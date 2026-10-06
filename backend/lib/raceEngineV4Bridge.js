@@ -1,5 +1,5 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
-import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater } from "./raceEngineRulesRevision.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "./raceEngineRulesRevision.ts";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
 //
 // HVAD DEN ER: seamen mellem den UÆNDREDE resultat-pipeline (raceRunner.js →
@@ -140,7 +140,7 @@ export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawa
     rank: index + 1,
     stageGap: clampGap(r.time_seconds - winnerTime),
     components: { breakaway: inBreakaway.has(r.rider_id) ? 1 : 0 },
-    ...(history ? { breakaway_status: { in_breakaway: inBreakaway.has(r.rider_id), breakaway_caught: !inBreakaway.has(r.rider_id) ? false : history.riders.get(r.rider_id)?.caught ? true : history.riders.get(r.rider_id)?.survived ? false : null } } : {}),
+    ...(history ? { breakaway_status: { in_breakaway: inBreakaway.has(r.rider_id), breakaway_caught: !inBreakaway.has(r.rider_id) ? false : history.riders.get(r.rider_id)?.caught ? true : history.riders.get(r.rider_id)?.survived ? false : null, breakaway_dropped: inBreakaway.has(r.rider_id) && history.riders.get(r.rider_id)?.dropped === true, breakaway_swallowed: inBreakaway.has(r.rider_id) && history.riders.get(r.rider_id)?.swallowed === true } } : {}),
   }));
   // Begge domme gælder motorens vinder (finish-eventets top[0] = results[0]).
   // Er han filtreret fra (udgået/OTL), taler de om en anden rytter end rækkens
@@ -502,6 +502,10 @@ export function buildV4StageInput({
       standings: gcStandings,
       starterIds: startlist.map((e) => e.rider_id),
     });
+    // #5978 (KUN orders_gc_v3): etaper tilbage efter i dag (farlighedens potentiale).
+    if (isOrdersGcV3OrLater(rulesRevision) && input.gc_context.status === "standings" && Array.isArray(raceStages)) {
+      input.gc_context.stages_remaining = raceStages.filter((s) => (Number(s?.stage_number) || 1) > Number(stageNumber)).length;
+    }
   }
   return input;
 }

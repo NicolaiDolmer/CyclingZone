@@ -59,8 +59,14 @@ export const ANCHOR_BANDS = {
     source: "race:gate + #3149 (mor-spec §5: \"ITT-korrelation synlig\" — tærskel valgt af denne harness)",
   },
   mountainTop10SpreadSeconds: {
-    min: 180, max: 240,
-    source: "#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)",
+    min: 60, max: 150,
+    source: "ejer 5/10 (#6199 del 2, virkelige Grand Tour-topankomster): nr. 10 er 1:00-2:30 efter vinderen. Erstatter #2415's 180-240 s",
+  },
+  // #6199 del 3 (ejer 5/10): kort afslutning opad (sidste stigning ca. 3-7 km a
+  // 5-7 %, ikke hoejfjeld). Tre lofter, samlet i én dom (se scoreShortUphillFinish).
+  shortUphillFinishSeconds: {
+    maxByRank: { 10: 20, 30: 90, 50: 300 },
+    source: "ejer 5/10 (#6199 del 3, virkelige korte afslutninger opad): nr. 10 inden for 0:20, nr. 30 inden for 1:30, nr. 50 inden for 5:00",
   },
   gtWinnerMarginSeconds: {
     min: 60, max: 480,
@@ -869,8 +875,8 @@ export function scoreGapRealism(rows) {
   return [
     {
       id: "mountain_top10_spread",
-      label: "Bjergetape top-10-spredning, topankomster (#2415)",
-      bandLabel: `${band.min}-${band.max}s (~3-4 min)`,
+      label: "Bjergetape top-10-spredning, topankomster (#6199)",
+      bandLabel: `${band.min}-${band.max}s (1:00-2:30)`,
       source: band.source,
       v3: { ...judge(v3.value, band, v3.n, "ingen bjerg-topankomster i input"), display: (v) => fmt(v, 0) },
       v4: { ...judge(v4.value, band, v4.n, "ingen bjerg-topankomster i input"), display: (v) => fmt(v, 0) },
@@ -899,6 +905,60 @@ const ITT_MIN_FINISHERS = 10;
 /** Tider for de ryttere der krydsede stregen (v4). En udgaaet rytters tid er frosset ved styrtet og ikke en maaltid. */
 function v4FinisherTimes(row) {
   return row.raw.v4Output.results.filter((x) => x.status !== "abandoned").map((x) => x.time_seconds);
+}
+
+/**
+ * #6199 del 3: er etapen en kort afslutning opad? Den sidste blok af
+ * sammenhaengende stigninger er ca. 3-7 km a 5-7 % i snit, og etapen er ikke
+ * hoejfjeld. Eksporteret for direkte kontrakt-test.
+ */
+export function isShortUphillFinish(route) {
+  if (!route || route.profile_type === "high_mountain") return false;
+  const segs = route.segments ?? [];
+  if (segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
+  let i = segs.length - 1;
+  while (i > 0 && segs[i - 1].kind === "climb") i--;
+  const block = segs.slice(i);
+  const km = block.reduce((a, s) => a + (s.to_km - s.from_km), 0);
+  const grad = km > 0 ? block.reduce((a, s) => a + (s.to_km - s.from_km) * (s.avg_gradient ?? 0), 0) / km : 0;
+  return km >= 3 && km <= 7 && grad >= 5 && grad <= 7;
+}
+
+/**
+ * #6199 del 3 (ejer 5/10): kort afslutning opad. Pr. plads (10/30/50) middel-
+ * afstanden til vinderen over etaperne, delt med pladsens loft; vaerdien er den
+ * vaerste af de tre brøker, saa PASS (<= 1) kraever at alle tre lofter holder.
+ * En plads etapen ikke har (faerre i maal) taeller ikke med.
+ */
+export function scoreShortUphillFinish(rows) {
+  const band = ANCHOR_BANDS.shortUphillFinishSeconds;
+  const uphillRows = stagesWhere(rows, isShortUphillFinish);
+  function worstRatio(getTimes) {
+    let worst = null;
+    for (const [rank, limit] of Object.entries(band.maxByRank)) {
+      const n = Number(rank);
+      const gaps = uphillRows
+        .map((r) => getTimes(r))
+        .filter((times) => times.length >= n)
+        .map((times) => spreadAtRank(times, n))
+        .filter((v) => v !== null);
+      if (gaps.length === 0) continue;
+      const ratio = mean(gaps) / limit;
+      worst = worst === null ? ratio : Math.max(worst, ratio);
+    }
+    return worst;
+  }
+  const v3 = worstRatio((r) => r.raw.v3Output.ranked.map((x) => x.stageGap));
+  const v4 = worstRatio((r) => r.raw.v4Output.results.map((x) => x.time_seconds));
+  const ratioBand = { max: 1 };
+  return {
+    id: "short_uphill_finish_gaps",
+    label: "Kort afslutning opad, nr. 10/30/50 til vinderen (#6199)",
+    bandLabel: "<= 1 (nr. 10 <= 20s, nr. 30 <= 90s, nr. 50 <= 300s)",
+    source: band.source,
+    v3: { ...judge(v3, ratioBand, v3 === null ? 0 : uphillRows.length, "ingen korte afslutninger opad i input"), display: (v) => fmt(v, 2) },
+    v4: { ...judge(v4, ratioBand, v4 === null ? 0 : uphillRows.length, "ingen korte afslutninger opad i input"), display: (v) => fmt(v, 2) },
+  };
 }
 
 /** Stoerste andel af feltet paa én og samme tid (afrundet til 1/100 s, samme oploesning som StageResult). */
@@ -1004,6 +1064,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
     ...scoreTypeIntegrity(rows, abilitiesByRider),
     scoreBonusSecondsBounded(rows),
     ...scoreGapRealism(rows),
+    scoreShortUphillFinish(rows),
     ...scoreIttTimeRealism(rows),
   ];
 }
@@ -1022,7 +1083,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
  * @returns {Array<object>}  samme form som buildScorecard, plus .spread pr. motor
  */
 // ALLE anker-id'er fra buildScorecard() SKAL have en indgang her (#4947;
-// 15 siden #5576's to ITT-tids-ankre).
+// 16 siden #6199's anker for korte afslutninger opad).
 // Et manglende id gjorde at aggregateEngine() faldt tilbage til
 // `measured[0].verdict` — dommen fra FOERSTE seed — i stedet for at doemme
 // 3-seed-middelvaerdien mod baandet, praecis den aggregerings-fejl §7 raekke 8
@@ -1048,6 +1109,7 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   sprinter_win_rate_flat: ANCHOR_BANDS.sprinterWinRateFlat,
   bonus_seconds_bounded: { max: 10 },
   mountain_top10_spread: ANCHOR_BANDS.mountainTop10SpreadSeconds,
+  short_uphill_finish_gaps: { max: 1 },
   gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
   itt_top10_spread_per_40km: ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds,
   itt_largest_same_time_share: ANCHOR_BANDS.ittLargestSameTimeShare,

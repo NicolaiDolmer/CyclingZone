@@ -82,10 +82,11 @@ import {
   resolveIncidentChasers,
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
-import { isLetGoChaseGroup, ownRiderWheelSitterIds } from "./mechanics/breakaway.ts";
+import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
 import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
+import { valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -840,7 +841,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // ved segmentets indgang).
     let tempoByGroup = new Map<string, GroupTempo>();
     // #6187 (KUN orders_gc_v3): egne udbrydere paa hjul foerer ikke (mechanics/breakaway.ts).
-    const wheelSitterIds = ordersGcV3 ? ownRiderWheelSitterIds({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km }) : undefined;
+    // #5978: hooket faar samme saet (ctx.ownRidersOnWheel), ikke et nyt fra hook-tidspunktet.
+    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km, tuning }) : undefined;
+    const wheelSitterIds = onWheelAtStart ? new Set(onWheelAtStart.flatMap((w) => w.rider_ids)) : undefined;
     for (const group of state.groups) {
       const tempo = computeGroupTempo(
         group,
@@ -946,6 +949,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // terraen. Se neutralizeBreakawayTempoDrift.
     const mountainPhase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
     tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
+    // #6199 (KUN orders_gc_v3): i dalen efter en top kan et hul ikke vokse (mechanics/timeModel.ts).
+    if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
@@ -982,6 +987,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
       ...(rollingBreakawayV2For(v2Revision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
       ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
+      ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.

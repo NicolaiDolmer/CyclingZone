@@ -40,6 +40,7 @@
 // begrundelse for hvorfor fundet er bevidst og (2) en udløbsbetingelse der
 // siger hvornår entryen skal fjernes igen.
 
+import { formatFeatureLivenessReport } from './feature-liveness-report.js';
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import { readdir, readFile } from "node:fs/promises";
@@ -1102,53 +1103,7 @@ if (isMain) {
   if (JSON_OUT) {
     console.log(JSON.stringify(summary, null, 2));
   } else {
-    console.log(`Feature-liveness audit — ${summary.generated_at}`);
-    console.log(`Detectors: ${summary.detectors_run.join(", ")}`);
-    console.log(`Total findings: ${summary.total_findings} (A=${summary.by_detector.A} B=${summary.by_detector.B} C=${summary.by_detector.C} D=${summary.by_detector.D} E=${summary.by_detector.E})\n`);
-
-    if (findingsA.length > 0) {
-      console.log(`Detector A — write-but-no-data (${findingsA.length}):`);
-      for (const f of findingsA) {
-        console.log(`  ${f.table}`);
-        console.log(`    reason: ${f.reason}`);
-        if (f.backend_files) console.log(`    backend: ${f.backend_files.join(", ")}`);
-      }
-      console.log();
-    }
-    if (findingsB.length > 0) {
-      console.log(`Detector B — orphaned-endpoints (${findingsB.length}):`);
-      for (const f of findingsB) {
-        console.log(`  ${f.method} ${f.path}`);
-      }
-      console.log();
-    }
-    if (findingsC.length > 0) {
-      console.log(`Detector C — migration-drift (${findingsC.length}):`);
-      for (const f of findingsC) {
-        console.log(`  ${f.filename}`);
-        console.log(`    ${f.reason}`);
-      }
-      console.log();
-    }
-    if (findingsD.length > 0) {
-      console.log(`Detector D — schema-drift (${findingsD.length}):`);
-      for (const f of findingsD) {
-        console.log(`  ${f.table}`);
-        console.log(`    ${f.reason}`);
-      }
-      console.log();
-    }
-    if (findingsE.length > 0) {
-      console.log(`Detector E — zero-impression-features (${findingsE.length}):`);
-      for (const f of findingsE) {
-        console.log(`  ${f.event_name}`);
-        console.log(`    ${f.reason}`);
-      }
-      console.log();
-    }
-    if (allFindings.length === 0) {
-      console.log("OK — no liveness findings.\n");
-    }
+    process.stdout.write(formatFeatureLivenessReport(summary));
   }
 
   if (STRICT && allFindings.length > 0) process.exit(1);

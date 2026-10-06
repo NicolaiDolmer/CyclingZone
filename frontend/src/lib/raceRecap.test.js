@@ -84,6 +84,22 @@ test("endagsløb gemt som 'stage'-rækker (ingen gc) → recap udledes alligevel
   assert.equal(keys(m).includes("teamWon"), true);
 });
 
+test("#6185: afsatte udbrydere tælles ikke med i 'udbruddet holdt hjem'", () => {
+  const row = (id, rank, flags) => ({ id, result_type: "stage", stage_number: 1, rank, rider_id: id, rider: { firstname: "R", lastname: id }, team_id: "tA", finish_time: `+0:${String(rank).padStart(2, "0")}`, in_breakaway: false, breakaway_caught: false, ...flags });
+  const results = [
+    row("w", 1, { in_breakaway: true, breakaway_caught: false, breakaway_dropped: false }),
+    row("h", 2, { in_breakaway: true, breakaway_caught: false }), // før migrationen: ingen kolonne
+    row("p", 3, {}),
+    row("d1", 40, { in_breakaway: true, breakaway_caught: false, breakaway_dropped: true }),
+    row("d2", 41, { in_breakaway: true, breakaway_caught: false, breakaway_dropped: true }),
+  ];
+  const m = buildRaceRecap({ results, scope: { type: "stage", stageNumber: 1 } });
+  assert.equal(m.find((x) => x.key === "breakawaySurvived")?.params.count, 2);
+  // En afsat "vinder" (kan kun ske i inkonsistente data) giver aldrig "holdt hjem".
+  const dropWin = buildRaceRecap({ results: [row("d", 1, { in_breakaway: true, breakaway_caught: false, breakaway_dropped: true }), row("p", 2, {})], scope: { type: "stage", stageNumber: 1 } });
+  assert.ok(!dropWin.some((x) => x.key === "breakawaySurvived"));
+});
+
 test("S4 (#1176): abandon-momenter — scopet til valgt etape, cap på 2, kræver navn", () => {
   const results = [
     { id: "1", result_type: "stage", stage_number: 2, rank: 1, rider_id: "r1", rider: { firstname: "Stage", lastname: "Two" }, team_id: "tA", finish_time: "+0:00" },

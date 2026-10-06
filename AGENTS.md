@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Code + Codex). Single source of truth for de discipliner hver session skal følge. Claude auto-loader `CLAUDE.md`, Codex auto-loader KUN denne fil — derfor trin 0 i start-sekvensen (Codex genindført 9/9, [#5065](https://github.com/NicolaiDolmer/CyclingZone/issues/5065))._
+_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er arbejdskontrakten for begge agenter._
 
 > **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
@@ -58,9 +58,9 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 18. **Commit i hoved-checkoutet kun bag den blokerende branch-guard.** Kør `bash scripts/guard-commit-branch.sh <forventet-branch> && git commit ...`. Committer du via `git -C <dir>` (worktree-workers), så giv guarden SAMME mappe: `bash scripts/guard-commit-branch.sh <branch> <dir> && git -C <dir> commit ...`; uden `<dir>` tjekker den shell-cwd, som agent-shells nulstiller mellem kald — hændelsen bag: [`docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter`](docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter). Guarden exiter 1 ved mismatch og ved detached HEAD. `git branch --show-current` er IKKE en guard: den printer branchen og exiter altid 0, så en `&&`-kæde fortsætter uanset hvad. Blokerer guarden, så gentag ALDRIG uden den; en blokeret guard er signalet om at checkoutet står forkert. Er der fremmed ucommitteret arbejde i træet, så skift ikke branch (et `checkout` bærer deres filer med) men commit via `git worktree add <tmp> <branch>`.
 
-19. **Aldrig skip-logik på prod-deploy-grenen.** main bygger ALTID. Enhver "spring buildet over"-optimering (ignoreCommand, diff-gates) hører til på branches, aldrig på main.
+19. **skip-logik på prod-deploy** (#6202): main følger sidste succesfulde deploy; frontend/afhængigheder eller ukendt grundlag bygger. Kontrakt: `docs/VERCEL_BUILD_RULES.md`.
 
-20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out.
+20. **Deploy-verify er en del af merge-handlingen.** Railway success kræves efter hver salve; Vercel READY kræves ved frontend/byggeinputs eller ukendt grundlag. Rene uafhængige ændringer kan beholde seneste frontend-deploy. `docs/VERCEL_BUILD_RULES.md`.
 
 21. **Per-agent-timeout dimensioneres efter samtidighed.** En timeout der er rimelig for én agent alene er forkert under fuldt tryk: skalér med antal samtidige agenter eller launch i forskudte chunks.
 

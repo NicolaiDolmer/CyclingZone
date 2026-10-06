@@ -34,6 +34,7 @@ import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } f
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
+import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -402,7 +403,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
 
   // #4914: paa en massefinale paa flad/rullende profil taeller feltets ANTAL i
   // jagten (se bunchCatchWindowSeconds + tuning.ts's bunchCatch*-kommentar).
-  const bunchCatch = isBunchCatchRoute(route);
+  // #6199 (KUN orders_gc_v3): ikke paa en afslutning opad. Feltets antal giver
+  // ingen fart op ad en stigning, saa de huller stigningen skabte, staar.
+  // #6200: heller ikke paa en nedkoersel mod maal, hvor antals-vinduet ellers
+  // kunne folde en gruppe ind forbi loftet (hoejst halvdelen af hullet).
+  const v3FinishDescent = ctx.ordersGcV3 === true && segment.kind === "descent";
+  const bunchCatch = isBunchCatchRoute(route) && !(ctx.ordersGcV3 === true && (segment.kind === "climb" || segment.kind === "descent"));
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
@@ -441,7 +447,13 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // #5581: en gruppe af udelukkende grupetto-ryttere jager ikke (ude af
     // finalen, ejer-trappen 23/9). En blandet gruppe jager paa de koerendes ben.
     const onlyGrupetto = group.rider_ids.every((id) => entrants[id]?.effort === "grupetto");
-    const closingSeconds = onlyGrupetto ? 0 : netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
+    // #6200 (KUN orders_gc_v3): paa en nedkoersel mod maal deler jagten loftet
+    // med regrupperingen paa samme segment: tilsammen hoejst ca. 1,5 s pr. km og
+    // hoejst halvdelen af hullet ved toppen (mechanics/timeModel.ts).
+    const descentCap = v3FinishDescent
+      ? finishDescentRemainingCapSeconds(carriedGapSeconds, remainingKm, state.finish_descent_regroup?.[group.id])
+      : Infinity;
+    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit);
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
@@ -525,8 +537,10 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
 
   // ── Placerings-opgoer i kontendentpuljen ────────────────────────────────────
   // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
+  // #6200 (KUN orders_gc_v3): klatring taeller med i placeringen i en nedkoerselsfinale.
+  const v3DescentDemand = ctx.ordersGcV3 === true && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
   const demandVector = cobbledFinaleDemandVector(
-    (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR,
+    v3DescentDemand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
     ctx,
   );
   // #6073: paa en udbrudsfinale gaelder udbrudsdemand kun for udbruddet selv;
@@ -680,6 +694,8 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let cumulativeGap = 0;
   let prevScore: number | null = null;
   let tailStarted = false;
+  const tieEpsilon = ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
+  let tierTopScore = -Infinity;
 
   // ── Massefinale (#4615, felt-sammenhaengs-ankeret) ──────────────────────────
   // En massespurt afgoeres paa PLACERING, ikke paa tid: hele den ankomne pulje
@@ -704,7 +720,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     if (inTailZone) {
       if (!tailStarted) {
         // Haleklump: ét gap-skridt bag sidste oploeste tier, resten deler tid.
-        const scoreDelta = prevScore !== null ? Math.max(0, prevScore - entry.score) : 0;
+        // Review af #6223 (KUN orders_gc_v3): fra den forrige tiers foerste rytter (se tier-grenen).
+        const tailReference = tieEpsilon === null || !Number.isFinite(tierTopScore) ? prevScore : tierTopScore;
+        const scoreDelta = tailReference !== null ? Math.max(0, tailReference - entry.score) : 0;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
         cumulativeGap += step;
@@ -723,9 +741,18 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       return;
     }
 
-    if (prevScore === null || entry.score < prevScore) {
-      if (prevScore !== null) {
-        const scoreDelta = prevScore - entry.score;
+    // #6199 (KUN orders_gc_v3): taet score giver samme tid. En ny tier kun naar
+    // scoren ligger mindst `finaleTieScoreEpsilon` under tierens foerste rytter.
+    const newTier = prevScore === null
+      || (tieEpsilon === null ? entry.score < prevScore : tierTopScore - entry.score >= tieEpsilon);
+    if (newTier) {
+      // Review af #6223 (KUN orders_gc_v3): skridtet regnes fra den forrige tiers
+      // FOERSTE rytter, saa en rytters tid stadig foelger hans score-afstand til
+      // vinderen; samme tid i en tier maa ikke goere ryttere bag den hurtigere.
+      const tierReference = tieEpsilon === null ? prevScore : tierTopScore;
+      tierTopScore = entry.score;
+      if (prevScore !== null && tierReference !== null) {
+        const scoreDelta = tierReference - entry.score;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
         cumulativeGap += step;
@@ -872,6 +899,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     ),
   ];
 
-  const nextState: EngineState = { ...state, groups: newGroups, finish_order: finishOrder };
+  // #6200: bogen fra nedkoerslens regruppering er brugt op her (types.ts).
+  const base: EngineState = { ...state };
+  delete base.finish_descent_regroup;
+  const nextState: EngineState = { ...base, groups: newGroups, finish_order: finishOrder };
   return { state: nextState, events };
 };
