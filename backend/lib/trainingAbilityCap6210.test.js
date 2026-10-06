@@ -236,4 +236,18 @@ for (const perDate of [true, false]) {
     const end = visible(state.rider_derived_abilities[0]);
     assert.ok(VISIBLE_ABILITIES.some((k) => end[k] === afterFirstDate[k] + 1));
   });
+
+  test(`#6210 ${label}: et kalenderdags-tick samme dato taeller ogsaa med (sti-skifte midt paa datoen)`, async () => {
+    const state = seedState({ perDate });
+    // Fail-safe-faldet (fx hold uden division) skrev et kalenderdags-tick tidligere paa datoen.
+    const popped = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 1]));
+    state.training_day_runs.push({
+      team_id: TEAM_ID, tick_date: "2026-06-12", game_day: null,
+      report: { riders: [{ rider_id: "r1", gains: popped }] },
+    });
+    const start = visible(state.rider_derived_abilities[0]);
+    const result = await run(state, { executedBy: "assistant", gameDay: 1, ...dateDays });
+    assert.deepEqual(result.report.riders[0].gains, {}, "datoen har allerede givet sit point i hver evne");
+    assert.deepEqual(visible(state.rider_derived_abilities[0]), start);
+  });
 }

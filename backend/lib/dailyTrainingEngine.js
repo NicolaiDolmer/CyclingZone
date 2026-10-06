@@ -425,14 +425,18 @@ export async function runTeamTrainingDay({
   }
 
   const riderIds = riders.map((r) => r.id);
-  // #6210: datoens tidligere loebsdags-rapporter paa stien uden dato-kvitteringer.
-  // Med conditionPerDate er kilden kvitteringerne (dateReceipts, rytter-noeglet).
+  // #6210: datoens andre rapporter. Et kalenderdags-tick (game_day NULL, fx fail-
+  // safe-faldet uden division) taeller altid med. Datoens andre loebsdage taeller
+  // herfra kun uden dato-kvitteringer; med conditionPerDate er kilden kvitteringerne
+  // (dateReceipts, rytter-noeglet), saa de ikke taelles to gange.
   let sameDateRunReports = [];
-  if (useRaceDayKey && !conditionPerDate) {
-    const { data, error } = await supabase.from("training_day_runs").select("game_day, report")
-      .eq("team_id", teamId).eq("season_id", seasonId).eq("squad", squadKey).eq("tick_date", tickDate);
+  if (useRaceDayKey) {
+    const { data, error } = await supabase.from("training_day_runs").select("game_day, season_id, squad, report")
+      .eq("team_id", teamId).eq("tick_date", tickDate);
     if (error) throw new Error(`same-date training reports: ${error.message}`);
-    sameDateRunReports = (data ?? []).filter((row) => Number(row.game_day) !== raceDay)
+    sameDateRunReports = (data ?? []).filter((row) => (row.game_day == null
+      || (!conditionPerDate && row.season_id === seasonId
+        && (row.squad ?? TRAINING_DAY_RUN_DEFAULT_SQUAD) === squadKey && Number(row.game_day) !== raceDay)))
       .flatMap((row) => row.report?.riders ?? []);
   }
   if (conditionPerDate) {
@@ -913,10 +917,11 @@ export async function runTeamTrainingDay({
       // #6210: maks +1 pr. evne pr. dato, paa tvaers af datoens loebsdage og stier.
       // Den gamle kalenderdags-sti har kun ét tick pr. dato og er uroert.
       if (useRaceDayKey) {
-        const usedGains = conditionPerDate
-          ? sumDateGains(dateReceipts.filter((row) => row.rider_id === rider.id
-            && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report))
-          : sumDateGains(sameDateRunReports.filter((row) => row.rider_id === rider.id));
+        const usedGains = sumDateGains([
+          ...(conditionPerDate ? dateReceipts.filter((row) => row.rider_id === rider.id
+            && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
+          ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
+        ]);
         tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
       }
     }
