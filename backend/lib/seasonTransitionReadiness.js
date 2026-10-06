@@ -4,8 +4,8 @@
  * Genbruger auto-cron'ens "wrapped window"-semantik (seasonAutoTransition.js):
  * den afgående sæsons seneste transfervindue skal være lukket via deadline-
  * cyklussen (status='closed' OG closed_at sat — et racing-window født af
- * transitionToNextSeason har closed_at=null og tæller IKKE), final whistle
- * sendt og squad enforcement kørt. Dertil: ingen aktive auktioner og alle
+ * transitionToNextSeason har closed_at=null og tæller IKKE) og squad
+ * enforcement kørt. Dertil: ingen aktive auktioner og alle
  * sæsonens løb afviklet (ejer-beslutning 12/6: kritisk check).
  *
  * #2361 — season_end_completed: transitionToNextSeason (season-transition) og
@@ -19,6 +19,12 @@
  * Season 0 er undtaget (FIRST_PROMOTION_RELEGATION_SEASON=1): der findes intet
  * season-end-skridt for sæson 0, og 0→1-transitionen kræver fromSeason
  * status='active'.
+ *
+ * #6120 — final_whistle_sent er fjernet: Final Whistle blev kun sat af den
+ * afskaffede Deadline Day-cron (markedet er altid åbent, docs/TRANSFER_MARKET_RULES.md),
+ * så checket var permanent rødt uden at beskytte noget. De øvrige kritiske
+ * checks er uændrede — squad enforcement (trup-loftet) kræver stadig både et
+ * lukket vindue (closed_at) og squad_enforcement_completed_at.
  *
  * Gaten håndhæves i POST /api/admin/season-transition (routes/api.js).
  * Cron, relaunch-orchestratoren (#1103) og scripts/executeSeasonTransition.js
@@ -37,7 +43,7 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   const [windowRes, auctionsRes, racesRes, seasonRes, poolFilterRes] = await Promise.all([
     supabase
       .from("transfer_windows")
-      .select("id, status, closed_at, final_whistle_sent_at, squad_enforcement_completed_at")
+      .select("id, status, closed_at, squad_enforcement_completed_at")
       .eq("season_id", fromSeasonId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -101,11 +107,6 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
         : `Sæson ${season.number} er stadig '${season.status}' — kør 'Afslut sæson' (season-end) FØRST, ellers springes op/nedrykning + divisionsbonusser over`,
     },
     window_closed: { ok: windowClosed, critical: true, detail: windowDetail },
-    final_whistle_sent: {
-      ok: Boolean(win?.final_whistle_sent_at),
-      critical: true,
-      detail: win?.final_whistle_sent_at ? null : "final_whistle_sent_at mangler på vinduet",
-    },
     squad_enforcement_completed: {
       ok: Boolean(win?.squad_enforcement_completed_at),
       critical: true,

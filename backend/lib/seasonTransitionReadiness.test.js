@@ -1,7 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { assessSeasonEndBlockers, assessTransitionReadiness } from "./seasonTransitionReadiness.js";
+import { ALL_CRON_MONITORS } from "./cronMonitorRegistry.js";
+
+const LIB_DIR = dirname(fileURLToPath(import.meta.url));
 
 // ─── Mock Supabase ────────────────────────────────────────────────────────────
 // Dækker præcis de queries assessTransitionReadiness laver:
@@ -83,7 +90,8 @@ const WRAPPED_WINDOW = {
   id: "w-1",
   status: "closed",
   closed_at: "2026-06-10T18:00:00Z",
-  final_whistle_sent_at: "2026-06-10T18:05:00Z",
+  // #6120: final_whistle_sent_at bevidst null — altid-åbent marked, ingen Deadline Day-cron sætter den.
+  final_whistle_sent_at: null,
   squad_enforcement_completed_at: "2026-06-10T18:10:00Z",
 };
 
@@ -102,7 +110,6 @@ test("assessTransitionReadiness — wrapped vindue + 0 auktioner + 0 uafviklede 
     Object.keys(result.checks).sort(),
     [
       "all_races_completed",
-      "final_whistle_sent",
       "no_active_auctions",
       "season_end_completed",
       "squad_enforcement_completed",
@@ -228,14 +235,67 @@ test("assessTransitionReadiness — racing-window (closed men closed_at=null) bl
   assert.equal(result.checks.window_closed.ok, false, "racing-window må ikke tælle som lukket deadline-vindue");
 });
 
-test("assessTransitionReadiness — manglende final whistle blokerer", async () => {
+// ============================================================
+// #6120: markedet er altid åbent (docs/TRANSFER_MARKET_RULES.md), og den
+// afskaffede Deadline Day-cron var eneste setter af final_whistle_sent_at.
+// Readiness må derfor ikke kræve Final Whistle — men må heller ikke blive
+// fail-open: de øvrige kritiske vindue-/trup-checks gælder uændret.
+// ============================================================
+
+test("#6120 altid-åbent marked: manglende final whistle blokerer IKKE", async () => {
   const supabase = createMockSupabase({
     win: { ...WRAPPED_WINDOW, final_whistle_sent_at: null },
   });
   const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, true);
+  assert.equal(result.checks.final_whistle_sent, undefined, "Final Whistle er ikke længere et readiness-check");
+  assert.ok(!result.failed_critical.includes("final_whistle_sent"));
+});
+
+test("#6120 ikke fail-open: whistle sat men squad enforcement mangler blokerer stadig", async () => {
+  const supabase = createMockSupabase({
+    win: { ...WRAPPED_WINDOW, final_whistle_sent_at: "2026-06-10T18:05:00Z", squad_enforcement_completed_at: null },
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
   assert.equal(result.ready, false);
-  assert.equal(result.checks.window_closed.ok, true);
-  assert.equal(result.checks.final_whistle_sent.ok, false);
+  assert.deepEqual(result.failed_critical, ["squad_enforcement_completed"]);
+});
+
+test("#6120 ikke fail-open: alle kritiske blockers består samtidig", async () => {
+  const supabase = createMockSupabase({
+    win: { id: "w-4", status: "closed", closed_at: null, final_whistle_sent_at: null, squad_enforcement_completed_at: null },
+    activeAuctionCount: 1,
+    unfinishedRaceCount: 1,
+    seasonNumber: 3,
+    seasonStatus: "active",
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, false);
+  assert.deepEqual(
+    [...result.failed_critical].sort(),
+    [
+      "all_races_completed",
+      "no_active_auctions",
+      "season_end_completed",
+      "squad_enforcement_completed",
+      "window_closed",
+    ],
+  );
+});
+
+test("#6120 readiness læser ikke final_whistle_sent_at fra transfer_windows", async () => {
+  const selects = [];
+  const base = createMockSupabase({ win: WRAPPED_WINDOW });
+  const spy = {
+    from(table) {
+      const q = base.from(table);
+      if (table !== "transfer_windows") return q;
+      return { select: (cols, ...rest) => { selects.push(cols); return q.select(cols, ...rest); } };
+    },
+  };
+  await assessTransitionReadiness({ supabase: spy, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(selects.length, 1);
+  assert.ok(!selects[0].includes("final_whistle_sent_at"), `select må ikke kræve whistle: ${selects[0]}`);
 });
 
 test("assessTransitionReadiness — manglende squad enforcement blokerer", async () => {
@@ -268,7 +328,6 @@ test("assessTransitionReadiness — intet vindue overhovedet blokerer", async ()
   const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
   assert.equal(result.ready, false);
   assert.equal(result.checks.window_closed.ok, false);
-  assert.equal(result.checks.final_whistle_sent.ok, false);
   assert.equal(result.checks.squad_enforcement_completed.ok, false);
 });
 
@@ -535,4 +594,21 @@ test("assessSeasonEndBlockers — >100 blocking races chunkes i flere .in()-kald
     "2026-08-20T10:00:00+00:00",
     "MAX scheduled_at på tværs af begge chunks skal vindes, selvom det kom fra det FØRSTE kald",
   );
+});
+
+// ============================================================
+// #6120: Deadline Day-cron'en er fjernet. Den læste transfer_windows hver
+// 5. min uden funktion (markedet er altid åbent) og gav CYCLINGZONE-82 under
+// et udfald. Ingen query, notifikation, webhook eller monitor-slug må komme
+// tilbage ad bagdøren.
+// ============================================================
+
+test("#6120 Deadline Day-cron er væk: intet modul, intet cron-kald, intet monitor-slug", () => {
+  assert.equal(existsSync(join(LIB_DIR, "deadlineDayReport.js")), false, "deadlineDayReport.js skal være slettet");
+  const cronSrc = readFileSync(join(LIB_DIR, "..", "cron.js"), "utf8");
+  for (const needle of ["deadlineDayReport", "processDeadlineDayCron", "runDeadlineDayCron", "\"deadline-day\"", "deadline_day_warning", "Final Whistle"]) {
+    assert.ok(!cronSrc.includes(needle), `cron.js må ikke indeholde ${needle}`);
+  }
+  const slugs = ALL_CRON_MONITORS.map(([slug]) => slug);
+  assert.ok(!slugs.includes("deadline-day"), "deadline-day monitor-slug skal være fjernet");
 });
