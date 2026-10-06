@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (6/10 morgen): Claude: [`2026-10-06-session-2-merge-koe.md`](superpowers/plans/2026-10-06-session-2-merge-koe.md) (kun merge: #6216 → #6223 → #6224 har ejer-go og venter på grøn CI; #6215 #6220 #6222 venter på Codex-rettelser; backfill #6185 fra 28/9 som dry-run med ejeren). **Derefter (ejer-go 6/10): tjek hold `ec201e6b` for den missede aftentræning 5/10 (lukningen fejlede med DB-timeout kl. 20:36, ingen retry i loggen); mangler dagen, så samme kompensation som #6061. PR #6243 (login ved blokeret sessionStorage, CYCLINGZONE-8W) i merge-køen ved grøn CI.** Merget 5/10: #6217 #6218 #6225. Så: **#6165 bundle-model senest fre 9/10**, [`session-a`](superpowers/plans/2026-10-05-session-a-motor-landing.md) og [`session-b`](superpowers/plans/2026-10-05-session-b-morgenblok.md). Codex: [`codex-stabilitet`](superpowers/plans/2026-10-05-naeste-session-codex-stabilitet.md).**
+> **🎯 Next action (6/10): [`2026-10-06-dagsplan.md`](superpowers/plans/2026-10-06-dagsplan.md) (Claude) + [`2026-10-06-codex-dag.md`](superpowers/plans/2026-10-06-codex-dag.md) (Codex).**
 >
 > **5/10 (motor):** kontrakterne står som seneste kommentar på hvert issue (#6187 #5978 #6201 #6185 #3460 #6137 #6199 #6200); krav før v3 tændes på #5978 #3460 #6223. Staging = prod-skema + data (#5904). Læring: `.claude/learnings/2026-10-05-*.md` (review FØR merge-session; rettelser to ad gangen; tjek GitHub-status ved CI i kø; "klar" = grøn CI).
 
