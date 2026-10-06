@@ -529,6 +529,7 @@ import {
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { loadTeamSeasonEntries, raceIdsMissingWindow, withEntryRaceWindows, writeRegeneratedLineups } from "../lib/raceHubAutofill.js";
+import { loadRegenerateBindingLocks, writeRegeneratedLineupsPreservingTarget } from "../lib/raceEntryGeneratorBindings.ts";
 import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import {
   buildSelectionDeadlineReminder,
@@ -6513,12 +6514,17 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
     }));
+    // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
+    lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
+      targetRaceIds: target.map((r) => r.id), riderIds: riders.map((r) => r.rider_id) }));
     const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows, strategy });
 
     // #5789: skrivningen (frys-guard #2074, slip af ryttere der flyttes mellem dagens
     // løb, delete-så-insert pr. løb, navngiven #3420-fejl) bor i raceHubAutofill.js.
-    const { regenerated } = await writeRegeneratedLineups({
+    // #6132: afvises et insert, genskabes holdets hele eksisterende måludtagelse.
+    const { regenerated } = await writeRegeneratedLineupsPreservingTarget({
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
+      write: async (args) => await writeRegeneratedLineups({ ...args }),
     });
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
