@@ -176,6 +176,21 @@ test("#6185 B1 prod 877c67c1 e4 on the race page: split off, never swallowed, 2n
   assert.equal(labelOf(byId.get("e107")!, history), "detail.breakaway.dropped");
 });
 
+test("#6234 prod 877c67c1 e4: the break 'caught' by its own dropped piece; nobody without a non-escapee ahead reads 'caught'", () => {
+  // Same stage, with the pursuer the engine names since #6050: e2's solo, a piece of the break.
+  const events = STAGE_877_E4.map((event) => event.type === "breakaway_caught" ? { ...event, params: { ...event.params, chase_group_id: "solo-5000", chase_group_kind: "solo" } } : event);
+  // The stored rows still carry the old engine's catch flag (no backfill in this PR).
+  const rows = withFinishSafetyNet(pageRows(STAGE_877_E4_ROWS, { escapees: ["e1", "e2", "e3", "e4", "e5", "e6", "e7", "e107"], caught: ["e1", "e3", "e4", "e5", "e6", "e7", "e107"] }));
+  const history = historyForStage({ timeline_version: 2, stage_number: 1, events }, 1, rows.map((row) => row.rider_id), rows);
+  assert.ok(history);
+  for (const row of rows.filter((r) => r.in_breakaway && history.nonEscapeeAhead?.get(r.rider_id) === false)) {
+    assert.notEqual(labelOf(row, history), "detail.breakaway.caught", row.rider_id);
+  }
+  assert.equal(labelOf(rows[0], history), "detail.breakaway.survived", "the stage winner held home");
+  // Without the timeline the stored flag is all there is: unchanged.
+  assert.equal(labelOf(rows[0], null), "detail.breakaway.caught");
+});
+
 test("#6185 B1 Penisola with the finish order: dropped riders behind a non-escapee stay dropped", () => {
   const rows = withFinishSafetyNet(Object.entries(PENISOLA_STAGE3_RANKS).map(([id, rank]) => ({ result_type: "stage", stage_number: 3, rank, rider_id: id, in_breakaway: id.startsWith("e"), breakaway_caught: id === "e3" || id === "e6" })));
   const history = historyForStage(penisola, 3, penisolaIds, rows);

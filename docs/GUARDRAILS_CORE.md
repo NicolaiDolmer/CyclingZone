@@ -23,6 +23,11 @@ Før kodning på systemer der kræver kravafklaring (flow-redesign, ny automatis
 - Cron og API implementerer samme flow forskelligt
 - Spec doc behandles som implementeret adfærd
 
+## Nye public-tabeller
+
+Eksplicit adgangskontrakt, GRANT og RLS i samme migration: [DATA_API_GRANTS.md](DATA_API_GRANTS.md).
+Ingen implicitte Data API-privilegier; skabelon og CI-audit dækker også SELECT og service_role (#708).
+
 ## Kritiske invarianter
 - Rytter må ikke ende i konfliktende ejer-state
 - Betaling går aldrig til forkert hold

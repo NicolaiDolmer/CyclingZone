@@ -3,6 +3,7 @@
 // increment_balance_with_audit, som debitTeam rammer via balanceRpc).
 import test from "node:test";
 import assert from "node:assert/strict";
+import { isAuctionCommitmentTable, auctionCommitmentTable } from "./availableBalanceMock.js";
 
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
@@ -18,9 +19,11 @@ function clone(value) {
 
 function createScoutSupabase({
   team, staff = [], abilities = [], assignments = [], scoutActions = [],
-  riders = [], academyIntake = [],
+  riders = [], academyIntake = [], leadingAuctions = [], proxies = [],
 }) {
   const state = {
+    leadingAuctions,
+    proxies,
     team: clone(team),
     staff: clone(staff),
     abilities: clone(abilities),
@@ -42,6 +45,9 @@ function createScoutSupabase({
       return Promise.resolve({ data: state.team.balance, error: null });
     },
     from(table) {
+      if (isAuctionCommitmentTable(table)) {
+        return auctionCommitmentTable(table, { leading: state.leadingAuctions, proxies: state.proxies });
+      }
       if (table === "teams") {
         return {
           select(columns) {
@@ -808,4 +814,60 @@ test("loadTeamScoutHistory: hides rider_id if the rider has become unavailable s
   const history = await loadTeamScoutHistory("team-1", supabase);
   assert.equal(history[0].rider_id, null);
   assert.deepEqual(history[0].riderStatus, {});
+});
+
+// ─── #6237: disponibel saldo (penge låst i auktionsbud) ──────────────────────
+
+test("#6237 startTargetAssignment: rejse kan ikke betales med penge låst i et førende bud", async () => {
+  const cost = SCOUT_JOB_CONFIG.target.costPerLevel;
+  const supabase = createScoutSupabase({
+    team: { id: "team-1", balance: cost + 100 },
+    leadingAuctions: [{ id: "a1", current_price: 101 }],
+  });
+  const result = await startTargetAssignment({ teamId: "team-1", riderId: "rider-1", seasonId: "season-1" }, supabase, NOW);
+  assert.deepEqual(result, { ok: false, error: "insufficient_available_balance", locked: 101, available: cost - 1 });
+  assert.equal(supabase.state.assignments.length, 0);
+  assert.equal(supabase.state.finance_transactions.length, 0);
+  assert.equal(supabase.state.team.balance, cost + 100);
+});
+
+test("#6237 startTargetAssignment: præcis nok disponibelt (proxy-loft tæller) går igennem", async () => {
+  const cost = SCOUT_JOB_CONFIG.target.costPerLevel;
+  const supabase = createScoutSupabase({
+    team: { id: "team-1", balance: cost + 100 },
+    proxies: [{ auction_id: "a2", max_amount: 100, auction: { status: "active" } }],
+  });
+  const result = await startTargetAssignment({ teamId: "team-1", riderId: "rider-1", seasonId: "season-1" }, supabase, NOW);
+  assert.equal(result.ok, true);
+});
+
+test("#6237 startTargetAssignment: proxy på afsluttet auktion låser ikke penge", async () => {
+  const cost = SCOUT_JOB_CONFIG.target.costPerLevel;
+  const supabase = createScoutSupabase({
+    team: { id: "team-1", balance: cost },
+    proxies: [{ auction_id: "a3", max_amount: 5_000, auction: { status: "completed" } }],
+  });
+  const result = await startTargetAssignment({ teamId: "team-1", riderId: "rider-1", seasonId: "season-1" }, supabase, NOW);
+  assert.equal(result.ok, true);
+});
+
+test("#6237 startTargetAssignment: rå saldo for lav giver stadig insufficient_funds", async () => {
+  const cost = SCOUT_JOB_CONFIG.target.costPerLevel;
+  const supabase = createScoutSupabase({ team: { id: "team-1", balance: cost - 1 } });
+  const result = await startTargetAssignment({ teamId: "team-1", riderId: "rider-1", seasonId: "season-1" }, supabase, NOW);
+  assert.deepEqual(result, { ok: false, error: "insufficient_funds" });
+});
+
+test("#6237 startMission: mission kan ikke betales med penge låst i bud", async () => {
+  const cost = SCOUT_JOB_CONFIG.mission.cost;
+  const supabase = createScoutSupabase({
+    team: { id: "team-1", balance: cost + 50 },
+    leadingAuctions: [{ id: "a1", current_price: 51 }],
+  });
+  const result = await startMission(
+    { teamId: "team-1", criteria: { scope: "division", value: "div-1" }, seasonId: "season-1" }, supabase, NOW
+  );
+  assert.deepEqual(result, { ok: false, error: "insufficient_available_balance", locked: 51, available: cost - 1 });
+  assert.equal(supabase.state.assignments.length, 0);
+  assert.equal(supabase.state.finance_transactions.length, 0);
 });

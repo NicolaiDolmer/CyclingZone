@@ -1,0 +1,51 @@
+{
+  "phase": "after",
+  "primed": true,
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "resultRows": 1889644,
+  "passes": [
+    {
+      "pass": 1,
+      "ok": true,
+      "durationMs": 105.26649999999972
+    },
+    {
+      "pass": 2,
+      "ok": true,
+      "durationMs": 84.53789999999935
+    },
+    {
+      "pass": 3,
+      "ok": true,
+      "durationMs": 60.302599999999074
+    }
+  ],
+  "calls": [
+    {
+      "name": "get_ranking_refresh_work_state",
+      "durationMs": 104.36709999999948,
+      "errorCode": null
+    },
+    {
+      "name": "get_ranking_refresh_work_state",
+      "durationMs": 84.44859999999971,
+      "errorCode": null
+    },
+    {
+      "name": "get_ranking_refresh_work_state",
+      "durationMs": 60.218300000000454,
+      "errorCode": null
+    }
+  ],
+  "readers": [],
+  "rowCounts": {
+    "rider_rankings_mv": 16286,
+    "team_standings_ext_mv": 1054,
+    "team_race_points_mv": 33328,
+    "global_rank_mv": 268,
+    "youth_rider_rankings_mv": 2072
+  },
+  "totalRefreshCalls": 0,
+  "meanPassMs": 83.36899999999939,
+  "allSucceeded": true
+}
