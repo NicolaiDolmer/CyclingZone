@@ -3,11 +3,12 @@
 // Hård gate: alle funktioner er no-ops mens FACILITIES_ENABLED=false; tests
 // injicerer flags-parameteren ({ facilitiesEnabled: true }) — prod-callsites
 // udelader den så koden følger kode-konstanten.
-import { FACILITIES_ENABLED, FACILITY_TRACKS, MAX_STAFF_SLOTS_PER_ROLE, staffSalaryFor, staffReleaseSeverance } from "./facilityConstants.js";
+import { FACILITIES_ENABLED, FACILITY_TRACKS, MAX_STAFF_SLOTS_PER_ROLE, STAFF_SALARY_BY_TIER, staffSalaryFor, staffReleaseSeverance } from "./facilityConstants.js";
 import { validateUpgrade, validateHire, getUpgradePrice, severanceCost } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { debitTeam } from "./economyEngine.js";
+import { checkAvailableSpend } from "./availableBalance.js";
 import { FINANCE_REASON } from "./economyConstants.js";
 import { notifyScoutChanged } from "./notificationService.js"; // #3334
 
@@ -116,6 +117,9 @@ export async function purchaseFacilityUpgrade(
 
   const nextTier = currentTier + 1;
   const price = getUpgradePrice(currentTier);
+  // #6237: penge låst i auktionsbud må ikke bruges på anlægget.
+  const spendIssue = await checkAvailableSpend(supabaseClient, { teamId, balance, cost: price });
+  if (spendIssue) return { ok: false, ...spendIssue };
 
   const debit = await debitTeam(teamId, price, "facility_purchase", null, seasonId, supabaseClient, {
     idempotent: true,
@@ -201,6 +205,12 @@ export async function hireStaff(
 
   const validationError = validateHire({ role, staffTier: candidate.tier, facilityTier, balance });
   if (validationError) return { ok: false, error: validationError };
+  // #6237: ansættelsen kræver at ansættelsesbeløbet (validateHire) ligger i den
+  // disponible saldo, ikke i penge låst i auktionsbud.
+  const hireSpendIssue = await checkAvailableSpend(supabaseClient, {
+    teamId, balance, cost: STAFF_SALARY_BY_TIER[candidate.tier],
+  });
+  if (hireSpendIssue) return { ok: false, ...hireSpendIssue };
 
   // #2216 A4 (Q1): den PERSISTEREDE løn er rating-drevet — staffSalaryFor(overall) af den
   // afledte profil, så den ansatte chefs løn matcher hans faktiske evne (ikke et groft tier).
@@ -337,6 +347,9 @@ export async function releaseStaff(
   const balance = await loadTeamBalance(teamId, supabaseClient);
   const severance = staffReleaseSeverance(staff.salary);
   if (balance < severance) return { ok: false, error: "insufficient_funds", severance, balance };
+  // #6237: fratrædelsen må heller ikke betales med penge låst i auktionsbud.
+  const severanceIssue = await checkAvailableSpend(supabaseClient, { teamId, balance, cost: severance });
+  if (severanceIssue) return { ok: false, ...severanceIssue, severance, balance };
 
   const debit = await debitTeam(teamId, severance, "staff_severance", null, seasonId, supabaseClient, {
     idempotent: true,
