@@ -124,7 +124,9 @@ export function teamChasesOwnBreakaway(events, groupSnapshots, teamByRider, team
     .filter((e) => e.type === "gc_reaction" && e.params?.status === "started" && e.params.team_id === team)
     .filter((e) => {
       const members = membersAt(e.km);
-      return members.some((id) => teamByRider.get(id) === team) && (e.params.rider_ids ?? []).some((id) => members.includes(id));
+      // #6201: er udbruddet hentet, kan gruppen med dets id vaere holdets egen
+      // (den beskyttede rytter sidder i den); en reaktion derfra er ikke en jagt paa egne.
+      return members.some((id) => teamByRider.get(id) === team) && (e.params.rider_ids ?? []).some((id) => members.includes(id)) && !members.includes(e.params.protected_rider_id);
     })
     .map((e) => e.km);
 }
