@@ -289,6 +289,10 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
       const params = breakawayParams();
       return params ? { key: "breakaway_survived", params } : null;
     }
+    case "breakaway_dropped": { // #6185 del 2 (orders_gc_v3): motoren melder selv hvor det skete
+      const params = breakawayParams();
+      return params ? { key: "breakaway_dropped", params } : null;
+    }
     case "incident": {
       const rider = riderName(p.rider_id, riderNameById);
       if (!rider) return null;

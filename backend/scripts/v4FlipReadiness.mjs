@@ -49,13 +49,13 @@ import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 
 import { runHeadToHead } from "./headToHeadV4.js";
-import { aggregateScorecards, buildScorecard } from "./lib/headToHeadAnchors.js";
+import { ANCHOR_BANDS, aggregateScorecards, buildScorecard, isShortUphillFinish } from "./lib/headToHeadAnchors.js";
 import { evaluateTailGate, runTailSpread } from "./v4TailSpread.js";
 import { displayFor } from "./renderV4AnchorTable.mjs";
 import { sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { stableSeed } from "../lib/raceSimulator.js";
-import { rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
+import { loadRaceEngineV4, rankedFromV4Output } from "../lib/raceEngineV4Bridge.js";
 import { simulateStageV4 } from "../lib/engine/v4/index.ts";
 import { RACE_V4_TUNING, TIME_LIMIT_EXTRA_TUNING } from "../lib/engine/v4/tuning.ts";
 import { incidentTimeLossByRider, timeLimitSecondsFor } from "../lib/engine/v4/mechanics/timeLimit.ts";
@@ -560,6 +560,25 @@ export function renderPublicBlock(result) {
     `**v4 samlet:** ${anchors.v4Pass.length} PASS · ${anchors.v4Fail.length} FAIL · ${anchors.v4NotMeasured.length} ikke maalt. ` +
       `Flip-gatens krav "alle ankre groenne": **${anchors.v4AllGreen && anchors.v4NotMeasured.length === 0 ? "OPFYLDT" : "IKKE OPFYLDT"}**.`,
   );
+  if (result.realisticField) {
+    const rf = result.realisticField;
+    lines.push("");
+    lines.push(`### 1b. Tidsankrene i et realistisk felt (#6199, v4, ${rf.seedCount} seeds)`);
+    lines.push("");
+    lines.push(
+      `Samme etaper, men startfeltet er det anonymiserede Giro-felt fra #6088 (\`${meta.realistic_field_file ?? REALISTIC_FIELD_FILE}\`, ${rf.fieldRiders} ryttere). ` +
+        "Det er den PRIMAERE maaling for de to tidsankre; proxy-feltets dom i (1) er sekundaer, fordi det er langt bredere i klatre-evne end et rigtigt startfelt.",
+    );
+    lines.push("");
+    lines.push("| Anker | v4 | v4 seeds |");
+    lines.push("|---|---|---|");
+    for (const a of rf.anchors) lines.push(`| ${a.label} | ${verdictMark(a.verdict)} | ${a.verdict === "N/A" ? "-" : `${a.seedsPass}/${a.seedsMeasured}`} |`);
+    lines.push("");
+    lines.push(
+      `- **OTL i det realistiske felt forekommer:** ${rf.rates.otlObserved ? "ja" : "nej"}` +
+        (rf.rates.otlTypes.length ? ` (etapetyper: ${rf.rates.otlTypes.join(", ")})` : "") + ". Rater pr. etapetype staar i den private fil.",
+    );
+  }
   lines.push("");
   lines.push(`### 2. Hale-gaten (ejer-laast, ${meta.tail_seeds.length} seeds: ${meta.tail_seeds.join(", ")})`);
   lines.push("");
@@ -664,6 +683,25 @@ export function renderPrivateReport(result) {
       `| ${r.label} | ${r.bandLabel} | ${anchorCell(r.id, r.v3)} | ${seedsCell(r.v3, anchors.seedCount)} | ${anchorCell(r.id, r.v4)} | ${seedsCell(r.v4, anchors.seedCount)} |`,
     );
   }
+  if (result.realisticField) {
+    const rf = result.realisticField;
+    const f1 = (v) => (v == null ? "n/a" : v.toFixed(1));
+    lines.push("");
+    lines.push(`## 1b. Realistisk felt (#6199, ${meta.realistic_field_file ?? REALISTIC_FIELD_FILE}, ${rf.fieldRiders} ryttere, v4)`);
+    lines.push("");
+    lines.push("| Anker | Baand | v4 middel | seeds bestaaet | etaper i alt | pr. plads |");
+    lines.push("|---|---|---|---|---|---|");
+    for (const a of rf.anchors) {
+      const byRank = a.byRank ? Object.entries(a.byRank).map(([n, v]) => `nr. ${n}: ${f1(v)} s`).join(", ") : "-";
+      lines.push(`| ${a.label} | ${a.bandLabel} | ${a.id === "short_uphill_finish_gaps" ? (a.value == null ? "n/a" : a.value.toFixed(2)) : `${f1(a.value)} s`} ${a.verdict} | ${a.seedsPass}/${a.seedsMeasured} | ${a.n} | ${byRank} |`);
+    }
+    lines.push("");
+    lines.push("| Etapetype | etaper | rytter-starter | OTL | OTL % | etaper m. OTL | reddet % | udgaaet % |");
+    lines.push("|---|---|---|---|---|---|---|---|");
+    for (const r of [...rf.rates.rows, ...(rf.rates.total ? [rf.rates.total] : [])]) {
+      lines.push(`| ${r.key} | ${r.stages} | ${r.riderStarts} | ${r.otl} | ${fmtPct(r.otlRate, 3)} | ${r.stagesWithOtl} | ${fmtPct(r.rescueRate, 3)} | ${fmtPct(r.abandonRate, 3)} |`);
+    }
+  }
   lines.push("");
   lines.push(`## 2. Hale-gate (${meta.tail_seeds.join(", ")}): ren p90 pooled, middel og spaend pr. seed`);
   lines.push("");
@@ -748,6 +786,152 @@ export function measureHeadToHead({ population, stages, seeds = HEAD_TO_HEAD_SEE
   };
 }
 
+// ---------------------------------------------------------------------------
+// (1b) #6199: realistisk felt for tidsankrene
+// ---------------------------------------------------------------------------
+
+// Det anonymiserede Giro-felt fra #6088 (184 ryttere fra et rigtigt loeb: hold,
+// roller og evner, ingen navne). Proxy-feltet (sampleField over HELE
+// populationen) er langt bredere i klatre-evne end et rigtigt startfelt, saa
+// tidsankrene (bjerg nr. 10, kort afslutning opad) maales primaert her; proxy-
+// feltets dom i (1) beholdes som sekundaer rapport (#6199, maaling 6/10).
+export const REALISTIC_FIELD_FILE = "backend/scripts/baselines/giro-field-6088-2026-10-02.json";
+
+/**
+ * Startlisten fra Giro-fixturet i broens form (som raceRunner bygger den):
+ * hold, roller og om holdet er AI-styret. AI-holdene faar M14's ordrer (de
+ * jager, koerer for kaptajnen), saa et udbrud ikke vinder hver bjergetape med
+ * minutter, som det goer i proxy-feltets orders=none.
+ */
+export function realisticFieldEntrants(fixture) {
+  const aiByTeam = new Map(fixture.teams.map((t) => [t.id, t.is_ai === true]));
+  const abilitiesById = new Map(fixture.abilities.map((a) => [a.rider_id, a]));
+  return fixture.entries.filter((e) => abilitiesById.has(e.rider_id)).map((e) => {
+    const { rider_id: _id, ...abilities } = abilitiesById.get(e.rider_id);
+    return { rider_id: e.rider_id, team_id: e.team_id ?? null, team_is_ai: aiByTeam.get(e.team_id) === true, race_role: e.race_role ?? null, effort: "normal", abilities };
+  });
+}
+
+function isMountainTopFinish(route) {
+  return (route.profile_type === "mountain" || route.profile_type === "high_mountain") && route.finale_type === "long_climb";
+}
+
+function gapAtRank(results, rank) {
+  const times = results.filter((r) => r.status !== "abandoned").map((r) => Number(r.time_seconds)).filter(Number.isFinite).sort((a, b) => a - b);
+  return times.length >= rank ? times[rank - 1] - times[0] : null;
+}
+
+function meanOf(xs) {
+  const v = xs.filter(Number.isFinite);
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+
+/** Vandt dagens udbrud (vinderen sad i morgenudbruddet og blev aldrig hentet)? Samme definition som dev/timeModel6199.mjs. */
+export function escapeWonStage(output) {
+  const events = output?.timeline?.events ?? [];
+  const formed = new Set(events.filter((e) => e.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
+  const caught = new Set(events.filter((e) => e.type === "breakaway_caught").flatMap((e) => e.params?.rider_ids ?? []));
+  const winner = (output?.results ?? []).filter((r) => r.status === "finished").sort((a, b) => a.time_seconds - b.time_seconds)[0]?.rider_id;
+  return winner !== undefined && formed.has(winner) && !caught.has(winner);
+}
+
+/**
+ * #6199: koerer ALLE proxy-etaper med det realistiske felt (samme startliste
+ * hver etape) og maaler de to tidsankre (samme baand og samme klassifikation
+ * som scorecardet) plus uheld/OTL pr. etapetype. Dom pr. seed og paa middel.
+ * Koeres gennem broen (`v4` = loadRaceEngineV4()), saa AI-holdenes ordrer er med;
+ * ingen gemte holdordrer, intet klassement (etaperne er fra forskellige loeb).
+ *
+ * Hvert anker maales to gange: paa de etaper hvor dagens udbrud IKKE vandt
+ * (favoritterne afgjorde etapen; det er tidsmodellens maal og den primaere dom)
+ * og paa alle etaper (en udbrudssejr giver nr. 10 = feltets hul til udbruddet,
+ * som udbruds-ankrene ejer).
+ */
+export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEAD_SEEDS, rulesRevision = undefined }) {
+  const entrants = realisticFieldEntrants(fixture);
+  const mountainBand = ANCHOR_BANDS.mountainTop10SpreadSeconds;
+  const shortBand = ANCHOR_BANDS.shortUphillFinishSeconds;
+  const ranks = Object.keys(shortBand.maxByRank).map(Number);
+  const rateAcc = new Map();
+  const perSeed = [];
+  for (const seed of seeds) {
+    const obs = [];
+    for (const row of stages) {
+      const route = routeFromStageProfileRow(row);
+      const isMountain = isMountainTopFinish(route);
+      const isShort = isShortUphillFinish(route);
+      const output = v4.simulateStage({
+        entrants, stageProfile: row, seedString: `${seed}:${row.stage_number ?? 1}:realistic`, stageNumber: row.stage_number ?? 1,
+        teamOrderRows: [], isStageRace: true, raceStages: null, squad: null, rulesRevision: rulesRevision ?? "legacy", gcStandings: null,
+      }).v4Output;
+      accumulateStageRates(rateAcc, row.profile_type, output);
+      if (isMountain || isShort) {
+        obs.push({
+          isMountain,
+          isShort,
+          escapeWon: escapeWonStage(output),
+          gaps: Object.fromEntries([...new Set([10, ...ranks])].map((n) => [n, gapAtRank(output.results, n)])),
+        });
+      }
+    }
+    const seedValues = (subset) => {
+      const mountain = subset.filter((o) => o.isMountain).map((o) => o.gaps[10]);
+      const shortRows = subset.filter((o) => o.isShort);
+      const shortByRank = Object.fromEntries(ranks.map((n) => [n, meanOf(shortRows.map((o) => o.gaps[n]))]));
+      const ratios = ranks.map((n) => (shortByRank[n] === null ? null : shortByRank[n] / shortBand.maxByRank[n])).filter((r) => r !== null);
+      return {
+        mountainTop10: meanOf(mountain),
+        mountainN: mountain.filter(Number.isFinite).length,
+        shortByRank,
+        shortRatio: ratios.length ? Math.max(...ratios) : null,
+        shortN: shortRows.length,
+      };
+    };
+    perSeed.push({ seed, favorites: seedValues(obs.filter((o) => !o.escapeWon)), all: seedValues(obs) });
+  }
+  const inBand = (v, b) => v !== null && (b.min === undefined || v >= b.min) && (b.max === undefined || v <= b.max);
+  const verdict = (v, b) => (v === null ? "N/A" : inBand(v, b) ? "PASS" : "FAIL");
+  const sum = (xs) => xs.reduce((a, b) => a + b, 0);
+  const anchorsFor = (key, suffix) => {
+    const mountainValue = meanOf(perSeed.map((s) => s[key].mountainTop10));
+    const shortRatio = meanOf(perSeed.map((s) => s[key].shortRatio));
+    return [
+      {
+        id: "mountain_top10_spread",
+        subset: key,
+        label: `Bjergetape top-10-spredning, topankomster (#6199)${suffix}`,
+        bandLabel: `${mountainBand.min}-${mountainBand.max}s`,
+        value: mountainValue,
+        verdict: verdict(mountainValue, mountainBand),
+        seedsPass: perSeed.filter((s) => verdict(s[key].mountainTop10, mountainBand) === "PASS").length,
+        seedsMeasured: perSeed.filter((s) => s[key].mountainTop10 !== null).length,
+        n: sum(perSeed.map((s) => s[key].mountainN)),
+      },
+      {
+        id: "short_uphill_finish_gaps",
+        subset: key,
+        label: `Kort afslutning opad, nr. 10/30/50 til vinderen (#6199)${suffix}`,
+        bandLabel: "<= 1",
+        value: shortRatio,
+        byRank: Object.fromEntries(ranks.map((n) => [n, meanOf(perSeed.map((s) => s[key].shortByRank[n]))])),
+        verdict: verdict(shortRatio, { max: 1 }),
+        seedsPass: perSeed.filter((s) => verdict(s[key].shortRatio, { max: 1 }) === "PASS").length,
+        seedsMeasured: perSeed.filter((s) => s[key].shortRatio !== null).length,
+        n: sum(perSeed.map((s) => s[key].shortN)),
+      },
+    ];
+  };
+  return {
+    fieldRiders: entrants.length,
+    anchors: [
+      ...anchorsFor("favorites", ", etaper udbruddet ikke vandt"),
+      ...anchorsFor("all", ", alle etaper (inkl. udbrudssejre)"),
+    ],
+    seedCount: seeds.length,
+    rates: summarizeRates(rateAcc),
+  };
+}
+
 function argValue(name, fallback = null) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : fallback;
@@ -793,6 +977,8 @@ async function main() {
   const t0 = performance.now();
   console.log(`[5515] head-to-head ${seeds.join(",")} x ${stages.length} etaper, felt ${FIELD_SIZE} ...`);
   const { anchors, rates } = measureHeadToHead({ population, stages, seeds, rulesRevision });
+  console.log(`[6199] realistisk felt (${REALISTIC_FIELD_FILE}) ${seeds.join(",")} x ${stages.length} etaper ...`);
+  const realisticField = measureRealisticField({ v4: await loadRaceEngineV4(), fixture: JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8")), stages, seeds, rulesRevision });
   console.log(`[5515] hale-gate ${tailSeeds.join(",")} ...`);
   const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[5515] ydelse ${perfSizes.join(",")} ...`);
@@ -816,11 +1002,13 @@ async function main() {
       tail_seeds: tailSeeds,
       field_size: FIELD_SIZE,
       rules_revision: rulesRevision ?? "legacy",
+      realistic_field_file: REALISTIC_FIELD_FILE,
       host: hostLabel(),
       node: process.version,
       report_path: reportPath,
     },
     anchors,
+    realisticField,
     tailGate,
     rates,
     perf: perf.map((p) => ({ fieldSize: p.fieldSize, summary: p.summary })),

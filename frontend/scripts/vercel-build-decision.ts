@@ -8,6 +8,21 @@ export function needsFrontendBuild(paths: string[]): boolean {
 }
 
 export type Git = (args: string[]) => string;
+export function previewBuildDecision(previousSha: string | undefined, git: Git): { build: boolean; reason: string } {
+  try {
+    const head = git(['rev-parse', 'HEAD']).trim();
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(head)) return { build: true, reason: 'Invalid preview HEAD' };
+    if (head === previousSha) return { build: true, reason: 'Same-commit preview redeploy' };
+    // The verified public repository URL works even when Vercel omits origin.
+    git(['fetch', '--no-tags', '--depth=64', 'https://github.com/NicolaiDolmer/CyclingZone.git', 'main']);
+    const main = git(['rev-parse', 'FETCH_HEAD']).trim();
+    const base = git(['merge-base', main, 'HEAD']).trim();
+    if (!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(base)) return { build: true, reason: 'No trustworthy PR base' };
+    const paths = git(['diff', '--name-only', '--no-renames', '-z', base, 'HEAD', '--']).split('\0').filter(Boolean);
+    const build = needsFrontendBuild(paths);
+    return { build, reason: build ? 'PR contains frontend or shared build inputs' : 'PR contains only known independent inputs' };
+  } catch { return { build: true, reason: 'Preview comparison unavailable: build conservatively' }; }
+}
 export function productionBuildDecision(previousSha: string | undefined, git: Git): { build: boolean; reason: string } {
   if (!previousSha || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i.test(previousSha)) return { build: true, reason: 'No trustworthy previous successful deployment' };
   try {

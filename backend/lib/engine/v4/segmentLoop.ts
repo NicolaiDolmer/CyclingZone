@@ -956,10 +956,16 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
     const frontGroup = state.groups.reduce((min, g) => (g.gap_seconds < min.gap_seconds ? g : min), state.groups[0]);
     const dtFront = tempoByGroup.get(frontGroup.id)?.dtSeconds ?? 0;
+    // #6200 (KUN orders_gc_v3): paa nedkoerslen mod maal (sidste segment, samme
+    // definition som descent.ts/breakaway.ts/finale.ts) kan tempo-tikket aabne et
+    // hul, men aldrig lukke det. Al lukning gaar gennem de kappede hooks (bogen i
+    // mechanics/timeModel.ts), saa loftet maales fra hullet ved toppen.
+    const descentOpenOnly = ordersGcV3 && segment.kind === "descent" && segmentIndex === segments.length - 1;
     let groups = state.groups.map((g) => {
       if (g.id === frontGroup.id) return g;
       const dtGroup = tempoByGroup.get(g.id)?.dtSeconds ?? dtFront;
-      return { ...g, gap_seconds: Math.max(0, g.gap_seconds + (dtGroup - dtFront)) };
+      const delta = descentOpenOnly ? Math.max(0, dtGroup - dtFront) : dtGroup - dtFront;
+      return { ...g, gap_seconds: Math.max(0, g.gap_seconds + delta) };
     });
     groups = rebaselineGroups(groups);
     state = { ...state, groups };

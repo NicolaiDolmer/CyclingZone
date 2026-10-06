@@ -649,3 +649,24 @@ test("triggerfunktionerne kan ikke kaldes som RPC af anon eller authenticated", 
     }
   }
 });
+
+test('#6221: forward hardening denies client roles and preserves service stats/split/resync', async () => {
+  const migration = readMigration('2026-10-06-6221-roadmap-service-rpcs.sql');
+  await db.exec(migration);
+  await db.exec(migration);
+  const functions = ['roadmap_admin_stats()', 'roadmap_split_item(uuid,text,text,text,text,integer)', 'roadmap_resync_flags()'];
+  for (const fn of functions) {
+    for (const role of ['anon', 'authenticated', 'service_role']) {
+      const { rows } = await db.query("SELECT has_function_privilege($1,$2,'EXECUTE') AS ok", [role, `public.${fn}`]);
+      assert.equal(rows[0].ok, role === 'service_role', `${role} ${fn}`);
+    }
+  }
+  await assert.rejects(() => asAdmin(tx => tx.query('SELECT * FROM roadmap_admin_stats()')), /permission denied/);
+  const stats = await asService(tx => tx.query('SELECT * FROM roadmap_admin_stats()'));
+  assert.equal(stats.rows.length, 1);
+  const src = await item({ status: 'planned' });
+  const result = await asService(tx => tx.query("SELECT roadmap_split_item($1,'Rest EN','Rest DA') AS id", [src.id]));
+  assert.ok(result.rows[0].id);
+  const synced = await asService(tx => tx.query('SELECT roadmap_resync_flags() AS n'));
+  assert.equal(typeof synced.rows[0].n, 'number');
+});

@@ -332,14 +332,33 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
   const anchorIds = [...new Set([...finalizeCandidates, ...prizeCandidates].map((r) => r.id))];
   const lastResultByRace = {};
   const racesWithPrize = new Set();
-  if (anchorIds.length) {
-    const rows = await fetchAllRaceRows(supabase, "race_results", "race_id,imported_at,prize_money,id", anchorIds);
-    for (const row of rows) {
-      const cur = lastResultByRace[row.race_id];
-      if (!cur || new Date(row.imported_at) > new Date(cur)) lastResultByRace[row.race_id] = row.imported_at;
-      if ((row.prize_money ?? 0) > 0) racesWithPrize.add(row.race_id);
+  // #6184 · Kun SENESTE imported_at + "findes der en præmie-række" pr. løb er
+  // nødvendigt. Før hentede vi ALLE resultat-rækker for alle ankre (titusinder,
+  // offset-pagineret, sorteret på id) — prod 4-5/10: planen skannede hele
+  // race_results via pkey, 30+ kald > 5 s og en 500 ved 60 s. Nu to LIMIT 1-
+  // opslag pr. løb, sekventielt (ingen parallel-burst mod PostgREST), dækket af
+  // idx_race_results_race_id_imported_at + idx_race_results.
+  const prizeCandidateIds = new Set(prizeCandidates.map((r) => r.id));
+  for (const raceId of anchorIds) {
+    const latest = await run(
+      supabase
+        .from("race_results")
+        .select("imported_at")
+        .eq("race_id", raceId)
+        .order("imported_at", { ascending: false, nullsFirst: false })
+        .limit(1),
+      "race_results(latest)"
+    );
+    lastResultByRace[raceId] = latest[0]?.imported_at ?? null;
+    // racesWithPrize bruges kun til at filtrere prize-kandidater — spring
+    // opslaget over for rene finalize-ankre (og når auto-prize er slukket).
+    if (latest.length && prizeCandidateIds.has(raceId)) {
+      const prize = await run(
+        supabase.from("race_results").select("id").eq("race_id", raceId).gt("prize_money", 0).limit(1),
+        "race_results(prize)"
+      );
+      if (prize.length) racesWithPrize.add(raceId);
     }
-    for (const id of anchorIds) if (!(id in lastResultByRace)) lastResultByRace[id] = null;
   }
   // Løb med resultater men uden én eneste præmie-række (fx ungdomsløb: ingen
   // præmiepenge i v1, YOUTH_RULES §7) har intet at udbetale. Præmiemotoren

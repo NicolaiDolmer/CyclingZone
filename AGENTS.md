@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er arbejdskontrakten for begge agenter._
+_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kontrakten for begge._
 
 > **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
@@ -89,6 +89,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 31. **Nye frontend-filer skrives i `.ts`/`.tsx`.** Konventionen gælder kun NYE filer; ingen big-bang-migrering af de eksisterende ca. 880 `.js`/`.jsx`. Gælder også testfiler: nye i `.ts`/`.tsx`, eksisterende `.js`-tests urørt (#5428). `check-anti-slop.mjs` advarer, blokerer ikke.
 
+Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [migration-skabelonen](database/templates/new-public-table.sql); RLS erstatter ikke grants.
+
 32. **"Kan en type fange det?" — spørg FØR du foreslår en ny CI-guard.** `.github/workflows/ci.yml` har allerede ca. 15 håndbyggede ratchet-guard-jobs. Kan compileren fange fejlen (forkert felt-navn, manglende case, forkert type), tilføj typen i stedet. Guards reserveres til det compileren IKKE kan se: invarianter, RLS, paginerings-lofter, patch-notes-dækning, feature-liveness.
 
 ### Backlog-disciplin (ejer-direktiv 25/8, [#4267](https://github.com/NicolaiDolmer/CyclingZone/issues/4267))
@@ -99,7 +101,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 ### Merge-regler (ejer 22/9 + 24/9 + 4/10, #5508)
 
-35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI, rent uafhængigt diff-tjek, ingen blokerende CodeRabbit-fund og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`, uden spillerændring og uden ny rød måling (#5580/#5581 undtaget) · **(c)** Dependabot patch/minor, docs uden spillertekst, CI/hooks/test-only. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`.
+35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI, rent uafhængigt diff-tjek, ingen blokerende CodeRabbit-fund og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`/regel-revision, uden spillerændring/ny rød måling (ikke #5580/#5581) · **(c)** Dependabot inkl. sikkerhed, docs/CI/hooks/test/ops uden spillertekst. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`.
 
 ### §LOKAL lokal-only-state
 
