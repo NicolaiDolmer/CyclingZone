@@ -479,6 +479,12 @@ test("measureRealisticField: favorit-afgjorte etaper skilles fra udbrudssejre, O
   assert.equal(fav.verdict, "PASS");
   assert.equal(fav.seedsMeasured, 1, "et seed uden favorit-etaper er ikke maalt");
   assert.ok(all.value > fav.value, "alle etaper inkl. udbrudssejren");
+  // #6257: nedkoersels-kontrakten maales kun under orders_gc_v3+; uden nedkoersel mod maal er den N/A.
+  const descent = result.anchors.find((a) => a.id === "descent_gap_closure_contract");
+  assert.ok(descent, "v3: kontrakt-ankeret er med i det realistiske felt");
+  assert.equal(descent.verdict, "N/A");
+  const legacy = measureRealisticField({ v4, fixture, stages, seeds: ["u1"], rulesRevision: "legacy" });
+  assert.ok(!legacy.anchors.some((a) => a.id === "descent_gap_closure_contract"), "legacy: uaendret ankersaet");
   assert.equal(result.rates.total.stages, stages.length * 2);
   assert.equal(result.rates.total.otl, stages.length * 2);
 
