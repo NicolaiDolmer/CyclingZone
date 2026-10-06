@@ -161,20 +161,21 @@ export const DANGEROUS_ATTEMPT_TUNING = Object.freeze({
  * privat (balance-internals/6201/).
  *  - maxSize: loftet over dem der kommer afsted.
  *  - room: hvor mange feltet typisk lader gaa; flere forsoeg end det goer det
- *    svaerere for alle (feltet lukker det overfyldte hul), uden at fylde op.
+ *    svaerere for alle (feltet lukker det overfyldte hul), uden at fylde op og
+ *    uden at en travl morgen kollapser (skaleringen er multiplikativ).
  *  - successBonus: tillaeg til succes paa dage hvor udbrud har bedre chance
  *    (feltet lader lettere en stoerre gruppe gaa). Ingen garanti.
  * Flad har ingen profil her: dannelsen er praecis som under orders_gc_v2.
  */
 export const BREAKAWAY_SIZE_V3_TUNING = Object.freeze({
   byProfile: Object.freeze({
-    hilly: Object.freeze({ maxSize: 12, room: 9, successBonus: 0.15 }),
-    rolling: Object.freeze({ maxSize: 12, room: 9, successBonus: 0.15 }),
+    hilly: Object.freeze({ maxSize: 12, room: 10, successBonus: 0.15 }),
+    rolling: Object.freeze({ maxSize: 12, room: 10, successBonus: 0.15 }),
     mountain: Object.freeze({ maxSize: 16, room: 12, successBonus: 0.2 }),
     high_mountain: Object.freeze({ maxSize: 16, room: 12, successBonus: 0.2 }),
   }) as Readonly<Partial<Record<string, Readonly<{ maxSize: number; room: number; successBonus: number }>>>>,
-  /** Fradrag i succes pr. overfyldt plads, relativt til `room`. */
-  roomCrowdWeight: 0.25,
+  /** Overfyldning: succes ganges med (room / forsoeg) ^ denne eksponent naar forsoeg > room. */
+  roomCrowdWeight: 0.7,
   /** Loftet paa alle andre profiler (samme som orders_gc_v2). */
   defaultMaxSize: 8,
 });
@@ -395,9 +396,12 @@ export function resolveMorningBreakFormation(input: {
   const [pLo, pHi] = t.successBounds;
   const successes: Array<{ riderId: string; margin: number; ordered: boolean }> = [];
   const orderedBonus = Math.max(0, Number.isFinite(t.orderedSuccessBonus) ? t.orderedSuccessBonus : 0);
-  // #6201: profilens tillaeg og overfyldning relativt til hvor mange feltet typisk lader gaa.
+  // #6201: profilens tillaeg, og et overfyldt forsoeg (flere end feltet typisk
+  // lader gaa) goer det svaerere for alle. Skaleringen er multiplikativ, saa
+  // en travl morgen aldrig kollapser til 0-1 mand (#5955-regressionen).
   const size = input.sizeProfile;
-  const profileShift = size ? size.successBonus - size.roomCrowdWeight * (Math.max(0, attempted.length - size.room) / Math.max(1, size.room)) : 0;
+  const profileShift = size ? size.successBonus : 0;
+  const crowdScale = size && attempted.length > size.room ? Math.pow(size.room / attempted.length, size.roomCrowdWeight) : 1;
   for (const rider of attempted) {
     const ordered = orderedIds.has(rider.rider_id);
     const raw = profileShift + t.successBase
@@ -406,7 +410,7 @@ export function resolveMorningBreakFormation(input: {
       - t.successPressureWeight * pressure
       - t.successCrowdWeight * crowd;
     const danger = dangerPressure.get(rider.rider_id);
-    const p = clamp(danger === undefined ? raw : raw - DANGEROUS_ATTEMPT_TUNING.pressureWeight * danger, pLo, pHi);
+    const p = clamp(danger === undefined ? raw : raw - DANGEROUS_ATTEMPT_TUNING.pressureWeight * danger, pLo, pHi) * crowdScale;
     const r = input.roll("success", rider.rider_id);
     if (r < p) successes.push({ riderId: rider.rider_id, margin: p - r, ordered });
   }

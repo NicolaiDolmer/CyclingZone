@@ -148,7 +148,7 @@ test("#6201 v3 slukket: legacy/v1/v2 giver en byte-identisk etape med koden foer
   const actual: Record<string, string> = {};
   for (const routeName of Object.keys(ROUTES) as Array<keyof typeof ROUTES>) {
     for (const seed of SEEDS) {
-      for (const revision of (process.env.PRINT_6201_V3 ? ["orders_gc_v3"] : ["legacy", "orders_gc_v1", "orders_gc_v2"]) as RulesRevision[]) {
+      for (const revision of ["legacy", "orders_gc_v1", "orders_gc_v2"] as RulesRevision[]) {
         actual[`${routeName}/${seed}/${revision}`] = stageDigest(routeName, revision, seed);
       }
     }
@@ -156,4 +156,51 @@ test("#6201 v3 slukket: legacy/v1/v2 giver en byte-identisk etape med koden foer
   if (process.env.PRINT_6201_PINS) console.log(JSON.stringify(actual, null, 2));
   // Hele tabellen paa een gang, saa en CI-afvigelse viser alle beroerte noegler.
   assert.deepEqual(actual, PINNED_PRE_6201);
+});
+
+// orders_gc_v3 paa samme etaper FOER #6201 (main cbeb70c65). Flad er med for
+// fuldstaendighedens skyld: dens dannelse er uaendret, men et lille udbrud
+// koerer langsommere, saa den kan aendre sig.
+const PINNED_V3_PRE_6201: Record<string, string> = {
+  "hilly/6201-pin-a/orders_gc_v3": "335bff19e6579829b840d174",
+  "hilly/6201-pin-b/orders_gc_v3": "bc2a253254e7c3584698af18",
+  "mountain/6201-pin-a/orders_gc_v3": "9ffafdc98317b790c3d6a72d",
+  "mountain/6201-pin-b/orders_gc_v3": "dce04f2249b2d18af6beaabb",
+};
+
+test("#6201 foelsomhed: kuperet og bjerg under orders_gc_v3 giver en anden etape end foer, ellers beviste digesten intet", () => {
+  for (const routeName of ["hilly", "mountain"] as const) {
+    const changed = SEEDS.some((seed) => stageDigest(routeName, "orders_gc_v3", seed) !== PINNED_V3_PRE_6201[`${routeName}/${seed}/orders_gc_v3`]);
+    assert.ok(changed, `${routeName}: #6201 skal kunne ses under v3`);
+  }
+});
+
+function morningBreak(routeName: keyof typeof ROUTES, revision: RulesRevision, seed: string): { size: number; attempts: number } {
+  const events = simulateStageV4(stageInput(routeName, revision, seed)).timeline.events;
+  const formed = events.find((e) => e.type === "breakaway_formed");
+  const attempt = events.find((e) => e.type === "breakaway_attempt");
+  return {
+    size: ((formed?.params?.["rider_ids"] as string[] | undefined) ?? []).length,
+    attempts: ((attempt?.params?.["rider_ids"] as string[] | undefined) ?? []).length,
+  };
+}
+
+test("#6201 orders_gc_v3: udbruddet holder sig under profilens loft (flad 8, kuperet 12, bjerg 16)", () => {
+  const caps = { flat: 8, hilly: 12, mountain: 16 } as const;
+  for (const routeName of Object.keys(ROUTES) as Array<keyof typeof ROUTES>) {
+    for (let i = 0; i < 6; i++) {
+      const { size } = morningBreak(routeName, "orders_gc_v3", `6201-cap-${i}`);
+      assert.ok(size <= caps[routeName], `${routeName} seed ${i}: ${size} > ${caps[routeName]}`);
+    }
+  }
+});
+
+test("#6201 orders_gc_v3: AI-holdene sender flere forsoeg paa bjerg end under orders_gc_v2 (klatreren fra hold uden klassementschance)", () => {
+  let v2 = 0;
+  let v3 = 0;
+  for (const seed of SEEDS) {
+    v2 += morningBreak("mountain", "orders_gc_v2", seed).attempts;
+    v3 += morningBreak("mountain", "orders_gc_v3", seed).attempts;
+  }
+  assert.ok(v3 > v2, `v3 ${v3} <= v2 ${v2}`);
 });

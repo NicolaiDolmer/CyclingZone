@@ -18,7 +18,7 @@
 // Tal skrives kun til stdout/--out (balance-internals/, gitignoreret; hard rule 17).
 //
 // Koer:
-//   node backend/scripts/dev/breakawaySize6201.mjs [--rules=orders_gc_v2,orders_gc_v3] [--seeds=s1,s2,s3] [--mode=proxy|giro|both] [--out=balance-internals/6201/x.md]
+//   node backend/scripts/dev/breakawaySize6201.mjs [--rules=orders_gc_v2,orders_gc_v3] [--seeds=s1,s2,s3] [--mode=proxy|giro|scorecard|both|all] [--out=balance-internals/6201/x.md]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -180,6 +180,29 @@ export async function runProxy({ revisions, seeds }) {
   return result;
 }
 
+/** Scorecardets egne betingelser (v4FlipReadiness): felt 180 fra hele populationen, ingen ordrer. */
+export async function runScorecard({ revisions, seeds }) {
+  const e = await engine();
+  const population = JSON.parse(readFileSync(path.join(REPO_ROOT, e.POPULATION_FILE), "utf8"));
+  const sf = JSON.parse(readFileSync(path.join(REPO_ROOT, e.STAGES_FILE), "utf8"));
+  const stages = (Array.isArray(sf) ? sf : sf.stages).filter((s) => !TIME_TRIALS.has(s.profile_type));
+  const result = {};
+  for (const rules of revisions) {
+    const samples = [];
+    for (const seed of seeds) {
+      for (const row of stages) {
+        const stageSeedStr = `${seed}:${row.stage_number ?? 1}`;
+        const field = e.sampleField(e.makeRng(e.stableSeed(`${stageSeedStr}:field`)), population.riders, e.FIELD_SIZE);
+        const route = e.routeFromStageProfileRow(row);
+        const out = e.simulateStageV4({ route, startlist: e.v4EntrantsFromPopulation(field), orders: [], seed: stageSeedStr, tuning: e.RACE_V4_TUNING, ...(rules === "legacy" ? {} : { rules_revision: rules }) });
+        samples.push({ group: groupOf(route.profile_type), profile: route.profile_type, ...morningBreakOf(out.timeline.events) });
+      }
+    }
+    result[rules] = summarize(samples);
+  }
+  return result;
+}
+
 /** Giro-feltet (#6088): rigtige roller og ordrer, klassement foer hver etape. */
 export async function runGiro({ revisions, seeds }) {
   const { loadFixture } = await import("./giroCaptainTimeLoss6088.mjs");
@@ -265,11 +288,15 @@ async function main() {
   const mode = arg("mode", "both");
   const outPath = arg("out", null);
   const parts = [`# #6201 udbrudsstoerrelse pr. profil (PRIVAT, hard rule 17)`, "", `Seeds ${seeds.join(",")} · revisioner ${revisions.join(",")}`, ""];
-  if (mode === "proxy" || mode === "both") {
+  if (mode === "proxy" || mode === "both" || mode === "all") {
     const proxy = await runProxy({ revisions, seeds });
     parts.push(renderMarkdown("Proxy-etaper, 22 hold x 8, AI-ordrer for alle hold", proxy), "");
   }
-  if (mode === "giro" || mode === "both") {
+  if (mode === "scorecard" || mode === "all") {
+    const sc = await runScorecard({ revisions, seeds });
+    parts.push(renderMarkdown("Scorecardets felt (180 fra hele populationen, ingen ordrer: alle fri rolle)", sc), "");
+  }
+  if (mode === "giro" || mode === "both" || mode === "all") {
     const giro = await runGiro({ revisions, seeds });
     parts.push(renderMarkdown("Giro-feltet (#6088), rigtige roller og ordrer", giro), "");
   }

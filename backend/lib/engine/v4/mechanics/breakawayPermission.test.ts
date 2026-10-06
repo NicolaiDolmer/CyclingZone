@@ -9,6 +9,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  applySmallBreakPullCost,
+  breakawayMaxSizeV3,
+  breakawaySizeProfileV3,
+  smallBreakPaceV3,
   canAttemptMorningBreak,
   effectiveTryBreakByRider,
   morningBreakIntent,
@@ -381,4 +385,82 @@ test("an unknown rules revision is an error, never silently legacy or newest", (
   assert.throws(() => normalizeRulesRevision("orders_gc_v9"));
   const input = fixtureInput("flat-massespurt");
   assert.throws(() => simulateStageV4({ ...input, rules_revision: "next" as unknown as "legacy" }));
+});
+
+// ── #6201 (KUN orders_gc_v3): stoerrelse pr. profil og fart efter antal ───────
+
+test("#6201 trappen: flad uaendret (loft 8, ingen profil), kuperet/rullende loft 12, bjerg/hoejfjeld loft 16", () => {
+  assert.equal(breakawaySizeProfileV3("flat"), null);
+  assert.equal(breakawayMaxSizeV3("flat"), 8);
+  assert.equal(breakawayMaxSizeV3("cobbles"), 8);
+  assert.equal(breakawayMaxSizeV3(undefined), 8);
+  for (const p of ["hilly", "rolling"]) assert.equal(breakawayMaxSizeV3(p), 12);
+  for (const p of ["mountain", "high_mountain"]) assert.equal(breakawayMaxSizeV3(p), 16);
+  // Trappen stiger: bjerg lader mindst lige saa mange gaa som kuperet.
+  const hilly = breakawaySizeProfileV3("hilly")!;
+  const mountain = breakawaySizeProfileV3("mountain")!;
+  assert.ok(mountain.room >= hilly.room && mountain.successBonus >= hilly.successBonus);
+});
+
+function hunters(n: number): FormationRider[] {
+  const riders: FormationRider[] = [];
+  for (let i = 0; i < n; i++) riders.push(rider(`hunter-${String(i).padStart(2, "0")}`, `T${i}`, { role: "hunter" }));
+  for (let i = 0; i < n; i++) riders.push(rider(`stay-${String(i).padStart(2, "0")}`, `T${i}`));
+  return riders;
+}
+
+test("#6201 uden profil er dannelsen bit-identisk; med profil aldrig over loftet og aldrig fyld", () => {
+  for (let r = 0; r < 1; r += 0.05) {
+    const base = { riders: hunters(20), stances: new Map<string, FormationStance>(), roll: always(r), maxSize: 16 };
+    assert.deepEqual(resolveMorningBreakFormation({ ...base, sizeProfile: undefined }), resolveMorningBreakFormation(base));
+    const shaped = resolveMorningBreakFormation({ ...base, sizeProfile: breakawaySizeProfileV3("mountain")! });
+    assert.ok(shaped.escaped.length <= 16);
+    for (const id of shaped.escaped) assert.ok(shaped.attempted.includes(id));
+  }
+});
+
+test("#6201 et bjergprofil lader flere gaa end ingen profil ved faa forsoeg, og en travl morgen kollapser ikke", () => {
+  const count = (n: number, profile: string | null, r: number) => resolveMorningBreakFormation({
+    riders: hunters(n), stances: new Map(), roll: always(r), maxSize: 16,
+    ...(profile ? { sizeProfile: breakawaySizeProfileV3(profile)! } : {}),
+  }).escaped.length;
+  // Faa forsoeg (under room): profilens tillaeg goer aldrig udfaldet daarligere.
+  for (let r = 0; r < 1; r += 0.05) assert.ok(count(8, "mountain", r) >= count(8, null, r), `roll ${r.toFixed(2)}`);
+  assert.ok([...Array(20).keys()].some((i) => count(8, "mountain", i / 20) > count(8, null, i / 20)));
+  // Mange forsoeg med spredte rul: stadig en rigtig gruppe (ikke 0-1 mand, #5955).
+  const spreadRoll: FormationRoll = (_stream, id) => (Number(id.slice(-2)) + 0.5) / 40;
+  for (const profile of ["hilly", "mountain"]) {
+    const n = resolveMorningBreakFormation({ riders: hunters(40), stances: new Map(), roll: spreadRoll, maxSize: 16, sizeProfile: breakawaySizeProfileV3(profile)! }).escaped.length;
+    assert.ok(n >= 6, `${profile}: ${n}`);
+  }
+});
+
+test("#6201 farten foelger antallet: 1-3 mand er langsommere og betaler mere, fra 4 mand intet aendret", () => {
+  assert.equal(smallBreakPaceV3(0), null);
+  assert.equal(smallBreakPaceV3(4), null);
+  assert.equal(smallBreakPaceV3(12), null);
+  const paces = [1, 2, 3].map((n) => smallBreakPaceV3(n)!);
+  for (const p of paces) {
+    assert.ok(p.growthScale > 0 && p.growthScale < 1);
+    assert.ok(p.closingScale > 1);
+    assert.ok(p.pullCostFraction > 0);
+  }
+  // Monotont: jo faerre, jo langsommere og dyrere.
+  for (let i = 1; i < paces.length; i++) {
+    assert.ok(paces[i].growthScale > paces[i - 1].growthScale);
+    assert.ok(paces[i].closingScale < paces[i - 1].closingScale);
+    assert.ok(paces[i].pullCostFraction < paces[i - 1].pullCostFraction);
+  }
+});
+
+test("#6201 et lille udbruds pris rammer kun de koerende udbrydere, i team_cp_factor med gulv", () => {
+  const state = (id: string, status: RiderState["status"] = "racing"): RiderState => ({ ...riderState(id), status });
+  const riders: Record<string, RiderState> = { a: state("a"), b: state("b"), out: state("out", "dnf"), field: state("field") };
+  const next = applySmallBreakPullCost(riders, ["a", "b", "out"], smallBreakPaceV3(2), 0.5)!;
+  assert.ok((next.a.team_cp_factor ?? 1) < (riders.a.team_cp_factor ?? 1));
+  assert.equal(next.a.team_cp_factor, next.b.team_cp_factor);
+  assert.equal(next.out, riders.out);
+  assert.equal(next.field, riders.field);
+  assert.equal(applySmallBreakPullCost(riders, ["a"], smallBreakPaceV3(5), 0.5), null);
+  assert.equal(applySmallBreakPullCost(riders, ["a"], smallBreakPaceV3(1), 0), null);
 });
