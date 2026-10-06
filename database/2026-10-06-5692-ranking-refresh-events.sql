@@ -152,8 +152,6 @@ BEGIN
         RAISE EXCEPTION 'Ranking refresh writer busy' USING ERRCODE='55P03'; END IF;
       REFRESH MATERIALIZED VIEW CONCURRENTLY public.%I; END; $body$;$f$,view_name,view_name);
     EXECUTE definition;
-    EXECUTE format('REVOKE ALL ON FUNCTION public.refresh_%I(boolean) FROM PUBLIC,anon,authenticated',view_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.refresh_%I(boolean) TO service_role',view_name);
     -- Token/version validation and expensive execution occur under the same
     -- writer lock. Production takes DB time here; p_now is a deterministic seam.
     definition:=format($f$CREATE OR REPLACE FUNCTION public.refresh_%I(p_concurrently boolean,p_owner_token uuid,p_target_version bigint,p_now timestamptz DEFAULT NULL)
@@ -170,8 +168,6 @@ BEGIN
         PERFORM public.refresh_%I(p_concurrently);
       END; $body$;$f$,view_name,view_name);
     EXECUTE definition;
-    EXECUTE format('REVOKE ALL ON FUNCTION public.refresh_%I(boolean,uuid,bigint,timestamptz) FROM PUBLIC,anon,authenticated',view_name);
-    EXECUTE format('GRANT EXECUTE ON FUNCTION public.refresh_%I(boolean,uuid,bigint,timestamptz) TO service_role',view_name);
   END LOOP;
   -- Preserve rollover mutation and its immediate season-start snapshot, changing
   -- only the publication transport/coordination. Never retry the mutation blindly.
@@ -186,5 +182,26 @@ BEGIN
   END IF;
 END;
 $$;
+-- Literal privileges keep the changed-migration access audit fully auditable.
+REVOKE ALL ON FUNCTION public.refresh_rider_rankings_mv(boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_rider_rankings_mv(boolean) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_rider_rankings_mv(boolean,uuid,bigint,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_rider_rankings_mv(boolean,uuid,bigint,timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_team_standings_ext_mv(boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_team_standings_ext_mv(boolean) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_team_standings_ext_mv(boolean,uuid,bigint,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_team_standings_ext_mv(boolean,uuid,bigint,timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_team_race_points_mv(boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_team_race_points_mv(boolean) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_team_race_points_mv(boolean,uuid,bigint,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_team_race_points_mv(boolean,uuid,bigint,timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_global_rank_mv(boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_global_rank_mv(boolean) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_global_rank_mv(boolean,uuid,bigint,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_global_rank_mv(boolean,uuid,bigint,timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_youth_rider_rankings_mv(boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_youth_rider_rankings_mv(boolean) TO service_role;
+REVOKE ALL ON FUNCTION public.refresh_youth_rider_rankings_mv(boolean,uuid,bigint,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.refresh_youth_rider_rankings_mv(boolean,uuid,bigint,timestamptz) TO service_role;
 NOTIFY pgrst,'reload schema';
 COMMIT;
