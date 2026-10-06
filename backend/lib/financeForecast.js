@@ -47,86 +47,18 @@ const RISK_NET_GREEN_THRESHOLD = 50_000;
 const RISK_NET_RED_THRESHOLD = -50_000;
 const RISK_DEBT_GREEN_RATIO = 0.5;
 const RISK_DEBT_YELLOW_RATIO = 0.8;
-// ±20%-fallback: bruges KUN når divisionens præmie-stikprøve er for lille til
-// et kvartilbånd (se computePrizeInterval).
+// Owner-selected forecast uncertainty band (#5940); not historical calibration.
 const CONFIDENCE_BAND_PCT = 0.2;
 
 // #3899: sæson hvorfra lønprognosen skifter til markedsværdi-kurven ("sæson 3-systemet").
 export const NEW_WAGE_SYSTEM_SEASON = 3;
 
-// #3899: mindste antal hold i divisions-stikprøven før kvartilbåndet bruges til
-// præmie-intervallet. Under dette er et kvartilbånd støj, ikke et interval.
-const MIN_DIVISION_PRIZE_SAMPLE = 4;
-
-// p25/p50/p75 med lineær interpolation (samme metode som langt de fleste
-// statistik-biblioteker, "type 7"/Excel-metoden — ingen game-specifik logik).
-function percentile(sortedAscending, p) {
-  if (sortedAscending.length === 0) return 0;
-  if (sortedAscending.length === 1) return sortedAscending[0];
-  const rank = p * (sortedAscending.length - 1);
-  const lowIndex = Math.floor(rank);
-  const highIndex = Math.ceil(rank);
-  if (lowIndex === highIndex) return sortedAscending[lowIndex];
-  const weight = rank - lowIndex;
-  return sortedAscending[lowIndex] * (1 - weight) + sortedAscending[highIndex] * weight;
+// #5940: owner-selected uncertainty band around the club's own estimate.
+// This display choice is not a historically measured confidence interval.
+function computePrizeInterval(projectedPrize) {
+  const band = Math.round(Math.abs(projectedPrize) * CONFIDENCE_BAND_PCT);
+  return { low: Math.max(0, projectedPrize - band), high: projectedPrize + band };
 }
-
-// #3899 punkt 2 (låst design): "INTERVAL for det usikre (præmier, ud fra
-// divisionens pulje)". Metode: kvartilbånd (P25-P75) af MÅLT per-hold-præmie
-// blandt peers i samme division (divisionPrizeSamples — se route-handler for
-// hvordan stikprøven bygges). Båndets BREDDE udtrykkes som andel af divisionens
-// median og appliceres derefter RELATIVT på holdets eget punktestimat
-// (projectedPrize) — det giver et interval der er centreret på holdets egen
-// prognose, men hvis SPREDNING kommer fra faktisk observeret variation i
-// divisionen, ikke en vilkårlig ±20%-antagelse.
-//
-// Fallback til ±20% (CONFIDENCE_BAND_PCT) når stikprøven er for lille
-// (< MIN_DIVISION_PRIZE_SAMPLE hold) eller medianen er 0 — begge cases hvor et
-// kvartilbånd ville være støj eller udefineret (division by zero).
-function computePrizeInterval(projectedPrize, divisionPrizeSamples) {
-  const samples = (divisionPrizeSamples || [])
-    .map((v) => Number(v))
-    .filter((v) => Number.isFinite(v) && v >= 0)
-    .sort((a, b) => a - b);
-
-  if (samples.length < MIN_DIVISION_PRIZE_SAMPLE) {
-    const band = Math.round(Math.abs(projectedPrize) * CONFIDENCE_BAND_PCT);
-    return {
-      low: Math.max(0, projectedPrize - band),
-      high: projectedPrize + band,
-      method: "flat_pct_fallback",
-      sample_size: samples.length,
-    };
-  }
-
-  const p25 = percentile(samples, 0.25);
-  const p50 = percentile(samples, 0.5);
-  const p75 = percentile(samples, 0.75);
-
-  if (p50 <= 0) {
-    const band = Math.round(Math.abs(projectedPrize) * CONFIDENCE_BAND_PCT);
-    return {
-      low: Math.max(0, projectedPrize - band),
-      high: projectedPrize + band,
-      method: "flat_pct_fallback",
-      sample_size: samples.length,
-    };
-  }
-
-  const lowRatio = Math.min(1, Math.max(0, (p50 - p25) / p50));
-  const highRatio = Math.max(0, (p75 - p50) / p50);
-
-  return {
-    low: Math.max(0, Math.round(projectedPrize * (1 - lowRatio))),
-    high: Math.round(projectedPrize * (1 + highRatio)),
-    method: "division_quartile_band",
-    sample_size: samples.length,
-    division_p25: Math.round(p25),
-    division_median: Math.round(p50),
-    division_p75: Math.round(p75),
-  };
-}
-
 // #3332 (forward-guard mod tavs udeladelse, mønster fra #1464/#2957): eksplicit
 // klassifikation af HVER finance_transactions.type koden rent faktisk skriver —
 // enten { modeled: true, field } hvis strømmen indgår deterministisk i
@@ -224,11 +156,6 @@ export function computeFinanceForecast({
   // typisk ikke findes endnu.
   upkeepPerRaceDay = false,
   upkeepRaceDays = null,
-  // #3899: MÅLT per-hold-præmie blandt peers i samme division (indeværende/
-  // seneste afsluttede sæson) — grundlaget for præmie-intervallets kvartilbånd.
-  // Tom default ⇒ ±20%-fallback (computePrizeInterval), så hold uden nok peers
-  // (fx en helt ny/lille division) stadig får et interval, bare et bredere et.
-  divisionPrizeSamples = [],
 } = {}) {
   const seasonNumber = Number.isInteger(targetSeasonNumber)
     ? targetSeasonNumber
@@ -404,7 +331,7 @@ export function computeFinanceForecast({
   // præmie-linjen (sponsor/løn/upkeep er deterministiske i et givent sæson-
   // perspektiv). confidence_low/high er derfor net ± præcis den samme spredning
   // som prize_low/prize_high — ét sammenhængende interval, ikke to uafhængige.
-  const prizeInterval = computePrizeInterval(projectedPrize, divisionPrizeSamples);
+  const prizeInterval = computePrizeInterval(projectedPrize);
   const confidenceLow = projectedNet - (projectedPrize - prizeInterval.low);
   const confidenceHigh = projectedNet + (prizeInterval.high - projectedPrize);
 
@@ -487,9 +414,6 @@ export function computeFinanceForecast({
       prize_rolling_avg: rollingPrize,
       realized_season_prize: realizedPrize,
       prize_basis: realizedPrize > rollingPrize ? "realized_season_floor" : "rolling_avg",
-      // #3899: transparens om intervallets metode + division-stikprøve.
-      prize_interval_method: prizeInterval.method,
-      prize_interval_sample_size: prizeInterval.sample_size,
       team_balance: startingBalance,
       total_salary: totalSalary,
       // #3899: hvilket lønsystem der faktisk blev brugt til denne sæson-projektion.
@@ -671,9 +595,6 @@ export function computeMultiSeasonForecast({
   facilitiesEnabled = true,
   // #4385: samme upkeep-model over hele horisonten.
   upkeepPerRaceDay = false,
-  // #3899: status-quo over hele horisonten, ligesom roster/facilities —
-  // samme division-stikprøve genbruges for hver fremskrevet sæson.
-  divisionPrizeSamples = [],
 } = {}) {
   const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
   const forecasts = [];
@@ -715,7 +636,6 @@ export function computeMultiSeasonForecast({
       academyRiderCount,
       facilitiesEnabled,
       upkeepPerRaceDay,
-      divisionPrizeSamples,
     });
 
     const endingBalance = rollingBalance + forecast.projected_net;
