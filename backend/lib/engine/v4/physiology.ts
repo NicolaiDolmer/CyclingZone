@@ -298,6 +298,49 @@ export function jourSansComponent(args: {
   return -(tuning.jourSansMagnitudeMin + u * (tuning.jourSansMagnitudeMax - tuning.jourSansMagnitudeMin));
 }
 
+// ── #6156: samlet form -> et lille, begraenset led paa baereevnen ─────────────
+//
+// Entrant.form er rytterens SAMLEDE form paa etapedagen (0-100): rider_condition.
+// form + formtoppens tillaeg eller minus dykket bagefter (regnet i broen; kernen
+// kender ingen kalender). Leddet laegges paa samme sted som dagsformen virker
+// (RiderState.dayform -> cp i segment-loopet, enkeltstarten, holdtidskoerslen og
+// finalens score), saa en top maerkes HELE etapen og i alle etapeformer.
+//
+// Doktrin (spec 2026-10-04 §3.3, samme princip som #5957):
+//   - Form er et tillaeg OVEN PAA evnen, aldrig en evne i sig selv: leddet har
+//     ingen evne-akse og er additivt, saa to ryttere med samme form flyttes
+//     praecis lige meget, og styrke straffes aldrig.
+//   - Neutralt ved middel form: et FAST nulpunkt (ikke feltets middel), saa en
+//     rytters led aldrig afhaenger af hvem der ellers stiller op, og en rytter
+//     uden data (feltet udeladt) flytter sig slet ikke.
+//   - Begraenset: formen klampes til skalaen, saa leddet aldrig kan overstige
+//     loftet uanset hvad der sendes ind. Loftet er valgt saa en top kan maerkes
+//     uden alene at kunne afgoere et loeb (gate-simuleringen, §3.6).
+//
+// START-KANDIDAT (kalibreres i gate-simuleringen foer taending, ligesom
+// tuning.ts's oevrige konstanter). Bor her og ikke i tuning.ts, fordi den kun
+// laeses af formCpModifier og kun naar Entrant.form er sat.
+export const FORM_CP_TUNING = Object.freeze({
+  neutralForm: 50, // formvaerdi der giver leddet 0 (middel paa 0-100-skalaen)
+  maxCp: 0.02, // normaliseret CP-tillaeg ved formskalaens loft (og fradrag ved gulvet)
+});
+
+export type FormCpTuning = { neutralForm: number; maxCp: number };
+
+/**
+ * Samlet form (0-100) -> signeret, begraenset CP-led. Lineaert om
+ * `neutralForm`, klampet til skalaens graenser, saa |led| <= maxCp.
+ * Manglende/ugyldig form -> 0 (neutral).
+ */
+export function formCpModifier(form: number | null | undefined, tuning: FormCpTuning = FORM_CP_TUNING): number {
+  const f = Number(form);
+  if (form == null || !Number.isFinite(f)) return 0;
+  const neutral = clamp(tuning.neutralForm, 1, 99);
+  const fc = clamp(f, 0, 100);
+  const frac = fc >= neutral ? (fc - neutral) / (100 - neutral) : (fc - neutral) / neutral;
+  return frac * Math.max(0, tuning.maxCp);
+}
+
 /** Anvend dagsform + jour sans paa en base-CP; gulv 0 (CP kan aldrig blive negativ). */
 export function applyDayformToCp(cp: number, dayform: number, jourSans: number): number {
   return Math.max(0, cp + dayform + jourSans);

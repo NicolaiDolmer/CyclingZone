@@ -160,6 +160,16 @@ export type Entrant = {
   // han koerer for. v3 kraever begge (buildTeamContext springer enhver
   // entrant uden team_id ELLER race_role over), og v4 goer det samme.
   team_id?: string | null;
+  // #6156 (ADDITIVT og VALGFRIT): rytterens SAMLEDE form paa etapedagen,
+  // 0-100-skalaen (rider_condition.form + formtoppens tillaeg i et peak-vindue,
+  // minus dykket i tilbagebetalingen). Regnes UDEN FOR kernen (broen kender
+  // kalenderen; kernen har ingen dato-logik). Virker to steder, begge i
+  // groups.initRiderStates: risikoen for en daarlig dag (jour sans) og et
+  // lille, begraenset led paa baereevnen, neutralt ved middel form.
+  // Udeladt/null = ingen form-data: motoren opfoerer sig byte-identisk med
+  // foer #6156 (alle fixtures og haandbyggede startlister er skrevet uden).
+  // Broen saetter feltet KUN under rules_revision "orders_gc_v4" eller senere.
+  form?: number | null;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
@@ -210,7 +220,7 @@ export type StageInput = {
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
-export type RulesRevision = "legacy" | "orders_gc_v1" | "orders_gc_v2" | "orders_gc_v3";
+export type RulesRevision = "legacy" | "orders_gc_v1" | "orders_gc_v2" | "orders_gc_v3" | "orders_gc_v4";
 
 /** #5978: én rytters plads i det publicerede klassement foer etapen. */
 export type GcStanding = { rider_id: string; rank: number; gap_seconds: number };

@@ -25,7 +25,11 @@
 // sine egne" (et hold foerer ikke jagten paa en gruppe med egen rytter i, og
 // dets udbrydere sidder paa hjul ved en trussel mod holdets GC-rytter).
 // Samlepunkt for uge 41-pakken. IKKE aktuel endnu: flip er ejer-only.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3"] as const;
+// #6156: "orders_gc_v4" = hele orders_gc_v3-pakken + samlet form i loebet
+// (rytterens form + formtoppens tillaeg / minus dykket bagefter, regnet i broen
+// pr. rytter pr. etape og baaret paa Entrant.form). IKKE aktuel: flip er
+// ejer-only med ordret go, efter gate-simuleringen (spec 2026-10-04 §3.6).
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "orders_gc_v4"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -39,6 +43,7 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   orders_gc_v1: 1,
   orders_gc_v2: 2,
   orders_gc_v3: 3,
+  orders_gc_v4: 4,
 });
 
 /** 0 for legacy og alt ukendt; ellers revisionens plads i orders_gc-arvelinjen. */
@@ -62,6 +67,15 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
 }
 
 /**
+ * orders_gc_v4 eller senere (#6156: samlet form i loebet). Kun under denne
+ * revision regner broen samlet form og saetter Entrant.form; alle tidligere
+ * revisioner faar et byte-identisk input.
+ */
+export function isOrdersGcV4OrLater(value: unknown): boolean {
+  return ordersGcGeneration(value) >= 4;
+}
+
+/**
  * Den revision et NYT loeb bindes til ved sin foerste etape-claim.
  *
  * "orders_gc_v1" siden ejer-go 2/10 (#5955): pakken (ordrestyret dannelse,
@@ -76,6 +90,10 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  *
  * "orders_gc_v3" (#6187) er bygget, men IKKE aktuel: skiftet hertil er et
  * eksplicit ejer-go (og migrationen 2026-10-05 skal vaere applied foer).
+ *
+ * "orders_gc_v4" (#6156) er bygget, men IKKE aktuel: skiftet hertil er et
+ * eksplicit ejer-go efter gaten i spec 2026-10-04 §3.6 (og migrationen
+ * 2026-10-07 skal vaere applied foer).
  */
 export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "orders_gc_v2";
 

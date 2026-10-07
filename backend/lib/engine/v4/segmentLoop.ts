@@ -760,6 +760,8 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "orders_gc_v1") return "orders_gc_v1";
   if (raw === "orders_gc_v2") return "orders_gc_v2";
   if (raw === "orders_gc_v3") return "orders_gc_v3";
+  // #6156: v4 = hele v3 (arvelinjen) + samlet form, som baeres paa Entrant.form.
+  if (raw === "orders_gc_v4") return "orders_gc_v4";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 

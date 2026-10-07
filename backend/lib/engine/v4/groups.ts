@@ -18,7 +18,7 @@ import type {
   StageResult,
   TimelineEvent,
 } from "./types.ts";
-import { deriveWprimeMax, dayformComponent, jourSansComponent } from "./physiology.ts";
+import { deriveWprimeMax, dayformComponent, formCpModifier, jourSansComponent } from "./physiology.ts";
 
 export const INITIAL_GROUP_ID = "peloton-0";
 
@@ -45,9 +45,14 @@ export function initGroups(entrants: Entrant[]): RaceGroup[] {
  * to separate komponenter — begge anvendes paa cp via physiology.applyDayformToCp).
  * `cp` saettes til 0 her — genberegnes segment for segment (segmentKind-afhaengig).
  *
- * F2-note: Entrant-kontrakten (SS2) baerer endnu intet "form"-felt (0-100-skala,
- * raceDayForm's form-koblede jour-sans-sandsynlighed) — jourSansComponent kaldes
- * derfor med form=null (neutral base-rate) indtil rating-fladen kobles ind (F3+).
+ * #6156: Entrant.form (rytterens SAMLEDE form, 0-100, valgfri) virker to steder:
+ *   1. jour sans' sandsynlighed (physiology.jourSansProbability) faar den rigtige
+ *      form i stedet for null (neutral base-rate).
+ *   2. et lille, begraenset led paa baereevnen (physiology.formCpModifier),
+ *      lagt i samme felt som dagsformen, saa det virker hele etapen og i alle
+ *      etapeformer (vejetape, enkeltstart, holdtidskoersel, finalens score).
+ * Uden feltet (null/udeladt) er begge byte-identiske med foer #6156: jour sans
+ * kaldes med form=null, og leddet laegges slet ikke til (heller ikke som 0).
  */
 export function initRiderStates(
   entrants: Entrant[],
@@ -58,14 +63,16 @@ export function initRiderStates(
   for (const entrant of entrants) {
     const wprimeMax = deriveWprimeMax(entrant.abilities, tuning.physiology.wprimeWeights);
     const dayform = dayformComponent({ seed, riderId: entrant.rider_id, tuning: tuning.dayform });
-    const jourSans = jourSansComponent({ seed, riderId: entrant.rider_id, form: null, tuning: tuning.dayform });
+    const form = Number.isFinite(entrant.form) ? (entrant.form as number) : null;
+    const jourSans = jourSansComponent({ seed, riderId: entrant.rider_id, form, tuning: tuning.dayform });
+    const dayModifier = dayform + jourSans;
     riders[entrant.rider_id] = {
       rider_id: entrant.rider_id,
       group_id: INITIAL_GROUP_ID,
       cp: 0,
       wprimeMax,
       wprime: wprimeMax,
-      dayform: dayform + jourSans,
+      dayform: form === null ? dayModifier : dayModifier + formCpModifier(form),
       seconds_over_cp: 0,
       work_norm: 0,
       incidents: 0,

@@ -10,6 +10,7 @@ import {
   isOrdersGcRulesRevision,
   isOrdersGcV2OrLater,
   isOrdersGcV3OrLater,
+  isOrdersGcV4OrLater,
   ordersGcGeneration,
   raceHasStarted,
   resolveRaceRulesRevision,
@@ -236,7 +237,7 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
-  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3"]);
+  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "orders_gc_v4"]);
   // Ejer-go 2/10: nye loeb bindes til v2; loeb bundet til v1 beholder v1.
   assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
 });
@@ -264,9 +265,9 @@ test("#6084: the bridge carries orders_gc_v2 with the same GC context as orders_
   assert.deepEqual({ ...v2, rules_revision: "orders_gc_v1" }, v1);
 });
 
-test("#6084/#6187: the newest migration allows exactly the known revisions in the CHECK constraint", async () => {
+test("#6084/#6187/#6156: the newest migration allows exactly the known revisions in the CHECK constraint", async () => {
   const { readFileSync } = await import("node:fs");
-  const sql = readFileSync(new URL("../../database/2026-10-05-race-engine-rules-revision-v3.sql", import.meta.url), "utf8");
+  const sql = readFileSync(new URL("../../database/2026-10-07-race-engine-rules-revision-v4.sql", import.meta.url), "utf8");
   const check = sql.match(/IN \(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   const allowed = check[1].split(",").map((s) => s.trim().replace(/'/g, ""));
@@ -285,10 +286,11 @@ test("#6187: orders_gc_v3 is known but NOT current (the flip is owner-only)", ()
 });
 
 test("#6187: the revisions form one lineage; each orders_gc revision inherits the previous ones", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 4]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV4OrLater), [false, false, false, false, true]);
   for (const unknown of [null, undefined, "", "orders_gc_v9", 3]) {
     assert.equal(ordersGcGeneration(unknown), 0);
     assert.equal(isOrdersGcRulesRevision(unknown), false);
@@ -300,4 +302,27 @@ test("#6187: the bridge carries orders_gc_v3 with the same input as orders_gc_v2
   const v3 = await bridgeInput("orders_gc_v3");
   assert.equal(v3.rules_revision, "orders_gc_v3");
   assert.deepEqual({ ...v3, rules_revision: "orders_gc_v2" }, v2);
+});
+
+// ── #6156: orders_gc_v4 (orders_gc_v3 + samlet form i loebet) ────────────────
+
+test("#6156: orders_gc_v4 is known but NOT current (the flip is owner-only)", () => {
+  assert.equal(isKnownRulesRevision("orders_gc_v4"), true);
+  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
+  assert.equal(
+    resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "orders_gc_v4", currentRevision: "orders_gc_v2" }),
+    "orders_gc_v4",
+  );
+  // Et igangvaerende loeb paa v3 forbliver v3, selv hvis v4 bliver den aktuelle.
+  assert.equal(
+    resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "orders_gc_v3", currentRevision: "orders_gc_v4" }),
+    "orders_gc_v3",
+  );
+});
+
+test("#6156: a field without form data gives orders_gc_v4 the same input as orders_gc_v3", async () => {
+  const v3 = await bridgeInput("orders_gc_v3");
+  const v4 = await bridgeInput("orders_gc_v4");
+  assert.equal(v4.rules_revision, "orders_gc_v4");
+  assert.deepEqual({ ...v4, rules_revision: "orders_gc_v3" }, v3);
 });
