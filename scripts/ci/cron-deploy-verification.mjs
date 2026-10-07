@@ -38,8 +38,10 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
         seen.add(path);
         const source = read(path);
         // Nonliteral loaders cannot be resolved statically, so never narrow.
-        if (/\b(?:import|require)\s*\(\s*[^'"\s]/.test(source)) throw new Error('Unknown dynamic dependency');
-        for (const match of source.matchAll(/(['"])(\.{1,2}\/[^'"\r\n]+)\1/g)) {
+        // The left boundary excludes prose such as "race-import (engine)".
+        // Only loader/from syntax creates edges; unrelated path strings do not.
+        if (/(?<![\w$-])(?:import|require)\s*\(\s*[^'"\s]/.test(source)) throw new Error('Unknown dynamic dependency');
+        for (const match of source.matchAll(/(?<![\w$-])(?:from\s*|import\s*|(?:import|require)\s*\(\s*)(['"])(\.{1,2}\/[^'"\r\n]+)\1/g)) {
           const base = posix.normalize(posix.join(posix.dirname(path), match[2]));
           if (base.startsWith('../')) throw new Error('Source outside repository');
           const target = [base, `${base}.js`, `${base}.ts`, `${base}/index.js`, `${base}/index.ts`].find(exists);
@@ -129,6 +131,8 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
   endpoint.searchParams.set('select', 'job_slug,last_checkin_at,expected_cadence_seconds');
   endpoint.searchParams.set('limit', String(monitors.length + 1));
   const excluded = new Set();
+  const accepted = new Map();
+  const lastLogged = new Map();
   let initial = true;
   for (;;) {
     let result;
@@ -142,11 +146,18 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
         for (const row of rows) if (Number.isFinite(stamp(row?.last_checkin_at))) excluded.add(stamp(row.last_checkin_at));
         initial = false;
       }
-      result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded });
+      result = evaluateCheckins({ slugs: slugs.filter(slug => !accepted.has(slug)), rows, since, now: now(), monitors, excluded });
+      for (const job of result.jobs) if (job.state === 'verified') accepted.set(job.slug, job);
+      const current = new Map(result.jobs.map(job => [job.slug, job]));
+      result.jobs = slugs.map(slug => accepted.get(slug) ?? current.get(slug));
     } catch {
       result = { state: 'failed', jobs: slugs.map(slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' })) };
     }
-    for (const job of result.jobs) log(`${job.slug}: ${job.state}; last check-in=${job.lastCheckin}; deadline=${job.deadline ?? 'unknown'}`);
+    for (const job of result.jobs) {
+      const line = `${job.slug}: ${job.state}; last check-in=${job.lastCheckin}; deadline=${job.deadline ?? 'unknown'}`;
+      if (lastLogged.get(job.slug) !== line || result.state !== 'waiting') log(line);
+      lastLogged.set(job.slug, line);
+    }
     if (result.state !== 'waiting') return result;
     await sleep(15000);
   }

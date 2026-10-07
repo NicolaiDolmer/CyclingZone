@@ -224,7 +224,11 @@ også blive afvist. Tabellen har hverken release-ID eller tick/boot-markør, så
 read-only bevis kan ikke entydigt tilskrive en senere individuel skrivning en
 proces ved genstarts-klynger; ingen migration indgår i denne leverance.
 
-Korte kadencer poller indtil deres deadline. Kadencer over 30 minutter må give
+Korte kadencer poller indtil deres deadline.
+Et accepteret første tick fastholdes, mens øvrige jobs afventes; senere upserts
+må ikke overskrive dette bevis. Kun ændret job-status og slutresultatet logges.
+
+Kadencer over 30 minutter må give
 **AFVENTER CHECK-IN** efter de korte jobs er bevist. Det er `deferred`, aldrig
 `verified`: ingen LIVE-kommentar, og merge-køen stopper med exit 75 før næste
 merge. Den genkører ikke automatisk deferred attempts, da det ville skabe en ny

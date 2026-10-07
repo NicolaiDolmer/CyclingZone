@@ -121,6 +121,8 @@ test('impact includes transitive TS and guard dependencies, renames and inline c
 test('real source map covers every registry job and stall aggregates reach watchdog', () => {
   const jobs = affectedCronJobs([{ filename: 'backend/lib/stallWatchdogAggregates.ts', status: 'modified' }]);
   assert.ok(jobs.includes('stall-watchdog'));
+  assert.ok(jobs.length < 55, 'an unrelated graph/prose reference must not widen every cron');
+  assert.deepEqual(affectedCronJobs([{ filename: 'docs/DEPLOYMENT.md', status: 'modified' }]), []);
   const savedMap = JSON.parse(readFileSync(new URL('./cron-source-map.json', import.meta.url)));
   assert.equal(Object.keys(savedMap.sourcePathsBySlug).length, 55);
 });
