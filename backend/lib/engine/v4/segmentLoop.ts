@@ -988,7 +988,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     }
     state = { ...state, groups };
     if (descentCrossings) {
-      const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km);
+      const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km, [], sharedGroupTime);
       state = contact.state;
       timeline.push(...contact.events);
     }
@@ -1073,7 +1073,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       const result = hooks.breakaway(state, ctx);
       acceptMovement(result);
       if (descentCrossings) {
-        const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events);
+        const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events, sharedGroupTime);
         state = contact.state;
         timeline.push(...contact.events);
       }

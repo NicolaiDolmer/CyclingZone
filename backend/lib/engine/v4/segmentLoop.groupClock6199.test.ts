@@ -55,3 +55,14 @@ test('pursuit exposes its signed advance to the shared clock instead of hiding i
  assert.ok(shift<0,'the actual let-go gain must remain visible to the absolute clock');
  assert.deepEqual(after.state.groups.map(g=>[g.id,g.gap_seconds-shift]),before.state.groups.map(g=>[g.id,g.gap_seconds]));
 });
+
+test('shared clock does not let an ordinary group pass through a morning escape without physical contact',()=>{
+ const routeInput=input('official_times_v1');
+ routeInput.route={...routeInput.route,distance_km:21,segments:[{kind:'flat',from_km:0,to_km:1},{kind:'descent',from_km:1,to_km:21,technicality:1}]};
+ routeInput.startlist=entrants.map((r,i)=>({...r,abilities:Object.fromEntries(keys.map(k=>[k,i?90:10])) as Entrant['abilities']}));
+ const hooks:MechanicHooks={...DEFAULT_MECHANIC_HOOKS,breakaway:(state,ctx)=>({state:ctx.segmentIndex===0?{...state,groups:[{id:'escape',kind:'breakaway',origin:'breakaway',rider_ids:['a'],gap_seconds:0,cohesion:1},{id:'field',kind:'peloton',rider_ids:['b'],gap_seconds:20,cohesion:1}]}:state,events:[]})};
+ const out=runSegmentLoop(routeInput,hooks);
+ assert.equal(out.state.groups.length,1,'physical overtaking must join the groups, not leave an escape behind the field');
+ assert.equal(out.state.riders.a.time_seconds,out.state.riders.b.time_seconds);
+ assert.equal(out.timeline.filter(e=>e.type==='breakaway_caught'&&e.params.group_id==='escape'&&e.params.chase_group_id==='field').length,1);
+});

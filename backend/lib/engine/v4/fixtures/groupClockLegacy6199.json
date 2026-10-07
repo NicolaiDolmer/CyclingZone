@@ -1,0 +1,41 @@
+{
+  "sourceCommit": "2e0bf27fc590b35aa4ffc29ddb4dbe5f46ab5eee",
+  "hashes": {
+    "legacy": {
+      "flat": "5636ac391caf659dd2f9dd04dc4b722afb8c0ebd069a62baedb1b564f23f01d6",
+      "rolling": "f3716282753b85af60e8a3d83b82015f874fce68c574ffc864fabb972dcb3f37",
+      "hilly": "27520b3d7d026ca2d15c60d0b040b4b9a04422da3f6e0c285cb2b2003aefaaa5",
+      "mountain": "4d348075a627aaf0b48cba639506860698f211ff6ee3fb9af4d63348c34102d6",
+      "high_mountain": "0be47bccf1f6bd3e7b8e38d8962092de0b47b5498548cbcf69e0de6553631871",
+      "cobbles": "90a393f213439725a9919fa4bd7e5f79874cbf57f1d8cbeef329812798c0bc1f",
+      "itt": "889e6bfe40529f394821fd4671340182c9b8e88644e2758fbb921c9ed105ba60"
+    },
+    "orders_gc_v1": {
+      "flat": "db6adcee620e2734898809c17e508954d3f2d8376ed66d9a85ef7046a4eca219",
+      "rolling": "b82387a943c20222d5a8ccfc9ed2b77a64f06dfb1e4c415c1975e47aad0a81c9",
+      "hilly": "f0bd296bc89e6479b659e806ccf05222b811f4550c433e873f03a7c76864e585",
+      "mountain": "ea73463613a72e5e378366a1ea5ff7f27794dcc57ed5f4a53accc2ace7f898b2",
+      "high_mountain": "5a1cf68eb2227ee6604b71afc48bdc6c0b853cc9e7424972e80906ac8ccc7dd9",
+      "cobbles": "be7aecc2d43ffd933cb81333234c1bf102939599c4bcffa0037436f7e9de44d9",
+      "itt": "889e6bfe40529f394821fd4671340182c9b8e88644e2758fbb921c9ed105ba60"
+    },
+    "orders_gc_v2": {
+      "flat": "db6adcee620e2734898809c17e508954d3f2d8376ed66d9a85ef7046a4eca219",
+      "rolling": "b82387a943c20222d5a8ccfc9ed2b77a64f06dfb1e4c415c1975e47aad0a81c9",
+      "hilly": "f0bd296bc89e6479b659e806ccf05222b811f4550c433e873f03a7c76864e585",
+      "mountain": "ea73463613a72e5e378366a1ea5ff7f27794dcc57ed5f4a53accc2ace7f898b2",
+      "high_mountain": "5a1cf68eb2227ee6604b71afc48bdc6c0b853cc9e7424972e80906ac8ccc7dd9",
+      "cobbles": "be7aecc2d43ffd933cb81333234c1bf102939599c4bcffa0037436f7e9de44d9",
+      "itt": "889e6bfe40529f394821fd4671340182c9b8e88644e2758fbb921c9ed105ba60"
+    },
+    "orders_gc_v3": {
+      "flat": "67f220efa3bf504c99c6c07b89a7bf933b5b61419a8fb479665410ef36c97e81",
+      "rolling": "b82387a943c20222d5a8ccfc9ed2b77a64f06dfb1e4c415c1975e47aad0a81c9",
+      "hilly": "157b50c655c40edc1870e11fff0acd9b77fce597a28a0ff70e293f69d643de81",
+      "mountain": "947c2ef68bcb95ebf5970144acfe20a58435cbd34a8c632503f41d2fb1c836b5",
+      "high_mountain": "838e6e351a6e59823c7e337738d352c1b2ed4ec5e89e1e76ce168d0ae6630195",
+      "cobbles": "be7aecc2d43ffd933cb81333234c1bf102939599c4bcffa0037436f7e9de44d9",
+      "itt": "889e6bfe40529f394821fd4671340182c9b8e88644e2758fbb921c9ed105ba60"
+    }
+  }
+}

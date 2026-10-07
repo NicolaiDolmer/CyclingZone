@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { createRaceEngineV4Adapter } from "./raceEngineV4Bridge.js";
 import { buildRaceResults, buildStageRowsAccumulated, bindRaceRulesRevision } from "./raceRunner.js";
 import * as entrantsAdapter from "./engine/v4/adapters/entrantAdapter.ts";
@@ -51,19 +53,36 @@ test("official revision travels through the adapter, saved runner rows and resum
   assert.deepEqual(full.incidents, legacy.incidents);
 });
 
-test("real engine official revision has exactly v2 mechanics across route profiles", () => {
-  for (const profile_type of ["flat", "rolling", "hilly", "mountain", "high_mountain", "cobbles", "itt"]) {
-    const stageProfile = { ...stages[0], profile_type };
-    const actual = createRaceEngineV4Adapter({ ...modules, core: { simulateStageV4 } });
-    const run = (rulesRevision) => actual.simulateStage({ entrants, stageProfile, seedString: `official-parity-${profile_type}`, stageNumber: 1, rulesRevision });
-    const v2 = run("orders_gc_v2");
-    const official = run(revision);
-    assert.deepEqual(official.v4Output, v2.v4Output, profile_type);
-    assert.deepEqual(official.incidents, v2.incidents, profile_type);
-    assert.deepEqual(official.passages, v2.passages, profile_type);
+test("old revisions retain frozen complete outputs across route profiles after the new model is added", () => {
+  const baseline = JSON.parse(readFileSync(new URL("./engine/v4/fixtures/groupClockLegacy6199.json", import.meta.url), "utf8"));
+  const actual = createRaceEngineV4Adapter({ ...modules, core: { simulateStageV4 } });
+  for (const [rulesRevision, profiles] of Object.entries(baseline.hashes)) {
+    for (const [profile_type, expected] of Object.entries(profiles)) {
+      const result = actual.simulateStage({ entrants, stageProfile: { ...stages[0], profile_type }, seedString: `official-parity-${profile_type}`, stageNumber: 1, rulesRevision });
+      assert.equal(createHash("sha256").update(JSON.stringify(result.v4Output)).digest("hex"), expected, `${rulesRevision}/${profile_type}`);
+    }
   }
 });
 
+test("new time-model revision remains deterministic and stores its own raw physical arrival gaps", () => {
+  for (const profile_type of ["flat", "rolling", "hilly", "mountain", "high_mountain", "cobbles", "itt"]) {
+    const actual = createRaceEngineV4Adapter({ ...modules, core: { simulateStageV4 } });
+    const run = () => actual.simulateStage({ entrants, stageProfile: { ...stages[0], profile_type }, seedString: `official-parity-${profile_type}`, stageNumber: 1, rulesRevision: revision });
+    const official = run();
+    assert.deepEqual(official.v4Output, run().v4Output, profile_type);
+    assert.equal(new Set(official.v4Output.results.map(row => row.rider_id)).size, entrants.length);
+    const finishers = official.v4Output.results.filter(row => row.status !== "abandoned" && row.status !== "otl");
+    assert.equal(official.ranked.length, finishers.length);
+    const winner = finishers[0]?.time_seconds;
+    official.ranked.forEach((row, index) => {
+      assert.equal(row.rider_id, finishers[index].rider_id);
+      assert.equal(row.stageGap, Math.max(0, Math.round(finishers[index].time_seconds - winner)));
+    });
+    for (const snapshot of official.v4Output.groupSnapshots) {
+      assert.ok(snapshot.groups.every(group => Number.isFinite(group.gap_seconds) && group.gap_seconds >= 0));
+    }
+  }
+});
 test("scheduled races pin at first start; ongoing, completed and retried races keep their pin", async () => {
   const dbFor = (row) => {
     const writes = [];

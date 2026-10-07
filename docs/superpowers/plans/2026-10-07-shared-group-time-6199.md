@@ -86,3 +86,14 @@ rebase on this path. Ten focused tests pass, including an actual M5 fixture with
 mutation-confirmed RED/GREEN. 100/100 complete old-revision digests match baseline.
 Strict engine types and preflight pass; FULL is running. This remains a draft
 foundation, not the completed physical regrouping/finale model or calibration.
+
+2026-10-07 prototype follow-up: the broad run exposed the old A-only expectation
+that official_times_v1 had exactly v2 physics. The approved #6199 scope supersedes
+that expectation; it is replaced by 28 frozen complete old-revision route outputs
+and new-revision determinism, field conservation and raw saved-gap checks. The
+existing runner/GC/pin tests remain. A real contact regression was also fixed:
+new-reference travel must not let an ordinary group pass through a morning escape
+without joining it and recording the actual catcher. The new clock path extends
+physical crossing reconciliation to these groups, while the existing descent-only
+helper default and all old revision paths remain unchanged. Targeted tests pass;
+final FULL and calibration remain required. No readiness claim.

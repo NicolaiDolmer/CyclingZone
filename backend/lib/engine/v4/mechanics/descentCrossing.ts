@@ -6,20 +6,20 @@ import type { EngineState, RaceGroup, SegmentHookResult, TimelineEvent } from '.
  * Contact is reported at the existing checkpoint; the endpoints do not prove
  * a particular instant within a segment containing several distinct hooks.
  */
-export function reconcileDescentCrossings(before: readonly RaceGroup[], state: EngineState, km: number, reported: readonly TimelineEvent[] = []): SegmentHookResult {
+export function reconcileDescentCrossings(before: readonly RaceGroup[], state: EngineState, km: number, reported: readonly TimelineEvent[] = [], allPhysicalContacts = false): SegmentHookResult {
   const previous = new Map(before.map(group => [group.id, group]));
   const knownCatches = new Map<string,string>();
   for (const event of reported) if (event.type === 'breakaway_caught'
     && typeof event.params.group_id === 'string' && typeof event.params.chase_group_id === 'string') {
     knownCatches.set(event.params.group_id, event.params.chase_group_id);
   }
-  const targets = before.filter(group => group.origin === 'descent')
+  const targets = before.filter(group => allPhysicalContacts || group.origin === 'descent')
     .sort((a,b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   let groups = state.groups;
   let riders = state.riders;
   const events: TimelineEvent[] = [];
   for (const oldTarget of targets) {
-    const target = groups.find(group => group.id === oldTarget.id && group.origin === 'descent');
+    const target = groups.find(group => group.id === oldTarget.id && (allPhysicalContacts || group.origin === 'descent'));
     if (!target || !Number.isFinite(target.gap_seconds) || !Number.isFinite(oldTarget.gap_seconds)) continue;
     const knownCatcher = knownCatches.get(target.id);
     const candidates = groups.filter(group => {
@@ -39,7 +39,7 @@ export function reconcileDescentCrossings(before: readonly RaceGroup[], state: E
     if (riders === state.riders) riders = {...riders};
     for (const id of mergedIds) if (riders[id]) riders[id] = {...riders[id], group_id: catcher.id};
     const checkpoint = Math.round(km * 100) / 100;
-    if (!knownCatcher) events.push({km:checkpoint,type:'breakaway_caught',params:{group_id:target.id,rider_ids:[...target.rider_ids],
+    if (!knownCatcher && target.origin) events.push({km:checkpoint,type:'breakaway_caught',params:{group_id:target.id,rider_ids:[...target.rider_ids],
       chase_group_id:catcher.id,chase_group_kind:catcher.kind}});
     events.push({km:checkpoint,type:'group_merged',params:{group_id:target.id,into_group_id:catcher.id,rider_ids:[...target.rider_ids]}});
   }
