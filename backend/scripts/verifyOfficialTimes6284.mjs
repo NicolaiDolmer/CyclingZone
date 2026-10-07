@@ -1,6 +1,7 @@
 // Read-only paired verification using an explicitly supplied private fixture.
 // No database access, no fixture identifiers or measured balance values logged.
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadRaceEngineV4 } from "../lib/raceEngineV4Bridge.js";
 import { accumulateStageRows, formatGap } from "../lib/raceClassifications.js";
@@ -9,7 +10,7 @@ const [inputPath, reportPath] = process.argv.slice(2);
 if (!inputPath || !reportPath) throw new Error("Usage: verifyOfficialTimes6284.mjs <private-input.json> <report.json>");
 const cases = JSON.parse(readFileSync(inputPath, "utf8"));
 const engine = await loadRaceEngineV4();
-const report = { method: "Paired new-seed simulations on supplied fixtures, not historical replay", cases: cases.length, pairedRuns: 0, rawOutputParity: true, savedTimeIntegrity: true, resumedGcIntegrity: true };
+const report = { method: "Paired new-seed simulations on supplied fixtures, not historical replay", cases: cases.length, pairedRuns: 0, rawOutputParity: true, rawOutputDifferences: 0, savedTimeIntegrity: true, resumedGcIntegrity: true };
 for (const fixture of cases) {
   const stageProfile = fixture.profiles.find((stage) => stage.stage_number === fixture.stage);
   assert.ok(stageProfile);
@@ -24,14 +25,18 @@ for (const fixture of cases) {
     };
     const old = engine.simulateStage({ ...args, rulesRevision: "orders_gc_v2" });
     const official = engine.simulateStage({ ...args, rulesRevision: "official_times_v1" });
-    assert.deepEqual(official.v4Output, old.v4Output, "raw engine output must retain v2 mechanics");
-    assert.deepEqual(official.incidents, old.incidents);
-    assert.deepEqual(official.passages, old.passages);
+    // #6327 intentionally changes contact in the future revision. Measure
+    // divergence, but verify the official time contract against its own output.
+    if (!isDeepStrictEqual(official.v4Output, old.v4Output)) {
+      report.rawOutputParity = false;
+      report.rawOutputDifferences++;
+    }
+
     const finishers = official.v4Output.results.filter((row) => row.status !== "otl" && row.status !== "abandoned");
     const winnerTime = finishers[0]?.time_seconds;
     official.ranked.forEach((row, index) => {
       assert.equal(row.stageGap, Math.max(0, Math.round(finishers[index].time_seconds - winnerTime)));
-      assert.deepEqual({ ...row, stageGap: old.ranked[index].stageGap }, old.ranked[index]);
+      assert.equal(row.rider_id, finishers[index].rider_id);
     });
     const saved = JSON.parse(JSON.stringify(official.ranked.map((row) => ({
       ...row, stage_number: 1, finish_time: formatGap(row.stageGap),
