@@ -463,10 +463,17 @@ export async function fetchHumanTeamCandidates(supabase, threshold) {
  * præcis de ryttere ejeren har set på listen (en rytter der er kommet til siden
  * dry-run'et frigives ikke uden en ny liste).
  */
-export function makeScopedFetcher(threshold, allowedIds, fetchCandidates = fetchHumanTeamCandidates) {
+export function makeScopedFetcher(threshold, allowedIds, fetchCandidates = fetchHumanTeamCandidates, { onlyUnused = false, fetchUsed = fetchUsedThisSeason } = {}) {
   const allowed = new Set(allowedIds);
-  return async ({ supabase }) =>
-    (await fetchCandidates(supabase, threshold)).filter((r) => isInScopeTeam(r.team) && allowed.has(r.id));
+  // Med onlyUnused tjekkes brug i den aktive saeson IGEN lige foer frigivelsen: en
+  // manager kan have tilmeldt rytteren et loeb mellem dry-run og apply, og saa skal
+  // rytteren vente til saesonskiftet som de andre brugte (ejer 6/10).
+  return async ({ supabase }) => {
+    const scoped = (await fetchCandidates(supabase, threshold)).filter((r) => isInScopeTeam(r.team) && allowed.has(r.id));
+    if (!onlyUnused) return scoped;
+    const used = await fetchUsed(supabase, scoped.map((r) => r.id));
+    return scoped.filter((r) => !used.has(r.id));
+  };
 }
 
 async function fetchRoster(supabase, teamIds) {
@@ -492,7 +499,10 @@ async function fetchFutureEntries(supabase, riderIds) {
       .in("rider_id", chunk)
       .eq("races.status", "scheduled")
       .eq("races.stages_completed", 0)
+      // (race_id, rider_id) er unik; race_id alene giver uens rækkefølge mellem
+      // sider, så rækker ved en sidegrænse kunne tælles dobbelt eller springes over.
       .order("race_id")
+      .order("rider_id")
   );
 }
 
@@ -517,6 +527,7 @@ export async function fetchUsedThisSeason(supabase, riderIds) {
       .in("rider_id", chunk)
       .eq("races.season_id", season.id)
       .order("rider_id")
+      .order("race_id")
   );
   return new Set(rows.map((r) => r.rider_id));
 }
@@ -597,7 +608,7 @@ export async function assertSnapshotCovers(supabase, riderIds) {
  * Idempotent: en frigjort rytter har contract_end_season=null og findes ikke igen;
  * normaliseringen rammer kun `team_id is null AND is_academy = true`.
  */
-export async function runApply({ supabase, plan, threshold, releaseFn, ownerGo, approvedHash, fetchCandidates = fetchHumanTeamCandidates }) {
+export async function runApply({ supabase, plan, threshold, releaseFn, ownerGo, approvedHash, fetchCandidates = fetchHumanTeamCandidates, fetchUsed = fetchUsedThisSeason }) {
   if (!ownerGo) throw new Error(`Apply requires ${OWNER_GO_FLAG}`);
   if (approvedHash !== approvedListHash(plan)) {
     throw new Error("Live list differs from the list the owner approved. Re-run dry-run and show the owner the new list. Nothing was written.");
@@ -609,7 +620,7 @@ export async function runApply({ supabase, plan, threshold, releaseFn, ownerGo, 
   const stats = await releaseFn({
     supabase,
     seasonNumber: threshold,
-    fetchExpiredContractRiders: makeScopedFetcher(threshold, planIds, fetchCandidates),
+    fetchExpiredContractRiders: makeScopedFetcher(threshold, planIds, fetchCandidates, { onlyUnused: Boolean(plan.totals.onlyUnused), fetchUsed }),
   });
 
   // Alle akademiryttere i planen (også dem der var udskudt ved dry-run, men er

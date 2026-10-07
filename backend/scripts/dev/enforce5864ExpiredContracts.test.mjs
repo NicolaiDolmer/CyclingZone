@@ -205,6 +205,20 @@ test("makeScopedFetcher limits to in-scope teams and the approved list", async (
   assert.deepEqual(rows.map((r) => r.id), [uuid(1)]);
 });
 
+test("makeScopedFetcher with onlyUnused re-checks active-season use at release time (CodeRabbit #6198)", async () => {
+  const f = fixture();
+  const fetchCandidates = async () => f.candidates;
+  // uuid(1) was unused at dry-run, but a manager entered it in a race before apply.
+  let checked;
+  const fetchUsed = async (_supabase, ids) => { checked = ids; return new Set([uuid(1)]); };
+  const fetcher = makeScopedFetcher(3, [uuid(1), uuid(3)], fetchCandidates, { onlyUnused: true, fetchUsed });
+  const rows = await fetcher({ supabase: {} });
+  assert.deepEqual(checked, [uuid(1), uuid(3)], "re-check covers exactly the scoped riders");
+  assert.deepEqual(rows.map((r) => r.id), [uuid(3)], "rider used since dry-run is not released");
+  const plain = makeScopedFetcher(3, [uuid(1), uuid(3)], fetchCandidates, { onlyUnused: false, fetchUsed: async () => { throw new Error("must not run"); } });
+  assert.deepEqual((await plain({ supabase: {} })).map((r) => r.id), [uuid(1), uuid(3)]);
+});
+
 // Minimal fake: understøtter backup-tabel-select og riders-update-kæden.
 function fakeSupabase({ backupIds = [], releasedIds = new Set() } = {}) {
   const calls = [];
