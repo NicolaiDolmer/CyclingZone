@@ -1,0 +1,29 @@
+{
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "method": "transaction-held writer lock; rollback after each phase",
+  "measuredAt": "2026-10-07T08:56:34.442Z",
+  "samples": [
+    {
+      "phase": "before",
+      "durationMs": 770.7775000000001,
+      "readerCode": "55P03",
+      "rows": 268,
+      "points": "516425b3248f5496413c7b6fc0ac5e07",
+      "ranks": "126959dd1a67ed7858e535e78593cd99",
+      "snapshot": "64a1b520391cb6c4f3cd27a105b88717",
+      "rolledBack": true
+    },
+    {
+      "phase": "after",
+      "durationMs": 1027.1347000000005,
+      "readerCode": null,
+      "rows": 268,
+      "points": "516425b3248f5496413c7b6fc0ac5e07",
+      "ranks": "126959dd1a67ed7858e535e78593cd99",
+      "snapshot": "64a1b520391cb6c4f3cd27a105b88717",
+      "rolledBack": true
+    }
+  ],
+  "passed": true,
+  "fullRaceDayPassed": false
+}

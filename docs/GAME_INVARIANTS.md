@@ -159,6 +159,9 @@ ukendte eksterne callers er ikke bevist af runtime-inventory.
 
 Staging-bevis: [måling](audits/5692-event-driven-staging.md). Kun staging er
 ændret af Codex; prod-apply og release tilhører Claude efter review/merge.
+Sæsonskiftets særskilte [læser-/snapshot-bevis](audits/5692-season-rollover-staging.md)
+viser samme snapshots og læsning under concurrent writer-lock; begge forsøg
+rulles tilbage. Det er ikke en fuld løbsdagsmåling.
 
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
