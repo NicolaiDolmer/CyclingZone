@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { flattenLayers, restoreV3Alpha, splitTopLevel, tailwindV3CompatPlugin } from "./tailwind-v3-compat.ts";
+import { flattenLayers, restoreV3Alpha, restoreV3Space, splitTopLevel, tailwindV3CompatPlugin } from "./tailwind-v3-compat.ts";
 
 const SUPPORTS = "@supports (color: color-mix(in lab, red, red))";
 
@@ -101,4 +101,69 @@ test("flattenLayers: ukendte lag-konstruktioner → input returneres uændret", 
   assert.equal(flattenLayers(anonymous), anonymous);
   const nested = "@layer a { @layer b { .x { y: z; } } }";
   assert.equal(flattenLayers(nested), nested);
+});
+
+// Codex review 7/10 (PR #6289): v4 puts the gap on the PREVIOUS sibling's
+// margin-bottom with zero specificity, so a child's own `mb-1` won and the
+// filter -> table gap on the trades tab shrank from 16 to 4 px.
+const V4_SPACE_Y = `  :where(.space-y-4 > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(0.25rem * 4) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(0.25rem * 4) * calc(1 - var(--tw-space-y-reverse)));
+  }
+`;
+
+test("space-y: v3's next-sibling selector and margin-top, so a child's mb-* cannot shrink the gap", () => {
+  const out = restoreV3Space(V4_SPACE_Y);
+  assert.ok(!out.includes(":where("), "zero-specificity :where() must be gone");
+  assert.match(out, /\.space-y-4 > :not\(\[hidden\]\) ~ :not\(\[hidden\]\) \{/);
+  assert.match(out, /margin-block-start: calc\(calc\(0\.25rem \* 4\) \* calc\(1 - var\(--tw-space-y-reverse\)\)\);/);
+  assert.match(out, /margin-block-end: calc\(calc\(0\.25rem \* 4\) \* var\(--tw-space-y-reverse\)\);/);
+});
+
+test("space-x, negative, responsive and reverse variants are rewritten the same way", () => {
+  const css = `  :where(.space-x-2 > :not(:last-child)) {
+    --tw-space-x-reverse: 0;
+    margin-inline-start: calc(calc(0.25rem * 2) * var(--tw-space-x-reverse));
+    margin-inline-end: calc(calc(0.25rem * 2) * calc(1 - var(--tw-space-x-reverse)));
+  }
+  :where(.-space-y-px > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(-1px * var(--tw-space-y-reverse));
+    margin-block-end: calc(-1px * calc(1 - var(--tw-space-y-reverse)));
+  }
+  @media (width >= 40rem) {
+    :where(.sm\:space-y-0 > :not(:last-child)) {
+      --tw-space-y-reverse: 0;
+      margin-block-start: 0;
+      margin-block-end: 0;
+    }
+  }
+  :where(.space-y-reverse > :not(:last-child)) {
+    --tw-space-y-reverse: 1;
+  }
+`;
+  const out = restoreV3Space(css);
+  assert.ok(!out.includes(":where("));
+  assert.match(out, /\.space-x-2 > :not\(\[hidden\]\) ~ :not\(\[hidden\]\) \{[^}]*margin-inline-start: calc\(calc\(0\.25rem \* 2\) \* calc\(1 - var\(--tw-space-x-reverse\)\)\);/);
+  assert.match(out, /\.-space-y-px > :not\(\[hidden\]\) ~ :not\(\[hidden\]\) \{[^}]*margin-block-start: calc\(-1px \* calc\(1 - var\(--tw-space-y-reverse\)\)\);/);
+  assert.match(out, /\.sm\:space-y-0 > :not\(\[hidden\]\) ~ :not\(\[hidden\]\) \{/);
+  assert.match(out, /\.space-y-reverse > :not\(\[hidden\]\) ~ :not\(\[hidden\]\) \{\s*--tw-space-y-reverse: 1;/);
+});
+
+test("divide-* and other :where() rules are left exactly as v4 wrote them", () => {
+  const css = `  :where(.divide-y > :not(:last-child)) {
+    border-bottom-width: 1px;
+  }
+`;
+  assert.equal(restoreV3Space(css), css);
+});
+
+test("the plugin applies the space rewrite", () => {
+  const plugin = tailwindV3CompatPlugin();
+  const transform = plugin.transform as (code: string, id: string) => { code: string } | null;
+  const res = transform(`@layer utilities {
+${V4_SPACE_Y}}
+`, "/src/index.css");
+  assert.ok(res && res.code.includes(".space-y-4 > :not([hidden]) ~ :not([hidden])"));
 });

@@ -4,7 +4,8 @@
 // upgrade (issue #6271, 6/10), about 2% of players were on older browsers
 // (Chrome 95-109, measured in Sentry + the Supabase edge log). With Tailwind 3
 // they got exactly the same page as everyone else. Two things in Tailwind 4's
-// output would have changed that, and this plugin undoes both:
+// output would have changed that, and this plugin undoes both (plus a third,
+// layout-only difference, see 3. below):
 //
 // 1. CASCADE LAYERS (`flattenLayers`)
 //    v4 wraps everything in `@layer theme/base/components/utilities`. A
@@ -74,6 +75,30 @@ export function restoreV3Alpha(css: string): string {
       .replace(CHANNEL_MIX, (_m, name: string, pct: string) => `rgb(var(${name}) / ${pct})`)
       .replace(VAR_MIX, (_m, name: string, pct: string) => `color-mix(in srgb, var(${name}) ${pct}, transparent)`);
     return `${indent}${prop}: ${value};`;
+  });
+}
+
+// 3. SPACE-X/Y BETWEEN SIBLINGS (`restoreV3Space`, Codex review 7/10 on #6289)
+//    v3: `.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem }`,
+//    i.e. the gap sits on the NEXT sibling with class-level specificity, so it
+//    beat a child's own `mb-*`/`mt-*`. v4 moves it to the PREVIOUS sibling's
+//    margin-bottom inside a zero-specificity `:where()`, so the child's
+//    `mb-1` won: the filter -> table gap on the trades tab went from 16 to
+//    4 px. The rewrite restores v3's selector and swaps start/end, which turns
+//    v4's `start = gap * reverse; end = gap * (1 - reverse)` into v3's
+//    `start = gap * (1 - reverse); end = gap * reverse`. divide-* is left as
+//    v4 wrote it (the one visible difference, the forum border, is the
+//    intended colour, see the PR body).
+const SPACE_RULE = /:where\((\.-?[^\s{}()]*space-[xy]-[^\s{}()]*) > :not\(:last-child\)\) \{([^{}]*)\}/g;
+
+/** space-x/space-y back to v3's selector and margin side. */
+export function restoreV3Space(css: string): string {
+  return css.replace(SPACE_RULE, (_whole, selector: string, body: string) => {
+    const swapped = body
+      .replace(/margin-(block|inline)-start:/g, "margin-$1-@@end:")
+      .replace(/margin-(block|inline)-end:/g, "margin-$1-start:")
+      .replace(/@@end:/g, "end:");
+    return `${selector} > :not([hidden]) ~ :not([hidden]) {${swapped}}`;
   });
 }
 
@@ -180,7 +205,7 @@ export function tailwindV3CompatPlugin(): Plugin {
     enforce: "pre",
     transform(code, id) {
       if (!/\.css(?:\?|$)/.test(id) || !code.includes("@layer")) return null;
-      const next = flattenLayers(restoreV3Alpha(code));
+      const next = flattenLayers(restoreV3Space(restoreV3Alpha(code)));
       return next === code ? null : { code: next, map: null };
     },
   };
