@@ -1,5 +1,5 @@
 export const WATCHDOG_RESULT_BATCH_SIZE = 300;
-export const WATCHDOG_RESULT_MIGRATION = 'database/2026-10-04-6102-watchdog-result-summary.sql';
+export const WATCHDOG_RESULT_MIGRATION = 'database/2026-10-07-6102-watchdog-result-summary.sql';
 
 export type WatchdogResultSummary = {
   race_id: string;

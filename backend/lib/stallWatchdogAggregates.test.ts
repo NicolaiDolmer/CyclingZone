@@ -46,3 +46,11 @@ test('RPC/permissions errors and malformed or incomplete data cannot become a cl
   }
   await assert.rejects(fetchWatchdogResultSummaries({ rpc: async () => { throw new Error('transport failure'); } }, ['r']), /transport failure/);
 });
+
+test("migration marker names a migration file that exists (#6102 marker drift)", async () => {
+  const { existsSync } = await import("node:fs");
+  const { fileURLToPath } = await import("node:url");
+  const { WATCHDOG_RESULT_MIGRATION } = await import("./stallWatchdogAggregates.ts");
+  const root = fileURLToPath(new URL("../../", import.meta.url));
+  assert.ok(existsSync(root + WATCHDOG_RESULT_MIGRATION), `${WATCHDOG_RESULT_MIGRATION} must exist, or the watchdog stops in prod`);
+});

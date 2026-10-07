@@ -10,7 +10,7 @@ import { fetchWatchdogState, evaluateStallFindings } from '../../lib/stallWatchd
 
 const baselinePath = new URL('../../lib/.codex-watchdog-baseline.mjs', import.meta.url);
 const now = new Date('2026-10-07T09:00:00Z');
-const marker = 'database/2026-10-04-6102-watchdog-result-summary.sql';
+const marker = 'database/2026-10-07-6102-watchdog-result-summary.sql';
 let phase = 'isolation';
 let baselineCreated = false;
 try {

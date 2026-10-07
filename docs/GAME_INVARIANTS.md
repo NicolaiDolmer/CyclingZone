@@ -72,7 +72,7 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
 - **Sæsonskiftets status-kontrakt** (#4228, låst 25/8): `backend/scripts/dev/seasonRollover.mjs` ejer selv nedetids-vinduet. Kommer sæsonen ind som `active`, sætter scriptet den til `upcoming` under den destruktive ombygning og TILBAGE til `active` bagefter — i et `try/finally`, så tilbage-sætningen også sker hvis et trin undervejs fejler. Kommer sæsonen ind som `upcoming` (operatørens egen tilstand ved indgangen), efterlades den `upcoming` — scriptet tænder ALDRIG en sæson der ikke var tændt i forvejen (at gen-tænde et live system er ejer-only, se `.claude/learnings`/memory om samme regel). Forward-guard: `seasonRolloverRestoresActive.test.js` (verificeret rød mod den gamle udgave, grøn mod den nye). Udløst af 25/8-hændelsen (#4229): sæson 3 stod `upcoming` med 0 løb kørt i ca. 4 timer, fordi et menneske var systemets eneste "finally-blok".
 
 **Aktivering af watchdog-RPC (#6102):** før et kandidatopslag kaldes, kræves en
-positiv række for `database/2026-10-04-6102-watchdog-result-summary.sql` i
+positiv række for `database/2026-10-07-6102-watchdog-result-summary.sql` i
 `schema_migrations`. Manglende marker, forkert payload eller læsefejl stopper
 watchdogen med fejl; den melder ikke rent facit og kalder ikke den nye RPC.
 Oprettelse, REVOKE/GRANT og schema-notify sker i én transaktion; registermarkeren
