@@ -128,7 +128,7 @@ export default function TeamPalmaresTab({ teamId }) {
     { key: "bestResult", value: bestResultValue },
     { key: "honours", value: honours.length },
   ];
-  const tileLabel = "text-3xs text-cz-3 uppercase tracking-[0.05em]";
+  const tileLabel = "text-3xs text-cz-3 uppercase tracking-wider";
 
   return (
     <div className="flex flex-col gap-[13px]">
@@ -178,7 +178,7 @@ export default function TeamPalmaresTab({ teamId }) {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-cz-1 whitespace-nowrap">{t("profile.division", { n: row.division })}</span>
                       {row.pool?.label && (
-                        <span className="font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
+                        <span className="font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-px rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
                           {row.pool.label}
                         </span>
                       )}

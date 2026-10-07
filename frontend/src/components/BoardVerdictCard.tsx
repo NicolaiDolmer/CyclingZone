@@ -52,7 +52,7 @@ export default function BoardVerdictCard({
   return (
     <div data-testid="board-verdict">
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-        <BriefcaseIcon size={14} className="flex-shrink-0 text-cz-2" aria-hidden="true" />
+        <BriefcaseIcon size={14} className="shrink-0 text-cz-2" aria-hidden="true" />
         <span className="flex-1 whitespace-nowrap text-[13px] text-cz-2">{t("recap.boardVerdict.label")}</span>
         <span className="font-data ms-auto inline-flex flex-wrap items-center justify-end gap-x-1 text-[13px] font-semibold tabular-nums text-cz-1">
           <span>{value}</span>

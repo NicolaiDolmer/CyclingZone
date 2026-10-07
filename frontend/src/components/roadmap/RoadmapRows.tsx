@@ -8,7 +8,7 @@ import type { SaveState } from "./roadmapFormat.ts";
 // #5673: prikken på det enkelte punkt, samme recipe som nav-prikken i Layout.jsx.
 export function NewDot({ label }: { label: string }) {
   return (
-    <span className="flex-shrink-0 inline-flex items-center" title={label}>
+    <span className="shrink-0 inline-flex items-center" title={label}>
       <span aria-hidden="true" className="block w-1.5 h-1.5 rounded-full bg-cz-accent" />
       <span className="sr-only">{label}</span>
     </span>
@@ -22,7 +22,7 @@ export function RowTitle({ children, isNew, newLabel }: { children: ReactNode; i
     // bliver ikke højere end en række uden prik.
     <span className="inline-flex items-start gap-2 text-sm leading-relaxed">
       <span className="text-cz-1">{children}</span>
-      {isNew && <span className="flex h-[1lh] shrink-0 items-center"><NewDot label={newLabel} /></span>}
+      {isNew && <span className="flex h-lh shrink-0 items-center"><NewDot label={newLabel} /></span>}
     </span>
   );
 }
@@ -33,7 +33,7 @@ export function RowMeta({ children }: { children: ReactNode }) {
 
 export function SaveNote({ state, savedLabel, errorLabel }: { state: SaveState | undefined; savedLabel: string; errorLabel: string }) {
   return (
-    <div aria-live="polite" className="min-h-[1rem]">
+    <div aria-live="polite" className="min-h-4">
       {state === "saved" && <span className="text-cz-3 text-xs">{savedLabel}</span>}
       {state === "error" && <span className="text-cz-danger text-xs">{errorLabel}</span>}
     </div>

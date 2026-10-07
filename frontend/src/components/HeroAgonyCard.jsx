@@ -61,20 +61,20 @@ export default function HeroAgonyCard({ teamId, teamName }) {
     <Card className="p-5 mb-4">
       <div className="flex items-center justify-between gap-x-3 gap-y-1 mb-3 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
-          <FlagIcon size={14} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
+          <FlagIcon size={14} className="text-cz-3 shrink-0" aria-hidden="true" />
           <h2 className="font-semibold text-cz-1 text-sm">{t("dashboard:cards.heroAgony.title")}</h2>
-          <span className="font-data text-3xs uppercase tracking-[.1em] text-cz-3">{eyebrow}</span>
+          <span className="font-data text-3xs uppercase tracking-widest text-cz-3">{eyebrow}</span>
         </div>
         {race?.id && (
           <RaceLink id={race.id} stage={stageNumber} state={{ from: "dashboard" }}
-            className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline flex-shrink-0">
+            className="inline-flex items-center gap-0.5 text-xs text-cz-accent-t hover:underline shrink-0">
             {t("dashboard:cards.heroAgony.linkFull")}
             <ChevronRightIcon size={13} aria-hidden="true" />
           </RaceLink>
         )}
       </div>
 
-      <p className="font-display text-3xl leading-[.92] text-cz-1 break-words">{headline}</p>
+      <p className="font-display text-3xl leading-[.92] text-cz-1 wrap-break-word">{headline}</p>
       <p className="text-cz-2 text-sm leading-relaxed mt-2">{subline}</p>
       <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 mt-3">{metaText}</p>
 

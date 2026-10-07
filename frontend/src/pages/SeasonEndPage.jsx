@@ -884,7 +884,7 @@ export default function SeasonEndPage() {
                           {expectedPrize > 0 ? <span className="text-cz-2 font-mono"> · {formatExpectedPrize(expectedPrize)}</span> : ""}
                         </p>
                       </div>
-                      <span className={`text-3xs uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${RACE_STATUS_CLS[statusKey]}`}>
+                      <span className={`text-3xs uppercase px-2 py-0.5 rounded-full border shrink-0 ${RACE_STATUS_CLS[statusKey]}`}>
                         {t(`status.${statusKey}`)}
                       </span>
                     </div>
@@ -958,14 +958,14 @@ export default function SeasonEndPage() {
                           {/* Separator before relegation zone */}
                           {isCompleted && i === divStandings.length - 2 && div < RULES_NUMBERS.maxDivision && divStandings.length > 4 && (
                             <tr aria-hidden="true">
-                              <td colSpan={5} className="p-0 leading-[0] border-0">
+                              <td colSpan={5} className="p-0 leading-0 border-0">
                                 <div className="border-t border-cz-danger/30" />
                               </td>
                             </tr>
                           )}
                           <tr
                             className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-colors ${rowMarks}
-                              ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-cz-success-bg" : isRelegation ? "bg-cz-danger-bg" : ""}`}
+                              ${isLeader ? "bg-cz-accent/8" : isPromotion ? "bg-cz-success-bg" : isRelegation ? "bg-cz-danger-bg" : ""}`}
                             onClick={() => navigate(`/teams/${s.team_id}`)}>
                             <Td>
                               <span className={`font-mono font-bold text-sm
@@ -1009,7 +1009,7 @@ export default function SeasonEndPage() {
                           {/* Separator after promotion zone */}
                           {isCompleted && i === 1 && div > RULES_NUMBERS.minDivision && divStandings.length > 2 && (
                             <tr aria-hidden="true">
-                              <td colSpan={5} className="p-0 leading-[0] border-0">
+                              <td colSpan={5} className="p-0 leading-0 border-0">
                                 <div className="border-t border-cz-success/30" />
                               </td>
                             </tr>
@@ -1050,7 +1050,7 @@ function WinnerCard({ icon: Icon, title, primary, secondary, onClick, hasData })
         hasData ? "hover:border-cz-accent/30 cursor-pointer" : "cursor-default"
       }`}>
       <div className="flex items-center gap-1.5 mb-1.5">
-        {Icon && <Icon size={15} className="text-cz-accent flex-shrink-0" aria-hidden="true" />}
+        {Icon && <Icon size={15} className="text-cz-accent shrink-0" aria-hidden="true" />}
         <span className="text-cz-3 text-3xs uppercase tracking-wider font-semibold">{title}</span>
       </div>
       <p className="text-cz-1 font-bold text-sm truncate">{primary}</p>

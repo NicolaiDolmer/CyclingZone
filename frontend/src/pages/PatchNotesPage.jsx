@@ -258,18 +258,18 @@ export default function PatchNotesPage() {
                       {formatDate(day.date, lang)}
                     </span>
                     {isNew && (
-                      <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill flex-shrink-0">
+                      <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill shrink-0">
                         {t("newBadge")}
                       </span>
                     )}
                   </span>
-                  <span className="flex items-center gap-2 flex-shrink-0">
+                  <span className="flex items-center gap-2 shrink-0">
                     <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3">
                       {summary}
                     </span>
                     <ChevronDownIcon
                       aria-hidden="true"
-                      className={`w-4 h-4 text-cz-3 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+                      className={`w-4 h-4 text-cz-3 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
                     />
                   </span>
                 </button>
@@ -283,7 +283,7 @@ export default function PatchNotesPage() {
                       return (
                         <div key={cat}>
                           <div className="flex items-center gap-2 mb-2">
-                            <div className={`w-1.5 h-1.5 rounded-cz-pill flex-shrink-0 ${meta.dot}`} />
+                            <div className={`w-1.5 h-1.5 rounded-cz-pill shrink-0 ${meta.dot}`} />
                             <span className="text-cz-2 text-xs font-semibold uppercase tracking-wider">
                               {t(`category.${cat}`)}
                             </span>
@@ -323,7 +323,7 @@ export default function PatchNotesPage() {
                                       <ChevronRightIcon
                                         aria-hidden="true"
                                         size={13}
-                                        className={`text-cz-3 mt-0.5 flex-shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+                                        className={`text-cz-3 mt-0.5 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
                                       />
                                     )}
                                   </button>

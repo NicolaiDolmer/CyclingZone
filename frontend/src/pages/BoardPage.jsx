@@ -281,7 +281,7 @@ function BoardMemberDialog({ member, onClose }) {
       ariaLabelledby="board-member-dialog-title"
     >
       <div className="flex items-start gap-3 mb-4">
-        <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
+        <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl shrink-0
           ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
           <span aria-hidden>{member.emoji}</span>
           {member.is_chairman && (
@@ -293,7 +293,7 @@ function BoardMemberDialog({ member, onClose }) {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p id="board-member-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{resolveMemberLabel(t, member)}</p>
+          <p id="board-member-dialog-title" className="text-cz-1 font-semibold text-base leading-snug wrap-break-word">{resolveMemberLabel(t, member)}</p>
           <p className={`text-xs uppercase tracking-wider mt-0.5 ${member.is_chairman ? "text-cz-accent-t font-semibold" : "text-cz-3"}`}>
             {roleLabel}
           </p>
@@ -327,7 +327,7 @@ function MemberCategoryWeights({ weights }) {
       <div className="flex flex-col gap-1.5">
         {entries.map(([key, value]) => (
           <div key={key} className="flex items-center gap-2">
-            <span className="text-cz-2 text-xs w-16 flex-shrink-0">{t(`category.${key}`, { defaultValue: key })}</span>
+            <span className="text-cz-2 text-xs w-16 shrink-0">{t(`category.${key}`, { defaultValue: key })}</span>
             <ProgressMeter value={Math.min(100, Number(value) * 100)} className="flex-1"
               ariaLabel={t(`category.${key}`, { defaultValue: key })} />
           </div>
@@ -348,7 +348,7 @@ function ClubDnaBadge({ dna, onSelect }) {
       className="w-full text-left bg-cz-card border border-cz-border rounded-cz p-4 mt-4 flex items-start gap-4
         hover:border-cz-accent/40 hover:bg-cz-subtle/40 transition-colors group">
       <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
-        flex items-center justify-center text-2xl flex-shrink-0">
+        flex items-center justify-center text-2xl shrink-0">
         <span aria-hidden>{dna.emoji}</span>
       </div>
       <div className="flex-1 min-w-0">
@@ -360,7 +360,7 @@ function ClubDnaBadge({ dna, onSelect }) {
         )}
       </div>
       <ChevronRightIcon aria-hidden="true" size={18}
-        className="text-cz-3 group-hover:text-cz-2 flex-shrink-0 self-center transition-colors" />
+        className="text-cz-3 group-hover:text-cz-2 shrink-0 self-center transition-colors" />
     </button>
   );
 }
@@ -441,7 +441,7 @@ function ClubDnaDialog({ dna, onClose, canRechoose = false }) {
     >
       <div className="flex items-start gap-3 mb-4">
         <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
-          flex items-center justify-center text-2xl flex-shrink-0">
+          flex items-center justify-center text-2xl shrink-0">
           <span aria-hidden>{dna.emoji}</span>
         </div>
         <div className="flex-1 min-w-0">
@@ -593,7 +593,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
 
   return (
     <div className={`flex items-start gap-3 p-3 rounded-cz border transition-all ${containerClass}`}>
-      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${iconClass}`}>
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${iconClass}`}>
         <StatusIcon size={12} aria-hidden="true" />
         <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
       </div>
@@ -605,7 +605,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
             className="flex items-start justify-between gap-2 w-full text-left rounded-cz -mx-1 px-1 hover:bg-cz-subtle/40 transition-colors group/goal">
             <span className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"} group-hover/goal:text-cz-1`}>{getBoardGoalLabel(t, goal)}</span>
             {!achieved && evaluation?.actual != null && (
-              <span className="text-xs font-mono text-cz-3 flex-shrink-0">
+              <span className="text-xs font-mono text-cz-3 shrink-0">
                 {formatGoalActualTarget(goal, evaluation).actual}/{formatGoalActualTarget(goal, evaluation).target}
               </span>
             )}
@@ -614,7 +614,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
           <div className="flex items-start justify-between gap-2">
             <p className={`text-sm font-medium ${achieved ? "text-cz-success" : "text-cz-2"}`}>{getBoardGoalLabel(t, goal)}</p>
             {!achieved && evaluation?.actual != null && (
-              <span className="text-xs font-mono text-cz-3 flex-shrink-0">
+              <span className="text-xs font-mono text-cz-3 shrink-0">
                 {formatGoalActualTarget(goal, evaluation).actual}/{formatGoalActualTarget(goal, evaluation).target}
               </span>
             )}
@@ -749,12 +749,12 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       ariaLabelledby="goal-mini-dialog-title"
     >
       <div className="flex items-start gap-3 mb-4">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${iconCls}`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconCls}`}>
           <MiniStatusIcon size={16} aria-hidden="true" />
           <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
         </div>
         <div className="flex-1">
-          <p id="goal-mini-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{getBoardGoalLabel(t, goal)}</p>
+          <p id="goal-mini-dialog-title" className="text-cz-1 font-semibold text-base leading-snug wrap-break-word">{getBoardGoalLabel(t, goal)}</p>
           {statusMeta?.label && (
             <p className={`text-sm mt-0.5 ${statusMeta.color}`}>{statusMeta.label}</p>
           )}
@@ -1026,12 +1026,12 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{resolvedTitle}</p>
-          <p className="text-cz-1 font-semibold text-sm break-words">{primarySpecializationLabel}</p>
-          <p className="text-cz-2 text-sm mt-1 break-words">{formatBoardCopy(resolveBoardIdentitySummary(t, identityProfile))}</p>
+          <p className="text-cz-1 font-semibold text-sm wrap-break-word">{primarySpecializationLabel}</p>
+          <p className="text-cz-2 text-sm mt-1 wrap-break-word">{formatBoardCopy(resolveBoardIdentitySummary(t, identityProfile))}</p>
         </div>
         {/* #1232 · U25-mål er et ANTAL — vis antallet som primær værdi; procent-
             observationen bevares som sekundær baggrundsinfo (Discord 9/6, @jeppek). */}
-        <div className="text-right flex-shrink-0">
+        <div className="text-right shrink-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("identity.u25")}</p>
           {typeof identityProfile.u25_count === "number" ? (
             <>
@@ -1047,40 +1047,40 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
           )}
         </div>
       </div>
-      {/* #1241 · break-words på alle chip-værdier: lange enkeltord (fx
+      {/* #1241 · wrap-break-word på alle chip-værdier: lange enkeltord (fx
           "Etapejaegerhold") clippede ud over chip-kanten i 6-kolonne-gridet. */}
       <div className="grid sm:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.primary")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{primarySpecializationLabel}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 wrap-break-word">{primarySpecializationLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.secondary")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{secondarySpecializationLabel}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 wrap-break-word">{secondarySpecializationLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.competitive")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{competitiveTierLabel}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 wrap-break-word">{competitiveTierLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.squad")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">
             {identityProfile.rider_count}/{identityProfile?.squad_limits?.max}
           </p>
-          <p className="text-cz-3 text-xs mt-1 break-words">{squadStatusLabel}</p>
+          <p className="text-cz-3 text-xs mt-1 wrap-break-word">{squadStatusLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.nationalCore")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 inline-flex items-center gap-1.5 break-words max-w-full">
+          <p className="text-cz-1 text-sm font-medium mt-1 inline-flex items-center gap-1.5 wrap-break-word max-w-full">
             {nationalCore?.established && nationalCore?.code && <Flag code={nationalCore.code} />}
             {nationalCoreValue}
           </p>
-          <p className="text-cz-3 text-xs mt-1 break-words">{nationalCoreSub}</p>
+          <p className="text-cz-3 text-xs mt-1 wrap-break-word">{nationalCoreSub}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 min-w-0">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("identity.starProfile")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{starProfileValue}</p>
-          <p className="text-cz-3 text-xs mt-1 break-words">{starProfileSub}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 wrap-break-word">{starProfileValue}</p>
+          <p className="text-cz-3 text-xs mt-1 wrap-break-word">{starProfileSub}</p>
         </div>
       </div>
       {/* #1889 · Navngiv profilrytterne under stjerneprofil-flisen, så kortet
@@ -1095,10 +1095,10 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
                 key={rider.id ?? `${rider.name}-${index}`}
                 className="flex items-baseline justify-between gap-3 min-w-0"
               >
-                <span className="text-cz-1 text-sm break-words min-w-0">
+                <span className="text-cz-1 text-sm wrap-break-word min-w-0">
                   {rider.name || t("identity.starRiderUnnamed")}
                 </span>
-                <span className="text-cz-2 text-xs font-mono flex-shrink-0">
+                <span className="text-cz-2 text-xs font-mono shrink-0">
                   {t(reputationOn ? "identity.starRiderReputation" : "identity.starRiderPopularity", {
                     score: Math.round(riderReputationValue(rider, reputationOn) ?? 0),
                     popularity: Math.round(rider.popularity ?? 0),
@@ -1108,7 +1108,7 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
             ))}
           </ul>
         ) : (
-          <p className="text-cz-3 text-sm mt-2 break-words">{t("identity.starRidersEmpty")}</p>
+          <p className="text-cz-3 text-sm mt-2 wrap-break-word">{t("identity.starRidersEmpty")}</p>
         )}
         <p className="text-cz-3 text-xs mt-2 leading-relaxed">{t("identity.starRidersExplainer")}</p>
       </div>
@@ -1209,7 +1209,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("request.heading")}</p>
           <p className="text-cz-1 font-semibold text-sm">{t("request.subheading")}</p>
         </div>
-        <div className="text-right flex-shrink-0">
+        <div className="text-right shrink-0">
           <p className={`text-sm font-semibold ${usedThisSeason ? "text-cz-accent-t" : "text-cz-success"}`}>
             {usedThisSeason ? t("request.used") : t("request.ready")}
           </p>
@@ -1402,7 +1402,7 @@ function BoardConsequencesPanel({ consequences = [] }) {
                 : "bg-cz-accent/10 border-cz-accent/30"}`}>
               <div className="flex items-start gap-3">
                 <LayerIcon size={20} aria-hidden="true"
-                  className={`flex-shrink-0 mt-0.5 ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`} />
+                  className={`shrink-0 mt-0.5 ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`} />
                 <div className="flex-1">
                   <p className={`text-sm font-semibold ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`}>
                     {t(`consequence.layer${c.layer}.label`)}
@@ -1464,7 +1464,7 @@ function BoardFeedSection({ items = [] }) {
                   <p className="text-cz-3 text-xs mt-1 leading-relaxed">{resolveFeedMessage(item, tBackend)}</p>
                 </div>
                 {isCritical && (
-                  <span className="text-3xs uppercase tracking-wider text-cz-danger flex-shrink-0">
+                  <span className="text-3xs uppercase tracking-wider text-cz-danger shrink-0">
                     {t("feed.needsAction")}
                   </span>
                 )}
@@ -1508,7 +1508,7 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
   return (
     <div className={`rounded-cz p-4 mb-5 border ${containerClass}`}>
       <div className="flex items-start gap-3">
-        <ClockIcon size={24} aria-hidden="true" className={`flex-shrink-0 mt-0.5 ${accentClass}`} />
+        <ClockIcon size={24} aria-hidden="true" className={`shrink-0 mt-0.5 ${accentClass}`} />
         <div className="flex-1">
           <p className={`font-semibold text-sm ${accentClass}`}>
             {isCritical
@@ -1688,7 +1688,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0
               ${is_expired ? "bg-cz-accent/10 border border-cz-accent/30 text-cz-accent-t" : "bg-cz-subtle border border-cz-border text-cz-2"}`}>
               {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
             </div>
@@ -1701,7 +1701,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               gør det klikbart → scroll til tilfredshedsforklaringen nederst. */}
           <button type="button" onClick={scrollToSatisfactionExplainer}
             title={t("satisfactionExplainer.heading")}
-            className="text-right flex-shrink-0 rounded-cz px-1 -mx-1 hover:bg-cz-subtle/40 transition-colors group/sat">
+            className="text-right shrink-0 rounded-cz px-1 -mx-1 hover:bg-cz-subtle/40 transition-colors group/sat">
             <p className={`font-data font-bold text-base ${satColor} underline-offset-2 group-hover/sat:underline`}>{board.satisfaction}%</p>
             <p className="text-cz-3 text-2xs font-data">×{modifier.toFixed(2)}</p>
           </button>
@@ -1741,7 +1741,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
                   </>
                 )}
               </div>
-              <span className="text-cz-2 text-xs font-data flex-shrink-0">{t("plan.goalsLabel")} {goalsAchieved}/{nonCumGoals.length}</span>
+              <span className="text-cz-2 text-xs font-data shrink-0">{t("plan.goalsLabel")} {goalsAchieved}/{nonCumGoals.length}</span>
             </div>
             <ProgressMeter
               value={nonCumGoals.length ? Math.round((goalsAchieved / nonCumGoals.length) * 100) : 0}
@@ -1951,12 +1951,12 @@ function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planTyp
             {preview.map((g, i) => (
               <div key={i} className="flex items-start gap-3 p-3 rounded-cz bg-cz-subtle border border-cz-border">
                 <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center justify-center
-                  flex-shrink-0 mt-0.5">
+                  shrink-0 mt-0.5">
                   <ClockIcon size={12} aria-hidden="true" />
                   <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-cz-2 text-sm break-words">{getBoardGoalLabel(t, g)}</p>
+                  <p className="text-cz-2 text-sm wrap-break-word">{getBoardGoalLabel(t, g)}</p>
                   <div className="flex gap-3 mt-1">
                     {g.cumulative && <span className="text-xs text-cz-info/50">{t("goal.cumulative")}</span>}
                     {g.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/60">+{g.satisfaction_bonus}</span>}
@@ -2012,12 +2012,12 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         {/* #1240 · Tilbage uden at miste valg: forrige mål, eller trin 1 fra første mål. */}
         {onBack && (
           <button type="button" onClick={onBack}
-            className="text-cz-3 hover:text-cz-2 text-xs flex-shrink-0 transition-colors inline-flex items-center gap-0.5">
+            className="text-cz-3 hover:text-cz-2 text-xs shrink-0 transition-colors inline-flex items-center gap-0.5">
             <ChevronLeftIcon size={13} aria-hidden="true" />
             {t("wizard.back")}
           </button>
         )}
-        <span className="text-cz-3 text-xs flex-shrink-0">{t("wizard.goalCounter", { current: goalIdx + 1, total })}</span>
+        <span className="text-cz-3 text-xs shrink-0">{t("wizard.goalCounter", { current: goalIdx + 1, total })}</span>
         <ProgressMeter
           value={total ? Math.round((goalIdx / total) * 100) : 0}
           ariaLabel={t("a11y.wizardProgress")}
@@ -2035,11 +2035,11 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         <div className={`flex items-start gap-3 p-4 rounded-cz border
           ${current?.negotiated ? "bg-cz-info-bg border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
           <div className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30
-            flex items-center justify-center flex-shrink-0 text-cz-accent-t" aria-hidden="true">
+            flex items-center justify-center shrink-0 text-cz-accent-t" aria-hidden="true">
             <FlagIcon size={12} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-cz-1 font-semibold break-words">{getBoardGoalLabel(t, current)}</p>
+            <p className="text-cz-1 font-semibold wrap-break-word">{getBoardGoalLabel(t, current)}</p>
             <div className="flex flex-wrap gap-3 mt-2">
               {current?.importance === "required" && (
                 <span className="text-3xs text-cz-3 uppercase tracking-wider">{t("wizard.obligatory")}</span>
@@ -2138,12 +2138,12 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack, hasExisting
             <div key={i} className={`flex items-start gap-3 p-3 rounded-cz border
               ${g.negotiated ? "bg-cz-info-bg border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
               <div className="w-5 h-5 rounded-full bg-cz-subtle text-cz-3 flex items-center
-                justify-center flex-shrink-0 mt-0.5">
+                justify-center shrink-0 mt-0.5">
                 <ClockIcon size={12} aria-hidden="true" />
                 <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-cz-2 text-sm font-medium break-words">{getBoardGoalLabel(t, g)}</p>
+                <p className="text-cz-2 text-sm font-medium wrap-break-word">{getBoardGoalLabel(t, g)}</p>
                 <div className="flex gap-3 mt-1">
                   {g.cumulative && <span className="text-xs text-cz-info/50">{t("goal.cumulative")}</span>}
                   {g.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
@@ -2793,7 +2793,7 @@ export default function BoardPage() {
       {isBaselinePhase && (
         <Section className="mb-5">
           <div className="flex items-start gap-3">
-            <EyeIcon size={24} aria-hidden="true" className="flex-shrink-0 mt-0.5 text-cz-2" />
+            <EyeIcon size={24} aria-hidden="true" className="shrink-0 mt-0.5 text-cz-2" />
             <div>
               <h2 className="text-cz-1 font-semibold text-base mb-1">{t("baseline.title")}</h2>
               <p className="text-cz-3 text-sm leading-relaxed">{t("baseline.body")}</p>
@@ -2895,13 +2895,13 @@ export default function BoardPage() {
                   onClick={() => setActivePlanTab(planType)}
                   className={`group relative flex items-center gap-2 px-3 sm:px-4 py-2.5 text-sm transition-colors -mb-px
                     ${isActive ? "text-cz-1 font-semibold" : "text-cz-3 hover:text-cz-2"}`}>
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0
                     ${expired ? "bg-cz-accent/10 border border-cz-accent/40 text-cz-accent-t"
                       : isActive ? "bg-cz-accent/12 border border-cz-accent/30 text-cz-accent-t"
                       : "bg-cz-subtle border border-cz-border text-cz-3"}`}>{num}</span>
                   <span className="hidden sm:inline">{getPlanLabel(t, planType)}</span>
                   {sat != null && (
-                    <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
+                    <span aria-hidden="true" className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
                   )}
                   {/* aktiv fane = solid guld-streg; inaktiv = micro-interaction accent-dash ved hover (#1050-mønster) */}
                   <span aria-hidden="true"
@@ -3030,7 +3030,7 @@ export default function BoardPage() {
                   { n: 3, labelKey: "signature"   },
                 ].map(({ n, labelKey }, i) => (
                   <div key={n} className={`flex items-center ${i < 2 ? "flex-1" : ""}`}>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
                         ${wizardStep === n ? "bg-cz-accent text-cz-on-accent"
                           : wizardStep > n ? "bg-cz-success-bg text-cz-success"

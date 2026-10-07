@@ -53,8 +53,8 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamNam
           disabled={!prevRider}
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0"
         >
-          <ChevronLeftIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
-          <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{shortName(prevRider)}</span>
+          <ChevronLeftIcon size={16} aria-hidden="true" className="text-cz-3 shrink-0" />
+          <span className="truncate max-w-28 sm:max-w-40">{shortName(prevRider)}</span>
         </button>
 
         {/* Midte: hold + index + hint */}
@@ -68,11 +68,11 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamNam
             </TeamLink>
           )}
           {index != null && total != null && (
-            <span className="font-mono tabular-nums text-2xs text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
+            <span className="font-mono tabular-nums text-2xs text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill shrink-0">
               {index} / {total}
             </span>
           )}
-          <span className="hidden md:inline text-cz-3 text-3xs uppercase tracking-[0.12em] font-semibold flex-shrink-0">
+          <span className="hidden md:inline text-cz-3 text-3xs uppercase tracking-[0.12em] font-semibold shrink-0">
             {t("profile.switcher.hint")}
           </span>
         </div>
@@ -83,8 +83,8 @@ export default function RiderSwitcherBar({ prevRider, nextRider, teamId, teamNam
           disabled={!nextRider}
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0 justify-end"
         >
-          <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{shortName(nextRider)}</span>
-          <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
+          <span className="truncate max-w-28 sm:max-w-40">{shortName(nextRider)}</span>
+          <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 shrink-0" />
         </button>
       </div>
     </div>

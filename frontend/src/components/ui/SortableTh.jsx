@@ -77,7 +77,7 @@ export default function SortableTh({ children, sortKey, sort, sortDir, onSort, c
     <button
       type="button"
       onClick={() => onSort(sortKey)}
-      className={`${help ? "" : "block w-full "}bg-transparent border-0 p-0 m-0 text-inherit cursor-pointer select-none transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent-t/60 ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}
+      className={`${help ? "" : "block w-full "}bg-transparent border-0 p-0 m-0 text-inherit cursor-pointer select-none transition-colors rounded-sm focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-cz-accent-t/60 ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"}`}
     >
       {children}
       <SortIndicator active={active} dir={sortDir} />

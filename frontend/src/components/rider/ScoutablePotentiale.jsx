@@ -191,7 +191,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
         t("rider:scouting.scouting")
       ) : (
         <>
-          <SearchIcon size={11} aria-hidden="true" className="flex-shrink-0" />
+          <SearchIcon size={11} aria-hidden="true" className="shrink-0" />
           {level > 0 ? t("rider:scouting.rescout") : t("rider:scouting.scout")}
         </>
       )}

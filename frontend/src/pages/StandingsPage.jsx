@@ -600,7 +600,7 @@ export default function StandingsPage() {
     return {
       ref: rowRef(s.team_id),
       onClick: () => navigate(`/teams/${s.team_id}?tab=results`),
-      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}${marks.length ? " " + marks.join(" ") : ""}`,
+      className: `cursor-pointer${isLeader ? " bg-cz-accent/8" : ""}${marks.length ? " " + marks.join(" ") : ""}`,
     };
   }
 

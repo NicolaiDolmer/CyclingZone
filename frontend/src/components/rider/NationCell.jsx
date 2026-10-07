@@ -9,7 +9,7 @@ export default function NationCell({ code, className = "" }) {
   if (!code3) return null;
   return (
     <span className={`inline-flex items-center gap-1.5 whitespace-nowrap ${className}`}>
-      <Flag code={code} className="flex-shrink-0" />
+      <Flag code={code} className="shrink-0" />
       <span className="text-cz-3 text-xs font-mono">{code3}</span>
     </span>
   );

@@ -13,5 +13,5 @@ test("Tooltip er group-ankret med role=tooltip + tooltipClass", () => {
 });
 
 test("open tvinger boblen synlig (kitchen-sink/snapshot)", () => {
-  assert.match(src, /!opacity-100/);
+  assert.match(src, /opacity-100!/);
 });

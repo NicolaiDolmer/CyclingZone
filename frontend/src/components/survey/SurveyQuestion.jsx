@@ -297,7 +297,7 @@ export default function SurveyQuestion({
       </div>
       {help && <p className="mb-2.5 text-xs leading-relaxed text-cz-2">{help}</p>}
       <div className={help ? "" : "mt-2.5"}>{control}</div>
-      <div aria-live="polite" className="mt-1.5 min-h-[1rem]">
+      <div aria-live="polite" className="mt-1.5 min-h-4">
         {saveState === "saving" && <span className="text-3xs text-cz-3">{t("save.saving")}</span>}
         {saveState === "saved" && <span className="text-3xs text-cz-3">{t("save.saved")}</span>}
         {saveState === "error" && <span className="text-3xs text-cz-danger">{t("save.error")}</span>}

@@ -61,7 +61,7 @@ function SettlementStep({ step, t, isLast, seasonParams }) {
           {t(`seasonSwitch.receipt.step.${step.key}.detail`, detailParams)}
         </p>
       </div>
-      <div className="text-end flex-shrink-0">
+      <div className="text-end shrink-0">
         {!isInfoOnly && (
           <p className={`font-mono text-sm font-bold tabular-nums ${
             step.amount > 0 ? "text-cz-success" : step.amount < 0 ? "text-cz-danger" : "text-cz-3"

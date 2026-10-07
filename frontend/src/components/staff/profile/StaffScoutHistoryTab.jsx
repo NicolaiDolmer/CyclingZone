@@ -51,7 +51,7 @@ export default function StaffScoutHistoryTab({ staffId }) {
     );
   }
 
-  const th = "font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-cz-3";
+  const th = "font-mono text-3xs font-semibold uppercase tracking-wider text-cz-3";
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className={`${GRID} py-2 border-b border-cz-border`}>

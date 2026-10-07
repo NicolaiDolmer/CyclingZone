@@ -506,7 +506,7 @@ export default function AcademyPage() {
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <div className="flex flex-col items-end gap-1 shrink-0">
             {item.is_serious && (
               <span className="text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill bg-cz-accent/15 text-cz-accent-t">
                 {t("seriousBadge")}

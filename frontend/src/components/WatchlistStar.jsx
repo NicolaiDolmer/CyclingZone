@@ -17,7 +17,7 @@ export default function WatchlistStar({ active, onToggle, className = "" }) {
     <button
       onClick={e => { e.stopPropagation(); onToggle(); }}
       title={active ? t("controls.watchlistRemove") : t("controls.watchlistAdd")}
-      className={`transition-all hover:scale-110 flex-shrink-0 ${active ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"} ${className}`}
+      className={`transition-all hover:scale-110 shrink-0 ${active ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"} ${className}`}
     >
       <StarIcon size={18} style={{ fill: active ? "currentColor" : "none" }} aria-hidden="true" />
     </button>

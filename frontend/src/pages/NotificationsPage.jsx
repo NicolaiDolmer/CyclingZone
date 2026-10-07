@@ -774,7 +774,7 @@ export default function NotificationsPage() {
                         }
                       } : undefined}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
-                        flex-shrink-0 mt-0.5 ${config.color}`}>
+                        shrink-0 mt-0.5 ${config.color}`}>
                         {Icon ? <Icon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -795,9 +795,9 @@ export default function NotificationsPage() {
                         )}
                         <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                       </div>
-                      <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
                         {!n.is_read && (
-                          <span className="w-2 h-2 rounded-cz-pill bg-cz-accent flex-shrink-0" />
+                          <span className="w-2 h-2 rounded-cz-pill bg-cz-accent shrink-0" />
                         )}
                         <button
                           onClick={e => { e.stopPropagation(); deleteNotif(n.id); }}
@@ -835,7 +835,7 @@ export default function NotificationsPage() {
                         toggleAggregate(entry.key);
                       }}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
-                        flex-shrink-0 mt-0.5 relative ${config.color}`}>
+                        shrink-0 mt-0.5 relative ${config.color}`}>
                         {AggIcon ? <AggIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                         {!isRaceCompleted && (
                           <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-cz-pill
@@ -889,9 +889,9 @@ export default function NotificationsPage() {
                           )}
                         </p>
                       </div>
-                      <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
+                      <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
                         {entry.any_unread && (
-                          <span className="w-2 h-2 rounded-cz-pill bg-cz-accent flex-shrink-0" />
+                          <span className="w-2 h-2 rounded-cz-pill bg-cz-accent shrink-0" />
                         )}
                         <span className="text-cz-3 flex items-center" aria-label={isExpanded ? t("aggregate.collapse") : t("aggregate.expand")} aria-hidden>
                           {isExpanded ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
@@ -909,7 +909,7 @@ export default function NotificationsPage() {
                         <ul className="flex flex-col gap-1.5 max-h-64 overflow-y-auto">
                           {entry.items.map(item => (
                             <li key={item.id} className="flex items-start gap-2 text-xs">
-                              <span className="text-cz-3 whitespace-nowrap min-w-[5rem]">{timeAgo(item.created_at)}</span>
+                              <span className="text-cz-3 whitespace-nowrap min-w-20">{timeAgo(item.created_at)}</span>
                               <span className="text-cz-2 flex-1">
                                 {/* #1486: link til rytterprofil når riderId findes i metadata */}
                                 <RiderLink id={item.metadata?.riderId} stopPropagation
@@ -964,7 +964,7 @@ export default function NotificationsPage() {
                 <div key={`${item.kind}-${item.id}`}
                   className="flex items-start gap-3 p-3 sm:p-4 rounded-cz border border-cz-accent/30 bg-cz-accent/5 hover:bg-cz-accent/10 transition-colors cursor-pointer"
                   onClick={() => { logEvent("notification_clicked", { kind: item.kind }); navigate(item.link); }}>
-                  <div className="w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center text-cz-accent-t flex-shrink-0 mt-0.5">
+                  <div className="w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center text-cz-accent-t shrink-0 mt-0.5">
                     {PendingIcon ? <PendingIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -972,7 +972,7 @@ export default function NotificationsPage() {
                     <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{item.secondary}</p>
                     <p className="text-cz-3 text-xs mt-1.5">{timeAgo(item.updated_at)}</p>
                   </div>
-                  <ChevronRightIcon size={14} className="text-cz-accent-t flex-shrink-0 mt-1" aria-hidden="true" />
+                  <ChevronRightIcon size={14} className="text-cz-accent-t shrink-0 mt-1" aria-hidden="true" />
                 </div>
                 );
               })}
@@ -1044,7 +1044,7 @@ export default function NotificationsPage() {
                 return (
                   <div key={event.id}
                     className="flex items-start gap-3 px-3 sm:px-4 py-3.5 rounded-cz border bg-cz-card border-cz-border transition-colors">
-                    <div className={`w-8 h-8 rounded-cz bg-cz-subtle flex items-center justify-center flex-shrink-0 ${cfg.color}`}>
+                    <div className={`w-8 h-8 rounded-cz bg-cz-subtle flex items-center justify-center shrink-0 ${cfg.color}`}>
                       {FeedIcon ? <FeedIcon size={16} /> : <InfoIcon size={16} aria-hidden="true" />}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1070,7 +1070,7 @@ export default function NotificationsPage() {
                         </p>
                       )}
                     </div>
-                    <span className="text-cz-3 text-xs flex-shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(event.created_at)}</span>
+                    <span className="text-cz-3 text-xs shrink-0 mt-0.5 whitespace-nowrap">{timeAgo(event.created_at)}</span>
                   </div>
                 );
               })}

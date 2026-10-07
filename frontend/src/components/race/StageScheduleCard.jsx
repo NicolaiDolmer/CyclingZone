@@ -111,13 +111,13 @@ export default function StageScheduleCard({ raceId, stagesCompleted = 0 }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border flex items-center gap-2">
-        <ClockIcon size={16} className="text-cz-accent-t flex-shrink-0" />
+        <ClockIcon size={16} className="text-cz-accent-t shrink-0" />
         <div className="min-w-0">
           <h2 className="font-semibold text-cz-1 text-sm leading-tight">{t("detail.stageSchedule.title")}</h2>
           <p className="text-cz-3 text-2xs leading-tight">{t("detail.stageSchedule.subtitle")}</p>
         </div>
         {nextStage && (
-          <div className="ms-auto text-right flex-shrink-0">
+          <div className="ms-auto text-right shrink-0">
             <p className="text-cz-3 text-3xs uppercase tracking-wider leading-none">{t("detail.stageSchedule.nextStageLabel")}</p>
             <p className="text-cz-accent-t font-mono text-xs font-bold mt-0.5 tabular-nums whitespace-nowrap">
               {countdownText(nextStage.date, nowMs, t)}
@@ -135,10 +135,10 @@ export default function StageScheduleCard({ raceId, stagesCompleted = 0 }) {
           return (
             <li
               key={s.stageNumber}
-              className={`flex items-center gap-3 px-4 py-2.5 ${isNext ? "bg-cz-accent/[0.06]" : ""}`}
+              className={`flex items-center gap-3 px-4 py-2.5 ${isNext ? "bg-cz-accent/6" : ""}`}
             >
               <span
-                className={`font-mono text-xs w-6 text-right flex-shrink-0 ${
+                className={`font-mono text-xs w-6 text-right shrink-0 ${
                   isNext ? "text-cz-accent-t font-bold" : s.status === "done" ? "text-cz-3" : "text-cz-2"
                 }`}
               >
@@ -149,11 +149,11 @@ export default function StageScheduleCard({ raceId, stagesCompleted = 0 }) {
               </span>
 
               {s.status === "done" ? (
-                <span className="text-3xs uppercase tracking-wider text-cz-3 font-medium flex-shrink-0">
+                <span className="text-3xs uppercase tracking-wider text-cz-3 font-medium shrink-0">
                   {t("detail.stageSchedule.done")}
                 </span>
               ) : (
-                <span className="text-right flex-shrink-0 whitespace-nowrap">
+                <span className="text-right shrink-0 whitespace-nowrap">
                   <span className={`text-sm tabular-nums ${isNext ? "text-cz-1 font-semibold" : "text-cz-2"}`}>
                     {timeLabel}
                   </span>

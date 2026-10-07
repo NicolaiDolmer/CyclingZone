@@ -77,7 +77,7 @@ export default function DevTransitionCard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 border-y border-cz-border divide-y sm:divide-y-0 sm:divide-x divide-cz-border mt-4">
         {facts.map((f) => (
-          <div key={f.key} className="py-3 sm:px-4 first:sm:ps-0 last:sm:pe-0">
+          <div key={f.key} className="py-3 sm:px-4 sm:first:ps-0 sm:last:pe-0">
             <p className="text-[13px] font-semibold text-cz-1 m-0">{f.title}</p>
             <p className="text-2xs text-cz-3 m-0 mt-0.5">{f.sub}</p>
           </div>
@@ -87,7 +87,7 @@ export default function DevTransitionCard() {
       <div className="overflow-x-auto mt-1">
         <table data-sort-exempt="Engangs-forklaringspanel; faa raekker, rating-sorteret server-side" className="w-full text-[13px] border-collapse min-w-[480px]">
           <thead>
-            <tr className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 text-left">
+            <tr className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 text-left">
               <th className="py-2 pe-3 font-semibold">{t("devTransition.colRider")}</th>
               <th className="py-2 px-2 text-right font-semibold">{t("devTransition.colRating")}</th>
               <th className="py-2 px-2 text-right font-semibold">{t("devTransition.colCeilBefore")}</th>

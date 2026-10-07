@@ -73,7 +73,7 @@ function Meter({ value, warn, tone }: { value: number | null; warn: boolean; ton
         {value ?? "—"}
       </span>
       <span className="relative h-1.5 w-11 overflow-hidden rounded-cz-pill bg-cz-subtle" aria-hidden="true">
-        <span className={`absolute inset-y-0 start-0 rounded-cz-pill ${fill}`} style={{ width: `${pct}%` }} />
+        <span className={`absolute inset-y-0 inset-s-0 rounded-cz-pill ${fill}`} style={{ width: `${pct}%` }} />
       </span>
     </div>
   );
@@ -190,7 +190,7 @@ export default function TrainingTodayTable({
                   className={`flex-none text-cz-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
                 />
               </span>
-              <span className="mt-px font-data text-3xs uppercase tracking-[.05em] text-cz-3">{row.sub}</span>
+              <span className="mt-px font-data text-3xs uppercase tracking-wider text-cz-3">{row.sub}</span>
             </button>
             {renderStatus(row.id)}
           </td>

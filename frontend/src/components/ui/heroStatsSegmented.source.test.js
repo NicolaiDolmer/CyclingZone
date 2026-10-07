@@ -22,7 +22,7 @@ test("HeroStats stabler i to kolonner paa mobil og bliver en raekke fra sm", () 
 // PAGE_TEMPLATES.md §T3: label text-3xs uppercase tracking .1em, value 20px/650
 // data-font tabular. Tallene skal vaere tabulaere begge steder.
 test("HeroStats holder T3-stat-opskriften (10px label, 20px/650 tabular vaerdi)", () => {
-  assert.match(heroStats, /text-3xs font-semibold uppercase tracking-\[\.1em\] text-cz-3/);
+  assert.match(heroStats, /text-3xs font-semibold uppercase tracking-widest text-cz-3/);
   assert.match(heroStats, /font-data text-\[20px\] font-\[650\][^"]*tabular-nums/);
 });
 

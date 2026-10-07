@@ -42,7 +42,7 @@ export default function RiderTypeBadge({ primaryType, secondaryType, size = "sm"
   // Synlig etiket kun i detalje-størrelsen (se header-kommentaren).
   const naturalTag = natural && size === "md" ? (
     <span
-      className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3"
+      className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3"
       data-testid="rider-type-natural-label"
     >
       {t("natural.label")}

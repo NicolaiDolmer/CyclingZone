@@ -45,7 +45,7 @@ export function ClubDnaSelectionCard({
               className={`bg-cz-subtle border rounded-cz p-4 flex flex-col gap-3 ${isCurrent ? "border-cz-accent/60" : "border-cz-border"}`}>
               <div className="flex items-start gap-3">
                 <div className="w-12 h-12 rounded-full bg-cz-card border border-cz-border
-                  flex items-center justify-center text-2xl flex-shrink-0">
+                  flex items-center justify-center text-2xl shrink-0">
                   <span aria-hidden>{suggestion.emoji}</span>
                 </div>
                 <div className="flex-1 min-w-0">

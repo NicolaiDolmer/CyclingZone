@@ -48,7 +48,7 @@ export default function AuctionBidWarModal({ open, onClose, riderName, finalPric
                   {isWinning && (
                     <TrophyIcon
                       size={15}
-                      className="flex-shrink-0 text-cz-success"
+                      className="shrink-0 text-cz-success"
                       aria-hidden="true"
                     />
                   )}

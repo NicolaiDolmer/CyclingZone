@@ -194,7 +194,7 @@ export default function OnboardingTour({ pageKey, steps }) {
             <span className="text-cz-accent-t">▸</span>
             {current.title}
           </p>
-          <span className="text-cz-3 text-3xs font-mono flex-shrink-0">
+          <span className="text-cz-3 text-3xs font-mono shrink-0">
             {tour.step + 1}/{steps.length}
           </span>
         </div>
