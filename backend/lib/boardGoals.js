@@ -13,6 +13,7 @@ import {
   getStarProfileSponsorPressure,
   calculateRiderStarScore,
   getStarRiderScoreThreshold,
+  countTeamStarRiders,
 } from "./boardIdentity.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
 import { stampGoalsOwners } from "./boardMembers.js";
@@ -988,6 +989,26 @@ function warnIfStalePersistedJerseyGoal(enrichedGoal, callerLabel) {
   }
 }
 
+// #6298 · Tæller ryttere mod et signature_rider-mål. Mål med
+// star_score_basis "reputation" tæller på omdømme (som rytterprofilen). Et mål
+// aftalt FØR omdømme blev synligt har ingen basis og tæller stadig på den
+// gamle score (#5828 beskytter allerede opnået fremgang), men tæller nu OGSÅ
+// ryttere der er stjerner på omdømme — ellers bliver nye omdømme-ryttere aldrig
+// set af et eksisterende mål. Mål med baseline (bonustilbud) holdes på den gamle
+// score, fordi deres baseline blev talt dér.
+function countSignatureRiders(riders, goal, context = {}) {
+  const list = riders || [];
+  if (context.reputationEnabled !== true) return countTeamStarRiders(list, { reputationEnabled: false });
+  if (goal.star_score_basis === "reputation") return countTeamStarRiders(list, { reputationEnabled: true });
+  if (goal.baseline != null) return countTeamStarRiders(list, { reputationEnabled: false });
+  const legacyThreshold = getStarRiderScoreThreshold({ reputationEnabled: false });
+  const reputationThreshold = getStarRiderScoreThreshold({ reputationEnabled: true });
+  return list.filter((rider) =>
+    calculateRiderStarScore(rider, { reputationEnabled: false }) >= legacyThreshold
+    || calculateRiderStarScore(rider, { reputationEnabled: true }) >= reputationThreshold
+  ).length;
+}
+
 export function evaluateGoal(goal, standing, team, context = {}) {
   const enrichedGoal = addGoalMetadata(goal);
   const {
@@ -1093,10 +1114,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       // #1889) — score = popularity*0.70 + uciScore*0.30 >= 68. Før #3141
       // brugte dette mål rå popularity>=75 alene, så en rytter kunne tælle
       // som "stjerne" på kortet uden at tælle mod 5-års-planens mål.
-      const reputationEnabled = context.reputationEnabled === true && enrichedGoal.star_score_basis === "reputation";
-      const threshold = getStarRiderScoreThreshold({ reputationEnabled });
-      const starRiderCount = (team?.riders || [])
-        .filter((rider) => calculateRiderStarScore(rider, { reputationEnabled }) >= threshold).length;
+      const starRiderCount = countSignatureRiders(team?.riders, enrichedGoal, context);
       // #3574 · Samme baseline-mekanik som monument_podium ovenfor: bonus-
       // tilbuddets "sign 1 star" var i praksis en beholdning ("har mindst 1
       // stjerne-rytter NU"), ikke en handling — de fleste hold der bliver
@@ -1408,9 +1426,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
     }
     case "signature_rider": {
       // #3141 · Samme star-score-SSOT som evaluateGoal ovenfor + board-kortet.
-      const reputationEnabled = context.reputationEnabled === true && enrichedGoal.star_score_basis === "reputation";
-      const threshold = getStarRiderScoreThreshold({ reputationEnabled });
-      const starRiderCount = riders.filter((rider) => calculateRiderStarScore(rider, { reputationEnabled }) >= threshold).length;
+      const starRiderCount = countSignatureRiders(riders, enrichedGoal, context);
       // #3574 · Samme netto-siden-accept-visning som monument_podium ovenfor.
       if (enrichedGoal.baseline != null) {
         actual = Math.max(0, starRiderCount - enrichedGoal.baseline);
