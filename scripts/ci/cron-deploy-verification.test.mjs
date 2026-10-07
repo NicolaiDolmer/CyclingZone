@@ -134,9 +134,9 @@ test('real source map covers every registry job and stall aggregates reach watch
   assert.equal(Object.keys(savedMap.sourcePathsBySlug).length, 55);
 });
 
-test('unknown relative dependency widens to all rather than silently dropping an edge', () => {
+test('unknown relative dependency always includes its job rather than silently dropping an edge', () => {
   assert.deepEqual(affectedCronJobs([{ filename: 'backend/a.js', status: 'modified' }], { map, monitors,
-    exists: path => path === 'backend/a.js', read: () => "import './missing';" }), ['short', 'long']);
+    exists: path => path === 'backend/a.js', read: () => "import './missing';" }), ['short']);
 });
 
 test('prose and path strings do not create loader edges; comments between real loader tokens are supported', () => {
@@ -146,11 +146,20 @@ test('prose and path strings do not create loader edges; comments between real l
     read: path => path === 'backend/a.js' ? text : '' }), ['short']);
 });
 
-test('template-expression and nonliteral loaders widen rather than disappearing through masking', () => {
+test('template-expression and nonliteral loaders remain potentially affected rather than disappearing through masking', () => {
   for (const source of ["const text = `hello ${await import('./guard.js')}`;", 'await import(variable);']) {
     assert.deepEqual(affectedCronJobs([{ filename: 'backend/a.js', status: 'modified' }], { map, monitors,
-      exists: path => path === 'backend/a.js', read: () => source }), ['short', 'long']);
+      exists: path => path === 'backend/a.js', read: () => source }), ['short']);
   }
+});
+
+test('an unresolved job remains affected when a different known runtime job changes; unknown files require all', () => {
+  const sources = { 'backend/a.js': 'await import(variable);', 'backend/long.js': '' };
+  const options = { map: { ...map, sourcePathsBySlug: { short: ['backend/a.js'], long: ['backend/long.js'] } }, monitors,
+    exists: path => path in sources, read: path => sources[path] };
+  assert.deepEqual(affectedCronJobs([{ filename: 'backend/long.js', status: 'modified' }], options), ['short', 'long']);
+  assert.deepEqual(affectedCronJobs([{ filename: 'backend/unknown.js', status: 'modified' }], options), ['short', 'long']);
+  assert.deepEqual(affectedCronJobs([{ filename: 'docs/example.md', status: 'modified' }], options), []);
 });
 
 test('changed-file retrieval validates target, pagination, transport and completeness', async () => {

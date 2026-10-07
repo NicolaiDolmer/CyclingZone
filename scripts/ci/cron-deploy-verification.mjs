@@ -30,14 +30,17 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
   }
   if ([...changed].some(path => map.commonSourcePaths.includes(path) || path.startsWith('database/'))) return all;
   const closures = new Map();
-  try {
-    for (const slug of all) {
-      const seen = new Set();
+  const unknown = new Set();
+  const sources = new Map();
+  for (const slug of all) {
+    const seen = new Set();
+    try {
       const visit = path => {
         if (seen.has(path) || map.commonSourcePaths.includes(path)) return;
         if (!exists(path)) throw new Error('Missing source root');
         seen.add(path);
-        const source = read(path);
+        if (!sources.has(path)) sources.set(path, read(path));
+        const source = sources.get(path);
         const code = blankStringsAndComments(source);
         // The shared scanner blanks template expressions as well. Such a
         // loader cannot safely be narrowed, so explicitly widen instead.
@@ -60,13 +63,14 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
         }
       };
       for (const path of map.sourcePathsBySlug[slug]) visit(path);
-      closures.set(slug, seen);
-    }
-  } catch { return all; } // conservative all-job proof, never an empty impact
+    } catch { unknown.add(slug); } // unresolved graph always requires this job's proof
+    closures.set(slug, seen);
+  }
   const runtime = [...changed].filter(path => !/^(?:docs\/|frontend\/|pr-screens\/|superpowers\/|\.claude\/|scripts\/|\.github\/)/.test(path)
     && !/^[^/]+\.md$/.test(path));
   if (runtime.some(path => ![...closures.values()].some(paths => paths.has(path)))) return all;
-  return all.filter(slug => [...changed].some(path => closures.get(slug).has(path)));
+  return all.filter(slug => (runtime.length > 0 && unknown.has(slug))
+    || [...changed].some(path => closures.get(slug).has(path)));
 }
 
 export async function changedFiles({ sha, repository, token, fetchFn }) {

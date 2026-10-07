@@ -205,7 +205,9 @@ Brug `-Sha <commit>` hvis en ældre production-commit skal verificeres eksplicit
 `scripts/ci/cron-deploy-verification.mjs --impact` læser hele commit-diffen med
 rename-oprindelser. Ukendt, tom eller trunkeret diff fejler. `cron-source-map.json`
 ejer callback-/injection-rødder; relative imports udvides transitivt, også `.ts`.
-Common cron-/runtime-filer og ukendte runtime-afhængigheder kræver alle jobs.
+Common cron-/runtime-filer og ukendte runtime-filer kræver alle jobs. Et jobs
+uopløselige importgraph gør altid dette job potentielt berørt ved runtime-diffs;
+usikkerheden smitter ikke de andre kendte graphs eller inline-only jobs.
 Nye registry-slugs kræver samtidig mapping; ukomplet mapping fejler.
 
 Kadence og margin kommer udelukkende fra `backend/lib/cronMonitorRegistry.js`
