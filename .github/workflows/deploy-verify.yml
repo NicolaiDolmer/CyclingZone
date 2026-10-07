@@ -201,6 +201,9 @@ jobs:
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
             VERCEL_OK=false
             RAILWAY_OK=false
+            # Refresh the boundary per observation round. Vercel may take much
+            # longer; its wait must not consume a short cron's proof window.
+            CRON_SINCE=""
             VERCEL_SEEN=false
             RAILWAY_SEEN=false
 
@@ -261,8 +264,8 @@ jobs:
             fi
 
             # Use a conservative UTC observation AFTER positive Railway READY,
-            # never the workflow start time. A later non-ready observation
-            # invalidates the boundary (same-SHA rebuilds must get new proof).
+            # never the workflow start time. The round satisfying all required
+            # deployments supplies the latest positive Railway observation.
             if ! $RAILWAY_OK; then CRON_SINCE=""; fi
             if $RAILWAY_OK && [[ -z "$CRON_SINCE" ]]; then
               CRON_SINCE=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
