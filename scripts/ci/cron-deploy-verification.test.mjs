@@ -112,6 +112,16 @@ test('cached first-tick proof cannot hide a missing, future or stale current hea
   }
 });
 
+test('a newly observed boot cohort revokes cached evidence and requires a distinct tick', () => {
+  const boot = '2026-10-07T12:00:10Z';
+  const accepted = new Map([['short', { lastCheckin: boot }]]);
+  const excluded = new Set();
+  const args = { slugs: ['short'], since, now: '2026-10-07T12:00:30Z', monitors, accepted, excluded };
+  assert.equal(evaluateCheckins({ ...args, rows: [row('short', boot), row('long', boot)] }).state, 'waiting');
+  assert.equal(accepted.size, 0);
+  assert.equal(evaluateCheckins({ ...args, rows: [row('short', '2026-10-07T12:00:20Z'), row('long', boot)] }).state, 'verified');
+});
+
 const map = { commonSourcePaths: ['backend/cron.js'], sourcePathsBySlug: { short: ['backend/a.js'], long: [] } };
 const sources = { 'backend/a.js': "import './nested.ts';", 'backend/nested.ts': "export { guard } from './guard.js';", 'backend/guard.js': '' };
 const impact = files => affectedCronJobs(files, { map, monitors, exists: path => path in sources, read: path => sources[path] });

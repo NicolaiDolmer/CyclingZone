@@ -119,6 +119,9 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
     if (!(cadence > 0) || !(margin >= 0)) throw new Error('Invalid registry cadence');
     const row = bySlug.get(slug), time = stamp(row?.last_checkin_at);
     const deadline = boundary + (cadence + margin) * 1000;
+    // A partial prime may initially look unique. Revoke cached evidence if a
+    // later snapshot reveals that its timestamp belongs to a boot cohort.
+    if (accepted.has(slug) && excluded.has(stamp(accepted.get(slug).lastCheckin))) accepted.delete(slug);
     let state;
     if (!row || !Number.isFinite(time) || time > clock || row.expected_cadence_seconds !== cadence
       || clock - time > (cadence + margin) * 1000) state = 'failed';

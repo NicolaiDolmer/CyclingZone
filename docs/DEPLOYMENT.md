@@ -222,7 +222,9 @@ fejler straks, udeblevet tick fejler ved deadline.
 Boot-prime er ikke tick-bevis: første snapshot tæller aldrig som succes, og
 observerede fælles timestamps udelukkes gennem hele polling-forløbet. Rækken
 skal avancere fra snapshot. Dette er konservativt: samtidige legitime ticks kan
-også blive afvist. Tabellen har hverken release-ID eller tick/boot-markør, så
+også blive afvist. En senere observeret boot-kohorte tilbagekalder cachet bevis
+med samme timestamp og kræver et særskilt tick.
+Tabellen har hverken release-ID eller tick/boot-markør, så
 read-only bevis kan ikke entydigt tilskrive en senere individuel skrivning en
 proces ved genstarts-klynger; ingen migration indgår i denne leverance.
 
