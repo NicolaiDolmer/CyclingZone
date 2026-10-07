@@ -218,7 +218,7 @@ test("#6156: samlet form flytter et v4-resultat; uden data er v4-resultatet iden
     const engine = await spiedAdapter([]);
     return engine.simulateStage({ entrants: field, stageProfile: stages[0], seedString: `${race.id}:1`, stageNumber: 1, isStageRace: true, raceStages: stages, rulesRevision }).v4Output;
   };
-  const noData = entrants.map(({ form, peakWindows, ...rest }) => rest);
+  const noData = entrants.map(({ form: _form, peakWindows: _peakWindows, ...rest }) => rest);
   const v3 = await run("orders_gc_v3", noData);
   const v4 = await run("orders_gc_v4", noData);
   assert.equal(JSON.stringify(v4.results), JSON.stringify(v3.results), "uden form-data: samme resultat");
