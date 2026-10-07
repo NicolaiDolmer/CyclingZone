@@ -6,11 +6,11 @@
 
 ## Ro på spillet (ejer 7/10, til S5 25/10)
 
-14 dage med for mange fejl (træning 15/24 skribenter, motor 17/24, chunk-fejl 43 spillere). **Kvalitet og fastholdelse foran nyt.** Vigtige ting sænkes aldrig uden god grund. Datolovede ting bygges stadig.
+**Kvalitet og fastholdelse foran nyt.** Vigtige ting sænkes aldrig uden god grund. Datolovede ting bygges stadig.
 
 ## 🔴 Brand (nu)
 
-**Ejer 7/10 eftermiddag:** Tailwind 4, databasen og løbsmotoren gøres FÆRDIGE først, med resultat hver dag. Så snart én lukker, kommer træningspakken ind (#6139 #6027 #6123 #6314 #6053). Derefter rytterudvikling. Sæsonskiftet 25/10 (#6320 #5904) kører parallelt.
+**Ejer 7/10 eftermiddag:** Tailwind 4, databasen og løbsmotoren gøres FÆRDIGE først, med resultat hver dag. Så snart én lukker, kommer træningspakken ind (#6139 #6027 #6123 #6314 #6053). Derefter rytterudvikling. Sæsonskiftet (#6320 #5904) parallelt.
 
 1. **Stabilitet:** Supabase (#5878; Medium ✅ · #5692 Codex · #6265 · alarm #6272 · #6276) · **chunk-fejl #5162 flyttet frem** (43 spillere, siden går i stå efter deploy).
 2. **Løbsmotoren fejlfri** (spillerne mærker den): tidsforskelle #5951 #6284 #6199 → mærker #6294 #6234 #6185d2 → udbrud/klatring #6201 #6200 #6299 #6187 #5978 → #6285 motor-tests som gate før hver tænding → `orders_gc_v3` (tændes ved grønt scorecard, ejer-only) → **form #6156 EFTER v3, designes grundigt med ejeren** (PR #6305 draft-udgangspunkt; toppe tilbage #6158). Hjælp = motor i samme PR (#6186).
@@ -30,11 +30,11 @@ Taktik lag 2-4 #5575 · U23 del 2 #4620 · nye features uden dato. Målinger (#4
 
 ## Roadmap · Planned (spejles i `roadmap_items.sort_order`)
 
-**Next:** stabilitet (#5878 #6184 #5911) · #3984 · #4522 · #4714 · #5833 · #2887 B · #6190 · #5831 · #5917 · #6060 · #1140 · #5105 · #3813 · #5981 · #5074 · #5238 · #5865 · #5131 · race sharpener · værdier uden potentiale. **Later:** #1177 · #2887 A · #2768 · #5573 · #4620 · #5113 · #5101 · #5575 · #5574 · #3463 · #6125 · #2176 · #4957 · #5106 · #3374 · #3513 · #2223 · #2161. #6203 søgning · #6204 admin · #6205 sync. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md). **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 · #5833-afstemning.
+**Next:** stabilitet (#5878 #6184 #5911) · #3984 · #4522 · #4714 · #5833 · #2887 B · #6190 · #5831 · #5917 · #6060 · #1140 · #5105 · #3813 · #5981 · #5074 · #5238 · #5865 · #5131 · race sharpener · værdier uden potentiale. **Later:** se roadmap_items. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md). **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 · #5833-afstemning.
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
-🔵 **Flip-liste beta → alle** (flip lukker alle i samme tur): `training_train_now` (#6006/#6027/#4847) · `training_programs` (#4629) · `training_groups` (#6000) · `season_matrix_mobile` (#5124) · `race_role_scope_choice` (#6095) · historik #5947. **Træningspakke man 5/10:** #6035 (PR #6053) · #6123 nulstil til holdprogram · #6060 · #5915 løbsdag-numre · #5485 · **lovet:** #5965 analyse. Derefter #5949 · #5630 · #5539 · #5911 < 2 min (kun delvist).
+🔵 **Flip-liste beta → alle** (flip lukker alle i samme tur): `training_train_now` (#6006/#6027/#4847) · `training_programs` (#4629) · `training_groups` (#6000) · `season_matrix_mobile` (#5124) · `race_role_scope_choice` (#6095) · historik #5947. **Træningspakke man 5/10:** #6035 (PR #6053) · #6123 nulstil til holdprogram · #6060 · #5915 løbsdag-numre · #5485 · **lovet:** #5965 analyse.
 
 ## Bane 1 · Lovet til spillerne (dato først)
 
