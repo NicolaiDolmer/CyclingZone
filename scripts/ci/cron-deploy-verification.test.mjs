@@ -124,3 +124,19 @@ test('dry-run makes no requests and does not claim verification', () => {
     { env: { ...process.env, AFFECTED_SLUGS: '["short"]', SUPABASE_URL: '', SUPABASE_SERVICE_KEY: '' }, encoding: 'utf8' });
   assert.match(output, /no heartbeat request or mutation; not verified/);
 });
+
+test('production workflow checks out target SHA, observes READY boundary and gates LIVE on cron proof', () => {
+  const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
+  assert.match(workflow, /name: Checkout target SHA[\s\S]*?ref: \$\{\{ steps\.pr\.outputs\.sha \}\}/);
+  assert.ok(workflow.indexOf('name: Checkout target SHA') < workflow.indexOf('cron-deploy-verification.mjs --impact'));
+  assert.match(workflow, /if \$RAILWAY_OK && \[\[ -z "\$CRON_SINCE" \]\]; then\s+CRON_SINCE=\$\(date -u/);
+  assert.match(workflow, /echo "cron_since=\$CRON_SINCE" >> "\$GITHUB_OUTPUT"/);
+  const gate = workflow.indexOf('name: Verify affected cron check-ins');
+  const live = workflow.indexOf('name: Comment success on merged PR');
+  assert.ok(gate > 0 && gate < live);
+  assert.match(workflow.slice(gate, live), /SUPABASE_SERVICE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_KEY \}\}/);
+  assert.match(workflow.slice(live), /if: success\(\).*steps\.crons\.outputs\.state == 'verified'/);
+  assert.match(workflow, /name: Cron check-ins deferred/);
+  const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  assert.match(ci, /node --test scripts\/ci\/cron-deploy-verification\.test\.mjs scripts\/ci\/deploy-verification-state\.test\.mjs/);
+});
