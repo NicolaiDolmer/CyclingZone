@@ -13,3 +13,9 @@ approved additive DB allow-list change and a separately approved default change.
 
 Private design/simulation evidence remains in the owner's existing private
 analysis directory; no private population identifiers or calibration are copied.
+
+Validation: the original test blob is unchanged. Targeted contract/adapter/runner
+and pin regressions passed, as did FULL local verification and strict engine
+TypeScript checking. Paired runs on the same five private stage fixtures passed
+raw v2 output parity, official saved gaps and resumed GC integrity. This is a
+new-seed contract comparison, not a replay or a time-model calibration approval.

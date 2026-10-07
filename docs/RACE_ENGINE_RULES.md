@@ -24,6 +24,8 @@ Revisionen er bygget, men **ikke aktiveret**. `CURRENT_RACE_RULES_REVISION` forb
 
 DB-forudsætning: den eksisterende CHECK tillader ikke den nye identitet. `database/proposals/2026-10-07-official-times-v1.sql` er en **ikke-anvendt** additiv allow-list-proposal. Før aktivering skal den godkendes, leveres som migration efter gældende merge/apply-protokol og verificeres read-only; først derefter må standardrevisionen ændres med separat ejer-go. Denne PR udfører ingen migration eller flag-flip. Testplan: den genbrugte `officialStageTimes6284.test.ts` plus runner/adapter-integration, genoptaget GC, mekanisk v2-paritet og pin-regressioner; fuld lokal verifikation. Patch notes delegeres til Claude ved release, da denne lane ikke må skrive spillertekst.
 
+Verifikationsbevis 7/10: den oprindelige kontrakttest er genbrugt byte-identisk fra `da42706ee` og målt RED→GREEN. Adapter/runner- og pin-regressionerne samt FULL lokal suite og strict engine-typecheck bestod. `backend/scripts/verifyOfficialTimes6284.mjs` sammenlignede samme fem private etapefixtures i parrede nye seeds: råt v2-motoroutput, rang/point/udfald og officielle gemte tider/genoptaget GC bestod kontrakten. Det er ikke historisk replay eller godkendelse af en ny tidsmodels kalibrering. Rapporten indeholder ingen private identifikatorer eller balancefordelinger.
+
 ## Morgenudbrud under `orders_gc_v1` (#5955, #5984 Task 3)
 
 Kun aktivt når løbets revision er `orders_gc_v1`; legacy-dannelsen er uændret. Tilladelse beregnes fra rolle, indsats og den effektive låste ordre (rolledefault + etapens overlay; fravær og eksplicit `try_break=false` holdes adskilt):
