@@ -23,7 +23,8 @@
 import { observeRace, aggregateObservations } from "../../lib/raceDominanceMetrics.js";
 import { isTimeTrial } from "../../lib/raceStageProfileGenerator.js";
 import { observeStageV4, cohesionFraction, spreadAtRank, descentAttackGainStats } from "./headToHeadObservers.js";
-import { mean, spearmanCorrelation, percentile, fmt, fmtPct } from "./headToHeadStats.js";
+import { mean, median, spearmanCorrelation, percentile, fmt, fmtPct } from "./headToHeadStats.js";
+import { isOrdersGcV3OrLater } from "../../lib/raceEngineRulesRevision.ts";
 
 // ---------------------------------------------------------------------------
 // Baand (kilder citeret pr. mor-spec §5 + #2415)
@@ -37,6 +38,14 @@ export const ANCHOR_BANDS = {
   descentToSummitGapRatio: {
     max: 0.5,
     source: "#3426-maalingen (mor-spec §5: nedkoersels-gaps vs. summit-gaps, ratio <=0,5 ved p5-p10)",
+  },
+  // #6257 (ejer 6/10): under orders_gc_v3 maaler dette kontrakt-anker i stedet for
+  // nedkoersels/summit-ratioen. Tallene er ejerens regel fra #6200 (RACE_ENGINE_RULES
+  // "Nedkoersel mod maal"): et hul kan hoejst lukke ca. 1,5 s/km og hoejst halvdelen.
+  descentGapClosureContract: {
+    maxSecondsPerKm: 1.5,
+    maxShare: 0.5,
+    source: "ejer 6/10 (#6257, regel fra #6200): nr. 10's hul fra sidste top til maal lukker hoejst 1,5 s/km og hoejst 50 % (median over seeds)",
   },
   descentAttackGainSeconds: {
     min: 10, max: 20,
@@ -59,8 +68,14 @@ export const ANCHOR_BANDS = {
     source: "race:gate + #3149 (mor-spec §5: \"ITT-korrelation synlig\" — tærskel valgt af denne harness)",
   },
   mountainTop10SpreadSeconds: {
-    min: 180, max: 240,
-    source: "#2415 (gap-realisme-baand: bjergetape top-10 inden for ~3-4 min, PCS-niveau)",
+    min: 60, max: 150,
+    source: "ejer 5/10 (#6199 del 2, virkelige Grand Tour-topankomster): nr. 10 er 1:00-2:30 efter vinderen. Erstatter #2415's 180-240 s",
+  },
+  // #6199 del 3 (ejer 5/10): kort afslutning opad (sidste stigning ca. 3-7 km a
+  // 5-7 %, ikke hoejfjeld). Tre lofter, samlet i én dom (se scoreShortUphillFinish).
+  shortUphillFinishSeconds: {
+    maxByRank: { 10: 20, 30: 90, 50: 300 },
+    source: "ejer 5/10 (#6199 del 3, virkelige korte afslutninger opad): nr. 10 inden for 0:20, nr. 30 inden for 1:30, nr. 50 inden for 5:00",
   },
   gtWinnerMarginSeconds: {
     min: 60, max: 480,
@@ -199,6 +214,87 @@ export function scoreDescentVsSummitRatio(rows) {
     source: band.source,
     v3: { ...judge(v3.value, band, v3.n, "kraever baade descent- og long_climb-finale-etaper i input"), display: (v) => fmt(v, 2) },
     v4: { ...judge(v4.value, band, v4.n, "kraever baade descent- og long_climb-finale-etaper i input"), display: (v) => fmt(v, 2) },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 2b. #6257: nedkoersels-kontrakten (kun orders_gc_v3 og senere). Maaler ejerens
+//     regel direkte i stedet for en gab-ratio mellem to etape-arketyper.
+// ---------------------------------------------------------------------------
+
+/** Er raekken koert under orders_gc_v3 eller senere? Revisionen ligger paa raa.rulesRevision (headToHeadV4.runHeadToHead). */
+export function rowsUseV3Rules(rows, rulesRevision = undefined) {
+  const revision = rulesRevision ?? rows.find((r) => r.raw?.rulesRevision)?.raw?.rulesRevision;
+  return isOrdersGcV3OrLater(revision);
+}
+
+/**
+ * Nr. 10's hul fra sidste top til maal paa EEN etape med nedkoersel mod maal.
+ * "Toppen" er gruppe-snapshottet ved nedkoerselssegmentets start; "fronten" er
+ * den gruppe der foerer dér, og dens tid i maal er dens hurtigste rytters.
+ * Returnerer null naar etapen ikke kan maales (ingen nedkoersel til sidst, nr. 10
+ * ikke i maal, nr. 10 allerede i front-gruppen, eller intet snapshot ved toppen).
+ * @returns {{closedSeconds:number, perKm:number, share:number}|null}
+ */
+export function descentGapClosure(row) {
+  const segs = row.raw?.route?.segments ?? [];
+  const last = segs[segs.length - 1];
+  if (!last || last.kind !== "descent") return null;
+  const descentKm = last.to_km - last.from_km;
+  if (!(descentKm > 0)) return null;
+
+  const snapshots = row.raw.v4Output?.groupSnapshots ?? [];
+  const top = [...snapshots].reverse().find((s) => s.km <= last.from_km + 1e-6);
+  if (!top) return null;
+
+  const finishers = (row.raw.v4Output?.results ?? [])
+    .filter((x) => x.status !== "abandoned")
+    .sort((a, b) => a.rank - b.rank);
+  const rider10 = finishers[9];
+  if (!rider10) return null;
+
+  const group10 = top.groups.find((g) => g.rider_ids.includes(rider10.rider_id));
+  if (!group10 || !(group10.gap_seconds > 0)) return null;
+  const frontIds = new Set(top.groups.filter((g) => g.gap_seconds === 0).flatMap((g) => g.rider_ids));
+  const frontTimes = finishers.filter((x) => frontIds.has(x.rider_id)).map((x) => x.time_seconds);
+  if (frontTimes.length === 0) return null;
+
+  const finishGap = rider10.time_seconds - Math.min(...frontTimes);
+  const closedSeconds = group10.gap_seconds - finishGap;
+  return { closedSeconds, perKm: closedSeconds / descentKm, share: closedSeconds / group10.gap_seconds };
+}
+
+/**
+ * Dommen er den vaerste af de to lofter, hver maalt som median over etaperne i
+ * seedet: vaerdi = max(s/km / 1,5, andel / 0,5), PASS naar <= 1 (ejerens "median",
+ * 6/10; en enkelt udlaeber-etape afgoer ikke dommen). Den vaerste enkelt-etape
+ * rapporteres ved siden af (worstPerKm/worstShare), men dommer ikke: maalet ligger
+ * ved snapshot-graensen foer nedkoerslens eget tempo-tik (RULES: "Hvor toppen maales"),
+ * saa en enkelt etapes tal er stoejfyldt som loft-test.
+ */
+export function scoreDescentGapContract(rows) {
+  const band = ANCHOR_BANDS.descentGapClosureContract;
+  const measures = rows.map(descentGapClosure).filter((m) => m !== null);
+  const perKm = median(measures.map((m) => m.perKm));
+  const share = median(measures.map((m) => m.share));
+  const value = measures.length === 0 ? null : Math.max(perKm / band.maxSecondsPerKm, share / band.maxShare);
+  const naNote = "ingen etaper med nedkoersel mod maal og et maalbart hul ved toppen i input";
+  return {
+    id: "descent_gap_closure_contract",
+    label: "Nedkoersel mod maal: nr. 10's hul lukker hoejst loftet (kontrakt, #6257)",
+    bandLabel: "<= 1 (hoejst 1,5 s/km og hoejst 50 % af hullet)",
+    source: band.source,
+    v3: { ...judge(null, {}, 0, "kontrakten er en orders_gc_v3-regel i v4-motoren; v3-motoren har den ikke"), display: (v) => fmt(v, 2) },
+    v4: {
+      ...judge(value, { max: 1 }, measures.length, naNote),
+      display: (v) => fmt(v, 2),
+      ...(value === null ? {} : {
+        closurePerKm: perKm,
+        closureShare: share,
+        worstPerKm: Math.max(...measures.map((m) => m.perKm)),
+        worstShare: Math.max(...measures.map((m) => m.share)),
+      }),
+    },
   };
 }
 
@@ -869,8 +965,8 @@ export function scoreGapRealism(rows) {
   return [
     {
       id: "mountain_top10_spread",
-      label: "Bjergetape top-10-spredning, topankomster (#2415)",
-      bandLabel: `${band.min}-${band.max}s (~3-4 min)`,
+      label: "Bjergetape top-10-spredning, topankomster (#6199)",
+      bandLabel: `${band.min}-${band.max}s (1:00-2:30)`,
       source: band.source,
       v3: { ...judge(v3.value, band, v3.n, "ingen bjerg-topankomster i input"), display: (v) => fmt(v, 0) },
       v4: { ...judge(v4.value, band, v4.n, "ingen bjerg-topankomster i input"), display: (v) => fmt(v, 0) },
@@ -899,6 +995,60 @@ const ITT_MIN_FINISHERS = 10;
 /** Tider for de ryttere der krydsede stregen (v4). En udgaaet rytters tid er frosset ved styrtet og ikke en maaltid. */
 function v4FinisherTimes(row) {
   return row.raw.v4Output.results.filter((x) => x.status !== "abandoned").map((x) => x.time_seconds);
+}
+
+/**
+ * #6199 del 3: er etapen en kort afslutning opad? Den sidste blok af
+ * sammenhaengende stigninger er ca. 3-7 km a 5-7 % i snit, og etapen er ikke
+ * hoejfjeld. Eksporteret for direkte kontrakt-test.
+ */
+export function isShortUphillFinish(route) {
+  if (!route || route.profile_type === "high_mountain") return false;
+  const segs = route.segments ?? [];
+  if (segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
+  let i = segs.length - 1;
+  while (i > 0 && segs[i - 1].kind === "climb") i--;
+  const block = segs.slice(i);
+  const km = block.reduce((a, s) => a + (s.to_km - s.from_km), 0);
+  const grad = km > 0 ? block.reduce((a, s) => a + (s.to_km - s.from_km) * (s.avg_gradient ?? 0), 0) / km : 0;
+  return km >= 3 && km <= 7 && grad >= 5 && grad <= 7;
+}
+
+/**
+ * #6199 del 3 (ejer 5/10): kort afslutning opad. Pr. plads (10/30/50) middel-
+ * afstanden til vinderen over etaperne, delt med pladsens loft; vaerdien er den
+ * vaerste af de tre brøker, saa PASS (<= 1) kraever at alle tre lofter holder.
+ * En plads etapen ikke har (faerre i maal) taeller ikke med.
+ */
+export function scoreShortUphillFinish(rows) {
+  const band = ANCHOR_BANDS.shortUphillFinishSeconds;
+  const uphillRows = stagesWhere(rows, isShortUphillFinish);
+  function worstRatio(getTimes) {
+    let worst = null;
+    for (const [rank, limit] of Object.entries(band.maxByRank)) {
+      const n = Number(rank);
+      const gaps = uphillRows
+        .map((r) => getTimes(r))
+        .filter((times) => times.length >= n)
+        .map((times) => spreadAtRank(times, n))
+        .filter((v) => v !== null);
+      if (gaps.length === 0) continue;
+      const ratio = mean(gaps) / limit;
+      worst = worst === null ? ratio : Math.max(worst, ratio);
+    }
+    return worst;
+  }
+  const v3 = worstRatio((r) => r.raw.v3Output.ranked.map((x) => x.stageGap));
+  const v4 = worstRatio((r) => r.raw.v4Output.results.map((x) => x.time_seconds));
+  const ratioBand = { max: 1 };
+  return {
+    id: "short_uphill_finish_gaps",
+    label: "Kort afslutning opad, nr. 10/30/50 til vinderen (#6199)",
+    bandLabel: "<= 1 (nr. 10 <= 20s, nr. 30 <= 90s, nr. 50 <= 300s)",
+    source: band.source,
+    v3: { ...judge(v3, ratioBand, v3 === null ? 0 : uphillRows.length, "ingen korte afslutninger opad i input"), display: (v) => fmt(v, 2) },
+    v4: { ...judge(v4, ratioBand, v4 === null ? 0 : uphillRows.length, "ingen korte afslutninger opad i input"), display: (v) => fmt(v, 2) },
+  };
 }
 
 /** Stoerste andel af feltet paa én og samme tid (afrundet til 1/100 s, samme oploesning som StageResult). */
@@ -987,15 +1137,18 @@ export function scoreIttTimeRealism(rows) {
  * simulerede) rows fra headToHeadV4.js's runHeadToHead().
  * @param {Array} rows  rows med .raw = { v3Output, v4Output, route, tuning, stageRow }
  * @param {object} ctx
+ * @param {string} [ctx.rulesRevision]  overstyrer rows' egen revision (raw.rulesRevision); udeladt = legacy
  * @param {Map<string,string|null>} ctx.teamByRider
  * @param {Map<string,object>} ctx.abilitiesByRider  rider_id -> abilities-record
  * @param {Record<string,object>} ctx.v4EntrantsById  rider_id -> v4 Entrant (for observeStageV4)
  * @returns {Array<{id:string,label:string,bandLabel:string,source:string,v3:object,v4:object}>}
  */
-export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById }) {
+export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4EntrantsById, rulesRevision }) {
   return [
     scoreFieldCohesion(rows),
-    scoreDescentVsSummitRatio(rows),
+    // #6257: under orders_gc_v3 maaler kontrakt-ankeret i stedet for ratioen
+    // (samme plads i raekken); legacy/v1/v2 beholder #3426-ankeret uaendret.
+    rowsUseV3Rules(rows, rulesRevision) ? scoreDescentGapContract(rows) : scoreDescentVsSummitRatio(rows),
     scoreDescentAttackBounds(rows),
     scorePunchCorrelation(rows, abilitiesByRider),
     scoreCobblestoneLift(rows, abilitiesByRider),
@@ -1004,6 +1157,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
     ...scoreTypeIntegrity(rows, abilitiesByRider),
     scoreBonusSecondsBounded(rows),
     ...scoreGapRealism(rows),
+    scoreShortUphillFinish(rows),
     ...scoreIttTimeRealism(rows),
   ];
 }
@@ -1022,7 +1176,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
  * @returns {Array<object>}  samme form som buildScorecard, plus .spread pr. motor
  */
 // ALLE anker-id'er fra buildScorecard() SKAL have en indgang her (#4947;
-// 15 siden #5576's to ITT-tids-ankre).
+// 16 siden #6199's anker for korte afslutninger opad).
 // Et manglende id gjorde at aggregateEngine() faldt tilbage til
 // `measured[0].verdict` — dommen fra FOERSTE seed — i stedet for at doemme
 // 3-seed-middelvaerdien mod baandet, praecis den aggregerings-fejl §7 raekke 8
@@ -1038,6 +1192,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
 export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
   descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
+  descent_gap_closure_contract: { max: 1 },
   descent_attack_gain_bounds: ANCHOR_BANDS.descentAttackGainSeconds,
   punch_correlation: { min: 0.2 },
   cobblestone_lift_on_sectors: ANCHOR_BANDS.cobblestoneLiftOnSectors,
@@ -1048,13 +1203,38 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   sprinter_win_rate_flat: ANCHOR_BANDS.sprinterWinRateFlat,
   bonus_seconds_bounded: { max: 10 },
   mountain_top10_spread: ANCHOR_BANDS.mountainTop10SpreadSeconds,
+  short_uphill_finish_gaps: { max: 1 },
   gt_winner_margin: ANCHOR_BANDS.gtWinnerMarginSeconds,
   itt_top10_spread_per_40km: ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds,
   itt_largest_same_time_share: ANCHOR_BANDS.ittLargestSameTimeShare,
 };
 
+// #6257: kontrakt-ankeret doemmes paa MEDIANEN over seeds (ejer 6/10), ikke middel.
+function aggregateMedianCells(cells) {
+  const measured = cells.filter((c) => c.verdict !== "N/A" && Number.isFinite(c.value));
+  if (measured.length === 0) return { ...cells[0], sampleCount: 0, spread: null };
+  const values = measured.map((c) => c.value);
+  const sampleCount = measured.reduce((sum, c) => sum + c.sampleCount, 0);
+  // Dommen tages paa de to komponent-medianer (det der rapporteres), ikke paa
+  // medianen af per-seed-maksimummet, saa verdict og viste maal altid stemmer.
+  const band = ANCHOR_BANDS.descentGapClosureContract;
+  const closurePerKm = median(measured.map((c) => c.closurePerKm));
+  const closureShare = median(measured.map((c) => c.closureShare));
+  const judged = judge(Math.max(closurePerKm / band.maxSecondsPerKm, closureShare / band.maxShare), { max: 1 }, sampleCount);
+  return {
+    ...judged,
+    display: cells[0].display,
+    closurePerKm,
+    closureShare,
+    worstPerKm: Math.max(...measured.map((c) => c.worstPerKm)),
+    worstShare: Math.max(...measured.map((c) => c.worstShare)),
+    spread: { min: Math.min(...values), max: Math.max(...values), seeds: values.length },
+  };
+}
+
 const PER_ANCHOR_AGGREGATORS = {
   breakaway_rate_per_terrain: aggregateBreakawayCells,
+  descent_gap_closure_contract: aggregateMedianCells,
 };
 
 export function aggregateScorecards(scorecards) {
@@ -1132,6 +1312,9 @@ export function formatScorecard(scorecard) {
     lines.push(`  Baand: ${anchor.bandLabel}  (kilde: ${anchor.source})`);
     lines.push(`  v3: ${formatCell(anchor.v3)}`);
     lines.push(`  v4: ${formatCell(anchor.v4)}`);
+    if (Number.isFinite(anchor.v4?.closurePerKm)) {
+      lines.push(`    median lukning: ${fmt(anchor.v4.closurePerKm, 2)} s/km, ${fmtPct(anchor.v4.closureShare)} af hullet; vaerste etape ${fmt(anchor.v4.worstPerKm, 2)} s/km, ${fmtPct(anchor.v4.worstShare)}`);
+    }
     lines.push(...formatPerTerrain(anchor));
     lines.push(...formatFavoriteDefinitions(anchor.favoriteDefinitions));
   }

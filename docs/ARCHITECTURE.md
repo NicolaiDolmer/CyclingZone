@@ -2,18 +2,20 @@
 
 ## Stack
 
-#6061 (forberedt, ikke live): kompensationsforslaget i
-`database/proposals/2026-10-03-6061-apply-compensation.sql` indeholder
+#6061 (infrastruktur live, read-only verificeret 6/10):
+`database/2026-10-05-6061-compensation-ledger.sql` indeholder
 `training_compensation_receipts` og service-only RPC
 `apply_training_compensation_6061`. En særskilt kvittering pr. rytter/sæson/løbsdag
 beskytter gentagne reparationer og afviser almindelig træning på samme slot.
 Kildekontrol, korte tabel-låse og compare-before-write beskytter atomisk
 evnekompensation; historiske rapporter/condition-afregninger rekonstrueres ikke.
-Forslaget kræver separat ejer-go og ligger uden for auto-migrate.
+Den aktuelle writer og kilde-hashes ligger i
+`database/2026-10-05-6129-compensation-slim-source.sql`; begge migrationer er
+registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 
 | Lag | Teknologi | Deploy |
 |-----|-----------|--------|
-| Frontend | React 18 + Vite + Tailwind CSS | Vercel |
+| Frontend | React 18 + Vite + Tailwind CSS | Vercel; production build selection: [VERCEL_BUILD_RULES.md](VERCEL_BUILD_RULES.md) |
 | Backend | Node.js + Express (ES modules) | Railway |
 | Database / Auth | Supabase (PostgreSQL + RLS) | Supabase cloud |
 | Error tracking | Sentry (`@sentry/node`, `@sentry/react`) | Railway + Vercel |
@@ -68,6 +70,14 @@ Forslaget kræver separat ejer-go og ligger uden for auto-migrate.
 ---
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
+
+### Ranking refresh events (#5692, staging verification 6/10)
+`ranking_refresh_work_state` records relevant source changes transactionally.
+Backend polling drains captured versions through service-only claim, renewal,
+token-fenced concurrent refresh and atomic completion RPCs. Clean ticks perform
+no full refresh; result publication schedules background work. SQL must be
+applied before the backend change. Contract and staging evidence:
+[GAME_INVARIANTS.md](GAME_INVARIANTS.md#durable-ranking-events-5692-ejer-210--prioritet-610).
 
 ### Spillersynlige feature-flags (#4948, #6103)
 GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`

@@ -17,6 +17,16 @@
 // streg"): 2px streg i --text-1, flad --bg-subtle-fyld under kurven,
 // slutpunkt markeret, akse-labels text-3xs. Kurven skifter ALDRIG farve efter
 // retning — deltaet ved siden af værdien bærer grøn/rød.
+//
+// #6286:
+// - En evne der mangler i en sæson er et HUL i kurven (aldrig 0), og deltaet
+//   regnes kun mellem rigtige værdier (lib/proAbilityHistory.js).
+// - Sæsonaksen har labels (S1, S2 ...) under hver kategori.
+// - Backend lægger rytterens nuværende evner ind som sidste punkt (live), så
+//   kurven slutter i det tal profilen viser; en rytter uden historik får ét punkt.
+// - Mens hold/abonnement indlæses vises intet (aldrig reklamen); fejl giver
+//   ErrorState med "Try again"; skabelonens Section/typografi i stedet for
+//   hårdkodede px-værdier.
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,39 +35,56 @@ import { authHeaders } from "../../../lib/supabase.js";
 import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { useSubscription } from "../../../lib/useSubscription.js";
 import { ABILITY_CATEGORIES, ABILITY_SHORT } from "../../../lib/abilities.js";
+import {
+  abilitySeries, abilityDelta, latestValue, seriesSegments, seasonAxisLabels, axisFraction,
+} from "../../../lib/proAbilityHistory.js";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
-import { Button } from "../../ui";
+import { Button, Section, SectionHeader, EmptyState, ErrorState, ChartLineIcon } from "../../ui";
 
 const API = import.meta.env.VITE_API_URL;
 const VB = { w: 120, h: 32, x0: 2, x1: 118, y0: 3, y1: 27 };
 
+const xAtIndex = (i, n) => VB.x0 + axisFraction(i, n) * (VB.x1 - VB.x0);
+
 function Sparkline({ points, ceiling }) {
-  if (points.length === 0) return null;
-  const vals = points.map((p) => p.v);
+  const segments = seriesSegments(points);
+  if (segments.length === 0) return <div className="h-8" aria-hidden="true" />;
+  const n = points.length;
+  const vals = segments.flat().map((p) => p.v);
   const lo = Math.min(0, ...vals);
   const hi = Math.max(ceiling, ...vals);
   const span = Math.max(1, hi - lo);
-  const xAt = (i) => (points.length === 1 ? (VB.x0 + VB.x1) / 2 : VB.x0 + (i / (points.length - 1)) * (VB.x1 - VB.x0));
   const yAt = (v) => VB.y1 - ((v - lo) / span) * (VB.y1 - VB.y0);
-  const line = points.map((p, i) => `${xAt(i).toFixed(1)},${yAt(p.v).toFixed(1)}`).join(" ");
-  const area = `${VB.x0},${VB.y1} ${line} ${VB.x1},${VB.y1}`;
-  const last = points[points.length - 1];
   const ceilY = yAt(ceiling);
+  const lastSeg = segments[segments.length - 1];
+  const last = lastSeg[lastSeg.length - 1];
   return (
     <svg viewBox={`0 0 ${VB.w} ${VB.h}`} className="block w-full h-8" aria-hidden="true">
       <line x1={VB.x0} y1={ceilY.toFixed(1)} x2={VB.x1} y2={ceilY.toFixed(1)}
         stroke="var(--border)" strokeWidth="1" strokeDasharray="2 2" opacity="0.8" />
-      <polygon points={area} fill="var(--bg-subtle)" />
-      <polyline points={line} fill="none" stroke="var(--text-1)" strokeWidth="2" />
-      <circle cx={xAt(points.length - 1).toFixed(1)} cy={yAt(last.v).toFixed(1)} r="2.3" fill="var(--text-1)" />
+      {segments.map((seg) => {
+        const line = seg.map((p) => `${xAtIndex(p.i, n).toFixed(1)},${yAt(p.v).toFixed(1)}`).join(" ");
+        const xFirst = xAtIndex(seg[0].i, n).toFixed(1);
+        const xLast = xAtIndex(seg[seg.length - 1].i, n).toFixed(1);
+        return seg.length > 1 ? (
+          <g key={seg[0].i}>
+            <polygon points={`${xFirst},${VB.y1} ${line} ${xLast},${VB.y1}`} fill="var(--bg-subtle)" />
+            <polyline points={line} fill="none" stroke="var(--text-1)" strokeWidth="2" />
+          </g>
+        ) : (
+          seg[0] !== last && (
+            <circle key={seg[0].i} cx={xFirst} cy={yAt(seg[0].v).toFixed(1)} r="1.6" fill="var(--text-1)" />
+          )
+        );
+      })}
+      <circle cx={xAtIndex(last.i, n).toFixed(1)} cy={yAt(last.v).toFixed(1)} r="2.3" fill="var(--text-1)" />
     </svg>
   );
 }
 
 function AbilityRow({ abilityKey, points, ceiling }) {
-  const first = points[0]?.v ?? null;
-  const last = points[points.length - 1]?.v ?? null;
-  const delta = first != null && last != null ? last - first : null;
+  const last = latestValue(points);
+  const delta = abilityDelta(points);
   return (
     <div className="flex items-center gap-3 py-2 border-t border-cz-border first:border-t-0">
       <div className="w-10 shrink-0 font-data text-2xs font-semibold uppercase text-cz-2">
@@ -78,13 +105,46 @@ function AbilityRow({ abilityKey, points, ceiling }) {
   );
 }
 
+// Sæsonakse under en kategori: samme kolonner som AbilityRow. Tegnes som SVG med
+// samme viewBox-bredde og skala som Sparkline (begge centreres af
+// preserveAspectRatio), så hvert label står præcis under sit punkt.
+const AXIS_H = 12;
+function SeasonAxis({ seasons, nowLabel }) {
+  const n = seasons.length;
+  const labels = seasonAxisLabels(seasons, { nowLabel });
+  return (
+    <div className="flex items-center gap-3 pt-1" aria-hidden="true">
+      <div className="w-10 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <svg viewBox={`0 0 ${VB.w} ${AXIS_H}`} className="block w-full h-3 overflow-visible">
+          {labels.map(({ i, label }) => (
+            <text
+              key={i}
+              x={xAtIndex(i, n).toFixed(1)}
+              y={AXIS_H - 2}
+              textAnchor={n <= 1 ? "middle" : i === 0 ? "start" : i === n - 1 ? "end" : "middle"}
+              className="font-data text-3xs tabular-nums"
+              fill="var(--text-3)"
+            >
+              {label}
+            </text>
+          ))}
+        </svg>
+      </div>
+      <div className="w-9 shrink-0" />
+      <div className="w-11 shrink-0" />
+    </div>
+  );
+}
+
 export default function RiderAbilityHistoryPro({ riderId, myTeamId }) {
   const { t } = useTranslation("pro");
   const { t: tRider } = useTranslation("rider");
   const navigate = useNavigate();
-  const { isPro, isFounder, loading: subLoading } = useSubscription(myTeamId);
+  const { isPro, isFounder, loading: subLoading, error: subError, reload: reloadSub } = useSubscription(myTeamId);
   const eligible = isPro || isFounder;
   const [state, setState] = useState({ status: "idle", seasons: [], ceiling: 99 });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!eligible || !riderId) return;
@@ -104,66 +164,79 @@ export default function RiderAbilityHistoryPro({ riderId, myTeamId }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [eligible, riderId]);
+  }, [eligible, riderId, attempt]);
 
-  if (subLoading) return null;
+  // Holdet er ikke kendt endnu, eller abonnementet indlæses: vis intet, aldrig reklamen.
+  if (!myTeamId || subLoading) return null;
+
+  const retryHistory = () => setAttempt((n) => n + 1);
+
+  if (subError) {
+    return (
+      <ErrorState
+        title={t("riderHistory.statusErrorTitle")}
+        description={t("riderHistory.errorBody")}
+        action={<Button size="sm" variant="secondary" onClick={reloadSub}>{t("riderHistory.retry")}</Button>}
+      />
+    );
+  }
 
   if (!eligible) {
     return (
-      <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-1.5">
-          {t("riderHistory.title")}
-        </h3>
-        <p className="text-[12.5px] text-cz-2 leading-[1.55] mb-3">{t("riderHistory.note")}</p>
+      <Section>
+        <SectionHeader as="h3" title={t("riderHistory.title")} className="mb-2" />
+        <p className="text-sm text-cz-2 mb-3">{t("riderHistory.note")}</p>
         <Button size="sm" variant="secondary" onClick={() => navigate("/pro")}>{t("riderHistory.cta")}</Button>
-      </div>
+      </Section>
     );
   }
 
-  if (state.status === "idle" || state.status === "loading") {
+  if (state.status === "error") {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-        <SkeletonLines lines={4} />
-      </div>
+      <ErrorState
+        title={t("riderHistory.errorTitle")}
+        description={t("riderHistory.errorBody")}
+        action={<Button size="sm" variant="secondary" onClick={retryHistory}>{t("riderHistory.retry")}</Button>}
+      />
     );
   }
 
-  if (state.status === "error" || state.seasons.length === 0) {
+  if (state.status === "ready" && state.seasons.length === 0) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-1.5">
-          {t("riderHistory.title")}
-        </h3>
-        <p className="text-cz-3 text-xs">{t("riderHistory.empty")}</p>
-      </div>
+      <EmptyState
+        icon={<ChartLineIcon size={26} aria-hidden="true" />}
+        title={t("riderHistory.emptyTitle")}
+        description={t("riderHistory.empty")}
+        action={<Button size="sm" variant="secondary" onClick={retryHistory}>{t("riderHistory.checkAgain")}</Button>}
+      />
     );
   }
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-      <div className="flex items-baseline justify-between gap-2 flex-wrap mb-1">
-        <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
-          {t("riderHistory.title")}
-        </h3>
-        <span className="text-3xs text-cz-3">{t("riderHistory.ceilingLegend")}</span>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5">
-        {ABILITY_CATEGORIES.map((cat) => (
-          <div key={cat.key}>
-            <div className="font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-3 mt-3 mb-0.5">
-              {tRider(`stats.categories.${cat.key}`, cat.key)}
+    <Section>
+      <SectionHeader as="h3" title={t("riderHistory.title")} meta={t("riderHistory.ceilingLegend")} className="mb-1" />
+      {state.status !== "ready" ? (
+        <SkeletonLines lines={4} className="mt-3" />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-5">
+          {ABILITY_CATEGORIES.map((cat) => (
+            <div key={cat.key}>
+              <div className="font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-3 mt-3 mb-0.5">
+                {tRider(`stats.categories.${cat.key}`, cat.key)}
+              </div>
+              {cat.keys.map((key) => (
+                <AbilityRow
+                  key={key}
+                  abilityKey={key}
+                  ceiling={state.ceiling}
+                  points={abilitySeries(state.seasons, key)}
+                />
+              ))}
+              <SeasonAxis seasons={state.seasons} nowLabel={t("riderHistory.now")} />
             </div>
-            {cat.keys.map((key) => (
-              <AbilityRow
-                key={key}
-                abilityKey={key}
-                ceiling={state.ceiling}
-                points={state.seasons.map((s) => ({ season: s.season_number, v: s.abilities?.[key] ?? 0 }))}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }

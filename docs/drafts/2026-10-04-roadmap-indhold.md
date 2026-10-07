@@ -561,6 +561,45 @@ Rækkefølgen inden for Next og Later lægges i planlægningssessionen (#6148).
 9. **Holdarbejde og Lederskab (N15):** ordlyden afhænger af A/B-valget på #5268.
 10. **Pro-betaling (N17):** hører det hjemme på roadmappet?
 
+## 8. Ejerens godkendelser, liste for liste (4/10 aften)
+
+Intet er skrevet til prod; det sker først på ejerens "kør".
+
+- **Liste 1 · Vote: godkendt** med to ændringer. Nr. 20 (minimumspris på egne ryttere, #450) fjernes fra Vote: ønsket er dækket af "auto-accept-pris" (#2176) under Planned · Later. Nr. 8 (skader nulstilles ved sæsonskiftet, #5865) flyttes til planen som løfte. Vote starter dermed med 28 synlige idéer.
+
+- **Liste 2 · Plan: godkendt.** In progress: N4 (#6035) og N9 (#6110). Next i denne rækkefølge: 00000201, 00000203, 00000208, 00000210, 00000008, N1, N2, N3, skader nulstilles ved sæsonskiftet (#5865), delt kaptajn (#5981), potentiale ud af værdimodellen, N16. Åbnere (00000208) og formtræning (00000210) forbliver to punkter. N17 (Pro-betaling) tages AF roadmappet (ejer: hører ikke hjemme der). N15 (Holdarbejde/Lederskab) oprettes skjult, til ejeren har valgt på #5268. Later som i 6c (16 punkter). Rækkefølgen er en start; ejeren retter den i admin-fanen.
+
+- **Liste 3 · Beta: godkendt.** Fem punkter koblet til deres kontakt, alle aflæst som `beta` i prod 4/10: `training_programs` (siden 27/9), `training_train_now`, `training_groups`, `season_matrix_mobile` (1/10), `race_role_scope_choice` (4/10). `beta_since` sættes til de datoer. Ingen får "For everyone soon" fra start. "Coming to beta": kun N4 (#6035, vælg rytter først).
+
+- **Liste 4 · Known issues: godkendt** efter fordelingen i 5.6. Bestyrelsesbeskederne (#6122) står som Being checked (ejerens regel: årsag ikke fundet); genskabes som det første 5/10. Alle 26 under Being checked vises. De 17 fra 5.3 starter uden opdatering. Fem uden GitHub-issue får et issue ved apply. Nyt på Fixed: hvid side ved blokeret site-data (#6168, rettet 4/10).
+- **Bundle-loft (ejer 4/10 aften):** 1170 → 1173 for spillersiden (#6160), sidste hævning efter den gamle model (#6165).
+
+- **Liste 5 · Done: godkendt.** 9 punkter flytter fra afstemningen til Done med datoerne i afsnit 1; 5 nye Done-rækker (afsnit 2 nederst); ruter deles som afgjort i 6b; 14 rettede fejl. Delvist leverede punkter (cab2228d, 00000209, 00000212): Done med en titel der siger præcis hvad der er live, ingen rest på planen ud over N10 (kort pr. rytter), som allerede står under Later. Rytterværdier (00000017): titlen skæres til "Rider values that follow the market" uden løftet om auktioner og transfers. De tre gamle Done-rækker uden dato står uden dato nederst.
+
+Alle fem lister er godkendt 4/10 aften. Næste: samlet ændringssæt med tal vises til ejeren; apply først på "kør", og først når spillersiden (#6160) er merget (den nuværende side viser kun `active`/`shipped`).
+
+### Efter ejerens gennemsyn af billederne (4/10 sent)
+
+Billeder af hele indholdet i den rigtige side: `pr-screens/6150/indhold/` (EN + DA, ét pr. fane; data fra en prøvekørsel der blev rullet tilbage, `pr-screens/6150/indhold-dump.json`). Samlet ændring: `database/manual/2026-10-04-roadmap-hub-indhold.sql` (ikke kørt). Rapport med alle titler før/efter: `2026-10-04-roadmap-indhold-apply-rapport.md`.
+
+Godkendt og indarbejdet i SQL-filen:
+- Ni nye titler (rapportens liste) godkendt. Bundle-loft 1173 godkendt og pushet på #6160.
+- Plan 7 (#5917) hedder nu "Move a rider between your squads while he is on the transfer list." Ejer: en rytter til salg skal kunne flyttes mellem holdene.
+- Dashboard og indbakke (00000226) er delt i to punkter under Later; de 9 stemmer står på begge.
+- "Sælg en rytter til AI" (N20) er ikke planlagt: står på Vote som idé.
+- Malwarebytes (#6047) holdes ude af listerne.
+- Known issues: "Reported, being checked" viser 8 og folder resten (bygget på #6160). En fejls dato følger dens seneste opdatering. De tre gamle Done-punkter har fået omtrentlig dato (4/6, 13/6, 5/8). "Train now" i beta siden 1/10 er rigtigt (patch note 1/10).
+- Tal efter prøvekørsel: 29 idéer på Vote, 13 i puljen, 29 planlagt synligt (12 Next, 17 Later) + N15 skjult, 7 i gang, 27 Done, 52 kendte fejl (7 rettes, 5 bekræftet, 26 tjekkes, 14 rettet), 33 opdateringer, 1.151 stemmer (1.121 + 21 + 9 kopierede).
+
+ÅBENT, afklares med ejeren 5/10 (intet af dette er lagt i SQL-filen endnu):
+1. **Kendte fejl, sandhedstjek 4/10 (read-only):** #5928 træthed/form er rettet 29/9 → Fixed. #6006 Train now er rettet 1/10 → Fixed. #5949 har forkert titel (en udgået rytter blokerer ikke holdet; han hviler resten af etapeløbet) → ny titel + Confirmed. #6129 er stadig åben og teksten skal rettes. Forslag til de fire tekster (EN + DA) står i sessionens rapport og på #6129/#5949. Ingen af de 26 indmeldte er løst.
+2. **Plan nr. 1 (00000201, #3813):** del-reglen? Forslag: Done 24/9 "Rating shows the rider's best role now, with his natural roles on the profile." + Plan · Next "Explain on the profile why a rider can reach higher in an ability outside his two natural roles." Ejeren mener punktet måske er løst; forklaringen mangler ifølge #3813 (status 28/9), og hjælpeteksten ("an ability outside both his roles reaches around half as high") modsiger det spillerne ser.
+3. **To fund uden for listen:** ca. 20 ryttere på 9 spillerhold har ikke trænet i S4 og misser stadig hver aften (#6129); søndagens værdikørsel kørte kl. 06:45 den 4/10 mod ejerens ønske om kl. 14-20. Brand eller ej afgøres 5/10.
+
+**Ejerens svar 4/10 kl. ca. 23:** punkt 1 er godkendt og lagt i SQL-filen (#5928 og #6006 står som Fixed med nye opdateringer, #5949 har ny titel og står som Confirmed, #6129 har ny tekst; prøvekørt: 16 rettet, 4 rettes, 6 bekræftet, 26 tjekkes, 35 opdateringer). Punkt 2 (ryttertyper) tages 5/10. Punkt 3: de 20 ryttere uden træning er brand 5/10 (#6129); tidspunktet for søndagens værdikørsel tages i planlægningssessionen (#6148).
+
+Derefter mangler kun ejerens "merge 6160" og "kør" (i den rækkefølge; indholdet lægges ind lige efter merge).
+
 ## Sidefund (ikke indhold)
 
 - `FEATURE_REGISTRY.yml` står på `rider-valuation-v5 dormant` og `race-engine-v4 dormant`, mens prod har v6 og v4 on.

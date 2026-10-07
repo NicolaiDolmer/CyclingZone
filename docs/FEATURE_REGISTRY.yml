@@ -204,11 +204,11 @@ features:
     area: race-day
     title_en: Role picker scope (stage N to the end / stage N only)
     title_da: Rollevælger med etape-valg (etape N og løbet ud / kun etape N)
-    state: beta
+    state: live
     flag: race_role_scope_choice
     epic: 6095
-    verified: 2026-10-04
-    note: PR #6141; beta sat af Claude 4/10 kl. 10.26 efter ejer-go, læst tilbage i prod. Off gendanner #4980-vælgeren.
+    verified: 2026-10-06
+    note: PR #6141; on for alle 6/10 kl. 19.52 efter ejer-go (beta siden 4/10), læst tilbage i prod. Off gendanner #4980-vælgeren.
 
   - id: race-day-development
     area: race-day
@@ -604,11 +604,11 @@ features:
     area: season
     title_en: Season matrix on mobile
     title_da: Sæsonmatrix på mobil
-    state: beta
+    state: live
     flag: season_matrix_mobile
     epic: 5124
-    verified: 2026-10-04
-    note: Beta læst i prod 4/10; kun visning (frontend). Flip til alle er ejer-only.
+    verified: 2026-10-06
+    note: On for alle 6/10 kl. 19.52 efter ejer-go (beta siden 1/10), læst tilbage i prod; kun visning (frontend).
 
   - id: season-end-recap
     area: season
@@ -812,11 +812,11 @@ features:
     area: comms
     title_en: Email retention loop
     title_da: E-mail-loop
-    state: beta
+    state: live
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
-    verified: 2026-09-14
-    note: Win-back afventer ejer-go (#2760).
+    verified: 2026-10-06
+    note: Velkomst-, dag 1- og løbsoversigt-mails er on for alle (30 dage til 6/10: 34/34/309 sendt). Kun win-back er slukket (`winback_send_enabled`=false) og afventer ejer-go (#2760, #4592).
 
   - id: in-app-survey
     area: comms
@@ -846,6 +846,16 @@ features:
     epic: 5019
     verified: 2026-09-17
     note: PR #5019, 8/9; ingen flag.
+
+  - id: roadmap-hub
+    area: comms
+    title_en: Roadmap hub (five tabs)
+    title_da: Roadmap-hub (fem faner)
+    state: live
+    ssot: docs/superpowers/specs/2026-10-04-roadmap-hub-design.md
+    epic: 5387
+    verified: 2026-10-04
+    note: Live for alle 4/10, intet flag; /roadmap og /admin/growth?tab=roadmap; #5387/#5388; patch note 7.340.
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro

@@ -156,4 +156,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "season_matrix_mobile",
   // #6000: HelpPage gater traeningsgruppe-blokken paa dette flag.
   "training_groups",
+  // #6154: patch notes-siden laeser beta-noternes kontakt herfra, saa
+  // maerket skifter til "Now for everyone" naar kontakten er on for alle.
+  "rider_best_role_display",
+  "training_programs",
 ]);

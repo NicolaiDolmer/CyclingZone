@@ -224,6 +224,20 @@ gh issue edit N --add-label "claude:todo" --remove-label "claude:blocked"
 gh issue edit N --add-label "claude:done" --remove-label "claude:todo"
 ```
 
+## Trin 7b — Triage-eksekvering, anonymisering, worktrees/branches (lektion 2026-10-05)
+
+**Eksekvér kun den godkendte liste.** Scripts til label-/triage-ændringer tager issue-numrene fra den godkendte liste, ALDRIG en frisk `gh issue list --label triage:new`. 5/10: #6184 blev oprettet efter dry-run og fik `needs-ai-triage` fjernet uden at være gennemgået.
+
+**Anonymisering af spillerfund (repoet er offentligt):** regex over Discord-handles i titel + body (`\bthelamba\b`, `egomadsen`, `mandia1984_65299`, `knud_r_flink`, `_chriskp_`, `friisisch`, `robsteren` osv. — udvid listen fra dagens sweep-filer), erstat med "spiller", `gh issue edit --title/--body-file`. Ejerens eget handle bevares. Sig altid: redigeringshistorikken er stadig synlig på GitHub, så det er hygiejne, ikke fjernelse. 5/10: 13 af 33 triage-issues havde handles.
+
+**Worktrees og branches (dry-run → ejer-ok → udfør):** pr. worktree: `git -C <sti> status --porcelain`, `rev-list --count origin/main..HEAD`, remote-branch findes?, PR-state (`gh pr list --state all --json headRefName,state,number`). Opdel:
+- **T1** PR merged + HEAD lig PR-head (`headRefOid`) → arkivér ikke-sporede filer til `C:\Dev\CyclingZone-worktrees\_arkiv\<navn>`, `git worktree remove --force`, `git branch -D`.
+- **T2** PR lukket uden merge, ren, commits på origin → fjern kun worktree.
+- **T3** 0 unikke commits, ren → fjern worktree + `git branch -d`.
+- **T4** unikt arbejde uden PR/remote → behold, ejer vurderer.
+- Åbne PR'er, protected branches fra opgaven og alt i `.claude/run/wave-active.json` røres aldrig.
+**"Upstream gone" ≠ merged:** session-hooken kalder alle "gone"-branches "merged"; 5/10 havde `feat/3353-v4-refit-new-types` en lukket PR og 13 egne commits. Review-kopier (`pr-NNNN`, `shots-*`, `rebase-*`) slettes kun hvis `git cherry origin/main <b>` ikke viser `+`-linjer (7 af 23 klarede det). `git branch` kræver `--no-pager` (hook).
+
 ## Trin 8 — Artifact + diff
 
 > **Commit af audit-filen sker bag den blokerende branch-guard** (hard rule 18):
@@ -378,6 +392,8 @@ Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af sched
 - **Routine auto-lukker IKKE dette repos done-pukkel (lektion 2026-06-18):** En fokuseret audit (fx 2026-06-13 launch-blocker) udskyder de ikke-scope done-issues til "daglig routine #627 dækker" — men routinen auto-lukker kun Tier 1+2, og dette repos AI-author/WEAK-comment-mønster sender stort set ALT til Tier 3. Resultat: ikke-scope done-issues hober sig op (21→29 done på 5 dage fra 13/6→18/6), routinen rører dem ikke, og **kun en manuel fuld done-sweep lukker dem reelt**. Antag derfor ALDRIG at routinen dækker akkumuleret done — kør en periodisk fuld done-sweep (alle `claude:done`, ikke kun dagens slice) uanset. `score_done.py`s nye `keep_done_gated`/`GATED-KEEP`-flag adskiller de bevidst beholdte launch-gatede fra de close-eligible, så en fuld sweep er hurtig at triagere.
 
 ## Changelog
+
+- **2026-10-05 — GitHub-audit (ejer-godkendt retro, alle 4 edits).** 28. kørsel, billig sweep, 0 subagenter, input = ejerens prompt (done 29, triage 33, worktrees/branches). **10 closes** (roadmap-hub-spor + #5387, #6168, #5905, #5900, #5860), **4 flips** (#5388/#4854 todo, #6061 blocked, #6115 done-label fjernet), 15 ejer-venter, 33 triage-issues ryddet (8 cat-labels, 13 anonymiseret), worktrees 63→25, lokale branches 94→63. Første udførsel blev afvist af auto-mode-klassifikatoren indtil ejeren gentog godkendelsen i chatten; det virkede på andet forsøg. Edits: (1) Trin 7b worktree/branch-tiers + "gone ≠ merged"; (2) eksekvér kun godkendt liste (#6184); (3) anonymiseringstrin; (4) `score_done.py` markerer beta-flag-gated done som GATED-KEEP via kommentartekst (12 af 29).
 
 - **2026-10-03 — Fuld-backlog-variant B som workflow (ejer: "følg dine anbefalinger", alle 4 edits).** 27. kørsel: 72 agenter (sonnet chunks/dubletter, opus K-verify/refute/beslutningsark), 0 fejl, ~10,0M tok mod mål ~6M. 727 → 684 åbne: 45 lukket (10 leveret, 5 forældet, 12 overhalet, 19 dubletter), 4 todo→done, 12 needs-decision fjernet, 2 nye (#6129, #6130), K-cache +16. 35 beslutningsark + 313 prioritetsforslag i ejer-dashboard. Edits i fuld-backlog-varianten: (1) token-budget ~140k/agent + `effort:'low'`/1.200 tegn på klassifikation, refute urørt; (2) betingede lukkeforslag → `senere`; (3) beskyttet sæt filtreres i main-loop; (4) verificér primary/rest-mål åbent og emne-korrekt før eksekvering. Observation: refute-tjekket væltede 44 af 82 klassifikations-lukkeforslag og 0 af 4 K-done-verdikter — K-scope-verify med opus var præcis, klassifikations-close er støjende.
 

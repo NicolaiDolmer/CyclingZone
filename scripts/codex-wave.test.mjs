@@ -4,6 +4,41 @@ import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runWave, childArgs } from './codex-wave.mjs';
+import * as runner from './codex-wave.mjs';
+
+const localAppData = 'C:\\Users\\Fixture\\AppData\\Local';
+const appCli = `${localAppData}\\OpenAI\\Codex\\bin\\current\\codex.exe`;
+const npmCli = 'C:\\Users\\Fixture\\AppData\\Roaming\\npm\\codex.ps1';
+const command = sources => runner.codexCommand({ platform: 'win32', localAppData, discover: () => sources });
+
+test('Windows discovery selects the app CLI when npm shims precede it on PATH', () => {
+  assert.deepEqual(command([npmCli, npmCli.replace('.ps1', '.cmd'), appCli]), { file: appCli, prefix: [] });
+});
+
+test('app CLI discovery accepts Windows case and slash differences', () => {
+  const executable = appCli.replaceAll('\\', '/').toUpperCase();
+  assert.deepEqual(command([npmCli, executable]), { file: executable, prefix: [] });
+});
+
+test('an unrelated codex.exe does not masquerade as the app binary', () => {
+  const unrelated = `${localAppData}\\OpenAI\\Codex\\bin-old\\codex.exe`;
+  assert.deepEqual(command([npmCli, unrelated]), { file: 'pwsh', prefix: ['-NoProfile', '-File', npmCli] });
+});
+
+test('CLI-only Windows installations preserve PowerShell and executable fallback', () => {
+  assert.deepEqual(command(npmCli), { file: 'pwsh', prefix: ['-NoProfile', '-File', npmCli] });
+  const exe = 'C:\\Tools\\codex.exe';
+  assert.deepEqual(command([exe]), { file: exe, prefix: [] });
+});
+
+test('missing CLI discovery fails before a child can be spawned', () => {
+  assert.throws(() => command([]), /No Codex CLI found/);
+});
+
+test('non-Windows runner preserves PATH resolution without Windows discovery', () => {
+  assert.deepEqual(runner.codexCommand({ platform: 'linux', discover: () => { assert.fail('unexpected discovery'); } }),
+    { file: 'codex', prefix: [] });
+});
 
 const now = 1790000000000;
 function fixture(t) {
@@ -16,7 +51,7 @@ function deps(overrides = {}) {
   return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], prefilter: async () => {},
     prepare: async t => ({ ...t, worktree: `/fixture/${t.issue}` }),
     runAgent: async (role, t) => role === 'reviewer' ? { verdict: 'approved', findings: [] } : { status: 'ready', summary: 'fixture', tests: ['pass'] },
-    validateResult: async () => {}, ...overrides };
+    verifyPermissions: async () => {}, validateResult: async () => {}, ...overrides };
 }
 
 test('dispatch counts open PRs, including parked drafts, but never rejects on count', async (t) => {
@@ -93,6 +128,24 @@ test('setup failure preserves report, does not dispatch, and cleans only owned m
   assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
 });
 
+test('Git metadata permission failure is caught before any writer dispatch', async t => {
+  const root=fixture(t); let writers=0, prepared=0;
+  await assert.rejects(runWave({root,runDir:root,tracks,owner:'fixture'},deps({
+    prepare:async track => {prepared++;return {...track,worktree:'/fixture/owned'};},
+    verifyPermissions:async () => {throw Error('Git metadata write probe failed');},
+    runAgent:async () => {writers++;},
+  })),/Git metadata write probe failed/);
+  assert.equal(prepared,1); assert.equal(writers,0);
+  assert.equal(existsSync(path.join(root,'wave-active.json')),false);
+});
+
+test('automatic approval review is limited to writable worker/fixer roles', () => {
+  const track={worktree:'/fixture',scratch:'/scratch'};
+  for(const role of ['worker','fixer']) assert.ok(childArgs(role,track,'schema','out').includes('--approve-for-me'));
+  assert.equal(childArgs('reviewer',track,'schema','out').includes('--approve-for-me'),false);
+  assert.equal(childArgs('worker',{...track,kind:'investigate'},'schema','out').includes('--approve-for-me'),false);
+});
+
 test('setup is marked before it can launch worktree or dependency subprocesses', async t => {
   const root = fixture(t);
   await runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({
@@ -124,7 +177,8 @@ test('worker failure never becomes ready or reaches reviewer', async (t) => {
 
 test('writer and reviewer invocation preserve selected cwd and distinct sandbox roles', () => {
   const t = { worktree: 'C:/fixture/worker', scratch: 'C:/fixture/scratch' };
-  assert.ok(childArgs('worker', t, 'schema', 'out').includes('workspace-write'));
+  assert.ok(childArgs('worker', t, 'schema', 'out').includes('--approve-for-me'));
+  assert.equal(childArgs('worker', t, 'schema', 'out').includes('--sandbox'), false);
   assert.ok(childArgs('reviewer', t, 'schema', 'out').includes('read-only'));
   assert.ok(childArgs('reviewer', t, 'schema', 'out').includes(t.worktree));
   assert.equal(childArgs('worker', t, 'schema', 'out').includes('--dangerously-bypass-approvals-and-sandbox'), false);

@@ -5,6 +5,7 @@ import { Tabs, TabList, Tab, TabPanel, PageLoader } from "../components/ui";
 import GrowthOverviewTab from "../components/admin/growth/GrowthOverviewTab";
 import GrowthCustomersTab from "../components/admin/growth/GrowthCustomersTab";
 import GrowthNpsTab from "../components/admin/growth/GrowthNpsTab";
+import GrowthRoadmapTab from "../components/admin/growth/GrowthRoadmapTab";
 import { AttributionContent } from "./AdminAttributionPage";
 import { WaitlistContent } from "./AdminWaitlistPage";
 import { SprintMetricsContent } from "./AdminSprintMetricsPage";
@@ -23,7 +24,7 @@ import { RetentionContent } from "./AdminRetentionPage";
 // filer (AdminWaitlistPage.jsx osv.), som stadig ejer deres egen data-
 // hentning/state. De gamle ruter redirecter hertil (se App.jsx) så ingen
 // bogmærker/links knækker.
-const GROWTH_TABS = ["overview", "customers", "nps", "attribution", "waitlist", "sprint", "retention"];
+const GROWTH_TABS = ["overview", "customers", "nps", "attribution", "waitlist", "sprint", "retention", "roadmap"];
 
 export default function AdminGrowthPage() {
   const [adminStatus, setAdminStatus] = useState("checking"); // checking | admin | not_admin
@@ -71,6 +72,7 @@ export default function AdminGrowthPage() {
           <Tab value="waitlist">Waitlist</Tab>
           <Tab value="sprint">Sprint-metrics</Tab>
           <Tab value="retention">Retention</Tab>
+          <Tab value="roadmap">Roadmap</Tab>
         </TabList>
 
         <TabPanel value="overview"><GrowthOverviewTab /></TabPanel>
@@ -80,6 +82,7 @@ export default function AdminGrowthPage() {
         <TabPanel value="waitlist"><WaitlistContent /></TabPanel>
         <TabPanel value="sprint"><SprintMetricsContent /></TabPanel>
         <TabPanel value="retention"><RetentionContent /></TabPanel>
+        <TabPanel value="roadmap"><GrowthRoadmapTab /></TabPanel>
       </Tabs>
     </div>
   );

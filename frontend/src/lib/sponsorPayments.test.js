@@ -153,9 +153,10 @@ test("projectOffer — legacy-payload uden andele falder tilbage på den lagrede
   assert.equal(p.certain, null);
 });
 
-test("projectOffer — ukendt etapetal projicerer ikke", () => {
+test("projectOffer — ukendt etapetal viser puljen, men ingen opdigtet sats", () => {
   const p = projectOffer({ guaranteedBase: 100, guaranteedFraction: 0.5, raceDayShare: 0.5, perRaceDayRate: 7 }, null);
 
-  assert.equal(p.certain, null);
-  assert.equal(p.rate, 7);
+  assert.equal(p.certain, 200);
+  assert.equal(p.raceDayPool, 100);
+  assert.equal(p.rate, null);
 });

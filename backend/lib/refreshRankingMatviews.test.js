@@ -5,16 +5,31 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  refreshRankingMatviewsSafe,
-  refreshRankingMatviewsGated,
-  refreshRankingsAfterTrainingSettlement,
-  requestRankingMatviewRefresh,
+  refreshRankingMatviewsSafe as rawSafe,
+  refreshRankingMatviewsGated as rawGated,
+  refreshRankingsAfterTrainingSettlement as rawTraining,
+  requestRankingMatviewRefresh as rawRequest,
   isTrainingSettlementInProgress,
   __resetRankingRefreshStateForTests,
   MAX_DEFER_MS,
   COALESCE_WINDOW_MS,
 } from "./refreshRankingMatviews.js";
 
+const FIXED_NOW = new Date('2026-10-04T10:00:00Z');
+function defaults(client, options = {}) {
+  const clock = options.clock ?? (() => 0);
+  if (client._setRankingClock) client._setRankingClock(clock);
+  client._markRankingEvent?.();
+  return { now: FIXED_NOW, nowFn: () => FIXED_NOW, heartbeatNowFn: () => FIXED_NOW,
+    clock, testNowFn: options.nowFn ?? options.heartbeatNowFn ?? (() => FIXED_NOW), tokenFn: () => '00000000-0000-4000-8000-000000000001', ...options };
+}
+const refreshRankingMatviewsSafe = (client, options) => rawSafe(client, defaults(client, options));
+const refreshRankingMatviewsGated = (client, options) => rawGated(client, defaults(client, options));
+const refreshRankingsAfterTrainingSettlement = options => rawTraining({ ...defaults(options.supabase, options), ...options });
+const requestRankingMatviewRefresh = (client, options) => rawRequest(client, {
+  setTimer: () => ({ unref() {} }), ...defaults(client, options),
+});
+const coordinatorReply = (client, name, args) => client._controlRpc?.(name, args);
 const ALL_RPCS = [
   "refresh_rider_rankings_mv",
   "refresh_team_standings_ext_mv",
@@ -23,15 +38,72 @@ const ALL_RPCS = [
   "refresh_youth_rider_rankings_mv", // #5647: sidst, efter de fire seniorviews
 ];
 
+test("#5692: every refresh explicitly selects the reader-safe RPC overload", async () => {
+  const supabase = createMockSupabase();
+  const requests = [];
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    requests.push({ name, args });
+    return { error: null };
+  };
+  const now = new Date("2026-10-04T10:00:00Z");
+  assert.equal(await refreshRankingMatviewsSafe(supabase, { nowFn: () => now }), true);
+  assert.deepEqual(requests, ALL_RPCS.map(name => ({ name, args: { p_concurrently: true, p_owner_token: '00000000-0000-4000-8000-000000000001', p_target_version: '3' } })));
+});
+
+test("#5692: an unavailable concurrent overload never falls back to a blocking refresh or heartbeat", async () => {
+  const supabase = createMockSupabase();
+  const requests = [];
+  const captured = [];
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    requests.push({ name, args });
+    return { error: { code: "PGRST202", message: "Concurrent overload unavailable" } };
+  };
+  const now = new Date("2026-10-04T10:00:00Z");
+  assert.equal(await refreshRankingMatviewsSafe(supabase, {
+    nowFn: () => now, captureExceptionFn: (err, context) => captured.push({ err, context }),
+  }), false);
+  assert.deepEqual(requests, ALL_RPCS.map(name => ({ name, args: { p_concurrently: true, p_owner_token: '00000000-0000-4000-8000-000000000001', p_target_version: '3' } })));
+  assert.equal(supabase.upsertCalls.length, 0);
+  assert.equal(captured.length, 1);
+});
+
 function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = [], workError = null } = {}) {
   const rpcCalls = [];
   const upsertCalls = [];
   const workQueries = [];
+  let requested = 1, completed = 0, target = null, clock = () => 0, dirtyAt = 0, clockInitialized = false, lastCompleted = null, onComplete = () => {};
+  const control = (name, args) => {
+    if (name === 'get_ranking_refresh_work_state') return { data: { pending: requested > completed,
+      pending_age_ms: Math.max(0, clock() - dirtyAt), last_completed_at: lastCompleted }, error: null };
+    if (name === 'claim_ranking_refresh_work') {
+      if (args.p_force) requested++;
+      if (requested === completed) return { data: { status: 'clean' }, error: null };
+      target = requested;
+      return { data: { status: 'claimed', target_version: String(target), token: args.p_token }, error: null };
+    }
+    if (name === 'renew_ranking_refresh_work') return { data: true, error: null };
+    if (name === 'finish_ranking_refresh_work') {
+      if (args.p_success) {
+        upsertCalls.push({ row: { matview_group: 'ranking', refreshed_at: args.p_now }, opts: { onConflict: 'matview_group' } });
+        if (heartbeatError) return { data: null, error: { message: heartbeatError } };
+        completed = Number(args.p_target_version); lastCompleted = args.p_now; onComplete();
+      }
+      return { data: true, error: null };
+    }
+    return null;
+  };
   return {
+    _controlRpc: control,
+    _setRankingClock(value) { clock = value; if (!clockInitialized) { dirtyAt = clock(); clockInitialized = true; } },
+    _setCompleteListener(fn) { onComplete = fn; },
+    _markRankingEvent() { if (requested === completed) dirtyAt = clock(); requested++; },
     rpcCalls,
     upsertCalls,
     workQueries,
-    async rpc(name) {
+    async rpc(name, args) {
+      const control = this._controlRpc(name, args); if (control) return control;
       rpcCalls.push(name);
       if (rpcErrors[name]) return { error: { message: rpcErrors[name] } };
       return { error: null };
@@ -73,7 +145,9 @@ test("#5900: cron, finalization and training share one active refresh and one fr
   let active = 0;
   let peak = 0;
   let calls = 0;
-  supabase.rpc = async (name) => {
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    const control = coordinatorReply(supabase, name, args); if (control) return control;
     supabase.rpcCalls.push(name);
     const call = ++calls;
     peak = Math.max(peak, ++active);
@@ -92,7 +166,7 @@ test("#5900: cron, finalization and training share one active refresh and one fr
   // Release even on failure, so a failed assertion cannot hang the suite.
   releaseFirst();
   const outcomes = await Promise.all([first, cron, training, finalization, recovery]);
-  assert.deepEqual(outcomes, [true, true, true, true, true]);
+  assert.deepEqual(outcomes, [true, true, true, 'coalesced', true]);
   assert.equal(peak, 1, "the five refresh sources must never overlap RPCs");
   assert.equal(calls, ALL_RPCS.length * 2, "requests after the first snapshot share one new pass");
   assert.equal(supabase.upsertCalls.length, 2);
@@ -104,7 +178,9 @@ test("#5900: a queued gated pass rechecks training when it finally starts", asyn
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   let calls = 0;
-  supabase.rpc = async (name) => {
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    const control = coordinatorReply(supabase, name, args); if (control) return control;
     supabase.rpcCalls.push(name);
     if (++calls === 1) await gate;
     return { error: null };
@@ -117,7 +193,7 @@ test("#5900: a queued gated pass rechecks training when it finally starts", asyn
     heartbeatNowFn: () => now, logger: quietLogger });
   for (let i = 0; i < 5; i++) await Promise.resolve();
   workRows.push({ tick_date: "2026-10-03", status: "pending" });
-  elapsed = 2 * 60 * 1000;
+  elapsed = 60 * 1000;
   release();
   assert.equal(await first, true);
   assert.equal(await pending, "deferred", "training began while the pass waited for admission");
@@ -130,7 +206,9 @@ test("#5900: queued training-close retains its settlement date across midnight",
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   let calls = 0;
-  supabase.rpc = async (name) => {
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    const control = coordinatorReply(supabase, name, args); if (control) return control;
     supabase.rpcCalls.push(name);
     if (++calls === 1) await gate;
     return { error: null };
@@ -143,7 +221,7 @@ test("#5900: queued training-close retains its settlement date across midnight",
     heartbeatNowFn: () => now, logger: quietLogger });
   for (let i = 0; i < 12; i++) await Promise.resolve();
   workRows.push({ tick_date: "2026-10-03", status: "partial" });
-  elapsed = 2 * 60 * 1000;
+  elapsed = 60 * 1000;
   release();
   assert.equal(await first, true);
   assert.equal(await pending, "deferred", "midnight cannot release an unfinished requested settlement date");
@@ -156,7 +234,9 @@ test("#5900: merging a new-day training close cannot discard the pending previou
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   let calls = 0;
-  supabase.rpc = async (name) => {
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    const control = coordinatorReply(supabase, name, args); if (control) return control;
     supabase.rpcCalls.push(name);
     if (++calls === 1) await gate;
     return { error: null };
@@ -169,7 +249,7 @@ test("#5900: merging a new-day training close cannot discard the pending previou
   const previousDate = refreshRankingsAfterTrainingSettlement({ supabase, now: beforeMidnight, ...options });
   for (let i = 0; i < 12; i++) await Promise.resolve();
   workRows.push({ tick_date: "2026-10-03", status: "partial" });
-  elapsed = 2 * 60 * 1000;
+  elapsed = 60 * 1000;
   const newDate = refreshRankingsAfterTrainingSettlement({ supabase, now: new Date("2026-10-03T22:01:00Z"), ...options });
   for (let i = 0; i < 12; i++) await Promise.resolve();
   release();
@@ -187,7 +267,9 @@ test(`#5900: queue waiting does not restart an expired maximum training deferral
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   let calls = 0;
-  supabase.rpc = async (name) => {
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    const control = coordinatorReply(supabase, name, args); if (control) return control;
     supabase.rpcCalls.push(name);
     if (++calls === 1) await gate;
     return { error: null };
@@ -219,38 +301,30 @@ test("#5900: finalization timer cannot overlap a refresh slower than its window"
   let active = 0;
   let peak = 0;
   let calls = 0;
-  supabase.rpc = async (name) => {
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    const control = coordinatorReply(supabase, name, args); if (control) return control;
     supabase.rpcCalls.push(name);
     peak = Math.max(peak, ++active);
     if (++calls === 1) await gate;
     active--;
     return { error: null };
   };
-  const upsert = supabase.from.bind(supabase);
-  supabase.from = (table) => {
-    const builder = upsert(table);
-    if (table !== "matview_refresh_heartbeat") return builder;
-    const save = builder.upsert;
-    builder.upsert = async (...args) => {
-      const result = await save(...args);
-      if (supabase.upsertCalls.length === 2) completed();
-      return result;
-    };
-    return builder;
-  };
+  supabase._setCompleteListener(() => { if (supabase.upsertCalls.length === 2) completed(); });
   const { timers, setTimer } = fakeTimers();
   let clock = 0;
   const nowFn = () => new Date("2026-10-03T10:00:00Z");
   const options = { clock: () => clock, nowFn, setTimer, logger: quietLogger };
   const first = requestRankingMatviewRefresh(supabase, options);
+  assert.equal(await first, 'coalesced');
+  timers[0].fn();
   for (let i = 0; i < 12; i++) await Promise.resolve();
   clock = 1_000;
   assert.equal(await requestRankingMatviewRefresh(supabase, options), "coalesced");
   clock = COALESCE_WINDOW_MS;
-  timers[0].fn();
+  timers[1].fn();
   for (let i = 0; i < 12; i++) await Promise.resolve();
   release();
-  assert.equal(await first, true);
   await followUpDone;
   assert.equal(peak, 1);
   assert.equal(calls, ALL_RPCS.length * 2);
@@ -261,7 +335,9 @@ test("#5900: a failed pass does not consume the successful pending pass's heartb
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   let calls = 0;
-  supabase.rpc = async (name) => {
+  supabase.rpc = async (name, args) => {
+    const response = coordinatorReply(supabase, name, args); if (response) return response;
+    const control = coordinatorReply(supabase, name, args); if (control) return control;
     supabase.rpcCalls.push(name);
     if (++calls === 1) { await gate; return { error: { message: "upstream" } }; }
     return { error: null };
@@ -305,15 +381,15 @@ test("refreshRankingMatviewsSafe — én RPC fejler: de andre kaldes stadig, hea
   assert.equal(captured[0].ctx.extra.failures[0].label, "team_race_points_mv");
 });
 
-test("refreshRankingMatviewsSafe — alle RPC'er lykkes men heartbeat-upsert fejler: returnerer stadig true (data er frisk)", async () => {
+test("refreshRankingMatviewsSafe — alle RPC'er lykkes men completion/heartbeat fejler: returnerer false", async () => {
   const supabase = createMockSupabase({ heartbeatError: "connection reset" });
   const captured = [];
   const result = await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: (err, ctx) => captured.push({ err, ctx }) });
 
-  assert.equal(result, true, "matviews ER refreshet — en heartbeat-observability-fejl må ikke fremstå som en data-fejl");
+  assert.equal(result, false, "completion uden fenced heartbeat maa ikke rapporteres som faerdig");
   assert.equal(supabase.upsertCalls.length, 1);
   assert.equal(captured.length, 1);
-  assert.match(captured[0].err.message, /heartbeat upsert/);
+  assert.match(captured[0].err.message, /completion not acknowledged/);
 });
 
 test("refreshRankingMatviewsSafe — uden captureExceptionFn kaster den ikke (best-effort virker uden DI)", async () => {
@@ -551,55 +627,57 @@ function fakeTimers() {
   };
 }
 
-test("#5911 samling — fem løb der slutter inden for vinduet giver to refreshes (straks + én samlet), ikke fem", async () => {
-  const supabase = {};
-  const calls = [];
-  const refresh = async () => { calls.push("refresh"); return true; };
+test('#5692: publication schedules one background pass for five close finishes', async () => {
+  const supabase = {}, calls = [];
   const { timers, setTimer } = fakeTimers();
-  let t = 0;
-  const opts = { clock: () => t, setTimer, refresh, logger: quietLogger };
-
-  assert.equal(await requestRankingMatviewRefresh(supabase, opts), true, "første løb refreshes straks (#3193)");
-  for (let i = 0; i < 4; i++) {
-    t += 5_000;
-    assert.equal(await requestRankingMatviewRefresh(supabase, opts), "coalesced");
+  let clock = 0;
+  const options = { clock: () => clock, setTimer, refresh: async () => { calls.push('refresh'); return true; }, logger: quietLogger };
+  for (let i = 0; i < 5; i++) {
+    assert.equal(await requestRankingMatviewRefresh(supabase, options), 'coalesced');
+    clock += 5_000;
   }
+  assert.equal(calls.length, 0, 'result publication never waits for global computation');
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].ms, COALESCE_WINDOW_MS);
+  assert.equal(timers[0].unrefed, true);
+  timers[0].fn(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls.length, 1);
-  assert.equal(timers.length, 1, "kun én efterfølgende refresh planlægges");
-  assert.equal(timers[0].ms, COALESCE_WINDOW_MS - 5_000, "planlagt ved vinduets udløb, målt fra seneste start");
-  assert.equal(timers[0].unrefed, true, "timeren må ikke holde processen i live");
-
-  t = COALESCE_WINDOW_MS;
-  timers[0].fn();
-  await new Promise((r) => setImmediate(r));
-  assert.equal(calls.length, 2);
 });
 
-test("#5911 samling — efter et roligt vindue refreshes straks igen", async () => {
-  const supabase = {};
-  const calls = [];
+test('#5692: a later finish schedules another bounded background pass', async () => {
+  const client = {}, calls = [];
   const { timers, setTimer } = fakeTimers();
-  let t = 0;
-  const opts = { clock: () => t, setTimer, refresh: async () => { calls.push(t); return true; }, logger: quietLogger };
-  await requestRankingMatviewRefresh(supabase, opts);
-  t = COALESCE_WINDOW_MS + 1;
-  assert.equal(await requestRankingMatviewRefresh(supabase, opts), true);
+  const options = { clock: () => 0, setTimer, refresh: async () => { calls.push('refresh'); return true; }, logger: quietLogger };
+  await requestRankingMatviewRefresh(client, options);
+  timers[0].fn(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(await requestRankingMatviewRefresh(client, options), 'coalesced');
+  assert.equal(calls.length, 1);
+  assert.equal(timers.length, 2);
+  timers[1].fn(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(calls.length, 2);
-  assert.equal(timers.length, 0);
 });
 
-test("#5911 samling — tilstanden er pr. klient, og en refresh-fejl kastes ikke videre", async () => {
-  const { setTimer } = fakeTimers();
-  const opts = { clock: () => 0, setTimer, refresh: async () => { throw new Error("boom"); }, logger: quietLogger };
-  assert.equal(await requestRankingMatviewRefresh({}, opts), false);
-  assert.equal(await requestRankingMatviewRefresh({}, opts), false, "en ny klient deler ikke vindue med den forrige");
+test('#5692: wakeup state is per client and a background exception is contained', async () => {
+  const { timers, setTimer } = fakeTimers();
+  const options = { clock: () => 0, setTimer, refresh: async () => { throw new Error('fixture'); }, logger: quietLogger };
+  assert.equal(await requestRankingMatviewRefresh({}, options), 'coalesced');
+  assert.equal(await requestRankingMatviewRefresh({}, options), 'coalesced');
+  assert.equal(timers.length, 2);
+  timers.forEach(timer => timer.fn()); await new Promise(resolve => setImmediate(resolve));
 });
 
-test("#5911 samling — standard-refresh er den gatede: kl. 20.30 med afregning i gang refreshes ikke", async () => {
+test('#5692: background finalization wakeup still respects training while within its bounded deferral', async () => {
   __resetRankingRefreshStateForTests();
-  const supabase = createMockSupabase({ workRows: [{ tick_date: "2026-10-01", status: "pending" }] });
-  // Ingen refresh-injektion: default-stien skal gå gennem gaten.
-  const result = await requestRankingMatviewRefresh(supabase, { nowFn: () => EVENING, logger: quietLogger });
-  assert.equal(result, "deferred");
-  assert.deepEqual(supabase.rpcCalls, []);
+  const db = createMockSupabase({ workRows: [{ tick_date: '2026-10-01', status: 'pending' }] });
+  const { timers, setTimer } = fakeTimers();
+  assert.equal(await requestRankingMatviewRefresh(db, { clock: () => 0, nowFn: () => EVENING, setTimer, logger: quietLogger }), 'coalesced');
+  timers[0].fn(); await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(db.rpcCalls, []);
+});
+
+test('#5692: unchanged ticks perform only the cheap durable state check', async () => {
+  const calls = [];
+  const db = { async rpc(name) { calls.push(name); return { data: { pending: false, pending_age_ms: 0, last_completed_at: FIXED_NOW.toISOString() }, error: null }; } };
+  assert.equal(await rawGated(db, { now: FIXED_NOW, clock: () => 0, heartbeatNowFn: () => FIXED_NOW, logger: quietLogger }), true);
+  assert.deepEqual(calls, ['get_ranking_refresh_work_state']);
 });

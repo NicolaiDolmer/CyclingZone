@@ -11,3 +11,13 @@ export const DRAFTED_SQUAD_THRESHOLD = 8;
 export function isSquadDrafted(riderCount) {
   return Number.isFinite(riderCount) && riderCount >= DRAFTED_SQUAD_THRESHOLD;
 }
+
+// #4321 team_created: kun et hold oprettet inden for vinduet tæller, så
+// eksisterende brugere ikke fyrer eventet ved deres første dashboard-load
+// efter deploy.
+export const TEAM_CREATED_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function isTeamNewlyCreated(createdAt, now = Date.now()) {
+  const t = createdAt ? new Date(createdAt).getTime() : NaN;
+  return Number.isFinite(t) && t <= now + 60_000 && now - t <= TEAM_CREATED_WINDOW_MS;
+}

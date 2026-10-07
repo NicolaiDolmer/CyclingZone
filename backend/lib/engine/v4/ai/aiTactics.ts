@@ -47,6 +47,7 @@
 import type { AbilityKey, FinaleType, ProfileType, RiderRole } from "../types.ts";
 import type { BreakawayStance, EffortLevel, TeamOrder, TeamOrderRider } from "./teamOrderContract.ts";
 import { validateTeamOrder } from "./teamOrderContract.ts";
+import { isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 export type AiRosterEntrant = {
   rider_id: string;
@@ -333,7 +334,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     // (hoejst MAX_BREAK_CANDIDATES i alt). Neutrale hold og jagt-hold sender
     // ingen ekstra. Et forsoeg er aldrig en garanti: motoren afgoer stadig
     // hvem der kommer afsted (mechanics/breakawayPermission.ts).
-    if (input.rules_revision === "orders_gc_v2") {
+    if (isOrdersGcV2OrLater(input.rules_revision)) { // #6187: v3 arver v2
       const v2RankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
       const eligible = input.roster
         .filter((r) => !grupettoIds.has(r.rider_id))
@@ -345,6 +346,28 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
       const extra = stance === "let_go" ? AI_TACTICS_TUNING.V2_LET_GO_BREAK_CANDIDATES : 0;
       const slots = Math.min(AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES, Math.max(extra, hunterCount));
       breakCandidates = eligible.slice(0, slots).map(({ riderId, score }) => ({ riderId, score }));
+    }
+    // #6201 (KUN orders_gc_v3, ejer 5/10 valg A): paa en bjergetape sender et
+    // hold uden klassementschance (lader gaa eller neutral) sin bedste passende
+    // klatrer i udbrud: hunter, fri rolle eller hjaelper, aldrig kaptajn eller
+    // grupetto, og kun naar hans klatreevne er i feltets passende top-andel.
+    // Han kommer oveni holdets forsoeg (hoejst MAX_BREAK_CANDIDATES i alt) og
+    // er aldrig en garanti. Ordrernes betydning er uaendret.
+    if (isOrdersGcV3OrLater(input.rules_revision) && demand === "climb") {
+      const climbCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
+      const taken = new Set(breakCandidates.map((c) => c.riderId));
+      const climber = input.roster
+        .filter((r) => !grupettoIds.has(r.rider_id) && !taken.has(r.rider_id))
+        .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
+        .filter((r) => fieldRank(abilityOf(r, "climbing"), fieldPrimary) <= climbCap)
+        .sort((a, b) => abilityOf(b, "climbing") - abilityOf(a, "climbing") || a.rider_id.localeCompare(b.rider_id))[0];
+      const hasClimber = breakCandidates.some((c) => {
+        const r = input.roster.find((x) => x.rider_id === c.riderId);
+        return r !== undefined && fieldRank(abilityOf(r, "climbing"), fieldPrimary) <= climbCap;
+      });
+      if (climber && !hasClimber && breakCandidates.length < AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES) {
+        breakCandidates = [...breakCandidates, { riderId: climber.rider_id, score: breakScore(climber.abilities, primaryAbility) }];
+      }
     }
   }
   const breakScoreById = new Map(breakCandidates.map((c) => [c.riderId, c.score]));

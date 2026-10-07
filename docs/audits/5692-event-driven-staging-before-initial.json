@@ -1,0 +1,186 @@
+{
+  "phase": "before",
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "resultRows": 1889644,
+  "passes": [
+    {
+      "pass": 1,
+      "ok": true,
+      "durationMs": 23525.3465
+    },
+    {
+      "pass": 2,
+      "ok": true,
+      "durationMs": 8510.4405
+    },
+    {
+      "pass": 3,
+      "ok": true,
+      "durationMs": 8626.054700000004
+    }
+  ],
+  "calls": [
+    {
+      "name": "refresh_rider_rankings_mv",
+      "durationMs": 3963.3284,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_standings_ext_mv",
+      "durationMs": 3397.2022000000006,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_race_points_mv",
+      "durationMs": 15014.3609,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_global_rank_mv",
+      "durationMs": 594.7697000000007,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_youth_rider_rankings_mv",
+      "durationMs": 453.6887999999999,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_rider_rankings_mv",
+      "durationMs": 2288.1026999999995,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_standings_ext_mv",
+      "durationMs": 2447.660499999998,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_race_points_mv",
+      "durationMs": 3131.3535999999986,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_global_rank_mv",
+      "durationMs": 227.34869999999864,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_youth_rider_rankings_mv",
+      "durationMs": 326.6419999999998,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_rider_rankings_mv",
+      "durationMs": 1826.1717000000026,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_standings_ext_mv",
+      "durationMs": 2110.3866999999955,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_race_points_mv",
+      "durationMs": 3450.6380999999965,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_global_rank_mv",
+      "durationMs": 549.2134000000005,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_youth_rider_rankings_mv",
+      "durationMs": 423.8066000000035,
+      "errorCode": null
+    }
+  ],
+  "readers": [
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 397.92920000000004,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 289.5770000000002,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 126.22839999999997,
+      "errorCode": null
+    },
+    {
+      "view": "global_rank_mv",
+      "durationMs": 448.0560000000005,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 135.9328999999998,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 90.3148000000001,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 118.26469999999972,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 113.39919999999984,
+      "errorCode": null
+    },
+    {
+      "view": "global_rank_mv",
+      "durationMs": 76.5070999999989,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 104.89990000000034,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 98.2452000000012,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 75.99730000000272,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 304.12139999999636,
+      "errorCode": null
+    },
+    {
+      "view": "global_rank_mv",
+      "durationMs": 368.2927999999956,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 128.88609999999608,
+      "errorCode": null
+    }
+  ],
+  "rowCounts": {
+    "rider_rankings_mv": 16286,
+    "team_standings_ext_mv": 1054,
+    "team_race_points_mv": 33328,
+    "global_rank_mv": 268,
+    "youth_rider_rankings_mv": 2072
+  },
+  "totalRefreshCalls": 15,
+  "meanPassMs": 13553.947233333334,
+  "allSucceeded": true
+}

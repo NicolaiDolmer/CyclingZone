@@ -1127,6 +1127,7 @@
         "breakaway_caught_by_teams": "{riders} bliver indhentet. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} stod for jagten.",
         "breakaway_caught_by_peloton": "{riders} bliver indhentet af feltet.",
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
+        "breakaway_dropped": "{riders} {count, plural, one {bliver} other {bliver}} sat af fra udbruddet.",
         "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
         "incident_crash_time_loss": "{rider} vælter og taber {seconds} sek.",
         "incident_crash_hard": "{rider} vælter hårdt: {seconds} sek. tabt, og {days, plural, one {# dag} other {# dage}} på sidelinjen.",
@@ -1161,7 +1162,18 @@
         "gc_reaction_stopped": "Holdet omkring {rider} stopper reaktionen.",
         "gc_reaction_exhausted": "Holdet omkring {rider} har brugt det, det kan på reaktionen på denne etape, og stopper arbejdet.",
         "gc_reaction_no_workers": "Holdet omkring {rider} ser truslen, men har ingen ledige ryttere i hans gruppe til at reagere.",
-        "gc_context_missing": "Klassementet før etapen er ikke tilgængeligt, så intet hold reagerer på en trussel i klassementet i dag."
+        "group_merged_batch": "{count} {scope, select, others {andre grupper} other {grupper}} samlet igen.",
+        "peloton_split_batch": "{count} {scope, select, others {andre grupper} other {grupper}} brød fra.",
+        "finale_attack_batch": "{count} {scope, select, others {andre ryttere} other {ryttere}} angriber i finalen.",
+        "finale_attack_named_batch": "{riders} angriber i finalen.",
+        "gc_reaction_batch_started": "{count} {scope, select, others {andre hold} other {hold}} reagerede.",
+        "gc_reaction_batch_contained": "{count} {scope, select, others {andre hold} other {hold}} stoppede arbejdet. Truslen er under kontrol.",
+        "gc_reaction_batch_stopped": "{count} {scope, select, others {andre hold} other {hold}} stoppede reaktionen.",
+        "gc_reaction_batch_exhausted": "{count} {scope, select, others {andre hold} other {hold}} brugte det, de kunne, på reaktionen på denne etape og stoppede arbejdet.",
+        "gc_reaction_batch_no_workers": "{count} {scope, select, others {andre hold} other {hold}} så truslen, men havde ingen ledige ryttere i gruppen til at reagere.",
+        "gc_context_missing": "Klassementet før etapen er ikke tilgængeligt, så intet hold reagerer på en trussel i klassementet i dag.",
+        "own_riders_ahead": "Holdet omkring {rider} jagter ikke. Det har {riders} foran.",
+        "own_riders_ahead_team": "Holdet bag {riders} jagter ikke. Det har {count, plural, one {ham} other {dem}} foran."
       }
     },
     "recap": {
@@ -1437,6 +1449,7 @@
       "label": "Morgenudbrud",
       "survived": "holdt hjem til mål",
       "caught": "indhentet",
+      "dropped": "sat af fra udbruddet",
       "participated": "deltog",
       "laterAttack": "Senere angreb",
       "legacyLabel": "Udbrud"

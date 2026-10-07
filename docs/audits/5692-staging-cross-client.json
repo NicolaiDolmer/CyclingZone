@@ -1,0 +1,11 @@
+{
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "first": true,
+  "competingResult": "coalesced",
+  "competingHeavyPasses": 0,
+  "callsAfterFirst": 5,
+  "laterArrivalRetained": true,
+  "followup": true,
+  "totalRefreshCalls": 10,
+  "allComplete": true
+}

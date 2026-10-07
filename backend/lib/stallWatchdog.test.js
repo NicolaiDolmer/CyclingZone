@@ -244,6 +244,18 @@ test("(d) ingen results overhovedet → ingen finding", () => {
 
 // ── (e) matview-refresh-stall (#2196 Del 2) ───────────────────────────────────
 
+test('#5692: clean durable work suppresses timestamp-only ranking lag', () => {
+  const findings = evaluateStallFindings({ now: NOW,
+    standings: { maxStandingsUpdated: hoursAgo(0.05), maxResultsImported: hoursAgo(0.1) },
+    matviewHeartbeat: hoursAgo(1), rankingWork: { pending: false, pendingAgeMs: 0 } });
+  assert.equal(findings.filter(f => f.type === 'matview').length, 0);
+});
+
+test('#5692: old pending work alarms even for a historical/ownership event without a new result timestamp', () => {
+  const findings = evaluateStallFindings({ now: NOW, rankingWork: { pending: true, pendingAgeMs: 300_001 } });
+  assert.equal(findings.filter(f => f.type === 'matview').length, 1);
+});
+
 test("(e) heartbeat >30min bag friske results → matview-finding", () => {
   const findings = evaluateStallFindings({
     now: NOW,
@@ -559,21 +571,31 @@ test("stallWatchdog: race_entries må ikke referere fantom-kolonnen id (#2536)",
 // Ungdomsløb har ingen præmiepenge (YOUTH_RULES §7). Præmiemotoren springer
 // løb uden præmie-rækker over, så prize_paid_at forbliver NULL. Det må ikke
 // alarmere som prize-stall; et løb helt uden resultater skal stadig alarmere.
-function makePrizeSupabase({ results }) {
-  const builder = (rows, single = null) => {
+function makePrizeSupabase({ results, calls = [] }) {
+  // #6184 · race_results-builderen respekterer eq/gt/order/limit, fordi stall-
+  // vagten nu laver LIMIT 1-opslag pr. løb i stedet for at hente alle rækker.
+  const builder = (rows, single = null, table = null) => {
+    const filters = [];
+    let lim = null;
+    let desc = null;
+    const shaped = () => {
+      let out = rows.filter((r) => filters.every((f) => f(r)));
+      if (desc) out = [...out].sort((a, b) => String(b[desc] ?? "").localeCompare(String(a[desc] ?? "")));
+      return lim == null ? out : out.slice(0, lim);
+    };
     const api = {
       select: () => api,
-      eq: () => api,
+      eq: (col, val) => { if (table === "race_results") filters.push((r) => r[col] === val); return api; },
       neq: () => api,
-      gt: () => api,
+      gt: (col, val) => { if (table === "race_results") filters.push((r) => (r[col] ?? 0) > val); return api; },
       lt: () => api,
       is: () => api,
       in: () => api,
-      order: () => api,
-      limit: () => api,
-      range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
+      order: (col, opts = {}) => { if (opts.ascending === false) desc = col; return api; },
+      limit: (n) => { lim = n; return api; },
+      range: (from, to) => Promise.resolve({ data: shaped().slice(from, to + 1), error: null }),
       maybeSingle: () => Promise.resolve({ data: single, error: null }),
-      then: (res, rej) => Promise.resolve({ data: rows, error: null }).then(res, rej),
+      then: (res, rej) => { if (table) calls.push(table); return Promise.resolve({ data: shaped(), error: null }).then(res, rej); },
     };
     return api;
   };
@@ -590,7 +612,7 @@ function makePrizeSupabase({ results }) {
           { id: "empty", name: "Tomt løb" },
         ]);
       }
-      if (table === "race_results") return builder(results, { imported_at: hoursAgo(3) });
+      if (table === "race_results") return builder(results, { imported_at: hoursAgo(3) }, "race_results");
       if (table === "race_stage_schedule") return builder([]);
       if (table === "race_entries") return builder([]);
       if (table === "season_standings") return builder([], { updated_at: hoursAgo(3) });
@@ -616,4 +638,21 @@ test("fetchWatchdogState: completed løb uden præmie-rækker (ungdomsløb) er I
     .filter((f) => f.type === "prize");
   assert.deepEqual(prizeFindings.map((f) => f.raceId).sort(), ["empty", "senior"],
     "seniorløb med ubetalt præmie + løb helt uden resultater alarmerer stadig; ungdomsløbet gør ikke");
+});
+
+test("#6184: seneste imported_at pr. løb via LIMIT 1-opslag, ikke en fuld række-load", async () => {
+  const calls = [];
+  const supabase = makePrizeSupabase({
+    calls,
+    results: [
+      { id: "1", race_id: "senior", imported_at: hoursAgo(9), prize_money: 0 },
+      { id: "2", race_id: "senior", imported_at: hoursAgo(2), prize_money: 5000 },
+      { id: "3", race_id: "senior", imported_at: hoursAgo(5), prize_money: 0 },
+    ],
+  });
+  const state = await fetchWatchdogState({ supabase, now: NOW, autoPrizeEnabled: true });
+  assert.equal(state.lastResultByRace.senior, hoursAgo(2), "nyeste tidspunkt vinder, uanset række-rækkefølge");
+  assert.equal(state.lastResultByRace.empty, null);
+  // 3 ankre: latest for alle 3 + prize-tjek kun for løb med rækker (senior).
+  assert.equal(calls.filter((t) => t === "race_results").length, 4);
 });

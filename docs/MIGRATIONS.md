@@ -48,6 +48,13 @@ Already-idempotent and therefore fine: `CREATE OR REPLACE FUNCTION/VIEW/…`,
 `CREATE EXTENSION IF NOT EXISTS …`, `CREATE VIEW IF NOT EXISTS …`,
 `DROP … IF EXISTS …`, plain `INSERT … ON CONFLICT DO NOTHING`, `UPDATE`, etc.
 
+## Explicit Data API grants (#708)
+
+New public tables must declare and explicitly grant their intended API access;
+RLS does not supply table or sequence privileges. Follow [DATA_API_GRANTS.md](DATA_API_GRANTS.md)
+and copy the template from `database/templates/new-public-table.sql`. CI checks
+new table declarations in changed SQL files. No production defaults are changed.
+
 ## Recipes
 
 ### CREATE TYPE (enum)

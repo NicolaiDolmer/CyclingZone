@@ -88,7 +88,7 @@ jobs:
             echo ""
             echo "$FINDINGS"
             echo ""
-            echo "Kilde: Supabase Management-API \`logs.all\`, seneste 24t vs. foregående 24t."
+            echo "Kilde: Supabase Management-API \`logs\`, seneste 24t vs. foregående 24t."
             echo "Workflow: .github/workflows/supabase-log-watch.yml"
           } > log-watch-body.md
           EXISTING=$(gh issue list --state open --search "supabase-log-watch in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")

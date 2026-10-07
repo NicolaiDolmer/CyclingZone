@@ -21,10 +21,45 @@
 // #6084: "orders_gc_v2" = hele orders_gc_v1-pakken + bjergselektionen (feltet
 // holder samlet til finalestigningen, udbruddet hentes dér). Aktuel for nye
 // loeb siden ejer-go 2/10 (se CURRENT_RACE_RULES_REVISION).
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2"] as const;
+// #6187: "orders_gc_v3" = hele orders_gc_v2-pakken + "eget hold jagter aldrig
+// sine egne" (et hold foerer ikke jagten paa en gruppe med egen rytter i, og
+// dets udbrydere sidder paa hjul ved en trussel mod holdets GC-rytter).
+// Samlepunkt for uge 41-pakken. IKKE aktuel endnu: flip er ejer-only.
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
+
+// #6187: revisionerne er en ARVELINJE: hver orders_gc-revision er hele den
+// forrige plus sit eget. Kaldsteder spoerger derfor "mindst vN?" via
+// helperne nedenfor i stedet for at sammenligne strenge (en ny revision skal
+// kun tilfoejes her og i listen ovenfor for at arve alt det foregaaende).
+const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object.freeze({
+  legacy: 0,
+  orders_gc_v1: 1,
+  orders_gc_v2: 2,
+  orders_gc_v3: 3,
+});
+
+/** 0 for legacy og alt ukendt; ellers revisionens plads i orders_gc-arvelinjen. */
+export function ordersGcGeneration(value: unknown): number {
+  return isKnownRulesRevision(value) ? ORDERS_GC_GENERATION[value] : 0;
+}
+
+/** orders_gc_v1 eller senere (ordrestyret udbrud, GC-reaktion, ...). */
+export function isOrdersGcRulesRevision(value: unknown): boolean {
+  return ordersGcGeneration(value) >= 1;
+}
+
+/** orders_gc_v2 eller senere (bjergselektion, rullende balance, AI-udbrud). */
+export function isOrdersGcV2OrLater(value: unknown): boolean {
+  return ordersGcGeneration(value) >= 2;
+}
+
+/** orders_gc_v3 eller senere (#6187: eget hold jagter aldrig sine egne). */
+export function isOrdersGcV3OrLater(value: unknown): boolean {
+  return ordersGcGeneration(value) >= 3;
+}
 
 /**
  * Den revision et NYT loeb bindes til ved sin foerste etape-claim.
@@ -38,6 +73,9 @@ export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
  * "orders_gc_v2" siden ejer-go 2/10 (#6084): v1-pakken + bjergselektionen er
  * aktuel for de loeb der starter ved genstarten. Loeb der allerede er bundet
  * til orders_gc_v1 (eller legacy) faerdiggoeres paa den.
+ *
+ * "orders_gc_v3" (#6187) er bygget, men IKKE aktuel: skiftet hertil er et
+ * eksplicit ejer-go (og migrationen 2026-10-05 skal vaere applied foer).
  */
 export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "orders_gc_v2";
 

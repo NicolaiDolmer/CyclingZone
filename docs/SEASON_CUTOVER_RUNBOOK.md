@@ -806,6 +806,14 @@ HEAD-kald kontrollerer races-felterne, `training_date_work`,
 rå serverfejl udskrives. Manglende schema, ukendt count, netværksfejl eller for
 lav volumen giver `BLOCKED` og exit 1.
 
+Genmålt 7/10: staging har 1.889.644 resultatrækker mod prods friske katalogestimat
+på 1.931.805. Med dette konservative volumengrundlag returnerer kontrollen
+`BLOCKED`, `RESULT_VOLUME_TOO_SMALL`, `loadTestPassed=false` og exit 1.
+Alle tre schema-prober består. Gårsdagens grønne kontrol med et ældre minimum
+er ikke bevis for, at dagens volumenkrav består. Claude skal klargøre staging
+igen, eller ejeren skal udtrykkeligt godkende et andet grundlag, før den fulde
+løbsdag kan godkendes. Grænsen sænkes ikke automatisk.
+
 `DATA_PREREQUISITES_READY` / exit 0 betyder kun, at disse datakrav består.
 `loadTestPassed` er altid false. Pinned løbsdato, alle senior/U23/junior-puljer
 og slots, tilstrækkelige entries/ryttere, isoleret backend uden eksterne
