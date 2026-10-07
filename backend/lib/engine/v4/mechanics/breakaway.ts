@@ -1781,7 +1781,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 
   if (!changed && !riders && !teamReactions && !ownAheadTeams) return { state, events };
   const frontGap = Math.min(...groups.map((group) => group.gap_seconds));
-  const rebasedGroups = frontGap < 0 ? groups.map((group) => ({ ...group, gap_seconds: group.gap_seconds - frontGap })) : groups;
+  const rebasedGroups = ctx.sharedGroupTime !== true && frontGap < 0 ? groups.map((group) => ({ ...group, gap_seconds: group.gap_seconds - frontGap })) : groups;
   return {
     state: {
       ...state, groups: rebasedGroups, ...(riders ? { riders } : {}), ...(teamReactions ? { team_reactions: teamReactions } : {}),

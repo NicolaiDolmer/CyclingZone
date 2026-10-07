@@ -79,3 +79,10 @@ Clock foundation interfaces (first implementation increment):
 - Six deterministic tests pass (front replacement, traversal replacement/idempotence, point delay, order independence, segment continuity, invalid inputs).
 - Frozen baseline `895871eff`: 125 paired simulations, comprising 100 complete old-revision digests and 25 private candidate outputs, with pinned input hash/seeds.
 - This increment is not loop integration, physical regrouping or calibrated acceptance. Those tasks remain open.
+2026-10-07 wiring increment: sharedGroupTime is an independent true-only hook
+capability for official_times_v1. Segment traversal and each hook proposal now
+commit the absolute reference; M5 no longer hides signed advance in its private
+rebase on this path. Ten focused tests pass, including an actual M5 fixture with
+mutation-confirmed RED/GREEN. 100/100 complete old-revision digests match baseline.
+Strict engine types and preflight pass; FULL is running. This remains a draft
+foundation, not the completed physical regrouping/finale model or calibration.

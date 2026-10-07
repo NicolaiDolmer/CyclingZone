@@ -679,6 +679,8 @@ export type EngineState = {
 // no-op-varianter) der ingenting goer: returnerer samme state, ingen events.
 
 export type SegmentHookContext = {
+  /** Isolated time capability; never enables unrelated ordersGcV3 behavior. */
+  sharedGroupTime?: true;
   segment: Segment;
   segmentIndex: number;
   route: RouteV2;

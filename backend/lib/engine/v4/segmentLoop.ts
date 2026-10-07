@@ -47,6 +47,7 @@ import type {
 } from "./types.ts";
 import { boundRngFor, segmentRngFor } from "./rng.ts";
 import { reconcileDescentCrossings } from "./mechanics/descentCrossing.ts";
+import { beginGroupClock, replaceTraversal, projectGroupClock, projectRelativeArrivals } from "./groupClock.ts";
 import {
   deriveCp,
   deriveRechargeRate,
@@ -783,6 +784,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   const v2Revision: RulesRevision = isOrdersGcV2OrLater(rulesRevision) ? "orders_gc_v2" : rulesRevision;
   const ordersGcV3 = isOrdersGcV3OrLater(rulesRevision);
   const descentCrossings = rulesRevision === "official_times_v1";
+  const sharedGroupTime = rulesRevision === "official_times_v1";
   const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
@@ -965,13 +967,25 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // mechanics/timeModel.ts), saa loftet maales fra hullet ved toppen.
     const descentOpenOnly = ordersGcV3 && segment.kind === "descent" && segmentIndex === segments.length - 1;
     const groupsBeforeTempo = state.groups;
-    let groups = state.groups.map((g) => {
-      if (g.id === frontGroup.id) return g;
-      const dtGroup = tempoByGroup.get(g.id)?.dtSeconds ?? dtFront;
-      const delta = descentOpenOnly ? Math.max(0, dtGroup - dtFront) : dtGroup - dtFront;
-      return { ...g, gap_seconds: Math.max(0, g.gap_seconds + delta) };
-    });
-    groups = rebaselineGroups(groups);
+    let groups: RaceGroup[];
+    if (sharedGroupTime) {
+      let clock = beginGroupClock({groups: state.groups, frontTimeSeconds: frontElapsedSeconds,
+        fromKm: segment.from_km, toKm: segment.to_km});
+      for (const group of state.groups) {
+        clock = replaceTraversal(clock, group.id, tempoByGroup.get(group.id)?.dtSeconds ?? dtFront);
+      }
+      const projected = projectGroupClock(clock);
+      groups = projected.groups;
+      frontElapsedSeconds = projected.frontTimeSeconds;
+    } else {
+      groups = state.groups.map((g) => {
+        if (g.id === frontGroup.id) return g;
+        const dtGroup = tempoByGroup.get(g.id)?.dtSeconds ?? dtFront;
+        const delta = descentOpenOnly ? Math.max(0, dtGroup - dtFront) : dtGroup - dtFront;
+        return { ...g, gap_seconds: Math.max(0, g.gap_seconds + delta) };
+      });
+      groups = rebaselineGroups(groups);
+    }
     state = { ...state, groups };
     if (descentCrossings) {
       const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km);
@@ -1002,7 +1016,17 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
       ...(rollingBreakawayV2For(v2Revision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
       ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
+      ...(sharedGroupTime ? { sharedGroupTime: true as const } : {}),
       ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
+    };
+    const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
+      state = result.state;
+      timeline.push(...result.events);
+      if (sharedGroupTime) {
+        const committed = projectRelativeArrivals(state.groups, frontElapsedSeconds);
+        frontElapsedSeconds = committed.frontTimeSeconds;
+        state = {...state, groups: committed.groups};
+      }
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
@@ -1019,18 +1043,15 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // hoved): mekanikken er da en eksakt no-op.
     {
       const result = (hooks.teamPlay ?? noopHook)(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
     }
 
     if (segment.kind === "climb") {
       const result = hooks.climbSelection(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
     } else if (segment.kind === "descent") {
       const result = hooks.descent(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
     } else if (segment.kind === "cobbles") {
       // M8 (#3855-wiring): brosten-/grus-sektor. Samme plads i loopet som M2/M3
       // — dagens terraen-selektion sker FOER udbruds-hooket og finalen, saa et
@@ -1038,8 +1059,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // sektorer ER cobbles-segmenter (RACE_ENGINE_RULES §2b), saa denne gren
       // daekker begge underlag.
       const result = (hooks.cobbles ?? noopHook)(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
     }
 
     // M5 (#4615): udbrud v2 koeres paa HVERT segment — formation paa det
@@ -1051,8 +1071,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     {
       const groupsBeforePursuit = state.groups;
       const result = hooks.breakaway(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
       if (descentCrossings) {
         const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events);
         state = contact.state;
@@ -1078,8 +1097,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // etapen helt uden uheld — det er den gamle F2-adfaerd, uaendret.
     if (hooks.incidents) {
       const result = hooks.incidents(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
     }
 
     // M9 (#2770/#2413): passager (bjergtoppe + indlagte spurter). Kaldes paa
@@ -1091,8 +1109,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // det kan hverken flytte en tid eller en placering.
     {
       const result = (hooks.passages ?? noopHook)(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
     }
 
     const isLastSegment = segmentIndex === segments.length - 1;
@@ -1101,12 +1118,17 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // (den rykker FORAN kildegruppens 0). Finale-opgoerets frontPool-filter
       // (gap_seconds === 0) kraever rebaseline FOER kaldet — ellers falder
       // angriberne ud af opgoerelsen (fundet af golden fixture 4, 21/8).
-      state = { ...state, groups: rebaselineGroups(state.groups) };
+      if (sharedGroupTime && state.groups.length > 0) {
+      frontElapsedSeconds += Math.min(...state.groups.map(group => group.gap_seconds));
+    }
+    state = { ...state, groups: rebaselineGroups(state.groups) };
       const preFinaleGroups = state.groups;
       const result = hooks.finale(state, ctx);
-      state = result.state;
-      timeline.push(...result.events);
+      acceptMovement(result);
       finaleTrace = { entryGroups: lastSegmentEntryGroups, preFinaleGroups, postFinaleGroups: state.groups };
+    }
+    if (sharedGroupTime && state.groups.length > 0) {
+      frontElapsedSeconds += Math.min(...state.groups.map(group => group.gap_seconds));
     }
     state = { ...state, groups: rebaselineGroups(state.groups) };
 
@@ -1124,7 +1146,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...tailMerge.merges,
     ];
     state = { ...state, groups: mergedGroups, km: segment.to_km };
-    frontElapsedSeconds += dtFront;
+    if (!sharedGroupTime) frontElapsedSeconds += dtFront;
 
     // 4c (#4971). Merget er et REELT gruppeskift, og indtil nu var det TAVST:
     // en mekanik kunne emittere `peloton_splits` til fx `chase-1000`, hvorefter

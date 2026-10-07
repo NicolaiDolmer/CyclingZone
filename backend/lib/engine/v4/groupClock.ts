@@ -86,3 +86,15 @@ export function projectGroupClock(clock: GroupClock): GroupClockProjection {
     arrivals: Object.fromEntries(arrivals.map(({entry,seconds}) => [entry.group.id, seconds])),
   };
 }
+
+/** Commit a mechanism's relative proposal through the same absolute reference. */
+export function projectRelativeArrivals(groups: readonly RaceGroup[], referenceSeconds: number): GroupClockProjection {
+  const arrivals = groups.map(group => ({group, seconds: referenceSeconds + group.gap_seconds}))
+    .sort((a,b) => a.seconds-b.seconds || a.group.id.localeCompare(b.group.id));
+  for (const arrival of arrivals) nonnegative(arrival.seconds, 'absolute arrival');
+  const frontTimeSeconds = arrivals[0]?.seconds ?? referenceSeconds;
+  return {frontTimeSeconds,
+    groups: arrivals.map(({group,seconds}) => ({...group,rider_ids:[...group.rider_ids],gap_seconds:seconds-frontTimeSeconds})),
+    arrivals: Object.fromEntries(arrivals.map(({group,seconds})=>[group.id,seconds])),
+  };
+}
