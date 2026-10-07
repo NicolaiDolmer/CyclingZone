@@ -74,6 +74,14 @@ test('transport, non-array, duplicate and HTTP errors fail closed without leakin
   }
 });
 
+test('unreadable configuration prints affected job diagnostics without requests or credentials', async () => {
+  const logs = [];
+  const result = await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'private-invalid-url', key: '',
+    now: () => since, sleep: async () => assert.fail(), fetchFn: async () => assert.fail(), log: line => logs.push(line) });
+  assert.equal(result.state, 'failed');
+  assert.deepEqual(logs, ['short: failed; last check-in=unreadable; deadline=unknown']);
+});
+
 test('mixed cadence waits for short jobs before returning deferred, never verified', async () => {
   let calls = 0;
   const result = await verifyCronCheckins({ slugs: ['short', 'long'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',

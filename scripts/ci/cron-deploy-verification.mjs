@@ -116,8 +116,16 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
 export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, fetchFn, log = () => {}, monitors = ALL_CRON_MONITORS }) {
   if (!Array.isArray(slugs) || new Set(slugs).size !== slugs.length) throw new Error('Invalid affected cron list');
   if (slugs.length === 0) return { state: 'verified', jobs: [] };
-  const endpoint = new URL('/rest/v1/cron_checkins', url);
-  if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || !key) throw new Error('Missing heartbeat read configuration');
+  let endpoint;
+  try {
+    endpoint = new URL('/rest/v1/cron_checkins', url);
+    if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || !key) throw new Error('Missing heartbeat read configuration');
+  } catch {
+    // Fail closed with per-job diagnostics, never echo secret configuration.
+    const jobs = slugs.map(slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' }));
+    for (const job of jobs) log(`${job.slug}: failed; last check-in=unreadable; deadline=unknown`);
+    return { state: 'failed', jobs };
+  }
   endpoint.searchParams.set('select', 'job_slug,last_checkin_at,expected_cadence_seconds');
   endpoint.searchParams.set('limit', String(monitors.length + 1));
   const excluded = new Set();

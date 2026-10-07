@@ -214,7 +214,7 @@ Kadence og margin kommer udelukkende fra `backend/lib/cronMonitorRegistry.js`
 eksisterende Actions secrets `SUPABASE_URL` og `SUPABASE_SERVICE_KEY`. Ingen
 mutationer eller rå API-bodies logges. Job, sidste check-in og deadline skrives
 til log/summary. Rækken skal have korrekt kadence og et check-in strengt efter
-grænsen, inden kadence plus margin; manglende, ulæselig eller fremtidig række
+grænsen, inden kadence plus margin; manglende, ulæselig, forældet eller fremtidig række
 fejler straks, udeblevet tick fejler ved deadline.
 
 Boot-prime er ikke tick-bevis: første snapshot tæller aldrig som succes, og
