@@ -3,15 +3,16 @@ import { resolve, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
+import { blankStringsAndComments } from '../lib/js-source-scan.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_MAP = JSON.parse(readFileSync(new URL('./cron-source-map.json', import.meta.url), 'utf8'));
 const units = { minute: 60, hour: 3600, day: 86400 };
 const stamp = value => typeof value === 'string' && /^\d{4}-\d\d-\d\dT.*(?:Z|\+00:00)$/.test(value) ? Date.parse(value) : NaN;
 
-// Includes injected callback/initializer roots from the reviewed map. Relative
-// string references deliberately overapproximate imports (also covers exports,
-// require and literal dynamic imports). Unknown/unresolvable graphs widen to ALL.
+// Includes injected callback/initializer roots from the reviewed map. Loader/
+// from syntax includes exports, require and literal dynamic imports. Unknown
+// or unresolvable graphs widen to ALL.
 // cron.js is a shared trigger, never a per-job traversal root.
 export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SOURCE_MAP,
   read = path => readFileSync(resolve(ROOT, path), 'utf8'),
@@ -37,12 +38,21 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
         if (!exists(path)) throw new Error('Missing source root');
         seen.add(path);
         const source = read(path);
+        const code = blankStringsAndComments(source);
+        // The shared scanner blanks template expressions as well. Such a
+        // loader cannot safely be narrowed, so explicitly widen instead.
+        for (const template of source.matchAll(/`(?:\\[\s\S]|[^`])*`/g)) {
+          if (template[0].includes('${') && /\b(?:import|require)\s*\(/.test(template[0])) throw new Error('Template loader dependency');
+        }
         // Nonliteral loaders cannot be resolved statically, so never narrow.
-        // The left boundary excludes prose such as "race-import (engine)".
-        // Only loader/from syntax creates edges; unrelated path strings do not.
-        if (/(?<![\w$-])(?:import|require)\s*\(\s*[^'"\s]/.test(source)) throw new Error('Unknown dynamic dependency');
-        for (const match of source.matchAll(/(?<![\w$-])(?:from\s*|import\s*|(?:import|require)\s*\(\s*)(['"])(\.{1,2}\/[^'"\r\n]+)\1/g)) {
-          const base = posix.normalize(posix.join(posix.dirname(path), match[2]));
+        if (/(?<![\w$-])(?:import|require)\s*\(\s*[^'"\s]/.test(code)) throw new Error('Unknown dynamic dependency');
+        for (const match of code.matchAll(/(?<![\w$-])(?:from\s*|import\s*|(?:import|require)\s*\(\s*)(['"])([^'"\r\n]*)\1/g)) {
+          // Masking preserves offsets and quotes: recover only the literal
+          // specifier, never a path mentioned in prose or another string.
+          const start = match.index + match[0].indexOf(match[1]) + 1;
+          const specifier = source.slice(start, start + match[2].length);
+          if (!/^\.{1,2}\//.test(specifier)) continue;
+          const base = posix.normalize(posix.join(posix.dirname(path), specifier));
           if (base.startsWith('../')) throw new Error('Source outside repository');
           const target = [base, `${base}.js`, `${base}.ts`, `${base}/index.js`, `${base}/index.ts`].find(exists);
           if (target && /\.(?:js|mjs|cjs|ts)$/.test(target)) visit(target);

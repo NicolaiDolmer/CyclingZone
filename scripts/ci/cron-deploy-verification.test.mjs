@@ -139,6 +139,20 @@ test('unknown relative dependency widens to all rather than silently dropping an
     exists: path => path === 'backend/a.js', read: () => "import './missing';" }), ['short', 'long']);
 });
 
+test('prose and path strings do not create loader edges; comments between real loader tokens are supported', () => {
+  const text = "// import (not code)\n// import './missing';\nconst label = \"from './missing'\";\nimport /* real edge */ './guard.js';";
+  assert.deepEqual(affectedCronJobs([{ filename: 'backend/guard.js', status: 'modified' }], { map, monitors,
+    exists: path => path === 'backend/a.js' || path === 'backend/guard.js',
+    read: path => path === 'backend/a.js' ? text : '' }), ['short']);
+});
+
+test('template-expression and nonliteral loaders widen rather than disappearing through masking', () => {
+  for (const source of ["const text = `hello ${await import('./guard.js')}`;", 'await import(variable);']) {
+    assert.deepEqual(affectedCronJobs([{ filename: 'backend/a.js', status: 'modified' }], { map, monitors,
+      exists: path => path === 'backend/a.js', read: () => source }), ['short', 'long']);
+  }
+});
+
 test('changed-file retrieval validates target, pagination, transport and completeness', async () => {
   const sha = 'a'.repeat(40);
   const args = { sha, repository: 'fixture/repo', token: 'fixture' };
