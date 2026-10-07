@@ -97,3 +97,13 @@ without joining it and recording the actual catcher. The new clock path extends
 physical crossing reconciliation to these groups, while the existing descent-only
 helper default and all old revision paths remain unchanged. Targeted tests pass;
 final FULL and calibration remain required. No readiness claim.
+
+2026-10-07 descent traversal increment: a typed sharedGroupTime context now carries
+the real entry groups. The new revision plans one effective descent traversal
+before physiology, rather than adding M3 regrouping after a different full-length
+travel estimate. Existing middle-/finish-descent rules and physical speed bounds
+are reused; morning escapes and incident chasers retain separate ownership. M3
+reads the real summit budget and does not repeat regrouping; M5 shares that budget.
+24 targeted tests pass, including prior contact/runner tests and frozen old outputs.
+Finale coupling, sustainable grupetto cohesion, broad calibration and final FULL
+remain open. No new OTL or film rule, activation or readiness claim.

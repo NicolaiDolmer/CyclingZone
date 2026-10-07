@@ -680,7 +680,7 @@ export type EngineState = {
 
 export type SegmentHookContext = {
   /** Isolated time capability; never enables unrelated ordersGcV3 behavior. */
-  sharedGroupTime?: true;
+  sharedGroupTime?: Readonly<{ entryGroups: readonly RaceGroup[] }>;
   segment: Segment;
   segmentIndex: number;
   route: RouteV2;

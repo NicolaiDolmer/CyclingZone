@@ -48,6 +48,7 @@ import type {
 import { boundRngFor, segmentRngFor } from "./rng.ts";
 import { reconcileDescentCrossings } from "./mechanics/descentCrossing.ts";
 import { beginGroupClock, replaceTraversal, projectGroupClock, projectRelativeArrivals } from "./groupClock.ts";
+import { planSharedDescentTravel } from "./mechanics/sharedGroupTime.ts";
 import {
   deriveCp,
   deriveRechargeRate,
@@ -879,6 +880,25 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       nominalTotalSeconds: nominalCumSeconds[nominalCumSeconds.length - 1] ?? 0,
       limitFactor,
     });
+    if (sharedGroupTime) {
+      const phase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
+      tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind,
+        phaseClimbNeutralShare(phase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
+      tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers);
+      if (segment.kind === "descent") {
+        const lengthKm = Math.max(0, segment.to_km-segment.from_km);
+        const minimumDurations = new Map(state.groups.map(group => {
+          const maximumSpeed = tuning.terrain.baseSpeedKmh.descent*tuning.terrain.speedMultiplierBounds[1]
+            *(1+groupDraftSpeedGain(group.rider_ids.length,"descent",tuning));
+          return [group.id, maximumSpeed > 0 ? lengthKm/maximumSpeed*3600 : 0] as const;
+        }));
+        const durations = planSharedDescentTravel({groups:state.groups,
+          durations:new Map([...tempoByGroup].map(([id,tempo])=>[id,tempo.dtSeconds])),minimumDurations,
+          entrants:entrantsById,lengthKm,technicality:segment.technicality,
+          isFinish:segmentIndex===segments.length-1,incidentChasers:state.incident_chasers});
+        tempoByGroup = new Map([...tempoByGroup].map(([id,tempo])=>[id,{...tempo,dtSeconds:durations.get(id)??tempo.dtSeconds}]));
+      }
+    }
     let nextRiders: Record<string, RiderState> = { ...state.riders };
     for (const group of state.groups) {
       const tempo = tempoByGroup.get(group.id);
@@ -953,7 +973,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // #5812 (a): M5 ejer hullet mellem dagens udbrud og jagtgruppen paa aabent
     // terraen. Se neutralizeBreakawayTempoDrift.
     const mountainPhase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
-    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
+    if (!sharedGroupTime) tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
     // #6199 (KUN orders_gc_v3): i dalen efter en top kan et hul ikke vokse (mechanics/timeModel.ts).
     if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers);
 
@@ -1016,7 +1036,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
       ...(rollingBreakawayV2For(v2Revision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
       ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
-      ...(sharedGroupTime ? { sharedGroupTime: true as const } : {}),
+      ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo } } : {}),
       ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {

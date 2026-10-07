@@ -1706,7 +1706,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const newBreakawayGap = breakaway.gap_seconds - growthSeconds;
     // #6199/#6200 (review af #6223, KUN orders_gc_v3): paa en nedkoersel mod maal deler
     // jagten loftet med regrupperingen, M3-angrebene og finalen (bogen, mechanics/timeModel.ts).
-    const v3DescentBook = ordersGcV3 && isLastSegment && ctx.segment.kind === "descent" ? (state.finish_descent_regroup ?? {}) : null;
+    const v3DescentBook = (ordersGcV3 || ctx.sharedGroupTime !== undefined) && isLastSegment && ctx.segment.kind === "descent" ? (state.finish_descent_regroup ?? {}) : null;
     const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, netClosingSeconds + floorClosingSeconds);
     const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
     const v3Booked = v3DescentBook ? bookFinishDescentClosure(state.finish_descent_regroup, chaseGroup.id, chaseGroup.gap_seconds, currentChase.gap_seconds - newChaseGap) : undefined;
@@ -1781,7 +1781,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 
   if (!changed && !riders && !teamReactions && !ownAheadTeams) return { state, events };
   const frontGap = Math.min(...groups.map((group) => group.gap_seconds));
-  const rebasedGroups = ctx.sharedGroupTime !== true && frontGap < 0 ? groups.map((group) => ({ ...group, gap_seconds: group.gap_seconds - frontGap })) : groups;
+  const rebasedGroups = !ctx.sharedGroupTime && frontGap < 0 ? groups.map((group) => ({ ...group, gap_seconds: group.gap_seconds - frontGap })) : groups;
   return {
     state: {
       ...state, groups: rebasedGroups, ...(riders ? { riders } : {}), ...(teamReactions ? { team_reactions: teamReactions } : {}),

@@ -50,7 +50,7 @@ test('pursuit exposes its signed advance to the shared clock instead of hiding i
  const state:EngineState={km:10,groups,riders,virtual_gc:{}};
  const ctx=makeHookCtx({segment:route.segments[1],segmentIndex:1,route,entrants:Object.fromEntries(members.map(r=>[r.rider_id,r])),tuning:RACE_V4_TUNING,seed:'6199-pursuit',orders:[{team_id:'field',kind:'team_tactics',params:{breakaway_stance:'let_go',riders:[]}}]});
  const v2ctx={...ctx,rulesRevision:'orders_gc_v1' as const};
- const before=breakawayHook(state,v2ctx),after=breakawayHook(state,{...v2ctx,sharedGroupTime:true});
+ const before=breakawayHook(state,v2ctx),after=breakawayHook(state,{...v2ctx,sharedGroupTime:{entryGroups:state.groups}});
  const shift=Math.min(...after.state.groups.map(g=>g.gap_seconds));
  assert.ok(shift<0,'the actual let-go gain must remain visible to the absolute clock');
  assert.deepEqual(after.state.groups.map(g=>[g.id,g.gap_seconds-shift]),before.state.groups.map(g=>[g.id,g.gap_seconds]));
@@ -58,7 +58,7 @@ test('pursuit exposes its signed advance to the shared clock instead of hiding i
 
 test('shared clock does not let an ordinary group pass through a morning escape without physical contact',()=>{
  const routeInput=input('official_times_v1');
- routeInput.route={...routeInput.route,distance_km:21,segments:[{kind:'flat',from_km:0,to_km:1},{kind:'descent',from_km:1,to_km:21,technicality:1}]};
+ routeInput.route={...routeInput.route,distance_km:22,segments:[{kind:'flat',from_km:0,to_km:1},{kind:'descent',from_km:1,to_km:21,technicality:1},{kind:'flat',from_km:21,to_km:22}]};
  routeInput.startlist=entrants.map((r,i)=>({...r,abilities:Object.fromEntries(keys.map(k=>[k,i?90:10])) as Entrant['abilities']}));
  const hooks:MechanicHooks={...DEFAULT_MECHANIC_HOOKS,breakaway:(state,ctx)=>({state:ctx.segmentIndex===0?{...state,groups:[{id:'escape',kind:'breakaway',origin:'breakaway',rider_ids:['a'],gap_seconds:0,cohesion:1},{id:'field',kind:'peloton',rider_ids:['b'],gap_seconds:20,cohesion:1}]}:state,events:[]})};
  const out=runSegmentLoop(routeInput,hooks);

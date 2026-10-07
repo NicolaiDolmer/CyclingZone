@@ -480,7 +480,7 @@ export const descentHook: DescentHook = (
   const segmentLengthKm = Math.max(0, segment.to_km - segment.from_km);
   const isFinishDescent = ctx.segmentIndex === ctx.route.segments.length - 1;
   // #6199 + #6200 (KUN orders_gc_v3): den faelles tidsmodel (regroupOnDescentV3).
-  let groups: RaceGroup[] = ctx.ordersGcV3 === true
+  let groups: RaceGroup[] = ctx.sharedGroupTime ? [...state.groups] : ctx.ordersGcV3 === true
     ? regroupOnDescentV3(state.groups, ctx.entrants, segmentLengthKm, segment.technicality, isFinishDescent)
     : regroupOnDescent(
       state.groups,
@@ -493,12 +493,12 @@ export const descentHook: DescentHook = (
   // #6199/#6200 (KUN orders_gc_v3): paa en nedkoersel mod maal bogfoeres hvad
   // regrupperingen lukkede, saa finalens jagt paa samme segment kun faar resten
   // af loftet (finishDescentRemainingCapSeconds). Kun sat naar noget blev lukket.
-  const v3FinishDescent = ctx.ordersGcV3 === true && isFinishDescent;
+  const v3FinishDescent = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && isFinishDescent;
   // Grupperne efter segmentets tempo-tik, foer regrupperingen. Paa en v3-nedkoersel
   // mod maal kan tempo-tikket kun aabne et hul, aldrig lukke det (#6200,
   // segmentLoop.ts 4a), saa hullet her er aldrig mindre end hullet ved toppen,
   // og loftet kan ikke omgaas af tempo-tikket.
-  const topGroups = state.groups;
+  const topGroups = ctx.sharedGroupTime?.entryGroups ?? state.groups;
   const regroupBook = v3FinishDescent ? finishDescentRegroupBook(topGroups, groups) : null;
   if (regroupBook) state = { ...state, finish_descent_regroup: regroupBook };
   // Review af #6223 (KUN orders_gc_v3): angrebene nedenfor deler samme loft og
