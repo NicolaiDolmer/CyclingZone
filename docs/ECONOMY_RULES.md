@@ -331,3 +331,14 @@ Læsningen 30/8: den forhandlede kanal ligger nu meget tæt på 1,0 mod de korri
 The development-only `backend/scripts/dev/bestRoleRefitReport5443.mjs` fits role offsets from a season simulation using the same rounded best-role selection as 1a. It evaluates the candidate through the existing career-NPV engine with an explicit development adapter; production valuation dispatch and the committed v5 model are unchanged. Candidate files and per-rider reports remain under ignored `balance-internals/`.
 
 The report distinguishes team cash balances from the sum of rider valuations. It records coverage, unsampled roles, losses and synthetic one-point role transitions. A one-point sensitivity probe is not a measured training strategy: time, training costs and ability caps are not simulated by that probe. The current run is uncalibrated and is not approval for activation. A calibration target and the response to role-switch discontinuities remain owner decisions.
+
+## Præmieprognosens interval (#5940, 5/10)
+
+[Ejerens valg 5/10 kl. 22](https://github.com/NicolaiDolmer/CyclingZone/pull/6215#issuecomment-6001921688)
+er et fast, proportionalt spænd omkring holdets eget estimat, med bunden klemt
+til nul. Intervallet bruger den eksisterende band-konstant; divisionens kvartiler
+og peer-stikprøve er fjernet. Nettoets confidence-grænser følger samme spredning.
+Punktestimat, præmieregler og udbetalinger er uændrede. Båndets størrelse er et
+ejer-valg, ikke en målt historisk kvalitet eller statistisk garanti. Historiske
+sammenligninger må derfor ikke bruges som kalibreringsgodkendelse. SSOT for
+sponsorvisning: `SPONSOR_RULES.md`.

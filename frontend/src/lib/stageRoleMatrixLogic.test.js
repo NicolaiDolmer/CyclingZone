@@ -240,3 +240,26 @@ test("SELECTABLE_ROLES: præcis de fem roller backenden kender, kaptajnen først
   assert.deepEqual([...SELECTABLE_ROLES], ["captain", "sprint_captain", "hunter", "helper", "free_role"]);
   assert.deepEqual([...EXCLUSIVE_ROLES], ["captain", "sprint_captain", "hunter"]);
 });
+
+// ── #6095: gem skriver kun ændrede etaper ─────────────────────────────────────
+import { changedStages as changedStages6095, applyRoleForRest as applyRole6095, buildDraftMatrix as build6095 } from "./stageRoleMatrixLogic.js";
+
+test("#6095 changedStages: kun etaper hvor en celle afviger fra det indlæste", () => {
+  const riders = [{ rider_id: "a", race_role: "captain" }, { rider_id: "b", race_role: "helper" }];
+  const initial = build6095({ riders, overrides: [], stageNumbers: [1, 2, 3, 4], stagesCompleted: 0 });
+  assert.deepEqual(changedStages6095(initial, initial), []);
+  const edited = { ...initial, 3: { ...initial[3], b: { race_role: "helper", effort: "protect" } } };
+  assert.deepEqual(changedStages6095(edited, initial), [3]);
+});
+
+test("#6095 rollevalg 'etape N og løbet ud' rører aldrig tidligere etaper; 'kun etape N' kun den ene", () => {
+  const riders = [{ rider_id: "a", race_role: "captain" }, { rider_id: "b", race_role: "helper" }];
+  const initial = build6095({ riders, overrides: [], stageNumbers: [1, 2, 3, 4, 5], stagesCompleted: 1 });
+  const rest = applyRole6095({ matrix: initial, riderId: "b", role: "captain", stages: [3, 4, 5] });
+  assert.deepEqual(changedStages6095(rest, initial), [3, 4, 5]);
+  assert.equal(rest[2].b.race_role, "helper", "etape 2 før den åbne er uændret");
+  assert.equal(rest[3].a.race_role, "helper", "forrige kaptajn demoteres kun på de samme etaper");
+  assert.equal(rest[2].a.race_role, "captain");
+  const only = applyRole6095({ matrix: initial, riderId: "b", role: "hunter", stages: [3] });
+  assert.deepEqual(changedStages6095(only, initial), [3]);
+});

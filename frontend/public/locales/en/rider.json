@@ -404,6 +404,7 @@
         "max_level": "This rider is already fully scouted.",
         "capacity": "Your scout is already fully booked. Wait for a job to finish.",
         "insufficient_funds": "Not enough CZ$ to send a scout.",
+        "insufficient_available_balance": "Not enough available money: part of your balance is locked in auction bids.",
         "auth": "Your session expired. Sign in again.",
         "network": "Connection failed. Check your network and try again."
       }

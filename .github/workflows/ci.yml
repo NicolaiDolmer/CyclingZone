@@ -170,6 +170,9 @@ jobs:
       # en select mod en kolonne skemaet ikke har giver nu en typefejl i editoren.
       - name: Type-check frontend
         run: npm run typecheck
+      # #6202: build-selection CLI/helpers are outside src/** and tests/e2e/**.
+      - name: Type-check build-selection tools (#6202)
+        run: npx tsc --ignoreConfig --noEmit --types node --allowImportingTsExtensions --module NodeNext --moduleResolution NodeNext --target ES2022 --strict --skipLibCheck scripts/vercel-build-decision.ts scripts/vercel-ignore-build.ts scripts/vercel-ignore-build.test.ts
 
       # #5534: hard rule 31 kraever nu .ts/.tsx for nye frontend-filer, ogsaa
       # e2e-specs — men frontend/tsconfig.json's include daekker kun src/**, saa
@@ -890,7 +893,7 @@ jobs:
 
       - name: Test shared wave admission and Codex lifecycle fixtures
         run: |
-          node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/make-wave-brief.test.mjs
+          node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/codex-git-write-probe.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/wave-api-recovery.test.mjs scripts/make-wave-brief.test.mjs
           python3 scripts/hooks/lib/test_codex_sessions.py
           bash scripts/test-guard-agent-spawn.sh
 

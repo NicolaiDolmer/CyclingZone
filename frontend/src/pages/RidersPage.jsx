@@ -30,13 +30,13 @@ import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
 import SavedFiltersBar from "../components/rider/SavedFiltersBar.jsx";
-import { useSubscription } from "../lib/useSubscription.js";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
 import { cycleSortState } from "../lib/riderSort";
+import { reputationSortKey } from "../lib/reputationSort.ts";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { useRiderReputation } from "../lib/useRiderReputation.ts";
 import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputationView.ts";
@@ -74,7 +74,7 @@ function ReputationValue({ rider, enabled, t }) {
   return (
     <span className="inline-flex flex-col items-end leading-tight">
       <span className="text-cz-2 font-mono text-xs">{value == null ? "—" : Math.round(value)}</span>
-      {enabled && bandKey && <span className="text-cz-3 text-3xs uppercase">{t(bandKey)}</span>}
+      {enabled && bandKey && <span className="text-cz-3 text-3xs uppercase">{t(`table.${bandKey}`)}</span>}
     </span>
   );
 }
@@ -148,7 +148,7 @@ function AbilityLegend({ t, tRider }) {
 // Denne select + retnings-toggle eksponerer NØJAGTIG de samme sort-nøgler som
 // desktop-headerne og skriver til samme filters.sort/sort_dir via handleSort —
 // ingen ny sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
-function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
+function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn }) {
   // Samme nøgler + rækkefølge som desktop-kolonnerne (RidersPage's `columns`).
   // Labels genbruger table.*-nøglerne; stat-options bruger de internationale
   // korte evne-labels (oversættes ikke, jf. #487).
@@ -161,7 +161,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
     { key: "primary_type", label: t("table.type") },
     { key: "value", label: t("table.value") },
     { key: "salary", label: t("table.salary") },
-    { key: "popularity", label: t("table.popularity") },
+    { key: reputationOn ? "reputation" : "popularity", label: t(reputationOn ? "table.reputationLabel" : "table.popularity") },
   ];
   const options = [...baseOptions, ...statCols.map(({ key, label }) => ({ key, label }))];
   const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
@@ -241,8 +241,6 @@ export default function RidersPage() {
   }
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
-  // #4649: gemte filtre (del C) — Pro-gated i UI, se SavedFiltersBar.
-  const { isPro, isFounder } = useSubscription(myTeam?.id);
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
   // #3012: fejl-feedback når en watchlist-toggle fejler, så den ikke tavst
@@ -352,7 +350,10 @@ export default function RidersPage() {
   // #4448: memoized så mount-/filter-effekten kan liste den i sit dependency-
   // array. Realtime-refetchen nedenfor bliver ved at gå gennem loadRidersRef —
   // den må IKKE gen-subscribe hver gang filtrene ændrer sig.
+  const displaySort = reputationSortKey(filters.sort, reputationOn);
+  const loadSequence = useRef(0);
   const loadRiders = useCallback(async ({ silent = false } = {}) => {
+    const request = ++loadSequence.current;
     if (!silent) { setLoading(true); setError(null); }
     // Evnerne hentes via join + flades op på rytter-objektet i fetchRidersPage (#1529).
     // #3622: popularity tilføjet — samme rå kolonne som bestyrelsens star-score
@@ -362,13 +363,15 @@ export default function RidersPage() {
     const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, current_production_value, is_u25, nationality_code, primary_type, secondary_type, popularity, reputation, team:team_id(id, name), pending_team:pending_team_id(id, name)";
     try {
       const [{ rows, count }, { data: auctionData }] = await Promise.all([
-        fetchRidersPage(supabase, { filters, page: filters.page, pageSize: 50, riderSelect, seasonYear }),
+        fetchRidersPage(supabase, { filters: { ...filters, sort: displaySort }, page: filters.page, pageSize: 50, riderSelect, seasonYear }),
         supabase.from("auctions").select("rider_id").in("status", ["active", "extended"]),
       ]);
+      if (request !== loadSequence.current) return;
       setRiders(rows);
       setTotal(count);
       setActiveAuctionRiders(new Set((auctionData || []).map(a => a.rider_id)));
     } catch (err) {
+      if (request !== loadSequence.current) return;
       console.error("loadRiders failed:", err.message);
       // #2849 bølge 2 (audit-fund): en fejlet HOVED-fetch (ikke-silent) surfaces nu
       // som ErrorState i stedet for en tavst tømt liste. Den stille realtime-refetch
@@ -380,11 +383,11 @@ export default function RidersPage() {
         setError(err);
       }
     } finally {
-      setLoading(false);
+      if (request === loadSequence.current) setLoading(false);
     }
-  }, [filters, seasonYear]);
+  }, [filters, seasonYear, displaySort]);
 
-  useEffect(() => { loadRiders(); }, [loadRiders]);
+  useEffect(() => { loadRiders(); return () => { loadSequence.current += 1; }; }, [loadRiders]);
 
   // #916: realtime — opdatér listen når en rytter skifter hold (fx solgt til AI-
   // hold), så TeamCell ikke bliver ved at vise "Fri" på stale data.
@@ -457,7 +460,7 @@ export default function RidersPage() {
   function handleSort(key) {
     // #1755: delt cyklus-logik (klik aktiv nøgle = vend retning; ny nøgle =
     // skift + default-retning) så alle rytter-tabeller opfører sig ens.
-    const next = cycleSortState({ sort: filters.sort, dir: filters.sort_dir }, key);
+    const next = cycleSortState({ sort: displaySort, dir: filters.sort_dir }, key);
     setFilters(f => ({ ...f, sort: next.sort, sort_dir: next.dir, page: 1 }));
   }
 
@@ -724,7 +727,7 @@ export default function RidersPage() {
         userId={userId}
         filters={filters}
         onApply={(saved) => setFilters({ ...FILTER_DEFAULTS, ...saved, page: 1 })}
-        eligible={isPro || isFounder}
+        teamId={myTeam?.id}
       />
 
       {loading ? (
@@ -743,9 +746,10 @@ export default function RidersPage() {
           {/* #9: mobil-sortering — desktop sorterer via kolonne-headers, men de
               fleste er skjult på mobil. Denne kontrol eksponerer samme sort-nøgler. */}
           <MobileSortControl
-            sort={filters.sort}
+            sort={displaySort}
             sortDir={filters.sort_dir}
             onSort={handleSort}
+            reputationOn={reputationOn}
             statCols={visibleStatCols}
             t={t}
           />
@@ -766,7 +770,7 @@ export default function RidersPage() {
                    profile. Salary and abilities remain one column-chip away. */
                 mobileDefaults={["rating", "value", "potential"]}
                 rowProps={(r) => ({ onClick: () => navigate(`/riders/${r.id}`), className: "cursor-pointer" })}
-                sort={filters.sort}
+                sort={displaySort}
                 sortDir={filters.sort_dir}
                 onSort={handleSort}
                 count={t("pagination.showing", {

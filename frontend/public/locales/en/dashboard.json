@@ -391,8 +391,8 @@
       "inSeasonBonus": "Race-day, result, objective, and signing bonuses actually earned this season. Not forecasted for next season, since it depends on results not yet run."
     },
     "prizeDetail": {
-      "realizedFloor": "Matches what your roster has already earned this season",
-      "divisionInterval": "Range based on measured prize money among division peers"
+      "realizedFloor": "My estimate is based on your team's earned prizes, plus/minus 20%; not a measured range",
+      "divisionInterval": "My estimate for your team, plus/minus 20%; not a measured range"
     },
     "upkeepDetail": {
       "perRaceDay": "{rate} per senior race day × {days} race days. Charged when each race is settled, not at season start.",

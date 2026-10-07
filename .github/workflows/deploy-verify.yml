@@ -19,10 +19,10 @@ name: Deploy verify
 # "Wait for Vercel + Railway deployments" derfor scripts/railway-deploy-status.mjs
 # (Railways egen GraphQL-API) som PRIMÆR kilde for Railway: "success" markerer
 # Railway-kravet opfyldt med det samme, "failed" stopper trinnet med det
-# samme (rødt, ikke 10-min timeout), og "pending" falder tilbage til den
-# hidtidige GitHub-deployment-status-polling. Uden RAILWAY_TOKEN er trinnet
-# BIT-IDENTISK med adfærden før #5489 (kun GitHub-deployment-status). Smoke-
-# test-trinnet nedenfor kører uændret — altid når dette trin lykkes, uanset
+# samme (rødt, uden at afvente polling-deadline). "pending" venter videre;
+# med token kan et gammelt GitHub-success ikke opfylde Railway-kravet.
+# Uden token bruges den nyeste GitHub-deployment-status. Smoke-test kører
+# kun efter result=success, aldrig efter en afsluttet pending-observation, uanset
 # hvilken kilde der gav grønt.
 
 on:
@@ -51,6 +51,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     steps:
       # #5424: flyttet hertil (var før "Wait for Vercel + Railway
       # deployments", se den bevarede begrundelse ved den næste brug af
@@ -206,28 +207,42 @@ jobs:
           # #4463: uden pipefail sluger `jq` gh's exit-kode, saa et fejlsvar fra
           # API'et ville laese som "ingen deployments" i stedet for som en fejl.
           set -o pipefail
-          DEADLINE=$(($(date +%s) + 600))  # 10 min timeout
+          DEADLINE=$(($(date +%s) + 2400))  # pending is not a deployment failure
           while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
             VERCEL_OK=false
             RAILWAY_OK=false
+            VERCEL_SEEN=false
+            RAILWAY_SEEN=false
 
             for ID in $(echo "$DEPLOYMENTS" | jq -r '.[].id'); do
               CREATOR=$(echo "$DEPLOYMENTS" | jq -r ".[] | select(.id==$ID) | .creator.login")
               STATE=$(gh api "repos/${{ github.repository }}/deployments/$ID/statuses" --jq '.[0].state // "pending"')
               echo "  deployment $ID by $CREATOR → $STATE"
-              if [[ "$CREATOR" == vercel* && "$STATE" == "success" ]]; then VERCEL_OK=true; fi
-              if [[ "$CREATOR" == railway* && "$STATE" == "success" ]]; then RAILWAY_OK=true; fi
+              if [[ "$CREATOR" == vercel* && "$VERCEL_SEEN" == "false" ]]; then
+                VERCEL_SEEN=true
+                if [[ "$STATE" == "success" ]]; then VERCEL_OK=true; fi
+                if [[ "$NEED_VERCEL" == "true" && ( "$STATE" == "failure" || "$STATE" == "error" ) ]]; then
+                  echo "result=failed" >> "$GITHUB_OUTPUT"
+                  echo "::error::Latest Vercel deployment failed"
+                  exit 1
+                fi
+              fi
+              if [[ "$CREATOR" == railway* && "$RAILWAY_SEEN" == "false" ]]; then
+                RAILWAY_SEEN=true
+                if [[ "$STATE" == "success" ]]; then RAILWAY_OK=true; fi
+                if [[ "$NEED_RAILWAY" == "true" && -z "${RAILWAY_TOKEN:-}" && ( "$STATE" == "failure" || "$STATE" == "error" ) ]]; then
+                  echo "result=failed" >> "$GITHUB_OUTPUT"
+                  echo "::error::Latest Railway deployment failed"
+                  exit 1
+                fi
+              fi
             done
 
             # #5489: GitHub-deployment-status for Railway er sat som fallback —
             # naar RAILWAY_TOKEN er sat, spoerger vi Railways egen GraphQL-API
             # direkte (samme kilde som `railway deployment list`) og bruger DEN
-            # som primaer kilde. "success" her overstyrer (OR'er ind i) RAILWAY_OK
-            # ovenfor — GitHub-signalet kan stadig gaa foerst og taeller ligesaa
-            # meget, dette er en STRIKT UDVIDELSE af hvornaar RAILWAY_OK bliver
-            # true, aldrig en indskraenkning. "failed" stopper med det samme
-            # (rødt, IKKE 10-min timeout) — det er selve pointen med #5489: en
+            # som primaer kilde. API pending kan ikke overstyres af et gammelt GitHub-success; et genbyg af samme SHA er ikke verificeret.
             # aegte Railway-fejl skal ikke vente paa at et laenge-forsinket
             # GitHub-signal til sidst ogsaa siger nej. Uden RAILWAY_TOKEN
             # (secret ikke sat) er denne blok en no-op og adfaerden er
@@ -241,13 +256,18 @@ jobs:
               RAILWAY_API_STATUS=$(node scripts/railway-deploy-status.mjs || echo "pending")
               echo "  Railway API-status (primaer kilde, #5489): $RAILWAY_API_STATUS"
               if [[ "$RAILWAY_API_STATUS" == "failed" ]]; then
-                echo "::error::Railway API meldte FAILED for ${SHA:0:7} — stopper med det samme (ikke 10-min timeout, #5489). Se scripts/railway-deploy-status.mjs' stderr-diagnostik i dette trins log ovenfor."
-                echo "railway=failed" >> "$GITHUB_OUTPUT"
-                echo "vercel=$VERCEL_OK" >> "$GITHUB_OUTPUT"
+                echo "::error::Railway API meldte FAILED for ${SHA:0:7} — stopper med det samme (uden at afvente polling-deadline, #5489). Se scripts/railway-deploy-status.mjs' stderr-diagnostik i dette trins log ovenfor."
+                {
+                  echo "railway=failed"
+                  echo "result=failed"
+                  echo "vercel=$VERCEL_OK"
+                } >> "$GITHUB_OUTPUT"
                 exit 1
               fi
               if [[ "$RAILWAY_API_STATUS" == "success" ]]; then
                 RAILWAY_OK=true
+              else
+                RAILWAY_OK=false
               fi
             fi
 
@@ -270,19 +290,28 @@ jobs:
                 echo "railway=success" >> "$GITHUB_OUTPUT"
               fi
               echo "All required deployments succeeded"
+              echo "result=success" >> "$GITHUB_OUTPUT"
               exit 0
             fi
 
             sleep 15
           done
 
-          echo "Timeout waiting for deployments (required: vercel=$NEED_VERCEL railway=$NEED_RAILWAY)"
-          echo "vercel=$VERCEL_OK" >> "$GITHUB_OUTPUT"
-          echo "railway=$RAILWAY_OK" >> "$GITHUB_OUTPUT"
-          exit 1
+          echo "::notice::Deployment verification pending; no release verification performed yet"
+          {
+            echo "vercel=$VERCEL_OK"
+            echo "railway=$RAILWAY_OK"
+            echo "result=pending"
+          } >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Deployment still pending
+        if: steps.deployments.outputs.result == 'pending'
+        run: echo "::notice::AFVENTER deployment; not verified. Merge queue must retry this attempt."
 
       - name: Smoke-test prod
         id: smoke
+        if: steps.deployments.outputs.result == 'success'
         run: |
           # #5905: deployment liveness stays DB-independent; release smoke requires DB readiness.
           # Shared probe: at most 6 x 5s requests + 5 x 5s pauses; fails closed on non-ready payloads.
@@ -326,6 +355,7 @@ jobs:
       # druknede (#3565). Denne pointe gælder stadig — den tidligere checkout
       # dækker den blot nu også.
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
+        if: steps.deployments.outputs.result == 'success'
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
 
       # #4545: enhedstesten i frontend/vercel.rewrites.test.js bevogter vores HENSIGT
@@ -334,7 +364,7 @@ jobs:
       # stå grøn mens spillerne rammer muren. Proben er kørt mod prod FØR fixet og
       # fejler dér (exit 1), så den er målt til at kunne bide.
       - name: Verify manglende asset fejler rent (#4545)
-        if: steps.required.outputs.need_vercel == 'true'
+        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
         run: |
           if node scripts/check-asset-miss-behaviour.mjs --base=https://cyclingzone.org; then
             echo "✅ **Asset-miss-probe: OK** — en manglende chunk giver 404, ikke en HTML-side." >> "$GITHUB_STEP_SUMMARY"
@@ -350,7 +380,7 @@ jobs:
         # at aktivere guarden mod stille source-map upload-fejl.
         # Kun relevant når Vercel faktisk byggede — backend-only commits har ingen
         # ny frontend-release, så en manglende bundle dér er forventet.
-        if: steps.required.outputs.need_vercel == 'true'
+        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -433,7 +463,7 @@ jobs:
       # katastrofalt galt (fx et deploy der serverer 404 paa alle chunks), og
       # DET skal stoppe koerslen.
       - name: Chunk-fejl-rate efter deploy (#4545)
-        if: steps.required.outputs.need_vercel == 'true'
+        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -481,7 +511,7 @@ jobs:
           note "✅ Chunk-fejl-rate: $COUNT paa 24 t (budget $CHUNK_ERROR_BUDGET, haard graense $CHUNK_ERROR_HARD_LIMIT)."
 
       - name: Comment success on merged PR
-        if: success() && steps.pr.outputs.number != ''
+        if: success() && steps.deployments.outputs.result == 'success' && steps.pr.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ steps.pr.outputs.number }}
@@ -498,6 +528,24 @@ jobs:
           - Frontend root = 200
 
           Du kan trygt lukke telefonen — det er live."
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
+          else
+            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          fi
+
+      - name: Comment pending on merged PR
+        if: success() && steps.deployments.outputs.result == 'pending' && steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          BODY="<!-- deploy-verify:$SHA -->
+          ## Deploy afventer (${SHA:0:7})
+
+          Deployment er endnu ikke klar. Release er **ikke verificeret**; ingen smoke-kontrol eller succesmelding er lavet. Merge-koeen genkoerer samme workflow og venter paa naeste attempt."
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
           if [ -n "$COMMENT_ID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
@@ -526,7 +574,7 @@ jobs:
           - Backend \`/api/auctions\`: \`${BACKEND_AUTH:-?}\` (forventet 401)
           - Frontend: \`${FRONTEND:-?}\` (forventet 200)
 
-          **Tjek prod nu** — auto-merge har sendt det live, men smoke-test fejlede. Mulig årsag: deploy-rollback, env-var mangler, healthcheck broken."
+          **Deploy-/release-verifikation fejlede.** Se det konkrete fejlende trin. Pending rapporteres særskilt og bliver aldrig markeret verificeret."
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
           if [ -n "$COMMENT_ID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"

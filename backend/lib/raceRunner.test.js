@@ -1330,49 +1330,36 @@ test("simulateRace: kalder processBoardWeekend med prev/ny race-days (#1187)", a
   assert.equal(boardCalls[0].race.id, STAGE_RACE.id);
 });
 
-// #3193: matview-refresh (global_rank_mv m.fl.) skal ske LIGE EFTER
-// season_standings er opdateret (applyRaceResults), IKKE efter board-weekend/
-// Discord/in-app-notifikationerne. Diagnose (execute_sql mod prod 3/8, se PR):
-// /standings læser season_standings LIVE, Global Rank læser global_rank_mv
-// (periodisk snapshot) — refresh'en lå tidligere efter en ekstern Discord-
-// webhook-latens, hvilket forlængede vinduet hvor de to sider viste
-// forskellige tal for samme hold. Denne test beviser rækkefølgen er rettet:
-// alle fire refresh-RPC'er er kaldt FØR notifyDiscord/notifyInApp fyrer.
-test("simulateRace: refresher rangliste-matviews FØR notifyDiscord/notifyInApp (#3193)", async () => {
-  const supabase = makeSupabase({
-    race_stage_profiles: STAGES_3,
-    ...cannedField(),
-    race_points: [],
-  });
+// #5692 supersedes the synchronous #3193 snapshot-order contract: saved results
+// and notifications publish immediately; global views drain in the background.
+test("simulateRace: publishes results before background global ranking refresh (#5692)", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: new Date("2026-10-06T12:00:00Z") });
+  const supabase = makeSupabase({ race_stage_profiles: STAGES_3, ...cannedField(), race_points: [] });
   const order = [];
   const originalRpc = supabase.rpc;
-  supabase.rpc = (name, args) => { order.push(`rpc:${name}`); return originalRpc(name, args); };
-
-  await simulateRace({
-    supabase,
-    race: STAGE_RACE,
+  supabase.rpc = (name, args) => {
+    order.push(`rpc:${name}`);
+    if (name === "get_ranking_refresh_work_state") return Promise.resolve({ data: { pending: true, pending_age_ms: 0, last_completed_at: null }, error: null });
+    if (name === "claim_ranking_refresh_work") return Promise.resolve({ data: { status: "claimed", token: args.p_token, target_version: "1" }, error: null });
+    if (["renew_ranking_refresh_work", "finish_ranking_refresh_work"].includes(name)) return Promise.resolve({ data: true, error: null });
+    return originalRpc(name, args);
+  };
+  const report = await simulateRace({
+    supabase, race: STAGE_RACE,
     applyRaceResults: async ({ resultRows }) => { order.push("applyRaceResults"); return { rowsImported: resultRows.length }; },
     recomputeRaceDays: async () => { order.push("recomputeRaceDays"); return 1; },
     notifyDiscord: async () => { order.push("notifyDiscord"); },
     notifyInApp: async () => { order.push("notifyInApp"); },
   });
-
-  assert.deepEqual(
-    order,
-    [
-      "rpc:find_spent_race_days",
-      "applyRaceResults",
-      "rpc:refresh_rider_rankings_mv",
-      "rpc:refresh_team_standings_ext_mv",
-      "rpc:refresh_team_race_points_mv",
-      "rpc:refresh_global_rank_mv",
-      "rpc:refresh_youth_rider_rankings_mv", // #5647: ungdoms-rytterranglisten, sidst i samme refresh
-      "recomputeRaceDays",
-      "notifyDiscord",
-      "notifyInApp",
-    ],
-    "alle fire matview-refresh skal ske LIGE EFTER applyRaceResults, FØR board-weekend/notify (#3193 rod-årsagsfix)"
-  );
+  assert.ok(report.rowsImported > 0);
+  assert.deepEqual(order, ["rpc:find_spent_race_days", "applyRaceResults", "recomputeRaceDays", "notifyDiscord", "notifyInApp"]);
+  t.mock.timers.tick(60_000);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(order.filter(value => value.startsWith("rpc:refresh_")), [
+    "rpc:refresh_rider_rankings_mv", "rpc:refresh_team_standings_ext_mv", "rpc:refresh_team_race_points_mv",
+    "rpc:refresh_global_rank_mv", "rpc:refresh_youth_rider_rankings_mv",
+  ]);
+  assert.ok(order.indexOf("rpc:finish_ranking_refresh_work") > order.indexOf("notifyInApp"));
 });
 
 test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", async () => {

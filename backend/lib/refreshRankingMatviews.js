@@ -14,11 +14,13 @@
 // stå og vente på den LANGSOMSTE (målt maks 7,8s i prod, dengang mod et
 // statement_timeout på 8s). Fire separate transaktioner (database/2026-07-27-
 // 3013-refresh-matviews-concurrently.sql) frigiver hver lås så snart DEN matview
-// er færdig i stedet for at holde alle fire til den sidste er done. CONCURRENTLY
-// er IKKE muligt her — Postgres afviser den fra enhver funktion kaldt via
-// RPC/SPI, se migrationens header-kommentar. Ægte nul-blokering kræver en
-// transport-ændring (pg_cron eller rå pg-forbindelse), sporet som opfølgning på
-// #3013 i #3121.
+// er færdig i stedet for at holde alle fire til den sidste er done.
+// #5692: den gamle SPI/isTopLevel-påstand var forkert for PostgreSQL 17.
+// Hvert kald vælger token/version-fenced overloaden med p_concurrently=true
+// fra database/2026-10-06-5692-ranking-refresh-events.sql. Den kører CONCURRENTLY
+// i samme SECURITY DEFINER/PostgREST-transport. Ingen fallback til plain REFRESH:
+// mangler overload/index/populerede data, beholdes sidste færdige snapshot og
+// heartbeat flyttes ikke. SQL-migration kræver separat ejer-go før aktivering.
 //
 // TIMEOUT-BUDGET (#4866, gældende fra 5/9): de fire RPC'er går gennem PostgREST
 // som service_role. Rollen havde ingen egen rolconfig og arvede derfor
@@ -34,39 +36,25 @@
 // pg_cron) eller flytter kaldene væk fra service_role, forsvinder de 60s —
 // forward-guarden i refreshRankingMatviews.test.js fanger det.
 //
-// Heartbeat-atomicitet (#2196 Del 2): den ORIGINALE refresh_ranking_matviews()
-// skrev matview_refresh_heartbeat KUN hvis alle fire REFRESH lykkedes i samme
-// transaktion ("heartbeat kan ikke lyve"). Med fire separate RPC'er kan det ikke
-// garanteres i databasen længere, så Node overtager invarianten: heartbeat
-// upsertes KUN herfra, og KUN hvis alle fire RPC-kald returnerede uden fejl.
+// #5692 events: DB statement triggers register relevant committed changes,
+// including historical corrections and rider ownership. Clean cron ticks only
+// check state. Cross-process claims capture a version; token-fenced concurrent
+// RPCs validate ownership at SQL admission, and completion/heartbeat commit
+// atomically after all five succeed. No fallback to plain refresh.
 //
-// BEST-EFFORT: en refresh-fejl logges + rapporteres til Sentry, men kastes ALDRIG
-// videre. Kaldere er race-finalization (resultaterne ER allerede skrevet — en
-// refresh-fejl må ikke vælte afviklingen) + cron (næste tick prøver igen).
-// Fejler en RPC fordi migrationen endnu ikke er applied i prod (funktionen findes
-// ikke endnu), er warn'en forventet og ufarlig — de andre matviews refreshes
-// stadig (best-effort pr. matview, ikke alt-eller-intet).
-//
-// #5911: AFTENAFREGNINGEN HAR FORRANG. Refreshen tager ACCESS EXCLUSIVE pr.
-// matview, og dagens sidste løb finaliserer lige før kl. 20, så refreshes landede
-// oven i træningsafregningens commit_training_date_tick og trak den ud (målt 1/10).
-// Derfor tre indgange:
-//   - refreshRankingMatviewsSafe: ubetinget og straks (recovery, repair-scripts).
-//   - refreshRankingMatviewsGated (10-min cron): springer over ("deferred") mens
-//     training_date_work for i dag (Copenhagen, fra kl. 20; efter midnat gårsdagens
-//     dato indtil kl. 03) har pending/partial-rækker. Loft: efter MAX_DEFER_MS i træk refreshes alligevel, så en afregning
-//     der hænger (fx venter til deadline kl. 02) ikke fryser ranglisten.
-//   - requestRankingMatviewRefresh (løbsfinalisering): gated + samlet, så flere løb
-//     der slutter inden for samme vindue giver én refresh i stedet for én pr. løb.
-//   - refreshRankingsAfterTrainingSettlement: træningslukningen kalder den efter et
-//     sweep der afregnede dagens hold; den refresher når sidste hold er færdigt.
-// FAIL-SAFE: fejler statusopslaget, refreshes som før #5911.
+// Result publication schedules a coalesced background wakeup and never awaits
+// global computation. The one-minute cron catches missed wakeups/restarts.
+// Training deferral is bounded by durable oldest work age. Explicit Safe is a
+// forced repair, bypassing training; a busy foreign owner is not completion.
+// Production lease time comes from SQL after locking, not the caller's clock.
+// An unavailable state keeps the last snapshot and reports failure for retry.
 import { copenhagenDateString, copenhagenHour } from "./copenhagenTime.js";
 import { createRankingRefreshQueue } from "./rankingRefreshQueue.ts";
+import { getRankingRefreshWorkState, runRankingRefreshWork } from "./rankingRefreshWork.ts";
 
 export const SETTLEMENT_WINDOW_START_HOUR = 20;
 export const SETTLEMENT_OVERNIGHT_END_HOUR = 3;
-export const MAX_DEFER_MS = 20 * 60 * 1000;
+export const MAX_DEFER_MS = 2 * 60 * 1000;
 export const COALESCE_WINDOW_MS = 60 * 1000;
 
 const REFRESH_RPCS = [
@@ -86,18 +74,17 @@ const runRefreshQueued = createRankingRefreshQueue();
 // #5900: all entry points (cron/finalization/training/recovery) share admission.
 // Requests during a pass share one fresh follow-up, preserving later DB writes.
 export function refreshRankingMatviewsSafe(supabase, options = {}) {
-  return runRefreshQueued(supabase, () => refreshRankingMatviewsPass(supabase, options), 1);
+  return runRefreshQueued(supabase, async () => (await runRankingRefreshWork(supabase,
+    (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { ...options, renewLease, ownerToken, targetVersion }), { ...options, force: true })) === true, 1);
 }
 
-async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn = () => new Date() } = {}) {
-  // A physically admitted pass consumes any expired training deferral, also
-  // when Safe replaced a queued expiry-entitled request in the shared queue.
-  deferredSinceMs = null;
+async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion } = {}) {
   const failures = [];
 
   for (const { rpc, label } of REFRESH_RPCS) {
     try {
-      const { error } = await supabase.rpc(rpc);
+      if (renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost');
+      const { error } = await supabase.rpc(rpc, { p_concurrently: true, p_owner_token: ownerToken, p_target_version: targetVersion });
       if (error) throw new Error(error.message);
     } catch (err) {
       failures.push({ label, message: err.message });
@@ -118,26 +105,7 @@ async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn 
     return false;
   }
 
-  // Alle RPC'er lykkedes → heartbeat opdateres (bevarer "heartbeat kan ikke lyve"-
-  // invarianten fra #2196 Del 2, nu på Node-siden i stedet for i én DB-transaktion).
-  try {
-    const { error: hbError } = await supabase
-      .from("matview_refresh_heartbeat")
-      .upsert({ matview_group: "ranking", refreshed_at: nowFn().toISOString() }, { onConflict: "matview_group" });
-    if (hbError) throw new Error(hbError.message);
-  } catch (err) {
-    console.warn(`⚠️  matview_refresh_heartbeat upsert fejlede (best-effort): ${err.message}`);
-    if (captureExceptionFn) {
-      captureExceptionFn(new Error(`refreshRankingMatviewsSafe heartbeat upsert: ${err.message}`), {
-        tags: { lib: "refreshRankingMatviews" },
-      });
-    }
-    // Matviews ER friske selvom heartbeat-skrivningen fejlede — returnér true,
-    // stall-watchdog degraderer gracefully hvis heartbeat-rækken mangler/er stale
-    // (samme disciplin som resten af filen: en observability-fejl må ikke
-    // fremstå som en data-fejl).
-  }
-
+  // The fenced database acknowledgement atomically updates generation + heartbeat.
   return true;
 }
 
@@ -165,18 +133,23 @@ export function settlementDatesToCheck(now = new Date()) {
   return [];
 }
 
-let deferredSinceMs = null;
-
 export function __resetRankingRefreshStateForTests() {
-  deferredSinceMs = null;
+  coalesceState = new WeakMap();
 }
 
 // Gate for cron + finalisering. Returnerer "deferred" når refreshen holdes
 // tilbage, ellers refreshRankingMatviewsSafe's true/false.
 async function rankingRefreshGateState(
   supabase,
-  { now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console } = {},
+  { now = new Date(), maxDeferMs = MAX_DEFER_MS, logger = console } = {},
 ) {
+  let work;
+  try { work = await getRankingRefreshWorkState(supabase, now); }
+  catch {
+    // best-effort: retain old data and report unavailable; never refresh blindly.
+    logger.warn?.('[ranking-refresh] work state unavailable; snapshot preserved'); return 'unavailable';
+  }
+  if (!work.pending) return 'clean';
   let settling = false;
   const dates = settlementDatesToCheck(now);
   if (dates.length) {
@@ -188,9 +161,7 @@ async function rankingRefreshGateState(
     }
   }
   if (settling) {
-    const nowMs = clock();
-    deferredSinceMs ??= nowMs;
-    if (nowMs - deferredSinceMs < maxDeferMs) {
+    if (work.pendingAgeMs < maxDeferMs) {
       logger.log?.("[ranking-refresh] deferred: training settlement in progress");
       return "deferred";
     }
@@ -199,25 +170,30 @@ async function rankingRefreshGateState(
     // this entitlement through the queue, even if later requests are gated.
     return "expired";
   }
-  deferredSinceMs = null;
   return "ready";
 }
 
 export async function refreshRankingMatviewsGated(
   supabase,
-  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console, heartbeatNowFn = () => new Date() } = {},
+  { captureExceptionFn, now = new Date(), clock = () => Date.now(), maxDeferMs = MAX_DEFER_MS, logger = console, heartbeatNowFn = () => new Date(), testNowFn } = {},
 ) {
   const requestedAt = clock();
+  void heartbeatNowFn; // Completion time is authoritative in SQL; retain option compatibility.
   const gateOptions = { now, clock, maxDeferMs, logger };
   const gateState = await rankingRefreshGateState(supabase, gateOptions);
+  if (gateState === 'unavailable') return false;
+  if (gateState === 'clean') return true;
   if (gateState === "deferred") return "deferred";
   return runRefreshQueued(supabase,
-    () => refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn }),
+    () => runRankingRefreshWork(supabase,
+      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion }), { captureExceptionFn, testNowFn }),
     gateState === "expired" ? 1 : 0, {
       key: `gated:${copenhagenDateString(now)}:${maxDeferMs}`,
       check: async () => {
       const admittedAt = new Date(now.getTime() + Math.max(0, clock() - requestedAt));
       const state = await rankingRefreshGateState(supabase, { ...gateOptions, now: admittedAt });
+      if (state === 'unavailable') return { kind: 'skip', result: false };
+      if (state === 'clean') return { kind: 'skip', result: true };
       if (state === "deferred") return { kind: "skip", result: "deferred" };
       return { kind: state === "expired" ? "force" : "proceed" };
       },
@@ -227,7 +203,8 @@ export async function refreshRankingMatviewsGated(
 // Træningslukningen kalder denne efter et sweep der afregnede dagens hold. Er
 // sidste hold færdigt (ingen pending/partial for i dag), refreshes straks og
 // ubetinget; ellers venter den på næste sweep/cron. Kaster aldrig.
-export async function refreshRankingsAfterTrainingSettlement({ supabase, now = new Date(), captureExceptionFn, logger = console, heartbeatNowFn = () => new Date(), clock = () => Date.now() } = {}) {
+export async function refreshRankingsAfterTrainingSettlement({ supabase, now = new Date(), captureExceptionFn, logger = console, heartbeatNowFn = () => new Date(), clock = () => Date.now(), testNowFn } = {}) {
+  void heartbeatNowFn;
   const requestedAt = clock();
   try {
     let settling = false;
@@ -239,7 +216,8 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
     }
     if (settling) return "deferred";
     return await runRefreshQueued(supabase,
-      () => refreshRankingMatviewsPass(supabase, { captureExceptionFn, nowFn: heartbeatNowFn }),
+      () => runRankingRefreshWork(supabase,
+        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion }), { captureExceptionFn, testNowFn }),
       0, {
         key: `training-close:${copenhagenDateString(now)}`,
         check: async () => {
@@ -262,11 +240,9 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
   }
 }
 
-// Samler refreshes ved løbsfinalisering: første kald i et roligt vindue kører
-// straks (ranglisten er frisk lige efter løbet, #3193); kald inden for
-// COALESCE_WINDOW_MS efter den seneste start samles til ÉN efterfølgende refresh
-// ved vinduets udløb. Tilstand pr. Supabase-klient. Kaster aldrig.
-const coalesceState = new WeakMap();
+// Publication never awaits global ranking computation. Durable DB events are
+// authoritative; this per-client wakeup timer only reduces scheduling latency.
+let coalesceState = new WeakMap();
 
 export async function requestRankingMatviewRefresh(
   supabase,
@@ -275,35 +251,24 @@ export async function requestRankingMatviewRefresh(
     windowMs = COALESCE_WINDOW_MS,
     clock = () => Date.now(),
     nowFn = () => new Date(),
+    testNowFn,
     setTimer = setTimeout,
-    refresh = (client, opts) => refreshRankingMatviewsGated(client, { ...opts, clock, heartbeatNowFn: nowFn }),
+    refresh = (client, opts) => refreshRankingMatviewsGated(client, { ...opts, clock, heartbeatNowFn: nowFn, testNowFn }),
     logger = console,
   } = {},
 ) {
   let state = coalesceState.get(supabase);
   if (!state) {
-    state = { lastStartedAt: -Infinity, timer: null };
+    state = { timer: null };
     coalesceState.set(supabase, state);
   }
   if (state.timer) return "coalesced";
-  const wait = state.lastStartedAt + windowMs - clock();
-  if (wait > 0) {
-    state.timer = setTimer(() => {
-      state.timer = null;
-      state.lastStartedAt = clock();
-      Promise.resolve()
-        .then(() => refresh(supabase, { captureExceptionFn, now: nowFn(), logger }))
-        .catch((err) => logger.warn?.(`⚠️  coalesced ranking refresh failed (cron catches it): ${err.message}`));
-    }, wait);
-    state.timer?.unref?.();
-    return "coalesced";
-  }
-  state.lastStartedAt = clock();
-  try {
-    return await refresh(supabase, { captureExceptionFn, now: nowFn(), logger });
-  } catch (err) {
-    // best-effort: resultaterne er skrevet; refreshRankingMatviewsSafe capturer selv, cron fanger resten.
-    logger.warn?.(`⚠️  ranking refresh failed (cron catches it): ${err.message}`);
-    return false;
-  }
+  state.timer = setTimer(() => {
+    state.timer = null;
+    Promise.resolve()
+      .then(() => refresh(supabase, { captureExceptionFn, now: nowFn(), logger }))
+      .catch((err) => logger.warn?.(`⚠️  coalesced ranking refresh failed (cron catches it): ${err.message}`));
+  }, windowMs);
+  state.timer?.unref?.();
+  return "coalesced";
 }

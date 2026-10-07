@@ -61,6 +61,11 @@
 //    aldrig kan bytte indbyrdes CP-orden. Holdspillet er — som i v3 — en
 //    kanal MELLEM roller, ikke stoej inden for en rolle.
 //
+// #3460 (KUN orders_gc_v3): garanti 2's loft er ikke laengere ens for alle
+// trin — "Spar kraefter" giver altid halv stoette, ogsaa med mange hjaelpere
+// (reducedEffortCeiling). Garantierne ovenfor staar uaendret; legacy/v1/v2 er
+// byte-identiske.
+//
 // ── KRAEVER HOLD-ID ──────────────────────────────────────────────────────────
 // `Entrant.team_id` er valgfrit (types.ts). Uden det er der intet hold, og
 // mekanikken er en eksakt no-op: rollen alene er IKKE nok, praecis som v3's
@@ -202,6 +207,58 @@ export function countSupportingWorkers(
 }
 
 /**
+ * #3460 (KUN orders_gc_v3): hvor meget af en hjaelpers pris der taeller som
+ * "fuld pris"-last, 0..1. `normal`/`protect` (fuld pris) = 1; `save`/
+ * `grupetto` (den halve pris) = 0; mellemtrin skalerer lineaert. Bruges kun af
+ * `reducedEffortCeiling`. Ukendt effort -> fuld pris (som helperCostMultiplier).
+ *
+ * KOBLING TIL PRISEN: "halv" laeses bevidst fra `effortCostMultiplier.save`
+ * (tuning.ts) — samme tal som spar-hjaelperens PRIS. Under orders_gc_v3 styrer
+ * det tal derfor ogsaa stoetteloftet: kalibreres prisen paa Spar kraefter om,
+ * flytter loftet sig med (#3460).
+ */
+export function fullPriceWeight(
+  effort: EffortLevel | undefined,
+  tuning: TeamPlayTuning = TEAM_PLAY_EXTRA_TUNING,
+): number {
+  const floor = clamp(tuning.effortCostMultiplier.save, 0, 1);
+  if (floor >= 1) return 1;
+  return clamp((helperCostMultiplier(effort, tuning) - floor) / (1 - floor), 0, 1);
+}
+
+/**
+ * #3460 (KUN orders_gc_v3): "Spar kraefter giver altid halv stoette" — halveringen
+ * gaelder EFTER loftet. Loftet er fuldt (`ceiling`) kun naar hjaelpere paa fuld
+ * pris selv baerer det; et hold der udelukkende sparer kan hoejst naa
+ * `ceiling x save-multiplikatoren`, ogsaa med mange hjaelpere. Mellem de to
+ * skalerer loftet jaevnt med hvor meget fuld-pris-hjaelperne ALENE kunne give
+ * (`fullPriceBonus`: deres pris x effektivitet x stoette-andel regnet paa
+ * fuld-pris-hjaelpernes antal, som andel af `ceiling`).
+ *
+ * Det er bevidst en ABSOLUT last og ikke en andel af holdet: en andel ville
+ * lade en ekstra save-hjaelper SAENKE stoetten paa et hold af normal-hjaelpere.
+ * Her er loftet monotont ikke-faldende i enhver hjaelper og i ethvert trin
+ * (last og antal vokser kun), saa en ekstra hjaelper — uanset trin — aldrig faar
+ * stoetten til at falde. Og det er aldrig over `ceiling`, saa garanti 2
+ * (bounded) holder. For et rent normal-hold er resultatet uaendret: bonussen
+ * er da hoejst `fullPriceBonus`, som aldrig overstiger det regnede loft.
+ *
+ * KOBLING TIL PRISEN: gulvet ("halvt loft") er `effortCostMultiplier.save`
+ * (tuning.ts), samme tal som spar-hjaelperens PRIS. Under orders_gc_v3 flytter
+ * en omkalibrering af den pris derfor ogsaa dette loft (#3460).
+ */
+export function reducedEffortCeiling(
+  ceiling: number,
+  fullPriceBonus: number,
+  tuning: TeamPlayTuning = TEAM_PLAY_EXTRA_TUNING,
+): number {
+  if (!(ceiling > 0)) return 0;
+  const floor = clamp(tuning.effortCostMultiplier.save, 0, 1);
+  const load = clamp(fullPriceBonus / ceiling, 0, 1);
+  return ceiling * (floor + (1 - floor) * load);
+}
+
+/**
  * Den BESKYTTEDE rytters rolle paa denne etapetype (v3's `teamComponent`
  * 1:1): paa flade etaper er det sprint-kaptajnen, ellers kaptajnen — og
  * hver af dem falder tilbage paa den anden hvis holdet ikke har den.
@@ -307,6 +364,7 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
   if (segmentShare <= 0) return { state, events: [] };
 
   const profileType = ctx.route.profile_type;
+  const ordersGcV3 = ctx.ordersGcV3 === true;
   /** rider_id -> signeret CP-fraktion dette segment (negativ = pris, positiv = lae). */
   const deltas = new Map<string, number>();
 
@@ -318,6 +376,10 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
       //    monotoni): to hjaelpere med samme rolle og effort bevarer deres
       //    indbyrdes CP-orden uanset hvor haardt holdet arbejder.
       let paidTotal = 0;
+      // #3460 (KUN orders_gc_v3): prisen betalt til fuld pris, og hvor mange
+      // fuld-pris-hjaelpere der staar bag den.
+      let fullPricePaid = 0;
+      let fullPriceCount = 0;
       for (const workerId of team.workerIds) {
         const entrant = ctx.entrants[workerId];
         if (!entrant) continue;
@@ -327,6 +389,11 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
         const paid = Math.max(0, fraction * helperCostMultiplier(entrant.effort, tuning) * segmentShare);
         if (paid <= 0) continue;
         paidTotal += paid;
+        if (ordersGcV3) {
+          const weight = fullPriceWeight(entrant.effort, tuning);
+          fullPricePaid += paid * weight;
+          fullPriceCount += weight;
+        }
         deltas.set(workerId, (deltas.get(workerId) ?? 0) - paid);
       }
 
@@ -343,9 +410,15 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
 
       // Garanti 1 (bevarelse): bonussen kan aldrig overstige det holdet
       // paadrog sig, ganget med transfer-effektiviteten.
-      const fromTeam = paidTotal * clamp(tuning.transferEfficiency, 0, 1) * share;
+      const efficiency = clamp(tuning.transferEfficiency, 0, 1);
+      const fromTeam = paidTotal * efficiency * share;
       // Garanti 2 (bounded): og aldrig kaptajnens eget etape-loft.
-      const ceiling = tuning.captainMaxBonusFraction * segmentShare;
+      const fullCeiling = tuning.captainMaxBonusFraction * segmentShare;
+      // #3460 (KUN orders_gc_v3): halveringen af "Spar kraefter" gaelder EFTER
+      // loftet (reducedEffortCeiling). Legacy/v1/v2 beholder det fulde loft.
+      const ceiling = ordersGcV3
+        ? reducedEffortCeiling(fullCeiling, fullPricePaid * efficiency * supportShare(fullPriceCount, tuning), tuning)
+        : fullCeiling;
       // Garanti 3: intet fortegns-skift — en bonus er aldrig en straf.
       const bonus = Math.max(0, Math.min(fromTeam, ceiling));
       if (bonus <= 0) continue;

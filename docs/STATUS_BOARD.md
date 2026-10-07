@@ -4,42 +4,48 @@
 > Kilde: `gh pr list` / `gh issue list` (live) + [`docs/FEATURE_REGISTRY.yml`](FEATURE_REGISTRY.yml)
 > Regenerér: `node scripts/generate-status-board.mjs`
 
-80 features i FEATURE_REGISTRY.yml: live 57 · beta 3 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2.
+87 features i FEATURE_REGISTRY.yml: live 67 · beta 3 · dormant 3 · building 9 · spec 1 · idea 2 · retired 2.
 
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #6053 feat(training): Programs - pick rider or group first, then the program (#6035) (0d) — groen
-- #6128 fix(market): annullér åbne tilbud atomisk ved holdskifte (#6115) (0d) — groen
+- #6053 feat(training): Programs - pick rider or group first, then the program (#6035) (3d) — groen
+- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (0d) — groen
+- #6282 fix(ops): fair verification places by runtime and wave priority (0d) — DIRTY
+- #6198 chore(5864): dry-run + ejer-gated haandhaevelse af udloebne kontrakter (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
 
-- #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (117d)
-- #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (117d)
-- #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (116d)
-- #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (115d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (107d)
-- #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (82d)
-- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (79d)
-- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (76d)
-- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (72d)
-- #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (70d)
-- #2887 [feature/balance] Sportsdirektør: gør senior-træningsstatten meningsfuld (påvirker den de… (70d)
-- #2991 season_grand_tour_rider kan ingen menneskemanager opnå: Grand Tours er Division-1-only og… (69d)
-- #3050 [feature] Venskabsløb / custom turneringer på tværs af divisioner (spiller-oprettede sim-… (68d)
-- #3147 [feature] Sponsor race-day-udbetalinger løbende i stedet for klumpsum ved sæsonslut (65d)
-- #3413 [balance] Udbrudsforsøg er gratis (ingen fatigue, ingen placeringsrisiko) — 2 spillere hæ… (58d)
-- …og 44 mere
+- #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (120d)
+- #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (120d)
+- #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (119d)
+- #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (118d)
+- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (110d)
+- #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (85d)
+- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (82d)
+- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (79d)
+- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (75d)
+- #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (73d)
+- #2887 [feature/balance] Sportsdirektør: gør senior-træningsstatten meningsfuld (påvirker den de… (73d)
+- #2991 season_grand_tour_rider kan ingen menneskemanager opnå: Grand Tours er Division-1-only og… (73d)
+- #3050 [feature] Venskabsløb / custom turneringer på tværs af divisioner (spiller-oprettede sim-… (72d)
+- #3147 [feature] Sponsor race-day-udbetalinger løbende i stedet for klumpsum ved sæsonslut (68d)
+- #3413 [balance] Udbrudsforsøg er gratis (ingen fatigue, ingen placeringsrisiko) — 2 spillere hæ… (61d)
+- …og 43 mere
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- #6128 fix(market): annullér åbne tilbud atomisk ved holdskifte (#6115) (0d) — groen
+- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
-- #5827 5268 rating-neutral mental ability dry run V3 (5d) — groen
+- #5827 5268 rating-neutral mental ability dry run V3 (8d) — groen
+- #6136 fix(watchdog): bound result metadata with SQL summaries (#6102) (2d) — DIRTY
+- #6170 test(loadtest): fail closed on staging data prerequisites (#5904) (0d) — groen
+- #6297 draft(ops): fail-closed staging refresh gates (#6229) (0d) — groen
+- #6289 chore(frontend): Tailwind 4 (tailwindcss@4.3.3 + @tailwindcss/vite) (0d) — roed
 
 **Ikke-draft med roed tilstand:**
 
@@ -48,38 +54,39 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
 
-- #419 Discord: Inviter Carl-bot + Dyno + konfigurér auto-mod (140d)
-- #428 [community] Fast ugentlig kommunikations-rytme (Man/Ons/Soen) - LOEBENDE opgave (140d)
-- #481 Brand identity overhaul — logo + design manual (once-and-for-all) (138d)
-- #658 chore(ops): Schedule check-agent-token-hygiene.ps1 as local cron (Windows Task Scheduler) (131d)
-- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (130d)
-- #931 [Epic] Træningssystem — nøglerytterplaner først, individuel dybde senere (123d)
-- #932 [Epic] Ungdomsakademi — intake, udvikling, promotion og ungdomsauktion (123d)
-- #954 [Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score) (123d)
-- #994 [ops] Harness-oprettede worktrees mangler node_modules + .env (auto-setup hook/script) (122d)
-- #1136 [Epic] Progression & livscyklus — rytterudvikling, træning, ungdom (samler #930/#931/#932… (118d)
-- #1140 Strømlin ny-spiller-onboarding til ét sammenhængende flow (konsolidér 6+ elementer) (118d)
-- #1299 Dynamiske OG share-billeder via @vercel/og (etaperesultat-kort) — før 20/6-relaunch (114d)
-- #1407 SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc (110d)
-- #1441 Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer (108d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (107d)
-- …og 646 mere
+- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (134d)
+- #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (108d)
+- #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (105d)
+- #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (81d)
+- #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (79d)
+- #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (77d)
+- #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (75d)
+- #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (75d)
+- #2884 [feature] Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vind… (73d)
+- #3154 [ops] Ejer-direktiv 26/7: backlog ned til ~200 åbne issues på 7-14 dage + fuld prioriteri… (68d)
+- #3426 [balance] Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjerg… (61d)
+- #3461 [bug/balance] Restitutionens timing: 'Træn i dag' om morgenen brænder dagens eneste resti… (61d)
+- #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (60d)
+- #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (58d)
+- #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (50d)
+- …og 699 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
 
-- #4629 [design] Traeningsprogrammer: ugeplan med session pr. ugedag + 10-25 default-programmer (… (31d)
-- #6000 [træning] Træningsgrupper: én beslutning for flere ryttere (ejer 1/10) (2d)
-- #6006 [bug/brand] Train now (beta) træner kun 10 af 45 ryttere: autopick-hold behandles som om… (2d)
-- #5124 [mobil] D-047-standarden til de fire haandrullede tabeller: Auktioner, Transferlisten, Da… (23d)
-- #5685 [traening/mobil] Et-tryks dagvalg (Hvile/Restitution/Pas) paa rytterraekken paa telefonen… (9d)
-- #6027 [træning] Train now giver ingen synlig respons: rapporten skjuler løbsdag 1-4 indtil dato… (2d)
-- #5947 [bug] Udviklingshistorikken: gårsdagens stigninger mangler hos nogle ryttere, andre steg… (4d)
-- #5933 [træning] Trætheds-prognose i rytterkortet: 'Træthed i aften: ca. X', opdateres live når… (4d)
-- #5932 [træning] De 35 felter (7 ugedage × 5 løbsdage) åbnes for alle: legal frihed til at styre… (4d)
-- #5620 [feature] Auto-hvile ved selvvalgt træthedsgrænse, retur til valgt træning næste dag (smu… (9d)
-- #6061 [bug] Aftentræningen sætter samme ryttere i karantæne dag efter dag - 2-4 hold afregnes a… (1d)
-- #4854 [traening] D3: Traetheds-graense - holdregel plus undtagelse pr. rytter (ejer-go 6/9) (28d)
-- #4847 [træning] "Træn nu" tilbage uden bonus: tidsuafhængigt resultat, dagen afgøres i begge re… (28d)
-- #4753 [bug/HOEJ] 4 puljer staar paa 25 hold - 13 AI-hold permanent utrimbare af doede transfer_… (29d)
-- #3643 [ux] Træningssiden på mobil: rework til langt højere standard (ejer-mandat 12/8) (53d)
+- #4629 [design] Traeningsprogrammer: ugeplan med session pr. ugedag + 10-25 default-programmer (… (34d)
+- #6000 [træning] Træningsgrupper: én beslutning for flere ryttere (ejer 1/10) (5d)
+- #6006 [bug/brand] Train now (beta) træner kun 10 af 45 ryttere: autopick-hold behandles som om… (5d)
+- #6027 [træning] Train now giver ingen synlig respons: rapporten skjuler løbsdag 1-4 indtil dato… (5d)
+- #5947 [bug] Udviklingshistorikken: gårsdagens stigninger mangler hos nogle ryttere, andre steg… (7d)
+- #4847 [træning] "Træn nu" tilbage uden bonus: tidsuafhængigt resultat, dagen afgøres i begge re… (31d)
+- #5845 [docs] Ejer-direktiv 27/9: roadmappen opdateres torsdag 1/10 (8d)
+- #3460 [bug/balance] effort er ikke koblet til kaptajnens støtte — 'Spar kræfter' er gratis, 'Ar… (61d)
+- #6219 [proposals-drift] Forslag er anvendt i prod uden at være forfremmet (1d)
+- #6174 [security] Flyt roadmap_split_item og roadmap_resync_flags bag backend (revoke fra authen… (1d)
+- #6221 [supabase-advisor-sweep] Nye advisor-fund uden for accept-listen (1d)
+- #5692 [infra] Rangliste-refresh blokerer læsere: billigere beregning, CONCURRENTLY og fælles ko… (12d)
+- #6120 [ops/dead-code] Fjern død Deadline Day-cron: læser transfer_windows hver 5. min uden funk… (3d)
+- #6095 [bug] Gem af etapetaktik overskriver alle etapers intentioner: Giro-intentioner for 17 et… (4d)
+- #5124 [mobil] D-047-standarden til de fire haandrullede tabeller: Auktioner, Transferlisten, Da… (26d)
+- …og 3 mere

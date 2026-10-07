@@ -20,7 +20,7 @@ Hvert værktøj ejer ÉT tal. Er to værktøjer uenige om "det samme", så slå 
 | Værktøj | Ejer sandheden om | Ejer IKKE | Status |
 |---|---|---|---|
 | **Postgres (Supabase)** | Tragt, aktivitet, retention, attribution, abonnementer, alle absolutte tal | Hvorfor en flade er svær at bruge | ✅ i drift |
-| **PostHog** | Produkt-funnels, retention pr. kohorte, attribution pr. pageview, ad hoc-spørgsmål via MCP | Penge (Alunta/Postgres ejer dem) | ❓ besluttet 27/8 ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)), projekt findes (EU), **0 events nogensinde**; SDK'et wires i en søster-PR. Status forbliver ❓ til den er merget |
+| **PostHog** | Kerne-rejsen som funnel (signup → `team_created` → `first_bid` → `first_race_with_own_squad` → `first_training`), D1/D7-retention på `$pageview` for identificerede brugere, ad hoc-spørgsmål via MCP | Penge (Alunta/Postgres ejer dem); absolutte bruger- og signup-tal (Postgres); session-optagelser (Clarity, ejer 6/10) | 📄 variant A (ejer 6/10, [#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)): `posthog-js-lite`, EU-cloud via `/ingest`, **cookieløs** (`persistence: "memory"`), kører for alle undtagen aktivt afviste, identify på intern UUID efter login. ❓ **0 events indtil `VITE_POSTHOG_KEY` er sat i Vercel**; backend-eventet kræver `POSTHOG_PROJECT_KEY` på Railway ([#6278](https://github.com/NicolaiDolmer/CyclingZone/issues/6278)) |
 | **GA4** | Adfærd efter landing, sessions, engagement, koblingen til Search Console | Ranking-position; absolutte brugertal | 📄 i drift, beholdes ved siden af PostHog (ejer 8/9). SPA-pageviews afhænger af en admin-toggle, se §6 |
 | **Google Search Console** | Søgning: impressions, klik, CTR, gennemsnitsposition, query-liste, indeksdækning | Adfærd efter landing; konvertering | 📄 property DNS-verificeret 30/6. Programmatisk adgang: service-konto planlagt, `scripts/gsc-report.mjs` klar, se §7 |
 | **Microsoft Clarity** | Kvalitativ friktion: replay, heatmaps, dead clicks, rage clicks, JS-fejl | Bruger- og sessionstal (se §6) | 📄 i drift. **Revurderes efter fire ugers PostHog-drift** ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)) |
@@ -31,6 +31,15 @@ Hvert værktøj ejer ÉT tal. Er to værktøjer uenige om "det samme", så slå 
 | **web-vitals til GA4** | FIELD Core Web Vitals fra rigtige brugere (LCP/INP/CLS/FCP/TTFB) | Lab-scores | 📄 i drift, gratis erstatning for betalt Speed Insights |
 | **Ahrefs (gratis)** | Backlinks + uafhængig teknisk site-audit | Keyword-volumen (betalt-only), GSC-data | ❓ MCP'en svarer "Insufficient plan" på keywords-explorer og GSC-værktøjerne |
 | **Alunta** | MRR, ARPU, churn, fakturaer | Spilleradfærd | ✅ i drift, se `docs/BILLING_STACK.md` |
+
+**PostHog, variant A i detaljer** (ejer 6/10, `docs/superpowers/specs/2026-10-06-ejer-beslutninger-stabilitet-10x.md` #2+#3) 📄:
+
+- **Cookieløs før login.** `frontend/src/lib/posthogClient.js` bygger klienten med `persistence: "memory"` og en underklasse (`memoryOnlyClass`) der også springer lite's localStorage/sessionStorage-support-probe over. SDK'et skriver altså hverken cookies, localStorage eller sessionStorage; anonym id, opt-out og event-kø dør med fanen. Vagtet runtime mod den ægte pakke i `posthogIntegration.test.js`.
+- **Ny anonym id pr. page load.** Derfor kalder `posthogIntegration.jsx` `identify(<intern UUID>)` ved HVER page load efter login (aldrig e-mail/navn), og `reset()` ved logout. Identify venter til brugerens profil er hentet, så en afvisning gemt i `users.consent_preferences` fra en anden enhed gælder før vi kobler noget til personen.
+- **Bruger-events venter på identify.** `logEvent`-spejlingen bærer bruger-id'et; kommer eventet før identify, holdes det i hukommelsen (maks 50) og sendes efter identify, så det lander på personen og ikke på en anonym id. Opt-out/reset smider køen væk.
+- **Kerne-rejsen.** `signup` og `first_bid` fandtes. Nye: `team_created` (første dashboard-load med et hold under 7 dage gammelt, kædet efter signup-flushen så rækkefølgen holder) og `first_training` (afledt i `logEvent()` af første trænings-handling, se §3). `first_race_with_own_squad` sendes **server-side** fra backend med env `POSTHOG_PROJECT_KEY` ([#6278](https://github.com/NicolaiDolmer/CyclingZone/issues/6278)), ikke fra klienten. "Tilbage dag 2/7" kræver ingen kode: det er PostHog-retention på `$pageview` for identificerede personer.
+- **Tæl first_* som unikke personer i PostHog, ikke som rå events.** Dedup-flaget `cz_first_event_v1:*` i localStorage skrives kun med analytics-ja (uændret). For en bruger der ikke har svaret på banneret skriver vi bevidst intet, så et `first_*`-event kan nå PostHog én gang pr. page load. `signup` er undtaget: dens eksisterende markør skifter værdi til `posthog_sent`, så den kun sendes én gang.
+- **Dashboard D1/D7** bygges i PostHog når der er data (kræver `VITE_POSTHOG_KEY` i Vercel). Det er et supplement; gate-D7 er stadig Postgres-kohorte-tallet i §4b.
 
 Tommelfingerregler ved konflikt:
 
@@ -43,7 +52,7 @@ Tommelfingerregler ved konflikt:
 | Kilde | MCP virker | Bemærkning |
 |---|---|---|
 | Supabase | ✅ ja, read-only SQL | Den vigtigste. Slå kolonner op i `database/schema-snapshot.json` FØR ad hoc-SQL ([#3769](https://github.com/NicolaiDolmer/CyclingZone/issues/3769)) |
-| PostHog | ✅ ja (`read-data-schema`, `execute-sql`) | Svarer, men projektet er tomt indtil SDK'et er wiret |
+| PostHog | ✅ ja (`read-data-schema`, `execute-sql`) | Svarer, men projektet er tomt indtil `VITE_POSTHOG_KEY` er sat i Vercel (SDK'et er wiret, §1a) |
 | Microsoft Clarity | ✅ ja | Dashboard-tal + session-recordings. Læs §6 om oppustningen før du citerer et tal |
 | Alunta | ✅ ja, skrivebeskyttet | Se `docs/BILLING_STACK.md` §7 |
 | Sentry | ✅ ja, plus `scripts/sentry-issues.mjs` | Scriptet er fallback når MCP'en er slået fra |
@@ -70,7 +79,9 @@ Valget gemmes to steder: `localStorage["cz_consent_v1"]` og `users.consent_prefe
 | Clarity | samme, plus `VITE_CLARITY_PROJECT_ID` | `frontend/src/lib/clarityIntegration.jsx` |
 | Vercel Web Analytics | samme, uden env-nøgle | `frontend/src/lib/vercelAnalyticsIntegration.jsx` |
 | web-vitals til GA4 | samme | `frontend/src/lib/webVitalsIntegration.jsx` |
-| `player_events` (klient) | `hasAnalyticsConsent()` læser `localStorage["cz_consent_v1"]` direkte | `frontend/src/lib/logEvent.js:30-39` |
+| **PostHog** (klient) | **Kører for alle UNDTAGEN aktivt afviste** (ejer 6/10): `isPosthogAllowed()` er falsk kun når et BESVARET samtykke har `analytics !== true`. Ubesvaret banner = kører, cookieløst. Den mest restriktive af lokal værdi og DB-værdi (`users.consent_preferences`) gælder: en afvisning ét af stederne lukker, også mens DB-skrivningen efter et klik på "afvis" stadig er undervejs. Afvisning undervejs = `optOut()` med det samme. Plus `import.meta.env.PROD` og `VITE_POSTHOG_KEY`. Intet nyt banner | `frontend/src/lib/posthogClient.js`, `frontend/src/lib/posthogIntegration.jsx` |
+| `player_events` (klient) | `hasAnalyticsConsent()` læser `localStorage["cz_consent_v1"]` direkte. **Uændret af PostHog-gaten:** Postgres-skrivningen kræver stadig et aktivt ja; kun PostHog-spejlingen i `logEvent.js` følger PostHog-gaten | `frontend/src/lib/logEvent.js` (`activeSinks()`) |
+| PostHog (server, `first_race_with_own_squad`) | Env `POSTHOG_PROJECT_KEY` på backend ([#6278](https://github.com/NicolaiDolmer/CyclingZone/issues/6278)) | backend, se #6278 |
 | Sentry | **ingen gate** | `frontend/src/lib/sentry.jsx`, `backend/instrument.mjs` |
 | Traffic beacon | **ingen gate** (cookie-fri, storage-less, kun offentlige sider) | `frontend/src/lib/trafficBeacon.js` |
 | First-touch attribution | **ingen gate** (fanges før banneret besvares, skrives først ved signup) | `frontend/src/lib/attribution.js`, på marketing-siderne `marketing/lib/attribution.ts` (samme felter, #5310) |
@@ -83,11 +94,11 @@ Alle fire browser-vendors er monteret i `AnalyticsBoundary` (`frontend/src/lib/s
 
 Ordlyden binder os. Nøglerne i `frontend/public/locales/{en,da}/banners.json`:
 
-- `consent.categories.analytics.desc`: "I anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity), where players come from (Google Analytics) and page views (Vercel Web Analytics), so I can fix bad UX."
+- `consent.categories.analytics.desc`: "I anonymously measure how the game is used: which buttons frustrate players (Microsoft Clarity), where players come from (Google Analytics) and page views (Vercel Web Analytics), so I can fix bad UX. PostHog counts page views and key steps in the game without cookies and links them to your account ID once you log in. Rejecting analytics turns PostHog off too."
 - `consent.categories.marketing.desc`: "Not used today." Kategorien er reelt ubrugt.
 - `consent.categories.email_marketing.desc`: "Occasional newsletters about major season updates or events."
 
-> ⚠️ **PostHog står ikke i teksten.** Wires PostHog under `analytics`-gaten, skal `analytics.desc` udvides i BEGGE sprog i samme PR. Ellers måler vi med et værktøj brugeren ikke har fået at vide at vi bruger.
+> **PostHog står i teksten (#4321, 6/10)**, både i banneret og i privatlivspolitikken (`privacy.json` EN+DA: dataTypes, thirdParties, cookies.outro): uden cookies, kobles til konto-id efter login, slukkes ved afvisning af analyse. Ændres gaten, skal begge tekster ændres i samme PR.
 
 ### 2d. `email_marketing` gater `race_digest`, ikke resten af mail-loopet 📄
 
@@ -106,6 +117,8 @@ Kolonnen "Kendt" = står i `KNOWN_EVENTS` (og er dermed canary-overvåget). Volu
 | Event | Kendt | Fyrer fra | Betydning |
 |---|---|---|---|
 | `signup` | ja | `logEvent.js:257` via `flushPendingSignup()` | Konto oprettet. Markøren sættes ved `signUp()` og flushes når brugeren er authenticated, fordi e-mailbekræftelse er slået til i prod |
+| `team_created` | ja | `logEvent.js` via `logTeamCreated()` fra `DashboardPage.jsx` | Kerne-rejsens "hold oprettet" ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)). Første dashboard-load med et hold oprettet inden for 7 dage (`isTeamNewlyCreated`, `teamDrafted.js`), så eksisterende brugere ikke tæller. `logFirstEvent`, kædet efter signup-flushen |
+| `first_training` | ja | `logEvent.js` (afledt i `logEvent()`) | Kerne-rejsens "første træning" ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)). Første af `TRAINING_ACTION_EVENTS` (`training_focus_set`, `_bulk`, `training_run_today`, ugeplanerne, `onboarding_step2_one_click`). Bærer `{via}`. `logFirstEvent` |
 | `onboarding_completed` | ja | `DashboardPage.jsx:810` | 4 af 4 onboarding-trin klaret. `logFirstEvent`, dedup pr. bruger |
 | `team_drafted` | ja | `logEvent.js:225` via `logTeamDrafted()` | Første gang truppen er løbsklar (mindst 8 ryttere) |
 | `first_bid` | ja | `useAuctionBidding.js:167` | Brugerens allerførste auktionsbud |
@@ -296,7 +309,7 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 | 7 | **`/admin/growth` opdateres ikke automatisk** | Dashboardet kan vise forældede tal uden at sige det | 📄 [#3453](https://github.com/NicolaiDolmer/CyclingZone/issues/3453). Snapshot-cron'en kører dagligt (`compute_daily_growth_snapshot`), men fladen har ikke en synlig friskheds-markør |
 | 8 | **`users.browser_language` er næsten tom** | ✅ målt 8/9: 4 af 263 rækker udfyldt. Kolonnen kom 3/9 og skrives KUN af `handle_new_user()` ved nye signups | 📄 [#4811](https://github.com/NicolaiDolmer/CyclingZone/issues/4811). Konsistent med kolonnens alder, ikke nødvendigvis en fejl. Sprogfordeling for eksisterende brugere skal tages fra `users.language`, ikke herfra |
 | 9 | **Sprint-metrics-snapshottet kører ikke** | `.github/workflows/sprint-metrics-snapshot.yml.disabled`. Der findes ingen automatisk historik på DAU/WAU/MAU ud over `growth_metric_snapshots` | 📄 bevidst deaktiveret. `backend/scripts/snapshot-sprint-metrics.mjs` findes og kan køres manuelt |
-| 10 | **PostHog-projektet er tomt** | 0 events nogensinde. Ethvert PostHog-tal er indtil videre ikke-eksisterende, ikke lavt | ❓ SDK'et wires i søster-PR ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)) |
+| 10 | **PostHog-projektet er tomt** | 0 events nogensinde. Ethvert PostHog-tal er indtil videre ikke-eksisterende, ikke lavt | ❓ SDK'et er wiret (variant A, §1a); ingestion starter først når `VITE_POSTHOG_KEY` er sat i Vercel ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)) |
 | 11 | ~~16 events er canary-blinde~~ **lukket 18/9** | De fyrede i prod, men stod ikke i `KNOWN_EVENTS`, så Detector E ville ikke opdage at de tørrede ud | ✅ Alle 16 tilføjet i [#5369](https://github.com/NicolaiDolmer/CyclingZone/issues/5369). 15 flyder (8 til 3.502 pr. 30 dage, målt mod prod 18/9); `academy_intake_pull` er dormant bag flag og whitelistet i Detector E. Guarden FEJLER nu på et nyt canary-blindt event |
 | 12 | **First-touch tabt på marketing-forsiden fra 14/9** | Signups via marketing-forsiden fik vores egen side som referrer og ingen UTM. Den eksterne referrer er tabt for de rækker | 🔧 [#5310](https://github.com/NicolaiDolmer/CyclingZone/issues/5310): skrive-siden rettet, læse-siden udleder UTM fra referrerens query eller viser "ukendt (tabt i marketing)". Ingen backfill. Se `docs/GROWTH_STACK.md` §3.5 |
 
@@ -317,6 +330,14 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 
 **RPC-adgang:** `get_cohort_retention`, `get_sprint_metrics` og `get_retention_scorecard_activity` er siden 6/9 kun kaldbare af `service_role` ([#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870), `database/2026-09-06-4870-revoke-metrics-rpcs.sql`). Kald dem gennem admin-endpointet, ikke fra browseren.
 
+**Roadmap-admin (#6221/#6174):** stats, del-punkt og flag-resync går gennem
+`GET /api/admin/roadmap/stats`, `POST /api/admin/roadmap/split` og
+`POST /api/admin/roadmap/resync`, alle bag backendens `requireAdmin`.
+`roadmap_admin_stats`, `roadmap_split_item` og `roadmap_resync_flags` er
+service-only efter `2026-10-06-6221-roadmap-service-rpcs.sql`; browseren har
+ingen EXECUTE-adgang, heller ikke med admin-rollen. Drift-scriptets eksisterende
+service-kald til resync bevares. Claude applies migrationen efter merge.
+
 **PostHog-MCP:** read-only under `read-data-schema` og `execute-sql`. Skriv aldrig til PostHog fra en session.
 
 **Retention på rå telemetri:** `traffic_events` og `identity_events` slettes efter 180 dage af daglige cron-job (`backend/cron.js`). `identity_events` bærer IP og user agent og er derfor personoplysninger; `traffic_events` er PII-fri, men slettes alligevel.
@@ -325,7 +346,7 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 
 | # | Sag | Blokerer |
 |---|---|---|
-| [#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321) | PostHog wires (SDK bag `analytics`-consent, reverse proxy, pageviews + kendte events spejlet). Banner-teksten skal med i samme PR | Produkt-funnels |
+| [#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321) | PostHog variant A (ejer 6/10): cookieløs, kører for alle undtagen aktivt afviste, identify efter login, kerne-rejsen. Mangler: `VITE_POSTHOG_KEY` i Vercel + D1/D7-dashboard i PostHog | Produkt-funnels |
 | [#3797](https://github.com/NicolaiDolmer/CyclingZone/issues/3797) | GSC-service-konto oprettes af ejeren, så `gsc-report.mjs` kan køre | Søgemåling |
 | [#5051](https://github.com/NicolaiDolmer/CyclingZone/issues/5051) | LTV-prisdrift 26500 mod 21200 | Troværdige penge-tal i admin |
 | [#3453](https://github.com/NicolaiDolmer/CyclingZone/issues/3453) | `/admin/growth` opdateres ikke automatisk | Tillid til dashboardet |

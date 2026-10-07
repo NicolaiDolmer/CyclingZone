@@ -164,6 +164,11 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 
 **Gotcha (fundet under 11/9-verifikationen, PR #5175):** GitHub auto-linker ethvert bart `#N` i en PR-body, kommentar eller commit — også når det bare optræder i en rapport-tabel. Det opretter en ægte "cross-referenced"-event, og fordi PR'en/kommentaren er frisk, ser issue N pludselig "linket PR-aktivt" ud — scriptets eget output ville forurene sit eget signal. Derfor render `formatReport()` altid issue-numre i backticks (`` `#N` ``, aldrig bart `#N`) — GitHub autolinker ikke inde i code spans. Samme regel bør følges i enhver fremtidig PR-body eller kommentar der lister issue-numre fra dette script.
 
+## Roadmap-flip og drift (roadmap-hub, #6152)
+- PR der lukker et issue: kør `node scripts/roadmap-flip.mjs --issue N` (dry-run, via `infisical run`). Et fund skrives i go-kortet som "flytter roadmap-punktet X til Done", så ejerens "merge" dækker flyttet. `--apply` køres efter merge, og først når funktionen er live for alle (ikke beta).
+- `node scripts/roadmap-drift.mjs` (read-only) køres ved §Aften og i mandagens styring; fund rettes samme dag eller står i go-kortet. Rapporten viser også beta-drift (punkt ude af takt med sin kontakt, fordi triggeren springer låste rækker over), og `--resync` retter den via `roadmap_resync_flags()`.
+- Ved hver ændring spillerne kan se skriver Claude et færdigt roadbook-opslag på engelsk, som ejeren selv poster (intet postes automatisk).
+
 ## Commit/PR-konvention
 - Commit-besked nævner issue: `Fix: gæld vises i Min aktivitet (#42)`
 - PR-body har `Refs #42` — brugeren lukker selv issuet efter manuel verifikation
@@ -221,13 +226,20 @@ gh issue close 42 --reason completed
 - `.github/workflows/dependabot-auto-merge.yml` — auto-mærker lav-risiko dep-PRs som auto-merge
 - `.github/workflows/dependency-review.yml` — blokerer PRs der introducerer high+ dependency vulnerabilities
 - `.github/workflows/playwright-smoke.yml` — PR-check for frontendændringer; kører mocket Playwright smoke + desktop/mobile screenshot-baselines uden live secrets
-- `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy, smoke-tester prod, upserter én ✅/❌ comment på merged PR
+- `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy og upserter én verified/failed/pending-comment pr. SHA. Pending er en afsluttet observation, aldrig release-verifikation; smoke og succesmelding kræver færdige deployments. Merge-koeen genkoerer samme run, venter paa en hoejere attempt og kræver gennemfoert smoke i den aktuelle SHA/attempt før næste merge (#6228).
 
 ### Sikkerheds-net
 
 Auto-merge fjerner IKKE de reelle gates — required status checks (`backend-tests` + `frontend-build`), `frontend-smoke` (fuld Playwright-suite) og advisory AI-review skal stadig være grønne, og high-risk-labels (`risk:med`, `risk:high`, `security`, `needs-decision`, `manual-review`) stopper mergen — FØR selve merge-skridtet køres. Det ENESTE branch protection-krav der bypasses ved merge-skridtet er `require_code_owner_reviews`, fordi det krav strukturelt aldrig kan opfyldes på en PR under ejerens egen konto (se "Auto-merge fra mobilen" herunder for hvorfor). Auto-merge er essentielt en **conditional merge-queue**: PR parker sig selv indtil betingelser opfyldt, og merger så via ejerens egen PAT — ikke en anonym bypass.
 
 Hvis CI fejler: PR forbliver åben, ingen merge sker, du får besked via GitHub-notifikation. Hvis prod-smoke-test fejler efter merge: `deploy-verify.yml` poster ❌-comment på den merged PR — du ved live er broken og kan rulle tilbage manuelt.
+
+Et deploy der stadig bygger, bliver pending efter observationens ventetid, ikke
+meldt fejlet. Koens samlede deploy-ventetid er afgrænset; ved udløb stopper den
+med AFVENTER/exit 75 og ingen næste merge. Workflow-success alene er ikke
+verificeret: koen læser GitHubs aktuelle run/attempt/job- og smoke-metadata.
+Manglende eller modstridende metadata stopper fail-closed. Ingen auto-genkoersel
+af en faktisk deployment-/probe-fejl.
 
 ### Auto-merge fra mobilen (PAT-setup, rettet #4404 5/9)
 

@@ -26,6 +26,8 @@ on:
       - 'backend/lib/**'
       - 'backend/server.js'
       - 'backend/scripts/audit-feature-liveness.js'
+      - 'backend/scripts/feature-liveness-report.js'
+      - 'backend/scripts/feature-liveness-report.test.js'
       - 'frontend/src/**'
       - '.github/workflows/feature-liveness-audit.yml'
   # #639 (Option D): run Detector C (migration-drift) after a migration lands,
@@ -111,14 +113,19 @@ jobs:
           # bare bruge ekstra Action-minutter; E er weekly-only. C er forward-guard
           # mod den præcise klasse #635 bug ramte: failed auto-migrate → manglende
           # schema_migrations-row. Kører EFTER auto-migrate er færdig, så ingen race.
+          # 6/10 (#6184/#5878): PR-runs skipper OGSAA Detector A. A kalder
+          # feature_liveness_table_counts(), der taeller raekker i alle prod-tabeller
+          # (12-17 s pr. kald). Den koerte ved hver PR-push mod prod-databasen og var
+          # en del af belastningen da Postgres frøs 6/10. A koerer kun i den ugentlige
+          # cron (mandag 04:00 UTC), hvor ingen spillere maerker den.
           SKIP_FLAG=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            SKIP_FLAG="--skip=C,E"
+            SKIP_FLAG="--skip=A,C,E"
           elif [ "${{ github.event_name }}" = "workflow_run" ]; then
             SKIP_FLAG="--skip=A,B,D,E"
           fi
           node backend/scripts/audit-feature-liveness.js $SKIP_FLAG --json > feature-liveness.json
-          node backend/scripts/audit-feature-liveness.js $SKIP_FLAG | tee feature-liveness.txt
+          node backend/scripts/feature-liveness-report.js feature-liveness.json | tee feature-liveness.txt
           total=$(node -e "const d=require('./feature-liveness.json');console.log(d.total_findings)")
           echo "total=$total" >> "$GITHUB_OUTPUT"
 

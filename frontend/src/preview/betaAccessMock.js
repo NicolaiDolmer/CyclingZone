@@ -67,6 +67,8 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_fatigue_rules", // #4854
   "season_matrix_mobile", // #5124
   "training_groups", // #6000
+  "rider_best_role_display", // #6154
+  "training_programs", // #6154
 ];
 
 function playerFlags() {

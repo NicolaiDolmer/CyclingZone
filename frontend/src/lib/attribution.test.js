@@ -249,3 +249,37 @@ test("getAttribution returnerer null uden data og ved korrupt JSON", () => {
   corrupt.setItem("cz_attribution_v1", "{not json");
   assert.equal(getAttribution(corrupt), null);
 });
+
+// CYCLINGZONE-8V: i browsere med blokeret site-data kaster selve OPSLAGET
+// `window.localStorage` (SecurityError) — ikke kun getItem/setItem. Det må
+// aldrig slippe ud, for captureFirstTouch() kører på boot i main.jsx.
+function withBlockedLocalStorage(fn) {
+  const prev = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const blocked = {
+    location: { search: "?utm_source=x", pathname: "/login", origin: "https://cyclingzone.org" },
+  };
+  Object.defineProperty(blocked, "localStorage", {
+    get() {
+      throw new Error("SecurityError: Access is denied for this document.");
+    },
+  });
+  Object.defineProperty(globalThis, "window", { value: blocked, configurable: true, writable: true });
+  const prevDoc = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "document", { value: { referrer: "" }, configurable: true, writable: true });
+  try {
+    fn();
+  } finally {
+    if (prev) Object.defineProperty(globalThis, "window", prev);
+    else delete globalThis.window;
+    if (prevDoc) Object.defineProperty(globalThis, "document", prevDoc);
+    else delete globalThis.document;
+  }
+}
+
+test("captureFirstTouch/getAttribution kaster ikke når window.localStorage-opslaget kaster (CYCLINGZONE-8V)", () => {
+  withBlockedLocalStorage(() => {
+    assert.doesNotThrow(() => captureFirstTouch());
+    assert.equal(getAttribution(), null);
+    assert.equal(getAttributionForBackend(), null);
+  });
+});

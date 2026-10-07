@@ -10,40 +10,79 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      academy_gift_claims: {
+        Row: {
+          batch: string
+          created_at: string
+          team_id: string
+        }
+        Insert: {
+          batch: string
+          created_at?: string
+          team_id: string
+        }
+        Update: {
+          batch?: string
+          created_at?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "academy_gift_claims_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "academy_gift_claims_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       academy_graduation: {
         Row: {
           created_at: string
           deadline: string
+          from_squad: string | null
           id: string
           resolved_at: string | null
           rider_id: string
           season_id: string
           status: string
           team_id: string
+          to_squad: string | null
         }
         Insert: {
           created_at?: string
           deadline: string
+          from_squad?: string | null
           id?: string
           resolved_at?: string | null
           rider_id: string
           season_id: string
           status?: string
           team_id: string
+          to_squad?: string | null
         }
         Update: {
           created_at?: string
           deadline?: string
+          from_squad?: string | null
           id?: string
           resolved_at?: string | null
           rider_id?: string
           season_id?: string
           status?: string
           team_id?: string
+          to_squad?: string | null
         }
         Relationships: [
           {
@@ -92,6 +131,7 @@ export type Database = {
           rider_id: string
           season_id: string
           signing_fee: number | null
+          source: string
           status: string
           team_id: string
         }
@@ -103,6 +143,7 @@ export type Database = {
           rider_id: string
           season_id: string
           signing_fee?: number | null
+          source?: string
           status?: string
           team_id: string
         }
@@ -114,6 +155,7 @@ export type Database = {
           rider_id?: string
           season_id?: string
           signing_fee?: number | null
+          source?: string
           status?: string
           team_id?: string
         }
@@ -714,6 +756,48 @@ export type Database = {
           },
         ]
       }
+      beta_requests: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beta_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beta_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_consequences: {
         Row: {
           created_at: string
@@ -1254,6 +1338,7 @@ export type Database = {
         Row: {
           board_id: string | null
           created_at: string
+          goal_states: Json | null
           goals_met: number
           goals_total: number
           id: string
@@ -1272,6 +1357,7 @@ export type Database = {
         Insert: {
           board_id?: string | null
           created_at?: string
+          goal_states?: Json | null
           goals_met?: number
           goals_total?: number
           id?: string
@@ -1290,6 +1376,7 @@ export type Database = {
         Update: {
           board_id?: string | null
           created_at?: string
+          goal_states?: Json | null
           goals_met?: number
           goals_total?: number
           id?: string
@@ -1366,6 +1453,7 @@ export type Database = {
       }
       board_vision_milestones: {
         Row: {
+          achieved_early: boolean
           confidence_delta: number | null
           created_at: string
           evaluated_at: string | null
@@ -1374,6 +1462,7 @@ export type Database = {
           is_headline: boolean
           milestone_key: string
           origin: string
+          slot_open: boolean
           status: string
           target_season_number: number
           team_id: string
@@ -1381,6 +1470,7 @@ export type Database = {
           weight: number
         }
         Insert: {
+          achieved_early?: boolean
           confidence_delta?: number | null
           created_at?: string
           evaluated_at?: string | null
@@ -1389,6 +1479,7 @@ export type Database = {
           is_headline?: boolean
           milestone_key: string
           origin?: string
+          slot_open?: boolean
           status?: string
           target_season_number: number
           team_id: string
@@ -1396,6 +1487,7 @@ export type Database = {
           weight?: number
         }
         Update: {
+          achieved_early?: boolean
           confidence_delta?: number | null
           created_at?: string
           evaluated_at?: string | null
@@ -1404,6 +1496,7 @@ export type Database = {
           is_headline?: boolean
           milestone_key?: string
           origin?: string
+          slot_open?: boolean
           status?: string
           target_season_number?: number
           team_id?: string
@@ -1468,6 +1561,27 @@ export type Database = {
           reputation?: number
           reputation_seed?: number
           talent_ceiling?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      cron_checkins: {
+        Row: {
+          expected_cadence_seconds: number
+          job_slug: string
+          last_checkin_at: string
+          updated_at: string
+        }
+        Insert: {
+          expected_cadence_seconds: number
+          job_slug: string
+          last_checkin_at?: string
+          updated_at?: string
+        }
+        Update: {
+          expected_cadence_seconds?: number
+          job_slug?: string
+          last_checkin_at?: string
           updated_at?: string
         }
         Relationships: []
@@ -1610,6 +1724,203 @@ export type Database = {
         }
         Relationships: []
       }
+      dm_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      dm_conversation_hides: {
+        Row: {
+          conversation_id: string
+          hidden_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          hidden_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          hidden_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_conversation_hides_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          participant_a: string
+          participant_b: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_a: string
+          participant_b: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          participant_a?: string
+          participant_b?: string
+        }
+        Relationships: []
+      }
+      dm_messages: {
+        Row: {
+          body: string
+          context: Json | null
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          context?: Json | null
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          context?: Json | null
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_reads: {
+        Row: {
+          conversation_id: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          last_read_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          last_read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_reads_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_reports: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_reports_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "dm_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_events: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json | null
+          provider_event_id: string
+          provider_id: string | null
+          recipient: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          provider_event_id: string
+          provider_id?: string | null
+          recipient?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          provider_event_id?: string
+          provider_id?: string | null
+          recipient?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       email_log: {
         Row: {
           attempts: number
@@ -1652,6 +1963,39 @@ export type Database = {
           status?: string
           team_id?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      email_sweep_runs: {
+        Row: {
+          candidates: number
+          created_at: string
+          email_type: string
+          failed: number
+          id: string
+          sent: number
+          skipped: number
+          stage: string | null
+        }
+        Insert: {
+          candidates?: number
+          created_at?: string
+          email_type: string
+          failed?: number
+          id?: string
+          sent?: number
+          skipped?: number
+          stage?: string | null
+        }
+        Update: {
+          candidates?: number
+          created_at?: string
+          email_type?: string
+          failed?: number
+          id?: string
+          sent?: number
+          skipped?: number
+          stage?: string | null
         }
         Relationships: []
       }
@@ -1897,6 +2241,39 @@ export type Database = {
           },
         ]
       }
+      forum_category_mutes: {
+        Row: {
+          category_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      forum_category_post_roles: {
+        Row: {
+          category: string
+          post_role: string
+        }
+        Insert: {
+          category: string
+          post_role?: string
+        }
+        Update: {
+          category?: string
+          post_role?: string
+        }
+        Relationships: []
+      }
       forum_poll_options: {
         Row: {
           id: string
@@ -1970,13 +2347,17 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           id: string
+          images: Json
           is_pinned: boolean
           last_reply_at: string | null
+          last_reply_team_id: string | null
+          last_reply_user_id: string | null
           reply_count: number
           seq: number
           team_id: string | null
           title: string
           user_id: string
+          view_count: number
         }
         Insert: {
           body: string
@@ -1985,13 +2366,17 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          images?: Json
           is_pinned?: boolean
           last_reply_at?: string | null
+          last_reply_team_id?: string | null
+          last_reply_user_id?: string | null
           reply_count?: number
           seq?: number
           team_id?: string | null
           title: string
           user_id: string
+          view_count?: number
         }
         Update: {
           body?: string
@@ -2000,15 +2385,33 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          images?: Json
           is_pinned?: boolean
           last_reply_at?: string | null
+          last_reply_team_id?: string | null
+          last_reply_user_id?: string | null
           reply_count?: number
           seq?: number
           team_id?: string | null
           title?: string
           user_id?: string
+          view_count?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "forum_posts_last_reply_team_id_fkey"
+            columns: ["last_reply_team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "forum_posts_last_reply_team_id_fkey"
+            columns: ["last_reply_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "forum_posts_team_id_fkey"
             columns: ["team_id"]
@@ -2053,8 +2456,10 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           id: string
+          images: Json
           post_id: string
           quoted_reply_id: string | null
+          quotes_post: boolean
           seq: number
           team_id: string | null
           user_id: string
@@ -2065,8 +2470,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          images?: Json
           post_id: string
           quoted_reply_id?: string | null
+          quotes_post?: boolean
           seq?: number
           team_id?: string | null
           user_id: string
@@ -2077,8 +2484,10 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           id?: string
+          images?: Json
           post_id?: string
           quoted_reply_id?: string | null
+          quotes_post?: boolean
           seq?: number
           team_id?: string | null
           user_id?: string
@@ -2172,6 +2581,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "forum_thread_reads_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_thread_views: {
+        Row: {
+          id: number
+          post_id: string
+          user_id: string
+          view_date: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: number
+          post_id: string
+          user_id: string
+          view_date?: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: number
+          post_id?: string
+          user_id?: string
+          view_date?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_thread_views_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "forum_posts"
@@ -2578,6 +3019,120 @@ export type Database = {
           },
         ]
       }
+      known_issue_reports: {
+        Row: {
+          created_at: string
+          issue_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          issue_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          issue_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "known_issue_reports_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "known_issue_scores"
+            referencedColumns: ["issue_id"]
+          },
+          {
+            foreignKeyName: "known_issue_reports_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "known_issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      known_issue_updates: {
+        Row: {
+          body_da: string
+          body_en: string
+          created_at: string
+          id: string
+          issue_id: string
+        }
+        Insert: {
+          body_da: string
+          body_en: string
+          created_at?: string
+          id?: string
+          issue_id: string
+        }
+        Update: {
+          body_da?: string
+          body_en?: string
+          created_at?: string
+          id?: string
+          issue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "known_issue_updates_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "known_issue_scores"
+            referencedColumns: ["issue_id"]
+          },
+          {
+            foreignKeyName: "known_issue_updates_issue_id_fkey"
+            columns: ["issue_id"]
+            isOneToOne: false
+            referencedRelation: "known_issues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      known_issues: {
+        Row: {
+          area: string
+          closed_at: string | null
+          created_at: string
+          id: string
+          issue_ref: number | null
+          published: boolean
+          sort_order: number
+          status: string
+          title_da: string
+          title_en: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          issue_ref?: number | null
+          published?: boolean
+          sort_order?: number
+          status?: string
+          title_da: string
+          title_en: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          issue_ref?: number | null
+          published?: boolean
+          sort_order?: number
+          status?: string
+          title_da?: string
+          title_en?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       launch_waitlist: {
         Row: {
           consent_given_at: string
@@ -2616,18 +3171,24 @@ export type Database = {
           id: number
           label: string
           pool_index: number
+          retired_at: string | null
+          squad: string
           tier: number
         }
         Insert: {
           id?: number
           label: string
           pool_index: number
+          retired_at?: string | null
+          squad?: string
           tier: number
         }
         Update: {
           id?: number
           label?: string
           pool_index?: number
+          retired_at?: string | null
+          squad?: string
           tier?: number
         }
         Relationships: []
@@ -3266,6 +3827,7 @@ export type Database = {
           created_at: string
           id: string
           message: string
+          metadata: Json | null
           page_path: string | null
           replied_at: string | null
           replied_by: string | null
@@ -3283,6 +3845,7 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          metadata?: Json | null
           page_path?: string | null
           replied_at?: string | null
           replied_by?: string | null
@@ -3300,6 +3863,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          metadata?: Json | null
           page_path?: string | null
           replied_at?: string | null
           replied_by?: string | null
@@ -3398,8 +3962,42 @@ export type Database = {
         }
         Relationships: []
       }
+      race_day_participation: {
+        Row: {
+          game_day: number
+          race_id: string
+          rider_id: string
+          season_id: string
+          stage_number: number
+        }
+        Insert: {
+          game_day: number
+          race_id: string
+          rider_id: string
+          season_id: string
+          stage_number: number
+        }
+        Update: {
+          game_day?: number
+          race_id?: string
+          rider_id?: string
+          season_id?: string
+          stage_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_day_participation_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       race_entries: {
         Row: {
+          auto_filled_at: string | null
+          auto_filled_source: string | null
           binding_span: unknown
           created_at: string
           is_auto_filled: boolean
@@ -3409,6 +4007,8 @@ export type Database = {
           team_id: string | null
         }
         Insert: {
+          auto_filled_at?: string | null
+          auto_filled_source?: string | null
           binding_span?: unknown
           created_at?: string
           is_auto_filled?: boolean
@@ -3418,6 +4018,8 @@ export type Database = {
           team_id?: string | null
         }
         Update: {
+          auto_filled_at?: string | null
+          auto_filled_source?: string | null
           binding_span?: unknown
           created_at?: string
           is_auto_filled?: boolean
@@ -3529,6 +4131,72 @@ export type Database = {
           },
         ]
       }
+      race_entry_generator_runs: {
+        Row: {
+          created_at: string
+          entries_written: number
+          error: string | null
+          finished_at: string | null
+          id: string
+          late_fill_hours: number | null
+          mode: string | null
+          races_considered: number
+          started_at: string
+          teams_filled: number
+        }
+        Insert: {
+          created_at?: string
+          entries_written?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          late_fill_hours?: number | null
+          mode?: string | null
+          races_considered?: number
+          started_at: string
+          teams_filled?: number
+        }
+        Update: {
+          created_at?: string
+          entries_written?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          late_fill_hours?: number | null
+          mode?: string | null
+          races_considered?: number
+          started_at?: string
+          teams_filled?: number
+        }
+        Relationships: []
+      }
+      race_entry_overrides: {
+        Row: {
+          auto_source: string | null
+          had_auto_filled: boolean
+          id: string
+          overridden_at: string
+          race_id: string
+          team_id: string
+        }
+        Insert: {
+          auto_source?: string | null
+          had_auto_filled?: boolean
+          id?: string
+          overridden_at?: string
+          race_id: string
+          team_id: string
+        }
+        Update: {
+          auto_source?: string | null
+          had_auto_filled?: boolean
+          id?: string
+          overridden_at?: string
+          race_id?: string
+          team_id?: string
+        }
+        Relationships: []
+      }
       race_incidents: {
         Row: {
           created_at: string
@@ -3538,6 +4206,7 @@ export type Database = {
           outcome: string
           race_id: string
           rider_id: string
+          severity: string | null
           stage_number: number
           time_loss_seconds: number | null
         }
@@ -3549,6 +4218,7 @@ export type Database = {
           outcome: string
           race_id: string
           rider_id: string
+          severity?: string | null
           stage_number: number
           time_loss_seconds?: number | null
         }
@@ -3560,6 +4230,7 @@ export type Database = {
           outcome?: string
           race_id?: string
           rider_id?: string
+          severity?: string | null
           stage_number?: number
           time_loss_seconds?: number | null
         }
@@ -3576,6 +4247,71 @@ export type Database = {
             columns: ["rider_id"]
             isOneToOne: false
             referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      race_notify_outbox: {
+        Row: {
+          attempts: number
+          channel_key: string
+          created_at: string
+          failed_at: string | null
+          id: string
+          last_error: string | null
+          last_status: number | null
+          lease_expires_at: string | null
+          leased_at: string | null
+          message_type: string
+          next_attempt_at: string
+          payload: Json
+          race_id: string
+          sent_at: string | null
+          status: string
+          webhook_url: string
+        }
+        Insert: {
+          attempts?: number
+          channel_key: string
+          created_at?: string
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_status?: number | null
+          lease_expires_at?: string | null
+          leased_at?: string | null
+          message_type: string
+          next_attempt_at?: string
+          payload: Json
+          race_id: string
+          sent_at?: string | null
+          status?: string
+          webhook_url: string
+        }
+        Update: {
+          attempts?: number
+          channel_key?: string
+          created_at?: string
+          failed_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_status?: number | null
+          lease_expires_at?: string | null
+          leased_at?: string | null
+          message_type?: string
+          next_attempt_at?: string
+          payload?: Json
+          race_id?: string
+          sent_at?: string | null
+          status?: string
+          webhook_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_notify_outbox_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
             referencedColumns: ["id"]
           },
         ]
@@ -3690,6 +4426,7 @@ export type Database = {
           race_class: string
           race_type: string
           retired_at: string | null
+          squad: string
           stages: number
           terrain_archetype: string | null
           updated_at: string
@@ -3704,6 +4441,7 @@ export type Database = {
           race_class: string
           race_type: string
           retired_at?: string | null
+          squad?: string
           stages: number
           terrain_archetype?: string | null
           updated_at?: string
@@ -3718,6 +4456,7 @@ export type Database = {
           race_class?: string
           race_type?: string
           retired_at?: string | null
+          squad?: string
           stages?: number
           terrain_archetype?: string | null
           updated_at?: string
@@ -3728,6 +4467,7 @@ export type Database = {
         Row: {
           bonus_seconds: number | null
           breakaway_caught: boolean
+          breakaway_dropped: boolean | null
           entrant_key: string | null
           entrant_uid: string | null
           finish_time: string | null
@@ -3750,6 +4490,7 @@ export type Database = {
         Insert: {
           bonus_seconds?: number | null
           breakaway_caught?: boolean
+          breakaway_dropped?: boolean | null
           entrant_key?: string | null
           entrant_uid?: string | null
           finish_time?: string | null
@@ -3772,6 +4513,7 @@ export type Database = {
         Update: {
           bonus_seconds?: number | null
           breakaway_caught?: boolean
+          breakaway_dropped?: boolean | null
           entrant_key?: string | null
           entrant_uid?: string | null
           finish_time?: string | null
@@ -3853,6 +4595,7 @@ export type Database = {
       }
       race_simulation_runs: {
         Row: {
+          condition_load_snapshot: Json | null
           created_at: string
           engine_version: number
           entrant_snapshot: Json
@@ -3865,6 +4608,7 @@ export type Database = {
           stage_number: number
         }
         Insert: {
+          condition_load_snapshot?: Json | null
           created_at?: string
           engine_version?: number
           entrant_snapshot: Json
@@ -3877,6 +4621,7 @@ export type Database = {
           stage_number?: number
         }
         Update: {
+          condition_load_snapshot?: Json | null
           created_at?: string
           engine_version?: number
           entrant_snapshot?: Json
@@ -4303,6 +5048,9 @@ export type Database = {
         Row: {
           created_at: string | null
           edition_year: number | null
+          engine_rules_revision: string | null
+          finalize_state: Json | null
+          finalize_updated_at: string | null
           game_day_start: number | null
           id: string
           league_division_id: number | null
@@ -4313,6 +5061,7 @@ export type Database = {
           race_type: string | null
           scheduled_for: string | null
           season_id: string | null
+          squad: string
           stages: number | null
           stages_completed: number
           status: string | null
@@ -4320,6 +5069,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           edition_year?: number | null
+          engine_rules_revision?: string | null
+          finalize_state?: Json | null
+          finalize_updated_at?: string | null
           game_day_start?: number | null
           id?: string
           league_division_id?: number | null
@@ -4330,6 +5082,7 @@ export type Database = {
           race_type?: string | null
           scheduled_for?: string | null
           season_id?: string | null
+          squad?: string
           stages?: number | null
           stages_completed?: number
           status?: string | null
@@ -4337,6 +5090,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           edition_year?: number | null
+          engine_rules_revision?: string | null
+          finalize_state?: Json | null
+          finalize_updated_at?: string | null
           game_day_start?: number | null
           id?: string
           league_division_id?: number | null
@@ -4347,6 +5103,7 @@ export type Database = {
           race_type?: string | null
           scheduled_for?: string | null
           season_id?: string | null
+          squad?: string
           stages?: number | null
           stages_completed?: number
           status?: string | null
@@ -4375,6 +5132,64 @@ export type Database = {
           },
           {
             foreignKeyName: "races_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rider_ability_race_day_history: {
+        Row: {
+          abilities: Json
+          created_at: string
+          game_day: number
+          id: string
+          rider_id: string
+          season_id: string
+          season_number: number | null
+          snapshot_date: string
+          source: string
+        }
+        Insert: {
+          abilities: Json
+          created_at?: string
+          game_day: number
+          id?: string
+          rider_id: string
+          season_id: string
+          season_number?: number | null
+          snapshot_date: string
+          source?: string
+        }
+        Update: {
+          abilities?: Json
+          created_at?: string
+          game_day?: number
+          id?: string
+          rider_id?: string
+          season_id?: string
+          season_number?: number | null
+          snapshot_date?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rider_ability_race_day_history_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_ability_race_day_history_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "rider_ability_race_day_history_season_id_fkey"
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "seasons"
@@ -4465,6 +5280,9 @@ export type Database = {
           form: number
           injured_until: string | null
           injury_cause: string | null
+          injury_end_game_day: number | null
+          injury_race_days_left: number | null
+          injury_season_id: string | null
           rider_id: string
           updated_at: string
         }
@@ -4473,6 +5291,9 @@ export type Database = {
           form?: number
           injured_until?: string | null
           injury_cause?: string | null
+          injury_end_game_day?: number | null
+          injury_race_days_left?: number | null
+          injury_season_id?: string | null
           rider_id: string
           updated_at?: string
         }
@@ -4481,10 +5302,27 @@ export type Database = {
           form?: number
           injured_until?: string | null
           injury_cause?: string | null
+          injury_end_game_day?: number | null
+          injury_race_days_left?: number | null
+          injury_season_id?: string | null
           rider_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rider_condition_injury_season_id_fkey"
+            columns: ["injury_season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "rider_condition_injury_season_id_fkey"
+            columns: ["injury_season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rider_condition_rider_id_fkey"
             columns: ["rider_id"]
@@ -4509,6 +5347,7 @@ export type Database = {
           formula_version: number
           generated_at: string
           hidden_potential: number | null
+          leadership: number | null
           positioning: number
           prolog: number | null
           punch: number
@@ -4516,6 +5355,7 @@ export type Database = {
           rider_id: string
           sprint: number
           tactics: number
+          teamwork: number | null
           tempo: number | null
           time_trial: number
         }
@@ -4533,6 +5373,7 @@ export type Database = {
           formula_version?: number
           generated_at?: string
           hidden_potential?: number | null
+          leadership?: number | null
           positioning: number
           prolog?: number | null
           punch: number
@@ -4540,6 +5381,7 @@ export type Database = {
           rider_id: string
           sprint: number
           tactics: number
+          teamwork?: number | null
           tempo?: number | null
           time_trial: number
         }
@@ -4557,6 +5399,7 @@ export type Database = {
           formula_version?: number
           generated_at?: string
           hidden_potential?: number | null
+          leadership?: number | null
           positioning?: number
           prolog?: number | null
           punch?: number
@@ -4564,6 +5407,7 @@ export type Database = {
           rider_id?: string
           sprint?: number
           tactics?: number
+          teamwork?: number | null
           tempo?: number | null
           time_trial?: number
         }
@@ -4576,6 +5420,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rider_derived_abilities_5268_backup: {
+        Row: {
+          applied_at: string
+          old_aggression: number | null
+          old_leadership: number | null
+          old_tactics: number | null
+          old_teamwork: number | null
+          rider_id: string
+          variant: string | null
+        }
+        Insert: {
+          applied_at?: string
+          old_aggression?: number | null
+          old_leadership?: number | null
+          old_tactics?: number | null
+          old_teamwork?: number | null
+          rider_id: string
+          variant?: string | null
+        }
+        Update: {
+          applied_at?: string
+          old_aggression?: number | null
+          old_leadership?: number | null
+          old_tactics?: number | null
+          old_teamwork?: number | null
+          rider_id?: string
+          variant?: string | null
+        }
+        Relationships: []
       }
       rider_derived_ability_history: {
         Row: {
@@ -4936,6 +5810,97 @@ export type Database = {
           },
         ]
       }
+      rider_reputation_events: {
+        Row: {
+          created_at: string
+          dedupe_key: string
+          event_kind: string
+          floor_credit: number
+          form_points: number
+          id: string
+          occurred_at: string | null
+          race_class: string | null
+          race_id: string | null
+          rider_id: string
+          season_id: string | null
+          stage_number: number | null
+          team_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dedupe_key: string
+          event_kind: string
+          floor_credit?: number
+          form_points?: number
+          id?: string
+          occurred_at?: string | null
+          race_class?: string | null
+          race_id?: string | null
+          rider_id: string
+          season_id?: string | null
+          stage_number?: number | null
+          team_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dedupe_key?: string
+          event_kind?: string
+          floor_credit?: number
+          form_points?: number
+          id?: string
+          occurred_at?: string | null
+          race_class?: string | null
+          race_id?: string | null
+          rider_id?: string
+          season_id?: string | null
+          stage_number?: number | null
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rider_reputation_events_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_reputation_events_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_reputation_events_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "rider_reputation_events_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_reputation_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "rider_reputation_events_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rider_stat_history: {
         Row: {
           height: number | null
@@ -5013,6 +5978,90 @@ export type Database = {
           },
         ]
       }
+      rider_training_scores: {
+        Row: {
+          contributions: Json | null
+          created_at: string
+          day_type: string | null
+          game_day: number | null
+          id: string
+          intention: string | null
+          rider_id: string
+          score: number | null
+          season_id: string
+          session: string | null
+          team_id: string
+          tick_date: string
+          was_race_day: boolean
+        }
+        Insert: {
+          contributions?: Json | null
+          created_at?: string
+          day_type?: string | null
+          game_day?: number | null
+          id?: string
+          intention?: string | null
+          rider_id: string
+          score?: number | null
+          season_id: string
+          session?: string | null
+          team_id: string
+          tick_date: string
+          was_race_day?: boolean
+        }
+        Update: {
+          contributions?: Json | null
+          created_at?: string
+          day_type?: string | null
+          game_day?: number | null
+          id?: string
+          intention?: string | null
+          rider_id?: string
+          score?: number | null
+          season_id?: string
+          session?: string | null
+          team_id?: string
+          tick_date?: string
+          was_race_day?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rider_training_scores_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_training_scores_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "rider_training_scores_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rider_training_scores_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "rider_training_scores_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rider_uci_history: {
         Row: {
           id: string
@@ -5041,6 +6090,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rider_value_sunday_log: {
+        Row: {
+          changed: number | null
+          completed_at: string | null
+          id: string
+          market_sweep_ran: boolean
+          market_sweep_written: number | null
+          run_date: string
+          scanned: number | null
+          started_at: string
+          written: number | null
+        }
+        Insert: {
+          changed?: number | null
+          completed_at?: string | null
+          id?: string
+          market_sweep_ran?: boolean
+          market_sweep_written?: number | null
+          run_date: string
+          scanned?: number | null
+          started_at?: string
+          written?: number | null
+        }
+        Update: {
+          changed?: number | null
+          completed_at?: string | null
+          id?: string
+          market_sweep_ran?: boolean
+          market_sweep_written?: number | null
+          run_date?: string
+          scanned?: number | null
+          started_at?: string
+          written?: number | null
+        }
+        Relationships: []
       }
       rider_watchlist: {
         Row: {
@@ -5080,6 +6165,8 @@ export type Database = {
           ai_team_id: string | null
           archetype_draw: Json | null
           base_value: number | null
+          best_role: string | null
+          best_role_rating: number | null
           birthdate: string | null
           contract_end_season: number | null
           contract_length: number | null
@@ -5098,13 +6185,22 @@ export type Database = {
           owner_is_ai: boolean
           pcm_id: number | null
           peak_suggestions_dismissed_season_id: string | null
+          pending_academy_signing: boolean
           pending_team_id: string | null
           popularity: number | null
           potentiale: number | null
           primary_type: string | null
           prize_earnings_bonus: number
+          reputation: number | null
+          reputation_floor: number | null
+          reputation_form: number | null
+          reputation_updated_at: string | null
+          retirement_notice_after_season: number | null
+          retirement_notice_given_at: string | null
+          retirement_notice_season: number | null
           salary: number | null
           secondary_type: string | null
+          squad: string
           stat_acc: number | null
           stat_bj: number | null
           stat_bk: number | null
@@ -5130,6 +6226,8 @@ export type Database = {
           ai_team_id?: string | null
           archetype_draw?: Json | null
           base_value?: number | null
+          best_role?: string | null
+          best_role_rating?: number | null
           birthdate?: string | null
           contract_end_season?: number | null
           contract_length?: number | null
@@ -5148,13 +6246,22 @@ export type Database = {
           owner_is_ai?: boolean
           pcm_id?: number | null
           peak_suggestions_dismissed_season_id?: string | null
+          pending_academy_signing?: boolean
           pending_team_id?: string | null
           popularity?: number | null
           potentiale?: number | null
           primary_type?: string | null
           prize_earnings_bonus?: number
+          reputation?: number | null
+          reputation_floor?: number | null
+          reputation_form?: number | null
+          reputation_updated_at?: string | null
+          retirement_notice_after_season?: number | null
+          retirement_notice_given_at?: string | null
+          retirement_notice_season?: number | null
           salary?: number | null
           secondary_type?: string | null
+          squad?: string
           stat_acc?: number | null
           stat_bj?: number | null
           stat_bk?: number | null
@@ -5180,6 +6287,8 @@ export type Database = {
           ai_team_id?: string | null
           archetype_draw?: Json | null
           base_value?: number | null
+          best_role?: string | null
+          best_role_rating?: number | null
           birthdate?: string | null
           contract_end_season?: number | null
           contract_length?: number | null
@@ -5198,13 +6307,22 @@ export type Database = {
           owner_is_ai?: boolean
           pcm_id?: number | null
           peak_suggestions_dismissed_season_id?: string | null
+          pending_academy_signing?: boolean
           pending_team_id?: string | null
           popularity?: number | null
           potentiale?: number | null
           primary_type?: string | null
           prize_earnings_bonus?: number
+          reputation?: number | null
+          reputation_floor?: number | null
+          reputation_form?: number | null
+          reputation_updated_at?: string | null
+          retirement_notice_after_season?: number | null
+          retirement_notice_given_at?: string | null
+          retirement_notice_season?: number | null
           salary?: number | null
           secondary_type?: string | null
+          squad?: string
           stat_acc?: number | null
           stat_bj?: number | null
           stat_bk?: number | null
@@ -5287,9 +6405,15 @@ export type Database = {
       roadmap_items: {
         Row: {
           approved: boolean
+          beta_since: string | null
+          beta_soon: boolean
           created_at: string
           engine: string
+          flag_key: string | null
+          horizon: string
           id: string
+          issue_ref: number | null
+          live_soon: boolean
           shipped_at: string | null
           sort_order: number
           status: string
@@ -5299,9 +6423,15 @@ export type Database = {
         }
         Insert: {
           approved?: boolean
+          beta_since?: string | null
+          beta_soon?: boolean
           created_at?: string
           engine: string
+          flag_key?: string | null
+          horizon?: string
           id?: string
+          issue_ref?: number | null
+          live_soon?: boolean
           shipped_at?: string | null
           sort_order?: number
           status?: string
@@ -5311,9 +6441,15 @@ export type Database = {
         }
         Update: {
           approved?: boolean
+          beta_since?: string | null
+          beta_soon?: boolean
           created_at?: string
           engine?: string
+          flag_key?: string | null
+          horizon?: string
           id?: string
+          issue_ref?: number | null
+          live_soon?: boolean
           shipped_at?: string | null
           sort_order?: number
           status?: string
@@ -5327,7 +6463,7 @@ export type Database = {
         Row: {
           created_at: string
           id: number
-          idea_score: number
+          idea_score: number | null
           importance_score: number
           item_id: string
           updated_at: string
@@ -5336,7 +6472,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: number
-          idea_score: number
+          idea_score?: number | null
           importance_score: number
           item_id: string
           updated_at?: string
@@ -5345,7 +6481,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: number
-          idea_score?: number
+          idea_score?: number | null
           importance_score?: number
           item_id?: string
           updated_at?: string
@@ -5894,6 +7030,7 @@ export type Database = {
           per_race_day_rate: number
           race_day_share: number | null
           results_bonus_paid: number
+          signed_division: number | null
           sponsor_name: string
           start_season: number
           status: string
@@ -5912,6 +7049,7 @@ export type Database = {
           per_race_day_rate?: number
           race_day_share?: number | null
           results_bonus_paid?: number
+          signed_division?: number | null
           sponsor_name: string
           start_season: number
           status?: string
@@ -5930,6 +7068,7 @@ export type Database = {
           per_race_day_rate?: number
           race_day_share?: number | null
           results_bonus_paid?: number
+          signed_division?: number | null
           sponsor_name?: string
           start_season?: number
           status?: string
@@ -6060,6 +7199,179 @@ export type Database = {
           },
         ]
       }
+      survey_completions: {
+        Row: {
+          completed_at: string
+          seconds_spent: number | null
+          survey_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          seconds_spent?: number | null
+          survey_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          seconds_spent?: number | null
+          survey_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_completions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_questions: {
+        Row: {
+          created_at: string
+          help_da: string | null
+          help_en: string | null
+          id: string
+          key: string
+          kind: string
+          label_da: string
+          label_en: string
+          options: Json | null
+          required: boolean
+          sort_order: number
+          survey_id: string
+        }
+        Insert: {
+          created_at?: string
+          help_da?: string | null
+          help_en?: string | null
+          id?: string
+          key: string
+          kind: string
+          label_da: string
+          label_en: string
+          options?: Json | null
+          required?: boolean
+          sort_order?: number
+          survey_id: string
+        }
+        Update: {
+          created_at?: string
+          help_da?: string | null
+          help_en?: string | null
+          id?: string
+          key?: string
+          kind?: string
+          label_da?: string
+          label_en?: string
+          options?: Json | null
+          required?: boolean
+          sort_order?: number
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_questions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_responses: {
+        Row: {
+          created_at: string
+          id: string
+          question_key: string
+          survey_id: string
+          team_id: string | null
+          updated_at: string
+          user_id: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_key: string
+          survey_id: string
+          team_id?: string | null
+          updated_at?: string
+          user_id: string
+          value: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_key?: string
+          survey_id?: string
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_responses_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "survey_responses_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      surveys: {
+        Row: {
+          closes_at: string | null
+          created_at: string
+          id: string
+          opens_at: string | null
+          slug: string
+          status: string
+          title_da: string
+          title_en: string
+          updated_at: string
+        }
+        Insert: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          opens_at?: string | null
+          slug: string
+          status?: string
+          title_da: string
+          title_en: string
+          updated_at?: string
+        }
+        Update: {
+          closes_at?: string | null
+          created_at?: string
+          id?: string
+          opens_at?: string | null
+          slug?: string
+          status?: string
+          title_da?: string
+          title_en?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       swap_offers: {
         Row: {
           cash_adjustment: number
@@ -6068,8 +7380,10 @@ export type Database = {
           id: string
           message: string | null
           offered_rider_id: string
+          proposing_archived_at: string | null
           proposing_confirmed: boolean
           proposing_team_id: string
+          receiving_archived_at: string | null
           receiving_confirmed: boolean
           receiving_team_id: string
           requested_rider_id: string
@@ -6083,8 +7397,10 @@ export type Database = {
           id?: string
           message?: string | null
           offered_rider_id: string
+          proposing_archived_at?: string | null
           proposing_confirmed?: boolean
           proposing_team_id: string
+          receiving_archived_at?: string | null
           receiving_confirmed?: boolean
           receiving_team_id: string
           requested_rider_id: string
@@ -6098,8 +7414,10 @@ export type Database = {
           id?: string
           message?: string | null
           offered_rider_id?: string
+          proposing_archived_at?: string | null
           proposing_confirmed?: boolean
           proposing_team_id?: string
+          receiving_archived_at?: string | null
           receiving_confirmed?: boolean
           receiving_team_id?: string
           requested_rider_id?: string
@@ -6452,15 +7770,107 @@ export type Database = {
           },
         ]
       }
+      team_training_rules: {
+        Row: {
+          created_at: string
+          fallback: string | null
+          fatigue_threshold: number | null
+          id: string
+          recovery_after_stage: boolean | null
+          rider_id: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fallback?: string | null
+          fatigue_threshold?: number | null
+          id?: string
+          recovery_after_stage?: boolean | null
+          rider_id?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fallback?: string | null
+          fatigue_threshold?: number | null
+          id?: string
+          recovery_after_stage?: boolean | null
+          rider_id?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_training_rules_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_training_rules_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "team_training_rules_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_youth_race_opt_outs: {
+        Row: {
+          created_at: string
+          squad: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          squad: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          squad?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_youth_race_opt_outs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "team_youth_race_opt_outs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           academy_intake_seeded_at: string | null
           ai_source_id: number | null
+          assistant_autopick_enabled: boolean
           balance: number | null
+          comeback_season_id: string | null
           consecutive_low_satisfaction_expirations: number
           created_at: string | null
           debt_breach_streak: number
           dev_transition_dismissed_at: string | null
+          discord_welcome_claimed_at: string | null
+          discord_welcome_sent_at: string | null
           division: number | null
           emergency_loan_streak: number
           id: string
@@ -6468,29 +7878,43 @@ export type Database = {
           is_bank: boolean | null
           is_frozen: boolean | null
           is_test_account: boolean
+          junior_league_division_id: number | null
           league_division_id: number | null
           manager_name: string | null
           my_result_seen_race_id: string | null
           name: string
+          next_season_signup_at: string | null
           onboarding_progress_dismissed_at: string | null
+          parked_at: string | null
           pending_removal_at: string | null
+          pending_removal_blocked_reason: string | null
+          pending_removal_blocked_since: string | null
+          reputation: number | null
+          reputation_updated_at: string | null
+          retired_at: string | null
           season_1_identity_basis: Json | null
+          selection_reminder_enabled: boolean
           sponsor_income: number | null
           starter_depth_topped_up_at: string | null
           starter_squad_allocated_at: string | null
           team_dna_chosen_at: string | null
           team_dna_key: string | null
           transfer_frozen: boolean
+          u23_league_division_id: number | null
           user_id: string | null
         }
         Insert: {
           academy_intake_seeded_at?: string | null
           ai_source_id?: number | null
+          assistant_autopick_enabled?: boolean
           balance?: number | null
+          comeback_season_id?: string | null
           consecutive_low_satisfaction_expirations?: number
           created_at?: string | null
           debt_breach_streak?: number
           dev_transition_dismissed_at?: string | null
+          discord_welcome_claimed_at?: string | null
+          discord_welcome_sent_at?: string | null
           division?: number | null
           emergency_loan_streak?: number
           id?: string
@@ -6498,29 +7922,43 @@ export type Database = {
           is_bank?: boolean | null
           is_frozen?: boolean | null
           is_test_account?: boolean
+          junior_league_division_id?: number | null
           league_division_id?: number | null
           manager_name?: string | null
           my_result_seen_race_id?: string | null
           name: string
+          next_season_signup_at?: string | null
           onboarding_progress_dismissed_at?: string | null
+          parked_at?: string | null
           pending_removal_at?: string | null
+          pending_removal_blocked_reason?: string | null
+          pending_removal_blocked_since?: string | null
+          reputation?: number | null
+          reputation_updated_at?: string | null
+          retired_at?: string | null
           season_1_identity_basis?: Json | null
+          selection_reminder_enabled?: boolean
           sponsor_income?: number | null
           starter_depth_topped_up_at?: string | null
           starter_squad_allocated_at?: string | null
           team_dna_chosen_at?: string | null
           team_dna_key?: string | null
           transfer_frozen?: boolean
+          u23_league_division_id?: number | null
           user_id?: string | null
         }
         Update: {
           academy_intake_seeded_at?: string | null
           ai_source_id?: number | null
+          assistant_autopick_enabled?: boolean
           balance?: number | null
+          comeback_season_id?: string | null
           consecutive_low_satisfaction_expirations?: number
           created_at?: string | null
           debt_breach_streak?: number
           dev_transition_dismissed_at?: string | null
+          discord_welcome_claimed_at?: string | null
+          discord_welcome_sent_at?: string | null
           division?: number | null
           emergency_loan_streak?: number
           id?: string
@@ -6528,22 +7966,53 @@ export type Database = {
           is_bank?: boolean | null
           is_frozen?: boolean | null
           is_test_account?: boolean
+          junior_league_division_id?: number | null
           league_division_id?: number | null
           manager_name?: string | null
           my_result_seen_race_id?: string | null
           name?: string
+          next_season_signup_at?: string | null
           onboarding_progress_dismissed_at?: string | null
+          parked_at?: string | null
           pending_removal_at?: string | null
+          pending_removal_blocked_reason?: string | null
+          pending_removal_blocked_since?: string | null
+          reputation?: number | null
+          reputation_updated_at?: string | null
+          retired_at?: string | null
           season_1_identity_basis?: Json | null
+          selection_reminder_enabled?: boolean
           sponsor_income?: number | null
           starter_depth_topped_up_at?: string | null
           starter_squad_allocated_at?: string | null
           team_dna_chosen_at?: string | null
           team_dna_key?: string | null
           transfer_frozen?: boolean
+          u23_league_division_id?: number | null
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "teams_comeback_season_id_fkey"
+            columns: ["comeback_season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "teams_comeback_season_id_fkey"
+            columns: ["comeback_season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teams_junior_league_division_id_fkey"
+            columns: ["junior_league_division_id"]
+            isOneToOne: false
+            referencedRelation: "league_divisions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "teams_league_division_id_fkey"
             columns: ["league_division_id"]
@@ -6566,6 +8035,13 @@ export type Database = {
             referencedColumns: ["key"]
           },
           {
+            foreignKeyName: "teams_u23_league_division_id_fkey"
+            columns: ["u23_league_division_id"]
+            isOneToOne: false
+            referencedRelation: "league_divisions"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "teams_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -6580,8 +8056,14 @@ export type Database = {
           event: string
           id: number
           is_bot: boolean
+          landing_path: string | null
           occurred_at: string
           path: string | null
+          referrer: string | null
+          referrer_host: string | null
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
           visit_hash: string
         }
         Insert: {
@@ -6589,8 +8071,14 @@ export type Database = {
           event: string
           id?: never
           is_bot?: boolean
+          landing_path?: string | null
           occurred_at?: string
           path?: string | null
+          referrer?: string | null
+          referrer_host?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           visit_hash: string
         }
         Update: {
@@ -6598,9 +8086,146 @@ export type Database = {
           event?: string
           id?: never
           is_bot?: boolean
+          landing_path?: string | null
           occurred_at?: string
           path?: string | null
+          referrer?: string | null
+          referrer_host?: string | null
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           visit_hash?: string
+        }
+        Relationships: []
+      }
+      training_condition_settlements: {
+        Row: {
+          applied_condition: Json | null
+          missing_evidence: Json
+          opening_condition: Json | null
+          rider_id: string
+          season_id: string
+          status: string
+          team_id: string
+          tick_date: string
+        }
+        Insert: {
+          applied_condition?: Json | null
+          missing_evidence?: Json
+          opening_condition?: Json | null
+          rider_id: string
+          season_id: string
+          status?: string
+          team_id: string
+          tick_date: string
+        }
+        Update: {
+          applied_condition?: Json | null
+          missing_evidence?: Json
+          opening_condition?: Json | null
+          rider_id?: string
+          season_id?: string
+          status?: string
+          team_id?: string
+          tick_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_condition_settlements_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_condition_timeout_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          delivered_at: string | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          payload: Json
+          season_id: string
+          team_id: string
+          tick_date: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          payload: Json
+          season_id: string
+          team_id: string
+          tick_date: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          delivered_at?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          payload?: Json
+          season_id?: string
+          team_id?: string
+          tick_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      training_date_work: {
+        Row: {
+          created_at: string
+          deadline_at: string
+          expected_rider_ids: string[]
+          game_days: number[]
+          missing_evidence: Json
+          opening_conditions: Json
+          quarantine_evidence: Json
+          quarantined_rider_ids: string[]
+          season_id: string
+          status: string
+          team_id: string
+          tick_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deadline_at: string
+          expected_rider_ids: string[]
+          game_days: number[]
+          missing_evidence?: Json
+          opening_conditions?: Json
+          quarantine_evidence?: Json
+          quarantined_rider_ids?: string[]
+          season_id: string
+          status?: string
+          team_id: string
+          tick_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deadline_at?: string
+          expected_rider_ids?: string[]
+          game_days?: number[]
+          missing_evidence?: Json
+          opening_conditions?: Json
+          quarantine_evidence?: Json
+          quarantined_rider_ids?: string[]
+          season_id?: string
+          status?: string
+          team_id?: string
+          tick_date?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -6609,8 +8234,11 @@ export type Database = {
           bonus_applied: boolean
           created_at: string
           executed_by: string
+          game_day: number | null
           id: string
           report: Json
+          season_id: string | null
+          squad: string
           team_id: string
           tick_date: string
         }
@@ -6618,8 +8246,11 @@ export type Database = {
           bonus_applied?: boolean
           created_at?: string
           executed_by: string
+          game_day?: number | null
           id?: string
           report: Json
+          season_id?: string | null
+          squad?: string
           team_id: string
           tick_date: string
         }
@@ -6627,12 +8258,29 @@ export type Database = {
           bonus_applied?: boolean
           created_at?: string
           executed_by?: string
+          game_day?: number | null
           id?: string
           report?: Json
+          season_id?: string | null
+          squad?: string
           team_id?: string
           tick_date?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "training_day_runs_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "training_day_runs_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "training_day_runs_team_id_fkey"
             columns: ["team_id"]
@@ -6642,6 +8290,110 @@ export type Database = {
           },
           {
             foreignKeyName: "training_day_runs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_group_members: {
+        Row: {
+          created_at: string
+          follows_group: boolean
+          group_id: string
+          rider_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          follows_group?: boolean
+          group_id: string
+          rider_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          follows_group?: boolean
+          group_id?: string
+          rider_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "training_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_group_members_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: true
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_group_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "training_group_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_groups: {
+        Row: {
+          created_at: string
+          days: Json | null
+          fallback: string | null
+          fatigue_threshold: number | null
+          id: string
+          name: string
+          program_key: string | null
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days?: Json | null
+          fallback?: string | null
+          fatigue_threshold?: number | null
+          id?: string
+          name: string
+          program_key?: string | null
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days?: Json | null
+          fallback?: string | null
+          fatigue_threshold?: number | null
+          id?: string
+          name?: string
+          program_key?: string | null
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_groups_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "training_groups_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -6718,6 +8470,112 @@ export type Database = {
           },
         ]
       }
+      training_race_loads: {
+        Row: {
+          consumed_at: string | null
+          duplicate_of_race_id: string | null
+          duplicate_of_stage_number: number | null
+          game_day: number
+          load: number
+          race_id: string
+          reconciliation_required: boolean
+          rider_id: string
+          season_id: string
+          stage_number: number
+          tick_date: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          duplicate_of_race_id?: string | null
+          duplicate_of_stage_number?: number | null
+          game_day: number
+          load: number
+          race_id: string
+          reconciliation_required?: boolean
+          rider_id: string
+          season_id: string
+          stage_number: number
+          tick_date: string
+        }
+        Update: {
+          consumed_at?: string | null
+          duplicate_of_race_id?: string | null
+          duplicate_of_stage_number?: number | null
+          game_day?: number
+          load?: number
+          race_id?: string
+          reconciliation_required?: boolean
+          rider_id?: string
+          season_id?: string
+          stage_number?: number
+          tick_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_race_load_alias_source"
+            columns: [
+              "rider_id",
+              "duplicate_of_race_id",
+              "duplicate_of_stage_number",
+            ]
+            isOneToOne: false
+            referencedRelation: "training_race_loads"
+            referencedColumns: ["rider_id", "race_id", "stage_number"]
+          },
+          {
+            foreignKeyName: "training_race_loads_race_id_fkey"
+            columns: ["race_id"]
+            isOneToOne: false
+            referencedRelation: "races"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_race_loads_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_rider_ticks: {
+        Row: {
+          created_at: string
+          game_day: number
+          report: Json
+          rider_id: string
+          season_id: string
+          team_id: string
+          tick_date: string
+        }
+        Insert: {
+          created_at?: string
+          game_day: number
+          report: Json
+          rider_id: string
+          season_id: string
+          team_id: string
+          tick_date: string
+        }
+        Update: {
+          created_at?: string
+          game_day?: number
+          report?: Json
+          rider_id?: string
+          season_id?: string
+          team_id?: string
+          tick_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_rider_ticks_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_slot_health_daily: {
         Row: {
           dead_slots: number
@@ -6745,11 +8603,44 @@ export type Database = {
         }
         Relationships: []
       }
+      training_train_now_locks: {
+        Row: {
+          pressed_at: string
+          rider_id: string
+          season_id: string
+          team_id: string
+          tick_date: string
+        }
+        Insert: {
+          pressed_at?: string
+          rider_id: string
+          season_id: string
+          team_id: string
+          tick_date: string
+        }
+        Update: {
+          pressed_at?: string
+          rider_id?: string
+          season_id?: string
+          team_id?: string
+          tick_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_train_now_locks_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       training_week_plans: {
         Row: {
           created_at: string
           days: Json
           id: string
+          program_key: string | null
           rider_id: string | null
           team_id: string
           updated_at: string
@@ -6758,6 +8649,7 @@ export type Database = {
           created_at?: string
           days: Json
           id?: string
+          program_key?: string | null
           rider_id?: string | null
           team_id: string
           updated_at?: string
@@ -6766,6 +8658,7 @@ export type Database = {
           created_at?: string
           days?: Json
           id?: string
+          program_key?: string | null
           rider_id?: string | null
           team_id?: string
           updated_at?: string
@@ -7011,12 +8904,14 @@ export type Database = {
       }
       users: {
         Row: {
+          browser_language: string | null
           consent_preferences: Json | null
           created_at: string | null
           discord_disconnected_at: string | null
           discord_dm_enabled: boolean
           discord_dm_failure_count: number
           discord_dm_prefs: Json
+          discord_handle: string | null
           discord_id: string | null
           email: string
           email_prefs: Json
@@ -7033,12 +8928,14 @@ export type Database = {
           xp: number | null
         }
         Insert: {
+          browser_language?: string | null
           consent_preferences?: Json | null
           created_at?: string | null
           discord_disconnected_at?: string | null
           discord_dm_enabled?: boolean
           discord_dm_failure_count?: number
           discord_dm_prefs?: Json
+          discord_handle?: string | null
           discord_id?: string | null
           email: string
           email_prefs?: Json
@@ -7055,12 +8952,14 @@ export type Database = {
           xp?: number | null
         }
         Update: {
+          browser_language?: string | null
           consent_preferences?: Json | null
           created_at?: string | null
           discord_disconnected_at?: string | null
           discord_dm_enabled?: boolean
           discord_dm_failure_count?: number
           discord_dm_prefs?: Json
+          discord_handle?: string | null
           discord_id?: string | null
           email?: string
           email_prefs?: Json
@@ -7200,6 +9099,84 @@ export type Database = {
         }
         Relationships: []
       }
+      youth_season_standings: {
+        Row: {
+          id: string
+          league_division_id: number | null
+          podiums: number
+          races: number
+          rank_in_pool: number | null
+          season_id: string
+          squad: string
+          team_id: string
+          total_points: number
+          updated_at: string
+          wins: number
+        }
+        Insert: {
+          id?: string
+          league_division_id?: number | null
+          podiums?: number
+          races?: number
+          rank_in_pool?: number | null
+          season_id: string
+          squad: string
+          team_id: string
+          total_points?: number
+          updated_at?: string
+          wins?: number
+        }
+        Update: {
+          id?: string
+          league_division_id?: number | null
+          podiums?: number
+          races?: number
+          rank_in_pool?: number | null
+          season_id?: string
+          squad?: string
+          team_id?: string
+          total_points?: number
+          updated_at?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youth_season_standings_league_division_id_fkey"
+            columns: ["league_division_id"]
+            isOneToOne: false
+            referencedRelation: "league_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "youth_season_standings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "youth_season_standings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "youth_season_standings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "global_rank_mv"
+            referencedColumns: ["team_id"]
+          },
+          {
+            foreignKeyName: "youth_season_standings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       ai_active_season_status: {
@@ -7277,6 +9254,23 @@ export type Database = {
         }
         Relationships: []
       }
+      known_issue_scores: {
+        Row: {
+          area: string | null
+          closed_at: string | null
+          created_at: string | null
+          days_open: number | null
+          issue_id: string | null
+          issue_ref: number | null
+          published: boolean | null
+          reports: number | null
+          sort_order: number | null
+          status: string | null
+          title_da: string | null
+          title_en: string | null
+        }
+        Relationships: []
+      }
       rider_rankings_mv: {
         Row: {
           classic_wins: number | null
@@ -7326,9 +9320,15 @@ export type Database = {
           avg_idea: number | null
           avg_importance: number | null
           engine: string | null
+          horizon: string | null
+          idea_votes: number | null
+          issue_ref: number | null
           item_id: string | null
+          sd_importance: number | null
+          sort_order: number | null
           status: string | null
           steering_score: number | null
+          title_da: string | null
           title_en: string | null
           votes: number | null
         }
@@ -7406,8 +9406,65 @@ export type Database = {
           },
         ]
       }
+      youth_rider_rankings_mv: {
+        Row: {
+          classic_wins: number | null
+          gc_wins: number | null
+          green_days: number | null
+          mtn_wins: number | null
+          points: number | null
+          polka_days: number | null
+          prize_earned: number | null
+          pts_wins: number | null
+          rider_id: string | null
+          season_id: string | null
+          squad: string | null
+          stage_wins: number | null
+          top10: number | null
+          top3: number | null
+          white_days: number | null
+          yellow_days: number | null
+          young_wins: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_results_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "riders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "races_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "ai_active_season_status"
+            referencedColumns: ["season_id"]
+          },
+          {
+            foreignKeyName: "races_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      admit_race_participant: {
+        Args: { p_race_id: string; p_rider_id: string; p_stage_number: number }
+        Returns: undefined
+      }
+      ai_pool_retirement_enabled: { Args: never; Returns: boolean }
+      ai_team_retirement_reason: {
+        Args: { p_team_id: string }
+        Returns: string
+      }
+      apply_board_weekend_writes: {
+        Args: { p_events: Json; p_profiles: Json }
+        Returns: Json
+      }
       apply_global_rank_season_rollover: {
         Args: { p_completed_season_id: string }
         Returns: undefined
@@ -7499,9 +9556,51 @@ export type Database = {
           write_policy_names: string[]
         }[]
       }
+      bootstrap_training_condition_date: {
+        Args: {
+          p_loads: Json
+          p_openings: Json
+          p_season_id: string
+          p_tick_date: string
+        }
+        Returns: Json
+      }
+      bulk_update_rider_prize_earnings_bonus: {
+        Args: { p_updates: Json }
+        Returns: number
+      }
+      commit_training_date_tick: {
+        Args: {
+          p_abilities: Json
+          p_conditions: Json
+          p_date_game_days: number[]
+          p_deadline_reached?: boolean
+          p_executed_by: string
+          p_game_day: number
+          p_history: Json
+          p_now?: string
+          p_race_history: Json
+          p_race_loads?: Json
+          p_report: Json
+          p_scores: Json
+          p_season_id: string
+          p_squad: string
+          p_team_id: string
+          p_tick_date: string
+        }
+        Returns: Json
+      }
       compute_daily_growth_snapshot: {
         Args: { p_snapshot_date?: string }
         Returns: Json
+      }
+      count_team_squad_members: {
+        Args: {
+          p_exclude_rider_id?: string
+          p_squad: string
+          p_team_id: string
+        }
+        Returns: number
       }
       create_emergency_loan_atomic: {
         Args: {
@@ -7612,6 +9711,9 @@ export type Database = {
           p_new_salary: number
           p_rider_id: string
           p_season_start_year: number
+          p_squad: string
+          p_squad_cap: number
+          p_squad_max_age: number
           p_team_id: string
         }
         Returns: Json
@@ -7640,6 +9742,7 @@ export type Database = {
       feature_liveness_table_counts: {
         Args: never
         Returns: {
+          estimated: boolean
           rls_enabled: boolean
           row_count: number
           table_name: string
@@ -7654,9 +9757,39 @@ export type Database = {
           p_price: number
           p_rider_id: string
           p_salary: number
+          p_squad: string
+          p_squad_cap: number
           p_team_id: string
         }
         Returns: Json
+      }
+      find_spent_race_days: {
+        Args: { p_game_day?: number; p_race_id: string; p_rider_ids: string[] }
+        Returns: Json
+      }
+      finish_recorded_race_completion: {
+        Args: {
+          p_expected_finalize_state: Json
+          p_now?: string
+          p_race_id: string
+        }
+        Returns: Json
+      }
+      flush_pending_academy_signing: {
+        Args: {
+          p_rider_id: string
+          p_squad: string
+          p_squad_cap: number
+          p_team_id: string
+        }
+        Returns: Json
+      }
+      founder_public_list: {
+        Args: never
+        Returns: {
+          founder_number: number
+          team_id: string
+        }[]
       }
       get_cohort_retention: { Args: { p_weeks?: number }; Returns: Json }
       get_retention_scorecard_activity: {
@@ -7691,6 +9824,25 @@ export type Database = {
         Args: { p_rider_id: string }
         Returns: boolean
       }
+      mark_training_condition_alert_attempt: {
+        Args: {
+          p_attempted_at: string
+          p_cutoff: string
+          p_delivered: boolean
+          p_error?: string
+          p_tick_date: string
+        }
+        Returns: number
+      }
+      move_academy_rider_squad: {
+        Args: {
+          p_rider_id: string
+          p_squad: string
+          p_squad_cap: number
+          p_team_id: string
+        }
+        Returns: Json
+      }
       move_race_entry: {
         Args: {
           p_from_race_id: string
@@ -7700,6 +9852,50 @@ export type Database = {
           p_to_race_id: string
         }
         Returns: undefined
+      }
+      persist_training_condition_run: {
+        Args: { p_run: Json; p_scores: Json }
+        Returns: Json
+      }
+      plan_ai_pool_retirements: {
+        Args: { p_now?: string; p_pool_id: number }
+        Returns: {
+          blocked_since: string
+          future_entries_removed: number
+          offers_preserved: number
+          pending_since: string
+          pool_id: number
+          pool_label: string
+          reason: string
+          riders_count: number
+          target_size: number
+          team_id: string
+          team_name: string
+          teams_now: number
+        }[]
+      }
+      prepare_recorded_race_completion: {
+        Args: {
+          p_expected_finalize_state: Json
+          p_now?: string
+          p_race_id: string
+        }
+        Returns: Json
+      }
+      prune_spent_race_entries: {
+        Args: { p_race_id: string; p_rider_ids: string[] }
+        Returns: number
+      }
+      quarantine_training_date_riders: {
+        Args: {
+          p_now?: string
+          p_reason: string
+          p_rider_ids: string[]
+          p_season_id: string
+          p_team_id: string
+          p_tick_date: string
+        }
+        Returns: Json
       }
       race_entries_binding_span: {
         Args: { p_race_id: string; p_team_id: string }
@@ -7713,12 +9909,56 @@ export type Database = {
         Args: { p_season_id: string }
         Returns: Json
       }
+      recompute_youth_season_standings: {
+        Args: { p_season_id: string; p_squad: string }
+        Returns: Json
+      }
+      record_forum_thread_view: {
+        Args: { p_post_id: string; p_user_id: string }
+        Returns: number
+      }
+      record_training_race_load: {
+        Args: { p_loads: Json; p_race_id: string; p_stage_number: number }
+        Returns: Json
+      }
+      recover_training_race_load_stage: {
+        Args: {
+          p_expected_finalize_state?: Json
+          p_now?: string
+          p_race_id: string
+          p_stage_number: number
+        }
+        Returns: Json
+      }
+      recover_transferred_race_loads: {
+        Args: {
+          p_expected_finalize_state: Json
+          p_expected_loads: Json
+          p_race_id: string
+          p_sources: Json
+          p_stage_number: number
+        }
+        Returns: Json
+      }
       refresh_global_rank_mv: { Args: never; Returns: undefined }
       refresh_ranking_matviews: { Args: never; Returns: undefined }
       refresh_rider_rankings_mv: { Args: never; Returns: undefined }
       refresh_team_race_points_mv: { Args: never; Returns: undefined }
       refresh_team_standings_ext_mv: { Args: never; Returns: undefined }
+      refresh_youth_rider_rankings_mv: { Args: never; Returns: undefined }
       regenerate_race_points: { Args: never; Returns: number }
+      register_training_date_work: {
+        Args: {
+          p_deadline_at?: string
+          p_expected_rider_ids: string[]
+          p_game_days: number[]
+          p_registered_at?: string
+          p_season_id: string
+          p_team_id: string
+          p_tick_date: string
+        }
+        Returns: Json
+      }
       repay_loan_atomic: {
         Args: {
           p_amount: number
@@ -7737,6 +9977,43 @@ export type Database = {
         }
         Returns: undefined
       }
+      replace_race_selection_bulk: {
+        Args: { p_auto_releases?: Json; p_changes: Json; p_team_id: string }
+        Returns: undefined
+      }
+      replace_retired_ai_youth_group:
+        | { Args: { p_team_id: string }; Returns: Json }
+        | { Args: { p_now: string; p_team_id: string }; Returns: Json }
+      reserve_ai_pool_retirements: {
+        Args: { p_now?: string; p_pool_id: number }
+        Returns: Json
+      }
+      retire_ai_pool_team: {
+        Args: { p_now?: string; p_team_id: string }
+        Returns: Json
+      }
+      roadmap_admin_stats: {
+        Args: never
+        Returns: {
+          managed_teams: number
+          voted_all: number
+          voters: number
+          voters_14d: number
+          votes_total: number
+        }[]
+      }
+      roadmap_resync_flags: { Args: never; Returns: number }
+      roadmap_split_item: {
+        Args: {
+          p_horizon?: string
+          p_issue_ref?: number
+          p_source: string
+          p_status?: string
+          p_title_da: string
+          p_title_en: string
+        }
+        Returns: string
+      }
       submit_race_results: {
         Args: { p_race_id: string; p_rows: Json }
         Returns: string
@@ -7748,9 +10025,19 @@ export type Database = {
         Returns: {
           engaged_events: number
           is_bot: boolean
+          landing_path: string
           pageviews: number
+          referrer_host: string
+          utm_campaign: string
+          utm_medium: string
+          utm_source: string
           visit_hash: string
         }[]
+      }
+      training_condition_injury_state: { Args: { value: Json }; Returns: Json }
+      verify_race_result_duplicates: {
+        Args: { p_limit?: number }
+        Returns: Json
       }
     }
     Enums: {
@@ -7770,12 +10057,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7799,11 +10086,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7824,11 +10111,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7849,11 +10136,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -7866,11 +10153,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

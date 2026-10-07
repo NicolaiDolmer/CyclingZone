@@ -404,6 +404,7 @@
         "max_level": "Denne rytter er allerede fuldt scoutet.",
         "capacity": "Din spejder er allerede fuldt booket. Vent til en opgave er færdig.",
         "insufficient_funds": "Ikke nok CZ$ til at sende en spejder.",
+        "insufficient_available_balance": "Ikke nok disponible penge: en del af din saldo er låst i auktionsbud.",
         "auth": "Din session er udløbet. Log ind igen.",
         "network": "Forbindelsen fejlede. Tjek dit netværk og prøv igen."
       }

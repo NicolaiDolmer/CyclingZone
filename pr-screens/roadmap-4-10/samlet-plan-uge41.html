@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Samlet plan uge 41 (forslag 4/10)</title>
+<!-- Forslag til ejeren 4/10 aften: alt igangvaerende arbejde samlet i een raekkefoelge. Kilder: docs/NOW.md,
+     docs/MASTERPLAN.md, docs/OPERATING_PLAN.md (efter commits 992800adc + 888ad4522), handoff paa #6148,
+     gh pr list 4/10 aften. Intet er besluttet; ejeren rangerer. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --navy:#1a1f38;
+  --danger:#b3392f; --danger-bg:rgba(179,57,47,.08);
+  --claude:#2b5c9a; --claude-bg:rgba(43,92,154,.09);
+  --codex:#5b4a9a; --codex-bg:rgba(91,74,154,.09);
+  --owner:#9a6b00; --owner-bg:rgba(154,107,0,.10);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:13.5px;-webkit-font-smoothing:antialiased}
+.sheet{width:1880px;padding:26px 30px 28px}
+h1{font-family:"Inter Tight";font-size:25px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.lead{font-size:14px;color:var(--text-2);margin:0 0 14px;line-height:1.5;max-width:150ch}
+.key{display:flex;gap:18px;margin-bottom:12px;font-size:12.5px;color:var(--text-2);align-items:center}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-family:"Inter Tight";font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);text-align:left;padding:0 10px 8px}
+td{vertical-align:top;padding:10px;border-top:1px solid var(--border)}
+tr.brand td{background:var(--danger-bg)}
+.n{font-family:"Bebas Neue";font-size:26px;line-height:1;color:var(--navy);width:34px}
+.area .t{font-family:"Inter Tight";font-size:15px;font-weight:700;line-height:1.25}
+.area .d{font-size:12.5px;color:var(--text-2);margin-top:3px;line-height:1.4}
+.rule{display:inline-block;font-family:"Inter Tight";font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:2px 8px;margin-top:6px;border:1px solid var(--border);color:var(--text-2)}
+.rule.r{border-color:var(--danger);color:var(--danger)}
+.chip{display:block;border-radius:5px;padding:6px 8px;font-size:12.5px;line-height:1.35;margin-bottom:5px}
+.chip:last-child{margin-bottom:0}
+.chip b{font-weight:600}
+.c{background:var(--claude-bg);border-left:3px solid var(--claude)}
+.x{background:var(--codex-bg);border-left:3px solid var(--codex)}
+.o{background:var(--owner-bg);border-left:3px solid var(--owner)}
+.g{background:var(--bg-body);border-left:3px solid var(--border);color:var(--text-2)}
+.who{font-family:"Inter Tight";font-size:12px;font-weight:600}
+.foot{margin-top:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.fbox{border:1px solid var(--border);border-radius:5px;background:var(--bg-card);padding:12px 14px}
+.fbox .k{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:4px}
+.fbox .v{font-size:13px;line-height:1.5;color:var(--text-2)}
+.fbox .v b{color:var(--text-1);font-weight:600}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>Samlet plan for uge 41: hvad kører hvornår</h1>
+  <p class="lead">Forslag efter dine egne regler i masterplanen: brand først, så det lovede (ældste først), beta til alle, forretning viger aldrig, færdiggør før nyt. Rækkefølgen oppefra er min anbefaling. Intet er besluttet, og du rangerer.</p>
+  <div class="key">
+    <span><span class="sw" style="background:var(--claude)"></span>Claude-bølge (dag, 4 laner)</span>
+    <span><span class="sw" style="background:var(--codex)"></span>Codex-bølge (nat, samme lås)</span>
+    <span><span class="sw" style="background:var(--owner)"></span>Kræver dig (kort, go eller test)</span>
+    <span><span class="sw" style="background:var(--border)"></span>Venter på noget andet</span>
+  </div>
+
+  <table>
+    <colgroup><col style="width:44px"><col style="width:330px"><col><col><col><col></colgroup>
+    <tr><th></th><th>Område</th><th>I aften, søn 4/10</th><th>Man 5/10</th><th>Tirs-ons 6.-7/10</th><th>Tors-fre 8.-9/10</th></tr>
+
+    <tr class="brand">
+      <td class="n">1</td>
+      <td class="area"><div class="t">Løbsmotoren: form og formtoppe virker ikke (#6156)</div><div class="d">Siden 28/9 når form og toppe ikke frem til løbene. 232 toppe er brugt uden virkning, 114 starter senest 11/10.</div><span class="rule r">Brand · start senest man</span></td>
+      <td><span class="chip c"><b>Trin 0:</b> sandhedstjek af 22 motorændringer (read-only, #6157)</span></td>
+      <td><span class="chip c"><b>3 laner:</b> form + toppe · kalibrering og vagter (gaten før tænding) · udbrud og jagt (#5951, #5978)</span></td>
+      <td><span class="chip c">Genmål gamle fejl i v4 (6 issues)</span><span class="chip o">Go-kort: tænding, med simuleringstal</span></td>
+      <td><span class="chip o">Go-kort: toppene gives tilbage (dry-run-tal)</span><span class="chip c">Tænding + reparation + én samlet besked</span></td>
+    </tr>
+
+    <tr class="brand">
+      <td class="n">2</td>
+      <td class="area"><div class="t">To PR'er er klar til dit go</div><div class="d">#6128 åbne tilbud annulleres ved holdskifte (brand, alle tjek grønne) · #6053 vælg rytter først på Program-fanen (lovet 1/10).</div><span class="rule r">Brand + løfte</span></td>
+      <td><span class="chip o">Go-kort #6128 (bygget på diffen)</span><span class="chip o">Go-kort #6053 med før/efter-billede og preview</span></td>
+      <td><span class="chip c">Merge-kø + post-verify + patch note</span></td>
+      <td></td><td></td>
+    </tr>
+
+    <tr>
+      <td class="n">3</td>
+      <td class="area"><div class="t">Løfter til spillerne</div><div class="d">Besked fra holdsiden (27/9) · transferliste til U23 (28/9) · påmindelser kommer igen (30/9) · kopiér dagsplan (2/10) · nulstil til holdprogram.</div><span class="rule">Det lovede, ældste først</span></td>
+      <td></td>
+      <td><span class="chip c"><b>1 lane:</b> de to ældste (#5831, #5917)</span></td>
+      <td><span class="chip c">#6060 + #6123 (efter #6053) · #5979</span><span class="chip o">Go på preview pr. UI-PR</span></td>
+      <td></td>
+    </tr>
+
+    <tr>
+      <td class="n">4</td>
+      <td class="area"><div class="t">Træning færdig: beta til alle</div><div class="d">Train now, programmer, grupper, sæsonmatrix. Analysen af udviklingstempo er lovet 5.-6/10.</div><span class="rule">Beta til alle før nyt</span></td>
+      <td></td>
+      <td><span class="chip c">Analyse af udviklingstempo (read-only, #5965)</span></td>
+      <td><span class="chip o">Go pr. kontakt, der skal til alle</span></td>
+      <td></td>
+    </tr>
+
+    <tr>
+      <td class="n">5</td>
+      <td class="area"><div class="t">Udvikling 2.0 (#6110)</div><div class="d">Niveau-kurve, løb der betaler sig, tilbagegang man kan påvirke. Skal være live i sæson 4.</div><span class="rule">Bane 1</span></td>
+      <td><span class="chip o">Designkort D1-D7, ét ad gangen</span></td>
+      <td><span class="chip o">Resten af kortene</span></td>
+      <td><span class="chip c">Byg i bølge 2</span></td>
+      <td><span class="chip c">Byg + simulering</span><span class="chip o">Go på tallene</span></td>
+    </tr>
+
+    <tr>
+      <td class="n">6</td>
+      <td class="area"><div class="t">Roadmap-hub (5 spor)</div><div class="d">Plan, Beta, Vote, Known issues, Done + admin-fane. Indfrier løftet 30/9 om at vise status, når ting er live.</div><span class="rule">Nyt · design godkendt 4/10</span></td>
+      <td></td>
+      <td><span class="chip c">Migrationen (#6149), så snart en lane er fri</span></td>
+      <td><span class="chip c">Admin-fane · patch notes-filter · færdig-rutine</span><span class="chip o">Go på migrationen</span></td>
+      <td><span class="chip c">Spillersiden</span><span class="chip o">Indhold: go pr. liste, derefter live</span></td>
+    </tr>
+
+    <tr>
+      <td class="n">7</td>
+      <td class="area"><div class="t">Betaling og moms</div><div class="d">Auto-træk, Pro stopper + besked (#4514, #4512, #6062), moms (#4511).</div><span class="rule">Forretning viger aldrig</span></td>
+      <td></td>
+      <td><span class="chip x">Nat: #4514 auto-træk</span></td>
+      <td><span class="chip x">Nat: #4512 / #6062</span><span class="chip o">DMARC: din test-signup</span></td>
+      <td><span class="chip x">Nat: moms #4511</span></td>
+    </tr>
+
+    <tr>
+      <td class="n">8</td>
+      <td class="area"><div class="t">Stabilitet</div><div class="d">#6153 læsere blokeres ikke under opdatering (draft) · staging (#5904) · jobkø (#6134).</div><span class="rule">Release-gate 1</span></td>
+      <td></td>
+      <td><span class="chip o">#6153: SQL skal lægges i prod først (dit go)</span></td>
+      <td><span class="chip x">Nat: staging-klargøring · jobkø</span></td>
+      <td><span class="chip g">#6136 kan først måles på staging</span></td>
+    </tr>
+
+    <tr>
+      <td class="n">9</td>
+      <td class="area"><div class="t">Codex-rester og Codex-runneren</div><div class="d">#6132, #6120, #5792 stoppede på for snævert filmandat. Runneren startede kun med en midlertidig løsning.</div><span class="rule">Færdiggør</span></td>
+      <td></td>
+      <td><span class="chip c">Nyt filmandat på de tre issues (plan-fil)</span></td>
+      <td><span class="chip x">Nat: runner-rettelse først, så de tre</span></td>
+      <td></td>
+    </tr>
+
+    <tr>
+      <td class="n">10</td>
+      <td class="area"><div class="t">Planen til 1/1-2027 (#6148)</div><div class="d">Områderne vist visuelt, du rangerer. Inkl. personale (#2887), delt kaptajn (#5981), navigation (#6147), Discord-fund (#6122-#6126).</div><span class="rule">Styring</span></td>
+      <td><span class="chip o">Denne rækkefølge for uge 41</span></td>
+      <td><span class="chip o">Områderne for okt-dec, du rangerer</span></td>
+      <td></td><td></td>
+    </tr>
+  </table>
+
+  <div class="foot">
+    <div class="fbox"><div class="k">Loftet</div><div class="v"><b>Én bølge ad gangen på maskinen, 4 laner.</b> Claude og Codex deler låsen, så forslaget er Claude om dagen (du er der til go-kort) og Codex om natten (backend med låst spec). En bølge kan have op til 12 spor i kø og tager det næste, når en lane bliver fri.</div></div>
+    <div class="fbox"><div class="k">Mandagens fire laner</div><div class="v"><b>Tre til løbsmotoren, én til de ældste løfter.</b> Roadmap-migrationen står først i køen og starter samme dag, når den første lane er fri (udbrud og jagt er mest verifikation og bliver hurtigst færdig).</div></div>
+    <div class="fbox"><div class="k">Det du skal bruge tid på</div><div class="v"><b>I aften:</b> to go-kort + designkort for Udvikling 2.0. <b>I ugen:</b> go på migration, tænding af motor-rettelsen, toppene tilbage, beta til alle, og roadmap-indholdet liste for liste.</div></div>
+  </div>
+</div>
+</body>
+</html>

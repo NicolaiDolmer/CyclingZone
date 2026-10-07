@@ -57,8 +57,8 @@ features:
     flag: race_engine_v2_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 1306
-    verified: 2026-09-06
-    note: Autoritativ; flagnavn historisk.
+    verified: 2026-10-04
+    note: Hovedkontakt for motoren (flagnavn historisk); etaperne regnes af v4, mens race_engine_v4 er on.
 
   - id: race-engine-v3-scoring
     area: race-engine
@@ -68,18 +68,19 @@ features:
     flag: race_engine_v3_scoring
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 2353
-    verified: 2026-09-06
-    note: 4 score-faktorer i raceSimulator.
+    verified: 2026-10-04
+    note: 4 score-faktorer i raceSimulator. Skal blive on under v4 (v3-gaten resolver rolle + indsats, som v4 læser).
 
   - id: race-engine-v4
     area: race-engine
     title_en: Race engine v4
     title_da: Løbsmotor v4
-    state: dormant
+    state: live
+    flag: race_engine_v4
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 3855
-    verified: 2026-09-07
-    note: Off i prod (#4951).
+    verified: 2026-10-04
+    note: On siden 28/9 (læst i prod 4/10); kører officielle etaper.
 
   - id: race-notify-outbox
     area: race-engine
@@ -199,6 +200,16 @@ features:
     verified: 2026-09-07
     note: PR #4913, 6/9; patch note 7.259.
 
+  - id: role-scope-choice
+    area: race-day
+    title_en: Role picker scope (stage N to the end / stage N only)
+    title_da: Rollevælger med etape-valg (etape N og løbet ud / kun etape N)
+    state: live
+    flag: race_role_scope_choice
+    epic: 6095
+    verified: 2026-10-06
+    note: PR #6141; on for alle 6/10 kl. 19.52 efter ejer-go (beta siden 4/10), læst tilbage i prod. Off gendanner #4980-vælgeren.
+
   - id: race-day-development
     area: race-day
     title_en: Race day development
@@ -280,12 +291,11 @@ features:
     area: market
     title_en: Rider value on the same abilities as the rating
     title_da: Rytterværdi på samme evner som ratingen
-    state: dormant
-    flag: rider_valuation_model
+    state: live
     ssot: docs/ECONOMY_RULES.md
     epic: 5443
-    verified: 2026-09-21
-    note: PR #5446, nøglen står på v4. Ejer flipper til v5 + ekstraordinær kørsel (runbook 5443); lønnen har egen nøgle rider_production_value_model.
+    verified: 2026-10-04
+    note: Modelnøglen rider_valuation_model = v6 siden 26/9 (læst i prod 4/10; ikke on/off, derfor ikke i flag). Lønnen kører stadig v4 (rider_production_value_model).
 
   # --- squad ---------------------------------------------------------------
   - id: contracts
@@ -373,7 +383,8 @@ features:
     flag: peak_planner_enabled
     ssot: docs/TRAINING_RULES.md
     epic: 2224
-    verified: 2026-09-06
+    verified: 2026-10-04
+    note: Planlægning virker, men toppe og form har INGEN virkning i løb under v4 siden 28/9 (#6156; rettes fra 5/10, spec 2026-10-04-form-og-formtoppe-i-v4-design.md).
 
   - id: training-tick-system
     area: training
@@ -399,12 +410,12 @@ features:
     area: training
     title_en: Daily rider training receipt
     title_da: Daglig rytterkvittering
-    state: beta
+    state: live
     flag: training_daily_receipt
     ssot: docs/TRAINING_RULES.md
     epic: 5915
-    verified: 2026-09-30
-    note: Beta/admin aktiveret 30/9 kl. 22.07; PR 5976, main-CI/Deploy verify og rigtigt holds datokvittering/passcorer verificeret. Off gendanner tidligere visninger.
+    verified: 2026-10-04
+    note: Beta 30/9, til alle 1/10 (patch note 7.330); flag on læst i prod 4/10.
 
   - id: training-score
     area: training
@@ -455,8 +466,52 @@ features:
     flag: training_programs
     ssot: docs/TRAINING_RULES.md
     epic: 4629
-    verified: 2026-09-27
+    verified: 2026-10-04
     note: 'PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil.'
+
+  - id: training-program-cells
+    area: training
+    title_en: Training cells per race day (35 cells)
+    title_da: Træningsfelter pr. løbsdag (35 felter)
+    state: live
+    flag: training_program_cells
+    ssot: docs/TRAINING_RULES.md
+    epic: 5932
+    verified: 2026-10-04
+    note: 'On for alle 1/10 (patch note 7.330; læst i prod 4/10). Prognosen #5933 følger samme flag.'
+
+  - id: training-fatigue-rules
+    area: training
+    title_en: Fatigue limit (player-set rules)
+    title_da: Træthedsgrænse (spillerens regler)
+    state: live
+    flag: training_fatigue_rules
+    ssot: docs/TRAINING_RULES.md
+    epic: 4854
+    verified: 2026-10-04
+    note: 'On for alle 1/10 (patch note 7.330; læst i prod 4/10). Inkl. auto-hvile #5620.'
+
+  - id: training-train-now
+    area: training
+    title_en: Train now (no bonus)
+    title_da: Træn nu (uden bonus)
+    state: beta
+    flag: training_train_now
+    ssot: docs/TRAINING_RULES.md
+    epic: 4847
+    verified: 2026-10-04
+    note: Beta læst i prod 4/10; kræver training_condition_per_date. Flip til alle er ejer-only.
+
+  - id: training-groups
+    area: training
+    title_en: Training groups
+    title_da: Træningsgrupper
+    state: beta
+    flag: training_groups
+    ssot: docs/TRAINING_RULES.md
+    epic: 6000
+    verified: 2026-10-04
+    note: Beta læst i prod 4/10; kræver training_program_cells. Flip til alle er ejer-only.
 
   # --- academy -------------------------------------------------------------
   - id: academy
@@ -544,6 +599,16 @@ features:
     ssot: docs/CALENDAR_RULES.md
     verified: 2026-09-24
     note: Tilmeldingskortet live 24/9 (flag on, S4-tilmelding).
+
+  - id: season-matrix-mobile
+    area: season
+    title_en: Season matrix on mobile
+    title_da: Sæsonmatrix på mobil
+    state: live
+    flag: season_matrix_mobile
+    epic: 5124
+    verified: 2026-10-06
+    note: On for alle 6/10 kl. 19.52 efter ejer-go (beta siden 1/10), læst tilbage i prod; kun visning (frontend).
 
   - id: season-end-recap
     area: season
@@ -747,11 +812,11 @@ features:
     area: comms
     title_en: Email retention loop
     title_da: E-mail-loop
-    state: beta
+    state: live
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
-    verified: 2026-09-14
-    note: Win-back afventer ejer-go (#2760).
+    verified: 2026-10-06
+    note: Velkomst-, dag 1- og løbsoversigt-mails er on for alle (30 dage til 6/10: 34/34/309 sendt). Kun win-back er slukket (`winback_send_enabled`=false) og afventer ejer-go (#2760, #4592).
 
   - id: in-app-survey
     area: comms
@@ -782,6 +847,16 @@ features:
     verified: 2026-09-17
     note: PR #5019, 8/9; ingen flag.
 
+  - id: roadmap-hub
+    area: comms
+    title_en: Roadmap hub (five tabs)
+    title_da: Roadmap-hub (fem faner)
+    state: live
+    ssot: docs/superpowers/specs/2026-10-04-roadmap-hub-design.md
+    epic: 5387
+    verified: 2026-10-04
+    note: Live for alle 4/10, intet flag; /roadmap og /admin/growth?tab=roadmap; #5387/#5388; patch note 7.340.
+
   # --- billing -------------------------------------------------------------
   - id: cz-pro
     area: billing
@@ -806,9 +881,10 @@ features:
     area: ops
     title_en: Rider reputation
     title_da: Rytter-omdømme
-    state: building
+    state: live
     flag: rider_reputation_enabled
-    verified: 2026-09-10
+    verified: 2026-10-04
+    note: Slået til 1/10 (PR #5828, patch note 7.330); flag on læst i prod 4/10.
 
   - id: survey-banner
     area: ops

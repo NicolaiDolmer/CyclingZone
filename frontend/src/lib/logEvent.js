@@ -1,12 +1,19 @@
 import { supabase } from "./supabase";
 import { getAuthedUser } from "./getAuthedUser.js";
-import { isSquadDrafted } from "./teamDrafted.js";
+import { isSquadDrafted, isTeamNewlyCreated } from "./teamDrafted.js";
 import { getSessionId } from "./sessionId.js";
-import { capturePosthogEvent } from "./posthogClient.js";
+import { capturePosthogEvent, isPosthogCapturing } from "./posthogClient.js";
 
 // Player-events baseline (#137). Fire-and-forget instrumentation der respekterer
 // analytics-consent (samme gate som Clarity). Skriver til public.player_events
 // — RLS sikrer at managers kun ser egne events.
+//
+// To gates, bevidst adskilt (#4321, ejer 6/10):
+//   - Postgres (player_events) kræver et AKTIVT analytics-ja, uændret.
+//   - PostHog-spejlingen følger PostHog-gaten: kører for alle undtagen dem der
+//     aktivt har afvist (cookieløst). Den gate håndhæves af
+//     posthogIntegration.jsx, der starter/opter ud; her spørger vi blot
+//     isPosthogCapturing().
 //
 // Master-listen KNOWN_EVENTS er Detector E's reference for hvilke events der
 // bør have impressions. Tilføj nye events her samtidig med at de instrumenteres.
@@ -61,6 +68,11 @@ export const KNOWN_EVENTS = Object.freeze([
   // ved 4/4 onboarding-steps, first_bid/first_transfer KUN ved brugerens første
   // (de-dup pr. bruger via logFirstEvent).
   "signup",
+  // team_created (#4321): kerne-rejsens trin "hold oprettet". Fyrer ved første
+  // dashboard-load med et hold oprettet inden for TEAM_CREATED_WINDOW_MS
+  // (teamDrafted.js), så eksisterende brugere ikke tæller ved deploy. Kædet
+  // efter signup-flushen, så PostHog ser signup før team_created.
+  "team_created",
   "onboarding_completed",
   "first_bid",
   "first_transfer",
@@ -145,6 +157,10 @@ export const KNOWN_EVENTS = Object.freeze([
   // Ugeplaner for holdet og for én rytter (useTraining.js). Canary-blinde indtil #5369.
   "training_week_plan_set",
   "training_rider_week_plan_set",
+  // first_training (#4321): kerne-rejsens trin "første træning". Afledt i
+  // logEvent() af brugerens første trænings-handling (TRAINING_ACTION_EVENTS
+  // nedenfor) og de-dup'et pr. bruger via logFirstEvent. Bærer {via}.
+  "first_training",
   // onboarding_step2_one_click (#5241) — fyrer fra OnboardingProgressCard.jsx
   // når "Run this week's training"/"Kør ugens træning" sætter assistentens
   // anbefalede fokus for truppen og kører dagen i ét klik. Måler #4964-fundet:
@@ -195,17 +211,26 @@ export const KNOWN_EVENTS = Object.freeze([
 // #4321: spejl eventet til PostHog. Postgres-skrivningen nedenfor er og bliver
 // sandheden (fair-play-detektion + Detector E læser player_events); PostHog er
 // kopien der giver funnels/retention uden håndbygget SQL. capturePosthogEvent
-// er no-op indtil SDK'et er startet (kræver PROD + analytics-samtykke) og kan
+// er no-op medmindre PostHog-gaten er åben (PROD + ikke aktivt afvist), og kan
 // hverken kaste eller blokere — spejlingen må aldrig påvirke instrumenteringen.
-function mirrorToPosthog(name, data) {
-  capturePosthogEvent(name, data || {});
+// userId sendes med, så eventet venter på identify og lander på personen.
+function mirrorToPosthog(name, data, userId) {
+  capturePosthogEvent(name, data || {}, { userId });
+}
+
+// Hvilke af de to sinks der skal have eventet lige nu. Begge lukkede = ingen
+// grund til identitets-opslaget (en teams-forespørgsel).
+function activeSinks() {
+  return { toPostgres: hasAnalyticsConsent(), toPosthog: isPosthogCapturing() };
 }
 
 async function _logEvent(name, data) {
-  if (!hasAnalyticsConsent()) return;
+  const { toPostgres, toPosthog } = activeSinks();
+  if (!toPostgres && !toPosthog) return;
   const identity = await ensureIdentity();
   if (!identity?.userId) return;
-  mirrorToPosthog(name, data);
+  mirrorToPosthog(name, data, identity.userId);
+  if (!toPostgres) return;
   await supabase.from("player_events").insert({
     team_id: identity.teamId,
     user_id: identity.userId,
@@ -214,10 +239,25 @@ async function _logEvent(name, data) {
   });
 }
 
+// Kerne-rejsens "første træning" (#4321): enhver af disse handlinger tæller.
+// Afledt her i stedet for på hvert kaldsted i useTraining.js /
+// OnboardingProgressCard.jsx, så et nyt trænings-event kun skal tilføjes ét sted.
+export const TRAINING_ACTION_EVENTS = Object.freeze([
+  "training_focus_set",
+  "training_focus_set_bulk",
+  "training_run_today",
+  "training_week_plan_set",
+  "training_rider_week_plan_set",
+  "onboarding_step2_one_click",
+]);
+
 export function logEvent(name, data = {}) {
   _logEvent(name, data).catch(() => {
     // Instrumentation must never break the user flow.
   });
+  if (TRAINING_ACTION_EVENTS.includes(name)) {
+    logFirstEvent("first_training", { via: name });
+  }
 }
 
 // session_started fyrede før ved HVER getSession() + HVER SIGNED_IN → 25.280
@@ -242,8 +282,17 @@ export function logSessionStart() {
 // signup-dato ≥ deploy. Den autoritative signup-måling er signup_attribution.
 const FIRST_EVENT_PREFIX = "cz_first_event_v1:";
 
+// De-dup af PostHog-spejlingen inden for én page load. localStorage-flaget
+// nedenfor skrives KUN med analytics-samtykke (uændret); for en bruger der ikke
+// har svaret på banneret skriver vi bevidst intet til browseren (cookieløs
+// variant A, ejer 6/10). Konsekvens, dokumenteret i ANALYTICS_STACK §3: for
+// sådanne brugere kan et first_*-event nå PostHog én gang pr. page load. Brug
+// derfor unikke personer, ikke rå event-antal, når first_* tælles i PostHog.
+const mirroredFirstEvents = new Set();
+
 async function _logFirstEvent(name, data) {
-  if (!hasAnalyticsConsent()) return;
+  const { toPostgres, toPosthog } = activeSinks();
+  if (!toPostgres && !toPosthog) return;
   const identity = await ensureIdentity();
   if (!identity?.userId) return;
   const flagKey = `${FIRST_EVENT_PREFIX}${name}:${identity.userId}`;
@@ -252,7 +301,11 @@ async function _logFirstEvent(name, data) {
   } catch {
     // localStorage utilgængelig — fortsæt og fyr eventet (hellere over- end under-tælle).
   }
-  mirrorToPosthog(name, data);
+  if (!mirroredFirstEvents.has(flagKey)) {
+    mirroredFirstEvents.add(flagKey);
+    mirrorToPosthog(name, data, identity.userId);
+  }
+  if (!toPostgres) return;
   await supabase.from("player_events").insert({
     team_id: identity.teamId,
     user_id: identity.userId,
@@ -273,6 +326,18 @@ export function logFirstEvent(name, data = {}) {
   });
 }
 
+// --- Kerne-rejsen: team_created (#4321) ---------------------------------
+// Holdet oprettes tre steder (Layout-auto-bootstrap, SetupWizardModal,
+// LoginPage ved confirm-off), og alle tre lander på dashboardet bagefter. Vi
+// fyrer derfor ved første dashboard-load med et NYT hold (oprettet inden for
+// vinduet i teamDrafted.js), så eksisterende brugere ikke tæller ved deploy.
+// Det kædes EFTER en igangværende signup-flush (samme dashboard-load), så
+// PostHog altid ser signup før team_created og tragtens rækkefølge holder.
+export function logTeamCreated(createdAt) {
+  if (!isTeamNewlyCreated(createdAt)) return;
+  signupFlushInFlight.then(() => logFirstEvent("team_created", {}));
+}
+
 // --- Aktiverings-funnel: team_drafted (#940) ----------------------------
 // Tærsklen ligger i lib/teamDrafted.js (pure, unit-testbar uden Supabase-import);
 // her kobles den til logFirstEvent, så eventet de-dup'es pr. bruger og kun lander
@@ -290,10 +355,18 @@ export function logTeamDrafted(riderCount) {
 // straks efter bootstrap; confirm-on: ved første dashboard-load efter bekræftelse).
 // Markøren sættes KUN ved en ægte signUp(), så eksisterende brugere aldrig tæller.
 const PENDING_SIGNUP_KEY = "cz_pending_signup_event_v1";
+// Markørens to tilstande: "1" = afventer både PostHog og Postgres;
+// POSTHOG_SENT = PostHog har fået signup, Postgres venter stadig på samtykke.
+// Samme nøgle, ingen ny browser-lagring (#4321): uden den ville en bruger der
+// ikke svarer på banneret sende signup til PostHog ved hver eneste page load.
+const PENDING_SIGNUP = "1";
+const PENDING_SIGNUP_POSTHOG_SENT = "posthog_sent";
+// Den seneste flush, så logTeamCreated() kan vente på den (se dér).
+let signupFlushInFlight = Promise.resolve();
 
 export function markPendingSignup() {
   try {
-    localStorage.setItem(PENDING_SIGNUP_KEY, "1");
+    localStorage.setItem(PENDING_SIGNUP_KEY, PENDING_SIGNUP);
   } catch {
     // best-effort
   }
@@ -302,16 +375,29 @@ export function markPendingSignup() {
 async function _flushPendingSignup() {
   let pending;
   try {
-    pending = localStorage.getItem(PENDING_SIGNUP_KEY) === "1";
+    pending = localStorage.getItem(PENDING_SIGNUP_KEY);
   } catch {
     return;
   }
-  if (!pending) return;
-  // Vent på consent — markøren bevares til consent gives (samme gate som øvrige events).
-  if (!hasAnalyticsConsent()) return;
+  if (pending !== PENDING_SIGNUP && pending !== PENDING_SIGNUP_POSTHOG_SENT) return;
+  // Postgres venter på consent — markøren bevares til consent gives (samme gate
+  // som øvrige events). PostHog følger sin egen gate.
+  const { toPostgres, toPosthog } = activeSinks();
+  const posthogDue = toPosthog && pending === PENDING_SIGNUP;
+  if (!toPostgres && !posthogDue) return;
   const identity = await ensureIdentity();
   if (!identity?.userId) return;
-  mirrorToPosthog("signup", {});
+  if (posthogDue) {
+    mirrorToPosthog("signup", {}, identity.userId);
+    if (!toPostgres) {
+      try {
+        localStorage.setItem(PENDING_SIGNUP_KEY, PENDING_SIGNUP_POSTHOG_SENT);
+      } catch {
+        // best-effort
+      }
+      return;
+    }
+  }
   await supabase.from("player_events").insert({
     team_id: identity.teamId,
     user_id: identity.userId,
@@ -326,7 +412,7 @@ async function _flushPendingSignup() {
 }
 
 export function flushPendingSignup() {
-  _flushPendingSignup().catch(() => {
+  signupFlushInFlight = _flushPendingSignup().catch(() => {
     // Instrumentation must never break the user flow.
   });
 }

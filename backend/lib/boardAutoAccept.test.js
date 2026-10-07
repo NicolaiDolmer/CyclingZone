@@ -207,6 +207,36 @@ test("#3579: et backlogget hold får varslet FØR nedtællingen, målt fra rollo
   assert.equal(notifications[0].metadata.titleCode, "notif.boardPlanOpened.title");
 });
 
+// ── #6122 · mandat-modellen 'on' → plan-cronen er tavs ───────────────────
+
+function withMandateFlag(state, value) {
+  state.app_config = [{ key: "board_mandate_model_enabled", value }];
+  return state;
+}
+
+test("#6122: mandat-model 'on' → ingen plan-påmindelse (planen kan ikke forhandles i Boardroom)", async () => {
+  const state = withMandateFlag(baseState({ teamCreatedAt: new Date(NOW.getTime() - 2 * DAY_MS).toISOString() }), "on");
+  const { summary, notifications } = await runCron(state, NOW);
+  assert.equal(notifications.length, 0);
+  assert.equal(summary.reminders_sent, 0);
+  assert.equal(summary.errors, 0);
+});
+
+test("#6122: mandat-model 'on' → auto-accept kører stadig, men uden besked", async () => {
+  const state = withMandateFlag(baseState({ teamCreatedAt: new Date(NOW.getTime() - 5 * DAY_MS).toISOString() }), "on");
+  const { summary, notifications } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 1);
+  assert.equal(notifications.length, 0);
+  assert.equal(state.board_profiles.find((b) => b.plan_type === "5yr").negotiation_status, "completed");
+});
+
+test("#6122: mandat-model 'beta' → almindelige managere ser stadig den gamle side og får påmindelsen", async () => {
+  const state = withMandateFlag(baseState({ teamCreatedAt: new Date(NOW.getTime() - 2 * DAY_MS).toISOString() }), "beta");
+  const { notifications } = await runCron(state, NOW);
+  assert.equal(notifications.length, 1);
+  assert.equal(notifications[0].metadata.titleCode, "notif.boardT3Reminder.title");
+});
+
 test("nyt hold, dag 2 siden åbning: T-3 info-reminder (board_update)", async () => {
   const opened = new Date(NOW.getTime() - 2 * DAY_MS);
   const state = baseState({ teamCreatedAt: opened.toISOString() });
@@ -607,4 +637,60 @@ test("#3579: aktiv spillers T-1 falder på dag 8, ikke dag 4", async () => {
   const day8 = await runCron(atDay8, NOW);
   assert.equal(day8.notifications[0].type, "board_critical");
   assert.equal(day8.notifications[0].metadata.messageParams.daysLeft, 2);
+});
+
+// =====================================================================
+// #6184 · board_profiles hentes i ét batch, ikke ét opslag pr. hold
+// =====================================================================
+
+function countingSupabase(state, options) {
+  const inner = createFakeSupabase(state, options);
+  const calls = { board_profiles: 0 };
+  return {
+    calls,
+    client: {
+      ...inner,
+      from(table) {
+        if (table === "board_profiles") calls.board_profiles += 1;
+        return inner.from(table);
+      },
+    },
+  };
+}
+
+function twoTeamState(opened) {
+  const state = baseState({ teamCreatedAt: opened.toISOString() });
+  state.teams.push({ ...state.teams[0], id: "team-2", user_id: "user-2", name: "Team B" });
+  state.board_profiles.push({ ...state.board_profiles[0], id: "bp-2", team_id: "team-2" });
+  return state;
+}
+
+test("#6184: to hold → ét board_profiles-læseopslag, samme reminders som før", async () => {
+  const state = twoTeamState(new Date(NOW.getTime() - 2 * DAY_MS));
+  const { calls, client } = countingSupabase(state);
+  const notifications = [];
+  const summary = await processBoardAutoAcceptCron({
+    supabase: client,
+    notifyUser: async (args) => { notifications.push(args); return { delivered: true }; },
+    now: NOW,
+    rolloutFloor: DISABLE_ROLLOUT_FLOOR,
+  });
+  assert.equal(summary.teams_checked, 2);
+  assert.equal(summary.reminders_sent, 2);
+  assert.equal(calls.board_profiles, 1, "batch-opslaget erstatter per-hold-opslagene");
+  assert.deepEqual(notifications.map((n) => n.userId).sort(), ["user-1", "user-2"]);
+});
+
+test("#6184: batch-opslaget fejler → hvert hold falder tilbage til eget opslag (fejlen isoleres)", async () => {
+  const state = twoTeamState(new Date(NOW.getTime() - 2 * DAY_MS));
+  const { calls, client } = countingSupabase(state, { errors: { board_profiles: { select: "boom" } } });
+  const summary = await processBoardAutoAcceptCron({
+    supabase: client,
+    notifyUser: async () => ({ delivered: true }),
+    now: NOW,
+    rolloutFloor: DISABLE_ROLLOUT_FLOOR,
+  });
+  assert.equal(summary.teams_checked, 2);
+  assert.equal(summary.errors, 2, "per-hold-fallbacken fejler pr. hold, ikke hele kørslen");
+  assert.equal(calls.board_profiles, 3, "1 batch + 1 fallback pr. hold");
 });

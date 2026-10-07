@@ -1,6 +1,6 @@
 # Træningens regler - SSOT
 
-## Forberedt kompensation #6061 (3/10, ikke i produktion)
+## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 
 Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
 planer, staff og motor. Dette er kompensation, ikke rekonstruktion af gamle
@@ -14,7 +14,12 @@ afregnede slots og tvetydige ejere afviser kompensation. Manglende neutral
 førstegangstilstand kan kun oprettes uden anvendt aktivitetshistorik; historiske
 tilstandsafregninger og rapporter opfindes ikke. En separat kompensationskvittering
 forhindrer både genanvendelse og efterfølgende normal træning af samme slot.
-Prototypen ligger i database/proposals og er ikke godkendt til anvendelse.
+Ledgeren og triggeren ligger i `database/2026-10-05-6061-compensation-ledger.sql`;
+den aktuelle writer og kilde-hashes i `database/2026-10-05-6129-compensation-slim-source.sql`.
+Begge migrationer er registreret i prod (read-only 6/10). Det oprindelige forslag
+er fjernet fra proposals, fordi dets writer er erstattet og ikke må genanvendes.
+Infrastrukturen er live; en konkret kompensationskørsel kræver fortsat separat
+ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparation.
 
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 

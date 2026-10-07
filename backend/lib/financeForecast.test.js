@@ -801,60 +801,30 @@ test("computeFinanceForecast (#3989): lønnen er monotont voksende i leverance o
 
 // ─── #3899 · Præmie-interval (kvartilbånd af divisionens målte per-hold-præmie) ─
 
-test("computeFinanceForecast (#3899): for lille division-stikprøve → ±20%-fallback", () => {
-  const result = computeFinanceForecast({
-    team: { sponsor_income: 240_000 },
-    riders: [{ salary: 10_000, prize_earnings_bonus: 100_000 }],
-    debtCeiling: 900_000,
-    divisionPrizeSamples: [90_000, 110_000], // kun 2 hold < MIN_DIVISION_PRIZE_SAMPLE
-  });
-  assert.equal(result.inputs.prize_interval_method, "flat_pct_fallback");
-  assert.equal(result.prize_low, Math.round(100_000 * 0.8));
-  assert.equal(result.prize_high, Math.round(100_000 * 1.2));
+test("#5940: own estimate determines both bounds for low/high values and every division", () => {
+  for (const estimate of [200, 200000]) {
+    for (const division of [1, 4]) {
+      const result = computeFinanceForecast({ team: { division }, targetSeasonNumber: 5,
+        riders: [{ prize_earnings_bonus: estimate }], divisionPrizeSamples: [100, 200, 300, 400] });
+      assert.equal(result.projected_prize, estimate);
+      assert.equal(result.prize_low, estimate * 0.8);
+      assert.equal(result.prize_high, estimate * 1.2);
+      assert.ok(result.prize_high > estimate);
+      assert.equal(result.projected_net - result.confidence_low, estimate - result.prize_low);
+      assert.equal(result.confidence_high - result.projected_net, result.prize_high - estimate);
+      assert.equal(result.inputs.prize_interval_method, undefined);
+      assert.equal(result.inputs.prize_interval_sample_size, undefined);
+    }
+  }
 });
 
-test("computeFinanceForecast (#3899): tilstrækkelig division-stikprøve → kvartilbånd, centreret på eget punktestimat", () => {
-  // 8 hold, jævnt spredt 50K → 400K. P25/P50/P75 er veldefinerede.
-  const samples = [50_000, 100_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000];
-  const result = computeFinanceForecast({
-    team: { sponsor_income: 240_000 },
-    riders: [{ salary: 10_000, prize_earnings_bonus: 210_000 }], // eget punktestimat
-    debtCeiling: 900_000,
-    divisionPrizeSamples: samples,
-  });
-  assert.equal(result.inputs.prize_interval_method, "division_quartile_band");
-  assert.equal(result.inputs.prize_interval_sample_size, 8);
-  // Intervallet er centreret på HOLDETS eget estimat (210.000), ikke divisionens median.
-  assert.ok(result.prize_low < 210_000, "low skal ligge under eget estimat");
-  assert.ok(result.prize_high > 210_000, "high skal ligge over eget estimat");
-  assert.ok(result.prize_low >= 0, "low må aldrig blive negativ");
+test("#5940: zero prize estimate has a nonnegative zero interval", () => {
+  const result = computeFinanceForecast({ team: { division: 4 }, riders: [], targetSeasonNumber: 5 });
+  assert.equal(result.projected_prize, 0);
+  assert.equal(result.prize_low, 0);
+  assert.equal(result.prize_high, 0);
+  assert.equal(result.confidence_low, result.confidence_high);
 });
-
-test("computeFinanceForecast (#3899): confidence_low/high følger PRÆCIS samme spredning som prize_low/high", () => {
-  const samples = [50_000, 100_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000];
-  const result = computeFinanceForecast({
-    team: { sponsor_income: 240_000 },
-    riders: [{ salary: 10_000, prize_earnings_bonus: 210_000 }],
-    debtCeiling: 900_000,
-    divisionPrizeSamples: samples,
-  });
-  const lowSpread = result.projected_prize - result.prize_low;
-  const highSpread = result.prize_high - result.projected_prize;
-  assert.equal(result.projected_net - result.confidence_low, lowSpread);
-  assert.equal(result.confidence_high - result.projected_net, highSpread);
-});
-
-test("computeFinanceForecast (#3899): division-median = 0 undgår division-by-zero (falder tilbage til ±20%)", () => {
-  const result = computeFinanceForecast({
-    team: { sponsor_income: 240_000 },
-    riders: [{ salary: 10_000, prize_earnings_bonus: 50_000 }],
-    debtCeiling: 900_000,
-    divisionPrizeSamples: [0, 0, 0, 0, 0],
-  });
-  assert.equal(result.inputs.prize_interval_method, "flat_pct_fallback");
-  assert.ok(Number.isFinite(result.prize_low) && Number.isFinite(result.prize_high));
-});
-
 // ─── #3986 · Stab/faciliteter vs. divisions-upkeep ────────────────────────────
 
 test("computeFinanceForecast (#3986): projected_staff_facilities = facility_upkeep + staff_salary — UDEN divisions-upkeep", () => {
@@ -919,19 +889,14 @@ test("computeFinanceForecast (#3986): den rapporterede D2-sag — 164.910 var 14
 
 // ─── #3899 · Multi-sæson: division-stikprøve threades gennem hele horisonten ──
 
-test("computeMultiSeasonForecast (#3899): divisionPrizeSamples er status-quo (samme stikprøve) over hele horisonten", () => {
-  const samples = [50_000, 100_000, 150_000, 200_000, 250_000, 300_000, 350_000, 400_000];
-  const result = computeMultiSeasonForecast({
-    ...ARCHETYPES.healthy,
-    seasonsAhead: 3,
-    divisionPrizeSamples: samples,
-  });
+test("#5940: own-estimate interval stays coherent throughout the forecast horizon", () => {
+  const result = computeMultiSeasonForecast({ ...ARCHETYPES.healthy, seasonsAhead: 3 });
   for (const f of result.forecasts) {
-    assert.equal(f.inputs.prize_interval_method, "division_quartile_band");
-    assert.equal(f.inputs.prize_interval_sample_size, samples.length);
+    const spread = Math.round(f.projected_prize * 0.2);
+    assert.equal(f.prize_low, Math.max(0, f.projected_prize - spread));
+    assert.equal(f.prize_high, f.projected_prize + spread);
   }
 });
-
 test("computeMultiSeasonForecast (#3899): lønsystemet skifter til markedsformlen fra sæson 3, ikke før", () => {
   const result = computeMultiSeasonForecast({
     team: { id: "t-wage", division: 2, balance: 500_000 },
@@ -949,4 +914,18 @@ test("computeMultiSeasonForecast (#3899): lønsystemet skifter til markedsformle
   assert.equal(s4.inputs.salary_basis, "production_s3");
   // Ved cpv = 100.000 koster rytteren præcis 100.000 × den globale sats.
   assert.equal(s3.projected_salary, -computeFrozenSalary({ current_production_value: 100_000 }));
+});
+
+test("#5940: a strong club keeps upside over its own estimate", () => {
+  const result = computeFinanceForecast({ team: { division: 3 }, targetSeasonNumber: 5,
+    riders: [{ prize_earnings_bonus: 200000 }], divisionPrizeSamples: [0, 100, 200, 300, 90000, 120000, 180000] });
+  assert.equal(result.prize_high, 240000);
+  assert.ok(result.prize_low >= 0);
+  assert.equal(result.projected_prize, 200000);
+});
+test("#5940: a low-division club uses its own estimate", () => {
+  const result = computeFinanceForecast({ team: { division: 3 }, targetSeasonNumber: 5,
+    riders: [{ prize_earnings_bonus: 200 }], divisionPrizeSamples: [100, 200, 300, 400] });
+  assert.equal(result.prize_low, 160);
+  assert.equal(result.prize_high, 240);
 });

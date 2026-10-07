@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Arbejdsregler for **alle kodende agenter** i cycling-manager-repo'et (Claude Code + Codex). Single source of truth for de discipliner hver session skal følge. Claude auto-loader `CLAUDE.md`, Codex auto-loader KUN denne fil — derfor trin 0 i start-sekvensen (Codex genindført 9/9, [#5065](https://github.com/NicolaiDolmer/CyclingZone/issues/5065))._
+_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kontrakten for begge._
 
 > **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
@@ -58,9 +58,9 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 18. **Commit i hoved-checkoutet kun bag den blokerende branch-guard.** Kør `bash scripts/guard-commit-branch.sh <forventet-branch> && git commit ...`. Committer du via `git -C <dir>` (worktree-workers), så giv guarden SAMME mappe: `bash scripts/guard-commit-branch.sh <branch> <dir> && git -C <dir> commit ...`; uden `<dir>` tjekker den shell-cwd, som agent-shells nulstiller mellem kald — hændelsen bag: [`docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter`](docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter). Guarden exiter 1 ved mismatch og ved detached HEAD. `git branch --show-current` er IKKE en guard: den printer branchen og exiter altid 0, så en `&&`-kæde fortsætter uanset hvad. Blokerer guarden, så gentag ALDRIG uden den; en blokeret guard er signalet om at checkoutet står forkert. Er der fremmed ucommitteret arbejde i træet, så skift ikke branch (et `checkout` bærer deres filer med) men commit via `git worktree add <tmp> <branch>`.
 
-19. **Aldrig skip-logik på prod-deploy-grenen.** main bygger ALTID. Enhver "spring buildet over"-optimering (ignoreCommand, diff-gates) hører til på branches, aldrig på main.
+19. **skip-logik på prod-deploy** (#6202): main følger sidste succesfulde deploy; frontend/afhængigheder eller ukendt grundlag bygger. Kontrakt: `docs/VERCEL_BUILD_RULES.md`.
 
-20. **Deploy-verify er en del af merge-handlingen.** En merge er ikke færdig før det NÆSTE production-deploy er SET i READY (Vercel) — efter hver merge-salve, ikke ved close-out.
+20. **Deploy-verify er en del af merge-handlingen.** Railway success kræves efter hver salve; Vercel READY kræves ved frontend/byggeinputs eller ukendt grundlag. Rene uafhængige ændringer kan beholde seneste frontend-deploy. `docs/VERCEL_BUILD_RULES.md`.
 
 21. **Per-agent-timeout dimensioneres efter samtidighed.** En timeout der er rimelig for én agent alene er forkert under fuldt tryk: skalér med antal samtidige agenter eller launch i forskudte chunks.
 
@@ -89,6 +89,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 31. **Nye frontend-filer skrives i `.ts`/`.tsx`.** Konventionen gælder kun NYE filer; ingen big-bang-migrering af de eksisterende ca. 880 `.js`/`.jsx`. Gælder også testfiler: nye i `.ts`/`.tsx`, eksisterende `.js`-tests urørt (#5428). `check-anti-slop.mjs` advarer, blokerer ikke.
 
+Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [migration-skabelonen](database/templates/new-public-table.sql); RLS erstatter ikke grants.
+
 32. **"Kan en type fange det?" — spørg FØR du foreslår en ny CI-guard.** `.github/workflows/ci.yml` har allerede ca. 15 håndbyggede ratchet-guard-jobs. Kan compileren fange fejlen (forkert felt-navn, manglende case, forkert type), tilføj typen i stedet. Guards reserveres til det compileren IKKE kan se: invarianter, RLS, paginerings-lofter, patch-notes-dækning, feature-liveness.
 
 ### Backlog-disciplin (ejer-direktiv 25/8, [#4267](https://github.com/NicolaiDolmer/CyclingZone/issues/4267))
@@ -97,9 +99,9 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 34. **Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md`, republiceres Masterplan-artifacten (samme URL, aldrig en ny) FØR sessionen lukker. Fuld tekst: [`docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync`](docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync).
 
-### Merge-regler (ejer 22/9 + 24/9, #5508)
+### Merge-regler (ejer 22/9 + 24/9 + 4/10, #5508)
 
-35. **Stående merge-regler.** Merges UDEN ejerens ordrette "merge", når CI er grøn, et uafhængigt read-only diff-tjek er rent, CodeRabbit ikke har blokerende fund, og hvert merge står i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter · **(b)** motor-PR'er bag slukket `race_engine_v4`, når intet ændrer sig for spillerne og ingen måling bliver NY rød (#5580/#5581 undtaget) · **(c)** Dependabot patch/minor, docs uden spillertekst, CI/hooks/test-only. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger. `scripts/merge-queue.ps1`s klassifikator skal kende (a)-(c) og logge kategorien på PR'en.
+35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI, rent uafhængigt diff-tjek, ingen blokerende CodeRabbit-fund og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`/regel-revision, uden spillerændring/ny rød måling (ikke #5580/#5581) · **(c)** Dependabot inkl. sikkerhed, docs/CI/hooks/test/ops uden spillertekst. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`.
 
 ### §LOKAL lokal-only-state
 

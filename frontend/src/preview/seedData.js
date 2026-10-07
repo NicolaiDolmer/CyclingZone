@@ -268,6 +268,30 @@ export const ROADMAP_ITEMS = [
     approved: true,
     status: "active",
   },
+  // #6150 (roadmap-hub): et punkt pr. fane, så preview viser alle fem faner med
+  // indhold. Eksempeltekst, ikke et roadmap-tilsagn.
+  { id: "rm-plan-1", engine: "training", sort_order: 1, title_en: "Example planned item.", title_da: "Eksempel på et planlagt punkt.", approved: true, status: "planned", horizon: "next", beta_since: null, beta_soon: false, live_soon: false, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
+  { id: "rm-plan-2", engine: "club", sort_order: 9, title_en: "Example item for later.", title_da: "Eksempel på et senere punkt.", approved: true, status: "planned", horizon: "later", beta_since: null, beta_soon: false, live_soon: false, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
+  { id: "rm-wip-1", engine: "races", sort_order: 1, title_en: "Example item in progress.", title_da: "Eksempel på et punkt i gang.", approved: true, status: "in_progress", horizon: "next", beta_since: null, beta_soon: true, live_soon: false, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
+  { id: "rm-beta-1", engine: "training", sort_order: 2, title_en: "Example item in beta.", title_da: "Eksempel på et punkt i beta.", approved: true, status: "in_progress", horizon: "next", beta_since: "2026-09-27T00:00:00Z", beta_soon: false, live_soon: true, created_at: "2026-09-20T00:00:00Z", shipped_at: null },
+  { id: "rm-done-1", engine: "youth", sort_order: 1, title_en: "Example finished item.", title_da: "Eksempel på et færdigt punkt.", approved: true, status: "shipped", horizon: "next", beta_since: null, beta_soon: false, live_soon: false, created_at: "2026-09-01T00:00:00Z", shipped_at: "2026-09-21T00:00:00Z" },
+];
+
+// #6150: kendte fejl til Known issues-fanen (én af hver slags). Datoerne er
+// relative til "nu", så "Fixed in the last 14 days" aldrig løber tør.
+const DAY_MS = 24 * 60 * 60 * 1000;
+const daysAgo = (n) => new Date(Date.now() - n * DAY_MS).toISOString();
+export const KNOWN_ISSUES = [
+  { id: "ki-confirmed-1", area: "races", status: "fixing", title_en: "Example confirmed issue that is being fixed.", title_da: "Eksempel på en bekræftet fejl, der rettes.", sort_order: 1, created_at: daysAgo(6), updated_at: daysAgo(1), closed_at: null },
+  { id: "ki-confirmed-2", area: "training", status: "confirmed", title_en: "Example confirmed issue.", title_da: "Eksempel på en bekræftet fejl.", sort_order: 2, created_at: daysAgo(4), updated_at: daysAgo(2), closed_at: null },
+  { id: "ki-checking-1", area: "club", status: "checking", title_en: "Example reported issue being checked.", title_da: "Eksempel på en indmeldt fejl, der bliver tjekket.", sort_order: 1, created_at: daysAgo(3), updated_at: daysAgo(3), closed_at: null },
+  { id: "ki-dismissed-1", area: "other", status: "dismissed", title_en: "Example report where no problem was found.", title_da: "Eksempel på en indmelding uden fejl.", sort_order: 3, created_at: daysAgo(10), updated_at: daysAgo(5), closed_at: daysAgo(5) },
+  { id: "ki-fixed-1", area: "races", status: "fixed", title_en: "Example fixed issue.", title_da: "Eksempel på en rettet fejl.", sort_order: 4, created_at: daysAgo(12), updated_at: daysAgo(2), closed_at: daysAgo(2) },
+];
+export const KNOWN_ISSUE_UPDATES = [
+  { id: "kiu-1", issue_id: "ki-confirmed-1", body_en: "Example update: the first part of the fix is live.", body_da: "Eksempel på en opdatering: første del af rettelsen er live.", created_at: daysAgo(1) },
+  { id: "kiu-2", issue_id: "ki-confirmed-1", body_en: "Example update: I have found the cause.", body_da: "Eksempel på en opdatering: jeg har fundet årsagen.", created_at: daysAgo(5) },
+  { id: "kiu-3", issue_id: "ki-dismissed-1", body_en: "Example explanation: this works as intended.", body_da: "Eksempel på en forklaring: det virker som det skal.", created_at: daysAgo(5) },
 ];
 
 export const AUCTIONS = [
@@ -2084,7 +2108,7 @@ export const SEED_SEASON_HONOURS = {
 // ── #3941 · Race Control ops-notices ────────────────────────────────────────
 // Én dismissable "warning" (viser dismiss-knappen) + én "incident" (viser at
 // incident IKKE kan dismisses) — begge active:true, saa preview/e2e ser begge
-// banner-strimler stakket + begge rækker i Hjælp-sidens "Kendte problemer".
+// banner-strimler stakket.
 export const SEED_OPS_NOTICES = [
   {
     id: "opsnotice-1",

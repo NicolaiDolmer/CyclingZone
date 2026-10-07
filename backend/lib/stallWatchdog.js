@@ -41,6 +41,7 @@
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { fetchWatchdogResultSummaries, WATCHDOG_RESULT_MIGRATION } from "./stallWatchdogAggregates.ts";
+import { getRankingRefreshWorkState } from "./rankingRefreshWork.ts";
 
 export const STALL_WATCHDOG_DEFAULT_THRESHOLDS = {
   finalizeHours: 2,
@@ -115,6 +116,7 @@ export function evaluateStallFindings({
   dueStages = [],          // [{ race_id, race_name, stage_number, scheduled_at, has_results, has_entries }]
   standings = { maxStandingsUpdated: null, maxResultsImported: null },
   matviewHeartbeat = null, // ISO | null — sidste succesfulde refresh_ranking_matviews()
+  rankingWork = null,
 } = {}) {
   const t = { ...STALL_WATCHDOG_DEFAULT_THRESHOLDS, ...thresholds };
   const findings = [];
@@ -225,7 +227,12 @@ export function evaluateStallFindings({
   // applied endnu, eller rækken tom) springes checken over, så et backend-deploy
   // FØR migrationen ikke false-alarmerer. Kan derfor kun give en ægte positiv —
   // et reelt heartbeat der er faldet bag race_results (refresh-sti død).
-  if (maxResultsImported && matviewHeartbeat) {
+  if (rankingWork) {
+    if (rankingWork.pending && rankingWork.pendingAgeMs > 5 * 60 * 1000) {
+      findings.push({ type: 'matview', ageHours: round1(rankingWork.pendingAgeMs / HOUR_MS),
+        detail: 'Pending ranking changes exceed the normal five-minute freshness target; last completed snapshot retained' });
+    }
+  } else if (maxResultsImported && matviewHeartbeat) {
     const lag =
       (new Date(maxResultsImported).getTime() - new Date(matviewHeartbeat).getTime()) / HOUR_MS;
     if (lag > t.matviewStaleHours) {
@@ -319,6 +326,7 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
 
   // lastResultByRace for (a)+(c)-kandidater
   const anchorIds = [...new Set([...finalizeCandidates, ...prizeCandidates].map((r) => r.id))];
+
 
   // Fetch due candidates before the shared summary; overlapping races are read once.
   const stageCutoff = new Date(now.getTime() - t.stageHours * HOUR_MS).toISOString();
@@ -418,6 +426,14 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
     matviewHeartbeat = hbRow?.refreshed_at ?? null;
   }
 
+  let rankingWork = null;
+  if (typeof supabase.rpc === 'function') {
+    try { rankingWork = await getRankingRefreshWorkState(supabase, now); }
+    catch (error) {
+      // During SQL-before-Node rollout the legacy lag probe stays available.
+      if (!['PGRST202', '42883', '42P01'].includes(error.code)) throw error;
+    }
+  }
   return {
     seasonId: sid,
     finalizeCandidates,
@@ -429,6 +445,7 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
       maxResultsImported: resRow?.imported_at ?? null,
     },
     matviewHeartbeat,
+    rankingWork,
   };
 }
 

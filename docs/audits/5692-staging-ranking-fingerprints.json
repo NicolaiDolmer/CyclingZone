@@ -1,0 +1,58 @@
+{
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "allIdentical": true,
+  "before": [
+    {
+      "view_name": "rider_rankings_mv",
+      "rows": 16286,
+      "fingerprint": "5434a8c399997be45fab9273d9e7ecfa"
+    },
+    {
+      "view_name": "team_standings_ext_mv",
+      "rows": 1054,
+      "fingerprint": "f5d660d788f9697be485106d3dbdfe24"
+    },
+    {
+      "view_name": "team_race_points_mv",
+      "rows": 33328,
+      "fingerprint": "8e9f3f595d233daead41df982eb7ccf6"
+    },
+    {
+      "view_name": "global_rank_mv",
+      "rows": 268,
+      "fingerprint": "469f370c20f378c5bce1ca8f97dd80b6"
+    },
+    {
+      "view_name": "youth_rider_rankings_mv",
+      "rows": 2072,
+      "fingerprint": "323bd64bab1895c39506f07d5c4473f8"
+    }
+  ],
+  "after": [
+    {
+      "view_name": "rider_rankings_mv",
+      "rows": 16286,
+      "fingerprint": "5434a8c399997be45fab9273d9e7ecfa"
+    },
+    {
+      "view_name": "team_standings_ext_mv",
+      "rows": 1054,
+      "fingerprint": "f5d660d788f9697be485106d3dbdfe24"
+    },
+    {
+      "view_name": "team_race_points_mv",
+      "rows": 33328,
+      "fingerprint": "8e9f3f595d233daead41df982eb7ccf6"
+    },
+    {
+      "view_name": "global_rank_mv",
+      "rows": 268,
+      "fingerprint": "469f370c20f378c5bce1ca8f97dd80b6"
+    },
+    {
+      "view_name": "youth_rider_rankings_mv",
+      "rows": 2072,
+      "fingerprint": "323bd64bab1895c39506f07d5c4473f8"
+    }
+  ]
+}

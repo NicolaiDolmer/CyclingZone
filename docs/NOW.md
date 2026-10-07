@@ -4,11 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (3/10 aften): fast rytme fra nu, se [`OPERATING_PLAN.md`](OPERATING_PLAN.md)** (ejer-godkendt 3/10: morgen 08.30 + aften 20.15 i Claude Code, Codex bygger Stabilitet/Betaling/Fabrikken og rører aldrig NOW/MASTERPLAN). **(1)** Brand: #6095 gem af etapetaktik (ikke startet) og #5860 dobbeltbooking (sat op 3/10); #6115-kodefix PR #6128 reviewet 3/10: én blokering (sync med main, patch note 7.335 over 7.334), derefter ejer-go. #6061 forebyggelse live 3/10 (`2abc92efd`, migration post-verificeret); kompensation afventer genberegning + ejer-go i #6129. **(2)** Søn 4/10: Udvikling 2.0 D1-D4 (#6110, spillersignaler på issuet) + kort #5897 (#5912 kørt 1/10, kun spillersvar mangler). **(3)** Man 5/10: mandagsstyring m. Discord-fund #6122-#6126, træningspakken (#6053 parkeret til da, #6123, #6060, #5915, #5485), flip-listen beta → alle, lovet #5965. **Fra man 5/10 08.30:** beslutningsark ét ad gangen fra `docs/audits/2026-10-03-ejer-dashboard.md` (først #4514, #4714, #5901/#5902, #1461).
+> **🎯 Next action (7/10):** **"Ro på spillet" til 25/10** (ejer 7/10, MASTERPLAN): brand = stabilitet + løbsmotoren fejlfri + rytterudvikling/scout-projection. (1) Bølgens PR'er → før/efter + go. (2) Svar-udkast til spillere (ejeren poster) → fast 24 t-rutine. (3) Tailwind #6289: Codex-review, så ejer-go (Claudes 9 punkter afgjort). (4) Kort: #5162 (bucket + nøgle), #6291 presence-måling. (5) #5864 rod-årsag før 25/10 (#6198 merget). (6) #6248 leveres med Udvikling 2.0. Afgjort 7/10: #6291 (målebrud, D2 43-50 % seneste uger), #6292 (rettet 23/9; server-sikring i bølgen). Roadmap: 2 nye "I gang"-punkter.
 >
-> **✅ 3/10:** #6117, #6107, #6119 merget og live; #6115-data repareret. Backlog-audit: 52 lukket, 8 → done (`.claude/audits/audit-2026-10-03.md`).
-
-> **📌 #6110 Udvikling 2.0:** design-kort søn 4/10-man 5/10, byg uge 41.
+> **6/10 aften (merget/live):** #6254 #6281 #6283 (patch 7.344) #6280+#6279+#6265 (PostHog live) #6287 (Pro-fejl) #6288. Flippet til alle: `race_role_scope_choice`, `season_matrix_mobile`. Nye issues: #6284 (+30:00-mur) #6285 (løbstests) #6290 #6291 #6292 #6293 #6294 #6295 #6296 (træning beta→alle).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -20,11 +18,11 @@
 
 - **Liga:** pyramide 1/2/4/4 fra S4 (ejer 24/9: D3+D4 samles ved skiftet, script #5669). **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
 - **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder (`riderSeasonAge.js`, S3=2028). Akademi-nedrykning ≤ 21 IKKE live (#5145 parkeret). **Graduation Day ved 23** (live 15/9).
-- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` ON (prod læst 1/10); v4 kører officielle etaper. Flip-klar-rapport forældet → genkør `v4FlipReadiness.mjs` efter S4's første løbsdage. Kalender-gaten blokerende (#4123 + #5707); `calendarGoldenDiff.mjs` FØR S4-generering.
+- **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` ON (prod læst 1/10); v4 kører officielle etaper. Flip-rapport forældet (#5515). Kalender-gaten blokerende (#4123 + #5707); `calendarGoldenDiff.mjs` FØR S4-generering.
 - **Træning (ejer 15/9, §13.3):** løbsdag som tick, sweep ≥ kl. 20 + knap uden bonus. Prod-måling 30/9: `training_tick_per_race_day`, `training_condition_per_date`, `race_day_development_enabled` og `race_day_engine_enabled` on. Dato-modellen aktiveret 29/9; B3 #5281 er IKKE bag flag.
 - **Evner (live):** `teamwork`/`leadership` er data, **ikke i rating-opskriften** (17/9). Lofter `{tactics 55, teamwork 70, leadership 70}`, `aggression` UDE (#5297). Point-flyt (#5268) ejer-gated.
 - **Trupper (15/9):** `riders.squad` + `backend/lib/squads.js` live; senior-læserne bruger ÉT delt prædikat (#5396). Loft U23 12/junior 10 (#5626). Ungdomsdrift: 0 ved S3-skiftet (#5741, ejer 25/9), sats fra S4 åben. Spec `2026-09-15-u23-kalender-og-trup-datamodel-design.md`.
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv Claude Code-session. Codex arbejder på #6115 (PR #6128; claim på issuet).
+> **🤖 Working agent:** Claude Code 7/10 (morgen-session): bølge #6156 #6158 #6261 #6292 kører; svar-udkast til spillere; Codex reviewer Tailwind #6289 + undersøgelse #6300 (read-only).

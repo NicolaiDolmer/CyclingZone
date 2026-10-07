@@ -146,6 +146,19 @@ export function isDirty(draftMatrix, initialMatrix) {
   return false;
 }
 
+// #6095 — de etaper hvor kladden afviger fra det indlæste (celle for celle,
+// samme sammenligning som isDirty). Kun disse sendes som `stages` i PUT'en, så
+// et gem aldrig erstatter en etape manageren ikke har rørt. Stigende orden.
+export function changedStages(draftMatrix, initialMatrix) {
+  const a = draftMatrix || {};
+  const b = initialMatrix || {};
+  const out = [];
+  for (const sn of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if (isDirty({ [sn]: a[sn] || {} }, { [sn]: b[sn] || {} })) out.push(Number(sn));
+  }
+  return out.sort((x, y) => x - y);
+}
+
 // #4980 — rollerne spilleren kan vælge i Taktik-fanens ROLE-kolonne, i den
 // rækkefølge de vises. Samme sæt som holdudtagelsen bruger (VALID_RACE_ROLES i
 // backend/lib/raceRoles.js); listen står her fordi fladen skal kunne tegne

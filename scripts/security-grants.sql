@@ -75,6 +75,7 @@
 --   get_cohort_retention              auth. Read-only admin-analytics, intern gate.
 --   get_sprint_metrics                auth. Read-only admin-analytics, intern gate.
 --   get_retention_scorecard_activity  auth. Read-only admin-analytics, intern gate.
+-- Roadmap admin RPCs are service-only after #6221/#6174; no client allowlist.
 
 WITH secdef AS (
   SELECT

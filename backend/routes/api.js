@@ -15,6 +15,7 @@ import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
+import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -259,6 +260,7 @@ import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
 import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
+import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
@@ -528,6 +530,7 @@ import {
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { loadTeamSeasonEntries, raceIdsMissingWindow, withEntryRaceWindows, writeRegeneratedLineups } from "../lib/raceHubAutofill.js";
+import { loadRegenerateBindingLocks, writeRegeneratedLineupsPreservingTarget } from "../lib/raceEntryGeneratorBindings.ts";
 import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import {
   buildSelectionDeadlineReminder,
@@ -990,6 +993,10 @@ async function requireAdmin(req, res, next) {
     next();
   });
 }
+
+router.use("/admin/roadmap", createAdminRoadmapRouter({
+  supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
+}));
 
 // #3750 · Ejer-only: requireAdmin + OWNER_USER_IDS-allowlist (backend/lib/ownerGate.js).
 // Bruges til flader der kun ejeren må se, selv om andre konti har admin-rollen.
@@ -6072,6 +6079,9 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
 // etaper (stage_number <= stages_completed) er ALTID skrivebeskyttede (håndhævet
 // i raceStageRolesApi.js, ikke her).
 
+// #6095: rollevælgerens "kun denne etape / resten af løbet". Manglende nøgle = off.
+const RACE_ROLE_SCOPE_CHOICE_FLAG_KEY = "race_role_scope_choice";
+
 // GET /api/races/:raceId/stage-roles — kontekst til managerens taktik-panel.
 router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -6089,9 +6099,17 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
-    const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    const [ctx, roleScopeStage, isBetaTester] = await Promise.all([
+      getStageRolesContext({ supabase, race, teamId: req.team.id }),
+      readFlagStage(supabase, RACE_ROLE_SCOPE_CHOICE_FLAG_KEY),
+      isViewerBetaTester(req),
+    ]);
     res.json({
       enabled,
+      // #6095: "kun denne etape / resten af løbet" i rollevælgeren (beta først).
+      role_scope_choice: evaluateFlagStage(roleScopeStage, { isBetaTester }),
+      // #6095: pr. etape; klienten sender dem retur som base_versions ved gem.
+      stage_versions: ctx.stage_versions,
       // #4632: fladen skal kunne rendre de rigtige trin uden at kende
       // multiplikatorerne. FOG OF WAR: kun enum-vaerdier ud, aldrig tal.
       intention_enabled: intentionEnabled,
@@ -6119,13 +6137,25 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
 
-    const { overrides = [] } = req.body || {};
+    const { overrides = [], stages, base_versions: baseVersions } = req.body || {};
     if (!Array.isArray(overrides)) return res.status(400).json({ error: "stage_roles_invalid_body" });
+    if (race.status === "completed") return res.status(409).json({ error: "stage_roles_race_completed", errors: ["stage_roles_race_completed"] });
 
     const ctx = await getStageRolesContext({ supabase, race, teamId: req.team.id });
+    // #6095: skriv kun de etaper klienten har ændret, aldrig en startet etape, og
+    // aldrig hvis etapen er ændret et andet sted siden klienten indlæste den.
+    const scope = resolveWriteScope({
+      stages, baseVersions, overrides,
+      stageCount: ctx.stage_count, stagesCompleted: ctx.stages_completed,
+      timeLockedStages: ctx.timeLockedStages, currentVersions: ctx.stage_versions,
+    });
+    if (!scope.ok) {
+      const status = scope.error === "stage_roles_conflict" ? 409 : 400;
+      return res.status(status).json({ error: scope.error, errors: [scope.error] });
+    }
     const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
     const result = validateStageRoleOverrides({
-      overrides,
+      overrides: scope.overrides,
       intentionEnabled,
       raceCompleted: race.status === "completed",
       stageCount: ctx.stage_count,
@@ -6141,7 +6171,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
 
     await saveStageRoleOverrides({
       supabase, raceId: race.id, teamRiderIds: ctx.teamRiderIds,
-      stagesCompleted: ctx.stages_completed, overrides,
+      stages: scope.stages, overrides: scope.overrides,
     });
     res.json({ ok: true });
   } catch (err) {
@@ -6489,12 +6519,17 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
     }));
+    // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
+    lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
+      targetRaceIds: target.map((r) => r.id), riderIds: riders.map((r) => r.rider_id) }));
     const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows, strategy });
 
     // #5789: skrivningen (frys-guard #2074, slip af ryttere der flyttes mellem dagens
     // løb, delete-så-insert pr. løb, navngiven #3420-fejl) bor i raceHubAutofill.js.
-    const { regenerated } = await writeRegeneratedLineups({
+    // #6132: afvises et insert, genskabes holdets hele eksisterende måludtagelse.
+    const { regenerated } = await writeRegeneratedLineupsPreservingTarget({
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
+      write: async (args) => await writeRegeneratedLineups({ ...args }),
     });
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
@@ -10685,40 +10720,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     // (defaultRunSeasonPayroll). Fail-safe null → false via evaluateFlagStage.
     const facilitiesEnabled = evaluateFlagStage(facilitiesEnabledStage);
 
-    // #3899 (låst design punkt 2): præmie-intervallets kvartilbånd baseres på
-    // MÅLT per-hold-præmie blandt peers i samme division. Stikprøven bruger
-    // riders.prize_earnings_bonus (samme rullende-avg-felt som holdets eget
-    // punktestimat ovenfor) summeret pr. hold — ikke finance_transactions
-    // (mange rækker pr. hold pr. sæson). Holdantal begrænses til 40 peers
-    // (rigeligt for et kvartilbånd), men selv 40 hold kan bære >1000 ryttere
-    // (D3 ~1460 ryttere totalt i prod, jf. races/distribution-routen ovenfor)
-    // — riders-loadet SKAL derfor paginere (fetchAllRows), ikke et nøgent
-    // .select(), ellers trunkerer PostgREST stille ved 1000 og skævvrider
-    // kvartilbåndet mod de først-returnerede rækker (#3331-mønstret).
-    const DIVISION_PRIZE_SAMPLE_TEAM_CAP = 40;
-    const divisionTeamsRes = await supabase
-      .from("teams")
-      .select("id")
-      .eq("division", team.division)
-      .limit(DIVISION_PRIZE_SAMPLE_TEAM_CAP);
-    if (divisionTeamsRes.error) throw divisionTeamsRes.error;
-    const divisionTeamIds = (divisionTeamsRes.data || []).map((t) => t.id);
-    let divisionPrizeSamples = [];
-    if (divisionTeamIds.length >= 1) {
-      const divisionRiderRows = await fetchAllRows(() =>
-        supabase
-          .from("riders")
-          .select("team_id, prize_earnings_bonus")
-          .in("team_id", divisionTeamIds)
-          .order("id"));
-      const perTeamPrize = new Map();
-      for (const r of divisionRiderRows) {
-        const prev = perTeamPrize.get(r.team_id) || 0;
-        perTeamPrize.set(r.team_id, prev + (r.prize_earnings_bonus || 0));
-      }
-      divisionPrizeSamples = [...perTeamPrize.values()];
-    }
-
     // Board-modifier = avg af completed plans (matcher economyEngine.processSeasonStart).
     // #1187: budget_modifier følger nu satisfaction LIVE pr. løbsweekend, så
     // forecastet afspejler altid den aktuelle modifier.
@@ -10822,8 +10823,6 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       facilitiesEnabled,
       // #4385: upkeep pr. seniorløbsdag når flaget er on (fail-safe off).
       upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
-      // #3899: kvartilbånd-stikprøven for præmie-intervallet.
-      divisionPrizeSamples,
     });
 
     // Backward-compat: spred det første (præcise) forecast på root.
@@ -18748,6 +18747,8 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     // så en spiller uden penge nok fik "Noget gik galt" — og hver forsøg
     // larmede i Sentry. Begge er forventede bruger-tilstande, ikke fejl.
     if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
+    // #6264: signing-fee ville bruge penge låst i auktionsbud.
+    if (msg === "insufficient_available_balance") return res.status(409).json({ error: msg, locked: err.locked, available: err.available });
     if (msg === "already_assigned") return res.status(409).json({ error: "already_assigned" });
     // #4213: rytteren er i mellemtiden ejet af et andet hold — forventet
     // bruger-tilstand ved et stale tilbud, ikke en fejl. Tilbuddet bevares

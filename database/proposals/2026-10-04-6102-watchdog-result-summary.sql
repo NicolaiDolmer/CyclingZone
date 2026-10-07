@@ -1,4 +1,5 @@
--- Prepared for #6102; NOT applied. Move to top-level only after owner mandate
+-- Prepared for #6102; staging verified 7 October, NOT applied in production.
+-- Move to top-level only after owner mandate
 -- and realistic staging evidence. No scheduler/engine flags or player data writes.
 BEGIN;
 CREATE OR REPLACE FUNCTION public.stall_watchdog_result_summary(p_race_ids uuid[])

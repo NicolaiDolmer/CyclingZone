@@ -9,13 +9,16 @@
 // frysningen gælder STARTFELTET (race_entries — hvem der overhovedet er udtaget),
 // ikke fremtidige etapers roller. Kun løbets FÆRDIGGØRELSE (status='completed')
 // lukker for redigering; kørte etapers rækker (stage_number <= stages_completed)
-// røres desuden ALDRIG, uanset request-body.
+// røres desuden ALDRIG, uanset request-body. #6095: heller ikke etaper hvis start
+// er passeret, og et gem skriver kun de etaper klienten har ændret.
 
 import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
 import { suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { isStageLocked } from "./raceTeamOrdersApi.js";
+import { stageVersions } from "./stageRolesWriteScope.ts";
 
 /**
  * Ren validering af en PUT-body. Ingen DB. Fejlrækkefølge (errors[0] til brugeren,
@@ -268,6 +271,22 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     overrides = overrideRows || [];
   }
 
+  // #6095: etaper hvis start er passeret er laast for skrivning, samme regel som
+  // ordrerne (raceTeamOrdersApi.isStageLocked), ogsaa foer stages_completed bumpes.
+  // Ét løbs etaper (≤ ~21) — pagineret alligevel, så PostgREST-cap'en aldrig
+  // kan skjule en etape (pagination-guard, #3331). Kaster ved fejl.
+  const schedRows = await fetchAllRows(() => supabase
+    .from("race_stage_schedule")
+    .select("stage_number, scheduled_at")
+    .eq("race_id", race.id)
+    .order("stage_number", { ascending: true }));
+  const now = new Date();
+  const timeLockedStages = new Set(
+    (schedRows || [])
+      .filter((s) => isStageLocked({ stageNumber: s.stage_number, stagesCompleted: race.stages_completed ?? 0, scheduledAt: s.scheduled_at, now }))
+      .map((s) => s.stage_number),
+  );
+
   return {
     stages_completed: race.stages_completed ?? 0,
     stage_count: race.stages ?? 0,
@@ -280,26 +299,29 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     baseRoleByRider: new Map(riders.map((r) => [r.rider_id, r.race_role])),
     // #4538: PUT-validatoren afviser overrides for disse.
     abandonedRiderIds,
+    // #6095: skrive-scope + samtidigheds-tjek pr. etape (stageRolesWriteScope.ts).
+    timeLockedStages,
+    stage_versions: stageVersions(overrides),
   };
 }
 
 /**
- * REPLACE-semantik for holdets ryttere på REDIGERBARE etaper (stage_number >
- * stagesCompleted). Kørte etapers rækker røres ALDRIG (delete er scopet med
- * .gt("stage_number", stagesCompleted)). Delete-then-insert i ÉN sekvens
- * (samme rækkefølge som race_results' idempotente mønster) — ingen RPC (lav
- * volumen, ejer-hold, ikke kritisk race-window).
+ * REPLACE-semantik for holdets ryttere på PRÆCIS de etaper i `stages` (#6095:
+ * kun de etaper klienten har ændret; stageRolesWriteScope.resolveWriteScope har
+ * allerede afvist kørte og tidslåste etaper). Andre etapers rækker røres ALDRIG.
+ * Delete-then-insert i ÉN sekvens — ingen RPC (lav volumen, ejer-hold).
  *
- * @param {{supabase, raceId, teamRiderIds: Set<string>, stagesCompleted: number, overrides: Array}} args
+ * @param {{supabase, raceId, teamRiderIds: Set<string>, stages: number[], overrides: Array}} args
  */
-export async function saveStageRoleOverrides({ supabase, raceId, teamRiderIds, stagesCompleted, overrides }) {
+export async function saveStageRoleOverrides({ supabase, raceId, teamRiderIds, stages, overrides }) {
   const riderIds = [...teamRiderIds];
+  if (!Array.isArray(stages) || stages.length === 0) return;
   if (riderIds.length) {
     const { error: delErr } = await supabase
       .from("race_stage_roles")
       .delete()
       .eq("race_id", raceId)
-      .gt("stage_number", stagesCompleted)
+      .in("stage_number", stages)
       .in("rider_id", riderIds);
     if (delErr) throw new Error(`race_stage_roles delete: ${delErr.message}`);
   }

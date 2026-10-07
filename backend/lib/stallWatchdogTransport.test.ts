@@ -23,6 +23,8 @@ test('real SDK serializes candidate arrays as POST and entry URLs stay below 8 K
         summaryCalls++;
         summaryRows += payload.p_race_ids.length;
         data = payload.p_race_ids.map(race_id => ({ race_id, last_imported_at: now.toISOString(), has_prize: false, stage_numbers: [1] }));
+      } else if (url.pathname.endsWith('/rpc/get_ranking_refresh_work_state')) {
+        data = { pending: false, pending_age_ms: 0, last_completed_at: now.toISOString() };
       } else {
         const table = url.pathname.split('/').at(-1);
         switch (table) {

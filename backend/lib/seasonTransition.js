@@ -933,7 +933,7 @@ export async function closePrevTransferWindow(supabase, fromSeasonId, transition
 /**
  * Indsætter nyt transfer_window for kommende sæson hvis ikke allerede tilstede.
  * Status='closed' fordi racing-sæsoner starter med lukket transfer-window
- * (åbnes manuelt/cron senere ved deadline-day-flow).
+ * (markedet er altid åbent; Deadline Day-flowet er fjernet, #6120).
  *
  * Eksporteret i #532 så manuel admin-flow (`POST /admin/seasons/:id/start`)
  * kan oprette deterministisk UUID-window matching engine's pattern.

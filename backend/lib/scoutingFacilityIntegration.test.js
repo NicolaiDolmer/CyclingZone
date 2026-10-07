@@ -10,6 +10,7 @@
 // (in-memory state, delt på tværs af de to services så én hire ses af begge).
 import test from "node:test";
 import assert from "node:assert/strict";
+import { isAuctionCommitmentTable, auctionCommitmentTable } from "./availableBalanceMock.js";
 
 process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
@@ -48,6 +49,7 @@ function createChainSupabase({ team }) {
       return Promise.resolve({ data: state.team.balance, error: null });
     },
     from(table) {
+      if (isAuctionCommitmentTable(table)) return auctionCommitmentTable(table);
       if (table === "teams") {
         return {
           select(columns) {

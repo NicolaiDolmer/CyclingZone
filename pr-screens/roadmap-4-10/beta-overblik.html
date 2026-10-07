@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<title>Beta-overblik + stemmeskala i to trin (4/10)</title>
+<!-- Forslagsbillede til ejeren 4/10. De fem beta-funktioner er laest fra docs/FEATURE_REGISTRY.yml (state: beta,
+     verificeret mod prod 4/10). "Coming to beta" og "For everyone soon" er eksempler; teksterne er udkast. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-body:#f4f2ec; --bg-card:#fcfbf7; --bg-elevated:#fff; --border:#e5e0d5;
+  --text-1:#0e0f15; --text-2:#66637a; --text-3:#9896b0;
+  --accent:#e8c547; --accent-t:#a07800; --on-accent:#1a1f38; --navy:#1a1f38;
+  --warning:#9a6b00; --warning-bg:rgba(154,107,0,.08); --success:#2e7d4f; --success-bg:rgba(46,125,79,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--text-1);font-family:"DM Sans",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.sheet{width:1780px;padding:28px 32px 30px}
+h1{font-family:"Inter Tight";font-size:25px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.lead{font-size:14px;color:var(--text-2);margin:0 0 18px;line-height:1.5}
+.grid{display:grid;grid-template-columns:900px 1fr;gap:28px;align-items:start}
+.blk{font-family:"Inter Tight";font-size:16px;font-weight:700;margin:0 0 9px;display:flex;align-items:baseline;gap:10px}
+.blk span{font-family:"DM Sans";font-size:13px;font-weight:400;color:var(--text-2)}
+.frame{position:relative;background:var(--bg-body);border:1px solid var(--border);border-radius:5px;padding:20px 24px 24px}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ph h2{font-family:"Inter Tight";font-size:20px;font-weight:700;margin:0}
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tab{font-size:14px;font-weight:500;color:var(--text-3);padding:8px 1px 9px;margin-bottom:-1px;border-bottom:2px solid transparent}
+.tab.on{color:var(--text-1);border-bottom-color:var(--accent)}
+.tab .cnt{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:11px;color:var(--text-3);margin-left:5px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:16px 20px}
+.card + .card{margin-top:14px}
+.ch{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+.ch .ct{font-size:15px;font-weight:600}
+.ch .cm{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.sub{font-size:13px;color:var(--text-2);margin:0 0 8px;line-height:1.45}
+.row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-top:1px solid var(--border)}
+.row:last-child{padding-bottom:0}
+.body{flex:1;min-width:0}
+.title{font-size:13.5px;font-weight:500;line-height:1.4}
+.meta{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
+.badge{flex:none;width:118px;text-align:center;font-family:"Inter Tight";font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:3px 0;white-space:nowrap}
+.badge.beta{color:var(--warning);background:var(--warning-bg)}
+.badge.soon{color:var(--success);background:var(--success-bg)}
+.badge.next{color:var(--text-2);border:1px solid var(--border)}
+.btn{flex:none;font-size:12px;font-weight:500;border:1px solid var(--border);border-radius:5px;padding:6px 11px;background:var(--bg-elevated);white-space:nowrap}
+.btn.gold{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.chips{display:flex;gap:6px;margin-bottom:12px}
+.chip{font-family:"Inter Tight";font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--border);border-radius:999px;padding:3px 10px;color:var(--text-2)}
+.chip.on{border-color:var(--text-1);color:var(--text-1)}
+.pn{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--border);align-items:flex-start}
+.pn .v{font-family:"Inter Tight";font-variant-numeric:tabular-nums;font-size:12px;color:var(--text-3);width:44px;flex:none;margin-top:1px}
+.rc{font-family:"Inter Tight";font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:5px;padding:1px 6px;margin-right:7px;white-space:nowrap}
+.rc.b{border-color:rgba(154,107,0,.4);color:var(--warning)} .rc.l{border-color:rgba(46,125,79,.4);color:var(--success)}
+.scale{display:flex;gap:4px}
+.sb{width:26px;height:26px;border-radius:5px;font-family:"Inter Tight";font-size:11.5px;font-weight:600;border:1px solid var(--border);color:var(--text-2);display:inline-flex;align-items:center;justify-content:center}
+.sb.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.axis{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:5px}
+.axis .lbl{font-size:11.5px;color:var(--text-3)}
+.step{font-family:"Inter Tight";font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin:0 0 4px}
+.pin{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--navy);color:var(--accent);font-family:"Inter Tight";font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.legend{margin-top:11px;display:flex;flex-direction:column;gap:6px}
+.legend div{display:flex;gap:10px;font-size:13.5px;line-height:1.45}
+.legend .p{position:static;flex:none;border:0;width:22px;height:22px;font-size:12px}
+.stack{display:flex;flex-direction:column;gap:24px}
+</style>
+</head>
+<body>
+<div class="sheet">
+  <h1>Beta-overblik på roadmap og i patch notes, og stemmeskalaen i to trin</h1>
+  <p class="lead">De fem funktioner under "In beta now" er dem, der står i beta i prod i dag. De to andre grupper er eksempler på, hvordan det ville se ud.</p>
+
+  <div class="grid">
+    <div>
+      <div class="blk">Roadmap · ny fane "Beta" <span>følger kontakterne i systemet automatisk</span></div>
+      <div class="frame">
+        <div class="ph"><h2>Roadmap</h2><span class="btn gold">Join the beta</span></div>
+        <div class="tabs"><div class="tab">Plan<span class="cnt">3</span></div><div class="tab on">Beta<span class="cnt">5</span></div><div class="tab">Vote<span class="cnt">12</span></div><div class="tab">Known issues<span class="cnt">13</span></div><div class="tab">Done</div></div>
+
+        <div class="card">
+          <div class="ch"><span class="ct">In beta now</span><span class="cm">5</span></div>
+          <p class="sub">Beta testers have these. Everyone else gets them when they are ready.</p>
+          <div class="row"><span class="badge soon">For everyone soon</span><div class="body"><div class="title">Train now: run today's training when it suits you, with the same result as the evening run.</div><div class="meta">Training · in beta since 1 Oct</div></div></div>
+          <div class="row"><span class="badge beta">In beta</span><div class="body"><div class="title">Training groups: one plan for several riders, and each rider keeps his own copy.</div><div class="meta">Training · in beta since 1 Oct</div></div></div>
+          <div class="row"><span class="badge beta">In beta</span><div class="body"><div class="title">Ready-made training programs per race day.</div><div class="meta">Training · in beta since 27 Sep</div></div></div>
+          <div class="row"><span class="badge beta">In beta</span><div class="body"><div class="title">The season matrix in Planning fits your phone screen.</div><div class="meta">Races · in beta since 1 Oct</div></div></div>
+          <div class="row"><span class="badge beta">In beta</span><div class="body"><div class="title">Choose whether a role applies from this stage to the end, or to this stage only.</div><div class="meta">Races · in beta since 4 Oct</div></div></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Coming to beta</span><span class="cm">1</span></div>
+          <div class="row"><span class="badge next">Next in beta</span><div class="body"><div class="title">On the Program tab, pick the rider first and then his program.</div><div class="meta">Training</div></div></div>
+        </div>
+        <div class="pin" style="right:-12px;top:22px">1</div>
+        <div class="pin" style="left:-12px;top:128px">2</div>
+        <div class="pin" style="left:-12px;top:186px">3</div>
+        <div class="pin" style="left:-12px;top:536px">4</div>
+      </div>
+      <div class="legend">
+        <div><span class="pin p">1</span><span>"Join the beta" fører til den ansøgning, der findes i dag. En beta-tester ser i stedet "You are in the beta".</span></div>
+        <div><span class="pin p">2</span><span><b>Automatisk:</b> et punkt står her, så længe dets kontakt står på beta. Slår du kontakten til for alle, flytter punktet selv til Done med dato. Du skal ikke rette roadmappet i hånden.</span></div>
+        <div><span class="pin p">3</span><span>"For everyone soon" sætter du med ét hak bagved, når en funktion er på vej ud af beta.</span></div>
+        <div><span class="pin p">4</span><span>"Coming to beta" er planlagte punkter, du har markeret som de næste i beta. Når kontakten går på beta, rykker punktet selv op.</span></div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div>
+        <div class="blk">Patch notes · filter <span>mærkerne findes allerede, filteret er nyt</span></div>
+        <div class="frame">
+          <div class="chips"><span class="chip">All</span><span class="chip on">Beta</span><span class="chip">Now for everyone</span></div>
+          <div class="card" style="padding-top:6px">
+            <div class="pn" style="border-top:0"><span class="v">7.330</span><div class="body"><div class="title"><span class="rc l">Now for everyone</span>A plan for each race day, a fatigue limit and the daily report, now for everyone</div></div></div>
+            <div class="pn"><span class="v">7.330</span><div class="body"><div class="title"><span class="rc b">Beta</span>Train now, without a bonus for the hour you train</div></div></div>
+            <div class="pn"><span class="v">7.305</span><div class="body"><div class="title"><span class="rc b">Beta</span>Ready-made training programs</div></div></div>
+          </div>
+          <div class="pin" style="left:-12px;top:20px">5</div>
+          <div class="pin" style="right:-12px;top:112px">6</div>
+        </div>
+        <div class="legend">
+          <div><span class="pin p">5</span><span>Ét tryk viser kun beta-opdateringer, eller kun det, der er gået fra beta til alle.</span></div>
+          <div><span class="pin p">6</span><span><b>Automatisk:</b> en beta-note, hvis funktion siden er slået til for alle, skifter selv mærke til "Now for everyone".</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="blk">Vote · skalaen i to trin <span>dit forslag</span></div>
+        <div class="frame">
+          <div class="card">
+            <p class="step">Før svar: kun én skala</p>
+            <div class="row" style="border-top:0;padding-top:2px"><div class="body"><div class="title">More facilities: more of your club to build than training and scouting.</div><div class="meta">Club</div></div>
+              <div><div class="axis" style="margin-top:0"><span class="lbl">Good idea?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+          </div>
+          <div class="card">
+            <p class="step">Efter første svar: den anden skala folder ud</p>
+            <div class="row" style="border-top:0;padding-top:2px"><div class="body"><div class="title">More facilities: more of your club to build than training and scouting.</div><div class="meta">Club</div></div>
+              <div><div class="axis" style="margin-top:0"><span class="lbl">Good idea?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb on">5</span><span class="sb">6</span></span></div>
+              <div class="axis"><span class="lbl">Important to you?</span><span class="scale"><span class="sb">1</span><span class="sb">2</span><span class="sb">3</span><span class="sb">4</span><span class="sb">5</span><span class="sb">6</span></span></div></div></div>
+          </div>
+          <div class="pin" style="left:-12px;top:60px">7</div>
+        </div>
+        <div class="legend">
+          <div><span class="pin p">7</span><span>Hver idé fylder én linje, til spilleren svarer. Stemmen gemmes, når begge er valgt, som i dag. Ca. 30 idéer ad gangen.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
