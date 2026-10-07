@@ -236,7 +236,7 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
-  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3"]);
+  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1"]);
   // Ejer-go 2/10: nye loeb bindes til v2; loeb bundet til v1 beholder v1.
   assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
 });
@@ -264,13 +264,17 @@ test("#6084: the bridge carries orders_gc_v2 with the same GC context as orders_
   assert.deepEqual({ ...v2, rules_revision: "orders_gc_v1" }, v1);
 });
 
-test("#6084/#6187: the newest migration allows exactly the known revisions in the CHECK constraint", async () => {
+test("#6284: the existing migration excludes the future revision; only the unapplied proposal allows it", async () => {
   const { readFileSync } = await import("node:fs");
   const sql = readFileSync(new URL("../../database/2026-10-05-race-engine-rules-revision-v3.sql", import.meta.url), "utf8");
   const check = sql.match(/IN \(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   const allowed = check[1].split(",").map((s) => s.trim().replace(/'/g, ""));
-  assert.deepEqual(allowed, [...RACE_RULES_REVISIONS]);
+  assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v1"));
+  const proposal = readFileSync(new URL("../../database/proposals/2026-10-07-official-times-v1.sql", import.meta.url), "utf8");
+  const proposed = proposal.match(/IN\s*\(([^)]*)\)/);
+  assert.ok(proposed);
+  assert.deepEqual(proposed[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
 });
 
 // ── #6187: orders_gc_v3 (orders_gc_v2 + eget hold jagter aldrig sine egne) ──────
@@ -284,11 +288,11 @@ test("#6187: orders_gc_v3 is known but NOT current (the flip is owner-only)", ()
   );
 });
 
-test("#6187: the revisions form one lineage; each orders_gc revision inherits the previous ones", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true]);
+test("#6187/#6284: orders_gc is a lineage; official times branches from v2 without v3 mechanics", () => {
+  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 2]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, false]);
   for (const unknown of [null, undefined, "", "orders_gc_v9", 3]) {
     assert.equal(ordersGcGeneration(unknown), 0);
     assert.equal(isOrdersGcRulesRevision(unknown), false);
