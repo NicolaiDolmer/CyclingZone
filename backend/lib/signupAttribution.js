@@ -25,6 +25,7 @@ function stripOwnSiteReferrer(attribution) {
   try {
     url = new URL(raw);
   } catch {
+    // best-effort: en referrer der ikke kan parses er ikke vores egen side, behold den uaendret
     return attribution;
   }
   if (!isOwnSiteHost(url.hostname)) return attribution;
