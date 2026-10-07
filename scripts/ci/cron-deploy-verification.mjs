@@ -102,7 +102,8 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
     const row = bySlug.get(slug), time = stamp(row?.last_checkin_at);
     const deadline = boundary + (cadence + margin) * 1000;
     let state;
-    if (!row || !Number.isFinite(time) || time > clock || row.expected_cadence_seconds !== cadence) state = 'failed';
+    if (!row || !Number.isFinite(time) || time > clock || row.expected_cadence_seconds !== cadence
+      || clock - time > (cadence + margin) * 1000) state = 'failed';
     else if (time > boundary && time <= deadline && !excluded.has(time)) state = 'verified';
     else if (clock >= deadline) state = 'failed';
     else state = cadence > 1800 ? 'deferred' : 'waiting';

@@ -18,7 +18,8 @@ test('strict boundary, future, missing, unreadable and wrong cadence cannot veri
     assert.equal(evaluate(rows).state, 'failed');
   }
   assert.equal(evaluate([row('short', since)]).state, 'waiting');
-  assert.equal(evaluate([row('short', '2026-10-07T11:00:00Z')]).state, 'waiting');
+  assert.equal(evaluate([row('short', '2026-10-07T11:59:30Z')]).state, 'waiting');
+  assert.equal(evaluate([row('short', '2026-10-07T11:00:00Z')]).state, 'failed');
   assert.equal(evaluate([row('short', '2026-10-07T12:00:10Z')]).state, 'verified');
   assert.equal(evaluate([row('short', since)], '2026-10-07T12:02:00Z').state, 'failed');
   assert.equal(evaluate([row('short', '2026-10-07T12:02:01Z')], '2026-10-07T12:02:10Z').state, 'failed');
@@ -27,6 +28,7 @@ test('strict boundary, future, missing, unreadable and wrong cadence cannot veri
 test('long cadence defers before deadline and fails after cadence plus SSOT margin', () => {
   assert.equal(evaluate([row('long', since)], undefined, ['long']).state, 'deferred');
   assert.equal(evaluate([row('long', since)], '2026-10-07T13:02:00Z', ['long']).state, 'failed');
+  assert.equal(evaluate([row('long', '2026-10-07T10:00:00Z')], undefined, ['long']).state, 'failed');
 });
 
 test('boot cohorts are excluded and remembered across polls', () => {
