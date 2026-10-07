@@ -11,7 +11,7 @@
 ## 🔴 Brand (nu)
 
 1. **Stabilitet:** Supabase (#5878; Medium ✅ · #5692 Codex · #6265 · alarm #6272 · #6276) · **chunk-fejl #5162 flyttet frem** (43 spillere, siden går i stå efter deploy).
-2. **Løbsmotoren fejlfri** (spillerne mærker den): #6156 form/formtoppe → tidsforskelle #5951 #6284 → mærker #6294 #6234 #6185d2 → udbrud/klatring #6201 #6199 #6200 #6299 #6187 #5978 → #6285 motor-tests som gate før hver tænding. Hjælp = motor i samme PR (#6186). `orders_gc_v3` tændes kun ved grønt scorecard (ejer-only).
+2. **Løbsmotoren fejlfri** (spillerne mærker den): tidsforskelle #5951 #6284 #6199 → mærker #6294 #6234 #6185d2 → udbrud/klatring #6201 #6200 #6299 #6187 #5978 → #6285 motor-tests som gate før hver tænding → `orders_gc_v3` (tændes ved grønt scorecard, ejer-only) → **form #6156 EFTER v3, designes grundigt med ejeren** (PR #6305 draft-udgangspunkt; toppe tilbage #6158). Hjælp = motor i samme PR (#6186).
 3. **Rytterudvikling + scoutens forventede udvikling** (spillerne har ret: den er forkert): Udvikling 2.0 #6110 (spec `2026-10-03-udvikling-2-design.md`; kurve B #3564 · #5950 · #6109 · #6059) · #5965 · projection #5764 #5683 · træningens rod #5928 · #6248 maks +1 (A/B 7/10).
 
 ## 🟠 Rødderne bag de andre klager (parallelt)
