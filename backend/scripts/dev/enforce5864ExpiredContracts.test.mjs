@@ -269,7 +269,7 @@ test("runApply aborts before any write when the snapshot does not cover every ri
   assert.equal(supabase.calls.some((c) => c.patch), false);
 });
 
-test("runApply reuses the normal release path with the scoped fetcher, then normalizes released academy riders", async () => {
+test("runApply reuses the normal release path with the scoped fetcher; academy normalization comes from that path", async () => {
   const f = fixture();
   const plan = buildPlan(f);
   const ids = plan.rows.map((r) => r.riderId);
@@ -277,20 +277,17 @@ test("runApply reuses the normal release path with the scoped fetcher, then norm
   const releaseFn = async (args) => {
     receivedArgs = args;
     const rows = await args.fetchExpiredContractRiders({ supabase: args.supabase, seasonNumber: args.seasonNumber });
-    return { candidates: rows.length, released: rows.length - 1 };
+    return { candidates: rows.length, released: rows.length - 1, youthNormalized: 3 };
   };
-  const supabase = fakeSupabase({ backupIds: ids, releasedIds: new Set([uuid(1), uuid(3), uuid(5)]) });
+  const supabase = fakeSupabase({ backupIds: ids });
   const result = await runApply({
     supabase, plan, threshold: 3, releaseFn, ownerGo: true, approvedHash: approvedListHash(plan),
     fetchCandidates: async () => f.candidates,
   });
   assert.equal(receivedArgs.seasonNumber, 3);
   assert.equal(result.candidates, 5, "frozen-team rider excluded by the scoped fetcher");
-  assert.equal(result.youthNormalized, 3);
-  const update = supabase.calls.find((c) => c.patch);
-  assert.deepEqual(update.patch, { is_academy: false });
-  assert.ok(update.filters.some((x) => x[0] === "is" && x[1] === "team_id" && x[2] === null), "only riders that are free agents now");
-  assert.ok(update.filters.some((x) => x[0] === "eq" && x[1] === "is_academy" && x[2] === true));
+  assert.equal(result.youthNormalized, 3, "taken from the normal release path's stats");
+  assert.equal(supabase.calls.some((c) => c.patch), false, "no separate post-release update (#5864: done in the release update itself)");
 });
 
 test("--only-unused: brugte ryttere i aktiv sæson udskydes, resten bliver i scope (ejer 6/10)", async () => {
