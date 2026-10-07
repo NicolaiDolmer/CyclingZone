@@ -279,6 +279,19 @@ test("#5864: frosne hold, testkonti, bank og AI-ungdom røres ikke", async () =>
   );
 });
 
+test("#5864 (CodeRabbit): rytter hvis akademiflag ændrede sig efter læsningen frigives ikke", async () => {
+  const db = makeDb(seed());
+  // Læst som senior (is_academy=false), men degraderet til akademiet imellem.
+  const stale = { ...db.rider("h-sen-exp"), team: db.tables.teams.find((t) => t.id === "H") };
+  db.rider("h-sen-exp").is_academy = true;
+  const stats = await releaseExpiredContractRiders({
+    supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify,
+    fetchExpiredContractRiders: async () => [stale],
+  });
+  assert.equal(stats.released, 0);
+  assert.equal(db.rider("h-sen-exp").team_id, "H", "ingen fri agent med is_academy=true");
+});
+
 test("#5864: idempotent; en ny kørsel samme sæson frigiver intet nyt (udskudt rytter stadig udskudt)", async () => {
   const db = makeDb(seed());
   const first = await releaseExpiredContractRiders({ supabase: db.supabase, seasonNumber: 4, notify: notifyRecorder().notify });

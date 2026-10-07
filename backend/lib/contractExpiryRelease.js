@@ -209,6 +209,9 @@ export async function releaseExpiredContractRiders({
         .update(patch)
         .eq("id", rider.id)
         .eq("team_id", rider.team_id)
+        // #5864 (CodeRabbit): også akademiflaget skal være det vi læste, ellers kan
+        // en samtidig akademi-degradering give en fri agent med is_academy=true.
+        .eq("is_academy", rider.is_academy === true)
         .select("id");
       if (error) throw new Error(`releaseExpiredContractRiders(${rider.id}): ${error.message}`);
       if (!released || released.length === 0) continue;
