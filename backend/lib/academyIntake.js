@@ -521,7 +521,8 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // #6264: signing-fee må ikke betales med penge låst i auktionsbud. RPC'en
   // nedenfor forbliver den autoritative rå-saldo-gate (insufficient_balance).
   if (fee > 0) {
-    const { data: teamRow, error: teamErr } = await supabase
+    // supabase er utypet (`object`) i denne fil; en lokal any-cast undgaar at ratchetten tæller en ny tsc-fejl.
+    const { data: teamRow, error: teamErr } = await /** @type {any} */ (supabase)
       .from("teams").select("balance").eq("id", teamId).single();
     if (teamErr) throw new Error(`signAcademyCandidate team balance lookup: ${teamErr.message}`);
     const spendIssue = await checkAvailableSpend(supabase, { teamId, balance: teamRow?.balance, cost: fee });
