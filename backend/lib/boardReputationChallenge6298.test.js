@@ -41,6 +41,12 @@ test("#6298 · maal med omdoemme-basis er uaendret og taeller kun omdoemme", () 
   assert.equal(evaluateGoalProgress(goal, null, team, ctx).actual, 2);
 });
 
+test("#6298 · maal med eksplicit anden basis holdes paa den gamle score", () => {
+  const goal = { ...OLD_GOAL, target: 1, star_score_basis: "legacy" };
+  const team = { riders: [reputationRider("r1")] };
+  assert.equal(evaluateGoalProgress(goal, null, team, ctx).actual, 0);
+});
+
 test("#6298 · bonus-maal med baseline holdes paa den gamle score", () => {
   const goal = { type: "signature_rider", target: 1, baseline: 1 };
   const team = { riders: [legacyRider, reputationRider("r1")] };

@@ -1000,7 +1000,7 @@ function countSignatureRiders(riders, goal, context = {}) {
   const list = riders || [];
   if (context.reputationEnabled !== true) return countTeamStarRiders(list, { reputationEnabled: false });
   if (goal.star_score_basis === "reputation") return countTeamStarRiders(list, { reputationEnabled: true });
-  if (goal.baseline != null) return countTeamStarRiders(list, { reputationEnabled: false });
+  if (goal.star_score_basis != null || goal.baseline != null) return countTeamStarRiders(list, { reputationEnabled: false });
   const legacyThreshold = getStarRiderScoreThreshold({ reputationEnabled: false });
   const reputationThreshold = getStarRiderScoreThreshold({ reputationEnabled: true });
   return list.filter((rider) =>
