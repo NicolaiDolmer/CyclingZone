@@ -485,7 +485,6 @@ export default function TrainingPage() {
     trainingScore,
     // Står FØR racingToday med vilje: #3459's guard i TrainingPage.raceDay.test.js
     // pinner at racingToday er det sidste felt før `} = training;`.
-    dailyReceiptEnabled,
     racingToday,
     // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
     dayClose,
@@ -579,7 +578,7 @@ export default function TrainingPage() {
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
-  const history = useTrainingHistory({ dailyReceiptEnabled });
+  const history = useTrainingHistory();
 
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);

@@ -37,6 +37,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
   const avgScore = (row: DailyRiderReceipt) => showsDevelopment(row)
     ? averagePassScore(trainingScore?.[row.rider_id], run.tick_date, run.season_id, row.activities) : null;
   const rows = sortReceiptRiders(run.report.riders, sortBy, avgScore);
+  const gameDays = Array.isArray(run.game_days) ? run.game_days : [];
   const trainedNowSlots = run.trained_now_slots ?? [];
   const trainedNow = run.receipt_status === "pending" && trainedNowSlots.length > 0;
   const trainedRows = rows.filter(row => row.trained_now != null);
@@ -82,7 +83,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
         {trainedNow
           ? <div data-testid="daily-receipt-trained-now-count"><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{trainedRows.length}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.trainedNowCount")}</p></div>
           : <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{known.length} / {rows.length}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.riderReceipts")}</p></div>}
-        <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{run.game_days.length || "—"}{run.expected_game_days ? ` / ${run.expected_game_days.length}` : ""}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.activitiesRecorded")}</p></div>
+        <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{gameDays.length || "—"}{run.expected_game_days ? ` / ${run.expected_game_days.length}` : ""}</p><p className="text-2xs text-cz-3">{t("dailyReceipt.activitiesRecorded")}</p></div>
         <div><p className="font-data text-lg font-semibold tabular-nums text-cz-1">{wholeDateKnown || trainedNow ? points : "—"}</p><p className="text-2xs text-cz-3">{t(trainedNow ? "dailyReceipt.wholePointsSoFar" : "dailyReceipt.wholePoints")}</p></div>
       </div>
       {rows.length > 1 && <div className="mb-1 flex flex-wrap items-center justify-between gap-2" data-testid="daily-receipt-toolbar">
