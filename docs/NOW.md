@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (7/10):** Start med [`2026-10-07-session-morgen.md`](superpowers/plans/2026-10-07-session-morgen.md). Kort: (1) **Dag 2-lækagen** #6291 (sept. D2 46 % → 15 %; ejer-go) + **attribution** #6292 (28 % egen side som kilde). (2) **PostHog-dashboard** 'Kerne-rejsen' (funnel + D1/D7) når events er set (#4321; PostHog live 6/10, uden cookies, verificeret). (3) **Tailwind 4** PR #6289 (bølge kørte natten over): tjek de 9 åbne punkter i Claudes audit-kommentar på PR'en, ét før/efter-billede til ejeren, merge senest 13/10; derefter vagterne #6290. (4) **Patch notes** samlet efter Tailwind-merge: Pro-rettelser (#6287) + PostHog-privatlivstekst (#6280). (5) **#5864**: rod-årsag i sæsonskiftet (ungdomstrupper) før 25/10; 77 brugte ryttere frigives ved skiftet (96 ubrugte frigivet 6/10 23:40, backup `backup_5864_*`). (6) Codex-kø: #6226 (ret Claudes review på #6282) → #6230 → #6172. Ejer-valg 7/10: #6248 langsigtet model (A/B).
+> **🎯 Next action (7/10):** **"Ro på spillet" til 25/10** (ejer 7/10, MASTERPLAN): brand = stabilitet + løbsmotoren fejlfri + rytterudvikling/scout-projection. (1) Bølgens PR'er → før/efter + go. (2) Svar-udkast til spillere (ejeren poster) → fast 24 t-rutine. (3) Tailwind #6289: Codex-review, så ejer-go (Claudes 9 punkter afgjort). (4) Kort: #5162 (bucket + nøgle), #6291 presence-måling. (5) #5864 rod-årsag før 25/10 (#6198 merget). (6) #6248 leveres med Udvikling 2.0. Afgjort 7/10: #6291 (målebrud, D2 43-50 % seneste uger), #6292 (rettet 23/9; server-sikring i bølgen). Roadmap: 2 nye "I gang"-punkter.
 >
 > **6/10 aften (merget/live):** #6254 #6281 #6283 (patch 7.344) #6280+#6279+#6265 (PostHog live) #6287 (Pro-fejl) #6288. Flippet til alle: `race_role_scope_choice`, `season_matrix_mobile`. Nye issues: #6284 (+30:00-mur) #6285 (løbstests) #6290 #6291 #6292 #6293 #6294 #6295 #6296 (træning beta→alle).
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session. Tailwind-bølgen er færdig (PR #6289 klar til review, CI 57/57 grøn).
+> **🤖 Working agent:** Claude Code 7/10 (morgen-session): bølge #6156 #6158 #6261 #6292 kører; svar-udkast til spillere; Codex reviewer Tailwind #6289 + undersøgelse #6300 (read-only).
