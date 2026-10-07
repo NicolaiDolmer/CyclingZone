@@ -31,7 +31,7 @@ Tag øverste ikke-startede trin i spor 1, 6 eller Fabrikken (MASTERPLAN-rækkef�
 
 1. Træning afregnet (sweep ≥ 20), forfaldne etaper kørt, Sentry siden morgen.
 2. Merge-køen (`scripts/merge-queue.ps1`) for PR'er med ejer-go eller stående merge-regel; post-verify.
-3. Patch note for dagens spillerrettede ændringer; done-flip pr. merget issue (også Codex' merges). Flip af beta → alle: luk alle issues på MASTERPLANs flip-liste i samme tur.
+3. **Daglig synk (ejer 7/10):** roadmap (`roadmap_items`: "I gang" = det der reelt bygges, i MASTERPLAN-rækkefølge, ingen dubletter) og kendte fejl (`known_issues` + `known_issue_updates`: status og kort opdatering EN/DA følger GitHub + patch notes; rettet = live for alle). Patch note for dagens spillerrettede ændringer; done-flip pr. merget issue (også Codex' merges). Flip af beta → alle: luk alle issues på MASTERPLANs flip-liste i samme tur.
 4. Close-out (CLAUDE.md): `NOW.md` 🎯 + 🤖, `MASTERPLAN.md`, token-hygiejne, `close-out-cleanup.ps1`, statusboard.
 
 ## Mandag
