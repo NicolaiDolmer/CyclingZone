@@ -32,8 +32,8 @@ export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
 
 // #6187: revisionerne er en ARVELINJE: hver orders_gc-revision er hele den
 // forrige plus sit eget. Kaldsteder spoerger derfor "mindst vN?" via
-// helperne nedenfor i stedet for at sammenligne strenge (en ny revision skal
-// kun tilfoejes her og i listen ovenfor for at arve alt det foregaaende).
+// helperne nedenfor i stedet for at sammenligne strenge. En sidegren skal
+// angive sin mekaniske generation eksplicit; official_times_v1 arver v2.
 const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object.freeze({
   legacy: 0,
   orders_gc_v1: 1,
