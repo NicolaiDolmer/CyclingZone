@@ -1,4 +1,4 @@
-import { readFileSync, existsSync, appendFileSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, appendFileSync } from 'node:fs';
 import { resolve, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -12,11 +12,12 @@ const stamp = value => typeof value === 'string' && /^\d{4}-\d\d-\d\dT.*(?:Z|\+0
 
 // Includes injected callback/initializer roots from the reviewed map. Loader/
 // from syntax includes exports, require and literal dynamic imports. Unknown
-// or unresolvable graphs widen to ALL.
+// or unresolvable graphs always require proof for that job. Unmapped runtime
+// files and common triggers widen to ALL.
 // cron.js is a shared trigger, never a per-job traversal root.
 export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SOURCE_MAP,
   read = path => readFileSync(resolve(ROOT, path), 'utf8'),
-  exists = path => existsSync(resolve(ROOT, path)) } = {}) {
+  exists = path => existsSync(resolve(ROOT, path)) && statSync(resolve(ROOT, path)).isFile() } = {}) {
   const all = monitors.map(([slug]) => slug);
   if (!Array.isArray(files) || files.length === 0 || files.length >= 3000) throw new Error('Unknown changed-file evidence');
   if (Object.keys(map.sourcePathsBySlug).sort().join() !== [...all].sort().join()) throw new Error('Cron source map does not cover registry');
@@ -37,7 +38,7 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
     try {
       const visit = path => {
         if (seen.has(path) || map.commonSourcePaths.includes(path)) return;
-        if (!exists(path)) throw new Error('Missing source root');
+        if (!exists(path)) { unknown.add(slug); return; }
         seen.add(path);
         if (!sources.has(path)) sources.set(path, read(path));
         const source = sources.get(path);
@@ -45,21 +46,22 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
         // The shared scanner blanks template expressions as well. Such a
         // loader cannot safely be narrowed, so explicitly widen instead.
         for (const template of source.matchAll(/`(?:\\[\s\S]|[^`])*`/g)) {
-          if (template[0].includes('${') && /\b(?:import|require)\s*\(/.test(template[0])) throw new Error('Template loader dependency');
+          if (template[0].includes('${') && /\b(?:import|require)\s*\(/.test(template[0])) unknown.add(slug);
         }
         // Nonliteral loaders cannot be resolved statically, so never narrow.
-        if (/(?<![\w$-])(?:import|require)\s*\(\s*[^'"\s]/.test(code)) throw new Error('Unknown dynamic dependency');
-        for (const match of code.matchAll(/(?<![\w$-])(?:from\s*|import\s*|(?:import|require)\s*\(\s*)(['"])([^'"\r\n]*)\1/g)) {
+        if (/(?<![\w$-])(?:import|require)\s*\(\s*[^'"\s]/.test(code)) unknown.add(slug);
+        for (const match of code.matchAll(/(?<![\w$-])(?:from\s*|import\s*|(?:import|require)\s*\(\s*)(['"])([^'"]*)\1/g)) {
           // Masking preserves offsets and quotes: recover only the literal
           // specifier, never a path mentioned in prose or another string.
           const start = match.index + match[0].indexOf(match[1]) + 1;
           const specifier = source.slice(start, start + match[2].length);
           if (!/^\.{1,2}\//.test(specifier)) continue;
           const base = posix.normalize(posix.join(posix.dirname(path), specifier));
-          if (base.startsWith('../')) throw new Error('Source outside repository');
+          if (base.startsWith('../')) { unknown.add(slug); continue; }
           const target = [base, `${base}.js`, `${base}.ts`, `${base}/index.js`, `${base}/index.ts`].find(exists);
           if (target && /\.(?:js|mjs|cjs|ts)$/.test(target)) visit(target);
-          else if (!target) throw new Error('Missing dependency');
+          else if (!target) unknown.add(slug);
+          else seen.add(target); // declared JSON/data imports are impact edges too
         }
       };
       for (const path of map.sourcePathsBySlug[slug]) visit(path);
