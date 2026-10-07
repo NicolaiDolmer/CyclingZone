@@ -7,7 +7,7 @@
 | Kanal | Ejer | Rører aldrig |
 |---|---|---|
 | **Claude Code** (orkestrator) | §Morgen, §Aften, §Søndag, mandag · merge-køen · prod-skrivninger efter ordret go · UI, spillertekst, designkort · `NOW.md` + `MASTERPLAN.md` · spor 2-5 (byg via `wave.js`) | Codex' åbne PR'er og claims |
-| **Codex** (bygger) | Spor 1 + 6 + Fabrikken · backend-fix med låst spec · PR med preflight; resultat og næste skridt som kommentar på issuet | `NOW.md`, `MASTERPLAN.md`, spillertekst, prod-skrivning uden ejer-go, status-docs-PR'er |
+| **Codex** (leveranceansvarlig) | Spor 1 + 6 + Fabrikken · backend-fix med låst spec · PR, reviewrettelser og afslutning efter mandat; bevis på issuet | `NOW.md`, `MASTERPLAN.md`, spillertekst, prod-skrivning uden ejer-go, status-docs-PR'er |
 
 Claim = `claude:in-progress` + kommentar "Codex/Claude Code: <plan>" på issuet. Begge respekterer fælles bølgelås og loft (4 laner, verify-semafor 2).
 
@@ -19,7 +19,9 @@ Claim = `claude:in-progress` + kommentar "Codex/Claude Code: <plan>" på issuet.
 
 ## §Codex (dag)
 
-Tag øverste ikke-startede trin i spor 1, 6 eller Fabrikken (MASTERPLAN-rækkefølge; brand-issues med `codex`-ejer går først). Claim → worktree → TDD → `scripts/preflight-pr.ps1` + tier-verifikation → PR (`Refs #N`) → kommentar på issuet. Merges PR'en, flippes issuet til `claude:done` (eller lukkes) i samme tur. Issue med flere delopgaver: resten flyttes til nyt issue ved første merge. Spørg aldrig ejeren direkte om design; skriv spørgsmålet på issuet med `needs-decision`, så tager §Morgen det.
+Tag øverste ikke-startede trin i spor 1, 6 eller Fabrikken (MASTERPLAN-rækkefølge; brand-issues med `codex`-ejer går først). Claim → worktree → TDD → preflight + tier-verifikation → PR (`Refs #N`) → reviewrettelser → afslutning efter mandat i [CODEX_WORKFLOWS](CODEX_WORKFLOWS.md). Merges PR'en, flippes issuet til `claude:done` (eller lukkes) i samme tur. Issue med flere delopgaver: resten flyttes til nyt issue ved første merge efter dublet-tjek.
+
+**Ejer-go 7/10 (#605):** Én hovedsession ejer hver leverance, også under CI/review. Konkrete beslutningskort må forelægges ejeren direkte og gemmes på issuet; ubesvarede kort får `needs-decision` til §Morgen. Fortsæt uafhængigt godkendt arbejde. Nye bølger vælger eksplicit 1-4 laner og modeller efter opgaven; loftet deles med Claude. Aktive claims/processer overtages ikke. Produkt-, merge- og prod-gates består; ingen global modelændring.
 
 ## §Bølge (dag, Claude Code)
 

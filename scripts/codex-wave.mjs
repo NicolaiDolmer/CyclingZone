@@ -13,12 +13,42 @@ const save = (p, data) => fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\
 const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', timeout: 30000 }).trim();
 const gh = (...args) => JSON.parse(execFileSync('gh', [...args, '--repo', REPO], { encoding: 'utf8', timeout: 30000 }));
 
+function modelSelection(role, track) {
+  if (role !== 'reviewer') return { model: track.model ?? null, effort: track.effort ?? null };
+  return {
+    model: track.reviewerModel ?? track.model ?? null,
+    // A newly selected model must not inherit another model's effort setting.
+    effort: track.reviewerEffort ?? (track.reviewerModel ? null : track.effort ?? null),
+  };
+}
+
+export function executionPlan(options) {
+  const tracks = validateTracks(options.tracks);
+  const lanes = options.lanes === undefined ? 2 : options.lanes;
+  if (!Number.isInteger(lanes) || lanes < 1 || lanes > 4) throw Error('lanes must be an integer from 1 to 4');
+  for (const track of tracks) {
+    for (const key of ['model', 'effort', 'reviewerModel', 'reviewerEffort']) {
+      if (track[key] !== undefined && (typeof track[key] !== 'string' || !track[key].trim())) {
+        throw Error(`${key} must be a non-empty string for #${track.issue}`);
+      }
+    }
+  }
+  return {
+    requestedLanes: options.lanes ?? null,
+    lanes: Math.min(lanes, tracks.length),
+    laneSource: options.lanes === undefined ? 'default' : 'explicit',
+    verifyMax: 2,
+    models: tracks.map(track => ({ issue: track.issue, worker: modelSelection('worker', track), reviewer: modelSelection('reviewer', track) })),
+  };
+}
+
 export function childArgs(role, track, schema, output) {
   const readOnly = role === 'reviewer' || track.kind === 'investigate';
   const args = ['exec', '-C', track.worktree, ...(readOnly ? ['--sandbox','read-only'] : ['--approve-for-me']),
     '--json', '--output-schema', schema, '--output-last-message', output];
-  if (track.model) args.push('--model', track.model);
-  if (track.effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(track.effort)}`);
+  const selection = modelSelection(role, track);
+  if (selection.model) args.push('--model', selection.model);
+  if (selection.effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(selection.effort)}`);
   // No model override by default. Scratch is per track, never a shared root.
   if (role !== 'reviewer') args.push('--add-dir', track.scratch);
   args.push('-');
@@ -35,6 +65,7 @@ function resultSchema(role) {
 export async function runWave(options, supplied = {}) {
   const { root, runDir, owner } = options;
   const tracks = validateTracks(options.tracks);
+  const execution = executionPlan(options);
   const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, ...supplied };
   const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs);
   const evidence = path.join(runDir, 'waves', wave.waveId);
@@ -45,7 +76,7 @@ export async function runWave(options, supplied = {}) {
   const controller = new AbortController();
   const onSignal = () => { stopWave = true; controller.abort(); };
   process.on('SIGINT', onSignal); process.on('SIGTERM', onSignal);
-  const checkpoint = cleanup => save(report, { waveId: wave.waveId, runtime: 'codex', results, cleanup, children: readWave(runDir).children || [],
+  const checkpoint = cleanup => save(report, { waveId: wave.waveId, runtime: 'codex', execution, results, cleanup, children: readWave(runDir).children || [],
     unstarted: tracks.filter(t => !results.some(r => r.issue === t.issue)).map(t => t.issue) });
   const context = { root, runDir, evidence, wave, signal: controller.signal, now: deps.now };
   try {
@@ -98,7 +129,7 @@ export async function runWave(options, supplied = {}) {
     }
     // Four child processes at most, including reviewers; each lane reviews
     // serially with a fresh process. Main session remains the architect.
-    const count = Math.max(1, Math.min(4, Number(options.lanes) || 2, prepared.length));
+    const count = execution.lanes;
     await Promise.all(Array.from({ length: count }, lane));
     return { results, report, waveId: wave.waveId };
   } finally {
@@ -283,14 +314,14 @@ async function cli() {
   const [configPath, mode = '--dry-run'] = process.argv.slice(2);
   if (!configPath || !['--dry-run', '--run'].includes(mode)) throw Error('Usage: codex-wave.mjs plan.json [--dry-run|--run]');
   const config = json(configPath);
-  validateTracks(config.tracks);
+  const execution = executionPlan(config);
   const root = git(process.cwd(), 'rev-parse', '--show-toplevel');
   const main = path.dirname(git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir'));
   const worktreesRoot = `${main}-worktrees`;
   if (mode === '--dry-run') {
-    console.log(JSON.stringify({ runtime: 'codex', lanes: Math.max(1, Math.min(4, config.lanes || 2)), verifyMax: 2,
+    console.log(JSON.stringify({ runtime: 'codex', lanes: execution.lanes, verifyMax: 2, execution,
       runDir: sharedRunDir(root), worktreesRoot, tracks: config.tracks, mutation: false,
-      merge: 'Owner must say merge; use scripts/merge-queue.ps1 separately' }, null, 2));
+      merge: 'Main session follows AGENTS rule 35; use scripts/merge-queue.ps1 separately' }, null, 2));
     return;
   }
   const result = await runWave({ ...config, root, runDir: sharedRunDir(root), owner: `codex-wave-${process.pid}` }, productionDeps(root, worktreesRoot));
