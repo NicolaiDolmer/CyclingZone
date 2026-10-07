@@ -90,6 +90,21 @@ test('mixed cadence waits for short jobs before returning deferred, never verifi
   assert.equal(result.state, 'deferred'); assert.equal(calls, 2);
 });
 
+test('accepted first-tick proof survives later heartbeat overwrites while another short job waits', async () => {
+  const configs = [monitors[0], ['medium', { schedule: { value: 5, unit: 'minute' }, checkinMargin: 1 }]];
+  let calls = 0;
+  const timestamps = [since, '2026-10-07T12:01:00Z', '2026-10-07T12:06:00Z'];
+  const result = await verifyCronCheckins({ slugs: ['short', 'medium'], since, monitors: configs,
+    url: 'https://fixture.invalid', key: 'fixture', now: () => timestamps[calls - 1], sleep: async () => {},
+    fetchFn: async () => {
+      calls++;
+      return { ok: true, json: async () => [row('short', timestamps[calls - 1]),
+        row('medium', calls < 3 ? since : '2026-10-07T12:05:50Z', 300)] };
+    } });
+  assert.equal(result.state, 'verified');
+  assert.equal(result.jobs.find(job => job.slug === 'short').lastCheckin, '2026-10-07T12:01:00.000Z');
+});
+
 const map = { commonSourcePaths: ['backend/cron.js'], sourcePathsBySlug: { short: ['backend/a.js'], long: [] } };
 const sources = { 'backend/a.js': "import './nested.ts';", 'backend/nested.ts': "export { guard } from './guard.js';", 'backend/guard.js': '' };
 const impact = files => affectedCronJobs(files, { map, monitors, exists: path => path in sources, read: path => sources[path] });
