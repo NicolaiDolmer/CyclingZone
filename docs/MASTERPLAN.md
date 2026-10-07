@@ -10,6 +10,8 @@
 
 ## 🔴 Brand (nu)
 
+**Ejer 7/10 eftermiddag:** Tailwind 4, databasen og løbsmotoren gøres FÆRDIGE først, med resultat hver dag. Så snart én lukker, kommer træningspakken ind (#6139 #6027 #6123 #6314 #6053). Derefter rytterudvikling. Sæsonskiftet 25/10 (#6320 #5904) kører parallelt.
+
 1. **Stabilitet:** Supabase (#5878; Medium ✅ · #5692 Codex · #6265 · alarm #6272 · #6276) · **chunk-fejl #5162 flyttet frem** (43 spillere, siden går i stå efter deploy).
 2. **Løbsmotoren fejlfri** (spillerne mærker den): tidsforskelle #5951 #6284 #6199 → mærker #6294 #6234 #6185d2 → udbrud/klatring #6201 #6200 #6299 #6187 #5978 → #6285 motor-tests som gate før hver tænding → `orders_gc_v3` (tændes ved grønt scorecard, ejer-only) → **form #6156 EFTER v3, designes grundigt med ejeren** (PR #6305 draft-udgangspunkt; toppe tilbage #6158). Hjælp = motor i samme PR (#6186).
 3. **Rytterudvikling + scoutens forventede udvikling** (spillerne har ret: den er forkert): Udvikling 2.0 #6110 (spec `2026-10-03-udvikling-2-design.md`; kurve B #3564 · #5950 · #6109 · #6059) · #5965 · projection #5764 #5683 · træningens rod #5928 · #6248 maks +1 (A/B 7/10).
