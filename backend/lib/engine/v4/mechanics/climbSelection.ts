@@ -424,9 +424,13 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const measured = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
     // Post-travel reserve is evidence of sustaining this group's actual pace.
     // A formed grupetto does not re-split merely relative to its best climber.
-    const selections = ctx.sharedGroupTime && group.kind === "gruppetto"
-      ? measured.map(selection => ({...selection, scoreTriggered:false, effortForced:false}))
-      : measured;
+    const cohesive = ctx.sharedGroupTime !== undefined && (group.kind === "gruppetto"
+      || (group.kind === "chase" && nextState.shared_grupetto_groups?.[group.id] === true));
+    const selections = cohesive ? measured.map(selection => {
+      const pace = nextState.riders[selection.riderId]?.segment_pace;
+      return {...selection, scoreTriggered:false, effortForced:false,
+        wprimeForced:selection.wprimeForced && (!pace || pace.demand > pace.cp)};
+    }) : measured;
     if (selections.length < 2) continue;
 
     let splitRiderIds = guardedSplitRiderIds(selections);
@@ -454,7 +458,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
       ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
         riderId: s.riderId,
         gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01),
-      })), group.kind === "gruppetto" ? GRUPPETTO_SINGLE_CLUSTER_TUNING : TIME_MODEL_V3_TUNING)
+      })), (group.kind === "gruppetto" || cohesive) ? GRUPPETTO_SINGLE_CLUSTER_TUNING : TIME_MODEL_V3_TUNING)
       : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
 
     for (const part of parts) {
@@ -469,7 +473,9 @@ export const climbSelectionHook: ClimbSelectionHook = (
         kind,
         gapSecondsDelta,
       });
-      nextState = { ...nextState, groups };
+      nextState = { ...nextState, groups,
+        ...(cohesive ? {shared_grupetto_groups:{...nextState.shared_grupetto_groups,[group.id]:true as const,[newGroupId]:true as const}} : {}),
+      };
 
       events.push({
         km: round2(segment.to_km),

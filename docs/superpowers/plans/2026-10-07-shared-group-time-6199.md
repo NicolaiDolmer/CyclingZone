@@ -118,3 +118,12 @@ Positive separation cannot be erased by the old classification window, and a
 full-interval finale closing estimate spends only movement not already accounted.
 These behaviors were reproduced RED and corrected; final calibration remains open.
 Existing OTL policy and all old-revision branches remain unchanged.
+
+2026-10-07 pace/lineage increment: shared runs record actual cp/demand from the
+physiology tick (including incident-chase re-ticks). Empty reserve alone is not
+proof of inability to sustain that actual pace. Cohorts retain internal lineage
+through weak-rider splits without renaming their displayed chase groups. RED/GREEN
+covers an empty but sustainable rider, an actually over-demanded weak rider and a
+recovered child cohort. 100/100 old-revision digests still match. Calibration is
+not accepted: first paired measurements still show excessive mountain gaps and
+fragmented tails, so this remains draft. No new pace/OTL/film policy chosen.

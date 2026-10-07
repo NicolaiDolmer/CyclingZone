@@ -59,3 +59,27 @@ test('finale travel estimate cannot close the same physical interval twice',()=>
  const twice=finaleHook({...state,groups:[state.groups[0],{...state.groups[1],gap_seconds:onceGap}]},shared);
  assert.equal(twice.state.groups.find(g=>g.id==='near')?.gap_seconds,onceGap,'the already-accounted movement is not charged again');
 });
+
+test('empty reserve alone does not detach a cohort rider who sustained the recorded physical demand',()=>{
+ const {state,ctx}=fixture();
+ for(const r of Object.values(state.riders)){r.wprime=0;r.segment_pace={cp:0.5,demand:0.2};}
+ const out=climbSelectionHook(state,{...ctx,sharedGroupTime:{entryGroups:state.groups}});
+ assert.deepEqual(out.state.groups,state.groups);
+});
+
+test('a weak rider with empty reserve and demand above capacity is still dropped',()=>{
+ const {state,ctx}=fixture();state.riders.r2.wprime=0;state.riders.r2.segment_pace={cp:0.2,demand:0.4};
+ const out=climbSelectionHook(state,{...ctx,sharedGroupTime:{entryGroups:state.groups}});
+ assert.ok(out.state.groups.some(g=>g.id!=='tail'&&g.rider_ids.includes('r2')));
+});
+
+test('a recovered detached cohort retains its physical cohesion without changing its displayed group kind',()=>{
+ const {state,ctx}=fixture();for(const id of ['r1','r2']){state.riders[id].wprime=0;state.riders[id].segment_pace={cp:0.2,demand:0.4};}
+ const first=climbSelectionHook(state,{...ctx,sharedGroupTime:{entryGroups:state.groups}});
+ const child=first.state.groups.find(g=>g.rider_ids.includes('r1'))!;
+ assert.notEqual(child.id,'tail');assert.equal(child.kind,'chase');
+ for(const id of child.rider_ids){first.state.riders[id]={...first.state.riders[id],wprime:1,segment_pace:{cp:0.5,demand:0.2}};}
+ const next=climbSelectionHook(first.state,{...ctx,sharedGroupTime:{entryGroups:first.state.groups}});
+ assert.deepEqual(next.state.groups.find(g=>g.id===child.id)?.rider_ids,child.rider_ids);
+ assert.equal(next.state.groups.find(g=>g.id===child.id)?.kind,'chase');
+});

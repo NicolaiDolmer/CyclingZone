@@ -572,6 +572,7 @@ function tickGroupRiders(
   segment: Segment,
   tempo: GroupTempo,
   tuning: EngineTuning,
+  recordPace = false,
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
   // #4604 (bjerg-anker): kravet er RELATIVT til gruppens kollektive CP — den
@@ -643,6 +644,7 @@ function tickGroupRiders(
     next[riderId] = {
       ...riderState,
       cp,
+      ...(recordPace ? {segment_pace: {cp, demand}} : {}),
       wprime: tick.wprime,
       seconds_over_cp: riderState.seconds_over_cp + tick.secondsOverCp,
       work_norm: riderState.work_norm + tick.workNorm,
@@ -903,7 +905,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     for (const group of state.groups) {
       const tempo = tempoByGroup.get(group.id);
       if (!tempo) continue;
-      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning);
+      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, sharedGroupTime);
       nextRiders = { ...nextRiders, ...patch };
     }
     const ridersBeforeTick = state.riders; // #5582: jagtens om-tick starter herfra
@@ -946,6 +948,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
             segment,
             chaseTempo,
             tuning,
+            sharedGroupTime,
           );
           const wprimeAfter = group.rider_ids.filter((id) => patch[id]).map((id) => patch[id].wprime);
           holdsPace = incidentChaseHoldsPace(isIncidentChasePacedSegment(segment.kind), wprimeAfter);
