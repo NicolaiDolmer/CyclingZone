@@ -1,0 +1,189 @@
+{
+  "engineCommit": "2e0bf27fc590b35aa4ffc29ddb4dbe5f46ab5eee",
+  "method": "Five paired seeds per actual profile with same present-day field and saved orders. Diagnostic input probes, not historical replay or accepted model. Before uses official_times_v1 including #6327.",
+  "runs": 100,
+  "shownRuns": 75,
+  "inputSha256": "2716b06a55f1f163f671f5baa0c5e77094e23552dfe0ad85ebba99b30b205a55",
+  "cases": [
+    {
+      "name": "Alpi e2 · rullende",
+      "before": {
+        "n10": 0,
+        "n30": 40.5099999999984,
+        "n50": 465.22000000000116,
+        "last": 1216,
+        "tailGroups": 4,
+        "largestTailGroup": 41,
+        "tailSize": 77,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      },
+      "probe1": {
+        "n10": 0,
+        "n30": 40.54000000000087,
+        "n50": 219.21000000000276,
+        "last": 582,
+        "tailGroups": 4,
+        "largestTailGroup": 44,
+        "tailSize": 77,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      },
+      "probe2": {
+        "n10": 0,
+        "n30": 30.81000000000131,
+        "n50": 250.8100000000013,
+        "last": 561,
+        "tailGroups": 4,
+        "largestTailGroup": 34,
+        "tailSize": 77,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      }
+    },
+    {
+      "name": "Alpi e6 · bjerg",
+      "before": {
+        "n10": 18.090000000000146,
+        "n30": 479.53999999999724,
+        "n50": 903.2299999999996,
+        "last": 1856,
+        "tailGroups": 8,
+        "largestTailGroup": 27,
+        "tailSize": 76,
+        "overThirtyTotal": 67,
+        "otlTotal": 0
+      },
+      "probe1": {
+        "n10": 9.260000000002037,
+        "n30": 360.619999999999,
+        "n50": 501.1000000000022,
+        "last": 738,
+        "tailGroups": 5,
+        "largestTailGroup": 65,
+        "tailSize": 76,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      },
+      "probe2": {
+        "n10": 9.260000000002037,
+        "n30": 340.6000000000022,
+        "n50": 472.119999999999,
+        "last": 579,
+        "tailGroups": 3,
+        "largestTailGroup": 74,
+        "tailSize": 76,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      }
+    },
+    {
+      "name": "Penisola e3 · kuperet",
+      "before": {
+        "n10": 23.510000000002037,
+        "n30": 100.7599999999984,
+        "n50": 142.1800000000003,
+        "last": 1011,
+        "tailGroups": 3,
+        "largestTailGroup": 87,
+        "tailSize": 92,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      },
+      "probe1": {
+        "n10": 23.540000000000873,
+        "n30": 57.409999999999854,
+        "n50": 126.84999999999854,
+        "last": 625,
+        "tailGroups": 3,
+        "largestTailGroup": 87,
+        "tailSize": 92,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      },
+      "probe2": {
+        "n10": 23.510000000002037,
+        "n30": 52.04000000000087,
+        "n50": 109.91999999999825,
+        "last": 126,
+        "tailGroups": 2,
+        "largestTailGroup": 90,
+        "tailSize": 92,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      }
+    },
+    {
+      "name": "Sierra Nevada e6 · højfjeld",
+      "before": {
+        "n10": 80.56999999999971,
+        "n30": 460.21000000000276,
+        "n50": 1137.579999999998,
+        "last": 1717,
+        "tailGroups": 6,
+        "largestTailGroup": 53,
+        "tailSize": 77,
+        "overThirtyTotal": 23,
+        "otlTotal": 0
+      },
+      "probe1": {
+        "n10": 80.43000000000029,
+        "n30": 356.84999999999854,
+        "n50": 591.6599999999999,
+        "last": 1142,
+        "tailGroups": 5,
+        "largestTailGroup": 55,
+        "tailSize": 77,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      },
+      "probe2": {
+        "n10": 62.23999999999796,
+        "n30": 338.40999999999985,
+        "n50": 573.3400000000001,
+        "last": 1133,
+        "tailGroups": 5,
+        "largestTailGroup": 51,
+        "tailSize": 77,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      }
+    },
+    {
+      "name": "Monferrato e4 · højfjeld",
+      "before": {
+        "n10": 116.86000000000058,
+        "n30": 1019.5200000000004,
+        "n50": 1644.5,
+        "last": 2980,
+        "tailGroups": 3,
+        "largestTailGroup": 44,
+        "tailSize": 69,
+        "overThirtyTotal": 389,
+        "otlTotal": 0
+      },
+      "probe1": {
+        "n10": 238.20000000000073,
+        "n30": 640.5699999999997,
+        "n50": 847.0499999999993,
+        "last": 1301,
+        "tailGroups": 3,
+        "largestTailGroup": 44,
+        "tailSize": 69,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      },
+      "probe2": {
+        "n10": 51.11999999999898,
+        "n30": 469.6800000000003,
+        "n50": 687.489999999998,
+        "last": 1143,
+        "tailGroups": 3,
+        "largestTailGroup": 44,
+        "tailSize": 69,
+        "overThirtyTotal": 0,
+        "otlTotal": 0
+      }
+    }
+  ]
+}
