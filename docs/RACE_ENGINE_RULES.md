@@ -16,6 +16,14 @@ Et løbs taktiske regler bindes ved løbets første etape-claim og ændres aldri
 
 `StageInput.rules_revision` er valgfri; udeladt er `legacy`, byte-identisk med før. Begge revisioner deler korrekthedsrettelser. Nye løb bindes til `CURRENT_RACE_RULES_REVISION`, siden ejer-go 2/10 `orders_gc_v2` (#6084); løb der allerede er bundet til `legacy` eller `orders_gc_v1` færdiggøres på den. Kode: `backend/lib/raceEngineRulesRevision.ts`, `raceRunner.bindRaceRulesRevision`, migration `2026-10-01-race-engine-rules-revision.sql`.
 
+## Officielle tider under `official_times_v1` (#6284)
+
+Design-go: ejer 7/10, option A fra [#5951](https://github.com/NicolaiDolmer/CyclingZone/issues/5951#issuecomment-6040527715). Revisionen er en særskilt gren fra `orders_gc_v2`: `ordersGcGeneration` er v2, og ingen v3-mekanik arves. Kun resultatbroens tidskontrakt ændres. Motorens officielle ankomsttid minus vinderens officielle tid afrundes til hele sekunder uden det gamle lagringsloft. Samme officielle gruppetid giver fortsat samme gap; placering, point, bonus og OTL/udgået-semantik er uændrede. `finish_time` gemmer det fulde gap; både hel-løbsberegning og genoptaget GC summerer disse gemte gaps med de eksisterende bonus- og countback-regler.
+
+Revisionen er bygget, men **ikke aktiveret**. `CURRENT_RACE_RULES_REVISION` forbliver `orders_gc_v2`. Eksisterende revisioner bevarer deres tidskontrakt, og ingen historiske rækker omskrives. Ved en senere, særskilt ejer-godkendt aktivering bindes kun nye løb ved første etape-claim; igangværende løb genbruger deres pin, og et startet løb uden pin forbliver legacy. Planlagte løb bindes ved start, ikke ved oprettelse.
+
+DB-forudsætning: den eksisterende CHECK tillader ikke den nye identitet. `database/proposals/2026-10-07-official-times-v1.sql` er en **ikke-anvendt** additiv allow-list-proposal. Før aktivering skal den godkendes, leveres som migration efter gældende merge/apply-protokol og verificeres read-only; først derefter må standardrevisionen ændres med separat ejer-go. Denne PR udfører ingen migration eller flag-flip. Testplan: den genbrugte `officialStageTimes6284.test.ts` plus runner/adapter-integration, genoptaget GC, mekanisk v2-paritet og pin-regressioner; fuld lokal verifikation. Patch notes delegeres til Claude ved release, da denne lane ikke må skrive spillertekst.
+
 ## Morgenudbrud under `orders_gc_v1` (#5955, #5984 Task 3)
 
 Kun aktivt når løbets revision er `orders_gc_v1`; legacy-dannelsen er uændret. Tilladelse beregnes fra rolle, indsats og den effektive låste ordre (rolledefault + etapens overlay; fravær og eksplicit `try_break=false` holdes adskilt):

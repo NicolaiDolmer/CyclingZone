@@ -82,6 +82,16 @@ features:
     verified: 2026-10-04
     note: On siden 28/9 (læst i prod 4/10); kører officielle etaper.
 
+  - id: race-official-times-v1
+    area: race-engine
+    title_en: Official time persistence revision
+    title_da: Revision for lagring af officielle tider
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6284
+    verified: 2026-10-07
+    note: "Built behind official_times_v1, branching from v2. Default unchanged; DB allow-list proposal and separate owner activation approval required."
+
   - id: race-notify-outbox
     area: race-engine
     title_en: Async delivery of race result posts

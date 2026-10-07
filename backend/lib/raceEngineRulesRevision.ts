@@ -25,7 +25,7 @@
 // sine egne" (et hold foerer ikke jagten paa en gruppe med egen rytter i, og
 // dets udbrydere sidder paa hjul ved en trussel mod holdets GC-rytter).
 // Samlepunkt for uge 41-pakken. IKKE aktuel endnu: flip er ejer-only.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3"] as const;
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -39,7 +39,14 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   orders_gc_v1: 1,
   orders_gc_v2: 2,
   orders_gc_v3: 3,
+  // #6284: a v2 branch for official result integrity, NOT v3 mechanics.
+  official_times_v1: 2,
 });
+
+/** Only this future pinned revision stores uncapped official stage gaps. */
+export function preservesOfficialStageTimes(value: unknown): boolean {
+  return value === "official_times_v1";
+}
 
 /** 0 for legacy og alt ukendt; ellers revisionens plads i orders_gc-arvelinjen. */
 export function ordersGcGeneration(value: unknown): number {

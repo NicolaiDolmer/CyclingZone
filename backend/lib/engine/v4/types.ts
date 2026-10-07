@@ -210,7 +210,7 @@ export type StageInput = {
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
-export type RulesRevision = "legacy" | "orders_gc_v1" | "orders_gc_v2" | "orders_gc_v3";
+export type RulesRevision = import("../../raceEngineRulesRevision.ts").RaceRulesRevision;
 
 /** #5978: én rytters plads i det publicerede klassement foer etapen. */
 export type GcStanding = { rider_id: string; rank: number; gap_seconds: number };

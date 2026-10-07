@@ -760,6 +760,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "orders_gc_v1") return "orders_gc_v1";
   if (raw === "orders_gc_v2") return "orders_gc_v2";
   if (raw === "orders_gc_v3") return "orders_gc_v3";
+  if (raw === "official_times_v1") return "official_times_v1";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
