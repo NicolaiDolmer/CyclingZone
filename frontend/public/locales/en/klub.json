@@ -93,6 +93,7 @@
   },
   "errors": {
     "insufficient_funds": "Not enough balance for that upgrade.",
+    "insufficient_available_balance": "Not enough available money: part of your balance is locked in auction bids.",
     "max_tier": "This track is already fully upgraded.",
     "role_occupied": "You already have staff in this role.",
     "staff_tier_exceeds_facility": "Upgrade the facility before hiring a higher-tier chief.",

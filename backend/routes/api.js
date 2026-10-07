@@ -18747,6 +18747,8 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     // så en spiller uden penge nok fik "Noget gik galt" — og hver forsøg
     // larmede i Sentry. Begge er forventede bruger-tilstande, ikke fejl.
     if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
+    // #6264: signing-fee ville bruge penge låst i auktionsbud.
+    if (msg === "insufficient_available_balance") return res.status(409).json({ error: msg, locked: err.locked, available: err.available });
     if (msg === "already_assigned") return res.status(409).json({ error: "already_assigned" });
     // #4213: rytteren er i mellemtiden ejet af et andet hold — forventet
     // bruger-tilstand ved et stale tilbud, ikke en fejl. Tilbuddet bevares

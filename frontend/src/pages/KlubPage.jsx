@@ -104,7 +104,9 @@ export default function KlubPage() {
       setUpgradeError(
         res.error === "network" ? t("error.upgrade.network")
           : res.error === "auth" ? t("error.upgrade.auth")
-            : t("error.upgrade.failed"),
+            // #6261: penge låst i auktionsbud.
+            : res.error === "insufficient_available_balance" ? t("errors.insufficient_available_balance")
+              : t("error.upgrade.failed"),
       );
       reportActionFailure("club_facility_upgrade", { reason: res.error, context: { track } });
       return;
