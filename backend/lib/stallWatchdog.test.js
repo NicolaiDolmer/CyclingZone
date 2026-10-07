@@ -517,7 +517,7 @@ function makeWatchdogSupabase({ raceId = "r1", stageNumbers = [1, 2, 3, 4, 5, 6,
     },
     from(table) {
       if (table === "seasons") return builder([], { id: "s1" });
-      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-04-6102-watchdog-result-summary.sql' });
+      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-07-6102-watchdog-result-summary.sql' });
       if (table === "races") return builder([{ id: raceId, name: "Giro X", stages: 21, stages_completed: 2 }]);
       if (table === "race_stage_schedule") {
         return builder(
@@ -684,7 +684,7 @@ function makePrizeSupabase({ results, calls = [] }) {
     },
     from(table) {
       if (table === "seasons") return builder([], { id: "s1" });
-      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-04-6102-watchdog-result-summary.sql' });
+      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-07-6102-watchdog-result-summary.sql' });
       if (table === "races") {
         racesCall += 1;
         // 1. kald = ikke-completede (finalize), 2. kald = completed + prize NULL

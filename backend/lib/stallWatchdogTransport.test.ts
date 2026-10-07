@@ -30,8 +30,8 @@ test('real SDK serializes candidate arrays as POST and entry URLs stay below 8 K
         switch (table) {
           case 'seasons': data = [{ id: 'season' }]; break;
           case 'schema_migrations':
-            assert.equal(url.searchParams.get('filename'), 'eq.database/2026-10-04-6102-watchdog-result-summary.sql');
-            data = [{ filename: 'database/2026-10-04-6102-watchdog-result-summary.sql' }]; break;
+            assert.equal(url.searchParams.get('filename'), 'eq.database/2026-10-07-6102-watchdog-result-summary.sql');
+            data = [{ filename: 'database/2026-10-07-6102-watchdog-result-summary.sql' }]; break;
           case 'races': data = ids.map(id => ({ id, name: 'fixture', stages: 1, stages_completed: 0 })); break;
           case 'race_stage_schedule': data = ids.map(race_id => ({ race_id, stage_number: 1, scheduled_at: '2026-10-04T06:00:00Z', races: { name: 'fixture' } })); break;
           case 'race_entries': data = []; break;
