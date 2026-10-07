@@ -40,6 +40,7 @@
  */
 
 import { fetchAllRows } from "./supabasePagination.js";
+import { fetchWatchdogResultSummaries, WATCHDOG_RESULT_MIGRATION } from "./stallWatchdogAggregates.ts";
 import { getRankingRefreshWorkState } from "./rankingRefreshWork.ts";
 
 export const STALL_WATCHDOG_DEFAULT_THRESHOLDS = {
@@ -253,17 +254,12 @@ export function evaluateStallFindings({
  * I/O-lag: henter alle rows evaluatoren behøver fra Supabase. Kaster ved query-fejl
  * (ikke tavst `|| []`) så trackedTick surfacer det i Sentry. Scoper til aktiv sæson.
  */
-// Range-pagineret + id-chunked load af race-scopede tabeller. race_results-rækker =
-// løb × etaper × ryttere, så et enkelt flerugers etapeløb alene sprænger PostgREST's
-// 1000-rækkers cap; en rå .in() trunkerer TAVST (samme klasse som #1798/#1839).
-//
-// Netop dét gav watchdogen FALSKE etape-stall-alarmer (#2430): resultKeys blev bygget
-// af de første 1000 af 7.277 rækker, så etaper der HAVDE resultater så tomme ud →
-// "forfalden m. startfelt, ingen resultater". Sorteringen SKAL være total (unik nøgle
-// sidst: id — eller PK-kolonnerne via orderCols for tabeller uden id-kolonne, #2536),
-// ellers kan ties flytte rækker mellem sider → gaps.
+// Entry rows retain range pagination and total composite-PK order (#2536).
+// #2430 previously needed full result pagination to avoid false missing-stage
+// alarms. #6102 instead obtains every distinct result key in one summary per
+// candidate, avoiding rider-row transfer and expensive ORDER BY id/OFFSET scans.
 async function fetchAllRaceRows(supabase, table, columns, raceIds, orderCols = ["id"]) {
-  const ID_CHUNK = 300;
+  const ID_CHUNK = 100; // UUID IN URLs stay below the transport ceiling; results use POST RPC.
   const rows = [];
   for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
     const chunk = raceIds.slice(i, i + ID_CHUNK);
@@ -330,46 +326,9 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
 
   // lastResultByRace for (a)+(c)-kandidater
   const anchorIds = [...new Set([...finalizeCandidates, ...prizeCandidates].map((r) => r.id))];
-  const lastResultByRace = {};
-  const racesWithPrize = new Set();
-  // #6184 · Kun SENESTE imported_at + "findes der en præmie-række" pr. løb er
-  // nødvendigt. Før hentede vi ALLE resultat-rækker for alle ankre (titusinder,
-  // offset-pagineret, sorteret på id) — prod 4-5/10: planen skannede hele
-  // race_results via pkey, 30+ kald > 5 s og en 500 ved 60 s. Nu to LIMIT 1-
-  // opslag pr. løb, sekventielt (ingen parallel-burst mod PostgREST), dækket af
-  // idx_race_results_race_id_imported_at + idx_race_results.
-  const prizeCandidateIds = new Set(prizeCandidates.map((r) => r.id));
-  for (const raceId of anchorIds) {
-    const latest = await run(
-      supabase
-        .from("race_results")
-        .select("imported_at")
-        .eq("race_id", raceId)
-        .order("imported_at", { ascending: false, nullsFirst: false })
-        .limit(1),
-      "race_results(latest)"
-    );
-    lastResultByRace[raceId] = latest[0]?.imported_at ?? null;
-    // racesWithPrize bruges kun til at filtrere prize-kandidater — spring
-    // opslaget over for rene finalize-ankre (og når auto-prize er slukket).
-    if (latest.length && prizeCandidateIds.has(raceId)) {
-      const prize = await run(
-        supabase.from("race_results").select("id").eq("race_id", raceId).gt("prize_money", 0).limit(1),
-        "race_results(prize)"
-      );
-      if (prize.length) racesWithPrize.add(raceId);
-    }
-  }
-  // Løb med resultater men uden én eneste præmie-række (fx ungdomsløb: ingen
-  // præmiepenge i v1, YOUTH_RULES §7) har intet at udbetale. Præmiemotoren
-  // springer dem over ("no_prize_results"), så prize_paid_at forbliver NULL for
-  // evigt — det er ikke et stall (CYCLINGZONE-2G, S4 løbsdag 1). Løb helt uden
-  // resultater bliver stående: det er en ægte anomali.
-  prizeCandidates = prizeCandidates.filter(
-    (r) => lastResultByRace[r.id] == null || racesWithPrize.has(r.id)
-  );
 
-  // (b) forfaldne etaper (aktiv sæson, ikke-completede løb) via embedded inner-join
+
+  // Fetch due candidates before the shared summary; overlapping races are read once.
   const stageCutoff = new Date(now.getTime() - t.stageHours * HOUR_MS).toISOString();
   const dueRaw = await run(
     supabase
@@ -382,11 +341,38 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
     "race_stage_schedule(due)"
   );
   const dueRaceIds = [...new Set(dueRaw.map((s) => s.race_id))];
+  if (anchorIds.length || dueRaceIds.length) {
+    // auto-migrate records this only after function + ACL transaction succeeds.
+    // No new RPC invocation during an unauthorized/unverified rollout window.
+    const { data: marker, error: markerError } = await supabase.from("schema_migrations")
+      .select("filename").eq("filename", WATCHDOG_RESULT_MIGRATION).maybeSingle();
+    if (markerError) throw new Error(`stall-watchdog migration marker: ${markerError.message}`);
+    if (marker?.filename !== WATCHDOG_RESULT_MIGRATION) throw new Error("stall-watchdog result summary migration not verified");
+  }
+  const summaries = await fetchWatchdogResultSummaries(supabase, [...anchorIds, ...dueRaceIds]);
+  const lastResultByRace = {};
+  const racesWithPrize = new Set();
+  for (const id of anchorIds) {
+    const row = summaries.get(id);
+    lastResultByRace[id] = row.last_imported_at;
+    if (row.has_prize) racesWithPrize.add(id);
+  }
+  // Løb med resultater men uden én eneste præmie-række (fx ungdomsløb: ingen
+  // præmiepenge i v1, YOUTH_RULES §7) har intet at udbetale. Præmiemotoren
+  // springer dem over ("no_prize_results"), så prize_paid_at forbliver NULL for
+  // evigt — det er ikke et stall (CYCLINGZONE-2G, S4 løbsdag 1). Løb helt uden
+  // resultater bliver stående: det er en ægte anomali.
+  prizeCandidates = prizeCandidates.filter(
+    (r) => lastResultByRace[r.id] == null || racesWithPrize.has(r.id)
+  );
+
+  // (b) forfaldne etaper (aktiv sæson, ikke-completede løb) via embedded inner-join
   const resultKeys = new Set();
   const entryRaceIds = new Set();
   if (dueRaceIds.length) {
-    const rr = await fetchAllRaceRows(supabase, "race_results", "race_id,stage_number,id", dueRaceIds);
-    for (const row of rr) resultKeys.add(`${row.race_id}:${row.stage_number}`);
+    for (const id of dueRaceIds) {
+      for (const stage of summaries.get(id).stage_numbers) resultKeys.add(`${id}:${stage}`);
+    }
     // race_entries har composite PK (race_id, rider_id) og INGEN id-kolonne (#2536,
     // samme fantom-kolonne-klasse som #2516) — total orden via PK-kolonnerne.
     const ent = await fetchAllRaceRows(supabase, "race_entries", "race_id,rider_id", dueRaceIds, ["race_id", "rider_id"]);

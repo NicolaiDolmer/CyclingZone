@@ -1,0 +1,842 @@
+{
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "baselineSha": "5bebe0e2798603d39278afa8b30d909360800d18",
+  "pinnedNow": "2026-10-07T09:00:00.000Z",
+  "resultRows": 1889644,
+  "candidates": 85,
+  "identicalStates": true,
+  "identicalFindings": true,
+  "findingCount": 93,
+  "access": {
+    "anon": false,
+    "authenticated": false,
+    "service_role": true
+  },
+  "samples": [
+    {
+      "phase": "before",
+      "durationMs": 10047.6862,
+      "calls": 96,
+      "rows": 27580,
+      "maxUrlBytes": 2303,
+      "requests": [
+        {
+          "path": "/rest/v1/seasons",
+          "ms": 209.33359999999993,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 109
+        },
+        {
+          "path": "/rest/v1/races",
+          "ms": 195.71489999999994,
+          "status": 200,
+          "rows": 384,
+          "urlBytes": 182
+        },
+        {
+          "path": "/rest/v1/races",
+          "ms": 252.3783000000003,
+          "status": 200,
+          "rows": 30,
+          "urlBytes": 163
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 98.69999999999982,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 85.05469999999968,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 134.34539999999924,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 64.9342999999999,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 65.01969999999983,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 76.16119999999955,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 79.39239999999972,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 102.42769999999928,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 78.97209999999995,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 101.34090000000015,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 119.4389000000001,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 111.65440000000035,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 107.09389999999985,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 115.55479999999989,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 94.4331000000002,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 75.3098,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 71.71430000000055,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 59.84239999999954,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 55.24489999999969,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 67.33879999999954,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 74.41459999999915,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 79.45879999999943,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 70.55809999999929,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 74.86229999999978,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 65.83820000000014,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 57.35499999999956,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 60.530400000000554,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 66.08910000000014,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 53.169700000000375,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 66.91550000000007,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 61.34650000000056,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 74.91269999999986,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 61.027500000000146,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 68.28189999999995,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 67.19779999999992,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 70.57139999999981,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 80.8108000000002,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 84.8166999999994,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 70.58100000000013,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 69.6887999999999,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 67.72379999999976,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 65.79150000000027,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 68.4393,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 61.7525999999998,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 70.1934999999994,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 59.114700000000084,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 63.94499999999971,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 63.05210000000079,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 72.64279999999962,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 83.42820000000029,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 59.906699999999546,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 78.89420000000064,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 60.608400000000984,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 72.41259999999966,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 68.30839999999989,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 62.14799999999923,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 69.25610000000052,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 75.32679999999891,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 74.29600000000028,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 169
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 56.340000000000146,
+          "status": 200,
+          "rows": 0,
+          "urlBytes": 144
+        },
+        {
+          "path": "/rest/v1/race_stage_schedule",
+          "ms": 82.6351999999988,
+          "status": 200,
+          "rows": 123,
+          "urlBytes": 311
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 364.424500000001,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2289
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 368.79010000000017,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 457.7584000000006,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 218.33350000000064,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 145.22479999999996,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 125.98589999999967,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 117.45269999999982,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 159.21090000000004,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 116.2461000000003,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 120.14780000000064,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2292
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 153.45570000000043,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 112.07190000000082,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 132.22880000000077,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 128.07400000000052,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 111.9994999999999,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 134.97699999999895,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 119.64120000000003,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 260.1386000000002,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 102.14670000000115,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 97.20539999999892,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 99.35379999999896,
+          "status": 200,
+          "rows": 474,
+          "urlBytes": 2293
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 130.86719999999877,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2300
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 137.73539999999957,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 121.19480000000112,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 108.16550000000097,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 96.1854000000003,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 129.98610000000008,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 107.72689999999966,
+          "status": 200,
+          "rows": 534,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/season_standings",
+          "ms": 67.59189999999944,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 163
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 68.48530000000028,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 198
+        },
+        {
+          "path": "/rest/v1/matview_refresh_heartbeat",
+          "ms": 60.30210000000079,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 119
+        },
+        {
+          "path": "/rest/v1/rpc/get_ranking_refresh_work_state",
+          "ms": 70.33050000000003,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 83
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "durationMs": 1689.4760000000006,
+      "calls": 17,
+      "rows": 7162,
+      "maxUrlBytes": 2303,
+      "requests": [
+        {
+          "path": "/rest/v1/seasons",
+          "ms": 71.98570000000109,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 109
+        },
+        {
+          "path": "/rest/v1/races",
+          "ms": 157.23669999999947,
+          "status": 200,
+          "rows": 384,
+          "urlBytes": 182
+        },
+        {
+          "path": "/rest/v1/races",
+          "ms": 74.96270000000004,
+          "status": 200,
+          "rows": 30,
+          "urlBytes": 163
+        },
+        {
+          "path": "/rest/v1/race_stage_schedule",
+          "ms": 105.79910000000018,
+          "status": 200,
+          "rows": 123,
+          "urlBytes": 311
+        },
+        {
+          "path": "/rest/v1/schema_migrations",
+          "ms": 66.52690000000075,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 149
+        },
+        {
+          "path": "/rest/v1/rpc/stall_watchdog_result_summary",
+          "ms": 175.0676000000003,
+          "status": 200,
+          "rows": 85,
+          "urlBytes": 82
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 105.43080000000009,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2300
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 113.46210000000065,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 90.72550000000047,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 110.9945000000007,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 117.37480000000141,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 97.23190000000068,
+          "status": 200,
+          "rows": 1000,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/race_entries",
+          "ms": 94.71300000000156,
+          "status": 200,
+          "rows": 534,
+          "urlBytes": 2303
+        },
+        {
+          "path": "/rest/v1/season_standings",
+          "ms": 69.75250000000051,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 163
+        },
+        {
+          "path": "/rest/v1/race_results",
+          "ms": 69.04359999999906,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 198
+        },
+        {
+          "path": "/rest/v1/matview_refresh_heartbeat",
+          "ms": 94.91659999999865,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 119
+        },
+        {
+          "path": "/rest/v1/rpc/get_ranking_refresh_work_state",
+          "ms": 62.361800000000585,
+          "status": 200,
+          "rows": 1,
+          "urlBytes": 83
+        }
+      ]
+    }
+  ],
+  "explain": {
+    "executionMs": 2.123,
+    "nodes": [
+      {
+        "type": "Aggregate",
+        "index": null,
+        "rows": 1
+      },
+      {
+        "type": "Index Scan",
+        "index": "idx_race_results_race_id_stage_id",
+        "rows": 1881
+      }
+    ]
+  },
+  "fullRaceDayPassed": false
+}
