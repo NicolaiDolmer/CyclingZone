@@ -322,7 +322,14 @@ export function jourSansComponent(args: {
 // laeses af formCpModifier og kun naar Entrant.form er sat.
 export const FORM_CP_TUNING = Object.freeze({
   neutralForm: 50, // formvaerdi der giver leddet 0 (middel paa 0-100-skalaen)
-  maxCp: 0.02, // normaliseret CP-tillaeg ved formskalaens loft (og fradrag ved gulvet)
+  // Normaliseret CP-tillaeg ved formskalaens loft (og fradrag ved gulvet). Ankret
+  // i v3's form-vaegt (RACE_V3_TUNING.FORM_RACE_WEIGHT_V3): den omregning
+  // formplanlaeggeren bruger til at vise en top i formpoint, saa et formpoint
+  // er lige meget vaerd i v4 som det spilleren faar vist. v4's dagsform deler
+  // allerede v3's skala-anker (dayform.sd). Gate-maalt (spec §3.6) mod en
+  // mindre kandidat: baandene holdt i begge, men med den mindre maerkedes
+  // toppen kun svagt (backend/scripts/v4FormPeakPaired.mjs).
+  maxCp: 0.035,
 });
 
 export type FormCpTuning = { neutralForm: number; maxCp: number };

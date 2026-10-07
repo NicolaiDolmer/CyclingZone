@@ -478,9 +478,31 @@ under den median på 57 der blev målt efter D3-rekalibreringen. Tallet er ikke 
 menneske- og AI-hold her, så det er **ikke** en verifikation af at D3-målet holder - det er
 et øjebliksbillede af hele bestanden.
 
-**Form vægter reelt ind i løbssimuleringen** via `formRaceWeightV3()` (`raceRoles.js`),
+**Form vægter ind i løbssimuleringen under v3** via `formRaceWeightV3()` (`raceRoles.js`),
 som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
-fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
+fra v1-stien. Formtoppen (peak-vinduet fra formplanlæggeren) er under v3 sin egen
+score-komponent oven i formen, og dykket bagefter trækkes fra.
+
+**Under løbsmotor v4 (siden flippet 28/9) virker hverken form eller formtop**
+([#6156](https://github.com/NicolaiDolmer/CyclingZone/issues/6156)): runneren henter dem, men
+broen sendte dem ikke videre til v4, og v4's "dårlig dag"-risiko kørte uden form. Rettelsen er
+bygget bag regel-revisionen `orders_gc_v4` og er **ikke tændt endnu** (ejer-only, ordret go efter
+gate-simuleringen). Når den tændes, gælder for løb der starter derefter:
+
+- **Én samlet form pr. etapedag** = formen fra `rider_condition` + toppens tillæg i et
+  peak-vindue, eller minus dykket i tilbagebetalingen efter vinduet. Toppens størrelse er den
+  samme værdi, planlæggeren viser spilleren (vinduets træningskvalitet, samme omregning til
+  formpoint); den holdes på skalaen 0-100.
+- **Den samlede form virker to steder:** et lille, begrænset tillæg (eller fradrag) på
+  rytterens bæreevne hele etapen, neutralt ved middel form, og risikoen for en dårlig dag
+  (bedre form, færre dårlige dage).
+- **Form er et tillæg oven på evnen**, aldrig en evne: samme form flytter en svag og en stærk
+  rytter lige meget, og en top kan mærkes uden at kunne afgøre et løb alene.
+
+Træningens egen side er uændret: `nextForm` bygger formen som før, og peak-vinduernes
+træningskvalitet regnes som før (`racePeakPlans.js`). Detaljerne om motoren står i
+[`RACE_ENGINE_RULES.md`](RACE_ENGINE_RULES.md) ("Samlet form og formtoppe under `orders_gc_v4`").
+At brugte toppe gives tilbage ved tændingen, er et separat skridt (#6158).
 
 ### 5.4 Skader fra træning
 
