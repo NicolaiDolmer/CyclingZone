@@ -294,6 +294,10 @@ function Wait-ForDeployVerification {
       [IO.File]::WriteAllText($jobsFile, ($jobsJson -join ""))
       $state = (& node $ClassifierPath $runFile $jobsFile $Sha $minimumAttempt | Out-String).Trim()
       $lastState = $state
+      if ($state -eq 'deferred') {
+        Write-Host "  AFVENTER CHECK-IN (run $runId, attempt $($run.run_attempt)); se job + sidste check-in i workflow-summary. Ikke verificeret; ingen automatisk genkoersel eller naeste merge." -ForegroundColor Yellow
+        return 'deferred'
+      }
       if ($state -eq 'verified' -or $state -eq 'failed' -or $state -eq 'unknown') { return $state }
       if ($state -eq 'pending') {
         if ($reruns -ge $MaxReruns) { return 'pending' }
@@ -419,6 +423,10 @@ foreach ($entry in $plan) {
   if ($entry.touchesBackend) {
     $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes
     if ($deployState -ne 'verified') {
+      if ($deployState -eq 'deferred') {
+        Write-Host "AFVENTER CHECK-IN: cron-bevis efter PR #$n er udskudt pga. lang kadence. Ikke verificeret; koeen stopper foer naeste merge. Se deploy-verify-summary for jobs, sidste check-in og deadline." -ForegroundColor Yellow
+        exit 75
+      }
       if ($deployState -eq 'pending') {
         Write-Host "AFVENTER: deploy-verifikation efter PR #$n er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
         exit 75

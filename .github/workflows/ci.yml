@@ -854,6 +854,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ci/check-workflow-checkout.test.mjs
 
+      - name: Test affected-cron deploy proof (#6318)
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ci/cron-deploy-verification.test.mjs scripts/ci/deploy-verification-state.test.mjs scripts/merge-queue-deploy-pending.test.mjs
+
       - name: Run workflow-checkout guard (#5441)
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-workflow-checkout.mjs

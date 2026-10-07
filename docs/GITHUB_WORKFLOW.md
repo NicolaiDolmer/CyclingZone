@@ -4,6 +4,13 @@
 
 ## Vision: Agent-loop
 
+Deploy-/cron-bevis (#6318) ejes af [DEPLOYMENT.md](DEPLOYMENT.md#berørte-cron-jobs-efter-railway-ready-6318).
+Et successful Deploy verify-run er ikke alene release-bevis: merge-køen læser
+matching SHA/run-attempt og de konkrete smoke-, pending- og cron-markertrin.
+`verified` tillader fortsættelse; `deferred` viser AFVENTER CHECK-IN og stopper
+med exit 75 uden automatisk rerun; `failed`/ukendt bevis stopper rødt. Eksisterende
+deployment `pending` genkøres bounded. LIVE-kommentaren kræver verificeret cron-bevis.
+
 ```
 Nicolai opretter issue (template)
         ↓

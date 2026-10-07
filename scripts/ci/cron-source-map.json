@@ -1,6 +1,8 @@
 {
   "sourceRevision": "4e938fe15a2806808e32972e12765d82ca00a06a",
   "commonSourcePaths": [
+    "package.json",
+    "package-lock.json",
     "backend/cron.js",
     "backend/lib/sentry.js",
     "backend/lib/cronHeartbeat.js",

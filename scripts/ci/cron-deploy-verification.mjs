@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, appendFileSync } from 'node:fs';
-import { resolve, dirname, posix } from 'node:path';
+import { resolve, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
@@ -44,16 +44,17 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
           if (base.startsWith('../')) throw new Error('Source outside repository');
           const target = [base, `${base}.js`, `${base}.ts`, `${base}/index.js`, `${base}/index.ts`].find(exists);
           if (target && /\.(?:js|mjs|cjs|ts)$/.test(target)) visit(target);
-          else if (/\.(?:js|mjs|cjs|ts)$/.test(base)) throw new Error('Missing dependency');
+          else if (!target) throw new Error('Missing dependency');
         }
       };
       for (const path of map.sourcePathsBySlug[slug]) visit(path);
       closures.set(slug, seen);
     }
   } catch { return all; } // conservative all-job proof, never an empty impact
-  const backend = [...changed].filter(path => path.startsWith('backend/'));
-  if (backend.some(path => ![...closures.values()].some(paths => paths.has(path)))) return all;
-  return all.filter(slug => backend.some(path => closures.get(slug).has(path)));
+  const runtime = [...changed].filter(path => !/^(?:docs\/|frontend\/|pr-screens\/|superpowers\/|\.claude\/|scripts\/|\.github\/)/.test(path)
+    && !/^[^/]+\.md$/.test(path));
+  if (runtime.some(path => ![...closures.values()].some(paths => paths.has(path)))) return all;
+  return all.filter(slug => [...changed].some(path => closures.get(slug).has(path)));
 }
 
 export async function changedFiles({ sha, repository, token, fetchFn }) {
@@ -67,8 +68,9 @@ export async function changedFiles({ sha, repository, token, fetchFn }) {
     const data = await response.json();
     if (data.sha !== sha || !Array.isArray(data.files)) throw new Error('Changed-file SHA/payload mismatch');
     files.push(...data.files);
+    if (new Set(files.map(file => file.filename)).size !== files.length) throw new Error('Repeated changed-file page');
     if (data.files.length < 100) {
-      if (new Set(files.map(file => file.filename)).size !== files.length) throw new Error('Repeated changed-file page');
+      if (!files.length) throw new Error('Empty changed-file evidence');
       return files;
     }
   }
@@ -118,12 +120,20 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
   endpoint.searchParams.set('select', 'job_slug,last_checkin_at,expected_cadence_seconds');
   endpoint.searchParams.set('limit', String(monitors.length + 1));
   const excluded = new Set();
+  let initial = true;
   for (;;) {
     let result;
     try {
       const response = await fetchFn(endpoint, { method: 'GET', headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000) });
       if (!response.ok) throw new Error('Heartbeat GET failed');
-      result = evaluateCheckins({ slugs, rows: await response.json(), since, now: now(), monitors, excluded });
+      const rows = await response.json();
+      // A first snapshot may be a partially completed boot-prime cohort. It
+      // never proves a tick; every affected row must advance after observation.
+      if (initial && Array.isArray(rows)) {
+        for (const row of rows) if (Number.isFinite(stamp(row?.last_checkin_at))) excluded.add(stamp(row.last_checkin_at));
+        initial = false;
+      }
+      result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded });
     } catch {
       result = { state: 'failed', jobs: slugs.map(slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' })) };
     }
@@ -145,7 +155,9 @@ async function main() {
     const files = await changedFiles({ sha, repository: process.env.GITHUB_REPOSITORY, token: process.env.GH_TOKEN, fetchFn: fetch });
     const slugs = affectedCronJobs(files);
     output('affected_slugs', JSON.stringify(slugs));
-    output('need_railway', slugs.length > 0 || files.some(file => file.filename.startsWith('backend/')) ? 'true' : 'false');
+    const paths = files.flatMap(file => [file.filename, ...(file.status === 'renamed' ? [file.previous_filename] : [])]);
+    output('need_railway', slugs.length > 0 || paths.some(path => path.startsWith('backend/')) ? 'true' : 'false');
+    output('need_vercel', paths.some(path => path.startsWith('frontend/')) ? 'true' : 'false');
     return;
   }
   const slugs = JSON.parse(process.env.AFFECTED_SLUGS);

@@ -199,6 +199,41 @@ Brug `-Sha <commit>` hvis en ældre production-commit skal verificeres eksplicit
 - Railway skal verificeres separat; en vellykket Vercel-deploy er ikke bevis for at backend-fixet er live
 - For backend-bugfixes bør en live deploy først betragtes som verificeret, når Railway svarer som forventet
 
+### Berørte cron-jobs efter Railway READY (#6318)
+
+`deploy-verify.yml` er gaten før LIVE-kommentaren. Checkout matcher target SHA;
+`scripts/ci/cron-deploy-verification.mjs --impact` læser hele commit-diffen med
+rename-oprindelser. Ukendt, tom eller trunkeret diff fejler. `cron-source-map.json`
+ejer callback-/injection-rødder; relative imports udvides transitivt, også `.ts`.
+Common cron-/runtime-filer og ukendte runtime-afhængigheder kræver alle jobs.
+Nye registry-slugs kræver samtidig mapping; ukomplet mapping fejler.
+
+Kadence og margin kommer udelukkende fra `backend/lib/cronMonitorRegistry.js`
+`ALL_CRON_MONITORS`. Efter positiv Railway-observation gemmes en konservativ UTC
+`cron_since`, ikke workflowets starttid. Read-only PostgREST GET bruger de
+eksisterende Actions secrets `SUPABASE_URL` og `SUPABASE_SERVICE_KEY`. Ingen
+mutationer eller rå API-bodies logges. Job, sidste check-in og deadline skrives
+til log/summary. Rækken skal have korrekt kadence og et check-in strengt efter
+grænsen, inden kadence plus margin; manglende, ulæselig eller fremtidig række
+fejler straks, udeblevet tick fejler ved deadline.
+
+Boot-prime er ikke tick-bevis: første snapshot tæller aldrig som succes, og
+observerede fælles timestamps udelukkes gennem hele polling-forløbet. Rækken
+skal avancere fra snapshot. Dette er konservativt: samtidige legitime ticks kan
+også blive afvist. Tabellen har hverken release-ID eller tick/boot-markør, så
+read-only bevis kan ikke entydigt tilskrive en senere individuel skrivning en
+proces ved genstarts-klynger; ingen migration indgår i denne leverance.
+
+Korte kadencer poller indtil deres deadline. Kadencer over 30 minutter må give
+**AFVENTER CHECK-IN** efter de korte jobs er bevist. Det er `deferred`, aldrig
+`verified`: ingen LIVE-kommentar, og merge-køen stopper med exit 75 før næste
+merge. Den genkører ikke automatisk deferred attempts, da det ville skabe en ny
+READY-grænse og skjule den oprindelige deadline. Ejeren følger jobbene/deadlines
+i det konkrete attempt og dokumenterer read-only opfølgning; workflow-rerun
+opretter en ny observation og kræver et nyt tick. Overskredne eller ulæselige
+check-ins må aldrig godkendes via et grønt workflow alene. Almindelig deployment
+`pending` beholder den eksisterende bounded rerun-adfærd.
+
 ---
 
 ## Hvornår Railway deployer (watch paths, #4150)

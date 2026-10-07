@@ -28,7 +28,12 @@ function runFixture(mode) {
       }
       if($GhArgs[0] -eq 'api' -and $GhArgs[1] -match '/attempts/(\\d+)/jobs'){
         $attempt=[int]$Matches[1];$smoke=if($attempt -eq 1 -or '${mode}' -eq 'alwaysPending'){'skipped'}else{'success'};$pending=if($attempt -eq 1 -or '${mode}' -eq 'alwaysPending'){'success'}else{'skipped'};
-        return (@{jobs=@(@{run_id=10;run_attempt=$attempt;steps=@(@{name='Smoke-test prod';status='completed';conclusion=$smoke},@{name='Deployment still pending';status='completed';conclusion=$pending})})}|ConvertTo-Json -Depth 6 -Compress)
+        if('${mode}' -in @('deferred','missingCron')){$smoke='success';$pending='skipped'}
+        $cronVerified=if('${mode}' -eq 'deferred'){'skipped'}else{'success'};
+        $cronDeferred=if('${mode}' -eq 'deferred'){'success'}else{'skipped'};
+        $steps=@(@{name='Smoke-test prod';status='completed';conclusion=$smoke},@{name='Deployment still pending';status='completed';conclusion=$pending});
+        if('${mode}' -ne 'missingCron'){$steps+=@(@{name='Cron check-ins verified';status='completed';conclusion=$cronVerified},@{name='Cron check-ins deferred';status='completed';conclusion=$cronDeferred})}
+        return (@{jobs=@(@{run_id=10;run_attempt=$attempt;steps=$steps})}|ConvertTo-Json -Depth 6 -Compress)
       }
       throw 'Unexpected GitHub operation'
     }
@@ -58,4 +63,12 @@ test('repeated completed pending observations stop at the rerun limit without ve
   const result = runFixture('alwaysPending');
   assert.equal(result.state, 'pending');
   assert.equal(result.reruns, 2);
+});
+
+test('deferred cron evidence stops immediately without resetting its boundary through rerun', () => {
+  assert.deepEqual(runFixture('deferred'), { state: 'deferred', reruns: 0, readsAfterRerun: 0 });
+});
+
+test('successful smoke without cron evidence stops fail-closed', () => {
+  assert.deepEqual(runFixture('missingCron'), { state: 'unknown', reruns: 0, readsAfterRerun: 0 });
 });
