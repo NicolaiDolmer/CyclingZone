@@ -526,6 +526,21 @@ jobs:
           CZ_DETERMINISM_FIXTURE_DIST: build-b
         run: node --test scripts/compare-build-manifests.test.mjs
 
+      # #5162: carry-forward paa RIGTIGE build-bytes. A uploades som en aeldre
+      # release til et lokalt lager; B-kopien faar alle egne assets fjernet
+      # (vaerste tilfaelde: ny kode, ingen delte chunks) og A baaret videre.
+      - name: Prove carry-forward keeps build A's assets in build B (#5162)
+        if: ${{ !cancelled() }}
+        env:
+          CZ_RELEASE_ASSETS_LOCAL_DIR: release-store
+        run: |
+          node --test scripts/upload-release-assets.test.mjs scripts/carry-forward-assets.test.mjs
+          cp -r build-a build-a-old && echo '{"release":"1111","frontend":"ci-release-a"}' > build-a-old/version.json
+          node scripts/upload-release-assets.mjs --dist build-a-old
+          cp -r build-b build-b-carried && rm -rf build-b-carried/assets/*
+          node scripts/carry-forward-assets.mjs --dist build-b-carried
+          node scripts/compare-build-manifests.mjs build-a build-b-carried --expect-superset
+
       # Artifactet indeholder kun filnavne, stoerrelser og sha256-summer fra to
       # syntetiske builds - ingen secrets, ingen kildekode.
       - name: Upload manifests and diff

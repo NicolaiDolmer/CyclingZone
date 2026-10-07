@@ -120,6 +120,88 @@ Postmortem: `.claude/learnings/2026-09-04-skew-protection-dpl-query-brak-hele-ap
 
 ---
 
+## Carry-forward og retention af gamle assets (#5162)
+
+`/assets/(.*)` får `public, max-age=31536000, immutable` (`frontend/vercel.json`),
+og et Vercel-deploy erstatter hele `dist/`. Uden mere ville en fane fra deploy A
+få 404 på A's chunks efter deploy B. **Carry-forward** lukker hullet på samme
+origin: hvert production-build kopierer de aktive, tidligere releases' hashede
+filer ind i sit eget `dist/assets/`, så A's URL'er stadig svarer 200 på B med de
+samme headere. Ingen Skew Protection (slukket, se ovenfor), ingen service worker,
+intet separat origin, ingen ændring i `chunkFileNames`. Spilleren ser ingen
+forskel; selvhelingen (#5159) er stadig nødnettet.
+
+**Build-kæden** (`frontend/package.json` `build`):
+`vite build` → `../scripts/carry-forward-assets.mjs` → SSR-build → prerender →
+`../scripts/upload-release-assets.mjs`. Prerender kører efter carry-forward, og
+`app.html` afhænger ikke af det. Scripts i repo-roden bruger kun Node-builtins +
+`fetch`: Vercel bygger med root directory `frontend/` (med "Include files outside
+the root directory" slået til) og installerer kun frontendens pakker.
+
+**Lageret** er den private Supabase Storage-bucket `frontend-release-assets` i
+prod-projektet. Layout (SSOT: `scripts/lib/releaseAssetsStore.mjs`):
+
+| Objekt | Indhold |
+|---|---|
+| `assets/<filnavn>` | én kopi pr. hashet filnavn (dedup på navn; Rollup-hashen ER indholdet) |
+| `manifests/<frontend-id>.json` | pr. release: filnavne + sha256 + bytes + `built_at`. Skrives SIDST |
+| `retention.json` | hvilke release-id'er der bæres videre |
+
+Release-nøglen er frontendens indholds-id (`<meta name="cz-frontend">` /
+`dist/version.json`), ikke git-sha'en: et docs-deploy giver samme id, og
+manifestet findes allerede (no-op). Source maps (`.map`) bæres ikke.
+
+**Hvornår hvad sker:**
+
+| Miljø | Carry-forward | Upload |
+|---|---|---|
+| Vercel production (`VERCEL=1` + `VERCEL_ENV=production`) | ja; lager-fejl **fejler buildet** | ja; manglende nøgle eller upload-fejl **fejler buildet** |
+| Vercel preview | ja hvis nøglen findes; fejl logges, buildet fortsætter | nej (preview-releases må ikke optage gulvets pladser); `CZ_RELEASE_ASSETS_UPLOAD=1` tvinger |
+| Lokalt / CI uden nøgle | springer over med en tydelig linje | springer over med en tydelig linje |
+| `CZ_RELEASE_ASSETS_LOCAL_DIR=<mappe>` | lokal mappe som lager (CI-kontrakt, tests) | samme |
+
+Nøglen læses fra `SUPABASE_SERVICE_ROLE_KEY` (fallback `SUPABASE_SERVICE_KEY`),
+URL'en fra `SUPABASE_URL` (fallback `VITE_SUPABASE_URL`). Begge findes i Vercels
+production-env (verificeret 7/10, kun nøgle-navne). En sha256-afvigelse på en
+båret fil, eller et manifest med ugyldige stier, stopper buildet i ALLE miljøer:
+en forkert fil bag `immutable` selvheler aldrig.
+
+**Nødventiler:** `CZ_CARRY_FORWARD_ALLOW_FAILURE=1` (lageret er nede og et hotfix
+skal ud: buildet fortsætter uden gamle assets). `CZ_RELEASE_ASSETS_DISABLE=1`
+slår lageret helt fra; i production fejler upload så bevidst, så den kan ikke
+glemmes slået til.
+
+**Retention efter målt klient-alder** (`scripts/measure-client-release-age.mjs`,
+kørt af `deploy-verify.yml` efter hvert deploy til main):
+
+- Kilde: PostHog, read-only HogQL. Hvert event bærer `cz_frontend`
+  (`frontend/src/lib/posthogClient.js`).
+- Alder = hvor længe efter en release blev afløst af den næste, en klient
+  stadig kører den. Vinduet er **max(72 t, p99 + 24 t)**: alle releases set inden
+  for vinduet beholdes, plus altid de **3 nyeste** (gulv). Loft **30 releases**:
+  overskrides det, beholdes de 30 nyeste og der rejses en alarm (GitHub-warning
+  + `alarms` i `retention.json`), aldrig stille beskæring.
+- Tom telemetri = kun gulvet + alarm. Mangler secrets, springer trinnet over;
+  carry-forward bruger så den seneste `retention.json` forenet med gulvet. En
+  gammel `retention.json` er altid en over-mængde af det nødvendige, fordi kun
+  den nyeste release kan være kommet til siden, og den er i gulvet.
+- Kræver i GitHub: secret `POSTHOG_PERSONAL_API_KEY` (personlig nøgle med
+  `query:read`) og variabel `POSTHOG_PROJECT_ID`. `SUPABASE_URL` +
+  `SUPABASE_SERVICE_KEY` findes allerede.
+
+**Beviser:** `build-determinism-two-builds` i `ci.yml` uploader build A til et
+lokalt lager, tømmer en kopi af build B for egne assets og kræver efter
+carry-forward at B indeholder alle A's assets med samme sha256
+(`compare-build-manifests.mjs --expect-superset`). Enhedstests:
+`scripts/{upload-release-assets,carry-forward-assets,measure-client-release-age,compare-build-manifests}.test.mjs`
+og `frontend/vite-plugins/frontend-content-id.test.js` (id'et ændrer sig ikke af
+båret-videre filer).
+
+**Første deploy efter merge bærer intet** (der findes endnu ingen manifester):
+første deploy skriver kun sit manifest, først det andet beskytter det første.
+
+---
+
 ## Observability env vars
 
 Sentry er canonical error-tracking for browser- og Node-runtime errors. GitHub Actions er canonical for CI/deploy/audit-status, og Supabase audits er canonical for DB/RLS/liveness drift.
