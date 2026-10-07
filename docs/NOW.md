@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (7/10):** **"Ro på spillet" til 25/10** (ejer 7/10, MASTERPLAN): brand = stabilitet + løbsmotoren fejlfri + rytterudvikling/scout-projection. (1) Bølgens PR'er → før/efter + go. (2) Svar-udkast til spillere (ejeren poster) → fast 24 t-rutine. (3) Tailwind #6289: Codex-review, så ejer-go (Claudes 9 punkter afgjort). (4) Kort: #5162 (bucket + nøgle), #6291 presence-måling. (5) #5864 rod-årsag før 25/10 (#6198 merget). (6) #6248 leveres med Udvikling 2.0. Afgjort 7/10: #6291 (målebrud, D2 43-50 % seneste uger), #6292 (rettet 23/9; server-sikring i bølgen). Roadmap: 2 nye "I gang"-punkter.
+> **🎯 Next action (8/10):** Brand først (ejer 7/10): **databasen + løbsmotoren færdige** (Tailwind 4 live 7/10 ✅), derefter **træningspakken** (#6139 #6027 #6123 #6314 #6053). (1) Morgen: svar-side v2 (#6319: lær ejerens tone af postede svar, påmind om resterende af de 66, nye beskeder). (2) Codex-kø: motor-designkort A valgt (#6284 rå tider bag revision + tidsmodel #6199 + #6327 nedkørselsangreb) → #5692 → #6318 → #6324 roadmap-stemmer (dry-run, ejer-go) → træningspakken. (3) Merge patch note 7.345 (PR #6328, ejer kører kø). (4) #6310 A→B-prøve lokalt (Vercel-env droppet). (5) Ejer: DB-alarm-konto #6272. (6) Aften: synk roadmap + kendte fejl (OPERATING_PLAN §Aften).
 >
-> **6/10 aften (merget/live):** #6254 #6281 #6283 (patch 7.344) #6280+#6279+#6265 (PostHog live) #6287 (Pro-fejl) #6288. Flippet til alle: `race_role_scope_choice`, `season_matrix_mobile`. Nye issues: #6284 (+30:00-mur) #6285 (løbstests) #6290 #6291 #6292 #6293 #6294 #6295 #6296 (træning beta→alle).
+> **7/10 (merget/live):** Tailwind 4 #6289 · #6136+#6317 watchdog-SQL (migration verificeret) · #6198 #6309 (#5864) · #6308 låste budpenge · #6311 bestyrelse · #6312 "vandt af" · #6306 #6307 #6301 #6313 #6282 #6170 #6315. Kendte fejl (21) + roadmap synket. Nye: #6300 #6302-#6304 #6314 #6318-#6324 #6327.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code 7/10 (morgen-session): bølge #6156 #6158 #6261 #6292 kører; svar-udkast til spillere; Codex reviewer Tailwind #6289 + undersøgelse #6300 (read-only).
+> **🤖 Working agent:** Ingen aktiv session. Codex kører motor/DB-sporet (se Next action).
