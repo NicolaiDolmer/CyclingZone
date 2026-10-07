@@ -1,0 +1,224 @@
+{
+  "sourceRevision": "4e938fe15a2806808e32972e12765d82ca00a06a",
+  "commonSourcePaths": [
+    "backend/cron.js",
+    "backend/lib/sentry.js",
+    "backend/lib/cronHeartbeat.js",
+    "backend/lib/cronMonitorRegistry.js",
+    "backend/package.json",
+    "backend/package-lock.json",
+    "backend/lib/cronRuntimeGuard.js",
+    "backend/server.js"
+  ],
+  "sourcePathsBySlug": {
+    "auctions": [
+      "backend/lib/auctionFinalization.js",
+      "backend/lib/discordDmRateGuard.js",
+      "backend/lib/discordNotifier.js",
+      "backend/lib/marketPause.js",
+      "backend/lib/notificationService.js"
+    ],
+    "squad-enforcement": [
+      "backend/lib/loanEngine.js",
+      "backend/lib/notificationService.js",
+      "backend/lib/squadEnforcement.js"
+    ],
+    "selection-warning": [
+      "backend/lib/selectionWarningSweep.js"
+    ],
+    "senior-start-reminder": [
+      "backend/lib/seniorStartReminder.js"
+    ],
+    "debt-warnings": [
+      "backend/lib/notificationService.js"
+    ],
+    "board-auto-accept": [
+      "backend/lib/boardAutoAccept.js",
+      "backend/lib/boardDmMirror.js",
+      "backend/lib/discordDmRateGuard.js",
+      "backend/lib/discordNotifier.js",
+      "backend/lib/notificationService.js"
+    ],
+    "board-mandate-auto-accept": [
+      "backend/lib/boardDmMirror.js",
+      "backend/lib/boardMandateAutoAccept.js",
+      "backend/lib/discordDmRateGuard.js",
+      "backend/lib/discordNotifier.js",
+      "backend/lib/notificationService.js"
+    ],
+    "board-mid-season": [
+      "backend/lib/boardDmMirror.js",
+      "backend/lib/boardMidSeason.js",
+      "backend/lib/discordDmRateGuard.js",
+      "backend/lib/discordNotifier.js",
+      "backend/lib/notificationService.js"
+    ],
+    "daily-season-count-check": [
+      "backend/lib/dailySeasonCountCheck.js",
+      "backend/lib/discordNotifier.js",
+      "backend/lib/opsAlertDedupe.js",
+      "backend/lib/seasonTransitionKeyGuard.js"
+    ],
+    "discord-bot-token-check": [
+      "backend/lib/discordBotTokenCheck.js",
+      "backend/lib/discordNotifier.js"
+    ],
+    "discord-role-sync": [
+      "backend/lib/discordNotifier.js",
+      "backend/lib/discordRoleSync.js"
+    ],
+    "discord-dm-outbox-drain": [
+      "backend/lib/discordNotifier.js"
+    ],
+    "discord-webhook-outbox-drain": [
+      "backend/lib/discordNotifier.js"
+    ],
+    "race-notify-outbox-drain": [
+      "backend/lib/discordNotifier.js"
+    ],
+    "training-sweep": [
+      "backend/lib/trainingSweep.js"
+    ],
+    "training-day-close": [
+      "backend/lib/trainingDayCloseTrigger.js"
+    ],
+    "ai-recovery-sweep": [
+      "backend/lib/aiRecoverySweep.js"
+    ],
+    "graduation-sweep": [
+      "backend/lib/academyGraduationSweep.js"
+    ],
+    "scout-sweep": [
+      "backend/lib/scoutSweep.js"
+    ],
+    "wage-deduction-sweep": [
+      "backend/lib/wageDeductionSweep.js"
+    ],
+    "starter-squad-heal": [
+      "backend/lib/starterSquadHealSweep.js"
+    ],
+    "academy-heal": [
+      "backend/lib/academyHealSweep.js"
+    ],
+    "rider-derive-heal": [
+      "backend/lib/opsAlertDedupe.js",
+      "backend/lib/riderDeriveHealSweep.js"
+    ],
+    "ai-trim-heal": [
+      "backend/lib/aiTeamTrimHealSweep.js",
+      "backend/lib/opsAlertDedupe.js"
+    ],
+    "deferred-transfer-heal": [
+      "backend/lib/deferredTransferHealSweep.js",
+      "backend/lib/notificationService.js"
+    ],
+    "auto-prize": [
+      "backend/lib/autoPrizeSweep.js"
+    ],
+    "stage-scheduler": [
+      "backend/lib/adminSimulateRace.js",
+      "backend/lib/discordNotifier.js",
+      "backend/lib/economyEngine.js",
+      "backend/lib/notificationService.js",
+      "backend/lib/raceEngineFlag.js",
+      "backend/lib/raceNotifyOutbox.js",
+      "backend/lib/raceNotifyOutboxFlag.js",
+      "backend/lib/seasonStandingsBootstrap.js",
+      "backend/lib/stageScheduler.js",
+      "backend/lib/stageSchedulerFlag.js"
+    ],
+    "race-finalize-watch": [
+      "backend/lib/raceFinalizeWatch.js"
+    ],
+    "ranking-matview-refresh": [
+      "backend/lib/refreshRankingMatviews.js"
+    ],
+    "global-rank-weekly-snapshot": [
+      "backend/lib/globalRankWeeklySnapshot.js"
+    ],
+    "stall-watchdog": [
+      "backend/lib/autoPrizeFlag.js",
+      "backend/lib/discordNotifier.js",
+      "backend/lib/stallWatchdog.js"
+    ],
+    "traffic-retention": [],
+    "identity-events-retention": [],
+    "balance-drift-watch": [
+      "backend/lib/balanceDriftWatch.js",
+      "backend/lib/discordNotifier.js"
+    ],
+    "growth-snapshot": [],
+    "entry-generator": [
+      "backend/lib/raceEntryGeneratorSweep.js",
+      "backend/lib/riderDoubleBookingWatch.js"
+    ],
+    "ownership-invariant-watch": [
+      "backend/lib/ownershipInvariantWatch.js"
+    ],
+    "rider-double-booking-watch": [
+      "backend/lib/riderDoubleBookingWatch.js"
+    ],
+    "training-slot-health-watch": [
+      "backend/lib/discordNotifier.js",
+      "backend/lib/trainingSlotHealthWatch.js"
+    ],
+    "intake-offer-expiry": [
+      "backend/lib/academyIntakeExpirySweep.js"
+    ],
+    "email-welcome": [
+      "backend/lib/discordNotifier.js",
+      "backend/lib/emailWelcomeSweep.js"
+    ],
+    "email-day1": [
+      "backend/lib/discordNotifier.js",
+      "backend/lib/emailDay1Sweep.js"
+    ],
+    "email-race-digest": [
+      "backend/lib/discordNotifier.js",
+      "backend/lib/emailRaceDigestSweep.js"
+    ],
+    "email-retry-drain": [
+      "backend/lib/discordNotifier.js",
+      "backend/lib/emailRetrySweep.js"
+    ],
+    "email-health-report": [
+      "backend/lib/discordNotifier.js",
+      "backend/lib/emailHealthReport.js"
+    ],
+    "discord-race-digest": [
+      "backend/lib/discordRaceDigestSweep.js"
+    ],
+    "discord-welcome": [
+      "backend/lib/discordWelcomeSweep.js"
+    ],
+    "alunta-subscription-reconcile": [
+      "backend/lib/alunta.js",
+      "backend/lib/aluntaReconcileFlag.js",
+      "backend/lib/aluntaSubscriptionReconcile.js"
+    ],
+    "alunta-overdue-watch": [
+      "backend/lib/alunta.js",
+      "backend/lib/aluntaOverdueWatch.js"
+    ],
+    "alunta-period-roll-watch": [
+      "backend/lib/alunta.js",
+      "backend/lib/aluntaPeriodRollWatch.js"
+    ],
+    "season-documentary": [
+      "backend/lib/seasonDocumentarySweep.js"
+    ],
+    "fairplay-scoring": [
+      "backend/lib/fairplayFlagsCron.js"
+    ],
+    "market-value-level-correction-gate": [
+      "backend/lib/marketValueLevelCorrectionGate.js"
+    ],
+    "cron-heartbeat-sweep": [
+      "backend/lib/cronHeartbeat.js",
+      "backend/lib/discordNotifier.js"
+    ],
+    "sunday-value-refresh": [
+      "backend/lib/sundayValueSweep.js"
+    ]
+  }
+}

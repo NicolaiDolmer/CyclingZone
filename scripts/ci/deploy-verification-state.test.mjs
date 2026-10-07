@@ -12,7 +12,17 @@ test('a pending deployment observation is never verified despite a successful wo
 });
 
 test('a passing smoke and completed workflow positively establish verification', () => {
-  assert.equal(deploymentAttemptState(run, jobs([step('Deployment still pending', 'skipped'), step('Smoke-test prod', 'success')]), SHA, 2), 'verified');
+  assert.equal(deploymentAttemptState(run, jobs([step('Deployment still pending', 'skipped'), step('Smoke-test prod', 'success'),
+    step('Cron check-ins verified', 'success'), step('Cron check-ins deferred', 'skipped')]), SHA, 2), 'verified');
+});
+
+test('smoke alone, skipped cron gate and deferred check-ins never establish verification', () => {
+  const base = [step('Deployment still pending', 'skipped'), step('Smoke-test prod', 'success')];
+  assert.equal(deploymentAttemptState(run, jobs(base), SHA, 2), 'unknown');
+  assert.equal(deploymentAttemptState(run, jobs([...base, step('Cron check-ins verified', 'skipped'),
+    step('Cron check-ins deferred', 'success')]), SHA, 2), 'deferred');
+  assert.equal(deploymentAttemptState(run, jobs([...base, step('Cron check-ins verified', 'skipped'),
+    step('Cron check-ins deferred', 'skipped')]), SHA, 2), 'unknown');
 });
 
 test('real deployment/probe failures remain terminal failures', () => {
