@@ -32,10 +32,10 @@
 
 Files: create `backend/lib/engine/v4/groupClock.ts` and `.test.ts`; later integrate `segmentLoop.ts` and its focused tests. Read all writers of `gap_seconds` before wiring.
 
-- [ ] Capture complete old-revision output digests on the five fixed fields and existing scorecard inputs.
-- [ ] RED tests for absolute-time conservation when the front changes, split/merge correspondence, deterministic ordering and one movement per leg.
-- [ ] Implement pure typed movement/ledger functions with explicit initial times, groups and movement duration. No wall-clock time.
-- [ ] GREEN targeted tests; record exact consumed/produced interfaces here before dependent integration.
+- [x] Capture complete old-revision output digests on the five fixed fields and existing scorecard inputs.
+- [x] RED tests for absolute-time conservation when the front changes, split/merge correspondence, deterministic ordering and one movement per leg.
+- [x] Implement pure typed movement/ledger functions with explicit initial times, groups and movement duration. No wall-clock time.
+- [x] GREEN targeted tests; interfaces recorded below.
 - [ ] Commit and push with measured status.
 
 ## Task 2: prototype integration, regrouping and finale (#6199)
@@ -70,3 +70,12 @@ Files: existing `backend/scripts/dev/timeModel6199.mjs` and a focused paired har
 ## Execution ledger
 
 2026-10-07: owner-go read and confirmed; main base `895871eff` includes #6326. Isolated worktree `codex/6199-shared-group-clock`. Two read-only inspections map accounting and acceptance; no second writer. No implementation or calibration is claimed by this planning commit.
+
+Clock foundation interfaces (first implementation increment):
+- `beginGroupClock({groups, frontTimeSeconds, fromKm, toKm}): GroupClock` captures immutable absolute entry arrivals.
+- `replaceTraversal(clock, groupId, durationSeconds): GroupClock` replaces an overlapping estimate of one physical distance interval.
+- `addPointDelay(clock, groupId, delaySeconds): GroupClock` accounts for a separate stopped-time delay.
+- `projectGroupClock(clock): {frontTimeSeconds, groups, arrivals}` derives gaps from absolute arrivals without discarding front changes.
+- Six deterministic tests pass (front replacement, traversal replacement/idempotence, point delay, order independence, segment continuity, invalid inputs).
+- Frozen baseline `895871eff`: 125 paired simulations, comprising 100 complete old-revision digests and 25 private candidate outputs, with pinned input hash/seeds.
+- This increment is not loop integration, physical regrouping or calibrated acceptance. Those tasks remain open.
