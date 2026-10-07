@@ -29,7 +29,7 @@ try {
     return result.stdout.trim();
   }
   phase = 'staging-proposal';
-  const proposal = readFileSync(new URL('../../../database/proposals/2026-10-04-6102-watchdog-result-summary.sql', import.meta.url), 'utf8');
+  const proposal = readFileSync(new URL('../../../database/2026-10-07-6102-watchdog-result-summary.sql', import.meta.url), 'utf8');
   // Register only after the exact function/ACL transaction succeeded on staging.
   sql(proposal);
   sql(`INSERT INTO public.schema_migrations(filename) VALUES ('${marker}') ON CONFLICT DO NOTHING;`);

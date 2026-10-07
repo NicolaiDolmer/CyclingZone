@@ -25,7 +25,7 @@ const fixtures = [
   { race_id: id(6), stage_number: 1, result_type: 'stage', imported_at: at(3), prize_money: -5 },
 ];
 let db: PGlite;
-const proposal = await readFile(new URL('../../database/proposals/2026-10-04-6102-watchdog-result-summary.sql', import.meta.url), 'utf8');
+const proposal = await readFile(new URL('../../database/2026-10-07-6102-watchdog-result-summary.sql', import.meta.url), 'utf8');
 
 before(async () => {
   db = await createTestDb({ files: ['schema.sql'] });

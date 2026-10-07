@@ -1,6 +1,6 @@
--- Prepared for #6102; staging verified 7 October, NOT applied in production.
--- Move to top-level only after owner mandate
--- and realistic staging evidence. No scheduler/engine flags or player data writes.
+-- #6102: watchdog-resultatsummer i SQL i stedet for fulde race_results-loads.
+-- Additiv og idempotent (CREATE OR REPLACE), kun service_role. Staging-verificeret 7/10;
+-- ejer-go 7/10 til migration + apply efter merge (auto-migrate.yml).
 BEGIN;
 CREATE OR REPLACE FUNCTION public.stall_watchdog_result_summary(p_race_ids uuid[])
 RETURNS TABLE (
