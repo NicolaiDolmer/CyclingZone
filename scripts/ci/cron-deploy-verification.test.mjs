@@ -105,6 +105,13 @@ test('accepted first-tick proof survives later heartbeat overwrites while anothe
   assert.equal(result.jobs.find(job => job.slug === 'short').lastCheckin, '2026-10-07T12:01:00.000Z');
 });
 
+test('cached first-tick proof cannot hide a missing, future or stale current heartbeat', () => {
+  const accepted = new Map([['short', { lastCheckin: '2026-10-07T12:01:00.000Z' }]]);
+  for (const rows of [[], [row('short', '2026-10-07T12:07:00Z')], [row('short', '2026-10-07T12:01:00Z')]]) {
+    assert.equal(evaluateCheckins({ slugs: ['short'], rows, since, now: '2026-10-07T12:06:00Z', monitors, accepted }).state, 'failed');
+  }
+});
+
 const map = { commonSourcePaths: ['backend/cron.js'], sourcePathsBySlug: { short: ['backend/a.js'], long: [] } };
 const sources = { 'backend/a.js': "import './nested.ts';", 'backend/nested.ts': "export { guard } from './guard.js';", 'backend/guard.js': '' };
 const impact = files => affectedCronJobs(files, { map, monitors, exists: path => path in sources, read: path => sources[path] });

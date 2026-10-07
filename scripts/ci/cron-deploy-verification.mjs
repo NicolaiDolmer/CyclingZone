@@ -79,7 +79,7 @@ export async function changedFiles({ sha, repository, token, fetchFn }) {
   throw new Error('Changed-file list may be truncated');
 }
 
-export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_MONITORS, excluded = new Set() }) {
+export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_MONITORS, excluded = new Set(), accepted = new Map() }) {
   const boundary = stamp(since), clock = stamp(now);
   if (!Number.isFinite(boundary) || !Number.isFinite(clock) || clock < boundary || !Array.isArray(rows)) throw new Error('Invalid heartbeat evidence');
   const configs = new Map(monitors);
@@ -106,10 +106,13 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
     let state;
     if (!row || !Number.isFinite(time) || time > clock || row.expected_cadence_seconds !== cadence
       || clock - time > (cadence + margin) * 1000) state = 'failed';
+    else if (accepted.has(slug)) state = 'verified';
     else if (time > boundary && time <= deadline && !excluded.has(time)) state = 'verified';
     else if (clock >= deadline) state = 'failed';
     else state = cadence > 1800 ? 'deferred' : 'waiting';
-    return { slug, state, lastCheckin: Number.isFinite(time) ? new Date(time).toISOString() : 'missing/unreadable', deadline: new Date(deadline).toISOString() };
+    const lastCheckin = state === 'verified' && accepted.has(slug) ? accepted.get(slug).lastCheckin
+      : Number.isFinite(time) ? new Date(time).toISOString() : 'missing/unreadable';
+    return { slug, state, lastCheckin, deadline: new Date(deadline).toISOString() };
   });
   const state = jobs.some(job => job.state === 'failed') ? 'failed' : jobs.some(job => job.state === 'waiting') ? 'waiting' : jobs.some(job => job.state === 'deferred') ? 'deferred' : 'verified';
   return { state, jobs };
@@ -146,10 +149,8 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
         for (const row of rows) if (Number.isFinite(stamp(row?.last_checkin_at))) excluded.add(stamp(row.last_checkin_at));
         initial = false;
       }
-      result = evaluateCheckins({ slugs: slugs.filter(slug => !accepted.has(slug)), rows, since, now: now(), monitors, excluded });
+      result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded, accepted });
       for (const job of result.jobs) if (job.state === 'verified') accepted.set(job.slug, job);
-      const current = new Map(result.jobs.map(job => [job.slug, job]));
-      result.jobs = slugs.map(slug => accepted.get(slug) ?? current.get(slug));
     } catch {
       result = { state: 'failed', jobs: slugs.map(slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' })) };
     }
