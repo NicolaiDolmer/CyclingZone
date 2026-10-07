@@ -31,7 +31,7 @@ test('each mechanism receives a normalized reference without losing the precedin
  let observed=false;
  const hooks:MechanicHooks={...DEFAULT_MECHANIC_HOOKS,
   descent:state=>({state:{...state,groups:[{id:'a',kind:'chase',rider_ids:['a'],gap_seconds:0,cohesion:1},{id:'b',kind:'solo',rider_ids:['b'],gap_seconds:-30,cohesion:1}]},events:[]}),
-  breakaway:state=>{observed=state.groups.find(g=>g.id==='b')?.gap_seconds===0&&state.groups.find(g=>g.id==='a')?.gap_seconds===30;return {state,events:[]}},
+  breakaway:state=>{observed=state.groups.find(g=>g.id==='b')?.gap_seconds===0&&state.groups.find(g=>g.id==='a')?.gap_seconds===30&&state.groups.every(g=>g.rider_ids.every(id=>state.riders[id].group_id===g.id));return {state,events:[]}},
  };
  runSegmentLoop(routeInput,hooks);
  assert.equal(observed,true,'the movement reference must be committed before the next mechanic');
@@ -65,4 +65,15 @@ test('shared clock does not let an ordinary group pass through a morning escape 
  assert.equal(out.state.groups.length,1,'physical overtaking must join the groups, not leave an escape behind the field');
  assert.equal(out.state.riders.a.time_seconds,out.state.riders.b.time_seconds);
  assert.equal(out.timeline.filter(e=>e.type==='breakaway_caught'&&e.params.group_id==='escape'&&e.params.chase_group_id==='field').length,1);
+});
+
+test('tail groups born apart at a checkpoint do not teleport together through the broad tail window',()=>{
+ const routeInput=input('official_times_v1');routeInput.route={...routeInput.route,distance_km:2,segments:[{kind:'flat',from_km:0,to_km:1},{kind:'flat',from_km:1,to_km:2}]};
+ routeInput.startlist=Array.from({length:80},(_,i)=>({...entrants[0],rider_id:'t'+i}));
+ const ids=routeInput.startlist.map(r=>r.rider_id);
+ const hooks:MechanicHooks={...DEFAULT_MECHANIC_HOOKS,breakaway:(state,ctx)=>({state:ctx.segmentIndex===0?{...state,groups:[{id:'front',kind:'peloton',rider_ids:ids.slice(0,60),gap_seconds:0,cohesion:1},{id:'ta',kind:'gruppetto',rider_ids:ids.slice(60,70),gap_seconds:1000,cohesion:1},{id:'tb',kind:'gruppetto',rider_ids:ids.slice(70),gap_seconds:1010,cohesion:1}]}:state,events:[]})};
+ const legacy=runSegmentLoop({...routeInput,rules_revision:'orders_gc_v2'},hooks);
+ assert.equal(legacy.groupSnapshots[0].groups.length,2,'fixture reaches the old broad merge');
+ const actual=runSegmentLoop(routeInput,hooks);
+ assert.equal(actual.groupSnapshots[0].groups.length,3,'a positive gap is not physical contact');
 });

@@ -1,5 +1,8 @@
 import type { RaceGroup } from './types.ts';
 
+// Floating-point equality only; this is not a sporting catch window.
+export const GROUP_CLOCK_CONTACT_EPSILON = 1e-7;
+
 export type GroupClockEntry = Readonly<{
   group: RaceGroup;
   entrySeconds: number;
@@ -97,4 +100,12 @@ export function projectRelativeArrivals(groups: readonly RaceGroup[], referenceS
     groups: arrivals.map(({group,seconds}) => ({...group,rider_ids:[...group.rider_ids],gap_seconds:seconds-frontTimeSeconds})),
     arrivals: Object.fromEntries(arrivals.map(({group,seconds})=>[group.id,seconds])),
   };
+}
+
+/** Remaining part of one interval's closing estimate after physical movement. */
+export function remainingClosureSeconds(entrySeparation: number, currentSeparation: number, totalEstimate: number): number {
+  nonnegative(entrySeparation, 'entry separation');
+  nonnegative(currentSeparation, 'current separation');
+  nonnegative(totalEstimate, 'closing estimate');
+  return Math.max(0, totalEstimate-Math.max(0,entrySeparation-currentSeparation));
 }

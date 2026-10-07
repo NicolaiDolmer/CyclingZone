@@ -107,3 +107,14 @@ reads the real summit budget and does not repeat regrouping; M5 shares that budg
 24 targeted tests pass, including prior contact/runner tests and frozen old outputs.
 Finale coupling, sustainable grupetto cohesion, broad calibration and final FULL
 remain open. No new OTL or film rule, activation or readiness claim.
+
+2026-10-07 cohesion/finale increment: post-travel group membership and physical
+arrival time now agree at shared-model hook boundaries. A sustainable formed
+grupetto is not split again solely against its best climber; genuinely depleted
+riders can still detach under existing severity/category rules. Broad tail-window
+teleportation is disabled in the candidate; actual contact uses numeric equality.
+A physical finale pool shares one time while finish_order retains placement.
+Positive separation cannot be erased by the old classification window, and a
+full-interval finale closing estimate spends only movement not already accounted.
+These behaviors were reproduced RED and corrected; final calibration remains open.
+Existing OTL policy and all old-revision branches remain unchanged.

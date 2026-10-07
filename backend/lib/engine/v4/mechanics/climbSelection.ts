@@ -264,7 +264,7 @@ function computeSelections(
   const wprimeMinSeverity = phaseWprimeForcedMinSeverity(CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity, phase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalWprimeForcedMinSeverity);
   // #6199 (KUN orders_gc_v3): en tom reserve tvinger kun rytteren af fra ca. kat. 2.
   const segmentCategory = ctx.segment.kind === "climb" ? ctx.segment.category : undefined;
-  const wprimeCategoryAllowed = ctx.ordersGcV3 !== true || wprimeForcedCategoryAllowed(segmentCategory);
+  const wprimeCategoryAllowed = (ctx.ordersGcV3 !== true && !ctx.sharedGroupTime) || wprimeForcedCategoryAllowed(segmentCategory);
 
   let referenceClimbing = 0;
   let groupHasRacers = false;
@@ -421,7 +421,12 @@ export const climbSelectionHook: ClimbSelectionHook = (
   for (const group of groupsSorted) {
     if (group.rider_ids.length < 2) continue;
 
-    const selections = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
+    const measured = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
+    // Post-travel reserve is evidence of sustaining this group's actual pace.
+    // A formed grupetto does not re-split merely relative to its best climber.
+    const selections = ctx.sharedGroupTime && group.kind === "gruppetto"
+      ? measured.map(selection => ({...selection, scoreTriggered:false, effortForced:false}))
+      : measured;
     if (selections.length < 2) continue;
 
     let splitRiderIds = guardedSplitRiderIds(selections);
@@ -445,7 +450,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // #6199 (maaling 6/10): en gruppetto deles ikke i flere klynger. De der
     // falder af den, falder af som én gruppe (gennemsnittet af deres eget hul),
     // ellers deles halen i stumper der hver for sig er for smaa til redningen.
-    const parts = ctx.ordersGcV3 === true
+    const parts = ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
       ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
         riderId: s.riderId,
         gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01),

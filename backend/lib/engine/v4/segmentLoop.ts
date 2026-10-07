@@ -47,7 +47,7 @@ import type {
 } from "./types.ts";
 import { boundRngFor, segmentRngFor } from "./rng.ts";
 import { reconcileDescentCrossings } from "./mechanics/descentCrossing.ts";
-import { beginGroupClock, replaceTraversal, projectGroupClock, projectRelativeArrivals } from "./groupClock.ts";
+import { beginGroupClock, replaceTraversal, projectGroupClock, projectRelativeArrivals, GROUP_CLOCK_CONTACT_EPSILON } from "./groupClock.ts";
 import { planSharedDescentTravel } from "./mechanics/sharedGroupTime.ts";
 import {
   deriveCp,
@@ -1045,7 +1045,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       if (sharedGroupTime) {
         const committed = projectRelativeArrivals(state.groups, frontElapsedSeconds);
         frontElapsedSeconds = committed.frontTimeSeconds;
-        state = {...state, groups: committed.groups};
+        state = {...state, groups: committed.groups, riders: applyGroupTimes(committed.groups, state.riders, committed.frontTimeSeconds)};
       }
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
@@ -1153,9 +1153,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     state = { ...state, groups: rebaselineGroups(state.groups) };
 
     // 4b. Sammensmelt grupper der er kommet inden for merge-taerskel.
-    const baseMerge = mergeGroupsDetailed(state.groups, tuning.groups.mergeThresholdSeconds);
+    const baseMerge = mergeGroupsDetailed(state.groups, sharedGroupTime ? GROUP_CLOCK_CONTACT_EPSILON : tuning.groups.mergeThresholdSeconds);
     // #5813: afhaengte halegrupper samles i én grupetto (se tailGrupettoMerge).
-    const tailMerge = tailGrupettoMerge(baseMerge.groups, segment.kind, isLastSegment);
+    const tailMerge = sharedGroupTime ? {groups:baseMerge.groups,merges:[] as GroupMerge[]} : tailGrupettoMerge(baseMerge.groups, segment.kind, isLastSegment);
     const mergedGroups = tailMerge.groups;
     // #4971: en kaede peger altid paa det id gruppen FAKTISK baerer i
     // snapshottet. Blev en gruppe, som den almindelige merge lige har samlet,
@@ -1165,7 +1165,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...baseMerge.merges.map((m) => (tailInto.has(m.into_group_id) ? { ...m, into_group_id: tailInto.get(m.into_group_id)! } : m)),
       ...tailMerge.merges,
     ];
-    state = { ...state, groups: mergedGroups, km: segment.to_km };
+    state = { ...state, groups: mergedGroups, km: segment.to_km, ...(sharedGroupTime ? {riders:applyGroupTimes(mergedGroups,state.riders,frontElapsedSeconds)} : {}) };
     if (!sharedGroupTime) frontElapsedSeconds += dtFront;
 
     // 4c (#4971). Merget er et REELT gruppeskift, og indtil nu var det TAVST:

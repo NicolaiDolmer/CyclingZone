@@ -1,3 +1,4 @@
+import { GROUP_CLOCK_CONTACT_EPSILON, remainingClosureSeconds } from "./groupClock.ts";
 // backend/lib/engine/v4/finale.ts
 // Race Engine v4 F2 (#4030): M4 - punch-finale + placerings-opgoer i frontgruppen.
 // SSOT: docs/superpowers/specs/2026-08-21-race-engine-v4-f2-core-design.md §4
@@ -407,8 +408,8 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // ingen fart op ad en stigning, saa de huller stigningen skabte, staar.
   // #6200: heller ikke paa en nedkoersel mod maal, hvor antals-vinduet ellers
   // kunne folde en gruppe ind forbi loftet (hoejst halvdelen af hullet).
-  const v3FinishDescent = ctx.ordersGcV3 === true && segment.kind === "descent";
-  const bunchCatch = isBunchCatchRoute(route) && !(ctx.ordersGcV3 === true && (segment.kind === "climb" || segment.kind === "descent"));
+  const v3FinishDescent = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && segment.kind === "descent";
+  const bunchCatch = isBunchCatchRoute(route) && !((ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && (segment.kind === "climb" || segment.kind === "descent"));
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
@@ -432,6 +433,14 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // gate som antals-vinduet), saa selektive finaler er uroerte.
   let caughtBunchShiftSeconds = 0;
   const caughtGroups: RaceGroup[] = [];
+  const entryGapByRider = ctx.sharedGroupTime
+    ? new Map(ctx.sharedGroupTime.entryGroups.flatMap(group => group.rider_ids.map(id => [id,group.gap_seconds] as const)))
+    : null;
+  const entryGap = (ids: readonly string[]): number => {
+    const values = ids.map(id => entryGapByRider?.get(id));
+    if (!values.length || values.some(value => value === undefined)) throw new Error("shared finale: missing entry lineage");
+    return Math.min(...values as number[]);
+  };
 
   for (const group of chaseCandidates) {
     const carriedGapSeconds = Math.max(0, group.gap_seconds - caughtBunchShiftSeconds);
@@ -453,7 +462,11 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     const descentCap = v3FinishDescent
       ? finishDescentRemainingCapSeconds(carriedGapSeconds, remainingKm, state.finish_descent_regroup?.[group.id])
       : Infinity;
-    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit);
+    const estimate = netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
+    const remainingEstimate = ctx.sharedGroupTime
+      ? remainingClosureSeconds(Math.max(0,entryGap(group.rider_ids)-entryGap(defenderIds)),carriedGapSeconds,estimate)
+      : estimate;
+    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, remainingEstimate);
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
@@ -483,7 +496,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
           ),
         )
       : mergeThreshold;
-    const caught = newGap < catchThreshold;
+    const caught = ctx.sharedGroupTime ? newGap <= GROUP_CLOCK_CONTACT_EPSILON : newGap < catchThreshold;
     // Forskydningen gaelder kun naar feltet henter et UDBRUD (en front der ikke
     // selv er felt-stor). Har feltet allerede samlet fronten, er fronten feltet,
     // og en gruppe bagved maales mod den som altid — ellers ville hver hentet
@@ -499,7 +512,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       caughtGroups.push(group);
       contenderIds = [...contenderIds, ...group.rider_ids];
       defenderIds = [...defenderIds, ...group.rider_ids];
-      if (bunchSized && frontIsEscape) caughtBunchShiftSeconds += carriedGapSeconds;
+      if (!ctx.sharedGroupTime && bunchSized && frontIsEscape) caughtBunchShiftSeconds += carriedGapSeconds;
     } else {
       const survivor: RaceGroup = { ...group, gap_seconds: newGap, rider_ids: [...group.rider_ids] };
       survivingGroups.push(survivor);
@@ -538,7 +551,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // ── Placerings-opgoer i kontendentpuljen ────────────────────────────────────
   // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
   // #6200 (KUN orders_gc_v3): klatring taeller med i placeringen i en nedkoerselsfinale.
-  const v3DescentDemand = ctx.ordersGcV3 === true && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
+  const v3DescentDemand = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
   const demandVector = cobbledFinaleDemandVector(
     v3DescentDemand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
     ctx,
@@ -707,7 +720,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   //
   // Selektive finaler (bjerg, punch, nedkoersel, udbrud, ITT) beholder de
   // individuelle tids-tiers: dér ER tidsforskellene virkelige.
-  if (isMassFinishRoute(route)) {
+  if (isMassFinishRoute(route) || ctx.sharedGroupTime) {
     placementGroups.push({
       id: "finale-bunch-0",
       kind: scored.length + unscoredContenderIds.length > 1 ? "peloton" : "solo",
@@ -772,7 +785,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     prevScore = entry.score;
   });
 
-  if (!isMassFinishRoute(route) && unscoredContenderIds.length > 0) {
+  if (!isMassFinishRoute(route) && !ctx.sharedGroupTime && unscoredContenderIds.length > 0) {
     // Samme feltbevarelses-hensyn som i massefinale-grenen: bagerst i den
     // sidste eksisterende klump, ellers som en klump for sig.
     const last = placementGroups[placementGroups.length - 1];

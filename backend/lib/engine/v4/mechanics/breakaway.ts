@@ -1,3 +1,4 @@
+import { GROUP_CLOCK_CONTACT_EPSILON } from "../groupClock.ts";
 import { findChaseGroup, isBreakawayPiece, rejoinBreakawayPiece, withBreakawayDrops } from "./chaseGroup.ts";
 // backend/lib/engine/v4/mechanics/breakaway.ts
 // Race Engine v4 F3 (#4030, #3855): M5 - udbrud v2, jagt-interesse-modellen
@@ -1722,7 +1723,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const chase = groups.find(group => group.id === chaseId);
     if (!breakaway || !chase) continue;
     const newGap = chase.gap_seconds - breakaway.gap_seconds;
-    const caught = newGap < ctx.tuning.groups.mergeThresholdSeconds;
+    const caught = ctx.sharedGroupTime ? newGap <= GROUP_CLOCK_CONTACT_EPSILON : newGap < ctx.tuning.groups.mergeThresholdSeconds;
     // #6234 (KUN orders_gc_v3): et afsat stykke af udbruddet der lukker hullet, er kommet tilbage, ikke en indhentning.
     if (caught && ordersGcV3 && isBreakawayPiece(chase)) {
       groups = rejoinBreakawayPiece(groups, chase.id, breakawayId);
