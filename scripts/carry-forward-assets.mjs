@@ -153,7 +153,13 @@ export async function carryForwardAssets({ distDir, env = process.env, store: in
         warn(`${LOG_PREFIX} ⚠️ retention nævner ${id}, men lageret har intet manifest for den — springes over.`);
         continue;
       }
-      manifests.push(validateManifest(manifest, id));
+      try {
+        manifests.push(validateManifest(manifest, id));
+      } catch (err) {
+        // Et manifest der ikke kan stoles på er en integritetsfejl, ikke en
+        // netværksfejl: buildet stoppes i alle miljøer.
+        throw new IntegrityError(err.message);
+      }
     }
 
     const presentNames = fs.readdirSync(path.join(distDir, ASSET_PREFIX)).map((n) => `${ASSET_PREFIX}/${n}`);
@@ -178,7 +184,7 @@ export async function carryForwardAssets({ distDir, env = process.env, store: in
     return { status: "carried", carried: [...carried].sort(), releases: manifests.map((m) => m.frontend) };
   } catch (err) {
     if (err instanceof IntegrityError) throw err;
-    const strict = !injectedStore && isStrictProductionBuild(env) && env.CZ_CARRY_FORWARD_ALLOW_FAILURE !== "1";
+    const strict = isStrictProductionBuild(env) && env.CZ_CARRY_FORWARD_ALLOW_FAILURE !== "1";
     if (strict) throw err;
     warn(`${LOG_PREFIX} ⚠️ carry-forward fejlede (${err.message}) — buildet fortsætter UDEN gamle assets.`);
     return { status: "failed-soft", carried: [...carried].sort(), releases: [] };
