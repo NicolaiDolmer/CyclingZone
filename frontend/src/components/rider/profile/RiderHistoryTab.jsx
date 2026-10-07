@@ -62,8 +62,14 @@ function EventCell({ row, t }) {
               tom), men er stadig et reelt salg — "AI team" i stedet for det
               generiske "Unknown", som gav indtryk af en datafejl. */}
           {link(row.buyer, row.is_guaranteed_sale ? t("history.auction.buyerFallbackAi") : t("history.auction.buyerFallback"))}
-          <span className="text-cz-3"> {t("history.auction.wonBy")} </span>
-          {link(row.seller, row.is_ai_sale ? t("history.auction.sellerFallbackAi") : t("history.auction.sellerFallback"))}
+          {/* #6304: køber = sælger (hold byder på egen AI/free-agent-auktion) →
+              ingen "won from X"-halvdel, ellers står holdet som vinder over sig selv. */}
+          {!(row.seller_is_buyer || (row.seller?.id && row.seller.id === row.buyer?.id)) && (
+            <>
+              <span className="text-cz-3"> {t("history.auction.wonBy")} </span>
+              {link(row.seller, row.is_ai_sale ? t("history.auction.sellerFallbackAi") : t("history.auction.sellerFallback"))}
+            </>
+          )}
         </>
       );
     case "bid":
