@@ -183,3 +183,13 @@ test('writer and reviewer invocation preserve selected cwd and distinct sandbox 
   assert.ok(childArgs('reviewer', t, 'schema', 'out').includes(t.worktree));
   assert.equal(childArgs('worker', t, 'schema', 'out').includes('--dangerously-bypass-approvals-and-sandbox'), false);
 });
+
+test('Codex child receives explicit runtime even with a Claude parent and no Codex session variables', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const inherited = { ...process.env, CZ_VERIFY_RUNTIME: 'claude' };
+  delete inherited.CODEX_THREAD_ID; delete inherited.CODEX_SESSION_ID;
+  const options = runner.agentSpawnOptions(process.cwd(), 'fixture-wave', inherited);
+  const child = spawnSync(process.execPath, ['-e', 'process.stdout.write(JSON.stringify({runtime:process.env.CZ_VERIFY_RUNTIME,wave:process.env.CZ_WAVE_ID}))'], { ...options, encoding: 'utf8' });
+  assert.equal(child.status, 0);
+  assert.deepEqual(JSON.parse(child.stdout), { runtime: 'codex', wave: 'fixture-wave' });
+});

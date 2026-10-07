@@ -126,6 +126,11 @@ export function codexCommand({ platform = process.platform, localAppData = proce
     ? { file: 'pwsh', prefix: ['-NoProfile', '-File', source] } : { file: source, prefix: [] };
 }
 
+export function agentSpawnOptions(worktree, waveId, parentEnv = process.env) {
+  return { cwd: worktree, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...parentEnv, CZ_WAVE_ID: waveId, CZ_VERIFY_RUNTIME: 'codex' } };
+}
+
 export async function runAgent(role, track, context) {
   const label = `${role}-${context.round || 0}`;
   const output = path.join(track.scratch, `${label}-result.json`);
@@ -142,10 +147,8 @@ export async function runAgent(role, track, context) {
   const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,
     children: [...(current.children || []).filter(c => c.key !== childKey), { key: childKey, state, pid }] }));
   recordChild('starting', null);
-  const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)], {
-    cwd: track.worktree, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, CZ_WAVE_ID: context.wave.waveId },
-  });
+  const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)],
+    agentSpawnOptions(track.worktree, context.wave.waveId));
   const processRecord = path.join(track.scratch, `${label}-process.json`);
   let completed = false, stopped = false, timedError = null;
   const started = context.now();
