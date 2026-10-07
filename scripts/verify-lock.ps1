@@ -132,7 +132,7 @@ if (-not $Runtime) {
   else { $Runtime = 'unknown' }
 }
 $Runtime = $Runtime.ToLowerInvariant()
-if ($Runtime -notin @('codex','claude','unknown')) { Write-Fail 'verify-lock: Runtime must be codex, claude or unknown.'; exit 2 }
+if ($Runtime -notin @('codex','claude','manual','unknown')) { Write-Fail 'verify-lock: Runtime must be codex, claude, manual or unknown.'; exit 2 }
 if ($Max -lt 1 -or $Max -gt 2) { Write-Fail 'verify-lock: Max must be 1 or 2.'; exit 2 }
 
 # --- Slot-mappe --------------------------------------------------------------
@@ -320,7 +320,7 @@ function Get-LiveWaiters {
 }
 
 function Get-DeclaredRuntime($record) {
-  if ($null -ne $record.Info -and $record.Info.runtime -in @('codex','claude')) { return $record.Info.runtime }
+  if ($null -ne $record.Info -and $record.Info.runtime -in @('codex','claude','manual')) { return $record.Info.runtime }
   return 'unknown'
 }
 
@@ -341,7 +341,7 @@ function Test-RuntimeEligible([string]$family, $running, $waiting) {
   if ($family -eq 'unknown' -and @($running).Count -gt 0) { return $false }
   $same = @($running | Where-Object { (Get-DeclaredRuntime $_) -eq $family }).Count
   $other = @(@($running) + @($waiting) | Where-Object { (Get-DeclaredRuntime $_) -ne $family }).Count
-  $limit = if ($family -eq 'claude' -and $other -eq 0) { $Max } else { 1 }
+  $limit = if ($family -ne 'unknown' -and $other -eq 0) { $Max } else { 1 }
   return $same -lt $limit
 }
 

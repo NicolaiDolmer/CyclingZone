@@ -13,7 +13,7 @@
  * Kilde for query-mønster: docs/audits/2026-08-04-supabase-hardening.md +
  * issue #4010 (samme fire fejlklasser der udløste denne vagt).
  *
- * READ-ONLY — kalder kun GET .../analytics/endpoints/logs.all. Ingen
+ * READ-ONLY — kalder kun GET .../analytics/endpoints/logs. Ingen
  * mutationer, ingen secret-værdier printes nogensinde.
  *
  * Env:
@@ -95,23 +95,31 @@ export function computeFindings(current, previous, opts = {}) {
 }
 
 /** @returns {Promise<{source:string, bucket:string, cnt:number}[]>} */
-async function queryLogs(token, ref, startIso, endIso) {
-  const url = new URL(`https://api.supabase.com/v1/projects/${ref}/analytics/endpoints/logs.all`);
+export async function queryLogs(token, ref, startIso, endIso, fetchImpl = fetch) {
+  const url = new URL(`https://api.supabase.com/v1/projects/${ref}/analytics/endpoints/logs`);
   url.searchParams.set("sql", LOG_SQL);
   url.searchParams.set("iso_timestamp_start", startIso);
   url.searchParams.set("iso_timestamp_end", endIso);
 
-  const res = await fetch(url, {
+  const res = await fetchImpl(url, {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    redirect: 'error', signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Management-API ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(`Management-API ${res.status}`);
   }
   const body = await res.json();
-  // Endpoint-shape: { result: [...] } — men vaer defensiv hvis Supabase aendrer wrapping.
-  const rows = Array.isArray(body) ? body : body.result || body.data || [];
-  return rows.map((r) => ({ source: String(r.source), bucket: String(r.bucket ?? ""), cnt: Number(r.cnt || 0) }));
+  // The ClickHouse endpoint can report SQL failures inside HTTP 200.
+  // Missing or malformed data is a failed audit, never a quiet log window.
+  if (!body || body.error != null || !Array.isArray(body.result)) throw new Error('Management-API invalid log result');
+  return body.result.map(r => {
+    const cnt = Number(r?.cnt);
+    const numericCount = typeof r?.cnt === 'number'
+      || typeof r?.cnt === 'string' && /^\d+$/.test(r.cnt);
+    if (!r || !SOURCES.includes(r.source) || typeof r.bucket !== 'string'
+      || !numericCount || !Number.isSafeInteger(cnt) || cnt < 0) throw new Error('Management-API invalid log row');
+    return { source: r.source, bucket: r.bucket, cnt };
+  });
 }
 
 async function main() {

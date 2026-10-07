@@ -127,6 +127,7 @@
     "academyFull": "Academy is full. Cannot sign another rider.",
     "notOffered": "This rider has not been offered a place.",
     "insufficientBalance": "You cannot afford the signing fee.",
+    "insufficientAvailableBalance": "Not enough available money: part of your balance is locked in auction bids.",
     "alreadyAssigned": "This rider has already joined an academy.",
     "riderOwned": "This rider is currently on another team, so the offer cannot be completed right now. I'm working on it, and your offer stays open.",
     "squadFull": "Senior squad is full. Free a spot to promote, or sell or release instead.",

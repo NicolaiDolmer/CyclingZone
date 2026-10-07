@@ -274,12 +274,11 @@ async function releaseHolders(runs) {
   await withTimeout(Promise.all(runs.map(run => run.done)), 40000, 'runtime holders');
 }
 
-test('Codex cannot occupy two places even without another runtime', { skip: !hasPwsh }, async t => {
+test('Codex can use two places when no other runtime is active or waiting', { skip: !hasPwsh }, async t => {
   const dir = freshDir('codex-one'); const runs = [];
   t.after(() => releaseHolders(runs));
   const first = runtimeHolder(dir, 'codex', 'first'); runs.push(first); await entered(first);
-  const second = runtimeHolder(dir, 'codex', 'second'); runs.push(second); await waiting(second);
-  writeFileSync(first.stop, 'stop'); await entered(second);
+  const second = runtimeHolder(dir, 'codex', 'second'); runs.push(second); await entered(second);
 });
 
 test('a waiting Codex gets the released place before a second Claude admission', { skip: !hasPwsh }, async t => {
@@ -509,3 +508,10 @@ test("udskudt sletning: egen efterladt kandidat taeller ikke mod en selv og rydd
     run.child.kill();
   }
 });
+
+ test('declared manual terminal can share capacity with Claude', { skip: !hasPwsh }, async t => {
+  const dir = freshDir('manual-share'); const runs = [];
+  t.after(() => releaseHolders(runs));
+  const claude = runtimeHolder(dir, 'claude', 'claude'); runs.push(claude); await entered(claude);
+  const manual = runtimeHolder(dir, 'manual', 'manual'); runs.push(manual); await entered(manual);
+ });

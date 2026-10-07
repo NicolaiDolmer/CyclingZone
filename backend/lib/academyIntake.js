@@ -12,6 +12,7 @@ import { calculateRiderMarketValue } from "./marketUtils.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
+import { checkAvailableSpend, INSUFFICIENT_AVAILABLE_BALANCE } from "./availableBalance.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
 import { academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
@@ -516,6 +517,19 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   const contractEndSeason = seasonNumber + ACADEMY.INTAKE_CONTRACT_LENGTH - 1;
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   const acquiredAt = new Date().toISOString();
+
+  // #6264: signing-fee må ikke betales med penge låst i auktionsbud. RPC'en
+  // nedenfor forbliver den autoritative rå-saldo-gate (insufficient_balance).
+  if (fee > 0) {
+    // supabase er utypet (`object`) i denne fil; en lokal any-cast undgaar at ratchetten tæller en ny tsc-fejl.
+    const { data: teamRow, error: teamErr } = await /** @type {any} */ (supabase)
+      .from("teams").select("balance").eq("id", teamId).single();
+    if (teamErr) throw new Error(`signAcademyCandidate team balance lookup: ${teamErr.message}`);
+    const spendIssue = await checkAvailableSpend(supabase, { teamId, balance: teamRow?.balance, cost: fee });
+    if (spendIssue?.error === INSUFFICIENT_AVAILABLE_BALANCE) {
+      throw Object.assign(new Error(INSUFFICIENT_AVAILABLE_BALANCE), { locked: spendIssue.locked, available: spendIssue.available });
+    }
+  }
 
   // 3. #1558: cap-check (loft pr. ungdomstrup, #5432) + rider-update + signing-fee-debit sker nu
   // ATOMISK i én RPC under pg_advisory_xact_lock(team_id). Tidligere var

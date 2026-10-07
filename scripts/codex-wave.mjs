@@ -14,7 +14,8 @@ const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encodi
 const gh = (...args) => JSON.parse(execFileSync('gh', [...args, '--repo', REPO], { encoding: 'utf8', timeout: 30000 }));
 
 export function childArgs(role, track, schema, output) {
-  const args = ['exec', '-C', track.worktree, '--sandbox', role === 'reviewer' || track.kind === 'investigate' ? 'read-only' : 'workspace-write',
+  const readOnly = role === 'reviewer' || track.kind === 'investigate';
+  const args = ['exec', '-C', track.worktree, ...(readOnly ? ['--sandbox','read-only'] : ['--approve-for-me']),
     '--json', '--output-schema', schema, '--output-last-message', output];
   if (track.model) args.push('--model', track.model);
   if (track.effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(track.effort)}`);
@@ -53,7 +54,9 @@ export async function runWave(options, supplied = {}) {
     for (const t of tracks) {
       if (controller.signal.aborted) throw Error('Wave interrupted during setup');
       await deps.prefilter(t, context);
-      prepared.push(await deps.prepare(t, context));
+      const preparedTrack = await deps.prepare(t, context);
+      if (preparedTrack.kind !== 'investigate') await deps.verifyPermissions(preparedTrack, context);
+      prepared.push(preparedTrack);
     }
     let next = 0;
     async function lane() {
@@ -123,6 +126,11 @@ export function codexCommand({ platform = process.platform, localAppData = proce
     ? { file: 'pwsh', prefix: ['-NoProfile', '-File', source] } : { file: source, prefix: [] };
 }
 
+export function agentSpawnOptions(worktree, waveId, parentEnv = process.env) {
+  return { cwd: worktree, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...parentEnv, CZ_WAVE_ID: waveId, CZ_VERIFY_RUNTIME: 'codex' } };
+}
+
 export async function runAgent(role, track, context) {
   const label = `${role}-${context.round || 0}`;
   const output = path.join(track.scratch, `${label}-result.json`);
@@ -130,17 +138,17 @@ export async function runAgent(role, track, context) {
   save(schema, resultSchema(role));
   if (fs.existsSync(output)) throw Error(`Refusing stale result: ${output}`);
   const command = codexCommand();
-  const prompt = context.fixturePrompt || (role === 'reviewer'
+  const prompt = context.fixturePrompt || (role === 'permission-probe'
+    ? `Run ONLY the local Git metadata write probe, not project implementation. Execute node ${JSON.stringify(path.join(context.root,'scripts/codex-git-write-probe.mjs'))} --worktree ${JSON.stringify(track.worktree)} --branch ${JSON.stringify(track.branch)} --out ${JSON.stringify(path.join(track.scratch,'git-permissions.json'))}. If sandbox permissions block this specific command, request command-only escalation through automatic approval review. Do not disable sandboxing, add writable directories, change config, start agents, or touch main/other branches. Report ready only after the probe artifact says ok=true; otherwise blocked with the precise reason.`
+    : role === 'reviewer'
     ? `READ-ONLY independent review. Read the brief below, inspect git diff ${track.reviewBase || track.base}...HEAD and tests. Do not trust the worker's summary. Check scope, ownership, requirements, SSOT, test evidence, privacy and regressions. No writes or agents. Approve only if there are no blocking findings.\n${track.brief}`
     : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${track.brief}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. Return blocked if a required command fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
   const childKey = `${track.issue}-${label}`;
   const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,
     children: [...(current.children || []).filter(c => c.key !== childKey), { key: childKey, state, pid }] }));
   recordChild('starting', null);
-  const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)], {
-    cwd: track.worktree, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, CZ_WAVE_ID: context.wave.waveId },
-  });
+  const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)],
+    agentSpawnOptions(track.worktree, context.wave.waveId));
   const processRecord = path.join(track.scratch, `${label}-process.json`);
   let completed = false, stopped = false, timedError = null;
   const started = context.now();
@@ -169,11 +177,11 @@ export async function runAgent(role, track, context) {
   }
   const onAbort = () => { void stop(Error('Wave interrupted')); };
   context.signal.addEventListener('abort', onAbort, { once: true });
-  let nextCheck = (role === 'reviewer' ? WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES : track.kind === 'investigate' ? WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES : resolveTrackTimeoutMinutes(track.timeoutMinutes)) * 60000;
+  let nextCheck = (role === 'permission-probe' ? 3 : role === 'reviewer' ? WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES : track.kind === 'investigate' ? WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES : resolveTrackTimeoutMinutes(track.timeoutMinutes)) * 60000;
   const timer = setInterval(() => {
     const elapsed = context.now() - started;
     if (elapsed < nextCheck || completed || stopped) return;
-    if (role === 'reviewer' || track.kind === 'investigate') { void stop(Error(`${role} timeout`)); return; }
+    if (role === 'permission-probe' || role === 'reviewer' || track.kind === 'investigate') { void stop(Error(`${role} timeout`)); return; }
     let probe;
     try {
       const last = Number(git(track.worktree, 'log', '-1', '--format=%ct'));
@@ -234,6 +242,16 @@ function productionDeps(root, worktreesRoot) {
       fs.writeFileSync(path.join(scratch, 'brief.md'), brief);
       save(path.join(context.evidence, `${slug}.json`), { issue: t.issue, worktree, branch: t.branch, base, scratch });
       return { ...t, worktree, base, brief, scratch };
+    },
+    async verifyPermissions(track, context) {
+      const proof = path.join(track.scratch,'git-permissions.json');
+      if (fs.existsSync(proof)) throw Error('Refusing stale Git permission proof');
+      const result = await runAgent('permission-probe',track,context);
+      if (result?.status !== 'ready' || !fs.existsSync(proof)) throw Error('Git metadata write probe failed before dispatch');
+      const evidence = json(proof);
+      if (evidence.ok !== true || evidence.branch !== track.branch || path.resolve(evidence.worktree) !== path.resolve(track.worktree)) {
+        throw Error('Git metadata permission proof does not match this worktree');
+      }
     },
     runAgent,
     async validateResult(t) {

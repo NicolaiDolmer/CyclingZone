@@ -51,7 +51,7 @@ function deps(overrides = {}) {
   return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], prefilter: async () => {},
     prepare: async t => ({ ...t, worktree: `/fixture/${t.issue}` }),
     runAgent: async (role, t) => role === 'reviewer' ? { verdict: 'approved', findings: [] } : { status: 'ready', summary: 'fixture', tests: ['pass'] },
-    validateResult: async () => {}, ...overrides };
+    verifyPermissions: async () => {}, validateResult: async () => {}, ...overrides };
 }
 
 test('dispatch counts open PRs, including parked drafts, but never rejects on count', async (t) => {
@@ -128,6 +128,24 @@ test('setup failure preserves report, does not dispatch, and cleans only owned m
   assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
 });
 
+test('Git metadata permission failure is caught before any writer dispatch', async t => {
+  const root=fixture(t); let writers=0, prepared=0;
+  await assert.rejects(runWave({root,runDir:root,tracks,owner:'fixture'},deps({
+    prepare:async track => {prepared++;return {...track,worktree:'/fixture/owned'};},
+    verifyPermissions:async () => {throw Error('Git metadata write probe failed');},
+    runAgent:async () => {writers++;},
+  })),/Git metadata write probe failed/);
+  assert.equal(prepared,1); assert.equal(writers,0);
+  assert.equal(existsSync(path.join(root,'wave-active.json')),false);
+});
+
+test('automatic approval review is limited to writable worker/fixer roles', () => {
+  const track={worktree:'/fixture',scratch:'/scratch'};
+  for(const role of ['worker','fixer']) assert.ok(childArgs(role,track,'schema','out').includes('--approve-for-me'));
+  assert.equal(childArgs('reviewer',track,'schema','out').includes('--approve-for-me'),false);
+  assert.equal(childArgs('worker',{...track,kind:'investigate'},'schema','out').includes('--approve-for-me'),false);
+});
+
 test('setup is marked before it can launch worktree or dependency subprocesses', async t => {
   const root = fixture(t);
   await runWave({ root, runDir: root, tracks, owner: 'fixture' }, deps({
@@ -159,8 +177,19 @@ test('worker failure never becomes ready or reaches reviewer', async (t) => {
 
 test('writer and reviewer invocation preserve selected cwd and distinct sandbox roles', () => {
   const t = { worktree: 'C:/fixture/worker', scratch: 'C:/fixture/scratch' };
-  assert.ok(childArgs('worker', t, 'schema', 'out').includes('workspace-write'));
+  assert.ok(childArgs('worker', t, 'schema', 'out').includes('--approve-for-me'));
+  assert.equal(childArgs('worker', t, 'schema', 'out').includes('--sandbox'), false);
   assert.ok(childArgs('reviewer', t, 'schema', 'out').includes('read-only'));
   assert.ok(childArgs('reviewer', t, 'schema', 'out').includes(t.worktree));
   assert.equal(childArgs('worker', t, 'schema', 'out').includes('--dangerously-bypass-approvals-and-sandbox'), false);
+});
+
+test('Codex child receives explicit runtime even with a Claude parent and no Codex session variables', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const inherited = { ...process.env, CZ_VERIFY_RUNTIME: 'claude' };
+  delete inherited.CODEX_THREAD_ID; delete inherited.CODEX_SESSION_ID;
+  const options = runner.agentSpawnOptions(process.cwd(), 'fixture-wave', inherited);
+  const child = spawnSync(process.execPath, ['-e', 'process.stdout.write(JSON.stringify({runtime:process.env.CZ_VERIFY_RUNTIME,wave:process.env.CZ_WAVE_ID}))'], { ...options, encoding: 'utf8' });
+  assert.equal(child.status, 0);
+  assert.deepEqual(JSON.parse(child.stdout), { runtime: 'codex', wave: 'fixture-wave' });
 });
