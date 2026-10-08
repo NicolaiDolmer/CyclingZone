@@ -335,7 +335,10 @@ export function labelContradictions(ranked, out, { soloMarginSeconds = 60 } = {}
 
 /**
  * Top-10 i klassementet foer etapen, der sad i morgenudbruddet og paa et
- * tidspunkt havde mindst `thresholdSeconds` til feltet (stoerste gruppe).
+ * tidspunkt havde mindst `thresholdSeconds` til feltet. #5978: "feltet" er
+ * klassementsgruppen (gruppen med flest af de oevrige top-10; lige = forreste),
+ * ikke den stoerste gruppe: paa bjergetaper er den stoerste gruppe ofte de
+ * afhaegtede, og et forspring paa dem er ingen klassementsgevinst.
  */
 export function gcTop10InBreakOverThreshold(out, gcBefore, { thresholdSeconds = 300, topN = 10 } = {}) {
   if (!gcBefore?.length) return [];
@@ -346,11 +349,12 @@ export function gcTop10InBreakOverThreshold(out, gcBefore, { thresholdSeconds = 
   const best = new Map();
   for (const s of out?.groupSnapshots ?? []) {
     const groups = s.groups ?? [];
-    if (!groups.length) continue;
-    const peloton = groups.reduce((a, b) => ((b.rider_ids?.length ?? 0) > (a.rider_ids?.length ?? 0) ? b : a));
-    for (const g of groups) {
-      const adv = (peloton.gap_seconds ?? 0) - (g.gap_seconds ?? 0);
-      for (const id of g.rider_ids ?? []) if (suspects.includes(id)) best.set(id, Math.max(best.get(id) ?? -Infinity, adv));
+    for (const id of suspects) {
+      const own = groups.find((g) => g.rider_ids?.includes(id));
+      const rivals = (g) => (g.rider_ids ?? []).filter((r) => r !== id && top.has(r)).length;
+      const gcGroup = groups.reduce((a, b) => (!a || rivals(b) > rivals(a) || (rivals(b) === rivals(a) && (b.gap_seconds ?? 0) < (a.gap_seconds ?? 0)) ? b : a), null);
+      if (!own || !gcGroup || gcGroup === own || rivals(gcGroup) === 0) continue;
+      best.set(id, Math.max(best.get(id) ?? -Infinity, (gcGroup.gap_seconds ?? 0) - (own.gap_seconds ?? 0)));
     }
   }
   return suspects.filter((id) => (best.get(id) ?? 0) >= thresholdSeconds);
