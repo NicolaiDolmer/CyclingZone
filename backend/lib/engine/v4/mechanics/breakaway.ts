@@ -97,6 +97,7 @@ import {
   oneDayProtectedRider,
   protectedRiderForTeam,
   type DangerModel,
+  type GcDangerTuning,
   type GcThreat,
 } from "./gcThreat.ts";
 import {
@@ -1204,6 +1205,7 @@ type GcReactionSetup = {
 
 /** Er GC-reaktionen i spil for dette hook-kald? KUN orders_gc_v1. */
 function gcReactionActive(ctx: BreakawayHookContext): boolean {
+  if ((globalThis as any).process?.env?.X5578 === "noreact" && ctx.ordersGcV3 && ctx.sharedGroupTime !== undefined) return false;
   return ctx.rulesRevision === "orders_gc_v1";
 }
 
@@ -1213,13 +1215,15 @@ function gcReactionActive(ctx: BreakawayHookContext): boolean {
  * udbrudsfinale maales paa feltets finale bag udbruddet).
  */
 function dangerModelFor(ctx: BreakawayHookContext, gcContext: GcContext): DangerModel {
-  return dangerModelOf(ctx.route, ctx.tuning, gcContext);
+  return dangerModelOf(ctx.route, ctx.tuning, gcContext, timeModelTuningFor(ctx).gcDanger);
 }
 
 /** #5978: dangerModelFor uden hook-konteksten (segmentLoop's hjul-kobling). */
-function dangerModelOf(route: RouteV2, tuning: EngineTuning, gcContext: GcContext): DangerModel {
+function dangerModelOf(route: RouteV2, tuning: EngineTuning, gcContext: GcContext, gcDanger: GcDangerTuning | null = null): DangerModel {
   if (gcContext.status === "standings") {
-    return gcContext.stages_remaining !== undefined ? { stagesRemaining: gcContext.stages_remaining } : {};
+    // #5578 (KUN official_times_v2): den kalibrerede farligheds-tuning (timeModel.ts).
+    const danger = gcDanger ? { tuning: gcDanger } : {};
+    return gcContext.stages_remaining !== undefined ? { stagesRemaining: gcContext.stages_remaining, ...danger } : { ...danger };
   }
   if (gcContext.status !== "one_day") return {};
   const finaleType = route.finale_type === "breakaway" ? fieldFinaleTypeBehindBreakaway(route) : route.finale_type;
@@ -1295,6 +1299,12 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
         bound += TEAM_CHASE.chaseCostFraction * helperCostMultiplier(ctx.entrants[riderId]?.effort) * segmentShareBound;
       }
       plan = { ...plan, intensity: capPreventiveIntensity(plan, bound) };
+    }
+    if ((globalThis as any).process?.env?.X5578_LOG && gcContext.status === "standings" && (threat.severity !== "none" || threat.leash_hold)) {
+      const st = new Map(gcContext.standings.map((s) => [s.rider_id, s]));
+      const p = st.get(protectedRiderId);
+      const tids = [...new Set([...(threat.threat_rider_ids ?? []), ...(threat.leash_rider_ids ?? [])])];
+      console.log(`X km${ctx.segment.from_km} team ${teamId.slice(0, 4)} prot#${p?.rank}/${p?.gap_seconds}s ${threat.severity}/${threat.reason} leash=${threat.leash_hold} tol=${threat.tolerated_lead_seconds} int=${plan.intensity?.toFixed?.(2)} threats=${tids.map((id) => `#${st.get(id)?.rank}/${st.get(id)?.gap_seconds}s:${ctx.entrants[id]?.role}`).join(",")} rem=${gcContext.stages_remaining}`);
     }
     decisions.push({ teamId, threat, stance, workers, plan });
     if (plan.intensity > 0 && threat.chase_group_id) {
@@ -1376,11 +1386,13 @@ export function ownRidersOnWheel(input: {
  * fra finalen.
  */
 export function ownRidersOnWheelRaw(
-  input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext" | "dangerModel"> & { gcContext: unknown; tuning: EngineTuning },
+  input: Omit<Parameters<typeof ownRidersOnWheel>[0], "gcContext" | "dangerModel"> & { gcContext: unknown; tuning: EngineTuning; sharedGroupTime?: true },
 ): OwnRidersOnWheel[] {
-  const { tuning, ...rest } = input;
+  const { tuning, sharedGroupTime, ...rest } = input;
   const gcContext = normalizeGcContext(input.gcContext);
-  return ownRidersOnWheel({ ...rest, gcContext, dangerModel: dangerModelOf(input.route, tuning, gcContext) });
+  // Kaldes KUN under orders_gc_v3 og senere; med den faelles gruppeklokke er det official_times_v2 (#5578).
+  const gcDanger = timeModelTuningFor({ ordersGcV3: true, ...(sharedGroupTime ? { sharedGroupTime } : {}) }).gcDanger;
+  return ownRidersOnWheel({ ...rest, gcContext, dangerModel: dangerModelOf(input.route, tuning, gcContext, gcDanger) });
 }
 
 /** #6187: holdets koerende ryttere i gruppen, sorteret. */
@@ -1613,7 +1625,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       if (ctx.mountainSelectionPhase) maxGapSeconds *= phaseLetGoMaxGapScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).letGoMaxGapScale);
       // #6199 (KUN official_times_v2): uden v3s ikke-fysiske lukning paa nedkoerslen
       // skal jagten hente det fysisk; feltet giver derfor et mindre lad-gaa-loft.
-      maxGapSeconds *= timeModelTuningFor(ctx).letGoMaxGapScale;
+      const xps = (globalThis as any).process?.env?.X5578_PS && ctx.ordersGcV3 && ctx.sharedGroupTime !== undefined ? Object.fromEntries(String((globalThis as any).process.env.X5578_PS).split(",").map((kv: string) => kv.split(":"))) : null;
+      maxGapSeconds *= xps && xps[ctx.route.profile_type] !== undefined ? Number(xps[ctx.route.profile_type]) : ((globalThis as any).process?.env?.X5578_SCALE && ctx.ordersGcV3 && ctx.sharedGroupTime !== undefined) ? Number((globalThis as any).process.env.X5578_SCALE) : timeModelTuningFor(ctx).letGoMaxGapScale;
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,

@@ -33,6 +33,7 @@
 // REN: ingen IO, ingen rng.
 
 import type { AbilityKey, ClimbCategory, ProfileType, RaceGroup, Segment } from "../types.ts";
+import type { GcDangerTuning } from "./gcThreat.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -101,12 +102,16 @@ export const TIME_MODEL_V3_TUNING = freeze({
   bunchClosingMaxSecondsPerKm: 20,
   // KUN official_times_v2: skalering af M5s lad-gaa-loft (1 = uaendret).
   letGoMaxGapScale: 1,
+  // #5578 (KUN official_times_v2, etapeloeb): GC-reaktionens farligheds-tuning
+  // (gcThreat.DangerModel.tuning). null = orders_gc_v3s vaerdier (bit-identisk).
+  gcDanger: null as GcDangerTuning | null,
 
   // ── 3: taet score = samme tid i en selektiv finale ──────────────────────────
   finaleTieScoreEpsilon: 0.02,
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
+const XENV: Record<string, string | undefined> = (globalThis as any).process?.env ?? {};
 
 /**
  * #6199 (KUN official_times_v2): den samlede tidsmodel kalibreret paa den faelles
@@ -126,6 +131,7 @@ export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
   // B i dalen som fart (valleyRegroupTempoV3).
   valleyClosingSecondsPerKm: 2,
   valleyClosingGapFractionPerKm: 0.02,
+  ...(XENV.X5578_GC ? { gcDanger: (() => { const [f, b, s, m, r] = String(XENV.X5578_GC).split(",").map(Number); return { futureSecondsPerStage: f, defendBaseSeconds: b, defendSecondsPerStage: s, leashMarginSeconds: m, rivalStrengthMin: r }; })() } : {}),
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).

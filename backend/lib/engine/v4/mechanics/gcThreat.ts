@@ -97,7 +97,22 @@ export type DangerModel = {
   stagesRemaining?: number;
   /** Endagsloeb: dagens evne-vektor (finalens krav). Udeladt = ingen endagsvurdering. */
   routeDemand?: Readonly<Partial<Record<AbilityKey, number>>>;
+  /**
+   * #5578 (KUN official_times_v2, etapeloeb): den kalibrerede farligheds-tuning
+   * (SHARED_TIME_MODEL_V2_TUNING.gcDanger). Udeladt = GC_THREAT_V3_TUNING og
+   * GC_THREAT_TUNING.rivalStrengthMin, bit-identisk med orders_gc_v3.
+   */
+  tuning?: GcDangerTuning;
 };
+
+/** #5578: de farligheds-knapper official_times_v2 kalibrerer (etapeloeb). */
+export type GcDangerTuning = Readonly<{
+  futureSecondsPerStage: number;
+  defendBaseSeconds: number;
+  defendSecondsPerStage: number;
+  leashMarginSeconds: number;
+  rivalStrengthMin: number;
+}>;
 
 /**
  * #5978 (KUN orders_gc_v3) START-KANDIDATER, kalibreres privat
@@ -174,10 +189,14 @@ export function oneDayProtectedRider(input: {
 const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
 
 /** #5978: har holdets GC-rytter noget at forsvare (KUN orders_gc_v3)? */
-function hasSomethingToDefend(standing: GcStanding, isLeader: boolean, stagesRemaining: number): boolean {
+function hasSomethingToDefend(standing: GcStanding, isLeader: boolean, stagesRemaining: number, t: GcDangerTuning): boolean {
   if (isLeader || standing.rank <= GC_THREAT_TUNING.protectRankLimit) return true;
-  const t = GC_THREAT_V3_TUNING;
   return standing.gap_seconds <= t.defendBaseSeconds + t.defendSecondsPerStage * Math.max(0, stagesRemaining);
+}
+
+/** #5578: etapeloebets farligheds-tuning for en DangerModel (default = orders_gc_v3). */
+function dangerTuningOf(model: DangerModel | undefined): GcDangerTuning {
+  return model?.tuning ?? V3_DANGER_TUNING;
 }
 
 function stagesRemainingOf(model: DangerModel | undefined): number {
@@ -206,6 +225,15 @@ export const GC_THREAT_TUNING = Object.freeze({
   // reel rival (kun en forbigaaende virtuel foering).
   rivalStrengthMin: 0.92,
   strengthRatioBounds: [0.5, 1.5] as readonly [number, number],
+});
+
+/** #5578: orders_gc_v3's farligheds-tuning samlet (de vaerdier en DangerModel uden `tuning` bruger). */
+export const V3_DANGER_TUNING: GcDangerTuning = Object.freeze({
+  futureSecondsPerStage: GC_THREAT_V3_TUNING.futureSecondsPerStage,
+  defendBaseSeconds: GC_THREAT_V3_TUNING.defendBaseSeconds,
+  defendSecondsPerStage: GC_THREAT_V3_TUNING.defendSecondsPerStage,
+  leashMarginSeconds: GC_THREAT_V3_TUNING.leashMarginSeconds,
+  rivalStrengthMin: GC_THREAT_TUNING.rivalStrengthMin,
 });
 
 const GC_ABILITY_KEYS: readonly AbilityKey[] = ["climbing", "tempo", "time_trial"];
@@ -354,6 +382,8 @@ export function assessGcThreat(input: {
   const tuning = GC_THREAT_TUNING;
   const gcContext = input.gcContext ?? null;
   const model = input.dangerModel;
+  // #5578: etapeloebets farligheds-tuning (official_times_v2 kalibreret, ellers orders_gc_v3s).
+  const danger = dangerTuningOf(model);
   if (!gcContext || gcContext.status === "missing") return { ...NO_THREAT_BASE, severity: "none", reason: "no_context" };
   if (gcContext.status === "one_day") {
     if (model?.routeDemand) return assessOneDayThreat({ ...input, routeDemand: model.routeDemand });
@@ -369,7 +399,7 @@ export function assessGcThreat(input: {
   const isLeader = gcContext.leader_id === protectedId;
   const stagesRemaining = stagesRemainingOf(model);
   const interested = model
-    ? hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining)
+    ? hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining, dangerTuningOf(model))
     : isLeader || protectedStanding.rank <= tuning.protectRankLimit;
   if (!interested) {
     return { ...NO_THREAT_BASE, protected_rider_id: protectedId, severity: "none", reason: "no_gc_interest" };
@@ -417,13 +447,13 @@ export function assessGcThreat(input: {
       const strengthRaw = protectedStrength > 0 ? gcAbility(input.entrants[riderId]) / protectedStrength : 1;
       const strength = clamp(strengthRaw, ratioLo, ratioHi);
       // #5978 (KUN orders_gc_v3): de kommende etaper taeller med (evne x antal).
-      const future = model ? stagesRemaining * GC_THREAT_V3_TUNING.futureSecondsPerStage * (strength - 1) : 0;
+      const future = model ? stagesRemaining * danger.futureSecondsPerStage * (strength - 1) : 0;
       const potential = Math.max(
         0,
         Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1) + future,
       );
       const margin = deficit - lead - potential;
-      const isRival = strengthRaw >= tuning.rivalStrengthMin;
+      const isRival = strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
       let severity: GcThreatSeverity;
       let reason: GcThreatReason;
       if (margin <= 0) {
@@ -444,7 +474,7 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival, leashRoom: deficit - Math.max(0, future) - GC_THREAT_V3_TUNING.leashMarginSeconds });
+      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival, leashRoom: deficit - Math.max(0, future) - danger.leashMarginSeconds });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
@@ -464,14 +494,14 @@ export function assessGcThreat(input: {
   const worst = counted[0];
   // #5978 (KUN orders_gc_v3): ogsaa naar snoren er den eneste trussel, kan
   // holdet ikke jage fra en anden gruppe end jagtgruppen (samme pause/stop).
-  const leashOnly = model !== undefined && worst.severity === "none" && leashHeldBy(counted);
+  const leashOnly = model !== undefined && worst.severity === "none" && leashHeldBy(counted, danger.leashMarginSeconds);
   if ((worst.severity !== "none" || leashOnly) && input.chasingGroupIds && !input.chasingGroupIds.has(protectedGroup.id)) {
     return { ...base, threat_rider_ids: [], tied: worst.tied, severity: "none", reason: "protected_in_other_group" };
   }
   const threatRiderIds = worst.severity === "none"
     ? []
     : counted.filter((c) => c.severity === worst.severity).map((c) => c.riderId).sort();
-  if (model) return withLeash({ ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied }, counted);
+  if (model) return withLeash({ ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied }, counted, danger.leashMarginSeconds);
   const toleratedLead = Math.max(0, Math.min(...counted.filter((c) => c.severity !== "none").map((c) => c.lead + c.margin)));
   return {
     ...base, severity: worst.severity, reason: worst.reason, threat_rider_ids: threatRiderIds, tied: worst.tied,
@@ -480,13 +510,13 @@ export function assessGcThreat(input: {
 }
 
 /** #5978 (KUN orders_gc_v3): holder denne rytter snoren (reel rival under snorens margin)? */
-function holdsLeash(c: { margin: number; rival: boolean }): boolean {
-  return c.rival && c.margin < GC_THREAT_V3_TUNING.leashMarginSeconds;
+function holdsLeash(c: { margin: number; rival: boolean }, leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds): boolean {
+  return c.rival && c.margin < leashMarginSeconds;
 }
 
 /** #5978 (KUN orders_gc_v3): holder nogen af de talte ryttere snoren? */
-function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean }>): boolean {
-  return counted.some(holdsLeash);
+function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean }>, leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds): boolean {
+  return counted.some((c) => holdsLeash(c, leashMarginSeconds));
 }
 
 /**
@@ -499,9 +529,10 @@ function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean }>)
 function withLeash(
   threat: GcThreat,
   counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number }>,
+  leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds,
 ): GcThreat {
-  const held = counted.filter(holdsLeash);
-  const limiting = counted.filter((c) => c.severity !== "none" || holdsLeash(c));
+  const held = counted.filter((c) => holdsLeash(c, leashMarginSeconds));
+  const limiting = counted.filter((c) => c.severity !== "none" || holdsLeash(c, leashMarginSeconds));
   const tolerated = limiting.length > 0
     ? { tolerated_lead_seconds: Math.max(0, Math.min(...limiting.map((c) => c.leashRoom))) }
     : {};
