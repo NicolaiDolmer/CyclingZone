@@ -65,6 +65,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Node 24 (readiness probe and deploy tooling)
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -167,11 +168,9 @@ jobs:
 
       - name: Determine required deployments (path-based)
         id: required
-        # Backend-only commits: Vercel canceller bevidst via Ignored Build Step
-        # (frontend/vercel.json ignoreCommand skipper når diffen siden sidste
-        # deploy — VERCEL_GIT_PREVIOUS_SHA, fix #3838 — ikke rører frontend/) —
-        # så en Vercel-deployment kommer ALDRIG, og at vente på den gav falske
-        # ❌-kommentarer (fx a7c63d41 / PR #2545, 2026-07-17).
+        # The canonical classifier covers frontend, backend/lib, root/shared
+        # and unknown inputs. Only positively independent changes omit Vercel.
+        # Full history avoids shallow-parent and commit-files API truncation.
         # Spejl ignoreCommand-logikken: kræv kun Vercel når frontend/ er ændret,
         # og kun Railway når backend/ er ændret. Kan fil-listen ikke hentes →
         # kræv begge (konservativ fallback).
@@ -179,15 +178,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ steps.pr.outputs.sha }}
         run: |
-          FILES=$(gh api "repos/${{ github.repository }}/commits/$SHA" --paginate --jq '.files[].filename' 2>/dev/null || true)
-          if [[ -z "$FILES" ]]; then
+          # Use the canonical conservative frontend-input rule.
+          REQUIREMENT=$(node scripts/frontend-deployment-needed.mjs "$SHA")
+          NEED_VERCEL=$(jq -r 'if (.required | type) == "boolean" then (.required | tostring) else error("Invalid requirement") end' <<<"$REQUIREMENT" 2>/dev/null || true)
+          [[ "$NEED_VERCEL" == "false" ]] || NEED_VERCEL=true
+          FILES=$(git diff-tree --no-commit-id --name-only --no-renames -r "$SHA^1" "$SHA" -- || echo "FETCH_FAILED")
+          if [[ "$FILES" == "FETCH_FAILED" ]]; then
             echo "::warning::Kunne ikke hente ændrede filer for $SHA — kræver både Vercel og Railway (fallback)"
             NEED_VERCEL=true
             NEED_RAILWAY=true
           else
-            NEED_VERCEL=false
             NEED_RAILWAY=false
-            grep -q '^frontend/' <<<"$FILES" && NEED_VERCEL=true
             grep -q '^backend/' <<<"$FILES" && NEED_RAILWAY=true
           fi
           echo "Changed files touch: frontend=$NEED_VERCEL backend=$NEED_RAILWAY"
