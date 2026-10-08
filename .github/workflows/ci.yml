@@ -151,6 +151,13 @@ jobs:
         working-directory: .
         run: node --test scripts/check-now-md-sidecar.test.mjs
 
+      # #6229: fail-closed gates til refresh-staging.ps1 (fingerprint, raekketal,
+      # privacy, atomisk restore-plan). Rene gate-funktioner, ingen database og
+      # ingen credentials; kraever pwsh (findes paa ubuntu-runneren).
+      - name: Test staging refresh gates
+        working-directory: .
+        run: node --test scripts/refresh-staging.test.mjs
+
       - name: Run now-md-sidecar guard
         if: github.event_name == 'pull_request'
         working-directory: .
