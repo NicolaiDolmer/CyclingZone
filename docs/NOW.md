@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (9/10):** **Tour de l'Hexagone søn 11/10 kl. 11.** Start med `docs/sessions/2026-10-09-morgen-prompt.md`. (1) Merge #6375 (udbrudsmål i RULES) → #6376 (kalibrering official_times_v2, slukket) → #6382 (patch 7.347) → #6374 er merget. (2) Ny Tour-gennemtest fra main (10 seeds) → Fable-dommer → ÉT før/efter-billede. (3) Morgenblok 08:30, ét kort ad gangen: Tour-go på `official_times_v2` + konflikt mål 2 vs 3 (legacy-niveau på kuperet/højfjeld) · form #6156 (S5 foreløbigt, tekst, #6158) · grupetto/OTL · betaling+moms · #5268-apply (7.813 ryttere, 0 ratingfald; 658/719-punktet) · PostHog-nøgle #6310. Frist lør 18:00, ellers orders_gc_v2.
+> **🎯 Next action (9/10):** **Tour de l'Hexagone søn 11/10 kl. 11.** Start med `docs/sessions/2026-10-09-morgen-prompt.md`. (1) Merge #6375 (udbrudsmål i RULES) → #6376 (kalibrering official_times_v2, slukket) (patch 7.347 #6382 merget nat; Discord-udkast til ejeren: docs/drafts/discord-patch-notes-2026-10-08-aften.md). (2) Ny Tour-gennemtest fra main (10 seeds) → Fable-dommer → ÉT før/efter-billede. (3) Morgenblok 08:30, ét kort ad gangen: Tour-go på `official_times_v2` + konflikt mål 2 vs 3 (legacy-niveau på kuperet/højfjeld) · form #6156 (S5 foreløbigt, tekst, #6158) · grupetto/OTL · betaling+moms · #5268-apply (7.813 ryttere, 0 ratingfald; 658/719-punktet) · PostHog-nøgle #6310. Frist lør 18:00, ellers orders_gc_v2.
 >
 > **8/10 aften:** merget #6354 #6357 #6330 (migration verificeret) #6325 #6371 #6353 #6355 #6348 #6374 #6372 (Train now live, ejer-go) #6373 · udbrudsmålene fundet og samlet (#6375) · Tour-test: ny revision 57/5/9 vs nu 45/13/13 · læring: én merge-kø til processen er slut (`.claude/learnings/2026-10-09-two-merge-queues-cron-proof.md`).
 

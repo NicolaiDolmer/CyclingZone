@@ -9,10 +9,10 @@ Tour de l'Hexagone (D1, 18 etaper) starter søndag 11/10 kl. 11 og skal køre fe
 Uændret fra `docs/sessions/2026-10-09-next-session-prompt.md` (Opus leder/bygger, Fable = designer + én dommer før motoren tændes, design før byg, merge-regel 35(d), bølger via `wave.js`, ét spørgsmål ad gangen med nøgletal i kortet, billeder som fil). **Beslutninger tages i morgenblokken kl. 08:30, ikke om aftenen** (ejer 8/10). **Én merge-kø ad gangen til køens proces er afsluttet** (læring 9/10).
 
 ## 1. Merges først (regel 35(d), én kø)
-`scripts/merge-queue.ps1 -Pr "6375,6376,6382"` i den rækkefølge:
+`scripts/merge-queue.ps1 -Pr "6375,6376"` i den rækkefølge:
 - **#6375** docs: udbrudsmålene samlet i RACE_ENGINE_RULES ("Udbrudsmål") + båndet er ejer-godkendt, ikke "kandidat".
 - **#6376** kalibrering af `official_times_v2` mod udbrudsmålene (slukket; ingen løb bruger revisionen). Opus-review: bemærkninger, ikke blokerende.
-- **#6382** patch note 7.347 (Train now-låsen, samme km i film/historie, online = synlig fane). Discord-udkast EN: `docs/drafts/discord-patch-notes-2026-10-08-aften.md` → til ejeren.
+- (#6382 patch note 7.347 er merget 9/10 nat.) Discord-udkast EN til ejeren: `docs/drafts/discord-patch-notes-2026-10-08-aften.md`.
 #6053 og #6248 må IKKE merges (ejer-gated: #6248 kommer med Udvikling 2.0). #6305 er draft (form).
 
 ## 2. Tour-gennemtest → Fable → billede (før morgenblokken)
