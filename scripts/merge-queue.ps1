@@ -390,7 +390,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # Batch (ejer 8/10, review #6357): naeste PR roerer heller ikke backend/ og
   # raekken er under -MaxBatch -> merge med det samme og vent paa CI (main) +
   # evt. deploy-verifikation EEN gang efter raekken.
-  $batchWithNext = (-not $NoBatch) -and (-not $entry.touchesBackend) -and ($idx + 1 -lt $plan.Count) -and (-not $plan[$idx + 1].touchesBackend) -and (($script:batchMerged.Count + 1) -lt $MaxBatch)
+  $batchWithNext = (-not $NoBatch) -and (-not $entry.touchesBackend) -and ($idx + 1 -lt $plan.Count) -and (-not $plan[$idx + 1].touchesBackend) -and (([Math]::Max($script:batchMerged.Count, $script:dryBatchSize) + 1) -lt $MaxBatch)
   Write-Host ""
   Write-Host "=== PR #$n ===" -ForegroundColor Cyan
 
@@ -472,8 +472,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     if (-not $sha) { Start-Sleep -Seconds 5 }
   }
   if (-not $sha) {
-    Write-Host "  [FEJL] Kunne ikke afgoere merge-commit-SHA for PR #$n - STOPPER koeen (kan ikke verificere CI/deploy)." -ForegroundColor Red
-    $script:batchMerged += $n
+    Write-Host "  [FEJL] Kunne ikke afgoere merge-commit-SHA for PR #$n - STOPPER koeen. #${n}: SHA ukendt, main-CI og deploy er IKKE verificeret for den - tjek main manuelt." -ForegroundColor Red
+    # #$n er IKKE med i Exit-Queue's liste: den venter kun paa CI for den
+    # sidste KENDTE merge-SHA (raekkens tidligere PR'er), som ikke indeholder #$n.
     Exit-Queue 1
   }
   Write-Host "  Merged som $sha"
