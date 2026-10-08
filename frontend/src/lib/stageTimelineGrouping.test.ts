@@ -42,7 +42,7 @@ function anchorStage() {
 
 test("anker: 26 linjer på samme km bliver højst 5 (uden egne ryttere: 3)", () => {
   const built = buildFilmTimeline({ events: anchorStage(), distanceKm: 180 });
-  const atKm = built.feedEvents.filter((e) => e.km === 175);
+  const atKm = built.feedEvents.filter((e) => (e.recorded_km ?? e.km) === 175); // #6350: tjekpunkt-hændelser står ved spændets start
   assert.equal(atKm.length, 3);
   const lines = atKm.map((e) => describeEvent(e, { riderNameById: names }));
   assert.deepEqual(lines.map((l) => l?.key), ["group_merged_batch", "gc_reaction_batch_started", "finale_attack_named_batch"]);
@@ -50,7 +50,7 @@ test("anker: 26 linjer på samme km bliver højst 5 (uden egne ryttere: 3)", () 
   assert.equal(asGrouped(lines[1]).params.count, 2);
   assert.equal(asGrouped(lines[2]).params.riders, "Rider 1, Rider 2, Rider 3");
   // Motoren/den rå liste er uændret.
-  assert.equal(built.events.filter((e) => e.km === 175).length, 26);
+  assert.equal(built.events.filter((e) => (e.recorded_km ?? e.km) === 175).length, 26);
 });
 
 test("én hændelse vises uændret", () => {
@@ -243,7 +243,7 @@ test("egne ryttere står fortsat på egen linje, når de øvrige mangler navne",
 
 test("buildFilmTimeline: egne ryttere gives videre, uden dem samles der stadig", () => {
   const withOwn = buildFilmTimeline({ events: anchorStage(), distanceKm: 180, ownRiderIds: ["r2", "r31"] });
-  assert.equal(withOwn.feedEvents.filter((e) => e.km === 175).length, 3 + 3);
+  assert.equal(withOwn.feedEvents.filter((e) => (e.recorded_km ?? e.km) === 175).length, 3 + 3);
 });
 
 test("tekster: alle nøgler findes på EN og DA og bøjes korrekt", () => {
