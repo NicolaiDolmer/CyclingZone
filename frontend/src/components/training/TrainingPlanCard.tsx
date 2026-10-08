@@ -130,6 +130,8 @@ export default function TrainingPlanCard({
     </select>
   );
 
+  // #6139: on desktop the lock sits in today's whole-day field (the day column is too narrow).
+  const desktopLock = <LockIcon size={12} aria-hidden="true" className="shrink-0 text-cz-3" />;
   const headerCell = "bg-cz-subtle py-1.5 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3";
   const dayCell = (weekday: string, rowBg: string, isToday: boolean) => (
     <span className={`flex items-center gap-1.5 border-t border-cz-border px-2 py-1.5 text-[13px] font-semibold text-cz-1 ${rowBg}`}>
@@ -141,7 +143,7 @@ export default function TrainingPlanCard({
         </span>
       )}
       {isToday && todayLocked && (
-        <LockIcon size={12} aria-label={t("trainNow.planLocked")} className="shrink-0 text-cz-3" data-testid="training-plan-today-locked" />
+        <LockIcon size={12} aria-label={t("trainNow.planLocked")} className="shrink-0 text-cz-3 sm:hidden" data-testid="training-plan-today-locked" />
       )}
     </span>
   );
@@ -202,7 +204,8 @@ export default function TrainingPlanCard({
                         <span className="truncate">{shortLabel(daySession)}</span>
                         {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel, true, isToday && todayLocked)}
                       </span>
-                      <span className={`hidden border-s border-t border-cz-border px-1 py-1 sm:block ${rowBg}`}>
+                      <span className={`hidden items-center gap-1 border-s border-t border-cz-border px-1 py-1 sm:flex ${rowBg}`}>
+                        {isToday && todayLocked && desktopLock}
                         {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel, false, isToday && todayLocked)}
                       </span>
                     </>
@@ -294,7 +297,8 @@ export default function TrainingPlanCard({
                     <span className="truncate">{intensityLabel(current)}</span>
                     {intensitySelect(true)}
                   </span>
-                  <span className={`hidden border-s border-t border-cz-border px-1 py-1 sm:block ${rowBg}`}>
+                  <span className={`hidden items-center gap-1 border-s border-t border-cz-border px-1 py-1 sm:flex ${rowBg}`}>
+                    {isToday && todayLocked && desktopLock}
                     {intensitySelect(false)}
                   </span>
                   {multi && columns.map((column) => (
