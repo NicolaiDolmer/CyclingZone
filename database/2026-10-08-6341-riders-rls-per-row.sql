@@ -95,6 +95,7 @@ $$;
 -- Supabase' ALTER DEFAULT PRIVILEGES giver anon+authenticated EXECUTE på nye
 -- funktioner (#1971/#2830/#3124). Revoke eksplicit fra anon, grant kun det
 -- policyen kræver: authenticated evaluerer policyen; service_role til drift.
+-- secdef-lint: allow offered_intake_rider_ids (kaldt fra riders-RLS-policyen, som evalueres med kalderens rettigheder; uden authenticated-EXECUTE fejler al indlogget laesning af riders med 42501. Returnerer kun id'er der allerede er skjult.)
 REVOKE ALL ON FUNCTION public.offered_intake_rider_ids() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.offered_intake_rider_ids() FROM anon;
 GRANT EXECUTE ON FUNCTION public.offered_intake_rider_ids() TO authenticated, service_role;
