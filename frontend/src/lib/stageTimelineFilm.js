@@ -23,6 +23,10 @@ const NON_FEED_TYPES = new Set(["gap_update", "ttt_team_result"]);
 import { describeGcReactionEvent } from "./ordersGcSurface.ts";
 // #6137: gentagne ens hændelser på samme km bliver én linje (kun visningen).
 import { groupRepeatedFeedEvents, describeGroupedEvent } from "./stageTimelineGrouping.ts";
+// #6294/#6350: én indgang til den tidslinje filmen viser (ingen falske
+// indhentninger, ærlige km-spænd). filmKmValue skriver "km A-B"-værdien.
+import { honestTimelineEvents } from "./stageTimelineKmSpan.ts";
+export { filmKmValue } from "./stageTimelineKmSpan.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -94,7 +98,9 @@ function isTimeTrialStage(events) {
  */
 /** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null}} input */
 export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [] } = {}) {
-  const sorted = [...(events || [])].sort((a, b) => (a?.km ?? 0) - (b?.km ?? 0));
+  // #6294/#6350: uden samlinger forklædt som indhentninger, og med ærlige
+  // km-spænd for hændelser motoren stemplede ved et tjekpunkt.
+  const sorted = honestTimelineEvents(events);
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
@@ -105,7 +111,9 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
   // ikke beskriver noget. Kurven udelades derfor på tidskørsler (GapCurveLayer
   // renderer ingenting på en tom liste); tallene bliver stående i tidslinjen.
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
-  const caughtEvent = findMorningCatch(sorted);
+  // Projektionen læser den rå tidslinje (rækkefølge-følsom); kurven og
+  // catch-mærket står ved tjekpunktet, hvor motoren målte hullet lukket.
+  const caughtEvent = findMorningCatch(events);
   const namedGroups = sorted.some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");
   let gapCurve = [];
   if (!isTimeTrialStage(sorted)) {
