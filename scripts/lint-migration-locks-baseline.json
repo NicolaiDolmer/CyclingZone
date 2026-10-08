@@ -1,0 +1,987 @@
+{
+  "_comment": "Grandfathered findings for scripts/lint-migration-locks.mjs (#6342). Keyed by repo-relative path then rule id; every entry carries a reason. Do NOT add new files here: fix the migration instead.",
+  "entries": {
+    "backend/lib/seniorResultAggregates.integration.test.js": {
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "backend/lib/testdb/rankingRefreshEvents5692.integration.test.ts": {
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "backend/lib/testdb/rankingRefreshOverloads5692.integration.test.ts": {
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "backend/lib/youthStandings.test.js": {
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "backend/routes/rankings.5692.test.ts": {
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "backend/scripts/staging/measureRankingRollover5692.mjs": {
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "database/2026-04-22-auctions-seller-team-id-nullable.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-23-discord-settings.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-23-season-standings-rank-and-rebuild.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-24-board-parallel-plans.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-24-dyn-cyclist-import-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-24-watchlist-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-25-economy-retuning.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-25-economy-scale-4000x.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-25-rider-value-growth.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-26-online-status.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-26-race-results-sheets-import-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-26-window-pending-transfers.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-29-finance-notification-contract-types.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-29-uci-men-race-points.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-30-rider-market-value.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-04-30-transfer-offer-archive.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-02-deadline-day-final-whistle.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-02-deadline-day.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-02-prize-payout-control.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-03-discord-dm-opt-out.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-04-auction-cancellation.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-04-auctions-is-flash.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-04-salary-generated-column.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-04-squad-enforcement.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-05-board-1yr-autogen.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-05-board-club-dna.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-05-board-foundation.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-05-board-goal-types.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-05-board-members.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-05-board-tradeoff-pivot.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-05-watchlist-auction-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-06-auctions-unique-active-rider.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-05-07-auction-proxy-bids.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-07-economy-idempotency.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-08-auction-proxy-own-read.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-08-teams-is-test-account.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-09-audit-log-foundation.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-09-market-pause.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-09-race-pool.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-09-season-transition-admin-action.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-09-season-zero-finance-tx-backfill.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-10-auction-timing-config-rls.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-10-audit-rls-helper.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-05-10-feature-liveness-helper.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-05-10-reject-late-auction-bid-trigger.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-10-rider-history-rls.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-10-transfer-listings-unique-active-rider.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-05-11-consent-preferences.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-11-fix-signup-economy-defaults.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-11-rider-retirement.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-12-player-events-audit-helper.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-05-15-board-snapshots-unique.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-15-founder-supporter-waitlist.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-05-16-waitlist-utm-country.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-17-sprint-metrics-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-05-17-users-language-i18n.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-20-jersey-per-day-result-types.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-20-race-edited-admin-action.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-20-race-points-edited-admin-action.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-21-admin-log-nullable-user.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-21-security-hardening-phase-a.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-05-21-team-frozen-admin-action.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-22-discord-settings-rls-lockdown.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-22-pending-race-result-atomic-rpc.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-22-rls-permissive-policy-lockdown.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-22-transfer-window-racing-guard.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-24-squad-enforcement-started-at.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-26-backend-message-codes.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-05-30-board-test-mode.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-01-loan-agreements-window-pending.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-01-race-point-model-admin-actions.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-02-loan-buyout-pending-status.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-06-rider-base-value.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-06-rider-types.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-07-ability-system-v2.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-07-rider-progression-l0.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-09-cohort-retention-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-06-10-value-cutover-base-value.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-11-board-weekend-satisfaction-anchor.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-11-teams-unique-user-and-name.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-06-12-daily-training.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-12-race-entries-roles.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-13-academy-mvp.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-13-beta-access.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-13-contract-data-fields.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-15-launch-waitlist.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-06-15-physiology-foundation-v2.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-16-rls-initplan-and-hot-indexes.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-06-17-e3-emergency-hard-floor.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-18-academy-graduation.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-18-audit-foreign-keys-helper.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-06-18-finance-upkeep-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-19-finance-forced-debt-sale-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-20-academy-intake-marker.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-20-races-stage-progress.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-20-roadmap-shipped-history.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-20-starter-squad-marker.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-21-league-divisions-pyramid.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-21-race-results-breakaway-flags.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-21-stage-write-atomic-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-06-21-tier4-economy.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-22-hide-intake-riders-from-db.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-06-22-races-league-division.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-22-startbalance-500k.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-23-account-email-username.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-23-starter-depth-topup-marker.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-25-academy-promote-demote.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-25-contract-expiring-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-25-nps-responses.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-26-ghost-race-entries-trigger.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-28-race-pool-archetype-country.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-29-db-io-temp-spills-presence.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-06-29-drop-stale-backup-tables.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-29-perf-advisor-fk-indexes-rls-initplan.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-06-29-perf-advisor-multiple-permissive.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-06-30-traffic-events.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-03-block-rider-delete-with-inflight-entries.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-03-discord-dm-prefs.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-03-discord-settings-division-routing.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-04-race-result-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-04-ranking-matviews.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "database/2026-07-04-rankings-heartbeat.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "database/2026-07-05-daily-training-season-budget-cap.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-05-facilities-staff-foundation.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-05-team-day-result-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-06-notifications-admin-notice-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-07-riders-owner-is-ai.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-10-emergency-loan-idempotency.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-10-loans-accrued-interest.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-10-scout-assignments.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-11-drop-loan-agreements-table.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-11-race-seed-salt.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-11-repay-loan-interest-split-2326.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-11-retention-scorecard-v2-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-07-11-revoke-rpc-grants-2327.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-12-ai-team-pending-removal.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-12-race-v3-s1-work-cost.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-12-recompute-standings-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-16-onboarding-progress-dismiss-persist.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-16-peak-suggestion-dismiss.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-16-race-results-orphan-guard.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-17-global-rank.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "database/2026-07-17-notifications-stage-result-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-17-watchlist-departed-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-18-2594-v4-value-salary-cutover.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-18-academy-intake-expired-compensation-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-18-auctions-expired-intake-team-id.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-18-my-result-seen-server-flag.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-18-riders-pending-team-id-drift-closer.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-19-academy-drip-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-19-dashboard-rider-ranking-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-19-drop-season-budget-cols.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-19-sunday-intake-drip.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-20-2725-email-retention-loop.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-20-finance-parachute-type.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-20-rider-development-atomic-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-21-race-route-model.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-22-race-passages.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-23-2764-prize-preview-index.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-07-23-rls-write-lockdown-users-transfers-bids-swaps.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-25-2891-season-recap-aggregate.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-25-2895-board-satisfaction-fk-indexes.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-07-25-dashboard-my-team-season-races-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-25-sponsor-choice-2.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-26-2863-season-honours.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-07-26-3016-notification-type-constraint.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-26-admin-log-target-fkeys-set-null.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-26-player-feedback-inbox.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-27-3013-refresh-matviews-concurrently.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "database/2026-07-27-3043-notification-type-constraint.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-07-30-2813-subscriptions-terms-accept.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-03-2792-3193-global-rank-humans-only.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-08-03-3190-team-rider-race-days.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-08-03-discord-dead-connection-autodisconnect.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-03-growth-snapshots-3196.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-08-04-2180-selection-warning-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-04-3316-midseason-sponsor-activation.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-04-3345-frozen-valuation-type.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-04-academy-signing-fee-cost-basis.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-04-welcome-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-05-3334-scout-changed-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-05-3398-maiden-win-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-05-audit-write-grants-helper.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-08-05-race-results-batch-write-atomic-rpc.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-08-05-race-results-entrant-key-unique-constraint.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-06-alunta-subscriptions-last-event-at.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-06-race-results-entrant-uid.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-09-3570-archetype-draw.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-14-3765-revoke-anon-execute-apply-race-results-batch.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-08-17-3489-staff-candidate-name-guard.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-08-17-3489-staff-multi-slot.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-17-3546-itt-hilly-profile-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-17-3549-auction-sold-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-18-3420-race-entries-rider-day-invariant.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-18-3514-mandate-model.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-18-3600-email-log-retry.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-18-3746-dev-transition-dismiss.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-18-3817-race-entries-team-fk-cascade.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-18-3934-sweep-batch-rpc-deferrable.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-19-2677-rls-initplan-permissive-split.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-19-3449-level-correction-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-20-3855-race-stage-profiles-segments-weather.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-20-4010-race-results-stage-window-index.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-21-4075-race-pool-retired-at.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-22-3750-value-transition-preview-academy.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-23-4155-s3-gameday-repair.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-23-division-bonus-unique-index.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-08-23-fk-indexes-cutover.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-08-24-4163-restore-deferrable-double-booking.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-24-4173-rider-binding-per-game-day.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-25-3517-forum-reactions.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-25-3517-forum-reply-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-27-4294-peak-plan-cascade.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-27-4320-traffic-channel-dimension.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-28-4213-academy-acquisition-ownership-guard.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-08-29-4213-academy-offer-ownership-guard.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-29-division-adjustment.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-30-3492-swap-offer-archive.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-30-4418-injury-dns-incident-kind.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-08-31-4423-academy-signing-defer.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-01-3514-milestone-early-achievement.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-02-4578-board-satisfaction-events-goal-states.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-02-growth-snapshot-paying-only-4636.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-09-03-4105-terre-di-toscana-gravel.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-03-4148-bulk-update-rider-values.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-09-03-4201-assistant-mode.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-03-4557-board-mandates-proposed.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-09-03-4592-next-season-signup.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-03-4592-team-parked-at.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-03-4720-advisor-warns-search-path-and-initplan.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-03-4733-users-browser-language.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-03-4733-users-language-constraint-config.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-04-4147-race-finalize-state.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-04-4376-backup-contracts-pkey.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-04-4376-clawback-finance-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-04-4485-backup-standings-type-fix.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-04-4753-team-retired-at.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-04-4754-feature-liveness-count-lock-timeout.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-09-04-forum-categories.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-05-1099-reputation-system.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-06-4632-effort-five-steps.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-06-4879-race-incidents-v4-parity.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-07-3457-roadmap-anon-read.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-07-4828-ai-trim-blocked-since.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-08-2853-email-events.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-08-3200-dm-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-08-4818-forum-roadmap-category.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-08-4819-forum-images-bucket.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-08-5000-forum-thread-stats.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-08-5011-forum-mention-notification.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-08-5012-discord-handle.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-09-4753-ai-pool-retirement.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-10-4983-selection-reminder.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-10-5073-retirement-notice-column.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-11-5121-survey-closes-at.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-13-5112-admin-log-retirement-notice-freeze.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-14-4346-fairplay-trade-report.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-14-4846-training-tick-game-day.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-14-5130-discord-welcome-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-14-5130-discord-welcome-sent-at.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-14-5215-growth-snapshot-ltv-ex-vat.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-09-15-4619-riders-squad.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-15-4620-race-pool-squad-and-youth-catalog.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-15-4847-training-day-close-trigger.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-15-5130-discord-welcome-claimed-at.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-15-5268-mental-abilities.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-18-5259-admin-log-beta-actions.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-18-5259-beta-access-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-21-4759-assistant-filled-squad-notification-type.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-21-5462-injury-race-days.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-22-5443-best-role-data.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-23-5246-late-fill-log.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-24-5386-forum-quote-op.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-24-5517-squad-leagues-races-teams.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-25-4592-d4-retire-pools.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-25-4592-team-comeback-season.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-25-4620-youth-rider-rankings-mv.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "database/2026-09-25-5535-senior-only-result-aggregates.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-09-26-4385-upkeep-per-race-day.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-26-4629-training-programs.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-28-4753-youth-pool-retirement-replacement.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-28-5844-academy-board-gift.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-28-5893-board-weekend-bulk-write.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-09-29-5928-training-condition-date.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-29-5928-training-condition-initialization.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-09-29-5928-training-condition-partial.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-29-5928-training-condition-recovery.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-09-30-5860-shared-race-day-recovery.sql": {
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-09-30-5860-spent-race-days.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-10-01-race-engine-rules-revision.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-10-02-race-engine-rules-revision-v2.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-10-03-6061-first-use-rider-condition.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-10-03-6115-withdraw-offers-on-owner-change.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-10-05-5387-roadmap-hub.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "index-concurrently": "Shipped and applied before the #6342 guard; plain CREATE INDEX on an existing table. History is not rewritten."
+    },
+    "database/2026-10-05-6061-compensation-ledger.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten.",
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-10-05-6129-compensation-slim-source.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    },
+    "database/2026-10-05-race-engine-rules-revision-v3.sql": {
+      "lock-timeout": "Shipped and applied before the #6342 guard; strong-lock DDL without SET lock_timeout. History is not rewritten."
+    },
+    "database/2026-10-06-5692-ranking-refresh-events.sql": {
+      "refresh-concurrently": "Pre-#6342: non-concurrent REFRESH MATERIALIZED VIEW (migration body, test fixture or staging script). Production refresh path uses CONCURRENTLY where possible."
+    },
+    "database/2026-10-06-6221-roadmap-service-rpcs.sql": {
+      "grant-atomic": "Shipped and applied before the #6342 guard; REVOKE and GRANT not in one transaction. History is not rewritten."
+    }
+  }
+}

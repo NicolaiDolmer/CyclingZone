@@ -125,6 +125,32 @@ moot for them.
 **Do not add new migrations to the whitelist.** Fix the DDL instead. The
 whitelist is for closing the gap on history, not a bypass for new work.
 
+## Lock safety (#6342)
+
+auto-migrate runs `psql -f` per file with no surrounding transaction, so each
+statement autocommits. Lock and statement timeouts on player reads were traced
+to migrations and index builds, and a burst of failed consent saves to a
+REVOKE/GRANT window. The CI guard
+[`scripts/lint-migration-locks.mjs`](../scripts/lint-migration-locks.mjs)
+(same job as the idempotency guard) enforces four rules on new
+`database/2026-*.sql` files:
+
+| Rule | Requirement |
+|------|-------------|
+| `lock-timeout` | `ALTER TABLE`, `DROP TABLE`, `TRUNCATE`, `CREATE/DROP POLICY`, `CREATE/DROP TRIGGER` on an existing table need `SET lock_timeout = '3s';` in the file (auto-migrate can be re-triggered) |
+| `index-concurrently` | `CREATE INDEX` on an existing table must be `CREATE INDEX CONCURRENTLY IF NOT EXISTS` (not valid inside a transaction or DO block, so keep it a top-level statement) |
+| `refresh-concurrently` | `REFRESH MATERIALIZED VIEW` without `CONCURRENTLY` is forbidden in migrations and in `backend/` code |
+| `grant-atomic` | `REVOKE` and `GRANT` on the same object must share one `BEGIN; ... COMMIT;` (or one `DO` block) |
+
+Tables created in the same file are exempt from the first, second and fourth
+rule: nobody can be using them yet.
+
+Existing findings are grandfathered per file and rule, with a reason, in
+[`scripts/lint-migration-locks-baseline.json`](../scripts/lint-migration-locks-baseline.json).
+New files are enforced; fix the migration instead of adding it to the baseline.
+Run locally with `node scripts/lint-migration-locks.mjs` (add `--print-baseline`
+to list raw findings).
+
 ## Local commands
 
 ```bash

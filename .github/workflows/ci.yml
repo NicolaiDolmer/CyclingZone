@@ -955,6 +955,13 @@ jobs:
       - name: Run idempotency guard
         run: node scripts/lint-migration-idempotency.mjs
 
+      # #6342: lock-safety (lock_timeout, CONCURRENTLY, atomic grants).
+      - name: Test migration lock guard
+        run: node --test scripts/lint-migration-locks.test.mjs
+
+      - name: Run migration lock guard
+        run: node scripts/lint-migration-locks.mjs
+
       # #4163: samme familie, anden akse. Idempotens-vagten spoerger "kan denne
       # migration koere igen?"; form-vagten spoerger "genskaber den objektet i
       # den RIGTIGE form?". #4155 var idempotent OG forkert: den droppede
