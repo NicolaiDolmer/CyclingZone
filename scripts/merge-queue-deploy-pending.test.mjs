@@ -12,7 +12,7 @@ function runFixture(mode) {
   const script = `
     $ErrorActionPreference='Stop'; $DryRun=$false; $Repo='fixture/repo';
     $taskClock=[DateTime]::Parse('2026-10-06T06:00:00Z').ToUniversalTime();
-    $taskReruns=0; $taskReadsAfterRerun=0;
+    $taskReruns=0; $taskReadsAfterRerun=0; $taskJobReads=0;
     $ast=[Management.Automation.Language.Parser]::ParseFile('${queue}',[ref]$null,[ref]$null);
     $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Wait-ForDeployVerification'},$true);
     Invoke-Expression $fn.Extent.Text;
@@ -32,7 +32,10 @@ function runFixture(mode) {
         if('${mode}' -in @('deferred','missingCron')){$smoke='success';$pending='skipped'}
         $cronVerified=if('${mode}' -eq 'deferred'){'skipped'}else{'success'};
         $cronDeferred=if('${mode}' -eq 'deferred'){'success'}else{'skipped'};
-        $steps=@(@{name='Smoke-test prod';status='completed';conclusion=$smoke},@{name='Deployment still pending';status='completed';conclusion=$pending});
+        $script:taskJobReads++;
+        if('${mode}' -eq 'settling'){$smoke='success';$pending='skipped'}
+        $smokeStatus=if('${mode}' -eq 'settling' -and $script:taskJobReads -le 2){'in_progress'}else{'completed'};
+        $steps=@(@{name='Smoke-test prod';status=$smokeStatus;conclusion=$smoke},@{name='Deployment still pending';status='completed';conclusion=$pending});
         if('${mode}' -ne 'missingCron'){$steps+=@(@{name='Cron check-ins verified';status='completed';conclusion=$cronVerified},@{name='Cron check-ins deferred';status='completed';conclusion=$cronDeferred})}
         return (@{jobs=@(@{run_id=10;run_attempt=$attempt;steps=$steps})}|ConvertTo-Json -Depth 6 -Compress)
       }
@@ -68,6 +71,10 @@ test('repeated completed pending observations stop at the rerun limit without ve
 
 test('deferred cron evidence stops immediately without resetting its boundary through rerun', () => {
   assert.deepEqual(runFixture('deferred'), { state: 'deferred', reruns: 0, readsAfterRerun: 0 });
+});
+
+test('8/10: job steps still settling right after completion are re-read, not treated as unknown', () => {
+  assert.deepEqual(runFixture('settling'), { state: 'verified', reruns: 0, readsAfterRerun: 0 });
 });
 
 test('successful smoke without cron evidence stops fail-closed', () => {
