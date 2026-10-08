@@ -240,7 +240,10 @@ export function backupSql(table) {
   if (!BACKUP_TABLE_PATTERN.test(table)) throw new Error(`Ugyldigt backup-navn: ${table}`);
   return [
     `CREATE TABLE IF NOT EXISTS public.${table} AS`,
-    "  SELECT rider_id, teamwork, leadership, now() AS backed_up_at",
+    // filled_* skrives af applyPlan EFTER hver vellykket opdatering: rollback
+    // rører kun felter scriptet faktisk fyldte (ikke felter træning skrev imens).
+    "  SELECT rider_id, teamwork, leadership,",
+    "    NULL::integer AS filled_teamwork, NULL::integer AS filled_leadership, now() AS backed_up_at",
     "  FROM public.rider_derived_abilities",
     "  WHERE teamwork IS NULL OR leadership IS NULL;",
     `ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY;`,
@@ -248,16 +251,18 @@ export function backupSql(table) {
   ].join("\n");
 }
 
-// Rollback sætter KUN felter tilbage til NULL der var NULL ved backup. Bemærk:
-// træningsfremgang optjent på de fyldte felter efter apply går tabt ved rollback.
+// Rollback sætter KUN felter tilbage til NULL som applyPlan faktisk fyldte
+// (filled_* er sat). Et felt træning skrev mellem backup og apply blev sprunget
+// over af apply og røres heller ikke her. Bemærk: træningsfremgang optjent på
+// de fyldte felter EFTER apply går tabt ved rollback.
 export function rollbackSql(table) {
   if (!BACKUP_TABLE_PATTERN.test(table)) throw new Error(`Ugyldigt backup-navn: ${table}`);
   return [
     "BEGIN;",
     "UPDATE public.rider_derived_abilities a SET teamwork = NULL",
-    `  FROM public.${table} b WHERE a.rider_id = b.rider_id AND b.teamwork IS NULL;`,
+    `  FROM public.${table} b WHERE a.rider_id = b.rider_id AND b.filled_teamwork IS NOT NULL;`,
     "UPDATE public.rider_derived_abilities a SET leadership = NULL",
-    `  FROM public.${table} b WHERE a.rider_id = b.rider_id AND b.leadership IS NULL;`,
+    `  FROM public.${table} b WHERE a.rider_id = b.rider_id AND b.filled_leadership IS NOT NULL;`,
     "COMMIT;",
   ].join("\n");
 }
@@ -328,7 +333,7 @@ function applyFooter(ctx) {
   L.push(`infisical run --env=prod -- node backend/scripts/backfill5268TeamworkLeadership.mjs --apply --owner-go --backup-table=${table} --expect-riders=${plan.entries.length}`);
   L.push("```");
   L.push("");
-  L.push("3. Rollback (saetter kun de fyldte felter tilbage til NULL; traening optjent efter apply paa de felter gaar tabt):");
+  L.push("3. Rollback (saetter kun felter apply faktisk fyldte tilbage til NULL; traening optjent efter apply paa de felter gaar tabt):");
   L.push("");
   L.push("```sql");
   L.push(rollbackSql(table));
@@ -470,7 +475,7 @@ export function lowValueCandidateIds(riders, abilityRows) {
 // Apply: verificér backup → pr. rytter pr. felt en BETINGET opdatering
 // (`.is(key, null)`), så et felt der har fået en værdi siden aldrig overskrives.
 export async function applyPlan(supabase, plan, { backupTable, log = console.log } = {}) {
-  const backup = await fetchAllRows(() => supabase.from(backupTable).select("rider_id, teamwork, leadership").order("rider_id"));
+  const backup = await fetchAllRows(() => supabase.from(backupTable).select("rider_id, teamwork, leadership, filled_teamwork, filled_leadership").order("rider_id"));
   const backupById = new Map(backup.map((b) => [b.rider_id, b]));
   const missing = plan.entries.filter((e) => {
     const b = backupById.get(e.riderId);
@@ -486,7 +491,14 @@ export async function applyPlan(supabase, plan, { backupTable, log = console.log
       const { data, error } = await supabase.from("rider_derived_abilities")
         .update({ [k]: v }).eq("rider_id", e.riderId).is(k, null).select("rider_id");
       if (error) throw error;
-      if (data?.length) fields += 1; else skippedSinceDryRun += 1;
+      if (!data?.length) { skippedSinceDryRun += 1; continue; }
+      // Markér feltet som fyldt (rollback-grundlaget). EFTER opdateringen: et
+      // crash imellem efterlader højst ét fyldt felt umarkeret, aldrig et
+      // trænings-felt markeret som "fyldt".
+      const { error: markError } = await supabase.from(backupTable)
+        .update({ [`filled_${k}`]: v }).eq("rider_id", e.riderId);
+      if (markError) throw markError;
+      fields += 1;
     }
   }
   log(`APPLY: ${fields} felter fyldt, ${skippedSinceDryRun} havde faaet en vaerdi siden (urort).`);

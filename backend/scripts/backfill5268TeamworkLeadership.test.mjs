@@ -150,15 +150,17 @@ function fakeSupabase(tables) {
       },
       update(patch) {
         q.patch = patch;
+        const perform = () => {
+          const hit = (tables[table] ?? []).filter((r) => q.filters.every((f) => f(r)));
+          for (const r of hit) Object.assign(r, patch);
+          writes.push({ table, patch, n: hit.length });
+          return { data: hit.map((r) => ({ rider_id: r.rider_id })), error: null };
+        };
         const exec = {
           eq(col, v) { q.filters.push((r) => r[col] === v); return exec; },
           is(col, v) { q.filters.push((r) => (r[col] ?? null) === v); return exec; },
-          select() {
-            const hit = (tables[table] ?? []).filter((r) => q.filters.every((f) => f(r)));
-            for (const r of hit) Object.assign(r, patch);
-            writes.push({ table, patch, n: hit.length });
-            return Promise.resolve({ data: hit.map((r) => ({ rider_id: r.rider_id })), error: null });
-          },
+          select() { return Promise.resolve(perform()); },
+          then(res, rej) { return Promise.resolve(perform()).then(res, rej); },
         };
         return exec;
       },
@@ -166,7 +168,7 @@ function fakeSupabase(tables) {
     for (const m of ["insert", "upsert", "delete", "rpc"]) b[m] = () => { writes.push({ table, method: m }); return b; };
     return b;
   };
-  return { from, rpc: () => { writes.push({ method: "rpc" }); }, writes };
+  return { from, rpc: () => { writes.push({ method: "rpc" }); }, writes, tables };
 }
 
 test("tør kørsel (run uden --apply) kalder ingen skrivende metode", async () => {
@@ -221,6 +223,10 @@ test("apply overskriver ikke et felt der har fået en værdi siden tør kørsel"
   assert.equal(row.teamwork, 4);
   assert.equal(row.leadership, plan.entries[0].fill.leadership);
   assert.equal(res.skippedSinceDryRun, 1);
+  // Rollback-grundlaget: kun det felt apply faktisk fyldte er markeret.
+  const b = sb.tables[table][0];
+  assert.equal(b.filled_teamwork ?? null, null, "trænings-feltet må ikke markeres som fyldt");
+  assert.equal(b.filled_leadership, plan.entries[0].fill.leadership);
 });
 
 test("apply nægter når en rytter mangler i backuppen", async () => {
@@ -256,8 +262,9 @@ test("backup- og rollback-SQL bruger kun et valideret tabelnavn", () => {
   assert.equal(t, "backup_5268_rider_derived_abilities_20261008");
   assert.match(backupSql(t), /CREATE TABLE IF NOT EXISTS public\.backup_5268_rider_derived_abilities_20261008 AS/);
   assert.match(backupSql(t), /ENABLE ROW LEVEL SECURITY/);
-  assert.match(rollbackSql(t), /SET teamwork = NULL[\s\S]*b\.teamwork IS NULL/);
-  assert.match(rollbackSql(t), /SET leadership = NULL[\s\S]*b\.leadership IS NULL/);
+  assert.match(rollbackSql(t), /SET teamwork = NULL[\s\S]*b\.filled_teamwork IS NOT NULL/);
+  assert.match(rollbackSql(t), /SET leadership = NULL[\s\S]*b\.filled_leadership IS NOT NULL/);
+  assert.match(backupSql(t), /NULL::integer AS filled_teamwork, NULL::integer AS filled_leadership/);
   assert.throws(() => backupSql("riders"), /Ugyldigt/);
 });
 
