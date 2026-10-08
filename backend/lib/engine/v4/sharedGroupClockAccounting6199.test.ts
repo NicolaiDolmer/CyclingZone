@@ -98,6 +98,42 @@ test('generic merge carries the cohort mark to the surviving group id', () => {
   assert.equal(mergedSharedCohorts(undefined, groups, merged.merges), undefined);
 });
 
+function threeGroupFinale() {
+  const {riders, ctx} = sharedFixture([50, 50, 90], '6199-finale-contact');
+  const entry: RaceGroup[] = [{id:'front',kind:'peloton',rider_ids:['r0'],gap_seconds:0,cohesion:1},
+    {id:'middle',kind:'chase',rider_ids:['r1'],gap_seconds:1000,cohesion:1},
+    {id:'rear',kind:'chase',rider_ids:['r2'],gap_seconds:1010,cohesion:1}];
+  const out = finaleHook(withGroups(riders, entry, {shared_grupetto_groups: {middle: true}}),
+    {...ctx, sharedGroupTime: {entryGroups: entry, incidentCursor: 0}});
+  return {out};
+}
+
+test('the finale cannot move a rear group past a middle group without contact', () => {
+  const {out} = threeGroupFinale();
+  const lineOf = (id: string) => out.state.groups.find(g => g.rider_ids.includes(id))!;
+  assert.equal(lineOf('r1').id, lineOf('r2').id, 'the passing group and the passed group share one physical line');
+  const order = out.state.finish_order!;
+  assert.ok(order.indexOf('r0') < order.indexOf('r1') && order.indexOf('r0') < order.indexOf('r2'));
+  const gaps = order.map(id => out.state.groups.find(g => g.rider_ids.includes(id))!.gap_seconds);
+  assert.deepEqual(gaps, [...gaps].sort((a, b) => a - b), 'finish order never contradicts physical arrival');
+  assert.ok(out.events.some(e => e.type === 'group_merged' && e.params.group_id === 'middle' && e.params.into_group_id === lineOf('r2').id),
+    'contact is reported');
+  assert.equal(out.state.shared_grupetto_groups?.[lineOf('r1').id], true, 'cohort lineage follows the joined line');
+});
+
+test('a group reaching the front in the finale collects every group it passed', () => {
+  const {riders, ctx} = sharedFixture([50, 50, 90], '6199-finale-front');
+  const entry: RaceGroup[] = [{id:'front',kind:'peloton',rider_ids:['r0'],gap_seconds:0,cohesion:1},
+    {id:'middle',kind:'chase',rider_ids:['r1'],gap_seconds:20,cohesion:1},
+    {id:'rear',kind:'chase',rider_ids:['r2'],gap_seconds:30,cohesion:1}];
+  const out = finaleHook(withGroups(riders, entry), {...ctx, sharedGroupTime: {entryGroups: entry, incidentCursor: 0}});
+  const gapOfRider = (id: string) => out.state.groups.find(g => g.rider_ids.includes(id))!.gap_seconds;
+  assert.ok(gapOfRider('r2') <= gapOfRider('r1'), 'no overtaking without contact');
+  const order = out.state.finish_order!;
+  const gaps = order.map(gapOfRider);
+  assert.deepEqual(gaps, [...gaps].sort((a, b) => a - b));
+});
+
 test('incidents booked before segment entry are already inside the entry gaps', () => {
   const {riders, ctx} = sharedFixture([50, 90, 90]);
   const entry: RaceGroup[] = [{id:'front',kind:'peloton',rider_ids:['r0'],gap_seconds:0,cohesion:1},

@@ -35,6 +35,8 @@ import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } f
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
+import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
+import type { GroupMerge } from "./groups.ts";
 import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -527,6 +529,41 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     }
   }
 
+  // #6199 (KUN official_times_v1): fysisk kontakt afklares FOER klassifikations-
+  // puljen og finish_order. En gruppe der i finalen naar en gruppe foran sig,
+  // kan ikke passere den uden kontakt: de samles ved checkpointet (samme regel
+  // som #6327: den samlede linje har indhenterens tid og id), og kohortelinjen
+  // foelger med. Naar linjen fronten, er alle grupper den passerede med.
+  let finaleCohorts = state.shared_grupetto_groups;
+  if (ctx.sharedGroupTime && survivingGroups.length > 0) {
+    const caughtIds = new Set(caughtGroups.map(group => group.id));
+    const survivorById = new Map(survivingGroups.map(group => [group.id, group]));
+    const stack: RaceGroup[] = [];
+    const caughtLines: RaceGroup[] = [];
+    const contactMerges: GroupMerge[] = [];
+    for (const group of chaseCandidates) {
+      let line = caughtIds.has(group.id) ? {...group, rider_ids: [...group.rider_ids], gap_seconds: 0} : survivorById.get(group.id);
+      if (!line) continue;
+      while (stack.length > 0 && line.gap_seconds <= stack[stack.length-1].gap_seconds + GROUP_CLOCK_CONTACT_EPSILON) {
+        const passed = stack.pop()!;
+        contactMerges.push({absorbed_group_id: passed.id, into_group_id: line.id, rider_ids: [...passed.rider_ids]});
+        finaleCohorts = mergedSharedCohorts(finaleCohorts, [line, passed],
+          [{absorbed_group_id: passed.id, into_group_id: line.id, rider_ids: [...passed.rider_ids]}]);
+        line = mergedPhysicalGroup(line, passed, Math.min(line.gap_seconds, passed.gap_seconds));
+      }
+      if (caughtIds.has(group.id) || line.gap_seconds <= GROUP_CLOCK_CONTACT_EPSILON) caughtLines.push(line);
+      else stack.push(line);
+    }
+    for (const merge of contactMerges) {
+      events.push({km: finishKm, type: "group_merged", params: {group_id: merge.absorbed_group_id,
+        into_group_id: merge.into_group_id, rider_ids: [...merge.rider_ids]}});
+    }
+    caughtGroups.splice(0, caughtGroups.length, ...caughtLines);
+    survivingGroups.splice(0, survivingGroups.length, ...stack);
+    contenderIds = [...frontPool.flatMap(g => g.rider_ids), ...caughtLines.flatMap(g => g.rider_ids)];
+    bestSurvivingGroupForEvent = stack[0] ?? null;
+  }
+
   // Hvis fronten selv IKKE er en ren peloton (dvs. et forspring der overlevede
   // hele finale-segmentet uindhentet uden nogen kontendent bagved overhovedet,
   // eller frontgruppens art er breakaway/solo/chase) markeres det som et
@@ -919,6 +956,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // #6200: bogen fra nedkoerslens regruppering er brugt op her (types.ts).
   const base: EngineState = { ...state };
   delete base.finish_descent_regroup;
-  const nextState: EngineState = { ...base, groups: newGroups, finish_order: finishOrder };
+  const nextState: EngineState = { ...base, groups: newGroups, finish_order: finishOrder,
+    ...(finaleCohorts !== state.shared_grupetto_groups ? { shared_grupetto_groups: finaleCohorts } : {}) };
   return { state: nextState, events };
 };
