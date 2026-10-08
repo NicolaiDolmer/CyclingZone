@@ -281,6 +281,72 @@ Brug `-Sha <commit>` hvis en ældre production-commit skal verificeres eksplicit
 - Railway skal verificeres separat; en vellykket Vercel-deploy er ikke bevis for at backend-fixet er live
 - For backend-bugfixes bør en live deploy først betragtes som verificeret, når Railway svarer som forventet
 
+### Berørte cron-jobs efter Railway READY (#6318)
+
+`deploy-verify.yml` er gaten før LIVE-kommentaren. Checkout matcher target SHA;
+`scripts/ci/cron-deploy-verification.mjs --impact` læser hele commit-diffen med
+rename-oprindelser. Ukendt, tom eller trunkeret diff fejler. `cron-source-map.json`
+ejer callback-/injection-rødder; relative imports udvides transitivt, også `.ts`.
+Common cron-/runtime-filer og ukendte runtime-filer kræver alle jobs. Et jobs
+uopløselige importgraph gør altid dette job potentielt berørt ved runtime-diffs;
+usikkerheden smitter ikke de andre kendte graphs eller inline-only jobs.
+Nye registry-slugs kræver samtidig mapping; ukomplet mapping fejler.
+
+Kadence og margin kommer udelukkende fra `backend/lib/cronMonitorRegistry.js`
+`ALL_CRON_MONITORS`. Efter positiv Railway-observation gemmes en konservativ UTC
+`cron_since`, ikke workflowets starttid. Read-only PostgREST GET bruger de
+eksisterende Actions secrets `SUPABASE_URL` og `SUPABASE_SERVICE_KEY`. Ingen
+mutationer eller rå API-bodies logges. Job, sidste check-in og deadline skrives
+til log/summary. Rækken skal have korrekt kadence og et check-in strengt efter
+grænsen, inden kadence plus margin; manglende, ulæselig, forældet eller fremtidig række
+fejler straks, udeblevet tick fejler ved deadline.
+
+Boot-prime er ikke tick-bevis: første snapshot tæller aldrig som succes, og
+observerede fælles timestamps udelukkes gennem hele polling-forløbet. Rækken
+skal avancere fra snapshot. Dette er konservativt: samtidige legitime ticks kan
+også blive afvist. En senere observeret boot-kohorte tilbagekalder cachet bevis
+med samme timestamp og kræver et særskilt tick.
+Tabellen har hverken release-ID eller tick/boot-markør, så
+read-only bevis kan ikke entydigt tilskrive en senere individuel skrivning en
+proces ved genstarts-klynger; ingen migration indgår i denne leverance.
+
+Korte kadencer poller indtil deres deadline.
+Et accepteret første tick fastholdes, mens øvrige jobs afventes; senere upserts
+må ikke overskrive dette bevis. Kun ændret job-status og slutresultatet logges.
+
+**Railway-drain:** den gamle proces kører videre i `deploy.drainingSeconds`
+(`backend/railway.json`) efter det nye deploy er READY, og et igangværende tick
+dér kan stadig skrive et check-in. Beviset tæller derfor kun check-ins strengt
+efter grænsen **plus** drain, og deadlinen regnes fra samme punkt. Værdien læses
+fra Railway-configen; en ugyldig værdi fejler lukket.
+
+Kun **korte kadencer (≤ 30 min) kræves** for at et deploy er bevist. Kadencer
+over 30 minutter må give **AFVENTER CHECK-IN**, når de korte jobs er bevist.
+Det er `deferred`, aldrig `verified`: ingen LIVE-kommentar, men en
+AFVENTER CHECK-IN-kommentar med jobs og deadlines, og merge-køen **fortsætter**
+(den viser kun status). Begrundelse: næsten enhver backend-ændring rører en
+fælles fil (`server.js`, `cron.js`, package-filer) og dermed alle jobs, også
+time- og døgn-jobs; skulle de blokere, ville køen stå stille i timevis efter
+hver backend-PR. De lange jobs dækkes af cron-heartbeat-vagten, der alarmerer i
+Discord, hvis et job misser kadence plus margin. Køen genkører ikke deferred
+attempts, da det ville skabe en ny READY-grænse. Overskredne eller ulæselige
+check-ins fejler stadig rødt og stopper køen. Almindelig deployment `pending`
+beholder den eksisterende bounded rerun-adfærd.
+
+Heartbeat-læsningen filtrerer på registry-slugs (`job_slug=in.(…)`), sorterer
+og begrænser til registry-størrelse + 1, så fremmede eller forældede rækker
+aldrig kan skubbe et berørt job ud af svaret. Søskende-rækkerne bevares bevidst,
+fordi en boot-prime-kohorte kun kan genkendes på tværs af jobs.
+
+En tom commit (ingen filer i GitHub-API'et **og** tom diff mod første parent i
+target-checkoutet) deployer intet og har ingen cron-påvirkning; uenighed mellem
+de to kilder fejler lukket. Fejler scriptet på topniveau, logges årsagen uden
+secrets (kendte secret-værdier og Bearer-tokens maskeres, JSON-fejl citeres ikke).
+
+Merge-køens `-DeployVerifyTimeoutMinutes` (110) ligger over Deploy verify-jobbets
+`timeout-minutes` (100), så et helt attempt kan nå at blive færdigt; en test
+holder de to tal afstemt.
+
 ---
 
 ## Hvornår Railway deployer (watch paths, #4150)

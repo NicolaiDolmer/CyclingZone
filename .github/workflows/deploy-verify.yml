@@ -51,7 +51,11 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    # 40 min deployment polling + up to ~48 min short-cadence proof (Railway
+    # drain + 30 min cadence + margin) + probes. scripts/merge-queue.ps1's
+    # -DeployVerifyTimeoutMinutes must stay above this (asserted in
+    # scripts/merge-queue-deploy-pending.test.mjs, #6318).
+    timeout-minutes: 100
     steps:
       # #5424: flyttet hertil (var før "Wait for Vercel + Railway
       # deployments", se den bevarede begrundelse ved den næste brug af
@@ -166,34 +170,35 @@ jobs:
           echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
           echo "Verifying sha=$SHA, PR=#${NUMBER:-(direct push)}"
 
+      - name: Checkout target SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+          persist-credentials: false
+          # Keep full history: frontend-deployment-needed.mjs and the empty-
+          # commit check compare against "$SHA^1" (#6318).
+          fetch-depth: 0
+
       - name: Determine required deployments (path-based)
         id: required
-        # The canonical classifier covers frontend, backend/lib, root/shared
-        # and unknown inputs. Only positively independent changes omit Vercel.
-        # Full history avoids shallow-parent and commit-files API truncation.
-        # Spejl ignoreCommand-logikken: kræv kun Vercel når frontend/ er ændret,
-        # og kun Railway når backend/ er ændret. Kan fil-listen ikke hentes →
-        # kræv begge (konservativ fallback).
+        # Vercel: the canonical classifier covers frontend, backend/lib,
+        # root/shared and unknown inputs; only positively independent changes
+        # omit Vercel. Full history (target checkout fetch-depth 0) avoids
+        # shallow-parent truncation.
+        # Railway + cron impact (#6318): complete, SHA-matched diff including
+        # rename origins. Unknown evidence fails closed; it must never produce
+        # an empty cron impact. A verified empty commit has no impact.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ steps.pr.outputs.sha }}
         run: |
+          node scripts/ci/cron-deploy-verification.mjs --impact
           # Use the canonical conservative frontend-input rule.
           REQUIREMENT=$(node scripts/frontend-deployment-needed.mjs "$SHA")
           NEED_VERCEL=$(jq -r 'if (.required | type) == "boolean" then (.required | tostring) else error("Invalid requirement") end' <<<"$REQUIREMENT" 2>/dev/null || true)
           [[ "$NEED_VERCEL" == "false" ]] || NEED_VERCEL=true
-          FILES=$(git diff-tree --no-commit-id --name-only --no-renames -r "$SHA^1" "$SHA" -- || echo "FETCH_FAILED")
-          if [[ "$FILES" == "FETCH_FAILED" ]]; then
-            echo "::warning::Kunne ikke hente ændrede filer for $SHA — kræver både Vercel og Railway (fallback)"
-            NEED_VERCEL=true
-            NEED_RAILWAY=true
-          else
-            NEED_RAILWAY=false
-            grep -q '^backend/' <<<"$FILES" && NEED_RAILWAY=true
-          fi
-          echo "Changed files touch: frontend=$NEED_VERCEL backend=$NEED_RAILWAY"
+          echo "Changed files touch: frontend=$NEED_VERCEL"
           echo "need_vercel=$NEED_VERCEL" >> "$GITHUB_OUTPUT"
-          echo "need_railway=$NEED_RAILWAY" >> "$GITHUB_OUTPUT"
 
       - name: Wait for Vercel + Railway deployments
         id: deployments
@@ -209,10 +214,14 @@ jobs:
           # API'et ville laese som "ingen deployments" i stedet for som en fejl.
           set -o pipefail
           DEADLINE=$(($(date +%s) + 2400))  # pending is not a deployment failure
+          CRON_SINCE=""
           while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
             VERCEL_OK=false
             RAILWAY_OK=false
+            # Refresh the boundary per observation round. Vercel may take much
+            # longer; its wait must not consume a short cron's proof window.
+            CRON_SINCE=""
             VERCEL_SEEN=false
             RAILWAY_SEEN=false
 
@@ -272,6 +281,14 @@ jobs:
               fi
             fi
 
+            # Use a conservative UTC observation AFTER positive Railway READY,
+            # never the workflow start time. The round satisfying all required
+            # deployments supplies the latest positive Railway observation.
+            if ! $RAILWAY_OK; then CRON_SINCE=""; fi
+            if $RAILWAY_OK && [[ -z "$CRON_SINCE" ]]; then
+              CRON_SINCE=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+            fi
+
             VERCEL_SATISFIED=$VERCEL_OK
             RAILWAY_SATISFIED=$RAILWAY_OK
             [[ "$NEED_VERCEL" == "false" ]] && VERCEL_SATISFIED=true
@@ -291,6 +308,7 @@ jobs:
                 echo "railway=success" >> "$GITHUB_OUTPUT"
               fi
               echo "All required deployments succeeded"
+              echo "cron_since=$CRON_SINCE" >> "$GITHUB_OUTPUT"
               echo "result=success" >> "$GITHUB_OUTPUT"
               exit 0
             fi
@@ -309,6 +327,28 @@ jobs:
       - name: Deployment still pending
         if: steps.deployments.outputs.result == 'pending'
         run: echo "::notice::AFVENTER deployment; not verified. Merge queue must retry this attempt."
+
+      - name: Verify affected cron check-ins
+        id: crons
+        if: steps.deployments.outputs.result == 'success'
+        env:
+          AFFECTED_SLUGS: ${{ steps.required.outputs.affected_slugs }}
+          CRON_SINCE: ${{ steps.deployments.outputs.cron_since }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -o pipefail
+          node scripts/ci/cron-deploy-verification.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Explicit markers make successful-but-deferred runs distinguishable from
+      # verified releases through the attempt-specific Jobs API (#6318).
+      - name: Cron check-ins verified
+        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'verified'
+        run: echo "Affected cron check-ins verified (or no affected monitored jobs)."
+
+      - name: Cron check-ins deferred
+        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'deferred'
+        run: echo "::notice::AFVENTER CHECK-IN for long cadences (> 30 min); short cadences verified. Non-blocking for the merge queue; see jobs and deadlines in summary."
 
       - name: Smoke-test prod
         id: smoke
@@ -525,7 +565,7 @@ jobs:
         run: node scripts/measure-client-release-age.mjs
 
       - name: Comment success on merged PR
-        if: success() && steps.deployments.outputs.result == 'success' && steps.pr.outputs.number != ''
+        if: success() && steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'verified' && steps.pr.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ steps.pr.outputs.number }}
@@ -537,11 +577,35 @@ jobs:
           ✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
           - Vercel deploy: ${VERCEL:-success}
           - Railway deploy: ${RAILWAY:-success}
+          - Affected cron check-ins: verified (or no affected monitored jobs)
           - Backend \`/health/ready\` = 200 (DB-readiness med retry)
           - Backend \`/api/auctions\` (no auth) = 401 (auth gates virker)
           - Frontend root = 200
 
           Du kan trygt lukke telefonen — det er live."
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
+          else
+            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          fi
+
+      - name: Comment deferred cron proof on merged PR
+        if: success() && steps.crons.outputs.state == 'deferred' && steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          CRON_SINCE: ${{ steps.deployments.outputs.cron_since }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          BODY="<!-- deploy-verify:$SHA -->
+          ## AFVENTER CHECK-IN (${SHA:0:7})
+
+          Railway er klar, smoke er groen, og alle berorte jobs med kort kadence (<= 30 min) har tikket efter deployet.
+          Jobs med lang kadence (> 30 min) **afventer check-in** og er ikke bevist endnu.
+          Boundary: $CRON_SINCE (+ Railway drain). [Jobs, sidste check-in og deadline]($RUN_URL).
+          Merge-koeen fortsaetter; cron-heartbeat-vagten alarmerer hvis et langt job misser sin deadline."
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
           if [ -n "$COMMENT_ID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
