@@ -299,7 +299,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-x-[18px] gap-y-[13px]">
         {ABILITY_CATEGORIES.map((cat) => (
           <div key={cat.key} className="min-w-0">
-            <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
+            <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
               {t(`stats.categories.${cat.key}`)}
             </span>
             <div className="mt-[5px]">

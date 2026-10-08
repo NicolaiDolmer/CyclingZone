@@ -292,7 +292,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
                                     if (e.key === "Escape") setEditingId(null);
                                   }}
                                   onBlur={(e) => { if (setEdit(row.id, e.target.value)) setEditingId(null); }}
-                                  className="w-14 bg-cz-card border border-cz-accent/60 rounded px-1 py-0.5 text-cz-1 text-xs font-mono text-center focus:outline-none"
+                                  className="w-14 bg-cz-card border border-cz-accent/60 rounded px-1 py-0.5 text-cz-1 text-xs font-mono text-center focus:outline-hidden"
                                   aria-label={`${rt.label} #${rank}`}
                                 />
                               ) : (

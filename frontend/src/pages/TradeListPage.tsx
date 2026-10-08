@@ -328,7 +328,7 @@ export default function TradeListPage({ myTeamId = null, onBrowseMarket = null }
           return (
             <span className="inline-flex flex-wrap items-center gap-1">
               {first}
-              <ExchangeIcon size={13} className="flex-shrink-0 text-cz-3" aria-hidden="true" />
+              <ExchangeIcon size={13} className="shrink-0 text-cz-3" aria-hidden="true" />
               <RiderLink id={ev.rider_swapped.id} tab={undefined} className="text-cz-1 hover:text-cz-accent-t">
                 {ev.rider_swapped.firstname} {ev.rider_swapped.lastname}
               </RiderLink>

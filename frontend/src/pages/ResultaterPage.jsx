@@ -528,7 +528,7 @@ export default function ResultaterPage() {
                         <div key={s.team?.id}
                           onClick={() => navigate(`/teams/${s.team?.id}`)}
                           className="flex items-center gap-3 px-4 py-3 hover:bg-cz-subtle cursor-pointer transition-colors">
-                          <span className={`w-5 text-center font-mono font-bold text-sm flex-shrink-0
+                          <span className={`w-5 text-center font-mono font-bold text-sm shrink-0
                             ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
                             {i + 1}
                           </span>
@@ -560,7 +560,7 @@ export default function ResultaterPage() {
                       {topRiders.map((a, i) => (
                         <RiderLink key={a.rider.id} id={a.rider.id}
                           className="flex items-center gap-3 px-4 py-3 hover:bg-cz-subtle cursor-pointer transition-colors">
-                          <span className={`w-5 text-center font-mono font-bold text-sm flex-shrink-0
+                          <span className={`w-5 text-center font-mono font-bold text-sm shrink-0
                             ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>
                             {i + 1}
                           </span>
@@ -675,7 +675,7 @@ function RaceResultCard({ race, podium, playedAtMs, t }) {
               {race.name}
             </Link>
             {inProgress && (
-              <span className="flex-shrink-0 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
+              <span className="shrink-0 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
                 {t("races:status.live")}
               </span>
             )}
@@ -690,7 +690,7 @@ function RaceResultCard({ race, podium, playedAtMs, t }) {
         <div className="divide-y divide-cz-border">
           {podium.map(row => (
             <div key={`${row.rank}-${row.rider_id ?? row.rider_name}`} className="flex items-center gap-3 py-[13px]">
-              <span className={`w-4 flex-shrink-0 text-center font-mono text-xs font-bold
+              <span className={`w-4 shrink-0 text-center font-mono text-xs font-bold
                 ${row.rank === 1 ? "text-cz-accent-t" : "text-cz-3"}`}>
                 {row.rank}
               </span>
@@ -707,7 +707,7 @@ function RaceResultCard({ race, podium, playedAtMs, t }) {
                 </p>
               </div>
               {row.points_earned > 0 && (
-                <span className="flex-shrink-0 font-mono text-xs font-bold text-cz-accent-t">
+                <span className="shrink-0 font-mono text-xs font-bold text-cz-accent-t">
                   {t("points", { count: formatNumber(row.points_earned) })}
                 </span>
               )}

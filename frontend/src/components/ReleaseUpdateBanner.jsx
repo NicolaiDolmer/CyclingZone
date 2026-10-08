@@ -97,7 +97,7 @@ export default function ReleaseUpdateBanner({ show, hasSession = false, onUpdate
       aria-live="polite"
       aria-label={t("releaseUpdate.regionAriaLabel")}
       data-testid="release-update-banner"
-      className="fixed inset-x-0 bottom-[var(--cz-mobile-nav-offset,0px)] z-toast px-3 pb-3 sm:px-6 sm:pb-6 pointer-events-none"
+      className="fixed inset-x-0 bottom-(--cz-mobile-nav-offset,0px) z-toast px-3 pb-3 sm:px-6 sm:pb-6 pointer-events-none"
     >
       {/* flex-wrap: ikon + spoergsmaal bliver paa samme linje, og det er
           KNAPPERNE der bryder om til linje to paa 390 px. To knapper og en hel

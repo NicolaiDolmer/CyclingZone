@@ -48,6 +48,10 @@ if ($normalizedResolvedRoot -ne $repoRoot) {
   throw "Scriptet kores ikke fra den forventede repo-root. Forventet: $repoRoot. Git siger: $resolvedRoot."
 }
 
+# Pure read-only staging precheck tests require no dependencies or credentials.
+& $nodePath --test (Join-Path $repoRoot "scripts/loadtest/check-staging-prerequisites.test.mjs")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 # #5092: scripts/monday-numbers.test.mjs og scripts/guard-inventory-cell.test.mjs
 # koerte ingen steder i verify-kaeden (ingen test:*-entry, intet workflow-step,
 # ikke her) - "usynlige" for hele kaeden. Kaeder direkte paa node --test (samme

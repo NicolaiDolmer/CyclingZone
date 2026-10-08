@@ -96,7 +96,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
     <div
       className="flex items-center gap-3 py-[13px] hover:bg-cz-subtle transition-colors cursor-pointer"
       onClick={onClick}>
-      <span className={`text-3xs px-2 py-0.5 rounded-full border font-medium uppercase whitespace-nowrap flex-shrink-0 ${badgeCls}`}>
+      <span className={`text-3xs px-2 py-0.5 rounded-full border font-medium uppercase whitespace-nowrap shrink-0 ${badgeCls}`}>
         {badge}
       </span>
       <div className="flex-1 min-w-0">
@@ -108,12 +108,12 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
       </div>
       {children}
       {amount != null && (
-        <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
+        <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap shrink-0">
           {formatNumber(amount)} CZ$
         </span>
       )}
-      {time && <span className="text-xs text-cz-3 whitespace-nowrap flex-shrink-0">{time}</span>}
-      <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
+      {time && <span className="text-xs text-cz-3 whitespace-nowrap shrink-0">{time}</span>}
+      <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 shrink-0" />
     </div>
   );
 }
@@ -300,7 +300,7 @@ export default function ActivityPage() {
       <div className="flex gap-1 mb-5 overflow-x-auto pb-px">
         {TABS.map(tabItem => (
           <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border flex-shrink-0
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border shrink-0
               ${tab === tabItem.key
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -519,15 +519,15 @@ export default function ActivityPage() {
                       <p className="font-data text-2xs uppercase tracking-[.04em] text-cz-3 truncate">{r?.team?.name || t("watchlist.freeAgent")}</p>
                     </div>
                     {inAuction && (
-                      <span className="text-3xs px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap flex-shrink-0">
+                      <span className="text-3xs px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap shrink-0">
                         {t("badge.inAuction")}
                       </span>
                     )}
-                    <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap flex-shrink-0">
+                    <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap shrink-0">
                       {formatNumber(getRiderMarketValue(r))} CZ$
                     </span>
                     <RiderLink id={r?.id}
-                      className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors flex-shrink-0">
+                      className="text-cz-3 hover:text-cz-accent-t text-sm transition-colors shrink-0">
                       <ChevronRightIcon size={16} aria-hidden="true" />
                     </RiderLink>
                   </div>

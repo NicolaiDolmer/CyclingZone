@@ -311,7 +311,7 @@ function LogCard({ viewer, entries, t }) {
       </div>
 
       {viewer !== "own" ? (
-        <p className="text-[12px] text-cz-2 leading-[1.5] pt-2">{t("profile.development.log.scoutingHidden")}</p>
+        <p className="text-[12px] text-cz-2 leading-normal pt-2">{t("profile.development.log.scoutingHidden")}</p>
       ) : (
         entries.map((e, i) => (
           <div key={`${e.season}-${i}`} className={`py-[11px] ${i === 0 ? "" : "border-t border-cz-border"}`}>
@@ -322,7 +322,7 @@ function LogCard({ viewer, entries, t }) {
                   : t("season.row", { n: e.season })}
               </span>
               {e.plan && (
-                <span className="inline-flex items-center font-mono text-3xs font-bold tracking-[0.03em] px-2 py-[2px] rounded-full bg-cz-accent/[.12] text-cz-accent-t">
+                <span className="inline-flex items-center font-mono text-3xs font-bold tracking-[0.03em] px-2 py-[2px] rounded-full bg-cz-accent/12 text-cz-accent-t">
                   {t(`profile.training.focus.${e.plan.focus}`)}
                   {e.plan.intensity ? ` · ${t(`training.intensity_${e.plan.intensity}`)}` : ""}
                 </span>

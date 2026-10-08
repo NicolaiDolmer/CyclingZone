@@ -37,11 +37,11 @@ function IncomeGroup({ title, total, expanded, onToggle, children, isEmpty }) {
           <ChevronRightIcon
             size={14}
             aria-hidden="true"
-            className={`text-cz-3 flex-shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+            className={`text-cz-3 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
           />
           <span className="text-cz-1 text-sm font-medium truncate">{title}</span>
         </span>
-        <span className="font-data tabular-nums text-sm font-semibold text-cz-1 flex-shrink-0">
+        <span className="font-data tabular-nums text-sm font-semibold text-cz-1 shrink-0">
           {money(total)}
         </span>
       </button>
@@ -54,7 +54,7 @@ function IncomeRow({ label, amount }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-cz-border last:border-0 gap-3">
       <p className="text-cz-2 text-xs min-w-0 truncate">{label}</p>
-      <p className="font-data tabular-nums text-xs text-cz-1 flex-shrink-0">{money(amount)}</p>
+      <p className="font-data tabular-nums text-xs text-cz-1 shrink-0">{money(amount)}</p>
     </div>
   );
 }

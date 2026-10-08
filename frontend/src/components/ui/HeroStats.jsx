@@ -40,7 +40,7 @@ export function HeroStats({ items, className = "" }) {
           key={item.label}
           className="min-w-0 sm:me-6 sm:shrink-0 sm:border-e sm:border-cz-border sm:pe-6 sm:last:me-0 sm:last:border-e-0 sm:last:pe-0"
         >
-          <div className="mb-1 font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
+          <div className="mb-1 font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">
             {item.label}
           </div>
           <div className="font-data text-[20px] font-[650] leading-tight tabular-nums text-cz-1 sm:whitespace-nowrap">

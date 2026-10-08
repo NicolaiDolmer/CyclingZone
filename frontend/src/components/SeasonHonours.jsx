@@ -64,8 +64,8 @@ function HonourColumn({ metric, entries, className = "" }) {
   return (
     <div className={`min-w-0 ${className}`}>
       <div className="mb-2 flex items-center gap-1.5">
-        <Icon size={15} className="flex-shrink-0 text-cz-accent" aria-hidden="true" />
-        <span className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
+        <Icon size={15} className="shrink-0 text-cz-accent" aria-hidden="true" />
+        <span className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">
           {t(`honours.title.${metric}`)}
         </span>
       </div>
@@ -76,14 +76,14 @@ function HonourColumn({ metric, entries, className = "" }) {
         <>
           <Link
             to={leader.riderId ? `/riders/${leader.riderId}` : "#"}
-            className="font-display block break-words text-[28px] uppercase leading-[.92] text-cz-1 transition-colors hover:text-cz-accent-t sm:text-[32px]"
+            className="font-display block wrap-break-word text-[28px] uppercase leading-[.92] text-cz-1 transition-colors hover:text-cz-accent-t sm:text-[32px]"
           >
             {leader.name}
           </Link>
 
           <div className="mb-3 mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             {leader.nationalityCode && (
-              <Flag code={leader.nationalityCode} className="flex-shrink-0" />
+              <Flag code={leader.nationalityCode} className="shrink-0" />
             )}
             {leader.teamId ? (
               <Link
@@ -107,11 +107,11 @@ function HonourColumn({ metric, entries, className = "" }) {
                   key={entry.riderId}
                   className="flex items-center gap-2.5 border-t border-cz-border py-2"
                 >
-                  <span className="font-data w-4 flex-shrink-0 text-2xs tabular-nums text-cz-3">
+                  <span className="font-data w-4 shrink-0 text-2xs tabular-nums text-cz-3">
                     {entry.rank}
                   </span>
                   {entry.nationalityCode && (
-                    <Flag code={entry.nationalityCode} className="flex-shrink-0" />
+                    <Flag code={entry.nationalityCode} className="shrink-0" />
                   )}
                   <Link
                     to={entry.riderId ? `/riders/${entry.riderId}` : "#"}
@@ -123,7 +123,7 @@ function HonourColumn({ metric, entries, className = "" }) {
                   {/* Fast bredde + højrestilling: uden den skubbede AI-badget
                       tallet ud af den lodrette kolonne, og tabulære tal der
                       ikke står under hinanden er ikke tabulære. */}
-                  <span className="font-data w-14 flex-shrink-0 text-right text-[13px] tabular-nums text-cz-2">
+                  <span className="font-data w-14 shrink-0 text-right text-[13px] tabular-nums text-cz-2">
                     {formatNumber(entry[metric])}
                   </span>
                 </li>

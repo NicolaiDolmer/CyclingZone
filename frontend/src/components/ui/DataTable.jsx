@@ -641,7 +641,7 @@ function MobileFullTable({
 
 // Den foldede meta-linje er EN streng, men "Klatrer/GC" er EET ord for
 // browseren. Uden en brydningsmulighed ved "/" falder linjen tilbage paa
-// `break-words` og braekker midt i ordet ("SPURT/ROULEU" / "R", maalt 19/9 paa
+// `wrap-break-word` og braekker midt i ordet ("SPURT/ROULEU" / "R", maalt 19/9 paa
 // 412 px). `<wbr>` er praecis dét HTML-element: en frivillig brydning der
 // hverken tegner noget eller aendrer `textContent` — teksten er den samme for
 // skaermlaesere, tests og tekst-vagten. Refs #5383.
@@ -678,20 +678,20 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
     .map((c) => (c.foldValue ? c.foldValue(row) : row[c.key]))
     .filter((v) => v != null && v !== "");
   const indent = col.sublineIndent ? "pl-[17px]" : "";
-  // `break-words`: uden det saetter det laengste ORD i navnet kolonnens
+  // `wrap-break-word`: uden det saetter det laengste ORD i navnet kolonnens
   // min-bredde, og en raekke med en bred handlingsknap kan saa ikke laengere
   // give plads — tabellen bliver bredere end telefonen. Med det kan
   // navnekolonnen altid krympe, og et navn brydes hellere end at tabellen
   // scroller (D-047's raekkefoelge af prioriteter).
-  // `[&_*]:whitespace-normal` (#5383): cellens indhold kommer fra SIDEN, og
+  // `**:whitespace-normal` (#5383): cellens indhold kommer fra SIDEN, og
   // flere sider saetter `whitespace-nowrap` paa selve navne-linket, fordi det er
-  // rigtigt paa desktop. Paa mobil slaar det cellens `break-words` ihjel — maalt
+  // rigtigt paa desktop. Paa mobil slaar det cellens `wrap-break-word` ihjel — maalt
   // 19/9 stak rytternavne og den foldede meta-linje 3-84 px ud over deres egen
   // <td> paa 412 px. D-047's "ingen vandret scroll" maa ikke afhaenge af at hver
   // enkelt side husker at lade vaere: mobil-tilstanden overstyrer descendants.
   //
   // #5471 — REGEL for sider der saetter badges ved siden af navnet: linjen
-  // herunder er EEN flex-linje uden wrap, og `[&>*]:min-w-0` lader hvert barn
+  // herunder er EEN flex-linje uden wrap, og `*:min-w-0` lader hvert barn
   // krympe. Er badges `shrink-0` og tilsammen bredere end cellen (ca. 90px paa
   // 390px), faar navnet 0px og braekkes tegn for tegn (ranglisten 21/9: en
   // raekke paa 500px med et Founder-maerke og intet navn). Navn + badges skal
@@ -701,7 +701,7 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
   // ikon (troejeprikken foran et rytternavn) staa alene paa foerste linje, fordi
   // flex bryder mellem boernene og ikke inde i navnet.
   const nowrap = wrap
-    ? "min-w-0 break-words [&>*]:min-w-0 [&_*]:whitespace-normal"
+    ? "min-w-0 wrap-break-word *:min-w-0 **:whitespace-normal"
     : "whitespace-nowrap";
   return (
     <>
@@ -714,13 +714,13 @@ function renderStickyCell(col, row, i, foldCols, wrap = false) {
           `title` kan ikke naas paa en touch-skaerm, og ejeren (og de fleste
           spillere) er paa Android. Den bliver derfor i sin egen celle og bryder
           i stedet: `min-w-0` + normal whitespace lader den ombryde ved " · ",
-          og `break-words` er sidste vaern mod et enkelt ord der er bredere end
+          og `wrap-break-word` er sidste vaern mod et enkelt ord der er bredere end
           kolonnen. At den kan NOEJES med to linjer er copy'ens ansvar —
           RidersPage og AcademyPage folder ryttertypen ind med repoets korte
           type-etiketter (riderTypes.short.*). */}
       {(sub != null || folded.length > 0) && (
         <span
-          className={`mt-0.5 block font-data text-3xs uppercase tracking-[.05em] text-cz-3 ${wrap ? "min-w-0 break-words [&_*]:whitespace-normal" : "whitespace-nowrap"} ${indent}`}
+          className={`mt-0.5 block font-data text-3xs uppercase tracking-wider text-cz-3 ${wrap ? "min-w-0 wrap-break-word **:whitespace-normal" : "whitespace-nowrap"} ${indent}`}
         >
           {folded.length > 0 && (
             <span className="sm:hidden">

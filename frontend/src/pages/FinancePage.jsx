@@ -701,7 +701,7 @@ export default function FinancePage() {
                           role={clickable ? "link" : undefined}
                           title={clickable ? t("prizeList.viewRace") : undefined}
                           className={`border-b border-cz-border last:border-0 ${clickable
-                            ? "cursor-pointer hover:bg-cz-subtle/60 focus-visible:bg-cz-subtle/60 focus-visible:outline-none"
+                            ? "cursor-pointer hover:bg-cz-subtle/60 focus-visible:bg-cz-subtle/60 focus-visible:outline-hidden"
                             : ""}`}
                         >
                           <td className="px-3 py-2 text-cz-2 font-medium max-w-0 w-full truncate">
@@ -860,7 +860,7 @@ export default function FinancePage() {
                           gældsgrad sidder i LoanConfirmModal (nedenfor), ikke her. */}
                       <Button type="button" variant="ghost" size="sm"
                         onClick={() => setLoanAmount(maxPrincipal)}
-                        className="flex-shrink-0 text-cz-3">
+                        className="shrink-0 text-cz-3">
                         {t("loans.take.useMax")}
                       </Button>
                     </div>
@@ -1076,7 +1076,7 @@ export default function FinancePage() {
                         )}
                         <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
                       </div>
-                      <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                      <p className={`font-mono text-sm font-bold shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
                         {tx.amount >= 0 ? "+" : ""}{formatNumber(tx.amount || 0)} CZ$
                       </p>
                     </>
@@ -1087,7 +1087,7 @@ export default function FinancePage() {
                     <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
                       className="flex items-center justify-between py-2.5 group hover:bg-cz-subtle/60 transition-colors">
                       {rowInner}
-                      <ChevronRightIcon size={16} aria-hidden className="text-cz-3 group-hover:text-cz-2 ms-2 flex-shrink-0 transition-colors" />
+                      <ChevronRightIcon size={16} aria-hidden className="text-cz-3 group-hover:text-cz-2 ms-2 shrink-0 transition-colors" />
                     </Link>
                   ) : (
                     <div key={tx.id} className="flex items-center justify-between py-2.5">

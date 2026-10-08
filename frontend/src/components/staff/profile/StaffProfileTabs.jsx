@@ -11,7 +11,7 @@ export default function StaffProfileTabs({ active, onChange }) {
   return (
     <div
       role="tablist"
-      className="-mx-4 md:mx-0 px-4 md:px-0 mt-5 flex gap-1 overflow-x-auto border-b border-cz-border [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      className="-mx-4 md:mx-0 px-4 md:px-0 mt-5 flex gap-1 overflow-x-auto border-b border-cz-border scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
     >
       {TABS.map((tab) => {
         const isActive = active === tab;
@@ -22,7 +22,7 @@ export default function StaffProfileTabs({ active, onChange }) {
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(tab)}
-            className={`min-h-[44px] px-3.5 py-2.5 text-sm font-medium whitespace-nowrap flex-shrink-0 border-b-2 -mb-px transition-colors
+            className={`min-h-[44px] px-3.5 py-2.5 text-sm font-medium whitespace-nowrap shrink-0 border-b-2 -mb-px transition-colors
               ${isActive
                 ? "text-cz-1 border-cz-accent"
                 : "text-cz-2 border-transparent hover:text-cz-1"}`}

@@ -71,7 +71,7 @@ function RiderSearch({ onSelect, excluded }) {
         onChange={e => setQ(e.target.value)}
         placeholder={t("compare.searchPlaceholder")}
         className="w-full bg-cz-subtle border border-cz-border rounded-cz px-4 py-2.5
-          text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent"
+          text-cz-1 text-sm placeholder-cz-3 focus:outline-hidden focus:border-cz-accent"
       />
       {(results.length > 0 || loading) && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
@@ -257,7 +257,7 @@ export default function RiderComparePage() {
                 className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10"
                 style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
                 <div className="flex items-center gap-2">
-                  <StarIcon size={14} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
+                  <StarIcon size={14} className="text-cz-3 shrink-0" aria-hidden="true" />
                   <span className="text-cz-2 text-sm font-medium">{t("compare.potential")}</span>
                 </div>
                 {fullRiders.map(r => (
@@ -292,12 +292,12 @@ export default function RiderComparePage() {
                               }} />
                           </div>
                           {isBest ? (
-                            <span className="font-mono tabular-nums text-xs font-extrabold flex-shrink-0 inline-block min-w-[28px] text-center rounded-cz px-1 py-0.5"
+                            <span className="font-mono tabular-nums text-xs font-extrabold shrink-0 inline-block min-w-[28px] text-center rounded-cz px-1 py-0.5"
                               style={statStyle(val)}>
                               {val ?? "—"}
                             </span>
                           ) : (
-                            <span className="font-mono tabular-nums text-xs font-medium w-7 text-right flex-shrink-0"
+                            <span className="font-mono tabular-nums text-xs font-medium w-7 text-right shrink-0"
                               style={{ color: statColor(val) }}>
                               {val ?? "—"}
                             </span>

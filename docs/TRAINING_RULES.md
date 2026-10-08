@@ -54,11 +54,20 @@ den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
 Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
 regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
 datoens forventede løbsdage som visningsbevis. Ejerens beta-release-go 30/9
-gater den nye rapport med `training_daily_receipt`: `beta` åbner kun for
-serververificerede beta-testere/admin. `off`, manglende flag eller læsefejl
-bevarer den eksisterende rapport. `training_score_visible` ændres ikke.
-API-feltet `dailyReceiptEnabled` vælger frontendvisningen; flaget ændrer ingen
-træningsskrivninger. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+brugte `training_daily_receipt` til at vælge mellem gammel og ny rapport.
+`training_score_visible` ændres ikke.
+Efter #6030 (1/10) er den gamle frontendvisning fjernet. `dailyReceiptEnabled`
+bevares som API-metadata, men må ikke skifte datatypen tilbage til rå ticks,
+heller ikke ved `false`, manglende felt eller fejlet flagopslag (#6314).
+De nuværende frontend-hooks leverer altid dagsprojektionen; rå historik findes
+kun i de eksplicitte `rawRuns`/`rawSeasonRuns`-felter. Efter en manuel kørsel
+beholdes seneste gyldige kvittering indtil GET-refresh er færdig.
+GET `/api/training/me` leverer altid `todayRuns` som array og `todayRun` som
+første række eller `null`. Hver rå række har `game_days`: den dokumenterede
+løbsdag som ét element, eller `[]` når den ikke kendes. Forventede slots
+kopieres aldrig ind som registrerede aktiviteter; manglende rapportbevis
+bevares som manglende. Dagsprojektionen samler stadig datoens faktiske ticks
+i `trainingDailyReceipt.ts`. Ingen træningsskrivning eller flag ændres.
 
 ## Historisk delt løbsdag efter holdskifte (#5860, ejer-go 30/9)
 

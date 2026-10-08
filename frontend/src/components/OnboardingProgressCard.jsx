@@ -152,11 +152,11 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
                   {/* #4625 — stroke-ikon/dot i stedet for tekst-glyfferne ✓/▸/○
                       (TASTE forbudsliste: "tekst-glyffer som ikoner"). */}
                   {step.done ? (
-                    <CheckIcon size={13} className="text-cz-success flex-shrink-0" aria-hidden="true" />
+                    <CheckIcon size={13} className="text-cz-success shrink-0" aria-hidden="true" />
                   ) : (
                     <span
                       aria-hidden="true"
-                      className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isNext ? "bg-cz-accent-t" : "border border-cz-3"}`}
+                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${isNext ? "bg-cz-accent-t" : "border border-cz-3"}`}
                     />
                   )}
                   <span className={
@@ -247,7 +247,7 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
         </div>
         <button
           onClick={onDismiss}
-          className="text-cz-3 hover:text-cz-1 p-1 flex-shrink-0"
+          className="text-cz-3 hover:text-cz-1 p-1 shrink-0"
           aria-label={t("onboardingProgress.dismissAria")}
         >
           <XIcon size={16} aria-hidden="true" />

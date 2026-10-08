@@ -697,7 +697,7 @@ export default function RaceHubBoard() {
                 <span className="font-semibold">{t("racehub.learnReuse.title")}</span>
                 <span className="block text-cz-2 mt-0.5">{t("racehub.learnReuse.body")}</span>
               </span>
-              <button type="button" onClick={dismissReuseNote} className="text-xs text-cz-accent-t hover:underline flex-shrink-0 whitespace-nowrap">
+              <button type="button" onClick={dismissReuseNote} className="text-xs text-cz-accent-t hover:underline shrink-0 whitespace-nowrap">
                 {t("racehub.learnReuse.dismiss")}
               </button>
             </div>

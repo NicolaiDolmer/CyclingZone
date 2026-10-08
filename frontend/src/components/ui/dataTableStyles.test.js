@@ -119,7 +119,7 @@ test("zone-rækker: fuld-række-tint, ingen hover, 2px separator kun på boundar
   // under tinten, ellers ses kolonnerne igennem dem under scroll.
   const stickyTinted = tdClass({ zone: "success", sticky: true });
   assert.ok(stickyTinted.includes("bg-cz-card"));
-  assert.ok(stickyTinted.includes("background-image:linear-gradient(var(--success-bg)"));
+  assert.ok(stickyTinted.includes("bg-[linear-gradient(var(--success-bg)"));
   assert.ok(tinted.includes("border-t border-cz-border"), "ikke-boundary beholder 1px-rule");
 
   const boundary = tdClass({ zone: "danger", edgeTop: true });

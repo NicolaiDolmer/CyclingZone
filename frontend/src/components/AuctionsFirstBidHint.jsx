@@ -18,7 +18,7 @@ export default function AuctionsFirstBidHint({ onDismiss, onStartTour, onJumpToR
   return (
     <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start gap-3">
-        <InfoIcon size={18} className="text-cz-accent-t flex-shrink-0 mt-0.5" />
+        <InfoIcon size={18} className="text-cz-accent-t shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-cz-1 text-sm font-semibold mb-1">{t("auctions:hint.title")}</p>
           <p className="text-cz-2 text-xs mb-2 leading-relaxed">{t("auctions:hint.body")}</p>
@@ -35,7 +35,7 @@ export default function AuctionsFirstBidHint({ onDismiss, onStartTour, onJumpToR
         </div>
         <button
           onClick={onDismiss}
-          className="text-cz-3 hover:text-cz-1 flex-shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -me-2"
+          className="text-cz-3 hover:text-cz-1 shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center -me-2"
           aria-label={t("common:actions.hide")}
         >
           <XIcon size={16} aria-hidden="true" />

@@ -124,7 +124,7 @@ export default function TrainingDaySelect({
           <ChevronDownIcon
             size={14}
             aria-hidden="true"
-            className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-cz-3"
+            className="pointer-events-none absolute inset-e-2.5 top-1/2 -translate-y-1/2 text-cz-3"
           />
         </div>
         {(saved || justSaved) && (

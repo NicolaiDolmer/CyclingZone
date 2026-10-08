@@ -39,6 +39,6 @@ const TAG_BASE =
   "inline-flex items-center font-data text-3xs font-semibold uppercase tracking-[.08em] text-cz-2";
 
 export function categoryTagClass({ dense = false } = {}) {
-  if (dense) return `${TAG_BASE} tracking-[.1em] pl-2 border-l-2 border-cz-accent`;
+  if (dense) return `${TAG_BASE} tracking-widest pl-2 border-l-2 border-cz-accent`;
   return `${TAG_BASE} rounded-cz border border-cz-border bg-cz-subtle px-2 py-0.5`;
 }

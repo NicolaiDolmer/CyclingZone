@@ -10,7 +10,7 @@ import { staffSpecializationHeadline } from "../../../lib/staffAbilities.js";
 function HeroStat({ label, value }) {
   return (
     <div className="min-w-0">
-      <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</p>
+      <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
       <div className="font-data leading-tight text-cz-1 tabular-nums text-[20px] font-[650]">{value}</div>
     </div>
   );
@@ -42,7 +42,7 @@ export default function StaffProfileHero({ profile, actions = null }) {
         </div>
         <div className="min-w-0">
           {/* Navnet øverst (ejer-feedback: sidens vigtigste ord først; tags er metadata) */}
-          <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{profile.name}</h1>
+          <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{profile.name}</h1>
 
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
             <CategoryTag>{t(`roles.${profile.role}`)}</CategoryTag>

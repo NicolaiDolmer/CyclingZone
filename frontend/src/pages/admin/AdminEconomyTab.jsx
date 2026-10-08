@@ -163,7 +163,7 @@ export default function AdminEconomyTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Hold</label>
             <select value={balTeam} onChange={e => setBalTeam(e.target.value)}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg hold...</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
             </select>
@@ -172,13 +172,13 @@ export default function AdminEconomyTab() {
             <label className="block text-cz-3 text-xs mb-1">Beløb (positiv = indsæt, negativ = træk)</label>
             <input type="number" value={balAmount} onChange={e => setBalAmount(e.target.value)}
               placeholder="fx 500 eller -200"
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none font-mono" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden font-mono" />
           </div>
           <div>
             <label className="block text-cz-3 text-xs mb-1">Årsag</label>
             <input type="text" value={balReason} onChange={e => setBalReason(e.target.value)}
               placeholder="Beskriv årsag..."
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
           </div>
         </div>
         <button onClick={handleAdjustBalance} disabled={loading.balance || !balTeam || !balAmount}
@@ -288,37 +288,37 @@ export default function AdminEconomyTab() {
                 <label className="block text-cz-3 text-xs mb-1">Varighed (aktive timer)</label>
                 <input type="number" min="1" max="72" value={editingAuctionConfig.duration_hours}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, duration_hours: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Hverdag åbner (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekday_open_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekday_open_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Hverdag lukker (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekday_close_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekday_close_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Weekend åbner (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekend_open_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekend_open_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Weekend lukker (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekend_close_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekend_close_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Forlængelse (minutter)</label>
                 <input type="number" min="1" max="60" value={editingAuctionConfig.extension_minutes}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, extension_minutes: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
             </div>
             <div className="flex gap-2">
@@ -342,7 +342,7 @@ export default function AdminEconomyTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Sæson</label>
             <select value={prizePayoutSeason} onChange={e => { setPrizePayoutSeason(e.target.value); setPrizePreview(null); setPrizePayResult(null); }}
-              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent">
               <option value="">Vælg sæson</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>

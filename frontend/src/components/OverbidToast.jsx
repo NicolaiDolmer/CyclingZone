@@ -24,7 +24,7 @@ export default function OverbidToast({ toasts, onDismiss }) {
           className="cz-toast-item pointer-events-auto bg-cz-card border border-cz-danger/40 shadow-lg
             rounded-cz px-4 py-3 flex items-start gap-3"
         >
-          <AlertTriangleIcon size={18} className="text-cz-danger flex-shrink-0 mt-0.5" />
+          <AlertTriangleIcon size={18} className="text-cz-danger shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
             <p className="text-cz-1 text-sm font-medium leading-snug">
               {t("auctions:toast.overbidMessage", { riderName: toast.riderName })}
@@ -37,7 +37,7 @@ export default function OverbidToast({ toasts, onDismiss }) {
           </div>
           <button
             onClick={() => onDismiss(toast.id)}
-            className="text-cz-3 hover:text-cz-1 text-base leading-none min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0 -me-2"
+            className="text-cz-3 hover:text-cz-1 text-base leading-none min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0 -me-2"
             aria-label={t("common:actions.close")}
           >
             ✕
