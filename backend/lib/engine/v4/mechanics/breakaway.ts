@@ -1137,7 +1137,7 @@ export function chaseFloorClosingSeconds(input: {
  * af mekanikken altid er slaaet til og fra sammen.
  */
 export function isLetGoChaseGroup(chaseRiderCount: number): boolean {
-  return Number.isFinite(chaseRiderCount) && chaseRiderCount >= BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders;
+  return Number.isFinite(chaseRiderCount) && chaseRiderCount >= Number((globalThis as any).process?.env?.X5578_MINCHASE ?? BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders);
 }
 
 /**

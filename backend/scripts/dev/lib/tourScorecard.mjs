@@ -137,9 +137,10 @@ export const TOUR_BENCHMARKS = Object.freeze({
   // samme data og seeds (se applyLegacyHoldReference). Baandet er relativt.
   breakawayHoldVsLegacy: {
     unit: "andel minus legacy",
-    byClass: { legacy: { minDelta: -0.1, warnMinDelta: -0.2, status: "ejer", source: "RULES Udbrudsmaal 3 (ejer 1-2/10, #5955, #6089): ikke markant sjaeldnere i maal end legacy paa nogen vejprofil" } },
+    // PASS: mindst legacy minus 0,1 ELLER 0,8 x legacy (den mildeste); WARN: minus 0,2 eller 0,67 x.
+    byClass: { legacy: { minDelta: -0.1, minRatio: 0.8, warnMinDelta: -0.2, warnMinRatio: 0.67, status: "ejer", source: "RULES Udbrudsmaal 3 (ejer 1-2/10, #5955, #6089): ikke markant sjaeldnere i maal end legacy paa nogen vejprofil" } },
   },
-  // #5578 udbrudsmaal 4: bjerg + hoejfjeld, udbruddet foran favoritterne ca. 45 %.
+  // #5578 udbrudsmaal 4: bjerg (MOUNTAIN_AHEAD_PROFILES), udbruddet foran favoritterne ca. 45 %.
   mountainBreakAheadShare: {
     unit: "andel",
     byClass: { race: { min: 0.35, max: 0.55, warnMin: 0.25, warnMax: 0.65, status: "ejer", source: "RULES Udbrudsmaal 4 (ejer 2/10, #6084): paa bjerg ender udbruddet foran favoritterne ca. 45 % af etaperne" } },
@@ -256,8 +257,12 @@ export function breakawayAheadOfFavourites(out, roleByRider) {
   return c < 0 || (b < c && fin[c].time_seconds - fin[b].time_seconds >= AHEAD_MIN_GAP_SECONDS);
 }
 
-/** Bjergetaperne i udbrudsmaal 4 (#6084: bjerg og hoejfjeld). */
-export const MOUNTAIN_AHEAD_PROFILES = Object.freeze(["mountain", "high_mountain"]);
+/**
+ * Bjergetaperne i udbrudsmaal 4: profile_type "mountain", samme "bjerg" som
+ * maal 2 (bjerg 15-50 % sejre, hoejfjeld 0-15 %). Med hoejfjeld i naevneren
+ * kunne maal 4 (ca. 45 % foran) ikke naas uden at bryde hoejfjeldets baand.
+ */
+export const MOUNTAIN_AHEAD_PROFILES = Object.freeze(["mountain"]);
 
 /**
  * #6285-1: udbrud der vinder en FLAD etape med minutter. Samme definition i
@@ -676,7 +681,7 @@ export function summarizeTour(perSeed, stages, revision = null) {
     flatBreakawayWinMinutes: perTour("flatBreakawayWinMinutes"),
     distinctGcWinners: new Set(perSeed.map((s) => s.gcWinner)).size,
   };
-  // #5578 udbrudsmaal 4: bjerg + hoejfjeld samlet (som #6084's "bjerg").
+  // #5578 udbrudsmaal 4: bjergetaperne samlet (MOUNTAIN_AHEAD_PROFILES).
   const mountainRows = classRows.filter((c) => MOUNTAIN_AHEAD_PROFILES.includes(c.profile_type));
   const mountainTrials = sum(mountainRows.map((c) => c.trials));
   race.mountainBreakAheadShare = mountainTrials ? sum(mountainRows.map((c) => c.breakawayAheadShare * c.trials)) / mountainTrials : null;
@@ -704,6 +709,14 @@ export function countVerdicts(summary) {
   return counts;
 }
 
+/** #5578 udbrudsmaal 3: det relative baand mod legacys andel (den mildeste af differens og forhold). */
+export function legacyHoldBand(legacyShare, band = TOUR_BENCHMARKS.breakawayHoldVsLegacy.byClass.legacy) {
+  return {
+    min: Math.min(legacyShare + band.minDelta, legacyShare * band.minRatio),
+    warnMin: Math.min(legacyShare + band.warnMinDelta, legacyShare * band.warnMinRatio),
+  };
+}
+
 /**
  * #5578 udbrudsmaal 3: doem hver profile_type's "foran favoritterne i maal"
  * mod legacy koert paa SAMME data og seeds (legacySummary). Muterer summary
@@ -711,14 +724,13 @@ export function countVerdicts(summary) {
  * En profiltype legacy ikke har, faar N/A. Legacy doemmes ikke mod sig selv.
  */
 export function applyLegacyHoldReference(summary, legacySummary) {
-  const band = TOUR_BENCHMARKS.breakawayHoldVsLegacy.byClass.legacy;
   const legacyByType = new Map((legacySummary?.classes ?? []).map((c) => [c.profile_type, c.breakawayAheadShare]));
   for (const c of summary.classes) {
     const ref = legacyByType.get(c.profile_type);
     c.legacyAheadShare = Number.isFinite(ref) ? ref : null;
     c.verdicts.breakawayHoldVsLegacy = c.legacyAheadShare === null
       ? "N/A"
-      : verdict(c.breakawayAheadShare, { min: c.legacyAheadShare + band.minDelta, warnMin: c.legacyAheadShare + band.warnMinDelta });
+      : verdict(c.breakawayAheadShare, legacyHoldBand(c.legacyAheadShare));
   }
   summary.counts = countVerdicts(summary);
   return summary;

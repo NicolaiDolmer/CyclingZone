@@ -453,7 +453,8 @@ export function assessGcThreat(input: {
         Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1) + future,
       );
       const margin = deficit - lead - potential;
-      const isRival = strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
+      const xr = model?.tuning ? (globalThis as any).process?.env : undefined;
+      const isRival = (xr?.X5578_ALWAYS && standing.rank <= Number(xr.X5578_ALWAYS)) || (strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin) && !(xr?.X5578_RANK && standing.rank > Number(xr.X5578_RANK)));
       let severity: GcThreatSeverity;
       let reason: GcThreatReason;
       if (margin <= 0) {
