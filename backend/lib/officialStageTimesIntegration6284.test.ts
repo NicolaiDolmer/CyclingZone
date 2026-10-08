@@ -33,7 +33,8 @@ const modules = { entrants: entrantsAdapter, route: routeAdapter, orders: orders
 const adapter = createRaceEngineV4Adapter({ ...modules, core: { simulateStageV4: () => output } });
 const args = { race, stages, entrants, pointsLookup: { stage__1: 9, stage__2: 4 }, v3: true, v4Engine: adapter };
 
-test("official revision travels through the adapter, saved runner rows and resumed classifications", () => {
+for (const officialRevision of ["official_times_v1", "official_times_v2"]) test(`${officialRevision}: official revision travels through the adapter, saved runner rows and resumed classifications`, () => {
+  const revision = officialRevision;
   const full = buildRaceResults({ ...args, rulesRevision: revision });
   const first = buildStageRowsAccumulated({ ...args, stagesSorted: stages, stageIndex: 0, rulesRevision: revision });
   const priorStageRows = JSON.parse(JSON.stringify(first.resultRows.filter((row) => row.result_type === "stage")));
@@ -64,7 +65,8 @@ test("old revisions retain frozen complete outputs across route profiles after t
   }
 });
 
-test("new time-model revision remains deterministic and stores its own raw physical arrival gaps", () => {
+for (const officialRevision of ["official_times_v1", "official_times_v2"]) test(`${officialRevision}: new time-model revision remains deterministic and stores its own raw physical arrival gaps`, () => {
+  const revision = officialRevision;
   for (const profile_type of ["flat", "rolling", "hilly", "mountain", "high_mountain", "cobbles", "itt"]) {
     const actual = createRaceEngineV4Adapter({ ...modules, core: { simulateStageV4 } });
     const run = () => actual.simulateStage({ entrants, stageProfile: { ...stages[0], profile_type }, seedString: `official-parity-${profile_type}`, stageNumber: 1, rulesRevision: revision });

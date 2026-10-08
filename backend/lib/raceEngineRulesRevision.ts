@@ -25,7 +25,11 @@
 // sine egne" (et hold foerer ikke jagten paa en gruppe med egen rytter i, og
 // dets udbrydere sidder paa hjul ved en trussel mod holdets GC-rytter).
 // Samlepunkt for uge 41-pakken. IKKE aktuel endnu: flip er ejer-only.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1"] as const;
+// #6199 (ejer 8/10): "official_times_v2" = hele orders_gc_v3-pakken + den samlede
+// tidsmodel (officielle etapetider #6284, fysisk kontakt #6327, faelles
+// gruppeklokke #6199, kontaktsted #6329). Revisionen Tour-pakken bindes til.
+// IKKE aktuel: flip er ejer-only.
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -33,7 +37,8 @@ export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
 // #6187: revisionerne er en ARVELINJE: hver orders_gc-revision er hele den
 // forrige plus sit eget. Kaldsteder spoerger derfor "mindst vN?" via
 // helperne nedenfor i stedet for at sammenligne strenge. En sidegren skal
-// angive sin mekaniske generation eksplicit; official_times_v1 arver v2.
+// angive sin mekaniske generation eksplicit; official_times_v1 arver v2,
+// official_times_v2 arver v3.
 const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object.freeze({
   legacy: 0,
   orders_gc_v1: 1,
@@ -41,11 +46,24 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   orders_gc_v3: 3,
   // #6284: a v2 branch for official result integrity, NOT v3 mechanics.
   official_times_v1: 2,
+  // #6199 (owner 8/10): the full orders_gc_v3 package + the shared time model.
+  official_times_v2: 3,
 });
 
-/** Only this future pinned revision stores uncapped official stage gaps. */
+const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2"]);
+
+/** Only the future pinned official-times revisions store uncapped official stage gaps. */
 export function preservesOfficialStageTimes(value: unknown): boolean {
-  return value === "official_times_v1";
+  return OFFICIAL_TIMES_REVISIONS.has(value);
+}
+
+/**
+ * #6199: the shared group clock (one physical time account per group line,
+ * physical contact, descent crossings and physical descent outcomes). Exactly
+ * the official-times revisions; never inferred from the orders_gc generation.
+ */
+export function usesSharedGroupTime(value: unknown): boolean {
+  return OFFICIAL_TIMES_REVISIONS.has(value);
 }
 
 /** 0 for legacy og alt ukendt; ellers revisionens plads i orders_gc-arvelinjen. */

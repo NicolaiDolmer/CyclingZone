@@ -11,6 +11,8 @@ import {
   isOrdersGcV2OrLater,
   isOrdersGcV3OrLater,
   ordersGcGeneration,
+  preservesOfficialStageTimes,
+  usesSharedGroupTime,
   raceHasStarted,
   resolveRaceRulesRevision,
 } from "./raceEngineRulesRevision.ts";
@@ -236,7 +238,7 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
-  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1"]);
+  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2"]);
   // Ejer-go 2/10: nye loeb bindes til v2; loeb bundet til v1 beholder v1.
   assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
 });
@@ -270,7 +272,7 @@ test("#6284: the existing migration excludes the future revision; only the unapp
   const check = sql.match(/IN \(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   const allowed = check[1].split(",").map((s) => s.trim().replace(/'/g, ""));
-  assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v1"));
+  assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => !revision.startsWith("official_times_")));
   const proposal = readFileSync(new URL("../../database/proposals/2026-10-07-official-times-v1.sql", import.meta.url), "utf8");
   const proposed = proposal.match(/IN\s*\(([^)]*)\)/);
   assert.ok(proposed);
@@ -289,10 +291,10 @@ test("#6187: orders_gc_v3 is known but NOT current (the flip is owner-only)", ()
 });
 
 test("#6187/#6284: orders_gc is a lineage; official times branches from v2 without v3 mechanics", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 2]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, false]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 2, 3]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, false, true]);
   for (const unknown of [null, undefined, "", "orders_gc_v9", 3]) {
     assert.equal(ordersGcGeneration(unknown), 0);
     assert.equal(isOrdersGcRulesRevision(unknown), false);
@@ -304,4 +306,45 @@ test("#6187: the bridge carries orders_gc_v3 with the same input as orders_gc_v2
   const v3 = await bridgeInput("orders_gc_v3");
   assert.equal(v3.rules_revision, "orders_gc_v3");
   assert.deepEqual({ ...v3, rules_revision: "orders_gc_v2" }, v2);
+});
+
+// ── #6199 (owner 8/10): official_times_v2 = orders_gc_v3 + the shared time model ──
+
+test("#6199: official_times_v2 is the full v3 lineage plus official times and the shared group clock", () => {
+  const revision = "official_times_v2";
+  assert.equal(isKnownRulesRevision(revision), true);
+  assert.equal(ordersGcGeneration(revision), 3);
+  assert.equal(isOrdersGcRulesRevision(revision), true);
+  assert.equal(isOrdersGcV2OrLater(revision), true);
+  assert.equal(isOrdersGcV3OrLater(revision), true);
+  assert.equal(preservesOfficialStageTimes(revision), true);
+  assert.equal(usesSharedGroupTime(revision), true);
+});
+
+test("#6199: official times and the shared clock belong to exactly the official-times revisions", () => {
+  assert.deepEqual(RACE_RULES_REVISIONS.map(preservesOfficialStageTimes), [false, false, false, false, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(usesSharedGroupTime), [false, false, false, false, true, true]);
+  for (const unknown of [null, undefined, "", "official_times_v9", "orders_gc_v3 ", 3]) {
+    assert.equal(preservesOfficialStageTimes(unknown), false);
+    assert.equal(usesSharedGroupTime(unknown), false);
+  }
+});
+
+test("#6199: official_times_v2 is NOT current (the flip is owner-only) but a pinned race keeps it", () => {
+  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
+  assert.equal(
+    resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "official_times_v2", currentRevision: "orders_gc_v2" }),
+    "official_times_v2",
+  );
+  assert.equal(
+    resolveRaceRulesRevision({ race: notStarted, firstStageClaim: true, storedRevision: null, currentRevision: "official_times_v2" }),
+    "official_times_v2",
+  );
+});
+
+test("#6199: the bridge carries official_times_v2 with the same input as orders_gc_v3", async () => {
+  const v3 = await bridgeInput("orders_gc_v3");
+  const official = await bridgeInput("official_times_v2");
+  assert.equal(official.rules_revision, "official_times_v2");
+  assert.deepEqual({ ...official, rules_revision: "orders_gc_v3" }, v3);
 });

@@ -316,7 +316,7 @@ function v4RulesRevisionArg(rulesRevision) {
  *  - Kolonnen findes ikke (migrationen er ikke applied) → legacy, intet skrives.
  *  - dryRun skriver aldrig; et ikke-startet løb previewes på den aktuelle revision.
  *
- * @returns {Promise<"legacy"|"orders_gc_v1"|"orders_gc_v2"|"orders_gc_v3">}
+ * @returns {Promise<import("./raceEngineRulesRevision.ts").RaceRulesRevision>}
  */
 export async function bindRaceRulesRevision({ supabase, race, firstStageClaim, dryRun = false, currentRevision = CURRENT_RACE_RULES_REVISION }) {
   const readRow = async () => supabase

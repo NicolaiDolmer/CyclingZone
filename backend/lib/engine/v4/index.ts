@@ -54,6 +54,7 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
+import { usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
 // M2/M3/M4/M5/M8/M10-
@@ -308,7 +309,7 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
   // loebsfilmen aldrig siger "udbruddet holdt" paa en etape udbruddet ikke vandt.
   // Samme dom som trace.breakaway_win, som etape-fortaellingen bruger.
   const settledTimeline = settleBreakawaySurvivedEvents(sortedTimeline, {
-    ...(input.rules_revision === "official_times_v1" ? { physicalDescentOutcomes: true } : {}),
+    ...(usesSharedGroupTime(input.rules_revision) ? { physicalDescentOutcomes: true } : {}),
     breakawayWin,
     trace: finaleTrace,
     results,

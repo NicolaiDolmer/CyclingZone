@@ -32,6 +32,11 @@ test("regel-revision: kun orders_gc_v1 er de nye regler; null/ukendt/legacy er l
   // #6187: orders_gc_v3 = orders_gc_v2 + eget hold jagter aldrig sine egne; samme flader.
   assert.equal(raceRulesRevision("orders_gc_v3"), "orders_gc_v1");
   assert.equal(isOrdersGcRevision("orders_gc_v3"), true);
+  // #6199: the official-times revisions carry the same orders package and surfaces.
+  for (const official of ["official_times_v1", "official_times_v2"]) {
+    assert.equal(raceRulesRevision(official), "orders_gc_v1");
+    assert.equal(isOrdersGcRevision(official), true);
+  }
 });
 
 test("ordre-halvdelen: preview-gaten gælder legacy, orders_gc_v1 viser altid ordrerne", () => {

@@ -87,7 +87,7 @@ import {
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
-import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "../../raceEngineRulesRevision.ts";
+import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
@@ -767,6 +767,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "orders_gc_v2") return "orders_gc_v2";
   if (raw === "orders_gc_v3") return "orders_gc_v3";
   if (raw === "official_times_v1") return "official_times_v1";
+  if (raw === "official_times_v2") return "official_times_v2";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -787,8 +788,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // #6187: orders_gc_v3 = hele v2 (fase + rullende balance ser "orders_gc_v2") + flaget ordersGcV3.
   const v2Revision: RulesRevision = isOrdersGcV2OrLater(rulesRevision) ? "orders_gc_v2" : rulesRevision;
   const ordersGcV3 = isOrdersGcV3OrLater(rulesRevision);
-  const descentCrossings = rulesRevision === "official_times_v1";
-  const sharedGroupTime = rulesRevision === "official_times_v1";
+  const descentCrossings = usesSharedGroupTime(rulesRevision);
+  const sharedGroupTime = usesSharedGroupTime(rulesRevision);
   const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;

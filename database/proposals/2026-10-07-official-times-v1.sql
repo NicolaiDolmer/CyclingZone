@@ -9,7 +9,7 @@ ALTER TABLE public.races
 ALTER TABLE public.races
   ADD CONSTRAINT races_engine_rules_revision_check
   CHECK (engine_rules_revision IS NULL OR engine_rules_revision IN
-    ('legacy', 'orders_gc_v1', 'orders_gc_v2', 'orders_gc_v3', 'official_times_v1'));
+    ('legacy', 'orders_gc_v1', 'orders_gc_v2', 'orders_gc_v3', 'official_times_v1', 'official_times_v2'));
 COMMIT;
 
 -- Read-only post-verify:
