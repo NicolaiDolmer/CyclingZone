@@ -115,6 +115,8 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate }) {
       .map((race) => ({ id: race.id, name: race.name ?? null }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   } catch {
+    // best-effort: the race names only decorate the button line; a failed read must
+    // never fail the status (the press itself does not depend on it).
     return [];
   }
 }
