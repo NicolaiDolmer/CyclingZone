@@ -3,12 +3,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { likeLiteral, parseArgs, pickRace, slug, GIRO_FIXTURE } from "./tourDryRun.mjs";
+import { attachLegacyReference, likeLiteral, parseArgs, pickRace, slug, GIRO_FIXTURE } from "./tourDryRun.mjs";
 import {
   KNOWN_OPEN_GATES,
+  MOUNTAIN_AHEAD_PROFILES,
   TOUR_BENCHMARKS,
   abilityTimeCorrelation,
   applyKnownOpen,
+  applyLegacyHoldReference,
+  breakawayAheadOfFavourites,
+  legacyHoldBand,
   gateStatus,
   gcTop10InBreakOverThreshold,
   isBunchSprintStage,
@@ -36,6 +40,72 @@ test("parseArgs: revision + sammenligning, default seeds, leadout-par kan slaas 
   assert.equal(b.leadoutPair, false);
   assert.deepEqual(parseArgs(["--compare=none"]).revisions, ["orders_gc_v3"]);
   assert.throws(() => parseArgs(["--seeds=0"]), /positivt heltal/);
+  assert.equal(a.legacyRef, true, "#5578: legacy-referencen er med som standard");
+  assert.equal(parseArgs(["--no-legacy-ref"]).legacyRef, false);
+});
+
+// ── #5578: udbrudsmaal 3 og 4 ───────────────────────────────────────────────
+
+const finish = (rows) => ({ results: rows.map(([rider_id, time_seconds], i) => ({ rider_id, rank: i + 1, time_seconds, status: "finished" })) });
+const withBreak = (out, ids) => ({ ...out, timeline: { events: [{ type: "breakaway_formed", params: { rider_ids: ids } }] } });
+
+test("#5578 breakawayAheadOfFavourites: udbryderen foran den foerste kaptajn uden for udbruddet, paa tid", () => {
+  const roles = new Map([["cap", "captain"], ["b1", "hunter"], ["h", "helper"]]);
+  assert.equal(breakawayAheadOfFavourites(finish([["b1", 100], ["cap", 160]]), roles), false, "intet udbrud = ikke foran");
+  assert.equal(breakawayAheadOfFavourites(withBreak(finish([["b1", 100], ["cap", 160]]), ["b1"]), roles), true);
+  assert.equal(breakawayAheadOfFavourites(withBreak(finish([["b1", 100], ["cap", 100]]), ["b1"]), roles), false, "samme tid som favoritterne = hentet");
+  assert.equal(breakawayAheadOfFavourites(withBreak(finish([["cap", 90], ["b1", 100]]), ["b1"]), roles), false);
+  assert.equal(breakawayAheadOfFavourites(withBreak(finish([["h", 90], ["b1", 100]]), ["b1"]), roles), true, "ingen kaptajn i maal");
+});
+
+test("#5578 legacyHoldBand: den mildeste af differens og forhold mod legacy", () => {
+  const band = TOUR_BENCHMARKS.breakawayHoldVsLegacy.byClass.legacy;
+  assert.equal(band.status, "ejer");
+  const hi = legacyHoldBand(0.9);
+  assert.ok(Math.abs(hi.min - Math.min(0.9 + band.minDelta, 0.9 * band.minRatio)) < 1e-12);
+  assert.ok(hi.warnMin < hi.min);
+  assert.ok(legacyHoldBand(0.1).min <= 0.1 * band.minRatio);
+});
+
+test("#5578 applyLegacyHoldReference: hver profiltype doemmes mod legacy paa samme seeds, og dommene taelles om", () => {
+  const summary = {
+    stages: [], race: { verdicts: {} },
+    classes: [
+      { profile_type: "hilly", breakawayAheadShare: 0.9, verdicts: {} },
+      { profile_type: "mountain", breakawayAheadShare: 0.1, verdicts: {} },
+      { profile_type: "gravel", breakawayAheadShare: 0.2, verdicts: {} },
+    ],
+  };
+  const legacy = { classes: [{ profile_type: "hilly", breakawayAheadShare: 0.95 }, { profile_type: "mountain", breakawayAheadShare: 0.6 }] };
+  applyLegacyHoldReference(summary, legacy);
+  const v = Object.fromEntries(summary.classes.map((c) => [c.profile_type, c.verdicts.breakawayHoldVsLegacy]));
+  assert.deepEqual(v, { hilly: "PASS", mountain: "FAIL", gravel: "N/A" });
+  assert.equal(summary.classes[0].legacyAheadShare, 0.95);
+  assert.deepEqual(summary.counts, { PASS: 1, WARN: 0, FAIL: 1, TODO: 0, "N/A": 1 });
+});
+
+test("#5578 attachLegacyReference: legacy genbruges hvis den er koert, ellers koeres den én gang", () => {
+  const mk = (revision) => ({ revision, summary: { stages: [], race: { verdicts: {} }, classes: [{ profile_type: "hilly", breakawayAheadShare: revision === "legacy" ? 0.5 : 0.45, verdicts: {} }] } });
+  let calls = 0;
+  const runs = [mk("official_times_v2"), mk("orders_gc_v2")];
+  attachLegacyReference(runs, () => { calls += 1; return mk("legacy"); });
+  assert.equal(calls, 1);
+  assert.ok(runs.every((r) => r.summary.classes[0].verdicts.breakawayHoldVsLegacy === "PASS"));
+  const withLegacy = [mk("legacy"), mk("official_times_v2")];
+  attachLegacyReference(withLegacy, () => { throw new Error("maa ikke koere legacy igen"); });
+  assert.equal(withLegacy[0].summary.classes[0].verdicts.breakawayHoldVsLegacy, undefined, "legacy doemmes ikke mod sig selv");
+  assert.equal(attachLegacyReference([mk("legacy")], () => { throw new Error("nej"); }), null);
+});
+
+test("#5578 summarizeTour: maal 4 maales paa bjerg (samme 'bjerg' som maal 2), ikke hoejfjeld", () => {
+  assert.deepEqual([...MOUNTAIN_AHEAD_PROFILES], ["mountain"]);
+  const row = (stage, profile_type, ahead) => ({ stage, profile_type, cls: profileClass(profile_type), breakawayWon: ahead, breakawayAhead: ahead, breakawaySize: 6, minuteLossAtZeroKm: null, gcTop10InBreakOver5Min: 0, ownTeamChasesOwn: 0, clampedAtCap: 0, capClump: 0, labelContradictions: 0, flatBreakawayWinMinutes: 0 });
+  const stages = [{ stage_number: 1, profile_type: "mountain" }, { stage_number: 2, profile_type: "high_mountain" }];
+  const perSeed = [true, false].map((ahead, i) => ({ seed: i + 1, rows: [row(1, "mountain", ahead), row(2, "high_mountain", false)], gcWeek1: null, gcFinalTo10: null, gcWinnerMargin: null, gcWinner: "a" }));
+  const s = summarizeTour(perSeed, stages, "official_times_v2");
+  assert.equal(s.race.mountainBreakAheadShare, 0.5);
+  assert.equal(s.race.verdicts.mountainBreakAheadShare, verdict(0.5, TOUR_BENCHMARKS.mountainBreakAheadShare.byClass.race));
+  assert.equal(TOUR_BENCHMARKS.mountainBreakAheadShare.byClass.race.status, "ejer");
 });
 
 test("pickRace: ét navn, division-tier ved flere, fejl ved tvetydighed", () => {
@@ -225,6 +295,9 @@ test("runTour: hele Giro-feltet, deterministisk, scorecard pr. etape og samlet",
   assert.ok(itt.rhoTempo !== null && itt.rhoClimb !== null, "kuperet ITT maaler evnevaegt (#6349)");
   assert.ok(a.summary.stages.some((s) => s.leadoutRankGain !== null), "sprinttoget maales paa mindst én etape (#6352)");
   assert.ok(Number.isFinite(a.summary.race.gcTo10Final));
+  // #5578: maal 3/4 maales paa det rigtige felt (Giro har bjergetaper).
+  assert.ok(Number.isFinite(a.summary.race.mountainBreakAheadShare));
+  assert.ok(a.summary.classes.every((c) => Number.isFinite(c.breakawayAheadShare)));
   assert.equal(a.droppedWithoutAbilities, 0);
   // Minuttab ved start maales paa den rigtige loebsfilm (vejetaper), N/A paa tidskoersler.
   const road = a.summary.stages.filter((s) => !["itt", "itt_hilly", "ttt"].includes(s.profile_type));
