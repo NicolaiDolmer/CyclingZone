@@ -159,9 +159,25 @@ function campaignProperties() {
   return found;
 }
 
+// #5162 (K3): frontend-releasens indholds-id (<meta name="cz-frontend">) på
+// hvert event. scripts/measure-client-release-age.mjs måler ud fra det hvor
+// længe klienter kører en afløst release, og dermed hvilke gamle assets næste
+// deploy skal bære videre. Læses én gang: id'et skifter aldrig i en page load.
+let frontendIdCache;
+function frontendIdProperty() {
+  if (frontendIdCache === undefined) {
+    frontendIdCache = "";
+    try {
+      frontendIdCache = document.querySelector('meta[name="cz-frontend"]')?.getAttribute("content")?.trim() || "";
+    } catch { /* intet document (node --test) */ }
+  }
+  return frontendIdCache ? { cz_frontend: frontendIdCache } : null;
+}
+
 function capture(name, properties) {
   const campaign = campaignProperties();
-  client.capture(name, campaign ? { ...(properties || {}), ...campaign } : (properties || {}));
+  const release = frontendIdProperty();
+  client.capture(name, campaign || release ? { ...(properties || {}), ...campaign, ...release } : (properties || {}));
 }
 
 // optIn()/optOut() er async i core'en, men laver kun en synkron

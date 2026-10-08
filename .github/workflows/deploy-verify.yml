@@ -510,6 +510,19 @@ jobs:
           fi
           note "✅ Chunk-fejl-rate: $COUNT paa 24 t (budget $CHUNK_ERROR_BUDGET, haard graense $CHUNK_ERROR_HARD_LIMIT)."
 
+      # #5162 (K3): retention for carry-forward efter maalt klient-alder. Read-only
+      # mod PostHog; eneste skrivning er retention.json i den private bucket.
+      # Mangler secrets, springer scriptet selv over (gulvet holder listen).
+      - name: Release-retention efter maalt klient-alder (#5162)
+        if: steps.deployments.outputs.result == 'success'
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
+        run: node scripts/measure-client-release-age.mjs
+
       - name: Comment success on merged PR
         if: success() && steps.deployments.outputs.result == 'success' && steps.pr.outputs.number != ''
         env:
