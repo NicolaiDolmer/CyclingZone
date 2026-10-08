@@ -21,7 +21,14 @@
 --    WHERE conname = 'races_engine_rules_revision_check' AND conrelid = 'public.races'::regclass;
 --   SELECT engine_rules_revision, count(*) FROM public.races GROUP BY 1;
 
+-- Lock-timeout: races er en varm tabel, og ADD CONSTRAINT ... CHECK kraever et
+-- kort ACCESS EXCLUSIVE-lock mens eksisterende raekker valideres. SET LOCAL
+-- lock_timeout faar migrationen til at fejle hurtigt (og kan koeres igen) i
+-- stedet for at staa i koe bag en lang transaktion og blokere races imens.
+
 BEGIN;
+
+SET LOCAL lock_timeout = '3s';
 
 ALTER TABLE public.races
   DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check;
