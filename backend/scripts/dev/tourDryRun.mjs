@@ -20,11 +20,12 @@
 //   --compare=<rev>                     sammenligningsrevision side om side (default orders_gc_v2; "none" slaar fra)
 //   --seeds=<n>                         seeds pr. revision (default 5)
 //   --no-leadout-pair                   spring den parrede sprinttog-maaling over
+//   --no-legacy-ref                     spring legacy-referencen over (udbrudsmaal 3, #5578)
 //   --out-dir=<dir>                     default balance-internals/tour-6285
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderTourMarkdown, runTour } from "./lib/tourScorecard.mjs";
+import { applyLegacyHoldReference, renderTourMarkdown, runTour } from "./lib/tourScorecard.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -50,6 +51,7 @@ export function parseArgs(argv) {
     revisions: all,
     seeds,
     leadoutPair: !argv.includes("--no-leadout-pair"),
+    legacyRef: !argv.includes("--no-legacy-ref"),
     cache: get("cache"),
     saveCache: get("save-cache"),
     fixture: get("fixture"),
@@ -74,6 +76,19 @@ export function pickRace(candidates, divisionTierById, tier = 1) {
 /** Et loebsnavn som literal ILIKE-moenster: \, % og _ escapes, saa navnet ikke virker som wildcard. */
 export function likeLiteral(text) {
   return String(text).replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * #5578 udbrudsmaal 3: doem hver ikke-legacy-revision mod legacy paa samme data
+ * og seeds. Legacy genbruges hvis den allerede er koert, ellers koeres den én
+ * gang via `runLegacy` (kun som reference, ikke som egen blok i rapporten).
+ */
+export function attachLegacyReference(runs, runLegacy) {
+  const targets = runs.filter((r) => r.revision !== "legacy");
+  if (!targets.length) return null;
+  const legacy = runs.find((r) => r.revision === "legacy") ?? runLegacy();
+  for (const r of targets) applyLegacyHoldReference(r.summary, legacy.summary);
+  return legacy;
 }
 
 /** Filnavn uden mellemrum og specialtegn. */
@@ -136,6 +151,7 @@ export async function main(argv = process.argv.slice(2)) {
   const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
   const v4 = await loadRaceEngineV4();
   const runs = opts.revisions.map((revision) => runTour({ v4, data, revision, seeds: opts.seeds, leadoutPair: opts.leadoutPair }));
+  if (opts.legacyRef) attachLegacyReference(runs, () => runTour({ v4, data, revision: "legacy", seeds: opts.seeds, leadoutPair: false }));
   const dropped = runs[0]?.droppedWithoutAbilities ?? 0;
   if (dropped > 0) console.warn(`ADVARSEL: ${dropped} ryttere paa startlisten mangler evner og er IKKE koert (feltet er mindre end i spillet).`);
   const generatedAt = new Date().toISOString();

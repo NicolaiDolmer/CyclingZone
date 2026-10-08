@@ -132,6 +132,18 @@ export const TOUR_BENCHMARKS = Object.freeze({
   },
   // Noeglen er profile_type (se breakawayWinShareBands), ikke benchmark-klassen.
   breakawayWinShare: { unit: "andel", byClass: breakawayWinShareBands },
+  // #5578 udbrudsmaal 3 (RULES "Udbrudsmaal"): pr. profile_type holder udbruddet
+  // til maal foran favoritterne paa legacy-niveau, maalt mod legacy koert paa
+  // samme data og seeds (se applyLegacyHoldReference). Baandet er relativt.
+  breakawayHoldVsLegacy: {
+    unit: "andel minus legacy",
+    byClass: { legacy: { minDelta: -0.1, warnMinDelta: -0.2, status: "ejer", source: "RULES Udbrudsmaal 3 (ejer 1-2/10, #5955, #6089): ikke markant sjaeldnere i maal end legacy paa nogen vejprofil" } },
+  },
+  // #5578 udbrudsmaal 4: bjerg + hoejfjeld, udbruddet foran favoritterne ca. 45 %.
+  mountainBreakAheadShare: {
+    unit: "andel",
+    byClass: { race: { min: 0.35, max: 0.55, warnMin: 0.25, warnMax: 0.65, status: "ejer", source: "RULES Udbrudsmaal 4 (ejer 2/10, #6084): paa bjerg ender udbruddet foran favoritterne ca. 45 % af etaperne" } },
+  },
   gcTo10AfterWeek1: {
     unit: "s",
     byClass: { race: { min: 45, max: 360, status: "forslag", source: `klassementet efter foerste uge: nr. 10 ca. 1-6 min efter foereren (${PCS_NOTE})` } },
@@ -222,6 +234,30 @@ export function breakawayWin(out) {
   const firstOther = fin.find((r) => !formed.has(r.rider_id));
   return { won: true, margin: firstOther ? firstOther.time_seconds - winner.time_seconds : null };
 }
+
+/**
+ * #5578 udbrudsmaal 3 og 4: holdt morgenudbruddet til maal foran favoritterne?
+ * Favoritterne defineres som i #6084/#6089-harnessen: kaptajnerne
+ * (race_role "captain") uden for morgenudbruddet. Udbruddet er foran naar dets
+ * foerste rytter i maal kommer foer den foerste af dem PAA TID (mindst
+ * AHEAD_MIN_GAP_SECONDS), eller ingen af dem kom i maal. Skaerpet i forhold til
+ * harnessen, der kun saa paa placeringen: en indhentet udbryder der spurter
+ * foran en kaptajn i samme gruppe (samme tid) har ikke holdt til maal.
+ * Ingen udbrud = ikke foran (etapen taeller stadig med).
+ */
+export const AHEAD_MIN_GAP_SECONDS = 1;
+export function breakawayAheadOfFavourites(out, roleByRider) {
+  const { formed } = breakawaySets(out);
+  if (!formed.size) return false;
+  const fin = finishedSorted(out);
+  const b = fin.findIndex((r) => formed.has(r.rider_id));
+  if (b < 0) return false;
+  const c = fin.findIndex((r) => roleByRider?.get(r.rider_id) === "captain" && !formed.has(r.rider_id));
+  return c < 0 || (b < c && fin[c].time_seconds - fin[b].time_seconds >= AHEAD_MIN_GAP_SECONDS);
+}
+
+/** Bjergetaperne i udbrudsmaal 4 (#6084: bjerg og hoejfjeld). */
+export const MOUNTAIN_AHEAD_PROFILES = Object.freeze(["mountain", "high_mountain"]);
 
 /**
  * #6285-1: udbrud der vinder en FLAD etape med minutter. Samme definition i
@@ -462,7 +498,7 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
 }
 
 /** Etapens maalinger for ét seed. */
-export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds = null }) {
+export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds = null, roleByRider = null }) {
   const out = res.v4Output;
   const ranked = res.ranked;
   const cls = profileClass(profile.profile_type);
@@ -477,6 +513,7 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     ittGapTo10Per40Km: tt && km && g10 !== null ? (g10 / km) * 40 : null,
     breakawaySize: tt ? null : formed.size,
     breakawayWon: tt ? null : bw.won,
+    breakawayAhead: tt ? null : breakawayAheadOfFavourites(out, roleByRider),
     breakawayWinMargin: bw.margin,
     flatBreakawayWinMinutes: !tt && flatBreakawayWinWithMinutes(out, profile).hit ? 1 : 0,
     gcTop10InBreakOver5Min: tt ? 0 : gcTop10InBreakOverThreshold(out, gcBefore).length,
@@ -522,6 +559,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
   const { entrants: all, droppedWithoutAbilities } = splitEntrants(data);
   const abilitiesById = new Map(data.abilities.map((a) => [a.rider_id, a]));
   const teamByRider = new Map(all.map((e) => [e.rider_id, e.team_id]));
+  const roleByRider = new Map(all.map((e) => [e.rider_id, e.race_role]));
   const riderIds = all.map((e) => e.rider_id);
   const week1Stage = stages[Math.max(0, Math.round(stages.length * (9 / 21)) - 1)]?.stage_number ?? null;
   const perSeed = [];
@@ -532,7 +570,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const final = runStagesInOrder({
       v4, data, revision, seedTag, stages, entrants: all,
       onStage: ({ profile, res, gcBefore, gcAfter, entrants }) => {
-        const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds });
+        const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider });
         if (leadoutPair && isBunchSprintStage(profile)) {
           const teams = leadoutTeams(data.orders, profile.stage_number);
           if (teams.size) {
@@ -571,6 +609,7 @@ export function summarizeTour(perSeed, stages, revision = null) {
       gapTo10: med("gapTo10"), gapTo30: med("gapTo30"), ittGapTo10Per40Km: med("ittGapTo10Per40Km"),
       breakawaySize: med("breakawaySize"),
       breakawayWins: ms.filter((m) => m.breakawayWon === true).length,
+      breakawayAhead: ms.filter((m) => m.breakawayAhead === true).length,
       breakawayWinMarginMedian: median(ms.map((m) => m.breakawayWinMargin).filter((v) => v !== null)),
       gcTo10After: med("gcTo10After"), gcTo30After: med("gcTo30After"),
       gcTop10InBreakOver5Min: sum(ms.map((m) => m.gcTop10InBreakOver5Min)),
@@ -601,9 +640,10 @@ export function summarizeTour(perSeed, stages, revision = null) {
   const byType = {};
   for (const r of stageRows) {
     if (TIME_TRIAL_PROFILES.has(r.profile_type)) continue;
-    const c = (byType[r.profile_type] ??= { cls: r.cls, stages: 0, wins: 0, trials: 0, sizes: [] });
+    const c = (byType[r.profile_type] ??= { cls: r.cls, stages: 0, wins: 0, ahead: 0, trials: 0, sizes: [] });
     c.stages += 1;
     c.wins += r.breakawayWins;
+    c.ahead += r.breakawayAhead ?? 0;
     c.trials += r.seeds;
     if (r.breakawaySize !== null) c.sizes.push(r.breakawaySize);
   }
@@ -612,6 +652,8 @@ export function summarizeTour(perSeed, stages, revision = null) {
     const sizeMedian = median(c.sizes);
     return {
       profile_type: profileType, cls: c.cls, stages: c.stages, trials: c.trials, breakawayWinShare: share, breakawaySizeMedian: sizeMedian,
+      breakawayAheadShare: c.trials ? c.ahead / c.trials : null,
+      legacyAheadShare: null,
       verdicts: {
         breakawayWinShare: verdict(share, TOUR_BENCHMARKS.breakawayWinShare.byClass[profileType]),
         breakawaySize: verdict(sizeMedian, TOUR_BENCHMARKS.breakawaySize.byClass[c.cls]),
@@ -634,20 +676,52 @@ export function summarizeTour(perSeed, stages, revision = null) {
     flatBreakawayWinMinutes: perTour("flatBreakawayWinMinutes"),
     distinctGcWinners: new Set(perSeed.map((s) => s.gcWinner)).size,
   };
+  // #5578 udbrudsmaal 4: bjerg + hoejfjeld samlet (som #6084's "bjerg").
+  const mountainRows = classRows.filter((c) => MOUNTAIN_AHEAD_PROFILES.includes(c.profile_type));
+  const mountainTrials = sum(mountainRows.map((c) => c.trials));
+  race.mountainBreakAheadShare = mountainTrials ? sum(mountainRows.map((c) => c.breakawayAheadShare * c.trials)) / mountainTrials : null;
   race.minuteLossMeasuredStages = stageRows.filter((r) => r.minuteLossAtZeroKm !== null).length;
   race.verdicts = {
     gcTo10AfterWeek1: verdict(race.gcTo10AfterWeek1, TOUR_BENCHMARKS.gcTo10AfterWeek1.byClass.race),
     gcTo10Final: verdict(race.gcTo10Final, TOUR_BENCHMARKS.gcTo10Final.byClass.race),
     gcWinnerMargin: verdict(race.gcWinnerMargin, TOUR_BENCHMARKS.gcWinnerMargin.byClass.race),
+    mountainBreakAheadShare: verdict(race.mountainBreakAheadShare, TOUR_BENCHMARKS.mountainBreakAheadShare.byClass.race),
   };
   for (const k of ["gcTop10InBreakOver5Min", "ownTeamChasesOwn", "clampedAtCap", "minuteLossAtZeroKm", "labelContradictions", "flatBreakawayWinMinutes"]) {
     race.verdicts[k] = applyKnownOpen(verdict(race[k], TOUR_BENCHMARKS[k].byClass.race), RACE_GATE_CHECK[k], revision);
   }
-  const all = [...stageRows.flatMap((r) => Object.values(r.verdicts)), ...classRows.flatMap((r) => Object.values(r.verdicts)), ...Object.values(race.verdicts)];
+  const gates = Object.keys(GATE_METRIC).map((check) => ({ check, metric: GATE_METRIC[check], status: gateStatus(check, revision), note: KNOWN_OPEN_GATES[check]?.[revision] ?? null, verdict: race.verdicts[GATE_METRIC[check]] }));
+  const summary = { stages: stageRows, classes: classRows, race, gates };
+  summary.counts = countVerdicts(summary);
+  return summary;
+}
+
+/** PASS/WARN/FAIL/TODO/N/A over alle domme i et scorecard. */
+export function countVerdicts(summary) {
+  const all = [...summary.stages.flatMap((r) => Object.values(r.verdicts)), ...summary.classes.flatMap((r) => Object.values(r.verdicts)), ...Object.values(summary.race.verdicts)];
   const counts = { PASS: 0, WARN: 0, FAIL: 0, TODO: 0, "N/A": 0 };
   for (const v of all) counts[v] += 1;
-  const gates = Object.keys(GATE_METRIC).map((check) => ({ check, metric: GATE_METRIC[check], status: gateStatus(check, revision), note: KNOWN_OPEN_GATES[check]?.[revision] ?? null, verdict: race.verdicts[GATE_METRIC[check]] }));
-  return { stages: stageRows, classes: classRows, race, counts, gates };
+  return counts;
+}
+
+/**
+ * #5578 udbrudsmaal 3: doem hver profile_type's "foran favoritterne i maal"
+ * mod legacy koert paa SAMME data og seeds (legacySummary). Muterer summary
+ * (legacyAheadShare + verdicts.breakawayHoldVsLegacy) og taeller dommene om.
+ * En profiltype legacy ikke har, faar N/A. Legacy doemmes ikke mod sig selv.
+ */
+export function applyLegacyHoldReference(summary, legacySummary) {
+  const band = TOUR_BENCHMARKS.breakawayHoldVsLegacy.byClass.legacy;
+  const legacyByType = new Map((legacySummary?.classes ?? []).map((c) => [c.profile_type, c.breakawayAheadShare]));
+  for (const c of summary.classes) {
+    const ref = legacyByType.get(c.profile_type);
+    c.legacyAheadShare = Number.isFinite(ref) ? ref : null;
+    c.verdicts.breakawayHoldVsLegacy = c.legacyAheadShare === null
+      ? "N/A"
+      : verdict(c.breakawayAheadShare, { min: c.legacyAheadShare + band.minDelta, warnMin: c.legacyAheadShare + band.warnMinDelta });
+  }
+  summary.counts = countVerdicts(summary);
+  return summary;
 }
 
 // ── Rapport ──────────────────────────────────────────────────────────────────
@@ -676,12 +750,13 @@ export function renderTourMarkdown({ raceLabel, runs, generatedAt }) {
   lines.push(MINUTE_LOSS_NA, "");
   if (runs.length > 1) {
     lines.push("## Side om side", "", `| Maaling | ${runs.map((r) => r.revision).join(" | ")} |`, `|---|${runs.map(() => "---").join("|")}|`);
-    const raceKeys = [["gcTo10AfterWeek1", fmtS], ["gcTo10Final", fmtS], ["gcWinnerMargin", fmtS], ["gcTop10InBreakOver5Min", fmtN], ["ownTeamChasesOwn", fmtN], ["clampedAtCap", fmtN], ["minuteLossAtZeroKm", fmtN], ["labelContradictions", fmtN], ["flatBreakawayWinMinutes", fmtN], ["distinctGcWinners", fmtN]];
+    const raceKeys = [["gcTo10AfterWeek1", fmtS], ["gcTo10Final", fmtS], ["gcWinnerMargin", fmtS], ["gcTop10InBreakOver5Min", fmtN], ["ownTeamChasesOwn", fmtN], ["clampedAtCap", fmtN], ["minuteLossAtZeroKm", fmtN], ["labelContradictions", fmtN], ["flatBreakawayWinMinutes", fmtN], ["mountainBreakAheadShare", fmtN], ["distinctGcWinners", fmtN]];
     for (const [k, f] of raceKeys) lines.push(`| ${k} | ${runs.map((r) => cell(f(r.summary.race[k]), r.summary.race.verdicts[k])).join(" | ")} |`);
     const types = [...new Set(runs.flatMap((r) => r.summary.classes.map((x) => x.profile_type)))];
     for (const t of types) {
       lines.push(`| udbrudssejre ${t} | ${runs.map((r) => { const x = r.summary.classes.find((y) => y.profile_type === t); return x ? cell(fmtN(x.breakawayWinShare), x.verdicts.breakawayWinShare) : "-"; }).join(" | ")} |`);
       lines.push(`| udbrudsstoerrelse ${t} | ${runs.map((r) => { const x = r.summary.classes.find((y) => y.profile_type === t); return x ? cell(fmtN(x.breakawaySizeMedian, 1), x.verdicts.breakawaySize) : "-"; }).join(" | ")} |`);
+      lines.push(`| udbrud foran favoritter ${t} (legacy) | ${runs.map((r) => { const x = r.summary.classes.find((y) => y.profile_type === t); return x ? cell(`${fmtN(x.breakawayAheadShare)} (${fmtN(x.legacyAheadShare)})`, x.verdicts.breakawayHoldVsLegacy) : "-"; }).join(" | ")} |`);
     }
     lines.push(`| PASS/WARN/FAIL/TODO/N/A | ${runs.map((r) => { const c = r.summary.counts; return `${c.PASS}/${c.WARN}/${c.FAIL}/${c.TODO}/${c["N/A"]}`; }).join(" | ")} |`, "");
     lines.push("### Etaper side om side (nr. 10 / nr. 30 til vinderen)", "", `| Etape | Profil | ${runs.map((r) => r.revision).join(" | ")} |`, `|---|---|${runs.map(() => "---").join("|")}|`);
@@ -701,8 +776,8 @@ export function renderTourMarkdown({ raceLabel, runs, generatedAt }) {
     for (const r of s.stages) {
       lines.push(`| ${r.stage} | ${r.profile_type}/${r.finale_type ?? "-"} | ${cell(fmtS(r.gapTo10), r.verdicts.gapTo10)} | ${cell(fmtS(r.gapTo30), r.verdicts.gapTo30)} | ${cell(fmtS(r.ittGapTo10Per40Km), r.verdicts.ittGapTo10Per40Km)} | ${cell(fmtN(r.breakawaySize, 1), r.verdicts.breakawaySize)} | ${r.breakawayWins}/${r.seeds} | ${fmtS(r.breakawayWinMarginMedian)} | ${fmtS(r.gcTo10After)} | ${r.gcTop10InBreakOver5Min} | ${r.ownTeamChasesOwn} | ${r.clampedAtCap} (klump ${r.capClumpMax}) | ${fmtN(r.over30RawMedian, 0)} | ${fmtZ(r.minuteLossAtZeroKm)} | ${r.labelContradictions} | ${r.rhoTempo === null ? "-" : `${fmtN(r.rhoTempo)} / ${fmtN(r.rhoClimb)}${r.verdicts.ittHillyTempoMinusClimb ? ` ${r.verdicts.ittHillyTempoMinusClimb}` : ""}`} | ${r.leadoutRankGain === null ? "-" : `${cell(fmtN(r.leadoutRankGain, 1), r.verdicts.leadoutRankGain)} (${r.leadoutWinsWith}/${r.leadoutWinsWithout})`} |`);
     }
-    lines.push("", "| Udbrud pr. profiltype | Etaper | Udbrudssejre (andel) | Stoerrelse (median) |", "|---|---|---|---|");
-    for (const c of s.classes) lines.push(`| ${c.profile_type} | ${c.stages} | ${cell(fmtN(c.breakawayWinShare), c.verdicts.breakawayWinShare)} | ${cell(fmtN(c.breakawaySizeMedian, 1), c.verdicts.breakawaySize)} |`);
+    lines.push("", "| Udbrud pr. profiltype | Etaper | Udbrudssejre (andel) | Stoerrelse (median) | Foran favoritter i maal (andel) | Legacy samme seeds | Holder til maal vs legacy |", "|---|---|---|---|---|---|---|");
+    for (const c of s.classes) lines.push(`| ${c.profile_type} | ${c.stages} | ${cell(fmtN(c.breakawayWinShare), c.verdicts.breakawayWinShare)} | ${cell(fmtN(c.breakawaySizeMedian, 1), c.verdicts.breakawaySize)} | ${fmtN(c.breakawayAheadShare)} | ${fmtN(c.legacyAheadShare)} | ${c.verdicts.breakawayHoldVsLegacy ?? "-"} |`);
     lines.push("", "| Loebet | Vaerdi | Dom |", "|---|---|---|");
     for (const [k, v] of Object.entries(s.race)) {
       if (k === "verdicts") continue;
@@ -714,7 +789,7 @@ export function renderTourMarkdown({ raceLabel, runs, generatedAt }) {
   }
   lines.push("## Benchmark-kilder", "", "| Maaling | Klasse | Baand | Status | Kilde |", "|---|---|---|---|---|");
   for (const [k, b] of Object.entries(TOUR_BENCHMARKS)) {
-    for (const [c, band] of Object.entries(b.byClass)) lines.push(`| ${k} (${b.unit}) | ${c} | ${band.min ?? "-"}..${band.max ?? "-"} | ${band.status} | ${band.source} |`);
+    for (const [c, band] of Object.entries(b.byClass)) lines.push(`| ${k} (${b.unit}) | ${c} | ${band.minDelta !== undefined ? `legacy ${band.minDelta}..` : `${band.min ?? "-"}..${band.max ?? "-"}`} | ${band.status} | ${band.source} |`);
   }
   return `${lines.join("\n")}\n`;
 }
