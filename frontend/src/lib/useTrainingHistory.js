@@ -45,7 +45,7 @@ function receiptState(activeStart, seasonRuns) {
   return seasonReceiptView(seasonReceiptState(activeStart, today), seasonRuns);
 }
 
-export function useTrainingHistory({ dailyReceiptEnabled = false } = {}) {
+export function useTrainingHistory() {
   const [runs, setRuns] = useState([]);     // [{ tick_date, executed_by, bonus_applied, report }] — seneste 30 dage
   const [rawRuns, setRawRuns] = useState([]);
   const [rawSeasonRuns, setRawSeasonRuns] = useState([]);
@@ -128,7 +128,9 @@ export function useTrainingHistory({ dailyReceiptEnabled = false } = {}) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { runs: dailyReceiptEnabled === true ? runs : rawRuns, rawRuns,
-    seasonRuns: dailyReceiptEnabled === true ? seasonRuns : rawSeasonRuns,
+  // The only history renderer has required date receipts since #6030. Keep raw
+  // data under its explicit fields, never as a temporary default UI shape.
+  return { runs, rawRuns, rawSeasonRuns,
+    seasonRuns,
     seasonStart, seasonState, loading, refresh };
 }
