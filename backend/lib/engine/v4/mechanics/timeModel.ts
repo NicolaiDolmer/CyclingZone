@@ -46,6 +46,8 @@ export const TIME_MODEL_V3_TUNING = freeze({
   climbGapExposure: 0.5,
   // Relativt fartab pr. enhed klatre-underskud (0-1 mod gruppens bedste klatrer).
   climbGapAbilityWeight: 1.0,
+  // Konveks del af fartabet (underskud i anden): 0 = lineaert (orders_gc_v3).
+  climbGapAbilityWeightQuadratic: 0,
   // Relativt fartab pr. enhed energi-underskud (tom reserve = 1).
   climbGapEnergyWeight: 0.02,
   climbGapMaxRelativeLoss: 0.6,
@@ -78,7 +80,31 @@ export const TIME_MODEL_V3_TUNING = freeze({
   finaleTieScoreEpsilon: 0.02,
 });
 
-type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
+export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
+
+/**
+ * #6199 (KUN official_times_v2): den samlede tidsmodel kalibreret paa den faelles
+ * gruppeklokke. Samme form som v3-modellen; kun de kalibrerede felter afviger.
+ * orders_gc_v3 og official_times_v1 laeser aldrig dette (gamle digests uaendrede).
+ */
+export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
+  ...TIME_MODEL_V3_TUNING,
+  // Slutstigningen spreder hele gruppen individuelt (climbSelection.summitRace),
+  // saa evne-vaegten er lavere end v3s taerskel-model.
+  climbGapAbilityWeight: 0.5,
+  ...calibrationOverride(),
+});
+
+// Midlertidig kalibreringskrog (fjernes foer merge): tom uden miljoevariablen.
+function calibrationOverride(): Partial<TimeModelTuning> {
+  const raw = typeof process !== "undefined" ? process.env?.CZ6199_TUNE : undefined;
+  return raw ? (JSON.parse(raw) as Partial<TimeModelTuning>) : {};
+}
+
+/** Tidsmodellens tuning for en hook-kontekst: den kalibrerede kun under official_times_v2. */
+export function timeModelTuningFor(ctx: { ordersGcV3?: true; sharedGroupTime?: unknown }): TimeModelTuning {
+  return ctx.ordersGcV3 === true && ctx.sharedGroupTime !== undefined ? SHARED_TIME_MODEL_V2_TUNING : TIME_MODEL_V3_TUNING;
+}
 
 /** Referencefarten (km/t) op ad en stigning med denne gennemsnitsstigning. */
 export function climbSpeedKmh(gradientPct: number, t: TimeModelTuning = TIME_MODEL_V3_TUNING): number {
@@ -110,7 +136,7 @@ export function climbSplitGapSeconds(
 ): number {
   const deficit = Number.isFinite(avgDeficit01) ? clamp(avgDeficit01, 0, 1) : 0;
   const energy = Number.isFinite(avgEnergyDeficit01) ? clamp(avgEnergyDeficit01, 0, 1) : 0;
-  const loss = clamp(t.climbGapAbilityWeight * deficit + t.climbGapEnergyWeight * energy, 0, t.climbGapMaxRelativeLoss);
+  const loss = clamp(t.climbGapAbilityWeight * deficit + t.climbGapAbilityWeightQuadratic * deficit * deficit + t.climbGapEnergyWeight * energy, 0, t.climbGapMaxRelativeLoss);
   const raw = climbTimeSeconds(gradientPct, lengthKm, t) * t.climbGapExposure * loss;
   const [lo, hi] = t.climbGapBoundsSeconds;
   return round2(clamp(raw, lo, hi));

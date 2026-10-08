@@ -749,6 +749,13 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let prevScore: number | null = null;
   let tailStarted = false;
   const tieEpsilon = ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
+  // #6199 (KUN official_times_v2): paa en selektiv finale er tids-tiers et fysisk
+  // tidstab paa sidste stykke, ikke kun en placering i en faelles pulje. Kun en
+  // massefinale deler én tid. En tier kommer aldrig bag en overlevende gruppe:
+  // den kan ikke passere den uden kontakt (samme regel som kontakt-stakken).
+  const sharedPhysicalTiers = ctx.sharedGroupTime !== undefined && ctx.ordersGcV3 === true && !isMassFinishRoute(route);
+  const survivorFloor = survivingGroups.reduce((m, g) => Math.min(m, g.gap_seconds), Infinity);
+  const tierCap = sharedPhysicalTiers && Number.isFinite(survivorFloor) ? Math.max(0, survivorFloor - mergeThreshold - extra.placementGapMarginSeconds) : Infinity;
   let tierTopScore = -Infinity;
 
   // ── Massefinale (#4615, felt-sammenhaengs-ankeret) ──────────────────────────
@@ -761,7 +768,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   //
   // Selektive finaler (bjerg, punch, nedkoersel, udbrud, ITT) beholder de
   // individuelle tids-tiers: dér ER tidsforskellene virkelige.
-  if (isMassFinishRoute(route) || ctx.sharedGroupTime) {
+  if (isMassFinishRoute(route) || (ctx.sharedGroupTime && !sharedPhysicalTiers)) {
     placementGroups.push({
       id: "finale-bunch-0",
       kind: scored.length + unscoredContenderIds.length > 1 ? "peloton" : "solo",
@@ -779,7 +786,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         const scoreDelta = tailReference !== null ? Math.max(0, tailReference - entry.score) : 0;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
-        cumulativeGap += step;
+        cumulativeGap = Math.min(cumulativeGap + step, Math.max(cumulativeGap, tierCap));
         placementGroups.push({
           id: `finale-tail-${seq++}`,
           kind: "peloton",
@@ -809,7 +816,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         const scoreDelta = tierReference - entry.score;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
-        cumulativeGap += step;
+        cumulativeGap = Math.min(cumulativeGap + step, Math.max(cumulativeGap, tierCap));
       }
       placementGroups.push({
         id: cumulativeGap === 0 ? `finale-winner-${seq++}` : `finale-tier-${seq++}`,
@@ -826,7 +833,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     prevScore = entry.score;
   });
 
-  if (!isMassFinishRoute(route) && !ctx.sharedGroupTime && unscoredContenderIds.length > 0) {
+  if (!isMassFinishRoute(route) && (!ctx.sharedGroupTime || sharedPhysicalTiers) && unscoredContenderIds.length > 0) {
     // Samme feltbevarelses-hensyn som i massefinale-grenen: bagerst i den
     // sidste eksisterende klump, ellers som en klump for sig.
     const last = placementGroups[placementGroups.length - 1];

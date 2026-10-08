@@ -40,10 +40,12 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import type { TimeModelTuning } from "./timeModel.ts";
 
 // #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
 const GRUPPETTO_SINGLE_CLUSTER_TUNING = Object.freeze({ ...TIME_MODEL_V3_TUNING, clusterMaxGroups: 1 });
+const singleClusterTuning = (t: typeof TIME_MODEL_V3_TUNING) => (t === TIME_MODEL_V3_TUNING ? GRUPPETTO_SINGLE_CLUSTER_TUNING : Object.freeze({ ...t, clusterMaxGroups: 1 }));
 
 /**
  * #5580 (M1 punkt 1, indsatstrappen model 3): indsatsens GEVINST paa
@@ -341,6 +343,37 @@ function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
 }
 
 /**
+ * #6199 (KUN official_times_v2): er segmentet en del af slutstigningen paa en
+ * topankomst (finale_type long_climb, sidste blok af sammenhaengende stigninger)?
+ */
+export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "segmentIndex">): boolean {
+  const segs = ctx.route.segments ?? [];
+  if (ctx.route.finale_type !== "long_climb" || segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
+  let start = segs.length - 1;
+  while (start > 0 && segs[start - 1].kind === "climb") start--;
+  return ctx.segmentIndex >= start && segs[ctx.segmentIndex]?.kind === "climb";
+}
+
+/**
+ * #6199 (KUN official_times_v2): slutstigningens selektion. En rytter falder af,
+ * naar hans eget hul mindst er klyngens minimum, eller naar reserven/indsatsen
+ * tvinger ham. Monotont i underskuddet: et stoerre underskud giver aldrig et
+ * mindre hul (climbSplitGapSeconds), saa ingen rank-guard er noedvendig.
+ */
+function summitRaceSplitRiderIds(
+  selections: readonly RiderSelection[],
+  gradientPct: number,
+  lengthKm: number,
+  t: TimeModelTuning,
+): string[] {
+  return selections
+    .filter((s) => s.wprimeForced || s.effortForced
+      || climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, t) >= t.clusterMinSeconds)
+    .map((s) => s.riderId)
+    .sort();
+}
+
+/**
  * Naar ALLE ryttere i en gruppe er udvalgt til split, beholdes én som
  * gruppens fortsatte front: den med laveste baseScore. #4914 (CodeRabbit-fund):
  * en tilbagefaldet grupetto-rytter (`effortForced`) maa aldrig vaere den der
@@ -433,7 +466,16 @@ export const climbSelectionHook: ClimbSelectionHook = (
     }) : measured;
     if (selections.length < 2) continue;
 
-    let splitRiderIds = guardedSplitRiderIds(selections);
+    // #6199: official_times_v2 laeser sin kalibrerede tidsmodel; alle andre v3-tallene.
+    const timeModel = timeModelTuningFor(ctx);
+    // #6199 (KUN official_times_v2): paa slutstigningen af en topankomst koerer
+    // favoritterne ikke paa hjul. Hver rytter taber den tid hans eget underskud
+    // giver (laengde x stejlhed x evneforskel); kun et hul under klyngens minimum
+    // holder ham i gruppen. Tidligere stigninger beholder taerskel-selektionen.
+    const summitRace = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto" && isSummitFinishClimb(ctx);
+    let splitRiderIds = summitRace
+      ? summitRaceSplitRiderIds(selections, gradientPct, lengthKm, timeModel)
+      : guardedSplitRiderIds(selections);
     if (splitRiderIds.length === 0) continue;
     if (splitRiderIds.length >= group.rider_ids.length) {
       // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):
@@ -457,8 +499,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const parts = ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
       ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
         riderId: s.riderId,
-        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01),
-      })), (group.kind === "gruppetto" || cohesive) ? GRUPPETTO_SINGLE_CLUSTER_TUNING : TIME_MODEL_V3_TUNING)
+        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, timeModel),
+      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : timeModel)
       : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
 
     for (const part of parts) {
