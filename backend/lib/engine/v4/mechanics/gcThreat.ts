@@ -112,6 +112,13 @@ export type GcDangerTuning = Readonly<{
   defendSecondsPerStage: number;
   leashMarginSeconds: number;
   rivalStrengthMin: number;
+  /**
+   * Klassementets forreste (rang <= dette) er altid en rival, uanset evne, og
+   * holder altid snoren. null = kun evnen afgoer (orders_gc_v3).
+   */
+  rivalRankAlways: number | null;
+  /** Snorens laengde for de forreste (rivalRankAlways) er hoejst dette. null = intet loft. */
+  rankedLeadCapSeconds: number | null;
 }>;
 
 /**
@@ -234,6 +241,8 @@ export const V3_DANGER_TUNING: GcDangerTuning = Object.freeze({
   defendSecondsPerStage: GC_THREAT_V3_TUNING.defendSecondsPerStage,
   leashMarginSeconds: GC_THREAT_V3_TUNING.leashMarginSeconds,
   rivalStrengthMin: GC_THREAT_TUNING.rivalStrengthMin,
+  rivalRankAlways: null,
+  rankedLeadCapSeconds: null,
 });
 
 const GC_ABILITY_KEYS: readonly AbilityKey[] = ["climbing", "tempo", "time_trial"];
@@ -427,7 +436,7 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   // #6187: under orders_gc_v3 taeller holdets egne ryttere aldrig (og med
@@ -453,8 +462,9 @@ export function assessGcThreat(input: {
         Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1) + future,
       );
       const margin = deficit - lead - potential;
-      const xr = model?.tuning ? (globalThis as any).process?.env : undefined;
-      const isRival = (xr?.X5578_ALWAYS && standing.rank <= Number(xr.X5578_ALWAYS)) || (strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin) && !(xr?.X5578_RANK && standing.rank > Number(xr.X5578_RANK)));
+      // #5578 (KUN official_times_v2): klassementets forreste er altid en rival.
+      const ranked = model !== undefined && danger.rivalRankAlways !== null && standing.rank <= danger.rivalRankAlways;
+      const isRival = ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
       let severity: GcThreatSeverity;
       let reason: GcThreatReason;
       if (margin <= 0) {
@@ -475,7 +485,11 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival, leashRoom: deficit - Math.max(0, future) - danger.leashMarginSeconds });
+      const leashRoom = deficit - Math.max(0, future) - danger.leashMarginSeconds;
+      // #5578 (KUN official_times_v2): de forreste holder altid snoren, og den er hoejst loftet lang.
+      const cap = ranked ? danger.rankedLeadCapSeconds : null;
+      candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival,
+        leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}) });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
@@ -511,12 +525,12 @@ export function assessGcThreat(input: {
 }
 
 /** #5978 (KUN orders_gc_v3): holder denne rytter snoren (reel rival under snorens margin)? */
-function holdsLeash(c: { margin: number; rival: boolean }, leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds): boolean {
-  return c.rival && c.margin < leashMarginSeconds;
+function holdsLeash(c: { margin: number; rival: boolean; forcedLeash?: boolean }, leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds): boolean {
+  return c.rival && (c.margin < leashMarginSeconds || c.forcedLeash === true);
 }
 
 /** #5978 (KUN orders_gc_v3): holder nogen af de talte ryttere snoren? */
-function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean }>, leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds): boolean {
+function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean; forcedLeash?: boolean }>, leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds): boolean {
   return counted.some((c) => holdsLeash(c, leashMarginSeconds));
 }
 
@@ -529,7 +543,7 @@ function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean }>,
  */
 function withLeash(
   threat: GcThreat,
-  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number }>,
+  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number; forcedLeash?: boolean }>,
   leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds,
 ): GcThreat {
   const held = counted.filter((c) => holdsLeash(c, leashMarginSeconds));

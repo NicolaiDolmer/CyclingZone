@@ -32,7 +32,7 @@
 //
 // REN: ingen IO, ingen rng.
 
-import type { AbilityKey, ClimbCategory, ProfileType, RaceGroup, Segment } from "../types.ts";
+import type { AbilityKey, ClimbCategory, FinaleType, ProfileType, RaceGroup, Segment } from "../types.ts";
 import type { GcDangerTuning } from "./gcThreat.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -102,6 +102,19 @@ export const TIME_MODEL_V3_TUNING = freeze({
   bunchClosingMaxSecondsPerKm: 20,
   // KUN official_times_v2: skalering af M5s lad-gaa-loft (1 = uaendret).
   letGoMaxGapScale: 1,
+  // #5578 (KUN official_times_v2): lad-gaa-loftets skalering pr. etapeprofil
+  // (udeladt = letGoMaxGapScale).
+  letGoMaxGapScaleByProfile: {} as Readonly<Partial<Record<ProfileType, number>>>,
+  // #5578 (KUN official_times_v2): finalens faktor paa lad-gaa-loftet pr. finaletype
+  // (udeladt = BREAKAWAY_EXTRA_TUNING.maxGapFinaleFactor).
+  letGoFinaleFactorByFinale: {} as Readonly<Partial<Record<FinaleType, number>>>,
+  // #5578 (KUN official_times_v2): mindste jagtgruppe der er et "felt", der kan
+  // lade dagens udbrud gaa (null = BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders).
+  letGoMinChaseRiders: null as number | null,
+  // #5578 (KUN official_times_v2): et farligt udbrud (et hold i jagtgruppen
+  // bremser for en rytter i det) faar aldrig et lad-gaa-loft over det mindste
+  // tolererede forspring blandt de bremsende hold. false = kun bremsen (v3).
+  letGoCapAtTolerated: false,
   // #5578 (KUN official_times_v2, etapeloeb): GC-reaktionens farligheds-tuning
   // (gcThreat.DangerModel.tuning). null = orders_gc_v3s vaerdier (bit-identisk).
   gcDanger: null as GcDangerTuning | null,
@@ -111,7 +124,6 @@ export const TIME_MODEL_V3_TUNING = freeze({
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
-const XENV: Record<string, string | undefined> = (globalThis as any).process?.env ?? {};
 
 /**
  * #6199 (KUN official_times_v2): den samlede tidsmodel kalibreret paa den faelles
@@ -126,12 +138,33 @@ export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
   // Kuperet/rullende/fladt: hoejere fart og mere lae paa stigningerne.
   climbGapAbilityWeightByProfile: { flat: 0.5, rolling: 0.5, hilly: 0.5 },
   // Uden v3s ikke-fysiske lukning paa nedkoerslen skal jagten hente udbruddet
-  // fysisk; feltet giver derfor et mindre lad-gaa-loft.
+  // fysisk; feltet giver derfor et mindre lad-gaa-loft (profiler uden egen vaerdi).
   letGoMaxGapScale: 0.7,
+  // #5578 (ejer 8/10, udbrudsmaal 2-4): loftet pr. vejprofil, kalibreret privat
+  // (balance-internals/5578-official-v2/) paa Tour- og Giro-feltet.
+  letGoMaxGapScaleByProfile: { flat: 1.4, rolling: 1.5, hilly: 3, mountain: 3, high_mountain: 1.5 },
+  // #5578: foran en nedkoerselsfinale kontrollerer feltet hullet lidt mindre stramt.
+  letGoFinaleFactorByFinale: { descent: 0.65 },
+  // #5578: favoritgruppen er stadig et felt, der styrer udbruddet, naar
+  // selektionen paa stigningerne har gjort den lille.
+  letGoMinChaseRiders: 10,
+  // #5578 (udbrudsmaal 6): et farligt udbrud vokser aldrig forbi det tolererede.
+  letGoCapAtTolerated: true,
+  // #5578: hvem har noget at forsvare (klassementets forreste og foereren), hvem
+  // er en rival (de forreste altid; ellers kun en mindst lige saa staerk rytter),
+  // og snoren for de forreste er altid holdt og har et loft.
+  gcDanger: {
+    futureSecondsPerStage: 40,
+    defendBaseSeconds: 0,
+    defendSecondsPerStage: 0,
+    leashMarginSeconds: 75,
+    rivalStrengthMin: 1,
+    rivalRankAlways: 10,
+    rankedLeadCapSeconds: 150,
+  },
   // B i dalen som fart (valleyRegroupTempoV3).
   valleyClosingSecondsPerKm: 2,
   valleyClosingGapFractionPerKm: 0.02,
-  ...(XENV.X5578_GC ? { gcDanger: (() => { const [f, b, s, m, r] = String(XENV.X5578_GC).split(",").map(Number); return { futureSecondsPerStage: f, defendBaseSeconds: b, defendSecondsPerStage: s, leashMarginSeconds: m, rivalStrengthMin: r }; })() } : {}),
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).

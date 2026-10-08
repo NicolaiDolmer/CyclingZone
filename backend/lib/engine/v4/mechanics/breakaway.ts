@@ -1046,10 +1046,12 @@ export function letGoMaxGapSeconds(input: {
   entrants: Readonly<Record<string, Entrant>>;
   profileType: ProfileType;
   finaleType?: FinaleType | null;
+  /** #5578 (KUN official_times_v2): finalens faktor i stedet for maxGapFinaleFactor. Udeladt = tabellen. */
+  finaleFactor?: number;
 }): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
   const profileBase = extra.maxGapSecondsByProfile[input.profileType] ?? extra.maxGapSecondsDefault;
-  const finaleFactor = input.finaleType ? (extra.maxGapFinaleFactor[input.finaleType] ?? 1) : 1;
+  const finaleFactor = input.finaleFactor ?? (input.finaleType ? (extra.maxGapFinaleFactor[input.finaleType] ?? 1) : 1);
   const base = profileBase * Math.max(0, finaleFactor);
   const fieldThreat = collectiveAbility(input.fieldRiderIds, input.entrants, GC_THREAT_KEYS);
   const breakawayThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS);
@@ -1134,10 +1136,12 @@ export function chaseFloorClosingSeconds(input: {
 /**
  * #5812 (a): er jagtgruppen et FELT der kan lade et udbrud gaa? Delt af M5
  * (lad-gaa-fasen) og segmentLoop (nulstillet tempo-drift), saa de to halvdele
- * af mekanikken altid er slaaet til og fra sammen.
+ * af mekanikken altid er slaaet til og fra sammen. #5578: `minRiders` er
+ * official_times_v2's egen graense (timeModel.letGoMinChaseRiders); udeladt =
+ * BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders (alle andre revisioner).
  */
-export function isLetGoChaseGroup(chaseRiderCount: number): boolean {
-  return Number.isFinite(chaseRiderCount) && chaseRiderCount >= Number((globalThis as any).process?.env?.X5578_MINCHASE ?? BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders);
+export function isLetGoChaseGroup(chaseRiderCount: number, minRiders: number = BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders): boolean {
+  return Number.isFinite(chaseRiderCount) && chaseRiderCount >= minRiders;
 }
 
 /**
@@ -1205,7 +1209,6 @@ type GcReactionSetup = {
 
 /** Er GC-reaktionen i spil for dette hook-kald? KUN orders_gc_v1. */
 function gcReactionActive(ctx: BreakawayHookContext): boolean {
-  if ((globalThis as any).process?.env?.X5578 === "noreact" && ctx.ordersGcV3 && ctx.sharedGroupTime !== undefined) return false;
   return ctx.rulesRevision === "orders_gc_v1";
 }
 
@@ -1299,12 +1302,6 @@ function gcReactionSetup(state: EngineState, ctx: BreakawayHookContext, gcContex
         bound += TEAM_CHASE.chaseCostFraction * helperCostMultiplier(ctx.entrants[riderId]?.effort) * segmentShareBound;
       }
       plan = { ...plan, intensity: capPreventiveIntensity(plan, bound) };
-    }
-    if ((globalThis as any).process?.env?.X5578_LOG && gcContext.status === "standings" && (threat.severity !== "none" || threat.leash_hold)) {
-      const st = new Map(gcContext.standings.map((s) => [s.rider_id, s]));
-      const p = st.get(protectedRiderId);
-      const tids = [...new Set([...(threat.threat_rider_ids ?? []), ...(threat.leash_rider_ids ?? [])])];
-      console.log(`X km${ctx.segment.from_km} team ${teamId.slice(0, 4)} prot#${p?.rank}/${p?.gap_seconds}s ${threat.severity}/${threat.reason} leash=${threat.leash_hold} tol=${threat.tolerated_lead_seconds} int=${plan.intensity?.toFixed?.(2)} threats=${tids.map((id) => `#${st.get(id)?.rank}/${st.get(id)?.gap_seconds}s:${ctx.entrants[id]?.role}`).join(",")} rem=${gcContext.stages_remaining}`);
     }
     decisions.push({ teamId, threat, stance, workers, plan });
     if (plan.intensity > 0 && threat.chase_group_id) {
@@ -1612,21 +1609,31 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       ? Math.max(0, ctx.segment.to_km - Math.max(ctx.segment.from_km, formationKm))
       : segmentLengthKm;
     let maxGapSeconds = 0;
-    if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length)) {
+    // #5578: official_times_v2's kalibrerede lad-gaa-knapper (timeModel.ts); neutrale ellers.
+    const letGoTuning = timeModelTuningFor(ctx);
+    if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length, letGoTuning.letGoMinChaseRiders ?? undefined)) {
+      const finaleFactor = ctx.route.finale_type ? letGoTuning.letGoFinaleFactorByFinale[ctx.route.finale_type] : undefined;
       maxGapSeconds = letGoMaxGapSeconds({
         breakawayRiderIds: breakaway.rider_ids,
         fieldRiderIds,
         entrants: ctx.entrants,
         profileType: ctx.route.profile_type,
         finaleType: ctx.route.finale_type,
+        ...(finaleFactor !== undefined ? { finaleFactor } : {}),
       });
       maxGapSeconds *= letGoBalance.maxGapFactor;
       // #6084 (KUN orders_gc_v2 paa bjerg): feltet holder samlet, saa loftet skaleres (mountainSelection.ts).
       if (ctx.mountainSelectionPhase) maxGapSeconds *= phaseLetGoMaxGapScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).letGoMaxGapScale);
       // #6199 (KUN official_times_v2): uden v3s ikke-fysiske lukning paa nedkoerslen
-      // skal jagten hente det fysisk; feltet giver derfor et mindre lad-gaa-loft.
-      const xps = (globalThis as any).process?.env?.X5578_PS && ctx.ordersGcV3 && ctx.sharedGroupTime !== undefined ? Object.fromEntries(String((globalThis as any).process.env.X5578_PS).split(",").map((kv: string) => kv.split(":"))) : null;
-      maxGapSeconds *= xps && xps[ctx.route.profile_type] !== undefined ? Number(xps[ctx.route.profile_type]) : ((globalThis as any).process?.env?.X5578_SCALE && ctx.ordersGcV3 && ctx.sharedGroupTime !== undefined) ? Number((globalThis as any).process.env.X5578_SCALE) : timeModelTuningFor(ctx).letGoMaxGapScale;
+      // skal jagten hente det fysisk; feltet giver derfor et andet lad-gaa-loft,
+      // #5578: kalibreret pr. etapeprofil mod udbrudsmaalene.
+      maxGapSeconds *= letGoTuning.letGoMaxGapScaleByProfile[ctx.route.profile_type] ?? letGoTuning.letGoMaxGapScale;
+      // #5578 (KUN official_times_v2, udbrudsmaal 6): et farligt udbrud vokser aldrig
+      // forbi det mindste forspring de bremsende hold tolererer.
+      if (letGoTuning.letGoCapAtTolerated && dangerous && gcSetup) {
+        const tolerated = [...letGoBrakingTeams(gcSetup.decisions.filter(inBreak), chaseGroup.id, ordersGcV3).values()];
+        if (tolerated.length > 0) maxGapSeconds = Math.min(maxGapSeconds, Math.max(INITIAL_GAP_SECONDS, Math.min(...tolerated)));
+      }
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
