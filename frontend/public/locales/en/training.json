@@ -8,7 +8,8 @@
   },
   "trainNow": {
     "button": "Train now",
-    "helper": "Locks today's training and entries. The result is the same as if you wait.",
+    "helper": "Locks today's training and today's race selection. The result is the same as if you wait.",
+    "helperRace": "Locks today's training and today's race selection ({race}). The result is the same as if you wait.",
     "locked": "Today's training and entries are locked. Fatigue and form update at the evening settlement.",
     "afterRace": "Riders racing today are settled after their stage.",
     "pressResult": "{trained, plural, one {# rider trained now} other {# riders trained now}}, {waiting, plural, one {# waiting for his race} other {# waiting for their race}}.",
@@ -207,6 +208,7 @@
   "weekRhythmReset": "Weekly rhythm removed: riders are back to their season intensity every day.",
   "weekRhythmSaveFailed": "Could not save. Try again in a moment.",
   "planActionErrorGeneric": "Could not save. Try again in a moment.",
+  "planActionError_train_now_locked": "Today's fields are locked. You can still change tomorrow.",
   "planActionError_no_slots": "No training slots left.",
   "planActionError_not_own_rider": "You can only train your own riders.",
   "planActionError_auth": "Your session expired. Sign in again.",

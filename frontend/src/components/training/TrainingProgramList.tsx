@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronDownIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
 import { catalogForRiderType, programName, programTagline, type CatalogProgram } from "../../lib/trainingPrograms.ts";
 import type { ProgramsResult } from "./useTrainingPrograms.ts";
+import { trainNowSaveErrorKey } from "./TrainNowState.ts";
 import type { ProgramRider } from "./TrainingPlanCard.tsx";
 
 export default function TrainingProgramList({
@@ -53,7 +54,7 @@ export default function TrainingProgramList({
       : (riders.find((r) => r.id === target)?.name ?? groups.find((g) => g.value === target)?.label ?? "");
     setMessage(result.ok
       ? { type: "ok", text: t("programs.applied", { name: programName(program, lang), target: who }) }
-      : { type: "error", text: t("programs.error") });
+      : { type: "error", text: t(trainNowSaveErrorKey(result.error, "programs.error")) });
   }
 
   return (

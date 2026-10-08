@@ -14,6 +14,7 @@
 // Telefonen (375 px): dag 34 px + hele dagen 48 px + 5 x ca. 47 px, ingen
 // sidelaens scroll; native vaelger ligger usynligt over hver celle.
 import { useTranslation } from "react-i18next";
+import { LockIcon } from "../ui/icons/index.jsx";
 import type { ReactNode } from "react";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
 import {
@@ -74,6 +75,7 @@ export default function TrainingPlanCard({
   ownPlans,
   onOpenOwnPlan,
   planForExtra = null,
+  todayLocked = false,
 }: {
   weekdays: readonly string[];
   todayWeekday: string;
@@ -88,6 +90,8 @@ export default function TrainingPlanCard({
   ownPlans: OwnPlanChip[];
   onOpenOwnPlan: (riderId: string) => void;
   planForExtra?: ReactNode;
+  // #6139: "Train now" er trykket i dag, saa dagens felter er laast (i morgen er aaben).
+  todayLocked?: boolean;
 }) {
   const { t, i18n } = useTranslation("training");
   const tRider = useTranslation("rider").t;
@@ -112,10 +116,10 @@ export default function TrainingPlanCard({
         : intro
     : intro;
 
-  const sessionSelect = (value: string, onChange: (session: string) => void, ariaLabel: string, overlay = false) => (
+  const sessionSelect = (value: string, onChange: (session: string) => void, ariaLabel: string, overlay = false, locked = false) => (
     <select
       value={value}
-      disabled={cells?.busy}
+      disabled={cells?.busy || locked}
       aria-label={ariaLabel}
       onChange={(event) => onChange(event.target.value)}
       className={overlay
@@ -135,6 +139,9 @@ export default function TrainingPlanCard({
         <span className="hidden rounded-cz bg-cz-1 px-1 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-card sm:inline">
           {t("weekPlan.today")}
         </span>
+      )}
+      {isToday && todayLocked && (
+        <LockIcon size={12} aria-label={t("trainNow.planLocked")} className="shrink-0 text-cz-3" data-testid="training-plan-today-locked" />
       )}
     </span>
   );
@@ -193,15 +200,15 @@ export default function TrainingPlanCard({
                     <>
                       <span className={`relative flex min-h-11 items-center justify-center border-s border-t border-cz-border px-0.5 font-data text-3xs font-semibold text-cz-1 sm:hidden ${rowBg}`}>
                         <span className="truncate">{shortLabel(daySession)}</span>
-                        {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel, true)}
+                        {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel, true, isToday && todayLocked)}
                       </span>
                       <span className={`hidden border-s border-t border-cz-border px-1 py-1 sm:block ${rowBg}`}>
-                        {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel)}
+                        {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel, false, isToday && todayLocked)}
                       </span>
                     </>
                   ) : (
                     <span className={`border-s border-t border-cz-border px-1 py-1 ${rowBg}`}>
-                      {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel)}
+                      {sessionSelect(daySession, (s) => cells.onSetCell(weekday, null, s), wholeLabel, false, isToday && todayLocked)}
                     </span>
                   )}
                   {multi && columns.map((column) => {
@@ -237,7 +244,7 @@ export default function TrainingPlanCard({
                         } ${rowBg}`}
                       >
                         <span className="truncate">{shortLabel(session)}</span>
-                        {sessionSelect(session, (next) => cells.onSetCell(weekday, slot, next), cellLabel, true)}
+                        {sessionSelect(session, (next) => cells.onSetCell(weekday, slot, next), cellLabel, true, isToday && todayLocked)}
                       </span>
                     );
                   })}
@@ -270,7 +277,7 @@ export default function TrainingPlanCard({
               const intensitySelect = (overlay: boolean) => (
                 <select
                   value={current}
-                  disabled={intensity.saving}
+                  disabled={intensity.saving || (isToday && todayLocked)}
                   aria-label={wholeLabel}
                   onChange={(event) => intensity.onSetDay(weekday, event.target.value)}
                   className={overlay
@@ -310,7 +317,7 @@ export default function TrainingPlanCard({
       </div>
 
       {/* ── Bund: gem (kun intensitets-ugen har en kladde) + egne planer ── */}
-      {(intensity && !showCells) || cells?.message || ownPlans.length > 0 ? (
+      {(intensity && !showCells) || cells?.message || ownPlans.length > 0 || todayLocked ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-cz-border px-4 py-2.5 sm:px-5">
           {intensity && !showCells && (
             <>
@@ -342,6 +349,12 @@ export default function TrainingPlanCard({
                 </span>
               )}
             </>
+          )}
+          {todayLocked && (
+            <span className="inline-flex items-center gap-1 text-2xs text-cz-3" data-testid="training-plan-locked-note">
+              <LockIcon size={11} aria-hidden="true" className="shrink-0" />
+              {t("trainNow.planLocked")}
+            </span>
           )}
           {showCells && <span className="text-2xs text-cz-3">{t("programs.raceNote")}</span>}
           {cells?.message && <span role="status" className="text-xs text-cz-danger">{cells.message}</span>}

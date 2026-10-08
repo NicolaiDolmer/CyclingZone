@@ -62,7 +62,7 @@ import { useTrainingGroups } from "../components/training/groups/useTrainingGrou
 import { planForWithGroups, groupNameByRider, groupIdOf, groupValue, NEW_GROUP_VALUE } from "../components/training/groups/trainingGroupsModel.ts";
 // #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
 import { useTrainNow } from "../components/training/TrainNowClient.ts";
-import { trainNowRunGate } from "../components/training/TrainNowState.ts";
+import { trainNowRunGate, trainNowSaveErrorKey } from "../components/training/TrainNowState.ts";
 import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import FatigueForecast from "../components/training/FatigueForecast.tsx";
 import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
@@ -798,7 +798,7 @@ export default function TrainingPage() {
     const result = await setWeekPlan(days);
     setWeekPlanMsg(result.ok
       ? { type: "ok", text: t("weekRhythmSaved") }
-      : { type: "error", text: t("weekRhythmSaveFailed") });
+      : { type: "error", text: t(trainNowSaveErrorKey(result.error, "weekRhythmSaveFailed")) });
     if (result.ok) setWeekDraft(null);
   }
 
@@ -807,7 +807,7 @@ export default function TrainingPage() {
     const result = await clearWeekPlan();
     setWeekPlanMsg(result.ok
       ? { type: "ok", text: t("weekRhythmReset") }
-      : { type: "error", text: t("weekRhythmSaveFailed") });
+      : { type: "error", text: t(trainNowSaveErrorKey(result.error, "weekRhythmSaveFailed")) });
     if (result.ok) setWeekDraft(null);
   }
 
@@ -832,7 +832,7 @@ export default function TrainingPage() {
       ...prev,
       [riderId]: result.ok
         ? { type: "ok", text: t("individualWeekPlanSaved") }
-        : { type: "error", text: t("weekRhythmSaveFailed") },
+        : { type: "error", text: t(trainNowSaveErrorKey(result.error, "weekRhythmSaveFailed")) },
     }));
     if (result.ok) setRiderWeekDraftMap((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
   }
@@ -844,7 +844,7 @@ export default function TrainingPage() {
       ...prev,
       [riderId]: result.ok
         ? { type: "ok", text: t("individualWeekPlanRemoved") }
-        : { type: "error", text: t("weekRhythmSaveFailed") },
+        : { type: "error", text: t(trainNowSaveErrorKey(result.error, "weekRhythmSaveFailed")) },
     }));
     if (result.ok) setRiderWeekDraftMap((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
   }
@@ -1918,7 +1918,7 @@ export default function TrainingPage() {
         busy: programs.busy,
         onSetCell: async (weekday, slotIndex, session) => {
           const result = await programs.setCell(key, weekday, slotIndex, session);
-          setPlanCellError(result.ok ? null : t("programs.error"));
+          setPlanCellError(result.ok ? null : t(trainNowSaveErrorKey(result.error, "programs.error")));
         },
         message: planCellError,
       }
@@ -1927,6 +1927,7 @@ export default function TrainingPage() {
       <TrainingPlanCard
         weekdays={WEEKDAY_KEYS}
         todayWeekday={todayWeekday}
+        todayLocked={trainNow.status.locked && !trainNow.status.settled} // #6139
         // #4629: med training_tick_per_race_day on (dayClose findes) bærer hver
         // dato PROGRAM_SLOTS løbsdage, og gitteret viser dem alle.
         columns={dayClose ? buildRaceDayColumns({ raceDayCount: PROGRAM_SLOTS }) : raceDayColumns}
