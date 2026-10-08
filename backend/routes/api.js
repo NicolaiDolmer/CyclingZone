@@ -15489,6 +15489,32 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 // PRESENCE & ONLINE STATUS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// #6343: tallet gemmes i 30 s pr. proces, så COUNT-forespørgslen mod users ikke
+// vokser med antallet af åbne faner (hver fane sender presence hvert 60. sekund).
+// "Online" er i forvejen 5-min-granularitet, så 30 s forsinkelse er usynlig.
+const ONLINE_COUNT_TTL_MS = 30 * 1000;
+let onlineCountCache = { value: null, at: 0 };
+
+async function countOnlineUsers() {
+  if (onlineCountCache.value !== null && Date.now() - onlineCountCache.at < ONLINE_COUNT_TTL_MS) {
+    return onlineCountCache.value;
+  }
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  try {
+    const { count, error } = await supabase.from("users")
+      .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
+    if (error) { console.error("[online-count] failed:", error.message); return null; }
+    onlineCountCache = { value: count || 0, at: Date.now() };
+    return onlineCountCache.value;
+  } catch (e) {
+    // best-effort: online-tallet er pynt i headeren. Ved fejl returneres null, så
+    // presence-svaret udelader feltet og klienten beholder sit sidst kendte tal
+    // (#4351); loggen tælles af railway-log-watch under tagget "online-count".
+    console.error("[online-count] failed:", e.message);
+    return null;
+  }
+}
+
 // POST /api/presence — heartbeat, opdater last_seen (throttlet)
 // Bruger touch_user_presence-RPC der KUN skriver hvis last_seen er >60s gammelt,
 // så heartbeat-spam ikke laver en row-write (+WAL+dead tuple) ved hvert kald.
@@ -15498,7 +15524,10 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 router.post("/presence", requireAuth, presencePulseLimiter, async (req, res) => {
   const { error } = await supabase.rpc("touch_user_presence", { p_user_id: req.user.id });
   if (error) console.error("[presence] touch failed:", error.message);
-  res.json({ ok: true, user_id: req.user.id, error: error?.message || null });
+  // #6343: online-tallet med i svaret, så klienten kun behøver ét kald.
+  // Fejler tællingen udelades feltet; klienten falder så tilbage til /online-count.
+  const onlineCount = await countOnlineUsers();
+  res.json({ ok: true, user_id: req.user.id, error: error?.message || null, ...(onlineCount === null ? {} : { online_count: onlineCount }) });
 });
 
 // POST /api/login-streak — beregn og opdater daglig login-streak
@@ -15522,10 +15551,9 @@ router.post("/login-streak", requireAuth, presencePulseLimiter, async (req, res)
 
 // GET /api/online-count — brugere aktive inden for de seneste 5 minutter
 router.get("/online-count", requireAuth, async (req, res) => {
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const { count } = await supabase.from("users")
-    .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
-  res.json({ count: count || 0 });
+  const count = await countOnlineUsers();
+  if (count === null) return res.status(500).json({ error: "online-count unavailable" });
+  res.json({ count });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
