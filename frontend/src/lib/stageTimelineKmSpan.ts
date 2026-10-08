@@ -56,27 +56,33 @@ function finishKmOf(events: readonly SpanTimelineEvent[]): number | null {
   return finite(events.find((event) => event.type === "stage_start")?.params?.distance_km);
 }
 
+type TimelineOptions = { timelineVersion?: number | null };
+
+/** Stabil km-sortering af de hændelser der har en type (samme km: input-rækkefølgen). */
+export function kmSortedEvents<T extends SpanTimelineEvent>(events: readonly (T | null | undefined)[] | null | undefined): T[] {
+  return (events ?? [])
+    .filter((event): event is T => !!event && typeof event.type === "string")
+    .map((event, i) => ({ event, i }))
+    .sort((a, b) => (finite(a.event.km) ?? 0) - (finite(b.event.km) ?? 0) || a.i - b.i)
+    .map(({ event }) => event);
+}
+
+/** Tidslinjen uden samlinger forklædt som indhentninger, km-sorteret (#6294). */
+function keptEvents<T extends SpanTimelineEvent>(events: readonly (T | null | undefined)[] | null | undefined): T[] {
+  // Projektionen er rækkefølge-følsom: den læser den rå, km-sorterede tidslinje.
+  return withoutRegroupCatches(kmSortedEvents(events) as unknown as ParticipationEvent[]) as unknown as T[];
+}
+
 /**
- * Tidslinjen som filmen skal vise den: uden samlinger forklædt som
- * indhentninger (#6294), km-sorteret, og med ærlige spænd (#6350) for
- * hændelser stemplet ved et tjekpunkt. Et spænd-event får `km` = spændets
- * start (afspilning og sortering), `recorded_km` = tjekpunktet og `km_span`.
- * Hændelser på målstregen (afgørelsen, opdelingen bag vinderen) står på
- * stregen og får aldrig spænd.
+ * Den km filmen viser for én hændelse fra `kept`-tidslinjen: `exact_km` når
+ * motoren har skrevet et (aldrig spænd), ellers det ærlige spænd for en
+ * tjekpunkt-stemplet hændelse på en v4-tidslinje, ellers eventets egen km.
  */
-export function honestTimelineEvents<T extends SpanTimelineEvent>(
-  events: readonly (T | null | undefined)[] | null | undefined,
-  { timelineVersion = null }: { timelineVersion?: number | null } = {},
-): T[] {
+function spanResolver(kept: readonly SpanTimelineEvent[], { timelineVersion = null }: TimelineOptions) {
   // Kun v4-tidslinjer (timeline_version >= 2) stempler ved tjekpunkter; v3's
   // tidslinje (version 1) har sine egne km og får aldrig spænd.
   const checkpointEngine = typeof timelineVersion === "number" && timelineVersion >= 2;
-  const present = (events ?? []).filter((event): event is T => !!event && typeof event.type === "string");
-  // Projektionen er rækkefølge-følsom: den læser den rå, km-sorterede tidslinje.
-  const rawSorted = present.map((event, i) => ({ event, i })).sort((a, b) => (a.event.km ?? 0) - (b.event.km ?? 0) || a.i - b.i).map(({ event }) => event);
-  const kept = withoutRegroupCatches(rawSorted as unknown as ParticipationEvent[]) as unknown as T[];
   const finishKm = finishKmOf(kept);
-
   // Kendte punkter: start, alle tjekpunkter motoren har skrevet (gap_update og
   // tjekpunkt-stemplede hændelser) og passager med egen km.
   const anchors = new Set<number>([0]);
@@ -91,16 +97,74 @@ export function honestTimelineEvents<T extends SpanTimelineEvent>(
     for (const anchor of sortedAnchors) { if (anchor < km) best = anchor; else break; }
     return best;
   };
-
-  const shown = kept.map((event, i) => {
+  return <T extends SpanTimelineEvent>(event: T): { event: T; spanned: boolean } => {
     const exact = exactEventKm(event);
-    if (exact != null) return { event: { ...event, km: exact } as T, i, spanned: false };
+    if (exact != null) return { event: { ...event, km: exact }, spanned: false };
     const km = finite(event.km);
-    if (km == null || !checkpointEngine || !isCheckpointStamped(event) || (finishKm != null && km >= finishKm)) return { event, i, spanned: false };
+    if (km == null || !checkpointEngine || !isCheckpointStamped(event) || (finishKm != null && km >= finishKm)) return { event, spanned: false };
     const from = previousAnchor(km);
-    if (!(from < km)) return { event, i, spanned: false };
-    return { event: { ...event, km: from, recorded_km: km, km_span: { from, to: km } } as T, i, spanned: true };
-  });
+    if (!(from < km)) return { event, spanned: false };
+    return { event: { ...event, km: from, recorded_km: km, km_span: { from, to: km } }, spanned: true };
+  };
+}
+
+/**
+ * Den samme km som filmen, for lister der viser enkelte hændelser fra den rå
+ * tidslinje (fx "hvor tabte dine ryttere tid"): returnerer en funktion der
+ * giver hændelsen med filmens `km`/`km_span`. Spændet afhænger kun af hele
+ * tidslinjen og hændelsens egen type og km, så resultatet er det samme som
+ * hændelsens linje i filmen.
+ */
+export function honestKmResolver(
+  events: readonly (SpanTimelineEvent | null | undefined)[] | null | undefined,
+  options: TimelineOptions = {},
+): <T extends SpanTimelineEvent>(event: T) => T {
+  const resolve = spanResolver(keptEvents(events), options);
+  return (event) => resolve(event).event;
+}
+
+type LossLike = { type: string; km: number; riderId: string; event?: SpanTimelineEvent | null };
+
+/**
+ * "Hvor tabte dine ryttere tid" med filmens km: hver linje får `shown` (den
+ * hændelse filmen viser, med `km`/`km_span`) og listen står i filmens
+ * rækkefølge. Et fald er motorens `peloton_splits` for rytteren på samme km;
+ * findes den ikke, bruges en hændelse af samme type og km (samme spænd).
+ */
+export function lossEntriesWithFilmKm<E extends LossLike>(
+  events: readonly (SpanTimelineEvent | null | undefined)[] | null | undefined,
+  entries: readonly E[],
+  options: TimelineOptions = {},
+): Array<E & { shown: SpanTimelineEvent }> {
+  if (!entries.length) return [];
+  const resolve = honestKmResolver(events, options);
+  const splits = kmSortedEvents(events).filter((event) => event.type === "peloton_splits");
+  return entries
+    .map((entry, i) => {
+      const source: SpanTimelineEvent = entry.type === "event" && entry.event ? entry.event
+        : splits.find((event) => finite(event.km) === entry.km && Array.isArray(event.params?.rider_ids) && event.params.rider_ids.includes(entry.riderId))
+          ?? { type: "peloton_splits", km: entry.km };
+      return { entry: { ...entry, shown: resolve(source) }, i };
+    })
+    .sort((a, b) => (a.entry.shown.km ?? 0) - (b.entry.shown.km ?? 0) || a.i - b.i)
+    .map(({ entry }) => entry);
+}
+
+/**
+ * Tidslinjen som filmen skal vise den: uden samlinger forklædt som
+ * indhentninger (#6294), km-sorteret, og med ærlige spænd (#6350) for
+ * hændelser stemplet ved et tjekpunkt. Et spænd-event får `km` = spændets
+ * start (afspilning og sortering), `recorded_km` = tjekpunktet og `km_span`.
+ * Hændelser på målstregen (afgørelsen, opdelingen bag vinderen) står på
+ * stregen og får aldrig spænd.
+ */
+export function honestTimelineEvents<T extends SpanTimelineEvent>(
+  events: readonly (T | null | undefined)[] | null | undefined,
+  options: TimelineOptions = {},
+): T[] {
+  const kept = keptEvents(events);
+  const resolve = spanResolver(kept, options);
+  const shown = kept.map((event, i) => ({ ...resolve(event), i }));
   // Spændets start sorterer; ved samme km står det præcise punkt (fx spurten
   // der åbner spændet) før spændet, og spænd holder tjekpunkt-rækkefølgen.
   shown.sort((a, b) => (a.event.km ?? 0) - (b.event.km ?? 0)
