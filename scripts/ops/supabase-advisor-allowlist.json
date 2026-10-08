@@ -21,7 +21,11 @@
     },
     {
       "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_is_offered_intake_rider_",
-      "note": "is_offered_intake_rider(uuid) — bruges i 'Public read riders'-RLS-policyens USING-klausul; revoke ville fejle SELECT for authenticated paa hele riders (samme incident-klasse som #2676). Ejer-beslutning 12/9: B, kun indloggede maa laese riders. LEVENDE WARN maalt 17/9 kl. 15:30 UTC."
+      "note": "is_offered_intake_rider(uuid) — bruges i 'Public read riders'-RLS-policyens USING-klausul; revoke ville fejle SELECT for authenticated paa hele riders (samme incident-klasse som #2676). Ejer-beslutning 12/9: B, kun indloggede maa laese riders. LEVENDE WARN maalt 17/9 kl. 15:30 UTC. NB #6341 (8/10): policyen kalder den ikke laengere (erstattet af offered_intake_rider_ids()); fundet lever videre fordi grantet er uaendret for en simpel rollback. Fjern posten naar funktionen revokes/droppes."
+    },
+    {
+      "cacheKeyPrefix": "authenticated_security_definer_function_executable_public_offered_intake_rider_ids_",
+      "note": "offered_intake_rider_ids() — saet-udgaven af is_offered_intake_rider (#6341), kaldt EN gang pr. query fra 'Public read riders'-RLS-policyen. Skal vaere SECURITY DEFINER (academy_intake_owner_read begraenser authenticated til eget hold; en raa subquery ville laekke andre holds kandidater) og authenticated SKAL have EXECUTE, ellers fejler al indlogget laesning af riders med 42501. Returnerer kun rytter-id'er der allerede er skjult; ingen personhenfoerbare data. anon har IKKE EXECUTE."
     }
   ]
 }
