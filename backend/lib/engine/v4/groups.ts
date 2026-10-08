@@ -466,10 +466,13 @@ export function settleBreakawaySurvivedEvents(
     }
     if (args.breakawayWin && bestInGroup < bestOutsideEscape) return [event];
     const groupId = event.params.group_id;
+    // #6199 (KUN official_times_v2): the exact place travels with the outcome.
+    const exact = Object.fromEntries((["exact_km", "exact_time"] as const)
+      .filter((key) => typeof event.params[key] === "number").map((key) => [key, event.params[key]]));
     return [{
       km: event.km,
       type: "breakaway_caught",
-      params: typeof groupId === "string" ? { group_id: groupId, rider_ids: finisherIds } : { rider_ids: finisherIds },
+      params: { ...(typeof groupId === "string" ? { group_id: groupId, rider_ids: finisherIds } : { rider_ids: finisherIds }), ...exact },
     }];
   });
 }

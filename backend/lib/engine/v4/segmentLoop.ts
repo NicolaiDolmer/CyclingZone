@@ -88,7 +88,8 @@ import {
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
 import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
-import { findChaseGroup } from "./mechanics/chaseGroup.ts";
+import { findChaseGroup, isMorningRegroupCatch } from "./mechanics/chaseGroup.ts";
+import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
@@ -842,9 +843,24 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // #5581: grupettoens tidsgraense-regnestykke (applyGrupettoPaceFloor).
   const nominalCumSeconds = nominalCumulativeSeconds(segments, tuning);
   const limitFactor = timeLimitFactorFor(route.profile_type, timeLimitTuningFor(input.squad));
+  // #6199 (KUN official_times_v2): riders of the day's breakaway (a catch between
+  // only them is a regroup, chaseGroup.isMorningRegroupCatch) and the exact place
+  // of every event (exactPlace.ts). Both touch events only, never times/groups.
+  const morningRiderIds = new Set<string>();
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
     if (segmentIndex === segments.length - 1) lastSegmentEntryGroups = state.groups;
+    const segmentEventStart = segmentIndex === 0 ? 0 : timeline.length;
+    const entryFrontSeconds = frontElapsedSeconds;
+    const entryGroupsForPlace = state.groups;
+    const regroupCatches = new Set<TimelineEvent>();
+    const noteSegmentEvents = (events: readonly TimelineEvent[]) => {
+      if (!preciseContact) return;
+      for (const event of events) {
+        if (event.type === "breakaway_formed") for (const id of Array.isArray(event.params.rider_ids) ? event.params.rider_ids : []) if (typeof id === "string") morningRiderIds.add(id);
+      }
+      for (const event of events) if (isMorningRegroupCatch(event, state.groups, morningRiderIds)) regroupCatches.add(event);
+    };
 
     if (!weatherAnnounced && weatherCpPenalty(route.weather, segment.kind, WEATHER_EXTRA_TUNING) > 0) {
       pushEvent(timeline, segment.from_km, "weather", { kind: route.weather.kind });
@@ -1024,6 +1040,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km, [], sharedGroupTime, contactInterval);
       state = contact.state;
       timeline.push(...contact.events);
+      noteSegmentEvents(contact.events);
     }
 
     // 3. Mekanik-hooks (M2 paa climb, M3 paa descent, M4 paa sidste segment).
@@ -1055,6 +1072,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
       state = result.state;
       timeline.push(...result.events);
+      noteSegmentEvents(result.events);
       if (sharedGroupTime) {
         const committed = projectRelativeArrivals(state.groups, frontElapsedSeconds);
         frontElapsedSeconds = committed.frontTimeSeconds;
@@ -1109,6 +1127,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events, sharedGroupTime, contactInterval);
         state = contact.state;
         timeline.push(...contact.events);
+        noteSegmentEvents(contact.events);
       }
     }
 
@@ -1213,6 +1232,20 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         pushEvent(timeline, segment.to_km, "gap_update", { group_id: g.id, gap_seconds: round2(g.gap_seconds) });
         lastEmittedGap.set(g.id, g.gap_seconds);
       }
+    }
+
+    // #6199 (KUN official_times_v2): a regroup inside the break is not a catch,
+    // and every event of the segment gets its exact place (exactPlace.ts).
+    if (preciseContact) {
+      const segmentEvents = timeline.slice(segmentEventStart).filter((event) => !regroupCatches.has(event));
+      const entryTime = new Map(entryGroupsForPlace.flatMap((g) => g.rider_ids.map((id) => [id, entryFrontSeconds + g.gap_seconds] as const)));
+      const exitTime = new Map(mergedGroups.flatMap((g) => g.rider_ids.map((id) => [id, frontElapsedSeconds + g.gap_seconds] as const)));
+      timeline.splice(segmentEventStart, timeline.length - segmentEventStart, ...annotateExactPlaces(segmentEvents, {
+        fromKm: segment.from_km, toKm: segment.to_km, entryTime, exitTime,
+        entryGroups: new Map(entryGroupsForPlace.map((g) => [g.id, g.rider_ids])),
+        exitGroups: new Map(mergedGroups.map((g) => [g.id, g.rider_ids])),
+        visibleGapSeconds: tuning.groups.mergeThresholdSeconds,
+      }));
     }
 
     // 5. Snapshot pr. segment (beslutning 20).

@@ -19,6 +19,28 @@ export function isBreakawayPiece(group: Pick<RaceGroup, "kind" | "origin">): boo
 }
 
 /**
+ * #6199 (KUN official_times_v2): a "catch" where both sides are only riders of
+ * the day's breakaway is a regroup inside the break, not the breakaway being
+ * caught. A dropped escapee (or a group of them that lost the breakaway origin
+ * through an earlier merge) closing back up to his own break must never read
+ * "the breakaway was caught" in the film. `groups` is the group picture at the
+ * moment the event was reported (the catcher still separate, or already joined:
+ * the catcher's riders are its group minus the caught riders either way).
+ * The physical merge itself is unchanged; only the event is not a catch.
+ */
+export function isMorningRegroupCatch(event: TimelineEvent, groups: readonly RaceGroup[], morningRiderIds: ReadonlySet<string>): boolean {
+  if (event.type !== "breakaway_caught" || morningRiderIds.size === 0) return false;
+  const caught = Array.isArray(event.params.rider_ids) ? event.params.rider_ids.filter((id): id is string => typeof id === "string") : [];
+  const chaseId = event.params.chase_group_id;
+  if (caught.length === 0 || typeof chaseId !== "string") return false;
+  const chase = groups.find((group) => group.id === chaseId);
+  if (!chase) return false;
+  const caughtSet = new Set(caught);
+  const catchers = chase.rider_ids.filter((id) => !caughtSet.has(id));
+  return catchers.length > 0 && catchers.every((id) => morningRiderIds.has(id)) && caught.every((id) => morningRiderIds.has(id));
+}
+
+/**
  * #6234 (KUN orders_gc_v3): stykket smelter ind i udbruddet, som beholder id,
  * art og hul (samme konvention som den almindelige merge: den forreste gruppe
  * beholder id og gap). Udbruddet forbliver dermed et udbrud, ogsaa naar stykket

@@ -54,7 +54,8 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
-import { usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOrdersGcV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { withPointPlace } from "./exactPlace.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
 // M2/M3/M4/M5/M8/M10-
@@ -347,9 +348,16 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
   // oevrige events; maalpassagen udsender intet eget event (finish-eventet ER
   // maalstregen), samme konvention som v3's tidslinje.
   const timelineWithPassages = sortTimeline([...settledTimeline, ...passagesToTimelineEvents(passages)]);
+  // #6199 (KUN official_times_v2): the segment loop placed its own events
+  // exactly (exactPlace.ts); passages, the finish and the time limit sit on
+  // their km. The finish carries the winner's time.
+  const exactPlaces = usesSharedGroupTime(input.rules_revision) && isOrdersGcV3OrLater(input.rules_revision);
+  const finalEvents = [...timelineWithPassages, finishEvent, ...timeLimit.events];
 
   const output: StageOutput = {
-    timeline: { timeline_version: 2, events: [...timelineWithPassages, finishEvent, ...timeLimit.events] },
+    timeline: { timeline_version: 2, events: exactPlaces
+      ? finalEvents.map((event) => withPointPlace(event, event === finishEvent ? results[0]?.time_seconds : undefined))
+      : finalEvents },
     results,
     loads,
     groupSnapshots,
