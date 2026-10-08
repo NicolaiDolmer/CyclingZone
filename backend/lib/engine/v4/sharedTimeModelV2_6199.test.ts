@@ -119,3 +119,25 @@ test("#6199 v2: a mass finish still shares one time", () => {
   assert.equal(out.groups.length, 1);
   assert.equal(out.groups[0].gap_seconds, 0);
 });
+
+test("#6199 v2: on a flat mass finish the field's numbers are closing speed over the final km, capped per km", () => {
+  const n = 40;
+  const route: RouteV2 = { distance_km: 184, profile_type: "flat", finale_type: "bunch_sprint",
+    segments: [flat(0, 180), flat(180, 184)], weather: { kind: "sun", wind_exposure: 0 }, waypoints: [] } as RouteV2;
+  const { riders, ctx } = fixture(Array.from({ length: n }, () => 50), route);
+  const breakIds = ["r0", "r1", "r2"];
+  const fieldIds = Array.from({ length: n - 3 }, (_, i) => "r" + (i + 3));
+  const run = (gap: number, c: SegmentHookContext) => {
+    const groups: RaceGroup[] = [
+      { id: "break", kind: "breakaway", origin: "breakaway", rider_ids: breakIds, gap_seconds: 0, cohesion: 1 },
+      { id: "field", kind: "peloton", rider_ids: fieldIds, gap_seconds: gap, cohesion: 1 },
+    ];
+    return finaleHook(stateWith(riders, groups), c === ctx ? v2Ctx(ctx, groups) : { ...c, sharedGroupTime: { entryGroups: groups, incidentCursor: 0 } }).state;
+  };
+  const caught = (state: EngineState) => state.groups.length === 1;
+  const perKmCap = SHARED_TIME_MODEL_V2_TUNING.bunchClosingMaxSecondsPerKm * 4;
+  assert.equal(caught(run(perKmCap * 0.5, ctx)), true, "a break within the field's closing capacity is caught by contact");
+  assert.equal(caught(run(perKmCap * 1.5, ctx)), false, "a lead beyond the per-km capacity survives: no catch window");
+  // official_times_v1 (shared clock without the v3 package) keeps its prototype finale.
+  assert.equal(caught(run(perKmCap * 0.5, { ...ctx })), false);
+});

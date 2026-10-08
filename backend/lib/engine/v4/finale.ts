@@ -37,7 +37,7 @@ import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
 import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
-import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
+import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -415,6 +415,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
+  const sharedNumbersClosing = bunchCatch && ctx.sharedGroupTime !== undefined && ctx.ordersGcV3 === true;
 
   const sorted = [...state.groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   const frontPool = sorted.filter((g) => g.gap_seconds === 0);
@@ -472,7 +473,16 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     const remainingEstimate = ctx.sharedGroupTime
       ? remainingClosureSeconds(Math.max(0,entryGap(group.rider_ids)-entryGap(defenderIds)),carriedGapSeconds,estimate)
       : estimate;
-    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, remainingEstimate);
+    // #6199 (KUN official_times_v2): feltets antals-fordel paa en massefinale er
+    // fart, ikke et opsamlings-vindue. Den bliver til lukning paa finalens egne km
+    // (hoejst loftet pr. km), og fangsten kraever stadig fysisk kontakt.
+    const numbersClosing = sharedNumbersClosing && isBunchSizedChaseGroup(group.rider_ids.length, fieldSize, extra.bunchCatchMinFieldFraction, extra.bunchCatchMinRiders)
+      ? Math.min(
+          bunchCatchWindowSeconds(group.rider_ids.length, defenderIds.length, extra.bunchCatchMaxSeconds, extra.bunchCatchNumbersReferenceRatio),
+          timeModelTuningFor(ctx).bunchClosingMaxSecondsPerKm * remainingKm,
+        )
+      : 0;
+    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, remainingEstimate + numbersClosing);
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-

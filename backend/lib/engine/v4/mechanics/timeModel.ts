@@ -76,6 +76,10 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // Placeringen i en nedkoerselsfinale: klatring taeller med.
   descentFinaleDemand: { climbing: 0.35, descending: 0.35, positioning: 0.1, aggression: 0.1, tactics: 0.1 } as Partial<Record<AbilityKey, number>>,
 
+  // ── Massefinale (KUN official_times_v2): feltets antals-fordel som lukning ──
+  // Hoejst saa mange sekunder pr. km af finalens segment (fart, ikke vindue).
+  bunchClosingMaxSecondsPerKm: 20,
+
   // ── 3: taet score = samme tid i en selektiv finale ──────────────────────────
   finaleTieScoreEpsilon: 0.02,
 });
