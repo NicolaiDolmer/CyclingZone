@@ -61,7 +61,7 @@ import { findChaseGroup, isBreakawayPiece, rejoinBreakawayPiece, withBreakawayDr
 //    SIDSTE segment, emitteres `breakaway_survived` (finale.ts afgoer derefter
 //    om forspringet baeres helt i maal eller indhentes i selve finalen).
 
-import { bookFinishDescentClosure, finishDescentRemainingCapSeconds } from "./timeModel.ts";
+import { bookFinishDescentClosure, finishDescentRemainingCapSeconds, timeModelTuningFor } from "./timeModel.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -1609,6 +1609,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       maxGapSeconds *= letGoBalance.maxGapFactor;
       // #6084 (KUN orders_gc_v2 paa bjerg): feltet holder samlet, saa loftet skaleres (mountainSelection.ts).
       if (ctx.mountainSelectionPhase) maxGapSeconds *= phaseLetGoMaxGapScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).letGoMaxGapScale);
+      // #6199 (KUN official_times_v2): uden v3s ikke-fysiske lukning paa nedkoerslen
+      // skal jagten hente det fysisk; feltet giver derfor et mindre lad-gaa-loft.
+      maxGapSeconds *= timeModelTuningFor(ctx).letGoMaxGapScale;
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,

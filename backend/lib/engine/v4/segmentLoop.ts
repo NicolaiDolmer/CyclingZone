@@ -90,7 +90,7 @@ import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts
 import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
-import { valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
+import { timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -792,6 +792,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   const sharedGroupTime = usesSharedGroupTime(rulesRevision);
   // #6329: praecist kontaktsted kun paa den samlede Tour-revision (official_times_v2).
   const preciseContact = sharedGroupTime && ordersGcV3;
+  // #6199: official_times_v2 laeser sin kalibrerede tidsmodel (dalens B-lukning).
+  const loopTimeModel = timeModelTuningFor({ ...(ordersGcV3 ? { ordersGcV3: true as const } : {}), ...(sharedGroupTime ? { sharedGroupTime: true } : {}) });
   const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
@@ -890,7 +892,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       const phase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
       tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind,
         phaseClimbNeutralShare(phase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
-      tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers);
+      tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
       if (segment.kind === "descent") {
         const lengthKm = Math.max(0, segment.to_km-segment.from_km);
         const minimumDurations = new Map(state.groups.map(group => {
@@ -982,7 +984,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     const mountainPhase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
     if (!sharedGroupTime) tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
     // #6199 (KUN orders_gc_v3): i dalen efter en top kan et hul ikke vokse (mechanics/timeModel.ts).
-    if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers);
+    if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.

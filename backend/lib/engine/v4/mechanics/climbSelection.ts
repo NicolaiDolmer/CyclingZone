@@ -346,11 +346,19 @@ function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
  * #6199 (KUN official_times_v2): er segmentet en del af slutstigningen paa en
  * topankomst (finale_type long_climb, sidste blok af sammenhaengende stigninger)?
  */
+const SUMMIT_RACE_SHORT_FINISH = Object.freeze({ maxKm: 7, maxGradientPct: 7 });
+
 export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "segmentIndex">): boolean {
   const segs = ctx.route.segments ?? [];
   if (ctx.route.finale_type !== "long_climb" || segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
   let start = segs.length - 1;
   while (start > 0 && segs[start - 1].kind === "climb") start--;
+  // En kort afslutning opad (ca. 3-7 km a 5-7 %, ejerens eget maal) koeres i
+  // gruppe som foer: farten er hoej, og laeet holder feltet samlet.
+  const block = segs.slice(start);
+  const km = block.reduce((sum, s) => sum + Math.max(0, s.to_km - s.from_km), 0);
+  const grad = km > 0 ? block.reduce((sum, s) => sum + Math.max(0, s.to_km - s.from_km) * ((s as { avg_gradient?: number }).avg_gradient ?? 0), 0) / km : 0;
+  if (km <= SUMMIT_RACE_SHORT_FINISH.maxKm && grad <= SUMMIT_RACE_SHORT_FINISH.maxGradientPct) return false;
   return ctx.segmentIndex >= start && segs[ctx.segmentIndex]?.kind === "climb";
 }
 

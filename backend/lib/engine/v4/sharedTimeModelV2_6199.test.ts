@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { finaleHook } from "./finale.ts";
 import { initRiderStates } from "./groups.ts";
 import { climbSelectionHook, isSummitFinishClimb } from "./mechanics/climbSelection.ts";
-import { SHARED_TIME_MODEL_V2_TUNING, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
+import { SHARED_TIME_MODEL_V2_TUNING, TIME_MODEL_V3_TUNING, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { makeHookCtx } from "./testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING } from "./tuning.ts";
 import type { AbilityKey, Entrant, EngineState, RaceGroup, RouteV2, Segment, SegmentHookContext } from "./types.ts";
@@ -55,6 +55,43 @@ test("#6199 v2: only official_times_v2 (v3 + shared clock) reads the calibrated 
   assert.equal(timeModelTuningFor({ ordersGcV3: true, sharedGroupTime: { entryGroups: [] } }), SHARED_TIME_MODEL_V2_TUNING);
   assert.equal(TIME_MODEL_V3_TUNING.climbGapAbilityWeightQuadratic, 0, "the v3 gap stays linear");
   assert.deepEqual(Object.keys(SHARED_TIME_MODEL_V2_TUNING).sort(), Object.keys(TIME_MODEL_V3_TUNING).sort());
+  // The knobs that only official_times_v2 reads are neutral in the v3 numbers.
+  assert.equal(TIME_MODEL_V3_TUNING.letGoMaxGapScale, 1);
+  assert.equal(TIME_MODEL_V3_TUNING.valleyClosingSecondsPerKm, 0);
+  assert.equal(TIME_MODEL_V3_TUNING.valleyClosingGapFractionPerKm, 0);
+  assert.deepEqual(TIME_MODEL_V3_TUNING.climbGapAbilityWeightByProfile, {});
+});
+
+test("#6199 v2: the climb-gap weight can differ per stage profile, only under official_times_v2", () => {
+  const shared = { ordersGcV3: true as const, sharedGroupTime: { entryGroups: [] } };
+  for (const [profile, weight] of Object.entries(SHARED_TIME_MODEL_V2_TUNING.climbGapAbilityWeightByProfile)) {
+    const t = timeModelTuningFor({ ...shared, route: { profile_type: profile as RouteV2["profile_type"] } });
+    assert.equal(t.climbGapAbilityWeight, weight, profile);
+    assert.equal(timeModelTuningFor({ ordersGcV3: true, route: { profile_type: profile as RouteV2["profile_type"] } }), TIME_MODEL_V3_TUNING);
+  }
+  assert.equal(timeModelTuningFor({ ...shared, route: { profile_type: "high_mountain" } }), SHARED_TIME_MODEL_V2_TUNING);
+});
+
+test("#6199 v2: in the valley the group behind closes as speed, never more than the gap; v3 only stops growth", () => {
+  const segments = [
+    { kind: "climb", from_km: 0, to_km: 5 },
+    { kind: "descent", from_km: 5, to_km: 10 },
+    { kind: "rolling", from_km: 10, to_km: 30 },
+  ] as Segment[];
+  const g = (id: string, gap: number, size: number): RaceGroup =>
+    ({ id, kind: "chase", gap_seconds: gap, cohesion: 1, rider_ids: Array.from({ length: size }, (_, i) => `${id}${i}`) });
+  const groups = [g("front", 0, 10), g("near", 30, 20), g("small", 60, 2)];
+  const tempo = new Map([["front", { dtSeconds: 1000 }], ["near", { dtSeconds: 1010 }], ["small", { dtSeconds: 1015 }]]);
+  const v3 = valleyRegroupTempoV3(groups, tempo, segments, 2, undefined);
+  assert.equal(v3.get("near")!.dtSeconds, 1000, "v3: the gap does not grow");
+  const t = SHARED_TIME_MODEL_V2_TUNING;
+  const v2 = valleyRegroupTempoV3(groups, tempo, segments, 2, undefined, t);
+  const nearClosing = Math.min(30, 20 * (t.valleyClosingSecondsPerKm + t.valleyClosingGapFractionPerKm * 30));
+  assert.equal(v2.get("near")!.dtSeconds, 1000 - nearClosing, "v2: a larger group behind closes at the full rate");
+  const smallClosing = Math.min(30, 20 * (t.valleyClosingSecondsPerKm + t.valleyClosingGapFractionPerKm * 30) * (2 / 20));
+  assert.equal(v2.get("small")!.dtSeconds, v2.get("near")!.dtSeconds - smallClosing, "a small group behind a large one closes in proportion to its numbers");
+  const touching = valleyRegroupTempoV3([g("front", 0, 10), g("near", 5, 20)], new Map([["front", { dtSeconds: 1000 }], ["near", { dtSeconds: 1000 }]]), segments, 2, undefined, t);
+  assert.equal(touching.get("near")!.dtSeconds, 995, "closing never passes the group ahead: contact, not overtaking");
 });
 
 test("#6199 v2: the summit climb block is the last run of climbs on a long_climb finale", () => {
@@ -62,6 +99,11 @@ test("#6199 v2: the summit climb block is the last run of climbs on a long_climb
   assert.deepEqual([0, 1, 2].map((segmentIndex) => isSummitFinishClimb({ route, segmentIndex })), [false, true, true]);
   assert.equal(isSummitFinishClimb({ route: { ...route, finale_type: "punch" }, segmentIndex: 2 }), false);
   assert.equal(isSummitFinishClimb({ route: { ...route, segments: [...route.segments, flat(40, 45)] }, segmentIndex: 2 }), false);
+  // The owner's short uphill finish (about 3-7 km at 5-7 %) is ridden as a group, not a summit race.
+  const short = { ...route, segments: [flat(0, 34), { ...climb(34, 40), avg_gradient: 6 } as Segment] } as RouteV2;
+  assert.equal(isSummitFinishClimb({ route: short, segmentIndex: 1 }), false);
+  const steep = { ...route, segments: [flat(0, 34), { ...climb(34, 40), avg_gradient: 9 } as Segment] } as RouteV2;
+  assert.equal(isSummitFinishClimb({ route: steep, segmentIndex: 1 }), true);
 });
 
 test("#6199 v2: on the summit climb every rider loses his own deficit time, ordered by ability", () => {
