@@ -124,8 +124,8 @@ mismatch AS (
 -- præcis den tavshed dette tjek findes for at bryde.
 allowed(tbl, polname, proname, polrole, why) AS (
   VALUES (
-    'riders', 'Public read riders', 'is_offered_intake_rider', 'anon',
-    'Bevidst fail-closed. Fuld kodebase-audit 18/7 2026 viste at ingen pre-login-flade laeser riders. Beslutning + re-grant-opskrift: .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md'
+    'riders', 'Public read riders', 'offered_intake_rider_ids', 'anon',
+    'Bevidst fail-closed. Fuld kodebase-audit 18/7 2026 viste at ingen pre-login-flade laeser riders. #6341 (8/10) erstattede is_offered_intake_rider(id) pr. raekke med saet-helperen offered_intake_rider_ids() i samme policy; anon fik bevidst heller ikke EXECUTE paa den. Beslutning + re-grant-opskrift: .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md'
   ), (
     'riders', 'Public read riders', 'is_admin', 'anon',
     'Bevidst fail-closed, samme beslutning som raekken ovenfor. #5153 revokede anon-EXECUTE paa is_admin() (advisor-lint 0028). anon-laesningen af riders fejlede allerede paa policyens ANDEN operand (is_offered_intake_rider, raekken ovenfor), saa revoken flytter kun hvilken funktion 42501 naevner - den aendrer ikke udfaldet for anon. Samme beslutning, samme re-grant-opskrift: .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md'

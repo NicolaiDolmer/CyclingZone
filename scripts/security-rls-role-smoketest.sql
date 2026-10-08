@@ -166,7 +166,7 @@ END $$;
 WITH allowed(tbl, polrole, why) AS (
   VALUES (
     'riders', 'anon',
-    'Bevidst fail-closed: anon mangler EXECUTE paa is_admin() og is_offered_intake_rider(uuid), begge kaldt fra "Public read riders". .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md'
+    'Bevidst fail-closed: anon mangler EXECUTE paa is_admin() og offered_intake_rider_ids() (#6341), begge kaldt fra "Public read riders". .claude/learnings/2026-07-18-anon-riders-select-fail-closed-42501.md'
   )
 )
 SELECT CASE WHEN f.polrole = 'authenticated' THEN 'CRITICAL' ELSE 'WARN' END AS severity,

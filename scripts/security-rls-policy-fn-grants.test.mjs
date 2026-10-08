@@ -80,12 +80,12 @@ test("den kendte riders-post staar uaendret i whitelisten", () => {
     (r) =>
       r.tbl === "riders" &&
       r.polname === "Public read riders" &&
-      r.proname === "is_offered_intake_rider" &&
+      r.proname === "offered_intake_rider_ids" &&
       r.polrole === "anon"
   );
   assert.ok(
     riders,
-    "riders / Public read riders / is_offered_intake_rider / anon skal blive staaende, ellers gaar det daglige tjek roedt paa en kendt, accepteret tilstand"
+    "riders / Public read riders / offered_intake_rider_ids / anon skal blive staaende (#6341 erstattede is_offered_intake_rider i policyen), ellers gaar det daglige tjek roedt paa en kendt, accepteret tilstand"
   );
 });
 
