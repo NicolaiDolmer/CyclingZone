@@ -133,10 +133,10 @@ export default function RacePointsPage() {
         <p className="text-[13px] text-cz-2">{t("points.subtitle")}</p>
         <Link
           to="/help"
-          className="flex flex-shrink-0 items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors"
+          className="flex shrink-0 items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors"
           title={t("points.help")}
         >
-          <InfoIcon size={16} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
+          <InfoIcon size={16} className="text-cz-3 shrink-0" aria-hidden="true" />
           <span className="hidden sm:inline">{t("points.help")}</span>
         </Link>
       </div>
@@ -144,7 +144,7 @@ export default function RacePointsPage() {
       {/* Prize formula */}
       <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <CoinIcon size={18} className="text-cz-accent-t flex-shrink-0" />
+          <CoinIcon size={18} className="text-cz-accent-t shrink-0" />
           <span className="font-semibold text-cz-1">{t("points.formula", { amount: fmt(PRIZE_PER_POINT) })}</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -164,7 +164,7 @@ export default function RacePointsPage() {
           <button
             key={c}
             onClick={() => setActiveClass(c)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-cz-pill text-sm font-medium transition-colors whitespace-nowrap
+            className={`shrink-0 px-3 py-1.5 rounded-cz-pill text-sm font-medium transition-colors whitespace-nowrap
               ${activeClass === c
                 ? "bg-cz-accent-t text-cz-on-accent"
                 : "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent/30 hover:text-cz-accent-t"

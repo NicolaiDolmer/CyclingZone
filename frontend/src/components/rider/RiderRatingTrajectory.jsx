@@ -30,7 +30,7 @@ function Sparkline({ trajectory }) {
   });
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className="flex-shrink-0" aria-hidden="true">
+    <svg viewBox={`0 0 ${w} ${h}`} width={w} height={h} className="shrink-0" aria-hidden="true">
       <polyline
         points={points.join(" ")}
         fill="none"

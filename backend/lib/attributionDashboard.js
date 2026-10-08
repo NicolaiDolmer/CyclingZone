@@ -32,7 +32,7 @@ function parseUrl(raw) {
 }
 
 // Domain-anchored: exact host or a dot-bounded subdomain, never a substring.
-function isOwnSiteHost(hostname) {
+export function isOwnSiteHost(hostname) {
   const host = String(hostname || "").toLowerCase();
   return OWN_SITE_HOSTS.some(h => host === h || host.endsWith(`.${h}`));
 }

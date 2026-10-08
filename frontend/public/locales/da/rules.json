@@ -169,6 +169,10 @@
           "title": "Ét hold pr. person",
           "text": "Hver spiller må kun have ét hold på én konto. At drive flere hold via ekstra konti tæller som snyd og overvåges via de konto- og login-signaler der er beskrevet i privatlivspolitikken."
         },
+        "aiAutomation": {
+          "title": "AI-værktøjer og automatisering",
+          "text": "Du må gerne bruge AI-værktøjer og regneark til at analysere ryttere og planlægge dit hold. Bud, transfers, taktik og alle andre handlinger i spillet skal du selv udføre. Scripts, bots eller AI-agenter, der handler på din konto, tæller som snyd."
+        },
         "starProtection": {
           "title": "Stjernerytter-beskyttelse",
           "text": "En rytter hvis markedsværdi er mindst {starValue} CZ$ tæller som en stjerne og er beskyttet mod tvangssalg. Det er den samme værdi du ser i rytterens profil."

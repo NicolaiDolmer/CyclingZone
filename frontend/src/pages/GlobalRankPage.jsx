@@ -51,9 +51,9 @@ function SidePanel({ title, rows, emptyLabel, unitLabel, valueKey, valueSuffix, 
             <div key={row.team_id}
               onClick={() => navigate(`/teams/${row.team_id}?tab=results`)}
               className="flex items-center gap-2 py-1.5 border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle rounded px-1 -mx-1 transition-colors">
-              <span className="text-cz-3 font-mono text-xs w-4 flex-shrink-0">{i + 1}</span>
+              <span className="text-cz-3 font-mono text-xs w-4 shrink-0">{i + 1}</span>
               <span className="text-cz-1 text-sm truncate flex-1">{row.name}</span>
-              <span className="font-mono text-xs font-bold text-cz-accent-t flex-shrink-0">
+              <span className="font-mono text-xs font-bold text-cz-accent-t shrink-0">
                 {valueKey === "places_gained" ? `+${row[valueKey]}` : formatNumber(row[valueKey])} {valueSuffix || unitLabel}
               </span>
             </div>
@@ -167,7 +167,7 @@ export default function GlobalRankPage() {
       onClick: () => navigate(`/teams/${row.team_id}?tab=results`),
       // #2795-opfoelgning: markeringen sidder paa cellerne (index.css), ikke som
       // box-shadow paa <tr>. Leder-raekker faar kun kanten, saa guldet bevares.
-      className: `cursor-pointer${isLeader ? " bg-cz-accent/[0.08]" : ""}${isMe ? (isLeader ? " cz-me-bar" : " cz-me") : ""}`,
+      className: `cursor-pointer${isLeader ? " bg-cz-accent/8" : ""}${isMe ? (isLeader ? " cz-me-bar" : " cz-me") : ""}`,
     };
   }
 
@@ -180,7 +180,7 @@ export default function GlobalRankPage() {
       {/* Egen placering — fastgjort bånd øverst, altid synlig uanset filter/side (godkendt mockup). */}
       {myRow && (
         <Card className="cz-me-block mb-4 px-4 py-3.5 flex items-center gap-4 flex-wrap">
-          <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded-full flex-shrink-0"
+          <span className="text-3xs font-bold uppercase px-1.5 py-0.5 rounded-full shrink-0"
             style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>
             {t("youBadge")}
           </span>

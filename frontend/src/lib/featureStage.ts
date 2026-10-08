@@ -58,6 +58,11 @@ async function fetchFlags(headers: Record<string, string>): Promise<Record<strin
   }
 }
 
+/** #6154: de anonymt evaluerede flag (sand = on for alle), eller null ved fejl. */
+export function loadAnonymousFlags(): Promise<Record<string, boolean> | null> {
+  return fetchFlags({});
+}
+
 /**
  * off|beta|on pr. spiller-synlig kontakt (PLAYER_VISIBLE_FLAG_KEYS,
  * backend/lib/stageFlagCatalog.js) for DENNE viewer. Fejler ét af de

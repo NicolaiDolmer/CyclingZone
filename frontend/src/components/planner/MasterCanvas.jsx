@@ -17,6 +17,7 @@ import { StarIcon, FlagIcon } from "../ui";
 import TerrainGlyph from "../calendar/TerrainGlyph.jsx";
 import { toTerrainBucket } from "../../lib/terrainBucket";
 import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel, formatOrdinalShort } from "./plannerShared";
+import { isPeakTargetOpen, isYouthPlannerRider } from "./plannerSquadModel";
 
 const VBW = 940, RAIL = 190, RRAIL = 132;
 const CX = RAIL, CW = VBW - RAIL - RRAIL;
@@ -28,13 +29,16 @@ const CX = RAIL, CW = VBW - RAIL - RRAIL;
 // ~1400px for samme trup uden at gøre form-kurverne uaflæselige.
 const AXIS = 48, LANE = 64, TOP_PAD = 10, BOT_PAD = 12;
 
-export default function MasterCanvas({ riders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget, onCreatePeak }) {
+export default function MasterCanvas({ riders: allRiders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget, onCreatePeak }) {
   const { t } = useTranslation(["planner", "riderTypes"]);
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null); // { planId, riderId, previewOrd }
   const months = t("months", { returnObjects: true });
 
   const nowOrd = dateToOrdinal(today);
+  // #5992: brættet planlægger seniortruppen. Ungdomsryttere kører ikke
+  // seniorkalenderens løb og hører ikke hjemme i lanerne.
+  const riders = useMemo(() => (allRiders || []).filter((rd) => !isYouthPlannerRider(rd)), [allRiders]);
 
   // Synlige løb (filter mine/alle) + gyldig dato.
   const visRaces = useMemo(() => (races || [])
@@ -81,7 +85,8 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
       // #4212: kun ÆGTE peak-mål blokerer — et andet uaccepteret forslag må
       // ALDRIG forhindre en retarget (forslaget har ingen bindende plads endnu).
       const taken = new Set(rider.peaks.filter((p) => !p.isSuggestion).map((p) => p.targetRaceId));
-      const eligible = visRaces.filter((r) => r.id !== plan.targetRaceId && !taken.has(r.id));
+      // #5992: et startet eller kørt løb kan ikke længere være et peak-mål.
+      const eligible = visRaces.filter((r) => r.id !== plan.targetRaceId && !taken.has(r.id) && isPeakTargetOpen(r, nowOrd));
       let best = null, bestD = Infinity;
       for (const r of eligible) { const d = Math.abs(r.ord - drag.previewOrd); if (d < bestD) { bestD = d; best = r; } }
       if (best && bestD <= span / 24) {
@@ -105,7 +110,7 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
     if (dragPlan) {
       // #4212: samme regel som dragEnd — et forslags mål blokerer ikke.
       const taken = new Set(dragRider.peaks.filter((p) => !p.isSuggestion).map((p) => p.targetRaceId));
-      const eligible = visRaces.filter((r) => r.id !== dragPlan.targetRaceId && !taken.has(r.id));
+      const eligible = visRaces.filter((r) => r.id !== dragPlan.targetRaceId && !taken.has(r.id) && isPeakTargetOpen(r, nowOrd));
       let best = null, bestD = Infinity;
       for (const r of eligible) { const d = Math.abs(r.ord - drag.previewOrd); if (d < bestD) { bestD = d; best = r; } }
       planningTarget = (best && bestD <= span / 24) ? best : (visRaces.find((r) => r.id === dragPlan.targetRaceId) || null);
@@ -323,7 +328,6 @@ export default function MasterCanvas({ riders, races, today, leadupDays, filter,
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRider(rd.id); } }}
             >{riderShortName(rd)}</text>
             <text x="50" y={y0 + 39} fontSize="10" fill={CZ.t2} style={{ fontFamily: "'DM Sans', sans-serif" }}>{typeLabel}</text>
-            {rd.isAcademy && <text x="50" y={y0 + 52} fontSize="10" fill={CZ.goldDeep} style={{ fontFamily: "Inter Tight, monospace" }}>◆ {t("academy").toUpperCase()}</text>}
             {/* #2447: OVR-badge farvet efter samme evne-gradient (statColor/statTextColor,
                 SSOT for ALLE rating-visninger) i stedet for en fast ink/gold-kombination
                 der blev ulæselig i dark mode (--text-1 er næsten hvid der → gult tal på

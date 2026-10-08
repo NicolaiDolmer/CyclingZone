@@ -55,7 +55,7 @@ export default function MemberPanel({ member, mandate, minutes = [], onClose }) 
           </div>
         </div>
         <button type="button" onClick={onClose} aria-label={t("boardroom.member.close")}
-          className="flex-shrink-0 rounded-cz p-1 text-cz-3 transition-colors hover:text-cz-1">
+          className="shrink-0 rounded-cz p-1 text-cz-3 transition-colors hover:text-cz-1">
           <XIcon size={16} aria-hidden="true" />
         </button>
       </div>

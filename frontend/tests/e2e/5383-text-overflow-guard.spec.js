@@ -35,7 +35,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "./e2e-base.js";
-import { corsHeaders, installNetworkMocks, json, login, stabilizePage, waitForStableSnapshotTarget } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage, waitForStableSnapshotTarget } from "./fixtures.js";
 import { RULES, scanPageForTextDefects, formatFinding } from "./lib/text-overflow-scan.js";
 import {
   TEXT_OVERFLOW_ALLOWLIST,
@@ -60,31 +60,17 @@ const REPORT_DIR = path.resolve(
   "../../test-results/5383-tekst-overflow",
 );
 
-// Den NYE mobil-traeningsvisning (#3643) ligger bag stadie-flaget
-// `training_mobile_table`, og standard-mocken saetter ikke `mobileTable` — uden
-// denne rute ville vagten kun se den gamle, doende D-047-gren paa /training.
-// Serveren sender flaget som en bar boolean, saa det er alt ruten behoever:
-// resten af svaret falder tilbage til standard-mocken (apiResponse), praecis
-// som naar vagten maaler den gamle gren.
-async function enableMobileTrainingTable(page) {
-  await page.route("**/api/training/me**", (route) => {
-    const request = route.request();
-    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
-    return json(route, { mobileTable: true });
-  });
-}
-
 // Fold den oeverste rytters kort ud. Kortet er lukket ved indlaesning (ejer
-// 21/9), og dets indhold bor i en `colSpan`-celle inde i tabellen — maales det
-// ikke aabent, er halvdelen af fladen usynlig for vagten.
+// 21/9) — maales det ikke aabent, er halvdelen af fladen usynlig for vagten.
+// #6030: telefonens Today er række-listen (TodayRowsMobile) for alle.
 // En vagt der tavst maaler ingenting er vaerre end ingen vagt: derfor VENTES
 // der paa tabellen og paa kortet, saa en mock der holder op med at taende den
 // nye gren fejler hoejlydt i stedet for at se groen ud.
 async function expandFirstRider(page) {
-  const button = page.locator('[data-testid="training-mobile-roster"] tbody button[aria-expanded]').first();
+  const button = page.locator('[data-testid="training-onetap-row"] button[aria-expanded]').first();
   await button.waitFor();
   if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
-  await page.locator('[data-testid="training-mobile-rider-detail"]').waitFor();
+  await page.locator('[data-testid="training-onetap-detail"]').waitFor();
 }
 
 // Siderne. `name` er noeglen undtagelser slaas op paa, saa den maa ikke aendres
@@ -112,14 +98,12 @@ const PAGES = [
   { name: "rytterprofil", path: "/riders/rider-1" },
   { name: "indstillinger", path: "/profile" },
   { name: "hjaelp", path: "/help" },
-  // #3643: den nye mobil-traeningsside, bag beta-flaget, med et rytterkort
-  // foldet ud. Egen post (ikke en tilstand paa "traening"), saa et fund peger
-  // paa den NYE gren og ikke forveksles med den gamle grens kendte gaeld.
+  // #3643: mobil-traeningssiden med et rytterkort foldet ud. Navnet er
+  // allowlist-noeglen og beholdes (#6030: visningen er nu for alle).
   {
     name: "traening-mobil-beta",
     path: "/training",
     viewports: ["mobil"],
-    setup: enableMobileTrainingTable,
     prepare: expandFirstRider,
   },
 ];

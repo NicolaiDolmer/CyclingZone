@@ -645,7 +645,7 @@
     },
     "errors": {
       "stage_roles_invalid_body": "Couldn't save the intentions. Try again.",
-      "stage_roles_stage_locked": "One of the changes is on a completed stage, so it can't be saved.",
+      "stage_roles_stage_locked": "One of the changes is on a stage that has already started, so it can't be saved.",
       "stage_roles_rider_not_entered": "One of the riders isn't entered in this race.",
       "stage_roles_invalid_role": "One of the roles isn't valid.",
       "stage_roles_invalid_effort": "One of the intentions isn't valid.",
@@ -653,7 +653,8 @@
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
       "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given an intention anymore.",
       "stage_roles_race_completed": "This race is finished, so the intentions can't be changed anymore.",
-      "generic": "Couldn't save the intentions. Try again."
+      "generic": "Couldn't save the intentions. Try again.",
+      "stage_roles_conflict": "Your tactics were changed in another window. The latest version is loaded. Check it and save again."
     }
   },
   "tacticsOrders": {
@@ -672,6 +673,19 @@
       "letGo": "{captain} leads. The team lets the early move go."
     },
     "breakawayAria": "Team breakaway stance",
+    "ordersGc": {
+      "rulesLabel": "Race rules",
+      "rulesName": "Break orders and GC reaction",
+      "rulesHelp": "How they work",
+      "stanceLabel": "Chasing the break",
+      "stance": {
+        "chase": "Chase",
+        "neutral": "Read the race",
+        "let_go": "Leave the chase to others"
+      },
+      "gcNote": "The team can make a limited response to a serious GC threat with its free riders.",
+      "breakNote": "Captain, sprint captain and domestique only go for the morning break with Try the break selected."
+    },
     "breakaway": {
       "chase": "Chase it down",
       "neutral": "Neutral",
@@ -765,6 +779,7 @@
     "tactics": {
       "title": "Tactics",
       "help": "The role runs all race. The intention and the orders are what you want on the stage you have open.",
+      "helpScoped": "You choose which stages a role applies to. The intention and the orders are what you want on the stage you have open.",
       "helpRaceDay": "The role runs all race. The intention and the orders are what you want on race day.",
       "colOrders": "Orders · stage {number}",
       "colOrdersRaceDay": "Orders · race day",
@@ -785,7 +800,11 @@
       "rolePickerTitle": "{name}'s role",
       "roleScope": "From stage {number} to the end of the race",
       "roleScopeRaceDay": "For this race",
+      "roleScopeLabel": "Applies to",
+      "roleScopeRest": "Stage {number} to the end of the race",
+      "roleScopeStageOnly": "Stage {number} only",
       "roleExclusiveNote": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique.",
+      "roleExclusiveNoteScoped": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique on the same stages. Earlier stages keep their roles.",
       "roleWhy": {
         "captain": "The team rides for him and he gets the protection.",
         "sprint_captain": "He gets the sprint train and the lead out.",
@@ -1071,6 +1090,32 @@
       "play": "Play",
       "pause": "Pause",
       "feedEmpty": "Scrub forward to see what happened.",
+      "split": {
+        "title": "Split times",
+        "lossTitle": "Where your riders lost time",
+        "showAll": "Show all groups",
+        "front": "Front",
+        "riders": "{count, plural, one {# rider} other {# riders}}",
+        "yours": "Yours: {names}",
+        "more": "{count, plural, one {# more group further back} other {# more groups further back}}",
+        "group": {
+          "breakaway": "Breakaway",
+          "peloton": "Peloton",
+          "group": "Group"
+        },
+        "drop": "{rider} lost contact with {from, select, breakaway {the breakaway} peloton {the peloton} other {{count, plural, one {his group} other {their group}}}}{where, select, climb { on {place}} sector { on {place}} other {}}.",
+        "reason": {
+          "climb_deficit": "The pace on the climb was too high for {count, plural, one {him} other {them}}.",
+          "wprime_depleted": "{count, plural, one {He} other {They}} had run out of strength.",
+          "mixed": "The pace was too high, and some in the group had run out of strength.",
+          "grupetto": "{count, plural, one {He was} other {They were}} set to ride in the grupetto.",
+          "cobbles_sector": "The cobbles split the group."
+        },
+        "order": {
+          "save": "Your order: Ride easy.",
+          "grupetto": "Your order: Grupetto."
+        }
+      },
       "event": {
         "stage_start": "{count} riders roll out for {distance} km.",
         "stage_start_itt": "{count} riders go off one by one over {distance} km against the clock.",
@@ -1079,7 +1124,10 @@
         "kom_passage": "{name} (cat. {category}): {rider} leads over the top.",
         "intermediate_sprint": "{name}: {rider} takes the intermediate sprint.",
         "breakaway_caught": "{riders} {count, plural, one {is} other {are}} caught by the pursuing group.",
+        "breakaway_caught_by_teams": "{riders} {count, plural, one {is} other {are}} caught. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} did the chasing.",
+        "breakaway_caught_by_peloton": "{riders} {count, plural, one {is} other {are}} caught by the peloton.",
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
+        "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
         "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
         "incident_crash_time_loss": "{rider} goes down and loses {seconds} sec.",
         "incident_crash_hard": "{rider} goes down hard: {seconds} sec. lost, and {days, plural, one {# day} other {# days}} on the sidelines.",
@@ -1107,7 +1155,25 @@
         "peloton_split": "{riders} {count, plural, one {moves} other {move}} into a separate group.",
         "group_split_many": "{count} riders split into a separate group.",
         "descent_attack": "{riders} {count, plural, one {attacks} other {attack}} on the descent.",
-        "descent_attack_many": "{count} riders attack on the descent."
+        "descent_attack_many": "{count} riders attack on the descent.",
+        "gc_reaction_started": "{rider}'s team starts working to protect his place in the GC.",
+        "gc_reaction_started_threat": "{rider}'s team starts working to limit the threat from {threats} in the GC.",
+        "gc_reaction_contained": "{rider}'s team stops working. The threat to his place in the GC is under control.",
+        "gc_reaction_stopped": "{rider}'s team stops reacting.",
+        "gc_reaction_exhausted": "{rider}'s team has spent what it can on the reaction this stage and stops working.",
+        "gc_reaction_no_workers": "{rider}'s team sees the threat, but has no free riders in his group to react.",
+        "group_merged_batch": "{count} {scope, select, others {other groups} other {groups}} came back together.",
+        "peloton_split_batch": "{count} {scope, select, others {other groups} other {groups}} split away.",
+        "finale_attack_batch": "{count} {scope, select, others {other riders} other {riders}} attack in the finale.",
+        "finale_attack_named_batch": "{riders} attack in the finale.",
+        "gc_reaction_batch_started": "{count} {scope, select, others {other teams} other {teams}} reacted.",
+        "gc_reaction_batch_contained": "{count} {scope, select, others {other teams} other {teams}} stopped working. The threat is under control.",
+        "gc_reaction_batch_stopped": "{count} {scope, select, others {other teams} other {teams}} stopped reacting.",
+        "gc_reaction_batch_exhausted": "{count} {scope, select, others {other teams} other {teams}} spent what they could on the reaction this stage and stopped working.",
+        "gc_reaction_batch_no_workers": "{count} {scope, select, others {other teams} other {teams}} saw the threat, but had no free riders in the group to react.",
+        "gc_context_missing": "The GC standings before this stage are not available, so no team reacts to a GC threat today.",
+        "own_riders_ahead": "{rider}'s team does not chase. It has {riders} up the road.",
+        "own_riders_ahead_team": "The team of {riders} does not chase. It has {count, plural, one {him} other {them}} up the road."
       }
     },
     "recap": {
@@ -1119,6 +1185,8 @@
       "tttWin": "{rider} led home the fastest team.",
       "breakawaySurvived": "{count, plural, one {A lone rider stayed away to the finish.} other {A #-rider breakaway stayed away to the finish.}}",
       "breakawayCaught": "{count, plural, one {The lone breakaway rider was caught before the line.} other {The breakaway (# riders) was caught before the line.}}",
+      "breakawayCaughtByTeams": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} led the chase and caught the breakaway {where, select, km {with {km} km to go} other {before the line}}.",
+      "breakawayCaughtByPeloton": "The peloton caught the breakaway {where, select, km {with {km} km to go} other {before the line}}.",
       "teamDay": "{team} led the team classification with {count} riders in the top 10.",
       "teamWon": "{team} won the team classification.",
       "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains.",
@@ -1323,6 +1391,12 @@
           "v1": "{count, plural, one {The lone escapee was brought back before the finish.} other {The break of # was brought back before the finish.}}",
           "v2": "{count, plural, one {The field closed down the lone leader in time.} other {The field closed down the # leaders in time.}}"
         },
+        "breakaway_caught_by_teams": {
+          "v1": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} led the chase and brought the break back {where, select, km {with {km} km to go} other {before the finish}}."
+        },
+        "breakaway_caught_by_peloton": {
+          "v1": "The peloton brought the break back {where, select, km {with {km} km to go} other {before the finish}}."
+        },
         "breakaway_survived": {
           "v1": "{count, plural, one {The lone leader was never caught.} other {The # escapees held the field off all the way to the line.}}"
         },
@@ -1375,6 +1449,7 @@
       "label": "Morning breakaway",
       "survived": "stayed away to the finish",
       "caught": "caught",
+      "dropped": "dropped from the break",
       "participated": "participated",
       "laterAttack": "Later attack",
       "legacyLabel": "Breakaway"

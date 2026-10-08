@@ -1,5 +1,13 @@
 # Rytterudviklingens regler — SSOT
 
+## Forberedt kompensation #6061 (ikke live)
+
+Ejeren godkendte 3/10 beregning med nuværende planer og motor for dokumenterede
+uafregnede slots. Motorens eksisterende udvikling/lofter anvendes pr. tick;
+resultater og start-snapshots afgør løb/hvile. Synlige evner må ikke reduceres.
+Historisk tilstand rekonstrueres ikke. Produktionsanvendelse kræver separat
+ejer-go, uændrede kilde-rækker og atomiske kvitteringer, jf. TRAINING_RULES.
+
 ## Datoens afsluttende historik (#5915, 30/9)
 
 Beta-release styres af `training_daily_receipt` mod serverens godkendte
@@ -143,11 +151,15 @@ Ejer-beslutning 13/8, "tredje vej": potentiale forbliver **1-6 internt**, UI vis
 
 > ⚠ **Kendt hul (spec 14/8, hul nr. 4, stadig åbent):** arvede ryttere over deres FORMEL-loft rammes ikke af aftrapningen. Se audit §C6.
 
+> 🔄 **Besluttet afløst (3/10, ikke bygget):** tilbagegangen skal kunne bremses af løbsdage ("kilometer i benene", D-060, #6109). Se §11.
+
 ---
 
 ## 5. Løbsdags-motoren: træning og løb på samme dag
 
 **Reglen (variant A, S1; ejer 24/9 i [#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850), valgt efter simuleringen i PR #5640):** på en løbsdag kører en rytter løb ELLER træner, aldrig begge dele. Kører han en etape, udvikler han sig som efter et **mellem-pas** i de evner etapens profil kræver (bjerg → klatring, flad → spurt, enkeltstart → tempo osv.), de øvrige evner får den sædvanlige off-fokus-andel, og reglen **maks +1 pr. evne pr. løbsdag** gælder med carry-over. **Planen er ikke input** (ejer-dom 24/8). Ingen ekstra faktor oven på passet. Motor-detaljer og simuleringens tal: [`TRAINING_RULES.md` §6.2](TRAINING_RULES.md). Variant B (dagens intention som modifikator, #4632) lægges ovenpå når v4 tændes.
+
+> 🔄 **Besluttet afløst (ejer 3/10, ikke bygget):** målt 29/9-2/10 giver mellem-passet kun omkring halvdelen af en hård træningsdag, så hjemmetræning plus hvile slår løb. Ny regel D-059: hård basis + tillæg i profil-evnerne, vægtet efter rolle (#5950). Se §11.
 
 | Regel | Konstant | Fil | Status |
 |---|---|---|---|
@@ -224,6 +236,8 @@ Det sidste niveau er nøjagtig det hul kalenderen havde før [#4176](https://git
 | 2 | Rolle-taget blev leveret 14/8, rullet tilbage 15/8, genopbygget via #3709/#3798 — ikke genmålt mod de oprindelige kriterier | audit §C1, §B4 |
 | 3 | ~~Planen er stadig input på en løbsdag, selvom spec 6/8 og ejerens dom 24/8 siger den ikke skal være det (A4)~~ **Afgjort 24/9 (variant A/S1, #4850):** etapens profil som mellem-pas, +1-loft, planen er ikke input. Live fra flippet 28/9 | denne fil §5, `TRAINING_RULES.md` §6.2 |
 | 4 | Specialiserings-gabet er langt over det ejeren eksplicit fravalgte, verifikationskravet er aldrig indfriet | denne fil §7, audit §B13 |
+| 4b | Beslutning 4 (9/8, absolut-niveau-kurve, top omkring 27) blev aldrig bygget ind i motoren; motoren er stadig alders-drevet, og en toptalent er næsten færdig som 21-årig. **Plan:** kurvemodel B (D-058), byg uge 41 | §11, #3564, #6110 |
+| 4c | Ejer-valget 6/8 (løb lidt over det pas, det erstatter) står i koden, men kaldes ikke; løbsdag ≈ normalt pas. **Plan:** D-059, byg uge 41 | §5, §11, #5950 |
 | 5 | "8 type-loftprofiler" (spec 9/8) findes ikke — der er én fælles rolleklasse-tabel for alle 8 typer | audit §B4 |
 | 6 | Toprytterens form ("mesterlig i primæren, jævn i resten") er princip, ikke kalibreret profil pr. type | audit §B9 |
 | 7 | Ingen af de tre kildespecs' succeskriterier er en tilbagevendende gate | denne fil §8, audit "Det vigtigste at kigge på" nr. 5 |
@@ -243,6 +257,24 @@ Det sidste niveau er nøjagtig det hul kalenderen havde før [#4176](https://git
 - `docs/superpowers/specs/2026-08-14-3659-rytterudvikling-og-traening-design.md` (Rytterudvikling og træning)
 - `docs/superpowers/specs/2026-08-06-ryttertype-fundament-v2-design.md` (Ryttertype-fundamentet)
 - `docs/superpowers/specs/2026-07-16-traening-ungdom-verdensklasse-addendum-design.md` (Ungdoms-addendum)
+- `docs/superpowers/specs/2026-10-03-udvikling-2-design.md` (Udvikling 2.0: kurve B, løbsdag, tilbagegang; §11)
 
 **Kode (verificér altid mod denne, aldrig mod en spec alene):**
 `backend/lib/riderProgression.js` · `backend/lib/dailyTraining.js` · `backend/lib/dailyTrainingEngine.js` · `backend/lib/riderCondition.js` · `backend/lib/riderTypes.js` · `backend/lib/scoutingReport.js` · `backend/lib/abilityRegistry.js` · `backend/lib/weights/displayRecipes.js` · `backend/scripts/spillervendteGates3709.mjs`
+
+---
+
+## 11. Udvikling 2.0: besluttet 2-3/10, IKKE bygget endnu (#6110)
+
+> ⚠ Indtil flagene er bygget og tændt gælder §1-§5 som de står. Denne sektion er den ejer-besluttede retning; detaljer og design-kort i [spec 3/10](superpowers/specs/2026-10-03-udvikling-2-design.md). Tal kun privat i `balance-internals/2026-10-03-udvikling-2/`.
+
+| Regel (besluttet) | Afløser | Issue | Status |
+|---|---|---|---|
+| **Kurvemodel B (D-058):** fart = niveau (hvert point dyrere jo tættere på 100) × potentiale × belastningsevne. Alder er ikke længere turbo, kun belastningsevne for de helt unge. Større sværhedsforskel lav/høj end i dag. Mål: omkring 60 % ved 22, omkring 85 % ved 25, top 27-28 | afstand-til-loft × `growthFractionByAge` × `youthMultiplier` (§1) | #3564 | ⏳ design D1-D2 4-5/10, byg uge 41 |
+| **Løbsdag (D-059):** hård basis + tillæg i etapens profil-evner, vægtet efter rolle (kaptajn/angriber, hjælper). Planen er fortsat ikke input | variant A's mellem-pas (§5) | #5950 | ⏳ design D3, byg uge 41 |
+| **Tilbagegang (D-060):** løbsdage bremser faldet ved sæsonskiftet; stilstandsår overvejes | fast alderstrappe ved skiftet (§4) | #6109 | ⏳ design D4, første effekt S4→S5 |
+| **Én kurve for alle:** AI-ryttere og frie ryttere udvikles som managerryttere (ingen sæsonvækst-knæk) | sæsonvækst for ikke-menneskehold | #6059 | ⏳ design D6 |
+| **Eksisterende ryttere:** anbefalet kun fremadrettet | — | #6110 D5 | ❓ ejer-kort |
+
+Fravalgt 3/10: model A (ren niveau-kurve uden alder). Lave niveauer er billige, så de unge ville stadig være næsten færdige som 21-årige.
+

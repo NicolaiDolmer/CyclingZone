@@ -55,7 +55,7 @@ function effortOf(decision: ReturnType<typeof generateAiTeamOrder>, riderId: str
 
 // ── Kaptajn beskyttes paa bjergetaper (opgave-eksemplet) ──────────────────────
 
-test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn beskyttes, hjaelper arbejder", () => {
+test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn gemmer sig til finalen, hjaelper arbejder", () => {
   const roster: AiRosterEntrant[] = [
     rider("cap", "captain", { climbing: 85 }),
     rider("sprint-cap", "sprint_captain", { sprint: 90 }),
@@ -68,7 +68,8 @@ test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn beskytt
 
   assert.equal(decision.order.breakaway_stance, "chase");
   const capOrder = decision.order.riders.find((r) => r.rider_id === "cap");
-  assert.equal(capOrder?.effort, "protect");
+  // #6055: kaptajnen koerer normal; protect/all_out braendte hans reserve af.
+  assert.equal(capOrder?.effort, "normal");
   assert.equal(capOrder?.try_break, false);
   // "Arbejd eller angrib": hjaelperen koerer ved kaptajnen holdet koerer for.
   assert.equal(effortOf(decision, "h1"), "protect");
@@ -81,12 +82,12 @@ test("kaptajn blandt feltets favoritter til bjergetape -> chase, kaptajn beskytt
   // Forklarlighed: hver rytter + stance har en ikke-tom reason-streng.
   assert.ok(decision.reasons.breakaway_stance.length > 0);
   for (const r of roster) assert.ok((decision.reasons.riders[r.rider_id] ?? "").length > 0);
-  assert.match(decision.reasons.riders.cap, /Beskyttes/);
+  assert.match(decision.reasons.riders.cap, /Gemmer kraefterne til finalen/);
 });
 
 // ── Sprint-tog-narrativ paa flade etaper ──────────────────────────────────────
 
-test("sprint-kaptajn blandt feltets hurtigste til flad spurtetape -> chase + beskyttes, toget sat", () => {
+test("sprint-kaptajn blandt feltets hurtigste til flad spurtetape -> chase, sprinteren gemmer sig til spurten, toget sat", () => {
   const roster: AiRosterEntrant[] = [
     rider("cap", "captain", { climbing: 80 }),
     rider("sprint-cap", "sprint_captain", { sprint: 92 }),
@@ -96,7 +97,7 @@ test("sprint-kaptajn blandt feltets hurtigste til flad spurtetape -> chase + bes
   const decision = generateAiTeamOrder({ team_id: "team-2", route: FLAT_SPRINT, roster, field });
 
   assert.equal(decision.order.breakaway_stance, "chase");
-  assert.equal(effortOf(decision, "sprint-cap"), "protect");
+  assert.equal(effortOf(decision, "sprint-cap"), "normal");
   // GC-kaptajnen er off-specialty paa en flad spurtetape -> spares.
   assert.equal(effortOf(decision, "cap"), "save");
   // M6: hjaelperen koerer i toget (rollens standard), maalet selv goer aldrig.
@@ -187,7 +188,7 @@ test("styrken er feltets plads, ikke en absolut evne: lav skala giver samme besl
   });
   assert.equal(highDecision.order.breakaway_stance, "chase");
   assert.equal(lowDecision.order.breakaway_stance, "chase");
-  assert.equal(effortOf(lowDecision, "cap"), "protect");
+  assert.equal(effortOf(lowDecision, "cap"), "normal");
 });
 
 // ── #5571: indsatstrappen brugt realistisk ─────────────────────────────────
@@ -222,26 +223,40 @@ test("endagsloeb paa bjergterraen: ingen grupetto (der er ingen i morgen at gemm
   assert.equal(effortOf(decision, "sprint-cap"), "save");
 });
 
-test("den afgoerende dag: kaptajnen gaar alt ud paa loebets sidste etape af hans terraen", () => {
+test("#6055: den afgoerende dag gemmer kaptajnen ogsaa kraefterne til finalen (aldrig all_out/protect)", () => {
   const roster: AiRosterEntrant[] = [rider("cap", "captain", { climbing: 85 }), rider("h1", "helper")];
   const field = fieldOf(roster, opponents("climbing", spread(30, 20, 60)));
 
   const notYet = generateAiTeamOrder({ team_id: "gt", route: MOUNTAIN, roster, field, race: stageRace([MOUNTAIN, FLAT_SPRINT]) });
-  assert.equal(effortOf(notYet, "cap"), "protect");
+  assert.equal(effortOf(notYet, "cap"), "normal");
 
   const lastMountain = generateAiTeamOrder({ team_id: "gt", route: MOUNTAIN, roster, field, race: stageRace([FLAT_SPRINT]) });
-  assert.equal(effortOf(lastMountain, "cap"), "all_out");
-  assert.match(lastMountain.reasons.riders.cap, /Alt ud/);
+  assert.equal(effortOf(lastMountain, "cap"), "normal");
+  assert.match(lastMountain.reasons.riders.cap, /sidste etape af denne type/);
+  // Hjaelperen arbejder stadig for ham.
+  assert.equal(effortOf(lastMountain, "h1"), "protect");
 
   const oneDay = generateAiTeamOrder({ team_id: "od", route: MOUNTAIN, roster, field, race: ONE_DAY });
-  assert.equal(effortOf(oneDay, "cap"), "all_out");
+  assert.equal(effortOf(oneDay, "cap"), "normal");
+  assert.match(oneDay.reasons.riders.cap, /endagsloeb/);
 
-  // Uden loebs-kontekst kender AI'en ikke den afgoerende dag.
   const unknownRace = generateAiTeamOrder({ team_id: "u", route: MOUNTAIN, roster, field });
-  assert.equal(effortOf(unknownRace, "cap"), "protect");
+  assert.equal(effortOf(unknownRace, "cap"), "normal");
 });
 
-test("alt ud kun for en favorit: en kaptajn midt i feltet koerer normalt ogsaa paa den afgoerende dag", () => {
+test("#6055: sprint-kaptajnen paa sidste flade etape koerer normal, ikke alt ud", () => {
+  const roster: AiRosterEntrant[] = [
+    rider("sprint-cap", "sprint_captain", { sprint: 92 }),
+    rider("h1", "helper", { sprint: 70, climbing: 30 }),
+  ];
+  const field = fieldOf(roster, opponents("sprint", spread(30, 20, 60)));
+  const decision = generateAiTeamOrder({ team_id: "gt", route: FLAT_SPRINT, roster, field, race: stageRace([MOUNTAIN]) });
+  assert.equal(decision.order.breakaway_stance, "chase");
+  assert.equal(effortOf(decision, "sprint-cap"), "normal");
+  assert.equal(decision.order.riders.find((r) => r.rider_id === "h1")?.leadout, true);
+});
+
+test("en kaptajn midt i feltet koerer normalt ogsaa paa den afgoerende dag (neutral stance)", () => {
   const roster: AiRosterEntrant[] = [rider("cap", "captain", { climbing: 62 })];
   const field = fieldOf(roster, [...opponents("climbing", spread(10, 70, 79)), ...opponents("climbing", spread(20, 10, 40))]);
   const decision = generateAiTeamOrder({ team_id: "od", route: MOUNTAIN, roster, field, race: ONE_DAY });
@@ -342,7 +357,7 @@ test("property: try_break er kun nogensinde true for hunter/free_role, output va
 
 // ── #5571: trappens yderpunkter bruges kun hvor et rigtigt hold ville ────────
 
-test("property: all_out kun for dagens kaptajn i et kendt loeb, grupetto kun i bjergene i etapeloeb", () => {
+test("property: AI'en bruger aldrig all_out, kaptajnen aldrig protect, grupetto kun i bjergene i etapeloeb", () => {
   const roleArb = fc.constantFrom<RiderRole>("captain", "sprint_captain", "helper", "hunter", "free_role");
   const routeArb = fc.constantFrom<AiTacticsRoute>(
     MOUNTAIN,
@@ -380,11 +395,10 @@ test("property: all_out kun for dagens kaptajn i et kendt loeb, grupetto kun i b
       const climbDay = route.profile_type === "mountain" || route.profile_type === "high_mountain";
       for (const r of decision.order.riders) {
         const role = roster.find((e) => e.rider_id === r.rider_id)?.role;
-        if (r.effort === "all_out") {
-          assert.ok(race !== undefined, "all_out kraever et kendt loeb");
-          assert.equal(decision.order.breakaway_stance, "chase");
-          assert.ok(role === "captain" || role === "sprint_captain");
-        }
+        // #6055: all_out braender reserven af foer finalen; protect er
+        // hjaelpernes trin ("arbejd eller angrib"), aldrig kaptajnens.
+        assert.notEqual(r.effort, "all_out");
+        if (role === "captain" || role === "sprint_captain") assert.notEqual(r.effort, "protect");
         if (r.effort === "grupetto") {
           assert.equal(race?.is_stage_race, true);
           assert.ok(climbDay);
@@ -396,4 +410,137 @@ test("property: all_out kun for dagens kaptajn i et kendt loeb, grupetto kun i b
     }),
     { numRuns: 300, seed: 5571 },
   );
+});
+
+// ── #6097: AI-holdenes udbrudsforsoeg under orders_gc_v2 ──────────────────────
+
+/** Et typisk AI-hold i prod: kun kaptajn, sprint-kaptajn og hjaelpere. */
+function aiTypicalRoster(capClimbing: number): AiRosterEntrant[] {
+  return [
+    rider("cap", "captain", { climbing: capClimbing }),
+    rider("sprint-cap", "sprint_captain", { sprint: 80, aggression: 90, climbing: 90 }),
+    rider("h-strong", "helper", { aggression: 80, climbing: 75 }),
+    rider("h-mid", "helper", { aggression: 70, climbing: 65 }),
+    rider("h-weak", "helper", { aggression: 20, climbing: 20 }),
+  ];
+}
+
+function tryBreakIds(decision: ReturnType<typeof generateAiTeamOrder>): string[] {
+  return decision.order.riders.filter((r) => r.try_break).map((r) => r.rider_id).sort();
+}
+
+test("#6097 orders_gc_v2: et let_go-AI-hold sender sin bedste passende hjaelper i udbruddet, aldrig en kaptajn", () => {
+  const roster = aiTypicalRoster(20); // kaptajnen er en outsider -> let_go
+  const field = fieldOf(roster, opponents("climbing", spread(40, 30, 70)));
+  const input: AiTacticsInput = { team_id: "ai-1", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v2" };
+  const decision = generateAiTeamOrder(input);
+  assert.equal(decision.order.breakaway_stance, "let_go");
+  assert.deepEqual(tryBreakIds(decision), ["h-strong"]);
+  assert.match(decision.reasons.riders["h-strong"], /Udbrudsforsoeg/);
+  assert.equal(validateTeamOrder(decision.order).ok, true);
+  // Uden revisionen (og under orders_gc_v1) forsoeger et sadant hold slet ikke.
+  assert.deepEqual(tryBreakIds(generateAiTeamOrder({ ...input, rules_revision: undefined })), []);
+});
+
+test("#6097 orders_gc_v2: jagt- og neutrale AI-hold sender ingen ekstra udbrudsforsoeg", () => {
+  for (const capClimbing of [95, 55]) {
+    const roster = aiTypicalRoster(capClimbing);
+    const field = fieldOf(roster, opponents("climbing", spread(40, 30, 70)));
+    const decision = generateAiTeamOrder({ team_id: "ai-2", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v2" });
+    assert.notEqual(decision.order.breakaway_stance, "let_go");
+    assert.deepEqual(tryBreakIds(decision), []);
+  }
+});
+
+test("#6097 orders_gc_v2: en hjaelper uden for feltets passende top-andel sendes ikke", () => {
+  const roster: AiRosterEntrant[] = [rider("cap", "captain", { climbing: 20 }), rider("h-weak", "helper", { aggression: 10, climbing: 10 })];
+  const field = fieldOf(roster, opponents("climbing", spread(40, 40, 80), { aggression: 60 }));
+  const decision = generateAiTeamOrder({ team_id: "ai-3", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v2" });
+  assert.equal(decision.order.breakaway_stance, "let_go");
+  assert.deepEqual(tryBreakIds(decision), []);
+});
+
+test("#6097 orders_gc_v2: grupetto-ryttere og kaptajn-roller faar aldrig udbrudsforsoeg", () => {
+  fc.assert(
+    fc.property(fc.integer({ min: 0, max: 99 }), fc.integer({ min: 0, max: 99 }), fc.boolean(), (capClimbing, aggression, stageRaceDay) => {
+      const roster: AiRosterEntrant[] = [
+        rider("cap", "captain", { climbing: capClimbing, aggression }),
+        rider("sprint-cap", "sprint_captain", { sprint: 90, aggression: 99, climbing: 99 }),
+        rider("train", "helper", { sprint: 80, climbing: 30, aggression: 99 }),
+        rider("h", "helper", { aggression, climbing: 60 }),
+      ];
+      const field = fieldOf(roster, opponents("climbing", spread(30, 20, 80)));
+      const decision = generateAiTeamOrder({
+        team_id: "ai-4", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v2",
+        ...(stageRaceDay ? { race: stageRace([MOUNTAIN]) } : {}),
+      });
+      for (const r of decision.order.riders) {
+        if (!r.try_break) continue;
+        assert.notEqual(r.rider_id, "cap");
+        assert.notEqual(r.rider_id, "sprint-cap");
+        assert.notEqual(r.effort, "grupetto");
+      }
+      assert.ok(tryBreakIds(decision).length <= 2);
+    }),
+    { numRuns: 200, seed: 6097 },
+  );
+});
+
+test("#6097: legacy/orders_gc_v1 er uaendrede - en anden revision end orders_gc_v2 giver praecis samme ordre som ingen revision", () => {
+  fc.assert(
+    fc.property(fc.integer({ min: 0, max: 99 }), fc.constantFrom(MOUNTAIN, FLAT_SPRINT), (capAbility, route) => {
+      const roster = aiTypicalRoster(capAbility);
+      const field = fieldOf(roster, opponents("climbing", spread(30, 20, 80)));
+      const base: AiTacticsInput = { team_id: "ai-5", route, roster, field, race: ONE_DAY };
+      const none = generateAiTeamOrder(base);
+      assert.deepEqual(generateAiTeamOrder({ ...base, rules_revision: "orders_gc_v1" }), none);
+      assert.deepEqual(generateAiTeamOrder({ ...base, rules_revision: "legacy" }), none);
+    }),
+    { numRuns: 200, seed: 6097 },
+  );
+});
+
+// ── #6201: AI-hold uden klassementschance sender en klatrer paa bjerg (orders_gc_v3) ──
+
+test("#6201 orders_gc_v3: et neutralt AI-hold sender sin bedste passende klatrer paa en bjergetape (v2 goer ikke)", () => {
+  const roster = aiTypicalRoster(55); // kaptajnen midt i feltet -> neutral
+  const field = fieldOf(roster, opponents("climbing", spread(40, 30, 70)));
+  const input: AiTacticsInput = { team_id: "ai-6201", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v3" };
+  const decision = generateAiTeamOrder(input);
+  assert.equal(decision.order.breakaway_stance, "neutral");
+  assert.deepEqual(tryBreakIds(decision), ["h-strong"]);
+  assert.match(decision.reasons.riders["h-strong"], /Udbrudsforsoeg/);
+  assert.equal(validateTeamOrder(decision.order).ok, true);
+  assert.deepEqual(tryBreakIds(generateAiTeamOrder({ ...input, rules_revision: "orders_gc_v2" })), []);
+});
+
+test("#6201 orders_gc_v3: et let_go-hold hvis v2-forsoeg allerede er en klatrer faar ingen ekstra", () => {
+  const roster = aiTypicalRoster(20); // let_go; v2 sender h-strong (bedste klatrer)
+  const field = fieldOf(roster, opponents("climbing", spread(40, 30, 70)));
+  const base: AiTacticsInput = { team_id: "ai-6201b", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v2" };
+  assert.deepEqual(tryBreakIds(generateAiTeamOrder({ ...base, rules_revision: "orders_gc_v3" })), tryBreakIds(generateAiTeamOrder(base)));
+});
+
+test("#6201 orders_gc_v3: et jagthold og en flad etape er uaendrede fra orders_gc_v2", () => {
+  fc.assert(
+    fc.property(fc.integer({ min: 0, max: 99 }), fc.constantFrom(MOUNTAIN, FLAT_SPRINT), (capAbility, route) => {
+      const roster = aiTypicalRoster(capAbility);
+      const field = fieldOf(roster, opponents("climbing", spread(30, 20, 80)));
+      const base: AiTacticsInput = { team_id: "ai-6201c", route, roster, field, race: ONE_DAY, rules_revision: "orders_gc_v2" };
+      const v2 = generateAiTeamOrder(base);
+      const v3 = generateAiTeamOrder({ ...base, rules_revision: "orders_gc_v3" });
+      if (route === FLAT_SPRINT || v2.order.breakaway_stance === "chase") assert.deepEqual(v3, v2);
+      // Aldrig kaptajn/sprint-kaptajn, aldrig flere end to forsoeg.
+      for (const r of v3.order.riders) if (r.try_break) assert.ok(r.rider_id !== "cap" && r.rider_id !== "sprint-cap");
+      assert.ok(tryBreakIds(v3).length <= 2);
+    }),
+    { numRuns: 200, seed: 6201 },
+  );
+});
+
+test("#6201 orders_gc_v3: en klatrer uden for feltets passende top-andel sendes ikke", () => {
+  const roster: AiRosterEntrant[] = [rider("cap", "captain", { climbing: 55 }), rider("h-weak", "helper", { aggression: 90, climbing: 10 })];
+  const field = fieldOf(roster, opponents("climbing", spread(40, 30, 70)));
+  const decision = generateAiTeamOrder({ team_id: "ai-6201d", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v3" });
+  assert.deepEqual(tryBreakIds(decision), []);
 });

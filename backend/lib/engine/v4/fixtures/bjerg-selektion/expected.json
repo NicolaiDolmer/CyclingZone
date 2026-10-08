@@ -73,7 +73,9 @@
           "group_id": "breakaway-0",
           "rider_ids": [
             "r02"
-          ]
+          ],
+          "chase_group_id": "peloton-0",
+          "chase_group_kind": "peloton"
         }
       },
       {

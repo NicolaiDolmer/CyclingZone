@@ -8,6 +8,8 @@
 // nøgler/params er alle rene funktioner af (events, distanceKm) — ingen skjult
 // tilstand, ingen engine-kald.
 
+import { catchActor, findMorningCatch } from "./raceCatchActor.ts";
+
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
 // ttt_team_result (M13, #3463) er af samme art: motoren emitterer ÉT resultat-
@@ -15,6 +17,12 @@
 // data. Som feed-linjer ville det være hele startlisten af hold på én km — en
 // mur, ikke en broadcast. Vinderen står allerede i `finish`-eventet.
 const NON_FEED_TYPES = new Set(["gap_update", "ttt_team_result"]);
+
+// #6067: orders_gc_v1's GC-reaktion (importen står her, ikke øverst, så den
+// ikke kolliderer med #6050's import i samme fil).
+import { describeGcReactionEvent } from "./ordersGcSurface.ts";
+// #6137: gentagne ens hændelser på samme km bliver én linje (kun visningen).
+import { groupRepeatedFeedEvents, describeGroupedEvent } from "./stageTimelineGrouping.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -84,10 +92,10 @@ function isTimeTrialStage(events) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null}} input */
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [] } = {}) {
   const sorted = [...(events || [])].sort((a, b) => (a?.km ?? 0) - (b?.km ?? 0));
-  const feedEvents = sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided"));
+  const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
     .map((e) => ({ km: e.km, category: e.params?.category ?? null, name: e.params?.name ?? null }));
@@ -97,10 +105,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null } = {}) {
   // ikke beskriver noget. Kurven udelades derfor på tidskørsler (GapCurveLayer
   // renderer ingenting på en tom liste); tallene bliver stående i tidslinjen.
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
-  const morningIds = new Set(formation?.params?.rider_ids ?? []);
-  const caughtEvent = sorted.find((e) => e?.type === "breakaway_caught"
-    && (!formation || (e.params?.rider_ids ?? []).some((id) => morningIds.has(id)))
-    && (!formation?.params?.group_id || !e.params?.group_id || e.params.group_id === formation.params.group_id));
+  const caughtEvent = findMorningCatch(sorted);
   const namedGroups = sorted.some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");
   let gapCurve = [];
   if (!isTimeTrialStage(sorted)) {
@@ -219,6 +224,7 @@ export function collectRiderIds(events) {
     add(p.winner_rider_id);
     add(p.new_leader_id);
     add(p.previous_leader_id);
+    add(p.protected_rider_id); // #6067: gc_reaction navngiver holdets GC-rytter
     for (const t of p.top || []) add(t?.rider_id);
   }
   return [...out];
@@ -237,8 +243,11 @@ export function collectRiderIds(events) {
  * de navne der KAN opløses og skipper kun når ingen kan; count følger de viste
  * navne så flertalsbøjningen ({count, plural}) matcher den synlige liste.
  */
-export function describeEvent(event, { riderNameById } = {}) {
+export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (!event?.type) return null;
+  if (event.grouped) {
+    return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
+  }
   const p = event.params || {};
   const breakawayParams = () => {
     const names = resolvedRiderNames(p.rider_ids, riderNameById);
@@ -267,11 +276,22 @@ export function describeEvent(event, { riderNameById } = {}) {
     }
     case "breakaway_caught": {
       const params = breakawayParams();
-      return params ? { key: "breakaway_caught", params } : null;
+      if (!params) return null;
+      // #6050: nævn aktøren når motoren har skrevet den; ellers den gamle linje.
+      const actor = catchActor(event, { teamNameById });
+      if (actor?.kind === "teams") {
+        return { key: "breakaway_caught_by_teams", params: { ...params, teams: actor.teams, teamCount: actor.teamCount, teamsHead: actor.teamsHead, teamLast: actor.teamLast } };
+      }
+      if (actor?.kind === "peloton") return { key: "breakaway_caught_by_peloton", params };
+      return { key: "breakaway_caught", params };
     }
     case "breakaway_survived": {
       const params = breakawayParams();
       return params ? { key: "breakaway_survived", params } : null;
+    }
+    case "breakaway_dropped": { // #6185 del 2 (orders_gc_v3): motoren melder selv hvor det skete
+      const params = breakawayParams();
+      return params ? { key: "breakaway_dropped", params } : null;
     }
     case "incident": {
       const rider = riderName(p.rider_id, riderNameById);
@@ -352,6 +372,11 @@ export function describeEvent(event, { riderNameById } = {}) {
       if (!rider || !previousLeader) return null;
       return { key: "gc_change", params: { rider, previousLeader } };
     }
+    // #6067: orders_gc_v1's ærlige kvitteringer, uden tal.
+    case "gc_reaction":
+    case "gc_context":
+    case "own_riders_ahead": // #6187 (orders_gc_v3)
+      return describeGcReactionEvent(event, (id) => riderName(id, riderNameById));
     default:
       return null;
   }

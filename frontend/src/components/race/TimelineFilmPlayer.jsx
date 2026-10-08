@@ -17,6 +17,7 @@ import { Button, RefreshIcon, PlayIcon, PauseIcon } from "../ui";
 import { formatNumber } from "../../lib/intl.js";
 import { buildFilmTimeline, eventsPlayedUpTo, describeEvent } from "../../lib/stageTimelineFilm.js";
 import StageFilmScrubber from "./StageFilmScrubber.jsx";
+import StageSplitTimes from "./StageSplitTimes.jsx"; // #6080
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 
 // Hele etapens film afspiller over dette vindue ved auto-play (mount-baseret
@@ -52,7 +53,7 @@ function EventFeed({ events, riderNameById, teamNameById, emptyKey, t }) {
   );
 }
 
-function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById, t }) {
+function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById, splitProps, t }) {
   const [scrubKm, setScrubKm] = useState(0);
   const [playing, setPlaying] = useState(true);
   // #5159 (B1): en koerende loebsfilm er ogsaa arbejde — spilleren ser noget der
@@ -127,11 +128,12 @@ function AnimatedFilm({ profile, built, distanceKm, riderNameById, teamNameById,
       <div className="mt-3">
         <EventFeed events={playedEvents} riderNameById={riderNameById} teamNameById={teamNameById} emptyKey="detail.film.feedEmpty" t={t} />
       </div>
+      <div className="mt-4"><StageSplitTimes {...splitProps} variant="plain" uptoKm={scrubKm} riderNameById={riderNameById} teamNameById={teamNameById} t={t} /></div>
     </>
   );
 }
 
-function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, t }) {
+function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, splitProps, t }) {
   return (
     <>
       <StageFilmScrubber
@@ -141,13 +143,15 @@ function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, t
       <div className="mt-3">
         <EventFeed events={built.feedEvents} riderNameById={riderNameById} teamNameById={teamNameById} emptyKey="detail.film.feedEmpty" t={t} />
       </div>
+      <div className="mt-4"><StageSplitTimes {...splitProps} variant="plain" riderNameById={riderNameById} teamNameById={teamNameById} t={t} /></div>
     </>
   );
 }
 
-export default function TimelineFilmPlayer({ open, onClose, timeline, profile, distanceKm, riderNameById, teamNameById, stageLabel }) {
+export default function TimelineFilmPlayer({ open, onClose, timeline, profile, distanceKm, riderNameById, teamNameById, stageLabel, ownRiderIds, effortByRider }) {
   const { t } = useTranslation("races");
-  const built = buildFilmTimeline({ events: timeline?.events, distanceKm });
+  const splitProps = { events: timeline?.events, ownRiderIds, effortByRider };
+  const built = buildFilmTimeline({ events: timeline?.events, distanceKm, ownRiderIds });
   const profileDistanceKm = Number(profile?.distance_km);
   const resolvedDistanceKm = distanceKm ?? (Number.isFinite(profileDistanceKm) ? profileDistanceKm : null) ?? built.distanceKm ?? 0;
   // window.matchMedia er ikke reaktiv her — samme konvention som FinalKilometre-
@@ -157,9 +161,9 @@ export default function TimelineFilmPlayer({ open, onClose, timeline, profile, d
   return (
     <Modal open={open} onClose={onClose} title={t("detail.film.title")} description={stageLabel} size="xl" closeLabel={t("common:actions.close")}>
       {reducedMotion ? (
-        <StaticFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+        <StaticFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} splitProps={splitProps} t={t} />
       ) : (
-        <AnimatedFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+        <AnimatedFilm profile={profile} built={built} distanceKm={resolvedDistanceKm} riderNameById={riderNameById} teamNameById={teamNameById} splitProps={splitProps} t={t} />
       )}
     </Modal>
   );

@@ -9,6 +9,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  applySmallBreakPullCost,
+  breakawayMaxSizeV3,
+  breakawaySizeProfileV3,
+  smallBreakPaceV3,
   canAttemptMorningBreak,
   effectiveTryBreakByRider,
   morningBreakIntent,
@@ -212,6 +216,58 @@ test("a spontaneous free role attempts only when its own roll says so", () => {
   assert.deepEqual(no.attempted, []);
 });
 
+// ── #6079 (ejer 2/10, beslutning A): beordret slaar spontant ─────────────────
+
+test("#6079 the ordered bonus is a real, positive tuning field", () => {
+  assert.ok(MORNING_BREAK_FORMATION_TUNING.orderedSuccessBonus > 0);
+  assert.ok(MORNING_BREAK_FORMATION_TUNING.orderedSuccessBonus < 1);
+});
+
+test("#6079 same ability, same roll: an ordered attempt never does worse than a spontaneous one, and sometimes better", () => {
+  let strictlyBetter = false;
+  for (let r = 0; r < 1; r += 0.01) {
+    const riders = [
+      rider("A-ordered", "A", { role: "free_role", tryBreak: true }),
+      rider("B-free", "B", { role: "free_role", spontaneousChance: 1 }),
+      rider("C-x", "C"), rider("D-x", "D"),
+    ];
+    const result = resolveMorningBreakFormation({ riders, stances: new Map(), roll: (s) => (s === "attempt" ? 0 : r), maxSize: 8 });
+    assert.deepEqual(result.attempted, ["A-ordered", "B-free"]);
+    if (result.escaped.includes("B-free")) assert.ok(result.escaped.includes("A-ordered"), `roll ${r.toFixed(2)}`);
+    if (result.escaped.includes("A-ordered") && !result.escaped.includes("B-free")) strictlyBetter = true;
+  }
+  assert.ok(strictlyBetter, "the order must change the outcome for some rolls");
+});
+
+test("#6079 a free role without an order can still make the break", () => {
+  const riders = [rider("A-free", "A", { role: "free_role", spontaneousChance: 1 }), rider("B-x", "B"), rider("C-x", "C")];
+  const result = resolveMorningBreakFormation({ riders, stances: new Map(), roll: always(0), maxSize: 8 });
+  assert.deepEqual(result.escaped, ["A-free"]);
+});
+
+test("#6079 too many successes: ordered attempts keep their seats before spontaneous ones", () => {
+  const riders: FormationRider[] = [];
+  // Spontane ryttere er staerkere (stoerre margin), men beordrede gaar foer.
+  for (let i = 0; i < 4; i++) riders.push(rider(`free-${i}`, `F${i}`, { role: "free_role", spontaneousChance: 1, strength: 0.9 }));
+  for (let i = 0; i < 4; i++) riders.push(rider(`hunter-${i}`, `H${i}`, { role: "hunter", strength: 0.4 }));
+  const result = resolveMorningBreakFormation({ riders, stances: new Map(), roll: always(0), maxSize: 5 });
+  assert.equal(result.escaped.length, 5);
+  for (let i = 0; i < 4; i++) assert.ok(result.escaped.includes(`hunter-${i}`), `hunter-${i} kept`);
+  assert.equal(result.escaped.filter((id) => id.startsWith("free-")).length, 1);
+});
+
+test("#6079 without the bonus (tuning 0) the old margin order is unchanged", () => {
+  const riders = [
+    rider("A-ordered", "A", { role: "hunter", strength: 0.3 }),
+    rider("B-free", "B", { role: "free_role", spontaneousChance: 1, strength: 0.9 }),
+    rider("C-x", "C"),
+  ];
+  const tuning = { ...MORNING_BREAK_FORMATION_TUNING, orderedSuccessBonus: 0 };
+  // Rul der kun den staerke spontane klarer: uden tillaeg kommer kun han afsted.
+  const result = resolveMorningBreakFormation({ riders, stances: new Map(), roll: (s) => (s === "attempt" ? 0 : 0.6), maxSize: 8, tuning });
+  assert.deepEqual(result.escaped, ["B-free"]);
+});
+
 // ── Hook-integration + legacy-bevis ──────────────────────────────────────────
 
 function abilities(over: Partial<Record<AbilityKey, number>> = {}): Record<AbilityKey, number> {
@@ -325,7 +381,86 @@ test("an unknown rules revision is an error, never silently legacy or newest", (
   assert.equal(normalizeRulesRevision(undefined), "legacy");
   assert.equal(normalizeRulesRevision(null), "legacy");
   assert.equal(normalizeRulesRevision("orders_gc_v1"), "orders_gc_v1");
-  assert.throws(() => normalizeRulesRevision("orders_gc_v2"));
+  assert.equal(normalizeRulesRevision("orders_gc_v2"), "orders_gc_v2"); // #6084
+  assert.throws(() => normalizeRulesRevision("orders_gc_v9"));
   const input = fixtureInput("flat-massespurt");
   assert.throws(() => simulateStageV4({ ...input, rules_revision: "next" as unknown as "legacy" }));
+});
+
+// ── #6201 (KUN orders_gc_v3): stoerrelse pr. profil og fart efter antal ───────
+
+test("#6201 trappen: flad uaendret (loft 8, ingen profil), kuperet/rullende loft 12, bjerg/hoejfjeld loft 16", () => {
+  assert.equal(breakawaySizeProfileV3("flat"), null);
+  assert.equal(breakawayMaxSizeV3("flat"), 8);
+  assert.equal(breakawayMaxSizeV3("cobbles"), 8);
+  assert.equal(breakawayMaxSizeV3(undefined), 8);
+  for (const p of ["hilly", "rolling"]) assert.equal(breakawayMaxSizeV3(p), 12);
+  for (const p of ["mountain", "high_mountain"]) assert.equal(breakawayMaxSizeV3(p), 16);
+  // Trappen stiger: bjerg lader mindst lige saa mange gaa som kuperet.
+  const hilly = breakawaySizeProfileV3("hilly")!;
+  const mountain = breakawaySizeProfileV3("mountain")!;
+  assert.ok(mountain.room >= hilly.room && mountain.successBonus >= hilly.successBonus);
+});
+
+function hunters(n: number): FormationRider[] {
+  const riders: FormationRider[] = [];
+  for (let i = 0; i < n; i++) riders.push(rider(`hunter-${String(i).padStart(2, "0")}`, `T${i}`, { role: "hunter" }));
+  for (let i = 0; i < n; i++) riders.push(rider(`stay-${String(i).padStart(2, "0")}`, `T${i}`));
+  return riders;
+}
+
+test("#6201 uden profil er dannelsen bit-identisk; med profil aldrig over loftet og aldrig fyld", () => {
+  for (let r = 0; r < 1; r += 0.05) {
+    const base = { riders: hunters(20), stances: new Map<string, FormationStance>(), roll: always(r), maxSize: 16 };
+    assert.deepEqual(resolveMorningBreakFormation({ ...base, sizeProfile: undefined }), resolveMorningBreakFormation(base));
+    const shaped = resolveMorningBreakFormation({ ...base, sizeProfile: breakawaySizeProfileV3("mountain")! });
+    assert.ok(shaped.escaped.length <= 16);
+    for (const id of shaped.escaped) assert.ok(shaped.attempted.includes(id));
+  }
+});
+
+test("#6201 et bjergprofil lader flere gaa end ingen profil ved faa forsoeg, og en travl morgen kollapser ikke", () => {
+  const count = (n: number, profile: string | null, r: number) => resolveMorningBreakFormation({
+    riders: hunters(n), stances: new Map(), roll: always(r), maxSize: 16,
+    ...(profile ? { sizeProfile: breakawaySizeProfileV3(profile)! } : {}),
+  }).escaped.length;
+  // Faa forsoeg (under room): profilens tillaeg goer aldrig udfaldet daarligere.
+  for (let r = 0; r < 1; r += 0.05) assert.ok(count(8, "mountain", r) >= count(8, null, r), `roll ${r.toFixed(2)}`);
+  assert.ok([...Array(20).keys()].some((i) => count(8, "mountain", i / 20) > count(8, null, i / 20)));
+  // Mange forsoeg med spredte rul: stadig en rigtig gruppe (ikke 0-1 mand, #5955).
+  const spreadRoll: FormationRoll = (_stream, id) => (Number(id.slice(-2)) + 0.5) / 40;
+  for (const profile of ["hilly", "mountain"]) {
+    const n = resolveMorningBreakFormation({ riders: hunters(40), stances: new Map(), roll: spreadRoll, maxSize: 16, sizeProfile: breakawaySizeProfileV3(profile)! }).escaped.length;
+    assert.ok(n >= 6, `${profile}: ${n}`);
+  }
+});
+
+test("#6201 farten foelger antallet: 1-3 mand er langsommere og betaler mere, fra 4 mand intet aendret", () => {
+  assert.equal(smallBreakPaceV3(0), null);
+  assert.equal(smallBreakPaceV3(4), null);
+  assert.equal(smallBreakPaceV3(12), null);
+  const paces = [1, 2, 3].map((n) => smallBreakPaceV3(n)!);
+  for (const p of paces) {
+    assert.ok(p.growthScale > 0 && p.growthScale < 1);
+    assert.ok(p.closingScale > 1);
+    assert.ok(p.pullCostFraction > 0);
+  }
+  // Monotont: jo faerre, jo langsommere og dyrere.
+  for (let i = 1; i < paces.length; i++) {
+    assert.ok(paces[i].growthScale > paces[i - 1].growthScale);
+    assert.ok(paces[i].closingScale < paces[i - 1].closingScale);
+    assert.ok(paces[i].pullCostFraction < paces[i - 1].pullCostFraction);
+  }
+});
+
+test("#6201 et lille udbruds pris rammer kun de koerende udbrydere, i team_cp_factor med gulv", () => {
+  const state = (id: string, status: RiderState["status"] = "racing"): RiderState => ({ ...riderState(id), status });
+  const riders: Record<string, RiderState> = { a: state("a"), b: state("b"), out: state("out", "abandoned"), field: state("field") };
+  const next = applySmallBreakPullCost(riders, ["a", "b", "out"], smallBreakPaceV3(2), 0.5)!;
+  assert.ok((next.a.team_cp_factor ?? 1) < (riders.a.team_cp_factor ?? 1));
+  assert.equal(next.a.team_cp_factor, next.b.team_cp_factor);
+  assert.equal(next.out, riders.out);
+  assert.equal(next.field, riders.field);
+  assert.equal(applySmallBreakPullCost(riders, ["a"], smallBreakPaceV3(5), 0.5), null);
+  assert.equal(applySmallBreakPullCost(riders, ["a"], smallBreakPaceV3(1), 0), null);
 });

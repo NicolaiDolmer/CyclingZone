@@ -36,12 +36,18 @@
 //    `protect` ("Arbejd eller angrib") ved en kaptajn holdet koerer for, og
 //    kaptajnen paa `all_out` paa den afgoerende dag. Aldrig et frikort: hvert
 //    trin betaler sin egen pris i motoren (M12/M16), praecis som for spillere.
+//  * #6055 (2/10): kaptajnen selv koerer `normal` paa jagt-dage, ogsaa den
+//    afgoerende. Replayet af prod-etaperne viste at `all_out` og `protect`
+//    koster ham mere reserve end finalen giver tilbage; han ankom tom til
+//    netop den finale holdet satsede paa. Om `all_out` skal kunne betale sig
+//    for en kaptajn er et prisvalg (det gaelder ogsaa spillere), ikke AI'ens.
 //  * `leadout` (M6, sprint-toget) saettes som rollens standard, saa et AI-hold
 //    ikke mister sit tog ved at M14 overtager standardordren.
 
 import type { AbilityKey, FinaleType, ProfileType, RiderRole } from "../types.ts";
 import type { BreakawayStance, EffortLevel, TeamOrder, TeamOrderRider } from "./teamOrderContract.ts";
 import { validateTeamOrder } from "./teamOrderContract.ts";
+import { isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 export type AiRosterEntrant = {
   rider_id: string;
@@ -81,6 +87,12 @@ export type AiTacticsInput = {
    */
   field?: readonly AiFieldRider[];
   race?: AiRaceContext;
+  /**
+   * #6097 (VALGFRIT): loebets bundne regel-revision. Kun "orders_gc_v2" aendrer
+   * noget (udbrudsforsoeg fra hjaelpere, se generateAiTeamOrder punkt 6);
+   * udeladt eller enhver anden vaerdi giver praecis samme ordre som foer.
+   */
+  rules_revision?: string;
 };
 
 export type AiTacticsReasons = {
@@ -125,6 +137,13 @@ export const AI_TACTICS_TUNING = Object.freeze({
   /** En fri rytter proever udbruddet naar hans udbruds-score er i feltets top-andel. */
   BREAK_CANDIDATE_FIELD_SHARE: 0.2,
   MAX_BREAK_CANDIDATES: 2,
+  /**
+   * #6097 (KUN orders_gc_v2): en hjaelper/fri rytter er en passende
+   * udbrudskandidat naar hans udbruds-score er i denne top-andel af feltet.
+   */
+  V2_BREAK_CANDIDATE_FIELD_SHARE: 0.5,
+  /** #6097 (KUN orders_gc_v2): et let_go-holds egne udbrudsforsoeg (hunters taeller med). */
+  V2_LET_GO_BREAK_CANDIDATES: 1,
 });
 
 /** Klassificerer dagens terraen-krav ud fra rute-typen (samme felter som RouteV2). */
@@ -230,9 +249,10 @@ function isSprintTrainRider(entrant: AiRosterEntrant, teamHasSprintCaptain: bool
  * 1. Find holdets terraen-relevante kaptajn (captain for alt undtagen rene
  *    spurtetaper, sprint_captain for dem — samme rollemodel som lineuppet)
  *    og hans plads i FELTET paa dagens primaere evne.
- * 2. Kaptajn blandt feltets favoritter -> "chase": kaptajnen beskyttes
- *    (`protect`), hjaelperne arbejder ved ham (`protect`, "Arbejd eller
- *    angrib"), og paa den afgoerende dag gaar kaptajnen `all_out`.
+ * 2. Kaptajn blandt feltets favoritter -> "chase": hjaelperne arbejder ved
+ *    ham (`protect`, "Arbejd eller angrib"), og kaptajnen selv koerer
+ *    `normal` og gemmer reserven til finalen, ogsaa paa den afgoerende dag
+ *    (#6055: `protect`/`all_out` braendte hans reserve af foer finalen).
  * 3. Kaptajn uden for feltets top eller ingen kaptajn -> "let_go": kaptajnen
  *    spares, og op til to hunter/free_role-ryttere forsoeger udbrud (bounded
  *    via try_break — oeger sandsynlighed, garanterer aldrig, T3).
@@ -304,6 +324,51 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
         .filter((c) => c.role === "hunter" || fieldRank(c.score, fieldBreakScores) <= freeRoleRankCap)
         .map(({ riderId, score }) => ({ riderId, score })),
     ).slice(0, AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES);
+    // #6097 (KUN orders_gc_v2): AI-holdenes trupper har sjaeldent hunters/frie
+    // roller, saa ovenstaaende gav naesten aldrig et forsoeg, og morgenudbruddet
+    // blev for lille (ofte intet). Under v2 vaelger et hold der lader udbruddet
+    // gaa (let_go) derfor selv sin bedste passende rytter: hunter, fri rolle
+    // ELLER hjaelper, aldrig kaptajn/sprint-kaptajn, aldrig grupetto, og kun en
+    // rytter hvis udbruds-score (aggression + dagens terraenevne) er i feltets
+    // passende top-andel. Holdets hunters forsoeger stadig som rollens standard
+    // (hoejst MAX_BREAK_CANDIDATES i alt). Neutrale hold og jagt-hold sender
+    // ingen ekstra. Et forsoeg er aldrig en garanti: motoren afgoer stadig
+    // hvem der kommer afsted (mechanics/breakawayPermission.ts).
+    if (isOrdersGcV2OrLater(input.rules_revision)) { // #6187: v3 arver v2
+      const v2RankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
+      const eligible = input.roster
+        .filter((r) => !grupettoIds.has(r.rider_id))
+        .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
+        .map((r) => ({ riderId: r.rider_id, hunter: r.role === "hunter", score: breakScore(r.abilities, primaryAbility) }))
+        .filter((c) => c.hunter || fieldRank(c.score, fieldBreakScores) <= v2RankCap)
+        .sort((a, b) => Number(b.hunter) - Number(a.hunter) || b.score - a.score || a.riderId.localeCompare(b.riderId));
+      const hunterCount = eligible.filter((c) => c.hunter).length;
+      const extra = stance === "let_go" ? AI_TACTICS_TUNING.V2_LET_GO_BREAK_CANDIDATES : 0;
+      const slots = Math.min(AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES, Math.max(extra, hunterCount));
+      breakCandidates = eligible.slice(0, slots).map(({ riderId, score }) => ({ riderId, score }));
+    }
+    // #6201 (KUN orders_gc_v3, ejer 5/10 valg A): paa en bjergetape sender et
+    // hold uden klassementschance (lader gaa eller neutral) sin bedste passende
+    // klatrer i udbrud: hunter, fri rolle eller hjaelper, aldrig kaptajn eller
+    // grupetto, og kun naar hans klatreevne er i feltets passende top-andel.
+    // Han kommer oveni holdets forsoeg (hoejst MAX_BREAK_CANDIDATES i alt) og
+    // er aldrig en garanti. Ordrernes betydning er uaendret.
+    if (isOrdersGcV3OrLater(input.rules_revision) && demand === "climb") {
+      const climbCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
+      const taken = new Set(breakCandidates.map((c) => c.riderId));
+      const climber = input.roster
+        .filter((r) => !grupettoIds.has(r.rider_id) && !taken.has(r.rider_id))
+        .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
+        .filter((r) => fieldRank(abilityOf(r, "climbing"), fieldPrimary) <= climbCap)
+        .sort((a, b) => abilityOf(b, "climbing") - abilityOf(a, "climbing") || a.rider_id.localeCompare(b.rider_id))[0];
+      const hasClimber = breakCandidates.some((c) => {
+        const r = input.roster.find((x) => x.rider_id === c.riderId);
+        return r !== undefined && fieldRank(abilityOf(r, "climbing"), fieldPrimary) <= climbCap;
+      });
+      if (climber && !hasClimber && breakCandidates.length < AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES) {
+        breakCandidates = [...breakCandidates, { riderId: climber.rider_id, score: breakScore(climber.abilities, primaryAbility) }];
+      }
+    }
   }
   const breakScoreById = new Map(breakCandidates.map((c) => [c.riderId, c.score]));
 
@@ -325,14 +390,18 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
           ? `Grupetto: ${terrainLabel} i et etapeloeb er ikke en sprinters dag — i maal inden for tidsgraensen, benene gemmes til spurtetaperne.`
           : `Grupetto: tog-rytter for sprint-kaptajnen; ${terrainLabel} er ikke hans dag, benene gemmes til spurtetaperne.`;
     } else if (isLeader) {
-      if (stance === "chase" && decisiveDay) {
-        effort = "all_out";
-        reason = input.race?.is_stage_race
-          ? `Alt ud: loebets sidste etape af denne type, og ${leaderNoun} er nr. ${leaderRank} i feltet (${primaryAbility}).`
-          : `Alt ud: endagsloeb, og ${leaderNoun} er nr. ${leaderRank} i feltet (${primaryAbility}).`;
-      } else if (stance === "chase") {
-        effort = "protect";
-        reason = `Beskyttes: holdets ${terrainLabel.replace(/^den |^det /, "")}-kaptajn mens holdet jager (nr. ${leaderRank} i feltet, ${primaryAbility}).`;
+      // #6055: kaptajnen holdet koerer for, koerer `normal`. Hjaelperne tager
+      // arbejdet (`protect`), og han gemmer reserven til finalen. Hverken
+      // `protect` (i motoren "arbejd eller angrib": hoejere kraftkrav) eller
+      // `all_out` (hoejere kraftkrav hele dagen) beskytter ham: replayet af
+      // prod-etaperne viste at begge braender reserven af foer finalen, saa
+      // favoritten ankom tom og tabte netop den dag holdet satsede paa ham.
+      // Trinnenes pris er den samme for spillere og er ikke roert her.
+      if (stance === "chase") {
+        effort = "normal";
+        reason = decisiveDay
+          ? `Gemmer kraefterne til finalen: ${input.race?.is_stage_race ? "loebets sidste etape af denne type" : "endagsloeb"}, og ${leaderNoun} er nr. ${leaderRank} i feltet (${primaryAbility}). Hjaelperne tager arbejdet.`
+          : `Gemmer kraefterne til finalen: holdet koerer for ${leaderNoun} paa ${terrainLabel} (nr. ${leaderRank} i feltet, ${primaryAbility}). Hjaelperne tager arbejdet.`;
       } else if (stance === "let_go") {
         effort = "save";
         reason = `Spares: ${terrainLabel} er ikke kaptajnens staerke side (nr. ${leaderRank} i feltet, ${primaryAbility}), og holdet jager ikke i dag.`;

@@ -81,6 +81,57 @@ test("effortFatigueMultiplier: protect +20%, save -30%, normal/default uændret"
   assert.equal(effortFatigueMultiplier(undefined), 1.0);
 });
 
+// ── #6079: save's træthed pr. etapeprofil, KUN under orders_gc_v1 ─────────────
+
+const ALL_PROFILES_6079 = ["flat", "rolling", "hilly", "classic", "cobbles", "mountain", "high_mountain", "itt", "ttt", "unknown", null, undefined];
+const ALL_EFFORTS_6079 = ["grupetto", "save", "normal", "protect", "all_out"];
+
+test("#6079 legacy (og manglende revision) er uændret for alle profiler og trin", () => {
+  for (const profileType of ALL_PROFILES_6079) {
+    for (const effort of ALL_EFFORTS_6079) {
+      const base = effortFatigueMultiplier(effort);
+      assert.equal(effortFatigueMultiplier(effort, { profileType, rulesRevision: "legacy" }), base, `${effort}/${profileType}`);
+      assert.equal(effortFatigueMultiplier(effort, { profileType }), base, `${effort}/${profileType}`);
+    }
+  }
+});
+
+test("#6079 orders_gc_v1: save sparer mere i bjergene og mindre på flad", () => {
+  const m = (profileType) => effortFatigueMultiplier("save", { profileType, rulesRevision: "orders_gc_v1" });
+  assert.ok(m("flat") > m("rolling"));
+  assert.ok(m("rolling") > m("hilly"));
+  assert.ok(m("hilly") > m("mountain"));
+  assert.equal(m("mountain"), m("high_mountain"));
+  assert.equal(m("hilly"), RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE, "kuperet = legacy-tallet");
+  assert.equal(m("itt"), RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE, "ukendt for tabellen = legacy");
+  assert.equal(m("unknown"), RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE);
+});
+
+test("#6079 orders_gc_v1: kun save ændres, og trappen vender aldrig (grupetto <= save < normal)", () => {
+  for (const profileType of ALL_PROFILES_6079) {
+    const ctx = { profileType, rulesRevision: "orders_gc_v1" };
+    for (const effort of ["grupetto", "normal", "protect", "all_out"]) {
+      assert.equal(effortFatigueMultiplier(effort, ctx), effortFatigueMultiplier(effort), `${effort}/${profileType}`);
+    }
+    const save = effortFatigueMultiplier("save", ctx);
+    assert.ok(effortFatigueMultiplier("grupetto", ctx) <= save, `grupetto > save paa ${profileType}`);
+    assert.ok(save < effortFatigueMultiplier("normal", ctx), `save >= normal paa ${profileType}`);
+  }
+});
+
+test("#6084 orders_gc_v2 arver orders_gc_v1's save-træthed for alle profiler og trin", () => {
+  for (const profileType of ALL_PROFILES_6079) {
+    for (const effort of ALL_EFFORTS_6079) {
+      assert.equal(
+        effortFatigueMultiplier(effort, { profileType, rulesRevision: "orders_gc_v2" }),
+        effortFatigueMultiplier(effort, { profileType, rulesRevision: "orders_gc_v1" }),
+        `${effort}/${profileType}`,
+      );
+    }
+  }
+  assert.ok(effortFatigueMultiplier("save", { profileType: "mountain", rulesRevision: "orders_gc_v2" }) < RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE);
+});
+
 // ── Team-vægt v1 → v3 ──────────────────────────────────────────────────────────
 
 test("teamRaceWeightV3() returnerer det kalibrerede v3-tal (> v1's 0.024)", () => {

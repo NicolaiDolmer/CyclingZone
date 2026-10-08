@@ -173,6 +173,8 @@ const finaleExtra = {
   dayformScoreWeight: 5.0, // dagsformen er allerede dagens performance-signal; finalen laeser den for at undgaa at evne-favoritten bliver naesten deterministisk
   modifierScaleFloor: 0.1, // #5957: gulv under puljens bedste finale-evne naar reserve/dagsform/indsats skaleres med evnen (finale.ts finaleModifierScale)
   modifierFullScaleShare: 0.4, // #5957: ryttere med mindst denne andel af puljens bedste finale-evne faar dagens modifikatorer fuldt ud (favorit-opgoeret blandt reelle kandidater)
+  modifierCandidateCount: 20, // #6049: de N bedste finale-evner i puljen er de reelle kandidater, uanset hvor ensartet feltet er (finale.ts finaleCandidateReference)
+  modifierReferenceAbilityTerm: 0.5, // #6049: puljens bedste finale-evne hvor modifikatorerne gaelder fuldt; et svagere felt faar dem i forhold til sit niveau (finale.ts finaleLevelScale)
   dayformScoreClamp: 0.1, // haardt loft paa finale-scorebidragets dagsform-input; Gaussian-halen maa aldrig blive ubundet placeringsstoej
 
   // ── Massefinale: feltets antals-fordel i jagten (#4914) ────────────────────
@@ -572,6 +574,11 @@ const cobblesExtra = {
   punchFinaleMultiplier: 1.15, // ekstra vaegt naar route.finale_type === 'punch' ("udvalgte punch-etaper" — brosten+punch-kombinationen mor-spec §3.1 fremhaever) — multiplicerer effectFractionBounds, stadig clampet til [0,1]-krydsningstidsandel af hook'en
   incidentRiskBase: 0.008, // basis-styrt-risiko pr. reel-vaegt-cobbles-passage (F3-fundament for brosten-kaos, groups.ts's RaceGroup.cohesion-kommentar), samme stoerrelsesorden som tuning.descent.incidentRiskBase
   incidentRiskCobblestoneDampening: 0.00012, // daempning pr. cobblestone-evne-point (0-99-skala) — samme subtraktive moenster som tuning.descent.incidentRiskDescendingDampening
+  // #6046 (balance, KUN under orders_gc_v1 og KUN paa disse profiler; se mechanics/cobbles.ts's #6046-blok)
+  tieredProfileTypes: ["cobbles", "gravel"] as ProfileType[],
+  maxSplitTiers: 4, // en sektor deler de afhaengte i op til saa mange grupper efter brostens-underskud
+  tieredEffectFractionBounds: [0.15, 0.8] as const, // tidstab-baand for de lagdelte grupper (andel af sektorens krydsningstid)
+  finaleCobblestoneShare: 0.66, // brostensevnens andel af finale-placeringen paa brosten/grus (resten: finale-typens vektor)
 };
 
 /** M8 additiv cobbles-tuning (deep-frosset). Se cobblesExtra-kommentaren ovenfor. */
@@ -786,6 +793,20 @@ const effortGainExtra = {
 
 /** M1 (#5580) additiv effort-gevinst-tuning (deep-frosset). Se effortGainExtra-kommentaren ovenfor. */
 export const EFFORT_GAIN_EXTRA_TUNING = deepFreeze(effortGainExtra);
+
+// #6079 (ejer 2/10, beslutning D, KUN orders_gc_v1): "Koer roligt" (save)
+// koster mindre placering paa stigningerne, taettere paa v3. Kun save's to
+// stignings-tal aendres; resten af trappen er effortGainExtra's. Ordenen
+// holder stadig (grupetto <= save <= normal, laast af test), saa en save-
+// rytter stadig taber tid mod en normal-rytter. Legacy laeser aldrig dette.
+// Maalt privat (balance-internals/6079/), tal ikke i PR-body.
+const ordersGcV1ClimbGain = {
+  climbScoreRelief: { ...effortGainExtra.climbScoreRelief, save: -0.45 } as Record<EffortLevel, number>,
+  climbScorePenalty: { ...effortGainExtra.climbScorePenalty, save: 0.2 } as Record<EffortLevel, number>,
+};
+
+/** #6079: stignings-tabellerne for save under orders_gc_v1 (deep-frosset). */
+export const ORDERS_GC_V1_CLIMB_GAIN_TUNING = deepFreeze(ordersGcV1ClimbGain);
 
 // ── M7 (mechanics/distanceFatigue.ts, #4030) — ADDITIV distance-slid-tuning ──
 // Samme moenster som finaleExtra/effortCostExtra ovenfor. Kontrakt (mor-spec
@@ -1278,6 +1299,10 @@ const teamPlayExtra = {
   // 1.5) og arbejder samtidig ikke for holdet (0 her). Derfor sit eget saet
   // konstanter og ikke et delt haandtag med EFFORT_COST_EXTRA_TUNING.
   // Ankret er raceRoles.RACE_V3_TUNING.EFFORT_COST_MULTIPLIER_* 1:1.
+  // #3460 (KUN orders_gc_v3): `save` styrer OGSAA kaptajnens stoetteloft for
+  // spar-hold (mechanics/teamPlay.ts's fullPriceWeight/reducedEffortCeiling:
+  // "Spar kraefter giver altid halv stoette"). Kalibreres prisen paa save om,
+  // flytter det loft sig med.
   effortCostMultiplier: {
     grupetto: 0.5, // samme halve pris som save (v3: bevidst IKKE lavere — en lavere pris end save ville vaere en resultat-FORDEL, og grupetto maa ikke give en saadan)
     save: 0.5, // koerer bevidst inden for sig selv: halv pris
@@ -1347,9 +1372,58 @@ const morningBreakFormation = {
   successPressureWeight: 0.06,
   successCrowdWeight: 0.05,
   successBounds: [0.03, 0.85] as readonly [number, number],
+  // #6079 (ejer 2/10, beslutning A): et forsoeg med effektiv udbrudsordre
+  // (hunterens rolledefault eller "Forsoeg udbrud") faar dette tillaeg til
+  // succes-sandsynligheden; en fri rolle der selv forsoeger faar det ikke.
+  orderedSuccessBonus: 0.15,
   // Rytterens motor relativt til feltets snit, clampet. STARTGAET
   relativeEngineBounds: [0.5, 1.5] as readonly [number, number],
 };
 
 /** #5955 orders_gc_v1-dannelse (deep-frosset). Se morningBreakFormation-kommentaren ovenfor. */
 export const MORNING_BREAK_FORMATION_TUNING = deepFreeze(morningBreakFormation);
+
+// ── #6084 (KUN orders_gc_v2): bjergetaper holder samlet til finalen ─────────
+// Laeses kun af mechanics/mountainSelection.ts, og kun naar segmentLoop har sat
+// en fase (orders_gc_v2 + en profil herunder). Legacy og orders_gc_v1 er
+// uroerte. Kalibreret privat mod ejer-maalene i #6084 (balance-internals/6084/).
+const mountainSelectionV2 = {
+  // Profiler hvor revisionen gaelder. #6092: kuperet er med (eget, lavere lad-gaa-loft i byProfile).
+  profileTypes: ["mountain", "high_mountain", "hilly"] as readonly ProfileType[],
+  // B: split-taersklen paa stigninger foer finalestigningen = tuning.selection.splitThreshold x faktor.
+  preFinalSplitThresholdFactor: 3.2,
+  // B: mindste stigningsalvor (climbSeverity01) hvor en tom reserve tvinger rytteren af foer finalestigningen.
+  preFinalWprimeForcedMinSeverity: 0.3,
+  // A: andel af tempo-driften mellem favoritgruppen og dagens udbrud der nulstilles paa stigninger foer
+  // finalestigningen (1 = kun jagten flytter hullet, som paa aabent terraen).
+  preFinalBreakawayDriftNeutralShare: 1,
+  // M5: skalering af lad-gaa-loftet (oven paa orders_gc_v1-faktoren) paa hele etapen.
+  letGoMaxGapScale: 0.7,
+  // M5: jagtens lukning paa segmenter foer finalestigningen (kontrolleret jagt).
+  preFinalChaseClosingScale: 0.4,
+  // M5: jagtens lukning paa og efter finalestigningen (favoritternes hold jager for alvor).
+  finalChaseClosingScale: 2.5,
+  // #6092: profil-vise afvigelser fra knapperne ovenfor (mechanics/mountainSelection.ts).
+  // Kalibreret privat paa rigtige felter (balance-internals/6092/).
+  byProfile: {
+    // Kuperet: lavere lad-gaa-loft, saa et holdt udbruds forspring ikke bliver hele kaptajnernes tidstab.
+    hilly: { letGoMaxGapScale: 0.45 },
+    // Bjerg: favoritternes hold jager i finalen uden ekstra skarphed.
+    mountain: { finalChaseClosingScale: 1 },
+    // Hoejfjeld: roligere jagt foer finalestigningen og uden ekstra skarphed i finalen.
+    high_mountain: { preFinalChaseClosingScale: 0.2, finalChaseClosingScale: 1 },
+  } as Partial<Record<ProfileType, Partial<MountainSelectionV2Knobs>>>,
+};
+
+/** #6092: de knapper en profil kan afvige paa (alle tal i mountainSelectionV2). */
+export type MountainSelectionV2Knobs = {
+  preFinalSplitThresholdFactor: number;
+  preFinalWprimeForcedMinSeverity: number;
+  preFinalBreakawayDriftNeutralShare: number;
+  letGoMaxGapScale: number;
+  preFinalChaseClosingScale: number;
+  finalChaseClosingScale: number;
+};
+
+/** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
+export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);

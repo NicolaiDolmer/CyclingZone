@@ -36,7 +36,7 @@ const fieldLabel = "block text-xs font-medium text-cz-2 uppercase tracking-wider
 const inputBase =
   "w-full bg-cz-subtle border border-cz-border rounded-cz " +
   "px-4 py-2.5 text-cz-1 text-sm placeholder-cz-3 " +
-  "focus:outline-none focus:border-cz-accent transition-all";
+  "focus:outline-hidden focus:border-cz-accent transition-all";
 const inputErr = "border-cz-danger/50 focus:border-cz-danger";
 
 function RadioCard({ name, value, checked, onChange, label, sub, disabled }) {

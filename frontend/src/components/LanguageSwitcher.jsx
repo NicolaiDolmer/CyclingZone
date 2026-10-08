@@ -112,7 +112,7 @@ export default function LanguageSwitcher({ className = "" }) {
         aria-expanded={open}
         aria-label={t("language.switchTooltip")}
         title={t("language.switchTooltip")}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-cz-2 hover:bg-cz-subtle focus:outline-none focus:ring-2 focus:ring-cz-accent"
+        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-cz-2 hover:bg-cz-subtle focus:outline-hidden focus:ring-2 focus:ring-cz-accent"
       >
         <LanguageSwitcherFlag code={active.flag} />
         <span className="hidden sm:inline uppercase text-xs font-medium">{active.code}</span>

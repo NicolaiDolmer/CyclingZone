@@ -36,9 +36,14 @@ import type {
 } from "../types.ts";
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
-import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING } from "../tuning.ts";
+import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
+import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+
+// #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
+const GRUPPETTO_SINGLE_CLUSTER_TUNING = Object.freeze({ ...TIME_MODEL_V3_TUNING, clusterMaxGroups: 1 });
 
 /**
  * #5580 (M1 punkt 1, indsatstrappen model 3): indsatsens GEVINST paa
@@ -160,6 +165,8 @@ type RiderSelection = {
   scoreTriggered: boolean; // (baseScore + stoej) > splitThreshold, FOER rank-guard
   wprimeForced: boolean; // wprime <= 0 paa en stigning af en vis alvor (#5813) — fysiologisk absolut, uafhaengig af rank-guard
   effortForced: boolean; // #4914: grupetto-rytter falder tilbage (kun model "effort_weighted") — rytterens EGET valg, uafhaengig af rank-guard
+  deficit01: number; // #6199: klatre-underskud mod gruppens bedste klatrer (0-1)
+  energyDeficit01: number; // #6199: energi-underskud (0-1, tom reserve = 1)
 };
 
 /** Klatre-underskud (0-1, normaliseret) relativt til gruppens staerkeste klatrer. */
@@ -249,7 +256,15 @@ function computeSelections(
   lengthKm: number,
 ): RiderSelection[] {
   const { entrants, tuning, rngFor } = ctx;
-  const { deficitWeight, energyDeficitWeight, noiseSdBase, splitThreshold } = tuning.selection;
+  const { deficitWeight, energyDeficitWeight, noiseSdBase } = tuning.selection;
+  // #6084 (KUN orders_gc_v2): bloedere selektion foer finalestigningen (mountainSelection.ts).
+  // #6199 (KUN orders_gc_v3): rullende etaper faar samme bloede selektion (selectionPhaseFor).
+  const phase = selectionPhaseFor(ctx);
+  const splitThreshold = phaseSplitThreshold(tuning.selection.splitThreshold, phase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalSplitThresholdFactor);
+  const wprimeMinSeverity = phaseWprimeForcedMinSeverity(CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity, phase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalWprimeForcedMinSeverity);
+  // #6199 (KUN orders_gc_v3): en tom reserve tvinger kun rytteren af fra ca. kat. 2.
+  const segmentCategory = ctx.segment.kind === "climb" ? ctx.segment.category : undefined;
+  const wprimeCategoryAllowed = ctx.ordersGcV3 !== true || wprimeForcedCategoryAllowed(segmentCategory);
 
   let referenceClimbing = 0;
   let groupHasRacers = false;
@@ -275,8 +290,10 @@ function computeSelections(
     // #5580: indsats-leddet (gevinsten), skaleret med rest-reserven — se
     // effortClimbScoreFactor — plus de lave trins straf-led (se
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
-    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit);
-    const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01);
+    // #6079: under orders_gc_v1 bruger save sine egne stignings-tal (tuning.ts).
+    const gain = ctx.rulesRevision === "orders_gc_v1" ? ORDERS_GC_V1_CLIMB_GAIN_TUNING : EFFORT_GAIN_EXTRA_TUNING;
+    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
+    const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
@@ -286,8 +303,10 @@ function computeSelections(
       riderId,
       baseScore,
       scoreTriggered: noisyScore > splitThreshold,
-      wprimeForced: wprimeDepletionForcesSplit(riderState.wprime, severity),
+      wprimeForced: wprimeCategoryAllowed && wprimeDepletionForcesSplit(riderState.wprime, severity, wprimeMinSeverity),
       effortForced: grupettoDropBackForced(entrant.effort, groupHasRacers),
+      deficit01,
+      energyDeficit01: energyDeficit,
     });
   }
   return selections;
@@ -419,30 +438,46 @@ export const climbSelectionHook: ClimbSelectionHook = (
     }
     if (splitRiderIds.length === 0) continue;
 
-    const kind = splitKindFor(group.kind, splitRiderIds.length);
-    const seq = ctx.segmentIndex * 1000 + localSeq;
-    localSeq += 1;
-    const newGroupId = makeGroupId(kind, seq);
-    const gapSecondsDelta = gapSecondsDeltaFor(selections, splitRiderIds);
+    // #6199 (KUN orders_gc_v3): de afhaengte falder ikke af som én klump. Hver
+    // rytter faar sit eget hul (laengde x stejlhed x evneforskel), og rytterne
+    // samles i faa grupper efter hullet (mechanics/timeModel.ts). Ellers: én
+    // gruppe med det gamle trin.
+    // #6199 (maaling 6/10): en gruppetto deles ikke i flere klynger. De der
+    // falder af den, falder af som én gruppe (gennemsnittet af deres eget hul),
+    // ellers deles halen i stumper der hver for sig er for smaa til redningen.
+    const parts = ctx.ordersGcV3 === true
+      ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
+        riderId: s.riderId,
+        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01),
+      })), group.kind === "gruppetto" ? GRUPPETTO_SINGLE_CLUSTER_TUNING : TIME_MODEL_V3_TUNING)
+      : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
 
-    const groups = splitGroup(nextState.groups, group.id, splitRiderIds, {
-      id: newGroupId,
-      kind,
-      gapSecondsDelta,
-    });
-    nextState = { ...nextState, groups };
+    for (const part of parts) {
+      const kind = splitKindFor(group.kind, part.riderIds.length);
+      const seq = ctx.segmentIndex * 1000 + localSeq;
+      localSeq += 1;
+      const newGroupId = makeGroupId(kind, seq);
+      const gapSecondsDelta = part.gapSeconds;
 
-    events.push({
-      km: round2(segment.to_km),
-      type: "peloton_splits",
-      params: {
-        group_id: newGroupId,
-        source_group_id: group.id,
-        rider_ids: [...splitRiderIds],
-        cause: causeFor(selections, splitRiderIds),
-        gap_seconds: round2(gapSecondsDelta),
-      },
-    });
+      const groups = splitGroup(nextState.groups, group.id, part.riderIds, {
+        id: newGroupId,
+        kind,
+        gapSecondsDelta,
+      });
+      nextState = { ...nextState, groups };
+
+      events.push({
+        km: round2(segment.to_km),
+        type: "peloton_splits",
+        params: {
+          group_id: newGroupId,
+          source_group_id: group.id,
+          rider_ids: [...part.riderIds],
+          cause: causeFor(selections, part.riderIds),
+          gap_seconds: round2(gapSecondsDelta),
+        },
+      });
+    }
   }
 
   return { state: nextState, events };

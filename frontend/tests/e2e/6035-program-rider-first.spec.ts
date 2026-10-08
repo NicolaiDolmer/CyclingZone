@@ -92,9 +92,13 @@ async function openPrograms(page: Page, width: number, height: number) {
     enabled: true, cellsEnabled: true, seeds: {}, catalog: CATALOG, assigned: { [CLIMBER.id]: "hill_climber" },
   })));
   await login(page);
-  await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
+  // Ét sprog-initialisator: stabilizePage laaser DA (login kraever det). Vi skifter
+  // til EN i appen EFTER navigationen i stedet for et andet cz_lang-init-script,
+  // hvis raekkefoelge Playwright ikke garanterer.
   await page.goto("/training?tab=weekplan&sub=programs");
   await page.getByTestId("training-programs").waitFor();
+  await page.evaluate(() => (window as unknown as { __i18n: { changeLanguage: (l: string) => Promise<unknown> } }).__i18n.changeLanguage("en"));
+  await expect(page.getByTestId("training-program-target").locator("option").first()).toHaveText("Pick a rider or group first");
   return applied;
 }
 

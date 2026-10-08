@@ -38,6 +38,7 @@ function fmtPct(v) {
 const DISPLAY_BY_ID = {
   field_cohesion_flat: fmtPct,
   descent_vs_summit_gap_ratio: (v) => v.toFixed(2),
+  descent_gap_closure_contract: (v) => v.toFixed(2),
   descent_attack_gain_bounds: (v) => `${Math.round(v)}s`,
   punch_correlation: (v) => v.toFixed(2),
   cobblestone_lift_on_sectors: (v) => v.toFixed(3),
@@ -48,6 +49,7 @@ const DISPLAY_BY_ID = {
   itt_correlation: (v) => v.toFixed(2),
   bonus_seconds_bounded: (v) => `${Math.round(v)}s`,
   mountain_top10_spread: (v) => `${Math.round(v)}s`,
+  short_uphill_finish_gaps: (v) => v.toFixed(2),
   gt_winner_margin: (v) => `${Math.round(v)}s`,
 };
 

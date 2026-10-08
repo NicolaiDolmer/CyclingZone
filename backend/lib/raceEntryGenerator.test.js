@@ -102,6 +102,16 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
   // #3906: rider_id genbrugt på tværs af to forskellige løb med overlappende vindue.
   const violatesDayInvariant = (existingRows, candidateRows) => {
     windowCache.clear();
+    // Immutable participation survives completion, transfers and entry deletion.
+    for (const row of [...existingRows, ...candidateRows]) {
+      const race = state.races.find((r) => r.id === row.race_id);
+      const window = windowForRace(row.race_id);
+      if ((state.race_day_participation || []).some((p) =>
+        p.rider_id === row.rider_id && p.race_id !== row.race_id &&
+        p.season_id === race?.season_id && window &&
+        p.game_day >= window.start && p.game_day <= window.end
+      )) return true;
+    }
     const byRider = new Map();
     for (const r of [...existingRows, ...candidateRows]) {
       if (!byRider.has(r.rider_id)) byRider.set(r.rider_id, new Set());
@@ -132,6 +142,8 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
       or() { return api; },
       is(col, val) { q.filters.push(["is", col, val]); return api; },
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
+      lte(col, val) { q.filters.push(["lte", col, val]); return api; },
+      not(col, op, val) { q.filters.push(["not", col, val]); return api; },
       range() { return api; }, // mock ignorer paginering (test-data < 1000 rækker)
       order() { return api; },
       limit() { return api; },
@@ -205,10 +217,13 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
         // dette default ville hver eneste rytter falde ud (undefined !== 'senior').
         if (table === "riders") rows = rows.map((r) => (r.squad === undefined ? { ...r, squad: "senior" } : r));
         for (const [op, col, val] of q.filters) {
+          if (col === "races.season_id") { rows = rows.filter((r) => state.races.some((race) => race.id === r.race_id && race.season_id === val)); continue; }
           if (op === "eq") rows = rows.filter((r) => r[col] === val);
           if (op === "neq") rows = rows.filter((r) => r[col] !== val);
           if (op === "in") rows = rows.filter((r) => val.includes(r[col]));
           if (op === "gte") rows = rows.filter((r) => r[col] != null && r[col] >= val);
+          if (op === "lte") rows = rows.filter((r) => r[col] != null && r[col] <= val);
+          if (op === "not") rows = rows.filter((r) => (r[col] ?? null) !== val);
           if (op === "is") rows = rows.filter((r) => (r[col] ?? null) === val);
         }
         if (q.op === "delete") {
@@ -304,6 +319,84 @@ function makeSupabase(state, { failUpsert = null, enforceDayInvariant = false, b
 }
 
 const flatProfile = (n) => ({ stage_number: n, profile_type: "flat", finale_type: null, demand_vector: { sprint: 0.8, endurance: 0.2, randomness: 0.5 } });
+
+function transferredRiderScenario({ spent = false, targetDay = 29 } = {}) {
+  const state = emptyState();
+  state.races = [
+    { id: "OLD", season_id: "season1", race_class: "Class2", league_division_id: 1,
+      status: spent ? "completed" : "scheduled", stages_completed: 1 },
+    { id: "NEW", season_id: "season1", race_class: "Class2", league_division_id: 2 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "OLD", stage_number: 1, game_day: 27, scheduled_at: "2026-10-01T08:00:00Z" },
+    { race_id: "OLD", stage_number: 2, game_day: 31, scheduled_at: "2026-10-02T16:00:00Z" },
+    { race_id: "NEW", stage_number: 1, game_day: targetDay, scheduled_at: "2026-10-02T08:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "NEW", ...flatProfile(1) }];
+  state.teams = [{ id: "buyer", user_id: null, is_test_account: false, is_frozen: false, league_division_id: 2 }];
+  seedTeamRiders(state, "buyer", 6);
+  const riderId = "buyer-r0";
+  if (spent) {
+    state.race_day_participation = [{ season_id: "season1", race_id: "OLD", rider_id: riderId, game_day: 29 }];
+  } else {
+    state.race_entries = [{ race_id: "OLD", team_id: "seller", rider_id: riderId, race_role: "captain", is_auto_filled: true, binding_span: "[27,32)" }];
+  }
+  return state;
+}
+
+for (const batchRpc of [false, true]) {
+  for (const spent of [false, true]) {
+    test(`#5860: ${spent ? "spent participation" : "frozen stage-race span"} binds a transferred rider across pools (batch=${batchRpc})`, async () => {
+      const state = transferredRiderScenario({ spent });
+      const supabase = makeSupabase(state, { enforceDayInvariant: true, batchRpc });
+      const result = await runRaceEntryGenerator({ supabase, seasonId: "season1", dryRun: false, now: new Date("2026-10-02T06:00:00Z") });
+      assert.equal(result.failed_units, 0, result.errors.join("; "));
+      const entries = state.race_entries.filter((e) => e.race_id === "NEW");
+      assert.equal(entries.length, 5, "only the five free riders can be selected");
+      assert.ok(entries.every((e) => e.rider_id !== "buyer-r0"), "the rider remains bound by identity, independent of owner");
+    });
+  }
+}
+
+test("#5860: a spent day in another season leaves this season free", async () => {
+  const state = transferredRiderScenario({ spent: true });
+  state.race_day_participation[0].season_id = "season0";
+  const result = await runRaceEntryGenerator({ supabase: makeSupabase(state, { enforceDayInvariant: true }), seasonId: "season1", dryRun: false, now: new Date("2026-10-02T06:00:00Z") });
+  assert.equal(result.failed_units, 0);
+  assert.equal(state.race_entries.filter((e) => e.race_id === "NEW").length, 6);
+});
+
+test("#5860: the next race day is free after completed participation", async () => {
+  const state = transferredRiderScenario({ spent: true, targetDay: 30 });
+  const result = await runRaceEntryGenerator({ supabase: makeSupabase(state, { enforceDayInvariant: true }), seasonId: "season1", dryRun: false, now: new Date("2026-10-02T06:00:00Z") });
+  assert.equal(result.failed_units, 0);
+  assert.equal(state.race_entries.filter((e) => e.race_id === "NEW").length, 6);
+});
+
+test("#5860: special-role retry does not resurrect a pre-deleted sibling binding", async () => {
+  const { state, seasonId } = seedSwapScenario();
+  for (const row of state.race_stage_schedule) row.game_day = 29;
+  const now = Date.parse("2026-07-01T06:00:00Z");
+  await runRaceEntryGenerator({ supabase: makeSupabase(state), seasonId, dryRun: false, now });
+  const desiredA = state.race_entries.filter((row) => row.race_id === "A");
+  const desiredB = state.race_entries.filter((row) => row.race_id === "B");
+  state.race_entries = [
+    ...desiredA.map((row) => ({ ...row, race_id: "B", binding_span: "[29,30)" })),
+    ...desiredB.map((row) => ({ ...row, race_id: "A", binding_span: "[29,30)" })),
+  ];
+  let rejected = false;
+  const supabase = makeSupabase(state, { enforceDayInvariant: true, failUpsert: ({ rows }) => {
+    if (!rejected && rows.some((row) => row.race_id === "A")) {
+      rejected = true;
+      return 'duplicate key value violates unique constraint "uq_race_entries_captain"';
+    }
+    return false;
+  } });
+  const result = await runRaceEntryGenerator({ supabase, seasonId, dryRun: false, now });
+  assert.equal(result.failed_units, 0, result.errors.join("; "));
+  assert.equal(state.race_entries.filter((row) => row.race_id === "A").length, desiredA.length);
+  assert.equal(state.race_entries.filter((row) => row.race_id === "B").length, desiredB.length);
+});
 
 // Byg en rytter-population for ét hold: id-prefix → 8 ryttere + abilities + (frisk) condition.
 function seedTeamRiders(state, teamId, count = 8) {

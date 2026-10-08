@@ -1,5 +1,26 @@
 # Træningens regler - SSOT
 
+## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
+
+Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
+planer, staff og motor. Dette er kompensation, ikke rekonstruktion af gamle
+planer. Løbsresultater og oprindelige start-snapshots afgør løb/hvile, også når
+belastningsregistrering mangler. Datoens frosne tilstand bruges hvis den findes,
+ellers nuværende tilstand eller motorens normale førstegangstilstand.
+
+Skriveforslaget kræver separat prod-go og præcis fil-hash. Det ændrer kun evner
+og brøkfremgang; nyere condition/skader bevares. Kildeændringer, allerede
+afregnede slots og tvetydige ejere afviser kompensation. Manglende neutral
+førstegangstilstand kan kun oprettes uden anvendt aktivitetshistorik; historiske
+tilstandsafregninger og rapporter opfindes ikke. En separat kompensationskvittering
+forhindrer både genanvendelse og efterfølgende normal træning af samme slot.
+Ledgeren og triggeren ligger i `database/2026-10-05-6061-compensation-ledger.sql`;
+den aktuelle writer og kilde-hashes i `database/2026-10-05-6129-compensation-slim-source.sql`.
+Begge migrationer er registreret i prod (read-only 6/10). Det oprindelige forslag
+er fjernet fra proposals, fordi dets writer er erstattet og ikke må genanvendes.
+Infrastrukturen er live; en konkret kompensationskørsel kræver fortsat separat
+ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparation.
+
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
 Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
@@ -33,11 +54,20 @@ den eksisterende syv-punkts sparkline og dens beregning ændres ikke.
 Læsningen er en projektion af eksisterende rapporter. Den ændrer ikke motorens
 regler eller historiske spillerdata. Nye rapporter gemmer også slut-fremdrift og
 datoens forventede løbsdage som visningsbevis. Ejerens beta-release-go 30/9
-gater den nye rapport med `training_daily_receipt`: `beta` åbner kun for
-serververificerede beta-testere/admin. `off`, manglende flag eller læsefejl
-bevarer den eksisterende rapport. `training_score_visible` ændres ikke.
-API-feltet `dailyReceiptEnabled` vælger frontendvisningen; flaget ændrer ingen
-træningsskrivninger. Kontrakten implementeres i `trainingDailyReceipt.ts`.
+brugte `training_daily_receipt` til at vælge mellem gammel og ny rapport.
+`training_score_visible` ændres ikke.
+Efter #6030 (1/10) er den gamle frontendvisning fjernet. `dailyReceiptEnabled`
+bevares som API-metadata, men må ikke skifte datatypen tilbage til rå ticks,
+heller ikke ved `false`, manglende felt eller fejlet flagopslag (#6314).
+De nuværende frontend-hooks leverer altid dagsprojektionen; rå historik findes
+kun i de eksplicitte `rawRuns`/`rawSeasonRuns`-felter. Efter en manuel kørsel
+beholdes seneste gyldige kvittering indtil GET-refresh er færdig.
+GET `/api/training/me` leverer altid `todayRuns` som array og `todayRun` som
+første række eller `null`. Hver rå række har `game_days`: den dokumenterede
+løbsdag som ét element, eller `[]` når den ikke kendes. Forventede slots
+kopieres aldrig ind som registrerede aktiviteter; manglende rapportbevis
+bevares som manglende. Dagsprojektionen samler stadig datoens faktiske ticks
+i `trainingDailyReceipt.ts`. Ingen træningsskrivning eller flag ændres.
 
 ## Historisk delt løbsdag efter holdskifte (#5860, ejer-go 30/9)
 
@@ -57,6 +87,14 @@ en tilstandsrække og uden tidligere gemte tilstandseffekter. Række og frossent
 udgangspunkt oprettes i samme transaktion. Eksisterende tilstande, skader og
 registreringer ændres aldrig af dette trin; historiske datoer og karantæner kræver
 eksplicit efterregulering. Reglen omfatter alle trupper, som den fælles motor.
+
+Forebyggelse #6061 (ejer-go 3/10): ved oprettelse af en ejet rytter eller et
+reelt ejerskifte materialiseres den samme manglende førstegangstilstand i
+oprettelses-/købstransaktionen, før første løbsbelastning kan blokere den.
+Samme historikværn gælder; eksisterende tilstand/skade, tidligere aktiviteter
+og frosne datoer ændres ikke. Funktionen er invoker og åbner ingen klientgrants.
+Installation efterregulerer ingen eksisterende rytter. Tabte dage har separat
+read-only recovery-manifest og kræver ejer-go til den konkrete skrivning.
 
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses

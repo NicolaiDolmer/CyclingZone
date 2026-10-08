@@ -45,10 +45,12 @@ import {
   preserveExternalGoals,
 } from "./boardGoals.js";
 import { computeDnaSuggestions } from "./boardClubDna.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { deriveDefaultFocusFromIdentity } from "./boardIdentity.js";
 import { regenerateBoardMembersForTeam } from "./boardMembers.js";
 import { ensureMandateForTeamFormation } from "./boardMandateEngine.js";
 import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
+import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 
 // #4557 · Tærskel-konstanterne + resolveThresholds flyttet til
@@ -212,6 +214,24 @@ export async function processBoardAutoAcceptCron({
     userIds: (humanTeams || []).map((t) => t.user_id).filter(Boolean),
   });
 
+  // #6184 · Ét batch-opslag af board_profiles for alle hold i stedet for ét
+  // opslag pr. hold (prod 5/10: flere hundrede enkelt-GETs pr. kørsel, alle i
+  // samme sekund-vindue). null = batch-opslaget fejlede → hvert hold henter
+  // selv som før, så en fejl stadig kun rammer det enkelte hold.
+  const boardsByTeamId = await loadBoardsByTeamId({
+    supabase,
+    teamIds: (humanTeams || []).map((t) => t.id).filter(Boolean),
+    captureExceptionFn,
+  });
+  // #6122 · Med mandat-modellen 'on' ser ALLE managere Boardroom/årsmødet
+  // (BoardroomRoute.jsx), og den gamle plan-forhandling findes ikke længere som
+  // handling. Prod 5/10: plan-påmindelserne ("The board is waiting for your
+  // 3-year plan") fyrede stadig parallelt med mandat-påmindelserne, også efter
+  // at manageren havde underskrevet sit mandat. LÆSE-gaten (ingen opts) er
+  // bevidst: i 'beta' ser almindelige managere stadig den gamle side og skal
+  // stadig have påmindelserne. Auto-accept kører fortsat, bare uden besked.
+  const silent = await isBoardMandateModelEnabled(supabase);
+
   for (const team of humanTeams || []) {
     summary.teams_checked += 1;
     try {
@@ -223,6 +243,8 @@ export async function processBoardAutoAcceptCron({
         now,
         rolloutFloor,
         lastSeenByUserId,
+        preloadedBoards: boardsByTeamId ? (boardsByTeamId.get(team.id) || []) : undefined,
+        silent,
       });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
@@ -268,6 +290,40 @@ async function loadLastSeenByUserId({ supabase, userIds }) {
   return map;
 }
 
+/**
+ * #6184 · Henter board_profiles for alle hold i chunks (pagineret) og grupperer
+ * pr. team_id. Returnerer null ved fejl, så kalderen falder tilbage til det
+ * gamle per-hold-opslag i stedet for at vælte hele kørslen.
+ *
+ * @returns {Promise<Map<string, object[]>|null>}
+ */
+async function loadBoardsByTeamId({ supabase, teamIds, captureExceptionFn }) {
+  const map = new Map();
+  if (!teamIds?.length) return map;
+  try {
+    const rows = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+      supabase
+        .from("board_profiles")
+        .select(`team_id, ${BOARD_AUTO_ACCEPT_SELECT}`)
+        .in("team_id", chunk)
+        .order("id")
+    );
+    for (const row of rows) {
+      if (!map.has(row.team_id)) map.set(row.team_id, []);
+      map.get(row.team_id).push(row);
+    }
+    return map;
+  } catch (error) {
+    // best-effort: batchet er kun en optimering — fallback'en er det gamle,
+    // fuldt funktionelle per-hold-opslag. Fejlen rapporteres, ikke skjult.
+    console.error("  ⚠️  board auto-accept: batch-opslag af board_profiles fejlede — falder tilbage til per-hold-opslag:", error?.message || error);
+    if (captureExceptionFn) {
+      captureExceptionFn(error, { tags: { cron: "board-auto-accept", stage: "board-batch-load" } });
+    }
+    return null;
+  }
+}
+
 async function processTeamAutoAccept({
   supabase,
   team,
@@ -276,8 +332,12 @@ async function processTeamAutoAccept({
   now,
   rolloutFloor = AUTO_ACCEPT_ROLLOUT_FLOOR,
   lastSeenByUserId = new Map(),
+  preloadedBoards,
+  silent = false,
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
+  // #6122 · silent = mandat-modellen er 'on': ingen plan-beskeder (se cron-entry).
+  const notify = silent ? async () => ({ delivered: false, reason: "mandate_model_on" }) : notifyUser;
 
   // Find første pending plan_type i 5yr→3yr→1yr-orden.
   //
@@ -289,11 +349,15 @@ async function processTeamAutoAccept({
   // aldrig haft fejlen: den henter board-rækken via loadBoardPlanningContext
   // (routes/api.js) med .select("*"). Samme upsert-kode, modsat udfald — hele
   // divergensen lå i denne select. Udvid den, ikke kaldestedet.
-  const { data: boards, error: boardsError } = await supabase
-    .from("board_profiles")
-    .select(BOARD_AUTO_ACCEPT_SELECT)
-    .eq("team_id", team.id);
-  if (boardsError) throw boardsError;
+  let boards = preloadedBoards;
+  if (boards === undefined) {
+    const { data, error: boardsError } = await supabase
+      .from("board_profiles")
+      .select(BOARD_AUTO_ACCEPT_SELECT)
+      .eq("team_id", team.id);
+    if (boardsError) throw boardsError;
+    boards = data;
+  }
 
   const realBoards = (boards || []).filter((b) => !b.is_baseline && b.plan_type !== "baseline");
 
@@ -339,7 +403,7 @@ async function processTeamAutoAccept({
       activeSeason,
       planType: pendingPlanType,
       existingBoard: pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
     });
     result.auto_accepted = accepted;
@@ -351,7 +415,7 @@ async function processTeamAutoAccept({
       team,
       planType: pendingPlanType,
       pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
       daysSinceOpen,
       thresholds,
@@ -365,7 +429,7 @@ async function processTeamAutoAccept({
       team,
       planType: pendingPlanType,
       pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
       daysSinceOpen,
       thresholds,
@@ -383,7 +447,7 @@ async function processTeamAutoAccept({
       team,
       planType: pendingPlanType,
       pendingBoard,
-      notifyUser,
+      notifyUser: notify,
       now,
     });
     result.reminder_sent = sent;

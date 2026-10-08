@@ -10,7 +10,7 @@ import { splitMessageText } from "../../lib/messageSegments.js";
 // lib/messageSegments.js og er unit-testet dér.
 export default function MessageBody({ text, className = "" }) {
   return (
-    <p className={`whitespace-pre-wrap break-words text-[13.5px] leading-relaxed ${className}`}>
+    <p className={`whitespace-pre-wrap wrap-break-word text-[13.5px] leading-relaxed ${className}`}>
       {splitMessageText(text).map((segment, index) => (
         segment.type === "link" ? (
           <a

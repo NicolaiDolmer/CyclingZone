@@ -100,10 +100,11 @@ async function openTraining(page: Page, width: number, height: number) {
   return bulkCalls;
 }
 
-const roster = (page: Page) => page.getByTestId("training-mobile-roster");
+// #6030: telefonens Today er række-listen (TodayRowsMobile) for alle.
+const roster = (page: Page) => page.getByTestId("training-onetap-rows");
 const bulkBar = (page: Page) => page.getByTestId("training-mobile-bulk-bar");
 const selectRiders = (page: Page) => page.getByTestId("training-mobile-select-riders");
-const rowButton = (page: Page, i: number) => roster(page).locator("tbody tr td:first-child button").nth(i);
+const rowButton = (page: Page, i: number) => roster(page).getByTestId("training-onetap-row").nth(i).getByRole("button").first();
 
 test("mobil 390 × 844: vælg tre ryttere og sæt dem til hvile med ét tryk", async ({ page }) => {
   const bulkCalls = await openTraining(page, 390, 844);
@@ -117,7 +118,7 @@ test("mobil 390 × 844: vælg tre ryttere og sæt dem til hvile med ét tryk", a
   for (const i of [0, 1, 2]) await expect(rowButton(page, i)).toHaveAttribute("aria-pressed", "true");
   await expect(rowButton(page, 3)).toHaveAttribute("aria-pressed", "false");
   // Et tryk markerer; det folder ikke rytterens kort ud.
-  await expect(page.getByTestId("training-mobile-rider-detail")).toHaveCount(0);
+  await expect(page.getByTestId("training-onetap-detail")).toHaveCount(0);
   await expect(bulkBar(page)).toContainText("3 selected");
   await page.screenshot({ path: evidenceShotPath("pr-screens/5620-quick-rest-390-selected.png") });
 
@@ -143,7 +144,7 @@ test("mobil 390 × 844: Done slår markeringen fra uden at gemme", async ({ page
   expect(bulkCalls).toHaveLength(0);
   // Uden markering folder et tryk kortet ud som før.
   await rowButton(page, 4).click();
-  await expect(page.getByTestId("training-mobile-rider-detail")).toHaveCount(1);
+  await expect(page.getByTestId("training-onetap-detail")).toHaveCount(1);
 });
 
 test("desktop 1440 × 900: telefonens værktøjslinje findes ikke", async ({ page }) => {

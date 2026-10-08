@@ -19,7 +19,7 @@ export default function RidersEmptyState({ balance, onFilterByBudget, onStartTou
   return (
     <Section className="mb-4">
       <div className="flex items-start gap-2 mb-3">
-        <BikeIcon size={16} className="text-cz-3 flex-shrink-0 mt-0.5" aria-hidden="true" />
+        <BikeIcon size={16} className="text-cz-3 shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="text-cz-1 text-sm font-semibold">{t("emptyState.title")}</p>
           <p className="text-cz-2 text-xs mt-0.5">

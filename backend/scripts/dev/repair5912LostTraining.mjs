@@ -124,7 +124,7 @@ export function classifyLostRiderDays({ runs, stageGameDaysByRider }) {
  */
 export function simulateRiderRepair({
   rider, abilityRow, days, plan = null, teamWeekDays = null, riderOverrideDays = null,
-  programsOn = false, staff = null, facilityTier = null, seasonNumber,
+  programsOn = false, staff = null, facilityTier = null, seasonNumber, recomputeCapsPerTick = false,
 }) {
   const startAbilities = {};
   for (const k of VISIBLE_ABILITIES) if (abilityRow?.[k] != null) startAbilities[k] = Number(abilityRow[k]);
@@ -135,11 +135,16 @@ export function simulateRiderRepair({
   const caps = buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type);
   const budgetDivisor = resolveRaceDayBudgetDivisor({ seasonNumber });
   const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
-  const weekday = copenhagenWeekdayKey(REPAIR_TICK_DATE);
   const totalGains = {};
   const perDay = [];
   let totalProgress = 0;
   for (const day of [...days].sort((a, b) => a.gameDay - b.gameDay)) {
+    const tickDate = day.tickDate ?? REPAIR_TICK_DATE;
+    const weekday = copenhagenWeekdayKey(tickDate);
+    if (day.kind === "bound_rest") {
+      perDay.push({ key: day.key, gameDay: day.gameDay, kind: day.kind, intensity: "rest", gains: {}, progress: 0 });
+      continue;
+    }
     const program = resolveProgram(plan, rider.primary_type);
     let tickProgram = program;
     let hardDailyCap = TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay;
@@ -152,10 +157,11 @@ export function simulateRiderRepair({
       });
       if (dayProgram.source === "program") program.focus = dayProgram.focus;
       program.intensity = dayProgram.intensity;
-      tickProgram = program;
+      tickProgram = day.tickProgram ? { ...program, ...day.tickProgram } : program;
     }
+    const tickCaps = recomputeCapsPerTick ? buildCapsForRider(abilities, { ...rider, age }, rider.primary_type, rider.secondary_type) : caps;
     const result = applyDailyTick({
-      riderId: rider.id, dateStr: REPAIR_TICK_DATE, age, abilities, caps, progress,
+      riderId: rider.id, dateStr: tickDate, age, abilities, caps: tickCaps, progress,
       program: tickProgram,
       conditionMult: conditionMultiplier({ form: day.formBefore, fatigue: day.fatigueBefore }),
       potentiale: rider.potentiale, primaryType: rider.primary_type, secondaryType: rider.secondary_type,

@@ -122,7 +122,9 @@ stadig et åbent spor (#2761).
 
 Format og pligt er låst i `TONE_OF_VOICE.md` (låst 14/8). To ting hører hjemme her:
 
-- **Skriv aldrig en separat Discord-tekst.** Discord får titlen plus feltet "What changed", ordret.
+- **Skriv aldrig en separat Discord-tekst.** Generér den: `node scripts/patch-notes-discord.mjs <version> [til-version]` (`--lang=da` til danske kanaler). Formatet er de bedste opslag (7.295-7.308): `**Patch X** (dato)` → én `**Kategori**` pr. topic → `- **Titel**: én sætning` → Beta-gruppen sidst → "Full detail as always at cyclingzone.org/patch-notes." Deles automatisk under 2.000 tegn.
+- **Første sætning i body er det, der nu er sandt for spilleren** (resultatet), aldrig problemet. Den bliver Discord-linjen. Problemet må stå i sætning 2. Bidt 5/10: 7.341 startede med problemet, så Discord-linjen fortalte kun hvad der var galt.
+- Dårlige opslag (7.276-7.290) var lange prosa-afsnit uden punkter; samleopslag over mange versioner laves også med scriptet (interval), ikke i hånden.
 - Patch notes er råstoffet til mandagens uge-note (§3). Har du skrevet dem, er uge-noten næsten skrevet.
 
 Selve produktions-SSOT'et for begge flader (site + Discord) står nu i [`PATCH_NOTES_RULES.md`](PATCH_NOTES_RULES.md) (#4521).

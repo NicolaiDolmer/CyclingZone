@@ -645,7 +645,7 @@
     },
     "errors": {
       "stage_roles_invalid_body": "Kunne ikke gemme intentionerne. Prøv igen.",
-      "stage_roles_stage_locked": "En af ændringerne er på en kørt etape og kan ikke gemmes.",
+      "stage_roles_stage_locked": "En af ændringerne er på en etape, der allerede er startet, og kan ikke gemmes.",
       "stage_roles_rider_not_entered": "En af rytterne er ikke tilmeldt dette løb.",
       "stage_roles_invalid_role": "En af rollerne er ugyldig.",
       "stage_roles_invalid_effort": "En af intentionerne er ugyldig.",
@@ -653,7 +653,8 @@
       "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
       "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere få en intention.",
       "stage_roles_race_completed": "Løbet er afsluttet, så intentionerne kan ikke længere ændres.",
-      "generic": "Kunne ikke gemme intentionerne. Prøv igen."
+      "generic": "Kunne ikke gemme intentionerne. Prøv igen.",
+      "stage_roles_conflict": "Taktikken er ændret i et andet vindue. Den nyeste udgave er hentet. Tjek den og gem igen."
     }
   },
   "tacticsOrders": {
@@ -672,6 +673,19 @@
       "letGo": "{captain} er kaptajn. Holdet lader det tidlige udbrud gå."
     },
     "breakawayAria": "Holdets udbruds-holdning",
+    "ordersGc": {
+      "rulesLabel": "Løbets regler",
+      "rulesName": "Udbrudsordrer og GC-reaktion",
+      "rulesHelp": "Sådan virker de",
+      "stanceLabel": "Jagten på udbruddet",
+      "stance": {
+        "chase": "Jag",
+        "neutral": "Vurder undervejs",
+        "let_go": "Overlad jagten til andre"
+      },
+      "gcNote": "Holdet kan reagere begrænset på en alvorlig GC-trussel med de ledige ryttere.",
+      "breakNote": "Kaptajn, spurt-kaptajn og hjælper går kun i morgenudbrud med Forsøg udbrud valgt."
+    },
     "breakaway": {
       "chase": "Kør det ind",
       "neutral": "Neutral",
@@ -765,6 +779,7 @@
     "tactics": {
       "title": "Taktik",
       "help": "Rollen gælder hele løbet. Intentionen og ordrerne er, hvad du vil have på den etape, du har åben.",
+      "helpScoped": "Du vælger selv, hvilke etaper en rolle gælder for. Intentionen og ordrerne er, hvad du vil have på den etape, du har åben.",
       "helpRaceDay": "Rollen gælder hele løbet. Intentionen og ordrerne er, hvad du vil have på løbsdagen.",
       "colOrders": "Ordrer · etape {number}",
       "colOrdersRaceDay": "Ordrer · løbsdag",
@@ -785,7 +800,11 @@
       "rolePickerTitle": "{name}s rolle",
       "roleScope": "Fra etape {number} og løbet ud",
       "roleScopeRaceDay": "For dette løb",
+      "roleScopeLabel": "Gælder for",
+      "roleScopeRest": "Etape {number} og løbet ud",
+      "roleScopeStageOnly": "Kun etape {number}",
       "roleExclusiveNote": "Én kaptajn, én spurtkaptajn og én udbrudsjæger ad gangen. Rytteren der havde rollen bliver domestik.",
+      "roleExclusiveNoteScoped": "Én kaptajn, én spurtkaptajn og én udbrudsjæger ad gangen. Rytteren der havde rollen bliver domestik på de samme etaper. Tidligere etaper beholder deres roller.",
       "roleWhy": {
         "captain": "Holdet kører for ham, og han får beskyttelsen.",
         "sprint_captain": "Han får sprint-toget og optrækket.",
@@ -1071,6 +1090,32 @@
       "play": "Afspil",
       "pause": "Pause",
       "feedEmpty": "Scrub fremad for at se hvad der skete.",
+      "split": {
+        "title": "Mellemtider",
+        "lossTitle": "Hvor dine ryttere tabte tid",
+        "showAll": "Vis alle grupper",
+        "front": "Front",
+        "riders": "{count, plural, one {# rytter} other {# ryttere}}",
+        "yours": "Dine: {names}",
+        "more": "{count, plural, one {# gruppe mere længere tilbage} other {# grupper mere længere tilbage}}",
+        "group": {
+          "breakaway": "Udbrud",
+          "peloton": "Feltet",
+          "group": "Gruppe"
+        },
+        "drop": "{rider} mistede kontakten til {from, select, breakaway {udbruddet} peloton {feltet} other {{count, plural, one {sin gruppe} other {deres gruppe}}}}{where, select, climb { på {place}} sector { på {place}} other {}}.",
+        "reason": {
+          "climb_deficit": "Tempoet på stigningen var for højt for {count, plural, one {ham} other {dem}}.",
+          "wprime_depleted": "{count, plural, one {Han} other {De}} var løbet tør for kræfter.",
+          "mixed": "Tempoet var for højt, og nogle i gruppen var løbet tør for kræfter.",
+          "grupetto": "{count, plural, one {Han} other {De}} skulle køre grupetto.",
+          "cobbles_sector": "Brostenene splittede gruppen."
+        },
+        "order": {
+          "save": "Din ordre: Kør roligt.",
+          "grupetto": "Din ordre: Grupetto."
+        }
+      },
       "event": {
         "stage_start": "{count} ryttere ruller ud på {distance} km.",
         "stage_start_itt": "{count} ryttere sendes af sted én ad gangen over {distance} km mod uret.",
@@ -1079,7 +1124,10 @@
         "kom_passage": "{name} (kat. {category}): {rider} fører over toppen.",
         "intermediate_sprint": "{name}: {rider} tager mellemsprinten.",
         "breakaway_caught": "{riders} {count, plural, one {bliver} other {bliver}} indhentet af jagtgruppen.",
+        "breakaway_caught_by_teams": "{riders} bliver indhentet. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} stod for jagten.",
+        "breakaway_caught_by_peloton": "{riders} bliver indhentet af feltet.",
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
+        "breakaway_dropped": "{riders} {count, plural, one {bliver} other {bliver}} sat af fra udbruddet.",
         "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
         "incident_crash_time_loss": "{rider} vælter og taber {seconds} sek.",
         "incident_crash_hard": "{rider} vælter hårdt: {seconds} sek. tabt, og {days, plural, one {# dag} other {# dage}} på sidelinjen.",
@@ -1107,7 +1155,25 @@
         "peloton_split": "{riders} {count, plural, one {kommer} other {kommer}} i en separat gruppe.",
         "group_split_many": "{count} ryttere kommer i en separat gruppe.",
         "descent_attack": "{riders} {count, plural, one {angriber} other {angriber}} på nedkørslen.",
-        "descent_attack_many": "{count} ryttere angriber på nedkørslen."
+        "descent_attack_many": "{count} ryttere angriber på nedkørslen.",
+        "gc_reaction_started": "Holdet omkring {rider} begynder at arbejde for at beskytte hans placering i klassementet.",
+        "gc_reaction_started_threat": "Holdet omkring {rider} begynder at arbejde for at begrænse truslen fra {threats} i klassementet.",
+        "gc_reaction_contained": "Holdet omkring {rider} stopper arbejdet. Truslen mod hans placering i klassementet er under kontrol.",
+        "gc_reaction_stopped": "Holdet omkring {rider} stopper reaktionen.",
+        "gc_reaction_exhausted": "Holdet omkring {rider} har brugt det, det kan på reaktionen på denne etape, og stopper arbejdet.",
+        "gc_reaction_no_workers": "Holdet omkring {rider} ser truslen, men har ingen ledige ryttere i hans gruppe til at reagere.",
+        "group_merged_batch": "{count} {scope, select, others {andre grupper} other {grupper}} samlet igen.",
+        "peloton_split_batch": "{count} {scope, select, others {andre grupper} other {grupper}} brød fra.",
+        "finale_attack_batch": "{count} {scope, select, others {andre ryttere} other {ryttere}} angriber i finalen.",
+        "finale_attack_named_batch": "{riders} angriber i finalen.",
+        "gc_reaction_batch_started": "{count} {scope, select, others {andre hold} other {hold}} reagerede.",
+        "gc_reaction_batch_contained": "{count} {scope, select, others {andre hold} other {hold}} stoppede arbejdet. Truslen er under kontrol.",
+        "gc_reaction_batch_stopped": "{count} {scope, select, others {andre hold} other {hold}} stoppede reaktionen.",
+        "gc_reaction_batch_exhausted": "{count} {scope, select, others {andre hold} other {hold}} brugte det, de kunne, på reaktionen på denne etape og stoppede arbejdet.",
+        "gc_reaction_batch_no_workers": "{count} {scope, select, others {andre hold} other {hold}} så truslen, men havde ingen ledige ryttere i gruppen til at reagere.",
+        "gc_context_missing": "Klassementet før etapen er ikke tilgængeligt, så intet hold reagerer på en trussel i klassementet i dag.",
+        "own_riders_ahead": "Holdet omkring {rider} jagter ikke. Det har {riders} foran.",
+        "own_riders_ahead_team": "Holdet bag {riders} jagter ikke. Det har {count, plural, one {ham} other {dem}} foran."
       }
     },
     "recap": {
@@ -1119,6 +1185,8 @@
       "tttWin": "{rider} førte det hurtigste hold i mål.",
       "breakawaySurvived": "{count, plural, one {En enkelt rytter holdt hjem til mål.} other {Et udbrud på # ryttere holdt hjem til mål.}}",
       "breakawayCaught": "{count, plural, one {Den udbrudte rytter blev hentet før stregen.} other {Udbruddet (# ryttere) blev hentet før stregen.}}",
+      "breakawayCaughtByTeams": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} førte jagten og hentede udbruddet {where, select, km {med {km} km igen} other {før stregen}}.",
+      "breakawayCaughtByPeloton": "Feltet hentede udbruddet {where, select, km {med {km} km igen} other {før stregen}}.",
       "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
       "teamWon": "{team} vandt holdkonkurrencen.",
       "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg.",
@@ -1323,6 +1391,12 @@
           "v1": "{count, plural, one {Den udbrudte rytter blev hentet før mål.} other {Udbruddet på # blev hentet før mål.}}",
           "v2": "{count, plural, one {Feltet lukkede hullet til den udbrudte i tide.} other {Feltet lukkede hullet til de # udbrudte i tide.}}"
         },
+        "breakaway_caught_by_teams": {
+          "v1": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} førte jagten og hentede udbruddet {where, select, km {med {km} km igen} other {før mål}}."
+        },
+        "breakaway_caught_by_peloton": {
+          "v1": "Feltet hentede udbruddet {where, select, km {med {km} km igen} other {før mål}}."
+        },
         "breakaway_survived": {
           "v1": "{count, plural, one {Den udbrudte rytter blev aldrig hentet.} other {De # udbrudte holdt feltet bag sig helt til stregen.}}"
         },
@@ -1375,6 +1449,7 @@
       "label": "Morgenudbrud",
       "survived": "holdt hjem til mål",
       "caught": "indhentet",
+      "dropped": "sat af fra udbruddet",
       "participated": "deltog",
       "laterAttack": "Senere angreb",
       "legacyLabel": "Udbrud"

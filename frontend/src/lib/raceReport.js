@@ -20,6 +20,8 @@
 // fnv1aHash duplikeret bevidst fra backend/lib/raceSimulator.js's stableSeed
 // (samme begrundelse som resten af kodebasens frontend/backend-duplikationer —
 // ingen delt pakke mellem de to sider, jf. raceStageMoments.js's isStoryTagKey).
+import { catchActorCopy } from "./raceCatchActor.ts";
+
 function fnv1aHash(str) {
   let h = 0x811c9dc5;
   const s = String(str);
@@ -54,6 +56,8 @@ export const BEAT_VARIANT_COUNTS = Object.freeze({
   breakaway_caught: 2, breakaway_survived: 1, helper_shift: 2, form_peak: 2,
   favorite_off_day: 1, gc_takeover: 2, team_day: 1,
   aggression_no_cost: 2, saved_effort: 2, gave_everything: 2,
+  // #6050: aktør-varianter af breakaway_caught (kun når tidslinjen navngiver den).
+  breakaway_caught_by_teams: 1, breakaway_caught_by_peloton: 1,
 });
 
 // #4373: itt_win/ttt_win er tidskørslernes vindermomenter (backend/lib/
@@ -147,9 +151,11 @@ export function selectBeats(stageMoments, headline) {
  * @param {string} [args.raceId]
  * @param {number} args.stageNumber
  * @param {Array} [args.moments]  ALLE løbets moments (race_stage_moments-rækker), filtreres internt til denne etape.
+ * @param {Array|null} [args.timelineEvents]  #6050: etapens tidslinje-events (aktøren bag en indhentning).
+ * @param {{get(id: string): string|undefined}|null} [args.teamNameById]  #6050: team_id → holdnavn.
  * @returns {{ headline: {moment, variant}, lede: {key, variant, winMoment}, beats: Array<{moment, beatKey, variant}> } | null}
  */
-export function buildRaceReport({ raceId, stageNumber, moments } = {}) {
+export function buildRaceReport({ raceId, stageNumber, moments, timelineEvents = null, teamNameById = null } = {}) {
   const stageMoments = (moments || []).filter((m) => (m.stage_number ?? 1) === stageNumber);
   const winMoment = stageMoments.find((m) => WIN_MOMENT_KEYS.includes(m.moment_key));
   if (!winMoment) return null; // ingen etapesejr-moment → degradér ærligt til v1 (raceRecap.js)
@@ -157,8 +163,14 @@ export function buildRaceReport({ raceId, stageNumber, moments } = {}) {
   const headline = selectHeadlineMoment(stageMoments, winMoment);
   const ledeKey = ledeKeyForWinMoment(winMoment, stageMoments);
   const beats = selectBeats(stageMoments, headline).map((m) => {
-    const beatKey = beatKeyFor(m.moment_key);
-    return { moment: m, beatKey, variant: variantIndex(raceId, stageNumber, `beat.${beatKey}`, BEAT_VARIANT_COUNTS[beatKey] ?? 1) };
+    // #6050: navngiver etapens tidslinje hvem der hentede udbruddet, bruges
+    // aktør-linjen (params klar til t()); ellers den oprindelige beat-tekst.
+    const actor = m.moment_key === "breakaway_caught"
+      ? catchActorCopy(timelineEvents, { teamNameById, family: "beat", count: m.params?.count ?? 0 })
+      : null;
+    const beatKey = actor?.key ?? beatKeyFor(m.moment_key);
+    const beat = { moment: m, beatKey, variant: variantIndex(raceId, stageNumber, `beat.${beatKey}`, BEAT_VARIANT_COUNTS[beatKey] ?? 1) };
+    return actor ? { ...beat, params: actor.params } : beat;
   });
 
   return {

@@ -1,4 +1,5 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, preservesOfficialStageTimes } from "./raceEngineRulesRevision.ts";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
 //
 // HVAD DEN ER: seamen mellem den UÆNDREDE resultat-pipeline (raceRunner.js →
@@ -67,8 +68,9 @@ export const ENGINE_VERSION_V4 = 4;
 /** Sikkerhedsloft på etape-gaps — SAMME værdi som raceSimulator.MAX_STAGE_GAP_SECONDS. */
 const MAX_STAGE_GAP_SECONDS = 1800;
 
-function clampGap(seconds) {
+function clampGap(seconds, rulesRevision) {
   if (!Number.isFinite(seconds)) return 0;
+  if (preservesOfficialStageTimes(rulesRevision)) return Math.max(Math.round(seconds), 0);
   return Math.min(Math.max(Math.round(seconds), 0), MAX_STAGE_GAP_SECONDS);
 }
 
@@ -117,10 +119,10 @@ const V4_OUT_OF_RACE_STATUSES = Object.freeze(new Set(["abandoned", "otl"]));
  * de når aldrig en tabel.
  *
  * @param {{results: Array<{rider_id, rank, time_seconds, status}>, groupSnapshots?: Array, timeline?: {events?: Array}}} output
- * @param {{teamIdByRider?: Map<string, string|null>, breakawayWin?: boolean|null}} [ctx]
+ * @param {{teamIdByRider?: Map<string, string|null>, breakawayWin?: boolean|null, rulesRevision?: string}} [ctx]
  * @returns {Array<{rider_id, team_id, rank, stageGap, components, win_type?, breakaway_win?}>}
  */
-export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawayWin = null } = {}) {
+export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawayWin = null, rulesRevision = "legacy" } = {}) {
   const results = (output?.results ?? []).filter((r) => !V4_OUT_OF_RACE_STATUSES.has(r.status));
   if (!results.length) return [];
   const recordedEvents = output?.timeline?.events;
@@ -137,9 +139,9 @@ export function rankedFromV4Output(output, { teamIdByRider = new Map(), breakawa
     // og OTL-ryttere, som vi netop har filtreret fra. 1..N uden huller er det
     // nedstrøms-kontrakten (pointopslag, countback) forudsætter.
     rank: index + 1,
-    stageGap: clampGap(r.time_seconds - winnerTime),
+    stageGap: clampGap(r.time_seconds - winnerTime, rulesRevision),
     components: { breakaway: inBreakaway.has(r.rider_id) ? 1 : 0 },
-    ...(history ? { breakaway_status: { in_breakaway: inBreakaway.has(r.rider_id), breakaway_caught: !inBreakaway.has(r.rider_id) ? false : history.riders.get(r.rider_id)?.caught ? true : history.riders.get(r.rider_id)?.survived ? false : null } } : {}),
+    ...(history ? { breakaway_status: { in_breakaway: inBreakaway.has(r.rider_id), breakaway_caught: !inBreakaway.has(r.rider_id) ? false : history.riders.get(r.rider_id)?.caught ? true : history.riders.get(r.rider_id)?.survived ? false : null, breakaway_dropped: inBreakaway.has(r.rider_id) && history.riders.get(r.rider_id)?.dropped === true, breakaway_swallowed: inBreakaway.has(r.rider_id) && history.riders.get(r.rider_id)?.swallowed === true } } : {}),
   }));
   // Begge domme gælder motorens vinder (finish-eventets top[0] = results[0]).
   // Er han filtreret fra (udgået/OTL), taler de om en anden rytter end rækkens
@@ -443,7 +445,7 @@ export function buildV4StageInput({
 }) {
   // #5955: løbets bundne taktiske regel-revision (raceRunner.bindRaceRulesRevision).
   // En ukendt værdi er en fejl, aldrig nyeste regler.
-  if (rulesRevision !== "legacy" && rulesRevision !== "orders_gc_v1") {
+  if (!isKnownRulesRevision(rulesRevision)) {
     throw new Error(`raceEngineV4Bridge: ukendt rulesRevision ${JSON.stringify(rulesRevision)}`);
   }
   const route = modules.route.routeFromStageProfileRow(stageProfile);
@@ -478,6 +480,9 @@ export function buildV4StageInput({
         isStageRace,
         routeFromStageProfileRow: modules.route.routeFromStageProfileRow,
       }),
+      // #6097: kun orders_gc_v2 aendrer AI-holdenes udbrudsforsoeg (M14);
+      // legacy/orders_gc_v1 faar et uaendret kontekst-objekt.
+      ...(isOrdersGcV2OrLater(rulesRevision) ? { rules_revision: rulesRevision } : {}),
     },
   });
   const startlist = toV4Entrants(entrants, modules.entrants, plan.aiEffortByRider);
@@ -489,7 +494,7 @@ export function buildV4StageInput({
     input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
   }
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
-  if (rulesRevision === "orders_gc_v1") {
+  if (isOrdersGcRulesRevision(rulesRevision)) {
     input.rules_revision = rulesRevision;
     // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
     input.gc_context = buildGcContext({
@@ -498,6 +503,10 @@ export function buildV4StageInput({
       standings: gcStandings,
       starterIds: startlist.map((e) => e.rider_id),
     });
+    // #5978 (KUN orders_gc_v3): etaper tilbage efter i dag (farlighedens potentiale).
+    if (isOrdersGcV3OrLater(rulesRevision) && input.gc_context.status === "standings" && Array.isArray(raceStages)) {
+      input.gc_context.stages_remaining = raceStages.filter((s) => (Number(s?.stage_number) || 1) > Number(stageNumber)).length;
+    }
   }
   return input;
 }
@@ -571,7 +580,7 @@ export function createRaceEngineV4Adapter(modules) {
         : { output: modules.core.simulateStageV4(input), trace: null };
       const teamIdByRider = new Map(entrants.map((e) => [e.rider_id, e.team_id ?? null]));
       return {
-        ranked: rankedFromV4Output(v4Output, { teamIdByRider, breakawayWin: trace?.breakaway_win ?? null }),
+        ranked: rankedFromV4Output(v4Output, { teamIdByRider, breakawayWin: trace?.breakaway_win ?? null, rulesRevision }),
         // #4879: M10 (#2944) + M15 (#2582) er koblet ind i motoren, så broen
         // oversætter nu deres udfald til v3's race_incidents-form.
         incidents: incidentRowsFromV4Output(v4Output),

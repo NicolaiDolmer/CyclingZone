@@ -301,8 +301,8 @@ test("#5571 buildV4StageInput (rigtige adaptere): AI-holdets indsats lander på 
     raceStages: [mountain, flat],
   });
   const effort = new Map(input.startlist.map((e) => [e.rider_id, e.effort]));
-  // Sidste bjergetape i etapeløbet: kaptajnen alt ud, hjælperen ved ham, sprinteren i grupettoen.
-  assert.equal(effort.get("ai-cap"), "all_out");
+  // Sidste bjergetape i etapeløbet: kaptajnen gemmer sig til finalen (#6055), hjælperen ved ham, sprinteren i grupettoen.
+  assert.equal(effort.get("ai-cap"), "normal");
   assert.equal(effort.get("ai-dom"), "protect");
   assert.equal(effort.get("ai-spr"), "grupetto");
   // Menneskeholdet: ingen autopilot, rollens standard.
@@ -312,6 +312,29 @@ test("#5571 buildV4StageInput (rigtige adaptere): AI-holdets indsats lander på 
   assert.equal(aiOrder.params.breakaway_stance, "chase");
   const humOrder = input.orders.find((o) => o.team_id === "hum" && o.kind === "team_tactics");
   assert.equal(humOrder.params.breakaway_stance, "neutral");
+});
+
+test("#6097 buildV4StageInput: kun orders_gc_v2 giver AI-holdet et udbrudsforsøg; orders_gc_v1-input er uændret", async () => {
+  const [entrantsMod, routeMod, ordersMod] = await Promise.all([
+    import("./engine/v4/adapters/entrantAdapter.ts"),
+    import("./engine/v4/adapters/routeAdapter.ts"),
+    import("./engine/v4/orders/teamOrdersAdapter.ts"),
+  ]);
+  const modules = { entrants: entrantsMod, route: routeMod, orders: ordersMod, tuning: { RACE_V4_TUNING: {} } };
+  const ai = [
+    { rider_id: "ai-cap", team_id: "ai", race_role: "captain", abilities: { climbing: 5, aggression: 10 }, fatigue: 0, team_is_ai: true },
+    { rider_id: "ai-dom", team_id: "ai", race_role: "helper", abilities: { climbing: 40, aggression: 60 }, fatigue: 0, team_is_ai: true },
+  ];
+  const others = Array.from({ length: 30 }, (_, i) => ({
+    rider_id: `o${i}`, team_id: `o${i}`, race_role: "captain", abilities: { climbing: 30 + i, aggression: 10 }, fatigue: 0,
+  }));
+  const mountain = { stage_number: 1, profile_type: "mountain", finale_type: "long_climb", distance_km: 150 };
+  const args = { modules, entrants: [...ai, ...others], stageProfile: mountain, seedString: "race:6097:1", stageNumber: 1 };
+  const tryBreak = (input) => input.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics").params.riders
+    .filter((r) => r.try_break === true).map((r) => r.rider_id);
+  assert.deepEqual(tryBreak(buildV4StageInput({ ...args, rulesRevision: "orders_gc_v2" })), ["ai-dom"]);
+  assert.deepEqual(tryBreak(buildV4StageInput({ ...args, rulesRevision: "orders_gc_v1" })), []);
+  assert.deepEqual(tryBreak(buildV4StageInput(args)), []);
 });
 
 // ── 3. Determinisme (rigtig motor) ─────────────────────────────────────────
@@ -504,6 +527,20 @@ test("#5978 buildV4StageInput: orders_gc_v1 bærer altid en eksplicit gc_context
   });
   assert.deepEqual(buildV4StageInput({ ...args, stageNumber: 1, gcStandings: [] }).gc_context, { status: "first_stage", stage_number: 1 });
   assert.deepEqual(buildV4StageInput({ ...args, isStageRace: false }).gc_context, { status: "one_day" });
+});
+
+test("#5978 buildV4StageInput: kun orders_gc_v3 bærer stages_remaining (etaper efter i dag)", () => {
+  const raceStages = [1, 2, 3, 4].map((n) => ({ stage_number: n }));
+  const args = {
+    modules: gcModules(), entrants: GC_ENTRANTS, stageProfile: stageProfile(), seedString: "race:2", stageNumber: 2, isStageRace: true,
+    raceStages, gcStandings: [{ rider_id: "b", time: 10 }, { rider_id: "a", time: 25 }],
+  };
+  assert.equal(buildV4StageInput({ ...args, rulesRevision: "orders_gc_v3" }).gc_context.stages_remaining, 2);
+  for (const rulesRevision of ["orders_gc_v1", "orders_gc_v2"]) {
+    assert.equal("stages_remaining" in buildV4StageInput({ ...args, rulesRevision }).gc_context, false, rulesRevision);
+  }
+  // Uden etape-rækker: intet felt (motoren regner da ingen kommende etaper).
+  assert.equal("stages_remaining" in buildV4StageInput({ ...args, raceStages: null, rulesRevision: "orders_gc_v3" }).gc_context, false);
 });
 
 // Runnerens to kaldsteder (raceRunner.js er en delt fil; koblingen testes her).

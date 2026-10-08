@@ -162,6 +162,10 @@ def score_issue(issue):
     is_nua = 'needs-user-action' in labels
     is_epic = any(l.startswith('epic:') for l in labels)
     is_gated = any(l in labels for l in ACTIVE_LAUNCH_SLICE_LABELS)
+    # 2026-10-05: beta-flag-gated done (12 af 29 var det) markeres ud fra kommentaren: "lukkes når ... flippes fra beta", "bag beta-flag".
+    if not is_gated and comments:
+        is_gated = bool(re.search(r'flippes fra beta|bag (?:beta[- ])?flag|bag beta|live i beta|i beta\b',
+                                  ' '.join(c.get('body', '') for c in comments[-2:]), re.I))
     forbidden = next((l for l in labels if l in FORBIDDEN_LABELS), None) or ('epic' if is_epic else None)
 
     if not comments:

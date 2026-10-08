@@ -391,8 +391,8 @@
       "inSeasonBonus": "Løbsdags-, resultat-, mål- og underskriftsbonusser rent faktisk tjent denne sæson. Ikke forecastet for næste sæson, da det afhænger af resultater der endnu ikke er kørt."
     },
     "prizeDetail": {
-      "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson",
-      "divisionInterval": "Spænd baseret på målt præmiesum blandt hold i din division"
+      "realizedFloor": "Mit estimat bygger på holdets optjente præmier, plus/minus 20 %; ikke et målt spænd",
+      "divisionInterval": "Mit estimat for dit hold, plus/minus 20 %; ikke et målt spænd"
     },
     "upkeepDetail": {
       "perRaceDay": "{rate} pr. seniorløbsdag × {days} løbsdage. Trækkes når hvert løb afregnes, ikke ved sæsonstart.",

@@ -28,7 +28,7 @@ export default function RequestSection({ options, selectedType, onSelect, onClea
           <button
             type="button"
             onClick={onClear}
-            className="flex-shrink-0 rounded-cz border border-cz-border bg-cz-card px-3 py-1.5 text-xs font-medium text-cz-2 transition-colors duration-150 hover:border-cz-3"
+            className="shrink-0 rounded-cz border border-cz-border bg-cz-card px-3 py-1.5 text-xs font-medium text-cz-2 transition-colors duration-150 hover:border-cz-3"
           >
             {t("boardroom.meeting.request.changeRequest")}
           </button>
@@ -57,7 +57,7 @@ export default function RequestSection({ options, selectedType, onSelect, onClea
                   type="button"
                   disabled={disabled}
                   onClick={() => onSelect(option.type)}
-                  className="flex-shrink-0 rounded-cz border border-cz-border bg-cz-card px-3 py-1.5 text-xs font-medium text-cz-2 transition-colors duration-150 hover:border-cz-3 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="shrink-0 rounded-cz border border-cz-border bg-cz-card px-3 py-1.5 text-xs font-medium text-cz-2 transition-colors duration-150 hover:border-cz-3 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {t("boardroom.meeting.request.select")}
                 </button>

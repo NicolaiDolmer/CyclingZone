@@ -16,8 +16,10 @@ import {
   baseCostFraction,
   buildGroupTeamContexts,
   countSupportingWorkers,
+  fullPriceWeight,
   helperCostMultiplier,
   protectedRoleOrder,
+  reducedEffortCeiling,
   supportShare,
   teamPlayHook,
 } from "./teamPlay.ts";
@@ -508,4 +510,207 @@ test("#5580 hullet i supportShare: en all_out-hjaelper giver kaptajnen INGEN lae
   const capNormal = factorOf(teamPlayHook(withNormalHelper.state, withNormalHelper.ctx).state, "cap");
   assert.equal(capAllOut, capAlone, "en all_out-hjaelper maa ikke flytte kaptajnens bonus");
   assert.ok(capNormal > capAllOut, "kaptajnens bonus falder naar hjaelperen saettes paa all_out");
+});
+
+// ── #3460 (KUN orders_gc_v3): Spar kraefter giver altid halv stoette ───────────
+//
+// Kontrakten er formuleret som FORHOLD til loftet og til normal-holdet, ikke
+// som absolutte tal (samme princip som resten af filen): tallene i
+// TEAM_PLAY_EXTRA_TUNING flytter sig ved kalibrering, forholdene er designet.
+
+/** Kaptajnens bonus over en hel etape (ét segment) paa en GC-profil. */
+function captainBonus(efforts: EffortLevel[], opts: { v3: boolean; profile?: ProfileType } = { v3: true }): number {
+  const specs: Spec[] = [{ id: "cap", role: "captain", team: "T1" }];
+  efforts.forEach((effort, i) => specs.push({ id: `h${i}`, role: "helper", team: "T1", effort }));
+  const { state, ctx } = scenario(specs, opts.profile ?? "mountain");
+  const hookCtx: SegmentHookContext = opts.v3 ? { ...ctx, ordersGcV3: true } : ctx;
+  return factorOf(teamPlayHook(state, hookCtx).state, "cap") - 1;
+}
+
+const CEILING = TEAM_PLAY_TUNING.captainMaxBonusFraction;
+const SAVE_SHARE = TEAM_PLAY_TUNING.effortCostMultiplier.save;
+const repeat = (effort: EffortLevel, n: number): EffortLevel[] => Array.from({ length: n }, () => effort);
+
+test("#3460 kontrakt: ÉN save-hjaelper giver halv stoette af en normal-hjaelper", () => {
+  const save = captainBonus(["save"]);
+  const normal = captainBonus(["normal"]);
+  assert.ok(normal > 0 && normal < CEILING, "med én hjaelper er loftet ikke naaet");
+  assert.ok(Math.abs(save - normal * SAVE_SHARE) < 1e-9, `save ${save} skal vaere halvdelen af normal ${normal}`);
+});
+
+test("#3460 kontrakt: 2 save-hjaelpere giver halvt loft, 3+ giver det samme (halveringen gaelder efter loftet)", () => {
+  for (const n of [2, 3, 4, 8]) {
+    const save = captainBonus(repeat("save", n));
+    const normal = captainBonus(repeat("normal", n));
+    assert.ok(Math.abs(normal - CEILING) < 1e-9, `n=${n}: normal er uaendret og ligger paa loftet`);
+    assert.ok(
+      Math.abs(save - CEILING * SAVE_SHARE) < 1e-9,
+      `n=${n}: save skal give halvt loft (${CEILING * SAVE_SHARE}), fik ${save}`,
+    );
+  }
+});
+
+test("#3460 kontrakt: legacy/v1/v2 er UAENDRET — 3+ save-hjaelpere naar stadig det fulde loft", () => {
+  const legacyThreeSave = captainBonus(repeat("save", 3), { v3: false });
+  assert.ok(Math.abs(legacyThreeSave - CEILING) < 1e-9, "uden orders_gc_v3 giver save det fulde loft som foer");
+  // 2 save-hjaelpere: under loftet i den gamle formel (betalt x effektivitet x andel).
+  const legacyTwoSave = captainBonus(repeat("save", 2), { v3: false });
+  const v3TwoSave = captainBonus(repeat("save", 2), { v3: true });
+  assert.ok(legacyTwoSave > v3TwoSave, "v3 er strengere end den gamle formel for et save-hold");
+  // Hooket laeser KUN ctx.ordersGcV3, aldrig rulesRevision; revisions-graensen
+  // sidder i segmentLoop.ts. Den testes hele vejen igennem (orders_gc_v3 naar
+  // hooket, orders_gc_v2 er uaendret mod en fastfrosset koersel) i
+  // ../segmentLoop.teamPlay.test.ts.
+});
+
+test("#3460 reducedEffortCeiling: fuld last giver NOEJAGTIGT det fulde loft, ogsaa for en save-pris under halv", () => {
+  // IEEE-754 (round-to-nearest): floor + (1 - floor) * 1 === 1 for ethvert
+  // floor i [0, 1], ogsaa under 0,5 hvor (1 - floor) selv afrundes. Testen
+  // laaser det, saa en senere omskrivning af udtrykket ikke stille giver et
+  // rent normal-hold et loft en ulp under det fulde.
+  for (const save of [0, 0.05, 0.1, 0.2, 0.25, 0.3, 1 / 3, 0.49999999999999994, 0.5, 0.7, 1]) {
+    const tuning = { ...TEAM_PLAY_TUNING, effortCostMultiplier: { ...TEAM_PLAY_TUNING.effortCostMultiplier, save } };
+    for (const ceiling of [CEILING, CEILING / 7, CEILING * 0.37, 1e-9, 1]) {
+      assert.equal(reducedEffortCeiling(ceiling, ceiling, tuning), ceiling, `save=${save}, loft=${ceiling}`);
+      assert.equal(reducedEffortCeiling(ceiling, ceiling * 3, tuning), ceiling, `save=${save}, loft=${ceiling}, last over loftet`);
+    }
+  }
+});
+
+test("#3460: normal/protect-hold er byte-identiske med og uden orders_gc_v3 (alle profiler)", () => {
+  for (const profile of ALL_PROFILES) {
+    for (const effort of ["normal", "protect"] as EffortLevel[]) {
+      for (const n of [1, 2, 3, 5, 8]) {
+        const specs: Spec[] = [{ id: "cap", role: "captain", team: "T1" }];
+        for (let i = 0; i < n; i++) specs.push({ id: `h${i}`, role: i % 3 === 2 ? "hunter" : "helper", team: "T1", effort });
+        const { state, ctx } = scenario(specs, profile);
+        assert.deepEqual(
+          teamPlayHook(state, { ...ctx, ordersGcV3: true }).state.riders,
+          teamPlayHook(state, ctx).state.riders,
+          `${profile}/${effort}/n=${n}: v3 maa ikke roere fuld-pris-hold`,
+        );
+      }
+    }
+  }
+});
+
+test("#3460: grupetto er praecis som save, protect praecis som normal", () => {
+  for (const n of [1, 2, 3, 6]) {
+    assert.equal(captainBonus(repeat("grupetto", n)), captainBonus(repeat("save", n)), `n=${n}: grupetto = save`);
+    assert.equal(captainBonus(repeat("protect", n)), captainBonus(repeat("normal", n)), `n=${n}: protect = normal`);
+  }
+});
+
+test("#3460 blandede hold: ligger mellem rent-save og rent-normal, og skalerer uden spring", () => {
+  const total = 6;
+  const allSave = captainBonus(repeat("save", total));
+  const allNormal = captainBonus(repeat("normal", total));
+  let prev = allSave;
+  for (let normals = 0; normals <= total; normals++) {
+    const mix = [...repeat("normal", normals), ...repeat("save", total - normals)];
+    const bonus = captainBonus(mix);
+    assert.ok(bonus >= allSave - 1e-12 && bonus <= allNormal + 1e-12, `${normals} normal af ${total}: ${bonus} uden for [${allSave}, ${allNormal}]`);
+    assert.ok(bonus >= prev - 1e-12, `${normals} normal af ${total}: en normal-hjaelper i stedet for en save maa aldrig give mindre stoette`);
+    // Intet spring: den foerste normal-hjaelper loefter kun en del af spaendet
+    // (et enkelt fuld-pris-bidrag fylder ikke hele loftet), ikke det hele.
+    if (normals === 1) {
+      assert.ok(bonus > allSave, "en enkelt normal-hjaelper hjaelper");
+      assert.ok(bonus - allSave < (allNormal - allSave) * SAVE_SHARE, `foerste normal flytter under halvdelen af spaendet (${bonus - allSave})`);
+    }
+    prev = bonus;
+  }
+  assert.ok(Math.abs(prev - allNormal) < 1e-9);
+});
+
+test("#3460 monotoni: en ekstra hjaelper — uanset trin — saenker aldrig stoetten", () => {
+  const efforts: EffortLevel[] = ["save", "grupetto", "normal", "protect", "all_out"];
+  const bases: EffortLevel[][] = [[], ["save"], ["normal"], ["save", "save"], ["normal", "normal"], ["normal", "save"], ["save", "save", "save"], ["normal", "normal", "save", "save"]];
+  for (const base of bases) {
+    const before = captainBonus(base);
+    for (const extra of efforts) {
+      const after = captainBonus([...base, extra]);
+      assert.ok(after >= before - 1e-12, `[${base}] + ${extra}: ${after} < ${before} — en ekstra hjaelper saenkede stoetten`);
+    }
+  }
+  // Heller ikke ved en trinopgradering: save -> normal giver aldrig mindre.
+  for (const n of [1, 2, 3, 5]) {
+    assert.ok(captainBonus(repeat("normal", n)) >= captainBonus(repeat("save", n)) - 1e-12);
+  }
+});
+
+test("#3460 de fire garantier holder under orders_gc_v3 (bevarelse, bounded, fortegn, monotoni)", () => {
+  const mixes: EffortLevel[][] = [
+    ["save"], ["save", "save"], ["save", "save", "save"], repeat("save", 8),
+    ["normal", "save"], ["normal", "normal", "save", "save", "save"], repeat("normal", 8),
+    ["grupetto", "protect", "save", "all_out"],
+  ];
+  for (const efforts of mixes) {
+    for (const profile of ALL_PROFILES) {
+      const specs: Spec[] = [{ id: "cap", role: "captain", team: "T1" }];
+      efforts.forEach((effort, i) => specs.push({ id: `h${i}`, role: "helper", team: "T1", effort }));
+      const { state, ctx } = scenario(specs, profile);
+      const { state: next } = teamPlayHook(state, { ...ctx, ordersGcV3: true });
+      const paid = specs.filter((s) => s.role === "helper").reduce((sum, s) => sum + (1 - factorOf(next, s.id)), 0);
+      const bonus = factorOf(next, "cap") - 1;
+      const label = `[${efforts}] ${profile}`;
+      assert.ok(bonus >= 0, `${label}: bonus aldrig negativ (garanti 3)`);
+      assert.ok(bonus <= paid + 1e-9, `${label}: bonus ${bonus} > paadraget ${paid} (garanti 1)`);
+      assert.ok(bonus <= CEILING + 1e-9, `${label}: bonus over loftet (garanti 2)`);
+      for (const s of specs.filter((x) => x.role === "helper")) {
+        assert.ok(factorOf(next, s.id) <= 1 && factorOf(next, s.id) >= TEAM_PLAY_TUNING.minCpFactor - 1e-9, `${label}: ${s.id} uden for [gulv, 1]`);
+      }
+    }
+  }
+  // Garanti 4: to hjaelpere paa samme trin har samme faktor, ogsaa under v3.
+  const { state, ctx } = scenario([
+    { id: "cap", role: "captain", team: "T1" },
+    { id: "a", role: "helper", team: "T1", effort: "save", wprimeMax: 1 },
+    { id: "b", role: "helper", team: "T1", effort: "save", wprimeMax: 2 },
+  ]);
+  const { state: next } = teamPlayHook(state, { ...ctx, ordersGcV3: true });
+  assert.equal(factorOf(next, "a"), factorOf(next, "b"));
+});
+
+test("#3460: hjaelperens PRIS er uroert af orders_gc_v3 — kun kaptajnens loft aendres", () => {
+  for (const effort of ALL_EFFORTS) {
+    const specs: Spec[] = [{ id: "cap", role: "captain", team: "T1" }, { id: "h1", role: "helper", team: "T1", effort }, { id: "h2", role: "helper", team: "T1", effort }];
+    const { state, ctx } = scenario(specs);
+    const v3 = teamPlayHook(state, { ...ctx, ordersGcV3: true }).state;
+    const old = teamPlayHook(state, ctx).state;
+    assert.equal(factorOf(v3, "h1"), factorOf(old, "h1"), `${effort}: prisen maa ikke flytte sig`);
+  }
+});
+
+test("#3460 granularitet: et blandet hold giver samme bonus uanset hvor fint ruten er skaaret op", () => {
+  const specs: Spec[] = [
+    { id: "cap", role: "captain", team: "T1" },
+    { id: "h1", role: "helper", team: "T1", effort: "normal" },
+    { id: "h2", role: "helper", team: "T1", effort: "save" },
+    { id: "h3", role: "helper", team: "T1", effort: "save" },
+  ];
+  const run = (count: number): number => {
+    const { state, ctx } = scenario(specs, "mountain", 200);
+    let current = state;
+    const width = 200 / count;
+    for (let i = 0; i < count; i++) {
+      const segment: Segment = { kind: "flat", from_km: i * width, to_km: (i + 1) * width };
+      current = teamPlayHook(current, { ...rekeyHookCtxForSegment(ctx, segment, i), ordersGcV3: true }).state;
+    }
+    return factorOf(current, "cap");
+  };
+  const one = run(1);
+  for (const count of [2, 5, 20]) assert.ok(Math.abs(run(count) - one) < 1e-9, `${count} segmenter skal give det samme som 1`);
+});
+
+test("#3460 fullPriceWeight/reducedEffortCeiling: graenser og defensive fallbacks", () => {
+  assert.equal(fullPriceWeight("normal"), 1);
+  assert.equal(fullPriceWeight("protect"), 1);
+  assert.equal(fullPriceWeight("save"), 0);
+  assert.equal(fullPriceWeight("grupetto"), 0);
+  assert.equal(fullPriceWeight("all_out"), 0);
+  assert.equal(fullPriceWeight(undefined), 1, "ukendt effort -> fuld pris, aldrig en rabat");
+  assert.equal(reducedEffortCeiling(0, 1), 0);
+  assert.equal(reducedEffortCeiling(CEILING, 0), CEILING * SAVE_SHARE, "ingen fuld-pris-last -> halvt loft");
+  assert.equal(reducedEffortCeiling(CEILING, CEILING * 10), CEILING, "fuld last -> fuldt loft, aldrig over");
+  assert.equal(reducedEffortCeiling(CEILING, -1), CEILING * SAVE_SHARE, "negativ last clampes");
 });

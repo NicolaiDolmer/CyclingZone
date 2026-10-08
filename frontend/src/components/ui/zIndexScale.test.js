@@ -4,9 +4,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { themeNamespace } from "../../lib/themeTokens.ts";
+
 // #2880 forward-guard. Root cause was TWO competing z-index scales: the
 // design-token scale (z-dropdown/z-sticky/z-overlay/z-modal/z-toast, defined
-// below + in tailwind.config.js) vs. raw Tailwind z-{10,20,30,40,50} used
+// below + in index.css @theme) vs. raw Tailwind z-{10,20,30,40,50} used
 // ad-hoc on `fixed` navigation/modal elements. Sticky page content (token
 // scale, 1100+) beat the mobile drawer and several modals (raw scale,
 // 30-50) — 3 independent Discord bug reports in 2 days, 23 occurrences
@@ -108,7 +110,7 @@ test("#2880: ingen raw z-index på position:fixed sat via inline style (Language
 // (page sub-headers, floating action bars, drawer headers) migrate straight
 // to `z-sticky`. A few tables combine a sticky TOP header row with sticky
 // LEFT/RIGHT columns (AuctionsPage, TransfersPage market view) — those use
-// the table-local `z-table-col`/`z-table-head` sub-scale (tailwind.config.js)
+// the table-local `z-table-col`/`z-table-head` sub-scale (index.css @theme)
 // instead, since flattening both onto the same `z-sticky` value would make
 // the body's sticky columns cover the header row on vertical scroll (DOM
 // order, not the token, would then decide stacking). Either way the guard
@@ -134,15 +136,17 @@ test("#2952: ingen raw z-index på sticky-elementer uden om token-skalaen", () =
   );
 });
 
-test("#2952: tailwind.config.js table-lokal z-skala (table-col/table-head) er under page-chrome-skalaen og korrekt ordnet", () => {
-  const tw = readFileSync(join(srcRoot, "..", "tailwind.config.js"), "utf8");
-  const m = tw.match(/zIndex:\s*\{([^}]*)\}/);
-  assert.ok(m, "tailwind.config.js mangler zIndex-blokken");
-  const local = {};
-  for (const [, name, value] of m[1].matchAll(/"([\w-]+)":\s*"(\d+)"/g)) local[name] = Number(value);
+// #6271: Tailwind 4 — the z-index scale lives in index.css `@theme` as
+// `--z-index-<name>` (parsed by lib/themeTokens.ts), not in tailwind.config.js.
+const zScale = () => themeNamespace(readFileSync(join(srcRoot, "index.css"), "utf8"), "--z-index-");
 
-  assert.equal(local["table-col"], 1, 'zIndex["table-col"] skal være "1"');
-  assert.equal(local["table-head"], 2, 'zIndex["table-head"] skal være "2"');
+test("#2952: @theme table-lokal z-skala (table-col/table-head) er under page-chrome-skalaen og korrekt ordnet", () => {
+  const scale = zScale();
+  assert.ok(scale.size > 0, "index.css @theme mangler --z-index-*-skalaen");
+  const local = { "table-col": Number(scale.get("table-col")), "table-head": Number(scale.get("table-head")) };
+
+  assert.equal(local["table-col"], 1, "--z-index-table-col skal være 1");
+  assert.equal(local["table-head"], 2, "--z-index-table-head skal være 2");
   assert.ok(
     local["table-head"] > local["table-col"],
     "table-head skal være > table-col — ellers vinder sticky-kolonnerne over header-rækken ved lodret scroll",
@@ -153,25 +157,20 @@ test("#2952: tailwind.config.js table-lokal z-skala (table-col/table-head) er un
   );
 });
 
-test("tailwind.config.js zIndex-skalaen er de 6 kanoniske lag i stigende rækkefølge", () => {
-  const tw = readFileSync(join(srcRoot, "..", "tailwind.config.js"), "utf8");
-  const m = tw.match(/zIndex:\s*\{([^}]*)\}/);
-  assert.ok(m, "tailwind.config.js mangler zIndex-blokken");
+test("@theme z-index-skalaen er de 6 kanoniske lag i stigende rækkefølge", () => {
   const scale = {};
-  for (const [, name, value] of m[1].matchAll(/(\w+):\s*"(\d+)"/g)) scale[name] = Number(value);
+  for (const [name, value] of zScale()) if (!name.startsWith("table-")) scale[name] = Number(value);
 
   const order = ["dropdown", "sticky", "nav", "overlay", "modal", "toast"];
-  assert.deepEqual(Object.keys(scale), order, "zIndex-skalaen skal indeholde præcis disse 6 lag i denne rækkefølge");
+  assert.deepEqual(Object.keys(scale), order, "z-index-skalaen skal indeholde præcis disse 6 lag i denne rækkefølge");
   for (let i = 1; i < order.length; i++) {
     assert.ok(scale[order[i]] > scale[order[i - 1]], `${order[i]} (${scale[order[i]]}) skal være > ${order[i - 1]} (${scale[order[i - 1]]})`);
   }
 });
 
-test("index.css --z-* CSS-vars matcher tailwind zIndex 1:1", () => {
+test("index.css --z-* CSS-vars matcher @theme --z-index-* 1:1", () => {
   const css = readFileSync(join(srcRoot, "index.css"), "utf8");
-  const tw = readFileSync(join(srcRoot, "..", "tailwind.config.js"), "utf8");
-  const twMatch = tw.match(/zIndex:\s*\{([^}]*)\}/)[1];
-  for (const [, name, value] of twMatch.matchAll(/(\w+):\s*"(\d+)"/g)) {
+  for (const [name, value] of zScale()) {
     assert.match(css, new RegExp(`--z-${name}:\\s*${value}\\b`), `index.css mangler --z-${name}: ${value}`);
   }
 });

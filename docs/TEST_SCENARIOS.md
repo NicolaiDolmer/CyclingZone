@@ -138,7 +138,7 @@ Alle bugfixes skal testes her eller have en begrundet test-note
 ### Deploy smoke
 - Push til `origin/main`
 - Bekræft seneste Vercel production deployment = `READY` og matcher commit SHA
-- Kald backend `GET /health`
+- Kald backend `GET /health/ready` og forvent 200 med `status=ok, db=ok` (DB-smoke); `/health` beviser kun proces-liveness.
 - Kald backend `GET /api/auctions` uden token og forvent `401`
 - Kør ét lille sanity-check på det berørte flow mod live miljø
 

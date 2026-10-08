@@ -6,6 +6,7 @@ import { formatNumber } from "../lib/intl";
 import { projectDivisionAdjustment } from "../lib/divisionAdjustment";
 import { buildSponsorPayments, projectRemainingStages } from "../lib/sponsorPayments";
 import { projectOffer } from "../lib/sponsorOfferProjection";
+import { resolveSponsorCalendarPreview } from "../lib/sponsorCalendarPreview.ts";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { buttonClass } from "../components/ui/buttonStyles.js";
@@ -192,18 +193,18 @@ export default function SponsorsPage() {
 
   const divisions = useMemo(
     () =>
-      Object.keys(offersState?.stageCounts?.byTier || {})
+      [...new Set([...Object.keys(offersState?.stageCounts?.byTier || {}), ...(teamDivision != null ? [teamDivision] : [])])]
         .map(Number)
         .sort((a, b) => a - b),
-    [offersState]
+    [offersState, teamDivision]
   );
   const activeDivision =
     previewDivision ??
     (divisions.includes(Number(teamDivision)) ? Number(teamDivision) : (divisions[0] ?? null));
-  const offerStages =
-    (activeDivision != null ? offersState?.stageCounts?.byTier?.[activeDivision] : null) ??
-    offersState?.stageCounts?.fallbackDays ??
-    null;
+  const offerCalendar = resolveSponsorCalendarPreview(
+    offersState?.stageCounts, activeDivision, payments.stagesTotal, teamDivision,
+  );
+  const offerStages = offerCalendar.count;
   const calendarDays = Number(offersState?.stageCounts?.fallbackDays) || null;
   const stagesPerDay =
     Number(offerStages) > 0 && calendarDays > 0 ? Number(offerStages) / calendarDays : null;
@@ -658,12 +659,12 @@ export default function SponsorsPage() {
                     title={t("page.next.title")}
                     meta={
                       offersOpen && activeDivision != null && Number(offerStages) > 0
-                        ? t("page.next.meta", {
+                        ? t(offerCalendar.estimated ? "page.next.metaEstimated" : "page.next.meta", {
                             count: offers.length,
                             division: activeDivision,
                             stages: Number(offerStages),
                           })
-                        : t("page.next.metaClosed", {
+                        : offersOpen ? t("offers.rateUnknown") : t("page.next.metaClosed", {
                             season: contract?.expires_after_season ?? payments.seasonNumber ?? "",
                           })
                     }
@@ -695,6 +696,11 @@ export default function SponsorsPage() {
                       <p className="mb-4 text-[13px] text-cz-2">
                         {t("offers.amountFollowsClub")}
                       </p>
+                      {offerCalendar.estimated && (
+                        <p className="mb-4 text-[13px] text-cz-2">
+                          {t(offerStages ? "offers.calendarEstimate" : "offers.calendarUnknown")}
+                        </p>
+                      )}
 
                       <Table
                         aria-label={t("page.next.title")}
@@ -778,7 +784,7 @@ export default function SponsorsPage() {
                                   )}
                                 </Td>
                                 <Td numeric className="whitespace-nowrap">
-                                  {money(p.rate)}
+                                  {p.rate == null ? t("offers.rateUnknown") : money(p.rate)}
                                 </Td>
                                 <Td>
                                   {bonusLines.length === 0 ? (
@@ -859,12 +865,12 @@ export default function SponsorsPage() {
                         activeDivision != null &&
                         upcomingSeason != null && (
                           <p className="mt-1.5 text-[13px] tabular-nums text-cz-2">
-                            {t("offers.unitCount", {
+                            {t(offerCalendar.estimated ? "offers.unitCountEstimate" : "offers.unitCount", {
                               division: activeDivision,
                               count: Number(offerStages),
                               season: upcomingSeason,
                             })}
-                            {stagesPerDay > 1.05 && (
+                            {!offerCalendar.estimated && stagesPerDay > 1.05 && (
                               <>
                                 {" "}
                                 {t("offers.unitPerDay", {

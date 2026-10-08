@@ -9,7 +9,7 @@
 //
 // TASTE: ingen gold (sidens ene gold er Train now), hairlines, rounded-cz,
 // vaelgeren er Plan-fanens "Plan for"-select (samme anatomi).
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../../ui/Button.jsx";
 import { ChevronDownIcon, ChevronRightIcon } from "../../ui/icons/index.jsx";
@@ -60,10 +60,22 @@ export default function TrainingProgramAssign({
       : target.kind === "group" ? (groups.find((g) => g.value === target.value)?.label ?? "")
         : "";
 
+  // Dobbelttryk-guard: `busy` naar foerst frem efter et render, saa et hurtigt
+  // andet tryk ville sende kaldet to gange. Ref'en lukker det med det samme.
+  const inFlight = useRef(false);
+
   async function apply(program: CatalogProgram) {
-    if (target.kind === "none") return;
+    if (target.kind === "none" || inFlight.current) return;
+    inFlight.current = true;
     setMessage(null);
-    const result = await onApply(program.key, targetValue);
+    let result: ProgramsResult;
+    try {
+      result = await onApply(program.key, targetValue);
+    } catch {
+      result = { ok: false };
+    } finally {
+      inFlight.current = false;
+    }
     setMessage(result.ok
       ? { type: "ok", text: t("programs.applied", { name: programName(program, lang), target: targetName }) }
       : { type: "error", text: t("programs.error") });
@@ -94,10 +106,10 @@ export default function TrainingProgramAssign({
               <span className="text-sm font-semibold text-cz-1">{programName(program, lang)}</span>
               {" · "}{programTagline(program, lang)}
             </span>
-            <span className="hidden flex-none font-data text-3xs uppercase tracking-[.05em] text-cz-3 md:inline">{forLabel(program)}</span>
+            <span className="hidden flex-none font-data text-3xs uppercase tracking-wider text-cz-3 md:inline">{forLabel(program)}</span>
           </button>
           {isCurrent && (
-            <span className="flex-none rounded-cz border border-cz-border px-1.5 font-data text-3xs uppercase tracking-[.05em] text-cz-2" data-testid="training-program-current">
+            <span className="flex-none rounded-cz border border-cz-border px-1.5 font-data text-3xs uppercase tracking-wider text-cz-2" data-testid="training-program-current">
               {t("programs.current")}
             </span>
           )}
@@ -133,7 +145,7 @@ export default function TrainingProgramAssign({
   };
 
   const sectionHead = (label: string) => (
-    <li className="bg-cz-subtle px-4 py-1 font-data text-3xs uppercase tracking-[.05em] text-cz-3 sm:px-5" aria-hidden="true">
+    <li className="bg-cz-subtle px-4 py-1 font-data text-3xs uppercase tracking-wider text-cz-3 sm:px-5" aria-hidden="true">
       {label}
     </li>
   );

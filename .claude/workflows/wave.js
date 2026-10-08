@@ -144,8 +144,9 @@
 //
 // 8. BILLIGT INTAKE-TJEK (#5602, ejer 24/9: boelge R brugte ca. 0,5M tokens
 //    paa fem tomme intake-agenter):
-//    (a) En ledig lane starter foerst et TJEK paa den mindste model (haiku)
-//        med en minimal prompt: kun `wave-policy.mjs intake --peek`, der
+//    (a) En ledig lane starter foerst et TJEK (sonnet, effort low; #6058:
+//        haiku fulgte ejerens relayede startprompt i stedet) med en minimal
+//        prompt: kun `wave-policy.mjs intake --peek`, der
 //        markerer faerdige branches og TAELLER koeen uden at flytte noget.
 //        Kun naar koeen har spor - eller tjekket ikke gav et brugbart svar -
 //        startes den fulde intake-agent (sonnet, optag + worktrees +
@@ -467,6 +468,20 @@ function planReviewAttempt(attempt) {
   }
 }
 
+// SPEJLING of classifyBuildRecoveryFailure in scripts/wave-freeze.mjs.
+function classifyBuildRecoveryFailure(outcome) {
+  if (!outcome || outcome.settled !== true) return null
+  const rejected = outcome.error !== null && outcome.error !== undefined
+  const value = rejected ? outcome.error : outcome.value
+  const text = String((value && value.message) || value || '').trim()
+  const api = text.match(/^API Error:\s*(5\d{2})(?:\s|:|$)/i)
+  if (api && (rejected || !/[\r\n]/.test(text))) return { reason: `api-${api[1]}`, terminalEvidence: 'agent-settled' }
+  if (outcome.terminalConfirmed === true && /^API (?:Error|Response Error):\s*(?:response|request)\s+(?:timed out|timeout)\b/i.test(text)) {
+    return { reason: 'response-timeout', terminalEvidence: 'explicit-terminal' }
+  }
+  return null
+}
+
 // SPEJLING af needsGracefulStop() i scripts/wave-freeze.mjs.
 // 'hard-cap' undtages: dér lever branchen, saa lane-agenten arbejder stadig i
 // worktreet (en timeout afbryder ikke agenten). To agenter der committer samme
@@ -651,6 +666,8 @@ function laneBrief(track) {
     return [
       `WAVE-LANE: #${track.issue} ${track.branch} (undersoegelsesspor, kind: investigate, #5220)`,
       '',
+      ...subStepScopeLines(`undersoeg #${track.issue} efter din brief og afgiv dommen`, 'worker'),
+      '',
       'Du er en autonom boelge-worker uden kontekst fra mor-samtalen.',
       '',
       `FOERSTE HANDLING: laes HELE din brief: ${track.briefPath}`,
@@ -672,6 +689,8 @@ function laneBrief(track) {
 
   return [
     `WAVE-LANE: #${track.issue} ${track.branch}`,
+    '',
+    ...subStepScopeLines(`byg #${track.issue} paa ${track.branch} efter din brief`, 'worker'),
     '',
     'Du er en autonom boelge-worker uden kontekst fra mor-samtalen.',
     '',
@@ -702,9 +721,29 @@ function laneBrief(track) {
 // et udloebet vindue ikke doemmes paa agentens tavshed alene. Regnestykket
 // ligger i scripts/wave-freeze.mjs, og proben kalder den CLI - saa dommen
 // kommer fra den testede kilde og ikke fra en agents hovedregning.
+function recoveryBrief(track, reason) {
+  return [
+    `WAVE-LANE: #${track.issue} ${track.branch} (recovery 1/1)`,
+    '',
+    ...subStepScopeLines(`genoptag #${track.issue} i samme worktree`, 'worker'),
+    '',
+    `Den tidligere agent er observeret terminal (${reason}). Dette er eneste automatiske genoptagelse.`,
+    `SAMME worktree: ${track.worktree}; SAMME branch: ${track.branch}.`,
+    'FOER arbejdet: maal branch, git status, lokale/upushede commits og eksisterende draft-PR.',
+    'Bevar eksisterende arbejde. Ingen reset, stash, ny branch, nyt worktree eller dublet-PR.',
+    'Fortsaet fra maalt WIP-status; gentag ikke afsluttede handlinger blindt.',
+    'Hvis en anden writer stadig koerer, STOP uden at skrive.',
+    'Orkestratoren koerer det normale uafhaengige review efter aflevering.',
+    '',
+    laneBrief(track),
+  ].join('\n')
+}
+
 function probePrompt(track, elapsedMinutes) {
   return [
     `READ-ONLY: frys-probe paa #${track.issue} ${track.branch} (#5178)`,
+    '',
+    ...subStepScopeLines(`maal om ${track.branch} lever, og returner dommen`, 'setup'),
     '',
     'Du maa KUN laese. Ingen commits, ingen pushes, ingen checkout, ingen filaendringer.',
     'Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter. Du er faerdig paa under et minut.',
@@ -735,6 +774,8 @@ function probePrompt(track, elapsedMinutes) {
 function stopPrompt(track, verdict) {
   return [
     `WAVE-FOLLOWUP: graceful stop paa #${track.issue} ${track.branch} (${verdict}, #5178)`,
+    '',
+    ...subStepScopeLines(`gem ucommittet arbejde paa ${track.branch} som WIP-commit og push det`, 'worker'),
     '',
     `ABSOLUT WORKING DIR: ${track.worktree} (EKSISTERENDE worktree - opret ALDRIG et nyt, reset ALDRIG, stash ALDRIG).`,
     `Brug \`git -C "${track.worktree}"\` til alle git-kald.`,
@@ -771,6 +812,8 @@ function reviewPrompt(track, attempt) {
     attempt > 1
       ? `(gen-spawn ${attempt}/${WAVE_FREEZE.REVIEW_MAX_ATTEMPTS} - foerste reviewer svarede ikke inden ${WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES} min. Vaer kortfattet og svar inden for vinduet.)`
       : '',
+    '',
+    ...subStepScopeLines(`review PR'en for #${track.issue} paa ${track.branch} og afgiv en dom`, 'worker'),
     '',
     'Du er READ-ONLY reviewer. Du maa IKKE aendre filer, committe, pushe eller checke branches ud.',
     `Laes diffen med \`gh pr diff --repo ${REPO} <PR-nummer>\` (find PR'en med \`gh pr list --repo ${REPO} --head ${track.branch} --state all --json number,url,isDraft\`).`,
@@ -822,6 +865,8 @@ function fixPrompt(track, review) {
     .join('\n')
   return [
     `WAVE-FOLLOWUP: ret BLOKERENDE reviewer-fund paa #${track.issue} ${track.branch}`,
+    '',
+    ...subStepScopeLines(`ret reviewerens blokerende fund paa ${track.branch}`, 'worker'),
     '',
     `ABSOLUT WORKING DIR: ${track.worktree} (EKSISTERENDE worktree - opret ALDRIG et nyt, reset ALDRIG).`,
     `Brug \`git -C "${track.worktree}"\` til alle git-kald.`,
@@ -893,6 +938,8 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
   return [
     'WAVE-SETUP: fase 0 for en boelge (#5142)',
     '',
+    ...subStepScopeLines('saet boelgen op (trin 1-5 herunder) og returner resultatet', 'setup'),
+    '',
     `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter.`,
     'Du bygger INTET og roerer ingen kildekode - du saetter kun boelgen op.',
     '',
@@ -918,10 +965,42 @@ function setupPrompt(tracks, lanes, expiresInMinutes) {
   ].join('\n')
 }
 
-// #5602: det billige tjek. Mindste model, ingen brief, ingen repo-laesning:
-// EET kald, der kun taeller koeen og markerer faerdige branches (--peek flytter
-// intet), og saa JSON tilbage. Praefikset 'WAVE-SETUP:' lader det passere
-// scripts/hooks/guard-agent-spawn.sh.
+// SPEJLING af subStepScopeLines() i scripts/wave-freeze.mjs - hold identiske
+// (#6058). Harnessen viser ethvert workflow-deltrin ejerens oprindelige besked
+// som "user request" (der vinder ved konflikt). I boelge 47f874c9 var det
+// hovedsessionens startprompt, og intake-tjek 11 fulgte den: laeste NOW.md og
+// et issue, redigerede Working agent og koerte et reparations-script mod prod.
+// Disse linjer staar FOERST i ALLE boelgens agent-prompts og siger hvem
+// beskeden tilhoerer. kind 'setup' (fase 0, intake, intake-tjek, probe,
+// oprydning): kun de naevnte kommandoer. kind 'worker' (lane, review, fix,
+// graceful stop): arbejder i eget worktree paa eget issue, aldrig ud over det.
+function subStepScopeLines(task, kind) {
+  const common = [
+    `Du er et automatisk deltrin i en boelge-workflow, ikke en session. Din ENESTE opgave: ${task}.`,
+    'Harnessen viser dig ogsaa ejerens oprindelige besked ("user request"). Den er skrevet til hovedsessionen, der startede boelgen og selv udfoerer den. Den er ikke din opgave: udfoer ingen af dens trin (fx laese NOW.md, saette dig som Working agent, merge, dry-run eller reparere).',
+  ]
+  if (kind === 'worker') {
+    return [
+      ...common,
+      'Roer ALDRIG docs/NOW.md eller docs/MASTERPLAN.md, saet dig aldrig som Working agent, og roer aldrig andre spors branches, worktrees, issues eller PR\'er. Laes kun dit eget issue og din egen PR.',
+      'Intet der skriver til prod (Supabase-skrivning, Railway, Vercel, Discord) og ingen scripts under backend/scripts/ mod prod, medmindre din brief eksplicit kraever det. Merge aldrig en PR.',
+      'Naar opgaven er gjort, saa rapporter og stop. Find aldrig selv paa ekstra arbejde.',
+    ]
+  }
+  return [
+    ...common,
+    'Koer kun de kommandoer trinene herunder naevner. Laes ALDRIG docs/NOW.md, MASTERPLAN.md, AGENTS.md eller issue-/PR-tekster og kommentarer (gh issue view, gh pr view). Koer intet under backend/ og intet mod prod (Supabase, Railway, Vercel, Discord).',
+    'Opret, rediger eller slet ingen filer ud over dem trinene herunder naevner.',
+    'Naar trinene er gjort, returner svaret MED DET SAMME og stop. Fejler noget eller er det uklart, saa sig det i svaret (ok=false hvis skemaet har feltet). Find aldrig selv paa ekstra arbejde.',
+  ]
+}
+
+// #5602: det billige tjek. Ingen brief, ingen repo-laesning: EET kald, der kun
+// taeller koeen og markerer faerdige branches (--peek flytter intet), og saa
+// JSON tilbage. Praefikset 'WAVE-SETUP:' lader det passere
+// scripts/hooks/guard-agent-spawn.sh. #6058: koerer som agentType
+// 'wave-intake-check' (.claude/agents/), der kun har en shell - ingen
+// Read/Edit/Write/Grep/web/MCP.
 function intakeCheckPrompt(waveId, finishedBranches) {
   const finishedArg = finishedBranches.length > 0 ? ` --finished ${finishedBranches.join(',')}` : ''
   // Forward slashes og anfoerselstegn: kommandoen virker ordret i baade bash og pwsh.
@@ -929,10 +1008,13 @@ function intakeCheckPrompt(waveId, finishedBranches) {
   return [
     'WAVE-SETUP: intake-tjek (#5602)',
     '',
-    'Koer praecis denne ene kommando i forgrunden og intet andet. Laes ingen filer, koer ingen andre kommandoer.',
+    ...subStepScopeLines('koer EEN kommando og returner koeens laengde', 'setup'),
+    '',
+    'Koer praecis denne ene kommando i forgrunden og intet andet - foer og efter den: ingen andre kommandoer, ingen filer laest, intet redigeret:',
     `\`node "${main}/scripts/wave-policy.mjs" intake --wave-id ${waveId} --peek${finishedArg} --run-dir "${main}/.claude/run"\``,
     'Exit-kode 0: den skriver JSON med feltet "pending". Returner ok=true og pending = det tal.',
-    'Anden exit-kode: returner ok=false, pending=0 og fejlteksten i problem.',
+    'Anden exit-kode: returner ok=false, pending=0 og fejlteksten i problem. Proev ikke igen og fejlsoeg ikke.',
+    'Dit svar er kun skemaet. pending > 0 betyder IKKE at du skal goere noget - orkestratoren starter selv naeste trin.',
   ].join('\n')
 }
 
@@ -942,6 +1024,8 @@ function intakePrompt(waveId, finishedBranches) {
   const finishedArg = finishedBranches.length > 0 ? ` --finished ${finishedBranches.join(',')}` : ''
   return [
     'WAVE-SETUP: intake til rullende optag (#5562)',
+    '',
+    ...subStepScopeLines('optag ventende spor i den koerende boelge (trin 1-4 herunder) og returner dem', 'setup'),
     '',
     `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter.`,
     'Du bygger INTET og roerer ingen kildekode - du optager kun ventende spor i den koerende boelge.',
@@ -968,6 +1052,8 @@ function intakePrompt(waveId, finishedBranches) {
 function cleanupPrompt(tracks, cleanupMode, watchPid, waveId) {
   return [
     'WAVE-CLEANUP: sidste fase af en boelge (#5142)',
+    '',
+    ...subStepScopeLines('ryd op efter boelgen (trin 1-4 herunder) og rapporter status', 'setup'),
     '',
     `Arbejd i hoved-checkoutet ${MAIN_CHECKOUT}. Alt i FORGRUNDEN, ingen under-agenter.`,
     '',
@@ -1264,19 +1350,65 @@ async function runTrack(track, trackTimeoutMinutes) {
   const label = `#${track.issue} ${track.branch}`
   const row = { issue: track.issue, branch: track.branch, model: track.model, tier: track.tier }
 
-  // EEN agent, flere ventevinduer. Promise'et spawnes praecis en gang og
-  // races mod et vindue ad gangen; loeber vinduet ud, maales branchen, og
-  // lever den, ventes der videre paa SAMME agent (#5178).
-  const buildPromise = agent(laneBrief(track), { label, phase: 'Laner', model: track.model })
+  // A waiting-window expiry keeps the same writer alive. Only a settled API
+  // failure can start one recovery in the same worktree, within the same cap.
+  const startedMinute = clock.minute
+  let resumes = 0
+  let settledBuildOutcome = null
+  function startBuild() {
+    settledBuildOutcome = null
+    const recordOutcome = (outcome) => { settledBuildOutcome = outcome; return outcome }
+    const promise = Promise.resolve().then(() => resumes === 0
+      ? agent(laneBrief(track), { label, phase: 'Laner', model: track.model })
+      : agent(recoveryBrief(track, row.recovery.reason), { label: `${label} (recovery 1/1)`, phase: 'Laner', model: track.model }))
+    return promise.then(
+      value => recordOutcome({ settled: true, value, error: null }),
+      error => recordOutcome({ settled: true, value: null, error, terminalConfirmed: error && error.terminalConfirmed === true }),
+    )
+  }
+  let buildPromise = startBuild()
   let elapsedMinutes = 0
   let waitMinutes = trackTimeoutMinutes
   let build = TIMED_OUT
   let stopProbe = null
 
   for (;;) {
-    build = await withTimeout(buildPromise, waitMinutes * 60 * 1000, label)
+    const outcome = await withTimeout(buildPromise, waitMinutes * 60 * 1000, label)
+    if (outcome !== TIMED_OUT) {
+      const failure = classifyBuildRecoveryFailure(outcome)
+      if (failure) {
+        elapsedMinutes = Math.max(elapsedMinutes, clock.minute - startedMinute + 1)
+        const remaining = WAVE_FREEZE.TRACK_HARD_CAP_MINUTES - elapsedMinutes
+        if (resumes === 0 && remaining > 0) {
+          row.recovery = { attempts: 1, reason: failure.reason, terminalEvidence: failure.terminalEvidence, outcome: 'resuming', worktree: track.worktree }
+          log(`${label}: ${failure.reason}; tidligere agent terminal (${failure.terminalEvidence}). Genoptager 1/1 i SAMME worktree ${track.worktree}; normalt review bevares.`)
+          resumes = 1
+          waitMinutes = Math.min(trackTimeoutMinutes, remaining)
+          buildPromise = startBuild()
+          continue
+        }
+        row.status = 'fejl'
+        row.note = resumes === 1 ? 'Genoptagelse 1/1 fejlede; ingen tredje writer. Arbejdet er bevaret.' : 'Terminal API-fejl ved det haarde loft; ingen genoptagelse.'
+        row.recovery = { ...(row.recovery || {}), attempts: resumes, reason: failure.reason, terminalEvidence: failure.terminalEvidence,
+          outcome: resumes === 1 ? 'exhausted' : 'budget-exhausted', worktree: track.worktree, review: 'ikke gennemfoert' }
+        log(`${label}: ${row.note}`)
+        return row
+      }
+      if (outcome.error !== null) {
+        row.status = 'fejl'
+        row.note = String((outcome.error && outcome.error.message) || outcome.error)
+        if (row.recovery) row.recovery.outcome = 'failed'
+        return row
+      }
+      build = outcome.value
+      if (row.recovery) {
+        row.recovery.outcome = build === null ? 'no-response' : 'completed'
+        log(`${label}: genoptagelse 1/1 afsluttet; ${build === null ? 'intet svar' : 'fortsaetter til normalt review'}.`)
+      }
+      break
+    }
+    build = TIMED_OUT
     elapsedMinutes += waitMinutes
-    if (build !== TIMED_OUT) break
 
     // Proben koster ogsaa tid (op til PROBE_TIMEOUT_MINUTES), og uden Date.now()
     // kan scriptet ikke maale hvor laenge den faktisk tog. Vi bogfoerer derfor
@@ -1288,6 +1420,10 @@ async function runTrack(track, trackTimeoutMinutes) {
     // tage fejl paa, naar loftet er defineret som absolut.
     elapsedMinutes += WAVE_FREEZE.PROBE_TIMEOUT_MINUTES
     const probe = await probeBranch(track, elapsedMinutes)
+    // A terminal result arriving during the probe takes precedence over a
+    // pre-cap freeze snapshot. Never extend an unfinished builder at the cap.
+    if (probe.verdict !== 'extend' && settledBuildOutcome !== null
+      && elapsedMinutes < WAVE_FREEZE.TRACK_HARD_CAP_MINUTES) continue
     const ageText = probe.lastCommitAgeMinutes === null ? 'ukendt' : `${Math.round(probe.lastCommitAgeMinutes)} min siden`
     if (probe.verdict === 'extend') {
       waitMinutes = probe.extendMinutes
@@ -1350,6 +1486,7 @@ async function runTrack(track, trackTimeoutMinutes) {
   }
   if (!review) {
     row.review = 'ikke gennemfoert'
+    if (row.recovery) row.recovery.review = row.review
     row.note = `Reviewer svarede ikke i ${WAVE_FREEZE.REVIEW_MAX_ATTEMPTS} forsoeg - PR'en skal menneske-reviewes foer merge.`
     return row
   }
@@ -1363,6 +1500,7 @@ async function runTrack(track, trackTimeoutMinutes) {
     for (const f of evidence.downgraded) log(`Reviewer-fund nedgraderet paa ${label}: ${f.file ? f.file + ': ' : ''}${f.what} - ${f.note}`)
   }
   row.review = review.verdict
+  if (row.recovery) row.recovery.review = row.review
   row.reviewSummary = review.summary
   row.pr = review.pr || 'ingen'
 
@@ -1465,7 +1603,26 @@ function noteEmptyIntake(label) {
   }
 }
 
-// #5602: det billige tjek (haiku, minimal prompt). Det flytter intet, saa et
+// #6058: intake-agenterne koerer som vaerktoejs-begraensede agent-typer fra
+// .claude/agents/. Kender registret ikke typen (fx en session startet foer
+// filen fandtes - registret laeses ved session-start), saa koeres kaldet uden
+// typen i stedet for at slaa optaget fra; prompt-vaernet (subStepScopeLines)
+// gaelder stadig.
+async function agentWithType(prompt, opts) {
+  try {
+    return await agent(prompt, opts)
+  } catch (err) {
+    const msg = String((err && err.message) || err)
+    if (!opts.agentType || !/not found/i.test(msg)) throw err
+    log(`${opts.label}: agent-typen '${opts.agentType}' findes ikke i denne session - koerer uden (kun prompt-vaern).`)
+    const rest = { ...opts }
+    delete rest.agentType
+    return agent(prompt, rest)
+  }
+}
+
+// #5602: det billige tjek (minimal prompt; #6058: sonnet + agentType
+// 'wave-intake-check' uden Read/Edit/Write). Det flytter intet, saa et
 // tjek der ikke svarer eller fejler, er bare et tomt tjek; finishedInWave
 // sendes med igen naeste gang.
 async function runIntakeCheck(finished) {
@@ -1474,7 +1631,7 @@ async function runIntakeCheck(finished) {
   let check = null
   try {
     check = await withTimeout(
-      agent(intakeCheckPrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'haiku', effort: 'low', schema: INTAKE_CHECK_SCHEMA }),
+      agentWithType(intakeCheckPrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'sonnet', effort: 'low', agentType: 'wave-intake-check', schema: INTAKE_CHECK_SCHEMA }),
       WAVE_FREEZE.INTAKE_CHECK_TIMEOUT_MINUTES * 60 * 1000,
       label,
     )
@@ -1505,7 +1662,7 @@ async function runIntake() {
   let answer = null
   try {
     answer = await withTimeout(
-      agent(intakePrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'sonnet', schema: INTAKE_SCHEMA }),
+      agentWithType(intakePrompt(setup.waveId, finished), { label, phase: 'Laner', model: 'sonnet', agentType: 'wave-setup', schema: INTAKE_SCHEMA }),
       WAVE_FREEZE.INTAKE_TIMEOUT_MINUTES * 60 * 1000,
       label,
     )
@@ -1789,7 +1946,7 @@ return {
   tailIdle,
   dirtyWorktrees: stillDirty.map((r) => ({ issue: r.issue, branch: r.branch, gracefulStop: r.gracefulStop })),
   skipped: skipped.map((s) => ({ issue: s.issue, branch: s.branch, reason: s.reason })),
-  stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note, gracefulStop: s.gracefulStop })),
+  stopped: stopped.map((s) => ({ issue: s.issue, branch: s.branch, status: s.status, note: s.note, gracefulStop: s.gracefulStop, recovery: s.recovery })),
   unstarted,
   tracks: results,
 }

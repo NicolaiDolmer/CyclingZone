@@ -29,24 +29,22 @@ test("ingen formel paa fladen: komponenten viser kun tal, baand og tekst", () =>
   assert.doesNotMatch(src, /recovery|fatigueLoad|injuryFatigueFloor|\b70\b/);
 });
 
-test("wiring: rytterkortet (desktop + telefon) og gitteret faar prognosen", () => {
+test("wiring: rytterkortet og gitteret faar prognosen", () => {
   const page = read("../../pages/TrainingPage.jsx");
   assert.match(page, /forecast=\{renderForecast\(riderId\)\}/);
-  assert.match(page, /forecastFor=\{renderForecast\}/);
-  // #5932: under-fanerne vises naar programmer, felter eller graensen er aaben.
-  assert.match(page, /const programLayout = programsOn \|\| cellsOn \|\| fatigueRulesOn;/);
-  assert.match(page, /programLayout \? renderProgramTab\(\) : renderWeekPlanTab\(\)/);
-  assert.match(read("mobile/TrainingMobileToday.tsx"), /forecast=\{forecastFor \? forecastFor\(selected\.id\) : null\}/);
+  // #5932/#6030: felterne er on for alle, saa Program-fanen har altid under-faner.
+  assert.match(page, /\{renderProgramTab\(\)\}/);
+  assert.doesNotMatch(page, /renderWeekPlanTab|programLayout/);
   assert.match(read("TrainingPlanCard.tsx"), /training-program-cell-locked/);
 });
 
-test("I dag-tabel, egne planer og fanenavn gates paa felt-flaget (samme som motoren)", () => {
+test("I dag-tabellen viser programfeltet og fanen hedder Program (felter on for alle, #6030)", () => {
   const page = read("../../pages/TrainingPage.jsx");
-  // cells=on + katalog=off: tabellen skal vise feltet, ikke ugedagens gamle session.
-  assert.match(page, /if \(cellsOn && column\.state !== "done"\)/);
-  assert.match(page, /!\(cellsOn && isProgramPlan\(riderWeekPlans\[r\.id\]/);
-  assert.match(page, /\{programLayout \? t\("tabs\.program"\) : t\("tabs\.weekplan"\)\}/);
+  // Katalog=off: tabellen skal stadig vise feltet, ikke ugedagens gamle session.
+  assert.match(page, /if \(column\.state !== "done"\) \{\s*const fromProgram = programSessionToday\(/);
+  assert.match(page, /<Tab value="weekplan">\{t\("tabs\.program"\)\}<\/Tab>/);
   assert.doesNotMatch(page, /programsOn && column\.state/);
+  assert.doesNotMatch(page, /\bcellsOn\b/);
 });
 
 test("i18n: EN og DA har de samme prognose-noegler", () => {

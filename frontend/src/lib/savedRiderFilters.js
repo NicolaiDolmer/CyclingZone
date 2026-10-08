@@ -33,11 +33,28 @@ function persist(userId, list) {
   }
 }
 
+function normalizeName(name) {
+  return (name || "").trim().toLocaleLowerCase();
+}
+
+// #6286: hvorfor et navn ikke kan gemmes, eller null. Rækkefølge: tomt navn,
+// loftet nået, dublet (samme navn uden hensyn til store/små bogstaver og mellemrum).
+export function savedFilterNameError(list, name) {
+  const normalized = normalizeName(name);
+  if (!normalized) return "empty";
+  if ((list?.length ?? 0) >= MAX_SAVED_FILTERS) return "limit";
+  if ((list ?? []).some((f) => normalizeName(f?.name) === normalized)) return "duplicate";
+  return null;
+}
+
 // Returnerer den OPDATEREDE liste (kaldere sætter selv React-state fra den).
+// #6286: et dublet-navn gemmer intet (listen returneres uændret). Loftet håndhæves
+// i UI'et (Save-knappen forklarer det); slice'en herunder er kun et sikkerhedsnet.
 export function addSavedFilter(userId, name, filters) {
   const trimmedName = (name || "").trim();
   if (!trimmedName || !userId) return loadSavedFilters(userId);
   const list = loadSavedFilters(userId);
+  if (list.some((f) => normalizeName(f?.name) === normalizeName(trimmedName))) return list;
   const entry = { id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, name: trimmedName, filters };
   const next = [entry, ...list].slice(0, MAX_SAVED_FILTERS);
   persist(userId, next);

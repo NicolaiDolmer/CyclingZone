@@ -95,7 +95,7 @@ function FaqItem({ q, a, defaultOpen }) {
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4">
         <span className="text-[15px] font-medium text-cz-1">{q}</span>
         <PlusIcon
-          className="w-5 h-5 flex-shrink-0 text-cz-accent-t transition-transform duration-200 group-open:rotate-45"
+          className="w-5 h-5 shrink-0 text-cz-accent-t transition-transform duration-200 group-open:rotate-45"
           aria-hidden="true"
         />
       </summary>
@@ -177,11 +177,11 @@ export default function LandingPage() {
               {t("hero.badge")}
             </span>
 
-            <h1 className="mt-6 font-display text-5xl leading-[0.92] tracking-tight text-cz-1 sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 font-display text-5xl leading-[0.92] tracking-tight text-cz-1 sm:text-6xl sm:leading-none lg:text-7xl">
               {t("hero.title")}
             </h1>
 
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-cz-2 sm:text-lg">{t("hero.subtitle")}</p>
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-cz-2 sm:text-lg sm:leading-7">{t("hero.subtitle")}</p>
 
             {/* #1570: spillet er live og tager imod spillere nu → "Opret dit hold"
                 er den primære hero-handling. Discord demoteres til sekundær, og
@@ -267,7 +267,7 @@ export default function LandingPage() {
             <h2 className="mt-4 max-w-3xl font-display text-4xl leading-none tracking-tight text-cz-1 sm:text-5xl">
               {t("different.title")}
             </h2>
-            <p className="mt-5 max-w-2xl border-l-2 border-cz-accent pl-4 text-base leading-relaxed text-cz-1 sm:text-lg">
+            <p className="mt-5 max-w-2xl border-l-2 border-cz-accent pl-4 text-base leading-relaxed text-cz-1 sm:text-lg sm:leading-7">
               {t("different.fairness")}
             </p>
 
@@ -291,7 +291,7 @@ export default function LandingPage() {
                 <h2 className="mt-4 font-display text-4xl leading-none tracking-tight text-cz-1 sm:text-5xl">
                   {t("discord.title")}
                 </h2>
-                <p className="mt-5 text-base leading-relaxed text-cz-2 sm:text-lg">{t("discord.body")}</p>
+                <p className="mt-5 text-base leading-relaxed text-cz-2 sm:text-lg sm:leading-7">{t("discord.body")}</p>
               </div>
               <a
                 href={DISCORD_URL}

@@ -143,9 +143,9 @@ function table(rows) {
 
 async function main() {
   // Sanity: backend oppe?
-  const health = await timedFetch(`${BASE}/health`, {});
+  const health = await timedFetch(`${BASE}/health/ready`, { signal: AbortSignal.timeout(5000) });
   if (health.status !== 200) {
-    console.error(`FEJL: backend svarer ikke på ${BASE}/health (status ${health.status} ${health.error || ""})`);
+    console.error(`FEJL: backend svarer ikke på ${BASE}/health/ready (status ${health.status} ${health.error || ""})`);
     process.exit(1);
   }
 

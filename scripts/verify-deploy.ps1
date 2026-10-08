@@ -7,6 +7,7 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$script:RequiresVercelDeployment = $true
 
 function Resolve-GitPath {
   $gitCommand = Get-Command git -ErrorAction SilentlyContinue
@@ -125,6 +126,20 @@ function Test-DeploymentStatus {
     Railway = "railway"
   }
 
+  # #6202: use the same conservative input classifier as the Vercel filter.
+  # Failed/empty classifier output never suppresses a required deployment.
+  $requiresVercel = $true
+  try {
+    $classification = & node (Join-Path $PSScriptRoot 'frontend-deployment-needed.mjs') $script:Sha
+    if ($LASTEXITCODE -ne 0) { throw 'classifier failed' }
+    $decision = ($classification -join "`n") | ConvertFrom-Json
+    if ($decision.required -isnot [bool]) { throw 'classifier returned unknown decision' }
+    $requiresVercel = $decision.required
+  } catch {
+    Write-Warning 'Frontend deployment classification unavailable: require Vercel.'
+  }
+  $script:RequiresVercelDeployment = $requiresVercel
+  if (-not $requiresVercel) { $needed.Remove('Vercel') }
   $messages = @()
   $allOk = $true
   $anyPending = $false
@@ -179,9 +194,9 @@ function Invoke-WebRequestAllowError {
 }
 
 function Test-LiveSmoke {
-  $health = Invoke-WebRequest -Uri "$BackendUrl/health" -UseBasicParsing -TimeoutSec 30
-  if ($health.StatusCode -ne 200) {
-    throw "Backend health returnerede $($health.StatusCode)."
+  & node (Join-Path $PSScriptRoot '..\backend\scripts\checkBackendReadiness.ts') $BackendUrl
+  if ($LASTEXITCODE -ne 0) {
+    throw "Backend /health/ready fejlede efter afgraensede retries."
   }
 
   $auctions = Invoke-WebRequestAllowError -Uri "$BackendUrl/api/auctions" -TimeoutSec 30
@@ -194,12 +209,16 @@ function Test-LiveSmoke {
     throw "Frontend alias returnerede uventet status $($frontend.StatusCode)."
   }
 
-  Write-Host "[ok] Backend /health = 200"
+  Write-Host "[ok] Backend /health/ready = 200 (DB-readiness)"
   Write-Host "[ok] Backend /api/auctions uden token = 401"
   Write-Host "[ok] Frontend alias svarer = $($frontend.StatusCode)"
 }
 
 function Test-SentrySourceMaps {
+  if (-not $script:RequiresVercelDeployment) {
+    Write-Host "[ok] No new frontend build required; no new frontend source maps required."
+    return
+  }
   $authToken = $env:SENTRY_AUTH_TOKEN
   $org = $env:SENTRY_ORG
   $project = $env:SENTRY_PROJECT

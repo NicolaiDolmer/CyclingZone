@@ -52,6 +52,17 @@ ikke en.**
 
 ## 1. Grundreglen: pull, ikke push
 
+**#5860, generatorens bindinger:** Sweepen læser kanoniske `race_entries.binding_span`
+pr. kandidat og sæson, også hos tidligere hold og i andre puljer/trupper.
+Den læser desuden præcise relevante dage i `race_day_participation`; completed
+og slettede udtagelser frigiver aldrig faktisk deltagelse. Egne regenererbare
+enheder fordeles fortsat samlet; manuelle og frosne udtagelser bevares.
+Samme bindinger gælder ved specialrolle-retry. En læsefejl stopper før skrivning.
+Et bindingsspænd læses én gang pr. entry, ikke én gang pr. optaget dag.
+Ingen flag, kalender, migration eller historiske resultater ændres.
+Kode: `raceEntryGenerator.js` + `raceEntryGeneratorBindings.ts`.
+Separat: bulk-regenerate-routens udtagelsesgrundlag dækkes ikke af dette preload.
+
 > Ejer 25/8 2026, ordret i `raceEntryGenerator.js:209-210`:
 > *"Vil du være sød at lade være med hele tiden at lave nye udtagelser på vegne af spillerne?
 > ... De vil hellere selv udtage."*

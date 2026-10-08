@@ -14,6 +14,8 @@ import { Flag } from "../components/Flag";
 import {
   FlagIcon,
   ArrowUpIcon,
+  ArrowDownIcon,
+  Portal,
   PageLoader,
   Button,
   CategoryTag,
@@ -35,6 +37,7 @@ import {
 } from "../components/ui";
 import { WRAP, SCROLLER } from "../components/ui/dataTableStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
+import { tooltipClass } from "../components/ui/tooltipStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
 import { buildRaceRecap } from "../lib/raceRecap.js";
@@ -60,7 +63,7 @@ import {
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { historyForStage, participationForResult, participationFlagsForResult } from "../lib/raceParticipationMarkers.ts";
+import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -73,6 +76,9 @@ import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
+import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
+import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
+import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -196,27 +202,102 @@ function riderName(res) {
   return res.rider_name || "—";
 }
 
+// #6185: ikon-FORM + tone pr. tilstand (klassenavne ordret, så Tailwinds scanner finder dem).
+const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon };
+const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger" };
+
+// #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, et andet tryk på samme markør skjuler den, hover virker
+// på desktop. Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal
+// med fixed position (følger markøren ved scroll/resize): resultattabellens
+// scroller klipper ellers boblen (mobil, sidste række).
+// preventDefault stopper at trykket navigerer via RiderLink-ankeret markøren ligger i.
+// #6185 review: markøren ligger INDE i ankeret, så den er bevidst IKKE fokuserbar
+// (ingen tabIndex: et fokuserbart element i et link er nested-interactive).
+// Tilstanden når skærmlæsere via linkets navn (role="img" + aria-label).
+// Trykfladen er 24 px (p-[4.5px] om 15 px-ikonet); den negative margin æder den
+// ekstra polstring, så layout og udseende er uændret (samme 19 px-boks som før).
+const MARKER_HIT_INSET = 2.5;
+function MarkerTip({ label, className = "", children }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  const show = useCallback(() => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect) return;
+    const maxWidth = Math.min(224, window.innerWidth - 16);
+    const left = rect.left + MARKER_HIT_INSET;
+    setPos({ left: Math.max(8, Math.min(left, window.innerWidth - maxWidth - 8)), top: rect.bottom - MARKER_HIT_INSET, maxWidth });
+  }, []);
+  const hide = useCallback(() => setPos(null), []);
+  // #6185 review: hover (kun mus) viser; et tryk skifter (andet tryk paa samme
+  // maerke lukker). Pointer-typen skelner, saa touch-browserens emulerede
+  // mouseenter ikke aabner boblen lige foer trykket lukker den igen.
+  const lastPointerRef = useRef("mouse");
+  const onPointerEnter = useCallback((e) => { if (e.pointerType === "mouse") show(); }, [show]);
+  const onPointerLeave = useCallback((e) => { if (e.pointerType === "mouse") hide(); }, [hide]);
+  const onClick = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (lastPointerRef.current === "mouse" || !pos) show(); else hide();
+  }, [pos, show, hide]);
+  useEffect(() => {
+    if (!pos) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") hide(); };
+    // Et tryk et andet sted lukker boblen (markøren kan ikke miste fokus, den har intet).
+    const onPointerDown = (e) => { if (!ref.current?.contains(e.target)) hide(); };
+    window.addEventListener("scroll", show, true);
+    window.addEventListener("resize", show);
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("scroll", show, true);
+      window.removeEventListener("resize", show);
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [pos, show, hide]);
+  return (
+    <span className="ms-1 inline-flex align-middle">
+      <span ref={ref} role="img" aria-label={label}
+        onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}
+        onPointerDown={(e) => { lastPointerRef.current = e.pointerType || "mouse"; }}
+        onClick={onClick}
+        className={`m-[-2.5px] inline-flex cursor-help p-[4.5px] ${className}`}>
+        {children}
+      </span>
+      {pos && (
+        <Portal>
+          <span role="tooltip" className={`${tooltipClass({ side: "bottom" })} whitespace-normal`}
+            /* #6271: Tailwind 4 writes `-translate-x-1/2` as the `translate`
+               property, so `transform: none` alone no longer cancels it. */
+            style={{ position: "fixed", left: pos.left, top: pos.top, right: "auto", bottom: "auto", transform: "none", translate: "none", maxWidth: pos.maxWidth, opacity: 1 }}>
+            {label}
+          </span>
+        </Portal>
+      )}
+    </span>
+  );
+}
+
 // #1499 Deskriptiv udbruds-markør: vises kun for ryttere der var i (morgen-)udbruddet.
-// Holdt hjem (survived) = accent-toned; indhentet (caught) = dæmpet. Tooltip via title.
+// #6185: holdt hjem = accent-flag; indhentet = dæmpet flag; sat af = rød pil ned.
 function BreakawayMarker({ result, t, history = null }) {
   const participation = participationForResult(result, history);
   if (!participation) return null;
   const markerLabel = t(participation.verified ? "detail.breakaway.label" : "detail.breakaway.legacyLabel");
-  const label = participation.caught ? t("detail.breakaway.caught")
-    : participation.verified && !participation.survived ? t("detail.breakaway.participated")
-    : t("detail.breakaway.survived");
+  // #6185: tre tilstande (indhentet / sat af / holdt hjem) — se breakawayMarkerState.
+  const markerState = breakawayMarkerState(participation);
+  const label = t(markerState.labelKey);
+  const StateIcon = BREAKAWAY_MARKER_ICON[markerState.icon] ?? FlagIcon;
   return (
     <>
       {participation.morning && (
-        <span className={`ms-1 inline-flex align-middle ${participation.caught || (participation.verified && !participation.survived) ? "text-cz-3" : "text-cz-accent-t"}`}
-          title={`${markerLabel}: ${label}`} aria-label={`${markerLabel}: ${label}`}>
-          <FlagIcon size={13} aria-hidden="true" />
-        </span>
+        <MarkerTip label={`${markerLabel}: ${label}`} className={BREAKAWAY_MARKER_TONE[markerState.tone]}>
+          <StateIcon size={15} aria-hidden="true" />
+        </MarkerTip>
       )}
       {participation.laterAttack && (
-        <span className="ms-1 inline-flex align-middle text-cz-2" title={t("detail.breakaway.laterAttack")} aria-label={t("detail.breakaway.laterAttack")}>
-          <ArrowUpIcon size={13} aria-hidden="true" />
-        </span>
+        <MarkerTip label={t("detail.breakaway.laterAttack")} className="text-cz-2">
+          <ArrowUpIcon size={15} aria-hidden="true" />
+        </MarkerTip>
       )}
     </>
   );
@@ -233,8 +314,8 @@ function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
       value={value}
       onChange={e => onChange(e.target.value)}
       aria-label={t("detail.teamFilter.label")}
-      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-[14rem] cursor-pointer
-        focus:outline-none focus:ring-1 focus:ring-cz-accent
+      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-56 cursor-pointer
+        focus:outline-hidden focus:ring-1 focus:ring-cz-accent
         ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}`}>
       <option value="all">{t("detail.teamFilter.all")}</option>
       {hasMyTeam && <option value="mine">{t("detail.teamFilter.mine")}</option>}
@@ -267,7 +348,7 @@ function countdownText(date, nowMs, t) {
 function HeroStatBlock({ label, value, sub, last = false }) {
   return (
     <div className={`shrink-0 ${last ? "" : "pe-6 me-6 border-e border-cz-border"}`}>
-      <div className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</div>
+      <div className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</div>
       <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums whitespace-nowrap">{value}</div>
       {sub && <div className="font-data text-2xs text-cz-3 mt-0.5 whitespace-nowrap">{sub}</div>}
     </div>
@@ -562,7 +643,7 @@ export default function RaceDetailPage() {
 
     setMyTeamId(myTeamId);
     setRace(raceRow);
-    setResults(rows);
+    setResults(withFinishSafetyNet(rows)); // #6185
     setStagePointsRows(stagePointsRowsResult);
     // #4581: nulstiller (ikke tilføjer til) det tidligere loaded-set — et raceId-skift
     // er et helt nyt løb, gamle stage-numre fra det forrige løb må ikke overleve.
@@ -598,7 +679,7 @@ export default function RaceDetailPage() {
       })
       .then((newRows) => {
         if (cancelled) return;
-        if (newRows.length) setResults((prev) => [...prev, ...newRows]);
+        if (newRows.length) setResults((prev) => [...prev, ...withFinishSafetyNet(newRows)]); // #6185
         setLoadedStages((prev) => new Set(prev).add(n));
       })
       .finally(() => {
@@ -629,8 +710,12 @@ export default function RaceDetailPage() {
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
   const { timeline: oneDayTimeline } = useStageTimeline(race?.race_type === "single" && results.length ? raceId : null, 1);
-  const oneDayParticipation = useMemo(() => historyForStage(oneDayTimeline, 1,
-    results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean)), [oneDayTimeline, results]);
+  const oneDayParticipation = useMemo(() => {
+    const dayRows = results.filter(row => row.result_type === "gc" || row.result_type === "stage");
+    // #6185: "ikke-udbryder foran" efter etape-placeringen, som backfillen (gc kun hvis der ingen etape-raekker er).
+    const stageRows = dayRows.filter(row => row.result_type === "stage");
+    return historyForStage(oneDayTimeline, 1, dayRows.map(row => row.rider_id).filter(Boolean), stageRows.length ? stageRows : dayRows);
+  }, [oneDayTimeline, results]);
   const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
     row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
 
@@ -998,7 +1083,7 @@ export default function RaceDetailPage() {
         <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
             <div className="min-w-0">
-              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{race.name}</h1>
+              <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{race.name}</h1>
               <div className="flex items-center gap-2 flex-wrap mt-2.5">
                 {race.race_class && <CategoryTag>{t(`classOption.${race.race_class}`)}</CategoryTag>}
                 <CategoryTag>{race.race_type === "stage_race" ? t("raceType.stageRace") : t("raceType.oneDayShort")}</CategoryTag>
@@ -1198,7 +1283,7 @@ export default function RaceDetailPage() {
                   ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                      raceId={race.id} raceName={race.name} passages={passages} t={t} />
+                      raceId={race.id} raceName={race.name} passages={passages} stageRoles={stageRoles} t={t} />
                   : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
@@ -1230,7 +1315,7 @@ export default function RaceDetailPage() {
                 <SectionStack>
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
-                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} />
+                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} />
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
                   <DnfSection incidents={incidents} scopeType="overall" t={t} />
                 </SectionStack>
@@ -1247,11 +1332,11 @@ export default function RaceDetailPage() {
 // præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
 // S4 (#1176): incidents er optional — [] (flag off/tabel ikke migreret) giver
 // samme output som før S4 (ingen abandon/notableCrash-momenter).
-function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null }) {
+function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null }) {
   const { t } = useTranslation("races");
   const moments = useMemo(
-    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType }),
-    [results, scopeType, stageNumber, incidents, profileType],
+    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType, timelineEvents, teamNameById }),
+    [results, scopeType, stageNumber, incidents, profileType, timelineEvents, teamNameById],
   );
   if (!moments.length) return null;
   return (
@@ -1343,10 +1428,10 @@ function beatParamsFor(moment, { riderName, teamName }) {
 // etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
 // spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
 // personalisering — ingen ny persistering, ingen data forlader klienten.
-function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, profileType = null, t }) {
+function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, t }) {
   const report = useMemo(
-    () => buildRaceReport({ raceId, stageNumber, moments }),
-    [raceId, stageNumber, moments],
+    () => buildRaceReport({ raceId, stageNumber, moments, timelineEvents, teamNameById }),
+    [raceId, stageNumber, moments, timelineEvents, teamNameById],
   );
 
   const riderName = (id) => (id ? riderNameById.get(id) || "—" : "—");
@@ -1376,7 +1461,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
   }, [results, moments, myTeamId, stageNumber, report]);
 
   if (!report) {
-    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} />;
+    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} timelineEvents={timelineEvents} teamNameById={teamNameById} />;
   }
 
   const ctx = { riderName, teamName, raceName };
@@ -1401,7 +1486,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
         <ul className="space-y-1.5 mt-2">
           {report.beats.map((b) => (
             <li key={b.moment.moment_key} className="text-cz-1 text-sm leading-relaxed">
-              {t(`detail.report.beat.${b.beatKey}.v${b.variant + 1}`, beatParamsFor(b.moment, ctx))}
+              {t(`detail.report.beat.${b.beatKey}.v${b.variant + 1}`, b.params ?? beatParamsFor(b.moment, ctx))}
             </li>
           ))}
         </ul>
@@ -1628,13 +1713,30 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, stageRoles = null, t }) {
   const [classTab, setClassTab] = useState("stage");
+  // #6080: egne ryttere + egne indsats-ordrer til mellemtider/tidstab.
+  const ownRiderIds = useMemo(() => ownRiderIdsForStage(results, stage, myOwnTeamId), [results, stage, myOwnTeamId]);
   const [finalKmOpen, setFinalKmOpen] = useState(false);
 
   const { timeline } = useStageTimeline(raceId, stage);
-  const participationHistory = useMemo(() => historyForStage(timeline, stage,
-    (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage).map((row) => row.rider_id).filter(Boolean)), [timeline, stage, results]);
+  // v4: holdets ordre-effort vinder over stage-roles (samme forrang som raceRunner).
+  const isV4Timeline = (timeline?.timeline_version ?? 1) >= 2 && ownRiderIds.length > 0;
+  const [teamOrders, setTeamOrders] = useState(null);
+  useEffect(() => {
+    if (!isV4Timeline) return undefined;
+    let live = true;
+    fetchTeamOrders({ raceId }).then((o) => { if (live) setTeamOrders(o); }).catch(() => {});
+    return () => { live = false; };
+  }, [raceId, isV4Timeline]);
+  const effortByRider = useMemo(
+    () => effectiveEffortByRider(stageRoles, teamOrders, stage, { v4: isV4Timeline }),
+    [stageRoles, teamOrders, stage, isV4Timeline],
+  );
+  const participationHistory = useMemo(() => {
+    const stageRows = (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage);
+    return historyForStage(timeline, stage, stageRows.map((row) => row.rider_id).filter(Boolean), stageRows); // #6185
+  }, [timeline, stage, results]);
   const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {
     if (row.result_type !== "stage" || row.stage_number !== stage) return row;
     return { ...row, ...participationFlagsForResult(row, participationHistory) };
@@ -1742,6 +1844,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             finalKmAvailable={finalKmPlayback.available}
             finalKmOpen={finalKmOpen}
             onToggleFinalKm={() => setFinalKmOpen(o => !o)}
+            ownRiderIds={ownRiderIds} effortByRider={effortByRider}
           />
           {finalKmOpen && finalKmPlayback.available && (
             <Suspense fallback={null}>
@@ -1751,9 +1854,10 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
           <RaceReportPanel
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={reportResults} incidents={incidents} myTeamId={myTeamId}
-            riderNameById={riderNameById} teamNameById={teamNameById}
+            riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
             profileType={profile?.profile_type ?? null} t={t}
           />
+          <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
           {jerseys.length > 0 && (

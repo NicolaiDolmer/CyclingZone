@@ -34,7 +34,7 @@ export default function MentionText({ body }) {
           href={segment.href}
           target="_blank"
           rel="noopener noreferrer nofollow ugc"
-          className="font-medium text-cz-accent-t transition-colors hover:underline [overflow-wrap:anywhere]"
+          className="font-medium text-cz-accent-t transition-colors hover:underline wrap-anywhere"
         >
           {segment.value}
         </a>

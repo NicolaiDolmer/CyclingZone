@@ -13,11 +13,10 @@
 //   2. siden selv scroller, og sidste raekke kan naas ved at scrolle SIDEN,
 //   3. portraet: overskriften foelger siden (sticky mod skaermens top),
 //   4. Mit hold > Evner: den yderste evne-kolonne har luft til kortets kant,
-//   5. traeningssiden (D-047-grenen, flaget training_mobile_table er slaaet
-//      fra i mocken) har heller ingen boks.
+//   (5. traeningssidens D-047-tabel er slettet med flaget, #6030.)
 // Siden kan aldrig scrolles vandret.
 import { test, expect } from "./e2e-base.js";
-import { corsHeaders, installNetworkMocks, json, login, stabilizePage, TEST_TEAM } from "./fixtures.js";
+import { installNetworkMocks, login, stabilizePage } from "./fixtures.js";
 import { openStandings, TEAMS } from "./lib/standings-mobile-mock.ts";
 import type { Page } from "@playwright/test";
 
@@ -115,49 +114,6 @@ test.describe("Mit hold > Evner", () => {
         return [lastTh, lastTd].map((el) => (el ? parseFloat(getComputedStyle(el).paddingRight) : NaN));
       });
       for (const pad of pads) expect(pad).toBeGreaterThanOrEqual(8);
-    });
-  }
-});
-
-// Traeningssiden, D-047-grenen (flaget training_mobile_table er IKKE sat i
-// svaret — samme svar som en spiller der ikke er beta-tester faar, jf.
-// 5124-training-mobile.spec.js). Den nye mobil-tabel (#3643) er ikke rort.
-const TRAINING_ME = {
-  enabled: true,
-  betaTester: true,
-  teamId: TEST_TEAM.id,
-  slots: { total: null, used: 2, remaining: null },
-  focuses: ["vo2max", "threshold", "sprint", "endurance", "technique", "aero"],
-  intensities: ["easy", "normal", "hard", "rest"],
-  plans: { "rider-1": { focus: "vo2max", intensity: "hard" } },
-  condition: { "rider-1": { form: 75, fatigue: 20, injured_until: null, risk: 0 } },
-  progress: {},
-  capped: {},
-  trainability: {},
-  smartDefaultFocus: {},
-  weekPlan: null,
-  riderWeekPlans: {},
-  racingToday: {},
-  todayRun: null,
-};
-
-test.describe("traeningssiden", () => {
-  for (const vp of VIEWPORTS) {
-    test(`ingen boks om roster-tabellen (${vp.name})`, async ({ page }) => {
-      await stabilizePage(page);
-      await installNetworkMocks(page);
-      await page.route("**/api/training/me**", (route) => {
-        const request = route.request();
-        if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
-        return json(route, TRAINING_ME);
-      });
-      await login(page);
-      await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto("/training");
-      await page.locator("table[data-sortable]").first().waitFor();
-
-      expect(await verticalBoxes(page, "table[data-sortable]")).toEqual([]);
-      expect(await horizontalPageOverflow(page)).toBeLessThanOrEqual(1);
     });
   }
 });

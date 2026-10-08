@@ -19,7 +19,7 @@ Brug disse som nuværende reference, indtil setup ændres:
 - Frontend projekt: `cycling-zone` på Vercel
 - Frontend production alias: `https://cycling-zone-git-main-nicolai-dolmers-projects.vercel.app`
 - Backend production URL: `https://cyclingzone-production.up.railway.app`
-- Backend health route: `GET /health`
+- Backend deploy-liveness: `GET /health` (ingen DB); DB-smoke: `GET /health/ready`
 - Backend auth-check route: `GET /api/auctions` bør returnere `401 Unauthorized` uden token
 
 Hvis Vercel-projekt, Railway-service eller domæner ændres, skal denne fil opdateres i samme arbejdsgang.
@@ -142,8 +142,8 @@ Source maps uploades kun når alle tre build-secrets (`SENTRY_AUTH_TOKEN`, `SENT
 4. Kør `pwsh -File scripts/verify-deploy.ps1`
    - Scriptet bekræfter at `HEAD` er `origin/main`
    - Poller GitHub Actions for den aktuelle commit
-   - Poller GitHub deployments for Vercel + Railway success
-   - Smoke-tester backend `/health` og `/api/auctions`
+   - Poller GitHub deployments for Railway success; Vercel success kræves ved frontend/byggeinputs eller ukendt sammenligningsgrundlag (#6202). Kendte uafhængige ændringer beholder seneste frontend-deploy
+   - Smoke-tester backend `/health/ready` med afgrænsede retries og `/api/auctions`
    - Tjekker at frontend-aliaset svarer (Vercel kan være auth-protected)
 
 Denne fil beskriver den nuværende praksis. Hvis release-flowet flyttes væk fra GitHub-connected auto-deploys, er denne fil stale og skal opdateres.
@@ -179,7 +179,9 @@ Brug `-Sha <commit>` hvis en ældre production-commit skal verificeres eksplicit
 - Bekræft at frontend-build job i GitHub Actions er grønt for samme commit
 
 ### Backend
-- `GET https://cyclingzone-production.up.railway.app/health` bør returnere succes eller app-specifik status
+- `GET https://cyclingzone-production.up.railway.app/health` giver 200 for en levende proces, også ved DB-udfald.
+- `GET https://cyclingzone-production.up.railway.app/health/ready` skal give 200 med `status=ok, db=ok`; DB-fejl/timeouts giver 503.
+- Health-kontrakten er beskrevet i `ARCHITECTURE.md`. CI og lokalt deploy-tjek deler samme readiness-probe, højst 55s inklusive retries. Eksterne DB-monitorer på `/health` skal flyttes til `/health/ready`; deres aktuelle konfiguration er ikke runtime-verificeret i repoet.
 - `GET https://cyclingzone-production.up.railway.app/api/auctions` uden auth bør returnere `401 Unauthorized`
 - Hvis en auth-gatet route returnerer `404` eller `5xx`, er deploy ikke godkendt
 - Bekræft at backend-test job i GitHub Actions er grønt for samme commit

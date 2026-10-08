@@ -21,8 +21,9 @@ test("touch-targets er mindst 40 px og ingen piller", () => {
   assert.doesNotMatch(row, /rounded-full|rounded-cz-pill/);
 });
 
-test("siden kobler raekken bag beta (cellsOn) med desktoppens QUICK_DAY_TYPES", () => {
-  assert.match(page, /cellsOn \? \(\s*<TodayRowsMobile/);
+test("siden kobler raekken (felter on for alle, #6030) med desktoppens QUICK_DAY_TYPES", () => {
+  assert.match(page, /\) : \(\s*<TodayRowsMobile/);
+  assert.doesNotMatch(page, /TrainingMobileToday/);
   assert.match(page, /choices=\{QUICK_DAY_TYPES\}/);
   assert.match(page, /onChoose=\{handleOneTapChoice\}/);
   assert.match(page, /handleDayQuickChange\(riderId, choice, planFor\(riderId\)\?\.focus\)/);

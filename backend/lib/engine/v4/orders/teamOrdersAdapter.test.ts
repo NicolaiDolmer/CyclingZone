@@ -295,9 +295,9 @@ test("#5571: et AI-hold faar M14's ordre — jagt, beskyttet kaptajn, hjaelper v
   const ai = plan.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics")!;
   assert.equal(params(ai).breakaway_stance, "chase");
   const byRider = new Map(params(ai).riders.map((r) => [r.rider_id as string, r]));
-  assert.equal(byRider.get("ai-cap")!.effort, "protect");
+  assert.equal(byRider.get("ai-cap")!.effort, "normal"); // #6055: kaptajnen gemmer sig til finalen
   assert.equal(byRider.get("ai-dom")!.effort, "protect");
-  assert.equal(plan.aiEffortByRider.get("ai-cap"), "protect");
+  assert.equal(plan.aiEffortByRider.get("ai-cap"), "normal");
 });
 
 test("#5571: aldrig autopilot for mennesker — et menneskehold beholder rollernes standard", () => {
@@ -341,8 +341,8 @@ test("#5571: etapeloeb i bjergene — AI-sprinterne koerer grupetto og er ude af
   const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context });
   assert.equal(plan.aiEffortByRider.get("ai-spr"), "grupetto");
   assert.equal(plan.aiEffortByRider.get("ai-train"), "grupetto");
-  // Sidste bjergetape i loebet: kaptajnen gaar alt ud.
-  assert.equal(plan.aiEffortByRider.get("ai-cap"), "all_out");
+  // Sidste bjergetape i loebet: kaptajnen gemmer sig til finalen (#6055).
+  assert.equal(plan.aiEffortByRider.get("ai-cap"), "normal");
   const aiTrain = plan.orders.find((o) => o.team_id === "ai" && o.kind === "leadout");
   assert.deepEqual(aiTrain?.params?.leadout_rider_ids, ["ai-dom"]);
   // Hele planen bestaar motorens egne parsere + kontrakten.
@@ -354,4 +354,46 @@ test("#5571: etapeloeb i bjergene — AI-sprinterne koerer grupetto og er ude af
   }
   assert.equal(parseBreakawayOrders(plan.orders).length, plan.orders.filter((x) => x.kind === "team_tactics").length);
   assert.ok(parseLeadoutOrders(plan.orders).length >= 1);
+});
+
+// ── #6097: regel-revisionen naar M14 kun under orders_gc_v2 ─────────────────
+
+/** Et svagt AI-hold (kaptajnen er outsider -> let_go) i et felt af staerkere klatrere. */
+function weakAiField() {
+  const ai = [
+    { team_id: "ai", rider_id: "ai-cap", role: "captain", is_ai: true, abilities: ab({ climbing: 10 }) },
+    { team_id: "ai", rider_id: "ai-dom", role: "helper", is_ai: true, abilities: ab({ climbing: 40, aggression: 60 }) },
+    { team_id: "ai", rider_id: "ai-dom2", role: "helper", is_ai: true, abilities: ab({ climbing: 30, aggression: 30 }) },
+  ];
+  const others = Array.from({ length: 30 }, (_, i) => ({
+    team_id: `o${String(i).padStart(2, "0")}`,
+    rider_id: `o${i}`,
+    role: "captain",
+    abilities: ab({ climbing: 30 + i, aggression: 10 }),
+  }));
+  return [...ai, ...others];
+}
+
+function aiTryBreak(plan: ReturnType<typeof buildStageOrderPlan>) {
+  const ai = plan.orders.find((o) => o.team_id === "ai" && o.kind === "team_tactics")!;
+  return params(ai).riders.filter((r) => r.try_break === true).map((r) => r.rider_id as string);
+}
+
+test("#6097: under orders_gc_v2 sender et let_go-AI-hold sin bedste hjaelper i udbruddet", () => {
+  const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: weakAiField(), context: { ...MOUNTAIN_CTX, rules_revision: "orders_gc_v2" } });
+  assert.deepEqual(aiTryBreak(plan), ["ai-dom"]);
+});
+
+test("#6097: uden revision eller under orders_gc_v1 er AI-ordren uaendret", () => {
+  const without = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: weakAiField(), context: MOUNTAIN_CTX });
+  assert.deepEqual(aiTryBreak(without), []);
+  const v1 = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: weakAiField(), context: { ...MOUNTAIN_CTX, rules_revision: "orders_gc_v1" } });
+  assert.deepEqual(v1, without);
+});
+
+test("#6097: menneskeholdenes ordrer roeres ikke af orders_gc_v2", () => {
+  const ctx = { ...MOUNTAIN_CTX, rules_revision: "orders_gc_v2" };
+  const v2 = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: ctx });
+  const before = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: MOUNTAIN_CTX });
+  assert.deepEqual(v2.orders.filter((o) => o.team_id !== "ai"), before.orders.filter((o) => o.team_id !== "ai"));
 });

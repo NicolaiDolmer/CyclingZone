@@ -14,11 +14,42 @@ node scripts/codex-wave.mjs plan.json --dry-run
 node scripts/codex-wave.mjs plan.json --run
 ```
 
-Planen indeholder `lanes` (default 2, maks 4) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `ownNodeModules` og `checkedMergedPrs`. Ingen model tilsidesaettes automatisk. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
+Planen indeholder `lanes` (heltal 1-4; udeladt bevarer default 2) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `reviewerModel`, `reviewerEffort`, `ownNodeModules` og `checkedMergedPrs`. Nye planer vaelger `lanes` eksplicit efter uafhaengige spor og faelles kapacitet; fire er et loft, ikke et maal. Ugyldige lane-tal/model-felttyper afvises foer admission. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
+
+**Rollespecifikke modeller (#605):** `model`/`effort` gaelder worker, fixer og permission-probe. Reviewer arver dem medmindre `reviewerModel`/`reviewerEffort` er angivet. Et eksplicit `reviewerModel` uden `reviewerEffort` sender ingen effort-override til CLI; byggerens effort overfoeres ikke til den valgte reviewer-model. Eksempel paa nye spor: `"model":"gpt-6.1-sol", "effort":"medium", "reviewerModel":"gpt-6-astra", "reviewerEffort":"high"`. Ingen global model aendres, og tilgaengelighed kontrolleres inden en rigtig boelge.
+
+Dry-run og `report.json` indeholder `execution`: `requestedLanes`, faktisk planlagt `lanes` (hoejst antal spor), `laneSource` (`explicit`/`default`), `verifyMax` og model/effort-anmodninger pr. rolle. `null` betyder ingen CLI-override, ikke en paastand om den faktisk anvendte model. Feltet maaler hverken realiseret samtidighed eller produktivitetsgevinst. Rapporten er lokal runtime-evidens; publicer den ufølsomme opsummering paa issuet efter [pilotkontrakten](CODEX_WORKFLOWS.md#pilot-næste-fem-egnede-godkendte-opgaver).
+
+Paa Windows finder runneren alle `codex`-kommandoer paa PATH og foretraekker desktop-appens `codex.exe` under `%LOCALAPPDATA%/OpenAI/Codex/bin/`, selv hvis en npm-shim kommer foerst. Uden den app-binary bevares PATH-fallback; PowerShell-shims startes via `pwsh -File`. Version/hash og modelindstillinger pins eller aendres ikke. Afproev valg og `--version` foer en rigtig boelge ved CLI-problemer. Planen fra 5/10 har eksplicit fire laner og sportitler; det udvider ingen filmandater og giver ikke lov til at genkoere spor med eksisterende PR/worktree.
 
 Runneren optager planen under den faelles boelgelaas, opretter worktrees sekventielt via `new-worktree.ps1`, genererer briefs via `make-wave-brief.mjs` og starter en CLI-proces pr. worker med eget cwd. Reviewer er en ny proces i read-only sandbox. Et blokerende fund giver en afgraenset rettelsesrunde i samme worktree og endnu et friskt review. Uafklarede fund efter den runde afleveres som `changes_requested`.
 
+**Git-metadata (#6214):** Worker/fixer bruger CLI'ens `--approve-for-me`, som
+bevarer workspace-write og giver automatisk review af specifikke nødvendige
+kommandoer ved en sandbox-grænse. Det erstatter `--sandbox workspace-write`;
+CLI'en afviser begge flag sammen. Reviewer/undersøgelse forbliver read-only.
+Der gives ingen blanketadgang til hovedcheckoutets `.git`. Efter hvert setup
+skal en fast permission-probe skabe/slette egne markører i privat Git-dir,
+object-store og eget branch-ref-navn og aflevere et matchende lokalt bevis,
+før nogen implementerings-worker startes. Afvist/manglende bevis stopper batchen.
+Bevarede worktrees genstartes ikke med ny `--run`: mål branch/WIP/PR, observer
+den gamle writer som terminal, og gentag proben før ejerens afgrænsede recovery.
+
 Tunge tests skal stadig wrappes i `verify-lock.ps1 -Max 2`; wrapperen finder hovedrepoet via git-common-dir. Frys beregnes med `wave-freeze.mjs` ud fra observeret branch-aktivitet. Afbrudte eller fejlede spor bliver aldrig meldt klar. Dirty worktrees, upushet arbejde og private proceslogs bevares til recovery; runneren resetter, stasher eller sletter dem ikke.
+
+**Runtime-fordeling (#6226):** `verify-lock.ps1 -Runtime codex|claude|manual` registrerer
+runtime/worktree i plads- og ventefiler; `-Status` viser ogsaa pladsens alder.
+Codex-runneren sætter altid `CZ_VERIFY_RUNTIME=codex` på child-processer, også
+hvis forælderens runtime er Claude. Manuelle Codex-kald bruger `-Runtime codex`;
+ejerens terminal kan bruge `-Runtime manual`. Ingen ukendt proces gættes at være ejeren.
+Runtime kan ellers arves via `CZ_VERIFY_RUNTIME` eller det kendte agentmiljø.
+Hver kendt runtime kan bruge to alene, men nye optag er maks
+een pr. runtime naar en anden runtime koerer eller venter. Bølgens deklarerede
+runtime har køprioritet blandt berettigede ventere; kørende arbejde afbrydes ikke.
+Atomisk admission bruger en vedvarende file-lock. Ukendt/legacy runtime behandles
+konservativt; blandede gamle wrappers giver ingen ny runtime-garanti før de er
+afsluttet/opgraderet. Nested verifikation i samme pladsmappe fejler straks med 75.
+Metadata er koordinationskontrol under samme OS-bruger, ikke en sikkerheds-ACL.
 
 | Egenskab | Haandhaevelse og graense |
 |---|---|
@@ -282,6 +313,16 @@ Eskalering ved haandholdt opfoelgning: 30 min uden push -> krav om status og oej
 | Reviewer | 30 min, **opus** | Praecis **eet** automatisk gen-spawn foer sporet meldes uden review. Et blokerende data-/skema-fund uden opslag i `database/schema-snapshot.json`, en read-only `SELECT ... FROM` eller fil:linje fra diffen nedgraderes til bemaerkning (#5567, #5602) |
 | Draft-PR / push | 30 min / 15 min | Uaendret - brief-generatoren skriver dem ind i hver lane |
 
+**Terminal API-fejl (#6227):** En afsluttet builder med en entydig API 529/5xx-
+fejl kan genoptages automatisk een gang i samme worktree og branch. En timeout
+uden svar kraever eksplicit terminal-bevis; et udloebet lokalt ventevindue
+starter aldrig en ekstra writer. Genoptagelsen beholder det oprindelige
+tidsbudget og det normale uafhaengige review. WIP, eksisterende PR og pushes
+maales foer videre arbejde; der resettes ikke. Log og sporrapport viser aarsag,
+forsog og udfald. En anden terminal fejl giver ingen tredje builder.
+Et afsluttet resultat under en pre-cap frys-probe behandles foer probens gamle
+snapshot kan stoppe sporet; en uafsluttet builder ved hard cap genstartes ikke.
+
 Maalingen sker via en kort read-only probe-agent i worktreet (`git log -1 --format=%ct`, `git status --porcelain`, `git rev-list --count @{u}..HEAD`), som koerer `node scripts/wave-freeze.mjs` for selve dommen. Regelen er ren, testet kode - [`scripts/wave-freeze.mjs`](../scripts/wave-freeze.mjs) med [`scripts/wave-freeze.test.mjs`](../scripts/wave-freeze.test.mjs); `wave.js` spejler konstanterne (workflow-scripts kan ikke importere), og testen fejler hvis de to drifter fra hinanden.
 
 Kan branchen ikke maales, doemmes der **frys** - konservativt: en frossen agent holder sin plads i samtidigheds-loftet, og usynligt reduceret kapacitet kostede 2,5 time natten 5-6/9.
@@ -325,7 +366,9 @@ Filen har samme format som `wave.js`-args: `{ "tracks": [...] }` eller et rent a
 
 I `wave.js` starter alle laner, ogsaa naar koeen er kortere. En lane uden spor spoerger den rene `planIdleLane()`: `take` (koeen har et spor), `intake` (koeen er tom - se det billige tjek herunder), `wait` (intake gav intet, men andre laner koerer stadig et spor: vent og proev igen) eller `exit`.
 
-**Billigt intake-tjek (#5602).** Boelge R 24/9 brugte ca. 0,5M tokens paa fem tomme intake-agenter. Nu koerer EET delt tjek ad gangen paa den mindste model (haiku, lav effort) med en minimal prompt uden brief og uden repo-laesning: kun `wave-policy.mjs intake --wave-id <id> --peek [--finished ...]`, som markerer faerdige branches og TAELLER koeen uden at flytte noget. Kun naar koeen har spor, eller tjekket ikke gav et brugbart svar (fejl eller intet svar inden 5 min, som IKKE taeller som tom koe), starter den fulde `WAVE-SETUP: intake`-agent (sonnet), som atomisk flytter ALLE ventende spor ind i boelgen og derefter koerer samme worktree-, brief- og PR-tjek som fase 0. Et tjek der svarer forkert, kan derfor forsinke et spor, men aldrig tabe det. Alle branches der har frigivet ejerskab, sendes med hvert kald (`--finished` er idempotent). Pauserne mellem tomme tjek vokser: 10, 20, 40 og derefter loftet 60 min (`intakeBackoffMinutes()`). Efter 5 tomme tjek i traek (`INTAKE_MAX_EMPTY_CHECKS`) stopper de ledige laner sig selv (`planIdleLane` giver `exit`), ogsaa mens andre laner koerer; det logges og staar i rapportens `selfStoppedLanes`. Den SIDSTE ledige lane bliver og tjekker med loft-pausen (60 min), saa laenge et spor koerer, saa et spor der koees senere, altid kan optages, ogsaa hvis den sidste optagne lane lukker paa det haarde loft. Et faerdigt spor nulstiller pause og taelling, og lanen der blev fri, tjekker igen. Pris: en lane der stoppede sig selv, kommer ikke tilbage i den boelge, saa spor der koees derefter, koeres af de laner der stadig lever. Optagne spor springes over paa samme betingelser som i fase 0 og sorteres tungeste foerst. Et spor frigiver kun sit ejerskab (`--finished`) naar `releasesOwnership()` siger det: status bygget, rettet, undersoegt eller undersoegt-ufuldstaendig - aldrig timeout, frys, doed, fejl eller rettelse-mangler, hvor en agent stadig kan skrive. Lukkede laner (timeout) traekker stadig aldrig nye spor. Et spor der stadig staar i koe ved release, rapporteres som `unstarted` med grunden "koeet men aldrig optaget"; `inspect` viser ventende spor undervejs.
+**Scope-vaern for deltrin (#6058).** Harnessen viser ethvert `agent()`-deltrin ejerens oprindelige besked som "user request", der vinder ved konflikt. I boelge 47f874c9 fulgte intake-tjek 11 (haiku) hovedsessionens startprompt: laeste NOW.md og et issue, redigerede Working agent og koerte et reparations-script mod prod i dry-run. ALLE boelgens agent-prompts starter derfor med `subStepScopeLines(task, kind)` (spejlet i `scripts/wave-freeze.mjs`). Begge varianter siger: kun dette trin, ejerens besked tilhoerer hovedsessionen. `setup` (fase 0, intake, intake-tjek, probe, oprydning): kun de naevnte kommandoer, aldrig NOW.md/issue- og PR-tekster/backend/prod, ingen fil-aendringer ud over trinene, svar straks. `worker` (lane, review, fix, graceful stop): kun eget worktree, issue og PR, aldrig NOW.md/MASTERPLAN/Working agent, intet der skriver til prod medmindre briefen kraever det, aldrig merge. Tjekket og den fulde intake koerer desuden som agent-typerne `wave-intake-check` (ingen Read/Edit/Write/Grep/web/ToolSearch) og `wave-setup` (ingen Edit/web/ToolSearch) fra `.claude/agents/`. Kender sessionens agent-register ikke typen (det laeses ved session-start), koeres kaldet uden typen og logges; prompt-vaernet gaelder stadig. Testen i `wave-freeze.test.mjs` fejler hvis et `agent()`-kald bruger en prompt-funktion uden vaernet.
+
+**Billigt intake-tjek (#5602).** Boelge R 24/9 brugte ca. 0,5M tokens paa fem tomme intake-agenter. Nu koerer EET delt tjek ad gangen paa sonnet (lav effort; indtil #6058 haiku) med en minimal prompt uden brief og uden repo-laesning: kun `wave-policy.mjs intake --wave-id <id> --peek [--finished ...]`, som markerer faerdige branches og TAELLER koeen uden at flytte noget. Kun naar koeen har spor, eller tjekket ikke gav et brugbart svar (fejl eller intet svar inden 5 min, som IKKE taeller som tom koe), starter den fulde `WAVE-SETUP: intake`-agent (sonnet), som atomisk flytter ALLE ventende spor ind i boelgen og derefter koerer samme worktree-, brief- og PR-tjek som fase 0. Et tjek der svarer forkert, kan derfor forsinke et spor, men aldrig tabe det. Alle branches der har frigivet ejerskab, sendes med hvert kald (`--finished` er idempotent). Pauserne mellem tomme tjek vokser: 10, 20, 40 og derefter loftet 60 min (`intakeBackoffMinutes()`). Efter 5 tomme tjek i traek (`INTAKE_MAX_EMPTY_CHECKS`) stopper de ledige laner sig selv (`planIdleLane` giver `exit`), ogsaa mens andre laner koerer; det logges og staar i rapportens `selfStoppedLanes`. Den SIDSTE ledige lane bliver og tjekker med loft-pausen (60 min), saa laenge et spor koerer, saa et spor der koees senere, altid kan optages, ogsaa hvis den sidste optagne lane lukker paa det haarde loft. Et faerdigt spor nulstiller pause og taelling, og lanen der blev fri, tjekker igen. Pris: en lane der stoppede sig selv, kommer ikke tilbage i den boelge, saa spor der koees derefter, koeres af de laner der stadig lever. Optagne spor springes over paa samme betingelser som i fase 0 og sorteres tungeste foerst. Et spor frigiver kun sit ejerskab (`--finished`) naar `releasesOwnership()` siger det: status bygget, rettet, undersoegt eller undersoegt-ufuldstaendig - aldrig timeout, frys, doed, fejl eller rettelse-mangler, hvor en agent stadig kan skrive. Lukkede laner (timeout) traekker stadig aldrig nye spor. Et spor der stadig staar i koe ved release, rapporteres som `unstarted` med grunden "koeet men aldrig optaget"; `inspect` viser ventende spor undervejs.
 
 **3. Merge under boelge uden overlap.** Se [Ejerskab ved release og resume](#ejerskab-ved-release-og-resume-229-5468): `assert-merge-allowed` + `guarded-merge` tillader en merge under en koerende boelge, naar ingen af PR'ens filer overlapper boelgens aktive ownership. Samtidig er et hul lukket: et glob der stopper midt i et segment (`scripts/wave-*.mjs`) daekker nu enhver sti der starter med samme streng, ogsaa ved admission.
 

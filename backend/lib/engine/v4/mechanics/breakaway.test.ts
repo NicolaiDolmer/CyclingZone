@@ -19,6 +19,10 @@ import {
   isLetGoChaseGroup,
   joinProbability,
   letGoBalanceFor,
+  letGoCrowdDamping,
+  letGoTeamShare,
+  letGoThreatDamping,
+  breakawayStrength,
   letGoMaxGapSeconds,
   letGoSplitKm,
   selectBreakawayRiders,
@@ -989,6 +993,116 @@ test("#5955 letGoBalanceFor: legacy er altid 1/1, orders_gc_v1 giver aldrig mind
   for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain"] as const) {
     assert.ok(letGoBalanceFor("orders_gc_v1", profile).maxGapFactor > 1, profile);
   }
+});
+
+test("#5955 (2/10) letGoBalanceFor: med GC-reaktionen bygges hullet hurtigere paa alt terraen med stigninger, og bjergene giver mest plads", () => {
+  // Kalibreret oven paa GC-reaktionen (#6033): paa rullende, kuperet og
+  // bjergterraen skal hullet vaere bygget foer reaktionen og stigningerne
+  // bider, ellers holder udbruddet langt sjaeldnere end under legacy.
+  for (const profile of ["rolling", "hilly", "mountain", "high_mountain"] as const) {
+    assert.ok(letGoBalanceFor("orders_gc_v1", profile).rateFactor > 1, profile);
+  }
+  // Paa flad vej afgoer jagt-gulvet sagen; vaeksten er uaendret.
+  assert.equal(letGoBalanceFor("orders_gc_v1", "flat").rateFactor, 1);
+  const gap = (p: "flat" | "rolling" | "hilly" | "mountain" | "high_mountain") => letGoBalanceFor("orders_gc_v1", p).maxGapFactor;
+  for (const profile of ["flat", "rolling", "hilly", "mountain"] as const) {
+    assert.ok(gap("high_mountain") >= gap(profile), profile);
+    assert.ok(gap(profile) >= gap("flat"), profile);
+  }
+  // Legacy roeres aldrig af kalibreringen.
+  for (const profile of ["flat", "rolling", "hilly", "mountain", "high_mountain"] as const) {
+    assert.deepEqual(letGoBalanceFor("legacy", profile), { maxGapFactor: 1, rateFactor: 1 });
+  }
+});
+
+test("#6074 lad-gaa-loft: daemper kun det ekstra forspring naar mange hold lader gaa, aldrig under legacy, legacy uroert", () => {
+  const profiles = ["flat", "rolling", "hilly", "mountain", "high_mountain"] as const;
+  for (const profile of profiles) {
+    const full = letGoBalanceFor("orders_gc_v1", profile);
+    // Udeladt eller lav/typisk andel = uaendret (AI-scenariet).
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, 0), full, profile);
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, 0.5), full, profile);
+    const all = letGoBalanceFor("orders_gc_v1", profile, 1);
+    assert.ok(all.maxGapFactor <= full.maxGapFactor && all.maxGapFactor >= 1, profile);
+    assert.ok(all.rateFactor <= full.rateFactor && all.rateFactor >= 1, profile);
+    // Legacy laeser aldrig andelen.
+    assert.deepEqual(letGoBalanceFor("legacy", profile, 1), { maxGapFactor: 1, rateFactor: 1 });
+    assert.deepEqual(letGoBalanceFor(undefined, profile, 1), { maxGapFactor: 1, rateFactor: 1 });
+  }
+  assert.ok(letGoBalanceFor("orders_gc_v1", "high_mountain", 1).maxGapFactor < letGoBalanceFor("orders_gc_v1", "high_mountain").maxGapFactor);
+  // Monotont ikke-stigende i andelen, inden for [0, 1].
+  let prev = Infinity;
+  for (let s = 0; s <= 1.0001; s += 0.05) {
+    const d = letGoCrowdDamping(s);
+    assert.ok(d <= prev && d >= 0 && d <= 1, String(s));
+    prev = d;
+  }
+  assert.equal(letGoCrowdDamping(Number.NaN), 1);
+});
+
+test("#6088 lad-gaa-loft: et staerkt udbrud faar ikke det ekstra loft paa terraen med stigninger; vaeksten, flad/rullende og legacy er uroerte", () => {
+  for (const profile of ["hilly", "mountain", "high_mountain"] as const) {
+    const full = letGoBalanceFor("orders_gc_v1", profile);
+    const strongBoth = { threatRatio: 3, climbLead: 2 };
+    // Svagt udbrud og udeladt styrke = uaendret.
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, undefined, { threatRatio: 0.9, climbLead: 0.5 }), full, profile);
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, undefined, undefined), full, profile);
+    // Staerkt paa kun ET maal = uaendret (bredt men harmloest, eller én klatrer i et svagt udbrud).
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, undefined, { threatRatio: 3, climbLead: 0.5 }), full, profile);
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, undefined, { threatRatio: 0.9, climbLead: 2 }), full, profile);
+    // Staerkt paa begge: intet ekstra loft, men vaeksthastigheden er den samme.
+    const strong = letGoBalanceFor("orders_gc_v1", profile, undefined, strongBoth);
+    assert.equal(strong.maxGapFactor, 1, profile);
+    assert.equal(strong.rateFactor, full.rateFactor, profile);
+    // Monotont ikke-stigende i hvert maal, aldrig under 1 (aldrig mindre end legacy).
+    let prev = Infinity;
+    for (let r = 0.5; r <= 2.5; r += 0.05) {
+      const s = { threatRatio: r, climbLead: r / 1.6 };
+      const f = letGoBalanceFor("orders_gc_v1", profile, undefined, s).maxGapFactor;
+      assert.ok(f <= prev + 1e-12 && f >= 1, `${profile} ${r}`);
+      prev = f;
+      const d = letGoThreatDamping(profile, s);
+      assert.ok(d >= 0 && d <= 1);
+    }
+    // Daempningerne stabler: mange hold der lader gaa + staerkt udbrud.
+    assert.ok(letGoBalanceFor("orders_gc_v1", profile, 1, { threatRatio: 1.4, climbLead: 0.9 }).maxGapFactor <= letGoBalanceFor("orders_gc_v1", profile, 1).maxGapFactor);
+    assert.deepEqual(letGoBalanceFor("legacy", profile, 1, strongBoth), { maxGapFactor: 1, rateFactor: 1 });
+  }
+  for (const profile of ["flat", "rolling"] as const) {
+    assert.deepEqual(letGoBalanceFor("orders_gc_v1", profile, undefined, { threatRatio: 3, climbLead: 2 }), letGoBalanceFor("orders_gc_v1", profile), profile);
+  }
+  assert.equal(letGoThreatDamping("mountain", { threatRatio: Number.NaN, climbLead: 2 }), 1);
+});
+
+test("#6088 breakawayStrength: samlet trussel mod feltet + bedste klatrer mod feltets bedste; tomt felt er neutralt", () => {
+  const strong = { abilities: abilities({ climbing: 90, time_trial: 90, tempo: 90 }) } as unknown as Entrant;
+  const weak = { abilities: abilities({ climbing: 40, time_trial: 40, tempo: 40 }) } as unknown as Entrant;
+  const entrants: Record<string, Entrant> = { s1: strong, s2: strong, w1: weak, w2: weak, w3: weak };
+  const field = ["s1", "s2", "w1", "w2", "w3"];
+  const both = breakawayStrength(["s1", "s2"], field, entrants);
+  const mixed = breakawayStrength(["s1", "w1"], field, entrants);
+  const weakOnly = breakawayStrength(["w1", "w2"], field, entrants);
+  assert.ok(both.threatRatio > 1 && weakOnly.threatRatio < 1);
+  assert.ok(both.threatRatio > mixed.threatRatio);
+  // Én staerk klatrer giver samme klatre-maal som to.
+  assert.equal(mixed.climbLead, both.climbLead);
+  assert.ok(weakOnly.climbLead < both.climbLead);
+  assert.deepEqual(breakawayStrength(["s1"], [], entrants), { threatRatio: 1, climbLead: 0 });
+});
+
+test("#6074 letGoTeamShare: andel af jagtgruppens koerende hold med let_go; hold uden ordre er neutrale", () => {
+  const entrants: Record<string, Entrant> = {
+    a1: { team_id: "A" } as Entrant, a2: { team_id: "A" } as Entrant,
+    b1: { team_id: "B" } as Entrant, c1: { team_id: "C" } as Entrant, d1: { team_id: "D" } as Entrant,
+  };
+  const riders: Record<string, RiderState> = Object.fromEntries(
+    Object.keys(entrants).map((id) => [id, { status: id === "d1" ? "dnf" : "racing" } as RiderState]),
+  );
+  const order = (team_id: string, breakaway_stance: BreakawayStance) => ({ team_id, breakaway_stance }) as BreakawayTeamOrder;
+  const ids = ["a1", "a2", "b1", "c1", "d1"];
+  assert.equal(letGoTeamShare({ orders: [order("A", "let_go"), order("B", "chase"), order("D", "let_go")], chaseGroupRiderIds: ids, entrants, riders }), 1 / 3);
+  assert.equal(letGoTeamShare({ orders: [order("A", "let_go"), order("B", "let_go"), order("C", "let_go")], chaseGroupRiderIds: ids, entrants, riders }), 1);
+  assert.equal(letGoTeamShare({ orders: [], chaseGroupRiderIds: [], entrants, riders }), 0);
 });
 
 test("#5955 letGoSplitKm: en hurtigere lad-gaa-fase naar samme loft paa faerre km, og default er uaendret", () => {

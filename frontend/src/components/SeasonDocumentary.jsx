@@ -72,7 +72,7 @@ export default function SeasonDocumentary({
           ))}
         </div>
         <div className="mt-5 border-t border-cz-border pt-4">
-          <span className="text-3xs uppercase tracking-[.1em] text-cz-3">
+          <span className="text-3xs uppercase tracking-widest text-cz-3">
             {picked.source === "llm" ? t("documentary.sourceLlm") : t("documentary.sourceDeterministic")}
           </span>
         </div>
@@ -89,8 +89,8 @@ export default function SeasonDocumentary({
         meta={t("documentary.metaFinal", { number: seasonNumber })}
       />
       <div className="mb-3 flex items-center gap-1.5">
-        <BookOpenIcon size={15} className="flex-shrink-0 text-cz-accent" aria-hidden="true" />
-        <span className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
+        <BookOpenIcon size={15} className="shrink-0 text-cz-accent" aria-hidden="true" />
+        <span className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">
           {t("documentary.eyebrow")}
         </span>
       </div>

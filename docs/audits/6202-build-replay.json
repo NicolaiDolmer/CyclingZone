@@ -1,0 +1,201 @@
+{
+  "periodUTC": {
+    "from": "2026-10-04T00:00:00Z",
+    "toExclusive": "2026-10-05T00:00:00Z"
+  },
+  "previousSha": "2efaf3caf2b53654dd256a33ed509864892b82d2",
+  "rows": [
+    {
+      "sha": "e5fcedebd7f6e0ea632208ad9b5c663efb34024d",
+      "created": 1791151776237
+    },
+    {
+      "sha": "2f2b22cd56b1329031e797c1d856fcea72a58e6b",
+      "created": 1791151452280
+    },
+    {
+      "sha": "f9e10afe25cf0a6d1a41af910090915fd8010817",
+      "created": 1791150989846
+    },
+    {
+      "sha": "530f61a7beda10bdf4045877e60917368c4b259e",
+      "created": 1791150644517
+    },
+    {
+      "sha": "5154ec0500d499ec019bf9c5ac9a53c4ca1f9c6f",
+      "created": 1791149877111
+    },
+    {
+      "sha": "4855905c1935ab5b57f77b97d97d130380af457f",
+      "created": 1791149045600
+    },
+    {
+      "sha": "9f1f1f0d810818fb54fcf67a83e7d6a473823131",
+      "created": 1791148635336
+    },
+    {
+      "sha": "bd24690b96daf2dfa1bdd0aa54d5304f17a18767",
+      "created": 1791148326177
+    },
+    {
+      "sha": "c68ca1cc70294fd0669850e64917cc89325aaab5",
+      "created": 1791141627538
+    },
+    {
+      "sha": "97137cdcce507ed2ad7d234b3e7f7dd9533a17fc",
+      "created": 1791140709355
+    },
+    {
+      "sha": "c701922835e52741e50817e0b2928d341aa652ec",
+      "created": 1791139937642
+    },
+    {
+      "sha": "b46db724cfdb8fc03883c64a076acaed7bad396a",
+      "created": 1791139321141
+    },
+    {
+      "sha": "c2fe7b2ffa4bed8f88ad25104d8e8da4390a0b57",
+      "created": 1791136602561
+    },
+    {
+      "sha": "31c78144554e4b287a6315f1ac3e2cf104c55eec",
+      "created": 1791135930478
+    },
+    {
+      "sha": "3039b21a9eab5ad656dfccbcf4f9a30ca38ae3c0",
+      "created": 1791135597826
+    },
+    {
+      "sha": "2cd5f060811244bc50f6f091aaf28348781165bb",
+      "created": 1791135217919
+    },
+    {
+      "sha": "36b2d83c1715aa080a6a3553e1b8b3676c035791",
+      "created": 1791134685493
+    },
+    {
+      "sha": "ec2c7f5e9370db50d0f041cb112f840890233087",
+      "created": 1791134306899
+    },
+    {
+      "sha": "0527912add4fc01885f363212cb4e648804b7ac2",
+      "created": 1791124460559
+    },
+    {
+      "sha": "31954b859fa2a37ceecd677dea698f830ce01d36",
+      "created": 1791119633731
+    },
+    {
+      "sha": "7e29f4f064bfc15a82d4a062ef1d384a55819216",
+      "created": 1791119279034
+    },
+    {
+      "sha": "888ad4522439a5d95b22cbf9adbf1b467bdc5dbd",
+      "created": 1791116590312
+    },
+    {
+      "sha": "992800adc88fbfbb472053f255cdc1ebdd906e91",
+      "created": 1791116474025
+    },
+    {
+      "sha": "10e6fedece346d3bfa10a2b6a4bbf04576f12ec2",
+      "created": 1791115574603
+    },
+    {
+      "sha": "1201bfd129e551711061180e1b292b8f1612e180",
+      "created": 1791115378832
+    },
+    {
+      "sha": "358274973fa368075be886ef7f56ea8c04c187d3",
+      "created": 1791114793717
+    },
+    {
+      "sha": "9936be6e916280e86741a3b26abc9ffec0f1a0e7",
+      "created": 1791114683270
+    },
+    {
+      "sha": "b19c6a884d7b67213dc2e2b2181487c0fdef03e5",
+      "created": 1791112709961
+    },
+    {
+      "sha": "8bd982a61c16898b8fe0f813aec93285ef783d3d",
+      "created": 1791112115333
+    },
+    {
+      "sha": "c93676921bb8945e2e1950b62ff8e35a2e11c88a",
+      "created": 1791111996906
+    },
+    {
+      "sha": "138f1baee31af6fe54a2309e97a75a4573916632",
+      "created": 1791111551746
+    },
+    {
+      "sha": "9d5bc367c722748b536851c6a16886d501101961",
+      "created": 1791111448781
+    },
+    {
+      "sha": "676c09a44e14cb9bcad722874a9774c2285ef6c8",
+      "created": 1791111296841
+    },
+    {
+      "sha": "16e337bf74c1fcfc5db3f0cf939fc480b8e5137a",
+      "created": 1791110923885
+    },
+    {
+      "sha": "ad97e5faa3c5b111bbfebdfb1bc8c110ce58e999",
+      "created": 1791110577455
+    },
+    {
+      "sha": "dff4510c6846a87db7f02b2395a1857949619ec4",
+      "created": 1791109488842
+    },
+    {
+      "sha": "b36cea25ba2269080eee034d42107aa7bc85e6bb",
+      "created": 1791107893351
+    },
+    {
+      "sha": "a619b2aac9ffc51dd56b6815b091abdef87dcc7d",
+      "created": 1791107413113
+    },
+    {
+      "sha": "d5fac0d8637bb47d2a37020a277de134d133b14d",
+      "created": 1791107294778
+    },
+    {
+      "sha": "f952906cf739a8ee3dd7adaaee9d1307a120a518",
+      "created": 1791106714004
+    },
+    {
+      "sha": "efd964dadcc7beefc45cf87e957c392585a3e65d",
+      "created": 1791104917819
+    },
+    {
+      "sha": "9562a355c420b87c536ee74bc6dea184a916cbfe",
+      "created": 1791103959511
+    },
+    {
+      "sha": "41ce4c56e9a626e327050963968fe96897f90431",
+      "created": 1791102945306
+    },
+    {
+      "sha": "e30697af0c1fa08c535ea882247fd6466cb3b4c7",
+      "created": 1791102404299
+    },
+    {
+      "sha": "fa3e5d0472a73d1fa01d1138289c575aa51151db",
+      "created": 1791101057700
+    },
+    {
+      "sha": "a190eba31bde69314787901bb7276acafebf7117",
+      "created": 1791097721453
+    },
+    {
+      "sha": "67b891ba7104e740771cac7b350a91bf74f12ccb",
+      "created": 1791096250459
+    },
+    {
+      "sha": "7ef65917718720e8ed502b75c0b1baafefcb3672",
+      "created": 1791074701882
+    }
+  ]
+}

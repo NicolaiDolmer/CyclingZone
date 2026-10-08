@@ -26,7 +26,7 @@ const STRENGTH_CLASS = {
 // Raekke-opskrift for baade "ingen jaeger" og rytterne: samme hoejde, samme
 // markering af det valgte (TASTE P8 — eet sprog for status).
 const ROW_BASE = "w-full flex items-center justify-between gap-2 text-2xs px-2 py-1 rounded-cz border transition-colors";
-const ROW_ON = "border-cz-accent bg-cz-accent/[0.06] text-cz-accent-t font-medium";
+const ROW_ON = "border-cz-accent bg-cz-accent/6 text-cz-accent-t font-medium";
 const ROW_OFF = "border-transparent text-cz-1 hover:border-cz-border hover:bg-cz-card";
 
 export default function HunterExplainer({
@@ -96,7 +96,7 @@ export default function HunterExplainer({
                       className={`${ROW_BASE} ${on ? ROW_ON : ROW_OFF} disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <span className="text-2xs truncate">{r.name}</span>
-                      <span className="text-2xs font-mono tabular-nums text-cz-2 flex-shrink-0">
+                      <span className="text-2xs font-mono tabular-nums text-cz-2 shrink-0">
                         {t("racehub.hunterExplainer.aggression")} {Number.isFinite(r.aggression) ? r.aggression : "—"}
                       </span>
                     </button>

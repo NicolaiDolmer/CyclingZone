@@ -68,6 +68,7 @@ import {
   isMissingRulesRevisionColumnError,
   raceHasStarted,
   resolveRaceRulesRevision,
+  isOrdersGcRulesRevision,
 } from "./raceEngineRulesRevision.ts";
 // #2410 (event-log S1): deterministisk etape-tidslinje-generator — REN funktion,
 // samme build-trin som moments/passages (data er i memory). Bag flag
@@ -132,7 +133,7 @@ import { loadEligibleEntries } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 // #4423: flush udskudte akademi-optagelser ved løbs-finalisering (spejler #1995 ovenfor).
 import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
-import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
+import { requestRankingMatviewRefresh } from "./refreshRankingMatviews.js"; // #5911: gated + samlet
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
@@ -155,6 +156,7 @@ import {
 // simulateStage; motoren selv læser aldrig rutefelterne (bit-identisk).
 import { computePassages } from "./racePassages.js";
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
+import { recordFirstRaceWithOwnSquadInBackground } from "./posthogServer.ts"; // #6278
 
 // #1995: flush parkerede holdskifter (pending_team_id → team_id) når et etapeløb
 // er finaliseret. Idempotent → sikker ved recovery-genkørsel (bevidst UDEN
@@ -201,6 +203,7 @@ async function flushDeferredAcademySigningsSafe({ supabase, race }) {
 function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, resultRows }) {
   const pushIndiv = ({
     result_type, rank, rider_id, stage_number, finish_time = null, in_breakaway = false, breakaway_caught = false,
+    breakaway_dropped = null, // #6185: tredje udbrudstilstand; null = ikke vurderet
     // Sub-2 (#2770): passage-lag-aggregater — NULL (default) = legacy/ingen rutedata.
     // Etape-niveau-gate (kald-stedets ansvar): når passage-laget er aktivt for en
     // etape bærer ALLE dens 'stage'-rækker numeriske værdier (0 for ikke-scorere),
@@ -225,6 +228,7 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
       prize_money: prizeMoneyForPoints(pts, race),
       in_breakaway,
       breakaway_caught,
+      breakaway_dropped,
       sprint_points,
       kom_points,
       bonus_seconds,
@@ -312,7 +316,7 @@ function v4RulesRevisionArg(rulesRevision) {
  *  - Kolonnen findes ikke (migrationen er ikke applied) → legacy, intet skrives.
  *  - dryRun skriver aldrig; et ikke-startet løb previewes på den aktuelle revision.
  *
- * @returns {Promise<"legacy"|"orders_gc_v1">}
+ * @returns {Promise<"legacy"|"orders_gc_v1"|"orders_gc_v2"|"orders_gc_v3">}
  */
 export async function bindRaceRulesRevision({ supabase, race, firstStageClaim, dryRun = false, currentRevision = CURRENT_RACE_RULES_REVISION }) {
   const readRow = async () => supabase
@@ -514,6 +518,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         restDaysBefore,
         trainingOwnsRecovery,
         recoveryAbility: e.abilities?.recovery,
+        ...v4RulesRevisionArg(rulesRevision), // #6079: save-træthed pr. profil under orders_gc_v1
       })];
     })
   );
@@ -601,7 +606,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // totalerne efter de foregaaende etaper i denne loop-instans).
     const jerseyLeaders = v4Engine && isStageRace ? jerseyLeadersFromComps(stageEntrants, pointsComp, komComp) : null;
     // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape); legacy-kaldet er uændret.
-    const gcStandings = v4Engine && isStageRace && rulesRevision === "orders_gc_v1" ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
+    const gcStandings = v4Engine && isStageRace && isOrdersGcRulesRevision(rulesRevision) ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
       ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}) })
       : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
@@ -1776,7 +1781,7 @@ async function loadRacePoints(supabase, raceClass) {
 // linke race_simulation_rider_scores.run_id UDEN en select-roundtrip efter
 // insert. v3=false (langt de fleste kald i dag) rører IKKE denne sti — id
 // forbliver DB-genereret som altid, adfærd uændret.
-async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows}) {
+async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision=null}) {
   // schema-columns-ok: condition_load_snapshot is added by this PR's 2026-09-29-5928-training-condition-date.sql and covered by actual SQL tests; reads are flag-gated until migration.
   const {data:saved,error}=await supabase.from('race_simulation_runs')
     .select('stage_number,entrant_snapshot,condition_load_snapshot').eq('race_id',race.id).in('stage_number',runs.map(run=>run.stage_number));
@@ -1791,7 +1796,7 @@ async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageR
       const effortByRider=!v3?null:v4Engine
         ?resolvedEffortByRiderForStage(stageRoleOverrides,run.stage_number,orderEffortByRiderForStage(teamOrderRows,run.stage_number))
         :effortByRiderForStage(stageRoleOverrides,run.stage_number);
-      run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider);
+      run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision);
     }
   }
 }
@@ -2347,12 +2352,12 @@ export async function simulateRace({
   const stagesInRun = [...new Set(resultRows.map((r) => r.stage_number))];
 
   if (trainingOwnsRecovery) {
-    await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows});
+    await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision});
     await persistRuns({supabase,race,runs});
     for(const run of runs) {
       await applyFatigue({supabase,raceId:race.id,stageNumber:run.stage_number,
         riderIds:run.entrant_snapshot,loadSnapshot:run.condition_load_snapshot,
-        profileType:stages.find(stage=>(stage.stage_number||1)===run.stage_number)?.profile_type});
+        profileType:stages.find(stage=>(stage.stage_number||1)===run.stage_number)?.profile_type,...v4RulesRevisionArg(rulesRevision)});
     }
   }
 
@@ -2393,7 +2398,7 @@ export async function simulateRace({
   // stadig viste løbets FØR-tilstand. Flyttet hertil skærer det vindue ned til
   // selve REFRESH-statements' egen eksekveringstid. Best-effort (resultaterne ER
   // allerede skrevet) — en refresh-fejl må ikke vælte afviklingen.
-  await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+  await requestRankingMatviewRefresh(supabase, { captureExceptionFn: captureException });
 
   if (!trainingOwnsRecovery) await persistRuns({ supabase, race, runs });
   // Sub-2 (#2770): passage-detalje — data-gated (ikke v3-gated), no-op'er selv
@@ -2451,6 +2456,8 @@ export async function simulateRace({
     captureException(err, { tags: { flow: "race-run", stage: "race-status-completed" }, raceId: race.id });
     throw err;
   }
+  // #6278: kerne-rejsens milepæl, efter commit. Fire-and-forget, kaster aldrig.
+  recordFirstRaceWithOwnSquadInBackground({ supabase, race, resultRows });
 
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   await flushDeferredTransfersSafe({ supabase, race });
@@ -2499,7 +2506,7 @@ export async function simulateRace({
         ? runs.find(run => run.stage_number === fatigueStageNumber)?.entrant_snapshot
         : riderIds;
       if (!Array.isArray(fatigueRiderIds)) throw new Error('Actual stage start field required for normalized race load');
-      await applyFatigue({ supabase, riderIds: fatigueRiderIds, profileType: stage.profile_type, effortByRider, raceId: race.id, stageNumber: fatigueStageNumber });
+      await applyFatigue({ supabase, riderIds: fatigueRiderIds, profileType: stage.profile_type, effortByRider, raceId: race.id, stageNumber: fatigueStageNumber, ...v4RulesRevisionArg(rulesRevision) });
     } catch (err) {
       // #2389 A2: en fejlet fatigue-skrivning lader træthed drive ud af sync — capture.
       console.error(`  ⚠️  race fatigue upsert failed (stage ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
@@ -2717,8 +2724,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     })()
     : null;
   // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape, null = mangler); legacy-kaldet er uændret.
-  const priorGcAcc = v4Engine && rulesRevision === "orders_gc_v1" && stageIndex > 0 && priorStageRows.length ? accumulateStageRows({ stageRows: priorStageRows }) : null;
-  const gcStandings = v4Engine && rulesRevision === "orders_gc_v1" ? (stageIndex === 0 ? [] : priorGcAcc ? rankByCumTimeAsc(filterCompletedEntrants(simEntrants, priorGcAcc.stagesByRider, priorGcAcc.stageNumbers), priorGcAcc.cumTime, priorGcAcc.posSum) : null) : undefined;
+  const priorGcAcc = v4Engine && isOrdersGcRulesRevision(rulesRevision) && stageIndex > 0 && priorStageRows.length ? accumulateStageRows({ stageRows: priorStageRows }) : null;
+  const gcStandings = v4Engine && isOrdersGcRulesRevision(rulesRevision) ? (stageIndex === 0 ? [] : priorGcAcc ? rankByCumTimeAsc(filterCompletedEntrants(simEntrants, priorGcAcc.stagesByRider, priorGcAcc.stageNumbers), priorGcAcc.cumTime, priorGcAcc.posSum) : null) : undefined;
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
   const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
     ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}) })
@@ -3465,7 +3472,7 @@ export async function simulateStageByIndex({
     // refresh — cron-fallback (10 min) dækker allerede mellem-etaper.
     if (isFinalStage) {
       const ran = await runFinalizeStep("matview", async () => {
-        await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+        await requestRankingMatviewRefresh(supabase, { captureExceptionFn: captureException });
       });
       __markPhase(ran ? "matview" : "matview-resumed");
     }
@@ -3476,7 +3483,7 @@ export async function simulateStageByIndex({
     // hele blokken er nået igennem. En afbrydelse midtvejs kører hele blokken igen, og
     // fordi simuleringen er seedet, skrives præcis de samme rækker.
     await runFinalizeStep("enrichment", async () => {
-    if(trainingOwnsRecovery) await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows});
+    if(trainingOwnsRecovery) await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision});
     await persistRuns({ supabase, race, runs, source: runSource });
     // Sub-2 (#2770): samme scoping-mønster (denne etape alene) — data-gated,
     // no-op'er ved tom liste (legacy-løb uden rutedata).
@@ -3520,6 +3527,8 @@ export async function simulateStageByIndex({
       seasonNumber: seasonBefore?.number ?? null,
     });
     }); // ── #4147: slut på "enrichment"-trinnet ───────────────────────────────────
+    // #6278: kerne-rejsens milepæl, efter den committede apply_stage_result. Fire-and-forget.
+    recordFirstRaceWithOwnSquadInBackground({ supabase, race, resultRows, stageNumber });
 
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
     // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
@@ -3549,7 +3558,7 @@ export async function simulateStageByIndex({
           } else loadSnapshot=runs.find(run=>run.stage_number===stageNumber)?.condition_load_snapshot;
           if(!Array.isArray(loadSnapshot)||!loadSnapshot.length) throw new Error('Immutable current stage condition snapshot required');
         }
-        await applyFatigue({ supabase, riderIds: loadSnapshot?.map(row=>row.rider_id) ?? entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider, raceId: race.id, stageNumber, loadSnapshot });
+        await applyFatigue({ supabase, riderIds: loadSnapshot?.map(row=>row.rider_id) ?? entrants.map((e) => e.rider_id), profileType: thisStage.profile_type, effortByRider, raceId: race.id, stageNumber, loadSnapshot, ...v4RulesRevisionArg(rulesRevision) });
       } catch (err) {
         // #2389 A2: mirror fuld-sim-grenen ovenfor — capture.
         console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
@@ -3774,7 +3783,7 @@ export async function simulateStageByIndex({
   // crash-recovery-genoptagelse indtil næste 10-min cron-tick.
   if (finalizationPending) {
     await runFinalizeStep("matview", async () => {
-      await refreshRankingMatviewsSafe(supabase, { captureExceptionFn: captureException });
+      await requestRankingMatviewRefresh(supabase, { captureExceptionFn: captureException });
     });
     __markPhase("matview");
   }

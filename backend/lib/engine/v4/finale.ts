@@ -32,7 +32,9 @@ import type {
 } from "./types.ts";
 import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
+import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
+import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -139,6 +141,36 @@ export function isBunchSizedChaseGroup(
   return chaseCount >= Math.max(minRiders, minFieldFraction * fieldSize);
 }
 
+/**
+ * #6073: hvilken finale feltet BAG et udbrud koerer paa en etape med
+ * finale_type "breakaway". Udbrudsfinalens demand (aggression, tempo,
+ * udholdenhed, taktik) beskriver flugten, ikke hvordan feltet afgoer de
+ * oevrige placeringer: det spurter, puncher eller klatrer paa terraenet.
+ * Profil -> terraenets afgoerende evne foelger korrelationsankerets kort
+ * (replay5957.mjs RELEVANT_ABILITY): rullende og kuperet = punch. null =
+ * etapen er ikke en udbrudsfinale, eller profilen har ingen feltfinale.
+ */
+const FIELD_FINALE_BY_PROFILE: Partial<Record<ProfileType, FinaleType>> = {
+  flat: "bunch_sprint",
+  rolling: "punch",
+  hilly: "punch",
+  classic: "punch",
+  mountain: "long_climb",
+  high_mountain: "long_climb",
+  cobbles: "reduced_sprint",
+  gravel: "reduced_sprint",
+};
+
+export function fieldFinaleTypeBehindBreakaway(route: { finale_type: FinaleType | null; profile_type: ProfileType }): FinaleType | null {
+  if (route.finale_type !== "breakaway") return null;
+  return FIELD_FINALE_BY_PROFILE[route.profile_type] ?? null;
+}
+
+/** #6073: dagens udbrud ved finalen (samme definition som groups.ts's escapeGroupOf). */
+export function isEscapeGroup(group: Pick<RaceGroup, "kind" | "origin">): boolean {
+  return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");
+}
+
 // Kollektiv "flugt"-evne: staying-power til at forsvare et forspring.
 const FLIGHT_KEYS: AbilityKey[] = ["tempo", "endurance", "durability"];
 // Kollektiv "jagt"-evne: villighed/kapacitet til at lukke et hul.
@@ -211,6 +243,41 @@ export function finaleModifierScale(abilityTerm: number, poolBestAbilityTerm: nu
   const ref = Math.max((Number.isFinite(poolBestAbilityTerm) ? poolBestAbilityTerm : 0) * share, Number.isFinite(floor) ? floor : 0);
   if (!(ref > 0)) return 1;
   return clamp((Number.isFinite(abilityTerm) ? abilityTerm : 0) / ref, 0, 1);
+}
+
+/**
+ * #6049: hvor meget af dagens modifikatorer en hel finale-pulje faar, givet
+ * puljens niveau: puljens bedste finale-evne delt med en reference, clampet til
+ * [0, 1]. Modifikatorerne (reserve, dagsform, indsats, leadout) er absolutte
+ * tal paa score-skalaen, men evne-leddet foelger feltets niveau. I et felt hvor
+ * selv den bedste ligger langt under referencen, er hele evne-spredningen
+ * lille, og et fast tillaeg ville afgoere raekkefoelgen alene. Med skalaen er
+ * tillaeggets stoerrelse i forhold til evnen den samme i et svagt og et staerkt
+ * felt. Ved og over referencen er opgoeret uaendret. `floor` holder skalaen
+ * over 0 i en pulje helt uden finale-evne. Ugyldig reference = 1 (neutral).
+ */
+export function finaleLevelScale(poolBestAbilityTerm: number, reference: number, floor = 0): number {
+  if (!(Number.isFinite(reference) && reference > 0)) return 1;
+  const best = Number.isFinite(poolBestAbilityTerm) ? poolBestAbilityTerm : 0;
+  return clamp(Math.max(best, Number.isFinite(floor) ? floor : 0) / reference, 0, 1);
+}
+
+/**
+ * #6049: evne-referencen over hvilken en rytter er en reel kandidat og faar
+ * dagens modifikatorer fuldt ud: den hoejeste af `fullShare` x puljens bedste
+ * og den `candidateCount`-bedste rytters finale-evne. Andelen alene taeller i
+ * et ensartet divisionsfelt halvdelen af feltet som kandidater, og saa ordner
+ * dagsformen hele den halvdel tilfaeldigt. Rang-graensen holder kandidat-
+ * gruppen paa samme stoerrelse uanset hvor ensartet feltet er. 0 = kun andelen.
+ */
+export function finaleCandidateReference(abilityTerms: readonly number[], fullShare: number, candidateCount: number): number {
+  const valid = abilityTerms.filter((x) => Number.isFinite(x)).sort((a, b) => b - a);
+  if (valid.length === 0) return 0;
+  const share = Number.isFinite(fullShare) && fullShare > 0 ? Math.min(1, fullShare) : 1;
+  const byShare = valid[0] * share;
+  const k = Number.isFinite(candidateCount) ? Math.floor(candidateCount) : 0;
+  if (k <= 0 || k > valid.length) return byShare;
+  return Math.max(byShare, valid[k - 1]);
 }
 
 /**
@@ -336,7 +403,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
 
   // #4914: paa en massefinale paa flad/rullende profil taeller feltets ANTAL i
   // jagten (se bunchCatchWindowSeconds + tuning.ts's bunchCatch*-kommentar).
-  const bunchCatch = isBunchCatchRoute(route);
+  // #6199 (KUN orders_gc_v3): ikke paa en afslutning opad. Feltets antal giver
+  // ingen fart op ad en stigning, saa de huller stigningen skabte, staar.
+  // #6200: heller ikke paa en nedkoersel mod maal, hvor antals-vinduet ellers
+  // kunne folde en gruppe ind forbi loftet (hoejst halvdelen af hullet).
+  const v3FinishDescent = ctx.ordersGcV3 === true && segment.kind === "descent";
+  const bunchCatch = isBunchCatchRoute(route) && !(ctx.ordersGcV3 === true && (segment.kind === "climb" || segment.kind === "descent"));
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
@@ -375,7 +447,13 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // #5581: en gruppe af udelukkende grupetto-ryttere jager ikke (ude af
     // finalen, ejer-trappen 23/9). En blandet gruppe jager paa de koerendes ben.
     const onlyGrupetto = group.rider_ids.every((id) => entrants[id]?.effort === "grupetto");
-    const closingSeconds = onlyGrupetto ? 0 : netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
+    // #6200 (KUN orders_gc_v3): paa en nedkoersel mod maal deler jagten loftet
+    // med regrupperingen paa samme segment: tilsammen hoejst ca. 1,5 s pr. km og
+    // hoejst halvdelen af hullet ved toppen (mechanics/timeModel.ts).
+    const descentCap = v3FinishDescent
+      ? finishDescentRemainingCapSeconds(carriedGapSeconds, remainingKm, state.finish_descent_regroup?.[group.id])
+      : Infinity;
+    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit);
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
@@ -458,8 +536,22 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   }
 
   // ── Placerings-opgoer i kontendentpuljen ────────────────────────────────────
-  const demandVector =
-    (route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR;
+  // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
+  // #6200 (KUN orders_gc_v3): klatring taeller med i placeringen i en nedkoerselsfinale.
+  const v3DescentDemand = ctx.ordersGcV3 === true && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
+  const demandVector = cobbledFinaleDemandVector(
+    v3DescentDemand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
+    ctx,
+  );
+  // #6073: paa en udbrudsfinale gaelder udbrudsdemand kun for udbruddet selv;
+  // resten af feltet afgoer sine placeringer paa terraenets egen finale.
+  const fieldFinaleType = fieldFinaleTypeBehindBreakaway(route);
+  const fieldDemandVector = fieldFinaleType
+    ? cobbledFinaleDemandVector(tuning.finale.demandVectorByFinaleType[fieldFinaleType] || DEFAULT_DEMAND_VECTOR, ctx)
+    : demandVector;
+  const escapeRiderIds = new Set(state.groups.filter(isEscapeGroup).flatMap((g) => g.rider_ids));
+  const demandVectorOf = (riderId: string): Partial<Record<AbilityKey, number>> =>
+    escapeRiderIds.has(riderId) ? demandVector : fieldDemandVector;
 
   // #5957: puljens bedste rene finale-evne er referencen for hvor meget af
   // dagens modifikatorer hver rytter faar (finaleModifierScale). Én reference
@@ -468,11 +560,16 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const finaleIds = [...contenderIds, ...survivingGroups.flatMap((group) => group.rider_ids)];
   const abilityTermOf = (riderId: string): number => {
     const abilities = entrants[riderId]?.abilities;
-    return abilities ? finaleAbilityTerm(abilities, demandVector) : 0;
+    return abilities ? finaleAbilityTerm(abilities, demandVectorOf(riderId)) : 0;
   };
   const poolBestAbilityTerm = finaleIds.reduce((best, id) => Math.max(best, abilityTermOf(id)), 0);
+  // #6049: modifikatorerne er absolutte score-enheder, men evne-leddet foelger
+  // feltets niveau. I et svagt felt er hele evne-spredningen lille, og saa
+  // overtrumfer et fast tillaeg den. Skalaen foelger derfor ogsaa puljens niveau.
+  const levelScale = finaleLevelScale(poolBestAbilityTerm, extra.modifierReferenceAbilityTerm, extra.modifierScaleFloor);
+  const candidateRef = finaleCandidateReference(finaleIds.map(abilityTermOf), extra.modifierFullScaleShare, extra.modifierCandidateCount);
   const modifierScaleOf = (riderId: string): number =>
-    finaleModifierScale(abilityTermOf(riderId), poolBestAbilityTerm, extra.modifierScaleFloor, extra.modifierFullScaleShare);
+    levelScale * finaleModifierScale(abilityTermOf(riderId), candidateRef, extra.modifierScaleFloor, 1);
 
   const scoreOf = (riderId: string, dayformWeight = extra.dayformScoreWeight): number | null => {
     const entrant = entrants[riderId];
@@ -494,7 +591,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     return computeFinaleAbilityScore(
       entrant.abilities,
       reserve,
-      demandVector,
+      demandVectorOf(riderId),
       extra.wprimeReserveWeight,
       entrant.effort,
       entrant.effort === "grupetto" ? 0 : state.riders[riderId]?.dayform ?? 0,
@@ -597,6 +694,8 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let cumulativeGap = 0;
   let prevScore: number | null = null;
   let tailStarted = false;
+  const tieEpsilon = ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
+  let tierTopScore = -Infinity;
 
   // ── Massefinale (#4615, felt-sammenhaengs-ankeret) ──────────────────────────
   // En massespurt afgoeres paa PLACERING, ikke paa tid: hele den ankomne pulje
@@ -621,7 +720,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     if (inTailZone) {
       if (!tailStarted) {
         // Haleklump: ét gap-skridt bag sidste oploeste tier, resten deler tid.
-        const scoreDelta = prevScore !== null ? Math.max(0, prevScore - entry.score) : 0;
+        // Review af #6223 (KUN orders_gc_v3): fra den forrige tiers foerste rytter (se tier-grenen).
+        const tailReference = tieEpsilon === null || !Number.isFinite(tierTopScore) ? prevScore : tierTopScore;
+        const scoreDelta = tailReference !== null ? Math.max(0, tailReference - entry.score) : 0;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
         cumulativeGap += step;
@@ -640,9 +741,18 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       return;
     }
 
-    if (prevScore === null || entry.score < prevScore) {
-      if (prevScore !== null) {
-        const scoreDelta = prevScore - entry.score;
+    // #6199 (KUN orders_gc_v3): taet score giver samme tid. En ny tier kun naar
+    // scoren ligger mindst `finaleTieScoreEpsilon` under tierens foerste rytter.
+    const newTier = prevScore === null
+      || (tieEpsilon === null ? entry.score < prevScore : tierTopScore - entry.score >= tieEpsilon);
+    if (newTier) {
+      // Review af #6223 (KUN orders_gc_v3): skridtet regnes fra den forrige tiers
+      // FOERSTE rytter, saa en rytters tid stadig foelger hans score-afstand til
+      // vinderen; samme tid i en tier maa ikke goere ryttere bag den hurtigere.
+      const tierReference = tieEpsilon === null ? prevScore : tierTopScore;
+      tierTopScore = entry.score;
+      if (prevScore !== null && tierReference !== null) {
+        const scoreDelta = tierReference - entry.score;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
         cumulativeGap += step;
@@ -789,6 +899,9 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     ),
   ];
 
-  const nextState: EngineState = { ...state, groups: newGroups, finish_order: finishOrder };
+  // #6200: bogen fra nedkoerslens regruppering er brugt op her (types.ts).
+  const base: EngineState = { ...state };
+  delete base.finish_descent_regroup;
+  const nextState: EngineState = { ...base, groups: newGroups, finish_order: finishOrder };
   return { state: nextState, events };
 };

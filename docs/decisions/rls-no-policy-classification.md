@@ -378,3 +378,7 @@ Ingen migration. Ingen `COMMENT ON TABLE`. Ingen policy. Ingen ændring af grant
 - [#284](https://github.com/NicolaiDolmer/CyclingZone/issues/284) — tidligere verifikation af `board_consequences`/`board_request_log`/`team_board_members` som "milestone-gated tomme, ikke broken" (`frontend/src/data/patchNotes.js:21962`).
 - [`docs/decisions/2026-05-22-rls-behavioral-vs-structural-guard.md`](2026-05-22-rls-behavioral-vs-structural-guard.md) — søster-ADR om RLS-verifikationsmetode.
 - Supabase advisor-remediation: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
+
+
+## Ranking coordinator (#5692, 6 October)
+ranking_refresh_work_state is a backend control ledger, not player data. RLS is enabled without client policies; PUBLIC/anon/authenticated have no table privileges. Only service_role has SELECT/INSERT/UPDATE. RPCs are service-only invokers; the statement trigger is a restricted definer with fixed search_path and no direct client EXECUTE. This is intentional backend isolation; no blanket client policy/grant is added to silence an advisor.

@@ -63,7 +63,7 @@ param(
   [switch] $DryRun,
   [int] $MinWaitMinutesNoBackend = 3,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
-  [int] $DeployVerifyTimeoutMinutes = 20,
+  [int] $DeployVerifyTimeoutMinutes = 60,
   [int] $CiTimeoutMinutes = 25
 )
 
@@ -149,6 +149,18 @@ function Get-PrMergeCategory([int]$number) {
     return (($line | ForEach-Object { "$_" }) -join ' ').Trim()
   } catch {
     return "ukendt (klassifikator fejlede: $($_.Exception.Message))"
+  }
+}
+
+function Set-PrOwnerGoMarker([int]$number, [string]$classification) {
+  # Best-effort: en fejl her stopper aldrig koeen. Klassifikatoren returnerer
+  # "klaebende: ..." naar markoeren allerede findes, saa den skrives kun een gang.
+  if ($classification -like '*klaebende*') { return }
+  $marker = '<!-- merge-queue-category: ejer-go -->'
+  try {
+    & gh pr comment $number --repo $Repo --body "$marker`nmerge-koe: $classification (klaebende, hard rule 35)" 2>&1 | Out-Null
+  } catch {
+    Write-Host "      (kunne ikke skrive ejer-go-markoer: $($_.Exception.Message))" -ForegroundColor DarkGray
   }
 }
 
@@ -239,6 +251,66 @@ function Wait-ForWorkflowRun {
   return $ok
 }
 
+function Wait-ForDeployVerification {
+  param(
+    [string] $Sha,
+    [int] $TimeoutMinutes,
+    [int] $MaxReruns = 2,
+    [scriptblock] $Now = { [DateTime]::UtcNow },
+    [scriptblock] $Pause = { param($Seconds) Start-Sleep -Seconds $Seconds },
+    [string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs')
+  )
+  if ($DryRun) { return 'pending' }
+  $deadline = (& $Now).AddMinutes($TimeoutMinutes)
+  $runId = $null
+  $minimumAttempt = 1
+  $reruns = 0
+  $lastState = 'unknown'
+  $runFile = [IO.Path]::GetTempFileName()
+  $jobsFile = [IO.Path]::GetTempFileName()
+  try {
+    while ((& $Now) -lt $deadline) {
+      if (-not $runId) {
+        $runsJson = Invoke-GhWithRetry @('run', 'list', '--repo', $Repo, '--workflow', 'deploy-verify.yml', '--branch', 'main', '--limit', '20', '--json', 'databaseId,headSha') -TolerateFailure
+        if ($runsJson) {
+          try {
+            $matches = @(($runsJson -join "") | ConvertFrom-Json | Where-Object { $_.headSha -eq $Sha })
+            if ($matches.Count -gt 0) { $runId = $matches[0].databaseId }
+          } catch { Write-Host 'Deploy verify: run lookup unavailable; no verification claimed.' -ForegroundColor Yellow }
+        }
+        if (-not $runId) { & $Pause 15; continue }
+      }
+      $runJson = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$runId") -TolerateFailure
+      if (-not $runJson) { return 'unknown' }
+      try { $run = ($runJson -join "") | ConvertFrom-Json }
+      catch { return 'unknown' }
+      if ($run.head_sha -ne $Sha -or -not $run.run_attempt) { return 'unknown' }
+      if ($run.run_attempt -ge $minimumAttempt -and $run.status -eq 'completed' -and $run.conclusion -in @('failure', 'timed_out')) { return 'failed' }
+      $jobsJson = if ($run.status -eq 'completed' -and $run.run_attempt -ge $minimumAttempt) {
+        Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$runId/attempts/$($run.run_attempt)/jobs?per_page=100") -TolerateFailure
+      } else { '{"jobs":[]}' }
+      if (-not $jobsJson) { return 'unknown' }
+      [IO.File]::WriteAllText($runFile, ($runJson -join ""))
+      [IO.File]::WriteAllText($jobsFile, ($jobsJson -join ""))
+      $state = (& node $ClassifierPath $runFile $jobsFile $Sha $minimumAttempt | Out-String).Trim()
+      $lastState = $state
+      if ($state -eq 'verified' -or $state -eq 'failed' -or $state -eq 'unknown') { return $state }
+      if ($state -eq 'pending') {
+        if ($reruns -ge $MaxReruns) { return 'pending' }
+        Write-Host "  AFVENTER deploy (run $runId, attempt $($run.run_attempt)); genkoerer samme run, ikke naeste merge." -ForegroundColor Yellow
+        Invoke-GhWithRetry @('run', 'rerun', "$runId", '--repo', $Repo) | Out-Null
+        $minimumAttempt = [int]$run.run_attempt + 1
+        $reruns++
+      } elseif ($state -ne 'waiting') { return 'unknown' }
+      & $Pause 15
+    }
+    if ($lastState -eq 'waiting' -or $lastState -eq 'pending') { return 'pending' }
+    return 'unknown'
+  } finally {
+    Remove-Item -LiteralPath $runFile, $jobsFile -ErrorAction SilentlyContinue
+  }
+}
+
 # --- 1. Indledende oversigt (read-only, ét kald pr. PR) ---------------------
 Write-Host "=== merge-queue $(if ($DryRun) { '[DRY-RUN - gennemgaar hele koeen, merger intet]' } else { '[EXECUTE]' }) ===" -ForegroundColor Cyan
 Write-Host "Repo: $Repo   Raekkefoelge: $($PrNumbers -join ' -> ')"
@@ -256,6 +328,10 @@ $plan | ForEach-Object {
   # Logikken ligger i scripts/merge-queue-classify.mjs (ren Node, node --test);
   # dette script viser kun linjen. Fejler node-kaldet, vises det som ukendt.
   $classification = Get-PrMergeCategory $_.number
+  # Ejer 4/10: ejer-go er klaebende. Foerste ejer-go-klassifikation skrives som
+  # markoer paa PR'en, saa en senere omformulering af body ikke kan loefte den til
+  # (a)-(c). Ogsaa i -DryRun: markoeren er metadata, ikke en merge. Slet den aldrig.
+  if ($classification -like 'EJER-GO*') { Set-PrOwnerGoMarker $_.number $classification }
   $classColor = if ($classification -like 'KATEGORI *') { 'Green' } elseif ($classification -like 'EJER-GO*') { 'Yellow' } else { 'DarkGray' }
   Write-Host ("      merge-regel: $classification") -ForegroundColor $classColor
 }
@@ -341,9 +417,13 @@ foreach ($entry in $plan) {
   }
 
   if ($entry.touchesBackend) {
-    $deployOk = Wait-ForWorkflowRun -WorkflowFile "deploy-verify.yml" -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -Label "Deploy verify (Railway+smoke)"
-    if (-not $deployOk) {
-      Write-Host "STOP: 'Deploy verify' er ROED efter PR #$n (roerer backend/). Undersoeg Railway-deploy FOER naeste merge." -ForegroundColor Red
+    $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes
+    if ($deployState -ne 'verified') {
+      if ($deployState -eq 'pending') {
+        Write-Host "AFVENTER: deploy-verifikation efter PR #$n er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
+        exit 75
+      }
+      Write-Host "STOP: deploy-verifikation efter PR #$n er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
       exit 1
     }
   } else {

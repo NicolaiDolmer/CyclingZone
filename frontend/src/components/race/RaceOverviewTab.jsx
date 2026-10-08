@@ -211,7 +211,7 @@ export default function RaceOverviewTab({
       {rolesFailed && <p className="text-xs text-cz-3">{t("racePage.team.loadError")}</p>}
       {!rolesLoading && !rolesFailed && (
         <>
-          <ul className="border border-cz-border rounded-cz overflow-hidden -mx-0">
+          <ul className="border border-cz-border rounded-cz overflow-hidden mx-0">
             {phase === "before"
               ? checklist.map((item) => (
                 <DecisionRow

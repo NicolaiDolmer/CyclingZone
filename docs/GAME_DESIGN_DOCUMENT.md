@@ -13,9 +13,9 @@ Den er endnu ikke en udtømmende beskrivelse af spillet.
 
 **Genoptag samtalen:** læs [sessionsjournalen](design/gdd/SESSION_LOG.md), derefter
 [beslutninger og spørgsmål](design/gdd/DECISIONS.md). Find områdets kilder i
-[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-057 er registreret
+[dækningsregistret](design/gdd/COVERAGE.md). V-001 og D-001 til D-060 er registreret
 (D-029 til D-048 i Claude Code 10/9; D-049 til D-057 i Claude Code 17/9,
-retroaktivt fra specs 11/9+15/9 og NOW.md, se #5087). **Status 10/9 kl. 16:15:** intet åbent
+retroaktivt fra specs 11/9+15/9 og NOW.md, se #5087; D-058 til D-060 i Claude Code 3/10, #6110). **Status 10/9 kl. 16:15:** intet åbent
 spørgsmålskort; Q-037 parkeret til spillerafstemning; Q-053 ikke stillet.
 Læs [CLAUDE_HANDOFF](design/gdd/CLAUDE_HANDOFF.md) for kort beslutningsoversigt,
 næste designarbejde og læserækkefølge; [GitHub-kortet](design/gdd/GITHUB_HANDOFF.md)
@@ -290,6 +290,23 @@ løser at bjergrytteren i dag dominerer bakkerytter-loftet (climber rang 1-2 hos
 efter 27/9; eksisterende ryttere over det nye loft beholder evnen, men vokser
 ikke videre i den.
 
+### Rytterudvikling: niveau, ikke alder (D-058/D-059/D-060, ejer-valgt 2-3/10)
+
+[Spec 3/10](superpowers/specs/2026-10-03-udvikling-2-design.md) (epic
+[#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110)) samler Discord-
+diskussionen 2/10 om alder, potentiale og udvikling. Målingen viste, at alderen er
+den dominerende knap, og at en toptalent er næsten færdig som 21-årig. Beslutning 4
+fra 9/8 blev aldrig bygget ind i motoren. **D-058 (kurvemodel B):** farten styres af
+niveauet (hvert point koster mere, jo tættere evnen er på 100) og af potentialet.
+Alder er ikke længere en turbo; den vender kun tilbage som belastningsevne, fordi de
+helt unge ikke tåler fuld træning. Toppen ligger omkring 27-28. En ren niveau-kurve
+uden alder blev fravalgt, fordi lave niveauer er billige og de unge derfor stadig
+ville blive færdige for tidligt. **D-059:** en løbsdag giver som en hård dag plus et
+tillæg i etapens evner, vægtet efter rollen i løbet. Løb skal slå træning, men være
+mindre målrettet. **D-060 (retning):** løbsdage bremser tilbagegangen ("kilometer i
+benene"); omfang og stilstandsår designes 4-5/10. Bygges i uge 41; detaljer og
+åbne kort står i spec'en og i `PROGRESSION_RULES.md` §11.
+
 ### Holdarbejde og Lederskab: mekanik og #3668-aftalen (D-051/D-052/D-053, ejer-valgt 15/9)
 
 Design-sessionen 15/9 ([spec](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md))
@@ -509,6 +526,11 @@ og hvad der ville få os til at ændre designet. Kodechecks kan bevise en regel,
 spillerens forståelse og glæde kræver observation og samtaler med spillere.
 
 ## Ændringslog
+
+- 3/10 2026 (Claude Code, #6110): D-058 kurvemodel B (niveau og potentiale styrer
+  farten, alder kun som belastningsevne for de helt unge), D-059 løbsdag som hård
+  dag plus tillæg vægtet efter rolle, D-060 retning om at løbsdage bremser
+  tilbagegangen. Fra Discord 2/10 og ejer-kort 3/10; spec 2026-10-03.
 
 - 17/9 2026 (Claude Code, retroaktiv registrering, #5087): D-049 og D-050 om
   ryttertype-visning, rating som bedste rolle nu og bjergrytterens punch-loft

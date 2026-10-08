@@ -1,5 +1,676 @@
 export const PATCHES = [
   {
+    "version": "7.345",
+    "date": "2026-10-07",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "Money in your bids stays locked",
+          "body": "Facility upgrades, staff hires, staff releases and academy signings can no longer be paid with money that is locked in your auction bids. You get a clear message instead, the same way scouting already works."
+        },
+        "da": {
+          "title": "Penge i dine bud forbliver låst",
+          "body": "Opgradering af anlæg, ansættelse og fratrædelse af staff samt akademi-signeringer kan ikke længere betales med penge, der er låst i dine auktionsbud. Du får en tydelig besked i stedet, som det allerede virker ved scouting."
+        },
+        "refs": [
+          6261,
+          6262,
+          6263,
+          6264
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board challenges count riders with a star reputation",
+          "body": "Board challenges that ask for high-renown riders now also count riders who reached star level on reputation. Challenges set before the reputation update no longer miss them, and nobody loses progress they already had."
+        },
+        "da": {
+          "title": "Bestyrelsens udfordringer tæller ryttere med stjerne-omdømme",
+          "body": "Bestyrelsens udfordringer om ryttere med højt omdømme tæller nu også ryttere, der har nået stjerneniveau på omdømme. Udfordringer sat før omdømme-opdateringen overser dem ikke længere, og ingen mister fremgang, de allerede havde."
+        },
+        "refs": [
+          6298
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Expired youth contracts end at the season switch",
+          "body": "At the season switch, expired U23, junior and academy contracts now end together with the senior ones. Riders whose contract has already run out are released at the next switch on 25 October."
+        },
+        "da": {
+          "title": "Udløbne ungdomskontrakter slutter ved sæsonskiftet",
+          "body": "Ved sæsonskiftet slutter udløbne U23-, junior- og akademikontrakter nu sammen med seniorernes. Ryttere, hvis kontrakt allerede er udløbet, frigives ved næste skifte 25. oktober."
+        },
+        "refs": [
+          5864
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider history no longer shows the same team twice",
+          "body": "When you won a rider at an auction you started yourself, the history said your team won him from your own team. It now just shows the purchase and the price."
+        },
+        "da": {
+          "title": "Rytterhistorikken viser ikke længere samme hold to gange",
+          "body": "Når du vandt en rytter på en auktion, du selv startede, stod der, at dit hold vandt ham fra dit eget hold. Nu viser historikken bare købet og prisen."
+        },
+        "refs": [
+          6304
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Pro: saved filters stay saved",
+          "body": "Saved filters in the rider database no longer disappear when you reload the page, and gaps in the season history are filled."
+        },
+        "da": {
+          "title": "Pro: gemte filtre bliver gemt",
+          "body": "Gemte filtre i rytterdatabasen forsvinder ikke længere, når du genindlæser siden, og hullerne i sæsonhistorikken er udfyldt."
+        },
+        "refs": [
+          6286
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Forum",
+        "en": {
+          "title": "First unread reply is highlighted in gold",
+          "body": "In a forum thread, the first reply you haven't read has its gold edge again, as intended. It showed as grey by mistake."
+        },
+        "da": {
+          "title": "Første ulæste svar markeres i guld",
+          "body": "I en forumtråd har det første svar, du ikke har læst, igen sin guldkant som tiltænkt. Den blev vist grå ved en fejl."
+        },
+        "refs": [
+          6271
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Privacy page explains the usage statistics",
+          "body": "The privacy page now describes the anonymous usage statistics collected before you log in, without cookies, and what is measured after you log in."
+        },
+        "da": {
+          "title": "Privatlivssiden forklarer brugsstatistikken",
+          "body": "Privatlivssiden beskriver nu den anonyme brugsstatistik, der indsamles før du logger ind, uden cookies, og hvad der måles, når du er logget ind."
+        },
+        "refs": [
+          6280
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.344",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Races",
+        "en": {
+          "title": "Choose how far a role reaches, now for everyone",
+          "body": "When you change a rider's role on the Tactics tab of a stage race, you choose Stage N and the rest of the race, or Stage N only. Earlier stages keep their roles. Beta testers have used it since 4 October."
+        },
+        "da": {
+          "title": "Vælg hvor langt en rolle rækker, nu for alle",
+          "body": "Når du skifter en rytters rolle på Taktik-fanen i et etapeløb, vælger du Etape N og løbet ud eller Kun etape N. Tidligere etaper beholder deres roller. Beta-testerne har brugt det siden 4. oktober."
+        },
+        "refs": [6095]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Planning",
+        "en": {
+          "title": "The season matrix fits your phone, now for everyone",
+          "body": "On a phone, the season matrix in Planning fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see. No more sideways scrolling."
+        },
+        "da": {
+          "title": "Sæsonmatrixen passer til din telefon, nu for alle",
+          "body": "På telefonen passer sæsonmatrixen i Planlægning til skærmen: én række linser i fuld bredde, og Før og Senere flytter de løbsdage, du ser. Ingen vandret scroll."
+        },
+        "refs": [5124]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Rankings",
+        "en": {
+          "title": "Rankings update about a minute after a result",
+          "body": "The rankings now update shortly after a race result is in, usually within about a minute, instead of on a fixed timer. When nothing has changed, they are not rebuilt, which takes load off the database."
+        },
+        "da": {
+          "title": "Ranglisterne opdateres cirka et minut efter et resultat",
+          "body": "Ranglisterne opdateres nu kort efter, at et løbsresultat er klar, typisk inden for cirka et minut, i stedet for på et fast ur. Når intet er ændret, bygges de ikke om, og det letter databasen."
+        },
+        "refs": [5692]
+      }
+    ]
+  },
+  {
+    "version": "7.343",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Finance",
+        "en": {
+          "title": "Next season's prize forecast is your own estimate ±20 %",
+          "body": "The prize money forecast now shows your own estimate with a range of ±20 %, instead of a lopsided range that could start far below it. Sponsor amounts per stage are marked as provisional while next season's calendar is not ready. Payouts are unchanged."
+        },
+        "da": {
+          "title": "Næste sæsons præmieprognose er dit eget estimat ±20 %",
+          "body": "Prognosen for præmiepenge viser nu dit eget estimat med et spænd på ±20 % i stedet for et skævt spænd, der kunne starte langt under. Sponsorbeløb pr. etape står som foreløbige, så længe næste sæsons kalender ikke er klar. Udbetalinger er uændrede."
+        },
+        "refs": [5940, 5916]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Escapees are no longer shown as caught by their own group",
+          "body": "A breakaway rider who was only reached by riders dropped from the same breakaway now shows as held on or dropped, not caught. Placings, times and points are unchanged."
+        },
+        "da": {
+          "title": "Udbrydere vises ikke længere som indhentet af deres egen gruppe",
+          "body": "En udbryder, der kun blev nået af ryttere sat af fra samme udbrud, står nu som holdt hjem eller sat af, ikke indhentet. Placeringer, tider og point er uændrede."
+        },
+        "refs": [6234]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Scouting",
+        "en": {
+          "title": "Scouting can't use money locked in your bids",
+          "body": "Sending a scout (target or mission) no longer uses money that is locked in your auction bids. If it would, you get a clear message instead."
+        },
+        "da": {
+          "title": "Scouting kan ikke bruge penge, der er låst i dine bud",
+          "body": "At sende en spejder (mål eller mission) bruger ikke længere penge, der er låst i dine auktionsbud. Hvis det ville ske, får du en tydelig besked i stedet."
+        },
+        "refs": [6237]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Regenerating line-ups respects race days used at a former team",
+          "body": "When line-ups are regenerated, a rider is no longer picked for a race day he already used at his previous team, so the target race is not left empty."
+        },
+        "da": {
+          "title": "Ny udtagelse respekterer løbsdage brugt hos et tidligere hold",
+          "body": "Når udtagelsen laves om, bliver en rytter ikke længere sat på en løbsdag, han allerede har brugt hos sit tidligere hold, så målløbet ikke står tomt."
+        },
+        "refs": [6132]
+      }
+    ]
+  },
+  {
+    "version": "7.342",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Riders dropped from the breakaway are shown as dropped",
+          "body": "Race results now show a separate state for a rider who was dropped by his own breakaway. Before, he could be shown as having held on to the finish. Stages since 28/9 are corrected."
+        },
+        "da": {
+          "title": "Ryttere, der blev sat af i udbruddet, vises som sat af",
+          "body": "Løbsresultaterne viser nu en egen tilstand for en rytter, der blev sat af sit eget udbrud. Før kunne han stå som holdt hjem. Etaper siden 28/9 er rettet."
+        },
+        "refs": [6185]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "The race film groups repeated events",
+          "body": "Identical events at the same kilometre now appear as one line, so the finish is easier to read."
+        },
+        "da": {
+          "title": "Løbsfilmen samler gentagne hændelser",
+          "body": "Ens hændelser på samme kilometer står nu som én linje, så afslutningen er lettere at læse."
+        },
+        "refs": [6137]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Riders",
+        "en": {
+          "title": "Sorting by reputation follows the number you see",
+          "body": "The order now matches the reputation shown, also across pages in the rider database. Help explains which riders count as stars, and the board's number is the count of riders who qualify, not a fixed group of seven."
+        },
+        "da": {
+          "title": "Sortering efter omdømme følger det tal, du ser",
+          "body": "Rækkefølgen følger nu det viste omdømme, også på tværs af sider i rytterdatabasen. Hjælp forklarer, hvilke ryttere der tæller som stjerner, og bestyrelsens tal er antallet, der opfylder kravet, ikke en fast gruppe på syv."
+        },
+        "refs": [6209]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The login page works in browsers that block site data",
+          "body": "The login page no longer fails when the browser blocks stored site data."
+        },
+        "da": {
+          "title": "Login-siden virker i browsere, der blokerer site-data",
+          "body": "Login-siden fejler ikke længere, når browseren blokerer gemte site-data."
+        },
+        "refs": [6243]
+      }
+    ]
+  },
+  {
+    "version": "7.341",
+    "date": "2026-10-05",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "Riders who missed evening training got their days back",
+          "body": "Riders who joined a team between 29/9 and 3/10 and missed evening training have those days back, and they train normally again from tonight. A few riders with a more complicated history are reviewed separately."
+        },
+        "da": {
+          "title": "Ryttere, der missede aftentræning, har fået deres dage tilbage",
+          "body": "Ryttere, der kom på et hold mellem 29/9 og 3/10 og missede aftentræning, har fået de dage tilbage og træner normalt igen fra i aften. Et par ryttere med en mere kompliceret historik bliver gennemgået separat."
+        },
+        "refs": [6129, 6061]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "Rankings no longer fail while they update",
+          "body": "Rankings now update in the background, and you see the last finished version in the meantime. Before, they could show an error while updating."
+        },
+        "da": {
+          "title": "Ranglisterne fejler ikke længere, mens de opdateres",
+          "body": "Ranglisterne opdateres nu i baggrunden, og imens ser du den seneste færdige version. Før kunne de vise en fejl under opdateringen."
+        },
+        "refs": [5692]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Board",
+        "en": {
+          "title": "The board stops repeating itself",
+          "body": "You get one reminder before your mandate deadline and one last call, and no more messages about a 3-year plan you cannot open. New teams also get their board mandate when they are created."
+        },
+        "da": {
+          "title": "Bestyrelsen gentager sig ikke længere",
+          "body": "Du får én påmindelse før fristen for dit mandat og én sidste påmindelse, og ingen beskeder om en 3-års plan, du ikke kan åbne. Nye hold får også deres bestyrelsesmandat, når de oprettes."
+        },
+        "refs": [6122, 6130]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Help",
+        "en": {
+          "title": "Help explains rider types more precisely",
+          "body": "Each rider type covers several abilities, not only the one in its name, so a GC rider can also reach high in time trials. The shares for abilities outside both roles and for craft are corrected."
+        },
+        "da": {
+          "title": "Hjælp forklarer ryttertyper mere præcist",
+          "body": "Hver ryttertype dækker flere evner end den, den er opkaldt efter, så en GC-rytter også kan nå højt i enkeltstart. Andelene for evner uden for begge roller og for håndværk er rettet."
+        },
+        "refs": [3813]
+      }
+    ]
+  },
+  {
+    "version": "7.340",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The roadmap is one page with five tabs",
+          "body": "Plan shows what I am building and what comes next, and you rate how important each planned item is to you. Vote holds the ideas I am considering. Beta shows what the beta group has now. Known issues moved here from Help, with my updates and a button to tell me it affects you too. Done lists what is finished."
+        },
+        "da": {
+          "title": "Roadmappen er én side med fem faner",
+          "body": "Plan viser, hvad jeg bygger, og hvad der kommer bagefter, og du vurderer, hvor vigtigt hvert planlagt punkt er for dig. Stem har de idéer, jeg overvejer. Beta viser, hvad beta-gruppen har nu. Kendte fejl er flyttet hertil fra Hjælp, med mine opdateringer og en knap til at fortælle mig, at det også rammer dig. Færdigt viser det, der er færdigt."
+        },
+        "refs": [5387, 6150]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "Filter patch notes by Beta or Now live for all",
+          "body": "A new filter on this page shows everything, only what the beta group has, or what has moved from beta to everyone. A beta note changes its label by itself when the feature is switched on for everyone."
+        },
+        "da": {
+          "title": "Filtrér patch notes på Beta eller Nu for alle",
+          "body": "Et nyt filter på denne side viser alt, kun det beta-gruppen har, eller det, der er gået fra beta til alle. En beta-note skifter selv mærke, når funktionen slås til for alle."
+        },
+        "refs": [6154]
+      }
+    ]
+  },
+  {
+    "version": "7.339",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Interface",
+        "en": {
+          "title": "The site loads when your browser blocks site data",
+          "body": "With site data blocked in the browser, the site stopped on a blank page. It now loads."
+        },
+        "da": {
+          "title": "Siden indlæses, når din browser blokerer site-data",
+          "body": "Med site-data blokeret i browseren stoppede siden på en tom side. Den indlæses nu."
+        },
+        "refs": [6168]
+      }
+    ]
+  },
+  {
+    "version": "7.338",
+    "date": "2026-10-04",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Transfers",
+        "en": {
+          "title": "Old offers close when a rider changes teams",
+          "body": "Open transfer and swap offers are withdrawn when a rider changes teams or is released, regardless of how the move happens. Completed deals are preserved."
+        },
+        "da": {
+          "title": "Gamle tilbud lukkes, når en rytter skifter hold",
+          "body": "Åbne transfer- og byttetilbud trækkes tilbage, når en rytter skifter hold eller frigives, uanset hvordan skiftet sker. Afsluttede handler bevares."
+        },
+        "refs": [6115]
+      }
+    ]
+  },
+{
+  "version": "7.337",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "new",
+      "audience": "player",
+      "rollout": "beta",
+      "topic": "Races",
+      "en": {
+        "title": "Choose which stages a role applies to, in the beta group",
+        "body": "When you change a rider's role on the Tactics tab, you choose Stage N to the end of the race or Stage N only. Earlier stages keep their roles."
+      },
+      "da": {
+        "title": "Vælg hvilke etaper en rolle gælder for, i beta-gruppen",
+        "body": "Når du skifter en rytters rolle på Taktik-fanen, vælger du Etape N og løbet ud eller Kun etape N. Tidligere etaper beholder deres roller."
+      },
+      "refs": [
+        6095
+      ]
+    }
+  ]
+},
+{
+  "version": "7.336",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Riders no longer race twice on one race day",
+        "body": "Two riders raced two races on the same race day after a transfer. Selection now checks every race a rider has already ridden that day, also races that have finished, and the assistant follows the same rule when it picks riders."
+      },
+      "da": {
+        "title": "Ryttere kører ikke længere to løb på én løbsdag",
+        "body": "To ryttere kørte to løb på samme løbsdag efter en transfer. Udtagelsen tjekker nu alle løb, rytteren allerede har kørt den dag, også løb der er afsluttet, og assistenten følger samme regel, når den udtager ryttere."
+      },
+      "refs": [
+        6009,
+        5860
+      ]
+    },
+    {
+      "category": "improved",
+      "audience": "player",
+      "rollout": "switched_on",
+      "topic": "Races",
+      "en": {
+        "title": "Cobble specialists count on cobbled stages",
+        "body": "On cobbled and gravel stages, the gap after a sector now grows with how much weaker a rider is on cobbles, and cobble ability counts in the finale. Applies to races that started from 2 October."
+      },
+      "da": {
+        "title": "Brostensryttere tæller på brostensetaper",
+        "body": "På brostens- og grusetaper vokser tidstabet efter en sektor nu med, hvor meget svagere en rytter er på brosten, og brostensevnen tæller med i finalen. Gælder løb, der er startet fra 2. oktober."
+      },
+      "refs": [
+        6046
+      ]
+    }
+  ]
+},
+{
+  "version": "7.335",
+  "date": "2026-10-04",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Races",
+      "en": {
+        "title": "Saving tactics for one stage no longer changes other stages",
+        "body": "Saving now only stores the stages you changed. If your tactics were changed in another window, nothing is overwritten: the latest version is loaded so you can check it and save again. A stage that has started can no longer be changed."
+      },
+      "da": {
+        "title": "Gem af taktik på én etape ændrer ikke længere andre etaper",
+        "body": "Et gem gemmer nu kun de etaper, du har ændret. Er taktikken ændret i et andet vindue, overskrives intet: den nyeste udgave hentes, så du kan tjekke den og gemme igen. En etape, der er startet, kan ikke længere ændres."
+      },
+      "refs": [
+        6095
+      ]
+    }
+  ]
+},
+{
+  "version": "7.334",
+  "date": "2026-10-03",
+  "changes": [
+    {
+      "category": "fixed",
+      "audience": "player",
+      "rollout": "live",
+      "topic": "Training",
+      "en": {
+        "title": "Training starts correctly for new riders",
+        "body": "New riders, including riders bought before their first activity, get their starting condition when they join a team. Their first race no longer prevents evening training from starting. Earlier missed training days are reviewed separately."
+      },
+      "da": {
+        "title": "Træningen starter korrekt for nye ryttere",
+        "body": "Nye ryttere, også ryttere købt før deres første aktivitet, får deres starttilstand, når de kommer på holdet. Deres første løb forhindrer ikke længere aftentræningen i at starte. Tidligere manglende træningsdage undersøges særskilt."
+      },
+      "refs": [
+        6061
+      ]
+    }
+  ]
+},
+  {
+    "version": "7.333",
+    "date": "2026-10-02",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Fair play",
+        "en": {
+          "title": "New rule: AI tools and automation",
+          "body": "You may use AI tools and spreadsheets to analyse riders and plan your team. Every action in the game must be made by you. Scripts, bots or AI agents that act on your account count as cheating. See Rules, Fair play."
+        },
+        "da": {
+          "title": "Ny regel: AI-værktøjer og automatisering",
+          "body": "Du må gerne bruge AI-værktøjer og regneark til at analysere ryttere og planlægge dit hold. Alle handlinger i spillet skal du selv udføre. Scripts, bots eller AI-agenter, der handler på din konto, tæller som snyd. Se Regler, Fair play."
+        },
+        "refs": [6100]
+      }
+    ]
+  },
+  {
+    "version": "7.332",
+    "date": "2026-10-02",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Captains no longer lose minutes for no reason",
+          "body": "GC captains lost far too much time on hilly and mountain stages, because a strong breakaway got the same extra room as a harmless one. A breakaway that threatens the stage or the GC no longer gets that extra room, so captains stay with the favourites far more often. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Kaptajner taber ikke længere minutter uden grund",
+          "body": "GC-kaptajner tabte alt for meget tid på kuperede etaper og bjergetaper, fordi et stærkt udbrud fik samme ekstra plads som et ufarligt. Et udbrud der truer etapen eller klassementet, får ikke længere den ekstra plads, så kaptajnerne langt oftere kommer ind med favoritterne. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6088, 6089, 6092]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Mountain stages are decided on the final climb",
+          "body": "The favourites now stay together until the final climb instead of splitting up early, and the day's breakaway is usually caught there. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Bjergetaper afgøres på finalestigningen",
+          "body": "Favoritterne holder nu samlet til finalestigningen i stedet for at blive splittet tidligt, og dagens udbrud bliver typisk hentet dér. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6084]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Rolling stages end in a sprint or a reduced group more often",
+          "body": "The morning breakaway won about every second rolling stage. It now gets less room, so these stages more often end in a sprint or with a reduced group. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Rullende etaper ender oftere i spurt eller med en reduceret gruppe",
+          "body": "Morgenudbruddet vandt omkring hver anden rullende etape. Det får nu mindre plads, så etaperne oftere ender i spurt eller med en reduceret gruppe. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6073]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Teams fight for a place in the breakaway",
+          "body": "AI teams now send a rider for the morning breakaway on stages that suit them, so almost every road stage has one again. Many teams can try, but only some get away. Your own riders still follow your roles and Try the break. Applies to races that start from today's restart."
+        },
+        "da": {
+          "title": "Holdene kæmper om en plads i udbruddet",
+          "body": "AI-hold sender nu en rytter i morgenudbrud på etaper der passer dem, så næsten alle vejetaper har et igen. Mange hold kan forsøge, men kun nogle kommer af sted. Dine egne ryttere følger stadig dine roller og Forsøg udbrud. Gælder løb der starter fra dagens genstart."
+        },
+        "refs": [6097]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "Your breakaway orders count, and Ride easy saves more in the mountains",
+          "body": "A rider you send with Try the break, or a breakaway hunter, now gets in ahead of riders who just go on their own. A rider on Ride easy loses less time on the climbs and saves most energy in the mountains."
+        },
+        "da": {
+          "title": "Dine udbrudsordrer tæller, og Kør roligt sparer mere i bjergene",
+          "body": "En rytter du sender med Forsøg udbrud, eller en udbrudsjæger, kommer nu med før ryttere der bare kører selv. En rytter på Kør roligt taber mindre tid på stigningerne og sparer flest kræfter i bjergene."
+        },
+        "refs": [6079]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Split times, and where and why your riders lost time",
+          "body": "The stage tab and the race film show the groups and their gaps at each climb and intermediate sprint. Below, you see where each of your riders lost contact and why, for example the pace on a climb, empty legs, a crash or your own Ride easy order."
+        },
+        "da": {
+          "title": "Mellemtider, og hvor og hvorfor dine ryttere tabte tid",
+          "body": "Etape-fanen og løbsfilmen viser grupperne og deres afstand ved hver stigning og mellemsprint. Nedenunder ser du, hvor hver af dine ryttere mistede kontakten og hvorfor, fx tempoet på en stigning, tomme ben, et styrt eller din egen Kør roligt-ordre."
+        },
+        "refs": [6080]
+      }
+    ]
+  },
+  {
+    "version": "7.331",
+    "date": "2026-10-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "switched_on", "topic": "Races",
+        "en": {
+          "title": "New race rules for races that start from 2 October",
+          "body": "Races whose first stage runs from 2 October use new rules. Captains, sprint captains and helpers only go for the morning breakaway when you tick Try the break. Breakaway hunters try by default, and you can switch it off for a stage. A rider on Ride easy does not attack on his own, and a grupetto rider never does. An attempt costs energy, also when it fails. GC teams react when a dangerous rider is up the road, with the helpers they have free. Races that had already started finish on the old rules. The Tactics tab shows which rules a race uses, and Help explains them."
+        },
+        "da": {
+          "title": "Nye løbsregler for løb der starter fra 2. oktober",
+          "body": "Løb hvis første etape køres fra 2. oktober, bruger nye regler. Kaptajner, spurtkaptajner og hjælpere går kun i morgenudbrud, når du sætter Forsøg udbrud. Udbrudsjægere forsøger som standard, og du kan slå det fra for en etape. En rytter på Kør roligt angriber ikke selv, og en grupetto-rytter gør det aldrig. Et forsøg koster kræfter, også når det mislykkes. Klassementshold reagerer, når en farlig rytter er kørt væk, med de hjælpere de har ledige. Løb der allerede var startet, køres færdige på de gamle regler. Taktik-fanen viser, hvilke regler et løb bruger, og Hjælp forklarer dem."
+        },
+        "refs": [5955, 5978, 6067]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "The best specialists finish where their ability says again",
+          "body": "In the finale, the day's form and fresh legs counted as much as ability, so a team's best sprinter or puncheur could finish behind weaker teammates. Form and reserve now follow ability, and AI teams no longer ride their leader at full effort all day so he is empty for the sprint. It applies from the next stage that has not been raced, also in stage races under way."
+        },
+        "da": {
+          "title": "De bedste specialister slutter igen efter evne",
+          "body": "I finalen talte dagsform og friske ben lige så meget som evnen, så holdets bedste spurter eller puncheur kunne slutte bag svagere holdkammerater. Form og reserve følger nu evnen, og AI-hold kører ikke længere deres kaptajn på fuld indsats hele dagen, så han er tom til spurten. Det gælder fra næste etape der ikke er kørt, også i etapeløb der er i gang."
+        },
+        "refs": [5957, 6049, 6055]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "The race film says who caught the breakaway",
+          "body": "When the breakaway is brought back, the race film, the stage report and the recap name the teams that led the chase and how far from the line it happened. Older races keep the text they had."
+        },
+        "da": {
+          "title": "Løbsfilmen siger, hvem der hentede udbruddet",
+          "body": "Når udbruddet bliver hentet, nævner løbsfilmen, etaperapporten og opsummeringen de hold, der førte jagten, og hvor langt fra stregen det skete. Ældre løb beholder deres tekst."
+        },
+        "refs": [6050]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Planning",
+        "en": {
+          "title": "The form planner only offers races that have not started",
+          "body": "Peak targets can only be races that have not started yet, and U23 and junior riders no longer sit in the senior plan. A youth rider with an old peak shows in his own box, where you can remove it."
+        },
+        "da": {
+          "title": "Formplanlæggeren tilbyder kun løb der ikke er startet",
+          "body": "Peak-mål kan kun være løb, der ikke er startet endnu, og U23- og juniorryttere står ikke længere i seniorplanen. En ungdomsrytter med et gammelt peak står i sin egen boks, hvor du kan fjerne det."
+        },
+        "refs": [5992]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Training",
+        "en": {
+          "title": "The training report shows progress as Flat +10%",
+          "body": "Progress below a whole ability point now reads like Flat +10% instead of +10% of an ability point. 100% equals one whole point, and Help explains it."
+        },
+        "da": {
+          "title": "Træningsrapporten viser fremgang som Flad +10%",
+          "body": "Fremgang under et helt evnepoint står nu som fx Flad +10% i stedet for +10% af et evnepoint. 100% svarer til ét helt point, og Hjælp forklarer det."
+        },
+        "refs": [6034]
+      }
+    ]
+  },
+  {
     "version": "7.330",
     "date": "2026-10-01",
     "label": "Beta",
@@ -89,7 +760,7 @@ export const PATCHES = [
         "refs": [5947, 6019]
       },
       {
-        "category": "new", "audience": "player", "rollout": "beta", "topic": "Planning",
+        "category": "new", "audience": "player", "rollout": "beta", "flag": "season_matrix_mobile", "topic": "Planning",
         "en": {
           "title": "Season matrix on the phone, in the beta group",
           "body": "On a phone, the season matrix in Planning now fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see."
@@ -216,7 +887,7 @@ export const PATCHES = [
     "date": "2026-09-30",
     "label": "Beta",
     "changes": [{
-      "category": "improved", "audience": "player", "rollout": "beta", "topic": "Training",
+      "category": "improved", "audience": "player", "rollout": "beta", "flag": "training_daily_receipt", "topic": "Training",
       "en": {
         "title": "One receipt for the whole training date",
         "body": "For beta testers, the training report combines the date's activities into one receipt per rider. Open a rider to see the recorded race days, development and condition changes. Where training scores are enabled, the list shows the latest recorded session score and details show each training session's quality. Form, fatigue and positive development use the same colours as the rider views. Pending or uncertain settlements are shown explicitly. Season receipts combine complete date evidence; development history displays the latest documented snapshot for each date."
@@ -775,7 +1446,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "training_programs",
         "stage": "beta",
         "topic": "Training",
         "en": {
@@ -1306,7 +1977,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "improved",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "youth_squad_pages",
         "topic": "Squad",
         "en": {
           "title": "U23 team and Junior team pages on a par with My Team, in the beta group",
@@ -1343,7 +2014,7 @@ export const PATCHES = [
       },
       {
         "category": "new",
-        "audience": "player", "rollout": "beta",
+        "audience": "player", "rollout": "beta", "flag": "rider_best_role_display",
         "stage": "beta",
         "topic": "Riders",
         "en": {

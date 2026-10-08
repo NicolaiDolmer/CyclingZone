@@ -6,6 +6,15 @@
 >
 > Afgrænsning: rytter-**økonomi** (market_value, salary, kontrakter, præmier) bor i [`GAME_INVARIANTS.md`](GAME_INVARIANTS.md). Her handler det kun om *skabelsen*.
 
+## Førstegangstilstand ved database-oprettelse (#6061)
+
+Når datoafregningen ejer træningen, får en ny ejet rytter eller en rytter
+ved reelt ejerskifte en manglende førstegangstilstand i samme transaktion,
+før første løbsbelastning. Generatorens seed, stats, type- og derive-kæde
+ændres ikke. Eksisterende tilstand og tidligere aktivitet spærrer automatisk
+initialisering. Kontrakten ejes af [TRAINING_RULES](TRAINING_RULES.md);
+kode: `database/2026-10-03-6061-first-use-rider-condition.sql`.
+
 ## Sådan efterprøver du dette dokument
 
 **Ingen påstand her hviler på nogens hukommelse.** Hver linje bærer enten en fil:linje-reference, et commit-hash eller en målekommando, så den kan verificeres uden at nogen skal huske hvad der blev besluttet hvornår.

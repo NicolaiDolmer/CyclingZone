@@ -23,10 +23,16 @@ import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
-import type { RosterCell } from "./mobile/TrainingMobileRoster.tsx";
 import TrainingScoreSparkline, { type TrainingScorePoint } from "./TrainingScoreSparkline.tsx";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import { squadBadgeKey } from "../../lib/squadBadge.ts";
+
+// En loebsdags-celle (flyttet hertil fra den slettede mobil-tabel, #6030).
+export type RosterCell = {
+  label: string;
+  tone: "race" | "session" | "off";
+  title?: string;
+};
 // Den ENE kanoniske sorterbare header (samme pil, aria-sort og klik-maal som
 // resten af spillet), ikke en lokal kopi.
 import SortableTh from "../ui/SortableTh.jsx";
@@ -67,7 +73,7 @@ function Meter({ value, warn, tone }: { value: number | null; warn: boolean; ton
         {value ?? "—"}
       </span>
       <span className="relative h-1.5 w-11 overflow-hidden rounded-cz-pill bg-cz-subtle" aria-hidden="true">
-        <span className={`absolute inset-y-0 start-0 rounded-cz-pill ${fill}`} style={{ width: `${pct}%` }} />
+        <span className={`absolute inset-y-0 inset-s-0 rounded-cz-pill ${fill}`} style={{ width: `${pct}%` }} />
       </span>
     </div>
   );
@@ -108,7 +114,6 @@ export default function TrainingTodayTable({
   renderNoDay,
   toolbar,
   empty = null,
-  showSeason = true,
   forecastSettled = false,
 }: {
   rows: TodayRow[];
@@ -133,14 +138,11 @@ export default function TrainingTodayTable({
   renderNoDay: (riderId: string) => ReactNode;
   toolbar: ReactNode;
   empty?: ReactNode;
-  // #6025 (ejer-valg A 1/10): Today handler kun om i dag; saesonens point bor
-  // i fanen Development, naar beta-fladen er aaben.
-  showSeason?: boolean;
   forecastSettled?: boolean;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
-  const colCount = 5 + (showScore ? 1 : 0) + columns.length + (showSeason ? 1 : 0);
+  const colCount = 5 + (showScore ? 1 : 0) + columns.length;
   const tonightOn = [...rows, ...(groups ?? []).flatMap((g) => g.rows)].some((r) => r.fatigueTonight);
   // Justeringen saettes pr. kolonne, saa text-left aldrig kaemper med
   // text-center/text-right i samme klasseliste.
@@ -188,7 +190,7 @@ export default function TrainingTodayTable({
                   className={`flex-none text-cz-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
                 />
               </span>
-              <span className="mt-px font-data text-3xs uppercase tracking-[.05em] text-cz-3">{row.sub}</span>
+              <span className="mt-px font-data text-3xs uppercase tracking-wider text-cz-3">{row.sub}</span>
             </button>
             {renderStatus(row.id)}
           </td>
@@ -267,11 +269,6 @@ export default function TrainingTodayTable({
               </td>
             ))
           )}
-          {showSeason && (
-          <td className={`${cellBase} w-[84px] pe-4 text-right font-data text-[13px] tabular-nums text-cz-1`}>
-            {row.seasonPoints != null ? `+${row.seasonPoints}` : <span className="text-cz-3">—</span>}
-          </td>
-          )}
         </tr>
         {isOpen && (
           <tr data-testid="training-rider-detail">
@@ -345,7 +342,7 @@ export default function TrainingTodayTable({
                   {single ? t("mobile.today") : t("mobile.raceDayShort", { n: column.index })}
                 </th>
               ))}
-              {showSeason && <th className={`${headClass} pe-4 text-right`}>{t("today.colSeasonPoints")}</th>}
+              {/* #6025/#6030: Today handler kun om i dag; saesonens point bor i Development. */}
             </tr>
           </thead>
           <tbody>

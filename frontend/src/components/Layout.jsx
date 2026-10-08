@@ -33,7 +33,7 @@ import {
   buildNavDotFlags, resolveNavDot,
 } from "../lib/patchNotesUnread.js";
 import {
-  isRoadmapUnread, readLastSeenRoadmap,
+  isRoadmapUnread, readLastSeenRoadmap, latestRoadmapCreatedAt,
 } from "../lib/roadmapUnread.ts"; // #5673: samme prik-recipe som patch notes
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
@@ -293,14 +293,11 @@ async function fetchForumUnread(headers) {
 // og patch-notes-prikkerne.
 async function fetchLatestRoadmapDate() {
   try {
-    const { data, error } = await supabase
-      .from("roadmap_items")
-      .select("created_at")
-      .eq("approved", true)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (error || !data?.length) return null;
-    return data[0].created_at ?? null;
+    // #6150: nyeste af roadmap-punkter og publicerede kendte fejl (Known issues-fanen).
+    const latest = (table, flag) => supabase.from(table).select("created_at")
+      .eq(flag, true).order("created_at", { ascending: false }).limit(1);
+    const [items, issues] = await Promise.all([latest("roadmap_items", "approved"), latest("known_issues", "published")]);
+    return latestRoadmapCreatedAt([...(items.error ? [] : items.data ?? []), ...(issues.error ? [] : issues.data ?? [])]);
   } catch {
     return null;
   }
@@ -338,15 +335,15 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
       <span className="flex items-center gap-2.5 min-w-0">
         {/* #481 PR-2: gold bullet — active = solid gold, inactive = muted (lights up on hover). Decorative. */}
         <span aria-hidden="true"
-          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors duration-150
+          className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-150
             ${isActive ? "bg-cz-accent" : "bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2"}`} />
         <span className="truncate">{label}</span>
         {/* #5404: "Beta" naar siden bag punktet ligger bag et flag i stadiet
             beta for denne viewer — se lib/featureStage.ts. */}
-        {beta && <BetaBadge stage="beta" className="flex-shrink-0" />}
+        {beta && <BetaBadge stage="beta" className="shrink-0" />}
       </span>
       {showBadge && (
-        <span className="bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full leading-none flex-shrink-0 tabular-nums">
+        <span className="bg-cz-accent text-cz-on-accent text-3xs font-black px-1.5 py-0.5 rounded-full leading-none shrink-0 tabular-nums">
           {formatNavBadgeCount(badgeValue)}
         </span>
       )}
@@ -354,7 +351,7 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
           patch notes" er ikke en meningsfuld optælling for spilleren), samme
           guld som badgen ovenfor. Forsvinder når /patch-notes åbnes (Layout()). */}
       {showDot && (
-        <span className="flex-shrink-0" title={dotText}>
+        <span className="shrink-0" title={dotText}>
           <span aria-hidden="true" className={`block w-2 h-2 rounded-full ${dotToneClass}`} />
           <span className="sr-only">{dotText}</span>
         </span>
@@ -466,7 +463,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
           className="group relative flex items-center w-full mx-2 px-3 py-2 rounded-lg text-[13px] text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150"
         >
           <span className="flex items-center gap-2.5 min-w-0">
-            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150" />
+            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150" />
             <span className="truncate">{contactLabel}</span>
           </span>
         </button>
@@ -931,7 +928,7 @@ export default function Layout() {
           footer, uses a fixed z-index and was left below it). z-nav keeps the
           sidebar above sticky page content while staying under dropdown-tier
           portals/modals/toasts. */}
-      <aside className="hidden md:flex flex-col w-52 flex-shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border fixed top-0 left-0 h-full z-nav">
+      <aside className="hidden md:flex flex-col w-52 shrink-0 bg-cz-sidebar border-r border-cz-sidebar-border fixed top-0 left-0 h-full z-nav">
         <SidebarContent {...sidebarProps} onNav={() => {}} />
       </aside>
 

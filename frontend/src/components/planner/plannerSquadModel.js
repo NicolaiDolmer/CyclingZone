@@ -86,8 +86,60 @@ export function targetableRacesFor({ rider, races, todayOrd, currentTargetId = n
     .filter((r) => r.isMine && r.date)
     .map((r) => ({ ...r, ord: dateToOrdinal(r.date) }))
     .filter((r) => r.ord != null)
-    .filter((r) => r.id === currentTargetId || (!takenByOtherSlots.has(r.id) && (todayOrd == null || r.ord >= todayOrd)))
+    .filter((r) => r.id === currentTargetId || (!takenByOtherSlots.has(r.id) && isPeakTargetOpen(r, todayOrd)))
     .sort((a, b) => a.ord - b.ord);
+}
+
+/**
+ * #5992: kan løbet stadig vælges som NYT peak-mål? Kun løb der ikke er startet.
+ *
+ * Datoen alene er ikke nok: pakkeren lægger flere løbsdage inden i én
+ * kalenderdag (docs/CALENDAR_RULES.md §1), så et løb med startdato i dag kan
+ * allerede være kørt færdigt om aftenen. `race.started` kommer fra boardet og
+ * bruger samme definition som resten af løbskalenderen (deriveRaceStatus:
+ * status ≠ 'scheduled' eller mindst én etape kørt). Datotjekket står tilbage
+ * som gulv for løb fra en ældre payload uden feltet.
+ *
+ * @param {{date?:string|null, started?:boolean}} race
+ * @param {number|null} todayOrd
+ * @returns {boolean}
+ */
+export function isPeakTargetOpen(race, todayOrd) {
+  if (!race || race.started === true) return false;
+  const ord = dateToOrdinal(race.date);
+  if (ord == null) return false;
+  return todayOrd == null || ord >= todayOrd;
+}
+
+/**
+ * #5992: hører rytteren til en UNGDOMStrup (U23/junior)? Boardet sender
+ * `squad` afledt af det fælles trup-prædikat (backend/lib/squads.js
+ * isSeniorSquadRider), så klienten aldrig selv gætter ud fra alder.
+ *
+ * @param {{squad?:string}|null|undefined} rider
+ * @returns {boolean}
+ */
+export function isYouthPlannerRider(rider) {
+  return rider?.squad === "u23" || rider?.squad === "junior";
+}
+
+/**
+ * #5992: del truppen i seniorryttere (planlægges) og ungdomsryttere der
+ * stadig har en ÆGTE peak (kan kun fjernes). Peak-mål er seniorkalenderens
+ * løb, som ungdomsryttere ikke kører; en ungdomsrytter uden peak vises derfor
+ * slet ikke i planlæggeren.
+ *
+ * @param {Array<object>} riders
+ * @returns {{senior:Array<object>, youthWithPeaks:Array<object>}}
+ */
+export function splitPlannerSquads(riders) {
+  const senior = [];
+  const youthWithPeaks = [];
+  for (const rd of riders || []) {
+    if (!isYouthPlannerRider(rd)) senior.push(rd);
+    else if ((rd.peaks || []).some((p) => !p?.isSuggestion && p?.targetRaceId)) youthWithPeaks.push(rd);
+  }
+  return { senior, youthWithPeaks };
 }
 
 /**
@@ -254,6 +306,8 @@ export function plannerStatusSummary({ riders, today, leadupDays }) {
   let daysToNextLeadup = null;
 
   for (const rider of riders || []) {
+    // #5992: status-linjen beskriver seniorplanen; ungdommens gamle peaks står i egen gruppe.
+    if (isYouthPlannerRider(rider)) continue;
     for (const peak of rider?.peaks || []) {
       if (!peak.isSuggestion) peaksPlanned += 1;
       if (peakNeedsAction(peak)) needsAction += 1;
@@ -280,6 +334,7 @@ export function plannerStatusSummary({ riders, today, leadupDays }) {
 export function pendingSuggestionPairs(riders) {
   const pairs = [];
   for (const rider of riders || []) {
+    if (isYouthPlannerRider(rider)) continue; // #5992: kun seniortruppen
     const suggestions = (rider?.peaks || [])
       .filter((p) => p.isSuggestion && p.targetRaceId)
       .sort((a, b) => (dateToOrdinal(a.windowStart) ?? 0) - (dateToOrdinal(b.windowStart) ?? 0));
@@ -298,5 +353,5 @@ export function pendingSuggestionPairs(riders) {
  * @returns {number}
  */
 export function ridersWithSuggestions(riders) {
-  return (riders || []).filter((r) => (r?.peaks || []).some((p) => p.isSuggestion && p.targetRaceId)).length;
+  return (riders || []).filter((r) => !isYouthPlannerRider(r) && (r?.peaks || []).some((p) => p.isSuggestion && p.targetRaceId)).length;
 }

@@ -5,32 +5,31 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-80 poster: live 57 · beta 3 · dormant 5 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+88 poster: live 67 · beta 3 · dormant 3 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
 
 ## race-engine
 
-**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · Race engine v3 (`race-engine-v3`) 2026-09-06 · v3 scoring components (`race-engine-v3-scoring`) 2026-09-06 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
+**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Race engine v4 (`race-engine-v4`) | dormant | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #3855 | 2026-09-07 | Off i prod (#4951). |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #4632 | 2026-09-07 | UI live; effekt venter v4-flip. |
+| Official time persistence revision (`race-official-times-v1`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-07 | Built behind official_times_v1, branching from v2. Default unchanged; DB allow-list proposal and separate owner activation approval required. |
 
 ## race-day
 
-**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Stage scheduler (`stage-scheduler`) 2026-09-06
+**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage scheduler (`stage-scheduler`) 2026-09-06
 
 ## market
 
-**live:** Auctions with proxy bidding (`auctions`) 2026-09-06 · Direct transfers and offers (`direct-transfers`) 2026-09-06 · Rider swaps (`rider-swaps`) 2026-09-06
+**live:** Auctions with proxy bidding (`auctions`) 2026-09-06 · Direct transfers and offers (`direct-transfers`) 2026-09-06 · Rider swaps (`rider-swaps`) 2026-09-06 · Rider value on the same abilities as the rating (`rider-valuation-v5`) 2026-10-04
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Market value blend sweep (`market-value-blend`) | dormant | `market_value_sweep_enabled` | [ECONOMY_RULES](ECONOMY_RULES.md) | #3448 | 2026-09-07 | Afventer ejer-go (#4449). |
-| Rider value on the same abilities as the rating (`rider-valuation-v5`) | dormant | `rider_valuation_model` | [ECONOMY_RULES](ECONOMY_RULES.md) | #5443 | 2026-09-21 | PR #5446, nøglen står på v4. Ejer flipper til v5 + ekstraordinær kørsel (runbook 5443); lønnen har egen nøgle rider_production_value_model. |
 | Auction entry gate (`auction-entry-gate`) | building | `auction_entry_gate_enabled` | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | - | 2026-09-06 | - |
 | AI and unsolicited bids (`ai-unsolicited-bids`) | idea | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | Findes ikke i kode. |
 | Rider loans (`rider-loans`) | retired | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1994 | 2026-09-06 | Afviklet; kun lån findes. |
@@ -46,12 +45,13 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## training
 
-**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-09-06 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training score 1-99 (`training-score`) 2026-09-24 · Training tick per race day (`training-tick-per-race-day`) 2026-09-28
+**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-10-04 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training score 1-99 (`training-score`) 2026-09-24 · Training tick per race day (`training-tick-per-race-day`) 2026-09-28
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Daily rider training receipt (`training-daily-receipt`) | beta | `training_daily_receipt` | [TRAINING_RULES](TRAINING_RULES.md) | #5915 | 2026-09-30 | Beta/admin aktiveret 30/9 kl. 22.07; PR 5976, main-CI/Deploy verify og rigtigt holds datokvittering/passcorer verificeret. Off gendanner tidligere visninger. |
-| Training programs per race day (`training-programs`) | beta | `training_programs` | [TRAINING_RULES](TRAINING_RULES.md) | #4629 | 2026-09-27 | PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil. |
+| Training groups (`training-groups`) | beta | `training_groups` | [TRAINING_RULES](TRAINING_RULES.md) | #6000 | 2026-10-04 | Beta læst i prod 4/10; kræver training_program_cells. Flip til alle er ejer-only. |
+| Training programs per race day (`training-programs`) | beta | `training_programs` | [TRAINING_RULES](TRAINING_RULES.md) | #4629 | 2026-10-04 | PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil. |
+| Train now (no bonus) (`training-train-now`) | beta | `training_train_now` | [TRAINING_RULES](TRAINING_RULES.md) | #4847 | 2026-10-04 | Beta læst i prod 4/10; kræver training_condition_per_date. Flip til alle er ejer-only. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
@@ -66,7 +66,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## season
 
-**live:** AI team retirement (`ai-team-retire`) 2026-09-06 · Season recap (`season-end-recap`) 2026-09-06 · Season signup (`season-signup`) 2026-09-24 · Season transition (`season-transition`) 2026-09-06
+**live:** AI team retirement (`ai-team-retire`) 2026-09-06 · Season recap (`season-end-recap`) 2026-09-06 · Season matrix on mobile (`season-matrix-mobile`) 2026-10-06 · Season signup (`season-signup`) 2026-09-24 · Season transition (`season-transition`) 2026-09-06
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -111,11 +111,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## comms
 
-**live:** Discord welcome inbox notification (`discord-welcome-inbox`) 2026-09-15 · In-app player survey (`in-app-survey`) 2026-09-08 · Manager-to-manager DM (`manager-dm-v1`) 2026-09-17
-
-| Feature | State | Flag | SSOT | Epic | Verified | Note |
-| --- | --- | --- | --- | --- | --- | --- |
-| Email retention loop (`email-loop`) | beta | - | [EMAIL_LOOP_GO_LIVE_RUNBOOK](EMAIL_LOOP_GO_LIVE_RUNBOOK.md) | #4616 | 2026-09-14 | Win-back afventer ejer-go (#2760). |
+**live:** Discord welcome inbox notification (`discord-welcome-inbox`) 2026-09-15 · Email retention loop (`email-loop`) 2026-10-06 · In-app player survey (`in-app-survey`) 2026-09-08 · Manager-to-manager DM (`manager-dm-v1`) 2026-09-17 · Roadmap hub (five tabs) (`roadmap-hub`) 2026-10-04
 
 ## billing
 
@@ -123,7 +119,8 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## ops
 
+**live:** Rider reputation (`rider-reputation`) 2026-10-04
+
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Rider reputation (`rider-reputation`) | building | `rider_reputation_enabled` | - | - | 2026-09-10 | - |
 | Survey banner (`survey-banner`) | building | `survey_banner_enabled` | - | - | 2026-09-06 | - |

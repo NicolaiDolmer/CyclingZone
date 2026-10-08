@@ -13,11 +13,42 @@ const save = (p, data) => fs.writeFileSync(p, JSON.stringify(data, null, 2) + '\
 const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', timeout: 30000 }).trim();
 const gh = (...args) => JSON.parse(execFileSync('gh', [...args, '--repo', REPO], { encoding: 'utf8', timeout: 30000 }));
 
+function modelSelection(role, track) {
+  if (role !== 'reviewer') return { model: track.model ?? null, effort: track.effort ?? null };
+  return {
+    model: track.reviewerModel ?? track.model ?? null,
+    // A newly selected model must not inherit another model's effort setting.
+    effort: track.reviewerEffort ?? (track.reviewerModel ? null : track.effort ?? null),
+  };
+}
+
+export function executionPlan(options) {
+  const tracks = validateTracks(options.tracks);
+  const lanes = options.lanes === undefined ? 2 : options.lanes;
+  if (!Number.isInteger(lanes) || lanes < 1 || lanes > 4) throw Error('lanes must be an integer from 1 to 4');
+  for (const track of tracks) {
+    for (const key of ['model', 'effort', 'reviewerModel', 'reviewerEffort']) {
+      if (track[key] !== undefined && (typeof track[key] !== 'string' || !track[key].trim())) {
+        throw Error(`${key} must be a non-empty string for #${track.issue}`);
+      }
+    }
+  }
+  return {
+    requestedLanes: options.lanes ?? null,
+    lanes: Math.min(lanes, tracks.length),
+    laneSource: options.lanes === undefined ? 'default' : 'explicit',
+    verifyMax: 2,
+    models: tracks.map(track => ({ issue: track.issue, worker: modelSelection('worker', track), reviewer: modelSelection('reviewer', track) })),
+  };
+}
+
 export function childArgs(role, track, schema, output) {
-  const args = ['exec', '-C', track.worktree, '--sandbox', role === 'reviewer' || track.kind === 'investigate' ? 'read-only' : 'workspace-write',
+  const readOnly = role === 'reviewer' || track.kind === 'investigate';
+  const args = ['exec', '-C', track.worktree, ...(readOnly ? ['--sandbox','read-only'] : ['--approve-for-me']),
     '--json', '--output-schema', schema, '--output-last-message', output];
-  if (track.model) args.push('--model', track.model);
-  if (track.effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(track.effort)}`);
+  const selection = modelSelection(role, track);
+  if (selection.model) args.push('--model', selection.model);
+  if (selection.effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(selection.effort)}`);
   // No model override by default. Scratch is per track, never a shared root.
   if (role !== 'reviewer') args.push('--add-dir', track.scratch);
   args.push('-');
@@ -34,6 +65,7 @@ function resultSchema(role) {
 export async function runWave(options, supplied = {}) {
   const { root, runDir, owner } = options;
   const tracks = validateTracks(options.tracks);
+  const execution = executionPlan(options);
   const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, ...supplied };
   const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs);
   const evidence = path.join(runDir, 'waves', wave.waveId);
@@ -44,7 +76,7 @@ export async function runWave(options, supplied = {}) {
   const controller = new AbortController();
   const onSignal = () => { stopWave = true; controller.abort(); };
   process.on('SIGINT', onSignal); process.on('SIGTERM', onSignal);
-  const checkpoint = cleanup => save(report, { waveId: wave.waveId, runtime: 'codex', results, cleanup, children: readWave(runDir).children || [],
+  const checkpoint = cleanup => save(report, { waveId: wave.waveId, runtime: 'codex', execution, results, cleanup, children: readWave(runDir).children || [],
     unstarted: tracks.filter(t => !results.some(r => r.issue === t.issue)).map(t => t.issue) });
   const context = { root, runDir, evidence, wave, signal: controller.signal, now: deps.now };
   try {
@@ -53,7 +85,9 @@ export async function runWave(options, supplied = {}) {
     for (const t of tracks) {
       if (controller.signal.aborted) throw Error('Wave interrupted during setup');
       await deps.prefilter(t, context);
-      prepared.push(await deps.prepare(t, context));
+      const preparedTrack = await deps.prepare(t, context);
+      if (preparedTrack.kind !== 'investigate') await deps.verifyPermissions(preparedTrack, context);
+      prepared.push(preparedTrack);
     }
     let next = 0;
     async function lane() {
@@ -95,7 +129,7 @@ export async function runWave(options, supplied = {}) {
     }
     // Four child processes at most, including reviewers; each lane reviews
     // serially with a fresh process. Main session remains the architect.
-    const count = Math.max(1, Math.min(4, Number(options.lanes) || 2, prepared.length));
+    const count = execution.lanes;
     await Promise.all(Array.from({ length: count }, lane));
     return { results, report, waveId: wave.waveId };
   } finally {
@@ -106,10 +140,26 @@ export async function runWave(options, supplied = {}) {
   }
 }
 
-function codexCommand() {
-  if (process.platform !== 'win32') return { file: 'codex', prefix: [] };
-  const source = execFileSync('pwsh', ['-NoProfile', '-Command', '(Get-Command codex -ErrorAction Stop).Source'], { encoding: 'utf8' }).trim();
-  return source.endsWith('.ps1') ? { file: 'pwsh', prefix: ['-NoProfile', '-File', source] } : { file: source, prefix: [] };
+export function codexCommand({ platform = process.platform, localAppData = process.env.LOCALAPPDATA, discover = () => JSON.parse(execFileSync('pwsh',
+  ['-NoProfile', '-Command', '@(Get-Command codex -All -ErrorAction Stop | ForEach-Object { $_.Source }) | ConvertTo-Json -Compress'],
+  { encoding: 'utf8', timeout: 10000 }).trim()) } = {}) {
+  if (platform !== 'win32') return { file: 'codex', prefix: [] };
+  const discovered = discover();
+  const sources = (Array.isArray(discovered) ? discovered : [discovered]).filter(source => typeof source === 'string' && source.trim());
+  // Desktop app updates its bundled CLI independently of the npm shim. Prefer
+  // the app binary already on PATH; do not pin a version/hash or change models.
+  const appBin = localAppData && `${path.win32.resolve(localAppData, 'OpenAI', 'Codex', 'bin').toLowerCase()}\\`;
+  const source = sources.find(candidate => appBin
+    && path.win32.resolve(candidate).toLowerCase().startsWith(appBin)
+    && path.win32.basename(candidate).toLowerCase() === 'codex.exe') || sources[0];
+  if (!source) throw Error('No Codex CLI found');
+  return path.win32.extname(source).toLowerCase() === '.ps1'
+    ? { file: 'pwsh', prefix: ['-NoProfile', '-File', source] } : { file: source, prefix: [] };
+}
+
+export function agentSpawnOptions(worktree, waveId, parentEnv = process.env) {
+  return { cwd: worktree, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...parentEnv, CZ_WAVE_ID: waveId, CZ_VERIFY_RUNTIME: 'codex' } };
 }
 
 export async function runAgent(role, track, context) {
@@ -119,17 +169,17 @@ export async function runAgent(role, track, context) {
   save(schema, resultSchema(role));
   if (fs.existsSync(output)) throw Error(`Refusing stale result: ${output}`);
   const command = codexCommand();
-  const prompt = context.fixturePrompt || (role === 'reviewer'
+  const prompt = context.fixturePrompt || (role === 'permission-probe'
+    ? `Run ONLY the local Git metadata write probe, not project implementation. Execute node ${JSON.stringify(path.join(context.root,'scripts/codex-git-write-probe.mjs'))} --worktree ${JSON.stringify(track.worktree)} --branch ${JSON.stringify(track.branch)} --out ${JSON.stringify(path.join(track.scratch,'git-permissions.json'))}. If sandbox permissions block this specific command, request command-only escalation through automatic approval review. Do not disable sandboxing, add writable directories, change config, start agents, or touch main/other branches. Report ready only after the probe artifact says ok=true; otherwise blocked with the precise reason.`
+    : role === 'reviewer'
     ? `READ-ONLY independent review. Read the brief below, inspect git diff ${track.reviewBase || track.base}...HEAD and tests. Do not trust the worker's summary. Check scope, ownership, requirements, SSOT, test evidence, privacy and regressions. No writes or agents. Approve only if there are no blocking findings.\n${track.brief}`
     : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${track.brief}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. Return blocked if a required command fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
   const childKey = `${track.issue}-${label}`;
   const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,
     children: [...(current.children || []).filter(c => c.key !== childKey), { key: childKey, state, pid }] }));
   recordChild('starting', null);
-  const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)], {
-    cwd: track.worktree, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, CZ_WAVE_ID: context.wave.waveId },
-  });
+  const child = spawn(command.file, [...command.prefix, ...childArgs(role, track, schema, output)],
+    agentSpawnOptions(track.worktree, context.wave.waveId));
   const processRecord = path.join(track.scratch, `${label}-process.json`);
   let completed = false, stopped = false, timedError = null;
   const started = context.now();
@@ -158,11 +208,11 @@ export async function runAgent(role, track, context) {
   }
   const onAbort = () => { void stop(Error('Wave interrupted')); };
   context.signal.addEventListener('abort', onAbort, { once: true });
-  let nextCheck = (role === 'reviewer' ? WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES : track.kind === 'investigate' ? WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES : resolveTrackTimeoutMinutes(track.timeoutMinutes)) * 60000;
+  let nextCheck = (role === 'permission-probe' ? 3 : role === 'reviewer' ? WAVE_FREEZE.REVIEW_TIMEOUT_MINUTES : track.kind === 'investigate' ? WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES : resolveTrackTimeoutMinutes(track.timeoutMinutes)) * 60000;
   const timer = setInterval(() => {
     const elapsed = context.now() - started;
     if (elapsed < nextCheck || completed || stopped) return;
-    if (role === 'reviewer' || track.kind === 'investigate') { void stop(Error(`${role} timeout`)); return; }
+    if (role === 'permission-probe' || role === 'reviewer' || track.kind === 'investigate') { void stop(Error(`${role} timeout`)); return; }
     let probe;
     try {
       const last = Number(git(track.worktree, 'log', '-1', '--format=%ct'));
@@ -224,6 +274,16 @@ function productionDeps(root, worktreesRoot) {
       save(path.join(context.evidence, `${slug}.json`), { issue: t.issue, worktree, branch: t.branch, base, scratch });
       return { ...t, worktree, base, brief, scratch };
     },
+    async verifyPermissions(track, context) {
+      const proof = path.join(track.scratch,'git-permissions.json');
+      if (fs.existsSync(proof)) throw Error('Refusing stale Git permission proof');
+      const result = await runAgent('permission-probe',track,context);
+      if (result?.status !== 'ready' || !fs.existsSync(proof)) throw Error('Git metadata write probe failed before dispatch');
+      const evidence = json(proof);
+      if (evidence.ok !== true || evidence.branch !== track.branch || path.resolve(evidence.worktree) !== path.resolve(track.worktree)) {
+        throw Error('Git metadata permission proof does not match this worktree');
+      }
+    },
     runAgent,
     async validateResult(t) {
       if (git(t.worktree, 'branch', '--show-current') !== t.branch) throw Error('Worker branch changed');
@@ -254,14 +314,14 @@ async function cli() {
   const [configPath, mode = '--dry-run'] = process.argv.slice(2);
   if (!configPath || !['--dry-run', '--run'].includes(mode)) throw Error('Usage: codex-wave.mjs plan.json [--dry-run|--run]');
   const config = json(configPath);
-  validateTracks(config.tracks);
+  const execution = executionPlan(config);
   const root = git(process.cwd(), 'rev-parse', '--show-toplevel');
   const main = path.dirname(git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir'));
   const worktreesRoot = `${main}-worktrees`;
   if (mode === '--dry-run') {
-    console.log(JSON.stringify({ runtime: 'codex', lanes: Math.max(1, Math.min(4, config.lanes || 2)), verifyMax: 2,
+    console.log(JSON.stringify({ runtime: 'codex', lanes: execution.lanes, verifyMax: 2, execution,
       runDir: sharedRunDir(root), worktreesRoot, tracks: config.tracks, mutation: false,
-      merge: 'Owner must say merge; use scripts/merge-queue.ps1 separately' }, null, 2));
+      merge: 'Main session follows AGENTS rule 35; use scripts/merge-queue.ps1 separately' }, null, 2));
     return;
   }
   const result = await runWave({ ...config, root, runDir: sharedRunDir(root), owner: `codex-wave-${process.pid}` }, productionDeps(root, worktreesRoot));

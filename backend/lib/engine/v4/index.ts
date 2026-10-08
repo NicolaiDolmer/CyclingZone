@@ -308,6 +308,7 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
   // loebsfilmen aldrig siger "udbruddet holdt" paa en etape udbruddet ikke vandt.
   // Samme dom som trace.breakaway_win, som etape-fortaellingen bruger.
   const settledTimeline = settleBreakawaySurvivedEvents(sortedTimeline, {
+    ...(input.rules_revision === "official_times_v1" ? { physicalDescentOutcomes: true } : {}),
     breakawayWin,
     trace: finaleTrace,
     results,

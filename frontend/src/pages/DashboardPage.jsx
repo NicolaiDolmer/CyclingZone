@@ -91,7 +91,7 @@ import {
   SkeletonLines, EmptyState, ProgressMeter,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
-import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
+import { flushPendingSignup, logFirstEvent, logTeamCreated, logTeamDrafted } from "../lib/logEvent";
 // #4997 — NPS-prompten var kun monteret på Resultater-fanen på egen holdside;
 // se komponent-monteringen nederst i filen.
 import NpsPrompt from "../components/NpsPrompt.jsx";
@@ -871,7 +871,9 @@ export default function DashboardPage() {
   // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
   useEffect(() => {
     if (team?.id) flushPendingSignup();
-  }, [team?.id]);
+    // #4321: kerne-rejsens "hold oprettet" (kun nye hold, se logTeamCreated).
+    if (team?.id) logTeamCreated(team.created_at);
+  }, [team?.id, team?.created_at]);
 
   // #1583: onboarding_completed-funnel-event når alle steps er nået (4/4).
   // logFirstEvent de-dup'er pr. bruger, så eventet kun fyrer én gang.
@@ -1263,7 +1265,7 @@ export default function DashboardPage() {
                   </p>
                 )}
               </div>
-              <ChevronRightIcon size={16} className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0" aria-hidden="true" />
+              <ChevronRightIcon size={16} className="text-cz-3 group-hover:text-cz-accent-t transition-colors shrink-0" aria-hidden="true" />
             </Link>
             {/* Customize-knap (#1005) — vis/skjul moduler. Top-højre = konventionel
                 placering for view-indstillinger, så den er let at finde (#957-follow-up). */}
@@ -1295,7 +1297,7 @@ export default function DashboardPage() {
           scroll-dybde — synlighed er ikke problemet, punktér de dyre ting). */}
       {seniorStartWarning && (
         <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-danger-bg text-cz-danger border-cz-danger/30">
-          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <AlertTriangleIcon size={16} className="shrink-0" />
           <span className="flex-1 min-w-[200px]">{t("dashboard:seniorStartWarning.message", seniorStartWarning)}</span>
           <Link to="/auctions" className="ms-auto inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
             {t("dashboard:seniorStartWarning.cta")}
@@ -1308,7 +1310,7 @@ export default function DashboardPage() {
           ${squadWarning.color === "red"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}>
-          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <AlertTriangleIcon size={16} className="shrink-0" />
           <span>{t(`dashboard:squadWarning.${squadWarning.type}`, {
             count: squadWarning.count,
             limit: squadWarning.limit,
@@ -1328,12 +1330,12 @@ export default function DashboardPage() {
           29/8) og ingen NY rytter er kommet ind i vinduet siden da. */}
       {expiringContractCount > 0 && showContractExpiryNotice && (
         <div className="mb-4 px-4 py-3 rounded-cz text-sm border flex flex-wrap items-center gap-2 bg-cz-warning-bg text-cz-warning border-cz-warning/30">
-          <AlertTriangleIcon size={16} className="flex-shrink-0" />
+          <AlertTriangleIcon size={16} className="shrink-0" />
           <span className="flex-1 min-w-[200px]">{t("dashboard:contractWarning.message", { count: expiringContractCount })}</span>
           {/* #4387 — egen flex-gruppe (i stedet for løse ms-auto-børn på det
               yderste flex-wrap) så handlingerne wrapper som ÉN blok under
               beskeden på mobil, i stedet for at knække midt i teksten. */}
-          <div className="flex items-center gap-2 flex-shrink-0 ms-auto">
+          <div className="flex items-center gap-2 shrink-0 ms-auto">
             <Link to="/team" className="inline-flex items-center gap-0.5 text-xs underline opacity-70 hover:opacity-100">
               {t("dashboard:contractWarning.cta")}
               <ChevronRightIcon size={13} aria-hidden="true" />
@@ -1575,7 +1577,7 @@ export default function DashboardPage() {
           nudge-banner ad gangen"-reglen. */}
       {showDiscordNudgeBanner && (
         <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
-          <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center shrink-0">
             <DiscordIcon size={16} className="text-cz-discord" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">
@@ -1591,12 +1593,12 @@ export default function DashboardPage() {
               vinderen afgøres af CSS-bundle-rækkefølge, ikke JSX). */}
           <Link
             to="/profile?tab=notifications#discord"
-            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-cz border border-transparent text-xs font-semibold bg-cz-discord text-white transition-colors duration-150 ease-out hover:bg-cz-discord-hover flex-shrink-0">
+            className="inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-cz border border-transparent text-xs font-semibold bg-cz-discord text-white transition-colors duration-150 ease-out hover:bg-cz-discord-hover shrink-0">
             {t("dashboard:discordNudge.cta")}
           </Link>
           <button
             onClick={dismissDiscordNudge}
-            className="text-cz-3 hover:text-cz-1 leading-none px-1 flex-shrink-0"
+            className="text-cz-3 hover:text-cz-1 leading-none px-1 shrink-0"
             aria-label={t("dashboard:discordNudge.dismissAria")}>
             <XIcon size={16} aria-hidden="true" />
           </button>
@@ -1714,7 +1716,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               {pendingIncoming > 0 && (
                 <div className="flex items-center gap-3 py-2 border-b border-cz-border">
-                  <ArrowDownIcon aria-hidden="true" className="text-cz-success w-4 h-4 flex-shrink-0" />
+                  <ArrowDownIcon aria-hidden="true" className="text-cz-success w-4 h-4 shrink-0" />
                   <p className="text-cz-1 text-sm">{t("dashboard:cards.transfers.incomingCount", { count: pendingIncoming })}</p>
                 </div>
               )}
@@ -1856,8 +1858,8 @@ export default function DashboardPage() {
                         leder-guldet. Samme opdeling som .cz-me / .cz-me-bar i
                         tabellerne, saa dashboardet ser ud som /standings. */}
                     <Link to={standingsLink}
-                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/[0.08]" : "hover:bg-cz-subtle"}`}>
-                      <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
+                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/8" : "hover:bg-cz-subtle"}`}>
+                      <span className={`font-mono text-xs w-4 text-right shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
                       {/* vk-movement-signals — divisionsplacerings-bevægelse siden
                           sidste løbsdag, KUN på egen række. null/0 = ingen løbsdag endnu
                           eller uændret placering → ingen badge (ingen "0"-støj, samme
@@ -1865,7 +1867,7 @@ export default function DashboardPage() {
                       {isMe && rankMovement != null && rankMovement !== 0 && (
                         <span
                           title={t("dashboard:cards.standings.movementTitle")}
-                          className={`font-mono text-3xs font-bold inline-flex items-center gap-0.5 flex-shrink-0 ${rankMovement > 0 ? "text-cz-success" : "text-cz-danger"}`}
+                          className={`font-mono text-3xs font-bold inline-flex items-center gap-0.5 shrink-0 ${rankMovement > 0 ? "text-cz-success" : "text-cz-danger"}`}
                         >
                           {rankMovement > 0
                             ? <ArrowUpIcon size={11} aria-hidden="true" />
@@ -1873,7 +1875,7 @@ export default function DashboardPage() {
                           {Math.abs(rankMovement)}
                         </span>
                       )}
-                      <div className="w-28 flex-shrink-0 min-w-0">
+                      <div className="w-28 shrink-0 min-w-0">
                         <div className="flex items-center gap-1 min-w-0">
                           <p className={`text-sm truncate ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
                           {/* #1718/#3506 — diskret AI-markør, samme dæmpede stil som
@@ -1911,7 +1913,7 @@ export default function DashboardPage() {
                         {isMe && pointsDelta != null && pointsDelta !== 0 && (
                           <span
                             title={t("dashboard:cards.standings.pointsDeltaTitle")}
-                            className={`font-mono text-3xs font-bold tabular-nums flex-shrink-0 ${pointsDelta > 0 ? "text-cz-success" : "text-cz-danger"}`}
+                            className={`font-mono text-3xs font-bold tabular-nums shrink-0 ${pointsDelta > 0 ? "text-cz-success" : "text-cz-danger"}`}
                           >
                             {formatNumber(pointsDelta, { signDisplay: "exceptZero" })}
                           </span>
@@ -2050,7 +2052,7 @@ export default function DashboardPage() {
               {riderRanking.map((r, i) => (
                 <RiderLink key={r.rider_id} id={r.rider_id}
                   className="flex items-center gap-3 py-1.5 hover:bg-cz-subtle rounded-lg -mx-2 px-2 transition-colors">
-                  <span className={`font-mono text-xs w-4 text-right flex-shrink-0 ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>#{i + 1}</span>
+                  <span className={`font-mono text-xs w-4 text-right shrink-0 ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>#{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-cz-1 text-sm truncate">
                       {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}
@@ -2063,7 +2065,7 @@ export default function DashboardPage() {
                       {r.classic_wins > 0 && ` · ${t("dashboard:cards.riderRanking.classicWins", { count: r.classic_wins })}`}
                     </p>
                   </div>
-                  <span className="font-mono font-bold text-cz-accent-t text-sm flex-shrink-0">{t("dashboard:cards.riderRanking.points", { points: formatNumber(r.points || 0) })}</span>
+                  <span className="font-mono font-bold text-cz-accent-t text-sm shrink-0">{t("dashboard:cards.riderRanking.points", { points: formatNumber(r.points || 0) })}</span>
                 </RiderLink>
               ))}
             </div>
@@ -2119,7 +2121,7 @@ export default function DashboardPage() {
                       <div key={category.key} className="bg-cz-subtle rounded-cz p-3 border border-cz-border">
                         <div className="flex items-center justify-between gap-1 mb-1">
                           <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 truncate">{resolveCategoryLabel(t, category)}</p>
-                          <span className="flex items-center gap-1 flex-shrink-0">
+                          <span className="flex items-center gap-1 shrink-0">
                             {category.score_pct > 100 && (
                               <span
                                 className="inline-flex items-center gap-0.5 text-3xs font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"

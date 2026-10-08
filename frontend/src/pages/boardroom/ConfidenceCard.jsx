@@ -42,7 +42,7 @@ export default function ConfidenceCard({ confidence, lastMovement = null }) {
             const tone = cat.score < 60 ? "warning" : "accent";
             return (
               <div key={cat.key}>
-                <p className="mb-1.5 text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
+                <p className="mb-1.5 text-3xs font-semibold uppercase tracking-widest text-cz-3">
                   {t(`boardroom.confidence.categories.${cat.key}`, { defaultValue: cat.key })}
                 </p>
                 <ProgressMeter value={cat.score} tone={tone} ariaLabel={t(`boardroom.confidence.categories.${cat.key}`, { defaultValue: cat.key })} />

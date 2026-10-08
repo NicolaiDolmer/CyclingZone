@@ -20,7 +20,7 @@ import { effectiveStageFit } from "../../lib/lineupInsight.js";
 function StatBlock({ label, value }) {
   return (
     <div className="min-w-0">
-      <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</p>
+      <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
       <div className="font-data text-[20px] font-[650] leading-tight text-cz-1 tabular-nums">{value ?? "—"}</div>
     </div>
   );
@@ -50,7 +50,7 @@ export default function RiderMiniProfileModal({ rider, selectedStageIndex = null
           data-testid="rider-mini-profile-modal"
           className="relative w-full h-full sm:h-auto sm:w-full sm:max-w-md sm:max-h-[calc(100dvh-2rem)]
             bg-cz-card border-t-2 border-t-cz-accent sm:border sm:border-cz-border sm:rounded-cz
-            overflow-y-auto outline-none"
+            overflow-y-auto outline-hidden"
         >
           <button
             type="button"
@@ -70,7 +70,7 @@ export default function RiderMiniProfileModal({ rider, selectedStageIndex = null
                 <span className="font-display text-2xl leading-none text-cz-2">{initials}</span>
               </div>
               <div className="min-w-0 pr-8">
-                <h2 id="rider-mini-profile-title" className="font-display text-[28px] leading-[.92] uppercase text-cz-1 break-words">
+                <h2 id="rider-mini-profile-title" className="font-display text-[28px] leading-[.92] uppercase text-cz-1 wrap-break-word">
                   {rider.name}
                 </h2>
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -91,7 +91,7 @@ export default function RiderMiniProfileModal({ rider, selectedStageIndex = null
 
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 mt-5 pt-4 border-t border-cz-border">
               <div className="min-w-0">
-                <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{fitLabel}</p>
+                <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{fitLabel}</p>
                 <FitBar score={fitScore} />
               </div>
               <StatBlock label={t("selection.form")} value={rider.form} />

@@ -74,7 +74,7 @@ function Row({ label, value, accent, detail, badge, dualColumn, s2Value, activeC
         {detail && <p className="text-cz-3 text-2xs mt-0.5 leading-snug">{detail}</p>}
       </div>
       {dualColumn ? (
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <p className={`font-mono text-sm font-bold tabular-nums w-28 text-end ${accent} ${activeCol === "s3" ? "hidden sm:block" : ""}`}>
             {formatSigned(s2Value)}
           </p>
@@ -105,7 +105,7 @@ function RangeRow({ label, low, high, accent, detail, dualColumn, s2Value, activ
         {detail && <p className="text-cz-3 text-2xs mt-0.5 leading-snug">{detail}</p>}
       </div>
       {dualColumn ? (
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <p className={`font-mono text-sm font-bold tabular-nums w-28 text-end ${accent} ${activeCol === "s3" ? "hidden sm:block" : ""}`}>
             {formatSigned(s2Value)}
           </p>
@@ -634,7 +634,7 @@ export function FinanceForecastBadge({ forecast, compact = false }) {
           </p>
         </div>
         <span
-          className={`px-2.5 py-1 rounded-full border text-xs font-medium flex items-center gap-1.5 flex-shrink-0 ${tier.badge}`}
+          className={`px-2.5 py-1 rounded-full border text-xs font-medium flex items-center gap-1.5 shrink-0 ${tier.badge}`}
         >
           <span aria-hidden="true" className={`inline-block w-2 h-2 rounded-full ${tier.dot}`} />
           <span>{tier.label}</span>

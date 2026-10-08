@@ -2,9 +2,20 @@
 
 ## Stack
 
+#6061 (infrastruktur live, read-only verificeret 6/10):
+`database/2026-10-05-6061-compensation-ledger.sql` indeholder
+`training_compensation_receipts` og service-only RPC
+`apply_training_compensation_6061`. En særskilt kvittering pr. rytter/sæson/løbsdag
+beskytter gentagne reparationer og afviser almindelig træning på samme slot.
+Kildekontrol, korte tabel-låse og compare-before-write beskytter atomisk
+evnekompensation; historiske rapporter/condition-afregninger rekonstrueres ikke.
+Den aktuelle writer og kilde-hashes ligger i
+`database/2026-10-05-6129-compensation-slim-source.sql`; begge migrationer er
+registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
+
 | Lag | Teknologi | Deploy |
 |-----|-----------|--------|
-| Frontend | React 18 + Vite + Tailwind CSS | Vercel |
+| Frontend | React 18 + Vite + Tailwind CSS | Vercel; production build selection: [VERCEL_BUILD_RULES.md](VERCEL_BUILD_RULES.md) |
 | Backend | Node.js + Express (ES modules) | Railway |
 | Database / Auth | Supabase (PostgreSQL + RLS) | Supabase cloud |
 | Error tracking | Sentry (`@sentry/node`, `@sentry/react`) | Railway + Vercel |
@@ -59,6 +70,22 @@
 ---
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
+
+### Ranking refresh events (#5692, staging verification 6/10)
+`ranking_refresh_work_state` records relevant source changes transactionally.
+Backend polling drains captured versions through service-only claim, renewal,
+token-fenced concurrent refresh and atomic completion RPCs. Clean ticks perform
+no full refresh; result publication schedules background work. SQL must be
+applied before the backend change. Contract and staging evidence:
+[GAME_INVARIANTS.md](GAME_INVARIANTS.md#durable-ranking-events-5692-ejer-210--prioritet-610).
+
+### Spillersynlige feature-flags (#4948, #6103)
+GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`
+i ét `app_config`-opslag. Svaret evalueres pr. viewer gennem `evaluateFlagStage`:
+`on` er synligt, `beta` kræver beta/admin, og manglende/ukendte værdier er `off`.
+En fejlet batch lukker alle flag og rapporteres til drift; rå værdier returneres
+aldrig. Ingen delt cache og `Cache-Control: no-store` bevarer flag-flips ved næste
+request. Endpointet kræver ikke login, men en sendt token skal verificeres først.
 
 ### Brugte løbsdage (#5860)
 `race_day_participation` bevarer faktisk deltagelse pr. rytter/sæson/løbsdag efter holdskifte og snapshot-retries. Private claims optages før etaperesultater og start-snapshots. `find_spent_race_days` er en service-only RPC med scalar JSON, så feltets størrelse ikke rammer PostgRESTs tabel-loft. `raceSpentDays.js` bruger eksisterende resultater/snapshots i backend-før-migration-vinduet. Historisk, ejer-godkendt genopretning i `recover_transferred_race_loads` bevarer immutable snapshots; `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number` refererer det oprindelige bidrag. Tilstanden tæller kun originale belastninger, mens det atomiske afregningsbevis omfatter alle rækker. SSOT: [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md), [TRAINING_RULES](TRAINING_RULES.md).
@@ -156,8 +183,16 @@ POST /api/login-streak
 GET  /api/online-count
 GET  /api/achievements
 POST /api/achievements/check
-GET  /health
+GET  /health                            → proces-liveness, ingen DB
+GET  /health/ready                      → DB-readiness, 200/503, 3s deadline
 ```
+
+Health-kontrakten (#5905): begge svar er `Cache-Control: no-store`. Railway bruger
+`/health`, så et hotfix kan deployes under DB-pres. Deploy-smoke/overvågning skal
+bruge `/health/ready`; den laver HEAD på højst én `app_config`-række uden exact-count.
+CI og `verify-deploy.ps1` deler `backend/scripts/checkBackendReadiness.ts`: højst
+seks forsøg, 5s request-timeout og 5s pause (maks. 55s); kun HTTP 200 med
+`status=ok, db=ok` består. Dette kontrollerer DB-forbindelsen, ikke alle spilflows.
 
 ### Transfer Window
 ```

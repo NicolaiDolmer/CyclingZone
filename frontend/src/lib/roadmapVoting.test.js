@@ -7,6 +7,8 @@ import {
   groupItemsByEngine,
   isValidScore,
   buildVotePayload,
+  buildImportancePayload,
+  ROADMAP_ITEM_COLUMNS,
   votesByItemId,
 } from "./roadmapVoting.js";
 
@@ -97,4 +99,19 @@ test("votesByItemId(userId) keeps ONLY that user's votes (#1599 privacy)", () =>
   assert.equal(map.size, 1);
   // Uden userId = uændret (bagudkompatibelt for callers uden filter).
   assert.equal(votesByItemId(mixed).size, 2);
+});
+
+// #6150: planlagte punkter har kun skalaen "Important to you?".
+test("buildImportancePayload sender kun importance_score (idea_score røres ikke)", () => {
+  const p = buildImportancePayload({ itemId: "i1", userId: "u1", importanceScore: 4 });
+  assert.equal(p.importance_score, 4);
+  assert.equal("idea_score" in p, false);
+  assert.throws(() => buildImportancePayload({ itemId: "i1", userId: "u1", importanceScore: 7 }));
+  assert.throws(() => buildImportancePayload({ itemId: "i1", userId: null, importanceScore: 4 }));
+});
+
+test("ROADMAP_ITEM_COLUMNS henter horizon og beta-felterne (#6150)", () => {
+  for (const col of ["horizon", "beta_since", "beta_soon", "live_soon", "created_at", "shipped_at"]) {
+    assert.match(ROADMAP_ITEM_COLUMNS, new RegExp(`\\b${col}\\b`));
+  }
 });

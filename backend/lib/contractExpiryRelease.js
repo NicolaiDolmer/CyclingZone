@@ -25,6 +25,16 @@
 // begrænsning som squadEnforcement.executeAutoSale er dokumenteret med). Deltaget
 // rytter beholder sin (stadig udløbne) contract_end_season og fanges af den NÆSTE
 // kørsel af denne funktion (idempotent `<=`-forespørgsel, ikke `=`).
+//
+// #5864 (rod-årsag, ejer-beslutning 28/9 valg B + 6/10): forespørgslen hentede
+// kun SENIORTRUPPEN (applySeniorSquadFilter), så udløbne U23-, junior- og
+// akademiryttere blev aldrig frigivet ved S2→S3 eller S3→S4. Normalvejen henter
+// nu også ungdomstrupperne på MENNESKEHOLD (samme ejendomsfilter). AI-holdenes
+// ungdom er bevidst uden for: Phase 5b-2 (aiContractAutoRenewal.js) fornyer kun
+// senior, så en AI-ungdomstrup ville ellers blive tømt uden en manager der kan
+// forlænge. Frigivne akademiryttere får is_academy=false i SAMME update (squad
+// bevares), samme form som en fri ungdomsrytter fra academyGenerator; det var
+// tidligere et separat efter-trin i enforce5864ExpiredContracts.mjs (PR #6198).
 
 import { fetchAllRows } from "./supabasePagination.js";
 import { applySeniorSquadFilter } from "./squads.js";
@@ -57,7 +67,11 @@ export function buildContractExpiredReleaseNotification({ riderName, riderId, se
   };
 }
 
-async function defaultFetchExpiredContractRiders({ supabase, seasonNumber }) {
+const EXPIRED_RIDER_SELECT =
+  "id, firstname, lastname, team_id, squad, is_academy, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen, is_bank, is_test_account)";
+
+/** Seniortruppen på alle gameplay-hold (menneske + AI). Uændret siden #2744-B/#2847. */
+export async function fetchExpiredSeniorContractRiders({ supabase, seasonNumber }) {
   return fetchAllRows(() =>
     applySeniorSquadFilter(
       supabase
@@ -67,7 +81,7 @@ async function defaultFetchExpiredContractRiders({ supabase, seasonNumber }) {
         // Uden den ville frigivelsen også ramme ryttere ejet af ikke-gameplay-hold
         // (harmløst i dag: 0 sådanne rækker med contract_end_season=1 i prod 23/7,
         // men uindskrænket for fremtidige sæsoners kørsler).
-        .select("id, firstname, lastname, team_id, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen, is_bank, is_test_account)")
+        .select(EXPIRED_RIDER_SELECT)
         .not("team_id", "is", null)
     )
       .lte("contract_end_season", seasonNumber)
@@ -76,6 +90,56 @@ async function defaultFetchExpiredContractRiders({ supabase, seasonNumber }) {
       .eq("team.is_test_account", false)
       .order("id")
   );
+}
+
+/**
+ * #5864 · Ungdomstrupperne (u23/junior og akademiet) på MENNESKEHOLD: præcis
+ * komplementet til applySeniorSquadFilter (squad != senior ELLER is_academy),
+ * samme ejendomsfilter, kun is_ai=false (se fil-headeren for hvorfor AI er ude).
+ */
+export async function fetchExpiredYouthContractRiders({ supabase, seasonNumber }) {
+  return fetchAllRows(() =>
+    supabase
+      .from("riders")
+      .select(EXPIRED_RIDER_SELECT)
+      .not("team_id", "is", null)
+      .or("squad.neq.senior,is_academy.eq.true")
+      .eq("is_retired", false)
+      .lte("contract_end_season", seasonNumber)
+      .eq("team.is_ai", false)
+      .eq("team.is_bank", false)
+      .eq("team.is_frozen", false)
+      .eq("team.is_test_account", false)
+      .order("id")
+  );
+}
+
+/** Senior + ungdom, deduplikeret på id (de to filtre er disjunkte, men vær robust). */
+export async function defaultFetchExpiredContractRiders({ supabase, seasonNumber }) {
+  const [senior, youth] = await Promise.all([
+    fetchExpiredSeniorContractRiders({ supabase, seasonNumber }),
+    fetchExpiredYouthContractRiders({ supabase, seasonNumber }),
+  ]);
+  const byId = new Map();
+  for (const r of [...senior, ...youth]) if (!byId.has(r.id)) byId.set(r.id, r);
+  return [...byId.values()].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+}
+
+/**
+ * Felterne der nulstilles når en rytter går til fri-agent-poolen. En akademirytter
+ * får desuden is_academy=false (#5864): en fri agent med is_academy=true findes
+ * ikke i spillet; `squad` bevares, så han stadig er en ungdomsrytter.
+ */
+export function buildContractReleasePatch(rider) {
+  return {
+    team_id: null,
+    pending_team_id: null,
+    salary: null,
+    contract_length: null,
+    contract_end_season: null,
+    acquired_at: null,
+    ...(rider?.is_academy === true ? { is_academy: false } : {}),
+  };
 }
 
 /**
@@ -93,7 +157,8 @@ async function defaultFetchExpiredContractRiders({ supabase, seasonNumber }) {
  * @param {number} args.seasonNumber — den AFSLUTTEDE sæsons nummer (fromSeason.number)
  * @param {Function} [args.notify] — injicerbar (test)
  * @param {Function} [args.fetchExpiredContractRiders] — injicerbar (test)
- * @returns {Promise<{candidates:number, released:number, deferredByRacing:number, notified:number, notifyFailed:number, failed:number}>}
+ * @returns {Promise<{candidates:number, released:number, deferredByRacing:number, notified:number, notifyFailed:number, failed:number, youthNormalized:number}>}
+ *   youthNormalized = frigivne akademiryttere der fik is_academy=false (#5864).
  *
  * Partial-failure-observability: hver rytters frigivelse er isoleret i sit eget
  * try/catch (samme disciplin som notifikations-loopet nedenfor) — én rytters
@@ -110,7 +175,7 @@ export async function releaseExpiredContractRiders({
   notify = defaultNotifyUser,
   fetchExpiredContractRiders = defaultFetchExpiredContractRiders,
 }) {
-  const stats = { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 };
+  const stats = { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0, youthNormalized: 0 };
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!Number.isFinite(seasonNumber)) return stats;
 
@@ -138,18 +203,15 @@ export async function releaseExpiredContractRiders({
     try {
       // Concurrency-guard: kun frigør hvis rytteren stadig er på det hold vi læste
       // (en parallel handel kan i teorien have flyttet ham imellem).
+      const patch = buildContractReleasePatch(rider);
       const { data: released, error } = await supabase
         .from("riders")
-        .update({
-          team_id: null,
-          pending_team_id: null,
-          salary: null,
-          contract_length: null,
-          contract_end_season: null,
-          acquired_at: null,
-        })
+        .update(patch)
         .eq("id", rider.id)
         .eq("team_id", rider.team_id)
+        // #5864 (CodeRabbit): også akademiflaget skal være det vi læste, ellers kan
+        // en samtidig akademi-degradering give en fri agent med is_academy=true.
+        .eq("is_academy", rider.is_academy === true)
         .select("id");
       if (error) throw new Error(`releaseExpiredContractRiders(${rider.id}): ${error.message}`);
       if (!released || released.length === 0) continue;
@@ -158,6 +220,7 @@ export async function releaseExpiredContractRiders({
       await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "contract_expiry_release" });
       await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
       stats.released += 1;
+      if (patch.is_academy === false) stats.youthNormalized += 1;
 
       const ownerUserId = rider.team?.user_id;
       const isHumanOwned = Boolean(ownerUserId) && rider.team?.is_ai === false && rider.team?.is_frozen === false;

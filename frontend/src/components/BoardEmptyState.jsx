@@ -23,7 +23,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
   return (
     <div className="mb-5 px-5 py-5 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start gap-3 mb-4">
-        <ClipboardIcon size={20} className="text-cz-accent-t flex-shrink-0" aria-hidden="true" />
+        <ClipboardIcon size={20} className="text-cz-accent-t shrink-0" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="text-cz-1 text-base font-semibold">{t("emptyState.headline")}</p>
           <p className="text-cz-2 text-xs mt-1">{t("emptyState.intro")}</p>

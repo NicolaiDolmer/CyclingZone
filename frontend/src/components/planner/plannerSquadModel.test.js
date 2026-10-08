@@ -4,6 +4,7 @@ import {
   squadSlots, targetableRacesFor, peakNeedsAction, plannerStatusSummary,
   pendingSuggestionPairs, ridersWithSuggestions, paybackRiskRaceIds, riderSeasonLoad,
   locksImmediatelyRaceIds, riderPendingSuggestions,
+  isPeakTargetOpen, isYouthPlannerRider, splitPlannerSquads,
 } from "./plannerSquadModel.js";
 
 const race = (id, date, isMine = true) => ({ id, name: `Race ${id}`, date, isMine });
@@ -301,4 +302,54 @@ test("riderSeasonLoad: ukendte løb (uden for payloadens kalender) tælles ikke;
   const rider = { id: "rd1", registeredRaceIds: ["known", "legacy", "gone-race"] };
   assert.deepEqual(riderSeasonLoad({ rider, races }), { races: 2, raceDays: 4 });
   assert.deepEqual(riderSeasonLoad({ rider: { id: "x" }, races }), { races: 0, raceDays: 0 });
+});
+
+// ── #5992: startede løb + ungdomstrupper ────────────────────────────────────
+test("#5992 isPeakTargetOpen: et startet løb er lukket, også med startdato i dag", () => {
+  const today = "2026-09-30";
+  const todayOrd = Date.UTC(2026, 8, 30) / 86400000;
+  assert.equal(isPeakTargetOpen({ date: today }, todayOrd), true);
+  assert.equal(isPeakTargetOpen({ date: today, started: true }, todayOrd), false);
+  assert.equal(isPeakTargetOpen({ date: "2026-10-05", started: false }, todayOrd), true);
+  assert.equal(isPeakTargetOpen({ date: "2026-09-20" }, todayOrd), false);
+  assert.equal(isPeakTargetOpen({ date: null }, todayOrd), false);
+  assert.equal(isPeakTargetOpen(null, todayOrd), false);
+});
+
+test("#5992 targetableRacesFor: startede løb tilbydes ikke, rytterens nuværende mål kan stadig læses", () => {
+  const races = [
+    { ...race("done", "2026-09-30"), started: true },
+    { ...race("open", "2026-09-30"), started: false },
+    { ...race("later", "2026-10-10"), started: false },
+  ];
+  const todayOrd = Date.UTC(2026, 8, 30) / 86400000;
+  const ids = (cur) => targetableRacesFor({ rider: { peaks: [] }, races, todayOrd, currentTargetId: cur }).map((r) => r.id);
+  assert.deepEqual(ids(null), ["open", "later"]);
+  assert.deepEqual(ids("done").sort(), ["done", "later", "open"]);
+});
+
+test("#5992 splitPlannerSquads: kun senior planlægges, ungdom med ægte peak står adskilt", () => {
+  const riders = [
+    { id: "s1", squad: "senior", peaks: [] },
+    { id: "legacy", peaks: [] },
+    { id: "u1", squad: "u23", peaks: [peak({ targetRaceId: "r1" })] },
+    { id: "u2", squad: "u23", peaks: [peak({ targetRaceId: "r1", isSuggestion: true })] },
+    { id: "j1", squad: "junior", peaks: [] },
+  ];
+  const { senior, youthWithPeaks } = splitPlannerSquads(riders);
+  assert.deepEqual(senior.map((r) => r.id), ["s1", "legacy"]);
+  assert.deepEqual(youthWithPeaks.map((r) => r.id), ["u1"]);
+  assert.equal(isYouthPlannerRider({ squad: "junior" }), true);
+  assert.equal(isYouthPlannerRider({ squad: "senior" }), false);
+  assert.equal(isYouthPlannerRider({}), false);
+});
+
+test("#5992 status-linje og Accept all ser kun seniortruppen", () => {
+  const riders = [
+    { id: "s1", squad: "senior", peaks: [peak({ targetRaceId: "r1" }), peak({ targetRaceId: "r2", isSuggestion: true })] },
+    { id: "u1", squad: "u23", peaks: [peak({ targetRaceId: "r3" }), peak({ targetRaceId: "r4", isSuggestion: true })] },
+  ];
+  assert.equal(plannerStatusSummary({ riders, today: null, leadupDays: 14 }).peaksPlanned, 1);
+  assert.deepEqual(pendingSuggestionPairs(riders), [{ riderId: "s1", raceId: "r2" }]);
+  assert.equal(ridersWithSuggestions(riders), 1);
 });

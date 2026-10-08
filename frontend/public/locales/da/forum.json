@@ -49,7 +49,7 @@
     "bodyLabel": "Besked",
     "bodyPlaceholder": "Skriv dit opslag",
     "pollLabel": "Afstemningsmuligheder (kun admin, én pr. linje)",
-    "pollHelp": "Tilføj 2 til 8 muligheder for at vedhæfte en afstemning til opslaget.",
+    "pollHelp": "Tilføj 2 til 10 muligheder for at vedhæfte en afstemning til opslaget.",
     "submit": "Udgiv",
     "cancel": "Annullér"
   },

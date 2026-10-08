@@ -23,27 +23,35 @@
 //   - med header: den kanoniske requireAuth (et ugyldigt token faar 401 som
 //     alle andre ruter), og derefter samme laese-gate som /board/room:
 //     admin/beta-tester ser ogsaa beta-stadiet.
-// Evalueringen er featureStage.js' readFlagStage + evaluateFlagStage, praecis
+// Evalueringen er featureStage.js' evaluateFlagStage, praecis
 // som de tre *Flag.js-moduler bag noeglerne, saa svaret ikke kan afvige fra
 // det serveren selv beslutter for den samme viewer.
 import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { evaluateFlagStage, readFlagStage } from "../lib/featureStage.js";
+import { evaluateFlagStage } from "../lib/featureStage.js";
 import { PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
 
 /**
- * { <noegle>: boolean } for hver noegle i allowlisten. Fejl i et enkelt opslag
- * er "off" (readFlagStage er fail-safe), aldrig en kastet fejl.
+ * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
+ * alle flag; manglende eller ukendte værdier lukker det enkelte flag.
  *
- * Opslagene staar bevidst IKKE som `evaluateFlagStage(await readFlagStage(..))`:
- * katalogets forward-guard (#5259) scanner netop den form og ville laese
- * loop-variablen som en ukendt noegle. Allowlisten er i stedet bundet til
- * kataloget af endpointets egen test.
+ * #6103: hent allowlisten i ét opslag. Ingen delt cache: ejerens flag-flips
+ * ses ved næste request. Databasefejl lukker alle flag og rapporteres særskilt
+ * fra et bevidst off; en manglende række er stadig off.
  */
-export async function readPlayerFeatureFlags(supabase, { isBetaTester = false } = {}) {
+export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {} } = {}) {
   const keys = PLAYER_VISIBLE_FLAG_KEYS;
-  const stages = await Promise.all(keys.map((key) => readFlagStage(supabase, key)));
-  return Object.fromEntries(keys.map((key, i) => [key, evaluateFlagStage(stages[i], { isBetaTester })]));
+  let stages;
+  try {
+    const { data, error } = await supabase.from("app_config").select("key,value").in("key", keys);
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error("feature flags: invalid app_config response");
+    stages = new Map(data.map(({ key, value }) => [key, value]));
+  } catch (error) {
+    stages = new Map();
+    reportError(error, { tags: { route: "/feature-flags", read: "app_config" } });
+  }
+  return Object.fromEntries(keys.map((key) => [key, evaluateFlagStage(stages.get(key), { isBetaTester })]));
 }
 
 /**
@@ -87,7 +95,7 @@ export function createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTe
   async function sendFlags(req, res, { authenticated }) {
     try {
       const isBetaTester = authenticated ? (await isViewerBetaTester(req)) === true : false;
-      const flags = await readPlayerFeatureFlags(supabase, { isBetaTester });
+      const flags = await readPlayerFeatureFlags(supabase, { isBetaTester, reportError });
       // Svaret afhaenger af viewerens beta-status og af et flag ejeren kan
       // flippe naar som helst: ingen cache, heller ikke i browseren.
       res.set("Cache-Control", "no-store");

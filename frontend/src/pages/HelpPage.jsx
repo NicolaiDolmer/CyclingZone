@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
-import { fetchRecentOpsNotices, pickNoticeCopy, SEVERITY_META } from "../lib/opsNotices.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import { isHelpBlockFlagVisible, isHelpBlockVisible, isHelpFaqVisible, isHelpSectionVisible } from "./helpFlagGates.js";
-import { formatDate } from "../lib/intl.js";
 import {
   PageHeader,
   Card,
@@ -14,7 +12,6 @@ import {
   SectionHeader,
   Input,
   EmptyState,
-  StatusBadge,
   Tabs,
   TabList,
   Tab,
@@ -44,7 +41,6 @@ import {
   ChevronDownIcon,
   SettingsIcon,
   SearchIcon,
-  AlertTriangleIcon,
   GavelIcon,
   CobblesIcon,
   GlobeIcon,
@@ -496,6 +492,7 @@ const SECTION_DEFS = [
       { id: "stageTactics", kind: "text" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
+      { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
       { id: "fatigue", kind: "text" },
       // #4201: hvornaar assistenten selv udfylder — tilstanden er runtime-styret,
       // saa teksten beskriver reglerne uden at love én bestemt indstilling.
@@ -745,7 +742,7 @@ function buildFaq(t, vars, flags) {
 // Sidenav item — shared between the desktop sticky rail and the mobile
 // horizontal tab row so icon + active-state markup stays in one place.
 function NavIcon({ Icon }) {
-  return <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />;
+  return <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />;
 }
 
 export default function HelpPage() {
@@ -774,7 +771,6 @@ export default function HelpPage() {
   const sectionParam = searchParams.get("section");
   const [activeSection, setActiveSection] = useState(() => {
     if (faqParam) return "faq";
-    if (sectionParam === "knownIssues") return "knownIssues";
     if (sectionParam && SECTION_DEFS.some((s) => s.key === sectionParam)) return sectionParam;
     return "start";
   });
@@ -785,20 +781,6 @@ export default function HelpPage() {
   const [faqOpen, setFaqOpen] = useState(() => (
     faqParam && FAQ_KEYS.includes(faqParam) ? faqParam : null
   ));
-
-  // #3941 — "Kendte problemer": aktive + seneste 14 dages ops_notices, samme
-  // datakilde som driftsbanneret i Layout.jsx. Hooken skal stå FØR den tidlige
-  // `ready`-return nedenfor (rules-of-hooks: samme antal hooks hver render).
-  const [knownIssues, setKnownIssues] = useState([]);
-  const [knownIssuesLoaded, setKnownIssuesLoaded] = useState(false);
-  useEffect(() => {
-    let active = true;
-    fetchRecentOpsNotices()
-      .then((data) => { if (active) setKnownIssues(data); })
-      .catch(() => { /* ikke-kritisk: listen forbliver tom */ })
-      .finally(() => { if (active) setKnownIssuesLoaded(true); });
-    return () => { active = false; };
-  }, []);
 
   // #4948 · ÉT let kald for alle flag-gatede dele (mandate, raceDay og
   // traenings-blokkene, se ./helpFlagGates.js). Aldrig blokerende: null mens
@@ -813,6 +795,9 @@ export default function HelpPage() {
     return () => { active = false; };
   }, []);
 
+  // #6150: Kendte fejl bor nu paa /roadmap (fanen Known issues).
+  if (sectionParam === "knownIssues") return <Navigate to="/roadmap?tab=issues" replace />;
+
   if (!ready) return <PageLoader />;
 
   // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
@@ -826,7 +811,7 @@ export default function HelpPage() {
   // Et dyb-link til en gated sektion (?section=mandate uden flaget) maa ikke
   // efterlade indholdsfeltet tomt - fald tilbage til den foerste sektion.
   const currentSection = sections.find((s) => s.key === activeSection)
-    || (activeSection === "faq" || activeSection === "knownIssues" ? null : sections[0]);
+    || (activeSection === "faq" ? null : sections[0]);
 
   const filteredFAQ = faq.filter(
     (f) =>
@@ -935,18 +920,12 @@ export default function HelpPage() {
                     {t("page.faqLabel")}
                   </span>
                 </Tab>
-                <Tab value="knownIssues">
-                  <span className="inline-flex items-center gap-1.5">
-                    <NavIcon Icon={AlertTriangleIcon} />
-                    {t("knownIssues.label")}
-                  </span>
-                </Tab>
               </TabList>
             </Tabs>
           </div>
 
           {/* Desktop (md+): sticky sidenav */}
-          <div className="hidden md:block w-40 flex-shrink-0">
+          <div className="hidden md:block w-40 shrink-0">
             <div className="sticky top-7 flex flex-col gap-1">
               {sections.map((s) => (
                 <button
@@ -976,62 +955,12 @@ export default function HelpPage() {
                 <NavIcon Icon={InfoIcon} />
                 <span>{t("page.faqLabel")}</span>
               </button>
-              <button
-                onClick={() => setActiveSection("knownIssues")}
-                className={`text-left px-3 py-2 rounded-cz text-xs transition-all flex items-center gap-2
-                  ${
-                    activeSection === "knownIssues"
-                      ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30"
-                      : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
-                  }`}
-              >
-                <NavIcon Icon={AlertTriangleIcon} />
-                <span>{t("knownIssues.label")}</span>
-              </button>
             </div>
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            {activeSection === "knownIssues" ? (
-              <div>
-                <h2 className="text-cz-1 font-bold text-base mb-4">{t("knownIssues.heading")}</h2>
-                {!knownIssuesLoaded ? (
-                  <div className="flex flex-col gap-[14px]">
-                    <Section className="animate-pulse h-16" />
-                    <Section className="animate-pulse h-16" />
-                  </div>
-                ) : knownIssues.length === 0 ? (
-                  <EmptyState
-                    icon={<AlertTriangleIcon size={26} aria-hidden="true" />}
-                    title={t("knownIssues.emptyTitle")}
-                    description={t("knownIssues.emptyDescription")}
-                  />
-                ) : (
-                  <div className="flex flex-col gap-[14px]">
-                    {knownIssues.map((notice) => {
-                      const meta = SEVERITY_META[notice.severity] || SEVERITY_META.info;
-                      const { title, body } = pickNoticeCopy(notice, i18n.language);
-                      return (
-                        <Section key={notice.id}>
-                          <SectionHeader
-                            as="h3"
-                            title={title}
-                            meta={formatDate(notice.starts_at)}
-                          />
-                          {body && <p className="text-cz-2 text-sm leading-relaxed">{body}</p>}
-                          <div className="mt-2">
-                            <StatusBadge state={meta.badgeState}>
-                              {notice.active ? t("knownIssues.activeLabel") : t("knownIssues.resolvedLabel")}
-                            </StatusBadge>
-                          </div>
-                        </Section>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : activeSection === "faq" ? (
+            {activeSection === "faq" ? (
               <div>
                 <h2 className="text-cz-1 font-bold text-base mb-4">{t("page.faqHeading")}</h2>
                 <div className="flex flex-col gap-2">
@@ -1044,7 +973,7 @@ export default function HelpPage() {
                         <p className="text-cz-1 text-sm font-medium">{f.q}</p>
                         <ChevronDownIcon
                           aria-hidden="true"
-                          className={`w-4 h-4 text-cz-3 ms-3 flex-shrink-0 transition-transform ${
+                          className={`w-4 h-4 text-cz-3 ms-3 shrink-0 transition-transform ${
                             faqOpen === f.id ? "rotate-180" : ""
                           }`}
                         />
@@ -1061,7 +990,7 @@ export default function HelpPage() {
             ) : currentSection ? (
               <div>
                 <h2 className="text-cz-1 font-bold text-base mb-4 flex items-center gap-2">
-                  <currentSection.Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" /> <span>{currentSection.label}</span>
+                  <currentSection.Icon className="w-5 h-5 shrink-0" aria-hidden="true" /> <span>{currentSection.label}</span>
                 </h2>
                 <div className="flex flex-col gap-[14px]">
                   {currentSection.content.map((block, i) => (
@@ -1074,7 +1003,7 @@ export default function HelpPage() {
                         <ol className="flex flex-col gap-1.5 mt-1">
                           {block.steps.map((step, j) => (
                             <li key={j} className="flex items-start gap-2">
-                              <span className="text-cz-accent-t text-xs font-bold flex-shrink-0 mt-0.5">
+                              <span className="text-cz-accent-t text-xs font-bold shrink-0 mt-0.5">
                                 {j + 1}.
                               </span>
                               <span className="text-cz-2 text-sm leading-relaxed">{step}</span>

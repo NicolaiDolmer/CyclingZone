@@ -45,7 +45,7 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
     |---|---|---|
     | `write` | Ingen delvis tilstand: `apply_stage_result` er ÉN Postgres-transaktion (counter-bump + `race_results`). Enten alt eller intet (#1598). | Uden markering: etapen køres helt om. Med markering: springes over. |
     | `standings` | `race_results` er korrekte; `season_standings` er stale. | Fuld re-derivation — køres om. Markeres KUN ved succes. |
-    | `matview` | Ranglister er stale (op til 10 min, indtil cron-fallbacken). | Idempotent REFRESH — køres om. |
+    | `matview` | Ranglister er stale; sidste færdige snapshot kan læses. Normaldriftsmålet fra #5692 er refresh senest fem minutter efter færdig finalisering; målet er ikke bevist af admission-fixet. | Idempotent REFRESH — køres om. |
     | `enrichment` | Etapen mangler helt eller delvist `race_simulation_runs`/`race_incidents`/`race_stage_moments`/tidslinjer. **Dette var det stille hul:** counteren var bumpet, så etapen kunne aldrig tages op igen. Målt i prod 4/9: 34 etaper (S1 29, S2 4, S3 1) uden ét eneste sim-run. | Alle skrivninger er delete-then-insert scopet til etapen, og simuleringen er seedet (`stableSeed(raceSeedInput(race.id, stageNumber))`) → en genkørsel skriver præcis de samme rækker. |
     | `fatigue` / `rest-day` | Trætheden er enten skrevet eller ikke — aldrig halvt (ét upsert-kald pr. felt). | **ENGANGS-trin:** markeres efter FORSØGET, ikke efter succes. De akkumulerer på `rider_condition.fatigue`; en manglende skrivning er langt billigere end en dobbelt. |
     | `board` | `race_days_completed` og board-weekend kan være halvt anvendt. | `recomputeSeasonRaceDays` er re-derivation og board-weekenden differ previous-vs-new → køres helt om. |
@@ -55,6 +55,7 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
 
   - **Præmier kan ikke dobbeltudbetales af en genoptagelse.** Udbetalingen ligger UDEN FOR kæden (`autoPrizeSweep` → `prizePayoutEngine.paySeasonPrizesToDate`) og er dobbelt-beskyttet: `races.prize_paid_at`-CAS'en (#1573, `UPDATE … WHERE prize_paid_at IS NULL` med read-back) og `uniq_finance_idempotency_key` på `race_prize:<race>:<team>`. Et genoptaget løb bliver berettiget til den ENE udbetaling det manglede — aldrig to.
   - **Vagt:** `runHalfFinalizedRaceWatch` (`backend/lib/raceFinalizeWatch.js`, cron hvert 15. min, READ-ONLY) alarmerer via Sentry med fast fingerprint `race-finalize-half-state` + `opsAlertDedupe` ved: markering der har stået stille >10 min uden levende stage-claim; alle etaper kørt men status ≠ `completed` >10 min; `completed` uden `prize_paid_at` >60 min trods præmie-berettigede rækker (kun når auto-prize er tændt). Den reparerer intet.
+  - **Watchdog-resultatmetadata (#6102, forberedt):** `stallWatchdog` bruger én opsummering pr. kandidatløb, med `MAX(imported_at)`, enhver positiv præmierække og distinkte `stage_number` fra **alle** resultattyper, inklusive NULL/0/negative legacy-nøgler. Ingen/kun NULL timestamps bevarer manglende-resultat-/præmie-anomalien; gyldigt timestamp uden positiv præmie udelader præmie-alarmen (også ungdom). Globalt seneste resultat beholder sit eksisterende `DESC LIMIT 1` inklusive NULL-sortering. Alarmregler/tidsgrænser ændres ikke. RPC `stall_watchdog_result_summary` er SECURITY INVOKER/STABLE, service_role-only, højst 300 kandidat-id'er pr. POST; manglende/ugyldigt svar kaster, aldrig et falsk rent facit. Entry-læsningen beholder PK-paginering med 100 id'er pr. URL. SQL er migrationen `database/2026-10-07-6102-watchdog-result-summary.sql` (ejer-go 7/10, applied via auto-migrate efter merge); [før/efter-bevis](audits/6102-watchdog-staging.md) viser identiske findings. Staging-bevis 7/10 før prod.
 - **Beskeder mellem managers (#3200, DM v1, låst 8/9):** en besked er maks **2 000 tegn** (`DM_BODY_MAX_LENGTH` i `backend/lib/directMessages.js` OG `dm_messages_body_length`-CHECK i databasen — de to skal spejle hinanden, ellers får spilleren en rå 500 fra Postgres i stedet for en pæn 400). Afsendelse er rate-limitet til **30 beskeder pr. 10 minutter** pr. bruger (`dmSendLimiter`), sidehandlinger (blokér/anmeld/skjul/markér læst) til 60 pr. 10 minutter (`dmActionLimiter`). **Beskeder slettes ALDRIG fra databasen** — `dm_messages` har hverken UPDATE- eller DELETE-policy for nogen rolle; tabellen er loggen og evidensen i fair-play-sager (#3131), og en bruger kan kun skjule en samtale for sig selv. Admin kan kun læse en samtale der har en `dm_reports`-række, håndhævet i RLS. Regeldetaljerne: `docs/SOCIAL_RULES.md` §6a.
 - **AI/bank/frozen får aldrig board-state** — board features er manager-only.
 - **`board_plan_snapshots = 0` er FORVENTET, ikke en fejl (#2596):** tabellen er et sæson-slut-retrospektiv (skrives af `processTeamSeasonEnd`/`buildSeasonEndPreviewRows`), ikke spillerens live plan — den forbliver tom indtil første reelle sæson-slut for en 1yr/3yr/5yr-plan er kørt. `loadGoalContextForBoard` (`boardGoalContext.js`) håndterer tom-tabel-casen korrekt (falder tilbage til `null`-baseline → mål-evaluatorer returnerer `awaiting_data`). Forveksl den ikke med et brudt write-path (#2463 var tæt på denne fælde).
@@ -69,6 +70,13 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
 - **Empty-pool-undtagelsen** (#4182, låst 24/8): et løb i en entry-pulje uden ét eneste hold blokerer hverken season-end-gaten eller transition-gatens `all_races_completed`-tjek, men BEVARES i kalenderen — puljen kan aktiveres igen af en ny tilmelding. Fælles diskriminator `inEmptyPool` i `backend/lib/emptyPoolPolicy.js` (tidligere duplikeret i `stageScheduler.js` + `seasonTransitionReadiness.js`, og manglede helt i `all_races_completed`, som derfor kunne blokere en transition selvom season-end-gaten korrekt så bort fra samme løb).
 - **Pulje-fordeling ved pyramide-komprimering** (#4172/#4185, låst 24/8): `distributeCompression` (`backend/lib/pyramidCompression.js`) fordeler tier 4-hold over `d4PoolCount` tier 4-puljer — defaulten er `null` = ALLE eksisterende D4-puljer. Før #4172 var defaulten hardkodet til 2, hvilket ved S1→S2-komprimeringen lod alle 48 D4-hold lande i kun pulje A+B, mens C-H stod tomme med 156 uafviklelige løb i kalenderen. Et eksplicit tal skærer stadig fra toppen af puljelisten (kan bruges til bevidst at reproducere en historisk fordeling). **S4-formen (#5642):** `distributeCompression` kender ikke `retired_at`; en komprimering efter S4 SKAL sende `d4PoolCount: 4`, ellers fordeles resten også på de pensionerede D4 E-H (de har `pool_index` 4-7 og skæres fra bunden).
 - **Sæsonskiftets status-kontrakt** (#4228, låst 25/8): `backend/scripts/dev/seasonRollover.mjs` ejer selv nedetids-vinduet. Kommer sæsonen ind som `active`, sætter scriptet den til `upcoming` under den destruktive ombygning og TILBAGE til `active` bagefter — i et `try/finally`, så tilbage-sætningen også sker hvis et trin undervejs fejler. Kommer sæsonen ind som `upcoming` (operatørens egen tilstand ved indgangen), efterlades den `upcoming` — scriptet tænder ALDRIG en sæson der ikke var tændt i forvejen (at gen-tænde et live system er ejer-only, se `.claude/learnings`/memory om samme regel). Forward-guard: `seasonRolloverRestoresActive.test.js` (verificeret rød mod den gamle udgave, grøn mod den nye). Udløst af 25/8-hændelsen (#4229): sæson 3 stod `upcoming` med 0 løb kørt i ca. 4 timer, fordi et menneske var systemets eneste "finally-blok".
+
+**Aktivering af watchdog-RPC (#6102):** før et kandidatopslag kaldes, kræves en
+positiv række for `database/2026-10-07-6102-watchdog-result-summary.sql` i
+`schema_migrations`. Manglende marker, forkert payload eller læsefejl stopper
+watchdogen med fejl; den melder ikke rent facit og kalder ikke den nye RPC.
+Oprettelse, REVOKE/GRANT og schema-notify sker i én transaktion; registermarkeren
+skrives først bagefter af auto-migrate. Ingen flag-flip eller tung bulk-fallback.
 
 ## AI-puljers størrelse og nedlæggelse (#2377/#4753, design-go 9/9)
 
@@ -95,12 +103,86 @@ aldrig tilbagefald til hård sletning. Den eksplicitte relaunch-wipe er en separ
 dens AI-reset bevarer nedlagte hold og afviser aktive tilbudsreferencer før første sletning.
 Audit må kun fratrække en frisk AI-markør med en konkret, levende blokering; markøren alene
 er ikke bevis. Uforklaret overskud, et stallet blokerende løb eller overskredet ventefrist fejler `league-size-invariant`.
+Ved eksplicit slukket `stage_scheduler_enabled` må en frisk, levende løbsbinding
+ikke blive til et stall-fund alene på grund af et forfaldent etapetidspunkt (#6098).
+Auditten bruger schedulerens flag-semantik; fejl, manglende eller ukendt værdi er
+ikke pausebevis og stopper auditen med fejl. Genstart genåbner stall-målingen.
 Auditens samlede markørgrænse er fortsat 120 timer; en ny blokeringsårsag forlænger
 ikke audit-fritagelsen. Langvarigt overskud kræver stadig en synlig reaktion.
 Dette præciserer audit-delen af occupancy-reglen ovenfor; signup-balanceringens tæller er uændret.
 Løbs-stall og den aktuelle blokerings alder overvåges fortsat af sweepet (#2434/#4828).
 Kode: `database/2026-09-09-4753-ai-pool-retirement.sql`, `backend/lib/aiPoolRetirement.js`.
 Marked: [`TRANSFER_MARKET_RULES.md`](TRANSFER_MARKET_RULES.md). Lokalt verificeret; prod-go udestår.
+
+## Ranking-refresh admission (#5900)
+
+Cron, løbsfinalisering, træningslukning og recovery bruger den samme admission
+i `refreshRankingMatviews.js` / `rankingRefreshQueue.ts`. Pr. delt Supabase-klient
+og proces kører én pass ad gangen; callers under en aktiv pass samles i en frisk
+opfølgning. Nye requests under opfølgningen kan kræve endnu en pass. En caller må
+ikke kvitteres med et snapshot, som startede før callerens nye data.
+Træningsgate genlæses ved faktisk start af et ventende job; ubetinget Safe beholder
+sin bypass-kontrakt. Et ventende træningslukningsjob beholder sin forespørgselsdato
+over midnat. RPC-rækkefølge, `false`/`deferred`/`coalesced` og heartbeat-reglen
+bevares. Samling af pending jobs bevarer datogates fra tidligere callers;
+kun ubetinget Safe eller udløbet maksimal udskydelse tilsidesætter dem.
+En fejl i første pass forbruger ikke opfølgningen.
+Dette er et regressionsværn for process-lokal samtidighed, ikke et bevis for
+#5692's ejer-godkendte friskhedsmål eller fuld load-test. Schedulerbudget, holdbare
+claims/restarts og cross-process coordination er suppleret af event-kontrakten nedenfor.
+
+### Durable ranking events (#5692, ejer 2/10 + prioritet 6/10)
+
+Etaperesultat og aktuelt klassement publiceres efter gemning/validering uden at
+vente på global beregning. Globale ranglister beregnes samlet i baggrunden,
+normalt senest fem minutter efter færdig finalisering; sidste færdige data kan
+læses imens. Dette er ejerens mål, ikke et regressionsgulv.
+
+`ranking_refresh_work_state` registrerer ændringer i samme transaction som
+`race_results`, `races`, `riders`, `season_standings`, `seasons`, `teams` og
+`team_global_rank_points`. Statement-triggere sammenligner kun ranglisternes
+projektioner; rollback, uændrede værdier og rytter-rating alene skaber ikke work.
+Historiske rettelser og ændret nuværende rytterejerskab tæller også. Eksisterende
+view-definitioner og alle historiske læsninger bevares.
+
+Den holdbare claim fanger requested-versionen ved start. Kun samme ejer/token
+kan kvittere netop denne version efter alle fem refreshes. Senere ændringer
+forbliver pending til en opfølgning. Lease fornyes før hvert RPC; fælles DB-writer
+lock beskytter hver concurrent refresh mod overlap, også ved tabt lease.
+Fejl beholder work og sidste completion/heartbeat; ingen plain-refresh fallback.
+Heartbeat og completed-version opdateres atomisk. De fem views publiceres stadig
+i separate transaktioner, så dette lover ikke én atomisk fem-view-publicering.
+
+Cron checker work hvert minut og kører ingen full refresh på clean state.
+Finalization-hooken planlægger en samlet baggrundswakeup og returnerer straks.
+Træningsprioritet må udskyde indtil to minutter fra den holdbare ældste ændring;
+ventetid/genstart nulstiller ikke alderen. Safe er en eksplicit forced repair og
+kvitterer ikke busy som færdig. Watchdog bruger pending work, ikke alene import-
+timestamp; et clean snapshot får ikke en ny beregningstid på uændrede ticks.
+
+Sæsonskiftets mutation og sæson-start-snapshot bevarer rækkefølge og atomicitet;
+den direkte globale refresh deler writer-lock og bruger CONCURRENTLY. Mutation
+må ikke retries blindt. Legacy nul-argument-RPC'er er bevaret til rollback;
+ukendte eksterne callers er ikke bevist af runtime-inventory.
+
+Staging-bevis: [måling](audits/5692-event-driven-staging.md). Kun staging er
+ændret af Codex; prod-apply og release tilhører Claude efter review/merge.
+Sæsonskiftets særskilte [læser-/snapshot-bevis](audits/5692-season-rollover-staging.md)
+viser samme snapshots og læsning under concurrent writer-lock; begge forsøg
+rulles tilbage. Det er ikke en fuld løbsdagsmåling.
+
+**Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
+`database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
+boolean-overloads paa den eksisterende RPC-transport. Kun service_role maa kalde
+dem; alle fem SECURITY DEFINER-overloads bruger `SET search_path = public, pg_temp`,
+med `pg_temp` eksplicit sidst. Katalogtesten kontrollerer dette efter foerste og
+gentagen apply. Argumentet skal vaere `p_concurrently = true`. False/NULL og manglende
+populated view/egnet UNIQUE-indeks fejler uden plain-refresh-fallback. De gamle
+nul-argument-funktioner bevares. Migrationen er additiv og aktiverer ingen Node-
+kaldesti eller scheduler. SQL er lagt i prod og post-verificeret (5 signatures, 4/10). Node-PR #6153
+frigives efter ejer-go 5/10 uden at vente paa staging; reel staging-transport
+maales bagefter som separat accept i #5904. Dette er en deploy-kontrakt, ikke et prod-/load- eller
+femminutters-friskhedsbevis. Heartbeat kraever stadig fem vellykkede commits.
 
 ## Matviews eksponeret i API (fog of war-gennemgang 6/9, [#4870](https://github.com/NicolaiDolmer/CyclingZone/issues/4870))
 

@@ -155,6 +155,22 @@ function missingRollout(patches, baseVersions) {
   return bad;
 }
 
+// #6154: en NY beta-note skal pege paa sin kontakt (`flag`), saa patch notes-siden kan
+// skifte maerket til "Now live" naar kontakten er on for alle (PATCH_NOTES_RULES §2a).
+// Eksisterende noter uden `flag` er undtaget: kun versioner der ikke findes paa base tjekkes.
+function missingFlag(patches, baseVersions) {
+  const known = new Set(baseVersions);
+  const bad = [];
+  for (const p of patches || []) {
+    if (known.has(p.version)) continue;
+    (p.changes || []).forEach((c, i) => {
+      const beta = c.rollout === "beta" || (!c.rollout && c.stage === "beta");
+      if (c.audience === "player" && beta && !c.flag) bad.push(`${p.version}#${i}`);
+    });
+  }
+  return bad;
+}
+
 async function main() {
   const root = repoRoot();
   const baseRef = process.env.PATCH_NOTES_BASE_REF || "origin/main";
@@ -220,6 +236,14 @@ async function main() {
     );
   }
 
+  const noFlag = baseVersions.length > 0 ? missingFlag(importResult.mod.PATCHES, baseVersions) : [];
+  if (noFlag.length > 0) {
+    fail(
+      `New beta changes without a "flag" (the feature flag key): ${noFlag.join(", ")}. `
+      + `See docs/PATCH_NOTES_RULES.md §2a.`
+    );
+  }
+
   if (patchNotesChanged && baseVersions.length > 0 && !versionsUnchanged) {
     const currentTop = versions[0];
     const baseTop = baseVersions[0];
@@ -264,6 +288,7 @@ module.exports = {
   patchNotesRouteIsSnapshotted,
   importCheck,
   missingRollout,
+  missingFlag,
 };
 
 if (require.main === module) {

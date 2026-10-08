@@ -103,12 +103,18 @@ export async function buildRiderHistory(supabase, riderId) {
         return Number.isFinite(otherEndMs) && otherEndMs > auctionEndMs;
       });
 
+    // #6304: et hold må byde på sin egen AI/free-agent-auktion (#194-reglen), så
+    // sælger og vinder kan reelt være samme hold. Rækken er et genkøb — ikke et
+    // salg mellem to hold — og må ikke læses som "X vandt af X".
+    const sellerIsBuyer = Boolean(a.seller?.id && a.winner?.id && a.seller.id === a.winner.id);
+
     events.push({
       type: "auction",
       date: a.actual_end || a.created_at,
       price: (noSale || isPhantomFreeAgentWin) ? null : a.current_price,
       seller: a.seller,
       buyer: a.winner,
+      seller_is_buyer: sellerIsBuyer,
       no_sale: noSale || isPhantomFreeAgentWin,
       is_ai_sale: a.seller?.is_ai ?? false,
       is_guaranteed_sale: a.is_guaranteed_sale,

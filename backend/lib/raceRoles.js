@@ -19,6 +19,8 @@
 // / RACE_V3_TEAM_RACE_WEIGHT) så scripts/sweepS1WorkCost.mjs kan køre et
 // joint grid i child-processer UDEN at redigere denne fil pr. celle. Prod/CI
 // sætter ALDRIG disse envs → tallene nedenfor er de gældende. Ingen secrets.
+import { isOrdersGcRulesRevision } from "./raceEngineRulesRevision.ts";
+
 const envNum = (name, def) => {
   const raw = process.env[name];
   if (raw == null || raw === "") return def;
@@ -378,15 +380,49 @@ function effortCostMultiplier(effort = "normal") {
  * #4632: femtrins-skalaen lægger grupetto UNDER save og all_out OVER protect.
  * Ukendt/manglende effort → NORMAL (1.0), som før.
  *
+ * #6079 (ejer 2/10, beslutning A): under regel-revisionen "orders_gc_v1"
+ * afhænger save's ("Kør roligt") besparelse af etapeprofilen — mere i bjergene,
+ * mindre på flad (ORDERS_GC_V1_SAVE_FATIGUE_BY_PROFILE). Ukendt profil og
+ * legacy-revisionen bruger den faste FATIGUE_MULTIPLIER_SAVE (bit-identisk).
+ * Trappen vendes aldrig: save holdes over grupetto og under normal.
+ *
  * @param {'grupetto'|'save'|'normal'|'protect'|'all_out'} [effort='normal']
+ * @param {{ profileType?: string|null, rulesRevision?: string|null }} [ctx]
  * @returns {number}
  */
-export function effortFatigueMultiplier(effort = "normal") {
+export function effortFatigueMultiplier(effort = "normal", { profileType = null, rulesRevision = null } = {}) {
   if (effort === "protect") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_PROTECT;
-  if (effort === "save") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE;
+  if (effort === "save") return saveFatigueMultiplier(profileType, rulesRevision);
   if (effort === "grupetto") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_GRUPETTO;
   if (effort === "all_out") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_ALL_OUT;
   return RACE_V3_TUNING.FATIGUE_MULTIPLIER_NORMAL;
+}
+
+/**
+ * #6079: save's trætheds-multiplikator pr. etapeprofil under orders_gc_v1
+ * (ejer 2/10: flad sparer mindst, bjerg/højfjeld mest; kuperet = legacy-tallet).
+ * classic/cobbles følger kuperet; itt/ttt og ukendte profiler falder tilbage
+ * til legacy-tallet. Frosset; læses kun under orders_gc_v1.
+ */
+export const ORDERS_GC_V1_SAVE_FATIGUE_BY_PROFILE = Object.freeze({
+  flat: 0.85,
+  rolling: 0.78,
+  hilly: 0.70,
+  classic: 0.70,
+  cobbles: 0.70,
+  mountain: 0.55,
+  high_mountain: 0.55,
+});
+
+function saveFatigueMultiplier(profileType, rulesRevision) {
+  const legacy = RACE_V3_TUNING.FATIGUE_MULTIPLIER_SAVE;
+  // #6084: orders_gc_v2 = hele orders_gc_v1-pakken + bjergselektionen, saa
+  // v2 arver v1's profil-afhaengige save-traethed.
+  if (!isOrdersGcRulesRevision(rulesRevision)) return legacy;
+  const m = ORDERS_GC_V1_SAVE_FATIGUE_BY_PROFILE[profileType];
+  if (!Number.isFinite(m)) return legacy;
+  // Trappen må ikke vende: grupetto <= save < normal.
+  return Math.min(RACE_V3_TUNING.FATIGUE_MULTIPLIER_NORMAL, Math.max(RACE_V3_TUNING.FATIGUE_MULTIPLIER_GRUPETTO, m));
 }
 
 /**

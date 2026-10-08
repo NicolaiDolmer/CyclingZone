@@ -10,10 +10,12 @@ import {
 //   teams.select().order().range()
 //   riders.select().not().order().range()
 // Alle tre er paginerede single-page reads i disse tests (data.length < 1000).
-function makeMock({ divisions = [], teams = [], riders = [], reason = 'inflight_entries' } = {}) {
+function makeMock({ divisions = [], teams = [], riders = [], reason = 'inflight_entries', schedulerValue = 'on', schedulerError = null } = {}) {
   function from(table) {
     const b = {
       select() { return b; },
+      eq() { return b; },
+      maybeSingle() { return Promise.resolve({ data: schedulerValue === null ? null : { value: schedulerValue }, error: schedulerError }); },
       order() { return b; },
       not() { return b; },
       neq() { return b; },
@@ -383,4 +385,49 @@ test("tier 1/2-puljer kræver 24 selv uden ægte managere (alwaysFill-politikken
   const summary = await runLeagueSizeAudit({ supabase, now: new Date("2026-07-20T22:00:00Z") });
   assert.equal(summary.total_findings, 1, "tom D1 er ALDRIG ok — toppen skal altid være fyldt");
   assert.equal(summary.findings[0].required, 24);
+});
+
+// #6098: fixed now covers the same overdue race across pause and resume.
+const PAUSE_NOW = new Date('2026-10-03T07:00:00Z');
+function pauseFixture(options = {}) {
+  const teams = Array.from({ length: 24 }, (_, i) => makeTeam(`pause-${i}`, { league_division_id: 1 }));
+  teams.push(makeTeam('pending-paused-ai', { league_division_id: 1, is_ai: true, pending_removal_at: '2026-10-02T07:00:00Z' }));
+  return { supabase: makeMock({ divisions: [makeDivision(1, 4, 0, 'D4 A')], teams, ...options }),
+    now: PAUSE_NOW, getStalledIds: async () => ['paused-race'], teamBlockingRaceIds: async () => ['paused-race'] };
+}
+for (const schedulerValue of ['off', false, 'beta']) {
+  test(`#6098 explicit scheduler ${schedulerValue} preserves a fresh live race reservation`, async () => {
+    const args = pauseFixture({ schedulerValue });
+    args.getStalledIds = async () => { assert.fail('planned pause must not measure overdue races'); };
+    const result = await runLeagueSizeAudit(args);
+    assert.equal(result.total_findings, 0);
+    assert.equal(result.waiting.length, 1);
+  });
+}
+for (const schedulerValue of ['on', true]) {
+  test(`#6098 resumed scheduler ${schedulerValue} still flags a stalled blocking race`, async () => {
+    const result = await runLeagueSizeAudit(pauseFixture({ schedulerValue }));
+    assert.equal(result.total_findings, 1);
+    assert.equal(result.findings[0].count, 25);
+    assert.equal(result.waiting.length, 0);
+  });
+}
+for (const schedulerValue of [null, 'unexpected']) {
+  test(`#6098 scheduler ${schedulerValue} is unknown, never proof of planned pause`, async () => {
+    await assert.rejects(runLeagueSizeAudit(pauseFixture({ schedulerValue })), /scheduler/i);
+  });
+}
+test('#6098 scheduler lookup error is not a successful paused audit', async () => {
+  await assert.rejects(runLeagueSizeAudit(pauseFixture({ schedulerValue: 'off', schedulerError: { message: 'unavailable' } })), /scheduler/i);
+});
+test('#6098 pause never hides an expired marker', async () => {
+  const args = pauseFixture({ schedulerValue: 'off' });
+  args.now = new Date('2026-10-09T07:00:00Z');
+  const result = await runLeagueSizeAudit(args);
+  assert.equal(result.total_findings, 1);
+  assert.equal(result.waiting.length, 0);
+});
+test('#6098 pause never hides excess without a live obligation', async () => {
+  const result = await runLeagueSizeAudit(pauseFixture({ schedulerValue: 'off', reason: null }));
+  assert.equal(result.total_findings, 1);
 });

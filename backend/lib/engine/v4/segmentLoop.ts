@@ -46,6 +46,7 @@ import type {
   Weather,
 } from "./types.ts";
 import { boundRngFor, segmentRngFor } from "./rng.ts";
+import { reconcileDescentCrossings } from "./mechanics/descentCrossing.ts";
 import {
   deriveCp,
   deriveRechargeRate,
@@ -82,8 +83,12 @@ import {
   resolveIncidentChasers,
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
-import { isLetGoChaseGroup } from "./mechanics/breakaway.ts";
+import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
+import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup } from "./mechanics/chaseGroup.ts";
+import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
+import { valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
+import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -375,6 +380,8 @@ export function groupEffortTempo(
   effortByRider: (riderId: string) => Entrant["effort"] | undefined,
   frontFraction: number,
   tempoTuning: { model: GroupTempoModel; grupettoTempoFactor: number } = GROUP_TEMPO_EFFORT_EXTRA_TUNING,
+  // #6187 (KUN orders_gc_v3): ryttere paa hjul er aldrig i fronten (som grupetto). Udeladt = uaendret.
+  wheelSitterIds?: ReadonlySet<string>,
 ): { collectiveCp: number; frontRiderIds: Set<string>; effortTempoFactor: number } {
   const weighted = [...cpByRider.entries()].map(([id, cp]) => {
     const factor = riderTempoEffortFactor(effortByRider(id), tempoTuning);
@@ -390,7 +397,7 @@ export function groupEffortTempo(
   // rytter der koerer). Kun en gruppe af udelukkende grupetto-ryttere bruger
   // den vaegtede raekkefoelge. I "cp_only" er ingen ryttere `slowed`, saa
   // kandidaterne er hele gruppen, praecis som foer.
-  const racers = weighted.filter((r) => !r.slowed);
+  const racers = weighted.filter((r) => !r.slowed && !wheelSitterIds?.has(r.id));
   const frontCandidates = racers.length > 0 ? racers : weighted;
   const frontSlice = frontCandidates.slice(0, frontCount);
   const frontRiderIds = new Set(frontSlice.map((r) => r.id));
@@ -409,6 +416,7 @@ function computeGroupTempo(
   tuning: EngineTuning,
   weather: Weather,
   referenceCp: number,
+  wheelSitterIds?: ReadonlySet<string>, // #6187: kun orders_gc_v3
 ): GroupTempo {
   const cpByRider = new Map<string, number>();
   for (const riderId of group.rider_ids) {
@@ -421,6 +429,8 @@ function computeGroupTempo(
     cpByRider,
     (riderId) => entrantsById[riderId]?.effort,
     tuning.work.frontFraction,
+    undefined,
+    wheelSitterIds,
   );
   const dtSeconds = groupDtSeconds(collectiveCp, segment, tuning, cpByRider.size, referenceCp, effortTempoFactor);
   return { collectiveCp, frontRiderIds, cpByRider, dtSeconds, effortTempoFactor };
@@ -669,8 +679,13 @@ export function neutralizeBreakawayTempoDrift(
   groups: readonly RaceGroup[],
   tempoByGroup: Map<string, GroupTempo>,
   kind: SegmentKind,
+  // #6084 (KUN orders_gc_v2): andel af driften der ogsaa nulstilles paa en
+  // stigning foer finalestigningen (mechanics/mountainSelection.ts, forslag A).
+  // 0 = uaendret (stigninger beholder driften), 1 = som paa aabent terraen.
+  climbNeutralShare = 0,
 ): Map<string, GroupTempo> {
-  if (!BREAKAWAY_NEUTRAL_KINDS.has(kind)) return tempoByGroup;
+  const climbShare = kind === "climb" ? climbNeutralShare : 0;
+  if (!BREAKAWAY_NEUTRAL_KINDS.has(kind) && !(climbShare > 0)) return tempoByGroup;
   const escapes = groups.filter((g) => g.kind === "breakaway" && g.origin === "breakaway");
   if (escapes.length === 0) return tempoByGroup;
   let out: Map<string, GroupTempo> | null = null;
@@ -682,7 +697,8 @@ export function neutralizeBreakawayTempoDrift(
     const own = tempoByGroup.get(escape.id);
     if (!own || own.dtSeconds === chaseTempo.dtSeconds) continue;
     out ??= new Map(tempoByGroup);
-    out.set(escape.id, { ...own, dtSeconds: chaseTempo.dtSeconds });
+    const dtSeconds = climbShare > 0 && climbShare < 1 ? own.dtSeconds + (chaseTempo.dtSeconds - own.dtSeconds) * climbShare : chaseTempo.dtSeconds;
+    out.set(escape.id, { ...own, dtSeconds });
   }
   return out ?? tempoByGroup;
 }
@@ -743,6 +759,9 @@ export type SegmentLoopResult = {
 export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === undefined || raw === null || raw === "legacy") return "legacy";
   if (raw === "orders_gc_v1") return "orders_gc_v1";
+  if (raw === "orders_gc_v2") return "orders_gc_v2";
+  if (raw === "orders_gc_v3") return "orders_gc_v3";
+  if (raw === "official_times_v1") return "official_times_v1";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -757,6 +776,14 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // eller tom liste er den neutrale default.
   const orders: readonly TeamOrder[] = input.orders ?? [];
   const rulesRevision = normalizeRulesRevision(input.rules_revision);
+  // #6084: orders_gc_v2 = hele orders_gc_v1-pakken + bjergselektionen. Hooksene
+  // ser v1 (alle v1-grene uaendrede) og faar fasen separat.
+  const hookRevision: RulesRevision = isOrdersGcRulesRevision(rulesRevision) ? "orders_gc_v1" : rulesRevision;
+  // #6187: orders_gc_v3 = hele v2 (fase + rullende balance ser "orders_gc_v2") + flaget ordersGcV3.
+  const v2Revision: RulesRevision = isOrdersGcV2OrLater(rulesRevision) ? "orders_gc_v2" : rulesRevision;
+  const ordersGcV3 = isOrdersGcV3OrLater(rulesRevision);
+  const descentCrossings = rulesRevision === "official_times_v1";
+  const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
 
@@ -816,6 +843,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // 1+2: krav-tempo + fysiologi-tick, pr. gruppe (baseret paa gruppe-strukturen
     // ved segmentets indgang).
     let tempoByGroup = new Map<string, GroupTempo>();
+    // #6187 (KUN orders_gc_v3): egne udbrydere paa hjul foerer ikke (mechanics/breakaway.ts).
+    // #5978: hooket faar samme saet (ctx.ownRidersOnWheel), ikke et nyt fra hook-tidspunktet.
+    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km, tuning }) : undefined;
+    const wheelSitterIds = onWheelAtStart ? new Set(onWheelAtStart.flatMap((w) => w.rider_ids)) : undefined;
     for (const group of state.groups) {
       const tempo = computeGroupTempo(
         group,
@@ -825,6 +856,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         tuning,
         route.weather,
         referenceCp[segment.kind],
+        wheelSitterIds,
       );
       tempoByGroup.set(group.id, tempo);
     }
@@ -918,19 +950,34 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
 
     // #5812 (a): M5 ejer hullet mellem dagens udbrud og jagtgruppen paa aabent
     // terraen. Se neutralizeBreakawayTempoDrift.
-    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind);
+    const mountainPhase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
+    tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
+    // #6199 (KUN orders_gc_v3): i dalen efter en top kan et hul ikke vokse (mechanics/timeModel.ts).
+    if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
     const frontGroup = state.groups.reduce((min, g) => (g.gap_seconds < min.gap_seconds ? g : min), state.groups[0]);
     const dtFront = tempoByGroup.get(frontGroup.id)?.dtSeconds ?? 0;
+    // #6200 (KUN orders_gc_v3): paa nedkoerslen mod maal (sidste segment, samme
+    // definition som descent.ts/breakaway.ts/finale.ts) kan tempo-tikket aabne et
+    // hul, men aldrig lukke det. Al lukning gaar gennem de kappede hooks (bogen i
+    // mechanics/timeModel.ts), saa loftet maales fra hullet ved toppen.
+    const descentOpenOnly = ordersGcV3 && segment.kind === "descent" && segmentIndex === segments.length - 1;
+    const groupsBeforeTempo = state.groups;
     let groups = state.groups.map((g) => {
       if (g.id === frontGroup.id) return g;
       const dtGroup = tempoByGroup.get(g.id)?.dtSeconds ?? dtFront;
-      return { ...g, gap_seconds: Math.max(0, g.gap_seconds + (dtGroup - dtFront)) };
+      const delta = descentOpenOnly ? Math.max(0, dtGroup - dtFront) : dtGroup - dtFront;
+      return { ...g, gap_seconds: Math.max(0, g.gap_seconds + delta) };
     });
     groups = rebaselineGroups(groups);
     state = { ...state, groups };
+    if (descentCrossings) {
+      const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km);
+      state = contact.state;
+      timeline.push(...contact.events);
+    }
 
     // 3. Mekanik-hooks (M2 paa climb, M3 paa descent, M4 paa sidste segment).
     // Fase A: DEFAULT_MECHANIC_HOOKS er no-op, saa state/timeline er uaendret.
@@ -948,10 +995,14 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       rngForStage: rngForFn,
       orders,
       jerseyLeaders: input.jersey_leaders ?? null,
-      rulesRevision,
+      rulesRevision: hookRevision,
       // #5978: GC-konteksten naar KUN hooksene under orders_gc_v1. Udeladt
       // under den revision = "missing" (aerlig diagnose i mechanics/breakaway.ts).
-      ...(rulesRevision === "orders_gc_v1" ? { gcContext: input.gc_context ?? null } : {}),
+      ...(hookRevision === "orders_gc_v1" ? { gcContext: input.gc_context ?? null } : {}),
+      ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
+      ...(rollingBreakawayV2For(v2Revision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
+      ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
+      ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
     };
     // M16 (#4246): holdspillet koeres FOERST blandt hooksene — umiddelbart
     // efter fysiologi-tick'et og gap-bogfoeringen, og FOER terraen-selektionen.
@@ -998,9 +1049,15 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // udbryder skal placeres) — praecis den raekkefolge breakaway.ts's egen
     // wiring-note foreskriver.
     {
+      const groupsBeforePursuit = state.groups;
       const result = hooks.breakaway(state, ctx);
       state = result.state;
       timeline.push(...result.events);
+      if (descentCrossings) {
+        const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events);
+        state = contact.state;
+        timeline.push(...contact.events);
+      }
     }
 
     // M10 (#2944): incidents-trappen koeres paa HVERT segment — et uheld er

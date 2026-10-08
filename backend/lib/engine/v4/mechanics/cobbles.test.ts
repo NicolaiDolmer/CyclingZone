@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { cobblesHook } from "./cobbles.ts";
+import { cobbledFinaleDemandVector, cobblesHook, splitTiers } from "./cobbles.ts";
 import { COBBLES_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
 import { boundRngFor, segmentRngFor } from "../rng.ts";
 import type {
@@ -409,4 +409,108 @@ test("#4886: SAMME segment-index er stadig fuldt deterministisk", () => {
   const b = cobblesHook(state, makeCtx(entrants, segment, { seed: "seg-key", segmentIndex: 3 }));
   assert.deepEqual(a.events, b.events);
   assert.deepEqual(a.state.groups, b.state.groups);
+});
+
+// ── #6046: brostens-balancen (kun orders_gc_v1, kun brosten/grus) ──────────
+
+function balancedCtx(
+  entrants: Entrant[],
+  segment: Segment,
+  opts: { seed?: string; finaleType?: RouteV2["finale_type"]; profile?: RouteV2["profile_type"]; revision?: "legacy" | "orders_gc_v1" } = {},
+): SegmentHookContext {
+  const base = makeCtx(entrants, segment, { seed: opts.seed, finaleType: opts.finaleType });
+  return {
+    ...base,
+    route: { ...base.route, profile_type: opts.profile ?? "cobbles" },
+    rulesRevision: opts.revision ?? "orders_gc_v1",
+  };
+}
+
+function spreadField(n: number): Entrant[] {
+  return Array.from({ length: n }, (_, i) => entrant(`r${String(i).padStart(2, "0")}`, { cobblestone: Math.round((i * 99) / (n - 1)) }));
+}
+
+test("#6046: legacy-revisionen er uaendret paa en brostensetape (ét split, som foer)", () => {
+  const entrants = spreadField(30);
+  const state = makeState(entrants);
+  const segment = cobblesSegment({ stars: 5 });
+  const legacy = cobblesHook(state, balancedCtx(entrants, segment, { seed: "legacy-6046", revision: "legacy" }));
+  const unset = cobblesHook(state, makeCtx(entrants, segment, { seed: "legacy-6046" }));
+  assert.deepEqual(legacy, unset, "rulesRevision=legacy skal give praecis det gamle udfald");
+  assert.ok(eventsOfType(legacy.events, "peloton_splits").length <= 1);
+});
+
+test("#6046: klassiker-profilen er uroert under orders_gc_v1", () => {
+  const entrants = spreadField(30);
+  const state = makeState(entrants);
+  const segment = cobblesSegment({ stars: 5 });
+  const classic = cobblesHook(state, balancedCtx(entrants, segment, { seed: "classic-6046", profile: "classic" }));
+  const legacy = cobblesHook(state, balancedCtx(entrants, segment, { seed: "classic-6046", profile: "classic", revision: "legacy" }));
+  assert.deepEqual(classic, legacy);
+});
+
+test("#6046: under orders_gc_v1 deles de afhaengte i flere lag, og tidstabet vokser med underskuddet", () => {
+  const entrants = spreadField(30);
+  const state = makeState(entrants);
+  const segment = cobblesSegment({ stars: 5 });
+  const result = cobblesHook(state, balancedCtx(entrants, segment, { seed: "tiers-6046" }));
+  const splits = eventsOfType(result.events, "peloton_splits");
+  assert.ok(splits.length >= 2 && splits.length <= COBBLES_EXTRA_TUNING.maxSplitTiers, `forventede 2..max lag, fik ${splits.length}`);
+  const sectorSeconds = ((segment.to_km - segment.from_km) / RACE_V4_TUNING.terrain.baseSpeedKmh.cobbles) * 3600;
+  const [lo, hi] = COBBLES_EXTRA_TUNING.tieredEffectFractionBounds;
+  for (const g of result.state.groups.filter((x) => x.id !== "peloton-0")) {
+    assert.ok(g.gap_seconds >= lo * sectorSeconds - 1e-6 && g.gap_seconds <= hi * sectorSeconds + 1e-6, `gap ${g.gap_seconds} uden for baandet`);
+  }
+});
+
+test("#6046: monotoni under orders_gc_v1 — en staerkere rytter ender aldrig bag en svagere fra samme gruppe (fast-check, 200 runs)", () => {
+  fc.assert(
+    fc.property(
+      fc.array(fc.integer({ min: 0, max: 99 }), { minLength: 2, maxLength: 24 }),
+      fc.constantFrom(3 as const, 4 as const, 5 as const),
+      fc.double({ min: 0.5, max: 6, noNaN: true }),
+      fc.string({ minLength: 1, maxLength: 12 }),
+      fc.constantFrom<RouteV2["profile_type"]>("cobbles", "gravel"),
+      (values, stars, lengthKm, seed, profile) => {
+        const entrants = values.map((c, i) => entrant(`r${i}`, { cobblestone: c }));
+        const state = makeState(entrants);
+        const segment = cobblesSegment({ stars, from_km: 100, to_km: 100 + lengthKm });
+        const result = cobblesHook(state, balancedCtx(entrants, segment, { seed, profile }));
+        const gapOf = new Map(result.state.groups.flatMap((g) => g.rider_ids.map((id) => [id, g.gap_seconds] as const)));
+        for (let i = 0; i < values.length; i++) {
+          for (let j = 0; j < values.length; j++) {
+            if (values[i] <= values[j]) continue;
+            assert.ok(gapOf.get(`r${i}`)! <= gapOf.get(`r${j}`)! + 1e-9, `r${i} (${values[i]}) endte bag r${j} (${values[j]})`);
+          }
+        }
+      },
+    ),
+    { numRuns: 200, seed: 6046 },
+  );
+});
+
+test("#6046: splitTiers er monotont i scoren og daekker alle udvalgte praecis én gang", () => {
+  const selections = [0.9, 0.2, 0.5, 0.31, 0.7, 0.2].map((baseScore, i) => ({ riderId: `r${i}`, baseScore }));
+  const ids = selections.map((s) => s.riderId);
+  const tiers = splitTiers(selections, ids, 3);
+  assert.deepEqual(tiers.flat().sort(), [...ids].sort());
+  const scoreOf = new Map(selections.map((s) => [s.riderId, s.baseScore]));
+  for (let t = 1; t < tiers.length; t++) {
+    assert.ok(Math.max(...tiers[t - 1].map((id) => scoreOf.get(id)!)) <= Math.min(...tiers[t].map((id) => scoreOf.get(id)!)));
+  }
+  assert.deepEqual(splitTiers(selections, ids, 1), [[...ids].sort()]);
+});
+
+test("#6046: cobbledFinaleDemandVector blander brostensevnen ind kun paa brosten/grus under orders_gc_v1", () => {
+  const vector = { sprint: 0.5, acceleration: 0.2, positioning: 0.2, flat: 0.1 };
+  const segment = cobblesSegment();
+  const active = cobbledFinaleDemandVector(vector, balancedCtx([], segment));
+  const share = COBBLES_EXTRA_TUNING.finaleCobblestoneShare;
+  const sum = Object.values(active).reduce((s, w) => s + (w ?? 0), 0);
+  assert.ok(Math.abs(sum - 1) < 1e-9, "vaegtsummen er uaendret");
+  assert.ok(Math.abs((active.cobblestone ?? 0) - share) < 1e-9);
+  assert.ok(Object.values(active).every((w) => (w ?? 0) >= 0));
+  assert.equal(cobbledFinaleDemandVector(vector, balancedCtx([], segment, { revision: "legacy" })), vector);
+  assert.equal(cobbledFinaleDemandVector(vector, balancedCtx([], segment, { profile: "classic" })), vector);
+  assert.equal(cobbledFinaleDemandVector(vector, balancedCtx([], segment, { profile: "flat" })), vector);
 });
