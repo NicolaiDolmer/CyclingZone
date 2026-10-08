@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (9/10):** **Tour de l'Hexagone søn 11/10 kl. 11 låser motor-revisionen.** Start med prompten i `docs/sessions/2026-10-09-next-session-prompt.md`. (1) Bølge: #6330 opfølgning (exact_km på nye hændelser, DB-migration for `official_times_v2`, SSOT) + #6355 (tabs-liste km, perf-gate). (2) Morgen med ejeren: Train now-låsen → #5268 evner → form #6156 (inkl. S5-mulighed) → grupetto/tidsudelukkelse (#6199) → betaling+moms. (3) Merge #6325 #6348 #6357 #6353 #6354 #6330 #6355 efter regel 35(d). (4) Tour-gennemtest af 18 etaper (Infisical-login) → ejer-go → frys. (5) Træning #6139 #6027 #6123 + svar #5912. (6) Daglig spillerstatus + roadmap.
+> **🎯 Next action (9/10):** **Tour de l'Hexagone søn 11/10 kl. 11.** Start med `docs/sessions/2026-10-09-morgen-prompt.md`. (1) Merge #6375 (udbrudsmål i RULES) → #6376 (kalibrering official_times_v2, slukket) → #6382 (patch 7.347) → #6374 er merget. (2) Ny Tour-gennemtest fra main (10 seeds) → Fable-dommer → ÉT før/efter-billede. (3) Morgenblok 08:30, ét kort ad gangen: Tour-go på `official_times_v2` + konflikt mål 2 vs 3 (legacy-niveau på kuperet/højfjeld) · form #6156 (S5 foreløbigt, tekst, #6158) · grupetto/OTL · betaling+moms · #5268-apply (7.813 ryttere, 0 ratingfald; 658/719-punktet) · PostHog-nøgle #6310. Frist lør 18:00, ellers orders_gc_v2.
 >
-> **8/10:** Oprydning (93→9 worktrees, `archive/*`-tags) · merget #6310 #6340 #6347 #6345 #6346 (rytterlister 25 ms) #6297 #6356 (patch 7.346) · Tour-etape 8/11 rekategoriseret (#6332) · regler: design-gate skærpet, merge-regel 35(d), Claude ejer alle spor, model-matrix inkl. Haiku · S5-etapeprofiler epic #6369 + 8 roadmap-idéer.
+> **8/10 aften:** merget #6354 #6357 #6330 (migration verificeret) #6325 #6371 #6353 #6355 #6348 #6374 #6372 (Train now live, ejer-go) #6373 · udbrudsmålene fundet og samlet (#6375) · Tour-test: ny revision 57/5/9 vs nu 45/13/13 · læring: én merge-kø til processen er slut (`.claude/learnings/2026-10-09-two-merge-queues-cron-proof.md`).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code (opus), session 9/10 start 8/10 aften: bølge #6330+#6355 → morgen med ejeren → merges → Tour-gennemtest.
+> **🤖 Working agent:** Ingen aktiv session (8/10 nat lukket; næste starter med docs/sessions/2026-10-09-morgen-prompt.md).
