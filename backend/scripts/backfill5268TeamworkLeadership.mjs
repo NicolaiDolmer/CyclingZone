@@ -269,7 +269,7 @@ const name = (r) => `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim() || "(uden 
 function commonHeader(ctx) {
   const { stamp, nulls, plan, impact, design } = ctx;
   const L = [];
-  L.push(`Koert: ${stamp} (TOER KOERSEL, READ-ONLY, ingen skrivninger).`);
+  L.push(`Koert: ${stamp} (${ctx.apply ? "APPLY" : "TOER KOERSEL, READ-ONLY, ingen skrivninger"}).`);
   L.push("");
   L.push("## Tomme felter i dag (`rider_derived_abilities`)");
   L.push("");
@@ -501,42 +501,46 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
     ...(opts.apply ? {} : { global: { fetch: readOnlyFetch } }),
   });
+  await run({ supabase, opts });
+}
 
+// Orkestrering med injiceret klient (testbar uden netværk). I tør kørsel kalder
+// den udelukkende læsende builder-metoder; `applyPlan` nås kun med `opts.apply`.
+export async function run({ supabase, opts, log = console.log, now = new Date() }) {
   const { riders, abilityRows } = await loadState(supabase);
   const plan = buildFillPlan(riders, abilityRows);
   const impact = ratingImpact(plan.entries);
   const nulls = countNulls(riders, abilityRows);
   const history = await loadHistory(supabase, lowValueCandidateIds(riders, abilityRows));
   const design = lowValueDesignPoint(riders, abilityRows, history);
-  const now = new Date();
   const stamp = now.toISOString();
   const tsSlug = stamp.slice(0, 19).replaceAll(":", "-");
   const table = opts.backupTable ?? backupTableName(now);
   const privateFile = opts.privateDir ? join(opts.privateDir, `dry-run-${tsSlug}-private.md`) : null;
   const ctx = {
-    stamp, nulls, plan, impact, design, table,
+    stamp, nulls, plan, impact, design, table, apply: opts.apply,
     dist: distribution(plan.entries),
     examples: pickExamples(plan.entries, opts.sample),
     privateFile: privateFile ? privateFile.replaceAll("\\", "/") : null,
   };
 
   const publicReport = renderPublicReport(ctx);
-  console.log(publicReport);
+  log(publicReport);
   if (opts.reportDir) {
     mkdirSync(opts.reportDir, { recursive: true });
     const f = join(opts.reportDir, `dry-run-${tsSlug}.md`);
     writeFileSync(f, publicReport);
-    console.log(`Offentlig rapport: ${f}`);
+    log(`Offentlig rapport: ${f}`);
   }
   if (privateFile) {
     mkdirSync(opts.privateDir, { recursive: true });
     writeFileSync(privateFile, renderPrivateReport(ctx));
-    console.log(`Privat rapport: ${privateFile}`);
+    log(`Privat rapport: ${privateFile}`);
   }
 
   if (!opts.apply) {
-    console.log("Toer koersel: intet er skrevet.");
-    return;
+    log("Toer koersel: intet er skrevet.");
+    return { plan, impact, nulls, design, applied: null };
   }
   if (impact.changedRiders !== 0) {
     throw new Error(`Rating ville aendre sig for ${impact.changedRiders} ryttere. Apply afvist (0 ratingeffekt er et krav).`);
@@ -544,8 +548,9 @@ async function main() {
   if (plan.entries.length !== opts.expectRiders) {
     throw new Error(`Planen har ${plan.entries.length} ryttere, --expect-riders=${opts.expectRiders}. Koer toer koersel igen.`);
   }
-  await applyPlan(supabase, plan, { backupTable: opts.backupTable });
-  console.log(`Rollback-SQL:\n${rollbackSql(opts.backupTable)}`);
+  const result = await applyPlan(supabase, plan, { backupTable: opts.backupTable, log });
+  log(`Rollback-SQL:\n${rollbackSql(opts.backupTable)}`);
+  return { plan, impact, nulls, design, applied: result };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
