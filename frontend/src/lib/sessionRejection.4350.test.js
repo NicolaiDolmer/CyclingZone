@@ -45,19 +45,24 @@ test("#4350/#5242 Layout.jsx har ikke længere sin egen 401-kopi", () => {
   );
 });
 
+// #6343: hjerteslaget og online-tallet går nu gennem ÉN funktion (sendPresence),
+// som presenceHeartbeat.ts kalder hvert 60. sekund i en synlig fane. Kontrakten
+// fra #4350 er uændret: kaldet går gennem apiFetch (401 afgøres før svaret
+// returneres), og hjerteslaget kalder den funktion.
 test("#4350 hjerteslaget kigger på svaret i stedet for at fyre og glemme", () => {
-  const heartbeat = layout.slice(layout.indexOf("heartbeatRef.current = setInterval"));
+  const send = layout.slice(layout.indexOf("async function sendPresence"), layout.indexOf("async function sendPresence") + 900);
   assert.match(
-    heartbeat.slice(0, 1400),
+    send,
     /apiFetch\(`\$\{API\}\/api\/presence`/,
     "hjerteslagets presence-kald skal gå gennem apiFetch — den kigger ALTID på status (401 afgøres inden den returnerer, se apiFetch.test.ts), så #4350's 'fyr og glem' ikke kan genopstå",
   );
+  assert.match(layout, /sendPresence\(h, "heartbeat"\)/, "hjerteslaget skal kalde sendPresence, ikke et eget fyr-og-glem-kald");
 });
 
 test("#4350 online-count afgør 401 FØR den bevarer sidst kendte tal", () => {
-  const block = layout.slice(layout.indexOf("async function fetchOnlineCount"), layout.indexOf("async function fetchOnlineCount") + 900);
+  const block = layout.slice(layout.indexOf("async function sendPresence"), layout.indexOf("async function sendPresence") + 900);
   const idxFetch = block.indexOf("apiFetch(`${API}/api/online-count`");
-  const idxOk = block.indexOf("if (!res.ok");
+  const idxOk = block.indexOf("if (!fallback.ok");
   assert.ok(idxFetch > -1, "online-count mangler apiFetch-kaldet");
   assert.ok(
     idxFetch < idxOk,

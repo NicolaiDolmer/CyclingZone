@@ -15489,14 +15489,30 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 // PRESENCE & ONLINE STATUS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// #6343: tallet gemmes i 30 s pr. proces, så COUNT-forespørgslen mod users ikke
+// vokser med antallet af åbne faner (hver fane sender presence hvert 60. sekund).
+// "Online" er i forvejen 5-min-granularitet, så 30 s forsinkelse er usynlig.
+const ONLINE_COUNT_TTL_MS = 30 * 1000;
+let onlineCountCache = { value: null, at: 0 };
+
 async function countOnlineUsers() {
+  if (onlineCountCache.value !== null && Date.now() - onlineCountCache.at < ONLINE_COUNT_TTL_MS) {
+    return onlineCountCache.value;
+  }
   const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
   try {
     const { count, error } = await supabase.from("users")
       .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
     if (error) { console.error("[online-count] failed:", error.message); return null; }
-    return count || 0;
-  } catch (e) { console.error("[online-count] failed:", e.message); return null; }
+    onlineCountCache = { value: count || 0, at: Date.now() };
+    return onlineCountCache.value;
+  } catch (e) {
+    // best-effort: online-tallet er pynt i headeren. Ved fejl returneres null, så
+    // presence-svaret udelader feltet og klienten beholder sit sidst kendte tal
+    // (#4351); loggen tælles af railway-log-watch under tagget "online-count".
+    console.error("[online-count] failed:", e.message);
+    return null;
+  }
 }
 
 // POST /api/presence — heartbeat, opdater last_seen (throttlet)
