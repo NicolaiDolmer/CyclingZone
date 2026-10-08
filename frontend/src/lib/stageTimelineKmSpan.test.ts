@@ -9,6 +9,7 @@ import { catchActorCopy } from "./raceCatchActor.ts";
 
 type Ev = { km: number; type: string; params?: Record<string, unknown>; exact_km?: number; recorded_km?: number; km_span?: { from: number; to: number } };
 const fmt = (value: number) => String(value);
+const V4 = { timelineVersion: 2 };
 
 // Prod-form (anonymiseret) af en kørt etape: segmentgrænser hver ~19 km,
 // spurt ved km 105, en rytter der kører op til udbruddet stemplet ved
@@ -32,7 +33,7 @@ const ranStage: Ev[] = [
 ];
 
 test("#6350 a checkpoint-stamped merge shows the honest span from the last known point (the sprint)", () => {
-  const shown = honestTimelineEvents(ranStage) as Ev[];
+  const shown = honestTimelineEvents(ranStage, V4) as Ev[];
   const merge = shown.find((e) => e.type === "group_merged" && e.recorded_km === 121.83);
   assert.ok(merge);
   assert.deepEqual(merge.km_span, { from: 105, to: 121.83 });
@@ -41,14 +42,14 @@ test("#6350 a checkpoint-stamped merge shows the honest span from the last known
 });
 
 test("#6350 the span opens at the previous checkpoint when no passage is closer", () => {
-  const shown = honestTimelineEvents(ranStage) as Ev[];
+  const shown = honestTimelineEvents(ranStage, V4) as Ev[];
   const merge = shown.find((e) => e.type === "group_merged" && e.recorded_km === 95.2);
   assert.deepEqual(merge?.km_span, { from: 76.16, to: 95.2 });
   assert.equal(filmKmValue(merge, fmt), "76-96");
 });
 
 test("#6350 the split on a summit is sorted before the summit passage it led up to", () => {
-  const shown = honestTimelineEvents(ranStage) as Ev[];
+  const shown = honestTimelineEvents(ranStage, V4) as Ev[];
   const split = shown.findIndex((e) => e.type === "peloton_splits");
   const top = shown.findIndex((e) => e.type === "kom_passage" && e.km === 184);
   assert.ok(split >= 0 && top >= 0 && split < top);
@@ -56,7 +57,7 @@ test("#6350 the split on a summit is sorted before the summit passage it led up 
 });
 
 test("#6350 a passage that opens a span stays before the span; precise events keep their own km", () => {
-  const shown = honestTimelineEvents(ranStage) as Ev[];
+  const shown = honestTimelineEvents(ranStage, V4) as Ev[];
   const sprint = shown.findIndex((e) => e.type === "intermediate_sprint");
   const merge = shown.findIndex((e) => e.type === "group_merged" && e.recorded_km === 121.83);
   assert.ok(sprint < merge);
@@ -66,7 +67,7 @@ test("#6350 a passage that opens a span stays before the span; precise events ke
 });
 
 test("#6350 events on the finish line never get a span", () => {
-  const shown = honestTimelineEvents(ranStage) as Ev[];
+  const shown = honestTimelineEvents(ranStage, V4) as Ev[];
   const finale = shown.find((e) => e.type === "group_merged" && e.km === 190);
   assert.ok(finale);
   assert.equal(finale.km_span, undefined);
@@ -75,7 +76,7 @@ test("#6350 events on the finish line never get a span", () => {
 
 test("#6350 new stages with a precise contact km show that km, never a span", () => {
   const precise: Ev[] = ranStage.map((e) => e.type === "group_merged" && e.km === 121.83 ? { ...e, exact_km: 118.4 } : e);
-  const shown = honestTimelineEvents(precise) as Ev[];
+  const shown = honestTimelineEvents(precise, V4) as Ev[];
   const merge = shown.find((e) => e.type === "group_merged" && e.km === 118.4);
   assert.ok(merge);
   assert.equal(merge.km_span, undefined);
@@ -84,15 +85,23 @@ test("#6350 new stages with a precise contact km show that km, never a span", ()
   assert.equal(exactEventKm({ type: "group_merged", params: {} }), null);
 });
 
+test("#6350 v3 timelines (version 1) and unknown versions keep their own km, never a span", () => {
+  for (const timelineVersion of [1, null]) {
+    const shown = honestTimelineEvents(ranStage, { timelineVersion }) as Ev[];
+    assert.equal(shown.some((e) => e.km_span), false);
+    assert.ok(shown.some((e) => e.type === "group_merged" && e.km === 121.83));
+  }
+});
+
 test("#6350 live playback shows a span line from the start of its span", () => {
-  const film = buildFilmTimeline({ events: ranStage, distanceKm: 190 });
+  const film = buildFilmTimeline({ events: ranStage, distanceKm: 190, timelineVersion: 2 });
   const at = (km: number) => eventsPlayedUpTo(film.feedEvents, km).map((e: Ev) => e.recorded_km ?? e.km);
   assert.ok(at(106).includes(121.83));
   assert.ok(!at(104).includes(121.83));
 });
 
 test("#6294 the film never shows a regroup of the break as a catch; the catch point is not invented", () => {
-  const film = buildFilmTimeline({ events: ranStage, distanceKm: 190 });
+  const film = buildFilmTimeline({ events: ranStage, distanceKm: 190, timelineVersion: 2 });
   assert.equal(film.feedEvents.some((e: Ev) => e.type === "breakaway_caught"), false);
   assert.equal(film.catchKm, null);
   assert.equal(catchActorCopy(ranStage), null);
@@ -105,7 +114,7 @@ test("#6294 a real catch keeps its film line and catch point at the checkpoint",
     { km: 150.5, type: "group_merged", params: { group_id: "breakaway-0", into_group_id: "peloton-0", rider_ids: ["b1", "b2", "b3"] } },
     { km: 190, type: "finish", params: {} },
   ];
-  const film = buildFilmTimeline({ events: caught, distanceKm: 190 });
+  const film = buildFilmTimeline({ events: caught, distanceKm: 190, timelineVersion: 2 });
   const line = film.feedEvents.find((e: Ev) => e.type === "breakaway_caught") as Ev | undefined;
   assert.ok(line);
   assert.deepEqual(line.km_span, { from: 76.16, to: 150.5 });

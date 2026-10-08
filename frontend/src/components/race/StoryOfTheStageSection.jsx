@@ -59,7 +59,7 @@ export default function StoryOfTheStageSection({
   const timeline = suppliedTimeline === undefined ? fetchedTimeline : suppliedTimeline;
   const [playerOpen, setPlayerOpen] = useState(false);
 
-  const story = timeline?.events?.length ? selectStoryEvents(honestTimelineEvents(timeline.events)) : [];
+  const story = timeline?.events?.length ? selectStoryEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version })) : [];
   if (!story.length && !finalKmAvailable) return null;
 
   return (

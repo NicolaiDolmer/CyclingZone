@@ -97,10 +97,10 @@ function isTimeTrialStage(events) {
  * etaper) og gap-kurve-punkter.
  */
 /** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [] } = {}) {
-  // #6294/#6350: uden samlinger forklædt som indhentninger, og med ærlige
-  // km-spænd for hændelser motoren stemplede ved et tjekpunkt.
-  const sorted = honestTimelineEvents(events);
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], timelineVersion = null } = {}) {
+  // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
+  // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
+  const sorted = honestTimelineEvents(events, { timelineVersion });
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")

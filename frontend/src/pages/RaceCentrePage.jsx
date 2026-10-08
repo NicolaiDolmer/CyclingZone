@@ -86,7 +86,8 @@ function LiveFilmLine({ card, nowMs, riderNameById, children }) {
   });
   // #6294/#6350: samme tidslinje som filmen (ingen falske indhentninger), og en
   // tjekpunkt-hændelse dukker op ved spændets start med "km A-B".
-  const honestEvents = useMemo(() => honestTimelineEvents(events), [events]);
+  const timelineVersion = timeline?.timeline_version;
+  const honestEvents = useMemo(() => honestTimelineEvents(events, { timelineVersion }), [events, timelineVersion]);
   const event = finishKm ? latestFilmEvent(honestEvents, km) : null;
   const described = event ? describeEvent(event, { riderNameById: mergedNames }) : null;
   return children(described ? { ...described, km: event.km, kmSpan: event.km_span } : null);

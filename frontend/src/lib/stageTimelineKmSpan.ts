@@ -64,7 +64,13 @@ function finishKmOf(events: readonly SpanTimelineEvent[]): number | null {
  * Hændelser på målstregen (afgørelsen, opdelingen bag vinderen) står på
  * stregen og får aldrig spænd.
  */
-export function honestTimelineEvents<T extends SpanTimelineEvent>(events: readonly (T | null | undefined)[] | null | undefined): T[] {
+export function honestTimelineEvents<T extends SpanTimelineEvent>(
+  events: readonly (T | null | undefined)[] | null | undefined,
+  { timelineVersion = null }: { timelineVersion?: number | null } = {},
+): T[] {
+  // Kun v4-tidslinjer (timeline_version >= 2) stempler ved tjekpunkter; v3's
+  // tidslinje (version 1) har sine egne km og får aldrig spænd.
+  const checkpointEngine = typeof timelineVersion === "number" && timelineVersion >= 2;
   const present = (events ?? []).filter((event): event is T => !!event && typeof event.type === "string");
   // Projektionen er rækkefølge-følsom: den læser den rå, km-sorterede tidslinje.
   const rawSorted = present.map((event, i) => ({ event, i })).sort((a, b) => (a.event.km ?? 0) - (b.event.km ?? 0) || a.i - b.i).map(({ event }) => event);
@@ -90,7 +96,7 @@ export function honestTimelineEvents<T extends SpanTimelineEvent>(events: readon
     const exact = exactEventKm(event);
     if (exact != null) return { event: { ...event, km: exact } as T, i, spanned: false };
     const km = finite(event.km);
-    if (km == null || !isCheckpointStamped(event) || (finishKm != null && km >= finishKm)) return { event, i, spanned: false };
+    if (km == null || !checkpointEngine || !isCheckpointStamped(event) || (finishKm != null && km >= finishKm)) return { event, i, spanned: false };
     const from = previousAnchor(km);
     if (!(from < km)) return { event, i, spanned: false };
     return { event: { ...event, km: from, recorded_km: km, km_span: { from, to: km } } as T, i, spanned: true };
