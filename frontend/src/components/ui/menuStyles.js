@@ -1,4 +1,4 @@
-const MENU_BASE = "min-w-[12rem] rounded-cz border border-cz-border bg-cz-card p-1.5 shadow-overlay";
+const MENU_BASE = "min-w-48 rounded-cz border border-cz-border bg-cz-card p-1.5 shadow-overlay";
 
 const ITEM_BASE =
   "flex w-full items-center gap-2 rounded-cz px-2.5 py-1.5 text-left text-sm transition-colors duration-150";

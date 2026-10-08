@@ -34,7 +34,7 @@ export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs
   return (
     <Card className="p-5 flex flex-col sm:flex-row sm:items-center gap-4" data-testid="team-selection-cta">
       <div className="flex items-start gap-3 min-w-0 flex-1">
-        <span className="flex-shrink-0 mt-0.5 text-cz-accent-t" aria-hidden="true">
+        <span className="shrink-0 mt-0.5 text-cz-accent-t" aria-hidden="true">
           <FlagIcon size={20} />
         </span>
         <div className="min-w-0">
@@ -50,7 +50,7 @@ export default function TeamSelectionCtaCard({ nextRace, startAtMs = null, nowMs
           scrolle direkte ned til RaceSelectionPanel ved load. */}
       <Link
         to={`/races/${nextRace.id}#selection`}
-        className={`flex-shrink-0 self-start sm:self-auto ${buttonClass({ variant: primary ? "primary" : "secondary", size: "sm" })}`}
+        className={`shrink-0 self-start sm:self-auto ${buttonClass({ variant: primary ? "primary" : "secondary", size: "sm" })}`}
       >
         {t("discoverCta.action")}
       </Link>

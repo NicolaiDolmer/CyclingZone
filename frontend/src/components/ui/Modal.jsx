@@ -74,7 +74,7 @@ export default function Modal({
           size={size}
           onClose={onClose}
           closeLabel={closeLabel}
-          className="outline-none"
+          className="outline-hidden"
         >
           {children}
         </DialogSurface>

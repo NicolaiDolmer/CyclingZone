@@ -23,7 +23,7 @@ export default function StartListColumn({ column, myTeamId = null }) {
   if (!column.visible) {
     return (
       <div className="border border-dashed border-cz-border rounded-cz bg-cz-subtle p-3 flex items-start gap-2.5">
-        <LockIcon size={15} className="text-cz-3 mt-0.5 flex-shrink-0" aria-hidden="true" />
+        <LockIcon size={15} className="text-cz-3 mt-0.5 shrink-0" aria-hidden="true" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-cz-2 truncate">{column.name}</p>
           <p className="text-2xs text-cz-3 mt-0.5">{typeLabel} · {classLabel}</p>
@@ -48,7 +48,7 @@ export default function StartListColumn({ column, myTeamId = null }) {
         <div className="flex items-start justify-between gap-2">
           <span className="text-sm font-semibold text-cz-1 transition-colors group-hover:text-cz-accent-t">{column.name}</span>
           {column.daysUntilStart != null && column.daysUntilStart > 0 && (
-            <span className="text-3xs uppercase tracking-wide text-cz-accent-t bg-cz-accent/10 border border-cz-accent/30 px-2 py-0.5 rounded-full flex-shrink-0">
+            <span className="text-3xs uppercase tracking-wide text-cz-accent-t bg-cz-accent/10 border border-cz-accent/30 px-2 py-0.5 rounded-full shrink-0">
               {t("browse.inDays", { count: column.daysUntilStart })}
             </span>
           )}
@@ -87,7 +87,7 @@ export default function StartListColumn({ column, myTeamId = null }) {
 
       <div className="p-2 border-t border-cz-border">
         <p className="text-3xs text-cz-3 flex items-center gap-1.5">
-          <LockIcon size={11} className="flex-shrink-0" aria-hidden="true" />
+          <LockIcon size={11} className="shrink-0" aria-hidden="true" />
           {t("browse.grossOnly")}
         </p>
       </div>

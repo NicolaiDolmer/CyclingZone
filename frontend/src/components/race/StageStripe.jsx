@@ -34,7 +34,7 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
           aria-label={t("detail.tabOverall")}
           aria-pressed={activeStage === "overall"}
           className={`flex-1 min-w-0 rounded-cz px-1.5 py-1.5 text-center border transition-colors
-            ${activeStage === "overall" ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
+            ${activeStage === "overall" ? "border-cz-accent bg-cz-accent/6" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
         >
           <span className={`text-2xs font-semibold uppercase tracking-wide ${activeStage === "overall" ? "text-cz-accent-t" : "text-cz-2"}`}>
             {t("detail.tabOverall")}
@@ -54,7 +54,7 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
             aria-label={t("detail.tabStage", { number: n })}
             aria-pressed={active}
             className={`flex-1 min-w-0 rounded-cz px-1.5 pt-1.5 pb-1 text-center border transition-colors
-              ${active ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
+              ${active ? "border-cz-accent bg-cz-accent/6" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
           >
             <span className={active ? "text-cz-accent-t" : "text-cz-2"}>
               {/* #4628: fast lav hoejde (h-7 = 28 px) i stedet for `h-auto`.

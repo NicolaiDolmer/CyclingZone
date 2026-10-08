@@ -26,7 +26,7 @@ export default function TermsPageEn() {
             </Link>
             <h1 className="text-cz-1 font-display text-4xl tracking-tight leading-none">Terms of Sale</h1>
           </div>
-          <div className="flex flex-shrink-0 items-center gap-3 text-sm pt-1">
+          <div className="flex shrink-0 items-center gap-3 text-sm pt-1">
             <Link to="/handelsbetingelser" className="text-cz-3 hover:text-cz-1">Dansk</Link>
             <Link to="/" className="inline-flex items-center gap-1 text-cz-3 hover:text-cz-1">
               <ChevronLeftIcon size={14} aria-hidden="true" />Back

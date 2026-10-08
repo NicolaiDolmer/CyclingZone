@@ -11,7 +11,7 @@ export function CompareToggle({ active, onToggle, disabled = false, className = 
       onClick={e => { e.stopPropagation(); onToggle(); }}
       disabled={disabled && !active}
       title={active ? t("controls.compareRemove") : disabled ? t("controls.compareMax", { max: MAX_COMPARE }) : t("controls.compareSelect")}
-      className={`inline-flex items-center justify-center leading-none transition-all flex-shrink-0 px-1.5 py-1 rounded-cz
+      className={`inline-flex items-center justify-center leading-none transition-all shrink-0 px-1.5 py-1 rounded-cz
         ${active ? "bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40" : "text-cz-3 hover:text-cz-2 border border-transparent hover:border-cz-border"}
         ${disabled && !active ? "opacity-30 cursor-not-allowed" : ""}
         ${className}`}

@@ -225,7 +225,7 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           overall-potentialet her ville implicere et per-type loft vi ikke har.
           Overall-potentialet står i hero'en. */}
       <div className="mt-3 pt-3 border-t border-cz-border flex items-center gap-2.5 flex-wrap">
-        <span className="font-mono text-3xs font-bold uppercase tracking-[0.1em] text-cz-3">
+        <span className="font-mono text-3xs font-bold uppercase tracking-widest text-cz-3">
           {/* #5435: guld-aksen er anlægget — "Natural role" med kontakten tændt. */}
           {bestRoleOn ? tTypes("natural.roleLabel") : t("profile.overview.radar.role")}
         </span>

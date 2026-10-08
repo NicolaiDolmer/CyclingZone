@@ -46,6 +46,7 @@ import type {
   Weather,
 } from "./types.ts";
 import { boundRngFor, segmentRngFor } from "./rng.ts";
+import { reconcileDescentCrossings } from "./mechanics/descentCrossing.ts";
 import {
   deriveCp,
   deriveRechargeRate,
@@ -760,6 +761,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "orders_gc_v1") return "orders_gc_v1";
   if (raw === "orders_gc_v2") return "orders_gc_v2";
   if (raw === "orders_gc_v3") return "orders_gc_v3";
+  if (raw === "official_times_v1") return "official_times_v1";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -780,6 +782,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // #6187: orders_gc_v3 = hele v2 (fase + rullende balance ser "orders_gc_v2") + flaget ordersGcV3.
   const v2Revision: RulesRevision = isOrdersGcV2OrLater(rulesRevision) ? "orders_gc_v2" : rulesRevision;
   const ordersGcV3 = isOrdersGcV3OrLater(rulesRevision);
+  const descentCrossings = rulesRevision === "official_times_v1";
   const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
@@ -961,6 +964,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // hul, men aldrig lukke det. Al lukning gaar gennem de kappede hooks (bogen i
     // mechanics/timeModel.ts), saa loftet maales fra hullet ved toppen.
     const descentOpenOnly = ordersGcV3 && segment.kind === "descent" && segmentIndex === segments.length - 1;
+    const groupsBeforeTempo = state.groups;
     let groups = state.groups.map((g) => {
       if (g.id === frontGroup.id) return g;
       const dtGroup = tempoByGroup.get(g.id)?.dtSeconds ?? dtFront;
@@ -969,6 +973,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     });
     groups = rebaselineGroups(groups);
     state = { ...state, groups };
+    if (descentCrossings) {
+      const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km);
+      state = contact.state;
+      timeline.push(...contact.events);
+    }
 
     // 3. Mekanik-hooks (M2 paa climb, M3 paa descent, M4 paa sidste segment).
     // Fase A: DEFAULT_MECHANIC_HOOKS er no-op, saa state/timeline er uaendret.
@@ -1040,9 +1049,15 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // udbryder skal placeres) — praecis den raekkefolge breakaway.ts's egen
     // wiring-note foreskriver.
     {
+      const groupsBeforePursuit = state.groups;
       const result = hooks.breakaway(state, ctx);
       state = result.state;
       timeline.push(...result.events);
+      if (descentCrossings) {
+        const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events);
+        state = contact.state;
+        timeline.push(...contact.events);
+      }
     }
 
     // M10 (#2944): incidents-trappen koeres paa HVERT segment — et uheld er

@@ -95,7 +95,7 @@ export function PeakValue({ peak, paybackDays, months }) {
         )
       )}
       {!peak.isSuggestion && peak.windowStart && (
-        <div className="mt-1 font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">
+        <div className="mt-1 font-data text-3xs uppercase tracking-wider tabular-nums text-cz-3">
           {t("squad.window", {
             start: formatOrdinalShort(dateToOrdinal(peak.windowStart), months),
             end: formatOrdinalShort(dateToOrdinal(peak.windowEnd), months),
@@ -307,14 +307,14 @@ export default function PlannerSquad({
                           {rider.nationality && <Flag code={rider.nationality} className="text-[11px]" />}
                           {rider.primaryType && <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} size="sm" />}
                           {rider.age != null && (
-                            <span className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">{t("squad.age", { age: rider.age })}</span>
+                            <span className="whitespace-nowrap font-data text-3xs uppercase tracking-wider tabular-nums text-cz-3">{t("squad.age", { age: rider.age })}</span>
                           )}
                           {/* #2772: sæson-belastning — en peak er kun troværdig hvis
                               rytteren ikke også er kørt træt i optakten. Tallet gør
                               opportunity cost synlig, uden en opfundet farve-tærskel. */}
                           {load.raceDays > 0 && (
                             <span
-                              className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3"
+                              className="whitespace-nowrap font-data text-3xs uppercase tracking-wider tabular-nums text-cz-3"
                               title={t("squad.loadTitle", { races: load.races, days: load.raceDays })}
                             >{t("squad.load", { days: load.raceDays })}</span>
                           )}
@@ -394,7 +394,7 @@ function YouthPeaksSection({ riders, races, months, busy, onRemovePeak }) {
             <div className="flex min-w-0 items-center gap-1.5 md:w-[34%]">
               {rider.nationality && <Flag code={rider.nationality} className="text-2xs" />}
               <span className="truncate text-[13.5px] font-medium text-cz-1">{riderShortName(rider)}</span>
-              <span className="whitespace-nowrap font-data text-3xs uppercase tracking-[.05em] tabular-nums text-cz-3">{t(`squad.youth.squad.${rider.squad}`)}</span>
+              <span className="whitespace-nowrap font-data text-3xs uppercase tracking-wider tabular-nums text-cz-3">{t(`squad.youth.squad.${rider.squad}`)}</span>
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               {(rider.peaks || []).filter((p) => !p.isSuggestion && p.targetRaceId).map((p) => (

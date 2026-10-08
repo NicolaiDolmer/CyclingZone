@@ -133,7 +133,7 @@ function AbilityLegend({ t, tRider }) {
           grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
           {STATS.map(({ key, label }) => (
             <div key={key} className="flex items-baseline gap-2 text-xs min-w-0">
-              <dt className="font-mono text-3xs text-cz-accent-t/80 w-9 flex-shrink-0">{label}</dt>
+              <dt className="font-mono text-3xs text-cz-accent-t/80 w-9 shrink-0">{label}</dt>
               <dd className="text-cz-2 truncate">{tRider(`racePreview.derived.${key}`)}</dd>
             </div>
           ))}
@@ -181,7 +181,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn })
         onClick={() => onSort(sort)}
         aria-label={dirAria}
         title={dirAria}
-        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
+        className="shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
           bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
       >
         {sortDir === "desc"

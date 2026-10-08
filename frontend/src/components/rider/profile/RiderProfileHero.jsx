@@ -50,7 +50,7 @@ const DIVISION_CHIP = "rgb(96 165 250)";
 function HeroStat({ label, value, sub, valueClassName = "text-[20px] font-[650]", valueProps = {} }) {
   return (
     <div className="min-w-0">
-      <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-1">{label}</p>
+      <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
       <div
         className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`}
         {...valueProps}
@@ -105,7 +105,7 @@ function StatusBanner({ banner }) {
 
   return (
     <div className={`mt-4 flex items-center gap-2 rounded-cz border px-3.5 py-2.5 text-sm tabular-nums ${tone}`}>
-      {banner.kind === "expiry" && <AlertTriangleIcon size={16} aria-hidden="true" className="flex-shrink-0" />}
+      {banner.kind === "expiry" && <AlertTriangleIcon size={16} aria-hidden="true" className="shrink-0" />}
       <span>{text}</span>
       {/* #3490: samme "X% under/over vurdering"-indikator som Transferlisten/
           Auktioner (ValueDeltaBadge) — kun for "listed" og kun når rytterens
@@ -122,7 +122,7 @@ function ReputationEventList({ events = [] }) {
   const rows = Array.isArray(events) ? events.slice(0, 4) : [];
   return (
     <div className="mt-4 rounded-cz border border-cz-border bg-cz-subtle/50 px-3.5 py-3">
-      <p className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3 mb-2">
+      <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-2">
         {t("profile.reputation.whyTitle")}
       </p>
       {rows.length ? (
@@ -229,7 +229,7 @@ export default function RiderProfileHero({
           </div>
           <div className="min-w-0">
             {/* Navnet øverst (ejer-feedback: sidens vigtigste ord først; tags er metadata) */}
-            <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">
+            <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">
               {rider.firstname} {rider.lastname}
             </h1>
 

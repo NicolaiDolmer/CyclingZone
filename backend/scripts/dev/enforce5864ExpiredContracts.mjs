@@ -38,8 +38,9 @@
 //   Normal sti nulstiller ikke is_academy, fordi den aldrig har set en akademi-
 //   rytter. En fri agent med is_academy=true findes ikke i spillet i dag; frie
 //   ungdomsryttere står med is_academy=false og ungdomstrup i `squad` (samme form
-//   som academyGenerator giver nye kandidater). Efter frigivelsen sættes derfor
-//   is_academy=false på de frigivne akademiryttere, `squad` bevares.
+//   som academyGenerator giver nye kandidater). Frigivne akademiryttere får derfor
+//   is_academy=false, `squad` bevares. Det sker nu i normalvejens egen update
+//   (contractExpiryRelease.buildContractReleasePatch), som også sæsonskiftet bruger.
 //
 //   node backend/scripts/dev/enforce5864ExpiredContracts.mjs
 //   node backend/scripts/dev/enforce5864ExpiredContracts.mjs --apply --owner-go=5864-production --approved-list=<hash>
@@ -623,22 +624,10 @@ export async function runApply({ supabase, plan, threshold, releaseFn, ownerGo, 
     fetchExpiredContractRiders: makeScopedFetcher(threshold, planIds, fetchCandidates, { onlyUnused: Boolean(plan.totals.onlyUnused), fetchUsed }),
   });
 
-  // Alle akademiryttere i planen (også dem der var udskudt ved dry-run, men er
-  // frigivet nu); `team_id is null`-vagten rører kun dem der reelt blev frigivet.
-  const academyIds = plan.rows.filter((r) => r.isAcademy).map((r) => r.riderId);
-  let normalized = 0;
-  for (let i = 0; i < academyIds.length; i += 100) {
-    const chunk = academyIds.slice(i, i + 100);
-    const { data, error } = await supabase.from("riders")
-      .update({ is_academy: false })
-      .in("id", chunk)
-      .is("team_id", null)
-      .eq("is_academy", true)
-      .select("id");
-    if (error) throw new Error(`youth normalize: ${error.message}`);
-    normalized += (data || []).length;
-  }
-  return { ...stats, plannedRelease: releaseIds.length, youthNormalized: normalized };
+  // Ungdoms-normaliseringen (is_academy=false) sker nu i normalvejens egen
+  // frigivelses-update (contractExpiryRelease.buildContractReleasePatch), så
+  // stats.youthNormalized kommer derfra (#5864 rod-årsag).
+  return { ...stats, plannedRelease: releaseIds.length, youthNormalized: stats.youthNormalized ?? 0 };
 }
 
 async function main() {

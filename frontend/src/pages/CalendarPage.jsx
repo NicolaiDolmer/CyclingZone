@@ -313,7 +313,7 @@ export default function CalendarPage() {
           >
             <ChevronLeftIcon size={18} aria-hidden="true" />
           </button>
-          <span className="font-display text-lg uppercase tracking-wide text-cz-1 tabular-nums min-w-[8.5rem] text-center">
+          <span className="font-display text-lg uppercase tracking-wide text-cz-1 tabular-nums min-w-34 text-center">
             {monthLabel}
           </span>
           <button
@@ -495,7 +495,7 @@ function CalendarControls({ t, eyebrow = null, division, onDivision, data, avail
 
 function DayCell({ cell, entries, todayISO, t, onExpand, dayCap }) {
   if (!cell) {
-    return <div className="border-b border-r border-cz-border bg-cz-subtle/40 min-h-[7rem]" aria-hidden="true" />;
+    return <div className="border-b border-r border-cz-border bg-cz-subtle/40 min-h-28" aria-hidden="true" />;
   }
   const isToday = cell.iso === todayISO;
   const list = entries || [];
@@ -513,7 +513,7 @@ function DayCell({ cell, entries, todayISO, t, onExpand, dayCap }) {
 
   return (
     <div
-      className={`relative border-b border-r min-h-[7rem] p-1.5 transition-colors
+      className={`relative border-b border-r min-h-28 p-1.5 transition-colors
         ${isToday ? "border-cz-1 border-2 -m-px z-10 bg-cz-card" : "border-cz-border bg-cz-card"}`}
     >
       <div className="mb-1 flex items-center justify-between">

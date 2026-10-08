@@ -29,11 +29,11 @@ export default function RiderNameCell({
   const shown = name ?? fullName;
   return (
     <span className={`inline-flex items-center gap-1.5 flex-wrap ${wrap ? "min-w-0" : ""}`}>
-      {/* #5124: KUN `min-w-0` (bryd ved ordgrænser), ikke `break-words` — sidstnævnte
+      {/* #5124: KUN `min-w-0` (bryd ved ordgrænser), ikke `wrap-break-word` — sidstnævnte
           tillader browseren at bryde MIDT i et ord, hvilket i en tabel med
           table-layout:auto (og en `max-w-0`-kolonnehint, se TransfersPage.jsx's
           sticky navne-celle) presser bredden helt ned til ét tegn pr. linje
-          ("S/a/n/d/e/r"). Uden break-words er kolonnens minimumsbredde det
+          ("S/a/n/d/e/r"). Uden wrap-break-word er kolonnens minimumsbredde det
           LÆNGSTE ORD i navnet, som table-layout ikke kan presse under — samme
           fix som TrainingPage.jsx's roster (#5124). */}
       <RiderLink

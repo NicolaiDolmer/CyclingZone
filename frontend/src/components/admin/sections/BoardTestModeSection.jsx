@@ -58,7 +58,7 @@ export default function BoardTestModeSection({ getAuth, onMsg }) {
           (sponsor-modifier 1.0, ingen board-udbetalinger, tvangssalg/pullout suppress). Hard-blocks
           (lønloft / indkøbsrestriktioner) håndhæves i begge. Ryddes automatisk ved sæson-skift.
         </p>
-        <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full border ${
+        <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full border ${
           boardTestMode === true
             ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
             : "bg-cz-subtle text-cz-3 border-cz-border"

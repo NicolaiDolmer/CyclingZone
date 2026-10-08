@@ -212,7 +212,7 @@ export default function SeasonExperiencePreviewPage() {
       <p className="mb-2 font-data text-xs font-semibold uppercase tracking-[.18em] text-cz-accent">
         Cycling Zone · design draft
       </p>
-      <h1 className="mb-3 font-display text-4xl leading-[.96] tracking-[.012em] text-cz-1 sm:text-5xl">
+      <h1 className="mb-3 font-display text-4xl leading-[.96] tracking-[.012em] text-cz-1 sm:text-5xl sm:leading-none">
         Season experience preview
       </h1>
       <p className="mb-10 max-w-2xl text-[13.5px] text-cz-2">

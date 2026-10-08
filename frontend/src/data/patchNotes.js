@@ -1,5 +1,133 @@
 export const PATCHES = [
   {
+    "version": "7.345",
+    "date": "2026-10-07",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "Money in your bids stays locked",
+          "body": "Facility upgrades, staff hires, staff releases and academy signings can no longer be paid with money that is locked in your auction bids. You get a clear message instead, the same way scouting already works."
+        },
+        "da": {
+          "title": "Penge i dine bud forbliver låst",
+          "body": "Opgradering af anlæg, ansættelse og fratrædelse af staff samt akademi-signeringer kan ikke længere betales med penge, der er låst i dine auktionsbud. Du får en tydelig besked i stedet, som det allerede virker ved scouting."
+        },
+        "refs": [
+          6261,
+          6262,
+          6263,
+          6264
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board challenges count riders with a star reputation",
+          "body": "Board challenges that ask for high-renown riders now also count riders who reached star level on reputation. Challenges set before the reputation update no longer miss them, and nobody loses progress they already had."
+        },
+        "da": {
+          "title": "Bestyrelsens udfordringer tæller ryttere med stjerne-omdømme",
+          "body": "Bestyrelsens udfordringer om ryttere med højt omdømme tæller nu også ryttere, der har nået stjerneniveau på omdømme. Udfordringer sat før omdømme-opdateringen overser dem ikke længere, og ingen mister fremgang, de allerede havde."
+        },
+        "refs": [
+          6298
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Expired youth contracts end at the season switch",
+          "body": "At the season switch, expired U23, junior and academy contracts now end together with the senior ones. Riders whose contract has already run out are released at the next switch on 25 October."
+        },
+        "da": {
+          "title": "Udløbne ungdomskontrakter slutter ved sæsonskiftet",
+          "body": "Ved sæsonskiftet slutter udløbne U23-, junior- og akademikontrakter nu sammen med seniorernes. Ryttere, hvis kontrakt allerede er udløbet, frigives ved næste skifte 25. oktober."
+        },
+        "refs": [
+          5864
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider history no longer shows the same team twice",
+          "body": "When you won a rider at an auction you started yourself, the history said your team won him from your own team. It now just shows the purchase and the price."
+        },
+        "da": {
+          "title": "Rytterhistorikken viser ikke længere samme hold to gange",
+          "body": "Når du vandt en rytter på en auktion, du selv startede, stod der, at dit hold vandt ham fra dit eget hold. Nu viser historikken bare købet og prisen."
+        },
+        "refs": [
+          6304
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Pro: saved filters stay saved",
+          "body": "Saved filters in the rider database no longer disappear when you reload the page, and gaps in the season history are filled."
+        },
+        "da": {
+          "title": "Pro: gemte filtre bliver gemt",
+          "body": "Gemte filtre i rytterdatabasen forsvinder ikke længere, når du genindlæser siden, og hullerne i sæsonhistorikken er udfyldt."
+        },
+        "refs": [
+          6286
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Forum",
+        "en": {
+          "title": "First unread reply is highlighted in gold",
+          "body": "In a forum thread, the first reply you haven't read has its gold edge again, as intended. It showed as grey by mistake."
+        },
+        "da": {
+          "title": "Første ulæste svar markeres i guld",
+          "body": "I en forumtråd har det første svar, du ikke har læst, igen sin guldkant som tiltænkt. Den blev vist grå ved en fejl."
+        },
+        "refs": [
+          6271
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Privacy page explains the usage statistics",
+          "body": "The privacy page now describes the anonymous usage statistics collected before you log in, without cookies, and what is measured after you log in."
+        },
+        "da": {
+          "title": "Privatlivssiden forklarer brugsstatistikken",
+          "body": "Privatlivssiden beskriver nu den anonyme brugsstatistik, der indsamles før du logger ind, uden cookies, og hvad der måles, når du er logget ind."
+        },
+        "refs": [
+          6280
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.344",
     "date": "2026-10-06",
     "changes": [

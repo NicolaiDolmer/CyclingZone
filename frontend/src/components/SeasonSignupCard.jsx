@@ -94,7 +94,7 @@ export default function SeasonSignupCard({
   return (
     <Card className="mb-4 p-5 flex flex-col sm:flex-row sm:items-center gap-4" data-testid="season-signup-card">
       <div className="flex items-start gap-3 min-w-0 flex-1">
-        <span className="flex-shrink-0 mt-0.5 text-cz-accent-t" aria-hidden="true">
+        <span className="shrink-0 mt-0.5 text-cz-accent-t" aria-hidden="true">
           {done ? <CheckIcon size={20} /> : <RefreshIcon size={20} />}
         </span>
         <div className="min-w-0">
@@ -111,7 +111,7 @@ export default function SeasonSignupCard({
           size="sm"
           onClick={parked ? handleComeback : onSignUp}
           loading={parked ? comebackSubmitting : submitting}
-          className="flex-shrink-0 self-start sm:self-auto"
+          className="shrink-0 self-start sm:self-auto"
         >
           {t(parked ? "seasonSignup.ctaComeback" : "seasonSignup.cta")}
         </Button>

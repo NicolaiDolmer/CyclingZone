@@ -33,7 +33,7 @@ export default function AnnualMeetingNudgeCard({ daysLeft }) {
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="flex items-center gap-2 text-[13px] text-cz-2">
-          <ClipboardIcon size={16} aria-hidden="true" className="flex-shrink-0 text-cz-3" />
+          <ClipboardIcon size={16} aria-hidden="true" className="shrink-0 text-cz-3" />
           {t("cards.board.meetingNudge.subtitle")}
         </p>
         <Button variant="secondary" size="sm" onClick={() => navigate("/board/meeting")}>

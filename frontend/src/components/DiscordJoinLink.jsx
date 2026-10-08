@@ -77,7 +77,7 @@ export default function DiscordJoinLink({ variant = "button", label, className =
         onClick={handleClick}
         className={`group mx-2 flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-cz-sidebar-2 transition-colors hover:bg-cz-sidebar-hover hover:text-cz-discord ${className}`}
       >
-        <DiscordGlyph className="h-4 w-4 flex-shrink-0 text-cz-discord" />
+        <DiscordGlyph className="h-4 w-4 shrink-0 text-cz-discord" />
         <span className="truncate">{label}</span>
       </a>
     );

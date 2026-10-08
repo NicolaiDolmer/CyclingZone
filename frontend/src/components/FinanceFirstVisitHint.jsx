@@ -16,7 +16,7 @@ export default function FinanceFirstVisitHint({ onDismiss, onStartTour }) {
     // border-cz-border); kun radius migreret til rounded-cz (#986/#671).
     <div className="mb-5 px-5 py-5 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start gap-3 mb-4">
-        <CoinIcon size={20} aria-hidden="true" className="text-cz-accent-t flex-shrink-0 mt-0.5" />
+        <CoinIcon size={20} aria-hidden="true" className="text-cz-accent-t shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-cz-1 text-base font-semibold">{t("hint.title")}</p>
           <p className="text-cz-2 text-xs mt-1">{t("hint.subtitle")}</p>
@@ -26,7 +26,7 @@ export default function FinanceFirstVisitHint({ onDismiss, onStartTour }) {
           size="sm"
           onClick={onDismiss}
           aria-label={t("hint.dismissAria")}
-          className="flex-shrink-0"
+          className="shrink-0"
         >
           <XIcon size={16} aria-hidden="true" />
         </Button>

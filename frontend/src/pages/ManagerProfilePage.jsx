@@ -301,7 +301,7 @@ export default function ManagerProfilePage() {
               <div className="min-w-0">
                 {/* Holdnavnet FØRST (ejer-runde 24/7: sidens vigtigste ord først;
                     tags/meta er metadata og sidder UNDER navnet). */}
-                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 break-words">{team.name}</h1>
+                <h1 className="font-display text-[40px] leading-[.92] uppercase text-cz-1 wrap-break-word">{team.name}</h1>
                 <div className="flex items-center gap-2 flex-wrap mt-2.5">
                   {isOwnProfile && (
                     <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>

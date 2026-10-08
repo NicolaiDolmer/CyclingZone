@@ -56,7 +56,7 @@ export default function RaceControlBanner() {
             key={notice.id}
             className={`flex items-start gap-3 border-b px-4 py-2.5 md:px-8 ${meta.classes}`}
           >
-            <Icon size={16} aria-hidden="true" className="mt-0.5 flex-shrink-0" />
+            <Icon size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
             <p className="min-w-0 flex-1 text-sm leading-snug">
               <span className="font-semibold">{title}</span>
               {body && <span> {body}</span>}
@@ -69,7 +69,7 @@ export default function RaceControlBanner() {
                 type="button"
                 onClick={() => handleDismiss(notice.id)}
                 aria-label={t("opsNotice.dismissAriaLabel")}
-                className="flex-shrink-0 opacity-70 transition-opacity hover:opacity-100"
+                className="shrink-0 opacity-70 transition-opacity hover:opacity-100"
               >
                 <XIcon size={16} aria-hidden="true" />
               </button>

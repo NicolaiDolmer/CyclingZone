@@ -151,7 +151,7 @@ function MarketSortControl({ sort, sortDir, onSort, statCols, t }) {
         onClick={() => onSort(sort)}
         aria-label={dirAria}
         title={dirAria}
-        className="flex-shrink-0"
+        className="shrink-0"
       >
         {sortDir === "desc"
           ? <ArrowDownIcon size={16} aria-hidden="true" />
@@ -289,7 +289,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
           </RiderLink>
           <p className="text-cz-3 text-xs">{t("offerCard.from")}: <TeamLink id={offer.buyer?.id} className="hover:text-cz-accent-t transition-colors">{offer.buyer?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.created_at)}</p>
         </div>
-        <div className="flex flex-col gap-1 items-end flex-shrink-0">
+        <div className="flex flex-col gap-1 items-end shrink-0">
           <span className={`text-3xs uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
             {cfg.label}
           </span>
@@ -364,7 +364,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
                 <AmountInput value={counterAmt}
                   onValueChange={v => setCounterAmt(v ?? 0)}
                   wrapperClassName="min-w-0 flex-1"
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-hidden focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_amount: counterAmt, message: msg })}
                   disabled={loading || counterAmt <= 0}
                   className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
@@ -373,7 +373,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder={t("offerCard.form.messageBuyer")}
-                className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+                className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
             </div>
           )}
         </div>
@@ -462,7 +462,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
           </RiderLink>
           <p className="text-cz-3 text-xs">{t("offerCard.to")}: <TeamLink id={offer.seller?.id} className="hover:text-cz-accent-t transition-colors">{offer.seller?.name || "—"}</TeamLink> · {t("offerCard.round", { round: offer.round || 1 })} · {timeAgo(offer.updated_at)}</p>
         </div>
-        <div className="flex flex-col gap-1 items-end flex-shrink-0">
+        <div className="flex flex-col gap-1 items-end shrink-0">
           <span className={`text-3xs uppercase px-2 py-1 rounded-full border font-medium ${cfg.bg} ${cfg.color}`}>
             {cfg.label}
           </span>
@@ -526,7 +526,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
                 <AmountInput value={newAmt}
                   onValueChange={v => setNewAmt(v ?? 0)}
                   wrapperClassName="min-w-0 flex-1"
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-hidden focus:border-cz-accent" />
                 <button onClick={() => doAction("new_offer", { counter_amount: newAmt, message: msg })}
                   disabled={loading || newAmt <= 0}
                   className="min-h-[44px] w-full sm:w-auto px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
@@ -535,7 +535,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
               </div>
               <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
                 placeholder={t("offerCard.form.messagePlaceholder")}
-                className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+                className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
             </div>
           )}
         </div>
@@ -635,7 +635,7 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
         ].map(({ label, rider }) => (
           <RiderLink key={rider?.id} id={rider?.id}
             aria-label={rider ? `${rider.firstname} ${rider.lastname}` : undefined}
-            className="group block bg-cz-subtle rounded-cz px-3 py-2 transition-colors hover:ring-1 hover:ring-cz-accent/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent/40">
+            className="group block bg-cz-subtle rounded-cz px-3 py-2 transition-colors hover:ring-1 hover:ring-cz-accent/30 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-cz-accent/40">
             <p className="text-cz-3 text-3xs uppercase tracking-wider mb-1">{label}</p>
             <p className="text-cz-1 text-sm font-semibold transition-colors group-hover:text-cz-accent-t">
               {rider?.firstname} {rider?.lastname}
@@ -687,7 +687,7 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
                   onValueChange={v => setCounterCash(v ?? 0)}
                   allowNegative
                   wrapperClassName="flex-1"
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-hidden focus:border-cz-accent" />
                 {/* #2843: counter_cash gemmes i SAMME konvention som cash_adjustment
                     (schema: positiv = proposing betaler receiving; transferExecution
                     vælger payer med `cash > 0 ? proposing : receiving`). Feltet
@@ -740,7 +740,7 @@ function SwapCard({ swap, myTeamId, onAction, showArchive = true }) {
                   onValueChange={v => setCounterCash(v ?? 0)}
                   allowNegative
                   wrapperClassName="flex-1"
-                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-none focus:border-cz-accent" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono focus:outline-hidden focus:border-cz-accent" />
                 <button onClick={() => doAction("counter", { counter_cash: counterCash })}
                   disabled={loading}
                   className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
@@ -828,7 +828,7 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
             onValueChange={v => setPrice(v)}
             data-testid="transfer-edit-price-input"
             wrapperClassName="min-w-0 flex-1"
-            className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden focus:border-cz-accent" />
           <div className="flex gap-2">
             <Button variant="primary" size="sm" className="flex-1 sm:flex-none"
               onClick={priceBlock.guard(savePrice)} loading={busy}
@@ -930,7 +930,7 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
           onValueChange={v => setOfferAmt(v ?? 0)}
           aria-label={t("offerCard.form.newOfferLabel")}
           wrapperClassName="min-w-0 flex-1"
-          className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+          className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden focus:border-cz-accent" />
         <Button variant="primary" size="sm"
           onClick={offerBlock.guard(() => setConfirmOpen(true))}
           loading={loading} disabled={loading} {...offerBlock.blockedProps}>
@@ -944,7 +944,7 @@ function MarketOfferForm({ listing, onOffer, seasonYear }) {
       )}
       <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
         placeholder={t("transferCard.messagePlaceholder")}
-        className="bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-xs focus:outline-none focus:border-cz-accent" />
+        className="bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-xs focus:outline-hidden focus:border-cz-accent" />
       <BidConfirmModal
         show={confirmOpen}
         mode="transfer"
@@ -1175,7 +1175,7 @@ function BulkPriceEditor({ selectedListings, onApply, onClear, busy }) {
             aria-label={t("bulkPrice.valueLabel")}
             aria-invalid={showInvalid || undefined}
             className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2
-              text-cz-1 font-mono text-sm focus:outline-none
+              text-cz-1 font-mono text-sm focus:outline-hidden
               ${showInvalid ? "border-cz-danger focus:border-cz-danger" : "border-cz-border focus:border-cz-accent"}`}
           />
           {showInvalid && (
