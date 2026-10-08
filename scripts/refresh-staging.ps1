@@ -32,6 +32,7 @@ $ErrorActionPreference = "Stop"
 $repo = (git rev-parse --show-toplevel).Trim()
 Set-Location $repo
 . (Join-Path $repo "scripts/lib/Staging-Env.ps1")
+. (Join-Path $repo "scripts/lib/Refresh-Staging-Gates.ps1")
 
 foreach ($tool in @("pg_dump", "pg_restore", "psql", "infisical", "supabase")) {
   if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Mangler vaerktoej: $tool" }
@@ -54,45 +55,112 @@ order by 1;
 "@ | Set-Content $verifySql -Encoding UTF8
 
 # Prod-secrets injiceres kun i child-processen; STAGING_* arver fra denne proces.
+# Output fanges og returneres; fejl kaster med PII-sikker tekst (kun ERROR/FATAL, maskeret).
 function Invoke-WithProd([string] $cmd) {
-  & infisical run --env=prod --silent -- pwsh -NoProfile -Command $cmd
-  if ($LASTEXITCODE -ne 0) { throw "Fejlede (exit $LASTEXITCODE): $($cmd.Substring(0, [Math]::Min(60, $cmd.Length)))..." }
+  Invoke-RefreshNative { & infisical run --env=prod --silent -- pwsh -NoProfile -Command $cmd } ("prod: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length)))
 }
 function Invoke-Staging([string] $cmd) {
-  & pwsh -NoProfile -Command $cmd
-  if ($LASTEXITCODE -ne 0) { throw "Fejlede (exit $LASTEXITCODE): $($cmd.Substring(0, [Math]::Min(60, $cmd.Length)))..." }
+  Invoke-RefreshNative { & pwsh -NoProfile -Command $cmd } ("staging: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length)))
 }
+
+# Fail-closed dump-bevis: counts + marker skrives kun naar BEGGE dumps er faerdige. -SkipDump kraever dem.
+$countsBeforeFile = Join-Path $DumpDir "prod-counts-before.txt"
+$countsAfterFile = Join-Path $DumpDir "prod-counts-after.txt"
+$markerFile = Join-Path $DumpDir "dump-complete.marker"
+$leanTables = @("race_results", "race_simulation_rider_scores", "race_simulation_runs", "player_events",
+  "board_satisfaction_events", "rider_derived_ability_history", "training_day_runs", "notifications",
+  "race_stage_moments", "rider_profile_views", "traffic_events")
+function Get-ProdCounts { (Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$verifySql'") -join "`n" }
+$countSkip = @(); $countSlack = @{ app_config = 1 }   # cleanup inserts the cz_environment marker
 
 if (-not $VerifyOnly) {
   if (-not $SkipDump) {
     $t0 = Get-Date
+    # Et afbrudt/halvt dump-forsoeg maa aldrig kunne genbruges: ryd bevis foer vi starter.
+    Remove-Item -Force $dumpFile, $authFile, $countsBeforeFile, $countsAfterFile, $markerFile -ErrorAction SilentlyContinue
+    Set-Content -Path $countsBeforeFile -Value (Get-ProdCounts) -Encoding utf8
     # LEAN: schema for alle tabeller, men ingen data i tabeller der kun er logs/resultat-historik.
     # Branch-disken er lille (fuld prod-kopi paa ~1 GB gav "No space left on device" 23/8).
-    $leanExclude = @("race_results", "race_simulation_rider_scores", "race_simulation_runs", "player_events",
-      "board_satisfaction_events", "rider_derived_ability_history", "training_day_runs", "notifications",
-      "race_stage_moments", "rider_profile_views", "traffic_events")
+    $leanExclude = $leanTables
     $excl = ""
     if (-not $Full) { $excl = ($leanExclude | ForEach-Object { "--exclude-table-data=public.$_" }) -join " "; $excl += " --exclude-table-data='public.*backup*'" }
     Write-Host ("[..] pg_dump public (prod, read-only, {0}) -> $dumpFile" -f $(if ($Full) { "FULL" } else { "LEAN: " + $leanExclude.Count + " tabeller uden data + backup_*" }))
-    Invoke-WithProd "pg_dump `$env:SUPABASE_DB_URL --schema=public --no-owner --no-acl $excl -Fc -f '$dumpFile'"
+    $null = Invoke-WithProd "pg_dump `$env:SUPABASE_DB_URL --schema=public --no-owner --no-acl $excl -Fc -f '$dumpFile'"
     Write-Host "[..] pg_dump auth.users (data only) -> $authFile"
-    Invoke-WithProd "pg_dump `$env:SUPABASE_DB_URL --table=auth.users --data-only --no-owner --no-acl -Fc -f '$authFile'"
+    $null = Invoke-WithProd "pg_dump `$env:SUPABASE_DB_URL --table=auth.users --data-only --no-owner --no-acl -Fc -f '$authFile'"
+    Set-Content -Path $countsAfterFile -Value (Get-ProdCounts) -Encoding utf8
+    Set-Content -Path $markerFile -Value ("complete " + (Get-Date).ToString("o") + " full=" + [bool]$Full) -Encoding utf8
     Write-Host ("[ok] dump {0:N0} MB paa {1:N0} s" -f ((Get-Item $dumpFile).Length / 1MB), ((Get-Date) - $t0).TotalSeconds)
+  } else {
+    foreach ($f in @($dumpFile, $authFile, $countsBeforeFile, $countsAfterFile, $markerFile)) {
+      if (-not (Test-Path -LiteralPath $f)) { throw "-SkipDump kraever et komplet dump-bevis; mangler $(Split-Path -Leaf $f). Koer uden -SkipDump." }
+    }
+    if ((Get-Content -LiteralPath $markerFile -Raw) -match 'full=True') { $Full = [switch]$true }
   }
 
-  $t1 = Get-Date
-  Write-Host "[..] restore -> staging $($env:STAGING_REF): auth.users (truncate+copy), derefter public (clean+if-exists)"
-  Invoke-Staging "psql `$env:STAGING_DB_URL -v ON_ERROR_STOP=1 -q -c 'truncate auth.users cascade;'"
-  Invoke-Staging "pg_restore -d `$env:STAGING_DB_URL --data-only --no-owner --no-acl '$authFile' 2>&1 | Select-String -Pattern 'error' | Select-Object -First 10; exit 0"
-  # pg_restore returnerer 1 ved harmloese advarsler (extensions/policies der allerede findes);
-  # de foerste 40 ikke-trivielle linjer vises, verify-trinnet afgoer GO/NO-GO.
-  Invoke-Staging "pg_restore -d `$env:STAGING_DB_URL --clean --if-exists --no-owner --no-acl --schema=public '$dumpFile' 2>&1 | Select-String -Pattern 'error' | Where-Object { `$_ -notmatch 'DROP |does not exist' } | Select-Object -First 40; exit 0"
-  Write-Host ("[ok] restore paa {0:N0} s" -f ((Get-Date) - $t1).TotalSeconds)
+  # Keep pg_restore's dependency ordering and complete clean phase intact.
+  # Large COPY sections remain separate visible steps in the same transaction.
+  $public=Join-Path $DumpDir 'public-restore.sql'; $auth=Join-Path $DumpDir 'auth-data.sql'
+  $guard=Join-Path $DumpDir 'restore-guard.sql'; $sanitize=Join-Path $DumpDir 'restore-sanitize.sql'
+  Remove-Item -Force $public, $auth, $guard, $sanitize, (Join-Path $DumpDir 'public-progress.sql') -ErrorAction SilentlyContinue
+  $null = Invoke-RefreshNative { & pg_restore --clean --if-exists --no-owner --no-acl --schema=public -f $public $dumpFile } 'Public archive extraction'
+  $null = Invoke-RefreshNative { & pg_restore --data-only --no-owner --no-acl -f $auth $authFile } 'Auth archive extraction'
+  # Stream instead of loading training_day_runs' large COPY payload into RAM.
+  $progress=Join-Path $DumpDir 'public-progress.sql'
+  $reader=[IO.StreamReader]::new($public,[Text.Encoding]::UTF8)
+  $writer=[IO.StreamWriter]::new($progress,$false,[Text.UTF8Encoding]::new($false)); $writer.NewLine="`n"
+  try {
+    while($null -ne ($line=$reader.ReadLine())) {
+      if(Test-RefreshTransactionControl $line){throw 'Transaction control found in public dump; restore would not be atomic'}
+      if($line -match '^COPY public\.(training_day_runs|training_rider_ticks) '){$writer.WriteLine('\echo RESTORE_STEP_'+$Matches[1])}
+      $writer.WriteLine($line)
+    }
+  } finally {$reader.Dispose();$writer.Dispose()}
+  @'
+set statement_timeout=0;
+set idle_in_transaction_session_timeout=0;
+set transaction_timeout=0;
+set session_replication_role=replica;
+'@ | Set-Content $guard -Encoding utf8
+  $anonSql=New-RefreshSanitizeSql ([IO.File]::ReadAllText((Join-Path $repo 'scripts/staging/anonymize-staging.sql')))
+  [IO.File]::WriteAllText($sanitize,$anonSql,[Text.UTF8Encoding]::new($false))
+  $authPrefix=[Text.Encoding]::UTF8.GetBytes("truncate auth.users cascade;`n")
+  [IO.File]::WriteAllBytes($auth,($authPrefix+[IO.File]::ReadAllBytes($auth)))
+  $restoreArgs=Get-RefreshRestoreArguments @($guard,$auth,$progress,$sanitize) -RequireFiles
+  $quoted=($restoreArgs|ForEach-Object { "'"+($_.Replace("'","''"))+"'" }) -join ' '
+  Write-Host '[..] atomic restore: schema/auth/light data/training_day_runs/training_rider_ticks/indexes/cleanup'
+  # Single transaction + ON_ERROR_STOP: fejl eller afbrudt forbindelse ruller ALT tilbage (intet halvt).
+  $null = Invoke-Staging "psql `$env:STAGING_DB_URL $quoted"
 }
 
-Write-Host "[..] verify: raekketaellinger prod vs staging"
-Invoke-WithProd "Write-Host '--- prod'; psql `$env:SUPABASE_DB_URL -q -f '$verifySql'"
-Invoke-Staging "Write-Host '--- staging'; psql `$env:STAGING_DB_URL -q -f '$verifySql'"
+if ($VerifyOnly) {
+  # Ingen dump i dag: prod-taelling nu er baade foer og efter.
+  $countsBefore = Get-ProdCounts; $countsAfter = $countsBefore
+} else {
+  $countsBefore = Get-Content -LiteralPath $countsBeforeFile -Raw; $countsAfter = Get-Content -LiteralPath $countsAfterFile -Raw
+}
+
+$privacyFile=Join-Path $DumpDir 'privacy-final.sql'
+@'
+select (select count(*) from public.users where email is null or email not like '%@loadtest.invalid'
+  or discord_id is not null or discord_handle is not null)
+ + (select count(*) from auth.users where email is null or email not like '%@loadtest.invalid'
+  or phone is not null or raw_user_meta_data <> '{}'::jsonb or raw_app_meta_data <> '{}'::jsonb);
+'@ | Set-Content $privacyFile -Encoding utf8
+# LEAN dumper race_results uden data; kun den taelles blandt de verificerede tabeller.
+if (-not $Full) { $countSkip = @("race_results") }
+$files=@{
+  fingerprint=(Join-Path $repo 'scripts/staging/schema-fingerprint-summary.sql')
+  counts=$verifySql
+  privacy=$privacyFile
+}
+# Fingerprint -> raekketal -> privacy (sidste database-kald, ogsaa i VerifyOnly). Intet GO uden alle tre.
+$gate=Invoke-RefreshGates `
+  { param($f) Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
+  { param($f) Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
+  $files $countsBefore $countsAfter $countSkip $countSlack
+if ($gate -ne 'GO') { throw 'Refresh gates did not return GO' }
+Write-Host '[ok] app-schema fingerprint matches; row counts within prod window; non-anonymous users=0'
 
 if ($Clean) { Remove-Item -Force $dumpFile, $authFile -ErrorAction SilentlyContinue; Write-Host "[ok] dump slettet" }
 Write-Host "[GO] staging '$BranchName' er en frisk prod-kopi. Koer cutover-scripts via scripts/with-staging.ps1."

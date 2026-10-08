@@ -66,6 +66,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Node 24 (readiness probe and deploy tooling)
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -171,16 +172,30 @@ jobs:
         with:
           ref: ${{ steps.pr.outputs.sha }}
           persist-credentials: false
+          # Keep full history: frontend-deployment-needed.mjs and the empty-
+          # commit check compare against "$SHA^1" (#6318).
+          fetch-depth: 0
 
       - name: Determine required deployments (path-based)
         id: required
-        # #6318: complete, SHA-matched diff including rename origins. Unknown
-        # evidence fails closed; it must never produce an empty cron impact.
+        # Vercel: the canonical classifier covers frontend, backend/lib,
+        # root/shared and unknown inputs; only positively independent changes
+        # omit Vercel. Full history (target checkout fetch-depth 0) avoids
+        # shallow-parent truncation.
+        # Railway + cron impact (#6318): complete, SHA-matched diff including
+        # rename origins. Unknown evidence fails closed; it must never produce
+        # an empty cron impact. A verified empty commit has no impact.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ steps.pr.outputs.sha }}
         run: |
           node scripts/ci/cron-deploy-verification.mjs --impact
+          # Use the canonical conservative frontend-input rule.
+          REQUIREMENT=$(node scripts/frontend-deployment-needed.mjs "$SHA")
+          NEED_VERCEL=$(jq -r 'if (.required | type) == "boolean" then (.required | tostring) else error("Invalid requirement") end' <<<"$REQUIREMENT" 2>/dev/null || true)
+          [[ "$NEED_VERCEL" == "false" ]] || NEED_VERCEL=true
+          echo "Changed files touch: frontend=$NEED_VERCEL"
+          echo "need_vercel=$NEED_VERCEL" >> "$GITHUB_OUTPUT"
 
       - name: Wait for Vercel + Railway deployments
         id: deployments

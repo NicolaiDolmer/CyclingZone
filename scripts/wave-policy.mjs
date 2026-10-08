@@ -166,6 +166,77 @@ export function assertCompatibleWithActive(active, incoming) {
   return sharedTouchPlan([...active, ...incoming]);
 }
 
+// ---------------------------------------------------------------- model, effort og design-gate (#6344)
+// Ejer 8/10 (docs/AI_CHANNEL_ROUTING.md §Model og effort + AGENTS.md hard rule
+// 25): kvaliteten maa ikke afhaenge af at orkestratoren husker reglerne. Tre
+// gates, alle udledt af sporets filer:
+//   1. effort pr. spor: low|medium|high, default medium (kun Claude-spor;
+//      Codex har sin egen effort-skala og valideres ikke her).
+//   2. Spor hvis ownership/touches rammer motor, migrationer/RLS, penge eller
+//      sikkerhed koerer altid som opus/high - uanset hvad sporet bad om.
+//   3. Et spillervendt spor (ownership i frontend/src/, frontend/public/locales/
+//      eller help.json) uden designGo afvises i admission, medmindre det er
+//      kind:'investigate' eller noVisibleChange:true med noVisibleReason.
+// wave.js SPEJLER requiredModel/designGateHits (workflow-scripts kan ikke
+// importere); en drift-vagt i wave-policy.test.mjs fejler hvis de skilles.
+export const TRACK_EFFORTS = ['low', 'medium', 'high'];
+export const DEFAULT_EFFORT = 'medium';
+// [sti/glob, aarsag]. Samme prefix-semantik som ownership (ownershipOverlaps),
+// saa en bred ownership som 'backend/' ogsaa opgraderes (konservativt).
+export const OPUS_RISK_PATHS = [
+  ['backend/lib/engine/', 'motor'],
+  ['database/', 'migration/RLS'],
+  ['supabase/migrations/', 'migration/RLS'],
+  ['backend/lib/billing*', 'penge/billing'],
+  ['backend/lib/economy*', 'penge/oekonomi'],
+];
+// Sikkerhed: auth/RLS/grants/security i stien (fx backend/lib/authTokenVerification.js,
+// .github/workflows/rls-audit.yml). Docs og learnings er tekst, ikke kode.
+export const OPUS_SECURITY_SOURCE = '(^|[^a-z])(auth|rls|grants?|security)';
+export const PLAYER_FACING_PATHS = ['frontend/src/', 'frontend/public/locales/'];
+
+const isProse = p => p.startsWith('docs/') || p.startsWith('.claude/learnings/') || p.endsWith('.md');
+
+// -> { model, effort, upgraded, reasons }. reasons = unikke "aarsag (sti)".
+export function requiredModel(t) {
+  const asked = t?.model || 'sonnet';
+  const effort = t?.effort || DEFAULT_EFFORT;
+  const security = new RegExp(OPUS_SECURITY_SOURCE);
+  const reasons = [];
+  const paths = [...(Array.isArray(t?.ownership) ? t.ownership : []), ...trackTouches(t)];
+  for (const raw of paths) {
+    const own = ownershipPrefix(raw);
+    for (const [risk, why] of OPUS_RISK_PATHS) if (ownershipOverlaps(own, risk)) reasons.push(`${why} (${raw})`);
+    if (!isProse(own.prefix) && security.test(own.prefix)) reasons.push(`sikkerhed (${raw})`);
+  }
+  const unique = [...new Set(reasons)];
+  if (!unique.length) return { model: asked, effort, upgraded: false, reasons: [] };
+  return { model: 'opus', effort: 'high', upgraded: asked !== 'opus' || effort !== 'high', reasons: unique };
+}
+
+// Spillervendte ownership-stier der kraever designGo. [] = sporet maa koere
+// (ikke spillervendt, kind:'investigate', designGo sat eller noVisibleChange
+// med begrundelse). touches taeller ikke: de er minimal kobling (#5997).
+export function designGateHits(t) {
+  if (t?.kind === 'investigate') return [];
+  if (typeof t?.designGo === 'string' && t.designGo.trim()) return [];
+  if (t?.noVisibleChange === true && typeof t?.noVisibleReason === 'string' && t.noVisibleReason.trim()) return [];
+  const own = Array.isArray(t?.ownership) ? t.ownership : [];
+  return own.filter(raw => {
+    const p = ownershipPrefix(raw);
+    return p.prefix.endsWith('help.json') || PLAYER_FACING_PATHS.some(f => ownershipOverlaps(p, f));
+  });
+}
+
+export function assertDesignGate(tracks) {
+  for (const t of tracks) {
+    const hits = designGateHits(t);
+    if (!hits.length) continue;
+    const half = t.noVisibleChange === true ? ' (noVisibleChange:true needs a non-empty noVisibleReason)' : '';
+    throw Error(`Design gate (AGENTS.md hard rule 25): player-facing track #${t.issue} (${hits.join(', ')}) has no designGo${half}. Get owner approval of problem + solution first and pass designGo: "<date/link>", or kind:'investigate', or noVisibleChange:true with noVisibleReason`);
+  }
+}
+
 // Ejer-beslutning 22/9 (variant B, #5510): PR-loftet paa 8 er fjernet helt.
 // Optaellingen bevares som info til planen (lanerne (4) og
 // verifikations-semaforen (2) er fortsat bremsen). Fail-closed bevares: en
@@ -291,6 +362,7 @@ function claudeOwnerPid(sessionId) {
 
 export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   validateTracks(request.tracks);
+  assertDesignGate(request.tracks); // #6344: begge runtimes, foer markoeren skrives
   if (!['claude', 'codex'].includes(request.runtime) || !request.owner || !Number.isFinite(request.now)) throw Error('runtime, owner and now required');
   fs.mkdirSync(dir, { recursive: true });
   const ownerProcess = admissionOwnerProcess(request.pid ?? process.pid);
@@ -360,6 +432,8 @@ export const INTAKE_MODELS = ['opus', 'sonnet'];
 export function assertEnqueueable(tracks) {
   for (const t of tracks) {
     if (t.model !== undefined && !INTAKE_MODELS.includes(t.model)) throw Error(`Invalid model for #${t.issue}: ${JSON.stringify(t.model)} (use ${INTAKE_MODELS.join(' or ')})`);
+    // #6344: same effort rule as wave.js' normalizeTrack, so a queued track is never skipped later.
+    if (t.effort !== undefined && !TRACK_EFFORTS.includes(t.effort)) throw Error(`Invalid effort for #${t.issue}: ${JSON.stringify(t.effort)} (use ${TRACK_EFFORTS.join(', ')})`);
     if (t.ownNodeModules === true) throw Error(`ownNodeModules track #${t.issue} cannot join a running wave (its npm ci can outlast intake); start it in its own wave`);
   }
 }
@@ -367,6 +441,7 @@ export function assertEnqueueable(tracks) {
 export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot) {
   validateTracks(tracks);
   assertEnqueueable(tracks);
+  assertDesignGate(tracks);
   let plan;
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);

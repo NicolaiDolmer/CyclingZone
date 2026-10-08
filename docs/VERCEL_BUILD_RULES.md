@@ -58,11 +58,19 @@ reduction. The missing-base/no-origin production case may build every commit.
 Preview uses a bounded fetch from the verified public URL; missing common history
 still forces a build. Actual build starts,
 skips, previous-SHA availability and Usage must be measured after owner release.
-Frontend source-map verification follows the same requirement: independent merges do not require maps uploaded for a new SHA when no new frontend build is required. The unchanged GitHub deploy-verify workflow still has its narrower path-prefix check; shared/root-input verification there remains a documented follow-up, not a claim of complete workflow alignment.
+Frontend source-map verification follows the same requirement: independent merges do not require maps uploaded for a new SHA when no new frontend build is required. GitHub deploy-verify uses the same first-parent adapter after #6235, covering shared/root inputs as well as frontend paths.
 
 The existing frontend-build CI job now typechecks the three build-selection TypeScript tools explicitly with Node types. The normal app typecheck only includes src/**, so its success alone is not tools-typecheck evidence.
 
 Owner safe-variant go: 5 October 23:50, PR #6222. Every backend/lib/ path builds; backend/routes/ alone still skips. There is no individual-file exception.
+
+
+## Freshness and shared verification (#6235)
+Deploy verify calls the same frontendDeploymentRequirement adapter as local release verification, with full history and a first-parent comparison. Preview uses the cumulative PR base in #6255; production uses its previous successful deployment. The common path rule retains backend/lib as an approved shared input convention; no file relocation is required.
+
+The hourly read-only freshness job compares the served version.json.release with a captured current main SHA. The frontend content hash remains the player refresh identity. Independent changes are intentionally unchanged. A covering active production build can be at the target or an earlier intervening commit with no missing newer inputs. GitHub evidence is restricted to Production – cycling-zone, excluding marketing and preview. At most 64 intervening commits and complete deployment/status pages are inspected; incomplete or unavailable evidence is unknown and fails the observation. The main SHA is read again before accepting the result. Neither stale nor unknown initiates a deploy or writes to production.
+
+Release measurement is separate: the 6 October current-version observation is not a full UTC-day build saving. Claude measures the first comparable full post-release UTC day and actual ignored-build/READY outcomes on #6202 after review/merge.
 
 ## Originless preview policy (#6233)
 Preview compares the complete PR tree from merge-base(main, HEAD) to HEAD,
