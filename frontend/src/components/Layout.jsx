@@ -559,36 +559,21 @@ export default function Layout() {
   // fail-safe: uden svar er tonen "none", og navigationen ser ud som foer.
   const { reminder: selectionReminder } = useSelectionReminder();
 
-  async function fetchOnlineCount(headers) {
-    if (!API) return;
-    try {
-      const h = headers || await authHeaders();
-      // #4347/#4348: uden session sprang det her kald før igennem med "Bearer
-      // undefined" i stedet for at blive sprunget over.
-      if (!h) return;
-      // #5242: apiFetch afleverer et 401 direkte til networkErrorGuards
-      // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
-      const res = await apiFetch(`${API}/api/online-count`, { headers: h }, { source: "online-count" });
-      // #4351: en 401/429/5xx (fx en afvist session, eller en stille backoff)
-      // blev læst som et gyldigt svar, og `data.count || 0` skrev "0 online".
-      // Behold sidst kendte tal i stedet.
-      if (!res.ok || res.limited || res.unauthorized) return;
-      setOnlineCount(res.data.count || 0);
-    } catch (e) { console.error("online-count:", e); }
-  }
-
   // #6343: ét kald i stedet for presence + online-count. Presence-svaret bærer
   // online-tallet; mangler feltet (gammel backend under deploy) falder vi
-  // tilbage til /api/online-count som før.
+  // tilbage til /api/online-count som før. Kalderen har allerede et token (h).
+  // #5242: apiFetch afleverer et 401 direkte til networkErrorGuards.
   async function sendPresence(h, source) {
+    if (!API) return;
     try {
       const res = await apiFetch(`${API}/api/presence`, { method: "POST", headers: h }, { source });
-      if (res.limited || res.unauthorized) return;
-      if (res.ok) {
-        const count = readOnlineCountFromPresence(res.data);
-        if (count !== null) { setOnlineCount(count); return; }
-      }
-      await fetchOnlineCount(h);
+      if (!res.ok || res.limited || res.unauthorized) return;
+      const count = readOnlineCountFromPresence(res.data);
+      if (count !== null) { setOnlineCount(count); return; }
+      const fallback = await apiFetch(`${API}/api/online-count`, { headers: h }, { source: "online-count" });
+      // #4351: en 401/429/5xx må ikke læses som "0 online"; behold sidst kendte tal.
+      if (!fallback.ok || fallback.limited || fallback.unauthorized) return;
+      setOnlineCount(fallback.data.count || 0);
     } catch (e) { console.error(`${source}:`, e); }
   }
 
