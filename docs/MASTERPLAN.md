@@ -18,7 +18,7 @@
 
 ## 🟠 Rødderne bag de andre klager (parallelt)
 
-Bestyrelse #5946 #6130 #5897 #6122 #6298 · sæsonskifte uden fejl #5864 (rod) #5904 lasttest #5842 #5833 · låste budpenge #6261-#6264 · U23/junior #5843 #5945 #6124 #5943 #6206 · tal der ikke stemmer #6207 #6238 #5733. Tailwind 4 #6271 (Codex-review først, merge senest 17/10) · vagter #6290.
+Bestyrelse #5946 #6130 #5897 #6122 #6298 · sæsonskifte uden fejl #5864 (rod) #5904 lasttest #5842 #5833 · **S5-etapeprofiler #6369** (ejer 8/10: stor pakke, design først, S5-kalender #5841 live senest 18/10) · låste budpenge #6261-#6264 · U23/junior #5843 #5945 #6124 #5943 #6206 · tal der ikke stemmer #6207 #6238 #5733. Vagter #6290.
 
 ## Luk sløjfen (fast, dagligt)
 
