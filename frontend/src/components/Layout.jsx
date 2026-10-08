@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { Outlet, Link, NavLink, useNavigate, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
+import { startPresenceHeartbeat, readOnlineCountFromPresence } from "../lib/presenceHeartbeat.ts"; // #6343
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej (afløser den lokale expireSessionIfRejected, se #5233 fund 2)
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
 import { formatNumber } from "../lib/intl";
@@ -546,7 +547,6 @@ export default function Layout() {
   const boardMandateBeta = isBetaStage(flagStages.board_mandate_model_enabled);
   // #3102 etape 3: peak_planner-nav-gaten (usePlanner) udgik — Formplan er en
   // fane i Planlægnings-hubben, og fanen selv viser tom-staten ved kill-switch.
-  const heartbeatRef = useRef(null);
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
   // #3521: Transfers-menupunktets badge — ubesvarede indgående tilbud. Samme
   // kanoniske kilde som Indbakkens "Skal handles"-fane (useActionSummary →
@@ -575,6 +575,21 @@ export default function Layout() {
       if (!res.ok || res.limited || res.unauthorized) return;
       setOnlineCount(res.data.count || 0);
     } catch (e) { console.error("online-count:", e); }
+  }
+
+  // #6343: ét kald i stedet for presence + online-count. Presence-svaret bærer
+  // online-tallet; mangler feltet (gammel backend under deploy) falder vi
+  // tilbage til /api/online-count som før.
+  async function sendPresence(h, source) {
+    try {
+      const res = await apiFetch(`${API}/api/presence`, { method: "POST", headers: h }, { source });
+      if (res.limited || res.unauthorized) return;
+      if (res.ok) {
+        const count = readOnlineCountFromPresence(res.data);
+        if (count !== null) { setOnlineCount(count); return; }
+      }
+      await fetchOnlineCount(h);
+    } catch (e) { console.error(`${source}:`, e); }
   }
 
   useEffect(() => {
@@ -713,8 +728,7 @@ export default function Layout() {
         .catch(() => { /* netværksfejl: behold sidst kendte (state uændret) */ });
       // #5242: 401 håndteres nu centralt af apiFetch->networkErrorGuards
       // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
-      apiFetch(`${API}/api/presence`, { method: "POST", headers: h }, { source: "presence" })
-        .catch(e => console.error("presence:", e));
+      sendPresence(h, "presence");
       // Login-streak power-mekanik fjernet (#1139) — ingen daglig login-tvang.
       // Achievements-check kører fortsat (kosmetiske unlocks), uafhængigt af streak.
       apiFetch(`${API}/api/achievements/check`, {
@@ -722,7 +736,6 @@ export default function Layout() {
         headers: h,
         body: JSON.stringify({ context: "team_update", data: {} }),
       }).catch(() => {});
-      fetchOnlineCount(h);
     });
   }, []);
 
@@ -849,7 +862,8 @@ export default function Layout() {
 
   useEffect(() => {
     if (!session) return;
-    heartbeatRef.current = setInterval(async () => {
+    // #6343: pauser i skjulte faner, ét kald straks når fanen bliver synlig.
+    return startPresenceHeartbeat({ doc: document, tick: async () => {
       if (!API) return;
       const h = await authHeaders();
       // #4347: DEN HER var kilden til 401-støjen i Railway-loggen. Når sessionen
@@ -863,11 +877,8 @@ export default function Layout() {
       if (!h) return;
       // #5242: 401 håndteres nu centralt af apiFetch->networkErrorGuards
       // (afløser den lokale expireSessionIfRejected, #5233 fund 2).
-      apiFetch(`${API}/api/presence`, { method: "POST", headers: h }, { source: "heartbeat" })
-        .catch(e => console.error("heartbeat:", e));
-      fetchOnlineCount(h);
-    }, 60000);
-    return () => clearInterval(heartbeatRef.current);
+      sendPresence(h, "heartbeat");
+    } });
   }, [session]);
 
   // #3012: supabase-js's signOut({ scope: "global" }, default) rydder ALTID

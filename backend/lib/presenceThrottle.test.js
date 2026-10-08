@@ -38,3 +38,16 @@ test("/presence laver ikke et ubetinget last_seen-UPDATE længere", () => {
     "ubetinget .update({ last_seen ... }) i /presence genintroducerer write-amplification",
   );
 });
+
+// #6343: presence-svaret bærer online-tallet, og /online-count består uændret
+// så gamle faner virker under deploy.
+test("/presence returnerer online_count via den delte tæller", () => {
+  const block = routeBlock("/presence");
+  assert.match(block, /online_count:\s*await countOnlineUsers\(\)/);
+});
+
+test("/online-count består og bruger samme tæller", () => {
+  const block = routeBlock("/online-count");
+  assert.match(block, /res\.json\(\{\s*count:\s*await countOnlineUsers\(\)\s*\}\)/);
+  assert.match(apiSource, /async function countOnlineUsers\(\)[\s\S]*?last_seen/);
+});
