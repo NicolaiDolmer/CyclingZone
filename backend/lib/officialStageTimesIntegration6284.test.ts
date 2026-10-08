@@ -54,7 +54,7 @@ test("official revision travels through the adapter, saved runner rows and resum
 });
 
 test("old revisions retain frozen complete outputs across route profiles after the new model is added", () => {
-  const baseline = JSON.parse(readFileSync(new URL("./engine/v4/fixtures/groupClockLegacy6199.json", import.meta.url), "utf8"));
+  const baseline = JSON.parse(readFileSync(new URL("./engine/v4/test-data/groupClockLegacy6199.json", import.meta.url), "utf8"));
   const actual = createRaceEngineV4Adapter({ ...modules, core: { simulateStageV4 } });
   for (const [rulesRevision, profiles] of Object.entries(baseline.hashes)) {
     for (const [profile_type, expected] of Object.entries(profiles)) {
