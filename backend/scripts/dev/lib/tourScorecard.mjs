@@ -92,10 +92,10 @@ const PCS_NOTE = "omtrentligt fra Grand Tour-resultater 2019-2024 (ProCyclingSta
 
 // Udbrudssucces doemmes pr. profile_type (ikke pr. sammenlagt klasse): et
 // high_mountain-baand er et andet end et mountain-baand, og rolling et andet end
-// hilly. Profiltyper uden kandidat-baand (fx gravel) giver N/A.
-const BREAKAWAY_RATE = ANCHOR_BANDS.breakawayRatePerTerrainCandidate;
+// hilly. Profiltyper uden udbrudsbaand (fx gravel) giver N/A.
+const BREAKAWAY_RATE = ANCHOR_BANDS.breakawayRatePerTerrain;
 const breakawayWinShareBands = Object.fromEntries(
-  Object.entries(BREAKAWAY_RATE.byTerrain).map(([terrain, band]) => [terrain, { ...band, status: "kandidat", source: BREAKAWAY_RATE.source }]),
+  Object.entries(BREAKAWAY_RATE.byTerrain).map(([terrain, band]) => [terrain, { ...band, status: "ejer", source: BREAKAWAY_RATE.source }]),
 );
 
 export const TOUR_BENCHMARKS = Object.freeze({
@@ -597,7 +597,7 @@ export function summarizeTour(perSeed, stages, revision = null) {
   });
 
   // Udbrudssucces pr. profile_type (vejetaper), doemt mod profiltypens eget
-  // kandidat-baand; stoerrelsen mod benchmark-klassens baand.
+  // ejer-baandet (RULES Udbrudsmaal); stoerrelsen mod benchmark-klassens baand.
   const byType = {};
   for (const r of stageRows) {
     if (TIME_TRIAL_PROFILES.has(r.profile_type)) continue;
