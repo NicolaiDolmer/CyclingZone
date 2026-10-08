@@ -266,8 +266,10 @@ export function scanRefresh(source, filename = '<source>') {
 export function loadBaseline(path) {
   try {
     return JSON.parse(readFileSync(path, 'utf8')).entries ?? {};
-  } catch {
-    return {};
+  } catch (err) {
+    // A missing/broken baseline must not silently turn every grandfathered
+    // finding into a "new" violation with no hint why.
+    throw new Error(`Failed to load migration lock baseline "${path}": ${err.message}`, { cause: err });
   }
 }
 
