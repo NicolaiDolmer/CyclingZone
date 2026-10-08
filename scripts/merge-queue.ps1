@@ -284,6 +284,7 @@ function Wait-ForDeployVerification {
   $minimumAttempt = 1
   $reruns = 0
   $lastState = 'unknown'
+  $settleReads = 0
   $runFile = [IO.Path]::GetTempFileName()
   $jobsFile = [IO.Path]::GetTempFileName()
   try {
@@ -315,6 +316,16 @@ function Wait-ForDeployVerification {
       if ($state -eq 'deferred') {
         Write-Host "  AFVENTER CHECK-IN for lange kadencer (run $runId, attempt $($run.run_attempt)); se job + sidste check-in i workflow-summary. Ingen automatisk genkoersel." -ForegroundColor Yellow
         return 'deferred'
+      }
+      # GitHub kan melde kørslen 'completed', før job-trinnene er skrevet færdigt.
+      # Et 'unknown' lige efter afslutningen er derfor ofte forbigaaende (8/10:
+      # #6353 stoppede koeen, samme data gav 'deferred' sekunder senere). Laes
+      # igen hoejst 3 gange, foer 'unknown' faar lov at stoppe koeen.
+      if ($state -eq 'unknown' -and $run.status -eq 'completed' -and $settleReads -lt 3) {
+        $settleReads++
+        Write-Host "  Deploy verify: job-data for run $runId er endnu ikke faerdigskrevet; laeser igen om 15 s ($settleReads/3)." -ForegroundColor DarkGray
+        & $Pause 15
+        continue
       }
       if ($state -eq 'verified' -or $state -eq 'failed' -or $state -eq 'unknown') { return $state }
       if ($state -eq 'pending') {
