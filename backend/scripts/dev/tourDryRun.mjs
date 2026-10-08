@@ -130,6 +130,8 @@ export async function main(argv = process.argv.slice(2)) {
   const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
   const v4 = await loadRaceEngineV4();
   const runs = opts.revisions.map((revision) => runTour({ v4, data, revision, seeds: opts.seeds, leadoutPair: opts.leadoutPair }));
+  const dropped = runs[0]?.droppedWithoutAbilities ?? 0;
+  if (dropped > 0) console.warn(`ADVARSEL: ${dropped} ryttere paa startlisten mangler evner og er IKKE koert (feltet er mindre end i spillet).`);
   const generatedAt = new Date().toISOString();
   const raceLabel = `${data.race.name ?? data.race.id} (${data.profiles.length} etaper, ${data.entries.length} ryttere)`;
   const md = renderTourMarkdown({ raceLabel, runs, generatedAt });
@@ -138,7 +140,11 @@ export async function main(argv = process.argv.slice(2)) {
   mkdirSync(path.dirname(base), { recursive: true });
   writeFileSync(`${base}.md`, md);
   writeFileSync(`${base}.json`, JSON.stringify({ race: data.race, generatedAt, runs }, null, 2));
-  for (const r of runs) console.log(`${r.revision}: PASS ${r.summary.counts.PASS} · WARN ${r.summary.counts.WARN} · FAIL ${r.summary.counts.FAIL}`);
+  for (const r of runs) {
+    const c = r.summary.counts;
+    const todo = r.summary.gates.filter((g) => g.status === "todo").map((g) => g.check);
+    console.log(`${r.revision}: PASS ${c.PASS} · WARN ${c.WARN} · FAIL ${c.FAIL} · TODO ${c.TODO} · N/A ${c["N/A"]}${todo.length ? ` (kendte aabne gates: ${todo.join(", ")})` : ""}`);
+  }
   console.log(`Scorecard: ${base}.md (+ .json)`);
   return { runs, base };
 }

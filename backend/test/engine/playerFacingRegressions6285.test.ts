@@ -7,14 +7,18 @@
 //  2. Motoren koeres deterministisk paa det anonymiserede Giro-felt
 //     (scripts/baselines/giro-field-6088-2026-10-02.json: rigtige roller,
 //     holdordrer, evner og etaper, ingen navne eller id'er) under hver
-//     revision, og fejlen maa ikke optraede. En revision hvor fejlen er KENDT
-//     og aaben, staar i KNOWN_OPEN og koeres som `todo` (rapporteres, blokerer
-//     ikke CI). Alle andre revisioner er en haard gate: en regression dér
-//     faelder backend-suiten (npm test i CI).
+//     revision, ALLE etaper i raekkefoelge med klassementet akkumuleret som i
+//     spillet (runStagesInOrder: fra etape 2 faar motoren klassementet foer
+//     etapen, saa orders_gc's klassementslogik koeres). Fejlen maa ikke
+//     optraede. En revision hvor fejlen er KENDT og aaben, staar i
+//     KNOWN_OPEN_GATES (delt med scorecardet, som aldrig taeller den som groen)
+//     og koeres som `todo` (rapporteres, blokerer ikke CI). Alle andre
+//     kombinationer er en haard gate: en regression dér faelder backend-suiten
+//     (npm test i CI).
 //
-// Fjern en linje fra KNOWN_OPEN naar fejlen er rettet i den revision, saa
-// gaten bliver haard. Taersklerne her er detektorernes definitioner af
-// fejlen ("med minutter", "paa loftet", "modsiger"), ikke motor-tuning.
+// Fjern en linje fra KNOWN_OPEN_GATES naar fejlen er rettet i den revision, saa
+// gaten bliver haard. Taersklerne er detektorernes definitioner af fejlen ("med
+// minutter", "liste-gab != raa tid", "modsiger"), ikke motor-tuning.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -23,9 +27,15 @@ import { fileURLToPath } from "node:url";
 import {
   breakawayWin,
   clampedAtCap,
-  entrantsFromData,
+  FLAT_BREAKAWAY_MINUTES_SECONDS,
+  flatBreakawayWinWithMinutes,
+  gateStatus,
+  KNOWN_OPEN_GATES,
   labelContradictions,
-  profileClass,
+  overCapRaw,
+  runStagesInOrder,
+  sortedStages,
+  splitEntrants,
   STAGE_GAP_CAP_SECONDS,
 } from "../../scripts/dev/lib/tourScorecard.mjs";
 import { loadRaceEngineV4 } from "../../lib/raceEngineV4Bridge.js";
@@ -33,57 +43,81 @@ import { loadRaceEngineV4 } from "../../lib/raceEngineV4Bridge.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, "..", "..", "scripts", "baselines", "giro-field-6088-2026-10-02.json");
 const data = JSON.parse(readFileSync(FIXTURE, "utf8"));
-const stages: any[] = data.profiles.slice().sort((a: any, b: any) => a.stage_number - b.stage_number);
-const roadStages = stages.filter((p) => !["itt", "itt_hilly", "ttt"].includes(p.profile_type));
-const entrants = entrantsFromData(data);
+const stages: any[] = sortedStages(data);
+const { entrants, droppedWithoutAbilities } = splitEntrants(data);
 const SEEDS = 3;
+const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 
 /** Prod-revisionen, Tour-revisionen og den officielle tidsmodel (#6284). */
 const REVISIONS = ["orders_gc_v2", "orders_gc_v3", "official_times_v1"] as const;
 type Revision = (typeof REVISIONS)[number];
-type Check = "flatBreakawayMinutes" | "capClump" | "labelContradiction";
-
-/** Kendte, aabne fejl pr. revision (maalt 8/10 paa fixturet). */
-const KNOWN_OPEN: Record<Check, Partial<Record<Revision, string>>> = {
-  flatBreakawayMinutes: {
-    orders_gc_v2: "aaben (#6285): flad udbrudssejr med minutter",
-    orders_gc_v3: "aaben (#6285): flad udbrudssejr med minutter",
-    official_times_v1: "aaben (#6285): flad udbrudssejr med minutter",
-  },
-  capClump: {
-    orders_gc_v2: "aaben (#6199/#6284): resultatlisten clamper til 30:00",
-    orders_gc_v3: "aaben (#6199/#6284): resultatlisten clamper til 30:00",
-  },
-  labelContradiction: {
-    orders_gc_v2: "aaben (#6294): breakaway_win modsiger udbrudsmaerket",
-    official_times_v1: "aaben (#6294): breakaway_win modsiger udbrudsmaerket",
-  },
-};
+type Check = keyof typeof KNOWN_OPEN_GATES;
 
 const v4 = await loadRaceEngineV4();
 
-function runStage(profile: any, revision: Revision, seed: number) {
-  return v4.simulateStage({
-    entrants, stageProfile: profile, seedString: `race-6285:${profile.stage_number}:gate${seed}`, stageNumber: profile.stage_number,
-    teamOrderRows: data.orders, isStageRace: true, raceStages: stages, squad: data.race.squad ?? null,
-    rulesRevision: revision, gcStandings: [],
-  });
-}
+/** Det de tre gates skal bruge fra én etape (hele broens svar gemmes ikke). */
+type StageHit = {
+  stage: number;
+  seed: number;
+  road: boolean;
+  gcStatus: string | null;
+  flatMinutes: number | null;
+  clamped: number;
+  overCap: number;
+  labels: string[];
+};
 
-function sweep(revision: Revision, profiles: any[], find: (res: any, profile: any) => string | null): string[] {
-  const hits: string[] = [];
-  for (const profile of profiles) {
-    for (let s = 1; s <= SEEDS; s++) {
-      const hit = find(runStage(profile, revision, s), profile);
-      if (hit) hits.push(`etape ${profile.stage_number} seed ${s}: ${hit}`);
-    }
+const tourCache = new Map<Revision, StageHit[]>();
+
+/** Hele loebet x SEEDS under revisionen, klassementet akkumuleret som i spillet (memoiseret pr. revision). */
+function tourHits(revision: Revision): StageHit[] {
+  const cached = tourCache.get(revision);
+  if (cached) return cached;
+  const hits: StageHit[] = [];
+  for (let seed = 1; seed <= SEEDS; seed++) {
+    runStagesInOrder({
+      v4, data, revision, seedTag: `gate${seed}`, stages, entrants,
+      onStage: ({ profile, res }: any) => {
+        const road = !TIME_TRIALS.has(profile.profile_type);
+        const flat = flatBreakawayWinWithMinutes(res.v4Output, profile);
+        const gc = (res.v4Output.timeline?.events ?? []).find((e: any) => e.type === "gc_context");
+        hits.push({
+          stage: profile.stage_number,
+          seed,
+          road,
+          gcStatus: gc?.params?.status ?? null,
+          flatMinutes: flat.hit ? Math.round(flat.margin ?? 0) : null,
+          clamped: road ? clampedAtCap(res.ranked, res.v4Output) : 0,
+          overCap: road ? overCapRaw(res.v4Output) : 0,
+          labels: road ? labelContradictions(res.ranked, res.v4Output).map((i: any) => i.kind) : [],
+        });
+      },
+    });
   }
+  tourCache.set(revision, hits);
   return hits;
 }
 
+const where = (h: StageHit) => `etape ${h.stage} seed ${h.seed}`;
+
 function revisionCase(check: Check, revision: Revision) {
-  const todo = KNOWN_OPEN[check][revision];
-  return todo ? { todo } : {};
+  return gateStatus(check, revision) === "todo" ? { todo: (KNOWN_OPEN_GATES[check] as Record<string, string>)[revision] } : {};
+}
+
+// ── Forudsaetninger: feltet er helt, og klassementet naar motoren ────────────
+
+test("#6285 fixturet: hele startlisten har evner (ingen ryttere smides stille ud)", () => {
+  assert.equal(droppedWithoutAbilities, 0);
+  const partial = splitEntrants({ ...data, abilities: data.abilities.slice(1) });
+  assert.equal(partial.droppedWithoutAbilities, 1, "en rytter uden evner skal taelles, ikke forsvinde");
+});
+
+for (const revision of REVISIONS) {
+  test(`#6285 ${revision}: motor-gates koeres med klassementet fra etape 2 (ikke first_stage paa alle etaper)`, () => {
+    const after1 = tourHits(revision).filter((h) => h.road && h.stage !== stages[0].stage_number && h.gcStatus !== null);
+    assert.ok(after1.length > 0, "vejetaperne efter etape 1 skal melde klassementsstatus");
+    assert.deepEqual(after1.filter((h) => h.gcStatus !== "standings").map((h) => `${where(h)}: ${h.gcStatus}`), []);
+  });
 }
 
 // ── Syntetiske udfald (fejlens form fra prod) ───────────────────────────────
@@ -108,33 +142,31 @@ function fieldTimes(breakLead: number): Array<[string, number]> {
 
 // ── 1. Udbrud der vinder med minutter mod et realistisk felt ────────────────
 
-/** "Med minutter" = mindst 2:00 foran feltet. */
-const BREAKAWAY_MINUTES_SECONDS = 120;
-
-test("#6285-1 detektoren fanger en flad udbrudssejr med minutter og lader en indhentet ude", () => {
-  const won = breakawayWin(syntheticOut({ times: fieldTimes(150), formed: ["b1", "b2", "b3", "b4"] }));
-  assert.equal(won.won, true);
-  assert.ok(won.margin! >= BREAKAWAY_MINUTES_SECONDS, `margin ${won.margin}`);
-  const caughtOut = syntheticOut({ times: [["b1", 15000], ...fieldTimes(0).slice(4)], formed: ["b1", "b2", "b3", "b4"], caught: ["b1", "b2", "b3", "b4"] });
+test("#6285-1 detektoren fanger en flad udbrudssejr med minutter og lader en indhentet, en med sekunder og en kuperet ude", () => {
+  const formed = ["b1", "b2", "b3", "b4"];
+  const flat = { profile_type: "flat" };
+  const won = flatBreakawayWinWithMinutes(syntheticOut({ times: fieldTimes(FLAT_BREAKAWAY_MINUTES_SECONDS + 30), formed }), flat);
+  assert.equal(won.hit, true);
+  assert.ok(won.margin! >= FLAT_BREAKAWAY_MINUTES_SECONDS, `margin ${won.margin}`);
+  assert.equal(flatBreakawayWinWithMinutes(syntheticOut({ times: fieldTimes(20), formed }), flat).hit, false, "sekunder er ikke minutter");
+  assert.equal(flatBreakawayWinWithMinutes(syntheticOut({ times: fieldTimes(FLAT_BREAKAWAY_MINUTES_SECONDS + 30), formed }), { profile_type: "hilly" }).hit, false, "kun flade etaper");
+  const caughtOut = syntheticOut({ times: [["b1", 15000], ...fieldTimes(0).slice(4)], formed, caught: formed });
   assert.equal(breakawayWin(caughtOut).won, false);
-  assert.equal(profileClass("flat"), "flat");
+  assert.equal(flatBreakawayWinWithMinutes(caughtOut, flat).hit, false);
 });
 
 for (const revision of REVISIONS) {
   test(`#6285-1 ${revision}: intet udbrud vinder en flad etape med minutter`, revisionCase("flatBreakawayMinutes", revision), () => {
-    const flat = roadStages.filter((p) => profileClass(p.profile_type) === "flat");
-    assert.ok(flat.length >= 2, "fixturet skal have flade etaper");
-    const hits = sweep(revision, flat, (res) => {
-      const bw = breakawayWin(res.v4Output);
-      return bw.won && (bw.margin ?? 0) >= BREAKAWAY_MINUTES_SECONDS ? `udbruddet vandt med ${Math.round(bw.margin!)} s` : null;
-    });
+    const flatStages = stages.filter((p) => p.profile_type === "flat");
+    assert.ok(flatStages.length >= 2, "fixturet skal have flade etaper");
+    const hits = tourHits(revision).filter((h) => h.flatMinutes !== null).map((h) => `${where(h)}: udbruddet vandt med ${h.flatMinutes} s`);
     assert.deepEqual(hits, []);
   });
 }
 
 // ── 2. +30:00-klumper ────────────────────────────────────────────────────────
 
-test("#6285-2 detektoren fanger ryttere der clampes til 30:00 og ignorerer aegte tider", () => {
+test("#6285-2 detektoren fanger liste-gab der ikke er den raa tid over loftet, ogsaa et andet loft end 30:00", () => {
   const out = syntheticOut({ times: [["w", 18000], ["a", 18000 + 1500], ["b", 18000 + 2400], ["c", 18000 + 2700]] });
   const clamped = [
     { rider_id: "w", rank: 1, stageGap: 0 },
@@ -145,15 +177,18 @@ test("#6285-2 detektoren fanger ryttere der clampes til 30:00 og ignorerer aegte
   assert.equal(clampedAtCap(clamped, out), 2);
   const official = clamped.map((r, i) => ({ ...r, stageGap: [0, 1500, 2400, 2700][i] }));
   assert.equal(clampedAtCap(official, out), 0);
+  // Et nyt, hoejere loft (fx 40:00) er samme fejl: listen lyver om rytter c.
+  const otherCap = official.map((r) => ({ ...r, stageGap: Math.min(r.stageGap, 2500) }));
+  assert.equal(clampedAtCap(otherCap, out), 1);
+  assert.equal(overCapRaw(out), 2);
 });
 
 for (const revision of REVISIONS) {
-  test(`#6285-2 ${revision}: ingen ryttere staar paa 30:00-loftet med en laengere raa tid`, revisionCase("capClump", revision), () => {
-    const hits = sweep(revision, roadStages, (res) => {
-      const n = clampedAtCap(res.ranked, res.v4Output);
-      return n ? `${n} ryttere clampet til 30:00` : null;
-    });
-    assert.deepEqual(hits, []);
+  test(`#6285-2 ${revision}: resultatlistens gab er den raa tid, ogsaa over 30:00`, revisionCase("capClump", revision), () => {
+    const hits = tourHits(revision).filter((h) => h.road);
+    // Ikke-tom forudsaetning: uden ryttere over loftet kunne gaten aldrig slaa ud.
+    assert.ok(hits.reduce((a, h) => a + h.overCap, 0) > 0, "fixturet skal give ryttere med raa gab over 30:00");
+    assert.deepEqual(hits.filter((h) => h.clamped > 0).map((h) => `${where(h)}: ${h.clamped} ryttere med liste-gab != raa tid`), []);
   });
 }
 
@@ -174,10 +209,7 @@ test("#6285-3 detektoren fanger 'indhentet men vandt alene' og en modstridende u
 
 for (const revision of REVISIONS) {
   test(`#6285-3 ${revision}: vinderens udbrudsmaerke stemmer med resultatet`, revisionCase("labelContradiction", revision), () => {
-    const hits = sweep(revision, roadStages, (res) => {
-      const issues = labelContradictions(res.ranked, res.v4Output);
-      return issues.length ? issues.map((i: any) => i.kind).join("+") : null;
-    });
+    const hits = tourHits(revision).filter((h) => h.labels.length).map((h) => `${where(h)}: ${h.labels.join("+")}`);
     assert.deepEqual(hits, []);
   });
 }
