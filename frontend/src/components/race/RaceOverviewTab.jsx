@@ -25,6 +25,7 @@ import { formatNumber } from "../../lib/intl.js";
 import { useStageTimeline } from "../../hooks/useStageTimeline.js";
 import { selectStoryEvents } from "../../lib/stageTimelineStory.js";
 import { describeEvent } from "../../lib/stageTimelineFilm.js";
+import { honestTimelineEvents, filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6294/#6350
 import { beforeFlagChecklist, openStageDecisions, standingsWithMine } from "../../lib/raceOverviewLogic.js";
 import { resultEntity } from "../../lib/raceResultEntity.js";
 
@@ -125,7 +126,11 @@ function StandingsExtract({ t, rows, myTeamId }) {
 // S3-forward-only), rendres INTET — aldrig en opdigtet fortælling.
 function LatestFromTheRoad({ t, raceId, stageNumber, riderNameById, teamNameById }) {
   const { timeline } = useStageTimeline(raceId, stageNumber);
-  const story = timeline?.events?.length ? selectStoryEvents(timeline.events) : [];
+  // #6294/#6350: samme ærlige tidslinje som filmen: en samling står aldrig som
+  // "indhentet", og tjekpunkt-stemplede hændelser vises som "km A-B".
+  const story = timeline?.events?.length
+    ? selectStoryEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version }))
+    : [];
   if (!story.length) return null;
   return (
     <Section>
@@ -136,8 +141,8 @@ function LatestFromTheRoad({ t, raceId, stageNumber, riderNameById, teamNameById
           if (!described) return null;
           return (
             <li key={`${event.km}-${i}`} className="flex items-baseline gap-3 py-1.5 border-t border-cz-border first:border-t-0">
-              <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 w-14">
-                {t("detail.film.km", { value: formatNumber(event.km) })}
+              <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 min-w-14 whitespace-nowrap">
+                {t("detail.film.km", { value: filmKmValue(event, formatNumber) })}
               </span>
               <span className="text-cz-1 text-sm leading-snug">
                 {t(`detail.film.event.${described.key}`, described.params)}

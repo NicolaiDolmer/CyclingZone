@@ -1,9 +1,13 @@
-// #6050: hvem hentede udbruddet. Ren afledning af tidslinje-events (ingen
-// imports), delt af løbsfilmen (stageTimelineFilm.js), recappen (raceRecap.js)
+// #6050: hvem hentede udbruddet. Ren afledning af tidslinje-events (ingen IO),
+// delt af løbsfilmen (stageTimelineFilm.js), recappen (raceRecap.js)
 // og etaperapporten, så de fortæller det samme. Eget lille modul, så recappen
 // på forsiden ikke trækker hele film-logikken med i bundlen.
+// #6294: eneste import er den rene deltager-projektion (ingen IO), så
+// "indhentet" betyder det samme her som i mærket og de gemte flag.
+import { withoutRegroupCatches } from "../../../backend/lib/raceParticipationHistory.ts";
+import type { ParticipationEvent } from "../../../backend/lib/raceParticipationHistory.ts";
 
-export type TimelineEvent = { km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
+export type TimelineEvent = { km?: number; recorded_km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 export type TeamNameLookup = { get(id: string): string | undefined } | null | undefined;
 export type CatchActor =
   | { kind: "teams"; teams: string; teamCount: number; teamsHead: string; teamLast: string; km: number | null }
@@ -19,7 +23,16 @@ function idsOf(value: unknown): unknown[] {
  * Samme udvælgelse som filmens catch-punkt. Ingen formation → første catch.
  */
 export function findMorningCatch(events: readonly TimelineEvent[] | null | undefined = []): TimelineEvent | null {
-  const sorted = [...(events || [])].sort((a, b) => (a?.km ?? 0) - (b?.km ?? 0));
+  // #6294: a "catch" by a group of escapees only is a regroup, never the catch.
+  // The projection replays the race in order, so sort first: by the km the
+  // engine wrote (`recorded_km` when a film span moved `km`), then the engine's
+  // own order at that km. The answer never depends on how the list arrived.
+  const raceKm = (e: TimelineEvent) => e?.recorded_km ?? e?.km ?? 0;
+  const sorted = withoutRegroupCatches((events || [])
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => raceKm(a.e) - raceKm(b.e) || a.i - b.i)
+    .map(({ e }) => e)
+    .filter((e): e is ParticipationEvent => typeof e?.type === "string"));
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
   const morningIds = new Set(idsOf(formation?.params?.rider_ids));
   const formationGroup = formation?.params?.group_id;
