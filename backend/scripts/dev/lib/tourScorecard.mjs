@@ -436,7 +436,8 @@ export function summarizeTour(perSeed, stages) {
     return { cls, stages: c.stages, breakawayWinShare: share, breakawaySizeMedian: median(c.sizes), verdicts: { breakawayWinShare: verdict(share, TOUR_BENCHMARKS.breakawayWinShare.byClass[cls]), breakawaySize: verdict(median(c.sizes), TOUR_BENCHMARKS.breakawaySize.byClass[cls]) } };
   });
 
-  const perTour = (k) => median(perSeed.map((s) => sum(s.rows.map((r) => r[k]))));
+  // Gennemsnit pr. Tour (ikke median): en fejl i ét af tre seeds skal kunne ses.
+  const perTour = (k) => mean(perSeed.map((s) => sum(s.rows.map((r) => r[k]))));
   const race = {
     gcTo10AfterWeek1: median(perSeed.map((s) => s.gcWeek1).filter((v) => v !== null)),
     gcTo10Final: median(perSeed.map((s) => s.gcFinalTo10).filter((v) => v !== null)),
