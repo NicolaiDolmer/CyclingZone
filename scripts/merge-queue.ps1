@@ -365,15 +365,30 @@ $script:batchMerged = @()
 $script:batchRailway = $false
 $script:lastMergedSha = $null
 $script:dryBatchSize = 0
+$script:batchShas = @()
+
+# Review #6357 opus-fund 1: ci.yml's sti-filtrerede jobs (fx marketing-lint-build)
+# koerer paa push kun for det enkelte commits egen diff. Venter vi kun paa den
+# SIDSTE merge-SHA, kan en tidligere PR i raekken have roed CI uden at koeen ser
+# det. Vent derfor paa ci.yml for HVER merge-SHA i raekken (push-koersler paa
+# main annulleres ikke, saa det koster stort set ingen ekstra tid).
+function Wait-BatchCi {
+  $allOk = $true
+  foreach ($s in $script:batchShas) {
+    $ok = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $s -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) $($s.Substring(0, [Math]::Min(8, $s.Length)))"
+    if (-not $ok) { $allOk = $false }
+  }
+  return $allOk
+}
 
 # Review #6357 M1: stopper koeen midt i en raekke, er de allerede mergede PR'er
-# aldrig CI-verificeret. Vent paa CI (main) for den sidste merge-SHA og sig det
-# tydeligt, FOER koeen afsluttes.
+# aldrig CI-verificeret. Vent paa CI (main) for alle raekkens merge-SHA'er og
+# sig det tydeligt, FOER koeen afsluttes.
 function Exit-Queue([int]$Code) {
   if ($script:batchMerged.Count -gt 0 -and $script:lastMergedSha) {
     $label = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
-    Write-Host "  Koeen stopper midt i en raekke: $label er allerede merget. Venter paa CI (main) for $($script:lastMergedSha) foer exit." -ForegroundColor Yellow
-    $ok = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $script:lastMergedSha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main)"
+    Write-Host "  Koeen stopper midt i en raekke: $label er allerede merget. Venter paa CI (main) for raekkens merge-SHA'er foer exit." -ForegroundColor Yellow
+    $ok = Wait-BatchCi
     if ($ok) {
       Write-Host "  CI (main) groen efter $label. Deploy-verifikation er IKKE ventet - tjek 'Deploy verify' for $($script:lastMergedSha)." -ForegroundColor Yellow
     } else {
@@ -480,6 +495,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   Write-Host "  Merged som $sha"
   $script:batchMerged += $n
   $script:lastMergedSha = $sha
+  $script:batchShas += $sha
   if ($entryRailway) { $script:batchRailway = $true }
 
   if ($batchWithNext) {
@@ -489,12 +505,13 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
 
   $batchLabel = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
   $batchSize = $script:batchMerged.Count
-  $ciOk = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main)"
+  $ciOk = Wait-BatchCi
   if (-not $ciOk) {
     Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst). Ved flere PR'er: en af dem (eller samspillet) er aarsagen." -ForegroundColor Red
     exit 1
   }
   $script:batchMerged = @()
+  $script:batchShas = @()
 
   # Deploy-verifikation: altid for backend; og efter en RAEKKE (2+) der har
   # udloest Railway, saa sluttilstanden er verificeret (review #6357 B1).
