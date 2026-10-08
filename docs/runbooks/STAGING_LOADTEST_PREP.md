@@ -135,6 +135,30 @@ psql $env:STAGING_DB_URL -f scripts/staging/anonymize-staging.sql
 **Motor/scheduler:** tændes KUN i stagings `app_config` (`race_engine_v2`/`stage_scheduler`)
 og kun efter grønt isolationstjek. Prod-flag røres aldrig.
 
+### Fail-closed refresh (#6229)
+
+`scripts/refresh-staging.ps1` er kun "gjort", når alle tre gates er bestået. Ingen af dem kan
+springes over, heller ikke med `-VerifyOnly` eller `-SkipDump`.
+
+1. **Atomisk import:** `psql --single-transaction -v ON_ERROR_STOP=1` kører rækkefølgen guard
+   (replica-rolle, ingen timeouts), `auth.users`, public-schema og data, og til sidst rensning.
+   Et fejltrin eller en afbrudt forbindelse ruller alt tilbage. Rensningen kører med triggere
+   slukket, så den ikke selv skaber nye outbox- eller notifikationsrækker. Filrækkefølgen og
+   at ingen fil indeholder `begin`/`commit` kontrolleres før start.
+2. **Gates efter importen:** (a) schema-fingeraftryk skal matche prod (backup-klassen undtaget),
+   (b) rækketal for `riders`, `teams`, `races`, `race_results`, `board_profiles`, `app_config`
+   og `auth_users` skal ligge mellem prods tal før og efter dumpet (LEAN undtager
+   `race_results`; `app_config` må have én ekstra række til miljø-markøren), (c) antal ikke-anonyme
+   brugere i `public.users` og `auth.users` skal være præcis 0. (c) er altid det sidste
+   databasekald.
+3. **`-SkipDump`:** kræver dump-markøren og de to optællinger fra samme dump. Mangler en,
+   stopper scriptet. Et nyt dump rydder først gammelt bevis, så et afbrudt dump aldrig genbruges.
+
+Fejltekst fra psql filtreres, så kun `ERROR`/`FATAL`-linjer med maskerede nøgleværdier og
+e-mails vises (DETAIL og CONTEXT kan indeholde rækkedata). Gates er unit-testet i
+`scripts/refresh-staging.test.mjs` (kører i CI). Selve restore'en mod en database er ikke
+testet; det kræver et ejer-godkendt forsøg.
+
 ## 5. Kommandoen til målingen (Codex)
 
 Når 3 og 4 er løst og generatoren er kørt:

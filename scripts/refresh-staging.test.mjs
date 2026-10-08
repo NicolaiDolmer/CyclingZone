@@ -114,7 +114,7 @@ function gates(stageBody){
 const sw=(fp,ct,pv)=>`switch($f){'fp'{'${fp}'} 'ct'{'${ct.replaceAll('\n',';')}'.Split(';')} 'pv'{'${pv}'}}`;
 test('gates: GO only when fingerprint, counts and privacy all pass; privacy is the last call',{skip:!hasPwsh},()=>{
   const out=gates(sw(FP,counts(base),'0')).stdout;
-  assert.match(out,/GO/); assert.match(out,/CALLS:prod:fp,stage:fp,stage:ct,stage:pv/);
+  assert.match(out,/^GO/m); assert.match(out,/CALLS:prod:fp,stage:fp,stage:ct,stage:pv/);
 });
 test('gates: any failing gate stops the sequence, privacy never reached after earlier failure',{skip:!hasPwsh},()=>{
   const fp=gates(sw(`table 1 ${other}`,counts(base),'0')).stdout;
@@ -122,7 +122,7 @@ test('gates: any failing gate stops the sequence, privacy never reached after ea
   const ct=gates(sw(FP,counts({...base,riders:1}),'0')).stdout;
   assert.match(ct,/FAIL:Row count mismatch: riders/); assert.doesNotMatch(ct,/stage:pv/);
   const pv=gates(sw(FP,counts(base),'3')).stdout;
-  assert.match(pv,/FAIL:Refresh privacy/); assert.doesNotMatch(pv,/GO/);
+  assert.match(pv,/FAIL:Refresh privacy/); assert.doesNotMatch(pv,/^GO/m);
 });
 test('refresh script wires gates, atomic restore and dump proof (source contract)',()=>{
   const source=readFileSync(new URL('./refresh-staging.ps1',import.meta.url),'utf8');
