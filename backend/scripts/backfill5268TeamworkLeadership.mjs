@@ -44,7 +44,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
@@ -347,7 +347,9 @@ export function renderPublicReport(ctx) {
   L.push("Percentiler (samlet, pr. aldersbaand og pr. primaertype) og de 10 navngivne eksempler med");
   L.push("vaerdier staar i den gitignorerede detaljefil" + (ctx.privateFile ? ` \`${ctx.privateFile}\`` : "") + ".");
   L.push("Offentligt repo: ingen maalte fordelinger fra foedselsformlen her.");
-  L.push("Kvalitativt: Lederskab stiger med alderen (formlens modenhedsrampe), Holdarbejde goer ikke.");
+  L.push("Kvalitativt: Lederskab stiger med alderen (formlens modenhedsrampe). Holdarbejde har intet alders-led;");
+  L.push("unge ligger alligevel lavere, fordi de evner formlen bygger paa (placering, taktik, holdbarhed) er lavere hos dem.");
+  L.push("En betydelig andel af de nye Holdarbejde-vaerdier lander i bunden af skalaen.");
   L.push("");
   L.push("| Aldersbaand | Ryttere med teamwork fyldt | Ryttere med leadership fyldt |");
   L.push("|---|---:|---:|");
@@ -521,7 +523,7 @@ export async function run({ supabase, opts, log = console.log, now = new Date() 
     stamp, nulls, plan, impact, design, table, apply: opts.apply,
     dist: distribution(plan.entries),
     examples: pickExamples(plan.entries, opts.sample),
-    privateFile: privateFile ? privateFile.replaceAll("\\", "/") : null,
+    privateFile: privateFile ? basename(privateFile) : null,
   };
 
   const publicReport = renderPublicReport(ctx);
