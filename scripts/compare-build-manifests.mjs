@@ -21,6 +21,9 @@
 //   --label-a <navn>  navn på build A i rapporten (default: mappenavnet)
 //   --label-b <navn>  navn på build B i rapporten
 //   --context <n>     antal bytes kontekst omkring første forskel (default 100)
+//   --expect-superset carry-forward-kontrakten (#5162): B skal indeholde alle
+//                     A's assets/ med samme sha256; B må have flere. Erstatter
+//                     determinisme-sammenligningen i det kald.
 //
 // Exit 0 = alle runtime-assets identiske. Exit 1 = forskel, eller et ugyldigt
 // kald. Ved forskel printes første forskellige byte-offset i den FØRSTE
@@ -33,6 +36,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { PRERENDERED_HTML_FILES } from "../frontend/scripts/public-prerender-routes.mjs";
+import { isCarriedAssetFile } from "./lib/releaseAssetsStore.mjs";
 
 /**
  * Filer der MÅ variere mellem to builds med forskelligt release-id.
@@ -323,6 +327,47 @@ export function formatReport(diff, { rootA, rootB, context = 100 } = {}) {
   return lines.join("\n");
 }
 
+/**
+ * #5162 (carry-forward): "B indeholder A". Hver fil build A har under
+ * `assets/` (uden source maps, samme udvalg som release-lageret bærer) skal
+ * findes i B med SAMME sha256. B må gerne have flere filer — det er hele
+ * pointen: B = B's egne filer + de aktive, ældre releases'.
+ *
+ * Det er en anden gate end determinisme-sammenligningen ovenfor: den kræver
+ * at to builds af SAMME kode er ens; denne kræver at et build af NY kode
+ * stadig kan servere den gamle fanes filer.
+ */
+export function checkSuperset(manifestA, manifestB) {
+  const missing = [];
+  const mismatched = [];
+  let checked = 0;
+  for (const [rel, file] of Object.entries(manifestA.files)) {
+    if (!isCarriedAssetFile(rel)) continue;
+    checked += 1;
+    const inB = manifestB.files[rel];
+    if (!inB) missing.push(rel);
+    else if (inB.sha256 !== file.sha256) mismatched.push(rel);
+  }
+  return { checked, missing: missing.sort(), mismatched: mismatched.sort(), ok: checked > 0 && missing.length === 0 && mismatched.length === 0 };
+}
+
+export function formatSupersetReport(result, { labelA, labelB }) {
+  const lines = [`Carry-forward-kontrakt (#5162): indeholder ${labelB} alle assets fra ${labelA}?`];
+  lines.push(`  tjekket: ${result.checked} assets fra A (uden source maps)`);
+  if (result.checked === 0) {
+    lines.push("❌ A har ingen assets — kontrakten beviser intet.");
+    return lines.join("\n");
+  }
+  if (result.ok) {
+    lines.push("✅ Alle A's assets findes i B med samme sha256. En fane fra A kan hente sine chunks efter deploy B.");
+    return lines.join("\n");
+  }
+  lines.push(`❌ ${result.missing.length} mangler i B, ${result.mismatched.length} har andet indhold i B.`);
+  for (const rel of result.missing.slice(0, 25)) lines.push(`  [mangler] ${rel}`);
+  for (const rel of result.mismatched.slice(0, 25)) lines.push(`  [andet indhold] ${rel}`);
+  return lines.join("\n");
+}
+
 function parseArgs(argv) {
   const positional = [];
   const opts = { context: 100 };
@@ -332,6 +377,7 @@ function parseArgs(argv) {
     else if (arg === "--label-a") opts.labelA = argv[++i];
     else if (arg === "--label-b") opts.labelB = argv[++i];
     else if (arg === "--context") opts.context = Number(argv[++i]);
+    else if (arg === "--expect-superset") opts.expectSuperset = true;
     else if (arg.startsWith("--")) throw new Error(`Ukendt flag: ${arg}`);
     else positional.push(arg);
   }
@@ -341,7 +387,7 @@ function parseArgs(argv) {
 export function main(argv) {
   const { positional, opts } = parseArgs(argv);
   if (positional.length !== 2) {
-    console.error("Brug: node scripts/compare-build-manifests.mjs <distA> <distB> [--out <dir>]");
+    console.error("Brug: node scripts/compare-build-manifests.mjs <distA> <distB> [--out <dir>] [--expect-superset]");
     return 1;
   }
   const [rootA, rootB] = positional.map((p) => path.resolve(p));
@@ -357,6 +403,12 @@ export function main(argv) {
   if (manifestA.fileCount === 0 || manifestB.fileCount === 0) {
     console.error("❌ Et af buildene er tomt — der er intet at sammenligne.");
     return 1;
+  }
+
+  if (opts.expectSuperset) {
+    const result = checkSuperset(manifestA, manifestB);
+    console.log(formatSupersetReport(result, { labelA: manifestA.label, labelB: manifestB.label }));
+    return result.ok ? 0 : 1;
   }
 
   const diff = compareManifests(manifestA, manifestB);

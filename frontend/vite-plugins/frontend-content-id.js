@@ -23,6 +23,11 @@
 //     faste navne og hentes on-demand af PatchNotesPage. Nye patch notes kræver
 //     ikke at nogen genindlæser noget.
 //   · worktree-id-filens indhold (dev/e2e-hjælper, ikke spiller-vendt runtime).
+//   · filer i dist/assets som scripts/carry-forward-assets.mjs bærer videre fra
+//     ÆLDRE releases (#5162). Id'et regnes af Rollups egen bundle og af kilderne
+//     på disken, aldrig af dist-mappen, så det kan ikke rotere med
+//     retention-listen. Testen "båret-videre filer" i frontend-content-id.test.js
+//     holder det fast.
 //
 // Sha'en forsvinder ikke: den står stadig i version.json og i meta-tagget, så et
 // forløb kan spores i Sentry og i telemetrien. Den er bare ikke længere det der
