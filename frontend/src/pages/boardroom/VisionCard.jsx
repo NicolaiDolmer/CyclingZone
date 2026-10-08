@@ -64,11 +64,11 @@ export default function VisionCard({ vision }) {
         >
           {milestones.map((m) => (
             <li key={m.id} data-testid="vision-milestone" className="flex items-start gap-3 sm:block sm:text-center">
-              <div className="flex w-4 shrink-0 justify-center pt-[1px] sm:block sm:w-auto sm:pt-0">
+              <div className="flex w-4 shrink-0 justify-center pt-px sm:block sm:w-auto sm:pt-0">
                 <MilestoneDot status={m.status} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className={`text-3xs font-semibold uppercase tracking-[.1em] sm:mt-2 ${m.isCurrentSeason ? "text-cz-accent-t" : "text-cz-3"}`}>
+                <p className={`text-3xs font-semibold uppercase tracking-widest sm:mt-2 ${m.isCurrentSeason ? "text-cz-accent-t" : "text-cz-3"}`}>
                   {m.isCurrentSeason
                     ? t("boardroom.vision.currentSeasonLabel", { season: m.seasonNumber })
                     : t("boardroom.vision.seasonLabel", { season: m.seasonNumber })}
@@ -77,7 +77,7 @@ export default function VisionCard({ vision }) {
                     (resolveGoalTitle, fx "Top 40 in the division"), ikke goalType-
                     korttitlen: fire ens "Division finish" sagde ikke hvad maalet
                     var. Korttitlen er kun fallback for en ukendt maaltype. */}
-                <p data-testid="vision-milestone-title" className="mt-[3px] break-words text-[13px] font-medium text-cz-1">
+                <p data-testid="vision-milestone-title" className="mt-[3px] wrap-break-word text-[13px] font-medium text-cz-1">
                   {resolveGoalTitle(t, m) || t(m.labelKey, m.labelParams || {})}
                 </p>
                 {/* #5820 · Én kort linje om HVORNÅR milepælen tælles, så et

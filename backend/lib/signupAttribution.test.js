@@ -37,6 +37,35 @@ test("buildAttributionRow gemmer direct-trafik (kun landing_path) men ikke en si
   assert.equal(buildAttributionRow("u1", { first_seen_at: "2026-06-15T10:00:00.000Z" }), null);
 });
 
+test("buildAttributionRow: egen side som referrer med UTM i query henter UTM og nulstiller referrer (#6292)", () => {
+  const row = buildAttributionRow("u1", {
+    referrer: "https://cyclingzone.org/?utm_source=reddit&utm_medium=social&utm_campaign=beta",
+    landing_path: "/login",
+  });
+  assert.equal(row.referrer, null);
+  assert.equal(row.utm_source, "reddit");
+  assert.equal(row.utm_medium, "social");
+  assert.equal(row.utm_campaign, "beta");
+});
+
+test("buildAttributionRow: egen side som referrer uden UTM giver referrer null (#6292)", () => {
+  const row = buildAttributionRow("u1", {
+    referrer: "https://cyclingzone.org/about",
+    landing_path: "/login",
+  });
+  assert.equal(row.referrer, null);
+  assert.equal(row.utm_source, null);
+  assert.equal(row.landing_path, "/login");
+});
+
+test("buildAttributionRow: ekstern referrer bevares (#6292)", () => {
+  const row = buildAttributionRow("u1", {
+    referrer: "https://www.google.com/search?q=cycling+manager",
+    landing_path: "/",
+  });
+  assert.equal(row.referrer, "https://www.google.com/search?q=cycling+manager");
+});
+
 test("buildAttributionRow capper for lange værdier", () => {
   const long = "a".repeat(1000);
   const row = buildAttributionRow("u1", { utm_source: long, referrer: long });

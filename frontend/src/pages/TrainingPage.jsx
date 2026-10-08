@@ -324,13 +324,13 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inlin
             <select
               value={sort ?? ""}
               onChange={(e) => onSort(e.target.value)}
-              className="min-h-11 min-w-0 max-w-full appearance-none truncate rounded-cz bg-transparent pe-4 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-1 focus:outline-none focus-visible:ring-1 focus-visible:ring-cz-3"
+              className="min-h-11 min-w-0 max-w-full appearance-none truncate rounded-cz bg-transparent pe-4 font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-1 focus:outline-hidden focus-visible:ring-1 focus-visible:ring-cz-3"
             >
               {options.map(({ key, label }) => (
                 <option key={key} value={key}>{label}</option>
               ))}
             </select>
-            <ChevronDownIcon size={12} className="pointer-events-none absolute end-0 text-cz-3" aria-hidden="true" />
+            <ChevronDownIcon size={12} className="pointer-events-none absolute inset-e-0 text-cz-3" aria-hidden="true" />
           </span>
         </label>
         <button
@@ -399,7 +399,7 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inlin
         // nye tabel og #5124's D-047-gren), så rettelsen gælder også når
         // training_mobile_table er off — et for lille tryk-mål er en fejl i
         // begge flader, ikke en egenskab ved den ene.
-        className="flex-shrink-0 flex min-h-11 min-w-11 items-center justify-center px-3 rounded-cz border border-cz-border
+        className="shrink-0 flex min-h-11 min-w-11 items-center justify-center px-3 rounded-cz border border-cz-border
           bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors disabled:opacity-40"
       >
         {sortDir === "desc"
@@ -485,7 +485,6 @@ export default function TrainingPage() {
     trainingScore,
     // Står FØR racingToday med vilje: #3459's guard i TrainingPage.raceDay.test.js
     // pinner at racingToday er det sidste felt før `} = training;`.
-    dailyReceiptEnabled,
     racingToday,
     // #4847: knappens aabne-tilstand (null = flaget training_tick_per_race_day er off).
     dayClose,
@@ -579,7 +578,7 @@ export default function TrainingPage() {
 
   // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
   // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
-  const history = useTrainingHistory({ dailyReceiptEnabled });
+  const history = useTrainingHistory();
 
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
@@ -2349,7 +2348,7 @@ export default function TrainingPage() {
                       <RiderLink id={rider.id} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent transition-colors">
                         {rider.firstname} {rider.lastname}
                       </RiderLink>
-                      <div className="mt-0.5 font-data text-3xs uppercase tracking-[.05em] text-cz-3">
+                      <div className="mt-0.5 font-data text-3xs uppercase tracking-wider text-cz-3">
                         {age != null
                           ? (roleLabel
                             ? t("development.ageRoleLine", { age, role: roleLabel })
@@ -2366,7 +2365,7 @@ export default function TrainingPage() {
                           <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />
                           <div className="mt-1 font-mono tabular-nums text-2xs text-cz-2">
                             {roleLabel ? (
-                              <span className="font-data uppercase tracking-[.05em] text-3xs text-cz-1 me-1.5">{roleLabel}</span>
+                              <span className="font-data uppercase tracking-wider text-3xs text-cz-1 me-1.5">{roleLabel}</span>
                             ) : null}
                             {Number.isFinite(estimate.loft)
                               ? t("development.numbers", { now: estimate.now, lo: estimate.prog.lo, hi: estimate.prog.hi, loft: estimate.loft })

@@ -70,7 +70,7 @@ const ZONES = {
   success: {
     cell: "bg-cz-success-bg",
     stickyCell:
-      "bg-cz-card [background-image:linear-gradient(var(--success-bg),var(--success-bg))]",
+      "bg-cz-card bg-[linear-gradient(var(--success-bg),var(--success-bg))]",
     edgeTop: "border-t-2 border-t-cz-success/40",
     edgeBottom: "border-b-2 border-b-cz-success/40",
     pill: "bg-cz-success-bg text-cz-success",
@@ -78,7 +78,7 @@ const ZONES = {
   danger: {
     cell: "bg-cz-danger-bg",
     stickyCell:
-      "bg-cz-card [background-image:linear-gradient(var(--danger-bg),var(--danger-bg))]",
+      "bg-cz-card bg-[linear-gradient(var(--danger-bg),var(--danger-bg))]",
     edgeTop: "border-t-2 border-t-cz-danger/40",
     edgeBottom: "border-b-2 border-b-cz-danger/40",
     pill: "bg-cz-danger-bg text-cz-danger",

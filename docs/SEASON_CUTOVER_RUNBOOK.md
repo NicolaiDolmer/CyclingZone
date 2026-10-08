@@ -781,6 +781,48 @@ Alle afhjælpninger er prod-skrivninger. De kræver ejer-go og køres **før** t
 
 ## Reference
 
+### Load-testens dataprerequisites (#5904, ejer-valg A 4/10)
+
+Før en fuld løbsdags-test kan accepteres, skal staging have aktuelt schema og
+resultatvolumen svarende til en frisk prod-måling. Claude Code ejer klargøringen
+af `staging-cutover` efter [A-beslutningen](https://github.com/NicolaiDolmer/CyclingZone/issues/5904#issuecomment-5978309198).
+Kontrollen her læser alene; den klargør ikke data og starter ingen jobs.
+
+Kør fra worktree-roden i en PowerShell-proces med eksisterende staging-helper:
+
+```powershell
+. ./scripts/lib/Staging-Env.ps1
+Set-StagingEnv -BranchName staging-cutover
+# Erstat tallet med den aktuelle, dokumenterede prod-størrelse; ingen default.
+node scripts/loadtest/check-staging-prerequisites.mjs --min-results 1865119
+```
+
+Tallet ovenfor er et målt eksempel fra 4/10, ikke et kvalitetsmål. Scriptet
+accepterer kun den godkendte branch `pywxpnynzmbukdvoiazp` med dens præcise HTTPS
+origin og `STAGING_*`-credentials. Der er ingen fallback til prod-env. Fire
+HEAD-kald kontrollerer races-felterne, `training_date_work`,
+`race_day_participation` og præcis COUNT af `race_results`; hvert kald har
+15 sekunders deadline og afviser redirects. Ingen rækker, credentials eller
+rå serverfejl udskrives. Manglende schema, ukendt count, netværksfejl eller for
+lav volumen giver `BLOCKED` og exit 1.
+
+Genmålt 7/10: staging har 1.889.644 resultatrækker mod prods friske katalogestimat
+på 1.931.805. Med dette konservative volumengrundlag returnerer kontrollen
+`BLOCKED`, `RESULT_VOLUME_TOO_SMALL`, `loadTestPassed=false` og exit 1.
+Alle tre schema-prober består. Gårsdagens grønne kontrol med et ældre minimum
+er ikke bevis for, at dagens volumenkrav består. Claude skal klargøre staging
+igen, eller ejeren skal udtrykkeligt godkende et andet grundlag, før den fulde
+løbsdag kan godkendes. Grænsen sænkes ikke automatisk.
+
+`DATA_PREREQUISITES_READY` / exit 0 betyder kun, at disse datakrav består.
+`loadTestPassed` er altid false. Pinned løbsdato, alle senior/U23/junior-puljer
+og slots, tilstrækkelige entries/ryttere, isoleret backend uden eksterne
+sideeffekter, samtidige reads/finalisering/træning, fault/restart/recovery og
+fasevis RAM/IO/query/HTTP/URL-måling skal fortsat bevises på rigtig staging.
+Ingen sæsonskifte-, aktiverings-, merge- eller prod-go følger af dette output.
+SSOT for accept: `GAME_INVARIANTS.md`, `RACE_ENGINE_RULES.md`,
+`TRAINING_RULES.md`, `CALENDAR_RULES.md` og ejerens #5904/#5692-testkontrakt.
+
 - `docs/SEASON_TRANSITION_CHECKLIST.md` — S1→S2-drejebogen (komprimerings-specifik,
   men trin 0/1/1b/4/5/7-strukturen og transition-motor-referencerne er stadig facit).
 - `scripts/preflight-season-cutover.ps1` — kør FØRST. Parametre: `-FromSeasonNumber`/

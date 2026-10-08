@@ -34,6 +34,7 @@
 
 import { ALL_CRON_MONITORS } from "./cronMonitorRegistry.js";
 import { withOpsMention } from "./opsWebhook.js";
+import { clampEmbedPayload, DISCORD_EMBED_LIMITS } from "./discordEmbedLimits.js";
 import { shouldAlertOnChange } from "./opsAlertDedupe.js";
 
 export const CRON_CHECKINS_TABLE = "cron_checkins";
@@ -157,7 +158,7 @@ function buildOverdueEmbed(overdue, now) {
     );
     return `• \`${slug}\` — sidste check-in ${new Date(lastCheckinAt).toISOString()} (${minutesLate} min over margin)`;
   });
-  return {
+  return clampEmbedPayload({
     embeds: [
       {
         title: "⚠️ Cron-heartbeat-vagt: job(s) har misset check-in",
@@ -165,11 +166,31 @@ function buildOverdueEmbed(overdue, now) {
           "Egen backup for Sentrys cron-monitorer (#2892 — Sentrys basisplan tillader kun 1 aktiv monitor). " +
           "Tjek Railway-logs/deploy-status for de listede jobs.",
         color: 0xe74c3c,
-        fields: [{ name: "Overskredne jobs", value: lines.join("\n") || "(ingen)" }],
+        fields: [{ name: "Overskredne jobs", value: fitLinesToFieldValue(lines) || "(ingen)" }],
         timestamp: now.toISOString(),
       },
     ],
-  };
+  });
+}
+
+// CYCLINGZONE-94 (6/10): efter et Supabase-udfald var mange jobs overskredet på
+// én gang; ~100 tegn pr. linje sprængte Discords felt-grænse (1024), og Discord
+// svarede 400 — alarmen udeblev netop når den var vigtigst. Hele linjer tages
+// med så langt pladsen rækker, resten opsummeres i en hale-linje.
+function fitLinesToFieldValue(lines, max = DISCORD_EMBED_LIMITS.fieldValue) {
+  const all = lines.join("\n");
+  if (all.length <= max) return all;
+  // Hale-linjens længde med det størst mulige antal, så den altid passer.
+  const tailBudget = `\n…og ${lines.length} flere (${lines.length} i alt)`.length;
+  const kept = [];
+  let used = 0;
+  for (const line of lines) {
+    const next = used + (kept.length ? 1 : 0) + line.length;
+    if (next + tailBudget > max) break;
+    kept.push(line);
+    used = next;
+  }
+  return `${kept.join("\n")}\n…og ${lines.length - kept.length} flere (${lines.length} i alt)`;
 }
 
 /**

@@ -28,7 +28,7 @@ export default function OnboardingCompletionCard({ onDismiss }) {
         </div>
         <button
           onClick={onDismiss}
-          className="text-cz-3 hover:text-cz-1 p-1 flex-shrink-0"
+          className="text-cz-3 hover:text-cz-1 p-1 shrink-0"
           aria-label={t("onboardingComplete.dismissAria")}
         >
           <XIcon size={16} aria-hidden="true" />
@@ -43,7 +43,7 @@ export default function OnboardingCompletionCard({ onDismiss }) {
             className="bg-cz-subtle border border-cz-border rounded-cz p-3 hover:border-cz-accent/40 transition-all"
           >
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-0.5 h-3.5 bg-cz-accent rounded-full flex-shrink-0" aria-hidden="true" />
+              <span className="w-0.5 h-3.5 bg-cz-accent rounded-full shrink-0" aria-hidden="true" />
               <p className="text-cz-1 text-sm font-semibold">{t(`onboardingComplete.nextLinks.${link.key}.label`)}</p>
             </div>
             <p className="text-cz-3 text-xs">{t(`onboardingComplete.nextLinks.${link.key}.desc`)}</p>

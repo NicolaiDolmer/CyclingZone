@@ -15,7 +15,7 @@ import { resolveGoalTitle } from "./boardroomFormat.js";
 function SummaryRow({ label, faces = null, children, actionLabel, onAction }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-cz-border px-0.5 py-2.5">
-      <p className="w-full flex-shrink-0 font-data text-3xs uppercase tracking-[.1em] text-cz-3 lg:w-24">
+      <p className="w-full shrink-0 font-data text-3xs uppercase tracking-widest text-cz-3 lg:w-24">
         {label}
       </p>
       {faces}
@@ -68,7 +68,7 @@ export default function OverviewSummaryRows({ vision, board, onOpenVision, onOpe
           actionLabel={t("boardroom.overview.openBoard")}
           onAction={onOpenBoard}
           faces={
-            <div className="flex flex-shrink-0 gap-1.5">
+            <div className="flex shrink-0 gap-1.5">
               {members.map((member) => (
                 <MonogramAvatar
                   key={member.archetypeKey}

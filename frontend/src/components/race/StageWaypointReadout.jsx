@@ -49,7 +49,7 @@ export default function StageWaypointReadout({ waypoint, passages, stageNumber, 
         <p className="text-cz-1 text-sm font-semibold truncate">{title}</p>
         <p className="text-cz-2 text-2xs font-mono">{meta}</p>
       </div>
-      <div className="text-end min-w-[9rem]">
+      <div className="text-end min-w-36">
         <p className="text-cz-3 text-3xs uppercase tracking-wider font-semibold mb-0.5">
           {results.length ? t("detail.route.result") : t("detail.route.atStake")}
         </p>

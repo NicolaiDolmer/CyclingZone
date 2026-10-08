@@ -65,7 +65,7 @@ export default function FilterBar({
           value={f.value}
           onChange={f.onChange}
           aria-label={f.ariaLabel}
-          className="w-auto min-w-[9rem]"
+          className="w-auto min-w-36"
         >
           {f.options.map((o) => (
             <option key={o.value} value={o.value}>
@@ -92,7 +92,7 @@ export default function FilterBar({
           lader et bredt panel vokse ud over filterlinjens bredde. Default er
           uaendret: en kort felt-liste der flugter til hoejre. */}
       {children && (
-        <details open={moreDefaultOpen} className={`group order-last w-full ${moreWide ? "basis-full" : "sm:order-none sm:ms-auto sm:w-auto"}`}>
+        <details open={moreDefaultOpen} className={`group order-last w-full ${moreWide ? "basis-full" : "sm:order-0 sm:ms-auto sm:w-auto"}`}>
           <summary className="flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-cz-2 select-none hover:text-cz-1">
             <FilterIcon size={14} aria-hidden="true" />
             {moreLabel}

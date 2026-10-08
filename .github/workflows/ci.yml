@@ -834,6 +834,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/guard-inventory-cell.test.mjs
 
+      - name: Test staging load-test data prerequisites (#5904)
+        if: ${{ !cancelled() }}
+        run: node --test scripts/loadtest/check-staging-prerequisites.test.mjs
+
       # #5565: billedstationens rene dele (argumenter, preview-opslag uden net,
       # filnavne, skrive-vagt, "aldrig et falsk ur"). Nul npm-afhaengigheder;
       # browseren er mocket vaek, saa testen hoerer hjemme blandt de npm-ci-frie
@@ -893,7 +897,7 @@ jobs:
 
       - name: Test shared wave admission and Codex lifecycle fixtures
         run: |
-          node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/wave-api-recovery.test.mjs scripts/make-wave-brief.test.mjs
+          node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/codex-git-write-probe.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/wave-api-recovery.test.mjs scripts/verify-lock.test.mjs scripts/make-wave-brief.test.mjs
           python3 scripts/hooks/lib/test_codex_sessions.py
           bash scripts/test-guard-agent-spawn.sh
 

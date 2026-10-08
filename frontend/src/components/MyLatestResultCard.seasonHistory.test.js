@@ -66,7 +66,7 @@ test("#2886 mobil (54,9% af besøg): løbsnavnet truncater — tal-kolonnen må 
   const row = source.slice(source.indexOf("function HistoryRow"), source.indexOf("export default"));
   assert.match(row, /flex-1 min-w-0[^"]*truncate/, "løbsnavnet skal være det element der giver plads (min-w-0 + truncate)");
   assert.doesNotMatch(row, /overflow-x|whitespace-nowrap on the row/, "rækken må ikke introducere vandret scroll");
-  assert.equal((row.match(/flex-shrink-0/g) || []).length, 2, "rang- og tal-kolonnen skal begge være faste, så navnet er det eneste der giver efter");
+  assert.equal((row.match(/(?<![\w-])shrink-0/g) || []).length, 2, "rang- og tal-kolonnen skal begge være faste, så navnet er det eneste der giver efter");
 });
 
 test("#2886 design: tabular figures på al ny numerik, data-font, ingen emoji/skygger/rounded-2xl", () => {

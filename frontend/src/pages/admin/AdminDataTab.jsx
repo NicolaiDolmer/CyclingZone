@@ -249,13 +249,13 @@ export default function AdminDataTab() {
                               <label className="block text-cz-3 text-xs mb-1">Løbsnavn</label>
                               <input type="text" value={editingRace.name}
                                 onChange={e => setEditingRace(er => ({ ...er, name: e.target.value }))}
-                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
+                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent" />
                             </div>
                             <div>
                               <label className="block text-cz-3 text-xs mb-1">Løbsklasse</label>
                               <select value={editingRace.race_class || ""}
                                 onChange={e => setEditingRace(er => ({ ...er, race_class: e.target.value }))}
-                                className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+                                className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent">
                                 <option value="">— Ingen klasse —</option>
                                 {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
                                   <optgroup key={type} label={type}>
@@ -270,7 +270,7 @@ export default function AdminDataTab() {
                               <label className="block text-cz-3 text-xs mb-1">Type</label>
                               <select value={editingRace.race_type}
                                 onChange={e => setEditingRace(er => ({ ...er, race_type: e.target.value }))}
-                                className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+                                className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
                                 <option value="stage_race">Etapeløb</option>
                                 <option value="single">Enkeltdagsløb</option>
                               </select>
@@ -279,7 +279,7 @@ export default function AdminDataTab() {
                               <label className="block text-cz-3 text-xs mb-1">Etaper</label>
                               <input type="number" min={1} value={editingRace.stages}
                                 onChange={e => setEditingRace(er => ({ ...er, stages: e.target.value }))}
-                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -307,7 +307,7 @@ export default function AdminDataTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Sæson</label>
             <select value={raceForm.season_id} onChange={e => setRaceForm(f => ({ ...f, season_id: e.target.value }))} required
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
@@ -322,7 +322,7 @@ export default function AdminDataTab() {
               onFocus={() => setPoolSearchOpen(true)}
               onBlur={() => setTimeout(() => setPoolSearchOpen(false), 150)}
               autoComplete="off"
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
             {poolSearchOpen && raceForm.name.length >= 1 && (() => {
               const q = raceForm.name.toLowerCase().trim();
               const matches = racePool
@@ -366,7 +366,7 @@ export default function AdminDataTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Løbsklasse</label>
             <select value={raceForm.race_class} onChange={e => setRaceForm(f => ({ ...f, race_class: e.target.value }))}
-              className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">— Ingen klasse —</option>
               {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
                 <optgroup key={type} label={type}>
@@ -380,7 +380,7 @@ export default function AdminDataTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Type</label>
             <select value={raceForm.race_type} onChange={e => setRaceForm(f => ({ ...f, race_type: e.target.value }))}
-              className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="stage_race">Etapeløb</option>
               <option value="single">Enkeltdagsløb</option>
             </select>
@@ -389,7 +389,7 @@ export default function AdminDataTab() {
             <label className="block text-cz-3 text-xs mb-1">Etaper</label>
             <input type="number" min={1} value={raceForm.stages}
               onChange={e => setRaceForm(f => ({ ...f, stages: e.target.value }))}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
           </div>
           <div className="flex items-end">
             <button type="submit" disabled={loading.race}

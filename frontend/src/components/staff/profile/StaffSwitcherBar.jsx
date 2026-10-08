@@ -36,13 +36,13 @@ export default function StaffSwitcherBar({ current, roster, onNavigate }) {
           disabled={!prev}
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0"
         >
-          <ChevronLeftIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
-          <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{prev ? t(`roles.${prev.role}`) : ""}</span>
+          <ChevronLeftIcon size={16} aria-hidden="true" className="text-cz-3 shrink-0" />
+          <span className="truncate max-w-28 sm:max-w-40">{prev ? t(`roles.${prev.role}`) : ""}</span>
         </button>
 
         {/* Midte: index + total */}
         <div className="flex-1 flex items-center justify-center gap-2.5 min-w-0">
-          <span className="font-mono tabular-nums text-2xs text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill flex-shrink-0">
+          <span className="font-mono tabular-nums text-2xs text-cz-2 bg-cz-body border border-cz-border px-2 py-0.5 rounded-cz-pill shrink-0">
             {t("switcher.count", { index: idx + 1, total: roster.length })}
           </span>
         </div>
@@ -54,8 +54,8 @@ export default function StaffSwitcherBar({ current, roster, onNavigate }) {
           disabled={!next}
           className="min-h-[44px] flex items-center gap-1.5 text-sm text-cz-2 hover:text-cz-1 disabled:opacity-30 disabled:cursor-default transition-colors min-w-0 justify-end"
         >
-          <span className="truncate max-w-[7rem] sm:max-w-[10rem]">{next ? t(`roles.${next.role}`) : ""}</span>
-          <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
+          <span className="truncate max-w-28 sm:max-w-40">{next ? t(`roles.${next.role}`) : ""}</span>
+          <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 shrink-0" />
         </button>
       </div>
     </div>

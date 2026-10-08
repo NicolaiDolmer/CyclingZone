@@ -46,7 +46,7 @@ export default function FatigueForecast({
         {settled ? value : t("forecast.value", { value })}
       </span>
       <span className="relative h-1.5 w-12 flex-none overflow-hidden rounded-cz-pill bg-cz-subtle" aria-hidden="true">
-        <span className={`absolute inset-y-0 start-0 rounded-cz-pill ${TONE_FILL[tone]}`} style={{ width: `${pct}%` }} />
+        <span className={`absolute inset-y-0 inset-s-0 rounded-cz-pill ${TONE_FILL[tone]}`} style={{ width: `${pct}%` }} />
       </span>
       <span className={`text-xs font-medium ${TONE_TEXT[tone]}`} aria-hidden="true">{bandText}</span>
     </div>

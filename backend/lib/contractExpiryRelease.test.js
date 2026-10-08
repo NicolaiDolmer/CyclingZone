@@ -128,7 +128,7 @@ test("frigiver PRÆCIS de kandidater fetchExpiredContractRiders returnerer — t
     fetchExpiredContractRiders: async () => candidates,
   });
 
-  assert.deepEqual(stats, { candidates: 2, released: 2, deferredByRacing: 0, notified: 1, notifyFailed: 0, failed: 0 });
+  assert.deepEqual(stats, { candidates: 2, released: 2, deferredByRacing: 0, notified: 1, notifyFailed: 0, failed: 0, youthNormalized: 0 });
   assert.equal(riderUpdates.length, 2, "begge kandidater fik en update-kald");
   for (const u of riderUpdates) {
     assert.deepEqual(u.patch, {
@@ -248,7 +248,7 @@ test("ingen kandidater → nul-stats, ingen writes", async () => {
     fetchExpiredContractRiders: async () => [],
   });
 
-  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 });
+  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0, youthNormalized: 0 });
   assert.equal(riderUpdates.length, 0);
   assert.equal(calls.length, 0);
 });
@@ -260,7 +260,7 @@ test("ugyldigt seasonNumber → nul-stats uden at røre DB'en", async () => {
     supabase, seasonNumber: NaN,
     fetchExpiredContractRiders: async () => { fetchCalled = true; return []; },
   });
-  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 });
+  assert.deepEqual(stats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0, youthNormalized: 0 });
   assert.equal(fetchCalled, false, "guard-clause skal returnere FØR fetch — ingen unødig DB-tur");
 });
 
@@ -327,7 +327,7 @@ test("fetchExpiredContractRiders-fejl hænger tomme partialStats på errors (int
   );
 
   assert.match(err.message, /season lookup boom/);
-  assert.deepEqual(err.partialStats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0 });
+  assert.deepEqual(err.partialStats, { candidates: 0, released: 0, deferredByRacing: 0, notified: 0, notifyFailed: 0, failed: 0, youthNormalized: 0 });
 });
 
 test("getRidersInActiveStageRace-fejl hænger partialStats med kendt candidates-tal på errors", async () => {

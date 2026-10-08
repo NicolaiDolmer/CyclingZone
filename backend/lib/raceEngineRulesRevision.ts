@@ -25,21 +25,28 @@
 // sine egne" (et hold foerer ikke jagten paa en gruppe med egen rytter i, og
 // dets udbrydere sidder paa hjul ved en trussel mod holdets GC-rytter).
 // Samlepunkt for uge 41-pakken. IKKE aktuel endnu: flip er ejer-only.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3"] as const;
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
 
 // #6187: revisionerne er en ARVELINJE: hver orders_gc-revision er hele den
 // forrige plus sit eget. Kaldsteder spoerger derfor "mindst vN?" via
-// helperne nedenfor i stedet for at sammenligne strenge (en ny revision skal
-// kun tilfoejes her og i listen ovenfor for at arve alt det foregaaende).
+// helperne nedenfor i stedet for at sammenligne strenge. En sidegren skal
+// angive sin mekaniske generation eksplicit; official_times_v1 arver v2.
 const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object.freeze({
   legacy: 0,
   orders_gc_v1: 1,
   orders_gc_v2: 2,
   orders_gc_v3: 3,
+  // #6284: a v2 branch for official result integrity, NOT v3 mechanics.
+  official_times_v1: 2,
 });
+
+/** Only this future pinned revision stores uncapped official stage gaps. */
+export function preservesOfficialStageTimes(value: unknown): boolean {
+  return value === "official_times_v1";
+}
 
 /** 0 for legacy og alt ukendt; ellers revisionens plads i orders_gc-arvelinjen. */
 export function ordersGcGeneration(value: unknown): number {

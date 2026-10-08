@@ -281,7 +281,7 @@ export default function AdminSystemTab() {
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2 items-center flex-shrink-0">
+                <div className="flex gap-2 items-center shrink-0">
                   <button onClick={() => testWebhook(w)} disabled={loading[`test_${w.id}`]}
                     className="text-cz-3 text-xs hover:text-cz-1 disabled:opacity-50 transition-colors">
                     {loading[`test_${w.id}`] ? "..." : "Test"}
@@ -305,13 +305,13 @@ export default function AdminSystemTab() {
         <div className="flex gap-2 flex-wrap">
           <input type="text" placeholder="Navn" value={newWebhook.webhook_name}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-36 focus:outline-none" />
+            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-36 focus:outline-hidden" />
           <input type="text" placeholder="Webhook URL" value={newWebhook.webhook_url}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm flex-1 min-w-[200px] focus:outline-none" />
+            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm flex-1 min-w-[200px] focus:outline-hidden" />
           <select value={newWebhook.webhook_type}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_type: e.target.value }))}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
             <option value="general">General</option>
             <option value="transfer_history">Transferhistorik</option>
           </select>
@@ -333,7 +333,7 @@ export default function AdminSystemTab() {
                   <p className="text-cz-2 text-xs">{log.description}</p>
                   {log.target_team?.name && <p className="text-cz-3 text-xs mt-0.5">Hold: {log.target_team.name}</p>}
                 </div>
-                <p className="text-cz-3 text-xs flex-shrink-0">{timeAgo(log.created_at)}</p>
+                <p className="text-cz-3 text-xs shrink-0">{timeAgo(log.created_at)}</p>
               </div>
             ))}
           </div>

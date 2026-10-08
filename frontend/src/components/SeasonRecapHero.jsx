@@ -121,13 +121,13 @@ export default function SeasonRecapHero({
       <SectionHeader title={t("recap.heading")} meta={t("recap.metaFinal", { number: seasonNumber })} />
 
       <div className="mb-2 flex items-center gap-1.5">
-        <BookOpenIcon size={15} className="flex-shrink-0 text-cz-accent" aria-hidden="true" />
-        <span className="font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
+        <BookOpenIcon size={15} className="shrink-0 text-cz-accent" aria-hidden="true" />
+        <span className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">
           {t("recap.eyebrow", { number: seasonNumber })}
         </span>
       </div>
 
-      <p className="font-display block break-words text-[32px] uppercase leading-[.92] text-cz-1 sm:text-[40px]">
+      <p className="font-display block wrap-break-word text-[32px] uppercase leading-[.92] text-cz-1 sm:text-[40px]">
         {teamName}
       </p>
 
@@ -150,8 +150,8 @@ export default function SeasonRecapHero({
           return (
             <div key={s.key} className="min-w-0">
               <div className="mb-1 flex items-center gap-1">
-                {Icon && <Icon size={13} className="flex-shrink-0 text-cz-3" aria-hidden="true" />}
-                <span className="font-data text-3xs uppercase tracking-[.1em] text-cz-3">{s.label}</span>
+                {Icon && <Icon size={13} className="shrink-0 text-cz-3" aria-hidden="true" />}
+                <span className="font-data text-3xs uppercase tracking-widest text-cz-3">{s.label}</span>
               </div>
               <p className="font-data text-[20px] font-[650] tabular-nums text-cz-1">{s.value}</p>
             </div>
@@ -167,9 +167,9 @@ export default function SeasonRecapHero({
             <li key={h.id ?? i} className="border-t border-cz-border py-2.5">{h.node}</li>
           ) : (
             <li key={h.id ?? i} className="flex items-center gap-2.5 border-t border-cz-border py-2">
-              {h.icon && <h.icon size={14} className="flex-shrink-0 text-cz-2" aria-hidden="true" />}
+              {h.icon && <h.icon size={14} className="shrink-0 text-cz-2" aria-hidden="true" />}
               <span className="min-w-0 flex-1 truncate text-[13px] text-cz-2">{h.label}</span>
-              <span className="font-data flex-shrink-0 text-[13px] font-semibold tabular-nums text-cz-1">
+              <span className="font-data shrink-0 text-[13px] font-semibold tabular-nums text-cz-1">
                 {h.value}
               </span>
             </li>

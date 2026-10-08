@@ -106,7 +106,7 @@ async function fetchAllRiderSeasonRows(riderId) {
 // Hero-handlingsrækkens trigger-knapper (ejer-feedback 3/7): kompakte, auto-
 // bredde og med appens delte buttonStyles i stedet for fuldbredde-bjælker.
 // Åben-tilstand = accent-tint så den udfoldede formular kobles visuelt til sin knap.
-const TRIGGER_OPEN = "!border-cz-accent/40 !text-cz-accent-t !bg-cz-accent/5";
+const TRIGGER_OPEN = "border-cz-accent/40! text-cz-accent-t! bg-cz-accent/5!";
 const triggerClass = (open, variant = "secondary") =>
   `${buttonClass({ variant })} ${open ? TRIGGER_OPEN : ""}`;
 // Udfoldede paneler/feedback: komponent-roden er display:contents, så panelet
@@ -186,17 +186,17 @@ function SwapOfferButton({ rider, myTeamId }) {
       {show && (
         <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-hidden focus:border-cz-accent">
             <option value="">{t("swapOffer.selectRider")}</option>
             {myRiders.map(r => (
               <option key={r.id} value={r.id}>{r.firstname} {r.lastname} ({formatNumber(getRiderMarketValue(r))} CZ$)</option>
             ))}
           </select>
           <div className="flex items-center gap-2">
-            <label className="text-cz-3 text-xs flex-shrink-0">{t("swapOffer.cashLabel")}</label>
+            <label className="text-cz-3 text-xs shrink-0">{t("swapOffer.cashLabel")}</label>
             <AmountInput value={cash} onValueChange={v => setCash(v ?? 0)}
               wrapperClassName="flex-1"
-              className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+              className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-hidden focus:border-cz-accent" />
           </div>
           <p className="text-cz-3 text-xs">{t("swapOffer.cashHint")}</p>
           <button onClick={sendSwap} disabled={loading || !offeredId}
@@ -271,10 +271,10 @@ function DirectOfferButton({ rider, seasonYear }) {
         <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <AmountInput value={amount} onValueChange={v => setAmount(v ?? 0)}
             placeholder={t("directOffer.amountPlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-hidden focus:border-cz-accent" />
           <input type="text" value={message} onChange={e => setMessage(e.target.value)}
             placeholder={t("directOffer.messagePlaceholder")}
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-hidden focus:border-cz-accent" />
           <button onClick={sendOffer} disabled={loading || amount <= 0}
             className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
             {loading ? t("directOffer.sending") : t("directOffer.submit")}
@@ -474,7 +474,7 @@ function TransferListButton({ rider, onChanged }) {
             onValueChange={v => setPrice(v)}
             placeholder={t("sellRider.pricePlaceholder")}
             data-testid="transfer-list-price-input"
-            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-hidden focus:border-cz-accent" />
           <button onClick={submit} disabled={loading || priceInvalid}
             className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50 transition-all">
             {loading ? t("sellRider.sending") : listing ? t("sellRider.submitUpdate") : t("sellRider.submit")}
@@ -554,7 +554,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
   });
 
   return (
-    <div className={`rounded-cz border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/[0.04]" : "border-cz-border bg-cz-subtle"}`}>
+    <div className={`rounded-cz border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/4" : "border-cz-border bg-cz-subtle"}`}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-widest">{t("auctionPanel.activeLabel")}</p>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -600,7 +600,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
               onValueChange={v => setBidAmount(v ?? 0)}
               aria-label={t("auctionPanel.bidInputAria")}
               wrapperClassName="min-w-0"
-              className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+              className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-hidden focus:border-cz-accent"
             />
             <button
               type="button"
@@ -664,7 +664,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, seniorCo
                     placeholder={t("auctionPanel.proxy.inputPlaceholder")}
                     aria-label={t("auctionPanel.proxy.inputAria")}
                     wrapperClassName="min-w-0 w-32"
-                    className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-none focus:border-cz-accent"
+                    className="w-full min-h-[44px] bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-base focus:outline-hidden focus:border-cz-accent"
                   />
                   <button
                     type="button"
@@ -793,7 +793,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
                 value={endWall}
                 onChange={e => setEndWall(e.target.value)}
                 data-testid="rider-auction-end-time-input"
-                className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
+                className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-hidden
                   ${endTimeIssue
                     ? "border-cz-danger/40 focus:border-cz-danger"
                     : "border-cz-border focus:border-cz-accent"}`} />
@@ -822,7 +822,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
               onValueChange={v => setPrice(v)}
               data-testid="auction-start-price-input"
               wrapperClassName="min-w-0 flex-1"
-              className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
+              className={`w-full min-h-[44px] bg-cz-subtle border rounded-cz px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-hidden
                 ${priceError
                   ? "border-cz-danger/40 focus:border-cz-danger"
                   : "border-cz-border focus:border-cz-accent"}`}
@@ -870,7 +870,7 @@ export default function RiderStatsPage() {
   const seasonYear = useActiveSeasonYear();
   const training = useTraining();
   // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
-  const trainingHistory = useTrainingHistory({ dailyReceiptEnabled: training.dailyReceiptEnabled });
+  const trainingHistory = useTrainingHistory();
   // #3496 punkt 3: genvej til et åbent transfer-tilbud på DENNE rytter, på
   // samme måde som en aktiv auktion allerede vises på rytter-siden (se
   // activeAuction/RiderBidPanel nedenfor). Samme kanoniske "skal handles"-kilde
@@ -2032,7 +2032,7 @@ export default function RiderStatsPage() {
                     className="w-full flex items-center justify-between gap-3 px-3 py-2.5 bg-cz-accent/8
                       border border-cz-accent/20 rounded-cz text-left hover:bg-cz-accent/12 transition-colors">
                     <span className="flex items-center gap-2 text-cz-1 text-sm min-w-0">
-                      <ExchangeIcon size={16} className="text-cz-accent-t flex-shrink-0" aria-hidden="true" />
+                      <ExchangeIcon size={16} className="text-cz-accent-t shrink-0" aria-hidden="true" />
                       <span className="truncate">
                         {pendingOfferOnRider.price != null
                           ? t("offerShortcut.textWithPrice", {
@@ -2044,7 +2044,7 @@ export default function RiderStatsPage() {
                             })}
                       </span>
                     </span>
-                    <span className="text-cz-accent-t text-xs font-medium flex-shrink-0">{t("offerShortcut.cta")}</span>
+                    <span className="text-cz-accent-t text-xs font-medium shrink-0">{t("offerShortcut.cta")}</span>
                   </button>
                 )}
                 {activeAuction && (

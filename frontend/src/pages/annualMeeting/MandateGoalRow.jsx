@@ -76,7 +76,7 @@ export default function MandateGoalRow({ goal, choice, onChoose, wouldExceedBudg
             <p className="font-data text-2xs uppercase tracking-[.06em] tabular-nums text-cz-3">{rewardText}</p>
           </div>
         </div>
-        <div className="flex flex-shrink-0 gap-[6px]">
+        <div className="flex shrink-0 gap-[6px]">
           {CHOICES.map((choiceKey) => {
             const option = options[choiceKey];
             const isKeep = choiceKey === "keep";

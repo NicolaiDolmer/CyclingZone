@@ -150,7 +150,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Søg rytter…"
-          className="w-full sm:w-64 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none mb-2"
+          className="w-full sm:w-64 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden mb-2"
         />
         <div className="overflow-x-auto rounded-lg border border-cz-border">
           <table data-sortable className="w-full text-xs">

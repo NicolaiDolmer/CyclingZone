@@ -61,9 +61,9 @@ export function useTraining() {
         setTeamId(data.teamId ?? null);
         setEnabled(data.enabled ?? false);
         setDailyReceiptEnabled(data.dailyReceiptEnabled === true);
-        setTodayRun(data.dailyReceiptEnabled === true
-          ? aggregateTrainingRuns(data.todayRuns ?? (data.todayRun ? [data.todayRun] : []))[0] ?? null
-          : data.todayRun ?? null);
+        // #6030 removed the raw-run renderer. A missing/off legacy flag must not
+        // change the shape consumed by the remaining daily receipt (#6314).
+        setTodayRun(aggregateTrainingRuns(data.todayRuns ?? (data.todayRun ? [data.todayRun] : []))[0] ?? null);
         setCondition(data.condition ?? {});
         setProgress(data.progress ?? {});
         setCapped(data.capped ?? {});
@@ -287,8 +287,8 @@ export function useTraining() {
         return null;
       }
       if (!res.ok) return { ok: false, error: data.error || "failed" };
-      // Opdatér todayRun lokalt + kald refresh for konsistent state.
-      setTodayRun({ executed_by: "manual", bonus_applied: data.bonus_applied, report: data.report, tick_date: data.tickDate, created_at: new Date().toISOString() });
+      // The POST report is a raw tick, not a date receipt. Retain the last
+      // valid receipt until refresh publishes the normalized GET result.
       logEvent("training_run_today", { tickDate: data.tickDate, bonus_applied: data.bonus_applied });
       await refresh();
       return data;

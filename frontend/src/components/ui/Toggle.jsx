@@ -5,7 +5,7 @@ export default function Toggle({ label, id, checked, className = "", ...rest }) 
         <input id={id} type="checkbox" role="switch" checked={checked} className="peer sr-only" {...rest} />
         <span
           aria-hidden="true"
-          className="absolute inset-0 rounded-cz-pill bg-cz-subtle transition-colors duration-150 peer-checked:bg-cz-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cz-accent-t"
+          className="absolute inset-0 rounded-cz-pill bg-cz-subtle transition-colors duration-150 peer-checked:bg-cz-accent peer-focus-visible:outline-solid peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cz-accent-t"
         />
         <span
           aria-hidden="true"

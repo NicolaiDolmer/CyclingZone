@@ -249,6 +249,7 @@ import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.
 import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
+import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
@@ -3052,8 +3053,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     ]);
 
     if (todayRunResult.error) throw new Error(todayRunResult.error.message);
-    const todayRuns = todayRunResult.data ?? [];
-    const todayRun = todayRuns[0] ?? null;
+    const { todayRuns, todayRun } = trainingRunResponse(todayRunResult.data);
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
@@ -18747,6 +18747,8 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     // så en spiller uden penge nok fik "Noget gik galt" — og hver forsøg
     // larmede i Sentry. Begge er forventede bruger-tilstande, ikke fejl.
     if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
+    // #6264: signing-fee ville bruge penge låst i auktionsbud.
+    if (msg === "insufficient_available_balance") return res.status(409).json({ error: msg, locked: err.locked, available: err.available });
     if (msg === "already_assigned") return res.status(409).json({ error: "already_assigned" });
     // #4213: rytteren er i mellemtiden ejet af et andet hold — forventet
     // bruger-tilstand ved et stale tilbud, ikke en fejl. Tilbuddet bevares

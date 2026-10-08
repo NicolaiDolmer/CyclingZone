@@ -35,7 +35,7 @@ function slotTime(scheduledMs, timeZone) {
 
 function MetaLine({ children }) {
   return (
-    <div className="mt-1 font-data text-3xs uppercase tracking-[.1em] text-cz-3 tabular-nums">
+    <div className="mt-1 font-data text-3xs uppercase tracking-widest text-cz-3 tabular-nums">
       {children}
     </div>
   );
@@ -55,7 +55,7 @@ function PodiumRow({ row, t }) {
         {row.rider_name}
       </span>
       {row.isOwn && (
-        <span className="ms-auto shrink-0 font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-accent-t">
+        <span className="ms-auto shrink-0 font-data text-3xs font-semibold uppercase tracking-widest text-cz-accent-t">
           {t("raceCentre.card.yourRider")}
         </span>
       )}

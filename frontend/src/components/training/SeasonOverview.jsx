@@ -31,7 +31,7 @@ export default function SeasonOverview({ rows, note = null }) {
             <div className="min-w-[160px] flex-1 sm:max-w-[240px]">
               <div className="text-[13.5px] font-medium text-cz-1">{row.name}</div>
               {row.sub ? (
-                <div className="mt-0.5 font-data text-3xs uppercase tracking-[.05em] text-cz-3">{row.sub}</div>
+                <div className="mt-0.5 font-data text-3xs uppercase tracking-wider text-cz-3">{row.sub}</div>
               ) : null}
             </div>
             <div className="w-16 flex-none text-right" title={t("today.colSeasonPoints")}>
@@ -39,7 +39,7 @@ export default function SeasonOverview({ rows, note = null }) {
                 {row.seasonPoints != null ? `+${row.seasonPoints}` : <span className="text-cz-3">—</span>}
               </span>
             </div>
-            <div className="min-w-[220px] flex-[2] max-w-[460px]">
+            <div className="min-w-[220px] flex-2 max-w-[460px]">
               {row.receipt?.length ? (
                 row.receipt.map((r) => <AbilityReceiptRow key={r.ability} row={r} inFocus />)
               ) : (

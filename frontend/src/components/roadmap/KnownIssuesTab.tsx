@@ -108,7 +108,7 @@ export default function KnownIssuesTab(props: KnownIssuesTabProps) {
             <Button variant="secondary" size="sm" aria-pressed={reported} onClick={() => props.onToggleReport(issue)}>
               {reported ? t("issues.reported") : buttonLabel}
             </Button>
-            <div aria-live="polite" className="min-h-[1rem]">
+            <div aria-live="polite" className="min-h-4">
               {props.reportError.has(issue.id) && <span className="text-cz-danger text-xs">{t("issues.reportError")}</span>}
             </div>
           </div>

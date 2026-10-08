@@ -310,3 +310,31 @@ test("runCronHeartbeatSweepCron — ingen overskredne jobs sender ingen besked",
   assert.equal(result.alerted, false);
   assert.equal(sent.length, 0);
 });
+
+test("runCronHeartbeatSweepCron — mange overskredne jobs holder feltet under Discords 1024-tegns-grænse (CYCLINGZONE-94)", async () => {
+  // Rod-årsag 6/10: efter Supabase-udfaldet var mange jobs overskredet på én
+  // gang; hver linje er ~100 tegn, så feltet sprængte 1024 og Discord svarede
+  // 400 — alarmen kom aldrig frem netop når den var vigtigst.
+  const now = new Date("2026-08-30T12:00:00.000Z");
+  const stale = new Date(now.getTime() - 3600_000).toISOString();
+  const monitors = Array.from({ length: 55 }, (_, i) => [`job-with-a-longish-slug-${i}`, CRON_MONITOR_5MIN]);
+  const supabase = makeSweepSupabase({
+    checkins: monitors.map(([slug]) => ({ job_slug: slug, last_checkin_at: stale })),
+  });
+  const sent = [];
+  const result = await runCronHeartbeatSweepCron({
+    supabase,
+    monitors,
+    now,
+    sendWebhookFn: (url, payload) => sent.push(payload),
+    getOpsWebhookFn: async () => "https://discord.example/webhook",
+  });
+  assert.equal(result.overdue.length, 55);
+  const embed = sent[0].embeds[0];
+  const value = embed.fields[0].value;
+  assert.ok(value.length <= 1024, `feltet er ${value.length} tegn`);
+  assert.match(value, /job-with-a-longish-slug-0`/);
+  assert.match(value, /…og \d+ flere \(55 i alt\)$/);
+  // Hele linjer — aldrig en linje klippet midt i et slug.
+  for (const line of value.split("\n").slice(0, -1)) assert.match(line, /min over margin\)$/);
+});

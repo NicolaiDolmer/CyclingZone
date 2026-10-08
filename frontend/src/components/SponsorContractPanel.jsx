@@ -153,7 +153,7 @@ export default function SponsorContractPanel() {
                   if (!text) return null;
                   return (
                     <li key={clause.type} className="flex items-start gap-1.5 text-xs text-cz-1">
-                      <Icon size={13} className="mt-0.5 flex-shrink-0 text-cz-accent-t" aria-hidden="true" />
+                      <Icon size={13} className="mt-0.5 shrink-0 text-cz-accent-t" aria-hidden="true" />
                       <span>{text}</span>
                     </li>
                   );

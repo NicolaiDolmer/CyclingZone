@@ -35,7 +35,7 @@ export default function DnaChoiceCard({
             key={suggestion.key}
             className="flex flex-col gap-1.5 rounded-cz border border-cz-border bg-cz-subtle p-3.5"
           >
-            <p className="font-data text-3xs uppercase tracking-[.1em] text-cz-3">
+            <p className="font-data text-3xs uppercase tracking-widest text-cz-3">
               {getDnaSlotLabel(t, suggestion)}
             </p>
             <p className="text-[13.5px] font-semibold leading-snug text-cz-1">

@@ -169,9 +169,9 @@ export default function ProUpgradePage() {
             <Section>
               <div className="flex items-center gap-2.5 text-cz-1">
                 {isFounder ? (
-                  <CrownIcon size={18} aria-hidden="true" className="flex-shrink-0 text-cz-accent-t" />
+                  <CrownIcon size={18} aria-hidden="true" className="shrink-0 text-cz-accent-t" />
                 ) : (
-                  <CheckIcon size={18} aria-hidden="true" className="flex-shrink-0 text-cz-accent-t" />
+                  <CheckIcon size={18} aria-hidden="true" className="shrink-0 text-cz-accent-t" />
                 )}
                 <p className="text-[13.5px] leading-relaxed">{isFounder ? t("alreadyFounder") : t("alreadyPro")}</p>
               </div>
@@ -226,7 +226,7 @@ export default function ProUpgradePage() {
                   checked={termsAccepted}
                   onChange={(e) => setTermsAccepted(e.target.checked)}
                   disabled={busy}
-                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-[3px] accent-cz-accent"
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded-[3px] accent-cz-accent"
                 />
                 <span className="text-sm leading-relaxed text-cz-2">
                   <Trans

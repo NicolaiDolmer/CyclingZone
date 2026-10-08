@@ -1,6 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadSavedFilters, addSavedFilter, removeSavedFilter, MAX_SAVED_FILTERS } from "./savedRiderFilters.js";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  loadSavedFilters, addSavedFilter, removeSavedFilter, savedFilterNameError, MAX_SAVED_FILTERS,
+} from "./savedRiderFilters.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const barSource = readFileSync(join(__dirname, "..", "components", "rider", "SavedFiltersBar.jsx"), "utf8");
+const ridersPageSource = readFileSync(join(__dirname, "..", "pages", "RidersPage.jsx"), "utf8");
 
 function withMockLocalStorage(fn) {
   const store = new Map();
@@ -60,4 +69,52 @@ test("removeSavedFilter: fjerner kun den valgte", () => {
     assert.equal(after.length, 1);
     assert.equal(after[0].name, "A");
   });
+});
+
+// #6286 P0: RidersPage kender først brugeren efter første render. Gemte filtre
+// skal vises efter en genindlæsning, selvom userId kommer sent.
+test("#6286 gemte filtre vises efter genmontering hvor userId kommer sent", () => {
+  withMockLocalStorage(() => {
+    addSavedFilter("u1", "Climbers", { rider_type: "climber" });
+    // Genmontering: første render har endnu ingen bruger ...
+    assert.deepEqual(loadSavedFilters(null), []);
+    // ... og når userId ankommer, læses listen igen og filtrene er der.
+    assert.deepEqual(loadSavedFilters("u1").map((f) => f.name), ["Climbers"]);
+  });
+  // Komponenten skal faktisk genlæse ved userId-ændring (ikke kun ved mount).
+  assert.match(
+    barSource,
+    /useEffect\(\(\) => \{\s*setSaved\(loadSavedFilters\(userId\)\);\s*\}, \[userId\]\);/,
+    "SavedFiltersBar skal genindlæse listen når userId ændres",
+  );
+});
+
+test("#6286 dublet-navn afvises (uden hensyn til store/små bogstaver og mellemrum)", () => {
+  withMockLocalStorage(() => {
+    addSavedFilter("u1", "Climbers", { q: "a" });
+    const list = addSavedFilter("u1", "  climbers ", { q: "b" });
+    assert.equal(list.length, 1);
+    assert.deepEqual(list[0].filters, { q: "a" });
+    assert.equal(savedFilterNameError(list, "CLIMBERS"), "duplicate");
+    assert.equal(savedFilterNameError(list, "Sprinters"), null);
+    assert.equal(savedFilterNameError(list, "   "), "empty");
+  });
+});
+
+test("#6286 loftet nået giver 'limit', og UI'et forklarer det i stedet for at skjule Save", () => {
+  const full = Array.from({ length: MAX_SAVED_FILTERS }, (_, i) => ({ id: `f${i}`, name: `F${i}` }));
+  assert.equal(savedFilterNameError(full, "New"), "limit");
+  assert.match(barSource, /t\("savedFilters\.limit", \{ max: MAX_SAVED_FILTERS \}\)/);
+  assert.doesNotMatch(barSource, /saved\.length < MAX_SAVED_FILTERS &&/);
+});
+
+test("#6286 slet er en selvstændig, tastatur-tilgængelig knap (ikke span i button)", () => {
+  assert.doesNotMatch(barSource, /role="button"/);
+  assert.doesNotMatch(barSource, /tabIndex=\{-1\}/);
+  assert.match(barSource, /aria-label=\{t\("savedFilters\.removeNamed", \{ name: f\.name \}\)\}/);
+});
+
+test("#6286 ingen 'See Pro'-reklame mens hold/abonnement indlæses", () => {
+  assert.match(barSource, /if \(!teamId \|\| subLoading\) return null;/);
+  assert.match(ridersPageSource, /teamId=\{myTeam\?\.id\}/);
 });

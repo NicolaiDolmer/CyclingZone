@@ -100,7 +100,7 @@ function LoftTick({ loft, title }) {
 function TypeRow({ typeKey, now, progLo, progHi, loft, loftTitle, label }) {
   return (
     <div className="flex items-center gap-3" data-type={typeKey}>
-      <span className="w-[110px] flex-shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
+      <span className="w-[110px] shrink-0 text-[12px] text-cz-2 truncate">{label}</span>
       <div className="relative flex-1 h-[7px] rounded-full bg-cz-subtle overflow-hidden" aria-hidden="true">
         <div className="absolute inset-y-0 left-0 bg-cz-accent rounded-full" style={{ width: barPct(now) }} />
         <div
@@ -109,7 +109,7 @@ function TypeRow({ typeKey, now, progLo, progHi, loft, loftTitle, label }) {
         />
         <LoftTick loft={loft} title={loftTitle} />
       </div>
-      <span className="w-[86px] flex-shrink-0 text-right font-mono tabular-nums text-2xs">
+      <span className="w-[86px] shrink-0 text-right font-mono tabular-nums text-2xs">
         <span className="text-cz-1 font-bold">{now}</span>
         <span className="text-cz-3"> · {progLo}–{progHi}</span>
       </span>
@@ -297,7 +297,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
           className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-2 whitespace-nowrap tabular-nums"
           title={pendingReadyClock ? t("scouting.pendingReadyAtTitle", { time: pendingReadyClock }) : undefined}
         >
-          <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
+          <SearchIcon size={13} aria-hidden="true" className="shrink-0" />
           {pendingJobLabel}
         </span>
       );
@@ -316,7 +316,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
         }
         className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-cz border border-cz-border text-cz-1 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
       >
-        <SearchIcon size={13} aria-hidden="true" className="flex-shrink-0" />
+        <SearchIcon size={13} aria-hidden="true" className="shrink-0" />
         {busy
           ? t("scouting.scouting")
           : scoutSystemEnabled
@@ -457,7 +457,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 mt-3.5 pt-3 border-t border-cz-border list-none p-0 m-0">
             {verdict.factorKeys.map((k) => (
               <li key={k} className="flex items-start gap-2 text-[12px] text-cz-2">
-                <CheckIcon size={14} aria-hidden="true" className="text-cz-success mt-px flex-shrink-0" />
+                <CheckIcon size={14} aria-hidden="true" className="text-cz-success mt-px shrink-0" />
                 {t(`profile.scouting.factor_${k}`)}
               </li>
             ))}

@@ -85,7 +85,7 @@ export default function BalanceDriftWatchSection({ getAuth }) {
     <div>
       {breaches.length > 0 && (
         <div className="mb-4 px-3 py-2 rounded-lg text-sm bg-cz-danger-bg text-cz-danger border border-cz-danger/30 flex items-start gap-1.5">
-          <AlertTriangleIcon size={14} aria-hidden="true" className="flex-shrink-0 mt-0.5" />
+          <AlertTriangleIcon size={14} aria-hidden="true" className="shrink-0 mt-0.5" />
           <span>
             {breaches.length} bånd har været rødt i 3+ dage i træk:{" "}
             {breaches.map(b => `${METRIC_LABELS[b.metric] || b.metric} (${b.days}d siden ${b.since})`).join(" · ")}

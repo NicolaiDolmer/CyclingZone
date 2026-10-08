@@ -42,7 +42,7 @@ export default function ForumImageAttachments({ images, t, onAdminRemove = null 
                 className={
                   single
                     ? "max-h-[420px] w-auto max-w-full rounded-cz border border-cz-border object-contain"
-                    : "aspect-[4/3] w-full rounded-cz border border-cz-border object-cover"
+                    : "aspect-4/3 w-full rounded-cz border border-cz-border object-cover"
                 }
               />
             </a>
@@ -52,7 +52,7 @@ export default function ForumImageAttachments({ images, t, onAdminRemove = null 
                 onClick={() => onAdminRemove(image.path)}
                 aria-label={t("images.adminRemove")}
                 title={t("images.adminRemove")}
-                className="absolute end-1.5 top-1.5 rounded-cz border border-cz-border bg-cz-surface px-2 py-0.5 font-data text-2xs uppercase tracking-[.06em] text-cz-danger"
+                className="absolute inset-e-1.5 top-1.5 rounded-cz border border-cz-border bg-cz-surface px-2 py-0.5 font-data text-2xs uppercase tracking-[.06em] text-cz-danger"
               >
                 {t("images.adminRemove")}
               </button>
