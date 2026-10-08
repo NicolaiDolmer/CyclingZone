@@ -26,7 +26,8 @@ test("#4295 panelet fodrer reglen med ryttere der er frie til NETOP dette løb",
   // den utætte antagelse #4175's escape-ventil hvilede på. freeLeft gør det.
   assert.match(
     panel,
-    /const freeLeft = riders\.filter\(\(r\) => !r\.injured && !boundByRider\.has\(r\.id\) && !selectedIdSet\.has\(r\.id\)\)\.length;/,
+    // #6139: ogsaa en rytter der traenede i dag (Train now) traekkes fra.
+    /const freeLeft = riders\.filter\(\(r\) => !r\.injured && !boundByRider\.has\(r\.id\) && !selectedIdSet\.has\(r\.id\)\s*&& !trainNowLocked\.has\(r\.id\)\)\.length;/,
   );
   assert.match(
     panel,

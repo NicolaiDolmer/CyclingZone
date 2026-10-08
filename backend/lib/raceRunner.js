@@ -117,7 +117,7 @@ import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
-import { loadTrainNowLockedTeamIdsForRace } from "./trainNowLock.js"; // #6006
+import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
@@ -1245,9 +1245,10 @@ export async function fillMissingTeamEntries({
   // forsvinder af sig selv i samme øjeblik spilleren udtager manuelt eller selv beder
   // om auto-fill, så tilstanden er altid spillerens egen og altid omgørlig.
   const clearedTeams = await loadClearedTeamIds({ supabase, raceId: race.id });
-  // #6006: et "Train now"-tryk paa en af loebets datoer afgoer dagen for holdet (I3):
-  // assistenten maa aldrig tilfoeje en rytter bagefter (en loebsdag = loeb ELLER traening, #5267).
-  const trainNowLockedTeams = await loadTrainNowLockedTeamIdsForRace({ supabase, raceId: race.id });
+  // #6006/#6139: en rytter der traenede ("Train now") paa en af loebets datoer er afgjort for
+  // dagen (I3): assistenten maa aldrig fylde ham ind (en loebsdag = loeb ELLER traening, #5267).
+  // Holdets oevrige ryttere (fx nykoebte) kan fyldes ind som normalt.
+  const trainNowLockedRiders = (await loadRaceTrainNowLock({ supabase, raceId: race.id })).riderIds;
 
   // #1688 pulje-filter: kun hold i løbets pulje (når løbet har en). NB: DB-eq på
   // league_division_id kunne gøre dette server-side, men selectInChunks-/teams-stien
@@ -1257,7 +1258,7 @@ export async function fillMissingTeamEntries({
   const drainingEnabled = await isAiTeamRetireEnabled(supabase);
   let eligibleTeams = (teams || []).filter(
     (t) => !t.is_frozen && !(drainingEnabled && t.is_ai && t.pending_removal_at) && !teamsAtOrAboveFloor.has(t.id)
-      && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id) && !trainNowLockedTeams.has(t.id)
+      && !withdrawnTeams.has(t.id) && !clearedTeams.has(t.id)
   );
   if (isYouthRace) {
     // #5645: holdets U23-/juniorpulje, ikke seniorpuljen. Et hold uden pulje for
@@ -1329,6 +1330,7 @@ export async function fillMissingTeamEntries({
   // fyldes ind igen af redningen — det ville give en dublet-entry for samme (race, rider).
   const candidates = (riders || []).filter(
     (r) => !injuredIds.has(r.id) && keptTeamSet.has(r.team_id) && !alreadyEnteredRiderIds.has(r.id)
+      && !trainNowLockedRiders.has(r.id)
   );
   if (!candidates.length) return [];
 

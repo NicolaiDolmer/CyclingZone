@@ -100,9 +100,9 @@ test("fillMissingTeamEntries: hold fra andre puljer ekskluderes når race har le
   assert.ok(!teamIds.has("out-1") && !teamIds.has("out-2"), "hold fra andre puljer må IKKE auto-fyldes");
 });
 
-// #6006: et hold der har trykket "Train now" paa en af loebets datoer er afgjort (I3).
-// Loebsstartens autofyld maa aldrig tilfoeje en rytter til det hold bagefter (#5267).
-test("fillMissingTeamEntries: Train now-laast hold auto-fyldes ALDRIG (#6006)", async () => {
+// #6006/#6139: en rytter der traenede ("Train now") paa en af loebets datoer er afgjort (I3).
+// Loebsstartens autofyld maa aldrig tilfoeje ham bagefter (#5267); holdets oevrige ryttere kan.
+test("fillMissingTeamEntries: en rytter der traenede auto-fyldes ALDRIG; holdkammeraterne kan (#6006/#6139)", async () => {
   const poolId = 100;
   const state = buildPoolState({
     poolId,
@@ -121,7 +121,8 @@ test("fillMissingTeamEntries: Train now-laast hold auto-fyldes ALDRIG (#6006)", 
   });
 
   const teamIds = new Set(rows.map((r) => r.team_id));
-  assert.ok(!teamIds.has("locked"), "et laast hold faar ingen auto-ryttere");
+  assert.ok(!rows.some((r) => r.rider_id === "r-0"), "den traenede rytter auto-fyldes aldrig");
+  assert.ok(teamIds.has("locked"), "holdets ryttere uden laase-raekke kan stadig fyldes ind");
   assert.ok(teamIds.has("free"), "et ulaast hold auto-fyldes som foer");
 });
 

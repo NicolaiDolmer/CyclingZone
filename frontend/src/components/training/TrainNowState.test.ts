@@ -2,11 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   TRAIN_NOW_OFF, parseTrainNowStatus, trainNowNoteKeys, trainNowPressCounts, trainNowRunGate,
-  type TrainNowStatus,
+  trainNowRaceNames, trainNowSaveErrorKey, type TrainNowStatus,
 } from "./TrainNowState.ts";
+import { trainNowClock } from "./trainNowClock.ts";
 
 const available: TrainNowStatus = {
   enabled: true, available: true, reason: null, tickDate: "2026-10-01", locked: false, lockedAt: null, settled: false,
+  todayRaces: [],
 };
 const locked: TrainNowStatus = { ...available, available: false, reason: "locked", locked: true, lockedAt: "2026-10-01T06:00:00Z" };
 
@@ -62,4 +64,21 @@ test("note: server refusals map to short lines, unknown errors to a retry line",
   assert.deepEqual(trainNowNoteKeys(available, null, "previous_date_open"), ["trainNow.previousOpen"]);
   assert.deepEqual(trainNowNoteKeys(available, null, "no_race_day_today"), ["trainNow.noRaceDay"]);
   assert.deepEqual(trainNowNoteKeys(available, null, "train_now_failed"), ["trainNow.error"]);
+});
+
+test("#6139: the helper names today's race when there is one", () => {
+  const withRace = { ...available, todayRaces: [{ id: "r1", name: "Tour A" }, { id: "r2", name: null }] };
+  assert.deepEqual(trainNowNoteKeys(withRace, null, null), ["trainNow.helperRace"]);
+  assert.equal(trainNowRaceNames(withRace), "Tour A");
+  assert.deepEqual(parseTrainNowStatus({ enabled: true, todayRaces: [{ id: "r1", name: "Tour A" }, { name: "no id" }, null] }).todayRaces,
+    [{ id: "r1", name: "Tour A" }]);
+  assert.deepEqual(parseTrainNowStatus({ enabled: true }).todayRaces, []);
+});
+
+test("#6139: lock time in game time and the plan-lock save message", () => {
+  assert.equal(trainNowClock("2026-10-01T07:12:00.000Z"), "09:12");
+  assert.equal(trainNowClock(null), null);
+  assert.equal(trainNowClock("nope"), null);
+  assert.equal(trainNowSaveErrorKey("train_now_locked", "weekRhythmSaveFailed"), "trainNow.planLocked");
+  assert.equal(trainNowSaveErrorKey("failed", "weekRhythmSaveFailed"), "weekRhythmSaveFailed");
 });

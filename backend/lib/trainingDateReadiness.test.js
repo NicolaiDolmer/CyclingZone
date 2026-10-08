@@ -25,18 +25,20 @@ test('missing senior snapshot cannot defer youth who are outside the runtime aut
   assert.deepEqual(trainingAutopickCandidates({ squad: 'u23', league_division_id: 'u23' }, teams, riders), ['u23']);
 });
 
-test('#6006: a team that pressed Train now is no autopick candidate; other autopick teams still are', () => {
+test('#6139: a rider locked by Train now is no autopick candidate; his unlocked teammate and other teams still are', () => {
   const teams = [
     { id: 'pressed', assistant_autopick_enabled: true, league_division_id: 'd1' },
     { id: 'other', assistant_autopick_enabled: true, league_division_id: 'd1' },
   ];
   const riders = [
     { id: 'p1', team_id: 'pressed', squad: 'senior', is_academy: false, is_retired: false, pending_team_id: null },
+    { id: 'p2', team_id: 'pressed', squad: 'senior', is_academy: false, is_retired: false, pending_team_id: null },
     { id: 'o1', team_id: 'other', squad: 'senior', is_academy: false, is_retired: false, pending_team_id: null },
   ];
   const race = { squad: 'senior', league_division_id: 'd1' };
-  assert.deepEqual(trainingAutopickCandidates(race, teams, riders), ['p1', 'o1']);
-  assert.deepEqual(trainingAutopickCandidates(race, teams, riders, new Set(['pressed'])), ['o1']);
+  assert.deepEqual(trainingAutopickCandidates(race, teams, riders), ['p1', 'p2', 'o1']);
+  // p2 was bought after the press: no lock row, so the assistant may still pick him.
+  assert.deepEqual(trainingAutopickCandidates(race, teams, riders, new Set(['p1'])), ['p2', 'o1']);
 });
 
 test('one missing stage delays its starter, never an unaffected teammate', () => {

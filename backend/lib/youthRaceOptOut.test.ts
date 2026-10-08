@@ -78,7 +78,12 @@ function seasonState(): State {
       { race_id: "u-locked", stage_number: 1, scheduled_at: "2026-10-02T10:00:00Z" },
       { race_id: "u-open-1", stage_number: 1, scheduled_at: "2026-10-03T10:00:00Z" },
     ],
-    training_train_now_locks: [{ team_id: "team-a", tick_date: "2026-10-02", rider_id: "u1" }],
+    // #6139: laasen er pr. rytter. u-locked-r er tilmeldt u-locked og traenede den dag; u1 traenede ogsaa,
+    // men er ikke tilmeldt noget U23-loeb den dato.
+    training_train_now_locks: [
+      { team_id: "team-a", tick_date: "2026-10-02", rider_id: "u-locked-r" },
+      { team_id: "team-a", tick_date: "2026-10-02", rider_id: "u1" },
+    ],
     race_entries: [
       ...["u-started", "u-locked", "u-open-1", "u-open-2", "u-done", "j-open", "s-open"].map((race_id) => ({ race_id, team_id: "team-a", rider_id: `${race_id}-r` })),
       // Et andet hold i samme U23-loeb: roeres aldrig.
@@ -111,6 +116,15 @@ test("#5944 skift til Train only: rydder kun truppens ulaaste loeb, laaste dage 
   assert.deepEqual(entered(state, "team-b"), ["u-open-1"], "andre hold roeres aldrig");
   assert.deepEqual(state[YOUTH_RACE_OPT_OUT_TABLE], [{ team_id: "team-a", squad: "u23" }]);
   assert.equal(result.effectiveFromDay, 22, "foerste ulaaste loebsdag (dag 21 er Train now-laast)");
+});
+
+test("#6139 skift til Train only: et loeb paa en Train now-dato ryddes, naar ingen af de tilmeldte traenede", async () => {
+  const state = seasonState();
+  // Den tilmeldte rytter blev koebt efter trykket: ingen laase-raekke, saa loebet er ikke afgjort.
+  state.training_train_now_locks = state.training_train_now_locks.filter((row) => row.rider_id !== "u-locked-r");
+  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: true });
+  assert.deepEqual(result.clearedRaceIds.sort(), ["u-locked", "u-open-1", "u-open-2"]);
+  assert.equal(result.effectiveFromDay, 21);
 });
 
 test("#5944 skift til Train only to gange er idempotent (én raekke)", async () => {

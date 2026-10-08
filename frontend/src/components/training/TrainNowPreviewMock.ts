@@ -4,6 +4,9 @@
 // click it on preview before the flag moves. Query params give the before/after pair:
 //   ?trainNow=off     the page exactly as today (no press)
 //   ?trainNow=locked  the state right after a press
+// #6139: the race selection panel (GET /api/races/:id/selection) follows the same
+// state: after a press the riders that trained are locked, a rider bought after the
+// press is free (trainNowSelectionPreview below).
 // Wired only in installPreviewMock.js, never in mockHandlers.js (Playwright
 // fixtures share mockHandlers; the existing /training snapshots must not move).
 
@@ -27,6 +30,45 @@ function status() {
   return {
     enabled: true, available: !locked, reason: locked ? "locked" : null, tickDate: TICK_DATE,
     locked, lockedAt, settled: false,
+    // #6139: the preview seed's race ("race-up-1" in seedData.js).
+    todayRaces: [{ id: "race-up-1", name: "Tour de Preview" }],
+  };
+}
+
+type SelectionBody = { riders?: Array<{ id: string }>; selection?: { rider_ids?: string[] } | null } & Record<string, unknown>;
+
+// #6139: fictional preview riders (the names from the owner-approved mockup), so the
+// panel shows both sides of the lock: two selected riders who trained, one bought
+// and one moved up after the press. Preview only; prod data never passes here.
+const PREVIEW_RIDER = { primaryType: "rouleur", secondaryType: null, suitability: 60, stageSuitability: null,
+  aggression: 50, tactics: 50, form: 55, fatigue: 20, injured: false, abilities: null };
+const PREVIEW_EXTRA = [
+  { id: "preview-6139-trained-1", name: "A. Vandenberg", selected: true },
+  { id: "preview-6139-trained-2", name: "M. Rasmussen", selected: true },
+  { id: "preview-6139-bought", name: "L. Moreau", selected: false },
+  { id: "preview-6139-moved", name: "J. Okafor", selected: false },
+];
+
+/**
+ * #6139: after a press, the riders who trained are locked for today's race. In the
+ * preview the selected riders trained, and the riders outside the selection play the
+ * ones bought or moved after the press (no lock). Before the press: no lock.
+ */
+export function trainNowSelectionPreview(body: SelectionBody): SelectionBody {
+  if (!Array.isArray(body?.riders)) return body;
+  const selected = [...(body.selection?.rider_ids ?? []), ...PREVIEW_EXTRA.filter((r) => r.selected).map((r) => r.id)];
+  const withExtra: SelectionBody = {
+    ...body,
+    riders: [...body.riders, ...PREVIEW_EXTRA.map(({ id, name }) => ({ ...PREVIEW_RIDER, id, name }))],
+    selection: body.selection ? { ...body.selection, rider_ids: selected } : body.selection,
+  };
+  const { locked, lockedAt } = status();
+  if (mode() === "off" || !locked) return withExtra;
+  const trained = new Set(selected);
+  return {
+    ...withExtra,
+    riders: (withExtra.riders ?? []).map((rider) => ({ ...rider, trainNowLocked: trained.has(rider.id) })),
+    trainNowLock: { riderIds: [...trained].sort(), pressedAt: lockedAt },
   };
 }
 

@@ -13,6 +13,8 @@ export type TrainNowStatus = {
   locked: boolean;
   lockedAt: string | null;
   settled: boolean;
+  // #6139: the team's races with a stage today, so the button can say which race selection it locks.
+  todayRaces: Array<{ id: string; name: string | null }>;
 };
 
 export type TrainNowPressResult = {
@@ -36,6 +38,7 @@ export function trainNowPressCounts(result: TrainNowPressResult | null): { train
 
 export const TRAIN_NOW_OFF: TrainNowStatus = {
   enabled: false, available: false, reason: "flag_off", tickDate: null, locked: false, lockedAt: null, settled: false,
+  todayRaces: [],
 };
 
 // `=== true` everywhere: an older backend without the route gives the old page.
@@ -51,6 +54,11 @@ export function parseTrainNowStatus(data: unknown): TrainNowStatus {
     locked: d.locked === true,
     lockedAt: typeof d.lockedAt === "string" ? d.lockedAt : null,
     settled: d.settled === true,
+    todayRaces: Array.isArray(d.todayRaces)
+      ? d.todayRaces.filter((r): r is { id: string; name: string | null } =>
+        !!r && typeof (r as { id?: unknown }).id === "string")
+        .map((r) => ({ id: r.id, name: typeof r.name === "string" ? r.name : null }))
+      : [],
   };
 }
 
@@ -95,5 +103,18 @@ export function trainNowNoteKeys(
   }
   if (status.reason === "previous_date_open") return ["trainNow.previousOpen"];
   if (status.reason === "no_race_day_today") return ["trainNow.noRaceDay"];
-  return ["trainNow.helper"];
+  return [status.todayRaces.some((r) => r.name) ? "trainNow.helperRace" : "trainNow.helper"];
+}
+
+/** #6139: the race names a press locks today, for the helper line ("Tour A, Tour B"). */
+export function trainNowRaceNames(status: TrainNowStatus): string {
+  return status.todayRaces.map((r) => r.name).filter(Boolean).join(", ");
+}
+
+/**
+ * #6139: a save refused by the Train now plan lock says so ("today's fields are locked,
+ * you can still change tomorrow") instead of the generic "could not save".
+ */
+export function trainNowSaveErrorKey(error: string | null | undefined, fallbackKey: string): string {
+  return error === "train_now_locked" ? "trainNow.planLocked" : fallbackKey;
 }
