@@ -10,7 +10,13 @@ export type ParticipationEvent = { type: string; km?: number; params?: Record<st
  * dropped rider; see settleBreakawayOutcome.
  */
 export type RiderParticipation = { morning: boolean; caught: boolean; survived: boolean; dropped: boolean; swallowed: boolean; laterAttack: boolean };
-export type ParticipationHistory = { complete: boolean; morningRiderIds: ReadonlySet<string>; riders: ReadonlyMap<string, RiderParticipation> };
+/**
+ * `regroupCatches` (#6294): the `breakaway_caught` events (same object
+ * references as the input) that were not catches: the group that closed the
+ * gap held escapees only. Display layers drop them (the race film, the catch
+ * actor) so marks, stored flags and film tell the same story.
+ */
+export type ParticipationHistory = { complete: boolean; morningRiderIds: ReadonlySet<string>; riders: ReadonlyMap<string, RiderParticipation>; regroupCatches: ReadonlySet<ParticipationEvent> };
 export type BreakawayOutcome = "caught" | "dropped" | "survived";
 
 function riderIds(value: unknown): string[] {
@@ -67,10 +73,28 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
   // #6234: a `breakaway_caught` whose pursuer held escapees only (a dropped
   // piece of the break closing the gap) is not a catch. Older engines emitted
   // it; the piece's merge into the break that follows is a rejoin.
-  const catchByEscapeesOnly = (chaseGroupId: unknown): boolean => {
-    const members = typeof chaseGroupId === "string" ? groups.get(chaseGroupId) : undefined;
-    return !!members && members.size > 0 && [...members].every((id) => morningRiderIds.has(id));
+  // #6294: a breakaway_caught only counts as a catch when the closing group
+  // holds at least one rider outside the morning break. When the projection
+  // does not know the group (a solo group after a crash: the incident event
+  // names no group), its members come from the engine's own group_merged of
+  // that group into the break on the same km.
+  const mergedIntoBreak = new Map<string, string[]>();
+  for (const event of events) {
+    const p = event.params ?? {};
+    if (event.type !== "group_merged" || typeof p.group_id !== "string" || typeof p.into_group_id !== "string") continue;
+    const key = `${event.km}|${p.group_id}|${p.into_group_id}`;
+    mergedIntoBreak.set(key, [...(mergedIntoBreak.get(key) ?? []), ...riderIds(p.rider_ids)]);
+  }
+  const catchByEscapeesOnly = (event: ParticipationEvent): boolean => {
+    const p = event.params ?? {};
+    const chaseGroupId = typeof p.chase_group_id === "string" ? p.chase_group_id : null;
+    if (!chaseGroupId) return false;
+    const known = groups.get(chaseGroupId);
+    const members = known && known.size > 0 ? [...known]
+      : typeof p.group_id === "string" ? mergedIntoBreak.get(`${event.km}|${chaseGroupId}|${p.group_id}`) ?? [] : [];
+    return members.length > 0 && members.every((id) => morningRiderIds.has(id));
   };
+  const regroupCatches = new Set<ParticipationEvent>();
   for (const event of events) {
     const p = event.params ?? {};
     const ids = riderIds(p.rider_ids);
@@ -113,7 +137,8 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
       groups.delete(groupId);
       groups.set(p.into_group_id, combined);
     } else if (event.type === "breakaway_caught") {
-      if (!catchByEscapeesOnly(p.chase_group_id)) catchMorning(ids, true);
+      if (catchByEscapeesOnly(event)) regroupCatches.add(event);
+      else catchMorning(ids, true);
     } else if (event.type === "breakaway_survived") {
       // The engine's verdict at the line: the riders it names were in the
       // group of kind `breakaway` at the finish, so they held on, even after
@@ -122,7 +147,18 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
     }
   }
   const complete = events.some((event) => event.type === "stage_start") && events.some((event) => event.type === "finish");
-  return { complete, morningRiderIds, riders };
+  return { complete, morningRiderIds, riders, regroupCatches };
+}
+
+/**
+ * #6294: the timeline without the `breakaway_caught` events that were a
+ * regroup of the break (deriveParticipationHistory's `regroupCatches`), in the
+ * input order. The engine's group_merged for the same moment stays, so the
+ * film still shows the riders coming together, never a false catch line.
+ */
+export function withoutRegroupCatches<T extends ParticipationEvent>(events: readonly T[] = [], initialRiderIds: readonly string[] = []): T[] {
+  const { regroupCatches } = deriveParticipationHistory(events, initialRiderIds);
+  return regroupCatches.size ? events.filter((event) => !regroupCatches.has(event)) : [...events];
 }
 
 /**

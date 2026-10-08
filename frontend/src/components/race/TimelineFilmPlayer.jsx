@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import Modal from "../ui/Modal.jsx";
 import { Button, RefreshIcon, PlayIcon, PauseIcon } from "../ui";
 import { formatNumber } from "../../lib/intl.js";
-import { buildFilmTimeline, eventsPlayedUpTo, describeEvent } from "../../lib/stageTimelineFilm.js";
+import { buildFilmTimeline, eventsPlayedUpTo, describeEvent, filmKmValue } from "../../lib/stageTimelineFilm.js";
 import StageFilmScrubber from "./StageFilmScrubber.jsx";
 import StageSplitTimes from "./StageSplitTimes.jsx"; // #6080
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
@@ -30,8 +30,8 @@ function FeedRow({ event, riderNameById, teamNameById, t }) {
   if (!described) return null;
   return (
     <li className="cz-overlay-pop flex items-baseline justify-between gap-3 py-1.5 border-t border-cz-border first:border-t-0">
-      <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 w-14">
-        {t("detail.film.km", { value: formatNumber(event.km) })}
+      <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 min-w-14 whitespace-nowrap">
+        {t("detail.film.km", { value: filmKmValue(event, formatNumber) })}
       </span>
       <span className="text-cz-1 text-sm leading-snug text-end flex-1">
         {t(`detail.film.event.${described.key}`, described.params)}
@@ -150,8 +150,8 @@ function StaticFilm({ profile, built, distanceKm, riderNameById, teamNameById, s
 
 export default function TimelineFilmPlayer({ open, onClose, timeline, profile, distanceKm, riderNameById, teamNameById, stageLabel, ownRiderIds, effortByRider }) {
   const { t } = useTranslation("races");
-  const splitProps = { events: timeline?.events, ownRiderIds, effortByRider };
-  const built = buildFilmTimeline({ events: timeline?.events, distanceKm, ownRiderIds });
+  const splitProps = { events: timeline?.events, ownRiderIds, effortByRider, timelineVersion: timeline?.timeline_version };
+  const built = buildFilmTimeline({ events: timeline?.events, distanceKm, ownRiderIds, timelineVersion: timeline?.timeline_version });
   const profileDistanceKm = Number(profile?.distance_km);
   const resolvedDistanceKm = distanceKm ?? (Number.isFinite(profileDistanceKm) ? profileDistanceKm : null) ?? built.distanceKm ?? 0;
   // window.matchMedia er ikke reaktiv her — samme konvention som FinalKilometre-

@@ -37,6 +37,7 @@ import RaceCentreCard from "../components/race/RaceCentreCard.jsx";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
 import { useRiderNames } from "../hooks/useRiderNames.js";
 import { collectRiderIds, describeEvent } from "../lib/stageTimelineFilm.js";
+import { honestTimelineEvents } from "../lib/stageTimelineKmSpan.ts";
 import { RACE_TIMEZONE, formatCountdown } from "../lib/stageScheduleConfig.js";
 import { applySeniorSquadFilter, withActiveSeniorPools } from "../lib/seniorScope.ts";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus.js";
@@ -83,9 +84,13 @@ function LiveFilmLine({ card, nowMs, riderNameById, children }) {
     nowMs,
     distanceKm: finishKm || FALLBACK_PROGRESS_SCALE,
   });
-  const event = finishKm ? latestFilmEvent(events, km) : null;
+  // #6294/#6350: samme tidslinje som filmen (ingen falske indhentninger), og en
+  // tjekpunkt-hændelse dukker op ved spændets start med "km A-B".
+  const timelineVersion = timeline?.timeline_version;
+  const honestEvents = useMemo(() => honestTimelineEvents(events, { timelineVersion }), [events, timelineVersion]);
+  const event = finishKm ? latestFilmEvent(honestEvents, km) : null;
   const described = event ? describeEvent(event, { riderNameById: mergedNames }) : null;
-  return children(described ? { ...described, km: event.km } : null);
+  return children(described ? { ...described, km: event.km, kmSpan: event.km_span } : null);
 }
 
 export default function RaceCentrePage() {
