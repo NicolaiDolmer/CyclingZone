@@ -1,21 +1,34 @@
 // backend/lib/engine/v4/mechanics/timeModel.ts
-// #6199 + #6200 (KUN regel-revisionen "orders_gc_v3"): én faelles tidsmodel for
-// stigning og nedkoersel. Ejer-aftalt design 5/10 (kontrakten staar i den
-// seneste kommentar paa #6199):
+// #6199 + #6200: én faelles tidsmodel for stigning og nedkoersel. Ejer-aftalt
+// design 5/10 (kontrakten staar paa #6199; SSOT: docs/RACE_ENGINE_RULES.md,
+// "Én tidsmodel for stigning og nedkørsel" og "Samlet Tour-revision
+// `official_times_v2`"):
 //
 //  1. A: hullet en stigning skaber regnes ud fra stigningens laengde, stejlhed og
 //     evneforskellen (tiden paa stigningen x det relative fartab), ikke et fast
-//     trin. En tom reserve tvinger kun en rytter af fra ca. kat. 2.
+//     trin. En tom reserve tvinger kun en rytter af paa de haarde kategorier
+//     (wprimeForcedCategories).
 //     B: efter en top midt paa etapen kan en gruppe koere op igen paa
-//     nedkoerslen (i dag lukker den 0 s, saa hullet kun kan vokse).
-//  2. Nedkoersel mod maal: hoejst ca. 1,5 s pr. km for en klart bedre nedkoerer,
-//     afhaengigt af laengde og teknik, og hoejst halvdelen af hullet. Klatring
-//     taeller med i placeringen i en nedkoerselsfinale.
+//     nedkoerslen, og i dalen kan hullet ikke vokse (valleyRegroupTempoV3).
+//  2. Nedkoersel mod maal: en klart bedre nedkoerer vinder hoejst et loft pr. km,
+//     afhaengigt af laengde og teknik, og hoejst en andel af hullet (bogen
+//     bookFinishDescentClosure deles af regruppering, angreb, jagt og finale).
+//     Klatring taeller med i placeringen i en nedkoerselsfinale.
 //  3. Taet score giver samme tid i en selektiv finale.
 //
+// Hvem laeser hvad (gaten sidder hos kaldestederne og i timeModelTuningFor):
+//  - Legacy, orders_gc_v1 og orders_gc_v2 laeser intet herfra.
+//  - orders_gc_v3 laeser modellen med TIME_MODEL_V3_TUNING (kaldestederne gater
+//    paa ctx.ordersGcV3).
+//  - official_times_v1 (frosset prototype, v2-arvelinje + faelles gruppeklokke)
+//    laeser de dele den faelles gruppeklokke bruger (fx dalen), ogsaa med
+//    TIME_MODEL_V3_TUNING (kaldestederne gater paa ctx.sharedGroupTime).
+//  - official_times_v2 (v3-pakken + faelles gruppeklokke) er den eneste der faar
+//    SHARED_TIME_MODEL_V2_TUNING (timeModelTuningFor: ordersGcV3 OG
+//    sharedGroupTime). Knapperne der kun den laeser, er neutrale i v3-tallene, saa
+//    orders_gc_v3 og official_times_v1 er byte-identiske (frosne digests).
+//
 // Alle konstanter er kalibreret privat mod ejer-maalene (balance-internals/6199/).
-// Legacy, orders_gc_v1 og orders_gc_v2 laeser intet herfra (kaldestederne gater
-// paa ctx.ordersGcV3).
 //
 // REN: ingen IO, ingen rng.
 

@@ -165,3 +165,20 @@ Numbers and the per-gate table are private (`balance-internals/6199/`). Open
 with the owner: OTL frequency on hard mountain stages (more than v3's teleported
 tail; a grupetto pacing policy would be a new player-facing choice) and the
 breakaway rate band (candidate, not owner-approved). No activation.
+
+2026-10-08 pre-merge follow-up (wave lane): under official_times_v2 every
+timeline event carries `exact_km` (and `exact_time` where it names riders or a
+group) from the shared clock's linear movement inside the segment
+(`exactPlace.ts`); M5's pursuit model reports its own catch point. A catch
+where both sides are only riders of the day's break is a regroup: no
+`breakaway_caught`, the merge is still reported. Both change events only:
+official_times_v2 times/groups/incidents/passages are digest-identical to the
+commit before, and legacy/orders_gc_v1/v2/v3/official_times_v1 complete outputs
+are frozen on a varied field with AI orders over real proxy-stage shapes
+(`oldRevisionDigests6199.test.ts`). The DB allow-list is now the idempotent
+migration `database/2026-10-08-race-engine-rules-revision-official-times.sql`
+(applied post-merge by auto-migrate, not by the lane). Known and not fixed
+here: on official_times_v2 some timelines disagree with the next group snapshot
+under the membership rule (`validateGroupMembership`), because contact merges
+are reported before a later same-segment move that names no membership event;
+the persistence guard does not run that rule.
