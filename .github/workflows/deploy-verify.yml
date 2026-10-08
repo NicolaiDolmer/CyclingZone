@@ -180,7 +180,8 @@ jobs:
         run: |
           # Use the canonical conservative frontend-input rule.
           REQUIREMENT=$(node scripts/frontend-deployment-needed.mjs "$SHA")
-          NEED_VERCEL=$(jq -r 'if (.required | type) == "boolean" then (.required | tostring) else error("Invalid requirement") end' <<<"$REQUIREMENT" || echo true)
+          NEED_VERCEL=$(jq -r 'if (.required | type) == "boolean" then (.required | tostring) else error("Invalid requirement") end' <<<"$REQUIREMENT" 2>/dev/null || true)
+          [[ "$NEED_VERCEL" == "false" ]] || NEED_VERCEL=true
           FILES=$(git diff-tree --no-commit-id --name-only --no-renames -r "$SHA^1" "$SHA" -- || echo "FETCH_FAILED")
           if [[ "$FILES" == "FETCH_FAILED" ]]; then
             echo "::warning::Kunne ikke hente ændrede filer for $SHA — kræver både Vercel og Railway (fallback)"
