@@ -1,5 +1,63 @@
 export const PATCHES = [
   {
+    "version": "7.347",
+    "date": "2026-10-08",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Train now shows what it locks",
+          "body": "After you press Train now, the race selection for today's races shows a lock with the time you pressed. Riders who trained today are greyed out and can't race today. Riders you bought or moved up after the press can still be picked. The training page marks today as locked instead of showing a save error, and the button tells you before you press which race it locks."
+        },
+        "da": {
+          "title": "Train now viser, hvad den låser",
+          "body": "Når du har trykket Train now, viser udtagelsen til dagens løb en lås med tidspunktet for trykket. Ryttere, der trænede i dag, er grå og kan ikke køre i dag. Ryttere, du har købt eller rykket op efter trykket, kan stadig udtages. Træningssiden markerer i dag som låst i stedet for at vise en fejl, og knappen siger, før du trykker, hvilket løb den låser."
+        },
+        "refs": [
+          6139
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Race film and stage story show the same kilometre",
+          "body": "The race film, the stage story, Race Centre and \"Where your riders lost time\" now show the same kilometre for each event. When a rider drops back to their own breakaway group, it is no longer shown as a catch."
+        },
+        "da": {
+          "title": "Løbsfilm og etapehistorie viser samme kilometer",
+          "body": "Løbsfilmen, etapehistorien, Race Centre og \"Hvor dine ryttere tabte tid\" viser nu samme kilometer for hver hændelse. Når en rytter falder tilbage til sin egen udbrudsgruppe, vises det ikke længere som en indhentning."
+        },
+        "refs": [
+          6294,
+          6350
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Online means looking at the game",
+          "body": "A manager who only has the game open in a background tab now shows as last seen after five minutes, and the online count only counts tabs in use. The game also sends fewer requests, which keeps the server faster."
+        },
+        "da": {
+          "title": "Online betyder, at man kigger på spillet",
+          "body": "En manager, der kun har spillet åbent i en baggrundsfane, vises nu som sidst set efter fem minutter, og online-tallet tæller kun faner i brug. Spillet sender også færre kald, så serveren holder sig hurtigere."
+        },
+        "refs": [
+          6343
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.346",
     "date": "2026-10-08",
     "changes": [
