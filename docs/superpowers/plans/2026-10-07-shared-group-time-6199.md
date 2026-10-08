@@ -127,3 +127,19 @@ covers an empty but sustainable rider, an actually over-demanded weak rider and 
 recovered child cohort. 100/100 old-revision digests still match. Calibration is
 not accepted: first paired measurements still show excessive mountain gaps and
 fragmented tails, so this remains draft. No new pace/OTL/film policy chosen.
+
+2026-10-08 review-fix increment (Claude, after the Codex handoff): the red backend
+CI came from the legacy digest JSON sitting among golden scenario directories; it
+now lives in `backend/lib/engine/v4/test-data/` with unchanged golden expectations.
+Three reproduced review findings were fixed RED/GREEN in
+`sharedGroupClockAccounting6199.test.ts`: (1) point delays booked after segment
+entry (`stage_incidents` from an entry cursor, positive time losses only) are kept
+apart from used movement, so a point loss no longer restores spent closing credit;
+the physical line takes entry gap and delay from the same rider. (2) Physical
+contact and the generic merge use the canonical merged kind/origin and carry the
+cohort mark to the id the joined line keeps; the peloton exception and descent-only
+default are unchanged. (3) The finale resolves physical contact before the
+classification pool and `finish_order`: a line cannot pass a group ahead without
+joining it at the checkpoint, and a line reaching the front brings every passed
+group into the pool. Old-revision frozen outputs still match. Calibration against
+the locked targets, the paired 125-run measurement and #6329 remain open.
