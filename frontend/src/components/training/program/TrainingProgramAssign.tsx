@@ -63,9 +63,12 @@ export default function TrainingProgramAssign({
   // Dobbelttryk-guard: `busy` naar foerst frem efter et render, saa et hurtigt
   // andet tryk ville sende kaldet to gange. Ref'en lukker det med det samme.
   const inFlight = useRef(false);
+  // Taeller valg af modtager: et svar der kommer efter et nyt valg, kasseres.
+  const targetGeneration = useRef(0);
 
   async function apply(program: CatalogProgram) {
     if (target.kind === "none" || inFlight.current) return;
+    const generation = targetGeneration.current;
     inFlight.current = true;
     setMessage(null);
     let result: ProgramsResult;
@@ -76,12 +79,14 @@ export default function TrainingProgramAssign({
     } finally {
       inFlight.current = false;
     }
+    if (targetGeneration.current !== generation) return;
     setMessage(result.ok
       ? { type: "ok", text: t("programs.applied", { name: programName(program, lang), target: targetName }) }
       : { type: "error", text: t("programs.error") });
   }
 
   function chooseTarget(value: string) {
+    targetGeneration.current += 1;
     setTargetValue(value);
     setMessage(null);
     setOpenKey(null);
