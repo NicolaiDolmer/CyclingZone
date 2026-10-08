@@ -60,10 +60,11 @@ test("indeholder TIER WAVE-verifikationsblokken", () => {
 test("kraever hele pakkens testsuite som i CI foer gh pr ready (ejer 8/10, #6348)", () => {
   for (const tier of ["TARGETED", "FULL"]) {
     const brief = generateBrief({ ...baseConfig, tier });
-    assert.match(brief, /Hele pakkens testsuite, samme kommandoer som CI/);
+    assert.match(brief, /Hele pakkens test \+ lint \+ de typiske CI-vagter/);
     assert.match(brief, /npm --prefix frontend test/);
     assert.match(brief, /npm --prefix backend test/);
-    assert.match(brief, /lint-swallowed-catches\.mjs/);
+    // Review #6357 M4: catch- og log-vagten hoerer under backend (det er dér #6348's fejl opstod).
+    assert.match(brief, /backend\/ roert:[^]*lint-swallowed-catches\.mjs[^]*railway-log-watch\.test\.mjs[^]*scripts\/ eller \.github\/ roert/);
     assert.match(brief, /Merge `origin\/main` ind og koer det igen lige foer `gh pr ready`/);
   }
 });

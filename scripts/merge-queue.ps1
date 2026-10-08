@@ -66,6 +66,9 @@ param(
   # hinanden, og CI (main) ventes kun EEN gang paa den sidste merge-SHA (den
   # indeholder hele raekken). -NoBatch giver den gamle en-ad-gangen-adfaerd.
   [switch] $NoBatch,
+  # Review #6357: hoejst saa mange PR'er i en raekke (faerre Railway-deploys i
+  # traek og fejlen kan stadig peges ud til en lille gruppe).
+  [int] $MaxBatch = 3,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   [int] $DeployVerifyTimeoutMinutes = 60,
   [int] $CiTimeoutMinutes = 25
@@ -116,6 +119,11 @@ function Get-PrPlanEntry([int]$number) {
 
   $filesJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'files,title,mergeable,isDraft') -TolerateFailure
   $touchesBackend = $false
+  # Review #6357: Railway bygger paa ALT undtagen backend/railway.json's
+  # watchPatterns-undtagelser (docs/, pr-screens/, superpowers/, .claude/, rod-*.md).
+  # "Roerer ikke backend/" er altsaa ikke det samme som "deployer ikke Railway".
+  $touchesRailway = $false
+  $filesKnown = $false
   $title = "(ukendt)"
   $mergeable = "UNKNOWN"
   $isDraft = $false
@@ -126,10 +134,14 @@ function Get-PrPlanEntry([int]$number) {
       $mergeable = $parsed.mergeable
       $isDraft = [bool]$parsed.isDraft
       foreach ($f in $parsed.files) {
-        if ($f.path -match '^backend/') { $touchesBackend = $true; break }
+        if ($f.path -match '^backend/') { $touchesBackend = $true }
+        if ($f.path -notmatch '^(docs|pr-screens|superpowers|\.claude)/' -and $f.path -notmatch '^[^/]+\.md$') { $touchesRailway = $true }
       }
+      $filesKnown = $true
     } catch {}
   }
+  # Ukendt filliste maa aldrig batches stille uden deploy-verifikation.
+  if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true }
 
   [pscustomobject]@{
     number         = $number
@@ -137,6 +149,7 @@ function Get-PrPlanEntry([int]$number) {
     checksExit     = $checksExit
     checksSummary  = $checksSummary
     touchesBackend = $touchesBackend
+    touchesRailway = $touchesRailway
     mergeable      = $mergeable
     isDraft        = $isDraft
   }
@@ -348,13 +361,36 @@ Write-Host ""
 # koersel ville - den eneste forskel er at intet mutations-kald (merge/wait-
 # for-workflow) reelt udfoeres. Det goer -DryRun til en aekte forhaandsvisning
 # af hvor koeen ville standse, ikke kun et statisk snapshot fra start.
-$batchMerged = @()
+$script:batchMerged = @()
+$script:batchRailway = $false
+$script:lastMergedSha = $null
+$script:dryBatchSize = 0
+
+# Review #6357 M1: stopper koeen midt i en raekke, er de allerede mergede PR'er
+# aldrig CI-verificeret. Vent paa CI (main) for den sidste merge-SHA og sig det
+# tydeligt, FOER koeen afsluttes.
+function Exit-Queue([int]$Code) {
+  if ($script:batchMerged.Count -gt 0 -and $script:lastMergedSha) {
+    $label = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
+    Write-Host "  Koeen stopper midt i en raekke: $label er allerede merget. Venter paa CI (main) for $($script:lastMergedSha) foer exit." -ForegroundColor Yellow
+    $ok = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $script:lastMergedSha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main)"
+    if ($ok) {
+      Write-Host "  CI (main) groen efter $label. Deploy-verifikation er IKKE ventet - tjek 'Deploy verify' for $($script:lastMergedSha)." -ForegroundColor Yellow
+    } else {
+      Write-Host "  CI (main) er ROED eller ikke faerdig efter $label - fix main foer naeste merge." -ForegroundColor Red
+      if ($Code -eq 0) { $Code = 1 }
+    }
+  }
+  exit $Code
+}
+
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $entry = $plan[$idx]
   $n = $entry.number
-  # Batch (ejer 8/10): naeste PR roerer heller ikke backend/ -> merge den med
-  # det samme og vent foerst paa CI (main) efter den sidste i raekken.
-  $batchWithNext = (-not $NoBatch) -and (-not $entry.touchesBackend) -and ($idx + 1 -lt $plan.Count) -and (-not $plan[$idx + 1].touchesBackend)
+  # Batch (ejer 8/10, review #6357): naeste PR roerer heller ikke backend/ og
+  # raekken er under -MaxBatch -> merge med det samme og vent paa CI (main) +
+  # evt. deploy-verifikation EEN gang efter raekken.
+  $batchWithNext = (-not $NoBatch) -and (-not $entry.touchesBackend) -and ($idx + 1 -lt $plan.Count) -and (-not $plan[$idx + 1].touchesBackend) -and (($script:batchMerged.Count + 1) -lt $MaxBatch)
   Write-Host ""
   Write-Host "=== PR #$n ===" -ForegroundColor Cyan
 
@@ -367,41 +403,61 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $draftState = Get-PrDraftState $n
   if ($null -eq $draftState) {
     Write-Host "STOP: kunne ikke afgoere om PR #$n er draft (gh-kaldet fejlede eller gav ulaeseligt JSON) - tjek manuelt med 'gh pr view $n' foer koeen fortsaetter." -ForegroundColor Red
-    exit 1
+    Exit-Queue 1
   }
   if ($draftState) {
     Write-Host "STOP: PR #$n er draft: koer gh pr ready $n foerst." -ForegroundColor Red
-    exit 1
+    Exit-Queue 1
   }
 
   Wait-OutOfMergeTickWindow
 
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
-  if ($LASTEXITCODE -ne 0) { throw "Aktiv boelgemarkoer: PR #$n overlapper boelgens ownership (eller markoeren/fil-listen kunne ikke laeses) - merge-koeen er blokeret." }
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "STOP: Aktiv boelgemarkoer: PR #$n overlapper boelgens ownership (eller markoeren/fil-listen kunne ikke laeses) - merge-koeen er blokeret." -ForegroundColor Red
+    Exit-Queue 1
+  }
 
   $fresh = Get-PrPlanEntry $n
   if ($fresh.checksExit -ne 0) {
     Write-Host "STOP: PR #$n har ikke groenne paakraevede checks ($($fresh.checksSummary)). Ingen flere PR'er merges." -ForegroundColor Red
-    exit 1
+    Exit-Queue 1
   }
+  # Review #6357 M3: brug den FRISKE fil-klassifikation for selve PR'en.
+  if ($fresh.touchesBackend) { $batchWithNext = $false }
+  $entryBackend = $entry.touchesBackend -or $fresh.touchesBackend
+  $entryRailway = $entry.touchesRailway -or $fresh.touchesRailway
 
   if ($DryRun) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
-    if ($entry.touchesBackend) {
+    if ($entryRailway) { $script:batchRailway = $true }
+    if ($entryBackend) {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + 'Deploy verify' (Railway+smoke) for merge-commit'et." -ForegroundColor DarkGray
+      $script:dryBatchSize = 0; $script:batchRailway = $false
     } elseif ($batchWithNext) {
-      Write-Host "  [dry-run] ville merge videre uden at vente (naeste PR roerer heller ikke backend/); CI (main) ventes efter raekken." -ForegroundColor DarkGray
+      $script:dryBatchSize++
+      Write-Host "  [dry-run] ville merge videre uden at vente (naeste PR roerer heller ikke backend/); CI (main) og evt. Deploy verify ventes efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
+    } elseif ($script:dryBatchSize -gt 0 -and $script:batchRailway) {
+      Write-Host "  [dry-run] sidste i raekken: ville vente paa CI (main) + 'Deploy verify' for hele raekken (den udloeser Railway)." -ForegroundColor DarkGray
+      $script:dryBatchSize = 0; $script:batchRailway = $false
     } else {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + mindst $MinWaitMinutesNoBackend min (roerer ikke backend/)." -ForegroundColor DarkGray
+      $script:dryBatchSize = 0; $script:batchRailway = $false
     }
     continue
   }
 
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
-  if ($LASTEXITCODE -ne 0) { throw "Boelgen har aendret sig siden preflight (overlap med PR #$n): merge er blokeret." }
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "STOP: Boelgen har aendret sig siden preflight (overlap med PR #$n): merge er blokeret." -ForegroundColor Red
+    Exit-Queue 1
+  }
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo
-  if ($LASTEXITCODE -ne 0) { throw 'Merge fejlede eller boelgelaasen blev afvist.' }
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "STOP: Merge af PR #$n fejlede eller boelgelaasen blev afvist." -ForegroundColor Red
+    Exit-Queue 1
+  }
 
   # Merge-commit-SHA'en er ikke altid straks synlig via API'et - lille retry-loop.
   $sha = $null
@@ -417,40 +473,47 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
   if (-not $sha) {
     Write-Host "  [FEJL] Kunne ikke afgoere merge-commit-SHA for PR #$n - STOPPER koeen (kan ikke verificere CI/deploy)." -ForegroundColor Red
-    exit 1
+    $script:batchMerged += $n
+    Exit-Queue 1
   }
   Write-Host "  Merged som $sha"
-  $batchMerged += $n
+  $script:batchMerged += $n
+  $script:lastMergedSha = $sha
+  if ($entryRailway) { $script:batchRailway = $true }
 
   if ($batchWithNext) {
-    Write-Host "  PR #$n roerer ikke backend/, og det goer naeste PR heller ikke - merger videre og venter paa CI (main) efter raekken." -ForegroundColor DarkGray
+    Write-Host "  PR #$n roerer ikke backend/, og det goer naeste PR heller ikke - merger videre og venter efter raekken." -ForegroundColor DarkGray
     continue
   }
 
-  $batchLabel = ($batchMerged | ForEach-Object { "#$_" }) -join ", "
+  $batchLabel = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
+  $batchSize = $script:batchMerged.Count
   $ciOk = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main)"
   if (-not $ciOk) {
     Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst). Ved flere PR'er: en af dem (eller samspillet) er aarsagen." -ForegroundColor Red
     exit 1
   }
-  $batchMerged = @()
+  $script:batchMerged = @()
 
-  if ($entry.touchesBackend) {
+  # Deploy-verifikation: altid for backend; og efter en RAEKKE (2+) der har
+  # udloest Railway, saa sluttilstanden er verificeret (review #6357 B1).
+  if ($entryBackend -or ($batchSize -gt 1 -and $script:batchRailway)) {
     $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes
     if ($deployState -ne 'verified') {
       if ($deployState -eq 'pending') {
-        Write-Host "AFVENTER: deploy-verifikation efter PR #$n er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
+        Write-Host "AFVENTER: deploy-verifikation efter $batchLabel er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
         exit 75
       }
-      Write-Host "STOP: deploy-verifikation efter PR #$n er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
+      Write-Host "STOP: deploy-verifikation efter $batchLabel er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
       exit 1
     }
   } else {
     Write-Host "  PR #$n roerer ikke backend/ - venter mindst $MinWaitMinutesNoBackend min foer naeste merge."
     Start-Sleep -Seconds ($MinWaitMinutesNoBackend * 60)
   }
+  $script:batchRailway = $false
 
-  Write-Host "  [ok] PR #$n faerdig - klar til naeste i koeen." -ForegroundColor Green
+  Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
 }
 
 Write-Host ""
