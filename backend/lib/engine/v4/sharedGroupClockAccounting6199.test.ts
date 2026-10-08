@@ -4,7 +4,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { finaleHook } from './finale.ts';
-import { initRiderStates } from './groups.ts';
+import { initRiderStates, mergeGroupsDetailed, mergedSharedCohorts } from './groups.ts';
+import { climbSelectionHook } from './mechanics/climbSelection.ts';
+import { reconcileDescentCrossings } from './mechanics/descentCrossing.ts';
 import { makeHookCtx } from './testUtils/makeHookCtx.ts';
 import { RACE_V4_TUNING } from './tuning.ts';
 import type { AbilityKey, Entrant, EngineState, RaceGroup, RouteV2, StageIncident } from './types.ts';
@@ -51,6 +53,49 @@ test('a point loss after segment entry is not erased by closing credit already u
     const out = finaleHook(moved, shared);
     assert.equal(gapOf(out.state, 'near'), onceGap + delay, `point loss ${delay}s is kept`);
   }
+});
+
+function cohortContact(markCatcher: boolean) {
+  const {riders, ctx} = sharedFixture([90, 50, 20], '6199-cohort-contact');
+  for (const r of Object.values(riders)) r.segment_pace = {cp: 0.5, demand: 0.2};
+  const before: RaceGroup[] = [{id:'cohort',kind:'chase',rider_ids:['r1','r2'],gap_seconds:0,cohesion:1},
+    {id:'catcher',kind:'solo',rider_ids:['r0'],gap_seconds:20,cohesion:1}];
+  const state = withGroups(riders, [{...before[1], gap_seconds: 0}, {...before[0], gap_seconds: 10}],
+    {shared_grupetto_groups: markCatcher ? {cohort: true, catcher: true} : {cohort: true}});
+  const joined = reconcileDescentCrossings(before, state, 10, [], true).state;
+  return {joined, ctx};
+}
+
+test('cohort lineage survives contact when the catcher keeps its own group id', () => {
+  const control = cohortContact(true);
+  assert.equal(control.joined.groups.length, 1);
+  const controlNext = climbSelectionHook(control.joined, {...control.ctx, sharedGroupTime: {entryGroups: control.joined.groups}});
+  assert.equal(controlNext.state.groups.length, 1, 'control: a marked adopted line stays together');
+  const {joined, ctx} = cohortContact(false);
+  assert.equal(joined.groups.length, 1);
+  assert.equal(joined.shared_grupetto_groups?.[joined.groups[0].id], true, 'merged physical line inherits the cohort mark');
+  const next = climbSelectionHook(joined, {...ctx, sharedGroupTime: {entryGroups: joined.groups}});
+  assert.equal(next.state.groups.length, 1, 'riders who sustain the actual pace are not re-split after a catch');
+});
+
+test('contact keeps the canonical merged kind: a caught peloton stays the peloton', () => {
+  const {riders} = sharedFixture([90, 50, 20], '6199-peloton-contact');
+  const before: RaceGroup[] = [{id:'peloton-0',kind:'peloton',rider_ids:['r1','r2'],gap_seconds:0,cohesion:1},
+    {id:'chase-1',kind:'chase',rider_ids:['r0'],gap_seconds:20,cohesion:1}];
+  const state = withGroups(riders, [{...before[1], gap_seconds: 0}, {...before[0], gap_seconds: 10}]);
+  const joined = reconcileDescentCrossings(before, state, 10, [], true).state;
+  assert.equal(joined.groups.length, 1);
+  assert.equal(joined.groups[0].kind, 'peloton');
+});
+
+test('generic merge carries the cohort mark to the surviving group id', () => {
+  const groups: RaceGroup[] = [{id:'a',kind:'chase',rider_ids:['r0'],gap_seconds:0,cohesion:1},
+    {id:'b',kind:'chase',rider_ids:['r1','r2'],gap_seconds:0,cohesion:1},
+    {id:'c',kind:'gruppetto',rider_ids:['r3'],gap_seconds:50,cohesion:1}];
+  const merged = mergeGroupsDetailed(groups, 1e-7);
+  assert.deepEqual(mergedSharedCohorts({b: true}, groups, merged.merges), {a: true});
+  assert.deepEqual(mergedSharedCohorts({x: true}, groups, merged.merges), {x: true}, 'unrelated marks are untouched');
+  assert.equal(mergedSharedCohorts(undefined, groups, merged.merges), undefined);
 });
 
 test('incidents booked before segment entry are already inside the entry gaps', () => {

@@ -62,6 +62,7 @@ import {
   initRiderStates,
   mergeGroupsDetailed,
   mergeTailGroupsDetailed,
+  mergedSharedCohorts,
 } from "./groups.ts";
 import type { FinaleGroupTrace, GroupMerge } from "./groups.ts";
 import {
@@ -1169,7 +1170,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...baseMerge.merges.map((m) => (tailInto.has(m.into_group_id) ? { ...m, into_group_id: tailInto.get(m.into_group_id)! } : m)),
       ...tailMerge.merges,
     ];
-    state = { ...state, groups: mergedGroups, km: segment.to_km, ...(sharedGroupTime ? {riders:applyGroupTimes(mergedGroups,state.riders,frontElapsedSeconds)} : {}) };
+    // #6199: kohortelinjen foelger den samlede linjes id gennem det generiske merge.
+    const cohortsAfterMerge = sharedGroupTime ? mergedSharedCohorts(state.shared_grupetto_groups, state.groups, merges) : state.shared_grupetto_groups;
+    state = { ...state, groups: mergedGroups, km: segment.to_km, ...(sharedGroupTime ? {riders:applyGroupTimes(mergedGroups,state.riders,frontElapsedSeconds)} : {}),
+      ...(cohortsAfterMerge !== state.shared_grupetto_groups ? {shared_grupetto_groups: cohortsAfterMerge} : {}) };
     if (!sharedGroupTime) frontElapsedSeconds += dtFront;
 
     // 4c (#4971). Merget er et REELT gruppeskift, og indtil nu var det TAVST:

@@ -1,4 +1,5 @@
 import type { EngineState, RaceGroup, SegmentHookResult, TimelineEvent } from '../types.ts';
+import { mergedPhysicalGroup, mergedSharedCohorts } from '../groups.ts';
 
 /**
  * Reconcile an observed order reversal, not proximity at the end alone.
@@ -17,6 +18,7 @@ export function reconcileDescentCrossings(before: readonly RaceGroup[], state: E
     .sort((a,b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   let groups = state.groups;
   let riders = state.riders;
+  let cohorts = state.shared_grupetto_groups;
   const events: TimelineEvent[] = [];
   for (const oldTarget of targets) {
     const target = groups.find(group => group.id === oldTarget.id && (allPhysicalContacts || group.origin === 'descent'));
@@ -33,8 +35,15 @@ export function reconcileDescentCrossings(before: readonly RaceGroup[], state: E
     const catcher = knownCatcher ? candidates.find(group => group.id === knownCatcher) : candidates[0];
     if (!catcher) continue;
     const mergedIds = [...new Set([...catcher.rider_ids, ...target.rider_ids])];
-    const combined: RaceGroup = {...catcher, kind: catcher.kind === 'solo' ? 'chase' : catcher.kind,
-      gap_seconds: Math.min(catcher.gap_seconds, target.gap_seconds), rider_ids: mergedIds, cohesion: Math.min(catcher.cohesion, target.cohesion)};
+    const contactGap = Math.min(catcher.gap_seconds, target.gap_seconds);
+    // #6199: every physical contact uses the canonical merge (kind/origin) and
+    // carries cohort lineage to the id the joined line keeps. The descent-only
+    // default keeps its original catcher-kind rule.
+    const combined: RaceGroup = allPhysicalContacts ? mergedPhysicalGroup(catcher, target, contactGap)
+      : {...catcher, kind: catcher.kind === 'solo' ? 'chase' : catcher.kind,
+        gap_seconds: contactGap, rider_ids: mergedIds, cohesion: Math.min(catcher.cohesion, target.cohesion)};
+    if (allPhysicalContacts) cohorts = mergedSharedCohorts(cohorts, [catcher, target],
+      [{absorbed_group_id: target.id, into_group_id: catcher.id, rider_ids: [...target.rider_ids]}]);
     groups = groups.filter(group => group.id !== target.id).map(group => group.id === catcher.id ? combined : group);
     if (riders === state.riders) riders = {...riders};
     for (const id of mergedIds) if (riders[id]) riders[id] = {...riders[id], group_id: catcher.id};
@@ -44,5 +53,6 @@ export function reconcileDescentCrossings(before: readonly RaceGroup[], state: E
     events.push({km:checkpoint,type:'group_merged',params:{group_id:target.id,into_group_id:catcher.id,rider_ids:[...target.rider_ids]}});
   }
   if (events.length === 0) return {state,events};
-  return {state:{...state,groups:[...groups].sort((a,b)=>a.gap_seconds-b.gap_seconds||a.id.localeCompare(b.id)),riders},events};
+  return {state:{...state,groups:[...groups].sort((a,b)=>a.gap_seconds-b.gap_seconds||a.id.localeCompare(b.id)),riders,
+    ...(cohorts !== state.shared_grupetto_groups ? {shared_grupetto_groups: cohorts} : {})},events};
 }
