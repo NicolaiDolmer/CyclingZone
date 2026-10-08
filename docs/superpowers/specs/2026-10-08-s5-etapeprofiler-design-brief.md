@@ -52,3 +52,41 @@ Designmøde (ejer) → byg i bølge med motor-tests og benchmark-gate → tørk�
 4. Skal "udbrud" forblive en finaletype?
 5. Etapekortets indhold og placering (mockup).
 6. Ønsket fordeling af etapetyper i en Grand Tour vs. et kort etapeløb i S5.
+
+---
+
+## Runde 2 (8/10 aften): ejerens Gemini-dialog vurderet + Claudes tilføjelser
+
+Ejeren bad om at bruge Gemini-runde 2 til at gøre designet endnu bedre og selv tilføje mere, så etapeprofilerne kan blive et af spillets klart bedste områder. **Det endelige design sættes fast SAMMEN med ejeren** (ét beslutningskort ad gangen, til sidst én side med hele designet som ejeren godkender ende-til-ende; design-go noteres på #6369).
+
+### Hvad Gemini runde 2 har ret i (tages med)
+
+- **Finaleaksen er rutens geometri de sidste km, ikke et udfald.** "Udbrud" og "solostød" fjernes som finaletyper; motoren afgør om et udbrud eller soloangreb holder hjem. Samme konklusion som Claudes kritik i runde 1. (Afløser spørgsmål 4 ovenfor med en anbefaling: fjern "udbrud" som finale.)
+- **Matrix over tilladte kombinationer** (terræn × afslutning) i generatoren, så umulige kombinationer ikke kan opstå (fx bjerg + reduceret spurt, som ramte Tour-etape 8).
+- **Kalenderkvoter som gate** (andel flad/bølget, kuperet/mellembjerg, bjerg/højbjerg, enkeltstart) — men tallene skal komme fra rigtige Grand Tours, ikke skøn (se nedenfor).
+- **Rytterevner pr. finale** skal designes eksplicit (fx stigende massespurt = sprint + punch + acceleration; mur-finale = punch + acceleration + kort klatring).
+
+### Hvor Gemini runde 2 tager fejl (rettes)
+
+- **Terræn efter samlede højdemeter (500/1.500/2.500/3.500/4.500 m) er forkert.** Højdemeter afhænger af distancen og af mange små bølger; en lang bølget etape kan have flere højdemeter end en kort etape med én kat. 1. Det strider også mod ejerens definition (stigningernes LÆNGDE og karakter). **Terræn skal udledes af de enkelte stigninger** (længde, gennemsnitsgradient, kategori, tæthed), med højdemeter som sekundært sanity-tjek. Det er sådan virkelighedens klassificering fungerer.
+- **Brosten, grus og klassiker er ikke terræn.** Brosten og grus er *underlag*; en brostensetape kan være flad (Roubaix) eller kuperet (Flandern med mure). Klassiker/monument er *løbets karakter* (længde, prestige), ikke etapens terræn.
+
+### Claudes tilføjelser til verdensklasse
+
+1. **Tre akser i stedet for to:** (A) terræn af stigningerne: flad, bølget, kuperet, mellembjerg, bjerg, højbjerg · (B) afslutning af de sidste km: flad, stigende spurt, bakke/punch, mur, bjergtop, nedkørsel (+ enkeltstart/holdtidskørsel) · (C) **underlag**: asfalt, brostenssektorer, grussektorer (antal, længde, sværhed). Så kan Flandern (kuperet + mure + brosten) og Roubaix (flad + brosten) være forskellige, som i virkeligheden.
+2. **Løbets karakter** på løbsniveau: monument/klassiker (lang distans, 250+ km), Grand Tour, kort etapeløb. Distancen påvirker udholdenhed, ikke terrænet.
+3. **Hvor afgøres etapen:** den sidste vigtige stigning og dens afstand til mål (fx Poggio 5,5 km før mål) som felt på etapen. Det er dét, der skiller "stigning og flad finale" fra "bjergtop", og spilleren kan se det.
+4. **Rigtig benchmark-database:** de seneste 3-5 års Tour/Giro/Vuelta og monumenter klassificeret med samme regel (fordeling af typer, finaler og typiske tidsgab pr. type). Kvoterne og motorens tidsgab kalibreres mod den, ikke mod gæt.
+5. **Grand Tour-struktur, ikke kun kvoter:** rigtige mønstre (flad/kuperet første uge, enkeltstart midtvejs, bjerge og kongeetape i uge 3) som kalenderregel for Grand Tours i spillet.
+6. **Kandidater til senere motor-mekanik** (ikke S5 uden ejer-go): sidevind og kanter på flade/bølgede etaper (vejr findes allerede pr. etape), teknisk finale (sving, smalle veje) der vægter positionering, målankomst i højde.
+7. **Etapekortet** viser alle tre akser + "her afgøres etapen" + hvilke evner dagen kræver, så holdudtagelsen bliver et reelt valg.
+
+### Rækkefølge for designmødet (ét kort ad gangen)
+
+1. Tre akser ja/nej (terræn, afslutning, underlag) + løbets karakter.
+2. Terræn-reglen: grænser for bølget/kuperet/mellembjerg/bjerg/højbjerg ud fra stigningerne (ejerens definition), vist på rigtige S4-etaper.
+3. Afslutningstyperne og den tilladte matrix.
+4. Rytterevner pr. afslutning.
+5. Benchmark-kvoter og Grand Tour-struktur (fra benchmark-databasen).
+6. Etapekortet (mockup).
+7. Samlet designside → ejerens design-go → byg.
