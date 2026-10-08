@@ -990,6 +990,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // mechanics/timeModel.ts), saa loftet maales fra hullet ved toppen.
     const descentOpenOnly = ordersGcV3 && segment.kind === "descent" && segmentIndex === segments.length - 1;
     const groupsBeforeTempo = state.groups;
+    const incidentCursorAtEntry = state.stage_incidents?.length ?? 0;
     let groups: RaceGroup[];
     if (sharedGroupTime) {
       let clock = beginGroupClock({groups: state.groups, frontTimeSeconds: frontElapsedSeconds,
@@ -1039,7 +1040,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
       ...(rollingBreakawayV2For(v2Revision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
       ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
-      ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo } } : {}),
+      ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo, incidentCursor: incidentCursorAtEntry } } : {}),
       ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {

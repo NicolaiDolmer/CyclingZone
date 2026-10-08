@@ -1,4 +1,4 @@
-import type { RaceGroup } from './types.ts';
+import type { RaceGroup, StageIncident } from './types.ts';
 
 // Floating-point equality only; this is not a sporting catch window.
 export const GROUP_CLOCK_CONTACT_EPSILON = 1e-7;
@@ -100,6 +100,38 @@ export function projectRelativeArrivals(groups: readonly RaceGroup[], referenceS
     groups: arrivals.map(({group,seconds}) => ({...group,rider_ids:[...group.rider_ids],gap_seconds:seconds-frontTimeSeconds})),
     arrivals: Object.fromEntries(arrivals.map(({group,seconds})=>[group.id,seconds])),
   };
+}
+
+/**
+ * Point delays booked after an interval's entry (incidents from `cursor` on).
+ * Earlier incidents are already inside the entry gaps; only a genuine,
+ * positive stopped-time loss counts. Never a stage total or a km filter.
+ */
+export function pointDelaysSince(incidents: readonly StageIncident[] | undefined, cursor: number): Map<string, number> {
+  nonnegative(cursor, 'incident cursor');
+  const delays = new Map<string, number>();
+  for (const incident of (incidents ?? []).slice(cursor)) {
+    const seconds = incident.time_loss_seconds;
+    if (incident.outcome !== 'time_loss' || seconds === null || !Number.isFinite(seconds) || seconds <= 0) continue;
+    delays.set(incident.rider_id, (delays.get(incident.rider_id) ?? 0) + seconds);
+  }
+  return delays;
+}
+
+/**
+ * A group's physical line since interval entry: the front-most rider's entry
+ * gap plus that same rider's point delays. Entry and delay come from one rider
+ * (the adopted line), never independent minima of the two.
+ */
+export function physicalLineSeconds(ids: readonly string[], entryGapByRider: ReadonlyMap<string, number>, delays: ReadonlyMap<string, number>): number {
+  if (ids.length === 0) throw new Error('group clock: empty line');
+  let best = Infinity;
+  for (const id of ids) {
+    const entry = entryGapByRider.get(id);
+    if (entry === undefined) throw new Error('group clock: missing entry lineage');
+    best = Math.min(best, entry + (delays.get(id) ?? 0));
+  }
+  return best;
 }
 
 /** Remaining part of one interval's closing estimate after physical movement. */

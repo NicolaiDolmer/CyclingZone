@@ -1,4 +1,4 @@
-import { GROUP_CLOCK_CONTACT_EPSILON, remainingClosureSeconds } from "./groupClock.ts";
+import { GROUP_CLOCK_CONTACT_EPSILON, physicalLineSeconds, pointDelaysSince, remainingClosureSeconds } from "./groupClock.ts";
 // backend/lib/engine/v4/finale.ts
 // Race Engine v4 F2 (#4030): M4 - punch-finale + placerings-opgoer i frontgruppen.
 // SSOT: docs/superpowers/specs/2026-08-21-race-engine-v4-f2-core-design.md §4
@@ -436,10 +436,14 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   const entryGapByRider = ctx.sharedGroupTime
     ? new Map(ctx.sharedGroupTime.entryGroups.flatMap(group => group.rider_ids.map(id => [id,group.gap_seconds] as const)))
     : null;
+  // #6199: punktforsinkelser efter indgangen bogfoeres separat, saa allerede
+  // brugt bevaegelse ikke kan genopstaa som lukningskredit efter et tidstab.
+  const pointDelays = ctx.sharedGroupTime
+    ? pointDelaysSince(state.stage_incidents, ctx.sharedGroupTime.incidentCursor ?? 0)
+    : new Map<string, number>();
   const entryGap = (ids: readonly string[]): number => {
-    const values = ids.map(id => entryGapByRider?.get(id));
-    if (!values.length || values.some(value => value === undefined)) throw new Error("shared finale: missing entry lineage");
-    return Math.min(...values as number[]);
+    if (!entryGapByRider) throw new Error("shared finale: missing entry lineage");
+    return physicalLineSeconds(ids, entryGapByRider, pointDelays);
   };
 
   for (const group of chaseCandidates) {
