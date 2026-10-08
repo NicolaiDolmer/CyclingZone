@@ -75,6 +75,8 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
     || [...changed].some(path => closures.get(slug).has(path)));
 }
 
+// An empty first page is returned as []: the caller must confirm emptiness
+// against the target checkout before treating it as "no impact".
 export async function changedFiles({ sha, repository, token, fetchFn }) {
   if (!/^[a-f0-9]{40}$/i.test(sha) || !/^[\w.-]+\/[\w.-]+$/.test(repository) || !token) throw new Error('Missing GitHub evidence configuration');
   const files = [];
@@ -82,22 +84,55 @@ export async function changedFiles({ sha, repository, token, fetchFn }) {
     const response = await fetchFn(`https://api.github.com/repos/${repository}/commits/${sha}?per_page=100&page=${page}`, {
       method: 'GET', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000),
     });
-    if (!response.ok) throw new Error('Changed-file GET failed');
+    if (!response.ok) throw new Error(`Changed-file GET failed (HTTP ${Number(response.status) || 'unknown'})`);
     const data = await response.json();
     if (data.sha !== sha || !Array.isArray(data.files)) throw new Error('Changed-file SHA/payload mismatch');
     files.push(...data.files);
     if (new Set(files.map(file => file.filename)).size !== files.length) throw new Error('Repeated changed-file page');
-    if (data.files.length < 100) {
-      if (!files.length) throw new Error('Empty changed-file evidence');
-      return files;
-    }
+    if (data.files.length < 100) return files;
   }
   throw new Error('Changed-file list may be truncated');
 }
 
-export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_MONITORS, excluded = new Set(), accepted = new Map() }) {
-  const boundary = stamp(since), clock = stamp(now);
-  if (!Number.isFinite(boundary) || !Number.isFinite(clock) || clock < boundary || !Array.isArray(rows)) throw new Error('Invalid heartbeat evidence');
+// Railway impact for the target SHA. An empty API file list is only accepted
+// when the checked-out commit itself is verifiably empty against its first
+// parent (#6318 review): an empty commit deploys nothing and proves nothing.
+export function deploymentImpact(files, { localChangedPaths, affected = affectedCronJobs } = {}) {
+  if (Array.isArray(files) && files.length === 0) {
+    if (!Array.isArray(localChangedPaths)) throw new Error('Empty changed-file evidence could not be confirmed locally');
+    if (localChangedPaths.length > 0) throw new Error('Empty changed-file evidence disagrees with the target checkout');
+    return { slugs: [], needRailway: false, empty: true };
+  }
+  const slugs = affected(files);
+  const paths = files.flatMap(file => [file.filename, ...(file.status === 'renamed' ? [file.previous_filename] : [])]);
+  return { slugs, needRailway: slugs.length > 0 || paths.some(path => path.startsWith('backend/')), empty: false };
+}
+
+// Railway keeps the previous process alive for drainingSeconds after the new
+// deployment is READY; in-flight ticks there may still write check-ins. Proof
+// must therefore start after boundary + drain (#6318 review).
+export function railwayDrainSeconds(read = () => readFileSync(resolve(ROOT, 'backend/railway.json'), 'utf8')) {
+  const value = JSON.parse(read())?.deploy?.drainingSeconds ?? 0;
+  if (!Number.isSafeInteger(value) || value < 0 || value > 3600) throw new Error('Invalid Railway drainingSeconds');
+  return value;
+}
+
+// Never print secrets: redact known secret values and cap the length.
+export function safeReason(error, secrets = []) {
+  // JSON parse errors quote fragments of the response body; never echo them.
+  if (error?.name === 'SyntaxError') return 'SyntaxError: invalid JSON payload';
+  let text = `${error?.name ?? 'Error'}: ${error?.message ?? String(error)}`;
+  for (const secret of secrets) if (typeof secret === 'string' && secret.length >= 4) text = text.split(secret).join('[redacted]');
+  return text.replace(/(Bearer\s+)\S+/gi, '$1[redacted]').replace(/[\r\n]+/g, ' ').slice(0, 300);
+}
+
+export const SHORT_CADENCE_SECONDS = 1800;
+
+export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_MONITORS, excluded = new Set(), accepted = new Map(), drainSeconds = 0 }) {
+  const ready = stamp(since), clock = stamp(now);
+  if (!Number.isFinite(ready) || !Number.isFinite(clock) || clock < ready || !Array.isArray(rows)
+    || !Number.isSafeInteger(drainSeconds) || drainSeconds < 0) throw new Error('Invalid heartbeat evidence');
+  const boundary = ready + drainSeconds * 1000;
   const configs = new Map(monitors);
   const bySlug = new Map();
   const cohort = new Map();
@@ -128,7 +163,7 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
     else if (accepted.has(slug)) state = 'verified';
     else if (time > boundary && time <= deadline && !excluded.has(time)) state = 'verified';
     else if (clock >= deadline) state = 'failed';
-    else state = cadence > 1800 ? 'deferred' : 'waiting';
+    else state = cadence > SHORT_CADENCE_SECONDS ? 'deferred' : 'waiting';
     const lastCheckin = state === 'verified' && accepted.has(slug) ? accepted.get(slug).lastCheckin
       : Number.isFinite(time) ? new Date(time).toISOString() : 'missing/unreadable';
     return { slug, state, lastCheckin, deadline: new Date(deadline).toISOString() };
@@ -137,7 +172,7 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
   return { state, jobs };
 }
 
-export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, fetchFn, log = () => {}, monitors = ALL_CRON_MONITORS }) {
+export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, fetchFn, log = () => {}, monitors = ALL_CRON_MONITORS, drainSeconds = 0 }) {
   if (!Array.isArray(slugs) || new Set(slugs).size !== slugs.length) throw new Error('Invalid affected cron list');
   if (slugs.length === 0) return { state: 'verified', jobs: [] };
   let endpoint;
@@ -150,8 +185,16 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
     for (const job of jobs) log(`${job.slug}: failed; last check-in=unreadable; deadline=unknown`);
     return { state: 'failed', jobs };
   }
+  // Filter to registry slugs with a stable order (#6318 review): stale or
+  // foreign rows can never push an affected row past the limit. Sibling
+  // registry rows stay in the snapshot on purpose: boot-prime cohorts are only
+  // recognisable across jobs, including when a single job is affected.
+  const registrySlugs = monitors.map(([slug]) => slug);
+  if (registrySlugs.some(slug => !/^[a-z0-9][a-z0-9_-]*$/.test(slug))) throw new Error('Invalid registry slug');
   endpoint.searchParams.set('select', 'job_slug,last_checkin_at,expected_cadence_seconds');
-  endpoint.searchParams.set('limit', String(monitors.length + 1));
+  endpoint.searchParams.set('job_slug', `in.(${registrySlugs.join(',')})`);
+  endpoint.searchParams.set('order', 'job_slug.asc');
+  endpoint.searchParams.set('limit', String(registrySlugs.length + 1));
   const excluded = new Set();
   const accepted = new Map();
   const lastLogged = new Map();
@@ -168,7 +211,7 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
         for (const row of rows) if (Number.isFinite(stamp(row?.last_checkin_at))) excluded.add(stamp(row.last_checkin_at));
         initial = false;
       }
-      result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded, accepted });
+      result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded, accepted, drainSeconds });
       for (const job of result.jobs) if (job.state === 'verified') accepted.set(job.slug, job);
     } catch {
       result = { state: 'failed', jobs: slugs.map(slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' })) };
@@ -193,11 +236,17 @@ async function main() {
     const head = execFileSync('git', ['-C', ROOT, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
     if (head !== sha) throw new Error('Checkout does not match target SHA');
     const files = await changedFiles({ sha, repository: process.env.GITHUB_REPOSITORY, token: process.env.GH_TOKEN, fetchFn: fetch });
-    const slugs = affectedCronJobs(files);
-    output('affected_slugs', JSON.stringify(slugs));
-    const paths = files.flatMap(file => [file.filename, ...(file.status === 'renamed' ? [file.previous_filename] : [])]);
-    output('need_railway', slugs.length > 0 || paths.some(path => path.startsWith('backend/')) ? 'true' : 'false');
-    output('need_vercel', paths.some(path => path.startsWith('frontend/')) ? 'true' : 'false');
+    // Only consulted for an empty API list; needs the full-history checkout.
+    const localChangedPaths = () => {
+      const parent = execFileSync('git', ['-C', ROOT, 'rev-parse', `${sha}^1`], { encoding: 'utf8' }).trim();
+      return execFileSync('git', ['-C', ROOT, 'diff', '--name-only', '--no-renames', '-z', parent, sha, '--'], { encoding: 'utf8' })
+        .split('\0').filter(Boolean);
+    };
+    const impact = deploymentImpact(files, { localChangedPaths: files.length === 0 ? localChangedPaths() : undefined });
+    if (impact.empty) console.log('Empty commit: no changed files, no Railway deploy and no affected cron jobs.');
+    output('affected_slugs', JSON.stringify(impact.slugs));
+    output('need_railway', impact.needRailway ? 'true' : 'false');
+    console.log(`Affected cron jobs: ${impact.slugs.length}; Railway required: ${impact.needRailway}`);
     return;
   }
   const slugs = JSON.parse(process.env.AFFECTED_SLUGS);
@@ -206,12 +255,20 @@ async function main() {
     return;
   }
   const result = await verifyCronCheckins({ slugs, since: process.env.CRON_SINCE, url: process.env.SUPABASE_URL,
-    key: process.env.SUPABASE_SERVICE_KEY, now: () => new Date().toISOString(),
+    key: process.env.SUPABASE_SERVICE_KEY, now: () => new Date().toISOString(), drainSeconds: railwayDrainSeconds(),
     sleep: ms => new Promise(done => setTimeout(done, ms)), fetchFn: fetch, log: console.log });
   output('state', result.state);
+  if (result.state === 'deferred') {
+    const waiting = result.jobs.filter(job => job.state === 'deferred').map(job => job.slug);
+    console.log(`AFVENTER CHECK-IN (non-blocking): ${waiting.join(', ')}. Short cadences (<= 30 min) are verified; long cadences are covered by the cron heartbeat watchdog.`);
+  }
   if (result.state === 'failed') process.exitCode = 1;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main().catch(() => { console.error('Cron deploy proof failed: evidence/configuration unreadable; no verification claimed'); process.exitCode = 1; });
+  main().catch(error => {
+    const reason = safeReason(error, [process.env.SUPABASE_SERVICE_KEY, process.env.GH_TOKEN]);
+    console.error(`Cron deploy proof failed (${reason}); no verification claimed`);
+    process.exitCode = 1;
+  });
 }

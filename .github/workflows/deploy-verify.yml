@@ -51,7 +51,10 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    # 40 min deployment polling + up to 45 min short-cadence proof + probes.
+    # 40 min deployment polling + up to ~48 min short-cadence proof (Railway
+    # drain + 30 min cadence + margin) + probes. scripts/merge-queue.ps1's
+    # -DeployVerifyTimeoutMinutes must stay above this (asserted in
+    # scripts/merge-queue-deploy-pending.test.mjs, #6318).
     timeout-minutes: 100
     steps:
       # #5424: flyttet hertil (var før "Wait for Vercel + Railway
@@ -345,7 +348,7 @@ jobs:
 
       - name: Cron check-ins deferred
         if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'deferred'
-        run: echo "::notice::AFVENTER CHECK-IN; not verified. Stop queue; see jobs and deadlines in summary."
+        run: echo "::notice::AFVENTER CHECK-IN for long cadences (> 30 min); short cadences verified. Non-blocking for the merge queue; see jobs and deadlines in summary."
 
       - name: Smoke-test prod
         id: smoke
@@ -599,9 +602,10 @@ jobs:
           BODY="<!-- deploy-verify:$SHA -->
           ## AFVENTER CHECK-IN (${SHA:0:7})
 
-          Railway er klar; cron-bevis afventer lange kadencer. Release er **ikke verificeret**.
-          Boundary: $CRON_SINCE. [Jobs, sidste check-in og deadline]($RUN_URL).
-          Merge-koeen stopper med exit 75, uden automatisk genkoersel eller naeste merge."
+          Railway er klar, smoke er groen, og alle berorte jobs med kort kadence (<= 30 min) har tikket efter deployet.
+          Jobs med lang kadence (> 30 min) **afventer check-in** og er ikke bevist endnu.
+          Boundary: $CRON_SINCE (+ Railway drain). [Jobs, sidste check-in og deadline]($RUN_URL).
+          Merge-koeen fortsaetter; cron-heartbeat-vagten alarmerer hvis et langt job misser sin deadline."
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
           if [ -n "$COMMENT_ID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"

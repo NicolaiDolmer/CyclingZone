@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const queue = fileURLToPath(new URL('./merge-queue.ps1', import.meta.url)).replaceAll("'", "''");
@@ -71,4 +72,40 @@ test('deferred cron evidence stops immediately without resetting its boundary th
 
 test('successful smoke without cron evidence stops fail-closed', () => {
   assert.deepEqual(runFixture('missingCron'), { state: 'unknown', reruns: 0, readsAfterRerun: 0 });
+});
+
+function gateActions(states) {
+  const list = states.map(state => `'${state}'`).join(',');
+  const script = `
+    $ErrorActionPreference='Stop';
+    $ast=[Management.Automation.Language.Parser]::ParseFile('${queue}',[ref]$null,[ref]$null);
+    $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-DeployGateAction'},$true);
+    Invoke-Expression $fn.Extent.Text;
+    $out=@{}; foreach($s in @(${list})){ $out[$s]=Get-DeployGateAction $s };
+    Write-Output ('RESULT='+($out|ConvertTo-Json -Compress));
+  `;
+  const output = execFileSync('pwsh', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
+  return JSON.parse(output.split(/\r?\n/).find(line => line.startsWith('RESULT=')).slice(7));
+}
+
+test('#6318 review: deferred long-cadence proof is shown but never stops the queue', () => {
+  const actions = gateActions(['verified', 'deferred', 'pending', 'failed', 'unknown', '', 'garbage']);
+  assert.deepEqual(actions, { verified: 'continue', deferred: 'continue', pending: 'pending', failed: 'stop',
+    unknown: 'stop', '': 'stop', garbage: 'stop' });
+  const source = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
+  const call = source.indexOf('$deployState = Wait-ForDeployVerification');
+  assert.ok(call > 0);
+  const block = source.slice(call, source.indexOf('} else {', call));
+  assert.match(block, /Get-DeployGateAction \$deployState/);
+  // The deferred branch only prints; exits belong to pending/stop gates.
+  const deferred = block.slice(block.indexOf("if ($deployState -eq 'deferred')"), block.indexOf("if ($gate -eq 'pending')"));
+  assert.doesNotMatch(deferred, /\bexit\b/);
+});
+
+test('#6318 review: queue deploy timeout covers one full deploy-verify job', () => {
+  const source = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
+  const queueMinutes = Number(source.match(/\[int\] \$DeployVerifyTimeoutMinutes = (\d+)/)[1]);
+  const workflow = readFileSync(new URL('../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
+  const jobMinutes = Number(workflow.match(/^ {4}timeout-minutes: (\d+)/m)[1]);
+  assert.ok(queueMinutes >= jobMinutes + 5, `queue ${queueMinutes} min must exceed job ${jobMinutes} min plus run-creation slack`);
 });

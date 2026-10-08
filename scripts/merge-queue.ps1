@@ -63,7 +63,8 @@ param(
   [switch] $DryRun,
   [int] $MinWaitMinutesNoBackend = 3,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
-  [int] $DeployVerifyTimeoutMinutes = 60,
+  # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
+  [int] $DeployVerifyTimeoutMinutes = 110,
   [int] $CiTimeoutMinutes = 25
 )
 
@@ -295,7 +296,7 @@ function Wait-ForDeployVerification {
       $state = (& node $ClassifierPath $runFile $jobsFile $Sha $minimumAttempt | Out-String).Trim()
       $lastState = $state
       if ($state -eq 'deferred') {
-        Write-Host "  AFVENTER CHECK-IN (run $runId, attempt $($run.run_attempt)); se job + sidste check-in i workflow-summary. Ikke verificeret; ingen automatisk genkoersel eller naeste merge." -ForegroundColor Yellow
+        Write-Host "  AFVENTER CHECK-IN for lange kadencer (run $runId, attempt $($run.run_attempt)); se job + sidste check-in i workflow-summary. Ingen automatisk genkoersel." -ForegroundColor Yellow
         return 'deferred'
       }
       if ($state -eq 'verified' -or $state -eq 'failed' -or $state -eq 'unknown') { return $state }
@@ -313,6 +314,15 @@ function Wait-ForDeployVerification {
   } finally {
     Remove-Item -LiteralPath $runFile, $jobsFile -ErrorAction SilentlyContinue
   }
+}
+
+# #6318: 'deferred' = korte cron-kadencer (<= 30 min) bevist, lange afventer
+# check-in. Det vises, men stopper ikke koeen. Alt andet end verified/deferred/
+# pending er fail-closed stop.
+function Get-DeployGateAction([string]$State) {
+  if ($State -eq 'verified' -or $State -eq 'deferred') { return 'continue' }
+  if ($State -eq 'pending') { return 'pending' }
+  return 'stop'
 }
 
 # --- 1. Indledende oversigt (read-only, ét kald pr. PR) ---------------------
@@ -422,15 +432,15 @@ foreach ($entry in $plan) {
 
   if ($entry.touchesBackend) {
     $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes
-    if ($deployState -ne 'verified') {
-      if ($deployState -eq 'deferred') {
-        Write-Host "AFVENTER CHECK-IN: cron-bevis efter PR #$n er udskudt pga. lang kadence. Ikke verificeret; koeen stopper foer naeste merge. Se deploy-verify-summary for jobs, sidste check-in og deadline." -ForegroundColor Yellow
-        exit 75
-      }
-      if ($deployState -eq 'pending') {
-        Write-Host "AFVENTER: deploy-verifikation efter PR #$n er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
-        exit 75
-      }
+    $gate = Get-DeployGateAction $deployState
+    if ($deployState -eq 'deferred') {
+      Write-Host "  AFVENTER CHECK-IN efter PR #${n}: jobs med lang kadence (> 30 min) er ikke bevist endnu (se deploy-verify-summary). Korte kadencer er bevist; koeen fortsaetter." -ForegroundColor Yellow
+    }
+    if ($gate -eq 'pending') {
+      Write-Host "AFVENTER: deploy-verifikation efter PR #$n er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
+      exit 75
+    }
+    if ($gate -ne 'continue') {
       Write-Host "STOP: deploy-verifikation efter PR #$n er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
       exit 1
     }

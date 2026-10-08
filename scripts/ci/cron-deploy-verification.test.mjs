@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { affectedCronJobs, changedFiles, evaluateCheckins, verifyCronCheckins } from './cron-deploy-verification.mjs';
+import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, railwayDrainSeconds, safeReason,
+  verifyCronCheckins } from './cron-deploy-verification.mjs';
 
 const since = '2026-10-07T12:00:00Z';
 const monitors = [['short', { schedule: { value: 1, unit: 'minute' }, checkinMargin: 1 }],
@@ -178,9 +179,11 @@ test('changed-file retrieval validates target, pagination, transport and complet
   assert.deepEqual(await changedFiles({ ...args, fetchFn: async (_, options) => {
     assert.equal(options.method, 'GET'); return { ok: true, json: async () => ({ sha, files: [{ filename: 'backend/a.js', status: 'modified' }] }) };
   } }), [{ filename: 'backend/a.js', status: 'modified' }]);
-  for (const data of [{ sha: 'b'.repeat(40), files: [] }, { sha }, { sha, files: [] }]) {
+  for (const data of [{ sha: 'b'.repeat(40), files: [] }, { sha }]) {
     await assert.rejects(changedFiles({ ...args, fetchFn: async () => ({ ok: true, json: async () => data }) }));
   }
+  // Empty is returned (not thrown); deploymentImpact must confirm it locally.
+  assert.deepEqual(await changedFiles({ ...args, fetchFn: async () => ({ ok: true, json: async () => ({ sha, files: [] }) }) }), []);
   await assert.rejects(changedFiles({ ...args, fetchFn: async () => ({ ok: false }) }));
   await assert.rejects(changedFiles({ ...args, fetchFn: async () => ({ ok: true, json: async () => ({ sha,
     files: Array.from({ length: 100 }, (_, i) => ({ filename: `backend/${i}.js`, status: 'modified' })) }) }) }));
@@ -192,9 +195,103 @@ test('dry-run makes no requests and does not claim verification', () => {
   assert.match(output, /no heartbeat request or mutation; not verified/);
 });
 
+test('#6318 review: a common backend change widening to every registry job verifies short cadences and only defers long ones', async () => {
+  const jobs = affectedCronJobs([{ filename: 'backend/server.js', status: 'modified' }]);
+  const { ALL_CRON_MONITORS } = await import('../../backend/lib/cronMonitorRegistry.js');
+  assert.equal(jobs.length, ALL_CRON_MONITORS.length);
+  const units = { minute: 60, hour: 3600, day: 86400 };
+  const cadence = config => config.schedule.value * units[config.schedule.unit];
+  const drainSeconds = railwayDrainSeconds();
+  const prime = Date.parse(since) - 30_000;
+  let clock = Date.parse(since), calls = 0;
+  const result = await verifyCronCheckins({ slugs: jobs, since, url: 'https://fixture.invalid', key: 'fixture', drainSeconds,
+    now: () => new Date(clock).toISOString(), sleep: async ms => { clock += ms; },
+    fetchFn: async () => {
+      calls++;
+      // Short jobs tick on the new process once draining is over; distinct
+      // timestamps so they never look like a boot cohort. Long jobs keep
+      // their boot-prime timestamp (still inside cadence + margin).
+      const rows = ALL_CRON_MONITORS.map(([slug, config], index) => {
+        const fresh = calls > 1 && cadence(config) <= 1800 && clock - 1000 - index > Date.parse(since) + drainSeconds * 1000;
+        return row(slug, new Date(fresh ? clock - 1000 - index : prime).toISOString(), cadence(config));
+      });
+      return { ok: true, json: async () => rows };
+    } });
+  assert.equal(result.state, 'deferred');
+  for (const job of result.jobs) {
+    const config = ALL_CRON_MONITORS.find(([slug]) => slug === job.slug)[1];
+    assert.equal(job.state, cadence(config) <= 1800 ? 'verified' : 'deferred', job.slug);
+  }
+  assert.ok(clock - Date.parse(since) < (drainSeconds + 120) * 1000, 'short proof must not wait for long cadences');
+});
+
+test('#6318 review: a check-in during Railway draining (old process) is not proof', () => {
+  const args = { slugs: ['short'], since, monitors, drainSeconds: 150 };
+  assert.equal(evaluateCheckins({ ...args, rows: [row('short', '2026-10-07T12:01:00Z')], now: '2026-10-07T12:01:30Z' }).state, 'waiting');
+  assert.equal(evaluateCheckins({ ...args, rows: [row('short', '2026-10-07T12:02:31Z')], now: '2026-10-07T12:02:40Z' }).state, 'verified');
+  // Deadline starts after the drain window as well.
+  const late = evaluateCheckins({ ...args, rows: [row('short', '2026-10-07T12:02:20Z')], now: '2026-10-07T12:04:30Z' });
+  assert.equal(late.state, 'failed');
+  assert.equal(late.jobs[0].deadline, '2026-10-07T12:04:30.000Z');
+  assert.throws(() => evaluateCheckins({ ...args, drainSeconds: -1, rows: [], now: since }));
+});
+
+test('#6318 review: drain seconds come from the Railway config and fail closed when invalid', () => {
+  const config = JSON.parse(readFileSync(new URL('../../backend/railway.json', import.meta.url), 'utf8'));
+  assert.equal(railwayDrainSeconds(), config.deploy.drainingSeconds);
+  assert.equal(railwayDrainSeconds(() => '{"deploy":{}}'), 0);
+  for (const text of ['{"deploy":{"drainingSeconds":"150"}}', '{"deploy":{"drainingSeconds":-5}}', 'not json']) {
+    assert.throws(() => railwayDrainSeconds(() => text));
+  }
+});
+
+test('#6318 review: heartbeat query is filtered to registry slugs, ordered and bounded', async () => {
+  let seen;
+  await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',
+    now: () => '2026-10-07T12:03:00Z', sleep: async () => {},
+    fetchFn: async url => { seen = url; return { ok: true, json: async () => [row('short', since)] }; } });
+  assert.equal(seen.searchParams.get('job_slug'), 'in.(short,long)');
+  assert.equal(seen.searchParams.get('order'), 'job_slug.asc');
+  assert.equal(seen.searchParams.get('limit'), '3');
+  await assert.rejects(verifyCronCheckins({ slugs: ['short'], since, monitors: [['bad slug)', monitors[0][1]]],
+    url: 'https://fixture.invalid', key: 'fixture', now: () => since, sleep: async () => {}, fetchFn: async () => assert.fail() }));
+});
+
+test('#6318 review: an empty commit has no impact only when the checkout confirms it', () => {
+  assert.deepEqual(deploymentImpact([], { localChangedPaths: [] }), { slugs: [], needRailway: false, empty: true });
+  assert.throws(() => deploymentImpact([], { localChangedPaths: ['backend/server.js'] }), /disagrees/);
+  assert.throws(() => deploymentImpact([]), /could not be confirmed/);
+  const impact = deploymentImpact([{ filename: 'backend/a.js', status: 'modified' }], { affected: () => [] });
+  assert.deepEqual(impact, { slugs: [], needRailway: true, empty: false });
+  assert.equal(deploymentImpact([{ filename: 'database/x.sql', status: 'added' }], { affected: () => ['short'] }).needRailway, true);
+});
+
+test('#6318 review: the top-level failure reason is logged without secrets or response bodies', () => {
+  const secret = 'fixture-secret-value';
+  const reason = safeReason(new Error(`Heartbeat GET failed for ${secret} with Bearer abc.def`), [secret, undefined, '']);
+  assert.match(reason, /^Error: Heartbeat GET failed/);
+  assert.ok(!reason.includes(secret) && !reason.includes('abc.def'));
+  assert.equal(safeReason(new SyntaxError('Unexpected token < in "<html>private"')), 'SyntaxError: invalid JSON payload');
+  const run = env => {
+    try {
+      execFileSync(process.execPath, [new URL('./cron-deploy-verification.mjs', import.meta.url).pathname.replace(/^\/(\w:)/, '$1')],
+        { env: { ...process.env, ...env }, encoding: 'utf8', stdio: 'pipe' });
+      return '';
+    } catch (error) { return error.stderr; }
+  };
+  const stderr = run({ AFFECTED_SLUGS: 'not-json', SUPABASE_SERVICE_KEY: secret });
+  assert.match(stderr, /Cron deploy proof failed \(SyntaxError: invalid JSON payload\); no verification claimed/);
+  assert.ok(!stderr.includes(secret));
+});
+
 test('production workflow checks out target SHA, observes READY boundary and gates LIVE on cron proof', () => {
   const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
-  assert.match(workflow, /name: Checkout target SHA[\s\S]*?ref: \$\{\{ steps\.pr\.outputs\.sha \}\}/);
+  assert.match(workflow, /name: Checkout target SHA[\s\S]*?ref: \$\{\{ steps\.pr\.outputs\.sha \}\}[\s\S]*?fetch-depth: 0\s+- name: Determine required deployments/);
+  // Railway/cron impact from this script; Vercel only from the canonical classifier.
+  assert.match(workflow, /cron-deploy-verification\.mjs --impact\s+[\s\S]*?node scripts\/frontend-deployment-needed\.mjs "\$SHA"/);
+  const deferredComment = workflow.slice(workflow.indexOf('name: Comment deferred cron proof on merged PR'), workflow.indexOf('name: Comment pending on merged PR'));
+  assert.doesNotMatch(deferredComment, /exit 75/);
+  assert.match(deferredComment, /Merge-koeen fortsaetter/);
   assert.ok(workflow.indexOf('name: Checkout target SHA') < workflow.indexOf('cron-deploy-verification.mjs --impact'));
   assert.match(workflow, /if \$RAILWAY_OK && \[\[ -z "\$CRON_SINCE" \]\]; then\s+CRON_SINCE=\$\(date -u/);
   assert.match(workflow, /while \[\[[\s\S]*?RAILWAY_OK=false\s+(?:#[^\n]*\r?\n\s*)+CRON_SINCE=""/);

@@ -314,15 +314,38 @@ Korte kadencer poller indtil deres deadline.
 Et accepteret første tick fastholdes, mens øvrige jobs afventes; senere upserts
 må ikke overskrive dette bevis. Kun ændret job-status og slutresultatet logges.
 
-Kadencer over 30 minutter må give
-**AFVENTER CHECK-IN** efter de korte jobs er bevist. Det er `deferred`, aldrig
-`verified`: ingen LIVE-kommentar, og merge-køen stopper med exit 75 før næste
-merge. Den genkører ikke automatisk deferred attempts, da det ville skabe en ny
-READY-grænse og skjule den oprindelige deadline. Ejeren følger jobbene/deadlines
-i det konkrete attempt og dokumenterer read-only opfølgning; workflow-rerun
-opretter en ny observation og kræver et nyt tick. Overskredne eller ulæselige
-check-ins må aldrig godkendes via et grønt workflow alene. Almindelig deployment
-`pending` beholder den eksisterende bounded rerun-adfærd.
+**Railway-drain:** den gamle proces kører videre i `deploy.drainingSeconds`
+(`backend/railway.json`) efter det nye deploy er READY, og et igangværende tick
+dér kan stadig skrive et check-in. Beviset tæller derfor kun check-ins strengt
+efter grænsen **plus** drain, og deadlinen regnes fra samme punkt. Værdien læses
+fra Railway-configen; en ugyldig værdi fejler lukket.
+
+Kun **korte kadencer (≤ 30 min) kræves** for at et deploy er bevist. Kadencer
+over 30 minutter må give **AFVENTER CHECK-IN**, når de korte jobs er bevist.
+Det er `deferred`, aldrig `verified`: ingen LIVE-kommentar, men en
+AFVENTER CHECK-IN-kommentar med jobs og deadlines, og merge-køen **fortsætter**
+(den viser kun status). Begrundelse: næsten enhver backend-ændring rører en
+fælles fil (`server.js`, `cron.js`, package-filer) og dermed alle jobs, også
+time- og døgn-jobs; skulle de blokere, ville køen stå stille i timevis efter
+hver backend-PR. De lange jobs dækkes af cron-heartbeat-vagten, der alarmerer i
+Discord, hvis et job misser kadence plus margin. Køen genkører ikke deferred
+attempts, da det ville skabe en ny READY-grænse. Overskredne eller ulæselige
+check-ins fejler stadig rødt og stopper køen. Almindelig deployment `pending`
+beholder den eksisterende bounded rerun-adfærd.
+
+Heartbeat-læsningen filtrerer på registry-slugs (`job_slug=in.(…)`), sorterer
+og begrænser til registry-størrelse + 1, så fremmede eller forældede rækker
+aldrig kan skubbe et berørt job ud af svaret. Søskende-rækkerne bevares bevidst,
+fordi en boot-prime-kohorte kun kan genkendes på tværs af jobs.
+
+En tom commit (ingen filer i GitHub-API'et **og** tom diff mod første parent i
+target-checkoutet) deployer intet og har ingen cron-påvirkning; uenighed mellem
+de to kilder fejler lukket. Fejler scriptet på topniveau, logges årsagen uden
+secrets (kendte secret-værdier og Bearer-tokens maskeres, JSON-fejl citeres ikke).
+
+Merge-køens `-DeployVerifyTimeoutMinutes` (110) ligger over Deploy verify-jobbets
+`timeout-minutes` (100), så et helt attempt kan nå at blive færdigt; en test
+holder de to tal afstemt.
 
 ---
 
