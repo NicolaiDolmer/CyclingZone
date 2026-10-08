@@ -62,6 +62,10 @@ param(
   [string] $Pr,
   [switch] $DryRun,
   [int] $MinWaitMinutesNoBackend = 3,
+  # Ejer 8/10: en raekke af PR'er der ikke roerer backend/ merges efter
+  # hinanden, og CI (main) ventes kun EEN gang paa den sidste merge-SHA (den
+  # indeholder hele raekken). -NoBatch giver den gamle en-ad-gangen-adfaerd.
+  [switch] $NoBatch,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   [int] $DeployVerifyTimeoutMinutes = 60,
   [int] $CiTimeoutMinutes = 25
@@ -344,8 +348,13 @@ Write-Host ""
 # koersel ville - den eneste forskel er at intet mutations-kald (merge/wait-
 # for-workflow) reelt udfoeres. Det goer -DryRun til en aekte forhaandsvisning
 # af hvor koeen ville standse, ikke kun et statisk snapshot fra start.
-foreach ($entry in $plan) {
+$batchMerged = @()
+for ($idx = 0; $idx -lt $plan.Count; $idx++) {
+  $entry = $plan[$idx]
   $n = $entry.number
+  # Batch (ejer 8/10): naeste PR roerer heller ikke backend/ -> merge den med
+  # det samme og vent foerst paa CI (main) efter den sidste i raekken.
+  $batchWithNext = (-not $NoBatch) -and (-not $entry.touchesBackend) -and ($idx + 1 -lt $plan.Count) -and (-not $plan[$idx + 1].touchesBackend)
   Write-Host ""
   Write-Host "=== PR #$n ===" -ForegroundColor Cyan
 
@@ -380,6 +389,8 @@ foreach ($entry in $plan) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
     if ($entry.touchesBackend) {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + 'Deploy verify' (Railway+smoke) for merge-commit'et." -ForegroundColor DarkGray
+    } elseif ($batchWithNext) {
+      Write-Host "  [dry-run] ville merge videre uden at vente (naeste PR roerer heller ikke backend/); CI (main) ventes efter raekken." -ForegroundColor DarkGray
     } else {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + mindst $MinWaitMinutesNoBackend min (roerer ikke backend/)." -ForegroundColor DarkGray
     }
@@ -409,12 +420,20 @@ foreach ($entry in $plan) {
     exit 1
   }
   Write-Host "  Merged som $sha"
+  $batchMerged += $n
 
+  if ($batchWithNext) {
+    Write-Host "  PR #$n roerer ikke backend/, og det goer naeste PR heller ikke - merger videre og venter paa CI (main) efter raekken." -ForegroundColor DarkGray
+    continue
+  }
+
+  $batchLabel = ($batchMerged | ForEach-Object { "#$_" }) -join ", "
   $ciOk = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $sha -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main)"
   if (-not $ciOk) {
-    Write-Host "STOP: main-CI er ROED efter PR #$n. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
+    Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst). Ved flere PR'er: en af dem (eller samspillet) er aarsagen." -ForegroundColor Red
     exit 1
   }
+  $batchMerged = @()
 
   if ($entry.touchesBackend) {
     $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes

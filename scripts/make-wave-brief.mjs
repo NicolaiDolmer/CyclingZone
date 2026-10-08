@@ -181,6 +181,16 @@ function verifikationsBlok(tier, verifyCommands, wd) {
     );
   }
   lines.push("- ALDRIG fuld e2e-suite paa egen haand - orkestratoren ejer e2e-slottet (hard rule 24).");
+  // Ejer 8/10: #6348 meldte klar efter kun at have koert sine EGNE nye tests;
+  // to eksisterende kildekontrakt-tests, en log-vagt og catch-vagten var roede i
+  // CI. "Mine tests er groenne" er ikke nok - samme kommandoer som CI, pr. pakke.
+  lines.push(
+    "- **Hele pakkens testsuite, samme kommandoer som CI (bindende foer `gh pr ready`, ejer 8/10):** for HVER pakke du har aendret, koer hele suiten - ikke kun dine egne nye tests. "
+      + `frontend/ roert: \`${lock} npm --prefix frontend test\` + \`npm --prefix frontend run lint\`. `
+      + `backend/ roert: \`${lock} npm --prefix backend test\` + \`npm --prefix backend run lint\`. `
+      + "scripts/ eller .github/ roert: `node --test` paa hver `*.test.mjs` i samme mappe som en aendret fil, plus de statiske vagter CI koerer for de stier (`node scripts/lint-swallowed-catches.mjs`, `node --test scripts/ops/railway-log-watch.test.mjs` ved nye log-tags). "
+      + "Merge `origin/main` ind og koer det igen lige foer `gh pr ready`, saa testen ser den kode der faktisk merges.",
+  );
   if (verifyCommands && verifyCommands.length > 0) {
     lines.push("- Derudover, specifikt for denne opgave:");
     for (const cmd of verifyCommands) lines.push(`  - \`${cmd}\``);

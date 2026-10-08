@@ -57,6 +57,17 @@ test("indeholder TIER WAVE-verifikationsblokken", () => {
   assert.match(brief, /preflight-pr\.ps1/);
 });
 
+test("kraever hele pakkens testsuite som i CI foer gh pr ready (ejer 8/10, #6348)", () => {
+  for (const tier of ["TARGETED", "FULL"]) {
+    const brief = generateBrief({ ...baseConfig, tier });
+    assert.match(brief, /Hele pakkens testsuite, samme kommandoer som CI/);
+    assert.match(brief, /npm --prefix frontend test/);
+    assert.match(brief, /npm --prefix backend test/);
+    assert.match(brief, /lint-swallowed-catches\.mjs/);
+    assert.match(brief, /Merge `origin\/main` ind og koer det igen lige foer `gh pr ready`/);
+  }
+});
+
 test("FULL-tier skifter verifikationsteksten men beholder e2e-slot-reglen", () => {
   const brief = generateBrief({ ...baseConfig, tier: "FULL" });
   assert.match(brief, /KUN én worker i boelgen maa have FULL/);
