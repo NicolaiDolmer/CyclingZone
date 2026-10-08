@@ -354,7 +354,7 @@ export function isBreakawayWin(trace: FinaleGroupTrace, winnerId: string | null)
  */
 export function settleBreakawaySurvivedEvents(
   events: TimelineEvent[],
-  args: { breakawayWin: boolean; trace: FinaleGroupTrace | null; results: readonly StageResult[] },
+  args: { breakawayWin: boolean; trace: FinaleGroupTrace | null; results: readonly StageResult[]; physicalDescentOutcomes?: boolean },
 ): TimelineEvent[] {
   if (!events.some((e) => e.type === "breakaway_survived")) return events;
 
@@ -363,16 +363,41 @@ export function settleBreakawaySurvivedEvents(
       .filter((g) => g.origin === "breakaway" && ESCAPE_KINDS.has(g.kind))
       .flatMap((g) => g.rider_ids),
   );
+  // #6327: the future revision reports descent contact from actual movement.
+  // Finish rank alone cannot supply an otherwise missing chase actor.
+  const descentIds = new Set([
+    ...(args.trace?.entryGroups ?? []), ...(args.trace?.preFinaleGroups ?? []),
+  ].filter(group => group.origin === "descent").map(group => group.id));
+  const morningRiders = new Set([
+    ...(args.trace?.entryGroups ?? []), ...(args.trace?.preFinaleGroups ?? []),
+  ].filter(group => group.origin === "breakaway").flatMap(group => group.rider_ids));
+  for (const event of events) if (event.type === "breakaway_formed" && Array.isArray(event.params.rider_ids)) {
+    for (const id of event.params.rider_ids) if (typeof id === "string") morningRiders.add(id);
+  }
+  for (const event of events) {
+    if (event.type === "finale_attack" && event.params.direction === "descent"
+      && typeof event.params.group_id === "string" && Array.isArray(event.params.rider_ids)
+      && event.params.rider_ids.some(id => typeof id === "string" && !morningRiders.has(id))) {
+      descentIds.add(event.params.group_id);
+    }
+  }
+  const escapeAtFinale = new Set((args.trace?.preFinaleGroups ?? [])
+    .filter(group => group.origin !== undefined).flatMap(group => group.rider_ids));
+  const actualCaught = new Set(events.filter(event => event.type === "breakaway_caught"
+    && typeof event.params.chase_group_id === "string").map(event => event.params.group_id));
+  let bestRegularRank = Infinity;
   const rankOf = new Map<string, number>();
   let bestOutsideEscape = Infinity;
   for (const result of args.results) {
     if (result.status === "abandoned") continue;
     rankOf.set(result.rider_id, result.rank);
+    if (!escapeAtFinale.has(result.rider_id)) bestRegularRank = Math.min(bestRegularRank, result.rank);
     if (!escapeRiderIds.has(result.rider_id)) bestOutsideEscape = Math.min(bestOutsideEscape, result.rank);
   }
 
   return events.flatMap((event): TimelineEvent[] => {
     if (event.type !== "breakaway_survived") return [event];
+    if (args.physicalDescentOutcomes && actualCaught.has(event.params.group_id)) return [];
     const riderIds = Array.isArray(event.params.rider_ids)
       ? event.params.rider_ids.filter((id): id is string => typeof id === "string")
       : [];
@@ -383,6 +408,19 @@ export function settleBreakawaySurvivedEvents(
     const finisherIds = riderIds.filter((id) => rankOf.has(id));
     if (finisherIds.length === 0) return [];
     const bestInGroup = Math.min(...finisherIds.map((id) => rankOf.get(id)!));
+    if (args.physicalDescentOutcomes && descentIds.has(String(event.params.group_id))) {
+      const finisherSet = new Set(finisherIds);
+      const joinedRegularGroup = (args.trace?.postFinaleGroups ?? []).some(group =>
+        group.rider_ids.some(id => finisherSet.has(id))
+        && group.rider_ids.some(id => !escapeAtFinale.has(id)));
+      // The selective finale splits a single contender pool into winner/tiers.
+      // Reconstruct that pool exactly as isBreakawayWin does above.
+      const preFinaleIds = new Set((args.trace?.preFinaleGroups ?? []).map(group => group.id));
+      const finaleBuilt = (args.trace?.postFinaleGroups ?? []).filter(group => !preFinaleIds.has(group.id));
+      const enteredMixedFinale = finaleBuilt.some(group => group.rider_ids.some(id => finisherSet.has(id)))
+        && finaleBuilt.some(group => group.rider_ids.some(id => !escapeAtFinale.has(id)));
+      return !joinedRegularGroup && !enteredMixedFinale && bestInGroup < bestRegularRank ? [event] : [];
+    }
     if (args.breakawayWin && bestInGroup < bestOutsideEscape) return [event];
     const groupId = event.params.group_id;
     return [{

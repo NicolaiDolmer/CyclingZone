@@ -249,6 +249,7 @@ import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.
 import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
+import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
@@ -3052,8 +3053,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     ]);
 
     if (todayRunResult.error) throw new Error(todayRunResult.error.message);
-    const todayRuns = todayRunResult.data ?? [];
-    const todayRun = todayRuns[0] ?? null;
+    const { todayRuns, todayRun } = trainingRunResponse(todayRunResult.data);
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til

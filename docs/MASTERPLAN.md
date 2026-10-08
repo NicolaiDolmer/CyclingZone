@@ -50,7 +50,7 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Bane 3 · Færdiggør
 
-#6081 merge-køen melder rød for tidligt · #5792 smoke + #6132 + #6120 · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 · #6064/#6065 · #5145 (parkeret).
+#6081 merge-køen melder rød for tidligt · #5792 smoke + #6132 + #6120 · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 · #6064/#6065.
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
