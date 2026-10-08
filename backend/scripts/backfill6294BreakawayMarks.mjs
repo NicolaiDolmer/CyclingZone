@@ -147,7 +147,8 @@ export async function planBackfill({ supabase, since = DEFAULT_SINCE, raceId = n
     totals.stages_with_regroup += 1;
     if (!plan.updates.length) continue;
     if (!raceNames.has(stage.race_id)) {
-      const { data: race } = await supabase.from("races").select("name").eq("id", stage.race_id).maybeSingle();
+      const { data: race, error: raceError } = await supabase.from("races").select("name").eq("id", stage.race_id).maybeSingle();
+      if (raceError) throw raceError;
       raceNames.set(stage.race_id, race?.name ?? stage.race_id);
     }
     totals.stages_with_updates += 1;
