@@ -279,6 +279,21 @@ export async function runRaceEntryGenerator({
   });
   const trainNowLockedByRace = new Map([...raceDatesByRace].map(([raceId, dates]) =>
     [raceId, lockedRidersOnDates(trainNowLockedByDate, dates)]));
+  // Holdenes nuvaerende raekker i de loeb hvor nogen traenede (kun dem; normalt ingen).
+  const trainNowUnitRiders = new Map(); // "race|team" → [rider_id]
+  const trainNowRaceIds = [...trainNowLockedByRace].filter(([, ids]) => ids.size).map(([raceId]) => raceId);
+  if (trainNowRaceIds.length) {
+    const { data: lockRaceRows, error: lockRaceErr } = await selectInChunks({
+      supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
+      inColumn: "race_id", ids: trainNowRaceIds, orderBy: ["race_id", "rider_id"], // PK (#2375)
+    });
+    if (lockRaceErr) throw new Error(`race_entries (train now scan): ${lockRaceErr.message}`);
+    for (const e of lockRaceRows || []) {
+      const key = `${e.race_id}|${e.team_id}`;
+      if (!trainNowUnitRiders.has(key)) trainNowUnitRiders.set(key, []);
+      trainNowUnitRiders.get(key).push(e.rider_id);
+    }
+  }
 
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
   const { data: profileRows, error: profileErr } = await selectInChunks({
@@ -711,7 +726,8 @@ export async function runRaceEntryGenerator({
         // spillerens eksplicitte "nej" og har aldrig en udloebsdato (gate 3, §7).
         const existingUnitRiders = entriesByRaceTeam.get(key) || [];
         // #6006/#6139: enheden er frosset naar en af dens ryttere traenede paa loebets dato.
-        const isTrainNowLocked = existingUnitRiders.some((rid) => trainNowLockedByRace.get(race.id)?.has(rid));
+        const trainNowRiders = trainNowUnitRiders.get(key) || [];
+        const isTrainNowLocked = trainNowRiders.some((rid) => trainNowLockedByRace.get(race.id)?.has(rid));
         const lateFillBlocked = mode === ASSISTANT_MODES.LATE_FILL
           && ownerTeamIds.has(team.id)
           && (!nearRaceIds.has(race.id) || existingUnitRiders.length > 0);
@@ -758,7 +774,7 @@ export async function runRaceEntryGenerator({
             // overlappende naboloeb → dobbeltbooking (samme klasse som #3113).
             if (lateFillBlocked) for (const rid of existingUnitRiders) lockedRiderIds.add(rid);
             // #6006: en Train now-laast enhed er frosset; dens ryttere er bundet i vinduet.
-            if (isTrainNowLocked) for (const rid of existingUnitRiders) lockedRiderIds.add(rid);
+            if (isTrainNowLocked) for (const rid of trainNowRiders) lockedRiderIds.add(rid);
             if (lockedRiderIds.size) lockedWindows.push({ window, riderIds: [...lockedRiderIds] });
           }
           continue;

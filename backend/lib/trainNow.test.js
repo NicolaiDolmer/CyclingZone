@@ -43,6 +43,7 @@ function fakeSupabase(state, { missing = [] } = {}) {
       gte(col, val) { filters.push((row) => row[col] >= val); return q; },
       not(col, op, val) { if (op === "is" && val === null) filters.push((row) => row[col] != null); return q; },
       order() { return q; },
+      or() { return q; }, // #6139: roster visibility filter (all fixture riders are visible).
       range(from, to) {
         const r = run();
         return Promise.resolve(r.error ? r : { data: r.data.slice(from, to + 1), error: null });

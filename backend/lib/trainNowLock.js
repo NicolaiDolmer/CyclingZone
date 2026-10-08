@@ -92,12 +92,14 @@ export async function loadTrainNowLocksForRaces({ supabase, raceIds, riderIds = 
   const ids = [...new Set((raceIds ?? []).filter(Boolean))];
   const out = new Map(ids.map((id) => [id, { riderIds: new Set(), pressedAt: null }]));
   if (!ids.length || (riderIds && !riderIds.length)) return out;
-  let schedule;
-  try {
-    schedule = await fetchAllRows(() => supabase.from("race_stage_schedule")
-      .select("race_id, scheduled_at").in("race_id", ids).order("race_id").order("stage_number"));
-  } catch (error) {
-    throw new Error(`race stage dates: ${error.message ?? error}`, { cause: error });
+  const schedule = [];
+  // pagination-safe: chunks of 40 races; a grand tour is ~21 stages, so a chunk stays
+  // below the 1000-row cap.
+  for (let i = 0; i < ids.length; i += 40) {
+    const { data, error } = await supabase.from("race_stage_schedule")
+      .select("race_id, scheduled_at").in("race_id", ids.slice(i, i + 40));
+    if (error) throw new Error(`race stage dates: ${error.message ?? error}`);
+    schedule.push(...(data ?? []));
   }
   const datesByRace = new Map(ids.map((id) => [id, raceStageDates(schedule.filter((row) => row.race_id === id))]));
   const rows = await loadLockRows({ supabase, dates: [...datesByRace.values()].flat(), riderIds });
