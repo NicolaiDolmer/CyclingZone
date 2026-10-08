@@ -40,10 +40,12 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import type { TimeModelTuning } from "./timeModel.ts";
 
 // #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
 const GRUPPETTO_SINGLE_CLUSTER_TUNING = Object.freeze({ ...TIME_MODEL_V3_TUNING, clusterMaxGroups: 1 });
+const singleClusterTuning = (t: typeof TIME_MODEL_V3_TUNING) => (t === TIME_MODEL_V3_TUNING ? GRUPPETTO_SINGLE_CLUSTER_TUNING : Object.freeze({ ...t, clusterMaxGroups: 1 }));
 
 /**
  * #5580 (M1 punkt 1, indsatstrappen model 3): indsatsens GEVINST paa
@@ -264,7 +266,7 @@ function computeSelections(
   const wprimeMinSeverity = phaseWprimeForcedMinSeverity(CLIMB_SELECTION_EXTRA_TUNING.wprimeForcedMinSeverity, phase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalWprimeForcedMinSeverity);
   // #6199 (KUN orders_gc_v3): en tom reserve tvinger kun rytteren af fra ca. kat. 2.
   const segmentCategory = ctx.segment.kind === "climb" ? ctx.segment.category : undefined;
-  const wprimeCategoryAllowed = ctx.ordersGcV3 !== true || wprimeForcedCategoryAllowed(segmentCategory);
+  const wprimeCategoryAllowed = (ctx.ordersGcV3 !== true && !ctx.sharedGroupTime) || wprimeForcedCategoryAllowed(segmentCategory);
 
   let referenceClimbing = 0;
   let groupHasRacers = false;
@@ -338,6 +340,45 @@ function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
     if (guardedTriggered || sel.wprimeForced || sel.effortForced) split.push(sel.riderId);
   }
   return split.sort();
+}
+
+/**
+ * #6199 (KUN official_times_v2): er segmentet en del af slutstigningen paa en
+ * topankomst (finale_type long_climb, sidste blok af sammenhaengende stigninger)?
+ */
+const SUMMIT_RACE_SHORT_FINISH = Object.freeze({ maxKm: 7, maxGradientPct: 7 });
+
+export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "segmentIndex">): boolean {
+  const segs = ctx.route.segments ?? [];
+  if (ctx.route.finale_type !== "long_climb" || segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
+  let start = segs.length - 1;
+  while (start > 0 && segs[start - 1].kind === "climb") start--;
+  // En kort afslutning opad (ca. 3-7 km a 5-7 %, ejerens eget maal) koeres i
+  // gruppe som foer: farten er hoej, og laeet holder feltet samlet.
+  const block = segs.slice(start);
+  const km = block.reduce((sum, s) => sum + Math.max(0, s.to_km - s.from_km), 0);
+  const grad = km > 0 ? block.reduce((sum, s) => sum + Math.max(0, s.to_km - s.from_km) * ((s as { avg_gradient?: number }).avg_gradient ?? 0), 0) / km : 0;
+  if (km <= SUMMIT_RACE_SHORT_FINISH.maxKm && grad <= SUMMIT_RACE_SHORT_FINISH.maxGradientPct) return false;
+  return ctx.segmentIndex >= start && segs[ctx.segmentIndex]?.kind === "climb";
+}
+
+/**
+ * #6199 (KUN official_times_v2): slutstigningens selektion. En rytter falder af,
+ * naar hans eget hul mindst er klyngens minimum, eller naar reserven/indsatsen
+ * tvinger ham. Monotont i underskuddet: et stoerre underskud giver aldrig et
+ * mindre hul (climbSplitGapSeconds), saa ingen rank-guard er noedvendig.
+ */
+function summitRaceSplitRiderIds(
+  selections: readonly RiderSelection[],
+  gradientPct: number,
+  lengthKm: number,
+  t: TimeModelTuning,
+): string[] {
+  return selections
+    .filter((s) => s.wprimeForced || s.effortForced
+      || climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, t) >= t.clusterMinSeconds)
+    .map((s) => s.riderId)
+    .sort();
 }
 
 /**
@@ -421,10 +462,28 @@ export const climbSelectionHook: ClimbSelectionHook = (
   for (const group of groupsSorted) {
     if (group.rider_ids.length < 2) continue;
 
-    const selections = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
+    const measured = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
+    // Post-travel reserve is evidence of sustaining this group's actual pace.
+    // A formed grupetto does not re-split merely relative to its best climber.
+    const cohesive = ctx.sharedGroupTime !== undefined && (group.kind === "gruppetto"
+      || (group.kind === "chase" && nextState.shared_grupetto_groups?.[group.id] === true));
+    const selections = cohesive ? measured.map(selection => {
+      const pace = nextState.riders[selection.riderId]?.segment_pace;
+      return {...selection, scoreTriggered:false, effortForced:false,
+        wprimeForced:selection.wprimeForced && (!pace || pace.demand > pace.cp)};
+    }) : measured;
     if (selections.length < 2) continue;
 
-    let splitRiderIds = guardedSplitRiderIds(selections);
+    // #6199: official_times_v2 laeser sin kalibrerede tidsmodel; alle andre v3-tallene.
+    const timeModel = timeModelTuningFor(ctx);
+    // #6199 (KUN official_times_v2): paa slutstigningen af en topankomst koerer
+    // favoritterne ikke paa hjul. Hver rytter taber den tid hans eget underskud
+    // giver (laengde x stejlhed x evneforskel); kun et hul under klyngens minimum
+    // holder ham i gruppen. Tidligere stigninger beholder taerskel-selektionen.
+    const summitRace = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto" && isSummitFinishClimb(ctx);
+    let splitRiderIds = summitRace
+      ? summitRaceSplitRiderIds(selections, gradientPct, lengthKm, timeModel)
+      : guardedSplitRiderIds(selections);
     if (splitRiderIds.length === 0) continue;
     if (splitRiderIds.length >= group.rider_ids.length) {
       // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):
@@ -445,11 +504,11 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // #6199 (maaling 6/10): en gruppetto deles ikke i flere klynger. De der
     // falder af den, falder af som én gruppe (gennemsnittet af deres eget hul),
     // ellers deles halen i stumper der hver for sig er for smaa til redningen.
-    const parts = ctx.ordersGcV3 === true
+    const parts = ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
       ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
         riderId: s.riderId,
-        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01),
-      })), group.kind === "gruppetto" ? GRUPPETTO_SINGLE_CLUSTER_TUNING : TIME_MODEL_V3_TUNING)
+        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, timeModel),
+      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : timeModel)
       : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
 
     for (const part of parts) {
@@ -464,7 +523,9 @@ export const climbSelectionHook: ClimbSelectionHook = (
         kind,
         gapSecondsDelta,
       });
-      nextState = { ...nextState, groups };
+      nextState = { ...nextState, groups,
+        ...(cohesive ? {shared_grupetto_groups:{...nextState.shared_grupetto_groups,[group.id]:true as const,[newGroupId]:true as const}} : {}),
+      };
 
       events.push({
         km: round2(segment.to_km),

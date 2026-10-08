@@ -93,10 +93,10 @@ export const V3_EXTRA_SELECTION_PROFILE_TYPES: readonly ProfileType[] = Object.f
  * segmentLoops fase, saa den rullende udbrudsbalance (#6073) er uroert.
  */
 export function selectionPhaseFor(
-  ctx: Pick<SegmentHookContext, "mountainSelectionPhase" | "ordersGcV3" | "route" | "segmentIndex">,
+  ctx: Pick<SegmentHookContext, "mountainSelectionPhase" | "ordersGcV3" | "sharedGroupTime" | "route" | "segmentIndex">,
 ): MountainSelectionPhase | undefined {
   if (ctx.mountainSelectionPhase) return ctx.mountainSelectionPhase;
-  if (ctx.ordersGcV3 !== true || !V3_EXTRA_SELECTION_PROFILE_TYPES.includes(ctx.route.profile_type)) return undefined;
+  if ((ctx.ordersGcV3 !== true && !ctx.sharedGroupTime) || !V3_EXTRA_SELECTION_PROFILE_TYPES.includes(ctx.route.profile_type)) return undefined;
   const finalStart = finalClimbStartIndex(ctx.route.segments);
   if (finalStart < 0) return undefined;
   return ctx.segmentIndex < finalStart ? "pre_final" : "final";

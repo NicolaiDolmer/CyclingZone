@@ -145,6 +145,49 @@ export function mergedOrigin(a: RaceGroup, b: RaceGroup): GroupOrigin | undefine
 }
 
 /**
+ * #6199 (official_times_v1): den kanoniske fysiske samling af to grupper ved
+ * kontakt. Samme kind-/origin-regel som den generiske merge (peloton dominerer,
+ * ellers stoerste gruppes kind), saa en kontakt aldrig omdoeber et indhentet
+ * peloton. En samlet linje med flere ryttere er aldrig "solo".
+ */
+export function mergedPhysicalGroup(into: RaceGroup, absorbed: RaceGroup, gapSeconds: number): RaceGroup {
+  const riderIds = [...new Set([...into.rider_ids, ...absorbed.rider_ids])];
+  const kind = mergedKind(into, absorbed);
+  const origin = mergedOrigin(into, absorbed);
+  const { origin: _dropped, ...base } = into;
+  return {...base, kind: kind === "solo" && riderIds.length > 1 ? "chase" : kind,
+    gap_seconds: gapSeconds, rider_ids: riderIds, cohesion: Math.min(into.cohesion, absorbed.cohesion),
+    ...(origin ? { origin } : {})};
+}
+
+const isSharedCohort = (map: Readonly<Record<string, true>> | undefined, group: RaceGroup | undefined): boolean =>
+  group !== undefined && (group.kind === "gruppetto" || map?.[group.id] === true);
+
+/**
+ * #6199: kohortearv gennem kontakt/merge. Overlever en samlet linje under et
+ * andet id end kohortens, foelger maerket med til det id gruppen FAKTISK
+ * baerer; det opslugte id fjernes. Peloton-undtagelsen bor i climbSelection
+ * (kun gruppetto/maerket chase er kohortebeskyttet), ikke her.
+ */
+export function mergedSharedCohorts(
+  map: Readonly<Record<string, true>> | undefined,
+  groupsBefore: readonly RaceGroup[],
+  merges: readonly GroupMerge[],
+): Readonly<Record<string, true>> | undefined {
+  if (merges.length === 0) return map;
+  const byId = new Map(groupsBefore.map(group => [group.id, group]));
+  const marked = new Set(Object.keys(map ?? {}));
+  let changed = false;
+  for (const merge of merges) {
+    const cohort = isSharedCohort(map, byId.get(merge.absorbed_group_id)) || marked.has(merge.absorbed_group_id);
+    if (marked.delete(merge.absorbed_group_id)) changed = true;
+    if (cohort && !marked.has(merge.into_group_id)) { marked.add(merge.into_group_id); changed = true; }
+  }
+  if (!changed) return map;
+  return Object.fromEntries([...marked].sort().map(id => [id, true as const]));
+}
+
+/**
  * Sammensmelt grupper hvis gap-afstanden mellem naboer (sorteret paa
  * gap_seconds) er under `mergeThresholdSeconds` ("breakaway_caught"-moenstret,
  * generaliseret til alle gruppe-par). Sorteringen (gap_seconds, id) goer
@@ -423,10 +466,13 @@ export function settleBreakawaySurvivedEvents(
     }
     if (args.breakawayWin && bestInGroup < bestOutsideEscape) return [event];
     const groupId = event.params.group_id;
+    // #6199 (KUN official_times_v2): the exact place travels with the outcome.
+    const exact = Object.fromEntries((["exact_km", "exact_time"] as const)
+      .filter((key) => typeof event.params[key] === "number").map((key) => [key, event.params[key]]));
     return [{
       km: event.km,
       type: "breakaway_caught",
-      params: typeof groupId === "string" ? { group_id: groupId, rider_ids: finisherIds } : { rider_ids: finisherIds },
+      params: { ...(typeof groupId === "string" ? { group_id: groupId, rider_ids: finisherIds } : { rider_ids: finisherIds }), ...exact },
     }];
   });
 }

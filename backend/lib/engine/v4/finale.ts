@@ -1,3 +1,4 @@
+import { GROUP_CLOCK_CONTACT_EPSILON, physicalLineSeconds, pointDelaysSince, remainingClosureSeconds } from "./groupClock.ts";
 // backend/lib/engine/v4/finale.ts
 // Race Engine v4 F2 (#4030): M4 - punch-finale + placerings-opgoer i frontgruppen.
 // SSOT: docs/superpowers/specs/2026-08-21-race-engine-v4-f2-core-design.md §4
@@ -34,7 +35,9 @@ import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } f
 import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
-import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING } from "./mechanics/timeModel.ts";
+import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
+import type { GroupMerge } from "./groups.ts";
+import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -407,11 +410,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // ingen fart op ad en stigning, saa de huller stigningen skabte, staar.
   // #6200: heller ikke paa en nedkoersel mod maal, hvor antals-vinduet ellers
   // kunne folde en gruppe ind forbi loftet (hoejst halvdelen af hullet).
-  const v3FinishDescent = ctx.ordersGcV3 === true && segment.kind === "descent";
-  const bunchCatch = isBunchCatchRoute(route) && !(ctx.ordersGcV3 === true && (segment.kind === "climb" || segment.kind === "descent"));
+  const v3FinishDescent = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && segment.kind === "descent";
+  const bunchCatch = isBunchCatchRoute(route) && !((ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && (segment.kind === "climb" || segment.kind === "descent"));
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
+  const sharedNumbersClosing = bunchCatch && ctx.sharedGroupTime !== undefined && ctx.ordersGcV3 === true;
 
   const sorted = [...state.groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   const frontPool = sorted.filter((g) => g.gap_seconds === 0);
@@ -432,6 +436,18 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // gate som antals-vinduet), saa selektive finaler er uroerte.
   let caughtBunchShiftSeconds = 0;
   const caughtGroups: RaceGroup[] = [];
+  const entryGapByRider = ctx.sharedGroupTime
+    ? new Map(ctx.sharedGroupTime.entryGroups.flatMap(group => group.rider_ids.map(id => [id,group.gap_seconds] as const)))
+    : null;
+  // #6199: punktforsinkelser efter indgangen bogfoeres separat, saa allerede
+  // brugt bevaegelse ikke kan genopstaa som lukningskredit efter et tidstab.
+  const pointDelays = ctx.sharedGroupTime
+    ? pointDelaysSince(state.stage_incidents, ctx.sharedGroupTime.incidentCursor ?? 0)
+    : new Map<string, number>();
+  const entryGap = (ids: readonly string[]): number => {
+    if (!entryGapByRider) throw new Error("shared finale: missing entry lineage");
+    return physicalLineSeconds(ids, entryGapByRider, pointDelays);
+  };
 
   for (const group of chaseCandidates) {
     const carriedGapSeconds = Math.max(0, group.gap_seconds - caughtBunchShiftSeconds);
@@ -453,7 +469,20 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     const descentCap = v3FinishDescent
       ? finishDescentRemainingCapSeconds(carriedGapSeconds, remainingKm, state.finish_descent_regroup?.[group.id])
       : Infinity;
-    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit);
+    const estimate = netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
+    const remainingEstimate = ctx.sharedGroupTime
+      ? remainingClosureSeconds(Math.max(0,entryGap(group.rider_ids)-entryGap(defenderIds)),carriedGapSeconds,estimate)
+      : estimate;
+    // #6199 (KUN official_times_v2): feltets antals-fordel paa en massefinale er
+    // fart, ikke et opsamlings-vindue. Den bliver til lukning paa finalens egne km
+    // (hoejst loftet pr. km), og fangsten kraever stadig fysisk kontakt.
+    const numbersClosing = sharedNumbersClosing && isBunchSizedChaseGroup(group.rider_ids.length, fieldSize, extra.bunchCatchMinFieldFraction, extra.bunchCatchMinRiders)
+      ? Math.min(
+          bunchCatchWindowSeconds(group.rider_ids.length, defenderIds.length, extra.bunchCatchMaxSeconds, extra.bunchCatchNumbersReferenceRatio),
+          timeModelTuningFor(ctx).bunchClosingMaxSecondsPerKm * remainingKm,
+        )
+      : 0;
+    const closingSeconds = onlyGrupetto ? 0 : Math.min(descentCap, remainingEstimate + numbersClosing);
     const newGap = Math.max(0, carriedGapSeconds - closingSeconds);
     // Opsamlings-taerskel: normalt segmentLoop's egen merge-taerskel (saa
     // placeringerne ikke foldes sammen igen af det EFTERFOELGENDE mergeGroups-
@@ -483,7 +512,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
           ),
         )
       : mergeThreshold;
-    const caught = newGap < catchThreshold;
+    const caught = ctx.sharedGroupTime ? newGap <= GROUP_CLOCK_CONTACT_EPSILON : newGap < catchThreshold;
     // Forskydningen gaelder kun naar feltet henter et UDBRUD (en front der ikke
     // selv er felt-stor). Har feltet allerede samlet fronten, er fronten feltet,
     // og en gruppe bagved maales mod den som altid — ellers ville hver hentet
@@ -499,7 +528,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       caughtGroups.push(group);
       contenderIds = [...contenderIds, ...group.rider_ids];
       defenderIds = [...defenderIds, ...group.rider_ids];
-      if (bunchSized && frontIsEscape) caughtBunchShiftSeconds += carriedGapSeconds;
+      if (!ctx.sharedGroupTime && bunchSized && frontIsEscape) caughtBunchShiftSeconds += carriedGapSeconds;
     } else {
       const survivor: RaceGroup = { ...group, gap_seconds: newGap, rider_ids: [...group.rider_ids] };
       survivingGroups.push(survivor);
@@ -508,6 +537,41 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         bestSurvivingGroupForEvent = survivor;
       }
     }
+  }
+
+  // #6199 (KUN official_times_v1): fysisk kontakt afklares FOER klassifikations-
+  // puljen og finish_order. En gruppe der i finalen naar en gruppe foran sig,
+  // kan ikke passere den uden kontakt: de samles ved checkpointet (samme regel
+  // som #6327: den samlede linje har indhenterens tid og id), og kohortelinjen
+  // foelger med. Naar linjen fronten, er alle grupper den passerede med.
+  let finaleCohorts = state.shared_grupetto_groups;
+  if (ctx.sharedGroupTime && survivingGroups.length > 0) {
+    const caughtIds = new Set(caughtGroups.map(group => group.id));
+    const survivorById = new Map(survivingGroups.map(group => [group.id, group]));
+    const stack: RaceGroup[] = [];
+    const caughtLines: RaceGroup[] = [];
+    const contactMerges: GroupMerge[] = [];
+    for (const group of chaseCandidates) {
+      let line = caughtIds.has(group.id) ? {...group, rider_ids: [...group.rider_ids], gap_seconds: 0} : survivorById.get(group.id);
+      if (!line) continue;
+      while (stack.length > 0 && line.gap_seconds <= stack[stack.length-1].gap_seconds + GROUP_CLOCK_CONTACT_EPSILON) {
+        const passed = stack.pop()!;
+        contactMerges.push({absorbed_group_id: passed.id, into_group_id: line.id, rider_ids: [...passed.rider_ids]});
+        finaleCohorts = mergedSharedCohorts(finaleCohorts, [line, passed],
+          [{absorbed_group_id: passed.id, into_group_id: line.id, rider_ids: [...passed.rider_ids]}]);
+        line = mergedPhysicalGroup(line, passed, Math.min(line.gap_seconds, passed.gap_seconds));
+      }
+      if (caughtIds.has(group.id) || line.gap_seconds <= GROUP_CLOCK_CONTACT_EPSILON) caughtLines.push(line);
+      else stack.push(line);
+    }
+    for (const merge of contactMerges) {
+      events.push({km: finishKm, type: "group_merged", params: {group_id: merge.absorbed_group_id,
+        into_group_id: merge.into_group_id, rider_ids: [...merge.rider_ids]}});
+    }
+    caughtGroups.splice(0, caughtGroups.length, ...caughtLines);
+    survivingGroups.splice(0, survivingGroups.length, ...stack);
+    contenderIds = [...frontPool.flatMap(g => g.rider_ids), ...caughtLines.flatMap(g => g.rider_ids)];
+    bestSurvivingGroupForEvent = stack[0] ?? null;
   }
 
   // Hvis fronten selv IKKE er en ren peloton (dvs. et forspring der overlevede
@@ -538,7 +602,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // ── Placerings-opgoer i kontendentpuljen ────────────────────────────────────
   // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
   // #6200 (KUN orders_gc_v3): klatring taeller med i placeringen i en nedkoerselsfinale.
-  const v3DescentDemand = ctx.ordersGcV3 === true && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
+  const v3DescentDemand = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
   const demandVector = cobbledFinaleDemandVector(
     v3DescentDemand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
     ctx,
@@ -695,6 +759,13 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let prevScore: number | null = null;
   let tailStarted = false;
   const tieEpsilon = ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
+  // #6199 (KUN official_times_v2): paa en selektiv finale er tids-tiers et fysisk
+  // tidstab paa sidste stykke, ikke kun en placering i en faelles pulje. Kun en
+  // massefinale deler én tid. En tier kommer aldrig bag en overlevende gruppe:
+  // den kan ikke passere den uden kontakt (samme regel som kontakt-stakken).
+  const sharedPhysicalTiers = ctx.sharedGroupTime !== undefined && ctx.ordersGcV3 === true && !isMassFinishRoute(route);
+  const survivorFloor = survivingGroups.reduce((m, g) => Math.min(m, g.gap_seconds), Infinity);
+  const tierCap = sharedPhysicalTiers && Number.isFinite(survivorFloor) ? Math.max(0, survivorFloor - mergeThreshold - extra.placementGapMarginSeconds) : Infinity;
   let tierTopScore = -Infinity;
 
   // ── Massefinale (#4615, felt-sammenhaengs-ankeret) ──────────────────────────
@@ -707,7 +778,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   //
   // Selektive finaler (bjerg, punch, nedkoersel, udbrud, ITT) beholder de
   // individuelle tids-tiers: dér ER tidsforskellene virkelige.
-  if (isMassFinishRoute(route)) {
+  if (isMassFinishRoute(route) || (ctx.sharedGroupTime && !sharedPhysicalTiers)) {
     placementGroups.push({
       id: "finale-bunch-0",
       kind: scored.length + unscoredContenderIds.length > 1 ? "peloton" : "solo",
@@ -725,7 +796,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         const scoreDelta = tailReference !== null ? Math.max(0, tailReference - entry.score) : 0;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
-        cumulativeGap += step;
+        cumulativeGap = Math.min(cumulativeGap + step, Math.max(cumulativeGap, tierCap));
         placementGroups.push({
           id: `finale-tail-${seq++}`,
           kind: "peloton",
@@ -755,7 +826,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         const scoreDelta = tierReference - entry.score;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
         const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
-        cumulativeGap += step;
+        cumulativeGap = Math.min(cumulativeGap + step, Math.max(cumulativeGap, tierCap));
       }
       placementGroups.push({
         id: cumulativeGap === 0 ? `finale-winner-${seq++}` : `finale-tier-${seq++}`,
@@ -772,7 +843,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     prevScore = entry.score;
   });
 
-  if (!isMassFinishRoute(route) && unscoredContenderIds.length > 0) {
+  if (!isMassFinishRoute(route) && (!ctx.sharedGroupTime || sharedPhysicalTiers) && unscoredContenderIds.length > 0) {
     // Samme feltbevarelses-hensyn som i massefinale-grenen: bagerst i den
     // sidste eksisterende klump, ellers som en klump for sig.
     const last = placementGroups[placementGroups.length - 1];
@@ -902,6 +973,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // #6200: bogen fra nedkoerslens regruppering er brugt op her (types.ts).
   const base: EngineState = { ...state };
   delete base.finish_descent_regroup;
-  const nextState: EngineState = { ...base, groups: newGroups, finish_order: finishOrder };
+  const nextState: EngineState = { ...base, groups: newGroups, finish_order: finishOrder,
+    ...(finaleCohorts !== state.shared_grupetto_groups ? { shared_grupetto_groups: finaleCohorts } : {}) };
   return { state: nextState, events };
 };

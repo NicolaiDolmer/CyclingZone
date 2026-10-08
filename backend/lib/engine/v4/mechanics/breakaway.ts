@@ -1,4 +1,6 @@
+import { GROUP_CLOCK_CONTACT_EPSILON } from "../groupClock.ts";
 import { findChaseGroup, isBreakawayPiece, rejoinBreakawayPiece, withBreakawayDrops } from "./chaseGroup.ts";
+import { pursuitContactKm } from "../exactPlace.ts";
 // backend/lib/engine/v4/mechanics/breakaway.ts
 // Race Engine v4 F3 (#4030, #3855): M5 - udbrud v2, jagt-interesse-modellen
 // fra #2416, foldet ind som v4's udbrudsmekanik (mor-spec §3.3/§4 M5).
@@ -60,7 +62,7 @@ import { findChaseGroup, isBreakawayPiece, rejoinBreakawayPiece, withBreakawayDr
 //    SIDSTE segment, emitteres `breakaway_survived` (finale.ts afgoer derefter
 //    om forspringet baeres helt i maal eller indhentes i selve finalen).
 
-import { bookFinishDescentClosure, finishDescentRemainingCapSeconds } from "./timeModel.ts";
+import { bookFinishDescentClosure, finishDescentRemainingCapSeconds, timeModelTuningFor } from "./timeModel.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -1501,6 +1503,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const parsedOrders = parseBreakawayOrders(ctx.orders);
   const workByChaseGroup = new Map<string, { plan: ReturnType<typeof teamChasePlan>; km: number }>();
   const pursuitByBreakaway = new Map<string, string>();
+  const contactKmByBreakaway = new Map<string, number>(); // #6199, KUN official_times_v2
   const brakeByChaseGroup = new Map<string, { work: Map<string, number>; km: number }>();
   const smallBreakWork: Array<{ riderIds: readonly string[]; pace: ReturnType<typeof smallBreakPaceV3>; km: number }> = []; // #6201
 
@@ -1608,6 +1611,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       maxGapSeconds *= letGoBalance.maxGapFactor;
       // #6084 (KUN orders_gc_v2 paa bjerg): feltet holder samlet, saa loftet skaleres (mountainSelection.ts).
       if (ctx.mountainSelectionPhase) maxGapSeconds *= phaseLetGoMaxGapScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).letGoMaxGapScale);
+      // #6199 (KUN official_times_v2): uden v3s ikke-fysiske lukning paa nedkoerslen
+      // skal jagten hente det fysisk; feltet giver derfor et mindre lad-gaa-loft.
+      maxGapSeconds *= timeModelTuningFor(ctx).letGoMaxGapScale;
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
@@ -1706,7 +1712,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const newBreakawayGap = breakaway.gap_seconds - growthSeconds;
     // #6199/#6200 (review af #6223, KUN orders_gc_v3): paa en nedkoersel mod maal deler
     // jagten loftet med regrupperingen, M3-angrebene og finalen (bogen, mechanics/timeModel.ts).
-    const v3DescentBook = ordersGcV3 && isLastSegment && ctx.segment.kind === "descent" ? (state.finish_descent_regroup ?? {}) : null;
+    const v3DescentBook = (ordersGcV3 || ctx.sharedGroupTime !== undefined) && isLastSegment && ctx.segment.kind === "descent" ? (state.finish_descent_regroup ?? {}) : null;
     const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, netClosingSeconds + floorClosingSeconds);
     const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
     const v3Booked = v3DescentBook ? bookFinishDescentClosure(state.finish_descent_regroup, chaseGroup.id, chaseGroup.gap_seconds, currentChase.gap_seconds - newChaseGap) : undefined;
@@ -1714,6 +1720,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     groups = groups.map((g) => g.id === breakaway.id ? { ...g, gap_seconds: newBreakawayGap } : g.id === chaseGroup.id ? { ...g, gap_seconds: newChaseGap } : g);
     changed = true;
     pursuitByBreakaway.set(breakaway.id, chaseGroup.id);
+    // #6199 (KUN official_times_v2): where this chase meets the break (exactPlace.ts).
+    if (ctx.sharedGroupTime !== undefined && ordersGcV3) {
+      const contactKm = pursuitContactKm({ toKm: ctx.segment.to_km, chaseKm, floorKm, netClosingSeconds, floorClosingSeconds, closingSeconds, separationSeconds: grown });
+      if (contactKm !== null) contactKmByBreakaway.set(breakaway.id, Math.max(ctx.segment.from_km, contactKm));
+    }
   }
 
   // All targets share the final advance. Only these final positions decide outcomes.
@@ -1722,11 +1733,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const chase = groups.find(group => group.id === chaseId);
     if (!breakaway || !chase) continue;
     const newGap = chase.gap_seconds - breakaway.gap_seconds;
-    const caught = newGap < ctx.tuning.groups.mergeThresholdSeconds;
+    const caught = ctx.sharedGroupTime ? newGap <= GROUP_CLOCK_CONTACT_EPSILON : newGap < ctx.tuning.groups.mergeThresholdSeconds;
     // #6234 (KUN orders_gc_v3): et afsat stykke af udbruddet der lukker hullet, er kommet tilbage, ikke en indhentning.
     if (caught && ordersGcV3 && isBreakawayPiece(chase)) {
       groups = rejoinBreakawayPiece(groups, chase.id, breakawayId);
-      events.push({ km: round2(ctx.segment.to_km), type: "group_merged", params: { group_id: chase.id, into_group_id: breakawayId, rider_ids: [...chase.rider_ids] } });
+      events.push({ km: round2(ctx.segment.to_km), type: "group_merged", params: { group_id: chase.id, into_group_id: breakawayId, rider_ids: [...chase.rider_ids],
+        ...(contactKmByBreakaway.has(breakawayId) ? { exact_km: contactKmByBreakaway.get(breakawayId) } : {}) } });
     } else if (caught) {
       groups = groups.map(group => group.id === breakawayId ? { ...group, gap_seconds: Math.min(group.gap_seconds, chase.gap_seconds) } : group);
       events.push({
@@ -1736,7 +1748,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         // de hold der havde ryttere i jagt-arbejde i det segment hvor hullet lukkede.
         // #6187 (KUN orders_gc_v3): planen for netop DETTE udbrud, saa et hold der
         // ikke jagede det (egen mand foran) aldrig staar som den der hentede det.
-        params: { group_id: breakaway.id, rider_ids: [...breakaway.rider_ids], ...catchActorParams(chase, (ordersGcV3 ? planByBreakaway.get(breakawayId) : workByChaseGroup.get(chaseId)?.plan)?.chaserWork, ctx.entrants) },
+        params: { group_id: breakaway.id, rider_ids: [...breakaway.rider_ids], ...catchActorParams(chase, (ordersGcV3 ? planByBreakaway.get(breakawayId) : workByChaseGroup.get(chaseId)?.plan)?.chaserWork, ctx.entrants),
+          ...(contactKmByBreakaway.has(breakawayId) ? { exact_km: contactKmByBreakaway.get(breakawayId) } : {}) },
       });
     } else if (isLastSegment) {
       events.push({
@@ -1781,7 +1794,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 
   if (!changed && !riders && !teamReactions && !ownAheadTeams) return { state, events };
   const frontGap = Math.min(...groups.map((group) => group.gap_seconds));
-  const rebasedGroups = frontGap < 0 ? groups.map((group) => ({ ...group, gap_seconds: group.gap_seconds - frontGap })) : groups;
+  const rebasedGroups = !ctx.sharedGroupTime && frontGap < 0 ? groups.map((group) => ({ ...group, gap_seconds: group.gap_seconds - frontGap })) : groups;
   return {
     state: {
       ...state, groups: rebasedGroups, ...(riders ? { riders } : {}), ...(teamReactions ? { team_reactions: teamReactions } : {}),
