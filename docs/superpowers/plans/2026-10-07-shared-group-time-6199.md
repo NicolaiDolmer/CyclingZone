@@ -143,3 +143,25 @@ classification pool and `finish_order`: a line cannot pass a group ahead without
 joining it at the checkpoint, and a line reaching the front brings every passed
 group into the pool. Old-revision frozen outputs still match. Calibration against
 the locked targets, the paired 125-run measurement and #6329 remain open.
+
+2026-10-08 Tour-revision increment (owner decision 8/10): the Tour runs on one
+combined revision. `official_times_v2` = the full orders_gc_v3 lineage
+(generation 3) + official times + the shared group clock; `official_times_v1`
+stays as the frozen prototype. Calibration lives in one tuning object read only
+under `official_times_v2` (v3 numbers neutral, old revisions byte-identical on
+the 100 paired digests and the frozen route outputs). Measured on the realistic
+field and the paired real stages, with hilly/rolling route-sensitivity cases:
+- The scorecard exposed that the shared clock alone broke flat stages (the old
+  numbers-window had silently repaired breakaways and late splits). Fixed
+  physically: the field's numbers are closing speed over the final km.
+- The v3 "tænd ikke endnu" regressions (mountain spread, short uphill finishes)
+  are addressed by the summit race on long summit finishes, physical finale
+  tiers, per-profile climb weight and keeping the owner's short uphill finish in
+  the group. Valley regrouping (model B) is speed on the shared clock; the let-go
+  ceiling is smaller because v3's descent teleport is gone.
+- #6329 is built in this PR (brief 8/10): precise contact point inside the
+  movement interval, contact A as fallback.
+Numbers and the per-gate table are private (`balance-internals/6199/`). Open
+with the owner: OTL frequency on hard mountain stages (more than v3's teleported
+tail; a grupetto pacing policy would be a new player-facing choice) and the
+breakaway rate band (candidate, not owner-approved). No activation.
