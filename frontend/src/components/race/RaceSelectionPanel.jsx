@@ -41,7 +41,7 @@ import {
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
 import { ArrowUpIcon, ArrowDownIcon, BlockedNote, LockIcon } from "../ui/index.js";
-import { trainNowClock } from "../training/TrainNowState.ts"; // #6139
+import { trainNowClock } from "../training/trainNowClock.ts"; // #6139
 import RiderMiniProfileModal from "../rider/RiderMiniProfileModal.jsx";
 import { useBlockedAction } from "../../lib/useBlockedAction.js";
 

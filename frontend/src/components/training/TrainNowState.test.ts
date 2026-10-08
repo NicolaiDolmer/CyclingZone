@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   TRAIN_NOW_OFF, parseTrainNowStatus, trainNowNoteKeys, trainNowPressCounts, trainNowRunGate,
-  trainNowClock, trainNowRaceNames, trainNowSaveErrorKey, type TrainNowStatus,
+  trainNowRaceNames, trainNowSaveErrorKey, type TrainNowStatus,
 } from "./TrainNowState.ts";
+import { trainNowClock } from "./trainNowClock.ts";
 
 const available: TrainNowStatus = {
   enabled: true, available: true, reason: null, tickDate: "2026-10-01", locked: false, lockedAt: null, settled: false,

@@ -111,14 +111,6 @@ export function trainNowRaceNames(status: TrainNowStatus): string {
   return status.todayRaces.map((r) => r.name).filter(Boolean).join(", ");
 }
 
-/** #6139: HH:MM in game time (Europe/Copenhagen) for "locked since"; null when unknown. */
-export function trainNowClock(iso: string | null | undefined): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Copenhagen" });
-}
-
 /**
  * #6139: a save refused by the Train now plan lock says so ("today's fields are locked,
  * you can still change tomorrow") instead of the generic "could not save".
