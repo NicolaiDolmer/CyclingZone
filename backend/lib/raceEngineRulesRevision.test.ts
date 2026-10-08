@@ -266,17 +266,20 @@ test("#6084: the bridge carries orders_gc_v2 with the same GC context as orders_
   assert.deepEqual({ ...v2, rules_revision: "orders_gc_v1" }, v1);
 });
 
-test("#6284: the existing migration excludes the future revision; only the unapplied proposal allows it", async () => {
+test("#6284/#6199: the v3 migration excludes official_times; the official-times migration allows every known revision", async () => {
   const { readFileSync } = await import("node:fs");
   const sql = readFileSync(new URL("../../database/2026-10-05-race-engine-rules-revision-v3.sql", import.meta.url), "utf8");
   const check = sql.match(/IN \(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   const allowed = check[1].split(",").map((s) => s.trim().replace(/'/g, ""));
   assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => !revision.startsWith("official_times_")));
-  const proposal = readFileSync(new URL("../../database/proposals/2026-10-07-official-times-v1.sql", import.meta.url), "utf8");
-  const proposed = proposal.match(/IN\s*\(([^)]*)\)/);
-  assert.ok(proposed);
-  assert.deepEqual(proposed[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
+  const migration = readFileSync(new URL("../../database/2026-10-08-race-engine-rules-revision-official-times.sql", import.meta.url), "utf8");
+  const migrated = migration.match(/IN\s*\(([^)]*)\)/);
+  assert.ok(migrated);
+  assert.deepEqual(migrated[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
+  // Idempotent and additive: the constraint is replaced, never a row update.
+  assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
+  assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
 });
 
 // ── #6187: orders_gc_v3 (orders_gc_v2 + eget hold jagter aldrig sine egne) ──────
