@@ -71,6 +71,11 @@ export function pickRace(candidates, divisionTierById, tier = 1) {
   throw new Error(`Navnet er tvetydigt (${candidates.length} loeb, ${pool.length} i division ${tier}): ${candidates.map((r) => r.id).join(", ")}. Brug --race=<id>.`);
 }
 
+/** Et loebsnavn som literal ILIKE-moenster: \, % og _ escapes, saa navnet ikke virker som wildcard. */
+export function likeLiteral(text) {
+  return String(text).replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
 /** Filnavn uden mellemrum og specialtegn. */
 export function slug(text) {
   return String(text).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "race";
@@ -89,8 +94,9 @@ async function fetchRace({ raceId, raceName, tier }) {
   if (raceId) {
     [race] = await one(db.from("races").select(raceCols).eq("id", raceId), "races");
   } else {
-    // pagination-safe: navnesoegning paa ét loebsnavn (en haandfuld rakker, én pr. division og saeson)
-    const candidates = await one(db.from("races").select(raceCols).ilike("name", raceName).neq("status", "completed"), "races");
+    // pagination-safe: navnesoegning paa ét loebsnavn (en haandfuld rakker, én pr. division og saeson).
+    // Navnet matches som literal (% og _ escapes); afsluttede loeb er med, saa pickRace kan falde tilbage paa dem.
+    const candidates = await one(db.from("races").select(raceCols).ilike("name", likeLiteral(raceName)), "races");
     const divIds = [...new Set(candidates.map((r) => r.league_division_id).filter(Boolean))];
     const divs = divIds.length ? await one(db.from("league_divisions").select("id, tier").in("id", divIds), "league_divisions") : [];
     race = pickRace(candidates, new Map(divs.map((d) => [d.id, d.tier])), tier);

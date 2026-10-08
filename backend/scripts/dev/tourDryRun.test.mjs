@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { parseArgs, pickRace, slug, GIRO_FIXTURE } from "./tourDryRun.mjs";
+import { likeLiteral, parseArgs, pickRace, slug, GIRO_FIXTURE } from "./tourDryRun.mjs";
 import {
   KNOWN_OPEN_GATES,
   TOUR_BENCHMARKS,
@@ -51,6 +51,20 @@ test("pickRace: ét navn, division-tier ved flere, fejl ved tvetydighed", () => 
 
 test("slug: filnavn uden specialtegn", () => {
   assert.equal(slug("Tour de l'Hexagone"), "tour-de-l-hexagone");
+});
+
+test("likeLiteral: loebsnavnet er ikke et wildcard-moenster", () => {
+  assert.equal(likeLiteral("Tour_100%"), "Tour\\_100\\%");
+  assert.equal(likeLiteral("a\\b"), "a\\\\b");
+  assert.equal(likeLiteral("Tour de l'Hexagone"), "Tour de l'Hexagone");
+});
+
+test("pickRace: et afsluttet loeb er fallback naar intet aktivt findes i divisionen", () => {
+  const done = { id: "old", league_division_id: "d1", status: "completed" };
+  const live = { id: "new", league_division_id: "d1", status: "scheduled" };
+  const tiers = new Map([["d1", 1], ["d2", 2]]);
+  assert.equal(pickRace([done, live], tiers, 1), live);
+  assert.equal(pickRace([done, { ...live, league_division_id: "d2" }], tiers, 1), done);
 });
 
 test("verdict: PASS i baandet, WARN i tolerancen, FAIL udenfor, N/A uden vaerdi", () => {
