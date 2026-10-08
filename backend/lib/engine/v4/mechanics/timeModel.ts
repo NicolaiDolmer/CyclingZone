@@ -142,7 +142,7 @@ export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
   letGoMaxGapScale: 0.7,
   // #5578 (ejer 8/10, udbrudsmaal 2-4): loftet pr. vejprofil, kalibreret privat
   // (balance-internals/5578-official-v2/) paa Tour- og Giro-feltet.
-  letGoMaxGapScaleByProfile: { flat: 1.4, rolling: 1.5, hilly: 3, mountain: 3, high_mountain: 1.5 },
+  letGoMaxGapScaleByProfile: { flat: 1.8, rolling: 1.5, hilly: 3, mountain: 3, high_mountain: 1.5 },
   // #5578: foran en nedkoerselsfinale kontrollerer feltet hullet lidt mindre stramt.
   letGoFinaleFactorByFinale: { descent: 0.65 },
   // #5578: favoritgruppen er stadig et felt, der styrer udbruddet, naar

@@ -461,9 +461,11 @@ export function assessGcThreat(input: {
         0,
         Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1) + future,
       );
-      const margin = deficit - lead - potential;
-      // #5578 (KUN official_times_v2): klassementets forreste er altid en rival.
+      // #5578 (KUN official_times_v2): klassementets forreste er altid en rival, og
+      // hans afstand taeller hoejst som snorens loft (udbrudsmaal 6: aldrig 5 min).
       const ranked = model !== undefined && danger.rivalRankAlways !== null && standing.rank <= danger.rivalRankAlways;
+      const cap = ranked ? danger.rankedLeadCapSeconds : null;
+      const margin = (cap !== null ? Math.min(deficit, cap) : deficit) - lead - potential;
       const isRival = ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
       let severity: GcThreatSeverity;
       let reason: GcThreatReason;
@@ -487,7 +489,6 @@ export function assessGcThreat(input: {
       }
       const leashRoom = deficit - Math.max(0, future) - danger.leashMarginSeconds;
       // #5578 (KUN official_times_v2): de forreste holder altid snoren, og den er hoejst loftet lang.
-      const cap = ranked ? danger.rankedLeadCapSeconds : null;
       candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival,
         leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}) });
     }
