@@ -8,9 +8,11 @@
 //     second formula here. The result is computed from the rider's condition at the
 //     start of the date (training_date_work.opening_conditions), so a press at 06:00
 //     and the automatic settlement give the same result (I1).
-//   - entries: the date's race entries for the team are locked. A rider who was not
-//     entered cannot be entered into a race on this date afterwards; an entered rider
-//     stays in his race. The press itself never writes race_entries/race_entry_days (I3).
+//   - entries: the riders the press froze (its lock rows) are decided for the date
+//     (#6139: per rider). A locked rider who was not entered cannot be entered into a
+//     race on this date afterwards; a locked rider who was entered stays in his race.
+//     A rider without a lock row (bought or moved after the press) is free. The press
+//     itself never writes race_entries/race_entry_days (I3).
 //
 // What the press deliberately does NOT settle:
 //   - the final race day of the date. That commit owns the one condition write per
@@ -37,12 +39,11 @@ import {
 import { registerTrainingDateWork } from "./trainingDateClose.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { stripProgramFromWeekDays } from "./trainingPrograms.js";
-import {
-  TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks, isRaceDateTrainNowLocked,
-} from "./trainNowLock.js";
+import { teamPoolIdForSquad } from "./raceBinding.js";
+import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
-export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks, isRaceDateTrainNowLocked };
+export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
 const SETTLED_STATUSES = new Set(["complete", "needs_reconciliation"]);
 const OPEN_STATUSES = ["pending", "partial"];
 
@@ -94,8 +95,33 @@ async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
 }
 
 /**
- * Read-only state for the panel. Cheap: no calendar or roster scan.
- * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean}>}
+ * #6139: the team's races with a stage today (any of its squads' pools), so the
+ * button can name the race selection a press locks. Decoration only: a failed read
+ * gives an empty list, never a failed status.
+ */
+export async function loadTodayRacesForTeam({ supabase, team, tickDate }) {
+  try {
+    const { start, end } = trainingDateBounds(tickDate);
+    const stages = await checked(supabase.from("race_stage_schedule").select("race_id")
+      // pagination-safe: one date's stages across all pools (low hundreds at most).
+      .gte("scheduled_at", start.toISOString()).lt("scheduled_at", end.toISOString()), "today's stages");
+    const raceIds = [...new Set((stages ?? []).map((row) => row.race_id).filter(Boolean))];
+    if (!raceIds.length) return [];
+    const races = await checked(supabase.from("races").select("id, name, squad, league_division_id")
+      .in("id", raceIds), "today's races");
+    return (races ?? [])
+      .filter((race) => race.league_division_id != null
+        && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"))
+      .map((race) => ({ id: race.id, name: race.name ?? null }))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Read-only state for the panel. Cheap: no roster scan; one small read of today's races.
+ * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean, todayRaces:Array<{id:string,name:string|null}>}>}
  */
 export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTester = false, now = new Date() }) {
   const tickDate = copenhagenDateString(now);
@@ -105,16 +131,17 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
   const enabled = { ...base, enabled: true, reason: null };
   if (!seasonId) return { ...enabled, reason: "no_active_season" };
   if (!team?.league_division_id) return { ...enabled, reason: "no_race_day_today" };
-  const [locks, work, earlierOpen] = await Promise.all([
+  const [locks, work, earlierOpen, todayRaces] = await Promise.all([
     loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate }),
     loadTeamDateWork({ supabase, teamId: team.id, seasonId, tickDate }),
     hasOpenEarlierDate({ supabase, teamId: team.id, seasonId, tickDate }),
+    loadTodayRacesForTeam({ supabase, team, tickDate }),
   ]);
   const locked = locks.length > 0;
   const lockedAt = locked ? locks.map((row) => row.pressed_at).filter(Boolean).sort()[0] ?? null : null;
   const settled = SETTLED_STATUSES.has(work?.status);
   const reason = settled ? "date_settled" : locked ? "locked" : earlierOpen ? "previous_date_open" : null;
-  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled };
+  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces };
 }
 
 /**
@@ -164,9 +191,9 @@ export async function runTrainNow({
     supabase, teamId: team.id, seasonId: season.id, tickDate, gameDays: days, riderIds: currentIds, now,
   });
 
-  // 2) Lock the registered roster: from here the date's entries are frozen for
-  //    this team. Idempotent per rider + date (I2); a repeated press keeps the
-  //    first time. A failure after this point keeps the lock; a retry resumes.
+  // 2) Lock the registered roster: from here these riders' entries on the date
+  //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
+  //    press keeps the first time. A failure after this point keeps the lock; a retry resumes.
   const pressedAt = now.toISOString();
   const { error: lockError } = await supabase.from(TRAIN_NOW_LOCK_TABLE).upsert(
     work.expected_rider_ids.map((riderId) => ({

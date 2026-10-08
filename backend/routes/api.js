@@ -242,7 +242,7 @@ import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trai
 import { loadDayCloseSpans } from "../lib/trainingDayCloseTrigger.js"; // #4847: train-now deler sweepens spaend
 import { createTrainNowRouter } from "./trainNow.js"; // #4847
 import { createTrainNowPlanLock } from "../lib/trainNow.js"; // #4847
-import { isRaceDateTrainNowLocked } from "../lib/trainNowLock.js"; // #4847
+import { loadRaceTrainNowLock, loadTrainNowLocksForRaces } from "../lib/trainNowLock.js"; // #4847/#6139
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "../lib/youthRaceOptOut.ts"; // #5944
 import { createYouthRaceOptOutRouter } from "./youthRaceOptOut.js"; // #5944
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
@@ -5965,10 +5965,6 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     // Et bevidst fravalg (afmeldt) er ikke "mangler udtagelse" — assistenten skal
     // ikke tilmelde holdet igen uden om manageren.
     if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
-    // #4847 (I3): samme "Train now"-laas som PUT/bulk (prepareSelectionChange).
-    if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: race.id })) {
-      return res.status(409).json({ error: "selection_train_now_locked" });
-    }
     // #5944: "Train only" — assistenten udtager ikke truppen, heller ikke via knappen.
     if (await isTeamSquadTrainOnly(supabase, { teamId: req.team.id, squad: raceSquadOf(race) })) {
       return res.status(409).json({ error: TRAIN_ONLY_SELECTION_ERROR });
@@ -5992,7 +5988,14 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     ]);
     if (ridersErr) return res.status(500).json({ error: ridersErr.message });
     if (profErr) return res.status(500).json({ error: profErr.message });
-    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    // #4847/#6139 (I3): samme "Train now"-laas som PUT/bulk — en rytter der traenede kan
+    // hverken fjernes fra loebet eller saettes ind; holdets oevrige ryttere er frie.
+    const autoLock = await loadRaceTrainNowLock({ supabase, raceId: race.id,
+      riderIds: [...(teamRiders || []).map((r) => r.id), ...(existingEntries || []).map((e) => e.rider_id)] });
+    if ((existingEntries || []).some((e) => autoLock.riderIds.has(e.rider_id))) {
+      return res.status(409).json({ error: "selection_train_now_locked" });
+    }
+    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id));
     if (!teamRiderIds.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
 
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
@@ -6438,11 +6441,11 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
     const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
     if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
-    // #6006 (I3): samme "Train now"-laas som PUT/bulk/auto-fill — en laast dag er afgjort.
-    for (const r of target) {
-      if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: r.id })) {
-        return res.status(409).json({ error: "selection_train_now_locked" });
-      }
+    // #6006/#6139 (I3): en rytter der traenede (Train now) er afgjort for dagen — regenerering
+    // maa hverken fjerne ham fra et loeb eller saette ham ind. Andre ryttere er frie.
+    const regenLocks = await loadTrainNowLocksForRaces({ supabase, raceIds: target.map((r) => r.id) });
+    if (allEntries.some((e) => regenLocks.get(e.race_id)?.riderIds.has(e.rider_id))) {
+      return res.status(409).json({ error: "selection_train_now_locked" });
     }
 
     // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
@@ -6517,7 +6520,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
 
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
-      sizeRule: selectionSizeForRace(r),
+      sizeRule: selectionSizeForRace(r), excludedRiderIds: regenLocks.get(r.id)?.riderIds, // #6139
     }));
     // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
     lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,

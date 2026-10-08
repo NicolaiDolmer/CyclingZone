@@ -3,17 +3,17 @@ import { fetchAllRows } from './supabasePagination.js';
 import { resolveCalendarRaceDayTarget } from './trainingRaceDayTick.js';
 import { isEligibleRider, raceSquadOf, ANY_SQUAD } from './riderEligibility.js';
 import { teamPoolIdForSquad } from './raceBinding.js';
-import { loadTrainNowLockedDatesByTeam } from './trainNowLock.js';
+import { loadTrainNowLockedRidersByDate } from './trainNowLock.js';
 
-// #6006: a team that pressed "Train now" for the date has a frozen selection (I3).
-// The assistant cannot add any of its riders afterwards, so only real entries can
-// still hold one of its riders back; the rest are free to settle now.
-export function trainingAutopickCandidates(race, teams, riders, trainNowLockedTeamIds = new Set()) {
+// #6006/#6139: a rider locked by a "Train now" press for the date is decided (I3).
+// The assistant cannot add him afterwards, so only a real entry can still hold him
+// back; he is free to settle now. Riders without a lock row stay candidates.
+export function trainingAutopickCandidates(race, teams, riders, trainNowLockedRiderIds = new Set()) {
   const squad = raceSquadOf(race);
   const possibleTeams = new Set(teams.filter(team => (team.is_ai || team.assistant_autopick_enabled) &&
-    !trainNowLockedTeamIds.has(team.id) &&
     teamPoolIdForSquad(team, squad) === race.league_division_id).map(team => team.id));
   return riders.filter(rider => possibleTeams.has(rider.team_id) && rider.pending_team_id == null &&
+    !trainNowLockedRiderIds.has(rider.id) &&
     isEligibleRider(rider, { squad })).map(rider => rider.id);
 }
 
@@ -109,11 +109,11 @@ export async function loadTrainingDateContext({ supabase, season, tickDate, load
     ]);
     results.push(...stageResults); incidents.push(...stageIncidents);
   }
-  const trainNowLockedTeamIds = raceIds.length
-    ? new Set((await loadTrainNowLockedDatesByTeam({ supabase, dates: [tickDate] })).keys()) : new Set();
+  const trainNowLockedRiderIds = raceIds.length
+    ? (await loadTrainNowLockedRidersByDate({ supabase, dates: [tickDate] })).get(tickDate) ?? new Set() : new Set();
   const candidateRiderIdsByRace = new Map();
   for (const race of races.filter(row => raceIds.includes(row.id))) {
-    candidateRiderIdsByRace.set(race.id, trainingAutopickCandidates(race, teams, riders, trainNowLockedTeamIds));
+    candidateRiderIdsByRace.set(race.id, trainingAutopickCandidates(race, teams, riders, trainNowLockedRiderIds));
   }
   const riderById = new Map(riders.map(rider => [rider.id, rider]));
   const validEntries = entries.filter(entry => isEligibleRider(riderById.get(entry.rider_id), { teamId: entry.team_id, squad: ANY_SQUAD }));
