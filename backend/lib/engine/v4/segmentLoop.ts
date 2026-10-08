@@ -790,6 +790,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   const ordersGcV3 = isOrdersGcV3OrLater(rulesRevision);
   const descentCrossings = usesSharedGroupTime(rulesRevision);
   const sharedGroupTime = usesSharedGroupTime(rulesRevision);
+  // #6329: praecist kontaktsted kun paa den samlede Tour-revision (official_times_v2).
+  const preciseContact = sharedGroupTime && ordersGcV3;
   const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
@@ -993,6 +995,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     const descentOpenOnly = ordersGcV3 && segment.kind === "descent" && segmentIndex === segments.length - 1;
     const groupsBeforeTempo = state.groups;
     const incidentCursorAtEntry = state.stage_incidents?.length ?? 0;
+    // #6329 (KUN official_times_v2): kontaktstedet beregnes inde i segmentets
+    // bevaegelsesinterval ud fra samme gruppeklokke (mechanics/descentCrossing.ts).
+    const contactInterval = preciseContact ? { fromKm: segment.from_km, entryGroups: groupsBeforeTempo } : undefined;
     let groups: RaceGroup[];
     if (sharedGroupTime) {
       let clock = beginGroupClock({groups: state.groups, frontTimeSeconds: frontElapsedSeconds,
@@ -1014,7 +1019,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     }
     state = { ...state, groups };
     if (descentCrossings) {
-      const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km, [], sharedGroupTime);
+      const contact = reconcileDescentCrossings(groupsBeforeTempo, state, segment.to_km, [], sharedGroupTime, contactInterval);
       state = contact.state;
       timeline.push(...contact.events);
     }
@@ -1099,7 +1104,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       const result = hooks.breakaway(state, ctx);
       acceptMovement(result);
       if (descentCrossings) {
-        const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events, sharedGroupTime);
+        const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events, sharedGroupTime, contactInterval);
         state = contact.state;
         timeline.push(...contact.events);
       }

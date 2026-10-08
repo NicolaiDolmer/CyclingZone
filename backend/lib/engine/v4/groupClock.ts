@@ -141,3 +141,19 @@ export function remainingClosureSeconds(entrySeparation: number, currentSeparati
   nonnegative(totalEstimate, 'closing estimate');
   return Math.max(0, totalEstimate-Math.max(0,entrySeparation-currentSeparation));
 }
+
+/**
+ * #6329 (official_times_v2): where inside one movement interval two physical
+ * lines meet. Each line moves at its own constant pace across the interval, so
+ * its arrival time is linear in distance and the difference between two lines
+ * is linear too. `entryDifference` and `exitDifference` are (chaser - target)
+ * arrival differences at the interval ends; contact is where the difference
+ * reaches zero. Returns the fraction of the interval (0 < f <= 1), or null when
+ * the endpoints do not describe a chaser closing from behind.
+ */
+export function contactFractionInInterval(entryDifference: number, exitDifference: number): number | null {
+  if (!Number.isFinite(entryDifference) || !Number.isFinite(exitDifference)) return null;
+  if (!(entryDifference > 0) || exitDifference > GROUP_CLOCK_CONTACT_EPSILON) return null;
+  const fraction = entryDifference / (entryDifference - Math.min(0, exitDifference));
+  return Math.min(1, Math.max(Number.EPSILON, fraction));
+}
