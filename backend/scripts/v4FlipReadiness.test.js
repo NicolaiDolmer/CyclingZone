@@ -24,8 +24,10 @@ import {
   HEAD_TO_HEAD_SEEDS,
   accumulateStageRates,
   countSeedVerdicts,
+  escapeWonStage,
   incidentCausedOtl,
   measureHeadToHead,
+  measureRealisticField,
   parseTap,
   renderPrivateReport,
   renderPublicBlock,
@@ -423,4 +425,76 @@ test("measureHeadToHead + runPerf koerer ende-til-ende paa eksempel-input (deter
   assert.equal(perf.length, 1);
   assert.equal(perf[0].summary.n, stages.length);
   assert.equal(perf[0].summary.verdict, "PASS");
+});
+
+// ── #6199: realistisk felt (1b) ─────────────────────────────────────────────
+
+function fakeStageOutput({ times, escapees = [], caught = [], otl = 0 }) {
+  return {
+    results: times.map((t, i) => ({ rider_id: `r${i}`, status: i >= times.length - otl ? "otl" : "finished", time_seconds: t })),
+    incidents: [],
+    timeline: {
+      events: [
+        ...(escapees.length ? [{ type: "breakaway_formed", params: { rider_ids: escapees } }] : []),
+        ...(caught.length ? [{ type: "breakaway_caught", params: { rider_ids: caught } }] : []),
+      ],
+    },
+  };
+}
+
+test("escapeWonStage: kun naar vinderen sad i udbruddet og aldrig blev hentet", () => {
+  assert.equal(escapeWonStage(fakeStageOutput({ times: [100, 200], escapees: ["r0"] })), true);
+  assert.equal(escapeWonStage(fakeStageOutput({ times: [100, 200], escapees: ["r0"], caught: ["r0"] })), false);
+  assert.equal(escapeWonStage(fakeStageOutput({ times: [100, 200], escapees: ["r1"] })), false);
+  assert.equal(escapeWonStage(fakeStageOutput({ times: [] })), false);
+});
+
+test("measureRealisticField: favorit-afgjorte etaper skilles fra udbrudssejre, OTL pr. etapetype, deterministisk", () => {
+  const stagesFile = JSON.parse(readFileSync(join(FIXTURE_DIR, "stages.json"), "utf8"));
+  const stages = Array.isArray(stagesFile) ? stagesFile : stagesFile.stages;
+  const fixture = {
+    entries: Array.from({ length: 12 }, (_, i) => ({ rider_id: `x${i}`, team_id: `t${i % 3}`, race_role: null })),
+    abilities: Array.from({ length: 12 }, (_, i) => ({ rider_id: `x${i}`, climbing: 50 + i })),
+    teams: [{ id: "t0", is_ai: true }, { id: "t1", is_ai: false }, { id: "t2", is_ai: true }],
+  };
+  const calls = [];
+  const v4 = {
+    simulateStage(args) {
+      calls.push(args);
+      const escape = args.seedString.startsWith("u2");
+      // 12 i maal: nr. 10 er 90 s efter vinderen; i en udbrudssejr 600 s.
+      const times = Array.from({ length: 12 }, (_, i) => 1000 + i * (escape ? 600 / 9 : 10));
+      return { v4Output: fakeStageOutput({ times, escapees: escape ? ["r0"] : [], otl: 1 }) };
+    },
+  };
+  const run = () => measureRealisticField({ v4, fixture, stages, seeds: ["u1", "u2"], rulesRevision: "orders_gc_v3" });
+  const result = run();
+  assert.deepEqual(run(), result, "samme input -> samme rapport");
+  assert.equal(result.fieldRiders, 12);
+  assert.ok(calls.every((c) => c.rulesRevision === "orders_gc_v3" && c.teamOrderRows.length === 0));
+  assert.equal(calls[0].entrants.filter((e) => e.team_is_ai).length, 8, "AI-holdene er markeret");
+  const fav = result.anchors.find((a) => a.id === "mountain_top10_spread" && a.subset === "favorites");
+  const all = result.anchors.find((a) => a.id === "mountain_top10_spread" && a.subset === "all");
+  assert.equal(Math.round(fav.value), 90, "udbrudssejren taeller ikke med i favorit-dommen");
+  assert.equal(fav.verdict, "PASS");
+  assert.equal(fav.seedsMeasured, 1, "et seed uden favorit-etaper er ikke maalt");
+  assert.ok(all.value > fav.value, "alle etaper inkl. udbrudssejren");
+  // #6257: nedkoersels-kontrakten maales kun under orders_gc_v3+; uden nedkoersel mod maal er den N/A.
+  const descent = result.anchors.find((a) => a.id === "descent_gap_closure_contract");
+  assert.ok(descent, "v3: kontrakt-ankeret er med i det realistiske felt");
+  assert.equal(descent.verdict, "N/A");
+  const legacy = measureRealisticField({ v4, fixture, stages, seeds: ["u1"], rulesRevision: "legacy" });
+  assert.ok(!legacy.anchors.some((a) => a.id === "descent_gap_closure_contract"), "legacy: uaendret ankersaet");
+  assert.equal(result.rates.total.stages, stages.length * 2);
+  assert.equal(result.rates.total.otl, stages.length * 2);
+
+  // Hard rule 17: den offentlige blok viser dommen, ikke tallet.
+  const meta = { generated_at: "x", engine_sha: "abc", population_file: "p", stages_file: "s", stage_count: 1, seeds: ["u1", "u2"], tail_seeds: ["s1"], field_size: 180, host: "h", node: "v" };
+  const common = { meta, anchors: summarizeAnchorGate([], new Map(), 2), realisticField: result, tailGate: { rows: [], gatedRows: [], allPass: true }, rates: summarizeRates(new Map()), perf: [] };
+  const block = renderPublicBlock({ ...common, infraTests: null });
+  assert.match(block, /1b\. Tidsankrene i et realistisk felt/u);
+  assert.match(block, /etaper udbruddet ikke vandt \| PASS \| 1\/1 \|/u);
+  assert.doesNotMatch(block, /\b90(\.\d+)? s\b/u);
+  assert.doesNotMatch(block, /\d\s*%/u);
+  assert.match(renderPrivateReport(common), /90\.0 s PASS/u);
 });

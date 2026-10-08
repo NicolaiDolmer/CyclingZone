@@ -156,7 +156,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
       >
         <div className="flex items-start justify-between gap-2">
           <span className="text-sm font-semibold text-cz-1 transition-colors group-hover:text-cz-accent-t">{column.name}</span>
-          {locked && <LockIcon size={13} className="text-cz-3 mt-0.5 flex-shrink-0" aria-hidden="true" />}
+          {locked && <LockIcon size={13} className="text-cz-3 mt-0.5 shrink-0" aria-hidden="true" />}
         </div>
         <p className="text-2xs text-cz-3 mt-0.5">
           {gameDayLabel && (
@@ -231,7 +231,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         // HELE løbet uafhængigt af holdets egen withdrawn-status (se status-precedence
         // ovenfor), så denne gren skal ligge FØR "locked"-grenen, ikke efter.
         <div className="flex-1 flex items-start gap-2 px-3 py-4 text-xs text-cz-3">
-          <InfoIcon size={14} className="flex-shrink-0 mt-px" aria-hidden="true" />
+          <InfoIcon size={14} className="shrink-0 mt-px" aria-hidden="true" />
           <span>{t("racehub.column.withdrawnNote")}</span>
         </div>
       ) : locked ? (
@@ -243,7 +243,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             return (
               <div key={id} className={`${RIDER_GRID} py-1.5`}>
                 <span data-testid="race-rider-name" className="min-w-0 truncate text-xs text-cz-1">{r.name}</span>
-                <span data-testid="race-rider-order" className={`min-w-0 break-words text-2xs ${role ? "text-cz-accent-t" : "text-cz-2"}`}>{orderLabel(role)}</span>
+                <span data-testid="race-rider-order" className={`min-w-0 wrap-break-word text-2xs ${role ? "text-cz-accent-t" : "text-cz-2"}`}>{orderLabel(role)}</span>
                 <RiderNumbers rider={r} />
                   {/* #2637: en igangværende trup er ellers helt read-only, men fjernelse
                       skal ALTID være muligt (fx en rytter der bliver skadet midt i et
@@ -282,7 +282,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                     aria-label={t("racehub.column.editOrder", { name: r.name, order: orderLabel(role) })}
                     aria-haspopup="menu" aria-expanded={roleMenuFor === id}
                     onClick={() => setRoleMenuFor(roleMenuFor === id ? null : id)} disabled={busy}
-                    className={`min-w-0 min-h-11 break-words text-left text-2xs hover:text-cz-accent-t disabled:opacity-50 ${role ? "text-cz-accent-t" : "text-cz-2"}`}>
+                    className={`min-w-0 min-h-11 wrap-break-word text-left text-2xs hover:text-cz-accent-t disabled:opacity-50 ${role ? "text-cz-accent-t" : "text-cz-2"}`}>
                     {orderLabel(role)}
                   </button>
                   <RiderNumbers rider={r} />
@@ -291,7 +291,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                       className="w-6 text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
                 </div>
                 {roleMenuFor === id && (
-                  <div className="absolute z-dropdown right-3 mt-0.5 bg-cz-elevated border border-cz-border rounded-cz shadow-overlay p-2 w-[19rem] max-w-[calc(100vw-2rem)]">
+                  <div className="absolute z-dropdown right-3 mt-0.5 bg-cz-elevated border border-cz-border rounded-cz shadow-overlay p-2 w-76 max-w-[calc(100vw-2rem)]">
                     <div className="grid grid-cols-2 gap-1.5">
                       {roleKeys.map((opt) => (
                         <RoleCard key={opt} role={opt}

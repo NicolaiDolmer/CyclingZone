@@ -284,7 +284,7 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
       aria-pressed={active}
       aria-label={ariaLabel}
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-cz border px-2 py-1 text-3xs font-medium uppercase tracking-wide transition-colors flex-shrink-0 disabled:opacity-60 disabled:pointer-events-none
+      className={`inline-flex items-center gap-1 rounded-cz border px-2 py-1 text-3xs font-medium uppercase tracking-wide transition-colors shrink-0 disabled:opacity-60 disabled:pointer-events-none
         ${active ? "border-cz-accent bg-cz-accent/10 text-cz-accent-t" : "border-cz-accent/40 text-cz-accent-t bg-transparent hover:bg-cz-accent/5"}`}
     >
       {/* Fluebenets plads reserveres altid: uden det skifter pillens BREDDE naar

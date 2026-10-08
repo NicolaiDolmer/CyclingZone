@@ -38,7 +38,7 @@ function TrendSub({ pct, t }) {
 }
 
 function FeedIcon({ type }) {
-  const cls = "flex-shrink-0 text-cz-3";
+  const cls = "shrink-0 text-cz-3";
   if (type === "scout") return <SearchIcon size={15} aria-hidden="true" className={cls} />;
   if (type === "watch") return <StarIcon size={15} aria-hidden="true" className={cls} />;
   return <EyeIcon size={15} aria-hidden="true" className={cls} />;
@@ -139,7 +139,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-[13px]">
         {statDefs.map((s) => (
           <div key={s.key} className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
-            <span className="inline-flex items-center gap-1.5 font-mono text-3xs font-semibold uppercase tracking-[0.1em] text-cz-3">
+            <span className="inline-flex items-center gap-1.5 font-mono text-3xs font-semibold uppercase tracking-widest text-cz-3">
               <s.icon size={14} aria-hidden="true" />
               {t(`profile.interest.stats.${s.key}`)}
             </span>
@@ -165,7 +165,7 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
               </p>
               {interest.scouts.map((s) => (
                 <div key={s.team_id} className="flex items-center gap-2.5 py-2 min-h-[44px] border-t border-cz-border">
-                  <SearchIcon size={15} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
+                  <SearchIcon size={15} aria-hidden="true" className="text-cz-3 shrink-0" />
                   <span className="flex-1 text-[12.5px] text-cz-1 truncate">
                     <TeamLink id={s.team_id} className="hover:text-cz-accent-t transition-colors">{s.team_name ?? t("bids.row.teamFallback")}</TeamLink>
                   </span>

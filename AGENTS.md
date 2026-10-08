@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er arbejdskontrakten for begge agenter._
+_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kontrakten for begge._
 
 > **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
 
@@ -70,7 +70,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd. **Loftet er siden 11/9 ([#5142](https://github.com/NicolaiDolmer/CyclingZone/issues/5142)) maks 2 tunge verifikationer samtidig (var 3), håndhævet af `scripts/verify-lock.ps1`; parallelt byggearbejde startes via `.claude/workflows/wave.js` eller Codex' `scripts/codex-wave.mjs` (#5467), maks 4 laner og faelles eksklusiv boelgemarkoer. Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1`; starter en kørsel udenom, er den usynlig for loftet, og disciplinen er stadig din.**
 
-25. **Design-gate før build** (ejer-mandat 13/8, [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)). En ny spillervendt funktion implementeres ALDRIG uden forudgående design-blok med ejeren: problem, løsningsskitse (mockup/show_widget/artboard/preview) og et eksplicit "godkendt til build". Godkendelsen refereres i PR-body ("Design-go: dato/link"). Refactors og bugfixes uden ny adfærd er undtaget.
+25. **Design-gate før build** (ejer-mandat 13/8, [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)). En ny spillervendt funktion implementeres ALDRIG uden forudgående design-blok med ejeren: problem, løsningsskitse (mockup/show_widget/artboard/preview) og et eksplicit "godkendt til build". Godkendelsen refereres i PR-body ("Design-go: dato/link"). **Skærpet 8/10 (ejer: "sådan vil jeg arbejde fast"):** gælder også rettelser, der ændrer hvad spilleren ser, læser eller oplever (tekst, tal, layout, regler) — problem + løsning godkendes FØR byg. Kun refactors, ops og rettelser uden synlig ændring er undtaget. Bølgen afviser et spillervendt spor uden registreret design-go på issuet (håndhævelse i `wave.js`, bølge 2 8/10).
 
 26. **Visuelt bevis før release** (#3661). Alt brugerrettet vises visuelt for ejeren FØR merge: rigtige screenshots (`pr-screens/`) eller preview-link, mobil OG desktop ved layoutændringer. Ingen tekst-beskrivelser som godkendelsesgrundlag — dette skærper UI-merge-reglen til også at gælde små ændringer (copy-only undtaget når teksten er citeret ordret).
     **Dev-/preview-serveren hentes ALDRIG over HTTP** ([#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024)): Vite injicerer `import.meta.env` — inkl. `VITE_SUPABASE_ANON_KEY` — i hvert modul den serverer, så `curl`/`fetch`/`Invoke-WebRequest` mod localhost:5173/5174 lækker nøglen til transcriptet uanset hvilket modul du henter. Screenshots og `read_page` er fine; skal du inspicere kode, læs kildefilen fra disk. Se tabel H i [`docs/SECRET_LEAK_VECTORS.md`](docs/SECRET_LEAK_VECTORS.md).
@@ -89,6 +89,8 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 31. **Nye frontend-filer skrives i `.ts`/`.tsx`.** Konventionen gælder kun NYE filer; ingen big-bang-migrering af de eksisterende ca. 880 `.js`/`.jsx`. Gælder også testfiler: nye i `.ts`/`.tsx`, eksisterende `.js`-tests urørt (#5428). `check-anti-slop.mjs` advarer, blokerer ikke.
 
+Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [migration-skabelonen](database/templates/new-public-table.sql); RLS erstatter ikke grants.
+
 32. **"Kan en type fange det?" — spørg FØR du foreslår en ny CI-guard.** `.github/workflows/ci.yml` har allerede ca. 15 håndbyggede ratchet-guard-jobs. Kan compileren fange fejlen (forkert felt-navn, manglende case, forkert type), tilføj typen i stedet. Guards reserveres til det compileren IKKE kan se: invarianter, RLS, paginerings-lofter, patch-notes-dækning, feature-liveness.
 
 ### Backlog-disciplin (ejer-direktiv 25/8, [#4267](https://github.com/NicolaiDolmer/CyclingZone/issues/4267))
@@ -99,7 +101,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 ### Merge-regler (ejer 22/9 + 24/9 + 4/10, #5508)
 
-35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI, rent uafhængigt diff-tjek, ingen blokerende CodeRabbit-fund og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`, uden spillerændring og uden ny rød måling (#5580/#5581 undtaget) · **(c)** Dependabot patch/minor, docs uden spillertekst, CI/hooks/test-only. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`.
+35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI, rent uafhængigt diff-tjek, ingen blokerende CodeRabbit-fund og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`/regel-revision, uden spillerændring/ny rød måling (ikke #5580/#5581) · **(c)** Dependabot inkl. sikkerhed, docs/CI/hooks/test/ops uden spillertekst. **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`.
 
 ### §LOKAL lokal-only-state
 

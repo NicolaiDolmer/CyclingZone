@@ -42,7 +42,14 @@
     "cta": "Se Pro",
     "note": "Pro viser alle evner på tværs af alle sæsoner, ikke kun den nuværende.",
     "ceilingLegend": "Skala-loft (99)",
-    "empty": "Ingen sæsonhistorik registreret endnu."
+    "empty": "Ingen sæsonhistorik registreret endnu.",
+    "errorTitle": "Kunne ikke hente sæsonhistorikken",
+    "statusErrorTitle": "Kunne ikke tjekke din Pro-status",
+    "errorBody": "Intet er gået tabt. Rytterens evner er uændrede.",
+    "retry": "Prøv igen",
+    "emptyTitle": "Ingen evner registreret endnu",
+    "checkAgain": "Tjek igen",
+    "now": "Nu"
   },
   "savedFilters": {
     "title": "Gemte filtre",
@@ -53,6 +60,11 @@
     "remove": "Fjern",
     "empty": "Ingen gemte filtre endnu.",
     "note": "Pro lader dig gemme filtre med navn og hoppe direkte tilbage til dem.",
-    "cta": "Se Pro"
+    "cta": "Se Pro",
+    "removeNamed": "Fjern {name}",
+    "duplicate": "Du har allerede et filter med det navn.",
+    "limit": "Du har gemt {max} filtre, som er loftet. Fjern et for at gemme et nyt.",
+    "statusError": "Jeg kunne ikke tjekke din Pro-status, så gemte filtre er skjult lige nu.",
+    "retry": "Prøv igen"
   }
 }

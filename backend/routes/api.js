@@ -15,6 +15,7 @@ import { createRankingsRouter } from "./rankings.ts";
 import { createFeatureFlagsRouter } from "../api/featureFlagsApi.js"; // #4948
 import { createTrainingProgramsRouter } from "./trainingPrograms.js"; // #4629
 import { createTrainingGroupsRouter } from "./trainingGroups.js"; // #6000
+import { createAdminRoadmapRouter } from "./adminRoadmap.js";
 import { createTrainingFatigueRulesRouter } from "./trainingFatigueRules.js"; // #4854
 import { stripProgramFromWeekDays } from "../lib/trainingPrograms.js"; // #4629
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -248,6 +249,7 @@ import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.
 import { isTrainingConditionPerDateEnabled } from "../lib/trainingDateConditionFlag.js";
 import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js";
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
+import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
@@ -529,6 +531,7 @@ import {
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { loadTeamSeasonEntries, raceIdsMissingWindow, withEntryRaceWindows, writeRegeneratedLineups } from "../lib/raceHubAutofill.js";
+import { loadRegenerateBindingLocks, writeRegeneratedLineupsPreservingTarget } from "../lib/raceEntryGeneratorBindings.ts";
 import { readAssistantSelectionConfig, ASSISTANT_MODES } from "../lib/assistantSelectionMode.js";
 import {
   buildSelectionDeadlineReminder,
@@ -991,6 +994,10 @@ async function requireAdmin(req, res, next) {
     next();
   });
 }
+
+router.use("/admin/roadmap", createAdminRoadmapRouter({
+  supabase, requireAdmin, writeLimiter: adminWriteLimiter, captureExceptionFn: captureException,
+}));
 
 // #3750 · Ejer-only: requireAdmin + OWNER_USER_IDS-allowlist (backend/lib/ownerGate.js).
 // Bruges til flader der kun ejeren må se, selv om andre konti har admin-rollen.
@@ -3046,8 +3053,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     ]);
 
     if (todayRunResult.error) throw new Error(todayRunResult.error.message);
-    const todayRuns = todayRunResult.data ?? [];
-    const todayRun = todayRuns[0] ?? null;
+    const { todayRuns, todayRun } = trainingRunResponse(todayRunResult.data);
     const weekPlanRows = weekPlanResult.data ?? [];
     const weekPlan = weekPlanRows.find((r) => r.rider_id == null)?.days ?? null;
     // #1895 PR 2: kun holdets EGNE ryttere — weekPlanRows er allerede scoped til
@@ -6513,12 +6519,17 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
     }));
+    // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
+    lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
+      targetRaceIds: target.map((r) => r.id), riderIds: riders.map((r) => r.rider_id) }));
     const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows, strategy });
 
     // #5789: skrivningen (frys-guard #2074, slip af ryttere der flyttes mellem dagens
     // løb, delete-så-insert pr. løb, navngiven #3420-fejl) bor i raceHubAutofill.js.
-    const { regenerated } = await writeRegeneratedLineups({
+    // #6132: afvises et insert, genskabes holdets hele eksisterende måludtagelse.
+    const { regenerated } = await writeRegeneratedLineupsPreservingTarget({
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
+      write: async (args) => await writeRegeneratedLineups({ ...args }),
     });
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
@@ -18736,6 +18747,8 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     // så en spiller uden penge nok fik "Noget gik galt" — og hver forsøg
     // larmede i Sentry. Begge er forventede bruger-tilstande, ikke fejl.
     if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
+    // #6264: signing-fee ville bruge penge låst i auktionsbud.
+    if (msg === "insufficient_available_balance") return res.status(409).json({ error: msg, locked: err.locked, available: err.available });
     if (msg === "already_assigned") return res.status(409).json({ error: "already_assigned" });
     // #4213: rytteren er i mellemtiden ejet af et andet hold — forventet
     // bruger-tilstand ved et stale tilbud, ikke en fejl. Tilbuddet bevares

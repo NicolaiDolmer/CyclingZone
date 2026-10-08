@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (6/10): [`2026-10-06-dagsplan.md`](superpowers/plans/2026-10-06-dagsplan.md) (Claude) + [`2026-10-06-codex-dag.md`](superpowers/plans/2026-10-06-codex-dag.md) (Codex).**
+> **🎯 Next action (8/10):** **Tour de l'Hexagone starter søn 11/10 kl. 11 og låser motor-revisionen.** Ejer 8/10: motor + træning + database er det vigtigste ("ikke flere fejl nu"). Rækkefølge: (1) bølge 2 færdig + merge #6325 #6297 → (2) Tour-pakken (ejer 8/10: ÉN revision = v3 + tidsmodel): #6199 kalibrering på v3 + #6329 + #6284/#6327, #6332 etape 11, #6294 mærker, #6285 motor-tests, #6186 Hjælp; byg fre, fuld test af alle 18 etaper lør + ejer-go på ét før/efter-billede, frys lør aften; ellers kører Touren på `orders_gc_v2`. Form #6156: designmøde 9/10 morgen. (3) Før hver motor-/træningsrunde: 14 dages Discord-sweep → verificerede issues → design ét ad gangen (memory `feedback_engine_training_trust_first`). (4) Træningspakken #6139 #6027 #6123 #6053.
 >
-> **5/10 (motor):** kontrakterne står som seneste kommentar på hvert issue (#6187 #5978 #6201 #6185 #3460 #6137 #6199 #6200); krav før v3 tændes på #5978 #3460 #6223. Staging = prod-skema + data (#5904). Læring: `.claude/learnings/2026-10-05-*.md` (review FØR merge-session; rettelser to ad gangen; tjek GitHub-status ved CI i kø; "klar" = grøn CI).
+> **8/10:** #6310 merget. Bølge 1 færdig: #6325 #6297 klar (merges efter bølge 2), #6053 venter ejer-go på billede, #6330 mangler kalibrering. Bølge 2: #6341 #6342 #6343 #6344 #6235. **9/10 med ejeren:** #5268 · betaling+moms #4511 #4514 #4512 · `POSTHOG_PERSONAL_API_KEY`. Pause-polls #5833 postes 8/10 aften → S5-kalender #5841 live ~12-13/10.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -17,7 +17,7 @@
 ## Standing context (forever-relaunch)
 
 - **Liga:** pyramide 1/2/4/4 fra S4 (ejer 24/9: D3+D4 samles ved skiftet, script #5669). **Styrke straffes ALDRIG; balance = struktur** (ejer 4/8).
-- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder (`riderSeasonAge.js`, S3=2028). Akademi-nedrykning ≤ 21 IKKE live (#5145 parkeret). **Graduation Day ved 23** (live 15/9).
+- **Overlap intended**; 1 rytter = 1 løb pr. **løbsdag** (#4209). Pension: afsluttet sæsons alder (`riderSeasonAge.js`, S3=2028). Akademi-nedrykning følger truppens aldersgrænse (#5547; #5145 lukket som overhalet 8/10). **Graduation Day ved 23** (live 15/9).
 - **Race engine:** ÉN v4 (`backend/lib/engine/v4`), flag `race_engine_v4` ON (prod læst 1/10); v4 kører officielle etaper. Flip-rapport forældet (#5515). Kalender-gaten blokerende (#4123 + #5707); `calendarGoldenDiff.mjs` FØR S4-generering.
 - **Træning (ejer 15/9, §13.3):** løbsdag som tick, sweep ≥ kl. 20 + knap uden bonus. Prod-måling 30/9: `training_tick_per_race_day`, `training_condition_per_date`, `race_day_development_enabled` og `race_day_engine_enabled` on. Dato-modellen aktiveret 29/9; B3 #5281 er IKKE bag flag.
 - **Evner (live):** `teamwork`/`leadership` er data, **ikke i rating-opskriften** (17/9). Lofter `{tactics 55, teamwork 70, leadership 70}`, `aggression` UDE (#5297). Point-flyt (#5268) ejer-gated.
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude 6/10: blok 1 merge. Codex: `2026-10-06-codex-dag.md`.
+> **🤖 Working agent:** Claude Code (Opus 5.5) hovedsession 8/10: oprydning, audits, prioritering. Eneste aktive session.

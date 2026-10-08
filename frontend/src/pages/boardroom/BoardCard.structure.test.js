@@ -57,6 +57,6 @@ test("#5633 board: synlig instruktion over medlems-gitteret (ikke kun en hover-o
 });
 
 test("#5633 board: medlems-tiles reserverer samme navne-hoejde uanset navnelaengde (ingen ujaevnt gitter)", () => {
-  assert.match(source, /line-clamp-2 min-h-\[26px\] w-full break-words/);
+  assert.match(source, /line-clamp-2 min-h-\[26px\] w-full wrap-break-word/);
   assert.match(source, /className="flex w-full min-w-0 flex-col items-center gap-0 text-center transition-opacity hover:opacity-80"/);
 });

@@ -142,7 +142,7 @@ export default function FocusPanel({
   if (showPerSeason) cols.push("minmax(96px,auto)");
   if (showSignal) cols.push("minmax(72px,auto)");
   const gridStyle = { "--focus-cols": cols.join(" ") };
-  const gridClass = "grid grid-cols-[18px_minmax(0,1fr)] sm:grid-cols-[var(--focus-cols)]";
+  const gridClass = "grid grid-cols-[18px_minmax(0,1fr)] sm:grid-cols-(--focus-cols)";
 
   // Når dagstypen skifter, må sessionen ikke blive hængende fra den forrige:
   // "Sprint" er ikke et gyldigt valg på en færdighedsdag. Vi vælger heller ikke
@@ -224,7 +224,7 @@ export default function FocusPanel({
         </div>
       )}
 
-      <p className="mb-2 font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
+      <p className="mb-2 font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">
         {t("dayPanel.step1")}
       </p>
       <div role="radiogroup" aria-label={t("dayPanel.step1")} className="grid gap-2 sm:grid-cols-2">
@@ -265,7 +265,7 @@ export default function FocusPanel({
 
       {needsSession && (
         <>
-          <p className="mb-2 mt-5 font-data text-3xs font-semibold uppercase tracking-[.1em] text-cz-3">
+          <p className="mb-2 mt-5 font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">
             {t("dayPanel.step2")}
           </p>
           <div

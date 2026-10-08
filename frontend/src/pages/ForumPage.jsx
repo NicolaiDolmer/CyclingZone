@@ -75,7 +75,7 @@ function PostRow({ post, t, language }) {
               egentlige "ulæst"-status kommunikeres til skærmlæsere via
               sr-only-teksten. */}
           {post.is_unread && (
-            <span className="flex-shrink-0" title={t("list.unread")}>
+            <span className="shrink-0" title={t("list.unread")}>
               <span aria-hidden="true" className="block h-2 w-2 rounded-full bg-cz-accent" />
               <span className="sr-only">{t("list.unread")}</span>
             </span>

@@ -13,7 +13,7 @@ function Star({ fillFraction = 0, softFraction = 0, tone, softTone, emptyTone, i
   const clipFull = `cz-star-full-${idSuffix}`;
   const clipSoft = `cz-star-soft-${idSuffix}`;
   return (
-    <svg viewBox="0 0 24 24" className="w-[1em] h-[1em] flex-shrink-0" aria-hidden="true">
+    <svg viewBox="0 0 24 24" className="w-[1em] h-[1em] shrink-0" aria-hidden="true">
       <defs>
         <clipPath id={clipSoft}>
           <rect x="0" y="0" width={24 * softFraction} height="24" />
@@ -70,7 +70,7 @@ export default function PotentialeStars({ value, range, label, large = false, la
       stars.push({ certain, uncertain });
     }
     return (
-      <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`} {...titleAttrs}>
+      <span className={`flex items-center gap-px shrink-0 ${sizeClass}`} {...titleAttrs}>
         {stars.map((s, i) => (
           <Star key={i} idSuffix={`${uid}r${i}`} fillFraction={s.certain} softFraction={s.uncertain}
             tone={tone} softTone={softTone} emptyTone={emptyTone} />
@@ -93,7 +93,7 @@ export default function PotentialeStars({ value, range, label, large = false, la
   }
 
   return (
-    <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`} {...titleAttrs}>
+    <span className={`flex items-center gap-px shrink-0 ${sizeClass}`} {...titleAttrs}>
       {stars.map((fillFraction, i) => (
         <Star key={i} idSuffix={`${uid}e${i}`} fillFraction={fillFraction}
           tone={tone} emptyTone={emptyTone} />

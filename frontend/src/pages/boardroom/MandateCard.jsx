@@ -74,10 +74,10 @@ function GoalRow({ goal, t, expanded, onToggle }) {
         <div className="flex min-w-0 items-center gap-3">
           <MonogramAvatar sizeClass="h-7 w-7" initials={goal.owner?.initials} initialsClass="text-2xs" />
           <div className="min-w-0">
-            {/* #5633 · [text-wrap:balance] fordeler linjebrud jaevnt i stedet for
+            {/* #5633 · text-balance fordeler linjebrud jaevnt i stedet for
                 at laegge et enkelt ord alene paa sidste linje ("Maaltitler
                 brydes ujaevnt", spillerrapport). Ren CSS, ingen ny mekanik. */}
-            <p className="text-[13.5px] font-medium leading-snug text-cz-1 [text-wrap:balance]">
+            <p className="text-[13.5px] font-medium leading-snug text-cz-1 text-balance">
               {resolveGoalTitle(t, goal)}
               {goal.isStretch && (
                 <span className="ms-1.5 rounded-cz-pill border border-cz-border px-[7px] py-px align-middle text-3xs font-semibold uppercase tracking-[.08em] text-cz-accent-t">
@@ -101,7 +101,7 @@ function GoalRow({ goal, t, expanded, onToggle }) {
             </p>
           </div>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <StatusPill status={goal.status} t={t} />
           {canExpand && <Chevron size={14} aria-hidden="true" className="text-cz-3" />}
         </div>
@@ -160,7 +160,7 @@ function BonusOfferProgressLine({ progress, t }) {
 // maal er hverken paa/foran/bagud endnu — det er slet ikke underskrevet.
 function ProposedPill({ t }) {
   return (
-    <span className="inline-block flex-shrink-0 rounded-cz-pill bg-cz-subtle px-2.5 py-[3px] text-2xs font-semibold text-cz-3">
+    <span className="inline-block shrink-0 rounded-cz-pill bg-cz-subtle px-2.5 py-[3px] text-2xs font-semibold text-cz-3">
       {t("boardroom.mandate.proposed.pill")}
     </span>
   );
@@ -182,7 +182,7 @@ function ProposedGoalRow({ goal, t }) {
     <div className="flex items-center justify-between gap-3 border-t border-cz-border py-[13px]">
       <div className="flex min-w-0 items-center gap-3">
         <MonogramAvatar sizeClass="h-7 w-7" initials={goal.owner?.initials} initialsClass="text-2xs" />
-        <p className="min-w-0 text-[13.5px] font-medium leading-snug text-cz-1 [text-wrap:balance]">
+        <p className="min-w-0 text-[13.5px] font-medium leading-snug text-cz-1 text-balance">
           {resolveGoalTitle(t, titleSource)}
         </p>
       </div>

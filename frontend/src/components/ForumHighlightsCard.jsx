@@ -56,7 +56,7 @@ export default function ForumHighlightsCard() {
               >
                 <span className="flex min-w-0 items-center gap-2">
                   {thread.is_unread && (
-                    <span className="flex-shrink-0" title={t("forum:list.unread")}>
+                    <span className="shrink-0" title={t("forum:list.unread")}>
                       <span aria-hidden="true" className="block h-2 w-2 rounded-full bg-cz-accent" />
                       <span className="sr-only">{t("forum:list.unread")}</span>
                     </span>

@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import {
   computeFrontendContentId,
@@ -81,6 +84,40 @@ test("pluginet injicerer meta-tagget og emitterer version.json med BEGGE id'er",
     injectedId,
     "HTML'ens id og version.json's id SKAL vaere det samme — ellers ville hver fane tro der var en ny frontend ved foerste tjek",
   );
+});
+
+test("#5162: baaret-videre filer i dist/assets aendrer IKKE id'et (ellers roterer det med retention-listen)", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "cz-content-id-"));
+  try {
+    const publicDir = path.join(root, "public");
+    fs.mkdirSync(publicDir, { recursive: true });
+    fs.writeFileSync(path.join(root, "index.html"), "<!doctype html><div id=root></div>");
+    fs.writeFileSync(path.join(publicDir, "chunk-selfheal.js"), "// guard\n");
+    const assetsDir = path.join(root, "dist", "assets");
+    fs.mkdirSync(assetsDir, { recursive: true });
+    fs.writeFileSync(path.join(assetsDir, "index-AAA.js"), "egen\n");
+
+    const bundle = { "assets/index-AAA.js": {}, "assets/Page-BBB.js": {} };
+    const idFor = () => {
+      const plugin = frontendContentIdPlugin({ releaseSha: "sha" });
+      plugin.configResolved({ build: { outDir: "dist" }, publicDir, root });
+      return plugin.transformIndexHtml.handler("<html></html>", { bundle })[0].attrs.content;
+    };
+
+    const before = idFor();
+    // Det carry-forward goer efter vite build: aeldre releases' filer lander
+    // ved siden af buildets egne.
+    fs.writeFileSync(path.join(assetsDir, "index-OLD1.js"), "release A\n");
+    fs.writeFileSync(path.join(assetsDir, "AuctionsPage-OLD2.js"), "release A\n");
+    fs.writeFileSync(path.join(root, "dist", ".cz-carried-forward.json"), "{}\n");
+    assert.equal(idFor(), before, "id'et maa kun afhaenge af bundlen, public/ og index.html");
+
+    // Kontrol: testen kan bide. En aendret public-fil SKAL give et nyt id.
+    fs.writeFileSync(path.join(publicDir, "chunk-selfheal.js"), "// guard v2\n");
+    assert.notEqual(idFor(), before);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("pluginet roerer ikke SSR-buildet (dist-ssr er ikke en server-rod)", () => {

@@ -7,7 +7,7 @@
 // før baren var lukket eller besvaret.
 //
 // Menuen måler sin egen højde og skriver den som en CSS-variabel på <html>;
-// bjælkerne bruger `bottom-[var(--cz-mobile-nav-offset,0px)]`. Højden MÅLES i
+// bjælkerne bruger `bottom-(--cz-mobile-nav-offset,0px)`. Højden MÅLES i
 // stedet for at gentage 56 px: får menuen senere safe-area-padding, følger
 // bjælkerne med. På desktop er menuen `md:hidden` (display:none), højden er 0,
 // og bjælkerne står i bunden som før. Uden menu (landing, login, SSR) er

@@ -181,6 +181,40 @@ async function defaultFetchWithdrawnTeamIdsByRace({ supabase, raceIds }) {
   return byRace;
 }
 
+// #6184 · Nøgle for "denne manager har allerede fået netop denne besked for
+// netop dette løb" — samme felter som notifyUser's dedup-opslag
+// (user_id, type, title, message, related_id), type er fast her.
+export function selectionWarningDedupKey({ userId, relatedId, title, message }) {
+  return `${userId}\u0000${relatedId}\u0000${title}\u0000${message}`;
+}
+
+// #6184 · Ét batch-opslag af de selection_warning-rækker der allerede findes
+// inden for dedup-vinduet for de løb der er i vinduet. Før lavede sweepet ét
+// notifications-GET (og ét teams-GET for ejeren) PR. (hold, løb) hvert 5. min,
+// selv når alle var dedup'et — prod 5/10: ~150 GET'er pr. tick i ét sekund-
+// vindue, også om natten. Returnerer Set<dedupKey>.
+async function defaultFetchRecentSelectionWarnings({ supabase, raceIds, sinceIso }) {
+  if (!raceIds.length) return new Set();
+  const rows = await fetchAllRowsChunkedIn(raceIds, (chunk) =>
+    supabase
+      .from("notifications")
+      .select("id, user_id, related_id, title, message")
+      .eq("type", SELECTION_WARNING_TYPE)
+      .in("related_id", chunk)
+      .gte("created_at", sinceIso)
+      .order("id")
+  );
+  const keys = new Set();
+  for (const row of rows) {
+    keys.add(selectionWarningDedupKey({
+      userId: row.user_id, relatedId: row.related_id, title: row.title, message: row.message,
+    }));
+  }
+  return keys;
+}
+
+const SELECTION_WARNING_DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // = notifyUser's RECENT_DUPLICATE_WINDOW_MS
+
 /**
  * #2180 · Kør 36t-varsel-sweepet for den aktive sæson. Additiv + read-mostly:
  * eneste writes er notifications-rækkerne (via notify, dedup'et 24t).
@@ -212,6 +246,10 @@ export async function runSelectionWarningSweep({
   fetchWithdrawnTeamIdsByRace = defaultFetchWithdrawnTeamIdsByRace,
   suppressLowRoster = false,
   fetchSeniorCounts = defaultFetchActiveRiderCounts,
+  // #6184 · Forhånds-dedup. Kun aktiv som default når den rigtige notify
+  // bruges (dens dedup er det batch-opslaget spejler); en injiceret notify i
+  // tests ejer selv sin dedup. null = slået fra (alle kandidater går til notify).
+  fetchRecentWarnings = notify === defaultNotifyTeamOwner ? defaultFetchRecentSelectionWarnings : null,
 }) {
   const stats = { racesChecked: 0, racesDue: 0, teamsChecked: 0, warned: 0, deduped: 0, failed: 0 };
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -237,6 +275,22 @@ export async function runSelectionWarningSweep({
   const seniorCounts = suppressLowRoster
     ? await fetchSeniorCounts({ supabase, teamIds: humanTeams.map((t) => t.id) })
     : null;
+  let recentWarningKeys = null;
+  if (fetchRecentWarnings) {
+    try {
+      recentWarningKeys = await fetchRecentWarnings({
+        supabase,
+        raceIds: dueRaceIds,
+        sinceIso: new Date(now.getTime() - SELECTION_WARNING_DEDUP_WINDOW_MS).toISOString(),
+      });
+    } catch (err) {
+      // Forhånds-dedup er kun en optimering: fejler den, går alle kandidater
+      // til notify, som selv dedup'er pr. række (adfærden før #6184).
+      console.error("  ⚠️  selection-warning: batch dedup prefetch failed, falling back to per-team dedup:", err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "selection-warning-prefetch" } });
+      recentWarningKeys = null;
+    }
+  }
 
   for (const race of dueRaces) {
     const eligibleTeams = humanTeams.filter((t) =>
@@ -254,6 +308,14 @@ export async function runSelectionWarningSweep({
 
     const payload = buildSelectionWarningNotification({ raceId: race.id, raceName: race.name });
     for (const team of missing) {
+      // #6184 · Allerede varslet inden for vinduet → ingen kald overhovedet.
+      // Ukendt ejer (user_id mangler i team-rækken) går stadig gennem notify.
+      if (recentWarningKeys && team.user_id && recentWarningKeys.has(selectionWarningDedupKey({
+        userId: team.user_id, relatedId: payload.relatedId, title: payload.title, message: payload.message,
+      }))) {
+        stats.deduped += 1;
+        continue;
+      }
       try {
         const res = await notify({ supabase, teamId: team.id, now, ...payload });
         if (res?.delivered) stats.warned += 1;

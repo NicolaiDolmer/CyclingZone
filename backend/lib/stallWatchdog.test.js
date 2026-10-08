@@ -244,6 +244,18 @@ test("(d) ingen results overhovedet → ingen finding", () => {
 
 // ── (e) matview-refresh-stall (#2196 Del 2) ───────────────────────────────────
 
+test('#5692: clean durable work suppresses timestamp-only ranking lag', () => {
+  const findings = evaluateStallFindings({ now: NOW,
+    standings: { maxStandingsUpdated: hoursAgo(0.05), maxResultsImported: hoursAgo(0.1) },
+    matviewHeartbeat: hoursAgo(1), rankingWork: { pending: false, pendingAgeMs: 0 } });
+  assert.equal(findings.filter(f => f.type === 'matview').length, 0);
+});
+
+test('#5692: old pending work alarms even for a historical/ownership event without a new result timestamp', () => {
+  const findings = evaluateStallFindings({ now: NOW, rankingWork: { pending: true, pendingAgeMs: 300_001 } });
+  assert.equal(findings.filter(f => f.type === 'matview').length, 1);
+});
+
 test("(e) heartbeat >30min bag friske results → matview-finding", () => {
   const findings = evaluateStallFindings({
     now: NOW,
@@ -446,6 +458,18 @@ test("processStallWatchdog — dedup gælder OGSÅ info-findings (samme dag alar
 
 const PAGE = 1000;
 
+function resultSummaries(raceIds, results) {
+  return raceIds.map(race_id => {
+    const rows = results.filter(row => row.race_id === race_id);
+    const dates = rows.map(row => row.imported_at).filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
+    return {
+      race_id, last_imported_at: dates.at(-1) ?? null,
+      has_prize: rows.some(row => (row.prize_money ?? 0) > 0),
+      stage_numbers: [...new Set(rows.map(row => row.stage_number ?? null))],
+    };
+  });
+}
+
 // Realistisk load: 8 kørte etaper à ~190 ryttere = 1.520 rækker for ÉT løb. Sorteret
 // på id rummer de første 1000 kun etape 1-5 → etape 6-8 ser resultat-løse ud for en
 // ikke-pagineret læsning, præcis som i prod (7.277 rækker for 5 forfaldne løb).
@@ -486,8 +510,14 @@ function makeWatchdogSupabase({ raceId = "r1", stageNumbers = [1, 2, 3, 4, 5, 6,
   };
 
   return {
+    async rpc(name, { p_race_ids }) {
+      if (name === 'get_ranking_refresh_work_state') return { data: { pending: false, pending_age_ms: 0, last_completed_at: hoursAgo(1) }, error: null };
+      assert.equal(name, 'stall_watchdog_result_summary');
+      return { data: resultSummaries(p_race_ids, results), error: null };
+    },
     from(table) {
       if (table === "seasons") return builder([], { id: "s1" });
+      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-07-6102-watchdog-result-summary.sql' });
       if (table === "races") return builder([{ id: raceId, name: "Giro X", stages: 21, stages_completed: 2 }]);
       if (table === "race_stage_schedule") {
         return builder(
@@ -508,7 +538,7 @@ function makeWatchdogSupabase({ raceId = "r1", stageNumbers = [1, 2, 3, 4, 5, 6,
   };
 }
 
-test("fetchWatchdogState: race_results pagineres — etape bag PostgREST-cap'en ses som havende resultater (#2430)", async () => {
+test("fetchWatchdogState: SQL-summary bevarer etaper bag den gamle PostgREST-cap (#2430/#6102)", async () => {
   const supabase = makeWatchdogSupabase();
   const state = await fetchWatchdogState({ supabase, now: NOW });
 
@@ -524,6 +554,64 @@ test("fetchWatchdogState: race_results pagineres — etape bag PostgREST-cap'en 
     [],
     "ingen etape-stall når alle forfaldne etaper faktisk har resultater"
   );
+});
+
+test('watchdog alarm boundaries are strictly greater than the configured duration with injected now', () => {
+  for (const delta of [-1, 0, 1]) {
+    const timestamp = hours => new Date(NOW.getTime() - hours * 3_600_000 - delta).toISOString();
+    const findings = evaluateStallFindings({
+      now: NOW, autoPrizeEnabled: true,
+      finalizeCandidates: [{ id: 'f' }], prizeCandidates: [{ id: 'p' }],
+      lastResultByRace: { f: timestamp(2), p: timestamp(1) },
+      dueStages: [{ race_id: 's', stage_number: 1, scheduled_at: timestamp(4), has_entries: true, has_results: false }],
+      standings: { maxResultsImported: NOW.toISOString(), maxStandingsUpdated: timestamp(1) },
+      matviewHeartbeat: timestamp(0.5),
+    });
+    assert.deepEqual(findings.map(finding => finding.type), delta > 0 ? ['finalize', 'stage', 'prize', 'standings', 'matview'] : []);
+  }
+});
+
+test('fetchWatchdogState: candidate result metadata uses bounded RPC, never rider-row pagination (#6102)', async () => {
+  const supabase = makeWatchdogSupabase({ rowsPerStage: 1000 });
+  let bulkReads = 0;
+  let rpcCalls = 0;
+  let returnedRows = 0;
+  const from = supabase.from.bind(supabase);
+  supabase.from = table => {
+    const builder = from(table);
+    const select = builder.select;
+    builder.select = (columns, ...args) => {
+      if (table === 'race_results' && columns.includes('race_id')) bulkReads++;
+      return select(columns, ...args);
+    };
+    return builder;
+  };
+  const rpc = supabase.rpc.bind(supabase);
+  supabase.rpc = async (...args) => {
+    const response = await rpc(...args);
+    if (args[0] === 'stall_watchdog_result_summary') { rpcCalls++; returnedRows += response.data.length; }
+    return response;
+  };
+  const state = await fetchWatchdogState({ supabase, now: NOW });
+  assert.ok(state.dueStages.every(stage => stage.has_results));
+  assert.equal(bulkReads, 0, '8,000 rider rows must stay inside SQL');
+  assert.equal(rpcCalls, 1);
+  assert.equal(returnedRows, 1, 'one summary per candidate race');
+});
+
+test('fetchWatchdogState: an unapplied migration cannot invoke the new summary RPC', async () => {
+  const supabase = makeWatchdogSupabase();
+  const from = supabase.from.bind(supabase);
+  supabase.from = table => {
+    if (table !== 'schema_migrations') return from(table);
+    const query = { select: () => query, eq: () => query, maybeSingle: async () => ({ data: null, error: null }) };
+    return query;
+  };
+  let rpcCalls = 0;
+  const rpc = supabase.rpc.bind(supabase);
+  supabase.rpc = (...args) => { rpcCalls++; return rpc(...args); };
+  await assert.rejects(fetchWatchdogState({ supabase, now: NOW }), /migration not verified/);
+  assert.equal(rpcCalls, 0);
 });
 
 test("fetchWatchdogState: en etape UDEN resultater giver stadig en ægte stall-alarm (#2430 må ikke maskere hangs)", async () => {
@@ -559,28 +647,44 @@ test("stallWatchdog: race_entries må ikke referere fantom-kolonnen id (#2536)",
 // Ungdomsløb har ingen præmiepenge (YOUTH_RULES §7). Præmiemotoren springer
 // løb uden præmie-rækker over, så prize_paid_at forbliver NULL. Det må ikke
 // alarmere som prize-stall; et løb helt uden resultater skal stadig alarmere.
-function makePrizeSupabase({ results }) {
-  const builder = (rows, single = null) => {
+function makePrizeSupabase({ results, calls = [] }) {
+  // #6184 · race_results-builderen respekterer eq/gt/order/limit, fordi stall-
+  // vagten nu laver LIMIT 1-opslag pr. løb i stedet for at hente alle rækker.
+  const builder = (rows, single = null, table = null) => {
+    const filters = [];
+    let lim = null;
+    let desc = null;
+    const shaped = () => {
+      let out = rows.filter((r) => filters.every((f) => f(r)));
+      if (desc) out = [...out].sort((a, b) => String(b[desc] ?? "").localeCompare(String(a[desc] ?? "")));
+      return lim == null ? out : out.slice(0, lim);
+    };
     const api = {
       select: () => api,
-      eq: () => api,
+      eq: (col, val) => { if (table === "race_results") filters.push((r) => r[col] === val); return api; },
       neq: () => api,
-      gt: () => api,
+      gt: (col, val) => { if (table === "race_results") filters.push((r) => (r[col] ?? 0) > val); return api; },
       lt: () => api,
       is: () => api,
       in: () => api,
-      order: () => api,
-      limit: () => api,
-      range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
+      order: (col, opts = {}) => { if (opts.ascending === false) desc = col; return api; },
+      limit: (n) => { lim = n; return api; },
+      range: (from, to) => Promise.resolve({ data: shaped().slice(from, to + 1), error: null }),
       maybeSingle: () => Promise.resolve({ data: single, error: null }),
-      then: (res, rej) => Promise.resolve({ data: rows, error: null }).then(res, rej),
+      then: (res, rej) => { if (table) calls.push(table); return Promise.resolve({ data: shaped(), error: null }).then(res, rej); },
     };
     return api;
   };
   let racesCall = 0;
   return {
+    async rpc(name, { p_race_ids }) {
+      if (name === 'get_ranking_refresh_work_state') return { data: { pending: false, pending_age_ms: 0, last_completed_at: hoursAgo(1) }, error: null };
+      assert.equal(name, 'stall_watchdog_result_summary');
+      return { data: resultSummaries(p_race_ids, results), error: null };
+    },
     from(table) {
       if (table === "seasons") return builder([], { id: "s1" });
+      if (table === "schema_migrations") return builder([], { filename: 'database/2026-10-07-6102-watchdog-result-summary.sql' });
       if (table === "races") {
         racesCall += 1;
         // 1. kald = ikke-completede (finalize), 2. kald = completed + prize NULL
@@ -590,7 +694,7 @@ function makePrizeSupabase({ results }) {
           { id: "empty", name: "Tomt løb" },
         ]);
       }
-      if (table === "race_results") return builder(results, { imported_at: hoursAgo(3) });
+      if (table === "race_results") return builder(results, { imported_at: hoursAgo(3) }, "race_results");
       if (table === "race_stage_schedule") return builder([]);
       if (table === "race_entries") return builder([]);
       if (table === "season_standings") return builder([], { updated_at: hoursAgo(3) });
@@ -616,4 +720,21 @@ test("fetchWatchdogState: completed løb uden præmie-rækker (ungdomsløb) er I
     .filter((f) => f.type === "prize");
   assert.deepEqual(prizeFindings.map((f) => f.raceId).sort(), ["empty", "senior"],
     "seniorløb med ubetalt præmie + løb helt uden resultater alarmerer stadig; ungdomsløbet gør ikke");
+});
+
+test("#6184/#6102: seneste imported_at bevares med kandidatopsummering uden resultat-række-load", async () => {
+  const calls = [];
+  const supabase = makePrizeSupabase({
+    calls,
+    results: [
+      { id: "1", race_id: "senior", imported_at: hoursAgo(9), prize_money: 0 },
+      { id: "2", race_id: "senior", imported_at: hoursAgo(2), prize_money: 5000 },
+      { id: "3", race_id: "senior", imported_at: hoursAgo(5), prize_money: 0 },
+    ],
+  });
+  const state = await fetchWatchdogState({ supabase, now: NOW, autoPrizeEnabled: true });
+  assert.equal(state.lastResultByRace.senior, hoursAgo(2), "nyeste tidspunkt vinder, uanset række-rækkefølge");
+  assert.equal(state.lastResultByRace.empty, null);
+  // Kandidatoplysninger kommer fra SQL-summary; det globale LIMIT 1 læses separat.
+  assert.equal(calls.filter((t) => t === "race_results").length, 0);
 });

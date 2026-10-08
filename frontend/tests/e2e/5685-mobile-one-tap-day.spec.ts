@@ -165,7 +165,8 @@ test("mobil 390 × 844 (beta): prognose, saesonfremgang og eet tryk = hvile", as
 });
 
 test("mobil 390 × 844 (beta): efter Train now er valget laast", async ({ page }) => {
-  await openTraining(page, 390, 844, { todayRun: { id: "run-1", created_at: "2026-05-05T08:00:00Z", executed_by: "manager", report: { riders: [] } } });
+  // /training/me always selects tick_date; the date receipt needs that key.
+  await openTraining(page, 390, 844, { todayRun: { id: "run-1", tick_date: "2026-05-05", created_at: "2026-05-05T08:00:00Z", executed_by: "manager", report: { riders: [] } } });
   await expect(page.getByTestId("training-onetap-locked")).toBeVisible();
   await expect(row(page, 0).locator('[data-choice="rest"]')).toBeDisabled();
 });

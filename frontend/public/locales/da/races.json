@@ -1127,6 +1127,7 @@
         "breakaway_caught_by_teams": "{riders} bliver indhentet. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} stod for jagten.",
         "breakaway_caught_by_peloton": "{riders} bliver indhentet af feltet.",
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
+        "breakaway_dropped": "{riders} {count, plural, one {bliver} other {bliver}} sat af fra udbruddet.",
         "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
         "incident_crash_time_loss": "{rider} vælter og taber {seconds} sek.",
         "incident_crash_hard": "{rider} vælter hårdt: {seconds} sek. tabt, og {days, plural, one {# dag} other {# dage}} på sidelinjen.",

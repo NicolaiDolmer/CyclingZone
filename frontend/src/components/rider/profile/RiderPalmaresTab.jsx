@@ -70,7 +70,7 @@ function achievementLabel(t, a) {
 
 function TeamBadge({ name, fallback }) {
   return (
-    <span className="font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-[1px] rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
+    <span className="font-mono text-3xs font-bold tracking-[0.03em] px-1.5 py-px rounded bg-cz-subtle text-cz-2 whitespace-nowrap">
       {name ?? fallback}
     </span>
   );
@@ -136,7 +136,7 @@ export default function RiderPalmaresTab({ riderId, seasonRows, loadFailed = fal
     { key: "points", value: formatNumber(totals.points) },
     { key: "prize", value: `${formatNumber(totals.prize)} CZ$`, tone: "text-cz-success" },
   ];
-  const tileLabel = "text-3xs text-cz-3 uppercase tracking-[0.05em]";
+  const tileLabel = "text-3xs text-cz-3 uppercase tracking-wider";
 
   return (
     <div className="flex flex-col gap-[13px]">

@@ -45,10 +45,10 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // Andel af stigningen de afhaengte ryttere i snit koerer bag gruppen (de saettes af undervejs).
   climbGapExposure: 0.5,
   // Relativt fartab pr. enhed klatre-underskud (0-1 mod gruppens bedste klatrer).
-  climbGapAbilityWeight: 0.6,
+  climbGapAbilityWeight: 1.0,
   // Relativt fartab pr. enhed energi-underskud (tom reserve = 1).
   climbGapEnergyWeight: 0.02,
-  climbGapMaxRelativeLoss: 0.35,
+  climbGapMaxRelativeLoss: 0.6,
   // Et split er altid mindst saa stort, at det overlever segmentets merge-trin.
   climbGapBoundsSeconds: [3, 900] as readonly [number, number],
   // De afhaengte samles i faa grupper efter eget hul (clusterSplitRiders).

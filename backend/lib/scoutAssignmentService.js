@@ -7,6 +7,7 @@
 // DEFAULT_SCOUT (overall 40) — systemet skal virke for alle hold fra dag 1.
 import { DEFAULT_SCOUT, SCOUT_JOB_CONFIG, scoutCapacity, travelCostFor, readyDateFor, targetReadyAt, missionReadyAt, canStartAssignment } from "./scoutEngine.js";
 import { debitTeam } from "./economyEngine.js";
+import { checkAvailableSpend } from "./availableBalance.js";
 import { FINANCE_REASON } from "./economyConstants.js";
 import { hydrateCompletedVisibility } from "./scoutReportVisibility.js";
 import { lazyCompleteDueTargetAssignments } from "./scoutTargetMaturation.js";
@@ -237,6 +238,9 @@ export async function startTargetAssignment({ teamId, riderId, seasonId }, supab
   const cost = travelCostFor("target", { fromLevel, toLevel });
   const guard = canStartAssignment({ activeCount: active.length, scout, balance, cost });
   if (!guard.ok) return { ok: false, error: guard.reason };
+  // #6237: penge låst i auktionsbud må ikke bruges på rejseomkostning.
+  const spendIssue = await checkAvailableSpend(supabaseClient, { teamId, balance, cost });
+  if (spendIssue) return { ok: false, ...spendIssue };
 
   const startedOn = now.toISOString().slice(0, 10);
   const readyOn = readyDateFor("target", now, { fromLevel, toLevel }).toISOString().slice(0, 10);
@@ -312,6 +316,9 @@ export async function startMission({ teamId, criteria, seasonId }, supabaseClien
   const cost = travelCostFor("mission");
   const guard = canStartAssignment({ activeCount: active.length, scout, balance, cost });
   if (!guard.ok) return { ok: false, error: guard.reason };
+  // #6237: samme disponibel-saldo-gate som target-stien.
+  const spendIssue = await checkAvailableSpend(supabaseClient, { teamId, balance, cost });
+  if (spendIssue) return { ok: false, ...spendIssue };
 
   const startedOn = now.toISOString().slice(0, 10);
   const readyOn = readyDateFor("mission", now).toISOString().slice(0, 10);

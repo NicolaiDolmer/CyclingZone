@@ -1373,7 +1373,7 @@
       },
       "breakaway": {
         "title": "Breakaways",
-        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. When a stage has a complete native race history, the results use a flag for the morning breakaway and an arrow for a later attack. The flag distinguishes participation, a recorded catch and a break that stayed away. Older stages without that history keep their stored markers. Joining the breakaway costs a rider nothing extra: no added fatigue and no penalty to his own finishing position if it gets caught. It is a free shot at a better result, never a gamble with a downside."
+        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. When a stage has a complete native race history, the results use a flag for the morning breakaway and an arrow for a later attack. The flag distinguishes participation, a recorded catch and a break that stayed away. Older stages without that history keep their stored markers. A rider who falls behind the break gets his own marker: dropped from the break. If he gets back up to the break, he is back in it, not caught. Joining the breakaway costs a rider nothing extra: no added fatigue and no penalty to his own finishing position if it gets caught. It is a free shot at a better result, never a gamble with a downside."
       },
       "ordersGc": {
         "title": "Break orders and GC reaction",

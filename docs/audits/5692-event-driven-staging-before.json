@@ -1,0 +1,901 @@
+{
+  "phase": "before",
+  "stagingRef": "pywxpnynzmbukdvoiazp",
+  "resultRows": 1889644,
+  "passes": [
+    {
+      "pass": 1,
+      "ok": true,
+      "durationMs": 8654.014299999999
+    },
+    {
+      "pass": 2,
+      "ok": true,
+      "durationMs": 7482.455100000001
+    },
+    {
+      "pass": 3,
+      "ok": true,
+      "durationMs": 7793.8591000000015
+    }
+  ],
+  "calls": [
+    {
+      "name": "refresh_rider_rankings_mv",
+      "durationMs": 2631.1419,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_standings_ext_mv",
+      "durationMs": 2223.8578999999995,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_race_points_mv",
+      "durationMs": 3220.6492000000007,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_global_rank_mv",
+      "durationMs": 108.01360000000022,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_youth_rider_rankings_mv",
+      "durationMs": 180.64409999999953,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_rider_rankings_mv",
+      "durationMs": 1743.528400000001,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_standings_ext_mv",
+      "durationMs": 2071.9614999999994,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_race_points_mv",
+      "durationMs": 3058.7007000000012,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_global_rank_mv",
+      "durationMs": 88.47099999999955,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_youth_rider_rankings_mv",
+      "durationMs": 192.91969999999856,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_rider_rankings_mv",
+      "durationMs": 1752.9289999999983,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_standings_ext_mv",
+      "durationMs": 2070.84,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_team_race_points_mv",
+      "durationMs": 3114.1697999999997,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_global_rank_mv",
+      "durationMs": 380.71380000000136,
+      "errorCode": null
+    },
+    {
+      "name": "refresh_youth_rider_rankings_mv",
+      "durationMs": 265.7694999999985,
+      "errorCode": null
+    }
+  ],
+  "readers": [
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 208.598,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 82.7636,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 111.37169999999992,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 301.3558999999999,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 297.2809,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 245.63609999999994,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 71.14110000000005,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 95.05870000000004,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 72.0909999999999,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 68.1257999999998,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 96.86849999999959,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 90.14809999999989,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 79.76060000000007,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 70.60129999999981,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 75.62429999999995,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 75.21379999999999,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 75.21159999999963,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 68.45159999999987,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 74.73050000000012,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 75.20910000000003,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 67.8444999999997,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 78.9094,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 70.69580000000042,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 81.57570000000032,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 70.15369999999984,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 88.09569999999985,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 73.09090000000015,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 68.92339999999967,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 63.47229999999945,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 66.46259999999984,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 125.66039999999975,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 168.1244000000006,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 198.92669999999998,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 83.85499999999956,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 81.78319999999985,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 76.8132000000005,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 86.69010000000071,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 67.26760000000013,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 75.67079999999987,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 94.5653999999995,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 95.64329999999973,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 87.03110000000015,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 102.25600000000031,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 81.27589999999964,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 69.96479999999974,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 79.37830000000031,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 127.41169999999966,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 71.64810000000034,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 75.47710000000006,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 67.72620000000006,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 77.28890000000047,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 66.42180000000008,
+      "errorCode": null
+    },
+    {
+      "view": "global_rank_mv",
+      "durationMs": 76.39429999999993,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 181.42079999999987,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 59.374299999999494,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 68.29399999999987,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 60.03089999999975,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 72.45339999999851,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 75.70770000000084,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 67.92019999999866,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 71.47609999999986,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 74.66059999999925,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 71.82270000000062,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 79.23919999999998,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 87.40589999999975,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 61.8755000000001,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 60.020300000000134,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 63.47400000000016,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 58.985899999999674,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 84.1846000000005,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 68.97290000000066,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 84.88349999999991,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 93.65179999999964,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 204.96720000000096,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 442.91380000000026,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 86.02069999999912,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 81.82999999999993,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 62.545500000000175,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 96.82469999999921,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 91.33089999999902,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 70.59259999999995,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 65.67689999999857,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 107.95250000000124,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 80.39409999999953,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 77.40829999999914,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 72.15720000000147,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 163.2579999999998,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 73.97279999999955,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 85.20299999999952,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 80.43450000000121,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 89.64760000000024,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 105.71789999999964,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 72.39199999999983,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 67.1921999999995,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 70.33100000000013,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 74.88680000000022,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 75.04579999999987,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 73.49969999999848,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 67.76270000000113,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 66.47450000000026,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 86.58220000000074,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 70.54349999999977,
+      "errorCode": null
+    },
+    {
+      "view": "global_rank_mv",
+      "durationMs": 76.76549999999952,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 73.79819999999927,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 77.46680000000015,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 75.17130000000179,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 66.64789999999994,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 92.17989999999918,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 87.15470000000278,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 70.02219999999943,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 75.32489999999962,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 62.104699999999866,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 57.2502999999997,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 58.44250000000102,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 74.2474000000002,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 76.15680000000066,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 70.90309999999954,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 68.25069999999687,
+      "errorCode": null
+    },
+    {
+      "view": "rider_rankings_mv",
+      "durationMs": 61.65320000000065,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 72.6903999999995,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 86.86100000000079,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 155.90700000000288,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 160.1978999999992,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 78.13690000000133,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 71.80919999999969,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 70.64930000000095,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 68.68349999999919,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 75.01000000000204,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 84.10440000000017,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 70.57380000000194,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 71.41909999999916,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 60.99569999999949,
+      "errorCode": null
+    },
+    {
+      "view": "team_standings_ext_mv",
+      "durationMs": 77.02890000000116,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 67.92870000000039,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 68.84779999999955,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 78.57690000000002,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 91.54579999999987,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 68.36309999999867,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 74.97490000000107,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 74.78439999999682,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 84.42529999999897,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 69.25240000000122,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 84.53949999999895,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 74.23079999999754,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 69.27189999999973,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 63.36030000000028,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 78.23049999999785,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 105.47819999999774,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 91.80679999999847,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 82.74090000000069,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 87.64579999999842,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 117.57210000000123,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 79.46680000000197,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 81.3208999999988,
+      "errorCode": null
+    },
+    {
+      "view": "team_race_points_mv",
+      "durationMs": 148.17659999999887,
+      "errorCode": null
+    },
+    {
+      "view": "global_rank_mv",
+      "durationMs": 371.78020000000106,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 118.52189999999973,
+      "errorCode": null
+    },
+    {
+      "view": "youth_rider_rankings_mv",
+      "durationMs": 80.6255999999994,
+      "errorCode": null
+    }
+  ],
+  "rowCounts": {
+    "rider_rankings_mv": 16286,
+    "team_standings_ext_mv": 1054,
+    "team_race_points_mv": 33328,
+    "global_rank_mv": 268,
+    "youth_rider_rankings_mv": 2072
+  },
+  "totalRefreshCalls": 15,
+  "meanPassMs": 7976.776166666667,
+  "allSucceeded": true
+}

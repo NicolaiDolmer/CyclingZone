@@ -70,7 +70,7 @@ export default function TrainingMoment({ latestRun, isToday, progressByRider, pa
           <p className="text-2xs font-semibold uppercase tracking-wide text-cz-warning mb-1">
             {t("injuryAlertLabel")}
           </p>
-          <p className="text-sm sm:text-base text-cz-1 leading-relaxed">
+          <p className="text-sm sm:text-base text-cz-1 leading-relaxed sm:leading-6">
             {t("injuryAlertLine", {
               list: injuryAlerts
                 .map((a) => t("injuryAlertEntry", { riderName: a.riderName, daysPhrase: daysPhrase(a.days) }))
@@ -84,7 +84,7 @@ export default function TrainingMoment({ latestRun, isToday, progressByRider, pa
           <p className="text-2xs font-semibold uppercase tracking-wide text-cz-3 mb-1">
             {t(isToday ? "momentLabelToday" : "momentLabelLatest")}
           </p>
-          <p className="text-sm sm:text-base text-cz-1 leading-relaxed">{body}</p>
+          <p className="text-sm sm:text-base text-cz-1 leading-relaxed sm:leading-6">{body}</p>
         </div>
       )}
     </div>

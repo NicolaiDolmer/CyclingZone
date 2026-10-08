@@ -22,14 +22,14 @@ export default function CareerFirstMomentRow({ event, t, isNew = false, showRace
   return (
     <div className="py-3 border-b border-cz-border last:border-0">
       <div className="flex items-center gap-2 mb-1 flex-wrap">
-        <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-cz-accent/10 text-cz-accent-t flex-shrink-0">
+        <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-cz-accent/10 text-cz-accent-t shrink-0">
           <TrophyIcon size={14} />
         </span>
         <h3 className="font-display text-sm tracking-[0.04em] uppercase text-cz-1 m-0">
           {t(`dashboard:cards.maidenWin.headline.${labelKey}`)}
         </h3>
         {isNew && (
-          <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 flex-shrink-0">
+          <span className="text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 shrink-0">
             {t("dashboard:cards.myResult.newBadge")}
           </span>
         )}

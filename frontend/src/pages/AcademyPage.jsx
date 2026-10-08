@@ -305,6 +305,8 @@ export default function AcademyPage() {
     if (err === "not_offered") return t("error.notOffered");
     // #2796: begge faldt før igennem til den generiske besked (+ Sentry-500).
     if (err === "insufficient_balance") return t("error.insufficientBalance");
+    // #6264: signing-fee ville bruge penge låst i auktionsbud.
+    if (err === "insufficient_available_balance") return t("error.insufficientAvailableBalance");
     if (err === "already_assigned") return t("error.alreadyAssigned");
     // #4213: stale tilbud — rytteren er i mellemtiden ejet af et andet hold.
     if (err === "rider_owned") return t("error.riderOwned");
@@ -504,7 +506,7 @@ export default function AcademyPage() {
               )}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <div className="flex flex-col items-end gap-1 shrink-0">
             {item.is_serious && (
               <span className="text-3xs font-semibold uppercase tracking-wide leading-none px-1.5 py-0.5 rounded-cz-pill bg-cz-accent/15 text-cz-accent-t">
                 {t("seriousBadge")}

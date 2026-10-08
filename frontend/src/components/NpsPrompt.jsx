@@ -71,7 +71,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
     <div
       role="region"
       aria-label={t("nps.regionAriaLabel")}
-      className="fixed inset-x-0 bottom-[var(--cz-mobile-nav-offset,0px)] z-toast px-3 pb-3 sm:px-4 sm:pb-4 pointer-events-none"
+      className="fixed inset-x-0 bottom-(--cz-mobile-nav-offset,0px) z-toast px-3 pb-3 sm:px-4 sm:pb-4 pointer-events-none"
     >
       <div className="mx-auto max-w-3xl bg-cz-card border border-cz-border rounded-cz pointer-events-auto">
         {done ? (
@@ -154,7 +154,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                   rows={2}
                   maxLength={500}
                   placeholder={t("nps.reasonPlaceholder")}
-                  className="w-full resize-none rounded-cz border border-cz-border bg-cz-subtle px-3 py-2 text-[13px] text-cz-1 focus:border-cz-accent focus:outline-none"
+                  className="w-full resize-none rounded-cz border border-cz-border bg-cz-subtle px-3 py-2 text-[13px] text-cz-1 focus:border-cz-accent focus:outline-hidden"
                 />
                 <div className="mt-2 flex items-center gap-2">
                   <Button size="sm" onClick={handleSubmit} loading={submitting}>

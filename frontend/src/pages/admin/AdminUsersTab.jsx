@@ -87,7 +87,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
         <label className="block text-cz-3 text-xs mb-1">Søg rytter</label>
         <input type="text" value={query} onChange={e => searchRiders(e.target.value)}
           placeholder="Navn..."
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
+          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent" />
         {riderResults.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-cz-subtle border border-cz-border rounded-lg overflow-hidden shadow-xl">
             {riderResults.map(r => (
@@ -109,7 +109,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
       <div>
         <label className="block text-cz-3 text-xs mb-1">Flyt til hold</label>
         <select value={selectedTeam} onChange={e => setSelectedTeam(e.target.value)}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
           <option value="">Fri agent (intet hold)</option>
           {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
         </select>
@@ -293,7 +293,7 @@ export default function AdminUsersTab() {
                     {r.email} · ansøgte {new Date(r.requested_at).toLocaleDateString("da-DK")}
                   </p>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => handleDecideBeta(r.user_id, true, r.username)}
                     disabled={loading[`beta_req_${r.user_id}`]}

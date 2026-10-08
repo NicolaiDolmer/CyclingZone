@@ -1,5 +1,229 @@
 export const PATCHES = [
   {
+    "version": "7.345",
+    "date": "2026-10-07",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "Money in your bids stays locked",
+          "body": "Facility upgrades, staff hires, staff releases and academy signings can no longer be paid with money that is locked in your auction bids. You get a clear message instead, the same way scouting already works."
+        },
+        "da": {
+          "title": "Penge i dine bud forbliver låst",
+          "body": "Opgradering af anlæg, ansættelse og fratrædelse af staff samt akademi-signeringer kan ikke længere betales med penge, der er låst i dine auktionsbud. Du får en tydelig besked i stedet, som det allerede virker ved scouting."
+        },
+        "refs": [
+          6261,
+          6262,
+          6263,
+          6264
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board challenges count riders with a star reputation",
+          "body": "Board challenges that ask for high-renown riders now also count riders who reached star level on reputation. Challenges set before the reputation update no longer miss them, and nobody loses progress they already had."
+        },
+        "da": {
+          "title": "Bestyrelsens udfordringer tæller ryttere med stjerne-omdømme",
+          "body": "Bestyrelsens udfordringer om ryttere med højt omdømme tæller nu også ryttere, der har nået stjerneniveau på omdømme. Udfordringer sat før omdømme-opdateringen overser dem ikke længere, og ingen mister fremgang, de allerede havde."
+        },
+        "refs": [
+          6298
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Expired youth contracts end at the season switch",
+          "body": "At the season switch, expired U23, junior and academy contracts now end together with the senior ones. Riders whose contract has already run out are released at the next switch on 25 October."
+        },
+        "da": {
+          "title": "Udløbne ungdomskontrakter slutter ved sæsonskiftet",
+          "body": "Ved sæsonskiftet slutter udløbne U23-, junior- og akademikontrakter nu sammen med seniorernes. Ryttere, hvis kontrakt allerede er udløbet, frigives ved næste skifte 25. oktober."
+        },
+        "refs": [
+          5864
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider history no longer shows the same team twice",
+          "body": "When you won a rider at an auction you started yourself, the history said your team won him from your own team. It now just shows the purchase and the price."
+        },
+        "da": {
+          "title": "Rytterhistorikken viser ikke længere samme hold to gange",
+          "body": "Når du vandt en rytter på en auktion, du selv startede, stod der, at dit hold vandt ham fra dit eget hold. Nu viser historikken bare købet og prisen."
+        },
+        "refs": [
+          6304
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Pro: saved filters stay saved",
+          "body": "Saved filters in the rider database no longer disappear when you reload the page, and gaps in the season history are filled."
+        },
+        "da": {
+          "title": "Pro: gemte filtre bliver gemt",
+          "body": "Gemte filtre i rytterdatabasen forsvinder ikke længere, når du genindlæser siden, og hullerne i sæsonhistorikken er udfyldt."
+        },
+        "refs": [
+          6286
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Forum",
+        "en": {
+          "title": "First unread reply is highlighted in gold",
+          "body": "In a forum thread, the first reply you haven't read has its gold edge again, as intended. It showed as grey by mistake."
+        },
+        "da": {
+          "title": "Første ulæste svar markeres i guld",
+          "body": "I en forumtråd har det første svar, du ikke har læst, igen sin guldkant som tiltænkt. Den blev vist grå ved en fejl."
+        },
+        "refs": [
+          6271
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Privacy page explains the usage statistics",
+          "body": "The privacy page now describes the anonymous usage statistics collected before you log in, without cookies, and what is measured after you log in."
+        },
+        "da": {
+          "title": "Privatlivssiden forklarer brugsstatistikken",
+          "body": "Privatlivssiden beskriver nu den anonyme brugsstatistik, der indsamles før du logger ind, uden cookies, og hvad der måles, når du er logget ind."
+        },
+        "refs": [
+          6280
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.344",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Races",
+        "en": {
+          "title": "Choose how far a role reaches, now for everyone",
+          "body": "When you change a rider's role on the Tactics tab of a stage race, you choose Stage N and the rest of the race, or Stage N only. Earlier stages keep their roles. Beta testers have used it since 4 October."
+        },
+        "da": {
+          "title": "Vælg hvor langt en rolle rækker, nu for alle",
+          "body": "Når du skifter en rytters rolle på Taktik-fanen i et etapeløb, vælger du Etape N og løbet ud eller Kun etape N. Tidligere etaper beholder deres roller. Beta-testerne har brugt det siden 4. oktober."
+        },
+        "refs": [6095]
+      },
+      {
+        "category": "new", "audience": "player", "rollout": "beta_to_live", "topic": "Planning",
+        "en": {
+          "title": "The season matrix fits your phone, now for everyone",
+          "body": "On a phone, the season matrix in Planning fits the screen: one row of lenses across the full width, and Earlier and Later move the race days you see. No more sideways scrolling."
+        },
+        "da": {
+          "title": "Sæsonmatrixen passer til din telefon, nu for alle",
+          "body": "På telefonen passer sæsonmatrixen i Planlægning til skærmen: én række linser i fuld bredde, og Før og Senere flytter de løbsdage, du ser. Ingen vandret scroll."
+        },
+        "refs": [5124]
+      },
+      {
+        "category": "improved", "audience": "player", "rollout": "live", "topic": "Rankings",
+        "en": {
+          "title": "Rankings update about a minute after a result",
+          "body": "The rankings now update shortly after a race result is in, usually within about a minute, instead of on a fixed timer. When nothing has changed, they are not rebuilt, which takes load off the database."
+        },
+        "da": {
+          "title": "Ranglisterne opdateres cirka et minut efter et resultat",
+          "body": "Ranglisterne opdateres nu kort efter, at et løbsresultat er klar, typisk inden for cirka et minut, i stedet for på et fast ur. Når intet er ændret, bygges de ikke om, og det letter databasen."
+        },
+        "refs": [5692]
+      }
+    ]
+  },
+  {
+    "version": "7.343",
+    "date": "2026-10-06",
+    "changes": [
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Finance",
+        "en": {
+          "title": "Next season's prize forecast is your own estimate ±20 %",
+          "body": "The prize money forecast now shows your own estimate with a range of ±20 %, instead of a lopsided range that could start far below it. Sponsor amounts per stage are marked as provisional while next season's calendar is not ready. Payouts are unchanged."
+        },
+        "da": {
+          "title": "Næste sæsons præmieprognose er dit eget estimat ±20 %",
+          "body": "Prognosen for præmiepenge viser nu dit eget estimat med et spænd på ±20 % i stedet for et skævt spænd, der kunne starte langt under. Sponsorbeløb pr. etape står som foreløbige, så længe næste sæsons kalender ikke er klar. Udbetalinger er uændrede."
+        },
+        "refs": [5940, 5916]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Escapees are no longer shown as caught by their own group",
+          "body": "A breakaway rider who was only reached by riders dropped from the same breakaway now shows as held on or dropped, not caught. Placings, times and points are unchanged."
+        },
+        "da": {
+          "title": "Udbrydere vises ikke længere som indhentet af deres egen gruppe",
+          "body": "En udbryder, der kun blev nået af ryttere sat af fra samme udbrud, står nu som holdt hjem eller sat af, ikke indhentet. Placeringer, tider og point er uændrede."
+        },
+        "refs": [6234]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Scouting",
+        "en": {
+          "title": "Scouting can't use money locked in your bids",
+          "body": "Sending a scout (target or mission) no longer uses money that is locked in your auction bids. If it would, you get a clear message instead."
+        },
+        "da": {
+          "title": "Scouting kan ikke bruge penge, der er låst i dine bud",
+          "body": "At sende en spejder (mål eller mission) bruger ikke længere penge, der er låst i dine auktionsbud. Hvis det ville ske, får du en tydelig besked i stedet."
+        },
+        "refs": [6237]
+      },
+      {
+        "category": "fixed", "audience": "player", "rollout": "live", "topic": "Races",
+        "en": {
+          "title": "Regenerating line-ups respects race days used at a former team",
+          "body": "When line-ups are regenerated, a rider is no longer picked for a race day he already used at his previous team, so the target race is not left empty."
+        },
+        "da": {
+          "title": "Ny udtagelse respekterer løbsdage brugt hos et tidligere hold",
+          "body": "Når udtagelsen laves om, bliver en rytter ikke længere sat på en løbsdag, han allerede har brugt hos sit tidligere hold, så målløbet ikke står tomt."
+        },
+        "refs": [6132]
+      }
+    ]
+  },
+  {
     "version": "7.342",
     "date": "2026-10-06",
     "changes": [

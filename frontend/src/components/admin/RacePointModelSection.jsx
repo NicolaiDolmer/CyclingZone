@@ -24,7 +24,7 @@ function MasterCard({ t, titleKey, rts, anchorOf, setAnchor, anchorEdits }) {
                 min={0}
                 value={anchorOf(rt.key)}
                 onChange={(e) => setAnchor(rt.key, e.target.value)}
-                className={`w-full bg-cz-card border rounded px-2 py-1 text-xs font-mono text-cz-1 focus:outline-none
+                className={`w-full bg-cz-card border rounded px-2 py-1 text-xs font-mono text-cz-1 focus:outline-hidden
                   ${dirty ? "border-cz-warn/60 text-cz-warn" : "border-cz-border focus:border-cz-accent/60"}`}
                 aria-label={`${t("racePoints.model.anchorLabel")} ${rt.label}`}
               />
@@ -291,7 +291,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
                             step="0.1"
                             value={fmtPct(factorOf(c.key, rt.key))}
                             onChange={(e) => setFactorPct(c.key, rt.key, e.target.value)}
-                            className={`w-14 bg-cz-card border rounded px-1 py-0.5 text-2xs font-mono text-center focus:outline-none
+                            className={`w-14 bg-cz-card border rounded px-1 py-0.5 text-2xs font-mono text-center focus:outline-hidden
                               ${dirty ? "border-cz-warn/60 text-cz-warn" : "border-cz-border text-cz-1 focus:border-cz-accent/60"}`}
                             aria-label={`${c.label} ${rt.label} %`}
                           />

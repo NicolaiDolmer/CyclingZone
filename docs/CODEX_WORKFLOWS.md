@@ -51,6 +51,23 @@ Ved allerede godkendt scope genbruges design og tilladelser; en skill må ikke i
 
 Genbrug eksisterende scripts og guards. Ingen ny scheduler, automatisk plugin-afinstallation eller generelle kontoændringer indgår i piloten. Skills vurderes under de rigtige opgaver: relevant brug, ekstra læsning, overflødige godkendelser og fejl. Reducér konkret overlap; mål effekten før yderligere ændringer.
 
+## Sammenhængende arbejde (ejer-go 7/10, #605)
+
+Én hovedsession ejer et claim til verificeret afslutning eller en konkret beslutningspakke. En anden runtime kan levere uafhængigt review; ejerskabet flyttes ikke alene fordi en PR er klar. Konkrete ejerbeslutninger forelægges direkte med bevis og gemmes på issuet, jf. [OPERATING_PLAN §Codex](OPERATING_PLAN.md#codex-dag). Afvent kun det afhængige arbejde; fortsæt øvrige allerede godkendte opgaver uden omprioritering.
+
+Vælg parallelitet eksplicit: del kun uafhængige spørgsmål eller filansvar. Undersøgelser kan bruge read-only subagenter efter dispatch-forfilter; byggearbejde bruger `codex-wave.mjs`. Hovedsessionen samler korte beviser, følger alle agenter til observeret terminaltilstand og bevarer fælles loft 4/verify 2. En aktiv bølgelås er aldrig ledig kapacitet. Hold aktive sessioners filer, processer, modeller og claims urørte.
+
+**Model-forsøg på nye spor:** almindeligt byg: `gpt-6.1-sol`/`medium`; svær årsagsanalyse/review: `gpt-6-astra`/`high`; let afgrænset læsning: `gpt-6-luna`/`medium`. Vælg kun tilgængelige modeller og angiv valget i planen. Runneren ændrer ingen globale defaults; en eksisterende plan arver fortsat CLI-konfigurationen. Fast/Ultrafast og ændrede forbrugsrammer kræver særskilt ejer-go. Bedøm forsøg på leveringstid, ejertid, forbrug og genarbejde i den eksisterende pilot; ingen gevinst er målt endnu.
+
+**Brug appens eksisterende muligheder efter konkret bestilling:**
+
+- **Goal:** "Opret et Goal: lever de godkendte issues [numre] med reproduktion, krævede tests, uafhængigt review og afslutning efter eksisterende mandat. Fortsæt øvrigt godkendt arbejde ved en lokal blokering; rapportér beslutning, bevis og næste handling." Et Goal kræver eksplicit anmodning; en almindelig opgave aktiverer det ikke automatisk.
+- **Opfølgning i samme chat:** "Følg PR [nummer] hvert 30. minut, håndtér rettelser inden for scope, og giv kun besked ved væsentlig ændring, fejl, nødvendig beslutning eller afslutning. Stop opfølgningen ved afslutning." Brug appens eksisterende thread-automation; én ejer pr. PR, kontrollér eksisterende automation først. Ingen ny scheduler. Lokale kørsler kræver tændt computer/app. Fast tidsplan kræver konkret bestilling; en Goal er ikke en tidsplan.
+- **Spillerproblem til bevis:** "Undersøg denne klage: sammenhold tilgængelige data med kode, reproducer lokalt, og aflever bevis og rettelsesforslag." Read-only data indtil andet mandat; privatdata og balance-tal forbliver private. Ny spilleradfærd kræver fortsat design-go.
+- **Visuel beslutning:** "Vis alternativer som lokal prototype eller simulation før build-go." Mockup-data markeres; eksisterende UI-/spillertekstmandat og krav om rigtige releasebilleder består.
+
+Officielle produktkilder kontrolleret 7/10: [Goals](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex), [subagenter](https://learn.chatgpt.com/docs/agent-configuration/subagents), [opfølgning](https://learn.chatgpt.com/docs/automations?surface=app), [hastighed/forbrug](https://learn.chatgpt.com/docs/agent-configuration/speed). Genkontrollér tilgængelighed ved brug. Delt projekt-state forbliver på GitHub; appens trådtilstand erstatter ikke handoff.
+
 ## Pilot: næste fem egnede, godkendte opgaver
 
 **Status ved oprettelse:** protokol klar, 0/5 pilotopgaver registreret; ingen produktivitetsgevinst målt. Denne docs-leverance er forberedelse og tæller ikke som en produktpilot.
@@ -83,8 +100,8 @@ Sekventiel/parallel sammenligning er observation af egnede rigtige opgaver, ikke
 
 Efter fem forløb samler hovedsessionen: behold/justér/tilbagefør, målinger, ukendte forhold og konkrete friktionspunkter. Ved forringet kvalitet standses udbredelsen; tilbagefør den konkrete regelændring via normal PR-proces. Ingen automatisk standardisering, modelskift eller udvidet mandat.
 
-## Verifikation af denne ændring
+## Verifikation
 
-Docs-only: diff- og linkkontrol, `preflight-pr.ps1`, token-hygiejne og uafhængigt review. Scenarier: teknisk tvivl undersøges; uløst produktvalg eskaleres; eksisterende go genbruges; draft/ready er ikke leveret; merge/prod-gates består; manglende ejertid er ukendt. Adfærden skal efterprøves i pilotopgaverne; en tekstkontrol beviser kun kontrakten.
+Oprindelig docs-leverance (29/9): diff- og linkkontrol, `preflight-pr.ps1`, token-hygiejne og uafhængigt review. Runner-udvidelsen (7/10): desuden `node --test scripts/codex-wave.test.mjs scripts/wave-policy.test.mjs` og CLI-dry-run for modelvalg/kapacitet uden dispatch. Scenarier: eksisterende planer bevarer modelarv; reviewer kan vælges separat; ugyldig kapacitet afvises før admission; ingen model gættes ved manglende override. Arbejdsformen efterprøves på reelle pilotopgaver; en tekstkontrol beviser kun kontrakten.
 
-Patch notes og FEATURE_REGISTRY ændres ikke: ingen spilleradfærd, feature eller flag ændres. Ingen runtime-kode, ny CI-guard eller scheduler indgår.
+Patch notes og FEATURE_REGISTRY ændres ikke: ingen spilleradfærd, feature eller flag ændres. Runneren udvides; ingen ny CI-guard eller scheduler indgår.

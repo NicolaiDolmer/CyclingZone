@@ -131,7 +131,7 @@ export default function FeatureFlagBoardSection({ getAuth, onMsg }) {
                       <p className="text-cz-3 text-xs mt-0.5">Boolean-flag (gammelt skema) — intet beta-stadie</p>
                     )}
                   </div>
-                  <div className="flex gap-1 flex-shrink-0 self-start sm:self-auto" role="group" aria-label={`Stadie for ${flag.label}`}>
+                  <div className="flex gap-1 shrink-0 self-start sm:self-auto" role="group" aria-label={`Stadie for ${flag.label}`}>
                     {["off", "beta", "on"].map(stage => {
                       const active = flag.stage === stage;
                       const unavailable = stage === "beta" && flag.boolean_only;

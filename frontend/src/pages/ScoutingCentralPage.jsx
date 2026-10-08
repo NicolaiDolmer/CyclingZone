@@ -129,7 +129,7 @@ function ActiveJobRow({ assignment: a, riderNames, onCancel, cancellingId, jobCo
   return (
     <li className="flex items-center justify-between gap-3 flex-wrap border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
       <div>
-        <span className="text-3xs font-mono uppercase tracking-[0.1em] text-cz-3">
+        <span className="text-3xs font-mono uppercase tracking-widest text-cz-3">
           {t(a.kind === "target" ? "queue.kindTarget" : "queue.kindMission")}
         </span>
         {/* #3046: målrettede opgaver kender rytterens id — link til profilen

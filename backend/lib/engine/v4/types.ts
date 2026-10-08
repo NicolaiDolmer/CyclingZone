@@ -210,7 +210,7 @@ export type StageInput = {
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
-export type RulesRevision = "legacy" | "orders_gc_v1" | "orders_gc_v2" | "orders_gc_v3";
+export type RulesRevision = import("../../raceEngineRulesRevision.ts").RaceRulesRevision;
 
 /** #5978: én rytters plads i det publicerede klassement foer etapen. */
 export type GcStanding = { rider_id: string; rank: number; gap_seconds: number };
@@ -265,6 +265,8 @@ export type KnownTimelineEventType =
   | "intermediate_sprint"
   | "breakaway_caught"
   | "breakaway_survived"
+  // #6185 del 2 (ADDITIV, KUN orders_gc_v3): udbrydere sat af fra udbruddet (mechanics/chaseGroup.ts).
+  | "breakaway_dropped"
   | "peloton_splits"
   // #4971 (ADDITIV): kvittering for at en gruppe blev opslugt af en anden i
   // segmentLoop's merge-trin. Uden den kunne tidslinjens sidste udsagn om en
@@ -664,6 +666,8 @@ export type EngineState = {
   // paa samme segment, saa de to lag tilsammen aldrig lukker mere end loftet
   // (mechanics/timeModel.ts's finishDescentRemainingCapSeconds), og sletter feltet.
   finish_descent_regroup?: Record<string, { topGapSeconds: number; closedSeconds: number }>;
+  // #6185 del 2 (ADDITIVT, valgfrit, KUN orders_gc_v3): udbrydere der er meldt sat af (mechanics/chaseGroup.ts).
+  breakaway_dropped_ids?: string[];
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────

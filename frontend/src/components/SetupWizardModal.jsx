@@ -114,7 +114,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
               placeholder={t("setupWizard.teamNamePlaceholder")}
               maxLength={40}
               className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
-                focus:outline-none focus:ring-2 focus:ring-cz-accent focus:border-transparent"
+                focus:outline-hidden focus:ring-2 focus:ring-cz-accent focus:border-transparent"
             />
           </div>
           <div>
@@ -127,7 +127,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
               placeholder={t("setupWizard.managerNamePlaceholder")}
               maxLength={40}
               className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
-                focus:outline-none focus:ring-2 focus:ring-cz-accent focus:border-transparent"
+                focus:outline-hidden focus:ring-2 focus:ring-cz-accent focus:border-transparent"
             />
           </div>
         </div>

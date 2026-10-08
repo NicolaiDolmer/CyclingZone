@@ -22,7 +22,7 @@ export default function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
   return (
     <div className="mt-5 rounded-cz p-5 border border-cz-success/40 bg-cz-success-bg">
       <div className="flex items-start gap-3">
-        <TrophyIcon size={24} aria-hidden="true" className="flex-shrink-0 text-cz-success" />
+        <TrophyIcon size={24} aria-hidden="true" className="shrink-0 text-cz-success" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-cz-success">{t("bonusOffer.heading")}</p>
           <p className="text-cz-2 text-xs mt-2 leading-relaxed">

@@ -742,7 +742,7 @@ function buildFaq(t, vars, flags) {
 // Sidenav item — shared between the desktop sticky rail and the mobile
 // horizontal tab row so icon + active-state markup stays in one place.
 function NavIcon({ Icon }) {
-  return <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />;
+  return <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />;
 }
 
 export default function HelpPage() {
@@ -925,7 +925,7 @@ export default function HelpPage() {
           </div>
 
           {/* Desktop (md+): sticky sidenav */}
-          <div className="hidden md:block w-40 flex-shrink-0">
+          <div className="hidden md:block w-40 shrink-0">
             <div className="sticky top-7 flex flex-col gap-1">
               {sections.map((s) => (
                 <button
@@ -973,7 +973,7 @@ export default function HelpPage() {
                         <p className="text-cz-1 text-sm font-medium">{f.q}</p>
                         <ChevronDownIcon
                           aria-hidden="true"
-                          className={`w-4 h-4 text-cz-3 ms-3 flex-shrink-0 transition-transform ${
+                          className={`w-4 h-4 text-cz-3 ms-3 shrink-0 transition-transform ${
                             faqOpen === f.id ? "rotate-180" : ""
                           }`}
                         />
@@ -990,7 +990,7 @@ export default function HelpPage() {
             ) : currentSection ? (
               <div>
                 <h2 className="text-cz-1 font-bold text-base mb-4 flex items-center gap-2">
-                  <currentSection.Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" /> <span>{currentSection.label}</span>
+                  <currentSection.Icon className="w-5 h-5 shrink-0" aria-hidden="true" /> <span>{currentSection.label}</span>
                 </h2>
                 <div className="flex flex-col gap-[14px]">
                   {currentSection.content.map((block, i) => (
@@ -1003,7 +1003,7 @@ export default function HelpPage() {
                         <ol className="flex flex-col gap-1.5 mt-1">
                           {block.steps.map((step, j) => (
                             <li key={j} className="flex items-start gap-2">
-                              <span className="text-cz-accent-t text-xs font-bold flex-shrink-0 mt-0.5">
+                              <span className="text-cz-accent-t text-xs font-bold shrink-0 mt-0.5">
                                 {j + 1}.
                               </span>
                               <span className="text-cz-2 text-sm leading-relaxed">{step}</span>

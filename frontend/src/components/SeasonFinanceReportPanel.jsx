@@ -50,7 +50,7 @@ function DonutTooltip({ active, payload, total }) {
   const p = payload[0].payload;
   const pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : "0";
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz shadow-sm px-3 py-2">
+    <div className="bg-cz-card border border-cz-border rounded-cz shadow-xs px-3 py-2">
       <p className="text-cz-1 text-sm font-bold">{p.label}</p>
       <p className="text-cz-2 text-xs font-mono">
         {formatCZ(p.value)} · {pct}%

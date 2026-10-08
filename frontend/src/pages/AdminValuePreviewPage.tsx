@@ -183,7 +183,7 @@ const toneClass = (n: number | null | undefined) =>
 function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-3xs uppercase tracking-[.1em] text-cz-3">{label}</p>
+      <p className="text-3xs uppercase tracking-widest text-cz-3">{label}</p>
       <p className={`mt-1 font-data text-lg font-semibold tabular-nums ${tone ?? "text-cz-1"}`}>{value}</p>
     </div>
   );
