@@ -4,6 +4,9 @@
 // click it on preview before the flag moves. Query params give the before/after pair:
 //   ?trainNow=off     the page exactly as today (no press)
 //   ?trainNow=locked  the state right after a press
+// #6139: the race selection panel (GET /api/races/:id/selection) follows the same
+// state: after a press the riders that trained are locked, a rider bought after the
+// press is free (trainNowSelectionPreview below).
 // Wired only in installPreviewMock.js, never in mockHandlers.js (Playwright
 // fixtures share mockHandlers; the existing /training snapshots must not move).
 
@@ -27,6 +30,26 @@ function status() {
   return {
     enabled: true, available: !locked, reason: locked ? "locked" : null, tickDate: TICK_DATE,
     locked, lockedAt, settled: false,
+    // #6139: the preview seed's race ("race-up-1" in seedData.js).
+    todayRaces: [{ id: "race-up-1", name: "Tour de Preview" }],
+  };
+}
+
+type SelectionBody = { riders?: Array<{ id: string }>; selection?: { rider_ids?: string[] } | null } & Record<string, unknown>;
+
+/**
+ * #6139: after a press, the riders who trained are locked for today's race. In the
+ * preview the selected riders trained, and the riders outside the selection play the
+ * ones bought or moved after the press (no lock). Before the press: unchanged.
+ */
+export function trainNowSelectionPreview(body: SelectionBody): SelectionBody {
+  const { locked, lockedAt } = status();
+  if (mode() === "off" || !locked || !Array.isArray(body?.riders)) return body;
+  const trained = new Set(body.selection?.rider_ids ?? []);
+  return {
+    ...body,
+    riders: body.riders.map((rider) => ({ ...rider, trainNowLocked: trained.has(rider.id) })),
+    trainNowLock: { riderIds: [...trained].sort(), pressedAt: lockedAt },
   };
 }
 

@@ -15,7 +15,7 @@ import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGR
 import { trainingGroupsMockRoute } from "../components/training/groups/trainingGroupsPreviewMock.ts"; // #6000
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
-import { trainNowPreviewRoute } from "../components/training/TrainNowPreviewMock.ts"; // #4847
+import { trainNowPreviewRoute, trainNowSelectionPreview } from "../components/training/TrainNowPreviewMock.ts"; // #4847/#6139
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_TEAM_ORDERS,
@@ -537,6 +537,10 @@ export function installPreviewMock() {
       if (/\/api\//.test(url)) {
         if (method !== "GET") return jsonResponse({ ok: true });
         const parsed = new URL(url, window.location.origin);
+        // #6139: udtagelsen foelger Train now-tilstanden (?trainNow=locked eller et tryk).
+        if (/\/api\/races\/[^/]+\/selection$/.test(parsed.pathname)) {
+          return jsonResponse(trainNowSelectionPreview(apiResponse(parsed.pathname, parsed.search)));
+        }
         return jsonResponse(apiResponse(parsed.pathname, parsed.search));
       }
     } catch (err) {
