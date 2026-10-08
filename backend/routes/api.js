@@ -15491,9 +15491,12 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 
 async function countOnlineUsers() {
   const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const { count } = await supabase.from("users")
-    .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
-  return count || 0;
+  try {
+    const { count, error } = await supabase.from("users")
+      .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
+    if (error) { console.error("[online-count] failed:", error.message); return null; }
+    return count || 0;
+  } catch (e) { console.error("[online-count] failed:", e.message); return null; }
 }
 
 // POST /api/presence — heartbeat, opdater last_seen (throttlet)
@@ -15506,7 +15509,9 @@ router.post("/presence", requireAuth, presencePulseLimiter, async (req, res) => 
   const { error } = await supabase.rpc("touch_user_presence", { p_user_id: req.user.id });
   if (error) console.error("[presence] touch failed:", error.message);
   // #6343: online-tallet med i svaret, så klienten kun behøver ét kald.
-  res.json({ ok: true, user_id: req.user.id, error: error?.message || null, online_count: await countOnlineUsers() });
+  // Fejler tællingen udelades feltet; klienten falder så tilbage til /online-count.
+  const onlineCount = await countOnlineUsers();
+  res.json({ ok: true, user_id: req.user.id, error: error?.message || null, ...(onlineCount === null ? {} : { online_count: onlineCount }) });
 });
 
 // POST /api/login-streak — beregn og opdater daglig login-streak
@@ -15530,7 +15535,9 @@ router.post("/login-streak", requireAuth, presencePulseLimiter, async (req, res)
 
 // GET /api/online-count — brugere aktive inden for de seneste 5 minutter
 router.get("/online-count", requireAuth, async (req, res) => {
-  res.json({ count: await countOnlineUsers() });
+  const count = await countOnlineUsers();
+  if (count === null) return res.status(500).json({ error: "online-count unavailable" });
+  res.json({ count });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
