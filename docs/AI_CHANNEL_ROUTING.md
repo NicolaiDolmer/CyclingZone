@@ -16,7 +16,9 @@ Claude Code og Codex kan begge eje et helt godkendt forløb: undersøgelse, desi
 
 **Arbejdsform besluttet 24/9:** specs kan forberedes i cloud dagen før; lokal implementering følger den færdige godkendte spec. UI-kort bærer preview-link og desktop-/mobilbilleder, så ejeren kan give go fra telefonen. Denne mulighed består; den kræver ikke et nyt kanal-hop, hvis den valgte hovedsession allerede har design og mandat.
 
-## Fordeling Claude Code ↔ Codex (ejer 6/10)
+## Fordeling Claude Code ↔ Codex (ejer 6/10, skærpet 8/10)
+
+**Ejer 8/10:** Claude Code ejer alle seks masterplan-spor. Codex er ikke fast ejer af noget spor. Claude foreslår Codex, når Codex vurderes bedre til netop den opgave for projektet på langt sigt (fx et uafhængigt review af Claudes egen kode eller en lang, isoleret ops-opgave mens bølgens laner er fulde), eller for at sprede token-forbruget. Claude skriver prompten og beder ejeren starte Codex. Reglerne nedenfor gælder for de opgaver, Codex så får.
 
 Målt 6/10: Codex brugte 4-5 timer på #5692 (25 filer, +2.200 linjer, staging-målinger, flere reviewrunder). Grundigt, men for langsomt til store tværgående eller hastende opgaver.
 
@@ -27,6 +29,28 @@ Målt 6/10: Codex brugte 4-5 timer på #5692 (25 filer, +2.200 linjer, staging-m
 | Måle- eller staging-tunge undersøgelser | Den kanal der har adgangen; tidsgrænse skrives i prompten | Kun berørte tests + preflight lokalt; CI er den fulde gate |
 
 Prompten til Codex har altid en prioriteret liste, tidsgrænsen og stopreglen. Claude reviewer og merger Codex' PR'er.
+
+## Model og effort pr. opgave (ejer 8/10)
+
+Princip: kvaliteten må aldrig afhænge af, at nogen husker at vælge den rigtige model. Risiko styrer modellen; gates fanger det mekaniske, så dyre modeller bruges på dømmekraft.
+
+| Opgave | Model | Effort |
+|---|---|---|
+| Daglig orkestrering, PR-gennemgang, prioritering | Opus | høj |
+| Store designs/arkitektur (fx Udvikling 2.0, motorens tidsmodel) | Fable, én session | max |
+| Lanes der rører motor, migrationer/RLS, penge, sikkerhed | Opus, **håndhæves i `wave.js` ud fra filerne** | høj |
+| UI, ops, docs, små fixes | Sonnet | medium |
+| Review af hver lane | Opus; **Fable som én dommer før motor-tænding** | høj/max |
+| Root-cause-audits / inventar-audits | Opus / Sonnet | høj / medium |
+| Mekaniske deltrin med skema og automatisk efterkontrol | Haiku (se nedenfor) | lav |
+
+**Haiku bruges kun når alle tre gælder:** (1) output har fast skema, (2) noget kontrollerer output automatisk bagefter (test, script eller stærkere model), (3) ingen dømmekraft og snævre værktøjer (agentType uden skrive-adgang). #6058 viste, at Haiku fulgte en videresendt prompt i stedet for sin egen.
+
+Haiku-kandidater: i18n-paritet (manglende/ekstra nøgler, pladsholdere, ICU-plural) · klassificering af Sentry-/Railway-/Supabase-loglinjer i kendte fejlklasser · Discord-/feedback-sweep → kategori + sprog + issue-match (Claude skriver svaret) · done-flip-kandidater (merget PR med `Refs #N`) · CI-fejllog → fejlende test + første fejllinje · patch-note-punkt ↔ merget PR-match · frys-probe i bølgen (4 git-tal).
+
+Ikke Haiku: endelig spillertekst og oversættelse (tone, `TONE_OF_VOICE.md`; Sonnet skriver, Opus-review), alt der skriver til prod, motor/økonomi, review, beslutningskort.
+
+**Høj kvalitet, effektivitet og fart på én gang:** færdiggør før nyt (merge-først, åbne PR'er før ny bølge) · design godkendt før byg, så intet bygges to gange · regler som gates, ikke prosa · maks 4 laner + verifikations-semafor 2 · subagenter til brede læsninger, så hovedsessionen holder konteksten · korte prompter der peger på SSOT i stedet for at kopiere den.
 
 ## Handoff og værktøjer
 
