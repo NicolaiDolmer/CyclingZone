@@ -283,7 +283,9 @@ export default function RaceSelectionPanel({
   // hold med ryttere nok på papiret men ingen ledige til dagens løb. Hinten er ren
   // visning: den går ALDRIG i clientErrors, så Gem-knappen forbliver aktiv.
   const selectedIdSet = new Set(sel.riderIds);
-  const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)).length;
+  // #6139: en rytter der traenede i dag (Train now) er heller ikke fri til dette loeb.
+  const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)
+    && !trainNowLocked.has(r.id)).length;
   // Vises først når manageren har udtaget mindst én rytter: på et urørt panel er
   // "7 pladser står åbne" bare en gentagelse af undertekstens "udtag op til {max}".
   //

@@ -1057,7 +1057,7 @@
       },
       "runDayNow": {
         "title": "Run today's training now",
-        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, so nothing is lost by not being online. 'Run today's training now' is there only if you don't want to wait: it runs exactly the same training, with no bonus and no advantage, and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again."
+        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, so nothing is lost by not being online. 'Run today's training now' is there only if you don't want to wait: it runs exactly the same training, with no bonus and no advantage, and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again. With Train now (beta) the press also locks today's race selection for the riders who trained: they can't be added to or removed from today's race. Riders you buy or move up after the press can still race."
       },
       "raceDays": {
         "title": "Race days and training",
