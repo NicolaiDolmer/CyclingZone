@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.346",
+    "date": "2026-10-08",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Two Tour de l'Hexagone stages have the right category",
+          "body": "Stage 11 is now a hilly stage. It was listed as mountain, but has three short cat. 3 climbs. Stage 8 is now a mountain stage with a descent finish: four cat. 2 climbs, and the last one tops out 12 km from the line. The routes are unchanged. If you picked your team for these stages, take another look."
+        },
+        "da": {
+          "title": "To etaper i Tour de l'Hexagone har den rigtige kategori",
+          "body": "Etape 11 er nu en kuperet etape. Den stod som bjergetape, men har tre korte kat. 3-stigninger. Etape 8 er nu en bjergetape med nedkørselsfinale: fire kat. 2-stigninger, og den sidste topper 12 km før mål. Ruterne er uændrede. Har du sat dit hold til de etaper, så kig på det igen."
+        },
+        "refs": [
+          6332
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Open pages keep working when I release an update",
+          "body": "When I released an update, an open tab could stop loading pages until you refreshed, most often on mobile. From the next update, the files your open tab needs stay available, so you can keep playing without a refresh."
+        },
+        "da": {
+          "title": "Åbne sider virker videre, når jeg udgiver en opdatering",
+          "body": "Når jeg udgav en opdatering, kunne en åben fane holde op med at indlæse sider, indtil du genindlæste, oftest på mobil. Fra næste opdatering er de filer, din åbne fane skal bruge, stadig tilgængelige, så du kan spille videre uden at genindlæse."
+        },
+        "refs": [
+          5162
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.345",
     "date": "2026-10-07",
     "changes": [
