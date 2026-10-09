@@ -1,5 +1,30 @@
 export const PATCHES = [
   {
+    "version": "7.348",
+    "date": "2026-10-09",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "New race rules from the next race start, Tour de l'Hexagone included",
+          "body": "Every race that starts from now on runs on the new race rules. Results show the real time gaps, so there is no longer a wall of riders at +30:00. A team never chases a group with its own rider in it. Teams of the top 10 react when a dangerous rider is in the breakaway. Races that have already started finish on the rules they started with."
+        },
+        "da": {
+          "title": "Nye løbsregler fra næste løbsstart, også Tour de l'Hexagone",
+          "body": "Alle løb, der starter fra nu af, kører på de nye løbsregler. Resultatlisten viser de rigtige tidsgab, så der er ikke længere en mur af ryttere på +30:00. Et hold jagter aldrig en gruppe med sin egen rytter i. Holdene i top 10 reagerer, når en farlig rytter sidder i udbruddet. Løb, der allerede er startet, kører færdigt på de regler, de startede med."
+        },
+        "refs": [
+          6199,
+          6187,
+          5578
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.347",
     "date": "2026-10-08",
     "changes": [
