@@ -534,7 +534,8 @@
       "title": "Låst i dag.",
       "bodyAt": "Du trykkede Træn nu kl. {time}. Ryttere der trænede i dag kan ikke køre dagens løb.",
       "body": "Ryttere der trænede i dag kan ikke køre dagens løb.",
-      "rider": "Trænede i dag"
+      "rider": "Trænede i dag",
+      "columnLocked": "Låst"
     },
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",

@@ -11,7 +11,7 @@ import { terrainBucket } from "../../lib/stageTerrain.js";
 import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
-import TrainNowRiderBadge from "./TrainNowRiderBadge.jsx"; // #6383
+import TrainNowRiderBadge from "./TrainNowRiderBadge.tsx"; // #6383
 import RaceLink from "../RaceLink.jsx";
 import { LockIcon, StarIcon, AlertTriangleIcon, InfoIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";

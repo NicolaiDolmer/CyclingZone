@@ -15,7 +15,7 @@ import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
 import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog, raceDayOverlaps, raceDayClashes, toDisplayRaceDay, isTrainNowLockedInColumn, trainNowLockSummary } from "../../lib/raceHubLogic.js";
-import TrainNowLockBanner from "./TrainNowLockBanner.jsx"; // #6383
+import TrainNowLockBanner from "./TrainNowLockBanner.tsx"; // #6383
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";

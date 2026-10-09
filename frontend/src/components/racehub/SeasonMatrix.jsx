@@ -17,7 +17,8 @@ import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { mobileRaceWindow, shiftMobileRaceWindow } from "../../lib/seasonMatrixMobile.ts";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { fitTier, trainNowLockSummary } from "../../lib/raceHubLogic.js";
-import TrainNowLockBanner from "./TrainNowLockBanner.jsx"; // #6383
+import TrainNowLockBanner from "./TrainNowLockBanner.tsx"; // #6383
+import { trainNowClock } from "../training/trainNowClock.ts";
 import { Spinner, EmptyState, ErrorState, Button, Segmented, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
 import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
 import {
@@ -118,6 +119,14 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   );
   const trainNowSummary = useMemo(() => trainNowLockSummary(Object.values(data?.trainNowLockByRace ?? {})), [data]);
   const isTrainedToday = (raceId, riderId) => trainNowLocks.get(raceId)?.has(riderId) === true;
+  const raceHasTrainNowLock = (raceId) => (trainNowLocks.get(raceId)?.size ?? 0) > 0;
+  // Popoveren viser tidspunktet for trykket (mockup: "Trænet i dag kl. 09:12").
+  const trainNowReasonText = (raceId) => {
+    const time = trainNowClock(data?.trainNowLockByRace?.[raceId]?.pressedAt);
+    return time ? t("selection.trainNowLock.bodyAt", { time }) : t("selection.trainNowLock.body");
+  };
+  // Ejer-godkendt mockup 9/10: låste celler er skraverede (ikke kun grånet).
+  const LOCK_HATCH = { backgroundImage: "repeating-linear-gradient(45deg, var(--color-cz-border) 0 3px, transparent 3px 6px)" };
   // Akse-konvertering (kontrakt #7, ejer-låst 27-28/8, spillertest-punkt 6): ÉN
   // kolonne pr. (løb, løbsdag) — se seasonMatrix.js's fil-header for begrundelsen.
   const dayColumns = useMemo(() => buildDayColumns(races), [races]);
@@ -381,6 +390,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                 <button type="button" disabled={!date} onClick={() => date && onOpenDay?.(date)} title={t("matrix.dayAria", { index: day.stageIndex, date: date ?? "?" })} className="w-full leading-tight disabled:cursor-default">
                   <span className="block font-semibold">{date ? formatBandDate(date) : "—"}</span>
                   <span className="block tabular-nums">{t("matrix.mobile.gameDay", { day: day.gameDay })}</span>
+                  {!readOnly && raceHasTrainNowLock(selectedMobileRace.id) && (
+                    <span className="flex items-center justify-center gap-0.5 normal-case text-cz-warning"><LockIcon size={9} aria-hidden="true" />{t("selection.trainNowLock.columnLocked")}</span>
+                  )}
                 </button>
               </th>;
             })}
@@ -412,7 +424,8 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       role == null ? t("matrix.cellEmptyAria", { rider: rider.name, race: selectedMobileRace.name }) : t("matrix.cellFilledAria", { rider: rider.name, race: selectedMobileRace.name, role: t(`tacticsOrders.roleLabel.${role}`) }),
                       trainedToday ? t("selection.trainNowLock.rider") : null,
                     ].filter(Boolean).join(" · ")}
-                    className={`w-full min-h-10 px-1 text-xs tabular-nums ${role == null ? "text-cz-3" : roleBadgeClass(role)} ${selectedMobileRace.withdrawn ? "opacity-40" : ""} ${trainedToday ? "opacity-60 saturate-50" : ""}`}
+                    className={`w-full min-h-10 px-1 text-xs tabular-nums ${role == null ? "text-cz-3" : roleBadgeClass(role)} ${selectedMobileRace.withdrawn ? "opacity-40" : ""} ${trainedToday ? "text-cz-3" : ""}`}
+                    style={trainedToday ? LOCK_HATCH : undefined}
                   >
                     {role == null ? (trainedToday ? <LockIcon size={11} className="mx-auto" aria-hidden="true" /> : (fit ?? "+")) : (selectedMobileRace.restGameDays?.includes(day.gameDay) ? <LockIcon size={11} className="mx-auto" /> : <>{ROLE_LETTER[role]}{fit != null && <span className={`ms-1 ${FIT_TEXT[fitTier(fit)]}`}>{fit}</span>}</>)}
                   </button>
@@ -508,6 +521,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       className="w-full h-6 flex items-center justify-center text-3xs font-mono tabular-nums text-cz-3 hover:text-cz-accent-t hover:bg-cz-subtle"
                     >
                       {col.stageIndex}
+                      {!readOnly && raceHasTrainNowLock(col.raceId) && (
+                        <LockIcon size={8} className="ms-0.5 text-cz-warning" aria-label={t("selection.trainNowLock.columnLocked")} />
+                      )}
                     </button>
                   </th>
                 );
@@ -551,7 +567,8 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                               disabled={!race}
                               onClick={(e) => race && openCellPopover(e, { kind: "empty", raceId: race.id, riderId: rider.id })}
                               title={[race ? t("matrix.cellEmptyAria", { rider: rider.name, race: race.name }) : null, trainedToday ? t("selection.trainNowLock.rider") : null, peakTitle(peak)].filter(Boolean).join(" · ") || undefined}
-                              className={`w-full h-7 flex items-center justify-center text-3xs tabular-nums ${race ? "hover:bg-cz-subtle cursor-pointer" : ""} ${trainedToday ? "bg-cz-subtle text-cz-3 opacity-60" : fit != null ? FIT_TEXT[fitTier(fit)] : "text-transparent"}`}
+                              className={`w-full h-7 flex items-center justify-center text-3xs tabular-nums ${race ? "hover:bg-cz-subtle cursor-pointer" : ""} ${trainedToday ? "text-cz-warning" : fit != null ? FIT_TEXT[fitTier(fit)] : "text-transparent"}`}
+                              style={trainedToday ? LOCK_HATCH : undefined}
                             >
                               {trainedToday ? <LockIcon size={10} aria-hidden="true" /> : fit != null ? fit : "·"}
                             </button>
@@ -589,7 +606,8 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                               trainedToday ? t("selection.trainNowLock.rider") : null,
                               peakInfo,
                             ].filter(Boolean).join(" · ")}
-                            className={`w-full h-7 flex cursor-pointer hover:opacity-90 ${race.withdrawn || trainedToday ? `${race.withdrawn ? "opacity-40" : "opacity-60"} saturate-50` : ""}`}
+                            className={`w-full h-7 flex cursor-pointer hover:opacity-90 ${race.withdrawn ? "opacity-40 saturate-50" : trainedToday ? "opacity-70 saturate-50" : ""}`}
+                            style={trainedToday ? LOCK_HATCH : undefined}
                           >
                             {lens === "routeMatch" ? (
                               <span className={`flex-1 flex items-center justify-center gap-1 text-3xs font-semibold ${roleBadgeClass(role)}`}>
@@ -649,7 +667,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         const lockedReasonText = readOnly
           ? t("seasonView.readOnlyHint")
           : race.withdrawn ? t("matrix.withdrawnHint")
-            : isTrainedToday(race.id, rider.id) ? t("selection.trainNowLock.body") : null;
+            : isTrainedToday(race.id, rider.id) ? trainNowReasonText(race.id) : null;
         return (
           <SeasonMatrixCellPopover
             anchorEl={popoverAnchor}

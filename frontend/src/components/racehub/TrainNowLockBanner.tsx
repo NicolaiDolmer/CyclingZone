@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 import { LockIcon } from "../ui";
 import { trainNowClock } from "../training/trainNowClock.ts";
 
-export default function TrainNowLockBanner({ pressedAt, testId = "train-now-lock-banner", className = "mb-3" }) {
+type TrainNowLockBannerProps = { pressedAt?: string | null; testId?: string; className?: string };
+
+export default function TrainNowLockBanner({ pressedAt, testId = "train-now-lock-banner", className = "mb-3" }: TrainNowLockBannerProps) {
   const { t } = useTranslation("races");
   const time = trainNowClock(pressedAt);
   return (
