@@ -157,8 +157,10 @@ export function seasonAbilityGains(runs, riderId, seasonStart) {
     const rows = run?.report?.riders;
     if (!Array.isArray(rows)) continue;
     const row = rows.find((r) => r && r.rider_id === riderId);
-    if (row?.receipt_status === "pending" || row?.receipt_status === "reconciliation") return null;
-    const gains = row?.gains;
+    // #6111: en dato foer aftenafregningen taeller med sine gemte loebsdage
+    // (trained_now, #6027), ellers stod hele saesonen som "—" fra midnat til kl. 20.
+    if (row?.receipt_status === "reconciliation" || (row?.receipt_status === "pending" && !row.trained_now)) return null;
+    const gains = row?.trained_now?.gains ?? row?.gains;
     if (!gains) continue;
     for (const [ability, n] of Object.entries(gains)) {
       const v = Number(n);
