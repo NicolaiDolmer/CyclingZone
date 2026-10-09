@@ -20,15 +20,15 @@
 
 // #6084: "orders_gc_v2" = hele orders_gc_v1-pakken + bjergselektionen (feltet
 // holder samlet til finalestigningen, udbruddet hentes dér). Aktuel for nye
-// loeb siden ejer-go 2/10 (se CURRENT_RACE_RULES_REVISION).
+// loeb 2/10-9/10; afloest af official_times_v2 (ejer-go 9/10).
 // #6187: "orders_gc_v3" = hele orders_gc_v2-pakken + "eget hold jagter aldrig
 // sine egne" (et hold foerer ikke jagten paa en gruppe med egen rytter i, og
 // dets udbrydere sidder paa hjul ved en trussel mod holdets GC-rytter).
-// Samlepunkt for uge 41-pakken. IKKE aktuel endnu: flip er ejer-only.
+// Samlepunkt for uge 41-pakken. Aldrig aktuel; indgaar i official_times_v2.
 // #6199 (ejer 8/10): "official_times_v2" = hele orders_gc_v3-pakken + den samlede
 // tidsmodel (officielle etapetider #6284, fysisk kontakt #6327, faelles
-// gruppeklokke #6199, kontaktsted #6329). Revisionen Tour-pakken bindes til.
-// IKKE aktuel: flip er ejer-only.
+// gruppeklokke #6199, kontaktsted #6329). Aktuel for nye loeb siden ejer-go
+// 9/10 (se CURRENT_RACE_RULES_REVISION).
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
@@ -99,10 +99,15 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * aktuel for de loeb der starter ved genstarten. Loeb der allerede er bundet
  * til orders_gc_v1 (eller legacy) faerdiggoeres paa den.
  *
- * "orders_gc_v3" (#6187) er bygget, men IKKE aktuel: skiftet hertil er et
- * eksplicit ejer-go (og migrationen 2026-10-05 skal vaere applied foer).
+ * "orders_gc_v3" (#6187) er bygget, men aldrig aktuel: den indgaar i
+ * official_times_v2.
+ *
+ * "official_times_v2" siden ejer-go 9/10 (#6199): v3-pakken + den samlede
+ * tidsmodel er aktuel for ALLE loeb hvis foerste etape claimes efter deploy
+ * (Tour de l'Hexagone inkl.). Loeb der allerede er bundet til orders_gc_v2
+ * faerdiggoeres paa den.
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "orders_gc_v2";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v2";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;

@@ -40,7 +40,7 @@ test("legacy revisions retain their existing capped ranked bytes", () => {
 test("official_times_v1 branches from v2 mechanics and is never the activation default", () => {
   assert.equal(isKnownRulesRevision(revision), true);
   assert.equal(ordersGcGeneration(revision), 2);
-  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
+  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision);
   assert.equal(resolveRaceRulesRevision({ race: { stages_completed: 0 }, firstStageClaim: true, storedRevision: null, currentRevision: revision }), revision);
   for (const storedRevision of ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3"]) {
     assert.equal(resolveRaceRulesRevision({ race: { stages_completed: 1 }, firstStageClaim: true, storedRevision, currentRevision: revision }), storedRevision);
