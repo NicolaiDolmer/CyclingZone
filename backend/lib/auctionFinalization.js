@@ -175,24 +175,24 @@ async function closeAuction({
   );
 }
 
-// #6320: findes der en 'sold'-stemplet academy_graduation-række for (hold,
-// rytter)? Det er kendetegnet for en graduate-auktion (createGraduateAuction via
-// resolveGraduation → finishGraduation 'sold'). Et frivilligt #3650-salg af egen
-// akademirytter har ingen. Samme opslag som restampSoldGraduation bruger, så de
-// to altid er enige om hvilken række der hører til auktionen. Kaster ved
-// læsefejl (expectMaybeSingle) — kalderen ligger før enhver skrivning.
+// #6320: står rytterens NYESTE academy_graduation-række for (hold, rytter) som
+// 'sold'? Det er kendetegnet for en løbende graduate-auktion (createGraduateAuction
+// via resolveGraduation → finishGraduation 'sold'). Et frivilligt #3650-salg af
+// egen akademirytter har ingen. Kun den nyeste række tæller (én pr. sæson,
+// #4484): en ældre 'sold'-række der aldrig blev restemplet må ikke gøre en
+// senere frivillig auktion til en graduate-auktion. Kaster ved læsefejl
+// (expectMaybeSingle) — kalderen ligger før enhver skrivning.
 async function hasSoldGraduationRow(supabase, { teamId, riderId }) {
   const row = await expectMaybeSingle(
     supabase
       .from("academy_graduation")
-      .select("id")
+      .select("status")
       .eq("team_id", teamId)
       .eq("rider_id", riderId)
-      .eq("status", "sold")
       .order("created_at", { ascending: false })
       .limit(1)
   );
-  return Boolean(row);
+  return row?.status === "sold";
 }
 
 async function resolveAuctionSellerContext({ supabase, auction }) {

@@ -2584,6 +2584,9 @@ for (const [label, seniorCount, row] of [
   ["ingen grad-række, plads i seniortruppen", 12, null],
   ["ingen grad-række, FULD seniortrup", 30, null],
   ["kun en PENDING grad-række (override-vindue)", 30, { id: "grad-pending", status: "pending" }],
+  // Nyeste række er allerede afgjort (fx en tidligere graduate-auktion der blev
+  // restemplet) — en ældre ikke-restemplet 'sold'-række må ikke tælle.
+  ["nyeste grad-række er 'promoted'", 30, { id: "grad-promoted", status: "promoted" }],
 ]) {
   test(`#6320 usolgt frivillig auktion på egen akademirytter (${label}): rytteren bliver, intet flyttes`, async () => {
     const riderUpdates = [];
