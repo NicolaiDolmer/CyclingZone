@@ -92,8 +92,8 @@ test("an unreadable stages_completed counts as started", () => {
   assert.equal(raceHasStarted({ stages_completed: "0" }), false);
 });
 
-test("new races are bound to orders_gc_v2 since the owner activated the mountain selection (2/10, #6084)", () => {
-  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
+test("new races are bound to official_times_v2 since the owner activated the Tour revision (9/10, #6199)", () => {
+  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v2");
 });
 
 test("only a missing-column error degrades to legacy", () => {
@@ -239,8 +239,8 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
   assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2"]);
-  // Ejer-go 2/10: nye loeb bindes til v2; loeb bundet til v1 beholder v1.
-  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
+  // Ejer-go 9/10: nye loeb bindes til official_times_v2; loeb bundet til v2 beholder v2.
+  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v2");
 });
 
 test("#6084: a race stored on orders_gc_v2 keeps it; a new race binds to v2 only when v2 is current", () => {
@@ -284,9 +284,9 @@ test("#6284/#6199: the v3 migration excludes official_times; the official-times 
 
 // ── #6187: orders_gc_v3 (orders_gc_v2 + eget hold jagter aldrig sine egne) ──────
 
-test("#6187: orders_gc_v3 is known but NOT current (the flip is owner-only)", () => {
+test("#6187: orders_gc_v3 is known but never current (official_times_v2 includes it)", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v3"), true);
-  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
+  assert.notEqual(CURRENT_RACE_RULES_REVISION, "orders_gc_v3");
   assert.equal(
     resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "orders_gc_v3", currentRevision: "orders_gc_v2" }),
     "orders_gc_v3",
@@ -333,8 +333,12 @@ test("#6199: official times and the shared clock belong to exactly the official-
   }
 });
 
-test("#6199: official_times_v2 is NOT current (the flip is owner-only) but a pinned race keeps it", () => {
-  assert.equal(CURRENT_RACE_RULES_REVISION, "orders_gc_v2");
+test("#6199: official_times_v2 is current (owner-go 9/10); a race pinned to orders_gc_v2 keeps it", () => {
+  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v2");
+  assert.equal(
+    resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "orders_gc_v2", currentRevision: CURRENT_RACE_RULES_REVISION }),
+    "orders_gc_v2",
+  );
   assert.equal(
     resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "official_times_v2", currentRevision: "orders_gc_v2" }),
     "official_times_v2",
