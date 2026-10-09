@@ -16,7 +16,8 @@ import { riderSuitability } from "../../lib/suitability.js";
 import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { mobileRaceWindow, shiftMobileRaceWindow } from "../../lib/seasonMatrixMobile.ts";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
-import { fitTier } from "../../lib/raceHubLogic.js";
+import { fitTier, trainNowLockSummary } from "../../lib/raceHubLogic.js";
+import TrainNowLockBanner from "./TrainNowLockBanner.jsx"; // #6383
 import { Spinner, EmptyState, ErrorState, Button, Segmented, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
 import SeasonMatrixCellPopover from "./SeasonMatrixCellPopover.jsx";
 import {
@@ -109,6 +110,14 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   }, [data]);
   const riders = useMemo(() => [...(data?.riders ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [data]);
   const raceById = useMemo(() => new Map(races.map((r) => [r.id, r])), [races]);
+  // #6383: Train now-låsen pr. løb (ryttere der har trænet i dag er afgjort for løbet).
+  // Samme kilde og regel som udtagelsespanelet (#6139); kun ryttere med lås er låst.
+  const trainNowLocks = useMemo(
+    () => new Map(Object.entries(data?.trainNowLockByRace ?? {}).map(([raceId, lock]) => [raceId, new Set(lock?.riderIds ?? [])])),
+    [data],
+  );
+  const trainNowSummary = useMemo(() => trainNowLockSummary(Object.values(data?.trainNowLockByRace ?? {})), [data]);
+  const isTrainedToday = (raceId, riderId) => trainNowLocks.get(raceId)?.has(riderId) === true;
   // Akse-konvertering (kontrakt #7, ejer-låst 27-28/8, spillertest-punkt 6): ÉN
   // kolonne pr. (løb, løbsdag) — se seasonMatrix.js's fil-header for begrundelsen.
   const dayColumns = useMemo(() => buildDayColumns(races), [races]);
@@ -322,6 +331,11 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         )}
       </div>
 
+      {/* #6383: låsen står FØR man prøver at gemme (samme banner som udtagelsespanelet). */}
+      {!readOnly && trainNowSummary.count > 0 && (
+        <TrainNowLockBanner pressedAt={trainNowSummary.pressedAt} testId="season-matrix-train-now-lock" />
+      )}
+
       {/* #5124, ejerens A-go 28/9: mobil beholder rytter × løbsdag, men ét løb
           og tre løbsdage ad gangen. Dato og game_day vises hver for sig.
           Samme draft, popover og Save plan bruges på begge layouts. */}
@@ -378,20 +392,29 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             return <tr key={rider.id}>
               <td className="border-b border-r border-cz-border px-2 py-2 align-middle text-xs font-medium text-cz-1 wrap-break-word">
                 {rider.name}
+                {isTrainedToday(selectedMobileRace.id, rider.id) && (
+                  <span className="mt-0.5 flex items-center gap-1 text-2xs font-normal text-cz-3">
+                    <LockIcon size={9} aria-hidden="true" />{t("selection.trainNowLock.rider")}
+                  </span>
+                )}
                 {loadDays != null && <span className="block text-2xs font-normal tabular-nums text-cz-3">{t("matrix.loadSuffix", { count: loadDays })}</span>}
               </td>
               {mobileWindow.days.map((day) => {
                 const peak = peakDaysByRider.get(rider.id)?.get(day.gameDay);
                 const hasError = saveError?.raceId === selectedMobileRace.id;
                 const isDraftCell = dirtyIdSet.has(selectedMobileRace.id);
+                const trainedToday = isTrainedToday(selectedMobileRace.id, rider.id); // #6383
                 return <td key={day.key} className={`border-b border-cz-border p-0 text-center ${peak ? "bg-cz-accent/10" : ""} ${hasError ? "outline-solid outline-1 -outline-offset-1 outline-cz-danger" : isDraftCell ? "outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : ""}`}>
                   <button
                     type="button"
                     onClick={(e) => openCellPopover(e, { kind: role == null ? "empty" : "filled", raceId: selectedMobileRace.id, riderId: rider.id })}
-                    title={role == null ? t("matrix.cellEmptyAria", { rider: rider.name, race: selectedMobileRace.name }) : t("matrix.cellFilledAria", { rider: rider.name, race: selectedMobileRace.name, role: t(`tacticsOrders.roleLabel.${role}`) })}
-                    className={`w-full min-h-10 px-1 text-xs tabular-nums ${role == null ? "text-cz-3" : roleBadgeClass(role)} ${selectedMobileRace.withdrawn ? "opacity-40" : ""}`}
+                    title={[
+                      role == null ? t("matrix.cellEmptyAria", { rider: rider.name, race: selectedMobileRace.name }) : t("matrix.cellFilledAria", { rider: rider.name, race: selectedMobileRace.name, role: t(`tacticsOrders.roleLabel.${role}`) }),
+                      trainedToday ? t("selection.trainNowLock.rider") : null,
+                    ].filter(Boolean).join(" · ")}
+                    className={`w-full min-h-10 px-1 text-xs tabular-nums ${role == null ? "text-cz-3" : roleBadgeClass(role)} ${selectedMobileRace.withdrawn ? "opacity-40" : ""} ${trainedToday ? "opacity-60 saturate-50" : ""}`}
                   >
-                    {role == null ? (fit ?? "+") : (selectedMobileRace.restGameDays?.includes(day.gameDay) ? <LockIcon size={11} className="mx-auto" /> : <>{ROLE_LETTER[role]}{fit != null && <span className={`ms-1 ${FIT_TEXT[fitTier(fit)]}`}>{fit}</span>}</>)}
+                    {role == null ? (trainedToday ? <LockIcon size={11} className="mx-auto" aria-hidden="true" /> : (fit ?? "+")) : (selectedMobileRace.restGameDays?.includes(day.gameDay) ? <LockIcon size={11} className="mx-auto" /> : <>{ROLE_LETTER[role]}{fit != null && <span className={`ms-1 ${FIT_TEXT[fitTier(fit)]}`}>{fit}</span>}</>)}
                   </button>
                 </td>;
               })}
@@ -513,6 +536,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                         const fit = lens === "routeMatch" && race && rider.abilities ? riderSuitability(rider.abilities, race.demandVector).score : null;
                         const isDraftCell = race && dirtyIdSet.has(race.id);
                         const hasError = race && saveError?.raceId === race.id;
+                        const trainedToday = race ? isTrainedToday(race.id, rider.id) : false; // #6383
                         return (
                           <td
                             key={seg.day}
@@ -526,10 +550,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                               type="button"
                               disabled={!race}
                               onClick={(e) => race && openCellPopover(e, { kind: "empty", raceId: race.id, riderId: rider.id })}
-                              title={[race ? t("matrix.cellEmptyAria", { rider: rider.name, race: race.name }) : null, peakTitle(peak)].filter(Boolean).join(" · ") || undefined}
-                              className={`w-full h-7 flex items-center justify-center text-3xs tabular-nums ${race ? "hover:bg-cz-subtle cursor-pointer" : ""} ${fit != null ? FIT_TEXT[fitTier(fit)] : "text-transparent"}`}
+                              title={[race ? t("matrix.cellEmptyAria", { rider: rider.name, race: race.name }) : null, trainedToday ? t("selection.trainNowLock.rider") : null, peakTitle(peak)].filter(Boolean).join(" · ") || undefined}
+                              className={`w-full h-7 flex items-center justify-center text-3xs tabular-nums ${race ? "hover:bg-cz-subtle cursor-pointer" : ""} ${trainedToday ? "bg-cz-subtle text-cz-3 opacity-60" : fit != null ? FIT_TEXT[fitTier(fit)] : "text-transparent"}`}
                             >
-                              {fit != null ? fit : "·"}
+                              {trainedToday ? <LockIcon size={10} aria-hidden="true" /> : fit != null ? fit : "·"}
                             </button>
                           </td>
                         );
@@ -541,6 +565,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       const peakInfo = peakHit ? peakTitle(peakDays.get(peakHit)) : null;
                       const isDraftCell = dirtyIdSet.has(race.id);
                       const hasError = saveError?.raceId === race.id;
+                      const trainedToday = isTrainedToday(race.id, rider.id); // #6383
                       return (
                         <td
                           key={race.id}
@@ -561,9 +586,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                             title={[
                               t("matrix.cellFilledAria", { rider: rider.name, race: race.name, role: t(`tacticsOrders.roleLabel.${role}`) }),
                               race.withdrawn ? t("matrix.withdrawnHint") : null,
+                              trainedToday ? t("selection.trainNowLock.rider") : null,
                               peakInfo,
                             ].filter(Boolean).join(" · ")}
-                            className={`w-full h-7 flex cursor-pointer hover:opacity-90 ${race.withdrawn ? "opacity-40 saturate-50" : ""}`}
+                            className={`w-full h-7 flex cursor-pointer hover:opacity-90 ${race.withdrawn || trainedToday ? `${race.withdrawn ? "opacity-40" : "opacity-60"} saturate-50` : ""}`}
                           >
                             {lens === "routeMatch" ? (
                               <span className={`flex-1 flex items-center justify-center gap-1 text-3xs font-semibold ${roleBadgeClass(role)}`}>
@@ -618,9 +644,12 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         // viser kun årsagen. PUT /races/selection/bulk afviser alligevel hele batchen
         // med 409 selection_withdrawn (#4306-gaten), så en redigerbar celle her var en
         // blindgyde der OGSÅ blokerede spillerens øvrige, lovlige ændringer i samme gem.
+        // #6383: trænet i dag (Train now) — cellen er afgjort og viser kun årsagen, som
+        // udtagelsespanelet; serveren afviser både tilføjelse og fjernelse af en låst rytter.
         const lockedReasonText = readOnly
           ? t("seasonView.readOnlyHint")
-          : race.withdrawn ? t("matrix.withdrawnHint") : null;
+          : race.withdrawn ? t("matrix.withdrawnHint")
+            : isTrainedToday(race.id, rider.id) ? t("selection.trainNowLock.body") : null;
         return (
           <SeasonMatrixCellPopover
             anchorEl={popoverAnchor}
