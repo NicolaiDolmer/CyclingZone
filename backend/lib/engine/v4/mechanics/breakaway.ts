@@ -84,6 +84,7 @@ import {
   applySmallBreakPullCost,
   breakawayMaxSizeV3,
   breakawaySizeProfileV3,
+  DANGEROUS_ATTEMPT_TUNING,
   effectiveTryBreakByRider,
   resolveMorningBreakFormation,
   smallBreakPaceV3,
@@ -394,6 +395,8 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     roll: (stream, riderId) => ctx.rngFor(stream === "attempt" ? "breakaway_attempt" : "breakaway_attempt_success", riderId)(),
     maxSize: Math.min(ctx.ordersGcV3 === true ? breakawayMaxSizeV3(ctx.route.profile_type) : MAX_BREAKAWAY_SIZE, formationRiders.length - 1),
     ...(dangerTeams ? { dangerTeams } : {}),
+    // #5578 robust (KUN official_times_v2): klassementets forreste moeder den haardeste modstand.
+    ...(dangerTeams && gcContext ? rankedFormationPressure(gcContext, timeModelTuningFor(ctx).gcDanger) : {}),
     ...(ctx.ordersGcV3 === true && breakawaySizeProfileV3(ctx.route.profile_type) ? { sizeProfile: breakawaySizeProfileV3(ctx.route.profile_type)! } : {}), // #6201
   });
   if (formation.attempted.length === 0) return { state, events };
@@ -457,6 +460,20 @@ function formationDangerLookup(
     gcContext, riderId, teamIds, groups: [sourceGroup], entrants: ctx.entrants, route: ctx.route,
     km: ctx.route.segments[0]?.from_km ?? 0, racingRiderIds, dangerModel,
   });
+}
+
+/**
+ * #5578 robust (KUN official_times_v2): et forsoeg fra en af klassementets
+ * forreste (rang <= rivalRankAlways) moeder de forsvarende holds modstand med
+ * sin egen vaegt; alle andre farlige forsoeg som under orders_gc_v3. Uden
+ * knappen (orders_gc_v3 og aeldre): intet (bit-identisk).
+ */
+export function rankedFormationPressure(gcContext: GcContext, danger: GcDangerTuning | null): { dangerPressureWeight?: (riderId: string) => number } {
+  const weight = danger?.formationRankedPressureWeight;
+  const rankLimit = danger?.rivalRankAlways;
+  if (typeof weight !== "number" || typeof rankLimit !== "number" || gcContext.status !== "standings") return {};
+  const ranked = new Set(gcContext.standings.filter((s) => s.rank <= rankLimit).map((s) => s.rider_id));
+  return { dangerPressureWeight: (riderId) => (ranked.has(riderId) ? weight : DANGEROUS_ATTEMPT_TUNING.pressureWeight) };
 }
 
 // ── Jagt-interesse (#2416) ─────────────────────────────────────────────────────
@@ -1569,8 +1586,16 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #5978 (KUN orders_gc_v3): ogsaa et hold der holder snoren paa en rytter i udbruddet.
     const inBreak = (d: TeamGcDecision) => d.threat.threat_rider_ids.some((id) => breakaway.rider_ids.includes(id))
       || (ordersGcV3 && (d.threat.leash_rider_ids ?? []).some((id) => breakaway.rider_ids.includes(id)));
+    // #5578 robust (KUN official_times_v2): paa en profil med troje-tolerance goer
+    // en trussel kun mod troejen (en svagere udbryder) ikke udbruddet farligt og
+    // bremser ikke; den lofter kun forspringet (snoren i gcThreat). Ellers som foer.
+    const letGoTuning = timeModelTuningFor(ctx);
+    const jerseyTolerance = letGoTuning.gcDanger?.jerseyAllowanceSeconds?.[ctx.route.profile_type] !== undefined;
+    const letGoDecisions = gcSetup && jerseyTolerance
+      ? gcSetup.decisions.filter((d) => !(d.threat.reason === "leader_jersey_at_risk" && d.threat.leash_hold !== true))
+      : gcSetup?.decisions ?? [];
     const dangerous = gcSetup !== null
-      && letGoBrakingTeams(gcSetup.decisions.filter(inBreak), chaseGroup.id, ordersGcV3).size > 0;
+      && letGoBrakingTeams(letGoDecisions.filter(inBreak), chaseGroup.id, ordersGcV3).size > 0;
     // #6088: et udbrud med staerke ryttere faar ikke det ekstra loft.
     const strength = ordersGcV1 ? breakawayStrength(breakaway.rider_ids, fieldRiderIds, ctx.entrants) : undefined;
     // #6073 (KUN orders_gc_v2 paa rullende): mindre ekstra plads (rollingBreakaway.ts).
@@ -1610,7 +1635,6 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       : segmentLengthKm;
     let maxGapSeconds = 0;
     // #5578: official_times_v2's kalibrerede lad-gaa-knapper (timeModel.ts); neutrale ellers.
-    const letGoTuning = timeModelTuningFor(ctx);
     if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length, letGoTuning.letGoMinChaseRiders ?? undefined)) {
       const finaleFactor = ctx.route.finale_type ? letGoTuning.letGoFinaleFactorByFinale[ctx.route.finale_type] : undefined;
       maxGapSeconds = letGoMaxGapSeconds({
@@ -1629,8 +1653,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       // #5578: kalibreret pr. etapeprofil mod udbrudsmaalene.
       maxGapSeconds *= letGoTuning.letGoMaxGapScaleByProfile[ctx.route.profile_type] ?? letGoTuning.letGoMaxGapScale;
       // #5578 (KUN official_times_v2, udbrudsmaal 6): et farligt udbrud vokser aldrig
-      // forbi det mindste forspring de bremsende hold tolererer.
-      if (letGoTuning.letGoCapAtTolerated && dangerous && gcSetup) {
+      // forbi det mindste forspring de bremsende hold tolererer. #5578 robust: ogsaa
+      // troejens tolerance lofter (alle reagerende hold, ikke kun de farlige).
+      if (letGoTuning.letGoCapAtTolerated && gcSetup) {
         const tolerated = [...letGoBrakingTeams(gcSetup.decisions.filter(inBreak), chaseGroup.id, ordersGcV3).values()];
         if (tolerated.length > 0) maxGapSeconds = Math.min(maxGapSeconds, Math.max(INITIAL_GAP_SECONDS, Math.min(...tolerated)));
       }
@@ -1651,7 +1676,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     workByChaseGroup.set(chaseGroup.id, { plan: mergedPlan, km: Math.max(priorWork?.km ?? 0, chaseKm) });
     if (ordersGcV3) planByBreakaway.set(breakaway.id, chasePlan); // #6187: filmens "hvem hentede" pr. udbrud
     // #5955 (ejer-valg B, KUN orders_gc_v1 via gcSetup): GC-bremsen i lad-gaa-fasen.
-    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(gcSetup.decisions, chaseGroup.id, ordersGcV3), entrants: ctx.entrants, riders: state.riders, ...(ordersGcV3 ? { maxBrake: LET_GO_BRAKE_TUNING.leashMaxBrake } : {}) }) : null;
+    const brake = gcSetup && letGoKm > 0 ? letGoBrake({ chaserWork: chasePlan.chaserWork, braking: letGoBrakingTeams(letGoDecisions, chaseGroup.id, ordersGcV3), entrants: ctx.entrants, riders: state.riders, ...(ordersGcV3 ? { maxBrake: LET_GO_BRAKE_TUNING.leashMaxBrake } : {}) }) : null;
     const braked = brake ? brakedLetGoGrowth({ separationSeconds: chaseGroup.gap_seconds - breakaway.gap_seconds, growthSeconds: letGoKm * letGoRate, fraction: brake.fraction, toleratedSeconds: brake.toleratedSeconds, ceilingSeconds: maxGapSeconds }) : null;
     if (brake && braked && braked.brakedShare > 0) {
       const priorBrake = brakeByChaseGroup.get(chaseGroup.id);

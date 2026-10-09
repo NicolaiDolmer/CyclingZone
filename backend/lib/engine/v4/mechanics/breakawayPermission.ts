@@ -288,6 +288,8 @@ export function resolveMorningBreakFormation(input: {
    * forsoeger. Udeladt = orders_gc_v1/v2-dannelsen, bit-identisk.
    */
   dangerTeams?: (riderId: string) => readonly string[];
+  /** #5578 (KUN official_times_v2): modstandens vaegt mod rytterens farlige forsoeg. Udeladt = DANGEROUS_ATTEMPT_TUNING. */
+  dangerPressureWeight?: (riderId: string) => number;
   /**
    * #6201 (KUN orders_gc_v3): profilens trin (breakawaySizeProfileV3). Udeladt
    * = orders_gc_v1/v2-dannelsen, bit-identisk.
@@ -410,7 +412,7 @@ export function resolveMorningBreakFormation(input: {
       - t.successPressureWeight * pressure
       - t.successCrowdWeight * crowd;
     const danger = dangerPressure.get(rider.rider_id);
-    const p = clamp(danger === undefined ? raw : raw - DANGEROUS_ATTEMPT_TUNING.pressureWeight * danger, pLo, pHi) * crowdScale;
+    const p = clamp(danger === undefined ? raw : raw - (input.dangerPressureWeight?.(rider.rider_id) ?? DANGEROUS_ATTEMPT_TUNING.pressureWeight) * danger, pLo, pHi) * crowdScale;
     const r = input.roll("success", rider.rider_id);
     if (r < p) successes.push({ riderId: rider.rider_id, margin: p - r, ordered });
   }
