@@ -427,16 +427,24 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           # Ingen pipe: exit-koden skal vaere probens, ikke tee's.
-          if node scripts/check-asset-miss-behaviour.mjs --carry-forward --base=https://cyclingzone.org > /tmp/carry-forward.txt 2>&1; then
-            cat /tmp/carry-forward.txt
+          # 0 = OK eller sprunget over, 1 = carry-forward maalt og fejlet,
+          # 2 = proben kunne ikke maale (lager-/netvaerksfejl).
+          set +e
+          node scripts/check-asset-miss-behaviour.mjs --carry-forward --base=https://cyclingzone.org > /tmp/carry-forward.txt 2>&1
+          CODE=$?
+          set -e
+          cat /tmp/carry-forward.txt
+          if [[ "$CODE" == "0" ]]; then
             if grep -q "SPRUNGET OVER" /tmp/carry-forward.txt; then
               echo "⏭️ **Carry-forward-probe: SPRUNGET OVER** — $(grep 'SPRUNGET OVER' /tmp/carry-forward.txt | head -1 | sed 's/^CARRY-FORWARD-PROBE SPRUNGET OVER: //')" >> "$GITHUB_STEP_SUMMARY"
             else
               echo "✅ **Carry-forward-probe: OK** — filer fra den forrige release svarer 200 med rigtig type efter dette deploy." >> "$GITHUB_STEP_SUMMARY"
             fi
-          else
-            cat /tmp/carry-forward.txt
+          elif [[ "$CODE" == "1" ]]; then
             echo "❌ **Carry-forward-probe: FEJLET** — en fane fra den forrige release kan ikke hente sine chunks. Se loggen (#5162)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
+            echo "⚠️ **Carry-forward-probe: KUNNE IKKE MAALE** (exit $CODE) — lager- eller netvaerksfejl, ikke en maalt carry-forward-fejl. Se loggen (#5162)." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 

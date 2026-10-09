@@ -269,7 +269,15 @@ async function main() {
 
   if (args["carry-forward"]) {
     const sample = Number.parseInt(args.sample, 10);
-    const result = await runCarryForwardProbe({ base, limit: Number.isFinite(sample) && sample > 0 ? sample : CARRY_FORWARD_SAMPLE });
+    let result;
+    try {
+      result = await runCarryForwardProbe({ base, limit: Number.isFinite(sample) && sample > 0 ? sample : CARRY_FORWARD_SAMPLE });
+    } catch (err) {
+      // Exit 2 = proben selv kunne ikke maale (lager-/netvaerksfejl, ugyldigt
+      // manifest). Adskilt fra exit 1 = carry-forward maalt og fejlet.
+      console.log(`CARRY-FORWARD-PROBE KUNNE IKKE KOERE: ${err?.message || err}`);
+      process.exit(2);
+    }
     if (result.status === "failed") process.exit(1);
     return;
   }
