@@ -649,6 +649,8 @@ export default function RaceHubBoard() {
     const source = payload.fromRaceId ? effectiveColumns.find((c) => c.id === payload.fromRaceId) : null;
     if (source && isTrainNowLockedInColumn(source, payload.riderId)) return;
     const target = effectiveColumns.find((c) => c.id === toRaceId);
+    // ...og aldrig ind i et løb hvor han er låst: afvis FØR kilden røres, ellers mister kladden ham.
+    if (target && isTrainNowLockedInColumn(target, payload.riderId)) return;
     const targetFull = target ? target.counts.selected >= (target.size?.max ?? Infinity) : false;
     const targetLocked = target ? (!!target.lineup_locked || (target.stages_completed ?? 0) > 0 || !!target.withdrawn) : false;
     const action = dropAction({ fromRaceId: payload.fromRaceId, toRaceId, toKind, targetFull, targetLocked });
