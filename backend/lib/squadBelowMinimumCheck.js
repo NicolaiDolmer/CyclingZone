@@ -121,7 +121,7 @@ export function buildSquadBelowMinimumNotification({
   };
 }
 
-async function defaultFetchHumanTeams({ supabase }) {
+export async function defaultFetchHumanTeams({ supabase }) {
   return fetchAllRows(() =>
     applyHumanTeamFilter(
       supabase.from("teams").select(`id, name, user_id, ${SQUAD_POOL_COLUMN.u23}, ${SQUAD_POOL_COLUMN.junior}`)
