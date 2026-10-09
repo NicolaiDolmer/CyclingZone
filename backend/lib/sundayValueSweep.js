@@ -4,7 +4,8 @@
 // kl. 06 dansk tid. Før dette lå genberegningen som et efterhængt trin i
 // trainingSweep.js og arvede DENS vindue (kl. 22), hvilket betød at værdierne
 // først flyttede sig søndag aften. Kadencen (kun søndag) er uændret fra #3448,
-// 6/8, kun tidspunktet og ejerskabet flytter sig hertil.
+// 6/8, kun tidspunktet og ejerskabet flytter sig hertil. (#5842 flytter
+// tidspunktet igen, til eftermiddagen; se TIDSPUNKTET nedenfor.)
 //
 // RÆKKEFØLGEN ER HELE POINTEN (uændret fra trainingSweep.js's tidligere
 // kommentar): refreshChangedRiderValues genberegner base_value RENT fra v4 og
@@ -40,19 +41,35 @@
 // marketValueSundaySweep har fortsat sit EGET flag (market_value_sweep) - det
 // er den sweeps egen nødbremse og har intet med træning at gøre.
 //
-// no_active_season er derimod BEVIDST ikke en gate her (samme review). Den var
-// et biprodukt af at refresh'en hang på en sweep der havde brug for sæsonen til
-// selve træningen; værdi-refresh'en har siden cutover-fixet 23/8 (#4151) sit
-// eget korrekte anker uden aktiv sæson (seneste completed sæson, aldrig '1').
-// En gate ville koste en hel uges værdiopdatering hver gang en søndag falder i
-// hullet mellem "Afslut sæson" og transitionen, uden at beskytte noget.
+// TIDSPUNKTET (#5842, ejer 28/9): ét fast tidspunkt hver søndag, et sted
+// mellem kl. 14 og 20 dansk tid, aldrig om morgenen. Timen bor i
+// economyConstants.js (SUNDAY_VALUE_FROM_HOUR). Det præcise klokkeslæt
+// bekræftes af ejeren; 14 er pladsholderen indtil da.
+//
+// SKIFTEDAGEN (#5842, ejer 28/9: "ingen to opdateringer næste sæsonskifte").
+// Sæsonskiftet skriver selv ingen værdier længere (riderProgressionEngine.js),
+// så søndagen er den ENESTE værdiskrivning, og på skiftedagen skal den ligge
+// EFTER det fuldførte skifte, så værdierne regnes på den nye sæsons evner og
+// alder. Jobbet springer derfor over, uden at claime dagen, så længe skiftet
+// kører eller ikke er fuldført (resolveTransitionGate nedenfor):
+//   · den nyeste sæson er afsluttet, og ingen ny sæson er aktiv,
+//   · den aktive sæsons sidste planlagte løb ligger i dag eller tidligere
+//     (skiftet står for døren),
+//   · transitionens seneste fase-anker (admin_log, seasonTransitionPhaseLog.js)
+//     inden for TRANSITION_ANCHOR_LOOKBACK_HOURS er 'started' eller 'failed'.
+// Det timelige tick kører så søndagen, så snart skiftet er fuldført. Bliver
+// skiftet ikke fuldført samme søndag, springes den uges opdatering over, og
+// næste søndag tager den. Det erstatter den tidligere regel (#4419-review
+// 31/8) om at no_active_season ikke måtte være en gate: ejeren har siden
+// besluttet, at én værdiskrivning efter skiftet vejer tungere end en uge uden.
 
 import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
 import { runMarketValueSundaySweep } from "./marketValueSundaySweep.js";
 import { captureException } from "./sentry.js";
-import { SUNDAY_VALUE_FROM_HOUR } from "./economyConstants.js";
+import { ADMIN_ACTION_TYPE, SUNDAY_VALUE_FROM_HOUR } from "./economyConstants.js";
 import { nextPhaseStep, readPhaseStepStrict, writePhaseStep } from "./riderValuationModelSelect.js";
+import { TRANSITION_PHASE_LOG_SOURCE, TRANSITION_PHASE_STATUS } from "./seasonTransitionPhaseLog.js";
 
 // Genudstilles her, men bor i economyConstants.js: den fil har ingen imports,
 // så frontendens paritetstest kan importere tallet i CI (se kommentaren der).
@@ -60,6 +77,76 @@ export { SUNDAY_VALUE_FROM_HOUR };
 export const RIDER_VALUE_SUNDAY_LOG_TABLE = "rider_value_sunday_log";
 
 const noop = () => {};
+
+// Hvor langt tilbage et ufuldført fase-anker tæller som "skiftet kører". Et
+// skifte tager minutter; et 'started' uden 'completed' efter et døgn er en
+// død proces, som ikke må spærre værdierne for altid. Inden for døgnet
+// spærrer det, også et 'failed' fra aftenen før.
+export const TRANSITION_ANCHOR_LOOKBACK_HOURS = 24;
+
+/**
+ * #5842 · Ren beslutning: må søndagens værdier skrives nu, eller kører
+ * sæsonskiftet / står det for døren? Se headeren for reglerne.
+ *
+ * @param {{ latestSeason?: {status?: string}|null, lastRaceAt?: string|Date|null,
+ *   latestAnchor?: {status?: string, created_at?: string}|null, runDate: string }} state
+ * @returns {{ blocked: boolean, reason?: string }}
+ */
+export function resolveTransitionGate({ latestSeason = null, lastRaceAt = null, latestAnchor = null, runDate } = {}) {
+  if (latestAnchor?.status === TRANSITION_PHASE_STATUS.STARTED) return { blocked: true, reason: "transition_running" };
+  if (latestAnchor?.status === TRANSITION_PHASE_STATUS.FAILED) return { blocked: true, reason: "transition_failed" };
+  if (latestSeason && latestSeason.status !== "active") return { blocked: true, reason: "transition_pending" };
+  if (latestSeason && lastRaceAt) {
+    const lastRace = lastRaceAt instanceof Date ? lastRaceAt : new Date(lastRaceAt);
+    if (!Number.isNaN(lastRace.getTime()) && copenhagenDateString(lastRace) <= runDate) {
+      return { blocked: true, reason: "transition_pending" };
+    }
+  }
+  return { blocked: false };
+}
+
+// Henter det resolveTransitionGate skal bruge. KASTER ved DB-fejl: kalderen
+// springer så over UDEN at claime dagen, og næste tick prøver igen. En
+// værdiskrivning midt i et skifte er værre end en time senere.
+async function defaultLoadTransitionState({ supabase, now }) {
+  const { data: latestSeason, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, number, status")
+    .neq("status", "upcoming")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (seasonError) throw new Error(`seasons: ${seasonError.message}`);
+
+  let lastRaceAt = null;
+  if (latestSeason?.status === "active") {
+    const { data: lastRace, error: raceError } = await supabase
+      .from("races")
+      .select("scheduled_for")
+      .eq("season_id", latestSeason.id)
+      .not("scheduled_for", "is", null)
+      .order("scheduled_for", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (raceError) throw new Error(`races: ${raceError.message}`);
+    lastRaceAt = lastRace?.scheduled_for ?? null;
+  }
+
+  const since = new Date(now.getTime() - TRANSITION_ANCHOR_LOOKBACK_HOURS * 3600 * 1000).toISOString();
+  const { data: anchor, error: anchorError } = await supabase
+    .from("admin_log")
+    .select("created_at, meta")
+    .eq("action_type", ADMIN_ACTION_TYPE.MANUAL_OVERRIDE)
+    .eq("meta->>source", TRANSITION_PHASE_LOG_SOURCE)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (anchorError) throw new Error(`admin_log: ${anchorError.message}`);
+  const latestAnchor = anchor ? { status: anchor.meta?.status ?? null, created_at: anchor.created_at } : null;
+
+  return { latestSeason, lastRaceAt, latestAnchor };
+}
 
 // KUN ægte "tabellen findes ikke". Postgres' 42P01 og PostgREST's PGRST205
 // (table not found in schema cache) er de to sande koder. Den tidligere brede
@@ -121,8 +208,8 @@ async function defaultCompleteRun({ supabase, runDate, summary }) {
 
 /**
  * Kør søndagens værdi-pipeline. No-op hvis: ikke søndag (dansk tid), før
- * kl. 06, log-tabellen mangler, eller dagen
- * allerede er kørt. Fejler v4-refresh'en, frigives dagens claim igen, og
+ * SUNDAY_VALUE_FROM_HOUR, sæsonskiftet kører eller står for døren (#5842),
+ * log-tabellen mangler, eller dagen allerede er kørt. Fejler v4-refresh'en, frigives dagens claim igen, og
  * jobbet svarer skipped:"value_refresh_failed", så næste tick prøver forfra.
  *
  * @param {object} args
@@ -144,6 +231,7 @@ export async function runSundayValueSweep({
   completeRun = defaultCompleteRun,
   readPhaseStep = readPhaseStepStrict,
   advancePhaseStep = writePhaseStep,
+  loadTransitionState = defaultLoadTransitionState,
   log = noop,
   captureExceptionFn = captureException,
 } = {}) {
@@ -157,6 +245,30 @@ export async function runSundayValueSweep({
   const runDate = copenhagenDateString(now);
   if (copenhagenWeekdayKey(runDate) !== "sun") return { ran: false, skipped: "not_sunday" };
   if (copenhagenHour(now) < SUNDAY_VALUE_FROM_HOUR) return { ran: false, skipped: "before_window" };
+
+  // #5842 · Skiftedagen: ingen værdiskrivning mens sæsonskiftet kører eller
+  // står for døren. Tjekket ligger FØR claim'et, så dagen stadig er fri, når
+  // skiftet er fuldført, og et senere tick samme søndag kan køre.
+  let transitionGate;
+  try {
+    transitionGate = resolveTransitionGate({ ...(await loadTransitionState({ supabase, now })), runDate });
+  } catch (err) {
+    log(`sunday-value-sweep skippet: saesonskifte-tjek fejlede: ${err.message}`);
+    captureExceptionFn(err, { tags: { cron: "sunday-value-sweep", stage: "transition-gate" } });
+    return { ran: false, skipped: "transition_check_failed", runDate };
+  }
+  if (transitionGate.blocked) {
+    log(`sunday-value-sweep venter paa saesonskiftet: ${transitionGate.reason}`);
+    if (transitionGate.reason === "transition_failed") {
+      // Et fejlet skifte spærrer værdierne indtil det er kørt færdigt. Det
+      // skal kunne ses, ikke ligne en almindelig søndag uden kørsel.
+      captureExceptionFn(
+        new Error("sunday-value-sweep: saesonskiftet fejlede, vaerdier venter til det er fuldfoert"),
+        { tags: { cron: "sunday-value-sweep", stage: "transition-gate" } },
+      );
+    }
+    return { ran: false, skipped: transitionGate.reason, runDate };
+  }
 
   const { claimed, tableMissing } = await claimRunDate({ supabase, runDate });
   if (tableMissing) {
@@ -191,8 +303,8 @@ export async function runSundayValueSweep({
     // ville skrive et blend fra dette tick væk igen (samme rækkefølge-fejlmode
     // som headeren beskriver). Retry er sikker, også når refresh'en nåede at
     // skrive nogle ryttere: den genberegner rent fra v4 og skriver kun diffs.
-    // Loftet er cadencen selv — det timelige tick giver højst ~18 forsøg inde i
-    // søndagens vindue, færre end de ~24 den 5-minutters sweep gav før #4419.
+    // Loftet er cadencen selv — det timelige tick giver et forsøg pr. time fra
+    // SUNDAY_VALUE_FROM_HOUR til midnat (#5842: ca. 10 med kl. 14).
     log(`value-refresh fejlede: ${err.message}`);
     captureExceptionFn(err, { tags: { cron: "sunday-value-sweep", stage: "value-refresh" } });
     try {
