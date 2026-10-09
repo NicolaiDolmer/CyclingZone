@@ -496,7 +496,11 @@
     "seededHint": "Shows what the rider trains now. Your first change saves it as his own plan.",
     "stageLocked": "Stage",
     "stageLockedTitle": "Locked by the race",
-    "listNote": "Tap a program to see its week. It is copied into Plan, so you can change any cell after."
+    "listNote": "Tap a program to see its week. It is copied into Plan, so you can change any cell after.",
+    "pickTarget": "Pick a rider or group first",
+    "fitsType": "Fits {type}",
+    "otherPrograms": "Other programs",
+    "current": "Current"
   },
   "dailyReceipt": {
     "status": {
