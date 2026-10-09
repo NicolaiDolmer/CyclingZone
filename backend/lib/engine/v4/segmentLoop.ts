@@ -689,6 +689,8 @@ export function neutralizeBreakawayTempoDrift(
   // stigning foer finalestigningen (mechanics/mountainSelection.ts, forslag A).
   // 0 = uaendret (stigninger beholder driften), 1 = som paa aabent terraen.
   climbNeutralShare = 0,
+  // #5578 (KUN official_times_v2): mindste jagtgruppe der er et felt (isLetGoChaseGroup).
+  minChaseRiders?: number,
 ): Map<string, GroupTempo> {
   const climbShare = kind === "climb" ? climbNeutralShare : 0;
   if (!BREAKAWAY_NEUTRAL_KINDS.has(kind) && !(climbShare > 0)) return tempoByGroup;
@@ -698,7 +700,7 @@ export function neutralizeBreakawayTempoDrift(
   for (const escape of escapes) {
     const chase = findChaseGroup(groups, escape);
     const chaseTempo = chase ? tempoByGroup.get(chase.id) : undefined;
-    if (!chase || !chaseTempo || !isLetGoChaseGroup(chase.rider_ids.length)) continue;
+    if (!chase || !chaseTempo || !isLetGoChaseGroup(chase.rider_ids.length, minChaseRiders)) continue;
     if (!(escape.gap_seconds <= chase.gap_seconds)) continue;
     const own = tempoByGroup.get(escape.id);
     if (!own || own.dtSeconds === chaseTempo.dtSeconds) continue;
@@ -872,7 +874,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     let tempoByGroup = new Map<string, GroupTempo>();
     // #6187 (KUN orders_gc_v3): egne udbrydere paa hjul foerer ikke (mechanics/breakaway.ts).
     // #5978: hooket faar samme saet (ctx.ownRidersOnWheel), ikke et nyt fra hook-tidspunktet.
-    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km, tuning }) : undefined;
+    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km, tuning, ...(sharedGroupTime ? { sharedGroupTime: true as const } : {}) }) : undefined;
     const wheelSitterIds = onWheelAtStart ? new Set(onWheelAtStart.flatMap((w) => w.rider_ids)) : undefined;
     for (const group of state.groups) {
       const tempo = computeGroupTempo(
@@ -907,7 +909,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     if (sharedGroupTime) {
       const phase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
       tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind,
-        phaseClimbNeutralShare(phase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
+        phaseClimbNeutralShare(phase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare),
+        loopTimeModel.letGoMinChaseRiders ?? undefined); // #5578: official_times_v2's egen felt-graense
+
       tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
       if (segment.kind === "descent") {
         const lengthKm = Math.max(0, segment.to_km-segment.from_km);

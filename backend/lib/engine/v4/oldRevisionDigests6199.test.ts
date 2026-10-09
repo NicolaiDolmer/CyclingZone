@@ -3,7 +3,9 @@
 // output byte for byte; official_times_v2 keeps every time, rank, group,
 // incident and passage (only its timeline events gain/lose what the issue asks).
 // Baseline: test-data/oldRevisionDigests6199.json, written from the commit
-// before the change (testUtils/oldRevisionDigests6199.ts).
+// before the change (testUtils/oldRevisionDigests6199.ts). #5578 moved
+// official_times_v2 on purpose (breakaway calibration) and re-wrote only its
+// physicsOnly digests; the complete digests of the old revisions are untouched.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

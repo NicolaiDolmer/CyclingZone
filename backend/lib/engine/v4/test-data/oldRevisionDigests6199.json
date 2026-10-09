@@ -1,6 +1,6 @@
 {
   "sourceCommit": "d62df5a86ea0221cfc1bebfcb9ba163945b65e63",
-  "note": "#6199: complete outputs of revisions that must not move, and official_times_v2 outputs without the timeline (the exact-place and regroup work changes events only).",
+  "note": "#6199: complete outputs of revisions that must not move, and official_times_v2 outputs without the timeline (the exact-place and regroup work changes events only). #5578 re-baselined official_times_v2 physicsOnly after the deliberate breakaway calibration (official_times_v2 only); complete digests unchanged.",
   "complete": {
     "legacy": {
       "flat#2@6199-frozen-a": "a87519e3fc67e2fa4a29bd520285f49d09cda1c5c4e51050c6be4757c0a7f523",
@@ -145,32 +145,32 @@
   },
   "physicsOnly": {
     "official_times_v2": {
-      "flat#2@6199-frozen-a": "862febb87bc2f49ba5f7eb990cd522c953c6efcb34bd894ebc67182063341ef2",
-      "flat#4@6199-frozen-a": "7b360b64d7fcb36a5e5f1f0c6e5b2a925d9b11f393e904d6578433cb43b68f0d",
-      "rolling#3@6199-frozen-a": "1ccf1a5b20b5a8771c4b62c9ea9a33fdc5ed577bf112fdff7f5811dee9ad21fa",
-      "rolling#16@6199-frozen-a": "27cca3c132596a84228e3540408f380df454e81965a322608ee73477ca5a4d2f",
-      "hilly#6@6199-frozen-a": "baee52d5db9adb6ff8ddbc5488115f1e2e4de8b92f0d5ef1b8a393be0c707163",
-      "hilly#7@6199-frozen-a": "2e7263c33a291a61ac1570374892fe2e349554a2b1f544f56ad0915f4aba5266",
-      "mountain#12@6199-frozen-a": "a87f54a36c951f700d14b0301003c28e94940ea9cd81299e6040ab5e57ab2353",
-      "mountain#14@6199-frozen-a": "dcb2f6d154169981e60814362767df4c307b4ea612cc59d531bb0becb58c12f1",
-      "high_mountain#15@6199-frozen-a": "987b726ee418f644f55aa14df4ed288b1e2c25a4053ad459d90a407c740cdbdf",
-      "high_mountain#20@6199-frozen-a": "638fae67e232fb1f55f038768e802ad19e25dbbcf1a5d03d29c1b40a9667ef8a",
+      "flat#2@6199-frozen-a": "d53aea051525f0c4dfd4bd61ea1b1cf340d684122fd54a561f2cd9a70ca2819b",
+      "flat#4@6199-frozen-a": "c25b0d4afd50bfef6e813120cd16c1a2462690f0685c073aff33f3b1d2bab9ee",
+      "rolling#3@6199-frozen-a": "635ab5c008a7a1e2a8c914f2bc288d9ba311f2b65cbb343eb048a7efe2ef7614",
+      "rolling#16@6199-frozen-a": "2b723162242d556ae32a318874d2557fb94f71b3becc2e2182f2566210aa9d0b",
+      "hilly#6@6199-frozen-a": "f7f30dbabad32eaa264605b02ed7290092141771a9e9f1cf684bf0974ec57d71",
+      "hilly#7@6199-frozen-a": "259d1e1eea8834cad1c260aca6cb186b78ce63fb5bcc60981064affa21dffe56",
+      "mountain#12@6199-frozen-a": "d4068e0509b636cd9aaf6d11580ba2cf8a6511629480d125f7f3a4b263a4a1bc",
+      "mountain#14@6199-frozen-a": "c66b26cff0326704933aa73d7577c3de5e7c247b6d7e550eb203de25a4467ea5",
+      "high_mountain#15@6199-frozen-a": "72dab2b1194265bb50ea2e74a71a36437bf52e6a24c8d163988dc277d36a55ff",
+      "high_mountain#20@6199-frozen-a": "0816708b9be1bc22d36bfe2577afb737e4c55e201f623118d319c99938b13911",
       "cobbles#45@6199-frozen-a": "5947abd7097c3838f7a81d3a1a1b472e7f4cf21cecfe1eecc8941ecc72ffeed8",
       "cobbles#92@6199-frozen-a": "28346da81add2bdee3d97450ffc4c5f4bf2955ee82a575471c91884e367f58fd",
-      "classic#93@6199-frozen-a": "a6b43f5858bf8741053a9e83c930b2cd07c5fc2117bce79645f91748f51da186",
-      "flat#2@6199-frozen-b": "d77f1fcede4e417f119880818e2e44dc174609659993eb485a69c8f1c35bd72e",
-      "flat#4@6199-frozen-b": "ed78305053e357117a44b359363ee4e6262a3895de6e79c0082fdbedf21025f2",
-      "rolling#3@6199-frozen-b": "3dee6457bd650a55e9ee4865235b0328c92d5829157b133d63e773e59953dfc0",
-      "rolling#16@6199-frozen-b": "846b16cb6595a2014d1f7d39ef44ec577e4a21bb06e72ae3f957ef6dce469832",
-      "hilly#6@6199-frozen-b": "00983d0637fef90b48c775a8040ddd1fa9349dc814d20c94dbe703385d5ec4a8",
-      "hilly#7@6199-frozen-b": "ee097d6a36f101fc6c9ea1c411cd466f7851b6f33bdcf11f617c9c9b8aec0e7f",
-      "mountain#12@6199-frozen-b": "08d09bb300fdff2519191ccd445ba217cc13cd9289f75671dff8a154c263f4f1",
-      "mountain#14@6199-frozen-b": "82ed0f8b68d3855bed86cb751e01bceab104177aa37bea52338d787c2983b7f6",
-      "high_mountain#15@6199-frozen-b": "42486c8da4c65c901601ec5297e337d0396c197a4d8bdd97d6008688bd4a7e33",
-      "high_mountain#20@6199-frozen-b": "d6d0287adadb0d18049350d426422bf194578c145f2df34362cd2b3e6e3257d1",
+      "classic#93@6199-frozen-a": "f286178e23e3d18a20fac96f70c5a1aba51c019ef60cb4b129828badd5977b3e",
+      "flat#2@6199-frozen-b": "b3db1d6c403d3d0f26388b12001473448dfea8b887145e74f43b0b4c9622e26e",
+      "flat#4@6199-frozen-b": "6a96a2091fb2c60688d2e5ce4677b6c7c450349155eb74c263f769aaae687686",
+      "rolling#3@6199-frozen-b": "ffda119beda7895d42e20bce1d1856b53032255c499c46e969a22fbc30a2cf9c",
+      "rolling#16@6199-frozen-b": "6439c0de7170557e9825ee5b5f6cbf8c88afb0d2aad31ce798afee9c8c564ee1",
+      "hilly#6@6199-frozen-b": "2e485b28356ff918a2c185fc277d91b61a496d51fd5416e632f37318941f3b90",
+      "hilly#7@6199-frozen-b": "1305fb35a30d4c5cc8893676618ecb339573e8c29075aa6f594fbd1475bfa795",
+      "mountain#12@6199-frozen-b": "2267c3db5042ebc4f392f84bc8325ffdca7419b67bc42190ac9ee29811ee5646",
+      "mountain#14@6199-frozen-b": "fbdadab6e53e0f1624e9a26d893eed3c8dc551371b5bbf6aad2139ee5991f2f5",
+      "high_mountain#15@6199-frozen-b": "527633a12fb63db2e48cbaa1d0467fb386e254a605bb8601ac3bbeb82ed1df9f",
+      "high_mountain#20@6199-frozen-b": "ab6ffd043193d7f363f963db20eaeb3bb1c2273428d959435f99f6a9f34c4613",
       "cobbles#45@6199-frozen-b": "756a3354c08a036e05c60d53e8e2fa186dfbfee27c35f16353ef1227828f21bb",
       "cobbles#92@6199-frozen-b": "2a6b9e129b4945e1a7613d3c6e42ec4a80c0eec47f45f25cfa5fdccd1becad21",
-      "classic#93@6199-frozen-b": "e4c6b544994e9e2a82e73bb5b21badf2a5692d4448da5f97c452b0b42131c748"
+      "classic#93@6199-frozen-b": "0952d0ea9f80f12e16337e34026edcd60ef259e8493c3c78c3a5bed0e9e8fcb7"
     }
   }
 }
