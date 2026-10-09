@@ -35,7 +35,7 @@ const rider = (n, team, extra = {}) => ({
 });
 
 test("parseArgs: dry-run is the default", () => {
-  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, approvedHash: null, onlyUnused: false });
+  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, approvedHash: null, onlyUnused: false, previewTransition: false, verifyAfterTransition: false });
 });
 
 const HASH = "a".repeat(64);
@@ -47,7 +47,7 @@ test("parseArgs: apply requires the exact owner-go token and the approved list h
   assert.throws(() => parseArgs([OWNER_GO_FLAG]), /only makes sense/);
   assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, "--approved-list=123"]), /64-char/);
   assert.throws(() => parseArgs(["--live"]), /Unknown option/);
-  assert.deepEqual(parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`]), { apply: true, ownerGo: true, approvedHash: HASH, onlyUnused: false });
+  assert.deepEqual(parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`]), { apply: true, ownerGo: true, approvedHash: HASH, onlyUnused: false, previewTransition: false, verifyAfterTransition: false });
 });
 
 test("approvedListHash pins the exact rider set, not just the count", () => {
@@ -298,4 +298,205 @@ test("--only-unused: brugte ryttere i aktiv sæson udskydes, resten bliver i sco
   const { keep, deferredUsed } = splitUnused(inScope, new Set(["b"]));
   assert.deepEqual(keep.map((r) => r.id), ["a", "c"]);
   assert.deepEqual(deferredUsed.map((r) => r.id), ["b"]);
+});
+
+// ─── #5864 · sæsonskifte-preview + efterkontrol (read-only) ─────────────────
+
+test("parseArgs: --preview-transition and --verify-after-transition are read-only and exclusive", async () => {
+  const { PREVIEW_TRANSITION_FLAG, VERIFY_AFTER_TRANSITION_FLAG } = await import("./enforce5864ExpiredContracts.mjs");
+  assert.equal(parseArgs([PREVIEW_TRANSITION_FLAG]).previewTransition, true);
+  assert.equal(parseArgs([VERIFY_AFTER_TRANSITION_FLAG]).verifyAfterTransition, true);
+  assert.throws(() => parseArgs([PREVIEW_TRANSITION_FLAG, VERIFY_AFTER_TRANSITION_FLAG]), /pick one/);
+  assert.throws(() => parseArgs([PREVIEW_TRANSITION_FLAG, "--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`]), /read-only/);
+  assert.throws(() => parseArgs([VERIFY_AFTER_TRANSITION_FLAG, "--only-unused"]), /read-only/);
+});
+
+/** Optagende fake-klient med write-metoder, så vi kan bevise at read-only-indpakningen stopper dem. */
+function recordingClient(tables = {}) {
+  const writes = [];
+  const reads = [];
+  const client = {
+    writes, reads,
+    from(table) {
+      const filters = [];
+      const q = {
+        select() { return q; },
+        eq(...a) { filters.push(["eq", ...a]); return q; },
+        neq(...a) { filters.push(["neq", ...a]); return q; },
+        gt(...a) { filters.push(["gt", ...a]); return q; },
+        lte(...a) { filters.push(["lte", ...a]); return q; },
+        in(...a) { filters.push(["in", ...a]); return q; },
+        not(...a) { filters.push(["not", ...a]); return q; },
+        or(...a) { filters.push(["or", ...a]); return q; },
+        order() { return q; },
+        limit() { return q; },
+        range() { return q; },
+        maybeSingle() { return q; },
+        then(resolve) {
+          reads.push({ table, filters: [...filters] });
+          const rows = typeof tables[table] === "function" ? tables[table](filters) : (tables[table] ?? []);
+          return resolve({ data: rows, error: null });
+        },
+      };
+      for (const m of ["insert", "update", "upsert", "delete"]) q[m] = () => { writes.push({ table, m }); return q; };
+      return q;
+    },
+    rpc(name) { writes.push({ table: "rpc", m: name }); return Promise.resolve({ data: null, error: null }); },
+  };
+  return client;
+}
+
+test("makeReadOnlyClient blocks every write method and rpc, lets reads through", async () => {
+  const { makeReadOnlyClient } = await import("./enforce5864ExpiredContracts.mjs");
+  const inner = recordingClient({ riders: [{ id: "r1" }] });
+  const ro = makeReadOnlyClient(inner);
+  for (const m of ["insert", "update", "upsert", "delete"]) {
+    assert.throws(() => ro.from("riders")[m]({}), /read-only client/);
+  }
+  assert.throws(() => ro.rpc("anything"), /read-only client/);
+  const { data } = await ro.from("riders").select("id").eq("id", "r1");
+  assert.deepEqual(data, [{ id: "r1" }]);
+  assert.deepEqual(inner.writes, [], "nothing reached the underlying client");
+});
+
+const embed = (team) => ({ user_id: team.user_id ?? null, is_ai: team.is_ai, is_frozen: false, is_bank: false, is_test_account: false });
+
+function previewFixture() {
+  const A = { id: "A", name: "Team A", user_id: "u-A", is_ai: false, u23_league_division_id: "p-u23", junior_league_division_id: null };
+  const B = { id: "B", name: "Team B", user_id: "u-B", is_ai: false, u23_league_division_id: null, junior_league_division_id: null };
+  const AI = { id: "X", is_ai: true };
+  const c = (n, team, extra) => ({ id: uuid(n), firstname: "F", lastname: `L${n}`, team_id: team.id, squad: "senior", is_academy: false, contract_end_season: 4, team: embed(team), ...extra });
+  return {
+    fromSeason: 4,
+    candidates: [
+      c(1, A, { squad: "u23", is_academy: true }),
+      c(2, A, { squad: "u23", is_academy: true }),
+      c(3, A, { squad: "u23", is_academy: true }),
+      c(4, B),
+      c(5, AI),
+    ],
+    racingIds: new Set([uuid(3)]),
+    humanTeams: [A, B],
+    // A: U23 7 (startbar), senior 10. B: senior 6 (præcis på gulvet), ingen ungdomspulje.
+    squadCounts: new Map([["A", { senior: 10, u23: 7, junior: 0 }], ["B", { senior: 6, u23: 2, junior: 0 }]]),
+  };
+}
+
+test("buildTransitionPreview: counts the normal path's releases and the squad warnings that follow", async () => {
+  const { buildTransitionPreview } = await import("./enforce5864ExpiredContracts.mjs");
+  const p = buildTransitionPreview(previewFixture());
+  const t = p.totals;
+  assert.equal(t.fromSeason, 4);
+  assert.equal(t.toSeason, 5);
+  assert.equal(t.candidates, 5);
+  assert.equal(t.release, 4, "rider 3 is in an active stage race and is deferred");
+  assert.equal(t.deferredActiveStageRace, 1);
+  assert.deepEqual(t.releaseByOwner, { human: 3, ai: 1 });
+  assert.deepEqual(t.humanReleaseBySquad, { u23: 2, senior: 1 });
+  assert.equal(t.youthNormalize, 2);
+  // A's U23 7 → 5 (new warning); B's senior 6 → 5 (new warning); B has no U23 pool so its U23 is not checked.
+  assert.equal(t.squadWarningsAfter, 2);
+  assert.equal(t.squadWarningsBefore, 0);
+  assert.equal(t.newlyBelowMinimum, 2);
+  assert.deepEqual(t.newlyBelowMinimumBySquad, { u23: 1, senior: 1 });
+  const aU23 = p.warnings.find((w) => w.teamId === "A" && w.squad === "u23");
+  assert.deepEqual({ before: aU23.before, after: aU23.activeRiders, releasedHere: aU23.releasedHere, newlyBelow: aU23.newlyBelow }, { before: 7, after: 5, releasedHere: 2, newlyBelow: true });
+});
+
+test("loadTransitionPreview runs the normal path's default query with seasonNumber = active season through a read-only client", async () => {
+  const { loadTransitionPreview } = await import("./enforce5864ExpiredContracts.mjs");
+  const f = previewFixture();
+  const inner = recordingClient({
+    seasons: [{ number: 4 }],
+    races: [],
+    teams: f.humanTeams,
+    riders: [],
+  });
+  // maybeSingle → recordingClient returnerer en liste; fetchActiveSeasonNumber læser data.number.
+  inner.from = ((orig) => (table) => {
+    const q = orig(table);
+    if (table === "seasons") q.then = (resolve) => resolve({ data: { number: 4 }, error: null });
+    return q;
+  })(inner.from.bind(inner));
+  let seen;
+  const preview = await loadTransitionPreview(inner, {
+    fetchCandidates: async ({ supabase, seasonNumber }) => {
+      seen = seasonNumber;
+      assert.throws(() => supabase.from("riders").update({ team_id: null }), /read-only client/, "the query runs through the read-only client");
+      return f.candidates;
+    },
+  });
+  assert.equal(seen, 4);
+  assert.equal(preview.totals.fromSeason, 4);
+  assert.equal(preview.totals.candidates, 5);
+  assert.deepEqual(inner.writes, []);
+});
+
+test("preview: public markdown has only totals; private report carries names and ids", async () => {
+  const { buildTransitionPreview, renderTransitionPreviewPublic, renderTransitionPreviewPrivate, writeTransitionPreview } = await import("./enforce5864ExpiredContracts.mjs");
+  const p = buildTransitionPreview(previewFixture());
+  const generatedAt = "2026-10-10T08:00:00.000Z";
+  const pub = renderTransitionPreviewPublic(p, { generatedAt });
+  assert.match(pub, /S4→S5/);
+  assert.match(pub, /seasonNumber=4/);
+  for (const secret of ["Team A", "Team B", "u-A", uuid(1), "L1"]) assert.equal(pub.includes(secret), false, `public file leaks ${secret}`);
+  assert.equal(pub.includes(String.fromCharCode(0x2014)), false, "no em dash");
+  const priv = renderTransitionPreviewPrivate(p, { generatedAt });
+  assert.ok(priv.includes("Team A"));
+  assert.ok(priv.includes(uuid(1)));
+
+  const pubDir = mkdtempSync(join(tmpdir(), "cz5864-pub-"));
+  const privDir = mkdtempSync(join(tmpdir(), "cz5864-priv-"));
+  try {
+    const files = writeTransitionPreview(p, { generatedAt, publicDir: pubDir, privateDir: privDir });
+    assert.match(files.publicFile, /preview-s4-s5-2026-10-10T08-00-00-000Z\.md$/);
+    assert.equal(readFileSync(files.publicFile, "utf8").includes("Team A"), false);
+    assert.equal(JSON.parse(readFileSync(files.privateJson, "utf8")).totals.release, 4);
+  } finally {
+    rmSync(pubDir, { recursive: true, force: true });
+    rmSync(privDir, { recursive: true, force: true });
+  }
+});
+
+test("buildVerifyResult: ok only with 0 in-scope riders at or below from_season; out-of-scope listed separately", async () => {
+  const { buildVerifyResult, renderVerifyPublic } = await import("./enforce5864ExpiredContracts.mjs");
+  const a = humanTeam("A");
+  const frozen = humanTeam("F", { is_frozen: true });
+  const clean = buildVerifyResult({ fromSeason: 4, candidates: [rider(6, frozen)] });
+  assert.equal(clean.ok, true);
+  assert.equal(clean.remaining, 0);
+  assert.deepEqual(clean.outOfScopeByReason, { frozen: 1 });
+
+  const dirty = buildVerifyResult({ fromSeason: 4, candidates: [rider(1, a), rider(2, a, { squad: "junior" })], racingIds: new Set([uuid(2)]) });
+  assert.equal(dirty.ok, false);
+  assert.equal(dirty.remaining, 2);
+  assert.deepEqual(dirty.remainingBySquad, { u23: 1, junior: 1 });
+  assert.equal(dirty.remainingInActiveStageRace, 1);
+  const pub = renderVerifyPublic(dirty, { generatedAt: "2026-10-25T08:00:00Z" });
+  assert.match(pub, /FEJL/);
+  assert.equal(pub.includes("Team A"), false);
+  assert.equal(pub.includes(uuid(1)), false);
+});
+
+test("loadVerifyAfterTransition checks from_season = active season - 1 through a read-only client", async () => {
+  const { loadVerifyAfterTransition } = await import("./enforce5864ExpiredContracts.mjs");
+  const inner = recordingClient({ races: [] });
+  inner.from = ((orig) => (table) => {
+    const q = orig(table);
+    if (table === "seasons") q.then = (resolve) => resolve({ data: { number: 5 }, error: null });
+    return q;
+  })(inner.from.bind(inner));
+  let threshold;
+  const result = await loadVerifyAfterTransition(inner, {
+    fetchCandidates: async (ro, t) => {
+      threshold = t;
+      assert.throws(() => ro.from("riders").delete(), /read-only client/);
+      return [];
+    },
+  });
+  assert.equal(threshold, 4);
+  assert.equal(result.fromSeason, 4);
+  assert.equal(result.activeSeason, 5);
+  assert.equal(result.ok, true);
+  assert.deepEqual(inner.writes, []);
 });
