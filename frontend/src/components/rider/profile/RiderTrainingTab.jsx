@@ -247,8 +247,11 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   // midnat til dagens tick kl. 20. Samme fallback som /training (latestReceiptRun).
   const receiptRun = latestReceiptRun(todayRun, trainingHistory?.runs);
   const runRow = reportRowsByRider(receiptRun)[rider.id] ?? null;
+  // #6111: foer aftenafregningen er datoens gevinster i trained_now (#6027),
+  // samme kilde som rapporten viser. Ellers stod "—" fra midnat til kl. 20.
+  const dayRow = runRow?.trained_now ?? runRow;
   const progressBefore = runRow?.progress_before ?? null;
-  const gainsToday = runRow?.gains ?? null;
+  const gainsToday = dayRow?.gains ?? null;
   const [nowMs] = useState(() => Date.now());
   const gainDay = receiptGainDay(receiptRun?.tick_date, copenhagenDayKey(nowMs));
 
@@ -273,7 +276,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
       progress,
       capped: capped?.[rider.id],
       seasonGains,
-      gainPercentToday: runRow?.gain_percent,
+      gainPercentToday: dayRow?.gain_percent,
       progressBefore,
       gainsToday,
       gainDay,
@@ -347,12 +350,13 @@ function DailyLogCard({ riderId, runs, t }) {
       ) : (
         entries.map(({ tick_date, row }) => {
           const isRest = !row.intensity || row.intensity === "rest";
-          const jumps = breakthroughJumps(row);
+          // #6111: en uafregnet dato viser sine gemte loebsdages gevinster (#6027).
+          const jumps = breakthroughJumps(row.trained_now ?? row);
           const focusLabel = row.focus ? t(`profile.training.focus.${row.focus}`) : "—";
           const intensityLabel = t(`training.intensity_${isRest ? "rest" : row.intensity}`);
           let result;
           let resultClass = "text-cz-3";
-          if (row.receipt_status === "pending" || row.receipt_status === "reconciliation") {
+          if (row.receipt_status === "reconciliation" || (row.receipt_status === "pending" && jumps.length === 0)) {
             result = tTraining(`dailyReceipt.status.${row.receipt_status}`);
           } else if (jumps.length === 1) {
             const j = jumps[0];
@@ -394,7 +398,7 @@ function TrendCard({ riderId, runs, t }) {
   let trained = 0, breakthroughs = 0, sharp = 0;
   for (const { row } of entries) {
     if (!row.injured && row.intensity && row.intensity !== "rest") trained++;
-    if (isBreakthrough(row)) breakthroughs++;
+    if (isBreakthrough(row.trained_now ?? row)) breakthroughs++;
     if (row.status === "over") sharp++;
   }
   const tiles = [

@@ -266,10 +266,10 @@ test("#6027: race days 1-4 before the evening settlement show what was trained, 
   assert.deepEqual(rider.trained_now, {
     gains: { tempo: 2 }, gains_detail: { tempo: { from: 54, to: 56 } }, gain_percent: { tempo: 140 },
   });
-  // Season totals, stories and rider logs still read the date as pending.
+  // Settled gains stay empty; the season total counts the stored race days (#6111).
   assert.deepEqual(rider.gains, {});
   assert.deepEqual(rider.gain_percent, {});
-  assert.equal(seasonAbilityGains([day], "r1", "2026-09-01"), null);
+  assert.deepEqual(seasonAbilityGains([day], "r1", "2026-09-01"), { tempo: 2 });
   assert.equal(selectTrainingMoment(day, {}, []), null);
   // Fatigue and form stay with the evening settlement.
   assert.equal(rider.fatigue, null);
@@ -314,4 +314,20 @@ test("#6027: slot ranges and riders still waiting for their race", () => {
   assert.deepEqual(waitingForRace(pending, null), []);
   const settled = aggregateTrainingRuns([0, 1, 2, 3, 4].map(i => run(i)))[0];
   assert.deepEqual(waitingForRace(settled, roster), []);
+});
+
+test("#6111: a settled date plus today's unsettled race days give a season total, not an unknown season", () => {
+  const settled = [0, 1, 2, 3, 4].map(i => run(i));
+  const today = [0, 1, 2, 3].map(i => {
+    const r = run(i);
+    r.id = `today-${i}`; r.tick_date = "2026-09-30"; r.created_at = `2026-09-30T10:0${i}:00Z`;
+    return r;
+  });
+  const receipts = aggregateTrainingRuns([...today, ...settled]);
+  assert.deepEqual(receipts.map(r => [r.tick_date, r.receipt_status]), [["2026-09-30", "pending"], ["2026-09-29", "complete"]]);
+  // 2 settled points on 29/9 + 2 stored race-day points on 30/9 before the evening settlement.
+  assert.deepEqual(seasonAbilityGains(receipts, "r1", "2026-09-01"), { tempo: 4 });
+  // A pending date without a trained-now view (missing middle slot) still makes the season unknown.
+  const gap = aggregateTrainingRuns([run(0), run(1), run(3), run(4)]);
+  assert.equal(seasonAbilityGains(gap, "r1", "2026-09-01"), null);
 });

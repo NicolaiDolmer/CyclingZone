@@ -242,7 +242,7 @@ import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trai
 import { loadDayCloseSpans } from "../lib/trainingDayCloseTrigger.js"; // #4847: train-now deler sweepens spaend
 import { createTrainNowRouter } from "./trainNow.js"; // #4847
 import { createTrainNowPlanLock } from "../lib/trainNow.js"; // #4847
-import { loadRaceTrainNowLock, loadTrainNowLocksForRaces } from "../lib/trainNowLock.js"; // #4847/#6139
+import { loadRaceTrainNowLock, loadTrainNowLocksForRaces, raceStageDates } from "../lib/trainNowLock.js"; // #4847/#6139
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "../lib/youthRaceOptOut.ts"; // #5944
 import { createYouthRaceOptOutRouter } from "./youthRaceOptOut.js"; // #5944
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
@@ -5137,6 +5137,19 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       supabase, teamId: req.team.id, raceIds: ownRaceIds,
     });
 
+    // #6383: Train now-laasen pr. loeb, saa matrixen graaner de laaste ryttere FOER gem
+    // (samme regel som udtagelsespanelet, #6139). Kun loeb der endnu har en etape
+    // i dag eller senere, og aldrig i en anden saesons read-only-visning.
+    const trainNowLockByRace = {};
+    const lockableRaceIds = readOnly || !riderIds.length ? [] : ownRaceIds.filter((id) =>
+      raceStageDates(scheduleByRace.get(id)).some((date) => date >= todayStr));
+    if (lockableRaceIds.length) {
+      const locks = await loadTrainNowLocksForRaces({ supabase, raceIds: lockableRaceIds, riderIds, teamId: req.team.id });
+      for (const [raceId, lock] of locks) {
+        if (lock.riderIds.size) trainNowLockByRace[raceId] = { riderIds: [...lock.riderIds].sort(), pressedAt: lock.pressedAt };
+      }
+    }
+
     res.json({
       enabled: true,
       season: { id: season.id, number: season.number },
@@ -5146,6 +5159,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       riders,
       entries: entries.map((e) => ({ raceId: e.race_id, riderId: e.rider_id, raceRole: e.race_role })),
       withdrawnRaceIds: [...withdrawnRaceIds],
+      trainNowLockByRace,
       dayDates: [...dayDateMap.entries()].map(([gameDay, date]) => ({ gameDay, date })),
     });
   } catch (err) {
@@ -5322,6 +5336,9 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         bindingRiderIds,
         // #3102 PR 2: peaks/payback-overlay til løbskortet (rytter-navne slås op
         // klient-side i kolonnens riders — kun id'er + dage over wiren).
+        // #6383: Train now-laasen pr. loeb (riderIds + pressedAt) — boardet graaner
+        // de laaste ryttere op-front, praecis som udtagelsespanelet (#6139).
+        trainNowLock: ctx.trainNowLock,
         peakRiderIds: overlay.peakRiderIds,
         paybackRiders: overlay.paybackRiders,
       });
