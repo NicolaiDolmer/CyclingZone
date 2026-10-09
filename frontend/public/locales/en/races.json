@@ -534,7 +534,8 @@
       "title": "Locked today.",
       "bodyAt": "You pressed Train now at {time}. Riders who trained today can't race today's race.",
       "body": "Riders who trained today can't race today's race.",
-      "rider": "Trained today"
+      "rider": "Trained today",
+      "columnLocked": "Locked"
     },
     "saving": "Saving…",
     "saved": "Selection saved.",

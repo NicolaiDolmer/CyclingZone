@@ -72,6 +72,41 @@ export function trainNowSelectionPreview(body: SelectionBody): SelectionBody {
   };
 }
 
+type BoardBody = { columns?: Array<{ id: string; selection?: { rider_ids?: string[] } | null } & Record<string, unknown>> } & Record<string, unknown>;
+type SeasonBody = { riders?: Array<{ id: string }>; races?: Array<{ id: string }> } & Record<string, unknown>;
+
+/**
+ * #6383: the day board follows the same state as the selection panel. After a press the
+ * first two preview riders trained today: the lock is on the two races that share the day
+ * (one of the two is already in the squad, the other is not). Before the press: no lock.
+ */
+export function trainNowBoardPreview(body: BoardBody): BoardBody {
+  const { locked, lockedAt } = status();
+  if (mode() === "off" || !locked || !Array.isArray(body?.columns)) return body;
+  const riders = (body.columns[0]?.riders as Array<{ id: string }> | undefined) ?? [];
+  const first = body.columns[0]?.selection?.rider_ids?.[0];
+  const second = riders.find((r) => r.id !== first)?.id;
+  const trained = [first, second].filter((id): id is string => !!id).sort();
+  return {
+    ...body,
+    columns: body.columns.map((col, i) => (i < 2 ? { ...col, trainNowLock: { riderIds: trained, pressedAt: lockedAt } } : col)),
+  };
+}
+
+/** #6383: the season matrix gets the same lock, on the first race of the preview season. */
+export function trainNowSeasonPreview(body: SeasonBody): SeasonBody {
+  const { locked, lockedAt } = status();
+  if (mode() === "off" || !locked || !Array.isArray(body?.riders) || !Array.isArray(body?.races)) return body;
+  // One rider with a squad spot (shows locked and filled), one without (shows locked and empty).
+  const trained = [body.riders[1], body.riders[4]].filter(Boolean).map((r) => r.id).sort();
+  return {
+    ...body,
+    trainNowLockByRace: Object.fromEntries(
+      body.races.slice(0, 1).map((race) => [race.id, { riderIds: trained, pressedAt: lockedAt }]),
+    ),
+  };
+}
+
 export function trainNowPreviewRoute(method: string): MockResponse | null {
   if (mode() === "off") return method === "GET" ? { status: 200, body: { enabled: false } } : { status: 404, body: { error: "not_found" } };
   if (method === "GET") return { status: 200, body: status() };

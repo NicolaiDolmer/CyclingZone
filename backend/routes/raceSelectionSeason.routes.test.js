@@ -78,6 +78,16 @@ test("dayDates dækker ALLE puljers schedule (buildGameDayDateMap på allRaceIds
   assert.match(block, /buildGameDayDateMap\(scheduleRows\)/);
 });
 
+test("#6383: svaret bærer Train now-låsen pr. løb (kun holdets ryttere, aldrig i en anden sæsons read-only-visning)", () => {
+  const block = routeBlock('router.get("/races/selection/season"', 12000);
+  assert.match(block, /loadTrainNowLocksForRaces\(\{ supabase, raceIds: lockableRaceIds, riderIds, teamId: req\.team\.id \}\)/);
+  assert.match(block, /readOnly \|\| !riderIds\.length \? \[\]/, "read-only og tomt hold slår ikke låsen op");
+  assert.match(block, /^\s*trainNowLockByRace,$/m, "låsen skal med i svaret");
+  // Distribution-kolonnen bærer samme lås som udtagelsespanelet (ctx.trainNowLock).
+  const dist = routeBlock('router.get("/races/distribution"', 20000);
+  assert.match(dist, /trainNowLock: ctx\.trainNowLock,/);
+});
+
 test("?season_number= giver read-only browsing af en ikke-aktiv sæson (samme mønster som kalenderen #4102)", () => {
   const block = routeBlock('router.get("/races/selection/season"', 2200);
   assert.match(block, /season_number/);

@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, riderLockReason, riderLockLabel, freeRiderCountForColumn, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, countDistinctClashRiders, RACE_DAY_DISPLAY_OFFSET } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolStageTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, riderLockReason, riderLockLabel, freeRiderCountForColumn, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps, formatStartsIn, shouldShowClearAllDialog, raceDateRangeLabel, raceGameDayLabel, toDisplayRaceDay, raceDayOverlaps, raceDayClashes, countDistinctClashRiders, RACE_DAY_DISPLAY_OFFSET, isTrainNowLockedInColumn, trainNowLockSummary } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -230,6 +230,49 @@ test("riderLockReason/riderLockLabel: udgående rytter får sin egen forklaring 
   assert.equal(riderLockLabel({ reason, t: (k) => k }), "racehub.lockOutgoing");
   // Ikke udgående → ingen lås (kolonnen er ledig).
   assert.equal(riderLockReason({ riderId: "yonas", columns: [colMun], bindingMap }), null);
+});
+
+// #6383: Train now-låsen pr. rytter og pr. løb — kun ryttere med lås er låst.
+test("riderColumnState/canAdd: Train now-låst rytter kan ikke tilføjes, en uden lås kan (#6383)", () => {
+  const lock = { riderIds: ["yonas"], pressedAt: "2026-10-08T07:12:00.000Z" };
+  const colMun = { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] }, trainNowLock: lock };
+  const bindingMap = draftBindingMap([colMun]);
+  assert.equal(riderColumnState({ column: colMun, bindingMap, riderId: "yonas" }), "trainNow");
+  assert.equal(canAddRiderToColumn({ column: colMun, bindingMap, riderId: "yonas" }), false);
+  // Købt/rykket efter trykket: ingen lås-række → stadig fri.
+  assert.equal(canAddRiderToColumn({ column: colMun, bindingMap, riderId: "moreau" }), true);
+  // Allerede udtaget og låst: låsen vinder over "riding" (han kan hverken ind eller ud).
+  const colRiding = { ...colMun, selection: { rider_ids: ["yonas"] } };
+  assert.equal(riderColumnState({ column: colRiding, bindingMap, riderId: "yonas" }), "trainNow");
+  // Uden lås-felt (gammelt svar) er adfærden uændret.
+  assert.equal(canAddRiderToColumn({ column: { ...colMun, trainNowLock: undefined }, bindingMap, riderId: "yonas" }), true);
+  assert.equal(isTrainNowLockedInColumn(colMun, "yonas"), true);
+  assert.equal(isTrainNowLockedInColumn(colMun, "moreau"), false);
+  assert.equal(isTrainNowLockedInColumn(null, "yonas"), false);
+});
+
+test("riderLockReason/riderLockLabel: trænet i dag får sin egen forklaring, men kun når intet andet løb er ledigt (#6383)", () => {
+  const locked = { id: "a", name: "Race A", bindingWindow: W(5), selection: { rider_ids: [] }, trainNowLock: { riderIds: ["yonas"], pressedAt: null } };
+  const free = { id: "b", name: "Race B", bindingWindow: W(7), selection: { rider_ids: [] } };
+  const bindingMap = draftBindingMap([locked, free]);
+  // Et andet løb er ledigt → ikke låst i puljen.
+  assert.equal(riderLockReason({ riderId: "yonas", columns: [locked, free], bindingMap }), null);
+  const reason = riderLockReason({ riderId: "yonas", columns: [locked], bindingMap });
+  assert.deepEqual(reason, { code: "trained_today", raceId: null, raceName: null });
+  assert.equal(riderLockLabel({ reason, t: (k) => k }), "selection.trainNowLock.rider");
+});
+
+test("trainNowLockSummary: antal låste ryttere og tidligste tryk på tværs af løb (#6383)", () => {
+  assert.deepEqual(trainNowLockSummary(null), { count: 0, pressedAt: null });
+  assert.deepEqual(trainNowLockSummary([undefined, { riderIds: [], pressedAt: "2026-10-08T07:00:00.000Z" }]), { count: 0, pressedAt: null });
+  assert.deepEqual(
+    trainNowLockSummary([
+      { riderIds: ["a", "b"], pressedAt: "2026-10-08T07:12:00.000Z" },
+      { riderIds: ["b", "c"], pressedAt: "2026-10-08T07:05:00.000Z" },
+      { riderIds: ["d"], pressedAt: null },
+    ]),
+    { count: 4, pressedAt: "2026-10-08T07:05:00.000Z" },
+  );
 });
 
 test("freeRiderCountForColumn: udgående ryttere tæller ikke som frie (#4119)", () => {
