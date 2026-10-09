@@ -128,7 +128,9 @@ import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalConte
 // no_outstanding_debt (scoreFinanceHealthGoal, boardUtils.js).
 import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
-import { MANDATE_CATEGORIES, reconcileMandateGoalsWithLegacyBoard } from "./boardMandate.js";
+import { MANDATE_CATEGORIES, resolveMandateDisplayGoals } from "./boardMandate.js";
+import { BOARD_MANDATE_MODEL_FLAG_KEY } from "./boardMandateFlag.js";
+import { readFlagStage } from "./featureStage.js";
 import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } from "./boardConsequences.js";
 // #5632 · Samme rene visnings-beregninger som det gamle bestyrelsesrum
 // (/board/status, routes/api.js) — genbrugt uændret, ikke kopieret. Se
@@ -514,6 +516,7 @@ export async function buildBoardRoomPayload({
     eventsRes,
     bonusOfferRes,
     reputationStage,
+    mandateModelStage,
   ] = await Promise.all([
     supabase.from("board_relations").select("*").eq("team_id", teamId).maybeSingle(),
     supabase.from("team_board_members")
@@ -565,6 +568,10 @@ export async function buildBoardRoomPayload({
       .order("created_at", { ascending: false })
       .limit(BONUS_OFFER_FETCH_LIMIT),
     readReputationStage(supabase),
+    // #5946 · Stadiet afgør om et underskrevet mandats mål er autoritative
+    // (resolveMandateDisplayGoals). Fail-safe: fejl/fravær → null → #5751-
+    // reconciliationen som før.
+    readFlagStage(supabase, BOARD_MANDATE_MODEL_FLAG_KEY),
   ]);
 
   for (const [label, res] of [
@@ -854,11 +861,14 @@ export async function buildBoardRoomPayload({
     });
 
     // #5618/#5751 · En AFSLUTTET legacy 1yr-forhandling (board_profiles.current_goals)
-    // overtager target/label pr. mål uanset tidsstempel — den gamle side er
-    // stadig forhandlingsfladen i S3. Se modul-headeren i
-    // reconcileMandateGoalsWithLegacyBoard.
-    const goalsSource = reconcileMandateGoalsWithLegacyBoard({
+    // overtager target/label pr. mål uanset tidsstempel — men KUN i 'beta'/'off'
+    // eller for et ikke-underskrevet mandat. #5946 · Med mandat-modellen 'on' er
+    // et underskrevet mandats mål autoritative; den gamle række er en afledt
+    // kopi der kan være forældet. Se isMandateGoalsAuthoritative (boardMandate.js).
+    const goalsSource = resolveMandateDisplayGoals({
       mandateGoals: Array.isArray(mandateRow.goals) ? mandateRow.goals : [],
+      mandateSignedAt: mandateRow.signed_at ?? null,
+      mandateModelStage: mandateModelStage ?? null,
       legacyGoals: parseBoardGoals(oneYearBoard?.current_goals),
       legacyNegotiationStatus: oneYearBoard?.negotiation_status ?? null,
       legacyNegotiatedAt: oneYearBoard?.negotiated_at ?? null,
@@ -1066,4 +1076,44 @@ export async function buildBoardRoomPayload({
     board: { members: boardMembers, chairmanQuote },
     minutes,
   };
+}
+
+/**
+ * #5946 / #6122 · Onboarding-trin 4 (board_plan_set, GET /me/onboarding-progress)
+ * med mandat-modellen 'on'. Trinnet læste kun board_profiles.negotiated_at —
+ * men under 'on' er årsmødet den eneste forhandlingsflade, og den gamle
+ * 1yr-række (som bærer negotiated_at) kan blive genskrevet efter underskriften
+ * (sæsonslut → 'pending' → den gamle auto-accept nulstiller negotiated_at).
+ * Spillerrapport: manglende flueben trods underskrevet mandat.
+ *
+ * Returnerer to signaler, så #5103-skellet (kun en SPILLERHANDLING tæller som
+ * done) bevares:
+ *   signed           — holdet har et underskrevet mandat (board_mandates.signed_at).
+ *   signedByManager  — underskriften var managerens egen: signMandate skriver
+ *                      kvitteringen 'mandate.signed' (manager) hhv.
+ *                      'mandate.auto_signed' (auto-accept-cronen) i samme kald
+ *                      som signed_at (boardMandateMeeting.js).
+ * Uden for 'on' (eller ved en fejlet læsning) er begge false, og trinnet falder
+ * tilbage til den gamle regel uændret. Kaster aldrig.
+ */
+export async function loadMandateOnboardingSignal({ supabase, teamId } = {}) {
+  const none = { signed: false, signedByManager: false };
+  if (!supabase?.from || !teamId) return none;
+  try {
+    const stage = await readFlagStage(supabase, BOARD_MANDATE_MODEL_FLAG_KEY);
+    if (stage !== true && stage !== "on") return none;
+    const [signedRes, manualRes] = await Promise.all([
+      supabase.from("board_mandates").select("id", { count: "exact", head: true })
+        .eq("team_id", teamId).not("signed_at", "is", null),
+      supabase.from("board_satisfaction_events").select("id", { count: "exact", head: true })
+        .eq("team_id", teamId).eq("reason_category", "mandate.signed"),
+    ]);
+    if (signedRes.error) throw new Error(`board_mandates (onboarding) lookup failed: ${signedRes.error.message}`);
+    if (manualRes.error) throw new Error(`board_satisfaction_events (onboarding) lookup failed: ${manualRes.error.message}`);
+    const signed = (signedRes.count || 0) > 0;
+    return { signed, signedByManager: signed && (manualRes.count || 0) > 0 };
+  } catch (err) {
+    captureException(err);
+    return none;
+  }
 }

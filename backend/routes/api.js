@@ -430,7 +430,7 @@ import {
 } from "../lib/boardConsequences.js";
 // #3514/#4557 S-M2b · Mandatets Boardroom-endpoint (GET /board/room).
 import { isBoardMandateModelEnabled } from "../lib/boardMandateFlag.js";
-import { buildBoardRoomPayload } from "../lib/boardRoom.js";
+import { buildBoardRoomPayload, loadMandateOnboardingSignal } from "../lib/boardRoom.js";
 // #4557 S-M2c · Årsmødet (GET/POST /board/meeting/*).
 import {
   buildBoardMeetingPayload,
@@ -10534,7 +10534,7 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     });
   }
 
-  const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes, boardsAutoRes] = await Promise.all([
+  const [bidsRes, trainingRunsRes, squadSelectedRes, boardsRes, boardsAutoRes, mandateSign] = await Promise.all([
     supabase.from("auction_bids").select("id", { count: "exact", head: true }).eq("team_id", teamId),
     // #3007: executed_by='manager' — se kommentaren ovenfor. Uden dette filter
     // tælles også de rækker den kl. 22-assistent-sweep skriver, og trinnet
@@ -10552,10 +10552,13 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
     // stadig står åbent, så opfordringen kan afvige fra "gå i gang"-teksten.
     supabase.from("board_profiles").select("id", { count: "exact", head: true })
       .eq("team_id", teamId).eq("negotiation_status", "completed").is("negotiated_at", null),
+    // #5946/#6122: mandat-modellen 'on' — et underskrevet mandat tæller (kun
+    // managerens egen underskrift som done). Kaster aldrig.
+    loadMandateOnboardingSignal({ supabase, teamId }),
   ]);
 
-  const boardPlanNegotiated = (boardsRes.count || 0) > 0;
-  const boardPlanAutoSet = !boardPlanNegotiated && (boardsAutoRes.count || 0) > 0;
+  const boardPlanNegotiated = (boardsRes.count || 0) > 0 || mandateSign.signedByManager;
+  const boardPlanAutoSet = !boardPlanNegotiated && ((boardsAutoRes.count || 0) > 0 || mandateSign.signed);
 
   const steps = [
     { key: "first_bid_placed", done: (bidsRes.count || 0) > 0 },
