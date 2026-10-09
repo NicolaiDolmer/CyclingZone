@@ -16,7 +16,7 @@ Arbejdet er merget, done-mærket manglede. Kommentar med PR på hvert issue.
 | #6342 | Migrations-lint (lock_timeout, CONCURRENTLY) | #6347 |
 | #6278 | PostHog-milepæl "første løb med egen trup" | #6279 |
 | #6257 | Scorecard: nedkørsels-ankeret måler ejerens regel | #6260 |
-| #3813 | Ryttertyper forklaret i Hjælp | #6180 |
+| ~~#3813~~ | Rullet tilbage til todo: UI-rest (evne-markering på profilen) mangler | #6180 |
 | #6229 | Fail-closed staging refresh | #6297 |
 
 ## claude:done til ejeren (lukkes af dig)
@@ -34,7 +34,7 @@ Arbejdet er merget, done-mærket manglede. Kommentar med PR på hvert issue.
 - #5124: mobilmatrix live for alle (7.344).
 - #6199 #3460 #6257: ny løbsmotor live for nye løb fra 10/10 (7.348 + 7.350). Første løb kl. 12 verificeres.
 - #5268: Holdarbejde/Lederskab (kontrol 0 NULL, 0 fald, 0 ratingændringer; 7.350).
-- Teknik uden spillertekst: #5692 rangliste-refresh, #6102 stall-watchdog, #6235 frontend-vagt, #6271 Tailwind 4, #6341 RLS pr. række, #6342 migrations-lint, #6278 PostHog, #6292 attribution, #6229 staging, #3813 Hjælp-tekst.
+- Teknik uden spillertekst: #5692 rangliste-refresh, #6102 stall-watchdog, #6235 frontend-vagt, #6271 Tailwind 4, #6341 RLS pr. række, #6342 migrations-lint, #6278 PostHog, #6292 attribution, #6229 staging. (#3813 tilbage til todo: UI-rest mangler.)
 
 **Ikke lukkeklar (bliver stående):**
 - #6158 giv formtoppe tilbage: kun dry-run (#6306), apply er din beslutning sammen med form #6156.
