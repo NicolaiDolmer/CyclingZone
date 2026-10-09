@@ -83,6 +83,16 @@ test("classifyAuction: frivilligt salg + udgang fyrede = wrongly_exited (#6320)"
   assert.equal(row.after_exit_introduced, true);
 });
 
+test("classifyAuction: graduate-auktion uden besked, men restemplet ved slut = graduate_exit", () => {
+  const row = classifyAuction(AUCTION, {
+    rider: { team_id: "team-a", is_academy: false },
+    gradRows: [{ team_id: "team-a", rider_id: "rider-1", status: "promoted", resolved_at: AUCTION.actual_end }],
+    notifications: [],
+  });
+  assert.equal(row.category, "graduate_exit");
+  assert.equal(row.exit, "promoted");
+});
+
 test("buildReport + offentlig opsummering: kun tal, ingen navne/hold/id'er", () => {
   const auctions = [
     { ...AUCTION, id: "auc-1", rider_id: "rider-1" },
@@ -107,6 +117,7 @@ test("buildReport + offentlig opsummering: kun tal, ingen navne/hold/id'er", () 
   assert.deepEqual(report.counts, { wrongly_exited: 2, graduate_exit: 1, untouched: 1 });
   assert.deepEqual(report.wronglyByExit, { promoted: 1, released: 1 });
   assert.equal(report.affectedTeams, 1);
+  assert.equal(report.affectedRiders, 2);
 
   const summary = renderPublicSummary(report, { generatedAt: "2026-10-10T00:00:00.000Z" });
   assert.match(summary, /Frivilligt salg ramt af udgangen \(#6320\): 2/);

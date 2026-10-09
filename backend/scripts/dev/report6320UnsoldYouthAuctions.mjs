@@ -85,6 +85,17 @@ export function isGraduateAuction(auction, gradRows = []) {
     && (within(ms(g.resolved_at), created, GRAD_WINDOW_MS) || within(ms(g.resolved_at), end, GRAD_WINDOW_MS)));
 }
 
+/** Grad-række restemplet til promoted/released ved auktionens slut → det udfald. */
+export function restampedExit(auction, gradRows = []) {
+  const end = ms(auction.actual_end);
+  const hit = gradRows.find((g) =>
+    g.team_id === auction.seller_team_id
+    && g.rider_id === auction.rider_id
+    && (g.status === "promoted" || g.status === "released")
+    && within(ms(g.resolved_at), end, GRAD_WINDOW_MS));
+  return hit ? hit.status : null;
+}
+
 /** Rytterens nuværende tilstand set fra sælgerens side. */
 export function currentState(auction, rider) {
   if (!rider) return "rider_missing";
@@ -105,7 +116,9 @@ export function currentState(auction, rider) {
  */
 export function classifyAuction(auction, { rider, gradRows, notifications }) {
   const graduate = isGraduateAuction(auction, gradRows);
-  const exit = detectExit(auction, notifications);
+  // For en graduate-auktion er restemplingen (sold → promoted/released ved
+  // auktionens slut) også bevis for udgangen, selv hvis beskeden mangler.
+  const exit = detectExit(auction, notifications) ?? (graduate ? restampedExit(auction, gradRows) : null);
   let category;
   if (graduate) category = exit ? "graduate_exit" : "graduate_no_exit";
   else category = exit ? "wrongly_exited" : "untouched";
@@ -138,7 +151,9 @@ export function buildReport({ auctions, ridersById, gradRows, notifications }) {
     wronglyByState[r.state_now] = (wronglyByState[r.state_now] ?? 0) + 1;
   }
   const affectedTeams = new Set(wrongly.map((r) => r.seller_team_id)).size;
-  return { rows, counts, wronglyByExit, wronglyByState, affectedTeams, total: rows.length };
+  // En rytter kan være ramt flere gange (sat på auktion igen efter en oprykning).
+  const affectedRiders = new Set(wrongly.map((r) => r.rider_id)).size;
+  return { rows, counts, wronglyByExit, wronglyByState, affectedTeams, affectedRiders, total: rows.length };
 }
 
 const STATE_LABELS = {
@@ -162,12 +177,12 @@ export function renderPublicSummary(report, { generatedAt }) {
     `- Auktioner scannet: ${report.total}`,
     `- Ægte graduate-auktion, udgang fyrede (tilsigtet, #4495): ${c.graduate_exit ?? 0}`,
     `- Ægte graduate-auktion, ingen udgang fundet: ${c.graduate_no_exit ?? 0}`,
-    `- **Frivilligt salg ramt af udgangen (#6320): ${c.wrongly_exited ?? 0}** (hold berørt: ${report.affectedTeams})`,
+    `- **Frivilligt salg ramt af udgangen (#6320): ${c.wrongly_exited ?? 0}** (ryttere: ${report.affectedRiders}, hold: ${report.affectedTeams})`,
     `  - rykket op uden managerens valg: ${report.wronglyByExit.promoted}`,
     `  - frigivet som fri agent: ${report.wronglyByExit.released}`,
     `- Usolgt uden udgang (korrekt adfærd): ${c.untouched ?? 0}`,
     "",
-    "Ramte rytteres tilstand nu:",
+    "Ramte auktioners rytter, tilstand nu (pr. auktion):",
   ];
   const states = Object.entries(report.wronglyByState);
   if (states.length === 0) lines.push("- (ingen)");
