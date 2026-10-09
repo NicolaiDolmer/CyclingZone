@@ -72,19 +72,28 @@ export function analyseDescentFinish({ route, out, abilitiesById, capFor }) {
   const topGap = new Map();
   for (const g of top.groups) for (const id of g.rider_ids) topGap.set(id, g.gap_seconds);
   const topSorted = [...topGap.entries()].filter(([id]) => finishGap.has(id)).sort((a, b) => a[1] - b[1]);
-  const lengthKm = after.filter((s) => s.kind === "descent").reduce((sum, s) => sum + Math.max(0, s.to_km - s.from_km), 0);
+  // Loftet maales fra toppen til stregen (nedkoersel + et evt. kort run-in).
+  const lengthKm = after.reduce((sum, s) => sum + Math.max(0, s.to_km - s.from_km), 0);
 
   // 2: lukning pr. lukker (gruppe ved toppen) mod loftet. Referencen er den
-  // forreste gruppe ved toppen; dens bedste tid i maal er nulpunktet.
+  // forreste gruppe ved toppen. Gruppens MEDIAN i maal maaler gruppens lukning;
+  // gruppens BEDSTE i maal maaler lukningen inkl. nedkoerselsangreb. Grupettoen
+  // (tidsgraensens tempo) maales separat.
   const groupsAtTop = [...top.groups].filter((g) => g.rider_ids.some((id) => finishGap.has(id))).sort((a, b) => a.gap_seconds - b.gap_seconds);
   const front = groupsAtTop[0];
-  const bestFinish = (g) => Math.min(...g.rider_ids.filter((id) => finishGap.has(id)).map((id) => finishGap.get(id)));
-  const frontFinish = front ? bestFinish(front) : 0;
+  const finishesOf = (g) => g.rider_ids.filter((id) => finishGap.has(id)).map((id) => finishGap.get(id));
+  const bestFinish = (g) => Math.min(...finishesOf(g));
+  const frontMedian = front ? median(finishesOf(front)) : 0;
+  const frontBest = front ? bestFinish(front) : 0;
   const closers = groupsAtTop.slice(1).filter((g) => g.gap_seconds <= 600).map((g) => {
-    const closed = g.gap_seconds - (bestFinish(g) - frontFinish);
+    const closed = g.gap_seconds - (median(finishesOf(g)) - frontMedian);
+    const closedBest = g.gap_seconds - (bestFinish(g) - frontBest);
     const cap = capFor(g.gap_seconds, lengthKm);
-    return { size: g.rider_ids.length, topGap: g.gap_seconds, closed, cap, ratio: cap > 0 ? closed / cap : (closed > 0 ? Infinity : 0) };
+    const ratioOf = (c) => (cap > 0 ? c / cap : (c > 0 ? Infinity : 0));
+    return { kind: g.kind, size: g.rider_ids.length, topGap: g.gap_seconds, closed, closedBest, cap, ratio: ratioOf(closed), ratioBest: ratioOf(closedBest) };
   });
+  const racing = closers.filter((c) => c.kind !== "gruppetto");
+  const gruppetto = closers.filter((c) => c.kind === "gruppetto");
 
   // 3: finaleplaceringen. Frontgruppen ved toppen og den bedste klatrer i den.
   const climbing = (id) => Number(abilitiesById.get(id)?.climbing ?? 0);
@@ -111,7 +120,9 @@ export function analyseDescentFinish({ route, out, abilitiesById, capFor }) {
     frontSizeAtTop: frontIds.length,
     groupsAtTopWithin150: groupsAtTop.filter((g) => g.gap_seconds - (front?.gap_seconds ?? 0) <= 150).length,
     closers,
-    maxCloserRatio: closers.length ? Math.max(...closers.map((c) => c.ratio)) : 0,
+    maxCloserRatio: racing.length ? Math.max(...racing.map((c) => c.ratio)) : 0,
+    maxCloserRatioBest: racing.length ? Math.max(...racing.map((c) => c.ratioBest)) : 0,
+    maxGruppettoRatio: gruppetto.length ? Math.max(...gruppetto.map((c) => c.ratio)) : 0,
     bestClimberTopGap: bestClimberTopGap === null ? null : bestClimberTopGap - (front?.gap_seconds ?? 0),
     bestClimberFinishRank: finished.findIndex((r) => r.rider_id === bestClimber) + 1,
     bestClimberGainOnClimb: climberGainOnClimb,
@@ -123,11 +134,11 @@ const fmt = (x, d = 0) => (x === null || x === undefined || !Number.isFinite(x) 
 
 export function renderMarkdown({ label, rows }) {
   const lines = [`# #6200 nedkoerselsfinaler: ${label}`, "", `Genereret ${new Date().toISOString()}.`, ""];
-  lines.push("| Revision | Etape | Seed | Nedk. km | Tek. | Sidste stigning km | Nr. 10 top | Nr. 10 maal | Front ved top | Grupper <=150 s | Max lukning/loft | Bedste klatrer hul top | Bedste klatrer nr. | Klatrer vinder paa stigning (s) | Vinders klatre-rang i front |");
-  lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+  lines.push("| Revision | Etape | Seed | Nedk. km | Tek. | Sidste stigning km | Nr. 10 top | Nr. 10 maal | Front ved top | Grupper <=150 s | Max lukning/loft (gruppe) | Max lukning/loft (inkl. angreb) | Grupetto lukning/loft | Bedste klatrer hul top | Bedste klatrer nr. | Klatrer vinder paa stigning (s) | Vinders klatre-rang i front |");
+  lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
   for (const r of rows) {
     const a = r.a;
-    lines.push(`| ${r.revision} | ${r.stage} | ${r.seed} | ${fmt(a.lengthKm, 1)} | ${a.technicality} | ${fmt(a.lastClimb?.lengthKm, 1)} | ${fmt(a.nr10Top)} | ${fmt(a.nr10Finish)} | ${a.frontSizeAtTop} | ${a.groupsAtTopWithin150} | ${fmt(a.maxCloserRatio, 2)} | ${fmt(a.bestClimberTopGap)} | ${a.bestClimberFinishRank} | ${fmt(a.bestClimberGainOnClimb)} | ${a.winnerClimbRankInFront ?? "-"} |`);
+    lines.push(`| ${r.revision} | ${r.stage} | ${r.seed} | ${fmt(a.lengthKm, 1)} | ${a.technicality} | ${fmt(a.lastClimb?.lengthKm, 1)} | ${fmt(a.nr10Top)} | ${fmt(a.nr10Finish)} | ${a.frontSizeAtTop} | ${a.groupsAtTopWithin150} | ${fmt(a.maxCloserRatio, 2)} | ${fmt(a.maxCloserRatioBest, 2)} | ${fmt(a.maxGruppettoRatio, 2)} | ${fmt(a.bestClimberTopGap)} | ${a.bestClimberFinishRank} | ${fmt(a.bestClimberGainOnClimb)} | ${a.winnerClimbRankInFront ?? "-"} |`);
   }
   lines.push("", "## Median pr. revision og etape", "", "| Revision | Etape | Nr. 10 top | Nr. 10 maal | Front ved top | Max lukning/loft |", "|---|---|---|---|---|---|");
   const keys = [...new Set(rows.map((r) => `${r.revision}|${r.stage}`))];
