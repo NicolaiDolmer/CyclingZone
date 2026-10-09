@@ -35,6 +35,11 @@ const FIT_TEXT = { strong: "text-cz-accent-t", average: "text-cz-2", poor: "text
 // Chunket save (defensivt — bulk-endpointets cap er 60 ændringer/kald, #4316).
 const BULK_CHUNK = 60;
 
+// #6383: skravering af Train now-låste celler (diagonale streger, 6 px).
+const LOCK_HATCH_IMAGE = `url("data:image/svg+xml,${encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'><path d='M-1 1l2-2M0 6l6-6M5 7l2-2' stroke='rgba(128,128,128,0.35)' stroke-width='1.5'/></svg>",
+)}")`;
+
 export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange }) {
   const { t } = useTranslation("races");
   const [data, setData] = useState(null);
@@ -126,7 +131,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     return time ? t("selection.trainNowLock.bodyAt", { time }) : t("selection.trainNowLock.body");
   };
   // Ejer-godkendt mockup 9/10: låste celler er skraverede (ikke kun grånet).
-  const LOCK_HATCH = { backgroundImage: "repeating-linear-gradient(45deg, var(--color-cz-border) 0 3px, transparent 3px 6px)" };
+  // Et lille SVG-mønster (ingen CSS-gradient, anti-slop-guarden #4626); neutral
+  // grå med alfa, så skraveringen læses i både lyst og mørkt tema.
+  const LOCK_HATCH = { backgroundImage: LOCK_HATCH_IMAGE };
   // Akse-konvertering (kontrakt #7, ejer-låst 27-28/8, spillertest-punkt 6): ÉN
   // kolonne pr. (løb, løbsdag) — se seasonMatrix.js's fil-header for begrundelsen.
   const dayColumns = useMemo(() => buildDayColumns(races), [races]);
