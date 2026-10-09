@@ -7,7 +7,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { assessGcThreat, V3_DANGER_TUNING, type DangerModel } from "./gcThreat.ts";
-import { isLetGoChaseGroup, letGoMaxGapSeconds } from "./breakaway.ts";
+import { isLetGoChaseGroup, letGoMaxGapSeconds, rankedFormationPressure } from "./breakaway.ts";
+import { DANGEROUS_ATTEMPT_TUNING, resolveMorningBreakFormation, type FormationRider } from "./breakawayPermission.ts";
 import { SHARED_TIME_MODEL_V2_TUNING, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./timeModel.ts";
 import { BREAKAWAY_EXTRA_TUNING } from "../tuning.ts";
 import type { AbilityKey, Entrant, GcContext, RaceGroup, RouteV2 } from "../types.ts";
@@ -88,6 +89,71 @@ test("#5578: klassementets forreste er altid en rival og holder altid snoren, me
   assert.deepEqual(after.leash_rider_ids, ["r5"]);
   const cap = SHARED_TIME_MODEL_V2_TUNING.gcDanger!.rankedLeadCapSeconds as number;
   assert.ok((after.tolerated_lead_seconds ?? Infinity) <= cap, "snoren er hoejst loftet lang");
+});
+
+// ── #5578 robust (ejer 9/10, A): tre felter, ogsaa med ekstra jagt ──────────
+
+// En svag foerer (fx en sprinter i troejen efter flade etaper) og en udbryder
+// der er staerkere end ham, men ingen reel klassementsrytter og ikke blandt de forreste.
+const WEAK_LEADER: Record<string, Entrant> = { ...ENTRANTS, r1: entrant("r1", "T1", 40, "sprint_captain"), x: entrant("x", "TX", 55) };
+const GC_WEAK: GcContext = { ...GC, standings: [...GC.standings, { rider_id: "x", rank: 13, gap_seconds: 120 }] } as GcContext;
+const HILLY: RouteV2 = { ...FLAT, profile_type: "hilly", finale_type: "breakaway" };
+const assessLeader = (route: RouteV2, dangerModel: DangerModel) => assessGcThreat({
+  gcContext: GC_WEAK, entrants: WEAK_LEADER, route, protectedRiderId: "r1", km: 20, ownTeamId: "T1", dangerModel,
+  groups: [
+    { id: "breakaway-0", kind: "breakaway", rider_ids: ["x"], gap_seconds: 0, cohesion: 1 },
+    { id: "peloton-0", kind: "peloton", rider_ids: IDS, gap_seconds: 30, cohesion: 1 },
+  ],
+});
+
+test("#5578 robust: de nye knapper findes kun under official_times_v2", () => {
+  const v3Danger = V3_DANGER_TUNING as Record<string, unknown>;
+  for (const key of ["leaderRivalFloorShare", "jerseyAllowanceSeconds", "formationRankedPressureWeight"]) {
+    assert.equal(v3Danger[key], undefined, `${key} er neutral i orders_gc_v3`);
+    assert.notEqual((SHARED_TIME_MODEL_V2_TUNING.gcDanger as Record<string, unknown>)[key], undefined, `${key} er sat i official_times_v2`);
+  }
+  assert.deepEqual(rankedFormationPressure(GC, null), {}, "uden knap: ingen ny vaegt (bit-identisk dannelse)");
+  assert.deepEqual(rankedFormationPressure(GC, V3_DANGER_TUNING), {});
+});
+
+test("#5578 robust: en svag foerer ser ikke enhver staerkere udbryder som en rival", () => {
+  const v3Threat = assessLeader(FLAT, v3);
+  assert.equal(v3Threat.reason, "leader_at_risk", "orders_gc_v3: staerkere end foereren = rival");
+  const officialThreat = assessLeader(FLAT, official);
+  assert.equal(officialThreat.reason, "leader_jersey_at_risk", "official_times_v2: kun troejen er i fare");
+  assert.equal(officialThreat.severity, "moderate");
+  assert.notEqual(officialThreat.leash_hold, true);
+});
+
+test("#5578 robust: troejens tolerance er et loft pr. profil, ikke en aaben dor", () => {
+  const allowance = SHARED_TIME_MODEL_V2_TUNING.gcDanger!.jerseyAllowanceSeconds!;
+  assert.equal(allowance.flat, undefined, "flad: snorens almindelige laengde");
+  assert.ok((allowance.hilly ?? 0) > 0);
+  const flat = assessLeader(FLAT, official).tolerated_lead_seconds ?? 0;
+  const hilly = assessLeader(HILLY, official).tolerated_lead_seconds ?? 0;
+  assert.ok(hilly > flat, "kuperet: foererens hold lader udbruddet tage troejen");
+  assert.ok(Number.isFinite(hilly) && hilly <= 120 + (allowance.hilly as number), "men kun med et begraenset forspring");
+});
+
+test("#5578 robust: klassementets forreste moeder den haardeste modstand ved dannelsen", () => {
+  const danger = SHARED_TIME_MODEL_V2_TUNING.gcDanger!;
+  const { dangerPressureWeight } = rankedFormationPressure(GC, danger);
+  assert.ok(dangerPressureWeight);
+  assert.equal(dangerPressureWeight("r10"), danger.formationRankedPressureWeight, "rang 10 er blandt de forreste");
+  assert.equal(dangerPressureWeight("r11"), DANGEROUS_ATTEMPT_TUNING.pressureWeight, "rang 11 som under orders_gc_v3");
+  assert.ok((danger.formationRankedPressureWeight as number) > DANGEROUS_ATTEMPT_TUNING.pressureWeight);
+
+  // Vaegten pr. rytter bruges af dannelsen; udeladt = den gamle vaegt (bit-identisk).
+  const riders: FormationRider[] = ["A", "B", "C", "D"].flatMap((team) => Array.from({ length: 5 }, (_, i) => ({
+    rider_id: `${team}${i}`, team_id: team, role: i === 0 ? "captain" : "helper", effort: "normal",
+    tryBreak: `${team}${i}` === "C1" ? true : undefined, strength: 0.6, spontaneousChance: 0, engine: 0.5, freshness: 1,
+  })));
+  const base = { riders, stances: new Map([["A", "neutral" as const], ["B", "neutral" as const], ["C", "neutral" as const], ["D", "neutral" as const]]), maxSize: 8,
+    roll: (stream: "attempt" | "success") => (stream === "attempt" ? 0 : 0.2), dangerTeams: (id: string) => (id === "C1" ? ["A", "B", "D"] : []) };
+  const old = resolveMorningBreakFormation(base);
+  assert.deepEqual(resolveMorningBreakFormation({ ...base, dangerPressureWeight: () => DANGEROUS_ATTEMPT_TUNING.pressureWeight }), old);
+  assert.ok(old.escaped.includes("C1"), "med den gamle vaegt kommer han afsted paa dette rul");
+  assert.equal(resolveMorningBreakFormation({ ...base, dangerPressureWeight: () => danger.formationRankedPressureWeight as number }).escaped.includes("C1"), false);
 });
 
 test("#5578: uden for de forreste er kun en mindst lige saa staerk rytter en rival", () => {

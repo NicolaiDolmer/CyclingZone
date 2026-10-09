@@ -20,7 +20,7 @@
 // START-KANDIDATER (samme lokale praecedens som breakaway.ts's TEAM_CHASE); de
 // kalibreres privat (#5984 Task 6) og er ikke ejer-godkendte maal.
 
-import type { AbilityKey, Entrant, GcContext, GcStanding, RaceGroup, RouteV2 } from "../types.ts";
+import type { AbilityKey, Entrant, GcContext, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
 
 export type GcThreatSeverity = "none" | "moderate" | "serious";
 
@@ -119,6 +119,26 @@ export type GcDangerTuning = Readonly<{
   rivalRankAlways: number | null;
   /** Snorens laengde for de forreste (rivalRankAlways) er hoejst dette. null = intet loft. */
   rankedLeadCapSeconds: number | null;
+  /**
+   * #5578 robust: foererens hold maaler en rival mod mindst denne andel af den
+   * bedste GC-evne blandt klassementets forreste (en svag foerer, fx en sprinter
+   * i troejen, ser ikke enhver staerkere udbryder som en rival). Udeladt = egen
+   * evne (orders_gc_v3).
+   */
+  leaderRivalFloorShare?: number;
+  /**
+   * #5578 robust: foererens hold tolererer at en svagere udbryder (ingen rival)
+   * tager troejen med op til dette forspring ud over sin afstand, pr. etapeprofil.
+   * Paa de profiler goer en trussel kun mod troejen heller ikke udbruddet farligt
+   * (breakaway.ts). Profil udeladt = snorens almindelige laengde (orders_gc_v3).
+   */
+  jerseyAllowanceSeconds?: Readonly<Partial<Record<ProfileType, number>>>;
+  /**
+   * #5578 robust: vaegten paa de forsvarende holds modstand mod et forsoeg fra
+   * en af klassementets forreste (rivalRankAlways) ved dannelsen. null/udeladt =
+   * DANGEROUS_ATTEMPT_TUNING.pressureWeight (orders_gc_v3).
+   */
+  formationRankedPressureWeight?: number;
 }>;
 
 /**
@@ -199,6 +219,16 @@ const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"])
 function hasSomethingToDefend(standing: GcStanding, isLeader: boolean, stagesRemaining: number, t: GcDangerTuning): boolean {
   if (isLeader || standing.rank <= GC_THREAT_TUNING.protectRankLimit) return true;
   return standing.gap_seconds <= t.defendBaseSeconds + t.defendSecondsPerStage * Math.max(0, stagesRemaining);
+}
+
+/** #5578 robust: den bedste GC-evne blandt klassementets forreste (protectRankLimit). */
+function bestTopGcAbility(standings: readonly GcStanding[], entrants: Readonly<Record<string, Entrant>>): number {
+  let best = 0;
+  for (const standing of standings) {
+    if (standing.rank > GC_THREAT_TUNING.protectRankLimit) continue;
+    best = Math.max(best, gcAbility(entrants[standing.rider_id]));
+  }
+  return best;
 }
 
 /** #5578: etapeloebets farligheds-tuning for en DangerModel (default = orders_gc_v3). */
@@ -431,7 +461,11 @@ export function assessGcThreat(input: {
     return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: protectedLeads ? "protected_ahead" : "nothing_ahead" };
   }
 
-  const protectedStrength = gcAbility(input.entrants[protectedId]);
+  // #5578 robust (KUN official_times_v2): en svag foerer (fx en sprinter i
+  // troejen) maaler rivaler mod en reel klassementsrytter, ikke mod sig selv.
+  const floorShare = isLeader && model ? danger.leaderRivalFloorShare : undefined;
+  const contenderFloor = floorShare !== undefined ? floorShare * bestTopGcAbility(gcContext.standings, input.entrants) : 0;
+  const protectedStrength = Math.max(gcAbility(input.entrants[protectedId]), contenderFloor);
   const terrain = remainingTerrainKm(input.route, input.km);
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
@@ -487,7 +521,10 @@ export function assessGcThreat(input: {
         severity = "none";
         reason = "harmless";
       }
-      const leashRoom = deficit - Math.max(0, future) - danger.leashMarginSeconds;
+      // #5578 robust (KUN official_times_v2): foererens hold lader en svagere
+      // udbryder tage troejen, men kun med et begraenset forspring.
+      const allowance = model !== undefined && isLeader && !isRival ? danger.jerseyAllowanceSeconds?.[input.route.profile_type] : undefined;
+      const leashRoom = allowance !== undefined ? Math.max(0, deficit) + allowance : deficit - Math.max(0, future) - danger.leashMarginSeconds;
       // #5578 (KUN official_times_v2): de forreste holder altid snoren, og den er hoejst loftet lang.
       candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival,
         leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}) });

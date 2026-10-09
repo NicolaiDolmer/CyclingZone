@@ -61,16 +61,20 @@ test("#5978 motor-vagt: official_times_v2 giver aldrig en top-10-udbryder 5 min 
   const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
   const v4 = await loadRaceEngineV4();
   const data = JSON.parse(readFileSync(GIRO_FIXTURE, "utf8"));
+  // #5578 robust: under official_times_v2 kommer klassementets forreste sjaeldent
+  // med i morgenudbruddet, saa vagten koerer to seeds, hvoraf det ene har tilfaelde.
   const count = (revision) => {
     let hits = 0;
     let suspects = 0;
-    runStagesInOrder({
-      v4, data, revision, seedTag: "tour6285-1",
-      onStage: ({ res, gcBefore }) => {
-        hits += gcTop10InBreakOverThreshold(res.v4Output, gcBefore).length;
-        suspects += gcTop10InBreakOverThreshold(res.v4Output, gcBefore, { thresholdSeconds: -Infinity }).length;
-      },
-    });
+    for (const seedTag of ["tour6285-1", "tour6285-5"]) {
+      runStagesInOrder({
+        v4, data, revision, seedTag,
+        onStage: ({ res, gcBefore }) => {
+          hits += gcTop10InBreakOverThreshold(res.v4Output, gcBefore).length;
+          suspects += gcTop10InBreakOverThreshold(res.v4Output, gcBefore, { thresholdSeconds: -Infinity }).length;
+        },
+      });
+    }
     return { hits, suspects };
   };
   const v2Official = count("official_times_v2");

@@ -140,9 +140,9 @@ export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
   // Uden v3s ikke-fysiske lukning paa nedkoerslen skal jagten hente udbruddet
   // fysisk; feltet giver derfor et mindre lad-gaa-loft (profiler uden egen vaerdi).
   letGoMaxGapScale: 0.7,
-  // #5578 (ejer 8/10, udbrudsmaal 2-4): loftet pr. vejprofil, kalibreret privat
-  // (balance-internals/5578-official-v2/) paa Tour- og Giro-feltet.
-  letGoMaxGapScaleByProfile: { flat: 1.8, rolling: 1.5, hilly: 3, mountain: 3, high_mountain: 1.5 },
+  // #5578 (ejer 8/10 + 9/10, udbrudsmaal 2-4): loftet pr. vejprofil, kalibreret
+  // privat (balance-internals/5578-official-v2/ og 5578-robust/) paa tre felter.
+  letGoMaxGapScaleByProfile: { flat: 1.8, rolling: 1.5, hilly: 2, mountain: 1.75, high_mountain: 0.8 },
   // #5578: foran en nedkoerselsfinale kontrollerer feltet hullet lidt mindre stramt.
   letGoFinaleFactorByFinale: { descent: 0.65 },
   // #5578: favoritgruppen er stadig et felt, der styrer udbruddet, naar
@@ -161,6 +161,13 @@ export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
     rivalStrengthMin: 1,
     rivalRankAlways: 10,
     rankedLeadCapSeconds: 150,
+    // #5578 robust (ejer 9/10, A): klassementets forreste kommer sjaeldent med i
+    // morgenudbruddet; en svag foerer ser kun reelle klassementsryttere som
+    // rivaler; foererens hold lader en svagere udbryder tage troejen med et
+    // begraenset forspring paa rullende, kuperet og bjerg.
+    formationRankedPressureWeight: 0.6,
+    leaderRivalFloorShare: 0.85,
+    jerseyAllowanceSeconds: { rolling: 300, hilly: 450, mountain: 900 },
   },
   // B i dalen som fart (valleyRegroupTempoV3).
   valleyClosingSecondsPerKm: 2,
