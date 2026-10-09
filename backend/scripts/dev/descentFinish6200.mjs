@@ -48,17 +48,23 @@ const median = (xs) => {
 /**
  * Ren analyse af én etape. `route.segments` er motorens rute, `out` motorens
  * StageOutput (results + groupSnapshots, ét snapshot pr. segment).
- * Returnerer null naar etapen ikke slutter paa en nedkoersel.
+ * Returnerer null naar etapen ikke har en nedkoerselsfinale (finale_type
+ * "descent" med en nedkoersel efter sidste stigning).
  */
 export function analyseDescentFinish({ route, out, abilitiesById, capFor }) {
   const segs = route?.segments ?? [];
-  const last = segs[segs.length - 1];
-  if (!last || last.kind !== "descent" || segs.length < 2) return null;
+  if (route?.finale_type !== "descent" || segs.length < 2) return null;
   const snaps = out?.groupSnapshots ?? [];
   if (snaps.length !== segs.length) return null;
-  const top = snaps[segs.length - 2];
   const lastClimbIdx = segs.map((s) => s.kind).lastIndexOf("climb");
-  const beforeClimb = lastClimbIdx > 0 ? snaps[lastClimbIdx - 1] : null;
+  const after = segs.slice(lastClimbIdx + 1);
+  const last = after.find((s) => s.kind === "descent");
+  if (lastClimbIdx < 0 || !last) return null;
+  // Toppen = snapshottet ved sidste stignings top.
+  const top = snaps[lastClimbIdx];
+  let blockStart = lastClimbIdx;
+  while (blockStart > 0 && segs[blockStart - 1].kind === "climb") blockStart--;
+  const beforeClimb = blockStart > 0 ? snaps[blockStart - 1] : null;
   const finished = (out.results ?? []).filter((r) => r.status === "finished").sort((a, b) => a.time_seconds - b.time_seconds || a.rank - b.rank);
   if (finished.length < 10) return null;
   const t0 = finished[0].time_seconds;
@@ -66,7 +72,7 @@ export function analyseDescentFinish({ route, out, abilitiesById, capFor }) {
   const topGap = new Map();
   for (const g of top.groups) for (const id of g.rider_ids) topGap.set(id, g.gap_seconds);
   const topSorted = [...topGap.entries()].filter(([id]) => finishGap.has(id)).sort((a, b) => a[1] - b[1]);
-  const lengthKm = Math.max(0, last.to_km - last.from_km);
+  const lengthKm = after.filter((s) => s.kind === "descent").reduce((sum, s) => sum + Math.max(0, s.to_km - s.from_km), 0);
 
   // 2: lukning pr. lukker (gruppe ved toppen) mod loftet. Referencen er den
   // forreste gruppe ved toppen; dens bedste tid i maal er nulpunktet.

@@ -27,6 +27,10 @@
 //    SHARED_TIME_MODEL_V2_TUNING (timeModelTuningFor: ordersGcV3 OG
 //    sharedGroupTime). Knapperne der kun den laeser, er neutrale i v3-tallene, saa
 //    orders_gc_v3 og official_times_v1 er byte-identiske (frosne digests).
+//  - official_times_v3 (#6200, slukket) = official_times_v2 + nedkoerselsfinalen
+//    (SHARED_TIME_MODEL_V3_TUNING, valgt via sharedGroupTime.timeModelGeneration).
+//    Dens knapper er neutrale i alle aeldre tal, saa official_times_v2 er
+//    byte-identisk (officialTimesV2Frozen6200.test.ts).
 //
 // Alle konstanter er kalibreret privat mod ejer-maalene (balance-internals/6199/).
 //
@@ -121,6 +125,16 @@ export const TIME_MODEL_V3_TUNING = freeze({
 
   // ── 3: taet score = samme tid i en selektiv finale ──────────────────────────
   finaleTieScoreEpsilon: 0.02,
+
+  // ── #6200 (KUN official_times_v3): nedkoerselsfinalen paa en bjergetape ─────
+  // Profiler hvor sidste stigning foer en nedkoerselsfinale koeres som en
+  // topankomst: hver rytter taber sit eget hul (climbSelection.summitRace).
+  // Tom = taerskel-selektionen som foer (alle aeldre revisioner).
+  descentFinishClimbRaceProfiles: [] as readonly ProfileType[],
+  // En nedkoersel efter sidste stigning, fulgt af hoejst saa mange km uden
+  // stigning til maal, er "nedkoersel mod maal" (loftet gaelder fra toppen til
+  // stregen). 0 = kun naar nedkoerslen er etapens sidste segment (som foer).
+  finishDescentMaxRunInKm: 0,
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
@@ -174,19 +188,102 @@ export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
   valleyClosingGapFractionPerKm: 0.02,
 });
 
+/**
+ * #6200 (KUN official_times_v3, slukket): hele official_times_v2-modellen plus
+ * nedkoerselsfinalen paa bjergetaper. Sidste stigning foer en nedkoersel mod
+ * maal spreder gruppen som en topankomst (en klart bedre klatrer koerer fra),
+ * og loftet paa nedkoerslen gaelder ogsaa naar der er et kort stykke uden
+ * stigning til stregen. Alle andre felter er official_times_v2's.
+ */
+export const SHARED_TIME_MODEL_V3_TUNING: TimeModelTuning = freeze({
+  ...SHARED_TIME_MODEL_V2_TUNING,
+  descentFinishClimbRaceProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
+  finishDescentMaxRunInKm: 5,
+});
+
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
-const SHARED_BY_PROFILE: Readonly<Partial<Record<ProfileType, TimeModelTuning>>> = Object.freeze(Object.fromEntries(
-  Object.entries(SHARED_TIME_MODEL_V2_TUNING.climbGapAbilityWeightByProfile)
-    .map(([profile, weight]) => [profile, freeze({ ...SHARED_TIME_MODEL_V2_TUNING, climbGapAbilityWeight: weight as number })]),
-));
+function byProfile(base: TimeModelTuning): Readonly<Partial<Record<ProfileType, TimeModelTuning>>> {
+  return Object.freeze(Object.fromEntries(
+    Object.entries(base.climbGapAbilityWeightByProfile)
+      .map(([profile, weight]) => [profile, freeze({ ...base, climbGapAbilityWeight: weight as number })]),
+  ));
+}
+const SHARED_BY_PROFILE = byProfile(SHARED_TIME_MODEL_V2_TUNING);
+const SHARED_V3_BY_PROFILE = byProfile(SHARED_TIME_MODEL_V3_TUNING);
+
+/** #6200: hvilken generation af den faelles tidsmodel en hook-kontekst koerer (3 = official_times_v3). */
+function contextTimeModelGeneration(sharedGroupTime: unknown): 2 | 3 {
+  return sharedGroupTime !== null && typeof sharedGroupTime === "object"
+    && (sharedGroupTime as { timeModelGeneration?: unknown }).timeModelGeneration === 3 ? 3 : 2;
+}
 
 /**
  * Tidsmodellens tuning for en hook-kontekst: den kalibrerede kun under
  * official_times_v2 (v3-pakken + den faelles gruppeklokke), ellers v3-tallene.
+ * #6200: under official_times_v3 (sharedGroupTime.timeModelGeneration = 3) den
+ * kalibrerede plus nedkoerselsfinalen (SHARED_TIME_MODEL_V3_TUNING).
  */
 export function timeModelTuningFor(ctx: { ordersGcV3?: true; sharedGroupTime?: unknown; route?: { profile_type: ProfileType } }): TimeModelTuning {
   if (!(ctx.ordersGcV3 === true && ctx.sharedGroupTime !== undefined)) return TIME_MODEL_V3_TUNING;
+  if (contextTimeModelGeneration(ctx.sharedGroupTime) === 3) {
+    return (ctx.route ? SHARED_V3_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V3_TUNING;
+  }
   return (ctx.route ? SHARED_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V2_TUNING;
+}
+
+/**
+ * #6200: indekset for etapens nedkoersel mod maal, eller -1. Uden et
+ * run-in-loft (finishDescentMaxRunInKm = 0, alle revisioner foer
+ * official_times_v3) er det etapens sidste segment, naar det er en nedkoersel.
+ * Ellers ogsaa den sidste nedkoersel efter etapens sidste stigning paa en
+ * nedkoerselsfinale, naar resten til maal er uden stigning og hoejst loftet.
+ */
+export function finishDescentIndexFor(
+  route: { finale_type?: FinaleType | null; segments: readonly (Pick<Segment, "kind"> & Partial<Pick<Segment, "from_km" | "to_km">>)[] },
+  t: TimeModelTuning = TIME_MODEL_V3_TUNING,
+): number {
+  const segs = route.segments ?? [];
+  const last = segs.length - 1;
+  if (last < 0) return -1;
+  if (segs[last].kind === "descent") return last;
+  if (!(t.finishDescentMaxRunInKm > 0) || route.finale_type !== "descent") return -1;
+  let runInKm = 0;
+  for (let i = last; i >= 0; i--) {
+    const seg = segs[i];
+    if (seg.kind === "descent") return runInKm <= t.finishDescentMaxRunInKm ? i : -1;
+    if (seg.kind === "climb") return -1;
+    runInKm += Math.max(0, Number(seg.to_km) - Number(seg.from_km)) || 0;
+  }
+  return -1;
+}
+
+/**
+ * #6200 (KUN official_times_v3): paa stykket efter nedkoerslen mod maal kan
+ * tempo-tikket aabne et hul, aldrig lukke det. Hver gruppe koerer mindst saa
+ * lang tid som den naermeste gruppe foran (efter gap). Grupper i en uheldsjagt
+ * roeres ikke. Samme Map naar intet aendres.
+ */
+export function runInOpenOnlyTempo<T extends { dtSeconds: number }>(
+  groups: readonly RaceGroup[],
+  tempoByGroup: Map<string, T>,
+  incidentChasers: Readonly<Record<string, unknown>> | undefined,
+): Map<string, T> {
+  const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  let out: Map<string, T> | null = null;
+  let aheadDt: number | null = null;
+  for (const group of sorted) {
+    const own = (out ?? tempoByGroup).get(group.id);
+    if (!own) continue;
+    const inIncidentChase = incidentChasers !== undefined && group.rider_ids.some((id) => incidentChasers[id] !== undefined);
+    // En uheldsjagt er hverken bundet af eller reference for gruppen bagved.
+    if (inIncidentChase) continue;
+    if (aheadDt !== null && own.dtSeconds < aheadDt) {
+      out ??= new Map(tempoByGroup);
+      out.set(group.id, { ...own, dtSeconds: aheadDt });
+    }
+    aheadDt = Math.max(aheadDt ?? -Infinity, (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds);
+  }
+  return out ?? tempoByGroup;
 }
 
 /** Referencefarten (km/t) op ad en stigning med denne gennemsnitsstigning. */
