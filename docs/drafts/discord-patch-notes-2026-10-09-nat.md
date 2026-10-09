@@ -11,5 +11,5 @@ The training tools that were in beta are now open to every team. Train now settl
 
 Training
 Season points show all day
-Your riders' season points on the Training tab and under Development no longer show "—" until the evening settlement. Race days that are already trained count right away.
+Your riders' season points on the Training tab and under Development no longer show empty values until the evening settlement. Race days that are already trained count right away.
 ```

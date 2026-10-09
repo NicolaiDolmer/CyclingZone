@@ -32,11 +32,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Season points show all day",
-          "body": "Your riders' season points on the Training tab and under Development no longer show \"—\" until the evening settlement. Race days that are already trained count right away."
+          "body": "Your riders' season points on the Training tab and under Development no longer show empty values until the evening settlement. Race days that are already trained count right away."
         },
         "da": {
           "title": "Sæsonpoint vises hele dagen",
-          "body": "Rytternes sæsonpoint på Træning-fanen og under Udvikling viser ikke længere \"—\" frem til aftenafregningen. Løbsdage, der allerede er trænet, tæller med med det samme."
+          "body": "Rytternes sæsonpoint på Træning-fanen og under Udvikling viser ikke længere tomme felter frem til aftenafregningen. Løbsdage, der allerede er trænet, tæller med med det samme."
         },
         "refs": [
           6111
