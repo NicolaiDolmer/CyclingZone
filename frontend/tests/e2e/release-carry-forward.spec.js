@@ -29,7 +29,8 @@
 //                                 (proeven beviser da kun routingen, ikke carry-forward)
 //   VERCEL_AUTOMATION_BYPASS_SECRET  sendes KUN til A's og B's origin (beskyttede previews)
 
-import { test, expect } from "@playwright/test";
+// e2e-base.js (#4248): auto-fixturen fælder testen på enhver uncaught fejl i A-fanen.
+import { test, expect } from "./e2e-base.js";
 
 const A_URL = process.env.CZ_CARRY_FORWARD_A_URL;
 const B_URL = process.env.CZ_CARRY_FORWARD_B_URL;
@@ -78,10 +79,10 @@ test.describe("release carry-forward A -> B (#5162, manuel)", () => {
     await context.addCookies([{ name: "cz_session", value: "1", url: a.origin }]);
 
     const pageErrors = [];
-    page.on("pageerror", (err) => {
-      const text = String(err?.message || err);
-      if (CHUNK_ERROR.test(text)) pageErrors.push(text);
-    });
+    // e2e-error-collector-exempt: uncaught fejl fanges af e2e-base.js' auto-fixture.
+    // Denne lytter filtrerer KUN chunk-klassens konsol-linjer (appens chunk-fallback
+    // fanger import-fejlen og logger den i stedet for at kaste), ikke generel
+    // konsol-støj, og bruger derfor ikke collectBrowserErrors' bredere opsamling.
     page.on("console", (msg) => {
       if (msg.type() === "error" && CHUNK_ERROR.test(msg.text())) pageErrors.push(msg.text());
     });
