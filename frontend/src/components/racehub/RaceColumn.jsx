@@ -11,6 +11,7 @@ import { terrainBucket } from "../../lib/stageTerrain.js";
 import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
+import TrainNowRiderBadge from "./TrainNowRiderBadge.jsx"; // #6383
 import RaceLink from "../RaceLink.jsx";
 import { LockIcon, StarIcon, AlertTriangleIcon, InfoIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
@@ -59,6 +60,9 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const peakNames = (column.peakRiderIds || []).map(nameOf).filter(Boolean);
   const paybackNames = (column.paybackRiders || []).map((p) => nameOf(p.riderId)).filter(Boolean);
   const locked = !!column.lineup_locked;
+  // #6383: ryttere der har trænet i dag (Train now) er afgjort for dette løb: grånet,
+  // kan hverken fjernes eller trækkes — samme regel som udtagelsespanelet (#6139).
+  const trainNowIds = new Set(column.trainNowLock?.riderIds ?? []);
   // S5: profil-bevidste rolle-hints. primaryProfileType = løbets dominerende terræn
   // (backend); mangler det (gamle løb) → terrainBucket defaulter til "flat".
   const bucket = terrainBucket(column.primaryProfileType);
@@ -240,16 +244,20 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             const r = ridersById.get(id);
             if (!r) return null;
             const role = roleOf(id);
+            const trainedToday = trainNowIds.has(id);
             return (
-              <div key={id} className={`${RIDER_GRID} py-1.5`}>
-                <span data-testid="race-rider-name" className="min-w-0 truncate text-xs text-cz-1">{r.name}</span>
+              <div key={id} className={`${RIDER_GRID} py-1.5 ${trainedToday ? "opacity-60" : ""}`}>
+                <span className="min-w-0">
+                  <span data-testid="race-rider-name" className="block truncate text-xs text-cz-1">{r.name}</span>
+                  {trainedToday && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
+                </span>
                 <span data-testid="race-rider-order" className={`min-w-0 wrap-break-word text-2xs ${role ? "text-cz-accent-t" : "text-cz-2"}`}>{orderLabel(role)}</span>
                 <RiderNumbers rider={r} />
                   {/* #2637: en igangværende trup er ellers helt read-only, men fjernelse
                       skal ALTID være muligt (fx en rytter der bliver skadet midt i et
                       etapeløb) - kun tilføjelse er frosset. Backend accepterer en ren
                       fjernelse (ingen nye ryttere) selv når stages_completed>0. */}
-                  <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy}
+                  <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy || trainedToday}
                     aria-label={t("racehub.column.remove")}
                     className="w-6 text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
               </div>
@@ -264,11 +272,13 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             const r = ridersById.get(id);
             if (!r) return null;
             const role = roleOf(id);
+            const trainedToday = trainNowIds.has(id);
             return (
               <div key={id} className="relative">
-                {/* #1925: rækken kan trækkes til et andet løb (flyt) eller til puljen (fjern). */}
-                <div className={`${RIDER_GRID} py-1.5 hover:bg-cz-subtle`}
-                  draggable={!busy}
+                {/* #1925: rækken kan trækkes til et andet løb (flyt) eller til puljen (fjern).
+                    #6383: ikke en rytter der har trænet i dag (Train now) — han er afgjort. */}
+                <div className={`${RIDER_GRID} py-1.5 hover:bg-cz-subtle ${trainedToday ? "opacity-60" : ""}`}
+                  draggable={!busy && !trainedToday}
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: id, fromRaceId: column.id }))}>
                   {/* #1919: rolle-tildeling lå skjult bag rytter-navnet uden nogen affordance
                       (Clarity: dead-clicks fordi navnet ikke så interaktivt ud). Chevron +
@@ -277,6 +287,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                     aria-haspopup="menu" aria-expanded={roleMenuFor === id}
                     className="group/role text-left min-w-0 disabled:opacity-50">
                     <span data-testid="race-rider-name" className="block truncate text-xs text-cz-1 transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
+                    {trainedToday && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
                   </button>
                   <button type="button" data-testid="race-rider-order"
                     aria-label={t("racehub.column.editOrder", { name: r.name, order: orderLabel(role) })}
@@ -286,7 +297,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                     {orderLabel(role)}
                   </button>
                   <RiderNumbers rider={r} />
-                    <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy}
+                    <button type="button" onClick={() => onRemoveRider(column.id, id)} disabled={busy || trainedToday}
                       aria-label={t("racehub.column.remove")}
                       className="w-6 text-cz-3 hover:text-cz-danger disabled:opacity-50 text-base leading-none px-1">×</button>
                 </div>

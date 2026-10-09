@@ -4,7 +4,7 @@
 //   • "Optaget i overlappende løb" — løb han er låst fra, MED hvilket løb der binder ham (grunden)
 // Åbnes også for låste ryttere (kan ikke tilføjes nogen) → de ser stadig HVORFOR.
 import { useTranslation } from "react-i18next";
-import { canAddRiderToColumn, overlapConflictColumn, sameDayCompatibilityHint, toDisplayRaceDay } from "../../lib/raceHubLogic.js";
+import { canAddRiderToColumn, isTrainNowLockedInColumn, overlapConflictColumn, sameDayCompatibilityHint, toDisplayRaceDay } from "../../lib/raceHubLogic.js";
 import { LockIcon } from "../ui";
 import FitBar from "./FitBar.jsx";
 
@@ -25,8 +25,12 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
   // allerede udtaget her) + HVILKET løb der binder ham (grunden).
   const blocked = columns
     .filter((c) => !c.withdrawn && !c.lineup_locked && !(c.selection?.rider_ids || []).includes(rider.id))
-    .map((c) => ({ c, conflict: overlapConflictColumn({ column: c, columns, bindingMap, riderId: rider.id }) }))
-    .filter((x) => x.conflict);
+    .map((c) => ({
+      c,
+      conflict: overlapConflictColumn({ column: c, columns, bindingMap, riderId: rider.id }),
+      trainedToday: isTrainNowLockedInColumn(c, rider.id), // #6383
+    }))
+    .filter((x) => x.conflict || x.trainedToday);
   return (
     <div className="absolute z-dropdown mt-1 bg-cz-elevated border border-cz-border rounded-cz shadow-overlay p-2 min-w-[230px]">
       <p className="text-xs text-cz-3 px-2 py-1">{t("racehub.popover.title")}</p>
@@ -54,12 +58,13 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
         </button>
       ))}
       {blocked.length > 0 && <p className="text-3xs uppercase tracking-wide text-cz-danger px-2 pt-2 pb-0.5">{t("racehub.popover.blockedGroup")}</p>}
-      {blocked.map(({ c, conflict }) => (
+      {blocked.map(({ c, conflict, trainedToday }) => (
         <div key={c.id} className="flex w-full items-start gap-2 px-2 py-1.5 text-cz-3">
           <span className="min-w-0">
             <span className="block text-sm truncate">{c.name}</span>
             <span className="text-3xs flex items-center gap-1">
-              <LockIcon size={10} aria-hidden="true" />{t("racehub.popover.blockedReason", { race: conflict.name })}
+              <LockIcon size={10} aria-hidden="true" />
+              {trainedToday ? t("selection.trainNowLock.rider") : t("racehub.popover.blockedReason", { race: conflict.name })}
             </span>
           </span>
         </div>

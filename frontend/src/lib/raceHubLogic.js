@@ -42,6 +42,25 @@ export function isRiderBound({ bindingMap, riderId, forRaceId, forWindow }) {
   return entries.some((e) => e.id !== forRaceId && windowsOverlap(e.window, forWindow));
 }
 
+// #6383: har rytteren trænet i dag (Train now) og er dermed låst i dette løb? Låsen følger
+// distribution-svaret (column.trainNowLock.riderIds), samme kilde som udtagelsespanelet.
+export function isTrainNowLockedInColumn(column, riderId) {
+  return Array.isArray(column?.trainNowLock?.riderIds) && column.trainNowLock.riderIds.includes(riderId);
+}
+
+// #6383: ét samlet banner-grundlag for board og matrix: hvor mange ryttere er låst, og hvornår
+// trykkede holdet (tidligste pressedAt). locks = iterable af { riderIds, pressedAt } | null.
+export function trainNowLockSummary(locks) {
+  const riders = new Set();
+  let pressedAt = null;
+  for (const lock of locks ?? []) {
+    if (!lock?.riderIds?.length) continue;
+    for (const id of lock.riderIds) riders.add(id);
+    if (lock.pressedAt && (!pressedAt || lock.pressedAt < pressedAt)) pressedAt = lock.pressedAt;
+  }
+  return { count: riders.size, pressedAt };
+}
+
 // Kan rytteren tilføjes kolonne-løbet? (ikke afmeldt/låst, ikke allerede udtaget, ikke
 // game-dag-bundet i et andet kolonne-løb). Delt af puljen (lås-tilstand) + popover (mål-liste).
 //
@@ -86,9 +105,13 @@ export function overlapConflictColumn({ column, columns = [], bindingMap, riderI
 //   "riding"    — allerede udtaget i løbet
 //   "locked"    — løbet er afmeldt/startet (kan ikke ændres)
 //   "overlap"   — blokeret fordi rytteren er i et tids-overlappende løb
+//   "trainNow"  — rytteren har trænet i dag (Train now, #6139/#6383) og er afgjort for løbet
 //   "available" — kan tilføjes
 export function riderColumnState({ column, bindingMap, riderId, outgoing = false }) {
   if (!column) return "locked";
+  // #6383: Train now-låsen er pr. rytter og pr. løb; den er afgjort også for en rytter der
+  // allerede er udtaget (han kan hverken ind eller ud), så den vinder over "riding".
+  if (isTrainNowLockedInColumn(column, riderId)) return "trainNow";
   if ((column.selection?.rider_ids || []).includes(riderId)) return "riding";
   // #4119: solgt rytter med parkeret holdskifte. "riding" vinder over dette — han
   // kører det løb han allerede er udtaget til færdigt — men han kan ikke tilføjes
@@ -117,6 +140,9 @@ export function riderColumnState({ column, bindingMap, riderId, outgoing = false
 export function riderLockReason({ riderId, columns = [], bindingMap, outgoing = false }) {
   const states = columns.map((column) => ({ column, state: riderColumnState({ column, bindingMap, riderId, outgoing }) }));
   if (states.some((s) => s.state === "available")) return null;
+
+  // #6383: trænet i dag — den mest handlingsbare forklaring, og den gælder rytteren, ikke et løb.
+  if (states.some((s) => s.state === "trainNow")) return { code: "trained_today", raceId: null, raceName: null };
 
   // Det løb han faktisk er udtaget i er den mest handlingsbare forklaring.
   const riding = states.find((s) => s.state === "riding" && !s.column?.withdrawn);
@@ -154,6 +180,7 @@ export function riderLockLabel({ reason, t }) {
       : t("racehub.lockBoundUnnamed");
   }
   if (reason.code === "outgoing_transfer") return t("racehub.lockOutgoing");
+  if (reason.code === "trained_today") return t("selection.trainNowLock.rider");
   if (reason.code === "all_races_started") return t("racehub.lockAllStarted");
   if (reason.code === "all_races_withdrawn") return t("racehub.lockAllWithdrawn");
   return t("racehub.lockUnavailable");

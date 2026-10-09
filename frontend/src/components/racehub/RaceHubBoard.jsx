@@ -14,7 +14,8 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog, raceDayOverlaps, raceDayClashes, toDisplayRaceDay } from "../../lib/raceHubLogic.js";
+import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog, raceDayOverlaps, raceDayClashes, toDisplayRaceDay, isTrainNowLockedInColumn, trainNowLockSummary } from "../../lib/raceHubLogic.js";
+import TrainNowLockBanner from "./TrainNowLockBanner.jsx"; // #6383
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
@@ -239,6 +240,8 @@ export default function RaceHubBoard() {
   const day = Number.isFinite(dayParam) ? dayParam : (data.focusDay ?? data.currentDay);
   const columns = data.columns || [];
   const roster = columns[0]?.riders || [];
+  // #6383: Train now-låsen på tværs af dagens løb (tidligste tryk + antal låste ryttere).
+  const trainNowSummary = trainNowLockSummary(columns.filter((c) => !c.withdrawn).map((c) => c.trainNowLock));
 
   // #3428: "hvor mange løb/ryttere rammer 'Ryd dag'?" var uklart ved overlappende
   // løb. Talt fra de ikke-afmeldte kolonner der faktisk har en udtagelse lige nu
@@ -431,16 +434,19 @@ export default function RaceHubBoard() {
 
   const discardAll = () => { setDrafts({}); setError(null); };
 
+  // #6383: en rytter der har trænet i dag (Train now) kan hverken tilføjes eller fjernes i det
+  // løb — samme regel som udtagelsespanelet og backendens afvisning (#6139). Kladden rører
+  // ham aldrig, så "Gem" aldrig sender en ændring serveren alligevel ville afvise.
   const addRider = (raceId, riderId) => {
     const col = columns.find((c) => c.id === raceId);
-    if (!col) return;
+    if (!col || isTrainNowLockedInColumn(col, riderId)) return;
     const cur = draftOf(col);
     if (cur.rider_ids.includes(riderId)) return;
     commitDraft(col, { ...cur, rider_ids: [...cur.rider_ids, riderId] });
   };
   const removeRider = (raceId, riderId) => {
     const col = columns.find((c) => c.id === raceId);
-    if (!col) return;
+    if (!col || isTrainNowLockedInColumn(col, riderId)) return;
     const cur = draftOf(col);
     commitDraft(col, {
       rider_ids: cur.rider_ids.filter((id) => id !== riderId),
@@ -456,7 +462,15 @@ export default function RaceHubBoard() {
   const clearColumnSelection = (raceId) => {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
-    commitDraft(col, { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [] });
+    // #6383: de låste ryttere bliver (de kan ikke fjernes); resten ryddes.
+    const kept = draftOf(col).rider_ids.filter((id) => isTrainNowLockedInColumn(col, id));
+    const cur = draftOf(col);
+    const keep = (id) => (id != null && kept.includes(id) ? id : null);
+    commitDraft(col, {
+      rider_ids: kept,
+      captain_id: keep(cur.captain_id), sprint_captain_id: keep(cur.sprint_captain_id), hunter_id: keep(cur.hunter_id),
+      free_role_ids: (cur.free_role_ids || []).filter((id) => kept.includes(id)),
+    });
   };
 
   // Klik rytter → rolle: ryd rytteren fra alle roller, sæt den valgte. Kaptajn er
@@ -631,6 +645,9 @@ export default function RaceHubBoard() {
   function handleDrop(toKind, toRaceId, raw) {
     const payload = decodeDrag(raw);
     if (!payload) return;
+    // #6383: en rytter der har trænet i dag flyttes aldrig ud af sit løb (ingen halv flytning).
+    const source = payload.fromRaceId ? effectiveColumns.find((c) => c.id === payload.fromRaceId) : null;
+    if (source && isTrainNowLockedInColumn(source, payload.riderId)) return;
     const target = effectiveColumns.find((c) => c.id === toRaceId);
     const targetFull = target ? target.counts.selected >= (target.size?.max ?? Infinity) : false;
     const targetLocked = target ? (!!target.lineup_locked || (target.stages_completed ?? 0) > 0 || !!target.withdrawn) : false;
@@ -684,6 +701,8 @@ export default function RaceHubBoard() {
         <EmptyState icon={<FlagIcon size={24} />} title={t("racehub.empty")} />
       ) : (
         <>
+          {/* #6383: låsen står FØR man prøver at gemme (samme banner som udtagelsespanelet). */}
+          {trainNowSummary.count > 0 && <TrainNowLockBanner pressedAt={trainNowSummary.pressedAt} testId="race-hub-train-now-lock" />}
           {/* #2195: forklar komprimeringen når dagen rummer flere spil-dage. */}
           {multiDay && (
             <p className="mb-3 text-2xs text-cz-3 flex items-center gap-1.5">
