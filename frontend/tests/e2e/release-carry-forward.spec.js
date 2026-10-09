@@ -88,6 +88,7 @@ test.describe("release carry-forward A -> B (#5162, manuel)", () => {
 
     // Fase 1: A serverer alt. Bypass-headeren sendes kun til A's origin.
     let servedByB = false;
+    let pending = 0;
     const fromB = [];
     await page.route(
       (url) => url.origin === a.origin,
@@ -98,12 +99,17 @@ test.describe("release carry-forward A -> B (#5162, manuel)", () => {
           return;
         }
         // Fase 2: origin er "gaaet til B" for fanens assets.
-        const response = await route.fetch({
-          url: `${bOrigin}${url.pathname}${url.search}`,
-          headers: { ...route.request().headers(), ...bypassHeaders() },
-        });
-        fromB.push({ path: url.pathname, status: response.status(), contentType: response.headers()["content-type"] || "" });
-        await route.fulfill({ response });
+        pending += 1;
+        try {
+          const response = await route.fetch({
+            url: `${bOrigin}${url.pathname}${url.search}`,
+            headers: { ...route.request().headers(), ...bypassHeaders() },
+          });
+          fromB.push({ path: url.pathname, status: response.status(), contentType: response.headers()["content-type"] || "" });
+          await route.fulfill({ response });
+        } finally {
+          pending -= 1;
+        }
       },
     );
 
@@ -113,12 +119,21 @@ test.describe("release carry-forward A -> B (#5162, manuel)", () => {
     });
 
     servedByB = true;
+    const firstChunk = page
+      .waitForResponse((res) => {
+        const url = new URL(res.url());
+        return url.origin === a.origin && isAssetPath(url.pathname) && isScriptOrStyle(url.pathname);
+      }, { timeout: 15000 })
+      .catch(() => null);
     await page.evaluate((target) => {
       window.history.pushState({}, "", target);
       window.dispatchEvent(new PopStateEvent("popstate", { state: {} }));
     }, TARGET_PATH);
-    await page.waitForLoadState("networkidle");
     await expect(page).toHaveURL(new RegExp(`${TARGET_PATH.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`));
+    await firstChunk;
+    // Lazy chunks kan hente flere chunks i kaskade: vent til alle B-hentninger er faerdige.
+    await page.waitForLoadState("networkidle");
+    await expect.poll(() => pending, { timeout: 15000 }).toBe(0);
 
     test.info().annotations.push({ type: "chunks-fra-B", description: fromB.map((r) => `${r.path} ${r.status}`).join(", ") || "(ingen)" });
 
@@ -133,5 +148,6 @@ test.describe("release carry-forward A -> B (#5162, manuel)", () => {
     // Ingen reload: markoeren fra fase 1 lever stadig, og ingen chunk-fejl naaede siden.
     expect(await page.evaluate(() => window.__czCarryForwardMarker)).toBe("A-tab");
     expect(pageErrors, "chunk-/sidefejl i A-fanen").toEqual([]);
+    await page.unrouteAll({ behavior: "ignoreErrors" });
   });
 });
