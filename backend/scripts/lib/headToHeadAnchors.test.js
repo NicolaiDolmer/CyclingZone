@@ -501,9 +501,9 @@ test("#5578 scoreBreakawayRates: v4 maales paa motorens egen udbrudsdom (v4Trace
   assert.equal(result.v4.perTerrain.mountain.breakawayWins, 1);
 });
 
-test("#5578 scoreBreakawayRates: dommen er pr. terraen mod kandidatbaandet — ét terraen udenfor = FAIL", () => {
-  const mountainBand = ANCHOR_BANDS.breakawayRatePerTerrainCandidate.byTerrain.mountain;
-  const flatBand = ANCHOR_BANDS.breakawayRatePerTerrainCandidate.byTerrain.flat;
+test("#5578 scoreBreakawayRates: dommen er pr. terraen mod udbrudsbaandet — ét terraen udenfor = FAIL", () => {
+  const mountainBand = ANCHOR_BANDS.breakawayRatePerTerrain.byTerrain.mountain;
+  const flatBand = ANCHOR_BANDS.breakawayRatePerTerrain.byTerrain.flat;
   // Bjerg: 1 af 3 (inden for bjergbaandet). Fladt: 1 af 1 (langt over fladbaandet).
   const rows = [
     breakawayRow("mountain", { v3Win: true, v4Win: true }),
@@ -532,7 +532,7 @@ test("#5578 scoreBreakawayRates: tidskoersler taeller ikke (intet udbrud), og v4
   assert.equal(noTrace.v3.value, 1);
 });
 
-test("#5578 scoreBreakawayRates: kun etapetyper uden kandidatbaand -> N/A (maalt, men ingen dom at faelde)", () => {
+test("#5578 scoreBreakawayRates: kun etapetyper uden udbrudsbaand -> N/A (maalt, men ingen dom at faelde)", () => {
   const result = scoreBreakawayRates([breakawayRow("classic", { v3Win: true, v4Win: true })]);
   assert.equal(result.v4.verdict, "N/A");
   assert.equal(result.v4.perTerrain.classic.verdict, "N/A");
