@@ -1,5 +1,64 @@
 export const PATCHES = [
   {
+    "version": "7.350",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Every rider has Teamwork and Leadership",
+          "body": "Riders who had no value for Teamwork or Leadership now have one, set by the same formula new riders get. Points your riders already trained in these two abilities are added on top. No rating changed, and no value went down."
+        },
+        "da": {
+          "title": "Alle ryttere har Holdarbejde og Lederskab",
+          "body": "Ryttere uden en værdi for Holdarbejde eller Lederskab har nu en, sat med den samme formel som nye ryttere får. Point, dine ryttere allerede har trænet i de to evner, er lagt oveni. Ingen rating er ændret, og ingen værdi er gået ned."
+        },
+        "refs": [
+          5268
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "More from the new race rules",
+          "body": "In races that start from now on, the breakaway follows the stage: up to 8 riders on flat stages, 12 on hilly stages and 16 in the mountains. On mountain stages, AI teams without a GC chance send a climber up the road. Time gaps on a climb follow its length and gradient, groups can come back together on a descent during the stage, and a descent to the finish only closes part of a gap."
+        },
+        "da": {
+          "title": "Mere fra de nye løbsregler",
+          "body": "I løb, der starter fra nu af, følger udbruddet etapen: op til 8 ryttere på flade etaper, 12 på kuperede og 16 i bjergene. På bjergetaper sender AI-hold uden klassementschance en klatrer af sted. Tidsgabene på en stigning følger dens længde og stigningsprocent, grupper kan samles igen på en nedkørsel undervejs, og en nedkørsel mod mål lukker kun en del af et hul."
+        },
+        "refs": [
+          6201,
+          6200,
+          6199
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "The daily report no longer crashes",
+          "body": "The Report tab on the training page could show an error page instead of the day's receipt. It now always opens, and a day without training shows as empty."
+        },
+        "da": {
+          "title": "Den daglige rapport crasher ikke længere",
+          "body": "Rapport-fanen på træningssiden kunne vise en fejlside i stedet for dagens kvittering. Den åbner nu altid, og en dag uden træning vises som tom."
+        },
+        "refs": [
+          6314
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.349",
     "date": "2026-10-09",
     "changes": [
