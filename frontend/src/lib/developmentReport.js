@@ -139,9 +139,10 @@ export function dominantPlan(entries) {
   return { focus, intensity: top(intensityCount) };
 }
 
-// Antal dage med mindst én evne-gevinst i run-entries.
+// Antal dage med mindst én evne-gevinst i run-entries. #6111: en dato foer
+// aftenafregningen taeller med sine gemte loebsdage (trained_now, #6027).
 export function gainDayCount(entries) {
-  return (Array.isArray(entries) ? entries : []).filter((e) => isBreakthrough(e?.row)).length;
+  return (Array.isArray(entries) ? entries : []).filter((e) => isBreakthrough(e?.row?.trained_now ?? e?.row)).length;
 }
 
 // ── Loft-udsigt (#2645 Del A) ────────────────────────────────────────────────────

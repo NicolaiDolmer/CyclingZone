@@ -164,6 +164,15 @@ test("gainDayCount: tæller kun dage med mindst én evne-gevinst", () => {
   assert.equal(gainDayCount(null), 0);
 });
 
+test("#6111 gainDayCount: en uafregnet dato tæller med sine gemte løbsdage (trained_now)", () => {
+  const entries = [
+    { row: { receipt_status: "pending", gains: {}, trained_now: { gains: { sprint: 1 } } } },
+    { row: { receipt_status: "pending", gains: {}, trained_now: { gains: {} } } },
+    { row: { receipt_status: "complete", gains: { tempo: 1 }, trained_now: null } },
+  ];
+  assert.equal(gainDayCount(entries), 2);
+});
+
 // #2645 Del A — spillerrapport 18/7: rytter med evne 29 og loft 90+ fik teksten
 // "Approaching ceiling" (frontend/public/locales/en/rider.json
 // profile.development.projection.approaching). Root cause: backendens
