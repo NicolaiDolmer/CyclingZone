@@ -39,7 +39,7 @@ Spillere og kode taler om "rytterens værdi" som ét tal. Det er mindst **tre**,
 | `valuation_type` frosset snapshot af `primary_type` | `riderValuation.js`, `riderCareerNpv.js` | #3345, ejer 4/8 | Live **under v4**. Indgår ikke i v5's beregning (se §1.1). Kolonnen droppes først i en senere, ejer-gatet migration |
 | NPV-vækstrater frosset (trin 7) | `riderCareerNpv.js` (`FROZEN_NPV_RATE_BY_POTENTIAL`) | ejer 16/8 | Live, undgår median −12 % shock |
 | Søndags-marked-sweep (blander model + observerede handler) | `marketValueSundaySweep.js` + `marketValueModelV1.json` | app_config-flag `market_value_sweep_enabled` | **SLUKKET.** Verificeret i prod 30/8: `market_value_sweep_enabled = 'off'`, `market_value_global_weight = 0`, og `market_value_sunday_sweep_log` er tom. Den har aldrig kørt. Se §9 |
-| Kadence: værdier genberegnes KUN søndag, fra kl. 06 dansk tid | `sundayValueSweep.js` | ejer 30/8 (#4419); søndags-kadencen selv: ejer 6/8 (#3448) | Live. Se §9 for hele billedet |
+| Kadence: værdier genberegnes KUN søndag, fra `SUNDAY_VALUE_FROM_HOUR` (kl. 14 dansk tid, pladsholder) | `sundayValueSweep.js`, `economyConstants.js` | ejer 28/9 (#5842): ét fast tidspunkt kl. 14-20, aldrig om morgenen; tidligere kl. 06 (ejer 30/8, #4419); søndags-kadencen selv: ejer 6/8 (#3448) | Klokkeslættet bekræftes af ejeren før merge af #5842. På skiftedagen kører søndagen først efter det fuldførte skifte. Se §9 |
 
 ### 1.1 Værdimodel v5 — værdien regnes på de samme evner som ratingen (#5443, ejer 20/9)
 
@@ -71,7 +71,7 @@ Migration: `database/2026-09-22-5443-best-role-data.sql`, nullable kolonner uden
 
 **Rækkefølge ved tænding** (hard regel, jf. §9.1): når nøglen er flippet, regner **også den førstkommende søndagskørsel** med v5 — nøglen læses pr. kørsel. Ejer-beslutning 3 (20/9 aften) gjorde selve begivenheden til én **ekstraordinær kørsel uden for søndagen**, med ejerens ordrette "kør" og spillerbeskeden ude først. Hele rækkefølgen, låsene og rollback-vejen: [`docs/runbooks/5443-ekstraordinaer-vaerdikoersel.md`](runbooks/5443-ekstraordinaer-vaerdikoersel.md). Søndags-pipelinen er uændret: værdi-refresh FØRST, markedsblend SIDST.
 
-**Alle produktions-læsere går gennem ÉN kontakt.** `riderValuationModelSelect.js` er det eneste sted i `backend/lib` og `backend/routes` der kender model-filerne. Søndagskørslen, sæson-transitionen, backfill/heal-stien og startruppens cap-gate læser nøglen pr. kørsel; api.js's læse-flader (rytterkort, værdi-trend, scouting, admin-preview) bruger en kort cache. Vagt: `valuationModelReaders.test.js` fejler hvis en fil uden for modulet indlæser en model-JSON direkte. Det hul kostede tre oversete læsere i første omgang (#5443, 20/9 aften).
+**Alle produktions-læsere går gennem ÉN kontakt.** `riderValuationModelSelect.js` er det eneste sted i `backend/lib` og `backend/routes` der kender model-filerne. Søndagskørslen, backfill/heal-stien og startruppens cap-gate læser nøglen pr. kørsel (sæson-transitionen læser den ikke længere, den regner ingen værdi, #5842); api.js's læse-flader (rytterkort, værdi-trend, scouting, admin-preview) bruger en kort cache. Vagt: `valuationModelReaders.test.js` fejler hvis en fil uden for modulet indlæser en model-JSON direkte. Det hul kostede tre oversete læsere i første omgang (#5443, 20/9 aften).
 
 ---
 
@@ -242,7 +242,8 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 | # | Hvad | Hvornår | Kode | Status |
 |---|---|---|---|---|
-| 1 | **Søndagens værdi-pipeline**: v4-genberegning af `base_value`/CPV/typer for hele populationen, derefter markedsblendet | Søndag fra **kl. 06** dansk tid, ét persisteret dato-claim pr. søndag. IKKE gated af træning | `sundayValueSweep.js` (#4419) | Live |
+| 1 | **Søndagens værdi-pipeline**: v4-genberegning af `base_value`/CPV/typer for hele populationen, derefter markedsblendet | Søndag fra **kl. 14** dansk tid (pladsholder, ejeren bekræfter klokkeslættet, #5842), ét persisteret dato-claim pr. søndag. IKKE gated af træning. **Skiftedagen:** springer over uden at claime dagen, mens sæsonskiftet kører eller ikke er fuldført (sidste løbsdag, afsluttet sæson uden ny aktiv sæson, eller et `started`/`failed`-fase-anker det seneste døgn); kører ved første tick efter det fuldførte skifte. Bliver skiftet ikke fuldført samme søndag, tager næste søndag opdateringen | `sundayValueSweep.js` (#4419, #5842) | Live |
+| 1a | ~~Sæsonskiftets progression genberegnede `base_value`/CPV for hele populationen~~ | ~~Ved sæsonskiftet~~ | ~~`riderProgressionEngine.developRidersForSeason`~~ | **Fjernet (#5842, ejer 27/9).** Skiftet skriver kun evner, `is_u25` og pension. Payroll og kontraktfornyelser i samme skifte kører før progressionen og læste aldrig den nye værdi |
 | 2 | `prize_earnings_bonus` (3-sæsons-vindue) genberegnes | Ved **præmie-udbetaling**, ubetinget, enhver ugedag | `prizePayoutEngine.js` | Live, se §1 |
 | 3 | Nye ryttere får `base_value` ved oprettelse | Akademi-intake, startrup-allokering | `academyIntakePull.js`, `starterSquadAllocator.js` | Live (oprettelse, ikke opdatering) |
 | 4 | Heal-sweep re-deriverer ryttere med `base_value` NULL | Løbende, kun strandede rækker | `riderDeriveHealSweep` (#1673) | Live |

@@ -303,7 +303,7 @@ export async function runSundayValueSweep({
     // ville skrive et blend fra dette tick væk igen (samme rækkefølge-fejlmode
     // som headeren beskriver). Retry er sikker, også når refresh'en nåede at
     // skrive nogle ryttere: den genberegner rent fra v4 og skriver kun diffs.
-    // Loftet er cadencen selv — det timelige tick giver et forsøg pr. time fra
+    // Loftet er cadencen selv: det timelige tick giver et forsøg pr. time fra
     // SUNDAY_VALUE_FROM_HOUR til midnat (#5842: ca. 10 med kl. 14).
     log(`value-refresh fejlede: ${err.message}`);
     captureExceptionFn(err, { tags: { cron: "sunday-value-sweep", stage: "value-refresh" } });
