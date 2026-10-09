@@ -1,5 +1,50 @@
 export const PATCHES = [
   {
+    "version": "7.349",
+    "date": "2026-10-09",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Train now, programs and groups are open to everyone",
+          "body": "The training tools that were in beta are now open to every team. Train now settles today's training right away, without a bonus. Riders who trained can't race today, and the selection, the day board and the season matrix show the lock before you save. Programs: pick a rider, a group or the whole squad first, then one of 22 standard programs; the ones that fit the rider's type are listed first. Groups let you make one plan decision for several riders, with a shared fatigue limit."
+        },
+        "da": {
+          "title": "Train now, programmer og grupper er åbne for alle",
+          "body": "Træningsværktøjerne, der var i beta, er nu åbne for alle hold. Train now afregner dagens træning med det samme, uden bonus. Ryttere, der har trænet, kan ikke køre i dag, og udtagelsen, dagsboardet og sæsonmatrixen viser låsen, før du gemmer. Programmer: vælg først en rytter, en gruppe eller hele truppen, og derefter et af 22 standardprogrammer; dem, der passer til rytterens type, står øverst. Med grupper træffer du én planbeslutning for flere ryttere med en fælles træthedsgrænse."
+        },
+        "refs": [
+          6296,
+          4847,
+          4629,
+          6000,
+          6035,
+          6383
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Season points show all day",
+          "body": "Your riders' season points on the Training tab and under Development no longer show empty values until the evening settlement. Race days that are already trained count right away."
+        },
+        "da": {
+          "title": "Sæsonpoint vises hele dagen",
+          "body": "Rytternes sæsonpoint på Træning-fanen og under Udvikling viser ikke længere tomme felter frem til aftenafregningen. Løbsdage, der allerede er trænet, tæller med med det samme."
+        },
+        "refs": [
+          6111
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.348",
     "date": "2026-10-09",
     "changes": [
