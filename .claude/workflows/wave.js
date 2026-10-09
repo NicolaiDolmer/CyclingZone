@@ -29,7 +29,10 @@
 //         branch: "chore/5143-xyz",   // branch (worktree-slug udledes af den)
 //         title: "[ops] ...",         // issue-titel (til brief + rapport)
 //         scopeText: "...",           // hvad lanen skal loese
-//         model: "sonnet",            // 'opus' | 'sonnet' - saettes EKSPLICIT
+//         model: "sonnet",            // 'opus' | 'sonnet' - saettes EKSPLICIT; motor/migration/RLS/penge/sikkerhed -> opus automatisk (#6344)
+//         effort: "medium",           // 'low' | 'medium' | 'high' (default medium; risiko-spor -> high), videregives til lane-agenten (#6344)
+//         designGo: "8/10 #1234",     // PAAKRAEVET for spillervendt ownership (frontend/src/, frontend/public/locales/, help.json) (#6344)
+//         noVisibleChange: false,     // true + noVisibleReason: "..." = undtaget design-gaten (refactor/ops uden synlig aendring)
 //         tier: "TARGETED",           // 'TARGETED' | 'FULL' (maks een FULL)
 //         ownership: ["scripts/x.ps1"],  // eksklusivt: ejede filer maa aendres frit
 //         touches: ["frontend/src/pages/X.jsx"], // valgfrit (#5997): delte filer, kun minimal kobling (faa linjer)
@@ -45,6 +48,14 @@
 //     trackTimeoutMinutes: 120,       // foerste spor-vindue (klemmes til 10-180)
 //     rollingIntake: true             // false = ingen rullende optag (#5562, se punkt 7)
 //   }
+//
+// MODEL, EFFORT OG DESIGN-GATE (#6344, ejer 8/10; AI_CHANNEL_ROUTING.md
+// §Model og effort + AGENTS.md hard rule 25). Reglerne er gates, ikke prosa:
+//   - Rammer ownership/touches motor, migrationer/RLS, penge eller sikkerhed,
+//     koerer sporet som opus/high uanset args; planen logger aarsagen.
+//   - Et spillervendt spor uden designGo afvises (hooken i wave-policy.mjs ved
+//     admission/enqueue, normalizeTrack her ved dryRun og intake). Undtaget:
+//     kind:'investigate' og noVisibleChange:true med noVisibleReason.
 //
 // FEM VALG DER IKKE ER OPLAGTE:
 //
@@ -247,6 +258,11 @@ const TRACK_CONFIG_SCHEMA = {
     title: { type: 'string' },
     scopeText: { type: 'string' },
     model: { type: 'string' },
+    // #6344: effort + design-gate-felterne skal overleve intake uaendret.
+    effort: { type: 'string' },
+    designGo: { type: 'string' },
+    noVisibleChange: { type: 'boolean' },
+    noVisibleReason: { type: 'string' },
     tier: { type: 'string' },
     kind: { type: 'string' },
     ownership: { type: 'array', items: { type: 'string' } },
@@ -394,16 +410,82 @@ function sharedWithFor(t) {
   return files.length > 0 ? { files, mergeOrder: plan.mergeOrder } : undefined
 }
 
+// SPEJLING af requiredModel()/designGateHits() i scripts/wave-policy.mjs
+// (#6344) - hold dem identiske; drift-vagten i wave-policy.test.mjs koerer
+// denne blok mod modulet. Admission (hooken) afviser allerede et spillervendt
+// spor uden designGo; normalizeTrack gentager det, saa dryRun og rullende
+// optag viser samme afvisning. Model-opgraderingen sker KUN her.
+const TRACK_EFFORTS = ['low', 'medium', 'high']
+const DEFAULT_EFFORT = 'medium'
+const OPUS_RISK_PATHS = [
+  ['backend/lib/engine/', 'motor'],
+  ['database/', 'migration/RLS'],
+  ['supabase/migrations/', 'migration/RLS'],
+  ['backend/lib/billing*', 'penge/billing'],
+  ['backend/lib/economy*', 'penge/oekonomi'],
+]
+const OPUS_SECURITY_SOURCE = '(^|[^a-z])(auth|rls|grants?|security)'
+const PLAYER_FACING_PATHS = ['frontend/src/', 'frontend/public/locales/']
+function gatePrefix(raw) {
+  const p = String(raw).replace(/\\/g, '/').replace(/\/$/, '').toLowerCase()
+  const head = p.split('*')[0]
+  return { prefix: head.replace(/\/$/, ''), open: p.includes('*') && !head.endsWith('/') }
+}
+function gateOverlaps(a, b) {
+  const x = typeof a === 'string' ? gatePrefix(a) : a
+  const y = typeof b === 'string' ? gatePrefix(b) : b
+  const covers = (u, v) => (u.open ? v.prefix.startsWith(u.prefix) : (v.prefix === u.prefix || v.prefix.startsWith(u.prefix + '/')))
+  return covers(x, y) || covers(y, x)
+}
+function requiredModel(t) {
+  const asked = (t && t.model) || 'sonnet'
+  const effort = (t && t.effort) || DEFAULT_EFFORT
+  const security = new RegExp(OPUS_SECURITY_SOURCE)
+  const isProse = (p) => p.startsWith('docs/') || p.startsWith('.claude/learnings/') || p.endsWith('.md')
+  const reasons = []
+  const paths = [...(Array.isArray(t && t.ownership) ? t.ownership : []), ...(Array.isArray(t && t.touches) ? t.touches : [])]
+  for (const raw of paths) {
+    const own = gatePrefix(raw)
+    for (const [risk, why] of OPUS_RISK_PATHS) if (gateOverlaps(own, risk)) reasons.push(`${why} (${raw})`)
+    if (!isProse(own.prefix) && security.test(own.prefix)) reasons.push(`sikkerhed (${raw})`)
+  }
+  const unique = [...new Set(reasons)]
+  if (!unique.length) return { model: asked, effort, upgraded: false, reasons: [] }
+  return { model: 'opus', effort: 'high', upgraded: asked !== 'opus' || effort !== 'high', reasons: unique }
+}
+function designGateHits(t) {
+  if (t && t.kind === 'investigate') return []
+  if (t && typeof t.designGo === 'string' && t.designGo.trim()) return []
+  if (t && t.noVisibleChange === true && typeof t.noVisibleReason === 'string' && t.noVisibleReason.trim()) return []
+  const own = Array.isArray(t && t.ownership) ? t.ownership : []
+  return own.filter((raw) => {
+    const p = gatePrefix(raw)
+    return p.prefix.endsWith('help.json') || PLAYER_FACING_PATHS.some((f) => gateOverlaps(p, f))
+  })
+}
+// Slut paa #6344-spejlingen.
+
 function normalizeTrack(raw, index) {
   if (!raw || typeof raw !== 'object') throw new Error(`wave: spor ${index} er ikke et objekt`)
   const issue = raw.issue
   const branch = raw.branch
   if (!issue) throw new Error(`wave: spor ${index} mangler "issue"`)
   if (!branch) throw new Error(`wave: spor ${index} (#${issue}) mangler "branch"`)
-  const model = raw.model || 'sonnet'
-  if (model !== 'opus' && model !== 'sonnet') {
-    throw new Error(`wave: spor #${issue} har ugyldig model "${model}" (brug 'opus' eller 'sonnet')`)
+  const askedModel = raw.model || 'sonnet'
+  if (askedModel !== 'opus' && askedModel !== 'sonnet') {
+    throw new Error(`wave: spor #${issue} har ugyldig model "${askedModel}" (brug 'opus' eller 'sonnet')`)
   }
+  if (raw.effort !== undefined && !TRACK_EFFORTS.includes(raw.effort)) {
+    throw new Error(`wave: spor #${issue} har ugyldig effort "${raw.effort}" (brug ${TRACK_EFFORTS.join(', ')})`)
+  }
+  // #6344: design-gaten (AGENTS.md hard rule 25). Samme regel som admission.
+  const gateHits = designGateHits(raw)
+  if (gateHits.length > 0) {
+    throw new Error(`wave: spillervendt spor #${issue} (${gateHits.join(', ')}) mangler designGo (AGENTS.md hard rule 25). Faa ejerens go paa problem + loesning foerst og send designGo: "<dato/link>" - eller kind:'investigate', eller noVisibleChange:true med noVisibleReason.`)
+  }
+  // #6344: risiko styrer modellen - motor/migrationer/RLS/penge/sikkerhed = opus/high.
+  const routed = requiredModel(raw)
+  const model = routed.model
   const slug = slugOf(branch)
   return {
     issue,
@@ -412,6 +494,12 @@ function normalizeTrack(raw, index) {
     title: raw.title || `issue #${issue}`,
     scopeText: raw.scopeText || '',
     model,
+    effort: routed.effort,
+    askedModel,
+    modelUpgrade: routed.upgraded ? routed.reasons : [],
+    designGo: typeof raw.designGo === 'string' ? raw.designGo : '',
+    noVisibleChange: raw.noVisibleChange === true,
+    noVisibleReason: typeof raw.noVisibleReason === 'string' ? raw.noVisibleReason : '',
     // #5220: 'investigate' er et undersoegelsesspor - intet build, fast
     // 60-min-vindue, ingen review/fix-trin (se runInvestigateTrack).
     kind: raw.kind === 'investigate' ? 'investigate' : 'build',
@@ -426,6 +514,18 @@ function normalizeTrack(raw, index) {
     briefPath: `${SCRATCH_ROOT}\\${slug}\\brief-${slug}.md`,
     configPath: `${SCRATCH_ROOT}\\${slug}\\brief-${slug}.json`,
   }
+}
+
+// #6344: planlinjen viser model/effort, og en automatisk opus-opgradering
+// logges med aarsag, saa ejeren kan se HVORFOR et spor koerer dyrere.
+function planLinesFor(t, i) {
+  const lines = [`  ${i + 1}. #${t.issue} ${t.branch} [${t.model}/${t.effort}/${t.tier}] -> ${t.worktree}`]
+  if (t.modelUpgrade && t.modelUpgrade.length > 0) {
+    lines.push(`     model-opgradering #${t.issue}: ${t.askedModel} -> opus/high (${t.modelUpgrade.join('; ')})`)
+  }
+  if (t.designGo) lines.push(`     design-go #${t.issue}: ${t.designGo}`)
+  else if (t.noVisibleChange) lines.push(`     ingen synlig aendring #${t.issue}: ${t.noVisibleReason}`)
+  return lines
 }
 
 // SPEJLING af classifyStall() i scripts/wave-freeze.mjs - hold dem identiske.
@@ -896,6 +996,8 @@ function trackConfigRow(t) {
     slug: t.slug,
     branch: t.branch,
     model: t.model,
+    // #6344: lane-agenten faar effort direkte i agent()-kaldet; feltet her er info.
+    effort: t.effort,
     kind: t.kind,
     title: t.title,
     scopeText: t.scopeText,
@@ -1101,7 +1203,7 @@ if (fullTiers.length > 1) {
   throw new Error(`wave: ${fullTiers.length} spor har tier FULL (${fullTiers.map((t) => '#' + t.issue).join(', ')}). Kun EET spor maa koere fuld suite - resten er TARGETED, CI er den fulde gate (TIER WAVE, ejer 6/9).`)
 }
 
-const planLines = tracks.map((t, i) => `  ${i + 1}. #${t.issue} ${t.branch} [${t.model}/${t.tier}] -> ${t.worktree}`)
+const planLines = tracks.flatMap((t, i) => planLinesFor(t, i))
 log(`Boelgeplan: ${tracks.length} spor (tungeste foerst), ${lanes} laner, verifikations-semafor 2, spor-vindue ${trackTimeoutMinutes} min (haardt loft ${WAVE_FREEZE.TRACK_HARD_CAP_MINUTES} min), rullende optag ${rollingIntake ? 'til' : 'fra'}.`)
 log(`Frys maales paa BRANCH-aktivitet (#5178): et udloebet vindue forlaenges saa laenge seneste commit er under ${WAVE_FREEZE.BRANCH_STALL_MINUTES} min gammel.`)
 for (const line of planLines) log(line)
@@ -1130,6 +1232,8 @@ if (dryRun) {
       branch: t.branch,
       slug: t.slug,
       model: t.model,
+      effort: t.effort,
+      modelUpgrade: t.modelUpgrade,
       tier: t.tier,
       weight: trackWeight(t),
       worktree: t.worktree,
@@ -1312,9 +1416,9 @@ async function gracefulStop(track, probe) {
 // laneBrief) skriver den tvungne dom ind i selve briefen.
 async function runInvestigateTrack(track) {
   const label = `#${track.issue} ${track.branch}`
-  const row = { issue: track.issue, branch: track.branch, model: track.model, tier: track.tier, kind: 'investigate' }
+  const row = { issue: track.issue, branch: track.branch, model: track.model, effort: track.effort, tier: track.tier, kind: 'investigate' }
   const build = await withTimeout(
-    agent(laneBrief(track), { label, phase: 'Laner', model: track.model }),
+    agent(laneBrief(track), { label, phase: 'Laner', model: track.model, effort: track.effort }),
     WAVE_FREEZE.INVESTIGATE_TIMEOUT_MINUTES * 60 * 1000,
     label,
   )
@@ -1348,7 +1452,7 @@ async function runTrack(track, trackTimeoutMinutes) {
   if (track.kind === 'investigate') return runInvestigateTrack(track)
 
   const label = `#${track.issue} ${track.branch}`
-  const row = { issue: track.issue, branch: track.branch, model: track.model, tier: track.tier }
+  const row = { issue: track.issue, branch: track.branch, model: track.model, effort: track.effort, tier: track.tier }
 
   // A waiting-window expiry keeps the same writer alive. Only a settled API
   // failure can start one recovery in the same worktree, within the same cap.
@@ -1359,8 +1463,8 @@ async function runTrack(track, trackTimeoutMinutes) {
     settledBuildOutcome = null
     const recordOutcome = (outcome) => { settledBuildOutcome = outcome; return outcome }
     const promise = Promise.resolve().then(() => resumes === 0
-      ? agent(laneBrief(track), { label, phase: 'Laner', model: track.model })
-      : agent(recoveryBrief(track, row.recovery.reason), { label: `${label} (recovery 1/1)`, phase: 'Laner', model: track.model }))
+      ? agent(laneBrief(track), { label, phase: 'Laner', model: track.model, effort: track.effort })
+      : agent(recoveryBrief(track, row.recovery.reason), { label: `${label} (recovery 1/1)`, phase: 'Laner', model: track.model, effort: track.effort }))
     return promise.then(
       value => recordOutcome({ settled: true, value, error: null }),
       error => recordOutcome({ settled: true, value: null, error, terminalConfirmed: error && error.terminalConfirmed === true }),
@@ -1507,7 +1611,7 @@ async function runTrack(track, trackTimeoutMinutes) {
   if (review.verdict === 'BLOKERENDE') {
     log(`BLOKERENDE fund paa ${label} - starter ret-trin i samme worktree.`)
     const fix = await withTimeout(
-      agent(fixPrompt(track, review), { label: `ret ${label}`, phase: 'Review', model: track.model }),
+      agent(fixPrompt(track, review), { label: `ret ${label}`, phase: 'Review', model: track.model, effort: track.effort }),
       FIX_TIMEOUT_MS,
       `ret ${label}`,
     )
@@ -1702,6 +1806,7 @@ async function runIntake() {
       continue
     }
     knownBranches.add(track.branch)
+    for (const line of planLinesFor(track, allTracks.length)) log(`Optag:${line}`)
     allTracks.push(track)
     taken.push(track)
   }

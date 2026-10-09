@@ -7,7 +7,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
-import { isRaceDateTrainNowLocked } from "./trainNowLock.js";
+import { loadRaceTrainNowLock, trainNowSelectionViolations } from "./trainNowLock.js";
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOptOut.ts";
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
@@ -175,18 +175,24 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 409, error: "selection_season_not_active" };
   }
 
-  // #4847 (I3): efter et "Train now"-tryk er datoens tilmelding afgjort for holdet.
-  // Et loeb med en etape paa en laast dato kan hverken faa nye eller miste ryttere.
-  if (await isRaceDateTrainNowLocked({ supabase, teamId, raceId: race.id })) {
-    return { ok: false, status: 409, error: "selection_train_now_locked" };
-  }
-
   // #5944: en ungdomstrup sat til "Train only" kan ikke tilmeldes. Tom trup (ryd) er tilladt.
   if (riderIds.length && await isTeamSquadTrainOnly(supabase, { teamId, squad: raceSquadOf(race) })) {
     return { ok: false, status: 409, error: TRAIN_ONLY_SELECTION_ERROR };
   }
 
   const ctx = await getSelectionContext({ supabase, race, teamId });
+
+  // #4847 (I3) / #6139: efter et "Train now"-tryk er dagen afgjort for de ryttere der
+  // traenede (laase-raekkerne). En laast rytter kan hverken tilfoejes eller fjernes fra
+  // et loeb med en etape paa den dato; alle andre ryttere (nykoebt, flyttet) er frie.
+  const lockedMoves = trainNowSelectionViolations({
+    lockedRiderIds: ctx.trainNowLock.riderIds,
+    currentRiderIds: ctx.selection?.rider_ids ?? [],
+    nextRiderIds: riderIds,
+  });
+  if (lockedMoves.length) {
+    return { ok: false, status: 409, error: "selection_train_now_locked", locked_rider_ids: lockedMoves };
+  }
 
   const result = validateSelection({
     riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
@@ -424,9 +430,11 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   const riderIds = riders.map((r) => r.id);
 
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");
-  const [abilitiesRes, conditionRes] = await Promise.all([
+  const [abilitiesRes, conditionRes, trainNowLock] = await Promise.all([
     supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIds),
     supabase.from("rider_condition").select("rider_id, form, fatigue, injured_until").in("rider_id", riderIds),
+    // #6139: hvilke af holdets ryttere er laast af et "Train now"-tryk paa en af loebets datoer.
+    loadRaceTrainNowLock({ supabase, raceId: race.id, riderIds, teamId }),
   ]);
   const abilityByRider = new Map((abilitiesRes.data || []).map((a) => [a.rider_id, a]));
   const conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
@@ -438,7 +446,9 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   // uafhængige, afgørende bagstopper på selve løbsdagen — se dets egen kommentar.
   const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
 
-  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr });
+  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr })
+    // #6139: panelet graaner en laast rytter op-front (han kan hverken ind eller ud).
+    .map((row) => ({ ...row, trainNowLocked: trainNowLock.riderIds.has(row.id) }));
 
   // Rod B (#1800/#1742): kryds committede entries mod den gyldige roster. En ghost
   // (rytter udtaget FØR han blev solgt/fyret/akademi/pensioneret) er ikke i `riders`
@@ -470,5 +480,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     // #4119: en udgaaende rytter kan ikke udtages til nye loeb og taeller derfor
     // ikke som "ledig" — samme skel som cap-taellingen bruger (#1090/#250).
     availableCount: riderRows.filter((r) => !r.injured && !r.outgoing).length,
+    // #6139: laasen for UI'et (banner med tidspunkt + graa ryttere) og for prepareSelectionChange.
+    trainNowLock: { riderIds: [...trainNowLock.riderIds].sort(), pressedAt: trainNowLock.pressedAt },
   };
 }

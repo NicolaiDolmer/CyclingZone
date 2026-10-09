@@ -20,7 +20,14 @@ export function deploymentAttemptState(run, jobResponse, sha, minimumAttempt) {
   const pending = steps.find(step => step.name === 'Deployment still pending');
   if (smoke?.status !== 'completed' || pending?.status !== 'completed') return 'unknown';
   if (pending?.conclusion === 'success' && smoke?.conclusion === 'skipped') return 'pending';
-  if (pending?.conclusion === 'skipped' && smoke?.conclusion === 'success') return 'verified';
+  if (pending?.conclusion === 'skipped' && smoke?.conclusion === 'success') {
+    const verified = steps.filter(step => step.name === 'Cron check-ins verified');
+    const deferred = steps.filter(step => step.name === 'Cron check-ins deferred');
+    if (verified.length !== 1 || deferred.length !== 1
+      || verified[0].status !== 'completed' || deferred[0].status !== 'completed') return 'unknown';
+    if (verified[0].conclusion === 'success' && deferred[0].conclusion === 'skipped') return 'verified';
+    if (verified[0].conclusion === 'skipped' && deferred[0].conclusion === 'success') return 'deferred';
+  }
   return 'unknown';
 }
 

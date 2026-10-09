@@ -81,14 +81,12 @@ export const ANCHOR_BANDS = {
     min: 60, max: 480,
     source: "#2415 (gap-realisme-baand: GT-vindermargin typisk 1-8 min)",
   },
-  // #5578: udbrudssejre pr. terraen. KANDIDAT — IKKE et ejer-godkendt maal.
-  // Tallene er #1021's v3-kalibreringsbaand (BREAKAWAY_TARGETS i
-  // scripts/simulateSeasonDryRun.js, kopieret her fordi det script koerer ved
-  // import). #5578 og spec'en (docs/drafts/spec-motor-runde-2-2026-09-25.md
-  // spor M3) siger at det endelige baand saettes ud fra virkelige udbrudsrater
-  // pr. terraen og godkendes af ejeren; dette er startpunktet, ikke dommen.
+  // #5578/#1021: udbrudssejre pr. terraen. EJER-GODKENDT (research i virkelige
+  // data 16/6, justeret 22/7 #2778, bekraeftet 8/10). Samme tal som
+  // BREAKAWAY_TARGETS i scripts/simulateSeasonDryRun.js (kopieret her fordi det
+  // script koerer ved import). SSOT: docs/RACE_ENGINE_RULES.md "Udbrudsmaal".
   // Kun vejetaper: tidskoersler har intet udbrud.
-  breakawayRatePerTerrainCandidate: {
+  breakawayRatePerTerrain: {
     byTerrain: {
       flat: { min: 0.01, max: 0.10 },
       rolling: { min: 0.04, max: 0.15 },
@@ -97,8 +95,8 @@ export const ANCHOR_BANDS = {
       high_mountain: { min: 0.00, max: 0.15 },
       cobbles: { min: 0.02, max: 0.15 },
     },
-    source: "KANDIDAT (#1021's v3-baand, simulateSeasonDryRun.js) — ikke ejer-godkendt; "
-      + "realisme-baand fra virkelige tal afventer ejeren (#5578)",
+    source: "ejer-godkendt (#1021 research 16/6, justeret 22/7 #2778, bekraeftet 8/10); "
+      + "docs/RACE_ENGINE_RULES.md 'Udbrudsmaal'",
   },
   // #5576: enkeltstartens TIDER, ikke kun dens rang. ITT-korrelationen ovenfor
   // er spearman paa placeringen og var groen, mens naesten hele feltet delte
@@ -663,7 +661,7 @@ export function scoreDominance(rows, { teamByRider, v4EntrantsById } = {}) {
 //       finale-segmentet og aldrig blev hentet. Nedkoerselsangreb ud af feltet
 //       har egen oprindelse og taeller ikke.
 // Tidskoersler (itt/itt_hilly/ttt) er udeladt: der findes intet udbrud.
-// Dommen er pr. terraen mod KANDIDAT-baandet (ANCHOR_BANDS-kommentaren): PASS
+// Dommen er pr. terraen mod ejer-baandet (ANCHOR_BANDS-kommentaren): PASS
 // kun naar ALLE maalte terraener med et baand ligger inden for det.
 // ---------------------------------------------------------------------------
 
@@ -672,7 +670,7 @@ const BREAKAWAY_V4_NO_TRACE = "rows uden v4Trace (koer headToHeadV4.js, der kald
 
 /** Taellinger pr. terraen -> anker-celle med pr.-terraen-dom. Eksporteret til aggregeringen og testene. */
 export function breakawayCellFromCounts(countsByTerrain, naNote = BREAKAWAY_NA_NOTE) {
-  const bands = ANCHOR_BANDS.breakawayRatePerTerrainCandidate.byTerrain;
+  const bands = ANCHOR_BANDS.breakawayRatePerTerrain.byTerrain;
   let races = 0;
   let wins = 0;
   let judged = 0;
@@ -698,7 +696,7 @@ export function breakawayCellFromCounts(countsByTerrain, naNote = BREAKAWAY_NA_N
   }
   if (judged === 0) {
     return {
-      value: null, sampleCount: races, verdict: "N/A", naReason: "ingen maalte etapetyper har et kandidatbaand",
+      value: null, sampleCount: races, verdict: "N/A", naReason: "ingen maalte etapetyper har et udbrudsbaand",
       display: fmtPct, perTerrain, counts,
     };
   }
@@ -739,12 +737,12 @@ function v4BreakawayWin(row) {
 }
 
 export function scoreBreakawayRates(rows) {
-  const band = ANCHOR_BANDS.breakawayRatePerTerrainCandidate;
+  const band = ANCHOR_BANDS.breakawayRatePerTerrain;
   const hasTrace = rows.some((r) => r.raw.v4Trace !== undefined);
   return {
     id: "breakaway_rate_per_terrain",
     label: "Udbruds-rater pr. terraen, vejetaper (vaerdi = samlet rate; dom pr. terraen)",
-    bandLabel: "KANDIDAT-baand pr. terraen (#1021), ikke ejer-godkendt",
+    bandLabel: "Ejer-baand pr. terraen (#1021, RULES Udbrudsmaal)",
     source: band.source,
     v3: breakawayCellFromCounts(countBreakawayWins(rows, v3BreakawayWin)),
     v4: breakawayCellFromCounts(countBreakawayWins(rows, v4BreakawayWin), hasTrace ? BREAKAWAY_NA_NOTE : BREAKAWAY_V4_NO_TRACE),
@@ -1188,7 +1186,7 @@ export function buildScorecard(rows, { teamByRider, abilitiesByRider, v4Entrants
 // ikke det samme som et manglende id: aggregateEngine() bruger stadig judge()
 // og maaler middelvaerdien. Udbrudsankeret doemmes pr. terraen og aggregeres
 // derfor af sin egen funktion (PER_ANCHOR_AGGREGATORS, #5578); indgangen her
-// er kun forward-guardens og peger paa kandidatbaandet.
+// er kun forward-guardens og peger paa udbrudsbaandet.
 export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   field_cohesion_flat: ANCHOR_BANDS.fieldCohesionFlat,
   descent_vs_summit_gap_ratio: ANCHOR_BANDS.descentToSummitGapRatio,
@@ -1198,7 +1196,7 @@ export const AGGREGATION_BAND_BY_ANCHOR_ID = {
   cobblestone_lift_on_sectors: ANCHOR_BANDS.cobblestoneLiftOnSectors,
   favorite_win_rate: ANCHOR_BANDS.favoriteWinRate,
   same_team_top10_share_4plus: ANCHOR_BANDS.sameTeamTop10Share4Plus,
-  breakaway_rate_per_terrain: ANCHOR_BANDS.breakawayRatePerTerrainCandidate,
+  breakaway_rate_per_terrain: ANCHOR_BANDS.breakawayRatePerTerrain,
   itt_correlation: ANCHOR_BANDS.ittCorrelationMinAbs,
   sprinter_win_rate_flat: ANCHOR_BANDS.sprinterWinRateFlat,
   bonus_seconds_bounded: { max: 10 },

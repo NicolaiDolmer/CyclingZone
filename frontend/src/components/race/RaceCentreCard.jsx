@@ -21,6 +21,7 @@ import {
 } from "../ui";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { formatNumber } from "../../lib/intl.js";
+import { filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6350: "km A-B" for kørte etaper
 
 // Tidspunktet for etapens slot, altid renderet i København-tid (spillets faste
 // slots) — ikke i browserens zone.
@@ -112,8 +113,8 @@ export default function RaceCentreCard({
           <>
             {filmLine ? (
               <p className="flex items-baseline gap-3 text-[13.5px] leading-snug text-cz-1">
-                <span className="w-14 shrink-0 font-data text-2xs tabular-nums text-cz-3">
-                  {t("detail.film.km", { value: formatNumber(filmLine.km) })}
+                <span className="min-w-14 shrink-0 whitespace-nowrap font-data text-2xs tabular-nums text-cz-3">
+                  {t("detail.film.km", { value: filmKmValue({ km: filmLine.km, km_span: filmLine.kmSpan }, formatNumber) })}
                 </span>
                 <span className="min-w-0">{t(`detail.film.event.${filmLine.key}`, filmLine.params)}</span>
               </p>

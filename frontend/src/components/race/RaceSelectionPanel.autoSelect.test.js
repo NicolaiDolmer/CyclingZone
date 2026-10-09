@@ -56,7 +56,8 @@ test("#3310 loadSelection kasserer svaret hvis generationen er forældet EFTER f
 test("#3310 Auto-select-knappen kalder autoSelect og låses af den delte busy-lås", () => {
   assert.match(
     source,
-    /onClick=\{autoSelect\}\s*\n\s*disabled=\{busy\}/,
+    // #6139: ogsaa laast naar alle holdets ryttere traenede i dag (Train now).
+    /onClick=\{autoSelect\}\s*\n\s*disabled=\{busy( \|\| fullyTrainNowLocked)?\}/,
     "Auto-select-knappen skal kalde autoSelect() og deaktiveres via den samme busy-variabel som resten af panelet",
   );
 });

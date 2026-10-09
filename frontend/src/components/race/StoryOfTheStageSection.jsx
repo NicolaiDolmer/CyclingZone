@@ -26,6 +26,7 @@ import { formatNumber } from "../../lib/intl.js";
 import { useStageTimeline } from "../../hooks/useStageTimeline.js";
 import { selectStoryEvents } from "../../lib/stageTimelineStory.js";
 import { describeEvent } from "../../lib/stageTimelineFilm.js";
+import { honestTimelineEvents, filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6294/#6350
 import { lazyWithRetry } from "../../lib/lazyWithRetry.js";
 
 // #5014: lazyWithRetry (ikke bart React.lazy) — se lib/lazyWithRetry.js for
@@ -38,8 +39,8 @@ function StoryRow({ event, riderNameById, teamNameById, t }) {
   if (!described) return null;
   return (
     <li className="flex items-baseline gap-3 py-1.5 border-t border-cz-border first:border-t-0">
-      <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 w-14">
-        {t("detail.film.km", { value: formatNumber(event.km) })}
+      <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 min-w-14 whitespace-nowrap">
+        {t("detail.film.km", { value: filmKmValue(event, formatNumber) })}
       </span>
       <span className="text-cz-1 text-sm leading-snug">
         {t(`detail.film.event.${described.key}`, described.params)}
@@ -58,7 +59,7 @@ export default function StoryOfTheStageSection({
   const timeline = suppliedTimeline === undefined ? fetchedTimeline : suppliedTimeline;
   const [playerOpen, setPlayerOpen] = useState(false);
 
-  const story = timeline?.events?.length ? selectStoryEvents(timeline.events) : [];
+  const story = timeline?.events?.length ? selectStoryEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version })) : [];
   if (!story.length && !finalKmAvailable) return null;
 
   return (

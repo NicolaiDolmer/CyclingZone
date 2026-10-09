@@ -40,7 +40,8 @@ import {
   SELECTION_ABILITY_SORT_KEYS,
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
-import { ArrowUpIcon, ArrowDownIcon, BlockedNote } from "../ui/index.js";
+import { ArrowUpIcon, ArrowDownIcon, BlockedNote, LockIcon } from "../ui/index.js";
+import { trainNowClock } from "../training/trainNowClock.ts"; // #6139
 import RiderMiniProfileModal from "../rider/RiderMiniProfileModal.jsx";
 import { useBlockedAction } from "../../lib/useBlockedAction.js";
 
@@ -251,6 +252,11 @@ export default function RaceSelectionPanel({
   }
 
   const { size, riders } = data;
+  // #6139: ryttere der traenede i dag via "Train now" (server-beregnet, pr. rytter). De kan
+  // hverken saettes ind eller tages ud af loebet; holdets oevrige ryttere er frie.
+  const trainNowLocked = new Set(data.trainNowLock?.riderIds ?? []);
+  const trainNowTime = trainNowClock(data.trainNowLock?.pressedAt);
+  const fullyTrainNowLocked = trainNowLocked.size > 0 && riders.every((r) => trainNowLocked.has(r.id));
   // #2265: ryttere bundet i et ANDET løb med overlappende in-game-dag-vindue (server-
   // beregnet). Bundne ryttere greyes + kan ikke tilføjes; er en bunden rytter allerede
   // valgt (fx efter en reschedule) vises en konflikt-markering, men han kan fjernes.
@@ -277,7 +283,9 @@ export default function RaceSelectionPanel({
   // hold med ryttere nok på papiret men ingen ledige til dagens løb. Hinten er ren
   // visning: den går ALDRIG i clientErrors, så Gem-knappen forbliver aktiv.
   const selectedIdSet = new Set(sel.riderIds);
-  const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)).length;
+  // #6139: en rytter der traenede i dag (Train now) er heller ikke fri til dette loeb.
+  const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)
+    && !trainNowLocked.has(r.id)).length;
   // Vises først når manageren har udtaget mindst én rytter: på et urørt panel er
   // "7 pladser står åbne" bare en gentagelse af undertekstens "udtag op til {max}".
   //
@@ -526,6 +534,23 @@ export default function RaceSelectionPanel({
         </span>
       </div>
 
+      {/* #6139: laasen staar FOER man proever at gemme (mockup pin 1): tidspunkt + hvem. */}
+      {trainNowLocked.size > 0 && (
+        <div
+          role="status"
+          data-testid="race-selection-train-now-lock"
+          className="px-4 py-2 flex items-start gap-2 text-xs text-cz-1 bg-cz-warning-bg border-b border-cz-warning/30"
+        >
+          <LockIcon size={14} aria-hidden="true" className="mt-px shrink-0 text-cz-warning" />
+          <span>
+            <span className="font-semibold">{t("selection.trainNowLock.title")}</span>{" "}
+            {trainNowTime
+              ? t("selection.trainNowLock.bodyAt", { time: trainNowTime })
+              : t("selection.trainNowLock.body")}
+          </span>
+        </div>
+      )}
+
       {/* #3809: kolonne-tilstand — "Current" viser rutematch/form/træthed (dagens
           visning), "Abilities" viser de 15 evner (samme rå tal som Mit Hold's
           evne-tilstand). Segmenteret knap-bånd, samme mønster/styling som
@@ -609,10 +634,11 @@ export default function RaceSelectionPanel({
           // fjernelse er altid tilladt, kun tilføjelse valideres. Tidligere gjorde
           // `rider.injured` alene checkboxen disabled UANSET checked-state, så en
           // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
-          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy;
+          const lockedByTrainNow = trainNowLocked.has(rider.id); // #6139
+          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy || lockedByTrainNow;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
-            <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
+            <li key={rider.id} className={rider.injured || (bound && !checked) || lockedByTrainNow ? "opacity-60" : ""}>
               {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den, ikke
                   længere navnet (spillerforslag: navneklik skal åbne profil, ikke toggle). */}
               <div className="flex items-start gap-3 px-4 py-3">
@@ -642,6 +668,7 @@ export default function RaceSelectionPanel({
                         {t("selection.injured")}
                       </span>
                     )}
+                    {lockedByTrainNow && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
                     {bound && (
                       <span className={`text-3xs px-2 py-0.5 rounded-full border ${checked
                         ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
@@ -738,9 +765,10 @@ export default function RaceSelectionPanel({
               const bound = boundByRider.get(rider.id) ?? null;
               // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
               // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
-              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy;
+              const lockedByTrainNow = trainNowLocked.has(rider.id); // #6139
+              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy || lockedByTrainNow;
               return (
-                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
+                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) || lockedByTrainNow ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
                     {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den. */}
                     <div className="flex items-center gap-2">
@@ -768,6 +796,7 @@ export default function RaceSelectionPanel({
                           {t("selection.injured")}
                         </span>
                       )}
+                      {lockedByTrainNow && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
                       {bound && (
                         <span className={`text-3xs px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
                           ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
@@ -824,7 +853,7 @@ export default function RaceSelectionPanel({
             value={sel.captainId}
             riders={selectedRiders}
             emptyLabel="—"
-            disabled={busy}
+            disabled={busy || fullyTrainNowLocked}
             onChange={(v) => setRole("captainId", v)}
           />
           <RoleSelect
@@ -832,7 +861,7 @@ export default function RaceSelectionPanel({
             value={sel.sprintCaptainId}
             riders={selectedRiders}
             emptyLabel={t("selection.noRole")}
-            disabled={busy}
+            disabled={busy || fullyTrainNowLocked}
             onChange={(v) => setRole("sprintCaptainId", v)}
           />
           {/* #1884: jaeger-dropdownen er VAEK herfra — valget bor i
@@ -895,7 +924,7 @@ export default function RaceSelectionPanel({
             <button
               type="button"
               onClick={autoSelect}
-              disabled={busy}
+              disabled={busy || fullyTrainNowLocked}
               className="px-4 py-2 rounded-lg border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t("selection.autoFill")}
@@ -907,11 +936,11 @@ export default function RaceSelectionPanel({
                  løb, og react-hooks/refs afviser (med rette) at sende en
                  ref-læsende funktion videre midt i en render. */
               onClick={(event) => saveBlock.guard(save)(event)}
-              disabled={busy}
+              disabled={busy || fullyTrainNowLocked}
               {...saveBlock.blockedProps}
               className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
-              {saving ? t("selection.saving") : t("selection.save")}
+              {saving ? t("selection.saving") : t(fullyTrainNowLocked ? "selection.saveLocked" : "selection.save")}
             </button>
           </div>
         </div>
@@ -932,7 +961,7 @@ export default function RaceSelectionPanel({
         profileType={selectedStageProfileType}
         finaleType={selectedStageFinaleType}
         hunterId={sel.hunterId}
-        disabled={busy}
+        disabled={busy || fullyTrainNowLocked}
         onSelect={(v) => setRole("hunterId", v)}
       />
 
@@ -1043,5 +1072,15 @@ function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange }) {
         ))}
       </select>
     </label>
+  );
+}
+
+// #6139: rytteren traenede i dag ("Train now") og er derfor afgjort for dagens loeb.
+function TrainNowRiderBadge({ label }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-3 border border-cz-border whitespace-nowrap">
+      <LockIcon size={10} aria-hidden="true" />
+      {label}
+    </span>
   );
 }

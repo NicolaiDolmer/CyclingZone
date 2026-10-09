@@ -1,25 +1,39 @@
 // backend/lib/engine/v4/mechanics/timeModel.ts
-// #6199 + #6200 (KUN regel-revisionen "orders_gc_v3"): én faelles tidsmodel for
-// stigning og nedkoersel. Ejer-aftalt design 5/10 (kontrakten staar i den
-// seneste kommentar paa #6199):
+// #6199 + #6200: én faelles tidsmodel for stigning og nedkoersel. Ejer-aftalt
+// design 5/10 (kontrakten staar paa #6199; SSOT: docs/RACE_ENGINE_RULES.md,
+// "Én tidsmodel for stigning og nedkørsel" og "Samlet Tour-revision
+// `official_times_v2`"):
 //
 //  1. A: hullet en stigning skaber regnes ud fra stigningens laengde, stejlhed og
 //     evneforskellen (tiden paa stigningen x det relative fartab), ikke et fast
-//     trin. En tom reserve tvinger kun en rytter af fra ca. kat. 2.
+//     trin. En tom reserve tvinger kun en rytter af paa de haarde kategorier
+//     (wprimeForcedCategories).
 //     B: efter en top midt paa etapen kan en gruppe koere op igen paa
-//     nedkoerslen (i dag lukker den 0 s, saa hullet kun kan vokse).
-//  2. Nedkoersel mod maal: hoejst ca. 1,5 s pr. km for en klart bedre nedkoerer,
-//     afhaengigt af laengde og teknik, og hoejst halvdelen af hullet. Klatring
-//     taeller med i placeringen i en nedkoerselsfinale.
+//     nedkoerslen, og i dalen kan hullet ikke vokse (valleyRegroupTempoV3).
+//  2. Nedkoersel mod maal: en klart bedre nedkoerer vinder hoejst et loft pr. km,
+//     afhaengigt af laengde og teknik, og hoejst en andel af hullet (bogen
+//     bookFinishDescentClosure deles af regruppering, angreb, jagt og finale).
+//     Klatring taeller med i placeringen i en nedkoerselsfinale.
 //  3. Taet score giver samme tid i en selektiv finale.
 //
+// Hvem laeser hvad (gaten sidder hos kaldestederne og i timeModelTuningFor):
+//  - Legacy, orders_gc_v1 og orders_gc_v2 laeser intet herfra.
+//  - orders_gc_v3 laeser modellen med TIME_MODEL_V3_TUNING (kaldestederne gater
+//    paa ctx.ordersGcV3).
+//  - official_times_v1 (frosset prototype, v2-arvelinje + faelles gruppeklokke)
+//    laeser de dele den faelles gruppeklokke bruger (fx dalen), ogsaa med
+//    TIME_MODEL_V3_TUNING (kaldestederne gater paa ctx.sharedGroupTime).
+//  - official_times_v2 (v3-pakken + faelles gruppeklokke) er den eneste der faar
+//    SHARED_TIME_MODEL_V2_TUNING (timeModelTuningFor: ordersGcV3 OG
+//    sharedGroupTime). Knapperne der kun den laeser, er neutrale i v3-tallene, saa
+//    orders_gc_v3 og official_times_v1 er byte-identiske (frosne digests).
+//
 // Alle konstanter er kalibreret privat mod ejer-maalene (balance-internals/6199/).
-// Legacy, orders_gc_v1 og orders_gc_v2 laeser intet herfra (kaldestederne gater
-// paa ctx.ordersGcV3).
 //
 // REN: ingen IO, ingen rng.
 
-import type { AbilityKey, ClimbCategory, RaceGroup, Segment } from "../types.ts";
+import type { AbilityKey, ClimbCategory, FinaleType, ProfileType, RaceGroup, Segment } from "../types.ts";
+import type { GcDangerTuning } from "./gcThreat.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -46,6 +60,10 @@ export const TIME_MODEL_V3_TUNING = freeze({
   climbGapExposure: 0.5,
   // Relativt fartab pr. enhed klatre-underskud (0-1 mod gruppens bedste klatrer).
   climbGapAbilityWeight: 1.0,
+  // Konveks del af fartabet (underskud i anden): 0 = lineaert (orders_gc_v3).
+  climbGapAbilityWeightQuadratic: 0,
+  // KUN official_times_v2: evne-vaegten pr. etapeprofil (udeladt = climbGapAbilityWeight).
+  climbGapAbilityWeightByProfile: {} as Readonly<Partial<Record<ProfileType, number>>>,
   // Relativt fartab pr. enhed energi-underskud (tom reserve = 1).
   climbGapEnergyWeight: 0.02,
   climbGapMaxRelativeLoss: 0.6,
@@ -63,6 +81,11 @@ export const TIME_MODEL_V3_TUNING = freeze({
   midDescentGapFractionPerKm: 0.04,
   // I dalen efter en top kan hullet ikke vokse for grupper inden for denne raekkevidde (s).
   valleyReachSeconds: 180,
+  // KUN official_times_v2: i dalen koerer gruppen bagved op igen (B), som fart:
+  // sekunder pr. km + andel af hullet pr. km, skaleret med antallet bagved mod
+  // antallet foran. 0 = ingen lukning (orders_gc_v3: hullet kan kun ikke vokse).
+  valleyClosingSecondsPerKm: 0,
+  valleyClosingGapFractionPerKm: 0,
 
   // ── 2: nedkoersel mod maal ──────────────────────────────────────────────────
   finishDescentMaxSecondsPerKm: 1.5,
@@ -74,11 +97,97 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // Placeringen i en nedkoerselsfinale: klatring taeller med.
   descentFinaleDemand: { climbing: 0.35, descending: 0.35, positioning: 0.1, aggression: 0.1, tactics: 0.1 } as Partial<Record<AbilityKey, number>>,
 
+  // ── Massefinale (KUN official_times_v2): feltets antals-fordel som lukning ──
+  // Hoejst saa mange sekunder pr. km af finalens segment (fart, ikke vindue).
+  bunchClosingMaxSecondsPerKm: 20,
+  // KUN official_times_v2: skalering af M5s lad-gaa-loft (1 = uaendret).
+  letGoMaxGapScale: 1,
+  // #5578 (KUN official_times_v2): lad-gaa-loftets skalering pr. etapeprofil
+  // (udeladt = letGoMaxGapScale).
+  letGoMaxGapScaleByProfile: {} as Readonly<Partial<Record<ProfileType, number>>>,
+  // #5578 (KUN official_times_v2): finalens faktor paa lad-gaa-loftet pr. finaletype
+  // (udeladt = BREAKAWAY_EXTRA_TUNING.maxGapFinaleFactor).
+  letGoFinaleFactorByFinale: {} as Readonly<Partial<Record<FinaleType, number>>>,
+  // #5578 (KUN official_times_v2): mindste jagtgruppe der er et "felt", der kan
+  // lade dagens udbrud gaa (null = BREAKAWAY_EXTRA_TUNING.letGoMinChaseRiders).
+  letGoMinChaseRiders: null as number | null,
+  // #5578 (KUN official_times_v2): et farligt udbrud (et hold i jagtgruppen
+  // bremser for en rytter i det) faar aldrig et lad-gaa-loft over det mindste
+  // tolererede forspring blandt de bremsende hold. false = kun bremsen (v3).
+  letGoCapAtTolerated: false,
+  // #5578 (KUN official_times_v2, etapeloeb): GC-reaktionens farligheds-tuning
+  // (gcThreat.DangerModel.tuning). null = orders_gc_v3s vaerdier (bit-identisk).
+  gcDanger: null as GcDangerTuning | null,
+
   // ── 3: taet score = samme tid i en selektiv finale ──────────────────────────
   finaleTieScoreEpsilon: 0.02,
 });
 
-type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
+export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
+
+/**
+ * #6199 (KUN official_times_v2): den samlede tidsmodel kalibreret paa den faelles
+ * gruppeklokke. Samme form som v3-modellen; kun de kalibrerede felter afviger.
+ * orders_gc_v3 og official_times_v1 laeser aldrig dette (gamle digests uaendrede).
+ */
+export const SHARED_TIME_MODEL_V2_TUNING: TimeModelTuning = freeze({
+  ...TIME_MODEL_V3_TUNING,
+  // Slutstigningen paa en topankomst spreder hele gruppen individuelt
+  // (climbSelection.summitRace), saa evne-vaegten er lavere end v3s.
+  climbGapAbilityWeight: 0.8,
+  // Kuperet/rullende/fladt: hoejere fart og mere lae paa stigningerne.
+  climbGapAbilityWeightByProfile: { flat: 0.5, rolling: 0.5, hilly: 0.5 },
+  // Uden v3s ikke-fysiske lukning paa nedkoerslen skal jagten hente udbruddet
+  // fysisk; feltet giver derfor et mindre lad-gaa-loft (profiler uden egen vaerdi).
+  letGoMaxGapScale: 0.7,
+  // #5578 (ejer 8/10 + 9/10, udbrudsmaal 2-4): loftet pr. vejprofil, kalibreret
+  // privat (balance-internals/5578-official-v2/ og 5578-robust/) paa tre felter.
+  letGoMaxGapScaleByProfile: { flat: 1.8, rolling: 1.5, hilly: 2, mountain: 1.75, high_mountain: 0.8 },
+  // #5578: foran en nedkoerselsfinale kontrollerer feltet hullet lidt mindre stramt.
+  letGoFinaleFactorByFinale: { descent: 0.65 },
+  // #5578: favoritgruppen er stadig et felt, der styrer udbruddet, naar
+  // selektionen paa stigningerne har gjort den lille.
+  letGoMinChaseRiders: 10,
+  // #5578 (udbrudsmaal 6): et farligt udbrud vokser aldrig forbi det tolererede.
+  letGoCapAtTolerated: true,
+  // #5578: hvem har noget at forsvare (klassementets forreste og foereren), hvem
+  // er en rival (de forreste altid; ellers kun en mindst lige saa staerk rytter),
+  // og snoren for de forreste er altid holdt og har et loft.
+  gcDanger: {
+    futureSecondsPerStage: 40,
+    defendBaseSeconds: 0,
+    defendSecondsPerStage: 0,
+    leashMarginSeconds: 75,
+    rivalStrengthMin: 1,
+    rivalRankAlways: 10,
+    rankedLeadCapSeconds: 150,
+    // #5578 robust (ejer 9/10, A): klassementets forreste kommer sjaeldent med i
+    // morgenudbruddet; en svag foerer ser kun reelle klassementsryttere som
+    // rivaler; foererens hold lader en svagere udbryder tage troejen med et
+    // begraenset forspring paa rullende, kuperet og bjerg.
+    formationRankedPressureWeight: 0.6,
+    leaderRivalFloorShare: 0.85,
+    jerseyAllowanceSeconds: { rolling: 300, hilly: 450, mountain: 900 },
+  },
+  // B i dalen som fart (valleyRegroupTempoV3).
+  valleyClosingSecondsPerKm: 2,
+  valleyClosingGapFractionPerKm: 0.02,
+});
+
+// Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
+const SHARED_BY_PROFILE: Readonly<Partial<Record<ProfileType, TimeModelTuning>>> = Object.freeze(Object.fromEntries(
+  Object.entries(SHARED_TIME_MODEL_V2_TUNING.climbGapAbilityWeightByProfile)
+    .map(([profile, weight]) => [profile, freeze({ ...SHARED_TIME_MODEL_V2_TUNING, climbGapAbilityWeight: weight as number })]),
+));
+
+/**
+ * Tidsmodellens tuning for en hook-kontekst: den kalibrerede kun under
+ * official_times_v2 (v3-pakken + den faelles gruppeklokke), ellers v3-tallene.
+ */
+export function timeModelTuningFor(ctx: { ordersGcV3?: true; sharedGroupTime?: unknown; route?: { profile_type: ProfileType } }): TimeModelTuning {
+  if (!(ctx.ordersGcV3 === true && ctx.sharedGroupTime !== undefined)) return TIME_MODEL_V3_TUNING;
+  return (ctx.route ? SHARED_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V2_TUNING;
+}
 
 /** Referencefarten (km/t) op ad en stigning med denne gennemsnitsstigning. */
 export function climbSpeedKmh(gradientPct: number, t: TimeModelTuning = TIME_MODEL_V3_TUNING): number {
@@ -110,7 +219,7 @@ export function climbSplitGapSeconds(
 ): number {
   const deficit = Number.isFinite(avgDeficit01) ? clamp(avgDeficit01, 0, 1) : 0;
   const energy = Number.isFinite(avgEnergyDeficit01) ? clamp(avgEnergyDeficit01, 0, 1) : 0;
-  const loss = clamp(t.climbGapAbilityWeight * deficit + t.climbGapEnergyWeight * energy, 0, t.climbGapMaxRelativeLoss);
+  const loss = clamp(t.climbGapAbilityWeight * deficit + t.climbGapAbilityWeightQuadratic * deficit * deficit + t.climbGapEnergyWeight * energy, 0, t.climbGapMaxRelativeLoss);
   const raw = climbTimeSeconds(gradientPct, lengthKm, t) * t.climbGapExposure * loss;
   const [lo, hi] = t.climbGapBoundsSeconds;
   return round2(clamp(raw, lo, hi));
@@ -246,32 +355,40 @@ export function isEscapeGroupV3(group: Pick<RaceGroup, "kind" | "origin">): bool
 export function valleyRegroupTempoV3<T extends { dtSeconds: number }>(
   groups: readonly RaceGroup[],
   tempoByGroup: Map<string, T>,
-  segments: readonly Pick<Segment, "kind">[],
+  segments: readonly (Pick<Segment, "kind"> & Partial<Pick<Segment, "from_km" | "to_km">>)[],
   segmentIndex: number,
   incidentChasers: Readonly<Record<string, unknown>> | undefined,
   t: TimeModelTuning = TIME_MODEL_V3_TUNING,
 ): Map<string, T> {
   const kind = segments[segmentIndex]?.kind;
+  const seg = segments[segmentIndex];
+  const lengthKm = seg && Number.isFinite(seg.from_km) && Number.isFinite(seg.to_km) ? Math.max(0, (seg.to_km as number) - (seg.from_km as number)) : 0;
   if (kind !== "flat" && kind !== "rolling") return tempoByGroup;
   if (!segments.slice(0, segmentIndex).some((s) => s.kind === "climb")) return tempoByGroup;
   const sorted = [...groups].sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   let out: Map<string, T> | null = null;
-  let reference: { gap: number; dtSeconds: number } | null = null;
+  let reference: { gap: number; dtSeconds: number; size: number } | null = null;
   for (const group of sorted) {
     if (isEscapeGroupV3(group)) continue;
     const own = (out ?? tempoByGroup).get(group.id);
     if (!own) continue;
     const inIncidentChase = incidentChasers !== undefined && group.rider_ids.some((id) => incidentChasers[id] !== undefined);
+    // KUN official_times_v2 (B i dalen): gruppen bagved lukker som fart, aldrig
+    // mere end hullet, skaleret med antallet bagved mod antallet foran.
+    const gapToAhead = reference === null ? 0 : Math.max(0, group.gap_seconds - reference.gap);
+    const closing = reference === null || !(t.valleyClosingSecondsPerKm > 0 || t.valleyClosingGapFractionPerKm > 0) ? 0
+      : Math.min(gapToAhead, lengthKm * (t.valleyClosingSecondsPerKm + t.valleyClosingGapFractionPerKm * gapToAhead)
+        * clamp(group.rider_ids.length / Math.max(1, reference.size), 0, 1));
     if (
       reference !== null
       && !inIncidentChase
       && group.gap_seconds - reference.gap <= t.valleyReachSeconds
-      && own.dtSeconds > reference.dtSeconds
+      && own.dtSeconds > reference.dtSeconds - closing
     ) {
       out ??= new Map(tempoByGroup);
-      out.set(group.id, { ...own, dtSeconds: reference.dtSeconds });
+      out.set(group.id, { ...own, dtSeconds: reference.dtSeconds - closing });
     }
-    reference = { gap: group.gap_seconds, dtSeconds: (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds };
+    reference = { gap: group.gap_seconds, dtSeconds: (out ?? tempoByGroup).get(group.id)?.dtSeconds ?? own.dtSeconds, size: group.rider_ids.length };
   }
   return out ?? tempoByGroup;
 }

@@ -8,6 +8,7 @@ import { Section, SectionHeader } from "../ui";
 import { formatNumber } from "../../lib/intl.js";
 import { buildSplitTimes, buildOwnTimeLoss, formatSplitGap } from "../../lib/stageSplitTimes.ts";
 import { describeEvent } from "../../lib/stageTimelineFilm.js";
+import { lossEntriesWithFilmKm, filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6350
 
 function nameOf(riderNameById, id) {
   return riderNameById?.get?.(id) || riderNameById?.get?.(String(id)) || null;
@@ -60,7 +61,7 @@ function SplitPointBlock({ point, riderNameById, t }) {
   );
 }
 
-function LossRow({ entry, riderNameById, teamNameById, t }) {
+function LossRow({ entry, kmLabel, riderNameById, teamNameById, t }) {
   let main;
   let reason = null;
   let order = null;
@@ -83,8 +84,8 @@ function LossRow({ entry, riderNameById, teamNameById, t }) {
   }
   return (
     <li className="flex items-baseline gap-3 py-1.5 border-t border-cz-border first:border-t-0">
-      <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 w-14">
-        {t("detail.film.km", { value: formatNumber(entry.km) })}
+      <span className="font-data text-2xs text-cz-3 tabular-nums shrink-0 min-w-14 whitespace-nowrap">
+        {t("detail.film.km", { value: kmLabel })}
       </span>
       <span className="text-sm leading-snug">
         <span className="text-cz-1">{main}</span>
@@ -96,13 +97,20 @@ function LossRow({ entry, riderNameById, teamNameById, t }) {
   );
 }
 
+// `timelineVersion`: listen vises kun for v4's gruppe-gab (hasGroupGaps), så
+// standarden er v4 (2); kaldere med tidslinjen sender den eksplicit.
 export default function StageSplitTimes({
-  events, ownRiderIds = [], effortByRider = null, riderNameById, teamNameById, uptoKm = null, variant = "section", t,
+  events, ownRiderIds = [], effortByRider = null, riderNameById, teamNameById, uptoKm = null, variant = "section", timelineVersion = 2, t,
 }) {
   const splits = useMemo(() => buildSplitTimes(events, { ownRiderIds }), [events, ownRiderIds]);
-  const losses = useMemo(() => buildOwnTimeLoss(events, { ownRiderIds, effortByRider }), [events, ownRiderIds, effortByRider]);
+  // #6350: samme km som filmens linje ("km A-B" for et fald stemplet ved
+  // tjekpunktet), og linjen dukker op når filmen viser den.
+  const losses = useMemo(
+    () => lossEntriesWithFilmKm(events, buildOwnTimeLoss(events, { ownRiderIds, effortByRider }), { timelineVersion }),
+    [events, ownRiderIds, effortByRider, timelineVersion],
+  );
   const shownSplits = uptoKm == null ? splits : splits.filter((p) => p.km <= uptoKm);
-  const shownLosses = uptoKm == null ? losses : losses.filter((l) => l.km <= uptoKm);
+  const shownLosses = uptoKm == null ? losses : losses.filter((l) => (l.shown.km ?? 0) <= uptoKm);
   if (!splits.length && !losses.length) return null;
 
   const splitList = (
@@ -118,7 +126,7 @@ export default function StageSplitTimes({
         <div>
           <p className="text-3xs font-bold uppercase tracking-wide text-cz-3 mb-1">{t("detail.film.split.lossTitle")}</p>
           <ul>
-            {shownLosses.map((l, i) => <LossRow key={`${l.riderId}-${l.km}-${i}`} entry={l} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />)}
+            {shownLosses.map((l, i) => <LossRow key={`${l.riderId}-${l.km}-${i}`} entry={l} kmLabel={filmKmValue(l.shown, formatNumber)} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />)}
           </ul>
         </div>
       )}

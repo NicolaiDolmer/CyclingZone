@@ -25,7 +25,7 @@ import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.j
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
-import { isRaceLockedForTeam, loadTrainNowLockedDatesByTeam, raceStageDates } from "./trainNowLock.js"; // #6006
+import { loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates } from "./trainNowLock.js"; // #6006/#6139
 import { indexGeneratorBindings, generatorBindingLocks } from "./raceEntryGeneratorBindings.ts";
 
 /**
@@ -59,6 +59,8 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
 
   for (const race of ordered) {
     const available = riders.filter((r) => {
+      // #6139: en rytter der traenede (Train now) paa en af loebets datoer kan ikke udtages hertil.
+      if (race.excludedRiderIds?.has(r.rider_id)) return false;
       const windows = busy.get(r.rider_id) || [];
       return !windows.some((w) => windowsOverlap(w, race.window));
     });
@@ -267,13 +269,31 @@ export async function runRaceEntryGenerator({
     }
     if (earliest !== null) firstStartByRace.set(raceId, earliest);
   }
-  // #6006: "Train now"-laase (I3, #5267). En enhed med en etape paa en dato holdet har
-  // trykket for, er afgjort: ingen nye ryttere, ingen fjernede. Kun datoer fra i dag.
+  // #6006/#6139: "Train now"-laase (I3, #5267), pr. rytter. En rytter der traenede paa en
+  // af loebets datoer kan ikke udtages til loebet, og en enhed der allerede har en saadan
+  // rytter er frosset (han kan heller ikke fjernes). Kun datoer fra i dag.
   const todayStr = copenhagenDateString(new Date(nowMs));
   const raceDatesByRace = new Map([...schedByRace].map(([raceId, rows]) => [raceId, raceStageDates(rows)]));
-  const trainNowLockedDates = await loadTrainNowLockedDatesByTeam({
+  const trainNowLockedByDate = await loadTrainNowLockedRidersByDate({
     supabase, dates: [...raceDatesByRace.values()].flat().filter((date) => date >= todayStr),
   });
+  const trainNowLockedByRace = new Map([...raceDatesByRace].map(([raceId, dates]) =>
+    [raceId, lockedRidersOnDates(trainNowLockedByDate, dates)]));
+  // Holdenes nuvaerende raekker i de loeb hvor nogen traenede (kun dem; normalt ingen).
+  const trainNowUnitRiders = new Map(); // "race|team" → [rider_id]
+  const trainNowRaceIds = [...trainNowLockedByRace].filter(([, ids]) => ids.size).map(([raceId]) => raceId);
+  if (trainNowRaceIds.length) {
+    const { data: lockRaceRows, error: lockRaceErr } = await selectInChunks({
+      supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
+      inColumn: "race_id", ids: trainNowRaceIds, orderBy: ["race_id", "rider_id"], // PK (#2375)
+    });
+    if (lockRaceErr) throw new Error(`race_entries (train now scan): ${lockRaceErr.message}`);
+    for (const e of lockRaceRows || []) {
+      const key = `${e.race_id}|${e.team_id}`;
+      if (!trainNowUnitRiders.has(key)) trainNowUnitRiders.set(key, []);
+      trainNowUnitRiders.get(key).push(e.rider_id);
+    }
+  }
 
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
   const { data: profileRows, error: profileErr } = await selectInChunks({
@@ -692,9 +712,6 @@ export async function runRaceEntryGenerator({
         const isWithdrawn = withdrawnByRace.get(race.id)?.has(team.id);
         const hasManual = manualByRaceTeam.has(key);
         const isStarted = startedRaceIds.has(race.id);
-        const isTrainNowLocked = isRaceLockedForTeam({ // #6006
-          lockedDatesByTeam: trainNowLockedDates, teamId: team.id, raceDates: raceDatesByRace.get(race.id),
-        });
         const sizeRule = selectionSizeForRace(race);
         const manualRiders = manualRidersByRaceTeam.get(key) || [];
         const fullManual = hasManual && manualRiders.length >= sizeRule.max;
@@ -708,6 +725,9 @@ export async function runRaceEntryGenerator({
         // vinder fortsat ubetinget — ogsaa inden for horisonten; markeringen er
         // spillerens eksplicitte "nej" og har aldrig en udloebsdato (gate 3, §7).
         const existingUnitRiders = entriesByRaceTeam.get(key) || [];
+        // #6006/#6139: enheden er frosset naar en af dens ryttere traenede paa loebets dato.
+        const trainNowRiders = trainNowUnitRiders.get(key) || [];
+        const isTrainNowLocked = trainNowRiders.some((rid) => trainNowLockedByRace.get(race.id)?.has(rid));
         const lateFillBlocked = mode === ASSISTANT_MODES.LATE_FILL
           && ownerTeamIds.has(team.id)
           && (!nearRaceIds.has(race.id) || existingUnitRiders.length > 0);
@@ -754,7 +774,7 @@ export async function runRaceEntryGenerator({
             // overlappende naboloeb → dobbeltbooking (samme klasse som #3113).
             if (lateFillBlocked) for (const rid of existingUnitRiders) lockedRiderIds.add(rid);
             // #6006: en Train now-laast enhed er frosset; dens ryttere er bundet i vinduet.
-            if (isTrainNowLocked) for (const rid of existingUnitRiders) lockedRiderIds.add(rid);
+            if (isTrainNowLocked) for (const rid of trainNowRiders) lockedRiderIds.add(rid);
             if (lockedRiderIds.size) lockedWindows.push({ window, riderIds: [...lockedRiderIds] });
           }
           continue;
@@ -767,6 +787,7 @@ export async function runRaceEntryGenerator({
           race_id: race.id, window,
           stages: stagesByRace.get(race.id) || [],
           sizeRule: { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length },
+          excludedRiderIds: trainNowLockedByRace.get(race.id), // #6139
         });
       }
       lockedWindows.push(...generatorBindingLocks({
@@ -1088,7 +1109,10 @@ export async function runRaceEntryGenerator({
     // #3906: ekskludér ryttere bundet i et overlappende søsterløb FØR autopick vælger,
     // så truppen splittes i stedet for at gense en allerede-bundet rytter.
     lockedWindows.push(...(await siblingLockedWindows({ raceId, teamId, window })));
-    const teamRaces = [{ race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule }];
+    const teamRaces = [{
+      race_id: raceId, window, stages: stagesByRace.get(raceId) || [], sizeRule: adjSizeRule,
+      excludedRiderIds: trainNowLockedByRace.get(raceId), // #6139
+    }];
     const assignment = assignTeamAcrossRaces({
       riders: ridersFor(teamId, raceSquadOf(race)), races: teamRaces, lockedWindows,
       strategy: strategyByTeam.get(teamId) ?? null,

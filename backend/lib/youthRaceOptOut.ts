@@ -11,13 +11,13 @@
 // Ingen raekke = "Enter races" (standard, uaendret).
 //
 // "Laast" loebsdag = truppen kan ikke laengere aendres: loebet er ikke 'scheduled',
-// en etape er koert (#1825/#4534), eller holdet har trykket "Train now" paa en af
-// loebets datoer (#4847). Et skift til "Train only" fjerner holdets tilmeldinger
+// en etape er koert (#1825/#4534), eller en af holdets tilmeldte ryttere traenede via
+// "Train now" paa en af loebets datoer (#4847, pr. rytter #6139). Et skift til "Train only" fjerner holdets tilmeldinger
 // til truppens ULAASTE loeb; laaste loeb beholder deres felt.
 //
 // Manglende tabel (foer auto-migrate har koert): alle laesere svarer "Enter
 // races" (fail-open = dagens adfaerd), skrivestien svarer 503.
-import { isRaceDateTrainNowLocked } from "./trainNowLock.js";
+import { loadTrainNowLocksForRaces } from "./trainNowLock.js";
 
 export const YOUTH_RACE_OPT_OUT_TABLE = "team_youth_race_opt_outs";
 export const OPT_OUT_SQUADS = ["u23", "junior"] as const;
@@ -166,6 +166,29 @@ async function loadSquadRaces(
 type TeamRow = { id: string; u23_league_division_id?: number | null; junior_league_division_id?: number | null };
 
 /**
+ * #6139: loeb hvor holdet har en tilmeldt rytter der er laast af et "Train now"-tryk
+ * paa loebets dato. Han kan hverken fjernes eller erstattes, saa loebets felt beholdes.
+ * Ryttere uden laase-raekke (nykoebt, flyttet) laaser ikke loebet.
+ */
+async function trainNowKeptRaceIds(
+  supabase: Supabase, { teamId, raceIds }: { teamId: string; raceIds: string[] },
+): Promise<Set<string>> {
+  const kept = new Set<string>();
+  if (!raceIds.length) return kept;
+  // pagination-safe: holdets entries i en trups aabne loeb (loeb × højst én trup).
+  const { data: entries, error } = (await supabase.from("race_entries")
+    .select("race_id, rider_id").eq("team_id", teamId).in("race_id", raceIds)) as Result<Array<{ race_id: string; rider_id: string }>>;
+  if (error) throw new Error(`race_entries (train now lock): ${error.message}`);
+  const rows = entries ?? [];
+  if (!rows.length) return kept;
+  const locks = await loadTrainNowLocksForRaces({
+    supabase, raceIds: [...new Set(rows.map((e) => e.race_id))], riderIds: rows.map((e) => e.rider_id),
+  });
+  for (const e of rows) if (locks.get(e.race_id)?.riderIds.has(e.rider_id)) kept.add(e.race_id);
+  return kept;
+}
+
+/**
  * Foerste ulaaste loebsdag for truppen (races.game_day_start), eller null.
  * Det er dagen et skift faar virkning fra (skitsens "Takes effect from day N").
  */
@@ -176,9 +199,10 @@ export async function firstUnlockedRaceDay(
   const list = (races ?? await loadSquadRaces(supabase, { team, squad }))
     .filter(isRaceOpenForChange)
     .sort((a, b) => (a.game_day_start ?? Infinity) - (b.game_day_start ?? Infinity));
+  const kept = await trainNowKeptRaceIds(supabase, { teamId: team.id, raceIds: list.map((r) => r.id) });
   for (const race of list) {
     if (race.game_day_start == null) continue;
-    if (await isRaceDateTrainNowLocked({ supabase, teamId: team.id, raceId: race.id })) continue;
+    if (kept.has(race.id)) continue;
     return race.game_day_start;
   }
   return null;
@@ -227,10 +251,7 @@ export async function setTeamSquadTrainOnly(
       .select("race_id").eq("team_id", team.id).in("race_id", openIds)) as Result<Array<{ race_id: string }>>;
     if (entriesError) throw new Error(`race_entries (${squad}): ${entriesError.message}`);
     const enteredRaceIds = new Set((entries ?? []).map((e) => e.race_id));
-    const trainNowLockedRaceIds = new Set<string>();
-    for (const raceId of enteredRaceIds) {
-      if (await isRaceDateTrainNowLocked({ supabase, teamId: team.id, raceId })) trainNowLockedRaceIds.add(raceId);
-    }
+    const trainNowLockedRaceIds = await trainNowKeptRaceIds(supabase, { teamId: team.id, raceIds: [...enteredRaceIds] });
     clearedRaceIds = racesToClearOnTrainOnly({ races, enteredRaceIds, trainNowLockedRaceIds });
     if (clearedRaceIds.length) {
       // Frisk laesning lige foer sletningen: et loeb der er startet siden

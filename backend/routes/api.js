@@ -242,7 +242,7 @@ import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trai
 import { loadDayCloseSpans } from "../lib/trainingDayCloseTrigger.js"; // #4847: train-now deler sweepens spaend
 import { createTrainNowRouter } from "./trainNow.js"; // #4847
 import { createTrainNowPlanLock } from "../lib/trainNow.js"; // #4847
-import { isRaceDateTrainNowLocked } from "../lib/trainNowLock.js"; // #4847
+import { loadRaceTrainNowLock, loadTrainNowLocksForRaces } from "../lib/trainNowLock.js"; // #4847/#6139
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "../lib/youthRaceOptOut.ts"; // #5944
 import { createYouthRaceOptOutRouter } from "./youthRaceOptOut.js"; // #5944
 import { isTrainingTickPerRaceDayEnabled } from "../lib/trainingTickRaceDayFlag.js";
@@ -5965,10 +5965,6 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     // Et bevidst fravalg (afmeldt) er ikke "mangler udtagelse" — assistenten skal
     // ikke tilmelde holdet igen uden om manageren.
     if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
-    // #4847 (I3): samme "Train now"-laas som PUT/bulk (prepareSelectionChange).
-    if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: race.id })) {
-      return res.status(409).json({ error: "selection_train_now_locked" });
-    }
     // #5944: "Train only" — assistenten udtager ikke truppen, heller ikke via knappen.
     if (await isTeamSquadTrainOnly(supabase, { teamId: req.team.id, squad: raceSquadOf(race) })) {
       return res.status(409).json({ error: TRAIN_ONLY_SELECTION_ERROR });
@@ -5992,7 +5988,14 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     ]);
     if (ridersErr) return res.status(500).json({ error: ridersErr.message });
     if (profErr) return res.status(500).json({ error: profErr.message });
-    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    // #4847/#6139 (I3): samme "Train now"-laas som PUT/bulk — en rytter der traenede kan
+    // hverken fjernes fra loebet eller saettes ind; holdets oevrige ryttere er frie.
+    const autoLock = await loadRaceTrainNowLock({ supabase, raceId: race.id,
+      riderIds: [...(teamRiders || []).map((r) => r.id), ...(existingEntries || []).map((e) => e.rider_id)] });
+    if ((existingEntries || []).some((e) => autoLock.riderIds.has(e.rider_id))) {
+      return res.status(409).json({ error: "selection_train_now_locked" });
+    }
+    const teamRiderIds = (teamRiders || []).map((r) => r.id).filter((id) => !autoLock.riderIds.has(id));
     if (!teamRiderIds.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
 
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
@@ -6438,11 +6441,11 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
     const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
     if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
-    // #6006 (I3): samme "Train now"-laas som PUT/bulk/auto-fill — en laast dag er afgjort.
-    for (const r of target) {
-      if (await isRaceDateTrainNowLocked({ supabase, teamId: req.team.id, raceId: r.id })) {
-        return res.status(409).json({ error: "selection_train_now_locked" });
-      }
+    // #6006/#6139 (I3): en rytter der traenede (Train now) er afgjort for dagen — regenerering
+    // maa hverken fjerne ham fra et loeb eller saette ham ind. Andre ryttere er frie.
+    const regenLocks = await loadTrainNowLocksForRaces({ supabase, raceIds: target.map((r) => r.id) });
+    if (allEntries.some((e) => regenLocks.get(e.race_id)?.riderIds.has(e.rider_id))) {
+      return res.status(409).json({ error: "selection_train_now_locked" });
     }
 
     // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
@@ -6517,7 +6520,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
 
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
-      sizeRule: selectionSizeForRace(r),
+      sizeRule: selectionSizeForRace(r), excludedRiderIds: regenLocks.get(r.id)?.riderIds, // #6139
     }));
     // #6132: kanoniske brugte dage (også hos et tidligere hold) og andre holds entries.
     lockedWindows.push(...await loadRegenerateBindingLocks({ supabase, seasonId: season.id, teamId: req.team.id,
@@ -15489,6 +15492,32 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 // PRESENCE & ONLINE STATUS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// #6343: tallet gemmes i 30 s pr. proces, så COUNT-forespørgslen mod users ikke
+// vokser med antallet af åbne faner (hver fane sender presence hvert 60. sekund).
+// "Online" er i forvejen 5-min-granularitet, så 30 s forsinkelse er usynlig.
+const ONLINE_COUNT_TTL_MS = 30 * 1000;
+let onlineCountCache = { value: null, at: 0 };
+
+async function countOnlineUsers() {
+  if (onlineCountCache.value !== null && Date.now() - onlineCountCache.at < ONLINE_COUNT_TTL_MS) {
+    return onlineCountCache.value;
+  }
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  try {
+    const { count, error } = await supabase.from("users")
+      .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
+    if (error) { console.error("[online-count] failed:", error.message); return null; }
+    onlineCountCache = { value: count || 0, at: Date.now() };
+    return onlineCountCache.value;
+  } catch (e) {
+    // best-effort: online-tallet er pynt i headeren. Ved fejl returneres null, så
+    // presence-svaret udelader feltet og klienten beholder sit sidst kendte tal
+    // (#4351); loggen tælles af railway-log-watch under tagget "online-count".
+    console.error("[online-count] failed:", e.message);
+    return null;
+  }
+}
+
 // POST /api/presence — heartbeat, opdater last_seen (throttlet)
 // Bruger touch_user_presence-RPC der KUN skriver hvis last_seen er >60s gammelt,
 // så heartbeat-spam ikke laver en row-write (+WAL+dead tuple) ved hvert kald.
@@ -15498,7 +15527,10 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 router.post("/presence", requireAuth, presencePulseLimiter, async (req, res) => {
   const { error } = await supabase.rpc("touch_user_presence", { p_user_id: req.user.id });
   if (error) console.error("[presence] touch failed:", error.message);
-  res.json({ ok: true, user_id: req.user.id, error: error?.message || null });
+  // #6343: online-tallet med i svaret, så klienten kun behøver ét kald.
+  // Fejler tællingen udelades feltet; klienten falder så tilbage til /online-count.
+  const onlineCount = await countOnlineUsers();
+  res.json({ ok: true, user_id: req.user.id, error: error?.message || null, ...(onlineCount === null ? {} : { online_count: onlineCount }) });
 });
 
 // POST /api/login-streak — beregn og opdater daglig login-streak
@@ -15522,10 +15554,9 @@ router.post("/login-streak", requireAuth, presencePulseLimiter, async (req, res)
 
 // GET /api/online-count — brugere aktive inden for de seneste 5 minutter
 router.get("/online-count", requireAuth, async (req, res) => {
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const { count } = await supabase.from("users")
-    .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
-  res.json({ count: count || 0 });
+  const count = await countOnlineUsers();
+  if (count === null) return res.status(500).json({ error: "online-count unavailable" });
+  res.json({ count });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

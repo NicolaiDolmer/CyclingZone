@@ -1057,7 +1057,7 @@
       },
       "runDayNow": {
         "title": "Kør dagens træning nu",
-        "text": "Fra sæson 4 kører dagens træning af sig selv, samlet, når dagens sidste løb er kørt og tidligst kl. 20. Alle dagens løbsdage trænes i samme kørsel, så du mister intet ved ikke at være online. 'Kør dagens træning nu' er der kun, hvis du ikke vil vente: den kører præcis den samme træning, uden bonus og uden fordel, og den åbner på samme tidspunkt som den automatiske kørsel ville. Når dagen først er trænet, kan den ikke køres igen."
+        "text": "Fra sæson 4 kører dagens træning af sig selv, samlet, når dagens sidste løb er kørt og tidligst kl. 20. Alle dagens løbsdage trænes i samme kørsel, så du mister intet ved ikke at være online. 'Kør dagens træning nu' er der kun, hvis du ikke vil vente: den kører præcis den samme træning, uden bonus og uden fordel, og den åbner på samme tidspunkt som den automatiske kørsel ville. Når dagen først er trænet, kan den ikke køres igen. Med Træn nu (beta) låser trykket også dagens løbsudtagelse for de ryttere, der trænede: de kan hverken sættes ind i eller tages ud af dagens løb. Ryttere, du køber eller rykker op efter trykket, kan stadig køre."
       },
       "raceDays": {
         "title": "Løbsdage og træning",

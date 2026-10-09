@@ -1,0 +1,159 @@
+import type { RaceGroup, StageIncident } from './types.ts';
+
+// Floating-point equality only; this is not a sporting catch window.
+export const GROUP_CLOCK_CONTACT_EPSILON = 1e-7;
+
+export type GroupClockEntry = Readonly<{
+  group: RaceGroup;
+  entrySeconds: number;
+  traversalSeconds: number;
+  pointDelaySeconds: number;
+}>;
+
+/** One physical distance interval. Estimates of traversal replace, delays add. */
+export type GroupClock = Readonly<{
+  fromKm: number;
+  toKm: number;
+  initialFrontSeconds: number;
+  entries: readonly GroupClockEntry[];
+}>;
+
+export type GroupClockProjection = {
+  frontTimeSeconds: number;
+  groups: RaceGroup[];
+  arrivals: Record<string, number>;
+};
+
+function nonnegative(value: number, label: string): void {
+  if (!Number.isFinite(value) || value < 0) throw new Error(`group clock: invalid ${label}`);
+}
+
+/** Capture absolute entry arrivals before any movement on this interval. */
+export function beginGroupClock(input: {
+  groups: readonly RaceGroup[];
+  frontTimeSeconds: number;
+  fromKm: number;
+  toKm: number;
+}): GroupClock {
+  nonnegative(input.frontTimeSeconds, 'front time');
+  nonnegative(input.fromKm, 'start distance');
+  nonnegative(input.toKm - input.fromKm, 'interval');
+  const groupIds = new Set<string>();
+  const riderIds = new Set<string>();
+  const entries = input.groups.map(group => {
+    if (groupIds.has(group.id)) throw new Error('group clock: duplicate group');
+    groupIds.add(group.id);
+    nonnegative(group.gap_seconds, 'entry gap');
+    for (const id of group.rider_ids) {
+      if (riderIds.has(id)) throw new Error('group clock: duplicate rider');
+      riderIds.add(id);
+    }
+    return {
+      group: {...group, rider_ids: [...group.rider_ids]},
+      entrySeconds: input.frontTimeSeconds + group.gap_seconds,
+      traversalSeconds: 0,
+      pointDelaySeconds: 0,
+    };
+  });
+  return {fromKm: input.fromKm, toKm: input.toKm, initialFrontSeconds: input.frontTimeSeconds, entries};
+}
+
+function updateEntry(clock: GroupClock, groupId: string, update: (entry: GroupClockEntry) => GroupClockEntry): GroupClock {
+  if (!clock.entries.some(entry => entry.group.id === groupId)) throw new Error(`group clock: unknown group ${groupId}`);
+  return {...clock, entries: clock.entries.map(entry => entry.group.id === groupId ? update(entry) : entry)};
+}
+
+/** Replace an overlapping estimate of the same physical traversal. */
+export function replaceTraversal(clock: GroupClock, groupId: string, durationSeconds: number): GroupClock {
+  nonnegative(durationSeconds, 'duration');
+  return updateEntry(clock, groupId, entry => ({...entry, traversalSeconds: durationSeconds}));
+}
+
+/** A genuine stopped-time incident is separate from distance travelled. */
+export function addPointDelay(clock: GroupClock, groupId: string, delaySeconds: number): GroupClock {
+  nonnegative(delaySeconds, 'delay');
+  return updateEntry(clock, groupId, entry => ({...entry, pointDelaySeconds: entry.pointDelaySeconds + delaySeconds}));
+}
+
+/** Relative gaps are a projection; changing the front never discards time. */
+export function projectGroupClock(clock: GroupClock): GroupClockProjection {
+  const arrivals = clock.entries.map(entry => ({entry,
+    seconds: entry.entrySeconds + entry.traversalSeconds + entry.pointDelaySeconds,
+  })).sort((a,b) => a.seconds - b.seconds || a.entry.group.id.localeCompare(b.entry.group.id));
+  const frontTimeSeconds = arrivals[0]?.seconds ?? clock.initialFrontSeconds;
+  return {
+    frontTimeSeconds,
+    groups: arrivals.map(({entry,seconds}) => ({...entry.group,
+      rider_ids: [...entry.group.rider_ids], gap_seconds: seconds - frontTimeSeconds,
+    })),
+    arrivals: Object.fromEntries(arrivals.map(({entry,seconds}) => [entry.group.id, seconds])),
+  };
+}
+
+/** Commit a mechanism's relative proposal through the same absolute reference. */
+export function projectRelativeArrivals(groups: readonly RaceGroup[], referenceSeconds: number): GroupClockProjection {
+  const arrivals = groups.map(group => ({group, seconds: referenceSeconds + group.gap_seconds}))
+    .sort((a,b) => a.seconds-b.seconds || a.group.id.localeCompare(b.group.id));
+  for (const arrival of arrivals) nonnegative(arrival.seconds, 'absolute arrival');
+  const frontTimeSeconds = arrivals[0]?.seconds ?? referenceSeconds;
+  return {frontTimeSeconds,
+    groups: arrivals.map(({group,seconds}) => ({...group,rider_ids:[...group.rider_ids],gap_seconds:seconds-frontTimeSeconds})),
+    arrivals: Object.fromEntries(arrivals.map(({group,seconds})=>[group.id,seconds])),
+  };
+}
+
+/**
+ * Point delays booked after an interval's entry (incidents from `cursor` on).
+ * Earlier incidents are already inside the entry gaps; only a genuine,
+ * positive stopped-time loss counts. Never a stage total or a km filter.
+ */
+export function pointDelaysSince(incidents: readonly StageIncident[] | undefined, cursor: number): Map<string, number> {
+  nonnegative(cursor, 'incident cursor');
+  const delays = new Map<string, number>();
+  for (const incident of (incidents ?? []).slice(cursor)) {
+    const seconds = incident.time_loss_seconds;
+    if (incident.outcome !== 'time_loss' || seconds === null || !Number.isFinite(seconds) || seconds <= 0) continue;
+    delays.set(incident.rider_id, (delays.get(incident.rider_id) ?? 0) + seconds);
+  }
+  return delays;
+}
+
+/**
+ * A group's physical line since interval entry: the front-most rider's entry
+ * gap plus that same rider's point delays. Entry and delay come from one rider
+ * (the adopted line), never independent minima of the two.
+ */
+export function physicalLineSeconds(ids: readonly string[], entryGapByRider: ReadonlyMap<string, number>, delays: ReadonlyMap<string, number>): number {
+  if (ids.length === 0) throw new Error('group clock: empty line');
+  let best = Infinity;
+  for (const id of ids) {
+    const entry = entryGapByRider.get(id);
+    if (entry === undefined) throw new Error('group clock: missing entry lineage');
+    best = Math.min(best, entry + (delays.get(id) ?? 0));
+  }
+  return best;
+}
+
+/** Remaining part of one interval's closing estimate after physical movement. */
+export function remainingClosureSeconds(entrySeparation: number, currentSeparation: number, totalEstimate: number): number {
+  nonnegative(entrySeparation, 'entry separation');
+  nonnegative(currentSeparation, 'current separation');
+  nonnegative(totalEstimate, 'closing estimate');
+  return Math.max(0, totalEstimate-Math.max(0,entrySeparation-currentSeparation));
+}
+
+/**
+ * #6329 (official_times_v2): where inside one movement interval two physical
+ * lines meet. Each line moves at its own constant pace across the interval, so
+ * its arrival time is linear in distance and the difference between two lines
+ * is linear too. `entryDifference` and `exitDifference` are (chaser - target)
+ * arrival differences at the interval ends; contact is where the difference
+ * reaches zero. Returns the fraction of the interval (0 < f <= 1), or null when
+ * the endpoints do not describe a chaser closing from behind.
+ */
+export function contactFractionInInterval(entryDifference: number, exitDifference: number): number | null {
+  if (!Number.isFinite(entryDifference) || !Number.isFinite(exitDifference)) return null;
+  if (!(entryDifference > 0) || exitDifference > GROUP_CLOCK_CONTACT_EPSILON) return null;
+  const fraction = entryDifference / (entryDifference - Math.min(0, exitDifference));
+  return Math.min(1, Math.max(Number.EPSILON, fraction));
+}

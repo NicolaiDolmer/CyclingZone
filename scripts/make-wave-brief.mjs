@@ -181,6 +181,16 @@ function verifikationsBlok(tier, verifyCommands, wd) {
     );
   }
   lines.push("- ALDRIG fuld e2e-suite paa egen haand - orkestratoren ejer e2e-slottet (hard rule 24).");
+  // Ejer 8/10: #6348 meldte klar efter kun at have koert sine EGNE nye tests;
+  // to eksisterende kildekontrakt-tests, en log-vagt og catch-vagten var roede i
+  // CI. "Mine tests er groenne" er ikke nok - samme kommandoer som CI, pr. pakke.
+  lines.push(
+    "- **Hele pakkens test + lint + de typiske CI-vagter (bindende foer `gh pr ready`, ejer 8/10):** for HVER pakke du har aendret, koer hele suiten - ikke kun dine egne nye tests. "
+      + `frontend/ roert: \`${lock} npm --prefix frontend test\` + \`npm --prefix frontend run lint\` + \`${lock} npm --prefix frontend run typecheck\`. `
+      + `backend/ roert: \`${lock} npm --prefix backend test\` + \`npm --prefix backend run lint\` + \`node scripts/lint-swallowed-catches.mjs\` (catch-vagten daekker backend/lib, backend/routes, backend/cron.js) + \`node --test scripts/ops/railway-log-watch.test.mjs\` (nye log-tags opstaar i backend-kode) + naar .ts-filer er roert: i backend/ \`npx tsc -p tsconfig.engine.json && npx tsc -p tsconfig.routes.json\` (gennem semaforen). `
+      + "scripts/ eller .github/ roert: `node --test` paa hver `*.test.mjs` i samme mappe som en aendret fil. "
+      + "Merge `origin/main` ind og koer det igen lige foer `gh pr ready`, saa testen ser den kode der faktisk merges. CI er stadig den fulde gate; dette fanger de roede vagter foer de koster en CI-runde.",
+  );
   if (verifyCommands && verifyCommands.length > 0) {
     lines.push("- Derudover, specifikt for denne opgave:");
     for (const cmd of verifyCommands) lines.push(`  - \`${cmd}\``);

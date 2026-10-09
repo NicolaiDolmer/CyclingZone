@@ -571,6 +571,8 @@ export type RaceGroup = {
 export type IncidentChaseMode = "alone" | "assisted";
 
 export type RiderState = {
+  /** Actual last traversal demand/capacity, only recorded by shared-time runs. */
+  segment_pace?: Readonly<{ cp: number; demand: number }>;
   rider_id: string;
   group_id: string;
   cp: number; // afledt kritisk-effekt-taerskel, normaliseret (physiology.ts)
@@ -603,6 +605,8 @@ export type RiderState = {
 };
 
 export type EngineState = {
+  /** Cohort lineage is internal; it does not rename film groups. */
+  shared_grupetto_groups?: Readonly<Record<string, true>>;
   km: number; // cursor, km allerede tilbagelagt
   groups: RaceGroup[];
   riders: Record<string, RiderState>;
@@ -679,6 +683,12 @@ export type EngineState = {
 // no-op-varianter) der ingenting goer: returnerer samme state, ingen events.
 
 export type SegmentHookContext = {
+  /** Isolated time capability; never enables unrelated ordersGcV3 behavior. */
+  sharedGroupTime?: Readonly<{
+    entryGroups: readonly RaceGroup[];
+    /** stage_incidents length at interval entry; later time losses are point delays. Absent = 0. */
+    incidentCursor?: number;
+  }>;
   segment: Segment;
   segmentIndex: number;
   route: RouteV2;

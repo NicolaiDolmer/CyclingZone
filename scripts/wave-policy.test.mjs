@@ -7,7 +7,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, updateWave, withIdleWaveLock, withWaveStateLock, stopWaveWatch,
   ownershipPrefix, ownershipOverlaps, activeTracks, enqueueTracks, intakeTracks, readTracksFile, assertMergeAllowed, guardedMerge,
-  flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS, assertCompatibleWithActive, sharedTouchPlan, trackTouches } from './wave-policy.mjs';
+  flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS, assertCompatibleWithActive, sharedTouchPlan, trackTouches,
+  requiredModel, designGateHits, assertDesignGate } from './wave-policy.mjs';
 import { assertWaveOwnership } from './wave-ownership.mjs';
 import { normalizeBootId } from './wave-boot-identity.mjs';
 
@@ -779,7 +780,7 @@ test('#5997: admission stores the shared files in the marker; a marker without s
 test('#5997: enqueue allows touches vs touches, reports them, and rejects ownership vs touches', t => {
   const shared = 'frontend/src/pages/Shared.jsx';
   const { dir, file } = runningWave(t, { tracks: [withTouches(1, ['scripts/one.mjs'], [shared])] });
-  assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(2, [shared])], ownSnapshot), /overlaps running #1's touches/);
+  assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(2, [shared], { designGo: 'fixture' })], ownSnapshot), /overlaps running #1's touches/);
   const result = enqueueTracks(dir, 'rolling-wave', [withTouches(2, ['scripts/two.mjs'], [shared])], ownSnapshot);
   assert.deepEqual(result.sharedTouches, { shared: [{ path: shared, issues: [1, 2] }], mergeOrder: [1, 2] });
   // the marker carries the current plan (CodeRabbit)
@@ -814,4 +815,119 @@ test('#5997: a malformed touches field in the marker fails closed; touches never
   const ok = runningWave(t, { tracks: [withTouches(1, ['scripts/one.mjs'], [shared])] });
   assert.equal(assertMergeAllowed(ok.dir, 42, () => prFiles(shared)).allowed, true);
   assert.throws(() => assertMergeAllowed(ok.dir, 42, () => prFiles('scripts/one.mjs')), /overlaps running wave track #1/);
+});
+
+// ===== #6344: effort, automatisk opus og design-gate =====
+
+test('#6344: risky files force opus/high and name the reason; plain tracks keep model and effort', () => {
+  const plain = requiredModel(trackWith(1, ['scripts/x.mjs']));
+  assert.deepEqual(plain, { model: 'sonnet', effort: 'medium', upgraded: false, reasons: [] });
+  assert.equal(requiredModel(trackWith(1, ['scripts/x.mjs'], { effort: 'low' })).effort, 'low');
+  const cases = [
+    [['backend/lib/engine/v4/mechanics/x.ts'], /motor/],
+    [['database/2026-10-08-x.sql'], /migration\/RLS/],
+    [['supabase/migrations/x.sql'], /migration\/RLS/],
+    [['backend/lib/billingCheckout.js'], /penge\/billing/],
+    [['backend/lib/economyEngine.js'], /penge\/oekonomi/],
+    [['backend/lib/authTokenVerification.js'], /sikkerhed/],
+    [['.github/workflows/rls-audit.yml'], /sikkerhed/],
+    [['.github/workflows/security-grants-audit.yml'], /sikkerhed/],
+    [['backend/'], /motor/], // a broad ownership covers the engine: conservative upgrade
+    [['backend/lib/billing*'], /penge\/billing/],
+  ];
+  for (const [ownership, why] of cases) {
+    const r = requiredModel(trackWith(1, ownership));
+    assert.equal(r.model, 'opus', ownership[0]);
+    assert.equal(r.effort, 'high', ownership[0]);
+    assert.equal(r.upgraded, true, ownership[0]);
+    assert.match(r.reasons.join('; '), why, ownership[0]);
+  }
+  // touches count too, and an explicit low effort is still raised
+  const viaTouch = requiredModel(withTouches(1, ['scripts/x.mjs'], ['backend/lib/engine/v4/y.ts'], { effort: 'low' }));
+  assert.deepEqual([viaTouch.model, viaTouch.effort, viaTouch.upgraded], ['opus', 'high', true]);
+  // already opus/high: no upgrade to report, but the reasons are still known
+  const already = requiredModel(trackWith(1, ['database/x.sql'], { model: 'opus', effort: 'high' }));
+  assert.equal(already.upgraded, false);
+  // prose about auth/RLS is not security code; neighbours of risky paths are not risky
+  for (const own of ['docs/security-notes.md', '.claude/learnings/2026-05-22-rls-x.md', 'backend/lib/prizeFixture.js', 'backend/lib/engineering.js', 'scripts/wave-policy.mjs']) {
+    assert.equal(requiredModel(trackWith(1, [own])).model, 'sonnet', own);
+  }
+});
+
+test('#6344: the design gate blocks player-facing ownership without designGo, with three exemptions', () => {
+  for (const own of ['frontend/src/pages/X.jsx', 'frontend/public/locales/en/common.json', 'frontend/public/locales/da/help.json', 'frontend/', 'frontend/src/pages/X*']) {
+    assert.deepEqual(designGateHits(trackWith(1, [own])), [own], own);
+    assert.throws(() => assertDesignGate([trackWith(1, [own])]), /Design gate.*#1/, own);
+  }
+  const ui = ['frontend/src/pages/X.jsx'];
+  assert.deepEqual(designGateHits(trackWith(1, ui, { designGo: '8/10 #1234' })), []);
+  assert.deepEqual(designGateHits(trackWith(1, ui, { kind: 'investigate' })), []);
+  assert.deepEqual(designGateHits(trackWith(1, ui, { noVisibleChange: true, noVisibleReason: 'refactor, same markup' })), []);
+  // half an exemption is no exemption
+  for (const extra of [{ designGo: '' }, { designGo: '   ' }, { designGo: true }, { noVisibleChange: true }, { noVisibleChange: true, noVisibleReason: ' ' }, { noVisibleChange: 'yes', noVisibleReason: 'x' }]) {
+    assert.deepEqual(designGateHits(trackWith(1, ui, extra)), ui, JSON.stringify(extra));
+  }
+  assert.throws(() => assertDesignGate([trackWith(1, ui, { noVisibleChange: true })]), /noVisibleReason/);
+  // not player-facing: backend, scripts, frontend tooling outside src/locales; touches never gate
+  assert.deepEqual(designGateHits(trackWith(1, ['backend/routes/x.js', 'scripts/x.mjs', 'frontend/scripts/x.mjs', 'frontend/e2e/x.spec.js'])), []);
+  assert.deepEqual(designGateHits(withTouches(1, ['scripts/x.mjs'], ['frontend/src/pages/X.jsx'])), []);
+});
+
+test('#6344: admission and enqueue refuse a player-facing track without designGo and leave no marker change', async t => {
+  const dir = fixture(t);
+  const ui = trackWith(1, ['frontend/src/pages/X.jsx']);
+  await assert.rejects(acquireWave(dir, { ...request('claude'), tracks: [ui] }, async () => []), /Design gate/);
+  assert.equal(existsSync(path.join(dir, 'wave-active.json')), false, 'no marker written');
+  await assert.rejects(acquireWave(dir, { ...request('codex'), tracks: [ui] }, async () => []), /Design gate/, 'Codex shares the admission');
+  const ok = await acquireWave(dir, { ...request('claude'), tracks: [{ ...ui, designGo: '8/10' }] }, async () => []);
+  assert.equal(ok.state, 'running');
+  const { dir: running, file } = runningWave(t);
+  const before = readFileSync(file, 'utf8');
+  assert.throws(() => enqueueTracks(running, 'rolling-wave', [trackWith(2, ['frontend/src/pages/Y.jsx'])], ownSnapshot), /Design gate.*#2/);
+  assert.equal(readFileSync(file, 'utf8'), before);
+  enqueueTracks(running, 'rolling-wave', [trackWith(2, ['frontend/src/pages/Y.jsx'], { noVisibleChange: true, noVisibleReason: 'test only' })], ownSnapshot);
+  assert.deepEqual(markerOf(running).pendingTracks.map(x => x.issue), [2]);
+});
+
+test('#6344: enqueue refuses an unknown effort (wave.js would skip it later)', t => {
+  const { dir, file } = runningWave(t);
+  const before = readFileSync(file, 'utf8');
+  for (const effort of ['max', 'High', null, 3]) {
+    assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md'], { effort })], ownSnapshot), /Invalid effort for #2/);
+    assert.equal(readFileSync(file, 'utf8'), before);
+  }
+  enqueueTracks(dir, 'rolling-wave', [trackWith(2, ['docs/two.md'], { effort: 'high' })], ownSnapshot);
+});
+
+test('#6344: wave.js mirror of requiredModel/designGateHits matches wave-policy.mjs, and lanes get effort (drift guard)', () => {
+  const src = readFileSync(fileURLToPath(new URL('../.claude/workflows/wave.js', import.meta.url)), 'utf8');
+  const start = src.indexOf('const TRACK_EFFORTS = [');
+  const end = src.indexOf('// Slut paa #6344-spejlingen.');
+  assert.ok(start > 0 && end > start, 'mirror block not found in wave.js');
+  const mirror = new Function(`${src.slice(start, end)}; return { requiredModel, designGateHits };`)();
+  const ui = 'frontend/src/pages/X.jsx';
+  const sets = [
+    trackWith(1, ['scripts/x.mjs']),
+    trackWith(1, ['scripts/x.mjs'], { effort: 'low' }),
+    trackWith(1, ['backend/lib/engine/v4/x.ts']),
+    trackWith(1, ['Backend\\lib\\Economy*', 'database/']),
+    trackWith(1, ['backend/lib/authTokenVerification.js'], { model: 'opus', effort: 'high' }),
+    trackWith(1, ['docs/rls.md', '.claude/learnings/auth.md']),
+    withTouches(1, ['scripts/x.mjs'], ['supabase/migrations/x.sql']),
+    trackWith(1, [ui]),
+    trackWith(1, [ui], { designGo: '8/10' }),
+    trackWith(1, [ui], { kind: 'investigate' }),
+    trackWith(1, [ui], { noVisibleChange: true }),
+    trackWith(1, [ui], { noVisibleChange: true, noVisibleReason: 'x' }),
+    trackWith(1, ['frontend/public/locales/en/help.json', 'frontend/']),
+    withTouches(1, ['scripts/x.mjs'], [ui]),
+  ];
+  for (const t of sets) {
+    assert.deepEqual(mirror.requiredModel(t), requiredModel(t), JSON.stringify(t));
+    assert.deepEqual(mirror.designGateHits(t), designGateHits(t), JSON.stringify(t));
+  }
+  // every lane/recovery/fix agent() call that passes the track's model also passes its effort
+  const calls = src.match(/model: track\.model(?:, effort: track\.effort)? \}/g) || [];
+  assert.ok(calls.length >= 4, 'expected lane, recovery, investigate and fix calls');
+  for (const c of calls) assert.match(c, /effort: track\.effort/);
 });

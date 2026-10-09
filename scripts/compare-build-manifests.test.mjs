@@ -34,7 +34,10 @@ import {
   listFiles,
   pairKey,
   splitHashedName,
+  checkSuperset,
 } from "./compare-build-manifests.mjs";
+import { carryForwardAssets } from "./carry-forward-assets.mjs";
+import { uploadReleaseAssets } from "./upload-release-assets.mjs";
 
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "compare-build-manifests.mjs");
 
@@ -321,4 +324,63 @@ test("scriptet exit'er 1 paa manglende mappe i stedet for at kaste", () => {
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /findes ikke som mappe/);
+});
+
+// ── #5162: carry-forward-kontrakten "B indeholder A" ─────────────────────────
+
+/** Et build af NY kode: andre chunk-hashes end A, plus id i version.json. */
+function makeReleaseDist(root, { frontend, entryHash, pageHash }) {
+  write(root, "app.html", `<!doctype html><meta name="cz-frontend" content="${frontend}">`);
+  write(root, "version.json", JSON.stringify({ release: frontend, frontend }));
+  write(root, `assets/index-${entryHash}.js`, `entry ${frontend}\n`);
+  write(root, `assets/index-${entryHash}.js.map`, '{"version":3}');
+  write(root, `assets/AuctionsPage-${pageHash}.js`, `auctions ${frontend}\n`);
+  write(root, "assets/style-bbbb2222.css", ":root{color:#000}\n");
+  return root;
+}
+
+test("superset: B uden carry-forward mangler A's chunks (det er fejlen #5162 lukker)", () => {
+  const a = makeReleaseDist(tmpdir("sup-a"), { frontend: "relA", entryHash: "AAAA1111", pageHash: "AUCA1111" });
+  const b = makeReleaseDist(tmpdir("sup-b"), { frontend: "relB", entryHash: "BBBB2222", pageHash: "AUCB2222" });
+  const result = checkSuperset(buildManifest(a), buildManifest(b));
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missing, ["assets/AuctionsPage-AUCA1111.js", "assets/index-AAAA1111.js"]);
+  assert.equal(result.checked, 3, "source maps er uden for kontrakten (de baeres ikke)");
+});
+
+test("superset: build B MED carry-forward af A's manifest indeholder alle A's assets", async () => {
+  const store = tmpdir("sup-store");
+  const env = { CZ_RELEASE_ASSETS_LOCAL_DIR: store };
+  const quiet = () => {};
+  const a = makeReleaseDist(tmpdir("sup-a2"), { frontend: "relA", entryHash: "AAAA1111", pageHash: "AUCA1111" });
+  await uploadReleaseAssets({ distDir: a, env, log: quiet });
+
+  const b = makeReleaseDist(tmpdir("sup-b2"), { frontend: "relB", entryHash: "BBBB2222", pageHash: "AUCB2222" });
+  await carryForwardAssets({ distDir: b, env, log: quiet, warn: quiet });
+  await uploadReleaseAssets({ distDir: b, env, log: quiet });
+
+  const result = checkSuperset(buildManifest(a), buildManifest(b));
+  assert.equal(result.ok, true, JSON.stringify(result));
+
+  // CLI-vejen (samme som CI kalder).
+  const cli = spawnSync(process.execPath, [SCRIPT, a, b, "--expect-superset"], { encoding: "utf-8" });
+  assert.equal(cli.status, 0, cli.stdout + cli.stderr);
+  assert.match(cli.stdout, /Alle A's assets findes i B/);
+});
+
+test("superset: samme navn med andet indhold i B er en fejl, ikke et match", () => {
+  const a = makeReleaseDist(tmpdir("sup-a3"), { frontend: "relA", entryHash: "AAAA1111", pageHash: "AUCA1111" });
+  const b = makeReleaseDist(tmpdir("sup-b3"), { frontend: "relA", entryHash: "AAAA1111", pageHash: "AUCA1111" });
+  write(b, "assets/AuctionsPage-AUCA1111.js", "andet indhold\n");
+  const result = checkSuperset(buildManifest(a), buildManifest(b));
+  assert.deepEqual(result.mismatched, ["assets/AuctionsPage-AUCA1111.js"]);
+  const cli = spawnSync(process.execPath, [SCRIPT, a, b, "--expect-superset"], { encoding: "utf-8" });
+  assert.equal(cli.status, 1);
+});
+
+test("superset: A uden assets beviser intet og er roed", () => {
+  const a = tmpdir("sup-empty");
+  write(a, "app.html", "<!doctype html>");
+  const b = makeReleaseDist(tmpdir("sup-b4"), { frontend: "relB", entryHash: "BBBB2222", pageHash: "AUCB2222" });
+  assert.equal(checkSuperset(buildManifest(a), buildManifest(b)).ok, false);
 });

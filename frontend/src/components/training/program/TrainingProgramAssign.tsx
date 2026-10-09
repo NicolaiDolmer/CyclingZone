@@ -15,6 +15,7 @@ import Button from "../../ui/Button.jsx";
 import { ChevronDownIcon, ChevronRightIcon } from "../../ui/icons/index.jsx";
 import { programName, programTagline, type CatalogProgram } from "../../../lib/trainingPrograms.ts";
 import type { ProgramsResult } from "../useTrainingPrograms.ts";
+import { trainNowSaveErrorKey } from "../TrainNowState.ts";
 import { currentProgramKey, resolveTarget, sectionsForTarget, type AssignRider } from "./programAssignModel.ts";
 
 export default function TrainingProgramAssign({
@@ -82,7 +83,7 @@ export default function TrainingProgramAssign({
     if (targetGeneration.current !== generation) return;
     setMessage(result.ok
       ? { type: "ok", text: t("programs.applied", { name: programName(program, lang), target: targetName }) }
-      : { type: "error", text: t("programs.error") });
+      : { type: "error", text: t(trainNowSaveErrorKey(result.error, "programs.error")) });
   }
 
   function chooseTarget(value: string) {

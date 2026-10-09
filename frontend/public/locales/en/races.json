@@ -529,6 +529,13 @@
     "autoFillReloadFailed": "Auto-select saved your squad, but reloading it here failed. Retry before you make more changes.",
     "retry": "Try again",
     "save": "Save selection",
+    "saveLocked": "Save selection (locked)",
+    "trainNowLock": {
+      "title": "Locked today.",
+      "bodyAt": "You pressed Train now at {time}. Riders who trained today can't race today's race.",
+      "body": "Riders who trained today can't race today's race.",
+      "rider": "Trained today"
+    },
     "saving": "Saving…",
     "saved": "Selection saved.",
     "wrongPool": {
@@ -564,7 +571,7 @@
       "selection_invalid_body": "Couldn't save the selection. Try again.",
       "selection_wrong_pool": "You can only enter races in your own division.",
       "selection_withdrawn": "You've withdrawn from this race, so a lineup can't be saved for it.",
-      "selection_train_now_locked": "You pressed Train now today, so today's entries are locked.",
+      "selection_train_now_locked": "Riders who trained today can't be added to or removed from today's race.",
       "selection_youth_squad_train_only": "This squad is set to Train only. Switch it to Enter races on the squad page to enter it.",
       "selection_duplicate_race": "Couldn't save: the same race was included twice. Try again.",
       "selection_bulk_too_large": "You can save at most {max} changed races at once. Save some now, then the rest.",

@@ -8,7 +8,8 @@
   },
   "trainNow": {
     "button": "Træn nu",
-    "helper": "Låser dagens træning og tilmelding. Resultatet er det samme, som hvis du venter.",
+    "helper": "Låser dagens træning og dagens løbsudtagelse. Resultatet er det samme, som hvis du venter.",
+    "helperRace": "Låser dagens træning og dagens løbsudtagelse ({race}). Resultatet er det samme, som hvis du venter.",
     "locked": "Dagens træning og tilmelding er låst. Træthed og form opdateres ved aftenopgørelsen.",
     "afterRace": "Ryttere med løb i dag afregnes efter deres etape.",
     "pressResult": "{trained, plural, one {# rytter trænet nu} other {# ryttere trænet nu}}, {waiting, plural, one {# venter på sit løb} other {# venter på deres løb}}.",
@@ -207,6 +208,7 @@
   "weekRhythmReset": "Ugentlig rytme fjernet: ryttere følger igen deres sæson-intensitet hver dag.",
   "weekRhythmSaveFailed": "Kunne ikke gemme. Prøv igen om lidt.",
   "planActionErrorGeneric": "Kunne ikke gemme. Prøv igen om lidt.",
+  "planActionError_train_now_locked": "Dagens felter er låst. Du kan stadig ændre i morgen.",
   "planActionError_no_slots": "Ingen trænings-slots tilbage.",
   "planActionError_not_own_rider": "Du kan kun træne dine egne ryttere.",
   "planActionError_auth": "Din session er udløbet. Log ind igen.",
