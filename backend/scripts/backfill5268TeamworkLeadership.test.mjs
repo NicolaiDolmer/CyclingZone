@@ -14,7 +14,9 @@ import {
   FILL_KEYS, buildFillPlan, applyFillToRow, ratingImpact, countNulls, distribution, pickExamples,
   lowValueDesignPoint, lowValueCandidateIds, parseArgs, backupSql, rollbackSql, backupTableName,
   renderPublicReport, renderPrivateReport, run, applyPlan,
+  originByKey, buildTopupPlan, combineChanges, ratingImpactChanges, rowAfterSet,
 } from "./backfill5268TeamworkLeadership.mjs";
+import { MENTAL_ABILITY_TAG_CEILING } from "../lib/riderProgression.js";
 import { deriveAbilities, CALIBRATION } from "../lib/abilityDerivation.js";
 import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { DISPLAY_RECIPE_KEYS, ratingForRole } from "../lib/weights/displayRecipes.js";
@@ -262,8 +264,8 @@ test("backup- og rollback-SQL bruger kun et valideret tabelnavn", () => {
   assert.equal(t, "backup_5268_rider_derived_abilities_20261008");
   assert.match(backupSql(t), /CREATE TABLE IF NOT EXISTS public\.backup_5268_rider_derived_abilities_20261008 AS/);
   assert.match(backupSql(t), /ENABLE ROW LEVEL SECURITY/);
-  assert.match(rollbackSql(t), /SET teamwork = NULL[\s\S]*b\.filled_teamwork IS NOT NULL/);
-  assert.match(rollbackSql(t), /SET leadership = NULL[\s\S]*b\.filled_leadership IS NOT NULL/);
+  assert.match(rollbackSql(t), /SET teamwork = b\.teamwork[\s\S]*b\.filled_teamwork IS NOT NULL/);
+  assert.match(rollbackSql(t), /SET leadership = b.leadership[\s\S]*b\.filled_leadership IS NOT NULL/);
   assert.match(backupSql(t), /NULL::integer AS filled_teamwork, NULL::integer AS filled_leadership/);
   assert.throws(() => backupSql("riders"), /Ugyldigt/);
 });
@@ -318,4 +320,74 @@ test("offentlig rapport har antal men ingen percentiler eller eksempel-værdier"
   assert.ok(/Ryttere med aendret rating: \*\*0\*\*/.test(pub));
   assert.ok(pub.includes("Test Rytter"));
   assert.equal(ctx.examples.length, 10);
+});
+
+// ── Trænet oven i formlen (ejer 9/10 aften) ─────────────────────────────────
+const hist = (riderId, ...vals) => vals.map((v, i) => ({ rider_id: riderId, teamwork: v, leadership: v, created_at: `2026-09-${String(16 + i).padStart(2, "0")}` }));
+
+test("originByKey: NULL set, første værdi efter NULL", () => {
+  const o = originByKey(hist("r1", null, 1, 2));
+  assert.deepEqual(o.get("r1:teamwork"), { nullSeen: true, first: 1 });
+  const o2 = originByKey(hist("r2", 4, 5));
+  assert.equal(o2.get("r2:teamwork").nullSeen, false);
+});
+
+test("tillæg: trænet fra NULL -> formlen + det trænede, loftet holder", () => {
+  const rider = makeRider(5);
+  const b = birthOf(rider);
+  const row = { rider_id: rider.id, teamwork: 2, leadership: 3 };
+  const plan = buildTopupPlan([rider], [row], originByKey(hist(rider.id, null, 1, 2)));
+  assert.equal(plan.entries.length, 1);
+  const tw = plan.entries[0].set.teamwork;
+  assert.equal(tw.kind, "plus");
+  assert.equal(tw.to, Math.min(MENTAL_ABILITY_TAG_CEILING.teamwork, b.teamwork + 2));
+  assert.ok(tw.to >= 2, "ingen værdi falder");
+});
+
+test("værn: spring fra NULL over 5 giver intet tillæg, kun max(nu, formel)", () => {
+  const rider = makeRider(6);
+  const b = birthOf(rider);
+  const row = { rider_id: rider.id, teamwork: 33, leadership: null };
+  const plan = buildTopupPlan([rider], [row], originByKey(hist(rider.id, null, 33)));
+  const tw = plan.entries[0]?.set.teamwork;
+  if (b.teamwork > 33) assert.deepEqual([tw.kind, tw.to], ["max", b.teamwork]);
+  else assert.equal(tw, undefined);
+  assert.equal(plan.stats.teamwork.plus, 0);
+});
+
+test("felt uden NULL i historikken røres ikke", () => {
+  const rider = makeRider(7);
+  const row = { rider_id: rider.id, teamwork: 2, leadership: 2 };
+  const plan = buildTopupPlan([rider], [row], originByKey(hist(rider.id, 2, 2)));
+  assert.equal(plan.entries.length, 0);
+  assert.equal(plan.stats.teamwork.noNullHistory, 1);
+});
+
+test("samlet ændringsliste: 0 ratingeffekt med både fyldning og tillæg", () => {
+  const { riders, rows } = makeWorld(40);
+  const history = [];
+  for (const r of rows) {
+    if (r.teamwork !== null) { history.push(...hist(r.rider_id, null, 1)); r.teamwork = 1; }
+  }
+  const changes = combineChanges(buildFillPlan(riders, rows), buildTopupPlan(riders, rows, originByKey(history)));
+  assert.ok(changes.some((c) => Object.values(c.set).some((v) => v.kind === "plus")));
+  for (const c of changes) {
+    const after = rowAfterSet(c.abilities, c.set);
+    for (const k of FILL_KEYS) if (c.abilities[k] !== null) assert.ok(after[k] >= c.abilities[k]);
+  }
+  assert.equal(ratingImpactChanges(changes).changedRiders, 0);
+});
+
+test("apply af tillæg er betinget af værdien fra tør kørsel", async () => {
+  const rider = makeRider(8);
+  const row = { rider_id: rider.id, teamwork: 2, leadership: 2 };
+  const table = "backup_5268_rider_derived_abilities_20261009";
+  const sb = fakeSupabase({ rider_derived_abilities: [row], [table]: [{ rider_id: rider.id, teamwork: 2, leadership: 2 }] });
+  const plan = buildTopupPlan([rider], [{ ...row }], originByKey(hist(rider.id, null, 1, 2)));
+  row.teamwork = 3; // træning skrev imellem
+  const res = await applyPlan(sb, { entries: plan.entries }, { backupTable: table, log: () => {} });
+  assert.equal(row.teamwork, 3, "et felt der har ændret sig siden, røres ikke");
+  assert.equal(row.leadership, plan.entries[0].set.leadership.to);
+  assert.equal(res.skippedSinceDryRun, 1);
+  assert.equal(sb.tables[table][0].filled_leadership, plan.entries[0].set.leadership.to);
 });
