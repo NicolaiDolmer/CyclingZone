@@ -40,6 +40,17 @@
 // (`.is(key, null)` i WHERE). Anden kørsel finder intet at fylde. Et felt der
 // har fået en værdi mellem tør kørsel og apply (træning) røres ikke.
 //
+// ── TRÆNET OVEN I FORMLEN (ejer 9/10 aften) ──────────────────────────────────
+// En PCM-rytter hvis felt i dag har en værdi, men hvis historik viser feltet som
+// NULL, har trænet evnen op fra 0 (træningsmotoren læser NULL som 0). Ejeren:
+// "læg det rytterne selv har trænet oven i det de ville have fået" — 2 trænet +
+// 12 fra formlen = 14. Samme behandling som en født rytter: grundtal + træning.
+// Værn: er den FØRSTE værdi efter NULL højere end LOW_VALUE_MAX, kom den ikke fra
+// én trænings-dag (fx et spring fra NULL til 33). Så tælles intet oven i; rytteren
+// får max(nu, formlen), så ingen værdi falder. Loft: MENTAL_ABILITY_TAG_CEILING.
+// Et felt uden NULL i historikken røres ikke. Apply er betinget af den værdi den
+// tørre kørsel så (`.eq(key, fra)`), så træning imellem aldrig overskrives.
+//
 // Refs #5268 #5912 #5321.
 
 import { createClient } from "@supabase/supabase-js";
@@ -51,6 +62,7 @@ import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.j
 import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { seedPhysiologyFromLegacy } from "../lib/physiologySeeding.js";
 import { isBornFromPriors } from "../lib/riderBirthPriors.js";
+import { MENTAL_ABILITY_TAG_CEILING } from "../lib/riderProgression.js";
 import { DISPLAY_RECIPE_KEYS, DISPLAY_RECIPE_ABILITIES, ratingForRole } from "../lib/weights/displayRecipes.js";
 import { readOnlyFetch, ageOf, bandOf, AGE_BANDS, percentile } from "./dry-run-5268-mental-abilities.js";
 
@@ -97,6 +109,118 @@ export function applyFillToRow(row, fill) {
     if (isNull(row[k]) && fill[k] !== undefined) out[k] = fill[k];
   }
   return out;
+}
+
+// ── Trænet oven i formlen ───────────────────────────────────────────────────
+// Oprindelse pr. (rytter, evne) fra historikken: blev feltet set som NULL, og
+// hvad var den første værdi efter (kronologisk; rækker sorteret af kalderen).
+export function originByKey(historyRows) {
+  const out = new Map();
+  for (const h of historyRows) {
+    for (const k of FILL_KEYS) {
+      const key = `${h.rider_id}:${k}`;
+      const o = out.get(key) ?? { nullSeen: false, first: null };
+      const v = Number(h[k]);
+      if (isNull(h[k])) o.nullSeen = true;
+      else if (Number.isFinite(v) && o.first === null && o.nullSeen) o.first = v;
+      out.set(key, o);
+    }
+  }
+  return out;
+}
+
+export function buildTopupPlan(riders, abilityRows, origins) {
+  const ridersById = new Map(riders.map((r) => [r.id, r]));
+  const entries = [];
+  const stats = Object.fromEntries(FILL_KEYS.map((k) => [k, {
+    withValue: 0, fromNull: 0, plus: 0, plusCapped: 0, guardedMax: 0, guardedNoChange: 0, noNullHistory: 0,
+  }]));
+  for (const row of abilityRows) {
+    const rider = ridersById.get(row.rider_id);
+    if (!rider || isBornFromPriors(rider)) continue;
+    let birth = null;
+    const set = {};
+    for (const k of FILL_KEYS) {
+      if (isNull(row[k])) continue;
+      const v = Number(row[k]);
+      if (!Number.isFinite(v)) continue;
+      const st = stats[k];
+      st.withValue += 1;
+      const o = origins.get(`${row.rider_id}:${k}`);
+      if (!o?.nullSeen) { st.noNullHistory += 1; continue; }
+      st.fromNull += 1;
+      birth ??= deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
+      const b = birth[k];
+      if (!Number.isInteger(b) || b < 1 || b > 99) continue;
+      const cap = MENTAL_ABILITY_TAG_CEILING[k];
+      if (o.first !== null && o.first <= LOW_VALUE_MAX) {
+        const to = Math.max(v, Math.min(cap, b + v));
+        if (to === v) continue;
+        if (b + v > cap) st.plusCapped += 1;
+        st.plus += 1;
+        set[k] = { from: v, to, kind: "plus", birth: b };
+      } else if (b > v) {
+        st.guardedMax += 1;
+        set[k] = { from: v, to: b, kind: "max", birth: b };
+      } else {
+        st.guardedNoChange += 1;
+      }
+    }
+    if (Object.keys(set).length) entries.push({ riderId: row.rider_id, rider, abilities: row, set });
+  }
+  return { entries, stats };
+}
+
+// Fyldning (NULL -> formel) og tillæg samlet til én ændringsliste pr. rytter.
+export function combineChanges(fillPlan, topupPlan) {
+  const byId = new Map();
+  for (const e of fillPlan.entries) {
+    const set = Object.fromEntries(Object.entries(e.fill).map(([k, v]) => [k, { from: null, to: v, kind: "fill", birth: v }]));
+    byId.set(e.riderId, { riderId: e.riderId, rider: e.rider, abilities: e.abilities, set });
+  }
+  for (const e of topupPlan.entries) {
+    const cur = byId.get(e.riderId);
+    if (cur) Object.assign(cur.set, e.set);
+    else byId.set(e.riderId, { ...e, set: { ...e.set } });
+  }
+  return [...byId.values()];
+}
+
+export function rowAfterSet(row, set) {
+  const out = { ...row };
+  for (const [k, c] of Object.entries(set)) out[k] = c.to;
+  return out;
+}
+
+// Gevinst pr. tillæg (nu -> efter) og antal der ramte loftet, til rapporten.
+export function topupSummary(changes) {
+  const out = {};
+  for (const k of FILL_KEYS) {
+    const plus = changes.map((c) => c.set[k]).filter((c) => c?.kind === "plus");
+    const max = changes.map((c) => c.set[k]).filter((c) => c?.kind === "max");
+    out[k] = {
+      plus: plus.length, max: max.length,
+      trained: pctRow(plus.map((c) => c.from)),
+      after: pctRow(plus.map((c) => c.to)),
+      atCap: plus.filter((c) => c.to === MENTAL_ABILITY_TAG_CEILING[k]).length,
+    };
+  }
+  return out;
+}
+
+// Rating for alle visnings-roller, før vs. efter, pr. rytter (samlet ændringsliste).
+export function ratingImpactChanges(changes) {
+  let changedRiders = 0;
+  let changedPairs = 0;
+  for (const c of changes) {
+    const after = rowAfterSet(c.abilities, c.set);
+    let changed = false;
+    for (const role of DISPLAY_RECIPE_KEYS) {
+      if (ratingForRole(c.abilities, role) !== ratingForRole(after, role)) { changedPairs += 1; changed = true; }
+    }
+    if (changed) changedRiders += 1;
+  }
+  return { riders: changes.length, roles: DISPLAY_RECIPE_KEYS.length, changedRiders, changedPairs };
 }
 
 // Rating for alle visnings-roller, før vs. efter, pr. rytter.
@@ -244,24 +368,25 @@ export function backupSql(table) {
     // rører kun felter scriptet faktisk fyldte (ikke felter træning skrev imens).
     "  SELECT rider_id, teamwork, leadership,",
     "    NULL::integer AS filled_teamwork, NULL::integer AS filled_leadership, now() AS backed_up_at",
-    "  FROM public.rider_derived_abilities",
-    "  WHERE teamwork IS NULL OR leadership IS NULL;",
+    // Hele tabellen: tillægget rører også felter der HAR en værdi (ejer 9/10).
+    "  FROM public.rider_derived_abilities;",
     `ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY;`,
     `SELECT count(*) FROM public.${table};`,
   ].join("\n");
 }
 
-// Rollback sætter KUN felter tilbage til NULL som applyPlan faktisk fyldte
-// (filled_* er sat). Et felt træning skrev mellem backup og apply blev sprunget
-// over af apply og røres heller ikke her. Bemærk: træningsfremgang optjent på
-// de fyldte felter EFTER apply går tabt ved rollback.
+// Rollback sætter KUN felter tilbage som applyPlan faktisk ændrede (filled_* er
+// sat), til værdien i backuppen (NULL for en fyldning, det trænede tal for et
+// tillæg). Et felt træning skrev mellem backup og apply blev sprunget over af
+// apply og røres heller ikke her. Bemærk: træningsfremgang optjent på de
+// ændrede felter EFTER apply går tabt ved rollback.
 export function rollbackSql(table) {
   if (!BACKUP_TABLE_PATTERN.test(table)) throw new Error(`Ugyldigt backup-navn: ${table}`);
   return [
     "BEGIN;",
-    "UPDATE public.rider_derived_abilities a SET teamwork = NULL",
+    "UPDATE public.rider_derived_abilities a SET teamwork = b.teamwork",
     `  FROM public.${table} b WHERE a.rider_id = b.rider_id AND b.filled_teamwork IS NOT NULL;`,
-    "UPDATE public.rider_derived_abilities a SET leadership = NULL",
+    "UPDATE public.rider_derived_abilities a SET leadership = b.leadership",
     `  FROM public.${table} b WHERE a.rider_id = b.rider_id AND b.filled_leadership IS NOT NULL;`,
     "COMMIT;",
   ].join("\n");
@@ -292,11 +417,30 @@ function commonHeader(ctx) {
   L.push(`- Ryttere der faar mindst et felt fyldt: **${plan.entries.length}** (heraf aktive: ${act})`);
   L.push(`- Felter: teamwork ${tw}, leadership ${ld}`);
   L.push(`- Sprunget over: prior-foedte ${plan.skipped.priorBorn}, uden rytter-raekke ${plan.skipped.noRider}, ugyldig foedselsvaerdi ${plan.skipped.invalid}`);
-  L.push("- Felter med en vaerdi roeres ikke (heller ikke lave vaerdier, se designpunktet).");
+  if (ctx.topup) {
+    const t = ctx.topup.stats;
+    L.push("");
+    L.push("## Traenet oven i formlen (ejer 9/10 aften)");
+    L.push("");
+    L.push(`Felter med en vaerdi hvor historikken viser NULL: formlen + det traenede (loft ${MENTAL_ABILITY_TAG_CEILING.teamwork}). `
+      + `Vaern: foerste vaerdi efter NULL > ${LOW_VALUE_MAX} -> max(nu, formlen), intet tillaeg.`);
+    L.push("");
+    L.push("| Evne | med vaerdi (PCM) | fra NULL | + traenet | heraf ramt loftet | vaern: max(nu, formel) | vaern: uaendret | uden NULL i historik (uroert) |");
+    L.push("|---|---:|---:|---:|---:|---:|---:|---:|");
+    for (const k of FILL_KEYS) {
+      const d = t[k];
+      L.push(`| ${k} | ${d.withValue} | ${d.fromNull} | **${d.plus}** | ${d.plusCapped} | ${d.guardedMax} | ${d.guardedNoChange} | ${d.noNullHistory} |`);
+    }
+    L.push("");
+    L.push(`- Ryttere i alt med mindst een aendring (fyldning eller tillaeg): **${ctx.changes.length}** `
+      + `(aktive: ${ctx.changes.filter((c) => c.rider.is_retired === false).length})`);
+  } else {
+    L.push("- Felter med en vaerdi roeres ikke (heller ikke lave vaerdier, se designpunktet).");
+  }
   L.push("");
   L.push("## Rating");
   L.push("");
-  L.push(`- Rating regnet foer/efter for ${impact.riders} ryttere x ${impact.roles} visnings-roller.`);
+  L.push(`- Rating regnet foer/efter for ${impact.riders} ryttere x ${impact.roles} visnings-roller (fyldning + tillaeg).`);
   L.push(`- Ryttere med aendret rating: **${impact.changedRiders}** (rolle-par: ${impact.changedPairs}). Maal: 0.`);
   L.push("");
   L.push(`## Aabent designpunkt: lave vaerdier (1-${LOW_VALUE_MAX}) der sandsynligvis er opstaaet fra NULL`);
@@ -330,7 +474,7 @@ function applyFooter(ctx) {
   L.push("2. Apply:");
   L.push("");
   L.push("```");
-  L.push(`infisical run --env=prod -- node backend/scripts/backfill5268TeamworkLeadership.mjs --apply --owner-go --backup-table=${table} --expect-riders=${plan.entries.length}`);
+  L.push(`infisical run --env=prod -- node backend/scripts/backfill5268TeamworkLeadership.mjs --apply --owner-go --backup-table=${table} --expect-riders=${ctx.changes ? ctx.changes.length : plan.entries.length}`);
   L.push("```");
   L.push("");
   L.push("3. Rollback (saetter kun felter apply faktisk fyldte tilbage til NULL; traening optjent efter apply paa de felter gaar tabt):");
@@ -398,6 +542,23 @@ export function renderPrivateReport(ctx) {
     L.push("");
     L.push(...pctTable("Primaertype", Object.entries(d.byType)));
   }
+  if (ctx.topupSum) {
+    for (const k of FILL_KEYS) {
+      const d = ctx.topupSum[k];
+      L.push("");
+      L.push(`## Tillaeg: ${k} (${d.plus} + traenet, ${d.max} vaern-max, ${d.atCap} paa loftet)`);
+      L.push("");
+      L.push(...pctTable("Fordeling", [["traenet (foer)", d.trained], ["efter", d.after]]));
+    }
+    const ex = ctx.changes.filter((c) => Object.values(c.set).some((v) => v.kind !== "fill")).slice(0, 10);
+    L.push("");
+    L.push("## Tillaeg: eksempler");
+    L.push("");
+    L.push("| Rytter | teamwork | leadership |");
+    L.push("|---|---|---|");
+    const fmt = (c) => (c ? `${cell(c.from)} -> ${c.to} (${c.kind}, formel ${c.birth})` : "-");
+    for (const c of ex) L.push(`| ${name(c.rider)} | ${fmt(c.set.teamwork)} | ${fmt(c.set.leadership)} |`);
+  }
   L.push("");
   L.push("## 10 eksempler");
   L.push("");
@@ -450,12 +611,26 @@ export async function loadState(supabase) {
 // Historik kun for kandidaterne til designpunktet (lave værdier hos PCM-ryttere).
 export async function loadHistory(supabase, riderIds) {
   if (!riderIds.length) return [];
-  const sel = "rider_id, teamwork:abilities->teamwork, leadership:abilities->leadership";
+  const sel = "id, rider_id, snapshot_date, created_at, teamwork:abilities->teamwork, leadership:abilities->leadership";
   const a = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase.from("rider_derived_ability_history")
     .select(sel).in("rider_id", chunk).order("id"));
   const b = await fetchAllRowsChunkedIn(riderIds, (chunk) => supabase.from("rider_ability_race_day_history")
     .select(sel).in("rider_id", chunk).order("id"));
-  return [...a, ...b];
+  // Kronologisk på tværs af de to tabeller (originByKey læser "første værdi efter NULL").
+  const ts = (h) => String(h.created_at ?? h.snapshot_date ?? "");
+  return [...a, ...b].sort((x, y) => ts(x).localeCompare(ts(y)));
+}
+
+// Alle PCM-ryttere med mindst én værdi (kandidater til tillægget).
+export function topupCandidateIds(riders, abilityRows) {
+  const ridersById = new Map(riders.map((r) => [r.id, r]));
+  const ids = new Set();
+  for (const row of abilityRows) {
+    const rider = ridersById.get(row.rider_id);
+    if (!rider || isBornFromPriors(rider)) continue;
+    if (FILL_KEYS.some((k) => !isNull(row[k]))) ids.add(row.rider_id);
+  }
+  return [...ids];
 }
 
 export function lowValueCandidateIds(riders, abilityRows) {
@@ -474,22 +649,28 @@ export function lowValueCandidateIds(riders, abilityRows) {
 
 // Apply: verificér backup → pr. rytter pr. felt en BETINGET opdatering
 // (`.is(key, null)`), så et felt der har fået en værdi siden aldrig overskrives.
+// Indgang: `plan.entries` med `fill` (kun NULL -> formel) ELLER `set`
+// ({ key: { from, to } }, også tillæg). Opdateringen er betinget af `from`:
+// `.is(key, null)` for en fyldning, `.eq(key, from)` for et tillæg.
+const setOf = (e) => e.set ?? Object.fromEntries(Object.entries(e.fill).map(([k, v]) => [k, { from: null, to: v }]));
+const sameVal = (a, b) => (isNull(a) && isNull(b)) || (!isNull(a) && !isNull(b) && Number(a) === Number(b));
+
 export async function applyPlan(supabase, plan, { backupTable, log = console.log } = {}) {
   const backup = await fetchAllRows(() => supabase.from(backupTable).select("rider_id, teamwork, leadership, filled_teamwork, filled_leadership").order("rider_id"));
   const backupById = new Map(backup.map((b) => [b.rider_id, b]));
   const missing = plan.entries.filter((e) => {
     const b = backupById.get(e.riderId);
-    return !b || Object.keys(e.fill).some((k) => !isNull(b[k]));
+    return !b || Object.entries(setOf(e)).some(([k, c]) => !sameVal(b[k], c.from));
   });
   if (missing.length) {
-    throw new Error(`${missing.length} ryttere i planen mangler i ${backupTable} (eller havde en vaerdi ved backup). Tag backup igen.`);
+    throw new Error(`${missing.length} ryttere i planen mangler i ${backupTable} (eller havde en anden vaerdi ved backup). Tag backup igen.`);
   }
   let fields = 0;
   let skippedSinceDryRun = 0;
   for (const e of plan.entries) {
-    for (const [k, v] of Object.entries(e.fill)) {
-      const { data, error } = await supabase.from("rider_derived_abilities")
-        .update({ [k]: v }).eq("rider_id", e.riderId).is(k, null).select("rider_id");
+    for (const [k, { from, to: v }] of Object.entries(setOf(e))) {
+      const q = supabase.from("rider_derived_abilities").update({ [k]: v }).eq("rider_id", e.riderId);
+      const { data, error } = await (isNull(from) ? q.is(k, null) : q.eq(k, from)).select("rider_id");
       if (error) throw error;
       if (!data?.length) { skippedSinceDryRun += 1; continue; }
       // Markér feltet som fyldt (rollback-grundlaget). EFTER opdateringen: et
@@ -501,7 +682,7 @@ export async function applyPlan(supabase, plan, { backupTable, log = console.log
       fields += 1;
     }
   }
-  log(`APPLY: ${fields} felter fyldt, ${skippedSinceDryRun} havde faaet en vaerdi siden (urort).`);
+  log(`APPLY: ${fields} felter skrevet, ${skippedSinceDryRun} havde aendret sig siden toer koersel (urort).`);
   return { fields, skippedSinceDryRun };
 }
 
@@ -523,16 +704,19 @@ async function main() {
 export async function run({ supabase, opts, log = console.log, now = new Date() }) {
   const { riders, abilityRows } = await loadState(supabase);
   const plan = buildFillPlan(riders, abilityRows);
-  const impact = ratingImpact(plan.entries);
   const nulls = countNulls(riders, abilityRows);
-  const history = await loadHistory(supabase, lowValueCandidateIds(riders, abilityRows));
+  const history = await loadHistory(supabase, topupCandidateIds(riders, abilityRows));
   const design = lowValueDesignPoint(riders, abilityRows, history);
+  const topup = buildTopupPlan(riders, abilityRows, originByKey(history));
+  const changes = combineChanges(plan, topup);
+  const impact = ratingImpactChanges(changes);
   const stamp = now.toISOString();
   const tsSlug = stamp.slice(0, 19).replaceAll(":", "-");
   const table = opts.backupTable ?? backupTableName(now);
   const privateFile = opts.privateDir ? join(opts.privateDir, `dry-run-${tsSlug}-private.md`) : null;
   const ctx = {
     stamp, nulls, plan, impact, design, table, apply: opts.apply,
+    topup, changes, topupSum: topupSummary(changes),
     dist: distribution(plan.entries),
     examples: pickExamples(plan.entries, opts.sample),
     privateFile: privateFile ? basename(privateFile) : null,
@@ -554,17 +738,17 @@ export async function run({ supabase, opts, log = console.log, now = new Date() 
 
   if (!opts.apply) {
     log("Toer koersel: intet er skrevet.");
-    return { plan, impact, nulls, design, applied: null };
+    return { plan, topup, changes, impact, nulls, design, applied: null };
   }
   if (impact.changedRiders !== 0) {
     throw new Error(`Rating ville aendre sig for ${impact.changedRiders} ryttere. Apply afvist (0 ratingeffekt er et krav).`);
   }
-  if (plan.entries.length !== opts.expectRiders) {
-    throw new Error(`Planen har ${plan.entries.length} ryttere, --expect-riders=${opts.expectRiders}. Koer toer koersel igen.`);
+  if (changes.length !== opts.expectRiders) {
+    throw new Error(`Planen har ${changes.length} ryttere, --expect-riders=${opts.expectRiders}. Koer toer koersel igen.`);
   }
-  const result = await applyPlan(supabase, plan, { backupTable: opts.backupTable, log });
+  const result = await applyPlan(supabase, { entries: changes }, { backupTable: opts.backupTable, log });
   log(`Rollback-SQL:\n${rollbackSql(opts.backupTable)}`);
-  return { plan, impact, nulls, design, applied: result };
+  return { plan, topup, changes, impact, nulls, design, applied: result };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
