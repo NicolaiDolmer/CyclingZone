@@ -100,7 +100,7 @@ async function fetchRaceData(db, race, ABILITY_KEYS) {
   for (let i = 0; i < riderIds.length; i += 50) {
     const ids = riderIds.slice(i, i + 50);
     abilities.push(...await one(db.from("rider_derived_abilities").select(["rider_id", ...ABILITY_KEYS].join(", ")).in("rider_id", ids), "abilities"));
-    riders.push(...await one(db.from("riders").select("id, firstname, lastname").in("id", ids), "riders"));
+    riders.push(...await one(db.from("riders").select("id, firstname, lastname").in("id", ids), "riders")); // pagination-safe: hoejst 50 id'er pr. kald
   }
   return { race, profiles, entries, orders, teams, abilities, riders };
 }
