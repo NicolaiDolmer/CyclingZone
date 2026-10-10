@@ -404,6 +404,76 @@ function summitRaceSplitRiderIds(
     .sort();
 }
 
+/** Underskud (0-1) mod den bedste "paa dagen": evne + dagsform x vaegt (i evne-point). */
+function deficitsOnTheDay(
+  selections: readonly RiderSelection[],
+  climbingOf: (riderId: string) => number,
+  dayformOf: (riderId: string) => number,
+  dayformWeight: number,
+): Map<string, number> {
+  const onTheDay = new Map(selections.map((s) => {
+    const form = dayformOf(s.riderId);
+    return [s.riderId, climbingOf(s.riderId) + 99 * dayformWeight * (Number.isFinite(form) ? form : 0)] as const;
+  }));
+  const reference = Math.max(...onTheDay.values());
+  return new Map([...onTheDay].map(([id, v]) => [id, clamp((reference - v) / 99, 0, 1)]));
+}
+
+/**
+ * Ren revision spor 1, D1 (KUN official_times_v3, ejer 10/10): den afgoerende
+ * stigning foer en nedkoerselsfinale paa en bjergetape. To kilder til varians:
+ *
+ *  1. Dagsform: alle klatrer med evnen PAA DAGEN, evnen plus dagsformen
+ *     (RiderState.dayform, inkl. jour sans) gange `descentFinishClimbDayformWeight`.
+ *     Det giver nr. 10's hul et udfald pr. loeb i stedet for en konstant.
+ *  2. Angrebet: rytterne der paa dagen er inden for `descentFinishClimbAttackWindowSeconds`
+ *     af den forreste, angriber hinanden. Mellem dem vejer dagsformen tungere
+ *     (`descentFinishClimbAttackDayformWeight`), saa den bedste klatrer ikke
+ *     altid vinder. Deres hul holdes inden for vinduet, saa angrebet aldrig
+ *     flytter dem bag en rytter uden for det (nr. 10 er stadig evnens hul).
+ *
+ * Vaegte paa 0 (alle aeldre tidsmodeller) giver udvalget uaendret.
+ *
+ * Monotoni: for samme dagsform giver en hoejere klatre-evne aldrig et stoerre
+ * underskud, hverken i feltet eller i angrebet (styrke straffes aldrig).
+ * Eksporteret for testbarhed.
+ */
+export function decidingClimbSelectionsOnTheDay(
+  selections: readonly RiderSelection[],
+  climbingOf: (riderId: string) => number,
+  dayformOf: (riderId: string) => number,
+  gapOf: (deficit01: number, energyDeficit01: number) => number,
+  t: Pick<TimeModelTuning, "descentFinishClimbDayformWeight" | "descentFinishClimbAttackWindowSeconds" | "descentFinishClimbAttackDayformWeight">,
+): RiderSelection[] {
+  if (selections.length === 0) return [];
+  let out: RiderSelection[] = [...selections];
+  if (t.descentFinishClimbDayformWeight > 0) {
+    const day = deficitsOnTheDay(out, climbingOf, dayformOf, t.descentFinishClimbDayformWeight);
+    out = out.map((s) => ({ ...s, deficit01: day.get(s.riderId) ?? s.deficit01 }));
+  }
+  const window = t.descentFinishClimbAttackWindowSeconds;
+  if (!(window > 0) || !(t.descentFinishClimbAttackDayformWeight > 0)) return out;
+  const front = out.filter((s) => !s.wprimeForced && !s.effortForced && gapOf(s.deficit01, s.energyDeficit01) <= window);
+  if (front.length < 2) return out;
+  const attack = deficitsOnTheDay(front, climbingOf, dayformOf, t.descentFinishClimbAttackDayformWeight);
+  return out.map((s) => {
+    const raw = attack.get(s.riderId);
+    if (raw === undefined) return s;
+    // Hullet holdes inden for vinduet (gapOf er monotont i underskuddet).
+    let deficit = raw;
+    if (gapOf(deficit, s.energyDeficit01) > window) {
+      let lo = 0;
+      let hi = deficit;
+      for (let i = 0; i < 30; i++) {
+        const mid = (lo + hi) / 2;
+        if (gapOf(mid, s.energyDeficit01) > window) hi = mid; else lo = mid;
+      }
+      deficit = lo;
+    }
+    return { ...s, deficit01: deficit };
+  });
+}
+
 /**
  * Naar ALLE ryttere i en gruppe er udvalgt til split, beholdes én som
  * gruppens fortsatte front: den med laveste baseScore. #4914 (CodeRabbit-fund):
@@ -490,12 +560,12 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // A formed grupetto does not re-split merely relative to its best climber.
     const cohesive = ctx.sharedGroupTime !== undefined && (group.kind === "gruppetto"
       || (group.kind === "chase" && nextState.shared_grupetto_groups?.[group.id] === true));
-    const selections = cohesive ? measured.map(selection => {
+    const baseSelections = cohesive ? measured.map(selection => {
       const pace = nextState.riders[selection.riderId]?.segment_pace;
       return {...selection, scoreTriggered:false, effortForced:false,
         wprimeForced:selection.wprimeForced && (!pace || pace.demand > pace.cp)};
     }) : measured;
-    if (selections.length < 2) continue;
+    if (baseSelections.length < 2) continue;
 
     // #6199: official_times_v2 laeser sin kalibrerede tidsmodel; alle andre v3-tallene.
     const timeModel = timeModelTuningFor(ctx);
@@ -505,8 +575,17 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // holder ham i gruppen. Tidligere stigninger beholder taerskel-selektionen.
     // #6200 (KUN official_times_v3): det samme paa sidste stigning foer en
     // nedkoerselsfinale paa en bjergetape (isDescentFinishDecidingClimb).
+    const descentDecider = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto"
+      && !isSummitFinishClimb(ctx) && isDescentFinishDecidingClimb(ctx, timeModel);
     const summitRace = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto"
       && (isSummitFinishClimb(ctx) || isDescentFinishDecidingClimb(ctx, timeModel));
+    // Ren revision spor 1, D1 (KUN official_times_v3; vaegtene er 0 i alle aeldre
+    // tidsmodeller): dagsform og angreb paa den afgoerende stigning foer nedkoerselsfinalen.
+    const selections = descentDecider
+      ? decidingClimbSelectionsOnTheDay(baseSelections, (id) => ctx.entrants[id]?.abilities.climbing ?? 0,
+        (id) => nextState.riders[id]?.dayform ?? 0,
+        (deficit, energy) => climbSplitGapSeconds(gradientPct, lengthKm, deficit, energy, timeModel), timeModel)
+      : baseSelections;
     let splitRiderIds = summitRace
       ? summitRaceSplitRiderIds(selections, gradientPct, lengthKm, timeModel)
       : guardedSplitRiderIds(selections);

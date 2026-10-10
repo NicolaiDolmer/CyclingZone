@@ -17,7 +17,15 @@ import { __resetRaceEngineV4Cache, loadRaceEngineV4 } from "../../raceEngineV4Br
 import { breakawayWin, runStagesInOrder, sortedStages } from "../../../scripts/dev/lib/tourScorecard.mjs";
 import { analyseDescentFinish } from "../../../scripts/dev/descentFinish6200.mjs";
 import { routeFromStageProfileRow } from "./adapters/routeAdapter.ts";
-import { finishDescentChaseCapSeconds, timeModelTuningFor } from "./mechanics/timeModel.ts";
+import {
+  SHARED_TIME_MODEL_V2_TUNING,
+  SHARED_TIME_MODEL_V3_TUNING,
+  TIME_MODEL_V3_TUNING,
+  climbSplitGapSeconds,
+  finishDescentChaseCapSeconds,
+  timeModelTuningFor,
+} from "./mechanics/timeModel.ts";
+import { decidingClimbSelectionsOnTheDay } from "./mechanics/climbSelection.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const GIRO = path.join(here, "..", "..", "..", "scripts", "baselines", "giro-field-6088-2026-10-02.json");
@@ -48,6 +56,51 @@ async function measureGiroStage7(revision: string): Promise<Row[]> {
   }
   return rows;
 }
+
+// ── Enheden: dagsform og angreb paa den afgoerende stigning ───────────────────
+
+type Sel = { riderId: string; baseScore: number; scoreTriggered: boolean; wprimeForced: boolean; effortForced: boolean; deficit01: number; energyDeficit01: number };
+const sel = (riderId: string, deficit01 = 0): Sel => ({ riderId, baseScore: 0, scoreTriggered: false, wprimeForced: false, effortForced: false, deficit01, energyDeficit01: 0.3 });
+const V3 = SHARED_TIME_MODEL_V3_TUNING;
+// Giro e7's afgoerende stigning (12,4 km a 7,2 %).
+const gapOf = (d: number, e: number) => climbSplitGapSeconds(7.2, 12.4, d, e, V3);
+
+test("D1: uden vaegte (alle aeldre tidsmodeller) er underskuddene uaendrede", () => {
+  const input = [sel("a", 0), sel("b", 0.05), sel("c", 0.1)];
+  for (const t of [TIME_MODEL_V3_TUNING, SHARED_TIME_MODEL_V2_TUNING]) {
+    const out = decidingClimbSelectionsOnTheDay(input as never, () => 80, () => 0.02, gapOf, t);
+    assert.deepEqual(out.map((s) => s.deficit01), [0, 0.05, 0.1]);
+  }
+});
+
+test("D1: styrke straffes aldrig - en hoejere klatre-evne giver aldrig et stoerre underskud (samme dagsform)", () => {
+  let x = 7;
+  const rnd = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648);
+  for (let trial = 0; trial < 200; trial++) {
+    const ids = Array.from({ length: 8 }, (_, i) => `r${i}`);
+    const climbing = new Map(ids.map((id) => [id, 70 + Math.round(rnd() * 25)]));
+    const form = new Map(ids.map((id) => [id, (rnd() - 0.5) * 0.08]));
+    const run = (c: Map<string, number>) => new Map(decidingClimbSelectionsOnTheDay(ids.map((id) => sel(id)) as never,
+      (id) => c.get(id) ?? 0, (id) => form.get(id) ?? 0, gapOf, V3).map((s) => [s.riderId, s.deficit01]));
+    const before = run(climbing);
+    const stronger = new Map(climbing);
+    stronger.set("r3", (climbing.get("r3") ?? 0) + 1 + Math.round(rnd() * 6));
+    const after = run(stronger);
+    assert.ok((after.get("r3") ?? 1) <= (before.get("r3") ?? 0) + 1e-9, `trial ${trial}: r3 ${before.get("r3")} -> ${after.get("r3")}`);
+  }
+});
+
+test("D1: angrebet holder rytterne inden for vinduet, og dagsformen kan vende raekkefoelgen mellem naere klatrere", () => {
+  // a er den bedste klatrer, b er 2 point bag. Med god dagsform til b vinder b angrebet.
+  const climbing = new Map([["a", 90], ["b", 88], ["c", 70]]);
+  const form = new Map([["a", -0.02], ["b", 0.02], ["c", 0]]);
+  const base = [sel("a", 0), sel("b", 2 / 99), sel("c", 20 / 99)];
+  const out = new Map(decidingClimbSelectionsOnTheDay(base as never, (id) => climbing.get(id) ?? 0, (id) => form.get(id) ?? 0, gapOf, V3).map((s) => [s.riderId, s]));
+  assert.equal(out.get("b")?.deficit01, 0, "b er foerst paa dagen");
+  assert.ok((out.get("a")?.deficit01 ?? 0) > 0);
+  assert.ok(gapOf(out.get("a")!.deficit01, 0.3) <= V3.descentFinishClimbAttackWindowSeconds + 1e-6, "a holdes inden for vinduet");
+  assert.ok(gapOf(out.get("c")!.deficit01, 0.3) > V3.descentFinishClimbAttackWindowSeconds, "c er uden for angrebet");
+});
 
 test("D1 (ejer 10/10): official_times_v3 - den bedste klatrer vinder 5-8 af 12 paa Giro e7, nr. 10 er 60-150 s og varierer", async () => {
   const rows = await measureGiroStage7("official_times_v3");

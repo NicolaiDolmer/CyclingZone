@@ -135,6 +135,16 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // stigning til maal, er "nedkoersel mod maal" (loftet gaelder fra toppen til
   // stregen). 0 = kun naar nedkoerslen er etapens sidste segment (som foer).
   finishDescentMaxRunInKm: 0,
+  // ── Ren revision spor 1, D1 (KUN official_times_v3): varians paa den afgoerende
+  // stigning foer en nedkoerselsfinale (ejer 10/10: den bedste klatrer vinder
+  // ikke altid, og nr. 10's hul varierer). Dagsformen flytter alles klatring
+  // paa dagen (vaegt pr. enhed dagsform, 0 = ren evne som foer). Mellem rytterne
+  // inden for angrebsvinduet (s) af den forreste vejer dagsformen tungere
+  // (angrebet). 0 = ingen angrebs-varians (som foer). Se
+  // climbSelection.decidingClimbSelectionsOnTheDay.
+  descentFinishClimbDayformWeight: 0,
+  descentFinishClimbAttackWindowSeconds: 0,
+  descentFinishClimbAttackDayformWeight: 0,
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
@@ -199,6 +209,11 @@ export const SHARED_TIME_MODEL_V3_TUNING: TimeModelTuning = freeze({
   ...SHARED_TIME_MODEL_V2_TUNING,
   descentFinishClimbRaceProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
   finishDescentMaxRunInKm: 5,
+  // Ren revision spor 1, D1 (ejer 10/10): kalibreret privat paa Giro e7, 12 seeds
+  // (balance-internals/clean-revision/d1/).
+  descentFinishClimbDayformWeight: 0.3,
+  descentFinishClimbAttackWindowSeconds: 40,
+  descentFinishClimbAttackDayformWeight: 1.2,
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).

@@ -59,14 +59,21 @@ test("#6200: only official_times_v3 (generation 3 on the shared clock) reads the
   assert.equal(timeModelTuningFor(shared), SHARED_TIME_MODEL_V2_TUNING);
   assert.equal(timeModelTuningFor({ ...shared, sharedGroupTime: { entryGroups: [], timeModelGeneration: 3 } }), SHARED_TIME_MODEL_V3_TUNING);
   assert.equal(timeModelTuningFor({ sharedGroupTime: { timeModelGeneration: 3 } }), TIME_MODEL_V3_TUNING, "without the v3 package nothing changes");
-  // The v3 model is official_times_v2 plus exactly the two descent-finish knobs.
+  // The v3 model is official_times_v2 plus exactly the descent-finish knobs
+  // (#6200) and the deciding climb's day form and attack (clean revision D1).
   const changed = Object.keys(SHARED_TIME_MODEL_V3_TUNING).filter((k) =>
     JSON.stringify((SHARED_TIME_MODEL_V3_TUNING as Record<string, unknown>)[k]) !== JSON.stringify((SHARED_TIME_MODEL_V2_TUNING as Record<string, unknown>)[k]));
-  assert.deepEqual(changed.sort(), ["descentFinishClimbRaceProfiles", "finishDescentMaxRunInKm"]);
+  assert.deepEqual(changed.sort(), [
+    "descentFinishClimbAttackDayformWeight", "descentFinishClimbAttackWindowSeconds", "descentFinishClimbDayformWeight",
+    "descentFinishClimbRaceProfiles", "finishDescentMaxRunInKm",
+  ]);
   // Neutral in every older model.
   for (const t of [TIME_MODEL_V3_TUNING, SHARED_TIME_MODEL_V2_TUNING]) {
     assert.deepEqual(t.descentFinishClimbRaceProfiles, []);
     assert.equal(t.finishDescentMaxRunInKm, 0);
+    assert.equal(t.descentFinishClimbDayformWeight, 0);
+    assert.equal(t.descentFinishClimbAttackWindowSeconds, 0);
+    assert.equal(t.descentFinishClimbAttackDayformWeight, 0);
   }
   // Per-profile calibration of official_times_v2 is kept under v3.
   for (const [profile, weight] of Object.entries(SHARED_TIME_MODEL_V2_TUNING.climbGapAbilityWeightByProfile)) {
