@@ -16,6 +16,13 @@
 > præcise SELECT-blokke der skal køres via Supabase MCP (`execute_sql`) før hvert
 > skridt nedenfor. Se scriptets egen header for hvad den kan og ikke kan verificere.
 
+> **Blokerende gate før hvert sæsonskifte (#5904, gælder senest fra 25/10/2026):** intet
+> cutover-go uden en rapport `docs/snapshots/5904/race-day-<tid>.md` med
+> `loadTestPassed: true`. Rapporten skal være kørt på den commit der går i prod, efter seneste
+> merge der rører løbsafvikling, afregning, ranglister eller requireAuth. `BLOCKED`, `FAILED`
+> eller en manglende rapport stopper skiftet; volumengrænsen sænkes ikke uden ejer-go.
+> Kørsel og forudsætninger: `docs/runbooks/STAGING_LOADTEST_PREP.md` afsnit 5. Aldrig mod prod.
+
 ---
 
 ## Hvad er anderledes end S1→S2 (læs dette først)
@@ -815,11 +822,13 @@ igen, eller ejeren skal udtrykkeligt godkende et andet grundlag, før den fulde
 løbsdag kan godkendes. Grænsen sænkes ikke automatisk.
 
 `DATA_PREREQUISITES_READY` / exit 0 betyder kun, at disse datakrav består.
-`loadTestPassed` er altid false. Pinned løbsdato, alle senior/U23/junior-puljer
-og slots, tilstrækkelige entries/ryttere, isoleret backend uden eksterne
-sideeffekter, samtidige reads/finalisering/træning, fault/restart/recovery og
-fasevis RAM/IO/query/HTTP/URL-måling skal fortsat bevises på rigtig staging.
-Ingen sæsonskifte-, aktiverings-, merge- eller prod-go følger af dette output.
+`loadTestPassed` er altid false i dette script. Selve gaten er
+`scripts/loadtest/race-day-sim.mjs` (kun via `with-loadtest-staging.ps1`): den kører
+denne kontrol igen som sit tredje fail-closed trin og afvikler derefter en fuld pinned
+løbsdag med alle senior/U23/junior-slots, samtidige spillerlæsninger, afregning,
+aftentræning, ranglister, Auth/DB-udfald og genstart. Kun dens rapport kan give
+`loadTestPassed: true`, og den er blokerende for sæsonskiftet (se øverst).
+Ingen sæsonskifte-, aktiverings-, merge- eller prod-go følger af prerequisites alene.
 SSOT for accept: `GAME_INVARIANTS.md`, `RACE_ENGINE_RULES.md`,
 `TRAINING_RULES.md`, `CALENDAR_RULES.md` og ejerens #5904/#5692-testkontrakt.
 
