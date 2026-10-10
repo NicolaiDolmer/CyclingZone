@@ -20,6 +20,7 @@ import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { breakawayHook } from "./breakaway.ts";
 import { breakawayDropEvents, isBreakawayPiece, rejoinBreakawayPiece } from "./chaseGroup.ts";
 import { deriveParticipationHistory } from "../../../raceParticipationHistory.ts";
+import { rankedFromV4Output } from "../../../raceEngineV4Bridge.js";
 import type {
   AbilityKey, EngineState, Entrant, RaceGroup, RiderRole, RiderState, RouteV2, RulesRevision, Segment, SegmentHookContext, StageInput, StageOutput,
 } from "../types.ts";
@@ -295,6 +296,34 @@ test("#6185/#6234 full stage under orders_gc_v3: drops reported at the split, no
     }
   }
   assert.ok(stagesWithDrops > 0, "the fixture stages must exercise a drop");
+});
+
+// ── Ren revision spor 1 (official_times_v3) ─────────────────────────────────
+test("#6185 official_times_v3: en afsat udbryder har breakaway_dropped=true og er aldrig maerket 'ikke indhentet'", () => {
+  let droppedRows = 0;
+  for (const routeName of Object.keys(ROUTES) as Array<keyof typeof ROUTES>) {
+    for (let s = 0; s < 12; s++) {
+      const out = stage(routeName, "official_times_v3", `6185-v3-${s}`);
+      const events = out.timeline.events;
+      const formed = events.find((e) => e.type === "breakaway_formed");
+      if (!formed) continue;
+      assert.equal(formed.params.drops_reported, true, `${routeName}/${s}: v3 melder selv afsatte`);
+      const ranked = rankedFromV4Output(out, { rulesRevision: "official_times_v3" });
+      const history = deriveParticipationHistory(events, out.results.map((r) => r.rider_id));
+      for (const row of ranked) {
+        const status = row.breakaway_status;
+        if (!status?.in_breakaway) continue;
+        const rider = history.riders.get(row.rider_id);
+        // Historikken siger afsat -> raekken siger afsat.
+        assert.equal(status.breakaway_dropped, rider?.dropped === true, `${routeName}/${s}: ${row.rider_id}`);
+        if (status.breakaway_dropped) {
+          droppedRows++;
+          assert.notEqual(status.breakaway_caught, false, `${routeName}/${s}: ${row.rider_id} er sat af og maa aldrig staa som 'ikke indhentet'`);
+        }
+      }
+    }
+  }
+  assert.ok(droppedRows > 0, "fixturen skal ramme en afsat udbryder under v3");
 });
 
 test("#6185: legacy/v1/v2 never report drops", () => {
