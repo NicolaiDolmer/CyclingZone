@@ -10,9 +10,23 @@ import {
   parseArgs,
   renderPublicReport,
   describeDistribution,
+  eventIdSetHash,
+  prepareApply,
+  existingBackupTables,
+  parseReportCounts,
+  compareCell,
+  OWNER_GO_FLAG,
+  PREVENTION_MERGED_AT,
+  BASELINE_REPORT,
+  BACKUP_PROFILES_TABLE,
+  BACKUP_EVENTS_TABLE,
 } from "./repair5897BoardYouthRaces.mjs";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { satisfactionToModifier } from "../../lib/boardEvaluation.js";
 import { createFakeSupabase } from "../../lib/testUtils/fakeSupabase.js";
+
+const HASH = "a".repeat(64);
 
 const T0 = "2026-09-28T17:50:00.000Z";
 const T1 = "2026-09-28T18:00:00.000Z";
@@ -147,7 +161,7 @@ test("modifierCaseSql spejler satisfactionToModifier for hele skalaen", () => {
 });
 
 test("apply-SQL er én atomisk, idempotent blok uden ids og med backup + verify", () => {
-  const sql = buildApplySql();
+  const sql = buildApplySql({ approvedHash: HASH });
   assert.match(sql, /^-- #5897/);
   assert.equal((sql.match(/DO \$repair\$/g) || []).length, 1);
   assert.match(sql, /IF n_events = 0 THEN[\s\S]*RETURN;/);
@@ -162,14 +176,14 @@ test("apply-SQL er én atomisk, idempotent blok uden ids og med backup + verify"
 });
 
 test("events-only-SQL sletter events men rører hverken satisfaction eller budget_modifier", () => {
-  const sql = buildApplySql({ eventsOnly: true });
+  const sql = buildApplySql({ eventsOnly: true, approvedHash: HASH });
   assert.match(sql, /EVENTS-ONLY/);
   assert.doesNotMatch(sql, /UPDATE public\.board_profiles/);
   assert.doesNotMatch(sql, /_repair_5897/);
   assert.doesNotMatch(sql, /--@profiles/);
   assert.match(sql, /DELETE FROM public\.board_satisfaction_events/);
   assert.match(sql, /CREATE TABLE public\.backup_board_satisfaction_events_5897/);
-  assert.doesNotMatch(buildApplySql(), /--@profiles/);
+  assert.doesNotMatch(buildApplySql({ approvedHash: HASH }), /--@profiles/);
 });
 
 test("planRepair: atTargetNow når seneste senior-skridt er 0 og værdien matcher", () => {
@@ -213,18 +227,144 @@ test("verifyAgainstPlan: ok når events er væk og boards matcher", () => {
   assert.deepEqual(bad.mismatches.map((m) => m.reason).sort(), ["missing", "satisfaction"]);
 });
 
-test("CLI: dry-run er default, apply kræver owner-go", () => {
-  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, verify: null, dryRun: true, eventsOnly: false });
+test("CLI: dry-run er default, apply kræver owner-go-token OG liste-hash", () => {
+  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: false, approvedHash: null, verify: null, dryRun: true, eventsOnly: false });
   assert.throws(() => parseArgs(["--events-only"]), /kræver/);
-  assert.equal(parseArgs(["--apply", "--owner-go", "--events-only"]).eventsOnly, true);
+  const goB = parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`, "--events-only"]);
+  assert.equal(goB.eventsOnly && goB.apply && goB.ownerGo && !goB.dryRun, true);
+  assert.equal(goB.approvedHash, HASH);
   assert.equal(parseArgs(["--dry-run"]).dryRun, true);
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
-  assert.throws(() => parseArgs(["--owner-go"]), /--apply/);
+  assert.throws(() => parseArgs([OWNER_GO_FLAG]), /--apply/);
   assert.throws(() => parseArgs(["--typo"]), /Ukendt/);
-  assert.throws(() => parseArgs(["--apply", "--owner-go", "--verify=x.json"]), /kombineres/);
-  const go = parseArgs(["--apply", "--owner-go"]);
-  assert.equal(go.apply && go.ownerGo && !go.dryRun, true);
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`, "--verify=x.json"]), /kombineres/);
   assert.equal(parseArgs(["--verify=5897/x.json"]).verify, "5897/x.json");
+});
+
+test("token-gate: bar --owner-go, forkert token, manglende eller ugyldig liste-hash afvises", () => {
+  assert.equal(OWNER_GO_FLAG, "--owner-go=5897-production");
+  assert.throws(() => parseArgs(["--apply", "--owner-go", `--approved-list=${HASH}`]), /Forkert owner-go-token/);
+  assert.throws(() => parseArgs(["--apply", "--owner-go=5864-production", `--approved-list=${HASH}`]), /Forkert owner-go-token/);
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG]), /--approved-list/);
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, "--approved-list=abc"]), /64-tegns/);
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH.toUpperCase()}`]), /64-tegns/);
+  assert.throws(() => parseArgs([`--approved-list=${HASH}`]), /uden --apply/);
+  assert.throws(() => buildApplySql({ eventsOnly: true }), /approvedHash/);
+});
+
+test("eventIdSetHash: eksakt id-mængde, uafhængig af rækkefølge og dubletter", () => {
+  const a = [{ id: "e2" }, { id: "e1" }, { id: "e3" }];
+  const b = [{ id: "e3" }, { id: "e1" }, { id: "e2" }, { id: "e1" }];
+  assert.equal(eventIdSetHash(a), eventIdSetHash(b));
+  assert.match(eventIdSetHash(a), /^[a-f0-9]{64}$/);
+  // Samme antal, anden mængde => anden hash.
+  assert.notEqual(eventIdSetHash(a), eventIdSetHash([{ id: "e1" }, { id: "e2" }, { id: "e4" }]));
+  // Formlen er sha256 over kodepunkt-sorterede ids join'et med "\n" (samme som SQL'en).
+  assert.equal(eventIdSetHash(a), createHash("sha256").update("e1\ne2\ne3").digest("hex"));
+  // Kodepunkt-orden (som COLLATE "C"), ikke locale-orden.
+  const mixed = [{ id: "b" }, { id: "B" }, { id: "a-1" }, { id: "a1" }];
+  assert.equal(eventIdSetHash(mixed), createHash("sha256").update(["B", "a-1", "a1", "b"].join("\n")).digest("hex"));
+});
+
+test("apply-SQL gentager liste-gaten under lås FØR første skrivning", () => {
+  const sql = buildApplySql({ eventsOnly: true, approvedHash: HASH });
+  const lock = sql.indexOf("LOCK TABLE");
+  const hashCheck = sql.indexOf(`IF live_hash IS DISTINCT FROM '${HASH}'`);
+  const backupCheck = sql.indexOf("to_regclass('public.backup_board_profiles_5897')");
+  const firstWrite = sql.indexOf("CREATE TABLE public.backup_board_satisfaction_events_5897");
+  assert.ok(lock > 0 && lock < backupCheck && backupCheck < hashCheck && hashCheck < firstWrite);
+  assert.match(sql, /ORDER BY x\.id_text COLLATE "C"/);
+  assert.match(sql, /string_agg\(x\.id_text, E'\\n'/);
+  assert.match(sql, /SELECT DISTINCT e\.id::text AS id_text/);
+  assert.match(sql, /matcher ikke den godkendte liste-hash/);
+});
+
+function gateInput(ids) {
+  return { youthEvents: ids.map((id) => ev(id, "b1", "y1", 1, T0)) };
+}
+
+test("prepareApply: hash-mismatch stopper før backup-tjek og før SQL", async () => {
+  const approved = eventIdSetHash(gateInput(["e1", "e2"]).youthEvents);
+  let backupChecked = false;
+  const checkBackups = async () => { backupChecked = true; return []; };
+  await assert.rejects(
+    prepareApply({ supabase: null, input: gateInput(["e1", "e3"]), ownerGo: true, approvedHash: approved, eventsOnly: true, checkBackups }),
+    /afviger fra den godkendte liste[\s\S]*Intet skrevet/,
+  );
+  await assert.rejects(
+    prepareApply({ supabase: null, input: gateInput(["e1", "e2", "e3"]), ownerGo: true, approvedHash: approved, eventsOnly: true, checkBackups }),
+    /afviger/,
+  );
+  assert.equal(backupChecked, false);
+  await assert.rejects(
+    prepareApply({ supabase: null, input: gateInput(["e1", "e2"]), ownerGo: false, approvedHash: approved, checkBackups }),
+    /5897-production/,
+  );
+  const ok = await prepareApply({ supabase: null, input: gateInput(["e2", "e1"]), ownerGo: true, approvedHash: approved, eventsOnly: true, checkBackups });
+  assert.equal(ok.liveHash, approved);
+  assert.match(ok.sql, /EVENTS-ONLY/);
+  assert.ok(ok.sql.includes(approved));
+});
+
+test("prepareApply: findes en backup-tabel allerede, stopper apply", async () => {
+  const input = gateInput(["e1"]);
+  const approvedHash = eventIdSetHash(input.youthEvents);
+  await assert.rejects(
+    prepareApply({ supabase: null, input, ownerGo: true, approvedHash, checkBackups: async () => [BACKUP_EVENTS_TABLE] }),
+    /backup-tabel findes allerede \(backup_board_satisfaction_events_5897\)[\s\S]*Intet skrevet/,
+  );
+});
+
+test("existingBackupTables: læser PostgREST-svar korrekt og stopper ved ukendt fejl", async () => {
+  const missing = "Could not find the table 'public.x' in the schema cache";
+  const none = createFakeSupabase({}, { errors: { [BACKUP_PROFILES_TABLE]: { select: missing }, [BACKUP_EVENTS_TABLE]: { select: missing } } });
+  assert.deepEqual(await existingBackupTables(none), []);
+  const one = createFakeSupabase({}, { errors: { [BACKUP_PROFILES_TABLE]: { select: missing } } });
+  assert.deepEqual(await existingBackupTables(one), [BACKUP_EVENTS_TABLE]);
+  const both = createFakeSupabase({});
+  assert.deepEqual(await existingBackupTables(both), [BACKUP_PROFILES_TABLE, BACKUP_EVENTS_TABLE]);
+  const broken = createFakeSupabase({}, { errors: { [BACKUP_PROFILES_TABLE]: { select: "permission denied" } } });
+  await assert.rejects(existingBackupTables(broken), /kunne ikke afgøre[\s\S]*Intet skrevet/);
+  const coded = { from: () => ({ select: () => ({ limit: async () => ({ error: { code: "PGRST205", message: "x" } }) }) }) };
+  assert.deepEqual(await existingBackupTables(coded), []);
+});
+
+test("planRepair: tæller ungdoms-events oprettet efter forebyggelsen (#5892)", () => {
+  const after = new Date(Date.parse(PREVENTION_MERGED_AT) + 60_000).toISOString();
+  const before = planRepair({ youthEvents: [ev("e1", "b1", "y1", 1, T0)], boards: [{ id: "b1", team_id: "tA", satisfaction: 50 }] });
+  assert.equal(before.summary.youthEventsAfterPrevention, 0);
+  const regressed = planRepair({
+    youthEvents: [ev("e1", "b1", "y1", 1, T0), ev("e2", "b1", "y2", 1, after)],
+    boards: [{ id: "b1", team_id: "tA", satisfaction: 50 }],
+  });
+  assert.equal(regressed.summary.youthEventsAfterPrevention, 1);
+  assert.equal(regressed.summary.listHash, eventIdSetHash([{ id: "e1" }, { id: "e2" }]));
+  const md = renderPublicReport(regressed.summary, { generatedAt: "x", privateFile: "5897/x.json" });
+  assert.match(md, /REGRESSION/);
+  assert.doesNotMatch(renderPublicReport(before.summary, { generatedAt: "x", privateFile: "5897/x.json" }), /REGRESSION/);
+});
+
+test("rapport: liste-hash, events efter forebyggelsen og ændring mod 1/10-baseline", () => {
+  const baselineMd = readFileSync(new URL(`../../../docs/snapshots/5897/${BASELINE_REPORT}`, import.meta.url), "utf8");
+  const baseline = parseReportCounts(baselineMd);
+  assert.equal(baseline.get("Ungdoms-events (races.squad <> 'senior') der fjernes"), "2100");
+  assert.equal(baseline.get("Boards hvor budget_modifier ændres (op / ned)"), "93 (8 / 85)");
+  assert.equal(baseline.has("Mål"), false);
+
+  const { summary } = planRepair({
+    youthEvents: [ev("e1", "b1", "y1", 3, T0)],
+    boards: [{ id: "b1", team_id: "tA", satisfaction: 50, budget_modifier: 1.0, negotiation_status: "completed" }],
+  });
+  const md = renderPublicReport(summary, { generatedAt: "2026-10-10T00:00:00Z", privateFile: "5897/x.json", baseline });
+  assert.ok(md.includes(summary.listHash));
+  assert.ok(md.includes(`--approved-list=${summary.listHash} --events-only`));
+  assert.match(md, /\| Ungdoms-events \(races\.squad <> 'senior'\) der fjernes \| 1 \| 2100 \| -2099 \|/);
+  assert.match(md, /\| Ungdoms-events oprettet efter forebyggelsen \(#5892\), forventet 0 \| 0 \| - \| ny \|/);
+  assert.match(md, /\| Boards der mangler \(event uden board\) \| 0 \| 0 \| uændret \|/);
+  assert.match(md, /Ændret siden 1\/10/);
+  assert.equal(compareCell("93 (8 / 85)", "93 (8 / 85)"), "uændret");
+  assert.equal(compareCell("94 (9 / 85)", "93 (8 / 85)"), "ændret");
+  assert.equal(compareCell(5, "3"), "+2");
 });
 
 test("offentlig rapport indeholder kun antal, ingen ids eller beløb", () => {
