@@ -359,10 +359,11 @@ async function loadSignedMandatesByTeamId({ supabase, teamIds, seasonNumber, cap
         .in("team_id", chunk)
         .eq("status", "active")
         .eq("season_number", seasonNumber)
-        .not("signed_at", "is", null)
         .order("team_id")
     );
-    for (const row of rows) map.set(row.team_id, row);
+    // signed_at tjekkes her, ikke i queryen: status 'active' sættes kun af
+    // signMandate sammen med signed_at, så det er et værn, ikke et filter.
+    for (const row of rows) if (row.signed_at) map.set(row.team_id, row);
     return map;
   } catch (error) {
     console.error("  ⚠️  board auto-accept: batch-opslag af board_mandates fejlede — falder tilbage til per-hold-opslag:", error?.message || error);
@@ -381,11 +382,10 @@ async function loadSignedMandateForTeam({ supabase, teamId, seasonNumber }) {
     .eq("team_id", teamId)
     .eq("status", "active")
     .eq("season_number", seasonNumber)
-    .not("signed_at", "is", null)
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  return data ?? null;
+  return data?.signed_at ? data : null;
 }
 
 async function processTeamAutoAccept({

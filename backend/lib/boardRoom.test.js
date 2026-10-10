@@ -12,6 +12,7 @@ import {
   deriveMemberRole,
   deriveMilestoneStatus,
   formatGoalDisplayValue,
+  loadMandateOnboardingSignal,
   mapGoalEvaluationToStatus,
   resolveEventSpeaker,
   sampleVoiceLineOrNull,
@@ -44,6 +45,11 @@ function makeQueryBuilder(rows, { count = false } = {}) {
     or() {
       // Testfixtures opfylder allerede invarianten (mandate_id ELLER
       // milestone_id sat) — .or() er et no-op i mock'en.
+      return builder;
+    },
+    // #5946 · loadMandateOnboardingSignal bruger .not(col, "is", null).
+    not(col, op, value) {
+      if (op === "is" && value === null) filtered = filtered.filter((r) => r[col] != null);
       return builder;
     },
     order(col, opts = {}) {
@@ -693,6 +699,151 @@ test("#5751 legacy-forhandling i gang (pending) rører ikke mandatets mål", asy
   const supabase = makeSupabase(tables);
   const payload = await buildBoardRoomPayload({ supabase, teamId: TEAM_ID, loadGoalContext: async () => ({}) });
   assert.equal(payload.mandate.goals[0].target, 7, "et igangværende forhandlingsudkast er ikke aftalt endnu");
+});
+
+// ── #5946 · mandat-modellen 'on': et UNDERSKREVET mandat er autoritativt ──
+// Spillerrapport: genforhandlet til top 7 på årsmødet, Boardroom viste top 5.
+// Den gamle 1yr-række var genskrevet med et standardmål efter underskriften
+// (sæsonslut → 'pending' → den gamle auto-accept, negotiation_status=
+// 'completed'), og #5751-reconciliationen lod den overskrive mandatet.
+// RØD før #5946 (target 5), GRØN efter.
+function tables5946({ stage, signedAt = "2026-09-27T19:03:00Z" } = {}) {
+  return tablesWithSingleGoal(
+    { type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" },
+    {
+      board_mandates: [{
+        id: "mand-5946", team_id: TEAM_ID, season_number: 3, status: "active",
+        signed_at: signedAt, updated_at: "2026-09-27T19:03:00Z",
+        goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+      }],
+      season_standings: [{ team_id: TEAM_ID, rank_in_division: 6, updated_at: "2026-09-28T00:00:00Z" }],
+      board_profiles: [{
+        id: "board-1yr-5946", team_id: TEAM_ID, plan_type: "1yr",
+        negotiation_status: "completed", negotiated_at: null,
+        current_goals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
+      }],
+      ...(stage === undefined ? {} : { app_config: [{ key: "board_mandate_model_enabled", value: stage }] }),
+    },
+  );
+}
+
+test("#5946 'on' + underskrevet mandat target 7 mod gammel legacy-række target 5 → viser 7", async () => {
+  const payload = await buildBoardRoomPayload({
+    supabase: makeSupabase(tables5946({ stage: "on" })), teamId: TEAM_ID, loadGoalContext: async () => ({}),
+  });
+  const goal = payload.mandate.goals[0];
+  assert.equal(goal.target, 7);
+  assert.equal(goal.targetDisplay, "7");
+  assert.equal(goal.label, "Slut i top 7");
+  assert.equal(goal.status, "achieved", "6. plads mod det underskrevne top-7 er opnået");
+});
+
+test("#5946 'on' (boolean true, gammelt skema) behandles som 'on'", async () => {
+  const payload = await buildBoardRoomPayload({
+    supabase: makeSupabase(tables5946({ stage: true })), teamId: TEAM_ID, loadGoalContext: async () => ({}),
+  });
+  assert.equal(payload.mandate.goals[0].target, 7);
+});
+
+test("#5946 'beta' → #5751-reconciliationen gælder uændret (den gamle side er forhandlingsfladen)", async () => {
+  const payload = await buildBoardRoomPayload({
+    supabase: makeSupabase(tables5946({ stage: "beta" })), teamId: TEAM_ID, loadGoalContext: async () => ({}),
+  });
+  assert.equal(payload.mandate.goals[0].target, 5);
+});
+
+test("#5946 manglende flag-række (fail-safe) → #5751-reconciliationen gælder uændret", async () => {
+  const payload = await buildBoardRoomPayload({
+    supabase: makeSupabase(tables5946({})), teamId: TEAM_ID, loadGoalContext: async () => ({}),
+  });
+  assert.equal(payload.mandate.goals[0].target, 5);
+});
+
+test("#5946 'on' men mandat UDEN signed_at → reconciliationen gælder (intet underskrevet at stå på)", async () => {
+  const payload = await buildBoardRoomPayload({
+    supabase: makeSupabase(tables5946({ stage: "on", signedAt: null })), teamId: TEAM_ID, loadGoalContext: async () => ({}),
+  });
+  assert.equal(payload.mandate.goals[0].target, 5);
+});
+
+// ── #5946/#6122 · onboarding-fluebenet (board_plan_set) under 'on' ──
+
+function onboardingTables({ stage = "on", mandates = [], events = [] } = {}) {
+  return {
+    app_config: stage == null ? [] : [{ key: "board_mandate_model_enabled", value: stage }],
+    board_mandates: mandates,
+    board_satisfaction_events: events,
+  };
+}
+
+const SIGNED_MANDATE_ROW = { id: "m-1", team_id: TEAM_ID, status: "active", signed_at: "2026-09-27T19:03:00Z" };
+
+test("#5946 loadMandateOnboardingSignal: 'on' + managerens egen underskrift → signed + signedByManager", async () => {
+  const signal = await loadMandateOnboardingSignal({
+    supabase: makeSupabase(onboardingTables({
+      mandates: [SIGNED_MANDATE_ROW],
+      events: [{ id: "e-1", team_id: TEAM_ID, mandate_id: "m-1", reason_category: "mandate.signed" }],
+    })),
+    teamId: TEAM_ID,
+  });
+  assert.deepEqual(signal, { signed: true, signedByManager: true });
+});
+
+test("#5946 loadMandateOnboardingSignal: auto-underskrevet mandat tæller IKKE som spillerhandling (#5103)", async () => {
+  const signal = await loadMandateOnboardingSignal({
+    supabase: makeSupabase(onboardingTables({
+      mandates: [SIGNED_MANDATE_ROW],
+      events: [{ id: "e-1", team_id: TEAM_ID, mandate_id: "m-1", reason_category: "mandate.auto_signed" }],
+    })),
+    teamId: TEAM_ID,
+  });
+  assert.deepEqual(signal, { signed: true, signedByManager: false });
+});
+
+test("#5946 loadMandateOnboardingSignal: ikke-underskrevet mandat → intet signal", async () => {
+  const signal = await loadMandateOnboardingSignal({
+    supabase: makeSupabase(onboardingTables({
+      mandates: [{ ...SIGNED_MANDATE_ROW, status: "proposed", signed_at: null }],
+      events: [{ id: "e-1", team_id: TEAM_ID, reason_category: "mandate.signed" }],
+    })),
+    teamId: TEAM_ID,
+  });
+  assert.deepEqual(signal, { signed: false, signedByManager: false });
+});
+
+test("#5946 loadMandateOnboardingSignal: 'beta'/'off'/manglende flag → intet signal (gammel regel uændret)", async () => {
+  for (const stage of ["beta", "off", null]) {
+    const signal = await loadMandateOnboardingSignal({
+      supabase: makeSupabase(onboardingTables({
+        stage,
+        mandates: [SIGNED_MANDATE_ROW],
+        events: [{ id: "e-1", team_id: TEAM_ID, reason_category: "mandate.signed" }],
+      })),
+      teamId: TEAM_ID,
+    });
+    assert.deepEqual(signal, { signed: false, signedByManager: false }, `stage=${stage}`);
+  }
+});
+
+test("#5946 loadMandateOnboardingSignal: DB-fejl kaster aldrig (best-effort → intet signal)", async () => {
+  const supabase = {
+    from(table) {
+      if (table === "app_config") return makeSupabase(onboardingTables()).from(table);
+      return { select: () => { throw new Error("boom"); } };
+    },
+  };
+  assert.deepEqual(await loadMandateOnboardingSignal({ supabase, teamId: TEAM_ID }), { signed: false, signedByManager: false });
+});
+
+test("#5946 GET /me/onboarding-progress: board_plan_set kobler mandat-signalet på (done kun ved managerens egen underskrift)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const apiSource = readFileSync(new URL("../routes/api.js", import.meta.url), "utf8");
+  const start = apiSource.indexOf('router.get("/me/onboarding-progress"');
+  assert.ok(start !== -1);
+  const block = apiSource.slice(start, start + 4500);
+  assert.match(block, /loadMandateOnboardingSignal\(\{\s*supabase,\s*teamId\s*\}\)/);
+  assert.match(block, /boardPlanNegotiated\s*=\s*\(boardsRes\.count\s*\|\|\s*0\)\s*>\s*0\s*\|\|\s*mandateSign\.signedByManager/);
+  assert.match(block, /!boardPlanNegotiated\s*&&\s*mandateSign\.signed/);
 });
 
 test("#4579 sponsor_growth: BEHIND når vækst < target (sponsorGrowth*Income stubbet)", async () => {
