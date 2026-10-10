@@ -18,10 +18,13 @@
 #   3. Merger med `gh pr merge <N> --squash --delete-branch --admin`.
 #   4. Venter paa at hovedrepoets CI-workflow (ci.yml) er groent for den nye
 #      main-HEAD (den commit merges skabte).
-#   5. Roerer PR'en `backend/`: venter derudover paa at "Deploy verify"
-#      (.github/workflows/deploy-verify.yml - Vercel/Railway-deploy +
-#      smoke-test) er groent for samme SHA. Roerer den IKKE backend/: venter
-#      i stedet mindst -MinWaitMinutesNoBackend minutter (default 3).
+#   5. Roerer PR'en backend-PRODUKTIONSKODE (scripts/merge-queue-files.mjs;
+#      tests, dev-scripts og test-data taeller ikke, ejer 10/10): venter
+#      derudover paa at "Deploy verify" (.github/workflows/deploy-verify.yml -
+#      Vercel/Railway-deploy + smoke-test) er groent for samme SHA. Ellers:
+#      mindst -MinWaitMinutesNoBackend minutter (default 3). Ejer 10/10 (valg B):
+#      op til -MaxBatch PR'er (ogsaa backend) merges i raekke med EEN
+#      verifikation efter raekken; roed = STOP, resten koeres med -NoBatch.
 #   6. Er CI eller Deploy verify roed for den nye HEAD: STOPPER koeen (roed
 #      main = stop-alt-fix-foerst, jf. GITHUB_WORKFLOW.md §Hurtige merges)
 #      i stedet for at merge videre ovenpaa den.
@@ -134,11 +137,18 @@ function Get-PrPlanEntry([int]$number) {
       $title = $parsed.title
       $mergeable = $parsed.mergeable
       $isDraft = [bool]$parsed.isDraft
-      foreach ($f in $parsed.files) {
-        if ($f.path -match '^backend/') { $touchesBackend = $true }
-        if ($f.path -notmatch '^(docs|pr-screens|superpowers|\.claude)/' -and $f.path -notmatch '^[^/]+\.md$') { $touchesRailway = $true }
+      # Ejer 10/10 (valg B): klassifikationen bor i scripts/merge-queue-files.mjs
+      # (node --test). Kun produktionskode er "backend"; tests/dev-scripts/
+      # test-data venter ikke paa deploy-verifikation alene.
+      $paths = @($parsed.files | ForEach-Object { $_.path })
+      $pathsJson = ConvertTo-Json -InputObject $paths -Compress
+      $classJson = & node (Join-Path $PSScriptRoot 'merge-queue-files.mjs') $pathsJson
+      if ($LASTEXITCODE -eq 0 -and $classJson) {
+        $cls = ($classJson -join "") | ConvertFrom-Json
+        $touchesBackend = [bool]$cls.touchesBackend
+        $touchesRailway = [bool]$cls.touchesRailway
+        $filesKnown = $true
       }
-      $filesKnown = $true
     } catch {}
   }
   # Ukendt filliste maa aldrig batches stille uden deploy-verifikation.
@@ -388,6 +398,7 @@ Write-Host ""
 # af hvor koeen ville standse, ikke kun et statisk snapshot fra start.
 $script:batchMerged = @()
 $script:batchRailway = $false
+$script:batchBackend = $false
 $script:lastMergedSha = $null
 $script:dryBatchSize = 0
 $script:batchShas = @()
@@ -430,7 +441,10 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # Batch (ejer 8/10, review #6357): naeste PR roerer heller ikke backend/ og
   # raekken er under -MaxBatch -> merge med det samme og vent paa CI (main) +
   # evt. deploy-verifikation EEN gang efter raekken.
-  $batchWithNext = (-not $NoBatch) -and (-not $entry.touchesBackend) -and ($idx + 1 -lt $plan.Count) -and (-not $plan[$idx + 1].touchesBackend) -and (([Math]::Max($script:batchMerged.Count, $script:dryBatchSize) + 1) -lt $MaxBatch)
+  # Ejer 10/10 (valg B): ogsaa backend-PR'er merges i raekker paa op til
+  # -MaxBatch med EEN CI- og deploy-verifikation efter raekken. Roed efter en
+  # raekke = STOP, og raekken koeres igen med -NoBatch for at finde den skyldige.
+  $batchWithNext = (-not $NoBatch) -and ($idx + 1 -lt $plan.Count) -and (([Math]::Max($script:batchMerged.Count, $script:dryBatchSize) + 1) -lt $MaxBatch)
   Write-Host ""
   Write-Host "=== PR #$n ===" -ForegroundColor Cyan
 
@@ -464,22 +478,19 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Exit-Queue 1
   }
   # Review #6357 M3: brug den FRISKE fil-klassifikation for selve PR'en.
-  if ($fresh.touchesBackend) { $batchWithNext = $false }
   $entryBackend = $entry.touchesBackend -or $fresh.touchesBackend
   $entryRailway = $entry.touchesRailway -or $fresh.touchesRailway
 
   if ($DryRun) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
     if ($entryRailway) { $script:batchRailway = $true }
-    if ($entryBackend) {
-      Write-Host "  [dry-run] ville derefter vente paa CI (main) + 'Deploy verify' (Railway+smoke) for merge-commit'et." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:batchRailway = $false
-    } elseif ($batchWithNext) {
+    if ($entryBackend) { $script:batchBackend = $true }
+    if ($batchWithNext) {
       $script:dryBatchSize++
-      Write-Host "  [dry-run] ville merge videre uden at vente (naeste PR roerer heller ikke backend/); CI (main) og evt. Deploy verify ventes efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
-    } elseif ($script:dryBatchSize -gt 0 -and $script:batchRailway) {
-      Write-Host "  [dry-run] sidste i raekken: ville vente paa CI (main) + 'Deploy verify' for hele raekken (den udloeser Railway)." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:batchRailway = $false
+      Write-Host "  [dry-run] ville merge videre uden at vente; CI (main) og evt. Deploy verify ventes EEN gang efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
+    } elseif ($script:batchBackend -or ($script:dryBatchSize -gt 0 -and $script:batchRailway)) {
+      Write-Host "  [dry-run] sidste i raekken: ville vente paa CI (main) + 'Deploy verify' for hele raekken." -ForegroundColor DarkGray
+      $script:dryBatchSize = 0; $script:batchRailway = $false; $script:batchBackend = $false
     } else {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + mindst $MinWaitMinutesNoBackend min (roerer ikke backend/)." -ForegroundColor DarkGray
       $script:dryBatchSize = 0; $script:batchRailway = $false
@@ -522,9 +533,10 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:lastMergedSha = $sha
   $script:batchShas += $sha
   if ($entryRailway) { $script:batchRailway = $true }
+  if ($entryBackend) { $script:batchBackend = $true }
 
   if ($batchWithNext) {
-    Write-Host "  PR #$n roerer ikke backend/, og det goer naeste PR heller ikke - merger videre og venter efter raekken." -ForegroundColor DarkGray
+    Write-Host "  PR #$n merget - merger videre og verificerer EEN gang efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
     continue
   }
 
@@ -532,7 +544,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $batchSize = $script:batchMerged.Count
   $ciOk = Wait-BatchCi
   if (-not $ciOk) {
-    Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst). Ved flere PR'er: en af dem (eller samspillet) er aarsagen." -ForegroundColor Red
+    Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst). Ved flere PR'er: en af dem (eller samspillet) er aarsagen; find den med CI-loggen pr. commit, og koer resten af koeen med -NoBatch." -ForegroundColor Red
     exit 1
   }
   $script:batchMerged = @()
@@ -540,7 +552,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
 
   # Deploy-verifikation: altid for backend; og efter en RAEKKE (2+) der har
   # udloest Railway, saa sluttilstanden er verificeret (review #6357 B1).
-  if ($entryBackend -or ($batchSize -gt 1 -and $script:batchRailway)) {
+  if ($script:batchBackend -or ($batchSize -gt 1 -and $script:batchRailway)) {
     $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes
     $gate = Get-DeployGateAction $deployState
     if ($deployState -eq 'deferred') {
@@ -551,7 +563,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
       exit 75
     }
     if ($gate -ne 'continue') {
-      Write-Host "STOP: deploy-verifikation efter $batchLabel er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
+      Write-Host "STOP: deploy-verifikation efter $batchLabel er $deployState. Ingen naeste merge uden positivt bevis. Ved en raekke: tjek deploy-loggen for hvilken PR, og koer resten med -NoBatch." -ForegroundColor Red
       exit 1
     }
   } else {
@@ -559,6 +571,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Start-Sleep -Seconds ($MinWaitMinutesNoBackend * 60)
   }
   $script:batchRailway = $false
+  $script:batchBackend = $false
 
   Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
 }
