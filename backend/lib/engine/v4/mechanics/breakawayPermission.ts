@@ -197,7 +197,7 @@ export const BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA = Object.freeze({
    * med 6-9 forsoeg: flaskehalsen var succesraten, ikke antallet af forsoeg.
    * Loftet er uaendret (8). Kalibreret privat (balance-internals/clean-revision/6431/).
    */
-  flat: Object.freeze({ maxSize: 8, room: 6, successBonus: 0.2 }),
+  flat: Object.freeze({ maxSize: 8, room: 6, successBonus: 0.1 }),
 });
 
 /**
