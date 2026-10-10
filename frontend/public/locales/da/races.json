@@ -476,6 +476,7 @@
     "willNotStart": "Færre end {min} ryttere. Dit hold stiller ikke op i dette løb.",
     "willNotStartEmpty": "Færre end {min} ryttere er fri til dette løb. Dit hold stiller ikke op.",
     "willNotStartShort": "Under {min} ryttere. Stiller ikke op.",
+    "minHint": "Mindst {min} ryttere for at stille op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
     "hunter": "Udbrudsjæger",

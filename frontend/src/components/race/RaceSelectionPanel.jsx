@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { toggleRider, validateSelectionClient, partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
+import { toggleRider, validateSelectionClient, partialSquadOutlook, MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js";
 // #5098: det ugemte udkast lever uden for komponenten, så en afmontering (et
 // fane-skift på løbssiden) ikke tager managerens arbejde med sig.
 import {
@@ -528,6 +528,7 @@ export default function RaceSelectionPanel({
         <div>
           <h2 className="font-semibold text-cz-1 text-sm">{t("selection.title")}</h2>
           <p className="text-cz-3 text-xs">{t("selection.subtitle", errParams)}</p>
+          <p data-testid="selection-min-hint" className="text-cz-3 text-xs">{t("selection.minHint", { min: MIN_RACE_ENTRIES })}</p>
         </div>
         <span className="text-xs font-mono text-cz-2 whitespace-nowrap">
           {t("selection.count", { count: sel.riderIds.length, max: size.max })}
