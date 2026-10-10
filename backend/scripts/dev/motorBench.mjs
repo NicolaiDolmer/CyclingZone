@@ -14,9 +14,15 @@
 //     --revisions=official_times_v2,official_times_v3 --race-name="Tour de l'Hexagone" \
 //     [--engine-root=C:/Dev/CyclingZone-worktrees/<revision>] [--max-races=200] [--out=balance-internals/motor-bench/bench.json]
 //   node backend/scripts/dev/motorBench.mjs --from-cache=balance-internals/motor-bench/races.json ...   (uden prod)
+//     [--previous=<forrige bench.json>] [--verdict-out=balance-internals/motor-bench/site/verdict.json]
+//
+// #6451: dommen (bench.verdict, og `auto` i verdict.json) er pr. profil paa
+// de-duplikerede ruter (samme rute i flere divisioner = een stemme), med
+// nedkoerselsfinaler i endagsloeb (motorens #6200-detektion) talt for sig.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { buildVerdict, isOneDayDescentFinish, routeKey } from "./lib/motorBenchVerdict.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -40,6 +46,9 @@ export function parseArgs(argv) {
     out: get("out", "balance-internals/motor-bench/bench.json"),
     saveCache: get("save-cache", null),
     fromCache: get("from-cache", null),
+    // #6451: forrige bench.json til foer/efter, og verdict.json hvis feltet `auto` skal opdateres.
+    previous: get("previous", null),
+    verdictOut: get("verdict-out", null),
   };
 }
 
@@ -148,8 +157,19 @@ export function summarizeStage(sc, profile, seedsViews) {
   return s;
 }
 
-export function runRace({ sc, v4, data, revisions, seeds }) {
+/**
+ * #6451: motorens egen #6200-detektion (routeAdapter + finishDescentIndexFor med
+ * official_times_v3's tuning), saa testbaenken aldrig opfinder sin egen.
+ * `engine` = { routeFromStageProfileRow, finishDescentIndexFor, tuning }.
+ */
+export function descentFinishFor(engine, profile, oneDay) {
+  if (!engine || !oneDay) return false;
+  return isOneDayDescentFinish({ oneDay, route: engine.routeFromStageProfileRow(profile), finishDescentIndexFor: engine.finishDescentIndexFor, tuning: engine.tuning });
+}
+
+export function runRace({ sc, v4, data, revisions, seeds, engine = null }) {
   const stages = sc.sortedStages(data);
+  const oneDay = stages.length === 1;
   const { entrants } = sc.splitEntrants(data);
   const abilitiesById = new Map(data.abilities.map((a) => [a.rider_id, a]));
   const teamByRider = new Map(entrants.map((e) => [e.rider_id, e.team_id]));
@@ -171,6 +191,8 @@ export function runRace({ sc, v4, data, revisions, seeds }) {
   return stages.map((p) => ({
     stage: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type ?? null,
     cls: sc.profileClass(p.profile_type), distance_km: p.distance_km ?? null,
+    routeKey: routeKey(data.race.name, p),
+    descentFinish: descentFinishFor(engine, p, oneDay),
     revisions: Object.fromEntries(revisions.map((r) => [r, byRevision[r][p.stage_number]])),
   }));
 }
@@ -197,6 +219,13 @@ export async function main(argv = process.argv.slice(2)) {
   const sc = await import(pathToFileURL(path.join(root, "backend/scripts/dev/lib/tourScorecard.mjs")).href);
   const bridge = await import(pathToFileURL(path.join(root, "backend/lib/raceEngineV4Bridge.js")).href);
   const { ABILITY_KEYS } = await import(pathToFileURL(path.join(root, "backend/lib/raceSimulator.js")).href);
+  const routeMod = await import(pathToFileURL(path.join(root, "backend/lib/engine/v4/adapters/routeAdapter.ts")).href);
+  const timeModel = await import(pathToFileURL(path.join(root, "backend/lib/engine/v4/mechanics/timeModel.ts")).href);
+  const engine = {
+    routeFromStageProfileRow: routeMod.routeFromStageProfileRow,
+    finishDescentIndexFor: timeModel.finishDescentIndexFor,
+    tuning: timeModel.SHARED_TIME_MODEL_V3_TUNING,
+  };
   let datasets;
   if (opts.fromCache) {
     datasets = JSON.parse(readFileSync(abs(opts.fromCache), "utf8"));
@@ -220,9 +249,10 @@ export async function main(argv = process.argv.slice(2)) {
   for (const data of datasets) {
     for (const t of data.teams ?? []) names.teams[t.id] = { name: t.name ?? null, ai: t.is_ai === true };
     for (const r of data.riders ?? []) names.riders[r.id] = `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim();
-    const stages = runRace({ sc, v4, data, revisions: opts.revisions, seeds: opts.seeds });
+    const stages = runRace({ sc, v4, data, revisions: opts.revisions, seeds: opts.seeds, engine });
     races.push({
       id: data.race.id, name: data.race.name, scheduled_for: data.race.scheduled_for ?? null, status: data.race.status,
+      oneDay: stages.length === 1,
       race_class: data.race.race_class ?? null, squad: data.race.squad ?? null,
       prodRevision: data.race.engine_rules_revision ?? null,
       division: data.division ? { tier: data.division.tier, label: data.division.label } : null,
@@ -238,8 +268,16 @@ export async function main(argv = process.argv.slice(2)) {
     benchmarks: { breakawaySize: sc.TOUR_BENCHMARKS.breakawaySize.byClass, gapTo10: sc.TOUR_BENCHMARKS.gapTo10.byClass, gapTo30: sc.TOUR_BENCHMARKS.gapTo30.byClass },
     tally: tally(races, opts.revisions), names, races,
   };
+  const previous = opts.previous ? JSON.parse(readFileSync(abs(opts.previous), "utf8")) : null;
+  bench.verdict = buildVerdict(bench, { previous });
   mkdirSync(path.dirname(abs(opts.out)), { recursive: true });
   writeFileSync(abs(opts.out), JSON.stringify(bench));
+  if (opts.verdictOut) {
+    // Den skrevne dom (status/label/summary/points) bevares; kun `auto` erstattes.
+    const vPath = abs(opts.verdictOut);
+    const existing = existsSync(vPath) ? JSON.parse(readFileSync(vPath, "utf8")) : {};
+    writeFileSync(vPath, JSON.stringify({ ...existing, auto: bench.verdict }, null, 2));
+  }
   const stageCount = races.reduce((n, r) => n + r.stages.length, 0);
   console.log(`Testbaenk: ${races.length} loeb, ${stageCount} etaper, ${opts.revisions.join(" vs ")} x ${opts.seeds} seeds -> ${abs(opts.out)}`);
   return bench;
