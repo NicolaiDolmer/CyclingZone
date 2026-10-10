@@ -316,7 +316,8 @@ export function step2({ deps }) {
 
 /**
  * Nat 11/10: GT-vindermarginen måles på gatens egne seeds (s1..sN), ens for revision
- * og baseline. Med 5 seeds (15 kørsler) svingede medianen over loftet alene af støj.
+ * og baseline (proxy + realistisk felt). Med 5 seeds (15 kørsler) svingede middelværdien
+ * over loftet alene af støj.
  */
 export function gtSeedList(n) {
   return Array.from({ length: n }, (_, i) => `s${i + 1}`).join(",");

@@ -1103,8 +1103,9 @@ async function main() {
   const { rates } = headToHead;
   // #6442: GT-vindermarginen paa et akkumuleret klassement (fast felt, samme seeds og revision).
   // Nat 11/10: GT-marginen er én vinder-margin pr. grand tour og seed (3 x seeds kørsler) og
-  // spænder over flere minutter mellem seeds; --gt-seeds lader gaten måle den på sine egne
-  // seeds (samme for revision og baseline). Udeladt = head-to-head-seedsene som før.
+  // spænder over flere minutter mellem seeds; --gt-seeds lader gaten måle begge GT-rækker
+  // (proxy + realistisk felt) på sine egne seeds, samme for revision og baseline.
+  // Udeladt = head-to-head-seedsene som før.
   const gtSeeds = listArg("gt-seeds", seeds);
   console.log(`[6442] GT-vindermargin ${gtSeeds.join(",")} (pinnede grand tours, fast felt ${FIELD_SIZE}) ...`);
   const anchors = withGtWinnerMargin(headToHead.anchors, measureGtMargins({ population, stages, seeds: gtSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
@@ -1112,8 +1113,8 @@ async function main() {
   const v4Engine = await loadRaceEngineV4();
   const realisticFixture = JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8"));
   const realisticField = measureRealisticField({ v4: v4Engine, fixture: realisticFixture, stages, seeds, rulesRevision });
-  console.log(`[6442] GT-vindermargin i det realistiske felt (fixturets egne etaper) ${seeds.join(",")} ...`);
-  realisticField.anchors.push(measureRealisticGtMargin({ v4: v4Engine, fixture: realisticFixture, seeds, rulesRevision }));
+  console.log(`[6442] GT-vindermargin i det realistiske felt (fixturets egne etaper) ${gtSeeds.join(",")} ...`);
+  realisticField.anchors.push(measureRealisticGtMargin({ v4: v4Engine, fixture: realisticFixture, seeds: gtSeeds, rulesRevision }));
   console.log(`[5515] hale-gate ${tailSeeds.join(",")} ...`);
   const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[5515] ydelse ${perfSizes.join(",")} ...`);
@@ -1134,6 +1135,7 @@ async function main() {
       stages_file: STAGES_FILE,
       stage_count: stages.length,
       seeds,
+      gt_seeds: gtSeeds,
       tail_seeds: tailSeeds,
       field_size: FIELD_SIZE,
       rules_revision: rulesRevision ?? "legacy",

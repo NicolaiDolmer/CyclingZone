@@ -186,13 +186,14 @@ export function runGrandTour({ population, tour, seed, fieldSize = LOCKED_FIELD_
  * bygget med spillets egen buildGcContext. Etape 1 = "first_stage".
  */
 export function proxyGcContext({ startIds, inRace, outcomes, stageRow, stages, rulesRevision }) {
-  const stageNumber = Number(stageRow.stage_number ?? 1);
+  // Etapens nummer i sit eget løb (proxy-filen nummererer nogle løb fortløbende i hele filen).
+  const stageNumber = Number(stageRow.race_stage_number ?? stageRow.stage_number ?? 1);
   const standings = outcomes.length === 0
     ? []
     : accumulateGc(startIds, outcomes).standings.map((s) => ({ rider_id: s.rider_id, time: s.gc_seconds }));
   const ctx = buildGcContext({ isStageRace: true, stageNumber, standings, starterIds: inRace });
   if (isOrdersGcV3OrLater(rulesRevision) && ctx.status === "standings") {
-    ctx.stages_remaining = stages.filter((s) => Number(s.stage_number ?? 1) > stageNumber).length;
+    ctx.stages_remaining = stages.filter((s) => Number(s.race_stage_number ?? s.stage_number ?? 1) > stageNumber).length;
   }
   return ctx;
 }
