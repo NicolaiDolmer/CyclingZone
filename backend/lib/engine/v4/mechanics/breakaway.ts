@@ -398,6 +398,8 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     // #5578 robust (KUN official_times_v2): klassementets forreste moeder den haardeste modstand.
     ...(dangerTeams && gcContext ? rankedFormationPressure(gcContext, timeModelTuningFor(ctx).gcDanger) : {}),
     ...(ctx.ordersGcV3 === true && breakawaySizeProfileV3(ctx.route.profile_type) ? { sizeProfile: breakawaySizeProfileV3(ctx.route.profile_type)! } : {}), // #6201
+    // #6201 R3 (KUN official_times_v3): et farligt forsoeg fylder ikke i traengslen.
+    ...(ctx.sharedGroupTime?.timeModelGeneration === 3 ? { dangerousOutsideRoom: true } : {}),
   });
   if (formation.attempted.length === 0) return { state, events };
 
