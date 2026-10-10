@@ -77,6 +77,7 @@ import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
 import { applyEffortToDemand } from "./effortCost.ts";
+import { isOfficialTimesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import {
   runTimeTrialStage,
   type TeamRoster,
@@ -134,15 +135,51 @@ export type IndividualTimeTrialTuning = { abilitySpeedSlope: number; stageNoiseS
 // ── Evne og fart ─────────────────────────────────────────────────────────────
 
 /**
+ * #6349 (official_times_v3): rutens stigningsandel = stigningskilometer /
+ * rutens kilometer (0-1). En rute uden segmenter eller uden laengde har 0.
+ */
+export function ittClimbShare(segments: readonly Segment[]): number {
+  let total = 0;
+  let climb = 0;
+  for (const s of segments) {
+    const km = Math.max(0, s.to_km - s.from_km);
+    total += km;
+    if (s.kind === "climb") climb += km;
+  }
+  return total > 0 ? clamp(climb / total, 0, 1) : 0;
+}
+
+/**
  * Tidskoersels-evnen for én rytter paa ét terraen (frisk, uden slid/vejr/dagsform).
  * Stigning: `long_climb`-vektoren. Alt andet: `solo_tt`-vektoren. Begge er
  * finale-tuningens egne vektorer; alle vaegte er >= 0, saa scoren er monotont
  * ikke-faldende i enhver evne (samme garanti som finale.ts).
+ *
+ * #6349 (KUN official_times_v3, `climbShare` sat): én evne for hele ruten,
+ * blandet efter stigningsandelen: (1 - andel) x `solo_tt` + andel x
+ * `long_climb`, paa hvert terraen. Foer afgjorde klatre-vektoren alene hvert
+ * stigningssegment, og et stigningssegment vejer mange gange et fladt i
+ * sekunder (lav fart, fuld terraen-vaegt), saa selv en kort stigning gjorde en
+ * kuperet enkeltstart til en klatre-konkurrence. Nu afgoer tempo-evnen en
+ * kuperet enkeltstart, og klatring vinder kun dér hvor ruten mest er stigning.
+ * Terraenet bestemmer stadig hvor store tidsforskellene bliver, ikke hvilken
+ * evne der taeller. Blandingen af to monotone scorer er monoton.
  */
-export function ittAbilityScore(abilities: Entrant["abilities"], kind: SegmentKind, tuning: EngineTuning): number {
+export function ittAbilityScore(
+  abilities: Entrant["abilities"],
+  kind: SegmentKind,
+  tuning: EngineTuning,
+  climbShare?: number,
+): number {
   const vectors = tuning.finale.demandVectorByFinaleType;
-  const vector = (kind === "climb" ? vectors.long_climb : vectors.solo_tt) ?? {};
-  return computeFinaleAbilityScore(abilities, 0, vector, 0);
+  if (climbShare === undefined) {
+    const vector = (kind === "climb" ? vectors.long_climb : vectors.solo_tt) ?? {};
+    return computeFinaleAbilityScore(abilities, 0, vector, 0);
+  }
+  const share = clamp(climbShare, 0, 1);
+  const tt = computeFinaleAbilityScore(abilities, 0, vectors.solo_tt ?? {}, 0);
+  const climb = computeFinaleAbilityScore(abilities, 0, vectors.long_climb ?? {}, 0);
+  return (1 - share) * tt + share * climb;
 }
 
 /**
@@ -151,11 +188,11 @@ export function ittAbilityScore(abilities: Entrant["abilities"], kind: SegmentKi
  * Regnet ÉN gang pr. etape paa den friske evne, saa slid og vejr stadig kan
  * saenke etapens tempo (samme begrundelse som dér).
  */
-export function ittReferenceByKind(startlist: readonly Entrant[], tuning: EngineTuning): Record<SegmentKind, number> {
+export function ittReferenceByKind(startlist: readonly Entrant[], tuning: EngineTuning, climbShare?: number): Record<SegmentKind, number> {
   const kinds: SegmentKind[] = ["flat", "rolling", "climb", "descent", "cobbles"];
   const out = {} as Record<SegmentKind, number>;
   for (const kind of kinds) {
-    const scores = startlist.map((e) => ittAbilityScore(e.abilities, kind, tuning)).sort((a, b) => b - a);
+    const scores = startlist.map((e) => ittAbilityScore(e.abilities, kind, tuning, climbShare)).sort((a, b) => b - a);
     const frontCount = Math.max(1, Math.ceil(scores.length * tuning.work.frontFraction));
     const slice = scores.slice(0, frontCount);
     out[kind] = slice.length > 0 ? slice.reduce((s, v) => s + v, 0) / slice.length : 0;
@@ -182,8 +219,9 @@ export function ittCapacityForSegment(
   tuning: EngineTuning,
   weather: Weather,
   stageNoise = 0,
+  climbShare?: number,
 ): number {
-  const fresh = ittAbilityScore(entrant.abilities, segment.kind, tuning);
+  const fresh = ittAbilityScore(entrant.abilities, segment.kind, tuning, climbShare);
   const worn = applyDistanceFatigueToCp(fresh, {
     kmSoFar: segment.from_km,
     enduranceAbility: entrant.abilities.endurance,
@@ -264,8 +302,9 @@ function tickSoloRider(
   route: RouteV2,
   tuning: EngineTuning,
   ittTuning: IndividualTimeTrialTuning,
+  climbShare: number | undefined,
 ): void {
-  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise);
+  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
   const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning);
   const dtSeconds = speedKmh > 0 ? (distanceKm / speedKmh) * 3600 : 0;
@@ -297,6 +336,7 @@ function individualTimeTrialMode(
   reference: Record<SegmentKind, number>,
   stageNoiseByRider: ReadonlyMap<string, number>,
   ittTuning: IndividualTimeTrialTuning,
+  climbShare: number | undefined,
 ): TimeTrialMode {
   return {
     groupPrefix: "itt",
@@ -319,7 +359,7 @@ function individualTimeTrialMode(
         const rider = unit.riders[entrant.rider_id];
         if (!rider || rider.status === "abandoned") continue;
         const noise = stageNoiseByRider.get(entrant.rider_id) ?? 0;
-        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning);
+        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare);
       }
       return [];
     },
@@ -328,7 +368,11 @@ function individualTimeTrialMode(
 
 // ── Top-niveau ───────────────────────────────────────────────────────────────
 
-export type IndividualTimeTrialOptions = TeamTimeTrialOptions & { ittTuning?: IndividualTimeTrialTuning };
+export type IndividualTimeTrialOptions = TeamTimeTrialOptions & {
+  ittTuning?: IndividualTimeTrialTuning;
+  /** #6349: loebets regel-revision. Kun official_times_v3 blander evnen efter stigningsandelen. */
+  rulesRevision?: unknown;
+};
 
 /**
  * Hele enkeltstarten: hver rytter starter fra sit eget nul, koerer alene og
@@ -343,7 +387,10 @@ export function simulateIndividualTimeTrialStage(
 ): StageOutput {
   const ittTuning = options.ittTuning ?? INDIVIDUAL_TIME_TRIAL_TUNING;
   const units: TeamRoster[] = startlist.map((entrant) => ({ team_id: entrant.rider_id, riders: [entrant] }));
-  const reference = ittReferenceByKind(startlist, tuning);
+  // #6349: kun official_times_v3. Aeldre revisioner faar `undefined` og regner
+  // praecis som foer (byte-identisk).
+  const climbShare = isOfficialTimesV3OrLater(options.rulesRevision) ? ittClimbShare(route.segments) : undefined;
+  const reference = ittReferenceByKind(startlist, tuning, climbShare);
   const stageNoiseByRider = new Map(startlist.map((e) => [e.rider_id, ittStageNoise(seed, e.rider_id, ittTuning)]));
   const { teams: _perRiderUnits, ...output } = runTimeTrialStage(
     route,
@@ -351,7 +398,7 @@ export function simulateIndividualTimeTrialStage(
     seed,
     tuning,
     { incidentsTuning: options.incidentsTuning, timeLimitTuning: options.timeLimitTuning },
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning),
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare),
   );
   return output;
 }

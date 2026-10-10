@@ -249,7 +249,7 @@ export function simulateStageV4WithTrace(input: StageInput): { output: StageOutp
   // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
   if (isIndividualTimeTrial(input.route.profile_type)) {
     return {
-      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning),
+      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision }),
       trace: TIME_TRIAL_TRACE,
     };
   }

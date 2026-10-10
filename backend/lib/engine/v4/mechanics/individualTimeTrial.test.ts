@@ -24,6 +24,7 @@ import {
   INDIVIDUAL_TIME_TRIAL_TUNING,
   isIndividualTimeTrial,
   ittAbilityScore,
+  ittClimbShare,
   ittCapacityForSegment,
   ittReferenceByKind,
   ittSpeedKmh,
@@ -466,4 +467,82 @@ test("golden fixture: itt-solo — bit-identitet, individuelle tider, TT-special
   assert.ok(!eventTypes(actual).includes("sprint_decided"));
   const spread = actual.results.at(-1)!.time_seconds - actual.results[0].time_seconds;
   assert.ok(spread > 60 && spread < 600, `feltets spredning ${spread.toFixed(0)} s paa 32 km`);
+});
+
+// ── 7. #6349 (ren revision, official_times_v3): klatring vejer efter stigningsandelen ──
+//
+// Fejlen (staff 6/10): paa en kuperet enkeltstart slog en klatrer med svag
+// tempo-evne en klart bedre tempo-rytter. Aarsagen: paa et stigningssegment
+// regnede enkeltstarten KUN klatre-vektoren, og et stigningssegment vejer
+// mange gange et fladt segment i sekunder (lav fart, fuld terraen-vaegt). Selv
+// en kort stigning afgjorde derfor hele enkeltstarten.
+// Under official_times_v3 vejer klatring efter rutens stigningsandel: lidt paa
+// en kuperet enkeltstart, meget paa en bjergenkeltstart.
+
+const SEEDS_6349 = Array.from({ length: 12 }, (_, i) => `itt-6349-${i}`);
+
+/** Rytter A (tempo-specialist) og B (klatrer) i et felt af jaevne ryttere. */
+function field6349(): Entrant[] {
+  const peers = Array.from({ length: 28 }, (_, i) =>
+    rider(`p${String(i).padStart(2, "0")}`, 55, { time_trial: 50 + (i % 10), climbing: 50 + ((i * 3) % 10) }, `team-${Math.floor(i / 4)}`),
+  );
+  return [
+    ...peers,
+    rider("tt-a", 65, { time_trial: 80, climbing: 60 }, "team-a"),
+    rider("climber-b", 65, { time_trial: 60, climbing: 80 }, "team-b"),
+  ];
+}
+
+/** En bjergenkeltstart: kort flad start, derefter en lang stigning til maal. */
+const MOUNTAIN_ITT_SEGMENTS: Segment[] = [
+  { kind: "flat", from_km: 0, to_km: 4 },
+  { kind: "climb", from_km: 4, to_km: 18, category: "1", avg_gradient: 7.2, top_elevation_m: 1450 },
+];
+
+function aBeatsB(profileType: ProfileType, segs: Segment[], rulesRevision: StageInput["rules_revision"]): number {
+  let wins = 0;
+  for (const seed of SEEDS_6349) {
+    const out = simulateStageV4({ ...input({ route: route(profileType, segs), startlist: field6349(), seed }), rules_revision: rulesRevision });
+    const time = new Map(out.results.map((r) => [r.rider_id, r.time_seconds]));
+    if ((time.get("tt-a") ?? Infinity) < (time.get("climber-b") ?? Infinity)) wins += 1;
+  }
+  return wins;
+}
+
+test("#6349 v3: paa en kuperet enkeltstart slaar tempo-rytteren klatreren i >= 10 af 12 seeds", () => {
+  const wins = aBeatsB("itt_hilly", HILLY_SEGMENTS, "official_times_v3");
+  assert.ok(wins >= 10, `tempo-rytteren foran i ${wins} af 12 seeds`);
+});
+
+test("#6349 v3: paa en bjergenkeltstart vejer klatring efter stigningsandelen (klatreren vinder oftest)", () => {
+  const wins = aBeatsB("itt", MOUNTAIN_ITT_SEGMENTS, "official_times_v3");
+  assert.ok(wins <= 4, `tempo-rytteren foran i ${wins} af 12 seeds; klatreren skal vinde mindst 8`);
+});
+
+test("#6349 v3: stigningsandelen er rutens stigningskilometer delt med distancen", () => {
+  assert.equal(ittClimbShare(route("itt").segments), 0);
+  assert.ok(Math.abs(ittClimbShare(HILLY_SEGMENTS) - 5 / 30) < 1e-12);
+  assert.ok(Math.abs(ittClimbShare(MOUNTAIN_ITT_SEGMENTS) - 14 / 18) < 1e-12);
+  assert.equal(ittClimbShare([]), 0);
+});
+
+test("#6349 v3: evnen er stigende i baade tempo og klatring (styrke straffes aldrig)", () => {
+  const base = abilities(60);
+  for (const share of [0, 0.2, 0.5, 0.8, 1]) {
+    for (const kind of ["flat", "climb", "descent", "rolling"] as const) {
+      const ref = ittAbilityScore(base, kind, RACE_V4_TUNING, share);
+      assert.ok(ittAbilityScore({ ...base, time_trial: 75 }, kind, RACE_V4_TUNING, share) >= ref);
+      assert.ok(ittAbilityScore({ ...base, climbing: 75 }, kind, RACE_V4_TUNING, share) >= ref);
+    }
+  }
+});
+
+test("#6349: aeldre revisioner er uaendrede (v2, v1, orders_gc og legacy = ingen revision)", () => {
+  for (const [profileType, segs] of [["itt_hilly", HILLY_SEGMENTS], ["itt", MOUNTAIN_ITT_SEGMENTS]] as const) {
+    const base = input({ route: route(profileType, segs), startlist: field6349(), seed: "itt-6349-old" });
+    const legacy = simulateStageV4(base);
+    for (const rev of ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2"] as const) {
+      assert.deepEqual(simulateStageV4({ ...base, rules_revision: rev }), legacy, `${profileType} under ${rev}`);
+    }
+  }
 });

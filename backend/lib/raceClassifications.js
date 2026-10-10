@@ -10,6 +10,8 @@
 // raceRunner.simulateStageByIndex (stage-by-stage, akkumulering fra persisterede
 // rækker), så ranking/tie-break-semantikken er defineret ét sted.
 
+import { isOfficialTimesV3OrLater } from "./raceEngineRulesRevision.ts";
+
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
 // Top-15 aftagende (samme form som rigtige point/bjerg-konkurrencer). Tunbar ÉT sted.
@@ -192,6 +194,8 @@ export function dailyTeamPlacesFromStageRows(stageRows = []) {
  */
 export function accumulateStageRows({ stageRows = [], profileTypeByStage = new Map() }) {
   const cumTime = new Map();
+  // #6338: samme sum UDEN bonussekunder (UCI's holdklassement), se teamClassificationTime.
+  const cumTimeRaw = new Map();
   const posSum = new Map();
   const pointsComp = new Map();
   const komComp = new Map();
@@ -208,6 +212,7 @@ export function accumulateStageRows({ stageRows = [], profileTypeByStage = new M
     // (classPointsForRank + CLIMB_PROFILES-heuristik), bit-identisk med før Sub-2.
     const hasPassageCols = r.sprint_points != null || r.kom_points != null || r.bonus_seconds != null;
     add(cumTime, r.rider_id, parseGapSeconds(r.finish_time) - (Number(r.bonus_seconds) || 0));
+    add(cumTimeRaw, r.rider_id, parseGapSeconds(r.finish_time));
     add(posSum, r.rider_id, Number(r.rank) || 0);
     if (hasPassageCols) {
       add(pointsComp, r.rider_id, Number(r.sprint_points) || 0);
@@ -221,7 +226,21 @@ export function accumulateStageRows({ stageRows = [], profileTypeByStage = new M
     if (!stagesByRider.has(r.rider_id)) stagesByRider.set(r.rider_id, new Set());
     stagesByRider.get(r.rider_id).add(stageNo);
   }
-  return { cumTime, posSum, pointsComp, komComp, stagesByRider, stageNumbers };
+  return { cumTime, cumTimeRaw, posSum, pointsComp, komComp, stagesByRider, stageNumbers };
+}
+
+/**
+ * #6338 (KUN official_times_v3, loebets engine_rules_revision): det samlede
+ * holdklassement i et etapeloeb summerer rytternes faktiske tider UDEN
+ * bonussekunder (UCI). GC og ungdom bruger stadig den bonus-justerede tid.
+ * Aeldre revisioner (og et kaldsted uden raa tid) faar `cumTime` uaendret.
+ *
+ * @param {{cumTime: Map<string,number>, cumTimeRaw?: Map<string,number>}} acc
+ * @param {unknown} rulesRevision
+ * @returns {Map<string,number>}
+ */
+export function teamClassificationTime(acc, rulesRevision) {
+  return isOfficialTimesV3OrLater(rulesRevision) && acc.cumTimeRaw ? acc.cumTimeRaw : acc.cumTime;
 }
 
 /**

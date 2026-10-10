@@ -68,6 +68,11 @@ export function sharedTimeModelGeneration(value: unknown): 0 | 3 {
   return value === "official_times_v3" ? 3 : 0;
 }
 
+/** Den rene motor-revision (#6349/#6352/#6338 m.fl.): official_times_v3 eller senere. */
+export function isOfficialTimesV3OrLater(revision: unknown): boolean {
+  return sharedTimeModelGeneration(revision) >= 3;
+}
+
 /** Only the future pinned official-times revisions store uncapped official stage gaps. */
 export function preservesOfficialStageTimes(value: unknown): boolean {
   return OFFICIAL_TIMES_REVISIONS.has(value);

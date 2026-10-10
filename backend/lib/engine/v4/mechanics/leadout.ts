@@ -12,7 +12,8 @@
 // aendre den frosne type. `parseLeadoutOrders` nedenfor er den lokale
 // fortolkning af det udkast: `kind: "leadout"`, `params: LeadoutOrderParams`.
 //
-// REN — ingen import fra oevrigt backend, ingen IO/Date/Math.random. Alle
+// REN — ingen import fra oevrigt backend (undtagen den rene regel-revisions-
+// helper, #6352), ingen IO/Date/Math.random. Alle
 // eksporterede funktioner er rene: samme input -> samme output, intet
 // input muteres.
 //
@@ -25,6 +26,7 @@
 // og LEADOUT_EXTRA_TUNING.maxScoreBonus for det haarde loft.
 
 import type { AbilityKey, Entrant, RiderState, TeamOrder } from "../types.ts";
+import { isOfficialTimesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -81,6 +83,76 @@ export function parseLeadoutOrders(orders: readonly TeamOrder[]): LeadoutOrder[]
     });
   }
   return [...byTeam.values()].sort((a, b) => a.team_id.localeCompare(b.team_id));
+}
+
+// ── #6352 (official_times_v3): hvem faar et tog ───────────────────────────────
+//
+// FEJLEN (spillere 2/10 + 7/10): togets MAAL var kun rollen `sprint_captain`.
+// Et hold hvis (obligatoriske) kaptajn er holdets sprinter, fik derfor intet
+// tog i et fladt loeb: hjaelpernes `leadout`-standard saettes kun naar holdet
+// har en sprint_captain, og adapteren byggede kun ordren for den rolle. Man
+// maatte saette en daarlig kaptajn for at faa sprinteren et tog.
+//
+// REGLEN (kun official_times_v3):
+//   - MAAL: holdets `sprint_captain`. Har holdet ingen, og er etapen flad, er
+//     det kaptajnen, naar kaptajnen har sprinterprofil (spurt er hans bedste
+//     finale-evne). En kaptajn uden sprinterprofil faar intet tog (en klatrer
+//     har intet at bruge et sprinttog til).
+//   - MANDSKAB: de ryttere ordren saetter i toget (`leadout: true`). Er ingen
+//     sat, og er maalet kaptajnen (hvis hjaelpere aldrig fik standarden),
+//     koerer holdets hjaelpere i toget; en grupetto-rytter er aldrig med.
+// Aeldre revisioner: `null` (kaldstedet bruger den gamle regel uaendret).
+
+/** Etapetyper hvor kaptajnen kan vaere togets maal (samme som teamPlay's sprint-profiler). */
+const SPRINT_TRAIN_PROFILES: ReadonlySet<string> = new Set(["flat"]);
+
+/** Finale-evnerne sprinterprofilen sammenlignes med. */
+const RIVAL_PROFILE_KEYS: AbilityKey[] = ["climbing", "time_trial", "punch", "cobblestone"];
+
+/** Sprinterprofil: spurt er mindst lige saa hoej som hver af de andre finale-evner. */
+export function hasSprinterProfile(abilities: Partial<Record<AbilityKey, number>> | null | undefined): boolean {
+  if (!abilities) return false;
+  const sprint = Number(abilities.sprint);
+  if (!Number.isFinite(sprint)) return false;
+  return RIVAL_PROFILE_KEYS.every((key) => !(Number(abilities[key]) > sprint));
+}
+
+export type SprintTrainInput = {
+  team_id: string;
+  /** Holdordrens ryttere (team_tactics): indsats og `leadout`-flag. */
+  riders: readonly { rider_id: string; effort?: string; leadout?: boolean }[];
+  /** Holdets ryttere paa etapen med rolle (og evner, til sprinterprofilen). */
+  roster: readonly { rider_id: string; role: string | null; abilities?: Partial<Record<AbilityKey, number>> | null }[];
+  profileType: string | null | undefined;
+  rulesRevision: unknown;
+};
+
+/**
+ * #6352: M6-ordren under official_times_v3 (se reglen ovenfor). `null` under
+ * aeldre revisioner og naar holdet intet tog har. Samme konvolut som
+ * teamOrdersAdapter's `toEngineLeadoutOrder`.
+ */
+export function sprintTrainLeadoutOrder(input: SprintTrainInput): TeamOrder | null {
+  if (!isOfficialTimesV3OrLater(input.rulesRevision)) return null;
+  const sprintCaptain = input.roster.find((r) => r.role === "sprint_captain");
+  const captain = sprintCaptain
+    ? null
+    : input.roster.find((r) => r.role === "captain" && SPRINT_TRAIN_PROFILES.has(String(input.profileType)) && hasSprinterProfile(r.abilities));
+  const target = sprintCaptain ?? captain;
+  if (!target) return null;
+  const effortById = new Map(input.riders.map((r) => [r.rider_id, r.effort]));
+  let train = input.riders.filter((r) => r.leadout === true && r.rider_id !== target.rider_id).map((r) => r.rider_id);
+  if (train.length === 0 && captain) {
+    train = input.roster
+      .filter((r) => r.role === "helper" && r.rider_id !== target.rider_id && effortById.get(r.rider_id) !== "grupetto")
+      .map((r) => r.rider_id);
+  }
+  if (train.length === 0) return null;
+  return {
+    team_id: input.team_id,
+    kind: LEADOUT_ORDER_KIND,
+    params: { captain_rider_id: target.rider_id, leadout_rider_ids: train },
+  };
 }
 
 // ── Tog-kvalitet ──────────────────────────────────────────────────────────────
