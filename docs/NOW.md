@@ -4,9 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (fra 11/10):** Start efter `docs/sessions/2026-10-11-session-design.md` (ejer-design 10/10 aften). Motoren først: ret #6431 (flad udbrud 2,5 mod 3-6 efter form), #6434, byg **Motor-testbænken** (skyggeløb på prod-felter, privat Artifact), gate grøn, Fable, ejerens "tænd". Sidespor-bølge: træningsklager, CodeQL (3), 10 spillersvar, S5-kalender (18/10), sæsonskifte-plan (25/10), #3984/#4714. Udvikling 2.0 venter til motoren er live. Betaling/moms mandag (egen session).
+> **🎯 Next action (nat 11/10):** Natsession efter `docs/sessions/2026-10-11-nat-motor.md`: byg udbrud forslag A (#6441, ejer 11/10 00:50), Fable-dom på #6443, gate grøn, testbænk opdateret, flip-PR klar men ikke merget, morgenkort kl. 09:30. Touren kører v3 KUN hvis alt er grønt og ejeren siger "tænd" før ca. 10:30; ellers v2.
 >
-> **10/10:** 26 PR'er merget (UI-løfter #5831 #5917 #6060 #4522 #6123 #5825, #5945 #6400 #6238 #5979 #5864, chunk-bevis #6398, merge-kø hurtigere #6414 #6433, motor slukket: gate #6432, form #6430, ITT/holdklassement #6429) · patch 7.351-7.353 · bestyrelses-reparation #5897 kørt + verificeret · roadmap opdateret · 37 issues lukket · `official_times_v2` verificeret i prod 12/15/18 (kuperet endagsløb 9-16 min udbrud → #6428; bjerg for spredt) · Touren 11/10 på v2 (ejer-valg) · ren motor-revision spec + plan godkendt · læringer: npm ci/junction, Tailwind-klasse som JS, kædede køer.
+> **10/10 aften:** merget #6431 (flad udbrudstrin), #6437 (sprintertog), #6438 (CodeQL 0), #6444 (bjerg-tider), #6446 (træning følger rytteren, migreret), #6449 (verify-lock). Motor-testbænk live (privat Artifact). Gate rød trin 1+3. Ejer-valg: standard-jagt for hold uden ordre + fair Udbrudsmål 3 (#6441). Nye: #6439 #6440-#6442 #6447 #6450. Spillersvar i docs/drafts/spillersvar-2026-10-10.md.
+>
+> **10/10 dag:** 26 PR'er merget, patch 7.351-7.353, bestyrelses-reparation #5897, v2 verificeret i prod (#6428), Touren på v2 (ejer-valg), ren motor-revision spec + plan godkendt.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code (Opus 5.5) hovedsession 10/10 aften→11/10: motor-revision (#6431, #6434, testbænk, gate) + sidespor-bølge.
+> **🤖 Working agent:** Ingen aktiv session (hovedsession 10/10 aften lukket ca. 00:35; natsession efter docs/sessions/2026-10-11-nat-motor.md).

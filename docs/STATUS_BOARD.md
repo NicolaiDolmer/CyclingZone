@@ -11,26 +11,24 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (3d) — groen
 - #6403 fix(economy): ingen vaerdiskrivning ved saesonskiftet, eet fast soendagstidspunkt (#5842) (0d) — groen
-- #6397 fix(engine/v4): official_times_v3 - bedre klatrer taber ikke fra paa nedkoerselsfinale (#… (0d) — groen
 - #6426 feat(ops): #5878 databasevagt - probe hvert 5. min + Discord-ops-alarm (0d) — groen
-- #6431 fix(engine): ren revision spor 1 - udbrud, klatring, tider bag official_times_v3 (#6201) (0d) — roed
-- #6436 docs(patch-notes): 7.353 - tilbage til holdprogram + programkatalog på telefon (0d) — groen
+- #6443 fix(engine): gate trin 3 - GT-margin maalt, tidsankre doemt i realistisk felt (#6442) (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
 
 - #605 P0: Codex verdensklasse — markant hurtigere leverancer med målt kvalitet (139d)
-- #1140 Strømlin ny-spiller-onboarding til ét sammenhængende flow (konsolidér 6+ elementer) (124d)
+- #1140 Strømlin ny-spiller-onboarding til ét sammenhængende flow (konsolidér 6+ elementer) (125d)
 - #1148 [Epic] World history & Club Museum — records, legends, rivalries and season stories (124d)
 - #1154 [Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding (124d)
 - #1173 Vækst/viralitets-loop: referral (del spillet med en ven) (123d)
 - #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (123d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (122d)
 - #1461 security(email): DMARC enforcement — p=none → quarantine → reject (114d)
-- #2236 Organic community outreach — Reddit + Discord posting (95d)
-- #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (88d)
+- #2236 Organic community outreach — Reddit + Discord posting (96d)
+- #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (89d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (86d)
-- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (83d)
+- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (84d)
 - #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (79d)
 - #2806 [monetization] /pro er ikke linket fra appen, og isPro() gater ingen funktionalitet (79d)
 - #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (77d)
@@ -39,23 +37,22 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (3d) — groen
-- #6397 fix(engine/v4): official_times_v3 - bedre klatrer taber ikke fra paa nedkoerselsfinale (#… (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
-- ingen
+- #6448 fix(engine): official_times_v3 - standard-jagt for hold uden ordre + fair Udbrudsmaal 3 (… (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
-- #6431 fix(engine): ren revision spor 1 - udbrud, klatring, tider bag official_times_v3 (#6201) (0d) — roed
+- ingen
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
 
-- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (137d)
+- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (138d)
 - #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (112d)
-- #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (108d)
+- #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (109d)
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (85d)
 - #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (83d)
 - #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (81d)
@@ -68,7 +65,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (64d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (62d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (54d)
-- …og 707 mere
+- …og 710 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -85,7 +82,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #5831 [ux] Besked til andet hold kan kun sendes via forum - mangler fra hold-, løbs- og rytters… (13d)
 - #5917 [feature] Rytter på transferlisten skal kunne flyttes til U23-truppen (ejer lovede 28/9:… (11d)
 - #6060 [feature] Træningsplan: kopiér en dags plan til de næste dage (spiller 1/10) (8d)
-- #5897 Reparér 217 bestyrelser flyttet af U23-løb 28/9 (invers-delta + event-oprydning) (11d)
+- #5897 Reparér 217 bestyrelser flyttet af U23-løb 28/9 (invers-delta + event-oprydning) (12d)
 - #4522 [assistent] Assistent-forslag med programmer + 'start/styr assistenten'-knapper overalt h… (40d)
 - #5945 [bug] Juniorhold med 3 ryttere står som "deltager" i taktik og træning, men kan ikke star… (11d)
-- …og 5 mere
+- …og 10 mere
