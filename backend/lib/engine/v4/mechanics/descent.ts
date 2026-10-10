@@ -79,7 +79,9 @@ import {
   bookFinishDescentClosure,
   finishDescentAttackGainCapSeconds,
   finishDescentClosingSeconds,
+  finishDescentIndexFor,
   TIME_MODEL_V3_TUNING,
+  timeModelTuningFor,
 } from "./timeModel.ts";
 
 function round2(n: number): number {
@@ -478,7 +480,11 @@ export const descentHook: DescentHook = (
   //    inden nogen kan angribe paa den. Gaelder ALLE nedkoersler — ogsaa de
   //    ikke-tekniske, hvor der aldrig angribes.
   const segmentLengthKm = Math.max(0, segment.to_km - segment.from_km);
-  const isFinishDescent = ctx.segmentIndex === ctx.route.segments.length - 1;
+  // #6200 (KUN official_times_v3): nedkoerslen mod maal kan efterfoelges af et
+  // kort stykke uden stigning (timeModel.finishDescentIndexFor).
+  const isFinishDescent = ctx.sharedGroupTime?.timeModelGeneration === 3
+    ? ctx.segmentIndex === finishDescentIndexFor(ctx.route, timeModelTuningFor(ctx))
+    : ctx.segmentIndex === ctx.route.segments.length - 1;
   // #6199 + #6200 (KUN orders_gc_v3): den faelles tidsmodel (regroupOnDescentV3).
   let groups: RaceGroup[] = ctx.sharedGroupTime ? [...state.groups] : ctx.ordersGcV3 === true
     ? regroupOnDescentV3(state.groups, ctx.entrants, segmentLengthKm, segment.technicality, isFinishDescent)

@@ -160,6 +160,9 @@ export type Entrant = {
   // han koerer for. v3 kraever begge (buildTeamContext springer enhver
   // entrant uden team_id ELLER race_role over), og v4 goer det samme.
   team_id?: string | null;
+  // #6156 (valgfrit): rytterens form (rider_condition.form, 0-100). Broen saetter
+  // det kun under official_times_v3; udeladt = byte-identisk med foer.
+  form?: number | null;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
@@ -688,6 +691,8 @@ export type SegmentHookContext = {
     entryGroups: readonly RaceGroup[];
     /** stage_incidents length at interval entry; later time losses are point delays. Absent = 0. */
     incidentCursor?: number;
+    /** #6200: 3 = official_times_v3's time model (mechanics/timeModel.ts). Absent = official_times_v1/v2. */
+    timeModelGeneration?: 3;
   }>;
   segment: Segment;
   segmentIndex: number;

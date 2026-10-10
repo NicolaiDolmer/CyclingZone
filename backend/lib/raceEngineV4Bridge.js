@@ -1,5 +1,5 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
-import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, preservesOfficialStageTimes } from "./raceEngineRulesRevision.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
 //
 // HVAD DEN ER: seamen mellem den UÆNDREDE resultat-pipeline (raceRunner.js →
@@ -347,11 +347,11 @@ export function passagesFromV4Output(output, { stageProfile = {}, isStageRace = 
  * v3's `buildTeamContext` springer enhver entrant uden team_id ELLER
  * race_role over.
  */
-function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map()) {
+function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(), { withForm = false } = {}) {
   return entrants.map((e) => {
     const fatigue = Number(e.fatigue);
     const condition = Number.isFinite(fatigue) ? 1 - Math.min(Math.max(fatigue, 0), 100) / 100 : 1;
-    return entrantAdapter.entrantFromAbilitiesRow(e.abilities ?? {}, {
+    const entrant = entrantAdapter.entrantFromAbilitiesRow(e.abilities ?? {}, {
       riderId: e.rider_id,
       role: e.race_role,
       // #5571: et AI-holds indsats kommer fra dets ordre (M14), fordi motoren
@@ -361,7 +361,32 @@ function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(
       condition,
       teamId: e.team_id,
     });
+    // #6156: rytterens form KUN under official_times_v3 og kun naar der ER
+    // form-data; ellers baerer Entrant intet form-felt (byte-identisk input).
+    if (!withForm) return entrant;
+    const form = riderFormForV4(e);
+    return form === null ? entrant : { ...entrant, form };
   });
+}
+
+/**
+ * #6156: rytterens form (rider_condition.form, 0-100) som v4 skal se den, eller
+ * null naar der intet er at sende. raceRunner baerer den paa simEntrant.form;
+ * foer #6156 smed toV4Entrants den vaek, og v4 kaldte jour sans med form=null.
+ *
+ * KUN formen: formtoppens tillaeg / dykket bagefter laegges IKKE til (ejer
+ * 10/10: formtoppe kobles paa ved S5 under en senere revision). Klampes til
+ * skalaen 0-100. REN: ingen DB, ingen datoer.
+ *
+ * @param {{form?: number|string|null}} entrant
+ * @returns {number|null}
+ */
+export function riderFormForV4(entrant) {
+  const raw = entrant?.form;
+  if (raw == null || raw === "") return null;
+  const form = Number(raw);
+  if (!Number.isFinite(form)) return null;
+  return Math.min(Math.max(form, 0), 100);
 }
 
 /**
@@ -485,7 +510,10 @@ export function buildV4StageInput({
       ...(isOrdersGcV2OrLater(rulesRevision) ? { rules_revision: rulesRevision } : {}),
     },
   });
-  const startlist = toV4Entrants(entrants, modules.entrants, plan.aiEffortByRider);
+  // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe).
+  const startlist = toV4Entrants(entrants, modules.entrants, plan.aiEffortByRider, {
+    withForm: sharedTimeModelGeneration(rulesRevision) === 3,
+  });
   const input = { route, startlist, orders: plan.orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
   // Ejer 28/9: kun ungdomsloeb baerer truppen; seniorens input er uaendret.
   if (squad === "u23" || squad === "junior") input.squad = squad;

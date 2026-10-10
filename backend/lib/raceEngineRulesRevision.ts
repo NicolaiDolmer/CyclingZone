@@ -29,7 +29,12 @@
 // tidsmodel (officielle etapetider #6284, fysisk kontakt #6327, faelles
 // gruppeklokke #6199, kontaktsted #6329). Aktuel for nye loeb siden ejer-go
 // 9/10 (se CURRENT_RACE_RULES_REVISION).
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2"] as const;
+// #6200: "official_times_v3" = hele official_times_v2-pakken + nedkoerselsfinalen
+// paa bjergetaper (sidste stigning spreder gruppen som en topankomst; loftet paa
+// nedkoerslen gaelder ogsaa med et kort stykke til maal). SLUKKET: aldrig aktuel
+// foer et ejer-go, og DB-constrainten kender den ikke endnu (kraever en migration
+// ved flip).
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -48,9 +53,20 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   official_times_v1: 2,
   // #6199 (owner 8/10): the full orders_gc_v3 package + the shared time model.
   official_times_v2: 3,
+  // #6200: official_times_v2 + the descent-finish package; same v3 mechanics.
+  official_times_v3: 3,
 });
 
-const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2"]);
+const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3"]);
+
+/**
+ * #6200: the shared time model's generation. 3 = official_times_v3 (the
+ * descent-finish package on top of official_times_v2); 0 for everything that is
+ * not official_times_v3. Never inferred from the orders_gc generation.
+ */
+export function sharedTimeModelGeneration(value: unknown): 0 | 3 {
+  return value === "official_times_v3" ? 3 : 0;
+}
 
 /** Only the future pinned official-times revisions store uncapped official stage gaps. */
 export function preservesOfficialStageTimes(value: unknown): boolean {

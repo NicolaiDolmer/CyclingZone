@@ -40,7 +40,7 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, finishDescentIndexFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 
 // #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
@@ -363,6 +363,29 @@ export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "seg
 }
 
 /**
+ * #6200 (KUN official_times_v3): er segmentet en del af etapens SIDSTE stigning
+ * (sidste blok af sammenhaengende stigninger) paa en nedkoerselsfinale, hvor
+ * resten til maal er uden stigning og indeholder en nedkoersel? Kun paa de
+ * profiler tuningen naevner (descentFinishClimbRaceProfiles; tom = aldrig).
+ */
+export function isDescentFinishDecidingClimb(
+  ctx: Pick<SegmentHookContext, "route" | "segmentIndex">,
+  t: Pick<TimeModelTuning, "descentFinishClimbRaceProfiles" | "finishDescentMaxRunInKm">,
+): boolean {
+  const segs = ctx.route.segments ?? [];
+  if (ctx.route.finale_type !== "descent" || !t.descentFinishClimbRaceProfiles.includes(ctx.route.profile_type)) return false;
+  let end = segs.length - 1;
+  while (end >= 0 && segs[end].kind !== "climb") end--;
+  // Fable-dom 10/10: samme definition af "nedkoersel mod maal" som loftet
+  // (finishDescentIndexFor, run-in <= finishDescentMaxRunInKm). Ellers kunne en
+  // rute med nedkoersel + lang dal faa topankomst-spredning uden loft bagefter.
+  if (end < 0 || finishDescentIndexFor(ctx.route, t) <= end) return false;
+  let start = end;
+  while (start > 0 && segs[start - 1].kind === "climb") start--;
+  return ctx.segmentIndex >= start && ctx.segmentIndex <= end;
+}
+
+/**
  * #6199 (KUN official_times_v2): slutstigningens selektion. En rytter falder af,
  * naar hans eget hul mindst er klyngens minimum, eller naar reserven/indsatsen
  * tvinger ham. Monotont i underskuddet: et stoerre underskud giver aldrig et
@@ -480,7 +503,10 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // favoritterne ikke paa hjul. Hver rytter taber den tid hans eget underskud
     // giver (laengde x stejlhed x evneforskel); kun et hul under klyngens minimum
     // holder ham i gruppen. Tidligere stigninger beholder taerskel-selektionen.
-    const summitRace = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto" && isSummitFinishClimb(ctx);
+    // #6200 (KUN official_times_v3): det samme paa sidste stigning foer en
+    // nedkoerselsfinale paa en bjergetape (isDescentFinishDecidingClimb).
+    const summitRace = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto"
+      && (isSummitFinishClimb(ctx) || isDescentFinishDecidingClimb(ctx, timeModel));
     let splitRiderIds = summitRace
       ? summitRaceSplitRiderIds(selections, gradientPct, lengthKm, timeModel)
       : guardedSplitRiderIds(selections);
