@@ -182,6 +182,16 @@ export const BREAKAWAY_SIZE_V3_TUNING = Object.freeze({
 
 export type BreakawaySizeProfile = { maxSize: number; room: number; successBonus: number; roomCrowdWeight: number };
 
+/**
+ * #6201 (KUN official_times_v3): ekstra succes-tillaeg oveni profilens trin paa
+ * bjerg og hoejfjeld, saa trappens bund holder i felter med mest menneskehold
+ * (forsoegene kommer kun fra hunters, frie roller og ordrer, ejer 10/10 valg B).
+ * Kalibreret privat (balance-internals/clean-revision/6201/).
+ */
+export const BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA = Object.freeze({
+  successBonusByProfile: Object.freeze({ mountain: 0.15, high_mountain: 0.15 }) as Readonly<Partial<Record<string, number>>>,
+});
+
 /** #6201: profilens trin, eller null (flad og alt andet: uaendret dannelse, loft 8). */
 export function breakawaySizeProfileV3(profileType: string | undefined): BreakawaySizeProfile | null {
   const p = profileType ? BREAKAWAY_SIZE_V3_TUNING.byProfile[profileType] : undefined;

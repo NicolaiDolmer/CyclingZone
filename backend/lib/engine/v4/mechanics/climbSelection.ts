@@ -575,8 +575,9 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // holder ham i gruppen. Tidligere stigninger beholder taerskel-selektionen.
     // #6200 (KUN official_times_v3): det samme paa sidste stigning foer en
     // nedkoerselsfinale paa en bjergetape (isDescentFinishDecidingClimb).
+    // D1 gaelder favoritternes grupper; dagens udbrud (M5's eget hul) koerer som foer.
     const descentDecider = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto"
-      && !isSummitFinishClimb(ctx) && isDescentFinishDecidingClimb(ctx, timeModel);
+      && group.origin !== "breakaway" && !isSummitFinishClimb(ctx) && isDescentFinishDecidingClimb(ctx, timeModel);
     const summitRace = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto"
       && (isSummitFinishClimb(ctx) || isDescentFinishDecidingClimb(ctx, timeModel));
     // Ren revision spor 1, D1 (KUN official_times_v3; vaegtene er 0 og skalaen 1 i

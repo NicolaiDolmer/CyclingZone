@@ -265,11 +265,16 @@ function proxyRows(): StageRow[] {
   return Array.isArray(raw) ? raw : raw.stages;
 }
 
-test("#6200 v3: every stage that is not a mountain descent finish is byte-identical to official_times_v2", () => {
-  const rows = proxyRows().filter((row) => !(row.finale_type === "descent" && (row.profile_type === "mountain" || row.profile_type === "high_mountain")));
+// Ren revision spor 1 (#6201/#6428) aendrer ogsaa morgenudbruddet paa kuperet,
+// rullende og bjerg (AI-holdenes forsoeg, traengslen, trappens bund) under v3.
+// Alle andre etapeformer er stadig byte-identiske med official_times_v2.
+const CLEAN_REVISION_S1_PROFILES = new Set(["hilly", "rolling", "mountain", "high_mountain"]);
+
+test("#6200 v3: every stage outside the clean revision's profiles is byte-identical to official_times_v2", () => {
+  const rows = proxyRows().filter((row) => !CLEAN_REVISION_S1_PROFILES.has(row.profile_type));
   const shapes = new Map<string, StageRow>();
   for (const row of rows) if (!shapes.has(`${row.profile_type}/${row.finale_type}`)) shapes.set(`${row.profile_type}/${row.finale_type}`, row);
-  assert.ok(shapes.size >= 15, "every other stage shape is covered");
+  assert.ok(shapes.size >= 6, `every other stage shape is covered (${shapes.size})`);
   for (const row of shapes.values()) {
     for (const seed of SEEDS) {
       assert.equal(digestOf(frozenStageOutput(row, seed, "official_times_v3")), digestOf(frozenStageOutput(row, seed, "official_times_v2")),

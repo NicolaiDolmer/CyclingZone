@@ -82,8 +82,10 @@ import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNIN
 import { helperCostMultiplier } from "./teamPlay.ts";
 import {
   applySmallBreakPullCost,
+  BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA,
   breakawayMaxSizeV3,
   breakawaySizeProfileV3,
+  type BreakawaySizeProfile,
   DANGEROUS_ATTEMPT_TUNING,
   effectiveTryBreakByRider,
   resolveMorningBreakFormation,
@@ -342,6 +344,15 @@ function attemptFormation(
 }
 
 /**
+ * #6201 (KUN official_times_v3): profilens trin plus revisionens ekstra
+ * succes-tillaeg (BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA). Samme objekt ellers.
+ */
+function officialTimesV3SizeProfile(size: BreakawaySizeProfile, ctx: BreakawayHookContext): BreakawaySizeProfile {
+  const extra = ctx.sharedGroupTime?.timeModelGeneration === 3 ? BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA.successBonusByProfile[ctx.route.profile_type] : undefined;
+  return extra ? { ...size, successBonus: size.successBonus + extra } : size;
+}
+
+/**
  * #5955 (orders_gc_v1): ordrestyret, omstridt morgenudbrud. Samme kildegruppe
  * og samme udbrudsgruppe-form som legacy (`attemptFormation`), men hvem der
  * kommer afsted afgoeres af mechanics/breakawayPermission.ts: tilladelse ->
@@ -397,7 +408,7 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     ...(dangerTeams ? { dangerTeams } : {}),
     // #5578 robust (KUN official_times_v2): klassementets forreste moeder den haardeste modstand.
     ...(dangerTeams && gcContext ? rankedFormationPressure(gcContext, timeModelTuningFor(ctx).gcDanger) : {}),
-    ...(ctx.ordersGcV3 === true && breakawaySizeProfileV3(ctx.route.profile_type) ? { sizeProfile: breakawaySizeProfileV3(ctx.route.profile_type)! } : {}), // #6201
+    ...(ctx.ordersGcV3 === true && breakawaySizeProfileV3(ctx.route.profile_type) ? { sizeProfile: officialTimesV3SizeProfile(breakawaySizeProfileV3(ctx.route.profile_type)!, ctx) } : {}), // #6201
     // #6201 R3 (KUN official_times_v3): et farligt forsoeg fylder ikke i traengslen.
     ...(ctx.sharedGroupTime?.timeModelGeneration === 3 ? { dangerousOutsideRoom: true } : {}),
   });
