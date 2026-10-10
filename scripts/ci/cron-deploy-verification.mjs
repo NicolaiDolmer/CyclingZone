@@ -45,7 +45,7 @@ export function affectedCronJobs(files, { monitors = ALL_CRON_MONITORS, map = SO
         const code = blankStringsAndComments(source);
         // The shared scanner blanks template expressions as well. Such a
         // loader cannot safely be narrowed, so explicitly widen instead.
-        for (const template of source.matchAll(/`(?:\\[\s\S]|[^`])*`/g)) {
+        for (const template of source.matchAll(/`(?:\\[\s\S]|[^`\\])*`/g)) {
           if (template[0].includes('${') && /\b(?:import|require)\s*\(/.test(template[0])) unknown.add(slug);
         }
         // Nonliteral loaders cannot be resolved statically, so never narrow.
