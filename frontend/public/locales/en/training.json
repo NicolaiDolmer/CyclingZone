@@ -183,6 +183,7 @@
     "nothingAppliedYet": "Nothing is applied until you accept.",
     "empty": "No suggestions right now. Every rider already has a matched focus.",
     "emptyFiltered": "Every rider already has a plan.",
+    "chooseByRider": "Choose rider by rider ({n})",
     "programTitle": "Programs for your groups",
     "programIntro": "A ready-made week for each type of rider. It only goes to riders without their own plan.",
     "programFor": "{type}: {count, plural, one {# rider} other {# riders}}",
