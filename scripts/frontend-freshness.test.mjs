@@ -8,7 +8,7 @@ const served = 'a'.repeat(40), target = 'b'.repeat(40), earlierBuild = 'c'.repea
 const version = { release: served, frontend: '0123456789abcdef' };
 function fixture(paths = 'frontend/src/App.jsx\0', candidates = [target]) {
   return args => {
-    if (args[0] === 'merge-base') return '';
+    if (args[0] === 'merge-base' || args[0] === 'cat-file') return '';
     if (args[0] === 'rev-list') return candidates.join('\n');
     if (args[0] === 'diff') return args[4] === served ? paths : 'docs/later.md\0';
     throw new Error('Unexpected Git operation');
@@ -96,6 +96,45 @@ test('main moving during the probe invalidates an otherwise current observation'
     readVersion: () => ({ release: target }), git: fixture(), observe: noBuild,
   });
   assert.equal(result.state, 'unknown');
+});
+
+test('target missing locally is fetched once and then assessed (no false unknown)', async () => {
+  let fetched = false;
+  const base = fixture('docs/change.md\0');
+  const result = await freshness.probeFrontendFreshness({
+    readMain: () => target, readVersion: () => version, observe: noBuild,
+    refresh: () => { fetched = true; },
+    git: args => { if (args[0] === 'cat-file' && !fetched) throw new Error('bad object'); return base(args); },
+  });
+  assert.equal(fetched, true);
+  assert.equal(result.state, 'intentionally-unchanged');
+});
+
+test('target still missing after fetch, or failing fetch, stays unknown', async () => {
+  const gitMissing = args => { if (args[0] === 'cat-file') throw new Error('bad object'); return fixture()(args); };
+  for (const refresh of [() => {}, () => { throw new Error('offline'); }, undefined]) {
+    const result = await freshness.probeFrontendFreshness({
+      readMain: () => target, readVersion: () => version, observe: noBuild, refresh, git: gitMissing,
+    });
+    assert.equal(result.state, 'unknown');
+  }
+});
+
+test('freshness CLI reads the production domain, not a branch alias', async () => {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('./frontend-freshness-cli.mjs', import.meta.url), 'utf8');
+  assert.match(source, /https:\/\/cyclingzone\.org\/version\.json/);
+  assert.doesNotMatch(source, /vercel\.app/);
+  assert.match(source, /'fetch', '--quiet', 'origin', 'main'/);
+});
+
+test('deploy-verify waits only on the frontend production Vercel environment', async () => {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
+  const env = readFileSync(new URL('./frontend-freshness.mjs', import.meta.url), 'utf8').match(/const ENVIRONMENT = '([^']+)'/)[1];
+  assert.ok(source.includes(`VERCEL_ENV='${env}'`));
+  assert.ok(source.includes('"$CREATOR" == vercel* && "$DEPLOY_ENV" != "$VERCEL_ENV"'));
+  assert.ok(source.includes('frontend-deployment-needed.mjs "$SHA" || true'));
 });
 
 test('deploy workflow uses the canonical adapter and no narrower frontend-only decision', async () => {
