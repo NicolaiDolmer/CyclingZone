@@ -200,3 +200,76 @@ test("deploy-vinduet (42703, program_key findes ikke endnu): tildeling virker ud
   assert.equal(row.program_key, undefined);
   assert.equal(row.days.mon.session, "vo2max");
 });
+
+// ── #4522: assistentens programforslag pr. rytter-gruppe (riderIds + keepOwn) ──
+
+test("#4522 riderIds + keepOwn: kopierer til ryttere uden egen plan og springer egne raekker og gruppefoelgere over", async (t) => {
+  const state = seed({
+    riders: ["r1", "r2", "r3", "r4"],
+    weekPlans: [{ id: "own-r1", team_id: "team-a", rider_id: "r1", days: { mon: { intensity: "hard" } } }],
+  });
+  state.training_group_members = [
+    { rider_id: "r3", group_id: "g1", team_id: "team-a", follows_group: true },
+    { rider_id: "r4", group_id: "g1", team_id: "team-a", follows_group: false },
+  ];
+  const { call } = await fixture(t, { state });
+  const res = await call("POST", "/apply", { programKey: "sprinter", riderIds: ["r1", "r2", "r3", "r4", "r2"], keepOwn: true });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.applied, 2, "r2 (ingen plan) og r4 (har forladt gruppen)");
+  assert.equal(res.body.skipped, 2, "r1 har egen raekke, r3 foelger en gruppe");
+  const rows = state.training_week_plans.filter((r) => r.team_id === "team-a");
+  assert.deepEqual(rows.map((r) => r.rider_id).sort(), ["r1", "r2", "r4"]);
+  assert.deepEqual(rows.find((r) => r.id === "own-r1").days, { mon: { intensity: "hard" } }, "egen plan er uroert");
+  assert.equal(rows.find((r) => r.rider_id === "r2").program_key, "sprinter");
+  assert.equal(rows.find((r) => r.rider_id === "r2").days.fri.session, "sprint");
+  assert.notEqual(rows.find((r) => r.rider_id === "r2").days, rows.find((r) => r.rider_id === "r4").days);
+});
+
+test("#4522 riderIds med en fremmed rytter afvises (403) og intet skrives", async (t) => {
+  const state = seed();
+  const { call } = await fixture(t, { state });
+  const res = await call("POST", "/apply", { programKey: "sprinter", riderIds: ["r1", "x9"], keepOwn: true });
+  assert.equal(res.status, 403);
+  assert.equal(state.training_week_plans.length, 0);
+});
+
+test("#4522 riderIds kraever keepOwn:true og en ikke-tom liste af id'er (400)", async (t) => {
+  const state = seed();
+  const { call } = await fixture(t, { state });
+  assert.equal((await call("POST", "/apply", { programKey: "sprinter", riderIds: ["r1"] })).status, 400);
+  assert.equal((await call("POST", "/apply", { programKey: "sprinter", riderIds: [], keepOwn: true })).status, 400);
+  assert.equal((await call("POST", "/apply", { programKey: "sprinter", riderIds: [1], keepOwn: true })).status, 400);
+  assert.equal(state.training_week_plans.length, 0);
+});
+
+test("#4522 flag off: riderIds-stien findes ikke (404)", async (t) => {
+  const state = seed({ stage: "off" });
+  const { call } = await fixture(t, { state });
+  assert.equal((await call("POST", "/apply", { programKey: "sprinter", riderIds: ["r1"], keepOwn: true })).status, 404);
+  assert.equal(state.training_week_plans.length, 0);
+});
+
+test("#4522 alle valgte har egen plan: applied 0, alt springes over, intet skrives", async (t) => {
+  const state = seed({
+    weekPlans: [{ id: "own-r1", team_id: "team-a", rider_id: "r1", days: { mon: { intensity: "hard" } } }],
+  });
+  const { call } = await fixture(t, { state });
+  const res = await call("POST", "/apply", { programKey: "sprinter", riderIds: ["r1"], keepOwn: true });
+  assert.equal(res.status, 200);
+  assert.deepEqual([res.body.applied, res.body.skipped], [0, 1]);
+  assert.equal(state.training_week_plans.length, 1);
+});
+
+test("#4522 squad og enkelt-rytter er uaendret: squad overskriver stadig en egen raekke", async (t) => {
+  const state = seed({
+    weekPlans: [{ id: "own-r1", team_id: "team-a", rider_id: "r1", days: { mon: { intensity: "hard" } } }],
+  });
+  const { call } = await fixture(t, { state });
+  const squad = await call("POST", "/apply", { programKey: "sprinter", target: "squad" });
+  assert.equal(squad.body.applied, 2);
+  assert.equal(squad.body.skipped, undefined);
+  assert.equal(state.training_week_plans.find((r) => r.id === "own-r1").program_key, "sprinter");
+  const single = await call("POST", "/apply", { programKey: "hill_climber", target: "r2" });
+  assert.equal(single.body.applied, 1);
+  assert.equal(state.training_week_plans.find((r) => r.rider_id === "r2").program_key, "hill_climber");
+});

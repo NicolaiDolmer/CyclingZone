@@ -34,7 +34,7 @@ import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
-import { markRidersOwnPlan, syncGroupsToSquadProgram } from "../lib/trainingGroups.ts"; // #6000
+import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
 
 const PASS = (_req, _res, next) => next();
 
@@ -164,18 +164,65 @@ export function createTrainingProgramsRouter({
     }
   });
 
-  // POST /api/training/programs/apply — body { programKey, target: "squad" | <riderId> }.
+  // #4522: ryttere der foelger en traeningsgruppe (#6000). Manglende tabel = ingen.
+  async function groupFollowerIds(teamId) {
+    const { data, error } = await supabase
+      // pagination-safe: one team's group memberships, far below the 1000-row cap.
+      .from("training_group_members").select("rider_id, follows_group").eq("team_id", teamId);
+    if (error) {
+      if (isMissingGroupsTable(error)) return new Set();
+      throw new Error(error.message);
+    }
+    return new Set((data ?? []).filter((m) => m.follows_group !== false).map((m) => m.rider_id));
+  }
+
+  // Assistentens program til en valgt gruppe (keepOwn): kopierer kun ind til
+  // ryttere UDEN egen ugeplan-raekke og som ikke foelger en gruppe. De andre
+  // springes over og rapporteres i `skipped` — en egen plan vinder altid.
+  async function applyToPickedRiders(res, { program, teamId, ownIds, pickedIds }) {
+    const own = new Set(ownIds);
+    const picked = [...new Set(pickedIds)];
+    if (!picked.every((id) => own.has(id))) return res.status(403).json({ error: "not_own_rider" });
+    const [{ data: rows, error: loadError }, followers] = await Promise.all([
+      loadProgramRows(supabase, teamId), groupFollowerIds(teamId),
+    ]);
+    if (loadError) throw new Error(loadError.message);
+    const hasOwnRow = new Set((rows ?? []).filter((r) => r.rider_id != null).map((r) => r.rider_id));
+    const targets = picked.filter((id) => !hasOwnRow.has(id) && !followers.has(id));
+    const skipped = picked.length - targets.length;
+    if (targets.length === 0) return res.json({ ok: true, applied: 0, skipped, programKey: program.key });
+    const now = new Date().toISOString();
+    const { error } = await insertRows(supabase, targets.map((riderId) => ({
+      // En NY kopi pr. rytter — ingen delte objekter mellem raekkerne.
+      team_id: teamId, rider_id: riderId, days: programWeekDaysFor(program.key), program_key: program.key, updated_at: now,
+    })));
+    if (error) {
+      captureExceptionFn(new Error(`training programs apply picked failed (0/${targets.length}): ${error.message}`));
+      return res.status(500).json({ error: "partial_apply", applied: 0, total: targets.length });
+    }
+    return res.json({ ok: true, applied: targets.length, skipped, programKey: program.key });
+  }
+
+  // POST /api/training/programs/apply — body { programKey, target: "squad" | <riderId> }
+  // eller (#4522) { programKey, riderIds: [...], keepOwn: true }.
   // Kopierer programmet ind i hver maal-rytters egen raekke.
   router.post("/apply", requireAuth, writeLimiter, planLock("programApply"), async (req, res) => {
     if (!req.team) return res.status(400).json({ error: "No team found" });
-    const { programKey, target } = req.body ?? {};
+    const { programKey, target, riderIds: pickedIds, keepOwn } = req.body ?? {};
     const program = findTrainingProgram(programKey);
     if (!program) return res.status(400).json({ error: "invalid_program" });
-    if (typeof target !== "string" || !target) return res.status(400).json({ error: "invalid_target" });
+    // #4522: assistentens programforslag pr. rytter-gruppe. Egen sti: en liste af
+    // ryttere, og `keepOwn:true` er pligt (intet her overskriver en egen plan).
+    const pickMode = pickedIds !== undefined;
+    if (pickMode) {
+      const validPick = Array.isArray(pickedIds) && pickedIds.length > 0 && pickedIds.every((id) => typeof id === "string" && id);
+      if (!validPick || keepOwn !== true) return res.status(400).json({ error: "invalid_target" });
+    } else if (typeof target !== "string" || !target) return res.status(400).json({ error: "invalid_target" });
     try {
       if (!(await programsOn(req))) return res.status(404).json({ error: "not_found" });
       const teamId = req.team.id;
       const riderIds = await ownRiderIds(teamId);
+      if (pickMode) return await applyToPickedRiders(res, { program, teamId, ownIds: riderIds, pickedIds });
       let targets;
       if (target === "squad") targets = riderIds;
       else if (riderIds.includes(target)) targets = [target];
