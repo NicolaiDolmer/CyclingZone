@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.353",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Back to team program on the Today row",
+          "body": "A rider with his own plan now has Back to team program right on the Today row: under the day picker on desktop, above Rest, Recovery and Program on your phone. One tap puts him back on the team program."
+        },
+        "da": {
+          "title": "Tilbage til holdets program på Today-rækken",
+          "body": "En rytter med egen plan har nu Back to team program direkte på Today-rækken: under dagsvælgeren på computeren, over Rest, Recovery og Program på telefonen. Ét tryk sætter ham tilbage på holdets program."
+        },
+        "refs": [
+          6123
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A shorter program catalog on your phone",
+          "body": "On your phone the program catalog shows the rider's current program on one line with Browse programs. The full list opens when you need it."
+        },
+        "da": {
+          "title": "Et kortere programkatalog på telefonen",
+          "body": "På telefonen viser programkataloget rytterens nuværende program på én linje med Browse programs. Hele listen åbner, når du skal bruge den."
+        },
+        "refs": [
+          5825
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.352",
     "date": "2026-10-10",
     "changes": [
