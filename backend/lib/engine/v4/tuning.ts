@@ -974,22 +974,22 @@ const breakawayChaseV3 = {
   // Hvor mange af jagtgruppens bedste ryttere paa finalens krav der maales.
   stageWinTopRiders: 8,
   // Vaegt paa etapeinteressen i chase-forcen (erstatter sprinterInterestWeight under v3).
-  stageWinInterestWeight: 0.5,
+  stageWinInterestWeight: 0.25,
   // Finalevaegt pr. finaletype (erstatter finaleTypeChaseWeight under v3).
   stageWinFinaleWeightDefault: 0.4,
   stageWinFinaleWeight: {
-    bunch_sprint: 2.0,
-    reduced_sprint: 1.3,
+    bunch_sprint: 3.0,
+    reduced_sprint: 2.0,
     punch: 0.6,
     breakaway: 0.3,
     descent: 0.15,
-    long_climb: 0.3,
+    long_climb: 0.5,
     solo_tt: 0.05,
   } as Partial<Record<import("./types.ts").FinaleType, number>>,
   // Vaegt paa et holds ordre/GC-reaktion (signal i [0, maxTeamSignal]) lagt til
   // netto-fordelen. Summen af det ordrerne tilfoejer ud over interessen er
   // hoejst denne vaegt (samme loft som det samlede stance-signal paa 1).
-  teamSignalWeight: 0.15,
+  teamSignalWeight: 0.12,
   // Jagt-gulvets lodtraekning (feltet kommer for sent) under v3.
   chaseFloorLateChanceByFinale: {
     bunch_sprint: 0.08,
