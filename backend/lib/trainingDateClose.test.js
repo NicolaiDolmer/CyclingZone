@@ -107,22 +107,92 @@ test('registered frozen and emptied teams reach reconciliation without a legacy 
   assert.equal(result.failed, 0);
 });
 
-test('a transferred rider cannot prevent the remaining teammate from receiving every tick', async () => {
-  __resetNormalizedTrainingDateCacheForTests();
-  const calls = [], quarantine = [];
-  const work = { team_id: 'old', game_days: [5, 6, 7, 8, 9], expected_rider_ids: ['ready', 'moved'], status: 'partial', opening_conditions: { ready: {}, moved: {} } };
-  await runNormalizedTrainingDateSweep({
+// #6439 (owner 10/10): training follows the rider who changes team mid-date.
+function transferOptions({ work, riders, quarantine, calls }) {
+  return {
     supabase: {}, now: new Date('2026-09-30T00:05:00Z'), elapsedClock: () => 0,
     loadIndex: async () => ({ today: '2026-09-30', activeSeasonId: 'season', jobs: [{ tickDate: '2026-09-29', season: { id: 'season', number: 4 }, forceRetry: true }] }),
     loadWorkRows: async () => [work],
-    loadContext: async () => ({ teams: [{ id: 'old', league_division_id: 'division' }], riders: [{ id: 'ready', team_id: 'old' }, { id: 'moved', team_id: 'new' }], gameDaysByDivision: new Map() }),
+    loadContext: async () => ({ teams: [{ id: 'old', league_division_id: 'division' }], riders, gameDaysByDivision: new Map() }),
     quarantineRiders: async args => { quarantine.push(...args.riderIds); },
     runDay: async args => { calls.push(args); return {}; },
     dispatchAlarms: async () => ({ dates: 1, failed: 0 }),
-  });
-  assert.deepEqual(quarantine, ['moved']);
+  };
+}
+
+test('a transferred rider settles on the opening team and the teammate still receives every tick', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const calls = [], quarantine = [];
+  const work = { team_id: 'old', game_days: [5, 6, 7, 8, 9], expected_rider_ids: ['ready', 'moved'], status: 'partial', opening_conditions: { ready: {}, moved: {} } };
+  await runNormalizedTrainingDateSweep(transferOptions({ work, quarantine, calls,
+    riders: [{ id: 'ready', team_id: 'old' }, { id: 'moved', team_id: 'new' }] }));
+  assert.deepEqual(quarantine, []);
   assert.equal(calls.length, 5);
-  assert.ok(calls.every(call => call.eligibleRiderIds.join() === 'ready'));
+  assert.ok(calls.every(call => call.teamId === 'old' && call.eligibleRiderIds.join() === 'ready,moved'));
+});
+
+test('a moved rider without a frozen opening condition, or released from every team, is still quarantined', async () => {
+  for (const [riders, opening] of [
+    [[{ id: 'ready', team_id: 'old' }, { id: 'moved', team_id: 'new' }], { ready: {} }],
+    [[{ id: 'ready', team_id: 'old' }], { ready: {}, moved: {} }],
+  ]) {
+    __resetNormalizedTrainingDateCacheForTests();
+    const calls = [], quarantine = [];
+    const work = { team_id: 'old', game_days: [5, 6, 7, 8, 9], expected_rider_ids: ['ready', 'moved'], status: 'partial', opening_conditions: opening };
+    await runNormalizedTrainingDateSweep(transferOptions({ work, riders, quarantine, calls }));
+    assert.deepEqual(quarantine, ['moved']);
+    assert.ok(calls.every(call => call.eligibleRiderIds.join() === 'ready'));
+  }
+});
+
+test('a transfer in the middle of the evening settlement gives 5 of 5 on one team and never a double tick', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  // Stateful stand-ins for the database: one receipt per (rider, game day), and the
+  // registration RPC's #6439 claim rule (a rider in another team's open date row
+  // is not registered again for that date).
+  const work = [], receipts = new Map(), quarantine = [];
+  let failOnce = true;
+  const riders = [{ id: 'stay', team_id: 'old' }, { id: 'mover', team_id: 'old' }, { id: 'buyer-own', team_id: 'new' }];
+  const options = {
+    supabase: {}, elapsedClock: () => 0, logger: { error() {} },
+    loadIndex: async ({ now }) => ({ today: '2026-09-29', activeSeasonId: 'season',
+      jobs: [{ tickDate: '2026-09-29', season: { id: 'season', number: 4 }, ...(now.getUTCMinutes() > 0 ? { forceRetry: true } : {}) }] }),
+    loadWorkRows: async () => work.map(row => ({ ...row })),
+    loadContext: async () => ({
+      teams: [{ id: 'old', league_division_id: 'division' }, { id: 'new', league_division_id: 'division' }],
+      riders: riders.map(rider => ({ ...rider })), gameDaysByDivision: new Map([['division', [5, 6, 7, 8, 9]]]),
+    }),
+    registerWork: async ({ teamId, gameDays, riderIds }) => {
+      const claimed = new Set(work.filter(row => row.team_id !== teamId).flatMap(row => row.expected_rider_ids));
+      const row = { team_id: teamId, game_days: gameDays, expected_rider_ids: riderIds.filter(id => !claimed.has(id)),
+        status: 'pending', opening_conditions: Object.fromEntries(riderIds.map(id => [id, { form: 50, fatigue: 10 }])), quarantined_rider_ids: [] };
+      work.push(row); return row;
+    },
+    quarantineRiders: async args => { quarantine.push(...args.riderIds); },
+    runDay: async ({ teamId, gameDay, eligibleRiderIds }) => {
+      // The settlement is interrupted on the final race day; the rider is sold before the retry.
+      if (failOnce && teamId === 'old' && gameDay === 9) {
+        failOnce = false;
+        riders.find(rider => rider.id === 'mover').team_id = 'new';
+        throw new Error('transient');
+      }
+      for (const rider of eligibleRiderIds) {
+        const key = `${rider}:${gameDay}`;
+        if (receipts.has(key)) continue; // commit_training_date_tick skips a receipted race day
+        receipts.set(key, teamId);
+      }
+      return {};
+    },
+    dispatchAlarms: async () => ({ dates: 0, failed: 0 }),
+  };
+  await runNormalizedTrainingDateSweep({ ...options, now: new Date('2026-09-29T18:00:00Z') });
+  assert.equal([...receipts.keys()].filter(key => key.startsWith('mover:')).length, 4);
+  await runNormalizedTrainingDateSweep({ ...options, now: new Date('2026-09-29T18:05:00Z') });
+  const moverTicks = [...receipts].filter(([key]) => key.startsWith('mover:'));
+  assert.deepEqual(moverTicks.map(([key]) => Number(key.split(':')[1])).sort((a, b) => a - b), [5, 6, 7, 8, 9]);
+  assert.ok(moverTicks.every(([, team]) => team === 'old'), 'the opening team settles the whole date');
+  assert.deepEqual(quarantine, []);
+  assert.equal(work.find(row => row.team_id === 'new').expected_rider_ids.includes('mover'), false);
 });
 
 test('an older season is evidence-only recovery and cannot overwrite a newer injury', async () => {
