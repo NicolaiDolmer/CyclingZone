@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   MAX_URL_BYTES, PHASES, RANKING_SLA_MS, WRAPPER_MARKER,
-  checkViewerToken, classifyRequest, computeTicks, createFaultController, createInstrumentedFetch, createRecorder,
+  boardDuplicateRaceIds, checkViewerToken, classifyRequest, computeTicks, createFaultController, createInstrumentedFetch, createRecorder,
   evaluateOracles, evaluateRun, nextCopenhagenMidnightMs, parseArgs, runRaceDaySim, urlBytes, validatePlan,
 } from './race-day-sim.mjs';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -58,7 +58,8 @@ function makeFakeLive(world, behaviour = {}) {
 
     async function finishRace(race) {
       await f(`${ORIGIN}/rest/v1/board_satisfaction_events`, { method: 'POST' });
-      world.board.push({ raceId: race.id, teamId: 'team-x' });
+      // Prod-form: ét hold har flere bestyrelser (baseline/1yr/3yr/5yr), én række pr. bestyrelse pr. løb.
+      for (const plan of ['baseline', '1yr', '3yr', '5yr']) world.board.push({ race_id: race.id, team_id: 'team-x', board_id: `board-x-${plan}` });
       await f(`${ORIGIN}/rest/v1/races?id=eq.${race.id}`, { method: 'PATCH' });
       race.finalizeState = null;
       if (race.stagesCompleted >= race.stages) race.status = 'completed';
@@ -144,7 +145,7 @@ function makeFakeLive(world, behaviour = {}) {
         return {
           runsBySlot,
           financeDup: dup(world.finance, r => `${r.raceId}|${r.teamId}|${r.type}`).map(k => ({ alias: aliasOf.get(k.split('|')[0]), type: 'prize' })),
-          boardDup: dup(world.board, r => `${r.raceId}|${r.teamId}`).map(k => aliasOf.get(k.split('|')[0])),
+          boardDup: boardDuplicateRaceIds(world.board).map(id => aliasOf.get(id)),
           races: world.races.map(r => ({ alias: aliasOf.get(r.id), status: r.status, finalizeState: !!r.finalizeState, prizePaid: r.prizePaid })),
           finalResultCounts: Object.fromEntries(world.races.map(r => [`${aliasOf.get(r.id)}#1`, world.results[`${r.id}#1`] ?? 0])),
         };
@@ -360,6 +361,18 @@ test('oracle: exactly one run and one settlement per race passes; anything else 
   assert.ok(evaluateOracles({ ...good, boardDup: ['R02'] }).blockers.includes('ORACLE_BOARD_DUPLICATE'));
   assert.ok(evaluateOracles({ ...good, resultCounts: { 'R01#1': { first: 120, final: 240 } } }).blockers.includes('ORACLE_RESULTS_CHANGED_AFTER_FIRST_READ'));
   assert.deepEqual(evaluateOracles(null).blockers, ['ORACLE_MISSING']);
+});
+
+test('board oracle: several boards per team per race is normal; the same board twice is a duplicate', () => {
+  const plans = ['baseline', '1yr', '3yr', '5yr'];
+  const rows = [];
+  for (const race of ['race-a', 'race-b']) for (const team of ['team-1', 'team-2']) for (const plan of plans) {
+    rows.push({ race_id: race, team_id: team, board_id: `${team}-${plan}` });
+  }
+  assert.deepEqual(boardDuplicateRaceIds(rows), []);
+  rows.push({ race_id: 'race-b', team_id: 'team-2', board_id: 'team-2-3yr' });
+  assert.deepEqual(boardDuplicateRaceIds(rows), ['race-b']);
+  assert.deepEqual(boardDuplicateRaceIds([]), []);
 });
 
 test('passed=false when a phase is missing, even if everything measured is clean', () => {

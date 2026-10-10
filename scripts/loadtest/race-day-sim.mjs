@@ -146,6 +146,20 @@ export function isBoardCall({ surface, name }) {
   return (surface === 'rest' && /^board_/.test(name ?? '')) || (surface === 'rpc' && /board/.test(name ?? ''));
 }
 
+// Bestyrelses-dublet = samme bestyrelse (board_id) to gange for samme løb, som
+// unik-indekset board_satisfaction_events_board_race_uniq (board_id, race_id).
+// Et hold har normalt flere bestyrelser (plan_type baseline/1yr/3yr/5yr) og
+// dermed flere rækker pr. (løb, hold) — det er IKKE en dublet.
+// Returnerer race_id'er med mindst én dublet (hver kun én gang).
+export function boardDuplicateRaceIds(rows) {
+  const seen = new Map();
+  for (const r of rows ?? []) {
+    const key = `${r.race_id}|${r.board_id}`;
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  }
+  return [...new Set([...seen].filter(([, n]) => n > 1).map(([k]) => k.split('|')[0]))];
+}
+
 // Den atomiske resultat-skrivning: etape-stien (stageResultRpc.applyStageResultAtomic)
 // og hel-løbs-stien (applyRaceResultsBatchAtomic).
 const RESULT_WRITE_RPCS = new Set(['apply_stage_result', 'apply_race_results_batch']);
@@ -340,7 +354,7 @@ function count(map) { return Object.values(map ?? {}).reduce((a, b) => a + b, 0)
  *   runsBySlot     { 'R01#1': n }   race_simulation_runs pr. planlagt etape-slot
  *   races          [{ alias, status, finalizeState, prizePaid }]
  *   financeDup     [{ alias, type }]  (løb, hold, type) med mere end én række
- *   boardDup       [alias]            (løb, hold) med mere end én bestyrelses-hændelse
+ *   boardDup       [alias]            (løb, bestyrelse) med mere end én bestyrelses-hændelse
  *   resultCounts   { 'R01#1': { first, final } }
  */
 export function evaluateOracles(data) {
@@ -1053,7 +1067,7 @@ export async function createLiveRuntime({ env, recorder, faults, als, getPhase, 
           if (key in runsBySlot) runsBySlot[key]++;
         }
         finance.push(...await pageAll(() => supabase.from('finance_transactions').select('race_id, team_id, type').in('race_id', part).in('type', ['prize', 'sponsor_race_day'])));
-        board.push(...await pageAll(() => supabase.from('board_satisfaction_events').select('race_id, team_id').in('race_id', part)));
+        board.push(...await pageAll(() => supabase.from('board_satisfaction_events').select('race_id, board_id').in('race_id', part)));
       }
       const dupKeys = (rows, keyFn) => {
         const seen = new Map();
@@ -1061,7 +1075,7 @@ export async function createLiveRuntime({ env, recorder, faults, als, getPhase, 
         return [...seen].filter(([, n]) => n > 1).map(([k]) => k);
       };
       const financeDup = dupKeys(finance, r => `${r.race_id}|${r.team_id}|${r.type}`).map(k => { const [race, , type] = k.split('|'); return { alias: aliasById.get(race), type }; });
-      const boardDup = dupKeys(board, r => `${r.race_id}|${r.team_id}`).map(k => aliasById.get(k.split('|')[0]));
+      const boardDup = boardDuplicateRaceIds(board).map(id => aliasById.get(id));
       const states = await this.raceStates(ids);
       const races = states.map(s => ({ alias: aliasById.get(s.id), status: s.status, finalizeState: !!s.finalizeState, prizePaid: s.prizePaid }));
       const finalResultCounts = {};
