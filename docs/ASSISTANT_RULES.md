@@ -523,6 +523,8 @@ fokus. Det er den eneste målbare forskel mellem manager og assistent på træni
   (`api.js:2817-2820`).
 - Intensiteten er en egenskab ved sessionen, ikke et frit valg
   (`SESSION_INTENSITY[smartFocus]`, `api.js:2842`).
+- Programforslag pr. rytter-gruppe (#4522, `POST /api/training/programs/apply` med `riderIds` + `keepOwn:true`):
+  anvendes først ved accept og springer ryttere med egen ugeplan-række eller som følger en træningsgruppe over.
 
 `SESSION_INTENSITY` (`backend/lib/trainingDayTypes.js:56-67`):
 `technique/aero/loebslaere/endurance → easy` · `tempo → normal` · `vo2max/threshold/sprint → hard`.

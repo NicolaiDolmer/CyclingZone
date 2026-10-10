@@ -5,19 +5,18 @@ Ejer-beslutning A (4/10): Claude Code klargør Supabase-branchen `staging-cutove
 prod er kun læst for schema og størrelses-estimater. Denne side er afleveringen: hvad der er
 klar, hvad der er bevist, og hvad der stadig blokerer.
 
-## Status 5/10 (målt)
+## Status 10/10 (målt)
 
 | Område | Status |
 |---|---|
-| Schema = prod | **Klar.** App-schemaet er identisk med prod på alle 8 objekttyper (bevis nedenfor). |
-| Sideeffekt-isolation, værktøj | **Klar.** Rent-miljø-wrapper og fail-closed isolationstjek findes og er testet. |
-| Sideeffekt-isolation, data | **Blokeret.** Staging er stadig en prod-kopi fra 23/8. Den indeholder DB-gemte Discord-webhooks, rigtige e-mails og auth-brugere. Isolationstjekket stopper derfor enhver backend-kørsel. |
-| Volumen i prod-størrelse | **Blokeret.** Branchens disk og compute kan ikke rumme 1,8 mio. resultatrækker (se "Kapacitet"). |
-| Fuld pinned S4-løbsdag | **Ikke bygget.** Staging har S3-strukturen: 15 seniorpuljer og ingen U23/junior-grupper. |
-| #6170-prerequisites | `BLOCKED`, kun på `RESULT_VOLUME_TOO_SMALL`. De tre schema-prober består. |
+| Schema = prod | **Klar.** Fingeraftrykket matcher prod på alle app-kategorier (genmålt 5/10 efter refresh). |
+| Sideeffekt-isolation | **Klar.** Ny prod-kopi 5/10, renset; wrapperen giver `ISOLATED` (genmålt 10/10). |
+| Volumen i prod-størrelse | **Blokeret.** Staging 1.889.644 resultatrækker mod prods katalogestimat 1.931.805 (7/10). |
+| Fuld pinned S4-løbsdag | **Værktøj klar:** `scripts/loadtest/race-day-sim.mjs` (afsnit 5). Ikke kørt, fordi volumen blokerer. |
+| #6170-prerequisites | `BLOCKED`, kun på `RESULT_VOLUME_TOO_SMALL`. Schema-proberne består. |
 
-**Konklusion:** load-testen kan ikke køres endnu. Schemadelen er løst. De tre blokeringer
-nedenfor kræver ejer-handling eller ejer-go.
+**Konklusion:** load-testen kan ikke godkendes endnu. Den sidste blokering er volumen.
+Afsnit 1-4 nedenfor er historikken fra klargøringen 5/10.
 
 ## 1. Schema-identitet
 
@@ -159,28 +158,71 @@ e-mails vises (DETAIL og CONTEXT kan indeholde rækkedata). Gates er unit-testet
 `scripts/refresh-staging.test.mjs` (kører i CI). Selve restore'en mod en database er ikke
 testet; det kræver et ejer-godkendt forsøg.
 
-## 5. Kommandoen til målingen (Codex)
+## 5. Fuld løbsdag: `race-day-sim.mjs`
 
-Når 3 og 4 er løst og generatoren er kørt:
+Kør fra en PowerShell-session i worktree-roden (kald scriptet med `&`; `pwsh -File ... --`
+fra en anden shell sender ikke `--flag`-argumenterne videre, målt 10/10):
 
 ```powershell
-. ./scripts/lib/Staging-Env.ps1; Set-StagingEnv
-node scripts/loadtest/check-staging-prerequisites.mjs --min-results 1865119   # #6170, forventet DATA_PREREQUISITES_READY
-pwsh -File scripts/staging/with-loadtest-staging.ps1 -Cwd . node scripts/loadtest/<målescript>.mjs
+& ./scripts/staging/with-loadtest-staging.ps1 -Cwd . -- node scripts/loadtest/race-day-sim.mjs `
+  --clock 2026-10-06T00:00:00+02:00 --season 4 --min-results <frisk prod-estimat> `
+  --viewer-token-file <sti uden for repoet>
 ```
 
-Målescriptet er Codex' (#5904/#6136), og det skal køre gennem wrapperen. Den pinned
-løbsdag er i dag kun mulig som **S3 game day 14, senior**. En fuld S4-dag med alle
-senior/U23/junior-puljer kræver, at S4-strukturen bygges på staging (punkt 6).
+Scriptet nægter at køre uden wrapperen (`CZ_LOADTEST_WRAPPER`). Det gentager isolationstjekket
+og #6170-prerequisites selv og stopper ved første fejl, før noget job starter. Exit 0 kun når
+`loadTestPassed` er true; ellers exit 1 (2 ved forkerte argumenter, og så skrives ingen rapport). Ellers skrives rapporten altid til
+`docs/snapshots/5904/race-day-<tid>.md` med commit-SHA, faser, blockers og oracles. Løb vises som
+aliaser (R01 ...), aldrig id'er eller navne.
+
+**Før en kørsel (alt på staging, intet på prod):**
+
+1. **Volumen:** `--min-results` er prods `pg_class`-estimat for `race_results`, målt read-only
+   samme dag. Ingen default og ingen tolerance; scriptet sænker aldrig grænsen. En relativ
+   tolerance kræver et ejer-go (kort i PR'en for #5904). Top-up er kun tilladt på staging
+   (`scripts/staging/synthesize-race-results.sql`).
+2. **Flag i stagings `app_config`:** `stage_scheduler_enabled`, `race_engine_v2` og `auto_prize`
+   skal være tændt. Scriptet læser dem og skriver aldrig flag. Øvrige flag
+   (fx `training_tick_per_race_day`) sættes som i prod; rapporten viser ikke deres værdi.
+3. **Pinned dag:** første S4-dag der ikke er kørt på staging. Planen stopper ved forfaldne
+   etaper før uret, en halv afslutning (`finalize_state`), allerede kørte slots, scheduler-runs
+   siden dagens midnat (daglig cap) eller en trup uden slots (senior, U23 og junior skal alle have).
+4. **Spiller-token:** JWT for én syntetisk staging-bruger i en fil uden for repoet, udstedt af
+   staging-Auth og gyldig mindst 30 minutter. En fuld dag tager længere: hæv stagings JWT-levetid
+   eller brug et frisk token, ellers tæller 401'ere i normalfasen som fejl. Commit aldrig filen.
+5. **Lokalt:** `psql` på PATH (DB-forbindelser, låse og IO pr. fase) og ingen `.env` i
+   `backend/` eller repo-roden (dotenv ville genindføre fjernede nøgler).
+
+**Hvad den gør:** tick-gitteret fra `backend/lib/schedulerTick.js` over vinduet `--clock` til
+næste dansk midnat plus en times opsamling. Hvert tick kalder `runStageScheduler` med
+`now` = tick-tidspunktet og den rigtige `runAdminSimulateStage` (Discord-besked = null), derefter
+auto-præmie, aftentræningens dags-lukning og ranglistens refresh. Backendens HTTP-flade
+(`server.js`, cron blokeret af `cronRuntimeGuard`) kører i samme proces, og samtidige læsere
+henter ranglister og kalender med tokenet.
+
+**Faser og accept (ejer 2/10):**
+
+| Fase | Hvad sker | Accept |
+|---|---|---|
+| normal | hele dagen uden fejl | 0 5xx (backend og Supabase), 0 lock-/statement-timeouts, 0 tick-fejl, etaperesultater kan læses straks efter tick'et, ranglister klar inden 5 min (inkl. 1 min cron-ventetid) |
+| fault_auth | Auth utilgængelig i processen (`--fault-ticks`, default 3 ticks) | hvert spillerkald entydigt 503 med samme kode, 0 × 200 (en cache må ikke autorisere), 0 × 401 |
+| fault_db | REST/RPC utilgængelig | som ovenfor; scheduleren må ikke efterlade en halv afvikling |
+| restart_recovery | næste afvikling afbrydes efter resultat-skrivning og trin-markering, derefter genstart (ny klient, ny dedup) | løbet genoptages inden claim-leasen + 2 ticks, uden dobbelt afvikling |
+
+Alle faser: max URL ≤ 8 KB (UTF-8 bytes), og RAM (RSS), proces-IO, CPU, DB-forbindelser,
+ventende låse og DB-IO er målt. **Oracles:** præcis én `race_simulation_runs` pr. planlagt slot,
+præmie sat for hvert afsluttet løb, ingen dobbelte præmie-/sponsorrækker eller
+bestyrelses-hændelser pr. (løb, hold), ingen `finalize_state` tilbage, og resultat-antallet
+uændret fra første læsning til slut. Mangler en fase eller en måling, er `loadTestPassed` false.
+
+**Efter en kørsel:** dagen er brugt på staging (etaperne er afviklet). En ny kørsel kræver den
+næste uafviklede dag eller en frisk refresh.
 
 ## 6. Udestående
 
-1. **Ejer-go: rensning** (`anonymize-staging.sql`) og syntetiske `auth.users`.
-2. **Ejer-valg: disk/compute** på branchen. Kør derefter `synthesize-race-results.sql`.
-3. **S4-struktur på staging:** U23-/junior-grupper (`seedYouthPools.js`), AI-ungdomstrupper
-   (`generateYouthSquadsS4.js`), S4-kalender pr. trup (`buildSeasonCalendar.js --squad`),
-   entries (`generateSeasonEntries.js`) og træningsdata. Alt gennem wrapperen, efter 1 og 2.
-4. Genmål tabellerne ovenfor, og kør #6170 og fingeraftrykket igen.
+1. **Volumen:** top-up på staging til mindst prods friske estimat, eller ejer-go på en relativ
+   tolerance.
+2. Kør `race-day-sim.mjs` (afsnit 5) og gem rapporten i `docs/snapshots/5904/`.
 
 ## Genskab beviserne
 

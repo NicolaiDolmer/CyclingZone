@@ -18,6 +18,8 @@
 // slået-fra checkbox i stedet for et klik der skriver 0 rækker.
 import { useTranslation } from "react-i18next";
 import { Section, Button, Toggle, StarIcon } from "../ui";
+import { ChevronDownIcon } from "../ui/icons/index.jsx";
+import { programName } from "../../lib/trainingPrograms.ts";
 
 export default function AssistantSuggestionsPanel({
   rows,
@@ -33,21 +35,22 @@ export default function AssistantSuggestionsPanel({
   busy,
   message,
   acceptableCount,
+  // #4522: programforslag pr. rytter-gruppe (tom/udeladt = sektionen vises ikke).
+  programGroups = [],
+  programCatalog = [],
+  onApplyProgramGroup,
+  programBusy = false,
+  programMessage = null,
 }) {
-  const { t } = useTranslation("training");
+  const { t, i18n } = useTranslation("training");
+  const tTypes = useTranslation("riderTypes").t;
   const tRider = useTranslation("rider").t;
   const selectedCount = selected.size;
 
-  return (
-    <Section borderClass="border-cz-accent-t" className="mb-6">
-      <div className="mb-3 flex items-start gap-3">
-        <StarIcon size={16} aria-hidden="true" className="mt-0.5 hidden shrink-0 text-cz-accent-t sm:block" />
-        <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-cz-1">{t("assistantSuggestions.title")}</p>
-          <p className="mt-1 text-[13px] text-cz-2">{t("assistantSuggestions.intro")}</p>
-        </div>
-      </div>
-
+  // #4522 B: med gruppeprogrammer ligger Dismiss uden for folden, saa panelet
+  // altid kan lukkes, ogsaa naar rytterlisten er foldet sammen.
+  const renderRiderBlock = (showDismiss) => (
+    <>
       <div className="mb-3">
         <Toggle
           id="assistant-suggestions-only-no-plan"
@@ -138,11 +141,93 @@ export default function AssistantSuggestionsPanel({
         >
           {t("assistantSuggestions.acceptAll", { n: acceptableCount })}
         </Button>
-        <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onDismiss}>
-          {t("assistantSuggestions.dismiss")}
-        </Button>
-        <span className="text-2xs text-cz-3">{t("assistantSuggestions.nothingAppliedYet")}</span>
+        {showDismiss && (
+          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onDismiss}>
+            {t("assistantSuggestions.dismiss")}
+          </Button>
+        )}
+        {showDismiss && <span className="text-2xs text-cz-3">{t("assistantSuggestions.nothingAppliedYet")}</span>}
       </div>
+    </>
+  );
+
+  return (
+    <Section borderClass="border-cz-accent-t" className="mb-6">
+      <div className="mb-3 flex items-start gap-3">
+        <StarIcon size={16} aria-hidden="true" className="mt-0.5 hidden shrink-0 text-cz-accent-t sm:block" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold text-cz-1">{t("assistantSuggestions.title")}</p>
+          <p className="mt-1 text-[13px] text-cz-2">{t("assistantSuggestions.intro")}</p>
+        </div>
+      </div>
+
+      {/* #4522 ejer-valg B 10/10: overblik foerst. Med gruppeprogrammer staar de
+          oeverst, og rytter-for-rytter-listen er foldet sammen bag ét klik. */}
+      {/* #4522: et traeningsprogram pr. rytter-gruppe. Intet anvendes foer klik; serveren
+          springer ryttere med egen plan eller gruppe over (keepOwn). */}
+      {programGroups.length > 0 && (
+        <div className="mb-3" data-testid="assistant-program-section">
+          <p className="text-[13px] font-semibold text-cz-1">{t("assistantSuggestions.programTitle")}</p>
+          <p className="mt-1 text-xs text-cz-2">{t("assistantSuggestions.programIntro")}</p>
+          <ul className="mt-2 rounded-cz border border-cz-border">
+            {programGroups.map((group, i) => (
+              <li
+                key={group.programKey + group.riderType}
+                className={`flex flex-wrap items-center gap-3 px-3 py-2.5 ${i > 0 ? "border-t border-cz-border" : ""}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-cz-1">
+                    {programName(programCatalog.find((p) => p.key === group.programKey), i18n.language)}
+                  </p>
+                  <p className="mt-0.5 text-2xs text-cz-3">
+                    {t("assistantSuggestions.programFor", { type: tTypes(`types.${group.riderType}`), count: group.riderIds.length })}
+                    {" · "}
+                    {group.names.join(", ")}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy || programBusy}
+                  onClick={() => onApplyProgramGroup?.(group)}
+                >
+                  {t("assistantSuggestions.programApply", { n: group.riderIds.length })}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {programMessage && (
+        <p className={`mt-3 text-xs ${programMessage.type === "ok" ? "text-cz-success" : "text-cz-warning"}`}>
+          {programMessage.text}
+        </p>
+      )}
+
+      {programGroups.length > 0 ? (
+        <details className="group mt-1 rounded-cz border border-cz-border" data-testid="assistant-rider-fold">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm text-cz-2 select-none">
+            <span>{t("assistantSuggestions.chooseByRider", { n: noPlanCount })}</span>
+            <ChevronDownIcon size={16} className="shrink-0 text-cz-3 transition-transform duration-150 group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="border-t border-cz-border px-3 pb-3 pt-3">
+            {renderRiderBlock(false)}
+          </div>
+        </details>
+      ) : (
+        renderRiderBlock(true)
+      )}
+
+      {programGroups.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={onDismiss}>
+            {t("assistantSuggestions.dismiss")}
+          </Button>
+          <span className="text-2xs text-cz-3">{t("assistantSuggestions.nothingAppliedYet")}</span>
+        </div>
+      )}
     </Section>
   );
 }
