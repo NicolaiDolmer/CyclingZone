@@ -14,13 +14,15 @@ Form and form peaks don't do enough in the races right now. Bringing them back p
 **A season switch without surprises**
 Before the next season starts, I'm making sure expired contracts end, unsold youth riders stay where they belong and rider values don't move at the switch. Thanks for voting on the break between seasons. Your votes decide when the next season starts, and you'll see the new calendar before the switch.
 
-**Things I promised you**
+**Things I promised you, done and on their way live**
 - Copy one day's training plan to the next days.
-- The assistant suggests a training program for a group of riders.
+- The assistant suggests a training program for each type of rider.
 - Send a message to another manager straight from his team page.
-- Move a rider between your squads while he is on the transfer list.
+- Sell your U23 and junior riders from the squad page, and move a listed rider between your squads.
 - A reminder you deleted stays deleted.
-- One settings page with a nationality for you and your team, and the 12-hour minimum on free agent auctions: I'm deciding both now.
+
+**Still open**
+One settings page with a nationality for you and your team, and the 12-hour minimum on free agent auctions: I'm deciding both now.
 
 **Two answers I owe you**
 - Teamwork and Leadership: every rider now has a value for both, set by the same formula new riders get, with the points you already trained added on top. No rating changed.
