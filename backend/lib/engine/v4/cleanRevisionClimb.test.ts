@@ -14,8 +14,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { __resetRaceEngineV4Cache, loadRaceEngineV4 } from "../../raceEngineV4Bridge.js";
-import { breakawayWin, runStagesInOrder, sortedStages } from "../../../scripts/dev/lib/tourScorecard.mjs";
-import { analyseDescentFinish } from "../../../scripts/dev/descentFinish6200.mjs";
+import { breakawayWin, runStagesInOrder as runStagesInOrderJs, sortedStages } from "../../../scripts/dev/lib/tourScorecard.mjs";
+import { analyseDescentFinish as analyseDescentFinishJs } from "../../../scripts/dev/descentFinish6200.mjs";
+
+// JS-hjaelperne (scripts/dev) har ingen typer; kald dem med et aabent options-objekt.
+const runStagesInOrder = runStagesInOrderJs as unknown as (opts: Record<string, unknown>) => unknown;
+const analyseDescentFinish = analyseDescentFinishJs as unknown as (opts: Record<string, unknown>) => { bestClimberFinishRank: number; nr10Finish: number; breakawayWon: boolean } | null;
 import { routeFromStageProfileRow } from "./adapters/routeAdapter.ts";
 import {
   SHARED_TIME_MODEL_V2_TUNING,

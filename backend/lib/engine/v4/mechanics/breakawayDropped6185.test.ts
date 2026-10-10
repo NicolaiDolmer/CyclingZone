@@ -311,7 +311,7 @@ test("#6185 official_times_v3: en afsat udbryder har breakaway_dropped=true og e
       const ranked = rankedFromV4Output(out, { rulesRevision: "official_times_v3" });
       const history = deriveParticipationHistory(events, out.results.map((r) => r.rider_id));
       for (const row of ranked) {
-        const status = row.breakaway_status;
+        const status = (row as { breakaway_status?: { in_breakaway: boolean; breakaway_caught: boolean | null; breakaway_dropped: boolean } }).breakaway_status;
         if (!status?.in_breakaway) continue;
         const rider = history.riders.get(row.rider_id);
         // Historikken siger afsat -> raekken siger afsat.

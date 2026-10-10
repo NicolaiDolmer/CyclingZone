@@ -25,7 +25,10 @@ import { morningBreakIntent, resolveMorningBreakFormation } from "./breakawayPer
 import { generateAiTeamOrder } from "../ai/aiTactics.ts";
 import type { AiRosterEntrant, AiTacticsInput } from "../ai/aiTactics.ts";
 import { __resetRaceEngineV4Cache, loadRaceEngineV4 } from "../../../raceEngineV4Bridge.js";
-import { TOUR_BENCHMARKS, breakawayAttempts, breakawaySets, profileClass, runStagesInOrder } from "../../../../scripts/dev/lib/tourScorecard.mjs";
+import { TOUR_BENCHMARKS, breakawayAttempts, breakawaySets, profileClass, runStagesInOrder as runStagesInOrderJs } from "../../../../scripts/dev/lib/tourScorecard.mjs";
+
+// JS-hjaelperen (scripts/dev) har ingen typer; kald den med et aabent options-objekt.
+const runStagesInOrder = runStagesInOrderJs as unknown as (opts: Record<string, unknown>) => unknown;
 
 const ABILITY_KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
