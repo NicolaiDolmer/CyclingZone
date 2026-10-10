@@ -17,8 +17,8 @@
 // accessible from the My Team"): samme to kolonne-tilstande som My Team
 // (Overview / Abilities, Segmented i tabellens toolbar, #2906 punkt 1), og
 // Overview har nu My Teams popularitet og status, så kolonnerne står i samme
-// rækkefølge på de tre trup-sider. Kun rækkehandlingen (Sell / Auction) er
-// stadig My Teams alene.
+// rækkefølge på de tre trup-sider. My Teams Sell / Auction-modal er stadig My
+// Teams alene.
 //
 // #5917 (ejer 4/10: "kan ikke se hvor man sætter U23/junior til salg"): en
 // Sælg-rækkehandling, der åbner rytterprofilens salgsformular
