@@ -62,7 +62,7 @@ import { pursuitContactKm } from "../exactPlace.ts";
 //    SIDSTE segment, emitteres `breakaway_survived` (finale.ts afgoer derefter
 //    om forspringet baeres helt i maal eller indhentes i selve finalen).
 
-import { bookFinishDescentClosure, finishDescentRemainingCapSeconds, timeModelTuningFor } from "./timeModel.ts";
+import { bookFinishDescentClosure, finishDescentIndexFor, finishDescentRemainingCapSeconds, timeModelTuningFor } from "./timeModel.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -1537,6 +1537,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   let changed = false;
 
   const isLastSegment = ctx.segmentIndex === ctx.route.segments.length - 1;
+  // #6200 (KUN official_times_v3): paa nedkoerslen mod maal og stykket uden stigning
+  // efter den gaelder loftet fra toppen til segmentets slutning (km fra toppen).
+  // null = ikke en v3-nedkoerselsfinale (alle aeldre revisioner som foer).
+  const v3FinishDescentIndex = ctx.sharedGroupTime?.timeModelGeneration === 3 ? finishDescentIndexFor(ctx.route, timeModelTuningFor(ctx)) : -1;
+  const finishDescentCapKm = v3FinishDescentIndex >= 0 && ctx.segmentIndex >= v3FinishDescentIndex
+    ? Math.max(0, ctx.segment.to_km - ctx.route.segments[v3FinishDescentIndex].from_km)
+    : null;
   const formationSegment = ctx.route.segments[FORMATION_SEGMENT_INDEX];
   const formationKm = formationSegment ? formationKmFor(formationSegment) : ctx.segment.from_km;
   const ordersGcV1 = ctx.rulesRevision === "orders_gc_v1";
@@ -1757,8 +1764,12 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const newBreakawayGap = breakaway.gap_seconds - growthSeconds;
     // #6199/#6200 (review af #6223, KUN orders_gc_v3): paa en nedkoersel mod maal deler
     // jagten loftet med regrupperingen, M3-angrebene og finalen (bogen, mechanics/timeModel.ts).
-    const v3DescentBook = (ordersGcV3 || ctx.sharedGroupTime !== undefined) && isLastSegment && ctx.segment.kind === "descent" ? (state.finish_descent_regroup ?? {}) : null;
-    const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, netClosingSeconds + floorClosingSeconds);
+    // #6200 (KUN official_times_v3): nedkoerslen mod maal kan efterfoelges af et kort
+    // stykke uden stigning (finishDescentIndexFor). Loftet gaelder da fra toppen til
+    // stregen, ogsaa paa nedkoerslen selv og paa stykket bagefter.
+    const v3DescentBook = (((ordersGcV3 || ctx.sharedGroupTime !== undefined) && isLastSegment && ctx.segment.kind === "descent") || finishDescentCapKm !== null)
+      ? (state.finish_descent_regroup ?? {}) : null;
+    const closingSeconds = Math.min(v3DescentBook ? finishDescentRemainingCapSeconds(separation, finishDescentCapKm ?? segmentLengthKm, v3DescentBook[chaseGroup.id]) : Infinity, netClosingSeconds + floorClosingSeconds);
     const newChaseGap = Math.min(currentChase.gap_seconds, Math.max(newBreakawayGap, chaseGroup.gap_seconds - closingSeconds));
     const v3Booked = v3DescentBook ? bookFinishDescentClosure(state.finish_descent_regroup, chaseGroup.id, chaseGroup.gap_seconds, currentChase.gap_seconds - newChaseGap) : undefined;
     if (v3Booked && v3Booked !== state.finish_descent_regroup) state = { ...state, finish_descent_regroup: v3Booked };

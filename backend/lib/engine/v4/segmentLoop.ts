@@ -87,11 +87,11 @@ import {
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
-import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup, isMorningRegroupCatch } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
-import { timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
+import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -771,6 +771,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "orders_gc_v3") return "orders_gc_v3";
   if (raw === "official_times_v1") return "official_times_v1";
   if (raw === "official_times_v2") return "official_times_v2";
+  if (raw === "official_times_v3") return "official_times_v3";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -796,7 +797,12 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // #6329: praecist kontaktsted kun paa den samlede Tour-revision (official_times_v2).
   const preciseContact = sharedGroupTime && ordersGcV3;
   // #6199: official_times_v2 laeser sin kalibrerede tidsmodel (dalens B-lukning).
-  const loopTimeModel = timeModelTuningFor({ ...(ordersGcV3 ? { ordersGcV3: true as const } : {}), ...(sharedGroupTime ? { sharedGroupTime: true } : {}) });
+  // #6200: official_times_v3 = official_times_v2 + nedkoerselsfinalen (timeModelGeneration 3).
+  const timeModelV3 = sharedGroupTime && ordersGcV3 && sharedTimeModelGeneration(rulesRevision) === 3;
+  const loopTimeModel = timeModelTuningFor({ ...(ordersGcV3 ? { ordersGcV3: true as const } : {}), ...(sharedGroupTime ? { sharedGroupTime: timeModelV3 ? { timeModelGeneration: 3 as const } : true } : {}) });
+  // #6200 (KUN official_times_v3): nedkoerslen mod maal kan efterfoelges af et
+  // kort stykke uden stigning (finishDescentIndexFor). Ellers etapens sidste segment.
+  const finishDescentIndex = timeModelV3 ? finishDescentIndexFor(route, loopTimeModel) : route.segments.length - 1;
   const finalClimbStart = finalClimbStartIndex(route.segments);
   const entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
@@ -851,6 +857,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   const morningRiderIds = new Set<string>();
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
+    // #6200 (KUN official_times_v3): stykket uden stigning efter nedkoerslen mod maal.
+    const runInAfterFinishDescent = timeModelV3 && finishDescentIndex >= 0 && segmentIndex > finishDescentIndex;
     if (segmentIndex === segments.length - 1) lastSegmentEntryGroups = state.groups;
     const segmentEventStart = segmentIndex === 0 ? 0 : timeline.length;
     const entryFrontSeconds = frontElapsedSeconds;
@@ -912,7 +920,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         phaseClimbNeutralShare(phase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare),
         loopTimeModel.letGoMinChaseRiders ?? undefined); // #5578: official_times_v2's egen felt-graense
 
-      tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
+      // #6200 (KUN official_times_v3): ingen dal paa stykket efter nedkoerslen mod maal (se nedenfor).
+      if (!runInAfterFinishDescent) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
       if (segment.kind === "descent") {
         const lengthKm = Math.max(0, segment.to_km-segment.from_km);
         const minimumDurations = new Map(state.groups.map(group => {
@@ -923,7 +932,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
         const durations = planSharedDescentTravel({groups:state.groups,
           durations:new Map([...tempoByGroup].map(([id,tempo])=>[id,tempo.dtSeconds])),minimumDurations,
           entrants:entrantsById,lengthKm,technicality:segment.technicality,
-          isFinish:segmentIndex===segments.length-1,incidentChasers:state.incident_chasers});
+          isFinish:segmentIndex===finishDescentIndex,incidentChasers:state.incident_chasers});
         tempoByGroup = new Map([...tempoByGroup].map(([id,tempo])=>[id,{...tempo,dtSeconds:durations.get(id)??tempo.dtSeconds}]));
       }
     }
@@ -1004,7 +1013,10 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     const mountainPhase = mountainSelectionPhaseFor(v2Revision, route.profile_type, segmentIndex, finalClimbStart);
     if (!sharedGroupTime) tempoByGroup = neutralizeBreakawayTempoDrift(state.groups, tempoByGroup, segment.kind, phaseClimbNeutralShare(mountainPhase, mountainSelectionKnobsFor(route.profile_type).preFinalBreakawayDriftNeutralShare));
     // #6199 (KUN orders_gc_v3): i dalen efter en top kan et hul ikke vokse (mechanics/timeModel.ts).
-    if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
+    // #6200 (KUN official_times_v3): paa stykket efter nedkoerslen mod maal lukkes
+    // intet ved tempo (loftet gaelder fra toppen til stregen); ellers dalen.
+    if (runInAfterFinishDescent) tempoByGroup = runInOpenOnlyTempo(state.groups, tempoByGroup, state.incident_chasers);
+    else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
@@ -1070,7 +1082,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
       ...(rollingBreakawayV2For(v2Revision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
       ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
-      ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo, incidentCursor: incidentCursorAtEntry } } : {}),
+      ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo, incidentCursor: incidentCursorAtEntry, ...(timeModelV3 ? { timeModelGeneration: 3 as const } : {}) } } : {}),
       ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
