@@ -182,6 +182,11 @@ async function closeAuction({
 // #4484): en ældre 'sold'-række der aldrig blev restemplet må ikke gøre en
 // senere frivillig auktion til en graduate-auktion. Kaster ved læsefejl
 // (expectMaybeSingle) — kalderen ligger før enhver skrivning.
+/**
+ * @param {any} supabase
+ * @param {{ teamId: string, riderId: string }} args
+ * @returns {Promise<boolean>}
+ */
 async function hasSoldGraduationRow(supabase, { teamId, riderId }) {
   const row = await expectMaybeSingle(
     supabase
