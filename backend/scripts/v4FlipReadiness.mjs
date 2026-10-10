@@ -52,6 +52,8 @@ import { runHeadToHead } from "./headToHeadV4.js";
 import { ANCHOR_BANDS, aggregateScorecards, buildScorecard, descentGapClosure, isShortUphillFinish } from "./lib/headToHeadAnchors.js";
 import { isOrdersGcV3OrLater } from "../lib/raceEngineRulesRevision.ts";
 import { evaluateTailGate, runTailSpread } from "./v4TailSpread.js";
+import { measureGtMargins } from "./v4GcMargin.mjs";
+import { gcGapAt, runStagesInOrder } from "./dev/lib/tourScorecard.mjs";
 import { displayFor } from "./renderV4AnchorTable.mjs";
 import { median, sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
@@ -154,6 +156,53 @@ export function summarizeAnchorGate(aggregated, seedCounts, seedCount) {
   const v4NotMeasured = rows.filter((r) => r.v4.verdict === "N/A").map((r) => r.id);
   const v4Pass = rows.filter((r) => r.v4.verdict === "PASS").map((r) => r.id);
   return { rows, seedCount, v4Pass, v4Fail, v4NotMeasured, v4AllGreen: v4Fail.length === 0 };
+}
+
+/**
+ * #6442: GT-vindermarginen kan ikke maales i etape-for-etape-harnessen (feltet
+ * traekkes pr. etape), saa scoreGapRealism giver den altid N/A. Den maales i
+ * stedet af v4GcMargin.measureGtMargins (fast felt over hele de pinnede grand
+ * tours, samme revision), og raekken i anker-gaten erstattes med den maaling.
+ * Uden dette er ankeret "ikke maalt" for enhver revision, og "ikke maalt" er
+ * aldrig groent. Seeds-taellingen er antal (grand tour, seed)-koersler hvis
+ * egen margin ligger i baandet.
+ * @param {ReturnType<typeof summarizeAnchorGate>} anchors
+ * @param {{anchor: object, runs: Array<{v3: {marginSeconds: number|null}, v4: {marginSeconds: number|null}}>}} gt  measureGtMargins-output
+ */
+export function withGtWinnerMargin(anchors, gt) {
+  const band = ANCHOR_BANDS.gtWinnerMarginSeconds;
+  const inBand = (v) => Number.isFinite(v) && v >= band.min && v <= band.max;
+  const cellFor = (engine) => {
+    const cell = gt.anchor[engine];
+    const margins = gt.runs.map((r) => r[engine]?.marginSeconds).filter(Number.isFinite);
+    return {
+      verdict: cell?.verdict ?? "N/A",
+      value: cell?.value ?? null,
+      spread: cell?.spread ?? null,
+      seedsPass: margins.filter(inBand).length,
+      seedsMeasured: margins.length,
+    };
+  };
+  const row = {
+    id: gt.anchor.id,
+    label: gt.anchor.label,
+    source: gt.anchor.source,
+    bandLabel: gt.anchor.bandLabel,
+    v3: cellFor("v3"),
+    v4: cellFor("v4"),
+  };
+  const rows = anchors.rows.some((r) => r.id === row.id)
+    ? anchors.rows.map((r) => (r.id === row.id ? row : r))
+    : [...anchors.rows, row];
+  const v4Fail = rows.filter((r) => r.v4.verdict === "FAIL").map((r) => r.id);
+  return {
+    ...anchors,
+    rows,
+    v4Pass: rows.filter((r) => r.v4.verdict === "PASS").map((r) => r.id),
+    v4Fail,
+    v4NotMeasured: rows.filter((r) => r.v4.verdict === "N/A").map((r) => r.id),
+    v4AllGreen: v4Fail.length === 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -973,6 +1022,39 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
   };
 }
 
+/**
+ * #6442: GT-vindermarginen i det realistiske felt. Giro-fixturet er et rigtigt
+ * etapeloeb (felt, hold, roller, gemte ordrer og etaper), og klassementet
+ * akkumuleres praecis som spillet goer det (tourScorecard.runStagesInOrder, samme
+ * maaling som gate trin 1's gcWinnerMargin). Proxy-feltets GT-margin (v4GcMargin)
+ * gater fortsat: RACE_ENGINE_RULES (#6199) goer kun de to tidsankre sekundaere i
+ * proxy-feltet. Denne raekke er en ekstra maaling ved siden af, ikke en erstatning.
+ * Vaerdien er middel over seeds (samme regel som de oevrige ankre); seeds bestaaet
+ * er antal seeds hvis egen margin ligger i baandet.
+ */
+export function measureRealisticGtMargin({ v4, fixture, seeds = HEAD_TO_HEAD_SEEDS, rulesRevision = undefined }) {
+  const band = ANCHOR_BANDS.gtWinnerMarginSeconds;
+  const margins = seeds.map((seed) => {
+    const standings = runStagesInOrder({ v4, data: fixture, revision: rulesRevision ?? "legacy", seedTag: `${seed}:gt-realistic` });
+    return gcGapAt(standings, 2);
+  });
+  const measured = margins.filter(Number.isFinite);
+  const value = meanOf(measured);
+  const inBand = (v) => v >= band.min && v <= band.max;
+  return {
+    id: "gt_winner_margin",
+    subset: "gc",
+    label: "GT-vindermargin, akkumuleret klassement (#2415, #6442)",
+    bandLabel: `${band.min}-${band.max}s`,
+    value,
+    margins,
+    verdict: value === null ? "N/A" : inBand(value) ? "PASS" : "FAIL",
+    seedsPass: measured.filter(inBand).length,
+    seedsMeasured: measured.length,
+    n: measured.length,
+  };
+}
+
 function argValue(name, fallback = null) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : fallback;
@@ -1017,9 +1099,22 @@ async function main() {
 
   const t0 = performance.now();
   console.log(`[5515] head-to-head ${seeds.join(",")} x ${stages.length} etaper, felt ${FIELD_SIZE} ...`);
-  const { anchors, rates } = measureHeadToHead({ population, stages, seeds, rulesRevision });
+  const headToHead = measureHeadToHead({ population, stages, seeds, rulesRevision });
+  const { rates } = headToHead;
+  // #6442: GT-vindermarginen paa et akkumuleret klassement (fast felt, samme seeds og revision).
+  // Nat 11/10: GT-marginen er én vinder-margin pr. grand tour og seed (3 x seeds kørsler) og
+  // spænder over flere minutter mellem seeds; --gt-seeds lader gaten måle begge GT-rækker
+  // (proxy + realistisk felt) på sine egne seeds, samme for revision og baseline.
+  // Udeladt = head-to-head-seedsene som før.
+  const gtSeeds = listArg("gt-seeds", seeds);
+  console.log(`[6442] GT-vindermargin ${gtSeeds.join(",")} (pinnede grand tours, fast felt ${FIELD_SIZE}) ...`);
+  const anchors = withGtWinnerMargin(headToHead.anchors, measureGtMargins({ population, stages, seeds: gtSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[6199] realistisk felt (${REALISTIC_FIELD_FILE}) ${seeds.join(",")} x ${stages.length} etaper ...`);
-  const realisticField = measureRealisticField({ v4: await loadRaceEngineV4(), fixture: JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8")), stages, seeds, rulesRevision });
+  const v4Engine = await loadRaceEngineV4();
+  const realisticFixture = JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8"));
+  const realisticField = measureRealisticField({ v4: v4Engine, fixture: realisticFixture, stages, seeds, rulesRevision });
+  console.log(`[6442] GT-vindermargin i det realistiske felt (fixturets egne etaper) ${gtSeeds.join(",")} ...`);
+  realisticField.anchors.push(measureRealisticGtMargin({ v4: v4Engine, fixture: realisticFixture, seeds: gtSeeds, rulesRevision }));
   console.log(`[5515] hale-gate ${tailSeeds.join(",")} ...`);
   const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[5515] ydelse ${perfSizes.join(",")} ...`);
@@ -1040,6 +1135,7 @@ async function main() {
       stages_file: STAGES_FILE,
       stage_count: stages.length,
       seeds,
+      gt_seeds: gtSeeds,
       tail_seeds: tailSeeds,
       field_size: FIELD_SIZE,
       rules_revision: rulesRevision ?? "legacy",

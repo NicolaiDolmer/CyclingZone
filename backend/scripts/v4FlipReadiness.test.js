@@ -36,7 +36,9 @@ import {
   summarizeAnchorGate,
   summarizeRates,
   summarizeTimings,
+  withGtWinnerMargin,
 } from "./v4FlipReadiness.mjs";
+import { scoreGapRealism, scoreGtWinnerMargin } from "./lib/headToHeadAnchors.js";
 import { timeLimitSecondsFor } from "../lib/engine/v4/mechanics/timeLimit.ts";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
@@ -94,6 +96,40 @@ test("summarizeAnchorGate: dommen er MIDDEL-dommen; én v4-FAIL = ikke alle groe
   assert.equal(a.v4.verdict, "PASS");
   assert.equal(a.v4.seedsPass, 1);
   assert.equal(a.v4.seedsMeasured, 2);
+});
+
+test("#6442: GT-vindermarginen er ALTID 'ikke maalt' i etape-harnessen, men maales af GC-harnessen og erstatter raekken", () => {
+  // Det rigtige scorecard (scoreGapRealism) giver gt_winner_margin N/A for enhver
+  // revision, fordi feltet traekkes pr. etape. Det er aarsagen til at gate trin 3
+  // aldrig kunne blive groent ("ikke maalt" er aldrig groent).
+  const scorecard = scoreGapRealism([]);
+  assert.equal(scorecard.find((a) => a.id === "gt_winner_margin").v4.verdict, "N/A");
+  const aggregated = card([["field_cohesion_flat", cell("PASS", 0.9), cell("PASS", 0.9)], ["gt_winner_margin", cell("N/A"), cell("N/A")]]);
+  const gate = summarizeAnchorGate(aggregated, countSeedVerdicts([aggregated]), 1);
+  assert.deepEqual(gate.v4NotMeasured, ["gt_winner_margin"]);
+
+  const gt = {
+    anchor: scoreGtWinnerMargin({ v3Margins: [30, 40], v4Margins: [100, 200, 900] }),
+    runs: [
+      { v3: { marginSeconds: 30 }, v4: { marginSeconds: 100 } },
+      { v3: { marginSeconds: 40 }, v4: { marginSeconds: 200 } },
+      { v3: { marginSeconds: null }, v4: { marginSeconds: 900 } },
+    ],
+  };
+  const measured = withGtWinnerMargin(gate, gt);
+  const row = measured.rows.find((r) => r.id === "gt_winner_margin");
+  assert.equal(row.v4.verdict, "PASS"); // middel 400 s inden for 60-480 s
+  assert.equal(row.v4.seedsPass, 2);
+  assert.equal(row.v4.seedsMeasured, 3);
+  assert.equal(row.v3.verdict, "FAIL");
+  assert.deepEqual(measured.v4NotMeasured, []);
+  assert.deepEqual(measured.v4Pass, ["field_cohesion_flat", "gt_winner_margin"]);
+  assert.equal(measured.v4AllGreen, true);
+  assert.equal(measured.rows.length, 2);
+
+  // En GC-koersel uden klassement (alle margins null) forbliver ikke maalt, aldrig groen.
+  const empty = withGtWinnerMargin(gate, { anchor: scoreGtWinnerMargin({}), runs: [] });
+  assert.deepEqual(empty.v4NotMeasured, ["gt_winner_margin"]);
 });
 
 // ── (3) Uheld + OTL ──────────────────────────────────────────────────────────

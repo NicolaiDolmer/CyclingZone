@@ -12,6 +12,7 @@ import {
   accumulateGc,
   measureGtMargins,
   pinGrandTours,
+  proxyGcContext,
   runGrandTour,
   v3StageOutcome,
   v4StageOutcome,
@@ -102,4 +103,30 @@ test("runGrandTour: ende-til-ende paa det syntetiske eksempel — begge motorer 
 test("measureGtMargins: fejler hoejt uden grand tours i etape-filen i stedet for at rapportere et tomt anker", () => {
   const { population, stages } = exampleInputs();
   assert.throws(() => measureGtMargins({ population, stages, seeds: ["s1"] }), /ingen grand tours/);
+});
+
+test("nat 11/10 (#6443): proxyGcContext giver klassementet foer etapen som spillet", () => {
+  const stages = [{ stage_number: 1 }, { stage_number: 2 }, { stage_number: 3 }];
+  const first = proxyGcContext({ startIds: ["a", "b"], inRace: ["a", "b"], outcomes: [], stageRow: stages[0], stages, rulesRevision: "official_times_v3" });
+  assert.deepEqual(first, { status: "first_stage", stage_number: 1 });
+  const outcomes = [{ finishers: [{ rider_id: "a", seconds: 10, bonus: 0 }, { rider_id: "b", seconds: 0, bonus: 4 }, { rider_id: "c", seconds: 5, bonus: 0 }] }];
+  const ctx = proxyGcContext({ startIds: ["a", "b", "c"], inRace: ["a", "b"], outcomes, stageRow: stages[1], stages, rulesRevision: "official_times_v3" });
+  assert.equal(ctx.status, "standings");
+  assert.equal(ctx.leader_id, "b");
+  assert.deepEqual(ctx.standings.map((s) => [s.rider_id, s.gap_seconds]), [["b", 0], ["a", 14]]);
+  assert.equal(ctx.stages_remaining, 1);
+});
+
+
+test("nat 11/10 (#6443): proxyGcContext - stages_remaining kun fra orders_gc_v3, race_stage_number foer stage_number, ingen startere = missing", () => {
+  const stages = [{ stage_number: 48, race_stage_number: 1 }, { stage_number: 49, race_stage_number: 2 }, { stage_number: 50, race_stage_number: 3 }];
+  const outcomes = [{ finishers: [{ rider_id: "a", seconds: 0, bonus: 0 }, { rider_id: "b", seconds: 3, bonus: 0 }] }];
+  const v3 = proxyGcContext({ startIds: ["a", "b"], inRace: ["a", "b"], outcomes, stageRow: stages[1], stages, rulesRevision: "official_times_v3" });
+  assert.equal(v3.stage_number, 2);
+  assert.equal(v3.stages_remaining, 1);
+  const v1 = proxyGcContext({ startIds: ["a", "b"], inRace: ["a", "b"], outcomes, stageRow: stages[1], stages, rulesRevision: "orders_gc_v1" });
+  assert.equal(v1.status, "standings");
+  assert.equal("stages_remaining" in v1, false);
+  const none = proxyGcContext({ startIds: ["a", "b"], inRace: [], outcomes, stageRow: stages[1], stages, rulesRevision: "official_times_v3" });
+  assert.equal(none.status, "missing");
 });
