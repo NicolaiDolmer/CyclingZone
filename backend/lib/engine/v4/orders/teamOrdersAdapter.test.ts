@@ -397,3 +397,90 @@ test("#6097: menneskeholdenes ordrer roeres ikke af orders_gc_v2", () => {
   const before = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: MOUNTAIN_CTX });
   assert.deepEqual(v2.orders.filter((o) => o.team_id !== "ai"), before.orders.filter((o) => o.team_id !== "ai"));
 });
+
+// ── #6434 (KUN official_times_v3): sprintertoget forbundet i adapteren ────────
+//
+// sprintTrainLeadoutOrder (#6352) kaldes nu her for alle hold (menneske og AI):
+// en kaptajn med sprinterprofil paa en flad etape faar holdets hjaelpere som tog.
+// Aeldre revisioner (og intet kontekst-objekt) bruger den gamle regel, uaendret.
+
+import { simulateStageV4 } from "../index.ts";
+import { RACE_V4_TUNING } from "../tuning.ts";
+import type { RouteV2 } from "../types.ts";
+
+const FLAT_6434: RouteV2 = {
+  distance_km: 178,
+  profile_type: "flat",
+  finale_type: "bunch_sprint",
+  segments: [
+    { kind: "flat", from_km: 0, to_km: 95 },
+    { kind: "flat", from_km: 95, to_km: 165 },
+    { kind: "flat", from_km: 165, to_km: 178 },
+  ],
+  weather: { kind: "sun", wind_exposure: 0.1 },
+  waypoints: [{ kind: "finish", index: 0, name: "Maal", km: 178 }],
+};
+
+const ABILITY_KEYS_6434 = ["flat", "climbing", "sprint", "time_trial", "punch", "cobblestone", "endurance", "tempo", "acceleration", "positioning", "recovery", "descending", "aggression", "tactics", "teamwork", "leadership"];
+function abil6434(over: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const k of ABILITY_KEYS_6434) out[k] = 55;
+  return { ...out, ...over };
+}
+
+/** Ti menneskehold a seks: kaptajnen er holdets sprinter (faldende spurt), fem hjaelpere. */
+function roster6434(leaderRole: "captain" | "sprint_captain" = "captain") {
+  const list: Array<{ team_id: string; rider_id: string; role: string; is_ai: boolean; abilities: Record<string, number> }> = [];
+  for (let t = 0; t < 10; t++) {
+    const sprint = 90 - t * 2;
+    list.push({ team_id: `team-${t}`, rider_id: `s${t}`, role: t === 4 ? leaderRole : "captain", is_ai: false, abilities: abil6434({ sprint, acceleration: sprint - 4, flat: 72, positioning: 70, climbing: 50 }) });
+    for (let h = 0; h < 5; h++) {
+      list.push({ team_id: `team-${t}`, rider_id: `h${t}-${h}`, role: "helper", is_ai: false, abilities: abil6434({ flat: 70, tempo: 72, positioning: 66, acceleration: 62, sprint: 58, climbing: 40 }) });
+    }
+  }
+  return list;
+}
+
+const plan6434 = (rules_revision: string, profile_type: RouteV2["profile_type"] = "flat", roster = roster6434()) => buildStageOrderPlan({
+  rows: [], stageNumber: 1, roster,
+  context: { route: { profile_type, finale_type: profile_type === "flat" ? "bunch_sprint" : "long_climb" }, race: { is_stage_race: false, later_stages: [] }, rules_revision },
+});
+
+test("#6434 v3: et menneskehold hvis kaptajn er sprinteren faar et tog i et fladt endagsloeb", () => {
+  const train = parseLeadoutOrders(plan6434("official_times_v3").orders).find((o) => o.team_id === "team-4");
+  assert.ok(train, "toget dannes for kaptajnen");
+  assert.equal(train.captain_rider_id, "s4");
+  assert.deepEqual([...train.leadout_rider_ids].sort(), ["h4-0", "h4-1", "h4-2", "h4-3", "h4-4"]);
+});
+
+test("#6434: official_times_v2 og uden kontekst - ingen ny tog-regel (byte-identiske ordrer)", () => {
+  assert.equal(parseLeadoutOrders(plan6434("official_times_v2").orders).length, 0);
+  const noContext = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: roster6434() });
+  assert.equal(parseLeadoutOrders(noContext.orders).length, 0);
+});
+
+test("#6434 v3: en sprint_captain faar samme tog som under v2; ingen tog paa en bjergetape", () => {
+  const sc = roster6434("sprint_captain");
+  const team4 = (rev: string) => plan6434(rev, "flat", sc).orders.filter((o) => o.team_id === "team-4");
+  assert.deepEqual(team4("official_times_v3"), team4("official_times_v2"));
+  assert.equal(parseLeadoutOrders(plan6434("official_times_v3", "mountain").orders).length, 0);
+});
+
+test("#6434 v3: i et helt fladt endagsloeb koerer toget kaptajnen frem (aldrig daarligere, bedre i mindst halvdelen af 12 seeds)", () => {
+  const roster = roster6434();
+  const startlist = roster.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, role: r.role, effort: "normal", condition: 1, abilities: r.abilities }));
+  const place = (orders: EngineTeamOrder[], seed: string) => {
+    const out = simulateStageV4({ route: FLAT_6434, startlist: startlist as never, orders, seed, tuning: RACE_V4_TUNING, rules_revision: "official_times_v3" });
+    return out.results.findIndex((r) => r.rider_id === "s4") + 1;
+  };
+  const withTrain = plan6434("official_times_v3").orders;
+  const withoutTrain = withTrain.filter((o) => !(o.kind === "leadout" && o.team_id === "team-4"));
+  let better = 0;
+  for (let i = 0; i < 12; i++) {
+    const a = place(withTrain, `lo-6434-${i}`);
+    const b = place(withoutTrain, `lo-6434-${i}`);
+    assert.ok(a <= b, `seed ${i}: med tog ${a}, uden ${b}`);
+    if (a < b) better++;
+  }
+  assert.ok(better >= 6, `toget flytter placeringen i ${better} af 12 seeds`);
+});
