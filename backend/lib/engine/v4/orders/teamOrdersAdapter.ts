@@ -33,13 +33,24 @@
 // sidekanal. Et menneskehold faar ALDRIG M14 (ingen autopilot for mennesker):
 // kun et hold hvis ryttere baerer `is_ai: true` fra startlisten.
 //
+// #6441 (KUN official_times_v3, ejer 10/10): undtagelsen er udbruds-stancen.
+// Et menneskehold uden egen stance for etapen faar M14's stance-regel
+// (decideAiBreakawayStance) i stedet for altid neutral; resten af ordren er
+// rollernes. Manageren gemte stance vinder altid (overlayet).
+//
 // Motoren laeser indsatsen paa `Entrant.effort`, ikke i ordren. Planen
 // returnerer derfor AI-holdenes indsats pr. rytter (`aiEffortByRider`), som
 // kaldstedet saetter paa startlisten. Menneskeholdenes indsatskilde roeres
 // ikke her (den er #5580's "én kilde til effort").
 
 import type { AbilityKey, TeamOrder as EngineTeamOrder } from "../types.ts";
-import { generateAiTeamOrder, type AiFieldRider, type AiRaceContext, type AiTacticsRoute } from "../ai/aiTactics.ts";
+import {
+  decideAiBreakawayStance,
+  generateAiTeamOrder,
+  type AiFieldRider,
+  type AiRaceContext,
+  type AiTacticsRoute,
+} from "../ai/aiTactics.ts";
 import {
   applyStageOverlayToOrder,
   defaultTeamOrderForRoster,
@@ -204,6 +215,37 @@ function aiTeamIds(roster: readonly RosterRider[]): Set<string> {
 }
 
 /**
+ * #6441 (KUN official_times_v3, ejer 10/10 kl. 22:40): et menneskeholds
+ * standardordre er rollernes (uaendret), men holdets udbruds-stance er den
+ * samme som et AI-hold ville vaelge (decideAiBreakawayStance, M14 punkt 1-4):
+ * kaptajnen blandt feltets favoritter paa dagens terraen -> chase, uden chance
+ * -> let_go, ellers neutral. Kun stancen; indsats, udbrudsforsoeg og tog er
+ * rollernes. En stance manageren selv har gemt for etapen laegges ovenpaa som
+ * overlay og vinder altid. Mangler holdets evner (ingen raekke at maale
+ * kaptajnen paa), bliver stancen rollernes neutrale standard.
+ */
+function humanDefaultOrderV3(
+  teamId: string,
+  teamRoster: readonly RosterEntry[],
+  route: AiTacticsRoute,
+  field: readonly AiFieldRider[],
+  abilitiesByRider: ReadonlyMap<string, Partial<Record<AbilityKey, number>>>,
+): TeamTacticsOrder {
+  const base = defaultTeamOrderForRoster(teamId, teamRoster);
+  if (!teamRoster.some((r) => abilitiesByRider.has(r.rider_id))) return base;
+  const { stance } = decideAiBreakawayStance({
+    route,
+    roster: teamRoster.map((r) => ({
+      rider_id: r.rider_id,
+      role: r.role,
+      abilities: toAbilities(abilitiesByRider.get(r.rider_id) ?? null),
+    })),
+    field,
+  });
+  return { ...base, breakaway_stance: stance };
+}
+
+/**
  * Alle raekker for ÉN etape + startlistens hold og roller → komplet
  * `StageInput.orders` + AI-holdenes indsats pr. rytter.
  *
@@ -227,8 +269,10 @@ export function buildStageOrderPlan(args: {
     if (row.stage_number === stageNumber) byTeam.set(String(row.team_id), row);
   }
   const aiTeams = context ? aiTeamIds(roster) : new Set<string>();
+  // #6441 (KUN official_times_v3): menneskeholdenes standard-stance laeser ogsaa feltet.
+  const v3HumanStance = context !== undefined && isOfficialTimesV3OrLater(context.rules_revision);
   const abilitiesByRider = new Map<string, Record<AbilityKey, number>>();
-  if (aiTeams.size > 0) {
+  if (aiTeams.size > 0 || v3HumanStance) {
     for (const rider of roster) {
       if (rider.rider_id != null) abilitiesByRider.set(String(rider.rider_id), toAbilities(rider.abilities));
     }
@@ -258,7 +302,9 @@ export function buildStageOrderPlan(args: {
           race: context.race,
           ...(context.rules_revision ? { rules_revision: context.rules_revision } : {}),
         }).order
-      : defaultTeamOrderForRoster(teamId, teamRoster);
+      : v3HumanStance
+        ? humanDefaultOrderV3(teamId, teamRoster, context.route, field, rawAbilitiesByRider)
+        : defaultTeamOrderForRoster(teamId, teamRoster);
     const row = byTeam.get(teamId);
     const order = row ? applyStageOverlayToOrder(base, rowToStageOverlay(row)) : base;
     if (isAiTeam) {
