@@ -1331,10 +1331,8 @@ export default function TrainingPage() {
     return { ok: true };
   }
   function renderResetFor(riderId, compact = false) {
-    const rider = riderByIdMap.get(riderId);
     return (
       <ResetToTeamProgram
-        riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
         visible={hasOwnProgram({ weekDays: riderWeekPlans[riderId], plan: planFor(riderId) }).any}
         locked={rowLocked({ trainedToday: runGate.trainedToday })}
         busy={savingId === riderId || savingRiderWeekPlanId === riderId || bulkApplying}

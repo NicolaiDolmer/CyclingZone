@@ -116,3 +116,14 @@ test("catchActorCopy: beat- og recap-familier giver nøgler der findes i en+da",
   }
   assert.equal(catchActorCopy(null, {}), null);
 });
+
+// #6400: uden startlisten kender regroup-filteret ikke feltet og læser en rigtig indhentning som en samling.
+test("findMorningCatch: startlisten gør indhentningen af feltet synlig (#6400)", () => {
+  const morning = caughtV4({ chase_group_kind: "peloton" });
+  // Motorens egen sammenlægning nævner kun udbryderne; uden startlisten ligner feltet en gruppe af udbrydere.
+  const merged = { km: 176, type: "group_merged", params: { group_id: "peloton-0", into_group_id: "breakaway-0", rider_ids: ["r1", "r2"] } };
+  const events = [start, formed, morning, merged];
+  const startlist = ["r1", "r2", "p1", "p2", "p3"];
+  assert.equal(findMorningCatch(events, startlist), morning);
+  assert.equal(findMorningCatch(events), null);
+});

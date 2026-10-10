@@ -10,7 +10,21 @@
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (2d) — groen
-- #6395 docs(patch-notes): 7.349 - træningspakken åben for alle, sæsonpoint hele dagen (0d) — groen
+- #6398 feat(ops): #5162 K4 carry-forward-bevis og chunk-fejl pr. release (0d) — groen
+- #6403 fix(economy): ingen vaerdiskrivning ved saesonskiftet, eet fast soendagstidspunkt (#5842) (0d) — groen
+- #6410 feat(training): copy a day plan to the next days (#6060) (0d) — groen
+- #6409 feat(team-page): Send besked-knap paa holdsiden (#5831) (0d) — groen
+- #6405 chore(5897): skaerpet apply-gate (token + liste-hash + backup) + frisk dry-run 10/10 (0d) — groen
+- #6406 fix(notifications): slettet holdudtagelses-paamindelse sendes ikke igen (#5979) (0d) — groen
+- #6413 fix(facilities): offentlig holdside bruger staerkeste staff (#6238) (0d) — groen
+- #6408 test(loadtest): race-day simulation gate before season cutover (#5904) (0d) — groen
+- #6411 feat(training): assistenten foreslaar et traeningsprogram pr. rytter-gruppe (#4522) (0d) — groen
+- #6416 fix(scorecard): forankr klassementsgruppen paa foereren i maal 6 (#6415) (0d) — groen
+- #6414 fix(ci): freshness-vagt + deploy-verify miljoe-filter + cron-ventetid (#6370, #6318) (0d) — groen
+- #6418 test(6124): pin ungdoms-redningsmatrixen (selvvalgt U23/junior-udtagelse røres ikke) (0d) — groen
+- #6420 docs(patch-notes): 7.351 - usolgt ungdomsrytter bliver, Boardroom viser underskrevne mål (0d) — groen
+- #6412 fix(race): hold under startgulvet vises ikke som deltager (#5945) (0d) — groen
+- …og 2 mere
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -26,25 +40,32 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2236 Organic community outreach — Reddit + Discord posting (95d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (88d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (85d)
-- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (82d)
-- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (78d)
-- #2806 [monetization] /pro er ikke linket fra appen, og isPro() gater ingen funktionalitet (78d)
+- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (83d)
+- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (79d)
+- #2806 [monetization] /pro er ikke linket fra appen, og isPro() gater ingen funktionalitet (79d)
 - #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (76d)
 - …og 57 mere
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (2d) — groen
-- #6395 docs(patch-notes): 7.349 - træningspakken åben for alle, sæsonpoint hele dagen (0d) — groen
+- #6397 fix(engine/v4): official_times_v3 - bedre klatrer taber ikke fra paa nedkoerselsfinale (#… (0d) — groen
+- #6407 feat(academy): flyt listet rytter mellem trupper uden at miste listingen (#5917) (0d) — groen
+- #6405 chore(5897): skaerpet apply-gate (token + liste-hash + backup) + frisk dry-run 10/10 (0d) — groen
+- #6414 fix(ci): freshness-vagt + deploy-verify miljoe-filter + cron-ventetid (#6370, #6318) (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
 - #6305 fix(6156): samlet form og formtoppe i løbsmotor v4 bag slukket regel-revision (2d) — groen
+- #6397 fix(engine/v4): official_times_v3 - bedre klatrer taber ikke fra paa nedkoerselsfinale (#… (0d) — groen
+- #6401 fix(#5864): varsling pr. trup ved udloebne kontrakter + read-only S4->S5-forhaandsvisning (0d) — groen
+- #6407 feat(academy): flyt listet rytter mellem trupper uden at miste listingen (#5917) (0d) — groen
+- #6417 fix(race): rutematch er samme normaliserede tal paa alle flader (#6207) (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
-- ingen
+- #6421 feat(training): fold programkataloget paa telefon (#5825) (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -53,7 +74,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (111d)
 - #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (108d)
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (84d)
-- #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (82d)
+- #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (83d)
 - #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (80d)
 - #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (78d)
 - #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (78d)
@@ -64,7 +85,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (63d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (61d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (53d)
-- …og 728 mere
+- …og 698 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -84,4 +105,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6264 [bug] Akademi-signing kan betales med penge der er låst i auktionsbud (opfølger #6237) (3d)
 - #6292 Attribution: 28 % af nye signups har egen side som kilde (kilden tabes) (3d)
 - #6158 [data] Giv formtoppe brugt uden virkning under v4 tilbage til managerne (ejer 4/10, koere… (5d)
-- …og 16 mere
+- …og 30 mere

@@ -22,7 +22,7 @@ function idsOf(value: unknown): unknown[] {
  * Indhentningen af DAGENS udbrud (morgen-formationen), ikke et senere angreb.
  * Samme udvælgelse som filmens catch-punkt. Ingen formation → første catch.
  */
-export function findMorningCatch(events: readonly TimelineEvent[] | null | undefined = []): TimelineEvent | null {
+export function findMorningCatch(events: readonly TimelineEvent[] | null | undefined = [], startlist: readonly string[] | null = null): TimelineEvent | null {
   // #6294: a "catch" by a group of escapees only is a regroup, never the catch.
   // The projection replays the race in order, so sort first: by the km the
   // engine wrote (`recorded_km` when a film span moved `km`), then the engine's
@@ -32,7 +32,7 @@ export function findMorningCatch(events: readonly TimelineEvent[] | null | undef
     .map((e, i) => ({ e, i }))
     .sort((a, b) => raceKm(a.e) - raceKm(b.e) || a.i - b.i)
     .map(({ e }) => e)
-    .filter((e): e is ParticipationEvent => typeof e?.type === "string"));
+    .filter((e): e is ParticipationEvent => typeof e?.type === "string"), startlist ?? []);
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
   const morningIds = new Set(idsOf(formation?.params?.rider_ids));
   const formationGroup = formation?.params?.group_id;
@@ -86,9 +86,9 @@ const BEAT_KEY = { teams: "breakaway_caught_by_teams", peloton: "breakaway_caugh
  */
 export function catchActorCopy(
   timelineEvents: readonly TimelineEvent[] | null | undefined,
-  { teamNameById, family = "recap", count = 0 }: { teamNameById?: TeamNameLookup; family?: "recap" | "beat"; count?: number } = {},
+  { teamNameById, family = "recap", count = 0, startlist = null }: { teamNameById?: TeamNameLookup; family?: "recap" | "beat"; count?: number; startlist?: readonly string[] | null } = {},
 ): CatchActorCopy | null {
-  const event = timelineEvents?.length ? findMorningCatch(timelineEvents) : null;
+  const event = timelineEvents?.length ? findMorningCatch(timelineEvents, startlist) : null;
   const actor = event ? catchActor(event, { teamNameById, distanceKm: timelineDistanceKm(timelineEvents) }) : null;
   if (!actor) return null;
   // Én nøgle pr. aktør; `where` vælger "med N km igen" / "før stregen" i ICU-teksten.

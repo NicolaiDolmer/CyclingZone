@@ -42,7 +42,22 @@
 //   is_academy=false, `squad` bevares. Det sker nu i normalvejens egen update
 //   (contractExpiryRelease.buildContractReleasePatch), som også sæsonskiftet bruger.
 //
+// SÆSONSKIFTE-PREVIEW + EFTERKONTROL (#5864, begge READ-ONLY)
+//   --preview-transition: kører normalvejens default-forespørgsel
+//     (contractExpiryRelease.defaultFetchExpiredContractRiders) med
+//     seasonNumber = den aktive sæson (= fromSeason ved næste skifte, S4 ved S4→S5)
+//     gennem en klient der kaster ved enhver skrivning. Viser hvad sæsonskiftet vil
+//     frigive, og hvilke hold+trupper der derefter får en squad-below-minimum-
+//     varsling (squadBelowMinimumCheck.planSquadsBelowMinimum, samme regel som
+//     fasen selv). Samlede tal → docs/snapshots/5864/preview-s<fra>-s<til>-<tid>.md,
+//     detaljer (hold, ryttere) → balance-internals/5864/.
+//   --verify-after-transition: efter skiftet skal der være 0 ryttere på
+//     menneskehold i scope med contract_end_season <= fromSeason (= aktiv sæson - 1).
+//     Exit-kode 1 hvis ikke. Samme fordeling af offentligt/privat output.
+//
 //   node backend/scripts/dev/enforce5864ExpiredContracts.mjs
+//   node backend/scripts/dev/enforce5864ExpiredContracts.mjs --preview-transition
+//   node backend/scripts/dev/enforce5864ExpiredContracts.mjs --verify-after-transition
 //   node backend/scripts/dev/enforce5864ExpiredContracts.mjs --apply --owner-go=5864-production --approved-list=<hash>
 //   (hash = "Liste-hash" fra det dry-run ejeren godkendte; afviger den levende rytter-mængde, afbrydes FØR skrivning)
 
@@ -57,10 +72,21 @@ import { MIN_RIDERS_FOR_RACE } from "../../lib/marketUtils.js";
 import { DIVISION_SQUAD_LIMITS } from "../../lib/boardConstants.js";
 import { MIN_RACE_ENTRIES } from "../../lib/raceAutopick.js";
 import { getRidersInActiveStageRace } from "../../lib/stageRaceTransferDefer.js";
+import { defaultFetchExpiredContractRiders } from "../../lib/contractExpiryRelease.js";
+import {
+  checkedSquadOf,
+  defaultFetchHumanTeams,
+  defaultFetchSquadRiderCounts,
+  planSquadsBelowMinimum,
+} from "../../lib/squadBelowMinimumCheck.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolve(__dirname, "../../..");
 export const PRIVATE_DIR = join(REPO_ROOT, "balance-internals", "5864");
+export const PUBLIC_SNAPSHOT_DIR = join(REPO_ROOT, "docs", "snapshots", "5864");
+
+export const PREVIEW_TRANSITION_FLAG = "--preview-transition";
+export const VERIFY_AFTER_TRANSITION_FLAG = "--verify-after-transition";
 
 export const OWNER_GO_FLAG = "--owner-go=5864-production";
 // Ejer-beslutning 6/10 (#5864): frigiv NU kun ryttere der ikke er brugt i den aktive
@@ -78,10 +104,12 @@ const TEAM_EMBED = "team:team_id!inner(id, name, user_id, is_ai, is_frozen, is_b
 // ── Argumenter ──────────────────────────────────────────────────────────────
 
 export function parseArgs(argv) {
-  const opts = { apply: false, ownerGo: false, approvedHash: null, onlyUnused: false };
+  const opts = { apply: false, ownerGo: false, approvedHash: null, onlyUnused: false, previewTransition: false, verifyAfterTransition: false };
   for (const arg of argv) {
     if (arg === "--apply") opts.apply = true;
     else if (arg === ONLY_UNUSED_FLAG) opts.onlyUnused = true;
+    else if (arg === PREVIEW_TRANSITION_FLAG) opts.previewTransition = true;
+    else if (arg === VERIFY_AFTER_TRANSITION_FLAG) opts.verifyAfterTransition = true;
     else if (arg === OWNER_GO_FLAG) opts.ownerGo = true;
     else if (arg.startsWith("--owner-go=")) throw new Error("Wrong owner-go token");
     else if (arg.startsWith("--approved-list=")) {
@@ -89,6 +117,15 @@ export function parseArgs(argv) {
       if (!/^[a-f0-9]{64}$/.test(h)) throw new Error("--approved-list must be the 64-char list hash printed by the dry-run");
       opts.approvedHash = h;
     } else throw new Error(`Unknown option: ${arg}`);
+  }
+  if (opts.previewTransition || opts.verifyAfterTransition) {
+    if (opts.previewTransition && opts.verifyAfterTransition) {
+      throw new Error(`${PREVIEW_TRANSITION_FLAG} and ${VERIFY_AFTER_TRANSITION_FLAG} are separate read-only runs; pick one`);
+    }
+    if (opts.apply || opts.ownerGo || opts.approvedHash !== null || opts.onlyUnused) {
+      throw new Error(`${PREVIEW_TRANSITION_FLAG}/${VERIFY_AFTER_TRANSITION_FLAG} are read-only and cannot be combined with apply options`);
+    }
+    return opts;
   }
   if (opts.ownerGo && !opts.apply) throw new Error("--owner-go only makes sense together with --apply");
   if (opts.apply && !opts.ownerGo) throw new Error(`--apply requires ${OWNER_GO_FLAG} (owner must have seen the live list)`);
@@ -585,6 +622,254 @@ export function writePrivateArtifacts(plan, { activeSeason, generatedAt, dir = P
   return { report, json, snapshot, restore };
 }
 
+// ── Read-only klient (preview + efterkontrol) ───────────────────────────────
+
+const WRITE_METHODS = new Set(["insert", "update", "upsert", "delete"]);
+
+/**
+ * Indpak en Supabase-klient så ENHVER skrivning kaster før den når netværket:
+ * insert/update/upsert/delete på en tabel-builder og alle rpc-kald (en rpc kan
+ * skrive). Kun `from(...)`-læsninger slipper igennem. Bruges af
+ * --preview-transition og --verify-after-transition, så de beviseligt er
+ * read-only, også når de kører normalvejens egen kode.
+ */
+export function makeReadOnlyClient(supabase) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  return {
+    from(table) {
+      const builder = supabase.from(table);
+      return new Proxy(builder, {
+        get(target, prop, receiver) {
+          if (WRITE_METHODS.has(prop)) {
+            return () => { throw new Error(`read-only client: ${String(prop)} on ${table} is blocked (#5864 preview/verify)`); };
+          }
+          const value = Reflect.get(target, prop, receiver);
+          return typeof value === "function" ? value.bind(target) : value;
+        },
+      });
+    },
+    rpc(name) {
+      throw new Error(`read-only client: rpc ${name} is blocked (#5864 preview/verify)`);
+    },
+  };
+}
+
+// ── Sæsonskifte-preview (read-only) ─────────────────────────────────────────
+
+function bump(map, teamId, squad, delta) {
+  if (!squad) return;
+  if (!map.has(teamId)) map.set(teamId, { senior: 0, u23: 0, junior: 0 });
+  map.get(teamId)[squad] += delta;
+}
+
+function cloneCounts(counts) {
+  const out = new Map();
+  for (const [teamId, c] of counts) out.set(teamId, { senior: c.senior || 0, u23: c.u23 || 0, junior: c.junior || 0 });
+  return out;
+}
+
+const warningKey = (w) => `${w.teamId}:${w.squad}`;
+
+/**
+ * Ren funktion: hvad gør sæsonskiftets kontraktudløb + squad-below-minimum-fasen?
+ *
+ * @param {object} p
+ * @param {number} p.fromSeason   den sæson der afsluttes (contract_end_season <= fromSeason frigives)
+ * @param {object[]} p.candidates normalvejens kandidater (EXPIRED_RIDER_SELECT inkl. `team`-embed)
+ * @param {Set<string>} p.racingIds kandidater midt i et aktivt etapeløb (udskydes)
+ * @param {object[]} p.humanTeams menneskehold (id, name, user_id, pulje-kolonner)
+ * @param {Map<string,{senior:number,u23:number,junior:number}>} p.squadCounts nuværende trup-tal
+ */
+export function buildTransitionPreview({ fromSeason, candidates, racingIds, humanTeams, squadCounts }) {
+  const released = candidates.filter((r) => !racingIds.has(r.id));
+  const humanTeamIds = new Set(humanTeams.map((t) => t.id));
+  const isHuman = (r) => r.team?.is_ai === false;
+
+  const countsAfter = cloneCounts(squadCounts);
+  for (const r of released) {
+    if (humanTeamIds.has(r.team_id)) bump(countsAfter, r.team_id, checkedSquadOf(r), -1);
+  }
+
+  const before = planSquadsBelowMinimum({ teams: humanTeams, counts: squadCounts });
+  const after = planSquadsBelowMinimum({ teams: humanTeams, counts: countsAfter });
+  const beforeKeys = new Set(before.map(warningKey));
+  const newlyBelow = after.filter((w) => !beforeKeys.has(warningKey(w)));
+
+  const releasedByTeamSquad = new Map();
+  for (const r of released) {
+    if (!humanTeamIds.has(r.team_id)) continue;
+    const key = `${r.team_id}:${checkedSquadOf(r) ?? rosterBucket(r)}`;
+    releasedByTeamSquad.set(key, (releasedByTeamSquad.get(key) || 0) + 1);
+  }
+
+  const warnings = after.map((w) => ({
+    ...w,
+    before: Number(squadCounts.get(w.teamId)?.[w.squad] || 0),
+    releasedHere: releasedByTeamSquad.get(warningKey(w)) || 0,
+    newlyBelow: !beforeKeys.has(warningKey(w)),
+  }));
+
+  const humanReleased = released.filter(isHuman);
+  const totals = {
+    fromSeason,
+    toSeason: fromSeason + 1,
+    candidates: candidates.length,
+    release: released.length,
+    deferredActiveStageRace: candidates.length - released.length,
+    releaseByOwner: { human: humanReleased.length, ai: released.length - humanReleased.length },
+    humanReleaseBySquad: countBy(humanReleased, (r) => rosterBucket(r)),
+    aiReleaseBySquad: countBy(released.filter((r) => !isHuman(r)), (r) => rosterBucket(r)),
+    youthNormalize: released.filter((r) => r.is_academy === true).length,
+    humanTeamsLosingRiders: new Set(humanReleased.map((r) => r.team_id)).size,
+    humanTeamsChecked: humanTeams.length,
+    squadWarningsAfter: after.length,
+    squadWarningsAfterBySquad: countBy(after, (w) => w.squad),
+    squadWarningsBefore: before.length,
+    newlyBelowMinimum: newlyBelow.length,
+    newlyBelowMinimumBySquad: countBy(newlyBelow, (w) => w.squad),
+  };
+  const riders = candidates.map((r) => ({
+    riderId: r.id,
+    name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
+    teamId: r.team_id,
+    human: isHuman(r),
+    squad: rosterBucket(r),
+    contractEndSeason: r.contract_end_season,
+    outcome: racingIds.has(r.id) ? "deferred_active_stage_race" : "release_to_free_agent",
+  }));
+  return { totals, warnings, riders };
+}
+
+export async function loadTransitionPreview(supabase, { fetchCandidates = defaultFetchExpiredContractRiders } = {}) {
+  const ro = makeReadOnlyClient(supabase);
+  const fromSeason = await fetchActiveSeasonNumber(ro);
+  const candidates = await fetchCandidates({ supabase: ro, seasonNumber: fromSeason });
+  const [racing, humanTeams] = await Promise.all([
+    getRidersInActiveStageRace(ro, candidates.map((r) => r.id)),
+    defaultFetchHumanTeams({ supabase: ro }),
+  ]);
+  const squadCounts = await defaultFetchSquadRiderCounts({ supabase: ro, teamIds: humanTeams.map((t) => t.id) });
+  return buildTransitionPreview({ fromSeason, candidates, racingIds: new Set(racing), humanTeams, squadCounts });
+}
+
+/** Offentlig markdown: KUN samlede tal (ingen id'er, holdnavne eller brugernavne). */
+export function renderTransitionPreviewPublic(preview, { generatedAt }) {
+  const t = preview.totals;
+  return [
+    `# #5864 preview: kontraktudløb ved S${t.fromSeason}→S${t.toSeason} (read-only)`,
+    "",
+    `Genereret ${generatedAt}. Normalvejens forespørgsel (defaultFetchExpiredContractRiders, seasonNumber=${t.fromSeason}) kørt gennem en klient der blokerer skrivninger. Intet skrevet.`,
+    "",
+    "## Kontraktudløb",
+    `- Kandidater (contract_end_season <= ${t.fromSeason}): ${t.candidates}`,
+    `- Frigives ved skiftet: ${t.release} (menneskehold ${t.releaseByOwner.human}, AI-hold ${t.releaseByOwner.ai})`,
+    `- Menneskehold pr. trup: ${JSON.stringify(t.humanReleaseBySquad)}`,
+    `- AI-hold pr. trup: ${JSON.stringify(t.aiReleaseBySquad)}`,
+    `- Akademiryttere der får is_academy=false: ${t.youthNormalize}`,
+    `- Udskudt (midt i et etapeløb): ${t.deferredActiveStageRace}`,
+    `- Menneskehold der mister mindst én rytter: ${t.humanTeamsLosingRiders}`,
+    "",
+    "## Squad-below-minimum-varsling efter skiftet",
+    `- Menneskehold tjekket: ${t.humanTeamsChecked}`,
+    `- Varslinger (hold+trup under startgulvet efter skiftet): ${t.squadWarningsAfter} ${JSON.stringify(t.squadWarningsAfterBySquad)}`,
+    `- Heraf nye (truppen kunne stille til start før skiftet): ${t.newlyBelowMinimum} ${JSON.stringify(t.newlyBelowMinimumBySquad)}`,
+    `- Allerede under gulvet før skiftet: ${t.squadWarningsBefore}`,
+    "",
+    "Detaljer (hold og ryttere) ligger privat i balance-internals/5864/.",
+    "",
+  ].join("\n");
+}
+
+export function renderTransitionPreviewPrivate(preview, { generatedAt }) {
+  const t = preview.totals;
+  const lines = [renderTransitionPreviewPublic(preview, { generatedAt }).replace("(read-only)", "(PRIVAT, read-only)")];
+  lines.push("## Varslinger pr. hold+trup");
+  lines.push("| Hold | Hold-id | Trup | Før | Efter | Frigives her | Ny |");
+  lines.push("|---|---|---|---|---|---|---|");
+  const sorted = [...preview.warnings].sort((a, b) => String(a.name).localeCompare(String(b.name)) || a.squad.localeCompare(b.squad));
+  for (const w of sorted) {
+    lines.push(`| ${w.name} | ${w.teamId} | ${w.squad} | ${w.before} | ${w.activeRiders} | ${w.releasedHere} | ${w.newlyBelow ? "ja" : "nej"} |`);
+  }
+  lines.push("");
+  lines.push(`## Ryttere (${preview.riders.length}, tærskel S${t.fromSeason})`);
+  lines.push("| Rytter | Rytter-id | Hold-id | Menneske | Trup | Kontrakt-slut | Udfald |");
+  lines.push("|---|---|---|---|---|---|---|");
+  for (const r of preview.riders) {
+    lines.push(`| ${r.name} | ${r.riderId} | ${r.teamId} | ${r.human ? "ja" : "nej"} | ${r.squad} | S${r.contractEndSeason} | ${OUTCOME_LABEL[r.outcome]} |`);
+  }
+  lines.push("");
+  return lines.join("\n");
+}
+
+export function writeTransitionPreview(preview, { generatedAt, publicDir = PUBLIC_SNAPSHOT_DIR, privateDir = PRIVATE_DIR }) {
+  const t = preview.totals;
+  const stamp = generatedAt.replace(/[:.]/g, "-");
+  const base = `preview-s${t.fromSeason}-s${t.toSeason}-${stamp}`;
+  mkdirSync(publicDir, { recursive: true });
+  mkdirSync(privateDir, { recursive: true });
+  const publicFile = join(publicDir, `${base}.md`);
+  const privateFile = join(privateDir, `${base}.md`);
+  const privateJson = join(privateDir, `${base}.json`);
+  writeFileSync(publicFile, renderTransitionPreviewPublic(preview, { generatedAt }), "utf8");
+  writeFileSync(privateFile, renderTransitionPreviewPrivate(preview, { generatedAt }), "utf8");
+  writeFileSync(privateJson, JSON.stringify({ generatedAt, ...preview }, null, 2), "utf8");
+  return { publicFile, privateFile, privateJson };
+}
+
+// ── Efterkontrol efter sæsonskiftet (read-only) ────────────────────────────
+
+/** Ren funktion: ok = 0 ryttere i scope med contract_end_season <= fromSeason. */
+export function buildVerifyResult({ fromSeason, candidates, racingIds = new Set() }) {
+  const inScope = candidates.filter((r) => isInScopeTeam(r.team));
+  const outOfScope = candidates.filter((r) => !isInScopeTeam(r.team));
+  return {
+    fromSeason,
+    ok: inScope.length === 0,
+    remaining: inScope.length,
+    remainingBySquad: countBy(inScope, (r) => rosterBucket(r)),
+    remainingInActiveStageRace: inScope.filter((r) => racingIds.has(r.id)).length,
+    remainingTeams: new Set(inScope.map((r) => r.team_id)).size,
+    outOfScope: outOfScope.length,
+    outOfScopeByReason: countBy(outOfScope, (r) => outOfScopeReason(r.team)),
+    riders: inScope.map((r) => ({ riderId: r.id, teamId: r.team_id, teamName: r.team?.name ?? null, squad: rosterBucket(r), contractEndSeason: r.contract_end_season, racing: racingIds.has(r.id) })),
+  };
+}
+
+export async function loadVerifyAfterTransition(supabase, { fetchCandidates = fetchHumanTeamCandidates } = {}) {
+  const ro = makeReadOnlyClient(supabase);
+  const activeSeason = await fetchActiveSeasonNumber(ro);
+  const fromSeason = activeSeason - 1;
+  const candidates = await fetchCandidates(ro, fromSeason);
+  const racing = await getRidersInActiveStageRace(ro, candidates.filter((r) => isInScopeTeam(r.team)).map((r) => r.id));
+  return { activeSeason, ...buildVerifyResult({ fromSeason, candidates, racingIds: new Set(racing) }) };
+}
+
+export function renderVerifyPublic(result, { generatedAt }) {
+  return [
+    `# #5864 efterkontrol: S${result.fromSeason}→S${result.fromSeason + 1} (read-only)`,
+    "",
+    `Genereret ${generatedAt}. Krav: 0 ryttere på menneskehold i scope med contract_end_season <= ${result.fromSeason}. Intet skrevet.`,
+    "",
+    `- Resultat: ${result.ok ? "OK" : "FEJL"}`,
+    `- Tilbage i scope: ${result.remaining} ${JSON.stringify(result.remainingBySquad)} på ${result.remainingTeams} hold`,
+    `- Heraf midt i et aktivt etapeløb (udskudt af normalvejen): ${result.remainingInActiveStageRace}`,
+    `- Uden for scope (frosne/testkonti/bank, røres bevidst ikke): ${result.outOfScope} ${JSON.stringify(result.outOfScopeByReason)}`,
+    "",
+  ].join("\n");
+}
+
+export function writeVerifyResult(result, { generatedAt, publicDir = PUBLIC_SNAPSHOT_DIR, privateDir = PRIVATE_DIR }) {
+  const stamp = generatedAt.replace(/[:.]/g, "-");
+  const base = `verify-after-s${result.fromSeason}-s${result.fromSeason + 1}-${stamp}`;
+  mkdirSync(publicDir, { recursive: true });
+  mkdirSync(privateDir, { recursive: true });
+  const publicFile = join(publicDir, `${base}.md`);
+  const privateJson = join(privateDir, `${base}.json`);
+  writeFileSync(publicFile, renderVerifyPublic(result, { generatedAt }), "utf8");
+  writeFileSync(privateJson, JSON.stringify({ generatedAt, ...result }, null, 2), "utf8");
+  return { publicFile, privateJson };
+}
+
 // ── Apply (ejer-gated) ──────────────────────────────────────────────────────
 
 /** Kast hvis snapshot-tabellen ikke dækker alle ryttere der skal frigives. */
@@ -640,6 +925,24 @@ async function main() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
   const generatedAt = new Date().toISOString();
+  if (opts.previewTransition) {
+    const preview = await loadTransitionPreview(supabase);
+    const files = writeTransitionPreview(preview, { generatedAt });
+    console.log(renderTransitionPreviewPublic(preview, { generatedAt }));
+    console.log(`  Offentlig snapshot: ${files.publicFile}`);
+    console.log(`  Privat rapport:     ${files.privateFile}`);
+    console.log("Preview: read-only klient, intet skrevet til databasen.");
+    return;
+  }
+  if (opts.verifyAfterTransition) {
+    const result = await loadVerifyAfterTransition(supabase);
+    const files = writeVerifyResult(result, { generatedAt });
+    console.log(renderVerifyPublic(result, { generatedAt }));
+    console.log(`  Offentlig snapshot: ${files.publicFile}`);
+    console.log(`  Privat detalje:     ${files.privateJson}`);
+    if (!result.ok) process.exitCode = 1;
+    return;
+  }
   const { plan, activeSeason, threshold } = await loadPlan(supabase, { onlyUnused: opts.onlyUnused });
   const files = writePrivateArtifacts(plan, { activeSeason, generatedAt, suffix: opts.apply ? "pre-apply" : "dry-run" });
   console.log(renderPublicSummary(plan));

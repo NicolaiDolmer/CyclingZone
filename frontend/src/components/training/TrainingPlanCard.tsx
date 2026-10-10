@@ -13,9 +13,11 @@
 // fra useTraining, felterne fra riderWeekPlans + seeds (useTrainingPrograms).
 // Telefonen (375 px): dag 34 px + hele dagen 48 px + 5 x ca. 47 px, ingen
 // sidelaens scroll; native vaelger ligger usynligt over hver celle.
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LockIcon } from "../ui/icons/index.jsx";
 import type { ReactNode } from "react";
+import { applyCopyDay, MAX_COPY_DAYS } from "./copyDayPlan.ts";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
 import {
   PROGRAM_SLOTS, cellSession, isCellOverridden, isProgramPlan, changedCellCount,
@@ -104,6 +106,17 @@ export default function TrainingPlanCard({
   const cellDays = cells?.days ?? null;
   const showCells = !!cells && isProgramPlan(cellDays, weekdays);
   const VISIBLE_CHIPS = 4;
+
+  // #6060: kopier en dags intensitet til de naeste dage. Kun kladden (onSetDay), aldrig rytter-planer.
+  const [copySource, setCopySource] = useState<string | null>(null);
+  const [copyCount, setCopyCount] = useState(1);
+  const [copiedTo, setCopiedTo] = useState<number | null>(null);
+  const copyFrom = copySource && weekdays.includes(copySource) ? copySource : todayWeekday;
+  const runCopy = () => {
+    if (!intensity) return;
+    const done = applyCopyDay(copyFrom, copyCount, weekdays, intensity.intensityFor, intensity.onSetDay, { todayWeekday, todayLocked });
+    setCopiedTo(done.length);
+  };
 
   const hint = cells
     ? cells.isSeed
@@ -325,6 +338,35 @@ export default function TrainingPlanCard({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-cz-border px-4 py-2.5 sm:px-5">
           {intensity && !showCells && (
             <>
+              <span className="inline-flex flex-wrap items-center gap-1.5" data-testid="training-copy-day">
+                <select
+                  value={copyFrom}
+                  onChange={(event) => setCopySource(event.target.value)}
+                  aria-label={t("weekPlan.copySource")}
+                  className="min-h-11 rounded-cz border border-cz-border bg-cz-card px-2 text-xs text-cz-1 sm:min-h-[30px]"
+                >
+                  {weekdays.map((weekday) => <option key={weekday} value={weekday}>{t(`weekday_${weekday}`)}</option>)}
+                </select>
+                <select
+                  value={copyCount}
+                  onChange={(event) => setCopyCount(Number(event.target.value))}
+                  aria-label={t("weekPlan.copyCount")}
+                  className="min-h-11 rounded-cz border border-cz-border bg-cz-card px-2 text-xs text-cz-1 sm:min-h-[30px]"
+                >
+                  {Array.from({ length: MAX_COPY_DAYS }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{t("weekPlan.copyOption", { n })}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={runCopy}
+                  disabled={intensity.saving}
+                  className="inline-flex min-h-11 items-center rounded-cz border border-cz-border bg-transparent px-3 text-[13px] font-medium text-cz-2 transition-colors hover:bg-cz-subtle disabled:opacity-50 sm:min-h-[30px]"
+                  data-testid="training-copy-day-button"
+                >
+                  {t("weekPlan.copyButton")}
+                </button>
+              </span>
               <button
                 type="button"
                 onClick={intensity.onSave}
@@ -346,6 +388,11 @@ export default function TrainingPlanCard({
               )}
               {intensity.changedCount > 0 && (
                 <span className="font-data text-xs tabular-nums text-cz-3">{t("weekPlan.unsaved", { n: intensity.changedCount })}</span>
+              )}
+              {copiedTo !== null && intensity.changedCount > 0 && (
+                <span role="status" className="text-xs text-cz-2" data-testid="training-copy-day-status">
+                  {copiedTo > 0 ? t("weekPlan.copyDone", { n: copiedTo }) : t("weekPlan.copyNone")}
+                </span>
               )}
               {intensity.message && (
                 <span role="status" className={`text-xs ${intensity.message.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>

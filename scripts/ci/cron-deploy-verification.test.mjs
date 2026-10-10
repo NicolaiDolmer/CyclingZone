@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, railwayDrainSeconds, safeReason,
+import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, railwayDrainSeconds, safeReason, waitingSummary,
   verifyCronCheckins } from './cron-deploy-verification.mjs';
 
 const since = '2026-10-07T12:00:00Z';
@@ -304,4 +304,25 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(workflow, /name: Cron check-ins deferred/);
   const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   assert.match(ci, /node --test scripts\/ci\/cron-deploy-verification\.test\.mjs scripts\/ci\/deploy-verification-state\.test\.mjs/);
+});
+
+test('waiting summary names jobs and latest deadline, and is empty otherwise (#6318)', () => {
+  assert.equal(waitingSummary([]), '');
+  assert.equal(waitingSummary([{ slug: 'a', state: 'verified', deadline: '2026-10-07T12:01:00.000Z' }]), '');
+  assert.equal(waitingSummary([
+    { slug: 'a', state: 'waiting', deadline: '2026-10-07T12:01:00.000Z' },
+    { slug: 'b', state: 'waiting', deadline: '2026-10-07T12:45:00.000Z' },
+    { slug: 'c', state: 'deferred', deadline: '2026-10-08T12:45:00.000Z' }]),
+  'Waiting for check-in from a, b; latest deadline 2026-10-07T12:45:00.000Z');
+});
+
+test('polling logs the waiting summary once per change and never changes the verdict', async () => {
+  let milliseconds = Date.parse(since);
+  const logs = [];
+  const result = await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',
+    now: () => new Date(milliseconds).toISOString(), sleep: async ms => { milliseconds += ms; },
+    fetchFn: async () => ({ ok: true, json: async () => [row('short', since)] }), log: line => logs.push(line) });
+  assert.equal(result.state, 'failed');
+  const summaries = logs.filter(line => line.startsWith('Waiting for check-in from short; latest deadline '));
+  assert.equal(summaries.length, 1);
 });

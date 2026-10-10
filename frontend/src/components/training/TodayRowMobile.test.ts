@@ -79,7 +79,7 @@ test("#6123 'Back to team program': raekken og tabellen rummer slottet, siden ka
 test("#6123 i18n en+da har alle nulstil-noeglerne", () => {
   for (const lang of ["en", "da"]) {
     const json = JSON.parse(readFileSync(join(here, `../../../public/locales/${lang}/training.json`), "utf8"));
-    for (const key of ["action", "done", "aria", "error"]) {
+    for (const key of ["action", "done", "error"]) {
       assert.equal(typeof json.resetProgram?.[key], "string", `${lang} resetProgram.${key}`);
     }
   }

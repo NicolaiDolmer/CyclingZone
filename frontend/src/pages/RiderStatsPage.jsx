@@ -303,7 +303,9 @@ function DirectOfferButton({ rider, seasonYear }) {
 // — upålidelig i mobile in-app-browsere).
 function TransferListButton({ rider, onChanged }) {
   const { t } = useTranslation("rider");
-  const [show, setShow]       = useState(false);
+  // #5917: U23-/Junior-tabellens Sælg-handling linker hertil med ?sell=1.
+  const [searchParams] = useSearchParams();
+  const [show, setShow]       = useState(() => searchParams.get("sell") === "1");
   const [listing, setListing] = useState(null);
   const [price, setPrice]     = useState(getRiderMarketValue(rider));
   const [loading, setLoading] = useState(false);

@@ -90,7 +90,6 @@
   "resetProgram": {
     "action": "Back to team program",
     "done": "Back on team program",
-    "aria": "Put {name} back on the team program",
     "error": "Could not reset. Try again in a moment."
   },
   "card": {
@@ -115,7 +114,13 @@
     "unsaved": "{n, plural, one {# change not saved} other {# changes not saved}}",
     "ownPlansEmpty": "No rider has his own plan yet. Pick a rider under Plan for to give him one.",
     "ownPlansChips": "Riders with own plan:",
-    "ownPlansMore": "+{n}"
+    "ownPlansMore": "+{n}",
+    "copySource": "Copy day",
+    "copyCount": "Days to copy to",
+    "copyOption": "{n, plural, one {Next day} other {Next # days}}",
+    "copyButton": "Copy",
+    "copyDone": "{n, plural, one {Copied to # day. Save to keep it.} other {Copied to # days. Save to keep it.}}",
+    "copyNone": "No open days to copy to."
   },
   "howTrainingWorksLink": "How training works",
   "development": {

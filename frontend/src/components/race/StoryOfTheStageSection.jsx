@@ -52,14 +52,14 @@ function StoryRow({ event, riderNameById, teamNameById, t }) {
 export default function StoryOfTheStageSection({
   raceId, stageNumber, profile, riderNameById, teamNameById, stageLabel,
   finalKmAvailable = false, finalKmOpen = false, onToggleFinalKm, timeline: suppliedTimeline,
-  ownRiderIds, effortByRider, // #6080: mellemtider/tidstab i filmen
+  ownRiderIds, effortByRider, startlist, // #6400, #6080: mellemtider/tidstab i filmen
 }) {
   const { t } = useTranslation("races");
   const { timeline: fetchedTimeline } = useStageTimeline(suppliedTimeline === undefined ? raceId : null, stageNumber);
   const timeline = suppliedTimeline === undefined ? fetchedTimeline : suppliedTimeline;
   const [playerOpen, setPlayerOpen] = useState(false);
 
-  const story = timeline?.events?.length ? selectStoryEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version })) : [];
+  const story = timeline?.events?.length ? selectStoryEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version, startlist })) : [];
   if (!story.length && !finalKmAvailable) return null;
 
   return (
@@ -96,6 +96,7 @@ export default function StoryOfTheStageSection({
             stageLabel={stageLabel}
             ownRiderIds={ownRiderIds}
             effortByRider={effortByRider}
+            startlist={startlist}
           />
         </Suspense>
       )}

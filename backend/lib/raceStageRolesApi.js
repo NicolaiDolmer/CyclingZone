@@ -19,6 +19,54 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
+import { teamWillStart } from "./raceStartOutlook.js";
+import {
+  applyRiderEligibilityFilter, raceSquadOf, isRiderInjured, raceSelectionReferenceDateStr,
+} from "./riderEligibility.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
+
+// #5945: stiller holdet op i løbet? Samme regel som trænings-badget og frontendens
+// partialSquadOutlook (raceStartOutlook.teamWillStart): udtagne + frie egnede ryttere i
+// løbets trup skal nå startgulvet. Frie = holdets løbs-berettigede ryttere i truppen der
+// hverken er udtaget her eller skadet på løbets startdato.
+//
+// BEVIDST KONSERVATIVT: en rytter bundet i et ANDET løb samme dag trækkes ikke fra de
+// frie her, så udsigten overvurderer de frie og fejler mod "stiller op". Banneret
+// "stiller ikke op" vises derfor kun når holdet entydigt ikke kan nå gulvet. Ren
+// berigelse: ALDRIG throw, enhver fejl giver { starts: true } (som før #5945).
+async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
+  const fallback = { starts: true, min: teamWillStart({}).min };
+  try {
+    if ((race.stages_completed ?? 0) > 0) return fallback;
+    const { data: roster, error: rosterErr } = await applyRiderEligibilityFilter(
+      // pagination-safe: .eq("team_id") afgraenser til ÉT holds egen trup (typisk < 30 ryttere),
+      // langt under PostgREST's 1000-raekkers-loft.
+      supabase.from("riders").select("id").eq("team_id", teamId),
+      { squad: raceSquadOf(race) },
+    );
+    if (rosterErr) return fallback;
+    const rosterIds = (roster || []).map((r) => r.id);
+    const candidateIds = [...new Set([...rosterIds, ...entryRiderIds])];
+    let injuredIds = new Set();
+    if (candidateIds.length) {
+      const { data: cond, error: condErr } = await supabase
+        .from("rider_condition").select("rider_id, injured_until").in("rider_id", candidateIds);
+      if (!condErr) {
+        const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
+        injuredIds = new Set((cond || []).filter((c) => isRiderInjured(c.injured_until ?? null, todayStr)).map((c) => c.rider_id));
+      }
+    }
+    const entered = new Set(entryRiderIds);
+    return teamWillStart({
+      entryCount: entryRiderIds.filter((id) => !injuredIds.has(id)).length,
+      freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id)).length,
+      stagesCompleted: race.stages_completed ?? 0,
+    });
+  } catch {
+    // best-effort: ren berigelse, fejler mod "stiller op" (som før #5945).
+    return fallback;
+  }
+}
 
 /**
  * Ren validering af en PUT-body. Ingen DB. Fejlrækkefølge (errors[0] til brugeren,
@@ -287,8 +335,14 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
       .map((s) => s.stage_number),
   );
 
+  // #5945: kun relevant når holdet har en udtagelse at vise taktik for.
+  const start_outlook = riderIds.length
+    ? await loadStartOutlook({ supabase, race, teamId, entryRiderIds: riderIds })
+    : { starts: true, min: teamWillStart({}).min };
+
   return {
     stages_completed: race.stages_completed ?? 0,
+    start_outlook,
     stage_count: race.stages ?? 0,
     riders,
     overrides,

@@ -159,9 +159,10 @@ export default function TodayRowsMobile({
                       </span>
                     </span>
                   </button>
+                  <div className="flex flex-none flex-col items-end">
                   {forecast && (
                     <span
-                      className="flex-none pt-0.5 text-xs text-cz-2"
+                      className="pt-0.5 text-xs text-cz-2"
                       data-testid="training-onetap-forecast"
                       data-band={forecast.tone}
                       aria-label={t(forecastSettled ? "forecast.ariaSettled" : "forecast.aria", {
@@ -175,6 +176,8 @@ export default function TodayRowsMobile({
                       </span>
                     </span>
                   )}
+                  {!pickMode && renderReset?.(rider.id)}
+                  </div>
                 </div>
 
                 {!pickMode && (
@@ -211,7 +214,6 @@ export default function TodayRowsMobile({
                     })}
                   </div>
                 )}
-                {!pickMode && renderReset?.(rider.id)}
                 {error && !pickMode && (
                   <p role="alert" className="mt-1 text-xs text-cz-danger" data-testid="training-onetap-error">
                     {t([`planActionError_${error}`, "planActionErrorGeneric"])}
