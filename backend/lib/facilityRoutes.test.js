@@ -704,3 +704,40 @@ for (const [marker, handler] of CLUB_ROUTES) {
     assert.ok(block.includes(handler), `route skal delegere til ${handler}`);
   });
 }
+
+// ── #6238: paritet egen klubside vs. offentlig holdside ─────────────────────
+
+test("#6238 paritet: samme tier + to staff (byttet rækkefølge) → samme staff og effectiveBonus på begge handlere", async () => {
+  const { getTeamPublicProfileHandler } = await import("./teamPublicProfileHandlers.js");
+  const weak = { id: "staff-weak", name: "Weak Coach", role: "training", tier: 1, salary: 5_000, slot: 1 };
+  const strong = { id: "staff-strong", name: "Strong Coach", role: "training", tier: 5, salary: 40_000, slot: 2 };
+  const facilities = [{ track: "training", tier: 3 }];
+
+  const publicSupabase = (staffRows) => ({
+    from(table) {
+      if (table === "teams") return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { id: TEAM_ID }, error: null }) }) }) };
+      if (table === "team_staff") return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: staffRows, error: null }) }) }) };
+      if (table === "team_facilities") return { select: () => ({ eq: () => Promise.resolve({ data: facilities, error: null }) }) };
+      throw new Error(`unexpected table ${table}`);
+    },
+  });
+
+  for (const order of [[weak, strong], [strong, weak]]) {
+    const own = await getClubFacilitiesHandler({ teamId: TEAM_ID }, createSupabaseMock({ facilities, staff: order }), { flags: ENABLED });
+    const pub = await getTeamPublicProfileHandler({ teamId: TEAM_ID }, publicSupabase(order), { flags: ENABLED });
+    const ownTraining = own.body.facilities.find((f) => f.track === "training");
+    const pubTraining = pub.body.facilities.find((f) => f.track === "training");
+    assert.equal(pubTraining.staff.id, ownTraining.staff.id);
+    assert.equal(pubTraining.effectiveBonus, ownTraining.effectiveBonus);
+  }
+});
+
+test("primaryStaff: stærkeste vinder; tie → laveste slot, så id; tom → null", async () => {
+  const { primaryStaff } = await import("./facilityEngine.js");
+  assert.equal(primaryStaff([]), null);
+  assert.equal(primaryStaff(null), null);
+  assert.equal(primaryStaff([{ id: "a", overall: 40 }, { id: "b", overall: 60 }]).id, "b");
+  assert.equal(primaryStaff([{ id: "b", overall: 50, slot: 2 }, { id: "a", overall: 50, slot: 1 }]).id, "a");
+  assert.equal(primaryStaff([{ id: "b", overall: 50, slot: 1 }, { id: "a", overall: 50, slot: 1 }]).id, "a");
+  assert.equal(primaryStaff([{ id: "a", overall: 50, slot: 1 }, { id: "b", overall: 50, slot: 1 }]).id, "a");
+});

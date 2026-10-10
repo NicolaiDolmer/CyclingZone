@@ -9,7 +9,7 @@
 // eksponerer salary — den kontrakt er UÆNDRET; DENNE route er en strammere,
 // dedikeret sanitering til holdsiden.
 import { FACILITIES_ENABLED, FACILITY_TRACKS, EFFECT_LIVE_BY_TRACK } from "./facilityConstants.js";
-import { effectiveBonus } from "./facilityEngine.js";
+import { effectiveBonus, primaryStaff } from "./facilityEngine.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
@@ -34,7 +34,7 @@ export async function getTeamPublicProfileHandler(
 
   const { data: staffRows, error: staffError } = await supabaseClient
     .from("team_staff")
-    .select("id, role, tier, name")
+    .select("id, role, tier, name, slot")
     .eq("team_id", teamId)
     .eq("status", "active");
   if (staffError) throw new Error(`teamPublicProfile: could not load staff for ${teamId}: ${staffError.message}`);
@@ -45,24 +45,31 @@ export async function getTeamPublicProfileHandler(
     .eq("team_id", teamId);
   if (facilityError) throw new Error(`teamPublicProfile: could not load facilities for ${teamId}: ${facilityError.message}`);
 
-  const staffByRole = new Map((staffRows ?? []).map((s) => [s.role, s]));
+  // #6238: gruppér pr. rolle og vælg STÆRKESTE staff (samme regel som egen klubside).
+  const staffListByRole = new Map();
+  for (const s of staffRows ?? []) {
+    const list = staffListByRole.get(s.role) ?? [];
+    list.push({
+      ...s,
+      overall: deriveStaffAbilities({ role: s.role, tier: s.tier, name: s.name }).overall,
+    });
+    staffListByRole.set(s.role, list);
+  }
   const tierByTrack = new Map((facilityRows ?? []).map((r) => [r.track, r.tier]));
 
   const staff = (staffRows ?? []).map((s) => ({ id: s.id, name: s.name, role: s.role, tier: s.tier }));
 
   const facilities = FACILITY_TRACKS.map((track) => {
     const tier = tierByTrack.get(track) ?? 0;
-    const staffRow = staffByRole.get(track) ?? null;
-    // overall bruges KUN internt til at beregne effectiveBonus (spejler
-    // facilityRoutesHandlers.getClubFacilitiesHandler) — eksponeres aldrig i responsen.
-    const internalStaffOut = staffRow
-      ? { overall: deriveStaffAbilities({ role: staffRow.role, tier: staffRow.tier, name: staffRow.name }).overall }
-      : null;
+    const roleList = staffListByRole.get(track) ?? [];
+    const staffRow = primaryStaff(roleList);
+    // overall bruges KUN internt til effectiveBonus — eksponeres aldrig i responsen.
     return {
       track,
       tier,
       staff: staffRow ? { id: staffRow.id, name: staffRow.name, tier: staffRow.tier } : null,
-      effectiveBonus: effectiveBonus(track, tier, internalStaffOut),
+      staffCount: roleList.length,
+      effectiveBonus: effectiveBonus(track, tier, staffRow ? { overall: staffRow.overall } : null),
       effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
     };
   });

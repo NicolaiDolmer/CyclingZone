@@ -11,7 +11,7 @@ import {
   MAX_FACILITY_TIER,
   MAX_STAFF_SLOTS_PER_ROLE,
 } from "./facilityConstants.js";
-import { getUpgradePrice, effectiveBonus } from "./facilityEngine.js";
+import { getUpgradePrice, effectiveBonus, primaryStaff } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { normalizeLevelBands } from "./staffAbilityConstants.js";
@@ -98,9 +98,7 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
     // scoutAssignmentService.loadScout — ét deterministisk "hvem tæller for
     // effekten"-svar på tværs af hele staff-laget). Ved 0 eller 1 aktiv er
     // adfærden UÆNDRET.
-    const primaryStaffOut = staffOutList.length
-      ? staffOutList.reduce((best, s) => (s.overall > best.overall ? s : best))
-      : null;
+    const primaryStaffOut = primaryStaff(staffOutList);
     return {
       track,
       tier,
