@@ -46,3 +46,14 @@ export function currentProgramKey(
   if (target.kind !== "rider" || !assigned) return null;
   return assigned[target.rider.id] ?? null;
 }
+
+// #5825: det program modtageren staar paa nu, som katalogobjekt (til den ene
+// linje paa telefonen). Kun en rytter har et "nu"; hold og gruppe har ingen.
+export function currentProgramFor(
+  target: AssignTarget,
+  assigned: Record<string, string> | null | undefined,
+  catalog: readonly CatalogProgram[],
+): CatalogProgram | null {
+  const key = currentProgramKey(target, assigned);
+  return key ? (catalog ?? []).find((p) => p.key === key) ?? null : null;
+}

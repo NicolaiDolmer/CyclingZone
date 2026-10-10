@@ -16,7 +16,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "../../ui/icons/index.jsx";
 import { programName, programTagline, type CatalogProgram } from "../../../lib/trainingPrograms.ts";
 import type { ProgramsResult } from "../useTrainingPrograms.ts";
 import { trainNowSaveErrorKey } from "../TrainNowState.ts";
-import { currentProgramKey, resolveTarget, sectionsForTarget, type AssignRider } from "./programAssignModel.ts";
+import { currentProgramFor, currentProgramKey, resolveTarget, sectionsForTarget, type AssignRider } from "./programAssignModel.ts";
 
 export default function TrainingProgramAssign({
   weekdays,
@@ -44,11 +44,14 @@ export default function TrainingProgramAssign({
   const lang = i18n?.language ?? "en";
   const [targetValue, setTargetValue] = useState("");
   const [openKey, setOpenKey] = useState<string | null>(null);
+  // #5825: kun telefonen foelder kataloget; fra sm og op er listen altid fremme.
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   const target = useMemo(() => resolveTarget(targetValue, riders, groups), [targetValue, riders, groups]);
   const { fits, others } = useMemo(() => sectionsForTarget(catalog, target), [catalog, target]);
   const current = currentProgramKey(target, assigned);
+  const currentProgram = currentProgramFor(target, assigned, catalog);
   const typeLabel = (type: string | null) => (type ? tTypes(`types.${type}`) : "");
 
   const forLabel = (program: CatalogProgram) =>
@@ -81,6 +84,8 @@ export default function TrainingProgramAssign({
       inFlight.current = false;
     }
     if (targetGeneration.current !== generation) return;
+    // Et lykkedes valg lukker kataloget igen (telefon); en fejl lader det staa aabent.
+    if (result.ok) setCatalogOpen(false);
     setMessage(result.ok
       ? { type: "ok", text: t("programs.applied", { name: programName(program, lang), target: targetName }) }
       : { type: "error", text: t(trainNowSaveErrorKey(result.error, "programs.error")) });
@@ -91,6 +96,7 @@ export default function TrainingProgramAssign({
     setTargetValue(value);
     setMessage(null);
     setOpenKey(null);
+    setCatalogOpen(false);
   }
 
   const row = (program: CatalogProgram) => {
@@ -191,15 +197,51 @@ export default function TrainingProgramAssign({
         )}
       </div>
 
+      {/* ── Telefon: modtagerens nuvaerende program som EN linje (#5825) ── */}
+      <div className="flex items-center justify-between gap-3 border-b border-cz-border px-4 py-1.5 sm:hidden" data-testid="training-program-summary">
+        <p className="min-w-0 truncate text-xs text-cz-2">
+          {target.kind === "rider"
+            ? currentProgram
+              ? <><span className="text-cz-3">{t("programs.current")}: </span><span className="font-semibold text-cz-1">{programName(currentProgram, lang)}</span></>
+              : t("programs.noProgram")
+            : t("programs.listNoteShort")}
+        </p>
+        <button
+          type="button"
+          aria-expanded={catalogOpen}
+          aria-controls="training-program-catalog"
+          onClick={() => setCatalogOpen((open) => !open)}
+          className="inline-flex min-h-11 flex-none items-center gap-1 text-xs font-medium text-cz-accent-t"
+          data-testid="training-program-browse"
+        >
+          {catalogOpen ? t("programs.closeCatalog") : t("programs.browse")}
+          {catalogOpen
+            ? <ChevronDownIcon size={12} aria-hidden="true" />
+            : <ChevronRightIcon size={12} aria-hidden="true" />}
+        </button>
+      </div>
+
       {/* ── Trin 2: programmet ─────────────────────────────────────────── */}
+      <div id="training-program-catalog" className={catalogOpen ? "" : "hidden sm:block"}>
       <ul className="divide-y divide-cz-border sm:max-h-[min(560px,calc(100vh-330px))] sm:min-h-[240px] sm:overflow-y-auto">
         {fits.length > 0 && sectionHead(t("programs.fitsType", { type: typeLabel(target.kind === "rider" ? target.rider.type : null) }))}
         {fits.map(row)}
         {fits.length > 0 && others.length > 0 && sectionHead(t("programs.otherPrograms"))}
         {others.map(row)}
       </ul>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-2.5 sm:px-5">
-        <p className="text-2xs text-cz-3">{t("programs.listNote")}</p>
+      <div className="border-t border-cz-border px-4 sm:hidden">
+        <button
+          type="button"
+          onClick={() => setCatalogOpen(false)}
+          className="inline-flex min-h-11 items-center text-xs font-medium text-cz-accent-t"
+          data-testid="training-program-close"
+        >
+          {t("programs.closeCatalog")}
+        </button>
+      </div>
+      </div>
+      <div className={`flex flex-wrap items-center justify-between gap-2 border-t border-cz-border px-4 py-2.5 sm:px-5 ${catalogOpen || message ? "" : "max-sm:hidden"}`}>
+        <p className={`text-2xs text-cz-3 ${catalogOpen ? "" : "hidden sm:block"}`}>{t("programs.listNote")}</p>
         {message && (
           <span role="status" className={`text-xs ${message.type === "ok" ? "text-cz-success" : "text-cz-danger"}`}>
             {message.text}
