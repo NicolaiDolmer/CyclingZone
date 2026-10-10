@@ -146,6 +146,7 @@ import {
   rankByCumTimeAsc,
   rankByCompDesc,
   teamClassification,
+  teamClassificationTime,
   accumulateStageRows,
   filterCompletedEntrants,
   dailyTeamPlacesFromStageRows,
@@ -445,6 +446,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   const stagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
 
   const cumTime = new Map();
+  const cumTimeRaw = new Map(); // #6338: uden bonussekunder (holdklassementet under official_times_v3)
   const posSum = new Map();   // sum af etapeplaceringer → GC-countback-tiebreaker
   const pointsComp = new Map();
   const komComp = new Map();
@@ -700,6 +702,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       // stemmer overens. Legacy (ingen rutedata): uændret adfærd (bit-identisk).
       const agg = passageActive ? passageAgg(r.rider_id) : null;
       add(cumTime, r.rider_id, r.stageGap - (agg ? agg.bonus_seconds : 0));
+      add(cumTimeRaw, r.rider_id, r.stageGap);
       add(posSum, r.rider_id, r.rank);
       if (agg) {
         add(pointsComp, r.rider_id, agg.sprint_points);
@@ -856,7 +859,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
       for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber, awardPrize: k.score > 0 });
       for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-      for (const t of teamClassification(classified, cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
+      for (const t of teamClassification(classified, teamClassificationTime({ cumTime, cumTimeRaw }, rulesRevision), overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
     } else {
       // Slut-etape: hele klassementet udbetales.
       const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
@@ -866,7 +869,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       for (const p of pointsCls) pushIndiv({ result_type: "points", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
       for (const k of komCls) pushIndiv({ result_type: "mountain", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber, awardPrize: k.score > 0 });
       for (const y of young) pushIndiv({ result_type: "young", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-      for (const t of teamClassification(classified, cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
+      for (const t of teamClassification(classified, teamClassificationTime({ cumTime, cumTimeRaw }, rulesRevision), overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
     }
   }
 
@@ -2925,14 +2928,14 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
     for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber, awardPrize: k.score > 0 });
     for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-    for (const t of teamClassification(classified, acc.cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
+    for (const t of teamClassification(classified, teamClassificationTime(acc, rulesRevision), overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
   } else {
     // Slut-etape: hele klassementet udbetales — fra AKKUMULERINGEN, ikke en re-sim.
     for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
     for (const p of pointsCls) pushIndiv({ result_type: "points", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
     for (const k of komCls) pushIndiv({ result_type: "mountain", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber, awardPrize: k.score > 0 });
     for (const y of young) pushIndiv({ result_type: "young", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
-    for (const t of teamClassification(classified, acc.cumTime, overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
+    for (const t of teamClassification(classified, teamClassificationTime(acc, rulesRevision), overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
   }
 
   return { resultRows, passageRows, runs, incidents: stampedIncidents, moments, timelines };
