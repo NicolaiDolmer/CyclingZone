@@ -43,6 +43,8 @@ export type TodayRowsMobileProps = {
   forecastSettled?: boolean;
   pressedFor: (riderId: string) => QuickChoice | null;
   onChoose: (riderId: string, choice: QuickChoice) => void;
+  // #6123: "Back to team program" under valget (null naar rytteren foelger holdet).
+  renderReset?: (riderId: string) => ReactNode;
   errorFor?: (riderId: string) => string | null;
   busyFor: (riderId: string) => boolean;
   locked: boolean;
@@ -65,6 +67,7 @@ export default function TodayRowsMobile({
   forecastSettled = false,
   pressedFor,
   onChoose,
+  renderReset,
   errorFor,
   busyFor,
   locked,
@@ -208,6 +211,7 @@ export default function TodayRowsMobile({
                     })}
                   </div>
                 )}
+                {!pickMode && renderReset?.(rider.id)}
                 {error && !pickMode && (
                   <p role="alert" className="mt-1 text-xs text-cz-danger" data-testid="training-onetap-error">
                     {t([`planActionError_${error}`, "planActionErrorGeneric"])}

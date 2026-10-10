@@ -1,7 +1,7 @@
 // #5685/#5630 · telefonens Today-raekke (retning A): ren logik.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { pressedChoice, pressedChoiceFromSession, rowForecast, rowLocked } from "./todayRowModel.ts";
+import { hasOwnProgram, pressedChoice, pressedChoiceFromSession, rowForecast, rowLocked } from "./todayRowModel.ts";
 
 test("prognosen: afrundet tal + serverens baand; ukendt baand er aldrig 'frisk'", () => {
   assert.deepEqual(rowForecast({ fatigue: 57.6, band: "ok" }), { value: 58, tone: "ok" });
@@ -34,4 +34,17 @@ test("effektivt felt: programcellen vinder over planen", () => {
   assert.equal(pressedChoiceFromSession("restitution"), "recovery");
   assert.equal(pressedChoiceFromSession("threshold"), "session");
   assert.equal(pressedChoiceFromSession(null), null);
+});
+
+test("#6123 egen plan: ugeplan-override, egen dag, begge eller ingen", () => {
+  assert.deepEqual(hasOwnProgram({ weekDays: null, plan: null }), { week: false, plan: false, any: false });
+  assert.deepEqual(hasOwnProgram({ weekDays: undefined, plan: undefined }), { week: false, plan: false, any: false });
+  assert.deepEqual(hasOwnProgram({ weekDays: { mon: { intensity: "hard" } }, plan: null }), { week: true, plan: false, any: true });
+  assert.deepEqual(hasOwnProgram({ weekDays: null, plan: { focus: "climbing" } }), { week: false, plan: true, any: true });
+  assert.deepEqual(hasOwnProgram({ weekDays: {}, plan: { focus: "climbing" } }), { week: true, plan: true, any: true });
+});
+
+test("#6123 en plan uden fokus (tom raekke) er ikke en egen plan", () => {
+  assert.equal(hasOwnProgram({ weekDays: null, plan: { focus: null } }).any, false);
+  assert.equal(hasOwnProgram({ weekDays: null, plan: { focus: "" } }).any, false);
 });

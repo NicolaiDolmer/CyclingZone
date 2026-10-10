@@ -76,7 +76,8 @@ import { countsForRole, mobileScoreCell, pacePerWeek, scoreSortValue } from "../
 import { DISPLAY_RECIPES } from "../lib/generated/displayRecipes.js";
 // #5685/#5630 (retning A, ejer 1/10): eet-tryks dagvalg i telefonens raekke.
 import TodayRowsMobile from "../components/training/TodayRowMobile.tsx";
-import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast } from "../components/training/todayRowModel.ts";
+import { pressedChoice, pressedChoiceFromSession, rowLocked, rowForecast, hasOwnProgram } from "../components/training/todayRowModel.ts";
+import ResetToTeamProgram from "../components/training/ResetToTeamProgram.tsx";
 // #6030: fanerne Program, Development og Report hentes foerst naar de aabnes
 // (lazyWithRetry, #5014), saa foerste visning af Today henter mindre. Fallback er den
 // kanoniske skelet-markup (PAGE_TEMPLATES: aldrig en spinner i kort).
@@ -1314,6 +1315,36 @@ export default function TrainingPage() {
     setOpenRiderId(riders[0].id);
   }, [tourActiveAtMount, phoneLayout, riders]);
 
+  // #6123: "Back to team program" på Today-rækken. Fjerner begge lag, kun dem
+  // rytteren faktisk har: ugeplan-override først, så den egne dag.
+  async function handleResetToTeamProgram(riderId) {
+    const own = hasOwnProgram({ weekDays: riderWeekPlans[riderId], plan: planFor(riderId) });
+    if (own.week) {
+      const result = await clearRiderWeekPlan(riderId);
+      if (!result?.ok) return { ok: false, error: result?.error || "failed" };
+      setRiderWeekDraftMap((prev) => { const next = { ...prev }; delete next[riderId]; return next; });
+    }
+    if (own.plan) {
+      const result = await clearPlan(riderId);
+      if (!result?.ok) return { ok: false, error: result?.error || "failed" };
+    }
+    lingerAfterSave(riderId);
+    return { ok: true };
+  }
+  function renderResetFor(riderId, compact = false) {
+    const rider = riderByIdMap.get(riderId);
+    return (
+      <ResetToTeamProgram
+        riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
+        visible={hasOwnProgram({ weekDays: riderWeekPlans[riderId], plan: planFor(riderId) }).any}
+        locked={rowLocked({ trainedToday: runGate.trainedToday })}
+        busy={savingId === riderId || savingRiderWeekPlanId === riderId || bulkApplying}
+        onReset={() => handleResetToTeamProgram(riderId)}
+        compact={compact}
+      />
+    );
+  }
+
   // Rytterens ugeplan + profil-linket, inde i kortet (A3). Clarity: klik på
   // navnet sendte spilleren ud på profilen og straks tilbage (quickbacks).
   function riderCardFooter(riderId) {
@@ -1546,6 +1577,7 @@ export default function TrainingPage() {
               return pressedChoice(plan?.focus ? dayTypeForProgram(plan) : null, sessionDayType(plan), !!plan?.focus);
             }}
             onChoose={handleOneTapChoice}
+            renderReset={(riderId) => renderResetFor(riderId, true)}
             errorFor={(riderId) => (planActionError?.riderId === riderId ? planActionError.error : null)}
             busyFor={(riderId) => savingId === riderId || bulkApplying}
             locked={rowLocked({ trainedToday: runGate.trainedToday })}
@@ -2167,6 +2199,7 @@ export default function TrainingPage() {
                   />
                 );
               }}
+              renderReset={renderResetFor}
               renderDetail={renderRiderCard}
               renderStatus={renderRowStatus}
               renderNoDay={renderNoDay}

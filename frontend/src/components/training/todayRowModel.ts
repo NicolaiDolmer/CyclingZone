@@ -60,3 +60,22 @@ export function pressedChoiceFromSession(session: string | null | undefined): Qu
 export function rowLocked({ trainedToday }: { trainedToday: boolean }): boolean {
   return trainedToday === true;
 }
+
+/**
+ * #6123: har rytteren sin EGEN plan, dvs. noget "Back to team program" kan fjerne?
+ * Enten en individuel ugeplan-override (training_week_plans, lag "individualPlan"
+ * i resolveDayIntensitySource) eller en eksplicit dag/plan (training_plans, lag
+ * "ownSetting"). Uden begge foelger rytteren holdets program, og handlingen
+ * findes ikke paa raekken. `weekDays` er riderWeekPlans[id], `plan` er planFor(id).
+ */
+export function hasOwnProgram({
+  weekDays,
+  plan,
+}: {
+  weekDays: unknown;
+  plan: { focus?: string | null } | null | undefined;
+}): { week: boolean; plan: boolean; any: boolean } {
+  const week = weekDays != null;
+  const own = !!plan?.focus;
+  return { week, plan: own, any: week || own };
+}
