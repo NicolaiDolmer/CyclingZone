@@ -196,7 +196,14 @@ export function profileClass(profileType) {
  * motoren) har sit eget ejer-maal (#6199 del 3); alle andre etaper profileClass.
  */
 export function gapClass(profile) {
-  return isShortUphillFinish(profile) ? "short_uphill" : profileClass(profile?.profile_type);
+  if (isShortUphillFinish(profile)) return "short_uphill";
+  const cls = profileClass(profile?.profile_type);
+  // Ejer-beslutning 2/9 (#4604, RULES "Bjerg-ankerets maaleflade"): bjergbaandet
+  // gaelder KUN topankomster (finale long_climb, samme definition som
+  // headToHeadAnchors.scoreGapRealism). En bjergetape der slutter efter en
+  // nedkoersel hoerer til nedkoerselsankeret (gatens D1/D3-trin), ikke dette baand.
+  if (cls === "mountain" && profile?.finale_type !== "long_climb") return "mountain_non_summit";
+  return cls;
 }
 
 /** PASS/WARN/FAIL/N/A for en vaerdi mod et baand. */
@@ -659,9 +666,17 @@ export function summarizeTour(perSeed, stages, revision = null) {
     const cls = profileClass(p.profile_type);
     const lo = ms.map((m) => m.leadout).filter(Boolean);
     const zeroKm = ms.map((m) => m.minuteLossAtZeroKm).filter((v) => v !== null && v !== undefined);
+    // RULES (#6199, ankertabellen; gate #6442): tidsgabene doemmes paa de seeds hvor
+    // udbruddet IKKE vandt. I en udbrudssejr er nr. 10 feltets hul til udbruddet, og
+    // det ejes af Udbrudsmaal (breakawayWinShare + vindermarginen nedenfor). Alle
+    // seeds staar som info (gapTo10All/gapTo30All). Kun udbrud vandt = N/A.
+    const caught = ms.filter((m) => m.breakawayWon !== true);
+    const medOf = (rows, k) => median(rows.map((m) => m[k]).filter((v) => v !== null && v !== undefined));
     const row = {
       stage: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type ?? null, cls,
-      gapTo10: med("gapTo10"), gapTo30: med("gapTo30"), ittGapTo10Per40Km: med("ittGapTo10Per40Km"),
+      gapTo10: medOf(caught, "gapTo10"), gapTo30: medOf(caught, "gapTo30"),
+      gapTo10All: med("gapTo10"), gapTo30All: med("gapTo30"), gapSeeds: caught.length,
+      ittGapTo10Per40Km: med("ittGapTo10Per40Km"),
       breakawaySize: med("breakawaySize"),
       breakawayWins: ms.filter((m) => m.breakawayWon === true).length,
       breakawayAhead: ms.filter((m) => m.breakawayAhead === true).length,

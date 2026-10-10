@@ -334,3 +334,29 @@ test("runTour: hele Giro-feltet, deterministisk, scorecard pr. etape og samlet",
   assert.match(md, /TODO \(kendt aaben/);
   assert.deepEqual(summarizeTour(a.perSeed, data.profiles.slice().sort((x, y) => x.stage_number - y.stage_number), "orders_gc_v3").counts, a.summary.counts);
 });
+
+test("nat 11/10: bjergets gabbaand kun paa topankomster (#4604); nedkoerselsfinale = N/A", () => {
+  const descent = { stage_number: 1, profile_type: "mountain", finale_type: "breakaway", segments: [] };
+  assert.equal(gapClass(descent), "mountain_non_summit");
+  assert.equal(gapClass({ ...descent, profile_type: "high_mountain", finale_type: "descent" }), "mountain_non_summit");
+  assert.equal(TOUR_BENCHMARKS.gapTo10.byClass.mountain_non_summit, undefined, "intet baand: doemmes af nedkoerselsankeret");
+  const row = { stage: 1, profile_type: "mountain", gapTo10: 10, gapTo30: 60, breakawayWon: false, breakawaySize: 8, minuteLossAtZeroKm: null, gcTop10InBreakOver5Min: 0, ownTeamChasesOwn: 0, clampedAtCap: 0, capClump: 0, labelContradictions: 0, flatBreakawayWinMinutes: 0 };
+  const s = summarizeTour([{ seed: 1, rows: [row], gcWeek1: null, gcFinalTo10: null, gcWinnerMargin: null, gcWinner: "a" }], [descent], "official_times_v3");
+  assert.equal(s.stages[0].verdicts.gapTo10, undefined);
+});
+
+test("nat 11/10: tidsgabene doemmes paa seeds hvor udbruddet ikke vandt; alle seeds staar som info", () => {
+  const stage = { stage_number: 1, profile_type: "hilly", finale_type: "punch", segments: [] };
+  const row = (won, gap) => ({ stage: 1, profile_type: "hilly", gapTo10: gap, gapTo30: gap * 2, breakawayWon: won, breakawaySize: 6, minuteLossAtZeroKm: null, gcTop10InBreakOver5Min: 0, ownTeamChasesOwn: 0, clampedAtCap: 0, capClump: 0, labelContradictions: 0, flatBreakawayWinMinutes: 0 });
+  const seeds = [row(true, 300), row(true, 400), row(false, 20), row(false, 30), row(true, 500)];
+  const perSeed = seeds.map((r, i) => ({ seed: i + 1, rows: [r], gcWeek1: null, gcFinalTo10: null, gcWinnerMargin: null, gcWinner: "a" }));
+  const st = summarizeTour(perSeed, [stage], "official_times_v3").stages[0];
+  assert.equal(st.gapTo10, 25);
+  assert.equal(st.gapSeeds, 2);
+  assert.equal(st.gapTo10All, 300);
+  assert.equal(st.verdicts.gapTo10, "PASS");
+  assert.equal(st.breakawayWins, 3, "udbruddets sejre doemmes stadig for sig");
+  const allWon = summarizeTour([0, 1].map((i) => ({ seed: i + 1, rows: [row(true, 400)], gcWeek1: null, gcFinalTo10: null, gcWinnerMargin: null, gcWinner: "a" })), [stage], "official_times_v3").stages[0];
+  assert.equal(allWon.gapTo10, null);
+  assert.equal(allWon.verdicts.gapTo10, "N/A");
+});
