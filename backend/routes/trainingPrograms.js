@@ -181,15 +181,28 @@ export function createTrainingProgramsRouter({
   // springes over og rapporteres i `skipped` — en egen plan vinder altid.
   async function applyToPickedRiders(res, { program, teamId, ownIds, pickedIds }) {
     const own = new Set(ownIds);
-    const picked = [...new Set(pickedIds)];
-    if (!picked.every((id) => own.has(id))) return res.status(403).json({ error: "not_own_rider" });
+    let picked = [...new Set(pickedIds)];
+    // Pensionerede ryttere paa holdet staar stadig i traeningssidens roster, men faar
+    // intet program: de tael som sprunget over i stedet for at fejle hele kaldet (403).
+    let retiredPicked = 0;
+    if (!picked.every((id) => own.has(id))) {
+      const { data: retired, error: retiredError } = await supabase
+        // pagination-safe: one team roster, far below the 1000-row cap.
+        .from("riders").select("id").eq("team_id", teamId).eq("is_retired", true);
+      if (retiredError) throw new Error(retiredError.message);
+      const retiredIds = new Set((retired ?? []).map((r) => r.id));
+      const foreign = picked.filter((id) => !own.has(id) && !retiredIds.has(id));
+      if (foreign.length > 0) return res.status(403).json({ error: "not_own_rider" });
+      retiredPicked = picked.filter((id) => retiredIds.has(id)).length;
+      picked = picked.filter((id) => own.has(id));
+    }
     const [{ data: rows, error: loadError }, followers] = await Promise.all([
       loadProgramRows(supabase, teamId), groupFollowerIds(teamId),
     ]);
     if (loadError) throw new Error(loadError.message);
     const hasOwnRow = new Set((rows ?? []).filter((r) => r.rider_id != null).map((r) => r.rider_id));
     const targets = picked.filter((id) => !hasOwnRow.has(id) && !followers.has(id));
-    const skipped = picked.length - targets.length;
+    const skipped = picked.length - targets.length + retiredPicked;
     if (targets.length === 0) return res.json({ ok: true, applied: 0, skipped, programKey: program.key });
     const now = new Date().toISOString();
     const { error } = await insertRows(supabase, targets.map((riderId) => ({

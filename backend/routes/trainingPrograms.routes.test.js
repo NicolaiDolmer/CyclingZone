@@ -273,3 +273,14 @@ test("#4522 squad og enkelt-rytter er uaendret: squad overskriver stadig en egen
   assert.equal(single.body.applied, 1);
   assert.equal(state.training_week_plans.find((r) => r.rider_id === "r2").program_key, "hill_climber");
 });
+
+test("#4522 en pensioneret rytter paa holdet springes over (skipped), en fremmed giver stadig 403", async (t) => {
+  const state = seed();
+  state.riders.push({ id: "ret1", team_id: "team-a", is_retired: true });
+  const { call } = await fixture(t, { state });
+  const res = await call("POST", "/apply", { programKey: "sprinter", riderIds: ["r1", "ret1"], keepOwn: true });
+  assert.equal(res.status, 200);
+  assert.deepEqual([res.body.applied, res.body.skipped], [1, 1]);
+  assert.deepEqual(state.training_week_plans.map((r) => r.rider_id), ["r1"]);
+  assert.equal((await call("POST", "/apply", { programKey: "sprinter", riderIds: ["ret1", "x9"], keepOwn: true })).status, 403);
+});
