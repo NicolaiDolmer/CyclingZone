@@ -61,6 +61,7 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
       stagesCompleted: race.stages_completed ?? 0,
     });
   } catch {
+    // best-effort: ren berigelse, fejler mod "stiller op" (som før #5945).
     return fallback;
   }
 }

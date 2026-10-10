@@ -105,6 +105,7 @@ async function loadStartsByRaceId({ supabase, now, riderIds, entryRows, raceRows
         injured = new Set((data ?? []).filter((c) => isRiderInjured(c.injured_until ?? null, todayStr)).map((c) => c.rider_id));
       }
     } catch {
+      // best-effort: skadesopslaget er berigelse; uden det tæller ingen som skadet.
       injured = new Set();
     }
     const stagesCompletedByRace = new Map(raceRows.map((r) => [r.id, Number(r.stages_completed) || 0]));
@@ -127,6 +128,7 @@ async function loadStartsByRaceId({ supabase, now, riderIds, entryRows, raceRows
       starts.set(raceId, willStart);
     }
   } catch {
+    // best-effort: ren berigelse, tomt map = badge som før #5945.
     return new Map();
   }
   return starts;
