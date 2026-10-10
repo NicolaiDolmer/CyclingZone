@@ -287,6 +287,23 @@ test('URL limit: bytes are counted in UTF-8, and a URL over 8 KB fails the run',
   assert.equal(v.loadTestPassed, false);
 });
 
+test('reader failures outside 2xx block normal and restart phases (status 0, 403, 404, 429)', async () => {
+  for (const [phase, prefix] of [['normal', 'NORMAL'], ['restart_recovery', 'RESTART']]) {
+    for (const st of [0, 403, 404, 429]) {
+      const recorder = createRecorder();
+      const s = recorder.stats(phase);
+      s.ticks = 1; s.stagesRun = 1; s.http.requests = 2; s.http.byStatus = { 200: 1, [st]: 1 };
+      const v = evaluateRun({ phases: { [phase]: s } });
+      assert.ok(v.blockers.includes(`${prefix}_HTTP_NON_2XX`), `${phase} ${st}`);
+      assert.equal(v.loadTestPassed, false);
+    }
+    const recorder = createRecorder();
+    const s = recorder.stats(phase);
+    s.ticks = 1; s.stagesRun = 1; s.http.requests = 2; s.http.byStatus = { 200: 1, 204: 1 };
+    assert.ok(!evaluateRun({ phases: { [phase]: s } }).blockers.includes(`${prefix}_HTTP_NON_2XX`));
+  }
+});
+
 test('instrumentation: lock timeouts and 5xx are counted, prod or local URLs are never fault targets', async () => {
   assert.equal(classifyRequest(`https://${PROD_REF}.supabase.co/rest/v1/races`).surface, 'other');
   assert.equal(classifyRequest('http://127.0.0.1:3000/api/rankings/global').surface, 'other');

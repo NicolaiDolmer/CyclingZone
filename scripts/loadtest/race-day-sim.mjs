@@ -401,6 +401,12 @@ export function evaluateRun(run) {
     const http5xx = Object.entries(s.http.byStatus).filter(([st]) => Number(st) >= 500).reduce((a, [, c]) => a + c, 0);
     if (http5xx > 0) blockers.push(`${prefix}_HTTP_5XX`);
     if ((s.http.byStatus[401] ?? 0) > 0) blockers.push(`${prefix}_HTTP_401`);
+    // Alt andet uden for 2xx (status 0 = netværksfejl hos en læser, 403/404/429 ...) er også
+    // en fejl; ellers kan gaten melde bestået, selvom læserne ikke fik svar (review 10/10).
+    const otherNon2xx = Object.entries(s.http.byStatus)
+      .filter(([st]) => { const n = Number(st); return (n < 200 || n >= 300) && n < 500 && n !== 401; })
+      .reduce((a, [, c]) => a + c, 0);
+    if (otherNon2xx > 0) blockers.push(`${prefix}_HTTP_NON_2XX`);
     if (s.lockTimeouts > 0) blockers.push(`${prefix}_LOCK_TIMEOUT`);
     if (s.statementTimeouts > 0) blockers.push(`${prefix}_STATEMENT_TIMEOUT`);
   }

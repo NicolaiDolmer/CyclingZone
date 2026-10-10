@@ -171,7 +171,7 @@ fra en anden shell sender ikke `--flag`-argumenterne videre, målt 10/10):
 
 Scriptet nægter at køre uden wrapperen (`CZ_LOADTEST_WRAPPER`). Det gentager isolationstjekket
 og #6170-prerequisites selv og stopper ved første fejl, før noget job starter. Exit 0 kun når
-`loadTestPassed` er true; ellers exit 1 (2 ved forkerte argumenter). Rapporten skrives altid til
+`loadTestPassed` er true; ellers exit 1 (2 ved forkerte argumenter, og så skrives ingen rapport). Ellers skrives rapporten altid til
 `docs/snapshots/5904/race-day-<tid>.md` med commit-SHA, faser, blockers og oracles. Løb vises som
 aliaser (R01 ...), aldrig id'er eller navne.
 
