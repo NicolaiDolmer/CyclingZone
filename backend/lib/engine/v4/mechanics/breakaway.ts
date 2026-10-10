@@ -84,6 +84,7 @@ import {
   applySmallBreakPullCost,
   BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA,
   breakawayMaxSizeV3,
+  breakawaySizeProfileOfficialV3,
   breakawaySizeProfileV3,
   type BreakawaySizeProfile,
   DANGEROUS_ATTEMPT_TUNING,
@@ -347,6 +348,18 @@ function attemptFormation(
  * #6201 (KUN official_times_v3): profilens trin plus revisionens ekstra
  * succes-tillaeg (BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA). Samme objekt ellers.
  */
+/**
+ * #6201/#6431: dannelsens trin for etapen. orders_gc_v3/official_times_v2:
+ * breakawaySizeProfileV3 (flad: intet). official_times_v3: også flad
+ * (breakawaySizeProfileOfficialV3), plus revisionens ekstra tillaeg.
+ */
+function sizeProfileFor(ctx: BreakawayHookContext): BreakawaySizeProfile | null {
+  if (ctx.ordersGcV3 !== true) return null;
+  const v3 = ctx.sharedGroupTime?.timeModelGeneration === 3;
+  const base = v3 ? breakawaySizeProfileOfficialV3(ctx.route.profile_type) : breakawaySizeProfileV3(ctx.route.profile_type);
+  return base ? officialTimesV3SizeProfile(base, ctx) : null;
+}
+
 function officialTimesV3SizeProfile(size: BreakawaySizeProfile, ctx: BreakawayHookContext): BreakawaySizeProfile {
   const extra = ctx.sharedGroupTime?.timeModelGeneration === 3 ? BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA.successBonusByProfile[ctx.route.profile_type] : undefined;
   return extra ? { ...size, successBonus: size.successBonus + extra } : size;
@@ -408,7 +421,7 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     ...(dangerTeams ? { dangerTeams } : {}),
     // #5578 robust (KUN official_times_v2): klassementets forreste moeder den haardeste modstand.
     ...(dangerTeams && gcContext ? rankedFormationPressure(gcContext, timeModelTuningFor(ctx).gcDanger) : {}),
-    ...(ctx.ordersGcV3 === true && breakawaySizeProfileV3(ctx.route.profile_type) ? { sizeProfile: officialTimesV3SizeProfile(breakawaySizeProfileV3(ctx.route.profile_type)!, ctx) } : {}), // #6201
+    ...(sizeProfileFor(ctx) ? { sizeProfile: sizeProfileFor(ctx)! } : {}), // #6201/#6431
     // #6201 R3 (KUN official_times_v3): et farligt forsoeg fylder ikke i traengslen.
     ...(ctx.sharedGroupTime?.timeModelGeneration === 3 ? { dangerousOutsideRoom: true } : {}),
   });

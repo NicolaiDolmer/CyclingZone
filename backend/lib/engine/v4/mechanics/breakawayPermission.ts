@@ -190,7 +190,24 @@ export type BreakawaySizeProfile = { maxSize: number; room: number; successBonus
  */
 export const BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA = Object.freeze({
   successBonusByProfile: Object.freeze({ mountain: 0.15, high_mountain: 0.15 }) as Readonly<Partial<Record<string, number>>>,
+  /**
+   * #6431 (KUN official_times_v3): flad faar sit eget trin (trappen: typisk 3-6,
+   * loft 8). Under orders_gc_v3/official_times_v2 har flad intet trin, og paa
+   * Giro-feltet kom hvert tredje flade morgenudbrud kun afsted med 1 mand, selv
+   * med 6-9 forsoeg: flaskehalsen var succesraten, ikke antallet af forsoeg.
+   * Loftet er uaendret (8). Kalibreret privat (balance-internals/clean-revision/6431/).
+   */
+  flat: Object.freeze({ maxSize: 8, room: 6, successBonus: 0.2 }),
 });
+
+/**
+ * #6431 (KUN official_times_v3): profilens trin under den rene revision. Som
+ * breakawaySizeProfileV3, men flad har sit eget trin (BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA.flat).
+ */
+export function breakawaySizeProfileOfficialV3(profileType: string | undefined): BreakawaySizeProfile | null {
+  if (profileType === "flat") return { ...BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA.flat, roomCrowdWeight: BREAKAWAY_SIZE_V3_TUNING.roomCrowdWeight };
+  return breakawaySizeProfileV3(profileType);
+}
 
 /** #6201: profilens trin, eller null (flad og alt andet: uaendret dannelse, loft 8). */
 export function breakawaySizeProfileV3(profileType: string | undefined): BreakawaySizeProfile | null {

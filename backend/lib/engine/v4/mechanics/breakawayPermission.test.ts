@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import {
   applySmallBreakPullCost,
   breakawayMaxSizeV3,
+  breakawaySizeProfileOfficialV3,
   breakawaySizeProfileV3,
   smallBreakPaceV3,
   canAttemptMorningBreak,
@@ -385,6 +386,42 @@ test("an unknown rules revision is an error, never silently legacy or newest", (
   assert.throws(() => normalizeRulesRevision("orders_gc_v9"));
   const input = fixtureInput("flat-massespurt");
   assert.throws(() => simulateStageV4({ ...input, rules_revision: "next" as unknown as "legacy" }));
+});
+
+// ── #6431 (KUN official_times_v3): flad faar sit eget trin ──────────────────
+
+test("#6431: official_times_v3 giver flad et trin (loft 8, uaendret), orders_gc_v3/official_times_v2 goer ikke", () => {
+  assert.equal(breakawaySizeProfileV3("flat"), null);
+  const flat = breakawaySizeProfileOfficialV3("flat")!;
+  assert.ok(flat, "flad har et trin under official_times_v3");
+  assert.equal(flat.maxSize, 8);
+  assert.ok(flat.successBonus > 0);
+  // De oevrige profiler er de samme som under orders_gc_v3.
+  for (const p of ["hilly", "rolling", "mountain", "high_mountain", "cobbles", undefined]) {
+    assert.deepEqual(breakawaySizeProfileOfficialV3(p), breakawaySizeProfileV3(p));
+  }
+});
+
+test("#6431: med flad-trinnet kommer flere afsted end uden, ved samme forsoeg og lodtraekninger (aldrig faerre)", () => {
+  const riders = Array.from({ length: 30 }, (_, i) => ({
+    rider_id: `r${String(i).padStart(2, "0")}`, team_id: `T${i % 10}`, role: "helper",
+    effort: "normal", tryBreak: i < 7, spontaneousChance: 0, strength: 0.5, engine: 0.5, freshness: 1,
+  }));
+  const stances = new Map(Array.from({ length: 10 }, (_, t) => [`T${t}`, "neutral" as const]));
+  const flat = breakawaySizeProfileOfficialV3("flat")!;
+  let more = 0;
+  for (let k = 0; k < 40; k++) {
+    let x = k * 7919 + 1;
+    const roll = () => { x = (x * 48271) % 2147483647; return x / 2147483647; };
+    const draws = new Map<string, number>();
+    const fixed = (stream: string, id: string) => { const key = `${stream}:${id}`; if (!draws.has(key)) draws.set(key, roll()); return draws.get(key)!; };
+    const without = resolveMorningBreakFormation({ riders, stances, roll: fixed, maxSize: 8 });
+    const withFlat = resolveMorningBreakFormation({ riders, stances, roll: fixed, maxSize: 8, sizeProfile: flat });
+    assert.ok(withFlat.escaped.length >= without.escaped.length, `k ${k}`);
+    assert.ok(withFlat.escaped.length <= 8);
+    if (withFlat.escaped.length > without.escaped.length) more++;
+  }
+  assert.ok(more > 0, "trinnet kan ses");
 });
 
 // ── #6201 (KUN orders_gc_v3): stoerrelse pr. profil og fart efter antal ───────
