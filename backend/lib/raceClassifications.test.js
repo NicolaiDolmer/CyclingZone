@@ -8,9 +8,14 @@ import {
   filterCompletedEntrants,
   classPointsForRank,
   teamClassification,
+  teamClassificationTime,
   dailyTeamPlacesFromStageRows,
   jerseyLeadersFromComps,
 } from "./raceClassifications.js";
+import { buildStageRowsAccumulated } from "./raceRunner.js";
+import { ABILITY_KEYS } from "./raceSimulator.js";
+import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
+import { ENGINE_VERSION_V4 } from "./raceEngineV4Bridge.js";
 
 // ── #5952: holdklassementet ved lige tid (UCI) ──────────────────────────────
 
@@ -252,4 +257,89 @@ test("#5952 stage: equal time and placing sum use the best individual placing", 
   const time = new Map(entrants.map((r) => [r.rider_id, 0]));
   const placeByRider = new Map([["a1", 2], ["a2", 3], ["a3", 7], ["z1", 1], ["z2", 5], ["z3", 6]]);
   assert.deepEqual(teamClassification(entrants, time, { mode: "stage", placeByRider }).map((r) => r.team_id), ["zeta", "alpha"]);
+});
+
+// ── #6338 (ren revision, official_times_v3): holdklassementet uden bonussekunder ──
+// UCI: holdklassementet i et etapeloeb summerer rytternes FAKTISKE tider, uden
+// bonussekunder. Foer trak den samlede tidssum bonussen fra (samme tal som GC),
+// saa et hold hvis rytter tog maalbonus fik en fordel det ikke skal have.
+
+// Hold A's rytter vandt etapen med 10 s bonus; Hold B var 5 s hurtigere i sum.
+const BONUS_ROWS_6338 = [
+  { stage_number: 1, rider_id: "a1", team_id: "team-a", rank: 1, finish_time: "+0:00", sprint_points: 0, kom_points: 0, bonus_seconds: 10 },
+  { stage_number: 1, rider_id: "a2", team_id: "team-a", rank: 4, finish_time: "+0:05", sprint_points: 0, kom_points: 0, bonus_seconds: 0 },
+  { stage_number: 1, rider_id: "a3", team_id: "team-a", rank: 5, finish_time: "+0:05", sprint_points: 0, kom_points: 0, bonus_seconds: 0 },
+  { stage_number: 1, rider_id: "b1", team_id: "team-b", rank: 2, finish_time: "+0:00", sprint_points: 0, kom_points: 0, bonus_seconds: 0 },
+  { stage_number: 1, rider_id: "b2", team_id: "team-b", rank: 3, finish_time: "+0:00", sprint_points: 0, kom_points: 0, bonus_seconds: 0 },
+  { stage_number: 1, rider_id: "b3", team_id: "team-b", rank: 6, finish_time: "+0:05", sprint_points: 0, kom_points: 0, bonus_seconds: 0 },
+];
+const BONUS_ENTRANTS_6338 = BONUS_ROWS_6338.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id }));
+
+test("#6338: accumulateStageRows baerer ogsaa tiden uden bonussekunder (cumTimeRaw); GC-tiden er uaendret", () => {
+  const acc = accumulateStageRows({ stageRows: [...BONUS_ROWS_6338, { ...BONUS_ROWS_6338[0], stage_number: 2, finish_time: "+0:07", bonus_seconds: 4 }] });
+  assert.equal(acc.cumTime.get("a1"), 0 - 10 + 7 - 4, "GC: bonussekunder trukket fra som foer");
+  assert.equal(acc.cumTimeRaw.get("a1"), 0 + 7, "holdtid: kun de faktiske tider");
+  assert.equal(acc.cumTimeRaw.get("b3"), 5);
+});
+
+test("#6338 v3: holdklassementet i et etapeloeb bruger tiden uden bonussekunder", () => {
+  const acc = accumulateStageRows({ stageRows: BONUS_ROWS_6338 });
+  const time = teamClassificationTime(acc, "official_times_v3");
+  assert.equal(time, acc.cumTimeRaw);
+  const rows = teamClassification(BONUS_ENTRANTS_6338, time, { mode: "overall" });
+  assert.deepEqual(rows.map((r) => [r.team_id, r.time]), [["team-b", 5], ["team-a", 10]], "bonussen maa ikke vinde holdklassementet");
+});
+
+test("#6338: aeldre revisioner er uaendrede (holdtiden er stadig GC-tiden med bonus)", () => {
+  const acc = accumulateStageRows({ stageRows: BONUS_ROWS_6338 });
+  for (const rev of [undefined, null, "legacy", "orders_gc_v1", "orders_gc_v3", "official_times_v1", "official_times_v2", "ukendt"]) {
+    assert.equal(teamClassificationTime(acc, rev), acc.cumTime, String(rev));
+  }
+  const rows = teamClassification(BONUS_ENTRANTS_6338, acc.cumTime, { mode: "overall" });
+  assert.deepEqual(rows.map((r) => r.team_id), ["team-a", "team-b"], "den gamle regel (bonus med) - laast som den var");
+});
+
+// Kaldstedet: raceRunner's etape-for-etape-sti (buildStageRowsAccumulated) paa
+// loebets sidste etape, med en spion-motor der giver hele feltet samme tid.
+// Etape 1 (persisteret): Hold A's rytter tog bonussen; Hold B var hurtigst i sum.
+test("#6338 v3: raceRunner's samlede holdklassement paa sidste etape ignorerer bonussen; aeldre revisioner uaendret", () => {
+  const abil = (seed) => Object.fromEntries(ABILITY_KEYS.map((k, i) => [k, 35 + ((seed * 13 + i * 7) % 55)]));
+  const entrants = Array.from({ length: 16 }, (_, i) => ({
+    rider_id: `r${String(i).padStart(2, "0")}`, team_id: i < 8 ? "A" : "B", team_name: i < 8 ? "Team A" : "Team B",
+    rider_name: `Rider ${i}`, is_u25: false, abilities: abil(i), fatigue: 0,
+  }));
+  const race = { id: "race-6338", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 2 };
+  const stages = [
+    { stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint", demand_vector: DEMAND_VECTORS.flat, distance_km: 180, climbs: [], sprints: [], race_id: race.id, id: "sp-1" },
+    { stage_number: 2, profile_type: "flat", finale_type: "bunch_sprint", demand_vector: DEMAND_VECTORS.flat, distance_km: 180, climbs: [], sprints: [], race_id: race.id, id: "sp-2" },
+  ];
+  // A: r00 +0:00 med 30 s bonus, r01/r02 +0:10 (raa sum 20, med bonus -10).
+  // B: r08/r09/r10 +0:05 (sum 15). Resten +1:00.
+  const gapOf = { r00: "+0:00", r01: "+0:10", r02: "+0:10", r08: "+0:05", r09: "+0:05", r10: "+0:05" };
+  const priorStageRows = entrants.map((e, i) => ({
+    stage_number: 1, result_type: "stage", rank: i + 1, rider_id: e.rider_id, team_id: e.team_id,
+    finish_time: gapOf[e.rider_id] ?? "+1:00", sprint_points: 0, kom_points: 0, bonus_seconds: e.rider_id === "r00" ? 30 : 0,
+  }));
+  const spyEngine = {
+    version: ENGINE_VERSION_V4,
+    simulateStage: (args) => ({
+      ranked: args.entrants.map((e, i) => ({ rider_id: e.rider_id, team_id: e.team_id, rank: i + 1, stageGap: 0, components: {} })),
+      incidents: [], passages: null, timeline: null,
+    }),
+  };
+  const finalTeamWinner = (rulesRevision) => {
+    const { resultRows } = buildStageRowsAccumulated({
+      race, stagesSorted: stages, stageIndex: 1, entrants, pointsLookup: {}, priorStageRows, v3: true, v4Engine: spyEngine, rulesRevision,
+    });
+    return resultRows.filter((r) => r.result_type === "team").sort((a, b) => a.rank - b.rank)[0]?.team_id;
+  };
+  assert.equal(finalTeamWinner("official_times_v3"), "B", "v3: holdklassementet paa de faktiske tider");
+  for (const rev of ["legacy", "orders_gc_v2", "official_times_v2"]) {
+    assert.equal(finalTeamWinner(rev), "A", `${rev}: den gamle regel (bonus med) er uaendret`);
+  }
+});
+
+test("#6338 v3: uden en raa tid (aeldre kaldsted) falder holdtiden tilbage paa GC-tiden", () => {
+  const cumTime = new Map([["a1", 1]]);
+  assert.equal(teamClassificationTime({ cumTime }, "official_times_v3"), cumTime);
 });

@@ -257,7 +257,9 @@ function proxyRows(): StageRow[] {
 }
 
 test("#6200 v3: every stage that is not a mountain descent finish is byte-identical to official_times_v2", () => {
-  const rows = proxyRows().filter((row) => !(row.finale_type === "descent" && (row.profile_type === "mountain" || row.profile_type === "high_mountain")));
+  const rows = proxyRows().filter((row) => !(row.finale_type === "descent" && (row.profile_type === "mountain" || row.profile_type === "high_mountain")))
+    // #6349: official_times_v3 also changes the individual time trial (climbing by climb share).
+    .filter((row) => row.profile_type !== "itt" && row.profile_type !== "itt_hilly");
   const shapes = new Map<string, StageRow>();
   for (const row of rows) if (!shapes.has(`${row.profile_type}/${row.finale_type}`)) shapes.set(`${row.profile_type}/${row.finale_type}`, row);
   assert.ok(shapes.size >= 15, "every other stage shape is covered");
