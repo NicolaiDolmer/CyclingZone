@@ -1641,6 +1641,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       ? Math.max(0, ctx.segment.to_km - Math.max(ctx.segment.from_km, formationKm))
       : segmentLengthKm;
     let maxGapSeconds = 0;
+    let oneDayScale = 1; // #6428 (KUN official_times_v3), se nedenfor
     // #5578: official_times_v2's kalibrerede lad-gaa-knapper (timeModel.ts); neutrale ellers.
     if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length, letGoTuning.letGoMinChaseRiders ?? undefined)) {
       const finaleFactor = ctx.route.finale_type ? letGoTuning.letGoFinaleFactorByFinale[ctx.route.finale_type] : undefined;
@@ -1666,6 +1667,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         const tolerated = [...letGoBrakingTeams(gcSetup.decisions.filter(inBreak), chaseGroup.id, ordersGcV3).values()];
         if (tolerated.length > 0) maxGapSeconds = Math.min(maxGapSeconds, Math.max(INITIAL_GAP_SECONDS, Math.min(...tolerated)));
       }
+      // #6428 (KUN official_times_v3; tom tabel i alle aeldre tidsmodeller): i et
+      // endagsloeb vil alle hold vinde loebet, saa feltet kontrollerer udbruddet
+      // paa hoejst endags-loftet (ogsaa naar ingen har en jagtordre). Hele
+      // forloebet skaleres ned (vaekst og jagt), saa udfaldet (holder udbruddet
+      // hjem eller ej) er det samme; kun forspringet er realistisk.
+      const oneDayCap = gcContext?.status === "one_day" ? letGoTuning.letGoOneDayMaxGapSecondsByProfile[ctx.route.profile_type] : undefined;
+      if (oneDayCap !== undefined && maxGapSeconds > oneDayCap) oneDayScale = Math.max(INITIAL_GAP_SECONDS, oneDayCap) / maxGapSeconds;
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
@@ -1723,9 +1731,10 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     );
     // #6084 (KUN orders_gc_v2 paa bjerg): kontrolleret jagt foer finalestigningen (mountainSelection.ts).
     // En GC-reaktion (et farligt udbrud) jager uden daempning.
-    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalChaseClosingScale, mountainSelectionKnobsFor(ctx.route.profile_type).finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1);
+    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalChaseClosingScale, mountainSelectionKnobsFor(ctx.route.profile_type).finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1) * oneDayScale;
     if (smallPace) smallBreakWork.push({ riderIds: smallBreakPullers, pace: smallPace, km: letGoKm + chaseKm });
-    const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
+    const letGoGrowth = (braked ? braked.growthSeconds : letGoKm * letGoRate) * oneDayScale;
+    const letGoCeiling = maxGapSeconds * oneDayScale;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
     // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",
@@ -1742,7 +1751,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const separation = chaseGroup.gap_seconds - breakaway.gap_seconds;
     // Lad gaa: hullet vokser mod loftet, men et hul der allerede er over
     // loftet (fx et nedkoerselsforspring) krympes aldrig af fasen selv.
-    const grown = separation >= 0 && separation < maxGapSeconds ? Math.min(maxGapSeconds, separation + letGoGrowth) : separation;
+    const grown = separation >= 0 && separation < letGoCeiling ? Math.min(letGoCeiling, separation + letGoGrowth) : separation;
     const beforeFloor = Math.max(0, grown - netClosingSeconds);
     // Jagt-gulvet: dagens maal er én lodtraekning pr. ETAPE (rngForStage, ikke
     // den segment-noeglede stream): "kommer sprinterholdene for sent i dag" er

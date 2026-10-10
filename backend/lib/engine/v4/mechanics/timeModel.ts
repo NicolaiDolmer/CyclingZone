@@ -147,6 +147,12 @@ export const TIME_MODEL_V3_TUNING = freeze({
   descentFinishClimbAttackDayformWeight: 0,
   // Evne-vaegtens skala paa samme stigning (1 = profilens egen vaegt, som foer).
   descentFinishClimbAbilityWeightScale: 1,
+
+  // ── #6428 (KUN official_times_v3): lad-gaa-loftet i et endagsloeb ──────────
+  // Det stoerste forspring (s) feltet giver morgenudbruddet i et endagsloeb pr.
+  // profil (alle hold vil vinde; ingen klassementsdag at spare). Udeladt = intet
+  // ekstra loft (alle aeldre revisioner, og etapeloeb).
+  letGoOneDayMaxGapSecondsByProfile: {} as Readonly<Partial<Record<ProfileType, number>>>,
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
@@ -217,6 +223,12 @@ export const SHARED_TIME_MODEL_V3_TUNING: TimeModelTuning = freeze({
   descentFinishClimbAttackWindowSeconds: 40,
   descentFinishClimbAttackDayformWeight: 1.4,
   descentFinishClimbAbilityWeightScale: 1.3,
+  // #6428: kalibreret privat (balance-internals/clean-revision/6428/) mod
+  // ankeret headToHeadAnchors.breakawayWinMarginOneDaySeconds.
+  letGoOneDayMaxGapSecondsByProfile: {
+    hilly: 240,
+    rolling: 240,
+  },
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
