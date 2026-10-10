@@ -108,7 +108,13 @@ async function openTraining(page: Page, width: number, height: number, me = trai
   return deletes;
 }
 
-const resetButton = (page: Page, name: string) => page.getByRole("button", { name: `Put ${name} back on the team program` });
+// Knappen har ikke rytternavnet i sit navn (commit c57257bef: synlig tekst = tilgængeligt navn),
+// så den findes i rytterens synlige raekke (desktop-tabel eller telefonens raekke).
+const resetButton = (page: Page, name: string) =>
+  page
+    .locator('[data-testid="training-today-row"]:visible, [data-testid="training-onetap-row"]:visible')
+    .filter({ hasText: name })
+    .getByRole("button", { name: "Back to team program" });
 
 test("desktop: handlingen findes kun paa ryttere med egen plan, og et tryk fjerner begge lag", async ({ page }) => {
   const deletes = await openTraining(page, 1440, 900);
