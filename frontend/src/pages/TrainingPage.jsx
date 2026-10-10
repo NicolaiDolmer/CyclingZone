@@ -1328,7 +1328,6 @@ export default function TrainingPage() {
       const result = await clearPlan(riderId);
       if (!result?.ok) return { ok: false, error: result?.error || "failed" };
     }
-    lingerAfterSave(riderId);
     return { ok: true };
   }
   function renderResetFor(riderId, compact = false) {
