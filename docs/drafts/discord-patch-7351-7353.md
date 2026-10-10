@@ -1,4 +1,5 @@
-**Patch 7.351–7.352** (10 Oct)
+1/2
+**Patch 7.351–7.353** (10 Oct)
 
 **Academy**
 - **An unsold youth rider stays on your team**: When you put one of your own U23 or junior riders up for auction and nobody bids, he now stays where he was.
@@ -14,11 +15,16 @@
 **Training**
 - **Copy a day's training plan**: On Training, Program, Plan you can copy one day to the next 1 to 6 days.
 - **The assistant suggests a program for each type of rider**: The assistant's suggestions now start with a ready-made program for your sprinters, climbers and all-rounders, one button per group.
+- **Back to team program on the Today row**: A rider with his own plan now has Back to team program right on the Today row: under the day picker on desktop, above Rest, Recovery and Program on your phone.
+- **A shorter program catalog on your phone**: On your phone the program catalog shows the rider's current program on one line with Browse programs.
 
 **Races**
 - **A team with fewer than 6 riders no longer looks like it is racing**: The Tactics tab now says the team will not start, the riders train as normal instead of showing Racing today, and the selection always shows Minimum 6 riders to start.
 - **The race film shows when the bunch catches the breakaway**: Some catches by the bunch were shown as groups coming back together.
 
+----- næste besked -----
+
+2/2
 **Notifications**
 - **A selection reminder you deleted stays deleted**: If you delete a reminder about your race selection, the same reminder does not come back.
 
