@@ -182,7 +182,13 @@
     "dismiss": "Dismiss",
     "nothingAppliedYet": "Nothing is applied until you accept.",
     "empty": "No suggestions right now. Every rider already has a matched focus.",
-    "emptyFiltered": "Every rider already has a plan."
+    "emptyFiltered": "Every rider already has a plan.",
+    "programTitle": "Programs for your groups",
+    "programIntro": "A ready-made week for each type of rider. It only goes to riders without their own plan.",
+    "programFor": "{type}: {count, plural, one {# rider} other {# riders}}",
+    "programApply": "Apply to these {n}",
+    "programApplied": "Program applied to {n, plural, one {# rider} other {# riders}}.",
+    "programSkipped": "{n, plural, one {Skipped # rider with their own plan.} other {Skipped # riders with their own plan.}}"
   },
   "historyTitle": "Training history",
   "historySubtitle": "Your last 30 days of daily training",

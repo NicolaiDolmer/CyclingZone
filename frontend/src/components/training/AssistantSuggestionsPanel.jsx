@@ -18,6 +18,7 @@
 // slået-fra checkbox i stedet for et klik der skriver 0 rækker.
 import { useTranslation } from "react-i18next";
 import { Section, Button, Toggle, StarIcon } from "../ui";
+import { programName } from "../../lib/trainingPrograms.ts";
 
 export default function AssistantSuggestionsPanel({
   rows,
@@ -33,8 +34,15 @@ export default function AssistantSuggestionsPanel({
   busy,
   message,
   acceptableCount,
+  // #4522: programforslag pr. rytter-gruppe (tom/udeladt = sektionen vises ikke).
+  programGroups = [],
+  programCatalog = [],
+  onApplyProgramGroup,
+  programBusy = false,
+  programMessage = null,
 }) {
-  const { t } = useTranslation("training");
+  const { t, i18n } = useTranslation("training");
+  const tTypes = useTranslation("riderTypes").t;
   const tRider = useTranslation("rider").t;
   const selectedCount = selected.size;
 
@@ -111,6 +119,49 @@ export default function AssistantSuggestionsPanel({
           efterlade to aktive knapper der skriver 0 rækker. */}
       {visibleRows.length > 0 && acceptableCount === 0 && (
         <p className="mt-3 text-xs text-cz-3">{t("assistantSuggestions.allHavePlanNote")}</p>
+      )}
+
+      {/* #4522: et traeningsprogram pr. rytter-gruppe. Intet anvendes foer klik; serveren
+          springer ryttere med egen plan eller gruppe over (keepOwn). */}
+      {programGroups.length > 0 && (
+        <div className="mt-4 border-t border-cz-border pt-3" data-testid="assistant-program-section">
+          <p className="text-[13px] font-semibold text-cz-1">{t("assistantSuggestions.programTitle")}</p>
+          <p className="mt-1 text-xs text-cz-2">{t("assistantSuggestions.programIntro")}</p>
+          <ul className="mt-2 rounded-cz border border-cz-border">
+            {programGroups.map((group, i) => (
+              <li
+                key={group.programKey + group.riderType}
+                className={`flex flex-wrap items-center gap-3 px-3 py-2.5 ${i > 0 ? "border-t border-cz-border" : ""}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-cz-1">
+                    {programName(programCatalog.find((p) => p.key === group.programKey), i18n.language)}
+                  </p>
+                  <p className="mt-0.5 text-2xs text-cz-3">
+                    {t("assistantSuggestions.programFor", { type: tTypes(`types.${group.riderType}`), count: group.riderIds.length })}
+                    {" · "}
+                    {group.names.join(", ")}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={busy || programBusy}
+                  onClick={() => onApplyProgramGroup?.(group)}
+                >
+                  {t("assistantSuggestions.programApply", { n: group.riderIds.length })}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {programMessage && (
+        <p className={`mt-3 text-xs ${programMessage.type === "ok" ? "text-cz-success" : "text-cz-warning"}`}>
+          {programMessage.text}
+        </p>
       )}
 
       {message && (

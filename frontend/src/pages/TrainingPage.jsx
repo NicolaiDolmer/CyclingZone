@@ -36,6 +36,7 @@ import { formatDate } from "../lib/intl.js";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import FocusPanel from "../components/training/FocusPanel.jsx";
 import AssistantSuggestionsPanel from "../components/training/AssistantSuggestionsPanel.jsx";
+import { buildProgramSuggestionGroups, acceptableGroupRiderIds } from "../lib/assistantProgramSuggestions.ts";
 import { buildAssistantSuggestions, countSuggestionsWithoutPlan, filterAssistantSuggestions, acceptableSuggestionIds, acceptableSelectionIds } from "../lib/assistantTrainingSuggestions.js";
 import OnboardingTour from "../components/OnboardingTour.jsx";
 import { readTour } from "../lib/onboardingTour.js";
@@ -443,6 +444,7 @@ export default function TrainingPage() {
   const [assistantOnlyNoPlan, setAssistantOnlyNoPlan] = useState(false);
   const [assistantSelected, setAssistantSelected] = useState(() => new Set());
   const [assistantMsg, setAssistantMsg] = useState(null);
+  const [assistantProgramMsg, setAssistantProgramMsg] = useState(null);
   const [scrollToAssistantPending, setScrollToAssistantPending] = useState(false);
 
   function handleOpenAssistantPanel() {
@@ -455,6 +457,7 @@ export default function TrainingPage() {
     setAssistantPanelOpen(false);
     setAssistantSelected(new Set());
     setAssistantMsg(null);
+    setAssistantProgramMsg(null);
   }
   useEffect(() => {
     if (activeTab === "today" && scrollToAssistantPending) {
@@ -1056,6 +1059,33 @@ export default function TrainingPage() {
     () => new Set(acceptableSuggestionIds(assistantVisibleRows)),
     [assistantVisibleRows],
   );
+
+  // #4522: programforslag pr. rytter-gruppe. Kun naar programmer er aabne; ryttere med
+  // egen ugeplan eller som foelger en traeningsgruppe er ikke med (serveren springer dem over).
+  const assistantOwnPlanIds = useMemo(() => new Set(Object.keys(riderWeekPlans ?? {})), [riderWeekPlans]);
+  const assistantGroupFollowerIds = useMemo(() => new Set(groupNameByRider(trainingGroups.groups ?? []).keys()), [trainingGroups.groups]);
+  const assistantProgramGroups = useMemo(
+    () => (programs.enabled
+      ? buildProgramSuggestionGroups({ riders, catalog: programs.catalog, ownPlanIds: assistantOwnPlanIds, groupFollowerIds: assistantGroupFollowerIds })
+      : []),
+    [programs.enabled, programs.catalog, riders, assistantOwnPlanIds, assistantGroupFollowerIds],
+  );
+  async function handleApplyAssistantProgramGroup(group) {
+    setAssistantProgramMsg(null);
+    const ids = acceptableGroupRiderIds(group, assistantOwnPlanIds, assistantGroupFollowerIds);
+    if (ids.length === 0) return;
+    const result = await programs.applyToRiders(group.programKey, ids);
+    if (!result.ok) {
+      setAssistantProgramMsg({ type: "partial", text: t(trainNowSaveErrorKey(result.error, "programs.error")) });
+      return;
+    }
+    const skipped = result.skipped ?? 0;
+    const text = t("assistantSuggestions.programApplied", { n: result.applied ?? 0 });
+    setAssistantProgramMsg({
+      type: skipped > 0 ? "partial" : "ok",
+      text: skipped > 0 ? `${text} ${t("assistantSuggestions.programSkipped", { n: skipped })}` : text,
+    });
+  }
 
   function handleToggleAssistantOnlyNoPlan(checked) {
     setAssistantOnlyNoPlan(checked);
@@ -1676,6 +1706,11 @@ export default function TrainingPage() {
         busy={bulkApplying}
         message={assistantMsg}
         acceptableCount={assistantAcceptableIds.size}
+        programGroups={assistantProgramGroups}
+        programCatalog={programs.catalog}
+        onApplyProgramGroup={handleApplyAssistantProgramGroup}
+        programBusy={programs.busy}
+        programMessage={assistantProgramMsg}
       />
     </div>
   ) : null;
