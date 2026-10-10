@@ -16,12 +16,16 @@ import {
   applyLeadoutScoreBonuses,
   computeLeadoutQuality,
   computeLeadoutScoreBonus,
+  hasSprinterProfile,
   parseLeadoutOrders,
+  sprintTrainLeadoutOrder,
   trainSizeFactor,
   type LeadoutOrder,
+  type SprintTrainInput,
 } from "./leadout.ts";
-import { LEADOUT_EXTRA_TUNING } from "../tuning.ts";
-import type { AbilityKey, Entrant, RiderState, TeamOrder } from "../types.ts";
+import { simulateStageV4 } from "../index.ts";
+import { LEADOUT_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import type { AbilityKey, Entrant, RiderState, RouteV2, TeamOrder } from "../types.ts";
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -213,4 +217,130 @@ test("applyLeadoutScoreBonuses: hjaelper der ikke overlevede ind i finale-puljen
   const scored = [{ riderId: "cap", score: 0.3 }];
   const result = applyLeadoutScoreBonuses(scored, orders, contenders, entrants, riderStates, LEADOUT_EXTRA_TUNING);
   assert.equal(result[0].score, 0.3, "toget skal vaere sprengt naar leadout-rytteren ikke er i kontendentpuljen");
+});
+
+// ── #6352 (ren revision, official_times_v3): sprinteren faar et tog ─────────
+//
+// Trin 0 (genmaalt paa main 10/10): en `sprint_captain` med 3+ hjaelpere FIK
+// allerede et tog gennem adapteren, og toget flyttede placeringen maalbart.
+// Fejlen var holdet hvis obligatoriske KAPTAJN er sprinteren: intet tog, fordi
+// togets maal kun var rollen sprint_captain. Testene nedenfor laaser begge.
+
+const SEEDS_6352 = Array.from({ length: 12 }, (_, i) => `lo-6352-${i}`);
+
+const FLAT_ROUTE: RouteV2 = {
+  distance_km: 178,
+  profile_type: "flat",
+  finale_type: "bunch_sprint",
+  segments: [
+    { kind: "flat", from_km: 0, to_km: 95 },
+    { kind: "flat", from_km: 95, to_km: 165 },
+    { kind: "flat", from_km: 165, to_km: 178 },
+  ],
+  weather: { kind: "sun", wind_exposure: 0.1 },
+  waypoints: [{ kind: "finish", index: 0, name: "Maal", km: 178 }],
+};
+
+/** Ti hold a seks: én sprinter (faldende spurt pr. hold) + fem hjaelpere. Hold 4's sprinter har `leaderRole`. */
+function flatField(leaderRole: "sprint_captain" | "captain"): Entrant[] {
+  const list: Entrant[] = [];
+  for (let t = 0; t < 10; t++) {
+    const team = `team-${t}`;
+    const sprint = 90 - t * 2;
+    list.push({
+      rider_id: `s${t}`, team_id: team, role: t === 4 ? leaderRole : "captain", effort: "normal", condition: 1,
+      abilities: abilities({ sprint, acceleration: sprint - 4, flat: 72, positioning: 70, climbing: 50 }),
+    });
+    for (let h = 0; h < 5; h++) {
+      list.push({
+        rider_id: `h${t}-${h}`, team_id: team, role: "helper", effort: "normal", condition: 1,
+        abilities: abilities({ flat: 70, tempo: 72, positioning: 66, acceleration: 62, sprint: 58, climbing: 40 }),
+      });
+    }
+  }
+  return list;
+}
+
+function team4Order(list: Entrant[], leadoutFlags: boolean): SprintTrainInput {
+  const team = list.filter((e) => e.team_id === "team-4");
+  return {
+    team_id: "team-4",
+    riders: team.map((e) => ({ rider_id: e.rider_id, effort: "normal", leadout: leadoutFlags && e.role === "helper" })),
+    roster: team.map((e) => ({ rider_id: e.rider_id, role: e.role, abilities: e.abilities })),
+    profileType: "flat",
+    rulesRevision: "official_times_v3",
+  };
+}
+
+function sprinterPlaces(list: Entrant[], orders: TeamOrder[]): number[] {
+  return SEEDS_6352.map((seed) => {
+    const out = simulateStageV4({ route: FLAT_ROUTE, startlist: list, orders, seed, tuning: RACE_V4_TUNING, rules_revision: "official_times_v3" });
+    return out.results.findIndex((r) => r.rider_id === "s4") + 1;
+  });
+}
+
+function assertMeasurableTrain(withTrain: number[], without: number[]): void {
+  const notWorse = withTrain.every((p, i) => p <= without[i]);
+  const better = withTrain.filter((p, i) => p < without[i]).length;
+  assert.ok(notWorse, `toget maa aldrig koste placeringer: med ${withTrain.join(",")} / uden ${without.join(",")}`);
+  assert.ok(better >= 6, `toget skal flytte placeringen i mindst halvdelen af seeds (${better} af 12)`);
+}
+
+test("#6352 v3: sprint_captain med 3+ hjaelpere i et fladt endagsloeb faar et tog med maalbar effekt", () => {
+  const list = flatField("sprint_captain");
+  const order = sprintTrainLeadoutOrder(team4Order(list, true));
+  assert.ok(order, "toget dannes");
+  assert.equal(order.params?.captain_rider_id, "s4");
+  assert.ok((order.params?.leadout_rider_ids as string[]).length >= 3, "mindst tre i toget");
+  assertMeasurableTrain(sprinterPlaces(list, [order]), sprinterPlaces(list, []));
+});
+
+test("#6352 v3: en kaptajn med sprinterprofil (ingen sprint_captain) faar hjaelperne som tog paa en flad etape", () => {
+  const list = flatField("captain");
+  const order = sprintTrainLeadoutOrder(team4Order(list, false));
+  assert.ok(order, "kaptajnen faar et tog uden at holdet skal have en sprint_captain");
+  assert.equal(order.params?.captain_rider_id, "s4");
+  assert.deepEqual(order.params?.leadout_rider_ids, ["h4-0", "h4-1", "h4-2", "h4-3", "h4-4"]);
+  assertMeasurableTrain(sprinterPlaces(list, [order]), sprinterPlaces(list, []));
+});
+
+test("#6352 v3: managerens egne tog-flag vinder, og en grupetto-rytter er aldrig med", () => {
+  const list = flatField("captain");
+  const input = team4Order(list, false);
+  const picked = sprintTrainLeadoutOrder({
+    ...input,
+    riders: input.riders.map((r) => ({ ...r, leadout: r.rider_id === "h4-1" || r.rider_id === "h4-2" })),
+  });
+  assert.deepEqual(picked?.params?.leadout_rider_ids, ["h4-1", "h4-2"]);
+  const withGrupetto = sprintTrainLeadoutOrder({
+    ...input,
+    riders: input.riders.map((r) => (r.rider_id === "h4-0" ? { ...r, effort: "grupetto" } : r)),
+  });
+  assert.ok(!(withGrupetto?.params?.leadout_rider_ids as string[]).includes("h4-0"));
+});
+
+test("#6352 v3: intet tog for en kaptajn uden sprinterprofil eller paa en ikke-flad etape", () => {
+  const list = flatField("captain");
+  const input = team4Order(list, false);
+  const climberRoster = input.roster.map((r) => (r.rider_id === "s4" ? { ...r, abilities: { ...r.abilities, climbing: 95 } } : r));
+  assert.equal(sprintTrainLeadoutOrder({ ...input, roster: climberRoster }), null);
+  for (const profileType of ["hilly", "mountain", "rolling", null]) {
+    assert.equal(sprintTrainLeadoutOrder({ ...input, profileType }), null, String(profileType));
+  }
+});
+
+test("#6352: aeldre revisioner faar ingen ny tog-regel (null = kaldstedets gamle regel)", () => {
+  const list = flatField("captain");
+  for (const rulesRevision of [undefined, null, "legacy", "orders_gc_v3", "official_times_v1", "official_times_v2"]) {
+    assert.equal(sprintTrainLeadoutOrder({ ...team4Order(list, false), rulesRevision }), null, String(rulesRevision));
+    assert.equal(sprintTrainLeadoutOrder({ ...team4Order(flatField("sprint_captain"), true), rulesRevision }), null, String(rulesRevision));
+  }
+});
+
+test("#6352: sprinterprofilen kraever at spurt er mindst lige saa hoej som de andre finale-evner", () => {
+  assert.equal(hasSprinterProfile(abilities({ sprint: 80, climbing: 60 })), true);
+  assert.equal(hasSprinterProfile(abilities({ sprint: 70, climbing: 80 })), false);
+  assert.equal(hasSprinterProfile(abilities({ sprint: 70, time_trial: 71 })), false);
+  assert.equal(hasSprinterProfile(null), false);
+  assert.equal(hasSprinterProfile({}), false);
 });
