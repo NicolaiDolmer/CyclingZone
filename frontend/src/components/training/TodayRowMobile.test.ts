@@ -58,3 +58,29 @@ test("i18n en+da har alle raekkens noegler", () => {
     }
   }
 });
+
+test("#6123 'Back to team program': raekken og tabellen rummer slottet, siden kalder begge DELETE-lag", () => {
+  const reset = read("ResetToTeamProgram.tsx");
+  const table = read("TrainingTodayTable.tsx");
+  assert.match(row, /\{!pickMode && renderReset\?\.\(rider\.id\)\}/);
+  assert.match(table, /renderReset\?\.\(row\.id\)/);
+  assert.match(page, /renderReset=\{\(riderId\) => renderResetFor\(riderId, true\)\}/);
+  assert.match(page, /renderReset=\{renderResetFor\}/);
+  assert.match(page, /await clearRiderWeekPlan\(riderId\)/);
+  assert.match(page, /await clearPlan\(riderId\)/);
+  // Laasen og fejlteksten kommer fra de eksisterende kilder.
+  assert.match(page, /locked=\{rowLocked\(\{ trainedToday: runGate\.trainedToday \}\)\}\s+busy=\{savingId === riderId/);
+  assert.match(reset, /trainNowSaveErrorKey\(error, "resetProgram\.error"\)/);
+  assert.match(reset, /disabled=\{locked \|\| busy \|\| working\}/);
+  assert.match(reset, /role="status"/);
+  assert.doesNotMatch(reset, /fetch\(|apiFetch/);
+});
+
+test("#6123 i18n en+da har alle nulstil-noeglerne", () => {
+  for (const lang of ["en", "da"]) {
+    const json = JSON.parse(readFileSync(join(here, `../../../public/locales/${lang}/training.json`), "utf8"));
+    for (const key of ["action", "done", "error"]) {
+      assert.equal(typeof json.resetProgram?.[key], "string", `${lang} resetProgram.${key}`);
+    }
+  }
+});

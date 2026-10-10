@@ -109,6 +109,7 @@ export default function TrainingTodayTable({
   openId,
   onToggleOpen,
   renderDay,
+  renderReset = undefined,
   renderDetail,
   renderStatus,
   renderNoDay,
@@ -131,6 +132,8 @@ export default function TrainingTodayTable({
   openId: string | null;
   onToggleOpen: (riderId: string) => void;
   renderDay: (riderId: string, isFirst: boolean) => ReactNode;
+  // #6123: "Back to team program", lige under dagsvaelgeren (null naar rytteren foelger holdet).
+  renderReset?: (riderId: string) => ReactNode;
   renderDetail: (riderId: string, detailId: string) => ReactNode;
   renderStatus: (riderId: string) => ReactNode;
   // Raekker uden en dag: loebsdags-cellerne slaas sammen til een celle med
@@ -257,7 +260,10 @@ export default function TrainingTodayTable({
               </div>
             </td>
           )}
-          <td className={`${cellBase} w-[220px]`}>{renderDay(row.id, isFirst)}</td>
+          <td className={`${cellBase} w-[220px]`}>
+            {renderDay(row.id, isFirst)}
+            {renderReset?.(row.id)}
+          </td>
           {row.noDay ? (
             <td className={`${cellBase} px-1`} colSpan={columns.length}>
               {renderNoDay(row.id)}

@@ -43,6 +43,8 @@ export type TodayRowsMobileProps = {
   forecastSettled?: boolean;
   pressedFor: (riderId: string) => QuickChoice | null;
   onChoose: (riderId: string, choice: QuickChoice) => void;
+  // #6123: "Back to team program" under valget (null naar rytteren foelger holdet).
+  renderReset?: (riderId: string) => ReactNode;
   errorFor?: (riderId: string) => string | null;
   busyFor: (riderId: string) => boolean;
   locked: boolean;
@@ -65,6 +67,7 @@ export default function TodayRowsMobile({
   forecastSettled = false,
   pressedFor,
   onChoose,
+  renderReset,
   errorFor,
   busyFor,
   locked,
@@ -156,9 +159,10 @@ export default function TodayRowsMobile({
                       </span>
                     </span>
                   </button>
+                  <div className="flex flex-none flex-col items-end">
                   {forecast && (
                     <span
-                      className="flex-none pt-0.5 text-xs text-cz-2"
+                      className="pt-0.5 text-xs text-cz-2"
                       data-testid="training-onetap-forecast"
                       data-band={forecast.tone}
                       aria-label={t(forecastSettled ? "forecast.ariaSettled" : "forecast.aria", {
@@ -172,6 +176,8 @@ export default function TodayRowsMobile({
                       </span>
                     </span>
                   )}
+                  {!pickMode && renderReset?.(rider.id)}
+                  </div>
                 </div>
 
                 {!pickMode && (

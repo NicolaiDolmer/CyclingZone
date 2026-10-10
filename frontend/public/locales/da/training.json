@@ -87,6 +87,11 @@
     "saved": "Gemt",
     "aria": "Dagens dag for {name}"
   },
+  "resetProgram": {
+    "action": "Tilbage til holdprogram",
+    "done": "Tilbage på holdprogram",
+    "error": "Kunne ikke nulstille. Prøv igen om et øjeblik."
+  },
   "card": {
     "changeDay": "Skift dag",
     "profile": "Rytterprofil",

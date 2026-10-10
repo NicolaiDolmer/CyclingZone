@@ -87,6 +87,11 @@
     "saved": "Saved",
     "aria": "Today's day for {name}"
   },
+  "resetProgram": {
+    "action": "Back to team program",
+    "done": "Back on team program",
+    "error": "Could not reset. Try again in a moment."
+  },
   "card": {
     "changeDay": "Change day",
     "profile": "Rider profile",
