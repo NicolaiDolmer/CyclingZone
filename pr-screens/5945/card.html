@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5945 before after</title>
+<style>
+  :root { --bg:#0e1116; --card:#161b22; --border:#2a313c; --t1:#e8ecf1; --t2:#aab3bf; --t3:#7d8794; --gold:#d4a843; --warn:#e0a030; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--t1); font:14px/1.45 system-ui, sans-serif; }
+  h1 { font-size:15px; margin:0 0 16px; font-weight:600; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .col h2 { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--t3); margin:0 0 8px; font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:5px; padding:14px; }
+  .card h3 { margin:0 0 10px; font-size:14px; }
+  .row { display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--border); color:var(--t2); font-size:13px; }
+  .chip { font-size:11px; color:var(--gold); border:1px solid var(--gold); border-radius:5px; padding:0 6px; }
+  .warn { color:var(--warn); font-size:12px; margin:0; }
+  .note { color:var(--t3); font-size:12px; margin:8px 0 0; }
+  .badge { font-size:11px; color:var(--t3); }
+</style></head><body>
+<h1>Junior team with 3 riders: Tactics tab and training badge</h1>
+<div class="grid">
+  <div class="col"><h2>Before</h2>
+    <div class="card"><h3>Tactics</h3>
+      <div class="row"><span>Rider A</span><span class="chip">Captain</span></div>
+      <div class="row"><span>Rider B</span><span>Helper</span></div>
+      <div class="row"><span>Rider C</span><span>Helper</span></div>
+    </div>
+    <p class="note">Training badge: Rider A <span class="badge">· Racing today</span>. The team is removed from the start field at the start.</p>
+  </div>
+  <div class="col"><h2>After</h2>
+    <div class="card"><h3>Tactics</h3>
+      <p class="warn" role="status">Fewer than 6 riders. Your team will not start this race.</p>
+    </div>
+    <p class="note">Training badge: none. Selection panel also says: "Minimum 6 riders to start."</p>
+  </div>
+</div>
+</body></html>
