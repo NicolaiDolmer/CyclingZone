@@ -65,6 +65,7 @@ import {
   mergedSharedCohorts,
 } from "./groups.ts";
 import type { FinaleGroupTrace, GroupMerge } from "./groups.ts";
+import { carrySplitsWithSourceAdvance, segmentSplitsFromEvents } from "./groups.ts"; // #6440
 import {
   GROUP_DRAFT_EXTRA_TUNING,
   GROUP_TEMPO_EFFORT_EXTRA_TUNING,
@@ -1113,9 +1114,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       acceptMovement(result);
     }
 
+    let climbSplits: ReturnType<typeof segmentSplitsFromEvents> = []; // #6440
     if (segment.kind === "climb") {
       const result = hooks.climbSelection(state, ctx);
       acceptMovement(result);
+      if (timeModelV3) climbSplits = segmentSplitsFromEvents(result.events); // #6440: foelger kilden gennem M5
     } else if (segment.kind === "descent") {
       const result = hooks.descent(state, ctx);
       acceptMovement(result);
@@ -1137,8 +1140,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // wiring-note foreskriver.
     {
       const groupsBeforePursuit = state.groups;
+      const frontBeforePursuit = frontElapsedSeconds; // #6440
       const result = hooks.breakaway(state, ctx);
       acceptMovement(result);
+      // #6440 (KUN official_times_v3): de afsatte foelger kilde-gruppen, naar M5 flytter den frem (groups.carrySplitsWithSourceAdvance).
+      if (climbSplits.length > 0) acceptMovement({ state: { ...state, groups: carrySplitsWithSourceAdvance({ before: groupsBeforePursuit, beforeFrontSeconds: frontBeforePursuit, after: state.groups, afterFrontSeconds: frontElapsedSeconds, splits: climbSplits }) }, events: [] });
       if (descentCrossings) {
         const contact = reconcileDescentCrossings(groupsBeforePursuit, state, segment.to_km, result.events, sharedGroupTime, contactInterval);
         state = contact.state;
