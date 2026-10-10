@@ -266,7 +266,11 @@
     },
     "squadBelowMinimum": {
       "title": "Squad below race minimum",
-      "message": "Your squad has {count} race-eligible rider(s), below the {min}-rider minimum needed to field a race day. Sign free agents or bid in an auction before your next race."
+      "message": "Your squad has {count} race-eligible rider(s), below the {min}-rider minimum needed to field a race day. Sign free agents or bid in an auction before your next race.",
+      "titleU23": "U23 team below race minimum",
+      "messageU23": "Your U23 team has {count, plural, one {1 rider} other {# riders}}, below the {min} needed to start a race. When a contract expires at the season change, the rider leaves the team. Your U23 team cannot start a race until you fill it up.",
+      "titleJunior": "Junior team below race minimum",
+      "messageJunior": "Your junior team has {count, plural, one {1 rider} other {# riders}}, below the {min} needed to start a race. When a contract expires at the season change, the rider leaves the team. Your junior team cannot start a race until you fill it up."
     },
     "seniorStartReminder": {
       "title": "Your senior squad needs riders",

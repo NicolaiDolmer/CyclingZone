@@ -1393,7 +1393,8 @@ export async function transitionToNextSeason({
   try {
     log.push({
       phase: "squad_below_minimum_check",
-      ...(await detectSquadsBelowMinimumFn({ supabase })),
+      // #5864: to_season = sæsonen truppen skal stille op i (dedupe-nøgle team+trup+sæson).
+      ...(await detectSquadsBelowMinimumFn({ supabase, seasonNumber: plan.to_season.number })),
     });
   } catch (err) {
     log.push({ phase: "squad_below_minimum_check", error: err.message, ...(err.partialStats || {}) });
