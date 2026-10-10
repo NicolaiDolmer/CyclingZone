@@ -1,5 +1,46 @@
 export const PATCHES = [
   {
+    "version": "7.351",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "An unsold youth rider stays on your team",
+          "body": "When you put one of your own U23 or junior riders up for auction and nobody bids, he now stays where he was. Before, he could be moved up to the senior team or leave the club. Graduation Day auctions work as before."
+        },
+        "da": {
+          "title": "En usolgt ungdomsrytter bliver på dit hold",
+          "body": "Når du sætter en af dine egne U23- eller juniorryttere på auktion, og ingen byder, bliver han, hvor han var. Før kunne han blive rykket op på seniorholdet eller forlade klubben. Auktioner fra Graduation Day virker som før."
+        },
+        "refs": [
+          6320
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "The Boardroom shows the goals you signed",
+          "body": "The Boardroom now always shows the goals from the mandate you signed at the annual meeting. It could show an older goal, for example top 5 after you negotiated top 7. The board plan step in your checklist also counts your signature."
+        },
+        "da": {
+          "title": "Bestyrelseslokalet viser de mål, du skrev under på",
+          "body": "Bestyrelseslokalet viser nu altid målene fra det mandat, du skrev under på ved årsmødet. Det kunne vise et ældre mål, fx top 5, efter du havde genforhandlet til top 7. Bestyrelsesplanen i din tjekliste tæller også din underskrift."
+        },
+        "refs": [
+          5946,
+          6122
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.350",
     "date": "2026-10-10",
     "changes": [
