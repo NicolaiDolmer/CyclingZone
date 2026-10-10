@@ -101,11 +101,11 @@ function jerseyWinnerName(results, type) {
 
 // #6050: hvem hentede udbruddet, når etapens tidslinje bærer det (v4). Uden
 // tidslinje eller felter → den oprindelige "breakawayCaught"-linje.
-function caughtMoment(count, timelineEvents, teamNameById) {
-  return catchActorCopy(timelineEvents, { teamNameById, family: "recap", count }) ?? { key: "breakawayCaught", params: { count } };
+function caughtMoment(count, timelineEvents, teamNameById, startlist = null) {
+  return catchActorCopy(timelineEvents, { teamNameById, family: "recap", count, startlist }) ?? { key: "breakawayCaught", params: { count } };
 }
 
-export function buildRaceRecap({ results = [], scope, incidents = [], profileType = null, timelineEvents = null, teamNameById = null } = {}) {
+export function buildRaceRecap({ results = [], scope, incidents = [], profileType = null, timelineEvents = null, teamNameById = null, startlist = null } = {}) {
   const sc = scope || { type: "overall" };
   const moments = [];
   const finish = selectFinishOrder(results, sc);
@@ -141,7 +141,7 @@ export function buildRaceRecap({ results = [], scope, incidents = [], profileTyp
       moments.push({ key: "breakawaySurvived", params: { count: inBreak.filter(heldHome).length } });
     } else if (inBreak.some((r) => r.breakaway_caught === true)) {
       const count = inBreak.filter((r) => r.breakaway_caught === true).length;
-      moments.push(caughtMoment(count, timelineEvents, teamNameById));
+      moments.push(caughtMoment(count, timelineEvents, teamNameById, startlist));
     }
   }
 

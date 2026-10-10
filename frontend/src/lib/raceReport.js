@@ -153,9 +153,10 @@ export function selectBeats(stageMoments, headline) {
  * @param {Array} [args.moments]  ALLE løbets moments (race_stage_moments-rækker), filtreres internt til denne etape.
  * @param {Array|null} [args.timelineEvents]  #6050: etapens tidslinje-events (aktøren bag en indhentning).
  * @param {{get(id: string): string|undefined}|null} [args.teamNameById]  #6050: team_id → holdnavn.
+ * @param {readonly string[]|null} [args.startlist]  #6400: etapens startliste (rider_id) til regroup-filteret.
  * @returns {{ headline: {moment, variant}, lede: {key, variant, winMoment}, beats: Array<{moment, beatKey, variant}> } | null}
  */
-export function buildRaceReport({ raceId, stageNumber, moments, timelineEvents = null, teamNameById = null } = {}) {
+export function buildRaceReport({ raceId, stageNumber, moments, timelineEvents = null, teamNameById = null, startlist = null } = {}) {
   const stageMoments = (moments || []).filter((m) => (m.stage_number ?? 1) === stageNumber);
   const winMoment = stageMoments.find((m) => WIN_MOMENT_KEYS.includes(m.moment_key));
   if (!winMoment) return null; // ingen etapesejr-moment → degradér ærligt til v1 (raceRecap.js)
@@ -166,7 +167,7 @@ export function buildRaceReport({ raceId, stageNumber, moments, timelineEvents =
     // #6050: navngiver etapens tidslinje hvem der hentede udbruddet, bruges
     // aktør-linjen (params klar til t()); ellers den oprindelige beat-tekst.
     const actor = m.moment_key === "breakaway_caught"
-      ? catchActorCopy(timelineEvents, { teamNameById, family: "beat", count: m.params?.count ?? 0 })
+      ? catchActorCopy(timelineEvents, { teamNameById, family: "beat", count: m.params?.count ?? 0, startlist })
       : null;
     const beatKey = actor?.key ?? beatKeyFor(m.moment_key);
     const beat = { moment: m, beatKey, variant: variantIndex(raceId, stageNumber, `beat.${beatKey}`, BEAT_VARIANT_COUNTS[beatKey] ?? 1) };
