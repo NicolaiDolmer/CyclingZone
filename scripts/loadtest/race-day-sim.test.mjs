@@ -92,7 +92,7 @@ function makeFakeLive(world, behaviour = {}) {
               await als.run({ kind: 'tick', counter, race: race.id, raceAlias: aliasOf.get(race.id) }, async () => {
                 try {
                   await f(`${ORIGIN}/rest/v1/races?id=eq.${race.id}`);
-                  await f(`${ORIGIN}/rest/v1/rpc/apply_race_results_batch`, { method: 'POST' });
+                  await f(`${ORIGIN}/rest/v1/rpc/apply_stage_result`, { method: 'POST' });
                   world.runs.push({ raceId: race.id, stageNumber: 1 });
                   if (behaviour.duplicateRun === race.id) world.runs.push({ raceId: race.id, stageNumber: 1 });
                   race.stagesCompleted = 1;
@@ -327,6 +327,21 @@ test('restart fault: the crash trips only after the results write and its marker
   assert.equal(faults.crash().point, 'after_results_write_and_marker');
   assert.equal(ok('rest', 'board_satisfaction_events', 'POST'), 'unreachable');
   assert.equal(faults.decide({ surface: 'rest', name: 'races' }, { kind: 'tick', race: 'r2' }), null);
+
+  // Etape-stien skriver via apply_stage_result; uden trin-markering afbrydes der kort efter.
+  const noMarker = createFaultController();
+  noMarker.armCrash();
+  const s2 = { kind: 'tick', race: 'r3' };
+  const step = (surface, name, method = 'GET') => {
+    const rec = { surface, name, method, status: 200 };
+    const d = noMarker.decide(rec, s2);
+    if (!d) noMarker.observe(rec, s2);
+    return d;
+  };
+  assert.equal(step('rpc', 'apply_stage_result', 'POST'), null);
+  for (let i = 0; i < 5; i++) assert.equal(step('rest', 'season_standings'), null);
+  assert.equal(step('rest', 'season_standings'), 'unreachable');
+  assert.equal(noMarker.crash().point, 'after_results_write_no_marker');
 });
 
 // ─── Oracles ───

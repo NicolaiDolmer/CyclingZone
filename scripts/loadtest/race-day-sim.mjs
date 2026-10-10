@@ -145,6 +145,10 @@ export function isBoardCall({ surface, name }) {
   return (surface === 'rest' && /^board_/.test(name ?? '')) || (surface === 'rpc' && /board/.test(name ?? ''));
 }
 
+// Den atomiske resultat-skrivning: etape-stien (stageResultRpc.applyStageResultAtomic)
+// og hel-løbs-stien (applyRaceResultsBatchAtomic).
+const RESULT_WRITE_RPCS = new Set(['apply_stage_result', 'apply_race_results_batch']);
+
 /**
  * Fault-styring. `mode` slukker en hel upstream for hele processen (backend + scheduler);
  * `armCrash` afbryder ÉN afvikling midt i afslutningen: efter den atomiske
@@ -156,7 +160,7 @@ export function createFaultController() {
   return {
     setMode(next) { mode = next; },
     mode: () => mode,
-    armCrash({ fallbackAfter = 60 } = {}) { crash = { state: 'armed', fallbackAfter, count: 0, race: null, point: null }; },
+    armCrash({ fallbackAfter = 60 } = {}) { crash = { state: 'armed', fallbackAfter, count: 0, afterWrite: 0, race: null, point: null }; },
     crash: () => crash,
     disarmCrash() { const c = crash; crash = null; return c; },
     decide(rec, store) {
@@ -169,6 +173,10 @@ export function createFaultController() {
         if (crash.race === store.race) {
           if (crash.state === 'tripped') return 'unreachable';
           crash.count++;
+          if (crash.state === 'write_seen' && ++crash.afterWrite > 5) {
+            // Ingen trin-markering kort efter skrivningen (fx genoptagelse slukket): afbryd alligevel.
+            crash.state = 'tripped'; crash.point = 'after_results_write_no_marker'; return 'unreachable';
+          }
           if (crash.count > crash.fallbackAfter) { crash.state = 'tripped'; crash.point = 'fallback_request_count'; return 'unreachable'; }
         }
       }
@@ -177,7 +185,7 @@ export function createFaultController() {
     observe(rec, store) {
       if (!crash || crash.state === 'tripped' || crash.race !== store?.race) return;
       if (!(rec.status >= 200 && rec.status < 300)) return;
-      if (crash.state === 'armed' && rec.surface === 'rpc' && rec.name === 'apply_race_results_batch') crash.state = 'write_seen';
+      if (crash.state === 'armed' && rec.surface === 'rpc' && RESULT_WRITE_RPCS.has(rec.name)) crash.state = 'write_seen';
       else if (crash.state === 'write_seen' && rec.surface === 'rest' && rec.name === 'races' && rec.method === 'PATCH') {
         crash.state = 'tripped';
         crash.point = 'after_results_write_and_marker';
