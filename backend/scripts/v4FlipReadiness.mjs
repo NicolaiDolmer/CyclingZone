@@ -52,6 +52,7 @@ import { runHeadToHead } from "./headToHeadV4.js";
 import { ANCHOR_BANDS, aggregateScorecards, buildScorecard, descentGapClosure, isShortUphillFinish } from "./lib/headToHeadAnchors.js";
 import { isOrdersGcV3OrLater } from "../lib/raceEngineRulesRevision.ts";
 import { evaluateTailGate, runTailSpread } from "./v4TailSpread.js";
+import { measureGtMargins } from "./v4GcMargin.mjs";
 import { displayFor } from "./renderV4AnchorTable.mjs";
 import { median, sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
@@ -154,6 +155,53 @@ export function summarizeAnchorGate(aggregated, seedCounts, seedCount) {
   const v4NotMeasured = rows.filter((r) => r.v4.verdict === "N/A").map((r) => r.id);
   const v4Pass = rows.filter((r) => r.v4.verdict === "PASS").map((r) => r.id);
   return { rows, seedCount, v4Pass, v4Fail, v4NotMeasured, v4AllGreen: v4Fail.length === 0 };
+}
+
+/**
+ * #6442: GT-vindermarginen kan ikke maales i etape-for-etape-harnessen (feltet
+ * traekkes pr. etape), saa scoreGapRealism giver den altid N/A. Den maales i
+ * stedet af v4GcMargin.measureGtMargins (fast felt over hele de pinnede grand
+ * tours, samme revision), og raekken i anker-gaten erstattes med den maaling.
+ * Uden dette er ankeret "ikke maalt" for enhver revision, og "ikke maalt" er
+ * aldrig groent. Seeds-taellingen er antal (grand tour, seed)-koersler hvis
+ * egen margin ligger i baandet.
+ * @param {ReturnType<typeof summarizeAnchorGate>} anchors
+ * @param {{anchor: object, runs: Array<{v3: {marginSeconds: number|null}, v4: {marginSeconds: number|null}}>}} gt  measureGtMargins-output
+ */
+export function withGtWinnerMargin(anchors, gt) {
+  const band = ANCHOR_BANDS.gtWinnerMarginSeconds;
+  const inBand = (v) => Number.isFinite(v) && v >= band.min && v <= band.max;
+  const cellFor = (engine) => {
+    const cell = gt.anchor[engine];
+    const margins = gt.runs.map((r) => r[engine]?.marginSeconds).filter(Number.isFinite);
+    return {
+      verdict: cell?.verdict ?? "N/A",
+      value: cell?.value ?? null,
+      spread: cell?.spread ?? null,
+      seedsPass: margins.filter(inBand).length,
+      seedsMeasured: margins.length,
+    };
+  };
+  const row = {
+    id: gt.anchor.id,
+    label: gt.anchor.label,
+    source: gt.anchor.source,
+    bandLabel: gt.anchor.bandLabel,
+    v3: cellFor("v3"),
+    v4: cellFor("v4"),
+  };
+  const rows = anchors.rows.some((r) => r.id === row.id)
+    ? anchors.rows.map((r) => (r.id === row.id ? row : r))
+    : [...anchors.rows, row];
+  const v4Fail = rows.filter((r) => r.v4.verdict === "FAIL").map((r) => r.id);
+  return {
+    ...anchors,
+    rows,
+    v4Pass: rows.filter((r) => r.v4.verdict === "PASS").map((r) => r.id),
+    v4Fail,
+    v4NotMeasured: rows.filter((r) => r.v4.verdict === "N/A").map((r) => r.id),
+    v4AllGreen: v4Fail.length === 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -1017,7 +1065,11 @@ async function main() {
 
   const t0 = performance.now();
   console.log(`[5515] head-to-head ${seeds.join(",")} x ${stages.length} etaper, felt ${FIELD_SIZE} ...`);
-  const { anchors, rates } = measureHeadToHead({ population, stages, seeds, rulesRevision });
+  const headToHead = measureHeadToHead({ population, stages, seeds, rulesRevision });
+  const { rates } = headToHead;
+  // #6442: GT-vindermarginen paa et akkumuleret klassement (fast felt, samme seeds og revision).
+  console.log(`[6442] GT-vindermargin ${seeds.join(",")} (pinnede grand tours, fast felt ${FIELD_SIZE}) ...`);
+  const anchors = withGtWinnerMargin(headToHead.anchors, measureGtMargins({ population, stages, seeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[6199] realistisk felt (${REALISTIC_FIELD_FILE}) ${seeds.join(",")} x ${stages.length} etaper ...`);
   const realisticField = measureRealisticField({ v4: await loadRaceEngineV4(), fixture: JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8")), stages, seeds, rulesRevision });
   console.log(`[5515] hale-gate ${tailSeeds.join(",")} ...`);
