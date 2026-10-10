@@ -104,6 +104,7 @@ function createFinalizeAuctionSupabase({
   riderUpdateHitsZeroRows = false, // #3580: simulér en riders.update() der rammer 0 rækker
   academyGraduationRow = null, // #2793: pending academy_graduation-row for sælgeren (resolvePendingGraduationOnSale), default ingen
   academyGraduationUpdates = [],
+  academyGraduationLookupError = null, // #6320: simulér en fejlet læsning af academy_graduation
   ownershipEvents = [], // #3582: rider_ownership_events-inserts
   atRiskRiderRowsByTeam = {}, // #2836: fetchAtRiskCount's fetchTeamRiskRows-svar pr. sælger-team-id (default: ingen risiko)
 } = {}) {
@@ -523,12 +524,26 @@ function createFinalizeAuctionSupabase({
         // den best-effort-catch sluger fejlen — præcis den stilhed #4484 var.
         return {
           select() {
+            // #6320: status-filtret respekteres — finalizeren spørger nu både
+            // efter 'pending' (salg) og 'sold' (er dette en graduate-auktion?),
+            // og en pending-række må aldrig forveksles med en 'sold'-række.
+            let statusFilter = null;
             const api = {
-              eq() { return api; },
+              eq(column, value) {
+                if (column === "status") statusFilter = value;
+                return api;
+              },
               order() { return api; },
               limit() { return api; },
               maybeSingle() {
-                return Promise.resolve({ data: academyGraduationRow, error: null });
+                if (academyGraduationLookupError) {
+                  return Promise.resolve({ data: null, error: academyGraduationLookupError });
+                }
+                const row = academyGraduationRow
+                  && (statusFilter === null || academyGraduationRow.status === undefined || academyGraduationRow.status === statusFilter)
+                  ? academyGraduationRow
+                  : null;
+                return Promise.resolve({ data: row, error: null });
               },
             };
             return api;
@@ -2452,6 +2467,7 @@ test("#4495 usolgt graduate-auktion: negativ saldo → slip (samme råd-kriteriu
       teamMarketCounts: {
         "seller-team": { riderCount: 12, pendingCount: 0, activeLoanCount: 0 },
       },
+      academyGraduationRow: { id: "grad-sold", status: "sold" }, // #6320: graduate-auktion = 'sold'-række
       auctionUpdates: [],
       riderUpdates,
     }),
@@ -2556,6 +2572,162 @@ test("#4495 usolgt SENIOR-auktion rører ikke rytteren (frigivelsen er gated på
   assert.deepEqual(riderUpdates, []);
   assert.deepEqual(teamUpdates, []);
   assert.deepEqual(financeInserts, []);
+});
+
+// #6320: #3650 lod et hold sætte sin EGEN akademirytter (U23/junior) på auktion
+// som et frivilligt salg. Den auktion har samme form som en graduate-auktion
+// (sellerOwned, is_youth=false, rider.is_academy=true) — men INGEN 'sold'-
+// stemplet grad-række. Før fixet ramte #4495's oprykning/frigivelse også den:
+// rytteren blev rykket op uden managerens valg, eller forsvandt ved fuld trup.
+// Acceptkriterie (ejer 7/10): usolgt ungdomsauktion lader rytteren blive.
+for (const [label, seniorCount, row] of [
+  ["ingen grad-række, plads i seniortruppen", 12, null],
+  ["ingen grad-række, FULD seniortrup", 30, null],
+  ["kun en PENDING grad-række (override-vindue)", 30, { id: "grad-pending", status: "pending" }],
+  // Nyeste række er allerede afgjort (fx en tidligere graduate-auktion der blev
+  // restemplet) — en ældre ikke-restemplet 'sold'-række må ikke tælle.
+  ["nyeste grad-række er 'promoted'", 30, { id: "grad-promoted", status: "promoted" }],
+]) {
+  test(`#6320 usolgt frivillig auktion på egen akademirytter (${label}): rytteren bliver, intet flyttes`, async () => {
+    const riderUpdates = [];
+    const teamUpdates = [];
+    const financeInserts = [];
+    const academyGraduationUpdates = [];
+    const auctionUpdates = [];
+    const ownershipEvents = [];
+    const notifications = [];
+
+    const result = await finalizeAuctionById({
+      supabase: createFinalizeAuctionSupabase({
+        auction: structuredClone({ ...UNSOLD_GRADUATE_AUCTION, id: "auction-owner-listed-youth" }),
+        teams: { "seller-team": { ...UNSOLD_GRADUATE_SELLER } },
+        teamMarketCounts: {
+          "seller-team": { riderCount: seniorCount, pendingCount: 0, activeLoanCount: 0 },
+        },
+        academyGraduationRow: row,
+        academyGraduationUpdates,
+        auctionUpdates,
+        teamUpdates,
+        riderUpdates,
+        financeInserts,
+        ownershipEvents,
+      }),
+      auctionId: "auction-owner-listed-youth",
+      notifyTeamOwner: async (teamId, type, title, message, entityId, metadata) => {
+        notifications.push({ teamId, type, title, message, entityId, metadata });
+      },
+      now: new Date("2026-10-07T07:00:00.000Z"),
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.code, "no_bids");
+    // Rytteren røres slet ikke: samme hold, samme is_academy/squad/kontrakt.
+    assert.deepEqual(riderUpdates, [], "ingen oprykning, ingen frigivelse");
+    assert.deepEqual(teamUpdates, []);
+    assert.deepEqual(financeInserts, []);
+    assert.deepEqual(ownershipEvents, []);
+    assert.deepEqual(academyGraduationUpdates, [], "ingen grad-række restemples");
+    // Auktionen lukkes som almindelig usolgt auktion.
+    assert.equal(auctionUpdates.length, 1);
+    assert.equal(auctionUpdates[0].status, "completed");
+    // Kun den almindelige expiredNoBids-besked — ingen academy_graduated.
+    assert.equal(notifications.filter((n) => n.type === "academy_graduated").length, 0);
+    const expired = notifications.filter((n) => n.metadata?.messageCode === "notif.auction.expiredNoBidsMessage");
+    assert.equal(expired.length, 1);
+    assert.equal(expired[0].teamId, "seller-team");
+  });
+}
+
+test("#6320 cron-retry af en usolgt frivillig akademi-auktion er idempotent (rytteren røres heller ikke anden gang)", async () => {
+  const riderUpdates = [];
+  const academyGraduationUpdates = [];
+  const auction = structuredClone({ ...UNSOLD_GRADUATE_AUCTION, id: "auction-owner-listed-retry" });
+  const deps = {
+    teams: { "seller-team": { ...UNSOLD_GRADUATE_SELLER } },
+    teamMarketCounts: { "seller-team": { riderCount: 30, pendingCount: 0, activeLoanCount: 0 } },
+    academyGraduationUpdates,
+    auctionUpdates: [],
+    riderUpdates,
+  };
+  for (let i = 0; i < 2; i += 1) {
+    const result = await finalizeAuctionById({
+      supabase: createFinalizeAuctionSupabase({ auction, ...deps }),
+      auctionId: "auction-owner-listed-retry",
+      notifyTeamOwner: async () => {},
+      now: new Date("2026-10-07T07:00:00.000Z"),
+    });
+    assert.equal(result.code, "no_bids");
+  }
+  assert.deepEqual(riderUpdates, []);
+  assert.deepEqual(academyGraduationUpdates, []);
+  assert.equal(auction.rider.is_academy, true);
+  assert.equal(auction.rider.team_id, "seller-team");
+});
+
+test("#6320 fejlet grad-opslag kaster FØR auktionen lukkes og før nogen besked (cron kan prøve igen)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const notifications = [];
+
+  await assert.rejects(
+    finalizeAuctionById({
+      supabase: createFinalizeAuctionSupabase({
+        auction: structuredClone({ ...UNSOLD_GRADUATE_AUCTION, id: "auction-lookup-fails" }),
+        teams: { "seller-team": { ...UNSOLD_GRADUATE_SELLER } },
+        teamMarketCounts: { "seller-team": { riderCount: 12, pendingCount: 0, activeLoanCount: 0 } },
+        academyGraduationLookupError: { message: "connection reset" },
+        auctionUpdates,
+        riderUpdates,
+      }),
+      auctionId: "auction-lookup-fails",
+      notifyTeamOwner: async (...args) => { notifications.push(args); },
+      now: new Date("2026-10-07T07:00:00.000Z"),
+    }),
+    /connection reset/,
+  );
+  assert.deepEqual(auctionUpdates, [], "auktionen er stadig åben → næste cron-kørsel prøver igen");
+  assert.deepEqual(riderUpdates, []);
+  assert.deepEqual(notifications, []);
+});
+
+test("#6320 garanteret bank-salg af egen akademirytter er et ÆGTE salg: ingen graduate-udgang, intet grad-opslag nødvendigt", async () => {
+  const riderUpdates = [];
+  const academyGraduationUpdates = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: structuredClone({
+        ...UNSOLD_GRADUATE_AUCTION,
+        id: "auction-owner-listed-bank",
+        is_guaranteed_sale: true,
+        guaranteed_price: 800,
+      }),
+      teams: {
+        "seller-team": { ...UNSOLD_GRADUATE_SELLER },
+        "bank-team": { id: "bank-team", name: "Bank", balance: 0, division: 3, is_bank: true },
+      },
+      teamMarketCounts: { "seller-team": { riderCount: 30, pendingCount: 0, activeLoanCount: 0 } },
+      // Selv en 'sold'-række må ikke trække rytteren gennem resolveUnsoldGraduate
+      // når banken faktisk har købt ham.
+      academyGraduationRow: { id: "grad-sold", status: "sold" },
+      academyGraduationUpdates,
+      auctionUpdates: [],
+      riderUpdates,
+    }),
+    auctionId: "auction-owner-listed-bank",
+    notifyTeamOwner: async (teamId, type, title, message, entityId, metadata) => {
+      notifications.push({ teamId, type, metadata });
+    },
+    now: new Date("2026-10-07T07:00:00.000Z"),
+  });
+
+  assert.equal(result.code, "guaranteed_sale");
+  assert.equal(riderUpdates.length, 1, "kun bank-overdragelsen");
+  assert.equal(riderUpdates[0].team_id, "bank-team");
+  assert.equal(riderUpdates[0].is_academy, false);
+  assert.deepEqual(academyGraduationUpdates, []);
+  assert.equal(notifications.filter((n) => n.type === "academy_graduated").length, 0);
 });
 
 // ── #1309 kontrakt-on-acquire ────────────────────────────────────────────────

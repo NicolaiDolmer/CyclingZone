@@ -175,6 +175,31 @@ async function closeAuction({
   );
 }
 
+// #6320: står rytterens NYESTE academy_graduation-række for (hold, rytter) som
+// 'sold'? Det er kendetegnet for en løbende graduate-auktion (createGraduateAuction
+// via resolveGraduation → finishGraduation 'sold'). Et frivilligt #3650-salg af
+// egen akademirytter har ingen. Kun den nyeste række tæller (én pr. sæson,
+// #4484): en ældre 'sold'-række der aldrig blev restemplet må ikke gøre en
+// senere frivillig auktion til en graduate-auktion. Kaster ved læsefejl
+// (expectMaybeSingle) — kalderen ligger før enhver skrivning.
+/**
+ * @param {any} supabase
+ * @param {{ teamId: string, riderId: string }} args
+ * @returns {Promise<boolean>}
+ */
+async function hasSoldGraduationRow(supabase, { teamId, riderId }) {
+  const row = await expectMaybeSingle(
+    supabase
+      .from("academy_graduation")
+      .select("status")
+      .eq("team_id", teamId)
+      .eq("rider_id", riderId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+  );
+  return row?.status === "sold";
+}
+
 async function resolveAuctionSellerContext({ supabase, auction }) {
   const sellerOwned = sellerOwnsAuctionRider(auction);
   if (sellerOwned) {
@@ -1540,6 +1565,22 @@ async function finalizeAuctionRecord({
       )
     : null;
 
+  // #6320: afgør FØR nogen skrivning/notifikation om denne usolgte auktion er en
+  // ÆGTE graduate-auktion. #3650 lod et hold sætte sin EGEN akademirytter
+  // (U23/junior) på auktion som et frivilligt salg — sådan en auktion har samme
+  // form (sellerOwned, is_youth=false, rider.is_academy=true), men ingen
+  // grad-række bag sig. Kun createGraduateAuction-auktioner har det: deres
+  // grad-række stemples 'sold' ved oprettelsen (finishGraduation). Uden dette
+  // tjek ramte #4495's oprykning/frigivelse også de frivillige salg, så en
+  // rytter ingen bød på blev rykket op uden managerens valg eller forsvandt fra
+  // holdet ved fuld seniortrup. Opslaget ligger før closeAuction, så en
+  // læsefejl kaster mens auktionen stadig er åben og cron'en kan prøve igen.
+  const soldToBank = Boolean(auction.is_guaranteed_sale && sellerOwned && bankTeam);
+  const isUnsoldGraduateAuction =
+    !soldToBank && !auction.is_youth && sellerOwned && auction.seller_team_id && auction.rider?.is_academy === true
+      ? await hasSoldGraduationRow(supabase, { teamId: auction.seller_team_id, riderId: auction.rider.id })
+      : false;
+
   if (auction.is_guaranteed_sale && sellerOwned && bankTeam) {
     const salePrice = auction.guaranteed_price;
 
@@ -1676,8 +1717,12 @@ async function finalizeAuctionRecord({
   // ikke længere lande, så udgangen kan ikke kappe en levende auktion over.
   // Begge udgange er conditional + idempotent (se resolveUnsoldGraduate), så en
   // cron-retry på samme auktion ikke rører en rytter der er kommet videre.
-  const soldToBank = Boolean(auction.is_guaranteed_sale && sellerOwned && bankTeam);
-  if (!soldToBank && !auction.is_youth && sellerOwned && auction.seller_team_id && auction.rider?.is_academy === true) {
+  //
+  // #6320: KUN ægte graduate-auktioner (se isUnsoldGraduateAuction ovenfor). Et
+  // frivilligt salg af egen akademirytter (#3650) uden bud lukker blot som
+  // 'no_bids': rytteren bliver på holdet med uændret is_academy/squad/kontrakt,
+  // og manageren får den almindelige expiredNoBids-besked.
+  if (isUnsoldGraduateAuction) {
     await resolveUnsoldGraduate(supabase, {
       teamId: auction.seller_team_id,
       riderId: auction.rider.id,
