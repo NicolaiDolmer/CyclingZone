@@ -1701,7 +1701,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const ordersGcV1 = ctx.rulesRevision === "orders_gc_v1";
   // #6441 (KUN official_times_v3): etapeinteresse + additiv holdjagt, kuperet jagt
   // uden daempning foer finalen og v3's lodtraekning paa jagt-gulvet.
-  const chaseV3 = ctx.sharedGroupTime?.timeModelGeneration === 3;
+  const chaseV3 = ctx.sharedGroupTime?.timeModelGeneration === 3 && BREAKAWAY_CHASE_V3_TUNING.profileTypes.includes(ctx.route.profile_type);
 
   // #6187 (KUN orders_gc_v3): et hold foerer aldrig jagten paa en gruppe med
   // egen mand i, og dets udbrydere sidder paa hjul ved en trussel mod holdets

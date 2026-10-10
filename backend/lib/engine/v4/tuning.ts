@@ -971,6 +971,9 @@ export const BREAKAWAY_EXTRA_TUNING = deepFreeze(breakawayExtra);
 // Kalibreret privat paa prod-felter, Giro-fixturen og Tour-cachen samtidig
 // (balance-internals/6441-A/).
 const breakawayChaseV3 = {
+  // Vejprofilerne den rene revision daekker (samme som udbrudstrappen); brosten,
+  // grus og klassikere jager som under official_times_v2.
+  profileTypes: ["flat", "rolling", "hilly", "mountain", "high_mountain"] as readonly ProfileType[],
   // Hvor mange af jagtgruppens bedste ryttere paa finalens krav der maales.
   stageWinTopRiders: 8,
   // Vaegt paa etapeinteressen i chase-forcen (erstatter sprinterInterestWeight under v3).
@@ -989,7 +992,7 @@ const breakawayChaseV3 = {
   // Vaegt paa et holds ordre/GC-reaktion (signal i [0, maxTeamSignal]) lagt til
   // netto-fordelen. Summen af det ordrerne tilfoejer ud over interessen er
   // hoejst denne vaegt (samme loft som det samlede stance-signal paa 1).
-  teamSignalWeight: 0.12,
+  teamSignalWeight: 0.11,
   // Jagt-gulvets lodtraekning (feltet kommer for sent) under v3.
   chaseFloorLateChanceByFinale: {
     bunch_sprint: 0.08,
