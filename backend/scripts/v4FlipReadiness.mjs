@@ -53,6 +53,7 @@ import { ANCHOR_BANDS, aggregateScorecards, buildScorecard, descentGapClosure, i
 import { isOrdersGcV3OrLater } from "../lib/raceEngineRulesRevision.ts";
 import { evaluateTailGate, runTailSpread } from "./v4TailSpread.js";
 import { measureGtMargins } from "./v4GcMargin.mjs";
+import { gcGapAt, runStagesInOrder } from "./dev/lib/tourScorecard.mjs";
 import { displayFor } from "./renderV4AnchorTable.mjs";
 import { median, sampleField } from "./lib/headToHeadStats.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
@@ -1021,6 +1022,39 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
   };
 }
 
+/**
+ * #6442: GT-vindermarginen i det realistiske felt. Giro-fixturet er et rigtigt
+ * etapeloeb (felt, hold, roller, gemte ordrer og etaper), og klassementet
+ * akkumuleres praecis som spillet goer det (tourScorecard.runStagesInOrder, samme
+ * maaling som gate trin 1's gcWinnerMargin). Proxy-feltets GT-margin (v4GcMargin,
+ * tilfaeldig stikproeve af hele populationen) er langt bredere i klatre-evne end
+ * et rigtigt startfelt, saa den er sekundaer her, som for de to tidsankre (#6199).
+ * Vaerdien er middel over seeds (samme regel som de oevrige ankre); seeds bestaaet
+ * er antal seeds hvis egen margin ligger i baandet.
+ */
+export function measureRealisticGtMargin({ v4, fixture, seeds = HEAD_TO_HEAD_SEEDS, rulesRevision = undefined }) {
+  const band = ANCHOR_BANDS.gtWinnerMarginSeconds;
+  const margins = seeds.map((seed) => {
+    const standings = runStagesInOrder({ v4, data: fixture, revision: rulesRevision ?? "legacy", seedTag: `${seed}:gt-realistic` });
+    return gcGapAt(standings, 2);
+  });
+  const measured = margins.filter(Number.isFinite);
+  const value = meanOf(measured);
+  const inBand = (v) => v >= band.min && v <= band.max;
+  return {
+    id: "gt_winner_margin",
+    subset: "gc",
+    label: "GT-vindermargin, akkumuleret klassement (#2415, #6442)",
+    bandLabel: `${band.min}-${band.max}s`,
+    value,
+    margins,
+    verdict: value === null ? "N/A" : inBand(value) ? "PASS" : "FAIL",
+    seedsPass: measured.filter(inBand).length,
+    seedsMeasured: measured.length,
+    n: measured.length,
+  };
+}
+
 function argValue(name, fallback = null) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
   return hit ? hit.slice(name.length + 3) : fallback;
@@ -1071,7 +1105,11 @@ async function main() {
   console.log(`[6442] GT-vindermargin ${seeds.join(",")} (pinnede grand tours, fast felt ${FIELD_SIZE}) ...`);
   const anchors = withGtWinnerMargin(headToHead.anchors, measureGtMargins({ population, stages, seeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[6199] realistisk felt (${REALISTIC_FIELD_FILE}) ${seeds.join(",")} x ${stages.length} etaper ...`);
-  const realisticField = measureRealisticField({ v4: await loadRaceEngineV4(), fixture: JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8")), stages, seeds, rulesRevision });
+  const v4Engine = await loadRaceEngineV4();
+  const realisticFixture = JSON.parse(readFileSync(abs(REALISTIC_FIELD_FILE), "utf8"));
+  const realisticField = measureRealisticField({ v4: v4Engine, fixture: realisticFixture, stages, seeds, rulesRevision });
+  console.log(`[6442] GT-vindermargin i det realistiske felt (fixturets egne etaper) ${seeds.join(",")} ...`);
+  realisticField.anchors.push(measureRealisticGtMargin({ v4: v4Engine, fixture: realisticFixture, seeds, rulesRevision }));
   console.log(`[5515] hale-gate ${tailSeeds.join(",")} ...`);
   const tailGate = evaluateTailGate(runTailSpread({ population, stages, seeds: tailSeeds, fieldSize: FIELD_SIZE, rulesRevision }));
   console.log(`[5515] ydelse ${perfSizes.join(",")} ...`);

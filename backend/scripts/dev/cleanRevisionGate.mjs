@@ -143,30 +143,76 @@ export function judgeTourJson(json, revision, label) {
 }
 
 /**
- * Dom over v4FlipReadiness-JSON: alle ankre groenne og maalt, realistisk felt
- * uden FAIL, hale-gaten PASS. Med baseline: ingen anker der bestod for baseline
- * er faldet fra PASS i den nye revision.
+ * #6442: tidsankrene doemmes i det REALISTISKE felt, ikke i proxy-feltet.
+ * RACE_ENGINE_RULES (#6199, ankertabellen): "rapportens afsnit 1b maaler de to
+ * tidsankre primaert i et realistisk felt ...; proxy-feltets dom er sekundaer",
+ * fordi proxy-feltet (en tilfaeldig stikproeve af HELE populationen, orders=none)
+ * er langt bredere i klatre-evne end et rigtigt startfelt. GT-vindermarginen er
+ * et tidsanker af samme slags (klassementsgab skabt af klatre-spredningen) og
+ * maales derfor ogsaa primaert i det realistiske felt (akkumuleret klassement).
+ *
+ * Pr. anker: den primaere raekke i 1b (subset) er gaten. Proxy-raekken og 1b's
+ * "alle etaper"-raekke (hvor nr. 10 i en udbrudssejr er feltets hul til
+ * udbruddet, som udbrudsankrene ejer) rapporteres som info, men gater ikke.
+ */
+export const REALISTIC_PRIMARY_ANCHORS = Object.freeze({
+  mountain_top10_spread: "favorites",
+  short_uphill_finish_gaps: "favorites",
+  gt_winner_margin: "gc",
+});
+
+/** Raekkerne i 1b der gater: de primaere tidsanker-raekker + alt der ikke er et tidsanker (fx nedkoersels-kontrakten). */
+function gatingRealisticRows(rf) {
+  return rf.filter((x) => {
+    const primary = REALISTIC_PRIMARY_ANCHORS[x.id];
+    return primary === undefined || x.subset === primary;
+  });
+}
+
+const realisticKey = (x) => `${x.id}/${x.subset ?? "-"}`;
+
+/**
+ * Dom over v4FlipReadiness-JSON: alle ankre groenne og maalt (tidsankrene i det
+ * realistiske felt, se REALISTIC_PRIMARY_ANCHORS), hale-gaten PASS. Med
+ * baseline: ingen gatende raekke der bestod for baseline er faldet fra PASS i
+ * den nye revision. `notes` er info (ikke-gatende raekker), aldrig en aarsag.
  */
 export function judgeAnchorsJson(json, baselineJson, revision, baseline) {
-  if (!json?.anchors?.rows) return { status: "FAIL", reasons: [`ankre for ${revision}: ingen data (ikke maalt)`] };
+  if (!json?.anchors?.rows) return { status: "FAIL", reasons: [`ankre for ${revision}: ingen data (ikke maalt)`], notes: [] };
   const reasons = [];
+  const notes = [];
   const a = json.anchors;
-  if (a.v4Fail?.length) reasons.push(`ankre FAIL for ${revision}: ${a.v4Fail.join(", ")}`);
-  if (a.v4NotMeasured?.length) reasons.push(`ankre ikke maalt for ${revision}: ${a.v4NotMeasured.join(", ")}`);
+  const proxyGates = (id) => REALISTIC_PRIMARY_ANCHORS[id] === undefined;
+  const proxyFail = (a.v4Fail ?? []).filter(proxyGates);
+  const proxyNotMeasured = (a.v4NotMeasured ?? []).filter(proxyGates);
+  if (proxyFail.length) reasons.push(`ankre FAIL for ${revision}: ${proxyFail.join(", ")}`);
+  if (proxyNotMeasured.length) reasons.push(`ankre ikke maalt for ${revision}: ${proxyNotMeasured.join(", ")}`);
+  const proxySecondary = a.rows.filter((r) => !proxyGates(r.id)).map((r) => `${r.id}=${r.v4.verdict}`);
+  if (proxySecondary.length) notes.push(`proxy-felt (sekundaer for tidsankre): ${proxySecondary.join(", ")}`);
   const rf = json.realisticField?.anchors;
   if (!rf) reasons.push(`realistisk felt: ingen data for ${revision} (ikke maalt)`);
   else {
-    const bad = rf.filter((x) => x.verdict !== "PASS").map((x) => `${x.id ?? x.label}=${x.verdict}`);
+    for (const [id, subset] of Object.entries(REALISTIC_PRIMARY_ANCHORS)) {
+      if (!rf.some((x) => x.id === id && x.subset === subset)) reasons.push(`realistisk felt: ${id}/${subset} mangler for ${revision} (ikke maalt)`);
+    }
+    const gating = gatingRealisticRows(rf);
+    const bad = gating.filter((x) => x.verdict !== "PASS").map((x) => `${realisticKey(x)}=${x.verdict}`);
     if (bad.length) reasons.push(`realistisk felt ikke groent for ${revision}: ${bad.join(", ")}`);
+    const info = rf.filter((x) => !gating.includes(x)).map((x) => `${realisticKey(x)}=${x.verdict}`);
+    if (info.length) notes.push(`realistisk felt, ikke-gatende raekker: ${info.join(", ")}`);
   }
   if (json.tailGate?.allPass !== true) reasons.push(`hale-gaten er ikke PASS for ${revision}`);
   if (!baselineJson?.anchors?.rows) reasons.push(`før/efter: ingen data for baseline ${baseline} (ikke maalt)`);
   else {
     const was = new Map(baselineJson.anchors.rows.map((r) => [r.id, r.v4.verdict]));
-    const regress = a.rows.filter((r) => was.get(r.id) === "PASS" && r.v4.verdict !== "PASS").map((r) => r.id);
+    const regress = a.rows.filter((r) => proxyGates(r.id) && was.get(r.id) === "PASS" && r.v4.verdict !== "PASS").map((r) => r.id);
+    const wasRf = new Map(gatingRealisticRows(baselineJson.realisticField?.anchors ?? []).map((x) => [realisticKey(x), x.verdict]));
+    for (const x of gatingRealisticRows(rf ?? [])) {
+      if (wasRf.get(realisticKey(x)) === "PASS" && x.verdict !== "PASS") regress.push(`realistisk ${realisticKey(x)}`);
+    }
     if (regress.length) reasons.push(`regression mod ${baseline} (PASS -> ikke PASS): ${regress.join(", ")}`);
   }
-  return { status: reasons.length ? "FAIL" : "PASS", reasons };
+  return { status: reasons.length ? "FAIL" : "PASS", reasons, notes };
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +327,8 @@ export function step3({ opts, deps, outBase, revisionKnown }) {
   const base = run(opts.baseline, "baseline");
   const r = judgeAnchorsJson(cur.json, base.error ? null : base.json, opts.revision, opts.baseline);
   if (base.error) r.reasons.unshift(base.error);
-  return { status: r.reasons.length ? "FAIL" : "PASS", reasons: r.reasons };
+  // #6442: info-noter (ikke-gatende raekker) staar i rapporten, men afgoer ikke trinnet.
+  return { status: r.reasons.length ? "FAIL" : "PASS", reasons: [...r.reasons, ...(r.notes ?? []).map((n) => `info: ${n}`)] };
 }
 
 export function step4({ deps }) {

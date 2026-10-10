@@ -75,11 +75,54 @@ test("judgeTourJson: PASS/WARN er groent, FAIL, TODO og manglende data er ikke",
   assert.equal(judgeTourJson(tourJson(undefined), "r", "x").status, "FAIL");
 });
 
+// #6442: de primaere tidsanker-raekker i det realistiske felt (gaten for tidsankrene).
+const realisticPrimary = (over = {}) => [
+  { id: "t", verdict: "PASS" },
+  { id: "mountain_top10_spread", subset: "favorites", verdict: over.mountain ?? "PASS" },
+  { id: "short_uphill_finish_gaps", subset: "favorites", verdict: over.short ?? "PASS" },
+  { id: "mountain_top10_spread", subset: "all", verdict: over.mountainAll ?? "PASS" },
+  { id: "short_uphill_finish_gaps", subset: "all", verdict: over.shortAll ?? "PASS" },
+  { id: "gt_winner_margin", subset: "gc", verdict: over.gt ?? "PASS" },
+];
+
 const anchors = (rows, over = {}) => ({
   anchors: { rows: rows.map(([id, v]) => ({ id, v4: { verdict: v } })), v4Fail: rows.filter(([, v]) => v === "FAIL").map(([id]) => id), v4NotMeasured: rows.filter(([, v]) => v === "N/A").map(([id]) => id) },
-  realisticField: { anchors: [{ id: "t", verdict: "PASS" }] },
+  realisticField: { anchors: realisticPrimary() },
   tailGate: { allPass: true },
   ...over,
+});
+
+test("#6442 judgeAnchorsJson: tidsankrene doemmes i det realistiske felt; proxy og 'alle etaper' er info", () => {
+  const base = anchors([["a", "PASS"], ["short_uphill_finish_gaps", "FAIL"], ["gt_winner_margin", "N/A"]]);
+  // Den situation gate trin 3 stod i: proxy-felt FAIL/ikke maalt paa tidsankrene, 1b's
+  // "alle etaper" FAIL (udbrudssejre), men de primaere raekker PASS. Foer #6442: FAIL.
+  const cur = anchors([["a", "PASS"], ["short_uphill_finish_gaps", "FAIL"], ["gt_winner_margin", "N/A"], ["mountain_top10_spread", "FAIL"]], {
+    realisticField: { anchors: realisticPrimary({ shortAll: "FAIL", mountainAll: "FAIL" }) },
+  });
+  const ok = judgeAnchorsJson(cur, base, "n", "o");
+  assert.equal(ok.status, "PASS", ok.reasons.join(" | "));
+  assert.match(ok.notes.join(" "), /short_uphill_finish_gaps=FAIL/);
+  assert.match(ok.notes.join(" "), /short_uphill_finish_gaps\/all=FAIL/);
+
+  // Den primaere raekke er gaten: FAIL eller manglende = FAIL ("ikke maalt" er aldrig groent).
+  const shortFail = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary({ short: "FAIL" }) } }), base, "n", "o");
+  assert.equal(shortFail.status, "FAIL");
+  assert.match(shortFail.reasons.join(" "), /short_uphill_finish_gaps\/favorites=FAIL/);
+  const gtMissing = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary().filter((x) => x.id !== "gt_winner_margin") } }), base, "n", "o");
+  assert.equal(gtMissing.status, "FAIL");
+  assert.match(gtMissing.reasons.join(" "), /gt_winner_margin\/gc mangler/);
+  const gtNa = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary({ gt: "N/A" }) } }), base, "n", "o");
+  assert.equal(gtNa.status, "FAIL");
+
+  // Et ikke-tidsanker i proxy-feltet gater stadig.
+  assert.equal(judgeAnchorsJson(anchors([["field_cohesion_flat", "FAIL"]]), base, "n", "o").status, "FAIL");
+
+  // Regression i en gatende realistisk raekke mod baseline er FAIL, selvom den er
+  // en "FAIL" mod sit eget baand allerede ville fange det: baseline-sammenligningen
+  // skal ogsaa se den.
+  const baseRf = anchors([["a", "PASS"]]);
+  const regress = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary({ mountain: "FAIL" }) } }), baseRf, "n", "o");
+  assert.match(regress.reasons.join(" "), /regression mod o .*realistisk mountain_top10_spread\/favorites/);
 });
 
 test("judgeAnchorsJson: groent, regression, ikke maalt, hale og baseline", () => {
@@ -217,7 +260,8 @@ test("runGate: GREEN naar alle vaerktoejer er groenne", () => {
   });
   deps.latestJson = () => "/r/tour.json";
   const r = runGate({ opts: parseArgs([]), deps });
-  assert.deepEqual(r.steps.map((s) => [s.id, s.status, s.reasons]), [1, 2, 3, 4, 5].map((id) => [id, "PASS", []]));
+  // #6442: trin 3 kan baere info-noter (ikke-gatende raekker), aldrig andre aarsager.
+  assert.deepEqual(r.steps.map((s) => [s.id, s.status, s.reasons.filter((x) => !x.startsWith("info: "))]), [1, 2, 3, 4, 5].map((id) => [id, "PASS", []]));
   assert.equal(r.verdict, "GREEN");
   assert.equal(exitCodeFor(r), 0);
 });
