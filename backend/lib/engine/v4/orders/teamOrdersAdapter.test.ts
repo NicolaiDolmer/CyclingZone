@@ -484,3 +484,15 @@ test("#6434 v3: i et helt fladt endagsloeb koerer toget kaptajnen frem (aldrig d
   }
   assert.ok(better >= 6, `toget flytter placeringen i ${better} af 12 seeds`);
 });
+
+test("#6434 v3 (review): managerens eksplicitte 'intet tog' for dagen respekteres for en sprinter-kaptajn", () => {
+  const roster = roster6434();
+  const row = { team_id: "team-4", stage_number: 1, breakaway_stance: null, riders: roster.filter((r) => r.team_id === "team-4").map((r) => ({ rider_id: r.rider_id, leadout: false })) };
+  const plan = buildStageOrderPlan({
+    rows: [row as never], stageNumber: 1, roster,
+    context: { route: { profile_type: "flat", finale_type: "bunch_sprint" }, race: { is_stage_race: false, later_stages: [] }, rules_revision: "official_times_v3" },
+  });
+  assert.equal(parseLeadoutOrders(plan.orders).find((o) => o.team_id === "team-4"), undefined);
+  // Andre hold uden raekke faar stadig toget.
+  assert.ok(parseLeadoutOrders(plan.orders).find((o) => o.team_id === "team-3"));
+});

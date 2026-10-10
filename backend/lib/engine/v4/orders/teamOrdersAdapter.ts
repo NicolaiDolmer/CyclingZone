@@ -268,6 +268,7 @@ export function buildStageOrderPlan(args: {
     // #6434 (KUN official_times_v3): togets maal kan ogsaa vaere en kaptajn med
     // sprinterprofil paa en flad etape (sprintTrainLeadoutOrder, #6352), for
     // menneske- og AI-hold. Aeldre revisioner: den gamle regel, uaendret.
+    const managerSetTrain = row ? (rowToStageOverlay(row).riders ?? []).some((r) => typeof r.leadout === "boolean") : false;
     const leadout = context !== undefined && isOfficialTimesV3OrLater(context.rules_revision)
       ? sprintTrainLeadoutOrder({
           team_id: teamId,
@@ -275,6 +276,7 @@ export function buildStageOrderPlan(args: {
           roster: teamRoster.map((r) => ({ rider_id: r.rider_id, role: r.role, abilities: rawAbilitiesByRider.get(r.rider_id) ?? null })),
           profileType: context.route.profile_type,
           rulesRevision: context.rules_revision,
+          managerSetTrain,
         })
       : toEngineLeadoutOrder(order, teamRoster);
     if (leadout) orders.push(leadout);
