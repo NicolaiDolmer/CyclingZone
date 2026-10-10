@@ -19,9 +19,16 @@
 // Overview har nu My Teams popularitet og status, så kolonnerne står i samme
 // rækkefølge på de tre trup-sider. Kun rækkehandlingen (Sell / Auction) er
 // stadig My Teams alene.
-import { useMemo, useState } from "react";
+//
+// #5917 (ejer 4/10: "kan ikke se hvor man sætter U23/junior til salg"): en
+// Sælg-rækkehandling, der åbner rytterprofilens salgsformular
+// (TransferListButton, ?sell=1). Ingen egen salgsmekanik her. En rytter på
+// transferlisten får listed-badgen i status-kolonnen, med samme aktiv-definition
+// som My Team (status open/negotiating).
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
+import { supabase } from "../../lib/supabase";
 import NationCell from "../rider/NationCell.jsx";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import ScoutablePotentiale from "../rider/ScoutablePotentiale.jsx";
@@ -76,6 +83,36 @@ const MOBILE_DEFAULTS = ["rating", "value", "salary"];
 
 type TableMode = "overview" | "abilities";
 
+/**
+ * #5917: rytter-id'er med en aktiv transferliste-annonce. Samme direkte læsning
+ * som My Teams loadOwnTransferListings (transfer_listings er offentligt læsbar).
+ * En fejl er ikke kritisk: badgen falder bare væk.
+ */
+function useListedRiderIds(riderIds: string[]): Set<string> {
+  const [listed, setListed] = useState<Set<string>>(() => new Set());
+  const key = riderIds.join(",");
+  useEffect(() => {
+    let cancelled = false;
+    const ids = key ? key.split(",") : [];
+    if (!ids.length) { setListed(new Set()); return; }
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("transfer_listings")
+          .select("rider_id")
+          .in("rider_id", ids)
+          .in("status", ["open", "negotiating"]);
+        if (cancelled || error) return;
+        setListed(new Set(((data ?? []) as Array<{ rider_id: string }>).map((l) => l.rider_id)));
+      } catch {
+        // ikke kritisk: badgen falder bare væk
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [key]);
+  return listed;
+}
+
 export default function YouthSquadTable({ riders, scouting, seasonYear, label }: {
   riders: YouthSquadRider[];
   scouting: Scouting;
@@ -83,6 +120,8 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   label: string;
 }) {
   const { t } = useTranslation("team");
+  const { t: tAcademy } = useTranslation("academy");
+  const listedIds = useListedRiderIds(useMemo(() => riders.map((r) => r.id), [riders]));
   const reputationOn = useRiderReputation();
   const typeColumnLabel = useTypeColumnLabel(t("squad.headers.type")); // #5435
   const navigate = useNavigate();
@@ -180,9 +219,9 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       render: (r) => <span className="text-cz-2">{formatNumber(r.salary ?? 0)}</span>,
     },
     // #5631: My Teams synlighedstal og status (#3956 / #1482), samme plads i
-    // rækkefølgen. Status viser kun skade: alders-badgen ville stå på hver
-    // eneste række af en ungdomstrup, og akademi-/transfer-badgesne hører til
-    // My Team.
+    // rækkefølgen. Status viser skade og (#5917) transferlisten: alders-badgen
+    // ville stå på hver eneste række af en ungdomstrup, og akademi-badgen
+    // hører til My Team.
     {
       key: "popularity",
       header: <span title={t(reputationOn ? "squad.headers.reputationTitle" : "squad.headers.popularityTitle")}>{t(reputationOn ? "squad.headers.reputationLabel" : "squad.headers.popularity")}</span>,
@@ -201,7 +240,7 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       key: "badges",
       header: t("squad.headers.badges"),
       compact: true,
-      render: (r) => <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured"]} />,
+      render: (r) => <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", listedIds.has(r.id) && "listed"]} />,
     },
     {
       key: "contract",
@@ -212,6 +251,21 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
         <span className="text-cz-2 whitespace-nowrap">
           {r.contract_end_season != null ? t("squad.headers.contractUntil", { season: r.contract_end_season }) : "—"}
         </span>
+      ),
+    },
+    // #5917: samme salgsflow som rytterprofilen (TransferListButton). Knappen
+    // åbner profilen med formularen fremme; en listet rytter får "Ret salg".
+    {
+      key: "action",
+      header: t("squad.headers.action"),
+      compact: true,
+      render: (r) => (
+        <button type="button" data-testid={`youth-sell-${r.id}`}
+          title={tAcademy("youthSell.title")}
+          onClick={(e) => { e.stopPropagation(); navigate(`/riders/${r.id}?sell=1`); }}
+          className="px-2 sm:px-3 py-1 min-h-[44px] sm:min-h-[30px] bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-normal sm:whitespace-nowrap">
+          {listedIds.has(r.id) ? tAcademy("youthSell.edit") : tAcademy("youthSell.sell")}
+        </button>
       ),
     },
   ];

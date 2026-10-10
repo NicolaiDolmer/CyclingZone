@@ -36,6 +36,11 @@
   "rejectBtn": "Afvis",
   "promoteBtn": "Ryk op",
   "sellBtn": "Sælg",
+  "youthSell": {
+    "sell": "Sælg",
+    "edit": "Ret salg",
+    "title": "Åbner rytterens side, hvor du sætter prisen."
+  },
   "releaseBtn": "Fyr",
   "graduationDeadline": "{days}d tilbage",
   "graduationOverdue": "Frist overskredet",

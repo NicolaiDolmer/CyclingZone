@@ -36,6 +36,11 @@
   "rejectBtn": "Reject",
   "promoteBtn": "Promote",
   "sellBtn": "Sell",
+  "youthSell": {
+    "sell": "Sell",
+    "edit": "Edit sale",
+    "title": "Opens the rider page, where you set the price."
+  },
   "releaseBtn": "Release",
   "graduationDeadline": "{days}d to decide",
   "graduationOverdue": "Overdue",
