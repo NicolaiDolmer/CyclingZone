@@ -37,7 +37,7 @@ import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
 import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
-import { finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
+import { finishDescentIndexFor, finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -410,8 +410,13 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // ingen fart op ad en stigning, saa de huller stigningen skabte, staar.
   // #6200: heller ikke paa en nedkoersel mod maal, hvor antals-vinduet ellers
   // kunne folde en gruppe ind forbi loftet (hoejst halvdelen af hullet).
-  const v3FinishDescent = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && segment.kind === "descent";
-  const bunchCatch = isBunchCatchRoute(route) && !((ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && (segment.kind === "climb" || segment.kind === "descent"));
+  // #6200 (KUN official_times_v3): et kort stykke uden stigning efter nedkoerslen
+  // mod maal hoerer til samme loft (bogen fra toppen), maalt fra toppen til stregen.
+  const v3FinishDescentIndex = ctx.sharedGroupTime?.timeModelGeneration === 3 ? finishDescentIndexFor(route, timeModelTuningFor(ctx)) : -1;
+  const v3RunIn = v3FinishDescentIndex >= 0 && ctx.segmentIndex > v3FinishDescentIndex;
+  const v3FinishDescent = ((ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && segment.kind === "descent") || v3RunIn;
+  const descentCapKm = v3RunIn ? Math.max(0, segment.to_km - route.segments[v3FinishDescentIndex].from_km) : remainingKm;
+  const bunchCatch = isBunchCatchRoute(route) && !((ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && (segment.kind === "climb" || segment.kind === "descent")) && !v3RunIn;
   // Feltet = alle ryttere der stadig er i en gruppe ved finalen. Andelen (ikke
   // et absolut rytterantal) er gaten, saa leddet skalerer med feltstoerrelsen.
   const fieldSize = state.groups.reduce((n, g) => n + g.rider_ids.length, 0);
@@ -467,7 +472,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     // med regrupperingen paa samme segment: tilsammen hoejst ca. 1,5 s pr. km og
     // hoejst halvdelen af hullet ved toppen (mechanics/timeModel.ts).
     const descentCap = v3FinishDescent
-      ? finishDescentRemainingCapSeconds(carriedGapSeconds, remainingKm, state.finish_descent_regroup?.[group.id])
+      ? finishDescentRemainingCapSeconds(carriedGapSeconds, descentCapKm, state.finish_descent_regroup?.[group.id])
       : Infinity;
     const estimate = netClosingPower * remainingKm * extra.chaseClosingSecondsPerKmPerUnit;
     const remainingEstimate = ctx.sharedGroupTime
