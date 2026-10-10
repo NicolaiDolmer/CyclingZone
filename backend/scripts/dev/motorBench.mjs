@@ -80,7 +80,7 @@ async function listRaces(db, { days, raceNames, maxRaces }) {
   const named = [];
   for (const name of raceNames) {
     // pagination-safe: ét navn, én pr. division og saeson
-    named.push(...await one(db.from("races").select(cols).ilike("name", name.replace(/[\\%_]/g, (c) => `\\${c}`)).neq("status", "completed"), "races"));
+    named.push(...await one(db.from("races").select(cols).ilike("name", name.replace(/[\\%_]/g, (c) => `\\${c}`)).neq("status", "completed").limit(maxRaces), "races"));
   }
   const byId = new Map();
   for (const r of [...recent, ...named]) byId.set(r.id, r);
