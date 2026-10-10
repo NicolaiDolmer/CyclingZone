@@ -38,6 +38,7 @@ $envMap["SUPABASE_URL"] = $env:STAGING_SUPABASE_URL
 $envMap["SUPABASE_SERVICE_KEY"] = $env:STAGING_SERVICE_KEY
 $envMap["SUPABASE_DB_URL"] = $env:STAGING_DB_URL
 $envMap["CZ_TARGET_ENV"] = "loadtest-staging"
+$envMap["CZ_LOADTEST_WRAPPER"] = "1" # race-day-sim.mjs naegter at koere uden (#5904)
 $envMap["NODE_ENV"] = "production"
 
 function Invoke-Clean([string] $file, [string[]] $argv, [string] $dir) {
