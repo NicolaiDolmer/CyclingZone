@@ -90,7 +90,6 @@
   "resetProgram": {
     "action": "Tilbage til holdprogram",
     "done": "Tilbage på holdprogram",
-    "aria": "Sæt {name} tilbage på holdprogrammet",
     "error": "Kunne ikke nulstille. Prøv igen om et øjeblik."
   },
   "card": {

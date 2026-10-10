@@ -24,14 +24,12 @@ const DONE_VISIBLE_MS = 4000;
 export type ResetResult = { ok: boolean; error?: string | null };
 
 export default function ResetToTeamProgram({
-  riderName,
   visible,
   locked = false,
   busy = false,
   onReset,
   compact = false,
 }: {
-  riderName: string;
   // Rytteren har egen plan/override (hasOwnProgram(...).any).
   visible: boolean;
   // Train now-laasen gaelder: handlingen er slaaet fra.
@@ -73,7 +71,7 @@ export default function ResetToTeamProgram({
   if (!visible && !done && !error) return null;
 
   return (
-    <div className={`min-w-0 ${compact ? "mt-1" : "mt-0.5"}`} data-testid="training-reset-program">
+    <div className={`min-w-0 ${compact ? "text-end" : ""} mt-0.5`} data-testid="training-reset-program">
       {done ? (
         <span role="status" className="inline-flex items-center gap-1 text-2xs font-semibold text-cz-success">
           <CheckIcon size={12} aria-hidden="true" />
@@ -84,10 +82,9 @@ export default function ResetToTeamProgram({
           type="button"
           onClick={() => void handleClick()}
           disabled={locked || busy || working}
-          aria-label={t("resetProgram.aria", { name: riderName })}
           title={locked ? t("trainNow.planLocked") : undefined}
           className={`inline-flex items-center text-start text-xs font-medium text-cz-accent-t transition-colors duration-150 hover:underline disabled:cursor-not-allowed disabled:text-cz-3 disabled:no-underline ${
-            compact ? "min-h-10" : "min-h-6"
+            min-h-6
           }`}
         >
           {t("resetProgram.action")}
