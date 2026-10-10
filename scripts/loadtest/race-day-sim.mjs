@@ -1,9 +1,10 @@
 /**
  * #5904 · Load-test-gate: simulér en fuld løbsdag på staging før hvert sæsonskifte.
  *
- * Startes KUN via isolations-wrapperen (aldrig direkte, aldrig mod prod):
- *   pwsh -File scripts/staging/with-loadtest-staging.ps1 -Cwd . -- node scripts/loadtest/race-day-sim.mjs \
- *     --clock 2026-10-06T00:00:00+02:00 --season 4 --min-results <frisk prod-estimat> \
+ * Startes KUN via isolations-wrapperen (aldrig direkte, aldrig mod prod), fra en PowerShell-
+ * session med `&` (`pwsh -File ... --` fra en anden shell sender ikke --flag'ene videre):
+ *   & ./scripts/staging/with-loadtest-staging.ps1 -Cwd . -- node scripts/loadtest/race-day-sim.mjs `
+ *     --clock 2026-10-06T00:00:00+02:00 --season 4 --min-results <frisk prod-estimat> `
  *     --viewer-token-file <sti til staging-JWT>
  *
  * Fail-closed, i denne rækkefølge (en fejl stopper alt; intet job startes):
@@ -148,6 +149,7 @@ export function isBoardCall({ surface, name }) {
 // Den atomiske resultat-skrivning: etape-stien (stageResultRpc.applyStageResultAtomic)
 // og hel-løbs-stien (applyRaceResultsBatchAtomic).
 const RESULT_WRITE_RPCS = new Set(['apply_stage_result', 'apply_race_results_batch']);
+export const MID_FINALIZATION_CRASH_POINTS = new Set(['after_results_write_and_marker', 'after_results_write_no_marker']);
 
 /**
  * Fault-styring. `mode` slukker en hel upstream for hele processen (backend + scheduler);
@@ -376,14 +378,20 @@ export function evaluateRun(run) {
   for (const [p, s] of Object.entries(phases)) {
     if (s.urlOverLimit > 0 || s.maxUrlBytes > MAX_URL_BYTES) blockers.push(`URL_OVER_8KB:${p}`);
   }
+  // Normaldriftens accept. Genstart-fasen har kun ét bevidst afbrudt løb; alt andet i den
+  // (backend, læsere, de øvrige løb) skal holde samme standard, under eget navn.
+  for (const [p, prefix] of [['normal', 'NORMAL'], ['restart_recovery', 'RESTART']]) {
+    const s = phases[p];
+    if (!s || s.ticks === 0) continue;
+    if (s.upstream5xx > 0) blockers.push(`${prefix}_UPSTREAM_5XX`);
+    const http5xx = Object.entries(s.http.byStatus).filter(([st]) => Number(st) >= 500).reduce((a, [, c]) => a + c, 0);
+    if (http5xx > 0) blockers.push(`${prefix}_HTTP_5XX`);
+    if ((s.http.byStatus[401] ?? 0) > 0) blockers.push(`${prefix}_HTTP_401`);
+    if (s.lockTimeouts > 0) blockers.push(`${prefix}_LOCK_TIMEOUT`);
+    if (s.statementTimeouts > 0) blockers.push(`${prefix}_STATEMENT_TIMEOUT`);
+  }
   const n = phases.normal;
   if (n && n.ticks > 0) {
-    if (n.upstream5xx > 0) blockers.push('NORMAL_UPSTREAM_5XX');
-    const http5xx = Object.entries(n.http.byStatus).filter(([st]) => Number(st) >= 500).reduce((a, [, c]) => a + c, 0);
-    if (http5xx > 0) blockers.push('NORMAL_HTTP_5XX');
-    if ((n.http.byStatus[401] ?? 0) > 0) blockers.push('NORMAL_HTTP_401');
-    if (n.lockTimeouts > 0) blockers.push('NORMAL_LOCK_TIMEOUT');
-    if (n.statementTimeouts > 0) blockers.push('NORMAL_STATEMENT_TIMEOUT');
     if (n.networkErrors > 0) blockers.push('NORMAL_NETWORK_ERRORS');
     if (n.tickErrors > 0) blockers.push('NORMAL_TICK_ERRORS');
     if (n.stagesRun === 0) blockers.push('NORMAL_NO_STAGES_RUN');
@@ -407,15 +415,21 @@ export function evaluateRun(run) {
     if ((s.http.byStatus[401] ?? 0) > 0) blockers.push(`FAULT_LOGOUT_401:${p}`);
     if (Object.keys(s.http.codes503).length > 1) blockers.push(`FAULT_503_AMBIGUOUS:${p}`);
   }
+  const slaPhases = new Set(['normal', 'restart_recovery']);
   const results = run.stageChecks ?? [];
-  if (results.some(c => c.phase === 'normal' && !(c.count > 0))) blockers.push('RESULTS_NOT_IMMEDIATE');
-  const lags = (run.rankingLags ?? []).filter(l => l.phase === 'normal');
+  if (results.some(c => slaPhases.has(c.phase) && !(c.count > 0))) blockers.push('RESULTS_NOT_IMMEDIATE');
+  const lags = (run.rankingLags ?? []).filter(l => slaPhases.has(l.phase));
   if (lags.some(l => !(l.lagMs <= RANKING_SLA_MS))) blockers.push('RANKINGS_OVER_5_MIN');
   if ((run.rankingsNeverReady ?? []).length) blockers.push('RANKINGS_NOT_READY');
   if (run.rankingStateUnavailable) blockers.push('MEASUREMENT_MISSING:ranking_state');
   const crash = run.crash;
   if (!crash || crash.state !== 'tripped') blockers.push('RESTART_CRASH_NOT_INJECTED');
-  else if (!run.recovery?.recovered) blockers.push('RESTART_NOT_RECOVERED');
+  else {
+    // Kun et afbrud EFTER resultat-skrivningen tester en halv afslutning; et afbrud
+    // fra tælleren alene beviser ikke genoptagelsen.
+    if (!MID_FINALIZATION_CRASH_POINTS.has(crash.point)) blockers.push('RESTART_CRASH_NOT_MID_FINALIZATION');
+    if (!run.recovery?.recovered) blockers.push('RESTART_NOT_RECOVERED');
+  }
   const oracle = evaluateOracles(run.oracleData);
   blockers.push(...oracle.blockers);
   const unique = [...new Set(blockers)];

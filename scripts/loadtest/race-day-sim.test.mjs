@@ -368,6 +368,20 @@ test('passed=false when a phase is missing, even if everything measured is clean
   for (const p of PHASES) assert.ok(v.blockers.includes(`PHASE_MISSING:${p}`), p);
 });
 
+test('restart phase: 5xx outside the crashed run and a counter-only crash both fail the gate', () => {
+  const recorder = createRecorder();
+  const s = recorder.stats('restart_recovery');
+  s.ticks = 3;
+  s.http.byStatus = { 200: 10, 502: 1 };
+  s.lockTimeouts = 1;
+  const v = evaluateRun({ phases: { restart_recovery: s }, crash: { state: 'tripped', point: 'fallback_request_count' }, recovery: { recovered: true } });
+  assert.ok(v.blockers.includes('RESTART_HTTP_5XX'));
+  assert.ok(v.blockers.includes('RESTART_LOCK_TIMEOUT'));
+  assert.ok(v.blockers.includes('RESTART_CRASH_NOT_MID_FINALIZATION'));
+  assert.ok(!evaluateRun({ phases: {}, crash: { state: 'tripped', point: 'after_results_write_and_marker' }, recovery: { recovered: true } })
+    .blockers.includes('RESTART_CRASH_NOT_MID_FINALIZATION'));
+});
+
 // ─── Ende-til-ende med fake staging ───
 
 test('end-to-end: a clean race day with all phases and oracles passes and the report says so', async () => {
