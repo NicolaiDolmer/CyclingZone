@@ -40,7 +40,7 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, finishDescentIndexFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 
 // #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
@@ -370,13 +370,16 @@ export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "seg
  */
 export function isDescentFinishDecidingClimb(
   ctx: Pick<SegmentHookContext, "route" | "segmentIndex">,
-  t: Pick<TimeModelTuning, "descentFinishClimbRaceProfiles">,
+  t: Pick<TimeModelTuning, "descentFinishClimbRaceProfiles" | "finishDescentMaxRunInKm">,
 ): boolean {
   const segs = ctx.route.segments ?? [];
   if (ctx.route.finale_type !== "descent" || !t.descentFinishClimbRaceProfiles.includes(ctx.route.profile_type)) return false;
   let end = segs.length - 1;
   while (end >= 0 && segs[end].kind !== "climb") end--;
-  if (end < 0 || !segs.slice(end + 1).some((s) => s.kind === "descent")) return false;
+  // Fable-dom 10/10: samme definition af "nedkoersel mod maal" som loftet
+  // (finishDescentIndexFor, run-in <= finishDescentMaxRunInKm). Ellers kunne en
+  // rute med nedkoersel + lang dal faa topankomst-spredning uden loft bagefter.
+  if (end < 0 || finishDescentIndexFor(ctx.route, t) <= end) return false;
   let start = end;
   while (start > 0 && segs[start - 1].kind === "climb") start--;
   return ctx.segmentIndex >= start && ctx.segmentIndex <= end;

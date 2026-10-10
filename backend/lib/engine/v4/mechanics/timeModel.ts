@@ -240,7 +240,7 @@ export function timeModelTuningFor(ctx: { ordersGcV3?: true; sharedGroupTime?: u
  */
 export function finishDescentIndexFor(
   route: { finale_type?: FinaleType | null; segments: readonly (Pick<Segment, "kind"> & Partial<Pick<Segment, "from_km" | "to_km">>)[] },
-  t: TimeModelTuning = TIME_MODEL_V3_TUNING,
+  t: Pick<TimeModelTuning, "finishDescentMaxRunInKm"> = TIME_MODEL_V3_TUNING,
 ): number {
   const segs = route.segments ?? [];
   const last = segs.length - 1;

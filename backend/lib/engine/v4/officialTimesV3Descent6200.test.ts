@@ -295,3 +295,19 @@ test("#6200 v3: on every descent finish the 10th rider's gap at the top closes a
   }
   assert.ok(measured >= 10, "the contract is measured on most descent finishes");
 });
+
+test("#6200 Fable-dom: lang dal efter nedkoerslen er ikke en nedkoerselsfinale for den afgoerende stigning", () => {
+  const seg = (kind: string, from_km: number, to_km: number) => ({ kind, from_km, to_km });
+  const route = (valleyKm: number): any => ({
+    finale_type: "descent",
+    profile_type: "mountain",
+    segments: [seg("flat", 0, 100), seg("climb", 100, 115), seg("descent", 115, 130), ...(valleyKm > 0 ? [seg("flat", 130, 130 + valleyKm)] : [])],
+  });
+  const t = SHARED_TIME_MODEL_V3_TUNING;
+  // Nedkoersel som sidste segment og kort run-in: stigningen er den afgoerende.
+  assert.equal(isDescentFinishDecidingClimb({ route: route(0), segmentIndex: 1 }, t), true);
+  assert.equal(isDescentFinishDecidingClimb({ route: route(t.finishDescentMaxRunInKm), segmentIndex: 1 }, t), true);
+  // Run-in over loftets graense: samme svar som finishDescentIndexFor (ingen loft), ingen topankomst-spredning.
+  assert.equal(finishDescentIndexFor(route(t.finishDescentMaxRunInKm + 5), t), -1);
+  assert.equal(isDescentFinishDecidingClimb({ route: route(t.finishDescentMaxRunInKm + 5), segmentIndex: 1 }, t), false);
+});
