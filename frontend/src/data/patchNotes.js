@@ -1,5 +1,164 @@
 export const PATCHES = [
   {
+    "version": "7.352",
+    "date": "2026-10-10",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Team",
+        "en": {
+          "title": "Message a manager from his team page",
+          "body": "Another manager's team page now has a Message button next to the global rank. It opens a conversation with that manager."
+        },
+        "da": {
+          "title": "Skriv til en manager fra hans holdside",
+          "body": "En anden managers holdside har nu en Besked-knap ved siden af den globale rangering. Den åbner en samtale med manageren."
+        },
+        "refs": [
+          5831
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Sell U23 and junior riders from the squad page",
+          "body": "The U23 and junior squad pages have a Sell button on each rider. A rider already on the list shows Edit sale. You can also move a listed rider between senior, U23 and junior, and the listing stays."
+        },
+        "da": {
+          "title": "Sælg U23- og juniorryttere fra truppens side",
+          "body": "U23- og juniortruppens sider har en Sælg-knap på hver rytter. En rytter, der allerede er sat til salg, viser Ret salg. Du kan også flytte en rytter på salgslisten mellem senior, U23 og junior, uden at salget forsvinder."
+        },
+        "refs": [
+          5917
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Copy a day's training plan",
+          "body": "On Training, Program, Plan you can copy one day to the next 1 to 6 days. Nothing is saved until you press Save plan."
+        },
+        "da": {
+          "title": "Kopiér en dags træningsplan",
+          "body": "Under Træning, Program, Plan kan du kopiere én dag til de næste 1 til 6 dage. Intet gemmes, før du trykker Gem plan."
+        },
+        "refs": [
+          6060
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "The assistant suggests a program for each type of rider",
+          "body": "The assistant's suggestions now start with a ready-made program for your sprinters, climbers and all-rounders, one button per group. They only go to riders without their own plan. Choosing rider by rider is one click away."
+        },
+        "da": {
+          "title": "Assistenten foreslår et program til hver ryttertype",
+          "body": "Assistentens forslag starter nu med et færdigt program til dine sprintere, klatrere og allroundere, én knap pr. gruppe. De går kun til ryttere uden egen plan. Rytter for rytter er ét klik væk."
+        },
+        "refs": [
+          4522
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "A team with fewer than 6 riders no longer looks like it is racing",
+          "body": "The Tactics tab now says the team will not start, the riders train as normal instead of showing Racing today, and the selection always shows Minimum 6 riders to start."
+        },
+        "da": {
+          "title": "Et hold med færre end 6 ryttere ligner ikke længere et hold, der kører",
+          "body": "Taktik-fanen siger nu, at holdet ikke starter, rytterne træner normalt i stedet for at stå som Kører løb i dag, og udtagelsen viser altid Mindst 6 ryttere for at stille op."
+        },
+        "refs": [
+          5945
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The race film shows when the bunch catches the breakaway",
+          "body": "Some catches by the bunch were shown as groups coming back together. The film now shows them as catches. Results did not change."
+        },
+        "da": {
+          "title": "Løbsfilmen viser, når feltet henter udbruddet",
+          "body": "Nogle af feltets indhentninger blev vist som grupper, der samledes. Filmen viser dem nu som indhentninger. Resultaterne er uændrede."
+        },
+        "refs": [
+          6400
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Team",
+        "en": {
+          "title": "The training facility shows the same bonus on every page",
+          "body": "Another team's Club tab now uses the strongest trainer, as your own club page does. The two numbers could differ before."
+        },
+        "da": {
+          "title": "Træningsanlægget viser samme bonus på alle sider",
+          "body": "Et andet holds Klub-fane bruger nu den stærkeste træner, ligesom din egen klubside. Før kunne de to tal være forskellige."
+        },
+        "refs": [
+          6238
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "A selection reminder you deleted stays deleted",
+          "body": "If you delete a reminder about your race selection, the same reminder does not come back."
+        },
+        "da": {
+          "title": "En påmindelse om udtagelse, du har slettet, forbliver slettet",
+          "body": "Sletter du en påmindelse om din løbsudtagelse, kommer den samme påmindelse ikke igen."
+        },
+        "refs": [
+          5979
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "A warning when a U23 or junior team ends up too small",
+          "body": "If expired contracts leave your U23 or junior team with fewer than 6 riders at the season switch, you get a message that the team cannot start a race until you fill it up."
+        },
+        "da": {
+          "title": "Besked når et U23- eller juniorhold bliver for lille",
+          "body": "Efterlader udløbne kontrakter dit U23- eller juniorhold med færre end 6 ryttere ved sæsonskiftet, får du besked om, at holdet ikke kan stille til start, før du har fyldt det op."
+        },
+        "refs": [
+          5864
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.351",
     "date": "2026-10-10",
     "changes": [
