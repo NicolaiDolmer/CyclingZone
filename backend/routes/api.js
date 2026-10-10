@@ -6113,7 +6113,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     ]);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed")
+      .select("id, status, stages, stages_completed, squad, scheduled_for")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6135,6 +6135,8 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
       intention_enabled: intentionEnabled,
       valid_efforts: validEffortsFor(intentionEnabled),
       stages_completed: ctx.stages_completed,
+      // #5945: stiller holdet op? starts:false = under startgulvet (min) og kan ikke fyldes op.
+      start_outlook: ctx.start_outlook,
       stage_count: ctx.stage_count,
       riders: ctx.riders,
       overrides: ctx.overrides,
