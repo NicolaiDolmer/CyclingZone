@@ -294,7 +294,7 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(deferredComment, /Merge-koeen fortsaetter/);
   assert.ok(workflow.indexOf('name: Checkout target SHA') < workflow.indexOf('cron-deploy-verification.mjs --impact'));
   assert.match(workflow, /if \$RAILWAY_OK && \[\[ -z "\$CRON_SINCE" \]\]; then\s+CRON_SINCE=\$\(date -u/);
-  assert.match(workflow, /while \[\[[\s\S]*?RAILWAY_OK=false\s+(?:#[^\n]*\r?\n\s*)+CRON_SINCE=""/);
+  assert.match(workflow, /while \[\[[\s\S]*?RAILWAY_OK=false\s+(?:#[^\r\n]*(?:\r?\n[ \t]*)+)+CRON_SINCE=""/);
   assert.match(workflow, /echo "cron_since=\$CRON_SINCE" >> "\$GITHUB_OUTPUT"/);
   const gate = workflow.indexOf('name: Verify affected cron check-ins');
   const live = workflow.indexOf('name: Comment success on merged PR');

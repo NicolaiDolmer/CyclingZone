@@ -110,7 +110,7 @@ export function judgeStopRule(days, perDay = STOP_RULE_PER_DAY) {
 }
 
 function cell(text) {
-  return String(text).replace(/\|/g, "\\|").slice(0, 48);
+  return String(text).replace(/\\/g, "\\\\").replace(/\|/g, "\\|").slice(0, 48);
 }
 
 export function renderMarkdown({ releases, days, verdict }) {

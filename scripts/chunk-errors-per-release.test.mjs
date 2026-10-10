@@ -79,6 +79,12 @@ test("markdown viser tabel, døgn og dom", () => {
   assert.match(md, /ADVISORY/);
 });
 
+test("backslash før pipe escapes også, så cellen ikke kan lukkes (CodeQL js/incomplete-sanitization)", () => {
+  const days = [{ label: "seneste 24 t", events: 0 }];
+  const md = renderMarkdown({ releases: [{ release: "a\\|b", events: 1, users: 1 }], days, verdict: judgeStopRule(days) });
+  assert.ok(md.includes("a\\\\\\|b"), "\\ bliver \\\\ og | bliver \\|");
+});
+
 test("uden token springes over uden netværk", async () => {
   assert.ok(resolveConfig({}).skip);
   const result = await runReport({ env: {}, fetchImpl: () => assert.fail("intet kald uden token") });
