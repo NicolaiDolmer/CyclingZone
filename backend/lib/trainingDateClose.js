@@ -143,6 +143,7 @@ export async function runNormalizedTrainingDateSweep({
     const workRows = await loadWorkRows({ supabase, ...job });
     const context = await loadContext({ supabase, ...job, loadDaySpans, registeredTeamIds: workRows.map(row => row.team_id) });
     const workByTeam = new Map(workRows.map(row => [row.team_id, row]));
+    const riderById = new Map((context.riders ?? []).map(rider => [rider.id, rider]));
     for (const team of context.teams) {
       const unsafeSeason = index.activeSeasonId !== undefined && index.activeSeasonId !== job.season.id;
       if (unsafeSeason && !workByTeam.has(team.id)) continue;
@@ -174,8 +175,15 @@ export async function runNormalizedTrainingDateSweep({
         const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now });
         tracked = true;
         const remaining = work.expected_rider_ids.filter(id => !(work.quarantined_rider_ids ?? []).includes(id));
+        // #6439 (owner 10/10): training follows the rider. A rider who changed team
+        // after this date opened keeps his slot in the frozen roster and settles the
+        // remaining race days here, from the date's opening condition, instead of
+        // stopping at 4 of 5. Registration never hands him to the new team for the
+        // same date (register_training_date_work), so only one team settles him.
+        const followsRider = id => currentIds.includes(id) ||
+          (riderById.get(id)?.team_id != null && work.opening_conditions?.[id] != null);
         const unavailable = remaining.filter(id => unsafeSeason || team.is_bank || team.is_frozen || team.is_test_account ||
-          !currentIds.includes(id) || (work.opening_conditions !== undefined && !work.opening_conditions[id]));
+          !followsRider(id) || (work.opening_conditions !== undefined && !work.opening_conditions[id]));
         if (unavailable.length) {
           await quarantineRiders({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate,
             riderIds: unavailable, reason: unsafeSeason ? 'historical_season_requires_review' : 'roster_or_opening_evidence_unavailable', now });
