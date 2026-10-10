@@ -688,6 +688,8 @@ export type SegmentHookContext = {
     entryGroups: readonly RaceGroup[];
     /** stage_incidents length at interval entry; later time losses are point delays. Absent = 0. */
     incidentCursor?: number;
+    /** #6200: 3 = official_times_v3's time model (mechanics/timeModel.ts). Absent = official_times_v1/v2. */
+    timeModelGeneration?: 3;
   }>;
   segment: Segment;
   segmentIndex: number;
