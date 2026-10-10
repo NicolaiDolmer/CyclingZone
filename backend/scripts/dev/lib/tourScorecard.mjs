@@ -392,13 +392,21 @@ export function labelContradictions(ranked, out, { soloMarginSeconds = 60 } = {}
 /**
  * Top-10 i klassementet foer etapen, der sad i morgenudbruddet og paa et
  * tidspunkt havde mindst `thresholdSeconds` til feltet. #5978: "feltet" er
- * klassementsgruppen (gruppen med flest af de oevrige top-10; lige = forreste),
- * ikke den stoerste gruppe: paa bjergetaper er den stoerste gruppe ofte de
- * afhaegtede, og et forspring paa dem er ingen klassementsgevinst.
+ * klassementsgruppen, ikke den stoerste gruppe: paa bjergetaper er den stoerste
+ * gruppe ofte de afhaegtede, og et forspring paa dem er ingen klassementsgevinst.
+ *
+ * Klassementsgruppen forankres paa foereren: gruppen med den bedst placerede
+ * top-10-rytter (laveste indeks i `gcBefore`) som ikke er udbryderen selv.
+ * (#6373 brugte "gruppen med flest oevrige top-10", men den kan vaere svage
+ * top-10 (plads 7-10), der er sat af, mens favoritternes gruppe har faerre top-10:
+ * forspringet blev maalt mod en afhaengt gruppe, hvilket gav baade falsk PASS og
+ * falsk FAIL, #5978.) Ligger foereren i udbryderens egen gruppe, er der ingen
+ * gevinst (samme gruppe = 0), og rytteren taeller ikke.
  */
 export function gcTop10InBreakOverThreshold(out, gcBefore, { thresholdSeconds = 300, topN = 10 } = {}) {
   if (!gcBefore?.length) return [];
-  const top = new Set(gcBefore.slice(0, topN).map((s) => s.rider_id));
+  const topIds = gcBefore.slice(0, topN).map((s) => s.rider_id);
+  const top = new Set(topIds);
   const { formed } = breakawaySets(out);
   const suspects = [...formed].filter((id) => top.has(id));
   if (!suspects.length) return [];
@@ -407,9 +415,9 @@ export function gcTop10InBreakOverThreshold(out, gcBefore, { thresholdSeconds = 
     const groups = s.groups ?? [];
     for (const id of suspects) {
       const own = groups.find((g) => g.rider_ids?.includes(id));
-      const rivals = (g) => (g.rider_ids ?? []).filter((r) => r !== id && top.has(r)).length;
-      const gcGroup = groups.reduce((a, b) => (!a || rivals(b) > rivals(a) || (rivals(b) === rivals(a) && (b.gap_seconds ?? 0) < (a.gap_seconds ?? 0)) ? b : a), null);
-      if (!own || !gcGroup || gcGroup === own || rivals(gcGroup) === 0) continue;
+      const leaderId = topIds.find((r) => r !== id && groups.some((g) => g.rider_ids?.includes(r)));
+      const gcGroup = leaderId === undefined ? null : groups.find((g) => g.rider_ids?.includes(leaderId));
+      if (!own || !gcGroup || gcGroup === own) continue;
       best.set(id, Math.max(best.get(id) ?? -Infinity, (gcGroup.gap_seconds ?? 0) - (own.gap_seconds ?? 0)));
     }
   }

@@ -200,6 +200,31 @@ båret-videre filer).
 **Første deploy efter merge bærer intet** (der findes endnu ingen manifester):
 første deploy skriver kun sit manifest, først det andet beskytter det første.
 
+### Bevis og måling pr. deploy (K4)
+
+- **Carry-forward-probe** (`deploy-verify.yml`, efter asset-miss-proben,
+  `continue-on-error`): `node scripts/check-asset-miss-behaviour.mjs --carry-forward`
+  læser read-only de to nyeste manifester, vælger op til 5 JS/CSS-filer fra den
+  forrige release som den nuværende ikke selv har, og henter dem på
+  `cyclingzone.org/assets/<navn>`. 200 + `text/javascript`/`text/css` = OK;
+  200 + `text/html` (SPA-rewriten) eller 404 = FEJL. Advarer hvis live
+  `version.json` ikke er det nyeste manifest. Uden `SUPABASE_URL` +
+  service-nøgle eller med under to manifester: springer over med en tydelig linje.
+- **Chunk-fejl pr. release** (`scripts/chunk-errors-per-release.mjs`, samme sted,
+  `continue-on-error`): Sentry-events med `frontend_error_kind:chunk_load_error`
+  pr. release over 72 t + pr. døgn, og en dom over ejerens stopregel (under 3
+  events pr. døgn over 72 t, målt fra det andet prod-deploy med carry-forward).
+  Kun advisory, altid exit 0; den hårde grænse står i trinnet "Chunk-fejl-rate".
+- **Manuel A→B-prøve** (`frontend/tests/e2e/release-carry-forward.spec.js`,
+  sprunget over uden env): åbner en fane på A, lader fanens `/assets/*` besvares
+  af B og navigerer klient-side til en route hvis chunk ikke var hentet. Kræver
+  200 + JS/CSS fra B, ingen reload og ingen chunk-fejl. A skal være uploadet til
+  lageret (et preview kræver `CZ_RELEASE_ASSETS_UPLOAD=1`), ellers bærer B den
+  ikke med. Kør fra `frontend/`:
+  `CZ_CARRY_FORWARD_A_URL=<A> CZ_CARRY_FORWARD_B_URL=<B> npx playwright test tests/e2e/release-carry-forward.spec.js --project=desktop-chromium --project=mobile-webkit`.
+  Playwright-configens lokale webServer starter stadig, selv om prøven kun
+  bruger de to URL'er. Resultatet skrives i PR-body.
+
 ---
 
 ## Observability env vars

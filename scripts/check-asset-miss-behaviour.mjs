@@ -26,11 +26,31 @@
 // nogen /assets/index-*.js-reference at finde. De to asset-probes (rigtig + manglende)
 // rammer konkrete /assets/*-stier, som IKKE er ramt af middleware'ens matcher, og
 // forbliver derfor bevidst helt anonyme — det er dem der reelt tester #4545's adfærd.
+//
+// #5162 K4: `--carry-forward` maaler i stedet om carry-forward virker i prod:
+//   node scripts/check-asset-miss-behaviour.mjs --carry-forward [--base=...] [--sample=5]
+// Laeser READ-ONLY de to nyeste manifester i release-lageret
+// (scripts/lib/releaseAssetsStore.mjs), vaelger op til 5 JS/CSS-filer der fandtes
+// i den forrige release men IKKE i den nuvaerende, og henter dem anonymt paa
+// <base>/assets/<navn>. 200 + text/javascript|text/css = baaret videre. 200 +
+// text/html (SPA-rewriten) eller 404 = FEJL: en fane fra den forrige release
+// rammer da chunk-fallbacken. Uden lager-secrets eller med under to manifester
+// springes der over med en tydelig linje (exit 0).
 
 import { fetchAppShell } from "./lib/fetchAppShell.mjs";
+import {
+  createDirStore,
+  createSupabaseStore,
+  describeStore,
+  listNewestReleaseIds,
+  manifestObjectPath,
+  resolveStoreConfig,
+  validateManifest,
+} from "./lib/releaseAssetsStore.mjs";
 
 const DEFAULT_BASE = "https://cyclingzone.org";
 const MISSING_ASSET = "/assets/ProbeMissingChunk-DEADBEEF.js";
+const CARRY_FORWARD_SAMPLE = 5;
 
 export function parseArgs(argv) {
   const args = {};
@@ -97,6 +117,141 @@ export function evaluate({ entry, miss }) {
   return { failures, warnings };
 }
 
+// ── #5162 K4: carry-forward-proben ────────────────────────────────────────────
+
+const CARRY_FORWARD_TYPES = { ".js": /javascript|ecmascript/i, ".mjs": /javascript|ecmascript/i, ".css": /text\/css/i };
+
+function extensionOf(name) {
+  const match = /\.[A-Za-z0-9]+$/.exec(name);
+  return match ? match[0].toLowerCase() : "";
+}
+
+/**
+ * Navnene (`assets/<fil>`) der fandtes i `previous` men ikke i `current`,
+ * begraenset til JS/CSS (det en gammel fane faktisk importerer), sorteret og
+ * derefter blandet med `random`, saa hver koersel rammer andre filer. Hoejst `limit`.
+ */
+export function selectCarryForwardCandidates(previous, current, { limit = CARRY_FORWARD_SAMPLE, random = Math.random } = {}) {
+  const currentNames = new Set((current?.files ?? []).map((f) => f.name));
+  const pool = [...new Set((previous?.files ?? []).map((f) => f.name))]
+    .filter((name) => !currentNames.has(name) && CARRY_FORWARD_TYPES[extensionOf(name)])
+    .sort();
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, Math.max(0, limit));
+}
+
+/** Vurderer ét carry-forward-svar. Returnerer null ved OK, ellers fejlteksten. */
+export function evaluateCarriedAsset({ name, status, contentType }) {
+  const type = contentType || "";
+  if (status === 200 && /text\/html/i.test(type)) {
+    return `${name} svarede 200 + text/html — SPA-rewriten svarer i stedet for filen; carry-forward bar den ikke videre`;
+  }
+  if (status !== 200) {
+    return `${name} svarede ${status} — filen fra den forrige release findes ikke laengere paa origin`;
+  }
+  const expected = CARRY_FORWARD_TYPES[extensionOf(name)];
+  if (expected && !expected.test(type)) {
+    return `${name} svarede 200 med content-type "${type}", forventede ${extensionOf(name) === ".css" ? "text/css" : "text/javascript"}`;
+  }
+  return null;
+}
+
+export function evaluateCarryForward(results) {
+  const failures = [];
+  for (const result of results) {
+    const failure = evaluateCarriedAsset(result);
+    if (failure) failures.push(failure);
+  }
+  return { failures };
+}
+
+/** Lageret read-only, eller { skip } med grunden. Nøglen logges aldrig. */
+export function openReleaseStore(env = process.env, { fetchImpl = globalThis.fetch } = {}) {
+  const config = resolveStoreConfig(env);
+  if (config.kind === "local") return { store: createDirStore(config.dir), label: describeStore(config) };
+  if (config.kind === "supabase") {
+    return { store: createSupabaseStore({ url: config.url, key: config.key, fetchImpl }), label: describeStore(config) };
+  }
+  return { skip: config.reason };
+}
+
+/**
+ * Hele carry-forward-maalingen. Returnerer { status: "skipped" | "ok" | "failed", ... }.
+ * Kun GET/LIST mod lageret og anonyme GET mod `base`; ingen skrivning.
+ */
+export async function runCarryForwardProbe({
+  base,
+  env = process.env,
+  store: injectedStore,
+  fetchImpl = globalThis.fetch,
+  limit = CARRY_FORWARD_SAMPLE,
+  random = Math.random,
+  log = console.log,
+} = {}) {
+  let store = injectedStore;
+  let label = "injiceret lager";
+  if (!store) {
+    const opened = openReleaseStore(env, { fetchImpl });
+    if (opened.skip) {
+      log(`CARRY-FORWARD-PROBE SPRUNGET OVER: ${opened.skip} — kan ikke laese manifesterne (forventet lokalt uden secrets).`);
+      return { status: "skipped", reason: opened.skip };
+    }
+    ({ store, label } = opened);
+  }
+
+  const newest = await listNewestReleaseIds(store, 2);
+  if (newest.length < 2) {
+    const reason = `lageret (${label}) har ${newest.length} manifest(er), skal bruge 2`;
+    log(`CARRY-FORWARD-PROBE SPRUNGET OVER: ${reason} — foerste deploy efter carry-forward baerer intet.`);
+    return { status: "skipped", reason };
+  }
+  const [currentRow, previousRow] = newest;
+  const current = validateManifest(await store.getJson(manifestObjectPath(currentRow.id)), currentRow.id);
+  const previous = validateManifest(await store.getJson(manifestObjectPath(previousRow.id)), previousRow.id);
+
+  log(`Carry-forward-probe mod ${base}`);
+  log(`  nuvaerende release ${current.frontend} (${current.files.length} filer)`);
+  log(`  forrige release    ${previous.frontend} (${previous.files.length} filer)`);
+
+  const warnings = [];
+  try {
+    const res = await fetchImpl(`${base}/version.json`, { redirect: "follow", headers: { "cache-control": "no-cache" } });
+    const live = res.ok ? (await res.json())?.frontend : null;
+    if (live && live !== current.frontend) {
+      warnings.push(`live frontend-id er ${live}, men nyeste manifest er ${current.frontend} — maalingen gaelder maaske ikke det serverede deploy`);
+    }
+  } catch {
+    warnings.push("kunne ikke laese live version.json — kan ikke bekraefte at nyeste manifest er det serverede deploy");
+  }
+
+  const names = selectCarryForwardCandidates(previous, current, { limit, random });
+  if (!names.length) {
+    log("CARRY-FORWARD-PROBE SPRUNGET OVER: den forrige release har ingen JS/CSS-filer som den nuvaerende mangler — intet at maale.");
+    return { status: "skipped", reason: "ingen kandidater", warnings };
+  }
+
+  const results = [];
+  for (const name of names) {
+    const url = `${base}/${name}`;
+    const res = await fetchImpl(url, { redirect: "follow" });
+    results.push({ name, url, status: res.status, contentType: res.headers.get("content-type") });
+    log(`  ${name} -> ${res.status} ${res.headers.get("content-type") || ""}`);
+  }
+
+  const { failures } = evaluateCarryForward(results);
+  for (const w of warnings) log(`  ADVARSEL: ${w}`);
+  for (const f of failures) log(`  FEJL: ${f}`);
+  if (failures.length) {
+    log(`\nCARRY-FORWARD-PROBE FEJLEDE (${failures.length} af ${results.length})`);
+    return { status: "failed", failures, warnings, results };
+  }
+  log(`\nCARRY-FORWARD-PROBE OK (${results.length} filer fra den forrige release svarer 200 med rigtig type)`);
+  return { status: "ok", failures, warnings, results };
+}
+
 async function probe(url) {
   const res = await fetch(url, { redirect: "follow" });
   return {
@@ -111,6 +266,21 @@ async function probe(url) {
 async function main() {
   const args = parseArgs(process.argv);
   const base = (args.base || DEFAULT_BASE).replace(/\/$/, "");
+
+  if (args["carry-forward"]) {
+    const sample = Number.parseInt(args.sample, 10);
+    let result;
+    try {
+      result = await runCarryForwardProbe({ base, limit: Number.isFinite(sample) && sample > 0 ? sample : CARRY_FORWARD_SAMPLE });
+    } catch (err) {
+      // Exit 2 = proben selv kunne ikke maale (lager-/netvaerksfejl, ugyldigt
+      // manifest). Adskilt fra exit 1 = carry-forward maalt og fejlet.
+      console.log(`CARRY-FORWARD-PROBE KUNNE IKKE KOERE: ${err?.message || err}`);
+      process.exit(2);
+    }
+    if (result.status === "failed") process.exit(1);
+    return;
+  }
 
   const shell = await fetchAppShell(base, { redirect: "follow" });
   const html = await shell.text();

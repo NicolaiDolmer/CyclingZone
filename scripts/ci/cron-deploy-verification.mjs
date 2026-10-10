@@ -172,6 +172,15 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
   return { state, jobs };
 }
 
+// Names the jobs still waiting for a check-in and the latest deadline among
+// them; empty when nothing is waiting. Output only, never part of the proof.
+export function waitingSummary(jobs) {
+  const waiting = jobs.filter(job => job.state === 'waiting' && job.deadline);
+  if (!waiting.length) return '';
+  const latest = waiting.map(job => job.deadline).sort().at(-1);
+  return `Waiting for check-in from ${waiting.map(job => job.slug).join(', ')}; latest deadline ${latest}`;
+}
+
 export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, fetchFn, log = () => {}, monitors = ALL_CRON_MONITORS, drainSeconds = 0 }) {
   if (!Array.isArray(slugs) || new Set(slugs).size !== slugs.length) throw new Error('Invalid affected cron list');
   if (slugs.length === 0) return { state: 'verified', jobs: [] };
@@ -199,6 +208,7 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
   const accepted = new Map();
   const lastLogged = new Map();
   let initial = true;
+  let lastSummary = '';
   for (;;) {
     let result;
     try {
@@ -221,6 +231,11 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
       if (lastLogged.get(job.slug) !== line || result.state !== 'waiting') log(line);
       lastLogged.set(job.slug, line);
     }
+    // #6318: one readable line naming what the run is waiting for (and until
+    // when) instead of only per-job rows; printed once per change.
+    const summary = waitingSummary(result.jobs);
+    if (summary && summary !== lastSummary) log(summary);
+    lastSummary = summary;
     if (result.state !== 'waiting') return result;
     await sleep(15000);
   }

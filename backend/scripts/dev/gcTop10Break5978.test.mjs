@@ -1,6 +1,7 @@
 // #5978: "en top-10 i klassementet faar aldrig 5 min i et udbrud uden at feltet
-// jagter". Feltet er klassementsgruppen (flest af de oevrige top-10), ikke den
-// stoerste gruppe: paa bjergetaper er den stoerste gruppe ofte de afhaegtede.
+// jagter". Feltet er klassementsgruppen forankret paa foereren (bedst placerede
+// top-10-rytter, der ikke er udbryderen), ikke den stoerste gruppe og ikke gruppen
+// med flest top-10 (kan vaere svage, afhaengte top-10).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -52,6 +53,36 @@ test("#5978: lige mange top-10 i to grupper = den forreste er klassementsgruppen
     ...formed,
     groupSnapshots: [
       { km: 80, groups: [{ rider_ids: ["g1", "x"], gap_seconds: 0 }, { rider_ids: favourites.slice(0, 4), gap_seconds: 200 }, { rider_ids: favourites.slice(4, 8), gap_seconds: 400 }, { rider_ids: [favourites[8], ...dropped], gap_seconds: 900 }] },
+    ],
+  };
+  assert.deepEqual(gcTop10InBreakOverThreshold(out, gc), []);
+});
+
+test("#5978 anker: svage top-10 sat af med flere top-10 end foererens gruppe -> maales mod foererens gruppe (ingen falsk FAIL)", () => {
+  const out = {
+    ...formed,
+    groupSnapshots: [
+      { km: 80, groups: [{ rider_ids: ["g1", "x"], gap_seconds: 0 }, { rider_ids: favourites.slice(0, 2), gap_seconds: 30 }, { rider_ids: favourites.slice(2), gap_seconds: 420 }, { rider_ids: dropped, gap_seconds: 800 }] },
+    ],
+  };
+  assert.deepEqual(gcTop10InBreakOverThreshold(out, gc), []);
+});
+
+test("#5978 anker: foererens gruppe 5 min efter udbryderen taeller, ogsaa naar en gruppe med flere top-10 ligger taettere (ingen falsk PASS)", () => {
+  const out = {
+    ...formed,
+    groupSnapshots: [
+      { km: 80, groups: [{ rider_ids: ["g1", "x"], gap_seconds: 0 }, { rider_ids: favourites.slice(2), gap_seconds: 100 }, { rider_ids: favourites.slice(0, 2), gap_seconds: 330 }, { rider_ids: dropped, gap_seconds: 800 }] },
+    ],
+  };
+  assert.deepEqual(gcTop10InBreakOverThreshold(out, gc), ["g1"]);
+});
+
+test("#5978 anker: foereren i udbryderens egen gruppe = ingen gevinst", () => {
+  const out = {
+    ...formed,
+    groupSnapshots: [
+      { km: 80, groups: [{ rider_ids: ["g1", "x", "c0"], gap_seconds: 0 }, { rider_ids: favourites.slice(1), gap_seconds: 600 }] },
     ],
   };
   assert.deepEqual(gcTop10InBreakOverThreshold(out, gc), []);
