@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { currentProgramKey, resolveTarget, sectionsForTarget } from "./programAssignModel.ts";
+import { currentProgramFor, currentProgramKey, resolveTarget, sectionsForTarget } from "./programAssignModel.ts";
 import type { CatalogProgram } from "../../../lib/trainingPrograms.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -72,10 +72,31 @@ test("fladen: vaelgeren foerst, ingen gold, samme API og gammel sti bevaret", ()
 test("i18n: EN og DA har de nye noegler, uden em-dash", () => {
   const en = JSON.parse(read("../../../../public/locales/en/training.json"));
   const da = JSON.parse(read("../../../../public/locales/da/training.json"));
-  for (const key of ["pickTarget", "fitsType", "otherPrograms", "current"]) {
+  for (const key of ["pickTarget", "fitsType", "otherPrograms", "current", "browse", "closeCatalog"]) {
     assert.ok(en.programs[key] && da.programs[key], key);
     assert.doesNotMatch(`${en.programs[key]}${da.programs[key]}`, /—/, key);
   }
   assert.match(en.programs.fitsType, /\{type\}/);
   assert.match(da.programs.fitsType, /\{type\}/);
+});
+
+test("#5825 nuvaerende program som katalogobjekt (kun rytter, ellers null)", () => {
+  const assigned = { r1: "climb" };
+  assert.equal(currentProgramFor(resolveTarget("r1", riders, groups), assigned, catalog)?.key, "climb");
+  assert.equal(currentProgramFor(resolveTarget("r2", riders, groups), assigned, catalog), null);
+  assert.equal(currentProgramFor(resolveTarget("squad", riders, groups), assigned, catalog), null);
+  // Et program der er ude af kataloget, giver ingen linje frem for en fejl.
+  assert.equal(currentProgramFor(resolveTarget("r1", riders, groups), { r1: "gone" }, catalog), null);
+});
+
+test("#5825 telefonens fold: kun under sm, aria-expanded, valg lukker, desktop uaendret", () => {
+  const src = read("TrainingProgramAssign.tsx");
+  assert.match(src, /aria-expanded=\{catalogOpen\}/);
+  assert.match(src, /aria-controls="training-program-catalog"/);
+  assert.match(src, /className=\{catalogOpen \? "" : "hidden sm:block"\}/);
+  assert.match(src, /if \(result\.ok\) setCatalogOpen\(false\)/);
+  assert.match(src, /data-testid="training-program-close"/);
+  // Ingen ny primary og ingen ny onApply-vej.
+  assert.doesNotMatch(src, /variant="primary"/);
+  assert.equal((src.match(/await onApply\(/g) ?? []).length, 1);
 });

@@ -140,10 +140,60 @@ test("mobil 390: vaelgeren foerst, ingen vandret scroll", async ({ page }) => {
     return;
   }
   await page.getByTestId("training-program-target").selectOption(CLIMBER.id);
+  // #5825: telefonens katalog er foldet sammen til en linje; fold det ud.
+  await page.getByTestId("training-program-browse").click();
   await expect(page.getByText("Fits Climber")).toBeVisible();
   const box = await page.getByTestId("training-program-put-on").first().boundingBox();
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   const noPageScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
   await expect.poll(noPageScroll).toBe(true);
   await page.screenshot({ path: evidenceShotPath("pr-screens/6035/after-390.png") });
+});
+
+// #5825 - telefonens katalog foldes sammen til EN linje med "Browse programs".
+test("mobil 390: nuvaerende program som een linje, katalog foldes ud, valg og Close lukker", async ({ page }) => {
+  const applied = await openPrograms(page, 390, 844);
+  if (BEFORE) {
+    await page.getByTestId("training-program-target").selectOption(CLIMBER.id);
+    await page.screenshot({ path: evidenceShotPath("pr-screens/5825/before-390.png"), fullPage: true });
+    return;
+  }
+  const noPageScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+  const browse = page.getByTestId("training-program-browse");
+  const options = page.getByTestId("training-program-option");
+
+  // Foldet: kataloget er skjult, knappen siger Browse programs.
+  await expect(browse).toHaveText("Browse programs");
+  await expect(browse).toHaveAttribute("aria-expanded", "false");
+  await expect(options.first()).toBeHidden();
+
+  // Valgt rytter: hans nuvaerende program staar paa linjen.
+  await page.getByTestId("training-program-target").selectOption(CLIMBER.id);
+  await expect(page.getByTestId("training-program-summary")).toContainText("Hill climber");
+  await expect(options.first()).toBeHidden();
+  await page.screenshot({ path: evidenceShotPath("pr-screens/5825/after-390-closed.png") });
+
+  // Fold ud, ingen vandret scroll, Close catalog lukker uden aendring.
+  await browse.click();
+  await expect(browse).toHaveAttribute("aria-expanded", "true");
+  await expect(options.first()).toBeVisible();
+  await expect.poll(noPageScroll).toBe(true);
+  await page.getByTestId("training-program-close").click();
+  await expect(options.first()).toBeHidden();
+  expect(applied).toHaveLength(0);
+
+  // Et valg lukker kataloget og bruger samme onApply-flow.
+  await browse.click();
+  await options.nth(1).getByTestId("training-program-put-on").click();
+  await expect.poll(() => applied.length).toBe(1);
+  expect(applied[0].target).toBe(CLIMBER.id);
+  await expect(options.first()).toBeHidden();
+  await expect(page.getByRole("status")).toContainText(`${CLIMBER.firstname} ${CLIMBER.lastname}`);
+});
+
+test("desktop 1440: kataloget er altid fremme og uden foldeknap", async ({ page }) => {
+  await openPrograms(page, 1440, 900);
+  if (BEFORE) return;
+  await expect(page.getByTestId("training-program-summary")).toBeHidden();
+  await expect(page.getByTestId("training-program-option").first()).toBeVisible();
 });

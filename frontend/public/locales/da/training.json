@@ -506,7 +506,9 @@
     "pickTarget": "Vælg først en rytter eller gruppe",
     "fitsType": "Passer til {type}",
     "otherPrograms": "Andre programmer",
-    "current": "Nuværende"
+    "current": "Nuværende",
+    "browse": "Gennemse programmer",
+    "closeCatalog": "Luk katalog"
   },
   "dailyReceipt": {
     "status": {

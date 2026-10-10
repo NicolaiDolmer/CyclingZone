@@ -506,7 +506,9 @@
     "pickTarget": "Pick a rider or group first",
     "fitsType": "Fits {type}",
     "otherPrograms": "Other programs",
-    "current": "Current"
+    "current": "Current",
+    "browse": "Browse programs",
+    "closeCatalog": "Close catalog"
   },
   "dailyReceipt": {
     "status": {
