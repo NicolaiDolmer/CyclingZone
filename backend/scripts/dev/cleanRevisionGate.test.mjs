@@ -93,10 +93,10 @@ const anchors = (rows, over = {}) => ({
 });
 
 test("#6442 judgeAnchorsJson: tidsankrene doemmes i det realistiske felt; proxy og 'alle etaper' er info", () => {
-  const base = anchors([["a", "PASS"], ["short_uphill_finish_gaps", "FAIL"], ["gt_winner_margin", "N/A"]]);
-  // Den situation gate trin 3 stod i: proxy-felt FAIL/ikke maalt paa tidsankrene, 1b's
+  const base = anchors([["a", "PASS"], ["short_uphill_finish_gaps", "FAIL"], ["gt_winner_margin", "PASS"]]);
+  // Den situation gate trin 3 stod i: proxy-felt FAIL paa de to tidsankre, 1b's
   // "alle etaper" FAIL (udbrudssejre), men de primaere raekker PASS. Foer #6442: FAIL.
-  const cur = anchors([["a", "PASS"], ["short_uphill_finish_gaps", "FAIL"], ["gt_winner_margin", "N/A"], ["mountain_top10_spread", "FAIL"]], {
+  const cur = anchors([["a", "PASS"], ["short_uphill_finish_gaps", "FAIL"], ["gt_winner_margin", "PASS"], ["mountain_top10_spread", "FAIL"]], {
     realisticField: { anchors: realisticPrimary({ shortAll: "FAIL", mountainAll: "FAIL" }) },
   });
   const ok = judgeAnchorsJson(cur, base, "n", "o");
@@ -108,11 +108,19 @@ test("#6442 judgeAnchorsJson: tidsankrene doemmes i det realistiske felt; proxy 
   const shortFail = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary({ short: "FAIL" }) } }), base, "n", "o");
   assert.equal(shortFail.status, "FAIL");
   assert.match(shortFail.reasons.join(" "), /short_uphill_finish_gaps\/favorites=FAIL/);
-  const gtMissing = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary().filter((x) => x.id !== "gt_winner_margin") } }), base, "n", "o");
-  assert.equal(gtMissing.status, "FAIL");
-  assert.match(gtMissing.reasons.join(" "), /gt_winner_margin\/gc mangler/);
+  const shortMissing = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary().filter((x) => !(x.id === "short_uphill_finish_gaps" && x.subset === "favorites")) } }), base, "n", "o");
+  assert.equal(shortMissing.status, "FAIL");
+  assert.match(shortMissing.reasons.join(" "), /short_uphill_finish_gaps\/favorites mangler/);
+
+  // GT-vindermarginen er ikke et af de to tidsankre i RACE_ENGINE_RULES: proxy-raekken
+  // gater (FAIL og ikke maalt = FAIL), og 1b's gc-raekke gater ogsaa.
+  const gtProxyFail = judgeAnchorsJson(anchors([["a", "PASS"], ["gt_winner_margin", "FAIL"]]), base, "n", "o");
+  assert.equal(gtProxyFail.status, "FAIL");
+  assert.match(gtProxyFail.reasons.join(" "), /ankre FAIL for n: gt_winner_margin/);
+  assert.equal(judgeAnchorsJson(anchors([["a", "PASS"], ["gt_winner_margin", "N/A"]]), base, "n", "o").status, "FAIL");
   const gtNa = judgeAnchorsJson(anchors([["a", "PASS"]], { realisticField: { anchors: realisticPrimary({ gt: "N/A" }) } }), base, "n", "o");
   assert.equal(gtNa.status, "FAIL");
+  assert.match(gtNa.reasons.join(" "), /gt_winner_margin\/gc=N\/A/);
 
   // Et ikke-tidsanker i proxy-feltet gater stadig.
   assert.equal(judgeAnchorsJson(anchors([["field_cohesion_flat", "FAIL"]]), base, "n", "o").status, "FAIL");

@@ -147,18 +147,19 @@ export function judgeTourJson(json, revision, label) {
  * RACE_ENGINE_RULES (#6199, ankertabellen): "rapportens afsnit 1b maaler de to
  * tidsankre primaert i et realistisk felt ...; proxy-feltets dom er sekundaer",
  * fordi proxy-feltet (en tilfaeldig stikproeve af HELE populationen, orders=none)
- * er langt bredere i klatre-evne end et rigtigt startfelt. GT-vindermarginen er
- * et tidsanker af samme slags (klassementsgab skabt af klatre-spredningen) og
- * maales derfor ogsaa primaert i det realistiske felt (akkumuleret klassement).
+ * er langt bredere i klatre-evne end et rigtigt startfelt. Reglen naevner kun de
+ * to tidsankre (bjerg og kort afslutning opad); GT-vindermarginen er IKKE flyttet
+ * og gater fortsat i proxy-feltet. At goere den sekundaer kraever en
+ * ejer-beslutning dokumenteret i RACE_ENGINE_RULES.
  *
  * Pr. anker: den primaere raekke i 1b (subset) er gaten. Proxy-raekken og 1b's
  * "alle etaper"-raekke (hvor nr. 10 i en udbrudssejr er feltets hul til
  * udbruddet, som udbrudsankrene ejer) rapporteres som info, men gater ikke.
+ * Alle andre raekker i 1b (ogsaa gt_winner_margin/gc) gater.
  */
 export const REALISTIC_PRIMARY_ANCHORS = Object.freeze({
   mountain_top10_spread: "favorites",
   short_uphill_finish_gaps: "favorites",
-  gt_winner_margin: "gc",
 });
 
 /** Raekkerne i 1b der gater: de primaere tidsanker-raekker + alt der ikke er et tidsanker (fx nedkoersels-kontrakten). */

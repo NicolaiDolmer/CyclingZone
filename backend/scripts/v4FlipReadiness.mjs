@@ -1026,9 +1026,9 @@ export function measureRealisticField({ v4, fixture, stages, seeds = HEAD_TO_HEA
  * #6442: GT-vindermarginen i det realistiske felt. Giro-fixturet er et rigtigt
  * etapeloeb (felt, hold, roller, gemte ordrer og etaper), og klassementet
  * akkumuleres praecis som spillet goer det (tourScorecard.runStagesInOrder, samme
- * maaling som gate trin 1's gcWinnerMargin). Proxy-feltets GT-margin (v4GcMargin,
- * tilfaeldig stikproeve af hele populationen) er langt bredere i klatre-evne end
- * et rigtigt startfelt, saa den er sekundaer her, som for de to tidsankre (#6199).
+ * maaling som gate trin 1's gcWinnerMargin). Proxy-feltets GT-margin (v4GcMargin)
+ * gater fortsat: RACE_ENGINE_RULES (#6199) goer kun de to tidsankre sekundaere i
+ * proxy-feltet. Denne raekke er en ekstra maaling ved siden af, ikke en erstatning.
  * Vaerdien er middel over seeds (samme regel som de oevrige ankre); seeds bestaaet
  * er antal seeds hvis egen margin ligger i baandet.
  */
