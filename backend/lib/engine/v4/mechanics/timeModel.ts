@@ -145,6 +145,8 @@ export const TIME_MODEL_V3_TUNING = freeze({
   descentFinishClimbDayformWeight: 0,
   descentFinishClimbAttackWindowSeconds: 0,
   descentFinishClimbAttackDayformWeight: 0,
+  // Evne-vaegtens skala paa samme stigning (1 = profilens egen vaegt, som foer).
+  descentFinishClimbAbilityWeightScale: 1,
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
@@ -211,9 +213,10 @@ export const SHARED_TIME_MODEL_V3_TUNING: TimeModelTuning = freeze({
   finishDescentMaxRunInKm: 5,
   // Ren revision spor 1, D1 (ejer 10/10): kalibreret privat paa Giro e7, 12 seeds
   // (balance-internals/clean-revision/d1/).
-  descentFinishClimbDayformWeight: 0.3,
+  descentFinishClimbDayformWeight: 0.15,
   descentFinishClimbAttackWindowSeconds: 40,
-  descentFinishClimbAttackDayformWeight: 1.2,
+  descentFinishClimbAttackDayformWeight: 1.4,
+  descentFinishClimbAbilityWeightScale: 1.3,
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
@@ -244,6 +247,25 @@ export function timeModelTuningFor(ctx: { ordersGcV3?: true; sharedGroupTime?: u
     return (ctx.route ? SHARED_V3_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V3_TUNING;
   }
   return (ctx.route ? SHARED_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V2_TUNING;
+}
+
+const DECIDING_CLIMB_TUNING = new WeakMap<TimeModelTuning, TimeModelTuning>();
+
+/**
+ * Ren revision spor 1, D1 (KUN official_times_v3): tuningen paa den afgoerende
+ * stigning foer en nedkoerselsfinale, med evne-vaegten ganget med
+ * `descentFinishClimbAbilityWeightScale`. Samme objekt naar skalaen er 1 (alle
+ * aeldre tidsmodeller), saa intet aendres der.
+ */
+export function descentFinishDecidingClimbTuning(t: TimeModelTuning): TimeModelTuning {
+  const scale = t.descentFinishClimbAbilityWeightScale;
+  if (!(scale > 0) || scale === 1) return t;
+  let out = DECIDING_CLIMB_TUNING.get(t);
+  if (!out) {
+    out = freeze({ ...t, climbGapAbilityWeight: t.climbGapAbilityWeight * scale });
+    DECIDING_CLIMB_TUNING.set(t, out);
+  }
+  return out;
 }
 
 /**

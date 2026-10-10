@@ -51,7 +51,7 @@ const median = (xs) => {
  * Returnerer null naar etapen ikke har en nedkoerselsfinale (finale_type
  * "descent" med en nedkoersel efter sidste stigning).
  */
-export function analyseDescentFinish({ route, out, abilitiesById, capFor, breakawayWin = null, breakawaySets = null, climbEntry = null }) {
+export function analyseDescentFinish({ route, out, abilitiesById, capFor, breakawayWin = null, breakawaySets = null, climbEntry = null, dayformWeight = 0 }) {
   const segs = route?.segments ?? [];
   if (route?.finale_type !== "descent" || segs.length < 2) return null;
   const snaps = out?.groupSnapshots ?? [];
@@ -83,10 +83,14 @@ export function analyseDescentFinish({ route, out, abilitiesById, capFor, breaka
   const front = groupsAtTop[0];
   const finishesOf = (g) => g.rider_ids.filter((id) => finishGap.has(id)).map((id) => finishGap.get(id));
   const bestFinish = (g) => Math.min(...finishesOf(g));
-  const frontMedian = front ? median(finishesOf(front)) : 0;
+  // Referencen er frontgruppens FOERSTE i maal. Ren revision D1: frontgruppen
+  // ved toppen er nu ofte et par klatrere, og finalens placeringshuller mellem
+  // dem er ikke en lukning fra jagten (med frontens median talte halvdelen af
+  // placeringshullet som lukning). For en jagende gruppe taeller dens egen
+  // median stadig: dens placeringshuller goer kun lukningen mindre.
   const frontBest = front ? bestFinish(front) : 0;
   const closers = groupsAtTop.slice(1).filter((g) => g.gap_seconds <= 600).map((g) => {
-    const closed = g.gap_seconds - (median(finishesOf(g)) - frontMedian);
+    const closed = g.gap_seconds - (median(finishesOf(g)) - frontBest);
     const closedBest = g.gap_seconds - (bestFinish(g) - frontBest);
     const cap = capFor(g.gap_seconds, lengthKm);
     const ratioOf = (c) => (cap > 0 ? c / cap : (c > 0 ? Infinity : 0));
@@ -140,7 +144,12 @@ export function analyseDescentFinish({ route, out, abilitiesById, capFor, breaka
       if (!(lost > CLIMB_PAIR_SLACK_S)) continue;
       const ea = climbEntry?.get(a);
       const eb = climbEntry?.get(b);
-      if (ea && eb && (ea.effort !== eb.effort || ea.energy < eb.energy - CLIMB_ENERGY_SLACK)) {
+      // Ren revision D1 (ejer 10/10, KUN official_times_v3): dagsformen er et
+      // vilkaar paa linje med energi og indsats. Var den bedre klatrer ikke
+      // bedre PAA DAGEN (evne + dagsform x motorens vaegt), er parret forklaret.
+      const onTheDay = (id, x) => climbing(id) + 99 * dayformWeight * (Number(x?.dayform) || 0);
+      const worseOnTheDay = dayformWeight > 0 && ea && eb && onTheDay(a, ea) <= onTheDay(b, eb);
+      if (ea && eb && (ea.effort !== eb.effort || ea.energy < eb.energy - CLIMB_ENERGY_SLACK || worseOnTheDay)) {
         climberExplained++;
         continue;
       }
@@ -277,7 +286,7 @@ export function climbEntryAtDecidingClimb({ input, route, core, runSegmentLoop }
       if (ctx.segmentIndex === start) {
         for (const g of state.groups) for (const id of g.rider_ids) {
           const r = state.riders[id];
-          entry.set(id, { group: g.id, kind: g.kind, energy: r && r.wprimeMax > 0 ? r.wprime / r.wprimeMax : 0, effort: ctx.entrants[id]?.effort ?? null });
+          entry.set(id, { group: g.id, kind: g.kind, energy: r && r.wprimeMax > 0 ? r.wprime / r.wprimeMax : 0, effort: ctx.entrants[id]?.effort ?? null, dayform: r?.dayform ?? 0 });
         }
       }
       return live.climbSelection(state, ctx);
@@ -321,7 +330,9 @@ export async function main(argv = process.argv.slice(2)) {
           const tuning = tm.timeModelTuningFor({ ordersGcV3: true, sharedGroupTime, route: { profile_type: route.profile_type } });
           const capFor = (gap, km) => tm.finishDescentChaseCapSeconds(gap, km, tuning);
           const quick = analyseDescentFinish({ route, out: res.v4Output, abilitiesById, capFor, breakawayWin });
-          const a = quick ? analyseDescentFinish({ route, out: res.v4Output, abilitiesById, capFor, breakawayWin, breakawaySets, climbEntry: climbEntryFor(route) }) : null;
+          // D1: angrebets dagsform-vaegt (0 under alle revisioner foer official_times_v3).
+          const dayformWeight = tuning.descentFinishClimbAttackDayformWeight ?? 0;
+          const a = quick ? analyseDescentFinish({ route, out: res.v4Output, abilitiesById, capFor, breakawayWin, breakawaySets, climbEntry: climbEntryFor(route), dayformWeight }) : null;
           if (a) rows.push({ revision, stage: profile.stage_number, seed: s, a });
         },
       });

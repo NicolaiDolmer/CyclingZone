@@ -64,7 +64,7 @@ test("#6200: only official_times_v3 (generation 3 on the shared clock) reads the
   const changed = Object.keys(SHARED_TIME_MODEL_V3_TUNING).filter((k) =>
     JSON.stringify((SHARED_TIME_MODEL_V3_TUNING as Record<string, unknown>)[k]) !== JSON.stringify((SHARED_TIME_MODEL_V2_TUNING as Record<string, unknown>)[k]));
   assert.deepEqual(changed.sort(), [
-    "descentFinishClimbAttackDayformWeight", "descentFinishClimbAttackWindowSeconds", "descentFinishClimbDayformWeight",
+    "descentFinishClimbAbilityWeightScale", "descentFinishClimbAttackDayformWeight", "descentFinishClimbAttackWindowSeconds", "descentFinishClimbDayformWeight",
     "descentFinishClimbRaceProfiles", "finishDescentMaxRunInKm",
   ]);
   // Neutral in every older model.
@@ -74,6 +74,7 @@ test("#6200: only official_times_v3 (generation 3 on the shared clock) reads the
     assert.equal(t.descentFinishClimbDayformWeight, 0);
     assert.equal(t.descentFinishClimbAttackWindowSeconds, 0);
     assert.equal(t.descentFinishClimbAttackDayformWeight, 0);
+    assert.equal(t.descentFinishClimbAbilityWeightScale, 1);
   }
   // Per-profile calibration of official_times_v2 is kept under v3.
   for (const [profile, weight] of Object.entries(SHARED_TIME_MODEL_V2_TUNING.climbGapAbilityWeightByProfile)) {

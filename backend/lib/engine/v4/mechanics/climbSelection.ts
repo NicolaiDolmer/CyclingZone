@@ -40,7 +40,7 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, finishDescentIndexFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, finishDescentIndexFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 
 // #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
@@ -579,15 +579,17 @@ export const climbSelectionHook: ClimbSelectionHook = (
       && !isSummitFinishClimb(ctx) && isDescentFinishDecidingClimb(ctx, timeModel);
     const summitRace = timeModel !== TIME_MODEL_V3_TUNING && !cohesive && group.kind !== "gruppetto"
       && (isSummitFinishClimb(ctx) || isDescentFinishDecidingClimb(ctx, timeModel));
-    // Ren revision spor 1, D1 (KUN official_times_v3; vaegtene er 0 i alle aeldre
-    // tidsmodeller): dagsform og angreb paa den afgoerende stigning foer nedkoerselsfinalen.
+    // Ren revision spor 1, D1 (KUN official_times_v3; vaegtene er 0 og skalaen 1 i
+    // alle aeldre tidsmodeller): evne-vaegt, dagsform og angreb paa den afgoerende
+    // stigning foer nedkoerselsfinalen.
+    const climbModel = descentDecider ? descentFinishDecidingClimbTuning(timeModel) : timeModel;
     const selections = descentDecider
       ? decidingClimbSelectionsOnTheDay(baseSelections, (id) => ctx.entrants[id]?.abilities.climbing ?? 0,
         (id) => nextState.riders[id]?.dayform ?? 0,
-        (deficit, energy) => climbSplitGapSeconds(gradientPct, lengthKm, deficit, energy, timeModel), timeModel)
+        (deficit, energy) => climbSplitGapSeconds(gradientPct, lengthKm, deficit, energy, climbModel), climbModel)
       : baseSelections;
     let splitRiderIds = summitRace
-      ? summitRaceSplitRiderIds(selections, gradientPct, lengthKm, timeModel)
+      ? summitRaceSplitRiderIds(selections, gradientPct, lengthKm, climbModel)
       : guardedSplitRiderIds(selections);
     if (splitRiderIds.length === 0) continue;
     if (splitRiderIds.length >= group.rider_ids.length) {
@@ -612,8 +614,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const parts = ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
       ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
         riderId: s.riderId,
-        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, timeModel),
-      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : timeModel)
+        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, climbModel),
+      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : climbModel)
       : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
 
     for (const part of parts) {
