@@ -173,3 +173,18 @@ test("#6095 etape-valget i rollevælgeren findes kun bag serverens flag", () => 
   assert.match(source, /racePage\.tactics\.roleScopeRest/);
   assert.match(source, /racePage\.tactics\.roleScopeStageOnly/);
 });
+
+// #5945: et hold under startgulvet, som ikke kan fyldes op, stiller ikke op. Serveren
+// siger det (stage-roles start_outlook); fanen viser banneret i stedet for en taktik-matrix
+// for ryttere der aldrig starter, og genbruger udtagelsens egen sætning.
+test("#5945 start_outlook.starts === false giver banner i stedet for matrix", () => {
+  assert.match(source, /roles\.enabled && roles\.start_outlook\?\.starts === false/);
+  assert.match(source, /data-testid="tactics-not-starting"/);
+  assert.match(source, /t\("selection\.willNotStart", \{ min: roles\.start_outlook\.min \}\)/);
+  // Banneret returnerer FØR rytter-matrixen, så ingen deltager-markering rendres.
+  const bannerAt = source.indexOf("tactics-not-starting");
+  const matrixAt = source.indexOf("stageIntentionCounts({ matrix: draftMatrix");
+  const flagOffAt = source.indexOf("Flag OFF, eller holdet har ingen ryttere");
+  assert.ok(bannerAt > 0 && flagOffAt > 0 && bannerAt < flagOffAt, "banneret ligger foer de normale grene");
+  assert.ok(matrixAt > 0);
+});

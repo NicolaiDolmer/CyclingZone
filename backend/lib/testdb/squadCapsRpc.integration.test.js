@@ -16,6 +16,8 @@
 //      tilbage — også trup-feltet.
 //   5. Overgangsperioden før #4619-backfill'en: en akademirytter med squad='senior'
 //      tæller i begge ungdomstrupper, så gaten aldrig bliver mildere end loftet.
+//   6. #5917: en åben transfer-listing blokerer ikke længere en nedrykning, og
+//      listingen står uændret bagefter. Auktionslåsen er uændret.
 //
 // Advisory-låsen (pg_advisory_xact_lock) kan ikke bevises med én PGlite-forbindelse;
 // den er uændret fra de tidligere versioner og deles af alle RPC'erne.
@@ -103,12 +105,13 @@ CREATE TABLE notifications (
 );
 `;
 
-// Prod-rækkefølge: gamle kroppe → riders.squad → #5432.
+// Prod-rækkefølge: gamle kroppe → riders.squad → #5432 → #5917.
 const MIGRATIONS = [
   "2026-06-25-academy-promote-demote.sql",
   "2026-08-31-4423-academy-signing-defer.sql",
   "2026-09-15-4619-riders-squad.sql",
   "2026-09-24-5432-squad-caps-rpc.sql",
+  "2026-10-10-5917-demote-allow-listed.sql",
 ];
 
 function loadMigration(filename) {
@@ -219,7 +222,11 @@ test("apply-rækkefølge: præcis ÉN overload pr. funktion — den gamle flade-
 });
 
 test("migrationen er idempotent: en anden kørsel er en no-op", async () => {
+  // Replay i prod-rækkefølge: #5432 og derefter #5917 (som gen-erstatter demote-kroppen),
+  // så resten af filen tester den krop prod ender med.
   await db.exec(loadMigration("2026-09-24-5432-squad-caps-rpc.sql"));
+  await db.exec(loadMigration("2026-10-10-5917-demote-allow-listed.sql"));
+  await db.exec(loadMigration("2026-10-10-5917-demote-allow-listed.sql"));
   const { rows } = await db.query(
     "SELECT count(*)::int AS n FROM pg_proc WHERE proname IN ('demote_rider_to_academy', 'finalize_academy_acquisition')",
   );
@@ -227,11 +234,13 @@ test("migrationen er idempotent: en anden kørsel er en no-op", async () => {
 });
 
 test("ingen tal i SQL: migrationen nævner hverken SQUAD_CAPS- eller SQUAD_MAX_AGE-værdierne som litteraler i en sammenligning", () => {
-  const sql = readFileSync(join(DATABASE_DIR, "2026-09-24-5432-squad-caps-rpc.sql"), "utf8")
-    .replace(/--[^\n]*/g, "");
-  const literals = [...Object.values(SQUAD_CAPS), SQUAD_MAX_AGE.junior, SQUAD_MAX_AGE.u23];
-  for (const n of literals) {
-    assert.doesNotMatch(sql, new RegExp(`[<>=]\\s*${n}\\b`), `tallet ${n} må ikke stå som grænse i SQL`);
+  for (const file of ["2026-09-24-5432-squad-caps-rpc.sql", "2026-10-10-5917-demote-allow-listed.sql"]) {
+    const sql = readFileSync(join(DATABASE_DIR, file), "utf8")
+      .replace(/--[^\n]*/g, "");
+    const literals = [...Object.values(SQUAD_CAPS), SQUAD_MAX_AGE.junior, SQUAD_MAX_AGE.u23];
+    for (const n of literals) {
+      assert.doesNotMatch(sql, new RegExp(`[<>=]\\s*${n}\\b`), `tallet ${n} må ikke stå som grænse i ${file}`);
+    }
   }
 });
 
@@ -317,6 +326,45 @@ test("demote: overgangsperioden — akademiryttere uden trup (før backfill) tæ
   await fillSquad(teamId, "u23", SQUAD_CAPS.u23 - 3);
   const riderId = await makeRider({ teamId, birthdate: BORN_U23 });
   assert.deepEqual(await demote(teamId, riderId, "u23"), { ok: false, code: "academy_full" });
+});
+
+test("#5917 demote: en åben eller forhandlende transfer-listing blokerer ikke, og listingen står uændret", async () => {
+  const teamId = await makeTeam();
+  for (const status of ["open", "negotiating"]) {
+    const riderId = await makeRider({ teamId, birthdate: BORN_U23 });
+    const listingId = (await db.query(
+      "INSERT INTO transfer_listings (rider_id, status) VALUES ($1, $2) RETURNING id",
+      [riderId, status],
+    )).rows[0].id;
+
+    const r = await demote(teamId, riderId, "u23");
+    assert.equal(r.ok, true, `${status}: ${JSON.stringify(r)}`);
+    const row = await riderRow(riderId);
+    assert.equal(row.is_academy, true);
+    assert.equal(row.squad, "u23");
+
+    const { rows } = await db.query("SELECT rider_id, status FROM transfer_listings WHERE id = $1", [listingId]);
+    assert.deepEqual(rows, [{ rider_id: riderId, status }], `${status}: listingen følger rytteren uændret`);
+  }
+});
+
+test("#5917 demote: auktionslåsen er uændret — en aktiv auktion afviser stadig (rider_on_market)", async () => {
+  const teamId = await makeTeam();
+  const riderId = await makeRider({ teamId, birthdate: BORN_U23 });
+  await db.query("INSERT INTO transfer_listings (rider_id, status) VALUES ($1, 'open')", [riderId]);
+  await db.query("INSERT INTO auctions (rider_id, status) VALUES ($1, 'active')", [riderId]);
+  assert.deepEqual(await demote(teamId, riderId, "u23"), { ok: false, code: "rider_on_market" });
+  assert.equal((await riderRow(riderId)).is_academy, false, "ingen skrivning ved afvisning");
+});
+
+test("#5917 move: en listet akademirytter kan flyttes junior ↔ U23, og listingen står uændret", async () => {
+  const teamId = await makeTeam();
+  const riderId = await makeRider({ teamId, isAcademy: true, squad: "junior", birthdate: BORN_JUNIOR });
+  await db.query("INSERT INTO transfer_listings (rider_id, status) VALUES ($1, 'open')", [riderId]);
+  assert.equal((await move(teamId, riderId, "u23")).ok, true);
+  assert.equal((await move(teamId, riderId, "junior")).ok, true);
+  const { rows } = await db.query("SELECT status FROM transfer_listings WHERE rider_id = $1", [riderId]);
+  assert.deepEqual(rows, [{ status: "open" }]);
 });
 
 // ── 3. Ungdomsauktion (finalize_academy_acquisition, betalende) ───────────────

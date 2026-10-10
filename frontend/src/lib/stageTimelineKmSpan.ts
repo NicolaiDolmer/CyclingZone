@@ -56,7 +56,7 @@ function finishKmOf(events: readonly SpanTimelineEvent[]): number | null {
   return finite(events.find((event) => event.type === "stage_start")?.params?.distance_km);
 }
 
-type TimelineOptions = { timelineVersion?: number | null };
+type TimelineOptions = { timelineVersion?: number | null; /** #6400: etapens startliste (rider_id), som broen bruger. */ startlist?: readonly string[] | null };
 
 /** Stabil km-sortering af de hændelser der har en type (samme km: input-rækkefølgen). */
 export function kmSortedEvents<T extends SpanTimelineEvent>(events: readonly (T | null | undefined)[] | null | undefined): T[] {
@@ -68,9 +68,9 @@ export function kmSortedEvents<T extends SpanTimelineEvent>(events: readonly (T 
 }
 
 /** Tidslinjen uden samlinger forklædt som indhentninger, km-sorteret (#6294). */
-function keptEvents<T extends SpanTimelineEvent>(events: readonly (T | null | undefined)[] | null | undefined): T[] {
+function keptEvents<T extends SpanTimelineEvent>(events: readonly (T | null | undefined)[] | null | undefined, startlist: readonly string[] | null = null): T[] {
   // Projektionen er rækkefølge-følsom: den læser den rå, km-sorterede tidslinje.
-  return withoutRegroupCatches(kmSortedEvents(events) as unknown as ParticipationEvent[]) as unknown as T[];
+  return withoutRegroupCatches(kmSortedEvents(events) as unknown as ParticipationEvent[], startlist ?? []) as unknown as T[];
 }
 
 /**
@@ -162,7 +162,7 @@ export function honestTimelineEvents<T extends SpanTimelineEvent>(
   events: readonly (T | null | undefined)[] | null | undefined,
   options: TimelineOptions = {},
 ): T[] {
-  const kept = keptEvents(events);
+  const kept = keptEvents(events, options.startlist);
   const resolve = spanResolver(kept, options);
   const shown = kept.map((event, i) => ({ ...resolve(event), i }));
   // Spændets start sorterer; ved samme km står det præcise punkt (fx spurten

@@ -25,6 +25,7 @@ import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamResultsTab from "../components/TeamResultsTab";
 import TeamPalmaresTab from "../components/TeamPalmaresTab";
 import TeamClubTab from "../components/TeamClubTab";
+import MessageManagerButton from "../components/messages/MessageManagerButton";
 import {
   PageLoader,
   Button,
@@ -395,6 +396,9 @@ export default function TeamProfilePage() {
     ] : []),
   ];
 
+  // #5831: sekundær besked-knap; AI/bank har ingen manager, egen-hold skjules af knappen selv.
+  const canMessageManager = Boolean(team.manager_name) && !team.is_ai && !team.is_bank;
+
   const TAB_LABELS = {
     squad: t("profile.tabSquad", { count: currentRiders.length }),
     results: t("profile.tabResults"),
@@ -447,11 +451,16 @@ export default function TeamProfilePage() {
                 </div>
               </div>
             </div>
-            {globalRank && (
-              <div className="flex gap-2 flex-none">
-                <Button size="sm" variant="secondary" onClick={() => navigate("/standings?tab=global")}>
-                  {tGR("title")} #{globalRank.global_rank}
-                </Button>
+            {(globalRank || canMessageManager) && (
+              <div className="flex flex-wrap gap-2 flex-none">
+                {canMessageManager && (
+                  <MessageManagerButton teamId={team.id} managerName={team.manager_name} variant="secondary" size="sm" />
+                )}
+                {globalRank && (
+                  <Button size="sm" variant="secondary" onClick={() => navigate("/standings?tab=global")}>
+                    {tGR("title")} #{globalRank.global_rank}
+                  </Button>
+                )}
               </div>
             )}
           </div>

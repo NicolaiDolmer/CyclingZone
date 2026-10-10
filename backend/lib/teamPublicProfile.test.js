@@ -141,3 +141,22 @@ test('api.js: GET /teams/:id/public-profile har requireAuth + No-team-guard + de
   assert.match(block, /if \(!req\.team\?\.id\) return res\.status\(404\)\.json\(\{ error: "No team" \}\)/, "route skal have No-team-guard");
   assert.ok(block.includes("getTeamPublicProfileHandler"), "route skal delegere til getTeamPublicProfileHandler");
 });
+
+// #6238 — offentlig holdside skal vælge STÆRKESTE staff (som egen klubside),
+// uanset rækkefølgen fra DB.
+const WEAK = { id: "staff-weak", role: "training", tier: 1, name: "Weak Coach", slot: 1 };
+const STRONG = { id: "staff-strong", role: "training", tier: 5, name: "Strong Coach", slot: 2 };
+
+test("GET team public-profile: to staff i samme rolle → stærkeste tæller, uafhængigt af rækkefølge (#6238)", async () => {
+  const facilityRows = [{ track: "training", tier: 3 }];
+  const a = await getTeamPublicProfileHandler({ teamId: "team-a" }, createSupabase({ facilityRows, staffRows: [WEAK, STRONG] }), { flags: ENABLED });
+  const b = await getTeamPublicProfileHandler({ teamId: "team-a" }, createSupabase({ facilityRows, staffRows: [STRONG, WEAK] }), { flags: ENABLED });
+  const ta = a.body.facilities.find((f) => f.track === "training");
+  const tb = b.body.facilities.find((f) => f.track === "training");
+  assert.equal(ta.staff.id, "staff-strong");
+  assert.equal(tb.staff.id, "staff-strong");
+  assert.equal(ta.effectiveBonus, tb.effectiveBonus);
+  assert.equal(ta.staffCount, 2);
+  assert.equal("overall" in ta.staff, false);
+  assert.equal("salary" in ta.staff, false);
+});

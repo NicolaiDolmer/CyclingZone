@@ -18,9 +18,8 @@
 //     viser det.
 //  4. holdt hjem kraever at ingen ikke-udbryder kom i maal foran.
 //  5. filmen viser de samme udbrudshaendelser som motoren skrev, minus de
-//     samlinger der ikke var indhentninger (#6294 regroupCatches). Kendt aaben
-//     (#6400): filmen skjuler nogle rigtige indhentninger af feltet; den del er
-//     `todo`, alt andet er haardt.
+//     samlinger der ikke var indhentninger (#6294 regroupCatches). Filmen faar
+//     samme startliste som broen (#6400), saa den ikke skjuler rigtige indhentninger.
 // Detektoren testes foerst syntetisk paa fejlens form; derefter er den en haard
 // gate paa hele Giro-feltet, alle vejetaper, i raekkefoelge med klassement.
 import { test } from "node:test";
@@ -66,7 +65,7 @@ function chainViolations({ out, events, distanceKm = null }: { out: any; events:
   const ranked = rankedFromV4Output(out, { rulesRevision: REVISION });
   const stored: Map<string, { in_breakaway: boolean; breakaway_caught: boolean; breakaway_dropped?: boolean | null }> = deriveBreakawayStatus(ranked);
   const morning = new Set(idsOf(raw.find((e) => e.type === "breakaway_formed")));
-  const film = buildFilmTimeline({ events, distanceKm, timelineVersion: 2 });
+  const film = buildFilmTimeline({ events, distanceKm, timelineVersion: 2, startlist: resultIds });
   const filmEvents: Ev[] = film.events;
   const filmMorning = new Set(idsOf(filmEvents.find((e) => e.type === "breakaway_formed")));
   if ([...morning].sort().join() !== [...filmMorning].sort().join()) issues.push("film_formation");
@@ -201,7 +200,7 @@ test(`#6285-C ${REVISION}: motor, resultatliste og loebsfilm fortaeller samme ud
   assert.deepEqual(live.filter((s) => hardIssues(s).length).map((s) => `${s.where}: ${hardIssues(s).join("; ")}`), []);
 });
 
-// Kendt aaben: haard gate naar #6400 er rettet (fjern `todo`).
-test(`#6285-C ${REVISION}: filmen skjuler ingen af motorens indhentninger`, { todo: "aaben (#6400): filmens regroup-filter kender ikke startlisten" }, () => {
+// Haard gate (#6400): filmen faar samme startliste som broen.
+test(`#6285-C ${REVISION}: filmen skjuler ingen af motorens indhentninger`, () => {
   assert.deepEqual(live.filter((s) => s.issues.includes(FILM_HIDES_CATCH)).map((s) => s.where), []);
 });

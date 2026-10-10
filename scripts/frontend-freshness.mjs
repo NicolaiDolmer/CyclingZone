@@ -45,12 +45,23 @@ export async function readProductionBuildState(sha, api) {
   } catch { return unavailable(); }
 }
 
-export async function probeFrontendFreshness({ readMain, readVersion, git, observe }) {
+// The checkout in CI predates the API read of main, so the freshly read target
+// may be missing locally. Fetch once and retry; a target that is still missing
+// after the fetch stays unknown (never a false stale).
+async function ensureTarget(target, git, refresh) {
+  const present = () => { try { git(['cat-file', '-e', `${target}^{commit}`]); return true; } catch { return false; } };
+  if (present()) return true;
+  if (typeof refresh !== 'function') return false;
+  try { await refresh(); } catch { return false; }
+  return present();
+}
+
+export async function probeFrontendFreshness({ readMain, readVersion, git, observe, refresh }) {
   try {
     const target = await readMain();
+    if (SHA.test(target ?? '') && !(await ensureTarget(target, git, refresh))) return unknown();
     const result = await assessFrontendFreshness(await readVersion(), target, git, observe);
     if (await readMain() !== target) return unknown();
     return { ...result, target };
   } catch { return unknown(); }
 }
-

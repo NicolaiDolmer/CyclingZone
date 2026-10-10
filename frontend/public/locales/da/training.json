@@ -114,7 +114,13 @@
     "unsaved": "{n, plural, one {# ændring ikke gemt} other {# ændringer ikke gemt}}",
     "ownPlansEmpty": "Ingen rytter har sin egen plan endnu. Vælg en rytter under Plan for for at give ham en.",
     "ownPlansChips": "Ryttere med egen plan:",
-    "ownPlansMore": "+{n}"
+    "ownPlansMore": "+{n}",
+    "copySource": "Kopiér dag",
+    "copyCount": "Antal dage at kopiere til",
+    "copyOption": "{n, plural, one {Næste dag} other {Næste # dage}}",
+    "copyButton": "Kopiér",
+    "copyDone": "{n, plural, one {Kopieret til # dag. Gem for at beholde den.} other {Kopieret til # dage. Gem for at beholde dem.}}",
+    "copyNone": "Ingen åbne dage at kopiere til."
   },
   "howTrainingWorksLink": "Sådan virker træning",
   "development": {

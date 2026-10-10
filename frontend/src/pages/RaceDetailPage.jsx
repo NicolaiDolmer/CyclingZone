@@ -716,6 +716,8 @@ export default function RaceDetailPage() {
     const stageRows = dayRows.filter(row => row.result_type === "stage");
     return historyForStage(oneDayTimeline, 1, dayRows.map(row => row.rider_id).filter(Boolean), stageRows.length ? stageRows : dayRows);
   }, [oneDayTimeline, results]);
+  // #6400: startlisten (som historyForStage) til filmens regroup-filter.
+  const oneDayStartlist = useMemo(() => results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean), [results]);
   const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
     row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
 
@@ -1315,7 +1317,7 @@ export default function RaceDetailPage() {
                 <SectionStack>
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
-                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} />
+                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
                   <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
                   <DnfSection incidents={incidents} scopeType="overall" t={t} />
                 </SectionStack>
@@ -1332,11 +1334,11 @@ export default function RaceDetailPage() {
 // præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
 // S4 (#1176): incidents er optional — [] (flag off/tabel ikke migreret) giver
 // samme output som før S4 (ingen abandon/notableCrash-momenter).
-function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null }) {
+function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null, startlist = null }) {
   const { t } = useTranslation("races");
   const moments = useMemo(
-    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType, timelineEvents, teamNameById }),
-    [results, scopeType, stageNumber, incidents, profileType, timelineEvents, teamNameById],
+    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType, timelineEvents, teamNameById, startlist }),
+    [results, scopeType, stageNumber, incidents, profileType, timelineEvents, teamNameById, startlist],
   );
   if (!moments.length) return null;
   return (
@@ -1428,10 +1430,10 @@ function beatParamsFor(moment, { riderName, teamName }) {
 // etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
 // spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
 // personalisering — ingen ny persistering, ingen data forlader klienten.
-function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, t }) {
+function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, startlist = null, t }) {
   const report = useMemo(
-    () => buildRaceReport({ raceId, stageNumber, moments, timelineEvents, teamNameById }),
-    [raceId, stageNumber, moments, timelineEvents, teamNameById],
+    () => buildRaceReport({ raceId, stageNumber, moments, timelineEvents, teamNameById, startlist }),
+    [raceId, stageNumber, moments, timelineEvents, teamNameById, startlist],
   );
 
   const riderName = (id) => (id ? riderNameById.get(id) || "—" : "—");
@@ -1461,7 +1463,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
   }, [results, moments, myTeamId, stageNumber, report]);
 
   if (!report) {
-    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} timelineEvents={timelineEvents} teamNameById={teamNameById} />;
+    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} timelineEvents={timelineEvents} teamNameById={teamNameById} startlist={startlist} />;
   }
 
   const ctx = { riderName, teamName, raceName };
@@ -1737,6 +1739,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     const stageRows = (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage);
     return historyForStage(timeline, stage, stageRows.map((row) => row.rider_id).filter(Boolean), stageRows); // #6185
   }, [timeline, stage, results]);
+  const stageStartlist = useMemo(() => (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage).map((row) => row.rider_id).filter(Boolean), [results, stage]); // #6400
   const reportResults = useMemo(() => !participationHistory ? results : (results || []).map((row) => {
     if (row.result_type !== "stage" || row.stage_number !== stage) return row;
     return { ...row, ...participationFlagsForResult(row, participationHistory) };
@@ -1844,7 +1847,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             finalKmAvailable={finalKmPlayback.available}
             finalKmOpen={finalKmOpen}
             onToggleFinalKm={() => setFinalKmOpen(o => !o)}
-            ownRiderIds={ownRiderIds} effortByRider={effortByRider}
+            ownRiderIds={ownRiderIds} effortByRider={effortByRider} startlist={stageStartlist}
           />
           {finalKmOpen && finalKmPlayback.available && (
             <Suspense fallback={null}>
@@ -1855,7 +1858,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={reportResults} incidents={incidents} myTeamId={myTeamId}
             riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
-            profileType={profile?.profile_type ?? null} t={t}
+            profileType={profile?.profile_type ?? null} startlist={stageStartlist} t={t}
           />
           <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />

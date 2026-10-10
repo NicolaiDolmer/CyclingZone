@@ -588,6 +588,8 @@ test("demote: maper RPC ok=false-koder til named errors", async () => {
     ["already_academy", /already_academy/],
     ["not_u23", /not_u23/],
     ["rider_on_market", /rider_on_market/],
+    // #5917: RPC'en returnerer ikke længere rider_listed, men den gamle krop kan
+    // stadig svare med den i deploy-vinduet før auto-migrate applier — koden bliver.
     ["rider_listed", /rider_listed/],
     ["academy_full", /academy_full/],
     ["too_old_for_squad", /too_old_for_squad/],
@@ -849,6 +851,26 @@ test("moveRider: senior → U23 delegerer til demote() med den valgte trup", asy
   assert.equal(res.action, "demoted");
   assert.equal(res.from, "senior");
   assert.equal(res.to, "u23");
+});
+
+test("#5917 moveRider: ingen sti slår transfer_listings op — en listet rytter flyttes, og listingen røres ikke", async () => {
+  const cases = [
+    { rider: { ...SENIOR_U23, squad: "senior" }, target: "u23", fn: "demote_rider_to_academy", rpc: { ok: true, new_salary: 3350, rows_deleted: 0, squad: "u23" } },
+    { rider: { ...JUNIOR_ACADEMY }, target: "u23", fn: "move_academy_rider_squad", rpc: { ok: true, squad: "u23", squad_count: 1 } },
+  ];
+  for (const { rider, target, fn, rpc } of cases) {
+    const { supabase } = makeSupabase({ rider, gradRow: null, rpcResults: { [fn]: rpc } });
+    const tables = [];
+    const from = supabase.from.bind(supabase);
+    supabase.from = (table) => { tables.push(table); return from(table); };
+    const res = await moveRider(supabase, {
+      teamId: "t1", riderId: rider.id, targetSquad: target, seasonNumber: 2,
+      notify: spyNotify(), ridersInActiveStageRace: noStageRace,
+      clearEntriesOutsideSquad: async () => ({ cleared: 0 }),
+    });
+    assert.equal(res.to, target, fn);
+    assert.ok(!tables.includes("transfer_listings"), `${fn}: transfer_listings må hverken læses eller skrives`);
+  }
 });
 
 test("moveRider: senior → junior for en 17-årig sender junior-loftet", async () => {

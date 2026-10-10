@@ -266,7 +266,11 @@
     },
     "squadBelowMinimum": {
       "title": "Trup under løbs-minimum",
-      "message": "Din trup har {count} løbsklar(e) rytter(e), under {min}-rytter-minimummet der kræves for at stille et løbshold. Hent fri agenter eller byd i en auktion før dit næste løb."
+      "message": "Din trup har {count} løbsklar(e) rytter(e), under {min}-rytter-minimummet der kræves for at stille et løbshold. Hent fri agenter eller byd i en auktion før dit næste løb.",
+      "titleU23": "U23-holdet er under løbs-minimum",
+      "messageU23": "Dit U23-hold har {count, plural, one {1 rytter} other {# ryttere}}, under de {min} der skal til for at stille til start. Når en kontrakt udløber ved sæsonskiftet, forlader rytteren holdet. U23-holdet kan ikke stille til start, før du har fyldt det op.",
+      "titleJunior": "Juniorholdet er under løbs-minimum",
+      "messageJunior": "Dit juniorhold har {count, plural, one {1 rytter} other {# ryttere}}, under de {min} der skal til for at stille til start. Når en kontrakt udløber ved sæsonskiftet, forlader rytteren holdet. Juniorholdet kan ikke stille til start, før du har fyldt det op."
     },
     "seniorStartReminder": {
       "title": "Du mangler seniorryttere",

@@ -96,11 +96,11 @@ function isTimeTrialStage(events) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, timelineVersion?: number|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], timelineVersion = null } = {}) {
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], timelineVersion = null, startlist = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
-  const sorted = honestTimelineEvents(events, { timelineVersion });
+  const sorted = honestTimelineEvents(events, { timelineVersion, startlist });
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
@@ -113,7 +113,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
   // Projektionen læser den rå tidslinje (rækkefølge-følsom); kurven og
   // catch-mærket står ved tjekpunktet, hvor motoren målte hullet lukket.
-  const caughtEvent = findMorningCatch(events);
+  const caughtEvent = findMorningCatch(events, startlist);
   // Et præcist kontakt-km (exact_km) står samme sted som filmens linje.
   const catchKm = caughtEvent ? (exactEventKm(caughtEvent) ?? caughtEvent.km ?? null) : null;
   const namedGroups = sorted.some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");

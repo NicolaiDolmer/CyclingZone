@@ -13,18 +13,26 @@
 // (ingen badge for nogen rytter) i stedet for at vælte hele
 // /api/training/me-responsen for én best-effort-berigelse.
 
-import { copenhagenMidnightUTC } from "./copenhagenTime.js";
+import { copenhagenMidnightUTC, copenhagenDateString } from "./copenhagenTime.js";
+import { applyRiderEligibilityFilter, isRiderInjured, raceSquadOf } from "./riderEligibility.js";
+import { teamWillStart } from "./raceStartOutlook.js";
 
 // Ren sammenkobling — INGEN I/O. Holdets (race_id, rider_id)-entries krydses mod
 // mængden af race_id'er der har en etape planlagt i dag, og løbsnavnet slås op.
 // 1-rytter-1-løb/dag-invarianten (låst, #3113) betyder normalt højst ét match pr.
 // rytter; ved en uventet dobbelt-række vinder sidste skrivning (harmløst — rent
 // display, ingen game-state røres).
-export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map() } = {}) {
+//
+// #5945: startsByRaceId (race_id -> boolean) er holdets start-udsigt pr. løb. Et løb
+// hvor holdet IKKE stiller op (under startgulvet, kan ikke fyldes op) giver ingen
+// badge — ellers står rytteren som "løber i dag" mens motoren fjerner holdet ved
+// start. Manglende nøgle = stiller op (bit-identisk med før #5945).
+export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map(), startsByRaceId = new Map() } = {}) {
   const todaySet = new Set(todayRaceIds);
   const out = {};
   for (const entry of entryRows) {
     if (!todaySet.has(entry.race_id)) continue;
+    if (startsByRaceId.get(entry.race_id) === false) continue;
     out[entry.rider_id] = { race: raceNameById.get(entry.race_id) ?? null };
   }
   return out;
@@ -65,15 +73,83 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
     const raceIdsNeeded = [...new Set((entryRows ?? []).filter((e) => todaySet.has(e.race_id)).map((e) => e.race_id))];
     if (!raceIdsNeeded.length) return {};
 
-    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name").in("id", raceIdsNeeded);
+    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name, stages_completed, squad").in("id", raceIdsNeeded);
     if (raceErr) return {};
 
     const raceNameById = new Map((raceRows ?? []).map((r) => [r.id, r.name]));
-    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById });
+    const startsByRaceId = await loadStartsByRaceId({
+      supabase, now, teamId, entryRows: entryRows ?? [], raceRows: raceRows ?? [], todaySet,
+    });
+    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId });
   } catch {
     // best-effort: en synkron/netværks-fejl her må ALDRIG vælte hele
     // /api/training/me-responsen pga. én best-effort-berigelse (samme fail-safe-
     // kontrakt som dailyTrainingEngine.js's loadRacedRiderIdsToday).
     return {};
   }
+}
+
+// #5945: pr. løb i dag — stiller holdet op? Frie egnede ryttere = holdets løbs-berettigede
+// ryttere i LØBETS trup (raceSquadOf + applyRiderEligibilityFilter, samme kilde som
+// stage-roles-stien) der hverken er skadet eller allerede står i et ANDET løb i dag eller i
+// dette løb (samme begreber som frontendens partialSquadOutlook). Et juniorløb tæller
+// derfor aldrig senior-/u23-/akademi-/pending-ryttere som frie. Kan truppens roster ikke
+// hentes, sættes løbet ikke i mappet (badge som før #5945). Skadesopslaget er best-effort: svigter
+// det, tæller ingen som skadet, så udsigten fejler mod "stiller op" (badge som før)
+// frem for at skjule et badge pga. en fejl. Kaster aldrig.
+async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, todaySet }) {
+  const starts = new Map();
+  try {
+    const raceById = new Map(raceRows.map((r) => [r.id, r]));
+    const squads = [...new Set(raceRows.filter((r) => todaySet.has(r.id)).map((r) => raceSquadOf(r)))];
+    const rosterBySquad = new Map();
+    await Promise.all(squads.map(async (squad) => {
+      const { data, error } = await applyRiderEligibilityFilter(
+        // pagination-safe: .eq("team_id") afgraenser til ÉT holds egen trup (typisk < 30 ryttere),
+        // langt under PostgREST's 1000-raekkers-loft.
+        supabase.from("riders").select("id").eq("team_id", teamId),
+        { squad },
+      );
+      if (!error) rosterBySquad.set(squad, (data ?? []).map((r) => r.id));
+    }));
+    const conditionIds = [...new Set([...rosterBySquad.values()].flat().concat(entryRows.map((e) => e.rider_id)))];
+    let injured = new Set();
+    try {
+      const { data, error } = conditionIds.length
+        ? await supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", conditionIds)
+        : { data: [], error: null };
+      if (!error) {
+        const todayStr = copenhagenDateString(now);
+        injured = new Set((data ?? []).filter((c) => isRiderInjured(c.injured_until ?? null, todayStr)).map((c) => c.rider_id));
+      }
+    } catch {
+      // best-effort: skadesopslaget er berigelse; uden det tæller ingen som skadet.
+      injured = new Set();
+    }
+    const stagesCompletedByRace = new Map(raceRows.map((r) => [r.id, Number(r.stages_completed) || 0]));
+    const entriesByRace = new Map();
+    for (const e of entryRows) {
+      if (!todaySet.has(e.race_id)) continue;
+      if (!entriesByRace.has(e.race_id)) entriesByRace.set(e.race_id, new Set());
+      entriesByRace.get(e.race_id).add(e.rider_id);
+    }
+    for (const [raceId, entered] of entriesByRace) {
+      const roster = rosterBySquad.get(raceSquadOf(raceById.get(raceId)));
+      if (!roster) continue;
+      const boundElsewhere = new Set();
+      for (const [otherId, otherRiders] of entriesByRace) {
+        if (otherId === raceId) continue;
+        for (const id of otherRiders) boundElsewhere.add(id);
+      }
+      const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)).length;
+      const { starts: willStart } = teamWillStart({
+        entryCount: [...entered].filter((id) => !injured.has(id)).length, freeEligibleCount, stagesCompleted: stagesCompletedByRace.get(raceId) ?? 0,
+      });
+      starts.set(raceId, willStart);
+    }
+  } catch {
+    // best-effort: ren berigelse, tomt map = badge som før #5945.
+    return new Map();
+  }
+  return starts;
 }

@@ -91,3 +91,11 @@ test("#4295 dagsboardets kolonne viser samme konsekvens", () => {
   assert.match(column, /t\("selection\.willNotStartShort", willNotStart\)/);
   assert.match(column, /column\.withdrawn \? null :/, "et afmeldt hold stiller allerede ikke op — ingen dobbeltbesked");
 });
+
+// #5945: gulvet staar som en fast hjaelpelinje i panelet, ikke kun som konsekvens efter
+// et valg. Undertitlen siger "du kan gemme et delvist hold" og er ellers den eneste tekst
+// der er synlig for et urort panel.
+test("#5945 panelet viser Minimum-linjen fra den delte konstant", () => {
+  assert.match(panel, /import \{[^}]*MIN_RACE_ENTRIES[^}]*\} from "\.\.\/\.\.\/lib\/raceSelectionLogic\.js";/);
+  assert.match(panel, /t\("selection\.minHint", \{ min: MIN_RACE_ENTRIES \}\)/);
+});
