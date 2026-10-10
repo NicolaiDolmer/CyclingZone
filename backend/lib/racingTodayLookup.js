@@ -14,7 +14,7 @@
 // /api/training/me-responsen for én best-effort-berigelse.
 
 import { copenhagenMidnightUTC, copenhagenDateString } from "./copenhagenTime.js";
-import { isRiderInjured } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, isRiderInjured, raceSquadOf } from "./riderEligibility.js";
 import { teamWillStart } from "./raceStartOutlook.js";
 
 // Ren sammenkobling — INGEN I/O. Holdets (race_id, rider_id)-entries krydses mod
@@ -73,12 +73,12 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
     const raceIdsNeeded = [...new Set((entryRows ?? []).filter((e) => todaySet.has(e.race_id)).map((e) => e.race_id))];
     if (!raceIdsNeeded.length) return {};
 
-    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name, stages_completed").in("id", raceIdsNeeded);
+    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name, stages_completed, squad").in("id", raceIdsNeeded);
     if (raceErr) return {};
 
     const raceNameById = new Map((raceRows ?? []).map((r) => [r.id, r.name]));
     const startsByRaceId = await loadStartsByRaceId({
-      supabase, now, riderIds, entryRows: entryRows ?? [], raceRows: raceRows ?? [], todaySet,
+      supabase, now, teamId, entryRows: entryRows ?? [], raceRows: raceRows ?? [], todaySet,
     });
     return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId });
   } catch {
@@ -89,17 +89,35 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
   }
 }
 
-// #5945: pr. løb i dag — stiller holdet op? Frie egnede ryttere = holdets ryttere der
-// hverken er skadet eller allerede står i et ANDET løb i dag eller i dette løb (samme
-// begreber som frontendens partialSquadOutlook). Skadesopslaget er best-effort: svigter
+// #5945: pr. løb i dag — stiller holdet op? Frie egnede ryttere = holdets løbs-berettigede
+// ryttere i LØBETS trup (raceSquadOf + applyRiderEligibilityFilter, samme kilde som
+// stage-roles-stien) der hverken er skadet eller allerede står i et ANDET løb i dag eller i
+// dette løb (samme begreber som frontendens partialSquadOutlook). Et juniorløb tæller
+// derfor aldrig senior-/u23-/akademi-/pending-ryttere som frie. Kan truppens roster ikke
+// hentes, sættes løbet ikke i mappet (badge som før #5945). Skadesopslaget er best-effort: svigter
 // det, tæller ingen som skadet, så udsigten fejler mod "stiller op" (badge som før)
 // frem for at skjule et badge pga. en fejl. Kaster aldrig.
-async function loadStartsByRaceId({ supabase, now, riderIds, entryRows, raceRows, todaySet }) {
+async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, todaySet }) {
   const starts = new Map();
   try {
+    const raceById = new Map(raceRows.map((r) => [r.id, r]));
+    const squads = [...new Set(raceRows.filter((r) => todaySet.has(r.id)).map((r) => raceSquadOf(r)))];
+    const rosterBySquad = new Map();
+    await Promise.all(squads.map(async (squad) => {
+      const { data, error } = await applyRiderEligibilityFilter(
+        // pagination-safe: .eq("team_id") afgraenser til ÉT holds egen trup (typisk < 30 ryttere),
+        // langt under PostgREST's 1000-raekkers-loft.
+        supabase.from("riders").select("id").eq("team_id", teamId),
+        { squad },
+      );
+      if (!error) rosterBySquad.set(squad, (data ?? []).map((r) => r.id));
+    }));
+    const conditionIds = [...new Set([...rosterBySquad.values()].flat().concat(entryRows.map((e) => e.rider_id)))];
     let injured = new Set();
     try {
-      const { data, error } = await supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", riderIds);
+      const { data, error } = conditionIds.length
+        ? await supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", conditionIds)
+        : { data: [], error: null };
       if (!error) {
         const todayStr = copenhagenDateString(now);
         injured = new Set((data ?? []).filter((c) => isRiderInjured(c.injured_until ?? null, todayStr)).map((c) => c.rider_id));
@@ -116,12 +134,14 @@ async function loadStartsByRaceId({ supabase, now, riderIds, entryRows, raceRows
       entriesByRace.get(e.race_id).add(e.rider_id);
     }
     for (const [raceId, entered] of entriesByRace) {
+      const roster = rosterBySquad.get(raceSquadOf(raceById.get(raceId)));
+      if (!roster) continue;
       const boundElsewhere = new Set();
       for (const [otherId, otherRiders] of entriesByRace) {
         if (otherId === raceId) continue;
         for (const id of otherRiders) boundElsewhere.add(id);
       }
-      const freeEligibleCount = riderIds.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)).length;
+      const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)).length;
       const { starts: willStart } = teamWillStart({
         entryCount: [...entered].filter((id) => !injured.has(id)).length, freeEligibleCount, stagesCompleted: stagesCompletedByRace.get(raceId) ?? 0,
       });

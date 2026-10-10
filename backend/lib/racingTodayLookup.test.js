@@ -50,9 +50,23 @@ test("computeRacingTodayByRider: 1-rytter-1-løb-invarianten betyder normalt ét
 const SIX_IDS = [1, 2, 3, 4, 5, 6].map((n) => `rider-${n}`);
 const SIX_ENTRIES = SIX_IDS.map((rider_id) => ({ race_id: "race-a", rider_id }));
 
-function fakeSupabase({ entries, sched, races, entryError, schedError, raceError, conditions, conditionError } = {}) {
+// riders: holdets ryttere {id, squad}; roster-querien (applyRiderEligibilityFilter) afgraenses
+// paa .eq("squad", <trup>) som i prod. Default = 6 senior-ryttere.
+function fakeSupabase({ entries, sched, races, entryError, schedError, raceError, conditions, conditionError, riders } = {}) {
+  const roster = riders ?? SIX_IDS.map((id) => ({ id, squad: "senior" }));
   return {
     from(table) {
+      if (table === "riders") {
+        const state = { squad: null };
+        const api = {
+          select: () => api,
+          eq(col, val) { if (col === "squad") state.squad = val; return api; },
+          or: () => api,
+          is: () => api,
+          then(resolve) { return Promise.resolve({ data: roster.filter((r) => r.squad === state.squad), error: null }).then(resolve); },
+        };
+        return api;
+      }
       if (table === "rider_condition") {
         return { select: () => ({ in: async () => ({ data: conditions ?? [], error: conditionError ?? null }) }) };
       }
@@ -150,6 +164,7 @@ test("loadRacingTodayByRider: hold med 3 udtagne og ingen frie ryttere faar inte
     entries: SIX_ENTRIES.slice(0, 3),
     sched: [{ race_id: "race-a" }],
     races: [{ id: "race-a", name: "Tour de Zone", stages_completed: 0 }],
+    riders: SIX_IDS.slice(0, 3).map((id) => ({ id, squad: "senior" })),
   });
   assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS.slice(0, 3), new Date()), {});
 });
@@ -162,6 +177,30 @@ test("loadRacingTodayByRider: 3 udtagne + 3 frie ryttere naar gulvet (assistente
   });
   const out = await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date());
   assert.deepEqual(Object.keys(out).sort(), SIX_IDS.slice(0, 3));
+});
+
+test("loadRacingTodayByRider: juniorloeb taeller kun junior-truppen som frie, ikke senior-ryttere (#5945)", async () => {
+  const juniors = ["j-1", "j-2", "j-3"];
+  const seniors = ["s-1", "s-2", "s-3", "s-4"];
+  const supabase = fakeSupabase({
+    entries: juniors.map((rider_id) => ({ race_id: "race-j", rider_id })),
+    sched: [{ race_id: "race-j" }],
+    races: [{ id: "race-j", name: "Junior Cup", stages_completed: 0, squad: "junior" }],
+    riders: [...juniors, ...seniors].map((id) => ({ id, squad: id.startsWith("j") ? "junior" : "senior" })),
+  });
+  assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", [...juniors, ...seniors], new Date()), {});
+});
+
+test("loadRacingTodayByRider: juniorloeb med nok junior-ryttere i truppen beholder badget (#5945)", async () => {
+  const juniors = ["j-1", "j-2", "j-3", "j-4", "j-5", "j-6"];
+  const supabase = fakeSupabase({
+    entries: juniors.slice(0, 3).map((rider_id) => ({ race_id: "race-j", rider_id })),
+    sched: [{ race_id: "race-j" }],
+    races: [{ id: "race-j", name: "Junior Cup", stages_completed: 0, squad: "junior" }],
+    riders: juniors.map((id) => ({ id, squad: "junior" })),
+  });
+  const out = await loadRacingTodayByRider(supabase, "team-1", juniors, new Date());
+  assert.deepEqual(Object.keys(out).sort(), juniors.slice(0, 3));
 });
 
 test("loadRacingTodayByRider: skadede frie ryttere taeller ikke med til gulvet", async () => {
