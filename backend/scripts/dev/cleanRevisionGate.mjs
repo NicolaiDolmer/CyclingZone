@@ -314,11 +314,19 @@ export function step2({ deps }) {
   return runTestFiles({ files: [...TRACK_TEST_FILES], deps, label: "spor-test" });
 }
 
+/**
+ * Nat 11/10: GT-vindermarginen måles på gatens egne seeds (s1..sN), ens for revision
+ * og baseline. Med 5 seeds (15 kørsler) svingede medianen over loftet alene af støj.
+ */
+export function gtSeedList(n) {
+  return Array.from({ length: n }, (_, i) => `s${i + 1}`).join(",");
+}
+
 export function step3({ opts, deps, outBase, revisionKnown }) {
   if (!revisionKnown) return { status: "FAIL", reasons: [`revisionen ${opts.revision} findes ikke i RACE_RULES_REVISIONS; ankre kan ikke maales (ikke maalt)`] };
   const run = (rev, tag) => runJsonTool({
     script: FLIP_SCRIPT,
-    args: [`--rules=${rev}`, "--skip-tests", `--json=${outBase}/anchors-${tag}.json`, `--private-out=${outBase}/anchors-${tag}.md`],
+    args: [`--rules=${rev}`, "--skip-tests", `--gt-seeds=${gtSeedList(opts.seeds)}`, `--json=${outBase}/anchors-${tag}.json`, `--private-out=${outBase}/anchors-${tag}.md`],
     jsonPath: () => (deps.exists(deps.abs(`${outBase}/anchors-${tag}.json`)) ? deps.abs(`${outBase}/anchors-${tag}.json`) : null),
     deps,
     label: `ankre ${rev}`,

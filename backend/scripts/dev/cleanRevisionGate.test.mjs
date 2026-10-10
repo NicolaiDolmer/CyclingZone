@@ -5,6 +5,7 @@ import {
   TRACK_TEST_FILES,
   assembleVerdict,
   exitCodeFor,
+  gtSeedList,
   judgeAnchorsJson,
   judgeDescentReport,
   judgeTourJson,
@@ -13,6 +14,7 @@ import {
   parseArgs,
   renderMarkdown,
   runGate,
+  step3,
 } from "./cleanRevisionGate.mjs";
 
 const pass = { status: "PASS", reasons: [] };
@@ -305,4 +307,15 @@ test("main: skriver rapport og returnerer exit 1 ved RED (injicerede afhaengighe
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("nat 11/10: ankre-trinnet maaler GT-marginen paa gatens egne seeds (revision og baseline ens)", () => {
+  assert.equal(gtSeedList(3), "s1,s2,s3");
+  const { deps, calls } = fakeDeps({ known: true, nodeStatus: 0 });
+  deps.exists = (p) => String(p).replaceAll("\\", "/").endsWith("scripts/v4FlipReadiness.mjs") || String(p).endsWith("anchors-revision.json") || String(p).endsWith("anchors-baseline.json");
+  deps.readJson = () => ({ anchors: [] });
+  step3({ opts: parseArgs(["--seeds=12"]), deps, outBase: "o", revisionKnown: true });
+  const flipCalls = calls.filter((args) => args.some((a) => String(a).includes("v4FlipReadiness")));
+  assert.equal(flipCalls.length, 2, "revision + baseline");
+  for (const args of flipCalls) assert.ok(args.includes(`--gt-seeds=${gtSeedList(12)}`), args.join(" "));
 });
