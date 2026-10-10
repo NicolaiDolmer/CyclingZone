@@ -429,7 +429,7 @@ export function renderReport(result) {
   lines.push(`# Race-day load-test #5904: ${result.status}`);
   lines.push('');
   lines.push(`- **loadTestPassed: ${v.loadTestPassed}**`);
-  lines.push(`- Startet (væg-ur): ${new Date(result.startedAtMs).toISOString()}`);
+  lines.push(`- Startet (væg-ur): ${new Date(result.startedAtMs).toISOString()} · kode: \`${result.codeSha ?? 'ukendt'}\``);
   lines.push(`- Pinned ur: ${result.options?.clockIso ?? 'n/a'} til ${result.options?.untilIso ?? 'n/a'} · sæson ${result.options?.season ?? 'n/a'}`);
   lines.push(`- Staging-ref: ${STAGING_REF} · minimum resultatrækker: ${result.options?.minResults ?? 'n/a'} · faktiske: ${result.prerequisites?.resultRows ?? 'n/a'}`);
   lines.push(`- Isolation: ${result.isolation?.status ?? 'ikke kørt'} · prerequisites: ${result.prerequisites?.status ?? 'ikke kørt'}`);
@@ -546,6 +546,8 @@ export async function runRaceDaySim(options, deps) {
       untilIso: Number.isFinite(options.untilMs) ? new Date(options.untilMs).toISOString() : null,
       season: options.season, minResults: options.minResults,
     },
+    // Gaten gælder den kode der blev målt: rapporten bærer commit'en.
+    codeSha: deps.gitSha?.() ?? null,
     notCovered: NOT_COVERED,
   };
   const finish = (result) => {
@@ -1068,6 +1070,11 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
     createLive: (args) => createLiveRuntime(args),
     writeReport: (dir, name, md) => { mkdirSync(dir, { recursive: true }); const p = join(dir, name); writeFileSync(p, md); return p; },
     sleep: (ms) => new Promise(r => setTimeout(r, ms)),
+    gitSha: () => {
+      const r = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8', windowsHide: true });
+      const sha = String(r.stdout ?? '').trim();
+      return r.status === 0 && /^[0-9a-f]{40}$/.test(sha) ? sha : null;
+    },
   });
   process.stdout.write(`${JSON.stringify({ status: result.status, loadTestPassed: result.verdict.loadTestPassed, blockers: result.verdict.blockers, report: result.reportPath })}\n`);
   return result.verdict.loadTestPassed ? 0 : 1;
