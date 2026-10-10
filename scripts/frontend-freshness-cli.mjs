@@ -9,12 +9,13 @@ const api = path => JSON.parse(execFileSync('gh', ['api', path], { encoding: 'ut
 const result = await probeFrontendFreshness({
   readMain: () => api(`repos/${REPO}/commits/main`).sha,
   readVersion: async () => {
-    const response = await fetch('https://cycling-zone-git-main-nicolai-dolmers-projects.vercel.app/version.json', {
+    const response = await fetch('https://cyclingzone.org/version.json', {
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) throw new Error('Version unavailable');
     return response.json();
   },
+  refresh: () => execFileSync('git', ['-C', root, 'fetch', '--quiet', 'origin', 'main'], { encoding: 'utf8', timeout: 60000, stdio: ['ignore', 'pipe', 'pipe'] }),
   git: args => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'pipe'] }),
   observe: sha => readProductionBuildState(sha, api),
 });

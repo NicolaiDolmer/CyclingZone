@@ -175,8 +175,9 @@ jobs:
         with:
           ref: ${{ steps.pr.outputs.sha }}
           persist-credentials: false
-          # Keep full history: frontend-deployment-needed.mjs and the empty-
-          # commit check compare against "$SHA^1" (#6318).
+          # Keep full history: frontend-deployment-needed.mjs (diff against the
+          # first parent) and the --impact diff in cron-deploy-verification.mjs
+          # both need "$SHA^1" present locally (#6318).
           fetch-depth: 0
 
       - name: Determine required deployments (path-based)
@@ -184,7 +185,8 @@ jobs:
         # Vercel: the canonical classifier covers frontend, backend/lib,
         # root/shared and unknown inputs; only positively independent changes
         # omit Vercel. Full history (target checkout fetch-depth 0) avoids
-        # shallow-parent truncation.
+        # shallow-parent truncation. An adapter crash must not abort the step
+        # (set -e): an empty REQUIREMENT falls through to NEED_VERCEL=true.
         # Railway + cron impact (#6318): complete, SHA-matched diff including
         # rename origins. Unknown evidence fails closed; it must never produce
         # an empty cron impact. A verified empty commit has no impact.
@@ -194,7 +196,7 @@ jobs:
         run: |
           node scripts/ci/cron-deploy-verification.mjs --impact
           # Use the canonical conservative frontend-input rule.
-          REQUIREMENT=$(node scripts/frontend-deployment-needed.mjs "$SHA")
+          REQUIREMENT=$(node scripts/frontend-deployment-needed.mjs "$SHA" || true)
           NEED_VERCEL=$(jq -r 'if (.required | type) == "boolean" then (.required | tostring) else error("Invalid requirement") end' <<<"$REQUIREMENT" 2>/dev/null || true)
           [[ "$NEED_VERCEL" == "false" ]] || NEED_VERCEL=true
           echo "Changed files touch: frontend=$NEED_VERCEL"
@@ -214,6 +216,10 @@ jobs:
           # API'et ville laese som "ingen deployments" i stedet for som en fejl.
           set -o pipefail
           DEADLINE=$(($(date +%s) + 2400))  # pending is not a deployment failure
+          # #6370: only the frontend production project counts as Vercel
+          # evidence (same value as ENVIRONMENT in scripts/frontend-freshness.mjs).
+          # cycling-zone-marketing also posts vercel[bot] deployments for the SHA.
+          VERCEL_ENV='Production – cycling-zone'
           CRON_SINCE=""
           while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
@@ -227,6 +233,11 @@ jobs:
 
             for ID in $(echo "$DEPLOYMENTS" | jq -r '.[].id'); do
               CREATOR=$(echo "$DEPLOYMENTS" | jq -r ".[] | select(.id==$ID) | .creator.login")
+              DEPLOY_ENV=$(echo "$DEPLOYMENTS" | jq -r ".[] | select(.id==$ID) | .environment")
+              if [[ "$CREATOR" == vercel* && "$DEPLOY_ENV" != "$VERCEL_ENV" ]]; then
+                echo "  deployment $ID by $CREATOR ($DEPLOY_ENV) ignored: not $VERCEL_ENV"
+                continue
+              fi
               STATE=$(gh api "repos/${{ github.repository }}/deployments/$ID/statuses" --jq '.[0].state // "pending"')
               echo "  deployment $ID by $CREATOR → $STATE"
               if [[ "$CREATOR" == vercel* && "$VERCEL_SEEN" == "false" ]]; then
