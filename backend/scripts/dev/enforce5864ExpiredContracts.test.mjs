@@ -354,7 +354,7 @@ test("makeReadOnlyClient blocks every write method and rpc, lets reads through",
     assert.throws(() => ro.from("riders")[m]({}), /read-only client/);
   }
   assert.throws(() => ro.rpc("anything"), /read-only client/);
-  const { data } = await ro.from("riders").select("id").eq("id", "r1");
+  const { data } = await ro.from("riders").select("id").eq("id", "r1"); // pagination-safe: test fake, one row by primary key
   assert.deepEqual(data, [{ id: "r1" }]);
   assert.deepEqual(inner.writes, [], "nothing reached the underlying client");
 });
