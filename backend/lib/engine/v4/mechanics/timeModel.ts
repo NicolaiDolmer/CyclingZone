@@ -135,6 +135,24 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // stigning til maal, er "nedkoersel mod maal" (loftet gaelder fra toppen til
   // stregen). 0 = kun naar nedkoerslen er etapens sidste segment (som foer).
   finishDescentMaxRunInKm: 0,
+  // ── Ren revision spor 1, D1 (KUN official_times_v3): varians paa den afgoerende
+  // stigning foer en nedkoerselsfinale (ejer 10/10: den bedste klatrer vinder
+  // ikke altid, og nr. 10's hul varierer). Dagsformen flytter alles klatring
+  // paa dagen (vaegt pr. enhed dagsform, 0 = ren evne som foer). Mellem rytterne
+  // inden for angrebsvinduet (s) af den forreste vejer dagsformen tungere
+  // (angrebet). 0 = ingen angrebs-varians (som foer). Se
+  // climbSelection.decidingClimbSelectionsOnTheDay.
+  descentFinishClimbDayformWeight: 0,
+  descentFinishClimbAttackWindowSeconds: 0,
+  descentFinishClimbAttackDayformWeight: 0,
+  // Evne-vaegtens skala paa samme stigning (1 = profilens egen vaegt, som foer).
+  descentFinishClimbAbilityWeightScale: 1,
+
+  // ── #6428 (KUN official_times_v3): lad-gaa-loftet i et endagsloeb ──────────
+  // Det stoerste forspring (s) feltet giver morgenudbruddet i et endagsloeb pr.
+  // profil (alle hold vil vinde; ingen klassementsdag at spare). Udeladt = intet
+  // ekstra loft (alle aeldre revisioner, og etapeloeb).
+  letGoOneDayMaxGapSecondsByProfile: {} as Readonly<Partial<Record<ProfileType, number>>>,
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
@@ -199,6 +217,18 @@ export const SHARED_TIME_MODEL_V3_TUNING: TimeModelTuning = freeze({
   ...SHARED_TIME_MODEL_V2_TUNING,
   descentFinishClimbRaceProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
   finishDescentMaxRunInKm: 5,
+  // Ren revision spor 1, D1 (ejer 10/10): kalibreret privat paa Giro e7, 12 seeds
+  // (balance-internals/clean-revision/d1/).
+  descentFinishClimbDayformWeight: 0.15,
+  descentFinishClimbAttackWindowSeconds: 40,
+  descentFinishClimbAttackDayformWeight: 1.4,
+  descentFinishClimbAbilityWeightScale: 1.3,
+  // #6428: kalibreret privat (balance-internals/clean-revision/6428/) mod
+  // ankeret headToHeadAnchors.breakawayWinMarginOneDaySeconds.
+  letGoOneDayMaxGapSecondsByProfile: {
+    hilly: 240,
+    rolling: 240,
+  },
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
@@ -229,6 +259,25 @@ export function timeModelTuningFor(ctx: { ordersGcV3?: true; sharedGroupTime?: u
     return (ctx.route ? SHARED_V3_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V3_TUNING;
   }
   return (ctx.route ? SHARED_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V2_TUNING;
+}
+
+const DECIDING_CLIMB_TUNING = new WeakMap<TimeModelTuning, TimeModelTuning>();
+
+/**
+ * Ren revision spor 1, D1 (KUN official_times_v3): tuningen paa den afgoerende
+ * stigning foer en nedkoerselsfinale, med evne-vaegten ganget med
+ * `descentFinishClimbAbilityWeightScale`. Samme objekt naar skalaen er 1 (alle
+ * aeldre tidsmodeller), saa intet aendres der.
+ */
+export function descentFinishDecidingClimbTuning(t: TimeModelTuning): TimeModelTuning {
+  const scale = t.descentFinishClimbAbilityWeightScale;
+  if (!(scale > 0) || scale === 1) return t;
+  let out = DECIDING_CLIMB_TUNING.get(t);
+  if (!out) {
+    out = freeze({ ...t, climbGapAbilityWeight: t.climbGapAbilityWeight * scale });
+    DECIDING_CLIMB_TUNING.set(t, out);
+  }
+  return out;
 }
 
 /**

@@ -182,6 +182,33 @@ export const BREAKAWAY_SIZE_V3_TUNING = Object.freeze({
 
 export type BreakawaySizeProfile = { maxSize: number; room: number; successBonus: number; roomCrowdWeight: number };
 
+/**
+ * #6201 (KUN official_times_v3): ekstra succes-tillaeg oveni profilens trin paa
+ * bjerg og hoejfjeld, saa trappens bund holder i felter med mest menneskehold
+ * (forsoegene kommer kun fra hunters, frie roller og ordrer, ejer 10/10 valg B).
+ * Kalibreret privat (balance-internals/clean-revision/6201/).
+ */
+export const BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA = Object.freeze({
+  successBonusByProfile: Object.freeze({ mountain: 0.15, high_mountain: 0.15 }) as Readonly<Partial<Record<string, number>>>,
+  /**
+   * #6431 (KUN official_times_v3): flad faar sit eget trin (trappen: typisk 3-6,
+   * loft 8). Under orders_gc_v3/official_times_v2 har flad intet trin, og paa
+   * Giro-feltet kom hvert tredje flade morgenudbrud kun afsted med 1 mand, selv
+   * med 6-9 forsoeg: flaskehalsen var succesraten, ikke antallet af forsoeg.
+   * Loftet er uaendret (8). Kalibreret privat (balance-internals/clean-revision/6431/).
+   */
+  flat: Object.freeze({ maxSize: 8, room: 6, successBonus: 0.1 }),
+});
+
+/**
+ * #6431 (KUN official_times_v3): profilens trin under den rene revision. Som
+ * breakawaySizeProfileV3, men flad har sit eget trin (BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA.flat).
+ */
+export function breakawaySizeProfileOfficialV3(profileType: string | undefined): BreakawaySizeProfile | null {
+  if (profileType === "flat") return { ...BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA.flat, roomCrowdWeight: BREAKAWAY_SIZE_V3_TUNING.roomCrowdWeight };
+  return breakawaySizeProfileV3(profileType);
+}
+
 /** #6201: profilens trin, eller null (flad og alt andet: uaendret dannelse, loft 8). */
 export function breakawaySizeProfileV3(profileType: string | undefined): BreakawaySizeProfile | null {
   const p = profileType ? BREAKAWAY_SIZE_V3_TUNING.byProfile[profileType] : undefined;
@@ -295,6 +322,12 @@ export function resolveMorningBreakFormation(input: {
    * = orders_gc_v1/v2-dannelsen, bit-identisk.
    */
   sizeProfile?: BreakawaySizeProfile;
+  /**
+   * #6201 R3 (KUN official_times_v3): et farligt forsoeg (dangerTeams) taeller
+   * ikke med i traengslen (crowd/room) for de andre. Den haarde modstand mod
+   * netop ham er uaendret. Udeladt = alle forsoeg taeller (bit-identisk).
+   */
+  dangerousOutsideRoom?: boolean;
 }): MorningBreakFormation {
   const t = input.tuning ?? MORNING_BREAK_FORMATION_TUNING;
   const riders = [...input.riders].sort((a, b) => a.rider_id.localeCompare(b.rider_id));
@@ -394,7 +427,9 @@ export function resolveMorningBreakFormation(input: {
   // 4. Hvem kommer afsted.
   const maxSize = Math.max(0, Math.floor(input.maxSize));
   const fieldStrength = riders.reduce((s, r) => s + clamp(r.strength, 0, 1), 0) / riders.length;
-  const crowd = maxSize > 0 ? Math.max(0, attempted.length - maxSize) / maxSize : 0;
+  // #6201 R3 (KUN official_times_v3): farlige forsoeg fylder ikke i traengslen.
+  const crowdCount = input.dangerousOutsideRoom ? attempted.filter((r) => !dangerTo.has(r.rider_id)).length : attempted.length;
+  const crowd = maxSize > 0 ? Math.max(0, crowdCount - maxSize) / maxSize : 0;
   const [pLo, pHi] = t.successBounds;
   const successes: Array<{ riderId: string; margin: number; ordered: boolean }> = [];
   const orderedBonus = Math.max(0, Number.isFinite(t.orderedSuccessBonus) ? t.orderedSuccessBonus : 0);
@@ -403,7 +438,7 @@ export function resolveMorningBreakFormation(input: {
   // en travl morgen aldrig kollapser til 0-1 mand (#5955-regressionen).
   const size = input.sizeProfile;
   const profileShift = size ? size.successBonus : 0;
-  const crowdScale = size && attempted.length > size.room ? Math.pow(size.room / attempted.length, size.roomCrowdWeight) : 1;
+  const crowdScale = size && crowdCount > size.room ? Math.pow(size.room / crowdCount, size.roomCrowdWeight) : 1;
   for (const rider of attempted) {
     const ordered = orderedIds.has(rider.rider_id);
     const raw = profileShift + t.successBase

@@ -82,8 +82,11 @@ import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNIN
 import { helperCostMultiplier } from "./teamPlay.ts";
 import {
   applySmallBreakPullCost,
+  BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA,
   breakawayMaxSizeV3,
+  breakawaySizeProfileOfficialV3,
   breakawaySizeProfileV3,
+  type BreakawaySizeProfile,
   DANGEROUS_ATTEMPT_TUNING,
   effectiveTryBreakByRider,
   resolveMorningBreakFormation,
@@ -342,6 +345,27 @@ function attemptFormation(
 }
 
 /**
+ * #6201 (KUN official_times_v3): profilens trin plus revisionens ekstra
+ * succes-tillaeg (BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA). Samme objekt ellers.
+ */
+/**
+ * #6201/#6431: dannelsens trin for etapen. orders_gc_v3/official_times_v2:
+ * breakawaySizeProfileV3 (flad: intet). official_times_v3: også flad
+ * (breakawaySizeProfileOfficialV3), plus revisionens ekstra tillaeg.
+ */
+function sizeProfileFor(ctx: BreakawayHookContext): BreakawaySizeProfile | null {
+  if (ctx.ordersGcV3 !== true) return null;
+  const v3 = ctx.sharedGroupTime?.timeModelGeneration === 3;
+  const base = v3 ? breakawaySizeProfileOfficialV3(ctx.route.profile_type) : breakawaySizeProfileV3(ctx.route.profile_type);
+  return base ? officialTimesV3SizeProfile(base, ctx) : null;
+}
+
+function officialTimesV3SizeProfile(size: BreakawaySizeProfile, ctx: BreakawayHookContext): BreakawaySizeProfile {
+  const extra = ctx.sharedGroupTime?.timeModelGeneration === 3 ? BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA.successBonusByProfile[ctx.route.profile_type] : undefined;
+  return extra ? { ...size, successBonus: size.successBonus + extra } : size;
+}
+
+/**
  * #5955 (orders_gc_v1): ordrestyret, omstridt morgenudbrud. Samme kildegruppe
  * og samme udbrudsgruppe-form som legacy (`attemptFormation`), men hvem der
  * kommer afsted afgoeres af mechanics/breakawayPermission.ts: tilladelse ->
@@ -397,7 +421,9 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     ...(dangerTeams ? { dangerTeams } : {}),
     // #5578 robust (KUN official_times_v2): klassementets forreste moeder den haardeste modstand.
     ...(dangerTeams && gcContext ? rankedFormationPressure(gcContext, timeModelTuningFor(ctx).gcDanger) : {}),
-    ...(ctx.ordersGcV3 === true && breakawaySizeProfileV3(ctx.route.profile_type) ? { sizeProfile: breakawaySizeProfileV3(ctx.route.profile_type)! } : {}), // #6201
+    ...(sizeProfileFor(ctx) ? { sizeProfile: sizeProfileFor(ctx)! } : {}), // #6201/#6431
+    // #6201 R3 (KUN official_times_v3): et farligt forsoeg fylder ikke i traengslen.
+    ...(ctx.sharedGroupTime?.timeModelGeneration === 3 ? { dangerousOutsideRoom: true } : {}),
   });
   if (formation.attempted.length === 0) return { state, events };
 
@@ -1641,6 +1667,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       ? Math.max(0, ctx.segment.to_km - Math.max(ctx.segment.from_km, formationKm))
       : segmentLengthKm;
     let maxGapSeconds = 0;
+    let oneDayScale = 1; // #6428 (KUN official_times_v3), se nedenfor
     // #5578: official_times_v2's kalibrerede lad-gaa-knapper (timeModel.ts); neutrale ellers.
     if (breakaway.origin === "breakaway" && isLetGoChaseGroup(chaseGroup.rider_ids.length, letGoTuning.letGoMinChaseRiders ?? undefined)) {
       const finaleFactor = ctx.route.finale_type ? letGoTuning.letGoFinaleFactorByFinale[ctx.route.finale_type] : undefined;
@@ -1666,6 +1693,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         const tolerated = [...letGoBrakingTeams(gcSetup.decisions.filter(inBreak), chaseGroup.id, ordersGcV3).values()];
         if (tolerated.length > 0) maxGapSeconds = Math.min(maxGapSeconds, Math.max(INITIAL_GAP_SECONDS, Math.min(...tolerated)));
       }
+      // #6428 (KUN official_times_v3; tom tabel i alle aeldre tidsmodeller): i et
+      // endagsloeb vil alle hold vinde loebet, saa feltet kontrollerer udbruddet
+      // paa hoejst endags-loftet (ogsaa naar ingen har en jagtordre). Hele
+      // forloebet skaleres ned (vaekst og jagt), saa udfaldet (holder udbruddet
+      // hjem eller ej) er det samme; kun forspringet er realistisk.
+      const oneDayCap = gcContext?.status === "one_day" ? letGoTuning.letGoOneDayMaxGapSecondsByProfile[ctx.route.profile_type] : undefined;
+      if (oneDayCap !== undefined && maxGapSeconds > oneDayCap) oneDayScale = Math.max(INITIAL_GAP_SECONDS, oneDayCap) / maxGapSeconds;
       ({ letGoKm, chaseKm } = letGoSplitKm({
         formationKm,
         maxGapSeconds,
@@ -1723,9 +1757,10 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     );
     // #6084 (KUN orders_gc_v2 paa bjerg): kontrolleret jagt foer finalestigningen (mountainSelection.ts).
     // En GC-reaktion (et farligt udbrud) jager uden daempning.
-    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalChaseClosingScale, mountainSelectionKnobsFor(ctx.route.profile_type).finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1);
+    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalChaseClosingScale, mountainSelectionKnobsFor(ctx.route.profile_type).finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1) * oneDayScale;
     if (smallPace) smallBreakWork.push({ riderIds: smallBreakPullers, pace: smallPace, km: letGoKm + chaseKm });
-    const letGoGrowth = braked ? braked.growthSeconds : letGoKm * letGoRate;
+    const letGoGrowth = (braked ? braked.growthSeconds : letGoKm * letGoRate) * oneDayScale;
+    const letGoCeiling = maxGapSeconds * oneDayScale;
 
     // Jagten maales paa SEPARATIONEN mellem de to grupper, ikke paa jagt-
     // gruppens absolutte gap (#4615). Begge felter er "sekunder bag fronten",
@@ -1742,7 +1777,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const separation = chaseGroup.gap_seconds - breakaway.gap_seconds;
     // Lad gaa: hullet vokser mod loftet, men et hul der allerede er over
     // loftet (fx et nedkoerselsforspring) krympes aldrig af fasen selv.
-    const grown = separation >= 0 && separation < maxGapSeconds ? Math.min(maxGapSeconds, separation + letGoGrowth) : separation;
+    const grown = separation >= 0 && separation < letGoCeiling ? Math.min(letGoCeiling, separation + letGoGrowth) : separation;
     const beforeFloor = Math.max(0, grown - netClosingSeconds);
     // Jagt-gulvet: dagens maal er én lodtraekning pr. ETAPE (rngForStage, ikke
     // den segment-noeglede stream): "kommer sprinterholdene for sent i dag" er

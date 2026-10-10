@@ -123,12 +123,14 @@ export const TOUR_BENCHMARKS = Object.freeze({
       itt_hilly: { min: ANCHOR_BANDS.ittTop10SpreadPer40KmSeconds.min, max: 240, status: "forslag", source: `kuperet enkeltstart: lidt stoerre spredning end flad (${PCS_NOTE})` },
     },
   },
+  // #6201 R1 (ejer 5/10, udbrudstrappen): det typiske udbrud pr. profil. Doemmes
+  // paa medianen; andelen paa 0-2 mand og antal forsoeg pr. etape staar ved siden af.
   breakawaySize: {
     unit: "ryttere",
     byClass: {
-      flat: { min: 1, max: 6, status: "forslag", source: `flad etape: 2-5 mands udbrud er normen (${PCS_NOTE})` },
-      hilly: { min: 3, max: 15, status: "forslag", source: `kuperet/rullende: 4-15 ryttere (${PCS_NOTE})` },
-      mountain: { min: 5, max: 30, status: "forslag", source: `bjerg: store udbrud paa 10-30 ryttere er almindelige (${PCS_NOTE})` },
+      flat: { min: 3, max: 6, status: "ejer", source: "#6201 ejer 5/10 (udbrudstrappen): flad typisk 3-6" },
+      hilly: { min: 5, max: 9, status: "ejer", source: "#6201 ejer 5/10 (udbrudstrappen): kuperet og rullende typisk 5-9" },
+      mountain: { min: 6, max: 12, status: "ejer", source: "#6201 ejer 5/10 (udbrudstrappen): bjerg og hoejfjeld typisk 6-12" },
     },
   },
   // Noeglen er profile_type (se breakawayWinShareBands), ikke benchmark-klassen.
@@ -221,6 +223,12 @@ export function breakawaySets(out) {
   const formed = new Set(events.filter((e) => e.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
   const caught = new Set(events.filter((e) => e.type === "breakaway_caught").flatMap((e) => e.params?.rider_ids ?? []));
   return { formed, caught };
+}
+
+/** #6201 R1: antal ryttere der forsoegte morgenudbruddet (breakaway_attempt). */
+export function breakawayAttempts(out) {
+  const events = out?.timeline?.events ?? [];
+  return new Set(events.filter((e) => e.type === "breakaway_attempt").flatMap((e) => e.params?.rider_ids ?? [])).size;
 }
 
 /**
@@ -544,6 +552,8 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     gapTo10: g10, gapTo30: gapAtRank(out, 30),
     ittGapTo10Per40Km: tt && km && g10 !== null ? (g10 / km) * 40 : null,
     breakawaySize: tt ? null : formed.size,
+    // #6201 R1: forsoeg pr. etape (breakaway_attempt) - maalt, ikke doemt.
+    breakawayAttempts: tt ? null : breakawayAttempts(out),
     breakawayWon: tt ? null : bw.won,
     breakawayAhead: tt ? null : breakawayAheadOfFavourites(out, roleByRider),
     breakawayWinMargin: bw.margin,
@@ -672,18 +682,25 @@ export function summarizeTour(perSeed, stages, revision = null) {
   const byType = {};
   for (const r of stageRows) {
     if (TIME_TRIAL_PROFILES.has(r.profile_type)) continue;
-    const c = (byType[r.profile_type] ??= { cls: r.cls, stages: 0, wins: 0, ahead: 0, trials: 0, sizes: [] });
+    const c = (byType[r.profile_type] ??= { cls: r.cls, stages: 0, wins: 0, ahead: 0, trials: 0, sizes: [], rawSizes: [], attempts: [] });
     c.stages += 1;
     c.wins += r.breakawayWins;
     c.ahead += r.breakawayAhead ?? 0;
     c.trials += r.seeds;
     if (r.breakawaySize !== null) c.sizes.push(r.breakawaySize);
+    // #6201 R1: hver (etape, seed) for sig: andelen paa 0-2 mand og forsoegene.
+    for (const m of perSeed.map((s) => s.rows.find((x) => x.stage === r.stage)).filter(Boolean)) {
+      if (m.breakawaySize !== null && m.breakawaySize !== undefined) c.rawSizes.push(m.breakawaySize);
+      if (m.breakawayAttempts !== null && m.breakawayAttempts !== undefined) c.attempts.push(m.breakawayAttempts);
+    }
   }
   const classRows = Object.entries(byType).map(([profileType, c]) => {
     const share = c.trials ? c.wins / c.trials : null;
     const sizeMedian = median(c.sizes);
     return {
       profile_type: profileType, cls: c.cls, stages: c.stages, trials: c.trials, breakawayWinShare: share, breakawaySizeMedian: sizeMedian,
+      breakawaySmallShare: c.rawSizes.length ? c.rawSizes.filter((n) => n <= 2).length / c.rawSizes.length : null,
+      breakawayAttemptsMedian: median(c.attempts),
       breakawayAheadShare: c.trials ? c.ahead / c.trials : null,
       legacyAheadShare: null,
       verdicts: {
@@ -815,8 +832,8 @@ export function renderTourMarkdown({ raceLabel, runs, generatedAt }) {
     for (const r of s.stages) {
       lines.push(`| ${r.stage} | ${r.profile_type}/${r.finale_type ?? "-"} | ${cell(fmtS(r.gapTo10), r.verdicts.gapTo10)} | ${cell(fmtS(r.gapTo30), r.verdicts.gapTo30)} | ${cell(fmtS(r.ittGapTo10Per40Km), r.verdicts.ittGapTo10Per40Km)} | ${cell(fmtN(r.breakawaySize, 1), r.verdicts.breakawaySize)} | ${r.breakawayWins}/${r.seeds} | ${fmtS(r.breakawayWinMarginMedian)} | ${fmtS(r.gcTo10After)} | ${r.gcTop10InBreakOver5Min} | ${r.ownTeamChasesOwn} | ${r.clampedAtCap} (klump ${r.capClumpMax}) | ${fmtN(r.over30RawMedian, 0)} | ${fmtZ(r.minuteLossAtZeroKm)} | ${r.labelContradictions} | ${r.rhoTempo === null ? "-" : `${fmtN(r.rhoTempo)} / ${fmtN(r.rhoClimb)}${r.verdicts.ittHillyTempoMinusClimb ? ` ${r.verdicts.ittHillyTempoMinusClimb}` : ""}`} | ${r.leadoutRankGain === null ? "-" : `${cell(fmtN(r.leadoutRankGain, 1), r.verdicts.leadoutRankGain)} (${r.leadoutWinsWith}/${r.leadoutWinsWithout})`} |`);
     }
-    lines.push("", "| Udbrud pr. profiltype | Etaper | Udbrudssejre (andel) | Stoerrelse (median) | Foran favoritter i maal (andel) | Legacy samme seeds | Holder til maal vs legacy |", "|---|---|---|---|---|---|---|");
-    for (const c of s.classes) lines.push(`| ${c.profile_type} | ${c.stages} | ${cell(fmtN(c.breakawayWinShare), c.verdicts.breakawayWinShare)} | ${cell(fmtN(c.breakawaySizeMedian, 1), c.verdicts.breakawaySize)} | ${fmtN(c.breakawayAheadShare)} | ${fmtN(c.legacyAheadShare)} | ${c.verdicts.breakawayHoldVsLegacy ?? "-"} |`);
+    lines.push("", "| Udbrud pr. profiltype | Etaper | Udbrudssejre (andel) | Stoerrelse (median) | 0-2 mand (andel) | Forsoeg (median) | Foran favoritter i maal (andel) | Legacy samme seeds | Holder til maal vs legacy |", "|---|---|---|---|---|---|---|---|---|");
+    for (const c of s.classes) lines.push(`| ${c.profile_type} | ${c.stages} | ${cell(fmtN(c.breakawayWinShare), c.verdicts.breakawayWinShare)} | ${cell(fmtN(c.breakawaySizeMedian, 1), c.verdicts.breakawaySize)} | ${fmtN(c.breakawaySmallShare)} | ${fmtN(c.breakawayAttemptsMedian, 1)} | ${fmtN(c.breakawayAheadShare)} | ${fmtN(c.legacyAheadShare)} | ${c.verdicts.breakawayHoldVsLegacy ?? "-"} |`);
     lines.push("", "| Loebet | Vaerdi | Dom |", "|---|---|---|");
     for (const [k, v] of Object.entries(s.race)) {
       if (k === "verdicts") continue;

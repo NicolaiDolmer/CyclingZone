@@ -47,7 +47,7 @@
 import type { AbilityKey, FinaleType, ProfileType, RiderRole } from "../types.ts";
 import type { BreakawayStance, EffortLevel, TeamOrder, TeamOrderRider } from "./teamOrderContract.ts";
 import { validateTeamOrder } from "./teamOrderContract.ts";
-import { isOrdersGcV2OrLater, isOrdersGcV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { isOrdersGcV2OrLater, isOrdersGcV3OrLater, sharedTimeModelGeneration } from "../../../raceEngineRulesRevision.ts";
 
 export type AiRosterEntrant = {
   rider_id: string;
@@ -144,7 +144,56 @@ export const AI_TACTICS_TUNING = Object.freeze({
   V2_BREAK_CANDIDATE_FIELD_SHARE: 0.5,
   /** #6097 (KUN orders_gc_v2): et let_go-holds egne udbrudsforsoeg (hunters taeller med). */
   V2_LET_GO_BREAK_CANDIDATES: 1,
+  /** #6201 R2a (KUN official_times_v3): et holds forsoeg i alt paa kuperet/rullende og bjerg. */
+  V3_MAX_BREAK_CANDIDATES: 3,
+  /** #6201 R2a (KUN official_times_v3): passende klatrere et hold sender paa en bjergetape. */
+  V3_CLIMBERS_ON_CLIMB_DAY: 2,
+  /** #6201 R2a (KUN official_times_v3): angribere et hold sender paa kuperet/rullende. */
+  V3_ATTACKERS_ON_HILLY_DAY: 1,
 });
+
+/**
+ * #6201 R2a (KUN official_times_v3): holdets ekstra udbrudskandidater paa
+ * kuperet/rullende (en angriber) og bjerg (passende klatrere), oveni de
+ * eksisterende. Ren og deterministisk; aendrer intet paa andre dage.
+ */
+function v3ExtraBreakCandidates(args: {
+  input: AiTacticsInput;
+  demand: TerrainDemand;
+  primaryAbility: AbilityKey;
+  field: readonly AiFieldRider[];
+  fieldPrimary: readonly number[];
+  grupettoIds: ReadonlySet<string>;
+  breakCandidates: BreakScoreEntry[];
+}): BreakScoreEntry[] {
+  const { input, demand, primaryAbility, field, fieldPrimary, grupettoIds } = args;
+  const profile = input.route.profile_type;
+  const climbDay = demand === "climb";
+  const hillyDay = !climbDay && (profile === "hilly" || profile === "rolling");
+  if (!climbDay && !hillyDay) return args.breakCandidates;
+  const rankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
+  // Paa kuperet/rullende er angriberens evne dagens terraenevne (tempo paa en spurtdag).
+  const attackKey: AbilityKey = demand === "sprint" ? "tempo" : primaryAbility;
+  const scoreOf = (r: AiRosterEntrant) => (climbDay ? abilityOf(r, "climbing") : breakScore(r.abilities, attackKey));
+  const fieldScores = climbDay ? fieldPrimary : field.map((r) => breakScore(r.abilities, attackKey));
+  const suitable = (r: AiRosterEntrant) => fieldRank(scoreOf(r), fieldScores) <= rankCap;
+  const want = climbDay ? AI_TACTICS_TUNING.V3_CLIMBERS_ON_CLIMB_DAY : AI_TACTICS_TUNING.V3_ATTACKERS_ON_HILLY_DAY;
+  let out = [...args.breakCandidates];
+  const byId = new Map(input.roster.map((r) => [r.rider_id, r]));
+  let have = out.filter((c) => { const r = byId.get(c.riderId); return r !== undefined && suitable(r); }).length;
+  const taken = new Set(out.map((c) => c.riderId));
+  const pool = input.roster
+    .filter((r) => !grupettoIds.has(r.rider_id) && !taken.has(r.rider_id))
+    .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
+    .filter(suitable)
+    .sort((a, b) => scoreOf(b) - scoreOf(a) || a.rider_id.localeCompare(b.rider_id));
+  for (const r of pool) {
+    if (have >= want || out.length >= AI_TACTICS_TUNING.V3_MAX_BREAK_CANDIDATES) break;
+    out = [...out, { riderId: r.rider_id, score: breakScore(r.abilities, primaryAbility) }];
+    have += 1;
+  }
+  return out;
+}
 
 /** Klassificerer dagens terraen-krav ud fra rute-typen (samme felter som RouteV2). */
 export function classifyTerrainDemand(route: AiTacticsRoute): TerrainDemand {
@@ -368,6 +417,16 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
       if (climber && !hasClimber && breakCandidates.length < AI_TACTICS_TUNING.MAX_BREAK_CANDIDATES) {
         breakCandidates = [...breakCandidates, { riderId: climber.rider_id, score: breakScore(climber.abilities, primaryAbility) }];
       }
+    }
+    // #6201 R2a (KUN official_times_v3, ejer 5/10 valg A): et hold uden
+    // klassementschance (lader gaa eller neutral) sender flere: paa kuperet og
+    // rullende ogsaa en angriber, paa bjerg flere passende klatrere. Samme
+    // kandidater som ovenfor (hunter, fri rolle eller hjaelper, aldrig kaptajn
+    // eller grupetto, kun i feltets passende top-andel), hoejst
+    // V3_MAX_BREAK_CANDIDATES i alt. Aldrig en garanti: motoren afgoer stadig
+    // hvem der kommer afsted. Ordrernes betydning er uaendret.
+    if (sharedTimeModelGeneration(input.rules_revision) === 3) {
+      breakCandidates = v3ExtraBreakCandidates({ input, demand, primaryAbility, field, fieldPrimary, grupettoIds, breakCandidates });
     }
   }
   const breakScoreById = new Map(breakCandidates.map((c) => [c.riderId, c.score]));

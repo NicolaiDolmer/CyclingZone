@@ -59,14 +59,23 @@ test("#6200: only official_times_v3 (generation 3 on the shared clock) reads the
   assert.equal(timeModelTuningFor(shared), SHARED_TIME_MODEL_V2_TUNING);
   assert.equal(timeModelTuningFor({ ...shared, sharedGroupTime: { entryGroups: [], timeModelGeneration: 3 } }), SHARED_TIME_MODEL_V3_TUNING);
   assert.equal(timeModelTuningFor({ sharedGroupTime: { timeModelGeneration: 3 } }), TIME_MODEL_V3_TUNING, "without the v3 package nothing changes");
-  // The v3 model is official_times_v2 plus exactly the two descent-finish knobs.
+  // The v3 model is official_times_v2 plus exactly the descent-finish knobs
+  // (#6200) and the deciding climb's day form and attack (clean revision D1).
   const changed = Object.keys(SHARED_TIME_MODEL_V3_TUNING).filter((k) =>
     JSON.stringify((SHARED_TIME_MODEL_V3_TUNING as Record<string, unknown>)[k]) !== JSON.stringify((SHARED_TIME_MODEL_V2_TUNING as Record<string, unknown>)[k]));
-  assert.deepEqual(changed.sort(), ["descentFinishClimbRaceProfiles", "finishDescentMaxRunInKm"]);
+  assert.deepEqual(changed.sort(), [
+    "descentFinishClimbAbilityWeightScale", "descentFinishClimbAttackDayformWeight", "descentFinishClimbAttackWindowSeconds", "descentFinishClimbDayformWeight",
+    "descentFinishClimbRaceProfiles", "finishDescentMaxRunInKm", "letGoOneDayMaxGapSecondsByProfile",
+  ]);
   // Neutral in every older model.
   for (const t of [TIME_MODEL_V3_TUNING, SHARED_TIME_MODEL_V2_TUNING]) {
     assert.deepEqual(t.descentFinishClimbRaceProfiles, []);
     assert.equal(t.finishDescentMaxRunInKm, 0);
+    assert.equal(t.descentFinishClimbDayformWeight, 0);
+    assert.equal(t.descentFinishClimbAttackWindowSeconds, 0);
+    assert.equal(t.descentFinishClimbAttackDayformWeight, 0);
+    assert.equal(t.descentFinishClimbAbilityWeightScale, 1);
+    assert.deepEqual(t.letGoOneDayMaxGapSecondsByProfile, {});
   }
   // Per-profile calibration of official_times_v2 is kept under v3.
   for (const [profile, weight] of Object.entries(SHARED_TIME_MODEL_V2_TUNING.climbGapAbilityWeightByProfile)) {
@@ -256,13 +265,19 @@ function proxyRows(): StageRow[] {
   return Array.isArray(raw) ? raw : raw.stages;
 }
 
-test("#6200 v3: every stage that is not a mountain descent finish is byte-identical to official_times_v2", () => {
-  const rows = proxyRows().filter((row) => !(row.finale_type === "descent" && (row.profile_type === "mountain" || row.profile_type === "high_mountain")))
-    // #6349: official_times_v3 also changes the individual time trial (climbing by climb share).
-    .filter((row) => row.profile_type !== "itt" && row.profile_type !== "itt_hilly");
+// Ren revision spor 1 (#6201/#6428) aendrer ogsaa morgenudbruddet paa kuperet,
+// rullende og bjerg (AI-holdenes forsoeg, traengslen, trappens bund) under v3, og
+// #6349 aendrer enkeltstarten (klatring efter stigningsandel), og #6431 giver
+// flad sit eget trin i udbrudsdannelsen.
+// Alle andre etapeformer er stadig byte-identiske med official_times_v2.
+const CLEAN_REVISION_S1_PROFILES = new Set(["flat", "hilly", "rolling", "mountain", "high_mountain", "itt", "itt_hilly"]);
+
+test("#6200 v3: every stage outside the clean revision's profiles is byte-identical to official_times_v2", () => {
+  const rows = proxyRows().filter((row) => !CLEAN_REVISION_S1_PROFILES.has(row.profile_type));
   const shapes = new Map<string, StageRow>();
   for (const row of rows) if (!shapes.has(`${row.profile_type}/${row.finale_type}`)) shapes.set(`${row.profile_type}/${row.finale_type}`, row);
-  assert.ok(shapes.size >= 15, "every other stage shape is covered");
+  // 3 = brosten- og klassiker-formerne, der er tilbage, naar enkeltstart (#6349) og flad (#6431) ogsaa er undtaget.
+  assert.ok(shapes.size >= 3, `every other stage shape is covered (${shapes.size})`);
   for (const row of shapes.values()) {
     for (const seed of SEEDS) {
       assert.equal(digestOf(frozenStageOutput(row, seed, "official_times_v3")), digestOf(frozenStageOutput(row, seed, "official_times_v2")),

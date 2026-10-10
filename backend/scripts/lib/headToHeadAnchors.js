@@ -98,6 +98,21 @@ export const ANCHOR_BANDS = {
     source: "ejer-godkendt (#1021 research 16/6, justeret 22/7 #2778, bekraeftet 8/10); "
       + "docs/RACE_ENGINE_RULES.md 'Udbrudsmaal'",
   },
+  // #6428 (ren revision spor 1). FORSLAG — IKKE et ejer-godkendt maal. Naar
+  // morgenudbruddet vinder et ENDAGSLOEB paa kuperet/rullende terraen: nr. 10's
+  // hul til vinderen. Virkelige endagsloeb (PCS, kuperede .1/.Pro-loeb og
+  // klassikere hvor udbruddet holdt hjem): feltet kommer typisk 0:30-3:00 efter;
+  // over 4 min ses naesten aldrig, fordi alle hold vil vinde loebet (der er
+  // ingen klassementsdag at spare). Etapeloebs overgangsetaper er IKKE omfattet
+  // (dér kan feltet give 10+ min). Kilde til fejlen: #6428 (prod 10/10).
+  breakawayWinMarginOneDaySeconds: {
+    byTerrain: {
+      hilly: { max: 240 },
+      rolling: { max: 240 },
+    },
+    source: "FORSLAG (#6428) — virkelige endagsloeb hvor udbruddet holdt hjem: feltet typisk 0:30-3:00 efter, "
+      + "over 4 min naesten aldrig; loftet er valgt af denne harness, ikke ejer-godkendt",
+  },
   // #5576: enkeltstartens TIDER, ikke kun dens rang. ITT-korrelationen ovenfor
   // er spearman paa placeringen og var groen, mens naesten hele feltet delte
   // én tid — de to ankre herunder maaler det rangen ikke kan se.
