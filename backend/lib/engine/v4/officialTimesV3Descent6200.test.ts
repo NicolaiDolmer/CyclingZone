@@ -20,6 +20,7 @@ import {
   usesSharedGroupTime,
 } from "../../raceEngineRulesRevision.ts";
 import { initRiderStates } from "./groups.ts";
+import { breakawayHook } from "./mechanics/breakaway.ts";
 import { climbSelectionHook, isDescentFinishDecidingClimb } from "./mechanics/climbSelection.ts";
 import {
   SHARED_TIME_MODEL_V2_TUNING,
@@ -193,6 +194,56 @@ test("#6200 v3: on the run-in after the finish descent tempo can open a gap, nev
     new Map([["front", { dtSeconds: 200 }], ["chase", { dtSeconds: 150 }], ["big", { dtSeconds: 195 }]]), chasers);
   assert.equal(withChase.get("chase")!.dtSeconds, 150);
   assert.equal(withChase.get("big")!.dtSeconds, 200);
+});
+
+// ── 2: the breakaway chase (M5) shares the cap on a descent with a short run-in ─
+
+function escapeChaseFixture(r: RouteV2, segmentIndex: number) {
+  const ability = (base: number, over: Partial<Record<AbilityKey, number>> = {}) =>
+    Object.fromEntries(keys.map((k) => [k, over[k] ?? base])) as Entrant["abilities"];
+  const escapeIds = ["e0", "e1"];
+  // Under the let-go group size, so the chase runs from the top (no let-go phase).
+  const fieldIds = Array.from({ length: 6 }, (_, i) => "p" + i);
+  const entrants: Entrant[] = [
+    ...escapeIds.map((id) => ({ rider_id: id, abilities: ability(20, { descending: 40, climbing: 70 }), role: "free_role", effort: "normal", condition: 1 } as Entrant)),
+    ...fieldIds.map((id) => ({ rider_id: id, abilities: ability(95, { descending: 80, climbing: 70 }), role: "free_role", effort: "normal", condition: 1 } as Entrant)),
+  ];
+  const riders = initRiderStates(entrants, RACE_V4_TUNING, "6200-m5");
+  const ctx = makeHookCtx({ segment: r.segments[segmentIndex], segmentIndex, route: r,
+    entrants: Object.fromEntries(entrants.map((e) => [e.rider_id, e])), tuning: RACE_V4_TUNING, seed: "6200-m5" });
+  return { riders, ctx, escapeIds, fieldIds };
+}
+
+test("#6200 v3: on a descent finish with a short run-in the breakaway chase closes at most the cap from the top to the line", () => {
+  const runIn = SHARED_TIME_MODEL_V3_TUNING.finishDescentMaxRunInKm;
+  const r = route([flat(0, 30), climb(30, 42), descent(42, 54), flat(54, 54 + Math.min(2, runIn))]);
+  const kmFromTop = r.segments[3].to_km - r.segments[2].from_km;
+  const topGap = 120;
+  const closedBy = (generation?: 3) => {
+    let book: EngineState["finish_descent_regroup"] = undefined;
+    let sep = topGap;
+    for (const segmentIndex of [2, 3]) {
+      const { riders, ctx, escapeIds, fieldIds } = escapeChaseFixture(r, segmentIndex);
+      const groups: RaceGroup[] = [
+        { id: "escape", kind: "breakaway", origin: "breakaway", rider_ids: escapeIds, gap_seconds: 0, cohesion: 1 },
+        { id: "field", kind: "peloton", rider_ids: fieldIds, gap_seconds: sep, cohesion: 1 },
+      ];
+      const state = { ...stateWith(riders, groups), ...(book ? { finish_descent_regroup: book } : {}) };
+      const out = breakawayHook(state, sharedCtx(ctx, groups, generation)).state;
+      const escape = out.groups.find((g) => g.id === "escape")!;
+      const field = out.groups.find((g) => g.id === "field")!;
+      sep = field.gap_seconds - escape.gap_seconds;
+      book = out.finish_descent_regroup;
+    }
+    return topGap - sep;
+  };
+  const cap = finishDescentChaseCapSeconds(topGap, kmFromTop, TIME_MODEL_V3_TUNING);
+  const v3 = closedBy(3);
+  assert.ok(v3 > 0, "the chase still closes something");
+  assert.ok(v3 <= cap + 0.01, `v3 closes ${v3} s, cap ${cap} s`);
+  // Control: official_times_v2 only caps a descent that is the last segment, so
+  // the chase there closes more than the cap on this route (unchanged revision).
+  assert.ok(closedBy() > cap + 1, `official_times_v2 closes ${closedBy()} s`);
 });
 
 // ── Whole stages: real proxy shapes, the varied frozen field, AI orders ───────
