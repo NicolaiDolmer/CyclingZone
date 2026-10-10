@@ -38,6 +38,8 @@ import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter.ts";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { sampleField } from "./lib/headToHeadStats.js";
+import { buildGcContext } from "../lib/raceEngineV4Bridge.js";
+import { isOrdersGcRulesRevision, isOrdersGcV3OrLater } from "../lib/raceEngineRulesRevision.ts";
 import { formatScorecard, scoreGtWinnerMargin } from "./lib/headToHeadAnchors.js";
 import { LOCKED_FIELD_SIZE, resolveSeeds, v3EntrantsFromPopulation, v4EntrantsFromPopulation } from "./headToHeadV4.js";
 
@@ -163,6 +165,12 @@ export function runGrandTour({ population, tour, seed, fieldSize = LOCKED_FIELD_
       tuning: RACE_V4_TUNING,
       // #6442: v4 under en regel-revision (samme form som headToHeadV4.runHeadToHead); udeladt = legacy (uaendret).
       ...(rulesRevision ? { rules_revision: rulesRevision } : {}),
+      // Nat 11/10 (Fable-dom #6443, del A): under orders_gc-revisionerne faar motoren
+      // klassementet foer etapen, som spillet giver det (raceEngineV4Bridge.buildV4StageInput).
+      // Uden det kan GC-reaktionen aldrig fyre, og proxy-GT'en maaler en strengere motor end spillets.
+      ...(isOrdersGcRulesRevision(rulesRevision)
+        ? { gc_context: proxyGcContext({ startIds, inRace: v4InRace, outcomes: v4Outcomes, stageRow, stages: tour.stages, rulesRevision }) }
+        : {}),
     });
     const v4Outcome = v4StageOutcome(v4Output);
     v4Outcomes.push(v4Outcome);
@@ -170,6 +178,23 @@ export function runGrandTour({ population, tour, seed, fieldSize = LOCKED_FIELD_
     v4InRace = v4InRace.filter((id) => v4Finished.has(id));
   }
   return { raceId: tour.raceId, seed, v3: accumulateGc(startIds, v3Outcomes), v4: accumulateGc(startIds, v4Outcomes) };
+}
+
+/**
+ * GC-konteksten for proxy-GT'en under orders_gc-revisionerne: klassementet foer
+ * etapen (kumuleret tid minus bonus over de kørte etaper, kun dagens startere),
+ * bygget med spillets egen buildGcContext. Etape 1 = "first_stage".
+ */
+export function proxyGcContext({ startIds, inRace, outcomes, stageRow, stages, rulesRevision }) {
+  const stageNumber = Number(stageRow.stage_number ?? 1);
+  const standings = outcomes.length === 0
+    ? []
+    : accumulateGc(startIds, outcomes).standings.map((s) => ({ rider_id: s.rider_id, time: s.gc_seconds }));
+  const ctx = buildGcContext({ isStageRace: true, stageNumber, standings, starterIds: inRace });
+  if (isOrdersGcV3OrLater(rulesRevision) && ctx.status === "standings") {
+    ctx.stages_remaining = stages.filter((s) => Number(s.stage_number ?? 1) > stageNumber).length;
+  }
+  return ctx;
 }
 
 /** Alle pinnede grand tours x seeds -> kørsler + anker. */

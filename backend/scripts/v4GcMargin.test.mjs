@@ -12,6 +12,7 @@ import {
   accumulateGc,
   measureGtMargins,
   pinGrandTours,
+  proxyGcContext,
   runGrandTour,
   v3StageOutcome,
   v4StageOutcome,
@@ -103,3 +104,16 @@ test("measureGtMargins: fejler hoejt uden grand tours i etape-filen i stedet for
   const { population, stages } = exampleInputs();
   assert.throws(() => measureGtMargins({ population, stages, seeds: ["s1"] }), /ingen grand tours/);
 });
+
+test("nat 11/10 (#6443): proxyGcContext giver klassementet foer etapen som spillet", () => {
+  const stages = [{ stage_number: 1 }, { stage_number: 2 }, { stage_number: 3 }];
+  const first = proxyGcContext({ startIds: ["a", "b"], inRace: ["a", "b"], outcomes: [], stageRow: stages[0], stages, rulesRevision: "official_times_v3" });
+  assert.deepEqual(first, { status: "first_stage", stage_number: 1 });
+  const outcomes = [{ finishers: [{ rider_id: "a", seconds: 10, bonus: 0 }, { rider_id: "b", seconds: 0, bonus: 4 }, { rider_id: "c", seconds: 5, bonus: 0 }] }];
+  const ctx = proxyGcContext({ startIds: ["a", "b", "c"], inRace: ["a", "b"], outcomes, stageRow: stages[1], stages, rulesRevision: "official_times_v3" });
+  assert.equal(ctx.status, "standings");
+  assert.equal(ctx.leader_id, "b");
+  assert.deepEqual(ctx.standings.map((s) => [s.rider_id, s.gap_seconds]), [["b", 0], ["a", 14]]);
+  assert.equal(ctx.stages_remaining, 1);
+});
+
