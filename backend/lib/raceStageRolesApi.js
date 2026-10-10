@@ -39,6 +39,8 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
   try {
     if ((race.stages_completed ?? 0) > 0) return fallback;
     const { data: roster, error: rosterErr } = await applyRiderEligibilityFilter(
+      // pagination-safe: .eq("team_id") afgraenser til ÉT holds egen trup (typisk < 30 ryttere),
+      // langt under PostgREST's 1000-raekkers-loft.
       supabase.from("riders").select("id").eq("team_id", teamId),
       { squad: raceSquadOf(race) },
     );
