@@ -323,7 +323,8 @@ export function realDeps(opts) {
     exists: (p) => existsSync(p),
     readJson: (p) => JSON.parse(readFileSync(p, "utf8")),
     readText: (p) => readFileSync(p, "utf8"),
-    stamp: () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-"),
+    // Unik pr. koersel (sekund, ms, pid): to koersler maa aldrig dele en run-mappe og laese hinandens JSON.
+    stamp: () => `${new Date().toISOString().replace(/[:.T]/g, "-")}-${process.pid}`,
     runNode: (args, { cwd }) => {
       const r = spawnSync(process.execPath, args, { cwd, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
       return { status: r.status ?? 1, stdout: r.stdout ?? "", stderr: r.stderr ?? "", error: r.error?.message ?? null };
