@@ -10558,7 +10558,8 @@ router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
   ]);
 
   const boardPlanNegotiated = (boardsRes.count || 0) > 0 || mandateSign.signedByManager;
-  const boardPlanAutoSet = !boardPlanNegotiated && ((boardsAutoRes.count || 0) > 0 || mandateSign.signed);
+  const boardPlanAutoSet = !boardPlanNegotiated && (boardsAutoRes.count || 0) > 0
+    || (!boardPlanNegotiated && mandateSign.signed);
 
   const steps = [
     { key: "first_bid_placed", done: (bidsRes.count || 0) > 0 },
