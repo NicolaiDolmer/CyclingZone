@@ -378,6 +378,27 @@ test("kommandoens exit-kode gives videre", { skip: !hasPwsh && "pwsh mangler" },
   assert.equal(r.status, 3, "en fejlende verifikation maa ikke maskeres af wrapperen");
 });
 
+// #6447: PowerShell splitter et script-argument der ligner et parameternavn
+// ved foerste kolon, saa '--cache=C:/Dev/x.json' blev til '--cache=C' + '/Dev/x.json'.
+test("argumenter efter -- gives ordret videre, ogsaa med drev-praefiks, mellemrum og apostrof (#6447)", { skip: !hasPwsh && "pwsh mangler" }, () => {
+  const args = [
+    "--cache=C:/Dev/x.json",
+    "-x:C:/y",
+    "--a=b c",
+    "it's",
+    'say "hi"',
+    "C:\\dir with space\\",
+    "-p",
+  ];
+  const r = spawnSync(
+    "pwsh",
+    ["-NoProfile", "-File", SCRIPT, "-SlotDir", slotDir, "--", "node", "-e", "console.log(JSON.stringify(process.argv.slice(1)))", "--", ...args],
+    { encoding: "utf8" },
+  );
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(JSON.parse(r.stdout.trim().split("\n").pop()), args);
+});
+
 // #5566 (boelge B 23/9): en wrapper tabte rangeringen, og dens ene sletteforsoeg
 // ramte en anden proces der laeste filen. Filen blev liggende med wrapperens
 // LEVENDE PID og blokerede baade wrapperen selv og andre laner.

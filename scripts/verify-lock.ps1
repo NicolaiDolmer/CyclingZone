@@ -98,7 +98,29 @@ $Runtime = ""
 $Worktree = [System.IO.Path]::GetFullPath($PWD.ProviderPath)
 $cmd = @()
 
-$argv = @($args)
+# #6447: $args er IKKE ordret. PowerShells parameter-binder splitter et
+# script-argument der ligner et parameternavn ("-x:vaerdi", "--cache=C:/sti")
+# ved foerste kolon, saa '--cache=C:/Dev/x.json' blev til '--cache=C' og
+# '/Dev/x.json'. Splatning videre til kommandoen er ordret (verificeret i
+# testen); det er kun indgangen via -File der skader. Derfor laeses de raa
+# proces-argumenter, naar scriptet er startet med `pwsh -File <script> ...`.
+function Get-RawScriptArgs {
+  try {
+    $raw = @([Environment]::GetCommandLineArgs())
+    for ($k = 1; $k -lt $raw.Count - 1; $k++) {
+      if ($raw[$k] -match '^[-/]f(i(l(e)?)?)?$') {
+        $scriptArg = [string]$raw[$k + 1]
+        $same = [System.IO.Path]::GetFullPath($scriptArg) -ieq [System.IO.Path]::GetFullPath($PSCommandPath)
+        if (-not $same) { return $null }
+        if ($k + 2 -ge $raw.Count) { return @() }
+        return @($raw[($k + 2)..($raw.Count - 1)] | ForEach-Object { [string]$_ })
+      }
+    }
+  } catch { return $null }
+  return $null
+}
+$rawArgs = Get-RawScriptArgs
+$argv = if ($null -ne $rawArgs) { @($rawArgs) } else { @($args) }
 $i = 0
 while ($i -lt $argv.Count) {
   $a = [string]$argv[$i]
