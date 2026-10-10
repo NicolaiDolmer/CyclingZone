@@ -160,6 +160,9 @@ export type Entrant = {
   // han koerer for. v3 kraever begge (buildTeamContext springer enhver
   // entrant uden team_id ELLER race_role over), og v4 goer det samme.
   team_id?: string | null;
+  // #6156 (valgfrit): rytterens form (rider_condition.form, 0-100). Broen saetter
+  // det kun under official_times_v3; udeladt = byte-identisk med foer.
+  form?: number | null;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
