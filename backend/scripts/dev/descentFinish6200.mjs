@@ -16,7 +16,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runStagesInOrder, sortedStages } from "./lib/tourScorecard.mjs";
+import { breakawaySets, breakawayWin, runStagesInOrder, sortedStages } from "./lib/tourScorecard.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const GIRO_FIXTURE = path.join(here, "..", "baselines", "giro-field-6088-2026-10-02.json");
@@ -51,7 +51,7 @@ const median = (xs) => {
  * Returnerer null naar etapen ikke har en nedkoerselsfinale (finale_type
  * "descent" med en nedkoersel efter sidste stigning).
  */
-export function analyseDescentFinish({ route, out, abilitiesById, capFor }) {
+export function analyseDescentFinish({ route, out, abilitiesById, capFor, breakawayWin = null, breakawaySets = null, climbEntry = null }) {
   const segs = route?.segments ?? [];
   if (route?.finale_type !== "descent" || segs.length < 2) return null;
   const snaps = out?.groupSnapshots ?? [];
@@ -111,7 +111,76 @@ export function analyseDescentFinish({ route, out, abilitiesById, capFor }) {
       climberGainOnClimb = peersAtTop.length ? median(peersAtTop) - topGap.get(bestClimber) : null;
     }
   }
+  // 4: kontrakten pr. seed (ejer 5/10). Klatrer-parrene: ryttere i samme gruppe
+  // ved indgangen til den afgoerende stigning (sidste blok), som stadig koerer ved
+  // toppen. En bedre klatrer der kommer over efter en daarligere (mere end
+  // CLIMB_PAIR_SLACK_S) er et brud. Hullet maales paa gruppe-billedet ved toppen.
+  // Med `climbEntry` (rytter -> gruppe, art, energi 0-1, indsats ved stigningens
+  // indgang, fra motoren selv) er et par med mindre energi tilbage (mere end
+  // CLIMB_ENERGY_SLACK) eller en anden indsats end den daarligere klatrer
+  // forklaret, ikke et brud: kontrakten sammenligner evne ved lige vilkaar.
+  const climberPairs = [];
+  let climberExplained = 0;
+  const entryGroups = new Map();
+  if (climbEntry) {
+    for (const [id, x] of climbEntry) {
+      if (x.kind === "gruppetto") continue;
+      if (!entryGroups.has(x.group)) entryGroups.set(x.group, []);
+      entryGroups.get(x.group).push(id);
+    }
+  } else if (beforeClimb) {
+    // En grupetto koerer ikke om etapen (faelles tempo, deles ikke af klatring).
+    for (const g of beforeClimb.groups) if (g.kind !== "gruppetto") entryGroups.set(g.group_id ?? g.id, g.rider_ids);
+  }
+  for (const groupIds of entryGroups.values()) {
+    const ids = groupIds.filter((id) => topGap.has(id) && finishGap.has(id));
+    for (const a of ids) for (const b of ids) {
+      if (a === b || !(climbing(a) > climbing(b))) continue;
+      const lost = topGap.get(a) - topGap.get(b);
+      if (!(lost > CLIMB_PAIR_SLACK_S)) continue;
+      const ea = climbEntry?.get(a);
+      const eb = climbEntry?.get(b);
+      if (ea && eb && (ea.effort !== eb.effort || ea.energy < eb.energy - CLIMB_ENERGY_SLACK)) {
+        climberExplained++;
+        continue;
+      }
+      climberPairs.push({ better: climbing(a), worse: climbing(b), lost });
+    }
+  }
+  // Placering: i frontgruppen ved toppen slaar en klart daarligere klatrer
+  // (mindst CLEAR_CLIMB_MARGIN under) der heller ikke er en bedre nedkoerer,
+  // aldrig den bedre klatrer i maal. Klatring vejer i placeringen
+  // (descentFinaleDemand); nedkoersel, positionering og stoej kan stadig afgoere
+  // mellem ryttere hvor ingen dominerer.
+  const descending = (id) => Number(abilitiesById.get(id)?.descending ?? 0);
+  const place = new Map(finished.map((r, i) => [r.rider_id, i]));
+  let placementBreaches = 0;
+  for (const a of frontIds) for (const b of frontIds) {
+    if (climbing(a) >= climbing(b) + CLEAR_CLIMB_MARGIN && descending(a) >= descending(b) && place.get(a) > place.get(b)) placementBreaches++;
+  }
+  const nr10Id = topSorted.length >= 10 ? topSorted[9][0] : null;
+  const nr10TopGap = nr10Id ? topSorted[9][1] - topSorted[0][1] : null;
+  // Nr. 10 ved toppens lukning paa vej til maal: hans hul ved toppen minus hans hul i maal.
+  const nr10Closed = nr10Id ? nr10TopGap - finishGap.get(nr10Id) : null;
+  const nr10Cap = nr10Id ? capFor(nr10TopGap, lengthKm) : null;
+  const bw = breakawayWin ? breakawayWin(out) : { won: false };
+  // Vandt udbruddet: nr. 10 blandt ryttere uden for morgenudbruddet, maalt til
+  // den foerste af dem (favoritternes etape). Kun information ved siden af N/A.
+  let nr10Favourites = null;
+  if (bw.won === true && breakawaySets) {
+    const { formed } = breakawaySets(out);
+    const favs = finished.filter((r) => !formed.has(r.rider_id));
+    if (favs.length >= 10) nr10Favourites = favs[9].time_seconds - favs[0].time_seconds;
+  }
   return {
+    breakawayWon: bw.won === true,
+    nr10Favourites,
+    climberViolations: climberPairs.length,
+    climberExplained,
+    placementBreaches,
+    climberWorstLoss: climberPairs.length ? Math.max(...climberPairs.map((p) => p.lost)) : 0,
+    nr10Closed,
+    nr10Cap,
     lengthKm,
     technicality: last.technicality,
     lastClimb: lastClimbIdx >= 0 ? { lengthKm: segs[lastClimbIdx].to_km - segs[lastClimbIdx].from_km, gradient: segs[lastClimbIdx].avg_gradient ?? null, category: segs[lastClimbIdx].category ?? null } : null,
@@ -130,6 +199,31 @@ export function analyseDescentFinish({ route, out, abilitiesById, capFor }) {
   };
 }
 
+/**
+ * Ejerens 5/10-kontrakt for én etape i ét seed (#6200). Hver del er PASS, FAIL
+ * eller N/A:
+ *  - loft: alle jagende grupper (ikke grupettoen) og nr. 10 lukker hoejst loftet
+ *    fra toppen til maal (afrundings-slack CAP_SLACK_S), ogsaa gruppens bedste;
+ *  - nr10: nr. 10 er NR10_BAND_S efter vinderen; N/A naar udbruddet vandt
+ *    (scorecardets opdeling, docs/RACE_ENGINE_RULES.md);
+ *  - klatrer: ingen bedre klatrer taber tid til en daarligere paa den afgoerende stigning;
+ *  - placering: i frontgruppen ved toppen slaar en klart daarligere klatrer, der
+ *    heller ikke er en bedre nedkoerer, aldrig den bedre klatrer i maal.
+ */
+export const CAP_SLACK_S = 1;
+export const CLIMB_PAIR_SLACK_S = 1;
+export const CLIMB_ENERGY_SLACK = 0.02;
+export const CLEAR_CLIMB_MARGIN = 5;
+export const NR10_BAND_S = Object.freeze([60, 150]);
+export function contractVerdict(a) {
+  const capOk = a.closers.filter((c) => c.kind !== "gruppetto").every((c) => c.closed <= c.cap + CAP_SLACK_S && c.closedBest <= c.cap + CAP_SLACK_S)
+    && (a.nr10Closed === null || a.nr10Closed <= a.nr10Cap + CAP_SLACK_S);
+  const nr10 = a.breakawayWon ? "N/A" : (a.nr10Finish >= NR10_BAND_S[0] && a.nr10Finish <= NR10_BAND_S[1] ? "PASS" : "FAIL");
+  const placement = a.placementBreaches === 0 ? "PASS" : "FAIL";
+  const parts = { cap: capOk ? "PASS" : "FAIL", nr10, climber: a.climberViolations === 0 ? "PASS" : "FAIL", placement };
+  return { ...parts, all: Object.values(parts).includes("FAIL") ? "FAIL" : "PASS" };
+}
+
 const fmt = (x, d = 0) => (x === null || x === undefined || !Number.isFinite(x) ? "-" : x.toFixed(d));
 
 export function renderMarkdown({ label, rows }) {
@@ -139,6 +233,19 @@ export function renderMarkdown({ label, rows }) {
   for (const r of rows) {
     const a = r.a;
     lines.push(`| ${r.revision} | ${r.stage} | ${r.seed} | ${fmt(a.lengthKm, 1)} | ${a.technicality} | ${fmt(a.lastClimb?.lengthKm, 1)} | ${fmt(a.nr10Top)} | ${fmt(a.nr10Finish)} | ${a.frontSizeAtTop} | ${a.groupsAtTopWithin150} | ${fmt(a.maxCloserRatio, 2)} | ${fmt(a.maxCloserRatioBest, 2)} | ${fmt(a.maxGruppettoRatio, 2)} | ${fmt(a.bestClimberTopGap)} | ${a.bestClimberFinishRank} | ${fmt(a.bestClimberGainOnClimb)} | ${a.winnerClimbRankInFront ?? "-"} |`);
+  }
+  lines.push("", "## Kontrakten pr. seed (ejer 5/10)", "", "| Revision | Etape | Seed | Udbrud vandt | Nr. 10 lukket / loft | Loft | Nr. 10 (60-150 s) | Klatrer-brud (vaerste s) | Placering | Samlet |", "|---|---|---|---|---|---|---|---|---|---|");
+  for (const r of rows) {
+    const a = r.a;
+    const v = contractVerdict(a);
+    lines.push(`| ${r.revision} | ${r.stage} | ${r.seed} | ${a.breakawayWon ? "ja" : "nej"} | ${fmt(a.nr10Closed)} / ${fmt(a.nr10Cap)} | ${v.cap} | ${fmt(a.nr10Finish)} ${v.nr10}${a.nr10Favourites !== null && a.nr10Favourites !== undefined ? ` (favoritter ${fmt(a.nr10Favourites)})` : ""} | ${a.climberViolations} (${fmt(a.climberWorstLoss)}) ${v.climber}; forklaret ${a.climberExplained ?? "-"} | ${a.placementBreaches} ${v.placement} | ${v.all} |`);
+  }
+  lines.push("", "## Kontrakten pr. revision og etape (antal seeds)", "", "| Revision | Etape | Seeds | Loft PASS | Nr. 10 PASS / FAIL / N/A | Klatrer PASS | Placering PASS | Samlet PASS |", "|---|---|---|---|---|---|---|---|");
+  for (const k of [...new Set(rows.map((r) => `${r.revision}|${r.stage}`))]) {
+    const [rev, stage] = k.split("|");
+    const vs = rows.filter((r) => r.revision === rev && String(r.stage) === stage).map((r) => contractVerdict(r.a));
+    const n = (key, val) => vs.filter((v) => v[key] === val).length;
+    lines.push(`| ${rev} | ${stage} | ${vs.length} | ${n("cap", "PASS")} | ${n("nr10", "PASS")} / ${n("nr10", "FAIL")} / ${n("nr10", "N/A")} | ${n("climber", "PASS")} | ${n("placement", "PASS")} | ${n("all", "PASS")} |`);
   }
   lines.push("", "## Median pr. revision og etape", "", "| Revision | Etape | Nr. 10 top | Nr. 10 maal | Front ved top | Max lukning/loft |", "|---|---|---|---|---|---|");
   const keys = [...new Set(rows.map((r) => `${r.revision}|${r.stage}`))];
@@ -150,13 +257,56 @@ export function renderMarkdown({ label, rows }) {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * Rytterne ved indgangen til den afgoerende stigning (sidste blok af stigninger),
+ * maalt i motoren selv: etapen genkoeres med samme input og et climbSelection-hook
+ * der registrerer gruppe, art, energi (W' / W'max) og indsats foer det kalder det
+ * rigtige hook. Motoren er deterministisk, saa genkoerslen er identisk med etapen.
+ */
+export function climbEntryAtDecidingClimb({ input, route, core, runSegmentLoop }) {
+  const segs = route.segments ?? [];
+  const lastClimb = segs.map((s) => s.kind).lastIndexOf("climb");
+  if (lastClimb < 0) return null;
+  let start = lastClimb;
+  while (start > 0 && segs[start - 1].kind === "climb") start--;
+  const entry = new Map();
+  const live = core.LIVE_MECHANIC_HOOKS;
+  runSegmentLoop(input, {
+    ...live,
+    climbSelection: (state, ctx) => {
+      if (ctx.segmentIndex === start) {
+        for (const g of state.groups) for (const id of g.rider_ids) {
+          const r = state.riders[id];
+          entry.set(id, { group: g.id, kind: g.kind, energy: r && r.wprimeMax > 0 ? r.wprime / r.wprimeMax : 0, effort: ctx.entrants[id]?.effort ?? null });
+        }
+      }
+      return live.climbSelection(state, ctx);
+    },
+  });
+  return entry;
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const opts = parseArgs(argv);
   const data = JSON.parse(readFileSync(opts.fixture === "giro" ? GIRO_FIXTURE : (opts.fixture ?? opts.cache), "utf8"));
-  const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
+  const bridgeUrl = new URL("../../lib/raceEngineV4Bridge.js", import.meta.url);
+  const bridge = await import(bridgeUrl.href);
   const { routeFromStageProfileRow } = await import("../../lib/engine/v4/adapters/routeAdapter.ts");
   const tm = await import("../../lib/engine/v4/mechanics/timeModel.ts");
-  const v4 = await loadRaceEngineV4();
+  const core = await import("../../lib/engine/v4/index.ts");
+  const { runSegmentLoop } = await import("../../lib/engine/v4/segmentLoop.ts");
+  // Motorens StageInput fanges pr. etape (samme input som broen sender), saa
+  // klatrer-kontrakten kan genkoere etapen med et maalende climbSelection-hook.
+  let capturedInput = null;
+  bridge.__resetRaceEngineV4Cache();
+  const v4 = await bridge.loadRaceEngineV4({
+    importModule: async (spec) => {
+      const m = await import(new URL(spec, bridgeUrl).href);
+      if (typeof m.simulateStageV4WithTrace !== "function") return m;
+      return { ...m, simulateStageV4WithTrace: (input) => { capturedInput = input; return m.simulateStageV4WithTrace(input); } };
+    },
+  });
+  const climbEntryFor = (route) => (capturedInput ? climbEntryAtDecidingClimb({ input: capturedInput, route, core, runSegmentLoop }) : null);
   const abilitiesById = new Map((data.abilities ?? []).map((a) => [a.rider_id, a]));
   const stages = sortedStages(data);
   const rows = [];
@@ -167,7 +317,9 @@ export async function main(argv = process.argv.slice(2)) {
       runStagesInOrder({
         v4, data, revision, seedTag: `${opts.seedPrefix}-${s}`, stages,
         onStage: ({ profile, res }) => {
-          const a = analyseDescentFinish({ route: routeFromStageProfileRow(profile), out: res.v4Output, abilitiesById, capFor });
+          const route = routeFromStageProfileRow(profile);
+          const quick = analyseDescentFinish({ route, out: res.v4Output, abilitiesById, capFor, breakawayWin });
+          const a = quick ? analyseDescentFinish({ route, out: res.v4Output, abilitiesById, capFor, breakawayWin, breakawaySets, climbEntry: climbEntryFor(route) }) : null;
           if (a) rows.push({ revision, stage: profile.stage_number, seed: s, a });
         },
       });
