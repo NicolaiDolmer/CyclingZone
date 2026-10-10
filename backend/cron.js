@@ -1159,10 +1159,10 @@ async function runMarketValueLevelCorrectionGateSweepCron() {
 
 // ─── Søndagens værdi-pipeline (#4419) ─────────────────────────────────────────
 // v4-refresh (base_value/CPV/typer følger udviklede evner) + markedsblendet
-// (#3448) i ét ordnet flow, søndag fra kl. 06 dansk tid. Selv-gated (søndag +
+// (#3448) i ét ordnet flow, søndag fra SUNDAY_VALUE_FROM_HOUR dansk tid (#5842). Selv-gated (søndag +
 // vindue + persisteret dato-claim), så timelig polling + boot-run er sikre.
-// Ejer-beslutning 30/8: værdier flytter sig én gang om ugen, om morgenen,
-// ikke kl. 22 som da genberegningen hang på trænings-sweepen.
+// Ejer 28/9 (#5842): én gang om ugen, søndag eftermiddag, aldrig om morgenen;
+// på skiftedagen først efter det fuldførte sæsonskifte.
 async function runSundayValueSweepCron() {
   try {
     const r = await runSundayValueSweep({ supabase, now: new Date() });
@@ -1174,6 +1174,8 @@ async function runSundayValueSweepCron() {
         // #5497: post-verify af trin-tælleren og løngrundlaget, direkte i Railway.
         ` · model ${v?.modelId ?? "?"} · phase step ${r.phase?.step ?? "-"} · production_value changed: ${v?.productionChanged ?? "?"}`
       );
+    } else if (String(r.skipped || "").startsWith("transition")) {
+      console.log(`💰 Søndags-værdier venter på sæsonskiftet (${r.runDate}): ${r.skipped}`); // #5842
     }
   } catch (err) {
     console.error("Cron error (sunday-value-refresh):", err.message);
@@ -2170,7 +2172,7 @@ export function startCron() {
   );
 
   // Every 60 minutes: søndagens værdi-pipeline (#4419): v4-refresh + markedsblend
-  // i ét ordnet flow. Modulet er selv søndags-gated (fra kl. 06 dansk tid) og
+  // i ét ordnet flow. Modulet er selv søndags-gated (SUNDAY_VALUE_FROM_HOUR, #5842) og
   // claim-idempotent pr. dato, så en times cadence bare fylder søndagens vindue op.
   // Samme monitor-begrundelse som market-value-level-correction-gate ovenfor:
   // tikket returnerer normalt (ran:false) på ikke-søndage, så CRON_MONITOR_60MIN
@@ -2357,7 +2359,7 @@ export function startCron() {
   trackedTick("global rank weekly snapshot", runGlobalRankWeeklySnapshotCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
   trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN))(); // boot-run: samme, ren måling
-  trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_60MIN))(); // boot-run: claim-idempotent, søndags- + kl.-06-gated
+  trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_60MIN))(); // boot-run: claim-idempotent, søndags- + time-gated
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
