@@ -549,7 +549,7 @@ export function carrySplitsWithSourceAdvance(params: {
   const byIdBefore = new Map(before.map((g) => [g.id, g]));
   let out: RaceGroup[] | null = null;
   for (const split of splits) {
-    const current = out ?? after;
+    const current: RaceGroup[] = out ?? after;
     const srcBefore = byIdBefore.get(split.sourceGroupId);
     const srcAfter = current.find((g) => g.id === split.sourceGroupId);
     const pieceBefore = byIdBefore.get(split.groupId);
