@@ -30,3 +30,16 @@ test("riderSuitability: 'randomness' i demand tælles ikke (ikke en evne)", () =
   const b = riderSuitability({ climbing: 60 }, { climbing: 1.0, randomness: 0.5 }).score;
   assert.equal(a, b);
 });
+
+// #6207: DELT TESTVEKTOR med backend/lib/raceAutopick.test.js (displaySuitability /
+// displayStageSuitabilityScores). Samme evner og etaper, samme forventede tal. Løbets
+// demand-vektor er summen af etapernes.
+test("riderSuitability: paritet med backendens visnings-egnethed (delt testvektor, #6207)", () => {
+  const abilities = { climbing: 80, sprint: 40, endurance: 60, tempo: 50, time_trial: 70 };
+  const stage1 = { climbing: 0.5, endurance: 0.3, tempo: 0.1, randomness: 0.1 };
+  const stage2 = { sprint: 0.6, endurance: 0.3, randomness: 0.1 };
+  assert.equal(riderSuitability(abilities, stage1).score, 71);
+  assert.equal(riderSuitability(abilities, stage2).score, 47);
+  const race = { climbing: 0.5, endurance: 0.6, tempo: 0.1, sprint: 0.6, randomness: 0.2 };
+  assert.equal(riderSuitability(abilities, race).score, 59);
+});

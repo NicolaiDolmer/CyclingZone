@@ -14,7 +14,7 @@
 
 import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
-import { suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
+import { displaySuitability, displayStageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
@@ -240,7 +240,7 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
   // afledning. Uden dem taber Holdfanen sine kolonner i det øjeblik løbet er
   // startet, fordi /selection selv gater på race.status === 'scheduled'.
   //
-  // FIT = løbs-snittet (suitabilityScore over løbets etape-profiler), ikke en
+  // FIT = løbs-snittet (displaySuitability, #6207, over løbets etape-profiler), ikke en
   // per-etape-værdi: rollen og udtagelsen gælder HELE løbet, så kolonnen skal
   // sige det samme hele vejen igennem. Ingen profiler / ingen evner → null
   // (degraderer til "—" på fladen, aldrig et opdigtet tal).
@@ -273,12 +273,12 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     // fladen — den er stadig fuldt brugbar uden kolonnerne.
     const stages = profileRows || [];
     if (!abilitiesRes.error && stages.length) {
-      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, Math.round(suitabilityScore(ab, stages) * 100)]));
+      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, displaySuitability(ab, stages)]));
       // Nøglet på stage_number, ikke på arrayets indeks: rækkerne er sorteret
       // efter stage_number, men et løb kan mangle en profil-række, og så ville
       // et indeks-array tavst forskyde alle etaper efter hullet.
       stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => {
-        const perStage = stageSuitabilityScores(ab, stages);
+        const perStage = displayStageSuitabilityScores(ab, stages);
         const byStage = {};
         stages.forEach((s, i) => {
           if (s?.stage_number != null && Number.isFinite(perStage[i])) byStage[s.stage_number] = perStage[i];

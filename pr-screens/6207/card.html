@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6207 before after</title>
+<style>
+  :root { --bg:#0e1116; --card:#161b22; --border:#2a313c; --t1:#e8ecf1; --t2:#aab3bf; --t3:#7d8794; --gold:#d4a843; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--t1); font:14px/1.45 system-ui, sans-serif; font-variant-numeric:tabular-nums; }
+  h1 { font-size:15px; margin:0 0 16px; font-weight:600; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  h2 { font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--t3); margin:0 0 8px; font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:5px; padding:14px; }
+  .row { display:flex; justify-content:space-between; padding:8px 0; border-top:1px solid var(--border); color:var(--t2); }
+  .row:first-of-type { border-top:0; }
+  .num { color:var(--t1); font-weight:600; }
+  .bad { color:#e0705a; }
+  .note { color:var(--t3); font-size:12px; margin:8px 0 0; }
+</style></head><body>
+<h1>Route match for the same rider and race (example data)</h1>
+<div class="grid">
+  <div><h2>Before</h2>
+    <div class="card">
+      <div class="row"><span>Season matrix</span><span class="num">59</span></div>
+      <div class="row"><span>Plan day</span><span class="num bad">53</span></div>
+    </div>
+    <p class="note">Plan day used the raw engine scale, the matrix used a normalized one.</p>
+  </div>
+  <div><h2>After</h2>
+    <div class="card">
+      <div class="row"><span>Season matrix</span><span class="num">59</span></div>
+      <div class="row"><span>Plan day</span><span class="num">59</span></div>
+    </div>
+    <p class="note">Same rider, same race, same number on every screen.</p>
+  </div>
+</div>
+</body></html>

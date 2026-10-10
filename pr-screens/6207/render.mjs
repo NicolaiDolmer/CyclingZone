@@ -1,0 +1,10 @@
+import { resolve, dirname } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+const dir = dirname(fileURLToPath(import.meta.url));
+const { chromium } = await import(pathToFileURL(resolve(dir, "../../frontend/node_modules/@playwright/test/index.mjs")).href);
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 900, height: 300 }, deviceScaleFactor: 1 });
+await p.goto(pathToFileURL(resolve(dir, "card.html")).href);
+await p.waitForTimeout(300);
+await p.screenshot({ path: resolve(dir, "before-after-6207.png"), fullPage: true });
+await b.close();

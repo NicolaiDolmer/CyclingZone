@@ -2,7 +2,7 @@
 // #1307: manager-udtagelse — ren validering + DB-operationer (kaldes fra api.js).
 // Fejl returneres som snake_case-koder (frontend oversætter; mønster fra training-ruterne).
 
-import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
+import { selectionSizeForRace, displaySuitability, displayStageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "./riderEligibility.js";
@@ -365,8 +365,8 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       // #1747: ryttertype (top-2) til visning i udtagelses-panelet. null = endnu ikke beregnet.
       primaryType: r.primary_type ?? null,
       secondaryType: r.secondary_type ?? null,
-      suitability: hasFit ? Math.round(suitabilityScore(ab, stages) * 100) : null,
-      stageSuitability: hasFit ? stageSuitabilityScores(ab, stages) : null,
+      suitability: hasFit ? displaySuitability(ab, stages) : null,
+      stageSuitability: hasFit ? displayStageSuitabilityScores(ab, stages) : null,
       // S5: aggression (0-99) — driver udbruds-CHANCEN i motoren (raceSimulator.aggressionScore).
       // Surfaces så HunterExplainer kan rangere jæger-kandidater. null = endnu ikke beregnet.
       aggression: ab?.aggression ?? null,

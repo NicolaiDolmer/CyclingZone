@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { autopickTeamSelection, selectionSizeForRace, stageSuitabilityScores, suitabilityScore } from "./raceAutopick.js";
+import { autopickTeamSelection, selectionSizeForRace, stageSuitabilityScores, suitabilityScore, displaySuitability, displayStageSuitabilityScores } from "./raceAutopick.js";
 
 const ab = (over = {}) => ({
   climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
@@ -199,4 +199,39 @@ test("stageSuitabilityScores: ét 0-100-tal pr. etape, samme skala som suitabili
 test("stageSuitabilityScores: tom stages → tom liste; manglende demand_vector → 0", () => {
   assert.deepEqual(stageSuitabilityScores(ab(), []), []);
   assert.deepEqual(stageSuitabilityScores(ab(), [{ stage_number: 1 }]), [0]);
+});
+
+// ── #6207: visnings-egnethed (normaliseret) == frontendens riderSuitability ───
+// DELT TESTVEKTOR: samme evner, etaper og forventede tal står i
+// frontend/src/lib/suitability.test.js. Ændres ét sted, skal det andet følge, ellers
+// viser planlægningsdagen og sæsonmatricen igen to tal for samme rytter og løb.
+const PARITY_ABILITIES = { climbing: 80, sprint: 40, endurance: 60, tempo: 50, time_trial: 70 };
+const PARITY_STAGES = [
+  { stage_number: 1, demand_vector: { climbing: 0.5, endurance: 0.3, tempo: 0.1, randomness: 0.1 } },
+  { stage_number: 2, demand_vector: { sprint: 0.6, endurance: 0.3, randomness: 0.1 } },
+];
+const PARITY_EXPECTED_STAGES = [71, 47];
+const PARITY_EXPECTED_RACE = 59;
+
+test("displayStageSuitabilityScores: normaliseret med summen af evne-vaegtene (randomness taeller ikke)", () => {
+  assert.deepEqual(displayStageSuitabilityScores(PARITY_ABILITIES, PARITY_STAGES), PARITY_EXPECTED_STAGES);
+});
+
+test("displaySuitability: loebs-tal = sum raa score / sum vaegte, afrundet som frontend", () => {
+  assert.equal(displaySuitability(PARITY_ABILITIES, PARITY_STAGES), PARITY_EXPECTED_RACE);
+});
+
+test("displaySuitability: perfekt rytter rammer 100, tom/ukendt profil giver 0 (aldrig NaN)", () => {
+  const perfect = Object.fromEntries(["climbing", "sprint", "endurance", "tempo", "time_trial"].map((k) => [k, 99]));
+  assert.equal(displaySuitability(perfect, PARITY_STAGES), 100);
+  assert.equal(displaySuitability(PARITY_ABILITIES, []), 0);
+  assert.equal(displaySuitability(PARITY_ABILITIES, [{ demand_vector: { randomness: 0.5 } }]), 0);
+  assert.deepEqual(displayStageSuitabilityScores(PARITY_ABILITIES, [{ demand_vector: null }]), [0]);
+  assert.deepEqual(displayStageSuitabilityScores(PARITY_ABILITIES, null), []);
+});
+
+test("autopick-skalaen er UROERT: suitabilityScore/stageSuitabilityScores er stadig unormaliserede", () => {
+  // (63/99 + 42/99) / 2 = ca. 0,53 — ikke de normaliserede 59. Motor og golden hviler paa denne skala.
+  assert.equal(Math.round(suitabilityScore(PARITY_ABILITIES, PARITY_STAGES) * 100), 53);
+  assert.deepEqual(stageSuitabilityScores(PARITY_ABILITIES, PARITY_STAGES), [64, 42]);
 });

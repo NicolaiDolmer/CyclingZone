@@ -1016,3 +1016,22 @@ test("#5843 prepareSelectionChange: 3×3-matrix — kun løbets egen trup kan ud
     }
   }
 });
+
+// #6207: udtagelsens rute-match er den NORMALISEREDE visnings-skala (samme som sæsonmatricen).
+// Vektoren er delt med raceAutopick.test.js og frontend/src/lib/suitability.test.js.
+test("buildRiderRows (#6207): suitability og stageSuitability er normaliseret, ikke den raa autopick-skala", () => {
+  const abilities = { climbing: 80, sprint: 40, endurance: 60, tempo: 50, time_trial: 70 };
+  const stages = [
+    { stage_number: 1, demand_vector: { climbing: 0.5, endurance: 0.3, tempo: 0.1, randomness: 0.1 } },
+    { stage_number: 2, demand_vector: { sprint: 0.6, endurance: 0.3, randomness: 0.1 } },
+  ];
+  const rows = buildRiderRows({
+    riders: [{ id: "r1", firstname: "A", lastname: "B" }],
+    stages,
+    abilityByRider: new Map([["r1", abilities]]),
+    conditionByRider: new Map(),
+    todayStr: "2026-10-01",
+  });
+  assert.equal(rows[0].suitability, 59);
+  assert.deepEqual(rows[0].stageSuitability, [71, 47]);
+});

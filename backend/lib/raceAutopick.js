@@ -4,7 +4,7 @@
 // Egnethed = gennemsnitlig terrain-score over løbets etapeprofiler, let dæmpet af
 // træthed (assistenten skåner smadrede ryttere). Deterministisk (stabil tiebreak).
 
-import { terrainScore } from "./raceSimulator.js";
+import { terrainScore, ABILITY_KEYS } from "./raceSimulator.js";
 
 // Spec 8.1 + race-hub Fase 0a: startfelt-størrelse pr. kategori — 8 (Grand Tours),
 // 7 (WorldTour-niveau), 6 (øvrige). Nøgler = race_class-værdier (database/2026-05-09-race-pool.sql).
@@ -60,6 +60,48 @@ export function suitabilityScore(abilities, stages) {
 export function stageSuitabilityScores(abilities, stages) {
   if (!Array.isArray(stages)) return [];
   return stages.map((s) => Math.round(terrainScore(abilities, s.demand_vector || {}) * 100));
+}
+
+// #6207: VISNINGS-egnethed (0-100), normaliseret med summen af de efterspurgte evne-vægte
+// (randomness tæller ikke med, det er støj og ikke en evne). Frontendens
+// suitability.js (riderSuitability) normaliserer på samme måde; uden den normalisering
+// viste planlægningsdagen et lavere tal end sæsonmatricen for samme rytter og løb (#6207).
+//
+// RØR IKKE suitabilityScore / stageSuitabilityScores ovenfor: de er den UNORMALISEREDE
+// skala som autopick-rangeringen og motoren er kalibreret på. Disse to funktioner er kun
+// til det spilleren ser.
+function demandWeight(demandVector, key) {
+  const w = Number(demandVector?.[key]);
+  return Number.isFinite(w) && w > 0 ? w : 0;
+}
+
+function weightSum(demandVector) {
+  let sum = 0;
+  for (const k of ABILITY_KEYS) sum += demandWeight(demandVector, k);
+  return sum;
+}
+
+// Løbs-egnethed: Σ rå score / Σ vægte over alle etaper. Det er det samme som at
+// normalisere løbets samlede demand-vektor (frontendens aggregat), og det er ikke
+// gennemsnittet af de afrundede etape-tal.
+export function displaySuitability(abilities, stages) {
+  if (!stages?.length) return 0;
+  let raw = 0;
+  let denom = 0;
+  for (const s of stages) {
+    raw += terrainScore(abilities, s.demand_vector || {});
+    denom += weightSum(s.demand_vector);
+  }
+  return denom > 0 ? Math.round((raw / denom) * 100) : 0;
+}
+
+// Per-etape visnings-egnethed, afrundet som frontendens riderSuitability.
+export function displayStageSuitabilityScores(abilities, stages) {
+  if (!Array.isArray(stages)) return [];
+  return stages.map((s) => {
+    const denom = weightSum(s.demand_vector);
+    return denom > 0 ? Math.round((terrainScore(abilities, s.demand_vector || {}) / denom) * 100) : 0;
+  });
 }
 
 // Flade etaper (sprint-stages) bruges ikke til GC-captain-udvælgelse.
