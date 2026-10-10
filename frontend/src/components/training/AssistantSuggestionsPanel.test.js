@@ -40,3 +40,23 @@ test("#4699 acceptableCount er en prop, ikke en gen-udledning i visningen", () =
   assert.doesNotMatch(src, /visibleRows\.filter\(/,
     "panelet må ikke bygge sin egen parallelle acceptabel-regel");
 });
+
+// #4522: programsektionen pr. rytter-gruppe er ren visning; afledningen bor i
+// lib/assistantProgramSuggestions.ts og skrivningen i serverens keepOwn-sti.
+test("#4522 programsektionen vises kun med grupper og har ingen egen afledning", () => {
+  assert.match(src, /programGroups\.length > 0 &&/, "ingen grupper = ingen sektion");
+  assert.match(src, /^\s*programGroups = \[\],$/m, "gruppelisten er en prop, ikke udledt i panelet");
+  assert.doesNotMatch(src, /buildProgramSuggestionGroups|primary_type/,
+    "panelet bygger ikke sine egne grupper");
+});
+
+test("#4522 intet anvendes foer klik: hver gruppe har en knap der kalder handleren, slaaet fra mens der arbejdes", () => {
+  assert.match(src, /disabled=\{busy \|\| programBusy\}/);
+  assert.match(src, /onClick=\{\(\) => onApplyProgramGroup\?\.\(group\)\}/);
+  assert.match(src, /t\("assistantSuggestions\.programApply", \{ n: group\.riderIds\.length \}\)/);
+});
+
+test("#4522 programsektionen tilfoejer ingen ekstra primaer knap", () => {
+  const section = src.slice(src.indexOf('data-testid="assistant-program-section"'), src.indexOf("{programMessage &&"));
+  assert.doesNotMatch(section, /variant="primary"/);
+});

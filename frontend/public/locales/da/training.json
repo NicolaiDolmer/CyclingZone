@@ -188,7 +188,14 @@
     "dismiss": "Afvis",
     "nothingAppliedYet": "Intet anvendes, før du accepterer.",
     "empty": "Ingen forslag lige nu. Alle ryttere har allerede et matchet fokus.",
-    "emptyFiltered": "Alle ryttere har allerede en plan."
+    "emptyFiltered": "Alle ryttere har allerede en plan.",
+    "chooseByRider": "Vælg rytter for rytter ({n})",
+    "programTitle": "Programmer til dine grupper",
+    "programIntro": "En færdig uge til hver type rytter. Den går kun til ryttere uden egen plan.",
+    "programFor": "{type}: {count, plural, one {# rytter} other {# ryttere}}",
+    "programApply": "Brug på disse {n}",
+    "programApplied": "Program sat på {n, plural, one {# rytter} other {# ryttere}}.",
+    "programSkipped": "{n, plural, one {Sprang # rytter med egen plan over.} other {Sprang # ryttere med egen plan over.}}"
   },
   "historyTitle": "Træningshistorik",
   "historySubtitle": "Dine seneste 30 dages daglige træning",

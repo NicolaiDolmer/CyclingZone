@@ -22,7 +22,7 @@ type ProgramsResponse = {
   assigned?: Record<string, string>;
 };
 
-export type ProgramsResult = { ok: boolean; error?: string };
+export type ProgramsResult = { ok: boolean; error?: string; applied?: number; skipped?: number };
 
 export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<unknown> | void } = {}) {
   const [enabled, setEnabled] = useState(false);
@@ -54,10 +54,10 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
     setBusy(true);
     try {
       const res = await apiFetch(path, { method, headers, body: JSON.stringify(body) }, { source: "training-programs" });
-      const data = (res.data ?? {}) as { error?: string };
+      const data = (res.data ?? {}) as { error?: string; applied?: number; skipped?: number };
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       await Promise.all([load(), onChanged?.()]);
-      return { ok: true };
+      return { ok: true, applied: data.applied, skipped: data.skipped };
     } catch {
       return { ok: false, error: "network" };
     } finally {
@@ -71,6 +71,14 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
     [send],
   );
 
+  // #4522: assistentens programforslag til en gruppe. keepOwn: serveren springer ryttere
+  // med egen plan eller gruppefoelgere over og svarer {applied, skipped}.
+  const applyToRiders = useCallback(
+    (programKey: string, riderIds: string[]) =>
+      send("/api/training/programs/apply", "POST", { programKey, riderIds, keepOwn: true }),
+    [send],
+  );
+
   // slotIndex null = hele ugedagen; 0-4 = een loebsdag.
   const setCell = useCallback(
     (riderId: string, weekday: string, slotIndex: number | null, session: string) =>
@@ -78,5 +86,5 @@ export function useTrainingPrograms({ onChanged }: { onChanged?: () => Promise<u
     [send],
   );
 
-  return { enabled, cellsEnabled, seeds, catalog, assigned, busy, applyProgram, setCell, reload: load };
+  return { enabled, cellsEnabled, seeds, catalog, assigned, busy, applyProgram, applyToRiders, setCell, reload: load };
 }
