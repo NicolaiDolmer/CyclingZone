@@ -209,9 +209,9 @@ test("pin: loadRacedRiderIdsToday laeser race_results (post-hoc), ikke race_entr
   const src = readFileSync(new URL("./dailyTrainingEngine.js", import.meta.url), "utf8");
   const start = src.indexOf("async function loadRacedRiderIdsToday");
   assert.ok(start > 0, "loadRacedRiderIdsToday findes");
-  const body = src.slice(start, src.indexOf("\n}\n", start));
+  const body = src.slice(start, start + 1400);
   assert.match(body, /\.from\("race_results"\)/);
-  assert.doesNotMatch(body, /.from("race_entries")/);
+  assert.doesNotMatch(body, /\.from\("race_entries"\)/);
 });
 
 test("pin: rytter fra et hold der ikke staar i startfeltet er ikke bundet paa loebsdagen og traener normalt", async () => {
