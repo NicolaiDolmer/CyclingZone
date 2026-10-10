@@ -507,6 +507,65 @@ export function applyGroupTimes(
   return next;
 }
 
+/** #6440: ét split fra stignings-hooket i dette segment (kilde -> ny gruppe). */
+export type SegmentSplit = { sourceGroupId: string; groupId: string };
+
+/** #6440: splittene i stignings-hookets events (peloton_splits med kilde og ny gruppe). */
+export function segmentSplitsFromEvents(events: readonly TimelineEvent[]): SegmentSplit[] {
+  const out: SegmentSplit[] = [];
+  for (const e of events) {
+    if (e.type !== "peloton_splits") continue;
+    const source = e.params?.source_group_id;
+    const group = e.params?.group_id;
+    if (typeof source === "string" && typeof group === "string") out.push({ sourceGroupId: source, groupId: group });
+  }
+  return out;
+}
+
+/**
+ * #6440 (KUN official_times_v3): en gruppe der blev sat af paa stigningen,
+ * foelger med naar M5 bagefter i SAMME segment flytter kilde-gruppen frem
+ * (jagtens lukning af hullet til dagens udbrud). Stigningens hul (#6199 A:
+ * laengde x stejlhed x evneforskel) maales mod den gruppe rytteren koerte i,
+ * saa det er afstanden til kilde-gruppen, ikke til dens gamle ur, der bevares.
+ * Uden dette laegges jagtens lukning oven i hullet for alle de afsatte (fx en
+ * favorit der henter udbruddet paa slutstigningen: alle bag ham taber ogsaa
+ * udbruddets forspring).
+ *
+ * Tiderne sammenlignes absolut (frontens tid + gap), saa en ny front efter
+ * M5 ikke forveksles med en flytning. En afsat gruppe M5 selv har flyttet, og
+ * splits fra dagens udbrud (M5 ejer det hul), roeres ikke. Den afsatte kommer
+ * aldrig foran sin kilde. Samme array naar intet aendres.
+ */
+export function carrySplitsWithSourceAdvance(params: {
+  before: readonly RaceGroup[];
+  beforeFrontSeconds: number;
+  after: RaceGroup[];
+  afterFrontSeconds: number;
+  splits: readonly SegmentSplit[];
+}): RaceGroup[] {
+  const { before, beforeFrontSeconds, after, afterFrontSeconds, splits } = params;
+  if (splits.length === 0) return after;
+  const byIdBefore = new Map(before.map((g) => [g.id, g]));
+  let out: RaceGroup[] | null = null;
+  for (const split of splits) {
+    const current: RaceGroup[] = out ?? after;
+    const srcBefore = byIdBefore.get(split.sourceGroupId);
+    const srcAfter = current.find((g) => g.id === split.sourceGroupId);
+    const pieceBefore = byIdBefore.get(split.groupId);
+    const pieceAfter = current.find((g) => g.id === split.groupId);
+    if (!srcBefore || !srcAfter || !pieceBefore || !pieceAfter || srcBefore.origin === "breakaway") continue;
+    const advance = (beforeFrontSeconds + srcBefore.gap_seconds) - (afterFrontSeconds + srcAfter.gap_seconds);
+    if (!(advance > 0)) continue;
+    const pieceMoved = (afterFrontSeconds + pieceAfter.gap_seconds) - (beforeFrontSeconds + pieceBefore.gap_seconds);
+    if (Math.abs(pieceMoved) > 1e-6) continue;
+    const gap = round2(Math.max(srcAfter.gap_seconds, pieceAfter.gap_seconds - advance));
+    if (gap === pieceAfter.gap_seconds) continue;
+    out = current.map((g) => (g.id === split.groupId ? { ...g, gap_seconds: gap } : g));
+  }
+  return out ?? after;
+}
+
 /** Per-segment gruppe-snapshot (beslutning 20) — km rundes til 2 decimaler. */
 export function buildGroupSnapshot(km: number, groups: RaceGroup[]): SegmentGroupSnapshot {
   return {

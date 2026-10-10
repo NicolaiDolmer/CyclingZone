@@ -40,7 +40,7 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, finishDescentIndexFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 
 // #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
@@ -370,10 +370,11 @@ export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "seg
  */
 export function isDescentFinishDecidingClimb(
   ctx: Pick<SegmentHookContext, "route" | "segmentIndex">,
-  t: Pick<TimeModelTuning, "descentFinishClimbRaceProfiles" | "finishDescentMaxRunInKm">,
+  t: Pick<TimeModelTuning, "descentFinishClimbRaceProfiles" | "finishDescentMaxRunInKm"> & Partial<Pick<TimeModelTuning, "finishDescentAnyFinaleProfiles">>,
 ): boolean {
   const segs = ctx.route.segments ?? [];
-  if (ctx.route.finale_type !== "descent" || !t.descentFinishClimbRaceProfiles.includes(ctx.route.profile_type)) return false;
+  // #6440 (D3, KUN official_times_v3): paa bjerg/hoejfjeld afgoer geometrien, ikke maerkatet.
+  if (!isDescentFinaleFor(ctx.route, t) || !t.descentFinishClimbRaceProfiles.includes(ctx.route.profile_type)) return false;
   let end = segs.length - 1;
   while (end >= 0 && segs[end].kind !== "climb") end--;
   // Fable-dom 10/10: samme definition af "nedkoersel mod maal" som loftet
