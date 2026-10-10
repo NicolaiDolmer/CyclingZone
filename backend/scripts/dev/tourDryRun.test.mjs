@@ -4,6 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { attachLegacyReference, likeLiteral, parseArgs, pickRace, slug, GIRO_FIXTURE } from "./tourDryRun.mjs";
+import { ANCHOR_BANDS } from "../lib/headToHeadAnchors.js";
 import {
   KNOWN_OPEN_GATES,
   MOUNTAIN_AHEAD_PROFILES,
@@ -12,6 +13,7 @@ import {
   applyKnownOpen,
   applyLegacyHoldReference,
   breakawayAheadOfFavourites,
+  gapClass,
   legacyHoldBand,
   gateStatus,
   gcTop10InBreakOverThreshold,
@@ -163,6 +165,24 @@ test("benchmark: hver post har kilde og status, og hver klasse kendes", () => {
   const share = TOUR_BENCHMARKS.breakawayWinShare.byClass;
   assert.ok(share.high_mountain && share.mountain && share.rolling && share.hilly);
   assert.notDeepEqual([share.high_mountain.min, share.high_mountain.max], [share.mountain.min, share.mountain.max]);
+});
+
+test("#6440 gapClass: en kort afslutning opad doemmes efter ejerens maal for den (#6199 del 3), ikke bjerg-baandet", () => {
+  const seg = (kind, from_km, to_km, avg_gradient) => ({ kind, from_km, to_km, ...(avg_gradient ? { avg_gradient } : {}) });
+  const shortFinish = { stage_number: 1, profile_type: "mountain", finale_type: "long_climb", segments: [seg("rolling", 0, 175), seg("climb", 175, 180, 6)] };
+  const longFinish = { stage_number: 2, profile_type: "mountain", finale_type: "long_climb", segments: [seg("rolling", 0, 150), seg("climb", 150, 165, 7.5)] };
+  assert.equal(gapClass(shortFinish), "short_uphill");
+  assert.equal(gapClass(longFinish), "mountain");
+  assert.equal(gapClass({ ...shortFinish, profile_type: "high_mountain" }), "mountain", "hoejfjeld er aldrig en kort afslutning");
+  assert.equal(TOUR_BENCHMARKS.gapTo10.byClass.short_uphill.max, ANCHOR_BANDS.shortUphillFinishSeconds.maxByRank[10]);
+  assert.equal(TOUR_BENCHMARKS.gapTo30.byClass.short_uphill.max, ANCHOR_BANDS.shortUphillFinishSeconds.maxByRank[30]);
+  // Samme maaling, to etaper: den korte doemmes mod sit eget loft, den lange mod bjerg-baandet.
+  const g10 = ANCHOR_BANDS.shortUphillFinishSeconds.maxByRank[10] / 2;
+  const row = (stage) => ({ stage, profile_type: "mountain", gapTo10: g10, gapTo30: null, breakawayWon: false, breakawaySize: 8, minuteLossAtZeroKm: null, gcTop10InBreakOver5Min: 0, ownTeamChasesOwn: 0, clampedAtCap: 0, capClump: 0, labelContradictions: 0, flatBreakawayWinMinutes: 0 });
+  const s = summarizeTour([{ seed: 1, rows: [row(1), row(2)], gcWeek1: null, gcFinalTo10: null, gcWinnerMargin: null, gcWinner: "a" }], [shortFinish, longFinish], "official_times_v3");
+  assert.equal(s.stages.find((x) => x.stage === 1).verdicts.gapTo10, "PASS");
+  assert.equal(s.stages.find((x) => x.stage === 2).verdicts.gapTo10, verdict(g10, TOUR_BENCHMARKS.gapTo10.byClass.mountain));
+  assert.notEqual(s.stages.find((x) => x.stage === 2).verdicts.gapTo10, "PASS");
 });
 
 test("summarizeTour: udbrud doemmes pr. profile_type, high_mountain og rolling slaas ikke sammen", () => {

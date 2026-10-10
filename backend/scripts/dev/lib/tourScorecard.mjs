@@ -14,7 +14,7 @@
 //
 // Repoet er offentligt: maalte tal skrives aldrig her, kun til
 // balance-internals/ (gitignoreret) af tourDryRun.mjs.
-import { ANCHOR_BANDS } from "../../lib/headToHeadAnchors.js";
+import { ANCHOR_BANDS, isShortUphillFinish } from "../../lib/headToHeadAnchors.js";
 import { mean, median, spearmanCorrelation } from "../../lib/headToHeadStats.js";
 import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
@@ -106,6 +106,9 @@ export const TOUR_BENCHMARKS = Object.freeze({
       flat: { max: 5, status: "forslag", source: `flad massespurt: top 10 paa vinderens tid (${PCS_NOTE}); jf. ANCHOR_BANDS.fieldCohesionFlat` },
       hilly: { max: 60, status: "forslag", source: `kuperet/rullende: top 10 inden for ca. 1 min (${PCS_NOTE})` },
       mountain: { min: ANCHOR_BANDS.mountainTop10SpreadSeconds.min, max: ANCHOR_BANDS.mountainTop10SpreadSeconds.max, status: "ejer", source: ANCHOR_BANDS.mountainTop10SpreadSeconds.source },
+      // #6440: en kort afslutning opad doemmes efter ejerens eget maal for netop
+      // den etapetype (#6199 del 3), ikke bjerg-baandet (de to kan ikke begge holde).
+      short_uphill: { max: ANCHOR_BANDS.shortUphillFinishSeconds.maxByRank[10], status: "ejer", source: ANCHOR_BANDS.shortUphillFinishSeconds.source },
     },
   },
   gapTo30: {
@@ -114,6 +117,7 @@ export const TOUR_BENCHMARKS = Object.freeze({
       flat: { max: 15, status: "forslag", source: `flad massespurt: nr. 30 paa eller taet paa vinderens tid (${PCS_NOTE})` },
       hilly: { max: 240, status: "forslag", source: `kuperet/rullende: nr. 30 inden for ca. 4 min (${PCS_NOTE})` },
       mountain: { min: 180, max: 600, status: "forslag", source: `bjerg: nr. 30 ca. 3-10 min efter vinderen (${PCS_NOTE})` },
+      short_uphill: { max: ANCHOR_BANDS.shortUphillFinishSeconds.maxByRank[30], status: "ejer", source: ANCHOR_BANDS.shortUphillFinishSeconds.source },
     },
   },
   ittGapTo10Per40Km: {
@@ -184,6 +188,15 @@ export function profileClass(profileType) {
   if (profileType === "mountain" || profileType === "high_mountain") return "mountain";
   if (profileType === "itt" || profileType === "itt_hilly" || profileType === "ttt") return profileType;
   return "hilly";
+}
+
+/**
+ * #6440: benchmark-klassen for TIDSGABENE (nr. 10/30). En kort afslutning opad
+ * (headToHeadAnchors.isShortUphillFinish, samme klassifikation som ankeret og
+ * motoren) har sit eget ejer-maal (#6199 del 3); alle andre etaper profileClass.
+ */
+export function gapClass(profile) {
+  return isShortUphillFinish(profile) ? "short_uphill" : profileClass(profile?.profile_type);
 }
 
 /** PASS/WARN/FAIL/N/A for en vaerdi mod et baand. */
@@ -670,8 +683,9 @@ export function summarizeTour(perSeed, stages, revision = null) {
       seeds: ms.length,
     };
     row.verdicts = {};
+    const gapCls = gapClass(p); // #6440
     for (const key of ["gapTo10", "gapTo30", "ittGapTo10Per40Km", "breakawaySize", "ittHillyTempoMinusClimb", "leadoutRankGain"]) {
-      const band = TOUR_BENCHMARKS[key]?.byClass?.[cls];
+      const band = TOUR_BENCHMARKS[key]?.byClass?.[key === "gapTo10" || key === "gapTo30" ? gapCls : cls];
       if (band) row.verdicts[key] = verdict(row[key], band);
     }
     return row;

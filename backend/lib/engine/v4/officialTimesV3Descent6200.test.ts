@@ -65,11 +65,12 @@ test("#6200: only official_times_v3 (generation 3 on the shared clock) reads the
     JSON.stringify((SHARED_TIME_MODEL_V3_TUNING as Record<string, unknown>)[k]) !== JSON.stringify((SHARED_TIME_MODEL_V2_TUNING as Record<string, unknown>)[k]));
   assert.deepEqual(changed.sort(), [
     "descentFinishClimbAbilityWeightScale", "descentFinishClimbAttackDayformWeight", "descentFinishClimbAttackWindowSeconds", "descentFinishClimbDayformWeight",
-    "descentFinishClimbRaceProfiles", "finishDescentMaxRunInKm", "letGoOneDayMaxGapSecondsByProfile",
+    "descentFinishClimbRaceProfiles", "finishDescentAnyFinaleProfiles", "finishDescentMaxRunInKm", "letGoOneDayMaxGapSecondsByProfile",
   ]);
   // Neutral in every older model.
   for (const t of [TIME_MODEL_V3_TUNING, SHARED_TIME_MODEL_V2_TUNING]) {
     assert.deepEqual(t.descentFinishClimbRaceProfiles, []);
+    assert.deepEqual(t.finishDescentAnyFinaleProfiles, []); // #6440
     assert.equal(t.finishDescentMaxRunInKm, 0);
     assert.equal(t.descentFinishClimbDayformWeight, 0);
     assert.equal(t.descentFinishClimbAttackWindowSeconds, 0);
@@ -108,7 +109,10 @@ test("#6200: the finish descent is the last segment, or under v3 the descent bef
   assert.equal(finishDescentIndexFor(route([flat(0, 20), climb(20, 30), descent(30, 40), rolling(40, 41), flat(41, 40 + runIn)]), v3), 2);
   assert.equal(finishDescentIndexFor(route([flat(0, 20), climb(20, 30), descent(30, 40), rolling(40, 40 + runIn + 1)]), v3), -1, "a long run-in is a valley, not the finish descent");
   assert.equal(finishDescentIndexFor(route([climb(0, 10), descent(10, 20), climb(20, 22)]), v3), -1, "a climb after the descent");
-  assert.equal(finishDescentIndexFor({ ...short, finale_type: "punch" }, v3), -1, "only on a descent finale");
+  assert.equal(finishDescentIndexFor({ ...short, profile_type: "hilly", finale_type: "punch" }, v3), -1, "only on a descent finale off the mountain profiles");
+  // #6440 (D3, ejer 10/10): on mountain/high_mountain the geometry decides, whatever the label.
+  assert.equal(finishDescentIndexFor({ ...short, finale_type: "punch" }, v3), 2);
+  assert.equal(finishDescentIndexFor({ ...short, finale_type: "punch" }, SHARED_TIME_MODEL_V2_TUNING), -1);
 });
 
 test("#6200: the deciding climb is the last climb block before a descent finish on a v3 mountain profile", () => {
@@ -117,7 +121,9 @@ test("#6200: the deciding climb is the last climb block before a descent finish 
   assert.deepEqual(r.segments.map((_, segmentIndex) => isDescentFinishDecidingClimb({ route: r, segmentIndex }, v3)),
     [false, false, false, true, true, false, false]);
   assert.equal(isDescentFinishDecidingClimb({ route: r, segmentIndex: 3 }, SHARED_TIME_MODEL_V2_TUNING), false, "official_times_v2 keeps the threshold selection");
-  assert.equal(isDescentFinishDecidingClimb({ route: { ...r, finale_type: "long_climb" }, segmentIndex: 3 }, v3), false);
+  assert.equal(isDescentFinishDecidingClimb({ route: { ...r, finale_type: "long_climb" }, segmentIndex: 3 }, { ...v3, finishDescentAnyFinaleProfiles: [] }), false, "the label rule");
+  // #6440 (D3, ejer 10/10): under v3 the geometry decides on the mountain profiles, whatever the label.
+  assert.equal(isDescentFinishDecidingClimb({ route: { ...r, finale_type: "long_climb" }, segmentIndex: 3 }, v3), true);
   assert.equal(isDescentFinishDecidingClimb({ route: { ...r, profile_type: "hilly" }, segmentIndex: 3 }, v3), false, "only the mountain profiles");
   assert.equal(isDescentFinishDecidingClimb({ route: { ...r, profile_type: "high_mountain" }, segmentIndex: 4 }, v3), true);
 });
