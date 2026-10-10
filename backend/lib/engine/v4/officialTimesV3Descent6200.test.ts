@@ -237,7 +237,7 @@ test("#6200 v3: on a descent finish with a short run-in the breakaway chase clos
     }
     return topGap - sep;
   };
-  const cap = finishDescentChaseCapSeconds(topGap, kmFromTop, TIME_MODEL_V3_TUNING);
+  const cap = finishDescentChaseCapSeconds(topGap, kmFromTop, timeModelTuningFor({ ordersGcV3: true, sharedGroupTime: { entryGroups: [], timeModelGeneration: 3 }, route: r }));
   const v3 = closedBy(3);
   assert.ok(v3 > 0, "the chase still closes something");
   assert.ok(v3 <= cap + 0.01, `v3 closes ${v3} s, cap ${cap} s`);

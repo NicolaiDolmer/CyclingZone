@@ -311,13 +311,15 @@ export async function main(argv = process.argv.slice(2)) {
   const stages = sortedStages(data);
   const rows = [];
   for (const revision of opts.revisions) {
-    const tuning = typeof tm.timeModelTuningForRevision === "function" ? tm.timeModelTuningForRevision(revision) : tm.SHARED_TIME_MODEL_V2_TUNING;
-    const capFor = (gap, km) => tm.finishDescentChaseCapSeconds(gap, km, tuning);
+    // Revisionens egen tidsmodel pr. profil (CodeRabbit-fund): generation 3 = official_times_v3.
+    const sharedGroupTime = revision === "official_times_v3" ? { timeModelGeneration: 3 } : {};
     for (let s = 1; s <= opts.seeds; s++) {
       runStagesInOrder({
         v4, data, revision, seedTag: `${opts.seedPrefix}-${s}`, stages,
         onStage: ({ profile, res }) => {
           const route = routeFromStageProfileRow(profile);
+          const tuning = tm.timeModelTuningFor({ ordersGcV3: true, sharedGroupTime, route: { profile_type: route.profile_type } });
+          const capFor = (gap, km) => tm.finishDescentChaseCapSeconds(gap, km, tuning);
           const quick = analyseDescentFinish({ route, out: res.v4Output, abilitiesById, capFor, breakawayWin });
           const a = quick ? analyseDescentFinish({ route, out: res.v4Output, abilitiesById, capFor, breakawayWin, breakawaySets, climbEntry: climbEntryFor(route) }) : null;
           if (a) rows.push({ revision, stage: profile.stage_number, seed: s, a });
