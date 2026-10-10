@@ -75,6 +75,21 @@ export function effectiveBonus(track, facilityTier, staff) {
   return base * factor;
 }
 
+// #6238: ÉN delt regel for "hvilken aktiv staff tæller for effekten" — stærkeste
+// (højeste overall) i rollen. Deterministisk tie-break: laveste slot, derefter id.
+// Uafhængig af rækkefølgen i input, så egen klubside og offentlig holdside altid
+// regner på samme person. Elementer skal bære { overall, slot?, id? }.
+export function primaryStaff(list) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const overallOf = (s) => (Number.isFinite(s?.overall) ? s.overall : 0);
+  return list.reduce((best, s) => {
+    if (overallOf(s) !== overallOf(best)) return overallOf(s) > overallOf(best) ? s : best;
+    const slotDiff = (s.slot ?? 1) - (best.slot ?? 1);
+    if (slotDiff !== 0) return slotDiff < 0 ? s : best;
+    return String(s.id ?? "") < String(best.id ?? "") ? s : best;
+  });
+}
+
 export function validateUpgrade({ track, currentTier, balance }) {
   if (!Number.isInteger(currentTier) || currentTier < 0) return "invalid_tier";
   if (!FACILITY_TRACKS.includes(track)) return "invalid_track";
