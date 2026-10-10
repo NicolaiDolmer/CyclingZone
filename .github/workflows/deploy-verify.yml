@@ -414,6 +414,51 @@ jobs:
             exit 1
           fi
 
+      # #5162 (K4): beviset for carry-forward i prod. Laeser READ-ONLY de to
+      # nyeste manifester i release-lageret og kraever at op til 5 JS/CSS-filer
+      # fra den forrige release (som den nuvaerende ikke selv har) svarer 200 med
+      # rigtig type paa cyclingzone.org. 200 + text/html = SPA-rewriten = FEJL.
+      # continue-on-error: et roedt trin er et signal til ejeren, ikke et stop.
+      - name: Verify carry-forward af forrige releases assets (#5162)
+        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          # Ingen pipe: exit-koden skal vaere probens, ikke tee's.
+          # 0 = OK eller sprunget over, 1 = carry-forward maalt og fejlet,
+          # 2 = proben kunne ikke maale (lager-/netvaerksfejl).
+          set +e
+          node scripts/check-asset-miss-behaviour.mjs --carry-forward --base=https://cyclingzone.org > /tmp/carry-forward.txt 2>&1
+          CODE=$?
+          set -e
+          cat /tmp/carry-forward.txt
+          if [[ "$CODE" == "0" ]]; then
+            if grep -q "SPRUNGET OVER" /tmp/carry-forward.txt; then
+              echo "⏭️ **Carry-forward-probe: SPRUNGET OVER** — $(grep 'SPRUNGET OVER' /tmp/carry-forward.txt | head -1 | sed 's/^CARRY-FORWARD-PROBE SPRUNGET OVER: //')" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "✅ **Carry-forward-probe: OK** — filer fra den forrige release svarer 200 med rigtig type efter dette deploy." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          elif [[ "$CODE" == "1" ]]; then
+            echo "❌ **Carry-forward-probe: FEJLET** — en fane fra den forrige release kan ikke hente sine chunks. Se loggen (#5162)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
+            echo "⚠️ **Carry-forward-probe: KUNNE IKKE MAALE** (exit $CODE) — lager- eller netvaerksfejl, ikke en maalt carry-forward-fejl. Se loggen (#5162)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+      # #5162 (K4/spor 6): chunk-fejl pr. release over 72 t + dom over ejerens
+      # stopregel. Kun advisory: scriptet afslutter altid med exit 0 og skriver
+      # selv til step-summary. Den haarde graense ligger i trinnet nedenfor.
+      - name: Chunk-fejl pr. release, 72 t (#5162)
+        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        continue-on-error: true
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+        run: node scripts/chunk-errors-per-release.mjs
+
       - name: Verify Sentry source-maps uploaded (#621 item 3)
         id: sourcemaps
         # Opt-in via secrets. Hvis SENTRY_AUTH_TOKEN ikke er konfigureret i GitHub Actions
