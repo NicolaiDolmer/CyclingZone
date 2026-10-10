@@ -84,7 +84,7 @@ export default function ResetToTeamProgram({
           disabled={locked || busy || working}
           title={locked ? t("trainNow.planLocked") : undefined}
           className={`inline-flex items-center text-start text-xs font-medium text-cz-accent-t transition-colors duration-150 hover:underline disabled:cursor-not-allowed disabled:text-cz-3 disabled:no-underline ${
-            min-h-6
+            compact ? "min-h-10" : "min-h-6"
           }`}
         >
           {t("resetProgram.action")}
