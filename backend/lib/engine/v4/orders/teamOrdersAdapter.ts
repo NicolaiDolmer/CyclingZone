@@ -55,7 +55,8 @@ import {
   type TeamOrder as TeamTacticsOrder,
 } from "../ai/teamOrderContract.ts";
 import { TEAM_TACTICS_ORDER_KIND } from "../mechanics/breakaway.ts";
-import { LEADOUT_ORDER_KIND } from "../mechanics/leadout.ts";
+import { LEADOUT_ORDER_KIND, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
+import { isOfficialTimesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 export type { BreakawayStance, TeamTacticsOrder };
 
@@ -232,6 +233,11 @@ export function buildStageOrderPlan(args: {
       if (rider.rider_id != null) abilitiesByRider.set(String(rider.rider_id), toAbilities(rider.abilities));
     }
   }
+  // #6434: alle rytteres evner (ogsaa menneskeholdenes), til sprinterprofilen.
+  const rawAbilitiesByRider = new Map<string, Partial<Record<AbilityKey, number>>>();
+  for (const rider of roster) {
+    if (rider.rider_id != null && rider.abilities) rawAbilitiesByRider.set(String(rider.rider_id), toAbilities(rider.abilities));
+  }
   // Hele dagens startliste: M14 placerer kaptajnen i FELTET, ikke i holdet.
   const field: AiFieldRider[] = [...abilitiesByRider.entries()].map(([rider_id, abilities]) => ({ rider_id, abilities }));
 
@@ -259,7 +265,20 @@ export function buildStageOrderPlan(args: {
       for (const rider of order.riders) aiEffortByRider.set(rider.rider_id, rider.effort);
     }
     orders.push(toEngineTeamOrder(order));
-    const leadout = toEngineLeadoutOrder(order, teamRoster);
+    // #6434 (KUN official_times_v3): togets maal kan ogsaa vaere en kaptajn med
+    // sprinterprofil paa en flad etape (sprintTrainLeadoutOrder, #6352), for
+    // menneske- og AI-hold. Aeldre revisioner: den gamle regel, uaendret.
+    const managerSetTrain = row ? (rowToStageOverlay(row).riders ?? []).some((r) => typeof r.leadout === "boolean") : false;
+    const leadout = context !== undefined && isOfficialTimesV3OrLater(context.rules_revision)
+      ? sprintTrainLeadoutOrder({
+          team_id: teamId,
+          riders: order.riders,
+          roster: teamRoster.map((r) => ({ rider_id: r.rider_id, role: r.role, abilities: rawAbilitiesByRider.get(r.rider_id) ?? null })),
+          profileType: context.route.profile_type,
+          rulesRevision: context.rules_revision,
+          managerSetTrain,
+        })
+      : toEngineLeadoutOrder(order, teamRoster);
     if (leadout) orders.push(leadout);
   }
   return { orders, aiEffortByRider };

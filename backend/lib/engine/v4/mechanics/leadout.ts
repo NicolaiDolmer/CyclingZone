@@ -125,6 +125,12 @@ export type SprintTrainInput = {
   roster: readonly { rider_id: string; role: string | null; abilities?: Partial<Record<AbilityKey, number>> | null }[];
   profileType: string | null | undefined;
   rulesRevision: unknown;
+  /**
+   * #6434 (review): manageren har selv sat tog-flag for dagen (etapens raekke
+   * har mindst ét `leadout`). Saa er hans valg endeligt, ogsaa "intet tog":
+   * hjaelperne fyldes aldrig ind. Udeladt = false.
+   */
+  managerSetTrain?: boolean;
 };
 
 /**
@@ -142,7 +148,7 @@ export function sprintTrainLeadoutOrder(input: SprintTrainInput): TeamOrder | nu
   if (!target) return null;
   const effortById = new Map(input.riders.map((r) => [r.rider_id, r.effort]));
   let train = input.riders.filter((r) => r.leadout === true && r.rider_id !== target.rider_id).map((r) => r.rider_id);
-  if (train.length === 0 && captain) {
+  if (train.length === 0 && captain && input.managerSetTrain !== true) {
     train = input.roster
       .filter((r) => r.role === "helper" && r.rider_id !== target.rider_id && effortById.get(r.rider_id) !== "grupetto")
       .map((r) => r.rider_id);
