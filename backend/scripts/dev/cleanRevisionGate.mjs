@@ -202,6 +202,32 @@ function runJsonTool({ script, args, jsonPath, deps, label }) {
   }
 }
 
+/**
+ * D1/D3: bedoemmer descentFinish6200.mjs' markdown-rapport. Scriptet regner
+ * kontrakten (loft/nr10/klatrer/placering, "Samlet" = PASS|FAIL) pr. etape og
+ * seed, men afslutter med exit 0 uanset udfaldet, saa gaten laeser tabellen
+ * "Kontrakten pr. seed" (10 kolonner: revision, etape, seed, ..., Samlet).
+ * Kun revisionen under test bedoemmes (baseline maa gerne bryde kontrakten).
+ * Ingen raekker for revisionen, eller en ulaeselig "Samlet", er ikke maalt = FAIL.
+ */
+export function judgeDescentReport(md, revision) {
+  const reasons = [];
+  let inSeedTable = false;
+  let rows = 0;
+  for (const line of String(md ?? "").split(/\r?\n/)) {
+    if (/^##\s/.test(line)) inSeedTable = /Kontrakten pr\. seed/.test(line);
+    if (!inSeedTable || !line.startsWith("|")) continue;
+    const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+    if (cells.length < 10 || cells[0] !== revision) continue;
+    rows++;
+    const samlet = cells[cells.length - 1];
+    if (samlet === "FAIL") reasons.push(`D1/D3: kontrakten brydes i ${revision} etape ${cells[1]} seed ${cells[2]} (loft ${cells[5]}; nr. 10 ${cells[6]}; klatrer ${cells[7]}; placering ${cells[8]})`);
+    else if (samlet !== "PASS") reasons.push(`D1/D3: ulaeselig Samlet "${samlet}" i ${revision} etape ${cells[1]} seed ${cells[2]} (ikke maalt)`);
+  }
+  if (!rows) reasons.push(`D1/D3: rapporten har ingen kontrakt-raekker for ${revision} (ikke maalt)`);
+  return { reasons };
+}
+
 export function step1({ opts, deps, outBase, revisionKnown }) {
   if (!revisionKnown) return { status: "FAIL", reasons: [`revisionen ${opts.revision} findes ikke i RACE_RULES_REVISIONS; intet kan maales (ikke maalt)`] };
   const reasons = [];
@@ -232,6 +258,7 @@ export function step1({ opts, deps, outBase, revisionKnown }) {
     const r = deps.runNode([path.join(deps.backend, DESCENT_SCRIPT), "--fixture=giro", `--revision=${opts.revision},${opts.baseline}`, `--seeds=${opts.seeds}`, `--out=${descentOut}`], { cwd: deps.root });
     if (r.status !== 0) reasons.push(`D1/D3: ${DESCENT_SCRIPT} fejlede (exit ${r.status}): ${tail(r.stderr || r.stdout)}`);
     else if (!deps.exists(deps.abs(descentOut))) reasons.push(`D1/D3: ${DESCENT_SCRIPT} skrev ingen rapport (ikke maalt)`);
+    else reasons.push(...judgeDescentReport(deps.readText(deps.abs(descentOut)), opts.revision).reasons);
   }
   return { status: reasons.length ? "FAIL" : "PASS", reasons };
 }

@@ -6,6 +6,7 @@ import {
   assembleVerdict,
   exitCodeFor,
   judgeAnchorsJson,
+  judgeDescentReport,
   judgeTourJson,
   main,
   makeStep,
@@ -167,6 +168,39 @@ test("runGate: et trin der kaster bliver FAIL i stedet for at vaelte svaret", ()
   assert.equal(r.steps.length, 5);
 });
 
+function descentMd(rows) {
+  const lines = ["# #6200", "", "## Kontrakten pr. seed (ejer 5/10)", "", "| Revision | Etape | Seed | Udbrud vandt | Nr. 10 lukket / loft | Loft | Nr. 10 (60-150 s) | Klatrer-brud (vaerste s) | Placering | Samlet |", "|---|---|---|---|---|---|---|---|---|---|"];
+  for (const [rev, stage, seed, samlet] of rows) lines.push(`| ${rev} | ${stage} | ${seed} | nej | 0 / 10 | PASS | 90 PASS | 0 (0) PASS; forklaret 0 | 0 PASS | ${samlet} |`);
+  lines.push("", "## Kontrakten pr. revision og etape (antal seeds)", "", "| Revision | Etape | Seeds | Loft PASS | Nr. 10 PASS / FAIL / N/A | Klatrer PASS | Placering PASS | Samlet PASS |", "|---|---|---|---|---|---|---|---|", "| official_times_v3 | 7 | 1 | 1 | 1 / 0 / 0 | 1 | 1 | 1 |");
+  return lines.join("\n");
+}
+
+test("judgeDescentReport: kontraktbrud i revisionen er FAIL, baseline-brud ignoreres", () => {
+  const md = descentMd([["official_times_v3", 7, 1, "PASS"], ["official_times_v3", 7, 2, "FAIL"], ["official_times_v2", 7, 1, "FAIL"]]);
+  const r = judgeDescentReport(md, "official_times_v3");
+  assert.equal(r.reasons.length, 1);
+  assert.match(r.reasons[0], /kontrakten brydes.*etape 7 seed 2/);
+});
+
+test("judgeDescentReport: ingen raekker for revisionen er ikke maalt (FAIL)", () => {
+  assert.match(judgeDescentReport(descentMd([["official_times_v2", 7, 1, "PASS"]]), "official_times_v3").reasons[0], /ikke maalt/);
+  assert.equal(judgeDescentReport("", "official_times_v3").reasons.length, 1);
+});
+
+test("runGate: descent koerer OK (exit 0, rapport findes) men kontrakten fejler -> trin 1 FAIL og RED", () => {
+  const exists = new Set(["/r/backend/scripts/dev/tourDryRun.mjs", "/r/backend/scripts/dev/descentFinish6200.mjs", "/r/cache.json", "/r/balance-internals/clean-revision/run-t/descent.md"]);
+  const { deps } = fakeDeps({
+    existing: exists,
+    texts: { "/r/balance-internals/clean-revision/run-t/descent.md": descentMd([["official_times_v3", 7, 3, "FAIL"]]) },
+    jsons: { "/r/tour.json": { runs: [{ revision: "official_times_v3", summary: { counts: { PASS: 3, WARN: 0, FAIL: 0, TODO: 0 }, stages: [], classes: [], race: { verdicts: {} } } }] } },
+  });
+  deps.latestJson = () => "/r/tour.json";
+  const r = runGate({ opts: parseArgs([]), deps });
+  assert.equal(r.steps[0].status, "FAIL");
+  assert.ok(r.steps[0].reasons.some((x) => /D1\/D3: kontrakten brydes/.test(x)));
+  assert.equal(r.verdict, "RED");
+});
+
 test("runGate: GREEN naar alle vaerktoejer er groenne", () => {
   const exists = new Set(["/r/backend/scripts/dev/tourDryRun.mjs", "/r/backend/scripts/dev/descentFinish6200.mjs", "/r/backend/scripts/v4FlipReadiness.mjs", "/r/cache.json", "/r/balance-internals/clean-revision/run-t/descent.md", "/r/balance-internals/clean-revision/run-t/anchors-revision.json", "/r/balance-internals/clean-revision/run-t/anchors-baseline.json"]);
   for (const f of [...TRACK_TEST_FILES, ...FROZEN_TEST_FILES, "lib/engine/v4/mono.test.ts"]) exists.add(`/r/backend/${f}`);
@@ -174,7 +208,7 @@ test("runGate: GREEN naar alle vaerktoejer er groenne", () => {
   const { deps } = fakeDeps({
     existing: exists,
     testFiles: ["mono.test.ts"],
-    texts: { "/r/backend/lib/engine/v4/mono.test.ts": "monotoni" },
+    texts: { "/r/backend/lib/engine/v4/mono.test.ts": "monotoni", "/r/balance-internals/clean-revision/run-t/descent.md": descentMd([["official_times_v3", 7, 1, "PASS"]]) },
     jsons: {
       "/r/tour.json": { runs: [{ revision: "official_times_v3", summary: { counts: { PASS: 3, WARN: 0, FAIL: 0, TODO: 0 }, stages: [], classes: [], race: { verdicts: {} } } }] },
       "/r/balance-internals/clean-revision/run-t/anchors-revision.json": good,
