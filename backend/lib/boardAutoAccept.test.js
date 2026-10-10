@@ -21,6 +21,7 @@ import {
   AUTO_ACCEPT_ROLLOUT_FLOOR,
   AUTO_ACCEPT_THRESHOLDS,
   BOARD_AUTO_ACCEPT_SELECT,
+  buildMandateMirrorForOneYear,
   findPendingPlanType,
   resolveNegotiationOpenedAt,
   resolveThresholds,
@@ -693,4 +694,137 @@ test("#6184: batch-opslaget fejler → hvert hold falder tilbage til eget opslag
   assert.equal(summary.teams_checked, 2);
   assert.equal(summary.errors, 2, "per-hold-fallbacken fejler pr. hold, ikke hele kørslen");
   assert.equal(calls.board_profiles, 3, "1 batch + 1 fallback pr. hold");
+});
+
+// =====================================================================
+// #5946 · 1yr-rækken må ikke genskrives med standardmål bag et underskrevet
+// mandat (mandat-modellen 'on')
+// =====================================================================
+//
+// Prod-mønster: sæsonslut sætter 1yr til 'pending', også når manageren
+// allerede har underskrevet næste sæsons mandat på årsmødet. Cronen skrev så
+// standardmål + negotiated_at=null ind, og Boardroom (#5751-reconcile) viste
+// standard-target i stedet for det forhandlede.
+
+const MANDATE_GOALS_5946 = [
+  { type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" },
+  { type: "stage_wins", target: 1, category: "results" },
+];
+
+function oneYearPendingState({ flag = "on", mandate = {}, withMandate = true } = {}) {
+  const opened = new Date(NOW.getTime() - 5 * DAY_MS).toISOString();
+  const state = baseState({ teamCreatedAt: daysAgo(200), negotiationStatus: "completed" });
+  state.board_profiles.push(
+    {
+      id: "bp-3", team_id: "team-1", plan_type: "3yr", focus: "balanced",
+      negotiation_status: "completed", is_baseline: false, created_at: daysAgo(200), updated_at: daysAgo(100),
+    },
+    {
+      id: "bp-1yr", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+      negotiation_status: "pending", is_baseline: false, created_at: daysAgo(200), updated_at: opened,
+      negotiated_at: daysAgo(6), // managerens egen underskrift (dual-write) før sæsonslut-resettet
+      current_goals: [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }],
+    },
+  );
+  if (withMandate) {
+    state.board_mandates = [{
+      id: "mand-1", team_id: "team-1", season_number: 2, status: "active", focus: "results",
+      signed_at: daysAgo(6), goals: MANDATE_GOALS_5946, ...mandate,
+    }];
+  } else {
+    state.board_mandates = [];
+  }
+  if (flag != null) withMandateFlag(state, flag);
+  return state;
+}
+
+function oneYear(state) {
+  return state.board_profiles.find((b) => b.team_id === "team-1" && b.plan_type === "1yr");
+}
+
+test("#5946: 'on' + underskrevet mandat i samme sæson → 1yr spejler mandatets mål, negotiated_at røres ikke", async () => {
+  const state = oneYearPendingState();
+  const before = oneYear(state).negotiated_at;
+  const { summary, notifications } = await runCron(state, NOW);
+
+  assert.equal(summary.auto_accepted, 1);
+  assert.equal(summary.errors, 0);
+  assert.equal(notifications.length, 0, "'on' er stadig tavs (#6122)");
+  const board = oneYear(state);
+  assert.equal(board.negotiation_status, "completed");
+  assert.equal(board.focus, "results", "mandatets fokus, ikke en afledt standard");
+  const topN = board.current_goals.find((g) => g.type === "top_n_finish");
+  assert.equal(topN.target, 7, "mandatets forhandlede target — ikke et standardmål");
+  assert.equal(board.current_goals.length, MANDATE_GOALS_5946.length);
+  assert.equal(board.negotiated_at, before, "managerens underskrift-stempel overlever (onboarding-fluebenet)");
+  assert.equal(board.plan_start_season_number, 2);
+});
+
+test("#5946: 'on' uden underskrevet mandat → uændret standardmål-sti (negotiated_at=null)", async () => {
+  const state = oneYearPendingState({ withMandate: false });
+  const { summary } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 1);
+  assert.equal(oneYear(state).negotiated_at, null);
+  assert.notEqual(oneYear(state).focus, "results");
+});
+
+test("#5946: 'on' + mandat fra en ANDEN sæson → standardmål-sti (spejler kun samme sæson)", async () => {
+  const state = oneYearPendingState({ mandate: { season_number: 1 } });
+  const { summary } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 1);
+  assert.equal(oneYear(state).negotiated_at, null);
+});
+
+test("#5946: 'beta' + underskrevet mandat → uændret (den gamle side er stadig forhandlingsfladen)", async () => {
+  const state = oneYearPendingState({ flag: "beta" });
+  const { summary } = await runCron(state, NOW);
+  assert.equal(summary.auto_accepted, 1);
+  assert.equal(oneYear(state).negotiated_at, null);
+  assert.notEqual(oneYear(state).focus, "results");
+});
+
+test("#5946: 'on' + mandat-batchopslaget fejler → per-hold-opslag, spejlingen virker stadig", async () => {
+  const state = oneYearPendingState();
+  const failingOnce = createFakeSupabase(state);
+  let batchFailed = false;
+  const client = {
+    ...failingOnce,
+    from(table) {
+      const q = failingOnce.from(table);
+      if (table !== "board_mandates" || batchFailed) return q;
+      batchFailed = true;
+      return { select: () => { throw new Error("boom"); } };
+    },
+  };
+  const captured = [];
+  const summary = await processBoardAutoAcceptCron({
+    supabase: client,
+    notifyUser: async () => ({ delivered: true }),
+    now: NOW,
+    rolloutFloor: DISABLE_ROLLOUT_FLOOR,
+    captureExceptionFn: (err) => captured.push(err),
+  });
+  assert.equal(summary.errors, 0);
+  assert.equal(captured.length, 1, "batch-fejlen rapporteres");
+  assert.equal(oneYear(state).current_goals.find((g) => g.type === "top_n_finish").target, 7);
+});
+
+test("#5946 buildMandateMirrorForOneYear: kun 1yr + underskrevet mandat med mål", () => {
+  const signed = { signed_at: "2026-09-27T19:00:00Z", focus: "results", goals: MANDATE_GOALS_5946 };
+  assert.deepEqual(buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: signed }), {
+    goals: MANDATE_GOALS_5946, focus: "results",
+  });
+  assert.equal(buildMandateMirrorForOneYear({ planType: "3yr", signedMandate: signed }), null);
+  assert.equal(buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: { ...signed, signed_at: null } }), null);
+  assert.equal(buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: { ...signed, goals: [] } }), null);
+  assert.equal(buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: null }), null);
+  // JSON-streng (board_profiles-formen) læses også; ulæselig → null.
+  assert.equal(
+    buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: { ...signed, goals: JSON.stringify(MANDATE_GOALS_5946) } }).goals.length,
+    2,
+  );
+  assert.equal(buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: { ...signed, goals: "{nope" } }), null);
+  // Rå mål ordret — ingen metadata-berigelse persisteres.
+  const mirrored = buildMandateMirrorForOneYear({ planType: "1yr", signedMandate: signed });
+  assert.deepEqual(Object.keys(mirrored.goals[1]).sort(), ["category", "target", "type"]);
 });

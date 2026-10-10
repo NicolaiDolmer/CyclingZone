@@ -26,6 +26,8 @@ import {
   planToMandate,
   planToMilestones,
   reconcileMandateGoalsWithLegacyBoard,
+  isMandateGoalsAuthoritative,
+  resolveMandateDisplayGoals,
 } from "./boardMandate.js";
 import { buildGoalKey } from "./boardGoals.js";
 import { CONSEQUENCE_CONSTANTS } from "./boardConsequences.js";
@@ -542,4 +544,37 @@ test("#5751 reconcile: et bonusmål i LEGACY-listen kan aldrig blive kilde for e
 
   assert.equal(reconciled[0].target, 7);
   assert.equal(reconciled[0].label, "Slut i top 7");
+});
+
+// ── #5946 · underskrevet mandat er autoritativt under 'on' ──
+
+test("#5946 isMandateGoalsAuthoritative: kun stadie 'on' (eller true) OG signed_at", () => {
+  const signedAt = "2026-09-27T19:03:00Z";
+  assert.equal(isMandateGoalsAuthoritative({ mandateModelStage: "on", mandateSignedAt: signedAt }), true);
+  assert.equal(isMandateGoalsAuthoritative({ mandateModelStage: true, mandateSignedAt: signedAt }), true);
+  assert.equal(isMandateGoalsAuthoritative({ mandateModelStage: "beta", mandateSignedAt: signedAt }), false);
+  assert.equal(isMandateGoalsAuthoritative({ mandateModelStage: "off", mandateSignedAt: signedAt }), false);
+  assert.equal(isMandateGoalsAuthoritative({ mandateModelStage: null, mandateSignedAt: signedAt }), false);
+  assert.equal(isMandateGoalsAuthoritative({ mandateModelStage: "on", mandateSignedAt: null }), false);
+  assert.equal(isMandateGoalsAuthoritative(), false);
+});
+
+test("#5946 resolveMandateDisplayGoals: 'on' + underskrevet → mandatets mål ordret; ellers #5751-reconcile", () => {
+  const mandateGoals = [{ type: "top_n_finish", target: 7, label: "Slut i top 7", category: "results" }];
+  const legacy = {
+    legacyGoals: [{ type: "top_n_finish", target: 5, label: "Slut i top 5", category: "results" }],
+    legacyNegotiationStatus: "completed",
+  };
+  const on = resolveMandateDisplayGoals({ mandateGoals, mandateSignedAt: "2026-09-27T19:03:00Z", mandateModelStage: "on", ...legacy });
+  assert.equal(on, mandateGoals, "samme array, ingen kopi");
+  assert.equal(on[0].target, 7);
+
+  const beta = resolveMandateDisplayGoals({ mandateGoals, mandateSignedAt: "2026-09-27T19:03:00Z", mandateModelStage: "beta", ...legacy });
+  assert.deepEqual(beta, reconcileMandateGoalsWithLegacyBoard({ mandateGoals, ...legacy }));
+  assert.equal(beta[0].target, 5);
+
+  const unsigned = resolveMandateDisplayGoals({ mandateGoals, mandateSignedAt: null, mandateModelStage: "on", ...legacy });
+  assert.equal(unsigned[0].target, 5);
+
+  assert.deepEqual(resolveMandateDisplayGoals({ mandateGoals: null, mandateModelStage: "on", mandateSignedAt: "x" }), []);
 });

@@ -105,7 +105,9 @@ export const BOARD_AUTO_ACCEPT_SELECT =
   // række via preserveExternalGoals. Uden kolonnen her ville existingBoard
   // være `undefined` på feltet, og hvert auto-accept ville tabe bonus-målet
   // præcis som /board/sign gjorde for de 11 hold i #4865.
-  "id, plan_type, focus, negotiation_status, is_baseline, satisfaction, budget_modifier, tradeoff_payload, current_goals, created_at, updated_at";
+  // #5946 · `negotiated_at` SKAL med: 1yr-spejlingen af et underskrevet mandat
+  // (autoAcceptPendingPlan) bevarer rækkens eksisterende stempel.
+  "id, plan_type, focus, negotiation_status, is_baseline, satisfaction, budget_modifier, tradeoff_payload, current_goals, negotiated_at, created_at, updated_at";
 
 /**
  * #2463 · Find hvornår en pending plan blev "åbnet til forhandling" — ankeret
@@ -231,6 +233,18 @@ export async function processBoardAutoAcceptCron({
   // bevidst: i 'beta' ser almindelige managere stadig den gamle side og skal
   // stadig have påmindelserne. Auto-accept kører fortsat, bare uden besked.
   const silent = await isBoardMandateModelEnabled(supabase);
+  // #5946 · Under 'on' er mandatet sandheden: et hold med et UNDERSKREVET
+  // mandat i den aktive sæson må ikke få sin 1yr-række genskrevet med
+  // standardmål (se autoAcceptPendingPlan). null = batch-opslaget fejlede →
+  // hvert hold slår selv op (samme degradering som boardsByTeamId).
+  const signedMandatesByTeamId = silent
+    ? await loadSignedMandatesByTeamId({
+      supabase,
+      teamIds: (humanTeams || []).map((t) => t.id).filter(Boolean),
+      seasonNumber: activeSeason.number,
+      captureExceptionFn,
+    })
+    : new Map();
 
   for (const team of humanTeams || []) {
     summary.teams_checked += 1;
@@ -245,6 +259,7 @@ export async function processBoardAutoAcceptCron({
         lastSeenByUserId,
         preloadedBoards: boardsByTeamId ? (boardsByTeamId.get(team.id) || []) : undefined,
         silent,
+        preloadedSignedMandate: signedMandatesByTeamId ? (signedMandatesByTeamId.get(team.id) ?? null) : undefined,
       });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
@@ -324,6 +339,55 @@ async function loadBoardsByTeamId({ supabase, teamIds, captureExceptionFn }) {
   }
 }
 
+// #5946 · Kolonnerne 1yr-spejlingen bruger fra et underskrevet mandat.
+const SIGNED_MANDATE_SELECT = "team_id, season_number, focus, goals, signed_at";
+
+/**
+ * #5946 · Underskrevne, aktive mandater for den aktive sæson, pr. team_id.
+ * Returnerer null ved fejl (kalderen falder tilbage til per-hold-opslag).
+ *
+ * @returns {Promise<Map<string, object>|null>}
+ */
+async function loadSignedMandatesByTeamId({ supabase, teamIds, seasonNumber, captureExceptionFn }) {
+  const map = new Map();
+  if (!teamIds?.length || seasonNumber == null) return map;
+  try {
+    const rows = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+      supabase
+        .from("board_mandates")
+        .select(SIGNED_MANDATE_SELECT)
+        .in("team_id", chunk)
+        .eq("status", "active")
+        .eq("season_number", seasonNumber)
+        .order("team_id")
+    );
+    // signed_at tjekkes her, ikke i queryen: status 'active' sættes kun af
+    // signMandate sammen med signed_at, så det er et værn, ikke et filter.
+    for (const row of rows) if (row.signed_at) map.set(row.team_id, row);
+    return map;
+  } catch (error) {
+    console.error("  ⚠️  board auto-accept: batch-opslag af board_mandates fejlede — falder tilbage til per-hold-opslag:", error?.message || error);
+    if (captureExceptionFn) {
+      captureExceptionFn(error, { tags: { cron: "board-auto-accept", stage: "mandate-batch-load" } });
+    }
+    return null;
+  }
+}
+
+async function loadSignedMandateForTeam({ supabase, teamId, seasonNumber }) {
+  if (seasonNumber == null) return null;
+  const { data, error } = await supabase
+    .from("board_mandates")
+    .select(SIGNED_MANDATE_SELECT)
+    .eq("team_id", teamId)
+    .eq("status", "active")
+    .eq("season_number", seasonNumber)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.signed_at ? data : null;
+}
+
 async function processTeamAutoAccept({
   supabase,
   team,
@@ -334,6 +398,7 @@ async function processTeamAutoAccept({
   lastSeenByUserId = new Map(),
   preloadedBoards,
   silent = false,
+  preloadedSignedMandate,
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
   // #6122 · silent = mandat-modellen er 'on': ingen plan-beskeder (se cron-entry).
@@ -397,6 +462,14 @@ async function processTeamAutoAccept({
   );
 
   if (daysSinceOpen >= thresholds.AUTO_ACCEPT) {
+    // #5946 · Kun 1yr-rækken er mandatets dual-write-kopi, og kun under 'on'
+    // (silent) er mandatet sandheden — i 'beta'/'off' er alt uændret.
+    let signedMandate = null;
+    if (silent && pendingPlanType === "1yr") {
+      signedMandate = preloadedSignedMandate !== undefined
+        ? preloadedSignedMandate
+        : await loadSignedMandateForTeam({ supabase, teamId: team.id, seasonNumber: activeSeason?.number ?? null });
+    }
     const accepted = await autoAcceptPendingPlan({
       supabase,
       team,
@@ -405,6 +478,7 @@ async function processTeamAutoAccept({
       existingBoard: pendingBoard,
       notifyUser: notify,
       now,
+      signedMandate,
     });
     result.auto_accepted = accepted;
     return result;
@@ -550,13 +624,50 @@ async function sendT1CriticalReminder({
   return Boolean(result?.delivered);
 }
 
+/**
+ * #5946 · Mål + fokus for en 1yr-række der spejler et underskrevet mandat.
+ * Ren funktion (eksporteret til test). `null` = intet at spejle (intet mandat,
+ * anden plan_type eller tom målliste) → den normale standardmål-sti.
+ */
+export function buildMandateMirrorForOneYear({ planType, signedMandate } = {}) {
+  if (planType !== "1yr" || !signedMandate?.signed_at) return null;
+  // Rå mål ordret (som writeLegacyOneYearBoard) — parseBoardGoals ville
+  // berige dem med metadata, og det må ikke persisteres.
+  let goals = signedMandate.goals;
+  if (typeof goals === "string") {
+    try {
+      goals = JSON.parse(goals);
+    } catch {
+      // best-effort: en ulæselig målliste = intet at spejle → den normale
+      // standardmål-sti (samme udfald som før #5946), ingen ny fejlflade.
+      goals = null;
+    }
+  }
+  if (!Array.isArray(goals)) return null;
+  goals = goals.filter((goal) => goal && typeof goal === "object");
+  if (!goals.length) return null;
+  return { goals, focus: signedMandate.focus || null };
+}
+
 async function autoAcceptPendingPlan({
-  supabase, team, activeSeason, planType, existingBoard, notifyUser, now,
+  supabase, team, activeSeason, planType, existingBoard, notifyUser, now, signedMandate = null,
 }) {
+  // #5946 · Rodårsag: sæsonslut sætter 1yr-rækken til 'pending'
+  // (economyEngine.processTeamSeasonEnd) — også når manageren allerede har
+  // underskrevet næste sæsons mandat på årsmødet. Denne cron skrev så friske
+  // STANDARDMÅL ind med negotiation_status='completed' og negotiated_at=null,
+  // og #5751-reconciliationen lod den række overskrive mandatets forhandlede
+  // target i Boardroom (spillerrapport: genforhandlet til top 7, viste top 5),
+  // mens onboarding-fluebenet (negotiated_at) forsvandt. Med et underskrevet
+  // mandat i den aktive sæson (kun under 'on', se processTeamAutoAccept)
+  // spejles mandatets mål + fokus i stedet (samme indhold som årsmødets
+  // dual-write, writeLegacyOneYearBoard), og rækkens negotiated_at røres ikke.
+  const mandateMirror = buildMandateMirrorForOneYear({ planType, signedMandate });
+
   // Default focus afledes fra identity_basis (B=b 2026-05-05) — fallback til
   // existing focus (renewal-case) eller "balanced".
   const identityBasis = team.season_1_identity_basis || null;
-  const focus = existingBoard?.focus || deriveDefaultFocusFromIdentity(identityBasis);
+  const focus = mandateMirror?.focus || existingBoard?.focus || deriveDefaultFocusFromIdentity(identityBasis);
   let dnaKey = team.team_dna_key || null;
 
   if (identityBasis && !dnaKey) {
@@ -604,32 +715,9 @@ async function autoAcceptPendingPlan({
     }
   }
 
-  // Load riders + standing til mål-generering.
-  const [ridersRes, standingRes] = await Promise.all([
-    supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", team.id),
-    supabase.from("season_standings").select("*").eq("team_id", team.id)
-      .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
-  ]);
-  if (ridersRes.error) throw ridersRes.error;
-  if (standingRes.error) throw standingRes.error;
-
-  const proposal = buildBoardProposal({
-    focus,
-    planType,
-    reputationEnabled: isReputationReadEnabled(await readReputationStage(supabase)),
-    team,
-    riders: ridersRes.data || [],
-    standing: standingRes.data || null,
-    identityBasis,
-    dnaKey,
-    // S-02g/#2469 · Anvend deferred tradeoff-stramning fra forrige sæsons
-    // approved request — præcis som /board/sign og /board/proposal gør.
-    // Uden den her gav samme plan to udfald: signerede du selv, blev din
-    // tradeoff anvendt; lod du planen udløbe, forsvandt den.
-    // (buildBoardProposal har ingen `board`-parameter — kun tradeoffPayload
-    // er kausal. api.js' `board:`-argument er en død prop, ryddet separat.)
-    tradeoffPayload: existingBoard?.tradeoff_payload ?? null,
-  });
+  const rebuiltGoals = mandateMirror
+    ? mandateMirror.goals
+    : await buildDefaultAutoAcceptGoals({ supabase, team, planType, focus, identityBasis, dnaKey, existingBoard });
 
   const planDuration = getPlanDuration(planType);
   const startSeasonNumber = activeSeason?.number ?? 1;
@@ -640,10 +728,7 @@ async function autoAcceptPendingPlan({
   // `source: "bonus_offer"`) bæres med over — pengene er allerede udbetalt,
   // så kravet må ikke forsvinde når planen fornys.
   const finalGoals = preserveExternalGoals({
-    rebuiltGoals: finalizeBoardGoals({
-      goals: proposal.goals,
-      negotiationIndexes: [], // ingen forhandlinger ved auto-accept — status quo
-    }),
+    rebuiltGoals,
     previousGoals: existingBoard?.current_goals ?? [],
   });
 
@@ -670,7 +755,11 @@ async function autoAcceptPendingPlan({
     // der er med i payloaden, så et tidligere spiller-signeret negotiated_at
     // ville ellers overleve stående ind i denne auto-accepterede cyklus (fx
     // efter /board/renew nulstiller status til 'pending' uden at røre feltet).
-    negotiated_at: null,
+    // #5946 · Undtagelse: en spejling af et underskrevet mandat er ikke en ny
+    // auto-accepteret cyklus — mandatets underskrift ER cyklussen, og den
+    // skrev selv negotiated_at (manager) hhv. null (auto) via dual-writen.
+    // Stemplet bevares derfor uændret.
+    negotiated_at: mandateMirror ? (existingBoard?.negotiated_at ?? null) : null,
     plan_start_season_number: startSeasonNumber,
     plan_end_season_number: endSeasonNumber,
     plan_start_balance: team.balance ?? 0,
@@ -715,6 +804,41 @@ async function autoAcceptPendingPlan({
   }
 
   return true;
+}
+
+// #5946 · Den normale auto-accept-sti: friske standardmål fra buildBoardProposal.
+async function buildDefaultAutoAcceptGoals({ supabase, team, planType, focus, identityBasis, dnaKey, existingBoard }) {
+  // Load riders + standing til mål-generering.
+  const [ridersRes, standingRes] = await Promise.all([
+    supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", team.id),
+    supabase.from("season_standings").select("*").eq("team_id", team.id)
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (ridersRes.error) throw ridersRes.error;
+  if (standingRes.error) throw standingRes.error;
+
+  const proposal = buildBoardProposal({
+    focus,
+    planType,
+    reputationEnabled: isReputationReadEnabled(await readReputationStage(supabase)),
+    team,
+    riders: ridersRes.data || [],
+    standing: standingRes.data || null,
+    identityBasis,
+    dnaKey,
+    // S-02g/#2469 · Anvend deferred tradeoff-stramning fra forrige sæsons
+    // approved request — præcis som /board/sign og /board/proposal gør.
+    // Uden den her gav samme plan to udfald: signerede du selv, blev din
+    // tradeoff anvendt; lod du planen udløbe, forsvandt den.
+    // (buildBoardProposal har ingen `board`-parameter — kun tradeoffPayload
+    // er kausal. api.js' `board:`-argument er en død prop, ryddet separat.)
+    tradeoffPayload: existingBoard?.tradeoff_payload ?? null,
+  });
+
+  return finalizeBoardGoals({
+    goals: proposal.goals,
+    negotiationIndexes: [], // ingen forhandlinger ved auto-accept — status quo
+  });
 }
 
 // #666: EN fallback brugt i title/message — i18n-key driver fuld locale.

@@ -559,3 +559,56 @@ export function reconcileMandateGoalsWithLegacyBoard({
     return unchanged ? goal : next;
   });
 }
+
+/**
+ * #5946 · Er mandatets EGNE mål den gældende sandhed (og dermed IKKE et
+ * reconcile-mål for den gamle 1yr-række)?
+ *
+ * #5751's regel ("en afsluttet legacy-forhandling vinder altid") byggede på at
+ * den gamle side var forhandlingsfladen i S3. Med mandat-modellen 'on' (flippet
+ * 27/9) ser alle managere Boardroom/årsmødet (BoardroomRoute.jsx); den gamle
+ * side er kun en fejl-fallback. Den gamle 1yr-række er nu en AFLEDT kopi
+ * (årsmødets dual-write, `writeLegacyOneYearBoard`), og den kan blive forældet
+ * eller genskrevet bag mandatets ryg: sæsonslut sætter den til 'pending'
+ * (economyEngine.processTeamSeasonEnd) og den gamle auto-accept-cron skrev så
+ * standardmål ind med negotiation_status='completed'. Reglen fra #5751 lod den
+ * række overskrive et UNDERSKREVET mandats target (spillerrapport: genforhandlet
+ * til top 7, Boardroom viste top 5).
+ *
+ * Derfor: stadie 'on' + underskrevet mandat (`signed_at`) → mandatets mål er
+ * autoritative. I 'beta'/'off' (den gamle side er stadig forhandlingsfladen for
+ * almindelige managere) eller ved et ikke-underskrevet mandat gælder #5751
+ * uændret.
+ *
+ * @param {object} p
+ * @param {boolean|string|null} p.mandateModelStage  app_config-værdien for board_mandate_model_enabled
+ * @param {string|null} p.mandateSignedAt            board_mandates.signed_at
+ */
+export function isMandateGoalsAuthoritative({ mandateModelStage = null, mandateSignedAt = null } = {}) {
+  const stageOn = mandateModelStage === true || mandateModelStage === "on";
+  return stageOn && Boolean(mandateSignedAt);
+}
+
+/**
+ * #5946 · De mål Boardroom viser for et mandat. ÉT sted for valget mellem
+ * "mandatet er autoritativt" og #5751-reconciliationen, så GET /board/room og
+ * drift-rapporten (scripts/dev/report5946MandateDisplayDrift.mjs) ikke kan
+ * divergere.
+ */
+export function resolveMandateDisplayGoals({
+  mandateGoals = [],
+  mandateSignedAt = null,
+  mandateModelStage = null,
+  legacyGoals = null,
+  legacyNegotiationStatus = null,
+  legacyNegotiatedAt = null,
+} = {}) {
+  const goals = Array.isArray(mandateGoals) ? mandateGoals : [];
+  if (isMandateGoalsAuthoritative({ mandateModelStage, mandateSignedAt })) return goals;
+  return reconcileMandateGoalsWithLegacyBoard({
+    mandateGoals: goals,
+    legacyGoals,
+    legacyNegotiationStatus,
+    legacyNegotiatedAt,
+  });
+}
