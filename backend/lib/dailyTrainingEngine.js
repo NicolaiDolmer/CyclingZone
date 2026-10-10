@@ -339,7 +339,9 @@ export async function runTeamTrainingDay({
     dateWork=work;
     const unsafe=dateWork.expected_rider_ids.filter(id=>{
       const rider=riders.find(row=>row.id===id);
-      return !(dateWork.quarantined_rider_ids??[]).includes(id)&&(!rider||rider.team_id!==teamId||rider.is_retired===true||!dateWork.opening_conditions?.[id]);
+      // #6439: a rider who changed team after the date opened stays in this frozen
+      // roster (training follows the rider); only a released rider is unsafe here.
+      return !(dateWork.quarantined_rider_ids??[]).includes(id)&&(!rider||rider.team_id==null||rider.is_retired===true||!dateWork.opening_conditions?.[id]);
     });
     if(unsafe.length){
       const {data:quarantine,error:quarantineError}=await supabase.rpc('quarantine_training_date_riders',{p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_rider_ids:unsafe,p_reason:'unsafe_roster_or_missing_opening',p_now:now.toISOString()});
