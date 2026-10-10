@@ -475,6 +475,20 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </Section>
     );
   }
+  // #5945: holdet står i startfeltet, men er under startgulvet og kan ikke fyldes op
+  // (serverens start_outlook, samme regel som udtagelses-panelet). Så stiller det ikke
+  // op, og en taktik-matrix for ryttere der aldrig starter ville bare lyve om at holdet
+  // deltager. Banneret erstatter matrixen; teksten genbruger udtagelsens egen linje.
+  if (roles.enabled && roles.start_outlook?.starts === false) {
+    return (
+      <Section>
+        <SectionHeader title={t("racePage.tactics.title")} />
+        <p role="status" data-testid="tactics-not-starting" className="text-xs text-cz-warning">
+          {t("selection.willNotStart", { min: roles.start_outlook.min })}
+        </p>
+      </Section>
+    );
+  }
   // Flag OFF, eller holdet har ingen ryttere i løbet.
   if (!roles.enabled || riders.length === 0 || activeStage == null) {
     return (
