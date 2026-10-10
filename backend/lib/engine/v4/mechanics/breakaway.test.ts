@@ -26,6 +26,8 @@ import {
   letGoMaxGapSeconds,
   letGoSplitKm,
   selectBreakawayRiders,
+  stageWinChaseForceV3,
+  stageWinDemandKeys,
   teamChasePlan,
   type BreakawayHookContext,
   type BreakawayStance,
@@ -34,7 +36,7 @@ import {
   TRY_BREAK_JOIN_SCORE_BOOST,
 } from "./breakaway.ts";
 import { makeHookCtx, rekeyHookCtxForSegment } from "../testUtils/makeHookCtx.ts";
-import { BREAKAWAY_EXTRA_TUNING, RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_CHASE_V3_TUNING, BREAKAWAY_EXTRA_TUNING, RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import type { AbilityKey, EffortLevel, Entrant, EngineState, RaceGroup, RiderRole, RiderState, RouteV2, TimelineEvent } from "../types.ts";
 
 // ── Fixtures (samme moenster som descent.test.ts) ─────────────────────────────
@@ -1212,4 +1214,116 @@ test("#5813 hook: dagens 'for sent'-lodtraekning er etape-stabil (samme paa alle
     makeHookCtx({ segment: route.segments[segmentIndex], segmentIndex, route, entrants: {}, tuning: RACE_V4_TUNING, seed: "5813-stable" })
       .rngForStage("breakaway_chase_floor")();
   assert.equal(roll(4), roll(5));
+});
+
+// ── #6441 (KUN official_times_v3, ejer 11/10): etapeinteresse + additiv holdjagt ─
+
+/** 40 ryttere paa 8 hold i jagtgruppen + et udbrud paa 5. `teamX` faar staerke ryttere paa `key`. */
+function stageWinScenario(key: AbilityKey | null, strong = 90) {
+  const entrants: Record<string, Entrant> = {};
+  const chase: string[] = [];
+  for (let t = 0; t < 8; t++) {
+    for (let i = 0; i < 5; i++) {
+      const id = `T${t}-${i}`;
+      const boost = key && t === 0 && i < 3 ? { [key]: strong } : {};
+      entrants[id] = { ...makeEntrant(id, boost), team_id: `T${t}` };
+      chase.push(id);
+    }
+  }
+  const breakaway: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const id = `B-${i}`;
+    entrants[id] = { ...makeEntrant(id, { endurance: 70, tempo: 70 }), team_id: `T${i + 1}` };
+    breakaway.push(id);
+  }
+  return { entrants, chase, breakaway };
+}
+
+function netV3(s: ReturnType<typeof stageWinScenario>, finaleType: "punch" | "breakaway" | "bunch_sprint" | "long_climb", profileType: "hilly" | "flat" | "mountain", teamSignals: Map<string, number> = new Map(), excludedTeamIds?: Set<string>) {
+  return computeNetChaseAdvantage({
+    chaseGroupRiderIds: s.chase, breakawayRiderIds: s.breakaway, entrants: s.entrants, finaleType,
+    remainingKmFraction: 0.5, stance: 0,
+    officialTimesV3: { profileType, teamSignals, ...(excludedTeamIds ? { excludedTeamIds } : {}) },
+  });
+}
+
+test("#6441: finalens krav - spurt -> sprint, lang stigning -> klatring, punch/udbrud -> punch paa kuperet og klatring paa bjerg", () => {
+  assert.deepEqual(stageWinDemandKeys("bunch_sprint", "flat"), ["sprint"]);
+  assert.deepEqual(stageWinDemandKeys("reduced_sprint", "hilly"), ["sprint"]);
+  assert.deepEqual(stageWinDemandKeys("long_climb", "hilly"), ["climbing"]);
+  assert.deepEqual(stageWinDemandKeys("punch", "hilly"), ["punch"]);
+  assert.deepEqual(stageWinDemandKeys("breakaway", "rolling"), ["punch"]);
+  assert.deepEqual(stageWinDemandKeys("breakaway", "mountain"), ["climbing"]);
+  assert.deepEqual(stageWinDemandKeys("descent", "high_mountain"), ["climbing"]);
+});
+
+test("#6441 v3: et hold med puncheurs jager en punch-finale paa kuperet (foer: kun sprintevne talte)", () => {
+  const withPunch = stageWinScenario("punch");
+  const without = stageWinScenario(null);
+  assert.ok(netV3(withPunch, "punch", "hilly") > netV3(without, "punch", "hilly"), "puncheurs giver jagtkraft under v3");
+  // Den gamle beregning (alle aeldre revisioner) ser ikke punch-evnen.
+  const legacy = (s: ReturnType<typeof stageWinScenario>) => computeNetChaseAdvantage({ chaseGroupRiderIds: s.chase, breakawayRiderIds: s.breakaway, entrants: s.entrants, finaleType: "punch", remainingKmFraction: 0.5, stance: 0 });
+  assert.equal(legacy(withPunch), legacy(without));
+  // Paa bjerg er det klatrerne, ikke puncheurerne.
+  assert.ok(netV3(stageWinScenario("climbing"), "long_climb", "mountain") > netV3(without, "long_climb", "mountain"));
+  assert.equal(netV3(withPunch, "long_climb", "mountain"), netV3(without, "long_climb", "mountain"));
+});
+
+test("#6441 v3: et hold med egen mand i udbruddet har ingen etapeinteresse i at jage det", () => {
+  const s = stageWinScenario("punch");
+  assert.ok(netV3(s, "punch", "hilly", new Map(), new Set(["T0"])) < netV3(s, "punch", "hilly"));
+});
+
+test("#6441 v3: 'jag' giver altid kraft, ogsaa naar feltet ellers ikke lukker; 'lad gaa' bremser aldrig", () => {
+  const s = stageWinScenario(null);
+  const neutral = netV3(s, "breakaway", "hilly");
+  assert.ok(neutral <= 0, `scenariet er et udbrud feltet ikke henter af sig selv (${neutral})`);
+  // Foer: multiplikatoren ganger en negativ fordel - "jag" (stance 1) hjalp ikke.
+  const old = (stance: number) => computeNetChaseAdvantage({ chaseGroupRiderIds: s.chase, breakawayRiderIds: s.breakaway, entrants: s.entrants, finaleType: "breakaway", remainingKmFraction: 0.5, stance });
+  assert.ok(old(1) <= old(0), "den gamle multiplikator kan ikke hjaelpe en negativ fordel");
+  const chase = netV3(s, "breakaway", "hilly", new Map([["T6", 0.5]]));
+  assert.ok(chase > neutral, "en jagtordre laegger kraft til");
+  assert.equal(netV3(s, "breakaway", "hilly", new Map([["T6", -0.4], ["T7", -0.2]])), neutral, "lad gaa = 0, aldrig negativt");
+  // Loftet: mange hold i fuld jagt tilfoejer hoejst teamSignalWeight.
+  const all = new Map(Array.from({ length: 8 }, (_, t) => [`T${t}`, 0.5] as [string, number]));
+  assert.ok(netV3(s, "breakaway", "hilly", all) - neutral <= BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight + 1e-12);
+});
+
+test("#6441 v3: pr. hold taeller det stoerste af etapeinteresse og ordre, aldrig summen", () => {
+  const s = stageWinScenario("sprint");
+  const base = { chaseGroupRiderIds: s.chase, entrants: s.entrants, finaleType: "bunch_sprint" as const, abilityScale: 1, profileType: "flat" as const };
+  const none = stageWinChaseForceV3({ ...base, teamSignals: new Map() });
+  const t0Interest = none.interestByTeam.get("T0") ?? 0;
+  assert.ok(t0Interest > BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight * 0.5, "sprinterholdets interesse er stoerre end dets ordre");
+  // Sprinterholdet med jagtordre: ingen ekstra (max, ikke sum).
+  assert.equal(stageWinChaseForceV3({ ...base, teamSignals: new Map([["T0", 0.5]]) }).total, none.total);
+  // Et hold uden interesse i top-rytterne og en jagtordre: ordren laegges til.
+  const outsider = stageWinChaseForceV3({ ...base, teamSignals: new Map([["T7", 0.5]]) });
+  assert.ok(outsider.total > none.total);
+  assert.ok(outsider.orderExcess > 0 && outsider.orderExcess <= BREAKAWAY_CHASE_V3_TUNING.teamSignalWeight);
+});
+
+test("#6441 v3: teamChasePlan med withTeamSignals giver hvert holds bidrag; uden er planen uaendret", () => {
+  const riders = teamRiders(["A", "B", "C"], 4);
+  const orders = [orderFor("A", "chase"), orderFor("B", "let_go")];
+  const f = chaseFixture(riders);
+  const plain = teamChasePlan({ orders, chaseGroupRiderIds: f.ids, entrants: f.entrants, riders: f.riderStates });
+  const withSignals = teamChasePlan({ orders, chaseGroupRiderIds: f.ids, entrants: f.entrants, riders: f.riderStates, withTeamSignals: true });
+  assert.equal("teamSignals" in plain, false);
+  assert.equal(withSignals.signal, plain.signal);
+  assert.ok((withSignals.teamSignals?.get("A") ?? 0) > 0);
+  assert.ok((withSignals.teamSignals?.get("B") ?? 0) < 0);
+  assert.equal(withSignals.teamSignals?.has("C"), false);
+});
+
+test("#6441 v3: feltet kommer sjaeldnere for sent paa en massespurt; aeldre revisioner og andre finaler uaendrede", () => {
+  const route = { finale_type: "bunch_sprint" as const, profile_type: "flat" as const };
+  const v3Chance = BREAKAWAY_CHASE_V3_TUNING.chaseFloorLateChanceByFinale.bunch_sprint ?? 0;
+  const oldChance = BREAKAWAY_EXTRA_TUNING.chaseFloorLateChanceByFinale.bunch_sprint ?? 0;
+  assert.ok(v3Chance < oldChance);
+  const roll = (v3Chance + oldChance) / 2;
+  assert.equal(chaseFloorTargetGapSeconds(route, roll), BREAKAWAY_EXTRA_TUNING.chaseFloorLateTargetGapSeconds, "foer: for sent");
+  assert.equal(chaseFloorTargetGapSeconds(route, roll, true), BREAKAWAY_EXTRA_TUNING.chaseFloorTargetGapSeconds, "v3: til tiden");
+  const breakawayRoute = { finale_type: "breakaway" as const, profile_type: "rolling" as const };
+  for (const r of [0.05, 0.2, 0.5, 0.9]) assert.equal(chaseFloorTargetGapSeconds(breakawayRoute, r, true), chaseFloorTargetGapSeconds(breakawayRoute, r));
 });

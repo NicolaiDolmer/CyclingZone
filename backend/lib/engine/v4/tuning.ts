@@ -957,6 +957,57 @@ const breakawayExtra = {
 /** M5 additiv udbruds-tuning (deep-frosset). Se breakawayExtra-kommentaren ovenfor. */
 export const BREAKAWAY_EXTRA_TUNING = deepFreeze(breakawayExtra);
 
+// ── #6441 (KUN official_times_v3, ejer 11/10): etapeinteresse + additiv holdjagt ─
+// Under official_times_v3 jager feltet efter hvem der kan VINDE dagens finale,
+// ikke kun efter sprinterne: jagtgruppens bedste ryttere paa finalens krav
+// (sprint ved spurt, punch ved punch-/udbrudsfinaler paa aabent og kuperet
+// terraen, klatring ved lange stigninger og paa bjerg) x finalens vaegt. Et
+// hold med egen rytter i udbruddet bidrager ikke til den interesse.
+// Holdenes ordre ("jag") og GC-reaktion laegges TIL netto-fordelen med en
+// begraenset vaegt i stedet for at gange den: "jag" giver altid kraft, ogsaa
+// naar feltet ellers ikke ville lukke; "lad gaa" bidrager 0 og bremser aldrig
+// feltet. Pr. hold taeller det stoerste af holdets etapeinteresse og dets
+// ordre/reaktion, aldrig summen. Alle aeldre revisioner laeser intet herfra.
+// Kalibreret privat paa prod-felter, Giro-fixturen og Tour-cachen samtidig
+// (balance-internals/6441-A/).
+const breakawayChaseV3 = {
+  // Vejprofilerne den rene revision daekker (samme som udbrudstrappen); brosten,
+  // grus og klassikere jager som under official_times_v2.
+  profileTypes: ["flat", "rolling", "hilly", "mountain", "high_mountain"] as readonly ProfileType[],
+  // Hvor mange af jagtgruppens bedste ryttere paa finalens krav der maales.
+  stageWinTopRiders: 8,
+  // Vaegt paa etapeinteressen i chase-forcen (erstatter sprinterInterestWeight under v3).
+  stageWinInterestWeight: 0.25,
+  // Finalevaegt pr. finaletype (erstatter finaleTypeChaseWeight under v3).
+  stageWinFinaleWeightDefault: 0.4,
+  stageWinFinaleWeight: {
+    bunch_sprint: 3.0,
+    reduced_sprint: 2.0,
+    punch: 0.6,
+    breakaway: 0.3,
+    descent: 0.15,
+    long_climb: 0.5,
+    solo_tt: 0.05,
+  } as Partial<Record<import("./types.ts").FinaleType, number>>,
+  // Vaegt paa et holds ordre/GC-reaktion (signal i [0, maxTeamSignal]) lagt til
+  // netto-fordelen. Summen af det ordrerne tilfoejer ud over interessen er
+  // hoejst denne vaegt (samme loft som det samlede stance-signal paa 1).
+  teamSignalWeight: 0.11,
+  // Jagt-gulvets lodtraekning (feltet kommer for sent) under v3.
+  chaseFloorLateChanceByFinale: {
+    bunch_sprint: 0.08,
+    reduced_sprint: 0.1,
+  } as Partial<Record<import("./types.ts").FinaleType, number>>,
+  // Kuperet: jagten foer finalestigningen er ikke daempet under v3 (bjerg og
+  // hoejfjeld beholder den kontrollerede jagt).
+  mountainSelectionByProfile: {
+    hilly: { preFinalChaseClosingScale: 1 },
+  } as Partial<Record<ProfileType, Partial<MountainSelectionV2Knobs>>>,
+};
+
+/** #6441 official_times_v3-jagten (deep-frosset). Se kommentaren ovenfor. */
+export const BREAKAWAY_CHASE_V3_TUNING = deepFreeze(breakawayChaseV3);
+
 // ── Sub-tick-fysiologi (#4030, fixture-fund 21/8) — ADDITIV physiology-tuning ─
 // SS2's frosne PhysiologyTuning-kontrakt (types.ts) baerer ikke disse felter.
 // Samme moenster som finaleExtra ovenfor: physiology.ts importerer denne
