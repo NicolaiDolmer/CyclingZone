@@ -24,7 +24,9 @@
 //     → fuld plan pr. board i balance-internals/5897/dry-run-<tid>.json (gitignoreret)
 //   apply (ejer-gated som #6198/#5864; kræver ALLE tre):
 //     ... node scripts/dev/repair5897BoardYouthRaces.mjs --apply --owner-go=5897-production \
-//           --approved-list=<liste-hash fra det dry-run ejeren godkendte> [--events-only]
+//           --approved-list=<liste-hash fra det dry-run ejeren godkendte> --events-only
+//     (--events-only er PÅKRÆVET ved apply: fuld reparation (A) er blokeret, fordi
+//      token + hash ellers også ville godkende den.)
 //     (--events-only = ejerens valg B 1/10: fjern kun ungdoms-events; satisfaction/
 //      budget_modifier røres ikke. Se "atTargetNow" i dry-run: et board på sit
 //      target har allerede absorberet ungdomsløbenes ekstra skridt mod samme
@@ -70,6 +72,9 @@ export const PREVENTION_MERGED_AT = "2026-09-28T19:04:10Z";
 // Det dry-run ejeren tog valg B på (1/10). Tallene genbruges ikke, kun sammenlignes.
 export const BASELINE_REPORT = "dry-run-2026-10-01T15-15-24-548Z.md";
 const HASH_RE = /^[a-f0-9]{64}$/;
+// Ejerens valg 1/10 er B. Token + liste-hash godkender KUN events-only; variant A
+// (invers-delta + budget_modifier) kræver en ny ejerbeslutning og en kodeændring her.
+const FULL_REPAIR_BLOCKED = `--apply kræver --events-only: ejerens valg 1/10 er B, og ${OWNER_GO_FLAG} godkender ikke fuld reparation (A)`;
 // En board-skrivning (updated_at) lander et øjeblik før eventet; margin så den
 // samme finalization ikke tælles som "ændret siden".
 export const CHANGED_SINCE_MARGIN_MS = 60_000;
@@ -526,6 +531,7 @@ export function parseArgs(args) {
   if (options.apply && !options.approvedHash) {
     throw new Error("--apply kræver --approved-list=<liste-hash fra det dry-run ejeren godkendte>");
   }
+  if (options.apply && !options.eventsOnly) throw new Error(FULL_REPAIR_BLOCKED);
   if (options.ownerGo && !options.apply) throw new Error("--owner-go uden --apply giver ingen mening");
   if (options.approvedHash && !options.apply) throw new Error("--approved-list uden --apply giver ingen mening");
   if (options.apply && options.verify) throw new Error("--apply og --verify kan ikke kombineres");
@@ -561,6 +567,7 @@ export async function existingBackupTables(supabase) {
  */
 export async function prepareApply({ supabase, input, ownerGo, approvedHash, eventsOnly = false, checkBackups = existingBackupTables }) {
   if (!ownerGo) throw new Error(`STOP #${ISSUE}: apply kræver ${OWNER_GO_FLAG}. Intet skrevet.`);
+  if (!eventsOnly) throw new Error(`STOP #${ISSUE}: ${FULL_REPAIR_BLOCKED}. Intet skrevet.`);
   if (!HASH_RE.test(String(approvedHash ?? ""))) {
     throw new Error(`STOP #${ISSUE}: apply kræver --approved-list=<liste-hash>. Intet skrevet.`);
   }
@@ -691,7 +698,8 @@ næste seniorløb trækker det tilbage igen (med budget_modifier-udsving underve
 Scriptet har to apply-varianter; ejeren valgte B 1/10:
 
 - **A. Fuld reparation** (issuets forslag): invers-delta + budget_modifier + fjern events.
-- **B. Kun events** (\`--events-only\`, valgt): fjern ungdoms-events fra historikken;
+  Blokeret i apply: kræver en ny ejerbeslutning og en kodeændring.
+- **B. Kun events** (\`--events-only\`, valgt og påkrævet ved apply): fjern ungdoms-events fra historikken;
   satisfaction og budget_modifier røres ikke, fordi de allerede står hvor
   senior-resultaterne siger.
 

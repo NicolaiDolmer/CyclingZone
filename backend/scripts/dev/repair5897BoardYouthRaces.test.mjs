@@ -237,7 +237,7 @@ test("CLI: dry-run er default, apply kræver owner-go-token OG liste-hash", () =
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
   assert.throws(() => parseArgs([OWNER_GO_FLAG]), /--apply/);
   assert.throws(() => parseArgs(["--typo"]), /Ukendt/);
-  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`, "--verify=x.json"]), /kombineres/);
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`, "--events-only", "--verify=x.json"]), /kombineres/);
   assert.equal(parseArgs(["--verify=5897/x.json"]).verify, "5897/x.json");
 });
 
@@ -250,6 +250,18 @@ test("token-gate: bar --owner-go, forkert token, manglende eller ugyldig liste-h
   assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH.toUpperCase()}`]), /64-tegns/);
   assert.throws(() => parseArgs([`--approved-list=${HASH}`]), /uden --apply/);
   assert.throws(() => buildApplySql({ eventsOnly: true }), /approvedHash/);
+});
+
+test("token + liste-hash godkender kun ejerens valg B (events-only), aldrig fuld reparation", async () => {
+  assert.throws(() => parseArgs(["--apply", OWNER_GO_FLAG, `--approved-list=${HASH}`]), /kræver --events-only[\s\S]*valg 1\/10 er B/);
+  const input = gateInput(["e1"]);
+  const approvedHash = eventIdSetHash(input.youthEvents);
+  let backupChecked = false;
+  await assert.rejects(
+    prepareApply({ supabase: null, input, ownerGo: true, approvedHash, eventsOnly: false, checkBackups: async () => { backupChecked = true; return []; } }),
+    /kræver --events-only[\s\S]*Intet skrevet/,
+  );
+  assert.equal(backupChecked, false);
 });
 
 test("eventIdSetHash: eksakt id-mængde, uafhængig af rækkefølge og dubletter", () => {
@@ -310,7 +322,7 @@ test("prepareApply: findes en backup-tabel allerede, stopper apply", async () =>
   const input = gateInput(["e1"]);
   const approvedHash = eventIdSetHash(input.youthEvents);
   await assert.rejects(
-    prepareApply({ supabase: null, input, ownerGo: true, approvedHash, checkBackups: async () => [BACKUP_EVENTS_TABLE] }),
+    prepareApply({ supabase: null, input, ownerGo: true, approvedHash, eventsOnly: true, checkBackups: async () => [BACKUP_EVENTS_TABLE] }),
     /backup-tabel findes allerede \(backup_board_satisfaction_events_5897\)[\s\S]*Intet skrevet/,
   );
 });
