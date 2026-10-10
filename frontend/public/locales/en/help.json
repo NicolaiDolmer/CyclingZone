@@ -707,7 +707,7 @@
           "Fatigue resets to 0 for every rider.",
           "Injuries are NOT reset. They carry over unchanged.",
           "Peak plans are unaffected by the changeover.",
-          "Rider values do not move during the changeover itself. Wages and values update once, in the Sunday update after the changeover is complete.",
+          "Season wages are paid during the changeover. Rider values do not move during the changeover itself: they update once, in the Sunday update after the changeover is complete.",
           "The new season's first race day is the day after the changeover. Its first stage starts at least 24 hours after the old season's last stage, so you have time to pick your race squads."
         ]
       }
