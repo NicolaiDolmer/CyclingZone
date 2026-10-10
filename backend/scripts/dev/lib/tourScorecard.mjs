@@ -19,6 +19,7 @@ import { mean, median, spearmanCorrelation } from "../../lib/headToHeadStats.js"
 import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
 import { isOrdersGcRulesRevision } from "../../../lib/raceEngineRulesRevision.ts";
+import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
 // Loebsfilmens egen afledning (samme kode som spillerne ser): "hvor tabte
 // rytterne tid" og om tidslinjen overhovedet baerer v4's gruppe-gab.
 import { buildOwnTimeLoss, hasGroupGaps } from "../../../../frontend/src/lib/stageSplitTimes.ts";
@@ -297,6 +298,20 @@ export function clampedAtCap(ranked, out) {
 export function overCapRaw(out) {
   const fin = finishedSorted(out);
   return fin.filter((r) => r.time_seconds - fin[0].time_seconds > STAGE_GAP_CAP_SECONDS + 0.5).length;
+}
+
+/**
+ * #6285/#6201: morgenudbrud stoerre end profilens loft. Loftet laeses fra
+ * motorens egen tuning (BREAKAWAY_SIZE_V3_TUNING via breakawayMaxSizeV3), aldrig
+ * et tal her; det gaelder orders_gc_v3-arvelinjen (official_times_v2 inkl.).
+ * Returnerer stoerrelsen paa hver breakaway_formed over loftet.
+ */
+export function breakawaysOverSizeCap(out, profile) {
+  const cap = breakawayMaxSizeV3(profile?.profile_type);
+  return (out?.timeline?.events ?? [])
+    .filter((e) => e.type === "breakaway_formed")
+    .map((e) => (e.params?.rider_ids ?? []).length)
+    .filter((size) => size > cap);
 }
 
 /** Stoerste klump af ryttere med praecis samme resultat-gab paa loftet (til rapporten). */

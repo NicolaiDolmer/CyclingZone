@@ -19,12 +19,21 @@
 // Fjern en linje fra KNOWN_OPEN_GATES naar fejlen er rettet i den revision, saa
 // gaten bliver haard. Taersklerne er detektorernes definitioner af fejlen ("med
 // minutter", "liste-gab != raa tid", "modsiger"), ikke motor-tuning.
+//
+// Den LIVE revision (official_times_v2, CURRENT_RACE_RULES_REVISION siden 9/10)
+// har ingen KNOWN_OPEN_GATES-linje og faar desuden tre haarde gates (#6285 A):
+// et hold jagter aldrig sine egne (ownChaseViolations), ingen minuttab paa 0 km
+// i loebsfilmen (minuteLossAtZeroKm) og intet morgenudbrud over profilens loft
+// (breakawaysOverSizeCap, loftet laest fra motorens tuning). Det typiske spaend
+// (tuningens `room`) gates ikke; det skrives kun til en privat rapport, naar
+// CZ_6285_REPORT_DIR peger paa balance-internals/6285-live/ (hard rule 17).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  breakawaysOverSizeCap,
   breakawayWin,
   clampedAtCap,
   FLAT_BREAKAWAY_MINUTES_SECONDS,
@@ -32,13 +41,17 @@ import {
   gateStatus,
   KNOWN_OPEN_GATES,
   labelContradictions,
+  minuteLossAtZeroKm,
   overCapRaw,
   runStagesInOrder,
   sortedStages,
   splitEntrants,
   STAGE_GAP_CAP_SECONDS,
 } from "../../scripts/dev/lib/tourScorecard.mjs";
+import { ownChaseViolations } from "../../scripts/dev/ownRiderAhead6187.mjs";
 import { loadRaceEngineV4 } from "../../lib/raceEngineV4Bridge.js";
+import { CURRENT_RACE_RULES_REVISION } from "../../lib/raceEngineRulesRevision.ts";
+import { BREAKAWAY_SIZE_V3_TUNING } from "../../lib/engine/v4/mechanics/breakawayPermission.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, "..", "..", "scripts", "baselines", "giro-field-6088-2026-10-02.json");
@@ -48,23 +61,37 @@ const { entrants, droppedWithoutAbilities } = splitEntrants(data);
 const SEEDS = 3;
 const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 
-/** Prod-revisionen, Tour-revisionen og den officielle tidsmodel (#6284). */
-const REVISIONS = ["orders_gc_v2", "orders_gc_v3", "official_times_v1"] as const;
+/** Den revision nye loeb bindes til (live siden ejer-go 9/10, #6199). */
+const LIVE_REVISION = "official_times_v2";
+/** Den forrige prod-revision, Tour-revisionen, den officielle tidsmodel (#6284) og den live. */
+const REVISIONS = ["orders_gc_v2", "orders_gc_v3", "official_times_v1", LIVE_REVISION] as const;
 type Revision = (typeof REVISIONS)[number];
 type Check = keyof typeof KNOWN_OPEN_GATES;
 
 const v4 = await loadRaceEngineV4();
+const teamByRider = new Map(entrants.map((e: any) => [e.rider_id, e.team_id]));
+const riderIds = entrants.map((e: any) => e.rider_id);
 
-/** Det de tre gates skal bruge fra én etape (hele broens svar gemmes ikke). */
+/** Det gates skal bruge fra én etape (hele broens svar gemmes ikke). */
 type StageHit = {
   stage: number;
   seed: number;
   road: boolean;
+  profileType: string;
   gcStatus: string | null;
   flatMinutes: number | null;
   clamped: number;
   overCap: number;
   labels: string[];
+  /** #6187: et hold jagter sine egne (antal). */
+  ownChase: number;
+  /** Hvor mange steder et hold kunne have jagtet sine egne (reaktioner + jagtede indhentninger). */
+  chaseChances: number;
+  /** #5951: minuttab paa 0 km i loebsfilmen; null = filmen kan intet vise. */
+  zeroKmLoss: number | null;
+  /** Morgenudbruddenes stoerrelser og dem over profilens loft (#6201). */
+  breakSizes: number[];
+  breakOverCap: number[];
 };
 
 const tourCache = new Map<Revision, StageHit[]>();
@@ -80,16 +107,23 @@ function tourHits(revision: Revision): StageHit[] {
       onStage: ({ profile, res }: any) => {
         const road = !TIME_TRIALS.has(profile.profile_type);
         const flat = flatBreakawayWinWithMinutes(res.v4Output, profile);
-        const gc = (res.v4Output.timeline?.events ?? []).find((e: any) => e.type === "gc_context");
+        const events: any[] = res.v4Output.timeline?.events ?? [];
+        const gc = events.find((e: any) => e.type === "gc_context");
         hits.push({
           stage: profile.stage_number,
           seed,
           road,
+          profileType: profile.profile_type,
           gcStatus: gc?.params?.status ?? null,
           flatMinutes: flat.hit ? Math.round(flat.margin ?? 0) : null,
           clamped: road ? clampedAtCap(res.ranked, res.v4Output) : 0,
           overCap: road ? overCapRaw(res.v4Output) : 0,
           labels: road ? labelContradictions(res.ranked, res.v4Output).map((i: any) => i.kind) : [],
+          ownChase: road ? ownChaseViolations(events, teamByRider).length : 0,
+          chaseChances: events.filter((e: any) => (e.type === "gc_reaction" && e.params?.status === "started") || (e.type === "breakaway_caught" && (e.params?.chasing_team_ids ?? []).length > 0)).length,
+          zeroKmLoss: road ? minuteLossAtZeroKm(res.timeline?.events ?? null, { riderIds }) : null,
+          breakSizes: events.filter((e: any) => e.type === "breakaway_formed").map((e: any) => (e.params?.rider_ids ?? []).length),
+          breakOverCap: road ? breakawaysOverSizeCap(res.v4Output, profile) : [],
         });
       },
     });
@@ -212,4 +246,69 @@ for (const revision of REVISIONS) {
     const hits = tourHits(revision).filter((h) => h.labels.length).map((h) => `${where(h)}: ${h.labels.join("+")}`);
     assert.deepEqual(hits, []);
   });
+}
+
+// ── Den live revision (#6285 A) ──────────────────────────────────────────────
+
+test("#6285 live: revisionen nye loeb bindes til er gatet og har ingen kendt aaben fejl", () => {
+  // Skifter CURRENT_RACE_RULES_REVISION, skal den nye revision ind i REVISIONS
+  // (og de live gates flyttes med), ellers koerer spillerne paa en ugatet motor.
+  assert.equal(CURRENT_RACE_RULES_REVISION, LIVE_REVISION);
+  assert.ok((REVISIONS as readonly string[]).includes(CURRENT_RACE_RULES_REVISION));
+  for (const check of Object.keys(KNOWN_OPEN_GATES) as Check[]) {
+    assert.equal(gateStatus(check, LIVE_REVISION), "gate", `${check} maa ikke vaere kendt aaben paa den live revision`);
+  }
+});
+
+test("#6285 detektoren for udbrudsloftet bruger motorens loft pr. profil og slaar ud lige over det", () => {
+  const formedOf = (n: number) => ({ timeline: { events: [{ km: 12, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: Array.from({ length: n }, (_, i) => `b${i}`) } }] } });
+  const mountainCap = BREAKAWAY_SIZE_V3_TUNING.byProfile.mountain!.maxSize;
+  assert.deepEqual(breakawaysOverSizeCap(formedOf(mountainCap), { profile_type: "mountain" }), []);
+  assert.deepEqual(breakawaysOverSizeCap(formedOf(mountainCap + 1), { profile_type: "mountain" }), [mountainCap + 1]);
+  // Flad har intet trin: standardloftet gaelder.
+  const flatCap = BREAKAWAY_SIZE_V3_TUNING.defaultMaxSize;
+  assert.deepEqual(breakawaysOverSizeCap(formedOf(flatCap + 1), { profile_type: "flat" }), [flatCap + 1]);
+  assert.deepEqual(breakawaysOverSizeCap({ timeline: { events: [] } }, { profile_type: "flat" }), []);
+});
+
+test(`#6285 ${LIVE_REVISION}: et hold jagter aldrig sine egne (#6187)`, () => {
+  const hits = tourHits(LIVE_REVISION).filter((h) => h.road);
+  // Ikke-tom forudsaetning: uden reaktioner eller jagtede indhentninger kunne gaten aldrig slaa ud.
+  assert.ok(hits.reduce((a, h) => a + h.chaseChances, 0) > 0, "loebet skal have GC-reaktioner eller jagtede indhentninger");
+  assert.deepEqual(hits.filter((h) => h.ownChase > 0).map((h) => `${where(h)}: ${h.ownChase} gange jagter et hold sine egne`), []);
+});
+
+test(`#6285 ${LIVE_REVISION}: ingen taber tid eller staar bagud i loebsfilmen paa 0 km (#5951)`, () => {
+  const road = tourHits(LIVE_REVISION).filter((h) => h.road);
+  // Ikke-tom forudsaetning: filmen skal kunne maales (null = ingen tidslinje eller ingen gruppe-gab).
+  assert.deepEqual(road.filter((h) => h.zeroKmLoss === null).map(where), [], "hver vejetape skal have en loebsfilm med gruppe-gab");
+  assert.deepEqual(road.filter((h) => (h.zeroKmLoss ?? 0) > 0).map((h) => `${where(h)}: ${h.zeroKmLoss} ryttere`), []);
+});
+
+test(`#6285 ${LIVE_REVISION}: intet morgenudbrud er stoerre end profilens loft (#6201)`, () => {
+  const road = tourHits(LIVE_REVISION).filter((h) => h.road);
+  assert.ok(road.some((h) => h.breakSizes.length > 0), "loebet skal have morgenudbrud");
+  assert.deepEqual(road.filter((h) => h.breakOverCap.length).map((h) => `${where(h)} (${h.profileType}): ${h.breakOverCap.join(",")} ryttere`), []);
+  writePrivateSpanReport(road);
+});
+
+/**
+ * Det typiske spaend gates ikke (kun loftet). Med CZ_6285_REPORT_DIR (fx
+ * balance-internals/6285-live/) skrives stoerrelserne pr. profil og hvor mange
+ * der ligger over tuningens `room`. Aldrig i repoet eller CI-loggen.
+ */
+function writePrivateSpanReport(road: StageHit[]) {
+  const dir = process.env.CZ_6285_REPORT_DIR;
+  if (!dir) return;
+  const byType = new Map<string, number[]>();
+  for (const h of road) byType.set(h.profileType, [...(byType.get(h.profileType) ?? []), ...h.breakSizes]);
+  const lines = [`# #6285 udbrudsstoerrelse under ${LIVE_REVISION} (Giro-feltet, ${SEEDS} seeds)`, "", "| Profil | Udbrud | Min | Median | Max | Typisk (room) | Over room | Loft |", "|---|---|---|---|---|---|---|---|"];
+  for (const [type, sizes] of [...byType].sort()) {
+    const s = sizes.slice().sort((a, b) => a - b);
+    const tier = BREAKAWAY_SIZE_V3_TUNING.byProfile[type];
+    const room = tier?.room ?? null;
+    lines.push(`| ${type} | ${s.length} | ${s[0] ?? "-"} | ${s.length ? s[Math.floor((s.length - 1) / 2)] : "-"} | ${s.at(-1) ?? "-"} | ${room ?? "-"} | ${room === null ? "-" : s.filter((x) => x > room).length} | ${tier?.maxSize ?? BREAKAWAY_SIZE_V3_TUNING.defaultMaxSize} |`);
+  }
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(path.join(dir, `breakaway-span-${LIVE_REVISION}.md`), `${lines.join("\n")}\n`);
 }
