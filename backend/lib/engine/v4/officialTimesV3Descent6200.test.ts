@@ -228,8 +228,8 @@ test("#6200 v3: on a descent finish with a short run-in the breakaway chase clos
         { id: "escape", kind: "breakaway", origin: "breakaway", rider_ids: escapeIds, gap_seconds: 0, cohesion: 1 },
         { id: "field", kind: "peloton", rider_ids: fieldIds, gap_seconds: sep, cohesion: 1 },
       ];
-      const state = { ...stateWith(riders, groups), ...(book ? { finish_descent_regroup: book } : {}) };
-      const out = breakawayHook(state, sharedCtx(ctx, groups, generation)).state;
+      const state: EngineState = { ...stateWith(riders, groups), ...(book ? { finish_descent_regroup: book } : {}) };
+      const out: EngineState = breakawayHook(state, sharedCtx(ctx, groups, generation)).state;
       const escape = out.groups.find((g) => g.id === "escape")!;
       const field = out.groups.find((g) => g.id === "field")!;
       sep = field.gap_seconds - escape.gap_seconds;
