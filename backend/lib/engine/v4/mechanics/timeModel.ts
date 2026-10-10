@@ -135,6 +135,12 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // stigning til maal, er "nedkoersel mod maal" (loftet gaelder fra toppen til
   // stregen). 0 = kun naar nedkoerslen er etapens sidste segment (som foer).
   finishDescentMaxRunInKm: 0,
+  // #6440 (KUN official_times_v3, D3 ejer 10/10): paa disse profiler er
+  // "nedkoersel mod maal" geometrien alene (nedkoersel efter sidste stigning og
+  // hoejst finishDescentMaxRunInKm uden stigning til maal), uanset finalens
+  // maerkat (fx en punch- eller udbrudsfinale efter en bjergtop). Tom = kun
+  // paa en nedkoerselsfinale (alle aeldre revisioner).
+  finishDescentAnyFinaleProfiles: [] as readonly ProfileType[],
   // ── Ren revision spor 1, D1 (KUN official_times_v3): varians paa den afgoerende
   // stigning foer en nedkoerselsfinale (ejer 10/10: den bedste klatrer vinder
   // ikke altid, og nr. 10's hul varierer). Dagsformen flytter alles klatring
@@ -217,6 +223,8 @@ export const SHARED_TIME_MODEL_V3_TUNING: TimeModelTuning = freeze({
   ...SHARED_TIME_MODEL_V2_TUNING,
   descentFinishClimbRaceProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
   finishDescentMaxRunInKm: 5,
+  // #6440 (D3, ejer 10/10): geometrien afgoer paa bjerg og hoejfjeld.
+  finishDescentAnyFinaleProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
   // Ren revision spor 1, D1 (ejer 10/10): kalibreret privat paa Giro e7, 12 seeds
   // (balance-internals/clean-revision/d1/).
   descentFinishClimbDayformWeight: 0.15,
@@ -281,6 +289,22 @@ export function descentFinishDecidingClimbTuning(t: TimeModelTuning): TimeModelT
 }
 
 /**
+ * #6440 (D3): taeller etapen som en nedkoerselsfinale? En finale maerket
+ * "descent" altid; under official_times_v3 ogsaa enhver finale paa profilerne i
+ * `finishDescentAnyFinaleProfiles` (geometrien afgoer saa: finishDescentIndexFor
+ * og isDescentFinishDecidingClimb kraever stadig nedkoersel efter sidste
+ * stigning og et kort stykke til maal). Tom liste = kun maerkatet (som foer).
+ */
+export function isDescentFinaleFor(
+  route: { finale_type?: FinaleType | null; profile_type?: ProfileType },
+  t: Partial<Pick<TimeModelTuning, "finishDescentAnyFinaleProfiles">> = TIME_MODEL_V3_TUNING,
+): boolean {
+  if (route.finale_type === "descent") return true;
+  const profiles = t.finishDescentAnyFinaleProfiles ?? [];
+  return profiles.length > 0 && route.profile_type !== undefined && profiles.includes(route.profile_type);
+}
+
+/**
  * #6200: indekset for etapens nedkoersel mod maal, eller -1. Uden et
  * run-in-loft (finishDescentMaxRunInKm = 0, alle revisioner foer
  * official_times_v3) er det etapens sidste segment, naar det er en nedkoersel.
@@ -288,14 +312,14 @@ export function descentFinishDecidingClimbTuning(t: TimeModelTuning): TimeModelT
  * nedkoerselsfinale, naar resten til maal er uden stigning og hoejst loftet.
  */
 export function finishDescentIndexFor(
-  route: { finale_type?: FinaleType | null; segments: readonly (Pick<Segment, "kind"> & Partial<Pick<Segment, "from_km" | "to_km">>)[] },
-  t: Pick<TimeModelTuning, "finishDescentMaxRunInKm"> = TIME_MODEL_V3_TUNING,
+  route: { finale_type?: FinaleType | null; profile_type?: ProfileType; segments: readonly (Pick<Segment, "kind"> & Partial<Pick<Segment, "from_km" | "to_km">>)[] },
+  t: Pick<TimeModelTuning, "finishDescentMaxRunInKm"> & Partial<Pick<TimeModelTuning, "finishDescentAnyFinaleProfiles">> = TIME_MODEL_V3_TUNING,
 ): number {
   const segs = route.segments ?? [];
   const last = segs.length - 1;
   if (last < 0) return -1;
   if (segs[last].kind === "descent") return last;
-  if (!(t.finishDescentMaxRunInKm > 0) || route.finale_type !== "descent") return -1;
+  if (!(t.finishDescentMaxRunInKm > 0) || !isDescentFinaleFor(route, t)) return -1;
   let runInKm = 0;
   for (let i = last; i >= 0; i--) {
     const seg = segs[i];
