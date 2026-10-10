@@ -78,7 +78,7 @@ import type {
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { fieldFinaleTypeBehindBreakaway, isBunchCatchRoute } from "../finale.ts";
-import { BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_CHASE_V3_TUNING, BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 import {
   applySmallBreakPullCost,
@@ -744,6 +744,11 @@ export type TeamChasePlan = {
   signal: number;
   /** rider_id -> arbejds-vaegt (0, 1] for de ryttere der jager dette segment (betaler i applyChaseCost). */
   chaserWork: Map<string, number>;
+  /**
+   * #6441 (KUN official_times_v3, kun med `withTeamSignals`): hvert holds eget
+   * signerede bidrag (foer summen clampes). Udeladt ellers (bit-identisk).
+   */
+  teamSignals?: Map<string, number>;
 };
 
 /**
@@ -789,15 +794,19 @@ export function teamChasePlan(input: {
    * ingen saadan regel (bit-identisk).
    */
   ownRiderAheadTeamIds?: ReadonlySet<string>;
+  /** #6441 (KUN official_times_v3): returnér ogsaa hvert holds bidrag (`teamSignals`). */
+  withTeamSignals?: true;
 }): TeamChasePlan {
   if (input.reactions && input.reactions.size > 0) return teamChasePlanWithReactions(input, input.reactions);
   const chaserWork = new Map<string, number>();
-  if (input.orders.length === 0) return { signal: 0, chaserWork };
+  const teamSignals = input.withTeamSignals ? new Map<string, number>() : undefined;
+  const done = (signal: number): TeamChasePlan => (teamSignals ? { signal, chaserWork, teamSignals } : { signal, chaserWork });
+  if (input.orders.length === 0) return done(0);
 
   const racing = [...input.chaseGroupRiderIds]
     .filter((id) => input.entrants[id] && input.riders[id]?.status === "racing")
     .sort((a, b) => a.localeCompare(b));
-  if (racing.length === 0) return { signal: 0, chaserWork };
+  if (racing.length === 0) return done(0);
 
   const membersByTeam = new Map<string, string[]>();
   for (const riderId of racing) {
@@ -807,7 +816,7 @@ export function teamChasePlan(input: {
     list.push(riderId);
     membersByTeam.set(teamId, list);
   }
-  if (membersByTeam.size === 0) return { signal: 0, chaserWork };
+  if (membersByTeam.size === 0) return done(0);
 
   const fieldIds =
     input.fieldRiderIds && input.fieldRiderIds.length > 0 ? [...input.fieldRiderIds] : racing;
@@ -821,6 +830,7 @@ export function teamChasePlan(input: {
 
     if (order.breakaway_stance === "let_go") {
       signal -= members.length / racing.length;
+      teamSignals?.set(order.team_id, -members.length / racing.length);
       continue;
     }
     if (order.breakaway_stance !== "chase") continue;
@@ -841,10 +851,12 @@ export function teamChasePlan(input: {
       pull += work * freshness * relativeEngine;
       chaserWork.set(riderId, work);
     }
-    signal += TEAM_CHASE.maxTeamSignal * clamp(pull / TEAM_CHASE.referenceChasers, 0, 1);
+    const teamSignal = TEAM_CHASE.maxTeamSignal * clamp(pull / TEAM_CHASE.referenceChasers, 0, 1);
+    signal += teamSignal;
+    teamSignals?.set(order.team_id, teamSignal);
   }
 
-  return { signal: clamp(signal, -1, 1), chaserWork };
+  return done(clamp(signal, -1, 1));
 }
 
 /**
@@ -859,10 +871,12 @@ function teamChasePlanWithReactions(
   reactions: ReadonlyMap<string, { intensity: number; workers: readonly string[] }>,
 ): TeamChasePlan {
   const chaserWork = new Map<string, number>();
+  const teamSignals = input.withTeamSignals ? new Map<string, number>() : undefined;
+  const done = (signal: number): TeamChasePlan => (teamSignals ? { signal, chaserWork, teamSignals } : { signal, chaserWork });
   const racing = [...input.chaseGroupRiderIds]
     .filter((id) => input.entrants[id] && input.riders[id]?.status === "racing")
     .sort((a, b) => a.localeCompare(b));
-  if (racing.length === 0) return { signal: 0, chaserWork };
+  if (racing.length === 0) return done(0);
 
   const membersByTeam = new Map<string, string[]>();
   for (const riderId of racing) {
@@ -872,7 +886,7 @@ function teamChasePlanWithReactions(
     list.push(riderId);
     membersByTeam.set(teamId, list);
   }
-  if (membersByTeam.size === 0) return { signal: 0, chaserWork };
+  if (membersByTeam.size === 0) return done(0);
 
   const fieldIds = input.fieldRiderIds && input.fieldRiderIds.length > 0 ? [...input.fieldRiderIds] : racing;
   const fieldEngine = collectiveAbility(fieldIds, input.entrants, CHASE_ENGINE_KEYS);
@@ -910,19 +924,24 @@ function teamChasePlanWithReactions(
       const allowed = new Set(reaction.workers);
       let pull = 0;
       for (const riderId of members) if (allowed.has(riderId)) pull += pullOf(riderId, intensity);
-      signal += TEAM_CHASE.maxTeamSignal * clamp(pull / TEAM_CHASE.referenceChasers, 0, 1);
+      const reactionSignal = TEAM_CHASE.maxTeamSignal * clamp(pull / TEAM_CHASE.referenceChasers, 0, 1);
+      signal += reactionSignal;
+      teamSignals?.set(teamId, reactionSignal);
       continue;
     }
     if (stance === "let_go") {
       signal -= members.length / racing.length;
+      teamSignals?.set(teamId, -members.length / racing.length);
       continue;
     }
     if (stance !== "chase" || ownAhead) continue;
     let pull = 0;
     for (const riderId of members) pull += pullOf(riderId, 1);
-    signal += TEAM_CHASE.maxTeamSignal * clamp(pull / TEAM_CHASE.referenceChasers, 0, 1);
+    const chaseSignal = TEAM_CHASE.maxTeamSignal * clamp(pull / TEAM_CHASE.referenceChasers, 0, 1);
+    signal += chaseSignal;
+    teamSignals?.set(teamId, chaseSignal);
   }
-  return { signal: clamp(signal, -1, 1), chaserWork };
+  return done(clamp(signal, -1, 1));
 }
 
 /** #5978: arbejdet pr. rytter flettet som max (fast, sorteret raekkefoelge). */
@@ -1004,6 +1023,84 @@ export function chaseAbilityScale(fieldRiderIds: string[], entrants: Readonly<Re
   return BREAKAWAY_EXTRA_TUNING.abilityReferenceLevel / fieldReference;
 }
 
+/** #6441 (KUN official_times_v3): profiler hvor en udbruds-/punchfinale afgoeres paa punch (ellers klatring). */
+const STAGE_WIN_PUNCH_PROFILES: ReadonlySet<ProfileType> = new Set<ProfileType>(["flat", "rolling", "hilly", "classic", "cobbles", "gravel"]);
+
+/**
+ * #6441 (KUN official_times_v3): den evne dagens finale afgoeres paa. Spurt ->
+ * sprint; lang stigning -> klatring; punch-, udbruds- og nedkoerselsfinaler ->
+ * punch paa aabent og kuperet terraen, klatring paa bjerg; enkeltstart -> tid.
+ * Eksporteret for kontrakt-tests.
+ */
+export function stageWinDemandKeys(finaleType: FinaleType | null, profileType: ProfileType): AbilityKey[] {
+  if (finaleType === "bunch_sprint" || finaleType === "reduced_sprint") return ["sprint"];
+  if (finaleType === "long_climb") return ["climbing"];
+  if (finaleType === "solo_tt") return ["time_trial"];
+  if (finaleType === null && profileType === "flat") return ["sprint"];
+  return STAGE_WIN_PUNCH_PROFILES.has(profileType) ? ["punch"] : ["climbing"];
+}
+
+export type StageWinChaseV3Input = {
+  profileType: ProfileType;
+  /** Hvert holds signerede ordre-/GC-reaktionsbidrag (teamChasePlan med withTeamSignals). */
+  teamSignals: ReadonlyMap<string, number>;
+  /** Hold med en egen koerende rytter i udbruddet: ingen etapeinteresse i at jage det. */
+  excludedTeamIds?: ReadonlySet<string>;
+};
+
+/**
+ * #6441 (KUN official_times_v3, ejer 11/10): holdenes samlede jagtkraft.
+ *
+ *  - Etapeinteresse: jagtgruppens bedste `stageWinTopRiders` ryttere paa
+ *    finalens krav (stageWinDemandKeys) x finalevaegt, maalt relativt til
+ *    feltets evne (abilityScale, #4707). Hvert hold ejer sin andel (summen af
+ *    dets rytteres bidrag); et hold med egen mand i udbruddet ejer intet.
+ *  - Ordre/GC-reaktion: et holds positive signal x `teamSignalWeight`. "Lad
+ *    gaa" (negativt signal) bidrager 0 og bremser aldrig feltet.
+ *  - Pr. hold max(interesse, ordre), aldrig summen. Det ordrerne tilfoejer ud
+ *    over interessen er hoejst `teamSignalWeight` (samme loft som det samlede
+ *    stance-signal paa 1), saa ét valg aldrig kan vaelte et loeb.
+ *
+ * MONOTONI: en "jag"-ordre kan kun oege kraften, "lad gaa" kan aldrig mindske
+ * den. SKALA-INVARIANT (#4707) via abilityScale. DETERMINISTISK: fast raekkefoelge.
+ * Eksporteret for kontrakt-tests.
+ */
+export function stageWinChaseForceV3(input: StageWinChaseV3Input & {
+  chaseGroupRiderIds: readonly string[];
+  entrants: Readonly<Record<string, Entrant>>;
+  finaleType: FinaleType | null;
+  abilityScale: number;
+}): { total: number; interest: number; orderExcess: number; interestByTeam: Map<string, number> } {
+  const v3 = BREAKAWAY_CHASE_V3_TUNING;
+  const keys = stageWinDemandKeys(input.finaleType, input.profileType);
+  const finaleWeight = input.finaleType
+    ? (v3.stageWinFinaleWeight[input.finaleType] ?? v3.stageWinFinaleWeightDefault)
+    : v3.stageWinFinaleWeightDefault;
+  const ranked = input.chaseGroupRiderIds
+    .filter((id) => input.entrants[id]?.abilities)
+    .map((id) => ({ id, ability: collectiveAbility([id], input.entrants, keys) }))
+    .sort((a, b) => b.ability - a.ability || a.id.localeCompare(b.id))
+    .slice(0, Math.max(0, v3.stageWinTopRiders));
+  const unit = ranked.length > 0 ? (v3.stageWinInterestWeight * input.abilityScale * finaleWeight) / ranked.length : 0;
+  const interestByTeam = new Map<string, number>();
+  for (const { id, ability } of ranked) {
+    const teamId = teamIdOf(input.entrants[id]);
+    if (!teamId || input.excludedTeamIds?.has(teamId)) continue;
+    interestByTeam.set(teamId, (interestByTeam.get(teamId) ?? 0) + unit * ability);
+  }
+  let interest = 0;
+  let orderExcess = 0;
+  const teamIds = [...new Set([...interestByTeam.keys(), ...input.teamSignals.keys()])].sort((a, b) => a.localeCompare(b));
+  for (const teamId of teamIds) {
+    const teamInterest = interestByTeam.get(teamId) ?? 0;
+    const order = v3.teamSignalWeight * Math.max(0, input.teamSignals.get(teamId) ?? 0);
+    interest += teamInterest;
+    orderExcess += Math.max(0, order - teamInterest);
+  }
+  orderExcess = Math.min(v3.teamSignalWeight, orderExcess);
+  return { total: interest + orderExcess, interest, orderExcess, interestByTeam };
+}
+
 /**
  * Netto jagt-fordel for ÉT segment (eksporteret for direkte kontrakt-tests).
  * Positiv => jagt-gruppen lukker hullet; negativ => udbruddet trækker fra.
@@ -1040,6 +1137,12 @@ export function computeNetChaseAdvantage(input: {
    * udbruddet koerer (bit-identisk).
    */
   pullingBreakawayRiderIds?: string[];
+  /**
+   * #6441 (KUN official_times_v3): etapeinteresse + additiv holdjagt i stedet
+   * for sprinter-interessen og stance-multiplikatoren (se stageWinChaseForceV3).
+   * Udeladt = den uaendrede beregning (bit-identisk for alle aeldre revisioner).
+   */
+  officialTimesV3?: StageWinChaseV3Input;
 }): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
   const pullers = input.pullingBreakawayRiderIds ?? input.breakawayRiderIds;
@@ -1048,6 +1151,25 @@ export function computeNetChaseAdvantage(input: {
       ? input.fieldRiderIds
       : [...input.chaseGroupRiderIds, ...input.breakawayRiderIds];
   const abilityScale = chaseAbilityScale(fieldRiderIds, input.entrants);
+
+  if (input.officialTimesV3) {
+    const pullerShareV3 = pullers === input.breakawayRiderIds || input.breakawayRiderIds.length === 0 ? 1 : pullers.length / input.breakawayRiderIds.length;
+    const teamForce = stageWinChaseForceV3({
+      chaseGroupRiderIds: input.chaseGroupRiderIds,
+      entrants: input.entrants,
+      finaleType: input.finaleType,
+      abilityScale,
+      ...input.officialTimesV3,
+    });
+    const chaseForceV3 =
+      teamForce.total +
+      extra.gcThreatWeight * collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS) * abilityScale +
+      extra.lateRaceUrgencyWeight * clamp(input.remainingKmFraction, 0, 1);
+    const resistanceV3 =
+      extra.enginePowerResistanceWeight * collectiveAbility(pullers, input.entrants, CHASE_ENGINE_KEYS) * abilityScale * pullerShareV3 +
+      extra.countResistanceWeight * clamp(pullers.length / extra.breakawayReferenceCount, 0, 1.5);
+    return chaseForceV3 - resistanceV3;
+  }
 
   const sprinterInterest =
     collectiveAbility(input.chaseGroupRiderIds, input.entrants, ["sprint"]) * abilityScale * finaleTypeChaseWeight(input.finaleType);
@@ -1143,9 +1265,13 @@ export function chaseFloorKm(input: {
 export function chaseFloorTargetGapSeconds(
   route: { finale_type: FinaleType | null; profile_type: ProfileType },
   lateRoll: number,
+  /** #6441 (KUN official_times_v3): v3's lodtraekning pr. finale (oevrige finaler som foer). */
+  officialTimesV3: boolean = false,
 ): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
-  const lateChance = (route.finale_type ? extra.chaseFloorLateChanceByFinale[route.finale_type] : undefined)
+  const v3Chance = officialTimesV3 && route.finale_type ? BREAKAWAY_CHASE_V3_TUNING.chaseFloorLateChanceByFinale[route.finale_type] : undefined;
+  const lateChance = v3Chance
+    ?? (route.finale_type ? extra.chaseFloorLateChanceByFinale[route.finale_type] : undefined)
     ?? extra.chaseFloorLateChanceDefault;
   if (lateRoll < lateChance) return extra.chaseFloorLateTargetGapSeconds;
   // Paa en massefinale henter finalens antals-vindue et kort forspring
@@ -1573,6 +1699,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const formationSegment = ctx.route.segments[FORMATION_SEGMENT_INDEX];
   const formationKm = formationSegment ? formationKmFor(formationSegment) : ctx.segment.from_km;
   const ordersGcV1 = ctx.rulesRevision === "orders_gc_v1";
+  // #6441 (KUN official_times_v3): etapeinteresse + additiv holdjagt, kuperet jagt
+  // uden daempning foer finalen og v3's lodtraekning paa jagt-gulvet.
+  const chaseV3 = ctx.sharedGroupTime?.timeModelGeneration === 3;
 
   // #6187 (KUN orders_gc_v3): et hold foerer aldrig jagten paa en gruppe med
   // egen mand i, og dets udbrydere sidder paa hjul ved en trussel mod holdets
@@ -1639,7 +1768,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const smallPace = ordersGcV3 && breakaway.origin === "breakaway" ? smallBreakPaceV3(smallBreakPullers.length) : null;
     const letGoRate = BREAKAWAY_EXTRA_TUNING.letGoSecondsPerKm * letGoBalance.rateFactor * (smallPace?.growthScale ?? 1);
     const reactions = gcSetup?.reactionsByChaseGroup.get(chaseGroup.id);
-    const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(reactions ? { reactions } : {}), ...(ownAheadTeamIds ? { ownRiderAheadTeamIds: ownAheadTeamIds } : {}) });
+    const chasePlan = teamChasePlan({ orders: parsedOrders, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders, fieldRiderIds, ...(reactions ? { reactions } : {}), ...(ownAheadTeamIds ? { ownRiderAheadTeamIds: ownAheadTeamIds } : {}), ...(chaseV3 ? { withTeamSignals: true as const } : {}) });
     const stance = chasePlan.signal;
     // WIRING-GUARD (#4615): en gruppe med kind "breakaway" er ikke
     // noedvendigvis ET udbrud M5 selv dannede — M3's descent attack bruger
@@ -1735,6 +1864,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       fieldRiderIds,
       // #6187: ryttere paa hjul koerer ikke foran i udbruddet.
       ...(breakaway.rider_ids.some((id) => wheelSitterIds.has(id)) ? { pullingBreakawayRiderIds: breakaway.rider_ids.filter((id) => !wheelSitterIds.has(id)) } : {}),
+      // #6441: et hold med egen koerende mand i udbruddet har ingen etapeinteresse i at jage det.
+      ...(chaseV3 ? { officialTimesV3: { profileType: ctx.route.profile_type, teamSignals: chasePlan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants) } } : {}),
     });
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
     // et. En holdordre (stancen) virker kun gennem jagten, saa den kan aldrig
@@ -1757,7 +1888,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     );
     // #6084 (KUN orders_gc_v2 paa bjerg): kontrolleret jagt foer finalestigningen (mountainSelection.ts).
     // En GC-reaktion (et farligt udbrud) jager uden daempning.
-    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, mountainSelectionKnobsFor(ctx.route.profile_type).preFinalChaseClosingScale, mountainSelectionKnobsFor(ctx.route.profile_type).finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1) * oneDayScale;
+    // #6441 (KUN official_times_v3): kuperet jager uden daempning foer finalen (bjerg uaendret).
+    const phaseKnobs = mountainSelectionKnobsFor(ctx.route.profile_type, chaseV3);
+    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, phaseKnobs.preFinalChaseClosingScale, phaseKnobs.finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1) * oneDayScale;
     if (smallPace) smallBreakWork.push({ riderIds: smallBreakPullers, pace: smallPace, km: letGoKm + chaseKm });
     const letGoGrowth = (braked ? braked.growthSeconds : letGoKm * letGoRate) * oneDayScale;
     const letGoCeiling = maxGapSeconds * oneDayScale;
@@ -1789,7 +1922,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
           separationSeconds: beforeFloor,
           floorKm,
           kmToFinish: ctx.route.distance_km - (ctx.segment.to_km - floorKm),
-          targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")()),
+          targetGapSeconds: chaseFloorTargetGapSeconds(ctx.route, ctx.rngForStage("breakaway_chase_floor")(), chaseV3),
         })
       : 0;
 

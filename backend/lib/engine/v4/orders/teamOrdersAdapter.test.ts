@@ -502,8 +502,9 @@ test("#6434 v3 (review): managerens eksplicitte 'intet tog' for dagen respektere
 // ── #6441 (KUN official_times_v3, ejer 10/10 kl. 22:40) ───────────────────────
 //
 // Et menneskehold uden egen udbrudsordre for etapen faar AI-holdenes stance-
-// regel (decideAiBreakawayStance): kaptajnen favorit -> chase, uden chance ->
-// let_go, ellers neutral. En stance manageren selv har gemt, vinder altid.
+// regel (decideAiBreakawayStance) for jagten: kaptajnen favorit -> chase, ellers
+// neutral. Ejer 11/10 kl. 00:50: et menneskehold uden ordre lader ALDRIG selv et
+// udbrud gaa (M14s let_go bliver neutral). En stance manageren har gemt, vinder altid.
 
 /** Ti menneskehold a seks paa en bjergetape: hold 0-8 har faldende klatrekaptajner, hold 9 en svag. */
 function mountainRoster6441(isAi = false) {
@@ -522,18 +523,22 @@ const MOUNTAIN_V3 = { route: { profile_type: "mountain" as const, finale_type: "
 const stanceByTeam = (orders: EngineTeamOrder[]) =>
   Object.fromEntries(parseBreakawayOrders(orders).map((o) => [o.team_id, o.breakaway_stance]));
 
-test("#6441 v3: menneskehold uden ordre faar AI-stancen (favorit jager, uden chance lader gaa, ellers neutral)", () => {
+test("#6441 v3: menneskehold uden ordre: favorit jager, ellers neutral (aldrig let_go)", () => {
   const stances = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(), context: MOUNTAIN_V3 }).orders);
   assert.equal(stances.t0, "chase");
   assert.equal(stances.t7, "chase");
   assert.equal(stances.t8, "neutral");
-  assert.equal(stances.t9, "let_go");
+  assert.equal(stances.t9, "neutral", "uden chance: neutral, ikke let_go (ejer 11/10)");
+  assert.ok(!Object.values(stances).includes("let_go"));
 });
 
-test("#6441 v3: samme stance som et AI-hold med samme trup og felt (én regel, ingen kopi)", () => {
+test("#6441 v3: samme jagt-regel som et AI-hold; kun AI-holdet kan selv vaelge let_go", () => {
   const human = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(false), context: MOUNTAIN_V3 }).orders);
   const ai = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(true), context: MOUNTAIN_V3 }).orders);
-  assert.deepEqual(human, ai);
+  for (const team of Object.keys(ai)) {
+    assert.equal(human[team], ai[team] === "let_go" ? "neutral" : ai[team], team);
+  }
+  assert.equal(ai.t9, "let_go", "AI-holdets egen beslutning er uaendret");
 });
 
 test("#6441 v3: kun stancen aendres; rytternes indsats, udbrudsforsoeg og tog er rollernes", () => {
@@ -554,7 +559,7 @@ test("#6441 v3: en stance manageren selv har gemt for etapen vinder altid", () =
   ];
   const stances = stanceByTeam(buildStageOrderPlan({ rows, stageNumber: 1, roster: mountainRoster6441(), context: MOUNTAIN_V3 }).orders);
   assert.equal(stances.t0, "let_go", "managerens let_go slaar favorit-jagten");
-  assert.equal(stances.t9, "neutral", "managerens neutral slaar let_go-standarden");
+  assert.equal(stances.t9, "neutral", "managerens neutral staar");
   assert.equal(stances.t8, "neutral", "en raekke for en anden etape taeller ikke");
   assert.equal(stances.t7, "chase", "en raekke uden stance falder tilbage paa standarden");
 });

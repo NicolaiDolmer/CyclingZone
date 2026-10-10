@@ -218,8 +218,8 @@ function aiTeamIds(roster: readonly RosterRider[]): Set<string> {
  * #6441 (KUN official_times_v3, ejer 10/10 kl. 22:40): et menneskeholds
  * standardordre er rollernes (uaendret), men holdets udbruds-stance er den
  * samme som et AI-hold ville vaelge (decideAiBreakawayStance, M14 punkt 1-4):
- * kaptajnen blandt feltets favoritter paa dagens terraen -> chase, uden chance
- * -> let_go, ellers neutral. Kun stancen; indsats, udbrudsforsoeg og tog er
+ * kaptajnen blandt feltets favoritter paa dagens terraen -> chase, ellers
+ * neutral (ejer 11/10: M14's let_go bliver neutral for et menneskehold). Kun stancen; indsats, udbrudsforsoeg og tog er
  * rollernes. En stance manageren selv har gemt for etapen laegges ovenpaa som
  * overlay og vinder altid. Mangler holdets evner (ingen raekke at maale
  * kaptajnen paa), bliver stancen rollernes neutrale standard.
@@ -242,7 +242,10 @@ function humanDefaultOrderV3(
     })),
     field,
   });
-  return { ...base, breakaway_stance: stance };
+  // #6441 (ejer 11/10 kl. 00:50): et menneskehold uden ordre lader aldrig selv
+  // et udbrud gaa. M14's "let_go" (ingen chance) bliver neutral; kun "chase"
+  // (kaptajnen er favorit) overtages. AI-holdenes egen beslutning er uaendret.
+  return { ...base, breakaway_stance: stance === "let_go" ? "neutral" : stance };
 }
 
 /**
