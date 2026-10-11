@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, railwayDrainSeconds, safeReason, waitingSummary,
-  verifyCronCheckins } from './cron-deploy-verification.mjs';
+  verifyCronCheckins, SHORT_CADENCE_SECONDS } from './cron-deploy-verification.mjs';
+import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
 
 const since = '2026-10-07T12:00:00Z';
 const monitors = [['short', { schedule: { value: 1, unit: 'minute' }, checkinMargin: 1 }],
@@ -325,4 +326,28 @@ test('polling logs the waiting summary once per change and never changes the ver
   assert.equal(result.state, 'failed');
   const summaries = logs.filter(line => line.startsWith('Waiting for check-in from short; latest deadline '));
   assert.equal(summaries.length, 1);
+});
+
+test('#6487: cron proof starts right after smoke and its step timeout covers the latest short-cadence deadline', () => {
+  const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
+  const names = [...workflow.matchAll(/^ {6}- name: (.+?)\s*$/gm)].map(match => match[1]);
+  // The first heartbeat snapshot is never proof, so the cron step must start
+  // before the boundary (READY + drain). Only the bounded smoke (<= 55 s) and
+  // the PR comment may sit between the deployment wait and the cron proof.
+  const from = names.indexOf('Deployment still pending');
+  const cron = names.indexOf('Verify affected cron check-ins');
+  assert.deepEqual(names.slice(from + 1, cron), ['Smoke-test prod', 'Comment release verified, cron proof running']);
+  assert.deepEqual(names.slice(cron + 1, cron + 3), ['Cron check-ins verified', 'Cron check-ins deferred']);
+  const units = { minute: 60, hour: 3600, day: 86400 };
+  const latest = Math.max(...ALL_CRON_MONITORS.map(([, config]) => config.schedule.value * units[config.schedule.unit])
+    .map((cadence, index) => cadence <= SHORT_CADENCE_SECONDS ? cadence + (ALL_CRON_MONITORS[index][1].checkinMargin ?? 0) * 60 : 0));
+  const drain = railwayDrainSeconds();
+  assert.ok(drain > 55, 'smoke must fit inside the Railway drain window');
+  const step = workflow.slice(workflow.indexOf('- name: Verify affected cron check-ins'), workflow.indexOf('- name: Cron check-ins verified'));
+  const minutes = Number(step.match(/timeout-minutes: (\d+)/)[1]);
+  const needed = (drain + latest) / 60;
+  assert.ok(minutes >= needed + 1 && minutes <= needed + 5, `cron step timeout ${minutes} min vs latest short deadline ${needed} min`);
+  const comment = workflow.slice(workflow.indexOf('- name: Comment release verified'), workflow.indexOf('- name: Verify affected cron check-ins'));
+  assert.match(comment, /continue-on-error: true/);
+  assert.match(comment, /<!-- deploy-verify:\$SHA -->/);
 });

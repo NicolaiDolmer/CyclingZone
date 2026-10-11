@@ -25,6 +25,10 @@
 #      mindst -MinWaitMinutesNoBackend minutter (default 3). Ejer 10/10 (valg B):
 #      op til -MaxBatch PR'er (ogsaa backend) merges i raekke med EEN
 #      verifikation efter raekken; roed = STOP, resten koeres med -NoBatch.
+#      #6487: koeen venter kun til deploy + smoke er groenne ('released');
+#      cron-beviset (op til ~50 min) koerer videre i Deploy verify, som
+#      kommenterer paa PR'en. Er en overdraget koersel endt roed, stopper
+#      koeen foer naeste merge.
 #   6. Er CI eller Deploy verify roed for den nye HEAD: STOPPER koeen (roed
 #      main = stop-alt-fix-foerst, jf. GITHUB_WORKFLOW.md §Hurtige merges)
 #      i stedet for at merge videre ovenpaa den.
@@ -315,7 +319,9 @@ function Wait-ForDeployVerification {
       catch { return 'unknown' }
       if ($run.head_sha -ne $Sha -or -not $run.run_attempt) { return 'unknown' }
       if ($run.run_attempt -ge $minimumAttempt -and $run.status -eq 'completed' -and $run.conclusion -in @('failure', 'timed_out')) { return 'failed' }
-      $jobsJson = if ($run.status -eq 'completed' -and $run.run_attempt -ge $minimumAttempt) {
+      # #6487: ogsaa en koerende attempt laeses, saa 'released' (deploy + smoke
+      # groen, cron-bevis i gang) kan frigive koeen uden at vente paa beviset.
+      $jobsJson = if ($run.run_attempt -ge $minimumAttempt) {
         Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$runId/attempts/$($run.run_attempt)/jobs?per_page=100") -TolerateFailure
       } else { '{"jobs":[]}' }
       if (-not $jobsJson) { return 'unknown' }
@@ -323,6 +329,11 @@ function Wait-ForDeployVerification {
       [IO.File]::WriteAllText($jobsFile, ($jobsJson -join ""))
       $state = (& node $ClassifierPath $runFile $jobsFile $Sha $minimumAttempt | Out-String).Trim()
       $lastState = $state
+      if ($state -eq 'released') {
+        Write-Host "  Deploy + smoke groen (run $runId, attempt $($run.run_attempt)). Cron-beviset koerer videre i GitHub-koerslen, som kommenterer paa PR'en; koeen venter ikke paa det." -ForegroundColor Green
+        $script:handedOffRuns = @($script:handedOffRuns) + $runId
+        return 'released'
+      }
       if ($state -eq 'deferred') {
         Write-Host "  AFVENTER CHECK-IN for lange kadencer (run $runId, attempt $($run.run_attempt)); se job + sidste check-in i workflow-summary. Ingen automatisk genkoersel." -ForegroundColor Yellow
         return 'deferred'
@@ -357,8 +368,9 @@ function Wait-ForDeployVerification {
 # #6318: 'deferred' = korte cron-kadencer (<= 30 min) bevist, lange afventer
 # check-in. Det vises, men stopper ikke koeen. Alt andet end verified/deferred/
 # pending er fail-closed stop.
+# #6487: 'released' = deploy + smoke groen, cron-beviset overladt til koerslen.
 function Get-DeployGateAction([string]$State) {
-  if ($State -eq 'verified' -or $State -eq 'deferred') { return 'continue' }
+  if ($State -eq 'verified' -or $State -eq 'deferred' -or $State -eq 'released') { return 'continue' }
   if ($State -eq 'pending') { return 'pending' }
   return 'stop'
 }
@@ -402,6 +414,22 @@ $script:batchBackend = $false
 $script:lastMergedSha = $null
 $script:dryBatchSize = 0
 $script:batchShas = @()
+$script:handedOffRuns = @()
+
+# #6487: koersler hvis cron-bevis er overladt til GitHub. En afsluttet koersel
+# der fejlede, stopper koeen foer naeste merge; en koerende koersel venter vi
+# ikke paa (den kommenterer selv paa PR'en, og cron-heartbeat-vagten alarmerer).
+# Returnerer en liste af fejlede run-id'er; tom liste = fortsaet.
+function Get-FailedHandedOffRuns {
+  $failed = @()
+  foreach ($id in @($script:handedOffRuns)) {
+    $json = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$id") -TolerateFailure
+    if (-not $json) { $failed += "$id (ulaeselig)"; continue }
+    try { $r = ($json -join "") | ConvertFrom-Json } catch { $failed += "$id (ulaeselig)"; continue }
+    if ($r.status -eq 'completed' -and $r.conclusion -ne 'success') { $failed += "$id ($($r.conclusion))" }
+  }
+  return $failed
+}
 
 # Review #6357 opus-fund 1: ci.yml's sti-filtrerede jobs (fx marketing-lint-build)
 # koerer paa push kun for det enkelte commits egen diff. Venter vi kun paa den
@@ -498,6 +526,11 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     continue
   }
 
+  $failedRuns = @(Get-FailedHandedOffRuns)
+  if ($failedRuns.Count -gt 0) {
+    Write-Host "STOP: en tidligere overdraget Deploy verify-koersel er ikke groen: $($failedRuns -join ', '). Se koerslen og PR-kommentaren foer naeste merge." -ForegroundColor Red
+    Exit-Queue 1
+  }
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) {
@@ -581,4 +614,7 @@ if ($DryRun) {
   Write-Host "[dry-run] Hele koeen ($($PrNumbers.Count) PR'er) blev gennemgaaet uden fejl - alle er klar til en rigtig koersel lige nu." -ForegroundColor Green
 } else {
   Write-Host "[OK] Hele merge-koeen ($($PrNumbers.Count) PR'er) er merget og verificeret." -ForegroundColor Green
+  foreach ($id in @($script:handedOffRuns)) {
+    Write-Host "  Cron-bevis koerer videre i https://github.com/$Repo/actions/runs/$id (kommenterer paa PR'en, naar det er faerdigt)." -ForegroundColor DarkGray
+  }
 }

@@ -339,28 +339,6 @@ jobs:
         if: steps.deployments.outputs.result == 'pending'
         run: echo "::notice::AFVENTER deployment; not verified. Merge queue must retry this attempt."
 
-      - name: Verify affected cron check-ins
-        id: crons
-        if: steps.deployments.outputs.result == 'success'
-        env:
-          AFFECTED_SLUGS: ${{ steps.required.outputs.affected_slugs }}
-          CRON_SINCE: ${{ steps.deployments.outputs.cron_since }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: |
-          set -o pipefail
-          node scripts/ci/cron-deploy-verification.mjs | tee -a "$GITHUB_STEP_SUMMARY"
-
-      # Explicit markers make successful-but-deferred runs distinguishable from
-      # verified releases through the attempt-specific Jobs API (#6318).
-      - name: Cron check-ins verified
-        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'verified'
-        run: echo "Affected cron check-ins verified (or no affected monitored jobs)."
-
-      - name: Cron check-ins deferred
-        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'deferred'
-        run: echo "::notice::AFVENTER CHECK-IN for long cadences (> 30 min); short cadences verified. Non-blocking for the merge queue; see jobs and deadlines in summary."
-
       - name: Smoke-test prod
         id: smoke
         if: steps.deployments.outputs.result == 'success'
@@ -406,6 +384,62 @@ jobs:
       # samtidig med at en permanent rød Deploy verify gjorde at ægte fejl
       # druknede (#3565). Denne pointe gælder stadig — den tidligere checkout
       # dækker den blot nu også.
+      # #6487: deploy + smoke er groenne, saa PR'en faar besked med det samme.
+      # Merge-koeen laeser samme tilstand ("released") via Jobs-API'et og
+      # frigiver koeen; cron-beviset og de oevrige release-tjek koerer videre i
+      # denne koersel, som opdaterer kommentaren (samme markoer) til sidst.
+      # Kun smoke (hoejst 55 s) og denne kommentar maa ligge mellem deploy og
+      # cron-trinnet: cron-scriptet kasserer tidsstempler fra sin foerste
+      # aflaesning, saa det skal starte foer graensen (READY + drain 150 s),
+      # ellers kan 1-min-jobs (margin 3 min) ikke naa at blive beviste.
+      - name: Comment release verified, cron proof running
+        if: success() && steps.deployments.outputs.result == 'success' && steps.pr.outputs.number != ''
+        # En fejlet kommentar maa aldrig koste cron-beviset.
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          BODY="<!-- deploy-verify:$SHA -->
+          ## Deploy LIVE, cron-bevis koerer (${SHA:0:7})
+
+          Deploy og smoke er groenne. Merge-koeen er frigivet.
+          Cron-beviset (berorte jobs tikker efter deployet) og de oevrige release-tjek koerer videre i [denne koersel]($RUN_URL), som opdaterer kommentaren her til sidst (cron-beviset tager hoejst ca. 50 min)."
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
+          else
+            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          fi
+
+      - name: Verify affected cron check-ins
+        id: crons
+        if: steps.deployments.outputs.result == 'success'
+        # #6487: seneste deadline for et kort job (<= 30 min) er Railway-drain
+        # 2,5 + kadence 30 + margin 15 = 47,5 min; scriptet melder selv failed
+        # derefter. 50 min er kun et vaern mod et haengende kald.
+        timeout-minutes: 50
+        env:
+          AFFECTED_SLUGS: ${{ steps.required.outputs.affected_slugs }}
+          CRON_SINCE: ${{ steps.deployments.outputs.cron_since }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -o pipefail
+          node scripts/ci/cron-deploy-verification.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Explicit markers make successful-but-deferred runs distinguishable from
+      # verified releases through the attempt-specific Jobs API (#6318).
+      - name: Cron check-ins verified
+        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'verified'
+        run: echo "Affected cron check-ins verified (or no affected monitored jobs)."
+
+      - name: Cron check-ins deferred
+        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'deferred'
+        run: echo "::notice::AFVENTER CHECK-IN for long cadences (> 30 min); short cadences verified. Non-blocking for the merge queue; see jobs and deadlines in summary."
+
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
         if: steps.deployments.outputs.result == 'success'
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
