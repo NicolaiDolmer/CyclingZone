@@ -267,7 +267,7 @@ export const SHARED_TIME_MODEL_V4_TUNING: TimeModelTuning = freeze({
   climbGapFieldScaleProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
   // #6456: den afgoerende stigning foer en nedkoerselsfinale spreder mindre end
   // en topankomst (favoritterne samles efter toppen; loftet paa nedkoerslen er uaendret).
-  descentFinishClimbAbilityWeightScale: 0.75,
+  descentFinishClimbAbilityWeightScale: 0.9,
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).

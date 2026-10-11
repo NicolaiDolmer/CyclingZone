@@ -10,7 +10,10 @@ import {
   isOrdersGcRulesRevision,
   isOrdersGcV2OrLater,
   isOrdersGcV3OrLater,
+  isOfficialTimesV3OrLater,
+  isOfficialTimesV4OrLater,
   ordersGcGeneration,
+  sharedTimeModelGeneration,
   preservesOfficialStageTimes,
   usesSharedGroupTime,
   raceHasStarted,
@@ -238,7 +241,7 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
-  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3"]);
+  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4"]);
   // #6452: nye loeb bindes til official_times_v3; loeb bundet til v2 beholder v2.
   assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v3");
 });
@@ -276,9 +279,9 @@ test("#6284/#6199: the v3 migration excludes official_times; the official-times 
   const migration = readFileSync(new URL("../../database/2026-10-08-race-engine-rules-revision-official-times.sql", import.meta.url), "utf8");
   const migrated = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(migrated);
-  // #6200: official_times_v3 is switched off and has no migration yet; a flip
-  // to it needs its own migration that adds it to the constraint.
-  assert.deepEqual(migrated[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v3"));
+  // #6200: official_times_v3 got its own migration (#6452); #6464: official_times_v4
+  // is switched off and needs its own migration in the flip PR.
+  assert.deepEqual(migrated[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v3" && revision !== "official_times_v4"));
   // Idempotent and additive: the constraint is replaced, never a row update.
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
@@ -296,10 +299,10 @@ test("#6187: orders_gc_v3 is known but never current (official_times_v2 includes
 });
 
 test("#6187/#6284: orders_gc is a lineage; official times branches from v2 without v3 mechanics", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 2, 3, 3]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, false, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 2, 3, 3, 3]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, false, true, true, true]);
   for (const unknown of [null, undefined, "", "orders_gc_v9", 3]) {
     assert.equal(ordersGcGeneration(unknown), 0);
     assert.equal(isOrdersGcRulesRevision(unknown), false);
@@ -327,8 +330,8 @@ test("#6199: official_times_v2 is the full v3 lineage plus official times and th
 });
 
 test("#6199: official times and the shared clock belong to exactly the official-times revisions", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(preservesOfficialStageTimes), [false, false, false, false, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(usesSharedGroupTime), [false, false, false, false, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(preservesOfficialStageTimes), [false, false, false, false, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(usesSharedGroupTime), [false, false, false, false, true, true, true, true]);
   for (const unknown of [null, undefined, "", "official_times_v9", "orders_gc_v3 ", 3]) {
     assert.equal(preservesOfficialStageTimes(unknown), false);
     assert.equal(usesSharedGroupTime(unknown), false);
@@ -357,7 +360,8 @@ test("#6452: the v3 migration allows every known revision, additively and idempo
   const migration = readFileSync(new URL("../../database/2026-10-11-race-engine-rules-revision-official-times-v3.sql", import.meta.url), "utf8");
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
+  // #6464: official_times_v4 is switched off; its own migration comes with the flip PR.
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v4"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
   // The current revision must be a value the constraint allows, or the first claim fails on CHECK.
@@ -408,4 +412,32 @@ test("#6199: the bridge carries official_times_v2 with the same input as orders_
   const official = await bridgeInput("official_times_v2");
   assert.equal(official.rules_revision, "official_times_v2");
   assert.deepEqual({ ...official, rules_revision: "orders_gc_v3" }, v3);
+});
+
+// ── #6464 + #6456: official_times_v4 (slukket, mountain gaps in every division) ──
+
+test("#6464: official_times_v4 is known, switched off, and keeps the whole official_times_v3 lineage", () => {
+  const revision = "official_times_v4";
+  assert.equal(isKnownRulesRevision(revision), true);
+  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision);
+  assert.equal(ordersGcGeneration(revision), 3);
+  assert.equal(isOrdersGcV3OrLater(revision), true);
+  assert.equal(preservesOfficialStageTimes(revision), true);
+  assert.equal(usesSharedGroupTime(revision), true);
+  assert.equal(sharedTimeModelGeneration(revision), 3);
+  assert.equal(isOfficialTimesV3OrLater(revision), true);
+  assert.equal(isOfficialTimesV4OrLater(revision), true);
+  for (const older of ["legacy", "orders_gc_v3", "official_times_v2", "official_times_v3", null, "official_times_v9"]) {
+    assert.equal(isOfficialTimesV4OrLater(older), false);
+  }
+  // A race bound to v4 keeps it; a new race still binds to the current revision.
+  assert.equal(resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: revision, currentRevision: CURRENT_RACE_RULES_REVISION }), revision);
+  assert.equal(resolveRaceRulesRevision({ race: notStarted, firstStageClaim: true, storedRevision: null, currentRevision: CURRENT_RACE_RULES_REVISION }), CURRENT_RACE_RULES_REVISION);
+});
+
+test("#6464: the bridge carries official_times_v4 with the same input as official_times_v3", async () => {
+  const v3 = await bridgeInput("official_times_v3");
+  const v4 = await bridgeInput("official_times_v4");
+  assert.equal(v4.rules_revision, "official_times_v4");
+  assert.deepEqual({ ...v4, rules_revision: "official_times_v3" }, v3);
 });
