@@ -19,6 +19,7 @@ export async function runWithRetry(run, retryOpts) {
     }, retryOpts);
     return { data, error: null };
   } catch (error) {
+    // catch-ok: fejlen sluges ikke, den returneres i {data, error}-kontrakten (kalderen kaster/capturer).
     return { data: null, error };
   }
 }
