@@ -15,6 +15,7 @@ import { groupNotifications } from "../lib/groupNotifications";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLink";
 import { resolveAggregateLink } from "../components/notifications/aggregateLink.ts"; // #5417
+import { notifyUnreadChanged, subscribeUnreadSync } from "../components/notifications/unreadSync.js"; // #6473
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -433,6 +434,17 @@ export default function NotificationsPage() {
 
   useEffect(() => { loadNotifications(); }, []);
 
+  // #6473: laest i en anden fane / fanen var sovende -> genindlaes stille (uden
+  // spinner) saa listen og Beskeder-taelleren ikke staar fast indtil refresh.
+  // Egne aendringer ("local") er allerede opdateret optimistisk.
+  useEffect(() => subscribeUnreadSync((source) => {
+    if (source !== "external") return;
+    loadNotifications({ quiet: true });
+    fetchUnreadSummary()
+      .then(summary => setUnreadMessages(summary?.unreadConversations ?? 0))
+      .catch(() => {});
+  }), []);
+
   useEffect(() => {
     if (tab === "ligaen" && !feedLoaded) loadFeed();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps -- feedLoaded er bevidst udeladt: feedet hentes ved faneskift, ikke når flaget sættes
@@ -457,9 +469,9 @@ export default function NotificationsPage() {
 
   // Pending decisions hentes + realtime-opdateres af useActionSummary (#271 Slice A).
 
-  async function loadNotifications() {
-    setNotifLoading(true);
-    setNotifLoadError(false);
+  async function loadNotifications({ quiet = false } = {}) {
+    if (!quiet) setNotifLoading(true);
+    if (!quiet) setNotifLoadError(false);
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setNotifLoading(false); return; }
@@ -470,7 +482,11 @@ export default function NotificationsPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) { setNotifLoadError(true); setNotifLoading(false); return; }
+    if (error) {
+      // #6473: en stille genindlaesning maa ikke erstatte en vist liste med fejlskaerm
+      if (!quiet) { setNotifLoadError(true); setNotifLoading(false); }
+      return;
+    }
     setNotifications(data || []);
     setNotifLoading(false);
   }
@@ -497,7 +513,9 @@ export default function NotificationsPage() {
     if (error) {
       setNotifications(prev);
       notifyMutationFailed("notification_mark_read", error, { notificationId: id });
+      return;
     }
+    notifyUnreadChanged(); // #6473: nav-badgen + andre faner
   }
 
   async function markManyRead(ids) {
@@ -509,7 +527,9 @@ export default function NotificationsPage() {
     if (error) {
       setNotifications(prev);
       notifyMutationFailed("notification_mark_many_read", error, { count: ids.length });
+      return;
     }
+    notifyUnreadChanged(); // #6473
   }
 
   async function deleteMany(ids) {
@@ -544,6 +564,7 @@ export default function NotificationsPage() {
     const { error } = await supabase.from("notifications")
       .update({ is_read: true }).eq("user_id", userId).eq("is_read", false);
     if (error) await loadNotifications();
+    else notifyUnreadChanged(); // #6473: nav-badgen + andre faner
     setMarkingAll(false);
   }
 

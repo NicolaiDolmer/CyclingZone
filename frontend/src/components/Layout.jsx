@@ -29,6 +29,7 @@ import { useScoutingCentral } from "../lib/useScoutingCentral";
 import { pathMatchesNavItem } from "../lib/navMatching.js";
 import { buildNavBadgeCounts, resolveNavBadgeCount, formatNavBadgeCount } from "../lib/navBadges.js";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
+import { subscribeUnreadSync } from "./notifications/unreadSync.js"; // #6473
 import {
   loadPatchNotesMeta, isPatchNotesUnread, readLastSeenPatchNotes, writeLastSeenPatchNotes,
   buildNavDotFlags, resolveNavDot,
@@ -776,13 +777,13 @@ export default function Layout() {
   }, [session]);
 
   // Supabase DELETE-events mangler user_id i payload uden REPLICA IDENTITY FULL — lyt på window-event i stedet.
+  // #6473: samme kilde dækker mark-read/mark-all, andre faner (BroadcastChannel) og at
+  // fanen bliver synlig/fokuseret igen — en død Realtime-kanal efterlod ellers tælleren.
   useEffect(() => {
     if (!session) return;
-    async function handleNotifDeleted() {
+    return subscribeUnreadSync(async () => {
       setUnread(await fetchUnreadCount(session.user.id));
-    }
-    window.addEventListener("cz:notif-deleted", handleNotifDeleted);
-    return () => window.removeEventListener("cz:notif-deleted", handleNotifDeleted);
+    });
   }, [session]);
 
   // #3811: henter kun den lette patch-notes-meta.json (ikke hele changelog'en) —
