@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.355",
+    "date": "2026-10-11",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A rider who changes team keeps all his race days",
+          "body": "A rider who moved to another team during the day could end up with only 4 of 5 race days in the evening training. The training now follows him to his new team, so he gets the full day."
+        },
+        "da": {
+          "title": "En rytter, der skifter hold, beholder alle sine løbsdage",
+          "body": "En rytter, der skiftede hold i løbet af dagen, kunne ende med kun 4 af 5 løbsdage i aftentræningen. Træningen følger ham nu til det nye hold, så han får hele dagen."
+        },
+        "refs": [
+          6439
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Signing an academy rider is fast again",
+          "body": "Signing a youth rider from your academy took up to 13 seconds, and signing two in a row could fail. It is much faster now."
+        },
+        "da": {
+          "title": "Det går hurtigt igen at signere en akademirytter",
+          "body": "Det tog op til 13 sekunder at signere en ungdomsrytter fra dit akademi, og to signeringer lige efter hinanden kunne fejle. Nu går det markant hurtigere."
+        },
+        "refs": [
+          6450
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.354",
     "date": "2026-10-11",
     "changes": [
