@@ -1368,6 +1368,19 @@ type TeamGcDecision = {
   plan: TeamReactionPlan;
 };
 
+/**
+ * #6457 (KUN official_times_v3 paa jagtens vejprofiler): et hold med "jag" har
+ * ingen GC-reaktion (planTeamReaction: eksplicit jagt styrer selv), men under
+ * v3's additive jagt (#6441) maa "jag" aldrig give MINDRE end neutral. I
+ * lad-gaa-fasen bremser og lofter holdet derfor som et reagerende hold ved
+ * en trussel i udbruddet: forspringet vokser ikke forbi det holdet tolererer
+ * (letGoCapAtTolerated) og bremsen virker med holdets jagtarbejde. Kun
+ * lad-gaa-vurderingen laeser dette; reaktioner, events og jagtplanen er uaendrede.
+ */
+export function chaseStanceBrakesAsReaction<T extends { stance: ReactionStance; plan: { intensity: number } }>(decisions: readonly T[]): T[] {
+  return decisions.map((d) => (d.stance === "chase" && !(d.plan.intensity > 0) ? { ...d, plan: { ...d.plan, intensity: 1 } } : d));
+}
+
 type GcReactionSetup = {
   decisions: TeamGcDecision[];
   /** jagtgruppe-id -> (team_id -> reaktion), til teamChasePlan's `reactions`. */
@@ -1753,9 +1766,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // bremser ikke; den lofter kun forspringet (snoren i gcThreat). Ellers som foer.
     const letGoTuning = timeModelTuningFor(ctx);
     const jerseyTolerance = letGoTuning.gcDanger?.jerseyAllowanceSeconds?.[ctx.route.profile_type] !== undefined;
+    // #6457 (KUN official_times_v3): "jag" bremser og lofter lad-gaa-fasen mindst som en reaktion.
+    const brakeDecisions = gcSetup && chaseV3 && BREAKAWAY_CHASE_V3_TUNING.chaseStanceBrakes ? chaseStanceBrakesAsReaction(gcSetup.decisions) : gcSetup?.decisions ?? [];
     const letGoDecisions = gcSetup && jerseyTolerance
-      ? gcSetup.decisions.filter((d) => !(d.threat.reason === "leader_jersey_at_risk" && d.threat.leash_hold !== true))
-      : gcSetup?.decisions ?? [];
+      ? brakeDecisions.filter((d) => !(d.threat.reason === "leader_jersey_at_risk" && d.threat.leash_hold !== true))
+      : brakeDecisions;
     const dangerous = gcSetup !== null
       && letGoBrakingTeams(letGoDecisions.filter(inBreak), chaseGroup.id, ordersGcV3).size > 0;
     // #6088: et udbrud med staerke ryttere faar ikke det ekstra loft.
@@ -1819,7 +1834,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       // forbi det mindste forspring de bremsende hold tolererer. #5578 robust: ogsaa
       // troejens tolerance lofter (alle reagerende hold, ikke kun de farlige).
       if (letGoTuning.letGoCapAtTolerated && gcSetup) {
-        const tolerated = [...letGoBrakingTeams(gcSetup.decisions.filter(inBreak), chaseGroup.id, ordersGcV3).values()];
+        const tolerated = [...letGoBrakingTeams(brakeDecisions.filter(inBreak), chaseGroup.id, ordersGcV3).values()];
         if (tolerated.length > 0) maxGapSeconds = Math.min(maxGapSeconds, Math.max(INITIAL_GAP_SECONDS, Math.min(...tolerated)));
       }
       // #6428 (KUN official_times_v3; tom tabel i alle aeldre tidsmodeller): i et
