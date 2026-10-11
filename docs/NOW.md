@@ -4,15 +4,15 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (fra 11/10 aften):** Næste session efter `docs/sessions/2026-10-11-aften-merge-stabilitet-og-udvikling-del1.md` (startprompt i filen): v4-etaper tjekkes pr. division → merge-kø med ét kort pr. PR (#6478 #6480 #6481 #6479 #6477; UI #6482 #6483 med billede) → stabilitet (#6184-rest, #5692, #6470) → Udvikling 2.0 del 1 til 25/10 + del 2 bag flag (#6110) → træningens rest (tjek 7×5 m.fl. først). Pengene (#6474) og spillersvar (#6476) tager ejeren separat.
+> **🎯 Next action (fra 11/10 sen aften):** (1) v4-bjergetaper pr. division 12/10 fra kl. 12 mod `balance-internals/motor-bench/bench-main-live.json`. (2) #6477 chunk merges efter ejerens GitHub-secret `POSTHOG_PERSONAL_API_KEY`. (3) Ejer-kort: faldets form (kerne 100 % / øvrige 70 % eller ens, #6499) FØR flaget `development_v2_aging_enabled` tændes før 25/10. (4) Ægte før/efter-billeder #6482 #6483 (Claude in Chrome ikke forbundet 11/10). (5) Design #6490 (træning ved 10× + "omgående træning", ejer 11/10) og #6489 (trup-skift-trigger), #6504 (frigivelse uden ejerskifte). (6) Tekniske standarder #6496: kort #6491 (job-kø) først. Man: betaling #4511 #4514 #4512.
 >
-> **11/10 eftermiddag:** `official_times_v4` TÆNDT 16:30 (#6465 #6484, migration verificeret; Touren bliver på v3). Merget: #6466 (klassement-tidsgab) #6403 (værdier kl. 14, ingen værdiskrivning ved skiftet) #6485 (patch 7.356). Udvikling 2.0: ALLE beslutninger truffet (D1-D7 + D1b, potentiale = levende talent 1-99, træningsscore B; se #6110). Auktionsfejl fundet: 6 auktioner gav 4 hold 1.092.657 CZ$ for meget (#6474, rettelse i #6481, datareparation ejer-gated).
+> **11/10 aften (session `031242c6`):** Merget #6478 #6480 #6481 #6479 #6498 #6503 #6502 (+#6501 og patch 7.357 #6505 i kø). Udvikling 2.0 del 1 bygget bag slukket flag (D4 #6499 prøvekørt mod prod: plateau 29-30 = 0 fald, 31-33 manager 5,2 mod 11,8 i dag; D6 #6500). Aftenspidsens rodårsag: GIN-indeks 800 MB på `training_day_runs` (#6490, live-målt: 1 MB WAL pr. afregning, max 45 s, lukning 30 min). 7×5 er live for alle (docs rettet). Tekniske standarder vedtaget (#6496 #6491-#6497, TS håndhæves #5158). Discord-udkast i `docs/drafts/`; postmortem i `.claude/learnings/`.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = JA (ejer 26/9). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret.
+> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 
