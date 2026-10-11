@@ -18,6 +18,7 @@
 //   5. Retirement      = seeded i alders-vindue, garanteret ved guaranteedAge
 
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { abilityMeta } from "./abilityRegistry.js";
 import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 
@@ -605,6 +606,140 @@ export function resolveSeasonRetirement(rider, age, season, cfg = PROGRESSION_CO
   // Ejer-regel 26/7 (cutover S1→S2): pension måles på den AFSLUTTEDE sæsons
   // alder (age − 1), ikke den nye sæsons. Se kommentaren ved `retirement` ovenfor.
   return { ...retirementDecision(age - 1, rider.id, season, cfg), source: "rolled" };
+}
+
+// ══ UDVIKLING 2.0 DEL 1: TILBAGEGANG VED SÆSONSKIFTET (#6499, epic #6110) ════
+//
+// Ejer-besluttet 11/10 (D4 variant B + D6 + D7 C). Kører KUN når flaget
+// `development_v2_aging_enabled` er on (developmentV2Flag.js); med flaget
+// slukket bruger motoren developRiderSeason ovenfor uændret.
+//
+// Reglerne (tallene står i AGING_V2_CONFIG nedenfor):
+//   • Ingen sæsonvækst for NOGEN ved skiftet. Managerryttere vokser kun via den
+//     daglige træning; AI- og frie ryttere vokser slet ikke (D6).
+//   • Plateau til og med `plateauThroughAge`: intet fald.
+//   • Derefter et fald pr. sæson der stiger i trin med årene forbi plateauet.
+//   • KUN de fysiske evner + brosten falder (ejer 11/10 aften: brosten regnes som
+//     fysisk her). Tekniske (nedkørsel, positionering) og mentale evner falder
+//     aldrig.
+//   • Kerneevner (positiv typevægt) får hele faldet, øvrige × offTypeDeclineFactor
+//     (samme default som i dag; ejeren afgør senere om det skal ændres).
+//   • Faldet bremses jævnt af den AFSLUTTEDE sæsons belastning:
+//       bremse = max(0, 1 − (løbsdage + hardTrainingDayWeight × hårde dage) / brakeLoadDays)
+//     Belastningen tælles i seasonDevelopmentLoad.js.
+//   • Brøk-fald afrundes SYSTEMATISK og seedet pr. (rytter, sæson): rytterens
+//     samlede fald bliver ⌊Σ⌋ eller ⌈Σ⌉ af de rå brøker, og hver evne får ⌊d⌋
+//     eller ⌈d⌉. Forventningen er præcis den rå brøk, og intet skal gemmes
+//     mellem sæsoner (ingen migration).
+//   • Pensionen er uændret (samme resolveSeasonRetirement som i dag).
+//   • Lofterne (ability_caps) skrives stadig af motoren som i dag.
+export const AGING_V2_CONFIG = Object.freeze({
+  plateauThroughAge: 30,
+  declineByYearsPastPlateau: Object.freeze([
+    { maxYears: 3, drop: 1.0 },
+    { maxYears: 6, drop: 1.8 },
+    { maxYears: 99, drop: 2.6 },
+  ]),
+  // Ikke besluttet endnu (ejer 11/10): konfigurerbar, default som i dag.
+  offTypeDeclineFactor: PROGRESSION_CONFIG.offTypeDeclineFactor,
+  brakeLoadDays: 120,
+  hardTrainingDayWeight: 0.5,
+});
+
+// De evner der kan falde med alderen: registrets fysiske evner + brosten.
+// Udledt af evne-registret (ikke en håndholdt liste), så en ny fysisk evne
+// automatisk ældes og en ny teknisk/mental evne automatisk ikke gør.
+export const AGING_V2_EXTRA_DECLINING = Object.freeze(["cobblestone"]);
+export const AGING_V2_DECLINING_ABILITIES = Object.freeze(
+  VISIBLE_ABILITIES.filter((ability) =>
+    abilityMeta(ability)?.category === "physical" || AGING_V2_EXTRA_DECLINING.includes(ability)),
+);
+
+// Bremsen fra den afsluttede sæsons belastning. 1 = fuldt fald (ingen løb, ingen
+// hård træning), 0 = intet fald. Manglende/ugyldige tal tæller som 0 dage.
+export function agingBrake(load, cfg = AGING_V2_CONFIG) {
+  const raceDays = Math.max(0, Number(load?.raceDays) || 0);
+  const hardDays = Math.max(0, Number(load?.hardDays) || 0);
+  return Math.max(0, 1 - (raceDays + cfg.hardTrainingDayWeight * hardDays) / cfg.brakeLoadDays);
+}
+
+// Fald pr. sæson for en kerneevne FØR bremsen, ved sæson-alderen `age`
+// (samme alders-input som developRiderSeason: alderen i den NYE sæson).
+export function agingV2BaseDrop(age, cfg = AGING_V2_CONFIG) {
+  const a = Number(age);
+  if (!Number.isFinite(a) || a <= cfg.plateauThroughAge) return 0;
+  return lookup(cfg.declineByYearsPastPlateau, a - cfg.plateauThroughAge, "maxYears", "drop");
+}
+
+// Systematisk afrunding af en liste ikke-negative brøker med ét seedet offset
+// `unit` ∈ [0,1): heltal_i = ⌊C_i + u⌋ − ⌊C_{i−1} + u⌋ hvor C er den løbende sum.
+// Summen af heltallene er ⌊Σ + u⌋ ∈ {⌊Σ⌋, ⌈Σ⌉}, og hvert heltal er ⌊d_i⌋ eller
+// ⌈d_i⌉. Den løbende sum rundes til 1e-9, så flydende-komma-støj (0,7 × 7 =
+// 4,8999…) ikke kan flytte et helt point.
+export function systematicRound(fractions, unit) {
+  const u = Math.min(Math.max(Number(unit) || 0, 0), 1 - Number.EPSILON);
+  const snap = (x) => Math.round(x * 1e9) / 1e9;
+  const out = [];
+  let cum = 0;
+  let prevFloor = Math.floor(u);
+  for (const f of fractions) {
+    cum = snap(cum + Math.max(0, Number(f) || 0));
+    const nextFloor = Math.floor(snap(cum + u));
+    out.push(nextFloor - prevFloor);
+    prevFloor = nextFloor;
+  }
+  return out;
+}
+
+// Én sæsons tilbagegang for én rytter efter Udvikling 2.0 (#6499).
+//   rider     : { id, primary_type, age, frozenRetirementNotice? } (age = alder i den NYE sæson)
+//   abilities : { climbing, sprint, ... } current-værdier
+//   season    : sæson-nummer (seed-komponent, samme som developRiderSeason)
+//   options   : { load?: { raceDays, hardDays }, cfg?: AGING_V2_CONFIG, progressionCfg?: PROGRESSION_CONFIG }
+// Returnerer samme form som developRiderSeason ({ next, changed, retirement })
+// plus `aging` med bremse og fald, så motoren og prøvekørslen kan tælle dem.
+export function developRiderSeasonV2(rider, abilities, season, options = {}) {
+  const cfg = options.cfg ?? AGING_V2_CONFIG;
+  const progressionCfg = options.progressionCfg ?? PROGRESSION_CONFIG;
+  const age = Number(rider.age);
+  const type = rider.primary_type;
+  const brake = agingBrake(options.load, cfg);
+  const baseDrop = agingV2BaseDrop(age, cfg);
+
+  const next = {};
+  for (const ability of VISIBLE_ABILITIES) {
+    const cur = abilities?.[ability];
+    if (cur == null) continue;
+    next[ability] = Math.round(Number(cur));
+  }
+
+  const declining = AGING_V2_DECLINING_ABILITIES.filter((ability) => Number.isFinite(next[ability]));
+  const raw = declining.map((ability) => {
+    const isSig = signatureFactor(type, ability, progressionCfg) >= 1.0;
+    return baseDrop * (isSig ? 1 : cfg.offTypeDeclineFactor) * brake;
+  });
+  const rawTotal = raw.reduce((s, d) => s + d, 0);
+  const drops = rawTotal > 0
+    ? systematicRound(raw, seededUnitMixed(`age2:${rider.id}:${season}`))
+    : raw.map(() => 0);
+
+  const changed = [];
+  let totalDrop = 0;
+  declining.forEach((ability, i) => {
+    if (drops[i] <= 0) return;
+    const before = next[ability];
+    const after = clamp(before - drops[i], 0, 99);
+    next[ability] = after;
+    totalDrop += before - after;
+    if (after !== before) changed.push(ability);
+  });
+
+  return {
+    next,
+    changed,
+    retirement: resolveSeasonRetirement(rider, age, season, progressionCfg),
+    aging: { brake, baseDrop, rawTotal, totalDrop },
+  };
 }
 
 // Potentiale → vækst-rate-multiplikator (lineær interpolation på rateByPotential).
