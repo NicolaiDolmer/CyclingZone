@@ -746,7 +746,23 @@ export function teamGameDaysFromDayClose({ teamDivisionId, gameDays }) {
  * @param {object} [args.logger]
  * @returns {Promise<object>}
  */
-export async function runTrainingDayCloseSweep({
+export async function runTrainingDayCloseSweep(args = {}) {
+  // ── a) Overlap-guard (#2090-moenstret, G6-krav) ─────────────────────────────
+  // Kode-invariant: to sweeps kan ALDRIG vaere i luften samtidig i samme proces.
+  // #5911: guarden tages SYNKRONT foer foerste await (flag-opslagene), ellers kan
+  // stage-schedulerens tidlige start og 5-min-cron'en begge naa forbi tjekket.
+  if (sweepRunning) {
+    return { ran: false, skipped: "overlap" };
+  }
+  sweepRunning = true;
+  try {
+    return await runTrainingDayCloseSweepGuarded(args);
+  } finally {
+    sweepRunning = false;
+  }
+}
+
+async function runTrainingDayCloseSweepGuarded({
   supabase,
   now = new Date(),
   runDay = runTeamTrainingDay,
@@ -754,25 +770,14 @@ export async function runTrainingDayCloseSweep({
   logger = console,
   runNormalized = runNormalizedTrainingDateSweep,
 } = {}) {
-  // ── a) Overlap-guard (#2090-moenstret, G6-krav) ─────────────────────────────
-  // Kode-invariant: to sweeps kan ALDRIG vaere i luften samtidig i samme proces.
-  if (sweepRunning) {
-    return { ran: false, skipped: "overlap" };
-  }
-
   const tickDate = copenhagenDateString(now);
 
   // The normalized writer has durable per-rider work across midnight. It must
   // inspect that work BEFORE the legacy same-date cache and evening-only gate.
   if (await isTrainingConditionPerDateEnabled(supabase)) {
     if (!await isDailyTrainingEnabled(supabase)) return { ran: false, skipped: 'daily_training_off' };
-    sweepRunning = true;
-    try {
-      const teamConcurrency = await resolveTeamConcurrency(supabase);
-      return await runNormalized({ supabase, now, runDay, onAlarm, logger, loadDaySpans: loadDayCloseSpans, teamConcurrency });
-    } finally {
-      sweepRunning = false;
-    }
+    const teamConcurrency = await resolveTeamConcurrency(supabase);
+    return await runNormalized({ supabase, now, runDay, onAlarm, logger, loadDaySpans: loadDayCloseSpans, teamConcurrency });
   }
 
   // ── b) Dags-claim ───────────────────────────────────────────────────────────
@@ -791,7 +796,6 @@ export async function runTrainingDayCloseSweep({
   // ── Betingelse 1: dansk tid >= kl. 20 ───────────────────────────────────────
   if (!shouldSweepNow(now)) return { ran: false, skipped: "before_window", tickDate };
 
-  sweepRunning = true;
   const startedAt = Date.now();
   try {
     // ── Aktiv saeson ──────────────────────────────────────────────────────────
@@ -1049,7 +1053,7 @@ export async function runTrainingDayCloseSweep({
       durationMs: Date.now() - startedAt,
     };
   } finally {
-    sweepRunning = false;
+    // #5911: overlap-guarden frigives af runTrainingDayCloseSweep (én finally for alle stier).
   }
 }
 

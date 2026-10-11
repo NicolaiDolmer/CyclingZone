@@ -1034,6 +1034,24 @@ describe("parseTeamConcurrency / resolveTeamConcurrency (#5911)", () => {
     return received;
   }
 
+  it("overlap-guarden tages foer flag-opslagene: en samtidig anden start er et skip", async () => {
+    __resetTrainingDayCloseStateForTests();
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    const query = { select() { return this; }, eq() { return this; },
+      async maybeSingle() { await gate; return { data: { value: "on" }, error: null }; } };
+    let normalizedRuns = 0;
+    const args = { supabase: { from: () => query }, now: new Date("2026-10-11T18:05:00Z"),
+      runNormalized: async () => { normalizedRuns++; return { ran: true }; } };
+    const first = runTrainingDayCloseSweep(args);
+    assert.equal(isTrainingDayCloseSweepRunning(), true, "guard held while the flag lookup is still pending");
+    assert.deepEqual(await runTrainingDayCloseSweep(args), { ran: false, skipped: "overlap" });
+    release();
+    assert.equal((await first).ran, true);
+    assert.equal(normalizedRuns, 1);
+    assert.equal(isTrainingDayCloseSweepRunning(), false, "guard released afterwards");
+  });
+
   it("den normaliserede sweep faar knappens vaerdi med, og uden knap den sekventielle 1", async () => {
     assert.equal(await sweepConcurrency(12), 12);
     assert.equal(await sweepConcurrency(undefined), 1);
