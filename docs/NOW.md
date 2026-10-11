@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (nat 11/10):** Natsession efter `docs/sessions/2026-10-11-nat-motor.md`: byg udbrud forslag A (#6441, ejer 11/10 00:50), Fable-dom på #6443, gate grøn, testbænk opdateret, flip-PR klar men ikke merget, morgenkort kl. 09:30. Touren kører v3 KUN hvis alt er grønt og ejeren siger "tænd" før ca. 10:30; ellers v2.
+> **🎯 Next action (11/10 morgen):** Ejerens svar på morgenkortet: "tænd" = accepter de 4 punkter i #6441 + merge #6443 → #6458 (indeholder #6448) → #6455 → #6454 → flip #6453 via merge-køen før ca. 10:30, migration straks efter, verificér første etaper pr. profil. Ellers Touren på v2 og tænd før 12/10. Separat: #6459 akademi-signering (migration, ejer-go).
 >
-> **10/10 aften:** merget #6431 (flad udbrudstrin), #6437 (sprintertog), #6438 (CodeQL 0), #6444 (bjerg-tider), #6446 (træning følger rytteren, migreret), #6449 (verify-lock). Motor-testbænk live (privat Artifact). Gate rød trin 1+3. Ejer-valg: standard-jagt for hold uden ordre + fair Udbrudsmål 3 (#6441). Nye: #6439 #6440-#6442 #6447 #6450. Spillersvar i docs/drafts/spillersvar-2026-10-10.md.
+> **Nat 11/10:** forslag A + jag-loft bygget (#6448/#6458), gate-målinger rettet efter RULES (#6443/#6455), testbænk på main-klar (#6454), flip-PR komplet m. patch 7.354 (#6453). Fable trin 6 runde 2: tænd forsvarligt med 4 ejer-accepter. Fuld suite grøn på samlet sæt. Nye issues: #6451-#6459.
 >
-> **10/10 dag:** 26 PR'er merget, patch 7.351-7.353, bestyrelses-reparation #5897, v2 verificeret i prod (#6428), Touren på v2 (ejer-valg), ren motor-revision spec + plan godkendt.
+> **10/10 aften:** merget #6431, #6437, #6438, #6444, #6446 (migreret), #6449. Ejer-valg: standard-jagt + fair Udbrudsmål 3 (#6441).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Natsession 11/10 (start ca. 00:30, Claude Code hovedsession efter docs/sessions/2026-10-11-nat-motor.md): bølge #6441 A + #6451 testbænk + #6452 flip-PR, Fable-dom #6443. Rør ikke motor-branches.
+> **🤖 Working agent:** Natsession 11/10 (Claude Code) afventer ejerens svar på morgenkortet; ingen merges/tænding uden ordret "tænd".
