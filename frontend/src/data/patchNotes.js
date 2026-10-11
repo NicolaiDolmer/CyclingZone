@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.357",
+    "date": "2026-10-11",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Riders who drop out of a stage race train again the next day",
+          "body": "A rider who drops out of a stage race, for example on the time limit, now follows your training program again from the next day instead of resting until the race ends. The day he drops out still counts as a rest day, and injured riders still rest."
+        },
+        "da": {
+          "title": "Ryttere, der udgår af et etapeløb, træner igen dagen efter",
+          "body": "En rytter, der udgår af et etapeløb, fx på tidsgrænsen, følger nu dit træningsprogram igen fra dagen efter i stedet for at hvile, til løbet er slut. Dagen, han udgår, er stadig en hviledag, og skadede ryttere hviler stadig."
+        },
+        "refs": [
+          5949
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squads",
+        "en": {
+          "title": "Moving a rider to another squad clears his old race entries",
+          "body": "When a rider moves squad, for example from junior to U23 or up to the senior team, he is now taken off the upcoming races of his old squad. If that leaves a team short, the team is filled up automatically when the race starts."
+        },
+        "da": {
+          "title": "Flytter du en rytter til en anden trup, fjernes han fra den gamle trups løb",
+          "body": "Når en rytter skifter trup, fx fra junior til U23 eller op på seniorholdet, bliver han nu taget af den gamle trups kommende løb. Mangler holdet så ryttere, fyldes det automatisk op, når løbet starter."
+        },
+        "refs": [
+          5903
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.356",
     "date": "2026-10-11",
     "changes": [
