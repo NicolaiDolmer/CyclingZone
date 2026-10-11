@@ -129,7 +129,10 @@ export async function forEachTeamBounded(items, limit, fn) {
   const worker = async () => {
     while (failure === null && next < items.length) {
       const item = items[next++];
-      try { await fn(item); } catch (error) { failure ??= { error }; }
+      try { await fn(item); } catch (error) {
+        // best-effort: not swallowed, rethrown below once the started teams finish.
+        failure ??= { error };
+      }
     }
   };
   await Promise.all(Array.from({ length: width }, worker));

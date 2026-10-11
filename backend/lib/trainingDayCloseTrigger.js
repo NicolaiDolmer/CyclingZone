@@ -90,6 +90,58 @@ export const DEFAULT_SQUAD = "senior";
 export const TEAM_CONCURRENCY = 1;
 
 /**
+ * #5911: hold-paralleliteten i den NORMALISEREDE datoafregning (den sti prod koerer,
+ * `training_condition_per_date` on). Den gamle sti ovenfor beholder TEAM_CONCURRENCY:
+ * dens plan har samme hold flere gange i traek (én post pr. loebsdag), og de poster
+ * maa aldrig koere samtidig.
+ *
+ * Tallet laeses fra app_config-noeglen nedenfor. Mangler den, er den ugyldig, eller
+ * fejler opslaget, er svaret 1 = praecis den sekventielle afregning fra foer. At
+ * haeve tallet er et ejer-skridt efter load-test-gaten (#5904), ikke en kode-default:
+ * det flytter skrivetryk, ikke resultater (holdene er uafhaengige, se
+ * `forEachTeamBounded` i trainingDateClose.js og paritetstesten).
+ */
+export const TEAM_CONCURRENCY_CONFIG_KEY = "training_day_close_team_concurrency";
+
+/** Loft paa app_config-vaerdien, saa en tastefejl ikke kan aabne hundredvis af kald. */
+export const MAX_TEAM_CONCURRENCY = 16;
+
+/**
+ * PUR: app_config-vaerdi → hold-parallelitet. Tal eller tal-streng (jsonb gemmer
+ * begge), afrundet ned og klemt til 1..MAX_TEAM_CONCURRENCY. Alt andet ⇒ 1.
+ * @param {unknown} raw
+ * @returns {number}
+ */
+export function parseTeamConcurrency(raw) {
+  const text = typeof raw === "string" ? raw.trim() : raw;
+  const n = typeof text === "number" ? text : typeof text === "string" && /^\d+$/.test(text) ? Number(text) : NaN;
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return Math.min(MAX_TEAM_CONCURRENCY, Math.floor(n));
+}
+
+/**
+ * I/O: laes hold-paralleliteten. Kaster aldrig: et kapacitets-knap maa ikke kunne
+ * vaelte aftenens afregning.
+ * @param {object} supabase
+ * @returns {Promise<number>}
+ */
+export async function resolveTeamConcurrency(supabase) {
+  try {
+    const { data, error } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", TEAM_CONCURRENCY_CONFIG_KEY)
+      .maybeSingle();
+    if (error) return 1;
+    return parseTeamConcurrency(data?.value ?? null);
+  } catch {
+    // best-effort: ukendt knap-vaerdi ⇒ den sekventielle afregning (1), som er den
+    // sikre side. Afregningen selv koerer videre og fejler/alarmerer paa sine egne vilkaar.
+    return 1;
+  }
+}
+
+/**
  * Hvor mange loebsdage én kalenderdags sweep hoejst maa daekke pr. division.
  *
  * #4847 (ejer-regel 4, 18/9): en loebsdag UDEN loeb er en ren traeningsdag og skal
@@ -716,7 +768,8 @@ export async function runTrainingDayCloseSweep({
     if (!await isDailyTrainingEnabled(supabase)) return { ran: false, skipped: 'daily_training_off' };
     sweepRunning = true;
     try {
-      return await runNormalized({ supabase, now, runDay, onAlarm, logger, loadDaySpans: loadDayCloseSpans });
+      const teamConcurrency = await resolveTeamConcurrency(supabase);
+      return await runNormalized({ supabase, now, runDay, onAlarm, logger, loadDaySpans: loadDayCloseSpans, teamConcurrency });
     } finally {
       sweepRunning = false;
     }
@@ -998,4 +1051,61 @@ export async function runTrainingDayCloseSweep({
   } finally {
     sweepRunning = false;
   }
+}
+
+/**
+ * #5911: start lukningen STRAKS naar stage-scheduleren har afviklet etaper, i stedet
+ * for at vente paa naeste 5-min-tick af training-day-close-cron'en. Cron'en er
+ * uaendret og er stadig fallback og retry-sti.
+ *
+ * Kaldes af stageScheduler.js efter hvert tick. Startes KUN naar tick'et faktisk
+ * afviklede eller afsluttede noget (`stagesRan > 0`), naar klokken er efter
+ * SWEEP_FROM_HOUR, og naar ingen sweep allerede koerer. Selve sweepen afgoer resten
+ * med sine egne betingelser (flag, aabne etaper, idempotens): et kald for tidligt er
+ * et billigt skip, aldrig et ekstra tick.
+ *
+ * Fire-and-forget: scheduleren venter ikke paa afregningen (den tager minutter).
+ * Fejl logges; en ryttergruppe der fejler bliver liggende som durable work, og cron'en
+ * proever igen inden for 5 min og laver dér den aggregerede Sentry-capture. Kun
+ * maks-ventetids-alarmen sendes herfra (samme indhold som cron'ens).
+ *
+ * @param {object} args
+ * @param {object} args.supabase
+ * @param {number} args.stagesRan — afviklede + genoptagne + afsluttede etaper i tick'et
+ * @param {Function} [args.captureExceptionFn]
+ * @param {() => Date} [args.clock]
+ * @param {Function} [args.runSweep] — DI-hook; default runTrainingDayCloseSweep
+ * @param {object} [args.logger]
+ * @returns {Promise<object>|null} sweep-loeftet naar en sweep blev startet, ellers null
+ */
+export function startTrainingDayCloseAfterStages({
+  supabase, stagesRan, captureExceptionFn = null, clock = () => new Date(),
+  runSweep = runTrainingDayCloseSweep, logger = console,
+}) {
+  if (!(stagesRan > 0) || !supabase?.from || sweepRunning) return null;
+  const now = clock();
+  if (!shouldSweepNow(now)) return null;
+  return Promise.resolve()
+    .then(() => runSweep({
+      supabase, now, logger,
+      onAlarm: (err, ctx) => captureExceptionFn?.(err, {
+        tags: { cron: "training-day-close", trigger: "stage-scheduler" },
+        tickDate: ctx?.tickDate, pending: ctx?.pending?.slice(0, 20), pendingEvidence: ctx?.pendingEvidence,
+      }),
+    }))
+    .then((result) => {
+      if (result?.ran) {
+        logger.log?.(`  🚴 Traenings-lukning startet af stage-scheduler: ${result.swept} tick(s), ${result.failed} fejl, ${Math.round((result.durationMs ?? 0) / 1000)} s`);
+      }
+      if (result?.failed) {
+        logger.error?.(`  ❌ Traenings-lukning (stage-scheduler): ${result.failed} fejl - cron proever igen`, result.failures?.slice(0, 20));
+      }
+      return result;
+    })
+    .catch((err) => {
+      // best-effort: den tidlige start er en genvej, ikke sandheden. Cron'en koerer
+      // samme sweep inden for 5 min og capturer vedvarende fejl dér (cron.js).
+      logger.error?.("  ❌ Traenings-lukning (stage-scheduler) fejlede - cron proever igen:", err?.message ?? err);
+      return null;
+    });
 }

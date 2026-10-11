@@ -21,6 +21,7 @@ import { captureException } from "./sentry.js";
 import { detectInFlightRacesWithoutEntries } from "./raceActiveGuard.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
+import { startTrainingDayCloseAfterStages } from "./trainingDayCloseTrigger.js"; // #5911
 
 // Daglig afviklings-cap (loop-prævention, Beslutning D). Cap'et er en runaway-BACKSTOP
 // (mod cron-loop-incidenten 2026-05-21), IKKE throughput-styring — den PRIMÆRE styring er
@@ -89,6 +90,7 @@ export async function runStageScheduler({
   // eskaleringen nedenfor, så en VEDVARENDE fejl ikke forstummer efter første capture.
   seenKeys = new Map(),
   captureExceptionFn = captureException,
+  startTrainingDayClose = startTrainingDayCloseAfterStages, // #5911
 }) {
   if (!(await isStageSchedulerEnabled(supabase))) return { ran: 0, errors: 0, skipped: "flag_off" };
   if (!(await isRaceEngineV2Enabled(supabase, { isBetaTester: true }))) {
@@ -314,6 +316,8 @@ export async function runStageScheduler({
       failRace(race, err);
     }
   }
+  // #5911: dagens sidste etape kan vaere afviklet nu - start traenings-lukningen straks (cron er fallback).
+  startTrainingDayClose({ supabase, stagesRan: ran + recovered + resumed, captureExceptionFn });
   return { ran, errors, recovered, resumed, benignSkips };
 }
 
