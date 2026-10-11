@@ -1,6 +1,8 @@
 -- Read-only, one-statement snapshot for the private offline proposal.
 -- Never publish the output: it contains player inputs and engine state.
-WITH w AS MATERIALIZED (
+WITH projection_ready AS MATERIALIZED (
+  SELECT public.training_seen_assert_ready()
+), w AS MATERIALIZED (
   SELECT * FROM training_date_work
   WHERE tick_date='2026-09-29' AND cardinality(quarantined_rider_ids)>0
 ), q AS MATERIALIZED (
@@ -29,7 +31,7 @@ SELECT jsonb_build_object(
    'settlement_count',(SELECT count(*) FROM training_condition_settlements s WHERE s.rider_id=q.rider_id),
    'race_load_count',(SELECT count(*) FROM training_race_loads l WHERE l.rider_id=q.rider_id),
    'race_result_count',(SELECT count(*) FROM race_results r WHERE r.rider_id=q.rider_id),
-   'canonical_report_count',(SELECT count(*) FROM training_day_runs t WHERE (t.report->'riders') @> jsonb_build_array(jsonb_build_object('rider_id',q.rider_id::text))),
+   'canonical_report_count',COALESCE((SELECT report_count FROM public.rider_training_seen WHERE rider_key=q.rider_id::text COLLATE "C"),0::bigint),
    'history_after_work_count',(SELECT count(*) FROM rider_derived_ability_history h WHERE h.rider_id=q.rider_id AND h.created_at>q.work_created)
  )) FROM q),
  'tables',jsonb_build_object(
@@ -55,4 +57,4 @@ SELECT jsonb_build_object(
    'rider_condition',COALESCE((SELECT jsonb_agg(to_jsonb(c)) FROM rider_condition c WHERE rider_id IN(SELECT rider_id FROM q)),'[]'),
    'training_day_runs',COALESCE((SELECT jsonb_agg(jsonb_build_object('team_id',team_id,'season_id',season_id,'squad',squad,'tick_date',tick_date,'game_day',game_day,'report',jsonb_build_object('condition_per_date',report->'condition_per_date','condition_settled',report->'condition_settled')) ORDER BY team_id,game_day) FROM training_day_runs t WHERE team_id IN(SELECT team_id FROM w) AND tick_date='2026-09-29'),'[]'),
    'training_rider_ticks',COALESCE((SELECT jsonb_agg(to_jsonb(t)) FROM training_rider_ticks t WHERE rider_id IN(SELECT rider_id FROM q)),'[]')
- )) AS snapshot;
+ )) AS snapshot FROM projection_ready;

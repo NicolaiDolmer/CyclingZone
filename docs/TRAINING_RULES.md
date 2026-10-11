@@ -1,6 +1,6 @@
 # Træningens regler - SSOT
 
-## Historikopslag #6490 (L1-kandidat, ikke aktiveret)
+## Historikopslag #6490 (L1–L3-kandidater, ikke aktiveret)
 
 Det eksisterende JSON-historikværn bevares, indtil en separat kontrolleret overgang
 er godkendt. L1-udkastet i `database/manual/6490/training-seen-foundation.sql`
@@ -30,6 +30,29 @@ men ikke fuld paritet, da det netop er backfillens opgave at etablere den.
 Runneren kan kun ramme den eksisterende isolerede loadtest-staging via wrapperen;
 ukendt mål/schema eller utilstrækkeligt batchbudget er blokeret, ikke grønt.
 L2 skifter ingen læsere, kører ingen automatisk backfill og ændrer intet i prod.
+
+L3-kandidaten skifter kun historikprædikatet i de tre eksisterende SQL-læsere,
+efter fuld readiness og kontrol af deres komplette gamle/forventede definitioner.
+Signatures, øvrig logik og rettigheder bevares. Rollback gendanner de præcise gamle
+definitioner og kræver det oprindelige, gyldige GIN-indeks. Ingen af scriptsene
+anvendes automatisk eller er kørt mod prod/staging i denne leverance.
+
+Recovery-apply og det konsistente snapshot kræver verificeret projektion.
+Rapporttælleren erstatter count/exists, ikke selve rapporterne. #6061's administrative
+rapportinventar læser derfor én keyset-strøm og beholder kun matchende rapporter,
+med samme tekstmatch, rækkefølge og gentagelser pr. efterspurgt rytter som før.
+Den delte pagineringskontrakt står i [GUARDRAILS_CORE](GUARDRAILS_CORE.md).
+Ved staging-restore genopbygges projektionen efter anonymisering, men inden samme
+transaktion committer; VerifyOnly kræver et positivt readiness-resultat. Fingerprint,
+volumen og privacy-gates består, og privacy er fortsat sidste DB-kald.
+Restore uden ACL gendanner eksplicit projektionens begrænsede rettigheder før
+kontraktkontrol; ukendt funktionskrop eller triggerbinding bliver ikke repareret.
+
+**Afgrænset baselinefund 12/10:** to tests i `scripts/trainingRecovery5928.test.mjs`
+fejler også på urørt L2: offlineklienten mangler `team_training_rules`, som den
+nuværende motor læser. Det historiske replay for 29/9 er derfor ikke erklæret
+funktionsdygtigt af #6490. Manglende historiske regeldata udfyldes ikke med gæt;
+en ny recovery-politik eller konkret reparation kræver sit eget mandat.
 
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 

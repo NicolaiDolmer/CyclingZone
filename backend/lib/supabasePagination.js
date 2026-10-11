@@ -58,7 +58,7 @@ export async function fetchAllRows(buildQuery, pageSize = SUPABASE_PAGE_SIZE) {
 // null på første side; kaldstedet påfører selv `.gt(keyColumn, after)`.
 export async function fetchAllRowsKeyset(
   buildQuery,
-  { keyColumn = "id", pageSize = SUPABASE_PAGE_SIZE } = {},
+  { keyColumn = "id", pageSize = SUPABASE_PAGE_SIZE, mapPage = (page) => page } = {},
 ) {
   const rows = [];
   let after = null;
@@ -69,9 +69,14 @@ export async function fetchAllRowsKeyset(
       return data;
     });
     if (!data?.length) break;
-    rows.push(...data);
-    if (data.length < pageSize) break;
+    // #6490: retain only needed rows during large administrative scans. Cursor
+    // and exhaustion always use the original page, even when mapping drops it.
+    const exhausted = data.length < pageSize;
     const nextAfter = data[data.length - 1]?.[keyColumn];
+    const mapped = mapPage(data);
+    if (!Array.isArray(mapped)) throw new Error("fetchAllRowsKeyset mapPage must return an array");
+    rows.push(...mapped);
+    if (exhausted) break;
     // Uden en nøgleværdi kan vi ikke rykke markøren, og et nyt kald ville hente
     // præcis samme side igen. Stop hellere end at loope i ring — kaldstedet har
     // så en select uden keyColumn, hvilket er en programmeringsfejl.

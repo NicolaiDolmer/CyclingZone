@@ -152,12 +152,13 @@ if (-not $Full) { $countSkip = @("race_results") }
 $files=@{
   fingerprint=(Join-Path $repo 'scripts/staging/schema-fingerprint-summary.sql')
   counts=$verifySql
+  trainingSeen=(Join-Path $repo 'database/manual/6490/training-seen-restore-check.sql')
   privacy=$privacyFile
 }
-# Fingerprint -> raekketal -> privacy (sidste database-kald, ogsaa i VerifyOnly). Intet GO uden alle tre.
+# Fingerprint -> raekketal -> projection -> privacy (sidste DB-kald, ogsaa i VerifyOnly).
 $gate=Invoke-RefreshGates `
   { param($f) Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
-  { param($f) Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
+  { param($f) Invoke-Staging "psql `$env:STAGING_DB_URL -X -q -tA -v ON_ERROR_STOP=1 -f '$f'" } `
   $files $countsBefore $countsAfter $countSkip $countSlack
 if ($gate -ne 'GO') { throw 'Refresh gates did not return GO' }
 Write-Host '[ok] app-schema fingerprint matches; row counts within prod window; non-anonymous users=0'

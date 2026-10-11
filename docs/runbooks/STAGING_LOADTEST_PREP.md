@@ -1,5 +1,15 @@
 # Staging-klargøring til load-test-gaten (#5904)
 
+## #6490 restore-kandidat (ikke kørt)
+
+Når `rider_training_seen` findes, genopbygger kandidatens restore-sanitizer denne
+afledte projektion efter anonymisering i den eksisterende ene transaktion. Importerede
+true-markører er ikke bevis efter replica-restore. Kontrollen bekræfter fuld paritet,
+før restore kan committe; `VerifyOnly` kræver også et positivt resultat. Fravær af
+projektion på et gammelt schema er en eksplicit, understøttet tilstand. De eksisterende
+fingerprint-, volumen- og privacy-gates svækkes ikke. Dette er kodeberedskab, ikke en
+påstand om klargjort staging eller et mandat til at restore data. Se #6490-planen.
+
 Ejer-beslutning A (4/10): Claude Code klargør Supabase-branchen `staging-cutover`
 (ref `pywxpnynzmbukdvoiazp`) til load-testen. Prod (`ghwvkxzhsbbltzfnuhhz`) skrives aldrig;
 prod er kun læst for schema og størrelses-estimater. Denne side er afleveringen: hvad der er

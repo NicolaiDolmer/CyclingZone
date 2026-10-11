@@ -37,6 +37,9 @@ before(async()=>{
   CREATE TABLE team_facilities(id uuid,team_id uuid,track text,tier integer,updated_at timestamptz);
   CREATE TABLE finance_transactions(team_id uuid,idempotency_key text,created_at timestamptz);`);
   for(const file of ['2026-09-29-5928-training-condition-date.sql','2026-09-29-5928-training-condition-partial.sql'])await db.exec(await readFile(new URL('../../database/'+file,import.meta.url),'utf8'));
+  // #6490 candidate prerequisites; existing recovery assertions remain unchanged.
+  await db.exec('ALTER TABLE training_day_runs ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid()');
+  for(const name of ['foundation','parity','backfill'])await db.exec(await readFile(new URL(`../../database/manual/6490/training-seen-${name}.sql`,import.meta.url),'utf8'));
 });
 after(async()=>db?.close());
 beforeEach(async()=>{
@@ -165,4 +168,12 @@ test('changed training roster inputs and ownership still abort before writes',as
     await db.query('UPDATE riders SET potentiale=NULL,team_id=$1,is_retired=false WHERE id=$2',[team,rider]);
   }
   assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_condition')).rows[0].n,0);
+});
+
+test('#6490 recovery rejects incomplete projection before changing abilities',async()=>{
+  const f=await fixture();
+  const before=(await db.query('SELECT * FROM rider_derived_abilities ORDER BY rider_id')).rows;
+  await db.query('INSERT INTO rider_training_seen(rider_key,report_count) VALUES($1,1) ON CONFLICT(rider_key) DO UPDATE SET report_count=1',['stale']);
+  await assert.rejects(db.exec(buildRecoverySql(f)),/training_seen not ready/);
+  assert.deepEqual((await db.query('SELECT * FROM rider_derived_abilities ORDER BY rider_id')).rows,before);
 });

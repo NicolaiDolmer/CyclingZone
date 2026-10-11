@@ -41,6 +41,13 @@ Ingen implicitte Data API-privilegier; skabelon og CI-audit dækker også SELECT
 - `loan_agreements` = rider-lån · `loans` + `loan_config` = finance-lån
 - Auction finalization: `api.js` og `cron.js` → begge delegerer til `auctionFinalization.js`
 
+## Delte dataopslag
+
+`fetchAllRowsKeyset` i `backend/lib/supabasePagination.js` bruger den oprindelige
+side til cursor og afslutning. En valgfri `mapPage` kan reducere de gemte rækker,
+men en tom filtreret side må aldrig stoppe skanningen eller ændre cursoren (#6490).
+Uden mapper er adfærden uændret; fejl må ikke blive til delvis evidens.
+
 ## Release hygiene (obligatorisk ved enhver brugerrettet ændring)
 - `frontend/src/pages/PatchNotesPage.jsx` — opdatér eller skriv eksplicit hvorfor ikke
 - `frontend/src/pages/HelpPage.jsx` — opdatér hvis regler/flow/FAQ/onboarding påvirkes

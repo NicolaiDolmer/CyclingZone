@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePagination.js';
+import { fetchAllRows, fetchAllRowsChunkedIn, fetchAllRowsKeyset } from '../../lib/supabasePagination.js';
 import { copenhagenDateString } from '../../lib/copenhagenTime.js';
 
 const slotKey=(rider,season,day)=>`${rider}:${season}:${day}`;
@@ -46,6 +46,24 @@ export function buildRecoveryManifest(state) {
  return {issue:6061,as_of:asOf.toISOString(),through:state.through,apply_ready:false,source_fingerprint,summary,candidates,source_snapshot:state};
 }
 
+// Administrative evidence still needs the actual reports. Scan by primary key
+// once, retaining only matches; do not scan the entire JSON table per rider.
+export async function loadLegacyTrainingReports(supabase,ids){
+ if(!ids.length)return [];
+ const wanted=new Set(ids);
+ const keys=row=>new Set((Array.isArray(row.report?.riders)?row.report.riders:[])
+  .map(r=>r?.rider_id).filter(id=>typeof id==='string'&&wanted.has(id)));
+ const matches=await fetchAllRowsKeyset(after=>{
+  let q=supabase.from('training_day_runs').select('id,team_id,tick_date,report').order('id');
+  if(after!==null)q=q.gt('id',after);
+  return q;
+ },{mapPage:page=>page.filter(row=>keys(row).size>0)});
+ const byRider=new Map(ids.map(id=>[id,[]]));
+ for(const row of matches)for(const id of keys(row))byRider.get(id).push(row);
+ // The former per-rider loop repeated a shared report for each requested rider.
+ return ids.flatMap(id=>byRider.get(id));
+}
+
 export async function loadRecoveryInputs(supabase,{through,asOf}){
  // schema-columns-ok: date-work/settlement/tick columns come from the tested #5928 migrations and were checked through information_schema on 3/10.
  const work=await fetchAllRows(()=>supabase.from('training_date_work').select('team_id,season_id,tick_date,game_days,quarantined_rider_ids,opening_conditions,quarantine_evidence,updated_at').lte('tick_date',through).order('season_id').order('tick_date').order('team_id'));
@@ -62,9 +80,7 @@ export async function loadRecoveryInputs(supabase,{through,asOf}){
   read('training_plans','*','team_id',teamIds,['id']),
   read('training_week_plans','*','team_id',teamIds,['id']),
  ]);
- // GIN-indexed containment catches legacy reports even under a previous owner.
- const legacyReports=[];
- for(const id of ids)legacyReports.push(...await fetchAllRows(()=>supabase.from('training_day_runs').select('id,team_id,tick_date,report').contains('report->riders',JSON.stringify([{rider_id:id}])).order('id')));
+ const legacyReports=await loadLegacyTrainingReports(supabase,ids);
  return {through,asOf,work:relevant,riders,conditions,ticks,settlements,loads,plans,weekPlans,legacyReports};
 }
 export function parseArgs(argv){

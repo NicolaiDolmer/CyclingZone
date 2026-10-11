@@ -109,8 +109,8 @@ function Get-RefreshRestoreArguments([string[]]$Files,[switch]$RequireFiles) {
   return $restoreOptions
 }
 
-# Cleanup SQL: auth privacy first, then the shared anonymizer. Triggers stay disabled (replica role
-# set by the guard file) for the whole transaction so cleanup cannot spawn new outbox/notification rows.
+# Cleanup SQL: auth privacy and anonymization run in replica mode. Only afterwards
+# may the #6490 projection rebuild enable its normal triggers, inside the same transaction.
 function New-RefreshSanitizeSql([string]$AnonSql) {
   $anon=[regex]::Replace($AnonSql,'(?im)^\s*(begin|commit);\s*$','')
   Assert-RefreshNoTransactionControl $anon 'anonymize-staging.sql'
@@ -120,7 +120,15 @@ update auth.users set email='loadtest-' || id::text || '@loadtest.invalid', phon
 '@
   $sql=$authPrivacy+"`n"+$anon
   if($sql -match '(?i)session_replication_role\s*=\s*origin'){throw 'Cleanup must not re-enable triggers before anonymization'}
-  return $sql
+  $projection=[IO.File]::ReadAllText((Join-Path $PSScriptRoot '../../database/manual/6490/training-seen-restore.sql'))
+  Assert-RefreshNoTransactionControl $projection 'training-seen-restore.sql'
+  return $sql+"`n"+$projection
+}
+
+function Assert-RefreshTrainingSeen([string]$Value) {
+  if($Value.Trim() -notin @('TRAINING_SEEN_ABSENT','TRAINING_SEEN_READY')) {
+    throw 'Training history projection is not verified'
+  }
 }
 
 # Gate sequence after a restore (or in -VerifyOnly). Callers pass scriptblocks that run a SQL file
@@ -131,6 +139,10 @@ function Invoke-RefreshGates([scriptblock]$ProdCall,[scriptblock]$StageCall,[has
   Assert-RefreshFingerprint $prodFp $stageFp
   $stageCounts=@(& $StageCall $Files.counts) -join "`n"
   Assert-RefreshCounts $ProdCountsBefore $ProdCountsAfter $stageCounts $Skip $Slack
+  if($Files.ContainsKey('trainingSeen')) {
+    $projection=@(& $StageCall $Files.trainingSeen) -join "`n"
+    Assert-RefreshTrainingSeen $projection
+  }
   $privacy=@(& $StageCall $Files.privacy) -join "`n"
   Assert-RefreshPrivacy $privacy
   return 'GO'
