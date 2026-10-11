@@ -199,6 +199,21 @@ export function gapClass(profile) {
   return isShortUphillFinish(profile) ? "short_uphill" : profileClass(profile?.profile_type);
 }
 
+/**
+ * Ejer-beslutning 2/9 (#4604, RULES "Bjerg-ankerets maaleflade"): bjerg-top-10-
+ * spredningen (nr. 10) maales KUN paa topankomster (finale long_climb, samme
+ * definition som headToHeadAnchors.scoreGapRealism). Paa andre bjerg-/hoejfjelds-
+ * etaper er nr. 10 "N/A" med grund. Kun nr. 10: nr. 30-baandet beholdes (ingen
+ * hjemmel til at fjerne det). Disse etaper har i dag intet andet nr. 10-tjek,
+ * medmindre finalen er en nedkoersel (D1/D3) - aabent hul, se #6456.
+ */
+export function isMountainNonSummit(profile) {
+  return profileClass(profile?.profile_type) === "mountain" && profile?.finale_type !== "long_climb" && !isShortUphillFinish(profile);
+}
+
+/** Faerre hentede seeds end dette = tidsgabet kan hoejst blive WARN (lille n). */
+export const GAP_MIN_CAUGHT_SEEDS = 3;
+
 /** PASS/WARN/FAIL/N/A for en vaerdi mod et baand. */
 export function verdict(value, band) {
   if (!band) return "N/A";
@@ -659,9 +674,17 @@ export function summarizeTour(perSeed, stages, revision = null) {
     const cls = profileClass(p.profile_type);
     const lo = ms.map((m) => m.leadout).filter(Boolean);
     const zeroKm = ms.map((m) => m.minuteLossAtZeroKm).filter((v) => v !== null && v !== undefined);
+    // RULES (#6199, ankertabellen; gate #6442): tidsgabene doemmes paa de seeds hvor
+    // udbruddet IKKE vandt. I en udbrudssejr er nr. 10 feltets hul til udbruddet, og
+    // det ejes af Udbrudsmaal (breakawayWinShare + vindermarginen nedenfor). Alle
+    // seeds staar som info (gapTo10All/gapTo30All). Kun udbrud vandt = N/A.
+    const caught = ms.filter((m) => m.breakawayWon !== true);
+    const medOf = (rows, k) => median(rows.map((m) => m[k]).filter((v) => v !== null && v !== undefined));
     const row = {
       stage: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type ?? null, cls,
-      gapTo10: med("gapTo10"), gapTo30: med("gapTo30"), ittGapTo10Per40Km: med("ittGapTo10Per40Km"),
+      gapTo10: medOf(caught, "gapTo10"), gapTo30: medOf(caught, "gapTo30"),
+      gapTo10All: med("gapTo10"), gapTo30All: med("gapTo30"), gapSeeds: caught.length,
+      ittGapTo10Per40Km: med("ittGapTo10Per40Km"),
       breakawaySize: med("breakawaySize"),
       breakawayWins: ms.filter((m) => m.breakawayWon === true).length,
       breakawayAhead: ms.filter((m) => m.breakawayAhead === true).length,
@@ -686,7 +709,14 @@ export function summarizeTour(perSeed, stages, revision = null) {
     const gapCls = gapClass(p); // #6440
     for (const key of ["gapTo10", "gapTo30", "ittGapTo10Per40Km", "breakawaySize", "ittHillyTempoMinusClimb", "leadoutRankGain"]) {
       const band = TOUR_BENCHMARKS[key]?.byClass?.[key === "gapTo10" || key === "gapTo30" ? gapCls : cls];
+      if (key === "gapTo10" && isMountainNonSummit(p)) {
+        row.verdicts.gapTo10 = "N/A";
+        row.gapNote = "bjerg uden topankomst: nr. 10 maales kun paa topankomster (#4604)";
+        continue;
+      }
       if (band) row.verdicts[key] = verdict(row[key], band);
+      // Lille n: dommen hviler paa faa hentede seeds og kan hoejst blive WARN.
+      if ((key === "gapTo10" || key === "gapTo30") && row.verdicts[key] === "PASS" && row.gapSeeds < GAP_MIN_CAUGHT_SEEDS) row.verdicts[key] = "WARN";
     }
     return row;
   });
@@ -831,7 +861,7 @@ export function renderTourMarkdown({ raceLabel, runs, generatedAt }) {
     lines.push(`| PASS/WARN/FAIL/TODO/N/A | ${runs.map((r) => { const c = r.summary.counts; return `${c.PASS}/${c.WARN}/${c.FAIL}/${c.TODO}/${c["N/A"]}`; }).join(" | ")} |`, "");
     lines.push("### Etaper side om side (nr. 10 / nr. 30 til vinderen)", "", `| Etape | Profil | ${runs.map((r) => r.revision).join(" | ")} |`, `|---|---|${runs.map(() => "---").join("|")}|`);
     for (const st of runs[0].summary.stages) {
-      lines.push(`| ${st.stage} | ${st.profile_type}/${st.finale_type ?? "-"} | ${runs.map((r) => { const x = r.summary.stages.find((y) => y.stage === st.stage); return x ? `${cell(fmtS(x.gapTo10), x.verdicts.gapTo10)} / ${cell(fmtS(x.gapTo30), x.verdicts.gapTo30)}` : "-"; }).join(" | ")} |`);
+      lines.push(`| ${st.stage} | ${st.profile_type}/${st.finale_type ?? "-"} | ${runs.map((r) => { const x = r.summary.stages.find((y) => y.stage === st.stage); return x ? `${cell(fmtS(x.gapTo10), x.verdicts.gapTo10)} / ${cell(fmtS(x.gapTo30), x.verdicts.gapTo30)} (n=${x.gapSeeds ?? "-"})` : "-"; }).join(" | ")} |`);
     }
     lines.push("");
   }
@@ -844,7 +874,7 @@ export function renderTourMarkdown({ raceLabel, runs, generatedAt }) {
     lines.push("| Etape | Profil | Nr. 10 | Nr. 30 | ITT nr. 10/40 km | Udbrud (median) | Udbrudssejre | Sejrsmargin udbrud | GC nr. 10 efter | Top-10 GC i udbrud >5 min | Jagter egne | Liste-gab != raa tid (over loftet) | Over 30 min (raa) | Minuttab km 0 (film) | Maerke-modsigelser | rho tempo / klatring | Tog: placeringer (sejre med/uden) |");
     lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
     for (const r of s.stages) {
-      lines.push(`| ${r.stage} | ${r.profile_type}/${r.finale_type ?? "-"} | ${cell(fmtS(r.gapTo10), r.verdicts.gapTo10)} | ${cell(fmtS(r.gapTo30), r.verdicts.gapTo30)} | ${cell(fmtS(r.ittGapTo10Per40Km), r.verdicts.ittGapTo10Per40Km)} | ${cell(fmtN(r.breakawaySize, 1), r.verdicts.breakawaySize)} | ${r.breakawayWins}/${r.seeds} | ${fmtS(r.breakawayWinMarginMedian)} | ${fmtS(r.gcTo10After)} | ${r.gcTop10InBreakOver5Min} | ${r.ownTeamChasesOwn} | ${r.clampedAtCap} (klump ${r.capClumpMax}) | ${fmtN(r.over30RawMedian, 0)} | ${fmtZ(r.minuteLossAtZeroKm)} | ${r.labelContradictions} | ${r.rhoTempo === null ? "-" : `${fmtN(r.rhoTempo)} / ${fmtN(r.rhoClimb)}${r.verdicts.ittHillyTempoMinusClimb ? ` ${r.verdicts.ittHillyTempoMinusClimb}` : ""}`} | ${r.leadoutRankGain === null ? "-" : `${cell(fmtN(r.leadoutRankGain, 1), r.verdicts.leadoutRankGain)} (${r.leadoutWinsWith}/${r.leadoutWinsWithout})`} |`);
+      lines.push(`| ${r.stage} | ${r.profile_type}/${r.finale_type ?? "-"} | ${cell(fmtS(r.gapTo10), r.verdicts.gapTo10)} | ${cell(fmtS(r.gapTo30), r.verdicts.gapTo30)} (n=${r.gapSeeds ?? "-"}) | ${cell(fmtS(r.ittGapTo10Per40Km), r.verdicts.ittGapTo10Per40Km)} | ${cell(fmtN(r.breakawaySize, 1), r.verdicts.breakawaySize)} | ${r.breakawayWins}/${r.seeds} | ${fmtS(r.breakawayWinMarginMedian)} | ${fmtS(r.gcTo10After)} | ${r.gcTop10InBreakOver5Min} | ${r.ownTeamChasesOwn} | ${r.clampedAtCap} (klump ${r.capClumpMax}) | ${fmtN(r.over30RawMedian, 0)} | ${fmtZ(r.minuteLossAtZeroKm)} | ${r.labelContradictions} | ${r.rhoTempo === null ? "-" : `${fmtN(r.rhoTempo)} / ${fmtN(r.rhoClimb)}${r.verdicts.ittHillyTempoMinusClimb ? ` ${r.verdicts.ittHillyTempoMinusClimb}` : ""}`} | ${r.leadoutRankGain === null ? "-" : `${cell(fmtN(r.leadoutRankGain, 1), r.verdicts.leadoutRankGain)} (${r.leadoutWinsWith}/${r.leadoutWinsWithout})`} |`);
     }
     lines.push("", "| Udbrud pr. profiltype | Etaper | Udbrudssejre (andel) | Stoerrelse (median) | 0-2 mand (andel) | Forsoeg (median) | Foran favoritter i maal (andel) | Legacy samme seeds | Holder til maal vs legacy |", "|---|---|---|---|---|---|---|---|---|");
     for (const c of s.classes) lines.push(`| ${c.profile_type} | ${c.stages} | ${cell(fmtN(c.breakawayWinShare), c.verdicts.breakawayWinShare)} | ${cell(fmtN(c.breakawaySizeMedian, 1), c.verdicts.breakawaySize)} | ${fmtN(c.breakawaySmallShare)} | ${fmtN(c.breakawayAttemptsMedian, 1)} | ${fmtN(c.breakawayAheadShare)} | ${fmtN(c.legacyAheadShare)} | ${c.verdicts.breakawayHoldVsLegacy ?? "-"} |`);
