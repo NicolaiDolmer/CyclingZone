@@ -995,7 +995,10 @@ const breakawayChaseV3 = {
   teamSignalWeight: 0.11,
   // #6457: et hold med "jag" bremser og lofter lad-gaa-fasen ved en trussel i
   // udbruddet mindst som et reagerende hold (breakaway.ts chaseStanceBrakesAsReaction).
-  chaseStanceBrakes: true,
+  // Kun paa klatreterraenet, hvor lad-gaa-loftet er stort; paa flad og rullende
+  // holder jagt-gulvet udbruddet i snor, og et hold uden troeje-tolerance ville
+  // ellers hente et harmloest udbrud efter faa km.
+  chaseStanceBrakesProfiles: ["hilly", "mountain", "high_mountain"] as readonly ProfileType[],
   // Jagt-gulvets lodtraekning (feltet kommer for sent) under v3.
   chaseFloorLateChanceByFinale: {
     bunch_sprint: 0.08,

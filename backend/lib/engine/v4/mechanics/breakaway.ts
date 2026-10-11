@@ -1767,7 +1767,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const letGoTuning = timeModelTuningFor(ctx);
     const jerseyTolerance = letGoTuning.gcDanger?.jerseyAllowanceSeconds?.[ctx.route.profile_type] !== undefined;
     // #6457 (KUN official_times_v3): "jag" bremser og lofter lad-gaa-fasen mindst som en reaktion.
-    const brakeDecisions = gcSetup && chaseV3 && BREAKAWAY_CHASE_V3_TUNING.chaseStanceBrakes ? chaseStanceBrakesAsReaction(gcSetup.decisions) : gcSetup?.decisions ?? [];
+    const brakeDecisions = gcSetup && chaseV3 && BREAKAWAY_CHASE_V3_TUNING.chaseStanceBrakesProfiles.includes(ctx.route.profile_type) ? chaseStanceBrakesAsReaction(gcSetup.decisions) : gcSetup?.decisions ?? [];
     const letGoDecisions = gcSetup && jerseyTolerance
       ? brakeDecisions.filter((d) => !(d.threat.reason === "leader_jersey_at_risk" && d.threat.leash_hold !== true))
       : brakeDecisions;
