@@ -707,7 +707,7 @@
           "Træthed nulstilles til 0 for alle ryttere.",
           "Skader nulstilles IKKE. De følger med uændret.",
           "Peak-planer påvirkes ikke af sæsonskiftet.",
-          "Løn og rytterværdier opdateres søndag ved sæsonskiftet.",
+          "Sæsonens løn betales under sæsonskiftet. Rytterværdierne flytter sig ikke under selve skiftet: de opdateres én gang, ved søndagsopdateringen efter at skiftet er færdigt.",
           "Den nye sæsons første løbsdag er dagen efter sæsonskiftet. Første etape starter mindst 24 timer efter den gamle sæsons sidste etape, så du har tid til at udtage dine trupper."
         ]
       }
@@ -842,7 +842,7 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder og udvikling. Den bygger på de samme evner som ratingen på hans kort og regnes ens for alle ryttere, uanset type, så når hans evner flytter sig, følger værdien med. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi. Værdier genberegnes én gang om ugen, hver søndag fra kl. 06, så en rytters værdi bevæger sig i ugentlige spring frem for dag for dag. Træning ændrer hans evner med det samme; værdien følger med ved næste søndagsopdatering. Værdien kan allerede begynde at falde i slutningen af 20'erne, før nogen evne vender: den priser hele den resterende karriere, ikke kun det nuværende niveau. En rytter der stadig er på sit skarpeste kan godt se sin værdi falde, alene fordi der er færre sæsoner tilbage at sælge ham i."
+        "text": "En rytters markedsværdi kommer fra spillets værdimodel: den estimerer den produktion rytteren forventes at levere resten af karrieren, målt mod spillets egen sæsonkalender og justeret for alder og udvikling. Den bygger på de samme evner som ratingen på hans kort og regnes ens for alle ryttere, uanset type, så når hans evner flytter sig, følger værdien med. Unge talenter bærer værdi for sæsonerne foran dem; veteraner prissættes på det de har tilbage; spillets absolutte elite har stjernepriser langt over ethvert holds budget. Startprisen på en auktion skal minimum svare til rytterens Værdi. Værdier genberegnes én gang om ugen, hver søndag fra kl. 14 dansk tid, så en rytters værdi bevæger sig i ugentlige spring frem for dag for dag. Træning ændrer hans evner med det samme; værdien følger med ved næste søndagsopdatering. Værdien kan allerede begynde at falde i slutningen af 20'erne, før nogen evne vender: den priser hele den resterende karriere, ikke kun det nuværende niveau. En rytter der stadig er på sit skarpeste kan godt se sin værdi falde, alene fordi der er færre sæsoner tilbage at sælge ham i."
       },
       "salary": {
         "title": "Løn",
