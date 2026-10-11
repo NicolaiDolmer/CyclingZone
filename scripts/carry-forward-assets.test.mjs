@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { CARRIED_SIDECAR, MAX_RELEASES } from "./lib/releaseAssetsStore.mjs";
+import { CARRIED_SIDECAR, FLOOR_RELEASES, MAX_RELEASES } from "./lib/releaseAssetsStore.mjs";
 import { IntegrityError, carryForwardAssets, main, planCarry, selectReleases, timeFloorReleaseIds, timeFloorWindowHours } from "./carry-forward-assets.mjs";
 import { uploadReleaseAssets } from "./upload-release-assets.mjs";
 
@@ -79,8 +79,8 @@ test("retention.json styrer hvilke releases der baeres (forenet med gulvet)", as
 
   const dist = makeDist("relNew", { "assets/index-NEW1.js": "ny\n" });
   const result = await carryForwardAssets({ distDir: dist, env: env(store), log: quiet, warn: quiet });
-  // retention: rel4 + relOld; gulv (3 nyeste + 1 for den aktuelle): rel4, rel3, rel2, rel1.
-  assert.deepEqual(result.releases, ["rel4", "relOld", "rel3", "rel2", "rel1"]);
+  // gulv (3 nyeste + 1 for den aktuelle) foerst: rel4, rel3, rel2, rel1; saa retention: relOld.
+  assert.deepEqual(result.releases, ["rel4", "rel3", "rel2", "rel1", "relOld"]);
   assert.ok(fs.existsSync(path.join(dist, "assets/old-OLD1.js")), "retention holder en gammel release i live");
 });
 
@@ -164,7 +164,36 @@ test("retention naevner en release uden manifest: advarsel, ikke fejl", async ()
 });
 
 test("den aktuelle release baeres aldrig ind i sig selv, og listen er dublet-fri", () => {
-  assert.deepEqual(selectReleases({ retentionIds: ["b", "a", "cur"], floorIds: ["cur", "b", "c"], currentId: "cur" }), ["b", "a", "c"]);
+  assert.deepEqual(selectReleases({ retentionIds: ["b", "a", "cur"], floorIds: ["cur", "b", "c"], currentId: "cur" }), {
+    ids: ["b", "c", "a"],
+    dropped: [],
+  });
+});
+
+test("loftet skaerer aldrig gulv/tidsgulv vaek til fordel for aeldre retention-releases", () => {
+  const cap = MAX_RELEASES + FLOOR_RELEASES;
+  const floorIds = ["cur", "f1", "f2", "f3"];
+  const timeFloorIds = Array.from({ length: MAX_RELEASES }, (_, i) => `t${i}`);
+  const retentionIds = Array.from({ length: cap }, (_, i) => `old${i}`);
+  const { ids, dropped } = selectReleases({ retentionIds, floorIds, timeFloorIds, currentId: "cur" });
+  assert.equal(ids.length, cap);
+  for (const id of ["f1", "f2", "f3", ...timeFloorIds]) assert.ok(ids.includes(id), `${id} skal baeres`);
+  assert.ok(dropped.length > 0 && dropped.every((id) => id.startsWith("old")));
+});
+
+test("over loftet: build-loggen advarer om de droppede retention-releases", async () => {
+  const store = tmp("store");
+  await publish(store, "relA", { "assets/index-AAA1.js": "A\n" }, 10);
+  const many = Array.from({ length: MAX_RELEASES + FLOOR_RELEASES + 2 }, (_, i) => `relOld${i}`);
+  write(store, "retention.json", JSON.stringify({ schema: 1, generated_at: new Date().toISOString(), releases: ["relA", ...many] }));
+  const warnings = [];
+  await carryForwardAssets({
+    distDir: makeDist("relB", { "assets/index-BBB1.js": "B\n" }),
+    env: env(store),
+    log: quiet,
+    warn: (m) => warnings.push(m),
+  });
+  assert.match(warnings.join("\n"), /over loftet/);
 });
 
 // ── Tidsgulvet (#5162, 11/10) ────────────────────────────────────────────────

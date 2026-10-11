@@ -129,18 +129,25 @@ export function timeFloorWindowHours(retention, now = Date.now()) {
 }
 
 /**
- * Hvilke releases der bæres videre: retention-listen forenet med gulvet og
- * tidsgulvet, uden den aktuelle release, i stabil rækkefølge (retention først).
+ * Hvilke releases der bæres videre: gulvet og tidsgulvet forenet med
+ * retention-listen, uden den aktuelle release, i stabil rækkefølge.
+ *
+ * Gulvene kommer FØRST, så det samlede loft aldrig skærer en release der er
+ * afløst inden for vinduet væk til fordel for en ældre fra retention.json.
+ * Gulvene er selv begrænset (3 nyeste + tidsgulvet ≤ MAX_RELEASES, og de
+ * nyeste ligger i begge), så de passer altid under loftet.
+ *
+ * @returns {{ ids: string[], dropped: string[] }} dropped = over loftet, bæres
+ *          IKKE (kalderen advarer højlydt).
  */
 export function selectReleases({ retentionIds, floorIds, timeFloorIds = [], currentId }) {
   const out = [];
-  for (const id of [...retentionIds, ...floorIds, ...timeFloorIds]) {
+  for (const id of [...floorIds, ...timeFloorIds, ...retentionIds]) {
     if (id !== currentId && !out.includes(id)) out.push(id);
   }
-  // Loftet håndhæves af målingen og af tidsgulvet (med advarsel). Her er det
-  // kun et sidste værn mod en korrupt retention.json, der ellers kunne fylde
-  // buildet.
-  return out.slice(0, MAX_RELEASES + FLOOR_RELEASES);
+  // Sidste værn mod en korrupt retention.json, der ellers kunne fylde buildet.
+  const cap = MAX_RELEASES + FLOOR_RELEASES;
+  return { ids: out.slice(0, cap), dropped: out.slice(cap) };
 }
 
 /**
@@ -205,7 +212,14 @@ export async function carryForwardAssets({ distDir, env = process.env, store: in
           `${windowHours} t; loftet er ${MAX_RELEASES}. De ${timeFloor.capped.length} ældste bæres IKKE af tidsgulvet.`,
       );
     }
-    const releases = selectReleases({ retentionIds, floorIds, timeFloorIds: timeFloor.ids, currentId: frontend }).slice();
+    const selection = selectReleases({ retentionIds, floorIds, timeFloorIds: timeFloor.ids, currentId: frontend });
+    const releases = selection.ids;
+    if (selection.dropped.length > 0) {
+      warn(
+        `${LOG_PREFIX} ⚠️ ${selection.dropped.length} releases fra retention.json er over loftet ` +
+          `(${MAX_RELEASES + FLOOR_RELEASES}) og bæres IKKE: ${selection.dropped.join(", ")}.`,
+      );
+    }
     if (windowHours !== MIN_WINDOW_HOURS) {
       log(
         `${LOG_PREFIX} ${retention ? "retention.json er forældet eller tom" : "retention.json findes ikke endnu"} — ` +
