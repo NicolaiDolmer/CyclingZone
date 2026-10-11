@@ -92,8 +92,8 @@ test("an unreadable stages_completed counts as started", () => {
   assert.equal(raceHasStarted({ stages_completed: "0" }), false);
 });
 
-test("new races are bound to official_times_v2 since the owner activated the Tour revision (9/10, #6199)", () => {
-  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v2");
+test("new races are bound to official_times_v3 from the owner's 'taend' (#6452)", () => {
+  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v3");
 });
 
 test("only a missing-column error degrades to legacy", () => {
@@ -239,8 +239,8 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
   assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3"]);
-  // Ejer-go 9/10: nye loeb bindes til official_times_v2; loeb bundet til v2 beholder v2.
-  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v2");
+  // #6452: nye loeb bindes til official_times_v3; loeb bundet til v2 beholder v2.
+  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v3");
 });
 
 test("#6084: a race stored on orders_gc_v2 keeps it; a new race binds to v2 only when v2 is current", () => {
@@ -335,8 +335,7 @@ test("#6199: official times and the shared clock belong to exactly the official-
   }
 });
 
-test("#6199: official_times_v2 is current (owner-go 9/10); a race pinned to orders_gc_v2 keeps it", () => {
-  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v2");
+test("#6199: a race pinned to orders_gc_v2 keeps it under the current revision", () => {
   assert.equal(
     resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "orders_gc_v2", currentRevision: CURRENT_RACE_RULES_REVISION }),
     "orders_gc_v2",
@@ -349,6 +348,59 @@ test("#6199: official_times_v2 is current (owner-go 9/10); a race pinned to orde
     resolveRaceRulesRevision({ race: notStarted, firstStageClaim: true, storedRevision: null, currentRevision: "official_times_v2" }),
     "official_times_v2",
   );
+});
+
+// ── #6452: the flip to official_times_v3 (merged only on the owner's "taend") ──
+
+test("#6452: the v3 migration allows every known revision, additively and idempotently", async () => {
+  const { readFileSync } = await import("node:fs");
+  const migration = readFileSync(new URL("../../database/2026-10-11-race-engine-rules-revision-official-times-v3.sql", import.meta.url), "utf8");
+  const check = migration.match(/IN\s*\(([^)]*)\)/);
+  assert.ok(check, "CHECK-listen findes");
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
+  assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
+  assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
+  // The current revision must be a value the constraint allows, or the first claim fails on CHECK.
+  assert.ok(check[1].includes(`'${CURRENT_RACE_RULES_REVISION}'`));
+});
+
+test("#6452: official_times_v3 keeps the full v3 lineage, official times and the shared clock", () => {
+  const revision = "official_times_v3";
+  assert.equal(CURRENT_RACE_RULES_REVISION, revision);
+  assert.equal(ordersGcGeneration(revision), 3);
+  assert.equal(isOrdersGcV3OrLater(revision), true);
+  assert.equal(preservesOfficialStageTimes(revision), true);
+  assert.equal(usesSharedGroupTime(revision), true);
+});
+
+test("#6452 bind: a race with engine_rules_revision = null binds to official_times_v3 on its first stage", async () => {
+  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0 };
+  const supabase = fakeSupabase(row);
+  // Default currentRevision: exactly what raceRunner uses in production.
+  const revision = await bindRaceRulesRevision({ supabase, race: { id: "tour" }, firstStageClaim: true });
+  assert.equal(revision, "official_times_v3");
+  assert.deepEqual(supabase.writes, [{ engine_rules_revision: "official_times_v3" }]);
+  assert.equal(row.engine_rules_revision, "official_times_v3");
+});
+
+test("#6452 bind: a race already bound to official_times_v2 stays on v2 and nothing is written", async () => {
+  for (const firstStageClaim of [true, false]) {
+    for (const stagesCompleted of [0, 4]) {
+      const row: RaceRow = { engine_rules_revision: "official_times_v2", stages_completed: stagesCompleted };
+      const supabase = fakeSupabase(row);
+      const revision = await bindRaceRulesRevision({ supabase, race: { id: "running" }, firstStageClaim });
+      assert.equal(revision, "official_times_v2");
+      assert.equal(supabase.writes.length, 0);
+      assert.equal(row.engine_rules_revision, "official_times_v2");
+    }
+  }
+});
+
+test("#6452 bind: a started race with null stays legacy, never an opt-in to v3", async () => {
+  const row: RaceRow = { engine_rules_revision: null, stages_completed: 2 };
+  const supabase = fakeSupabase(row);
+  assert.equal(await bindRaceRulesRevision({ supabase, race: { id: "old" }, firstStageClaim: true }), "legacy");
+  assert.equal(supabase.writes.length, 0);
 });
 
 test("#6199: the bridge carries official_times_v2 with the same input as orders_gc_v3", async () => {

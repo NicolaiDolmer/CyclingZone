@@ -27,13 +27,14 @@
 // Samlepunkt for uge 41-pakken. Aldrig aktuel; indgaar i official_times_v2.
 // #6199 (ejer 8/10): "official_times_v2" = hele orders_gc_v3-pakken + den samlede
 // tidsmodel (officielle etapetider #6284, fysisk kontakt #6327, faelles
-// gruppeklokke #6199, kontaktsted #6329). Aktuel for nye loeb siden ejer-go
-// 9/10 (se CURRENT_RACE_RULES_REVISION).
+// gruppeklokke #6199, kontaktsted #6329). Aktuel for nye loeb 9/10 indtil
+// ejerens "taend" af official_times_v3 (#6452).
 // #6200: "official_times_v3" = hele official_times_v2-pakken + nedkoerselsfinalen
 // paa bjergetaper (sidste stigning spreder gruppen som en topankomst; loftet paa
-// nedkoerslen gaelder ogsaa med et kort stykke til maal). SLUKKET: aldrig aktuel
-// foer et ejer-go, og DB-constrainten kender den ikke endnu (kraever en migration
-// ved flip).
+// nedkoerslen gaelder ogsaa med et kort stykke til maal) og resten af den rene
+// motor-revision (spec 2026-10-10-ren-motor-revision-design.md). Aktuel for nye
+// loeb fra ejerens ordrette "taend" (#6452); migrationen
+// 2026-10-11-race-engine-rules-revision-official-times-v3.sql goer vaerdien lovlig.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
@@ -127,8 +128,16 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * tidsmodel er aktuel for ALLE loeb hvis foerste etape claimes efter deploy
  * (Tour de l'Hexagone inkl.). Loeb der allerede er bundet til orders_gc_v2
  * faerdiggoeres paa den.
+ *
+ * "official_times_v3" fra ejerens ordrette "taend" (#6452): den rene
+ * motor-revision er aktuel for ALLE loeb hvis foerste etape claimes efter
+ * deploy (et loeb med engine_rules_revision = null binder til v3). Loeb der
+ * allerede er bundet til official_times_v2 (eller aeldre) faerdiggoeres paa
+ * den. Migrationen 2026-10-11-race-engine-rules-revision-official-times-v3.sql
+ * SKAL vaere applied foer foerste claim; ellers fejler bindingen hoejlydt paa
+ * CHECK-constrainten (ingen tavs fallback).
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v2";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v3";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;

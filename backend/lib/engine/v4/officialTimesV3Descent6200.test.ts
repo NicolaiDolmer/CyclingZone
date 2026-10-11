@@ -1,4 +1,4 @@
-// #6200: official_times_v3 (switched off) = official_times_v2 + the descent
+// #6200: official_times_v3 (current since #6452) = official_times_v2 + the descent
 // finish on mountain stages. Two rules, owner contract on #6199/#6200:
 //   1. The last climb before a descent finish is raced like a summit finish:
 //      every rider loses the time his own deficit gives, so a clearly better
@@ -40,10 +40,10 @@ import type { AbilityKey, Entrant, EngineState, RaceGroup, RouteV2, Segment, Seg
 
 // ── Revision contract ─────────────────────────────────────────────────────────
 
-test("#6200: official_times_v3 is a known, switched-off revision of the official-times line", () => {
+test("#6200: official_times_v3 is a known revision of the official-times line, current since the owner's taend (#6452)", () => {
   assert.equal(isKnownRulesRevision("official_times_v3"), true);
   assert.equal(normalizeRulesRevision("official_times_v3"), "official_times_v3");
-  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v2", "new races still bind to official_times_v2");
+  assert.equal(CURRENT_RACE_RULES_REVISION, "official_times_v3", "new races bind to official_times_v3 (#6452)");
   assert.equal(ordersGcGeneration("official_times_v3"), 3);
   assert.equal(isOrdersGcV3OrLater("official_times_v3"), true);
   assert.equal(usesSharedGroupTime("official_times_v3"), true);

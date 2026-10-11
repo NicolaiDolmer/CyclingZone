@@ -1,5 +1,5 @@
 // #6285 C: kontrakttest for hele kaeden motor -> bro -> race_results -> loebsfilm
-// under den live revision (official_times_v2).
+// under den live revision (official_times_v3, #6452).
 //
 // Kaeden, som spillet koerer den:
 //  - motoren (v4) skriver tidslinjen og gruppe-snapshots;
@@ -36,7 +36,9 @@ import { buildFilmTimeline } from "../../../frontend/src/lib/stageTimelineFilm.j
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, "..", "..", "scripts", "baselines", "giro-field-6088-2026-10-02.json");
 const data = JSON.parse(readFileSync(FIXTURE, "utf8"));
-const REVISION = "official_times_v2";
+// #6452: den live revision. official_times_v2 er frosset byte-identisk
+// (officialTimesV2Frozen6200.test.ts), saa kaeden gates paa den nye.
+const REVISION = "official_times_v3";
 const SEEDS = 3;
 const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 const BREAK_EVENT_TYPES = new Set(["breakaway_formed", "breakaway_caught", "breakaway_dropped", "breakaway_survived"]);
@@ -162,7 +164,7 @@ test("#6285-C detektoren: indhentet uden en eneste ikke-udbryder er et brud", ()
   assert.ok(chainViolations({ out, events: out.timeline.events }).includes("caught_without_bunch b1"));
 });
 
-// ── Live: hele Giro-feltet under official_times_v2 ───────────────────────────
+// ── Live: hele Giro-feltet under official_times_v3 ───────────────────────────
 
 const v4 = await loadRaceEngineV4();
 const stages: any[] = sortedStages(data);
