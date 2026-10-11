@@ -30,16 +30,17 @@ Ny session efter docs/sessions/2026-10-12-stabilitet-og-udvikling.md. Læs FØRS
 - D1-D7 fra #6110 (kurve, tempo, rollevægte på løbsdagen, tilbagegang, eksisterende ryttere, AI-ryttere, indfasning). Spiller-signal 11/10 (friisisch): "løbstræning skal give lige så meget som at blive hjemme"; unge udvikler sig for hurtigt, ældre for langsomt.
 - #5842: værdier ved sæsonskiftet (ingen værdiskrivning, ét fast tidspunkt; PR #6403 findes).
 
-## Overdraget fra sessionen 11/10 (tjek status først)
+## Overdraget fra sessionen 11/10 (lukket kl. ca. 11:45; gør disse FØRST)
 
-- **#6464 + #6456 bjerg-tidsgab** (ny revision): rapport var lovet 11/10 kl. 16, derefter gate + Fable-dom + tænd-kort, så 37 løb 12/10 kl. 12 (18 med bjerg) kan få den. Tjek om den er tændt, ellers er det første punkt.
-- **#6384 tidsgab i ungdoms-/holdklassement:** UI-PR med før/efter-billede; merges kun efter ejerens visuelle go.
-- **#6470 træningsafstemning:** dry-run viste ingen reparation; tjek efter aftentræningen 11/10, at Sentry-rytteren blev afregnet og at der ikke kom nye karantæner, luk så.
-- **Touren (official_times_v3):** drift-tjek pr. etape, især bjerg 13/10 kl. 13 og højfjeld 15/10; e1 var som testet.
-- **#6472 rullende etaper** og **#6471 rutematch følger ikke motoren**: mål før der bygges.
-- **#6476 svar-sløjfen:** 4 ubesvarede i feedback-formularen + 10 spillersvar; ejeren vil have hjælp "inden for de kommende dage".
-- **Discord:** patch 7.354-7.355 i `docs/drafts/discord-patch-7354-7355-2026-10-11.md` (ejeren poster selv).
-- **Mandag:** betaling #4511 #4514 #4512 + Sentry CYCLINGZONE-62 (faktura 63 dage over forfald, ét Pro der ikke passer).
+1. **#6464 + #6456 bjerg-tidsgab (vigtigst, frist 12/10 kl. 11:30):** branch `fix/6464-mountain-gaps-all-divisions`, draft-PR #6465, ny slukket revision `official_times_v4`. Lanen blev stoppet midt i kalibreringen (rent og pushet). Genoptag sporet i en bølge (allowExistingPr), få tal på prod-felter pr. division + Giro + Tour-cache, kør gaten (`cleanRevisionGate --revision=official_times_v4 --baseline=official_times_v3`) og hele backend-suiten på en LOKAL kombination med v4 sat som current, Fable-dom (read-only, model fable), så tænd-kort til ejeren. Flip = separat PR med migration (mønster: #6453 + #6460 patch note). 37 løb starter 12/10 kl. 12 (18 med bjerg); når den ikke at blive tændt, kører de på v3.
+2. **#6384 tidsgab i ungdoms-/holdklassement:** PR #6466 (ikke draft) har før/efter-billede; send billedet til ejeren som fil og merge kun på hans visuelle go.
+3. **Tour-drift (official_times_v3):** e1 som testet. Tjek e2 (11/10 17:00, flad) og især bjerg e8 (13/10 13:00) og højfjeld e12-13 (15/10) mod testbænken (`balance-internals/motor-bench/bench-main-live.json`).
+4. **#6470 træningsafstemning:** dry-run viste ingen reparation. Tjek efter aftentræningen 11/10, at rytteren `09b377d9…` er afregnet for 11/10 og at der ikke er nye `needs_reconciliation`; luk så.
+5. **#6472 rullende etaper** og **#6471 rutematch følger ikke motoren:** mål før der bygges.
+6. **#6476 svar-sløjfen:** 4 ubesvarede i feedback-formularen + 10 spillersvar; hjælp ejeren inden for de kommende dage.
+7. **Discord:** patch 7.354-7.355 i `docs/drafts/discord-patch-7354-7355-2026-10-11.md` (ejeren poster selv).
+8. **Mandag 12/10:** betaling #4511 #4514 #4512 + Sentry CYCLINGZONE-62 (faktura 63 dage over forfald, ét Pro der ikke passer).
+9. **Issue-labels:** v3-issues er sat `claude:done` 11/10; ejeren lukker selv. #6327 og #6450 er klar til lukning.
 
 ## Ikke i denne session
 
