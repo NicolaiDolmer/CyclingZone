@@ -9,7 +9,7 @@
 --     117-381 linjer pr. time, hele doegnet, ogsaa om natten. Linjerne kommer i
 --     klumper med SAMME mikrosekund-tidsstempel (1-25 pr. klump) = timeout-
 --     managerens oprydnings-tik, ikke enkelte forespoergsler.
---   * edge_logs, samme vindue: ca. 711k kald til /rest/v1, heraf 3 med 5xx og
+--   * edge_logs, samme vindue: ca. 718k kald til /rest/v1, heraf 3 med 5xx og
 --     0 med 502/504/544. Ingen forespoergsel er blevet afbrudt med en gateway-
 --     timeout. Kald med Envoy-genforsoeg (x_envoy_attempt_count > 1) foelger
 --     trafikken (0 kl. 01-02 UTC), mens "Thread killed" ligger fladt (142-188
@@ -42,6 +42,14 @@
 --   3. Rangliste-matviews (#5692): refresh koerer nu ved haendelse (43 gange i
 --      vinduet, 1,8-3,4 s), og HEAD-count paa team_race_points_mv (Sentry
 --      race-count) svarer i snit paa 6 ms. Ingen timeouts.
+--
+-- FORDELING (samme vindue): 99 REST-kald over 5 s, heraf 68 i timen 18 UTC
+-- (opbremsningen, spredt over ~25 tabeller) og 15 paa
+-- rpc/finalize_academy_acquisition (#6450). Resten er enkeltstaaende.
+-- EFTER #6450 (11/10 08:05-10:55 UTC): 139k REST-kald, 1 over 5 s, 0 x 5xx,
+-- 0 statement/lock timeouts, akademi-signering 8 kald og 0 over 5 s. "Thread
+-- killed" 590 (ca. 210 pr. time, uaendret niveau) - bekraefter at det tal ikke
+-- foelger de aegte timeouts.
 --
 -- DENNE FIL: den ene resterende auth_rls_initplan-WARN fra performance-
 -- advisors (opgavens trin 3). forum_category_mutes' politik evaluerede
