@@ -4,11 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (fra 11/10):** Næste session efter `docs/sessions/2026-10-12-stabilitet-og-udvikling.md` (startprompt i filen): overdragelsen først (bjerg-revision `official_times_v4` #6464 før 37 løb 12/10 kl. 12, #6384 visuelt go), så stabilitet (#5162 #5911 #6184) + Udvikling 2.0 D1-D7 (#6110) + #5842 + småting-lane.
+> **🎯 Next action (fra 11/10 aften):** Næste session efter `docs/sessions/2026-10-11-aften-merge-stabilitet-og-udvikling-del1.md` (startprompt i filen): v4-etaper tjekkes pr. division → merge-kø med ét kort pr. PR (#6478 #6480 #6481 #6479 #6477; UI #6482 #6483 med billede) → stabilitet (#6184-rest, #5692, #6470) → Udvikling 2.0 del 1 til 25/10 + del 2 bag flag (#6110) → træningens rest (tjek 7×5 m.fl. først). Pengene (#6474) og spillersvar (#6476) tager ejeren separat.
 >
-> **11/10:** `official_times_v3` tændt 09:43, Touren kører v3 (e1 som testet). Merget: #6443 #6458 #6455 #6454 #6453 #6460 #6459 (migreret) #6467 #6468. Roadmap afstemt + ejer-godkendt, MASTERPLAN + artifact opdateret, patch 7.354-7.355. Nye issues #6464 #6469-#6476.
->
-> **Tænd (#6452):** `official_times_v3` gælder løb der starter efter merge; patch 7.354 (regler) + 7.355 (holdskifte i træning, akademi-signering #6459). Første etaper verificeres pr. profil samme dag.
+> **11/10 eftermiddag:** `official_times_v4` TÆNDT 16:30 (#6465 #6484, migration verificeret; Touren bliver på v3). Merget: #6466 (klassement-tidsgab) #6403 (værdier kl. 14, ingen værdiskrivning ved skiftet) #6485 (patch 7.356). Udvikling 2.0: ALLE beslutninger truffet (D1-D7 + D1b, potentiale = levende talent 1-99, træningsscore B; se #6110). Auktionsfejl fundet: 6 auktioner gav 4 hold 1.092.657 CZ$ for meget (#6474, rettelse i #6481, datareparation ejer-gated).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (session 11/10 lukket ca. 11:45; bølgen stoppet rent, markør frigivet).
+> **🤖 Working agent:** Ingen aktiv session (session 11/10 eftermiddag lukket ca. 17:00; bølgen færdig og frigivet, ingen dirty worktrees).

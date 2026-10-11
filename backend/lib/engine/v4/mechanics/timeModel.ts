@@ -159,6 +159,19 @@ export const TIME_MODEL_V3_TUNING = freeze({
   // profil (alle hold vil vinde; ingen klassementsdag at spare). Udeladt = intet
   // ekstra loft (alle aeldre revisioner, og etapeloeb).
   letGoOneDayMaxGapSecondsByProfile: {} as Readonly<Partial<Record<ProfileType, number>>>,
+
+  // ── #6464 (KUN official_times_v4): bjergets tidsgab ens i alle divisioner ───
+  // Hullet paa en stigning maales i feltets egen evne-spredning, ikke i
+  // absolutte evne-point: evne-vaegten ganges med referencen delt med feltets
+  // klatre-spredning (bedste minus nr. `climbGapFieldSpreadRank`), clampet til
+  // `climbGapFieldScaleBounds`. Samme faktor for alle ryttere paa etapen, saa en
+  // staerkere klatrer aldrig faar et stoerre hul end en svagere (#4707).
+  // 0 = slukket (alle aeldre revisioner, byte-identiske).
+  climbGapFieldSpreadReferencePoints: 0,
+  climbGapFieldSpreadRank: 10,
+  climbGapFieldScaleBounds: [1, 1] as readonly [number, number],
+  // Kun paa disse etapeprofiler (tom = ingen; bjerg-maalet ejer kun bjerg og hoejfjeld).
+  climbGapFieldScaleProfiles: [] as readonly ProfileType[],
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
@@ -239,6 +252,25 @@ export const SHARED_TIME_MODEL_V3_TUNING: TimeModelTuning = freeze({
   },
 });
 
+/**
+ * #6464 + #6456 (KUN official_times_v4, slukket): hele official_times_v3-modellen
+ * plus bjergets tidsgab i feltets egen evne-spredning (samme maal for nr. 10 paa
+ * en topankomst i alle divisioner) og en blidere afgoerende stigning foer en
+ * nedkoerselsfinale (bjergetaper uden topankomst samles efter toppen).
+ * Kalibreret privat (balance-internals/6464/) paa prod-felter, Giro og Tour.
+ */
+export const SHARED_TIME_MODEL_V4_TUNING: TimeModelTuning = freeze({
+  ...SHARED_TIME_MODEL_V3_TUNING,
+  climbGapFieldSpreadReferencePoints: 10,
+  climbGapFieldSpreadRank: 10,
+  climbGapFieldScaleBounds: [0.25, 1.25] as readonly [number, number],
+  climbGapFieldScaleProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
+  // #6456: den afgoerende stigning foer en nedkoerselsfinale spreder ikke mere end
+  // en topankomst (official_times_v3 lagde en ekstra skala oven i); feltets faktor
+  // gaelder som paa en topankomst, og loftet paa nedkoerslen er uaendret.
+  descentFinishClimbAbilityWeightScale: 1,
+});
+
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
 function byProfile(base: TimeModelTuning): Readonly<Partial<Record<ProfileType, TimeModelTuning>>> {
   return Object.freeze(Object.fromEntries(
@@ -248,11 +280,14 @@ function byProfile(base: TimeModelTuning): Readonly<Partial<Record<ProfileType, 
 }
 const SHARED_BY_PROFILE = byProfile(SHARED_TIME_MODEL_V2_TUNING);
 const SHARED_V3_BY_PROFILE = byProfile(SHARED_TIME_MODEL_V3_TUNING);
+const SHARED_V4_BY_PROFILE = byProfile(SHARED_TIME_MODEL_V4_TUNING);
 
-/** #6200: hvilken generation af den faelles tidsmodel en hook-kontekst koerer (3 = official_times_v3). */
-function contextTimeModelGeneration(sharedGroupTime: unknown): 2 | 3 {
-  return sharedGroupTime !== null && typeof sharedGroupTime === "object"
-    && (sharedGroupTime as { timeModelGeneration?: unknown }).timeModelGeneration === 3 ? 3 : 2;
+/** #6200: hvilken generation af den faelles tidsmodel en hook-kontekst koerer (3 = official_times_v3, 4 = official_times_v4). */
+function contextTimeModelGeneration(sharedGroupTime: unknown): 2 | 3 | 4 {
+  if (sharedGroupTime === null || typeof sharedGroupTime !== "object") return 2;
+  const s = sharedGroupTime as { timeModelGeneration?: unknown; mountainGapsV4?: unknown };
+  if (s.timeModelGeneration !== 3) return 2;
+  return s.mountainGapsV4 === true ? 4 : 3;
 }
 
 /**
@@ -260,13 +295,61 @@ function contextTimeModelGeneration(sharedGroupTime: unknown): 2 | 3 {
  * official_times_v2 (v3-pakken + den faelles gruppeklokke), ellers v3-tallene.
  * #6200: under official_times_v3 (sharedGroupTime.timeModelGeneration = 3) den
  * kalibrerede plus nedkoerselsfinalen (SHARED_TIME_MODEL_V3_TUNING).
+ * #6464: under official_times_v4 (ogsaa sharedGroupTime.mountainGapsV4) v3 plus
+ * bjergets tidsgab i feltets egen evne-spredning (SHARED_TIME_MODEL_V4_TUNING).
  */
 export function timeModelTuningFor(ctx: { ordersGcV3?: true; sharedGroupTime?: unknown; route?: { profile_type: ProfileType } }): TimeModelTuning {
   if (!(ctx.ordersGcV3 === true && ctx.sharedGroupTime !== undefined)) return TIME_MODEL_V3_TUNING;
-  if (contextTimeModelGeneration(ctx.sharedGroupTime) === 3) {
+  const generation = contextTimeModelGeneration(ctx.sharedGroupTime);
+  if (generation === 4) {
+    return (ctx.route ? SHARED_V4_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V4_TUNING;
+  }
+  if (generation === 3) {
     return (ctx.route ? SHARED_V3_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V3_TUNING;
   }
   return (ctx.route ? SHARED_BY_PROFILE[ctx.route.profile_type] : undefined) ?? SHARED_TIME_MODEL_V2_TUNING;
+}
+
+/**
+ * #6464 (KUN official_times_v4): faktoren paa stigningens evne-vaegt, saa hullet
+ * maales i feltets egen klatre-spredning. Spredningen er feltets bedste klatrer
+ * minus nr. `climbGapFieldSpreadRank` (faerre ryttere: den sidste). Faktoren er
+ * referencen delt med spredningen, clampet til `climbGapFieldScaleBounds`.
+ * 1 naar referencen er 0 (alle aeldre tidsmodeller) eller feltet er tomt.
+ * Ren funktion af feltets evner: samme faktor for alle ryttere paa etapen.
+ */
+export function climbGapFieldScale(fieldClimbing: readonly number[], t: TimeModelTuning = TIME_MODEL_V3_TUNING): number {
+  const ref = t.climbGapFieldSpreadReferencePoints;
+  if (!(ref > 0)) return 1;
+  const values = fieldClimbing.filter((v) => Number.isFinite(v)).sort((a, b) => b - a);
+  if (values.length < 2) return 1;
+  const rank = Math.max(2, Math.min(values.length, Math.round(t.climbGapFieldSpreadRank)));
+  const spread = values[0] - values[rank - 1];
+  const [lo, hi] = t.climbGapFieldScaleBounds;
+  if (!(spread > 0)) return hi;
+  return clamp(ref / spread, lo, hi);
+}
+
+const FIELD_SCALED_TUNING = new WeakMap<TimeModelTuning, Map<number, TimeModelTuning>>();
+
+/**
+ * #6464: tuningen med evne-vaegten ganget med feltets faktor (climbGapFieldScale).
+ * Samme objekt ved faktor 1, saa intet aendres for aeldre tidsmodeller.
+ */
+export function fieldScaledClimbTuning(t: TimeModelTuning, scale: number): TimeModelTuning {
+  if (!(scale > 0) || scale === 1) return t;
+  const key = Math.round(scale * 1e6) / 1e6;
+  let byScale = FIELD_SCALED_TUNING.get(t);
+  if (!byScale) {
+    byScale = new Map();
+    FIELD_SCALED_TUNING.set(t, byScale);
+  }
+  let out = byScale.get(key);
+  if (!out) {
+    out = freeze({ ...t, climbGapAbilityWeight: t.climbGapAbilityWeight * key, climbGapAbilityWeightQuadratic: t.climbGapAbilityWeightQuadratic * key * key });
+    byScale.set(key, out);
+  }
+  return out;
 }
 
 const DECIDING_CLIMB_TUNING = new WeakMap<TimeModelTuning, TimeModelTuning>();
