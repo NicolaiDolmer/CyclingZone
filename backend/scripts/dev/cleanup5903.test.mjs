@@ -1,7 +1,7 @@
 // #5903: engangs-oprydningens kerne + ejer-go-gaten.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findOffSquadEntries, deleteOffSquadEntries, parseArgs, OWNER_GO_TOKEN } from "./cleanup5903.mjs";
+import { findOffSquadEntries, deleteOffSquadEntries, recheckRider, parseArgs, OWNER_GO_TOKEN } from "./cleanup5903.mjs";
 
 const open = (id, squad) => ({ id, squad, status: "scheduled", stages_completed: 0 });
 const rider = (id, squad, extra = {}) => ({
@@ -86,11 +86,46 @@ test("#5903 deleteOffSquadEntries: én delete pr. rytter, kun de fundne løb", a
       };
     },
   };
+  const keepAll = async (_s, { raceIds }) => raceIds;
   const res = await deleteOffSquadEntries(supabase, [
     { race_id: "J1", rider_id: "u1" }, { race_id: "J2", rider_id: "u1" }, { race_id: "U1", rider_id: "s1" },
-  ]);
+  ], { recheck: keepAll });
   assert.equal(res.deleted, 3);
   assert.deepEqual(deletes, [{ rider_id: "u1", race_id: ["J1", "J2"] }, { rider_id: "s1", race_id: ["U1"] }]);
+});
+
+test("#5903 deleteOffSquadEntries: genberegningen afgør; ændret siden snapshot = sprunget over", async () => {
+  const deletes = [];
+  const supabase = { from() { return { delete() { const f = {}; const api = { eq(c, v) { f[c] = v; return api; }, in(c, v) { f[c] = v; return api; }, then(res, rej) { deletes.push(f); return Promise.resolve({ error: null }).then(res, rej); } }; return api; } }; } };
+  // u1 er imens flyttet til løbets trup (intet tilbage); s1: kun U1 er stadig forkert.
+  const recheck = async (_s, { riderId }) => (riderId === "u1" ? [] : ["U1"]);
+  const res = await deleteOffSquadEntries(supabase, [
+    { race_id: "J1", rider_id: "u1" }, { race_id: "U1", rider_id: "s1" }, { race_id: "U2", rider_id: "s1" },
+  ], { recheck });
+  assert.equal(res.deleted, 1);
+  assert.equal(res.skipped, 2);
+  assert.deepEqual(deletes, [{ rider_id: "s1", race_id: ["U1"] }]);
+});
+
+test("#5903 recheckRider: rytter flyttet til løbets trup eller løb startet → intet at slette", async () => {
+  const state = {
+    riders: { id: "u1", team_id: "A", squad: "junior", is_academy: true, is_retired: false }, // nu junior
+    races: [open("J1", "junior"), { id: "U9", squad: "u23", status: "scheduled", stages_completed: 1 }],
+    race_entries: [{ race_id: "J1", team_id: "A", rider_id: "u1" }, { race_id: "U9", team_id: "A", rider_id: "u1" }],
+  };
+  const supabase = {
+    from(table) {
+      const api = {
+        select() { return api; }, eq() { return api; }, in() { return api; },
+        maybeSingle() { return Promise.resolve({ data: state[table], error: null }); },
+        then(res, rej) { return Promise.resolve({ data: state[table], error: null }).then(res, rej); },
+      };
+      return api;
+    },
+  };
+  assert.deepEqual(await recheckRider(supabase, { riderId: "u1", raceIds: ["J1", "U9"] }), []);
+  state.riders = { ...state.riders, squad: "u23" }; // tilbage i U23: J1 er forkert igen, U9 er startet
+  assert.deepEqual(await recheckRider(supabase, { riderId: "u1", raceIds: ["J1", "U9"] }), ["J1"]);
 });
 
 test("#5903 parseArgs: --apply kræver præcis ejer-go-token", () => {

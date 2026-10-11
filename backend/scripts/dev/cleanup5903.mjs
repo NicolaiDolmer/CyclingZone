@@ -114,25 +114,57 @@ export async function fetchSnapshot(supabase) {
 }
 
 /**
- * Slet de fundne rækker, grupperet pr. rytter. Idempotent: en række der
- * allerede er væk, rammer bare 0 rækker.
+ * Genlæs ÉN rytters tilstand lige før sletningen og beregn hans forkerte
+ * entries igen. Snapshottet kan være minutter gammelt: er rytteren imens
+ * flyttet til løbets trup, eller er løbet startet, må rækken ikke slettes.
+ * Vinduet mellem genlæsning og delete er millisekunder; en fuldt atomisk
+ * variant ville kræve en RPC, hvilket er for meget til en ejer-gated engangs-
+ * kørsel. Motoren filtrerer alligevel forkert-trup-entries fra ved start.
  */
-export async function deleteOffSquadEntries(supabase, offSquad) {
+export async function recheckRider(supabase, { riderId, raceIds }) {
+  const { data: rider, error: riderErr } = await supabase.from("riders")
+    .select("id, team_id, squad, is_academy, is_retired").eq("id", riderId).maybeSingle();
+  if (riderErr) throw new Error(`riders (recheck): ${riderErr.message}`);
+  const { data: races, error: raceErr } = await supabase.from("races")
+    .select("id, squad, status, stages_completed").in("id", raceIds);
+  if (raceErr) throw new Error(`races (recheck): ${raceErr.message}`);
+  const { data: entries, error: entryErr } = await supabase.from("race_entries")
+    .select("race_id, team_id, rider_id").eq("rider_id", riderId).in("race_id", raceIds);
+  if (entryErr) throw new Error(`race_entries (recheck): ${entryErr.message}`);
+  const { offSquad } = findOffSquadEntries({ races: races || [], entries: entries || [], riders: rider ? [rider] : [] });
+  return [...new Set(offSquad.map((r) => r.race_id))];
+}
+
+/**
+ * Slet de fundne rækker, grupperet pr. rytter, efter en frisk genberegning
+ * (recheckRider). Idempotent: en række der allerede er væk, rammer 0 rækker.
+ */
+export async function deleteOffSquadEntries(supabase, offSquad, { recheck = recheckRider } = {}) {
   const byRider = new Map();
   for (const row of offSquad) {
     if (!byRider.has(row.rider_id)) byRider.set(row.rider_id, new Set());
     byRider.get(row.rider_id).add(row.race_id);
   }
   let deleted = 0;
+  let skipped = 0;
   const failures = [];
-  for (const [riderId, raceIds] of byRider) {
-    const ids = [...raceIds];
+  for (const [riderId, raceIdSet] of byRider) {
+    const planned = [...raceIdSet];
+    let ids;
+    try {
+      ids = await recheck(supabase, { riderId, raceIds: planned });
+    } catch (err) {
+      failures.push({ riderId, error: err instanceof Error ? err.message : String(err) });
+      continue;
+    }
+    skipped += planned.length - ids.length;
+    if (!ids.length) continue;
     const { error } = await supabase.from("race_entries").delete()
       .eq("rider_id", riderId).in("race_id", ids);
     if (error) failures.push({ riderId, error: error.message });
     else deleted += ids.length;
   }
-  return { deleted, failures };
+  return { deleted, skipped, failures };
 }
 
 export function parseArgs(argv) {
@@ -194,7 +226,7 @@ async function main() {
     return;
   }
   const res = await deleteOffSquadEntries(supabase, offSquad);
-  console.log(`\nSlettet: ${res.deleted}. Fejl: ${res.failures.length}`);
+  console.log(`\nSlettet: ${res.deleted}. Sprunget over (ændret siden snapshot): ${res.skipped}. Fejl: ${res.failures.length}`);
   for (const f of res.failures) console.error(`  FAIL rider=${f.riderId}: ${f.error}`);
   if (res.failures.length) process.exit(1);
 }
