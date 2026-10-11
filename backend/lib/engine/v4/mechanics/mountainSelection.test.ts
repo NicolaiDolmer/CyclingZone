@@ -272,3 +272,16 @@ test("orders_gc_v2 er deterministisk paa en bjergetape", () => {
   const input = { ...fixtureInput("bjerg-selektion"), rules_revision: "orders_gc_v2" as const };
   assert.equal(JSON.stringify(simulateStageV4(input)), JSON.stringify(simulateStageV4(input)));
 });
+
+// ── #6441 (KUN official_times_v3): kuperet jager uden daempning foer finalen ──
+
+test("#6441: under official_times_v3 jager kuperet fuldt foer finalen; bjerg/hoejfjeld og aeldre revisioner uaendrede", () => {
+  assert.equal(mountainSelectionKnobsFor("hilly", true).preFinalChaseClosingScale, 1);
+  assert.equal(mountainSelectionKnobsFor("hilly").preFinalChaseClosingScale, MOUNTAIN_SELECTION_V2_TUNING.preFinalChaseClosingScale);
+  for (const prof of ["mountain", "high_mountain"] as const) {
+    assert.deepEqual(mountainSelectionKnobsFor(prof, true), mountainSelectionKnobsFor(prof), prof);
+  }
+  const { preFinalChaseClosingScale: _a, ...hillyV3Rest } = mountainSelectionKnobsFor("hilly", true);
+  const { preFinalChaseClosingScale: _b, ...hillyRest } = mountainSelectionKnobsFor("hilly");
+  assert.deepEqual(hillyV3Rest, hillyRest, "kun jagten foer finalen aendres");
+});

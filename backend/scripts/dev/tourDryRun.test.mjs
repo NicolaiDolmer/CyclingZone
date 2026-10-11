@@ -12,6 +12,7 @@ import {
   abilityTimeCorrelation,
   applyKnownOpen,
   applyLegacyHoldReference,
+  breakawayAheadOfAllCaptains,
   breakawayAheadOfFavourites,
   gapClass,
   legacyHoldBand,
@@ -60,6 +61,20 @@ test("#5578 breakawayAheadOfFavourites: udbryderen foran den foerste kaptajn ude
   assert.equal(breakawayAheadOfFavourites(withBreak(finish([["h", 90], ["b1", 100]]), ["b1"]), roles), true, "ingen kaptajn i maal");
 });
 
+test("#6441 breakawayAheadOfAllCaptains: alle kaptajner er favoritter, ogsaa dem i udbruddet (udbrudsmaal 3)", () => {
+  const roles = new Map([["cap", "captain"], ["cap2", "captain"], ["b1", "hunter"], ["h", "helper"]]);
+  // Legacy-artefakten: en kaptajn i udbruddet foran de oevrige kaptajner taeller ikke som udbruddet foran.
+  const capInBreak = withBreak(finish([["cap2", 90], ["b1", 120], ["cap", 160]]), ["cap2", "b1"]);
+  assert.equal(breakawayAheadOfFavourites(capInBreak, roles), true, "den gamle maaling saa udbruddet foran");
+  assert.equal(breakawayAheadOfAllCaptains(capInBreak, roles), false, "en kaptajn i udbruddet er stadig en favorit");
+  // Udbruddets foerste ikke-kaptajn foran alle kaptajner paa tid = foran.
+  assert.equal(breakawayAheadOfAllCaptains(withBreak(finish([["b1", 100], ["cap2", 110], ["cap", 160]]), ["b1", "cap2"]), roles), true);
+  assert.equal(breakawayAheadOfAllCaptains(withBreak(finish([["b1", 100], ["cap", 100]]), ["b1"]), roles), false, "samme tid = hentet");
+  assert.equal(breakawayAheadOfAllCaptains(withBreak(finish([["cap", 90], ["b1", 100]]), ["cap"]), roles), false, "lutter kaptajner i udbruddet");
+  assert.equal(breakawayAheadOfAllCaptains(finish([["b1", 100], ["cap", 160]]), roles), false, "intet udbrud = ikke foran");
+  assert.equal(breakawayAheadOfAllCaptains(withBreak(finish([["h", 90], ["b1", 100]]), ["b1"]), roles), true, "ingen kaptajn i maal");
+});
+
 test("#5578 legacyHoldBand: den mildeste af differens og forhold mod legacy", () => {
   const band = TOUR_BENCHMARKS.breakawayHoldVsLegacy.byClass.legacy;
   assert.equal(band.status, "ejer");
@@ -73,12 +88,13 @@ test("#5578 applyLegacyHoldReference: hver profiltype doemmes mod legacy paa sam
   const summary = {
     stages: [], race: { verdicts: {} },
     classes: [
-      { profile_type: "hilly", breakawayAheadShare: 0.9, verdicts: {} },
-      { profile_type: "mountain", breakawayAheadShare: 0.1, verdicts: {} },
-      { profile_type: "gravel", breakawayAheadShare: 0.2, verdicts: {} },
+      // #6441: maal 3 laeser breakawayHoldShare (alle kaptajner), ikke maal 4's breakawayAheadShare.
+      { profile_type: "hilly", breakawayHoldShare: 0.9, breakawayAheadShare: 0.1, verdicts: {} },
+      { profile_type: "mountain", breakawayHoldShare: 0.1, breakawayAheadShare: 0.9, verdicts: {} },
+      { profile_type: "gravel", breakawayHoldShare: 0.2, verdicts: {} },
     ],
   };
-  const legacy = { classes: [{ profile_type: "hilly", breakawayAheadShare: 0.95 }, { profile_type: "mountain", breakawayAheadShare: 0.6 }] };
+  const legacy = { classes: [{ profile_type: "hilly", breakawayHoldShare: 0.95, breakawayAheadShare: 0.1 }, { profile_type: "mountain", breakawayHoldShare: 0.6, breakawayAheadShare: 0.1 }] };
   applyLegacyHoldReference(summary, legacy);
   const v = Object.fromEntries(summary.classes.map((c) => [c.profile_type, c.verdicts.breakawayHoldVsLegacy]));
   assert.deepEqual(v, { hilly: "PASS", mountain: "FAIL", gravel: "N/A" });
@@ -87,7 +103,7 @@ test("#5578 applyLegacyHoldReference: hver profiltype doemmes mod legacy paa sam
 });
 
 test("#5578 attachLegacyReference: legacy genbruges hvis den er koert, ellers koeres den én gang", () => {
-  const mk = (revision) => ({ revision, summary: { stages: [], race: { verdicts: {} }, classes: [{ profile_type: "hilly", breakawayAheadShare: revision === "legacy" ? 0.5 : 0.45, verdicts: {} }] } });
+  const mk = (revision) => ({ revision, summary: { stages: [], race: { verdicts: {} }, classes: [{ profile_type: "hilly", breakawayHoldShare: revision === "legacy" ? 0.5 : 0.45, verdicts: {} }] } });
   let calls = 0;
   const runs = [mk("official_times_v2"), mk("orders_gc_v2")];
   attachLegacyReference(runs, () => { calls += 1; return mk("legacy"); });

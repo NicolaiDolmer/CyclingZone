@@ -31,7 +31,7 @@
 // (segmentLoop saetter kun `mountainSelectionPhase` under orders_gc_v2).
 
 import type { ProfileType, Segment, RulesRevision, SegmentHookContext } from "../types.ts";
-import { MOUNTAIN_SELECTION_V2_TUNING, type MountainSelectionV2Knobs } from "../tuning.ts";
+import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, type MountainSelectionV2Knobs } from "../tuning.ts";
 
 export type MountainSelectionPhase = "pre_final" | "final";
 
@@ -51,7 +51,7 @@ export function finalClimbStartIndex(segments: readonly Pick<Segment, "kind">[])
  * #6092: knapperne for en profil = de faelles vaerdier med profilens afvigelser
  * (MOUNTAIN_SELECTION_V2_TUNING.byProfile) lagt ovenpaa.
  */
-export function mountainSelectionKnobsFor(profileType: ProfileType): MountainSelectionV2Knobs {
+export function mountainSelectionKnobsFor(profileType: ProfileType, officialTimesV3: boolean = false): MountainSelectionV2Knobs {
   const t = MOUNTAIN_SELECTION_V2_TUNING;
   const base: MountainSelectionV2Knobs = {
     preFinalSplitThresholdFactor: t.preFinalSplitThresholdFactor,
@@ -61,7 +61,10 @@ export function mountainSelectionKnobsFor(profileType: ProfileType): MountainSel
     preFinalChaseClosingScale: t.preFinalChaseClosingScale,
     finalChaseClosingScale: t.finalChaseClosingScale,
   };
-  return { ...base, ...(t.byProfile[profileType] ?? {}) };
+  const knobs = { ...base, ...(t.byProfile[profileType] ?? {}) };
+  // #6441 (KUN official_times_v3): profilens v3-afvigelser (kuperet jager uden daempning foer finalen).
+  if (!officialTimesV3) return knobs;
+  return { ...knobs, ...(BREAKAWAY_CHASE_V3_TUNING.mountainSelectionByProfile[profileType] ?? {}) };
 }
 
 /**

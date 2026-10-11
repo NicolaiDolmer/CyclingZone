@@ -461,7 +461,9 @@ test("#6434: official_times_v2 og uden kontekst - ingen ny tog-regel (byte-ident
 
 test("#6434 v3: en sprint_captain faar samme tog som under v2; ingen tog paa en bjergetape", () => {
   const sc = roster6434("sprint_captain");
-  const team4 = (rev: string) => plan6434(rev, "flat", sc).orders.filter((o) => o.team_id === "team-4");
+  // Kun toget sammenlignes: stancen er #6441's v3-standard (se testene nedenfor).
+  const team4 = (rev: string) => plan6434(rev, "flat", sc).orders.filter((o) => o.team_id === "team-4" && o.kind === "leadout");
+  assert.equal(team4("official_times_v3").length, 1);
   assert.deepEqual(team4("official_times_v3"), team4("official_times_v2"));
   assert.equal(parseLeadoutOrders(plan6434("official_times_v3", "mountain").orders).length, 0);
 });
@@ -495,4 +497,85 @@ test("#6434 v3 (review): managerens eksplicitte 'intet tog' for dagen respektere
   assert.equal(parseLeadoutOrders(plan.orders).find((o) => o.team_id === "team-4"), undefined);
   // Andre hold uden raekke faar stadig toget.
   assert.ok(parseLeadoutOrders(plan.orders).find((o) => o.team_id === "team-3"));
+});
+
+// ── #6441 (KUN official_times_v3, ejer 10/10 kl. 22:40) ───────────────────────
+//
+// Et menneskehold uden egen udbrudsordre for etapen faar AI-holdenes stance-
+// regel (decideAiBreakawayStance) for jagten: kaptajnen favorit -> chase, ellers
+// neutral. Ejer 11/10 kl. 00:50: et menneskehold uden ordre lader ALDRIG selv et
+// udbrud gaa (M14s let_go bliver neutral). En stance manageren har gemt, vinder altid.
+
+/** Ti menneskehold a seks paa en bjergetape: hold 0-8 har faldende klatrekaptajner, hold 9 en svag. */
+function mountainRoster6441(isAi = false) {
+  const list: Array<{ team_id: string; rider_id: string; role: string; is_ai: boolean; abilities: Record<string, number> }> = [];
+  for (let t = 0; t < 10; t++) {
+    const climbing = t === 9 ? 30 : 90 - t * 2;
+    list.push({ team_id: `t${t}`, rider_id: `c${t}`, role: "captain", is_ai: isAi, abilities: abil6434({ climbing }) });
+    for (let h = 0; h < 5; h++) {
+      list.push({ team_id: `t${t}`, rider_id: `h${t}-${h}`, role: h === 0 ? "hunter" : "helper", is_ai: isAi, abilities: abil6434({ climbing: 40 }) });
+    }
+  }
+  return list;
+}
+
+const MOUNTAIN_V3 = { route: { profile_type: "mountain" as const, finale_type: "long_climb" as const }, race: { is_stage_race: true, later_stages: [] }, rules_revision: "official_times_v3" };
+const stanceByTeam = (orders: EngineTeamOrder[]) =>
+  Object.fromEntries(parseBreakawayOrders(orders).map((o) => [o.team_id, o.breakaway_stance]));
+
+test("#6441 v3: menneskehold uden ordre: favorit jager, ellers neutral (aldrig let_go)", () => {
+  const stances = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(), context: MOUNTAIN_V3 }).orders);
+  assert.equal(stances.t0, "chase");
+  assert.equal(stances.t7, "chase");
+  assert.equal(stances.t8, "neutral");
+  assert.equal(stances.t9, "neutral", "uden chance: neutral, ikke let_go (ejer 11/10)");
+  assert.ok(!Object.values(stances).includes("let_go"));
+});
+
+test("#6441 v3: samme jagt-regel som et AI-hold; kun AI-holdet kan selv vaelge let_go", () => {
+  const human = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(false), context: MOUNTAIN_V3 }).orders);
+  const ai = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(true), context: MOUNTAIN_V3 }).orders);
+  for (const team of Object.keys(ai)) {
+    assert.equal(human[team], ai[team] === "let_go" ? "neutral" : ai[team], team);
+  }
+  assert.equal(ai.t9, "let_go", "AI-holdets egen beslutning er uaendret");
+});
+
+test("#6441 v3: kun stancen aendres; rytternes indsats, udbrudsforsoeg og tog er rollernes", () => {
+  const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(), context: MOUNTAIN_V3 });
+  const v2 = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(), context: { ...MOUNTAIN_V3, rules_revision: "official_times_v2" } });
+  // Hele rytter-ordren (indsats, udbrudsforsoeg, tog) + eventuelle tog-ordrer.
+  const riders = (orders: EngineTeamOrder[]) => orders.map((o) => (o.kind === "team_tactics" ? o.params?.riders : o));
+  assert.deepEqual(riders(plan.orders), riders(v2.orders));
+  assert.equal(plan.aiEffortByRider.size, 0, "et menneskehold faar aldrig AI-indsats");
+});
+
+test("#6441 v3: en stance manageren selv har gemt for etapen vinder altid", () => {
+  const rows = [
+    { team_id: "t0", stage_number: 1, breakaway_stance: "let_go", riders: [] },
+    { team_id: "t9", stage_number: 1, breakaway_stance: "neutral", riders: [] },
+    { team_id: "t8", stage_number: 2, breakaway_stance: "let_go", riders: [] },
+    { team_id: "t7", stage_number: 1, breakaway_stance: null, riders: [] },
+  ];
+  const stances = stanceByTeam(buildStageOrderPlan({ rows, stageNumber: 1, roster: mountainRoster6441(), context: MOUNTAIN_V3 }).orders);
+  assert.equal(stances.t0, "let_go", "managerens let_go slaar favorit-jagten");
+  assert.equal(stances.t9, "neutral", "managerens neutral staar");
+  assert.equal(stances.t8, "neutral", "en raekke for en anden etape taeller ikke");
+  assert.equal(stances.t7, "chase", "en raekke uden stance falder tilbage paa standarden");
+});
+
+test("#6441: official_times_v2, aeldre og uden kontekst er menneskeholdene neutrale (uaendret)", () => {
+  for (const rules_revision of ["official_times_v2", "orders_gc_v3", "orders_gc_v2"]) {
+    const stances = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441(), context: { ...MOUNTAIN_V3, rules_revision } }).orders);
+    assert.ok(Object.values(stances).every((s) => s === "neutral"), rules_revision);
+  }
+  const noCtx = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mountainRoster6441() }).orders);
+  assert.ok(Object.values(noCtx).every((s) => s === "neutral"));
+});
+
+test("#6441 v3: et hold uden evner paa startlisten beholder den neutrale standard", () => {
+  const roster = mountainRoster6441().map((r) => (r.team_id === "t0" ? { ...r, abilities: null } : r));
+  const stances = stanceByTeam(buildStageOrderPlan({ rows: [], stageNumber: 1, roster: roster as never, context: MOUNTAIN_V3 }).orders);
+  assert.equal(stances.t0, "neutral");
+  assert.equal(stances.t1, "chase");
 });

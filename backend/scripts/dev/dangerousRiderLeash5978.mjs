@@ -140,8 +140,15 @@ export function analyzeAnchorRun(out, dangerousId, gapById, isRivalFor = () => t
   };
   const events = out.timeline.events;
   const escaped = events.some((e) => e.type === "breakaway_formed" && (e.params?.rider_ids ?? []).includes(dangerousId));
+  // #6457: forspringet "mens han sad i udbruddet" (filens maaledefinition):
+  // kun det sammenhaengende stykke fra dannelsen, til han ikke laengere sidder
+  // i en udbrudsgruppe (indhentet, sat af eller udgaaet). Et senere soloangreb i
+  // finalen er ikke dagens udbrud og taelles ikke med.
+  const formedKm = events.find((e) => e.type === "breakaway_formed" && (e.params?.rider_ids ?? []).includes(dangerousId))?.km;
   let maxLead = 0;
-  for (const s of snapshots) {
+  for (const s of formedKm === undefined ? [] : snapshots.filter((x) => x.km >= formedKm)) {
+    const group = s.groups.find((g) => g.rider_ids.includes(dangerousId));
+    if (!group || (group.kind !== "breakaway" && group.kind !== "solo")) break;
     const lead = leadOf(s, dangerousId);
     if (lead !== null) maxLead = Math.max(maxLead, lead);
   }

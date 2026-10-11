@@ -56,6 +56,24 @@ test("analyzeAnchorRun: 'contained' taelles kun mens han sidder i udbruddet over
   assert.equal(a.containedWhileIn, 1, "kun holdet han er rival for; forspringet ved segmentets start (150) var over afstanden (100)");
 });
 
+test("analyzeAnchorRun (#6457): forspringet maales kun mens han sidder i dagens udbrud, ikke i et senere soloangreb i finalen", () => {
+  const pel = (gap) => ({ group_id: "pel", kind: "peloton", rider_ids: Array.from({ length: 30 }, (_, i) => `r${i}`), gap_seconds: gap });
+  const out = {
+    groupSnapshots: [
+      { km: 10, groups: [{ group_id: "b", kind: "breakaway", rider_ids: ["x"], gap_seconds: 0 }, pel(40)] },
+      { km: 20, groups: [{ group_id: "pel", kind: "peloton", rider_ids: ["x", ...pel(0).rider_ids], gap_seconds: 0 }] },
+      { km: 30, groups: [{ group_id: "s", kind: "solo", rider_ids: ["x"], gap_seconds: 0 }, pel(120)] },
+    ],
+    timeline: { events: [
+      { km: 5, type: "breakaway_formed", params: { rider_ids: ["x"] } },
+      { km: 15, type: "breakaway_caught", params: { rider_ids: ["x"] } },
+    ] },
+  };
+  const a = analyzeAnchorRun(out, "x", new Map([["x", 100]]));
+  assert.equal(a.escaped, true);
+  assert.equal(a.maxLead, 40, "finalens soloangreb (120) er ikke forspringet i udbruddet");
+});
+
 test("#5978 anker (Giro etape 6): v2 genskaber 'contained' over hans afstand; v3 holder ham i snor og goer det svaerere at komme af sted", () => {
   const r = runDangerousRiderLeash({ v4, data, seeds: SEEDS, chain });
   const v2 = r.orders_gc_v2;
