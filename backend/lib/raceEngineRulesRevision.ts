@@ -38,8 +38,9 @@
 // #6464 + #6456 (ejer 11/10, slukket): "official_times_v4" = hele
 // official_times_v3-pakken + bjergets tidsgab ens i alle divisioner (nr. 10 paa
 // en topankomst maales i feltets egen evne-spredning, ikke i absolutte
-// evne-point) + et maal for bjergetaper uden topankomst. Aldrig aktuel foer en
-// separat ejer-flip-PR med egen migration.
+// evne-point) + et maal for bjergetaper uden topankomst. Aktuel for nye loeb fra
+// ejerens ordrette "taend"; migrationen
+// 2026-10-12-race-engine-rules-revision-official-times-v4.sql goer vaerdien lovlig.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
@@ -156,11 +157,14 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * SKAL vaere applied foer foerste claim; ellers fejler bindingen hoejlydt paa
  * CHECK-constrainten (ingen tavs fallback).
  *
- * "official_times_v4" (#6464 + #6456) er bygget, men slukket: skiftet hertil er
- * en separat ejer-PR med sin egen migration (CHECK-constrainten kender den ikke
- * endnu).
+ * "official_times_v4" fra ejerens ordrette "taend" (#6464 + #6456): bjergets
+ * tidsgab ens i alle divisioner + bjergetaper uden topankomst er aktuel for ALLE
+ * loeb hvis foerste etape claimes efter deploy. Loeb der allerede er bundet til
+ * official_times_v3 (fx Touren) faerdiggoeres paa den. Migrationen
+ * 2026-10-12-race-engine-rules-revision-official-times-v4.sql SKAL vaere applied
+ * foer foerste claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten.
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v3";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v4";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;
