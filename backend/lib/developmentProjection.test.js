@@ -4,7 +4,7 @@ import {
   stepRating, projectCeilingBand, ceilingTiming,
   RATING_DECLINE_BY_YEARS_PAST_PEAK, DISPLAY_SEASONS,
 } from "./developmentProjection.js";
-import { PROGRESSION_CONFIG } from "./riderProgression.js";
+import { PROGRESSION_CONFIG, AGING_V2_CONFIG } from "./riderProgression.js";
 
 // #2100 — projektions-funktioner. Ren matematik; node --test.
 
@@ -114,6 +114,23 @@ test("#3666 projektionens decline ER motorens, ikke en kopi der ligner", () => {
     PROGRESSION_CONFIG.declineByYearsPastPeak,
     "samme objekt-reference — en kopi ville kunne drifte i tavshed",
   );
+});
+
+// #6499: Udvikling 2.0's tilbagegang (bag development_v2_aging_enabled) har sin
+// EGEN konfiguration og rører ikke PROGRESSION_CONFIG. Med flaget slukket er
+// projektionen derfor uændret. Fald-trinene er de samme tal; det der flytter
+// sig, er hvornår de begynder (plateauet). Projektionen kobles til v2 i et
+// senere trin sammen med prognoserne (#6110 del 2), når spillerteksten følger med.
+test("#6499 projektionen følger stadig den slukkede motor; v2's trin er de samme tal, senere start", () => {
+  assert.equal(RATING_DECLINE_BY_YEARS_PAST_PEAK, PROGRESSION_CONFIG.declineByYearsPastPeak);
+  assert.deepEqual(
+    AGING_V2_CONFIG.declineByYearsPastPlateau.map((r) => r.drop),
+    PROGRESSION_CONFIG.declineByYearsPastPeak.map((r) => r.drop),
+  );
+  assert.ok(AGING_V2_CONFIG.plateauThroughAge > PROGRESSION_CONFIG.peakAge);
+  // Flag slukket: samme skridt som før #6499.
+  const age = PROGRESSION_CONFIG.peakAge + 2;
+  assert.equal(stepRating(50, 60, age), 50 - PROGRESSION_CONFIG.declineByYearsPastPeak[0].drop);
 });
 
 test("#3666 en median-rytter over peak rammer ikke gulvet i display-vinduet", () => {

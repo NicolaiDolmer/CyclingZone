@@ -12,6 +12,11 @@ import {
   CRAFT_ABILITIES, abilityRoleClass, roleRateFactor, ROLE_CLASSES, ROLE_CLASS_RATE,
   announcedRetirementAfterSeason, GC_PUNCH_FLOOR, MENTAL_ABILITY_TAG_CEILING,
 } from "./riderProgression.js";
+import {
+  AGING_V2_CONFIG, AGING_V2_DECLINING_ABILITIES, agingBrake, agingV2BaseDrop,
+  systematicRound, developRiderSeasonV2, youthRateForPotential,
+} from "./riderProgression.js";
+import { ABILITY_REGISTRY } from "./abilityRegistry.js";
 import { CAPS_SHAPING_WEIGHTS } from "./weights/capsShapingWeights.js";
 import { DISPLAY_RECIPES, ratingForRole } from "./weights/displayRecipes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -989,4 +994,154 @@ test("et loft under evnen konfiskerer ALDRIG evne — motoren kan kun stå still
     const efter = stepAbility(70, caps[k], 25, 28, true, 0.5);
     assert.equal(efter, 70, `${k}: stepAbility må ikke røre en evne over loftet`);
   }
+});
+
+// ══ #6499: Udvikling 2.0 del 1 — tilbagegang ved sæsonskiftet ════════════════
+
+test("#6499: kun de fysiske evner + brosten kan falde; tekniske og mentale aldrig", () => {
+  const physical = ABILITY_REGISTRY.filter((a) => a.category === "physical").map((a) => a.key);
+  for (const k of physical) assert.ok(AGING_V2_DECLINING_ABILITIES.includes(k), `${k} er fysisk og skal kunne falde`);
+  assert.ok(AGING_V2_DECLINING_ABILITIES.includes("cobblestone"), "brosten regnes som fysisk her (ejer 11/10)");
+  for (const k of ["descending", "positioning", "aggression", "tactics", "teamwork", "leadership"]) {
+    assert.ok(!AGING_V2_DECLINING_ABILITIES.includes(k), `${k} må aldrig falde`);
+  }
+  assert.equal(AGING_V2_DECLINING_ABILITIES.length, physical.length + 1);
+  // Rækkefølgen er lagrings-ordenen, så den systematiske afrunding er stabil.
+  assert.deepEqual(AGING_V2_DECLINING_ABILITIES, VISIBLE_ABILITIES.filter((k) => AGING_V2_DECLINING_ABILITIES.includes(k)));
+});
+
+test("#6499: bremsen er 1 uden belastning, falder jævnt, hårde dage tæller med vægt, gulv 0", () => {
+  const cfg = AGING_V2_CONFIG;
+  assert.equal(agingBrake(null), 1);
+  assert.equal(agingBrake({ raceDays: 0, hardDays: 0 }), 1);
+  assert.equal(agingBrake({ raceDays: cfg.brakeLoadDays, hardDays: 0 }), 0);
+  assert.equal(agingBrake({ raceDays: cfg.brakeLoadDays * 3, hardDays: 0 }), 0, "gulv 0, aldrig vækst af bremsen");
+  const half = agingBrake({ raceDays: cfg.brakeLoadDays / 2, hardDays: 0 });
+  assert.ok(Math.abs(half - 0.5) < 1e-12, "jævn bremse, ingen trappe");
+  // En hård træningsdag er hardTrainingDayWeight løbsdage værd.
+  const n = 20;
+  const viaHard = agingBrake({ raceDays: 0, hardDays: n });
+  const viaRace = agingBrake({ raceDays: n * cfg.hardTrainingDayWeight, hardDays: 0 });
+  assert.ok(Math.abs(viaHard - viaRace) < 1e-12);
+  assert.ok(viaHard > agingBrake({ raceDays: n, hardDays: 0 }), "en hård dag bremser mindre end en løbsdag");
+  assert.equal(agingBrake({ raceDays: -5, hardDays: "x" }), 1, "ugyldige tal tæller som 0 dage");
+});
+
+test("#6499: plateau til og med plateau-alderen, derefter trin der stiger med årene", () => {
+  const cfg = AGING_V2_CONFIG;
+  for (let age = 16; age <= cfg.plateauThroughAge; age++) assert.equal(agingV2BaseDrop(age), 0, `alder ${age}`);
+  let prev = 0;
+  for (let age = cfg.plateauThroughAge + 1; age <= cfg.plateauThroughAge + 12; age++) {
+    const d = agingV2BaseDrop(age);
+    assert.ok(d > 0, `alder ${age} falder`);
+    assert.ok(d >= prev, `faldet må ikke blive mindre med alderen (${age})`);
+    prev = d;
+  }
+  const steps = cfg.declineByYearsPastPlateau;
+  assert.equal(agingV2BaseDrop(cfg.plateauThroughAge + 1), steps[0].drop);
+  assert.equal(agingV2BaseDrop(cfg.plateauThroughAge + steps[0].maxYears + 1), steps[1].drop);
+  assert.equal(agingV2BaseDrop(cfg.plateauThroughAge + steps[1].maxYears + 1), steps[2].drop);
+  assert.equal(agingV2BaseDrop(null), 0);
+});
+
+test("#6499: kerne-vs-øvrige-faktoren er konfigurerbar og har dagens default", () => {
+  assert.equal(AGING_V2_CONFIG.offTypeDeclineFactor, PROGRESSION_CONFIG.offTypeDeclineFactor);
+});
+
+test("#6499: systematisk afrunding — samlet ⌊Σ⌋ eller ⌈Σ⌉, hver evne ⌊d⌋ eller ⌈d⌉, forventning = brøken", () => {
+  const fracs = [0.7, 1.0, 0.7, 0.7, 1.0, 0.35, 0.7, 1.26, 0.7, 0.7, 0.7];
+  const sum = fracs.reduce((s, x) => s + x, 0);
+  const totals = new Map();
+  const perAbility = fracs.map(() => 0);
+  const N = 4000;
+  for (let i = 0; i < N; i++) {
+    const out = systematicRound(fracs, (i + 0.5) / N);
+    const t = out.reduce((s, x) => s + x, 0);
+    assert.ok(t === Math.floor(sum) || t === Math.ceil(sum), `samlet ${t} for Σ=${sum}`);
+    out.forEach((x, j) => {
+      assert.ok(x === Math.floor(fracs[j]) || x === Math.ceil(fracs[j]), `evne ${j}: ${x} for ${fracs[j]}`);
+      perAbility[j] += x;
+    });
+    totals.set(t, (totals.get(t) ?? 0) + 1);
+  }
+  perAbility.forEach((s, j) => assert.ok(Math.abs(s / N - fracs[j]) < 0.01, `forventning evne ${j}`));
+  // Heltals-sum (fx 7 × 1,0 eller 10 × 0,7) giver præcis den sum, ikke ±1 af flydende komma.
+  assert.equal(systematicRound(Array(10).fill(0.7), 0.999999).reduce((s, x) => s + x, 0), 7);
+  assert.equal(systematicRound(Array(10).fill(0.7), 0).reduce((s, x) => s + x, 0), 7);
+  assert.deepEqual(systematicRound([0, 0, 0], 0.5), [0, 0, 0]);
+});
+
+const V2_ABILITIES = Object.freeze(Object.fromEntries(VISIBLE_ABILITIES.map((k, i) => [k, 40 + i])));
+
+test("#6499: ingen sæsonvækst for nogen — ung rytter langt under loftet står stille", () => {
+  for (const age of [17, 20, 24, 28, 30]) {
+    const out = developRiderSeasonV2({ id: `ung-${age}`, primary_type: "climber", potentiale: 6, age }, V2_ABILITIES, 5);
+    assert.deepEqual(out.next, V2_ABILITIES, `alder ${age}: ingen ændring`);
+    assert.deepEqual(out.changed, []);
+    assert.equal(out.aging.totalDrop, 0);
+  }
+});
+
+test("#6499: veteran uden belastning falder kun fysisk + brosten, samlet ⌊Σ⌋/⌈Σ⌉ af de rå fald", () => {
+  const cfg = AGING_V2_CONFIG;
+  for (const type of ["climber", "sprinter", "gc", "rouleur"]) {
+    for (const age of [31, 34, 37, 39]) {
+      const rider = { id: `vet-${type}-${age}`, primary_type: type, potentiale: 3, age };
+      const out = developRiderSeasonV2(rider, V2_ABILITIES, 5);
+      let raw = 0;
+      for (const k of VISIBLE_ABILITIES) {
+        const delta = V2_ABILITIES[k] - out.next[k];
+        if (!AGING_V2_DECLINING_ABILITIES.includes(k)) {
+          assert.equal(delta, 0, `${type} ${age}: ${k} må ikke ændres`);
+          continue;
+        }
+        const sig = signatureFactor(type, k) >= 1;
+        const d = agingV2BaseDrop(age) * (sig ? 1 : cfg.offTypeDeclineFactor);
+        raw += d;
+        assert.ok(delta === Math.floor(d) || delta === Math.ceil(d), `${type} ${age}: ${k} faldt ${delta} for ${d}`);
+      }
+      assert.ok(Math.abs(out.aging.rawTotal - raw) < 1e-9);
+      const snapped = Math.round(raw * 1e9) / 1e9;
+      assert.ok(out.aging.totalDrop === Math.floor(snapped) || out.aging.totalDrop === Math.ceil(snapped),
+        `${type} ${age}: samlet ${out.aging.totalDrop} for Σ=${raw}`);
+      assert.equal(out.aging.brake, 1);
+    }
+  }
+});
+
+test("#6499: fuld belastning bremser hele faldet; delvis belastning skalerer det", () => {
+  const rider = { id: "aktiv-veteran", primary_type: "sprinter", potentiale: 3, age: 35 };
+  const full = developRiderSeasonV2(rider, V2_ABILITIES, 5, { load: { raceDays: AGING_V2_CONFIG.brakeLoadDays, hardDays: 0 } });
+  assert.deepEqual(full.next, V2_ABILITIES, "fuld bremse = intet fald");
+  const none = developRiderSeasonV2(rider, V2_ABILITIES, 5, { load: { raceDays: 0, hardDays: 0 } });
+  const half = developRiderSeasonV2(rider, V2_ABILITIES, 5, { load: { raceDays: AGING_V2_CONFIG.brakeLoadDays / 2, hardDays: 0 } });
+  assert.ok(Math.abs(half.aging.rawTotal - none.aging.rawTotal / 2) < 1e-9);
+  assert.ok(half.aging.totalDrop <= none.aging.totalDrop);
+});
+
+test("#6499: deterministisk pr. (rytter, sæson), og evner kan ikke gå under 0", () => {
+  const rider = { id: "det-1", primary_type: "climber", potentiale: 3, age: 38 };
+  const a = developRiderSeasonV2(rider, V2_ABILITIES, 6);
+  const b = developRiderSeasonV2(rider, V2_ABILITIES, 6);
+  assert.deepEqual(a, b);
+  const zeros = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 0]));
+  const z = developRiderSeasonV2(rider, zeros, 6);
+  for (const k of VISIBLE_ABILITIES) assert.equal(z.next[k], 0);
+  // Evner uden værdi springes over (samme kontrakt som developRiderSeason).
+  const partial = developRiderSeasonV2(rider, { climbing: 60, tactics: 40 }, 6);
+  assert.deepEqual(Object.keys(partial.next).sort(), ["climbing", "tactics"]);
+  assert.equal(partial.next.tactics, 40);
+});
+
+test("#6499: flag slukket — developRiderSeason er uændret (dagens fald fra peak, vækst før peak)", () => {
+  // Udvikling 2.0 er en SEPARAT funktion; den gamle sti må ikke have flyttet sig.
+  const old = { id: "old-1", primary_type: "climber", potentiale: 3, age: 34 };
+  const v1 = developRiderSeason(old, V2_ABILITIES, {}, 5);
+  for (const k of VISIBLE_ABILITIES) {
+    const expected = stepAbility(V2_ABILITIES[k], V2_ABILITIES[k], 34, PROGRESSION_CONFIG.peakAge,
+      signatureFactor("climber", k) >= 1, seededUnitMixed(`grow:old-1:5:${k}`), PROGRESSION_CONFIG,
+      youthRateForPotential(3));
+    assert.equal(v1.next[k], expected, `${k}`);
+  }
+  assert.equal(v1.aging, undefined, "den gamle sti kender intet til v2");
 });
