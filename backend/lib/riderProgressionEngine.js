@@ -34,7 +34,11 @@
 import { fetchAllRows } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { developRiderSeason, buildCapsForRider, sameCaps, resolveSeasonRetirement } from "./riderProgression.js";
+import {
+  developRiderSeason, developRiderSeasonV2, buildCapsForRider, sameCaps, resolveSeasonRetirement,
+} from "./riderProgression.js";
+import { isDevelopmentV2AgingEnabled } from "./developmentV2Flag.js";
+import { loadSeasonDevelopmentLoad } from "./seasonDevelopmentLoad.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   frozenNoticeFor,
@@ -182,6 +186,12 @@ async function runBatched(items, concurrency, fn) {
  * @param {boolean} [args.dailyTrainingEnabled] — injiceret flag (test/orchestrator); udefineret →
  *                  slår isDailyTrainingEnabled(supabase) op. Når true: menneskelige holds
  *                  vækst-trin springes over (anti-double-dip #1305); AI-hold er upåvirket.
+ * @param {boolean} [args.agingV2Enabled] — injiceret flag (#6499, test/prøvekørsel); udefineret →
+ *                  slår development_v2_aging_enabled op. Når true: ingen sæsonvækst, kun
+ *                  tilbagegang efter Udvikling 2.0 (developRiderSeasonV2). Slukket = som før.
+ * @param {Map}     [args.seasonLoadByRider] — injiceret belastning (rider_id → { raceDays, hardDays })
+ *                  for den afsluttede sæson; udeladt → hentes af loadSeasonDevelopmentLoadFn.
+ *                  Læses KUN når agingV2 er tændt.
  * @returns {Promise<object>} summary
  */
 export async function developRidersForSeason({
@@ -190,9 +200,33 @@ export async function developRidersForSeason({
   notifyTeamOwnerFn = notifyTeamOwner,
   dailyTrainingEnabled: dailyTrainingEnabledArg,
   detectGraduatesFn = detectGraduates,
+  agingV2Enabled: agingV2EnabledArg,
+  seasonLoadByRider: seasonLoadByRiderArg,
+  loadSeasonDevelopmentLoadFn = loadSeasonDevelopmentLoad,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId) throw new Error("seasonId required");
+
+  // ── Udvikling 2.0 del 1 (#6499): tilbagegang ved skiftet, bag flag ────────────
+  //    Slukket (default) rører intet herunder: samme sti, samme output som før.
+  //    Tændt: belastningen for den AFSLUTTEDE sæson (seasonNumber − 1) hentes
+  //    FØR noget skrives. Fejler den, kaster vi: uden belastning ville alle få
+  //    fuldt fald, og skiftet kan køres igen (idempotent via dev-loggen).
+  const agingV2 = agingV2EnabledArg !== undefined
+    ? agingV2EnabledArg === true
+    : await isDevelopmentV2AgingEnabled(supabase);
+  let seasonLoad = null;
+  if (agingV2) {
+    if (seasonLoadByRiderArg instanceof Map) {
+      seasonLoad = seasonLoadByRiderArg;
+    } else {
+      if (!Number.isFinite(Number(seasonNumber)) || Number(seasonNumber) < 2) {
+        throw new Error("agingV2: seasonNumber >= 2 is required to find the ending season");
+      }
+      const loaded = await loadSeasonDevelopmentLoadFn({ supabase, seasonNumber: Number(seasonNumber) - 1 });
+      seasonLoad = loaded.byRider;
+    }
+  }
 
   // ── Idempotens: hvilke ryttere er allerede udviklet for denne sæson? ──────────
   const alreadyRows = await fetchAllRows(() =>
@@ -207,9 +241,10 @@ export async function developRidersForSeason({
     ? dailyTrainingEnabledArg
     : await isDailyTrainingEnabled(supabase);
 
-  // Human-team id-sæt: kun nødvendig når flaget er aktivt (ingen forespørgsel ellers).
+  // Human-team id-sæt: kun nødvendig når et af flagene er aktivt (ingen forespørgsel ellers).
+  // #6499/D6: tilbagegangens bremse skal også vide, hvem der er managerryttere.
   const humanTeamIds = new Set();
-  if (dailyTrainingActive) {
+  if (dailyTrainingActive || agingV2) {
     const teamRows = await fetchAllRows(() => supabase
       .from("teams")
       .select("id")
@@ -256,6 +291,10 @@ export async function developRidersForSeason({
     retirement_notice_frozen: 0,  // ryttere hvis pensionsvarsel blev skrevet ned her (#5073)
     retirement_notice_read: 0,    // ryttere hvor cutover LÆSTE et allerede frosset varsel (#5073)
   };
+  // #6499: kun med i summary når flaget er tændt, så det slukkede skifte er uændret.
+  if (agingV2) {
+    summary.aging_v2 = { riders_with_load: 0, ability_points_declined: 0 };
+  }
 
   for (const r of riders) {
     if (alreadyDeveloped.has(r.id)) { summary.skipped_already_done++; continue; }
@@ -290,7 +329,8 @@ export async function developRidersForSeason({
     // Træningsbias: rytterens nuværende holds plan fra den afsluttede sæson.
     // For skipGrowth-ryttere er den sæsonbaserede bias irrelevant (vækst hoppes over),
     // så vi sætter training=undefined for at undgå en stille bias der intet gør.
-    const plan = (!skipGrowth && r.team_id) ? trainingByTeamRider.get(`${r.team_id}:${r.id}`) : null;
+    // #6499: med Udvikling 2.0 er der ingen sæsonvækst, så træningsbias er irrelevant.
+    const plan = (!agingV2 && !skipGrowth && r.team_id) ? trainingByTeamRider.get(`${r.team_id}:${r.id}`) : null;
     const training = resolveTrainingModifier(plan, r.id, seasonNumber);
     if (training) summary.trained++;
 
@@ -300,10 +340,23 @@ export async function developRidersForSeason({
     // resultatet skrives ned nedenfor, så det aldrig kan flytte sig igen.
     if (frozenRetirementNotice !== null) summary.retirement_notice_read++;
 
-    const { next, retirement } = developRiderSeason(
-      { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age, frozenRetirementNotice },
-      abilities, caps, seasonNumber, undefined, training, { skipGrowth }
-    );
+    const riderInput = { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age, frozenRetirementNotice };
+    let developed;
+    if (agingV2) {
+      // #6499: ingen vækst for nogen; kun fysiske evner + brosten falder, bremset
+      // af rytterens egne løbsdage og hårde træningsdage i den afsluttede sæson.
+      // D6 (ejer 11/10): uden for managerhold bremser kun rytterens egne løbsdage;
+      // hårde træningsdage tæller kun for managerryttere.
+      const rawLoad = seasonLoad.get(r.id) ?? null;
+      const isManagerRider = r.team_id != null && humanTeamIds.has(r.team_id);
+      const load = rawLoad && !isManagerRider ? { ...rawLoad, hardDays: 0 } : rawLoad;
+      if (load) summary.aging_v2.riders_with_load++;
+      developed = developRiderSeasonV2(riderInput, abilities, seasonNumber, { load });
+      summary.aging_v2.ability_points_declined += developed.aging.totalDrop;
+    } else {
+      developed = developRiderSeason(riderInput, abilities, caps, seasonNumber, undefined, training, { skipGrowth });
+    }
+    const { next, retirement } = developed;
 
     // Vækst/fald-tælling (signaturen er den højeste evne-bevægelse).
     const before = abilitySum(abilities);
