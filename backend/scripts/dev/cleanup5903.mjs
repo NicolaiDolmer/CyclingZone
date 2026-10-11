@@ -128,6 +128,7 @@ export async function recheckRider(supabase, { riderId, raceIds }) {
   const { data: races, error: raceErr } = await supabase.from("races")
     .select("id, squad, status, stages_completed").in("id", raceIds);
   if (raceErr) throw new Error(`races (recheck): ${raceErr.message}`);
+  // pagination-safe: én rytter har højst én tilmelding pr. løb, og raceIds er rytterens få fundne løb
   const { data: entries, error: entryErr } = await supabase.from("race_entries")
     .select("race_id, team_id, rider_id").eq("rider_id", riderId).in("race_id", raceIds);
   if (entryErr) throw new Error(`race_entries (recheck): ${entryErr.message}`);
