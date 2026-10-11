@@ -7,8 +7,7 @@
 > **🎯 Next action (nat 11/10):** Natsession efter `docs/sessions/2026-10-11-nat-motor.md`: byg udbrud forslag A (#6441, ejer 11/10 00:50), Fable-dom på #6443, gate grøn, testbænk opdateret, flip-PR klar men ikke merget, morgenkort kl. 09:30. Touren kører v3 KUN hvis alt er grønt og ejeren siger "tænd" før ca. 10:30; ellers v2.
 >
 > **10/10 aften:** merget #6431 (flad udbrudstrin), #6437 (sprintertog), #6438 (CodeQL 0), #6444 (bjerg-tider), #6446 (træning følger rytteren, migreret), #6449 (verify-lock). Motor-testbænk live (privat Artifact). Gate rød trin 1+3. Ejer-valg: standard-jagt for hold uden ordre + fair Udbrudsmål 3 (#6441). Nye: #6439 #6440-#6442 #6447 #6450. Spillersvar i docs/drafts/spillersvar-2026-10-10.md.
->
-> **10/10 dag:** 26 PR'er merget, patch 7.351-7.353, bestyrelses-reparation #5897, v2 verificeret i prod (#6428), Touren på v2 (ejer-valg), ren motor-revision spec + plan godkendt.
+> **Tænd (#6452):** `official_times_v3` gælder løb der starter efter merge; patch 7.354. Første etaper verificeres pr. profil samme dag.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
