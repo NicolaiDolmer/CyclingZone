@@ -48,8 +48,25 @@ function auctionNotify(notifyTeamOwner, teamId, type, keys, relatedId, metadata 
   return notifyTeamOwner(teamId, type, payload.title, payload.message, relatedId, payload.metadata);
 }
 
+/** @param {{ rider?: { team_id?: string | null } | null, seller_team_id?: string | null } | null | undefined} auction */
 export function sellerOwnsAuctionRider(auction) {
   return Boolean(auction?.rider && auction.rider.team_id === auction.seller_team_id);
+}
+
+// #6474: et hold kan aldrig byde på sin EGEN rytter (bid-ruten afviser det,
+// "cannot_bid_own_rider"). Ejer højestbydende allerede rytteren ved finalize, er
+// han derfor flyttet til vinderen af en tidligere, afbrudt finalize-kørsel. På en
+// fri-agent-/AI-auktion står initiativtageren (= vinderen) som seller_team_id, og
+// uden denne genkendelse blev han regnet som sælger og fik både "Købt"- og
+// "Solgt"-posten — købesummen tilbage for en rytter han kun havde købt. På et
+// almindeligt salg blev auktionen i stedet annulleret som "stale owner".
+/** @param {{ rider?: { team_id?: string | null } | null, current_bidder_id?: string | null } | null | undefined} auction */
+export function riderAlreadyWithAuctionWinner(auction) {
+  return Boolean(
+    auction?.rider?.team_id &&
+    auction.current_bidder_id &&
+    auction.rider.team_id === auction.current_bidder_id
+  );
 }
 
 function isHumanManagedTeam(team) {
@@ -201,6 +218,34 @@ async function hasSoldGraduationRow(supabase, { teamId, riderId }) {
 }
 
 async function resolveAuctionSellerContext({ supabase, auction }) {
+  // #6474: rytteren er allerede hos vinderen (afbrudt tidligere kørsel). Den
+  // nuværende ejer er køberen og må aldrig udbetales som sælger. Den egentlige
+  // sælger er den, rytteren kom FRA i kørslens ejerskabs-hændelse (samme
+  // idempotency-nøgle som recordRiderOwnershipEvent nedenfor) — fri agent =
+  // ingen. sellerOwned=false: sælger-gulvet er irrelevant, rytteren er allerede
+  // væk. Læsefejl kaster før enhver pengebevægelse, så cron'en prøver igen.
+  if (riderAlreadyWithAuctionWinner(auction)) {
+    const priorEvent = await expectMaybeSingle(
+      supabase
+        .from("rider_ownership_events")
+        .select("from_team_id")
+        .eq("idempotency_key", `ownership:auction_winner:${auction.id}`)
+    );
+    // Hændelsen skrives best-effort (kan mangle, hvis kørslen stoppede før den,
+    // eller insert fejlede stille). Så er auktionens sælger den oprindelige ejer
+    // på et almindeligt salg; på en fri-agent-auktion er sælgeren = vinderen og
+    // filtreres fra af ulighedstjekket nedenfor.
+    const originalOwnerId = priorEvent?.from_team_id ?? auction.seller_team_id ?? null;
+    return {
+      sellerOwned: false,
+      actualSellerTeamId:
+        originalOwnerId && originalOwnerId !== auction.current_bidder_id ? originalOwnerId : null,
+      actualSeller: null,
+      staleHumanOwner: false,
+      riderAlreadyWithWinner: true,
+    };
+  }
+
   const sellerOwned = sellerOwnsAuctionRider(auction);
   if (sellerOwned) {
     return {
@@ -1047,6 +1092,7 @@ async function finalizeAuctionRecord({
     actualSellerTeamId,
     actualSeller: _actualSeller,
     staleHumanOwner,
+    riderAlreadyWithWinner = false,
   } = await resolveAuctionSellerContext({
     supabase,
     auction,
@@ -1109,7 +1155,11 @@ async function finalizeAuctionRecord({
         squadLimits[baseBuyerState.division || 3] || baseBuyerState.squad_limits,
     };
 
-    if (!buyer || buyer.balance < price) {
+    // #6474: ved en gentaget kørsel er rytteren allerede leveret til køberen.
+    // Den første kørsel nåede kun dertil, fordi saldo- og trup-tjekket var
+    // bestået; et nyt afslag her ville lukke auktionen UDEN betaling, mens
+    // køberen beholder rytteren. Retry'en gennemfører derfor betalingen.
+    if (!buyer || (!riderAlreadyWithWinner && buyer.balance < price)) {
       await closeAuction({
         supabase,
         auction,
@@ -1161,7 +1211,8 @@ async function finalizeAuctionRecord({
     // løbet finaliseres. Betaling + auktions-lukning sker straks (Model B).
     const deferTeamChange =
       (await getRidersInActiveStageRace(supabase, [auction.rider.id])).length > 0;
-    const squadViolation = getIncomingSquadViolation(buyer, {
+    // #6474: rytteren tæller allerede med i køberens trup ved en retry (se saldo-tjekket).
+    const squadViolation = riderAlreadyWithWinner ? null : getIncomingSquadViolation(buyer, {
       // #16 altid-åben handel: intet transfervindue → ingen vindue-grace → hard cap ved handlen.
       softCapBuffer: 0,
     });
