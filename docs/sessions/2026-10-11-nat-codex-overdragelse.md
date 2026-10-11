@@ -4,7 +4,8 @@ Ejeren arbejder videre med Codex resten af aftenen og natten. Denne fil er sandh
 
 ## Status ved overdragelse
 - **Merget 11/10 aften:** #6478 #6480 #6481 #6479 #6498 #6503 #6502. Migration fra #6479 (forum-politik) er post-verificeret. Prod-oprydning #5903 (2 forkerte startlister) kørt med ejer-go, nu 0.
-- **I Claudes merge-kø (lad den køre færdig; start IKKE en anden kø samtidig):** #6501 (tilbagegang D4 bag slukket flag + seed-migration `development_v2_aging_enabled = off`), #6505 (patch 7.357), #6477 (chunk), #6488 (merge-køen frigives ved deploy), #6426 (databasevagt). Tjek `gh pr list --state open` før du merger noget selv.
+- **Også merget (21:15-21:50):** #6488 (merge-køen frigives ved deploy), #6501 (tilbagegang D4 bag flag; seed-migration post-verificeret: prod = `off`), #6477 (chunk), #6426 (databasevagt).
+- **Mangler kun: #6505 (patch 7.357, ejer-go givet 11/10).** Webkit-shardet timede ud efter 20 min (infra, ingen testfejl); genkørt kl. ca. 21:40. Når CI er grøn: `pwsh -File scripts/merge-queue.ps1 -Pr "6505"`. Discord-tekst: `docs/drafts/discord-patch-7357-2026-10-11.md` (ejeren poster).
 - **Flaget `development_v2_aging_enabled` må IKKE tændes** (ejer-only, efter ejerens beslutning om faldets form, før 25/10).
 - **#6426 databasevagt** fejler hvert 5. min, indtil ejeren opretter GitHub-secrets `DISCORD_OPS_WEBHOOK_URL` og `SUPABASE_PUBLISHABLE_KEY` (ejer-valg 11/10: merge nu, secrets senere). Røde `db-watchdog`-kørsler er forventede indtil da.
 
