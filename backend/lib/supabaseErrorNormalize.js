@@ -53,8 +53,10 @@ const TRANSIENT_DB_TIMEOUT_CODES = new Set(["57014", "55P03"]);
 // Matchet er ANKRET på hele beskeden: PostgREST's egne fejl er altid mere specifikke
 // ('permission denied for table "riders"', 'column ... does not exist'), så en fuld-
 // streng-match kan ikke maskere en ægte DB-fejl som et transient hikke.
+// "Project not specified": Supabases globale gateway, før kaldet er routet til
+// projektet (CYCLINGZONE-9A, 11/10 lige efter et deploy; intet i projektets egne logs).
 const TRANSIENT_GATEWAY_MESSAGE_RE =
-  /^(internal server error|bad gateway|service (temporarily )?unavailable|gateway time-?out)\.?$/i;
+  /^(internal server error|bad gateway|service (temporarily )?unavailable|gateway time-?out|project not specified)\.?$/i;
 
 function extractMessage(error) {
   if (error == null) return "";
