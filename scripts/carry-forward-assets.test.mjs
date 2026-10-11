@@ -11,8 +11,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { CARRIED_SIDECAR } from "./lib/releaseAssetsStore.mjs";
-import { IntegrityError, carryForwardAssets, main, planCarry, selectReleases } from "./carry-forward-assets.mjs";
+import { CARRIED_SIDECAR, MAX_RELEASES } from "./lib/releaseAssetsStore.mjs";
+import { IntegrityError, carryForwardAssets, main, planCarry, selectReleases, timeFloorReleaseIds } from "./carry-forward-assets.mjs";
 import { uploadReleaseAssets } from "./upload-release-assets.mjs";
 
 const quiet = () => {};
@@ -165,6 +165,76 @@ test("retention naevner en release uden manifest: advarsel, ikke fejl", async ()
 
 test("den aktuelle release baeres aldrig ind i sig selv, og listen er dublet-fri", () => {
   assert.deepEqual(selectReleases({ retentionIds: ["b", "a", "cur"], floorIds: ["cur", "b", "c"], currentId: "cur" }), ["b", "a", "c"]);
+});
+
+// ── Tidsgulvet (#5162, 11/10) ────────────────────────────────────────────────
+//
+// Prod-fund 11/10: retention.json var aldrig skrevet, så kun "3 nyeste" blev
+// båret. En auktionsfane fra en release afløst ca. 21 t før var nr. 5 bagud og
+// fik 404. Tidsgulvet bærer alt afløst inden for 72 t, uanset telemetri.
+
+const HOUR = 3_600_000;
+const iso = (ms) => new Date(ms).toISOString();
+
+test("tidsgulv: alt afløst inden for 72 t er med, ældre er ude, den aktuelle udelades", () => {
+  const now = Date.parse("2026-10-11T08:47:00Z");
+  // nyeste først; hver release afløses af den foregående rækkes oprettelse
+  const rows = [
+    { id: "r8", createdAt: iso(now - 1 * HOUR) }, // lever (afløses først af dette build)
+    { id: "r7", createdAt: iso(now - 13 * HOUR) }, // afløst for 1 t siden
+    { id: "r6", createdAt: iso(now - 15 * HOUR) },
+    { id: "r5", createdAt: iso(now - 17 * HOUR) },
+    { id: "r4", createdAt: iso(now - 19 * HOUR) },
+    { id: "auction", createdAt: iso(now - 21 * HOUR) }, // afløst for 19 t siden: nr. 6 bagud
+    { id: "r2", createdAt: iso(now - 80 * HOUR) }, // afløst for 21 t siden (r3 = auction): med
+    { id: "r1", createdAt: iso(now - 100 * HOUR) }, // afløst for 80 t siden: ude
+    { id: "noDate", createdAt: null },
+  ];
+  const { ids, capped } = timeFloorReleaseIds({ rows, currentId: "r7", now });
+  assert.deepEqual(ids, ["r8", "r6", "r5", "r4", "auction", "r2"]);
+  assert.deepEqual(capped, []);
+});
+
+test("tidsgulv: loftet på MAX_RELEASES holdes, resten returneres som capped", () => {
+  const now = Date.parse("2026-10-11T00:00:00Z");
+  const rows = Array.from({ length: MAX_RELEASES + 5 }, (_, i) => ({ id: `r${i}`, createdAt: iso(now - i * HOUR) }));
+  const { ids, capped } = timeFloorReleaseIds({ rows, currentId: "none", now });
+  assert.equal(ids.length, MAX_RELEASES);
+  assert.equal(capped.length, 5);
+  assert.equal(ids[0], "r0");
+});
+
+test("uden retention.json baeres en release der er 5 bagud men afloest for under 72 t (10/10-scenariet)", async () => {
+  const store = tmp("store");
+  // 'auction' oprettet for 22 t siden, afløst for 21 t siden; derefter 5 nyere releases.
+  await publish(store, "relAncient", { "assets/ancient-ANC1.js": "for gammel\n" }, 100 * 60);
+  await publish(store, "auction", { "assets/AuctionsPage-AUC9.js": "auktion\n" }, 22 * 60);
+  for (const [i, id] of ["n1", "n2", "n3", "n4", "n5"].entries()) {
+    await publish(store, id, { [`assets/p-${id.toUpperCase()}x.js`]: `${id}\n` }, (21 - i * 4) * 60);
+  }
+
+  const dist = makeDist("relLive", { "assets/index-LIVE1.js": "live\n" });
+  const lines = [];
+  const result = await carryForwardAssets({ distDir: dist, env: env(store), log: (m) => lines.push(m), warn: quiet });
+
+  assert.ok(fs.existsSync(path.join(dist, "assets/AuctionsPage-AUC9.js")), "auktionsfanens chunk skal findes på det nye deploy");
+  assert.ok(result.releases.includes("auction"));
+  // relAncient blev afløst af 'auction' for 22 t siden → stadig inden for 72 t.
+  assert.ok(result.releases.includes("relAncient"));
+  assert.match(lines.join("\n"), /tidsgulvet \(afløst inden for 72 t: 7 releases\)/);
+});
+
+test("tidsgulv: en release afloest for over 72 t siden baeres ikke (kun gulvet holder den)", async () => {
+  const store = tmp("store");
+  await publish(store, "relGone", { "assets/gone-GON1.js": "væk\n" }, 200 * 60);
+  // relGone afløst af relB for 100 t siden; relB..relE er nyere.
+  for (const [i, id] of ["relB", "relC", "relD", "relE"].entries()) {
+    await publish(store, id, { [`assets/p-${id.toUpperCase()}x.js`]: `${id}\n` }, (100 - i * 10) * 60);
+  }
+  const dist = makeDist("relLive", { "assets/index-LIVE1.js": "live\n" });
+  const result = await carryForwardAssets({ distDir: dist, env: env(store), log: quiet, warn: quiet });
+  assert.ok(!result.releases.includes("relGone"));
+  assert.ok(!fs.existsSync(path.join(dist, "assets/gone-GON1.js")));
 });
 
 test("et manifest kan ikke skrive uden for dist/assets", async () => {

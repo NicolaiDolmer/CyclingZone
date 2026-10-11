@@ -12,7 +12,8 @@
 //
 // Hvilke releases: `retention.json` fra lageret (skrevet af
 // scripts/measure-client-release-age.mjs) FORENET med de 3 nyeste manifester
-// (gulvet). Findes retention.json ikke endnu, bruges gulvet alene.
+// (gulvet) OG alle releases afløst inden for de sidste 72 t (tidsgulvet, se
+// timeFloorReleaseIds). Findes retention.json ikke endnu, bruges de to gulve.
 //
 // Sikkerhed:
 //   · hver hentet fil verificeres mod manifestets sha256 og byte-størrelse;
@@ -44,6 +45,7 @@ import {
   CARRIED_SIDECAR,
   FLOOR_RELEASES,
   MAX_RELEASES,
+  MIN_WINDOW_HOURS,
   RETENTION_OBJECT_PATH,
   RETENTION_SCHEMA,
   assetObjectPath,
@@ -60,6 +62,9 @@ import {
 } from "./lib/releaseAssetsStore.mjs";
 
 const LOG_PREFIX = "[release-assets:carry-forward]";
+// Hvor mange manifester tidsgulvet højst kigger på (nyeste først). Rigeligt over
+// loftet; et list-kald henter op til 1.000 rækker.
+const MANIFEST_SCAN_LIMIT = 200;
 
 export class IntegrityError extends Error {}
 
@@ -77,16 +82,48 @@ export function retentionReleaseIds(retention) {
 }
 
 /**
- * Hvilke releases der bæres videre: retention-listen forenet med gulvet,
- * uden den aktuelle release, i stabil rækkefølge (retention først).
+ * Tidsgulvet (#5162, 11/10): alle releases der er AFLØST inden for de sidste
+ * `windowHours` (default 72 t = specens gulv for vinduet). Afløst-tidspunkt =
+ * næste nyere manifests oprettelse; den nyeste lagrede release afløses først
+ * af dette build, så den er altid med.
+ *
+ * Hvorfor: tælle-gulvet "3 nyeste" dækkede kun få timer på en dag med mange
+ * deploys (10/10: 7 frontend-releases), og retention.json var aldrig skrevet
+ * (målingen springer over uden PostHog-nøgle, og PostHog ser kun spillere med
+ * analytics-samtykke). En auktionsfane fra en release afløst ca. 21 t før fik
+ * 404, fordi releasen var nr. 5 bagud. Tidsgulvet gælder uanset telemetri.
+ *
+ * @param {Array<{id: string, createdAt: string|null}>} rows nyeste først
+ * @returns {{ ids: string[], capped: string[] }} ids nyeste først; capped = dem
+ *          over loftet MAX_RELEASES, som IKKE bæres (kalderen advarer højlydt).
  */
-export function selectReleases({ retentionIds, floorIds, currentId }) {
+export function timeFloorReleaseIds({ rows, currentId, now = Date.now(), windowHours = MIN_WINDOW_HOURS }) {
+  const ordered = rows
+    .map((row) => ({ id: row.id, at: Date.parse(row.createdAt ?? "") }))
+    .filter((row) => isValidReleaseId(row.id) && Number.isFinite(row.at))
+    .sort((a, b) => b.at - a.at);
+  const cutoff = now - windowHours * 3_600_000;
+  const ids = [];
+  for (let i = 0; i < ordered.length; i += 1) {
+    const supersededAt = i === 0 ? now : ordered[i - 1].at;
+    if (supersededAt < cutoff) break; // ældre rækker er afløst endnu tidligere
+    if (ordered[i].id !== currentId) ids.push(ordered[i].id);
+  }
+  return { ids: ids.slice(0, MAX_RELEASES), capped: ids.slice(MAX_RELEASES) };
+}
+
+/**
+ * Hvilke releases der bæres videre: retention-listen forenet med gulvet og
+ * tidsgulvet, uden den aktuelle release, i stabil rækkefølge (retention først).
+ */
+export function selectReleases({ retentionIds, floorIds, timeFloorIds = [], currentId }) {
   const out = [];
-  for (const id of [...retentionIds, ...floorIds]) {
+  for (const id of [...retentionIds, ...floorIds, ...timeFloorIds]) {
     if (id !== currentId && !out.includes(id)) out.push(id);
   }
-  // Loftet håndhæves af målingen (med alarm). Her er det kun et sidste værn
-  // mod en korrupt retention.json, der ellers kunne fylde buildet.
+  // Loftet håndhæves af målingen og af tidsgulvet (med advarsel). Her er det
+  // kun et sidste værn mod en korrupt retention.json, der ellers kunne fylde
+  // buildet.
   return out.slice(0, MAX_RELEASES + FLOOR_RELEASES);
 }
 
@@ -125,7 +162,7 @@ export function verifyBytes(file, bytes) {
 /**
  * @returns {Promise<{status: "skipped"|"carried"|"failed-soft", carried: string[], releases: string[]}>}
  */
-export async function carryForwardAssets({ distDir, env = process.env, store: injectedStore, log = console.log, warn = console.warn }) {
+export async function carryForwardAssets({ distDir, env = process.env, store: injectedStore, now = Date.now, log = console.log, warn = console.warn }) {
   const { frontend } = readVersionFile(distDir);
   const carried = new Set();
   // Skrives FØR noget andet: upload må aldrig læse en sidecar fra et tidligere build.
@@ -142,9 +179,22 @@ export async function carryForwardAssets({ distDir, env = process.env, store: in
   try {
     const retention = await store.getJson(RETENTION_OBJECT_PATH);
     const retentionIds = retentionReleaseIds(retention);
-    const floorIds = (await listNewestReleaseIds(store, FLOOR_RELEASES + 1)).map((row) => row.id);
-    const releases = selectReleases({ retentionIds, floorIds, currentId: frontend }).slice();
-    if (!retention) log(`${LOG_PREFIX} retention.json findes ikke endnu — bruger gulvet (${FLOOR_RELEASES} nyeste releases).`);
+    const newestRows = await listNewestReleaseIds(store, MANIFEST_SCAN_LIMIT);
+    const floorIds = newestRows.slice(0, FLOOR_RELEASES + 1).map((row) => row.id);
+    const timeFloor = timeFloorReleaseIds({ rows: newestRows, currentId: frontend, now: now() });
+    if (timeFloor.capped.length > 0) {
+      warn(
+        `${LOG_PREFIX} ⚠️ ${timeFloor.ids.length + timeFloor.capped.length} releases er afløst inden for ` +
+          `${MIN_WINDOW_HOURS} t; loftet er ${MAX_RELEASES}. De ${timeFloor.capped.length} ældste bæres IKKE af tidsgulvet.`,
+      );
+    }
+    const releases = selectReleases({ retentionIds, floorIds, timeFloorIds: timeFloor.ids, currentId: frontend }).slice();
+    if (!retention) {
+      log(
+        `${LOG_PREFIX} retention.json findes ikke endnu — bruger gulvet (${FLOOR_RELEASES} nyeste) ` +
+          `+ tidsgulvet (afløst inden for ${MIN_WINDOW_HOURS} t: ${timeFloor.ids.length} releases).`,
+      );
+    }
 
     const manifests = [];
     for (const id of releases) {
@@ -179,7 +229,7 @@ export async function carryForwardAssets({ distDir, env = process.env, store: in
     log(
       `${LOG_PREFIX} ${carried.size} filer fra ${fromReleases.size} releases båret videre ` +
         `(${(bytesTotal / 1024 / 1024).toFixed(2)} MB; ${manifests.length} manifester læst, ` +
-        `retention ${retentionIds.length} + gulv ${floorIds.length}). Lager: ${storeLabel}.`,
+        `retention ${retentionIds.length} + gulv ${floorIds.length} + tidsgulv ${timeFloor.ids.length}). Lager: ${storeLabel}.`,
     );
     return { status: "carried", carried: [...carried].sort(), releases: manifests.map((m) => m.frontend) };
   } catch (err) {
