@@ -1,0 +1,44 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#0f1115;--card:#171a21;--b:#2a2f3a;--t1:#e8eaef;--t2:#a7adba;--t3:#6f7685;--gold:#d4a72c;--red:#e5534b;--green:#3fb950;--warn:#e0a526}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t1);font:14px/1.45 Inter,system-ui,sans-serif;padding:28px;width:1600px}
+h1{font-size:22px;margin:0 0 4px}.sub{color:var(--t2);margin:0 0 22px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.col h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px}
+.now h2{color:var(--red)}.new h2{color:var(--green)}
+.screen{background:var(--card);border:1px solid var(--b);border-radius:5px;padding:16px;margin-bottom:16px;position:relative}
+.st{font-size:12px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--b)}
+td{padding:8px;border-bottom:1px solid var(--b);color:var(--t2)}td.n{color:var(--t1)}
+.badge{font-size:10px;font-weight:700;letter-spacing:.06em;padding:1px 6px;border-radius:9px;border:1px solid var(--warn);color:var(--warn)}
+.pin{position:absolute;right:14px;top:12px;background:var(--gold);color:#1a1405;font-weight:700;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:12px}
+.hl{outline:2px solid var(--gold);outline-offset:2px;border-radius:9px}
+.age{color:var(--t1);font-weight:600;font-size:18px}.bad{color:var(--red)}.good{color:var(--green)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-top:1px solid var(--b)}
+.leg{margin-top:18px;border:1px solid var(--b);border-radius:5px;padding:12px 16px;color:var(--t2);font-size:13px}.leg b{color:var(--gold)}
+</style></head><body>
+<h1>#6206 + #5943: ungdomstrupper</h1>
+<p class="sub">Illustrativt kort med aliaser (Rytter A/B), ikke et live-skaermbillede. Foer til venstre, efter til hojre.</p>
+<div class="cols">
+<div class="col now"><h2>Foer</h2>
+  <div class="screen"><span class="pin">1</span><div class="st">U23-trup, status-kolonne</div>
+    <table><tr><th>Rytter</th><th>Kontrakt</th><th>Status</th></tr>
+    <tr><td class="n">Rytter A</td><td>Til S4</td><td>&nbsp;</td></tr>
+    <tr><td class="n">Rytter B</td><td>Til S6</td><td>&nbsp;</td></tr></table>
+    <p class="bad" style="margin:10px 0 0;font-size:13px">Kontrakten for Rytter A udloeber ved naeste saesonskifte, men der er intet EXP.</p></div>
+  <div class="screen"><span class="pin">2</span><div class="st">Graduation Day, oprykning junior til U23</div>
+    <div class="row"><span>Rytter C</span><span class="age bad">Alder 16</span></div>
+    <p class="bad" style="margin:10px 0 0;font-size:13px">Alderen er regnet paa kalenderaar. Rytteren er 19 i saesonen.</p></div>
+</div>
+<div class="col new"><h2>Efter</h2>
+  <div class="screen"><span class="pin">1</span><div class="st">U23-trup, status-kolonne</div>
+    <table><tr><th>Rytter</th><th>Kontrakt</th><th>Status</th></tr>
+    <tr><td class="n">Rytter A</td><td>Til S4</td><td><span class="badge hl">EXP</span></td></tr>
+    <tr><td class="n">Rytter B</td><td>Til S6</td><td>&nbsp;</td></tr></table>
+    <p class="good" style="margin:10px 0 0;font-size:13px">Samme EXP-badge som paa My Team. Samme paa Junior.</p></div>
+  <div class="screen"><span class="pin">2</span><div class="st">Graduation Day, oprykning junior til U23</div>
+    <div class="row"><span>Rytter C</span><span class="age good">Alder 19</span></div>
+    <p class="good" style="margin:10px 0 0;font-size:13px">Saesonalder (samme kilde som rytterprofil og trupper).</p></div>
+</div></div>
+<div class="leg"><b>1</b> #6206: status-kolonnen i YouthSquadTable bruger contractExpiringBadgeKey. &nbsp; <b>2</b> #5943: /api/academy/me regner graduate-alder med ageForSeason.</div>
+</body></html>
