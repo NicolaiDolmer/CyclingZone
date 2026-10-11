@@ -1014,16 +1014,30 @@ describe("parseTeamConcurrency / resolveTeamConcurrency (#5911)", () => {
     assert.equal(await resolveTeamConcurrency(configClient(new Error("network")).supabase), 1);
   });
 
-  it("den normaliserede sweep faar paralleliteten med", async () => {
+  async function sweepConcurrency(knob) {
     __resetTrainingDayCloseStateForTests();
-    const query = { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: { value: "on" }, error: null }; } };
+    // Flagene er "on"; kun knappens noegle svarer med `knob` (undefined = ingen raekke).
+    const supabase = { from: () => {
+      let key = null;
+      const query = { select() { return this; }, eq(col, val) { if (col === "key") key = val; return this; },
+        async maybeSingle() {
+          if (key !== TEAM_CONCURRENCY_CONFIG_KEY) return { data: { value: "on" }, error: null };
+          return { data: knob === undefined ? null : { value: knob }, error: null };
+        } };
+      return query;
+    } };
     let received = null;
     await runTrainingDayCloseSweep({
-      supabase: { from: () => query }, now: new Date("2026-10-11T18:05:00Z"),
+      supabase, now: new Date("2026-10-11T18:05:00Z"),
       runNormalized: async (args) => { received = args.teamConcurrency; return { ran: false }; },
     });
-    // "on" er ikke et tal ⇒ den sekventielle default.
-    assert.equal(received, 1);
+    return received;
+  }
+
+  it("den normaliserede sweep faar knappens vaerdi med, og uden knap den sekventielle 1", async () => {
+    assert.equal(await sweepConcurrency(12), 12);
+    assert.equal(await sweepConcurrency(undefined), 1);
+    assert.equal(await sweepConcurrency("on"), 1);
   });
 });
 
@@ -1214,6 +1228,14 @@ describe("startTrainingDayCloseAfterStages (#5911: start straks efter dagens sid
     assert.equal(captured[0][0], "late");
     assert.equal(captured[0][1].tags.cron, "training-day-close");
     assert.deepEqual(captured[0][1].pending, [1, 2]);
+  });
+
+  it("stage-scheduleren kalder den tidlige start efter tick'et med alle afviklede etaper", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const src = readFileSync(resolve(import.meta.dirname, "stageScheduler.js"), "utf8");
+    assert.match(src, /startTrainingDayClose\s*=\s*startTrainingDayCloseAfterStages/);
+    assert.match(src, /startTrainingDayClose\(\{ supabase, stagesRan: ran \+ recovered \+ resumed, captureExceptionFn \}\);\s*return \{ ran, errors/);
   });
 
   it("en fejlende sweep kaster aldrig ind i stage-scheduleren", async () => {
