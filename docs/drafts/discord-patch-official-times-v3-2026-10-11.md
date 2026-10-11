@@ -15,7 +15,7 @@ Every race that starts from now on runs on the new race rules. Races that have a
 - On a hilly time trial, Time trial is the main ability. Climbing only counts for the uphill part.
 - With no Sprint captain, a Captain who is a sprinter gets the sprint train on flat stages.
 - The team classification uses times without bonus seconds.
-- Races use each rider's Form. Form peaks count in races from season 5.
+- Races use each rider's Form. Form peaks do not count in races yet.
 
 The Help page has the details under Break orders and GC reaction.
 ```
@@ -51,11 +51,11 @@ Lægges ind ved tænding af den session der merger (patchNotes.js kræver samtid
       "topic": "Races",
       "en": {
         "title": "Time trials, sprint trains and form",
-        "body": "On a hilly time trial, Time trial is the main ability and Climbing only counts for the uphill part. With no Sprint captain, a Captain who is a sprinter gets the sprint train on flat stages. The team classification uses times without bonus seconds. Races use each rider's Form; form peaks count in races from season 5."
+        "body": "On a hilly time trial, Time trial is the main ability and Climbing only counts for the uphill part. With no Sprint captain, a Captain who is a sprinter gets the sprint train on flat stages. The team classification uses times without bonus seconds. Races use each rider's Form; form peaks do not count in races yet."
       },
       "da": {
         "title": "Enkeltstarter, sprint-tog og form",
-        "body": "På en kuperet enkeltstart er Enkeltstart den vigtigste evne, og Klatring tæller kun for stykkerne opad. Uden sprint-kaptajn får en kaptajn, der er sprinter, sprint-toget på flade etaper. Holdklassementet bruger tiderne uden bonussekunder. Løbene bruger hver rytters form; formtoppe tæller i løbene fra sæson 5."
+        "body": "På en kuperet enkeltstart er Enkeltstart den vigtigste evne, og Klatring tæller kun for stykkerne opad. Uden sprint-kaptajn får en kaptajn, der er sprinter, sprint-toget på flade etaper. Holdklassementet bruger tiderne uden bonussekunder. Løbene bruger hver rytters form; formtoppe tæller ikke i løbene endnu."
       },
       "refs": [6349, 6352, 6338, 6156]
     }
