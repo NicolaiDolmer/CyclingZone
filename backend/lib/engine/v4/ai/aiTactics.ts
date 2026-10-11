@@ -290,6 +290,62 @@ function isSprintTrainRider(entrant: AiRosterEntrant, teamHasSprintCaptain: bool
   );
 }
 
+export type AiStanceDecision = {
+  stance: BreakawayStance;
+  reason: string;
+  /** Dagens terraen-relevante kaptajn (null = holdet har ingen). */
+  leader: AiRosterEntrant | null;
+  /** Kaptajnens plads i feltet paa dagens primaere evne (Infinity uden kaptajn). */
+  leaderRank: number;
+};
+
+/**
+ * M14's holdstance for én etape (punkt 1-4 i generateAiTeamOrder): kaptajnen
+ * blandt feltets favoritter -> chase, uden for feltets top eller ingen
+ * kaptajn -> let_go, ellers neutral. Ren og deterministisk.
+ *
+ * #6441 (ejer 10/10 kl. 22:40): under official_times_v3 er dette ogsaa
+ * standard-stancen for et menneskehold uden egen udbrudsordre for etapen
+ * (orders/teamOrdersAdapter.ts). Én regel, ingen kopi.
+ */
+export function decideAiBreakawayStance(input: Pick<AiTacticsInput, "route" | "roster" | "field">): AiStanceDecision {
+  const demand = classifyTerrainDemand(input.route);
+  const primaryAbility = PRIMARY_ABILITY_BY_DEMAND[demand];
+  const terrainLabel = TERRAIN_DEMAND_LABEL[demand];
+  const leaderRole = leaderRoleForDemand(demand);
+  const field: readonly AiFieldRider[] = input.field && input.field.length > 0 ? input.field : input.roster;
+  const fieldPrimary = field.map((r) => clampAbility(r.abilities[primaryAbility]));
+
+  const leader = input.roster.find((r) => r.role === leaderRole) ?? null;
+  const leaderAbility = leader ? abilityOf(leader, primaryAbility) : 0;
+  const leaderRank = leader ? fieldRank(leaderAbility, fieldPrimary) : Number.POSITIVE_INFINITY;
+
+  if (leader !== null && leaderRank <= AI_TACTICS_TUNING.CONTENDER_FIELD_RANK) {
+    return {
+      stance: "chase",
+      reason: `${capitalize(leaderRoleLabel(leaderRole))} ${primaryAbility} er nr. ${leaderRank} i feltet til ${terrainLabel} — holdet jager udbrud ned for at holde loebet aabent.`,
+      leader,
+      leaderRank,
+    };
+  }
+  if (leader === null || leaderRank > AI_TACTICS_TUNING.OUTSIDER_FIELD_RANK) {
+    return {
+      stance: "let_go",
+      reason: leader
+        ? `${capitalize(leaderRoleLabel(leaderRole))} ${primaryAbility} er nr. ${leaderRank} i feltet til ${terrainLabel} — intet at forsvare, sparer kraefter.`
+        : `Ingen ${leaderRole === "sprint_captain" ? "sprint-kaptajn" : "kaptajn"} paa holdlisten til ${terrainLabel} — intet at forsvare, sparer kraefter.`,
+      leader,
+      leaderRank,
+    };
+  }
+  return {
+    stance: "neutral",
+    reason: `${capitalize(leaderRoleLabel(leaderRole))} ${primaryAbility} er nr. ${leaderRank} i feltet til ${terrainLabel} — hverken tydelig fordel ved at jage eller ved at spare.`,
+    leader,
+    leaderRank,
+  };
+}
+
 /**
  * M14: genererer ét holds TeamOrder for én etape, plus en forklaring pr.
  * ordre. Ren funktion — deterministisk i (team_id, route, roster, field, race).
@@ -323,25 +379,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
   const field: readonly AiFieldRider[] = input.field && input.field.length > 0 ? input.field : input.roster;
   const fieldPrimary = field.map((r) => clampAbility(r.abilities[primaryAbility]));
 
-  const leader = input.roster.find((r) => r.role === leaderRole) ?? null;
-  const leaderAbility = leader ? abilityOf(leader, primaryAbility) : 0;
-  const leaderRank = leader ? fieldRank(leaderAbility, fieldPrimary) : Number.POSITIVE_INFINITY;
-
-  let stance: BreakawayStance;
-  let stanceReason: string;
-
-  if (leader !== null && leaderRank <= AI_TACTICS_TUNING.CONTENDER_FIELD_RANK) {
-    stance = "chase";
-    stanceReason = `${capitalize(leaderRoleLabel(leaderRole))} ${primaryAbility} er nr. ${leaderRank} i feltet til ${terrainLabel} — holdet jager udbrud ned for at holde loebet aabent.`;
-  } else if (leader === null || leaderRank > AI_TACTICS_TUNING.OUTSIDER_FIELD_RANK) {
-    stance = "let_go";
-    stanceReason = leader
-      ? `${capitalize(leaderRoleLabel(leaderRole))} ${primaryAbility} er nr. ${leaderRank} i feltet til ${terrainLabel} — intet at forsvare, sparer kraefter.`
-      : `Ingen ${leaderRole === "sprint_captain" ? "sprint-kaptajn" : "kaptajn"} paa holdlisten til ${terrainLabel} — intet at forsvare, sparer kraefter.`;
-  } else {
-    stance = "neutral";
-    stanceReason = `${capitalize(leaderRoleLabel(leaderRole))} ${primaryAbility} er nr. ${leaderRank} i feltet til ${terrainLabel} — hverken tydelig fordel ved at jage eller ved at spare.`;
-  }
+  const { stance, reason: stanceReason, leader, leaderRank } = decideAiBreakawayStance(input);
 
   const decisiveDay = stance === "chase" && isDecisiveDay(demand, input.race);
 
