@@ -26,7 +26,7 @@
 //
 // Usage:
 //   node backend/scripts/v4GcMargin.mjs [--population=<fil>] [--stages=<fil>]
-//     [--seeds=s1,s2,s3] [--field-size=180] [--json=<fil>]
+//     [--seeds=s1,s2,s3] [--field-size=180] [--json=<fil>] [--rules=<revision>]
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -38,6 +38,8 @@ import { RACE_V4_TUNING } from "../lib/engine/v4/tuning.ts";
 import { routeFromStageProfileRow } from "../lib/engine/v4/adapters/routeAdapter.ts";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { sampleField } from "./lib/headToHeadStats.js";
+import { buildGcContext } from "../lib/raceEngineV4Bridge.js";
+import { isOrdersGcRulesRevision, isOrdersGcV3OrLater } from "../lib/raceEngineRulesRevision.ts";
 import { formatScorecard, scoreGtWinnerMargin } from "./lib/headToHeadAnchors.js";
 import { LOCKED_FIELD_SIZE, resolveSeeds, v3EntrantsFromPopulation, v4EntrantsFromPopulation } from "./headToHeadV4.js";
 
@@ -129,7 +131,7 @@ export function accumulateGc(startRiderIds, outcomes) {
  * Koerer én grand tour med ét fast felt i begge motorer.
  * @returns {{raceId: string, seed: string, v3: ReturnType<typeof accumulateGc>, v4: ReturnType<typeof accumulateGc>}}
  */
-export function runGrandTour({ population, tour, seed, fieldSize = LOCKED_FIELD_SIZE }) {
+export function runGrandTour({ population, tour, seed, fieldSize = LOCKED_FIELD_SIZE, rulesRevision = undefined }) {
   const tourSeed = `${seed}:${tour.raceId}`;
   const field = fieldSize
     ? sampleField(makeRng(stableSeed(`${tourSeed}:field`)), population.riders, fieldSize)
@@ -161,6 +163,14 @@ export function runGrandTour({ population, tour, seed, fieldSize = LOCKED_FIELD_
       orders: [],
       seed: stageSeedStr,
       tuning: RACE_V4_TUNING,
+      // #6442: v4 under en regel-revision (samme form som headToHeadV4.runHeadToHead); udeladt = legacy (uaendret).
+      ...(rulesRevision ? { rules_revision: rulesRevision } : {}),
+      // Nat 11/10 (Fable-dom #6443, del A): under orders_gc-revisionerne faar motoren
+      // klassementet foer etapen, som spillet giver det (raceEngineV4Bridge.buildV4StageInput).
+      // Uden det kan GC-reaktionen aldrig fyre, og proxy-GT'en maaler en strengere motor end spillets.
+      ...(isOrdersGcRulesRevision(rulesRevision)
+        ? { gc_context: proxyGcContext({ startIds, inRace: v4InRace, outcomes: v4Outcomes, stageRow, stages: tour.stages, rulesRevision }) }
+        : {}),
     });
     const v4Outcome = v4StageOutcome(v4Output);
     v4Outcomes.push(v4Outcome);
@@ -170,14 +180,32 @@ export function runGrandTour({ population, tour, seed, fieldSize = LOCKED_FIELD_
   return { raceId: tour.raceId, seed, v3: accumulateGc(startIds, v3Outcomes), v4: accumulateGc(startIds, v4Outcomes) };
 }
 
+/**
+ * GC-konteksten for proxy-GT'en under orders_gc-revisionerne: klassementet foer
+ * etapen (kumuleret tid minus bonus over de kørte etaper, kun dagens startere),
+ * bygget med spillets egen buildGcContext. Etape 1 = "first_stage".
+ */
+export function proxyGcContext({ startIds, inRace, outcomes, stageRow, stages, rulesRevision }) {
+  // Etapens nummer i sit eget løb (proxy-filen nummererer nogle løb fortløbende i hele filen).
+  const stageNumber = Number(stageRow.race_stage_number ?? stageRow.stage_number ?? 1);
+  const standings = outcomes.length === 0
+    ? []
+    : accumulateGc(startIds, outcomes).standings.map((s) => ({ rider_id: s.rider_id, time: s.gc_seconds }));
+  const ctx = buildGcContext({ isStageRace: true, stageNumber, standings, starterIds: inRace });
+  if (isOrdersGcV3OrLater(rulesRevision) && ctx.status === "standings") {
+    ctx.stages_remaining = stages.filter((s) => Number(s.race_stage_number ?? s.stage_number ?? 1) > stageNumber).length;
+  }
+  return ctx;
+}
+
 /** Alle pinnede grand tours x seeds -> kørsler + anker. */
-export function measureGtMargins({ population, stages, seeds = DEFAULT_SEEDS, fieldSize = LOCKED_FIELD_SIZE }) {
+export function measureGtMargins({ population, stages, seeds = DEFAULT_SEEDS, fieldSize = LOCKED_FIELD_SIZE, rulesRevision = undefined }) {
   if (!population?.riders?.length) throw new Error("population.riders mangler eller er tom");
   const tours = pinGrandTours(stages);
   if (tours.length === 0) throw new Error(`ingen grand tours (race_id med >= ${GRAND_TOUR_MIN_STAGES} etaper) i etape-filen`);
   const runs = [];
   for (const seed of seeds) {
-    for (const tour of tours) runs.push(runGrandTour({ population, tour, seed, fieldSize }));
+    for (const tour of tours) runs.push(runGrandTour({ population, tour, seed, fieldSize, rulesRevision }));
   }
   const anchor = scoreGtWinnerMargin({
     v3Margins: runs.map((r) => r.v3.marginSeconds),
@@ -206,12 +234,13 @@ function main() {
   const fieldArg = argValue("field-size");
   const fieldSize = fieldArg === "all" ? null : Number(fieldArg ?? LOCKED_FIELD_SIZE);
   const jsonPath = argValue("json");
+  const rulesRevision = argValue("rules") ?? undefined;
 
   const population = JSON.parse(readFileSync(populationPath, "utf8"));
   const stagesFile = JSON.parse(readFileSync(stagesPath, "utf8"));
   const stages = Array.isArray(stagesFile) ? stagesFile : stagesFile.stages;
 
-  const result = measureGtMargins({ population, stages, seeds, fieldSize });
+  const result = measureGtMargins({ population, stages, seeds, fieldSize, rulesRevision });
   console.log(`Grand tours: ${result.tours.map((t) => `${t.raceId} (${t.stages} etaper)`).join(", ")}. Seeds: ${seeds.join(", ")}. Felt: ${fieldSize ?? "hele populationen"}.`);
   console.log("");
   console.log("GT x seed | v3 margin (m:ss) | v4 margin (m:ss) | v3 i maal | v4 i maal");
