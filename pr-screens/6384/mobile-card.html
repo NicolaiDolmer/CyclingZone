@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+body{margin:0;background:#f7f5ef;font-family:Inter,Segoe UI,Arial,sans-serif;color:#1d2433;padding:32px;width:1100px}
+h1{font-size:26px;margin:0 0 6px}
+p.sub{margin:0 0 22px;color:#555;font-size:15px}
+.row{display:flex;gap:28px;align-items:flex-start}
+.col{flex:none}
+.col h2{font-size:17px;margin:0 0 10px}
+.col.before h2{color:#1d2433}.col.after h2{color:#9a7300}
+.shot{position:relative;width:390px;border:1px solid #d9d4c7;border-radius:5px;overflow:hidden}
+.shot img{display:block;width:390px;height:auto}
+.pin{position:absolute;width:24px;height:24px;border-radius:50%;background:#c0392b;color:#fff;font:700 13px/24px Arial;text-align:center;box-shadow:0 0 0 2px #fff}
+.legend{width:230px;font-size:15px;line-height:1.45}
+.legend div{margin-bottom:14px}
+.legend b.n{display:inline-block;width:22px;height:22px;border-radius:50%;background:#c0392b;color:#fff;text-align:center;font:700 12px/22px Arial;margin-right:6px}
+</style></head><body>
+<h1>#6384 mobil (390 px): ungdomstabellen holder sig på én linje</h1>
+<p class="sub">Preview-data (fiktive ryttere). Desktop er uændret (samme klasser fra sm: og op).</p>
+<div class="row">
+  <div class="col before"><h2>FØR (PR #6466 som den står)</h2>
+    <div class="shot"><img src="mobile-before.jpg">
+      <span class="pin" style="left:4px;top:58px">1</span>
+      <span class="pin" style="left:4px;top:120px">2</span>
+    </div></div>
+  <div class="col after"><h2>EFTER (rettet)</h2>
+    <div class="shot"><img src="mobile-after.jpg">
+      <span class="pin" style="left:4px;top:58px">1</span>
+      <span class="pin" style="left:4px;top:96px">2</span>
+    </div></div>
+  <div class="legend">
+    <div><b class="n">1</b><b>DIG-mærket</b> stod alene på en ny linje. Nu hænger det fast i navnet.</div>
+    <div><b class="n">2</b><b>Holdnavne</b> brød over to linjer. Nu står de på én linje; meget lange navne afkortes med "…" (fuldt navn ved hold-over).</div>
+    <div>Rækkerne er 37 px i stedet for 49-57 px, så tabellen er ca. 30 % kortere. Ingen vandret scroll (322/322 px).</div>
+    <div>Samme rettelse gælder GC- og etapetabellerne, som havde samme DIG-brud i forvejen.</div>
+  </div>
+</div>
+</body></html>

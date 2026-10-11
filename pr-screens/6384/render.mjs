@@ -1,0 +1,10 @@
+import { createRequire } from "node:module";
+const { chromium } = createRequire(import.meta.url)("../../frontend/node_modules/playwright");
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+const dir = path.dirname(fileURLToPath(import.meta.url));
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1164, height: 900 }, deviceScaleFactor: 2 });
+await page.goto(pathToFileURL(path.join(dir, "mobile-card.html")).href);
+await page.screenshot({ path: path.join(dir, "before-after-6384-mobile.png"), fullPage: true });
+await browser.close();
