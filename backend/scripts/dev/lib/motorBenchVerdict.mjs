@@ -195,6 +195,52 @@ export function beforeAfter(prevGroups, currGroups, { revision }) {
   return out;
 }
 
+const medianOf = (xs) => {
+  const s = xs.filter((x) => x !== null && x !== undefined && Number.isFinite(Number(x))).map(Number).sort((a, b) => a - b);
+  if (!s.length) return null;
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+/**
+ * #6464 (ejer 11/10: samme maal for nr. 10 i alle divisioner): nr. 10 doemt pr.
+ * division og gab-klasse (topankomst `mountain`, bjerg uden topankomst
+ * `mountain_non_summit`, ...). Ingen de-duplikering: samme rute i to divisioner
+ * er netop to maalinger her. Pr. revision: antal etaper, medianen af etapernes
+ * nr. 10 (hentede seeds) og PASS/WARN/FAIL. Raekker uden division staar som "D?".
+ */
+export function divisionGapSummary(races, revisions) {
+  const groups = new Map();
+  for (const race of races ?? []) {
+    const division = race.division?.tier !== undefined && race.division?.tier !== null ? `D${race.division.tier}` : "D?";
+    for (const st of race.stages ?? []) {
+      const gapClass = st.gapTo10Class ?? st.cls ?? "unknown";
+      const key = `${division}|${gapClass}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { division, gapClass, stages: 0, rows: [] };
+        groups.set(key, g);
+      }
+      g.stages++;
+      g.rows.push(st);
+    }
+  }
+  const out = [];
+  for (const g of groups.values()) {
+    const byRevision = {};
+    for (const rev of revisions) {
+      const counts = { PASS: 0, WARN: 0, FAIL: 0 };
+      for (const st of g.rows) {
+        const status = st.revisions?.[rev]?.verdicts?.gapTo10?.status;
+        if (counts[status] !== undefined) counts[status]++;
+      }
+      byRevision[rev] = { medianGapTo10: medianOf(g.rows.map((st) => st.revisions?.[rev]?.gapTo10)), ...counts };
+    }
+    out.push({ division: g.division, gapClass: g.gapClass, stages: g.stages, byRevision });
+  }
+  return out.sort((a, b) => a.division.localeCompare(b.division) || a.gapClass.localeCompare(b.gapClass));
+}
+
 /**
  * Hele den automatiske dom til bench.json (`bench.verdict`) og verdict.json
  * (`auto`). `previous` er en forrige bench.json (valgfri).

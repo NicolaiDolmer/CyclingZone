@@ -693,6 +693,8 @@ export type SegmentHookContext = {
     incidentCursor?: number;
     /** #6200: 3 = official_times_v3's time model (mechanics/timeModel.ts). Absent = official_times_v1/v2. */
     timeModelGeneration?: 3;
+    /** #6464 (KUN official_times_v4): bjergets tidsgab i feltets egen evne-spredning. Absent = official_times_v3 and older. */
+    mountainGapsV4?: true;
   }>;
   segment: Segment;
   segmentIndex: number;

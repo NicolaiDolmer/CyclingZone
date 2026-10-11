@@ -109,6 +109,9 @@ export const TOUR_BENCHMARKS = Object.freeze({
       // #6440: en kort afslutning opad doemmes efter ejerens eget maal for netop
       // den etapetype (#6199 del 3), ikke bjerg-baandet (de to kan ikke begge holde).
       short_uphill: { max: ANCHOR_BANDS.shortUphillFinishSeconds.maxByRank[10], status: "ejer", source: ANCHOR_BANDS.shortUphillFinishSeconds.source },
+      // #6456 (ejer 11/10: orkestratorens forslag, ejeren bekraefter ved taending):
+      // paa en bjergetape uden topankomst samles favoritterne efter toppen.
+      mountain_non_summit: { max: 90, status: "forslag", source: "#6456 (ejer 11/10, bekraeftes ved taending): bjergetape uden topankomst, nr. 10 hoejst ca. 1:30 efter vinderen" },
     },
   },
   gapTo30: {
@@ -202,14 +205,21 @@ export function gapClass(profile) {
 
 /**
  * Ejer-beslutning 2/9 (#4604, RULES "Bjerg-ankerets maaleflade"): bjerg-top-10-
- * spredningen (nr. 10) maales KUN paa topankomster (finale long_climb, samme
- * definition som headToHeadAnchors.scoreGapRealism). Paa andre bjerg-/hoejfjelds-
- * etaper er nr. 10 "N/A" med grund. Kun nr. 10: nr. 30-baandet beholdes (ingen
- * hjemmel til at fjerne det). Disse etaper har i dag intet andet nr. 10-tjek,
- * medmindre finalen er en nedkoersel (D1/D3) - aabent hul, se #6456.
+ * spredningen (nr. 10, 60-150 s) maales KUN paa topankomster (finale long_climb,
+ * samme definition som headToHeadAnchors.scoreGapRealism). #6456 (ejer 11/10):
+ * paa andre bjerg-/hoejfjeldsetaper doemmes nr. 10 mod sit eget loft
+ * (`mountain_non_summit`, gapTo10Class). Kun nr. 10: nr. 30 doemmes som foer.
  */
 export function isMountainNonSummit(profile) {
   return profileClass(profile?.profile_type) === "mountain" && profile?.finale_type !== "long_climb" && !isShortUphillFinish(profile);
+}
+
+/**
+ * #6456: benchmark-klassen for nr. 10. Bjerg uden topankomst har sit eget loft
+ * (`mountain_non_summit`); alle andre etaper gapClass (nr. 30 bruger altid gapClass).
+ */
+export function gapTo10Class(profile) {
+  return isMountainNonSummit(profile) ? "mountain_non_summit" : gapClass(profile);
 }
 
 /** Faerre hentede seeds end dette = tidsgabet kan hoejst blive WARN (lille n). */
@@ -733,12 +743,9 @@ export function summarizeTour(perSeed, stages, revision = null) {
     row.verdicts = {};
     const gapCls = gapClass(p); // #6440
     for (const key of ["gapTo10", "gapTo30", "ittGapTo10Per40Km", "breakawaySize", "ittHillyTempoMinusClimb", "leadoutRankGain"]) {
-      const band = TOUR_BENCHMARKS[key]?.byClass?.[key === "gapTo10" || key === "gapTo30" ? gapCls : cls];
-      if (key === "gapTo10" && isMountainNonSummit(p)) {
-        row.verdicts.gapTo10 = "N/A";
-        row.gapNote = "bjerg uden topankomst: nr. 10 maales kun paa topankomster (#4604)";
-        continue;
-      }
+      const band = TOUR_BENCHMARKS[key]?.byClass?.[key === "gapTo10" ? gapTo10Class(p) : key === "gapTo30" ? gapCls : cls];
+      // #6456: bjerg uden topankomst doemmes mod sit eget loft, ikke topankomstens baand.
+      if (key === "gapTo10" && isMountainNonSummit(p)) row.gapNote = "bjerg uden topankomst: nr. 10 doemmes mod loftet for bjergetaper uden topankomst (#6456), ikke topankomstens baand (#4604)";
       if (band) row.verdicts[key] = verdict(row[key], band);
       // Lille n: dommen hviler paa faa hentede seeds og kan hoejst blive WARN.
       if ((key === "gapTo10" || key === "gapTo30") && row.verdicts[key] === "PASS" && row.gapSeeds < GAP_MIN_CAUGHT_SEEDS) row.verdicts[key] = "WARN";

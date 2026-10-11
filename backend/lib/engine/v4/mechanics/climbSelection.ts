@@ -38,10 +38,29 @@ import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFFORT_EXTRA_TUNING, ORDERS_GC_V1_CLIMB_GAIN_TUNING } from "../tuning.ts";
 import type { GroupTempoModel } from "../tuning.ts";
-import type { EffortLevel } from "../types.ts";
+import type { EffortLevel, Entrant } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
+
+// #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
+// etapens) og tuning; ren funktion af feltets klatre-evner.
+const FIELD_SCALE_CACHE = new WeakMap<object, Map<TimeModelTuning, number>>();
+
+function fieldClimbGapScale(entrants: Readonly<Record<string, Entrant>>, t: TimeModelTuning): number {
+  if (!(t.climbGapFieldSpreadReferencePoints > 0)) return 1;
+  let byTuning = FIELD_SCALE_CACHE.get(entrants);
+  if (!byTuning) {
+    byTuning = new Map();
+    FIELD_SCALE_CACHE.set(entrants, byTuning);
+  }
+  let scale = byTuning.get(t);
+  if (scale === undefined) {
+    scale = climbGapFieldScale(Object.values(entrants).map((e) => e.abilities.climbing), t);
+    byTuning.set(t, scale);
+  }
+  return scale;
+}
 
 // #6199: en gruppetto samles i hoejst én klynge (se kaldestedet).
 const GRUPPETTO_SINGLE_CLUSTER_TUNING = Object.freeze({ ...TIME_MODEL_V3_TUNING, clusterMaxGroups: 1 });
@@ -584,7 +603,11 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // Ren revision spor 1, D1 (KUN official_times_v3; vaegtene er 0 og skalaen 1 i
     // alle aeldre tidsmodeller): evne-vaegt, dagsform og angreb paa den afgoerende
     // stigning foer nedkoerselsfinalen.
-    const climbModel = descentDecider ? descentFinishDecidingClimbTuning(timeModel) : timeModel;
+    // #6464 (KUN official_times_v4; faktor 1 i alle aeldre tidsmodeller): hullet
+    // maales i feltets egen klatre-spredning, saa nr. 10 paa en topankomst ligger
+    // ens i alle divisioner. Samme faktor for alle ryttere paa etapen.
+    const fieldScale = timeModel.climbGapFieldScaleProfiles.includes(ctx.route.profile_type) ? fieldClimbGapScale(ctx.entrants, timeModel) : 1;
+    const climbModel = fieldScaledClimbTuning(descentDecider ? descentFinishDecidingClimbTuning(timeModel) : timeModel, fieldScale);
     const selections = descentDecider
       ? decidingClimbSelectionsOnTheDay(baseSelections, (id) => ctx.entrants[id]?.abilities.climbing ?? 0,
         (id) => nextState.riders[id]?.dayform ?? 0,
