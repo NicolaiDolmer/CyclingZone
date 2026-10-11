@@ -16,6 +16,7 @@ import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLink";
 import { resolveAggregateLink } from "../components/notifications/aggregateLink.ts"; // #5417
 import { notifyUnreadChanged, subscribeUnreadSync } from "../components/notifications/unreadSync.js"; // #6473
+import { findSupersededUnreadIds } from "../components/notifications/supersededUnread.js"; // #6385
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -487,8 +488,19 @@ export default function NotificationsPage() {
       if (!quiet) { setNotifLoadError(true); setNotifLoading(false); }
       return;
     }
-    setNotifications(data || []);
+    // #6385: ulæste bud-beskeder for afgjorte auktioner er skjult i listen men
+    // talte med i badgen — læs dem stille, så tallet er sandt.
+    const hiddenUnread = new Set(findSupersededUnreadIds(data || []));
+    setNotifications(hiddenUnread.size
+      ? (data || []).map(n => (hiddenUnread.has(n.id) ? { ...n, is_read: true } : n))
+      : (data || []));
     setNotifLoading(false);
+    if (hiddenUnread.size) {
+      const { error: healError } = await supabase.from("notifications")
+        .update({ is_read: true }).in("id", [...hiddenUnread]);
+      if (healError) reportActionFailure("notification_heal_superseded", { reason: healError.message, context: { count: hiddenUnread.size } });
+      else notifyUnreadChanged();
+    }
   }
 
   async function loadFeed() {
