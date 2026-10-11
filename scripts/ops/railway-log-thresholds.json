@@ -63,6 +63,7 @@
     "retirement-notice": 5,
     "rider-view-log": 10,
     "runStarterSquadAllocation": 5,
+    "squadEntryCleanup": 10,
     "starterSquadHealSweep": 10,
     "teamProfileEngine": 10,
     "welcome-notification": 5

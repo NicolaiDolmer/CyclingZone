@@ -91,11 +91,9 @@ export async function clearOffSquadEntriesSafe(supabase, {
   riderId, squad, label = "squad_change", clear = clearOffSquadEntries,
 }) {
   try {
-    const res = await clear(supabase, { riderId, squad });
-    if (res.cleared) {
-      console.log(`[squadEntryCleanup] ${label}: ryddede ${res.cleared} entries i andre trupper for rytter ${riderId}`);
-    }
-    return res;
+    // Ingen succes-log: en graduerings-bølge ville ellers fylde log-vagtens
+    // spand for tagget (railway-log-thresholds.json) med tilstandsbeskeder.
+    return await clear(supabase, { riderId, squad });
   } catch (err) {
     // best-effort: trup-skiftet er allerede skrevet; motoren filtrerer
     // forkert-trup-entries fra ved start og start-redningen fylder holdet op.
