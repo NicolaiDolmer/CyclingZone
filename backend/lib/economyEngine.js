@@ -630,7 +630,7 @@ export async function processSeasonStart(seasonId, deps = {}) {
     (Array.isArray(payrollOutcome) ? payrollOutcome : []);
 
   // #1137 · Passiv rytterudvikling: vækst mod loft / fald efter peak / semi-auto
-  // retirement + base_value-recompute. Kører fra sæson 2 (sæson 1 = launch-baseline,
+  // retirement (#5842: ingen værdi-skrivning; søndagskørslen tager den). Kører fra sæson 2 (sæson 1 = launch-baseline,
   // intet at udvikle fra). Idempotent via rider_development_log. Isoleret: en fejl
   // her må ikke rulle sponsor/payroll tilbage (allerede skrevet) → fang + rapportér.
   // Gaten (progressionWillRun) afgøres før payroll ovenfor — se #1155/#4153 dér.

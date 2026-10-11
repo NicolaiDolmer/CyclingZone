@@ -35,7 +35,13 @@
 // motor-revision (spec 2026-10-10-ren-motor-revision-design.md). Aktuel for nye
 // loeb fra ejerens ordrette "taend" (#6452); migrationen
 // 2026-10-11-race-engine-rules-revision-official-times-v3.sql goer vaerdien lovlig.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3"] as const;
+// #6464 + #6456 (ejer 11/10, slukket): "official_times_v4" = hele
+// official_times_v3-pakken + bjergets tidsgab ens i alle divisioner (nr. 10 paa
+// en topankomst maales i feltets egen evne-spredning, ikke i absolutte
+// evne-point) + et maal for bjergetaper uden topankomst. Aktuel for nye loeb fra
+// ejerens ordrette "taend"; migrationen
+// 2026-10-12-race-engine-rules-revision-official-times-v4.sql goer vaerdien lovlig.
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -56,22 +62,36 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   official_times_v2: 3,
   // #6200: official_times_v2 + the descent-finish package; same v3 mechanics.
   official_times_v3: 3,
+  // #6464: official_times_v3 + mountain gaps in every division; same v3 mechanics.
+  official_times_v4: 3,
 });
 
-const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3"]);
+const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4"]);
 
 /**
- * #6200: the shared time model's generation. 3 = official_times_v3 (the
- * descent-finish package on top of official_times_v2); 0 for everything that is
- * not official_times_v3. Never inferred from the orders_gc generation.
+ * #6200: the shared time model's generation. 3 = official_times_v3 OR LATER
+ * (the descent-finish package on top of official_times_v2; official_times_v4
+ * inherits it whole); 0 for everything before official_times_v3. Never inferred
+ * from the orders_gc generation. #6464: official_times_v4's own additions are
+ * asked with isOfficialTimesV4OrLater, so every "generation 3" call site keeps
+ * treating v4 exactly as v3.
  */
 export function sharedTimeModelGeneration(value: unknown): 0 | 3 {
-  return value === "official_times_v3" ? 3 : 0;
+  return value === "official_times_v3" || value === "official_times_v4" ? 3 : 0;
 }
 
 /** Den rene motor-revision (#6349/#6352/#6338 m.fl.): official_times_v3 eller senere. */
 export function isOfficialTimesV3OrLater(revision: unknown): boolean {
   return sharedTimeModelGeneration(revision) >= 3;
+}
+
+/**
+ * #6464 + #6456 (slukket): official_times_v4 eller senere. Bjergets tidsgab
+ * maales i feltets egen evne-spredning (samme maal i alle divisioner), og
+ * bjergetaper uden topankomst har et eget loft paa nr. 10.
+ */
+export function isOfficialTimesV4OrLater(revision: unknown): boolean {
+  return revision === "official_times_v4";
 }
 
 /** Only the future pinned official-times revisions store uncapped official stage gaps. */
@@ -136,8 +156,15 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * den. Migrationen 2026-10-11-race-engine-rules-revision-official-times-v3.sql
  * SKAL vaere applied foer foerste claim; ellers fejler bindingen hoejlydt paa
  * CHECK-constrainten (ingen tavs fallback).
+ *
+ * "official_times_v4" fra ejerens ordrette "taend" (#6464 + #6456): bjergets
+ * tidsgab ens i alle divisioner + bjergetaper uden topankomst er aktuel for ALLE
+ * loeb hvis foerste etape claimes efter deploy. Loeb der allerede er bundet til
+ * official_times_v3 (fx Touren) faerdiggoeres paa den. Migrationen
+ * 2026-10-12-race-engine-rules-revision-official-times-v4.sql SKAL vaere applied
+ * foer foerste claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten.
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v3";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v4";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;

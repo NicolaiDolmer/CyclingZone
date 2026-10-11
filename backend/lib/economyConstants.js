@@ -472,10 +472,14 @@ export const FINANCE_REASON = Object.freeze({
 });
 
 // Timen (Europe/Copenhagen) hvor søndagens værdiopdatering tidligst må køre.
+// #5842 (ejer 28/9): ét fast tidspunkt hver søndag mellem kl. 14 og 20, aldrig
+// om morgenen. 14 er en PLADSHOLDER: det præcise klokkeslæt bekræftes af ejeren
+// før merge. Ændres tallet, følger frontendens VALUE_UPDATE_HOUR og help.json
+// (en+da) med; paritetstesten fanger frontenden.
 // Bor HER og ikke i sundayValueSweep.js, fordi frontendens paritetstest skal
 // kunne importere tallet: sundayValueSweep.js trækker @sentry/node med sig, og
 // frontend-build-jobbet i CI installerer kun frontend/node_modules, så en import
 // derfra fejler i CI selvom den består lokalt. Denne fil har ingen imports.
 // Frontenden duplikerer tallet i auctionValueUpdateWindow.js (backend-kode må
 // ikke ind i bundlen); auctionValueUpdateWindow.parity.test.js holder de to i sync.
-export const SUNDAY_VALUE_FROM_HOUR = 6;
+export const SUNDAY_VALUE_FROM_HOUR = 14;

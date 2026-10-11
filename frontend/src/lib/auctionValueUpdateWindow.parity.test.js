@@ -17,6 +17,11 @@ test("frontendens VALUE_UPDATE_HOUR matcher backendens SUNDAY_VALUE_FROM_HOUR (c
   assert.equal(VALUE_UPDATE_HOUR, SUNDAY_VALUE_FROM_HOUR);
 });
 
+// #5842 (ejer 28/9): et fast tidspunkt mellem kl. 14 og 20, aldrig om morgenen.
+test("søndagstimen ligger i ejerens vindue kl. 14-20", () => {
+  assert.ok(VALUE_UPDATE_HOUR >= 14 && VALUE_UPDATE_HOUR <= 20, `kl. ${VALUE_UPDATE_HOUR}`);
+});
+
 test("varslet regner med søndag, samme ugedag som backendens gate", () => {
   assert.equal(VALUE_UPDATE_WEEKDAY, 0);
   // 2026-05-05 er en tirsdag; næste refresh skal lande på en søndag.

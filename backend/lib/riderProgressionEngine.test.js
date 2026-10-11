@@ -10,10 +10,6 @@ import {
   willRetireAtSeasonStart,
 } from "./riderProgressionEngine.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
-import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
-import { predictBaseValue } from "./riderValuation.js";
-import { currentProductionValue } from "./riderCareerNpv.js";
-import { loadValuationModelById, withPhaseStep } from "./riderValuationModelSelect.js";
 
 // ── Minimal in-memory Supabase-mock (kun det engine'n bruger) ──────────────────
 function createMockSupabase(state) {
@@ -97,31 +93,43 @@ function seedState({ riders, abilities }) {
   };
 }
 
-const MODEL = { a: 6.14, b: 0.126, offset: {} };
 
-test("#5497: sæson-transitionen med v6 regner prisen på modellens trin og løngrundlaget på v4", async () => {
-  // Pinnet v6 med app_config-trinnet lagt på (som loadValuationModelStrict gør).
-  // Tidligere trak en pinnet model løngrundlaget med sig; for v6 må det aldrig
-  // ske (løn følger ikke værdi), og prisen skal stå på samme trin som søndagen
-  // senest skrev, ikke trin 0.
-  const v6 = withPhaseStep(loadValuationModelById("v6"), 2);
-  const v4 = loadValuationModelById("v4");
-  const high = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 72]));
+// #5842: sæsonskiftet må ikke flytte rytterværdier. Evner, alder og pension
+// skrives; base_value og current_production_value står urørt til søndagskørslen.
+test("#5842: sæson-transitionen skriver evner og is_u25, men aldrig base_value eller current_production_value", async () => {
+  const rpcCalls = [];
   const state = seedState({
-    riders: [{ id: "r-v6", primary_type: "gc", secondary_type: "tt", valuation_type: "gc", potentiale: 3, birthdate: "1999-01-01", base_value: 1, current_production_value: 1, is_u25: false, is_retired: false, team_id: null, firstname: "A", lastname: "Elite" }],
-    abilities: [{ rider_id: "r-v6", ...high, ability_caps: null }],
+    riders: [
+      { id: "r-young", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, current_production_value: 90000, is_u25: true, is_retired: false, team_id: null, firstname: "Ung", lastname: "Talent" },
+      { id: "r-old", primary_type: "sprinter", potentiale: 5, birthdate: "1986-01-01", base_value: 50000, current_production_value: 40000, is_u25: false, is_retired: false, team_id: null, firstname: "Gammel", lastname: "Rytter" },
+    ],
+    abilities: [
+      { rider_id: "r-young", climbing: 55, tempo: 55, endurance: 55, ability_caps: null },
+      { rider_id: "r-old", sprint: 70, ability_caps: null },
+    ],
   });
-  state.app_config = []; // ingen løn-nøgle ⇒ v4 (fail-safe)
   const supabase = createMockSupabase(state);
-  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: v6, notify: false, dailyTrainingEnabled: false });
+  const spy = { from: supabase.from, rpc: (fn, args) => { rpcCalls.push(args); return supabase.rpc(fn, args); } };
+  // Ingen app_config-tabel seedet: motoren må ikke engang slå en værdimodel op.
+  const summary = await developRidersForSeason({ supabase: spy, seasonId: "s2", seasonNumber: 2, notify: false, dailyTrainingEnabled: false });
 
-  const abRow = state.rider_derived_abilities[0];
-  const next = Object.fromEntries(VISIBLE_ABILITIES.filter((k) => abRow[k] != null).map((k) => [k, Number(abRow[k])]));
-  const valueRider = { primary_type: "gc", secondary_type: "tt", valuation_type: "gc", potentiale: 3, age: ageForSeason("1999-01-01", 2) };
-  const rider = state.riders[0];
-  assert.equal(rider.base_value, predictBaseValue(valueRider, next, v6, { phaseStep: 2 }), "pris på trin 2");
-  assert.notEqual(rider.base_value, predictBaseValue(valueRider, next, v6, { phaseStep: 0 }), "ikke trin 0");
-  assert.equal(rider.current_production_value, currentProductionValue(valueRider, next, v4), "løngrundlag på v4, ikke v6");
+  assert.equal(summary.developed, 2);
+  assert.equal(summary.retired, 1, "pensionen skrives stadig i skiftet");
+  for (const call of rpcCalls) {
+    assert.equal("base_value" in call.p_rider_patch, false, `${call.p_rider_id}: base_value i rider-patch`);
+    assert.equal("current_production_value" in call.p_rider_patch, false, `${call.p_rider_id}: CPV i rider-patch`);
+    assert.equal(call.p_log.base_value, null, "dev-loggen bærer ingen ny værdi");
+    assert.equal(typeof call.p_rider_patch.is_u25, "boolean", "is_u25 skrives");
+  }
+  const young = state.riders.find((r) => r.id === "r-young");
+  const old = state.riders.find((r) => r.id === "r-old");
+  assert.ok(state.rider_derived_abilities.find((a) => a.rider_id === "r-young").climbing > 55, "evner udvikles");
+  assert.equal(young.base_value, 100000, "base_value urørt");
+  assert.equal(young.current_production_value, 90000, "CPV urørt");
+  assert.equal(old.is_retired, true);
+  assert.equal(old.base_value, 50000, "base_value urørt også ved pension");
+  assert.equal(old.current_production_value, 40000, "CPV urørt også ved pension");
+  assert.equal((state.app_config ?? []).length, 0);
 });
 
 test("ageForSeason er sæson-drevet (sæson 1 = launch-året)", () => {
@@ -130,13 +138,13 @@ test("ageForSeason er sæson-drevet (sæson 1 = launch-året)", () => {
   assert.equal(ageForSeason(null, 2), null);
 });
 
-test("ung høj-pot rytter udvikler sig + base_value stiger + caps initialiseres", async () => {
+test("ung høj-pot rytter udvikler sig + caps initialiseres (værdien venter på søndag, #5842)", async () => {
   const state = seedState({
     riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: null, firstname: "Ung", lastname: "Talent" }],
     abilities: [{ rider_id: "r1", climbing: 55, tempo: 55, endurance: 55, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  const summary = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL });
+  const summary = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2 });
 
   assert.equal(summary.developed, 1);
   assert.equal(summary.grew, 1);
@@ -144,33 +152,8 @@ test("ung høj-pot rytter udvikler sig + base_value stiger + caps initialiseres"
   const ab = state.rider_derived_abilities[0];
   assert.ok(ab.climbing > 55, "signatur-evne steg");
   assert.ok(ab.ability_caps && ab.ability_caps.climbing > 55, "loft sat fra baseline");
-  assert.ok(state.riders[0].base_value > 100000, "base_value steg med abilities");
+  assert.equal(state.riders[0].base_value, 100000, "base_value urørt i skiftet (#5842)");
   assert.equal(state.rider_development_log.length, 1, "snapshot skrevet til dev-log");
-});
-
-test("#3345: sæson-progression bruger riders.valuation_type (frossen) til base_value, ikke primary_type", async () => {
-  // To ryttere, SAMME primary_type (så vækst-trinet — som selv er styret af
-  // primary_type, se riderProgression.js — bliver identisk for begge) og SAMME
-  // abilities. Kun r-frozen har valuation_type sat til en ANDEN type. Modellens
-  // offset-tabel differentierer typerne kraftigt, så en forskel i base_value
-  // efter udvikling beviser at valuation_type (ikke primary_type) drev valget.
-  const MODEL_WITH_OFFSETS = { a: 6.14, b: 0.126, offset: { sprinter: 0, climber: 3 } };
-  const state = seedState({
-    riders: [
-      { id: "r-fresh", primary_type: "sprinter", potentiale: 3, birthdate: "1998-01-01", base_value: 100000, is_u25: false, is_retired: false, team_id: null, firstname: "A", lastname: "Fresh" },
-      { id: "r-frozen", primary_type: "sprinter", valuation_type: "climber", potentiale: 3, birthdate: "1998-01-01", base_value: 100000, is_u25: false, is_retired: false, team_id: null, firstname: "B", lastname: "Frozen" },
-    ],
-    abilities: [
-      { rider_id: "r-fresh", sprint: 55, acceleration: 55, ability_caps: null },
-      { rider_id: "r-frozen", sprint: 55, acceleration: 55, ability_caps: null },
-    ],
-  });
-  const supabase = createMockSupabase(state);
-  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL_WITH_OFFSETS });
-
-  const fresh = state.riders.find((r) => r.id === "r-fresh");
-  const frozen = state.riders.find((r) => r.id === "r-frozen");
-  assert.ok(frozen.base_value > fresh.base_value, "climber-offsettet (3) skal give en højere base_value end sprinter-offsettet (0)");
 });
 
 test("ability-history: season-transition skriver én season-snapshot pr. udviklet rytter (#2000)", async () => {
@@ -180,7 +163,7 @@ test("ability-history: season-transition skriver én season-snapshot pr. udvikle
   });
   const supabase = createMockSupabase(state);
   await developRidersForSeason({
-    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    supabase, seasonId: "s2", seasonNumber: 2,
     now: new Date("2026-06-12T10:00:00+02:00"),
   });
 
@@ -200,7 +183,7 @@ test("ability-history: idempotent — anden season-kørsel skriver ingen ny snap
     abilities: [{ rider_id: "r1", climbing: 55, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  const args = { supabase, seasonId: "s2", seasonNumber: 2, model: MODEL, now: new Date("2026-06-12T10:00:00+02:00") };
+  const args = { supabase, seasonId: "s2", seasonNumber: 2, now: new Date("2026-06-12T10:00:00+02:00") };
   await developRidersForSeason(args);
   await developRidersForSeason(args); // 2. kørsel: alle allerede udviklet → ingen nye logRows
   assert.equal((state.rider_derived_ability_history ?? []).length, 1, "kun én snapshot trods to kørsler");
@@ -212,11 +195,11 @@ test("idempotent: anden kørsel skipper alle og muterer intet yderligere", async
     abilities: [{ rider_id: "r1", climbing: 55, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL });
+  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2 });
   const afterFirst = state.rider_derived_abilities[0].climbing;
   const bvFirst = state.riders[0].base_value;
 
-  const summary2 = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL });
+  const summary2 = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2 });
   assert.equal(summary2.developed, 0);
   assert.equal(summary2.skipped_already_done, 1);
   assert.equal(state.rider_derived_abilities[0].climbing, afterFirst, "abilities uændret ved re-run");
@@ -233,7 +216,7 @@ test("garanteret retirement ved 40 + notifikation til ejer-hold", async () => {
   });
   const supabase = createMockSupabase(state);
   const summary = await developRidersForSeason({
-    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    supabase, seasonId: "s2", seasonNumber: 2,
     notifyTeamOwnerFn: async (args) => { notified.push(args); return { delivered: true }; },
   });
 
@@ -274,7 +257,7 @@ test("#5073: et frosset 'nej' for den AFSLUTTEDE sæson blokerer pensioneringen 
     abilities: [{ rider_id: NOTICE_RIDER.id, sprint: 70, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4 });
 
   assert.equal(summary.retirement_notice_read, 1, "cutover skal LÆSE frysningen");
   assert.equal(summary.retirement_notice_frozen, 0, "et allerede frosset svar må ikke skrives igen");
@@ -289,7 +272,7 @@ test("#5073: uden frysning ruller cutover og skriver svaret ned for sæson N−1
     abilities: [{ rider_id: NOTICE_RIDER.id, sprint: 70, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4 });
 
   assert.equal(summary.retirement_notice_read, 0, "der var intet frosset svar at læse");
   assert.equal(summary.retirement_notice_frozen, 1, "motorens eget rul skal skrives ned");
@@ -337,7 +320,7 @@ test("#5073: mangler varsel-kolonnerne, kører sæsonskiftet videre uden dem (in
     },
   };
 
-  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+  const summary = await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4 });
   assert.equal(summary.developed, 1, "rytteren skal stadig udvikles");
   assert.equal(summary.retired, 1, "rullet afgør pensionen som før #5073");
   assert.equal(summary.retirement_notice_read, 0);
@@ -385,7 +368,7 @@ test("#4153: loadRetiringRiderIds forudsiger præcis de holdryttere motoren pens
   // Samme rækkefølge som sæsonskiftet: opslag (payroll) FØR motoren.
   const predicted = await loadRetiringRiderIds({ supabase, seasonNumber });
   await developRidersForSeason({
-    supabase, seasonId: "s4", seasonNumber, model: MODEL, notify: false, dailyTrainingEnabled: false,
+    supabase, seasonId: "s4", seasonNumber, notify: false, dailyTrainingEnabled: false,
   });
   const retiredOnTeams = state.riders.filter((r) => r.is_retired && r.team_id != null).map((r) => r.id);
 
@@ -419,7 +402,7 @@ test("is_u25 opdateres når rytter passerer 25 (board #813 ser aldringen)", asyn
     abilities: [{ rider_id: "r1", flat: 60, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+  await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4 });
   assert.equal(state.riders[0].is_u25, false, "rytter på 26 er ikke længere U25");
 });
 
@@ -432,7 +415,7 @@ test("is_u25 - boundary 25 er STADIG U25 under UCI-reglen (ejer-beslutning 2/9)"
     abilities: [{ rider_id: "r1", flat: 60, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4, model: MODEL });
+  await developRidersForSeason({ supabase, seasonId: "s4", seasonNumber: 4 });
   assert.equal(state.riders[0].is_u25, true, "rytter på 25 er stadig U25 (UCI-reglen)");
 });
 
@@ -442,7 +425,7 @@ test("pensionerede ryttere udvikles ikke (filtreret på is_retired)", async () =
     abilities: [{ rider_id: "r1", climbing: 55, ability_caps: null }],
   });
   const supabase = createMockSupabase(state);
-  const summary = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL });
+  const summary = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2 });
   assert.equal(summary.developed, 0);
 });
 
@@ -469,7 +452,7 @@ test("flag OFF → ingen teams-forespørgsel, alle vokser som normalt", async ()
   // fordi teams ALDRIG bliver spurgt når flaget er OFF.
   const supabase = createMockSupabase(state);
   const summary = await developRidersForSeason({
-    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    supabase, seasonId: "s2", seasonNumber: 2,
     dailyTrainingEnabled: false,
   });
   assert.equal(summary.growth_skipped, 0, "ingen skippet vækst");
@@ -487,7 +470,7 @@ test("flag ON + menneskelig-hold rytter i vækstfase → abilities uændret, log
   const climbBefore = state.rider_derived_abilities[0].climbing;
 
   const summary = await developRidersForSeason({
-    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    supabase, seasonId: "s2", seasonNumber: 2,
     dailyTrainingEnabled: true,
   });
 
@@ -506,7 +489,7 @@ test("flag ON + AI-hold rytter → vokser fuldt ud (uberørt af skipGrowth)", as
   const supabase = createMockSupabase(state);
 
   const summary = await developRidersForSeason({
-    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    supabase, seasonId: "s2", seasonNumber: 2,
     dailyTrainingEnabled: true,
   });
 
@@ -525,7 +508,7 @@ test("flag ON + menneskelig-hold fald-fase rytter → falder som normalt (declin
   const sprintBefore = state.rider_derived_abilities[0].sprint;
 
   const summary = await developRidersForSeason({
-    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    supabase, seasonId: "s2", seasonNumber: 2,
     dailyTrainingEnabled: true,
   });
 
@@ -543,10 +526,10 @@ test("flag ON + idempotens: anden kørsel med menneskelig hold skipper allerede-
     teams: [{ id: "human-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
   });
   const supabase = createMockSupabase(state);
-  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL, dailyTrainingEnabled: true });
+  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, dailyTrainingEnabled: true });
 
   const climbAfterFirst = state.rider_derived_abilities[0].climbing;
-  const summary2 = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL, dailyTrainingEnabled: true });
+  const summary2 = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, dailyTrainingEnabled: true });
 
   assert.equal(summary2.skipped_already_done, 1, "anden kørsel skipper");
   assert.equal(summary2.developed, 0);
@@ -568,7 +551,7 @@ test("flag ON + akademi-rytter (is_academy=true) på menneskelig hold → skipGr
   const climbBefore = state.rider_derived_abilities[0].climbing;
 
   const summary = await developRidersForSeason({
-    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    supabase, seasonId: "s2", seasonNumber: 2,
     dailyTrainingEnabled: true,
   });
 
@@ -588,12 +571,12 @@ test("træningsfokus (#1163) biaser udvikling når trainingSeasonId er sat", asy
 
   // Uden trainingSeasonId → ren passiv (ingen bias indlæses).
   const plain = mkState();
-  const sumPlain = await developRidersForSeason({ supabase: createMockSupabase(plain), seasonId: "s2", seasonNumber: 2, model: MODEL });
+  const sumPlain = await developRidersForSeason({ supabase: createMockSupabase(plain), seasonId: "s2", seasonNumber: 2 });
   assert.equal(sumPlain.trained, 0);
 
   // Med trainingSeasonId → planen for den afsluttede sæson biaser udviklingen.
   const trained = mkState();
-  const sumTrained = await developRidersForSeason({ supabase: createMockSupabase(trained), seasonId: "s2", seasonNumber: 2, trainingSeasonId: "s1", model: MODEL });
+  const sumTrained = await developRidersForSeason({ supabase: createMockSupabase(trained), seasonId: "s2", seasonNumber: 2, trainingSeasonId: "s1" });
   assert.equal(sumTrained.trained, 1);
 
   const climbPlain = plain.rider_derived_abilities[0].climbing;
@@ -638,7 +621,7 @@ test("re-run-sikkerhed: RPC-fejl for én rytter → rytteren udvikles præcis 1�
   };
 
   await assert.rejects(
-    () => developRidersForSeason({ supabase: flakySupabase, seasonId: "s2", seasonNumber: 2, model: MODEL }),
+    () => developRidersForSeason({ supabase: flakySupabase, seasonId: "s2", seasonNumber: 2 }),
     /simulated rpc failure/,
     "fejlende RPC-kald propagerer (season-transition må ikke sluge det)"
   );
@@ -656,7 +639,7 @@ test("re-run-sikkerhed: RPC-fejl for én rytter → rytteren udvikles præcis 1�
   assert.ok(r3ClimbAfterRun1 > 55, "r3 udviklet i første kørsel");
 
   // Re-run (nu uden injiceret fejl): r1+r3 skippes (alreadyDeveloped-filter), kun r2 udvikles.
-  const summary2 = await developRidersForSeason({ supabase: flakySupabase, seasonId: "s2", seasonNumber: 2, model: MODEL });
+  const summary2 = await developRidersForSeason({ supabase: flakySupabase, seasonId: "s2", seasonNumber: 2 });
 
   assert.equal(summary2.developed, 1, "kun r2 udvikles ved re-run");
   assert.equal(summary2.skipped_already_done, 2, "r1+r3 skippes ved re-run (allerede committet)");
@@ -666,5 +649,5 @@ test("re-run-sikkerhed: RPC-fejl for én rytter → rytteren udvikles præcis 1�
   assert.equal(state.rider_derived_abilities.find((a) => a.rider_id === "r1").climbing, r1ClimbAfterRun1, "r1 abilities uændret ved re-run (allerede committede ryttere rører intet)");
   assert.equal(state.rider_derived_abilities.find((a) => a.rider_id === "r3").climbing, r3ClimbAfterRun1, "r3 abilities uændret ved re-run");
   assert.ok(state.rider_derived_abilities.find((a) => a.rider_id === "r2").climbing > 55, "r2 endelig korrekt udviklet efter re-run");
-  assert.ok(state.riders.find((r) => r.id === "r2").base_value > 100000, "r2 base_value endelig anvendt efter re-run");
+  assert.equal(state.riders.find((r) => r.id === "r2").base_value, 100000, "r2 base_value urørt efter re-run (#5842: søndagskørslen ejer værdien)");
 });
