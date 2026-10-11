@@ -126,6 +126,9 @@ export function stageView({ sc, res, profile, gcBefore, abilitiesById, teamByRid
     winnerTeam: winner ? teamByRider.get(winner.rider_id) ?? null : null,
     winType: m.winType,
     gapTo10: m.gapTo10, gapTo30: m.gapTo30,
+    // #6464: nr. 20 og grupettoen (sidste rytter i maal inden for tidsgraensen) til vinderen.
+    gapTo20: fin.length >= 20 ? fin[19].time_seconds - fin[0].time_seconds : null,
+    gapLast: fin.length >= 2 ? fin[fin.length - 1].time_seconds - fin[0].time_seconds : null,
     ittGapTo10Per40Km: m.ittGapTo10Per40Km,
     breakawaySize: m.breakawaySize, breakawayAttempts: m.breakawayAttempts,
     breakawayWon: m.breakawayWon, breakawayWinMargin: m.breakawayWinMargin,
@@ -145,6 +148,7 @@ export function summarizeStage(sc, profile, seedsViews) {
   const s = {
     gapTo10: median(caught.map((v) => v.gapTo10)), gapTo30: median(caught.map((v) => v.gapTo30)),
     gapTo10All: median(col("gapTo10")), gapTo30All: median(col("gapTo30")), gapSeeds: caught.length,
+    gapTo20: median(caught.map((v) => v.gapTo20)), gapLast: median(caught.map((v) => v.gapLast)),
     ittGapTo10Per40Km: median(col("ittGapTo10Per40Km")),
     breakawaySize: median(col("breakawaySize")), breakawayAttempts: median(col("breakawayAttempts")),
     breakawayWinShare: share(col("breakawayWon").filter((v) => v !== null)),
