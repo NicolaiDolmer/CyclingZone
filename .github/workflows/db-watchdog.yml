@@ -1,0 +1,96 @@
+name: DB Watchdog
+
+# Databasevagt (#5878, variant A: probe + alarm, ingen automatisk genstart).
+# 6/10-2026 frøs databasen i 21 min og ejeren opdagede det selv. Hvert 5. minut
+# probes backend-readiness, PostgREST og pg_postmaster_start_time(); to fejl i
+# træk giver én Discord-ops-alarm, grøn igen giver én "oppe igen"-besked, og en
+# ændret postmaster-starttid registreres som genstart.
+# Spec: docs/drafts/spec-5878-db-watchdog-2026-10-11.md
+# Logik og alarmregel: scripts/ops/db-watchdog.mjs (+ .test.mjs).
+#
+# Kører i GitHub Actions med vilje: uden for Railway og Supabase, så en død
+# backend eller en frossen database ikke tager vagten med sig. Tilstand (fejl i
+# træk, alarm aktiv, sidste starttid) ligger i Actions-cache, ALDRIG i prod-DB.
+#
+# GitHub-secrets (sæt med `gh secret set <NAVN>`):
+#   findes allerede:   SUPABASE_URL, SUPABASE_DB_URL
+#   SKAL oprettes:     DISCORD_OPS_WEBHOOK_URL   (ops-kanalens webhook, fra Infisical)
+#                      SUPABASE_PUBLISHABLE_KEY  (publishable/anon-nøglen, fra Infisical)
+#   valgfri:           DISCORD_OPS_MENTION       (fx <@123456789012345678>)
+#                      SENTRY_DSN                (aktiverer Sentry Cron Monitor check-in)
+# Mangler en påkrævet secret, fejler jobbet tydeligt UDEN at sende en alarm.
+#
+# Sentry Cron Monitor (ejer opretter): slug `db-watchdog`, schedule `*/5 * * * *`,
+# check-in margin 10 min, max runtime 3 min, failure threshold 1. Så melder Sentry
+# selv, hvis GitHub dropper kørsler eller vagten er død.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Tving en anden backend-URL (fx en forkert, til at teste alarmen). Tom = produktion.'
+        required: false
+        default: ''
+
+concurrency:
+  group: db-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write   # kun til at rydde gamle tilstands-cacher
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+
+      # Nøglen er unik pr. kørsel (caches kan ikke overskrives); restore-keys
+      # henter den senest oprettede. Ingen tidligere tilstand = start forfra.
+      - name: Restore watchdog state
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .db-watchdog-state
+          key: db-watchdog-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            db-watchdog-state-
+
+      - name: Run watchdog
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DISCORD_OPS_WEBHOOK_URL: ${{ secrets.DISCORD_OPS_WEBHOOK_URL }}
+          DISCORD_OPS_MENTION: ${{ secrets.DISCORD_OPS_MENTION }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          DB_WATCHDOG_BACKEND_URL: ${{ github.event.inputs.backend_url }}
+        run: node scripts/ops/db-watchdog.mjs
+
+      - name: Save watchdog state
+        if: always() && hashFiles('.db-watchdog-state/state.json') != ''
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .db-watchdog-state
+          key: db-watchdog-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Best effort: behold de 3 nyeste tilstands-cacher så listen ikke vokser
+      # med 288 poster i døgnet. Fejl her må aldrig fælde vagten.
+      - name: Prune old state caches
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh cache list --key db-watchdog-state- --sort created_at --order desc --limit 100 --json id --jq '.[3:][].id' \
+            | xargs -r -n1 gh cache delete
