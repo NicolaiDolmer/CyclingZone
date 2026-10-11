@@ -8,7 +8,7 @@
 >
 > **Nat 11/10:** forslag A + jag-loft bygget (#6448/#6458), gate-målinger rettet efter RULES (#6443/#6455), testbænk på main-klar (#6454), flip-PR komplet m. patch 7.354 (#6453). Fable trin 6 runde 2: tænd forsvarligt med 4 ejer-accepter. Fuld suite grøn på samlet sæt. Nye issues: #6451-#6459.
 >
-> **Tænd (#6452):** `official_times_v3` gælder løb der starter efter merge; patch 7.354. Første etaper verificeres pr. profil samme dag.
+> **10/10 aften:** merget #6431, #6437, #6438, #6444, #6446 (migreret), #6449. Ejer-valg: standard-jagt + fair Udbrudsmål 3 (#6441).
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
