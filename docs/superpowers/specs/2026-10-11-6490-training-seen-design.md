@@ -1,7 +1,9 @@
 # #6490: Billigt opslag af tidligere træningshistorik
 
-Status: design til ejerreview, 11/10/2026. Ejeren valgte A og bestilte dette design
-med testplan i Codex. Det er ikke build-, merge- eller prod-go. **GIN-indekset må
+Status: design godkendt af ejeren i Codex 11/10/2026; se
+[godkendelsen på #6506](https://github.com/NicolaiDolmer/CyclingZone/pull/6506#issuecomment-6113868710).
+[Implementeringsplanen](../plans/2026-10-11-6490-training-seen.md) er bestilt og
+afventer selvstændigt review. Det er ikke build-, merge- eller prod-go. **GIN-indekset må
 først slettes efter særskilt ejer-go til den konkrete handling.**
 
 Refs [#6490](https://github.com/NicolaiDolmer/CyclingZone/issues/6490).
@@ -216,10 +218,10 @@ Hårde korrekthedskrav: nul paritetsafvigelser, nul tabte/dobbelte ticks, nul ny
 5xx eller lock-timeouts og alle forventede datoarbejder terminale med korrekt
 status. Kendte reconciliation-fixtures skal stadig give samme status.
 
-Foreslået performance-gate til ejerreview: ved 10× må spillerlæsnings p95/p99
+Relativ performance-gate, omfattet af ejerens designgodkendelse 11/10: ved 10× må spillerlæsnings p95/p99
 højst stige 10 % mod samme læseworkload uden afregning; vis absolutte millisekunder
 og alle gentagelser. En støjfyldt eller manglende måling er uafklaret, ikke grøn.
-Denne tolerance er et **forslag, endnu ikke et ejer-godkendt mål**.
+Denne tolerance er et testmål; den er ikke i sig selv et prod- eller drop-go.
 
 Issuets ≤50 KB WAL har uklar enhed (hold-dato eller hold-slot). Vis begge enheder;
 det bruges ikke som automatisk godkendelse. Samlet lukketidsmål skal også fastlægges
