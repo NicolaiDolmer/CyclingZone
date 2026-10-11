@@ -97,6 +97,18 @@ export const NOTIFICATION_TYPES = [
   "assistant_filled_squad",
 ];
 
+// #6385: når en auktion er afgjort, skjuler indbakken (frontend/src/lib/
+// groupNotifications.js, TERMINATING_TYPES) de bud-beskeder der førte dertil og
+// viser kun den endelige. De skjulte rækker lå dog stadig som ULÆSTE i DB og
+// talte med i nav-badgen ("2 ulæste, men ingen markeret"), og en overbudt-besked
+// forsvandt dermed uset når auktionen sluttede. Her: hvilke typer en
+// afsluttende notifikation gør overflødige — SKAL matche TERMINATING_TYPES.
+export const AUCTION_TERMINATOR_SUPERSEDES = {
+  auction_won: ["auction_outbid", "auction_proxy_outbid", "bid_received"],
+  auction_lost: ["auction_outbid", "auction_proxy_outbid", "bid_received"],
+  auction_sold: ["bid_received"],
+};
+
 const TYPE_SET = new Set(NOTIFICATION_TYPES);
 
 export function isKnownNotificationType(type) {

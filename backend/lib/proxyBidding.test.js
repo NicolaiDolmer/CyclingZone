@@ -1427,3 +1427,69 @@ test("#230 + #1091: previousLeader's tie-break-kandidat (max == currentPrice) ry
   assert.equal(supabase.state.proxies.length, 1, "tie-break-kandidaten må ikke slettes");
   assert.equal(supabase.state.proxyDeletes.length, 0, "ingen deletes overhovedet");
 });
+
+test('notifyOutbidDM (#5919): ingen DM til holdet der SELV udløste cascaden — in-app-beskeden består', async () => {
+  // A byder/sætter autobud 100K og bliver straks overhalet af B's 200K-autobud.
+  // A står i UI'et lige nu og får ikke en Discord-DM om sin egen handling.
+  const auction = {
+    id: 'auc-dm-actor',
+    status: 'active',
+    calculated_end: FUTURE_END,
+    current_price: 50000,
+    current_bidder_id: 'team-a',
+    rider: { firstname: 'Mads', lastname: 'Pedersen', team_id: null },
+    seller_team_id: 'ai-team',
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: 'team-a', max_amount: 100000 },
+    { team_id: 'team-b', max_amount: 200000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies, teams: { 'team-b': { name: 'Hold B' } } });
+
+  const dmCalls = [];
+  const inApp = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: 'auc-dm-actor',
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (teamId, type) => { inApp.push([teamId, type]); },
+    notifyOutbidDM: async (args) => { dmCalls.push(args); },
+    actorTeamId: 'team-a',
+  });
+
+  assert.equal(supabase.state.auction.current_bidder_id, 'team-b');
+  assert.equal(dmCalls.length, 0, 'ingen DM til A, der selv udløste cascaden');
+  assert.ok(inApp.some(([teamId, type]) => teamId === 'team-a' && type === 'auction_proxy_outbid'), 'in-app-beskeden til A er uændret');
+});
+
+test('notifyOutbidDM (#5919): en ANDEN managers handling giver stadig DM til den udmattede', async () => {
+  const auction = {
+    id: 'auc-dm-other',
+    status: 'active',
+    calculated_end: FUTURE_END,
+    current_price: 50000,
+    current_bidder_id: 'team-a',
+    rider: { firstname: 'Mads', lastname: 'Pedersen', team_id: null },
+    seller_team_id: 'ai-team',
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: 'team-a', max_amount: 100000 },
+    { team_id: 'team-b', max_amount: 200000 },
+  ];
+  const supabase = createMockSupabase({ auction, proxies, teams: { 'team-b': { name: 'Hold B' } } });
+  const dmCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: 'auc-dm-other',
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    notifyOutbidDM: async (args) => { dmCalls.push(args); },
+    actorTeamId: 'team-b',
+  });
+  assert.equal(dmCalls.length, 1);
+  assert.equal(dmCalls[0].teamId, 'team-a');
+});

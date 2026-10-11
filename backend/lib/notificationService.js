@@ -1,4 +1,4 @@
-import { isKnownNotificationType } from "./notificationTypes.js";
+import { isKnownNotificationType, AUCTION_TERMINATOR_SUPERSEDES } from "./notificationTypes.js";
 import { findForumMentions, loadMentionableManagers, uniqueMentionTargets } from "./forumMentions.js";
 import { DEFAULT_LANGUAGE, translate as translateServer } from "./i18nServer.js";
 import { captureException } from "./sentry.js";
@@ -161,7 +161,39 @@ export async function notifyUser({
     throw error;
   }
 
+  if (relatedId && AUCTION_TERMINATOR_SUPERSEDES[type]) {
+    await markSupersededAuctionNotificationsRead({ supabase, userId, relatedId, terminatorType: type });
+  }
+
   return { delivered: true, deduped: false };
+}
+
+/**
+ * #6385 · Markér de bud-beskeder som en afsluttende auktions-notifikation gør
+ * overflødige som læst (indbakken skjuler dem alligevel, men som ulæste
+ * talte de med i nav-badgen). Ikke-kritisk: en fejl her må aldrig vælte selve
+ * afslutnings-notifikationen, der allerede er leveret.
+ */
+export async function markSupersededAuctionNotificationsRead({ supabase, userId, relatedId, terminatorType }) {
+  const superseded = AUCTION_TERMINATOR_SUPERSEDES[terminatorType];
+  if (!superseded || !userId || !relatedId) return { updated: false };
+  try {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", userId)
+      .eq("related_id", relatedId)
+      .eq("is_read", false)
+      .in("type", superseded);
+    if (error) throw error;
+    return { updated: true };
+  } catch (error) {
+    captureException(error, {
+      tags: { flow: "notifications", stage: "mark-superseded-read" },
+      extra: { relatedId, terminatorType },
+    });
+    return { updated: false, error };
+  }
 }
 
 /**
