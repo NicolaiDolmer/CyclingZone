@@ -13,7 +13,7 @@
 **Ejer 7/10 eftermiddag:** databasen og løbsmotoren gøres FÆRDIGE først, med resultat hver dag. Derefter rytterudvikling. Sæsonskiftet (#6320 #5904) parallelt.
 
 1. **Stabilitet:** Supabase (#5878; Medium ✅ · #5692 Codex · #6265 · alarm #6272 · #6276) · **chunk-fejl #5162 flyttet frem** (43 spillere, siden går i stå efter deploy).
-2. **Løbsmotoren fejlfri** (spillerne mærker den): drift af `official_times_v2` (standard for nye løb fra 10/10; OTL følges i Touren) · tidsforskelle #5951 #6284 → mærker #6234 #6185d2 → udbrud/klatring #6201 #6200 #6299 #6187 #5978 → #6285 motor-tests som gate før hver tænding → **form #6156 EFTER v3, designes grundigt med ejeren** (PR #6305 draft-udgangspunkt; toppe tilbage #6158). Hjælp = motor i samme PR (#6186).
+2. **Løbsmotoren fejlfri** (spillerne mærker den): **`official_times_v3` live 11/10 09:43** (Touren + alle nye løb; 4 accepter i #6441) → **nu:** bjerg-tidsgab i alle divisioner #6464 + bjerg uden topankomst #6456 (ny revision, tænd før 37 løb 12/10 kl. 12) · tidsgab i klassementer #6384 · drift-tjek pr. Tour-etape (bjerg 13/10 + 15/10) · vagter i CI (#6285, #6327 #6468) · film: huller uden forklaring (nyt issue) → **form #6156 (toppe S5)**. Hjælp = motor i samme PR (#6186).
 3. **Rytterudvikling + scoutens forventede udvikling** (spillerne har ret: den er forkert): Udvikling 2.0 #6110 (spec `2026-10-03-udvikling-2-design.md`; kurve B #3564 · #5950 · #6109 · #6059) · #5965 · projection #5764 #5683 · træningens rod #5928 · #6248 maks +1 (A/B 7/10).
 
 ## 🟠 Rødderne bag de andre klager (parallelt)
@@ -28,17 +28,17 @@ Hver spillerrapport: issue + svar inden 24 t (Claude skriver udkast i ejerens to
 
 Taktik lag 2-4 #5575 · U23 del 2 #4620 · nye features uden dato. Målinger (#4321 #6273 #6275) og Codex-spor kører videre.
 
-## Roadmap · Planned (spejles i `roadmap_items.sort_order`)
+## Roadmap · Planned (spejles i `roadmap_items`, ejer-godkendt 11/10)
 
-**Next:** stabilitet (#5878 #6184 #5911) · #3984 · #4522 · #4714 · #5833 · #2887 B · #6190 · #5831 · #5917 · #6060 · #1140 · #5105 · #3813 · #5981 · #5074 · #5238 · #5865 · #5131 · race sharpener · værdier uden potentiale. **Later:** se roadmap_items. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md). **Næste roadbook-opslag:** #5268-historien · #5912-svar · upkeep 0 · #5833-afstemning.
+**I gang:** stabilt spil #5878 · løb næste skridt #6464 #6384 · sæsonskifte uden overraskelser #5904 · næste sæsons kalender + pausen #5841 #5833 · etapetyper der passer til ruten #6369. **Planned (kø):** Udvikling 2.0 #6110 · #3984 · #4714 · træningsrettelser #5915 #6210 · formtoppe #6156 · delt kaptajn #5981 · bedre start #1140 · egne unge stjerner #5105. **Later:** #5573 · #5574 · #3463. Resten af Next (#2887 B, #6190, #3813, #5074, #5238, #5131, værdier uden potentiale) står som idéer, til der er plads. **Not planned for 2026:** [`2026-10-05-2027-list.md`](superpowers/plans/2026-10-05-2027-list.md).
 
 ## Bane 1 · Træning færdig (ejer 1/10: "så hurtigt som muligt")
 
-🔵 **Rest efter flip til alle 9/10:** historik #5947 · #6123 nulstil til holdprogram · #6060 · #5915 løbsdag-numre · #5485 · #5825 mobil-katalog · **lovet:** #5965 analyse.
+🔵 **Rest:** historik #5947 · #5915 løbsdag-numre · #5485 · #6210 maks +1 (PR #6248) · **lovet:** #5965 analyse. Leveret 10/10: #6123 #6060 #5825.
 
 ## Bane 1 · Lovet til spillerne (dato først)
 
-31/8 #4522 · 19/8+15/9 #3984 · 27/9 #5831 · 28/9 #5917 · 30/9 #5979 · 2/10 #6060 · 4/10 #4714 (rækkefølge = roadmap).
+19/8+15/9 #3984 (beslutning) · 4/10 #4714 (beslutning). Leveret 10/10: #4522 #5831 #5917 #5979 #6060.
 
 ## Release-gate (beta → "færdigt spil", ejer 30/9)
 
