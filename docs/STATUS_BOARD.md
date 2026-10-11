@@ -12,7 +12,13 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (3d) — groen
 - #6403 fix(economy): ingen vaerdiskrivning ved saesonskiftet, eet fast soendagstidspunkt (#5842) (0d) — groen
 - #6426 feat(ops): #5878 databasevagt - probe hvert 5. min + Discord-ops-alarm (0d) — groen
+- #6454 feat(dev): Motor-testbaenken - nedkoerselsfinaler for sig + een rute taeller een gang (0d) — groen
 - #6443 fix(engine): gate trin 3 - GT-margin maalt, tidsankre doemt i realistisk felt (#6442) (0d) — groen
+- #6455 fix(engine): gate trin 1 - tidsgab efter RULES (topankomster, uden udbrudssejre) (#6441) (0d) — groen
+- #6459 perf(training): first-use-trigger scanner ikke længere alle træningsrapporter (akademi-si… (0d) — groen
+- #6458 fix(engine): v3 udbrudsmargin + farlig klassementsrytter oven paa forslag A (#6457) (0d) — groen
+- #6453 TAEND-PR: official_times_v3 bliver den aktuelle motor-revision (#6452) (0d) — groen
+- #6448 fix(engine): official_times_v3 - etapeinteresse + additiv holdjagt (forslag A) + fair Udb… (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -29,8 +35,8 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (89d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (86d)
 - #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (84d)
-- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (79d)
-- #2806 [monetization] /pro er ikke linket fra appen, og isPro() gater ingen funktionalitet (79d)
+- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (80d)
+- #2806 [monetization] /pro er ikke linket fra appen, og isPro() gater ingen funktionalitet (80d)
 - #2885 [feature] Sælg rytter til AI efter N mislykkede auktioner — udvej for hold der ikke kan k… (77d)
 - …og 54 mere
 
@@ -41,7 +47,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
-- #6448 fix(engine): official_times_v3 - standard-jagt for hold uden ordre + fair Udbrudsmaal 3 (… (0d) — groen
+- ingen
 
 **Ikke-draft med roed tilstand:**
 
@@ -54,7 +60,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (112d)
 - #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (109d)
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (85d)
-- #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (83d)
+- #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (84d)
 - #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (81d)
 - #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (79d)
 - #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (79d)
@@ -65,7 +71,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (64d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (62d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (54d)
-- …og 710 mere
+- …og 705 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
