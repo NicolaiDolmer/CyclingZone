@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (11/10 morgen):** Ejerens svar på morgenkortet: "tænd" = accepter de 4 punkter i #6441 + merge #6443 → #6458 (indeholder #6448) → #6455 → #6454 → flip #6453 via merge-køen før ca. 10:30, migration straks efter, verificér første etaper pr. profil. Ellers Touren på v2 og tænd før 12/10. Separat: #6459 akademi-signering (migration, ejer-go).
+> **🎯 Next action (fra 11/10):** Næste session efter `docs/sessions/2026-10-12-stabilitet-og-udvikling.md` (startprompt i filen): overdragelsen først (bjerg-revision `official_times_v4` #6464 før 37 løb 12/10 kl. 12, #6384 visuelt go), så stabilitet (#5162 #5911 #6184) + Udvikling 2.0 D1-D7 (#6110) + #5842 + småting-lane.
 >
-> **Nat 11/10:** forslag A + jag-loft bygget (#6448/#6458), gate-målinger rettet efter RULES (#6443/#6455), testbænk på main-klar (#6454), flip-PR komplet m. patch 7.354 (#6453). Fable trin 6 runde 2: tænd forsvarligt med 4 ejer-accepter. Fuld suite grøn på samlet sæt. Nye issues: #6451-#6459.
+> **11/10:** `official_times_v3` tændt 09:43, Touren kører v3 (e1 som testet). Merget: #6443 #6458 #6455 #6454 #6453 #6460 #6459 (migreret) #6467 #6468. Roadmap afstemt + ejer-godkendt, MASTERPLAN + artifact opdateret, patch 7.354-7.355. Nye issues #6464 #6469-#6476.
 >
 > **Tænd (#6452):** `official_times_v3` gælder løb der starter efter merge; patch 7.354 (regler) + 7.355 (holdskifte i træning, akademi-signering #6459). Første etaper verificeres pr. profil samme dag.
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Natsession 11/10 (Claude Code) afventer ejerens svar på morgenkortet; ingen merges/tænding uden ordret "tænd".
+> **🤖 Working agent:** Ingen aktiv session (session 11/10 lukket ca. 11:45; bølgen stoppet rent, markør frigivet).
