@@ -50,7 +50,6 @@ export const AGE_BANDS = Object.freeze([
   { key: "37+", lo: 37, hi: 999 },
 ]);
 export const GROUPS = Object.freeze(["manager", "AI", "fri"]);
-const STABLE_ABILITIES = VISIBLE_ABILITIES.filter((k) => !AGING_V2_DECLINING_ABILITIES.includes(k));
 
 export function ageBand(age) {
   return AGE_BANDS.find((b) => age >= b.lo && age <= b.hi)?.key ?? null;
