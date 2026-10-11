@@ -48,6 +48,7 @@ function auctionNotify(notifyTeamOwner, teamId, type, keys, relatedId, metadata 
   return notifyTeamOwner(teamId, type, payload.title, payload.message, relatedId, payload.metadata);
 }
 
+/** @param {{ rider?: { team_id?: string | null } | null, seller_team_id?: string | null } | null | undefined} auction */
 export function sellerOwnsAuctionRider(auction) {
   return Boolean(auction?.rider && auction.rider.team_id === auction.seller_team_id);
 }
@@ -59,6 +60,7 @@ export function sellerOwnsAuctionRider(auction) {
 // uden denne genkendelse blev han regnet som sælger og fik både "Købt"- og
 // "Solgt"-posten — købesummen tilbage for en rytter han kun havde købt. På et
 // almindeligt salg blev auktionen i stedet annulleret som "stale owner".
+/** @param {{ rider?: { team_id?: string | null } | null, current_bidder_id?: string | null } | null | undefined} auction */
 export function riderAlreadyWithAuctionWinner(auction) {
   return Boolean(
     auction?.rider?.team_id &&
