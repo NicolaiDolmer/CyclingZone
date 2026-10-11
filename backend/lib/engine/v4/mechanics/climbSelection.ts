@@ -606,7 +606,8 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // #6464 (KUN official_times_v4; faktor 1 i alle aeldre tidsmodeller): hullet
     // maales i feltets egen klatre-spredning, saa nr. 10 paa en topankomst ligger
     // ens i alle divisioner. Samme faktor for alle ryttere paa etapen.
-    const climbModel = fieldScaledClimbTuning(descentDecider ? descentFinishDecidingClimbTuning(timeModel) : timeModel, fieldClimbGapScale(ctx.entrants, timeModel));
+    const fieldScale = timeModel.climbGapFieldScaleProfiles.includes(ctx.route.profile_type) ? fieldClimbGapScale(ctx.entrants, timeModel) : 1;
+    const climbModel = fieldScaledClimbTuning(descentDecider ? descentFinishDecidingClimbTuning(timeModel) : timeModel, fieldScale);
     const selections = descentDecider
       ? decidingClimbSelectionsOnTheDay(baseSelections, (id) => ctx.entrants[id]?.abilities.climbing ?? 0,
         (id) => nextState.riders[id]?.dayform ?? 0,

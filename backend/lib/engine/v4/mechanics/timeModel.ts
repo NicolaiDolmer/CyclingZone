@@ -170,6 +170,8 @@ export const TIME_MODEL_V3_TUNING = freeze({
   climbGapFieldSpreadReferencePoints: 0,
   climbGapFieldSpreadRank: 10,
   climbGapFieldScaleBounds: [1, 1] as readonly [number, number],
+  // Kun paa disse etapeprofiler (tom = ingen; bjerg-maalet ejer kun bjerg og hoejfjeld).
+  climbGapFieldScaleProfiles: [] as readonly ProfileType[],
 });
 
 export type TimeModelTuning = typeof TIME_MODEL_V3_TUNING;
@@ -262,6 +264,10 @@ export const SHARED_TIME_MODEL_V4_TUNING: TimeModelTuning = freeze({
   climbGapFieldSpreadReferencePoints: 10,
   climbGapFieldSpreadRank: 10,
   climbGapFieldScaleBounds: [0.25, 1.25] as readonly [number, number],
+  climbGapFieldScaleProfiles: ["mountain", "high_mountain"] as readonly ProfileType[],
+  // #6456: den afgoerende stigning foer en nedkoerselsfinale spreder mindre end
+  // en topankomst (favoritterne samles efter toppen; loftet paa nedkoerslen er uaendret).
+  descentFinishClimbAbilityWeightScale: 0.75,
 });
 
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
