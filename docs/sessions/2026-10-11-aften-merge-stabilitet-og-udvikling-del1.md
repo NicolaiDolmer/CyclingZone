@@ -52,6 +52,8 @@ UX: #6123 #6303 #6176 #6208 #5630 · Fejl: #6210 (PR #6248) #5886 #5949 #6470 #6
 6. **Ikke i næste session (ejeren separat):** pengene tilbage fra 4 hold (#6474, dry-run i worktreet `fix-6474-finance-history-sale/balance-internals/2026-10-11-6474-dry-run.md`; vis saldoerne live først), spillersvar #6476, known issue-tekst "Money from a sale can look like it came back" (prod-data, efter merge af #6481).
 7. **Ejerens Claude Design-session** (wireframes til idéerne fra #staff-chat 11/10; prompt i `docs/drafts/claude-design-prompt-staff-chat-2026-10-11.md`): artifact "Cycling Zone · Feature wireframes" opdateret 11/10. Gennemgå med ejeren, når han vil.
 8. **Mandag 12/10:** betaling #4511 #4514 #4512 + CYCLINGZONE-62.
+9. **Lukket ned 11/10 ca. 17:20:** den lokale merge-kø for #6484 blev stoppet efter merge (ejer-go), fordi den hang på deploy-verifikationens cron-step (run 38147469574, grænse 100 min), selv om alle hurtige cron-jobs havde meldt sig. Tjek resultatet på #6484. Opfølgning (opgave-chip "Gør merge-køen fri straks efter merge"): køen skal frigives efter merge; død række `deadline-day` i `cron_checkins` (cron fjernet #6259) slettes kun med ejer-go.
+10. **Oprydning:** merget worktrees `feat-6384-classification-time-gaps`, `feat-6464-flip-official-times-v4`, `docs-patch-note-7356` (de to sidste har junctions til delte `node_modules`: fjern junctions FØR worktree-sletning, ellers rammes de delte pakker). To gamle `tail -F`-processer fra natsessionen (`balance-internals/nat-11-10/merge-queue-taend.log`) kan stoppes.
 
 ## Faste regler
 
