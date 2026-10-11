@@ -1,4 +1,4 @@
-// #6285 B: "input betyder noget" under den live revision (official_times_v2).
+// #6285 B: "input betyder noget" under den live revision (official_times_v3, #6452).
 //
 // Parrede koersler paa det anonymiserede Giro-felt (scripts/baselines/
 // giro-field-6088-2026-10-02.json): samme felt, samme etape, samme seed og samme
@@ -37,7 +37,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, "..", "..", "scripts", "baselines", "giro-field-6088-2026-10-02.json");
 const data = JSON.parse(readFileSync(FIXTURE, "utf8"));
 const stages: any[] = sortedStages(data);
-const REVISION = "official_times_v2";
+// #6452: den live revision. official_times_v2 er frosset byte-identisk
+// (officialTimesV2Frozen6200.test.ts), saa retningen gates paa den nye.
+const REVISION = "official_times_v3";
 
 /** Bjergetapen med lang slutstigning (klatring afgoer). */
 const CLIMB_STAGE = 11;

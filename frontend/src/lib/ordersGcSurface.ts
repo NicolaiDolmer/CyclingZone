@@ -21,7 +21,9 @@ export type RulesRevision = "legacy" | "orders_gc_v1";
 // den forrige plus sit eget, så alle vises som orders_gc_v1 på fladerne.
 // #6199: the official-times revisions carry the full orders package too
 // (official_times_v1 branches from v2, official_times_v2 from v3).
-const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2"]);
+// #6452: official_times_v3 (the clean engine revision) is official_times_v2 plus
+// engine changes without a surface of their own, so it shows the same orders.
+const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3"]);
 
 /**
  * Løbets effektive regel-revision for spillerfladerne. #6084: orders_gc_v2 er
