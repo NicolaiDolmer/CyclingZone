@@ -4320,3 +4320,106 @@ test("#4619: garanteret bank-handel af en U23-akademirytter sætter squad='senio
   assert.equal(bankUpdate.is_academy, false, "banken har intet akademi (#4495)");
   assert.equal(bankUpdate.squad, "senior", "squad følger med — ellers står han som U23 hos banken");
 });
+
+// #6474 (review): en retry, hvor køberen i mellemtiden har brugt pengene, må ikke
+// annullere auktionen — rytteren er allerede leveret. Køberen betaler (saldoen må
+// gå i minus; spillet har negativ saldo med renter), og sælgeren får beløbet.
+test("finalizeAuctionById charges the buyer on a retry even if the balance dropped (#6474)", async () => {
+  const teamUpdates = [];
+  const financeInserts = [];
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-retry-broke", status: "active", current_bidder_id: "buyer-team", current_price: 90,
+        seller_team_id: "seller-team",
+        rider: { id: "rider-retry-broke", firstname: "Retry", lastname: "Broke", team_id: "buyer-team" },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 40, division: 3, user_id: "user-b", is_ai: false },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 100, division: 3, user_id: "user-s", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 4, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 20, pendingCount: 0, activeLoanCount: 0 },
+      },
+      priorOwnershipEvents: [{ idempotency_key: "ownership:auction_winner:auction-retry-broke", from_team_id: "seller-team" }],
+      teamUpdates,
+      auctionUpdates: [],
+      riderUpdates: [],
+      financeInserts,
+    }),
+    auctionId: "auction-retry-broke",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-04-25T10:00:00.000Z"),
+  });
+  assert.equal(result.code, "completed");
+  assert.ok(teamUpdates.some((u) => u.teamId === "buyer-team" && u.payload.balance === -50), "køberen betaler, saldoen går i minus");
+  assert.ok(financeInserts.some((row) => row.metadata?.code === "tx.auctionSell"), "sælgeren får salgsbeløbet");
+});
+
+// #6474 (review): en retry med en trup, der nu er fuld, må ikke lukke som
+// squad_full — rytteren tæller allerede med i køberens trup.
+test("finalizeAuctionById completes a retry even when the buyer squad now looks full (#6474)", async () => {
+  const teamUpdates = [];
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-retry-full", status: "active", current_bidder_id: "buyer-team", current_price: 90,
+        seller_team_id: "seller-team",
+        rider: { id: "rider-retry-full", firstname: "Retry", lastname: "Full", team_id: "buyer-team" },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 300, division: 3, user_id: "user-b", is_ai: false },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 100, division: 3, user_id: "user-s", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 99, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 20, pendingCount: 0, activeLoanCount: 0 },
+      },
+      priorOwnershipEvents: [{ idempotency_key: "ownership:auction_winner:auction-retry-full", from_team_id: "seller-team" }],
+      teamUpdates,
+      auctionUpdates: [],
+      riderUpdates: [],
+    }),
+    auctionId: "auction-retry-full",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-04-25T10:00:00.000Z"),
+  });
+  assert.equal(result.code, "completed");
+  assert.ok(teamUpdates.some((u) => u.teamId === "buyer-team" && u.payload.balance === 210));
+});
+
+// #6474 (review): mangler kørslens ejerskabs-hændelse (best-effort-skrivning),
+// falder sælgeren tilbage på auktionens seller_team_id på et almindeligt salg.
+test("finalizeAuctionById pays seller_team_id on a retry without an ownership event (#6474)", async () => {
+  const financeInserts = [];
+  const teamUpdates = [];
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-retry-noevent", status: "active", current_bidder_id: "buyer-team", current_price: 90,
+        seller_team_id: "seller-team",
+        rider: { id: "rider-retry-noevent", firstname: "Retry", lastname: "NoEvent", team_id: "buyer-team" },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 300, division: 3, user_id: "user-b", is_ai: false },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 100, division: 3, user_id: "user-s", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 4, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 20, pendingCount: 0, activeLoanCount: 0 },
+      },
+      priorOwnershipEvents: [],
+      teamUpdates,
+      auctionUpdates: [],
+      riderUpdates: [],
+      financeInserts,
+    }),
+    auctionId: "auction-retry-noevent",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-04-25T10:00:00.000Z"),
+  });
+  assert.equal(result.code, "completed");
+  assert.ok(financeInserts.some((row) => row.metadata?.code === "tx.auctionSell"), "sælgeren betales trods manglende hændelse");
+  assert.ok(teamUpdates.some((u) => u.teamId === "seller-team"));
+});
