@@ -20,6 +20,17 @@ Backfill og fuld paritet er forudsætninger for senere læserskift. GIN-drop kr�
 fortsat særskilt ejer-go; indtil da består indekset. Ingen ændring af udbytte,
 historik, form/træthed, afregningstidspunkter eller spillertekst følger af L1.
 
+L2-kandidaten tilføjer en bounded backfill med row locks og SKIP LOCKED. Et tomt
+batch er ikke færdigt, hvis der stadig er ikke-indlemmede rækker. Paritet tæller
+alle kilderækker i ét konsistent snapshot og adskiller manglende/ekstra nøgler,
+forkerte tællere og ikke-indlemmede rækker. Nul-tombstones er ikke ekstra hits.
+Readiness kræver både nul afvigelser og den reviewede L1-kontrakt for kolonner,
+funktionsdefinitioner, aktive triggere og klientadgang. Backfill kræver kontrakten,
+men ikke fuld paritet, da det netop er backfillens opgave at etablere den.
+Runneren kan kun ramme den eksisterende isolerede loadtest-staging via wrapperen;
+ukendt mål/schema eller utilstrækkeligt batchbudget er blokeret, ikke grønt.
+L2 skifter ingen læsere, kører ingen automatisk backfill og ændrer intet i prod.
+
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 
 Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
