@@ -48,6 +48,7 @@ import { riderLevelBand } from "./staffAbilityConstants.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
+import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled, readConditionWriterFlag } from './trainingDateConditionFlag.js';
 import { settleTrainingDateCondition, canonicalRaceLoads } from './trainingDateCondition.js';
 import {
@@ -66,6 +67,38 @@ import {
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
 // findes for at sweepens noegle-strenge og motorens INSERT kan dele ÉN sandhed.
 export const TRAINING_DAY_RUN_DEFAULT_SQUAD = "senior";
+
+// ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────
+// AI-, bank- og testhold (og hold uden manager) koerer stadig det daglige tick:
+// form, traethed, skade og traeningsscore er uaendrede. Men evnegevinsterne,
+// ability_progress og de to historik-raekker droppes. En rytter der skifter til
+// et managerhold, udvikler sig derfor fra foerste tick paa det nye hold.
+//
+// Bag `development_v2_aging_enabled` (slukket = bit-identisk med foer, ogsaa i
+// DB-kaldene: holdets raekke hentes kun naar flaget er taendt). Kun "on"/true
+// taender motoren: "beta" er IKKE en motor-skrivning her, fordi der ingen
+// skyggedata er at bygge — det er en live balance-aendring for hele ligaen.
+// Flag-laesningen bor midlertidigt her; et andet spor ejer den faelles
+// developmentV2Flag.js, og denne laesning flyttes dertil ved en senere refaktor.
+export const DEVELOPMENT_V2_AGING_FLAG_KEY = "development_v2_aging_enabled";
+
+async function isDevelopmentV2AgingEnabled(supabase, { strict = false } = {}) {
+  // strict = loebsdags-datoens atomare sti: en fejlet laesning kaster (som de
+  // oevrige flag der laeses dér), i stedet for at blive tolket som "off".
+  if (strict) return readConditionWriterFlag(supabase, DEVELOPMENT_V2_AGING_FLAG_KEY);
+  return evaluateFlagStage(await readFlagStage(supabase, DEVELOPMENT_V2_AGING_FLAG_KEY));
+}
+
+/**
+ * #6500: er holdet et managerhold? Ikke-managerhold = AI, bank, testkonto eller
+ * ingen manager (user_id null). `is_frozen` er bevidst ikke med: frosne hold
+ * traenes ikke af sweepen i forvejen, og issuets afgraensning naevner det ikke.
+ * @param {{user_id?:string|null,is_ai?:boolean|null,is_bank?:boolean|null,is_test_account?:boolean|null}} team
+ */
+export function isManagerTeamForDevelopment(team) {
+  if (!team) return false;
+  return team.user_id != null && team.is_ai !== true && team.is_bank !== true && team.is_test_account !== true;
+}
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
@@ -401,10 +434,27 @@ export async function runTeamTrainingDay({
   // (recovery-konstanterne nedenfor); D1+D2 — lookuppet, "race"-intensiteten og
   // udviklings-tick'et — hænger på `raceDayDevelopmentOn`. Læses parallelt: to
   // uafhængige app_config-opslag uden indbyrdes rækkefølge.
-  const [raceDayEngineOn, raceDayDevelopmentOn] = await Promise.all([
+  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On] = await Promise.all([
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_engine_enabled') : isRaceDayEngineEnabled(supabase),
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_development_enabled') : isRaceDayDevelopmentEnabled(supabase),
+    isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
   ]);
+
+  // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
+  // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
+  // fra en manager. Derfor kastes der (reservationen slettes i catch'en nedenfor),
+  // og naeste sweep proever igen. ASCII-only besked (intern ops-fejl).
+  let developmentAllowed = true;
+  if (developmentV2On) {
+    const { data: teamRow, error: teamError } = await supabase
+      .from("teams")
+      .select("id, user_id, is_ai, is_bank, is_test_account")
+      .eq("id", teamId)
+      .maybeSingle();
+    if (teamError) throw new Error(`team load (team ${teamId}): ${teamError.message ?? teamError} - refusing to tick, retry on next sweep`);
+    if (!teamRow) throw new Error(`team load (team ${teamId}): team row not found - refusing to tick`);
+    developmentAllowed = isManagerTeamForDevelopment(teamRow);
+  }
 
   // ── 3) Load abilities, training plans + condition i parallell ─────────────────
   const [
@@ -853,6 +903,14 @@ export async function runTeamTrainingDay({
       } else {
         tickResult = applyDailyTick(sharedTickArgs);
       }
+      // #6500 D6: ikke-managerhold beholder tick'ets score, status og
+      // traeningsscore-detalje, men evnerne og fremdriften staar stille. Ved at
+      // nulstille DET HER (i stedet for at springe tick'et over) er form, traethed,
+      // skade og scoren bit-identiske med et managerhold, og alle nedstroems
+      // forbrugere (patch, historik, rapport) ser automatisk "ingen gevinst".
+      if (!developmentAllowed) {
+        tickResult = { ...tickResult, abilities: { ...abilities }, gains: {}, progress: preProgress };
+      }
     }
 
     // Træthed + form for næste dag. #3459 D3: recoveryBase/recoveryFraction følger
@@ -957,7 +1015,8 @@ export async function runTeamTrainingDay({
           abilityPatch[k] = tickResult.abilities[k];
         }
       }
-      abilityPatch.ability_progress = tickResult.progress;
+      // #6500: ikke-managerhold skriver ingen ability_progress (fremdriften er frosset).
+      if (developmentAllowed) abilityPatch.ability_progress = tickResult.progress;
     }
     if (capsChanged) {
       abilityPatch.ability_caps = caps;

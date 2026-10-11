@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import {
   TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
   resolveRaceDaysPerSeason, resolveRaceDayBudgetDivisor, loadBoundRiderIdsForRaceDay,
-  resolveCalendarRaceDayTarget,
+  resolveCalendarRaceDayTarget, loadRaceExitGameDays, dropBindingsAfterRaceExit,
 } from "./trainingRaceDayTick.js";
 import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
@@ -17,18 +17,18 @@ function mockSupabase(tables, opts = {}) {
   return {
     from(table) {
       const rows = tables[table] ?? [];
-      const state = { filters: [], inList: null, order: null, limit: null };
+      const state = { filters: [], inLists: [], order: null, limit: null };
       const api = {
         select() { return api; },
         eq(col, val) { state.filters.push([col, val, "eq"]); return api; },
         lte(col, val) { state.filters.push([col, val, "lte"]); return api; },
-        in(col, vals) { state.inList = [col, vals]; return api; },
+        in(col, vals) { state.inLists.push([col, vals]); return api; },
         order(col, o = {}) { state.order = { col, ascending: o.ascending !== false }; return api; },
         limit(n) { state.limit = n; return api; },
         run() {
           if (opts.errorOn === table) return { data: null, error: { message: "boom" } };
           let out = rows.filter((r) => state.filters.every(([c, v, op]) => (op === "lte" ? r[c] <= v : r[c] === v)));
-          if (state.inList) out = out.filter((r) => state.inList[1].includes(r[state.inList[0]]));
+          for (const [col, vals] of state.inLists) out = out.filter((r) => vals.includes(r[col]));
           if (state.order) {
             out = [...out].sort((a, b) => (state.order.ascending
               ? Number(a[state.order.col]) - Number(b[state.order.col])
@@ -322,6 +322,111 @@ test("#4847: daarlige argumenter giver en fejl, ikke en tavs tom maengde", async
     assert.equal(out.data, null);
     assert.ok(out.error);
   }
+});
+
+// ── #5949: udgaaet rytter frigives fra dagen EFTER udgangsdagen ──────────────
+// Et 8-etapers loeb paa loebsdag 10..17 (etape n paa loebsdag 9+n). Rytter "a"
+// udgaar paa etape 2 (loebsdag 11), rytter "b" koerer hele loebet.
+const TOUR_DAYS = [10, 11, 12, 13, 14, 15, 16, 17];
+
+function tourTables({ incidents = [], schedule = TOUR_DAYS.map((d, i) => ({ race_id: "tour", stage_number: i + 1, game_day: d })) } = {}) {
+  return {
+    race_entry_days: ["a", "b"].flatMap((rider_id) => TOUR_DAYS.map((game_day) => ({
+      rider_id, season_id: BIND_SEASON, game_day, race_id: "tour", team_id: "t1",
+    }))),
+    race_incidents: incidents,
+    race_stage_schedule: schedule,
+  };
+}
+
+async function boundOn(tables, gameDay, extra = {}) {
+  const out = await loadBoundRiderIdsForRaceDay({
+    supabase: mockSupabase(tables), riderIds: ["a", "b"], seasonId: BIND_SEASON, gameDay, ...extra,
+  });
+  assert.equal(out.error, null);
+  return [...out.data].sort();
+}
+
+const ABANDON_STAGE_2 = { race_id: "tour", stage_number: 2, rider_id: "a", kind: "time_limit", outcome: "abandon" };
+
+test("#5949: udgang paa etape 2 af 8 => bundet til og med udgangsdagen, fri dag 3-8", async () => {
+  const tables = tourTables({ incidents: [ABANDON_STAGE_2] });
+  assert.deepEqual(await boundOn(tables, 10), ["a", "b"], "etape 1: begge koerer");
+  assert.deepEqual(await boundOn(tables, 11), ["a", "b"], "udgangsdagen er stadig bundet (hvile)");
+  for (const day of TOUR_DAYS.slice(2)) {
+    assert.deepEqual(await boundOn(tables, day), ["b"], `loebsdag ${day}: a foelger programmet igen`);
+  }
+});
+
+test("#5949: frigivelsen gaelder ogsaa uden DNS-frigivelsen (releaseDns=false)", async () => {
+  const tables = tourTables({ incidents: [ABANDON_STAGE_2] });
+  assert.deepEqual(await boundOn(tables, 11, { releaseDns: false }), ["a", "b"]);
+  assert.deepEqual(await boundOn(tables, 12, { releaseDns: false }), ["b"]);
+});
+
+test("#5949: skadet udgang (styrt) frigives ogsaa; hvilen kommer fra skade-gaten, ikke bindingen", async () => {
+  // Bindingen siger kun "ikke i loebet laengere". Motoren og prognosen giver en skadet
+  // rytter hvile via isInjuredOnRaceDay foer bindingen overhovedet vurderes
+  // (se trainingWeekPlanForecast.test.js for hele kaeden).
+  const tables = tourTables({ incidents: [{ ...ABANDON_STAGE_2, kind: "crash", injury_days: 3 }] });
+  assert.deepEqual(await boundOn(tables, 12), ["b"]);
+});
+
+test("#5949: kun outcome=abandon taeller; tidstab og andre loeb frigiver intet", async () => {
+  const tables = tourTables({
+    incidents: [
+      { race_id: "tour", stage_number: 2, rider_id: "b", kind: "crash", outcome: "time_loss" },
+      { race_id: "andet-loeb", stage_number: 1, rider_id: "a", kind: "crash", outcome: "abandon" },
+    ],
+  });
+  tables.race_stage_schedule.push({ race_id: "andet-loeb", stage_number: 1, game_day: 2 });
+  assert.deepEqual(await boundOn(tables, 14), ["a", "b"]);
+});
+
+test("#5949: manglende game_day for udgangsetapen bevarer bindingen (manglende bevis = hvile)", async () => {
+  const tables = tourTables({
+    incidents: [ABANDON_STAGE_2],
+    schedule: [{ race_id: "tour", stage_number: 2, game_day: null }],
+  });
+  assert.deepEqual(await boundOn(tables, 14), ["a", "b"]);
+});
+
+test("#5949: fejl i udgangs-opslaget RETURNERES — bindingen gaettes aldrig", async () => {
+  for (const table of ["race_incidents", "race_stage_schedule"]) {
+    const out = await loadBoundRiderIdsForRaceDay({
+      supabase: mockSupabase(tourTables({ incidents: [ABANDON_STAGE_2] }), { errorOn: table }),
+      riderIds: ["a", "b"], seasonId: BIND_SEASON, gameDay: 14,
+    });
+    assert.equal(out.data, null, table);
+    assert.ok(out.error, table);
+  }
+});
+
+test("#5949: dropBindingsAfterRaceExit er ren og bruger raekkens egen game_day", () => {
+  const exits = new Map([["a:tour", 11]]);
+  const rows = [
+    { rider_id: "a", race_id: "tour", game_day: 11 },
+    { rider_id: "a", race_id: "tour", game_day: 12 },
+    { rider_id: "b", race_id: "tour", game_day: 12 },
+  ];
+  assert.deepEqual(dropBindingsAfterRaceExit(rows, exits), [rows[0], rows[2]]);
+  assert.deepEqual(dropBindingsAfterRaceExit(rows, new Map()), rows);
+  assert.deepEqual(dropBindingsAfterRaceExit([{ rider_id: "a", race_id: "tour" }], exits, 13), []);
+});
+
+test("#5949: loadRaceExitGameDays tager den tidligste udgang og koster ingen DB-tur uden bindinger", async () => {
+  const tables = tourTables({
+    incidents: [ABANDON_STAGE_2, { ...ABANDON_STAGE_2, stage_number: 3, kind: "injury" }],
+  });
+  const out = await loadRaceExitGameDays({
+    supabase: mockSupabase(tables), rows: [{ rider_id: "a", race_id: "tour" }],
+  });
+  assert.equal(out.error, null);
+  assert.deepEqual([...out.data], [["a:tour", 11]]);
+  let calls = 0;
+  const empty = await loadRaceExitGameDays({ supabase: { from() { calls += 1; return {}; } }, rows: [] });
+  assert.equal(calls, 0);
+  assert.equal(empty.data.size, 0);
 });
 
 test("#4847: en tom trup koster ingen DB-tur", async () => {

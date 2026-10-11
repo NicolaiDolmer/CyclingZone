@@ -34,6 +34,7 @@ import { resolveDayCloseStatus } from "./trainingDayCloseTrigger.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
 // #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
 // efter resolveDayProgram. Prognosen kalder SAMME funktion (I5).
 import {
@@ -164,6 +165,29 @@ export function buildTeamFatigueForecast({
   return out;
 }
 
+// ── Ren kerne: bindinger + planlagte etaper fra race_entry_days ─────────────
+// #5949: a rider who abandoned his race is bound up to and including his exit
+// day, then follows the plan again (same rule as the engine's binding). Rows
+// after the exit day are dropped BEFORE both outputs, so the forecast neither
+// rests him nor plans a stage he will not ride.
+export function forecastBindingsFromEntryDays({ entryDays = [], schedule = [], profiles = [], exits = new Map() }) {
+  const active = dropBindingsAfterRaceExit(entryDays, exits);
+  const plannedStages = [];
+  for (const entry of active) {
+    const stage = schedule.find((row) => row.race_id === entry.race_id && Number(row.game_day) === Number(entry.game_day));
+    if (!stage) continue;
+    const profile = profiles.find((row) => row.race_id === stage.race_id && Number(row.stage_number) === Number(stage.stage_number));
+    plannedStages.push({ rider_id: entry.rider_id, game_day: Number(entry.game_day), profile_type: profile?.profile_type ?? null });
+  }
+  const boundRiderIdsByGameDay = new Map();
+  for (const entry of active) {
+    const day = Number(entry.game_day);
+    if (!boundRiderIdsByGameDay.has(day)) boundRiderIdsByGameDay.set(day, new Set());
+    boundRiderIdsByGameDay.get(day).add(entry.rider_id);
+  }
+  return { plannedStages, boundRiderIdsByGameDay };
+}
+
 async function rows(query, label) {
   const { data, error } = await query;
   if (error) throw new Error(`${label}: ${error.message}`);
@@ -221,27 +245,20 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
 
   // Planlagte etaper: bindingens loeb har en etape paa netop den loebsdag.
   const raceIds = [...new Set(entryDays.map((row) => row.race_id).filter(Boolean))];
-  const [schedule, profiles] = raceIds.length
+  const [schedule, profiles, exits] = raceIds.length
     ? await Promise.all([
       // pagination-safe: a few bound races x five game days.
       rows(supabase.from("race_stage_schedule").select("race_id, stage_number, game_day").in("race_id", raceIds).in("game_day", dateGameDays), "forecast stage schedule"),
       // pagination-safe: a few bound races, at most 21 stages each.
       rows(supabase.from("race_stage_profiles").select("race_id, stage_number, profile_type").in("race_id", raceIds), "forecast stage profiles"),
+      // #5949: same exit lookup as the engine's binding (I5: no copy of the rule).
+      loadRaceExitGameDays({ supabase, rows: entryDays }).then(({ data, error }) => {
+        if (error) throw new Error(`forecast race exits: ${error.message ?? error}`);
+        return data;
+      }),
     ])
-    : [[], []];
-  const plannedStages = [];
-  for (const entry of entryDays) {
-    const stage = schedule.find((row) => row.race_id === entry.race_id && Number(row.game_day) === Number(entry.game_day));
-    if (!stage) continue;
-    const profile = profiles.find((row) => row.race_id === stage.race_id && Number(row.stage_number) === Number(stage.stage_number));
-    plannedStages.push({ rider_id: entry.rider_id, game_day: Number(entry.game_day), profile_type: profile?.profile_type ?? null });
-  }
-  const boundRiderIdsByGameDay = new Map();
-  for (const entry of entryDays) {
-    const day = Number(entry.game_day);
-    if (!boundRiderIdsByGameDay.has(day)) boundRiderIdsByGameDay.set(day, new Set());
-    boundRiderIdsByGameDay.get(day).add(entry.rider_id);
-  }
+    : [[], [], new Map()];
+  const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles, exits });
 
   const { fatigueRules, stageYesterdayRiderIds } = await fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
   const forecast = buildTeamFatigueForecast({

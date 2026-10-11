@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   buildTeamFatigueForecast, forecastBand, forecastRiderFatigue, forecastSlotActivity,
+  forecastBindingsFromEntryDays,
 } from "./trainingWeekPlanForecast.js";
 import { settleTrainingDateCondition } from "./trainingDateCondition.js";
 import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
@@ -131,6 +132,41 @@ test("skadet rytter hviler; ufuldstaendig dato giver ingen prognose", () => {
   assert.equal(injured.r1.fatigue, settle(["rest", "rest", "rest", "rest", "rest"]));
   assert.deepEqual(buildTeamFatigueForecast(base({ dateGameDays: [41, 42] })), {});
   assert.equal(forecastRiderFatigue({ riderId: "r1", dateStr: TICK_DATE, opening: {}, slots: [] }), null);
+});
+
+// #5949: et 8-etapers loeb paa loebsdag 40..47 (etape n paa loebsdag 39+n).
+// Rytteren udgaar paa etape 2 (loebsdag 41 = datoens foerste felt).
+function tourBindings(exits) {
+  const entryDays = DAYS.map((game_day) => ({ rider_id: "r1", race_id: "tour", game_day }));
+  const schedule = DAYS.map((game_day) => ({ race_id: "tour", stage_number: game_day - 39, game_day }));
+  const profiles = schedule.map((row) => ({ race_id: "tour", stage_number: row.stage_number, profile_type: "flat" }));
+  return forecastBindingsFromEntryDays({ entryDays, schedule, profiles, exits });
+}
+
+test("#5949: udgaaet rytter koerer udgangsdagen og foelger planen resten af datoen", () => {
+  const days = programWeekDaysFor("sprinter");
+  const thu = intensityForSession(days.thu.session);
+  const flatLoad = raceConditionLoads(["r1"], "flat")[0].load;
+
+  const stillRacing = tourBindings(new Map());
+  assert.equal(stillRacing.plannedStages.length, 5, "uden udgang: en etape i hvert felt");
+
+  const exited = tourBindings(new Map([["r1:tour", 41]]));
+  assert.deepEqual(exited.plannedStages.map((row) => row.game_day), [41], "ingen etaper planlagt efter udgangen");
+  assert.deepEqual([...exited.boundRiderIdsByGameDay.keys()], [41], "kun udgangsdagen er bundet");
+
+  const out = buildTeamFatigueForecast(base({ riderWeekDaysByRider: new Map([["r1", days]]), ...exited }));
+  assert.equal(out.r1.fatigue, settle(["race", thu, thu, thu, thu], [flatLoad, 0, 0, 0, 0]));
+});
+
+test("#5949: skadet udgaaet rytter hviler stadig efter udgangen", () => {
+  const flatLoad = raceConditionLoads(["r1"], "flat")[0].load;
+  const exited = tourBindings(new Map([["r1:tour", 41]]));
+  const out = buildTeamFatigueForecast(base({
+    conditionByRider: new Map([["r1", { fatigue: 55, form: 50, injured_until: "2026-10-03" }]]),
+    ...exited,
+  }));
+  assert.equal(out.r1.fatigue, settle(["race", "rest", "rest", "rest", "rest"], [flatLoad, 0, 0, 0, 0]));
 });
 
 test("aabningstilstanden fra datoens registrering vinder over den aktuelle", () => {
