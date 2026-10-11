@@ -12,8 +12,8 @@
 //
 // Hvilke releases: `retention.json` fra lageret (skrevet af
 // scripts/measure-client-release-age.mjs) FORENET med de 3 nyeste manifester
-// (gulvet) OG alle releases afløst inden for de sidste 72 t (tidsgulvet, se
-// timeFloorReleaseIds). Findes retention.json ikke endnu, bruges de to gulve.
+// (gulvet) OG alle releases afløst inden for tidsgulvets vindue (72 t med en
+// frisk måling, ellers 7 døgn; se timeFloorReleaseIds/timeFloorWindowHours).
 //
 // Sikkerhed:
 //   · hver hentet fil verificeres mod manifestets sha256 og byte-størrelse;
@@ -45,6 +45,7 @@ import {
   CARRIED_SIDECAR,
   FLOOR_RELEASES,
   MAX_RELEASES,
+  MEASURE_LOOKBACK_DAYS,
   MIN_WINDOW_HOURS,
   RETENTION_OBJECT_PATH,
   RETENTION_SCHEMA,
@@ -83,7 +84,7 @@ export function retentionReleaseIds(retention) {
 
 /**
  * Tidsgulvet (#5162, 11/10): alle releases der er AFLØST inden for de sidste
- * `windowHours` (default 72 t = specens gulv for vinduet). Afløst-tidspunkt =
+ * `windowHours` (se timeFloorWindowHours). Afløst-tidspunkt =
  * næste nyere manifests oprettelse; den nyeste lagrede release afløses først
  * af dette build, så den er altid med.
  *
@@ -110,6 +111,21 @@ export function timeFloorReleaseIds({ rows, currentId, now = Date.now(), windowH
     if (ordered[i].id !== currentId) ids.push(ordered[i].id);
   }
   return { ids: ids.slice(0, MAX_RELEASES), capped: ids.slice(MAX_RELEASES) };
+}
+
+/**
+ * Tidsgulvets vindue. Med en frisk måling (retention.json skrevet inden for
+ * 72 t) er det specens gulv, 72 t: målingen bærer selv p99 + 24 t oven i.
+ * Uden måling, eller hvis den er gået i stå, kendes p99 ikke, og 10/10-11/10
+ * så faner på 80+ t; så bæres hele målevinduet (7 døgn) op til loftet. At
+ * bære for meget koster build-størrelse; at bære for lidt koster en frosset side.
+ */
+export function timeFloorWindowHours(retention, now = Date.now()) {
+  const measuredAt = Date.parse(retention?.generated_at ?? "");
+  const fresh = retentionReleaseIds(retention).length > 0
+    && Number.isFinite(measuredAt)
+    && now - measuredAt <= MIN_WINDOW_HOURS * 3_600_000;
+  return fresh ? MIN_WINDOW_HOURS : MEASURE_LOOKBACK_DAYS * 24;
 }
 
 /**
@@ -181,18 +197,19 @@ export async function carryForwardAssets({ distDir, env = process.env, store: in
     const retentionIds = retentionReleaseIds(retention);
     const newestRows = await listNewestReleaseIds(store, MANIFEST_SCAN_LIMIT);
     const floorIds = newestRows.slice(0, FLOOR_RELEASES + 1).map((row) => row.id);
-    const timeFloor = timeFloorReleaseIds({ rows: newestRows, currentId: frontend, now: now() });
+    const windowHours = timeFloorWindowHours(retention, now());
+    const timeFloor = timeFloorReleaseIds({ rows: newestRows, currentId: frontend, now: now(), windowHours });
     if (timeFloor.capped.length > 0) {
       warn(
         `${LOG_PREFIX} ⚠️ ${timeFloor.ids.length + timeFloor.capped.length} releases er afløst inden for ` +
-          `${MIN_WINDOW_HOURS} t; loftet er ${MAX_RELEASES}. De ${timeFloor.capped.length} ældste bæres IKKE af tidsgulvet.`,
+          `${windowHours} t; loftet er ${MAX_RELEASES}. De ${timeFloor.capped.length} ældste bæres IKKE af tidsgulvet.`,
       );
     }
     const releases = selectReleases({ retentionIds, floorIds, timeFloorIds: timeFloor.ids, currentId: frontend }).slice();
-    if (!retention) {
+    if (windowHours !== MIN_WINDOW_HOURS) {
       log(
-        `${LOG_PREFIX} retention.json findes ikke endnu — bruger gulvet (${FLOOR_RELEASES} nyeste) ` +
-          `+ tidsgulvet (afløst inden for ${MIN_WINDOW_HOURS} t: ${timeFloor.ids.length} releases).`,
+        `${LOG_PREFIX} ${retention ? "retention.json er forældet eller tom" : "retention.json findes ikke endnu"} — ` +
+          `bruger gulvet (${FLOOR_RELEASES} nyeste) + tidsgulvet (afløst inden for ${windowHours} t: ${timeFloor.ids.length} releases).`,
       );
     }
 

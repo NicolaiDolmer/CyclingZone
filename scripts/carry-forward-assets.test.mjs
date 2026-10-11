@@ -12,7 +12,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { CARRIED_SIDECAR, MAX_RELEASES } from "./lib/releaseAssetsStore.mjs";
-import { IntegrityError, carryForwardAssets, main, planCarry, selectReleases, timeFloorReleaseIds } from "./carry-forward-assets.mjs";
+import { IntegrityError, carryForwardAssets, main, planCarry, selectReleases, timeFloorReleaseIds, timeFloorWindowHours } from "./carry-forward-assets.mjs";
 import { uploadReleaseAssets } from "./upload-release-assets.mjs";
 
 const quiet = () => {};
@@ -221,20 +221,32 @@ test("uden retention.json baeres en release der er 5 bagud men afloest for under
   assert.ok(result.releases.includes("auction"));
   // relAncient blev afløst af 'auction' for 22 t siden → stadig inden for 72 t.
   assert.ok(result.releases.includes("relAncient"));
-  assert.match(lines.join("\n"), /tidsgulvet \(afløst inden for 72 t: 7 releases\)/);
+  // Uden måling er vinduet hele målevinduet (7 døgn), ikke 72 t.
+  assert.match(lines.join("\n"), /tidsgulvet \(afløst inden for 168 t: 7 releases\)/);
 });
 
-test("tidsgulv: en release afloest for over 72 t siden baeres ikke (kun gulvet holder den)", async () => {
+test("tidsgulv med frisk maaling: en release afloest for over 72 t siden baeres ikke", async () => {
   const store = tmp("store");
   await publish(store, "relGone", { "assets/gone-GON1.js": "væk\n" }, 200 * 60);
   // relGone afløst af relB for 100 t siden; relB..relE er nyere.
   for (const [i, id] of ["relB", "relC", "relD", "relE"].entries()) {
     await publish(store, id, { [`assets/p-${id.toUpperCase()}x.js`]: `${id}\n` }, (100 - i * 10) * 60);
   }
+  write(store, "retention.json", JSON.stringify({ schema: 1, generated_at: new Date().toISOString(), releases: ["relE"] }));
   const dist = makeDist("relLive", { "assets/index-LIVE1.js": "live\n" });
   const result = await carryForwardAssets({ distDir: dist, env: env(store), log: quiet, warn: quiet });
   assert.ok(!result.releases.includes("relGone"));
   assert.ok(!fs.existsSync(path.join(dist, "assets/gone-GON1.js")));
+});
+
+test("tidsgulvets vindue: 72 t med frisk maaling; 7 doegn uden, ved tom liste eller forældet maaling", () => {
+  const now = Date.parse("2026-10-11T12:00:00Z");
+  const measured = (hoursAgo, releases = ["a"]) => ({ schema: 1, generated_at: iso(now - hoursAgo * HOUR), releases });
+  assert.equal(timeFloorWindowHours(measured(2), now), 72);
+  assert.equal(timeFloorWindowHours(null, now), 168);
+  assert.equal(timeFloorWindowHours(measured(2, []), now), 168);
+  assert.equal(timeFloorWindowHours(measured(73), now), 168);
+  assert.equal(timeFloorWindowHours({ schema: 1, releases: ["a"] }, now), 168, "uden generated_at regnes målingen ikke som frisk");
 });
 
 test("et manifest kan ikke skrive uden for dist/assets", async () => {
