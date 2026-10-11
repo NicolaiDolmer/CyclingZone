@@ -25,7 +25,6 @@ import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
 import { useScouting } from "../lib/useScouting.js";
-import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import RiderLink from "../components/RiderLink.jsx";
 import NationCell from "../components/rider/NationCell.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
@@ -39,7 +38,6 @@ import { statPlateStyle } from "../lib/statColor.js";
 import { riderOverallRating } from "../lib/riderRating.js";
 import { flattenAbilities } from "../lib/abilities.js";
 import { formatNumber } from "../lib/intl.js";
-import { getRiderAge } from "../lib/riderAge.js";
 import {
   coachVerdictKey, defaultChoice, effectiveChoice, groupGraduations, moveUpBlock,
   type GraduationChoice, type Graduate,
@@ -91,7 +89,6 @@ const CHOICES: GraduationChoice[] = ["promote", "sell", "release"];
 export default function GraduationDayPage() {
   const { t } = useTranslation("academy");
   const scouting = useScouting();
-  const seasonYear = useActiveSeasonYear();
   const { enabled, graduations, loading, error, resolveGraduate, refresh } = useAcademy();
 
   // Spillerens valg pr. rytter. Defaulten er `Move up` medmindre oprykningen er
@@ -237,7 +234,6 @@ export default function GraduationDayPage() {
                   disabled={confirming}
                   rowError={rowErrors[g.riderId] || null}
                   scouting={scouting}
-                  seasonYear={seasonYear}
                   t={t}
                 />
               ))}
@@ -265,7 +261,6 @@ interface GraduateRowProps {
   disabled: boolean;
   rowError: string | null;
   scouting: ReturnType<typeof useScouting>;
-  seasonYear: number | null;
   t: ReturnType<typeof useTranslation>["t"];
 }
 
@@ -281,7 +276,7 @@ function Cell({ label, children, className = "" }: { label: string; children: Re
   );
 }
 
-function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting, seasonYear, t }: GraduateRowProps) {
+function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting, t }: GraduateRowProps) {
   const g = graduate;
   const block = moveUpBlock(g);
   const rider = useMemo(
@@ -302,7 +297,10 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
     level: estimate?.level ?? null,
     maxLevel: scouting.maxLevel ?? null,
   });
-  const age = getRiderAge(g, seasonYear) ?? g.age;
+  // #5943: alderen kommer færdigregnet som sæson-alder fra /api/academy/me
+  // (ageForSeason). Graduate bærer ingen birthdate, så et getRiderAge-kald her
+  // kunne aldrig give andet end null.
+  const age = g.age;
   const contract = g.contract_end_season != null
     ? t("graduationDay.contractUntil", { season: g.contract_end_season })
     : t("graduationDay.contractNone");
