@@ -13,8 +13,8 @@
 **Ejer 7/10 eftermiddag:** databasen og løbsmotoren gøres FÆRDIGE først, med resultat hver dag. Derefter rytterudvikling. Sæsonskiftet (#6320 #5904) parallelt.
 
 1. **Stabilitet:** Supabase (#5878; Medium ✅ · #5692 Codex · #6265 · alarm #6272 · #6276) · **chunk-fejl #5162 flyttet frem** (43 spillere, siden går i stå efter deploy).
-2. **Løbsmotoren fejlfri** (spillerne mærker den): **`official_times_v3` live 11/10 09:43** (Touren + alle nye løb; 4 accepter i #6441) → **nu:** bjerg-tidsgab i alle divisioner #6464 + bjerg uden topankomst #6456 (ny revision, tænd før 37 løb 12/10 kl. 12) · tidsgab i klassementer #6384 · drift-tjek pr. Tour-etape (bjerg 13/10 + 15/10) · vagter i CI (#6285, #6327 #6468) · film: huller uden forklaring (nyt issue) → **form #6156 (toppe S5)**. Hjælp = motor i samme PR (#6186).
-3. **Rytterudvikling + scoutens forventede udvikling** (spillerne har ret: den er forkert): Udvikling 2.0 #6110 (spec `2026-10-03-udvikling-2-design.md`; kurve B #3564 · #5950 · #6109 · #6059) · #5965 · projection #5764 #5683 · træningens rod #5928 · #6248 maks +1 (A/B 7/10).
+2. **Løbsmotoren fejlfri** (spillerne mærker den): **`official_times_v4` live 11/10 16:30** (#6464 #6456; accepter på #6484; Touren på v3) → **nu:** v4-bjergetaper pr. division 12/10 · Tour-bjerg 13/10 + 15/10 · D3-rute #6486 · "Long day" #6475 · film-huller → **form #6156 (S5)**. Hjælp = motor i samme PR (#6186).
+3. **Rytterudvikling:** Udvikling 2.0 #6110 **besluttet 11/10**. **Del 1 til 25/10:** tilbagegang D4 + ingen udvikling uden for managerhold D6. **Del 2 bag flag i S5:** kurve, løbsdag, potentiale 1-99 (levende talent), træningsscore, skjult potentiale på unge, salg efter 5, prognoser #5764 #5683, #2798 først. Træning: 7×5 (tjek status først) · #6248 · UX-ønsker.
 
 ## 🟠 Rødderne bag de andre klager (parallelt)
 
@@ -54,7 +54,7 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-**Åbne:** Udvikling 2.0 D1-D7 + #4765 (#6110) · #5842 (før 25/10) · #5878 compute · #4269 token · kort F statusfejl · #6122 bestyrelse · #6248 maks +1 · #6291 D2-måling (presence-tabel).
+**Åbne:** pengene tilbage fra 4 hold #6474 (vis saldo live først) · GitHub-secret `POSTHOG_PERSONAL_API_KEY` (#5162) · merge-kort pr. PR (#6478 #6480 #6481 #6479 #6477, UI #6482 #6483) · #4765 svaghedernes fart · #5878 compute · #4269 token · kort F statusfejl · #6122 bestyrelse · #6248 maks +1 · #6291 D2-måling. **Besluttet 11/10:** Udvikling 2.0 alle kort · #5842 kl. 14 · v4 tændt.
 
 ## Skubbet til S5 (meldt ud) + venteliste
 
