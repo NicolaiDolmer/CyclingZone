@@ -1,5 +1,7 @@
 # Udvikling 2.0 del 1 — prøvekørsel af tilbagegangen (2026-10-11)
 
+> **FORÆLDET — skal køres igen.** Tallene herunder er lavet før rettelsen af løbsdag-tællingen: endagsløb (`race_type='single'`) gav 0 løbsdage, fordi kun `result_type='stage'` blev talt. Kolonnerne "ny" og "ny hel" er derfor for høje for ryttere der har kørt endagsløb. "Gammel" er upåvirket. Genkør `backend/scripts/dev/agingV2DryRun6110.mjs`; den nye fil viser også hvor mange rytter-løbsdage endagsløbene gav.
+
 Read-only prøvekørsel af `backend/scripts/dev/agingV2DryRun6110.mjs` mod prod (#6499, #6110).
 Produktionens egen sæsonskifte-motor er kørt mod et øjebliksbillede, med flaget slukket (gammel) og tændt (ny).
 "Ny (hel)" fremskriver den igangværende sæsons belastning til en hel sæson. Alder = alder i den nye sæson.

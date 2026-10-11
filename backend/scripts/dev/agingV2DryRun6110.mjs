@@ -232,7 +232,7 @@ async function main() {
   priv.push(`# Udvikling 2.0 tilbagegang — prøvekørsel ${date} (PRIVAT, hard rule 17)`);
   priv.push("");
   priv.push(`Aktiv sæson ${active.number} → skifte til sæson ${newSeasonNumber}. Alder = alder i den NYE sæson (motorens input).`);
-  priv.push(`Løbsdage kørt: ${done} af ${total} (fremskrivning ×${Math.round(scale * 100) / 100}). Daglig træning: ${dailyTrainingEnabled ? "on" : "off"}. Løb i sæsonen: ${load.raceCount}.`);
+  priv.push(`Løbsdage kørt: ${done} af ${total} (fremskrivning ×${Math.round(scale * 100) / 100}). Daglig træning: ${dailyTrainingEnabled ? "on" : "off"}. Løb i sæsonen: ${load.raceCount}, heraf endagsløb: ${load.singleRaceCount} (${load.oneDayRiderDays} rytter-løbsdage fra endagsløb).`);
   priv.push("");
   priv.push("Fald = sum af fysiske evner + brosten pr. rytter (snit). ≥1 = antal ryttere med mindst ét points fald. Vækst/tek+mental/ratingfald = antal ryttere.");
   priv.push("");
@@ -280,7 +280,7 @@ async function main() {
   pub.push(pubRow("**Alle**", "", totals));
   pub.push("");
   pub.push(`Kontrol: vækst ved skiftet (ny) = ${totals.neu.grew}, tekniske+mentale ændret (ny) = ${totals.neu.stable}. Begge skal være 0.`);
-  const pubDir = join(REPO, "docs", "snapshots", "6110");
+  pub.push(`Endagsløb tæller med i løbsdagene: ${load.singleRaceCount} endagsløb i sæsonen gav ${load.oneDayRiderDays} rytter-løbsdage (fra rytterens 'gc'-række; endagsløb har ingen 'stage'-rækker).`);  const pubDir = join(REPO, "docs", "snapshots", "6110");
   mkdirSync(pubDir, { recursive: true });
   writeFileSync(join(pubDir, `aging-v2-dry-run-${date}.md`), pub.join("\n") + "\n");
 

@@ -5,8 +5,11 @@
 // tæller de to tal; selve bremse-formlen bor i riderProgression.js.
 //
 //   løbsdage   = distinkte (race_id, stage_number) i race_results med
-//                result_type = 'stage', for løb i sæsonen (races.season_id).
-//                Et endagsløb er én etape; en etape tæller én gang pr. rytter.
+//                result_type = 'stage', for løb i sæsonen (races.season_id),
+//                PLUS én løbsdag pr. endagsløb (races.race_type = 'single') fra
+//                rytterens 'gc'-række. Endagsløb gemmer rytterens resultat som
+//                'gc' (+ 'team'), aldrig 'stage' (ejer på #6499, 11/10).
+//                En etape/et endagsløb tæller én gang pr. rytter.
 //   hårde dage = rækker i rider_training_scores for sæsonen med
 //                day_type = 'training', was_race_day = false og en session hvis
 //                intensitet er 'hard' (trainingDayTypes.SESSION_INTENSITY),
@@ -38,17 +41,26 @@ function isHardTrainingRow(row) {
 /**
  * Ren tælling fra rå rækker. Returnerer Map(rider_id → { raceDays, hardDays }).
  * stageRows:    [{ rider_id, race_id, stage_number }] (allerede filtreret til sæsonens etaper)
+ * oneDayRows:   [{ rider_id, race_id }] (rytterens 'gc'-række i sæsonens endagsløb);
+ *               ét endagsløb = én løbsdag, uanset stage_number og dubletter
  * trainingRows: [{ rider_id, day_type, was_race_day, session, game_day, tick_date }]
  * Rækker uden rider_id ignoreres; træningsrækker filtreres igen her, så en løsere
  * forespørgsel aldrig kan tælle en let dag eller en løbsdag med.
  */
-export function computeSeasonLoad({ stageRows = [], trainingRows = [] } = {}) {
+export function computeSeasonLoad({ stageRows = [], oneDayRows = [], trainingRows = [] } = {}) {
   const raceKeys = new Map();
+  const addRaceDay = (riderId, key) => {
+    let set = raceKeys.get(riderId);
+    if (!set) { set = new Set(); raceKeys.set(riderId, set); }
+    set.add(key);
+  };
   for (const r of stageRows) {
     if (r?.rider_id == null || r.race_id == null) continue;
-    let set = raceKeys.get(r.rider_id);
-    if (!set) { set = new Set(); raceKeys.set(r.rider_id, set); }
-    set.add(`${r.race_id}:${r.stage_number ?? 1}`);
+    addRaceDay(r.rider_id, `${r.race_id}:${r.stage_number ?? 1}`);
+  }
+  for (const r of oneDayRows) {
+    if (r?.rider_id == null || r.race_id == null) continue;
+    addRaceDay(r.rider_id, `${r.race_id}:1`);
   }
 
   const hardKeys = new Map();
@@ -86,24 +98,32 @@ export async function loadSeasonDevelopmentLoad({ supabase, seasonId = null, sea
   const sid = seasonId ?? await resolveSeasonIdByNumber(supabase, seasonNumber);
 
   const races = await fetchAllRows(() => supabase
-    .from("races").select("id").eq("season_id", sid).order("id"));
+    .from("races").select("id, race_type").eq("season_id", sid).order("id"));
   const raceIds = races.map((r) => r.id);
+  const singleRaceIds = races.filter((r) => r.race_type === "single").map((r) => r.id);
 
-  const stageRows = [];
-  for (let i = 0; i < raceIds.length; i += RACE_ID_CHUNK) {
-    const chunk = raceIds.slice(i, i + RACE_ID_CHUNK);
-    const rows = await fetchAllRowsKeyset((after) => {
-      let q = supabase
-        .from("race_results")
-        .select("id, rider_id, race_id, stage_number")
-        .in("race_id", chunk)
-        .eq("result_type", "stage")
-        .order("id", { ascending: true });
-      if (after != null) q = q.gt("id", after);
-      return q;
-    });
-    stageRows.push(...rows);
+  async function resultRows(ids, resultType) {
+    const out = [];
+    for (let i = 0; i < ids.length; i += RACE_ID_CHUNK) {
+      const chunk = ids.slice(i, i + RACE_ID_CHUNK);
+      const rows = await fetchAllRowsKeyset((after) => {
+        let q = supabase
+          .from("race_results")
+          .select("id, rider_id, race_id, stage_number")
+          .in("race_id", chunk)
+          .eq("result_type", resultType)
+          .order("id", { ascending: true });
+        if (after != null) q = q.gt("id", after);
+        return q;
+      });
+      out.push(...rows);
+    }
+    return out;
   }
+
+  const stageRows = await resultRows(raceIds, "stage");
+  // Endagsløb har ingen 'stage'-rækker; rytterens 'gc'-række er hans løbsdag.
+  const oneDayRows = await resultRows(singleRaceIds, "gc");
 
   const trainingRows = await fetchAllRowsKeyset((after) => {
     let q = supabase
@@ -118,9 +138,16 @@ export async function loadSeasonDevelopmentLoad({ supabase, seasonId = null, sea
     return q;
   });
 
+  // Kontroltal til prøvekørslen: at endagsløb faktisk tæller med (#6499).
+  const oneDayRiderDays = new Set(
+    oneDayRows.filter((r) => r?.rider_id != null && r.race_id != null).map((r) => `${r.rider_id}:${r.race_id}`),
+  ).size;
+
   return {
     seasonId: sid,
     raceCount: raceIds.length,
-    byRider: computeSeasonLoad({ stageRows, trainingRows }),
+    singleRaceCount: singleRaceIds.length,
+    oneDayRiderDays,
+    byRider: computeSeasonLoad({ stageRows, oneDayRows, trainingRows }),
   };
 }

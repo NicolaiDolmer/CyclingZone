@@ -33,6 +33,25 @@ test("#6499: løbsdage = distinkte (løb, etape) pr. rytter", () => {
   assert.equal(load.has(null), false);
 });
 
+test("#6499: endagsløb giver én løbsdag pr. rytter fra 'gc'-rækken (ingen 'stage'-rækker)", () => {
+  const load = computeSeasonLoad({
+    stageRows: [
+      { rider_id: "a", race_id: "tour", stage_number: 1 },
+      { rider_id: "a", race_id: "tour", stage_number: 2 },
+    ],
+    oneDayRows: [
+      { rider_id: "a", race_id: "classic1", stage_number: 1 },
+      { rider_id: "a", race_id: "classic1", stage_number: 1 }, // dublet
+      { rider_id: "a", race_id: "classic2", stage_number: null },
+      { rider_id: "c", race_id: "classic1", stage_number: 1 }, // kun endagsløb
+      { rider_id: null, race_id: "classic1", stage_number: 1 }, // uden rytter
+    ],
+  });
+  assert.deepEqual(load.get("a"), { raceDays: 4, hardDays: 0 });
+  assert.deepEqual(load.get("c"), { raceDays: 1, hardDays: 0 });
+  assert.equal(load.has(null), false);
+});
+
 test("#6499: hårde dage = træningsdag, ikke løbsdag, hård session; dedup pr. (rytter, game_day ?? tick_date)", () => {
   const t = (over) => ({ rider_id: "a", day_type: "training", was_race_day: false, session: "vo2max", game_day: null, tick_date: "2026-10-01", ...over });
   const load = computeSeasonLoad({
@@ -102,8 +121,18 @@ test("#6499: loadSeasonDevelopmentLoad læser kun den afsluttede sæson og tæll
       results.push({ id: `res-${pad(results.length)}`, race_id: raceId, stage_number: stage, result_type: "gc", rider_id: "a" });
     }
   }
+  // Endagsløb: rytterens resultat ligger som 'gc' (+ 'team'), aldrig 'stage'.
+  const SINGLE_RACES = RACE_ID_CHUNK + 2; // flere end én bid
+  for (let i = 0; i < SINGLE_RACES; i++) {
+    const raceId = `single-${pad(i)}`;
+    races.push({ id: raceId, season_id: "s4", race_type: "single" });
+    results.push({ id: `res-${pad(results.length)}`, race_id: raceId, stage_number: 1, result_type: "gc", rider_id: "a" });
+    results.push({ id: `res-${pad(results.length)}`, race_id: raceId, stage_number: 1, result_type: "team", rider_id: "a" });
+  }
   races.push({ id: "race-other", season_id: "s3" });
   results.push({ id: "res-other", race_id: "race-other", stage_number: 1, result_type: "stage", rider_id: "a" });
+  races.push({ id: "single-other", season_id: "s3", race_type: "single" });
+  results.push({ id: "res-single-other", race_id: "single-other", stage_number: 1, result_type: "gc", rider_id: "a" });
   const training = [];
   for (let d = 1; d <= 1500; d++) {
     training.push({ id: `trn-${pad(d)}`, rider_id: "a", season_id: "s4", day_type: "training", was_race_day: false, session: "vo2max", game_day: d, tick_date: "2026-10-01" });
@@ -116,8 +145,11 @@ test("#6499: loadSeasonDevelopmentLoad læser kun den afsluttede sæson og tæll
   });
   const out = await loadSeasonDevelopmentLoad({ supabase, seasonNumber: 4 });
   assert.equal(out.seasonId, "s4");
-  assert.equal(out.raceCount, RACE_ID_CHUNK + 5);
-  assert.deepEqual(out.byRider.get("a"), { raceDays: (RACE_ID_CHUNK + 5) * 3, hardDays: 1500 });
+  assert.equal(out.raceCount, RACE_ID_CHUNK + 5 + SINGLE_RACES);
+  assert.equal(out.singleRaceCount, SINGLE_RACES);
+  assert.equal(out.oneDayRiderDays, SINGLE_RACES);
+  // Etapeløbenes 'gc'-rækker tæller ikke; endagsløbenes 'gc' tæller én dag hver.
+  assert.deepEqual(out.byRider.get("a"), { raceDays: (RACE_ID_CHUNK + 5) * 3 + SINGLE_RACES, hardDays: 1500 });
 });
 
 test("#6499: manglende sæson eller læsefejl kaster (aldrig tavst fuldt fald)", async () => {
