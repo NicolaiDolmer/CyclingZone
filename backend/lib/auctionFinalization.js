@@ -52,6 +52,20 @@ export function sellerOwnsAuctionRider(auction) {
   return Boolean(auction?.rider && auction.rider.team_id === auction.seller_team_id);
 }
 
+// #6474: et hold kan aldrig byde på sin EGEN rytter (bid-ruten afviser det,
+// "cannot_bid_own_rider"). Ejer højestbydende allerede rytteren ved finalize, er
+// han derfor flyttet til vinderen af en tidligere, afbrudt finalize-kørsel på en
+// fri-agent-/AI-auktion (initiativtageren står som seller_team_id). Uden denne
+// genkendelse blev vinderen regnet som sælger og fik både "Købt"- og "Solgt"-
+// posten — købesummen tilbage på kontoen for en rytter han kun havde købt.
+export function riderAlreadyWithAuctionWinner(auction) {
+  return Boolean(
+    auction?.rider?.team_id &&
+    auction.current_bidder_id &&
+    auction.rider.team_id === auction.current_bidder_id
+  );
+}
+
 function isHumanManagedTeam(team) {
   return Boolean(team?.user_id) && !team?.is_ai;
 }
@@ -201,6 +215,17 @@ async function hasSoldGraduationRow(supabase, { teamId, riderId }) {
 }
 
 async function resolveAuctionSellerContext({ supabase, auction }) {
+  // #6474: rytteren er allerede hos vinderen → ingen sælger at udbetale til;
+  // køberen betaler stadig (idempotency-nøglen forhindrer dobbelt-debitering).
+  if (riderAlreadyWithAuctionWinner(auction)) {
+    return {
+      sellerOwned: false,
+      actualSellerTeamId: null,
+      actualSeller: null,
+      staleHumanOwner: false,
+    };
+  }
+
   const sellerOwned = sellerOwnsAuctionRider(auction);
   if (sellerOwned) {
     return {

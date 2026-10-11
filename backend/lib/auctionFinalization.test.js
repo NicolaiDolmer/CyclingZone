@@ -2231,6 +2231,76 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
   assert.match(notifications[0].title, /you won the auction/i);
 });
 
+// #6474: en afbrudt finalize-kørsel havde allerede flyttet fri-agent-rytteren
+// til vinderen (initiativtageren, som også står som seller_team_id), før
+// pengene flyttede. Retry'en så rytter.team_id === seller_team_id og regnede
+// vinderen som sælger → både "Købt"- og "Solgt"-posten på samme hold, netto 0.
+// Nu: køberen betaler, ingen sælger-udbetaling.
+test("finalizeAuctionById does not pay the winner as seller when a retry finds the rider already moved (#6474)", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-retry-moved",
+        status: "active",
+        current_bidder_id: "initiator-team",
+        current_price: 80,
+        seller_team_id: "initiator-team",
+        rider: {
+          id: "rider-retry",
+          firstname: "Retry",
+          lastname: "Rider",
+          team_id: "initiator-team",
+        },
+      },
+      teams: {
+        "initiator-team": {
+          id: "initiator-team",
+          name: "Initiator",
+          balance: 300,
+          division: 3,
+          user_id: "user-init",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "initiator-team": {
+          riderCount: 4,
+          pendingCount: 0,
+          activeLoanCount: 0,
+        },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-retry-moved",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-04-25T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.equal(result.seller_owned, false);
+  assert.deepEqual(teamUpdates, [
+    { teamId: "initiator-team", payload: { balance: 220 } },
+  ]);
+  assert.equal(financeInserts.length, 1, "kun købs-posten — ingen 'Solgt'-post til vinderen");
+  assert.equal(financeInserts[0].metadata.code, "tx.auctionBuy");
+  assert.equal(financeInserts[0].amount, -80);
+  assert.equal(financeInserts.some((row) => row.metadata?.code === "tx.auctionSell"), false);
+  assert.equal(notifications.length, 1);
+  assert.match(notifications[0].title, /you won the auction/i);
+});
+
 // #3963: en manager fyrede sin EGEN rytter (POST /riders/:id/release) mens
 // han stadig lå på en auktion manageren selv havde startet. release rører
 // aldrig auktionsrækken, så den løb videre uden bud — og "implicit first
