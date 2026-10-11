@@ -54,10 +54,11 @@ export function sellerOwnsAuctionRider(auction) {
 
 // #6474: et hold kan aldrig byde på sin EGEN rytter (bid-ruten afviser det,
 // "cannot_bid_own_rider"). Ejer højestbydende allerede rytteren ved finalize, er
-// han derfor flyttet til vinderen af en tidligere, afbrudt finalize-kørsel på en
-// fri-agent-/AI-auktion (initiativtageren står som seller_team_id). Uden denne
-// genkendelse blev vinderen regnet som sælger og fik både "Købt"- og "Solgt"-
-// posten — købesummen tilbage på kontoen for en rytter han kun havde købt.
+// han derfor flyttet til vinderen af en tidligere, afbrudt finalize-kørsel. På en
+// fri-agent-/AI-auktion står initiativtageren (= vinderen) som seller_team_id, og
+// uden denne genkendelse blev han regnet som sælger og fik både "Købt"- og
+// "Solgt"-posten — købesummen tilbage for en rytter han kun havde købt. På et
+// almindeligt salg blev auktionen i stedet annulleret som "stale owner".
 export function riderAlreadyWithAuctionWinner(auction) {
   return Boolean(
     auction?.rider?.team_id &&
@@ -215,12 +216,24 @@ async function hasSoldGraduationRow(supabase, { teamId, riderId }) {
 }
 
 async function resolveAuctionSellerContext({ supabase, auction }) {
-  // #6474: rytteren er allerede hos vinderen → ingen sælger at udbetale til;
-  // køberen betaler stadig (idempotency-nøglen forhindrer dobbelt-debitering).
+  // #6474: rytteren er allerede hos vinderen (afbrudt tidligere kørsel). Den
+  // nuværende ejer er køberen og må aldrig udbetales som sælger. Den egentlige
+  // sælger er den, rytteren kom FRA i kørslens ejerskabs-hændelse (samme
+  // idempotency-nøgle som recordRiderOwnershipEvent nedenfor) — fri agent =
+  // ingen. sellerOwned=false: sælger-gulvet er irrelevant, rytteren er allerede
+  // væk. Læsefejl kaster før enhver pengebevægelse, så cron'en prøver igen.
   if (riderAlreadyWithAuctionWinner(auction)) {
+    const priorEvent = await expectMaybeSingle(
+      supabase
+        .from("rider_ownership_events")
+        .select("from_team_id")
+        .eq("idempotency_key", `ownership:auction_winner:${auction.id}`)
+    );
+    const originalOwnerId = priorEvent?.from_team_id ?? null;
     return {
       sellerOwned: false,
-      actualSellerTeamId: null,
+      actualSellerTeamId:
+        originalOwnerId && originalOwnerId !== auction.current_bidder_id ? originalOwnerId : null,
       actualSeller: null,
       staleHumanOwner: false,
     };

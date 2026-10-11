@@ -106,6 +106,7 @@ function createFinalizeAuctionSupabase({
   academyGraduationUpdates = [],
   academyGraduationLookupError = null, // #6320: simulér en fejlet læsning af academy_graduation
   ownershipEvents = [], // #3582: rider_ownership_events-inserts
+  priorOwnershipEvents = [], // #6474: hændelser fra en tidligere, afbrudt finalize-kørsel
   atRiskRiderRowsByTeam = {}, // #2836: fetchAtRiskCount's fetchTeamRiskRows-svar pr. sælger-team-id (default: ingen risiko)
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
@@ -560,11 +561,24 @@ function createFinalizeAuctionSupabase({
       }
 
       // #3582: rider_ownership_events — best-effort audit-skrivning.
+      // #6474: + opslag af en tidligere kørsels hændelse (idempotency_key).
       if (table === "rider_ownership_events") {
         return {
           insert(payload) {
             ownershipEvents.push(payload);
             return Promise.resolve({ error: null });
+          },
+          select() {
+            return {
+              eq(column, value) {
+                return {
+                  maybeSingle: async () => ({
+                    data: priorOwnershipEvents.find((row) => row[column] === value) || null,
+                    error: null,
+                  }),
+                };
+              },
+            };
           },
         };
       }
@@ -2299,6 +2313,64 @@ test("finalizeAuctionById does not pay the winner as seller when a retry finds t
   assert.equal(financeInserts.some((row) => row.metadata?.code === "tx.auctionSell"), false);
   assert.equal(notifications.length, 1);
   assert.match(notifications[0].title, /you won the auction/i);
+});
+
+// #6474 (CodeRabbit): samme afbrudte kørsel på et ALMINDELIGT salg — rytteren
+// er flyttet fra sælgeren til køberen før pengene. Retry'en må hverken annullere
+// som "stale owner" (køberen ville beholde rytteren gratis) eller snyde sælgeren:
+// køberen betaler, og den oprindelige ejer (fra kørslens ejerskabs-hændelse) får
+// salgsbeløbet.
+test("finalizeAuctionById pays the original seller when a retry finds the rider already with the buyer (#6474)", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const financeInserts = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-retry-sale",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 90,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-retry-sale",
+          firstname: "Retry",
+          lastname: "Sale",
+          team_id: "buyer-team",
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 300, division: 3, user_id: "user-b", is_ai: false },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 100, division: 3, user_id: "user-s", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 4, pendingCount: 0, activeLoanCount: 0 },
+        "seller-team": { riderCount: 20, pendingCount: 0, activeLoanCount: 0 },
+      },
+      priorOwnershipEvents: [{
+        idempotency_key: "ownership:auction_winner:auction-retry-sale",
+        from_team_id: "seller-team",
+      }],
+      auctionUpdates,
+      teamUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-retry-sale",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-04-25T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.deepEqual(teamUpdates, [
+    { teamId: "buyer-team", payload: { balance: 210 } },
+    { teamId: "seller-team", payload: { balance: 190 } },
+  ]);
+  assert.deepEqual(
+    financeInserts.map((row) => [row.team_id, row.metadata.code, row.amount]),
+    [["buyer-team", "tx.auctionBuy", -90], ["seller-team", "tx.auctionSell", 90]]
+  );
 });
 
 // #3963: en manager fyrede sin EGEN rytter (POST /riders/:id/release) mens
