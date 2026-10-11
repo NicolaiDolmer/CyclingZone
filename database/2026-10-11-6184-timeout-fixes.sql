@@ -62,9 +62,14 @@
 -- Apply: post-merge under #2642-rammer (idempotent + post-verify).
 -- Rollback: koer CREATE POLICY-blokken fra 2026-09-08-5013-forum-category-mutes.sql.
 
+-- #6342: kort laase-ventetid, saa en DDL-laas aldrig staar i koe foran
+-- spillernes laesninger (auto-migrate kan koeres igen).
+SET lock_timeout = '3s';
+
 BEGIN;
 
 DROP POLICY IF EXISTS "forum_category_mutes_own_rows" ON public.forum_category_mutes;
+-- policy-grant-ok: toggle-tabel; 2026-09-08-5013 giver bevidst kun SELECT/INSERT/DELETE (ingen UPDATE-brug), uaendret her
 CREATE POLICY "forum_category_mutes_own_rows" ON public.forum_category_mutes
   FOR ALL TO authenticated
   USING (user_id = (SELECT auth.uid()))
