@@ -73,6 +73,9 @@ async function countStagesDoneToday(supabase, now) {
  *   supabase, now?: Date,
  *   isStageSchedulerEnabled, isRaceEngineV2Enabled,
  *   runStageFn: ({ raceId, stageIndex }) => Promise,
+ *   seenKeys?: Map<string, any>,
+ *   captureExceptionFn?: Function,
+ *   startTrainingDayClose?: Function,
  * }} args
  * @returns {{ ran, errors, skipped? }}
  */
