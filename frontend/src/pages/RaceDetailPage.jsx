@@ -69,6 +69,7 @@ import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/rac
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
 import { groupPassagesForStage } from "../lib/raceStagePassages.js";
 import { classificationPointTotals } from "../lib/raceClassificationTotals.js";
+import { withClassificationGaps } from "../lib/raceClassificationGaps.js";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
 import { buildFinalKilometrePlayback } from "../lib/finalKilometre.js";
 import { profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig.js";
@@ -467,7 +468,7 @@ export default function RaceDetailPage() {
     // fjernet som del af dato-oprydningen på resultat-fladen.
     const { data: raceRow, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, season:season_id(id, number)")
+      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, engine_rules_revision, season:season_id(id, number)")
       .eq("id", raceId)
       .single();
 
@@ -536,7 +537,7 @@ export default function RaceDetailPage() {
     const stagePointsPromise = fetchAllRows(() =>
       supabase
         .from("race_results")
-        .select("id, stage_number, result_type, rank, rider_id, sprint_points, kom_points")
+        .select("id, stage_number, result_type, rank, rider_id, team_id, finish_time, bonus_seconds, sprint_points, kom_points")
         .eq("race_id", raceId)
         .eq("result_type", "stage")
         .order("id")
@@ -820,6 +821,17 @@ export default function RaceDetailPage() {
   const finalClassificationTotals = useMemo(
     () => classificationPointTotals(stagePointsRows, profileByStage, null),
     [stagePointsRows, profileByStage],
+  );
+
+  // #6384: tidsforskel i ungdoms- og holdklassementet (afledt, se raceClassificationGaps.js).
+  const rulesRevision = race?.engine_rules_revision ?? null;
+  const liveByTypeWithGaps = useMemo(
+    () => (liveStandings ? withClassificationGaps(liveStandings.byType, { stageRows: stagePointsRows, uptoStage: liveStandings.stage, revision: rulesRevision }) : null),
+    [liveStandings, stagePointsRows, rulesRevision],
+  );
+  const finalByTypeWithGaps = useMemo(
+    () => withClassificationGaps(finalByType, { stageRows: stagePointsRows, uptoStage: null, revision: rulesRevision }),
+    [finalByType, stagePointsRows, rulesRevision],
   );
 
   // #2081: "mit hold" løses til den faktiske team_id (kan være ukendt hvis ikke logget
@@ -1265,8 +1277,8 @@ export default function RaceDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
                   <SectionStack>
                     {liveStandings
-                      ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={liveClassificationTotals} />
-                      : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={finalClassificationTotals} />}
+                      ? <LiveOverallTab byType={liveByTypeWithGaps} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={liveClassificationTotals} />
+                      : <OverallTab finalByType={finalByTypeWithGaps} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={finalClassificationTotals} />}
                   </SectionStack>
                   <SectionStack>
                     <RaceRecap results={results} scopeType="overall" incidents={incidents} />
@@ -1285,7 +1297,7 @@ export default function RaceDetailPage() {
                   ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                      raceId={race.id} raceName={race.name} passages={passages} stageRoles={stageRoles} t={t} />
+                      raceId={race.id} raceName={race.name} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} />
                   : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
@@ -1715,7 +1727,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, stageRoles = null, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, stageRoles = null, rulesRevision = null, t }) {
   const [classTab, setClassTab] = useState("stage");
   // #6080: egne ryttere + egne indsats-ordrer til mellemtider/tidstab.
   const ownRiderIds = useMemo(() => ownRiderIdsForStage(results, stage, myOwnTeamId), [results, stage, myOwnTeamId]);
@@ -1744,7 +1756,17 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     if (row.result_type !== "stage" || row.stage_number !== stage) return row;
     return { ...row, ...participationFlagsForResult(row, participationHistory) };
   }), [results, stage, participationHistory]);
-  const rows = filterRows(classificationRowsForStage(results, stage, classTab));
+  // #6384: ungdom/hold får tidsforskel til føreren, afledt af GC-gab og etapetider.
+  const classRows = useMemo(() => {
+    const base = classificationRowsForStage(results, stage, classTab);
+    if (classTab !== "young" && classTab !== "team") return base;
+    const byType = withClassificationGaps(
+      { gc: classificationRowsForStage(results, stage, "gc"), young: classTab === "young" ? base : [], team: classTab === "team" ? base : [] },
+      { stageRows: stagePointsRows, uptoStage: stage, revision: rulesRevision },
+    );
+    return classTab === "young" ? byType.young : byType.team;
+  }, [results, stage, classTab, stagePointsRows, rulesRevision]);
+  const rows = filterRows(classRows);
 
   // #3519: point-totaler "efter etape {stage}" for mountain/points-sub-fanen —
   // samme SSOT-genbrug som Overall-fanerne (raceClassificationTotals.js).
