@@ -9,6 +9,7 @@ import {
   applyChaseCost,
   breakawayHook,
   chaseAbilityScale,
+  chaseStanceBrakesAsReaction,
   chaseFloorClosingSeconds,
   chaseFloorKm,
   chaseFloorTargetGapSeconds,
@@ -36,6 +37,7 @@ import {
   TRY_BREAK_JOIN_SCORE_BOOST,
 } from "./breakaway.ts";
 import { makeHookCtx, rekeyHookCtxForSegment } from "../testUtils/makeHookCtx.ts";
+import { letGoBrakingTeams } from "./teamChaseReaction.ts";
 import { BREAKAWAY_CHASE_V3_TUNING, BREAKAWAY_EXTRA_TUNING, RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import type { AbilityKey, EffortLevel, Entrant, EngineState, RaceGroup, RiderRole, RiderState, RouteV2, TimelineEvent } from "../types.ts";
 
@@ -1326,4 +1328,27 @@ test("#6441 v3: feltet kommer sjaeldnere for sent paa en massespurt; aeldre revi
   assert.equal(chaseFloorTargetGapSeconds(route, roll, true), BREAKAWAY_EXTRA_TUNING.chaseFloorTargetGapSeconds, "v3: til tiden");
   const breakawayRoute = { finale_type: "breakaway" as const, profile_type: "rolling" as const };
   for (const r of [0.05, 0.2, 0.5, 0.9]) assert.equal(chaseFloorTargetGapSeconds(breakawayRoute, r, true), chaseFloorTargetGapSeconds(breakawayRoute, r));
+});
+
+// ── #6457 (KUN official_times_v3): "jag" lofter og bremser lad-gaa-fasen mindst som en reaktion ─
+
+test("#6457 v3: et hold med 'jag' og en trussel i udbruddet bremser og lofter lad-gaa-fasen som et reagerende hold", () => {
+  const threat = (severity: "none" | "moderate" | "serious", extra: Record<string, unknown> = {}) =>
+    ({ severity, reason: "rival_ahead", chase_group_id: "pel", tolerated_lead_seconds: 300, threat_rider_ids: ["B-0"], ...extra }) as never;
+  const neutralReacting = { teamId: "N", stance: "neutral" as const, threat: threat("moderate"), plan: { intensity: 0.5 } };
+  const chaseOrder = { teamId: "C", stance: "chase" as const, threat: threat("moderate"), plan: { intensity: 0 } };
+  // Foer: neutral reagerer og lofter forspringet; "jag" har ingen reaktion og lofter intet.
+  assert.deepEqual([...letGoBrakingTeams([neutralReacting], "pel", true)], [["N", 300]]);
+  assert.equal(letGoBrakingTeams([chaseOrder], "pel", true).size, 0);
+  // v3: "jag" giver aldrig mindre end neutral.
+  assert.deepEqual([...letGoBrakingTeams(chaseStanceBrakesAsReaction([chaseOrder]), "pel", true)], [["C", 300]]);
+  // Uden trussel bremser "jag" stadig ikke (feltet lader dagens udbrud faa sit forspring).
+  const calm = { ...chaseOrder, threat: threat("none") };
+  assert.equal(letGoBrakingTeams(chaseStanceBrakesAsReaction([calm]), "pel", true).size, 0);
+  // Kun "jag" uden reaktion aendres; neutral, lad gaa og en igangvaerende reaktion er uroerte.
+  const letGo = { teamId: "L", stance: "let_go" as const, threat: threat("serious"), plan: { intensity: 0 } };
+  const out = chaseStanceBrakesAsReaction([neutralReacting, letGo, { ...chaseOrder, plan: { intensity: 0.7 } }]);
+  assert.equal(out[0], neutralReacting);
+  assert.equal(out[1], letGo);
+  assert.equal(out[2].plan.intensity, 0.7);
 });
