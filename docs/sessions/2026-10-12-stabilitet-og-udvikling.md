@@ -5,7 +5,7 @@ Planlagt 11/10 sammen med ejeren (svar 11/10 ca. 12:15). Ejeren er med fra start
 ## Startprompt (kopiér ind i en ny Claude Code-session)
 
 ```
-Ny session efter docs/sessions/2026-10-12-stabilitet-og-udvikling.md. Læs FØRST den fil, derefter docs/NOW.md, docs/MASTERPLAN.md og issue #6110 inkl. kommentarer. Jeg er med fra start. Rækkefølge: (1) tjek overdragelsen fra sessionen 11/10 (punkt "Overdraget" i filen) og sig hvad der er åbent, (2) start en bølge med stabilitets-sporene og småting-lanen, (3) tag Udvikling 2.0-beslutningerne D1-D7 med mig ét kort ad gangen med billede, mens bølgen kører, (4) sæsonskiftets værdier (#5842) som kort, (5) byg Udvikling 2.0 når D1-D7 er besluttet. Formtoppe (#6156 #6158) er IKKE med i denne session. Svar på dansk.
+Ny session efter docs/sessions/2026-10-12-stabilitet-og-udvikling.md. Læs FØRST den fil, derefter docs/NOW.md, docs/MASTERPLAN.md og issue #6110 inkl. kommentarer. Jeg er med fra start. Rækkefølge: (1) GØR FÆRDIG det, sessionen 11/10 stoppede midt i (afsnit "Overdraget"): genoptag #6464-sporet (draft-PR #6465, revision official_times_v4) i en bølge og før det helt til et tænd-kort til mig senest 12/10 kl. 11:00, så de 37 løb kl. 12 får det; send mig før/efter-billedet for #6384 (PR #6466) til merge-go. (2) Start i samme bølge stabilitets-sporene (#5162 #5911 #6184) og småting-lanen. (3) Tag Udvikling 2.0-beslutningerne D1-D7 med mig ét kort ad gangen med billede, mens bølgen kører. (4) Sæsonskiftets værdier (#5842) som kort. (5) Byg Udvikling 2.0, når D1-D7 er besluttet. Formtoppe (#6156 #6158) er IKKE med. Afbryd aldrig et igangværende spor uden at jeg beder om det; nye ting skrives ind i overdragelsen. Svar på dansk.
 ```
 
 ## Mål for sessionen
