@@ -1344,3 +1344,16 @@ test('notifyUser (#6385): andre typer udløser ingen oprydning', async () => {
   await notifyUser({ supabase, userId: 'user-1', type: 'auction_outbid', title: 'Outbid again', message: 'x', relatedId: 'auc-1' });
   assert.equal(supabase.state.notifications.find((n) => n.id === 'a').is_read, false);
 });
+
+test('notifyUser (#6385): en deduperet afslutnings-notifikation kører oprydningen igen (retry repareret)', async () => {
+  const { createFakeSupabase } = await import('./testUtils/fakeSupabase.js');
+  const supabase = createFakeSupabase({
+    notifications: [
+      auctionRow('a', 'user-1', 'auction_outbid', 'auc-1'),
+      { id: 'end', user_id: 'user-1', type: 'auction_lost', related_id: 'auc-1', is_read: false, title: 'Lost', message: 'Gone', created_at: new Date().toISOString() },
+    ],
+  });
+  const result = await notifyUser({ supabase, userId: 'user-1', type: 'auction_lost', title: 'Lost', message: 'Gone', relatedId: 'auc-1' });
+  assert.equal(result.deduped, true);
+  assert.equal(supabase.state.notifications.find((n) => n.id === 'a').is_read, true);
+});

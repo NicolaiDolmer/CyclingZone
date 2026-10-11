@@ -491,15 +491,19 @@ export default function NotificationsPage() {
     // #6385: ulæste bud-beskeder for afgjorte auktioner er skjult i listen men
     // talte med i badgen — læs dem stille, så tallet er sandt.
     const hiddenUnread = new Set(findSupersededUnreadIds(data || []));
-    setNotifications(hiddenUnread.size
-      ? (data || []).map(n => (hiddenUnread.has(n.id) ? { ...n, is_read: true } : n))
-      : (data || []));
+    setNotifications(data || []);
+    setNotifLoadError(false);
     setNotifLoading(false);
     if (hiddenUnread.size) {
       const { error: healError } = await supabase.from("notifications")
         .update({ is_read: true }).in("id", [...hiddenUnread]);
-      if (healError) reportActionFailure("notification_heal_superseded", { reason: healError.message, context: { count: hiddenUnread.size } });
-      else notifyUnreadChanged();
+      if (healError) {
+        reportActionFailure("notification_heal_superseded", { reason: healError.message, context: { count: hiddenUnread.size } });
+      } else {
+        // Lokal laest-tilstand foerst NU, naar DB er opdateret (ellers vises noget andet end badgen taeller)
+        setNotifications(prev => prev.map(n => (hiddenUnread.has(n.id) ? { ...n, is_read: true } : n)));
+        notifyUnreadChanged();
+      }
     }
   }
 
@@ -555,7 +559,7 @@ export default function NotificationsPage() {
       notifyMutationFailed("notification_delete_many", error, { count: ids.length });
       return;
     }
-    window.dispatchEvent(new Event("cz:notif-deleted"));
+    notifyUnreadChanged(); // #6473: ogsaa andre faner
   }
 
   function toggleAggregate(key) {
@@ -589,7 +593,7 @@ export default function NotificationsPage() {
       notifyMutationFailed("notification_delete", error, { notificationId: id });
       return;
     }
-    window.dispatchEvent(new Event("cz:notif-deleted"));
+    notifyUnreadChanged(); // #6473: ogsaa andre faner
   }
 
   async function deleteAllRead() {
@@ -604,7 +608,7 @@ export default function NotificationsPage() {
       notifyMutationFailed("notification_delete_all_read", error, { count: readIds.length });
       return;
     }
-    window.dispatchEvent(new Event("cz:notif-deleted"));
+    notifyUnreadChanged(); // #6473: ogsaa andre faner
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length;

@@ -141,6 +141,10 @@ export async function notifyUser({
   }
 
   if (existing?.length) {
+    // #6385: et retry efter en fejlet oprydning skal kunne reparere læst-tilstanden.
+    if (relatedId && AUCTION_TERMINATOR_SUPERSEDES[type]) {
+      await markSupersededAuctionNotificationsRead({ supabase, userId, relatedId, terminatorType: type });
+    }
     return { delivered: false, deduped: true, reason: "recent_duplicate" };
   }
 
