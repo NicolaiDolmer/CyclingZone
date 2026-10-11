@@ -77,6 +77,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
   { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalægger" },
+  // #6500 (Udvikling 2.0): fail-safe OFF; "beta" læses som off i motoren
+  // (dailyTrainingEngine.js). Flip til on er ejer-only.
+  { key: "development_v2_aging_enabled", area: "training", label: "Udvikling 2.0 — kun managerhold udvikler sig dagligt" },
   { key: "auto_calendar_enabled", area: "season", label: "Auto-kalender" },
   { key: "auto_entry_generator_enabled", area: "season", label: "Auto-tilmelding af felter" },
   { key: "auto_prize_enabled", area: "economy", label: "Auto-præmier" },
