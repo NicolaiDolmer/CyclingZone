@@ -211,12 +211,15 @@ async function main() {
     if (!cells.has(key)) cells.set(key, emptyCell());
     const before = abilityByRider.get(r.id);
     const l = load.byRider.get(r.id) ?? { raceDays: 0, hardDays: 0 };
+    // D6: som motoren (riderProgressionEngine) bremser hårde dage kun managerryttere.
+    const isManager = riderGroup(r.team_id, teamById) === "manager";
+    const eff = (x) => (isManager || !x ? x : { ...x, hardDays: 0 });
     for (const c of [cells.get(key), totals]) {
       c.n++;
       c.raceDays += l.raceDays;
       c.hardDays += l.hardDays;
-      c.brake += agingBrake(l);
-      c.brakeFull += agingBrake(fullLoad.get(r.id));
+      c.brake += agingBrake(eff(l));
+      c.brakeFull += agingBrake(eff(fullLoad.get(r.id)));
       addDelta(c.old, riderDelta(before, o.p_log.abilities));
       addDelta(c.neu, riderDelta(before, n.p_log.abilities));
       addDelta(c.full, riderDelta(before, f.p_log.abilities));

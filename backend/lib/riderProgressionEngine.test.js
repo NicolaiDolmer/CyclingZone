@@ -773,6 +773,21 @@ test("#6499: flag tændt — ingen vækst, plateau står stille, veteraner falde
   }
 });
 
+test("#6499/D6: hårde træningsdage bremser kun managerryttere; AI bremses kun af egne løbsdage", async () => {
+  const opts = { dailyTrainingEnabled: true, agingV2Enabled: true };
+  const noLoad = await captureRun(mixedPopulation(), { ...opts, seasonLoadByRider: new Map() });
+  const hardOnly = await captureRun(mixedPopulation(), {
+    ...opts,
+    seasonLoadByRider: new Map([["vet-ai", { raceDays: 0, hardDays: 240 }], ["vet-human", { raceDays: 0, hardDays: 240 }]]),
+  });
+  const patch = (run, id) => run.calls.find((c) => c.p_rider_id === id).p_ability_patch;
+  const before = new Map(mixedPopulation().rider_derived_abilities.map((a) => [a.rider_id, a]));
+  const drop = (run, id) => VISIBLE_ABILITIES.reduce((sum, k) => sum + (before.get(id)[k] - patch(run, id)[k]), 0);
+  assert.ok(drop(noLoad, "vet-ai") > 0, "AI-veteranen falder uden belastning");
+  assert.equal(drop(hardOnly, "vet-ai"), drop(noLoad, "vet-ai"), "hårde dage bremser ikke en AI-rytter");
+  assert.equal(drop(hardOnly, "vet-human"), 0, "240 hårde dage = fuld bremse for en managerrytter");
+});
+
 test("#6499: flag tændt via app_config 'on' — belastningen hentes for den AFSLUTTEDE sæson", async () => {
   const state = mixedPopulation();
   state.app_config.push({ key: "development_v2_aging_enabled", value: "on" });

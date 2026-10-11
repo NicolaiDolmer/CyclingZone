@@ -241,9 +241,10 @@ export async function developRidersForSeason({
     ? dailyTrainingEnabledArg
     : await isDailyTrainingEnabled(supabase);
 
-  // Human-team id-sæt: kun nødvendig når flaget er aktivt (ingen forespørgsel ellers).
+  // Human-team id-sæt: kun nødvendig når et af flagene er aktivt (ingen forespørgsel ellers).
+  // #6499/D6: tilbagegangens bremse skal også vide, hvem der er managerryttere.
   const humanTeamIds = new Set();
-  if (dailyTrainingActive) {
+  if (dailyTrainingActive || agingV2) {
     const teamRows = await fetchAllRows(() => supabase
       .from("teams")
       .select("id")
@@ -344,7 +345,11 @@ export async function developRidersForSeason({
     if (agingV2) {
       // #6499: ingen vækst for nogen; kun fysiske evner + brosten falder, bremset
       // af rytterens egne løbsdage og hårde træningsdage i den afsluttede sæson.
-      const load = seasonLoad.get(r.id) ?? null;
+      // D6 (ejer 11/10): uden for managerhold bremser kun rytterens egne løbsdage;
+      // hårde træningsdage tæller kun for managerryttere.
+      const rawLoad = seasonLoad.get(r.id) ?? null;
+      const isManagerRider = r.team_id != null && humanTeamIds.has(r.team_id);
+      const load = rawLoad && !isManagerRider ? { ...rawLoad, hardDays: 0 } : rawLoad;
       if (load) summary.aging_v2.riders_with_load++;
       developed = developRiderSeasonV2(riderInput, abilities, seasonNumber, { load });
       summary.aging_v2.ability_points_declined += developed.aging.totalDrop;
