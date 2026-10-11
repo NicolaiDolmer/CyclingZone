@@ -1,5 +1,25 @@
 # Træningens regler - SSOT
 
+## Historikopslag #6490 (L1-kandidat, ikke aktiveret)
+
+Det eksisterende JSON-historikværn bevares, indtil en separat kontrolleret overgang
+er godkendt. L1-udkastet i `database/manual/6490/training-seen-foundation.sql`
+ligger uden for auto-migrate og ændrer hverken prod, læserfunktioner eller GIN.
+Design og plan: [#6490-design](superpowers/specs/2026-10-11-6490-training-seen-design.md)
+og [implementeringsplan](superpowers/plans/2026-10-11-6490-training-seen.md).
+
+Projektionen `rider_training_seen` tæller rapport-rækker pr. eksakt rider_id-streng,
+med C-kollation. Dubletter i samme rapport tæller én gang; nul-tællere beholdes.
+Et hit kræver `report_count > 0`, ikke blot en række. Ingen UUID-normalisering:
+kompensationsværnets rå tekst og de øvrige værns UUID-tekst bevarer hvert sit match.
+INSERT/UPDATE/DELETE/TRUNCATE vedligeholder tællerne i rapportens transaktion;
+underflow afviser hele skrivningen. Metadata-only/membership-uændrede writes
+omskriver ikke tællerne. Den interne source-markør `training_seen_indexed` er
+false på gamle rækker og true ved indlemmelse; den er aldrig en træningskvittering.
+Backfill og fuld paritet er forudsætninger for senere læserskift. GIN-drop kræver
+fortsat særskilt ejer-go; indtil da består indekset. Ingen ændring af udbytte,
+historik, form/træthed, afregningstidspunkter eller spillertekst følger af L1.
+
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 
 Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
