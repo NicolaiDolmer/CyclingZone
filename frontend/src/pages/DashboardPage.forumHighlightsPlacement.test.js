@@ -66,7 +66,7 @@ test("[MyLatestResultCard|NextActionsCard]-parret står FØR DevTransitionCard, 
   assert.ok(nextActionsCardIdx < devTransitionIdx, "NextActionsCard skal stå FØR DevTransitionCard");
   // myLatestResultPaired er defineret som !firstRaceMomentActive && ..., dvs.
   // udelukker sig selv fra parringen under #3310s første-løbs-øjeblik.
-  assert.match(src, /const myLatestResultPaired = !firstRaceMomentActive && myLatestResultVisible;/);
+  assert.match(src, /const myLatestResultPaired = !firstRaceMomentActive && myLatestResultVisible && !myLatestResultEmptyHidden;/);
 });
 
 test("[TeamSelectionCtaCard|Sæsonstatus]-parret står FØR DevTransitionCard og kollapser til fuld bredde når ét kort er skjult", () => {
