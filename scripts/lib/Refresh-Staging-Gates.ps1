@@ -53,12 +53,17 @@ function Assert-RefreshCounts([string]$ProdBefore,[string]$ProdAfter,[string]$St
 }
 
 # psql/pg_restore error text can echo row data (DETAIL, CONTEXT, Key (...)=(...)). Only ERROR/FATAL
-# lines survive, with key values and e-mail addresses masked.
+# lines survive, with key values and e-mail addresses masked. #5904: pg_dump/pg_restore prefix their
+# own errors ("pg_dump: error: ..."), and the connection cause sits in "pg_dump: detail: Error message
+# from server: ..." (no row data). Both used to be dropped, so a 26-minute dump failure read
+# "(output suppressed)". SQL DETAIL/CONTEXT lines stay hidden.
 function Get-RefreshSafeErrorText([string[]]$Lines) {
   $keep=@()
   foreach($line in @($Lines)) {
     if($null -eq $line){continue}
-    if($line -notmatch '(?i)^(psql:[^:]*:[0-9]+: )?(error|fatal):'){continue}
+    $toolError = $line -match '(?i)^(pg_dump|pg_restore|psql): (error|fatal):' -or $line -match '^(Exception: )?DirectConnection: '
+    $serverCause = $line -match '(?i)^(pg_dump|pg_restore|psql): detail: error message from server:'
+    if(-not $toolError -and -not $serverCause -and $line -notmatch '(?i)^(psql:[^:]*:[0-9]+: )?(error|fatal):'){continue}
     $safe=[regex]::Replace($line,'\([^)]*\)=\([^)]*\)','(<masked>)')
     $safe=[regex]::Replace($safe,'[^\s''"]+@[^\s''"]+','<masked-email>')
     if($safe.Length -gt 300){$safe=$safe.Substring(0,300)}
@@ -67,6 +72,17 @@ function Get-RefreshSafeErrorText([string[]]$Lines) {
   }
   if($keep.Count -eq 0){return '(output suppressed)'}
   return ($keep -join ' | ')
+}
+
+# #5904: Supavisor-URL (user postgres.<ref>@*.pooler.supabase.com) -> direkte db-server
+# (postgres@db.<ref>.supabase.co:5432). Password genbruges URL-kodet; fejl naevner aldrig vaerdien.
+function Get-RefreshDirectUrl([string]$PoolerUrl) {
+  $u=[Uri]$PoolerUrl
+  if($u.Host -notmatch '\.pooler\.supabase\.com$'){throw 'DirectConnection: prod-URL er ikke en Supabase-pooler-URL'}
+  $ui=$u.UserInfo.Split(':',2)
+  $parts=$ui[0].Split('.',2)
+  if($ui.Count -ne 2 -or $parts.Count -ne 2 -or $parts[1] -notmatch '^[a-z0-9]{20}$'){throw 'DirectConnection: kan ikke udlede projekt-ref fra brugernavnet'}
+  return "postgresql://$($parts[0]):$($ui[1])@db.$($parts[1]).supabase.co:5432/postgres?sslmode=require"
 }
 
 # Runs a native step, merges stderr, and throws on any non-zero exit with a PII-safe message.

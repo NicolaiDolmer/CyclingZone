@@ -62,6 +62,14 @@ test('error text never echoes row data, keys or e-mails',{skip:!hasPwsh},()=>{
   assert.match(result.stdout,/ERROR/);
   assert.match(run("Get-RefreshSafeErrorText @('DETAIL: only row data')").stdout,/suppressed/);
 });
+test('#5904: pg_dump own error and server cause survive, masked; other pg_dump detail stays hidden',{skip:!hasPwsh},()=>{
+  const result=run(`Get-RefreshSafeErrorText @('pg_dump: error: Dumping the contents of table "race_results" failed: PQgetResult() failed.','pg_dump: detail: Error message from server: server closed the connection unexpectedly','pg_dump: detail: Key (email)=(secret@real.example) row','pg_restore: error: could not execute query for x@y.example')`);
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/pg_dump: error: Dumping the contents of table "race_results" failed/);
+  assert.match(result.stdout,/server closed the connection unexpectedly/);
+  assert.match(result.stdout,/pg_restore: error: could not execute query for <masked-email>/);
+  assert.doesNotMatch(result.stdout,/secret|real\.example|x@y/);
+});
 test('failed native step throws with exit code and safe text, success returns output',{skip:!hasPwsh},()=>{
   const bad=run("Invoke-RefreshNative { 'ERROR:  boom'; 'DETAIL: Key (e)=(x@y.z)'; $global:LASTEXITCODE=3 } 'Restore'");
   assert.notEqual(bad.status,0); assert.match(bad.stderr,/Restore failed \(exit 3\)/); assert.doesNotMatch(bad.stderr,/x@y\.z/);
@@ -151,4 +159,13 @@ test('refresh script wires gates, atomic restore and dump proof (source contract
   assert.match(source,/-SkipDump kraever/);
   assert.ok(source.indexOf('Invoke-RefreshGates')>source.indexOf('Invoke-Staging "psql `$env:STAGING_DB_URL $quoted"'),'gates run after restore');
   assert.ok(source.lastIndexOf('Write-Host "[GO]')>source.indexOf('Invoke-RefreshGates'),'GO printed only after gates');
+});
+test('#5904: direct URL is derived from the pooler URL; non-pooler or malformed input fails without echoing the secret',{skip:!hasPwsh},()=>{
+  const ok=run(`Get-RefreshDirectUrl 'postgresql://postgres.abcdefghijklmnopqrst:p%40ss@aws-0-eu-central-1.pooler.supabase.com:5432/postgres'`);
+  assert.equal(ok.status,0,ok.stderr);
+  assert.equal(ok.stdout.trim(),'postgresql://postgres:p%40ss@db.abcdefghijklmnopqrst.supabase.co:5432/postgres?sslmode=require');
+  const notPooler=run(`Get-RefreshDirectUrl 'postgresql://postgres:topsecret@db.abcdefghijklmnopqrst.supabase.co:5432/postgres'`);
+  assert.notEqual(notPooler.status,0); assert.doesNotMatch(notPooler.stderr+notPooler.stdout,/topsecret/);
+  const noRef=run(`Get-RefreshDirectUrl 'postgresql://postgres:topsecret@aws-0-x.pooler.supabase.com:6543/postgres'`);
+  assert.notEqual(noRef.status,0); assert.doesNotMatch(noRef.stderr+noRef.stdout,/topsecret/);
 });
