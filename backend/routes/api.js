@@ -18578,9 +18578,12 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       youthSquadCounts.u23 = u23Count;
     }
 
+    // #5943: sæson-alder (ageForSeason), ikke wall-clock — ellers står en rytter
+    // der er 19 i sæsonen som 16 ved oprykningen, når sæsonåret ligger foran kalenderen.
+    const graduationSeasonNumber = await getActiveSeasonNumber();
     const graduations = (gradRows ?? []).map((g) => {
       const r = g.riders ?? {};
-      const age = r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null;
+      const age = ageForSeason(r.birthdate, graduationSeasonNumber);
       // Nullable på rækker fra før #4619: fallback er 'senior', præcis samme
       // adfærd som graduationSquadPatch — en graduering uden trup-information
       // ER den gamle akademi → senior-overgang. Vi gætter aldrig `from`.
