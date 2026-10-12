@@ -95,3 +95,16 @@ test('cutover is fail-closed, idempotent and rollback restores exact definitions
   await db.exec(await readManual('readers-rollback')); await db.exec(await readManual('readers-rollback'));
   assert.deepEqual(await definitions(),before);
 });
+
+test('reader switch and rollback preserve definitions with LF and CRLF script bytes',async t=>{
+  for(const eol of ['\n','\r\n']){
+    const db=await createTrainingSeenReadersFixture();t.after(()=>db.close());
+    const definitions=async()=> (await db.query(`SELECT replace(pg_get_functiondef(oid),chr(13),'') AS body,proacl::text AS acl
+      FROM pg_proc WHERE oid=ANY($1::regprocedure[]) ORDER BY oid::regprocedure::text`,[READER_SIGNATURES])).rows;
+    const before=await definitions();
+    for(const script of ['readers','readers','readers-rollback','readers-rollback']){
+      await db.exec((await readManual(script)).replace(/\r?\n/g,eol));
+    }
+    assert.deepEqual(await definitions(),before);
+  }
+});

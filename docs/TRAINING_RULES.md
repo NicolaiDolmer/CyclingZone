@@ -2,6 +2,12 @@
 
 ## Historikopslag #6490 (L1–L3-kandidater, ikke aktiveret)
 
+**L4-blokering, målt 12/10:** native PostgreSQL 17 reproducerer nye counter-
+deadlocks ved samtidige blandede UPSERTs og modsat nøgleorden over flere statements.
+Kandidaten er derfor ikke klar til aktivering eller kapacitetsgodkendelse.
+[Bevis](snapshots/6490/README.md) og [foreslået membership-addendum](superpowers/specs/2026-10-12-6490-membership-addendum.md).
+Prototypen ændrer ikke den nedenstående godkendte kandidat; addendum afventer ejer.
+
 Det eksisterende JSON-historikværn bevares, indtil en separat kontrolleret overgang
 er godkendt. L1-udkastet i `database/manual/6490/training-seen-foundation.sql`
 ligger uden for auto-migrate og ændrer hverken prod, læserfunktioner eller GIN.

@@ -22,7 +22,7 @@ BEGIN
     SELECT replace(pg_get_functiondef(to_regprocedure(item.signature)),chr(13),'') INTO definition;
     fingerprint:=md5(definition);
     IF fingerprint=item.new_hash THEN
-      EXECUTE replace(definition,item.new_part,item.old_part);
+      EXECUTE replace(definition,replace(item.new_part,chr(13),''),replace(item.old_part,chr(13),''));
     ELSIF fingerprint IS DISTINCT FROM item.old_hash THEN
       RAISE EXCEPTION 'training_seen reader definition mismatch: %',item.signature;
     END IF;

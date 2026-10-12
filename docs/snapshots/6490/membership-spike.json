@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "target": "local-disposable",
+  "clock": "2026-10-11T12:00:00Z",
+  "cases": [
+    {
+      "name": "concurrent_mixed_upsert",
+      "status": "PASS"
+    },
+    {
+      "name": "reverse_keys_across_multiple_statements",
+      "status": "PASS"
+    },
+    {
+      "name": "dedup_no_rewrite_rollback_delete",
+      "status": "PASS"
+    }
+  ],
+  "runnerHash": "210f4607f32e292ba6d34c66d7374f8e00cdb60250fdb24812bc1f3612e7b413",
+  "version": "170011",
+  "fixtureHash": "1221597af460a67160a6db68b457b40f09b3b482f68376a51bebcb71f468766c"
+}

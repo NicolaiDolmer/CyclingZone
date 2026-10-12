@@ -1,0 +1,51 @@
+{
+  "status": "FAIL",
+  "cases": [
+    {
+      "name": "locked_old_row_skip_and_update",
+      "status": "PASS"
+    },
+    {
+      "name": "update_waits_for_backfill_and_preserves_both_deltas",
+      "status": "PASS"
+    },
+    {
+      "name": "delete_before_and_after_counting",
+      "status": "PASS"
+    },
+    {
+      "name": "two_teams_reverse_key_order",
+      "status": "PASS"
+    },
+    {
+      "name": "mixed_upsert_and_rollback",
+      "status": "PASS"
+    },
+    {
+      "name": "reader_switch_while_report_write_is_uncommitted",
+      "status": "PASS"
+    },
+    {
+      "name": "missing_trigger_blocks_readiness",
+      "status": "PASS"
+    },
+    {
+      "name": "client_acl_and_replica_restore",
+      "status": "PASS"
+    },
+    {
+      "name": "concurrent_mixed_upserts_reverse_event_order",
+      "status": "FAIL"
+    }
+  ],
+  "targetRef": "local-disposable",
+  "parity": null,
+  "clock": "2026-10-11T12:00:00Z",
+  "mode": "concurrency",
+  "runnerHash": "341279f475ad09451980c6a0f2a6019435e30f3cb3ba72b06eb6c533b5776cd3",
+  "version": "170011",
+  "fixtureHash": "422d6c531702ce6564043ea4c3889bfd44e3291226674820d8e448d505a5909d",
+  "code": "CONCURRENT_MIXED_UPSERTS_REVERSE_EVENT_ORDER",
+  "sqlState": "40P01",
+  "commit": "fb60a40b28e9ebc99cc53406e4f0b3aeb8a75031"
+}
