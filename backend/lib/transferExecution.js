@@ -13,6 +13,7 @@ import {
 import { fetchAtRiskCount } from "./squadRiskGuard.js";
 import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
@@ -463,7 +464,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       // udløber i indeværende sæson.
       // #3650: is_academy med så et salg af en akademi-rytter (listet direkte
       // fra akademiet) kan graduere ham atomisk ved handlens gennemførelse.
-      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy")
+      .select("id, firstname, lastname, team_id, salary, base_value, market_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy")
       .eq("id", offer.rider_id)
   );
   const [buyerState, sellerState, buyerCommitment, activeSeasonNumber] = await Promise.all([
@@ -690,9 +691,13 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
 
   // #1995 Model B: handlen er fuldført (accepted) uanset defer — kun den fysiske
   // rytter-flytning er evt. parkeret på pending_team_id og flushes ved race-slut.
-  await expectMutation(
-    supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", offer.id)
-  );
+  // #2226: frys rytterens værdi på handelsdagen (rider læst før mutationerne ovenfor).
+  await updateDealWithValueSnapshot(supabase, {
+    table: "transfer_offers",
+    id: offer.id,
+    payload: { status: "accepted" },
+    snapshot: buildRiderValueSnapshot(rider, { suffix: "at_accept" }),
+  });
 
   await logActivity("transfer_accepted", {
     team_id: offer.seller_team_id,
@@ -777,11 +782,11 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   // applier den ved merge, hvorefter schema-snapshot.json opdateres.
   const [offered, requested] = await Promise.all([
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy, squad").eq("id", swap.offered_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, market_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy, squad").eq("id", swap.offered_rider_id)
     ),
     expectSingle(
       // schema-columns-ok: riders.squad tilfoejes af migrationen i SAMME PR (#4619) — se ovenfor.
-      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy, squad").eq("id", swap.requested_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, market_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy, squad").eq("id", swap.requested_rider_id)
     ),
   ]);
   const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([
@@ -1059,9 +1064,16 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   // #1995 Model B: byttehandlen er fuldført (accepted) uanset defer — kun de
   // fysiske rytter-flytninger er evt. parkeret på pending_team_id (race-flush).
-  await expectMutation(
-    supabase.from("swap_offers").update({ status: "accepted" }).eq("id", swap.id)
-  );
+  // #2226: frys begge rytteres værdi på handelsdagen (læst før mutationerne ovenfor).
+  await updateDealWithValueSnapshot(supabase, {
+    table: "swap_offers",
+    id: swap.id,
+    payload: { status: "accepted" },
+    snapshot: {
+      ...buildRiderValueSnapshot(offered, { prefix: "offered_rider", suffix: "at_accept" }),
+      ...buildRiderValueSnapshot(requested, { prefix: "requested_rider", suffix: "at_accept" }),
+    },
+  });
 
   const swapCompletedPayload = buildSwapCompletedNotification({
     offeredName: `${offered.firstname} ${offered.lastname}`,

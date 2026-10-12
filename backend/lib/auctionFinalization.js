@@ -2,7 +2,6 @@ import {
   closeTransferListingsForRiders,
   ensureNoError,
   expectMaybeSingle,
-  expectMutation,
   expectMutationAffectingRows,
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
@@ -21,6 +20,7 @@ import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academyGraduation.js";
 import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -184,12 +184,17 @@ async function closeAuction({
     payload.current_bidder_id = currentBidderId;
   }
 
-  await expectMutation(
-    supabase
-      .from("auctions")
-      .update(payload)
-      .eq("id", auction.id)
-  );
+  // #2226: frys rytterens værdi på lukke-tidspunktet. auction.rider er læst af
+  // finalizeAuctionById (rider:rider_id(*)) FØR finaliseringen muterer rytteren.
+  const snapshot = status === "completed"
+    ? buildRiderValueSnapshot(auction.rider, { suffix: "at_close" })
+    : {};
+  await updateDealWithValueSnapshot(supabase, {
+    table: "auctions",
+    id: auction.id,
+    payload,
+    snapshot,
+  });
 }
 
 // #6320: står rytterens NYESTE academy_graduation-række for (hold, rytter) som
