@@ -68,6 +68,26 @@ test('failed native step throws with exit code and safe text, success returns ou
   const ok=run("(Invoke-RefreshNative { 'a'; 'b' } 'Step') -join ','");
   assert.equal(ok.status,0); assert.match(ok.stdout,/a,b/);
 });
+test('SQL collection separates wrapper logs and stderr from strict count data',{skip:!hasPwsh},()=>{
+  const collect=(data,exit=0)=>run(`$rows = @(Invoke-RefreshSqlData {
+    param($outputFile)
+    'INF Injecting synthetic environment';
+    & pwsh -NoProfile -Command '[Console]::Out.WriteLine("${data}"); [Console]::Error.WriteLine("NOTICE: synthetic diagnostic"); exit ${exit}' 1> $outputFile
+  } 'SQL probe'); Assert-RefreshCounts 'riders|100' 'riders|100' ($rows -join "\n"); 'PASS'`);
+  const valid=collect('riders|100');
+  assert.equal(valid.status,0,valid.stderr);
+  assert.match(valid.stdout,/PASS/);
+  assert.doesNotMatch(valid.stdout,/INF|NOTICE/);
+  const malformed=collect('riders=100');
+  assert.notEqual(malformed.status,0);
+  assert.match(malformed.stderr,/Invalid row count output/);
+  const wrongCount=collect('riders|99');
+  assert.notEqual(wrongCount.status,0);
+  assert.match(wrongCount.stderr,/Row count mismatch/);
+  const failed=collect('riders|100',3);
+  assert.notEqual(failed.status,0);
+  assert.match(failed.stderr,/SQL probe failed \(exit 3\)/);
+});
 test('restore plan enforces guard, auth, public, cleanup order and real files',{skip:!hasPwsh},()=>{
   const dir=mkdtempSync(join(tmpdir(),'cz-refresh-'));
   try{

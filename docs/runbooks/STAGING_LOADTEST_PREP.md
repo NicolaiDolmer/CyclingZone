@@ -153,6 +153,11 @@ springes over, heller ikke med `-VerifyOnly` eller `-SkipDump`.
 3. **`-SkipDump`:** kræver dump-markøren og de to optællinger fra samme dump. Mangler en,
    stopper scriptet. Et nyt dump rydder først gammelt bevis, så et afbrudt dump aldrig genbruges.
 
+SQL-data til rækketal, fingeraftryk og privacy kommer kun fra `psql` stdout, som
+redirectes til en midlertidig fil inde i den kaldende proces. Wrapperens driftslog og
+`psql` stderr (fx NOTICE) går aldrig til parserne. Filen slettes også ved fejl;
+forkert SQL-stdout og nonzero processtatus afviser fortsat gaten.
+
 Fejltekst fra psql filtreres, så kun `ERROR`/`FATAL`-linjer med maskerede nøgleværdier og
 e-mails vises (DETAIL og CONTEXT kan indeholde rækkedata). Gates er unit-testet i
 `scripts/refresh-staging.test.mjs` (kører i CI). Selve restore'en mod en database er ikke
