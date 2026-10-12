@@ -92,9 +92,9 @@ CREATE TABLE IF NOT EXISTS public.rider_training_seen (
 ALTER TABLE public.rider_training_seen ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.rider_training_seen FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.rider_training_seen TO service_role;
--- codex_readonly findes i prod (top-level grants som 2026-06-29-db-io-temp-spills-presence.sql);
--- statisk GRANT i stedet for DO-blok, så table-grants-auditten kan læse den.
-GRANT SELECT ON TABLE public.rider_training_seen TO codex_readonly;
+-- Ingen eksplicit codex_readonly-grant (som training_rider_ticks): i prod får
+-- nye public-tabeller SELECT til codex_readonly via postgres' default privileges,
+-- og rollen findes ikke i alle miljøer (test, preview), så en statisk GRANT ville fejle.
 
 -- Én række pr. rytter: tidligste kilde (dato, så rapport < kvittering <
 -- løbsbelastning, så laveste id). Strømmende HashAggregate over en "C"-sortérbar

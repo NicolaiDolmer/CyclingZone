@@ -165,7 +165,6 @@ test('migrationen er idempotent og backfill dækker dato-, legacy- og kvittering
     assert.equal((await db.query<{ v: boolean }>(`SELECT has_function_privilege('${role}','public.rebuild_rider_training_seen()','EXECUTE') AS v`)).rows[0].v, false);
   }
   assert.equal((await db.query<{ v: boolean }>("SELECT has_table_privilege('service_role','public.rider_training_seen','INSERT') AS v")).rows[0].v, true);
-  assert.equal((await db.query<{ v: boolean }>("SELECT has_table_privilege('codex_readonly','public.rider_training_seen','SELECT') AS v")).rows[0].v, true);
   assert.equal((await db.query<{ v: boolean }>("SELECT has_function_privilege('service_role','public.rebuild_rider_training_seen()','EXECUTE') AS v")).rows[0].v, true);
 });
 
