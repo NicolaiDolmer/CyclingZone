@@ -159,6 +159,8 @@ for (const size of SIZES) {
     await openDashboard(page, size);
 
     await expect(page.getByTestId("first-race-card")).toHaveCount(0);
+    // Flag slukket: det tomme resultatkort er uaendret.
+    await expect(page.getByText("How your team did")).toBeVisible();
     const squad = page.getByTestId("team-selection-cta");
     await expect(squad).toBeVisible();
     await expect(squad.getByRole("link")).toHaveClass(GOLD);
@@ -194,6 +196,9 @@ for (const size of SIZES) {
     await expect(page.getByTestId("team-selection-cta")).toHaveCount(0);
     await expect(page.getByText("Pick your race squad")).toHaveCount(0);
     await expect(page.getByText("Next move")).toBeVisible();
+    // #1140: det tomme "How your team did" skjules, saa budskabet ikke staar to gange.
+    await expect(page.getByText("How your team did")).toHaveCount(0);
+    await expect(page.getByText("Your riders haven")).toHaveCount(0);
 
     // Kortet staar over "Get started", som er nedtonet.
     const started = page.getByText(/Get started/).first();
@@ -213,6 +218,27 @@ for (const size of SIZES) {
     await page.screenshot({ path: evidenceShotPath(`pr-screens/1140/after-${size.slug}.png`) });
   });
 }
+
+const WITH_RESULT = {
+  race: { id: "race-1140-done", name: "Giro di Preview", seen: true, finished_at: "2026-08-20T14:00:00.000Z", best_position: 2, best_rider_name: "Ada Pedersen", points: 80, prize_money: 194000 },
+  history: [{ id: "race-1140-h1", name: "Omloop Preview", position: 1, points: 45, prize_money: 140000 }],
+  season_totals: { races: 2, points: 125, prize_money: 334000 },
+};
+
+// Har holdet allerede et resultat (preview), er "How your team did" uaendret ved siden af kortet.
+test("preview med resultat: How your team did bevares ved siden af kortet", async ({ page }) => {
+  await mockCard(page, { ...CARD_ON, preview: true });
+  await page.route("**/api/dashboard/my-latest-result**", (route: Route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, WITH_RESULT);
+  });
+  await mockRaces(page, [RACE]);
+  await mockSchedule(page, [{ race_id: RACE.id, stage_number: 1, scheduled_at: new Date(Date.now() + 17 * HOUR).toISOString() }]);
+  await openDashboard(page, { width: 1440, height: 900 });
+  await expect(page.getByTestId("first-race-card")).toBeVisible();
+  await expect(page.getByText("How your team did")).toBeVisible();
+});
 
 test("assistent- og mail-saetningerne udelades naar de ikke er sande", async ({ page }) => {
   await mockCard(page, { ...CARD_ON, assistant_picks: false, mail: false });

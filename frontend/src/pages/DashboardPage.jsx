@@ -1182,7 +1182,7 @@ export default function DashboardPage() {
   // øvre par ([Seneste resultat|Næste træk] og [Holdudtagelse|Sæsonstatus]).
   // myLatestResultPaired dækker KUN normaltilstanden — first-race-momentet
   // ovenfor (#3310) ejer toppen alene og deltager ikke i parringen.
-  const myLatestResultPaired = !firstRaceMomentActive && myLatestResultVisible;
+  // #1140: paret styres af myLatestResultPaired nedenfor, efter firstRaceCardModel.
   const nextActionsVisible = isVisible("nextActions");
   // TeamSelectionCtaCard afgør selv om den renderer (kræver nextRace) — vi
   // spejler samme betingelse her for at vide hvornår kollaps-col-span skal på.
@@ -1200,6 +1200,10 @@ export default function DashboardPage() {
     : null;
   // "Pick your race squad" skjules MENS kortet vises (ingen to guldknapper); "Next move" er uroert.
   const showTeamSelectionCta = Boolean(squadSelectionMissingRace) && !firstRaceCardModel;
+  // #1140: det TOMME "How your team did" (race: null) skjules mens "Your first race" vises,
+  // saa budskabet ikke staar to gange. Har holdet et resultat (preview), er kortet uaendret.
+  const myLatestResultEmptyHidden = Boolean(firstRaceCardModel) && myLatestResult?.race === null;
+  const myLatestResultPaired = !firstRaceMomentActive && myLatestResultVisible && !myLatestResultEmptyHidden;
 
   // #2925 — sæsonstart-guiden. Undertrykt mens onboarding kører (samme regel som
   // Discord-nudgen, #2288 B: onboarding-kortet får skærmen for sig selv), og kun
