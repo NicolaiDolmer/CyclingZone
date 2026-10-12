@@ -88,16 +88,13 @@ CREATE TABLE IF NOT EXISTS public.rider_training_seen (
   first_team_id uuid,
   first_run_id uuid
 );
+-- data-api-access: {"table":"public.rider_training_seen","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Server-only training history; written by the training_day_runs trigger and rebuild, read by the first-use guards in the service_role training RPCs"}
 ALTER TABLE public.rider_training_seen ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.rider_training_seen FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.rider_training_seen TO service_role;
-DO $grant$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'codex_readonly') THEN
-    GRANT SELECT ON public.rider_training_seen TO codex_readonly;
-  END IF;
-END
-$grant$;
+REVOKE ALL ON TABLE public.rider_training_seen FROM PUBLIC, anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.rider_training_seen TO service_role;
+-- codex_readonly findes i prod (top-level grants som 2026-06-29-db-io-temp-spills-presence.sql);
+-- statisk GRANT i stedet for DO-blok, så table-grants-auditten kan læse den.
+GRANT SELECT ON TABLE public.rider_training_seen TO codex_readonly;
 
 -- Én række pr. rytter: tidligste kilde (dato, så rapport < kvittering <
 -- løbsbelastning, så laveste id). Strømmende HashAggregate over en "C"-sortérbar
