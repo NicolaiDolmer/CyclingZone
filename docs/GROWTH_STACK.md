@@ -387,6 +387,7 @@ Kort oversigt. Ansvarsfordelingen mellem værktøjerne bor i ANALYTICS_STACK.
 
 | Dato | MRR ekskl. moms / abo | D7 (kohorte) | Checkout 7 d | Aktive 1d/7d/30d | Signups 7 d | Sovende m. samtykke |
 |---|---|---|---|---|---|---|
+| 2026-10-12 | 620,13 kr. / 17 (Alunta), 17 (SQL); -5,9 % mod sep., 1 opsagt, 0 nye | 30 % (uge 28/9, 10 berettigede) | 0 / 0 (—) | 49 / **61** / 114 | 8 (uge 28/9: 10, uge 21/9: 13) | 113 af 193 |
 | 2026-09-14 | 659,33 kr. / 18 (Alunta), 17 (SQL) | 16,7 % (uge 31/8, 6 berettigede) | 2 / 2 (100 %) | 51 / **74** / 117 | 6 (uge 7/9: 6, uge 24/8: 20) | 92 af 170 |
 | 2026-09-08 (baseline) | 659,33 kr. / 18 (Alunta), 17 (SQL) | 30,0 % (uge 24/8, 20 berettigede) | 16 / 19 (84,2 %) | 54 / **74** / 122 | 6 | 84 af 167 |
 
