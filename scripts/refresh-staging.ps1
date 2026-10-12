@@ -25,7 +25,12 @@ param(
   [switch] $VerifyOnly,
   [switch] $SkipDump,
   [switch] $Clean,
-  [string] $DumpDir = (Join-Path $env:TEMP "cz-staging-refresh")
+  [string] $DumpDir = (Join-Path $env:TEMP "cz-staging-refresh"),
+  # #5904: lange dumps over session-pooleren blev afbrudt (12/10, exit 1 efter 26 min). -DirectConnection
+  # udleder db.<ref>.supabase.co:5432 af prod-URL'en INDE i child-processen (intet printes).
+  [switch] $DirectConnection,
+  # #5904: klientvaerktoejer i samme major som prod (fx scoop postgresql17\current\bin) foran PATH.
+  [string] $PgBin
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +38,13 @@ $repo = (git rev-parse --show-toplevel).Trim()
 Set-Location $repo
 . (Join-Path $repo "scripts/lib/Staging-Env.ps1")
 . (Join-Path $repo "scripts/lib/Refresh-Staging-Gates.ps1")
+
+if ($PgBin) {
+  if (-not (Test-Path (Join-Path $PgBin "pg_dump.exe")) -and -not (Test-Path (Join-Path $PgBin "pg_dump"))) { throw "PgBin mangler pg_dump: $PgBin" }
+  $env:PATH = $PgBin + [IO.Path]::PathSeparator + $env:PATH
+}
+Write-Host ("[..] klient: " + ((& pg_dump --version) -join ' ') + $(if ($DirectConnection) { " · prod-forbindelse: direkte db-server 5432" } else { " · prod-forbindelse: SUPABASE_DB_URL" }))
+$gatesLib = Join-Path $repo "scripts/lib/Refresh-Staging-Gates.ps1"
 
 foreach ($tool in @("pg_dump", "pg_restore", "psql", "infisical", "supabase")) {
   if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Mangler vaerktoej: $tool" }
@@ -57,7 +69,10 @@ order by 1;
 # Prod-secrets injiceres kun i child-processen; STAGING_* arver fra denne proces.
 # Output fanges og returneres; fejl kaster med PII-sikker tekst (kun ERROR/FATAL, maskeret).
 function Invoke-WithProd([string] $cmd) {
-  Invoke-RefreshNative { & infisical run --env=prod --silent -- pwsh -NoProfile -Command $cmd } ("prod: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length)))
+  $label = "prod: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length))
+  $prodCmd = $cmd
+  if ($DirectConnection) { $prodCmd = ". '$gatesLib'; `$env:SUPABASE_DB_URL = Get-RefreshDirectUrl `$env:SUPABASE_DB_URL; " + $cmd }
+  Invoke-RefreshNative { & infisical run --env=prod --silent -- pwsh -NoProfile -Command $prodCmd } $label
 }
 function Invoke-Staging([string] $cmd) {
   Invoke-RefreshNative { & pwsh -NoProfile -Command $cmd } ("staging: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length)))

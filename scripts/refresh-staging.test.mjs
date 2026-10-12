@@ -160,3 +160,12 @@ test('refresh script wires gates, atomic restore and dump proof (source contract
   assert.ok(source.indexOf('Invoke-RefreshGates')>source.indexOf('Invoke-Staging "psql `$env:STAGING_DB_URL $quoted"'),'gates run after restore');
   assert.ok(source.lastIndexOf('Write-Host "[GO]')>source.indexOf('Invoke-RefreshGates'),'GO printed only after gates');
 });
+test('#5904: direct URL is derived from the pooler URL; non-pooler or malformed input fails without echoing the secret',{skip:!hasPwsh},()=>{
+  const ok=run(`Get-RefreshDirectUrl 'postgresql://postgres.abcdefghijklmnopqrst:p%40ss@aws-0-eu-central-1.pooler.supabase.com:5432/postgres'`);
+  assert.equal(ok.status,0,ok.stderr);
+  assert.equal(ok.stdout.trim(),'postgresql://postgres:p%40ss@db.abcdefghijklmnopqrst.supabase.co:5432/postgres?sslmode=require');
+  const notPooler=run(`Get-RefreshDirectUrl 'postgresql://postgres:topsecret@db.abcdefghijklmnopqrst.supabase.co:5432/postgres'`);
+  assert.notEqual(notPooler.status,0); assert.doesNotMatch(notPooler.stderr+notPooler.stdout,/topsecret/);
+  const noRef=run(`Get-RefreshDirectUrl 'postgresql://postgres:topsecret@aws-0-x.pooler.supabase.com:6543/postgres'`);
+  assert.notEqual(noRef.status,0); assert.doesNotMatch(noRef.stderr+noRef.stdout,/topsecret/);
+});
