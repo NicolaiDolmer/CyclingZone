@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/apiFetch.ts";
 import { authHeaders } from "../lib/supabase";
+import { readFirstRacePreviewParam, normalizeFirstRaceCardPayload } from "../lib/firstRaceCardPayload.js";
 
 // #1140 · server-afgjort svar paa "skal dashboardet vise 'Your first race'-kortet,
 // og hvad maa det sige?" (GET /api/me/first-race-card). Flag, beta-status,
@@ -10,28 +11,6 @@ import { authHeaders } from "../lib/supabase";
 //
 // Aldrig blokerende og aldrig kastende: fejl/ukendt svar = null = intet kort
 // (dashboardet er uaendret). null betyder ogsaa "ikke hentet endnu".
-export const FIRST_RACE_PREVIEW_PARAM = "first-race";
-
-export function readFirstRacePreviewParam(search) {
-  try {
-    return new URLSearchParams(search ?? "").get("preview") === FIRST_RACE_PREVIEW_PARAM
-      ? FIRST_RACE_PREVIEW_PARAM
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-export function normalizeFirstRaceCardPayload(data) {
-  if (!data || data.visible !== true) return null;
-  return {
-    preview: data.preview === true,
-    assistant_picks: data.assistant_picks === true,
-    mail: data.mail === true,
-    next_season_start: typeof data.next_season_start === "string" ? data.next_season_start : null,
-  };
-}
-
 export default function useFirstRaceCard(teamId) {
   const [card, setCard] = useState(null);
 
