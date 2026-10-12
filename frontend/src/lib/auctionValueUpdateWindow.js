@@ -1,6 +1,6 @@
 // #4004 (ejer-beslutning 21/8, revision 2) — pre-bid-varsel: auktioner der
 // afsluttes EFTER søndagens værdi-genberegning (backend/lib/sundayValueSweep.js
-// → refreshChangedRiderValues, kun søndag >= kl. 06 dansk tid, kørt via
+// → refreshChangedRiderValues, kun søndag >= VALUE_UPDATE_HOUR dansk tid, kørt via
 // cron.js's timelige tick — se copenhagenHour/copenhagenWeekdayKey i backend/lib/
 // copenhagenTime.js for den autoritative server-side gate) kan have ryttere
 // hvis evner/værdi flytter sig FØR auktionen lukker. Dette er bevidst KUN en
@@ -17,7 +17,9 @@ import { GAME_TIMEZONE, utcToGameWallClock, gameWallClockToUTC } from "./auction
 // låser dem sammen, så en kadence-ændring ikke igen kan flytte serveren uden at
 // flytte varslet (#4419: timen gik fra 22 til 06, og denne fil blev ikke rettet).
 export const VALUE_UPDATE_WEEKDAY = 0; // søndag (Date#getUTCDay()-konvention)
-export const VALUE_UPDATE_HOUR = 6;
+// #5842 (ejer 28/9): eftermiddag, kl. 14-20, aldrig om morgenen. 14 er
+// pladsholderen indtil ejeren har bekræftet klokkeslættet.
+export const VALUE_UPDATE_HOUR = 14;
 
 // pad2 gælder OGSÅ timetallet: gameWallClockToUTC kræver "YYYY-MM-DDTHH:mm", og
 // et etcifret "T6:00" giver Invalid Date. Med den gamle time (22) var det
@@ -48,7 +50,7 @@ export function nextSundayValueUpdateUTC(now = new Date()) {
   const candidateWall = `${anchor.getUTCFullYear()}-${pad2(anchor.getUTCMonth() + 1)}-${pad2(anchor.getUTCDate())}T${pad2(VALUE_UPDATE_HOUR)}:00`;
   let refreshUTC = gameWallClockToUTC(candidateWall);
 
-  // I dag ER søndag OG klokken er allerede forbi kl. 06 dansk tid — den næste
+  // I dag ER søndag OG klokken er allerede forbi VALUE_UPDATE_HOUR dansk tid: den næste
   // reelle refresh er om en uge, ikke den der allerede er passeret.
   if (refreshUTC.getTime() <= now.getTime()) {
     anchor.setUTCDate(anchor.getUTCDate() + 7);

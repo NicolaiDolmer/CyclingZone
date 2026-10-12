@@ -266,27 +266,15 @@ export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId
       .eq("season_id", seasonId)
       .eq("game_day", Number(gameDay));
     if (error) return { data: null, error };
-    if (!releaseDns) return { data: new Set((data ?? []).map(row => row.rider_id)), error: null };
-    // Saved selections can include riders excluded from the actual start field.
-    // Only an immutable first-stage snapshot proves DNS; missing evidence keeps
-    // the binding. Never infer DNS from finishers or a missing result.
-    const raceIds = [...new Set((data ?? []).map(row => row.race_id).filter(Boolean))];
-    const fields = new Map();
-    if (raceIds.length) {
-      // pagination-safe: one first-stage run per bound race in this team's roster.
-      const { data: runs, error: runError } = await supabase.from("race_simulation_runs")
-        .select("race_id, entrant_snapshot").in("race_id", raceIds).eq("stage_number", 1);
-      if (runError) return { data: null, error: runError };
-      for (const run of runs ?? []) {
-        const entrantIds = Array.isArray(run.entrant_snapshot) ? run.entrant_snapshot.map(entry => typeof entry === "string" ? entry : entry?.rider_id) : null;
-        if (!entrantIds || !entrantIds.every(id => typeof id === "string" && id)) {
-          return { data: null, error: new Error("invalid immutable start field") };
-        }
-        if (fields.has(run.race_id)) return { data: null, error: new Error("ambiguous immutable start field") };
-        fields.set(run.race_id, new Set(entrantIds));
-      }
-    }
-    return { data: new Set((data ?? []).filter(row => !fields.has(row.race_id) || fields.get(row.race_id).has(row.rider_id)).map(row => row.rider_id)), error: null };
+    const started = releaseDns ? await releaseNonStarters(supabase, data ?? []) : { data: data ?? [], error: null };
+    if (started.error) return { data: null, error: started.error };
+    // #5949: a rider who abandoned the race is bound up to and including the day he
+    // left, then follows the team's programme again. This applies on both paths
+    // (with and without the DNS release). Injured riders still rest through the
+    // engine's injury gate, which does not depend on this binding.
+    const exits = await loadRaceExitGameDays({ supabase, rows: started.data });
+    if (exits.error) return { data: null, error: exits.error };
+    return { data: new Set(dropBindingsAfterRaceExit(started.data, exits.data, Number(gameDay)).map(row => row.rider_id)), error: null };
   } catch (err) {
     // best-effort HER, men ikke hos kalderen: fejlen sluges ikke, den RETURNERES
     // (`data: null` = "ved det ikke", ikke "ingen er bundet"), og
@@ -295,4 +283,108 @@ export async function loadBoundRiderIdsForRaceDay({ supabase, riderIds, seasonId
     // { data, error } — saa kald-stedet har ét sted at traeffe sin beslutning.
     return { data: null, error: err };
   }
+}
+
+// Saved selections can include riders excluded from the actual start field.
+// Only an immutable first-stage snapshot proves DNS; missing evidence keeps
+// the binding. Never infer DNS from finishers or a missing result.
+async function releaseNonStarters(supabase, rows) {
+  const raceIds = [...new Set(rows.map(row => row.race_id).filter(Boolean))];
+  const fields = new Map();
+  if (raceIds.length) {
+    // pagination-safe: one first-stage run per bound race in this team's roster.
+    const { data: runs, error: runError } = await supabase.from("race_simulation_runs")
+      .select("race_id, entrant_snapshot").in("race_id", raceIds).eq("stage_number", 1);
+    if (runError) return { data: null, error: runError };
+    for (const run of runs ?? []) {
+      const entrantIds = Array.isArray(run.entrant_snapshot) ? run.entrant_snapshot.map(entry => typeof entry === "string" ? entry : entry?.rider_id) : null;
+      if (!entrantIds || !entrantIds.every(id => typeof id === "string" && id)) {
+        return { data: null, error: new Error("invalid immutable start field") };
+      }
+      if (fields.has(run.race_id)) return { data: null, error: new Error("ambiguous immutable start field") };
+      fields.set(run.race_id, new Set(entrantIds));
+    }
+  }
+  return { data: rows.filter(row => !fields.has(row.race_id) || fields.get(row.race_id).has(row.rider_id)), error: null };
+}
+
+const raceExitKey = (riderId, raceId) => `${riderId}:${raceId}`;
+
+/**
+ * #5949: on which race day did each bound rider leave his race?
+ *
+ * A rider who abandons a stage race (crash, mechanical, time limit, or the
+ * injury withdrawal from #4418) is written to `race_incidents` with
+ * outcome='abandon' on the stage he left. That stage's `game_day` in
+ * `race_stage_schedule` is his exit day. `race_entry_days` still carries the
+ * rest of the race span, which made him rest until the race ended.
+ *
+ * Missing evidence keeps the binding: an abandon whose stage has no scheduled
+ * game_day gives no exit day. Errors are RETURNED (same contract as the binding):
+ * the engine refuses to tick rather than guess.
+ *
+ * @param {{supabase: object, rows: Array<{rider_id: string, race_id: string}>}} args
+ * @returns {Promise<{data: Map<string, number>|null, error: unknown}>}
+ *   key `${rider_id}:${race_id}` -> earliest exit game_day
+ */
+export async function loadRaceExitGameDays({ supabase, rows }) {
+  const exits = new Map();
+  const bound = (rows ?? []).filter(row => row?.rider_id && row?.race_id);
+  if (!bound.length) return { data: exits, error: null };
+  const wanted = new Set(bound.map(row => raceExitKey(row.rider_id, row.race_id)));
+  const raceIds = [...new Set(bound.map(row => row.race_id))];
+  const riderIds = [...new Set(bound.map(row => row.rider_id))];
+  try {
+    const { data: incidents, error } = await supabase.from("race_incidents")
+      .select("race_id, stage_number, rider_id")
+      // pagination-safe: one team's bound riders (one roster) in their bound races,
+      // and an abandoned rider is excluded from every later stage, so at most a
+      // handful of rows per rider. Far below the 1000-row cap.
+      .in("race_id", raceIds)
+      .in("rider_id", riderIds)
+      .eq("outcome", "abandon");
+    if (error) return { data: null, error };
+    const abandons = (incidents ?? []).filter(row => wanted.has(raceExitKey(row.rider_id, row.race_id)));
+    if (!abandons.length) return { data: exits, error: null };
+    const abandonRaceIds = [...new Set(abandons.map(row => row.race_id))];
+    const { data: schedule, error: scheduleError } = await supabase.from("race_stage_schedule")
+      .select("race_id, stage_number, game_day")
+      // pagination-safe: the few races a roster abandoned, at most ~21 stages each.
+      .in("race_id", abandonRaceIds);
+    if (scheduleError) return { data: null, error: scheduleError };
+    const dayByStage = new Map();
+    for (const row of schedule ?? []) {
+      const day = row.game_day == null ? NaN : Number(row.game_day);
+      if (Number.isFinite(day)) dayByStage.set(`${row.race_id}:${Number(row.stage_number)}`, day);
+    }
+    for (const row of abandons) {
+      const day = dayByStage.get(`${row.race_id}:${Number(row.stage_number)}`);
+      if (day === undefined) continue;
+      const key = raceExitKey(row.rider_id, row.race_id);
+      if (!exits.has(key) || day < exits.get(key)) exits.set(key, day);
+    }
+    return { data: exits, error: null };
+  } catch (err) {
+    // best-effort here only: the error is RETURNED, and the binding's caller throws on it.
+    return { data: null, error: err };
+  }
+}
+
+/**
+ * #5949: drop binding rows that lie AFTER the rider's exit day from that race.
+ * The exit day itself stays bound (he rode, or could not start, that stage).
+ * Pure; shared by the engine's binding and the fatigue forecast.
+ *
+ * @param {Array<{rider_id: string, race_id: string, game_day?: number}>} rows
+ * @param {Map<string, number>} exits from loadRaceExitGameDays
+ * @param {number} [gameDay] the race day for rows without their own game_day
+ */
+export function dropBindingsAfterRaceExit(rows, exits, gameDay) {
+  if (!exits?.size) return [...(rows ?? [])];
+  return (rows ?? []).filter((row) => {
+    const exitDay = exits.get(raceExitKey(row.rider_id, row.race_id));
+    if (exitDay === undefined) return true;
+    const day = Number(row.game_day ?? gameDay);
+    return !Number.isFinite(day) || day <= exitDay;
+  });
 }

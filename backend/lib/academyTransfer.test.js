@@ -289,6 +289,91 @@ test("promote: ingen grad-row → ingen grad-update (men promote lykkes)", async
   assert.equal(rec.gradUpdates.length, 0);
 });
 
+// #5903: POST /api/academy/promote kalder promote() direkte (uden om moveRider),
+// så promote() selv skal rydde rytterens kommende U23-/juniorløb.
+test("#5903 promote: rydder entries i kommende ungdomsløb efter trup-skiftet", async () => {
+  const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER, gradRow: null });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  const calls = [];
+  const clearEntriesOutsideSquad = async (_sb, args) => {
+    calls.push({ ...args, riderUpdatesSoFar: rec.riderUpdates.length });
+    return { cleared: 2 };
+  };
+  const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify(), clearEntriesOutsideSquad });
+  assert.deepEqual(calls, [{ riderId: "r1", squad: "senior", label: "academy_promote", riderUpdatesSoFar: 1 }], "oprydning EFTER squad='senior' er skrevet");
+  assert.equal(res.offSquadEntriesCleared, 2);
+});
+
+test("#5903 promote: standard-oprydningen sletter rytterens entry i et kommende U23-løb", async () => {
+  const deletes = [];
+  const { supabase } = makeSupabase({
+    rider: ACADEMY_RIDER, gradRow: null,
+    raceEntries: [
+      { race_id: "race-u23", races: { squad: "u23", status: "scheduled", stages_completed: 0 } },
+      { race_id: "race-senior", races: { squad: "senior", status: "scheduled", stages_completed: 0 } },
+    ],
+  });
+  const from = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = from(table);
+    if (table !== "race_entries") return api;
+    return {
+      ...api,
+      delete() {
+        const del = { filters: [] };
+        deletes.push(del);
+        const chain = {
+          eq(col, val) { del.filters.push(["eq", col, val]); return chain; },
+          in(col, vals) { del.filters.push(["in", col, vals]); return Promise.resolve({ error: null }); },
+        };
+        return chain;
+      },
+    };
+  };
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
+  assert.equal(deletes.length, 1);
+  assert.deepEqual(deletes[0].filters, [["eq", "rider_id", "r1"], ["in", "race_id", ["race-u23"]]]);
+  assert.equal(res.offSquadEntriesCleared, 1);
+});
+
+test("#5903 promote: fejl i oprydningen gør ikke en gennemført promovering til en fejl", async () => {
+  const { supabase } = makeSupabase({ rider: ACADEMY_RIDER, gradRow: null });
+  supabase.from = ((from) => (table) => {
+    if (table === "race_entries") return { select() { return { eq() { return Promise.resolve({ data: null, error: { message: "boom" } }); } }; } };
+    return from(table);
+  })(supabase.from.bind(supabase));
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  const origErr = console.error;
+  console.error = () => {};
+  try {
+    const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
+    assert.equal(res.action, "promoted");
+    assert.equal(res.offSquadEntriesCleared, undefined);
+  } finally {
+    console.error = origErr;
+  }
+});
+
+test("#5903 moveRider → senior: promote() rydder ikke selv (moveRider rydder én gang)", async () => {
+  const { supabase } = makeSupabase({
+    rider: JUNIOR_ACADEMY, gradRow: null,
+    raceEntries: [{ race_id: "race-jr", races: { squad: "junior", status: "scheduled", stages_completed: 0 } }],
+  });
+  const tables = [];
+  const from = supabase.from.bind(supabase);
+  supabase.from = (table) => { tables.push(table); return from(table); };
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
+  const calls = [];
+  await moveRider(supabase, {
+    teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState,
+    notify: spyNotify(), ridersInActiveStageRace: noStageRace,
+    clearEntriesOutsideSquad: async (_sb, args) => { calls.push(args); return { cleared: 0 }; },
+  });
+  assert.equal(calls.length, 1);
+  assert.ok(!tables.includes("race_entries"), "promote() må ikke scanne race_entries når moveRider ejer oprydningen");
+});
+
 test("promote: afviser ved fuld senior-trup (squad_cap_violation)", async () => {
   const { supabase } = makeSupabase({ rider: ACADEMY_RIDER });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30 });

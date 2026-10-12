@@ -15,6 +15,7 @@ import {
   breakawayAheadOfAllCaptains,
   breakawayAheadOfFavourites,
   gapClass,
+  gapTo10Class,
   isMountainNonSummit,
   GAP_MIN_CAUGHT_SEEDS,
   legacyHoldBand,
@@ -353,18 +354,21 @@ test("runTour: hele Giro-feltet, deterministisk, scorecard pr. etape og samlet",
   assert.deepEqual(summarizeTour(a.perSeed, data.profiles.slice().sort((x, y) => x.stage_number - y.stage_number), "orders_gc_v3").counts, a.summary.counts);
 });
 
-test("nat 11/10: bjergets nr. 10-baand kun paa topankomster (#4604); nr. 30 beholdes; N/A med grund", () => {
+test("nat 11/10 + #6456: bjergets nr. 10-baand kun paa topankomster (#4604); uden topankomst eget loft; nr. 30 beholdes", () => {
   const nonSummit = { stage_number: 1, profile_type: "mountain", finale_type: "breakaway", segments: [] };
   assert.equal(isMountainNonSummit(nonSummit), true);
   assert.equal(isMountainNonSummit({ ...nonSummit, profile_type: "high_mountain", finale_type: "punch" }), true);
   assert.equal(isMountainNonSummit({ ...nonSummit, finale_type: "long_climb" }), false);
   assert.equal(isMountainNonSummit({ ...nonSummit, profile_type: "hilly" }), false);
   assert.equal(gapClass(nonSummit), "mountain", "gapClass uaendret: nr. 30 doemmes stadig mod bjergbaandet");
+  assert.equal(gapTo10Class(nonSummit), "mountain_non_summit", "#6456: nr. 10 har sit eget loft uden topankomst");
+  assert.equal(gapTo10Class({ ...nonSummit, finale_type: "long_climb" }), "mountain", "topankomsten beholder bjergbaandet");
   const row = (i) => ({ stage: 1, profile_type: "mountain", gapTo10: 10, gapTo30: 60, breakawayWon: false, breakawaySize: 8, minuteLossAtZeroKm: null, gcTop10InBreakOver5Min: 0, ownTeamChasesOwn: 0, clampedAtCap: 0, capClump: 0, labelContradictions: 0, flatBreakawayWinMinutes: 0, seed: i });
   const perSeed = [1, 2, 3].map((i) => ({ seed: i, rows: [row(i)], gcWeek1: null, gcFinalTo10: null, gcWinnerMargin: null, gcWinner: "a" }));
   const st = summarizeTour(perSeed, [nonSummit], "official_times_v3").stages[0];
-  assert.equal(st.verdicts.gapTo10, "N/A");
-  assert.match(st.gapNote, /topankomster/);
+  assert.equal(st.verdicts.gapTo10, verdict(10, TOUR_BENCHMARKS.gapTo10.byClass.mountain_non_summit));
+  assert.notEqual(st.verdicts.gapTo10, "N/A", "#6456: ikke laengere N/A");
+  assert.match(st.gapNote, /uden topankomst/);
   assert.equal(st.verdicts.gapTo30, verdict(60, TOUR_BENCHMARKS.gapTo30.byClass.mountain));
   assert.notEqual(st.verdicts.gapTo30, "PASS");
 });

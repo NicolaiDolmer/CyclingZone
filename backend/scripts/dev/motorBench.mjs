@@ -22,7 +22,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { buildVerdict, isOneDayDescentFinish, routeKey } from "./lib/motorBenchVerdict.mjs";
+import { buildVerdict, divisionGapSummary, isOneDayDescentFinish, routeKey } from "./lib/motorBenchVerdict.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -126,6 +126,9 @@ export function stageView({ sc, res, profile, gcBefore, abilitiesById, teamByRid
     winnerTeam: winner ? teamByRider.get(winner.rider_id) ?? null : null,
     winType: m.winType,
     gapTo10: m.gapTo10, gapTo30: m.gapTo30,
+    // #6464: nr. 20 og grupettoen (sidste rytter i maal inden for tidsgraensen) til vinderen.
+    gapTo20: fin.length >= 20 ? fin[19].time_seconds - fin[0].time_seconds : null,
+    gapLast: fin.length >= 2 ? fin[fin.length - 1].time_seconds - fin[0].time_seconds : null,
     ittGapTo10Per40Km: m.ittGapTo10Per40Km,
     breakawaySize: m.breakawaySize, breakawayAttempts: m.breakawayAttempts,
     breakawayWon: m.breakawayWon, breakawayWinMargin: m.breakawayWinMargin,
@@ -138,8 +141,14 @@ export function stageView({ sc, res, profile, gcBefore, abilitiesById, teamByRid
 export function summarizeStage(sc, profile, seedsViews) {
   const cls = sc.profileClass(profile.profile_type);
   const col = (k) => seedsViews.map((v) => v[k]);
+  // #6464 (RULES ankertabellen, gate #6442): tidsgabene doemmes paa de seeds hvor
+  // udbruddet IKKE vandt (i en udbrudssejr er nr. 10 feltets hul til udbruddet,
+  // det ejes af Udbrudsmaal). Alle seeds staar som info (gapTo10All/gapTo30All).
+  const caught = seedsViews.filter((v) => v.breakawayWon !== true);
   const s = {
-    gapTo10: median(col("gapTo10")), gapTo30: median(col("gapTo30")),
+    gapTo10: median(caught.map((v) => v.gapTo10)), gapTo30: median(caught.map((v) => v.gapTo30)),
+    gapTo10All: median(col("gapTo10")), gapTo30All: median(col("gapTo30")), gapSeeds: caught.length,
+    gapTo20: median(caught.map((v) => v.gapTo20)), gapLast: median(caught.map((v) => v.gapLast)),
     ittGapTo10Per40Km: median(col("ittGapTo10Per40Km")),
     breakawaySize: median(col("breakawaySize")), breakawayAttempts: median(col("breakawayAttempts")),
     breakawayWinShare: share(col("breakawayWon").filter((v) => v !== null)),
@@ -148,9 +157,18 @@ export function summarizeStage(sc, profile, seedsViews) {
   };
   const B = sc.TOUR_BENCHMARKS;
   s.verdicts = {};
+  // #6464/#6456: nr. 10 efter etapens egen gab-klasse (topankomst, bjerg uden
+  // topankomst, kort afslutning opad), nr. 30 efter gapClass; resten profilklassen.
+  // Aeldre scorecards (--engine-root) uden de to helpere falder tilbage paa klassen.
+  const bandClass = (key) => (key === "gapTo10" && sc.gapTo10Class ? sc.gapTo10Class(profile)
+    : (key === "gapTo10" || key === "gapTo30") && sc.gapClass ? sc.gapClass(profile) : cls);
   for (const key of ["gapTo10", "gapTo30", "ittGapTo10Per40Km", "breakawaySize"]) {
-    const band = B[key]?.byClass?.[cls];
-    if (band && s[key] !== null) s.verdicts[key] = { status: sc.verdict(s[key], band), band: { min: band.min ?? null, max: band.max ?? null } };
+    const band = B[key]?.byClass?.[bandClass(key)];
+    if (!band || s[key] === null) continue;
+    let status = sc.verdict(s[key], band);
+    // Lille n: faa hentede seeds giver hoejst WARN (samme regel som Tour-scorecardet).
+    if ((key === "gapTo10" || key === "gapTo30") && status === "PASS" && s.gapSeeds < (sc.GAP_MIN_CAUGHT_SEEDS ?? 0)) status = "WARN";
+    s.verdicts[key] = { status, band: { min: band.min ?? null, max: band.max ?? null }, cls: bandClass(key) };
   }
   const wb = B.breakawayWinShare?.byClass?.[profile.profile_type];
   if (wb && s.breakawayWinShare !== null) s.verdicts.breakawayWinShare = { status: sc.verdict(s.breakawayWinShare, wb), band: { min: wb.min ?? null, max: wb.max ?? null } };
@@ -191,6 +209,8 @@ export function runRace({ sc, v4, data, revisions, seeds, engine = null }) {
   return stages.map((p) => ({
     stage: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type ?? null,
     cls: sc.profileClass(p.profile_type), distance_km: p.distance_km ?? null,
+    // #6464: nr. 10's gab-klasse (topankomst / bjerg uden topankomst / ...), til dommen pr. division.
+    gapTo10Class: sc.gapTo10Class ? sc.gapTo10Class(p) : sc.profileClass(p.profile_type),
     routeKey: routeKey(data.race.name, p),
     descentFinish: descentFinishFor(engine, p, oneDay),
     revisions: Object.fromEntries(revisions.map((r) => [r, byRevision[r][p.stage_number]])),
@@ -270,6 +290,8 @@ export async function main(argv = process.argv.slice(2)) {
   };
   const previous = opts.previous ? JSON.parse(readFileSync(abs(opts.previous), "utf8")) : null;
   bench.verdict = buildVerdict(bench, { previous });
+  // #6464: nr. 10 doemt pr. division (ejer 11/10: samme maal i alle divisioner).
+  bench.byDivision = divisionGapSummary(races, opts.revisions);
   mkdirSync(path.dirname(abs(opts.out)), { recursive: true });
   writeFileSync(abs(opts.out), JSON.stringify(bench));
   if (opts.verdictOut) {
@@ -280,6 +302,15 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const stageCount = races.reduce((n, r) => n + r.stages.length, 0);
   console.log(`Testbaenk: ${races.length} loeb, ${stageCount} etaper, ${opts.revisions.join(" vs ")} x ${opts.seeds} seeds -> ${abs(opts.out)}`);
+  // Kun lokalt output (gitignoreret fil + konsol); tallene kommer aldrig i repoet.
+  for (const row of bench.byDivision) {
+    if (row.gapClass !== "mountain" && row.gapClass !== "mountain_non_summit") continue;
+    const cells = opts.revisions.map((rev) => {
+      const r = row.byRevision[rev];
+      return `${rev}: median ${r.medianGapTo10 === null ? "-" : Math.round(r.medianGapTo10)} s (P${r.PASS}/W${r.WARN}/F${r.FAIL})`;
+    });
+    console.log(`  nr. 10 ${row.division} ${row.gapClass} (${row.stages} etaper): ${cells.join(" | ")}`);
+  }
   return bench;
 }
 

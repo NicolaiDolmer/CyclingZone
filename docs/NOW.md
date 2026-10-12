@@ -4,17 +4,16 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (fra 11/10):** Næste session efter `docs/sessions/2026-10-12-stabilitet-og-udvikling.md` (startprompt i filen): overdragelsen først (bjerg-revision `official_times_v4` #6464 før 37 løb 12/10 kl. 12, #6384 visuelt go), så stabilitet (#5162 #5911 #6184) + Udvikling 2.0 D1-D7 (#6110) + #5842 + småting-lane.
+> **🎯 Next action = NÆSTE SESSION: styringssession man 12/10** (ejer) efter `WEEKLY_STEERING.md`. Blok 3: 27 `triage:new` inkl. #6519-#6527 (Clarity 12/10; hover #2009 skal laves) + #6528 #6529 (Postgres). CYCLINGZONE-9B fyrede efter #6446.
 >
-> **11/10:** `official_times_v3` tændt 09:43, Touren kører v3 (e1 som testet). Merget: #6443 #6458 #6455 #6454 #6453 #6460 #6459 (migreret) #6467 #6468. Roadmap afstemt + ejer-godkendt, MASTERPLAN + artifact opdateret, patch 7.354-7.355. Nye issues #6464 #6469-#6476.
+> **Derefter (11/10):** (1) v4-bjergetaper pr. division 12/10 fra kl. 12 mod `balance-internals/motor-bench/bench-main-live.json`. (2) Ejer: GitHub-secrets `POSTHOG_PERSONAL_API_KEY`, `DISCORD_OPS_WEBHOOK_URL`, `SUPABASE_PUBLISHABLE_KEY` (#6477 #6426 merget). (3) Ejer-kort: faldets form (kerne 100 % / øvrige 70 % eller ens, #6499) FØR flaget `development_v2_aging_enabled` tændes før 25/10. (4) Ægte før/efter-billeder #6482 #6483 (Claude in Chrome ikke forbundet 11/10). (5) #6490: M3 på pause, først staging-måling af GIN (ejer 12/10, se issue). Desuden #6489 (trup-skift-trigger), #6504 (frigivelse uden ejerskifte). (6) Standarder #6496: #6491 først. Man: betaling #4511 #4514 #4512.
 >
-> **Tænd (#6452):** `official_times_v3` gælder løb der starter efter merge; patch 7.354 (regler) + 7.355 (holdskifte i træning, akademi-signering #6459). Første etaper verificeres pr. profil samme dag.
-
+> **11/10 aften (session `031242c6`):** 11 PR'er merget + patch 7.357 (#6505). Udvikling 2.0 del 1 bygget bag slukket flag (D4 #6499 prøvekørt mod prod; D6 #6500). Aftenspidsens rodårsag: GIN-indeks 800 MB på `training_day_runs` (#6490, live-målt: 1 MB WAL pr. afregning, max 45 s, lukning 30 min). 7×5 live for alle. Standarder vedtaget (#6496, TS #5158).
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #5162 chunk (EFTER S4) · #5633 (4/5 rettet) · #5692 matview timeouts · parkering ved S4 = JA (ejer 26/9). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`. **Supabase 25/9:** 3 WARN dokumenteret.
+> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 
@@ -27,4 +26,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (session 11/10 lukket ca. 11:45; bølgen stoppet rent, markør frigivet).
+> **🤖 Working agent:** Claude Code primær session 12/10 (styringssession + bølge wf_18c8c554: #6482 #6483 #6423). Codex parallelt på #6490.

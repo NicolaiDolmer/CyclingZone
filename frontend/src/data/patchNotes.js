@@ -1,5 +1,86 @@
 export const PATCHES = [
   {
+    "version": "7.357",
+    "date": "2026-10-11",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Riders who drop out of a stage race train again the next day",
+          "body": "A rider who drops out of a stage race, for example on the time limit, now follows your training program again from the next day instead of resting until the race ends. The day he drops out still counts as a rest day, and injured riders still rest."
+        },
+        "da": {
+          "title": "Ryttere, der udgår af et etapeløb, træner igen dagen efter",
+          "body": "En rytter, der udgår af et etapeløb, fx på tidsgrænsen, følger nu dit træningsprogram igen fra dagen efter i stedet for at hvile, til løbet er slut. Dagen, han udgår, er stadig en hviledag, og skadede ryttere hviler stadig."
+        },
+        "refs": [
+          5949
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squads",
+        "en": {
+          "title": "Moving a rider to another squad clears his old race entries",
+          "body": "When a rider moves squad, for example from junior to U23 or up to the senior team, he is now taken off the upcoming races of his old squad. If that leaves a team short, the team is filled up automatically when the race starts."
+        },
+        "da": {
+          "title": "Flytter du en rytter til en anden trup, fjernes han fra den gamle trups løb",
+          "body": "Når en rytter skifter trup, fx fra junior til U23 eller op på seniorholdet, bliver han nu taget af den gamle trups kommende løb. Mangler holdet så ryttere, fyldes det automatisk op, når løbet starter."
+        },
+        "refs": [
+          5903
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.356",
+    "date": "2026-10-11",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Mountain gaps are the same in every division",
+          "body": "Every race that starts from now on uses the new mountain rules. The gap to 10th place on a summit finish is now about the same in every division, so the lower divisions no longer lose far more time than the top division. Mountain stages that end with a descent after the last climb also get more realistic gaps. Races that have already started, including the Tour, finish on the rules they started with."
+        },
+        "da": {
+          "title": "Tidsgabene i bjergene er ens i alle divisioner",
+          "body": "Alle løb, der starter fra nu af, bruger de nye bjergregler. Hullet til nr. 10 på en topafslutning er nu omtrent det samme i alle divisioner, så de lavere divisioner ikke længere taber langt mere tid end den øverste. Bjergetaper, der slutter med en nedkørsel efter den sidste stigning, får også mere realistiske tidsgab. Løb, der allerede er startet, også Touren, kører færdigt på de regler, de startede med."
+        },
+        "refs": [
+          6464,
+          6456
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Time gaps in the youth and team classifications",
+          "body": "Stage race results now show the time gap to the leader in the youth and team classifications, the same way as in the overall classification."
+        },
+        "da": {
+          "title": "Tidsgab i ungdoms- og holdklassementet",
+          "body": "Resultaterne i etapeløb viser nu tidsgabet til føreren i ungdoms- og holdklassementet, ligesom i det samlede klassement."
+        },
+        "refs": [
+          6384
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.355",
     "date": "2026-10-11",
     "changes": [

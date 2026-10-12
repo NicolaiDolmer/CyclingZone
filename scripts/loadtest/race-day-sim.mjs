@@ -972,6 +972,9 @@ export async function createLiveRuntime({ env, recorder, faults, als, getPhase, 
           result = await runStageScheduler({
             supabase, now, isStageSchedulerEnabled, isRaceEngineV2Enabled, seenKeys, captureExceptionFn: capture,
             runStageFn: (args) => als.run({ kind: 'tick', counter, race: args.raceId, raceAlias: aliasById.get(args.raceId) }, () => runStage(args)),
+            // #5911: scheduleren starter ellers en fire-and-forget aftentræning efter
+            // VÆGUR (ikke simulatorens `now`). Aftentræningen måles som cron-job nedenfor.
+            startTrainingDayClose: () => {},
           });
         } catch (err) {
           // catch-ok: et kastet tick er et maalepunkt (tickErrors), ikke en fejl i simulatoren.

@@ -13,7 +13,12 @@ import {
   loadPriorMaxGameDayByDivision, loadLastRaceDateByDivision,
   runTrainingDayCloseSweep, resolveDayCloseStatus, isTrainingDayCloseSweepRunning,
   __resetTrainingDayCloseStateForTests,
+  TEAM_CONCURRENCY_CONFIG_KEY, MAX_TEAM_CONCURRENCY, parseTeamConcurrency, resolveTeamConcurrency,
+  startTrainingDayCloseAfterStages,
 } from "./trainingDayCloseTrigger.js";
+import {
+  runNormalizedTrainingDateSweep, forEachTeamBounded, __resetNormalizedTrainingDateCacheForTests,
+} from "./trainingDateClose.js";
 import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 
@@ -973,5 +978,291 @@ describe("dagens etaper hentes uden hel-sæsons id-liste i URL'en", () => {
     const src = readFileSync(resolve(import.meta.dirname, "trainingDayCloseTrigger.js"), "utf8");
     assert.equal(/\.in\(\s*"race_id",\s*\[\.\.\.raceById\.keys\(\)\]\s*\)/.test(src), false);
     assert.match(src, /races!inner\(season_id/);
+  });
+});
+
+// ── #5911: hold-parallelitet i datoafregningen + start straks efter etaperne ──────
+
+describe("parseTeamConcurrency / resolveTeamConcurrency (#5911)", () => {
+  it("tal og tal-strenge klemmes til 1..loftet; alt andet er den sekventielle 1", () => {
+    assert.equal(parseTeamConcurrency(12), 12);
+    assert.equal(parseTeamConcurrency("8"), 8);
+    assert.equal(parseTeamConcurrency(" 4 "), 4);
+    assert.equal(parseTeamConcurrency(7.9), 7);
+    assert.equal(parseTeamConcurrency(999), MAX_TEAM_CONCURRENCY);
+    for (const raw of [null, undefined, 0, -3, "on", "", "2.5", {}, [], NaN, true]) {
+      assert.equal(parseTeamConcurrency(raw), 1, `raw=${JSON.stringify(raw)}`);
+    }
+  });
+
+  function configClient(answer) {
+    const seen = [];
+    const query = {
+      select() { return this; },
+      eq(col, val) { seen.push([col, val]); return this; },
+      async maybeSingle() { if (answer instanceof Error) throw answer; return answer; },
+    };
+    return { seen, supabase: { from: (table) => { seen.push(["table", table]); return query; } } };
+  }
+
+  it("laeser app_config-noeglen og fail-safer til 1 ved fejl, kast eller manglende raekke", async () => {
+    const ok = configClient({ data: { value: 12 }, error: null });
+    assert.equal(await resolveTeamConcurrency(ok.supabase), 12);
+    assert.deepEqual(ok.seen, [["table", "app_config"], ["key", TEAM_CONCURRENCY_CONFIG_KEY]]);
+    assert.equal(await resolveTeamConcurrency(configClient({ data: null, error: null }).supabase), 1);
+    assert.equal(await resolveTeamConcurrency(configClient({ data: null, error: { message: "down" } }).supabase), 1);
+    assert.equal(await resolveTeamConcurrency(configClient(new Error("network")).supabase), 1);
+  });
+
+  async function sweepConcurrency(knob) {
+    __resetTrainingDayCloseStateForTests();
+    // Flagene er "on"; kun knappens noegle svarer med `knob` (undefined = ingen raekke).
+    const supabase = { from: () => {
+      let key = null;
+      const query = { select() { return this; }, eq(col, val) { if (col === "key") key = val; return this; },
+        async maybeSingle() {
+          if (key !== TEAM_CONCURRENCY_CONFIG_KEY) return { data: { value: "on" }, error: null };
+          return { data: knob === undefined ? null : { value: knob }, error: null };
+        } };
+      return query;
+    } };
+    let received = null;
+    await runTrainingDayCloseSweep({
+      supabase, now: new Date("2026-10-11T18:05:00Z"),
+      runNormalized: async (args) => { received = args.teamConcurrency; return { ran: false }; },
+    });
+    return received;
+  }
+
+  it("overlap-guarden tages foer flag-opslagene: en samtidig anden start er et skip", async () => {
+    __resetTrainingDayCloseStateForTests();
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    const query = { select() { return this; }, eq() { return this; },
+      async maybeSingle() { await gate; return { data: { value: "on" }, error: null }; } };
+    let normalizedRuns = 0;
+    const args = { supabase: { from: () => query }, now: new Date("2026-10-11T18:05:00Z"),
+      runNormalized: async () => { normalizedRuns++; return { ran: true }; } };
+    const first = runTrainingDayCloseSweep(args);
+    assert.equal(isTrainingDayCloseSweepRunning(), true, "guard held while the flag lookup is still pending");
+    assert.deepEqual(await runTrainingDayCloseSweep(args), { ran: false, skipped: "overlap" });
+    release();
+    assert.equal((await first).ran, true);
+    assert.equal(normalizedRuns, 1);
+    assert.equal(isTrainingDayCloseSweepRunning(), false, "guard released afterwards");
+  });
+
+  it("den normaliserede sweep faar knappens vaerdi med, og uden knap den sekventielle 1", async () => {
+    assert.equal(await sweepConcurrency(12), 12);
+    assert.equal(await sweepConcurrency(undefined), 1);
+    assert.equal(await sweepConcurrency("on"), 1);
+  });
+});
+
+describe("forEachTeamBounded (#5911)", () => {
+  it("limit 1 er den gamle sekventielle loekke i samme raekkefoelge", async () => {
+    const order = [];
+    let inFlight = 0, maxInFlight = 0;
+    await forEachTeamBounded([1, 2, 3, 4], 1, async (n) => {
+      inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setImmediate(r));
+      order.push(n); inFlight--;
+    });
+    assert.deepEqual(order, [1, 2, 3, 4]);
+    assert.equal(maxInFlight, 1);
+  });
+
+  it("holder sig under loftet, og et kast stopper nye hold men lader de startede blive faerdige", async () => {
+    let inFlight = 0, maxInFlight = 0;
+    const finished = [];
+    await assert.rejects(forEachTeamBounded([...Array(20).keys()], 3, async (n) => {
+      inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setImmediate(r));
+      inFlight--;
+      if (n === 4) throw new Error("boom");
+      finished.push(n);
+    }), /boom/);
+    assert.equal(maxInFlight, 3);
+    assert.equal(inFlight, 0, "ingen hold koerer videre efter kastet");
+    assert.ok(finished.length < 19, "nye hold startes ikke efter kastet");
+  });
+});
+
+// PARITET: samme fixture afregnet sekventielt (1) og parallelt (12) skal give
+// praecis samme database-tilstand, samme kald pr. hold og samme opsummering. Den
+// falske database er tilstandsfuld paa samme punkter som den rigtige: én kvittering
+// pr. (rytter, loebsdag), evner der bygger videre paa forrige loebsdags vaerdi,
+// registreringens #6439-regel og en atomisk commit (et kast skriver intet).
+function hashOf(text) {
+  let h = 0;
+  for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+function buildParityFixture() {
+  const days = [10, 11, 12, 13, 14];
+  const teams = [];
+  const riders = [];
+  for (let t = 0; t < 262; t++) {
+    const id = `team-${String(t).padStart(3, "0")}`;
+    teams.push({ id, league_division_id: t < 2 ? null : `div-${t % 11}` });
+    for (let r = 0; r < 3; r++) riders.push({ id: `${id}-r${r}`, team_id: id });
+  }
+  // #6439: en rytter solgt efter at datoen aabnede, settles af det gamle hold.
+  riders.find((r) => r.id === "team-005-r2").team_id = "team-006";
+  const opening = (ids) => Object.fromEntries(ids.map((id) => [id, { form: 50, fatigue: 20 }]));
+  const preWork = [
+    { team_id: "team-005", game_days: days, expected_rider_ids: ["team-005-r0", "team-005-r1", "team-005-r2"],
+      status: "partial", opening_conditions: opening(["team-005-r0", "team-005-r1", "team-005-r2"]), quarantined_rider_ids: [] },
+    { team_id: "team-007", game_days: days, expected_rider_ids: ["team-007-r0"], status: "complete",
+      opening_conditions: opening(["team-007-r0"]), quarantined_rider_ids: [] },
+  ];
+  return { days, teams, riders, preWork, opening };
+}
+
+async function settleParity(concurrency) {
+  __resetNormalizedTrainingDateCacheForTests();
+  const { days, teams, riders, preWork, opening } = buildParityFixture();
+  const work = preWork.map((row) => ({ ...row }));
+  const abilities = new Map(riders.map((r) => [r.id, hashOf(r.id) % 100]));
+  const receipts = new Map();
+  const legacyRuns = new Set(["team-001"]);
+  const callsByTeam = new Map();
+  const failOnce = new Set(["team-020:12", "team-150:10", "team-261:14"]);
+  const running = new Set();
+  let inFlight = 0, maxInFlight = 0;
+
+  const options = {
+    supabase: {}, elapsedClock: () => 0, logger: { error() {} },
+    loadIndex: async ({ now }) => ({ today: "2026-10-11", activeSeasonId: "season",
+      jobs: [{ tickDate: "2026-10-11", season: { id: "season", number: 4 }, ...(now.getUTCMinutes() > 5 ? { forceRetry: true } : {}) }] }),
+    loadWorkRows: async () => work.map((row) => ({ ...row })),
+    loadContext: async () => ({
+      teams: teams.map((t) => ({ ...t })), riders: riders.map((r) => ({ ...r })),
+      races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
+      gameDaysByDivision: new Map(teams.filter((t) => t.league_division_id).map((t) => [t.league_division_id, days])),
+    }),
+    registerWork: async ({ teamId, gameDays, riderIds }) => {
+      const claimed = new Set(work.filter((row) => row.team_id !== teamId).flatMap((row) => row.expected_rider_ids));
+      const ids = riderIds.filter((id) => !claimed.has(id));
+      const row = { team_id: teamId, game_days: gameDays, expected_rider_ids: ids, status: "pending",
+        opening_conditions: opening(ids), quarantined_rider_ids: [] };
+      work.push(row);
+      return { ...row };
+    },
+    loadLegacyRuns: async () => new Set(legacyRuns),
+    quarantineRiders: async () => { throw new Error("parity fixture has no unavailable riders"); },
+    refreshRankings: async () => {},
+    dispatchAlarms: async () => ({ dates: 0, failed: 0 }),
+    runDay: async ({ teamId, gameDay, eligibleRiderIds, dateGameDays }) => {
+      assert.equal(running.has(teamId), false, `team ${teamId} must never settle two race days at once`);
+      running.add(teamId);
+      inFlight++; maxInFlight = Math.max(maxInFlight, inFlight);
+      try {
+        // Forskellig "rundtur" pr. kald, saa holdene faktisk fletter ind i hinanden.
+        for (let i = hashOf(`${teamId}:${gameDay}`) % 4; i >= 0; i--) await new Promise((r) => setImmediate(r));
+        if (!callsByTeam.has(teamId)) callsByTeam.set(teamId, []);
+        callsByTeam.get(teamId).push(`${gameDay}:${(eligibleRiderIds ?? []).join(",")}`);
+        if (failOnce.delete(`${teamId}:${gameDay}`)) throw new Error("transient");
+        if (gameDay === null) { legacyRuns.add(teamId); return { alreadyRan: false }; }
+        for (const riderId of eligibleRiderIds) {
+          const key = `${riderId}:${gameDay}`;
+          if (receipts.has(key)) continue;
+          const earlier = dateGameDays.filter((d) => d < gameDay);
+          assert.ok(earlier.every((d) => receipts.has(`${riderId}:${d}`)), `${key} settled out of order`);
+          abilities.set(riderId, (abilities.get(riderId) * 31 + gameDay + hashOf(teamId)) % 1000003);
+          receipts.set(key, teamId);
+        }
+        const row = work.find((w) => w.team_id === teamId);
+        row.status = row.expected_rider_ids.every((id) => days.every((d) => receipts.has(`${id}:${d}`))) ? "complete" : "partial";
+        return { alreadyRan: false };
+      } finally {
+        running.delete(teamId);
+        inFlight--;
+      }
+    },
+  };
+  const strip = (s) => ({ ...s, durationMs: 0, failures: [...s.failures].sort((a, b) => a.teamId.localeCompare(b.teamId)) });
+  const first = strip(await runNormalizedTrainingDateSweep({ ...options, teamConcurrency: concurrency, now: new Date("2026-10-11T18:05:00Z") }));
+  const retry = strip(await runNormalizedTrainingDateSweep({ ...options, teamConcurrency: concurrency, now: new Date("2026-10-11T18:10:00Z") }));
+  return {
+    first, retry, maxInFlight,
+    abilities: [...abilities].sort(), receipts: [...receipts].sort(),
+    work: work.map((row) => ({ ...row })).sort((a, b) => a.team_id.localeCompare(b.team_id)),
+    legacyRuns: [...legacyRuns].sort(),
+    callsByTeam: [...callsByTeam].sort(([a], [b]) => a.localeCompare(b)),
+  };
+}
+
+describe("paritet: sekventiel og parallel datoafregning giver samme resultat (#5911)", () => {
+  it("262 hold x 5 loebsdage: samme evner, kvitteringer, arbejdsrækker, kald pr. hold og opsummering", async () => {
+    const sequential = await settleParity(1);
+    const parallel = await settleParity(12);
+    assert.equal(sequential.maxInFlight, 1);
+    assert.ok(parallel.maxInFlight > 1 && parallel.maxInFlight <= 12, `max in flight ${parallel.maxInFlight}`);
+    // Fixturen daekker de kanter paritet skal holde paa: fejl der proeves igen,
+    // division-loese hold, et faerdigt hold og en solgt rytter.
+    assert.equal(sequential.first.failed, 3);
+    assert.equal(sequential.retry.failed, 0);
+    // 260 hold med division x 3 ryttere x 5 loebsdage, minus det allerede faerdige hold.
+    assert.equal(sequential.receipts.length, 260 * 3 * 5 - 3 * 5);
+    assert.equal(sequential.receipts.find(([key]) => key === "team-005-r2:14")?.[1], "team-005");
+    assert.deepEqual(parallel.first, sequential.first);
+    assert.deepEqual(parallel.retry, sequential.retry);
+    assert.deepEqual(parallel.abilities, sequential.abilities);
+    assert.deepEqual(parallel.receipts, sequential.receipts);
+    assert.deepEqual(parallel.work, sequential.work);
+    assert.deepEqual(parallel.legacyRuns, sequential.legacyRuns);
+    assert.deepEqual(parallel.callsByTeam, sequential.callsByTeam);
+  });
+});
+
+describe("startTrainingDayCloseAfterStages (#5911: start straks efter dagens sidste etape)", () => {
+  beforeEach(() => __resetTrainingDayCloseStateForTests());
+  const evening = () => new Date("2026-10-11T18:20:00Z"); // 20:20 CEST
+  const quiet = { log() {}, error() {} };
+
+  it("starter ikke uden afviklede etaper eller foer kl. 20", () => {
+    let calls = 0;
+    const runSweep = async () => { calls++; return {}; };
+    assert.equal(startTrainingDayCloseAfterStages({ supabase: { from() {} }, stagesRan: 0, clock: evening, runSweep, logger: quiet }), null);
+    assert.equal(startTrainingDayCloseAfterStages({ supabase: { from() {} }, stagesRan: 2, clock: () => new Date("2026-10-11T17:59:00Z"), runSweep, logger: quiet }), null);
+    assert.equal(calls, 0);
+  });
+
+  it("starter sweepen med frisk tid og sender maks-ventetids-alarmen til Sentry", async () => {
+    const captured = [];
+    let args = null;
+    const promise = startTrainingDayCloseAfterStages({
+      supabase: { from() {} }, stagesRan: 1, clock: evening, logger: quiet,
+      captureExceptionFn: (err, ctx) => captured.push([err.message, ctx]),
+      runSweep: async (a) => { args = a; await a.onAlarm(new Error("late"), { tickDate: "2026-10-11", pending: [1, 2] }); return { ran: true, swept: 3, failed: 0, durationMs: 1200 }; },
+    });
+    assert.ok(promise, "a sweep was started");
+    const result = await promise;
+    assert.equal(result.swept, 3);
+    assert.equal(args.now.toISOString(), evening().toISOString());
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0][0], "late");
+    assert.equal(captured[0][1].tags.cron, "training-day-close");
+    assert.deepEqual(captured[0][1].pending, [1, 2]);
+  });
+
+  it("stage-scheduleren kalder den tidlige start efter tick'et med alle afviklede etaper", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const src = readFileSync(resolve(import.meta.dirname, "stageScheduler.js"), "utf8");
+    assert.match(src, /startTrainingDayClose\s*=\s*startTrainingDayCloseAfterStages/);
+    assert.match(src, /startTrainingDayClose\(\{ supabase, stagesRan: ran \+ recovered \+ resumed, captureExceptionFn \}\);\s*return \{ ran, errors/);
+  });
+
+  it("en fejlende sweep kaster aldrig ind i stage-scheduleren", async () => {
+    const errors = [];
+    const result = await startTrainingDayCloseAfterStages({
+      supabase: { from() {} }, stagesRan: 1, clock: evening, logger: { log() {}, error: (...a) => errors.push(a) },
+      runSweep: async () => { throw new Error("db down"); },
+    });
+    assert.equal(result, null);
+    assert.equal(errors.length, 1);
   });
 });

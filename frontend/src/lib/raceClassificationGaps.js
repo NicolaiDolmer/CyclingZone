@@ -17,7 +17,9 @@
 // udregnede orden ikke med de gemte placeringer, vises intet gab hellere end
 // et forkert et.
 
-export const REVISIONS_WITHOUT_TEAM_BONUS = new Set(["official_times_v3"]);
+// #6464: official_times_v4 er hele official_times_v3-pakken (backend
+// sharedTimeModelGeneration), så den tæller også uden bonussekunder.
+export const REVISIONS_WITHOUT_TEAM_BONUS = new Set(["official_times_v3", "official_times_v4"]);
 
 /** Spejler backend isOfficialTimesV3OrLater. Ukendt/null revision = ældre regler. */
 export function isOfficialTimesV3OrLater(revision) {

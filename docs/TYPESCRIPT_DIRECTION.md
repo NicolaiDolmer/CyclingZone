@@ -111,6 +111,18 @@ saa tag den med over.** Sammen med "nye filer er altid TS" betyder det, at
 kernen bliver typet dér hvor der faktisk sker noget — og ikke i de filer ingen
 har rørt i et halvt aar.
 
+### Håndhævet (ejer 11/10-2026)
+
+Reglen ovenfor holdt ikke af sig selv: fra 11/9 til 11/10 faldt kernen kun fra
+1070 til 1031 fejl, og PR'er rørte kerne-filer uden at tage dem med over. Derfor:
+
+- **En PR, der ændrer ≥ 40 linjer i en kerne-`.js`-fil, konverterer filen til
+  `.ts` i samme PR** (opskriften nedenfor).
+- **Er filen for stor til én PR** (> 100 `tsc`-fejl), skal filens fejltal i
+  stedet **falde** i PR'en (JSDoc-typer på det, PR'en rører).
+- Gaten (`check-ts-core-ratchet.mjs`) skal håndhæve begge dele; indtil da er
+  det en review-regel, og en worker-prompt der rører kernen skal nævne den.
+
 ### Opskrift: én fil fra `.js` til `.ts`
 
 1. **`git mv lib/foo.js lib/foo.ts`**, og ret **alle** importstier til filen fra

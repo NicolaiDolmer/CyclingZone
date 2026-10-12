@@ -46,7 +46,7 @@ import { findPendingGraduation } from "./academyGraduation.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { ACTIVE_AUCTION_STATUSES } from "./auctionRules.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
-import { clearOffSquadEntries } from "./squadEntryCleanup.js";
+import { clearOffSquadEntries, clearOffSquadEntriesSafe } from "./squadEntryCleanup.js";
 import {
   SQUAD_MAX_AGE, DEFAULT_SQUAD, ACADEMY_SQUAD_WHEN_AGE_UNKNOWN,
   isSquad, isYouthSquad, squadForSeason, squadCapRpcArgs, effectiveSquad,
@@ -112,14 +112,17 @@ export function resolveDemoteSalary(rider) {
  * - is_academy=false.
  * - resolver en evt. pending academy_graduation-row → 'promoted' (så
  *   academyGraduationSweep ikke auto-resolver den bagefter).
+ * - #5903: rydder rytterens entries i kommende U23-/juniorløb (kaster aldrig).
+ *   POST /api/academy/promote kalder promote() direkte, uden om moveRider().
  * - notify 'academy_promoted'.
  *
  * @throws 'rider_not_found' | 'not_owned' | 'not_academy' | 'squad_cap_violation'
- * @returns {Promise<{riderId:string, action:'promoted', salary:number}>}
+ * @returns {Promise<{riderId:string, action:'promoted', salary:number, offSquadEntriesCleared?:number}>}
  */
 export async function promote(supabase, {
   teamId, riderId, seasonNumber, now = new Date(),
   getMarketState = getTeamMarketState, notify = notifyTeamOwner,
+  clearEntriesOutsideSquad = clearOffSquadEntriesSafe,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -154,6 +157,10 @@ export async function promote(supabase, {
   }).eq("id", riderId);
   if (error) throw new Error(`promote update: ${error.message}`);
 
+  // #5903: rytteren er nu senior; hans kommende ungdomsløb ryddes. Samme regel
+  // som moveRider() (#5843) og graduerings-stierne; kaster aldrig.
+  const { cleared } = await clearEntriesOutsideSquad(supabase, { riderId, squad: "senior", label: "academy_promote" });
+
   // Resolver en evt. pending graduerings-row så sweepet ikke kører den igen.
   // #4484: opslaget SKAL scopes til den pending række (findPendingGraduation),
   // og opdateringen ramme netop dens id — en rytter med akademi-ophold over to
@@ -182,7 +189,7 @@ export async function promote(supabase, {
     },
   });
 
-  return { riderId, action: "promoted", salary };
+  return { riderId, action: "promoted", salary, ...(cleared ? { offSquadEntriesCleared: cleared } : {}) };
 }
 
 // RPC ok=false-koder → named errors (kalderen i api.js maper til HTTP-status).
@@ -486,7 +493,12 @@ export async function moveRider(supabase, {
   let result;
   try {
     if (targetSquad === DEFAULT_SQUAD) {
-      const res = await promote(supabase, { teamId, riderId, seasonNumber, now, getMarketState, notify });
+      // Oprydningen nedenfor dækker også denne sti (med moveRiders egen
+      // fejlhåndtering), så promote() skal ikke rydde én gang til.
+      const res = await promote(supabase, {
+        teamId, riderId, seasonNumber, now, getMarketState, notify,
+        clearEntriesOutsideSquad: async () => ({ cleared: 0 }),
+      });
       result = { ...res, from: fromSquad, to: targetSquad };
     } else if (fromSquad === DEFAULT_SQUAD) {
       // isSquad() ovenfor + targetSquad !== senior: kun junior/u23 når hertil.

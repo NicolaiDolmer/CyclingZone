@@ -134,17 +134,19 @@ test("#5443 vagt b: den frosne valuation_type kan ikke længere holde værdien f
   assert.ok(better > predictBaseValue(frozen, ab, v5));
 });
 
-// ── De to kaldeveje sender det samme rytter-grundlag ─────────────────────────
+// ── Én kaldevej til værdikolonnerne (#5842) ──────────────────────────────────
+//
+// Før #5842 havde værdikolonnerne to kaldeveje: søndagskørslen og
+// sæson-transitionen. #5443 holdt deres rytter-grundlag ens med en vagt her.
+// Ejeren besluttede 27/9, at værdier ikke må flytte sig ved sæsonskiftet, så
+// transitionen er ikke længere en kaldevej. Vagten sikrer at den ikke bliver
+// det igen: motoren må hverken importere værdifunktionerne eller vælge model.
 
-test("#5443: sæson-transitionen henter de samme værdi-felter som søndagskørslen", async () => {
-  const { SEASON_RIDER_COLUMNS } = await import("./riderProgressionEngine.js");
-  const cols = SEASON_RIDER_COLUMNS.split(",").map((c) => c.trim());
-  // Felterne værdi-funktionerne kan læse på et rytter-objekt. Søndagskørslen
-  // sender hele rækken videre (riderValueRefresh `withType`); sæson-transitionen
-  // bygger sit eget objekt, og hvert felt der mangler dér er en tavs divergens
-  // mellem to kaldeveje der skriver til de SAMME kolonner.
-  for (const field of ["primary_type", "secondary_type", "valuation_type", "potentiale", "birthdate"]) {
-    assert.ok(cols.includes(field), `${field} mangler i sæson-transitionens rytter-select`);
+test("#5842: sæson-transitionens motor regner ingen rytterværdi", () => {
+  const src = readFileSync(new URL("./riderProgressionEngine.js", import.meta.url), "utf8");
+  const code = src.split("\n").filter((line) => !line.trim().startsWith("//") && !line.trim().startsWith("*")).join("\n");
+  for (const name of ["predictBaseValue", "currentProductionValue", "loadValuationModelStrict", "loadProductionValueModelStrict"]) {
+    assert.equal(code.includes(name), false, `riderProgressionEngine.js bruger ${name}: sæsonskiftet må ikke skrive værdier (#5842)`);
   }
 });
 

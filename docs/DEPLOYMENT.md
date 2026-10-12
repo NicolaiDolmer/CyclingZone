@@ -182,9 +182,18 @@ kørt af `deploy-verify.yml` efter hvert deploy til main):
   overskrides det, beholdes de 30 nyeste og der rejses en alarm (GitHub-warning
   + `alarms` i `retention.json`), aldrig stille beskæring.
 - Tom telemetri = kun gulvet + alarm. Mangler secrets, springer trinnet over;
-  carry-forward bruger så den seneste `retention.json` forenet med gulvet. En
-  gammel `retention.json` er altid en over-mængde af det nødvendige, fordi kun
-  den nyeste release kan være kommet til siden, og den er i gulvet.
+  carry-forward bruger så den seneste `retention.json` forenet med gulvene.
+- **Tidsgulvet (11/10, `timeFloorReleaseIds` i `carry-forward-assets.mjs`)**
+  gælder uanset måling: alle releases **afløst** inden for vinduet bæres
+  (afløst-tidspunkt = næste manifests oprettelse). Vinduet er **72 t** når
+  `retention.json` er frisk (skrevet inden for 72 t, ikke-tom liste), ellers
+  **7 døgn** (hele målevinduet), begge med loftet 30 og en advarsel i build-loggen
+  over det. Baggrund: indtil 11/10 var `retention.json` aldrig skrevet
+  (`POSTHOG_PERSONAL_API_KEY` mangler i GitHub), så kun "3 nyeste" blev båret;
+  på en dag med 7 frontend-releases dækkede det få timer, og en auktionsfane
+  fra en release afløst ca. 21 t før fik 404 (filen lå i lageret, ikke på
+  deployet). PostHog ser desuden kun spillere med analytics-samtykke, så
+  målingen alene kan undervurdere gamle faner.
 - Kræver i GitHub: secret `POSTHOG_PERSONAL_API_KEY` (personlig nøgle med
   `query:read`) og variabel `POSTHOG_PROJECT_ID`. `SUPABASE_URL` +
   `SUPABASE_SERVICE_KEY` findes allerede.

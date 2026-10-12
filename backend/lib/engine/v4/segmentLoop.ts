@@ -88,7 +88,7 @@ import {
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
-import { isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup, isMorningRegroupCatch } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
@@ -773,6 +773,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "official_times_v1") return "official_times_v1";
   if (raw === "official_times_v2") return "official_times_v2";
   if (raw === "official_times_v3") return "official_times_v3";
+  if (raw === "official_times_v4") return "official_times_v4";
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -800,7 +801,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // #6199: official_times_v2 laeser sin kalibrerede tidsmodel (dalens B-lukning).
   // #6200: official_times_v3 = official_times_v2 + nedkoerselsfinalen (timeModelGeneration 3).
   const timeModelV3 = sharedGroupTime && ordersGcV3 && sharedTimeModelGeneration(rulesRevision) === 3;
-  const loopTimeModel = timeModelTuningFor({ ...(ordersGcV3 ? { ordersGcV3: true as const } : {}), ...(sharedGroupTime ? { sharedGroupTime: timeModelV3 ? { timeModelGeneration: 3 as const } : true } : {}) });
+  // #6464 (KUN official_times_v4, slukket): v3-modellen + bjergets tidsgab i feltets egen evne-spredning.
+  const mountainGapsV4 = timeModelV3 && isOfficialTimesV4OrLater(rulesRevision);
+  const loopTimeModel = timeModelTuningFor({ ...(ordersGcV3 ? { ordersGcV3: true as const } : {}), ...(sharedGroupTime ? { sharedGroupTime: timeModelV3 ? { timeModelGeneration: 3 as const, ...(mountainGapsV4 ? { mountainGapsV4: true as const } : {}) } : true } : {}) });
   // #6200 (KUN official_times_v3): nedkoerslen mod maal kan efterfoelges af et
   // kort stykke uden stigning (finishDescentIndexFor). Ellers etapens sidste segment.
   const finishDescentIndex = timeModelV3 ? finishDescentIndexFor(route, loopTimeModel) : route.segments.length - 1;
@@ -1083,7 +1086,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(mountainPhase ? { mountainSelectionPhase: mountainPhase } : {}),
       ...(rollingBreakawayV2For(v2Revision, route.profile_type) ? { rollingBreakawayV2: true as const } : {}),
       ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
-      ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo, incidentCursor: incidentCursorAtEntry, ...(timeModelV3 ? { timeModelGeneration: 3 as const } : {}) } } : {}),
+      ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo, incidentCursor: incidentCursorAtEntry, ...(timeModelV3 ? { timeModelGeneration: 3 as const } : {}), ...(mountainGapsV4 ? { mountainGapsV4: true as const } : {}) } } : {}),
       ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {

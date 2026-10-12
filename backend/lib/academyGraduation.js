@@ -16,6 +16,7 @@ import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js"
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
+import { clearOffSquadEntriesSafe } from "./squadEntryCleanup.js";
 
 // Notifikationstypen for "manageren har et graduerings-valg at træffe". Den er
 // eksporteret fordi den nu bruges TO steder: når vinduet åbnes, og når det
@@ -317,6 +318,7 @@ export async function detectGraduates(supabase, { seasonId, seasonNumber, now = 
 export async function resolveGraduation(supabase, {
   teamId, riderId, action, seasonNumber, now = new Date(),
   getMarketState = getTeamMarketState, countSquad = countSquadMembers, auctionConfig, notify = notifyTeamOwner,
+  clearEntriesOutsideSquad = clearOffSquadEntriesSafe,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!VALID_ACTIONS.has(action)) throw new Error("invalid_action");
@@ -353,6 +355,10 @@ export async function resolveGraduation(supabase, {
       ...contractPatch,
     }).eq("id", riderId);
     if (error) throw new Error(`resolveGraduation promote update: ${error.message}`);
+    // #5903: en graduate auto-udtaget i den GAMLE trups kommende løb (28/9:
+    // junior → U23 efter autofyldet) må ikke blive stående dér. Samme regel som
+    // moveRider() (#5843); kaster aldrig.
+    await clearEntriesOutsideSquad(supabase, { riderId, squad: targetSquad, label: "graduation_promote" });
     await finishGraduation(supabase, { gradId: grad.id, status: "promoted", teamId, rider, now, action, notify });
     const salary = contractPatch.salary ?? rider.salary;
     return { riderId, action: "promoted", salary };
@@ -528,6 +534,7 @@ export async function releaseUnsoldGraduate(supabase, {
 export async function completeStuckPromotion(supabase, {
   teamId, riderId, rider = null, seasonNumber,
   getMarketState = getTeamMarketState, notify = notifyTeamOwner, notification = null,
+  clearEntriesOutsideSquad = clearOffSquadEntriesSafe,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId || !riderId || !Number.isFinite(seasonNumber)) {
@@ -562,6 +569,8 @@ export async function completeStuckPromotion(supabase, {
     .select("id");
   if (error) throw new Error(`completeStuckPromotion update: ${error.message}`);
   if ((updated ?? []).length === 0) return { completed: false, riderId, reason: "already_resolved" };
+  // #5903: rytteren er nu senior; hans kommende ungdomsløb ryddes (kaster aldrig).
+  await clearEntriesOutsideSquad(supabase, { riderId, squad: "senior", label: "graduation_stuck_promotion" });
 
   const name = `${target.firstname} ${target.lastname}`;
   await notify({

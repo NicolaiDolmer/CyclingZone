@@ -897,7 +897,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-o
 | Trup-akse i nøglen (`squad`, default `senior`) til #4620's tre akser pr. hold | **bygget** | `database/2026-09-15-4847-training-day-close-trigger.sql` |
 | Manager-klik-bonussen i vækstformlen (B3) | **fjernet i #5281** fra både løbsdags- og kalenderdagsstien. `bonus_applied` består som historisk audit-felt, men påvirker ikke udvikling; knappen er frivillig. | `dailyTraining.js`, `dailyTrainingEngine.js` |
 | Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag** (PR #5465 merget). Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
-| Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **mangler** | `training_week_plans` |
+| Program pr. løbsdag, 7 × 5 celler (beslutning 8) | **bygget, on for alle** (`training_program_cells` = on, prod 11/10; 89 af 340 ugeplaner bruger cellerne) | `training_week_plans.days[*].slots` · `trainingWeekPlanCellsFlag.js` · `TrainingPlanCard.tsx` |
 | Peak-plannerens konsistens-signal tæller datoer, ikke løbsdags-rækker (B5, gate G8) | **bygget** (#4848) — se "B5" nedenfor | `racePeakPlans.js` (`summarizeLeadupTraining`) |
 | Trænings-slot-vagtens spring-gate målt pr. løbsdag (B5, gate G9) | **bygget** (#4848) — se "B5" nedenfor | `trainingSlotHealth.js`, `trainingSlotHealthWatch.js` |
 | Off-season-hullet: defineret, logget adfærd i begge sweeps (B5) | **bygget** (#4848) — se "B5" nedenfor | `trainingSweep.js`, `trainingDayCloseTrigger.js` |

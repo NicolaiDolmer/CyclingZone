@@ -321,7 +321,9 @@ export async function main(argv = process.argv.slice(2)) {
   const rows = [];
   for (const revision of opts.revisions) {
     // Revisionens egen tidsmodel pr. profil (CodeRabbit-fund): generation 3 = official_times_v3.
-    const sharedGroupTime = revision === "official_times_v3" ? { timeModelGeneration: 3 } : {};
+    // #6464: official_times_v4 = generation 3 + bjergets tidsgab (samme flag som motoren saetter).
+    const sharedGroupTime = revision === "official_times_v3" ? { timeModelGeneration: 3 }
+      : revision === "official_times_v4" ? { timeModelGeneration: 3, mountainGapsV4: true } : {};
     for (let s = 1; s <= opts.seeds; s++) {
       runStagesInOrder({
         v4, data, revision, seedTag: `${opts.seedPrefix}-${s}`, stages,

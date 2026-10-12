@@ -19,7 +19,7 @@ import {
   resolveNoticeFromRow,
   resolveRetirementNotice,
 } from "./retirementNotice.js";
-import { announcedRetirementAfterSeason, developRiderSeason, retirementDecision } from "./riderProgression.js";
+import { announcedRetirementAfterSeason, developRiderSeason, developRiderSeasonV2, retirementDecision } from "./riderProgression.js";
 
 // Sæson 3 = referenceår 2028 (LAUNCH_REFERENCE_YEAR 2026 i riderSeasonAge.js).
 const S3 = 3;
@@ -243,6 +243,24 @@ test("#5073: banneret og cutover giver samme svar for den samme sæson", () => {
   );
   assert.equal(banner.announced, true);
   assert.equal(cutover.retirement.retire, banner.announced);
+});
+
+test("#6499: Udvikling 2.0-skiftet giver præcis samme pensionssvar som i dag (rullet og frosset)", () => {
+  // Tilbagegangen er ny; pensionen er det ikke. Banneret har lovet et svar, og
+  // det løfte må ikke afhænge af om development_v2_aging_enabled er tændt.
+  const cutoverSeason = S3 + 1;
+  const abilities = { climbing: 70, sprint: 50, tactics: 60 };
+  const caps = { climbing: 80, sprint: 60, tactics: 60 };
+  for (const age of [36, 37, 38, 39, 40, 41]) {
+    for (const id of ["v2-a", "v2-b", "v2-c", "v2-d"]) {
+      for (const frozen of [undefined, null, true, false]) {
+        const rider = { id, primary_type: "climber", potentiale: 3, age, frozenRetirementNotice: frozen };
+        const v1 = developRiderSeason(rider, abilities, caps, cutoverSeason).retirement;
+        const v2 = developRiderSeasonV2(rider, abilities, cutoverSeason).retirement;
+        assert.deepEqual(v2, v1, `alder ${age}, ${id}, frosset=${frozen}`);
+      }
+    }
+  }
 });
 
 test("#5073: noticeFreezePatch giver kun en dato når der faktisk er et varsel", () => {

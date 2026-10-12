@@ -1,6 +1,7 @@
 # Spec-udkast #5878: DB-vagt (tiltag 5, alarm når DB hænger)
 
-Status: **udkast, kræver ejer-valg (A/B/C) før byg.** Ingen kode i denne PR.
+Status: **ejer-valg A (10/10), bygget i `.github/workflows/db-watchdog.yml` + `scripts/ops/db-watchdog.mjs`.** B tages op efter 14 dage med A.
+Afvigelser fra udkastet: tilstand ligger i Actions-cache (ikke gist). Sentry-delen er et Cron Monitor check-in pr. kørsel (aktiveres af secret `SENTRY_DSN`); et separat Sentry-event ved alarm er ikke bygget, fordi Discord-ops + monitoren dækker det. Nye secrets ejeren skal oprette: `DISCORD_OPS_WEBHOOK_URL`, `SUPABASE_PUBLISHABLE_KEY` (valgfri: `DISCORD_OPS_MENTION`, `SENTRY_DSN`).
 Baggrund: `docs/audits/2026-10-11-5878-supabase-udfald.md`. 6/10 frøs databasen i 21 min (13:21-13:42 UTC), og ejeren opdagede det selv. Eksisterende vagter kører kun ugentligt (`db-health.yml`) og dagligt (`supabase-log-watch.yml`).
 
 ## Mål

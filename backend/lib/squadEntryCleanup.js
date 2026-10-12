@@ -66,3 +66,39 @@ export async function clearOffSquadEntries(supabase, { riderId, squad }) {
   if (delErr) throw new Error(`race_entries (off-squad delete): ${delErr.message}`);
   return { cleared: raceIds.length };
 }
+
+/**
+ * #5903: samme oprydning til de stier hvor trup-skiftet ALLEREDE er skrevet
+ * (graduering junior → U23 / U23 → senior, fuldført promovering). moveRider()
+ * har sin egen try/catch; graduerings-stierne bruger denne, så reglen og
+ * loggen er én kopi.
+ *
+ * Kaster aldrig: skiftet er gennemført og må ikke rulles tilbage eller blive en
+ * 500. Fejler oprydningen, sorterer løbsmotoren forkert-trup-entries fra ved
+ * start (filterEligibleEntries), og start-redningen (fillMissingTeamEntries)
+ * fylder holdet op til gulvet fra truppens egne ryttere.
+ *
+ * Holdet i den gamle trups løb mister rytteren. Det er ønsket: start-redningen
+ * tæller kun berettigede entries og fylder holdet op igen ved løbsstart, så
+ * holdet ikke stiller med for få ryttere.
+ *
+ * @param {any} supabase
+ * @param {{riderId: string, squad: string, label?: string,
+ *   clear?: typeof clearOffSquadEntries}} args
+ * @returns {Promise<{cleared:number, failed?:true}>}
+ */
+export async function clearOffSquadEntriesSafe(supabase, {
+  riderId, squad, label = "squad_change", clear = clearOffSquadEntries,
+}) {
+  try {
+    // Ingen succes-log: en graduerings-bølge ville ellers fylde log-vagtens
+    // spand for tagget (railway-log-thresholds.json) med tilstandsbeskeder.
+    return await clear(supabase, { riderId, squad });
+  } catch (err) {
+    // best-effort: trup-skiftet er allerede skrevet; motoren filtrerer
+    // forkert-trup-entries fra ved start og start-redningen fylder holdet op.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[squadEntryCleanup] ${label}: oprydning fejlede for rytter ${riderId}: ${msg}`);
+    return { cleared: 0, failed: true };
+  }
+}

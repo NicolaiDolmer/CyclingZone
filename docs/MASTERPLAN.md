@@ -2,7 +2,7 @@
 
 > **Ejer-godkendt regel 6/9: tre baner, aldrig flere.** 🔴 brand · 🟠 i gang · 🔵 ejer-go · ⚪ ikke startet. ≤1.500 tok. Spørg før omprioritering. Områdernes tilstand: `docs/FEATURE_REGISTRY.yml`. **Intentionen** ejes af GDD'en; MASTERPLAN ejer kun rækkefølgen. Færdigt står IKKE her (patch notes + git-log).
 
-**Reglen:** 🔴 brand foran alt (10/9; motor + rytterudvikling er brand fra 7/10) · klare PR'er merges én ad gangen morgen og aften · **gør det lovede færdigt** (21/9; dato først, ældste først, samme dato parallelt) · beta → alle før nyt · Bane 2 forretning viger aldrig · Bane 3 færdiggør (>70 %) før nyt. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) (ejer 3/10) og [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
+**Reglen:** 🔴 brand foran alt (10/9; motor + rytterudvikling er brand fra 7/10) · klare PR'er merges én ad gangen morgen og aften · **gør det lovede færdigt** (21/9; dato først, ældste først, samme dato parallelt) · beta → alle før nyt · Bane 2 forretning viger aldrig · Bane 3 færdiggør (>70 %) før nyt. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) + [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
 
 ## Ro på spillet (ejer 7/10, til S5 25/10)
 
@@ -12,9 +12,9 @@
 
 **Ejer 7/10 eftermiddag:** databasen og løbsmotoren gøres FÆRDIGE først, med resultat hver dag. Derefter rytterudvikling. Sæsonskiftet (#6320 #5904) parallelt.
 
-1. **Stabilitet:** Supabase (#5878; Medium ✅ · #5692 Codex · #6265 · alarm #6272 · #6276) · **chunk-fejl #5162 flyttet frem** (43 spillere, siden går i stå efter deploy).
-2. **Løbsmotoren fejlfri** (spillerne mærker den): **`official_times_v3` live 11/10 09:43** (Touren + alle nye løb; 4 accepter i #6441) → **nu:** bjerg-tidsgab i alle divisioner #6464 + bjerg uden topankomst #6456 (ny revision, tænd før 37 løb 12/10 kl. 12) · tidsgab i klassementer #6384 · drift-tjek pr. Tour-etape (bjerg 13/10 + 15/10) · vagter i CI (#6285, #6327 #6468) · film: huller uden forklaring (nyt issue) → **form #6156 (toppe S5)**. Hjælp = motor i samme PR (#6186).
-3. **Rytterudvikling + scoutens forventede udvikling** (spillerne har ret: den er forkert): Udvikling 2.0 #6110 (spec `2026-10-03-udvikling-2-design.md`; kurve B #3564 · #5950 · #6109 · #6059) · #5965 · projection #5764 #5683 · træningens rod #5928 · #6248 maks +1 (A/B 7/10).
+1. **Stabilitet:** Supabase (#5878 · #5692 · #6265 · #6272 · #6276) · chunk #5162 (#6477 efter secret) · **aftenspidsen: træning ved 10× #6490** (job-kø #6491, Postgres #6492).
+2. **Løbsmotoren fejlfri** (spillerne mærker den): **`official_times_v4` live 11/10 16:30** (#6464 #6456; accepter på #6484; Touren på v3) → **nu:** v4-bjergetaper pr. division 12/10 · Tour-bjerg 13/10 + 15/10 · D3-rute #6486 · "Long day" #6475 · film-huller → **form #6156 (S5)**. Hjælp = motor i samme PR (#6186).
+3. **Rytterudvikling:** Udvikling 2.0 #6110 **besluttet 11/10**. **Del 1 til 25/10:** tilbagegang D4 + ingen udvikling uden for managerhold D6. **Del 2 bag flag i S5:** kurve, løbsdag, potentiale 1-99 (levende talent), træningsscore, skjult potentiale på unge, salg efter 5, prognoser #5764 #5683, #2798 først. Træning: 7×5 (tjek status først) · #6248 · UX-ønsker.
 
 ## 🟠 Rødderne bag de andre klager (parallelt)
 
@@ -50,11 +50,11 @@ D7 ≥ 45 % · aktive/7d ≥ 100. Måling #5305 · SEO #5249 #5250 · billing #4
 
 ## Bane 3 · Færdiggør
 
-#6081 merge-køen melder rød for tidligt · #5792 smoke + #6132 + #6120 · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 · #6064/#6065.
+**Tekniske standarder #6496:** #519 #6493 #6494 #6495 #5158. #6081 merge-køen · #5792 smoke + #6132 + #6120 · #2259 backup-tabeller · #5678 · #5681 · #3556 · #5507 · #4812 → #5157 · #5151 → #5152 · #5113 · #6064/#6065.
 
 ## Ejer-beslutninger (ét kort ad gangen)
 
-**Åbne:** Udvikling 2.0 D1-D7 + #4765 (#6110) · #5842 (før 25/10) · #5878 compute · #4269 token · kort F statusfejl · #6122 bestyrelse · #6248 maks +1 · #6291 D2-måling (presence-tabel).
+**Åbne:** pengene tilbage fra 4 hold #6474 (vis saldo live først) · GitHub-secret `POSTHOG_PERSONAL_API_KEY` (#5162) · UI-billeder #6482 #6483 · #4765 svaghedernes fart · #5878 compute · #4269 token · kort F statusfejl · #6122 bestyrelse · #6248 maks +1 · #6291 D2-måling. **Besluttet 11/10:** Udvikling 2.0 · #5842 · v4 tændt · merget #6478 #6480 #6481 #6479 · tekniske standarder #6496.
 
 ## Skubbet til S5 (meldt ud) + venteliste
 

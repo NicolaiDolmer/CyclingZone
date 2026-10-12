@@ -4,6 +4,7 @@
 // tidsoverlappende løb. Deterministisk (autopick er deterministisk; løb sorteres
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
+import { runWithRetry } from "./dbChunk.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
@@ -149,7 +150,7 @@ function isUqRaceEntriesViolation(err) {
 function isRiderFkViolation(err) {
   return !!err && /race_entries_rider_id_fkey/.test(String(err.message || ""));
 }
-async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null, orderBy = null }) {
+async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null, orderBy = null, retryOpts }) {
   const out = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
     const chunk = ids.slice(i, i + IN_CHUNK_SIZE);
@@ -157,17 +158,19 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
     // TAVST (fx race_entries: 168 hold × 6-8 ryttere ≫ 1000 rækker pr. løb-chunk) →
     // manglende manuelle entries blev overskrevet (captain-constraint-brud). Bidt 25/6.
     for (let from = 0; ; from += PAGE_SIZE) {
-      let q = supabase.from(table).select(columns).in(inColumn, chunk);
       // #2375 (12/7): .range() UDEN ORDER BY er ustabil på tværs af side-queries —
       // Postgres garanterer ingen rækkefølge, så samme række kan dubleres/springes
       // over mellem sider. En dubleret rytter-række → autopick vælger ham to gange →
       // dublet (race_id, rider_id) i insert-batchen → race_entries_pkey-crash i prod.
       // Callers angiver en UNIK nøgle via orderBy; fallback = inColumn (grupperende —
       // bedre end ingen, men kun en unik nøgle giver hård stabilitets-garanti).
-      for (const col of orderBy || [inColumn]) q = q.order(col);
-      q = q.range(from, from + PAGE_SIZE - 1);
-      if (extra) q = extra(q);
-      const { data, error } = await q;
+      // CYCLINGZONE-9A: forbigående gateway-hikke retry'es (frisk builder pr. forsøg).
+      const { data, error } = await runWithRetry(() => {
+        let q = supabase.from(table).select(columns).in(inColumn, chunk);
+        for (const col of orderBy || [inColumn]) q = q.order(col);
+        q = q.range(from, from + PAGE_SIZE - 1);
+        return extra ? extra(q) : q;
+      }, retryOpts);
       if (error) return { data: null, error };
       out.push(...(data || []));
       if (!data || data.length < PAGE_SIZE) break;

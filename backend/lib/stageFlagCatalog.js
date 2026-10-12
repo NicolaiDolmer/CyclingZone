@@ -90,6 +90,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_end_pool_reseed", area: "season", label: "Sæsonslut — genfyld rytterpulje" },
   { key: "season_end_skip_division_movement", area: "season", label: "Sæsonslut — spring op/nedrykning over" },
   { key: "season_fatigue_reset_enabled", area: "season", label: "Sæsonslut — nulstil træthed" },
+  // #6499 + #6500: Udvikling 2.0 del 1 under ét flag: tilbagegang ved sæsonskiftet
+  // (developmentV2Flag.js) og ingen daglig udvikling uden for managerhold
+  // (dailyTrainingEngine.js). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
+  { key: "development_v2_aging_enabled", area: "season", label: "Udvikling 2.0 del 1 — tilbagegang + kun managerhold udvikler sig" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },

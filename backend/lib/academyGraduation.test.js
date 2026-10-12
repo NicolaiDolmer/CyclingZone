@@ -341,6 +341,65 @@ test("#4619 resolveGraduation promote: junior→u23 laander i U23, IKKE i senior
   assert.deepEqual(rec.riderUpdates[0], { squad: "u23", is_academy: true });
 });
 
+// #5903: spionen på oprydningen. Rækkefølgen tæller: oprydningen må først ske
+// EFTER at trup-skiftet er skrevet (ellers kunne en fejlet update efterlade
+// rytteren i den gamle trup uden hans løb).
+function spyClear(rec) {
+  const calls = [];
+  const fn = async (_supabase, args) => {
+    calls.push({ ...args, riderUpdatesBefore: rec.riderUpdates.length });
+    return { cleared: 1 };
+  };
+  fn.calls = calls;
+  return fn;
+}
+
+test("#5903 resolveGraduation promote junior→u23: rydder rytterens kommende løb uden for U23 efter skiftet", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRow: { id: "g2", status: "pending", from_squad: "junior", to_squad: "u23" },
+    rider: RIDER_WITH_ACADEMY_CONTRACT,
+  });
+  const clear = spyClear(rec);
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  await resolveGraduation(supabase, {
+    teamId: "t1", riderId: "r5", action: "promote", seasonNumber: 2, getMarketState, notify: spyNotify(),
+    clearEntriesOutsideSquad: clear,
+  });
+  assert.equal(clear.calls.length, 1);
+  assert.equal(clear.calls[0].riderId, "r5");
+  assert.equal(clear.calls[0].squad, "u23");
+  assert.equal(clear.calls[0].riderUpdatesBefore, 1, "oprydningen kører efter trup-opdateringen");
+});
+
+test("#5903 resolveGraduation sell: ingen trup-oprydning (rytteren bliver i sin trup indtil salget)", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: { id: "g1", status: "pending" }, rider: RIDER_WITH_ACADEMY_CONTRACT });
+  const clear = spyClear(rec);
+  await resolveGraduation(supabase, {
+    teamId: "t1", riderId: "r5", action: "sell", seasonNumber: 1, auctionConfig: DEFAULT_AUCTION_CONFIG,
+    notify: spyNotify(), clearEntriesOutsideSquad: clear,
+  });
+  assert.equal(clear.calls.length, 0);
+});
+
+test("#5903 resolveGraduation promote: fejlet oprydning vælter ikke graduationen", async () => {
+  const { supabase, rec } = makeSupabase({
+    gradRow: { id: "g2", status: "pending", from_squad: "junior", to_squad: "u23" },
+    rider: RIDER_WITH_ACADEMY_CONTRACT,
+  });
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  const orig = console.error;
+  console.error = () => {};
+  let res;
+  try {
+    // Mock-supabase kender ikke race_entries og kaster: den ægte safe-wrapper skal sluge det.
+    res = await resolveGraduation(supabase, { teamId: "t1", riderId: "r5", action: "promote", seasonNumber: 2, getMarketState, notify: spyNotify() });
+  } finally {
+    console.error = orig;
+  }
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.gradUpdates[0].status, "promoted");
+});
+
 test("#4619 resolveGraduation promote: grad-raekke UDEN trup-felter falder tilbage til senior", async () => {
   // Raekker fra foer #4619 har from_squad/to_squad = NULL. Fallback skal vaere
   // den gamle adfaerd (akademi → senior), ikke et kast.
@@ -665,6 +724,28 @@ test("#4495 completeStuckPromotion: fuldfører — is_academy=false, kontrakt he
   assert.ok(rec.riderUpdates[0].salary > 0);
   assert.equal(notify.calls[0].type, "academy_graduated");
   assert.equal(notify.calls[0].metadata.messageCode, "notif.academyGraduated.promote");
+});
+
+test("#5903 completeStuckPromotion: rydder ungdomsløbene efter skiftet til senior", async () => {
+  const { supabase, rec } = makeSupabase({ rider: STUCK_PROMOTED_RIDER });
+  const clear = spyClear(rec);
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  await completeStuckPromotion(supabase, {
+    teamId: "t1", riderId: "r11", seasonNumber: 3, getMarketState, notify: spyNotify(), clearEntriesOutsideSquad: clear,
+  });
+  assert.equal(clear.calls.length, 1);
+  assert.equal(clear.calls[0].squad, "senior");
+  assert.equal(clear.calls[0].riderUpdatesBefore, 1);
+});
+
+test("#5903 completeStuckPromotion: allerede løst → ingen oprydning", async () => {
+  const { supabase, rec } = makeSupabase({ rider: { ...STUCK_PROMOTED_RIDER, is_academy: false } });
+  const clear = spyClear(rec);
+  const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 });
+  await completeStuckPromotion(supabase, {
+    teamId: "t1", riderId: "r11", seasonNumber: 3, getMarketState, notify: spyNotify(), clearEntriesOutsideSquad: clear,
+  });
+  assert.equal(clear.calls.length, 0);
 });
 
 test("#4495 completeStuckPromotion: afviser ved fuld senior-trup (squad_cap_violation)", async () => {
