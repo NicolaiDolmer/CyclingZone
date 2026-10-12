@@ -1,0 +1,105 @@
+{
+  "isolation": {
+    "status": "ISOLATED",
+    "stagingRef": "pywxpnynzmbukdvoiazp",
+    "blockers": []
+  },
+  "probe": {
+    "index": {
+      "bytes": 450117632,
+      "ready": true,
+      "valid": true,
+      "options": null,
+      "definition": "CREATE INDEX idx_training_day_runs_report_riders ON public.training_day_runs USING gin (((report -> 'riders'::text)) jsonb_path_ops)",
+      "tablespace": "0"
+    },
+    "settings": {
+      "max_wal_size": "4096",
+      "shared_buffers": "65536",
+      "wal_compression": "zstd",
+      "full_page_writes": "on",
+      "checkpoint_timeout": "300",
+      "pg_stat_statements.track": "top",
+      "shared_preload_libraries": "pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault"
+    },
+    "functions": [
+      {
+        "hash": "7d3829c5eaaeb266675b6d261c5f6fbd",
+        "name": "commit_training_date_tick"
+      },
+      {
+        "hash": "9e40a41ebd5efc96ed7787331aba3b31",
+        "name": "register_training_date_work"
+      }
+    ],
+    "observed_at": "2026-10-12T09:27:50.28085+00:00",
+    "can_checkpoint": false,
+    "database_bytes": 3438144659,
+    "other_sessions": [
+      {
+        "state": "idle",
+        "backend": "client backend",
+        "application": ""
+      },
+      {
+        "state": "idle",
+        "backend": "client backend",
+        "application": "postgres_exporter"
+      },
+      {
+        "state": "idle",
+        "backend": "client backend",
+        "application": "PostgREST 14.5"
+      },
+      {
+        "state": "idle",
+        "backend": "client backend",
+        "application": "PostgREST 14.5"
+      },
+      {
+        "state": "idle",
+        "backend": "pg_net 0.20.4 worker",
+        "application": "pg_net 0.20.4"
+      },
+      {
+        "state": null,
+        "backend": "pg_cron launcher",
+        "application": "pg_cron scheduler"
+      }
+    ],
+    "server_version": "17.6",
+    "training_tables": [
+      {
+        "name": "rider_ability_race_day_history",
+        "bytes": 10633216,
+        "estimate": 14726
+      },
+      {
+        "name": "rider_derived_ability_history",
+        "bytes": 79364096,
+        "estimate": 128075
+      },
+      {
+        "name": "rider_training_scores",
+        "bytes": 178716672,
+        "estimate": 358162
+      },
+      {
+        "name": "training_date_work",
+        "bytes": 5963776,
+        "estimate": 1591
+      },
+      {
+        "name": "training_day_runs",
+        "bytes": 707141632,
+        "estimate": 32619
+      },
+      {
+        "name": "training_rider_ticks",
+        "bytes": 421896192,
+        "estimate": 252266
+      }
+    ],
+    "can_set_nested_tracking": false
+  }
+}
