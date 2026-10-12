@@ -2001,6 +2001,7 @@ export default function TrainingPage() {
       : null;
     return (
       <TrainingPlanCard
+        plainNotes={bulkDayFlag}
         weekdays={WEEKDAY_KEYS}
         todayWeekday={todayWeekday}
         todayLocked={trainNow.status.locked && !trainNow.status.settled} // #6139
