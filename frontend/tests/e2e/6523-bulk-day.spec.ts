@@ -156,6 +156,7 @@ test("flag ON: Group by type giver 'Set for group', og Today-overskriften har en
 test("flag OFF: den gamle visning, ingen linje, ingen gruppe-knap, ingen forklaring", async ({ page }) => {
   await openTraining(page, { bulkDay: false });
   await expect(todayRows(page)).toHaveCount(SQUAD.length);
+  await page.screenshot({ path: evidenceShotPath("pr-screens/6523/before-1440-off.png") });
   await expect(page.getByTestId("training-bulk-bar")).toHaveCount(0);
   await expect(page.getByTestId("training-race-day-head")).toHaveCount(0);
   await page.getByLabel("Group by type").check();
@@ -166,5 +167,11 @@ test("flag OFF: den gamle visning, ingen linje, ingen gruppe-knap, ingen forklar
   await expect(page.getByRole("combobox", { name: "Set day" })).toHaveCount(0);
   await todayRows(page).nth(0).getByRole("checkbox").check();
   await expect(page.getByRole("combobox", { name: "Set day" })).toBeVisible();
-  await page.screenshot({ path: evidenceShotPath("pr-screens/6523/before-1440-off.png") });
+});
+
+test("mobil 390 med flag ON: telefonen er uroert (linjen er kun paa desktop-fanen)", async ({ page }) => {
+  await openTraining(page, { bulkDay: true, width: 390, height: 844 });
+  await expect(page.getByTestId("training-bulk-bar")).toHaveCount(0);
+  await expect(page.getByTestId("training-set-for-group")).toHaveCount(0);
+  await page.screenshot({ path: evidenceShotPath("pr-screens/6523/after-390-on.png") });
 });

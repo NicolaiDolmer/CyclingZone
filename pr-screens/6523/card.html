@@ -1,0 +1,53 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9e6de; font-family: "Inter", "Segoe UI", Arial, sans-serif; color: #1c2230; }
+  .wrap { padding: 24px; width: 1900px; }
+  .row { display: flex; gap: 24px; margin-bottom: 24px; }
+  .col { flex: 1; }
+  .lbl { font-size: 19px; font-weight: 700; margin: 0 0 8px; }
+  .lbl span { font-weight: 400; color: #6b7080; font-size: 14px; }
+  .frame { position: relative; overflow: hidden; border: 1px solid #c9c4b6; border-radius: 5px; background: #f6f3ec; }
+  .frame img { display: block; width: 100%; }
+    .box { position: absolute; border: 3px dashed #c8232c; border-radius: 4px; }
+  .pin { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #c8232c; color: #fff; font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .note { border: 1px solid #c9c4b6; background: #fbfaf6; border-radius: 5px; padding: 14px 18px; font-size: 14px; line-height: 1.5; }
+  .note b { color: #c8232c; }
+  .phone { width: 300px; flex: none; }
+  .phone img { width: 300px; }
+</style></head><body><div class="wrap">
+  <div class="row">
+    <div class="col">
+      <p class="lbl">Foer <span>flag off, desktop 1440, e2e-data (siden uaendret)</span></p>
+      <div class="frame"><img src="before-1440-off.png"></div>
+    </div>
+    <div class="col">
+      <p class="lbl">Efter <span>flag on, desktop 1440, samme data</span></p>
+      <div class="frame"><img src="after-1440-on.png">
+        <div class="box" style="left:0.5%;top:32%;width:99%;height:5.5%"></div><div class="pin" style="left:1%;top:26.5%">1</div><div class="box" style="left:87.5%;top:37.5%;width:8%;height:3.5%"></div><div class="pin" style="left:96%;top:36.5%">3</div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col">
+      <p class="lbl">Group by type <span>flag on: "Set for group" paa hver gruppe</span></p>
+      <div class="frame"><img src="after-1440-group.png">
+        <div class="box" style="left:89%;top:41.5%;width:10%;height:4%"></div><div class="pin" style="left:84%;top:41.5%">2</div><div class="box" style="left:89%;top:69.5%;width:10%;height:4%"></div>
+      </div>
+    </div>
+    <div class="phone">
+      <p class="lbl">Mobil 390 <span>flag on, uroert</span></p>
+      <div class="frame"><img src="after-390-on.png"></div>
+    </div>
+    <div class="col">
+      <div class="note">
+        <p><b>1</b> Linjen "Set today's day for ... to ... Apply" er altid synlig. Intet markeret = "All 6 riders" (alle i visningen/filtret), ellers "N selected". Samme bulk-sti som foer (<code>POST /api/training/bulk</code>), ingen ny backend-logik. "Clear" vises ved markering.</p>
+        <p><b>2</b> Med "Group by type" staar "Set for group" paa hver gruppe-overskrift; den bruger sessionen fra linjens vaelger.</p>
+        <p><b>3</b> Today-overskriften har en kort forklaring (hover). Today / R1-R5-kolonnen er IKKE fjernet.</p>
+        <p><b>Flaget</b> <code>training_bulk_day</code> staar paa <b>off</b>: ingen spiller ser noget foer ejeren flytter det. Program-fanens noter bliver almindelig graa tekst med flaget.</p>
+        <p><b>Ikke vist:</b> en dag med flere loebsdage (R1-R5) findes ikke paa Today-fanen i dag: kolonnen er altid een ("Today") indtil API'et leverer et loebsdags-antal.</p>
+      </div>
+    </div>
+  </div>
+</div></body></html>
