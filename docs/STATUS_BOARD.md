@@ -12,6 +12,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (5d) — groen
 - #6482 fix(notifications): ulaest-taeller paa tvaers af faner, overbudt-notif, ingen mail ved eg… (0d) — groen
 - #6483 fix(youth): EXP-badge paa U23/junior + saeson-alder paa Graduation Day (0d) — groen
+- #6530 feat(fairplay): #2226 gem rytterværdi på handels-rækken ved gennemførelse (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -55,13 +56,13 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **Ikke-draft med roed tilstand:**
 
-- ingen
+- #6530 feat(fairplay): #2226 gem rytterværdi på handels-rækken ved gennemførelse (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
 
 - #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (139d)
-- #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (113d)
+- #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (114d)
 - #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (110d)
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (87d)
 - #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (85d)
@@ -84,7 +85,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #5845 [docs] Ejer-direktiv 27/9: roadmappen opdateres torsdag 1/10 (14d)
 - #6158 [data] Giv formtoppe brugt uden virkning under v4 tilbage til managerne (ejer 4/10, koere… (7d)
 - #6350 [race-film] Hændelser får motorens tjektidspunkt, ikke tidspunktet de skete (3d)
-- #6187 [race-engine/v4] Et hold jagter udbruddet med sine egne ryttere i (Giro della Penisola e7… (6d)
+- #6187 [race-engine/v4] Et hold jagter udbruddet med sine egne ryttere i (Giro della Penisola e7… (7d)
 - #5951 [bug/HØJ] v4: udbrud trækkes baglæns af jagten - indhentede udbrudsryttere taber op til 1… (12d)
 - #6320 [bug] Usolgt auktion på U23/junior-rytter ender med oprykning eller at rytteren forsvinde… (4d)
 - #5946 [bug] Bestyrelsen viser stadig top 5 efter genforhandling til top 7 (cybersimon 28/9) (12d)
