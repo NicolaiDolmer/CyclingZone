@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
@@ -393,6 +393,10 @@ export default function NotificationsPage() {
   // Mine tab
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(true);
+  // #6473: en stille genindlaesning der blev startet FOER en mark-read/slet maa ikke
+  // overskrive den nyere lokale tilstand med gamle raekker (og to stille loads kan
+  // lande i omvendt raekkefoelge). Hver load og hver mutation tager et nyt nummer.
+  const loadGen = useRef(0);
   // #2849 bølge 6: manglende fejltilstand (audit-fund #5) — supabase-fejl faldt
   // tidligere tavst tilbage til en tom liste (data || []), umuligt at skelne fra
   // "ingen notifikationer". ErrorState + retry gør fejlen synlig.
@@ -471,6 +475,7 @@ export default function NotificationsPage() {
   // Pending decisions hentes + realtime-opdateres af useActionSummary (#271 Slice A).
 
   async function loadNotifications({ quiet = false } = {}) {
+    const gen = ++loadGen.current;
     if (!quiet) setNotifLoading(true);
     if (!quiet) setNotifLoadError(false);
     const { data: { user } } = await supabase.auth.getUser();
@@ -488,6 +493,7 @@ export default function NotificationsPage() {
       if (!quiet) { setNotifLoadError(true); setNotifLoading(false); }
       return;
     }
+    if (quiet && gen !== loadGen.current) return; // #6473: forældet svar
     // #6385: ulæste bud-beskeder for afgjorte auktioner er skjult i listen men
     // talte med i badgen — læs dem stille, så tallet er sandt.
     const hiddenUnread = new Set(findSupersededUnreadIds(data || []));
@@ -523,6 +529,7 @@ export default function NotificationsPage() {
 
 
   async function markRead(id) {
+    loadGen.current += 1; // #6473
     const prev = notifications;
     setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n));
     const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
@@ -535,6 +542,7 @@ export default function NotificationsPage() {
   }
 
   async function markManyRead(ids) {
+    loadGen.current += 1; // #6473
     if (!ids?.length) return;
     const prev = notifications;
     const idSet = new Set(ids);
@@ -549,6 +557,7 @@ export default function NotificationsPage() {
   }
 
   async function deleteMany(ids) {
+    loadGen.current += 1; // #6473
     if (!ids?.length) return;
     const prev = notifications;
     const idSet = new Set(ids);
@@ -571,6 +580,7 @@ export default function NotificationsPage() {
   }
 
   async function markAllRead() {
+    loadGen.current += 1; // #6473
     if (!userId) return;
     setMarkingAll(true);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -585,6 +595,7 @@ export default function NotificationsPage() {
   }
 
   async function deleteNotif(id) {
+    loadGen.current += 1; // #6473
     const prev = notifications;
     setNotifications(p => p.filter(n => n.id !== id));
     const { error } = await supabase.from("notifications").delete().eq("id", id);
@@ -597,6 +608,7 @@ export default function NotificationsPage() {
   }
 
   async function deleteAllRead() {
+    loadGen.current += 1; // #6473
     const readIds = notifications.filter(n => n.is_read).map(n => n.id);
     if (!readIds.length) return;
     const prev = notifications;
