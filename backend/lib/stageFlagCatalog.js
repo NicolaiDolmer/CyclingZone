@@ -39,6 +39,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "daily_training_enabled", area: "training", label: "Daglig træning" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
+  // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
+  { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4847: "Train now" uden bonus. Kraever training_condition_per_date.
