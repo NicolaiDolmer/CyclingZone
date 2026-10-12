@@ -852,6 +852,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/retirement-notice-freeze-5073.test.mjs
 
+      # #6548 "Hvad brænder"-vagten: klassifikationerne (rød/gul/grøn) og rapport-
+      # tilstanden. Scriptet importerer kun node-indbyggede moduler (ingen npm ci).
+      - name: Test hvad-braender classification
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ops/hvad-braender.test.mjs
+
       # --- guard-inventory-cell escaping (#5092) ---
       # scripts/guard-inventory-cell.test.mjs fandtes, men koerte ingen steder i
       # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
