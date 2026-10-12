@@ -1,12 +1,31 @@
 # Træningens regler - SSOT
 
-## Historikopslag #6490 (L1–L3-kandidater, ikke aktiveret)
+## Historikopslag #6490 (membership-kandidat, ikke aktiveret)
+
+**A-go 12/10:** [ejerbeslutning](https://github.com/NicolaiDolmer/CyclingZone/issues/6490#issuecomment-6118488960).
+Den reviderede kandidat gemmer én reference pr. `(report_id, rider_key)` i
+`rider_training_report_refs`; den bruger ingen fælles tællerrækker eller tombstones.
+M1 ligger i `database/manual/6490/membership/foundation.sql`, uden for auto-migrate.
+Rå tekst/C-kollation og distinct inden for rapporten bevares. Der er en sammensat
+primærnøgle og et separat ikke-unikt rider_key-indeks. Uændrede memberships
+omskrives ikke; INSERT/UPDATE/DELETE/TRUNCATE og kilde-rollback er atomiske.
+Source-markøren `training_seen_indexed` er false for gamle rækker og true ved
+inddragelse, ikke en træningskvittering. M2 skal levere kontrolleret backfill og
+fuld paritet; M3 skal tilpasse læsere/recovery/restore før noget må aktiveres.
+Installationen afviser den forkastede counter-kandidat og en forældreløs markør.
+Der er bevidst ingen FK fra den afledte tabel, da det ville ændre eksisterende
+source-TRUNCATE til at kræve CASCADE; triggere og fuld pair-paritet ejer invarianten.
+Klientroller har ingen adgang; service_role har kun SELECT/INSERT/DELETE på referencerne.
+Designet er ikke en 10×-godkendelse. L4/L5 og separate prod-/GIN-mandater består.
+
+### Forkastet counterforsøg (historik, må ikke aktiveres)
 
 **L4-blokering, målt 12/10:** native PostgreSQL 17 reproducerer nye counter-
 deadlocks ved samtidige blandede UPSERTs og modsat nøgleorden over flere statements.
 Kandidaten er derfor ikke klar til aktivering eller kapacitetsgodkendelse.
 [Bevis](snapshots/6490/README.md) og [foreslået membership-addendum](superpowers/specs/2026-10-12-6490-membership-addendum.md).
-Prototypen ændrer ikke den nedenstående godkendte kandidat; addendum afventer ejer.
+Ejerens A-go erstatter den følgende counter-repræsentation. Teksten bevares kun
+som forklaring til de historiske drafts og regressionerne; membership-afsnittet er gældende.
 
 Det eksisterende JSON-historikværn bevares, indtil en separat kontrolleret overgang
 er godkendt. L1-udkastet i `database/manual/6490/training-seen-foundation.sql`

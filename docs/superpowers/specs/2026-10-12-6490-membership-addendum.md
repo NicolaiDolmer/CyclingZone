@@ -1,6 +1,7 @@
-# #6490: foreslået designjustering efter L4
+# #6490: godkendt membership-design efter L4
 
-**Status: forslag til ejer, ikke godkendt til at erstatte L1–L3.**
+**Status: A godkendt 12/10; L1–L3 skal tilpasses sekventielt med review.**
+[Ejer-go](https://github.com/NicolaiDolmer/CyclingZone/issues/6490#issuecomment-6118488960).
 SSOT: [TRAINING_RULES](../../TRAINING_RULES.md). Dette er et addendum til det
 [godkendte design](2026-10-11-6490-training-seen-design.md), ikke en ny spillerregel.
 
@@ -35,7 +36,7 @@ Prisen er flere projektionsrækker, proportionalt med rapportreferencer, og et
 indeksinterval ved COUNT frem for én tællerrække. Lager, WAL, write- og read-
 percentiler skal måles i L5; eksisterende tærskler sænkes ikke.
 
-## Alternativ B
+## Fravalgt alternativ B
 
 Behold den nuværende repræsentation som blokeret kandidat og undersøg en anden
 counter-låsestrategi. En samlet flush pr. statement løser ikke generelt flere
