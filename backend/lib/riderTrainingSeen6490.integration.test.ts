@@ -393,7 +393,9 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
   // PREFILL rewritten history reports (steady state: the 100 calls may hit a
   // pending-list flush, as an unlucky prod call does).
   const TEAMS = 20, PER_TEAM = 25, HISTORY_RUNS = Number(process.env.RIDER_SEEN_BENCH_HISTORY ?? 40000);
-  const PREFILL = Number(process.env.RIDER_SEEN_BENCH_PREFILL ?? 480);
+  // ~740 rewritten runs leave the pending list just under gin_pending_list_limit
+  // (4 MB), so the measured calls cross it once.
+  const PREFILL = Number(process.env.RIDER_SEEN_BENCH_PREFILL ?? 740);
   writeAndRun('bench-fixture.sql', `
     INSERT INTO app_config(key,value) VALUES('training_condition_per_date','"on"'),('training_tick_per_race_day','"on"')
       ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value;
@@ -410,19 +412,24 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
         jsonb_build_object('riders', (SELECT jsonb_agg(jsonb_build_object(
           'rider_id', CASE WHEN h % 10 = 0 AND k <= ${PER_TEAM} THEN ('00000000-0000-4000-a000-' || lpad(to_hex(((h / 10) % ${TEAMS} + 1) * 100 + k), 12, '0'))::uuid
                            ELSE ('00000000-0000-4000-c000-' || lpad(to_hex((h * 7 + k * 13) % 20000), 12, '0'))::uuid END,
-          'intensity','normal','focus','climbing','session','tempo','score', k % 9,
-          'deltas', jsonb_build_object('climbing', 0.1 + k / 100.0, 'flat', 0.02, 'tempo', 0.05),
-          'form', 50 + k % 7, 'fatigue', 10 + k % 11, 'notes', repeat('n', 60))) FROM generate_series(1, 25) k))
+          'intensity','normal','focus','climbing','session','tempo','score', (random() * 100)::int,
+          'deltas', jsonb_build_object('climbing', round(random()::numeric, 4), 'flat', round(random()::numeric, 4),
+            'tempo', round(random()::numeric, 4), 'endurance', round(random()::numeric, 4)),
+          'form', 40 + (random() * 30)::int, 'fatigue', (random() * 60)::int, 'notes', md5(random()::text))) FROM generate_series(1, 25) k))
       FROM generate_series(1, ${HISTORY_RUNS}) h;
     ANALYZE;
+    CREATE EXTENSION IF NOT EXISTS pgstattuple;
+    CREATE EXTENSION IF NOT EXISTS pg_walinspect;
     CREATE UNLOGGED TABLE bench_log(variant text, n int, phase text, wal_bytes numeric, ms numeric);
     CREATE FUNCTION bench_commit(p_team uuid, p_day int) RETURNS jsonb LANGUAGE plpgsql AS $bench$
     DECLARE v_report jsonb; v_cond jsonb := '[]';
     BEGIN
       SELECT jsonb_build_object('riders', jsonb_agg(jsonb_build_object('rider_id', c.rider_id, 'game_day', p_day, 'intensity', 'normal',
           'condition_observed', to_jsonb(c), 'missing_evidence', '[]'::jsonb, 'form', c.form, 'fatigue', c.fatigue,
-          'focus', 'climbing', 'session', 'tempo', 'score', 7, 'deltas', jsonb_build_object('climbing', 0.12, 'flat', 0.03, 'tempo', 0.05),
-          'notes', repeat('n', 60)) ORDER BY c.rider_id), 'condition_per_date', true, 'game_day', p_day)
+          'focus', 'climbing', 'session', 'tempo', 'score', (random() * 100)::int,
+          'deltas', jsonb_build_object('climbing', round(random()::numeric, 4), 'flat', round(random()::numeric, 4),
+            'tempo', round(random()::numeric, 4), 'endurance', round(random()::numeric, 4)),
+          'notes', md5(random()::text)) ORDER BY c.rider_id), 'condition_per_date', true, 'game_day', p_day)
         INTO v_report FROM rider_condition c JOIN riders r ON r.id = c.rider_id WHERE r.team_id = p_team;
       IF p_day = 5 THEN
         SELECT jsonb_agg(to_jsonb(c)) INTO v_cond FROM rider_condition c JOIN riders r ON r.id = c.rider_id WHERE r.team_id = p_team;
@@ -474,9 +481,26 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
     }
     sql('CHECKPOINT', dbName);
     results[`${variant.name}_gin_bytes`] = Number(sql("SELECT COALESCE(pg_relation_size(to_regclass('idx_training_day_runs_report_riders')),0)", dbName));
+    const hasGin = sql("SELECT to_regclass('idx_training_day_runs_report_riders') IS NOT NULL", dbName) === 't';
+    const pending = () => hasGin ? sql("SELECT pending_pages || ' pages/' || pending_tuples || ' tuples' FROM pgstatginindex('idx_training_day_runs_report_riders')", dbName) : 'none';
+    results[`${variant.name}_gin_pending_before`] = pending();
     const f = join(runDir, `calls-${variant.name}.sql`);
     writeFileSync(f, callScript(variant.name));
+    const startLsn = sql('SELECT pg_current_wal_insert_lsn()', dbName);
     sqlFile(f, dbName);
+    const endLsn = sql('SELECT pg_current_wal_insert_lsn()', dbName);
+    results[`${variant.name}_gin_pending_after`] = pending();
+    // WAL fordelt på relation for hele kørslen (registrering + 100 afregninger).
+    const byRel = sql(`SELECT rel || '=' || bytes FROM (
+        SELECT COALESCE(c.relname, 'relfilenode:' || b.relfilenode) AS rel, sum(b.block_data_length + b.block_fpi_length) AS bytes
+          FROM pg_get_wal_block_info('${startLsn}', '${endLsn}') b LEFT JOIN pg_class c ON c.relfilenode = b.relfilenode
+         GROUP BY 1) x ORDER BY bytes DESC LIMIT 12`, dbName)
+      .split('\n').filter(Boolean).map(line => { const at = line.lastIndexOf('='); return [line.slice(0, at), Number(line.slice(at + 1))] as const; });
+    const totalWal = Number(sql(`SELECT pg_wal_lsn_diff('${endLsn}', '${startLsn}')`, dbName));
+    results[`${variant.name}_wal_total_kb`] = Math.round(totalWal / 1000);
+    results[`${variant.name}_wal_by_relation_kb`] = Object.fromEntries(byRel.map(([rel, bytes]) => [rel, Math.round(bytes / 1000)]));
+    const ginBytes = byRel.find(([rel]) => rel === 'idx_training_day_runs_report_riders')?.[1] ?? 0;
+    results[`${variant.name}_gin_wal_share_pct`] = Math.round(ginBytes / totalWal * 1000) / 10;
     for (const phase of ['register', 'commit']) {
       const rows = sql(`SELECT wal_bytes || ',' || ms FROM bench_log WHERE variant='${variant.name}' AND phase='${phase}' ORDER BY n`, dbName)
         .split('\n').filter(Boolean).map(line => line.split(',').map(Number));
