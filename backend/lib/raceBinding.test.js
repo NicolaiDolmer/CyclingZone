@@ -216,7 +216,7 @@ test("findRiderBindingConflicts: intet vindue → ingen konflikter", () => {
 // (id, season_id → nu + league_division_id). seasonRaces dækker den NYE
 // .eq("season_id", ...)-gren (uden .in("id", ...)) som loadPoolLocalCetSpans bruger til
 // at bygge det pulje-lokale monument-indeks — separat fra otherRaceIds-opslaget ovenfor.
-function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], raceSeasonById = null, raceLeagueDivisionById = null, seasonRaces = null,ownedRiderIds=[],spentDays=[] } = {}) {
+function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], raceSeasonById = null, raceLeagueDivisionById = null, seasonRaces = null,ownedRiderIds=[],spentDays=[], rowCap = null } = {}) {
   function from(table) {
     const f = {};
     const b = {
@@ -255,6 +255,8 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
           }
         }
         if(f.range && Array.isArray(data)) data=data.slice(f.range[0],f.range[1]+1);
+        // PostgREST max-rows: et kald uden .range() får højst rowCap rækker (prod = 1000).
+        else if (rowCap != null && Array.isArray(data)) data = data.slice(0, rowCap);
         return Promise.resolve({ data, error: null }).then(resolve, reject);
       },
     };
@@ -271,6 +273,20 @@ test('loadTeamBindingContext retains transferred participation in a race the buy
   });
   const context=await loadTeamBindingContext({supabase,race:{id:'new',season_id:'s4'},teamId:'team-1'});
   assert.deepEqual(findRiderBindingConflicts({riderIds:['transferred'],...context}),['transferred']);
+});
+
+// CYCLINGZONE-4P (12/10): et hold med > 1000 race_entries (alle sæsoner) fik binding-
+// opslaget afkortet af PostgREST max-rows, så aktuelle tilmeldinger forsvandt og
+// auto-udfyld valgte en allerede booket rytter (DB-invarianten afviste insert).
+test("loadTeamBindingContext: læser ALLE holdets entries forbi PostgREST' 1000-rækkers loft", async () => {
+  const oldEntries = Array.from({ length: 1000 }, (_, i) => ({ race_id: `old-${i}`, rider_id: `old-r${i}` }));
+  const supabase = makeSupabase({
+    rowCap: 1000,
+    scheduleByRace: { "race-this": [{ race_id: "race-this", game_day: 80 }], "race-now": [{ race_id: "race-now", game_day: 80 }] },
+    teamEntries: [...oldEntries, { race_id: "race-now", rider_id: "booked" }],
+  });
+  const ctx = await loadTeamBindingContext({ supabase, race: { id: "race-this" }, teamId: "team-1" });
+  assert.deepEqual(findRiderBindingConflicts({ riderIds: ["booked"], ...ctx }), ["booked"]);
 });
 
 test("loadTeamBindingContext: bygger thisWindow + otherRaces grupperet pr. løb", async () => {
