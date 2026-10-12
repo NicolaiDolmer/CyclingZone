@@ -55,12 +55,17 @@ function makeSql(db,env) {
 }
 
 const validCount = value => Number.isSafeInteger(value)&&value>=0;
-const parityFields = ['unindexed','missing_keys','extra_keys','wrong_counts'];
+const projections = {
+  counter: {prefix:'training_seen',parityFields:['unindexed','missing_keys','extra_keys','wrong_counts']},
+  membership: {prefix:'training_membership',parityFields:['unindexed','missing_refs','extra_refs']},
+};
 
-export async function runBackfill(argv,env=process.env,deps={}) {
+export async function runBackfill(argv,env=process.env,deps={},projection='counter') {
   let phase='config';
   const progress={targetRef:STAGING_REF,batches:0,processed:0,remaining:null};
   try {
+    if(!Object.hasOwn(projections,projection))throw new Error('CONFIG_INVALID');
+    const {prefix,parityFields}=projections[projection];
     const options=parseArgs(argv), database=stagingDatabase(env);
     phase='isolation';
     if((await (deps.isolation??assertIsolation)(env)).status!=='ISOLATED') {
@@ -68,14 +73,14 @@ export async function runBackfill(argv,env=process.env,deps={}) {
     }
     const sql=deps.sql??makeSql(database,env);
     phase='schema';
-    const schema=await sql(`SELECT public.training_seen_assert_contract();
-      SELECT json_build_object('ready',to_regprocedure('public.training_seen_backfill_batch(integer)') IS NOT NULL
-        AND to_regprocedure('public.training_seen_assert_ready()') IS NOT NULL
-        AND to_regprocedure('public.training_seen_parity()') IS NOT NULL);`);
+    const schema=await sql(`SELECT public.${prefix}_assert_contract();
+      SELECT json_build_object('ready',to_regprocedure('public.${prefix}_backfill_batch(integer)') IS NOT NULL
+        AND to_regprocedure('public.${prefix}_assert_ready()') IS NOT NULL
+        AND to_regprocedure('public.${prefix}_parity()') IS NOT NULL);`);
     if(schema?.ready!==true)return {...progress,status:'BLOCKED',code:'SCHEMA_NOT_READY'};
     phase='batch';
     for(let i=0;i<options.maxBatches;i++) {
-      const result=await sql(`SELECT row_to_json(b) FROM public.training_seen_backfill_batch(${options.batchSize}) b;`);
+      const result=await sql(`SELECT row_to_json(b) FROM public.${prefix}_backfill_batch(${options.batchSize}) b;`);
       if(!validCount(result?.processed)||result.processed>options.batchSize||!validCount(result?.remaining)) {
         throw new Error('COUNTERS_INVALID');
       }
@@ -86,8 +91,8 @@ export async function runBackfill(argv,env=process.env,deps={}) {
       if(result.remaining===0) {
         phase='parity';
         const parity=await sql(`BEGIN ISOLATION LEVEL REPEATABLE READ;
-          SELECT public.training_seen_assert_ready();
-          SELECT row_to_json(p) FROM public.training_seen_parity() p; COMMIT;`);
+          SELECT public.${prefix}_assert_ready();
+          SELECT row_to_json(p) FROM public.${prefix}_parity() p; COMMIT;`);
         if(!parityFields.every(key=>parity?.[key]===0))throw new Error('PARITY_FAILED');
         return {...progress,status:'READY',parity};
       }
@@ -100,10 +105,10 @@ export async function runBackfill(argv,env=process.env,deps={}) {
   }
 }
 
-async function main() {
+export async function runBackfillCli(argv=process.argv.slice(2),env=process.env,projection='counter') {
   let fd;
   try {
-    const options=parseArgs(process.argv.slice(2));
+    const options=parseArgs(argv);
     const output=resolve(options.out);
     mkdirSync(dirname(output),{recursive:true});
     fd=openSync(output,'wx'); // Never overwrite a previous report or a user's file.
@@ -111,7 +116,7 @@ async function main() {
       const bytes=Buffer.from(`${JSON.stringify(value,null,2)}\n`);
       writeSync(fd,bytes,0,bytes.length,0); ftruncateSync(fd,bytes.length);
     };
-    const result=await runBackfill(process.argv.slice(2),process.env,{onProgress:save});
+    const result=await runBackfill(argv,env,{onProgress:save},projection);
     save(result);
     console.log(JSON.stringify(result));
     process.exitCode=result.status==='READY'?0:1;
@@ -123,4 +128,4 @@ async function main() {
   }
 }
 
-if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url)await main();
+if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url)await runBackfillCli();

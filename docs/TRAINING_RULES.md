@@ -18,6 +18,19 @@ source-TRUNCATE til at kræve CASCADE; triggere og fuld pair-paritet ejer invari
 Klientroller har ingen adgang; service_role har kun SELECT/INSERT/DELETE på referencerne.
 Designet er ikke en 10×-godkendelse. L4/L5 og separate prod-/GIN-mandater består.
 
+M2-kandidaten i samme katalog tilføjer bounded backfill og readiness. Pair-paritet
+returnerer `unindexed`, `missing_refs`, `extra_refs`: nul alene er ikke nok uden
+kontrakttjek. Forkert report-tilknytning afvises, selv når rider-counts er identiske.
+Kontrakten validerer source-/pair-PK, rider-indeks, C-kollation, source-markør,
+reviewede helper-fingerprints inklusive SETOF, aktive triggerbindinger og effektive
+tabel-/kolonnerettigheder. Backend-grants skal være de præcise nødvendige operationer.
+Et batch kræver sessionens normale triggerdrift (`origin`), tabel-låser i samme orden
+som writers, vælger højst 1.000 gamle rækker med FOR UPDATE SKIP LOCKED og bruger
+source-markøren som restart-autoritet. Et tomt batch med remaining>0 er ikke færdigt.
+Et partialt indeks på gamle source-rækker understøtter restart-opslaget; GIN består.
+Runneren genbruger den eksisterende strikte staging-isolation og transport, med en
+fast membership-kontrakt. Den installerer ikke SQL og har ingen prod-mode.
+
 ### Forkastet counterforsøg (historik, må ikke aktiveres)
 
 **L4-blokering, målt 12/10:** native PostgreSQL 17 reproducerer nye counter-

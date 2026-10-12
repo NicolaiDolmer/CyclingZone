@@ -28,3 +28,13 @@ Test den påståede låseorden med separate native sessions og observerede barri
 enkelt-session-tests kan ikke bevise concurrency. Medtag flere events/statements.
 Test tekstbaserede SQL-rewrites med både LF og CRLF som faktiske inputbytes,
 ikke kun det aktuelle checkouts implicitte format. Intet nyt CI-vagtsystem nødvendigt.
+
+## M2: marker-write kræver aktive sessionstriggere
+
+En konkret negativ test viste, at et backfill-kald i `session_replication_role=replica`
+kunne sætte source-markøren uden at oprette refs. Kaldet afvises nu før skrivning,
+og source-/ref-tabeller låses før kontraktkontrollen. Testen beviser uændret markør
+og ingen refs ved afvisning. En ekstra negativ test bekræfter, at en manglende
+source-PK heller ikke kan certificeres: batchgrænsen afhænger af unikke source-id'er.
+PGlite blev positivt identificeret som PG18.3; dens NOT NULL-katalogrækker accepteres
+uden at svække attributkravene. Native PG17 er stadig det særskilte L4-bevis.
