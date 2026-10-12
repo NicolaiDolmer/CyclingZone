@@ -62,6 +62,14 @@ test('error text never echoes row data, keys or e-mails',{skip:!hasPwsh},()=>{
   assert.match(result.stdout,/ERROR/);
   assert.match(run("Get-RefreshSafeErrorText @('DETAIL: only row data')").stdout,/suppressed/);
 });
+test('#5904: pg_dump own error and server cause survive, masked; other pg_dump detail stays hidden',{skip:!hasPwsh},()=>{
+  const result=run(`Get-RefreshSafeErrorText @('pg_dump: error: Dumping the contents of table "race_results" failed: PQgetResult() failed.','pg_dump: detail: Error message from server: server closed the connection unexpectedly','pg_dump: detail: Key (email)=(secret@real.example) row','pg_restore: error: could not execute query for x@y.example')`);
+  assert.equal(result.status,0);
+  assert.match(result.stdout,/pg_dump: error: Dumping the contents of table "race_results" failed/);
+  assert.match(result.stdout,/server closed the connection unexpectedly/);
+  assert.match(result.stdout,/pg_restore: error: could not execute query for <masked-email>/);
+  assert.doesNotMatch(result.stdout,/secret|real\.example|x@y/);
+});
 test('failed native step throws with exit code and safe text, success returns output',{skip:!hasPwsh},()=>{
   const bad=run("Invoke-RefreshNative { 'ERROR:  boom'; 'DETAIL: Key (e)=(x@y.z)'; $global:LASTEXITCODE=3 } 'Restore'");
   assert.notEqual(bad.status,0); assert.match(bad.stderr,/Restore failed \(exit 3\)/); assert.doesNotMatch(bad.stderr,/x@y\.z/);

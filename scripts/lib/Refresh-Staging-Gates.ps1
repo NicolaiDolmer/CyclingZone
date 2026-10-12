@@ -53,12 +53,17 @@ function Assert-RefreshCounts([string]$ProdBefore,[string]$ProdAfter,[string]$St
 }
 
 # psql/pg_restore error text can echo row data (DETAIL, CONTEXT, Key (...)=(...)). Only ERROR/FATAL
-# lines survive, with key values and e-mail addresses masked.
+# lines survive, with key values and e-mail addresses masked. #5904: pg_dump/pg_restore prefix their
+# own errors ("pg_dump: error: ..."), and the connection cause sits in "pg_dump: detail: Error message
+# from server: ..." (no row data). Both used to be dropped, so a 26-minute dump failure read
+# "(output suppressed)". SQL DETAIL/CONTEXT lines stay hidden.
 function Get-RefreshSafeErrorText([string[]]$Lines) {
   $keep=@()
   foreach($line in @($Lines)) {
     if($null -eq $line){continue}
-    if($line -notmatch '(?i)^(psql:[^:]*:[0-9]+: )?(error|fatal):'){continue}
+    $toolError = $line -match '(?i)^(pg_dump|pg_restore): (error|fatal):'
+    $serverCause = $line -match '(?i)^(pg_dump|pg_restore): detail: error message from server:'
+    if(-not $toolError -and -not $serverCause -and $line -notmatch '(?i)^(psql:[^:]*:[0-9]+: )?(error|fatal):'){continue}
     $safe=[regex]::Replace($line,'\([^)]*\)=\([^)]*\)','(<masked>)')
     $safe=[regex]::Replace($safe,'[^\s''"]+@[^\s''"]+','<masked-email>')
     if($safe.Length -gt 300){$safe=$safe.Substring(0,300)}
