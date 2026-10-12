@@ -384,9 +384,14 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   // Rod A (#1823): holdets afmeldte løb binder IKKE — de udtagne ryttere er frie til
   // det overlappende løb. Entries bevares (gen-tilmelding giver samme trup), men de
   // tæller ikke som optaget tid. Tidligere låste afmeldte løb stadig rytterne.
-  const { data: wRows, error: eW } = await supabase
-    .from("race_withdrawals").select("race_id").eq("team_id", teamId);
-  if (eW) throw new Error(`race_withdrawals (binding): ${eW.message}`);
+  // CYCLINGZONE-4P: paged som entries nedenfor — afmeldinger akkumuleres også på tværs af sæsoner.
+  let wRows;
+  try {
+    wRows = await fetchAllRows(() => supabase
+      .from("race_withdrawals").select("race_id").eq("team_id", teamId).order("race_id"));
+  } catch (eW) {
+    throw new Error(`race_withdrawals (binding): ${eW.message}`, { cause: eW });
+  }
   const withdrawn = new Set((wRows || []).map((w) => w.race_id));
 
   // Holdets entries i ANDRE løb end dette (afmeldte udeladt). #1906/#1823 rod-årsag:
@@ -401,11 +406,17 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   // Trup-leddet i ghost-tjekket ville ellers kalde hans gamle entry for en ghost og
   // frigive dagen. Off-team og pensioneret er stadig ghosts. For et seniorløb er
   // udfaldet uændret: kandidaterne er seniorer, og deres egne entries blev også talt før.
+  //
+  // CYCLINGZONE-4P (12/10): paged + stabil orden. Holdets entries akkumuleres på tværs af
+  // sæsoner; over PostgREST' 1000-rækkers loft blev opslaget afkortet tavst, og aktuelle
+  // tilmeldinger faldt ud af bindingen (auto-udfyld dobbeltbookede → DB-invarianten afviste).
   const { data: entries, error: e2 } = await loadEligibleEntries({
     supabase,
     squad: ANY_SQUAD,
+    paged: true,
     baseQuery: () => supabase
-      .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", teamId).neq("race_id", race.id),
+      .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", teamId).neq("race_id", race.id)
+      .order("race_id").order("rider_id"),
   });
   if (e2) throw new Error(`race_entries (binding): ${e2.message}`);
 
@@ -433,9 +444,15 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   otherRaceIds = otherRaceIds.filter((rid) => seasonByRaceId.get(rid) === race.season_id);
   if (!otherRaceIds.length) return { thisWindow, otherRaces: spentBindings };
 
-  const { data: scheds, error: e3 } = await supabase
-    .from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", otherRaceIds);
-  if (e3) throw new Error(`race_stage_schedule (others): ${e3.message}`);
+  // CYCLINGZONE-4P: paged — mange etapeløb × etaper kan også nå 1000-rækkers loftet.
+  let scheds;
+  try {
+    scheds = await fetchAllRows(() => supabase
+      .from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", otherRaceIds)
+      .order("race_id").order("stage_number"));
+  } catch (e3) {
+    throw new Error(`race_stage_schedule (others): ${e3.message}`, { cause: e3 });
+  }
 
   const schedByRace = new Map();
   for (const s of scheds || []) {
