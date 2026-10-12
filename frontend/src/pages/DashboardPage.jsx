@@ -37,6 +37,9 @@ import NextActionsCard from "../components/NextActionsCard";
 import ForumHighlightsCard from "../components/ForumHighlightsCard";
 import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import MyLatestResultCard from "../components/MyLatestResultCard";
+import FirstRaceCard from "../components/FirstRaceCard"; // #1140
+import useFirstRaceCard from "../hooks/useFirstRaceCard.js"; // #1140
+import { buildFirstRaceCardModel } from "../lib/firstRaceCardModel.js"; // #1140
 // #3397 (epic #3395 bølge 1): Hero & Agony moment-kort. Selv-hentende
 // komponent (kun team-props) med vilje — se komponentfilens kommentar.
 import HeroAgonyCard from "../components/HeroAgonyCard";
@@ -154,7 +157,7 @@ const SQUAD_NUDGE_LOOKAHEAD = 5;
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation(["dashboard", "common"]);
+  const { t, i18n } = useTranslation(["dashboard", "common"]);
   // #3697: board.json (55 KB rå pr. sprogpar) lazy-loades via HttpBackend i
   // stedet for at ligge inline i language-chunken. Dashboardets bestyrelseskort
   // er den ENESTE forbruger uden for BoardPage, og feedback-blokken er den
@@ -235,6 +238,8 @@ export default function DashboardPage() {
 
   // Kanonisk "kræver handling"-summary til "Næste træk"-sektionen (#271 Slice B).
   const { pending: actionSummary, loading: actionLoading } = useActionSummary();
+  // #1140: server-afgjort "Your first race"-kort (flag first_race_card, preview). null = intet kort.
+  const firstRaceCard = useFirstRaceCard(team?.id);
 
   // #4997 — In-app NPS. Dashboardet er den side alle managere lander på; før
   // #4997 var prompten kun monteret på Resultater-fanen på egen holdside, og kun
@@ -1181,7 +1186,20 @@ export default function DashboardPage() {
   const nextActionsVisible = isVisible("nextActions");
   // TeamSelectionCtaCard afgør selv om den renderer (kræver nextRace) — vi
   // spejler samme betingelse her for at vide hvornår kollaps-col-span skal på.
-  const showTeamSelectionCta = Boolean(squadSelectionMissingRace);
+  // #1140: "Your first race"-kortet ejer toppen for et nyt hold uden resultat.
+  // Resultat-gaten er den SAMME kilde som MyLatestResultCard (race: null); serveren
+  // har allerede afgjort flag/preview/resultat, saa klienten kun sikrer at kortet
+  // aldrig staar ved siden af first-race-momentet (#3310).
+  const firstRaceCardGateOpen = Boolean(firstRaceCard) && !firstRaceMomentActive
+    && (firstRaceCard.preview || !myLatestResultVisible || myLatestResult?.race === null);
+  const firstRaceCardModel = firstRaceCardGateOpen
+    ? buildFirstRaceCardModel({
+      nextRaces, nextStageByRace, squadSelectionMissingRace, enteredRaceIds: teamRaceIdsLoaded ? teamRaceIds : null,
+      card: firstRaceCard, nowMs, locale: i18n.language,
+    })
+    : null;
+  // "Pick your race squad" skjules MENS kortet vises (ingen to guldknapper); "Next move" er uroert.
+  const showTeamSelectionCta = Boolean(squadSelectionMissingRace) && !firstRaceCardModel;
 
   // #2925 — sæsonstart-guiden. Undertrykt mens onboarding kører (samme regel som
   // Discord-nudgen, #2288 B: onboarding-kortet får skærmen for sig selv), og kun
@@ -1211,8 +1229,8 @@ export default function DashboardPage() {
   // logik i lib/dashboardGoldCta.js — se DashboardPage.goldCtaPriority.test.js
   // for dækning af alle kombinationer.
   const { squadCtaActive, seasonSignupPrimary, seasonWrapPrimary } = computeDashboardGoldCta({
-    firstRaceMomentActive,
-    squadCtaEligible: !!squadSelectionMissingRace,
+    firstRaceMomentActive: firstRaceMomentActive || Boolean(firstRaceCardModel?.showCta), // #1140: kortets knap ejer guldet
+    squadCtaEligible: showTeamSelectionCta,
     seasonSignupEligible: showSeasonSignupCard,
     seasonWrapVisible: showSeasonWrapNudge,
   });
@@ -1389,6 +1407,14 @@ export default function DashboardPage() {
           dag (mindst-støj-valg, ejer 18/8). */}
       <TodayStagesStrip teamId={team?.id} />
 
+      {/* #1140: "Your first race" (flag first_race_card), samme plads som #3310-kortet
+          nedenfor; de to optræder aldrig sammen (se firstRaceCardGateOpen). */}
+      {firstRaceCardModel && (
+        <div className="mb-4">
+          <FirstRaceCard model={firstRaceCardModel} nowMs={nowMs} division={team?.division} />
+        </div>
+      )}
+
       {/* #3310: første-løbs-øjeblikket ejer toppen ALENE indtil resultatet er
           set — INGEN par, i modsætning til normaltilstanden lige nedenfor. */}
       {firstRaceMomentActive && (
@@ -1529,7 +1555,7 @@ export default function DashboardPage() {
           træk) indtil onboarding er fuldført, så den ikke drukner blandt andre
           kort. Completion-kortet bliver hvor det plejer (post-onboarding). */}
       {!onboardingDismissed && onboardingIncomplete && (
-        <div className={firstRaceMomentActive ? "opacity-75" : undefined}>
+        <div className={firstRaceMomentActive || firstRaceCardModel ? "opacity-75" : undefined}>
           <OnboardingProgressCard progress={onboardingProgress} onDismiss={dismissOnboarding} />
         </div>
       )}

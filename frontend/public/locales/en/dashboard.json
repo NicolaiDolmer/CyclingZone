@@ -2,6 +2,40 @@
   "loadError": "Couldn't load the dashboard. Please try again.",
   "offlineError": "Can't reach the game server. Check your connection, then try again.",
   "retry": "Try again",
+  "firstRace": {
+    "eyebrow": "Your first race",
+    "titleUpcoming": "{race} starts {when}",
+    "titleSoon": "{race} is coming up",
+    "titleStarted": "{race} is under way",
+    "titlePause": "No race to pick right now",
+    "when": {
+      "today": "today at {time}",
+      "tomorrow": "tomorrow at {time}",
+      "date": "on {day} at {time}"
+    },
+    "at": {
+      "today": "Today {time}",
+      "tomorrow": "Tomorrow {time}",
+      "date": "{day} {time}"
+    },
+    "stages": "{count, plural, one {# stage} other {# stages}}",
+    "oneDay": "One-day race",
+    "division": "your riders race in Division {division}",
+    "now": "Now",
+    "nowAssistant": "Pick your riders and captain. If you skip it, your assistant picks for you.",
+    "nowPick": "Pick your riders and captain.",
+    "nowSaved": "Your line-up is saved. You can change it until the race starts.",
+    "stageRaced": "Stage {number} is raced.",
+    "oneDayRaced": "The race is on.",
+    "resultHere": "Your result is here.",
+    "resultMail": "Your result is here, and it is emailed to you.",
+    "takesAbout": "Takes about 2 minutes",
+    "nextLabel": "Next",
+    "pauseSeason": "The next season starts on {day}. Your first race will show up here.",
+    "pauseUnknown": "Your first race will show up here as soon as it is on the calendar.",
+    "openCalendar": "Open the race calendar",
+    "viewRace": "View the race"
+  },
   "todayStages": {
     "title": "Today's stages",
     "winner": "Winner: {name}",
