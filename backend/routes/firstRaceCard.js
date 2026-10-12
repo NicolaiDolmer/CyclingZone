@@ -20,7 +20,7 @@ export function createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaT
       res.json(payload);
     } catch (error) {
       reportError(error, { tags: { route: "/me/first-race-card" } });
-      // Fail-safe: en fejl skjuler kortet, den ydmyger ikke dashboardet.
+      // best-effort: rapporteret ovenfor; en fejl skjuler kortet, den vaelter ikke dashboardet.
       res.json({ visible: false, preview: false });
     }
   });

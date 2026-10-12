@@ -78,6 +78,16 @@ export function resolveMailActive({ day1Stage, digestStage, emailPrefs, consentP
   return day1 || digest;
 }
 
+// Sekundaer laesning: en fejl degraderer feltet til dets sikre vaerdi, aldrig kortets synlighed.
+async function orFallback(promise, fallback) {
+  try {
+    return await promise;
+  } catch {
+    // best-effort: sikker standardvaerdi (ingen assistent-/mail-saetning)
+    return fallback;
+  }
+}
+
 /**
  * Hele svaret til GET /api/me/first-race-card. Fail-safe: enhver fejl i en
  * sekundaer laesning degraderer det enkelte felt, aldrig kortets synlighed
@@ -107,13 +117,15 @@ export async function buildFirstRaceCardPayload(supabase, { userId, team, isBeta
     const { data, error } = await supabase
       .from("race_results").select("id").eq("team_id", team.id).limit(1);
     if (!error && Array.isArray(data)) hasResult = data.length > 0;
-  } catch { /* hasResult forbliver true */ }
+  } catch {
+    // best-effort: en fejlet laesning lader hasResult staa som true (kortet viser sig ikke)
+  }
   if (!shouldShowFirstRaceCard({ enabled, preview, hasResult })) return hidden;
 
   const [assistant, day1Stage, digestStage, userRow, seasonRow] = await Promise.all([
-    readAssistantSelectionConfig(supabase).catch(() => ({ mode: ASSISTANT_MODES.PROACTIVE })),
-    readEmailLoopStage(supabase, "day1").catch(() => "off"),
-    readEmailLoopStage(supabase, "race_digest").catch(() => "off"),
+    orFallback(readAssistantSelectionConfig(supabase), { mode: ASSISTANT_MODES.PROACTIVE }),
+    orFallback(readEmailLoopStage(supabase, "day1"), "off"),
+    orFallback(readEmailLoopStage(supabase, "race_digest"), "off"),
     supabase.from("users").select("email_prefs, consent_preferences").eq("id", userId).maybeSingle()
       .then((r) => (r.error ? null : r.data), () => null),
     supabase.from("seasons").select("start_date").eq("status", "upcoming")

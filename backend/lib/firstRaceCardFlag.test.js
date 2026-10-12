@@ -39,7 +39,6 @@ function fakeSupabase(tables) {
     },
   };
 }
-const config = (obj) => Object.entries(obj).map(([key, value]) => ({ key, value }));
 // app_config-opslag: maybeSingle skal svare paa den noegle der spoerges — her
 // returnerer vi en praemuteret raekke pr. kald via en lille tabel-resolver.
 function supabaseWith({ stage, day1 = "off", digest = "off", mode = "proactive", results = [], user = null, seasons = [] }) {
