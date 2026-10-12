@@ -339,8 +339,10 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
     await stopped;
   });
   const psqlArgs = (dbName: string) => ['-X', '-q', '-A', '-t', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', dbName, '-v', 'ON_ERROR_STOP=1'];
-  const sql = (statement: string, dbName = 'postgres') => execFileSync(exe('psql'), [...psqlArgs(dbName), '-c', statement], { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 }).trim();
-  const sqlFile = (file: string, dbName: string) => execFileSync(exe('psql'), [...psqlArgs(dbName), '-f', file], { encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024 }).trim();
+  // Migrationernes IF EXISTS-NOTICEs er forventede; kun advarsler og fejl vises.
+  const psqlOptions = { encoding: 'utf8' as const, windowsHide: true, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, PGOPTIONS: '-c client_min_messages=warning' } };
+  const sql = (statement: string, dbName = 'postgres') => execFileSync(exe('psql'), [...psqlArgs(dbName), '-c', statement], psqlOptions).trim();
+  const sqlFile = (file: string, dbName: string) => execFileSync(exe('psql'), [...psqlArgs(dbName), '-f', file], psqlOptions).trim();
   for (let attempt = 0; ; attempt++) {
     try { if (sql('SELECT 1') === '1') break; } catch { /* expected while the server starts */ }
     assert.ok(attempt < 200, 'PG17 did not start');
@@ -386,14 +388,21 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
   if (!benchOut) { t.diagnostic('RIDER_SEEN_BENCH_OUT not set: WAL/latency measurement skipped'); return; }
 
   // ---- Måling: 100 commit_training_date_tick-kald (20 hold x 5 løbsdage).
-  const TEAMS = 20, PER_TEAM = 25, HISTORY_RUNS = Number(process.env.RIDER_SEEN_BENCH_HISTORY ?? 12000);
+  // History ~ prod's run count. ANALYZE empties GIN's pending list, which prod
+  // never gets between settlements, so each variant first re-fills it with
+  // PREFILL rewritten history reports (steady state: the 100 calls may hit a
+  // pending-list flush, as an unlucky prod call does).
+  const TEAMS = 20, PER_TEAM = 25, HISTORY_RUNS = Number(process.env.RIDER_SEEN_BENCH_HISTORY ?? 40000);
+  const PREFILL = Number(process.env.RIDER_SEEN_BENCH_PREFILL ?? 480);
   writeAndRun('bench-fixture.sql', `
-    INSERT INTO app_config(key,value) VALUES('training_condition_per_date','"on"'),('training_tick_per_race_day','"on"');
+    INSERT INTO app_config(key,value) VALUES('training_condition_per_date','"on"'),('training_tick_per_race_day','"on"')
+      ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value;
     CREATE TABLE bench_team(n int PRIMARY KEY, id uuid NOT NULL);
     INSERT INTO bench_team SELECT n, ('00000000-0000-4000-9000-' || lpad(to_hex(n), 12, '0'))::uuid FROM generate_series(1, ${TEAMS}) n;
     INSERT INTO riders(id,team_id,created_at)
       SELECT ('00000000-0000-4000-a000-' || lpad(to_hex(t.n * 100 + k), 12, '0'))::uuid, t.id, now() FROM bench_team t, generate_series(1, ${PER_TEAM}) k;
-    INSERT INTO rider_condition(rider_id,form,fatigue,updated_at) SELECT id, 50, 10, now() - interval '1 day' FROM riders;
+    INSERT INTO rider_condition(rider_id,form,fatigue,updated_at) SELECT id, 50, 10, now() - interval '1 day' FROM riders
+      ON CONFLICT(rider_id) DO UPDATE SET form=EXCLUDED.form, fatigue=EXCLUDED.fatigue, updated_at=EXCLUDED.updated_at;
     -- Historik: mange tidligere rapporter (legacy-form) med en pulje af ryttere,
     -- inkl. målingens ryttere, så de allerede er "set" som i prod.
     INSERT INTO training_day_runs(team_id,tick_date,report)
@@ -443,7 +452,7 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
     return lines.join('\n');
   };
 
-  const results: Record<string, unknown> = { pg: version, history_runs: HISTORY_RUNS, teams: TEAMS, riders_per_team: PER_TEAM };
+  const results: Record<string, unknown> = { pg: version, history_runs: HISTORY_RUNS, pending_prefill_runs: PREFILL, teams: TEAMS, riders_per_team: PER_TEAM };
   const variants: Array<{ name: string; setup: string[] }> = [
     { name: 'before_gin', setup: [] },
     { name: 'after_gin', setup: ['migration'] },
@@ -458,6 +467,10 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
         sqlFile(migrationFile, dbName);
         results[`${variant.name}_migration_ms`] = Date.now() - t0;
       } else sql(step, dbName);
+    }
+    if (PREFILL > 0) {
+      sql(`UPDATE training_day_runs SET report = report || jsonb_build_object('prefill', true)
+        WHERE id IN (SELECT id FROM training_day_runs WHERE game_day IS NULL ORDER BY tick_date, id LIMIT ${PREFILL})`, dbName);
     }
     sql('CHECKPOINT', dbName);
     results[`${variant.name}_gin_bytes`] = Number(sql("SELECT COALESCE(pg_relation_size(to_regclass('idx_training_day_runs_report_riders')),0)", dbName));
