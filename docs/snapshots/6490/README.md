@@ -3,7 +3,13 @@
 SSOT: [TRAINING_RULES](../../TRAINING_RULES.md). The owner's latest instruction
 stops M3 and requires measurement before further implementation or stack cleanup.
 
-**Revised owner scope, 12 October:** retain completed baseline-1; run only
+**Final owner decision, 12 October:** the two remaining trials are cancelled.
+Neither was started. Claude builds `rider_training_seen` on
+`perf/6490-rider-training-seen`; Codex only preserves WIP/evidence, closes the
+superseded drafts, releases restored staging, and reviews Claude's PR.
+The temporary private server snapshot must be removed before release.
+
+**Earlier revised owner scope, superseded:** retain completed baseline-1; run only
 fastupdate-off-1 and no-gin-1 with the same sealed inputs. Restore staging and
 remove measurement extensions/cache, publish one result comment, then stop this
 build track. Claude/Fable own the design decision. No new product PR, M3, merge
