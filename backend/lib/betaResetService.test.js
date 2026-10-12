@@ -166,6 +166,11 @@ function createBetaResetSupabase(initialState, fkConstraints = []) {
 
   return {
     state,
+    rpcCalls: [],
+    async rpc(name) {
+      this.rpcCalls.push(name);
+      return { data: {}, error: null };
+    },
     from(table) {
       ensureTable(table);
       return {
@@ -524,6 +529,7 @@ test("resetBetaTrainingHistory wipes alle training_day_runs men bevarer riders +
   // Sletter ALLE rækker (også AI), så ingen gammel træningshistorik overlever en relaunch.
   assert.equal(result.training_day_runs, 2);
   assert.deepEqual(supabase.state.training_day_runs, [], "training_day_runs ryddet");
+  assert.deepEqual(supabase.rpcCalls, ["rebuild_rider_training_seen"], "#6490: historiktabellen genberegnes efter sletning");
   // Rører ikke ryttere eller hold.
   assert.equal(supabase.state.riders.length, 5, "ryttere bevares");
   assert.equal(supabase.state.teams.length, 4, "hold bevares");

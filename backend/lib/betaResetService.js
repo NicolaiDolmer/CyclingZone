@@ -606,6 +606,8 @@ export async function resetBetaTrainingHistory(supabase) {
     .delete()
     .not("id", "is", null)
     .select("id"));
+  // #6490: rider_training_seen-triggeren dækker ikke DELETE; genberegn bagefter.
+  ensureOk(await supabase.rpc("rebuild_rider_training_seen"));
 
   return { training_day_runs: countRows(trainingRuns) };
 }

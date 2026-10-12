@@ -62,9 +62,19 @@ export async function loadRecoveryInputs(supabase,{through,asOf}){
   read('training_plans','*','team_id',teamIds,['id']),
   read('training_week_plans','*','team_id',teamIds,['id']),
  ]);
- // GIN-indexed containment catches legacy reports even under a previous owner.
+ // #6490: report history comes from rider_training_seen (btree), never a JSON-
+ // containment scan. Per-date reports are already covered by the tick receipts;
+ // a rider seen without ticks has a legacy report (game_day IS NULL), fetched by
+ // its first-seen team+date (btree team_id/tick_date) and filtered here, so it
+ // is found even under a previous owner.
+ const seen=await read('rider_training_seen','rider_id,first_seen_date,first_team_id','rider_id',ids,['rider_id']);
+ const withTicks=new Set(ticks.map(t=>t.rider_id));const wanted=new Set(ids);const slots=new Map();
+ for(const s of seen)if(!withTicks.has(s.rider_id)&&s.first_team_id&&s.first_seen_date)slots.set(`${s.first_team_id}:${s.first_seen_date}`,s);
  const legacyReports=[];
- for(const id of ids)legacyReports.push(...await fetchAllRows(()=>supabase.from('training_day_runs').select('id,team_id,tick_date,report').contains('report->riders',JSON.stringify([{rider_id:id}])).order('id')));
+ for(const s of slots.values()){
+  const rows=await fetchAllRows(()=>supabase.from('training_day_runs').select('id,team_id,tick_date,report').eq('team_id',s.first_team_id).eq('tick_date',s.first_seen_date).order('id'));
+  legacyReports.push(...rows.filter(r=>r.report?.riders?.some(entry=>wanted.has(entry.rider_id))));
+ }
  return {through,asOf,work:relevant,riders,conditions,ticks,settlements,loads,plans,weekPlans,legacyReports};
 }
 export function parseArgs(argv){
