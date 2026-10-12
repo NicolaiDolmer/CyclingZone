@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action = NY SESSION 12/10 AFTEN:** `docs/sessions/2026-10-12-aften-saesonskifte-og-prioritering.md`. (1) #6538 rider_training_seen: merge på ejer-go når Codex-review er uden blokerende fund (før 19:30, ellers efter aftenafregningen), post-verify paritet + funktioner, observér 2 aftener → kort om DROP INDEX. (2) S5-etapeprofiler #6369 → kalender #5841 senest 18/10 (design først). (3) Udvikling 2.0 aldringskort #6499 før 25/10. (4) Prioriteringskørsel (Haiku scorer, Opus efterprøver, ingen lukning uden ejer). 13/10 kl. 12: første v4-bjergetaper. 13/10: faktura i Alunta (ejer).
+> **🎯 Next action = SESSION 13/10:** `docs/sessions/2026-10-13-s5-byg-og-v4-tjek.md`. (1) Fund fra #6549 (Hvad brænder kl. 08). (2) Secrets til DB Watchdog #5878 (ejer). (3) S5-etapeprofiler #6369: design-go 12/10 → baseline + bølge, live senest 18/10. (4) Kl. 12 v4-bjergetaper (#6456/#6464, luk kun på ejer-go). (5) Aldringskort #6499 (0,7 vs 1,0). (6) #6490 observationsaften 1 af 2. 13/10: faktura i Alunta (ejer).
 >
-> **12/10 (session `c2aaf190`):** merget #6530 #6532 #6483 #6482 #6533 (flag `training_bulk_day` off) #6534 (`first_race_card` off) #6540 (bølge-agenter tools-allowlist: intake-tjek 148 KB → 2 KB) #6541 (refresh-stdout) + patch 7.358 (#6542). Audit: 37 lukket. Hard rule 36 (teknisk design + måling før byg). Codex #6490-spor lukket (retro `.claude/learnings/2026-10-12-codex-6490-retro.md`). #5904 lasttest: pg_dump fejlede, årsag under diagnose. Følge-issues #6536 (legacy-sti) #6537 (disk, ikke akut).
+> **12/10 aften:** merget #6544 (auto-udtag, CYCLINGZONE-4P) #6538 (rider_training_seen, paritet 0) #6546 #6547 (refresh: diagnostik + direkte forbindelse + PG17) #6550 (Hvad brænder-vagt). Prioritering ejer-godkendt: Nu-listen (10) `priority:high`, 22 lukket, 23 icebox, 2 dubletter. S5-design kort 1-6 + design-go (spec `docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md`). DB Watchdog har aldrig kørt (mangler secrets).
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv Claude-session (12/10 c2aaf190 lukket; næste starter i aften). Codex: #6538-review + #5904-diagnose.
+> **🤖 Working agent:** Ingen aktiv session (12/10 aften lukket; næste 13/10 morgen). Codex: intet aktivt spor.
