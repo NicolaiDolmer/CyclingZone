@@ -7609,6 +7609,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       // #1091: ved bud PRÆCIS på den hidtidige fører's proxy-loft beholder
       // føreren føringen (tie-break) — cascaden skal kende lederen før buddet.
       previousLeader,
+      actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv byder
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
@@ -7912,6 +7913,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // #1091: tie-break — hvis dette autobuds opening bid lander præcis på den
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
+      actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
