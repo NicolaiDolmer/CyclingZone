@@ -1,0 +1,20 @@
+{
+  "_publicEvidenceRedacted": true,
+  "checks": [
+    {
+      "name": "nested_tracking",
+      "available": true,
+      "sqlstate": null
+    },
+    {
+      "name": "walinspect",
+      "available": true,
+      "sqlstate": null
+    },
+    {
+      "name": "gin_pending_inspection",
+      "available": true,
+      "sqlstate": null
+    }
+  ]
+}

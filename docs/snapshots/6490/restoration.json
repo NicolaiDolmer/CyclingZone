@@ -1,0 +1,60 @@
+{
+  "observedAt": "2026-10-12T12:46:17.293Z",
+  "dataHashesMatch": true,
+  "tables": [
+    {
+      "name": "rider_ability_race_day_history",
+      "rows": 14726
+    },
+    {
+      "name": "rider_condition",
+      "rows": 12842
+    },
+    {
+      "name": "rider_derived_abilities",
+      "rows": 17989
+    },
+    {
+      "name": "rider_derived_ability_history",
+      "rows": 128075
+    },
+    {
+      "name": "rider_training_scores",
+      "rows": 358162
+    },
+    {
+      "name": "training_condition_settlements",
+      "rows": 50306
+    },
+    {
+      "name": "training_condition_timeout_outbox",
+      "rows": 0
+    },
+    {
+      "name": "training_date_work",
+      "rows": 1591
+    },
+    {
+      "name": "training_day_runs",
+      "rows": 32619
+    },
+    {
+      "name": "training_race_loads",
+      "rows": 36587
+    },
+    {
+      "name": "training_rider_ticks",
+      "rows": 251826
+    }
+  ],
+  "index": {
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "definition": "CREATE INDEX idx_training_day_runs_report_riders ON public.training_day_runs USING gin (((report -> 'riders'::text)) jsonb_path_ops)"
+  },
+  "functionsRestored": true,
+  "extensionsRestored": true,
+  "measurementSnapshotRetained": false,
+  "_publicEvidenceRedacted": true
+}

@@ -1,7 +1,6 @@
 {
   "isolation": {
     "status": "ISOLATED",
-    "stagingRef": "pywxpnynzmbukdvoiazp",
     "blockers": []
   },
   "probe": {
@@ -24,15 +23,13 @@
     },
     "functions": [
       {
-        "hash": "7d3829c5eaaeb266675b6d261c5f6fbd",
         "name": "commit_training_date_tick"
       },
       {
-        "hash": "9e40a41ebd5efc96ed7787331aba3b31",
         "name": "register_training_date_work"
       }
     ],
-    "observed_at": "2026-10-12T09:27:50.28085+00:00",
+    "observed_at": "2026-10-12T09:41:47.547195+00:00",
     "can_checkpoint": false,
     "database_bytes": 3438144659,
     "other_sessions": [
@@ -101,5 +98,6 @@
       }
     ],
     "can_set_nested_tracking": false
-  }
+  },
+  "_publicEvidenceRedacted": true
 }

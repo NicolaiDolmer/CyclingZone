@@ -1,0 +1,92 @@
+{
+  "createdAt": "2026-10-12T10:07:57.466339+00:00",
+  "tables": [
+    {
+      "name": "rider_ability_race_day_history",
+      "rows": 14726
+    },
+    {
+      "name": "rider_condition",
+      "rows": 12842
+    },
+    {
+      "name": "rider_derived_abilities",
+      "rows": 17989
+    },
+    {
+      "name": "rider_derived_ability_history",
+      "rows": 128075
+    },
+    {
+      "name": "rider_training_scores",
+      "rows": 358162
+    },
+    {
+      "name": "training_condition_settlements",
+      "rows": 50306
+    },
+    {
+      "name": "training_condition_timeout_outbox",
+      "rows": 0
+    },
+    {
+      "name": "training_date_work",
+      "rows": 1591
+    },
+    {
+      "name": "training_day_runs",
+      "rows": 32619
+    },
+    {
+      "name": "training_race_loads",
+      "rows": 36587
+    },
+    {
+      "name": "training_rider_ticks",
+      "rows": 251826
+    }
+  ],
+  "files": [
+    {
+      "name": "rider_derived_abilities.copy"
+    },
+    {
+      "name": "rider_condition.copy"
+    },
+    {
+      "name": "rider_derived_ability_history.copy"
+    },
+    {
+      "name": "rider_ability_race_day_history.copy"
+    },
+    {
+      "name": "rider_training_scores.copy"
+    },
+    {
+      "name": "training_rider_ticks.copy"
+    },
+    {
+      "name": "training_condition_settlements.copy"
+    },
+    {
+      "name": "training_race_loads.copy"
+    },
+    {
+      "name": "training_day_runs.copy"
+    },
+    {
+      "name": "training_date_work.copy"
+    },
+    {
+      "name": "training_condition_timeout_outbox.copy"
+    }
+  ],
+  "index": {
+    "ready": true,
+    "valid": true,
+    "options": null,
+    "definition": "CREATE INDEX idx_training_day_runs_report_riders ON public.training_day_runs USING gin (((report -> 'riders'::text)) jsonb_path_ops)"
+  },
+  "originalExtensions": [],
+  "_publicEvidenceRedacted": true
+}

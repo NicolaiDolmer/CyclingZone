@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-04",
+  "captureOnly": true,
+  "commits": 1310,
+  "applied": 41450,
+  "failures": 0,
+  "coverage": {
+    "teams": 262,
+    "partial": 0,
+    "pending": 0,
+    "complete": 251,
+    "quarantined": 24,
+    "rider_ticks": 41450,
+    "roster_entries": 8314,
+    "needs_reconciliation": 11
+  },
+  "summary": {
+    "planned": 1310,
+    "swept": 1310,
+    "failed": 0,
+    "pending": 0,
+    "quarantined": 0
+  },
+  "errors": [],
+  "_publicEvidenceRedacted": true
+}
