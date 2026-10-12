@@ -30,6 +30,9 @@ SELECT jsonb_build_object(
    'race_load_count',(SELECT count(*) FROM training_race_loads l WHERE l.rider_id=q.rider_id),
    'race_result_count',(SELECT count(*) FROM race_results r WHERE r.rider_id=q.rider_id),
    -- #6490: 0/1 from the btree history table, never a JSON-containment scan.
+   -- seen also covers ticks/loads, so this is a superset of "has a report". The
+   -- apply gate requires every count = 0, and receipt/race_load counts are gated
+   -- too, so 0 here is exactly "no report": fail-closed, never a false PASS.
    'canonical_report_count',(SELECT count(*) FROM rider_training_seen s WHERE s.rider_id=q.rider_id),
    'history_after_work_count',(SELECT count(*) FROM rider_derived_ability_history h WHERE h.rider_id=q.rider_id AND h.created_at>q.work_created)
  )) FROM q),
