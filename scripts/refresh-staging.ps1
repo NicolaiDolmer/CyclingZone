@@ -152,7 +152,7 @@ if (-not $Full) { $countSkip = @("race_results") }
 $files=@{
   fingerprint=(Join-Path $repo 'scripts/staging/schema-fingerprint-summary.sql')
   counts=$verifySql
-  trainingSeen=(Join-Path $repo 'database/manual/6490/training-seen-restore-check.sql')
+  trainingSeen=(Join-Path $repo 'database/manual/6490/membership/restore-check.sql')
   privacy=$privacyFile
 }
 # Fingerprint -> raekketal -> projection -> privacy (sidste DB-kald, ogsaa i VerifyOnly).

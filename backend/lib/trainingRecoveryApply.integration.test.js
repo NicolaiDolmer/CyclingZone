@@ -39,7 +39,7 @@ before(async()=>{
   for(const file of ['2026-09-29-5928-training-condition-date.sql','2026-09-29-5928-training-condition-partial.sql'])await db.exec(await readFile(new URL('../../database/'+file,import.meta.url),'utf8'));
   // #6490 candidate prerequisites; existing recovery assertions remain unchanged.
   await db.exec('ALTER TABLE training_day_runs ADD COLUMN id uuid PRIMARY KEY DEFAULT gen_random_uuid()');
-  for(const name of ['foundation','parity','backfill'])await db.exec(await readFile(new URL(`../../database/manual/6490/training-seen-${name}.sql`,import.meta.url),'utf8'));
+  for(const name of ['foundation','parity','backfill','snapshot-ready'])await db.exec(await readFile(new URL(`../../database/manual/6490/membership/${name}.sql`,import.meta.url),'utf8'));
 });
 after(async()=>db?.close());
 beforeEach(async()=>{
@@ -173,7 +173,20 @@ test('changed training roster inputs and ownership still abort before writes',as
 test('#6490 recovery rejects incomplete projection before changing abilities',async()=>{
   const f=await fixture();
   const before=(await db.query('SELECT * FROM rider_derived_abilities ORDER BY rider_id')).rows;
-  await db.query('INSERT INTO rider_training_seen(rider_key,report_count) VALUES($1,1) ON CONFLICT(rider_key) DO UPDATE SET report_count=1',['stale']);
-  await assert.rejects(db.exec(buildRecoverySql(f)),/training_seen not ready/);
+  await db.query('INSERT INTO rider_training_report_refs(report_id,rider_key) VALUES($1,$2)',[rider,'stale']);
+  await assert.rejects(db.exec(buildRecoverySql(f)),/training_membership not ready/);
   assert.deepEqual((await db.query('SELECT * FROM rider_derived_abilities ORDER BY rider_id')).rows,before);
+});
+
+test('#6490 private snapshot uses actual membership count and refuses corrupt projection',async()=>{
+  await db.query(`UPDATE training_day_runs SET report=jsonb_set(report,'{riders}',
+    (report->'riders')||jsonb_build_array(jsonb_build_object('rider_id',$1::text))) WHERE game_day=5`,[rider]);
+  const sql=await readFile(new URL('../../scripts/trainingRecovery5928.snapshot.sql',import.meta.url),'utf8');
+  const snapshot=(await db.query(sql)).rows[0].snapshot;
+  const legacy=(await db.query(`SELECT count(*)::int AS n FROM training_day_runs
+    WHERE report->'riders' @> jsonb_build_array(jsonb_build_object('rider_id',$1::text))`,[rider])).rows[0].n;
+  assert.equal(snapshot.evidence.find(e=>e.rider_id===rider).canonical_report_count,legacy);
+  assert.equal(legacy,1);
+  await db.query('DELETE FROM rider_training_report_refs WHERE rider_key=$1',[rider]);
+  await assert.rejects(db.query(sql),/training_membership not ready/);
 });

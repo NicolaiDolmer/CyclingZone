@@ -120,8 +120,8 @@ update auth.users set email='loadtest-' || id::text || '@loadtest.invalid', phon
 '@
   $sql=$authPrivacy+"`n"+$anon
   if($sql -match '(?i)session_replication_role\s*=\s*origin'){throw 'Cleanup must not re-enable triggers before anonymization'}
-  $projection=[IO.File]::ReadAllText((Join-Path $PSScriptRoot '../../database/manual/6490/training-seen-restore.sql'))
-  Assert-RefreshNoTransactionControl $projection 'training-seen-restore.sql'
+  $projection=[IO.File]::ReadAllText((Join-Path $PSScriptRoot '../../database/manual/6490/membership/restore.sql'))
+  Assert-RefreshNoTransactionControl $projection 'membership/restore.sql'
   return $sql+"`n"+$projection
 }
 

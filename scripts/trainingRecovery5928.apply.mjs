@@ -120,7 +120,7 @@ BEGIN
   PERFORM pg_advisory_xact_lock(hashtextextended('training-date-cutover:'||date_key::text,0));
   FOREACH team_key IN ARRAY team_ids LOOP PERFORM pg_advisory_xact_lock(hashtextextended('training-date:'||team_key::text,0));END LOOP;
   LOCK TABLE ${lockTables.map(name=>'public.'+name).join(',')} IN SHARE ROW EXCLUSIVE MODE;
-  PERFORM public.training_seen_assert_ready();
+  PERFORM public.training_membership_assert_ready();
   PERFORM id FROM public.riders WHERE id=ANY(ids) ORDER BY id FOR UPDATE;
   IF (SELECT count(*) FROM public.riders WHERE id=ANY(ids))<>cardinality(ids) THEN RAISE EXCEPTION 'Recovery roster missing'; END IF;
 `;
@@ -146,7 +146,7 @@ BEGIN
   ${noLater}
   ${peerGuard}
   ${Object.keys(before).map(name=>compare(name)).join('\n')}
-  IF EXISTS(SELECT 1 FROM public.rider_training_seen seen WHERE seen.report_count>0 AND seen.rider_key=ANY(ARRAY(SELECT id::text FROM unnest(ids)id))) THEN RAISE EXCEPTION 'Canonical rider report already exists';END IF;
+  IF EXISTS(SELECT 1 FROM public.rider_training_report_refs seen WHERE seen.rider_key=ANY(ARRAY(SELECT id::text FROM unnest(ids)id))) THEN RAISE EXCEPTION 'Canonical rider report already exists';END IF;
   IF EXISTS(SELECT 1 FROM training_day_runs x WHERE x.team_id=ANY(team_ids) AND x.season_id=season_key AND x.tick_date=date_key AND x.report->'riders' IS DISTINCT FROM
     COALESCE((SELECT jsonb_agg(t.report ORDER BY t.rider_id) FROM training_rider_ticks t WHERE t.team_id=x.team_id AND t.season_id=x.season_id AND t.game_day=x.game_day),'[]')) THEN RAISE EXCEPTION 'Canonical teammate report differs from receipt ledger';END IF;
   IF EXISTS(SELECT 1 FROM rider_derived_ability_history WHERE rider_id=ANY(ids) AND created_at>(SELECT min((value->>'created_at')::timestamptz) FROM jsonb_array_elements(b->'training_date_work')))

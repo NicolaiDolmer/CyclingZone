@@ -1,5 +1,6 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
+import { readMembership } from './trainingMembership6490.ts';
 export const READER_SIGNATURES = [
   'public.register_training_date_work(uuid,uuid,date,integer[],uuid[],timestamp with time zone,timestamp with time zone)',
   'public.initialize_first_use_rider_condition()',
@@ -15,7 +16,8 @@ export async function sourceFunction(file: string,name: string) {
   if(start<0||end<start)throw new Error(`Missing SQL fixture function: ${name}`);
   return source.slice(start,end+4);
 }
-export async function createTrainingSeenReadersFixture() {
+export async function createTrainingSeenReadersFixture(projection='counter') {
+  if(!['counter','membership'].includes(projection))throw new Error('Unknown fixture projection');
   const db=new PGlite();
   await db.exec(await readFile(new URL('./trainingSeenReaders6490.sql',import.meta.url),'utf8'));
   await db.exec(await readFile(new URL('../../../database/2026-10-05-6061-compensation-ledger.sql',import.meta.url),'utf8'));
@@ -30,6 +32,6 @@ export async function createTrainingSeenReadersFixture() {
   }
   await db.exec(`CREATE TRIGGER trg_initialize_first_use_rider_condition AFTER INSERT OR UPDATE OF team_id ON riders
     FOR EACH ROW EXECUTE FUNCTION initialize_first_use_rider_condition();`);
-  for(const name of ['foundation','parity','backfill'])await db.exec(await readManual(name));
+  for(const name of ['foundation','parity','backfill'])await db.exec(await (projection==='membership'?readMembership:readManual)(name));
   return db;
 }
