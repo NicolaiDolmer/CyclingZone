@@ -34,6 +34,11 @@
 --     DROP COLUMN IF EXISTS requested_rider_market_value_at_accept,
 --     DROP COLUMN IF EXISTS requested_rider_base_value_at_accept;
 
+-- Lock safety (#6342): ADD COLUMN uden default er ren metadata, men skal stadig
+-- have ACCESS EXCLUSIVE kortvarigt. Hellere fejle og genkøre end at stå i kø
+-- bag en lang spiller-læsning og blokere alt bagved.
+SET lock_timeout = '3s';
+
 ALTER TABLE auctions
   ADD COLUMN IF NOT EXISTS rider_market_value_at_close INTEGER,
   ADD COLUMN IF NOT EXISTS rider_base_value_at_close INTEGER;
