@@ -125,6 +125,10 @@ export async function resolveProxyBids({
   // #1091: lederen før det udløsende bud — nødvendig for tie-break til fordel
   // for den hidtidige fører. null/udeladt = ingen tie-break (bagudkompat).
   previousLeader = null,
+  // #5919: holdet der UDLØSTE denne cascade ved selv at byde/sætte autobud. Det
+  // får ingen Discord-DM om resultatet af sin egen handling (de står i UI'et
+  // lige nu); in-app-beskeden er uændret. null/udeladt = ingen filtrering.
+  actorTeamId = null,
   // #44: balance-check er injectable så tests kan stube den uden at mock'e
   // teams/auctions/auction_proxy_bids-tabellerne i fuld bredde. Default = real
   // DB-aware impl.
@@ -549,7 +553,7 @@ export async function resolveProxyBids({
     // (above, "auction_proxy_outbid" via the autoBidder === currentWinner branch)
     // DOES fire for that case, terminal + at most once per cascade run, since that
     // branch always ends the loop. Only the Discord DM stays exhausted-only.
-    if (notifyOutbidDM && exhaustedTeam) {
+    if (notifyOutbidDM && exhaustedTeam && exhaustedTeam !== actorTeamId) {
       notifyOutbidDM({
         riderName,
         newBid: autoBidAmount,

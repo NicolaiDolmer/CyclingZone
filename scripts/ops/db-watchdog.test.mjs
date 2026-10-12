@@ -288,7 +288,7 @@ function makeEnv(dir, extra = {}) {
 function harness({ healthy }) {
   const discord = [];
   const fetchFn = async (url, opts = {}) => {
-    if (url.startsWith("https://discord.example")) {
+    if (new URL(url).hostname === "discord.example") {
       discord.push(JSON.parse(opts.body));
       return { ok: true, status: 204 };
     }
@@ -342,7 +342,7 @@ test("main: mislykket Discord-afsendelse gemmer ikke alarmen som sendt", async (
   let discordOk = false;
   const sent = [];
   const fetchFn = async (url, opts = {}) => {
-    if (url.startsWith("https://discord.example")) {
+    if (new URL(url).hostname === "discord.example") {
       sent.push(opts.body);
       return { ok: discordOk, status: discordOk ? 204 : 500 };
     }

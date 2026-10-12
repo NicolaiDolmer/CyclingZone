@@ -1281,3 +1281,79 @@ test("DM-notifikationen laekker aldrig det engelske fallback-navn ind i i18n", (
   // Den lagrede kopi beholder fallbacken; den er backendens egen, ikke klientens.
   assert.match(withoutName.message, /Another manager/);
 });
+
+// ─── #6385 · afsluttende auktions-notifikation læser de overflødige bud-beskeder ──
+
+function auctionRow(id, userId, type, relatedId, isRead = false) {
+  return { id, user_id: userId, type, related_id: relatedId, is_read: isRead, title: type + id, message: 'm' + id, created_at: '2026-10-08T10:00:00.000Z' };
+}
+
+test('notifyUser (#6385): auction_lost markerer samme managers overbudt-/autobud-/bud-beskeder på den auktion som læst', async () => {
+  const { createFakeSupabase } = await import('./testUtils/fakeSupabase.js');
+  const supabase = createFakeSupabase({
+    notifications: [
+      auctionRow('a', 'user-1', 'auction_outbid', 'auc-1'),
+      auctionRow('b', 'user-1', 'auction_proxy_outbid', 'auc-1'),
+      auctionRow('c', 'user-1', 'bid_received', 'auc-1'),
+      // må IKKE røres: anden auktion, anden manager, anden type, allerede læst
+      auctionRow('d', 'user-1', 'auction_outbid', 'auc-2'),
+      auctionRow('e', 'user-2', 'auction_outbid', 'auc-1'),
+      auctionRow('f', 'user-1', 'race_result', 'auc-1'),
+    ],
+  });
+
+  const result = await notifyUser({
+    supabase, userId: 'user-1', type: 'auction_lost', title: 'Auction lost', message: 'Another team won', relatedId: 'auc-1',
+  });
+
+  assert.equal(result.delivered, true);
+  const byId = Object.fromEntries(supabase.state.notifications.map((n) => [n.id, n.is_read]));
+  assert.deepEqual([byId.a, byId.b, byId.c], [true, true, true]);
+  assert.deepEqual([byId.d, byId.e, byId.f], [false, false, false]);
+  const lost = supabase.state.notifications.find((n) => n.type === 'auction_lost');
+  assert.equal(lost.is_read ?? false, false, 'selve afslutnings-beskeden forbliver ulæst');
+});
+
+test('notifyUser (#6385): auction_sold rører kun bud_received, ikke en overbudt-besked', async () => {
+  const { createFakeSupabase } = await import('./testUtils/fakeSupabase.js');
+  const supabase = createFakeSupabase({
+    notifications: [
+      auctionRow('a', 'user-1', 'bid_received', 'auc-1'),
+      auctionRow('b', 'user-1', 'auction_outbid', 'auc-1'),
+    ],
+  });
+  await notifyUser({ supabase, userId: 'user-1', type: 'auction_sold', title: 'Sold', message: 'Sold for X', relatedId: 'auc-1' });
+  const byId = Object.fromEntries(supabase.state.notifications.map((n) => [n.id, n.is_read]));
+  assert.equal(byId.a, true);
+  assert.equal(byId.b, false);
+});
+
+test('notifyUser (#6385): en fejl i oprydningen vælter ikke den leverede afslutnings-notifikation', async () => {
+  const { createFakeSupabase } = await import('./testUtils/fakeSupabase.js');
+  const supabase = createFakeSupabase(
+    { notifications: [auctionRow('a', 'user-1', 'auction_outbid', 'auc-1')] },
+    { errors: { notifications: { update: 'update nede' } } },
+  );
+  const result = await notifyUser({ supabase, userId: 'user-1', type: 'auction_won', title: 'Won', message: 'You won', relatedId: 'auc-1' });
+  assert.equal(result.delivered, true);
+});
+
+test('notifyUser (#6385): andre typer udløser ingen oprydning', async () => {
+  const { createFakeSupabase } = await import('./testUtils/fakeSupabase.js');
+  const supabase = createFakeSupabase({ notifications: [auctionRow('a', 'user-1', 'auction_outbid', 'auc-1')] });
+  await notifyUser({ supabase, userId: 'user-1', type: 'auction_outbid', title: 'Outbid again', message: 'x', relatedId: 'auc-1' });
+  assert.equal(supabase.state.notifications.find((n) => n.id === 'a').is_read, false);
+});
+
+test('notifyUser (#6385): en deduperet afslutnings-notifikation kører oprydningen igen (retry repareret)', async () => {
+  const { createFakeSupabase } = await import('./testUtils/fakeSupabase.js');
+  const supabase = createFakeSupabase({
+    notifications: [
+      auctionRow('a', 'user-1', 'auction_outbid', 'auc-1'),
+      { id: 'end', user_id: 'user-1', type: 'auction_lost', related_id: 'auc-1', is_read: false, title: 'Lost', message: 'Gone', created_at: new Date().toISOString() },
+    ],
+  });
+  const result = await notifyUser({ supabase, userId: 'user-1', type: 'auction_lost', title: 'Lost', message: 'Gone', relatedId: 'auc-1' });
+  assert.equal(result.deduped, true);
+  assert.equal(supabase.state.notifications.find((n) => n.id === 'a').is_read, true);
+});

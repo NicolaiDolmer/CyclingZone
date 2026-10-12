@@ -38,7 +38,7 @@ import { riderNameSortKey } from "../../lib/riderColumnSort.js";
 import { riderOverallRating } from "../../lib/riderRating.js";
 import { statPlateStyle } from "../../lib/statColor.js";
 import { getRiderMarketValue } from "../../lib/marketValues.js";
-import { getRiderAge } from "../../lib/riderAge.js";
+import { contractExpiringBadgeKey, getRiderAge, seasonNumberFromReferenceYear } from "../../lib/riderAge.js";
 import { getCountryCode3 } from "../../lib/countryUtils.js";
 import { scoutSortValue } from "../../lib/scouting.js";
 import { formatNumber } from "../../lib/intl.js";
@@ -127,6 +127,9 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
   const navigate = useNavigate();
   const [tableMode, setTableMode] = useState<TableMode>("overview");
   const abilityColumns = useAbilityColumns<Row>();
+  // #6206: EXP-badgen (kontrakt udløber ved næste sæsonskifte) som på My Team.
+  // contract_end_season er et sæson-NUMMER, så det udledes af referenceåret.
+  const activeSeasonNumber = seasonNumberFromReferenceYear(seasonYear);
 
   const decorated = useMemo<Row[]>(() => riders.map((r) => {
     const ovr = riderOverallRating(r);
@@ -240,7 +243,11 @@ export default function YouthSquadTable({ riders, scouting, seasonYear, label }:
       key: "badges",
       header: t("squad.headers.badges"),
       compact: true,
-      render: (r) => <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", listedIds.has(r.id) && "listed"]} />,
+      render: (r) => <RiderBadges badges={[
+        isRiderInjured(r.injured_until) && "injured",
+        contractExpiringBadgeKey(r, activeSeasonNumber),
+        listedIds.has(r.id) && "listed",
+      ]} />,
     },
     {
       key: "contract",

@@ -252,6 +252,7 @@ import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
+import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
@@ -2914,7 +2915,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage, dailyReceiptStage,
+      mobileTableStage, dailyReceiptStage, bulkDayStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -2927,6 +2928,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // testere ser den nye tabel, alle andre den gamle. Desktop er uberoert.
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
+      readFlagStage(supabase, TRAINING_BULK_DAY_FLAG_KEY), // #6523
     ]);
     const enabled = evaluateFlagStage(stage, { isBetaTester });
     // #3459 V3 / #4375: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres
@@ -2944,6 +2946,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     // og det er med vilje: fail-safe er den visning der står i prod i dag.
     const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
     const dailyReceiptEnabled = evaluateFlagStage(dailyReceiptStage, { isBetaTester });
+    const bulkDay = evaluateFlagStage(bulkDayStage, { isBetaTester }); // #6523: bar boolean
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -3131,6 +3134,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // #3643: true ⇒ telefonen tegner den nye løbsdags-tabel; false ⇒ den
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
+      bulkDay,
       dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
@@ -7611,6 +7615,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       // #1091: ved bud PRÆCIS på den hidtidige fører's proxy-loft beholder
       // føreren føringen (tie-break) — cascaden skal kende lederen før buddet.
       previousLeader,
+      actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv byder
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
@@ -7914,6 +7919,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
       // #1091: tie-break — hvis dette autobuds opening bid lander præcis på den
       // hidtidige fører's proxy-loft, beholder føreren føringen.
       previousLeader,
+      actorTeamId: req.team.id, // #5919: ingen DM til holdet der selv sætter autobud
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
@@ -18580,9 +18586,12 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       youthSquadCounts.u23 = u23Count;
     }
 
+    // #5943: sæson-alder (ageForSeason), ikke wall-clock — ellers står en rytter
+    // der er 19 i sæsonen som 16 ved oprykningen, når sæsonåret ligger foran kalenderen.
+    const graduationSeasonNumber = await getActiveSeasonNumber();
     const graduations = (gradRows ?? []).map((g) => {
       const r = g.riders ?? {};
-      const age = r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null;
+      const age = ageForSeason(r.birthdate, graduationSeasonNumber);
       // Nullable på rækker fra før #4619: fallback er 'senior', præcis samme
       // adfærd som graduationSquadPatch — en graduering uden trup-information
       // ER den gamle akademi → senior-overgang. Vi gætter aldrig `from`.

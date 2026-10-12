@@ -116,6 +116,10 @@ export default function TrainingTodayTable({
   toolbar,
   empty = null,
   forecastSettled = false,
+  bulkBar = null,
+  onSetGroup = undefined,
+  setForGroupLabel = "",
+  raceDaysHint = undefined,
 }: {
   rows: TodayRow[];
   groups?: TodayGroup[] | null;
@@ -142,6 +146,13 @@ export default function TrainingTodayTable({
   toolbar: ReactNode;
   empty?: ReactNode;
   forecastSettled?: boolean;
+  // #6523 (flag training_bulk_day): altid synlig "Set today's day for ..."-linje
+  // under vaerktoejslinjen, "Set for group" paa gruppe-overskrifter og en kort
+  // forklaring paa loebsdags-overskrifterne. Alle fire er udeladt = uaendret.
+  bulkBar?: ReactNode;
+  onSetGroup?: (riderIds: string[]) => void;
+  setForGroupLabel?: string;
+  raceDaysHint?: string;
 }) {
   const { t } = useTranslation("training");
   const single = columns.length === 1;
@@ -292,6 +303,7 @@ export default function TrainingTodayTable({
       <div className="flex min-h-[46px] flex-wrap items-center justify-between gap-3 border-b border-cz-border px-3 py-2">
         {toolbar}
       </div>
+      {bulkBar}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse" data-sortable>
           <thead>
@@ -344,8 +356,15 @@ export default function TrainingTodayTable({
               )}
               <th className={`${headClass} text-left`}>{t("today.colDay")}</th>
               {columns.map((column) => (
-                <th key={column.key} className={`${headClass} px-1 text-center`}>
-                  {single ? t("mobile.today") : t("mobile.raceDayShort", { n: column.index })}
+                <th
+                  key={column.key}
+                  className={`${headClass} px-1 text-center`}
+                  title={raceDaysHint}
+                  data-testid={raceDaysHint ? "training-race-day-head" : undefined}
+                >
+                  <span className={raceDaysHint ? "cursor-help underline decoration-dotted underline-offset-2" : undefined}>
+                    {single ? t("mobile.today") : t("mobile.raceDayShort", { n: column.index })}
+                  </span>
                 </th>
               ))}
               {/* #6025/#6030: Today handler kun om i dag; saesonens point bor i Development. */}
@@ -363,8 +382,22 @@ export default function TrainingTodayTable({
                 <Fragment key={group.key}>
                   <tr className="bg-cz-subtle/60">
                     <td colSpan={colCount} className="border-t border-cz-border px-4 py-2">
-                      <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">{group.label}</span>
-                      <span className="ms-2 font-data text-2xs text-cz-3">{group.count}</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <span>
+                          <span className="font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-2">{group.label}</span>
+                          <span className="ms-2 font-data text-2xs text-cz-3">{group.count}</span>
+                        </span>
+                        {onSetGroup && (
+                          <button
+                            type="button"
+                            onClick={() => onSetGroup(group.rows.map((r) => r.id))}
+                            data-testid="training-set-for-group"
+                            className="text-xs font-medium text-cz-accent-t hover:underline"
+                          >
+                            {setForGroupLabel}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   {group.rows.map(renderRow)}

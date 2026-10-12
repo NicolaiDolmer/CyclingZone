@@ -62,3 +62,13 @@ test("#5631 meta-linjen viser truppens loft, også ved en tom trup", () => {
     "hele meta-linjen må ikke skjules ved en tom trup — 0/loft skal stadig vises",
   );
 });
+
+// #6206: Discord 5/10 — EXP-ikonet for en udløbende kontrakt stod kun på
+// seniorholdet. U23/Junior-tabellen skal bruge SAMME badge-nøgle og samme
+// sæson-nummer-udledning som My Team, ikke en kopi.
+test("#6206 U23/Junior-status-kolonnen viser EXP-badgen som My Team", () => {
+  assert.match(squadTable, /contractExpiringBadgeKey, getRiderAge, seasonNumberFromReferenceYear \} from "\.\.\/\.\.\/lib\/riderAge\.js"/);
+  assert.match(squadTable, /seasonNumberFromReferenceYear\(seasonYear\)/);
+  assert.match(squadTable, /contractExpiringBadgeKey\(r, activeSeasonNumber\)/);
+  assert.match(teamPage, /contractExpiringBadgeKey\(r, activeSeasonNumber\)/);
+});

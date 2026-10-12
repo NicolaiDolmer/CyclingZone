@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { subscribeAuthedChannel } from "../lib/realtimeChannel";
@@ -15,6 +15,8 @@ import { groupNotifications } from "../lib/groupNotifications";
 import { formatNavBadgeCount } from "../lib/navBadges.js";
 import { resolveNotificationLink, aggregateCtaKey } from "../lib/notificationLink";
 import { resolveAggregateLink } from "../components/notifications/aggregateLink.ts"; // #5417
+import { notifyUnreadChanged, subscribeUnreadSync } from "../components/notifications/unreadSync.js"; // #6473
+import { findSupersededUnreadIds } from "../components/notifications/supersededUnread.js"; // #6385
 import { DISCORD_INVITE_URL } from "../lib/externalLinks.js"; // #5130
 import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
@@ -391,6 +393,10 @@ export default function NotificationsPage() {
   // Mine tab
   const [notifications, setNotifications] = useState([]);
   const [notifLoading, setNotifLoading] = useState(true);
+  // #6473: en stille genindlaesning der blev startet FOER en mark-read/slet maa ikke
+  // overskrive den nyere lokale tilstand med gamle raekker (og to stille loads kan
+  // lande i omvendt raekkefoelge). Hver load og hver mutation tager et nyt nummer.
+  const loadGen = useRef(0);
   // #2849 bølge 6: manglende fejltilstand (audit-fund #5) — supabase-fejl faldt
   // tidligere tavst tilbage til en tom liste (data || []), umuligt at skelne fra
   // "ingen notifikationer". ErrorState + retry gør fejlen synlig.
@@ -433,6 +439,17 @@ export default function NotificationsPage() {
 
   useEffect(() => { loadNotifications(); }, []);
 
+  // #6473: laest i en anden fane / fanen var sovende -> genindlaes stille (uden
+  // spinner) saa listen og Beskeder-taelleren ikke staar fast indtil refresh.
+  // Egne aendringer ("local") er allerede opdateret optimistisk.
+  useEffect(() => subscribeUnreadSync((source) => {
+    if (source !== "external") return;
+    loadNotifications({ quiet: true });
+    fetchUnreadSummary()
+      .then(summary => setUnreadMessages(summary?.unreadConversations ?? 0))
+      .catch(() => {});
+  }), []);
+
   useEffect(() => {
     if (tab === "ligaen" && !feedLoaded) loadFeed();
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps -- feedLoaded er bevidst udeladt: feedet hentes ved faneskift, ikke når flaget sættes
@@ -457,9 +474,10 @@ export default function NotificationsPage() {
 
   // Pending decisions hentes + realtime-opdateres af useActionSummary (#271 Slice A).
 
-  async function loadNotifications() {
-    setNotifLoading(true);
-    setNotifLoadError(false);
+  async function loadNotifications({ quiet = false } = {}) {
+    const gen = ++loadGen.current;
+    if (!quiet) setNotifLoading(true);
+    if (!quiet) setNotifLoadError(false);
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setNotifLoading(false); return; }
@@ -470,9 +488,29 @@ export default function NotificationsPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) { setNotifLoadError(true); setNotifLoading(false); return; }
+    if (error) {
+      // #6473: en stille genindlaesning maa ikke erstatte en vist liste med fejlskaerm
+      if (!quiet) { setNotifLoadError(true); setNotifLoading(false); }
+      return;
+    }
+    if (quiet && gen !== loadGen.current) return; // #6473: forældet svar
+    // #6385: ulæste bud-beskeder for afgjorte auktioner er skjult i listen men
+    // talte med i badgen — læs dem stille, så tallet er sandt.
+    const hiddenUnread = new Set(findSupersededUnreadIds(data || []));
     setNotifications(data || []);
+    setNotifLoadError(false);
     setNotifLoading(false);
+    if (hiddenUnread.size) {
+      const { error: healError } = await supabase.from("notifications")
+        .update({ is_read: true }).in("id", [...hiddenUnread]);
+      if (healError) {
+        reportActionFailure("notification_heal_superseded", { reason: healError.message, context: { count: hiddenUnread.size } });
+      } else {
+        // Lokal laest-tilstand foerst NU, naar DB er opdateret (ellers vises noget andet end badgen taeller)
+        setNotifications(prev => prev.map(n => (hiddenUnread.has(n.id) ? { ...n, is_read: true } : n)));
+        notifyUnreadChanged();
+      }
+    }
   }
 
   async function loadFeed() {
@@ -491,16 +529,20 @@ export default function NotificationsPage() {
 
 
   async function markRead(id) {
+    loadGen.current += 1; // #6473
     const prev = notifications;
     setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n));
     const { error } = await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     if (error) {
       setNotifications(prev);
       notifyMutationFailed("notification_mark_read", error, { notificationId: id });
+      return;
     }
+    notifyUnreadChanged(); // #6473: nav-badgen + andre faner
   }
 
   async function markManyRead(ids) {
+    loadGen.current += 1; // #6473
     if (!ids?.length) return;
     const prev = notifications;
     const idSet = new Set(ids);
@@ -509,10 +551,13 @@ export default function NotificationsPage() {
     if (error) {
       setNotifications(prev);
       notifyMutationFailed("notification_mark_many_read", error, { count: ids.length });
+      return;
     }
+    notifyUnreadChanged(); // #6473
   }
 
   async function deleteMany(ids) {
+    loadGen.current += 1; // #6473
     if (!ids?.length) return;
     const prev = notifications;
     const idSet = new Set(ids);
@@ -523,7 +568,7 @@ export default function NotificationsPage() {
       notifyMutationFailed("notification_delete_many", error, { count: ids.length });
       return;
     }
-    window.dispatchEvent(new Event("cz:notif-deleted"));
+    notifyUnreadChanged(); // #6473: ogsaa andre faner
   }
 
   function toggleAggregate(key) {
@@ -535,6 +580,7 @@ export default function NotificationsPage() {
   }
 
   async function markAllRead() {
+    loadGen.current += 1; // #6473
     if (!userId) return;
     setMarkingAll(true);
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -544,10 +590,12 @@ export default function NotificationsPage() {
     const { error } = await supabase.from("notifications")
       .update({ is_read: true }).eq("user_id", userId).eq("is_read", false);
     if (error) await loadNotifications();
+    else notifyUnreadChanged(); // #6473: nav-badgen + andre faner
     setMarkingAll(false);
   }
 
   async function deleteNotif(id) {
+    loadGen.current += 1; // #6473
     const prev = notifications;
     setNotifications(p => p.filter(n => n.id !== id));
     const { error } = await supabase.from("notifications").delete().eq("id", id);
@@ -556,10 +604,11 @@ export default function NotificationsPage() {
       notifyMutationFailed("notification_delete", error, { notificationId: id });
       return;
     }
-    window.dispatchEvent(new Event("cz:notif-deleted"));
+    notifyUnreadChanged(); // #6473: ogsaa andre faner
   }
 
   async function deleteAllRead() {
+    loadGen.current += 1; // #6473
     const readIds = notifications.filter(n => n.is_read).map(n => n.id);
     if (!readIds.length) return;
     const prev = notifications;
@@ -571,7 +620,7 @@ export default function NotificationsPage() {
       notifyMutationFailed("notification_delete_all_read", error, { count: readIds.length });
       return;
     }
-    window.dispatchEvent(new Event("cz:notif-deleted"));
+    notifyUnreadChanged(); // #6473: ogsaa andre faner
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length;

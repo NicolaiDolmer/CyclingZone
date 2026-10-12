@@ -78,7 +78,7 @@ function dayOf(createdAt) {
 // SÆLGERENS aggregerede bud-støj, så dens terminator skal matche sælgerens
 // faktiske afsluttet-type, ellers "hænger" bud-aggregatet uendeligt hos
 // sælgeren efter et salg.
-const TERMINATING_TYPES = {
+export const TERMINATING_TYPES = {
   auction_bidding: new Set(["auction_won", "auction_lost"]),
   bid_received: new Set(["auction_won", "auction_lost", "auction_sold"]),
 };
