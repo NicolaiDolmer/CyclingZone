@@ -39,6 +39,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "daily_training_enabled", area: "training", label: "Daglig træning" },
   { key: "training_score_visible", area: "training", label: "Træningsscore 1-99 (visning)" },
   { key: "training_mobile_table", area: "training", label: "Træningssiden på mobil — ny tabel" },
+  { key: "training_bulk_day", area: "training", label: "Træning — sæt dagen for flere ryttere" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4847: "Train now" uden bonus. Kraever training_condition_per_date.
