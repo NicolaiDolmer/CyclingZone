@@ -78,6 +78,7 @@ export default function TrainingPlanCard({
   onOpenOwnPlan,
   planForExtra = null,
   todayLocked = false,
+  plainNotes = false,
 }: {
   weekdays: readonly string[];
   todayWeekday: string;
@@ -94,6 +95,8 @@ export default function TrainingPlanCard({
   planForExtra?: ReactNode;
   // #6139: "Train now" er trykket i dag, saa dagens felter er laast (i morgen er aaben).
   todayLocked?: boolean;
+  // #6523 (flag training_bulk_day): noterne laeses som almindelig graa tekst, ikke som links.
+  plainNotes?: boolean;
 }) {
   const { t, i18n } = useTranslation("training");
   const tRider = useTranslation("rider").t;
@@ -402,12 +405,12 @@ export default function TrainingPlanCard({
             </>
           )}
           {todayLocked && (
-            <span className="inline-flex items-center gap-1 text-2xs text-cz-3" data-testid="training-plan-locked-note">
+            <span className={`inline-flex items-center gap-1 text-2xs ${plainNotes ? "cursor-default text-cz-2" : "text-cz-3"}`} data-testid="training-plan-locked-note">
               <LockIcon size={11} aria-hidden="true" className="shrink-0" />
               {t("trainNow.planLocked")}
             </span>
           )}
-          {showCells && <span className="text-2xs text-cz-3">{t("programs.raceNote")}</span>}
+          {showCells && <span className={`text-2xs ${plainNotes ? "cursor-default text-cz-2" : "text-cz-3"}`} data-testid="training-plan-race-note">{t("programs.raceNote")}</span>}
           {cells?.message && <span role="status" className="text-xs text-cz-danger">{cells.message}</span>}
           {ownPlans.length > 0 && (
             <span className="ms-auto flex min-w-0 flex-wrap items-center gap-1.5" data-testid="training-own-plan-chips">
