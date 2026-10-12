@@ -10,10 +10,16 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const neutral = id => ({rider_id:id,form:50,fatigue:0,injured_until:null,injury_cause:null,
   injury_end_game_day:null,injury_season_id:null,injury_race_days_left:null});
+// Fatigue rules (#5999) and group rules (#6000) postdate 29/9. The engine reads
+// them, so the export carries today's rows; only rows that existed at work time
+// are historical input, and any such row fails closed (its flag stage is not exported).
+const ruleTables=['team_training_rules','training_groups','training_group_members'];
+const existedAt=(row,w)=>Date.parse(row.created_at)<=Date.parse(w.created_at);
 const requiredTables = ['training_date_work','riders','rider_derived_abilities','training_plans',
   'training_week_plans','team_facilities','team_staff','staff_derived_abilities','finance_transactions',
   'app_config','teams','users','races','race_stage_schedule','race_results','race_stage_profiles',
-  'race_entry_days','race_simulation_runs','training_race_loads','rider_condition','training_day_runs','training_rider_ticks'];
+  'race_entry_days','race_simulation_runs','training_race_loads','rider_condition','training_day_runs','training_rider_ticks',
+  ...ruleTables];
 
 const approvedScope=Object.freeze({riders:84,teams:17,eligible:75,excluded:9});
 export function validateSnapshot(snapshot, scope=approvedScope) {
@@ -46,6 +52,10 @@ export function validateSnapshot(snapshot, scope=approvedScope) {
       check(plans.length<=1,`Duplicate plan ${id}`);
       if(plans.some(p=>!p.updated_at || p.updated_at>w.created_at)) {excluded.push({rider_id:id,team_id:w.team_id,reason:'plan_changed'});continue;}
       eligible.push({rider_id:id,team_id:w.team_id});
+    }
+    for(const name of ruleTables) for(const r of t[name].filter(r=>r.team_id===w.team_id)) {
+      check(Number.isFinite(Date.parse(r.created_at)),`Rule row without creation time: ${name}`);
+      check(name==='training_group_members' || !existedAt(r,w),`Fatigue rule existed before historical work: ${name}`);
     }
     for(const p of t.training_week_plans.filter(p=>p.team_id===w.team_id)) check(p.updated_at && p.updated_at<=w.created_at,'Week program changed after historical work');
     for(const f of t.team_facilities.filter(f=>f.team_id===w.team_id && f.track==='training')) check(f.updated_at && f.updated_at<=w.created_at,'Facility changed after historical work');
@@ -132,6 +142,7 @@ export async function replaySnapshot(snapshot, scope=approvedScope, {engineRevis
   const workOriginal=structuredClone(t.training_date_work);
   const selected=new Set(validation.eligible.map(r=>r.rider_id));
   t.training_rider_ticks=[];
+  for(const name of ruleTables) t[name]=t[name].filter(r=>t.training_date_work.some(w=>w.team_id===r.team_id && existedAt(r,w)));
   t.training_date_work=t.training_date_work.map(w=>{
     const ids=w.quarantined_rider_ids.filter(id=>selected.has(id));
     return {...w,expected_rider_ids:ids,quarantined_rider_ids:[],opening_conditions:Object.fromEntries(ids.map(id=>[id,neutral(id)])),status:'partial'};

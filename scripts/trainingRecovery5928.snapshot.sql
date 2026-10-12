@@ -54,5 +54,9 @@ SELECT jsonb_build_object(
    'training_race_loads',COALESCE((SELECT jsonb_agg(to_jsonb(l)) FROM training_race_loads l WHERE rider_id IN(SELECT rider_id FROM q)),'[]'),
    'rider_condition',COALESCE((SELECT jsonb_agg(to_jsonb(c)) FROM rider_condition c WHERE rider_id IN(SELECT rider_id FROM q)),'[]'),
    'training_day_runs',COALESCE((SELECT jsonb_agg(jsonb_build_object('team_id',team_id,'season_id',season_id,'squad',squad,'tick_date',tick_date,'game_day',game_day,'report',jsonb_build_object('condition_per_date',report->'condition_per_date','condition_settled',report->'condition_settled')) ORDER BY team_id,game_day) FROM training_day_runs t WHERE team_id IN(SELECT team_id FROM w) AND tick_date='2026-09-29'),'[]'),
-   'training_rider_ticks',COALESCE((SELECT jsonb_agg(to_jsonb(t)) FROM training_rider_ticks t WHERE rider_id IN(SELECT rider_id FROM q)),'[]')
+   'training_rider_ticks',COALESCE((SELECT jsonb_agg(to_jsonb(t)) FROM training_rider_ticks t WHERE rider_id IN(SELECT rider_id FROM q)),'[]'),
+   -- Engine reads these since #5999/#6000; the replay keeps only rows that existed at work time.
+   'team_training_rules',COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM team_training_rules r WHERE team_id IN(SELECT team_id FROM w)),'[]'),
+   'training_groups',COALESCE((SELECT jsonb_agg(to_jsonb(g) ORDER BY id) FROM training_groups g WHERE team_id IN(SELECT team_id FROM w)),'[]'),
+   'training_group_members',COALESCE((SELECT jsonb_agg(to_jsonb(m) ORDER BY group_id,rider_id) FROM training_group_members m WHERE team_id IN(SELECT team_id FROM w)),'[]')
  )) AS snapshot;
