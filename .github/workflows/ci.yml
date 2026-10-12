@@ -52,6 +52,12 @@ jobs:
       - name: Run backend tests
         run: npm test -- --test-reporter=spec
 
+      # #5928: offline recovery replay drives the real training engine; a new
+      # engine read without a snapshot table failed unnoticed outside CI (12/10).
+      # Lives in scripts/ (npm test only finds backend/) but needs backend deps.
+      - name: Test training recovery replay (#5928)
+        run: node --test --test-reporter=spec ../scripts/trainingRecovery5928.test.mjs
+
       - name: Lint backend
         run: npm run lint
 

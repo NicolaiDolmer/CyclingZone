@@ -61,6 +61,7 @@ async function fixture(){
   for(const name of names){let predicate='';if(name==='riders')predicate=` WHERE id IN('${rider}','${excluded}')`;if(name==='rider_derived_abilities')predicate=` WHERE rider_id IN('${rider}','${excluded}')`;if(name==='training_rider_ticks')predicate=' WHERE false';
     tables[name]=(await db.query(`SELECT COALESCE(jsonb_agg(to_jsonb(x)),'[]') AS rows FROM ${name} x${predicate}`)).rows[0].rows;}
   tables.app_config=tables.app_config.map(({key,value})=>({key,value}));
+  Object.assign(tables,{team_training_rules:[],training_groups:[],training_group_members:[]});
   const quarantineIds=tables.training_date_work[0].quarantined_rider_ids;
   const snapshot={tick_date:date,exported_at:now,season_number:4,manifest:{eligible:[rider],excluded:quarantineIds.filter(id=>id!==rider)},tables,evidence:quarantineIds.map(id=>({rider_id:id,condition_count:0,receipt_count:0,settlement_count:0,race_load_count:0,race_result_count:0,canonical_report_count:0,history_after_work_count:0}))};
   const final={...opening(rider),form:51,fatigue:5,updated_at:'2026-09-29T18:00:00Z'};
