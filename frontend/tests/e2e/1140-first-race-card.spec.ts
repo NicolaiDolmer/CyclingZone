@@ -81,6 +81,26 @@ async function mockNoResult(page: Page) {
   });
 }
 
+// ...og er midt i onboarding (1 af 4 trin), som i mockuppen: "Get started" er synligt.
+async function mockOnboardingOpen(page: Page) {
+  await page.route("**/api/me/onboarding-progress", (route: Route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return json(route, {
+      completed_count: 1,
+      total_count: 4,
+      dismissed: false,
+      established: false,
+      steps: [
+        { key: "first_bid_placed", done: true },
+        { key: "first_training_run", done: false },
+        { key: "first_squad_selected", done: false },
+        { key: "board_plan_set", done: false },
+      ],
+    });
+  });
+}
+
 async function mockRaces(page: Page, rows: unknown[]) {
   await page.route("**/rest/v1/races?**", (route: Route) => {
     const request = route.request();
@@ -128,6 +148,7 @@ test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
   await stabilizePage(page);
   await mockNoResult(page);
+  await mockOnboardingOpen(page);
 });
 
 for (const size of SIZES) {
