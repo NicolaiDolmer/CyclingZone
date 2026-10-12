@@ -1,44 +1,39 @@
 <!doctype html><html><head><meta charset="utf-8"><style>
-:root{--bg:#0f1115;--card:#171a21;--b:#2a2f3a;--t1:#e8eaef;--t2:#a7adba;--t3:#6f7685;--gold:#d4a72c;--red:#e5534b;--green:#3fb950;--warn:#e0a526}
+:root{--bg:#f2f0ea;--card:#fff;--b:#d9d5c8;--t1:#17181c;--t2:#555a66;--gold:#c9961a;--red:#c0392b;--green:#1e8a4c}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t1);font:14px/1.45 Inter,system-ui,sans-serif;padding:28px;width:1600px}
-h1{font-size:22px;margin:0 0 4px}.sub{color:var(--t2);margin:0 0 22px}
+h1{font-size:22px;margin:0 0 4px}.sub{color:var(--t2);margin:0 0 20px}
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px}
 .col h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px}
-.now h2{color:var(--red)}.new h2{color:var(--green)}
-.screen{background:var(--card);border:1px solid var(--b);border-radius:5px;padding:16px;margin-bottom:16px;position:relative}
-.st{font-size:12px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--b)}
-td{padding:8px;border-bottom:1px solid var(--b);color:var(--t2)}td.n{color:var(--t1)}
-.badge{font-size:10px;font-weight:700;letter-spacing:.06em;padding:1px 6px;border-radius:9px;border:1px solid var(--warn);color:var(--warn)}
-.pin{position:absolute;right:14px;top:12px;background:var(--gold);color:#1a1405;font-weight:700;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:12px}
-.hl{outline:2px solid var(--gold);outline-offset:2px;border-radius:9px}
-.age{color:var(--t1);font-weight:600;font-size:18px}.bad{color:var(--red)}.good{color:var(--green)}
-.row{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-top:1px solid var(--b)}
-.leg{margin-top:18px;border:1px solid var(--b);border-radius:5px;padding:12px 16px;color:var(--t2);font-size:13px}.leg b{color:var(--gold)}
+.before h2{color:var(--red)}.after h2{color:var(--green)}
+.panel{background:var(--card);border:1px solid var(--b);border-radius:5px;padding:14px;margin-bottom:18px;position:relative}
+.st{font-size:12px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.shot{border:1px solid var(--b);border-radius:5px;overflow:hidden;position:relative}
+.shot img{display:block;width:100%}
+.pin{position:absolute;right:10px;top:8px;background:var(--gold);color:#fff;font-weight:700;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:13px;z-index:2}
+.box{position:absolute;border:2px solid var(--gold);border-radius:5px;z-index:2}
+.note{margin-top:8px;color:var(--t2);font-size:13px}
+.leg{border:1px solid var(--b);background:var(--card);border-radius:5px;padding:12px 16px;color:var(--t2);font-size:13px}.leg b{color:var(--gold)}
+.z{position:relative;overflow:hidden;border:1px solid var(--b);border-radius:5px}.z img{position:absolute;max-width:none}.z .box{z-index:2}
 </style></head><body>
 <h1>#6206 + #5943: ungdomstrupper</h1>
-<p class="sub">Illustrativt kort med aliaser (Rytter A/B), ikke et live-skaermbillede. Foer til venstre, efter til hojre.</p>
+<p class="sub">Rigtige skaermbilleder af appen (preview-mock, desktop 1440). Foer = main, efter = denne branch.</p>
 <div class="cols">
-<div class="col now"><h2>Foer</h2>
-  <div class="screen"><span class="pin">1</span><div class="st">U23-trup, status-kolonne</div>
-    <table><tr><th>Rytter</th><th>Kontrakt</th><th>Status</th></tr>
-    <tr><td class="n">Rytter A</td><td>Til S4</td><td>&nbsp;</td></tr>
-    <tr><td class="n">Rytter B</td><td>Til S6</td><td>&nbsp;</td></tr></table>
-    <p class="bad" style="margin:10px 0 0;font-size:13px">Kontrakten for Rytter A udloeber ved naeste saesonskifte, men der er intet EXP.</p></div>
-  <div class="screen"><span class="pin">2</span><div class="st">Graduation Day, oprykning junior til U23</div>
-    <div class="row"><span>Rytter C</span><span class="age bad">Alder 16</span></div>
-    <p class="bad" style="margin:10px 0 0;font-size:13px">Alderen er regnet paa kalenderaar. Rytteren er 19 i saesonen.</p></div>
+  <div class="col before"><h2>Foer (main)</h2>
+    <div class="panel"><span class="pin">1</span><div class="st">U23-trup, status-kolonnen</div>
+      <div class="z" style="height:250px"><img src="shots/u23-before.png" style="width:1596px;left:-878px;top:0"><div class="box" style="left:372px;top:18px;width:84px;height:205px"></div></div>
+      <div class="note">To ryttere har en kontrakt der udloeber ved saesonskiftet. Status-kolonnen er tom.</div></div>
+    <div class="panel"><span class="pin">2</span><div class="st">Graduation Day, alder (rytter foedt 2007, saeson 3)</div>
+      <div class="z" style="height:130px"><img src="shots/grad-before.png" style="width:2020px;left:-295px;top:-320px"><div class="box" style="left:104px;top:40px;width:62px;height:30px"></div></div>
+      <div class="note">Alderen blev regnet paa kalenderaar: 19 aar, selvom rytteren er 21 i saesonen.</div></div>
+  </div>
+  <div class="col after"><h2>Efter (branch)</h2>
+    <div class="panel"><span class="pin">1</span><div class="st">U23-trup, status-kolonnen</div>
+      <div class="z" style="height:250px"><img src="shots/u23-after.png" style="width:1596px;left:-878px;top:0"><div class="box" style="left:372px;top:18px;width:84px;height:205px"></div></div>
+      <div class="note">Samme to ryttere viser nu UDLOEB-badgen, som paa My Team.</div></div>
+    <div class="panel"><span class="pin">2</span><div class="st">Graduation Day, alder (samme rytter, saeson 3)</div>
+      <div class="z" style="height:130px"><img src="shots/grad-after.png" style="width:2020px;left:-295px;top:-320px"><div class="box" style="left:104px;top:40px;width:62px;height:30px"></div></div>
+      <div class="note">Alderen er saeson-alder: 21 aar, som paa rytterprofilen.</div></div>
+  </div>
 </div>
-<div class="col new"><h2>Efter</h2>
-  <div class="screen"><span class="pin">1</span><div class="st">U23-trup, status-kolonne</div>
-    <table><tr><th>Rytter</th><th>Kontrakt</th><th>Status</th></tr>
-    <tr><td class="n">Rytter A</td><td>Til S4</td><td><span class="badge hl">EXP</span></td></tr>
-    <tr><td class="n">Rytter B</td><td>Til S6</td><td>&nbsp;</td></tr></table>
-    <p class="good" style="margin:10px 0 0;font-size:13px">Samme EXP-badge som paa My Team. Samme paa Junior.</p></div>
-  <div class="screen"><span class="pin">2</span><div class="st">Graduation Day, oprykning junior til U23</div>
-    <div class="row"><span>Rytter C</span><span class="age good">Alder 19</span></div>
-    <p class="good" style="margin:10px 0 0;font-size:13px">Saesonalder (samme kilde som rytterprofil og trupper).</p></div>
-</div></div>
-<div class="leg"><b>1</b> #6206: status-kolonnen i YouthSquadTable bruger contractExpiringBadgeKey. &nbsp; <b>2</b> #5943: /api/academy/me regner graduate-alder med ageForSeason.</div>
+<div class="leg"><b>1</b> #6206 EXP-badge paa U23/Junior &nbsp;&middot;&nbsp; <b>2</b> #5943 saeson-alder paa Graduation Day. Punkt 1 er koert mod main-versionen af YouthSquadTable. Punkt 2: UI'et er uaendret, forskellen ligger i aldersvaerdien /api/academy/me sender (19 foer = kalenderaar, 21 efter = ageForSeason, tal regnet med de rigtige formler); selve backend-endpointet er daekket af academyGraduationAge.test.js, ikke af skaermbilledet.</div>
 </body></html>
