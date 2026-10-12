@@ -162,9 +162,12 @@ CREATE OR REPLACE TRIGGER trg_track_rider_training_seen
   AFTER INSERT OR UPDATE OF report ON public.training_day_runs
   FOR EACH ROW EXECUTE FUNCTION public.track_rider_training_seen();
 
--- Fuld genberegning efter sletning af rapporter. EXCLUSIVE-låsen lader læsere
--- være, men holder samtidige trigger-indsættelser tilbage til commit; de kører
--- så bagefter med ON CONFLICT DO NOTHING, så intet tabes.
+-- Fuld genberegning efter sletning af rapporter. SHARE på rapporttabellen venter
+-- på igangværende rapportskrivere og holder nye tilbage til commit: en skriver
+-- hvis ryttere allerede er set, indsætter intet og holder derfor ingen lås på
+-- historiktabellen, så uden den lås kunne dens rapport mangle i genberegningen.
+-- Samme låserækkefølge som skriverne (rapporter, så historik): ingen deadlock.
+-- Læsere påvirkes ikke.
 CREATE OR REPLACE FUNCTION public.rebuild_rider_training_seen()
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY INVOKER
@@ -174,6 +177,7 @@ DECLARE
   v_before integer;
   v_after integer;
 BEGIN
+  LOCK TABLE public.training_day_runs IN SHARE MODE;
   LOCK TABLE public.rider_training_seen IN EXCLUSIVE MODE;
   SELECT count(*) INTO v_before FROM public.rider_training_seen;
   DELETE FROM public.rider_training_seen;

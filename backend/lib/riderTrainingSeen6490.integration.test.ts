@@ -385,6 +385,29 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
   assert.equal(sql("SELECT count(*) FROM rider_training_seen s WHERE NOT EXISTS(SELECT 1 FROM training_day_runs t WHERE t.report->'riders' @> jsonb_build_array(jsonb_build_object('rider_id',s.rider_id)))", 'conc'), '0');
   t.diagnostic(`${version}; pgbench 4x60 overlapping writers: 0 failed, 0 deadlocks, seen=${distinctReported}`);
 
+  // ---- rebuild mod en igangværende skriver hvis rytter allerede er set: skriverens
+  // trigger indsætter intet (og låser intet i historiktabellen), så rebuild skal
+  // vente på rapporttabellen, ellers mangler rytteren efter commit.
+  const known = sql('SELECT rider_id FROM rider_training_seen ORDER BY rider_id LIMIT 1', 'conc');
+  sql(`DELETE FROM training_day_runs WHERE report->'riders' @> jsonb_build_array(jsonb_build_object('rider_id','${known}'))`, 'conc');
+  const holder = spawn(exe('psql'), psqlArgs('conc'), { windowsHide: true, env: { ...process.env, PGOPTIONS: '-c client_min_messages=warning' } });
+  let holderOut = '';
+  holder.stdout.on('data', chunk => { holderOut += String(chunk); });
+  holder.stderr.on('data', chunk => { holderOut += String(chunk); });
+  const holderDone = once(holder, 'exit');
+  holder.stdin.write(`BEGIN;\nINSERT INTO training_day_runs(team_id,tick_date,report) VALUES(gen_random_uuid(), DATE '2026-10-12', '{"riders":[{"rider_id":"${known}"}]}');\n\\echo WRITER_OPEN\n`);
+  for (let i = 0; !holderOut.includes('WRITER_OPEN'); i++) { assert.ok(i < 200, `writer did not open: ${holderOut}`); await new Promise(r => setTimeout(r, 25)); }
+  const rebuild = spawn(exe('psql'), [...psqlArgs('conc'), '-c', 'SELECT public.rebuild_rider_training_seen()'], { windowsHide: true });
+  const rebuildDone = once(rebuild, 'exit');
+  for (let i = 0; sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock' AND query LIKE '%rebuild_rider_training_seen%'", 'conc') !== '1'; i++) {
+    assert.ok(i < 200, 'rebuild must wait for the in-flight report writer');
+    await new Promise(r => setTimeout(r, 25));
+  }
+  holder.stdin.end('COMMIT;\n\\q\n');
+  await holderDone;
+  assert.equal((await rebuildDone)[0], 0, 'rebuild completes after the writer commits');
+  assert.equal(sql(`SELECT count(*) FROM rider_training_seen WHERE rider_id='${known}'`, 'conc'), '1', 'in-flight report survives rebuild');
+
   if (!benchOut) { t.diagnostic('RIDER_SEEN_BENCH_OUT not set: WAL/latency measurement skipped'); return; }
 
   // ---- Måling: 100 commit_training_date_tick-kald (20 hold x 5 løbsdage).
