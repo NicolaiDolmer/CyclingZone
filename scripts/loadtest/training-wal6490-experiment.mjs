@@ -12,7 +12,7 @@ const tables=['rider_derived_abilities','rider_condition','rider_derived_ability
   'training_condition_settlements','training_race_loads','training_day_runs',
   'training_date_work','training_condition_timeout_outbox'];
 const mode=process.argv[2];
-if(!['snapshot','prepare','restore','restore-local','restore-final','cache-original','capture','seal','recover-owned-restore'].includes(mode))throw new Error('Unknown mode');
+if(!['snapshot','prepare','restore','restore-local','restore-final','cleanup-only','cache-original','capture','seal','recover-owned-restore'].includes(mode))throw new Error('Unknown mode');
 if(process.env.CZ_LOADTEST_WRAPPER!=='1'||!process.env.SUPABASE_DB_URL?.includes(STAGING_REF)||
   process.env.SUPABASE_DB_URL.includes(PROD_REF))throw new Error('Staging wrapper required');
 const isolation=await assertIsolation();
@@ -105,7 +105,7 @@ try{
   if(statSync(callFile).mtimeMs>statSync(reportFile).mtimeMs)throw new Error('Capture changed while sealing');
   writeFileSync(join(out,'capture-complete.json'),JSON.stringify(seal,null,2)+'\n');
   console.log(JSON.stringify(seal));if(seal.status!=='COMPLETED')process.exitCode=1;
- }else if(['restore','restore-local','restore-final'].includes(mode)){
+ }else if(['restore','restore-local','restore-final','cleanup-only'].includes(mode)){
   const manifest=JSON.parse(readFileSync(join(out,'snapshot-complete.json')));
   for(const file of manifest.files)if(checksum(join(out,file.name))!==file.sha256)throw new Error('Backup hash mismatch');
   const metadata=JSON.parse(readFileSync(join(out,'original-metadata.json')));
@@ -133,10 +133,12 @@ try{
     ['pg_walinspect','pgstattuple'].filter(e=>!metadata.extensions.some(x=>x.name===e)).map(e=>`DROP EXTENSION IF EXISTS ${e};`).join('\n')+
     `\nDO $$ BEGIN IF (SELECT jsonb_agg(x ORDER BY name) FROM(${relationSql})x) IS DISTINCT FROM ${literal(JSON.stringify(manifest.tables))}::jsonb
       THEN RAISE EXCEPTION 'Restored data mismatch before commit';END IF;END $$;`;
+  if(mode!=='cleanup-only'){
   writeFileSync(join(out,'restore.sql'),restoreSql);
   console.log(JSON.stringify({phase:'restore-original',tables:tables.length,source:useCache?'verified-server-snapshot':'verified-local-copy'}));
   native('psql',['-X','-w','-q','-v','ON_ERROR_STOP=1','-v','VERBOSITY=sqlstate','--single-transaction',
     '-f',join(out,'restore.sql')],undefined,3600000);
+  }
   const restoredTables=fingerprint();
   if(JSON.stringify(restoredTables)!==JSON.stringify(manifest.tables))throw new Error('Restored data fingerprint mismatch');
   const index=JSON.parse(query("SELECT jsonb_build_object('definition',pg_get_indexdef(c.oid),'options',c.reloptions,'valid',i.indisvalid,'ready',i.indisready) FROM pg_class c JOIN pg_index i ON i.indexrelid=c.oid WHERE c.oid=to_regclass('public.idx_training_day_runs_report_riders')"));
@@ -144,15 +146,16 @@ try{
   const checks=JSON.parse(query(`SELECT jsonb_build_object('extensions',(SELECT coalesce(jsonb_agg(extname ORDER BY extname),'[]') FROM pg_extension WHERE extname IN('pg_walinspect','pgstattuple')),'functions',(SELECT jsonb_agg(jsonb_build_object('name',p.proname,'definition',pg_get_functiondef(p.oid),'acl',p.proacl) ORDER BY p.proname) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN('commit_training_date_tick','register_training_date_work')))`));
   if(JSON.stringify(checks.functions)!==JSON.stringify([...metadata.functions].sort((a,b)=>a.name.localeCompare(b.name))))throw new Error('Function restoration mismatch');
   if(JSON.stringify(checks.extensions)!==JSON.stringify(metadata.extensions.map(x=>x.name).sort()))throw new Error('Extension cleanup mismatch');
-  if(mode==='restore-final'&&cachedExists){
+  const finalCleanup=['restore-final','cleanup-only'].includes(mode);
+  if(finalCleanup&&cachedExists){
     if(!ownedCache)throw new Error('Refusing to remove an unowned snapshot schema');
     // RESTRICT intentionally stops if anyone introduced unexpected dependencies or objects.
     query(`BEGIN;${tables.map(t=>`DROP TABLE ${cacheSchema}.${t} RESTRICT;`).join('\n')}DROP SCHEMA ${cacheSchema} RESTRICT;COMMIT;`);
     if(query(`SELECT to_regnamespace('${cacheSchema}') IS NULL`)!=='t')throw new Error('Snapshot schema cleanup failed');
   }
   if((await assertIsolation()).status!=='ISOLATED')throw new Error('Post-restoration isolation failed');
-  writeFileSync('docs/snapshots/6490/restoration.json',JSON.stringify({observedAt:new Date().toISOString(),dataHashesMatch:true,tables:restoredTables,index,functionsRestored:true,extensionsRestored:true,measurementSnapshotRetained:cachedExists&&mode!=='restore-final'},null,2)+'\n');
-  console.log(JSON.stringify({phase:'restored',dataHashesMatch:true,indexValid:true,indexDefinitionMatches:true,extensionsRestored:true,measurementSnapshotRetained:cachedExists&&mode!=='restore-final'}));
+  writeFileSync('docs/snapshots/6490/restoration.json',JSON.stringify({observedAt:new Date().toISOString(),dataHashesMatch:true,tables:restoredTables,index,functionsRestored:true,extensionsRestored:true,measurementSnapshotRetained:cachedExists&&!finalCleanup},null,2)+'\n');
+  console.log(JSON.stringify({phase:'restored',dataHashesMatch:true,indexValid:true,indexDefinitionMatches:true,extensionsRestored:true,measurementSnapshotRetained:cachedExists&&!finalCleanup}));
  }else if(mode==='prepare'){
   const manifest=JSON.parse(readFileSync(join(out,'snapshot-complete.json')));
   if(JSON.stringify(fingerprint())!==JSON.stringify(manifest.tables))throw new Error('Original snapshot no longer matches');

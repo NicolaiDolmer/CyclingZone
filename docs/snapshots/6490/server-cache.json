@@ -1,0 +1,49 @@
+{
+  "tables": [
+    {
+      "name": "rider_ability_race_day_history",
+      "rows": 2700
+    },
+    {
+      "name": "rider_condition",
+      "rows": 8313
+    },
+    {
+      "name": "rider_derived_abilities",
+      "rows": 8313
+    },
+    {
+      "name": "rider_derived_ability_history",
+      "rows": 1869
+    },
+    {
+      "name": "rider_training_scores",
+      "rows": 40860
+    },
+    {
+      "name": "training_condition_settlements",
+      "rows": 8292
+    },
+    {
+      "name": "training_condition_timeout_outbox",
+      "rows": 0
+    },
+    {
+      "name": "training_date_work",
+      "rows": 267
+    },
+    {
+      "name": "training_day_runs",
+      "rows": 1330
+    },
+    {
+      "name": "training_race_loads",
+      "rows": 5202
+    },
+    {
+      "name": "training_rider_ticks",
+      "rows": 41744
+    }
+  ],
+  "_publicEvidenceRedacted": true
+}

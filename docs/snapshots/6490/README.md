@@ -7,7 +7,11 @@ stops M3 and requires measurement before further implementation or stack cleanup
 Neither was started. Claude builds `rider_training_seen` on
 `perf/6490-rider-training-seen`; Codex only preserves WIP/evidence, closes the
 superseded drafts, releases restored staging, and reviews Claude's PR.
-The temporary private server snapshot must be removed before release.
+The temporary private server snapshot was removed at close-out. All eleven
+full-table fingerprints, original function definitions/ACLs and the original
+valid/ready GIN definition/options matched. Both measurement extensions and the
+private snapshot schema were absent, and zero measurement connections remained.
+Staging reservation released; no alternative-arm replay was started.
 
 **Earlier revised owner scope, superseded:** retain completed baseline-1; run only
 fastupdate-off-1 and no-gin-1 with the same sealed inputs. Restore staging and
