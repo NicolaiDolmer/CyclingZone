@@ -389,13 +389,12 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
 
   // ---- Måling: 100 commit_training_date_tick-kald (20 hold x 5 løbsdage).
   // History ~ prod's run count. ANALYZE empties GIN's pending list, which prod
-  // never gets between settlements, so each variant first re-fills it with
-  // PREFILL rewritten history reports (steady state: the 100 calls may hit a
-  // pending-list flush, as an unlucky prod call does).
+  // never gets between settlements, so each GIN variant first re-fills it to
+  // PREFILL_PAGES (default 4 MB limit = 512 pages) by rewriting history reports:
+  // the 100 measured calls then cross the limit once and one call pays the
+  // flush, as an unlucky prod call does.
   const TEAMS = 20, PER_TEAM = 25, HISTORY_RUNS = Number(process.env.RIDER_SEEN_BENCH_HISTORY ?? 40000);
-  // ~740 rewritten runs leave the pending list just under gin_pending_list_limit
-  // (4 MB), so the measured calls cross it once.
-  const PREFILL = Number(process.env.RIDER_SEEN_BENCH_PREFILL ?? 740);
+  const PREFILL_PAGES = Number(process.env.RIDER_SEEN_BENCH_PREFILL_PAGES ?? 480);
   writeAndRun('bench-fixture.sql', `
     INSERT INTO app_config(key,value) VALUES('training_condition_per_date','"on"'),('training_tick_per_race_day','"on"')
       ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value;
@@ -459,7 +458,7 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
     return lines.join('\n');
   };
 
-  const results: Record<string, unknown> = { pg: version, history_runs: HISTORY_RUNS, pending_prefill_runs: PREFILL, teams: TEAMS, riders_per_team: PER_TEAM };
+  const results: Record<string, unknown> = { pg: version, history_runs: HISTORY_RUNS, prefill_pending_pages: PREFILL_PAGES, teams: TEAMS, riders_per_team: PER_TEAM };
   const variants: Array<{ name: string; setup: string[] }> = [
     { name: 'before_gin', setup: [] },
     { name: 'after_gin', setup: ['migration'] },
@@ -475,13 +474,21 @@ test('#6490 PG17: samtidige skrivere med overlappende nye ryttere uden deadlock 
         results[`${variant.name}_migration_ms`] = Date.now() - t0;
       } else sql(step, dbName);
     }
-    if (PREFILL > 0) {
-      sql(`UPDATE training_day_runs SET report = report || jsonb_build_object('prefill', true)
-        WHERE id IN (SELECT id FROM training_day_runs WHERE game_day IS NULL ORDER BY tick_date, id LIMIT ${PREFILL})`, dbName);
+    const hasGin = sql("SELECT to_regclass('idx_training_day_runs_report_riders') IS NOT NULL", dbName) === 't';
+    const pendingPages = () => Number(sql("SELECT pending_pages FROM pgstatginindex('idx_training_day_runs_report_riders')", dbName));
+    const rewrite = (offset: number, count: number) => sql(`UPDATE training_day_runs SET report = report || jsonb_build_object('prefill', true)
+        WHERE id IN (SELECT id FROM training_day_runs WHERE game_day IS NULL ORDER BY tick_date, id OFFSET ${offset} LIMIT ${count})`, dbName);
+    // Steady state: fill the pending list to just under the flush limit (with
+    // GIN), or rewrite the same number of history runs (without GIN).
+    let prefilled = 0;
+    if (hasGin) {
+      while (pendingPages() < PREFILL_PAGES && prefilled < 20_000) { rewrite(prefilled, 10); prefilled += 10; }
+      results.prefill_runs = prefilled;
+    } else if (typeof results.prefill_runs === 'number') {
+      rewrite(0, results.prefill_runs);
     }
     sql('CHECKPOINT', dbName);
     results[`${variant.name}_gin_bytes`] = Number(sql("SELECT COALESCE(pg_relation_size(to_regclass('idx_training_day_runs_report_riders')),0)", dbName));
-    const hasGin = sql("SELECT to_regclass('idx_training_day_runs_report_riders') IS NOT NULL", dbName) === 't';
     const pending = () => hasGin ? sql("SELECT pending_pages || ' pages/' || pending_tuples || ' tuples' FROM pgstatginindex('idx_training_day_runs_report_riders')", dbName) : 'none';
     results[`${variant.name}_gin_pending_before`] = pending();
     const f = join(runDir, `calls-${variant.name}.sql`);
