@@ -63,6 +63,19 @@ function Invoke-Staging([string] $cmd) {
   Invoke-RefreshNative { & pwsh -NoProfile -Command $cmd } ("staging: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length)))
 }
 
+function Invoke-ProdSqlData([string] $sqlFile) {
+  Invoke-RefreshSqlData {
+    param($outputFile)
+    Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$sqlFile' 1> '$outputFile'"
+  } 'prod SQL data'
+}
+function Invoke-StagingSqlData([string] $sqlFile) {
+  Invoke-RefreshSqlData {
+    param($outputFile)
+    Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$sqlFile' 1> '$outputFile'"
+  } 'staging SQL data'
+}
+
 # Fail-closed dump-bevis: counts + marker skrives kun naar BEGGE dumps er faerdige. -SkipDump kraever dem.
 $countsBeforeFile = Join-Path $DumpDir "prod-counts-before.txt"
 $countsAfterFile = Join-Path $DumpDir "prod-counts-after.txt"
@@ -70,7 +83,7 @@ $markerFile = Join-Path $DumpDir "dump-complete.marker"
 $leanTables = @("race_results", "race_simulation_rider_scores", "race_simulation_runs", "player_events",
   "board_satisfaction_events", "rider_derived_ability_history", "training_day_runs", "notifications",
   "race_stage_moments", "rider_profile_views", "traffic_events")
-function Get-ProdCounts { (Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$verifySql'") -join "`n" }
+function Get-ProdCounts { (Invoke-ProdSqlData $verifySql) -join "`n" }
 $countSkip = @(); $countSlack = @{ app_config = 1 }   # cleanup inserts the cz_environment marker
 
 if (-not $VerifyOnly) {
@@ -156,8 +169,8 @@ $files=@{
 }
 # Fingerprint -> raekketal -> privacy (sidste database-kald, ogsaa i VerifyOnly). Intet GO uden alle tre.
 $gate=Invoke-RefreshGates `
-  { param($f) Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
-  { param($f) Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
+  { param($f) Invoke-ProdSqlData $f } `
+  { param($f) Invoke-StagingSqlData $f } `
   $files $countsBefore $countsAfter $countSkip $countSlack
 if ($gate -ne 'GO') { throw 'Refresh gates did not return GO' }
 Write-Host '[ok] app-schema fingerprint matches; row counts within prod window; non-anonymous users=0'

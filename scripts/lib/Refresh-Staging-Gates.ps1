@@ -79,6 +79,21 @@ function Invoke-RefreshNative([scriptblock]$Run,[string]$Step) {
   return $out
 }
 
+# The SQL process redirects ONLY its stdout to this file, inside any credential
+# wrapper. Wrapper logs and SQL stderr remain diagnostic output, never gate data.
+# Do not filter lines here: malformed SQL stdout must still fail the strict gates.
+function Invoke-RefreshSqlData([scriptblock]$Run,[string]$Step) {
+  $outputFile=Join-Path ([IO.Path]::GetTempPath()) ('cz-refresh-sql-'+[guid]::NewGuid().ToString('N')+'.txt')
+  $sqlRunner=$Run
+  try {
+    $null=Invoke-RefreshNative { & $sqlRunner $outputFile } $Step
+    if(-not (Test-Path -LiteralPath $outputFile -PathType Leaf)){throw "$Step produced no SQL stdout file"}
+    return [IO.File]::ReadAllLines($outputFile)
+  } finally {
+    Remove-Item -LiteralPath $outputFile -Force -ErrorAction SilentlyContinue
+  }
+}
+
 function Test-RefreshTransactionControl([string]$Line) {
   return ($Line -match '(?i)^\s*(begin|commit|rollback|end|start\s+transaction|abort)(\s+work|\s+transaction)?\s*;\s*$')
 }
