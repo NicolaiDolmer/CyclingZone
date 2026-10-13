@@ -1065,6 +1065,15 @@ const s5Profiles = {
     punch: { punch: 0.45, acceleration: 0.25, positioning: 0.1 },
     uphill_sprint: { sprint: 0.35, acceleration: 0.25, positioning: 0.2 },
   } as Partial<Record<import("./types.ts").FinaleType, Partial<Record<import("./types.ts").AbilityKey, number>>>>,
+  // Tids-spredningen i maal pr. kort afslutning: sekunder pr. score-enhed mellem to
+  // naboplaceringer (afloeser finaleExtra.placementGapScoreScale) og den score-afstand
+  // under hvilken ryttere deler tid (afloeser finaleTieScoreEpsilon). Stigende spurt
+  // er en massefinale i alt andet end tiden (finale.ts).
+  finaleTiers: {
+    wall_finish: { gapScoreScale: 140, tieScoreEpsilon: 0.005 },
+    punch: { gapScoreScale: 34, tieScoreEpsilon: 0.01 },
+    uphill_sprint: { gapScoreScale: 3, tieScoreEpsilon: 0.12 },
+  } as Partial<Record<import("./types.ts").FinaleType, { gapScoreScale: number; tieScoreEpsilon: number }>>,
   hybridWeight: 0.2,
   hybridPunchMaxPriorClimbs: 1,
   hybridDurabilityFullPriorClimbs: 4,

@@ -84,6 +84,23 @@ export function stageInputForRulesRevision(input: StageInput): StageInput {
 }
 
 /**
+ * Er segmentet en del af finalestigningen paa en kort eksplosiv afslutning (mur,
+ * bakke, stigende spurt: de finaler der har et S5-grundsaet), dvs. den sidste blok
+ * af sammenhaengende stigninger naar etapen ender paa en stigning? Dér afgoeres
+ * etapen af finalen (finale.ts, demand-vektoren), ikke af klatre-selektionen:
+ * klatring indgaar ikke i mur-finalen (spec §4). Kun s5_profiles_v1 spoerger.
+ */
+export function isS5ExplosiveFinaleClimb(route: Pick<RouteV2, "finale_type" | "segments">, segmentIndex: number): boolean {
+  const finale = route.finale_type;
+  if (!finale || !S5_PROFILES_TUNING.finaleBase[finale]) return false;
+  const segs = route.segments;
+  if (segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
+  let start = segs.length - 1;
+  while (start > 0 && segs[start - 1].kind === "climb") start--;
+  return segmentIndex >= start && segs[segmentIndex]?.kind === "climb";
+}
+
+/**
  * Antal kategoriserede stigninger FOER finalen: stignings-segmenter der slutter
  * mindst `priorClimbMinKmBeforeFinish` foer maal (selve mur-/bakke-stigningen
  * taeller ikke). Segmenterne er motorens sandhed; waypoints kan mangle.
