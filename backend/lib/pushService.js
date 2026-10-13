@@ -58,6 +58,8 @@ export const SWEEP_MAX_LOOKBACK_MS = 15 * 60 * 1000;
 export const DELIVERY_RETENTION_DAYS = 30;
 const SWEEP_BATCH = 500;
 const QUEUE_BATCH = 2000;
+// Et resumé taeller hoejst saa mange notifikationer pr. spiller (PostgREST-loftet er 1000).
+const DIGEST_LOOKUP_CAP = 500;
 const MAX_SUBSCRIPTION_FAILURES = 10;
 
 export const PUSH_CATEGORIES = Object.freeze([
@@ -366,19 +368,23 @@ async function deliverToUser({ supabase, subscriptions, payload, category, vapid
       urgency: category?.urgency ?? "normal",
       ttlSeconds: category?.ttlSeconds ?? 12 * 60 * 60,
     });
+    let error = null;
     if (result.ok) {
       anyOk = true;
       allGone = false;
-      await supabase.from("push_subscriptions")
-        .update({ last_success_at: now.toISOString(), failure_count: 0 }).eq("id", sub.id);
+      ({ error } = await supabase.from("push_subscriptions")
+        .update({ last_success_at: now.toISOString(), failure_count: 0 }).eq("id", sub.id));
     } else if (result.gone || (sub.failure_count ?? 0) + 1 >= MAX_SUBSCRIPTION_FAILURES) {
       // 404/410 = abonnementet er vaek (GDPR: slet endpointet med det samme).
-      await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+      ({ error } = await supabase.from("push_subscriptions").delete().eq("id", sub.id));
     } else {
       allGone = false;
-      await supabase.from("push_subscriptions")
-        .update({ failure_count: (sub.failure_count ?? 0) + 1 }).eq("id", sub.id);
+      ({ error } = await supabase.from("push_subscriptions")
+        .update({ failure_count: (sub.failure_count ?? 0) + 1 }).eq("id", sub.id));
     }
+    // Beskeden er allerede sendt (eller afvist); en fejlet bogfoering af
+    // abonnementet maa ikke stoppe de oevrige enheder. Rapporteres til Sentry.
+    if (error) captureException(new Error(`push_subscriptions bookkeeping: ${error.message}`), { tags: { flow: "push", stage: "subscription" } });
   }
   return anyOk ? "sent" : allGone ? "gone" : "failed";
 }
@@ -441,6 +447,8 @@ async function loadRecipients(supabase, userIds, now) {
   const withSubs = [...subs.keys()];
   if (!withSubs.length) return { users: new Map(), subs, sentToday: new Map() };
 
+  // schema-columns-ok: push_prefs + timezone tilfoejes af database/2026-10-13-6590-push-notifications.sql
+  // (apply post-merge, #2642); snapshot opdateres efter apply. Sweepen er bag et flag der er off til da.
   const { data: userRows, error: userErr } = await supabase
     .from("users").select("id, language, timezone, push_prefs, role, is_beta_tester").in("id", withSubs);
   if (userErr) throw new Error(`users: ${userErr.message}`);
@@ -619,7 +627,10 @@ async function flushDigests({ supabase, stage, vapid, now, send, summary }) {
     const queueIds = rows.map((r) => r.id);
     if (!user || !userSubs.length || !isUserEligibleForStage(stage, user)) {
       // Ingen modtager laengere (afmeldt, eller ude af beta): koeen er doed.
-      if (!user || !userSubs.length) await supabase.from("push_queue").delete().in("id", queueIds);
+      if (!user || !userSubs.length) {
+        const { error: deadErr } = await supabase.from("push_queue").delete().in("id", queueIds);
+        if (deadErr) captureException(new Error(`push_queue cleanup: ${deadErr.message}`), { tags: { flow: "push", stage: "queue-cleanup" } });
+      }
       continue;
     }
     const timeZone = normalizeTimeZone(user.timezone);
@@ -633,8 +644,9 @@ async function flushDigests({ supabase, stage, vapid, now, send, summary }) {
       const mine = rows.filter((r) => claimedIds.has(r.id));
       if (!mine.length) continue;
       // Kun det spilleren ikke allerede har set i appen kommer med.
-      const notificationIds = mine.map((r) => r.notification_id);
+      const notificationIds = mine.slice(0, DIGEST_LOOKUP_CAP).map((r) => r.notification_id);
       const { data: notes, error: noteErr } = await supabase
+        // pagination-safe: hoejst DIGEST_LOOKUP_CAP (< 1000) id'er pr. spiller, slaaet op paa primaernoeglen.
         .from("notifications").select("id, is_read").in("id", notificationIds);
       if (noteErr) throw new Error(`notifications (digest): ${noteErr.message}`);
       const unreadIds = new Set((notes ?? []).filter((n) => n.is_read === false).map((n) => n.id));
