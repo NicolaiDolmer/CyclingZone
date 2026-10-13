@@ -1033,7 +1033,9 @@ const STAGE_WIN_PUNCH_PROFILES: ReadonlySet<ProfileType> = new Set<ProfileType>(
  * Eksporteret for kontrakt-tests.
  */
 export function stageWinDemandKeys(finaleType: FinaleType | null, profileType: ProfileType): AbilityKey[] {
-  if (finaleType === "bunch_sprint" || finaleType === "reduced_sprint") return ["sprint"];
+  // #6363 (S5): flad og stigende spurt afgoeres paa sprint, muren paa punch (alle profiler).
+  if (finaleType === "bunch_sprint" || finaleType === "reduced_sprint" || finaleType === "flat_sprint" || finaleType === "uphill_sprint") return ["sprint"];
+  if (finaleType === "wall_finish") return ["punch"];
   if (finaleType === "long_climb") return ["climbing"];
   if (finaleType === "solo_tt") return ["time_trial"];
   if (finaleType === null && profileType === "flat") return ["sprint"];

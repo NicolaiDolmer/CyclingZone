@@ -38,6 +38,7 @@ import { classifyRoadWinType } from "./winType.ts";
 import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
 import { finishDescentIndexFor, finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
+import { s5FinaleDemandVector } from "./s5Profiles.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -68,7 +69,9 @@ const DEFAULT_DEMAND_VECTOR: Partial<Record<AbilityKey, number>> = {
 // Finaler hvor hele den ankomne pulje krydser stregen sammen og derfor deler
 // vindertiden. De oevrige finale-typer (long_climb, punch, descent, breakaway,
 // solo_tt) er selektive: dér er tidsforskellene inden for frontpuljen ægte.
-const MASS_FINISH_FINALE_TYPES: ReadonlySet<FinaleType> = new Set(["bunch_sprint", "reduced_sprint"]);
+// #6363 (S5): flad spurt og stigende spurt er samlede feltopgoer. De to navne
+// findes kun under s5_profiles_v1 (aeldre revisioner ser de gamle, s5Profiles.ts).
+const MASS_FINISH_FINALE_TYPES: ReadonlySet<FinaleType> = new Set(["bunch_sprint", "reduced_sprint", "flat_sprint", "uphill_sprint"]);
 // Fallback naar etapen ikke er finale-klassificeret: en flad/kuperet etape
 // ankommer stadig samlet. Bevidst konservativ — alt andet regnes som selektivt.
 const MASS_FINISH_PROFILE_TYPES: ReadonlySet<ProfileType> = new Set(["flat", "rolling"]);
@@ -157,6 +160,8 @@ const FIELD_FINALE_BY_PROFILE: Partial<Record<ProfileType, FinaleType>> = {
   flat: "bunch_sprint",
   rolling: "punch",
   hilly: "punch",
+  // #6363: mellembjerg naar aldrig hertil (s5Profiles.ts koerer det i terraen-bucketen); raekken er defensiv.
+  medium_mountain: "punch",
   classic: "punch",
   mountain: "long_climb",
   high_mountain: "long_climb",
@@ -608,8 +613,11 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
   // #6200 (KUN orders_gc_v3): klatring taeller med i placeringen i en nedkoerselsfinale.
   const v3DescentDemand = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
+  // #6363 (KUN s5_profiles_v1): mur, bakke og stigende spurt = grundsaet + hybrid
+  // efter etapens haardhed (s5Profiles.ts). Aeldre revisioner laeser intet herfra.
+  const s5Demand = ctx.s5ProfilesV1 === true ? s5FinaleDemandVector(route) : null;
   const demandVector = cobbledFinaleDemandVector(
-    v3DescentDemand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
+    v3DescentDemand ?? s5Demand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
     ctx,
   );
   // #6073: paa en udbrudsfinale gaelder udbrudsdemand kun for udbruddet selv;
