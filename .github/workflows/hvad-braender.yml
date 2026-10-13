@@ -1,8 +1,9 @@
 # "Hvad brænder"-vagten (#6548, design-go ejer 12/10).
 # Daglig rapport kl. 08:00 dansk tid i det fastgjorte issue #6549; kommentar kun ved rødt.
 # Deterministisk node-script, ingen AI-tokens. Kun læsning fra prod (to skalar-selects).
-# To cron-tider dækker sommer- og vintertid; scriptet kører kun, når klokken i
-# København er 08 (manuel kørsel springer tjekket over).
+# To cron-tider dækker sommer- og vintertid. GitHub forsinker planlagte kørsler op til
+# flere timer (13/10), så gaten er "kl. 08 eller senere"; scriptet rapporterer kun én
+# gang pr. dag (reportedOn i state). Manuel kørsel springer begge tjek over.
 name: Hvad brænder
 
 on:
@@ -29,7 +30,7 @@ jobs:
       - name: Only at 08 Copenhagen time
         id: gate
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$(TZ=Europe/Copenhagen date +%H)" = "08" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$(TZ=Europe/Copenhagen date +%-H)" -ge 8 ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
@@ -53,4 +54,5 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          HVAD_BRAENDER_SCHEDULED: ${{ github.event_name == 'schedule' && '1' || '0' }}
         run: node scripts/ops/hvad-braender.mjs

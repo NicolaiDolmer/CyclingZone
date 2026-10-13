@@ -220,6 +220,12 @@ async function safe(name, fn) {
   try { return { name, ...(await fn()) }; } catch (e) { return { name, level: NODATA, summary: `kunne ikke måles (${e.message})` }; }
 }
 
+// GitHub kan forsinke planlagte kørsler i timevis (13/10: 06:00Z kom 13:48Z). Gaten i
+// workflowet er derfor "kl. 08 eller senere"; her sikrer state, at der kun rapporteres én gang pr. dag.
+export function alreadyReported(state, today, scheduled) {
+  return Boolean(scheduled) && state?.reportedOn === today;
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const dryRun = argv.includes("--dry-run");
   const repo = process.env.GITHUB_REPOSITORY || "NicolaiDolmer/CyclingZone";
@@ -232,6 +238,10 @@ export async function main(argv = process.argv.slice(2)) {
   const issue = await gh(`/repos/${repo}/issues/${issueNo}`);
   const state = parseState(issue.body);
   state.db = state.db || {};
+  if (alreadyReported(state, today, process.env.HVAD_BRAENDER_SCHEDULED === "1")) {
+    console.log(`[hvad-braender] allerede rapporteret ${today}, springer over`);
+    return 0;
+  }
 
   const sections = await Promise.all([
     safe("Sentry 24 t", async () => {
@@ -286,13 +296,16 @@ export async function main(argv = process.argv.slice(2)) {
   ]);
 
   const stamp = `${today} kl. ${new Intl.DateTimeFormat("da-DK", { timeZone: "Europe/Copenhagen", hour: "2-digit", minute: "2-digit" }).format(new Date(now))}`;
+  if (!dryRun) state.reportedOn = today;
   const body = renderReport(sections, { stamp, state });
   if (dryRun) { console.log(body); return 0; }
-  await gh(`/repos/${repo}/issues/${issueNo}`, { method: "PATCH", body: { body } });
+  // Rød-kommentaren sendes FØR body'en (med reportedOn) gemmes: fejler alarmen, prøver næste
+  // planlagte kørsel igen i stedet for at tro, at dagen er rapporteret.
   const reds = sections.filter((s) => s.level === RED);
   if (reds.length) {
     await gh(`/repos/${repo}/issues/${issueNo}/comments`, { method: "POST", body: { body: `**Rødt ${stamp}:** ${reds.map((s) => `${s.name}: ${s.summary}`).join(" · ")}` } });
   }
+  await gh(`/repos/${repo}/issues/${issueNo}`, { method: "PATCH", body: { body } });
   console.log(`[hvad-braender] ${sections.map((s) => `${s.name}=${s.level}`).join(" · ")}`);
   return 0;
 }
