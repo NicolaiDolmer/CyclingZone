@@ -169,7 +169,8 @@ function v3ExtraBreakCandidates(args: {
   const { input, demand, primaryAbility, field, fieldPrimary, grupettoIds } = args;
   const profile = input.route.profile_type;
   const climbDay = demand === "climb";
-  const hillyDay = !climbDay && (profile === "hilly" || profile === "rolling");
+  // #6363: mellembjerg uden topankomst er en kuperet angrebsdag (motorens terraen-bucket).
+  const hillyDay = !climbDay && (profile === "hilly" || profile === "rolling" || profile === "medium_mountain");
   if (!climbDay && !hillyDay) return args.breakCandidates;
   const rankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
   // Paa kuperet/rullende er angriberens evne dagens terraenevne (tempo paa en spurtdag).
@@ -197,7 +198,9 @@ function v3ExtraBreakCandidates(args: {
 
 /** Klassificerer dagens terraen-krav ud fra rute-typen (samme felter som RouteV2). */
 export function classifyTerrainDemand(route: AiTacticsRoute): TerrainDemand {
-  if (route.finale_type === "punch") return "punch";
+  // #6363 (S5): muren er en punch-dag, flad og stigende spurt er spurtdage.
+  if (route.finale_type === "punch" || route.finale_type === "wall_finish") return "punch";
+  if (route.finale_type === "flat_sprint" || route.finale_type === "uphill_sprint") return "sprint";
   if (route.profile_type === "mountain" || route.profile_type === "high_mountain" || route.finale_type === "long_climb") {
     return "climb";
   }
