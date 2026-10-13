@@ -1488,6 +1488,8 @@ export default function AuctionsPage() {
         body: JSON.stringify({ context: "auction_bid", data: { amount } }),
       }).catch(() => {});
       loadAll();
+      // #6590: tilbyd push i kontekst (kun auktion der slutter i dag, flag on). Lazy, fail-closed.
+      import("../pwa/push/offerPushAfterBid.ts").then((m) => m.offerPushAfterBid(auction?.calculated_end)).catch(() => {});
       const okData = res.data || {};
       return { ok: true, warnings: okData.warnings || [] };
     }

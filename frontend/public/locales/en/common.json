@@ -124,5 +124,31 @@
     "columnsLabel": "Choose columns",
     "moreRight": "More columns to the right"
   },
-  "networkError": "Can't reach the server right now. Check your connection and try again."
+  "networkError": "Can't reach the server right now. Check your connection and try again.",
+  "push": {
+    "title": "Push notifications",
+    "subtitle": "I only ping you when it matters. Never between 22:00 and 08:00, and at most 6 a day.",
+    "enable": "Turn on push",
+    "disable": "Turn off on this device",
+    "statusOn": "On for this device",
+    "denied": "Your browser blocks notifications from Cycling Zone. Allow them in the site settings, then try again.",
+    "iosInstall": "On iPhone and iPad, push works once Cycling Zone is on your home screen: tap Share, then Add to Home Screen.",
+    "unsupported": "This browser can't receive push notifications.",
+    "error": "That didn't work. Try again.",
+    "categoriesHeading": "What I send",
+    "category": {
+      "auctions": { "label": "Auctions, last minute", "desc": "Outbid just before the end, and won." },
+      "races": { "label": "Races", "desc": "One summary per race day." },
+      "transfers": { "label": "Transfer offers", "desc": "An offer is waiting for your answer." },
+      "deadlines": { "label": "Squad and deadlines", "desc": "Deadlines that cost you if you miss them." },
+      "academy": { "label": "Academy and training", "desc": "Only in the morning summary." }
+    },
+    "offer": {
+      "regionAriaLabel": "Push notifications",
+      "title": "Want a ping if you're outbid before the end?",
+      "accept": "Yes, ping me",
+      "later": "Not now",
+      "done": "Done. Change it any time under Profile, Notifications."
+    }
+  }
 }

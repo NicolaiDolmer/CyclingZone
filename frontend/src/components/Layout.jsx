@@ -876,6 +876,8 @@ export default function Layout() {
   // besked der ville nå frem (siden skifter med det samme). Fejlen skal dog
   // stadig kunne ses — før forsvandt den sporløst.
   async function signOut() {
+    // #6590: slet enhedens push-abonnement foer sessionen forsvinder (hoejst 1,5 s).
+    await import("../pwa/push/pushApi.ts").then((m) => m.forgetPushOnThisDevice()).catch(() => {});
     const { error } = await supabase.auth.signOut();
     if (error) reportActionFailure("auth_sign_out", { reason: error.message });
     navigate("/login");
