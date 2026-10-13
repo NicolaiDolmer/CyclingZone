@@ -1,0 +1,628 @@
+{
+  "route": {
+    "distance_km": 175,
+    "profile_type": "medium_mountain",
+    "finale_type": "punch",
+    "segments": [
+      {
+        "kind": "rolling",
+        "from_km": 0,
+        "to_km": 70
+      },
+      {
+        "kind": "climb",
+        "from_km": 70,
+        "to_km": 78,
+        "category": "2",
+        "avg_gradient": 5.8,
+        "top_elevation_m": 900
+      },
+      {
+        "kind": "descent",
+        "from_km": 78,
+        "to_km": 86,
+        "technicality": 2
+      },
+      {
+        "kind": "rolling",
+        "from_km": 86,
+        "to_km": 114
+      },
+      {
+        "kind": "climb",
+        "from_km": 114,
+        "to_km": 121,
+        "category": "2",
+        "avg_gradient": 6,
+        "top_elevation_m": 950
+      },
+      {
+        "kind": "descent",
+        "from_km": 121,
+        "to_km": 129,
+        "technicality": 2
+      },
+      {
+        "kind": "rolling",
+        "from_km": 129,
+        "to_km": 172.5
+      },
+      {
+        "kind": "climb",
+        "from_km": 172.5,
+        "to_km": 175,
+        "category": "3",
+        "avg_gradient": 6,
+        "top_elevation_m": 480
+      }
+    ],
+    "waypoints": [
+      {
+        "kind": "kom",
+        "index": 0,
+        "name": "Col A",
+        "km": 78,
+        "category": "2",
+        "summit_finish": false
+      },
+      {
+        "kind": "kom",
+        "index": 1,
+        "name": "Col B",
+        "km": 121,
+        "category": "2",
+        "summit_finish": false
+      },
+      {
+        "kind": "kom",
+        "index": 2,
+        "name": "Bakke",
+        "km": 175,
+        "category": "3",
+        "summit_finish": true
+      },
+      {
+        "kind": "finish",
+        "index": 0,
+        "name": "Maal",
+        "km": 175
+      }
+    ],
+    "weather": {
+      "kind": "sun",
+      "wind_exposure": 0.2
+    }
+  },
+  "startlist": [
+    {
+      "rider_id": "r01",
+      "abilities": {
+        "climbing": 64,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 70,
+        "sprint": 58,
+        "acceleration": 90,
+        "punch": 95,
+        "endurance": 72,
+        "recovery": 58,
+        "durability": 70,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 75,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "captain",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r02",
+      "abilities": {
+        "climbing": 97,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 80,
+        "sprint": 58,
+        "acceleration": 52,
+        "punch": 62,
+        "endurance": 85,
+        "recovery": 80,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "captain",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r03",
+      "abilities": {
+        "climbing": 30,
+        "time_trial": 58,
+        "flat": 78,
+        "tempo": 58,
+        "sprint": 96,
+        "acceleration": 90,
+        "punch": 58,
+        "endurance": 58,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 85,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "sprint_captain",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r04",
+      "abilities": {
+        "climbing": 55,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 58,
+        "sprint": 86,
+        "acceleration": 86,
+        "punch": 84,
+        "endurance": 58,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 80,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "sprint_captain",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r05",
+      "abilities": {
+        "climbing": 72,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 76,
+        "sprint": 58,
+        "acceleration": 70,
+        "punch": 78,
+        "endurance": 88,
+        "recovery": 58,
+        "durability": 92,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "captain",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r06",
+      "abilities": {
+        "climbing": 66,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 74,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 70,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r07",
+      "abilities": {
+        "climbing": 58,
+        "time_trial": 58,
+        "flat": 74,
+        "tempo": 72,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 68,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r08",
+      "abilities": {
+        "climbing": 62,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 58,
+        "sprint": 58,
+        "acceleration": 66,
+        "punch": 70,
+        "endurance": 58,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r09",
+      "abilities": {
+        "climbing": 58,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 58,
+        "sprint": 72,
+        "acceleration": 70,
+        "punch": 58,
+        "endurance": 58,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 70,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r10",
+      "abilities": {
+        "climbing": 74,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 70,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 72,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r11",
+      "abilities": {
+        "climbing": 58,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 72,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 74,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r12",
+      "abilities": {
+        "climbing": 58,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 70,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 70,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r13",
+      "abilities": {
+        "climbing": 58,
+        "time_trial": 58,
+        "flat": 70,
+        "tempo": 66,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 58,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r14",
+      "abilities": {
+        "climbing": 60,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 58,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 58,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 80,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r15",
+      "abilities": {
+        "climbing": 58,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 58,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 58,
+        "recovery": 70,
+        "durability": 66,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    },
+    {
+      "rider_id": "r16",
+      "abilities": {
+        "climbing": 58,
+        "time_trial": 58,
+        "flat": 58,
+        "tempo": 58,
+        "sprint": 58,
+        "acceleration": 58,
+        "punch": 58,
+        "endurance": 58,
+        "recovery": 58,
+        "durability": 58,
+        "descending": 58,
+        "cobblestone": 58,
+        "positioning": 58,
+        "aggression": 58,
+        "tactics": 58
+      },
+      "role": "helper",
+      "effort": "normal",
+      "condition": 1
+    }
+  ],
+  "orders": [],
+  "seed": "s5-6363-mellembjerg",
+  "tuning": {
+    "physiology": {
+      "cpWeights": {
+        "tempo": 0.45,
+        "endurance": 0.35,
+        "climbSpec": 0.2,
+        "tt": 0.2
+      },
+      "wprimeWeights": {
+        "punch": 0.4,
+        "accel": 0.3,
+        "sprint": 0.3
+      },
+      "rechargeRateBase": 0.0006,
+      "recoveryFloorFraction": 0.5
+    },
+    "dayform": {
+      "sd": 0.018,
+      "jourSansPBase": 0.03,
+      "jourSansFormLow": 40,
+      "jourSansFormHigh": 70,
+      "jourSansPMultLowform": 1.6666666666666667,
+      "jourSansPMultHighform": 0.6666666666666666,
+      "jourSansMagnitudeMin": 0.05,
+      "jourSansMagnitudeMax": 0.1
+    },
+    "work": {
+      "frontWorkFactor": {
+        "flat": 1,
+        "rolling": 1,
+        "climb": 1,
+        "descent": 1,
+        "cobbles": 1
+      },
+      "draftFactor": {
+        "flat": 0.55,
+        "rolling": 0.6,
+        "climb": 0.9,
+        "descent": 0.75,
+        "cobbles": 0.85
+      },
+      "frontFraction": 0.2
+    },
+    "terrain": {
+      "baseDemand": {
+        "flat": 0.55,
+        "rolling": 0.6,
+        "climb": 0.8,
+        "descent": 0.3,
+        "cobbles": 0.65
+      },
+      "baseSpeedKmh": {
+        "flat": 42,
+        "rolling": 36,
+        "climb": 18,
+        "descent": 55,
+        "cobbles": 32
+      },
+      "strengthSpeedGain": 0.12,
+      "speedMultiplierBounds": [
+        0.7,
+        1.3
+      ]
+    },
+    "groups": {
+      "mergeThresholdSeconds": 2,
+      "gapUpdateThresholdSeconds": 1
+    },
+    "selection": {
+      "deficitWeight": 1,
+      "energyDeficitWeight": 1,
+      "noiseSdBase": 0.15,
+      "splitThreshold": 0.12
+    },
+    "descent": {
+      "attackWindowSeconds": [
+        10,
+        20
+      ],
+      "minTechnicalityForAttack": 2,
+      "minAbilityGapForAttack": 15,
+      "incidentRiskBase": 0.01,
+      "incidentRiskDescendingDampening": 0.00015
+    },
+    "finale": {
+      "demandVectorByFinaleType": {
+        "bunch_sprint": {
+          "sprint": 0.5,
+          "acceleration": 0.2,
+          "positioning": 0.2,
+          "flat": 0.1
+        },
+        "reduced_sprint": {
+          "sprint": 0.35,
+          "acceleration": 0.2,
+          "punch": 0.15,
+          "positioning": 0.15,
+          "endurance": 0.15
+        },
+        "punch": {
+          "punch": 0.45,
+          "acceleration": 0.25,
+          "climbing": 0.15,
+          "tactics": 0.15
+        },
+        "breakaway": {
+          "aggression": 0.3,
+          "tempo": 0.25,
+          "endurance": 0.25,
+          "tactics": 0.2
+        },
+        "descent": {
+          "descending": 0.5,
+          "positioning": 0.2,
+          "aggression": 0.15,
+          "tactics": 0.15
+        },
+        "long_climb": {
+          "climbing": 0.55,
+          "endurance": 0.3,
+          "tempo": 0.15
+        },
+        "solo_tt": {
+          "time_trial": 0.6,
+          "tempo": 0.25,
+          "endurance": 0.15
+        },
+        "flat_sprint": {
+          "sprint": 0.5,
+          "acceleration": 0.2,
+          "positioning": 0.2,
+          "flat": 0.1
+        },
+        "uphill_sprint": {
+          "sprint": 0.35,
+          "acceleration": 0.25,
+          "positioning": 0.2,
+          "punch": 0.2
+        },
+        "wall_finish": {
+          "punch": 0.6,
+          "acceleration": 0.3,
+          "positioning": 0.1
+        }
+      }
+    },
+    "bonusSeconds": {
+      "finishSeconds": [
+        10,
+        6,
+        4
+      ],
+      "intermediateSeconds": [
+        3,
+        2,
+        1
+      ]
+    }
+  },
+  "rules_revision": "s5_profiles_v1"
+}

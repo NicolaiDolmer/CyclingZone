@@ -108,7 +108,7 @@ test("golden fixture: nedkoerselsfinale — bit-identitet + descent attack afgoe
 // `chase-1000`, snapshot i `peloton-0`). Guarden koeres paa ALLE fire fixtures,
 // fordi flat/punch/nedkoersel har hver sit merge-moenster — og fordi et frosset
 // expected.json ellers kan cementere netop den slags selvmodsigelse igen.
-for (const name of ["flat-massespurt", "bjerg-selektion", "punch-finale-forspring", "nedkoerselsfinale"]) {
+for (const name of ["flat-massespurt", "bjerg-selektion", "punch-finale-forspring", "nedkoerselsfinale", "mur-finale", "stigende-spurt", "mellembjerg"]) {
   test(`golden fixture: ${name} — hvert gruppeskift i tidslinjen staar i naeste snapshot (#4971)`, () => {
     const { input, expected } = loadFixture(name);
     for (const [label, output] of [["frosset expected.json", expected], ["frisk koersel", simulateStageV4(input)]] as const) {
@@ -130,6 +130,11 @@ const EXPECTED_WIN_TYPE: Record<string, string> = {
   "punch-finale-forspring": "solo_win",
   nedkoerselsfinale: "close_win",
   "itt-solo": "itt_win",
+  // #6363 (S5, s5_profiles_v1): muren afgoeres i en lille gruppe, den stigende spurt
+  // er en massespurt, mellembjergets bakke en taet finish.
+  "mur-finale": "close_win",
+  "stigende-spurt": "sprint_win",
+  mellembjerg: "close_win",
 };
 
 function finishOf(output: StageOutput) {
