@@ -11,3 +11,7 @@
 
 ## 3. GitHub-cron på ny workflow kørte ikke første morgen
 "Hvad brænder" (#6548) var registreret, men den planlagte kørsel kl. 08 kom ikke 13/10; manuel `workflow_dispatch` virkede. Tjekkes 14/10 morgen; en vagt er først færdig efter første verificerede planlagte kørsel.
+
+## 4. Deploy verify rød efter batch-merge, grøn på samme kode bagefter
+Merge-køen merged #6565, #6567 og #6568 inden for ca. 30 s. Deploy verify for alle tre SHA'er fejlede på "Backend /health/ready unavailable after bounded retries" (Railway genstartede tre gange i træk). De næste to verify-kørsler (40105b68, e364b36a), som indeholder samme kode, var grønne, og `/health/ready` svarede 200 kl. 18:45. Ingen fejl i koden; årsagen er overlappende deploys.
+**Læring:** Ved flere backend-PR'er: kør merge-køen med `-NoBatch`, så hver deploy verificeres før næste merge.
