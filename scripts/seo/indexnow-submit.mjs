@@ -65,7 +65,7 @@ export function buildPayload({ host, key, urls }) {
 
 // Noeglefilen er gyldig kun hvis body === noeglen (trimmet).
 export async function keyFileIsLive({ host, key, fetchImpl = fetch }) {
-  const res = await fetchImpl(`https://${host}/${key}.txt`, { redirect: "follow" });
+  const res = await fetchImpl(`https://${host}/${key}.txt`, { redirect: "follow", signal: AbortSignal.timeout(30_000) });
   if (!res.ok) return false;
   const body = (await res.text()).trim();
   return body === key;
@@ -87,7 +87,7 @@ export async function main({ env = process.env, fetchImpl = fetch, log = console
     throw new Error(`indexnow-submit: noeglefilen paa https://${host}/<key>.txt svarer ikke med noeglen - indsender ikke.`);
   }
 
-  const sitemapRes = await fetchImpl(`https://${host}/sitemap.xml`);
+  const sitemapRes = await fetchImpl(`https://${host}/sitemap.xml`, { signal: AbortSignal.timeout(30_000) });
   if (!sitemapRes.ok) {
     throw new Error(`indexnow-submit: sitemap.xml svarede ${sitemapRes.status}.`);
   }
@@ -100,6 +100,7 @@ export async function main({ env = process.env, fetchImpl = fetch, log = console
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8" },
     body: JSON.stringify(buildPayload({ host, key, urls })),
+    signal: AbortSignal.timeout(30_000),
   });
   // 200 = modtaget, 202 = modtaget, noeglevalidering afventer.
   if (res.status !== 200 && res.status !== 202) {
