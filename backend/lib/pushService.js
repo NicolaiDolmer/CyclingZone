@@ -35,6 +35,7 @@
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { normalizeLanguage, translate } from "./i18nServer.js";
 import { captureException } from "./sentry.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { readVapidConfig, sendWebPush, isValidPushEndpoint } from "./webPush.ts";
 
 export const PUSH_FLAG_KEY = "push_enabled";
@@ -57,7 +58,7 @@ export const RACE_DIGEST_SETTLE_MS = 90 * 60 * 1000;
 export const SWEEP_MAX_LOOKBACK_MS = 15 * 60 * 1000;
 export const DELIVERY_RETENTION_DAYS = 30;
 const SWEEP_BATCH = 500;
-const QUEUE_BATCH = 2000;
+const QUEUE_BATCH = 1000; // = PostgREST-loftet; resten tages i naeste tick
 // Et resumé taeller hoejst saa mange notifikationer pr. spiller (PostgREST-loftet er 1000).
 const DIGEST_LOOKUP_CAP = 500;
 const MAX_SUBSCRIPTION_FAILURES = 10;
@@ -438,29 +439,33 @@ function groupBy(rows, key) {
   return map;
 }
 
+// PostgREST svarer hoejst 1000 raekker, og lange .in()-lister giver for lange
+// URL'er: alle tre opslag chunkes (100 id'er) og pagineres (fetchAllRowsChunkedIn).
+// Ellers kunne en afkortet push_deliveries-liste give et for lavt doegntal og
+// dermed flere end PUSH_DAILY_CAP push til en spiller.
 async function loadRecipients(supabase, userIds, now) {
   if (!userIds.length) return { users: new Map(), subs: new Map(), sentToday: new Map() };
-  const { data: subRows, error: subErr } = await supabase
-    .from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth, failure_count").in("user_id", userIds);
-  if (subErr) throw new Error(`push_subscriptions: ${subErr.message}`);
-  const subs = groupBy(subRows ?? [], "user_id");
+  const subRows = await fetchAllRowsChunkedIn(userIds, (ids) =>
+    supabase.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth, failure_count").in("user_id", ids).order("id"),
+  );
+  const subs = groupBy(subRows, "user_id");
   const withSubs = [...subs.keys()];
   if (!withSubs.length) return { users: new Map(), subs, sentToday: new Map() };
 
   // schema-columns-ok: push_prefs + timezone tilfoejes af database/2026-10-13-6590-push-notifications.sql
   // (apply post-merge, #2642); snapshot opdateres efter apply. Sweepen er bag et flag der er off til da.
-  const { data: userRows, error: userErr } = await supabase
-    .from("users").select("id, language, timezone, push_prefs, role, is_beta_tester").in("id", withSubs);
-  if (userErr) throw new Error(`users: ${userErr.message}`);
-  const users = new Map((userRows ?? []).map((u) => [u.id, u]));
+  const userRows = await fetchAllRowsChunkedIn(withSubs, (ids) =>
+    supabase.from("users").select("id, language, timezone, push_prefs, role, is_beta_tester").in("id", ids).order("id"),
+  );
+  const users = new Map(userRows.map((u) => [u.id, u]));
 
   // Lidt over et doegn tilbage; det praecise doegn regnes i spillerens zone.
   const since = new Date(now.getTime() - 26 * 60 * 60 * 1000).toISOString();
-  const { data: deliveryRows, error: delErr } = await supabase
-    .from("push_deliveries").select("user_id, sent_at").in("user_id", withSubs).eq("status", "sent").gte("sent_at", since);
-  if (delErr) throw new Error(`push_deliveries: ${delErr.message}`);
+  const deliveryRows = await fetchAllRowsChunkedIn(withSubs, (ids) =>
+    supabase.from("push_deliveries").select("id, user_id, sent_at").in("user_id", ids).eq("status", "sent").gte("sent_at", since).order("id"),
+  );
   const sentToday = new Map();
-  for (const row of deliveryRows ?? []) {
+  for (const row of deliveryRows) {
     const user = users.get(row.user_id);
     const dayStart = startOfLocalDay(now, normalizeTimeZone(user?.timezone)).getTime();
     if (Date.parse(row.sent_at) >= dayStart) sentToday.set(row.user_id, (sentToday.get(row.user_id) ?? 0) + 1);

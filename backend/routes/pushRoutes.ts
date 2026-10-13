@@ -83,7 +83,8 @@ export function createPushRouter({
       const timezone = typeof req.body?.timezone === "string" ? req.body.timezone.trim() : "";
       if (timezone && isValidTimeZone(timezone)) {
         const { error: tzError } = await supabase.from("users").update({ timezone }).eq("id", userId);
-        if (tzError) throw new Error(`users.timezone: ${tzError.message}`);
+        // best-effort: abonnementet er allerede gemt; tidszonen er sekundaer (default Europe/Copenhagen).
+        if (tzError) reportError(new Error(`users.timezone: ${tzError.message}`), { tags: { route: "/push/subscriptions", method: "POST" } });
       }
       return res.json({ ok: true });
     } catch (error) {

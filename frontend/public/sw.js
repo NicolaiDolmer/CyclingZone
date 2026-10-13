@@ -192,6 +192,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
+  if (!data || typeof data !== "object") data = {};
   const title = typeof data.title === "string" && data.title ? data.title : "Cycling Zone";
   const tasks = [
     self.registration.showNotification(title, {
@@ -217,7 +218,7 @@ self.addEventListener("notificationclick", (event) => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const client of windows) {
         if (new URL(client.url).origin !== self.location.origin) continue;
-        await client.focus();
+        await client.focus().catch(() => {});
         if ("navigate" in client) await client.navigate(path).catch(() => {});
         return;
       }

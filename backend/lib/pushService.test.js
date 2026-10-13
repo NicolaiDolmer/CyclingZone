@@ -100,7 +100,7 @@ test("sendWebPush: browseren kan dekryptere, VAPID-JWT verificerer, headers er k
   };
   const payload = JSON.stringify({ title: "Hej", body: "Du er overbudt", tag: "auctions" });
   const result = await sendWebPush(
-    { endpoint: "https://push.example.invalid/send/abc", ...browser.keys },
+    { endpoint: "https://fcm.googleapis.com/fcm/send/abc", ...browser.keys },
     payload,
     vapid,
     { topic: "auctions", urgency: "high", ttlSeconds: 600, fetchImpl, nowSeconds: 1_800_000_000 },
@@ -118,7 +118,7 @@ test("sendWebPush: browseren kan dekryptere, VAPID-JWT verificerer, headers er k
   assert.equal(match[2], env.VAPID_PUBLIC_KEY);
   const [h, c, s] = match[1].split(".");
   const claims = JSON.parse(Buffer.from(c, "base64url").toString("utf8"));
-  assert.equal(claims.aud, "https://push.example.invalid");
+  assert.equal(claims.aud, "https://fcm.googleapis.com");
   assert.equal(claims.sub, env.VAPID_SUBJECT);
   assert.ok(claims.exp > 1_800_000_000 && claims.exp <= 1_800_000_000 + 24 * 3600);
   const pub = b64urlDecode(env.VAPID_PUBLIC_KEY);
@@ -131,12 +131,24 @@ test("sendWebPush: browseren kan dekryptere, VAPID-JWT verificerer, headers er k
 
 test("sendWebPush: 410 = abonnementet er vaek; netvaerksfejl kaster ikke", async () => {
   const vapid = readVapidConfig(makeVapidEnv());
-  const sub = { endpoint: "https://push.example.invalid/x", ...makeBrowserSubscription().keys };
+  const sub = { endpoint: "https://updates.push.services.mozilla.com/wpush/v2/x", ...makeBrowserSubscription().keys };
   assert.deepEqual(await sendWebPush(sub, "{}", vapid, { fetchImpl: async () => ({ status: 410 }) }), { status: 410, gone: true, ok: false });
   assert.deepEqual(
     await sendWebPush(sub, "{}", vapid, { fetchImpl: async () => { throw new Error("ECONNRESET"); } }),
     { status: 0, gone: false, ok: false },
   );
+});
+
+test("sendWebPush: server-side VAPID-fejl sletter IKKE abonnementet; ukendt push-vaert sendes aldrig", async () => {
+  const env = makeVapidEnv();
+  const broken = { publicKey: "AAAA", privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT };
+  const keys = makeBrowserSubscription().keys;
+  let called = 0;
+  const fetchImpl = async () => { called += 1; return { status: 201 }; };
+  assert.deepEqual(await sendWebPush({ endpoint: "https://fcm.googleapis.com/fcm/send/x", ...keys }, "{}", broken, { fetchImpl }), { status: 0, gone: false, ok: false });
+  const vapid = readVapidConfig(env);
+  assert.deepEqual(await sendWebPush({ endpoint: "https://10.0.0.1/x", ...keys }, "{}", vapid, { fetchImpl }), { status: 0, gone: true, ok: false });
+  assert.equal(called, 0);
 });
 
 test("readVapidConfig: mangler, forkert subject eller noeglepar der ikke haenger sammen = null", () => {
@@ -163,6 +175,9 @@ test("parseSubscription afviser http-endpoints og skaeve noegler", () => {
   const keys = makeBrowserSubscription().keys;
   assert.ok(parseSubscription({ endpoint: "https://fcm.googleapis.com/fcm/send/x", keys }));
   assert.equal(parseSubscription({ endpoint: "http://fcm.googleapis.com/x", keys }), null);
+  assert.equal(parseSubscription({ endpoint: "https://169.254.169.254/latest", keys }), null, "SSRF: kun kendte push-tjenester");
+  assert.equal(parseSubscription({ endpoint: "https://evil.example/fcm.googleapis.com", keys }), null);
+  assert.ok(parseSubscription({ endpoint: "https://web.push.apple.com/abc", keys }));
   assert.equal(parseSubscription({ endpoint: "https://fcm.googleapis.com/x", keys: { ...keys, auth: "short" } }), null);
 });
 

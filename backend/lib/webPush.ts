@@ -71,10 +71,14 @@ export function readVapidConfig(env: Record<string, string | undefined> = proces
     const ecdh = createECDH("prime256v1");
     ecdh.setPrivateKey(priv);
     if (!ecdh.getPublicKey().equals(pub)) return null;
+    // Byg signeringsnoeglen én gang nu: fejler den, staar sweepen stille i stedet
+    // for at fejle pr. besked.
+    buildVapidJwt("https://validate.invalid", { publicKey, privateKey: b64urlEncode(priv), subject });
   } catch {
     return null;
   }
-  return { publicKey, privateKey, subject };
+  // Normaliseret (uden "="-padding): JWK's d-felt kraever ren base64url.
+  return { publicKey: b64urlEncode(b64urlDecode(publicKey)), privateKey: b64urlEncode(b64urlDecode(privateKey)), subject };
 }
 
 function vapidKeyObject(config: VapidConfig): KeyObject {
@@ -166,14 +170,21 @@ export async function sendWebPush(
   config: VapidConfig,
   { ttlSeconds = 12 * 60 * 60, urgency = "normal", topic, fetchImpl = fetch, nowSeconds }: SendOptions = {},
 ): Promise<SendResult> {
+  // Endpoint uden for de kendte push-tjenester: send aldrig (SSRF-vaern), slet.
+  if (!isValidPushEndpoint(sub.endpoint)) return { status: 0, gone: true, ok: false };
   let body: Buffer;
   let authorization: string;
   try {
     body = encryptPayload(Buffer.from(payload, "utf8"), sub);
+  } catch {
+    // best-effort: ugyldige noegler i abonnementet kan aldrig lykkes, behandl som vaek.
+    return { status: 0, gone: true, ok: false };
+  }
+  try {
     authorization = vapidAuthorizationHeader(sub.endpoint, config, nowSeconds);
   } catch {
-    // Ugyldige noegler i abonnementet: det kan aldrig lykkes, behandl som vaek.
-    return { status: 0, gone: true, ok: false };
+    // best-effort: server-side VAPID-fejl er ikke abonnementets skyld; slet det ikke.
+    return { status: 0, gone: false, ok: false };
   }
   const headers: Record<string, string> = {
     "Content-Encoding": "aes128gcm",
@@ -196,12 +207,20 @@ export async function sendWebPush(
   }
 }
 
-/** Kun til endpoint-validering: kendte push-tjenester bruger altid https. */
+// Browsernes push-tjenester (Chrome/Edge-Android/Samsung = FCM, Firefox =
+// Mozilla autopush, Safari/iOS = Apple, Edge-desktop = WNS). Backenden POSTer
+// kun til disse, saa et forfalsket abonnement aldrig kan faa serveren til at
+// kalde en vilkaarlig adresse (SSRF).
+const PUSH_HOSTS = ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"];
+const PUSH_HOST_SUFFIXES = [".push.services.mozilla.com", ".push.apple.com", ".notify.windows.com"];
+
 export function isValidPushEndpoint(endpoint: unknown): endpoint is string {
   if (typeof endpoint !== "string" || endpoint.length > 2048) return false;
   try {
     const url = new URL(endpoint);
-    return url.protocol === "https:" && !!url.hostname;
+    if (url.protocol !== "https:" || url.port || url.username || url.password) return false;
+    const host = url.hostname.toLowerCase();
+    return PUSH_HOSTS.includes(host) || PUSH_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
   } catch {
     return false;
   }
