@@ -11,6 +11,8 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
+// S5 (#6359): matrixen (spec §3) og pladsholder-kilderne bor i Fase 0's ordforråd.
+import { isFinishAllowed as isFinishAllowedS5, S5_PLACEHOLDER_SOURCE_PROFILE } from "./stageProfileTypes.js";
 
 // FNV-1a 32-bit (lokal kopi af raceStageProfileGenerator.stableSeed — selvstændig fil).
 function stableSeed(str) {
@@ -463,6 +465,311 @@ function elevationGain(climbs, profileType, distanceKm) {
   // profiler (inkl. itt_hilly, ttt) bruger uændret det faste BASE_ELEVATION-opslag.
   const base = profileType === "itt" ? Math.round(distanceKm * ITT_ELEVATION_PER_KM) : (BASE_ELEVATION[profileType] ?? 300);
   return fromClimbs + base;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════
+// S5-etapeprofiler (#6359, Spor 1): stigningerne trækkes FØRST, typen afledes af dem.
+//
+// Spec: docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md (design-go ejer 12/10).
+// Byg-plan: docs/superpowers/plans/2026-10-13-s5-etapeprofiler-byg-plan.md, Spor 1.
+//
+// ROD-ÅRSAGEN (#6359). v5's CLIMB_SPEC trak stigningerne UD FRA en allerede valgt type med
+// overlappende spænd: en `hilly` kunne trække to lange kat. 2 (= mellembjerg efter ejerens
+// regel), en `mountain` kunne lande uden kat. 1. Typen og ruten sagde derfor to forskellige
+// ting om samme etape. S5-stien vender det om: et terræn-MÅL vælger en stignings-skabelon
+// hvis udfald altid opfylder netop dét terræns regel, og typen LÆSES bagefter af ruten med
+// deriveTerrainType (spec §2, B+). Skabelonerne overlapper ikke, så "type == B+(climbs)"
+// holder for hver etape - det er en egenskab testen håndhæver, ikke et håb.
+//
+// HVAD DER IKKE ÆNDRES. Alt ovenfor (v5-stien, attachRoute) er bit-identisk. S5-stien er en
+// SÆRSKILT indgang (attachRouteS5) som raceStageProfileGenerator.js kun kalder når
+// kalderen beder om S5-modellen (profileModel: "s5").
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Spec §2's længdegrænser for kat. 2.
+export const S5_CAT2_LONG_MIN_KM = 5;
+export const S5_CAT2_SINGLE_MEDIUM_MIN_KM = 8;
+const KM_EPS = 1e-9;
+
+/**
+ * Terræn-reglen B+ (spec §2, rettet på kort 5). Første regel der passer, oppefra:
+ *   højbjerg     ≥ 1 HC eller ≥ 3 × kat. 1
+ *   bjerg        ≥ 1 × kat. 1
+ *   mellembjerg  ≥ 2 × kat. 2 på mindst 5 km, eller 1 × kat. 2 på mindst 8 km,
+ *                eller kat. 2 på mindst 5 km som bjergtopmål
+ *   kuperet      kat. 3 eller kort kat. 2 (kat. 4 tæller ALDRIG mod kuperet)
+ *   bølget       2 × kat. 4
+ *   flad         højst 1 × kat. 4
+ * En kat. 2 der ikke opfylder mellembjerg-reglen, er "kort" i reglens forstand og tæller
+ * som kuperet (ellers ville en enlig 6 km kat. 2 gøre etapen flad).
+ *
+ * Ren funktion. Ukendte kategorier ignoreres.
+ * @param {Array<{category: string, length_km: number, summit_finish?: boolean}>} climbs
+ * @returns {"flat"|"rolling"|"hilly"|"medium_mountain"|"mountain"|"high_mountain"}
+ */
+export function deriveTerrainType(climbs = []) {
+  let hc = 0, cat1 = 0, cat2 = 0, cat2Long = 0, cat2Single = 0, cat3 = 0, cat4 = 0;
+  let cat2LongSummit = false;
+  for (const c of Array.isArray(climbs) ? climbs : []) {
+    const cat = String(c?.category ?? "");
+    const len = Number(c?.length_km);
+    if (cat === "HC") hc += 1;
+    else if (cat === "1") cat1 += 1;
+    else if (cat === "2") {
+      cat2 += 1;
+      if (Number.isFinite(len) && len >= S5_CAT2_LONG_MIN_KM - KM_EPS) {
+        cat2Long += 1;
+        if (c?.summit_finish === true) cat2LongSummit = true;
+        if (len >= S5_CAT2_SINGLE_MEDIUM_MIN_KM - KM_EPS) cat2Single += 1;
+      }
+    } else if (cat === "3") cat3 += 1;
+    else if (cat === "4") cat4 += 1;
+  }
+  if (hc >= 1 || cat1 >= 3) return "high_mountain";
+  if (cat1 >= 1) return "mountain";
+  if (cat2Long >= 2 || cat2Single >= 1 || cat2LongSummit) return "medium_mountain";
+  if (cat3 >= 1 || cat2 >= 1) return "hilly";
+  if (cat4 >= 2) return "rolling";
+  return "flat";
+}
+
+// Kort kat. 2 (spec §2): en stejl, kort stigning der er kat. 2 på grund af gradienten, ikke
+// længden. Altid under S5_CAT2_LONG_MIN_KM, så den aldrig udløser mellembjerg-reglen.
+const S5_SHORT_CAT2_PROFILE = Object.freeze({ length: [2.5, 4.5], grad: [7.0, 9.0] });
+// En enlig kat. 2 på et mellembjerg skal selv bære reglen (1 × kat. 2 på mindst 8 km).
+const S5_SINGLE_MEDIUM_CAT2_PROFILE = Object.freeze({ length: [S5_CAT2_SINGLE_MEDIUM_MIN_KM, 10], grad: [5.5, 7.5] });
+
+// Stignings-skabelon pr. terræn-mål. Hvert felt er [min, max] antal (uniformt) eller
+// `chance` (0/1-træk). Antallene er sat så gennemsnittet pr. etape følger benchmarkens 315
+// Grand Tour-etaper (docs/design/s5-benchmark/gt-2021-2025.json, kategori-strengene pr.
+// terræn), og så skabelonen ALDRIG kan lande i et andet terræn efter B+:
+//   flad:        højst én kat. 4
+//   bølget:      kun kat. 4, mindst to
+//   kuperet:     mindst én kat. 3; kat. 2 kun som kort kat. 2
+//   mellembjerg: ingen kat. 1/HC; mindst to lange kat. 2, eller én på mindst 8 km
+//   bjerg:       én eller to kat. 1, ingen HC
+//   højbjerg:    præcis én HC (v5's "én HC pr. højbjergetape" bevares, så GT'ens HC-total
+//                stadig er lig antallet af højbjergetaper, jf. buildClimbs ovenfor)
+export const S5_CLIMB_TEMPLATES = Object.freeze({
+  flat:            Object.freeze({ cat4: [0, 1] }),
+  rolling:         Object.freeze({ cat4: [2, 3] }),
+  hilly:           Object.freeze({ cat3: [1, 2], cat4: [0, 3], shortCat2Chance: 0.35 }),
+  medium_mountain: Object.freeze({ cat2: [1, 3], cat3: [0, 2], cat4Chance: 0.23 }),
+  mountain:        Object.freeze({ cat1: [1, 2], cat2: [0, 2], cat3: [0, 2], cat4Chance: 0.15 }),
+  high_mountain:   Object.freeze({ hc: [1, 1], cat1: [0, 3], cat2: [0, 1], cat3Chance: 0.39, cat4Chance: 0.18 }),
+});
+
+function drawCount(rng, range) { return range ? randInt(rng, range[0], range[1]) : 0; }
+function drawChance(rng, p) { return p ? (rng() < p ? 1 : 0) : 0; }
+
+function makeClimb(rng, category, profile = CAT_PROFILE[category]) {
+  return {
+    category,
+    length_km: randFloat(rng, profile.length[0], profile.length[1], 1),
+    avg_gradient: randFloat(rng, profile.grad[0], profile.grad[1], 1),
+  };
+}
+
+/**
+ * Træk stignings-SÆTTET (kategori, længde, gradient) for et terræn-mål, før placeringen.
+ * Rækkefølge: lettest først, hårdest sidst (samme "bygger mod klimaks" som buildClimbs).
+ * Ikke-terræn-typer (brosten, grus, klassiker, kuperet enkeltstart) bruger v5's
+ * kategori-pulje uændret; deres terræn læses af B+ bagefter.
+ */
+export function drawS5ClimbSet(rng, targetType) {
+  const tpl = S5_CLIMB_TEMPLATES[targetType];
+  const set = [];
+  if (!tpl) {
+    const spec = CLIMB_SPEC[targetType] ?? CLIMB_SPEC.flat;
+    const n = randInt(rng, spec.count[0], spec.count[1]);
+    for (let i = 0; i < n && spec.cats.length; i++) set.push(makeClimb(rng, spec.cats[randInt(rng, 0, spec.cats.length - 1)]));
+  } else {
+    const nHc = drawCount(rng, tpl.hc);
+    const n1 = drawCount(rng, tpl.cat1);
+    const n2 = drawCount(rng, tpl.cat2);
+    const nShort2 = drawChance(rng, tpl.shortCat2Chance);
+    const n3 = drawCount(rng, tpl.cat3) + drawChance(rng, tpl.cat3Chance);
+    const n4 = drawCount(rng, tpl.cat4) + drawChance(rng, tpl.cat4Chance);
+    for (let i = 0; i < n4; i++) set.push(makeClimb(rng, "4"));
+    for (let i = 0; i < n3; i++) set.push(makeClimb(rng, "3"));
+    for (let i = 0; i < nShort2; i++) set.push(makeClimb(rng, "2", S5_SHORT_CAT2_PROFILE));
+    const single = targetType === "medium_mountain" && n2 === 1;
+    for (let i = 0; i < n2; i++) set.push(makeClimb(rng, "2", single ? S5_SINGLE_MEDIUM_CAT2_PROFILE : CAT_PROFILE["2"]));
+    for (let i = 0; i < n1; i++) set.push(makeClimb(rng, "1"));
+    for (let i = 0; i < nHc; i++) set.push(makeClimb(rng, "HC"));
+  }
+  // Stabil sortering: kategori (lettest først), inden for kategori kortest først, så den
+  // længste af den hårdeste kategori bliver klimakset.
+  return set
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => (CAT_ORDER[b.c.category] - CAT_ORDER[a.c.category]) || (a.c.length_km - b.c.length_km) || (a.i - b.i))
+    .map(({ c }) => c);
+}
+
+// ── Afslutningen (spec §3): geometri, ikke udfald ─────────────────────────────────
+//
+// Nedkørsel: sidste top 5-25 km før mål, og den top er kat. 3 eller hårdere (kort 5).
+export const S5_DESCENT_TOP_WINDOW_KM = Object.freeze([5, 25]);
+// Alle andre landevejs-afslutninger: sidste kategoriserede top ligger UDEN FOR
+// nedkørsels-vinduet ("flad spurt langt efter sidste top", spec §3), så en flad spurt
+// aldrig ligner en nedkørsels-etape i ruten.
+const S5_OPEN_FINISH_LAST_TOP_KM = Object.freeze([26, 45]);
+// Afslutnings-rampen for de tre korte opad-afslutninger (spec §3). Rampen er IKKE en
+// kategoriseret stigning: den er afslutningens egen akse og flytter aldrig terrænet.
+export const S5_FINISH_RAMPS = Object.freeze({
+  uphill_sprint: Object.freeze({ length: [0.5, 1.0], grad: [2.0, 5.0] }),
+  wall_finish:   Object.freeze({ length: [0.5, 1.4], grad: [10.0, 20.0] }),
+  punch:         Object.freeze({ length: [1.0, 3.0], grad: [5.0, 8.0] }),
+});
+// Bjergtop pr. terræn (spec §3): hvilken kategori målstigningen skal have.
+export const S5_SUMMIT_CATEGORIES = Object.freeze({
+  medium_mountain: Object.freeze(["2"]),
+  mountain: Object.freeze(["1"]),
+  high_mountain: Object.freeze(["1", "HC"]),
+});
+
+// Vejens ikke-kategoriserede bølgen (#6366): højdemeter pr. km UDEN FOR de kategoriserede
+// stigninger. ÉT tal for alle etaper, så højdemeterne beskriver ruten (distance +
+// stigninger + afslutnings-rampe) og ikke etiketten - v5's BASE_ELEVATION gav hver TYPE et
+// fast grundtal uanset ruten. Tallet er fundet ved mindste kvadraters tilpasning af
+// benchmarkens højdemeter mod distance og stigningernes egen stigning; stignings-leddet
+// landede selv på ~1, hvilket er det modellen forudsætter.
+export const S5_ROAD_UNDULATION_M_PER_KM = 8;
+
+function climbGainM(lengthKm, gradientPct) {
+  return Math.round((Number(lengthKm) * 1000 * Number(gradientPct)) / 100);
+}
+
+export function elevationGainS5({ climbs = [], distanceKm = 0, finishRamp = null } = {}) {
+  const fromClimbs = climbs.reduce((s, c) => s + climbGainM(c.length_km, c.avg_gradient), 0);
+  const fromRamp = finishRamp ? climbGainM(finishRamp.ramp_km, finishRamp.ramp_gradient) : 0;
+  return fromClimbs + fromRamp + Math.round(Number(distanceKm) * S5_ROAD_UNDULATION_M_PER_KM);
+}
+
+/** Kaster hvis (terræn, afslutning) ligger uden for matrixen (spec §3). */
+export function assertFinishAllowed(terrain, finish) {
+  if (!isFinishAllowedS5(terrain, finish)) {
+    throw new Error(`S5 matrix: finish "${finish}" is not allowed on terrain "${terrain}" (spec §3)`);
+  }
+}
+
+// Placér stignings-sættet på ruten givet afslutningen. Den sidste stigning i sættet er
+// klimakset. Bjergtop: klimakset topper på stregen. Nedkørsel: klimakset topper 5-25 km
+// før mål. Andre: klimakset topper 26-45 km før mål. De øvrige stigninger fordeles med
+// tilfældige mellemrum mellem km 5 og klimaksets fod, så stigningerne aldrig overlapper.
+function placeS5Climbs(rng, set, finish, distanceKm, namer) {
+  if (!set.length) return [];
+  const n = set.length;
+  const last = set[n - 1];
+  let lastCrest;
+  if (finish === "long_climb") lastCrest = distanceKm;
+  else if (finish === "descent") lastCrest = distanceKm - randInt(rng, S5_DESCENT_TOP_WINDOW_KM[0], S5_DESCENT_TOP_WINDOW_KM[1]);
+  else lastCrest = distanceKm - randInt(rng, S5_OPEN_FINISH_LAST_TOP_KM[0], S5_OPEN_FINISH_LAST_TOP_KM[1]);
+  const anchor = lastCrest - last.length_km; // klimaksets fod
+  const START_KM = 5;
+  const bodyLen = set.slice(0, -1).reduce((s, c) => s + c.length_km, 0);
+  const free = Math.max(0, anchor - START_KM - bodyLen);
+  const weights = Array.from({ length: n }, () => 0.2 + rng());
+  const wSum = weights.reduce((s, w) => s + w, 0);
+  const climbs = [];
+  let cursor = START_KM + (free * weights[0]) / wSum;
+  for (let i = 0; i < n - 1; i++) {
+    const c = set[i];
+    const crest = cursor + c.length_km;
+    climbs.push({ name: namer.climb(), category: c.category, crest_km: Math.round(crest), length_km: c.length_km, avg_gradient: c.avg_gradient, summit_finish: false });
+    cursor = crest + (free * weights[i + 1]) / wSum;
+  }
+  climbs.push({
+    name: namer.climb(), category: last.category, crest_km: Math.round(lastCrest),
+    length_km: last.length_km, avg_gradient: last.avg_gradient, summit_finish: finish === "long_climb",
+  });
+  return climbs;
+}
+
+/** Bandopslag for S5: mellembjerg har (endnu) intet eget bånd og bruger sin pladsholder-kilde. */
+function s5BandKey(profileType) {
+  return S5_PLACEHOLDER_SOURCE_PROFILE[profileType] ?? profileType;
+}
+
+/**
+ * S5-rute (pass 2) for én etape. Stigningerne trækkes først, terrænet læses af dem (B+),
+ * afslutningen vælges INDEN FOR matrixen af `chooseFinish(terrain)`, og først derefter
+ * placeres stigningerne efter afslutningens geometri. Ren og deterministisk: samme
+ * rute-rng-strøm (seed + ":route:" + etape) som v5, men en anden rækkefølge af træk.
+ *
+ * @param {{stage_number:number, profile_type:string}} stage  profile_type = terræn-målet
+ * @param {object} race
+ * @param {boolean} isStageRace
+ * @param {{ chooseFinish: (terrain: string) => string, shortItt?: boolean }} opts
+ *   chooseFinish  vælger afslutningen for det afledte terræn (tidskørsler: "solo_tt")
+ *   shortItt      Grand Tour-ugestrukturens korte enkeltstart (spec §5): prolog-båndet
+ * @returns {{distance_km, elevation_gain_m, climbs, sprints, sectors, terrain, finale_type}}
+ */
+export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt = false } = {}) {
+  const target = stage.profile_type;
+  const rng = makeRng(stableSeed(routeSeedKey(race, stage.stage_number)));
+  const namer = makeRegionNamer(rng, regionOf(race?.name));
+  const isGrandTour = isStageRace && race?.terrain_archetype === GRAND_TOUR_ARCHETYPE;
+  const bandKey = s5BandKey(target);
+
+  // Distance: samme bånd og samme forrangsregler som attachRoute (GT > klasse > terræn).
+  // Den korte enkeltstart i en Grand Tour er ALTID prolog-båndet (spec §5: "én kort
+  // enkeltstart tidligt"); ellers gælder v5's prolog-træk for etape 1.
+  const isProlog = target === "itt" && isStageRace && (shortItt || (stage.stage_number === 1 && rng() < PROLOGUE_PROBABILITY));
+  const classBand = !isStageRace && race?.race_class ? CLASS_DISTANCE_BANDS[race.race_class] : null;
+  const prologueBand = isGrandTour ? GRAND_TOUR_PROLOGUE_DISTANCE_BAND : PROLOGUE_DISTANCE_BAND;
+  const grandTourBand = isGrandTour ? GRAND_TOUR_DISTANCE_BANDS[bandKey] : null;
+  const [lo, hi] = isProlog ? prologueBand : (classBand ?? grandTourBand ?? DISTANCE_BANDS[bandKey] ?? DISTANCE_BANDS.flat);
+  let distance_km = isTimeTrialProfile(target) ? randInt(rng, lo, hi) : round5(randInt(rng, lo, hi));
+  if (distance_km < lo) distance_km = lo;
+  if (distance_km > hi) distance_km = hi;
+
+  // Tidskørsler: v5's stigninger (en kuperet enkeltstart har 1-2 små stigninger) og ingen
+  // terræn-matrix (spec §3: enkeltstart/holdtidskørsel står uden for matrixen).
+  if (isTimeTrialProfile(target)) {
+    const climbs = buildClimbs(rng, target, "solo_tt", distance_km, namer);
+    const sprints = buildSprints(rng, target, "solo_tt", distance_km, isStageRace, climbs);
+    return {
+      distance_km, elevation_gain_m: elevationGainS5({ climbs, distanceKm: distance_km }),
+      climbs, sprints, sectors: [], terrain: deriveTerrainType(climbs), finale_type: "solo_tt",
+    };
+  }
+
+  const set = drawS5ClimbSet(rng, target);
+  // Terrænet læses af SÆTTET før placeringen. Placeringen kan kun tilføje bjergtop-
+  // tilfældet af mellembjerg-reglen, og afslutningen vælges inden for matrixen af netop
+  // dette terræn, så det endelige B+ nedenfor er altid det samme (testen håndhæver det).
+  const terrain = deriveTerrainType(set);
+  const finale_type = chooseFinish(terrain);
+  assertFinishAllowed(terrain, finale_type);
+  if (finale_type === "long_climb") {
+    const summitCat = set.length ? set[set.length - 1].category : null;
+    if (!(S5_SUMMIT_CATEGORIES[terrain] ?? []).includes(summitCat)) {
+      throw new Error(`S5 matrix: summit finish on "${terrain}" requires category ${(S5_SUMMIT_CATEGORIES[terrain] ?? []).join("/")}, got "${summitCat}"`);
+    }
+  }
+  if (finale_type === "descent") {
+    const topCat = set.length ? set[set.length - 1].category : null;
+    if (!(topCat in CAT_ORDER) || CAT_ORDER[topCat] > CAT_ORDER["3"]) {
+      throw new Error(`S5 matrix: descent finish requires a last top of category 3 or harder, got "${topCat}"`);
+    }
+  }
+  const climbs = placeS5Climbs(rng, set, finale_type, distance_km, namer);
+
+  const rampSpec = S5_FINISH_RAMPS[finale_type];
+  const finishRamp = rampSpec
+    ? { ramp_km: randFloat(rng, rampSpec.length[0], rampSpec.length[1], 1), ramp_gradient: randFloat(rng, rampSpec.grad[0], rampSpec.grad[1], 1) }
+    : null;
+  const sprints = buildSprints(rng, target, finale_type, distance_km, isStageRace, climbs)
+    .map((s) => (s.kind === "finish" && finishRamp ? { ...s, ...finishRamp } : s));
+  const sectors = buildSectors(rng, target, distance_km, namer);
+  return {
+    distance_km,
+    elevation_gain_m: elevationGainS5({ climbs, distanceKm: distance_km, finishRamp }),
+    climbs, sprints, sectors,
+    terrain: deriveTerrainType(climbs),
+    finale_type,
+  };
 }
 
 /**
