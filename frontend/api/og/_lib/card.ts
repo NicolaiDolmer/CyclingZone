@@ -150,7 +150,8 @@ export function layoutStage(route: StageRoute, lang: Lang = "en") {
   // 4) Km-ticks: 5-10 stk., runde tal.
   const stepKm = [5, 10, 20, 25, 50, 100].find((s) => D / s <= 10) ?? 100;
   const ticks: { km: number; px: number }[] = [];
-  for (let k = 0; k < D - stepKm * 0.35; k += stepKm) ticks.push({ km: k, px: X(k) });
+  // Ingen tick så tæt på målet at den rammer slut-etiketten ("210 km", højrestillet).
+  for (let k = 0; k < D && W - X(k) >= 84; k += stepKm) ticks.push({ km: k, px: X(k) });
 
   return { terrain, fills, outline, flags, rollingBands, cobbleBands, sprints, ticks, X, Y, W, baseline };
 }
