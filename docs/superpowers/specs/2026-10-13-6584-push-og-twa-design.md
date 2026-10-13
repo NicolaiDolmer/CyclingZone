@@ -102,6 +102,8 @@ create index if not exists push_subscriptions_user_idx on public.push_subscripti
 alter table public.push_subscriptions enable row level security;
 -- Spilleren må se og slette sine egne; indsættelse sker via backend (service role),
 -- så endpoint/nøgler valideres ét sted.
+drop policy if exists push_subscriptions_select_own on public.push_subscriptions;
+drop policy if exists push_subscriptions_delete_own on public.push_subscriptions;
 create policy push_subscriptions_select_own on public.push_subscriptions
   for select using (auth.uid() = user_id);
 create policy push_subscriptions_delete_own on public.push_subscriptions
