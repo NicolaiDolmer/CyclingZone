@@ -25,6 +25,7 @@
 
 import { isS5ProfilesV1OrLater } from "../../raceEngineRulesRevision.ts";
 import { S5_PROFILES_TUNING } from "./tuning.ts";
+import { lateAttackChance, lateAttackSegmentIndex } from "./mechanics/lateAttack.ts";
 import type { AbilityKey, FinaleType, ProfileType, RouteV2, Segment, StageInput } from "./types.ts";
 
 /** De nye S5-finaler og den gamle finale hver af dem afloeser (aeldre revisioner). */
@@ -73,8 +74,25 @@ export function routeForRulesRevision(route: RouteV2, revision: unknown): RouteV
     finale = S5_LEGACY_FINALE[finale];
   }
   const profile = route.profile_type === "medium_mountain" ? mediumMountainBucket(finale) : route.profile_type;
-  if (profile === route.profile_type && finale === route.finale_type) return route;
-  return { ...route, profile_type: profile, finale_type: finale };
+  const typed = profile === route.profile_type && finale === route.finale_type ? route : { ...route, profile_type: profile, finale_type: finale };
+  return s5 ? withLateAttackBoundary(typed) : typed;
+}
+
+/**
+ * #6368 (KUN S5): det sene angreb sker paa et segment der slutter 5-15 km fra maal
+ * (mechanics/lateAttack.ts). Har ruten ingen segmentgraense dér (et langt fladt
+ * eller rullende stykke ind til maal), deles det stykke `splitAtKmToGo` fra maal.
+ * Kun naar terraenet giver angrebet; ellers samme objekt.
+ */
+function withLateAttackBoundary(route: RouteV2): RouteV2 {
+  if (!(lateAttackChance(route) > 0) || lateAttackSegmentIndex(route) >= 0) return route;
+  const finishKm = route.distance_km > 0 ? route.distance_km : route.segments[route.segments.length - 1]?.to_km ?? 0;
+  const at = Math.round((finishKm - S5_PROFILES_TUNING.lateAttack.splitAtKmToGo) * 100) / 100;
+  const index = route.segments.findIndex((s) => s.from_km < at - 1 && s.to_km > at + 1);
+  const seg = index >= 0 ? route.segments[index] : undefined;
+  if (!seg || (seg.kind !== "flat" && seg.kind !== "rolling")) return route;
+  const segments = [...route.segments.slice(0, index), { ...seg, to_km: at }, { ...seg, from_km: at }, ...route.segments.slice(index + 1)];
+  return { ...route, segments };
 }
 
 /** StageInput med ruten oversat til revisionen (samme objekt naar intet aendres). */

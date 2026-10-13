@@ -1079,6 +1079,30 @@ const s5Profiles = {
   hybridDurabilityFullPriorClimbs: 4,
   // En stigning der slutter mindst saa mange km foer maal er "tidligere" (ikke selve finalestigningen).
   priorClimbMinKmBeforeFinish: 0.5,
+  // #6368: det sene soloangreb (mechanics/lateAttack.ts) som motoradfaerd i stedet
+  // for en udbrudsfinale. Udbrudsfinalens gamle evne-vaegte er angrebets evne; paa
+  // brosten/grus taeller brostensevnen med. Angrebet sker paa det sidste segment der
+  // slutter `windowKm` fra maal (ikke en nedkoersel, ikke finalesegmentet); s5Profiles.ts
+  // laegger en segmentgraense i vinduet naar ruten ingen har. Chancen er pr. etape
+  // (én seedet lodtraekning) og afhaenger af underlaget/terraenet. Gevinsten er
+  // angriberens forspring paa nr. 2 i gruppen gange `gainSecondsPerScoreUnit`,
+  // clampet; et for lille forspring bliver ikke til et angreb. Resten afgoeres af
+  // motorens egen jagt (tempo-modellen og finalens jagt-mod-flugt).
+  lateAttack: {
+    windowKm: [5, 15] as readonly [number, number],
+    splitAtKmToGo: 10,
+    demand: { aggression: 0.3, tempo: 0.25, endurance: 0.25, tactics: 0.2 } as Partial<Record<import("./types.ts").AbilityKey, number>>,
+    sectorDemand: { cobblestone: 0.25 } as Partial<Record<import("./types.ts").AbilityKey, number>>,
+    reserveWeight: 0.15,
+    chanceWithSectors: 0.55,
+    chanceHilly: 0.3,
+    hillyProfiles: ["rolling", "hilly", "classic", "cobbles", "gravel"] as readonly ProfileType[],
+    excludedFinales: ["flat_sprint", "long_climb", "descent", "solo_tt"] as readonly import("./types.ts").FinaleType[],
+    minGroupRiders: 5,
+    gainSecondsPerScoreUnit: 400,
+    minGainSeconds: 8,
+    maxGainSeconds: 45,
+  },
   // Mellembjerg i motorens terraen-bucket: kuperet-mekanikken (spec §5: mellembjergets
   // tidsgab ligger som kuperets), bjerg-mekanikken naar etapen ender paa toppen.
   mediumMountainBucket: "hilly" as ProfileType,
