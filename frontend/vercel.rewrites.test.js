@@ -211,7 +211,7 @@ test("hver top-level rute i App.jsx serveres af SPA-fallback (#6557)", () => {
   }
 });
 
-test("app-skallen er noindex, 404-siden er noindex, robots.txt blokerer app-ruter men ikke offentlige (#6557)", () => {
+test("app-skallen er noindex, 404-siden er noindex, robots.txt blokerer kun /api/ (#6557)", () => {
   const indexHtml = readFileSync(join(here, "index.html"), "utf8");
   assert.match(indexHtml, /<meta\s+name="robots"\s+content="noindex"\s*\/?>/);
   const notFound = readFileSync(join(here, "public", "404.html"), "utf8");
@@ -219,8 +219,10 @@ test("app-skallen er noindex, 404-siden er noindex, robots.txt blokerer app-rute
 
   const robots = readFileSync(join(here, "public", "robots.txt"), "utf8");
   const disallows = robots.split(/\r?\n/).filter((l) => l.startsWith("Disallow:")).map((l) => l.slice(9).trim());
-  for (const blocked of ["/dashboard", "/admin", "/api/", "/riders/1", "/pro"]) {
-    assert.ok(disallows.some((d) => robotsRuleMatches(d, blocked)), `${blocked} skal være Disallow i robots.txt`);
+  assert.ok(disallows.some((d) => robotsRuleMatches(d, "/api/x")), "/api/ skal være Disallow i robots.txt");
+  // App-ruter maa IKKE vaere Disallow: saa kan crawleren ikke se noindex i app-skallen.
+  for (const appRoute of ["/dashboard", "/admin", "/riders/1", "/pro"]) {
+    assert.ok(!disallows.some((d) => robotsRuleMatches(d, appRoute)), `${appRoute} maa ikke være Disallow (noindex skal kunne ses)`);
   }
   const sitemap = readFileSync(join(here, "public", "sitemap.xml"), "utf8");
   for (const [, loc] of sitemap.matchAll(/<loc>https:\/\/cyclingzone\.org([^<]*)<\/loc>/g)) {
