@@ -283,6 +283,18 @@ Alt andet om kampagnen er ubesluttet. **Opfind ikke datoer, budgetter eller kana
 
 > Dato-drift afklaret 8/9: 27/9 er sidste S3-dag (søndag), 28/9 er første S4-dag (mandag). Tekster der siger 'sæsonen starter 28/9' er korrekte; tekster der siger 'sæsonskiftet 27/9' mener sidste dag i S3.
 
+### 6.2 Delbare billeder: road book pr. etape (#6574)
+
+Kontrakten for det delbare etapebillede (1200x630 PNG, til `og:image`, opslag og en "Del"-knap):
+
+- **Endpoint:** `GET /api/og/stage?id=<race_stage_profiles.id>[&lang=da]` (Vercel edge, `frontend/api/og/stage.ts`). EN som standard. URL'en bærer kun etape-id og sprog, aldrig kurven.
+- **Datakilde:** etapens række i `race_stage_profiles`, hentet server-side fra backendens offentlige, read-only `GET /api/public/stage-route/:stageId` (`backend/routes/publicStageRoute.js`). Svaret er whitelistet til det etapesiden viser (rute, stigninger, sprints, brosten, løbsnavn, etapenummer); intet om hold, ryttere, motorvægte eller vejr. Valgt frem for en service-nøgle i Vercel eller anon-adgang til tabellen: ingen hemmelighed i funktionen og ingen ny databaseflade.
+- **Ægte terræn (ejer 13/10):** profilen tegnes kun af rutens egne data (`segments` + `climbs`). Stigning = ret rampe med stigningens gennemsnitsprocent; nedkørsel = fald med samme loft som etapesiden; flad, bølget og brosten = vandret linje, markeret i km-båndet. Ingen dekorative bølger. Etapens højdemeter står som tal. Ældre rækker uden `segments` får ramper fra `climbs` og en afledt nedkørsel efter hver top.
+- **Stil:** P2 fra designlærredet (Idea 7) og den fælles road book-skala fra #6570 (under 3 / 3-6 / 6-8 / 8-10 / over 10 %, nedkørsel dæmpet). Egne løbsnavne, aldrig rigtige løbs varemærker.
+- **Cache og pris:** `s-maxage` et døgn + `stale-while-revalidate`; backend-svaret 1 time på delt cache. 0 kr. ekstra (Vercel OG + eksisterende Railway). Fejl caches aldrig.
+- **Demo:** `?demo=high|hilly|flat|cobbles` viser faste udsnit af rigtige etaper (kun rigtige profildata).
+- **Ikke bygget endnu:** "Del"-knap på etapesiden og `og:image` på etape-links (SPA'en har ingen server-side meta pr. rute).
+
 ## 7. Brugerforståelse
 
 Tallene siger hvor folk falder fra. De siger ikke hvorfor. Interviews er det andet ben.

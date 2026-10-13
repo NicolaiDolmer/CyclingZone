@@ -34,5 +34,6 @@
     "allowImportingTsExtensions": true,
     "types": ["vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  // api/ = Vercel-funktionerne (#6574 road book-billedet); samme strict-daekning som src/.
+  "include": ["src/**/*.ts", "src/**/*.tsx", "api/**/*.ts"]
 }
