@@ -84,7 +84,7 @@ import { fetchAllRows } from "./supabasePagination.js"; // #6551
 // rækker der lå over loftet, så skjulte ryttere slap ind i shortlisten og blev
 // fjernet igen ved visning (tom rapport).
 export async function defaultLoadCandidates(supabase, targetPool = "free_agents", seasonNumber = null) {
-  const buildRidersQuery = () => {
+  const loadRiders = () => fetchAllRows(() => {
     const query = supabase
       .from("riders")
       // #3657: primary_type tilføjet — driver den nye scope:"type"-targeting i
@@ -99,10 +99,10 @@ export async function defaultLoadCandidates(supabase, targetPool = "free_agents"
       ? query.not("team_id", "is", null) // #2644 del 2: kun ryttere PÅ et hold
       : query.is("team_id", null); // free_agents (default): kun kontraktfrie
     return scoped.order("id");
-  };
+  });
 
   const [data, offered] = await Promise.all([
-    fetchAllRows(buildRidersQuery).catch((error) => {
+    loadRiders().catch((error) => {
       throw new Error(`scoutMissionMaturation: candidate riders load failed: ${error.message}`);
     }),
     fetchAllRows(() => supabase.from("academy_intake").select("rider_id").eq("status", "offered").order("id")).catch((error) => {
