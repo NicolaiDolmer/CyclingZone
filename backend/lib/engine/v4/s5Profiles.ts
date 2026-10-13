@@ -54,6 +54,26 @@ const S5_TERRAIN_FINALE: Readonly<Partial<Record<ProfileType, FinaleType>>> = Ob
   gravel: "reduced_sprint",
 });
 
+/** Index for starten af den sidste blok af sammenhaengende stigninger, naar etapen ender paa en stigning; ellers -1. */
+function finalClimbBlockStart(segs: readonly Segment[]): number {
+  if (segs.length === 0 || segs[segs.length - 1].kind !== "climb") return -1;
+  let start = segs.length - 1;
+  while (start > 0 && segs[start - 1].kind === "climb") start--;
+  return start;
+}
+
+/**
+ * Terraenets finale for en S5-etape maerket "breakaway". Et mellembjerg der ender
+ * paa en kat. 2-top (eller haardere) er en bjergtop, ikke en bakke (spec §3).
+ */
+function s5TerrainFinale(route: Pick<RouteV2, "profile_type" | "segments">): FinaleType | null {
+  if (route.profile_type === "medium_mountain") {
+    const last = route.segments[route.segments.length - 1];
+    if (last?.kind === "climb" && (last.category === "HC" || last.category === "1" || last.category === "2")) return "long_climb";
+  }
+  return S5_TERRAIN_FINALE[route.profile_type] ?? null;
+}
+
 function isS5Finale(finale: FinaleType | null): finale is keyof typeof S5_LEGACY_FINALE {
   return finale === "flat_sprint" || finale === "uphill_sprint" || finale === "wall_finish";
 }
@@ -72,7 +92,7 @@ export function routeForRulesRevision(route: RouteV2, revision: unknown): RouteV
   const s5 = isS5ProfilesV1OrLater(revision);
   let finale = route.finale_type;
   if (s5) {
-    if (finale === "breakaway") finale = S5_TERRAIN_FINALE[route.profile_type] ?? null;
+    if (finale === "breakaway") finale = s5TerrainFinale(route);
   } else if (isS5Finale(finale)) {
     finale = S5_LEGACY_FINALE[finale];
   }
@@ -109,29 +129,43 @@ export function stageInputForRulesRevision(input: StageInput): StageInput {
  * bakke, stigende spurt: de finaler der har et S5-grundsaet), dvs. den sidste blok
  * af sammenhaengende stigninger naar etapen ender paa en stigning? Dér afgoeres
  * etapen af finalen (finale.ts, demand-vektoren), ikke af klatre-selektionen:
- * klatring indgaar ikke i mur-finalen (spec §4). Kun s5_profiles_v1 spoerger.
+ * klatring indgaar ikke i mur-finalen (spec §4). Kun de segmenter i blokken der
+ * ligger inden for de sidste `explosiveFinaleMaxKm`: en lang sammenhaengende
+ * stigning foer selve afslutningen beholder selektionen. Kun s5_profiles_v1 spoerger.
  */
-export function isS5ExplosiveFinaleClimb(route: Pick<RouteV2, "finale_type" | "segments">, segmentIndex: number): boolean {
+export function isS5ExplosiveFinaleClimb(route: Pick<RouteV2, "finale_type" | "segments" | "distance_km">, segmentIndex: number): boolean {
   const finale = route.finale_type;
   if (!finale || !S5_PROFILES_TUNING.finaleBase[finale]) return false;
   const segs = route.segments;
-  if (segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
-  let start = segs.length - 1;
-  while (start > 0 && segs[start - 1].kind === "climb") start--;
-  return segmentIndex >= start && segs[segmentIndex]?.kind === "climb";
+  const start = finalClimbBlockStart(segs);
+  if (start < 0 || segmentIndex < start || segs[segmentIndex]?.kind !== "climb") return false;
+  const finishKm = route.distance_km > 0 ? route.distance_km : segs[segs.length - 1].to_km;
+  return segs[segmentIndex].to_km > finishKm - S5_PROFILES_TUNING.explosiveFinaleMaxKm;
 }
 
 /**
- * Antal kategoriserede stigninger FOER finalen: stignings-segmenter der slutter
- * mindst `priorClimbMinKmBeforeFinish` foer maal (selve mur-/bakke-stigningen
- * taeller ikke). Segmenterne er motorens sandhed; waypoints kan mangle.
+ * Antal kategoriserede stigninger FOER finalen: blokke af sammenhaengende
+ * stignings-segmenter (én stigning kan vaere delt i flere segmenter) foer etapens
+ * finalestigning. Ender etapen ikke paa en stigning, taeller alle blokke der slutter
+ * mindst `priorClimbMinKmBeforeFinish` foer maal. Segmenterne er motorens sandhed;
+ * waypoints kan mangle.
  */
 export function priorCategorizedClimbs(route: Pick<RouteV2, "distance_km" | "segments">): number {
+  const segs = route.segments;
   const finishKm = Number.isFinite(route.distance_km) && route.distance_km > 0
     ? route.distance_km
-    : route.segments[route.segments.length - 1]?.to_km ?? 0;
+    : segs[segs.length - 1]?.to_km ?? 0;
+  const finalStart = finalClimbBlockStart(segs);
+  const end = finalStart >= 0 ? finalStart : segs.length;
   const limit = finishKm - S5_PROFILES_TUNING.priorClimbMinKmBeforeFinish;
-  return route.segments.filter((s: Segment) => s.kind === "climb" && s.to_km <= limit).length;
+  let blocks = 0;
+  for (let i = 0; i < end; i++) {
+    const s = segs[i];
+    if (s.kind !== "climb" || s.to_km > limit) continue;
+    if (i > 0 && segs[i - 1].kind === "climb") continue; // samme stigning, delt i segmenter
+    blocks++;
+  }
+  return blocks;
 }
 
 /**

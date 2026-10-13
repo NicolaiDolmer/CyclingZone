@@ -1079,6 +1079,9 @@ const s5Profiles = {
   hybridDurabilityFullPriorClimbs: 4,
   // En stigning der slutter mindst saa mange km foer maal er "tidligere" (ikke selve finalestigningen).
   priorClimbMinKmBeforeFinish: 0.5,
+  // Kun finalestigningens sidste km afgoeres af finalen i stedet for klatre-selektionen
+  // (en mur er under 1,5 km, en bakke 1-3 km, spec §3).
+  explosiveFinaleMaxKm: 3,
   // #6368: det sene soloangreb (mechanics/lateAttack.ts) som motoradfaerd i stedet
   // for en udbrudsfinale. Udbrudsfinalens gamle evne-vaegte er angrebets evne; paa
   // brosten/grus taeller brostensevnen med. Angrebet sker paa det sidste segment der

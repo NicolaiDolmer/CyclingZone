@@ -114,7 +114,8 @@ test("#6363: hybriden gaar til punch ved 0-1 tidligere stigninger og glider mono
 test("#6363: mur, bakke og stigende spurt = grundsaet + 20 points hybrid; ingen klatring i muren", () => {
   const sum = (v: Partial<Record<AbilityKey, number>>) => Object.values(v).reduce((a, b) => a + (b ?? 0), 0);
   const easy = route({});
-  const hard = route({ segments: [climb(20, 25, "3", 6), climb(50, 55, "3", 6), climb(80, 85, "3", 6), climb(110, 115, "3", 6), { kind: "rolling", from_km: 115, to_km: 158.8 }, climb(158.8, 160, "3", 12)] });
+  const gap = (a: number, b: number): Segment => ({ kind: "rolling", from_km: a, to_km: b });
+  const hard = route({ segments: [gap(0, 20), climb(20, 25, "3", 6), gap(25, 50), climb(50, 55, "3", 6), gap(55, 80), climb(80, 85, "3", 6), gap(85, 110), climb(110, 115, "3", 6), gap(115, 158.8), climb(158.8, 160, "3", 12)] });
   assert.equal(priorCategorizedClimbs(easy), 0);
   assert.equal(priorCategorizedClimbs(hard), 4);
   for (const finale of ["wall_finish", "punch", "uphill_sprint"] as const) {
@@ -137,6 +138,22 @@ test("#6363: finalestigningen paa en kort eksplosiv afslutning afgoeres af final
   assert.equal(isS5ExplosiveFinaleClimb(r, 2), true);
   assert.equal(isS5ExplosiveFinaleClimb(r, 1), false);
   assert.equal(isS5ExplosiveFinaleClimb({ ...r, finale_type: "long_climb" }, 2), false, "bjergtoppen beholder selektionen");
+  // CodeRabbit: en lang sammenhaengende stigning foer selve afslutningen beholder selektionen.
+  const block = route({ segments: [{ kind: "flat", from_km: 0, to_km: 150 }, climb(150, 156, "2", 6), climb(156, 160, "3", 8)] });
+  assert.equal(isS5ExplosiveFinaleClimb(block, 1), false);
+  assert.equal(isS5ExplosiveFinaleClimb(block, 2), true);
+  // ... og en delt finalestigning taeller ikke som tidligere stigninger.
+  assert.equal(priorCategorizedClimbs(block), 0);
+  const split = route({ segments: [climb(20, 24, "3", 6), climb(24, 27, "3", 6), { kind: "flat", from_km: 27, to_km: 158.8 }, climb(158.8, 160, "3", 12)] });
+  assert.equal(priorCategorizedClimbs(split), 1, "én stigning delt i to segmenter er én stigning");
+});
+
+test("#6363: et mellembjerg maerket breakaway der ender paa en kat. 2-top er en bjergtop under S5", () => {
+  const summit = route({ profile_type: "medium_mountain", finale_type: "breakaway", segments: [{ kind: "flat", from_km: 0, to_km: 150 }, climb(150, 160, "2", 6)] });
+  const mapped = routeForRulesRevision(summit, "s5_profiles_v1");
+  assert.equal(mapped.finale_type, "long_climb");
+  assert.equal(mapped.profile_type, S5_PROFILES_TUNING.mediumMountainSummitBucket);
+  assert.equal(routeForRulesRevision({ ...summit, segments: [{ kind: "flat", from_km: 0, to_km: 158 }, climb(158, 160, "3", 6)] }, "s5_profiles_v1").finale_type, "punch");
 });
 
 test("#6363 fixture mur-finale: puncheuren vinder, den bedste klatrer er ikke med i finalen, reelle tidsgab", () => {
