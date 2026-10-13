@@ -309,3 +309,18 @@ test("scoreSeason: distance-outliers er advisory og fælder ikke gaten", () => {
   assert.equal(summary.verdict, VERDICT.GO);
   assert.ok(summary.advisories.some((a) => a.includes("WT-distancebåndet")));
 });
+
+// #6367: S5-navnene taeller i de samme gulve som v5-navnene (S5 skriver aldrig bunch_sprint,
+// og mellembjerget er bjerg-familien). v5-kalendere skriver ingen af dem, saa de er uaendrede.
+test("#6367 scoreTier: S5 flad spurt taeller som massespurt; mellembjerg-bjergtop og -nedkoersel taeller som bjerg", () => {
+  const s5 = scoreTier(4, [stageRace([
+    st("flat", "flat_sprint"), st("flat", "bunch_sprint"), st("flat", "reduced_sprint"),
+    st("medium_mountain", "long_climb", 170), st("medium_mountain", "descent", 170), st("hilly", "descent"),
+  ])]);
+  assert.equal(s5.bunch_sprint_stage_days, 2, "flat_sprint + bunch_sprint; reduced_sprint taeller fortsat ikke");
+  assert.equal(s5.summit_finishes, 1);
+  assert.equal(s5.mountain_stages, 2);
+  assert.equal(s5.descent_finale_stage_days, 1, "kun bjerg-familiens nedkoersler, som i v5");
+  const outlier = scoreTier(4, [stageRace([st("medium_mountain", "descent", 250)])]);
+  assert.equal(outlier.distanceOutliers, 1, "mellembjerg har bjergets distancebaand");
+});
