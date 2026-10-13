@@ -25,7 +25,7 @@ Kun det der ødelægger spillet i dag. Tomt = godt.
 
 **Mål 31/12 (ejer 13/10): 2.000 kr. MRR · 200 aktive/7d.** Målt 12/10: 620 kr. / 17 betalende / 61 aktive. Flaskehalsen er tilgang, ikke konvertering.
 
-- **S5-lancering 25/10:** opslag pr. målgruppe (GDD D-005), postes torsdag 23/10 · annoncetest #2759 (500-1.000 kr.).
+- **S5-lancering 25/10:** opslag pr. målgruppe (GDD D-005), postes torsdag 22/10 · annoncetest #2759 (500-1.000 kr.).
 - **Pro-sporet #2806** 19-25/10 (rytterhistorik, gemte filtre, /pro).
 - **Marts-fornyelser:** 11 halvårsabonnementer 2.-8/3; fastholdelsesplan fra januar.
 - **Drift af virksomheden:** bogføring ajour · abonnementsgennemgang · moms EU-privat #4511 (revisor) · billing #4514 #4512 #6062.
