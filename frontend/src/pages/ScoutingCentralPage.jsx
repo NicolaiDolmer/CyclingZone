@@ -330,7 +330,14 @@ function ShortlistFeed({ completed, riderNames, t, tTypes }) {
   // #6551: en fuldført mission med tom liste skjules ikke længere. Enten fandt
   // spejderen ingen (hiddenCount 0), eller også er alle fund skjult siden
   // (fx et åbent akademi-tilbud eller en handel i gang); begge får én kort linje.
-  const missions = completed.filter((c) => c.kind === "mission" && Array.isArray(c.result?.shortlist));
+  // Tomme missioner har deres egen lille kvote, så de aldrig skubber en
+  // shortlist med ryttere ud af top-10 (rækkefølgen bevares).
+  const allMissions = completed.filter((c) => c.kind === "mission" && Array.isArray(c.result?.shortlist));
+  const keep = new Set([
+    ...allMissions.filter((m) => m.result.shortlist.length > 0).slice(0, 10),
+    ...allMissions.filter((m) => m.result.shortlist.length === 0).slice(0, 3),
+  ]);
+  const missions = allMissions.filter((m) => keep.has(m));
   if (missions.length === 0) {
     return (
       <Section>
@@ -347,7 +354,7 @@ function ShortlistFeed({ completed, riderNames, t, tTypes }) {
           så listen ikke aflæses som "kun navne, ingen data". */}
       <p className="text-cz-3 text-2xs mt-1 mb-2.5">{t("shortlist.allReportedNote")}</p>
       <ul className="list-none p-0 m-0 space-y-3">
-        {missions.slice(0, 10).map((m) => (
+        {missions.map((m) => (
           <li key={m.id} className="border-t border-cz-border pt-2.5 first:border-0 first:pt-0">
             <p className="text-cz-3 text-2xs font-mono uppercase tracking-[0.08em] m-0">
               {missionCriteriaLabel(m.mission_criteria, {
