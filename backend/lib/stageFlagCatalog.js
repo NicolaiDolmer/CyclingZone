@@ -71,6 +71,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_day_development_enabled", area: "race-day", label: "Udvikling på løbsdage" },
   // #5124: kun visning (frontend). Beta foerst, ejer 1/10.
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
+  // #6590: web push, seedet off. Kræver VAPID_* på backend. Flip er ejer-only.
+  { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },

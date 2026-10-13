@@ -702,5 +702,17 @@
       "testTitle": "Discord-DM virker",
       "testDescription": "Du modtager nu DM'er fra Cycling Zone om auktioner, transfers og bestyrelsen."
     }
+  },
+  "push": {
+    "digest": {
+      "title": "Siden sidst",
+      "count": {
+        "auctions": "{count, plural, one {# auktionsbesked} other {# auktionsbeskeder}}",
+        "races": "{count, plural, one {# løbsresultat} other {# løbsresultater}}",
+        "transfers": "{count, plural, one {# transfertilbud} other {# transfertilbud}}",
+        "deadlines": "{count, plural, one {# frist} other {# frister}}",
+        "academy": "{count, plural, one {# akademibesked} other {# akademibeskeder}}"
+      }
+    }
   }
 }

@@ -38,6 +38,7 @@ import {
 } from "./lib/discordNotifier.js";
 import { deliverRaceResultNotify, RACE_RESULT_MESSAGE_TYPE } from "./lib/raceNotifyOutbox.js"; // #3624
 import { isRaceNotifyOutboxEnabled } from "./lib/raceNotifyOutboxFlag.js"; // #3624
+import { runPushSweepOnce } from "./lib/pushService.js"; // #6590
 import { flushDmRunGuard } from "./lib/discordDmRateGuard.js"; // #2571
 import { makeBoardDmNotifier } from "./lib/boardDmMirror.js"; // #2619
 import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
@@ -557,6 +558,13 @@ async function runRaceNotifyOutboxDrain() {
       `📨 Notify-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.failed} opgivet, ${result.skipped} taget af andet tick`
     );
   }
+}
+
+// ─── Web push sweep (#6590) ──────────────────────────────────────────────────
+// No-op saa laenge app_config.push_enabled er off eller VAPID-noeglerne mangler.
+async function runPushSweepCron() {
+  const r = await runPushSweepOnce({ supabase, now: new Date() });
+  if (r.sent || r.digests || r.failed) console.log(`📲 Push: ${r.sent} sendt, ${r.digests} resuméer, ${r.queued} i kø, ${r.failed} fejlet`);
 }
 
 // ─── Discord division-role sync (#2153) ──────────────────────────────────────
@@ -1952,6 +1960,8 @@ export function startCron() {
     trackedTick("race notify-outbox drain", monitorCron("race-notify-outbox-drain", runRaceNotifyOutboxDrain, CRON_MONITOR_1MIN)),
     60 * 1000
   );
+  // Every minute: web push sweep (#6590). Ingen Sentry-cron-monitor (ny monitor = ny udgift).
+  setInterval(trackedTick("push sweep", runPushSweepCron), 60 * 1000);
 
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
   setInterval(

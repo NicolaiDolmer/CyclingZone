@@ -427,7 +427,13 @@
     "discord.dm.transferRejected": "Your offer on {rider} was rejected.",
     "discord.dm.watchlistRiderAuction": "A rider on your watchlist is up for auction: {rider}.",
     "discord.dm.testTitle": "Discord DM works",
-    "discord.dm.testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates."
+    "discord.dm.testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates.",
+    "push.digest.title": "Since you last looked",
+    "push.digest.count.auctions": "{count, plural, one {# auction update} other {# auction updates}}",
+    "push.digest.count.races": "{count, plural, one {# race result} other {# race results}}",
+    "push.digest.count.transfers": "{count, plural, one {# transfer offer} other {# transfer offers}}",
+    "push.digest.count.deadlines": "{count, plural, one {# deadline} other {# deadlines}}",
+    "push.digest.count.academy": "{count, plural, one {# academy update} other {# academy updates}}"
   },
   "da": {
     "tx.sponsor.seasonStartIntro": "Sponsorindtægt · Sæson start (intro {amount} ×{modifier})",
@@ -857,6 +863,12 @@
     "discord.dm.transferRejected": "Dit tilbud på {rider} blev afvist.",
     "discord.dm.watchlistRiderAuction": "En rytter fra din ønskeliste er på auktion: {rider}.",
     "discord.dm.testTitle": "Discord-DM virker",
-    "discord.dm.testDescription": "Du modtager nu DM'er fra Cycling Zone om auktioner, transfers og bestyrelsen."
+    "discord.dm.testDescription": "Du modtager nu DM'er fra Cycling Zone om auktioner, transfers og bestyrelsen.",
+    "push.digest.title": "Siden sidst",
+    "push.digest.count.auctions": "{count, plural, one {# auktionsbesked} other {# auktionsbeskeder}}",
+    "push.digest.count.races": "{count, plural, one {# løbsresultat} other {# løbsresultater}}",
+    "push.digest.count.transfers": "{count, plural, one {# transfertilbud} other {# transfertilbud}}",
+    "push.digest.count.deadlines": "{count, plural, one {# frist} other {# frister}}",
+    "push.digest.count.academy": "{count, plural, one {# akademibesked} other {# akademibeskeder}}"
   }
 }

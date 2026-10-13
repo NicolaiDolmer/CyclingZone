@@ -384,24 +384,42 @@ async function deliverToUser({ supabase, subscriptions, payload, category, vapid
 }
 
 async function readCursor(supabase) {
-  const { data, error } = await supabase.from("app_config").select("value").eq("key", PUSH_CURSOR_KEY).maybeSingle();
+  const { data, error } = await supabase
+    .from("app_config").select("value, updated_at").eq("key", PUSH_CURSOR_KEY).maybeSingle();
   if (error) throw new Error(`push cursor: ${error.message}`);
   const value = data?.value;
-  if (value && typeof value === "object" && typeof value.at === "string") return { at: value.at, id: value.id ?? null };
+  if (value && typeof value === "object" && typeof value.at === "string") {
+    return { at: value.at, id: value.id ?? null, version: data.updated_at ?? null };
+  }
   return null;
 }
 
-async function writeCursor(supabase, cursor, now) {
+async function initCursor(supabase, now) {
   const { error } = await supabase.from("app_config").upsert(
     {
       key: PUSH_CURSOR_KEY,
-      value: cursor,
+      value: { at: now.toISOString(), id: null },
       description: "Internal cursor for the web push sweep (#6590): last processed notification. Not a flag.",
       updated_at: now.toISOString(),
     },
-    { onConflict: "key" },
+    { onConflict: "key", ignoreDuplicates: true },
   );
-  if (error) throw new Error(`push cursor write: ${error.message}`);
+  if (error) throw new Error(`push cursor init: ${error.message}`);
+}
+
+/**
+ * Flyt cursoren FOER der sendes (compare-and-swap paa updated_at). Under et
+ * deploy koerer den gamle og den nye proces samtidig et kort oejeblik; kun det
+ * tick der vinder claim'en sender, saa ingen spiller faar samme push to gange.
+ * Doer processen efter claim'en, mistes de push (indbakken har dem stadig):
+ * hellere ét for lidt end ét for meget.
+ */
+async function claimCursor(supabase, next, previousVersion, now) {
+  let query = supabase.from("app_config").update({ value: next, updated_at: now.toISOString() }).eq("key", PUSH_CURSOR_KEY);
+  query = previousVersion ? query.eq("updated_at", previousVersion) : query.is("updated_at", null);
+  const { data, error } = await query.select("key");
+  if (error) throw new Error(`push cursor claim: ${error.message}`);
+  return Array.isArray(data) && data.length === 1;
 }
 
 function groupBy(rows, key) {
@@ -475,7 +493,7 @@ export async function runPushSweep({ supabase, now = new Date(), env = process.e
   const floorIso = new Date(now.getTime() - SWEEP_MAX_LOOKBACK_MS).toISOString();
   if (!cursor) {
     // Foerste koersel: start fra nu. Gamle notifikationer sendes aldrig.
-    await writeCursor(supabase, { at: now.toISOString(), id: null }, now);
+    await initCursor(supabase, now);
   } else {
     const fromCursor = Date.parse(cursor.at) >= Date.parse(floorIso);
     const lowerIso = fromCursor ? cursor.at : floorIso;
@@ -493,9 +511,12 @@ export async function runPushSweep({ supabase, now = new Date(), env = process.e
     );
     summary.scanned = fresh.length;
     if (fresh.length) {
-      await processFresh({ supabase, rows: fresh, stage, vapid, now, send, summary });
       const last = fresh[fresh.length - 1];
-      await writeCursor(supabase, { at: last.created_at, id: last.id }, now);
+      if (await claimCursor(supabase, { at: last.created_at, id: last.id }, cursor.version, now)) {
+        await processFresh({ supabase, rows: fresh, stage, vapid, now, send, summary });
+      } else {
+        summary.scanned = 0; // et andet tick (fx under et deploy) tog dem
+      }
     }
   }
 
@@ -509,6 +530,20 @@ export async function runPushSweep({ supabase, now = new Date(), env = process.e
     if (error) captureException(new Error(`push_deliveries cleanup: ${error.message}`), { tags: { flow: "push", stage: "cleanup" } });
   }
   return summary;
+}
+
+// Et langsomt tick (mange abonnementer, langsom push-tjeneste) maa ikke faa det
+// naeste minut-tick til at starte oveni i samme proces.
+let sweepInFlight = false;
+
+export async function runPushSweepOnce(args) {
+  if (sweepInFlight) return { skipped: "in_flight" };
+  sweepInFlight = true;
+  try {
+    return await runPushSweep(args);
+  } finally {
+    sweepInFlight = false;
+  }
 }
 
 async function processFresh({ supabase, rows, stage, vapid, now, send, summary }) {
@@ -590,8 +625,15 @@ async function flushDigests({ supabase, stage, vapid, now, send, summary }) {
     const timeZone = normalizeTimeZone(user.timezone);
     if (!isDigestDue({ rows, now, timeZone, sentToday: sentToday.get(userId) ?? 0 })) continue;
     try {
+      // Claim: slet koe-raekkerne FOER der sendes. Kun de raekker DETTE tick
+      // faktisk slettede kommer med, saa to samtidige tick aldrig sender samme resumé.
+      const { data: claimed, error: claimErr } = await supabase.from("push_queue").delete().in("id", queueIds).select("id");
+      if (claimErr) throw new Error(`push_queue claim: ${claimErr.message}`);
+      const claimedIds = new Set((claimed ?? []).map((r) => r.id));
+      const mine = rows.filter((r) => claimedIds.has(r.id));
+      if (!mine.length) continue;
       // Kun det spilleren ikke allerede har set i appen kommer med.
-      const notificationIds = rows.map((r) => r.notification_id);
+      const notificationIds = mine.map((r) => r.notification_id);
       const { data: notes, error: noteErr } = await supabase
         .from("notifications").select("id, is_read").in("id", notificationIds);
       if (noteErr) throw new Error(`notifications (digest): ${noteErr.message}`);
@@ -599,7 +641,7 @@ async function flushDigests({ supabase, stage, vapid, now, send, summary }) {
       const prefs = resolveCategoryPrefs(user.push_prefs);
       const countsByCategory = {};
       const included = [];
-      for (const row of rows) {
+      for (const row of mine) {
         if (!unreadIds.has(row.notification_id) || prefs[row.category] !== true) continue;
         countsByCategory[row.category] = (countsByCategory[row.category] ?? 0) + 1;
         included.push(row.notification_id);
@@ -613,8 +655,6 @@ async function flushDigests({ supabase, stage, vapid, now, send, summary }) {
         if (status === "sent") summary.digests += 1;
         else summary.failed += 1;
       }
-      const { error: delErr } = await supabase.from("push_queue").delete().in("id", queueIds);
-      if (delErr) throw new Error(`push_queue delete: ${delErr.message}`);
     } catch (err) {
       summary.failed += 1;
       captureException(err, { tags: { flow: "push", stage: "digest" } });
