@@ -6,7 +6,6 @@ import { stageAxes, decisiveClimb, dayDemands } from "../../lib/stageAxes";
 import StageProfileCard from "./StageProfileCard.jsx";
 import StageAxesStrip from "./StageAxesStrip";
 import StageDecidedDemands from "./StageDecidedDemands";
-import Tooltip from "../ui/Tooltip.jsx";
 
 // Valgt-etape-panel for et KOMMENDE loeb: ETAPEKORTET (#6364, S5-spec §6). Ét kort pr.
 // etape: de tre akser (terraen, afslutning, underlag) hver for sig, profilen EN gang med
@@ -39,9 +38,6 @@ export default function StageDetailPanel({
   if (!axes) return null;
   const { points } = profileShape(profile.profile_type);
   const routed = hasRouteData(profile);
-  const finishHint = axes.finish === "ttt"
-    ? t("detail.stageCard.finishHintTtt")
-    : t(`detail.finaleTypeHint.${axes.finish}`);
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-4">
@@ -72,17 +68,14 @@ export default function StageDetailPanel({
               <polyline points={`${points} 100,24 0,24`} fill="currentColor" fillOpacity="0.06" stroke="none" />
               <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
             </svg>
-            {/* Finale-markoer ved maalet (hoejre ende). #2756: title viser FORKLARINGEN,
-                ikke bare gentager label-teksten. En <button> goer den tap-tilgaengelig
-                paa mobil via focus-within, ikke kun hover. */}
-            <Tooltip label={finishHint}>
-              <button type="button" className="absolute -top-0.5 right-0 text-cz-accent-t cursor-help" aria-label={t(`detail.stageCard.finish.${axes.finish}`)}>
-                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-                  <path d="M3 1 V13" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M3.6 1.5 L11 3.2 L7 5 L11 6.8 L3.6 5" fill="currentColor" fillOpacity="0.85" />
-                </svg>
-              </button>
-            </Tooltip>
+            {/* Maalflag ved maalet (hoejre ende). Forklaringen af afslutningen (#2756)
+                bor i akse-feltet ovenfor som tooltip, saa flaget er rent dekorativt. */}
+            <span className="absolute -top-0.5 right-0 text-cz-accent-t" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 14 14">
+                <path d="M3 1 V13" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M3.6 1.5 L11 3.2 L7 5 L11 6.8 L3.6 5" fill="currentColor" fillOpacity="0.85" />
+              </svg>
+            </span>
           </div>
         </>
       )}
