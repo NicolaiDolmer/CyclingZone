@@ -837,6 +837,7 @@ function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
 // `make` (#6359): etape-fabrikken. v5 = toStage (default, bit-identisk); S5 = toStageS5.
 // Begge forbruger PRÆCIS ét pass 1-rng-kald pr. etape, så typerne og rækkefølgen er de
 // samme i begge modeller for alt andet end Grand Tours.
+/** @param {S5Rng} rng @param {any} cfg @param {any} race @param {StageFactory} [make] */
 function buildSingle(rng, cfg, race, make = toStage) {
   const weights = cfg?.kind === "single" ? cfg.weights : SINGLE_PROFILE_WEIGHTS;
   return [make(rng, weightedPick(rng, weights), 1, race, false)];
@@ -1280,6 +1281,10 @@ export function applyOpeningVariety(rng, ordered) {
 
 // Finale-drevet ordning + map til etaper. Bruges af ALLE ikke-GT etapeløbs-arketyper +
 // generisk fallback (terrainArchetype=null → DEFAULT_ORDER_WEIGHTS).
+/**
+ * @param {S5Rng} rng @param {string[]} types @param {number} stages @param {any} race
+ * @param {string | null} terrainArchetype @param {number} protectedCount @param {StageFactory} [make]
+ */
 function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, protectedCount, make = toStage) {
   types.length = stages; // defensiv trim (parity med orderAndBuildGrandTour)
   const weights = orderWeightsFor(terrainArchetype);
@@ -1310,7 +1315,7 @@ function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, p
       ordered = [...weaveMountainFamilyBlocks(ordered.slice(0, -1)), finale];
     }
   }
-  return ordered.map((profileType, i) => make(rng, profileType, i + 1, race, true));
+  return ordered.map((/** @type {string} */ profileType, /** @type {number} */ i) => make(rng, profileType, i + 1, race, true));
 }
 
 // Generisk: garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5. STAGE_FILLER_WEIGHTS
@@ -1318,6 +1323,7 @@ function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, p
 // 70%-træk; TT-loftet håndhæves alligevel defensivt (guaranteed TT ⊆ de 2 første pladser).
 // #3326: rækkefølgen er nu finale-drevet (DEFAULT_ORDER_WEIGHTS), ikke længere ren
 // crescendo — konsistent med de kendte arketyper i stedet for en to-tier legacy-adfærd.
+/** @param {S5Rng} rng @param {number} stages @param {any} race @param {StageFactory} [make] */
 function buildStageRaceGeneric(rng, stages, race, make = toStage) {
   const types = ["flat", "mountain"];
   if (stages >= 5 && rng() < 0.7) types.push("itt");
@@ -1333,6 +1339,7 @@ function buildStageRaceGeneric(rng, stages, race, make = toStage) {
 // #3326: grandTourOrder (kun grand_tour) bruger sin egen finale-drevne GT-ordning
 // (orderAndBuildGrandTour); alle andre arketyper går gennem den generelle
 // ORDER_ARCHETYPES-fordeling.
+/** @param {S5Rng} rng @param {number} stages @param {any} cfg @param {any} race @param {StageFactory} [make] */
 function buildStageRaceArchetype(rng, stages, cfg, race, make = toStage) {
   const types = cfg.guarantees.slice(0, stages);
   const protectedCount = types.length; // guarantees = beskyttet region
@@ -1343,6 +1350,7 @@ function buildStageRaceArchetype(rng, stages, cfg, race, make = toStage) {
 }
 
 // Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
+/** @param {S5Rng} rng @param {number} stages @param {any} cfg @param {any} race @param {StageFactory} [make] */
 function buildStageRace(rng, stages, cfg, race, make = toStage) {
   return cfg?.kind === "stage" ? buildStageRaceArchetype(rng, stages, cfg, race, make) : buildStageRaceGeneric(rng, stages, race, make);
 }
@@ -1387,12 +1395,19 @@ export const S5_FINISH_WEIGHTS = Object.freeze({
   high_mountain: Object.freeze([{ value: "long_climb", weight: 38 }, { value: "descent", weight: 11 }]),
 });
 
+/** @typedef {() => number} S5Rng */
+/** @typedef {(rng: S5Rng, targetType: string, stageNumber: number, race: any, isStageRace: boolean) => any} StageFactory */
+
+/**
+ * @param {S5Rng} rng @param {string} targetType @param {number} stageNumber @param {any} race
+ * @param {boolean} isStageRace @param {{ finish?: string | null, shortItt?: boolean }} [opts]
+ */
 function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = null, shortItt = false } = {}) {
   // Ét pass 1-rng-kald pr. etape, præcis som v5's drawFinale - så S5 ser samme typer og
   // samme rækkefølge som v5. En Grand Tour-etape med en kvote-tildelt afslutning trækker
   // intet (GT-stien har sin egen strøm).
   const u = finish ? null : rng();
-  const chooseFinish = (terrain) => finish ?? pickByQuantile(S5_FINISH_WEIGHTS[terrain], u);
+  const chooseFinish = (/** @type {string} */ terrain) => finish ?? pickByQuantile(/** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain], u);
   const { terrain, ...route } = attachRouteS5({ stage_number: stageNumber, profile_type: targetType }, race, isStageRace, { chooseFinish, shortItt });
   // Typen afledes af ruten for alle terræn-mål. Brosten, grus, klassiker og tidskørsler er
   // formater/underlag og beholder deres type; deres terræn er B+(climbs) og afslutningen
@@ -1420,7 +1435,11 @@ export const S5_GRAND_TOUR_QUOTAS = Object.freeze({
 });
 const S5_QUOTA_ROAD_TYPES = Object.freeze(["high_mountain", "mountain", "medium_mountain", "hilly", "rolling", "flat"]);
 
-/** GT-typen: Tour-klassen er Tour-typen; ellers afgør løbets region (Giro/Vuelta). */
+/**
+ * GT-typen: Tour-klassen er Tour-typen; ellers afgør løbets region (Giro/Vuelta).
+ * @param {any} race
+ * @returns {"tour" | "giro" | "vuelta"}
+ */
 export function grandTourTypeFor(race) {
   if (race?.race_class === "TourFrance") return "tour";
   const region = regionOf(race?.name);
@@ -1434,9 +1453,15 @@ export function grandTourTypeFor(race) {
  * Kvoten som et type-multisæt for en GT med `stages` etaper. Har løbet et andet antal
  * etaper end kvoten (18/17/17), skaleres landevejs-typerne med største-rest-metoden;
  * tidskørslerne holdes faste. Ren funktion.
+ *
+ * @param {string} gtType
+ * @param {number} stages
+ * @param {{ allowTtt?: boolean }} [opts]
+ * @returns {{ types: string[], summits: number }}
  */
 export function grandTourQuotaTypes(gtType, stages, { allowTtt = false } = {}) {
-  const q = S5_GRAND_TOUR_QUOTAS[gtType] ?? S5_GRAND_TOUR_QUOTAS.tour;
+  /** @type {Record<string, number>} */
+  const q = /** @type {Record<string, any>} */ (S5_GRAND_TOUR_QUOTAS)[gtType] ?? S5_GRAND_TOUR_QUOTAS.tour;
   const itt = q.itt + (allowTtt ? 0 : q.ttt);
   const ttt = allowTtt ? q.ttt : 0;
   const roadTarget = Math.max(0, stages - itt - ttt);
@@ -1460,11 +1485,15 @@ export function grandTourQuotaTypes(gtType, stages, { allowTtt = false } = {}) {
  * hårdeste terræn) næstsidst, altså i sidste tredjedel; ingen højbjerg i første
  * tredjedel. Resten vævet som v5's GT (#4075: bjerg-familien i blokke, maks 3 ens i træk).
  * Deterministisk givet rng. Returnerer typerne i etape-rækkefølge.
+ *
+ * @param {S5Rng} rng
+ * @param {string[]} types
+ * @returns {string[]}
  */
 export function orderGrandTourS5(rng, types) {
   const n = types.length;
   const pool = types.slice();
-  const take = (t) => { const i = pool.indexOf(t); if (i === -1) return null; pool.splice(i, 1); return t; };
+  const take = (/** @type {string} */ t) => { const i = pool.indexOf(t); if (i === -1) return null; pool.splice(i, 1); return t; };
   const slots = new Array(n).fill(null);
   const firstThirdEnd = Math.floor(n / 3); // indeks < firstThirdEnd = første tredjedel
   const lastThirdStart = n - Math.floor(n / 3); // indeks >= lastThirdStart = sidste tredjedel
@@ -1504,11 +1533,19 @@ export function orderGrandTourS5(rng, types) {
  * etaperne der kan have en (mellembjerg/bjerg/højbjerg), valgt uden tilbagelægning med
  * terrænets bjergtop-andel som vægt; de øvrige af dem får en afslutning fra matrixen uden
  * bjergtop. Alle andre landevejsetaper trækker fra S5_FINISH_WEIGHTS. Tidskørsler: null.
+ *
+ * @param {S5Rng} rng
+ * @param {string[]} ordered
+ * @param {number} summits
+ * @returns {Array<string | null>}
  */
 export function assignGrandTourFinishes(rng, ordered, summits) {
+  /** @type {Array<string | null>} */
   const finishes = ordered.map(() => null);
-  const shareOf = (t) => {
-    const w = S5_FINISH_WEIGHTS[t];
+  /** @type {Record<string, ReadonlyArray<{ value: string, weight: number }>>} */
+  const finishWeights = S5_FINISH_WEIGHTS;
+  const shareOf = (/** @type {string} */ t) => {
+    const w = finishWeights[t];
     const total = w.reduce((s, it) => s + it.weight, 0);
     return (w.find((it) => it.value === "long_climb")?.weight ?? 0) / total;
   };
@@ -1524,12 +1561,13 @@ export function assignGrandTourFinishes(rng, ordered, summits) {
   ordered.forEach((t, i) => {
     if (isTimeTrial(t)) return;
     if (chosen.has(i)) { finishes[i] = "long_climb"; return; }
-    const options = (S5_FINISH_WEIGHTS[t] ?? []).filter((it) => !(eligible.includes(i) && it.value === "long_climb"));
+    const options = (finishWeights[t] ?? []).filter((it) => !(eligible.includes(i) && it.value === "long_climb"));
     finishes[i] = weightedPick(rng, options.length ? options : [{ value: FINISH_MATRIX[t][0], weight: 1 }]);
   });
   return finishes;
 }
 
+/** @param {S5Rng} rng @param {number} stages @param {any} race @param {{ allowTtt?: boolean }} [opts] */
 function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
   const { types, summits } = grandTourQuotaTypes(grandTourTypeFor(race), stages, { allowTtt });
   const ordered = orderGrandTourS5(rng, types);
@@ -1548,7 +1586,7 @@ function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
  *   season_variant (#3347, default 0) er tier-trækkets re-draw-tæller: 0 giver præcis
  *   samme output som før #3347; n > 0 er det n'te deterministiske gen-træk. Vælges af
  *   resolveSeasonDrawVariants (raceRouteRealismDraw.js) — sæt den ALDRIG ad-hoc.
- * @param {{seed?:number, archetypeProfiles?:object}} [opts]
+ * @param {{seed?:number, archetypeProfiles?:object, profileModel?:string, allowTtt?:boolean}} [opts]
  *   seed              override-seed (default: stableSeed(seedIdentityFor(race)))
  *   archetypeProfiles override af ARCHETYPE_PROFILES — oprindelig KUN til kalibrerings-/
  *                     analyse-harnesses (#3295). #4103 (31/8) genbruger samme parameter i
