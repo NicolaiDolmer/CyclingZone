@@ -29,7 +29,7 @@ export default async function handler(request) {
   let value;
   const demoKey = searchParams.get("demo");
   if (demoKey) {
-    value = DEMO_STAGES[demoKey];
+    value = Object.hasOwn(DEMO_STAGES, demoKey) ? DEMO_STAGES[demoKey] : undefined; // aldrig prototype-nøgler som "constructor"
     if (!value) return plain(404, `Unknown demo. Use one of: ${Object.keys(DEMO_STAGES).join(", ")}`);
     if (searchParams.get("lang") === "da") value = { ...value, lang: "da" };
   } else {
@@ -39,12 +39,16 @@ export default async function handler(request) {
   }
 
   try {
-    return new ImageResponse(buildStageCard(value), {
+    const image = new ImageResponse(buildStageCard(value), {
       width: OG_WIDTH,
       height: OG_HEIGHT,
       fonts: loadFonts(),
       headers: { "cache-control": CACHE_OK },
     });
+    // @vercel/og renderer i streamens start-callback: en satori/resvg-fejl opstår først når kroppen læses.
+    // Bufferen (ca. 80 kB) gør at catch-blokken nedenfor faktisk kan svare 500 i stedet for et afbrudt svar.
+    const body = await image.arrayBuffer();
+    return new Response(body, { status: image.status, headers: image.headers });
   } catch (err) {
     console.error("og/stage render failed", err instanceof Error ? err.message : err);
     return plain(500, "Could not render image");
