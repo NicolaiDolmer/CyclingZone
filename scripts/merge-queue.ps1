@@ -273,8 +273,20 @@ function Wait-ForWorkflowRun {
   }
 
   Write-Host "  Venter paa '$Label' (run $runId) for $Sha ..."
-  & gh run watch $runId --repo $Repo --exit-status *> $null
-  $ok = ($LASTEXITCODE -eq 0)
+  # 13/10: `gh run watch --exit-status` exiter ogsaa != 0 ved GitHub-API-fejl (HTTP 502),
+  # og det blev to gange laest som "main roed" mens koerslen stadig stod queued/groen.
+  # Derfor afgoeres udfaldet af koerslens EGEN status/conclusion (med retry), og vi
+  # venter videre saa laenge den ikke er completed.
+  $ok = $false
+  while ((Get-Date) -lt $deadline) {
+    & gh run watch $runId --repo $Repo --exit-status *> $null
+    $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'status,conclusion') -TolerateFailure
+    $run = $null
+    if ($viewJson) { try { $run = ($viewJson -join "") | ConvertFrom-Json } catch {} }
+    if ($run -and $run.status -eq 'completed') { $ok = ($run.conclusion -eq 'success'); break }
+    Write-Host "  ... '$Label' (run $runId) er ikke faerdig endnu (status: $($run.status)); venter videre ..." -ForegroundColor DarkGray
+    Start-Sleep -Seconds 20
+  }
   if ($ok) {
     Write-Host "  [ok] '$Label' groen for $Sha." -ForegroundColor Green
   } else {
