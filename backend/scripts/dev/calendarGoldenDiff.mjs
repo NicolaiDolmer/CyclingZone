@@ -24,6 +24,14 @@
 //   node scripts/dev/calendarGoldenDiff.mjs --fail-on-diff  # også exit 1 ved ren diff
 //   node scripts/dev/calendarGoldenDiff.mjs --golden <fil>  # diff mod en anden snapshot
 //   node scripts/dev/calendarGoldenDiff.mjs --candidate <fil>  # og/eller en anden kandidat
+//   node scripts/dev/calendarGoldenDiff.mjs --profile-model s5 # #6367: S5-sektionen DØMMER
+//   node scripts/dev/calendarGoldenDiff.mjs --motor-bench <fil> # #6367: rigtig motor-bench til del (4)
+//
+// #6367 — S5 BENCHMARK-SEKTIONEN. Rapporten slutter med S5 benchmark-gaten
+// (lib/s5BenchmarkGate.js) målt på den offline kalenders etaper: type == B+, matrix,
+// Grand Tour-kvoter + ugestruktur, afslutnings-andele og motor-gab mod rigtige Grand Tours.
+// Med v5 (default) er sektionen MÅLT, IKKE DØMT: den viser hvor langt v5 er fra S5, uden at
+// vælte placerings-gaten. Med --profile-model s5 dømmer den, og rød giver exit 1.
 //
 // EXIT-KODER. 1 = mindst én HÅRD invariant er brudt (eller --fail-on-diff og diffen er
 // ikke tom). 0 = ingen hårde brud. En ren diff ALENE er ikke en fejl: den kan være en
@@ -42,22 +50,65 @@ import { buildCalendarGoldenSnapshot } from "./lib/calendarGoldenSnapshotBuilder
 import {
   detectHardInvariantBreaches, summarizeGoldenDiff, formatGoldenDiffReport,
 } from "./lib/calendarGoldenDiffReport.mjs";
+import { buildS3OfflineCalendarPlan, FIXTURE_PATH } from "./lib/s3OfflineCalendarPlan.mjs";
+import { generateRaceStageProfiles, balanceFinaleQuotas } from "../../lib/raceStageProfileGenerator.js";
+import {
+  evaluateS5BenchmarkGate, loadS5Benchmark, loadMotorGapFile, S5_PROFILE_MODEL,
+} from "../../lib/s5BenchmarkGate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_GOLDEN_PATH = join(__dirname, "..", "..", "lib", "__fixtures__", "calendarGoldenSnapshot.s3.json");
 
 /**
+ * #6367: den offline kalenders loeb MED etapeprofiler, til S5 benchmark-sektionen.
+ * Samme plan som den gyldne snapshot (s3OfflineCalendarPlan.mjs), een repraesentativ
+ * pulje pr. division, samme seed-form som materializeren. v5 faar kvote-fordelte finaler
+ * (balanceFinaleQuotas) som i prod; S5-modellen vaelger selv inden for matrixen.
+ *
+ * Kender generatoren ikke `profileModel` endnu (#6359), ignoreres den, og sektionen maaler
+ * v5 - hvilket er rigtigt, for det er den kode der ville koere.
+ */
+export function buildOfflineS5GateRaces({ profileModel = "v5" } = {}) {
+  const { tierPlans } = buildS3OfflineCalendarPlan();
+  const { catalog } = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
+  const catById = new Map(catalog.map((c) => [c.id, c]));
+  const races = [];
+  for (const plan of tierPlans) {
+    const rows = plan.pools?.[0]?.raceRows ?? [];
+    const seeds = rows.map((r) => {
+      const c = catById.get(r.pool_race_id) ?? {};
+      return {
+        id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
+        external_id: c.external_id ?? null, terrain_archetype: c.terrain_archetype ?? null,
+        race_class: r.race_class ?? null, season_id: "golden-offline", season_variant: 0,
+      };
+    });
+    let generated = seeds.map((s) => generateRaceStageProfiles(s, { profileModel }));
+    if (profileModel !== S5_PROFILE_MODEL) generated = balanceFinaleQuotas(generated);
+    seeds.forEach((s, i) => races.push({ pool_race_id: s.id, name: s.name, race_type: s.race_type, race_class: s.race_class, terrain_archetype: s.terrain_archetype, stages: generated[i] }));
+  }
+  return races;
+}
+
+/**
  * Kører hele diffen mod to snapshots. Ren i forhold til filsystemet — kalderen leverer
  * begge sider, så en test kan injicere en snapshot med en bevidst afvigelse.
  *
- * @param {{gylden: object, ny: object, failOnDiff?: boolean}} args
+ * #6367: `s5Benchmark` = { result, judged } fra evaluateS5BenchmarkGate. Sektionen vises
+ * altid naar den er med; den DOEMMER (exit 1 ved roed) kun naar `judged` er sand, dvs. naar
+ * kalenderen er genereret med S5-modellen. Placeringen (golden-diffen) og terraenet
+ * (benchmarken) er to forskellige spoergsmaal: en v5-kalender er korrekt placeret og
+ * samtidig roed mod benchmarken, og det skal kunne laeses uden at CI-gaten falder.
+ *
+ * @param {{gylden: object, ny: object, failOnDiff?: boolean, s5Benchmark?: {result: object, judged: boolean}|null}} args
  * @returns {{diff: object, hårdeBrud: string[], exitCode: number, rapport: string}}
  */
-export function runGoldenDiff({ gylden, ny, failOnDiff = false } = {}) {
+export function runGoldenDiff({ gylden, ny, failOnDiff = false, s5Benchmark = null } = {}) {
   const diff = summarizeGoldenDiff(gylden, ny);
   const hårdeBrud = detectHardInvariantBreaches(ny);
-  const exitCode = hårdeBrud.length > 0 || (failOnDiff && !diff.uændret) ? 1 : 0;
-  return { diff, hårdeBrud, exitCode, rapport: formatGoldenDiffReport(diff, hårdeBrud) };
+  const s5Rød = Boolean(s5Benchmark?.judged && s5Benchmark?.result && !s5Benchmark.result.green);
+  const exitCode = hårdeBrud.length > 0 || (failOnDiff && !diff.uændret) || s5Rød ? 1 : 0;
+  return { diff, hårdeBrud, exitCode, rapport: formatGoldenDiffReport(diff, hårdeBrud, { s5Benchmark }) };
 }
 
 function argOf(flag) {
@@ -74,17 +125,35 @@ if (isMain) {
   const candidatePath = argOf("--candidate");
   const failOnDiff = process.argv.includes("--fail-on-diff");
   const asJson = process.argv.includes("--json");
+  // #6367: hvilken profil-model den offline kalenders etaper genereres med til S5
+  // benchmark-sektionen. v5 (default) = maalt, ikke doemt; s5 = doemt (exit 1 ved roed).
+  const profileModel = argOf("--profile-model") ?? "v5";
+  if (!["v5", S5_PROFILE_MODEL].includes(profileModel)) {
+    console.error(`--profile-model: "${profileModel}" er hverken v5 eller s5`); process.exit(2);
+  }
+  const motorPath = argOf("--motor-bench");
 
   const gylden = JSON.parse(readFileSync(goldenPath, "utf8"));
   const ny = candidatePath ? JSON.parse(readFileSync(candidatePath, "utf8")) : buildCalendarGoldenSnapshot();
+  const s5Benchmark = {
+    judged: profileModel === S5_PROFILE_MODEL,
+    result: evaluateS5BenchmarkGate({
+      races: buildOfflineS5GateRaces({ profileModel }),
+      benchmark: loadS5Benchmark(),
+      motor: motorPath ? loadMotorGapFile(resolve(motorPath)) : loadMotorGapFile(),
+    }),
+  };
 
-  const { diff, hårdeBrud, exitCode, rapport } = runGoldenDiff({ gylden, ny, failOnDiff });
+  const { diff, hårdeBrud, exitCode, rapport } = runGoldenDiff({ gylden, ny, failOnDiff, s5Benchmark });
 
   if (asJson) {
-    console.log(JSON.stringify({ diff, hårdeBrud, exitCode }, null, 2));
+    console.log(JSON.stringify({ diff, hårdeBrud, exitCode, s5Benchmark: { judged: s5Benchmark.judged, green: s5Benchmark.result.green, blocking: s5Benchmark.result.blocking } }, null, 2));
   } else {
     console.log(rapport);
     console.log("");
+    if (s5Benchmark.judged && !s5Benchmark.result.green) {
+      console.log("❌ S5 BENCHMARK-GATEN ER RØD — S5-kalenderen må IKKE genereres på denne kode (#6367).");
+    }
     if (hårdeBrud.length > 0) {
       console.log("❌ HÅRDE INVARIANTER BRUDT — kalenderen må IKKE genereres på denne kode.");
     } else if (!diff.uændret) {

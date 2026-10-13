@@ -1126,6 +1126,58 @@ Terræner under stikproeveminimum vises som `n<min, kun rapport` i begge lag. De
 
 ---
 
+## 7c. S5-etapeprofiler: terræn-reglen B+ og benchmark-gaten ([#6367](https://github.com/NicolaiDolmer/CyclingZone/issues/6367))
+
+Gælder fra **sæson 5** (S5-modellen, `profileModelForSeason` i `backend/lib/s5BenchmarkGate.js`). Sæson 1-4 er uændret og dømmes fortsat af §6, §7b og realisme-båndene. Design-go ejer 12/10: [spec](superpowers/specs/2026-10-12-s5-etapeprofiler-design.md) §2, §3 og §5. Epic [#6369](https://github.com/NicolaiDolmer/CyclingZone/issues/6369).
+
+### Terræn-reglen B+ (spec §2, rettet på kort 5)
+
+En etapes terræn **læses af stigningerne**, aldrig omvendt. Første regel der passer, oppefra:
+
+| Terræn | Regel |
+|---|---|
+| Højbjerg | ≥ 1 HC eller ≥ 3 × kat. 1 |
+| Bjerg | ≥ 1 × kat. 1 |
+| Mellembjerg | ≥ 2 × kat. 2 på mindst 5 km, eller 1 × kat. 2 på mindst 8 km, eller kat. 2 på mindst 5 km som bjergtopmål |
+| Kuperet | kat. 3 eller kort kat. 2. **Kat. 4 tæller aldrig mod kuperet** |
+| Bølget | 2 × kat. 4 (endelig regel når højdemeter regnes af ruten, [#6366](https://github.com/NicolaiDolmer/CyclingZone/issues/6366)) |
+| Flad | højst 1 × kat. 4 |
+
+En kat. 2 der ikke opfylder mellembjerg-reglen er en *kort* kat. 2 og tæller som kuperet. Formaterne (enkeltstart, holdtidskørsel, brosten, grus, klassiker) beholder deres type; deres terræn er B+ af deres stigninger.
+
+**Hvorfor reglen er en regel og ikke en etiket:** i S4 havde en tredjedel af etaperne en type der ikke passede med ruten (byg-planen §2), fordi v5-generatoren valgte typen først og trak stigningerne bagefter med overlappende spænd. B+ står to steder med vilje: i generatoren ([#6359](https://github.com/NicolaiDolmer/CyclingZone/issues/6359), `deriveTerrainType`) og i gaten (`deriveTerrainTypeBPlus`). Gaten låner ikke generatorens funktion, for så ville den måle generatoren mod sig selv; `s5BenchmarkGate.test.js` sammenligner de to over tilfældige stigningssæt.
+
+**Mellembjerg er en bjergdag.** I K-B-kompositionen (§6, `PROFILE_TO_CATEGORY`) og i realisme-scorecardet (bjerg-familien, bjergtoppe, distancebånd) tæller mellembjerg som bjerg. Ejer-definitionen 8/10: *kuperet = bakker, lange stigninger = bjerg*, og B+ giver kun mellembjerg ved lange kat. 2-stigninger.
+
+### Afslutningen (spec §3)
+
+Afslutningen er **geometri, ikke udfald**: flad spurt · stigende spurt · bakke · mur · bjergtop · nedkørsel · enkeltstart · holdtidskørsel. Udbrud er ikke en afslutning (motoradfærd, [#6368](https://github.com/NicolaiDolmer/CyclingZone/issues/6368)), og flad spurt afløser masse- og reduceret spurt. Hvilke afslutninger hvert terræn tillader står i matrixen (`FINISH_MATRIX` i `backend/lib/stageProfileTypes.js`) med cellernes betingelser: bjergtop på mellembjerg er kat. 2, på bjerg kat. 1, på højbjerg kat. 1/HC; nedkørsel kræver at sidste top er kat. 3 eller hårdere og ligger 5-25 km før mål; flad spurt på mellembjerg kræver at sidste top ligger længere væk end det; stigende spurt, bakke og mur kræver finale-rampen fra spec §3.
+
+### Benchmark-gaten (spec §5)
+
+`backend/lib/s5BenchmarkGate.js`. Måler den **planlagte** kalender mod 315 rigtige Grand Tour-etaper (`docs/design/s5-benchmark/gt-2021-2025.json`). Fire dele:
+
+| Del | Hvad | Tolerance |
+|---|---|---|
+| (1) etape | hver etape: type == B+, og afslutningen i matrixen inkl. cellens betingelser | ingen |
+| (2) Grand Tour | ejerens kvoter pr. GT-type (Tour/Giro/Vuelta) + ugestrukturen | i hele etaper, `S5_GT_QUOTA_TOLERANCE` (vises i dry-runnet) |
+| (3) sæson | afslutnings-andelene over sæsonens GT-etaper mod benchmarken | binomialt stikprøve-tillæg med et gulv, samme metode som §7b |
+| (4) motor | median tidsgab (vinder → nr. 10) pr. afslutning fra motor-bench | benchmarkens kvartil-interval |
+
+Ugestrukturen (del 2): ingen højbjerg i første tredjedel · kongeetapen (en etape af løbets hårdeste terræn) i sidste tredjedel · en tidskørsel i første og en i sidste tredjedel · sidste dag flad eller en tidskørsel. GT-typen afgøres af klassen (Tour-klassen er Tour-typen), ellers af løbets region. Har et løb et andet etapeantal end kvoten, skaleres landevejs-terrænerne, og tidskørslerne holdes faste. En holdtidskørsel må blive en enkeltstart ([#3463](https://github.com/NicolaiDolmer/CyclingZone/issues/3463)).
+
+**Hvor den håndhæves:**
+
+- `backend/scripts/buildSeasonCalendar.js`: fra sæson 5 er gaten et **hårdt krav uden override**, i samme klasse som placerings-gatesne. Den stopper `--apply`; dry-runnet måler videre og slutter med exit 1. For S5 **erstatter** den §7b's finale-bånd (de kender udbrud som afslutning); §7b printes stadig, men stopper ikke.
+- `backend/scripts/dev/calendarGoldenDiff.mjs` (#4123) har en S5-sektion. Default måles den offline kalender med den generator der ville køre og vises som *målt, ikke dømt*; `--profile-model s5` dømmer (exit 1 ved rød). Placering og terræn er to spørgsmål: golden-diffen dømmer placeringen, benchmarken terrænet.
+- Del (4) kører på en **stub** (`backend/lib/__fixtures__/s5MotorBenchStub.json`, benchmarkens egne medianer) indtil motor-sporet ([#6363](https://github.com/NicolaiDolmer/CyclingZone/issues/6363)) leverer en rigtig motor-bench. Stubben vises som STUB og blokerer ikke. En rigtig måling gives med `--motor-bench <fil>` (`{ "medians": { "<afslutning>": sekunder } }`) og blokerer når den er rød.
+
+**Gatens egen test:** den nuværende v5-generator er rød på (1) og (2), og S5-generatoren er grøn på (1)-(3). Begge låses af `s5BenchmarkGate.test.js`; den sidste aktiverer sig selv, når generatoren kender `profileModel: "s5"`.
+
+**Hvad gaten ikke dækker:** afslutnings-andelene (del 3) måles kun over Grand Tour-etaper, fordi benchmarken er Grand Tours. Endagsløb og korte etapeløb bindes af del (1) (B+ og matrixen), ikke af en fordeling.
+
+---
+
 ## 8. Rytterbinding og trupkrav
 
 **Brugte løbsdage efter holdskifte (#5860, ejer-go 30/9).** Afslutning frigiver fremtidige forpligtelser, men ikke en faktisk brugt løbsdag. Deltagelsen følger rytterens id og sæson på tværs af holdskift; en senere løbsdag er fri. `race_day_participation` og adgang før etaperesultater er kontrakten i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md). Kalenderdato eller klokkeslæt erstatter aldrig `game_day`. Historiske resultater bevares; særskilt genopretning af belastningsbevis er ejer-gated. Ingen kalender flyttes af denne rettelse.

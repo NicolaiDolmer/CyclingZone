@@ -33,6 +33,7 @@
 
 import { MAX_GT_STAGES_PER_DAY, MAX_GT_SPAN_DAYS } from "../../../lib/raceCalendarLanePacker.js";
 import { GRAND_TOUR_MIN_STAGES } from "../../../lib/grandTourRestDays.js";
+import { formatS5BenchmarkReport } from "../../../lib/s5BenchmarkGate.js";
 
 /** Løbstyperne rapporten grupperer efter. Rækkefølgen er rapportens rækkefølge. */
 export const RACE_TYPES = Object.freeze(["endagsløb", "etapeløb", "grand tour"]);
@@ -235,10 +236,11 @@ export function summarizeGoldenDiff(gylden, ny) {
  *
  * @param {ReturnType<typeof summarizeGoldenDiff>} diff
  * @param {string[]} hårdeBrud fra detectHardInvariantBreaches
- * @param {{maxDage?: number}} [opts]
+ * @param {{maxDage?: number, s5Benchmark?: {result: object, judged: boolean}|null}} [opts]
+ *   s5Benchmark (#6367): evaluateS5BenchmarkGate-resultatet; vises som egen sektion
  * @returns {string}
  */
-export function formatGoldenDiffReport(diff, hårdeBrud = [], { maxDage = 40 } = {}) {
+export function formatGoldenDiffReport(diff, hårdeBrud = [], { maxDage = 40, s5Benchmark = null } = {}) {
   const ud = [];
   ud.push("GYLDEN KALENDER-DIFF (#4123)");
   ud.push("=".repeat(60));
@@ -285,6 +287,14 @@ export function formatGoldenDiffReport(diff, hårdeBrud = [], { maxDage = 40 } =
     ud.push("  ✅ ingen brud");
   } else {
     for (const b of hårdeBrud) ud.push(`  ❌ ${b}`);
+  }
+
+  // #6367: S5 benchmark-sektionen (terrænet mod rigtige Grand Tours). Placering og terræn
+  // er to spørgsmål; sektionen står derfor EFTER de hårde placerings-invarianter og siger
+  // selv om den dømmer (S5-modellen) eller kun måler (v5).
+  if (s5Benchmark?.result) {
+    ud.push("");
+    for (const line of formatS5BenchmarkReport(s5Benchmark.result, { judged: s5Benchmark.judged === true })) ud.push(line);
   }
 
   return ud.join("\n");
