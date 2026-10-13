@@ -41,7 +41,13 @@
 // evne-point) + et maal for bjergetaper uden topankomst. Aktuel for nye loeb fra
 // ejerens ordrette "taend"; migrationen
 // 2026-10-12-race-engine-rules-revision-official-times-v4.sql goer vaerdien lovlig.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4"] as const;
+// #6369 (S5-etapeprofiler, Fase 0, SLUKKET): "s5_profiles_v1" = hele official_times_v4-pakken
+// og (endnu) intet andet. Revisionen er tom: Spor 2 (#6363/#6362/#6368) laegger S5-motorens
+// nye finaler, mellembjerg-terraen og udbrud-som-adfaerd bag isS5ProfilesV1OrLater. Den er
+// IKKE aktuel (CURRENT_RACE_RULES_REVISION er uaendret), og races_engine_rules_revision_check
+// kender den ikke endnu: CHECK-udvidelsen hoerer til taend-PR'en (ejer-only), saa et forsoeg
+// paa at binde et loeb til den fejler hoejlydt.
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -64,9 +70,14 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   official_times_v3: 3,
   // #6464: official_times_v3 + mountain gaps in every division; same v3 mechanics.
   official_times_v4: 3,
+  // #6369: official_times_v4 + (endnu intet); same v3 mechanics.
+  s5_profiles_v1: 3,
 });
 
-const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4"]);
+const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"]);
+
+/** #6369: revisionerne der arver HELE official_times_v4-pakken (v4 selv + S5). */
+const OFFICIAL_TIMES_V4_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v4", "s5_profiles_v1"]);
 
 /**
  * #6200: the shared time model's generation. 3 = official_times_v3 OR LATER
@@ -77,7 +88,7 @@ const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_
  * treating v4 exactly as v3.
  */
 export function sharedTimeModelGeneration(value: unknown): 0 | 3 {
-  return value === "official_times_v3" || value === "official_times_v4" ? 3 : 0;
+  return value === "official_times_v3" || OFFICIAL_TIMES_V4_LINEAGE.has(value) ? 3 : 0;
 }
 
 /** Den rene motor-revision (#6349/#6352/#6338 m.fl.): official_times_v3 eller senere. */
@@ -91,7 +102,16 @@ export function isOfficialTimesV3OrLater(revision: unknown): boolean {
  * bjergetaper uden topankomst har et eget loft paa nr. 10.
  */
 export function isOfficialTimesV4OrLater(revision: unknown): boolean {
-  return revision === "official_times_v4";
+  return OFFICIAL_TIMES_V4_LINEAGE.has(revision);
+}
+
+/**
+ * #6369 (slukket, tom): S5-etapeprofilernes motor-regler. Kaldsteder for S5-adfaerd
+ * (nye finaler, mellembjerg, udbrud som adfaerd) spoerger HER, aldrig paa strengen.
+ * Indtil Spor 2 bygger noget bag den, koerer s5_profiles_v1 praecis som official_times_v4.
+ */
+export function isS5ProfilesV1OrLater(revision: unknown): boolean {
+  return revision === "s5_profiles_v1";
 }
 
 /** Only the future pinned official-times revisions store uncapped official stage gaps. */

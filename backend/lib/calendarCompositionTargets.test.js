@@ -47,6 +47,8 @@ test("compositionCategory grupperer som ejerens #3295-tabel", () => {
   assert.equal(compositionCategory("flat"), "flat");
   for (const pt of ["rolling", "hilly", "classic"]) assert.equal(compositionCategory(pt), "hilly");
   for (const pt of ["mountain", "high_mountain"]) assert.equal(compositionCategory(pt), "mountain");
+  // #6369 Fase 0: PLADSHOLDER indtil benchmark-gaten (#6367) giver mellembjerg sin S5-kategori.
+  assert.equal(compositionCategory("medium_mountain"), "mountain");
   assert.equal(compositionCategory("itt"), "itt");
   for (const pt of ["cobbles", "gravel"]) assert.equal(compositionCategory(pt), "cobbles");
   assert.equal(compositionCategory("ttt"), "ttt");

@@ -25,6 +25,7 @@ import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, withS5ProfilePlaceholders } from "./stageProfileTypes.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
 import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
@@ -103,13 +104,11 @@ export const ABILITY_DIMENSIONS = Object.freeze([
 //      at kalenderen mister evnen til at skelne dem — regel-sporet ejer den mapping.
 //   2. brostensevnen taeller kun paa etaper med brosten/grus (ejer-regel 3/9): gravel faar
 //      GARANTEREDE grus-sektorer i buildSectors, saa vaegten aldrig falder paa gulvet.
-export const PROFILE_TYPES = Object.freeze([
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
-]);
+// #6369 Fase 0: listerne bor i stageProfileTypes.js (S5-ordforraadet: + medium_mountain,
+// + flat_sprint/uphill_sprint/wall_finish). Generatoren producerer stadig kun de gamle.
+export const PROFILE_TYPES = STAGE_PROFILE_TYPES;
 
-export const FINALE_TYPES = Object.freeze([
-  "bunch_sprint", "reduced_sprint", "punch", "long_climb", "descent", "solo_tt", "breakaway",
-]);
+export const FINALE_TYPES = STAGE_FINALE_TYPES;
 
 // Normaliserede demand-vektorer pr. terræn (ability-vægte + randomness, sum 1.0).
 // Launch-defaults — tunes HER. Nøgler ⊆ ABILITY_DIMENSIONS ∪ {randomness}.
@@ -117,7 +116,8 @@ export const FINALE_TYPES = Object.freeze([
 // (Mid-mountain, 5-15 min) som terræn-kraft, re-normaliseret til sum 1.0. flat
 // forbliver underordnet sprint på flad (sprinter ≥90%-mål); tempo underordnet
 // climbing i bjerg. Endelig kalibrering låses i race:gate (Plan 1 Task C1).
-export const DEMAND_VECTORS = Object.freeze({
+// #6369 Fase 0: medium_mountain faar en pladsholder (stageProfileTypes.js), kalibreres i Spor 1/2.
+export const DEMAND_VECTORS = Object.freeze(withS5ProfilePlaceholders({
   flat:          Object.freeze({ sprint: 0.61, acceleration: 0.15, flat: 0.06, positioning: 0.08, endurance: 0.02, randomness: 0.08 }),
   rolling:       Object.freeze({ endurance: 0.18, flat: 0.12, punch: 0.12, tempo: 0.08, positioning: 0.08, sprint: 0.08, tactics: 0.06, climbing: 0.04, recovery: 0.04, randomness: 0.20 }),
   hilly:         Object.freeze({ punch: 0.44, tempo: 0.10, acceleration: 0.08, climbing: 0.06, endurance: 0.06, positioning: 0.04, sprint: 0.02, randomness: 0.20 }),
@@ -140,7 +140,7 @@ export const DEMAND_VECTORS = Object.freeze({
   // samlet gruppe. Sum 1.0, som alle oevrige vektorer.
   gravel:        Object.freeze({ cobblestone: 0.58, endurance: 0.12, punch: 0.08, climbing: 0.05, flat: 0.03, positioning: 0.03, randomness: 0.11 }),
   classic:       Object.freeze({ endurance: 0.18, punch: 0.16, climbing: 0.12, cobblestone: 0.10, tempo: 0.06, flat: 0.06, positioning: 0.06, tactics: 0.04, sprint: 0.04, randomness: 0.18 }),
-});
+}));
 
 // Plausible finale-typer pr. terræn som VÆGTE (display + udbruds-modifier).
 // #1021 Fase 1: finale_type driver udbruds-bonussen.

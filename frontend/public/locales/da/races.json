@@ -1495,7 +1495,8 @@
       "ttt": "Holdtidskørsel",
       "cobbles": "Brosten",
       "gravel": "Grus",
-      "classic": "Klassiker"
+      "classic": "Klassiker",
+      "medium_mountain": "Mellembjerge"
     },
     "finaleType": {
       "bunch_sprint": "Massespurt",
@@ -1504,7 +1505,10 @@
       "long_climb": "Bjergfinale",
       "descent": "Nedkørselsfinale",
       "solo_tt": "Soloenkeltstart",
-      "breakaway": "Udbrudsvenlig"
+      "breakaway": "Udbrudsvenlig",
+      "flat_sprint": "Flad spurt",
+      "uphill_sprint": "Stigende spurt",
+      "wall_finish": "Murfinale"
     },
     "finaleTypeHint": {
       "bunch_sprint": "Feltet holder sammen, og etapen afgøres i en massespurt.",
@@ -1513,7 +1517,10 @@
       "long_climb": "Bjergfinale: selve stigningen er målstregen, hvor dagens største tidsforskelle opstår.",
       "descent": "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen.",
       "solo_tt": "Hver rytter starter alene mod uret, uden slipstrøm.",
-      "breakaway": "Terræn der begunstiger et tidligt udbrud. Om det holder hjem, afgøres på vejen, ikke her."
+      "breakaway": "Terræn der begunstiger et tidligt udbrud. Om det holder hjem, afgøres på vejen, ikke her.",
+      "flat_sprint": "Etapen slutter på flad vej og afgøres i en spurt.",
+      "uphill_sprint": "Den sidste kilometer stiger let, så spurten belønner ryttere der kan holde kraften op ad bakke.",
+      "wall_finish": "Målstregen ligger på en kort, meget stejl mur, hvor eksplosiv kraft afgør etapen."
     },
     "route": {
       "stats": {

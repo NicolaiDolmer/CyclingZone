@@ -16,11 +16,13 @@ import {
 // anvendes post-merge: se PR-body).
 // #4105: gravel tilføjet (migration database/2026-09-03-4105-terre-di-toscana-gravel.sql,
 // anvendes post-merge: se PR-body).
+// #6369: medium_mountain + flat_sprint/uphill_sprint/wall_finish (migration
+// database/2026-10-13-6369-s5-stage-profile-types.sql, anvendes post-merge).
 const DB_PROFILE_TYPES = [
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
+  "flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
 ];
 const DB_FINALE_TYPES = [
-  "bunch_sprint", "reduced_sprint", "punch", "long_climb", "descent", "solo_tt", "breakaway",
+  "bunch_sprint", "reduced_sprint", "punch", "long_climb", "descent", "solo_tt", "breakaway", "flat_sprint", "uphill_sprint", "wall_finish",
 ];
 
 test("PROFILE_TYPE_KEYS matcher DB-constrainten", () => {

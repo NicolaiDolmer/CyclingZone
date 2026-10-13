@@ -103,6 +103,10 @@ export type ProfileType =
   | "flat"
   | "rolling"
   | "hilly"
+  // #6369 Fase 0 (S5, ADDITIVT): mellembjerg. Ordforraadet bor i backend/lib/stageProfileTypes.js.
+  // Motoren har ingen egen adfaerd for typen endnu (Spor 2, bag regel-revision s5_profiles_v1);
+  // ingen etape har typen foer S5-generatoren skriver den.
+  | "medium_mountain"
   | "mountain"
   | "high_mountain"
   | "cobbles"
@@ -125,7 +129,12 @@ export type FinaleType =
   | "breakaway"
   | "descent"
   | "long_climb"
-  | "solo_tt";
+  | "solo_tt"
+  // #6369 Fase 0 (S5, ADDITIVT): flad spurt (S5-navnet for bunch/reduced), stigende spurt
+  // (#6362) og mur (#6363). Ingen motor-adfaerd endnu (Spor 2, bag s5_profiles_v1).
+  | "flat_sprint"
+  | "uphill_sprint"
+  | "wall_finish";
 
 export type RouteV2 = {
   distance_km: number;

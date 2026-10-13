@@ -774,6 +774,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "official_times_v2") return "official_times_v2";
   if (raw === "official_times_v3") return "official_times_v3";
   if (raw === "official_times_v4") return "official_times_v4";
+  if (raw === "s5_profiles_v1") return "s5_profiles_v1"; // #6369: tom, slukket (= official_times_v4)
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 

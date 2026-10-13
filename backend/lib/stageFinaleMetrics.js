@@ -23,6 +23,8 @@ export const FINALE_CLASS_BY_TYPE = Object.freeze({
   descent: "down",
   breakaway: "break",
   solo_tt: "tt",
+  // #6369 Fase 0: PLADSHOLDER-klasser for S5's nye finaler (geometri, spec §3); S5-baandene ejes af #6367.
+  flat_sprint: "flat", uphill_sprint: "flat", wall_finish: "up",
 });
 
 export const FINALE_CLASSES = Object.freeze(["up", "flat", "down", "break", "tt"]);

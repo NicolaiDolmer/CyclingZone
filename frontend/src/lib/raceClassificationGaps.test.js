@@ -160,7 +160,7 @@ test("parity: teamGaps matches backend teamClassification for both time models",
       }
     }
   }
-  for (const revision of ["official_times_v4", "official_times_v3", "official_times_v2", "legacy"]) {
+  for (const revision of ["s5_profiles_v1", "official_times_v4", "official_times_v3", "official_times_v2", "legacy"]) {
     const acc = accumulateStageRows({ stageRows });
     const classified = filterCompletedEntrants(riders, acc.stagesByRider, acc.stageNumbers);
     const engine = teamClassification(classified, teamClassificationTime(acc, revision));
