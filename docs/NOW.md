@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action = SESSION 13/10:** `docs/sessions/2026-10-13-s5-byg-og-v4-tjek.md`. (1) Fund fra #6549 (Hvad brænder kl. 08). (2) Secrets til DB Watchdog #5878 (ejer). (3) S5-etapeprofiler #6369: design-go 12/10 → baseline + bølge, live senest 18/10. (4) Kl. 12 v4-bjergetaper (#6456/#6464, luk kun på ejer-go). (5) Aldringskort #6499 (0,7 vs 1,0). (6) #6490 observationsaften 1 af 2. 13/10: faktura i Alunta (ejer).
+> **🎯 Next action = SESSION 14/10:** `docs/sessions/2026-10-14-effektiv-session.md` (startprompt + bølge-args klar). (1) Hvad brænder kom kl. 08? (2) Merge-status #6565 #6567 #6568 + #6535. (3) Bølge: #6569 dashboard · #6557 SEO · #6574 road book-billede · #6551 scout (investigate). (4) Kl. 20: pause-afstemningerne i forummet lukker → S5-startdato (#5833). (5) Bogføring + revisor #4511 (ejer). (6) #6490 aften 2 → DROP INDEX-kort.
 >
-> **12/10 aften:** merget #6544 (auto-udtag, CYCLINGZONE-4P) #6538 (rider_training_seen, paritet 0) #6546 #6547 (refresh: diagnostik + direkte forbindelse + PG17) #6550 (Hvad brænder-vagt). Prioritering ejer-godkendt: Nu-listen (10) `priority:high`, 22 lukket, 23 icebox, 2 dubletter. S5-design kort 1-6 + design-go (spec `docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md`). DB Watchdog har aldrig kørt (mangler secrets).
+> **13/10:** masterplan omlagt (Brand / Nu / Forretning, mål 31/12: 2.000 kr. MRR + 200 aktive/7d, release-gate #6553). Merget #6555 (S5 Fase 0, migration verificeret) #6556 (S5-mail-kampagne) #6561. DB Watchdog grøn (secrets sat). Aldring 0,7 (#6499). Founder-funktioner kræver aktiv Pro (#2806). Etapeside-retning 6A+6C (#6570); ingen udviklingstal på løbssiden; route fit kun egne ryttere. Ingen nye løbende udgifter før indtægt stiger.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -25,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (12/10 aften lukket; næste 13/10 morgen). Codex: intet aktivt spor.
+> **🤖 Working agent:** Ingen aktiv session (13/10 aften lukket; næste 14/10 morgen). Codex: S5-lanceringspakke + annoncetest + marts-plan (udkast til 21/10).
