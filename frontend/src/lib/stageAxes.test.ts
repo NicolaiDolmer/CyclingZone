@@ -54,6 +54,13 @@ test("decisiveClimb: hardeste kategori, og den sidste af dem", () => {
   assert.equal(d?.crestKm, 120);
   assert.equal(d?.kmToGo, 55);
   assert.equal(d?.summit, false);
+  assert.equal(d?.isLast, false, "en senere (lavere) stigning følger efter, så der er ikke nedkørsel direkte til mål");
+});
+
+test("decisiveClimb: summit kommer kun af summit_finish, aldrig af at toppen ligger tæt på mål", () => {
+  const d = decisiveClimb({ distance_km: 150, climbs: [climb("1", 149.6)] });
+  assert.equal(d?.summit, false);
+  assert.equal(d?.isLast, true);
 });
 
 test("decisiveClimb: bjergtop er markeret som summit", () => {

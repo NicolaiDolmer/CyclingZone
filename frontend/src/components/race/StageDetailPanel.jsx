@@ -22,7 +22,11 @@ import StageDecidedDemands from "./StageDecidedDemands";
 // planlaegger - faar `tier="full"`, saa hver stignings navn, laengde og gradient
 // kan aflaeses mens man udtager. Den KOERTE etape faar `tier="compact"` (se
 // RaceDetailPage's StageProfileSlot); foer var det stik modsat.
-const READS_COVERED_BY_DECIDED = ["summit", "valley"];
+// Route-reads som "her afgoeres etapen" allerede siger: bjergtop, og nedkoersel efter den
+// sidste stigning. Er der ingen afgoerende stigning, beholdes alle reads.
+const NO_READS = [];
+const READS_COVERED_BY_SUMMIT = ["summit"];
+const READS_COVERED_BY_DESCENT = ["valley"];
 
 export default function StageDetailPanel({
   profile,
@@ -53,7 +57,7 @@ export default function StageDetailPanel({
           asCard={false}
           beforeGraph={<StageAxesStrip axes={axes} />}
           decisiveCrestKm={decisive ? decisive.crestKm : null}
-          hideReads={READS_COVERED_BY_DECIDED}
+          hideReads={!decisive ? NO_READS : decisive.summit ? READS_COVERED_BY_SUMMIT : decisive.isLast ? READS_COVERED_BY_DESCENT : NO_READS}
         />
       ) : (
         <>

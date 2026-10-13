@@ -34,7 +34,7 @@ export default function StageAxesStrip({ axes }: { axes: StageAxes }) {
       <div className={CELL}>
         <p className={LABEL}>{t("detail.stageCard.axes.finish")}</p>
         <Tooltip id={tipId} label={finishHint}>
-          <button type="button" className={`${VALUE} p-0 text-start cursor-help`}>
+          <button type="button" aria-describedby={tipId} className={`${VALUE} p-0 text-start cursor-help`}>
             {finishLabel}
           </button>
         </Tooltip>

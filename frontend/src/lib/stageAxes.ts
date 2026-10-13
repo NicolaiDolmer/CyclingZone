@@ -162,7 +162,10 @@ export interface DecisiveClimb {
   avgGradient: number;
   /** Km fra toppen til maal (0 ved bjergtop). */
   kmToGo: number;
+  /** Er maalet paa toppen? Kun etapens egen summit_finish-markering, aldrig afstanden. */
   summit: boolean;
+  /** Er det etapens SIDSTE stigning (kat. 4 medregnet)? Kun da foelger der en nedkoersel til maal. */
+  isLast: boolean;
 }
 
 // UCI-kategori -> haardhed. Kat. 4 afgoer aldrig en etape (spec §2: tael ikke mod kuperet).
@@ -190,6 +193,8 @@ export function decisiveClimb(
   if (!pick) return null;
   const crestKm = Number(pick.crest_km);
   const kmToGo = Math.max(0, distance - crestKm);
+  const lastCrest = Math.max(...(Array.isArray(profile.climbs) ? profile.climbs : [])
+    .map((c) => Number(c?.crest_km)).filter((km) => Number.isFinite(km)));
   return {
     name: pick.name ?? null,
     category: String(pick.category),
@@ -197,7 +202,8 @@ export function decisiveClimb(
     lengthKm: Number(pick.length_km),
     avgGradient: Number(pick.avg_gradient),
     kmToGo,
-    summit: !!pick.summit_finish || kmToGo < 0.5,
+    summit: !!pick.summit_finish,
+    isLast: crestKm >= lastCrest,
   };
 }
 

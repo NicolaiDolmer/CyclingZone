@@ -26,7 +26,8 @@ export default function StageDecidedDemands({ decisive, demands, finish }: Props
       length: formatNumber(decisive.lengthKm, { maximumFractionDigits: 1 }),
       gradient: formatNumber(decisive.avgGradient, { maximumFractionDigits: 1 }),
     });
-    const kind = decisive.summit ? "summit" : finish === "descent" ? "descent" : "before";
+    // "Derefter nedkoersel" kun naar den afgoerende stigning ogsaa er den sidste paa ruten.
+    const kind = decisive.summit ? "summit" : finish === "descent" && decisive.isLast ? "descent" : "before";
     decidedText = t(`detail.stageCard.decided.${kind}`, { name, stats, km: Math.round(decisive.kmToGo) });
   }
 
