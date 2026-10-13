@@ -4,6 +4,8 @@
 
 ## Aktiv styring
 
+> **⏰ Påmind ejeren 14/10 morgen:** betalingsvagten (Sentry CYCLINGZONE-62) melder Alunta-faktura nr. 2 (61,25 kr., forfaldt 8/8) + én Pro-adgang der ikke matcher betaling → ejeren afstemmer/krediterer i Dinero; Claude undersøger derefter Pro-afvigelsen. Plus: CodeRabbit har ramt udgiftsloftet (ejer-beslutning).
+>
 > **🎯 Next action = SESSION 14/10:** `docs/sessions/2026-10-14-effektiv-session.md` (startprompt + bølge-args klar). (1) Hvad brænder kom kl. 08? (2) Merge-status #6565 #6567 #6568 + #6535. (3) Bølge: #6569 dashboard · #6557 SEO · #6574 road book-billede · #6551 scout (investigate). (4) Kl. 20: pause-afstemningerne i forummet lukker → S5-startdato (#5833). (5) Bogføring + revisor #4511 (ejer). (6) #6490 aften 2 → DROP INDEX-kort.
 >
 > **13/10:** masterplan omlagt (Brand / Nu / Forretning, mål 31/12: 2.000 kr. MRR + 200 aktive/7d, release-gate #6553). Merget #6555 (S5 Fase 0, migration verificeret) #6556 (S5-mail-kampagne) #6561. DB Watchdog grøn (secrets sat). Aldring 0,7 (#6499). Founder-funktioner kræver aktiv Pro (#2806). Etapeside-retning 6A+6C (#6570); ingen udviklingstal på løbssiden; route fit kun egne ryttere. Ingen nye løbende udgifter før indtægt stiger.
