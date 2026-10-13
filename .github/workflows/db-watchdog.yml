@@ -59,7 +59,7 @@ jobs:
       # Nøglen er unik pr. kørsel (caches kan ikke overskrives); restore-keys
       # henter den senest oprettede. Ingen tidligere tilstand = start forfra.
       - name: Restore watchdog state
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .db-watchdog-state
           key: db-watchdog-state-${{ github.run_id }}-${{ github.run_attempt }}
@@ -79,7 +79,7 @@ jobs:
 
       - name: Save watchdog state
         if: always() && hashFiles('.db-watchdog-state/state.json') != ''
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .db-watchdog-state
           key: db-watchdog-state-${{ github.run_id }}-${{ github.run_attempt }}
