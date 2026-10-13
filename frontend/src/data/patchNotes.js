@@ -1,5 +1,64 @@
 export const PATCHES = [
   {
+    "version": "7.359",
+    "date": "2026-10-13",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "App",
+        "en": {
+          "title": "Install Cycling Zone as an app",
+          "body": "On Android, open cyclingzone.org in Chrome, tap the ⋮ menu and choose \"Install app\". You get an icon on your home screen, full screen, shortcuts to Auctions, Today's stages and My team (long-press the icon), and the unread count on the icon. Same game, same account, no app store needed."
+        },
+        "da": {
+          "title": "Installér Cycling Zone som app",
+          "body": "På Android: åbn cyclingzone.org i Chrome, tryk på menuen ⋮ og vælg \"Installér app\". Du får et ikon på hjemmeskærmen, fuld skærm, genveje til Auktioner, Dagens etaper og Min trup (hold fingeren på ikonet) og antal ulæste på ikonet. Samme spil, samme konto, ingen app-butik."
+        },
+        "refs": [
+          6584,
+          6585
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting missions search the whole market again",
+          "body": "A bug meant missions only searched part of the free agents, and some reports came back with riders you couldn't see. Missions now search every free agent. If your scout finds no one matching your criteria, you're told so plainly. If your report was lost to the bug, the 6,000 has been refunded and you've had a message."
+        },
+        "da": {
+          "title": "Spejdermissioner søger igen på hele markedet",
+          "body": "En fejl gjorde, at missioner kun søgte blandt en del af de frie ryttere, og nogle rapporter kom tilbage med ryttere, du ikke kunne se. Missioner søger nu blandt alle frie ryttere. Finder din spejder ingen inden for dine kriterier, får du det at vide direkte. Gik din rapport tabt på grund af fejlen, har du fået de 6.000 tilbage og en besked."
+        },
+        "refs": [
+          6551,
+          6579
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Today's stages loads faster",
+          "body": "The \"Today's stages\" card on your dashboard now loads together with the page and no longer flickers into a loading placeholder every minute."
+        },
+        "da": {
+          "title": "Dagens etaper indlæses hurtigere",
+          "body": "Kortet \"Dagens etaper\" på dit dashboard indlæses nu sammen med siden og blinker ikke længere som skelet hvert minut."
+        },
+        "refs": [
+          6569
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.358",
     "date": "2026-10-12",
     "changes": [
