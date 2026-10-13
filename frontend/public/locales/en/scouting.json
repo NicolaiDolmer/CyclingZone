@@ -68,6 +68,8 @@
     "empty": "No mission has reported back yet.",
     "allReportedNote": "Every rider below comes with a free level 1 scouting report. Open their profile's Scouting tab to see it.",
     "topFind": "Best match",
+    "noMatches": "Your scout searched but found no riders matching your criteria.",
+    "allHidden": "The riders from this mission can't be viewed right now, for example because of an open academy offer or a transfer in progress.",
     "statusFreeAgent": "Free agent"
   },
   "teamHistory": {

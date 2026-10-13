@@ -327,7 +327,10 @@ function MissionForm({ onSubmit, busy, jobConfig, t, tTypes }) {
 }
 
 function ShortlistFeed({ completed, riderNames, t, tTypes }) {
-  const missions = completed.filter((c) => c.kind === "mission" && c.result?.shortlist?.length);
+  // #6551: en fuldført mission med tom liste skjules ikke længere. Enten fandt
+  // spejderen ingen (hiddenCount 0), eller også er alle fund skjult siden
+  // (fx et åbent akademi-tilbud eller en handel i gang); begge får én kort linje.
+  const missions = completed.filter((c) => c.kind === "mission" && Array.isArray(c.result?.shortlist));
   if (missions.length === 0) {
     return (
       <Section>
@@ -353,6 +356,12 @@ function ShortlistFeed({ completed, riderNames, t, tTypes }) {
                 translateType: (key) => tTypes(`types.${key}`),
               })}
             </p>
+            {m.result.shortlist.length === 0 && (
+              <p className="text-cz-3 text-[12.5px] mt-1.5 mb-0">
+                {m.hiddenCount > 0 ? t("shortlist.allHidden") : t("shortlist.noMatches")}
+              </p>
+            )}
+            {m.result.shortlist.length > 0 && (
             <ul className="list-none p-0 m-0 mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
               {m.result.shortlist.map((riderId) => {
                 // #2644 beslutning 4: rytterens NUVÆRENDE status (kontraktfri /
@@ -381,6 +390,7 @@ function ShortlistFeed({ completed, riderNames, t, tTypes }) {
                 );
               })}
             </ul>
+            )}
           </li>
         ))}
       </ul>

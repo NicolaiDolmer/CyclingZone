@@ -5,12 +5,15 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { defaultLoadCandidates, completeDueMissionAssignments } from "./scoutMissionMaturation.js";
 import { missionReadyAt } from "./scoutEngine.js";
+import { buildScoutReportReadyNotification } from "./notificationService.js"; // #6551
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Supabase-mock: chainable query-builders (.eq/.is/.not/.lte/.maybeSingle) OG en
 // betinget update-kæde (.eq×N.select()) der spejler den ægte claim-first UPDATE.
-function makeMockSupabase({ assignments = [], scoutActions = [], candidates = [], offeredIntake = [], seasons = [] } = {}) {
+// #6551: rowCap simulerer PostgREST's 1.000-rækkers loft — en select uden
+// .range() klippes ved rowCap, .range(from,to) giver præcis den side.
+function makeMockSupabase({ assignments = [], scoutActions = [], candidates = [], offeredIntake = [], seasons = [], rowCap = Infinity } = {}) {
   const state = {
     assignments: JSON.parse(JSON.stringify(assignments)),
     scoutActions: JSON.parse(JSON.stringify(scoutActions)),
@@ -25,14 +28,20 @@ function makeMockSupabase({ assignments = [], scoutActions = [], candidates = []
     const filters = [];
     const notNullFilters = [];
     let lteVal = null;
+    let orderCol = null;
+    let rangeVal = null;
     const matched = () => {
       let out = rows.filter((r) => filters.every(([c, v]) => r[c] === v));
       if (notNullFilters.length) out = out.filter((r) => notNullFilters.every((c) => r[c] != null));
       if (supportsLte && lteVal) out = out.filter((r) => r[lteVal[0]] != null && r[lteVal[0]] <= lteVal[1]);
-      return out;
+      if (orderCol) out = [...out].sort((x, y) => String(x[orderCol]).localeCompare(String(y[orderCol])));
+      if (rangeVal) return out.slice(rangeVal[0], Math.min(rangeVal[1] + 1, rangeVal[0] + rowCap));
+      return out.slice(0, rowCap);
     };
     const b = {
       select() { return b; },
+      order(col) { orderCol = col; return b; },
+      range(from, to) { rangeVal = [from, to]; return b; },
       eq(col, val) { filters.push([col, val]); return b; },
       is(col, val) { filters.push([col, val]); return b; },
       not(col, op, val) { if (op === "is" && val === null) notNullFilters.push(col); return b; },
@@ -115,6 +124,20 @@ describe("defaultLoadCandidates (#2581, flyttet fra scoutSweep.js #3997)", () =>
     });
     const candidates = await defaultLoadCandidates(supabase);
     assert.deepEqual(candidates.map((c) => c.id), ["r2"]);
+  });
+
+  it("#6551: henter ALLE rækker forbi PostgREST's 1.000-loft (begge loads pagineret)", async () => {
+    const pad = (n) => String(n).padStart(5, "0");
+    // 2.500 frie ryttere; de sidste 1.200 har et åbent intake-tilbud. Begge
+    // lister overstiger loftet, så en upagineret load ville både miste
+    // kandidater og lade tilbudte ryttere slippe igennem.
+    const riders = Array.from({ length: 2500 }, (_, i) => riderRow({ id: `r${pad(i)}` }));
+    const offered = Array.from({ length: 1200 }, (_, i) => ({ id: `i${pad(i)}`, rider_id: `r${pad(1300 + i)}`, status: "offered" }));
+    const supabase = makeMockSupabase({ candidates: riders, offeredIntake: offered, rowCap: 1000 });
+    const candidates = await defaultLoadCandidates(supabase);
+    assert.equal(candidates.length, 1300);
+    assert.equal(new Set(candidates.map((c) => c.id)).size, 1300);
+    assert.ok(candidates.every((c) => c.id < `r${pad(1300)}`), "ingen rytter med åbent intake-tilbud i puljen");
   });
 
   it("free_agents (default): ekskluderer ryttere med et team_id sat", async () => {
@@ -322,6 +345,28 @@ describe("completeDueMissionAssignments (#3997)", () => {
     assert.deepEqual(result, { completed: 1 });
     assert.deepEqual(supabase.state.assignments[0].result, { shortlist: [], top_rider_id: null });
     assert.equal(supabase.state.inserts.scout_actions.length, 0);
+  });
+
+  it("#6551 tom shortlist: ingen refusion, ingen 'rapport klar', ærlig ingen-fund-besked", async () => {
+    const now = new Date("2026-08-02T09:00:00.000Z");
+    const supabase = makeMockSupabase({
+      assignments: [missionAssignment({ mission_criteria: { scope: "division", value: "no-such-div" } })],
+      candidates: [],
+    });
+    const calls = [];
+    // Ægte payload-builder: vi tjekker hvad spilleren faktisk får at se.
+    const notify = async ({ assignment }) => { calls.push(buildScoutReportReadyNotification({ assignment })); return { delivered: true }; };
+    const result = await complete({ supabase, now, loadCandidates: async () => [], notify });
+    assert.deepEqual(result, { completed: 1 });
+    // Ingen refusion: mocken kaster på enhver ukendt tabel (finance_transactions,
+    // teams m.fl.), og den eneste UPDATE er claimet på scout_assignments.
+    assert.equal(supabase.state.updates.length, 1);
+    assert.deepEqual(Object.keys(supabase.state.updates[0].payload).sort(), ["completed_at", "result", "status"]);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].metadata.titleCode, "notif.scoutReportReady.mission.titleEmpty");
+    assert.equal(calls[0].metadata.messageCode, "notif.scoutReportReady.mission.messageEmpty");
+    assert.doesNotMatch(calls[0].title, /ready/i);
+    assert.match(calls[0].message, /found no riders matching your criteria/);
   });
 
   it("ét hold/mission's fejl stopper ikke en anden mission", async () => {

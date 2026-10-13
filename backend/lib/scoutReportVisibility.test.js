@@ -111,6 +111,21 @@ test("hydrateCompletedVisibility: fjerner AI-ejet rytter fra mission-shortlist +
   assert.deepEqual(mission.result.shortlist, ["rider-human"]);
   assert.equal(mission.result.top_rider_id, null); // topfundet VAR den AI-ejede rytter
   assert.deepEqual(mission.riderStatus, { "rider-human": { status: "team", teamName: "FC Nordkyst" } });
+  assert.equal(mission.hiddenCount, 1); // #6551
+});
+
+test("hydrateCompletedVisibility: hiddenCount = hele shortlisten når alle fund er skjult siden (#6551)", async () => {
+  const completed = [{
+    id: "m2", kind: "mission", status: "completed",
+    result: { shortlist: ["rider-ai", "rider-gone"], top_rider_id: "rider-ai" },
+  }];
+  const riders = [
+    { id: "rider-ai", team_id: "team-9", pending_team_id: null, is_academy: false, owner_is_ai: true, team: null },
+  ];
+  const supabase = makeSupabase({ riders });
+  const [mission] = await hydrateCompletedVisibility(supabase, completed);
+  assert.deepEqual(mission.result.shortlist, []);
+  assert.equal(mission.hiddenCount, 2);
 });
 
 test("hydrateCompletedVisibility: target-rapport skjuler rider_id hvis rytteren er AI-ejet", async () => {

@@ -68,6 +68,8 @@
     "empty": "Ingen mission har meldt sig endnu.",
     "allReportedNote": "Hver rytter herunder får en gratis niveau 1-rapport. Åbn deres profils Spejder-fane for at se den.",
     "topFind": "Bedste match",
+    "noMatches": "Din spejder har ledt, men fandt ingen ryttere, der matcher dine kriterier.",
+    "allHidden": "Rytterne fra denne mission kan ikke ses lige nu, fx på grund af et åbent akademitilbud eller en handel i gang.",
     "statusFreeAgent": "Kontraktfri"
   },
   "teamHistory": {

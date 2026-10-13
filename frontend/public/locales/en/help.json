@@ -1927,7 +1927,7 @@
     },
     "scoutCancelRefundFaq": {
       "q": "If I cancel a scouting mission, do I get the money back? Does it matter when I cancel?",
-      "a": "No refund, at any point. The travel cost is charged the moment you start a mission, and cancelling just stops it and frees up your scout; it doesn't return any of the money you already spent, no matter how early or late you cancel. Weigh that before you commit a mission: only start one you're willing to see through, or willing to lose the cost of if your plans change."
+      "a": "No refund, at any point. The travel cost is charged the moment you start a mission, and cancelling just stops it and frees up your scout; it doesn't return any of the money you already spent, no matter how early or late you cancel. Weigh that before you commit a mission: only start one you're willing to see through, or willing to lose the cost of if your plans change. The same goes for a mission that comes back empty: if no riders match your criteria, your scout has still done the search, so there's no refund, and you get a message saying nothing matched instead of a report. If the riders a mission found later become unavailable to view (for example an open academy offer or a transfer in progress), the mission stays on the Scouting page with a short note."
     }
   }
 }
