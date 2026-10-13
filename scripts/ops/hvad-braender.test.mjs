@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { classifySentry, classifyCi, classifyDb, classifyTraining, classifyDeploy, classifyWaveTokens, classifyTracks, parseState, parseWaveTokenComments, renderReport } from "./hvad-braender.mjs";
+import { classifySentry, classifyCi, classifyDb, classifyTraining, classifyDeploy, classifyWaveTokens, classifyTracks, parseState, parseWaveTokenComments, renderReport, alreadyReported } from "./hvad-braender.mjs";
 
 const NOW = Date.parse("2026-10-13T06:00:00Z");
 const h = (n) => new Date(NOW - n * 3600000).toISOString();
@@ -77,4 +77,11 @@ test("Report: reds first, state round-trips, pipes cannot break the table", () =
   assert.match(body, /x \/ y/);
   assert.deepEqual(parseState(body), { db: { "2026-10-13": 1 } });
   assert.deepEqual(parseState("no state"), {});
+});
+
+test("Late cron: scheduled run skips when today is already reported; manual run never skips", () => {
+  assert.equal(alreadyReported({ reportedOn: "2026-10-14" }, "2026-10-14", true), true);
+  assert.equal(alreadyReported({ reportedOn: "2026-10-13" }, "2026-10-14", true), false);
+  assert.equal(alreadyReported({}, "2026-10-14", true), false);
+  assert.equal(alreadyReported({ reportedOn: "2026-10-14" }, "2026-10-14", false), false);
 });
