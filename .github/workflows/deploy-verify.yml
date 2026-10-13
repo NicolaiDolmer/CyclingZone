@@ -440,6 +440,15 @@ jobs:
         if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'deferred'
         run: echo "::notice::AFVENTER CHECK-IN for long cadences (> 30 min); short cadences verified. Non-blocking for the merge queue; see jobs and deadlines in summary."
 
+      # #6558: sitemap-URL'er til IndexNow efter frontend-deploy. Advisory: aldrig
+      # et stop for koeen. No-op uden secret INDEXNOW_KEY.
+      - name: Submit sitemap URLs to IndexNow (#6558)
+        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        continue-on-error: true
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        run: node scripts/seo/indexnow-submit.mjs
+
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
         if: steps.deployments.outputs.result == 'success'
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
