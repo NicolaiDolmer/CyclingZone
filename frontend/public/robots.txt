@@ -1,4 +1,47 @@
 User-agent: *
 Allow: /
 
+# #6557: app-ruter bag login. De har ingen offentlig tekst (kun app-skallen) og
+# skal ikke crawles. Offentlige sider (/, /login, /help, /rules, /roadmap,
+# /patch-notes, /founder-supporter, juridiske sider) er bevidst IKKE listet.
+Disallow: /api/
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /riders
+Disallow: /staff
+Disallow: /auctions
+Disallow: /transfers
+Disallow: /team
+Disallow: /teams
+Disallow: /standings
+Disallow: /board
+Disallow: /sponsors
+Disallow: /notifications
+Disallow: /forum
+Disallow: /compare
+Disallow: /profile
+# /pro uden $ ville ogsaa blokere /pro-cycling-manager-alternative (sitemap).
+Disallow: /pro$
+Disallow: /pro/
+Disallow: /activity
+Disallow: /watchlist
+Disallow: /planning
+Disallow: /races
+Disallow: /seasons
+Disallow: /resultater
+Disallow: /race-centre
+Disallow: /race-archive
+Disallow: /finance
+Disallow: /managers
+Disallow: /training
+Disallow: /planner
+Disallow: /academy
+Disallow: /squads
+Disallow: /youth-races
+Disallow: /klub
+Disallow: /scouting
+Disallow: /survey
+Disallow: /reset-password
+Disallow: /ui
+
 Sitemap: https://cyclingzone.org/sitemap.xml

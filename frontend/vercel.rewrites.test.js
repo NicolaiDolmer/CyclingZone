@@ -179,3 +179,59 @@ test("alle mapper med lang cache-header er undtaget fra fallback", () => {
     );
   }
 });
+
+// #6557: ukendte stier skal give ægte 404, ikke 200 + app-skal (soft 404).
+// Fallbacken er derfor en hvidliste af første sti-segmenter. Guarden udleder
+// listen af App.jsx, saa en ny top-level rute der glemmes i vercel.json fejler
+// her og ikke giver spillere en 404 i prod.
+const here = dirname(fileURLToPath(import.meta.url));
+
+test("ukendte stier falder IKKE tilbage til app.html (#6557)", () => {
+  for (const path of ["/findes-ikke", "/xyz/abc", "/dashboardx", "/api/unknown", "/wp-admin", "/.env"]) {
+    assert.ok(!servesSpaFallback(path), `${path} skal give 404, ikke app-skallen`);
+  }
+});
+
+test("hver top-level rute i App.jsx serveres af SPA-fallback (#6557)", () => {
+  const app = readFileSync(join(here, "src", "App.jsx"), "utf8");
+  // Kun top-level: <Route path="…"> under admin er indlejret (admin/season mv.)
+  // og dækkes af første segment. Dev-only /ui/boardroom dækkes af /ui.
+  const segments = new Set();
+  for (const m of app.matchAll(/<Route\b[^>]*?\bpath="([^"]+)"/g)) {
+    const first = m[1].replace(/^\//, "").split("/")[0];
+    if (!first || first === "*") continue;
+    segments.add(first);
+  }
+  // Børn af <Route path="admin"> staar uden "admin/"-praefiks i App.jsx.
+  for (const nested of ["season", "economy", "users", "feedback", "data", "system"]) segments.delete(nested);
+  assert.ok(segments.size > 40, "forventede at finde de ~58 top-level ruter i App.jsx");
+  for (const seg of segments) {
+    assert.ok(servesSpaFallback(`/${seg}`), `/${seg} er en app-rute men mangler i SPA-fallbackens hvidliste i vercel.json`);
+    assert.ok(servesSpaFallback(`/${seg}/under-side`), `/${seg}/… skal også serveres af SPA-fallback`);
+  }
+});
+
+test("app-skallen er noindex, 404-siden er noindex, robots.txt blokerer app-ruter men ikke offentlige (#6557)", () => {
+  const indexHtml = readFileSync(join(here, "index.html"), "utf8");
+  assert.match(indexHtml, /<meta\s+name="robots"\s+content="noindex"\s*\/?>/);
+  const notFound = readFileSync(join(here, "public", "404.html"), "utf8");
+  assert.match(notFound, /<meta\s+name="robots"\s+content="noindex"/);
+
+  const robots = readFileSync(join(here, "public", "robots.txt"), "utf8");
+  const disallows = robots.split(/\r?\n/).filter((l) => l.startsWith("Disallow:")).map((l) => l.slice(9).trim());
+  for (const blocked of ["/dashboard", "/admin", "/api/", "/riders/1", "/pro"]) {
+    assert.ok(disallows.some((d) => robotsRuleMatches(d, blocked)), `${blocked} skal være Disallow i robots.txt`);
+  }
+  const sitemap = readFileSync(join(here, "public", "sitemap.xml"), "utf8");
+  for (const [, loc] of sitemap.matchAll(/<loc>https:\/\/cyclingzone\.org([^<]*)<\/loc>/g)) {
+    const p = loc || "/";
+    assert.ok(!disallows.some((d) => robotsRuleMatches(d, p)), `sitemap-siden ${p} maa ikke være Disallow i robots.txt`);
+  }
+});
+
+// Minimal robots.txt-matcher: præfiks, med `$` som slut-anker.
+function robotsRuleMatches(rule, path) {
+  if (!rule) return false;
+  if (rule.endsWith("$")) return path === rule.slice(0, -1);
+  return path.startsWith(rule);
+}
