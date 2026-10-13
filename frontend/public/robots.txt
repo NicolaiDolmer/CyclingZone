@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
 
+# #6557: app-ruterne bag login styres med <meta name="robots" content="noindex">
+# i app-skallen, IKKE med Disallow her. En Disallow-blokeret side kan ikke crawles,
+# saa soegemaskinen ser aldrig noindex, og allerede indekserede adresser bliver
+# liggende som rene links. /api/ har ingen HTML og maa gerne blokeres.
+Disallow: /api/
+
 Sitemap: https://cyclingzone.org/sitemap.xml

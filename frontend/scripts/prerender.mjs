@@ -100,7 +100,14 @@ function buildDocument({ route, head, appHtml }) {
   const description = head.description;
   const lang = head.lang || route.lang;
 
-  let html = template;
+  // #6557: templaten bærer noindex (app-skallen), men de offentlige ruter skal
+  // indekseres. Kaster hvis tagget mangler, så en template-ændring ikke stille
+  // sender noindex ud på sitemap-siderne eller dropper det fra app.html.
+  const robotsTag = metaTagPattern("name", "robots");
+  if (!robotsTag.test(template)) {
+    throw new Error('Kunne ikke finde <meta name="robots"> i index.html-templaten (#6557).');
+  }
+  let html = template.replace(robotsTag, () => "");
 
   // <html lang> — templaten er EN-first; DA-ruterne skal melde dansk allerede
   // i server-HTML'en (LanguageProvider sætter den igen runtime).
@@ -187,9 +194,13 @@ for (const route of PRERENDER_ROUTES) {
   }
 
   const outFile = outputFileFor(route.path);
+  const document = buildDocument({ route, head, appHtml });
+  if (/<meta\s+name="robots"/.test(document)) {
+    throw new Error(`Prerender af ${route.path} indeholder stadig en robots-meta (noindex, #6557) — siden ville blive udelukket fra søgning.`);
+  }
   const outPath = path.join(distDir, outFile);
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, buildDocument({ route, head, appHtml }), "utf-8");
+  fs.writeFileSync(outPath, document, "utf-8");
   rendered.push(`${outFile} (${appHtml.length})`);
 }
 

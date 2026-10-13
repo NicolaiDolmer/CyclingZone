@@ -51,6 +51,11 @@
 
     <title>Cycling Zone</title>
     <meta name="description" content="Cycling Zone: fair, browser-based cycling manager MMO. Tactics, long-term planning and community rivalry. No pay-to-win, ever." />
+    <!-- #6557: app-skallen (app.html) er en tynd dublet for crawlere (samme
+         titel, ingen h1). noindex her; prerender.mjs FJERNER tagget igen på de
+         offentlige sitemap-ruter, som skal indekseres. Fjern det ikke her:
+         buildet fejler, hvis prerenderen ikke finder tagget. -->
+    <meta name="robots" content="noindex" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.ico" sizes="48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
