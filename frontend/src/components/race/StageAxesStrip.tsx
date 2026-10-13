@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import Tooltip from "../ui/Tooltip.jsx";
 import TerrainTypeGlyph from "./TerrainTypeGlyph.jsx";
@@ -14,6 +15,7 @@ const VALUE = "text-cz-1 text-sm font-semibold leading-snug";
 
 export default function StageAxesStrip({ axes }: { axes: StageAxes }) {
   const { t } = useTranslation("races");
+  const tipId = useId();
   const finishLabel = t(`detail.stageCard.finish.${axes.finish}`);
   const finishHint = axes.finish === "ttt"
     ? t("detail.stageCard.finishHintTtt")
@@ -31,7 +33,7 @@ export default function StageAxesStrip({ axes }: { axes: StageAxes }) {
       </div>
       <div className={CELL}>
         <p className={LABEL}>{t("detail.stageCard.axes.finish")}</p>
-        <Tooltip label={finishHint}>
+        <Tooltip id={tipId} label={finishHint}>
           <button type="button" className={`${VALUE} text-start cursor-help`}>
             {finishLabel}
           </button>

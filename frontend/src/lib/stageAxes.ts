@@ -19,7 +19,7 @@ export type SectorKind = "cobbles" | "gravel";
 export interface StageAxesInput {
   profile_type?: string | null;
   finale_type?: string | null;
-  sectors?: Array<{ kind?: string; length_km?: number | string }> | null;
+  sectors?: Array<{ kind?: string; length_km?: number | string } | null> | null;
 }
 
 export interface StageAxes {
