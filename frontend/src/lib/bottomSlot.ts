@@ -33,6 +33,7 @@ export const BOTTOM_SLOT_PRIORITY = Object.freeze({
   consent: 3,
   release: 2,
   nps: 1,
+  install: 0, // #6584: app-installationstilbuddet viger for alt andet
 });
 
 export type BottomSlotKind = keyof typeof BOTTOM_SLOT_PRIORITY;

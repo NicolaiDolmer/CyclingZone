@@ -21,6 +21,7 @@ import {
 import { getRelease } from "./lib/release.js";
 import { installTranslationResilience } from "./lib/translationResilience.js";
 import { captureFirstTouch } from "./lib/attribution.js";
+import { installPwa } from "./pwa/installPwa.ts"; // #6584
 import { BrowserRouter } from "react-router";
 import i18n from "./i18n";
 import "./index.css";
@@ -93,6 +94,9 @@ initSentry();
 // #679: snapshot first-touch acquisition source as early as possible — before any
 // SPA navigation changes document.referrer. First visit wins; persisted at signup.
 captureFirstTouch();
+
+// #6584: PWA-laget (install-lyttere nu, service worker efter load). Se src/pwa/installPwa.ts.
+installPwa();
 
 // Preview-mock (#prelive-harness): KUN når VITE_PREVIEW_MOCK er sat (Vercel
 // preview-scope). Den dynamiske import bag build-time-guarden ⇒ prod-bundlen

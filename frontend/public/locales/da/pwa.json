@@ -1,0 +1,10 @@
+{
+  "install": {
+    "regionAriaLabel": "Installér appen",
+    "title": "Læg Cycling Zone på din hjemmeskærm. Den åbner i fuld skærm, direkte på dit hold.",
+    "action": "Installér",
+    "later": "Ikke nu",
+    "iosTitle": "Læg Cycling Zone på din hjemmeskærm: tryk på Del og derefter Føj til hjemmeskærm.",
+    "iosDismiss": "Forstået"
+  }
+}
