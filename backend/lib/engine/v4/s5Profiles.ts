@@ -18,8 +18,11 @@
 //     eller bjerg naar etapen ender paa toppen), saa alle profil-tabeller i
 //     mekanikkerne gaelder uden en ny raekke.
 //
+// Under s5_profiles_v1 kan ruten desuden faa en segmentgraense 5-15 km fra maal, saa
+// det sene angreb (#6368) har et segment at ske paa (withLateAttackBoundary).
+//
 // En rute uden S5-ord under en aeldre revision returneres som SAMME objekt:
-// alle eksisterende loeb er byte-identiske (s5UntouchedRevisions6363.test.ts).
+// alle eksisterende loeb er byte-identiske (s5Profiles6363.test.ts).
 //
 // REN: ingen IO, ingen rng. Muterer aldrig input.
 
@@ -63,7 +66,7 @@ export function mediumMountainBucket(finale: FinaleType | null): ProfileType {
 /**
  * Ruten som mekanikkerne skal se den under `revision`. Samme objekt naar intet
  * skal oversaettes (alle eksisterende loeb), ellers en kopi med kun
- * profile_type/finale_type aendret.
+ * profile_type/finale_type aendret (og under S5 evt. én ekstra segmentgraense).
  */
 export function routeForRulesRevision(route: RouteV2, revision: unknown): RouteV2 {
   const s5 = isS5ProfilesV1OrLater(revision);

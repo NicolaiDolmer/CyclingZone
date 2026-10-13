@@ -25,6 +25,7 @@ import { CLIMB_SELECTION_EXTRA_TUNING, MOUNTAIN_SELECTION_V2_TUNING, RACE_V4_TUN
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { neutralizeBreakawayTempoDrift, runSegmentLoop, type GroupTempo } from "../segmentLoop.ts";
 import { LIVE_MECHANIC_HOOKS, simulateStageV4 } from "../index.ts";
+import { routeForRulesRevision } from "../s5Profiles.ts";
 import type {
   AbilityKey,
   ClimbSegment,
@@ -260,7 +261,8 @@ test("laas: legacy og orders_gc_v1 ser aldrig en fase; orders_gc_v2 ser v1-pakke
 test("laas: uden for bjergprofilerne er orders_gc_v2 byte-identisk med orders_gc_v1", () => {
   for (const name of readdirSync(fixturesDir)) {
     const input = fixtureInput(name);
-    if (MOUNTAIN_SELECTION_V2_TUNING.profileTypes.includes(input.route.profile_type)) continue;
+    // #6363: profilen som motoren ser den (mellembjerg koerer i terraen-bucketen).
+    if (MOUNTAIN_SELECTION_V2_TUNING.profileTypes.includes(routeForRulesRevision(input.route, "orders_gc_v2").profile_type)) continue;
     const gc = { status: "first_stage", stage_number: 1 } as unknown as StageInput["gc_context"];
     const v1 = simulateStageV4({ ...input, rules_revision: "orders_gc_v1", gc_context: gc });
     const v2 = simulateStageV4({ ...input, rules_revision: "orders_gc_v2", gc_context: gc });
