@@ -10,8 +10,8 @@ import type { StageAxes } from "../../lib/stageAxes";
 // Afslutningen har den korte forklaring bag en tooltip (samme moenster som foer), manualen
 // bor i Hjaelp (TASTE P9).
 const CELL = "min-w-0 border border-cz-border rounded-cz px-3 py-2";
-const LABEL = "text-cz-3 text-3xs uppercase tracking-wider font-semibold";
-const VALUE = "text-cz-1 text-sm font-semibold leading-snug";
+const LABEL = "text-cz-3 text-3xs uppercase tracking-wider font-semibold mb-0.5";
+const VALUE = "text-cz-1 text-sm font-semibold leading-5";
 
 export default function StageAxesStrip({ axes }: { axes: StageAxes }) {
   const { t } = useTranslation("races");
@@ -34,7 +34,7 @@ export default function StageAxesStrip({ axes }: { axes: StageAxes }) {
       <div className={CELL}>
         <p className={LABEL}>{t("detail.stageCard.axes.finish")}</p>
         <Tooltip id={tipId} label={finishHint}>
-          <button type="button" className={`${VALUE} text-start cursor-help`}>
+          <button type="button" className={`${VALUE} p-0 text-start cursor-help`}>
             {finishLabel}
           </button>
         </Tooltip>
