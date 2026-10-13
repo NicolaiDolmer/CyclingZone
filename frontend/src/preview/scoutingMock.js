@@ -70,6 +70,29 @@ const SEED_COMPLETED = [
     result: { level: 2 },
     riderStatus: {},
   },
+  // #6551: to tomme missioner, som serveren leverer dem efter synlighedsfilteret.
+  // Én hvor alle fund er skjult siden (hiddenCount > 0) og én hvor spejderen
+  // reelt intet fandt (hiddenCount 0). Begge skal stå i feedet med en kort note.
+  {
+    id: "scout-done-3",
+    kind: "mission",
+    mission_criteria: { scope: "u23", targetPool: "free_agents" },
+    status: "completed",
+    completed_at: "2026-07-24T10:00:00.000Z",
+    result: { shortlist: [], top_rider_id: null },
+    riderStatus: {},
+    hiddenCount: 5,
+  },
+  {
+    id: "scout-done-4",
+    kind: "mission",
+    mission_criteria: { scope: "nm", value: "is", targetPool: "free_agents" },
+    status: "completed",
+    completed_at: "2026-07-25T10:00:00.000Z",
+    result: { shortlist: [], top_rider_id: null },
+    riderStatus: {},
+    hiddenCount: 0,
+  },
 ];
 
 // Deep-clone seed én gang pr. session (module-scope state, samme mønster som clubMock).
