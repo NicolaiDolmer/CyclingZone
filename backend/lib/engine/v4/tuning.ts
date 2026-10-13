@@ -142,6 +142,13 @@ const tuning: EngineTuning = {
       descent: { descending: 0.5, positioning: 0.2, aggression: 0.15, tactics: 0.15 },
       long_climb: { climbing: 0.55, endurance: 0.3, tempo: 0.15 },
       solo_tt: { time_trial: 0.6, tempo: 0.25, endurance: 0.15 },
+      // #6363 (S5, KUN s5_profiles_v1 laeser disse; aeldre revisioner mapper de nye
+      // finaler til de gamle navne i s5Profiles.ts). Raekken er grundsaettet + hybriden
+      // paa punch (0-1 tidligere stigninger); finale.ts fordeler hybriden pr. etape
+      // (S5_PROFILES_TUNING nedenfor).
+      flat_sprint: { sprint: 0.5, acceleration: 0.2, positioning: 0.2, flat: 0.1 },
+      uphill_sprint: { sprint: 0.35, acceleration: 0.25, positioning: 0.2, punch: 0.2 },
+      wall_finish: { punch: 0.6, acceleration: 0.3, positioning: 0.1 },
     }, // pr. finale-type placerings-demand (M4, §4 punkt "punch-tungt ved finale_type: 'punch'")
   },
 
@@ -295,6 +302,10 @@ const bonusSecondsExtra = {
     "breakaway",
     "descent",
     "long_climb",
+    // #6363 (S5): de nye finaler er massestart-etaper som de gamle.
+    "flat_sprint",
+    "uphill_sprint",
+    "wall_finish",
   ], // #2413: maal-bonus KUN paa masse-etaper — solo_tt (ITT) er bevidst UDELADT
   maxTotalBonusSecondsPerRiderPerStage: 10, // #2413: samlet GC-effekt bounded ~10s/etape, ogsaa naar samme rytter baade tager maal- og indlagt-spurt-bonus
   intermediateSprintQualityWeights: { sprint: 0.5, acceleration: 0.3, positioning: 0.2 }, // evne-vaegte for hvem der tager en indlagt spurt (distinkt fra finale.ts's egne demandVectorByFinaleType, saa spurt-udfaldet ikke er en ren kopi af maal-udfaldet)
@@ -869,6 +880,12 @@ const breakawayExtra = {
     descent: 0.15, // nedkoersels-finale: lav sprinter-interesse
     long_climb: 0.1, // lang klatring: minimal sprinter-interesse
     solo_tt: 0.05, // enkeltstart: irrelevant (ingen felt-dynamik) men holdt lav i stedet for 0 for robusthed
+    // #6363 (S5, kun under s5_profiles_v1): flad spurt afloeser massespurt + reduceret
+    // spurt (feltets stoerrelse er motorens udfald), stigende spurt jages som en
+    // reduceret spurt, muren som en punch-finale.
+    flat_sprint: 4.0,
+    uphill_sprint: 2.6,
+    wall_finish: 0.3,
   } as Partial<Record<import("./types.ts").FinaleType, number>>, // pr. finale-type sprinterhold-interesse-vaegt (#2416's "terraen + rest-km-proxy")
 
   // ── "Lad gaa"-fasen (#5812 a) ────────────────────────────────────────────
@@ -911,6 +928,11 @@ const breakawayExtra = {
   // Finaler uden noegle faar faktor 1.
   maxGapFinaleFactor: {
     descent: 0.5,
+    // #6363 (S5): de nye finaler afgoeres paa maalstregen, ikke over en top; feltet
+    // giver udbruddet samme loft som foran de gamle spurt-/punch-finaler.
+    flat_sprint: 1,
+    uphill_sprint: 1,
+    wall_finish: 1,
   } as Partial<Record<import("./types.ts").FinaleType, number>>,
   // Et udbrud er per konstruktion udvalgt paa aggression/endurance/tempo, saa
   // dets GC-trussel ligger typisk et godt stykke OVER feltets snit. Referencen
@@ -949,6 +971,9 @@ const breakawayExtra = {
   chaseFloorLateChanceByFinale: {
     bunch_sprint: 0.15, // massespurt: sprinterholdene kommer sjaeldent for sent
     reduced_sprint: 0.15, // reduceret spurt: samme
+    flat_sprint: 0.15, // #6363 (S5): flad spurt = massespurt
+    uphill_sprint: 0.15, // #6363 (S5): stigende spurt = reduceret spurt
+    wall_finish: 0.35, // #6363 (S5): mur = oevrige finaler (chaseFloorLateChanceDefault)
   } as Partial<Record<import("./types.ts").FinaleType, number>>,
   chaseFloorLateChanceDefault: 0.35, // oevrige finaler paa aabent terraen (fx en udbrudsfinale): feltet lader oftere udbruddet koere
   chaseFloorLateTargetGapSeconds: 150, // forspring ved maal naar feltet kommer for sent (over finalens antals-vindue)
@@ -988,6 +1013,10 @@ const breakawayChaseV3 = {
     descent: 0.15,
     long_climb: 0.5,
     solo_tt: 0.05,
+    // #6363 (S5): samme vaegt som den gamle finale de afloeser.
+    flat_sprint: 3.0,
+    uphill_sprint: 2.0,
+    wall_finish: 0.6,
   } as Partial<Record<import("./types.ts").FinaleType, number>>,
   // Vaegt paa et holds ordre/GC-reaktion (signal i [0, maxTeamSignal]) lagt til
   // netto-fordelen. Summen af det ordrerne tilfoejer ud over interessen er
@@ -1003,6 +1032,9 @@ const breakawayChaseV3 = {
   chaseFloorLateChanceByFinale: {
     bunch_sprint: 0.08,
     reduced_sprint: 0.1,
+    flat_sprint: 0.08, // #6363 (S5): flad spurt = massespurt
+    uphill_sprint: 0.1, // #6363 (S5): stigende spurt = reduceret spurt
+    wall_finish: 0.35, // #6363 (S5): mur = oevrige finaler (chaseFloorLateChanceDefault)
   } as Partial<Record<import("./types.ts").FinaleType, number>>,
   // Kuperet: jagten foer finalestigningen er ikke daempet under v3 (bjerg og
   // hoejfjeld beholder den kontrollerede jagt).
@@ -1013,6 +1045,75 @@ const breakawayChaseV3 = {
 
 /** #6441 official_times_v3-jagten (deep-frosset). Se kommentaren ovenfor. */
 export const BREAKAWAY_CHASE_V3_TUNING = deepFreeze(breakawayChaseV3);
+
+// ── #6363 (KUN s5_profiles_v1, SLUKKET): S5-etapeprofilernes motor ────────────
+// Spec docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md §4. Ingen
+// aeldre revision laeser noget herfra (s5Profiles.ts mapper de nye ord til de
+// gamle under dem), saa alle eksisterende loeb er byte-identiske.
+//
+// Korte eksplosive afslutninger (mur, bakke, stigende spurt): et fast grundsaet
+// plus en hybrid paa `hybridWeight` der fordeles efter etapens haardhed. Med
+// hoejst `hybridPunchMaxPriorClimbs` tidligere kategoriserede stigninger gaar hele
+// hybriden til punch; derefter flyttes den lineaert til durability og er helt
+// durability ved `hybridDurabilityFullPriorClimbs`. Klatring indgaar ikke i
+// mur-finalen (ejer). Bakke = finale_type "punch" under S5: klatring og taktik
+// er erstattet af hybriden. Vaegtene er maalt mod motor-bench (spec §5's
+// tidsgab-facit); tallene bor i balance-internals/6363/ (hard rule 17).
+const s5Profiles = {
+  finaleBase: {
+    wall_finish: { punch: 0.4, acceleration: 0.3, positioning: 0.1 },
+    punch: { punch: 0.45, acceleration: 0.25, positioning: 0.1 },
+    uphill_sprint: { sprint: 0.35, acceleration: 0.25, positioning: 0.2 },
+  } as Partial<Record<import("./types.ts").FinaleType, Partial<Record<import("./types.ts").AbilityKey, number>>>>,
+  // Tids-spredningen i maal pr. kort afslutning: sekunder pr. score-enhed mellem to
+  // naboplaceringer (afloeser finaleExtra.placementGapScoreScale) og den score-afstand
+  // under hvilken ryttere deler tid (afloeser finaleTieScoreEpsilon). Stigende spurt
+  // er en massefinale i alt andet end tiden (finale.ts).
+  finaleTiers: {
+    wall_finish: { gapScoreScale: 140, tieScoreEpsilon: 0.005 },
+    punch: { gapScoreScale: 34, tieScoreEpsilon: 0.01 },
+    uphill_sprint: { gapScoreScale: 3, tieScoreEpsilon: 0.12 },
+  } as Partial<Record<import("./types.ts").FinaleType, { gapScoreScale: number; tieScoreEpsilon: number }>>,
+  hybridWeight: 0.2,
+  hybridPunchMaxPriorClimbs: 1,
+  hybridDurabilityFullPriorClimbs: 4,
+  // En stigning der slutter mindst saa mange km foer maal er "tidligere" (ikke selve finalestigningen).
+  priorClimbMinKmBeforeFinish: 0.5,
+  // Kun finalestigningens sidste km afgoeres af finalen i stedet for klatre-selektionen
+  // (en mur er under 1,5 km, en bakke 1-3 km, spec §3).
+  explosiveFinaleMaxKm: 3,
+  // #6368: det sene soloangreb (mechanics/lateAttack.ts) som motoradfaerd i stedet
+  // for en udbrudsfinale. Udbrudsfinalens gamle evne-vaegte er angrebets evne; paa
+  // brosten/grus taeller brostensevnen med. Angrebet sker paa det sidste segment der
+  // slutter `windowKm` fra maal (ikke en nedkoersel, ikke finalesegmentet); s5Profiles.ts
+  // laegger en segmentgraense i vinduet naar ruten ingen har. Chancen er pr. etape
+  // (én seedet lodtraekning) og afhaenger af underlaget/terraenet. Gevinsten er
+  // angriberens forspring paa nr. 2 i gruppen gange `gainSecondsPerScoreUnit`,
+  // clampet; et for lille forspring bliver ikke til et angreb. Resten afgoeres af
+  // motorens egen jagt (tempo-modellen og finalens jagt-mod-flugt).
+  lateAttack: {
+    windowKm: [5, 15] as readonly [number, number],
+    splitAtKmToGo: 10,
+    demand: { aggression: 0.3, tempo: 0.25, endurance: 0.25, tactics: 0.2 } as Partial<Record<import("./types.ts").AbilityKey, number>>,
+    sectorDemand: { cobblestone: 0.25 } as Partial<Record<import("./types.ts").AbilityKey, number>>,
+    reserveWeight: 0.15,
+    chanceWithSectors: 0.55,
+    chanceHilly: 0.3,
+    hillyProfiles: ["rolling", "hilly", "classic", "cobbles", "gravel"] as readonly ProfileType[],
+    excludedFinales: ["flat_sprint", "long_climb", "descent", "solo_tt"] as readonly import("./types.ts").FinaleType[],
+    minGroupRiders: 5,
+    gainSecondsPerScoreUnit: 400,
+    minGainSeconds: 8,
+    maxGainSeconds: 45,
+  },
+  // Mellembjerg i motorens terraen-bucket: kuperet-mekanikken (spec §5: mellembjergets
+  // tidsgab ligger som kuperets), bjerg-mekanikken naar etapen ender paa toppen.
+  mediumMountainBucket: "hilly" as ProfileType,
+  mediumMountainSummitBucket: "mountain" as ProfileType,
+};
+
+/** #6363 S5-motoren (deep-frosset). Se kommentaren ovenfor. */
+export const S5_PROFILES_TUNING = deepFreeze(s5Profiles);
 
 // ── Sub-tick-fysiologi (#4030, fixture-fund 21/8) — ADDITIV physiology-tuning ─
 // SS2's frosne PhysiologyTuning-kontrakt (types.ts) baerer ikke disse felter.

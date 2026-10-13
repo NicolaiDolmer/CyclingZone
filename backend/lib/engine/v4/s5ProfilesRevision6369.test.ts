@@ -4,8 +4,8 @@
 // under official_times_v4 (dens forgaenger i arvelinjen). Testen koerer alle motor-
 // fixtures under begge revisioner og sammenligner hele StageOutput.
 //
-// Naar Spor 2 laegger adfaerd bag isS5ProfilesV1OrLater, skal denne test indsnaevres til
-// de fixtures adfaerden ikke rammer (fx dem uden de nye finaler), ikke slettes.
+// #6363: Spor 2 har lagt adfaerd bag isS5ProfilesV1OrLater; testen er indsnaevret til
+// de fixtures adfaerden ikke rammer (s5Untouched nedenfor), ikke slettet.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -15,6 +15,8 @@ import { fileURLToPath } from "node:url";
 import { simulateStageV4 } from "./index.ts";
 import { normalizeRulesRevision } from "./segmentLoop.ts";
 import type { StageInput } from "./types.ts";
+import { S5_PROFILES_TUNING } from "./tuning.ts";
+import { lateAttackChance } from "./mechanics/lateAttack.ts";
 
 const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -33,8 +35,19 @@ test("#6369: motoren kender s5_profiles_v1 (ingen kast), ukendte revisioner kast
   assert.throws(() => normalizeRulesRevision("s5_profiles_v2"));
 });
 
+// #6363 (Spor 2): S5-adfaerden rammer kun mur/bakke/stigende spurt/flad spurt, mellembjerg,
+// den afskaffede udbrudsfinale og det sene angrebs terraen. Fixtures uden noget af det skal
+// stadig give samme StageOutput under s5_profiles_v1 som under official_times_v4.
+function s5Untouched(input: StageInput): boolean {
+  const route = input.route;
+  if (route.profile_type === "medium_mountain" || route.finale_type === "breakaway") return false;
+  if (route.finale_type && (S5_PROFILES_TUNING.finaleBase[route.finale_type] || S5_PROFILES_TUNING.finaleTiers[route.finale_type])) return false;
+  if (route.finale_type === "flat_sprint" || route.finale_type === "wall_finish" || route.finale_type === "uphill_sprint") return false;
+  return lateAttackChance(route) === 0;
+}
+
 test("#6369: s5_profiles_v1 er tom - samme StageOutput som official_times_v4 paa alle motor-fixtures", () => {
-  const fixtures = fixtureInputs();
+  const fixtures = fixtureInputs().filter(({ input }) => s5Untouched(input));
   assert.ok(fixtures.length >= 3, `forventede motor-fixtures i ${FIXTURES_DIR}`);
   for (const { name, input } of fixtures) {
     const v4 = simulateStageV4({ ...input, rules_revision: "official_times_v4" });

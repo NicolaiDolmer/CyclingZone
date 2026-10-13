@@ -743,6 +743,9 @@ export type SegmentHookContext = {
   // #6187 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v3 (og senere).
   // Udeladt = holdene jagter som under orders_gc_v2 (mechanics/breakaway.ts).
   ordersGcV3?: true;
+  // #6363 (ADDITIVT og VALGFRIT, KUN s5_profiles_v1, slukket): S5-etapeprofilernes
+  // motor (s5Profiles.ts). Udeladt = alle aeldre revisioner, byte-identiske.
+  s5ProfilesV1?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

@@ -42,6 +42,7 @@ import type { EffortLevel, Entrant } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
 import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
+import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
 // etapens) og tuning; ren funktion af feltets klatre-evner.
@@ -559,6 +560,9 @@ export const climbSelectionHook: ClimbSelectionHook = (
 ): SegmentHookResult => {
   const { segment } = ctx;
   if (segment.kind !== "climb") return { state, events: [] };
+  // #6363 (KUN s5_profiles_v1): mur, bakke og stigende spurt afgoeres af finalen paa
+  // finalestigningen (s5Profiles.ts), ikke af klatre-selektionen.
+  if (ctx.s5ProfilesV1 === true && isS5ExplosiveFinaleClimb(ctx.route, ctx.segmentIndex)) return { state, events: [] };
 
   const gradientPct = Math.max(0, segment.avg_gradient);
   const lengthKm = Math.max(0, segment.to_km - segment.from_km);

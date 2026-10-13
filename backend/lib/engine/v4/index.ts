@@ -56,6 +56,7 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
 import { isOrdersGcV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { withPointPlace } from "./exactPlace.ts";
+import { stageInputForRulesRevision } from "./s5Profiles.ts";
 
 // Fase C-wiring (#4030) + F3-wiring (#4615, #2944, #3855): de rigtige
 // M2/M3/M4/M5/M8/M10-
@@ -207,7 +208,10 @@ export type StageTraceV4 = { breakaway_win: boolean | null };
 
 const TIME_TRIAL_TRACE: StageTraceV4 = { breakaway_win: null };
 
-export function simulateStageV4WithTrace(input: StageInput): { output: StageOutput; trace: StageTraceV4 } {
+export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageOutput; trace: StageTraceV4 } {
+  // #6363: S5-ordforraadet oversat til regel-revisionen (s5Profiles.ts). Samme
+  // objekt for alle ruter uden S5-ord under en aeldre revision (byte-identisk).
+  const input = stageInputForRulesRevision(rawInput);
   // ── M13: holdtidskoerslen (#3463/#2412, ejer-beslutning 6/9) ─────────────
   // En TTT er ikke en vejetape med et ekstra hook paa: hele gruppe-modellen er
   // en anden (ét hold = én gruppe der koerer sammen fra egen start, og holdets

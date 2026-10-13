@@ -1,0 +1,133 @@
+// backend/lib/engine/v4/mechanics/lateAttack.ts
+// #6368 (KUN s5_profiles_v1, slukket): det sene soloangreb som motoradfaerd.
+// Spec docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md §3-§4: udbrud
+// og soloangreb er ikke en finaletype (det ville skrive resultatet paa forhaand);
+// motoren afgoer om et staerkt angreb 5-15 km fra maal holder hjem, naar evner og
+// taktik tillader det. Udbrudsfinalens gamle evne-vaegte er angrebets evne.
+//
+// Mekanikken laver KUN angrebet: den staerkeste angriber i favoritgruppen koerer
+// fra med et forspring der vokser med hans forspring paa nr. 2 i gruppen. Om det
+// holder, afgoeres af motorens egen jagt bagefter (tempo-modellen paa resten af
+// ruten og finalens jagt-mod-flugt, finale.ts), aldrig her.
+//
+// Kaldes fra breakawayHook (M5) paa hvert segment; sker hoejst én gang pr. etape
+// (kun paa vindues-segmentet, lateAttackSegmentIndex). REN: muterer aldrig input,
+// rng kun via ctx.rngForStage (én lodtraekning pr. etape).
+
+import { makeGroupId, splitGroup } from "../groups.ts";
+import { S5_PROFILES_TUNING } from "../tuning.ts";
+import type { AbilityKey, EngineState, Entrant, RaceGroup, RouteV2, SegmentHookContext, SegmentHookResult } from "../types.ts";
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function normAbility(v: number | undefined): number {
+  return clamp(Number(v) || 0, 0, 99) / 99;
+}
+
+function finishKmOf(route: Pick<RouteV2, "distance_km" | "segments">): number {
+  return Number.isFinite(route.distance_km) && route.distance_km > 0 ? route.distance_km : route.segments[route.segments.length - 1]?.to_km ?? 0;
+}
+
+/** Har ruten brostens- eller grussektorer (begge er "cobbles"-segmenter i motoren)? */
+export function routeHasSectors(route: Pick<RouteV2, "segments">): boolean {
+  return route.segments.some((s) => s.kind === "cobbles");
+}
+
+/** Chancen (0-1) for et sent angreb paa denne rute. 0 = terraenet giver ikke angrebet. */
+export function lateAttackChance(route: Pick<RouteV2, "profile_type" | "finale_type" | "segments">): number {
+  const t = S5_PROFILES_TUNING.lateAttack;
+  const finale = route.finale_type;
+  if (finale === "long_climb" || finale === "descent" || finale === "solo_tt") return 0;
+  if (routeHasSectors(route)) return t.chanceWithSectors;
+  if (finale && t.excludedFinales.includes(finale)) return 0;
+  return t.hillyProfiles.includes(route.profile_type) ? t.chanceHilly : 0;
+}
+
+/**
+ * Segmentet angrebet sker paa: det SENESTE segment (ikke etapens sidste, ikke en
+ * nedkoersel) der slutter inden for vinduet `windowKm` fra maal. -1 = intet.
+ */
+export function lateAttackSegmentIndex(route: Pick<RouteV2, "distance_km" | "segments">): number {
+  const [minKm, maxKm] = S5_PROFILES_TUNING.lateAttack.windowKm;
+  const finishKm = finishKmOf(route);
+  for (let i = route.segments.length - 2; i >= 0; i--) {
+    const seg = route.segments[i];
+    const toGo = finishKm - seg.to_km;
+    if (toGo > maxKm) break;
+    if (toGo >= minKm && seg.kind !== "descent") return i;
+  }
+  return -1;
+}
+
+/** Angrebs-evnen: udbrudsvaegtene (+ brostensevnen paa sektorer) plus egen reserve. */
+export function lateAttackScore(abilities: Record<AbilityKey, number> | undefined, reserve01: number, withSectors: boolean): number {
+  if (!abilities) return 0;
+  const t = S5_PROFILES_TUNING.lateAttack;
+  let sum = 0;
+  for (const [key, w] of Object.entries(t.demand) as [AbilityKey, number][]) sum += w * normAbility(abilities[key]);
+  if (withSectors) for (const [key, w] of Object.entries(t.sectorDemand) as [AbilityKey, number][]) sum += w * normAbility(abilities[key]);
+  return sum + t.reserveWeight * clamp(reserve01, 0, 1);
+}
+
+function isEscape(group: RaceGroup): boolean {
+  return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");
+}
+
+/** Favoritgruppen: den forreste gruppe uden for dagens udbrud med mindst `minGroupRiders` koerende. */
+function favouriteGroup(state: EngineState, entrants: Readonly<Record<string, Entrant>>): RaceGroup | null {
+  const minRiders = S5_PROFILES_TUNING.lateAttack.minGroupRiders;
+  const candidates = state.groups
+    .filter((g) => !isEscape(g))
+    .filter((g) => g.rider_ids.filter((id) => state.riders[id]?.status === "racing" && entrants[id]).length >= minRiders)
+    .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  return candidates[0] ?? null;
+}
+
+/**
+ * Det sene angreb paa dette segment (S5). Uaendret state naar segmentet ikke er
+ * vindues-segmentet, terraenet ikke giver angrebet, lodtraekningen siger nej, eller
+ * angriberen ikke er staerk nok til at komme fri. Monotont i angriberens evne: en
+ * staerkere angriber faar aldrig et mindre forspring.
+ */
+export function lateAttack(state: EngineState, ctx: Pick<SegmentHookContext, "route" | "segment" | "segmentIndex" | "entrants" | "rngForStage">): SegmentHookResult {
+  const none: SegmentHookResult = { state, events: [] };
+  const { route, entrants } = ctx;
+  if (ctx.segmentIndex !== lateAttackSegmentIndex(route)) return none;
+  const chance = lateAttackChance(route);
+  if (!(chance > 0)) return none;
+  const group = favouriteGroup(state, entrants);
+  if (!group) return none;
+  const withSectors = routeHasSectors(route);
+  const ranked = group.rider_ids
+    .filter((id) => state.riders[id]?.status === "racing" && entrants[id] && entrants[id].effort !== "grupetto" && entrants[id].effort !== "save")
+    .map((id) => {
+      const rider = state.riders[id];
+      const reserve = rider && rider.wprimeMax > 0 ? rider.wprime / rider.wprimeMax : 0;
+      return { id, score: lateAttackScore(entrants[id].abilities, reserve, withSectors) };
+    })
+    .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+  if (ranked.length < 2) return none;
+  const attacker = ranked[0];
+  // Én lodtraekning pr. etape (etape-stabil stroem): angribes der overhovedet i dag?
+  if (!(ctx.rngForStage("s5_late_attack")() < chance)) return none;
+  const t = S5_PROFILES_TUNING.lateAttack;
+  const edge = Math.max(0, attacker.score - ranked[1].score);
+  const gainSeconds = round2(Math.min(t.maxGainSeconds, edge * t.gainSecondsPerScoreUnit));
+  if (gainSeconds < t.minGainSeconds) return none;
+  const newGroupId = makeGroupId("solo", ctx.segmentIndex * 1000 + 900);
+  const groups = splitGroup(state.groups, group.id, [attacker.id], { id: newGroupId, kind: "solo", gapSecondsDelta: -gainSeconds });
+  return {
+    state: { ...state, groups },
+    events: [{
+      km: round2(ctx.segment.to_km),
+      type: "finale_attack",
+      params: { kind: "late_attack", rider_id: attacker.id, group_id: newGroupId, source_group_id: group.id, gained_seconds: gainSeconds },
+    }],
+  };
+}

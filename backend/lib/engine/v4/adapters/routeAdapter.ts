@@ -14,6 +14,7 @@
 
 import { buildSegments, buildWeather, synthesizeSegments } from "../../../routeSegments.js";
 import { makeRng } from "../../../fictionalRiderGenerator.js";
+import { mediumMountainBucket, S5_LEGACY_FINALE } from "../s5Profiles.ts";
 import type {
   ClimbCategory,
   FinaleType,
@@ -28,10 +29,28 @@ import type {
 // moenster"-begrundelse som types.ts's egen header) — bruges KUN til
 // defensivt at falde tilbage til "flat" ved en ukendt/manglende profile_type,
 // spejler synthesizeSegments' egen interne DISTANCE_BANDS-gate (ikke eksporteret).
+// #6363: medium_mountain (S5) er kendt og baeres uaendret til motoren, som selv
+// afgoer dens terraen-bucket pr. regel-revision (s5Profiles.ts). Foer faldt den til "flat".
 const KNOWN_PROFILE_TYPES = new Set<ProfileType>([
-  "flat", "rolling", "hilly", "mountain", "high_mountain",
+  "flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain",
   "cobbles", "gravel", "classic", "itt", "itt_hilly", "ttt",
 ]);
+
+/**
+ * #6363: rute-generatorens hjaelpere (routeSegments.js: gap-fyld, syntese, vejr)
+ * kender kun de gamle ord. Fallback-stierne faar derfor S5-ordene oversat til den
+ * gamle type/finale (samme kort som motorens aeldre revisioner). Ruten selv
+ * beholder S5-ordene. Gamle raekker passerer uaendret (byte-identisk).
+ */
+function generatorProfileType(profileType: ProfileType, finaleType: FinaleType | null): ProfileType {
+  return profileType === "medium_mountain" ? mediumMountainBucket(finaleType) : profileType;
+}
+
+function generatorFinaleType(finaleType: FinaleType | null): FinaleType | null {
+  return finaleType === "flat_sprint" || finaleType === "uphill_sprint" || finaleType === "wall_finish"
+    ? S5_LEGACY_FINALE[finaleType]
+    : finaleType;
+}
 
 // Lokal FNV-1a 32-bit (samme selvstaendige moenster som routeSegments.js's
 // egen lokale stableSeed — undgaar et krydsimport af selve hash-funktionen).
@@ -231,9 +250,11 @@ function resolveWaypoints(row: StageProfileRow, distanceKm: number): Waypoint[] 
 export function routeFromStageProfileRow(row: StageProfileRow): RouteV2 {
   const profileType = resolveProfileType(row.profile_type);
   const finaleType = resolveFinaleType(row.finale_type);
-  const segments = resolveSegments(row, profileType, finaleType);
+  // #6363: fallback-stierne (generatorens hjaelpere) faar de gamle ord.
+  const generatorProfile = generatorProfileType(profileType, finaleType);
+  const segments = resolveSegments(row, generatorProfile, generatorFinaleType(finaleType));
   const distanceKm = resolveDistanceKm(row, segments);
-  const weather = resolveWeather(row, profileType);
+  const weather = resolveWeather(row, generatorProfile);
   const waypoints = resolveWaypoints(row, distanceKm);
 
   return {
