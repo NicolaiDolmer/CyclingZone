@@ -23,6 +23,11 @@
 //   · DRY-RUN er default. --apply er det ENESTE der skriver.
 //   · Kalender-invarianter (#2251/#2276/#3327/#3328) skal være rene. Ingen override.
 //   · Realisme-båndene (#2755/#2769/#3347) skal være grønne. Ingen override.
+//   · #6367: fra sæson 5 (S5-etapeprofilerne) skal BENCHMARK-GATEN være grøn
+//     (lib/s5BenchmarkGate.js: type == B+, matrix, GT-kvoter + ugestruktur, afslutnings-
+//     andele og motor-gab mod rigtige Grand Tours). Ingen override; stopper --apply.
+//     For S5 erstatter den §7b's finale-bånd. `--motor-bench <fil>` er motor-målingen
+//     til del (4); uden den bruges stubben (blokerer ikke). Sæson 1-4: uændret.
 //   · §2's "løb hver kalenderdag i ALLE divisioner" (ejer-låst 25/8) skal være ren.
 //     Ingen override — det er en ejer-regel, ikke et balance-mål.
 //   · Kompositionen (#3295) skal ramme K-B, både på SÆSON-AGGREGATET og PR. TIER (#3469,
@@ -133,6 +138,10 @@ import { withSeniorSquadScope } from "../lib/squads.js";
 import { SENIOR_SQUAD_OR_FILTER } from "../lib/racePoolCatalog.js";
 import { assertCalendarSquad } from "../lib/tierCalendarMaterializer.js";
 import { SENIOR_CALENDAR_POOLS_FROM_S4, SENIOR_CALENDAR_POOLS_FIRST_SEASON } from "../lib/calendarTierCaps.js";
+import {
+  S5_PROFILE_MODEL, profileModelForSeason, evaluateS5BenchmarkGate, formatS5BenchmarkReport,
+  loadS5Benchmark, loadMotorGapFile, DEFAULT_MOTOR_STUB_PATH,
+} from "../lib/s5BenchmarkGate.js";
 import {
   resolveTargetStructure, targetStructureUsageError, resolveCutoverPoolRetirement,
   racesInCutoverRetiredPools, formatTargetStructureReport,
@@ -617,6 +626,48 @@ export async function loadCutoverPoolRetirement({ supabase, structure }) {
   return resolveCutoverPoolRetirement({ pools: data ?? [], structure });
 }
 
+/**
+ * #6367: loebene benchmark-gaten maaler, formet af den PLANLAGTE kalender. Samme profiler
+ * som scorecardet og apply-stien (materializerens `profilesByPoolRaceId`), een
+ * repraesentativ pulje pr. division (puljer i en division deler parcours, #2276). Samme
+ * loeb i flere divisioner deduplikeres af gaten selv (pool_race_id).
+ */
+export function s5GateRacesFromPlan(plan) {
+  const archetypeByPoolRace = plan?.archetypeByPoolRace ?? new Map();
+  const races = [];
+  for (const t of plan?.planTiers ?? []) {
+    const pool = (t.pools ?? [])[0];
+    const profiles = t.profilesByPoolRaceId ?? new Map();
+    for (const r of pool?.raceRows ?? []) {
+      races.push({
+        pool_race_id: r.pool_race_id, name: r.name, race_type: r.race_type, race_class: r.race_class ?? null,
+        terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+        stages: profiles.get(r.pool_race_id) ?? [],
+      });
+    }
+  }
+  return races;
+}
+
+/**
+ * #6367: koer benchmark-gaten for en planlagt kalender. Returnerer gaten + om den DOEMMER
+ * (kun S5-modellen, profileModelForSeason). For S1-S4 maales intet: deres etiketter er v5's
+ * og ville altid vaere roede her, og deres egne gates (K-B, §7b, realisme) gaelder uaendret.
+ *
+ * @param {{ plan: object, seasonNumber: number, motorBenchPath?: string|null,
+ *   benchmark?: object[], motor?: object }} args  benchmark/motor kan injiceres i tests
+ */
+export function runS5BenchmarkGateForPlan({ plan, seasonNumber, motorBenchPath = null, benchmark, motor }) {
+  const profileModel = profileModelForSeason(seasonNumber);
+  if (profileModel !== S5_PROFILE_MODEL) return { profileModel, applies: false, gate: null, lines: [] };
+  const gate = evaluateS5BenchmarkGate({
+    races: s5GateRacesFromPlan(plan),
+    benchmark: benchmark ?? loadS5Benchmark(),
+    motor: motor ?? loadMotorGapFile(motorBenchPath ?? DEFAULT_MOTOR_STUB_PATH),
+  });
+  return { profileModel, applies: true, gate, lines: formatS5BenchmarkReport(gate) };
+}
+
 // ── CLI ─────────────────────────────────────────────────────────────────────────
 const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 if (isMain) {
@@ -635,6 +686,13 @@ if (isMain) {
   const allowTierDrift = process.argv.includes("--allow-tier-composition-drift");
   const allowFinaleDrift = process.argv.includes("--allow-finale-drift");
   const allowUniformDrift = process.argv.includes("--allow-uniform-target-drift");
+  // #6367: en rigtig motor-bench-fil ({ medians: { <afslutning>: sek } }) til benchmark-
+  // gatens del (4). Uden den bruges stubben. Flaget er et INPUT, ikke en override.
+  const motorBenchArg = argOf("--motor-bench");
+  if (process.argv.includes("--motor-bench") && (!motorBenchArg || motorBenchArg.startsWith("--"))) {
+    console.error("--motor-bench kræver en filsti"); process.exit(2);
+  }
+  const motorBenchPath = motorBenchArg ? resolve(motorBenchArg) : null;
   // #5405: regenerering er en SLETNING af spillervendte rækker. Den skal vælges eksplicit,
   // aldrig ske som bivirkning af at nogen kørte --apply én gang til.
   const replaceExisting = process.argv.includes("--replace-existing");
@@ -955,6 +1013,18 @@ if (isMain) {
     // Dry-runnet skal kunne koeres til ende, fordi det er det ENESTE sted man kan maale hvor
     // langt der er igen: nogle af dem lukkes af kataloget, ikke af en regel (§5b).
     const applyBlocking = [...(scorecardGates.applyBlocking ?? [])];
+
+    // #6367 (S5-etapeprofiler, spec §5): BENCHMARK-GATEN. Kun S5-modellen (saeson 5 og
+    // frem). Haardt krav UDEN override, i samme klasse som placerings-gatesne: stopper
+    // --apply, dry-runnet maaler videre. Del (4) koerer paa motor-stubben indtil
+    // --motor-bench <fil> peger paa en rigtig motor-bench (#6363); stubben blokerer ikke.
+    const s5 = runS5BenchmarkGateForPlan({ plan, seasonNumber, motorBenchPath });
+    if (s5.applies) {
+      console.log("");
+      for (const line of s5.lines) console.log(line);
+      for (const b of s5.gate.blocking) applyBlocking.push(b);
+    }
+
     if (applyBlocking.length) {
       console.error(`\n❌ PLACERINGS-GATES (${applyBlocking.length}) — hårde krav, ingen override:`);
       for (const b of applyBlocking) console.error(`   · ${b}`);
@@ -991,7 +1061,14 @@ if (isMain) {
     }
     // #4270: §7b og §6b er balance-MÅL som §6's komposition — hvert sit override-flag,
     // og afvigelsen printes fuldt ud, så ingen kan sætte flaget uden at se hvad de tog med.
-    if (scorecardGates.finaleDrift.length) {
+    // #6367: for S5-modellen er §7b's finale-baand ERSTATTET af benchmark-gatens del (3)
+    // (afslutnings-andele mod rigtige Grand Tours). §7b's klasser kender udbrud som
+    // afslutning, og S5 har ingen (spec §3), saa baandene ville vaere roede paa en korrekt
+    // S5-kalender. Afvigelsen printes stadig, men stopper ikke.
+    if (scorecardGates.finaleDrift.length && s5.applies) {
+      console.warn(`\n-- FINALE-BÅND (§7b, ${scorecardGates.finaleDrift.length}) — erstattet af S5 benchmark-gatens del (3), dømmes ikke:`);
+      for (const c of scorecardGates.finaleDrift) console.warn(`   · ${c}`);
+    } else if (scorecardGates.finaleDrift.length) {
       console.warn(`\n⚠ FINALE-BÅND-AFVIGELSE (§7b, ${scorecardGates.finaleDrift.length}):`);
       for (const c of scorecardGates.finaleDrift) console.warn(`   · ${c}`);
       if (apply && !allowFinaleDrift) {
