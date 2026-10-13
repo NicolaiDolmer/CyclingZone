@@ -82,10 +82,20 @@ export function summarizeSectors(sectors) {
  * etiketten (cobbles/gravel), ellers asfalt.
  */
 export function surfaceOf({ profile_type: profileType, sectors } = {}) {
-  const summary = summarizeSectors(sectors);
-  const { cobbles, gravel } = summary;
-  if (cobbles.count > 0 || gravel.count > 0) {
-    if (gravel.count > 0 && (gravel.km >= cobbles.km || cobbles.count === 0)) return "gravel";
+  // Kun sektorer med en gyldig, positiv laengde afgoer underlaget, og km summeres UAFRUNDET
+  // (en kort sektor maa ikke forsvinde i afrundingen). Uden en eneste gyldig sektor
+  // gaelder etiketten, saa en ufuldstaendig raekke ikke skifter underlag.
+  const validKm = { cobbles: 0, gravel: 0 };
+  const validCount = { cobbles: 0, gravel: 0 };
+  for (const s of Array.isArray(sectors) ? sectors : []) {
+    if (!s || !SECTOR_KINDS.includes(s.kind)) continue;
+    const km = Number(s.length_km);
+    if (!Number.isFinite(km) || km <= 0) continue;
+    validKm[s.kind] += km;
+    validCount[s.kind] += 1;
+  }
+  if (validCount.cobbles > 0 || validCount.gravel > 0) {
+    if (validCount.gravel > 0 && validKm.gravel >= validKm.cobbles) return "gravel";
     return "cobbles";
   }
   return SURFACE_BY_PROFILE_TYPE[profileType] ?? "asphalt";

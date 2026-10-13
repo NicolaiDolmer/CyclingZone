@@ -220,6 +220,15 @@ test("underlag: sektorerne vinder over etiketten; flest km afgoer; ingen sektore
     sectors: [{ kind: "cobbles", length_km: 5 }, { kind: "gravel", length_km: 2 }],
   }), "cobbles");
   assert.equal(surfaceOf({ profile_type: "flat", sectors: [{ kind: "sand", length_km: 3 }] }), "asphalt");
+  // Sektorer uden gyldig laengde afgoer intet; etiketten gaelder (CodeRabbit-fund).
+  assert.equal(surfaceOf({ profile_type: "cobbles", sectors: [{ kind: "gravel", length_km: "x" }] }), "cobbles");
+  assert.equal(surfaceOf({ profile_type: "flat", sectors: [{ kind: "gravel", length_km: 0 }] }), "asphalt");
+  // En kort, gyldig sektor forsvinder ikke i afrundingen.
+  assert.equal(surfaceOf({ profile_type: "flat", sectors: [{ kind: "gravel", length_km: 0.04 }] }), "gravel");
+  assert.equal(surfaceOf({
+    profile_type: "flat",
+    sectors: [{ kind: "cobbles", length_km: 0.04 }, { kind: "gravel", length_km: 0.03 }],
+  }), "cobbles");
 });
 
 test("summarizeSectors: antal + km pr. underlag, robust mod snavs", () => {
