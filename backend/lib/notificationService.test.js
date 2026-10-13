@@ -1017,7 +1017,10 @@ test("buildScoutReportReadyNotification (mission): tom shortlist → messageEmpt
   const assignment = { id: "m-3", team_id: "team-1", kind: "mission", result: { shortlist: [], top_rider_id: null } };
   const payload = buildScoutReportReadyNotification({ assignment });
   assert.equal(payload.metadata.messageCode, "notif.scoutReportReady.mission.messageEmpty");
-  assert.match(payload.message, /No matching riders/);
+  // #6551: ærlig besked, ingen "ready"-titel når der ikke er nogen rapport.
+  assert.equal(payload.metadata.titleCode, "notif.scoutReportReady.mission.titleEmpty");
+  assert.doesNotMatch(payload.title, /ready/i);
+  assert.match(payload.message, /found no riders matching your criteria/);
 });
 
 test("notifyScoutReportReady: leverer via notifyTeamOwner (teamId → user_id-opslag)", async () => {

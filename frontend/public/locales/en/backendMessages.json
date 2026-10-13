@@ -309,7 +309,8 @@
         "title": "Scouting mission ready",
         "messageSingle": "Your scouting mission found {count} rider. View the shortlist.",
         "messageMulti": "Your scouting mission found {count} riders. View the shortlist.",
-        "messageEmpty": "Your scouting mission is complete. No matching riders were found this time."
+        "titleEmpty": "Scouting mission: no matches",
+        "messageEmpty": "Your scout searched but found no riders matching your criteria."
       }
     },
     "scoutLostReportRefund": {

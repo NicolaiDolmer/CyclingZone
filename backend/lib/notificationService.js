@@ -906,15 +906,18 @@ export function buildScoutReportReadyNotification({ assignment, riderName }) {
   const shortlistCount = assignment.result?.shortlist?.length ?? 0;
   return {
     type: SCOUT_REPORT_READY_TYPE,
-    title: "Scouting mission ready",
+    // #6551: tom shortlist = spejderen fandt reelt ingen inden for kriterierne.
+    // Ingen "klar"-titel (der er ingen rapport at se) og ingen refusion
+    // (spejderen har gjort arbejdet), kun en ærlig besked.
+    title: shortlistCount > 0 ? "Scouting mission ready" : "Scouting mission: no matches",
     message: shortlistCount > 0
       ? `Your scouting mission found ${shortlistCount} rider${shortlistCount === 1 ? "" : "s"}. View the shortlist.`
-      : "Your scouting mission is complete. No matching riders were found this time.",
+      : "Your scout searched but found no riders matching your criteria.",
     relatedId: assignment.id,
     metadata: {
       kind: "mission",
       shortlistCount,
-      titleCode: "notif.scoutReportReady.mission.title",
+      titleCode: shortlistCount > 0 ? "notif.scoutReportReady.mission.title" : "notif.scoutReportReady.mission.titleEmpty",
       titleParams: {},
       // Single/multi/empty-varianter valgt server-side (samme mønster som
       // tx.squadFineSingle/-Multi) i stedet for ICU-plural — {count}-parametret

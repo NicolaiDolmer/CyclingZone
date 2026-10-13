@@ -32,6 +32,7 @@ import { generateShortlist } from "./scoutMission.js";
 import { getScoutState } from "./scoutAssignmentService.js";
 import { notifyScoutReportReady } from "./notificationService.js"; // #2945
 import { ageForSeason } from "./riderSeasonAge.js"; // #4058
+import { fetchAllRows } from "./supabasePagination.js"; // #6551
 
 // Standard kandidat-loader for missioner: alle ikke-pensionerede ryttere med
 // kendt potentiale, mappet til scoutMission's forventede rider-form. Scope
@@ -76,28 +77,38 @@ import { ageForSeason } from "./riderSeasonAge.js"; // #4058
 // udledt af assignment.season_id). Mangler seasonNumber (fx en direkte-kaldt
 // test uden season-kontekst), giver ageForSeason null tilbage — en manglende
 // alder er bedre end en forkert (samme kontrakt som frontend/src/lib/riderAge.js).
+//
+// #6551: BEGGE loads pagineres med fetchAllRows + stabil .order("id"). Før
+// klippede PostgREST hver select ved 1.000 rækker: kandidatpuljen var et
+// vilkårligt udsnit af de frie ryttere, og offered-intake-listen manglede de
+// rækker der lå over loftet, så skjulte ryttere slap ind i shortlisten og blev
+// fjernet igen ved visning (tom rapport).
 export async function defaultLoadCandidates(supabase, targetPool = "free_agents", seasonNumber = null) {
-  let ridersQuery = supabase
-    .from("riders")
-    // #3657: primary_type tilføjet — driver den nye scope:"type"-targeting i
-    // scoutMission.filterCandidatePool (allerede beregnet af riderTypes.js,
-    // ingen ny kolonne).
-    .select("id, potentiale, birthdate, nationality_code, team_id, primary_type, is_retired, team:team_id(league_division_id)")
-    .eq("is_retired", false)
-    .eq("owner_is_ai", false) // #2581: AI-ejede ryttere er skjulte for spillere i RidersPage
-    .not("potentiale", "is", null)
-    .is("pending_team_id", null); // #2644: ikke midt i et handelsflow, uanset scope
+  const loadRiders = () => fetchAllRows(() => {
+    const query = supabase
+      .from("riders")
+      // #3657: primary_type tilføjet — driver den nye scope:"type"-targeting i
+      // scoutMission.filterCandidatePool (allerede beregnet af riderTypes.js,
+      // ingen ny kolonne).
+      .select("id, potentiale, birthdate, nationality_code, team_id, primary_type, is_retired, team:team_id(league_division_id)")
+      .eq("is_retired", false)
+      .eq("owner_is_ai", false) // #2581: AI-ejede ryttere er skjulte for spillere i RidersPage
+      .not("potentiale", "is", null)
+      .is("pending_team_id", null); // #2644: ikke midt i et handelsflow, uanset scope
+    const scoped = targetPool === "other_teams"
+      ? query.not("team_id", "is", null) // #2644 del 2: kun ryttere PÅ et hold
+      : query.is("team_id", null); // free_agents (default): kun kontraktfrie
+    return scoped.order("id");
+  });
 
-  ridersQuery = targetPool === "other_teams"
-    ? ridersQuery.not("team_id", "is", null) // #2644 del 2: kun ryttere PÅ et hold
-    : ridersQuery.is("team_id", null); // free_agents (default): kun kontraktfrie
-
-  const [{ data, error }, { data: offered, error: intakeError }] = await Promise.all([
-    ridersQuery,
-    supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
+  const [data, offered] = await Promise.all([
+    loadRiders().catch((error) => {
+      throw new Error(`scoutMissionMaturation: candidate riders load failed: ${error.message}`);
+    }),
+    fetchAllRows(() => supabase.from("academy_intake").select("rider_id").eq("status", "offered").order("id")).catch((error) => {
+      throw new Error(`scoutMissionMaturation: offered-intake load failed: ${error.message}`);
+    }),
   ]);
-  if (error) throw new Error(`scoutMissionMaturation: candidate riders load failed: ${error.message}`);
-  if (intakeError) throw new Error(`scoutMissionMaturation: offered-intake load failed: ${intakeError.message}`);
   const offeredIntakeRiderIds = new Set((offered ?? []).map((r) => r.rider_id));
   return (data ?? [])
     .filter((r) => !offeredIntakeRiderIds.has(r.id))

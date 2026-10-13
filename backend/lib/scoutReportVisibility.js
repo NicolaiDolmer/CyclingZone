@@ -99,7 +99,10 @@ export async function hydrateCompletedVisibility(supabaseClient, completed) {
       const topRiderId = hiddenIds.has(a.result.top_rider_id) ? null : a.result.top_rider_id;
       const riderStatus = {};
       for (const id of filteredShortlist) if (statusById[id]) riderStatus[id] = statusById[id];
-      return { ...a, result: { ...a.result, shortlist: filteredShortlist, top_rider_id: topRiderId }, riderStatus };
+      // #6551: hiddenCount lader frontend skelne "alle fund er skjult siden" fra
+      // "spejderen fandt ingen" (begge giver en tom shortlist).
+      const hiddenCount = a.result.shortlist.length - filteredShortlist.length;
+      return { ...a, result: { ...a.result, shortlist: filteredShortlist, top_rider_id: topRiderId }, riderStatus, hiddenCount };
     }
     return { ...a, riderStatus: {} };
   });

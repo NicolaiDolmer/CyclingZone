@@ -309,7 +309,8 @@
         "title": "Spejdermission klar",
         "messageSingle": "Din spejdermission fandt {count} rytter. Se listen.",
         "messageMulti": "Din spejdermission fandt {count} ryttere. Se listen.",
-        "messageEmpty": "Din spejdermission er afsluttet. Ingen matchende ryttere blev fundet denne gang."
+        "titleEmpty": "Spejdermission: ingen fund",
+        "messageEmpty": "Din spejder har ledt, men fandt ingen ryttere, der matcher dine kriterier."
       }
     },
     "scoutLostReportRefund": {
