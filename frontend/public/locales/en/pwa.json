@@ -1,0 +1,10 @@
+{
+  "install": {
+    "regionAriaLabel": "Install the app",
+    "title": "Put Cycling Zone on your home screen. It opens full screen, straight to your team.",
+    "action": "Install",
+    "later": "Not now",
+    "iosTitle": "Put Cycling Zone on your home screen: tap Share, then Add to Home Screen.",
+    "iosDismiss": "Got it"
+  }
+}

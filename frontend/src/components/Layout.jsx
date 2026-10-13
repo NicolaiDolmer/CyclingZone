@@ -49,6 +49,7 @@ import { youthSquadNavItems, YOUTH_SQUAD_PATHS } from "../lib/youthSquadPages.ts
 import { useYouthSquadPages, useYouthSquadPagesSync } from "../lib/useYouthSquadPages.ts"; // #5519
 import { loadFeatureFlagStages, isBetaStage } from "../lib/featureStage.ts"; // #5404
 import BetaBadge from "./ui/BetaBadge.tsx"; // #5404
+import { useAppBadge } from "../pwa/appBadge.ts"; // #6584
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -556,6 +557,7 @@ export default function Layout() {
   // når alle tilbud er besvaret uden ekstra wiring her.
   const { pending: pendingActions } = useActionSummary();
   const badgeCounts = buildNavBadgeCounts({ unread, pendingOffersCount: pendingActions.counts.total });
+  useAppBadge(unread); // #6584: app-ikonets badge = samme ulæst-tal som menuen
   // #4983: den synlige paamindelse foer udtagelsesfristen. Read-only og
   // fail-safe: uden svar er tonen "none", og navigationen ser ud som foer.
   const { reminder: selectionReminder } = useSelectionReminder();
