@@ -42,6 +42,8 @@ const SHAPES = Object.freeze({
   rolling:       [21, 17, 21, 17, 21, 17, 21, 18],
   // Hyppigere, skarpere kuperinger.
   hilly:         [21, 14, 20, 13, 21, 14, 20, 15],
+  // #6364: mellembjerg, mellem kuperet og bjerg: to-tre moderate toppe.
+  medium_mountain: [21, 17, 12, 18, 11, 17, 18, 20],
   // Få markante bjergtoppe.
   mountain:      [21, 19, 9, 18, 7, 17, 19, 20],
   // Høje, spidse toppe der topper ud.

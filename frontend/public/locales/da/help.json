@@ -582,45 +582,53 @@
       },
       "stageEndings": {
         "title": "Etape-afslutninger forklaret",
-        "text": "Hver etape har en finaletype vist ved siden af terræn-badget i kalenderen og på løbssiden. Hold musen over eller tryk på badget for hele forklaringen dér; tabellen herunder samler alle typerne ét sted.",
+        "text": "Hvert etapekort viser tre ting side om side: terræn, afslutning og underlag. Terrænet læses af stigningerne. Afslutningen er hvordan de sidste kilometer ser ud, ikke hvem der vinder. Hold musen over eller tryk på afslutningen for den korte version, eller brug tabellen herunder.",
         "rows": [
           [
             "Afslutning",
             "Hvad det betyder"
           ],
           [
-            "Massespurt",
-            "Feltet holder sammen, og etapen afgøres i en massespurt."
+            "Flad spurt",
+            "Fladt til stregen, og en spurt afgør det. Hvor mange ryttere der er tilbage i feltet er løbets udfald, ikke etapens. Ældre løb kalder det massespurt eller reduceret spurt."
           ],
           [
-            "Reduceret spurt",
-            "En reduceret gruppe holder hjem til mål og spurter om sejren."
+            "Stigende spurt",
+            "Sidste kilometer stiger let, så spurten belønner ryttere der kan holde kræfterne op ad bakke."
           ],
           [
-            "Stikfinale",
-            "Et kort, stejlt ryk tæt på mål belønner et sent angreb frem for en ren spurt."
+            "Bakke",
+            "En kort stigning tæt på mål. Her kan et sent angreb lykkes."
           ],
           [
-            "Bjergfinale",
-            "Selve stigningen er målstregen, hvor dagens største tidsforskelle opstår."
+            "Mur",
+            "Stregen ligger på en kort, meget stejl mur, hvor eksplosiv kraft afgør etapen."
           ],
           [
-            "Nedkørselsfinale",
-            "Målgangen kommer efter en nedkørsel, så forfølgerne kan nå tilbage inden stregen."
+            "Bjergtop",
+            "Selve stigningen er målstregen og åbner dagens største tidsgab."
           ],
           [
-            "Soloenkeltstart",
-            "Hver rytter starter alene mod uret, uden slipstrøm."
+            "Nedkørsel",
+            "Sidste stigning ligger et godt stykke før mål, og målet kommer efter en nedkørsel, så de forfølgende kan nå op igen."
+          ],
+          [
+            "Enkeltstart",
+            "Hver rytter starter alene mod uret, uden at køre i hjul."
+          ],
+          [
+            "Holdtidskørsel",
+            "Hvert hold kører alene mod uret."
           ],
           [
             "Udbrud",
-            "En tidlig udbrudsgruppe holder sig fri af feltet og opgør sejren indbyrdes."
+            "Kun ældre etaper. En tidlig udbrudsgruppe holder feltet fra livet og kæmper om sejren indbyrdes."
           ]
         ]
       },
       "stageProfile": {
         "title": "Terræn og etapeprofiler",
-        "text": "Fra sæson 2 viser løb med rutedata etapens rigtige profil: det er den nøjagtige rute race-motoren afvikler, med hver stignings længde, hældning og kategori, mellemsprinten, brostenssektorer, og hvor målstregen ligger. En stignings kategori afgør hvor mange bjergpoint der er på spil på toppen, og en målgang på toppen af en stigning giver større tidsforskelle end en målgang efter en nedkørsel. Tryk på en markør på profilen for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt. Ældre løb uden rutedata viser stadig det tidligere terræn-badge: en skematisk silhuet og en vejledende kategori, ikke en målt profil."
+        "text": "Fra sæson 2 viser løb med rutedata etapens rigtige profil: det er den nøjagtige rute race-motoren afvikler, med hver stignings længde, hældning og kategori, mellemsprinten, brostenssektorer, og hvor målstregen ligger. En stignings kategori afgør hvor mange bjergpoint der er på spil på toppen, og en målgang på toppen af en stigning giver større tidsforskelle end en målgang efter en nedkørsel. Tryk på en markør på profilen for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt. Ældre løb uden rutedata viser stadig det tidligere terræn-badge: en skematisk silhuet og en vejledende kategori, ikke en målt profil. Etapekortet tegner profilen én gang og markerer dagens hårdeste stigning (den sidste, hvis to er lige hårde) med afstanden til mål. Under den viser Dagen kræver de fire evner etapen belønner mest som høj, mid eller lav. Det læses af etapens rute og evnevægte, de samme som motoren bruger."
       },
       "raceDetail": {
         "title": "Åbn et løb: rute, terræn-DNA og din opstilling",

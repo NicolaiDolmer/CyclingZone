@@ -39,7 +39,7 @@ const DEFAULT_DIMS = { mini: { width: 120, height: 36 }, full: { width: 900, hei
 export default function StageProfileGraph({
   profile, tier = "full", width, height,
   activeWaypoint = null, onWaypointSelect = null, uid = "sp", hasClassifications = true,
-  heightClass = "h-auto",
+  heightClass = "h-auto", decisiveCrestKm = null,
 }) {
   const { t } = useTranslation("races");
   // #4107 (ejer-låst 23/8): FAST højdeskala pr. profile_type — buildProfileSeries
@@ -78,6 +78,11 @@ export default function StageProfileGraph({
   const axisY = baseY + (full ? 16 : 12);
   const isActive = (w) => activeWaypoint && activeWaypoint.kind === w.kind && activeWaypoint.index === w.index;
   const pick = (w) => (onWaypointSelect ? () => onWaypointSelect(w) : undefined);
+  // #6364: den afgoerende stigning (stageAxes.decisiveClimb) faar et kraftigere baand og
+  // en "km til maal"-maaling. Matcher paa crest_km, fordi series.climbs er km-sorteret.
+  const decisiveIdx = decisiveCrestKm == null ? -1
+    : series.climbs.findIndex((c) => Math.abs(Number(c.crest_km) - decisiveCrestKm) < 1e-6);
+  const decisiveToGo = decisiveIdx >= 0 ? D - Number(series.climbs[decisiveIdx].crest_km) : 0;
 
   return (
     <svg
@@ -117,8 +122,10 @@ export default function StageProfileGraph({
       {!mini && series.spans.map(([a, b], i) => (
         <rect key={`band${i}`} x={X(a)} y={p.t} width={X(b) - X(a)} height={plotH}
           fill="rgb(var(--jersey-mountain-bg))"
-          fillOpacity={activeWaypoint?.kind === "kom" && activeWaypoint.index === i ? 0.15 : 0.045}
-          stroke="rgb(var(--jersey-mountain-bg))" strokeOpacity="0.15" strokeWidth="0.5" />
+          fillOpacity={activeWaypoint?.kind === "kom" && activeWaypoint.index === i ? 0.15 : i === decisiveIdx ? 0.14 : 0.045}
+          stroke={i === decisiveIdx ? "var(--text-1)" : "rgb(var(--jersey-mountain-bg))"}
+          strokeOpacity={i === decisiveIdx ? 0.45 : 0.15} strokeWidth={i === decisiveIdx ? 1 : 0.5}
+          data-decisive={i === decisiveIdx ? "true" : undefined} />
       ))}
 
       <polygon points={`${points} ${X(D)},${baseY} ${X(0)},${baseY}`} fill="var(--text-1)" fillOpacity="0.09" />
@@ -239,6 +246,16 @@ export default function StageProfileGraph({
             }
             return null;
           })}
+          {decisiveIdx >= 0 && decisiveToGo >= 2 && X(D) - X(D - decisiveToGo) >= 56 && (
+            <g data-testid="stage-profile-to-go">
+              <line x1={X(D - decisiveToGo)} y1={baseY - 8} x2={X(D)} y2={baseY - 8}
+                stroke="var(--text-2)" strokeWidth="0.8" strokeDasharray="2 2" />
+              <text x={(X(D - decisiveToGo) + X(D)) / 2} y={baseY - 12} textAnchor="middle" fontSize="10"
+                className="text-3xs fill-cz-2 font-mono">
+                {t("detail.stageCard.toGo", { km: Math.round(decisiveToGo) })}
+              </text>
+            </g>
+          )}
           <line x1={X(D)} y1={finishY} x2={X(D)} y2={baseY} stroke="var(--text-1)" strokeWidth="1" />
           <rect x={X(D) - 13} y={finishY - 10} width="13" height="9" fill={`url(#${uid}-chk)`}
             stroke={activeWaypoint?.kind === "finish" ? "var(--text-1)" : "none"} strokeWidth="1.2"

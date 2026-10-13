@@ -37,6 +37,7 @@ const PROFILE_TYPE_TO_BUCKET: Record<string, TerrainBucket> = {
   cobbles: "cobbles",
   hilly: "hilly",
   classic: "hilly",
+  medium_mountain: "mountain", // #6364: S5-mellembjerg tegnes med bjerg-silhuetten, ikke den flade
   mountain: "mountain",
   high_mountain: "mountain",
   itt: "itt",

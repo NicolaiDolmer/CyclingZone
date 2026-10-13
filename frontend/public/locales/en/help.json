@@ -582,45 +582,53 @@
       },
       "stageEndings": {
         "title": "Stage endings, explained",
-        "text": "Every stage has a finale type shown next to its terrain badge on the calendar and on the race page. Hover or tap the badge for the full explanation right there; the table below covers all of them in one place.",
+        "text": "Every stage card shows three things side by side: terrain, finish and surface. Terrain is read from the climbs. The finish is how the last kilometres look, not who wins. Hover or tap the finish for the short version, or use the table below.",
         "rows": [
           [
             "Ending",
             "What it means"
           ],
           [
-            "Bunch sprint",
-            "The peloton stays together and the stage is decided in a mass sprint."
+            "Flat sprint",
+            "Flat road to the line and a sprint decides it. How many riders are left in the bunch is up to the race, not the stage. Older races call this bunch sprint or reduced sprint."
           ],
           [
-            "Reduced sprint",
-            "A reduced group survives to the line and sprints for the win."
+            "Uphill sprint",
+            "The last kilometre rises gently, so the sprint rewards riders who can hold their power uphill."
           ],
           [
-            "Punchy finish",
-            "A short, steep kick near the line rewards a late attack over a pure sprint."
+            "Hill",
+            "A short climb close to the line. A late attack can work here."
           ],
           [
-            "Summit finish",
+            "Wall",
+            "The line sits on a short, very steep wall, where explosive power decides the stage."
+          ],
+          [
+            "Summit",
             "The climb itself is the finish line, opening the biggest time gaps of the day."
           ],
           [
-            "Downhill finish",
-            "The finish comes after a descent, giving chasers a chance to close back down before the line."
+            "Descent",
+            "The last climb is well before the line and the finish comes after a descent, so chasers can close back down."
           ],
           [
-            "Solo time trial",
+            "Time trial",
             "Every rider starts alone against the clock, no drafting."
           ],
           [
+            "Team time trial",
+            "Every team rides alone against the clock."
+          ],
+          [
             "Breakaway",
-            "An early escape group stays clear of the peloton and contests the win among themselves."
+            "Older stages only. An early escape group stays clear of the peloton and contests the win among themselves."
           ]
         ]
       },
       "stageProfile": {
         "title": "Terrain and stage profiles",
-        "text": "From season 2, races with route data show the stage's real profile: it's the exact route the race engine runs, with each climb's length, gradient and category, the intermediate sprint, cobbled sectors, and where the finish falls. A climb's category sets how many mountain points are up for grabs at the top, and a finish at the top of a climb opens bigger time gaps than a finish after a descent. Tap a marker on the profile to see what's at stake there, or who took it once the stage has been ridden. Older races without route data still show the earlier terrain badge: a schematic silhouette and an indicative category, not a measured profile."
+        "text": "From season 2, races with route data show the stage's real profile: it's the exact route the race engine runs, with each climb's length, gradient and category, the intermediate sprint, cobbled sectors, and where the finish falls. A climb's category sets how many mountain points are up for grabs at the top, and a finish at the top of a climb opens bigger time gaps than a finish after a descent. Tap a marker on the profile to see what's at stake there, or who took it once the stage has been ridden. Older races without route data still show the earlier terrain badge: a schematic silhouette and an indicative category, not a measured profile. The stage card draws the profile once and marks the hardest climb of the day (the last one if two are equally hard), with how far it is from the line. Under it, The day demands lists the four abilities the stage rewards most as high, mid or low. It reads from the stage's route and ability weights, the same ones the race engine uses."
       },
       "raceDetail": {
         "title": "Open a race: route, terrain DNA and your lineup",

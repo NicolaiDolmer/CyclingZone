@@ -17,6 +17,7 @@ test("kendte profile_type-strenge mappes til rigtig bucket", () => {
   assert.equal(toTerrainBucket("classic"), "hilly");
   assert.equal(toTerrainBucket("high_mountain"), "mountain");
   assert.equal(toTerrainBucket("itt_hilly"), "itt");
+  assert.equal(toTerrainBucket("medium_mountain"), "mountain");
 });
 
 test("ukendt/manglende terræn falder tilbage til sprint (samme graceful-degrade som TerrainGlyph)", () => {

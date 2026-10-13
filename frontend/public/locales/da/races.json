@@ -1003,11 +1003,6 @@
     "backToLibrary": "Løbsbibliotek",
     "back": "Tilbage",
     "raceDnaLabel": "Dette løb:",
-    "terrainDna": {
-      "label": "Terræn-DNA · hvad etapen belønner",
-      "rest": "Andre faktorer",
-      "finaleFactor": "+ op til ±{pct}%: nedkørsel og positionering afgør finalen"
-    },
     "ability": {
       "climbing": "Klatring",
       "time_trial": "Enkeltstart",
@@ -1582,7 +1577,55 @@
       "prizePoints": "Præmiepoint",
       "jerseyPoints": "Trøjepoint"
     },
-    "jumpToResults": "Se resultater"
+    "jumpToResults": "Se resultater",
+    "stageCard": {
+      "label": "Etapekort",
+      "axes": {
+        "terrain": "Terræn",
+        "finish": "Afslutning",
+        "surface": "Underlag"
+      },
+      "terrain": {
+        "flat": "Fladt",
+        "rolling": "Bølget",
+        "hilly": "Kuperet",
+        "medium_mountain": "Mellembjerg",
+        "mountain": "Bjerg",
+        "high_mountain": "Højbjerg"
+      },
+      "finish": {
+        "flat_sprint": "Flad spurt",
+        "uphill_sprint": "Stigende spurt",
+        "punch": "Bakke",
+        "wall_finish": "Mur",
+        "long_climb": "Bjergtop",
+        "descent": "Nedkørsel",
+        "solo_tt": "Enkeltstart",
+        "ttt": "Holdtidskørsel"
+      },
+      "finishHintTtt": "Hvert hold kører alene mod uret.",
+      "surface": {
+        "asphalt": "Asfalt",
+        "cobbles": "Brosten",
+        "gravel": "Grus"
+      },
+      "sectors": "{count, plural, one {# sektor} other {# sektorer}}, {km} km",
+      "unnamedClimb": "Kat. {cat}-stigning",
+      "climbStats": "kat. {cat}, {length} km @ {gradient}%",
+      "decided": {
+        "label": "Her afgøres etapen",
+        "summit": "Målstregen ligger på toppen af {name} ({stats}).",
+        "descent": "{name} ({stats}), toppen {km} km fra mål. Bagefter går det ned ad bakke til stregen.",
+        "before": "{name} ({stats}), toppen {km} km fra mål."
+      },
+      "toGo": "{km} km til mål",
+      "demands": {
+        "label": "Dagen kræver",
+        "high": "Høj",
+        "mid": "Mid",
+        "low": "Lav"
+      }
+    }
   },
   "history": {
     "loadError": {

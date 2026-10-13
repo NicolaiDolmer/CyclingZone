@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import StageProfileGraph from "./StageProfileGraph.jsx";
 import TerrainTypeGlyph from "./TerrainTypeGlyph.jsx";
 import { hasRouteData, waypointsFor } from "../../lib/stageRouteProfile.js";
-import { profileLabelKey } from "../../lib/stageProfileConfig.js";
+import { stageAxes } from "../../lib/stageAxes";
 import { formatNumber } from "../../lib/intl.js";
 
 // #4979 (spillerønske thelamba/egomadsen 7/9, ejer-skitseret): etapeprofilen i
@@ -32,7 +32,8 @@ export default function RaceStageProfileRow({ profile, stageLabel = null, hasCla
   );
   if (!profile || !hasRouteData(profile)) return null;
 
-  const terrainKey = profileLabelKey(profile.profile_type);
+  // #6364: terraen + afslutning som de to foerste akser (samme ord som etapekortet).
+  const axes = stageAxes(profile);
   const stageNumber = profile.stage_number ?? 1;
 
   return (
@@ -42,9 +43,9 @@ export default function RaceStageProfileRow({ profile, stageLabel = null, hasCla
     >
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
         <p className="text-cz-2 text-3xs uppercase tracking-wider font-semibold inline-flex items-center gap-1.5">
-          <TerrainTypeGlyph profileType={profile.profile_type} size={12} />
+          <TerrainTypeGlyph profileType={axes ? axes.terrain : profile.profile_type} size={12} />
           {stageLabel ? `${stageLabel} · ` : ""}
-          {terrainKey ? t(`detail.${terrainKey}`) : ""}
+          {axes ? `${t(`detail.stageCard.terrain.${axes.terrain}`)} · ${t(`detail.stageCard.finish.${axes.finish}`)}` : ""}
         </p>
         {/* Tallene er de SAMME tre som etape-kortets stat-linje, i mikro-format:
             distance, højdemeter, antal stigninger. Ingen nye ord, ingen nye tal. */}

@@ -17,16 +17,22 @@ import { formatNumber } from "../../lib/intl.js";
 const MOUNTAIN_TONE = { borderColor: "rgb(var(--jersey-mountain-bg) / 0.45)", color: "rgb(var(--jersey-mountain-bg))" };
 const READ_TONE_STYLE = { summit: MOUNTAIN_TONE, valley: MOUNTAIN_TONE };
 const READ_TONE_CLASS = { technical: "border-cz-accent/50 text-cz-accent-t" };
+const NO_HIDDEN_READS = [];
 
 // #4628: `asCard=false` renderer indholdet UDEN kort-rammen, saa StageDetailPanel
 // kan samle rute-graf + terraen-navn + finale + terraen-DNA i EET kort. Uden det
 // blev de to kort tegnet oven paa hinanden paa kommende-fladen (samme profil to
 // gange, 1.754 px foer holdudtagelsen — audit 2026-09 raekke #4) og et kort-i-kort
 // var alternativet (PAGE_TEMPLATES: "never wrap in another Card").
-export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full", hasClassifications = true, asCard = true }) {
+//
+// #6364: `beforeGraph` er pladsen til de tre akser (StageAxesStrip) mellem stat-linjen og
+// grafen; `decisiveCrestKm` markerer den afgoerende stigning paa grafen; `hideReads`
+// skjuler read-chips (summit/valley) som "her afgoeres etapen" allerede siger.
+export default function StageProfileCard({ profile, stageLabel, passages = [], tier = "full", hasClassifications = true, asCard = true, beforeGraph = null, decisiveCrestKm = null, hideReads = NO_HIDDEN_READS }) {
   const { t } = useTranslation("races");
   const waypoints = useMemo(() => waypointsFor(profile), [profile]);
-  const reads = useMemo(() => routeReadKeys(profile), [profile]);
+  const allReads = useMemo(() => routeReadKeys(profile), [profile]);
+  const reads = useMemo(() => allReads.filter((r) => !hideReads.includes(r.key)), [allReads, hideReads]);
   const defaultWp = waypoints.length ? waypoints[waypoints.length - 1] : null;
   const [selected, setSelected] = useState(defaultWp);
   // Skift af etape skal nulstille valget — ellers hænger forrige etapes waypoint.
@@ -63,6 +69,8 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
         </div>
       </div>
 
+      {beforeGraph}
+
       {reads.length > 0 && (
         <div className="flex gap-1.5 flex-wrap mt-2">
           {reads.map((r) => (
@@ -92,6 +100,7 @@ export default function StageProfileCard({ profile, stageLabel, passages = [], t
         activeWaypoint={selected}
         onWaypointSelect={setSelected}
         hasClassifications={hasClassifications}
+        decisiveCrestKm={decisiveCrestKm}
       />
 
       <StageWaypointReadout waypoint={selected} passages={passages} stageNumber={stageNumber} hasClassifications={hasClassifications} />

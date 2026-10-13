@@ -1003,11 +1003,6 @@
     "backToLibrary": "Race library",
     "back": "Back",
     "raceDnaLabel": "This race:",
-    "terrainDna": {
-      "label": "Terrain DNA · what the stage rewards",
-      "rest": "Other factors",
-      "finaleFactor": "+ up to ±{pct}%: descending & positioning decide the finale"
-    },
     "ability": {
       "climbing": "Climbing",
       "time_trial": "Time trial",
@@ -1582,7 +1577,55 @@
       "prizePoints": "Prize points",
       "jerseyPoints": "Jersey points"
     },
-    "jumpToResults": "See results"
+    "jumpToResults": "See results",
+    "stageCard": {
+      "label": "Stage card",
+      "axes": {
+        "terrain": "Terrain",
+        "finish": "Finish",
+        "surface": "Surface"
+      },
+      "terrain": {
+        "flat": "Flat",
+        "rolling": "Rolling",
+        "hilly": "Hilly",
+        "medium_mountain": "Medium mountain",
+        "mountain": "Mountain",
+        "high_mountain": "High mountain"
+      },
+      "finish": {
+        "flat_sprint": "Flat sprint",
+        "uphill_sprint": "Uphill sprint",
+        "punch": "Hill",
+        "wall_finish": "Wall",
+        "long_climb": "Summit",
+        "descent": "Descent",
+        "solo_tt": "Time trial",
+        "ttt": "Team time trial"
+      },
+      "finishHintTtt": "Every team rides alone against the clock.",
+      "surface": {
+        "asphalt": "Asphalt",
+        "cobbles": "Cobbles",
+        "gravel": "Gravel"
+      },
+      "sectors": "{count, plural, one {# sector} other {# sectors}}, {km} km",
+      "unnamedClimb": "Cat. {cat} climb",
+      "climbStats": "cat. {cat}, {length} km @ {gradient}%",
+      "decided": {
+        "label": "Where the stage is decided",
+        "summit": "The line is at the top of {name} ({stats}).",
+        "descent": "{name} ({stats}), top {km} km from the line. Then it is downhill to the finish.",
+        "before": "{name} ({stats}), top {km} km from the line."
+      },
+      "toGo": "{km} km to go",
+      "demands": {
+        "label": "The day demands",
+        "high": "High",
+        "mid": "Mid",
+        "low": "Low"
+      }
+    }
   },
   "history": {
     "loadError": {
