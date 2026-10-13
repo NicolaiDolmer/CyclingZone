@@ -199,3 +199,36 @@ test("#4123: den ÆGTE gyldne snapshot bryder ingen hård invariant", async () =
   assert.deepEqual(detectHardInvariantBreaches(gylden), []);
   assert.equal(summarizeGoldenDiff(gylden, gylden).uændret, true);
 });
+
+// ── #6367: S5 benchmark-sektionen ─────────────────────────────────────────────────
+
+const rødS5 = { green: false, blocking: ["S5 (1) etape — x"], parts: {
+  stages: { stageCount: 1, mismatchedType: 1, violations: ["x"], green: false },
+  grandTours: { races: [], violations: [], green: false },
+  season: { n: 0, rows: [], violations: [], green: true },
+  motor: { status: "stub", stub: true, rows: [], violations: [] },
+} };
+
+test("#6367: S5-sektionen vises i rapporten; MÅLT (v5) vælter ikke exit-koden, DØMT (s5) gør", () => {
+  const snap = lovligtSnapshot();
+  const målt = runGoldenDiff({ gylden: snap, ny: snap, s5Benchmark: { result: rødS5, judged: false } });
+  assert.equal(målt.exitCode, 0, "en rød v5-måling må ikke vælte placerings-gaten");
+  assert.match(målt.rapport, /S5 benchmark-gate \(#6367/);
+  assert.match(målt.rapport, /MÅLT, IKKE DØMT/);
+  const dømt = runGoldenDiff({ gylden: snap, ny: snap, s5Benchmark: { result: rødS5, judged: true } });
+  assert.equal(dømt.exitCode, 1, "S5-modellen rød = exit 1");
+  assert.match(dømt.rapport, /❌ RØD/);
+  const uden = runGoldenDiff({ gylden: snap, ny: snap });
+  assert.doesNotMatch(uden.rapport, /S5 benchmark-gate/);
+});
+
+test("#6367: den offline kalender på den nuværende generator er rød mod benchmarken (v5 ≠ S5)", async () => {
+  const { buildOfflineS5GateRaces } = await import("./calendarGoldenDiff.mjs");
+  const { evaluateS5BenchmarkGate, loadS5Benchmark, loadMotorGapFile } = await import("../../lib/s5BenchmarkGate.js");
+  const races = buildOfflineS5GateRaces({ profileModel: "v5" });
+  assert.ok(races.length > 100);
+  const res = evaluateS5BenchmarkGate({ races, benchmark: loadS5Benchmark(), motor: loadMotorGapFile() });
+  assert.equal(res.parts.stages.green, false);
+  assert.equal(res.parts.grandTours.green, false);
+  assert.equal(res.parts.grandTours.races.length, 3);
+});
