@@ -50,6 +50,7 @@
     "riderRelease": "Released {riderName} (buyout fee)",
     "swapCash": "Swap cash settlement: {offeredName} <-> {requestedName}",
     "scoutTravel": "Scout travel cost",
+    "scoutLostReportRefund": "Refund: scout report lost to a bug",
     "legacy": {
       "sponsor": "Sponsor income · Season {season}",
       "salary": "Salaries · Season {season}",
@@ -311,6 +312,10 @@
         "titleEmpty": "Scouting mission: no matches",
         "messageEmpty": "Your scout searched but found no riders matching your criteria."
       }
+    },
+    "scoutLostReportRefund": {
+      "title": "Scout mission refunded",
+      "message": "Your scout report from {date} was lost to a bug. The {amount} CZ$ has been refunded."
     },
     "auctionCancelledRetired": {
       "title": "Auction cancelled: rider retired",

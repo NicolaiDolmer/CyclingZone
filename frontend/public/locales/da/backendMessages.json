@@ -50,6 +50,7 @@
     "riderRelease": "Fyrede {riderName} (buyout-gebyr)",
     "swapCash": "Byttehandel kontantbetaling: {offeredName} <-> {requestedName}",
     "scoutTravel": "Rejseomkostning for spejder",
+    "scoutLostReportRefund": "Refusion: spejderrapport tabt pga. en fejl",
     "legacy": {
       "sponsor": "Sponsorindtægt · Sæson {season}",
       "salary": "Løn · Sæson {season}",
@@ -311,6 +312,10 @@
         "titleEmpty": "Spejdermission: ingen fund",
         "messageEmpty": "Din spejder har ledt, men fandt ingen ryttere, der matcher dine kriterier."
       }
+    },
+    "scoutLostReportRefund": {
+      "title": "Spejdermission refunderet",
+      "message": "Din spejderrapport fra {date} gik tabt pga. en fejl. De {amount} CZ$ er refunderet."
     },
     "auctionCancelledRetired": {
       "title": "Auktion annulleret: rytter pensioneret",
