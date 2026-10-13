@@ -27,6 +27,7 @@ export const TERRAIN_TYPE_ICON_NAME: Readonly<Record<string, string>> = Object.f
   flat: "RoadIcon",
   rolling: "RollingIcon",
   hilly: "MountainIcon",
+  medium_mountain: "MountainIcon", // #6369 Fase 0: samme bjerg-familie; etapekortet (#6364) ejer ikonet
   mountain: "MountainIcon",
   high_mountain: "MountainIcon",
   itt: "TimeTrialIcon",

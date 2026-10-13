@@ -57,6 +57,7 @@ export const TACTICAL_DEMAND = Object.freeze({
   rolling: "light",
   mountain: "light",
   high_mountain: "light",
+  medium_mountain: "light", // #6369 Fase 0: DEMAND_VECTORS.medium_mountain er en pladsholder (= mountain)
   classic: "light",
   ttt: "high",
 });
