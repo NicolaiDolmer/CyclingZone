@@ -147,7 +147,7 @@ export function buildFinancePayload(row) {
     source_path: "scripts/ops/refund-6551-scout-missions.mjs",
     reason_code: REFUND_REASON_CODE,
     related_entity_type: "manual",
-    related_entity_id: null,
+    related_entity_id: row.assignmentId, // uuid-kolonne; peger paa scout_assignments-raekken
     idempotency_key: row.idempotencyKey,
     metadata: { code: REFUND_TX_CODE, params: { assignmentId: row.assignmentId } },
   };
