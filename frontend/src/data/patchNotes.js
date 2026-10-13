@@ -1,5 +1,48 @@
 export const PATCHES = [
   {
+    "version": "7.358",
+    "date": "2026-10-12",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Unread count stays in sync, and you're told when you're outbid",
+          "body": "When you mark everything as read, the count in the menu now clears right away, also in your other open tabs. You now get a notification when someone outbids you in an auction, and you no longer get an email about your own bids."
+        },
+        "da": {
+          "title": "Antallet af ulæste passer nu, og du får besked, når du bliver overbudt",
+          "body": "Når du markerer alt som læst, forsvinder tallet i menuen med det samme, også i dine andre åbne faner. Du får nu en notifikation, når nogen overbyder dig på en auktion, og du får ikke længere en mail om dine egne bud."
+        },
+        "refs": [
+          6473,
+          6385,
+          6386
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squads",
+        "en": {
+          "title": "Expiring contracts and correct age on U23 and junior squads",
+          "body": "U23 and junior squads now show the same \"Expiring\" badge as your senior team when a contract runs out at the season change. Graduation Day now shows the rider's age in the season, the same as on his profile."
+        },
+        "da": {
+          "title": "Udløbende kontrakter og rigtig alder på U23 og junior",
+          "body": "U23- og juniortrupperne viser nu samme \"Udløber\"-mærke som seniorholdet, når en kontrakt udløber ved sæsonskiftet. Graduation Day viser nu rytterens alder i sæsonen, som på hans profil."
+        },
+        "refs": [
+          6206,
+          5943
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.357",
     "date": "2026-10-11",
     "changes": [

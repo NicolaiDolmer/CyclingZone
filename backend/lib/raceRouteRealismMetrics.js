@@ -7,7 +7,13 @@
 // grandTourRestDays.js importerer intet, saa der er ingen cyklus.
 import { GRAND_TOUR_MIN_STAGES as GT_MIN_STAGES } from "./grandTourRestDays.js";
 
-const MOUNTAIN = new Set(["mountain", "high_mountain"]);
+// #6367: mellembjerg (S5) er bjerg-familien. Ejer-definitionen (8/10): "lange stigninger =
+// bjerg", og B+ (spec §2) giver kun mellembjerg ved lange kat. 2; dens bjergtop (kat. 2) er
+// en af GT-kvotens bjergtoppe (spec §5). v5 skriver aldrig typen, saa S1-S4 er uaendret.
+const MOUNTAIN = new Set(["mountain", "high_mountain", "medium_mountain"]);
+// #6367: S5's "flad spurt" (flat_sprint) afloeser massespurten (spec §3). Gulvet for
+// spurt-etapedage taeller begge navne; reduceret spurt taeller fortsat ikke (uaendret v5).
+const BUNCH_SPRINT_FINALES = new Set(["bunch_sprint", "flat_sprint"]);
 // #4105 (ejer 3/9): grus hoerer til brostensfamilien - se TERRAIN_FAMILY_BY_PROFILE_TYPE.
 const COBBLES_FAMILY = new Set(["cobbles", "gravel"]);
 const isSummit = (s) => s.finale_type === "long_climb" && MOUNTAIN.has(s.profile_type);
@@ -123,6 +129,8 @@ export const TIER_TARGETS = Object.freeze({
 export const WT_DISTANCE_BANDS = Object.freeze({
   flat: [150, 200], rolling: [150, 190], hilly: [160, 210],
   mountain: [140, 190], high_mountain: [140, 190],
+  // #6367: mellembjerg bruger bjergets baand, som S5-ruten selv goer (#6359 s5BandKey).
+  medium_mountain: [140, 190],
   cobbles: [150, 170], gravel: [150, 170], classic: [200, 260], itt: [15, 40], ttt: [25, 45],
 });
 
@@ -161,7 +169,7 @@ export function scoreTier(tier, races) {
   // GENBRUGER mdown-tælleren — det er PRÆCIS samme tal, blot udtrykt som et minimums-gulv
   // i stedet for et procent-loft (mdown_max_pct), fordi kun mountain/high_mountain-profiler
   // kan få finale_type "descent" (raceStageProfileGenerator.js's FINALE_WEIGHTS_BY_PROFILE).
-  const bunchSprintStageDays = stages.filter((s) => s.finale_type === "bunch_sprint").length;
+  const bunchSprintStageDays = stages.filter((s) => BUNCH_SPRINT_FINALES.has(s.finale_type)).length;
   const descentFinaleStageDays = mdown.length;
   const soloTtFinalRaces = races.filter((r) => {
     const rs = Array.isArray(r.stages) ? r.stages : [];

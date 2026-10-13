@@ -103,6 +103,10 @@ export type ProfileType =
   | "flat"
   | "rolling"
   | "hilly"
+  // #6369 Fase 0 (S5, ADDITIVT): mellembjerg. Ordforraadet bor i backend/lib/stageProfileTypes.js.
+  // Motoren har ingen egen adfaerd for typen endnu (Spor 2, bag regel-revision s5_profiles_v1);
+  // ingen etape har typen foer S5-generatoren skriver den.
+  | "medium_mountain"
   | "mountain"
   | "high_mountain"
   | "cobbles"
@@ -125,7 +129,12 @@ export type FinaleType =
   | "breakaway"
   | "descent"
   | "long_climb"
-  | "solo_tt";
+  | "solo_tt"
+  // #6369 Fase 0 (S5, ADDITIVT): flad spurt (S5-navnet for bunch/reduced), stigende spurt
+  // (#6362) og mur (#6363). Ingen motor-adfaerd endnu (Spor 2, bag s5_profiles_v1).
+  | "flat_sprint"
+  | "uphill_sprint"
+  | "wall_finish";
 
 export type RouteV2 = {
   distance_km: number;
@@ -734,6 +743,9 @@ export type SegmentHookContext = {
   // #6187 (ADDITIVT og VALGFRIT): kun sat under orders_gc_v3 (og senere).
   // Udeladt = holdene jagter som under orders_gc_v2 (mechanics/breakaway.ts).
   ordersGcV3?: true;
+  // #6363 (ADDITIVT og VALGFRIT, KUN s5_profiles_v1, slukket): S5-etapeprofilernes
+  // motor (s5Profiles.ts). Udeladt = alle aeldre revisioner, byte-identiske.
+  s5ProfilesV1?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

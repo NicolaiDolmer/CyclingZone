@@ -12,8 +12,9 @@ import { join } from "node:path";
 import {
   gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
   scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar, loadCutoverPoolRetirement,
-  formatGrandTourOrder,
+  formatGrandTourOrder, s5GateRacesFromPlan, runS5BenchmarkGateForPlan,
 } from "./buildSeasonCalendar.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas } from "../lib/raceStageProfileGenerator.js";
 import { resolveTargetStructure } from "../lib/calendarTargetStructure.js";
 import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
 import {
@@ -477,4 +478,49 @@ test("#5802: formatGrandTourOrder viser GT'erne i start-rækkefølge med dato og
   const uvurderet = formatGrandTourOrder({ tiers: [{ tier: 1, grandTourStarts: uden, gtOrderViol: [] }] });
   assert.match(uvurderet[1], /⚠ kan ikke vurderes uden virkelig dato: Vuelta$/);
   assert.doesNotMatch(uvurderet[1], /✅/);
+});
+
+// ── #6367: S5 benchmark-gaten i den planlagte kalender ────────────────────────────
+
+// En planlagt kalender med fixturens tre Grand Tours i D1 (to puljer, samme parcours) og
+// én af dem igen i D2, genereret af den NUVÆRENDE generator (v5).
+function s5Plan() {
+  const catalog = JSON.parse(readFileSync(new URL("../lib/__fixtures__/racePoolCatalog.prod.json", import.meta.url), "utf8")).catalog;
+  const gts = catalog.filter((c) => c.terrain_archetype === "grand_tour");
+  const rows = gts.map((c) => ({ pool_race_id: c.id, name: c.name, race_type: c.race_type, race_class: c.race_class, stages: c.stages }));
+  const generated = balanceFinaleQuotas(gts.map((c) => generateRaceStageProfiles({ ...c, season_id: "s5-test" })));
+  const profiles = new Map(gts.map((c, i) => [c.id, generated[i]]));
+  return {
+    archetypeByPoolRace: new Map(gts.map((c) => [c.id, c.terrain_archetype])),
+    planTiers: [
+      { tier: 1, pools: [{ raceRows: rows }, { raceRows: rows }], profilesByPoolRaceId: profiles },
+      { tier: 2, pools: [{ raceRows: rows.slice(0, 1) }], profilesByPoolRaceId: profiles },
+    ],
+  };
+}
+
+test("#6367 s5GateRacesFromPlan: én repræsentativ pulje pr. division, profiler og arketype fra planen", () => {
+  const races = s5GateRacesFromPlan(s5Plan());
+  assert.equal(races.length, 4, "D1's første pulje (3) + D2 (1); D1's anden pulje tælles ikke");
+  assert.ok(races.every((r) => r.terrain_archetype === "grand_tour" && r.stages.length >= 17));
+  assert.deepEqual(s5GateRacesFromPlan({}), []);
+});
+
+test("#6367 runS5BenchmarkGateForPlan: gælder KUN S5-modellen; S4 måles ikke", () => {
+  const s4 = runS5BenchmarkGateForPlan({ plan: s5Plan(), seasonNumber: 4 });
+  assert.equal(s4.applies, false);
+  assert.equal(s4.gate, null);
+  assert.deepEqual(s4.lines, []);
+});
+
+test("#6367 runS5BenchmarkGateForPlan: sæson 5 på den nuværende v5-generator er RØD (stopper --apply)", () => {
+  const s5 = runS5BenchmarkGateForPlan({ plan: s5Plan(), seasonNumber: 5 });
+  assert.equal(s5.applies, true);
+  assert.equal(s5.profileModel, "s5");
+  assert.equal(s5.gate.green, false);
+  assert.ok(s5.gate.blocking.some((b) => b.startsWith("S5 (1) etape")));
+  assert.ok(s5.gate.blocking.some((b) => b.startsWith("S5 (2) Grand Tour")));
+  assert.equal(s5.gate.parts.grandTours.races.length, 3, "samme løb i D1 og D2 tælles én gang");
+  assert.equal(s5.gate.parts.motor.status, "stub", "uden --motor-bench bruges stubben");
+  assert.ok(s5.lines.some((l) => l.includes("RØD")));
 });

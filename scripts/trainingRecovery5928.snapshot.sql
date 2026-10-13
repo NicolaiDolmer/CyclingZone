@@ -29,7 +29,11 @@ SELECT jsonb_build_object(
    'settlement_count',(SELECT count(*) FROM training_condition_settlements s WHERE s.rider_id=q.rider_id),
    'race_load_count',(SELECT count(*) FROM training_race_loads l WHERE l.rider_id=q.rider_id),
    'race_result_count',(SELECT count(*) FROM race_results r WHERE r.rider_id=q.rider_id),
-   'canonical_report_count',(SELECT count(*) FROM training_day_runs t WHERE (t.report->'riders') @> jsonb_build_array(jsonb_build_object('rider_id',q.rider_id::text))),
+   -- #6490: 0/1 from the btree history table, never a JSON-containment scan.
+   -- seen also covers ticks/loads, so this is a superset of "has a report". The
+   -- apply gate requires every count = 0, and receipt/race_load counts are gated
+   -- too, so 0 here is exactly "no report": fail-closed, never a false PASS.
+   'canonical_report_count',(SELECT count(*) FROM rider_training_seen s WHERE s.rider_id=q.rider_id),
    'history_after_work_count',(SELECT count(*) FROM rider_derived_ability_history h WHERE h.rider_id=q.rider_id AND h.created_at>q.work_created)
  )) FROM q),
  'tables',jsonb_build_object(
@@ -54,5 +58,9 @@ SELECT jsonb_build_object(
    'training_race_loads',COALESCE((SELECT jsonb_agg(to_jsonb(l)) FROM training_race_loads l WHERE rider_id IN(SELECT rider_id FROM q)),'[]'),
    'rider_condition',COALESCE((SELECT jsonb_agg(to_jsonb(c)) FROM rider_condition c WHERE rider_id IN(SELECT rider_id FROM q)),'[]'),
    'training_day_runs',COALESCE((SELECT jsonb_agg(jsonb_build_object('team_id',team_id,'season_id',season_id,'squad',squad,'tick_date',tick_date,'game_day',game_day,'report',jsonb_build_object('condition_per_date',report->'condition_per_date','condition_settled',report->'condition_settled')) ORDER BY team_id,game_day) FROM training_day_runs t WHERE team_id IN(SELECT team_id FROM w) AND tick_date='2026-09-29'),'[]'),
-   'training_rider_ticks',COALESCE((SELECT jsonb_agg(to_jsonb(t)) FROM training_rider_ticks t WHERE rider_id IN(SELECT rider_id FROM q)),'[]')
+   'training_rider_ticks',COALESCE((SELECT jsonb_agg(to_jsonb(t)) FROM training_rider_ticks t WHERE rider_id IN(SELECT rider_id FROM q)),'[]'),
+   -- Engine reads these since #5999/#6000; the replay keeps only rows that existed at work time.
+   'team_training_rules',COALESCE((SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM team_training_rules r WHERE team_id IN(SELECT team_id FROM w)),'[]'),
+   'training_groups',COALESCE((SELECT jsonb_agg(to_jsonb(g) ORDER BY id) FROM training_groups g WHERE team_id IN(SELECT team_id FROM w)),'[]'),
+   'training_group_members',COALESCE((SELECT jsonb_agg(to_jsonb(m) ORDER BY group_id,rider_id) FROM training_group_members m WHERE team_id IN(SELECT team_id FROM w)),'[]')
  )) AS snapshot;

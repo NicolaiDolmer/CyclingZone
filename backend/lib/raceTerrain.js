@@ -8,6 +8,10 @@ export const TERRAIN_BUCKETS = Object.freeze(["flat", "hilly", "mountain", "cobb
 const PROFILE_TO_BUCKET = Object.freeze({
   flat: "flat", rolling: "flat",
   hilly: "hilly", classic: "hilly",
+  // #6363 (S5): mellembjerg deler bucket med kuperet, som i motorens terraen-bucket
+  // (engine/v4/s5Profiles.ts): dagene afgoeres af angribere og allroundere, ikke af
+  // bjergtoppenes klatrere.
+  medium_mountain: "hilly",
   mountain: "mountain", high_mountain: "mountain",
   // #4105: grus deler bucket med brosten. Kaptajn-prioriteterne er spiller-vendte, og
   // ejer-rammen 3/9 er at det er "naesten samme type der er god til den slags loeb" — en

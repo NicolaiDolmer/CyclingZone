@@ -119,6 +119,7 @@ import {
 import type { EngineTuning, GcContext, RouteV2, TeamReactionState } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale } from "./mountainSelection.ts";
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
+import { lateAttack } from "./lateAttack.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1033,7 +1034,9 @@ const STAGE_WIN_PUNCH_PROFILES: ReadonlySet<ProfileType> = new Set<ProfileType>(
  * Eksporteret for kontrakt-tests.
  */
 export function stageWinDemandKeys(finaleType: FinaleType | null, profileType: ProfileType): AbilityKey[] {
-  if (finaleType === "bunch_sprint" || finaleType === "reduced_sprint") return ["sprint"];
+  // #6363 (S5): flad og stigende spurt afgoeres paa sprint, muren paa punch (alle profiler).
+  if (finaleType === "bunch_sprint" || finaleType === "reduced_sprint" || finaleType === "flat_sprint" || finaleType === "uphill_sprint") return ["sprint"];
+  if (finaleType === "wall_finish") return ["punch"];
   if (finaleType === "long_climb") return ["climbing"];
   if (finaleType === "solo_tt") return ["time_trial"];
   if (finaleType === null && profileType === "flat") return ["sprint"];
@@ -2053,7 +2056,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
 export const breakawayHook: BreakawayHook = (state: EngineState, ctx: BreakawayHookContext): SegmentHookResult => {
   const result = breakawayHookCore(state, ctx);
   // #6185 del 2 (KUN orders_gc_v3): motoren melder selv "sat af fra udbruddet" (chaseGroup.ts).
-  return ctx.ordersGcV3 === true ? withBreakawayDrops(result, round2(ctx.segment.to_km)) : result;
+  const reported = ctx.ordersGcV3 === true ? withBreakawayDrops(result, round2(ctx.segment.to_km)) : result;
+  // #6368 (KUN s5_profiles_v1): det sene soloangreb som motoradfaerd (mechanics/lateAttack.ts).
+  if (ctx.s5ProfilesV1 !== true) return reported;
+  const attack = lateAttack(reported.state, ctx);
+  return attack.events.length === 0 ? reported : { state: attack.state, events: [...reported.events, ...attack.events] };
 };
 
 const breakawayHookCore: BreakawayHook = (state: EngineState, ctx: BreakawayHookContext): SegmentHookResult => {

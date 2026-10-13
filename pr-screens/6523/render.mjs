@@ -1,0 +1,10 @@
+import { chromium } from "@playwright/test";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+const dir = dirname(fileURLToPath(import.meta.url));
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1948, height: 900 }, deviceScaleFactor: 1 });
+await page.goto(pathToFileURL(resolve(dir, "card.html")).href);
+await page.waitForLoadState("networkidle");
+await page.screenshot({ path: resolve(dir, "before-after-6523.png"), fullPage: true });
+await browser.close();

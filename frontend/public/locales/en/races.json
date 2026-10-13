@@ -1495,7 +1495,8 @@
       "ttt": "Team time trial",
       "cobbles": "Cobbles",
       "gravel": "Gravel",
-      "classic": "Classic"
+      "classic": "Classic",
+      "medium_mountain": "Medium mountain"
     },
     "finaleType": {
       "bunch_sprint": "Bunch sprint",
@@ -1504,7 +1505,10 @@
       "long_climb": "Summit finish",
       "descent": "Downhill finish",
       "solo_tt": "Solo time trial",
-      "breakaway": "Breakaway-friendly"
+      "breakaway": "Breakaway-friendly",
+      "flat_sprint": "Flat sprint",
+      "uphill_sprint": "Uphill sprint",
+      "wall_finish": "Wall finish"
     },
     "finaleTypeHint": {
       "bunch_sprint": "The peloton stays together and the stage is decided in a mass sprint.",
@@ -1513,7 +1517,10 @@
       "long_climb": "Summit finish: the climb itself is the finish line, opening the biggest time gaps of the day.",
       "descent": "The finish comes after a descent, giving chasers a chance to close back down before the line.",
       "solo_tt": "Every rider starts alone against the clock, no drafting.",
-      "breakaway": "Terrain that favours an early escape. Whether it stays away is decided on the road, not here."
+      "breakaway": "Terrain that favours an early escape. Whether it stays away is decided on the road, not here.",
+      "flat_sprint": "The stage finishes on flat road and is decided in a sprint.",
+      "uphill_sprint": "The last kilometre rises gently, so the sprint rewards riders who can hold their power uphill.",
+      "wall_finish": "The finish line sits on a short, very steep wall, where explosive power decides the stage."
     },
     "route": {
       "stats": {

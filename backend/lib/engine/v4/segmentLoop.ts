@@ -88,7 +88,7 @@ import {
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
-import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup, isMorningRegroupCatch } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
@@ -774,6 +774,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "official_times_v2") return "official_times_v2";
   if (raw === "official_times_v3") return "official_times_v3";
   if (raw === "official_times_v4") return "official_times_v4";
+  if (raw === "s5_profiles_v1") return "s5_profiles_v1"; // #6369: tom, slukket (= official_times_v4)
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -1088,6 +1089,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(ordersGcV3 ? { ordersGcV3: true as const } : {}),
       ...(sharedGroupTime ? { sharedGroupTime: { entryGroups: groupsBeforeTempo, incidentCursor: incidentCursorAtEntry, ...(timeModelV3 ? { timeModelGeneration: 3 as const } : {}), ...(mountainGapsV4 ? { mountainGapsV4: true as const } : {}) } } : {}),
       ...(onWheelAtStart ? { ownRidersOnWheel: onWheelAtStart } : {}),
+      // #6363 (KUN s5_profiles_v1, slukket): S5-motorens finaler og sene angreb.
+      ...(isS5ProfilesV1OrLater(rulesRevision) ? { s5ProfilesV1: true as const } : {}),
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
       state = result.state;

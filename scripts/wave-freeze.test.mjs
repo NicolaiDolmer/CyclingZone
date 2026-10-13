@@ -848,14 +848,15 @@ test("#6058: agent-typerne findes og mangler fil-redigering", () => {
   const agentsDir = path.join(path.dirname(WAVE_JS_PATH), "..", "agents");
   const check = readFileSync(path.join(agentsDir, "wave-intake-check.md"), "utf8");
   const setupAgent = readFileSync(path.join(agentsDir, "wave-setup.md"), "utf8");
-  const denied = (src) => (src.match(/^disallowedTools:\s*(.+)$/m) || [, ""])[1].split(",").map((t) => t.trim());
+  const allowed = (src) => (src.match(/^tools:\s*(.+)$/m) || [, ""])[1].split(",").map((t) => t.trim());
   assert.match(check, /^name: wave-intake-check$/m);
   assert.match(setupAgent, /^name: wave-setup$/m);
-  for (const tool of ["Read", "Edit", "Write", "Grep", "Glob", "WebFetch", "Agent", "Workflow", "ToolSearch"]) {
-    assert.ok(denied(check).includes(tool), `wave-intake-check skal naegte ${tool}`);
-  }
+  assert.doesNotMatch(check, /^disallowedTools:/m, "tilladt-liste (tools:), ikke forbudsliste (#6539)");
+  assert.doesNotMatch(setupAgent, /^disallowedTools:/m, "tilladt-liste (tools:), ikke forbudsliste (#6539)");
+  assert.deepEqual(allowed(check), ["Bash", "PowerShell"]);
+  assert.deepEqual(allowed(setupAgent), ["Bash", "PowerShell", "Read", "Write", "Grep", "Glob"]);
   for (const tool of ["Edit", "WebFetch", "Agent", "Workflow", "ToolSearch"]) {
-    assert.ok(denied(setupAgent).includes(tool), `wave-setup skal naegte ${tool}`);
+    assert.ok(!allowed(check).includes(tool) && !allowed(setupAgent).includes(tool), `${tool} maa ikke vaere tilladt`);
   }
 });
 

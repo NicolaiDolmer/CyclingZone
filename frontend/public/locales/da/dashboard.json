@@ -2,6 +2,40 @@
   "loadError": "Kunne ikke indlæse dashboardet. Prøv igen.",
   "offlineError": "Kan ikke få forbindelse til spillets server. Tjek din forbindelse, og prøv igen.",
   "retry": "Prøv igen",
+  "firstRace": {
+    "eyebrow": "Dit første løb",
+    "titleUpcoming": "{race} starter {when}",
+    "titleSoon": "{race} er på vej",
+    "titleStarted": "{race} er i gang",
+    "titlePause": "Intet løb at udtage lige nu",
+    "when": {
+      "today": "i dag kl. {time}",
+      "tomorrow": "i morgen kl. {time}",
+      "date": "{day} kl. {time}"
+    },
+    "at": {
+      "today": "I dag {time}",
+      "tomorrow": "I morgen {time}",
+      "date": "{day} {time}"
+    },
+    "stages": "{count, plural, one {# etape} other {# etaper}}",
+    "oneDay": "Endagsløb",
+    "division": "dine ryttere kører i Division {division}",
+    "now": "Nu",
+    "nowAssistant": "Vælg dine ryttere og din kaptajn. Springer du over, vælger din assistent for dig.",
+    "nowPick": "Vælg dine ryttere og din kaptajn.",
+    "nowSaved": "Din udtagelse er gemt. Du kan ændre den, indtil løbet starter.",
+    "stageRaced": "Etape {number} køres.",
+    "oneDayRaced": "Løbet køres.",
+    "resultHere": "Dit resultat står her.",
+    "resultMail": "Dit resultat står her og sendes også på mail.",
+    "takesAbout": "Tager ca. 2 minutter",
+    "nextLabel": "Næste",
+    "pauseSeason": "Næste sæson starter {day}. Dit første løb dukker op her.",
+    "pauseUnknown": "Dit første løb dukker op her, så snart det er sat i kalenderen.",
+    "openCalendar": "Åbn løbskalenderen",
+    "viewRace": "Se løbet"
+  },
   "todayStages": {
     "title": "Dagens etaper",
     "winner": "Vinder: {name}",

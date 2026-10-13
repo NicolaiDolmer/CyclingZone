@@ -4,11 +4,10 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (12/10 styring kørt):** tal i GROWTH_STACK §12 (aktive 7d 74→61, MRR 620 kr.), audit 37 lukket (`.claude/audits/audit-2026-10-12.md`), bølge #6482 #6483 #6423 #6531 kører, #6530 i merge-kø. Næste: #6526 analyse af faldet, mockups træningssiden (#6524 #6523), 13/10 kl. 12 v4-bjergtjek.
+> **🎯 Next action = SESSION 14/10:** `docs/sessions/2026-10-14-effektiv-session.md` (startprompt + bølge-args klar). (1) Hvad brænder kom kl. 08? (2) Merge-status #6565 #6567 #6568 + #6535. (3) Bølge: #6569 dashboard · #6557 SEO · #6574 road book-billede · #6551 scout (investigate). (4) Kl. 20: pause-afstemningerne i forummet lukker → S5-startdato (#5833). (5) Bogføring + revisor #4511 (ejer). (6) #6490 aften 2 → DROP INDEX-kort.
 >
-> **Derefter (11/10):** (1) v4-bjergetaper pr. division **13/10 kl. 12** (12/10 var kun Volta på v2; 177 v4-bjergetaper venter) mod `balance-internals/motor-bench/bench-main-live.json`. (2) Ejer: GitHub-secrets `POSTHOG_PERSONAL_API_KEY`, `DISCORD_OPS_WEBHOOK_URL`, `SUPABASE_PUBLISHABLE_KEY` (#6477 #6426 merget). (3) Ejer-kort: faldets form (kerne 100 % / øvrige 70 % eller ens, #6499) FØR flaget `development_v2_aging_enabled` tændes før 25/10. (4) #6482 #6483: e2e-fix + ægte billeder i bølge wf_18c8c554. (5) #6490: M3 på pause, først staging-måling af GIN (ejer 12/10, se issue). Desuden #6489 (trup-skift-trigger), #6504 (frigivelse uden ejerskifte). (6) Standarder #6496: #6491 først. Man: betaling #4511 #4514 #4512.
+> **13/10:** masterplan omlagt (Brand / Nu / Forretning, mål 31/12: 2.000 kr. MRR + 200 aktive/7d, release-gate #6553). Merget #6555 (S5 Fase 0, migration verificeret) #6556 (S5-mail-kampagne) #6561. DB Watchdog grøn (secrets sat). Aldring 0,7 (#6499). Founder-funktioner kræver aktiv Pro (#2806). Etapeside-retning 6A+6C (#6570); ingen udviklingstal på løbssiden; route fit kun egne ryttere. Ingen nye løbende udgifter før indtægt stiger.
 >
-> **11/10 aften:** 11 PR'er + patch 7.357; Udvikling 2.0 del 1 bag slukket flag (#6499 #6500); aftenspids = GIN-indeks på `training_day_runs` (#6490). Standarder vedtaget (#6496).
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
@@ -26,4 +25,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code primær session 12/10 (styringssession + bølge wf_18c8c554: #6482 #6483 #6423). Codex parallelt på #6490.
+> **🤖 Working agent:** Ingen aktiv session (13/10 aften lukket; næste 14/10 morgen). Codex: S5-lanceringspakke + annoncetest + marts-plan (udkast til 21/10).

@@ -145,7 +145,7 @@ BEGIN
   ${noLater}
   ${peerGuard}
   ${Object.keys(before).map(name=>compare(name)).join('\n')}
-  IF EXISTS(SELECT 1 FROM training_day_runs WHERE (report->'riders') @> ANY(ARRAY(SELECT jsonb_build_array(jsonb_build_object('rider_id',id::text)) FROM unnest(ids)id))) THEN RAISE EXCEPTION 'Canonical rider report already exists';END IF;
+  IF EXISTS(SELECT 1 FROM rider_training_seen WHERE rider_id=ANY(ids)) THEN RAISE EXCEPTION 'Canonical rider report already exists';END IF;
   IF EXISTS(SELECT 1 FROM training_day_runs x WHERE x.team_id=ANY(team_ids) AND x.season_id=season_key AND x.tick_date=date_key AND x.report->'riders' IS DISTINCT FROM
     COALESCE((SELECT jsonb_agg(t.report ORDER BY t.rider_id) FROM training_rider_ticks t WHERE t.team_id=x.team_id AND t.season_id=x.season_id AND t.game_day=x.game_day),'[]')) THEN RAISE EXCEPTION 'Canonical teammate report differs from receipt ledger';END IF;
   IF EXISTS(SELECT 1 FROM rider_derived_ability_history WHERE rider_id=ANY(ids) AND created_at>(SELECT min((value->>'created_at')::timestamptz) FROM jsonb_array_elements(b->'training_date_work')))
@@ -239,6 +239,8 @@ END;`);
   FOR item IN SELECT value FROM jsonb_array_elements(b->'training_day_runs') LOOP
     UPDATE training_day_runs x SET report=(item->'report_header')||jsonb_build_object('riders',COALESCE((SELECT jsonb_agg(t.report ORDER BY t.rider_id) FROM training_rider_ticks t WHERE t.team_id=x.team_id AND t.season_id=x.season_id AND t.game_day=x.game_day),'[]')) WHERE x.team_id=(item->>'team_id')::uuid AND x.season_id=season_key AND x.game_day=(item->>'game_day')::integer;
   END LOOP;
+  -- #6490: the seen-trigger is insert-only; forget the rolled-back riders.
+  PERFORM public.rebuild_rider_training_seen();
   DELETE FROM training_condition_timeout_outbox WHERE team_id=ANY(team_ids) AND season_id=season_key AND tick_date=date_key;
   INSERT INTO training_condition_timeout_outbox SELECT * FROM jsonb_populate_recordset(NULL::public.training_condition_timeout_outbox,b->'training_condition_timeout_outbox');
   b:=jsonb_set(b,'{rider_derived_abilities}',${literal(before.rider_derived_abilities)});

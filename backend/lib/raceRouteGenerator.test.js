@@ -8,7 +8,19 @@ import {
   clampSprintKm,
   sprintValleys,
   pickSprintValley,
+  deriveTerrainType,
+  drawS5ClimbSet,
+  attachRouteS5,
+  assertFinishAllowed,
+  elevationGainS5,
+  S5_CLIMB_TEMPLATES,
+  S5_DESCENT_TOP_WINDOW_KM,
+  S5_FINISH_RAMPS,
+  S5_SUMMIT_CATEGORIES,
+  S5_ROAD_UNDULATION_M_PER_KM,
 } from "./raceRouteGenerator.js";
+import { makeRng } from "./fictionalRiderGenerator.js";
+import { FINISH_MATRIX, TERRAIN_TYPES } from "./stageProfileTypes.js";
 
 const race = { external_id: "abc123", season_id: "s1", name: "Vuelta Andaluza" };
 const stage = (profile_type, finale_type, stage_number = 1) =>
@@ -406,4 +418,139 @@ test("#3048: clampSprintKm muterer aldrig climbs-arrayet — KOM-passager forbli
   const before = JSON.parse(JSON.stringify(climbs));
   clampSprintKm(97, climbs, 200); // 97 ligger inde i klatresegmentet [92,100]
   assert.deepEqual(climbs, before, "climbs-arrayet må ikke ændres af sprint-placeringen");
+});
+
+// ── #6359 S5: terræn-reglen B+ (spec §2) ─────────────────────────────────────────
+const cl = (category, length_km = 3, summit_finish = false) => ({ category, length_km, avg_gradient: 6, summit_finish });
+
+test("#6359 B+: højbjerg = ≥1 HC eller ≥3 × kat. 1", () => {
+  assert.equal(deriveTerrainType([cl("HC", 12)]), "high_mountain");
+  assert.equal(deriveTerrainType([cl("1", 10), cl("1", 10), cl("1", 10)]), "high_mountain");
+  assert.equal(deriveTerrainType([cl("1", 10), cl("1", 10)]), "mountain", "to kat. 1 er bjerg, ikke højbjerg");
+});
+
+test("#6359 B+: bjerg = ≥1 × kat. 1 (uanset kat. 2'ere)", () => {
+  assert.equal(deriveTerrainType([cl("1", 10)]), "mountain");
+  assert.equal(deriveTerrainType([cl("2", 9), cl("2", 9), cl("1", 10)]), "mountain");
+});
+
+test("#6359 B+: mellembjerg - alle tre veje ind og grænserne på 5 og 8 km", () => {
+  assert.equal(deriveTerrainType([cl("2", 5), cl("2", 5)]), "medium_mountain", "2 × kat. 2 på mindst 5 km");
+  assert.equal(deriveTerrainType([cl("2", 8)]), "medium_mountain", "1 × kat. 2 på mindst 8 km");
+  assert.equal(deriveTerrainType([cl("3", 4), cl("2", 5, true)]), "medium_mountain", "kat. 2 på 5 km som bjergtopmål");
+  assert.equal(deriveTerrainType([cl("2", 7.9)]), "hilly", "enlig kat. 2 under 8 km uden topmål er kort");
+  assert.equal(deriveTerrainType([cl("2", 4.9), cl("2", 9)]), "medium_mountain", "én på 9 km bærer reglen alene");
+  assert.equal(deriveTerrainType([cl("2", 4.9), cl("2", 4.9)]), "hilly", "to korte kat. 2 er kuperet");
+  assert.equal(deriveTerrainType([cl("2", 4.9, true)]), "hilly", "kort kat. 2 som topmål er stadig kort");
+});
+
+test("#6359 B+: kuperet = kat. 3 eller kort kat. 2, og kat. 4 tæller aldrig mod kuperet (kort 5)", () => {
+  assert.equal(deriveTerrainType([cl("3")]), "hilly");
+  assert.equal(deriveTerrainType([cl("2", 3.5)]), "hilly");
+  assert.equal(deriveTerrainType([cl("4"), cl("4"), cl("4"), cl("4"), cl("4")]), "rolling");
+});
+
+test("#6359 B+: bølget = 2 × kat. 4, flad = højst 1 × kat. 4", () => {
+  assert.equal(deriveTerrainType([cl("4"), cl("4")]), "rolling");
+  assert.equal(deriveTerrainType([cl("4")]), "flat");
+  assert.equal(deriveTerrainType([]), "flat");
+  assert.equal(deriveTerrainType(undefined), "flat");
+});
+
+// ── #6359 S5: stignings-skabelonerne overlapper ikke ─────────────────────────────
+test("#6359 hver S5-skabelon lander ALTID i sit eget terræn efter B+ (5.000 træk pr. terræn)", () => {
+  for (const terrain of Object.keys(S5_CLIMB_TEMPLATES)) {
+    const rng = makeRng(6359);
+    for (let i = 0; i < 5000; i++) {
+      const set = drawS5ClimbSet(rng, terrain);
+      assert.equal(deriveTerrainType(set), terrain, `${terrain}: ${set.map((c) => `${c.category}/${c.length_km}`).join(" ")}`);
+    }
+  }
+});
+
+test("#6359 S5-skabelonerne dækker præcis de seks terræner", () => {
+  assert.deepEqual(Object.keys(S5_CLIMB_TEMPLATES).sort(), [...TERRAIN_TYPES].sort());
+});
+
+// ── #6359 S5-ruten: afslutning inden for matrixen + geometri ──────────────────────
+const firstAllowed = (terrain) => FINISH_MATRIX[terrain][0];
+function s5Route(target, n, finishFor) {
+  return attachRouteS5({ stage_number: 2, profile_type: target }, { external_id: `s5-${target}-${n}`, season_id: "s5", name: "Giro test" }, true, {
+    chooseFinish: finishFor ?? firstAllowed,
+  });
+}
+
+test("#6359 matrix-test: en ulovlig (terræn, afslutning) kaster", () => {
+  assert.throws(() => assertFinishAllowed("flat", "long_climb"), /not allowed/);
+  assert.throws(() => assertFinishAllowed("mountain", "flat_sprint"), /not allowed/);
+  assert.throws(() => assertFinishAllowed("hilly", "breakaway"), /not allowed/);
+  assert.doesNotThrow(() => assertFinishAllowed("medium_mountain", "wall_finish"));
+  assert.throws(() => s5Route("flat", 1, () => "descent"), /not allowed/);
+});
+
+test("#6359 S5-ruten: type == B+(climbs) og hver tilladt afslutning får sin geometri (alle terræner × alle afslutninger × 40 løb)", () => {
+  for (const terrain of TERRAIN_TYPES) {
+    for (const finish of FINISH_MATRIX[terrain]) {
+      for (let n = 0; n < 40; n++) {
+        const r = s5Route(terrain, n, () => finish);
+        const where = `${terrain}/${finish}#${n}`;
+        assert.equal(r.terrain, terrain, where);
+        assert.equal(deriveTerrainType(r.climbs), terrain, where);
+        assert.equal(r.finale_type, finish, where);
+        const sorted = [...r.climbs].sort((a, b) => a.crest_km - b.crest_km);
+        for (let i = 1; i < sorted.length; i++) {
+          assert.ok(sorted[i].crest_km - sorted[i].length_km >= sorted[i - 1].crest_km - 1, `${where}: stigninger overlapper`);
+        }
+        const last = sorted[sorted.length - 1];
+        const finishSprint = r.sprints.find((s) => s.kind === "finish");
+        if (finish === "long_climb") {
+          assert.equal(last.crest_km, r.distance_km, `${where}: bjergtop topper på stregen`);
+          assert.equal(last.summit_finish, true, where);
+          assert.ok(S5_SUMMIT_CATEGORIES[terrain].includes(last.category), `${where}: bjergtop på kat. ${last.category}`);
+        } else {
+          assert.ok(r.climbs.every((c) => !c.summit_finish), `${where}: kun bjergtop har topmål`);
+        }
+        if (finish === "descent") {
+          const toGo = r.distance_km - last.crest_km;
+          assert.ok(toGo >= S5_DESCENT_TOP_WINDOW_KM[0] && toGo <= S5_DESCENT_TOP_WINDOW_KM[1], `${where}: sidste top ${toGo} km før mål`);
+          assert.ok(["HC", "1", "2", "3"].includes(last.category), `${where}: nedkørslens top er kat. ${last.category}`);
+        }
+        if (!["long_climb", "descent"].includes(finish) && last) {
+          assert.ok(r.distance_km - last.crest_km > S5_DESCENT_TOP_WINDOW_KM[1], `${where}: åben afslutning med top ${r.distance_km - last.crest_km} km før mål`);
+        }
+        const ramp = S5_FINISH_RAMPS[finish];
+        if (ramp) {
+          assert.ok(finishSprint.ramp_km >= ramp.length[0] && finishSprint.ramp_km <= ramp.length[1], `${where}: rampe ${finishSprint.ramp_km} km`);
+          assert.ok(finishSprint.ramp_gradient >= ramp.grad[0] && finishSprint.ramp_gradient <= ramp.grad[1], `${where}: rampe ${finishSprint.ramp_gradient} %`);
+        } else {
+          assert.equal(finishSprint.ramp_km, undefined, `${where}: ingen rampe`);
+        }
+        assert.ok(r.climbs.every((c) => c.crest_km - c.length_km >= 0), `${where}: stigning starter før km 0`);
+      }
+    }
+  }
+});
+
+test("#6359 S5-ruten er deterministisk og rører ikke v5's attachRoute", () => {
+  const a = s5Route("mountain", 1, () => "descent");
+  const b = s5Route("mountain", 1, () => "descent");
+  assert.deepEqual(a, b);
+  const v5 = attachRoute(stage("mountain", "descent", 2), { external_id: "s5-mountain-1", season_id: "s5", name: "Giro test" }, true);
+  assert.ok(!("terrain" in v5), "v5-ruten har ingen S5-felter");
+});
+
+// ── #6366: højdemeter regnet af ruten, intet grundtal pr. type ─────────────────────
+test("#6366 S5-højdemeter = stigningerne + afslutnings-rampen + vejens bølgen pr. km (samme sats for alle typer)", () => {
+  for (const terrain of [...TERRAIN_TYPES, "cobbles", "gravel", "classic", "itt", "itt_hilly"]) {
+    for (let n = 0; n < 10; n++) {
+      const r = s5Route(terrain, n, (t) => FINISH_MATRIX[t][FINISH_MATRIX[t].length - 1]);
+      const fromClimbs = r.climbs.reduce((s, c) => s + Math.round((c.length_km * 1000 * c.avg_gradient) / 100), 0);
+      const fin = r.sprints.find((s) => s.kind === "finish");
+      const fromRamp = fin.ramp_km ? Math.round((fin.ramp_km * 1000 * fin.ramp_gradient) / 100) : 0;
+      assert.equal(r.elevation_gain_m, fromClimbs + fromRamp + Math.round(r.distance_km * S5_ROAD_UNDULATION_M_PER_KM), `${terrain}#${n}`);
+    }
+  }
+  // Samme stigninger, længere rute → flere højdemeter; typen spiller ingen rolle.
+  const climbs = [cl("3", 4)];
+  assert.ok(elevationGainS5({ climbs, distanceKm: 200 }) > elevationGainS5({ climbs, distanceKm: 150 }));
 });

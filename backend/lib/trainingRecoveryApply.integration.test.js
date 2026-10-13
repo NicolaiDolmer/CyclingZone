@@ -26,7 +26,7 @@ before(async()=>{
   CREATE TABLE race_stage_profiles(race_id uuid,stage_number integer,profile_type text);
   CREATE TABLE rider_derived_abilities(rider_id uuid PRIMARY KEY,climbing integer,ability_progress jsonb);
   CREATE TABLE rider_condition(rider_id uuid PRIMARY KEY,form smallint,fatigue smallint,injured_until date,injury_cause text,updated_at timestamptz,injury_end_game_day integer,injury_season_id uuid,injury_race_days_left integer);
-  CREATE TABLE training_day_runs(team_id uuid,season_id uuid,squad text,game_day integer,tick_date date,executed_by text,bonus_applied boolean,report jsonb,UNIQUE(team_id,season_id,squad,game_day));
+  CREATE TABLE training_day_runs(team_id uuid,season_id uuid,squad text,game_day integer,tick_date date,executed_by text,bonus_applied boolean,report jsonb,id uuid PRIMARY KEY DEFAULT gen_random_uuid(),UNIQUE(team_id,season_id,squad,game_day));
   CREATE TABLE rider_derived_ability_history(rider_id uuid,snapshot_date date,source text,season_number integer,abilities jsonb,created_at timestamptz DEFAULT now(),UNIQUE(rider_id,snapshot_date,source));
   CREATE TABLE rider_ability_race_day_history(rider_id uuid,season_id uuid,game_day integer,source text,season_number integer,snapshot_date date,abilities jsonb,UNIQUE(rider_id,season_id,game_day,source));
   CREATE TABLE rider_training_scores(rider_id uuid,team_id uuid,season_id uuid,tick_date date,game_day integer,score integer,session text,day_type text,was_race_day boolean,intention text,contributions jsonb);
@@ -36,11 +36,12 @@ before(async()=>{
   CREATE TABLE staff_derived_abilities(staff_id uuid,updated_at timestamptz);
   CREATE TABLE team_facilities(id uuid,team_id uuid,track text,tier integer,updated_at timestamptz);
   CREATE TABLE finance_transactions(team_id uuid,idempotency_key text,created_at timestamptz);`);
-  for(const file of ['2026-09-29-5928-training-condition-date.sql','2026-09-29-5928-training-condition-partial.sql'])await db.exec(await readFile(new URL('../../database/'+file,import.meta.url),'utf8'));
+  // #6490: the recovery guard/rollback read and rebuild rider_training_seen.
+  for(const file of ['2026-09-29-5928-training-condition-date.sql','2026-09-29-5928-training-condition-partial.sql','2026-10-12-6490-rider-training-seen.sql'])await db.exec(await readFile(new URL('../../database/'+file,import.meta.url),'utf8'));
 });
 after(async()=>db?.close());
 beforeEach(async()=>{
-  await db.exec('TRUNCATE riders,rider_condition,rider_derived_abilities,training_day_runs,training_rider_ticks,training_condition_settlements,training_date_work,training_condition_timeout_outbox,rider_training_scores,rider_derived_ability_history,rider_ability_race_day_history,training_plans,teams,app_config CASCADE');
+  await db.exec('TRUNCATE riders,rider_condition,rider_derived_abilities,training_day_runs,rider_training_seen,training_rider_ticks,training_condition_settlements,training_date_work,training_condition_timeout_outbox,rider_training_scores,rider_derived_ability_history,rider_ability_race_day_history,training_plans,teams,app_config CASCADE');
   await db.query('INSERT INTO riders(id,team_id,is_retired) VALUES($1,$4,false),($2,$4,false),($3,$4,false)',[rider,excluded,peer,team]);
   await db.query("INSERT INTO rider_derived_abilities VALUES($1,50,'{}'),($2,40,'{}'),($3,55,'{}')",[rider,excluded,peer]);
   await db.query("INSERT INTO teams VALUES($1,'Test',NULL,1,NULL,NULL)",[team]);
@@ -61,6 +62,7 @@ async function fixture(){
   for(const name of names){let predicate='';if(name==='riders')predicate=` WHERE id IN('${rider}','${excluded}')`;if(name==='rider_derived_abilities')predicate=` WHERE rider_id IN('${rider}','${excluded}')`;if(name==='training_rider_ticks')predicate=' WHERE false';
     tables[name]=(await db.query(`SELECT COALESCE(jsonb_agg(to_jsonb(x)),'[]') AS rows FROM ${name} x${predicate}`)).rows[0].rows;}
   tables.app_config=tables.app_config.map(({key,value})=>({key,value}));
+  Object.assign(tables,{team_training_rules:[],training_groups:[],training_group_members:[]});
   const quarantineIds=tables.training_date_work[0].quarantined_rider_ids;
   const snapshot={tick_date:date,exported_at:now,season_number:4,manifest:{eligible:[rider],excluded:quarantineIds.filter(id=>id!==rider)},tables,evidence:quarantineIds.map(id=>({rider_id:id,condition_count:0,receipt_count:0,settlement_count:0,race_load_count:0,race_result_count:0,canonical_report_count:0,history_after_work_count:0}))};
   const final={...opening(rider),form:51,fatigue:5,updated_at:'2026-09-29T18:00:00Z'};
@@ -109,6 +111,7 @@ test('fully recovered team loses stale outbox and new canonical runs; rollback r
   assert.equal((await db.query('SELECT count(*)::int AS n FROM training_day_runs')).rows[0].n,5);
   await db.exec(buildRecoverySql({...f,mode:'rollback'}));
   assert.equal((await db.query('SELECT count(*)::int AS n FROM training_day_runs')).rows[0].n,0);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM rider_training_seen')).rows[0].n,0,'#6490: rollback rebuilds the history table');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM training_condition_timeout_outbox')).rows[0].n,1);
 });
 test('fresh global canonical evidence aborts; rollback refuses changed work and alarm metadata',async()=>{
@@ -116,6 +119,7 @@ test('fresh global canonical evidence aborts; rollback refuses changed work and 
   await db.query("INSERT INTO training_day_runs VALUES($1,$2,'senior',1,'2026-09-28','assistant',false,$3)",[excluded,season,JSON.stringify({riders:[{rider_id:rider}]})]);
   await assert.rejects(db.exec(buildRecoverySql(f)),/Canonical rider report/);
   await db.query('DELETE FROM training_day_runs WHERE team_id=$1',[excluded]);
+  await db.exec('SELECT public.rebuild_rider_training_seen()'); // #6490: deleters rebuild
   await db.exec(buildRecoverySql(f));
   await db.exec("UPDATE training_date_work SET missing_evidence=missing_evidence||'[{\"new_external_field\":true}]'");
   await assert.rejects(db.exec(buildRecoverySql({...f,mode:'rollback'})),/work state changed/);

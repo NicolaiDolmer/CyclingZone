@@ -12,6 +12,7 @@ const fixture = () => ({
     training_plans:[], training_week_plans:[], team_facilities:[],team_staff:[],staff_derived_abilities:[],finance_transactions:[],
     app_config:[...['training_condition_per_date','training_tick_per_race_day','race_day_engine_enabled','race_day_development_enabled'].map(key=>({key,value:'on'})),{key:'training_programs',value:'off'}],
     teams:[{id:'t',name:'Test',league_division_id:1}],users:[],races:[],race_stage_schedule:[],race_results:[],race_stage_profiles:[],race_entry_days:[],race_simulation_runs:[],training_race_loads:[],rider_condition:[],training_day_runs:[],training_rider_ticks:[],
+    team_training_rules:[],training_groups:[],training_group_members:[],
   },
 });
 const scope={riders:1,teams:1,eligible:1,excluded:0};
@@ -65,4 +66,21 @@ test('private report escapes untrusted rider names and includes the concrete che
   const p=await replaySnapshot(s,scope);const html=renderProposalHtml(p,s);
   assert.ok(!html.includes('<script>bad</script>'));assert.ok(html.includes('&lt;script&gt;bad'));
   assert.ok(html.includes(p.proposal_sha256));assert.ok(html.includes('Ingen spillerdata er ændret'));
+});
+test('fatigue/group rules created after the work are not historical input; earlier or undated rows fail closed',async()=>{
+  const later=s=>{
+    s.tables.team_training_rules=[{id:'x',team_id:'t',rider_id:'r',fatigue_threshold:10,fallback:'rest',recovery_after_stage:true,created_at:'2026-10-01T12:00:00Z',updated_at:'2026-10-01T12:00:00Z'}];
+    s.tables.training_groups=[{id:'g',team_id:'t',name:'G',days:{},program_key:null,fatigue_threshold:10,fallback:'rest',created_at:'2026-10-01T12:00:00Z',updated_at:'2026-10-01T12:00:00Z'}];
+    s.tables.training_group_members=[{rider_id:'r',group_id:'g',team_id:'t',follows_group:true,created_at:'2026-10-01T12:00:00Z'}];
+    s.tables.app_config.push({key:'training_fatigue_rules',value:'on'});
+    return s;
+  };
+  const base=await replaySnapshot(fixture(),scope),withLater=await replaySnapshot(later(fixture()),scope);
+  assert.deepEqual(withLater.commits,base.commits);assert.deepEqual(withLater.riders,base.riders);
+  const early=later(fixture());early.tables.team_training_rules[0].created_at='2026-09-29T17:00:00Z';
+  assert.throws(()=>validateSnapshot(early,scope),/existed before historical work: team_training_rules/);
+  const undated=later(fixture());delete undated.tables.training_group_members[0].created_at;
+  assert.throws(()=>validateSnapshot(undated,scope),/without creation time: training_group_members/);
+  const old=fixture();delete old.tables.team_training_rules;
+  assert.throws(()=>validateSnapshot(old,scope),/Missing snapshot table team_training_rules/);
 });

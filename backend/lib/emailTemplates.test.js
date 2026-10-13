@@ -6,6 +6,7 @@ import {
   buildDay1Email,
   buildRaceDigestEmail,
   buildWinbackEmail,
+  buildS5LaunchEmail,
   buildSeasonSignupReminderEmail,
   buildLoopEmail,
 } from "./emailTemplates.js";
@@ -706,4 +707,34 @@ test("season signup reminder shares the win-back opening line verbatim (same hel
     const reminderOpening = buildSeasonSignupReminderEmail(args).text.split("\n\n")[1];
     assert.equal(reminderOpening, winbackOpening, language);
   }
+});
+
+// ─── s5-launch campaign (#6554) ─────────────────────────────────────────────
+
+test("s5-launch email (EN): subject, Season 5 copy, CTA with s5-launch UTM, Dolmer signature, unsubscribe", () => {
+  const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language: "en" });
+  assert.equal(t.subject, "A new season in Cycling Zone");
+  assert.ok(t.html.includes("SEASON 5"));
+  assert.ok(t.html.includes("The season change is on 25 October"));
+  assert.ok(t.html.includes("You can play without a subscription."));
+  assert.ok(t.html.includes("utm_campaign=s5-launch"));
+  assert.ok(t.text.includes("Open Cycling Zone: "));
+  assert.ok(t.text.includes("Dolmer, Cycling Zone"));
+  assertHasUnsubscribeLink(t);
+  assertHasSharedFooter(t);
+  assertNoEmDash(t, "s5-launch");
+});
+
+test("s5-launch email (DA): Danish subject and copy with æøå", () => {
+  const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language: "da" });
+  assert.equal(t.subject, "En ny sæson i Cycling Zone");
+  assert.ok(t.html.includes("SÆSON 5"));
+  assert.ok(t.text.includes("Sæsonskiftet er 25. oktober"));
+  assert.ok(t.text.includes("Åbn Cycling Zone: "));
+  assertNoEmDash(t, "s5-launch da");
+});
+
+test("s5-launch email falls back to English for an unknown language", () => {
+  const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language: "fr" });
+  assert.equal(t.subject, "A new season in Cycling Zone");
 });

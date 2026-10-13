@@ -14,13 +14,16 @@
 // profile_type-værdier (CHECK-constraint i database/2026-06-06-race-stage-profiles.sql
 // + PROFILE_TYPES i backend/lib/raceStageProfileGenerator.js). Holdes i sync med dem.
 // itt_hilly (#3546 D): kuperet enkeltstart: GT'ens ANDEN tidskørsel.
+// #6369 Fase 0: medium_mountain (S5, backend/lib/stageProfileTypes.js). Silhuetten falder
+// tilbage til flat indtil etapekortet (#6364) tegner den.
 export const PROFILE_TYPE_KEYS = Object.freeze([
-  "flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
+  "flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel", "classic",
 ]);
 
 // finale_type-værdier (samme kilder). Bruges til labels, ikke til silhuet.
+// #6369 Fase 0: + flat_sprint, uphill_sprint, wall_finish (S5).
 export const FINALE_TYPE_KEYS = Object.freeze([
-  "bunch_sprint", "reduced_sprint", "punch", "long_climb", "descent", "solo_tt", "breakaway",
+  "bunch_sprint", "reduced_sprint", "punch", "long_climb", "descent", "solo_tt", "breakaway", "flat_sprint", "uphill_sprint", "wall_finish",
 ]);
 
 // Silhuet-koordinatsystem: en 100×24-viewBox "sparkline". Hvert profil er en liste

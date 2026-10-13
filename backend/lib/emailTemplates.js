@@ -669,6 +669,55 @@ export function buildWinbackEmail({ teamName, daysSinceLastSeen: _daysSinceLastS
   };
 }
 
+// ─── s5-launch win-back campaign (#6554) ────────────────────────────────────
+// Named win-back campaign (winbackSegment.js WINBACK_CAMPAIGNS), sent by
+// scripts/winback-send.mjs --campaign s5-launch. DRAFT copy from Codex 13/10
+// (signature "Dolmer" via wrapHtml/wrapText); final owner review 21/10 before
+// any send, same rule as the 22/9 text: reword only with the owner.
+const S5_LAUNCH_COPY = {
+  en: {
+    subject: "A new season in Cycling Zone",
+    eyebrow: "SEASON 5",
+    paragraphs: [
+      "I’m getting ready for Season 5 in Cycling Zone. The season change is on 25 October, and I’d like to invite you to take another look.",
+      "If you miss building a team and following your riders, log in to see your team and decide what you’d like to do next. You can play without a subscription.",
+      "If something was confusing or frustrating when you left, I’d also like to understand what happened. A specific example from your last visit would help me more than guessing which feature to build next.",
+    ],
+    cta: "Open Cycling Zone",
+  },
+  da: {
+    subject: "En ny sæson i Cycling Zone",
+    eyebrow: "SÆSON 5",
+    paragraphs: [
+      "Jeg gør klar til sæson 5 i Cycling Zone. Sæsonskiftet er 25. oktober, og jeg vil gerne invitere dig til at kigge ind igen.",
+      "Hvis du savner at bygge et hold og følge dine ryttere, så log ind, se dit hold og vælg, hvad du har lyst til at gøre næste gang. Du kan spille uden abonnement.",
+      "Hvis noget var forvirrende eller frustrerende, da du stoppede, vil jeg også gerne forstå, hvad der skete. Et konkret eksempel fra dit sidste besøg hjælper mig mere end at gætte på, hvilken funktion jeg skal bygge som den næste.",
+    ],
+    cta: "Åbn Cycling Zone",
+  },
+};
+
+export function buildS5LaunchEmail({ unsubscribeUrl, language }) {
+  const lang = normalizeLanguage(language);
+  const copy = copyFor(lang);
+  const s5 = S5_LAUNCH_COPY[lang] || S5_LAUNCH_COPY.en;
+  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "s5-launch");
+
+  const bodyHtml = `
+    <p style="margin:0 0 16px;">${copy.greeting}</p>
+    ${s5.paragraphs.map((p) => `<p style="margin:0 0 16px;">${escapeHtml(p)}</p>`).join("\n    ")}
+    <p style="margin:0 0 8px;">${primaryButtonHtml(dashboardUrl, s5.cta)}</p>
+  `.trim();
+
+  const bodyText = [copy.greeting, ...s5.paragraphs, `${s5.cta}: ${dashboardUrl}`].join("\n\n");
+
+  return {
+    subject: s5.subject,
+    html: wrapHtml({ eyebrow: s5.eyebrow, bodyHtml, unsubscribeUrl, language: lang }),
+    text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
+  };
+}
+
 // ─── season_signup_reminder (#5814) ─────────────────────────────────────────
 // One-off reminder, sent by scripts/season-signup-reminder-send.mjs on the
 // last day of season 3 to managers whose team the season switch would park

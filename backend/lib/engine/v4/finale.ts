@@ -38,6 +38,8 @@ import { classifyRoadWinType } from "./winType.ts";
 import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
 import { finishDescentIndexFor, finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
+import { s5FinaleDemandVector } from "./s5Profiles.ts";
+import { S5_PROFILES_TUNING } from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -68,7 +70,9 @@ const DEFAULT_DEMAND_VECTOR: Partial<Record<AbilityKey, number>> = {
 // Finaler hvor hele den ankomne pulje krydser stregen sammen og derfor deler
 // vindertiden. De oevrige finale-typer (long_climb, punch, descent, breakaway,
 // solo_tt) er selektive: dér er tidsforskellene inden for frontpuljen ægte.
-const MASS_FINISH_FINALE_TYPES: ReadonlySet<FinaleType> = new Set(["bunch_sprint", "reduced_sprint"]);
+// #6363 (S5): flad spurt og stigende spurt er samlede feltopgoer. De to navne
+// findes kun under s5_profiles_v1 (aeldre revisioner ser de gamle, s5Profiles.ts).
+const MASS_FINISH_FINALE_TYPES: ReadonlySet<FinaleType> = new Set(["bunch_sprint", "reduced_sprint", "flat_sprint", "uphill_sprint"]);
 // Fallback naar etapen ikke er finale-klassificeret: en flad/kuperet etape
 // ankommer stadig samlet. Bevidst konservativ — alt andet regnes som selektivt.
 const MASS_FINISH_PROFILE_TYPES: ReadonlySet<ProfileType> = new Set(["flat", "rolling"]);
@@ -157,6 +161,8 @@ const FIELD_FINALE_BY_PROFILE: Partial<Record<ProfileType, FinaleType>> = {
   flat: "bunch_sprint",
   rolling: "punch",
   hilly: "punch",
+  // #6363: mellembjerg naar aldrig hertil (s5Profiles.ts koerer det i terraen-bucketen); raekken er defensiv.
+  medium_mountain: "punch",
   classic: "punch",
   mountain: "long_climb",
   high_mountain: "long_climb",
@@ -608,8 +614,11 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // #6046: paa brosten/grus under orders_gc_v1 taeller brostensevnen med (se mechanics/cobbles.ts).
   // #6200 (KUN orders_gc_v3): klatring taeller med i placeringen i en nedkoerselsfinale.
   const v3DescentDemand = (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined) && route.finale_type === "descent" ? TIME_MODEL_V3_TUNING.descentFinaleDemand : null;
+  // #6363 (KUN s5_profiles_v1): mur, bakke og stigende spurt = grundsaet + hybrid
+  // efter etapens haardhed (s5Profiles.ts). Aeldre revisioner laeser intet herfra.
+  const s5Demand = ctx.s5ProfilesV1 === true ? s5FinaleDemandVector(route) : null;
   const demandVector = cobbledFinaleDemandVector(
-    v3DescentDemand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
+    v3DescentDemand ?? s5Demand ?? ((route.finale_type && tuning.finale.demandVectorByFinaleType[route.finale_type]) || DEFAULT_DEMAND_VECTOR),
     ctx,
   );
   // #6073: paa en udbrudsfinale gaelder udbrudsdemand kun for udbruddet selv;
@@ -763,12 +772,19 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let cumulativeGap = 0;
   let prevScore: number | null = null;
   let tailStarted = false;
-  const tieEpsilon = ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
+  // #6363 (KUN s5_profiles_v1): mur, bakke og stigende spurt har deres egen
+  // tids-spredning i maal (S5_PROFILES_TUNING.finaleTiers). En stigende spurt er en
+  // massefinale i alt andet end tiden: de forreste deler tid naar de er taet, ellers
+  // faar de faa sekunder. Uden raekke (alle aeldre revisioner) er alt som foer.
+  const s5Tiers = ctx.s5ProfilesV1 === true && route.finale_type ? S5_PROFILES_TUNING.finaleTiers[route.finale_type] : undefined;
+  const massPlacement = isMassFinishRoute(route) && !s5Tiers;
+  const gapScoreScale = s5Tiers?.gapScoreScale ?? extra.placementGapScoreScale;
+  const tieEpsilon = s5Tiers ? s5Tiers.tieScoreEpsilon : ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
   // #6199 (KUN official_times_v2): paa en selektiv finale er tids-tiers et fysisk
   // tidstab paa sidste stykke, ikke kun en placering i en faelles pulje. Kun en
   // massefinale deler én tid. En tier kommer aldrig bag en overlevende gruppe:
   // den kan ikke passere den uden kontakt (samme regel som kontakt-stakken).
-  const sharedPhysicalTiers = ctx.sharedGroupTime !== undefined && ctx.ordersGcV3 === true && !isMassFinishRoute(route);
+  const sharedPhysicalTiers = ctx.sharedGroupTime !== undefined && ctx.ordersGcV3 === true && !massPlacement;
   const survivorFloor = survivingGroups.reduce((m, g) => Math.min(m, g.gap_seconds), Infinity);
   const tierCap = sharedPhysicalTiers && Number.isFinite(survivorFloor) ? Math.max(0, survivorFloor - mergeThreshold - extra.placementGapMarginSeconds) : Infinity;
   let tierTopScore = -Infinity;
@@ -783,7 +799,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   //
   // Selektive finaler (bjerg, punch, nedkoersel, udbrud, ITT) beholder de
   // individuelle tids-tiers: dér ER tidsforskellene virkelige.
-  if (isMassFinishRoute(route) || (ctx.sharedGroupTime && !sharedPhysicalTiers)) {
+  if (massPlacement || (ctx.sharedGroupTime && !sharedPhysicalTiers)) {
     placementGroups.push({
       id: "finale-bunch-0",
       kind: scored.length + unscoredContenderIds.length > 1 ? "peloton" : "solo",
@@ -800,7 +816,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
         const tailReference = tieEpsilon === null || !Number.isFinite(tierTopScore) ? prevScore : tierTopScore;
         const scoreDelta = tailReference !== null ? Math.max(0, tailReference - entry.score) : 0;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
-        const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
+        const step = mergeThreshold + extra.placementGapMarginSeconds + gapScoreScale * scoreDelta + jitter;
         cumulativeGap = Math.min(cumulativeGap + step, Math.max(cumulativeGap, tierCap));
         placementGroups.push({
           id: `finale-tail-${seq++}`,
@@ -830,7 +846,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       if (prevScore !== null && tierReference !== null) {
         const scoreDelta = tierReference - entry.score;
         const jitter = rngFor("finale_placement_gap", entry.riderId)() * extra.placementGapJitterMaxSeconds;
-        const step = mergeThreshold + extra.placementGapMarginSeconds + extra.placementGapScoreScale * scoreDelta + jitter;
+        const step = mergeThreshold + extra.placementGapMarginSeconds + gapScoreScale * scoreDelta + jitter;
         cumulativeGap = Math.min(cumulativeGap + step, Math.max(cumulativeGap, tierCap));
       }
       placementGroups.push({
@@ -848,7 +864,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
     prevScore = entry.score;
   });
 
-  if (!isMassFinishRoute(route) && (!ctx.sharedGroupTime || sharedPhysicalTiers) && unscoredContenderIds.length > 0) {
+  if (!massPlacement && (!ctx.sharedGroupTime || sharedPhysicalTiers) && unscoredContenderIds.length > 0) {
     // Samme feltbevarelses-hensyn som i massefinale-grenen: bagerst i den
     // sidste eksisterende klump, ellers som en klump for sig.
     const last = placementGroups[placementGroups.length - 1];

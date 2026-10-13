@@ -25,7 +25,12 @@ param(
   [switch] $VerifyOnly,
   [switch] $SkipDump,
   [switch] $Clean,
-  [string] $DumpDir = (Join-Path $env:TEMP "cz-staging-refresh")
+  [string] $DumpDir = (Join-Path $env:TEMP "cz-staging-refresh"),
+  # #5904: lange dumps over session-pooleren blev afbrudt (12/10, exit 1 efter 26 min). -DirectConnection
+  # udleder db.<ref>.supabase.co:5432 af prod-URL'en INDE i child-processen (intet printes).
+  [switch] $DirectConnection,
+  # #5904: klientvaerktoejer i samme major som prod (fx scoop postgresql17\current\bin) foran PATH.
+  [string] $PgBin
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +38,13 @@ $repo = (git rev-parse --show-toplevel).Trim()
 Set-Location $repo
 . (Join-Path $repo "scripts/lib/Staging-Env.ps1")
 . (Join-Path $repo "scripts/lib/Refresh-Staging-Gates.ps1")
+
+if ($PgBin) {
+  if (-not (Test-Path (Join-Path $PgBin "pg_dump.exe")) -and -not (Test-Path (Join-Path $PgBin "pg_dump"))) { throw "PgBin mangler pg_dump: $PgBin" }
+  $env:PATH = $PgBin + [IO.Path]::PathSeparator + $env:PATH
+}
+Write-Host ("[..] klient: " + ((& pg_dump --version) -join ' ') + $(if ($DirectConnection) { " · prod-forbindelse: direkte db-server 5432" } else { " · prod-forbindelse: SUPABASE_DB_URL" }))
+$gatesLib = Join-Path $repo "scripts/lib/Refresh-Staging-Gates.ps1"
 
 foreach ($tool in @("pg_dump", "pg_restore", "psql", "infisical", "supabase")) {
   if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "Mangler vaerktoej: $tool" }
@@ -57,10 +69,26 @@ order by 1;
 # Prod-secrets injiceres kun i child-processen; STAGING_* arver fra denne proces.
 # Output fanges og returneres; fejl kaster med PII-sikker tekst (kun ERROR/FATAL, maskeret).
 function Invoke-WithProd([string] $cmd) {
-  Invoke-RefreshNative { & infisical run --env=prod --silent -- pwsh -NoProfile -Command $cmd } ("prod: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length)))
+  $label = "prod: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length))
+  $prodCmd = $cmd
+  if ($DirectConnection) { $prodCmd = ". '$gatesLib'; `$env:SUPABASE_DB_URL = Get-RefreshDirectUrl `$env:SUPABASE_DB_URL; " + $cmd }
+  Invoke-RefreshNative { & infisical run --env=prod --silent -- pwsh -NoProfile -Command $prodCmd } $label
 }
 function Invoke-Staging([string] $cmd) {
   Invoke-RefreshNative { & pwsh -NoProfile -Command $cmd } ("staging: " + $cmd.Substring(0, [Math]::Min(40, $cmd.Length)))
+}
+
+function Invoke-ProdSqlData([string] $sqlFile) {
+  Invoke-RefreshSqlData {
+    param($outputFile)
+    Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$sqlFile' 1> '$outputFile'"
+  } 'prod SQL data'
+}
+function Invoke-StagingSqlData([string] $sqlFile) {
+  Invoke-RefreshSqlData {
+    param($outputFile)
+    Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$sqlFile' 1> '$outputFile'"
+  } 'staging SQL data'
 }
 
 # Fail-closed dump-bevis: counts + marker skrives kun naar BEGGE dumps er faerdige. -SkipDump kraever dem.
@@ -70,7 +98,7 @@ $markerFile = Join-Path $DumpDir "dump-complete.marker"
 $leanTables = @("race_results", "race_simulation_rider_scores", "race_simulation_runs", "player_events",
   "board_satisfaction_events", "rider_derived_ability_history", "training_day_runs", "notifications",
   "race_stage_moments", "rider_profile_views", "traffic_events")
-function Get-ProdCounts { (Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$verifySql'") -join "`n" }
+function Get-ProdCounts { (Invoke-ProdSqlData $verifySql) -join "`n" }
 $countSkip = @(); $countSlack = @{ app_config = 1 }   # cleanup inserts the cz_environment marker
 
 if (-not $VerifyOnly) {
@@ -156,8 +184,8 @@ $files=@{
 }
 # Fingerprint -> raekketal -> privacy (sidste database-kald, ogsaa i VerifyOnly). Intet GO uden alle tre.
 $gate=Invoke-RefreshGates `
-  { param($f) Invoke-WithProd "psql `$env:SUPABASE_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
-  { param($f) Invoke-Staging "psql `$env:STAGING_DB_URL -X -tA -v ON_ERROR_STOP=1 -f '$f'" } `
+  { param($f) Invoke-ProdSqlData $f } `
+  { param($f) Invoke-StagingSqlData $f } `
   $files $countsBefore $countsAfter $countSkip $countSlack
 if ($gate -ne 'GO') { throw 'Refresh gates did not return GO' }
 Write-Host '[ok] app-schema fingerprint matches; row counts within prod window; non-anonymous users=0'

@@ -23,6 +23,12 @@ export const FINALE_CLASS_BY_TYPE = Object.freeze({
   descent: "down",
   breakaway: "break",
   solo_tt: "tt",
+  // S5's nye finaler (spec §3). Klassen er geometrien: flad og stigende spurt er spurter
+  // (fladt), mur er opad. #6367: S5-kalendere DOEMMES IKKE af §7b-baandene nedenfor - de
+  // kender udbrud som afslutning, og S5 har ingen (spec §3). For S5 er §7b erstattet af
+  // benchmark-gatens del (3) (s5BenchmarkGate.js, afslutnings-andele mod rigtige Grand
+  // Tours); buildSeasonCalendar.js printer §7b, men stopper ikke paa den for S5.
+  flat_sprint: "flat", uphill_sprint: "flat", wall_finish: "up",
 });
 
 export const FINALE_CLASSES = Object.freeze(["up", "flat", "down", "break", "tt"]);

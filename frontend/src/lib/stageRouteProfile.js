@@ -37,6 +37,7 @@ export const PROFILE_TYPE_SCALE_M = Object.freeze({
   flat: 600, cobbles: 600, gravel: 2000,
   hilly: 1200, rolling: 1200, itt: 1200, itt_hilly: 1200, ttt: 1200,
   mountain: 2500, classic: 2500,
+  medium_mountain: 2500, // #6369 Fase 0: samme loft som mountain (kat. 2-stigninger ligger under)
   high_mountain: 3000,
 });
 // Visuel dal-basishøjde pr. type (opts §2b: "flad ~50-150 m, bjerg ~400-900 m").
@@ -45,6 +46,7 @@ export const PROFILE_TYPE_VALLEY_M = Object.freeze({
   flat: 90, cobbles: 70, gravel: 300, ttt: 90,
   rolling: 220, hilly: 260, itt: 140, itt_hilly: 240,
   mountain: 650, classic: 600,
+  medium_mountain: 650, // #6369 Fase 0: som mountain
   high_mountain: 850,
 });
 const DEFAULT_SCALE_M = PROFILE_TYPE_SCALE_M.mountain; // ukendt type → bredt, konservativt loft (samme fallback-princip som GREEN_FINISH_SCALES.mountain)

@@ -72,6 +72,11 @@ const PROFILE_TO_CATEGORY = Object.freeze({
   flat: "flat",
   rolling: "hilly", hilly: "hilly", classic: "hilly",
   mountain: "mountain", high_mountain: "mountain",
+  // #6367 (afgjort, ikke laengere Fase 0-pladsholder): mellembjerg er en BJERGDAG i
+  // kompositionen. Ejer-definitionen (8/10): "kuperet = bakker, lange stigninger = bjerg",
+  // og B+ (spec §2) giver kun mellembjerg ved LANGE kat. 2-stigninger. Samme familie som
+  // realisme-scorecardet (raceRouteRealismMetrics.js MOUNTAIN) og GT-kvotens bjergtoppe.
+  medium_mountain: "mountain",
   // itt_hilly (#3546 D): stadig en TIDSKØRSEL for K-B-budgetteringens formål (den er en
   // GT's ANDEN enkeltstart, ikke en ny kategori spilleren oplever anderledes i budgettet).
   itt: "itt", itt_hilly: "itt",

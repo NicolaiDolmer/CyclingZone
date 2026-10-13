@@ -7,6 +7,7 @@ import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaginatio
 import { copenhagenDateString } from '../../lib/copenhagenTime.js';
 
 const slotKey=(rider,season,day)=>`${rider}:${season}:${day}`;
+const reportRiders=r=>Array.isArray(r?.report?.riders)?r.report.riders:[];
 export function buildRecoveryManifest(state) {
  const asOf=new Date(state.asOf);
  if(!Number.isFinite(asOf.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(state.through??'') || state.through>=copenhagenDateString(asOf)) throw new Error('Explicit closed date cutoff and valid asOf required');
@@ -28,7 +29,7 @@ export function buildRecoveryManifest(state) {
    if(!w.opening_conditions?.[id]) blockers.push('missing_opening_condition');
    const days=w.game_days.filter(day=>!ticks.some(t=>t.season_id===w.season_id&&t.game_day===day));
    for(const day of days){const key=slotKey(id,w.season_id,day);lost.add(key);if(!byDate.has(w.tick_date))byDate.set(w.tick_date,new Set());byDate.get(w.tick_date).add(key);}
-   const hasHistory=ticks.length || state.settlements.some(s=>s.rider_id===id) || state.legacyReports.some(r=>r.report?.riders?.some(entry=>entry.rider_id===id));
+   const hasHistory=ticks.length || state.settlements.some(s=>s.rider_id===id) || state.legacyReports.some(r=>reportRiders(r).some(entry=>entry?.rider_id===id));
    const recorded=state.loads.filter(l=>l.rider_id===id&&l.season_id===w.season_id&&l.tick_date===w.tick_date&&days.includes(l.game_day));
    if(recorded.some(l=>l.consumed_at!=null)) blockers.push('consumed_race_load_without_receipt');
    const plans=state.plans.filter(p=>p.rider_id===id&&p.team_id===w.team_id);
@@ -62,9 +63,25 @@ export async function loadRecoveryInputs(supabase,{through,asOf}){
   read('training_plans','*','team_id',teamIds,['id']),
   read('training_week_plans','*','team_id',teamIds,['id']),
  ]);
- // GIN-indexed containment catches legacy reports even under a previous owner.
- const legacyReports=[];
- for(const id of ids)legacyReports.push(...await fetchAllRows(()=>supabase.from('training_day_runs').select('id,team_id,tick_date,report').contains('report->riders',JSON.stringify([{rider_id:id}])).order('id')));
+ // #6490: report history comes from rider_training_seen. Per-date reports are
+ // already covered by the tick receipts. A rider seen without ticks is looked up
+ // by first_run_id (btree pkey) when the earliest source was a report. When the
+ // earliest source was a race load (first_run_id NULL), a later legacy report can
+ // still exist, so those few riders fall back to an explicit containment query
+ // (heap is small; works with or without the GIN). Not seen at all = no report.
+ const seen=await read('rider_training_seen','rider_id,first_run_id','rider_id',ids,['rider_id']);
+ const withTicks=new Set(ticks.map(t=>t.rider_id));const wanted=new Set(ids);
+ const noTicks=seen.filter(s=>!withTicks.has(s.rider_id));
+ const runIds=[...new Set(noTicks.map(s=>s.first_run_id).filter(Boolean))];
+ const fallbackRiders=noTicks.filter(s=>!s.first_run_id).map(s=>s.rider_id);
+ const byId=new Map();
+ const runs=await read('training_day_runs','id,team_id,tick_date,report','id',runIds,['id']);
+ for(const r of runs)byId.set(r.id,r);
+ for(const riderId of fallbackRiders){
+  const rows=await fetchAllRows(()=>supabase.from('training_day_runs').select('id,team_id,tick_date,report').contains('report->riders',JSON.stringify([{rider_id:riderId}])).order('id'));
+  for(const r of rows)byId.set(r.id,r);
+ }
+ const legacyReports=[...byId.values()].filter(r=>reportRiders(r).some(entry=>wanted.has(entry?.rider_id)));
  return {through,asOf,work:relevant,riders,conditions,ticks,settlements,loads,plans,weekPlans,legacyReports};
 }
 export function parseArgs(argv){

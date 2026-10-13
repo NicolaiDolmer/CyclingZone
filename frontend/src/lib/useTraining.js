@@ -41,6 +41,8 @@ export function useTraining() {
   // beder aldrig om en bestemt visning. Default false = fail-safe gammel visning.
   const [mobileTable, setMobileTable] = useState(false);
   const [dailyReceiptEnabled, setDailyReceiptEnabled] = useState(false);
+  // #6523: true = Today-fanen faar "saet dagen for flere"-linjen. Default false.
+  const [bulkDay, setBulkDay] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -84,6 +86,7 @@ export function useTraining() {
         // feltet, eller en vaerdi der ikke er en boolean, skal give den GAMLE
         // visning, ikke en halv ny flade.
         setMobileTable(data.mobileTable === true);
+        setBulkDay(data.bulkDay === true);
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -302,7 +305,7 @@ export function useTraining() {
   return {
     slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
-    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, dailyReceiptEnabled,
+    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, bulkDay, dailyReceiptEnabled,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
     setRiderWeekPlan, clearRiderWeekPlan,
   };

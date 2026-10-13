@@ -48,9 +48,9 @@ test("tacticalDemand: ukendt/manglende profil → none", () => {
   assert.equal(tacticalDemand(undefined), "none");
 });
 
-test("TACTICAL_DEMAND: nøjagtig elleve profiltyper (ingen glemt/tilføjet) (#3546: itt_hilly · #4105: gravel)", () => {
+test("TACTICAL_DEMAND: nøjagtig tolv profiltyper (ingen glemt/tilføjet) (#3546: itt_hilly · #4105: gravel · #6369: medium_mountain)", () => {
   assert.deepEqual(Object.keys(TACTICAL_DEMAND).sort(), [
-    "classic", "cobbles", "flat", "gravel", "high_mountain", "hilly", "itt", "itt_hilly", "mountain", "rolling", "ttt",
+    "classic", "cobbles", "flat", "gravel", "high_mountain", "hilly", "itt", "itt_hilly", "medium_mountain", "mountain", "rolling", "ttt",
   ]);
 });
 

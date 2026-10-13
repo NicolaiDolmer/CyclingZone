@@ -96,6 +96,15 @@ og frosne datoer ændres ikke. Funktionen er invoker og åbner ingen klientgrant
 Installation efterregulerer ingen eksisterende rytter. Tabte dage har separat
 read-only recovery-manifest og kræver ejer-go til den konkrete skrivning.
 
+Historikværnets rapportled (#6490, ejer-go 12/10): "har rytteren optrådt i en
+træningsrapport" læses fra `rider_training_seen` (én række pr. rytter, btree),
+ikke fra JSON-containment i `training_day_runs.report`. En trigger på rapport-
+tabellen (INSERT og UPDATE af `report`) tilføjer nye ryttere, så både
+dato-stien og den gamle `game_day IS NULL`-sti dækkes. Tabellen er insert-only
+og glemmer ikke af sig selv: den der sletter rapporter (beta-reset, recovery-
+rollback) kalder `rebuild_rider_training_seen()` bagefter. Semantikken i de tre
+første-brugs-vagter er uændret; GIN-indekset står indtil separat ejer-go.
+
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
 i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
