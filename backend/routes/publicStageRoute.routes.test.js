@@ -80,6 +80,7 @@ test("400 on a non-uuid id, 404 on unknown stage", async () => {
     assert.equal((await fetch(`${base}/not-a-uuid`)).status, 400);
     const missing = await fetch(`${base}/99999999-2222-4333-8444-555555555555`);
     assert.equal(missing.status, 404);
+    assert.equal(missing.headers.get("cache-control"), "no-store", "404 caches aldrig");
     assert.deepEqual(await missing.json(), { error: "stage_not_found" });
   });
 });
@@ -88,7 +89,7 @@ test("500 when the read fails, never cached", async () => {
   await withServer(fakeSupabase(TABLES, { failOn: "race_stage_profiles" }), async (base) => {
     const res = await fetch(`${base}/${STAGE_ID}`);
     assert.equal(res.status, 500);
-    assert.equal(res.headers.get("cache-control"), null);
+    assert.equal(res.headers.get("cache-control"), "no-store");
   });
 });
 

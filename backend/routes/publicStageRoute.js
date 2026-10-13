@@ -103,6 +103,8 @@ export function createPublicStageRouteRouter({ supabase }) {
 
   router.get("/:stageId", limiter, async (req, res) => {
     const { stageId } = req.params;
+    // Fejl og "findes ikke" caches aldrig (en etape kan blive genereret efter et 404).
+    res.set("Cache-Control", "no-store");
     if (!UUID_RE.test(String(stageId ?? ""))) return res.status(400).json({ error: "invalid_stage_id" });
     try {
       const stage = await loadPublicStageRoute(supabase, stageId);
