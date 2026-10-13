@@ -38,6 +38,18 @@ const DAY_MS = 86_400_000;
 // but the constant stays correct in case a future run ever does.
 export const ALREADY_CONTACTED_STATUSES = new Set(["sent", "delivered", "bounced", "complained", "failed"]);
 
+// #6554: named campaigns reuse the win-back segment, template slot and
+// email_type ("winback", so the email_prefs opt-out keeps one switch), but
+// dedupe per campaign. The 22/9 send stays the unnamed legacy campaign with
+// its once-ever key `winback:<userId>`; a named campaign keys
+// `winback:<campaign>:<userId>`, so a 22/9 recipient can get exactly one S5
+// mail and never two. Only campaigns listed here can be sent.
+export const WINBACK_CAMPAIGNS = Object.freeze(["s5-launch"]);
+
+export function isKnownWinbackCampaign(campaign) {
+  return WINBACK_CAMPAIGNS.includes(campaign);
+}
+
 function isHumanTeam(team) {
   return (
     !!team &&
@@ -58,7 +70,8 @@ export function hasWinbackConsent(user) {
  * @param {Array<{id, email, last_seen, language, consent_preferences, email_prefs}>} args.users
  * @param {Array<{team_id, rank_in_division, league_division_id}>} [args.standings] active-season season_standings rows
  * @param {Array<{id, label}>} [args.divisions] league_divisions rows
- * @param {Array<{user_id, email_type, status}>} [args.emailLogRows] existing email_log rows (any type -- filtered internally to "winback")
+ * @param {Array<{user_id, email_type, status, dedupe_key}>} [args.emailLogRows] existing email_log rows (any type -- filtered internally to "winback")
+ * @param {string|null} [args.campaign] named campaign (#6554); null = the 22/9 legacy one-off
  * @param {Date} [args.now]
  * @returns {Array<{userId, email, language, teamId, teamName, daysSinceLastSeen: number|null, rankInDivision: number|null, poolLabel: string|null}>}
  */
@@ -68,8 +81,12 @@ export function selectWinbackCandidates({
   standings = [],
   divisions = [],
   emailLogRows = [],
+  campaign = null,
   now = new Date(),
 } = {}) {
+  if (campaign != null && !isKnownWinbackCampaign(campaign)) {
+    throw new Error(`unknown win-back campaign: ${campaign}`);
+  }
   // Same one-team-per-user assumption as emailRaceDigestSweep.js's teamByUser
   // map (a later team for the same user_id wins on a data violation of that
   // assumption -- a pre-existing convention this file inherits, not a new
@@ -83,10 +100,16 @@ export function selectWinbackCandidates({
   const standingByTeam = new Map(standings.filter((s) => s?.team_id != null).map((s) => [s.team_id, s]));
   const divisionLabelById = new Map(divisions.filter((d) => d?.id != null).map((d) => [d.id, d.label]));
 
+  // Legacy (campaign null): any attempted winback row blocks, as on 22/9.
+  // Named campaign: only a row carrying THIS campaign's dedupe key blocks.
+  const contactedRows = emailLogRows.filter(
+    (row) => row?.email_type === WINBACK_EMAIL_KIND && ALREADY_CONTACTED_STATUSES.has(row.status)
+  );
   const alreadyContacted = new Set(
-    emailLogRows
-      .filter((row) => row?.email_type === WINBACK_EMAIL_KIND && ALREADY_CONTACTED_STATUSES.has(row.status))
-      .map((row) => row.user_id)
+    (campaign == null
+      ? contactedRows
+      : contactedRows.filter((row) => row.dedupe_key === winbackDedupeKey(row.user_id, campaign))
+    ).map((row) => row.user_id)
   );
 
   const candidates = [];
@@ -141,7 +164,8 @@ export function distributionByPool(candidates) {
 
 // One-off, once-ever dedupe key -- unlike the retention loop's per-week/per-
 // day keys (#2853), win-back has no recurring cadence to key off, so the key
-// is just the user id (scope point 3, "idempotent pr. bruger").
-export function winbackDedupeKey(userId) {
-  return `winback:${userId}`;
+// is just the user id (scope point 3, "idempotent pr. bruger"). A named
+// campaign (#6554) is once-ever per user per campaign.
+export function winbackDedupeKey(userId, campaign = null) {
+  return campaign == null ? `winback:${userId}` : `winback:${campaign}:${userId}`;
 }
