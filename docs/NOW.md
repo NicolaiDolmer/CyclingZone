@@ -4,7 +4,7 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren 14/10:** Alunta-faktura nr. 2 (61,25 kr., Sentry CYCLINGZONE-62) afstemmes/krediteres i Dinero, derefter Claude: Pro-afvigelse · CodeRabbit-loft nået (ejer) · `INDEXNOW_KEY` som GitHub-secret (#6558).
+> **⏰ Påmind ejeren 14/10:** Alunta-faktura nr. 2 (61,25 kr., Sentry CYCLINGZONE-62) afstemmes/krediteres i Dinero, derefter Claude: Pro-afvigelse · CodeRabbit-loft nået (ejer) · `INDEXNOW_KEY` som GitHub-secret (#6558) · post Discord-tekst for 7.359 (docs/drafts/patch-7359) + app-opslag i forum.
 >
 > **🎯 Next action 14/10:** (1) Hvad brænder kom kl. 08 (#6575)? (2) Kl. 20: forum-afstemningerne lukker → S5-start til generatoren (#5833; stand 13/10: ons 28/10 + lørdag-slut). (3) Preview-go: road book (#6574) + push (#6590). (4) Sprogtest #6586/#6588. (5) Google Play-kort (#6584 spor 3). (6) #6490 aften 2 → DROP INDEX-kort. (7) Revisor #4511 (udkast i docs/drafts).
 >
