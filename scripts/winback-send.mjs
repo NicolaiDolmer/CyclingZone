@@ -16,13 +16,13 @@
 //
 // BRUG:
 //   # 1) maaling (default, INGEN mails, ingen email_log-skrivning):
-//   infisical run --env=prod -- node scripts/winback-send.mjs --dry-run
-//   infisical run --env=prod -- node scripts/winback-send.mjs --dry-run --verbose   (+ per-manager rows)
+//   infisical run --env=prod -- node scripts/winback-send.mjs --campaign s5-launch --dry-run
+//   infisical run --env=prod -- node scripts/winback-send.mjs --campaign s5-launch --dry-run --verbose   (+ per-manager rows)
 //
 //   # 2) rigtig afsendelse -- KRAEVER app_config.winback_send_enabled = true
 //   #    (database/2026-09-14-2760-winback-app-config.sql, default false).
 //   #    Flip'es af ejeren i Supabase FOERST, efter godkendt mailtekst:
-//   infisical run --env=prod -- node scripts/winback-send.mjs --execute
+//   infisical run --env=prod -- node scripts/winback-send.mjs --campaign s5-launch --execute
 //
 // Flag:
 //   --dry-run    eksplicit maaling (default-adfaerd hvis intet flag gives)
@@ -54,9 +54,11 @@ import {
   distributionByLanguage,
   distributionByPool,
   winbackDedupeKey,
+  isKnownWinbackCampaign,
+  WINBACK_CAMPAIGNS,
   WINBACK_EMAIL_KIND,
 } from "../backend/lib/winbackSegment.js";
-import { buildWinbackEmail } from "../backend/lib/emailTemplates.js";
+import { buildS5LaunchEmail } from "../backend/lib/emailTemplates.js";
 import { sendLoopEmail } from "../backend/lib/emailService.js";
 import { unsubscribeUrlForStage } from "../backend/lib/emailUnsubUrl.js";
 
@@ -72,6 +74,16 @@ function fail(msg) {
 }
 
 if (EXECUTE && ARGV.includes("--dry-run")) fail("--dry-run og --execute kan ikke kombineres.");
+
+// #6554: --campaign is REQUIRED. The 22/9 one-off (legacy key winback:<id>,
+// S4 text) is done and can no longer be run from here -- a bare run would
+// otherwise send the outdated S4 mail to everyone who went dormant since.
+const campaignArgIndex = ARGV.indexOf("--campaign");
+const CAMPAIGN = campaignArgIndex >= 0 ? ARGV[campaignArgIndex + 1] : null;
+if (!CAMPAIGN || !isKnownWinbackCampaign(CAMPAIGN)) {
+  fail(`--campaign <navn> er paakraevet; kendte kampagner: ${WINBACK_CAMPAIGNS.join(", ")}.`);
+}
+const CAMPAIGN_TEMPLATES = { "s5-launch": buildS5LaunchEmail };
 
 function requireEnv(name) {
   const value = process.env[name];
@@ -116,7 +128,7 @@ async function fetchUsers(userIds) {
 
 async function fetchWinbackLogRows() {
   return fetchAllRows(() =>
-    supabase.from("email_log").select("user_id, email_type, status").eq("email_type", WINBACK_EMAIL_KIND).order("id")
+    supabase.from("email_log").select("user_id, email_type, status, dedupe_key").eq("email_type", WINBACK_EMAIL_KIND).order("id")
   );
 }
 
@@ -176,21 +188,21 @@ async function main() {
     fetchDivisions(),
   ]);
 
-  const candidates = selectWinbackCandidates({ teams, users, standings, divisions, emailLogRows });
+  const candidates = selectWinbackCandidates({ teams, users, standings, divisions, emailLogRows, campaign: CAMPAIGN });
 
   if (!EXECUTE) {
-    console.log("Mode: DRY-RUN (ingen mails, ingen email_log-skrivning)\n");
+    console.log(`Kampagne: ${CAMPAIGN}\nMode: DRY-RUN (ingen mails, ingen email_log-skrivning)\n`);
     printReport(candidates);
     process.exit(0);
   }
 
-  console.log("Mode: EXECUTE\n");
+  console.log(`Kampagne: ${CAMPAIGN}\nMode: EXECUTE\n`);
   const enabled = await readWinbackSendEnabled();
   if (!enabled) {
     fail(
       `app_config.${APP_CONFIG_KEY} er ikke sat til true -- afsendelse er slukket. ` +
         `Se database/2026-09-14-2760-winback-app-config.sql. Ejeren skal flippe noeglen ` +
-        `i Supabase efter at have godkendt mailteksten i backend/lib/emailTemplates.js (buildWinbackEmail), ` +
+        `i Supabase efter at have godkendt mailteksten i backend/lib/emailTemplates.js (S5_LAUNCH_COPY / buildS5LaunchEmail), ` +
         `foer denne kommando koeres igen.`
     );
   }
@@ -223,11 +235,7 @@ async function main() {
       }
 
       const unsubscribeUrl = unsubscribeUrlForStage({ userId: candidate.userId, secret: process.env.EMAIL_UNSUB_SECRET, stage: "on" });
-      const { subject, html, text } = buildWinbackEmail({
-        teamName: candidate.teamName,
-        daysSinceLastSeen: candidate.daysSinceLastSeen,
-        rankInDivision: candidate.rankInDivision,
-        poolLabel: candidate.poolLabel,
+      const { subject, html, text } = CAMPAIGN_TEMPLATES[CAMPAIGN]({
         unsubscribeUrl,
         language: candidate.language,
       });
@@ -236,7 +244,7 @@ async function main() {
         userId: candidate.userId,
         teamId: candidate.teamId,
         type: WINBACK_EMAIL_KIND,
-        dedupeKey: winbackDedupeKey(candidate.userId),
+        dedupeKey: winbackDedupeKey(candidate.userId, CAMPAIGN),
         to: candidate.email,
         subject,
         html,

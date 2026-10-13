@@ -211,3 +211,39 @@ test("multiple independent candidates in one pass (segment shape, not just singl
     ["user-1"]
   );
 });
+
+// ─── #6554 named campaigns ──────────────────────────────────────────────────
+
+test("campaign: a 22/9 legacy recipient (key winback:<id>) is still eligible for s5-launch", () => {
+  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_KIND, status: "sent", dedupe_key: "winback:user-1" }];
+  const candidates = selectWinbackCandidates({ teams: [humanTeam()], users: [consentingUser()], emailLogRows, campaign: "s5-launch", now: NOW });
+  assert.equal(candidates.length, 1);
+});
+
+test("campaign: an existing s5-launch row blocks a second s5-launch mail", () => {
+  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_KIND, status: "sent", dedupe_key: winbackDedupeKey("user-1", "s5-launch") }];
+  const candidates = selectWinbackCandidates({ teams: [humanTeam()], users: [consentingUser()], emailLogRows, campaign: "s5-launch", now: NOW });
+  assert.equal(candidates.length, 0);
+});
+
+test("campaign: a dry_run s5-launch row never blocks", () => {
+  const emailLogRows = [{ user_id: "user-1", email_type: WINBACK_EMAIL_KIND, status: "dry_run", dedupe_key: winbackDedupeKey("user-1", "s5-launch") }];
+  const candidates = selectWinbackCandidates({ teams: [humanTeam()], users: [consentingUser()], emailLogRows, campaign: "s5-launch", now: NOW });
+  assert.equal(candidates.length, 1);
+});
+
+test("campaign: consent and opt-out gates still apply to a named campaign", () => {
+  const users = [consentingUser({ consent_preferences: { email_marketing: null } })];
+  assert.equal(selectWinbackCandidates({ teams: [humanTeam()], users, campaign: "s5-launch", now: NOW }).length, 0);
+  const optedOut = [consentingUser({ email_prefs: { winback: false } })];
+  assert.equal(selectWinbackCandidates({ teams: [humanTeam()], users: optedOut, campaign: "s5-launch", now: NOW }).length, 0);
+});
+
+test("campaign: an unknown campaign name throws", () => {
+  assert.throws(() => selectWinbackCandidates({ teams: [humanTeam()], users: [consentingUser()], campaign: "s9-typo", now: NOW }), /unknown win-back campaign/);
+});
+
+test("campaign: dedupe keys -- legacy unchanged, named campaign prefixed", () => {
+  assert.equal(winbackDedupeKey("user-1"), "winback:user-1");
+  assert.equal(winbackDedupeKey("user-1", "s5-launch"), "winback:s5-launch:user-1");
+});
