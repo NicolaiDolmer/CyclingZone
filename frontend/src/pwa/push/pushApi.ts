@@ -4,7 +4,7 @@
 // den; i dev findes den ikke, og saa melder vi "virker ikke her" i stedet for at
 // registrere en worker midt i HMR.
 import { apiFetch } from "../../lib/apiFetch.ts";
-import { supabase } from "../../lib/supabase.ts";
+import { authHeaders } from "../../lib/supabase.ts";
 import { SW_URL } from "../serviceWorker.ts";
 import { PUSH_CATEGORY_KEYS, sameServerKey, urlBase64ToUint8Array, type PushCategories } from "./pushSupport.ts";
 
@@ -15,12 +15,6 @@ export interface PushConfig {
   timezone: string | null;
 }
 
-async function authHeaders(): Promise<Record<string, string> | null> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  return token ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } : null;
-}
-
 function normalizeCategories(input: unknown): PushCategories {
   const source = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
   const out = {} as PushCategories;
@@ -29,7 +23,8 @@ function normalizeCategories(input: unknown): PushCategories {
 }
 
 export async function fetchPushConfig(): Promise<PushConfig | null> {
-  const headers = await authHeaders();
+  // GET uden Content-Type: ingen unoedvendig CORS-preflight (#4348).
+  const headers = await authHeaders({ json: false });
   if (!headers) return null;
   const res = await apiFetch("/api/push/config", { headers }, { source: "push-config" });
   if (!res.ok || !res.data || typeof res.data !== "object") return null;
