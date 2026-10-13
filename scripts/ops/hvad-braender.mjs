@@ -299,11 +299,13 @@ export async function main(argv = process.argv.slice(2)) {
   if (!dryRun) state.reportedOn = today;
   const body = renderReport(sections, { stamp, state });
   if (dryRun) { console.log(body); return 0; }
-  await gh(`/repos/${repo}/issues/${issueNo}`, { method: "PATCH", body: { body } });
+  // Rød-kommentaren sendes FØR body'en (med reportedOn) gemmes: fejler alarmen, prøver næste
+  // planlagte kørsel igen i stedet for at tro, at dagen er rapporteret.
   const reds = sections.filter((s) => s.level === RED);
   if (reds.length) {
     await gh(`/repos/${repo}/issues/${issueNo}/comments`, { method: "POST", body: { body: `**Rødt ${stamp}:** ${reds.map((s) => `${s.name}: ${s.summary}`).join(" · ")}` } });
   }
+  await gh(`/repos/${repo}/issues/${issueNo}`, { method: "PATCH", body: { body } });
   console.log(`[hvad-braender] ${sections.map((s) => `${s.name}=${s.level}`).join(" · ")}`);
   return 0;
 }
