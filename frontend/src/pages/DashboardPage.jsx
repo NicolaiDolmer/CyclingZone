@@ -47,6 +47,7 @@ import HeroAgonyCard from "../components/HeroAgonyCard";
 // hentende komponentfil (kun teamId som prop), samme isolations-princip som
 // HeroAgonyCard ovenfor — se komponentfilens kommentar.
 import TodayStagesStrip from "../components/TodayStagesStrip";
+import useTodayStages from "../hooks/useTodayStages.js";
 import DevTransitionCard from "../components/DevTransitionCard";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
@@ -626,6 +627,8 @@ export default function DashboardPage() {
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
+  // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
+  const todayStages = useTodayStages(team?.id);
 
   // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
   // Promise.all med vilje (progressiv, aldrig blokerende for resten af
@@ -1409,7 +1412,7 @@ export default function DashboardPage() {
           må stå over dagens etaper — se docs/
           DASHBOARD_RULES.md §2. Skjuler sig selv når holdet ingen løb har i
           dag (mindst-støj-valg, ejer 18/8). */}
-      <TodayStagesStrip teamId={team?.id} />
+      <TodayStagesStrip stages={todayStages} />
 
       {/* #1140: "Your first race" (flag first_race_card), samme plads som #3310-kortet
           nedenfor; de to optræder aldrig sammen (se firstRaceCardGateOpen). */}

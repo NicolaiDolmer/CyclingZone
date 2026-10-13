@@ -34,7 +34,9 @@ export default function useTodayStages(teamId) {
 
   const load = useCallback(async () => {
     if (!teamId) { setState({ loading: false, cards: [] }); return; }
-    setState((s) => ({ ...s, loading: true }));
+    // #6569: stale-while-revalidate — skelettet vises kun foer foerste kort er
+    // hentet; minut-tick og realtime-refetch beholder de eksisterende kort.
+    setState((s) => (s.cards.length ? s : { ...s, loading: true }));
     try {
       const now = Date.now();
       const range = copenhagenDayRange(now);

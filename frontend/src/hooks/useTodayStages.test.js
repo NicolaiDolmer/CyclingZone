@@ -112,3 +112,17 @@ test("#5601 RaceCentrePage: top-3-forespørgslen er afgrænset til gruppens løb
 test("#5952 dashboard standings read includes persisted team_day rows", () => {
   assert.match(hookSource, /\.in\("result_type",\s*\["leader",\s*"team_day",\s*"team"\]\)/);
 });
+
+// #6569: stale-while-revalidate + hentning paa DashboardPage-topniveau.
+test("#6569 useTodayStages saetter kun loading:true naar der ingen kort er (ingen skelet-blink pr. minut-tick)", () => {
+  assert.match(hookSource, /setState\(\(s\) => \(s\.cards\.length \? s : \{ \.\.\.s, loading: true \}\)\)/);
+  assert.doesNotMatch(hookSource, /setState\(\(s\) => \(\{ \.\.\.s, loading: true \}\)\)/);
+});
+
+test("#6569 DashboardPage kalder useTodayStages paa topniveau (foer early-return) og sender state til stribens prop", () => {
+  const page = readFileSync(join(__dirname, "../pages/DashboardPage.jsx"), "utf8");
+  const hookIdx = page.indexOf("useTodayStages(team?.id)");
+  assert.ok(hookIdx > 0, "hook-kaldet mangler");
+  assert.ok(hookIdx < page.indexOf("if (loading) return ("), "hook skal staa foer PageLoader-early-return");
+  assert.match(page, /<TodayStagesStrip stages=\{todayStages\} \/>/);
+});

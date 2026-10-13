@@ -4,7 +4,6 @@ import { Card, Section, SectionHeader, SectionAction, StatusBadge, ClockIcon, Tr
 import TerrainGlyph from "./calendar/TerrainGlyph.jsx";
 import StageProfileGraph from "./race/StageProfileGraph.jsx";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
-import useTodayStages from "../hooks/useTodayStages.js";
 import { formatLocalTime } from "../lib/intl.js";
 
 // #3915 — dashboardets "Today's stages"-strip. SELVSTÆNDIG komponentfil,
@@ -125,9 +124,12 @@ function TodayStageCard({ card, t }) {
   );
 }
 
-export default function TodayStagesStrip({ teamId }) {
+// #6569: hentningen (useTodayStages) ligger paa DashboardPage-topniveau, saa den
+// starter samtidig med loadAll i stedet for foerst naar PageLoader er vaek;
+// stribens state sendes ned som prop.
+export default function TodayStagesStrip({ stages }) {
   const { t } = useTranslation(["dashboard", "races"]);
-  const { loading, cards } = useTodayStages(teamId);
+  const { loading, cards } = stages;
 
   // #5389: en ægte "ingen løb i dag" (hentet OG bekræftet tom) renderer
   // stadig intet — #3915's mindst-støj-beslutning står uændret. Kun den
