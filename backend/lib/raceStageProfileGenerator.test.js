@@ -29,7 +29,16 @@ import {
   TT_LOOKALIKE_DISTANCE_BAND_KM,
   looksLikeDuplicateTimeTrial,
   findDuplicateTimeTrialPairs,
+  S5_GENERATOR_VERSION,
+  S5_FINISH_WEIGHTS,
+  S5_GRAND_TOUR_QUOTAS,
+  grandTourTypeFor,
+  grandTourQuotaTypes,
+  toStageProfileRow,
+  isTimeTrial,
 } from "./raceStageProfileGenerator.js";
+import { deriveTerrainType } from "./raceRouteGenerator.js";
+import { FINISH_MATRIX, TERRAIN_TYPES, isFinishAllowed } from "./stageProfileTypes.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import {
   ORDER_ARCHETYPES,
@@ -999,4 +1008,141 @@ test("#4539 grand_tour (21, uændret): kan stadig få 2 TT, men de er ALDRIG et 
     assert.deepEqual(findDuplicateTimeTrialPairs(stages), [], `gt seed ${s}: duplikat-par trods GT-undtagelsen`);
   }
   assert.ok(sawTwoTT, "ingen af de 300 seeds gav 2 TT — testen dækker ikke det tilfælde den skal bevise");
+});
+
+// ═══ #6359 S5-modellen (profileModel: "s5") ══════════════════════════════════════════
+const S5 = { profileModel: "s5" };
+const S5_SEEDS = 25;
+function s5Races() {
+  const races = [];
+  for (const [archetype, cfg] of Object.entries(ARCHETYPE_PROFILES)) {
+    if (archetype === "grand_tour") continue;
+    if (cfg.kind === "single") races.push({ archetype, race_type: "single", stages: 1 });
+    else for (const stages of [3, 5, 7, 9]) races.push({ archetype, race_type: "stage_race", stages });
+  }
+  races.push({ archetype: null, race_type: "single", stages: 1 });
+  for (const stages of [2, 6, 8]) races.push({ archetype: null, race_type: "stage_race", stages });
+  return races;
+}
+const raceFor = (spec, s) => ({
+  id: `s5-${spec.archetype}-${spec.stages}`, external_id: `s5-${spec.archetype}-${spec.stages}`,
+  terrain_archetype: spec.archetype, race_type: spec.race_type, stages: spec.stages,
+  season_id: `season-${s}`, name: "Ronde test",
+});
+
+test("#6359 property: S5 type == B+(climbs) for HVER terræn-etape og afslutningen ligger i matrixen (alle arketyper × N seeds)", () => {
+  let checked = 0;
+  for (const spec of s5Races()) {
+    for (let s = 0; s < S5_SEEDS; s++) {
+      for (const p of generateRaceStageProfiles(raceFor(spec, s), S5)) {
+        const where = `${spec.archetype}/${spec.stages} s${s} etape ${p.stage_number} (${p.profile_type}/${p.finale_type})`;
+        assert.equal(p.generator_version, S5_GENERATOR_VERSION, where);
+        if (isTimeTrial(p.profile_type)) {
+          assert.equal(p.finale_type, "solo_tt", where);
+          continue;
+        }
+        const terrain = deriveTerrainType(p.climbs);
+        if (TERRAIN_TYPES.includes(p.profile_type)) assert.equal(p.profile_type, terrain, where);
+        assert.ok(isFinishAllowed(terrain, p.finale_type), `${where}: uden for matrixen for ${terrain}`);
+        assert.ok(!["breakaway", "bunch_sprint", "reduced_sprint"].includes(p.finale_type), `${where}: v5-afslutning i S5`);
+        checked += 1;
+      }
+    }
+  }
+  assert.ok(checked > 2000, `for få etaper tjekket (${checked})`);
+});
+
+test("#6359 S5 bevarer v5's typer og rækkefølge for alle andre løb end Grand Tours", () => {
+  for (const spec of s5Races()) {
+    for (let s = 0; s < 6; s++) {
+      const race = raceFor(spec, s);
+      const v5 = generateRaceStageProfiles(race).map((p) => p.profile_type);
+      const s5 = generateRaceStageProfiles(race, S5).map((p) => p.profile_type);
+      assert.deepEqual(s5, v5, `${spec.archetype}/${spec.stages} s${s}`);
+    }
+  }
+});
+
+test("#6359 S5's afslutnings-vægte dækker præcis matrixen pr. terræn", () => {
+  for (const terrain of TERRAIN_TYPES) {
+    const values = S5_FINISH_WEIGHTS[terrain].map((w) => w.value).sort();
+    assert.deepEqual(values, [...FINISH_MATRIX[terrain]].sort(), terrain);
+  }
+});
+
+test("#6359 v5 er default og uændret; S5 stemples v6; ukendt model kaster", () => {
+  const race = { id: "r1", external_id: "x-6359", race_type: "stage_race", stages: 5, terrain_archetype: "balanced_week" };
+  assert.deepEqual(generateRaceStageProfiles(race), generateRaceStageProfiles(race, { profileModel: "v5" }));
+  assert.equal(toStageProfileRow("r1", generateRaceStageProfiles(race)[0]).generator_version, GENERATOR_VERSION);
+  assert.equal(toStageProfileRow("r1", generateRaceStageProfiles(race, S5)[0]).generator_version, S5_GENERATOR_VERSION);
+  assert.equal(S5_GENERATOR_VERSION, 6);
+  assert.throws(() => generateRaceStageProfiles(race, { profileModel: "s6" }), /unknown profileModel/);
+});
+
+// ── #6359 Grand Tours: ejerens kvoter + ugestruktur (spec §5) ───────────────────────
+const S5_GTS = [
+  { name: "Tour de l'Hexagone", race_class: "TourFrance", stages: 18, type: "tour" },
+  { name: "Giro della Penisola", race_class: "GiroVuelta", stages: 17, type: "giro" },
+  { name: "Vuelta Ibérica", race_class: "GiroVuelta", stages: 17, type: "vuelta" },
+];
+const gtRace = (gt, s) => ({
+  id: `gt-${gt.type}`, external_id: `gt-${gt.type}`, name: gt.name, race_class: gt.race_class,
+  race_type: "stage_race", stages: gt.stages, terrain_archetype: "grand_tour", season_id: `season-${s}`,
+});
+const HARDNESS = { flat: 0, rolling: 1, hilly: 2, medium_mountain: 3, mountain: 4, high_mountain: 5 };
+
+test("#6359 GT-typen udledes af klasse + region", () => {
+  for (const gt of S5_GTS) assert.equal(grandTourTypeFor(gtRace(gt, 0)), gt.type, gt.name);
+});
+
+test("#6359 GT-kvoterne summerer til 18/17/17 og skaleres når etapeantallet er et andet", () => {
+  assert.equal(grandTourQuotaTypes("tour", 18).types.length, 18);
+  assert.equal(grandTourQuotaTypes("giro", 17).types.length, 17);
+  assert.equal(grandTourQuotaTypes("vuelta", 17).types.length, 17);
+  const t21 = grandTourQuotaTypes("tour", 21);
+  assert.equal(t21.types.length, 21);
+  assert.equal(t21.types.filter((t) => t === "itt").length, 2, "tidskørslerne skaleres ikke");
+});
+
+test("#6359 GT: kvoter, bjergtoppe og ugestruktur holder for Tour/Giro/Vuelta-typen over N sæsoner", () => {
+  for (const gt of S5_GTS) {
+    const q = S5_GRAND_TOUR_QUOTAS[gt.type];
+    for (let s = 0; s < 60; s++) {
+      const stages = generateRaceStageProfiles(gtRace(gt, s), S5);
+      const where = `${gt.type} s${s}: ${stages.map((p) => p.profile_type).join(" ")}`;
+      const n = stages.length;
+      assert.equal(n, gt.stages, where);
+      const count = (t) => stages.filter((p) => p.profile_type === t).length;
+      for (const t of ["high_mountain", "mountain", "medium_mountain", "hilly", "rolling", "flat"]) assert.equal(count(t), q[t], `${where} (${t})`);
+      assert.equal(stages.filter((p) => isTimeTrial(p.profile_type)).length, q.itt + q.ttt, `${where} (TT)`);
+      assert.equal(count("ttt"), 0, `${where}: holdtidskørsel uden allowTtt`);
+      assert.equal(stages.filter((p) => p.finale_type === "long_climb").length, q.summits, `${where} (bjergtoppe)`);
+      // Ugestruktur.
+      const firstThirdEnd = Math.floor(n / 3);
+      const lastThirdStart = n - Math.floor(n / 3);
+      for (let i = 0; i < firstThirdEnd; i++) assert.notEqual(stages[i].profile_type, "high_mountain", `${where}: højbjerg i første tredjedel`);
+      assert.ok(isTimeTrial(stages[0].profile_type), `${where}: kort enkeltstart tidligt`);
+      assert.ok(stages[0].distance_km <= 14, `${where}: åbnings-enkeltstarten er kort (${stages[0].distance_km} km)`);
+      const lateTt = stages.findIndex((p, i) => i > 0 && isTimeTrial(p.profile_type));
+      assert.ok(lateTt >= lastThirdStart, `${where}: sen enkeltstart på etape ${lateTt + 1}`);
+      assert.ok(stages[n - 1].profile_type === "flat" || isTimeTrial(stages[n - 1].profile_type), `${where}: sidste dag`);
+      const maxHard = Math.max(...stages.map((p) => HARDNESS[p.profile_type] ?? -1));
+      const queen = stages.findLastIndex((p) => HARDNESS[p.profile_type] === maxHard);
+      assert.ok(queen >= lastThirdStart, `${where}: kongeetapen på etape ${queen + 1}`);
+      for (const p of stages) {
+        if (isTimeTrial(p.profile_type)) continue;
+        assert.equal(p.profile_type, deriveTerrainType(p.climbs), `${where}: etape ${p.stage_number}`);
+        assert.ok(isFinishAllowed(p.profile_type, p.finale_type), `${where}: etape ${p.stage_number} ${p.finale_type}`);
+      }
+    }
+  }
+});
+
+test("#6359 GT med allowTtt: Vuelta-typen åbner med holdtidskørslen", () => {
+  const vuelta = S5_GTS.find((g) => g.type === "vuelta");
+  for (let s = 0; s < 10; s++) {
+    const stages = generateRaceStageProfiles(gtRace(vuelta, s), { profileModel: "s5", allowTtt: true });
+    assert.equal(stages.filter((p) => p.profile_type === "ttt").length, 1);
+    assert.equal(stages[0].profile_type, "ttt");
+  }
 });
