@@ -675,8 +675,13 @@ export function parseSubscription(input) {
   return { endpoint, p256dh: p256dh.replace(/=+$/, ""), auth: auth.replace(/=+$/, "") };
 }
 
-/** Er push slaaet til for denne spiller (flag + VAPID)? */
-export async function readPushAvailability(supabase, { isBetaTester, env = process.env } = {}) {
+/**
+ * Er push slaaet til for denne spiller (flag + VAPID)?
+ * @param {any} supabase
+ * @param {{ isBetaTester?: boolean, env?: Record<string, string | undefined> }} [opts]
+ * @returns {Promise<{ enabled: boolean, publicKey: string | null }>}
+ */
+export async function readPushAvailability(supabase, { isBetaTester = false, env = process.env } = {}) {
   const stage = await readFlagStage(supabase, PUSH_FLAG_KEY);
   const vapid = readVapidConfig(env);
   const flagOn = evaluateFlagStage(stage, { isBetaTester: Boolean(isBetaTester) });

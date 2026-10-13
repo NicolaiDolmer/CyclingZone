@@ -38,7 +38,8 @@ export function PushOptInOfferView({ phase, onAccept, onLater }: PushOptInOfferV
     >
       <div className="mx-auto flex max-w-lg flex-wrap items-center gap-x-3 gap-y-2 rounded-cz border border-cz-border bg-cz-card px-4 py-3 pointer-events-auto">
         <BellIcon size={16} className="shrink-0 text-cz-3" aria-hidden="true" />
-        <p className="min-w-0 flex-1 text-sm leading-snug text-cz-1">
+        {/* min-w: paa en smal skaerm ryger knapperne ned paa egen linje i stedet for at klemme teksten */}
+        <p className="min-w-[14rem] flex-1 text-sm leading-snug text-cz-1">
           {phase === "done" ? t("push.offer.done") : t("push.offer.title")}
         </p>
         {phase !== "done" && (

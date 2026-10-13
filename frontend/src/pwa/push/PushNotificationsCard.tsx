@@ -81,6 +81,7 @@ export function PushNotificationsCardView({
                 </div>
                 <Toggle
                   id={`push-category-${key}`}
+                  label={null}
                   aria-label={t(`push.category.${key}.label`)}
                   checked={categories[key]}
                   disabled={savingCategory === key}
