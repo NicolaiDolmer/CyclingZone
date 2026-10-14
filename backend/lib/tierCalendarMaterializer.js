@@ -17,6 +17,7 @@ import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCale
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
+import { applyS5TierFillerTilt, S5_TIER_FILLER_TILT } from "./s5TierFillerCalibration.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { filterSeniorSquadRows, selectSeniorRacePool } from "./racePoolCatalog.js";
@@ -932,6 +933,10 @@ export async function materializeTierCalendars({
   // eller { benchmark, motor } injiceret i tests). Det er INGEN override: gaten koeres altid
   // for S5-modellen, og en roed gate naegter apply. null = benchmarken + motor-stubben.
   s5BenchmarkInputs = null,
+  // #6367: S5-modellens pr.-division-kalibrering (s5TierFillerCalibration.js). Default =
+  // den kalibrerede tabel; KUN kalibrerings-harnessen (calibrateS5TierFillers.mjs) sender
+  // en kandidat-tabel. Ignoreres for v5 (S1-S4).
+  s5TierFillerTilt = S5_TIER_FILLER_TILT,
 } = {}) {
   assertCalendarSquad(squad);
   const isSenior = squad === "senior";
@@ -1063,7 +1068,12 @@ export async function materializeTierCalendars({
     // #4103: ÉN gang pr. tier, genbrugt af BÅDE dæknings-verifikationen og skrive-stien
     // nedenfor — undefined (default-adfærd) medmindre useUniformTierTilt er slået til.
     // #5644: tilten er kalibreret pr. SENIORdivision (§6b) og gælder ikke en trup.
-    const archetypeProfilesForTier = useUniformTierTilt && isSenior ? applyUniformTierTilt({ tier: tierPlan.tier }) : undefined;
+    // #6367: S5-modellen har sin egen, soegte pr.-division-kalibrering (s5TierFillerCalibration.js)
+    // og bruger den paa ALLE stier. Den afloeser S3-tilten (useUniformTierTilt), som er
+    // kalibreret mod v5 og et andet loebsudvalg; v5 (S1-S4) er uaendret.
+    const archetypeProfilesForTier = !isSenior ? undefined
+      : profileModel === S5_PROFILE_MODEL ? applyS5TierFillerTilt({ tier: tierPlan.tier, tiltByTier: s5TierFillerTilt })
+        : useUniformTierTilt ? applyUniformTierTilt({ tier: tierPlan.tier }) : undefined;
 
     // #3327/#3328: dækningsverifikation EFTER selection/packing men FØR apply-gaten —
     // beregnet fra ÉN repræsentativ pulje (identisk kalender pr. tier, #2276). Fejl her

@@ -66,8 +66,16 @@
  *
  * Saetter du en ny saeson ind her, skal tallet efterregnes mod et dry-run af netop den
  * saesons D1-pakning (CALENDAR_RULES.md §1d) - ikke arves fra S4.
+ *
+ * S5 = 160 (#6367): samme regel som S4's 140, regnet paa S5's laaste vindue (onsdag 28/10
+ * -> loerdag 28/11 = 32 loebsdatoer, #5833) x D1's 5 slots = 5 loebsdage paa HVER
+ * kalenderdato (§1e-b, ejer-valg 20/9). Efterregnet mod S5-toerkoerslen: D1's naturlige
+ * pakning ligger over enhver lavere vaerdi (padding kan kun TILFOEJE loebsdage), og et
+ * mål under 160 fordeler sig ikke jaevnt pr. dato, saa §1e's traeningsrytme gaar roed.
+ * Uden et S5-tal arver traenings-deleren 140 (resolveRaceDaysPerSeason) mens aksen er
+ * pakkerens naturlige - to tal der ikke maa vaere forskellige.
  */
-export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140 });
+export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140, 5: 160 });
 
 /**
  * Divisionerne der skal have samme antal loebsdage. Ikke udledt af TIER_DENSITY, fordi

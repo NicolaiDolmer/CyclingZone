@@ -115,10 +115,15 @@ export function fixtureTables(fixture) {
 /**
  * Hele tørkørslen offline. Returnerer gate-grupperne + scorecardet.
  * @param {{ seasonNumber: number, firstDay: string, lastDay?: string|null, raceDays?: number|null,
- *   uniformTilt?: boolean, raceDayTarget?: number|null|undefined, baseSeed?: number, fixture?: any }} opts
+ *   uniformTilt?: boolean, raceDayTarget?: number|null|undefined, baseSeed?: number, fixture?: any,
+ *   s5TierFillerTilt?: Record<string, Record<string, number>> }} opts
+ *   s5TierFillerTilt  kun kalibrerings-harnessen: en kandidat-tabel i stedet for den kalibrerede.
+ *   seasonId          kun robusthedsmålingen: et andet parcours-træk (seed-nøglen indeholder
+ *                     season_id) for samme løbsudvalg. Default = sæsonens rigtige id.
  */
 export async function runOfflineSeasonGates({
   seasonNumber, firstDay, lastDay = null, raceDays = null, uniformTilt = false, raceDayTarget = undefined, baseSeed = 1, fixture = null,
+  s5TierFillerTilt = undefined, seasonId = null,
 }) {
   const fx = fixture ?? JSON.parse(readFileSync(FIXTURE, "utf8"));
   const supabase = makeFixtureSupabase(fixtureTables(fx));
@@ -132,9 +137,10 @@ export async function runOfflineSeasonGates({
   const target = raceDayTarget === undefined ? (SEASON_RACE_DAY_TARGET[seasonNumber] ?? null) : raceDayTarget;
   const from = new Date(Date.parse(`${firstDay}T00:00:00Z`) - 86_400_000);
   const plan = await materializeTierCalendars({
-    supabase, seasonId: seasonUuid(seasonNumber), seasonNumber, seasonStartDate: firstDay, from, dryRun: true,
+    supabase, seasonId: seasonId ?? seasonUuid(seasonNumber), seasonNumber, seasonStartDate: firstDay, from, dryRun: true,
     baseSeed, realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget: target,
     seasonTransitionAt: null, seasonLastRaceDay: window.lastRaceDay, squad: "senior",
+    ...(s5TierFillerTilt !== undefined ? { s5TierFillerTilt } : {}),
   });
   const { blocking, compositionDrift, tierCompositionDrift, report } = gatePlan(plan, {
     allowTierCompositionDrift: false, raceDayEqualityBlocking: false,
