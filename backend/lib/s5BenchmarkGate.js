@@ -494,6 +494,13 @@ export function checkSeasonFinishShares({ stages = [], benchmark }) {
 export const MOTOR_GAP_VERDICTS = Object.freeze(["inside", "below", "above"]);
 /** #6362: vindertype-dommen pr. afslutning i del (4). Kun "pass" er groen. */
 export const MOTOR_WINNER_VERDICTS = Object.freeze(["pass", "fail"]);
+/**
+ * #6362: vindertype-tjekkene del (4) SKAL have en dom for (afslutning -> forventet ryttertype).
+ * Samme tjek som benchens S5_WINNER_EXPECTATIONS (scripts/dev/s5MotorBench.mjs); drift fanges
+ * af s5BenchmarkGate.test.js (mod fixturen) og s5MotorBench.test.ts (fixturen mod benchen).
+ * En ikke-stub-maaling uden en gyldig dom for hvert tjek er roed (fail-closed).
+ */
+export const MOTOR_REQUIRED_WINNERS = Object.freeze({ uphill_sprint: "sprinter", long_climb: "climber" });
 
 function gapVerdict(m, iv) {
   if (m < iv.p25 - 1e-9) return "below";
@@ -530,8 +537,11 @@ export function motorGapVerdicts({ medians = {}, benchmark }) {
  *   - Mangler motorens tal/dom for en afslutning med et interval, er det et brud ("ikke maalt").
  *   - stub: true -> `status: "stub"`: sammenlignes og vises, men BLOKERER IKKE (en stub er
  *     ikke en maaling af motoren). Den rigtige bench er ikke en stub og blokerer ved fail.
- *   - `winners` (valgfri): { [finish]: { expected, verdict: "pass"|"fail" } } fra benchen;
- *     andet end "pass" er et brud. Taersklen bag dommen er privat (hard rule 17).
+ *   - `winners` (PAAKRAEVET): { [finish]: { expected, verdict: "pass"|"fail" } } fra benchen.
+ *     Hvert tjek i MOTOR_REQUIRED_WINNERS skal have dommen "pass" med den forventede type;
+ *     mangler `winners`, et tjek, en gyldig dom, eller er typen en anden, er det et brud
+ *     (fail-closed: en fil med kun medianer/domme kan ikke goere del (4) groen). Ekstra
+ *     tjek ud over de paakraevede doemmes ogsaa. Taersklen bag dommen er privat (hard rule 17).
  */
 export function evaluateMotorGaps({ motor, benchmark }) {
   const intervals = benchmarkGapIntervals(benchmark);
@@ -558,14 +568,23 @@ export function evaluateMotorGaps({ motor, benchmark }) {
     }
   }
   // Vindertype (#6362): { [finish]: { expected, verdict: "pass"|"fail" } }. Taersklen er
-  // privat (balance-internals); her doemmes kun dommen. Alt andet end "pass" er et brud.
+  // privat (balance-internals); her doemmes kun dommen. Alt andet end "pass" er et brud,
+  // og hvert paakraevet tjek (MOTOR_REQUIRED_WINNERS) skal vaere med (fail-closed).
   const winnerRows = [];
-  if (motor?.winners && typeof motor.winners === "object") {
-    for (const [finish, w] of Object.entries(motor.winners)) {
-      const verdict = MOTOR_WINNER_VERDICTS.includes(w?.verdict) ? w.verdict : null;
-      winnerRows.push({ finish, expected: w?.expected ?? null, verdict, pass: verdict === "pass" });
-      if (verdict !== "pass") violations.push(`${finish}: ${w?.expected ?? "den forventede ryttertype"} vinder ikke afslutningen ofte nok på motor-benchen${verdict ? "" : " (dom mangler)"}`);
-    }
+  const winners = motor?.winners && typeof motor.winners === "object" && !Array.isArray(motor.winners) ? motor.winners : {};
+  const winnerFinishes = [...Object.keys(MOTOR_REQUIRED_WINNERS), ...Object.keys(winners).filter((f) => !Object.hasOwn(MOTOR_REQUIRED_WINNERS, f))];
+  for (const finish of winnerFinishes) {
+    const required = Object.hasOwn(MOTOR_REQUIRED_WINNERS, finish) ? MOTOR_REQUIRED_WINNERS[finish] : null;
+    const w = Object.hasOwn(winners, finish) ? winners[finish] : null;
+    const expected = w?.expected ?? required;
+    const verdict = MOTOR_WINNER_VERDICTS.includes(w?.verdict) ? w.verdict : null;
+    const wrongType = required != null && w?.expected != null && w.expected !== required;
+    const pass = verdict === "pass" && !wrongType;
+    winnerRows.push({ finish, expected: expected ?? null, verdict, pass });
+    if (pass) continue;
+    if (!w) violations.push(`${finish}: vindertype-dommen mangler på motor-benchen (${required} forventes)`);
+    else if (wrongType) violations.push(`${finish}: vindertype-dommen gælder ${w.expected}, men ${required} forventes`);
+    else violations.push(`${finish}: ${expected ?? "den forventede ryttertype"} vinder ikke afslutningen ofte nok på motor-benchen${verdict ? "" : " (dom mangler)"}`);
   }
   const stub = motor?.stub === true;
   return { status: stub ? "stub" : (violations.length ? "red" : "green"), stub, source: motor?.source ?? null, rows, winnerRows, violations };

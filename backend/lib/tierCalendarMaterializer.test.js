@@ -10,7 +10,7 @@ import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { TIER_DENSITY, SQUAD_CALENDAR } from "./calendarTierCaps.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION, S5_GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { resolveEarliestSeasonTransition, latestInstant, TIER_STAGE_SLOTS } from "./calendarPlanningWindow.js";
-import { benchmarkGapIntervals, loadS5Benchmark } from "./s5BenchmarkGate.js";
+import { benchmarkGapIntervals, loadS5Benchmark, MOTOR_REQUIRED_WINNERS } from "./s5BenchmarkGate.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
 
@@ -1775,7 +1775,7 @@ test("#6367 dry-run: saeson 5 genereres med S5-modellen, saeson 4 er uaendret v5
 // #6362: en GROEN motor-maaling (dommen "inside" pr. afslutning, ingen tal). Standard-motoren
 // er den rigtige bench, hvis dom kan vaere roed; tests der skal skrive under en groen gate
 // injicerer derfor en groen maaling i stedet for at arve benchens aktuelle dom.
-const GREEN_MOTOR = { s5BenchmarkInputs: { motor: { stub: false, source: "test", verdicts: Object.fromEntries(Object.keys(benchmarkGapIntervals(loadS5Benchmark())).map((f) => [f, "inside"])) } } };
+const GREEN_MOTOR = { s5BenchmarkInputs: { motor: { stub: false, source: "test", verdicts: Object.fromEntries(Object.keys(benchmarkGapIntervals(loadS5Benchmark())).map((f) => [f, "inside"])), winners: Object.fromEntries(Object.entries(MOTOR_REQUIRED_WINNERS).map(([f, expected]) => [f, { expected, verdict: "pass" }])) } } };
 
 test("#6367 apply: saeson 5 skriver S5-profiler (v6) i race_stage_profiles; modellen slaas op paa seasonId naar nummeret mangler", async () => {
   const state = s5Tier3State([{ id: "season-5", number: 5, status: "upcoming" }]);
