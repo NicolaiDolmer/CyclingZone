@@ -15,6 +15,8 @@
 // S5's første løbsdag er ikke fastlagt (#5833), så datoen er en PARAMETER og kræves:
 //   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-26
 //   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-26 --seeds=5 --json
+//   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-28 --last-day=2026-11-29 --seeds=5
+// --last-day (inklusiv) eller --race-days N saetter saesonens laengde; default 28 (#6367).
 // --now (default dagen før --first-day) fryser "i dag", så kørslen er gentagelig.
 // --seeds=N kører N sæson-træk (season_id "s5-dryrun-<i>"); default 3.
 //
@@ -39,7 +41,7 @@ import { TERRAIN_TYPES, isFinishAllowed, canonicalFinaleType } from "../../backe
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FIXTURE = join(ROOT, "backend", "lib", "__fixtures__", "racePoolCatalog.prod.json");
 const BENCHMARK = join(ROOT, "docs", "design", "s5-benchmark", "gt-2021-2025.json");
-const REAL_DAYS = 28;
+const DEFAULT_REAL_DAYS = 28;
 
 function arg(name, fallback = null) {
   const argv = process.argv.slice(2);
@@ -56,6 +58,28 @@ if (typeof firstDay !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(firstDay)) {
   process.exit(2);
 }
 const nowDay = arg("now") ?? new Date(Date.parse(`${firstDay}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+// #6367: saesonens laengde er ogsaa en parameter (S5's vindue er ikke laast). --last-day
+// (inklusiv) eller --race-days; uden dem 28 loebsdatoer som foer.
+const lastDayArg = arg("last-day");
+const raceDaysArg = arg("race-days");
+if (lastDayArg != null && raceDaysArg != null) {
+  console.error("Angiv enten --last-day eller --race-days, ikke begge.");
+  process.exit(2);
+}
+let REAL_DAYS = DEFAULT_REAL_DAYS;
+if (lastDayArg != null) {
+  if (typeof lastDayArg !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(lastDayArg)) {
+    console.error("--last-day skal vaere YYYY-MM-DD.");
+    process.exit(2);
+  }
+  REAL_DAYS = Math.round((Date.parse(`${lastDayArg}T00:00:00Z`) - Date.parse(`${firstDay}T00:00:00Z`)) / 86_400_000) + 1;
+} else if (raceDaysArg != null) {
+  REAL_DAYS = Number(raceDaysArg);
+}
+if (!Number.isInteger(REAL_DAYS) || REAL_DAYS < 1) {
+  console.error(`Ugyldig saesonlaengde (${REAL_DAYS} loebsdatoer).`);
+  process.exit(2);
+}
 const seeds = Math.max(1, Number(arg("seeds", 3)) || 3);
 const asJson = arg("json") === true;
 
@@ -96,6 +120,8 @@ function emptyCounts() {
 
 function measure(model, plan, seasonId) {
   const all = { n: 0, byTerrain: emptyCounts(), typeMismatch: 0, terrainStages: 0, outsideMatrix: 0, finishes: {}, elevationByTerrain: {}, series: { n: 0, bad: 0, bytes: 0, ms: 0 } };
+  /** @type {Record<number, Record<string, number>>} */
+  const byTier = {};
   const grandTours = [];
   const seen = new Set();
   for (const tierPlan of plan.tierPlans) {
@@ -103,6 +129,14 @@ function measure(model, plan, seasonId) {
     const races = rows.map((r) => seedRace(r, plan, seasonId));
     let generated = races.map((race) => generateRaceStageProfiles(race, { profileModel: model }));
     if (model === "v5") generated = balanceFinaleQuotas(generated);
+    // #6367: terræn efter B+ pr. division (uden dedup: et løb tæller i hver division det kører i).
+    const tierCounts = (byTier[tierPlan.tier] ??= { n: 0, ...emptyCounts() });
+    for (const stages of generated) {
+      for (const p of stages) {
+        tierCounts.n += 1;
+        tierCounts[isTimeTrial(p.profile_type) ? "tt" : deriveTerrainType(p.climbs)] += 1;
+      }
+    }
     generated.forEach((stages, idx) => {
       const race = races[idx];
       if (seen.has(race.id)) return; // én række pr. unikt parcours (samme løb i flere tiers tæller én gang)
@@ -139,7 +173,7 @@ function measure(model, plan, seasonId) {
     }
     return { name: race.name, gtType: grandTourTypeFor(race), stages: stages.length, counts, summits, sequence: stages.map((p) => p.profile_type) };
   });
-  return { all, gts };
+  return { all, gts, byTier };
 }
 
 function benchmarkElevation() {
@@ -161,13 +195,23 @@ for (let i = 0; i < seeds; i++) {
 const bench = benchmarkElevation();
 
 if (asJson) {
-  console.log(JSON.stringify({ firstDay, nowDay, seeds, runs, benchmarkElevationMedian: bench }, null, 2));
+  console.log(JSON.stringify({ firstDay, nowDay, realDays: REAL_DAYS, seeds, runs, benchmarkElevationMedian: bench }, null, 2));
   process.exit(0);
 }
 
 const pct = (a, b) => (b ? `${Math.round((a / b) * 100)} %` : "-");
 const lines = [];
-lines.push(`# S5-tørkørsel (offline, intet skrevet) - første løbsdag ${firstDay}, ${seeds} sæson-træk`);
+lines.push(`# S5-tørkørsel (offline, intet skrevet) - første løbsdag ${firstDay}, ${REAL_DAYS} løbsdatoer, ${seeds} sæson-træk`);
+lines.push("");
+lines.push("## Terræn efter B+ pr. division (S5, alle etaper i divisionens repræsentative pulje)");
+lines.push("");
+lines.push(`| Træk | Division | n | ${TERRAIN_TYPES.map((t) => TERRAIN_LABEL[t]).join(" | ")} | TT |`);
+lines.push(`|---|---|---|${TERRAIN_TYPES.map(() => "---").join("|")}|---|`);
+for (const run of runs) {
+  for (const [tier, c] of Object.entries(run.s5.byTier)) {
+    lines.push(`| ${run.seasonId} | D${tier} | ${c.n} | ${TERRAIN_TYPES.map((t) => c[t]).join(" | ")} | ${c.tt} |`);
+  }
+}
 lines.push("");
 lines.push("## Terræn efter B+ (alle unikke etaper) og typer der ikke passer med ruten");
 lines.push("");
