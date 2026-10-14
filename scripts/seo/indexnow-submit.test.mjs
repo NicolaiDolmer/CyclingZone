@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { extractSitemapUrls, buildPayload, keyFileIsLive, main } from "./indexnow-submit.mjs";
+import { extractSitemapUrls, buildPayload, keyFileIsLive, main, stripXmlComments } from "./indexnow-submit.mjs";
 
 const SITEMAP = `<?xml version="1.0"?>
 <urlset>
@@ -94,4 +94,12 @@ test("main: forkert noeglefil-body stopper foer POST", async () => {
   const { impl, calls } = fakeFetch({ keyBody: "<html>spa</html>" });
   await assert.rejects(main({ env: { INDEXNOW_KEY: KEY }, fetchImpl: impl, log: () => {} }), /noeglefilen/);
   assert.equal(calls.some((c) => c.init?.method === "POST"), false);
+});
+
+test("stripXmlComments: lineaer, overlappende og uafsluttede kommentarer (#374)", () => {
+  assert.equal(stripXmlComments("a<!-- x -->b"), "a b");
+  assert.ok(!stripXmlComments("<!<!-- -->-- x -->").includes("<!--"));
+  assert.ok(!stripXmlComments("a<!-- open <loc>https://cyclingzone.org/x</loc>").includes("<loc>"));
+  const big = "<!--".repeat(20000) + "-->".repeat(20000);
+  const t0 = Date.now(); stripXmlComments(big); assert.ok(Date.now() - t0 < 200);
 });
