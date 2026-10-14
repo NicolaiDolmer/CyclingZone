@@ -42,6 +42,10 @@
       "destination": "https://cycling-zone-marketing.vercel.app/_next/:path"
     },
     {
+      "source": "/assets/:path*",
+      "destination": "/api/asset-miss"
+    },
+    {
       "source": "/((?:login|reset-password|privatlivspolitik|privacy-policy|handelsbetingelser|terms|founder-supporter|ui|board|dashboard|riders|staff|auctions|transfers|team|teams|standings|sponsors|notifications|forum|compare|profile|pro|activity|activity-feed|watchlist|hall-of-fame|season-preview|head-to-head|planning|races|seasons|season-end|resultater|race-centre|calendar|rider-rankings|global-rank|race-archive|finance|race-points|managers|admin|training|planner|academy|squads|youth-races|klub|scouting|survey|help|rules|patch-notes|roadmap)(?:/.*)?)?",
       "destination": "/app.html"
     }
