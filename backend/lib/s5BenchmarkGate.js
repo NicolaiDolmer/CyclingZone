@@ -5,7 +5,7 @@
 // Spec (design-go ejer 12/10): docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md
 //   §2 terraen-reglen B+ · §3 afslutninger + matrix · §5 kvoter, ugestruktur, motor-facit.
 // Byg-plan: docs/superpowers/plans/2026-10-13-s5-etapeprofiler-byg-plan.md, Spor 3.
-// Benchmark: docs/design/s5-benchmark/gt-2021-2025.json (315 GT-etaper, Tour/Giro/Vuelta
+// Benchmark: backend/lib/__fixtures__/s5Benchmark.gt-2021-2025.json (315 GT-etaper, Tour/Giro/Vuelta
 // 2021-2025). Fordelinger og medianer LAESES af filen, de skrives ikke af her.
 //
 // HVAD GATEN DOEMMER (fire dele, i spec'ens raekkefoelge):
@@ -47,7 +47,10 @@ import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import { checkElevationProfile, ELEVATION_PROFILE_MIN_GENERATOR_VERSION } from "./routeElevationProfile.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-export const DEFAULT_BENCHMARK_PATH = join(__dirname, "..", "..", "docs", "design", "s5-benchmark", "gt-2021-2025.json");
+// Ligger under backend/ (ikke docs/): Railway bygger med rootDirectory /backend, saa en fil
+// uden for backend/ findes ikke i prod, og gaten ville kaste ENOENT paa alle skrivestier.
+// backend/lib/s5BenchmarkGateFiles.test.js holder det fast.
+export const DEFAULT_BENCHMARK_PATH = join(__dirname, "__fixtures__", "s5Benchmark.gt-2021-2025.json");
 /** #6362: den rigtige motor-benchs dom (erstatter #6367's stub). */
 export const DEFAULT_MOTOR_BENCH_PATH = join(__dirname, "__fixtures__", "s5MotorBench.json");
 /** Bagudkompatibelt navn (buildSeasonCalendar, calendarGoldenDiff): peger nu paa den rigtige bench. */
@@ -388,7 +391,7 @@ export function checkGrandTour(race) {
   };
 }
 
-// ── 4. Benchmark (docs/design/s5-benchmark/) ───────────────────────────────────────
+// ── 4. Benchmark (__fixtures__/s5Benchmark.gt-2021-2025.json) ──────────────────────
 
 /** Benchmarkens afslutnings-navne -> S5-afslutningen. Tidskoersler samles i `tt`. */
 export const BENCHMARK_FINISH_MAP = Object.freeze({

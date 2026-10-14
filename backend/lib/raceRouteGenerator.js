@@ -541,7 +541,7 @@ const S5_SINGLE_MEDIUM_CAT2_PROFILE = Object.freeze({ length: [S5_CAT2_SINGLE_ME
 
 // Stignings-skabelon pr. terræn-mål. Hvert felt er [min, max] antal (uniformt) eller
 // `chance` (0/1-træk). Antallene er sat så gennemsnittet pr. etape følger benchmarkens 315
-// Grand Tour-etaper (docs/design/s5-benchmark/gt-2021-2025.json, kategori-strengene pr.
+// Grand Tour-etaper (backend/lib/__fixtures__/s5Benchmark.gt-2021-2025.json, kategori-strengene pr.
 // terræn), og så skabelonen ALDRIG kan lande i et andet terræn efter B+:
 //   flad:        højst én kat. 4
 //   bølget:      kun kat. 4, mindst to
