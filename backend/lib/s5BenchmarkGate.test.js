@@ -276,7 +276,8 @@ const ALL_INSIDE = { stub: false, source: "test", verdicts: motorGapVerdicts({ m
 test("evaluateMotorGaps: stub blokerer ikke; en rigtig måling uden for intervallet gør", () => {
   const s = evaluateMotorGaps({ motor: STUB, benchmark: BENCHMARK });
   assert.equal(s.status, "stub");
-  assert.deepEqual(s.violations, [], "benchmarkens egne medianer");
+  assert.deepEqual(s.rows.filter((r) => r.judged && !r.pass), [], "benchmarkens egne medianer");
+  assert.ok(s.violations.every((v) => v.includes("vindertype-dommen mangler")), "stubben har ingen vindertype-domme (vises, blokerer ikke)");
 
   const real = { stub: false, medians: { ...BENCHMARK_MEDIANS, long_climb: 30 }, winners: ALL_WINNERS_PASS };
   const r = evaluateMotorGaps({ motor: real, benchmark: BENCHMARK });
