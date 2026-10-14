@@ -103,7 +103,7 @@ test("defaultStage: i dag (dansk tid), ellers senest koerte, ellers 1", () => {
   // 23:30 UTC den 14. er den 15. i Koebenhavn.
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-14T23:30:00Z") }), 3);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-20T08:00:00Z") }), 2);
-  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule: [], now: new Date() }), 1);
+  assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule: [], now: new Date("2026-10-14T08:00:00Z") }), 1);
 });
 
 test("stagePhase + navne + tidshuller", () => {

@@ -83,6 +83,7 @@ import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-o
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
 import { defaultStage, resolveV2Tab } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
+import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfilesQuery.ts"; // #6570
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -558,11 +559,9 @@ export default function RaceDetailPage() {
     // tegnes 1:1 fra rækken. race_id følger med, fordi silhuet-syntesens seed
     // bruger den (deterministisk pr. løb+etape). Løb uden rutedata får null/[]
     // og falder tilbage til #1484-piktogrammet — degraderer som før.
-    const profilesPromise = supabase
-      .from("race_stage_profiles")
-      .select("race_id, stage_number, profile_type, finale_type, demand_vector, distance_km, elevation_gain_m, climbs, sprints, sectors")
-      .eq("race_id", raceId)
-      .order("stage_number");
+    // #6570: elevation_profile (#6594) hentes med, så etapeside 2.0 tegner den
+    // rigtige højdeserie; syntesen bruges kun når kolonnen er tom/ikke migreret.
+    const profilesPromise = fetchStageProfiles(supabase, raceId);
 
     // #1597 → S4: etape-kalenderen foldes ind i etape-striben (per-etape-tid) +
     // næste-start-countdown i headeren. Degraderer pænt (tom = ingen tider).
