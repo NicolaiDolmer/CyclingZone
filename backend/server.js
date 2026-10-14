@@ -28,6 +28,7 @@ import { normalizeRequestBody } from "./lib/normalizeRequestBody.js";
 import apiRoutes from "./routes/api.js";
 import { createComebackRouter } from "./routes/comeback.js"; // #5643
 import { createBoardVerdictRouter } from "./routes/boardVerdict.js"; // #5753
+import { createPublicStageRouteRouter } from "./routes/publicStageRoute.js"; // #6574
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
 
 const app = express();
@@ -84,6 +85,13 @@ app.use("/api/season/comeback", createComebackRouter({
 // #5753: GET /api/board/verdict/:seasonId (bestyrelsens dom i saesonrecappen). Samme
 // begrundelse som comeback-routeren ovenfor: egen fil, monteret FOER apiRoutes.
 app.use("/api/board/verdict", createBoardVerdictRouter({
+  supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false },
+  }),
+}));
+// #6574: GET /api/public/stage-route/:stageId (etapens rute til road book-billedet).
+// Offentlig og read-only, whitelistet udsnit. Samme mønster: egen fil, FØR apiRoutes.
+app.use("/api/public/stage-route", createPublicStageRouteRouter({
   supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
   }),
