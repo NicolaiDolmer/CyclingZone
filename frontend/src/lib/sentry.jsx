@@ -21,6 +21,7 @@ import { isBackendUnreachableMessage } from "./backendReachability.js";
 // import.meta.env — en deploy-unik streng i bundlen roterer entry-chunkens hash
 // på hvert deploy og gør alle åbne faner stale. Se lib/release.js.
 import { getRelease, getSentryRelease } from "./release.js";
+import { SENTRY_V10_COMPAT_OPTIONS } from "./sentryCompatOptions.ts";
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENABLED = import.meta.env.PROD && Boolean(DSN);
@@ -65,6 +66,7 @@ export function initSentry() {
     tracesSampleRate: toSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE),
     replaysSessionSampleRate: toSampleRate(import.meta.env.VITE_SENTRY_REPLAY_SAMPLE_RATE),
     replaysOnErrorSampleRate: toSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE, 0.1),
+    ...SENTRY_V10_COMPAT_OPTIONS, // #6607: v10-privatlivs-baseline under Sentry 11
     // #1792 (extensions) + #2018 (Vercel Live Feedback toolbar): dropper events
     // hvis "blame"-frame stammer fra tredjeparts-injiceret kode. Se DENY_URLS.
     denyUrls: DENY_URLS,

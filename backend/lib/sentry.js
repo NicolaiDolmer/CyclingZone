@@ -1,7 +1,37 @@
 import * as Sentry from "@sentry/node";
 import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+import { shouldReportToSentry } from "./errorMiddleware.js";
 
 let enabled = false;
+
+// #6607 (Sentry 10 → 11): v11 fjernede `sendDefaultPii` og gjorde den nye
+// `dataCollection` MERE tilladende som default (bruger-IP, cookies, request-/
+// response-bodies, DB-query-data). Vi sendte aldrig `sendDefaultPii`, så v10-
+// adfærden var den restriktive. Sentrys migrationsguide siger eksplicit: lad
+// IKKE `dataCollection` stå tom hvis v10-adfærden skal bevares — her er
+// baseline'en ordret fra guiden, plus v10's 7 context-linjer (v11: 5).
+// `attachStacktrace: false` bevarer v10-grupperingen: v11 sætter som default en
+// syntetisk stack på captureMessage og ikke-Error-værdier, hvilket splitter
+// eksisterende issue-grupper og tæller beskeder som "errored" sessions.
+// `traceLifecycle: "static"` holder v10's transaktions-model (v11-default er
+// span streaming), anbefalet i #6121 som start.
+const PII_DENY = ["forwarded", "-ip", "remote-", "via", "-user"];
+export const SENTRY_V10_COMPAT_OPTIONS = Object.freeze({
+  attachStacktrace: false,
+  traceLifecycle: "static",
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: { request: { deny: PII_DENY }, response: { deny: PII_DENY } },
+    httpBodies: [],
+    urlQueryParams: { deny: PII_DENY },
+    genAI: { inputs: false, outputs: false },
+    databaseQueryData: false,
+    queues: false,
+    graphQL: { document: false, variables: false },
+    frameContextLines: 7,
+  },
+});
 
 // #2389 (A3): Supabase-js' query-fejl er PLAIN OBJECTS ({message, code, details,
 // hint}), ikke Error-instanser. Sendes de rå til Sentry.captureException, bliver
@@ -203,6 +233,12 @@ export function initSentry() {
     environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
     release: releaseName(),
     tracesSampleRate: sampleRateFromEnv(),
+    ...SENTRY_V10_COMPAT_OPTIONS,
+    // #6607: v11 capturer Express-fejl automatisk i integrationen (ved
+    // throw-stedet, før vores middleware), og `shouldHandleError` er flyttet
+    // hertil fra setupExpressErrorHandler. Samme predicate som errorMiddleware
+    // (#5144), så en 4xx aldrig bliver en driftshændelse i Sentry.
+    integrations: [Sentry.expressIntegration({ shouldHandleError: shouldReportToSentry })],
     beforeSend(event) {
       // #3052: kog HTML-fejlsider ned FØR gruppering/volumen-guard nedenfor.
       normalizeEventMessages(event);
@@ -274,14 +310,25 @@ export function captureException(error, context = {}) {
   });
 }
 
-// options videresendes uændret til Sentry — i praksis `{ shouldHandleError }`
-// (#5144), så server.js kan gate capture til 5xx med samme status-udledning
-// som lib/errorMiddleware.js bruger til selve svaret. Sentrys default gør
-// allerede status >= 500, men den er implicit; en eksplicit predicate gør at
-// de to steder ikke kan drifte fra hinanden uden at en test fanger det.
-export function setupSentryExpressErrorHandler(app, options) {
-  if (!enabled || typeof Sentry.setupExpressErrorHandler !== "function") return;
-  Sentry.setupExpressErrorHandler(app, options);
+// `options.shouldHandleError` (#5144) gater capture til 5xx med samme status-
+// udledning som lib/errorMiddleware.js bruger til selve svaret.
+//
+// #6607 (Sentry 11): Sentry.setupExpressErrorHandler er deprecated og tager
+// ikke længere `shouldHandleError` — den ville capture med Sentrys EGEN
+// default-predicate. Primær capture sker nu i expressIntegration (se init
+// ovenfor, samme predicate). Denne middleware er backstoppen hvis integrationen
+// ikke fik instrumenteret Express (fx Express loadet før init): den capturer
+// med VORES predicate, og en fejl integrationen allerede har sendt springes over
+// af SDK'et selv (samme Error-objekt capturees kun én gang).
+export function setupSentryExpressErrorHandler(app, options = {}) {
+  if (!enabled) return;
+  const shouldHandleError = options.shouldHandleError ?? shouldReportToSentry;
+  app.use(function sentryFallbackErrorHandler(err, _req, _res, next) {
+    if (shouldHandleError(err)) {
+      Sentry.captureException(err, { mechanism: { type: "auto.middleware.express", handled: false } });
+    }
+    next(err);
+  });
 }
 
 // #2077 (#621 punkt 5) — Sentry Cron-heartbeat. Wrap et cron-tick så Sentry ved

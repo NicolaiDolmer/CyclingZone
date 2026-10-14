@@ -12,6 +12,8 @@ import {
   createVolumeLimiter,
   normalizeEventMessages,
   setCronHeartbeatRecorder,
+  SENTRY_V10_COMPAT_OPTIONS,
+  setupSentryExpressErrorHandler,
 } from "./sentry.js";
 
 // I test-env er Sentry disabled (ingen SENTRY_DSN) → monitorCron skal være en ren
@@ -325,4 +327,28 @@ test("normalizeEventMessages — to udfald af samme outage får samme gruppering
   const a = normalizeEventMessages(build("aaaaaaaaaaaaaaaa"));
   const b = normalizeEventMessages(build("bbbbbbbbbbbbbbbb"));
   assert.equal(getEventGroupKey(a), getEventGroupKey(b));
+});
+
+// #6607: Sentry 11's dataCollection-default er mere tilladende end v10 (IP,
+// cookies, bodies). Baseline'en skal eksplicit holde v10's restriktive adfærd.
+test("SENTRY_V10_COMPAT_OPTIONS — bevarer v10's restriktive data-indsamling (#6607)", () => {
+  const { attachStacktrace, dataCollection } = SENTRY_V10_COMPAT_OPTIONS;
+  assert.equal(attachStacktrace, false);
+  assert.equal(SENTRY_V10_COMPAT_OPTIONS.traceLifecycle, "static");
+  assert.equal(dataCollection.userInfo, false);
+  assert.equal(dataCollection.cookies, false);
+  assert.deepEqual(dataCollection.httpBodies, []);
+  assert.equal(dataCollection.databaseQueryData, false);
+  assert.equal(dataCollection.queues, false);
+  assert.deepEqual(dataCollection.genAI, { inputs: false, outputs: false });
+  for (const direction of ["request", "response"]) {
+    assert.ok(dataCollection.httpHeaders[direction].deny.includes("forwarded"));
+    assert.ok(dataCollection.httpHeaders[direction].deny.includes("-ip"));
+  }
+});
+
+test("setupSentryExpressErrorHandler (Sentry disabled) — monterer ingen middleware", () => {
+  let used = 0;
+  setupSentryExpressErrorHandler({ use: () => { used++; } }, { shouldHandleError: () => true });
+  assert.equal(used, 0);
 });
