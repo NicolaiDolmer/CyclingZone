@@ -361,7 +361,7 @@ test("review (3b): et uheldsoffer uden kendt solo-gruppe endnu får ikke restens
 test("review (4): replay viser en gruppe indtil dens faktiske merge-punkt, ikke kun til forrige snapshot", () => {
   const story = buildRaceStory({ events: oneDayTimeline(), timelineVersion: 2 });
   const span = story.group_spans.find((s) => s.group_id === "breakaway-0");
-  assert.deepEqual(span, { group_id: "breakaway-0", from_km: 10, to_km: 88.5, source_group_id: "peloton-0", into_group_id: "peloton-0" });
+  assert.deepEqual(span, { group_id: "breakaway-0", from_km: 10, to_km: 88.5, source_group_id: "peloton-0", into_group_id: "peloton-0", rider_ids: ["a", "b"] });
   // Udbruddet hentes på km 88,5; næste snapshot er målet (km 100).
   const frames = replayFrames(story, { finaleKm: 20 });
   for (const f of frames.filter((x) => x.km > 80 && x.km < 100)) {
@@ -476,4 +476,88 @@ test("review (5): serverens historie får målresultatet, så udbrydernes udfald
   // Endagsløb uden etape-rækker: gc-rækkerne er målresultatet.
   assert.deepEqual(storyInputsFromResults([{ result_type: "gc", stage_number: null, rider_id: "x", rank: 1 }], 1).results, [{ rider_id: "x", rank: 1 }]);
   assert.deepEqual(storyInputsFromResults(rows, 3), { results: [], startlist: [] });
+});
+
+// ── 5. Review-runde 4 på PR #6632 ────────────────────────────────────────────
+
+test("review-runde 4 (1): et split med exact_km før en passage er sket på passagen, selv om det er stemplet ved segmentets slut", () => {
+  const events = oneDayTimeline();
+  const at = events.findIndex((e) => e.type === "kom_passage");
+  // Top på km 45 uden melding. c sætter sig fra feltet på km 43 (exact_km),
+  // men motoren stempler splittet ved segmentets slut (km 60).
+  events.splice(at, 0, ev(45, "kom_passage", { name: "Mellem", category: "3", exact_km: 45, top: [{ rider_id: "a", points: 2 }] }));
+  const splitAt = (params) => ev(60, "peloton_splits", { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["c"], ...params });
+  const withSplit = (params) => {
+    const out = [...events];
+    const i = out.findIndex((e) => e.km === 60 && e.type === "gap_update") + 1;
+    out.splice(i, 0, splitAt(params), ev(60, "gap_update", { group_id: "chase-1", gap_seconds: 130, exact_km: 60, exact_time: 5130 }));
+    return out;
+  };
+  const midOf = (list) => buildRaceStory({ events: list, timelineVersion: 2 }).checkpoints.find((c) => c.name === "Mellem");
+  // Førerens linje: km 40 = 3200 s, km 60 = 5000 s, så km 43 = 3470 s.
+  const mid = midOf(withSplit({ exact_km: 43, exact_time: 3680 }));
+  const c = checkpointGapForRider(mid, "c");
+  assert.equal(c.group_id, "chase-1", "c kørte allerede i sin egen gruppe over toppen");
+  assert.equal(c.via_rest, false);
+  assert.equal(c.gap_s, 210, "hullet er gruppens egen måling på split-punktet, aldrig 'forrest' af mangel på melding");
+  assert.equal(c.time_s, round(mid.leader_time_s + 210));
+  const peloton = mid.groups.find((g) => g.group_id === "peloton-0");
+  assert.deepEqual([peloton.size, peloton.gap_s], [7, 200], "feltet har afgivet c; dets hul er stadig det sidst meldte");
+  // Uden exact_time arver gruppen hullet fra gruppen den kom fra.
+  const inherited = checkpointGapForRider(midOf(withSplit({ exact_km: 43 })), "c");
+  assert.deepEqual([inherited.group_id, inherited.gap_s], ["chase-1", 200]);
+  // Et split der først sker efter toppen (exact_km 50), er stadig fremtid for toppen.
+  const later = checkpointGapForRider(midOf(withSplit({ exact_km: 50, exact_time: 3980 })), "c");
+  assert.deepEqual([later.group_id, later.via_rest], ["peloton-0", true]);
+  // Replay-snapshottet på km 60 er uændret (motorens rækkefølge).
+  const story = buildRaceStory({ events: withSplit({ exact_km: 43, exact_time: 3680 }), timelineVersion: 2 });
+  assert.equal(checkpointGapForRider(story.snapshots.find((s) => s.km === 60), "c").gap_s, 130);
+});
+
+test("review-runde 4 (2): replay viser en gruppe der både opstår og forsvinder mellem to snapshots, i hele dens levetid", () => {
+  const events = oneDayTimeline();
+  const fin = events.findIndex((e) => e.type === "sprint_decided");
+  // c sætter sig fra feltet på km 91 og hentes på km 96; begge stemplet ved målet.
+  events.splice(fin, 0,
+    ev(100, "peloton_splits", { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["c"], exact_km: 91 }),
+    ev(100, "group_merged", { group_id: "chase-1", into_group_id: "peloton-0", rider_ids: ["c"], exact_km: 96 }));
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  assert.deepEqual(story.group_spans.find((s) => s.group_id === "chase-1"),
+    { group_id: "chase-1", from_km: 91, to_km: 96, source_group_id: "peloton-0", into_group_id: "peloton-0", rider_ids: ["c"] });
+  assert.ok(!story.snapshots.some((s) => s.groups.some((g) => g.group_id === "chase-1")), "intet snapshot kender gruppen");
+  const frames = replayFrames(story, { finaleKm: 20 });
+  const size = (f, id) => f.groups.find((g) => g.group_id === id)?.size;
+  for (const f of frames.filter((x) => x.km > 80 && x.km < 100)) {
+    const alive = f.km >= 91 && f.km <= 96;
+    assert.equal(f.groups.some((g) => g.group_id === "chase-1"), alive, `km ${f.km}: chase-1 ${alive ? "er" : "er ikke"} på vejen`);
+    const total = f.groups.reduce((sum, g) => sum + (g.size ?? 0), 0);
+    assert.equal(total, 10, `km ${f.km}: hver rytter i præcis én gruppe (${f.groups.map((g) => `${g.group_id}=${g.size}`).join(", ")})`);
+  }
+  assert.equal(size(frames.find((f) => f.km === 93), "chase-1"), 1);
+  assert.equal(size(frames.find((f) => f.km === 93), "peloton-0"), 9);
+  // Efter udbruddets merge-punkt (km 88,5) kører udbryderne i feltet.
+  assert.equal(size(frames.find((f) => f.km === 90), "peloton-0"), 10);
+  assert.equal(size(frames.find((f) => f.km === 97), "peloton-0"), 10);
+});
+
+test("review-runde 4 (3): en hændelse på et snapshots km, stemplet først senere, styrer replayet fra dét km", () => {
+  const finaleFrames = (events) => replayFrames(buildRaceStory({ events, timelineVersion: 2 }), { finaleKm: 20 })
+    .filter((f) => f.km > 80 && f.km < 100);
+  const total = (f) => f.groups.reduce((sum, g) => sum + (g.size ?? 0), 0);
+  // Split på km 80 (exact_km = snapshottets km), stemplet ved målet.
+  const split = oneDayTimeline();
+  split.splice(split.findIndex((e) => e.type === "sprint_decided"), 0,
+    ev(100, "peloton_splits", { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["c"], exact_km: 80 }),
+    ev(100, "gap_update", { group_id: "chase-1", gap_seconds: 20, exact_km: 100, exact_time: 8220 }));
+  for (const f of finaleFrames(split)) {
+    assert.ok(f.groups.some((g) => g.group_id === "chase-1"), `km ${f.km}: chase-1 er på vejen`);
+    assert.equal(total(f), 10, `km ${f.km}`);
+  }
+  // Indhentning på km 80 (exact_km = snapshottets km), stemplet på km 90:
+  // udbryderne forsvinder ikke ud af replayet, de kører i feltet.
+  const caught = oneDayTimeline().map((e) => (e.km === 90 ? ev(90, e.type, { ...e.params, exact_km: 80, exact_time: 6600 }) : e));
+  for (const f of finaleFrames(caught)) {
+    assert.ok(!f.groups.some((g) => g.group_id === "breakaway-0"), `km ${f.km}: udbruddet er hentet`);
+    assert.equal(total(f), 10, `km ${f.km}`);
+  }
 });
