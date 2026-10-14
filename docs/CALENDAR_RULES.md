@@ -1155,7 +1155,7 @@ Afslutningen er **geometri, ikke udfald**: flad spurt · stigende spurt · bakke
 
 ### Benchmark-gaten (spec §5)
 
-`backend/lib/s5BenchmarkGate.js`. Måler den **planlagte** kalender mod 315 rigtige Grand Tour-etaper (`docs/design/s5-benchmark/gt-2021-2025.json`). Fire dele:
+`backend/lib/s5BenchmarkGate.js`. Måler den **planlagte** kalender mod 315 rigtige Grand Tour-etaper (`backend/lib/__fixtures__/s5Benchmark.gt-2021-2025.json`). Fire dele:
 
 | Del | Hvad | Tolerance |
 |---|---|---|
