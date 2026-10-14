@@ -222,3 +222,97 @@ test("legacy name lookup includes completed races and treats wildcard characters
     ["finished"]
   );
 });
+
+test("a legacy name still finds editions when absent from the current season", async () => {
+  const db = fake({ races: [race("older", { season_id: "s3", status: "completed" })] });
+  const result = await createRaceLibraryReader(db.client).findRaceByName(
+    "Vuelta Ibérica",
+    scope,
+    seasons,
+    pools,
+    new AbortController().signal
+  );
+  assert.deepEqual(
+    result.map((r) => r.id),
+    ["older"]
+  );
+});
+
+test("statistics retain separate GC/stage wins and points from every classification", async () => {
+  const db = fake({
+    races: [race("finished", { status: "completed" })],
+    race_results: [
+      {
+        id: "g",
+        race_id: "finished",
+        result_type: "gc",
+        rank: 1,
+        rider_id: "r",
+        rider_name: "Synthetic rider",
+        points_earned: 100,
+      },
+      {
+        id: "s",
+        race_id: "finished",
+        result_type: "stage",
+        rank: 1,
+        rider_id: "r",
+        points_earned: 10,
+      },
+      {
+        id: "p",
+        race_id: "finished",
+        result_type: "points",
+        rank: 2,
+        rider_id: "r",
+        points_earned: 30,
+      },
+    ],
+  });
+  const [stat] = await createRaceLibraryReader(db.client).listRaceStats(
+    { name: "Vuelta Ibérica", race_type: "stage_race" },
+    scope,
+    seasons,
+    pools,
+    new AbortController().signal
+  );
+  assert.equal(stat.stageWins, 1);
+  assert.equal(stat.gcWins, 1);
+  assert.equal(stat.points, 140);
+  assert.equal(stat.podiums, 3);
+});
+test("large season and pool selectors are bounded while shared editions are deduplicated", async () => {
+  const manySeasons = Array.from({ length: 205 }, (_, i) => ({
+    id: "s" + i,
+    number: i + 1,
+    status: "completed",
+  }));
+  const manyPools = Array.from({ length: 205 }, (_, i) => ({
+    id: i,
+    tier: 1,
+    pool_index: i,
+    label: String(i),
+  }));
+  const db = fake({ races: [race("shared", { season_id: "s4", league_division_id: null })] });
+  const rows = await createRaceLibraryReader(db.client).listRaceEditions(
+    { name: "Vuelta Ibérica", race_type: "stage_race" },
+    { ...scope, poolId: null },
+    manySeasons,
+    manyPools,
+    new AbortController().signal
+  );
+  assert.equal(rows.length, 1);
+  const calls = db.calls.filter((c) => c.table === "races");
+  assert.ok(calls.length >= 9);
+  for (const call of calls) {
+    assert.ok(
+      call.ops.filter(([op]) => op === "in").every(([, a]) => (a[1] as unknown[]).length <= 100)
+    );
+    const selector = String(
+      call.ops.find(
+        ([op, a]) => op === "or" && String(a[0]).includes("league_division_id")
+      )?.[1][0] ?? ""
+    );
+    assert.ok(selector.split(",").length <= 102);
+  }
+});

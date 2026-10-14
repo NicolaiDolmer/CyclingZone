@@ -29,3 +29,9 @@ Mechanics are inherited from [CALENDAR_RULES](CALENDAR_RULES.md) §0/0b, [PLANNI
 ## Evidence
 
 [Local PG17 baseline](audits/2026-10-14-loebsbibliotek-baseline.md) is synthetic SQL evidence, not a production latency claim. No approved performance SLO exists. Browser/runtime, mobile, dark/light, pagination, query-scope and transition tests must accompany release.
+
+## Navigation and statistics
+
+Legacy exact-name URLs search known seasons; a unique current-season candidate takes precedence, otherwise a sole historical candidate opens in its persisted season. Multiple candidates require explicit selection. React Router decodes the path once; wildcard characters are literal. Missing stage counts remain unknown.
+URL filters and optional full-table mode survive edition navigation; the list restores its opening scroll position. DataTable accepts optional fullTable/onFullTableChange; absent props preserve its existing local-state behaviour.
+Historical rider statistics retain separate GC/stage wins and points/podiums across all stored classifications, scoped to completed reportable editions. They load only on the statistics tab. Season, pool and race ID selectors are batched at 100; shared editions are deduplicated by race.id.

@@ -21,7 +21,16 @@ export function normalizeRaceSearch(value: string): string {
     .join("");
 }
 export function matchesRaceSearch(name: string, query: string): boolean {
-  return normalizeRaceSearch(name).includes(normalizeRaceSearch(query));
+  const literal = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, "");
+  return (
+    normalizeRaceSearch(name).includes(normalizeRaceSearch(query)) ||
+    literal(name).includes(literal(query))
+  );
 }
 // Exact persisted spelling is deliberately distinct from the forgiving search index.
 export function raceFamilyKey<T extends Pick<RawRace, "name" | "race_type">>(race: T): string {
@@ -37,7 +46,7 @@ export function summariseRace(
   const derived = deriveRaceStatus(race.status, race.stages_completed, race.stages);
   const status =
     derived === "scheduled" || derived === "live" || derived === "completed" ? derived : "unknown";
-  const stages = race.stages && race.stages > 0 ? race.stages : 1;
+  const stages = race.stages && race.stages > 0 ? race.stages : null;
   const dates = schedule
     .map((row) => row.scheduled_at)
     .filter((value) => Number.isFinite(Date.parse(value)))
@@ -46,12 +55,12 @@ export function summariseRace(
     .map((row) => row.game_day)
     .filter((day): day is number => typeof day === "number" && Number.isFinite(day));
   const profileMap = new Map(profiles.map((row) => [row.stage_number, row.distance_km]));
-  const distances = Array.from({ length: stages }, (_, i) => profileMap.get(i + 1));
-  const distanceKm = distances.every(
-    (d): d is number => typeof d === "number" && Number.isFinite(d) && d > 0
-  )
-    ? distances.reduce((total, d) => total + d, 0)
-    : null;
+  const distances = Array.from({ length: stages ?? 0 }, (_, i) => profileMap.get(i + 1));
+  const distanceKm =
+    stages !== null &&
+    distances.every((d): d is number => typeof d === "number" && Number.isFinite(d) && d > 0)
+      ? distances.reduce((total, d) => total + d, 0)
+      : null;
   const resultType = race.race_type === "stage_race" ? "gc" : "stage";
   const final =
     status === "completed"

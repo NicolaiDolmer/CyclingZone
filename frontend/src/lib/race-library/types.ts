@@ -75,7 +75,7 @@ export interface RaceEditionSummary {
   seasonId: string;
   seasonNumber: number;
   poolId: number | null;
-  stages: number;
+  stages: number | null;
   status: "scheduled" | "live" | "completed" | "unknown";
   startAt: string | null;
   endAt: string | null;

@@ -124,3 +124,14 @@ test("library preserves editions sharing year/name and puts live first; history 
     ["race-c"]
   );
 });
+
+test("missing stage count is unknown, not an invented one-day race", () => {
+  const row = summariseRace({ ...raw, stages: null }, season, [], [], []);
+  assert.equal(row.stages, null);
+  assert.equal(row.distanceKm, null);
+});
+
+test("compact search keeps a literal full name as well as article-free variants", () => {
+  assert.ok(matchesRaceSearch("Tour de l'Hexagone", "tourdelhexagone"));
+  assert.ok(matchesRaceSearch("Giro della Penisola", "girodellapenisola"));
+});

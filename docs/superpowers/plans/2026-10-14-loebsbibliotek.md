@@ -2,7 +2,7 @@
 
 > Ved senere udførelse: brug superpowers:executing-plans og afkryds trinene sekventielt. Ingen parallel delegation uden særskilt mandat.
 >
-> Status 14/10/2026: ejeren har godkendt skitsens retning og **Kommende løb som startfane**. Denne plan er til review. **Ingen kode endnu; ingen godkendelse til build, merge eller release registreret.**
+> Status 14/10/2026: ejeren har godkendt skitsens retning og **Kommende løb som startfane**. **Godkendt til build 14/10**, [registreret på #6514](https://github.com/NicolaiDolmer/CyclingZone/issues/6514#issuecomment-6175783481). Merge/release afventer stadig ejerens mandat. Implementeringen ligger i eget worktree og draft #6636.
 
 **Mål:** Ét hurtigt, søgbart løbsbibliotek med kommende løb, historik og sammenhæng mellem udgaver. Spilleren skal kunne finde et løb og forstå den valgte udgave uden at grave i kalenderen.
 
@@ -126,8 +126,8 @@ Ejeren skal på preview finde Vuelta uden præcis accent, vælge ældre L'Enfer-
 
 **M/L**, tre reviewbare leverancer; intet kalender-/motorarbejde. Kritisk afhængighed er korrekt historisk familieidentitet og en tilstrækkeligt hurtig eksisterende læsesti. S5-data er ikke en forudsætning for udvikling: test med anonymiserede S1-S4-lignende fixtures samt syntetisk fremtidig sæson; ændr aldrig S5 for at få biblioteket grønt.
 
-**Næste ejerbeslutning:** godkend eller korrigér planen, især den foreslåede placering af igangværende løb og legacy-linkadfærden. Først et efterfølgende eksplicit “godkendt til build” åbner udførelsen. Anbefaling: implementér sekventielt, fordi alle tre leverancer deler identitets- og scope-kontrakten.
+**Udførelse 14/10:** de tre leverancer udføres sekventielt som commits i samme draft-PR #6636. Det holder maksimum to drafts sammen med planens #6634 og undgår en release uden mandat. Tjekbokse ovenfor er den oprindelige acceptliste, ikke en påstand om fuld verifikation; aktuel evidens og resterende gates står i PR og #6514.
 
-**Denne omgang:** kun planen er skrevet. Ingen produkttests, ny PG17-måling eller runtime-reproduktion udført; de står som fremtidige opgaver. Ingen patch notes nødvendige for selve plandokumentet. Planen og ejerens startfanevalg registreres på #6514; ingen nyt issue og ingen kommentar på de beskyttede spor.
+**Afvigelser med bevis:** katalog-IDs skifter på S1-S4 for tre GT-familier. Præcist gemt navn + løbstype identificerer derfor kandidater; race.id og scope identificerer altid udgaven. Se [SSOT](../../RACE_LIBRARY_RULES.md) og [PG17-baseline](../../audits/2026-10-14-loebsbibliotek-baseline.md). Ingen evidens for autentificeret produktsvartid eller forbedret spilleradfærd. Tidligere arkivsøgning kunne ikke reproduceres i en autentificeret produktionssession.
 
-**Dokumentverifikation:** relative kildelinks findes; staged diff-check bestået; kun dette Markdown-dokument ændret. Repo-preflight blev kørt og sluttede med exit 1 på frontend-lint og eslint-warning-budget; dokumentationsworktreet mangler lint-afhængigheder, herunder @eslint/js. Ingen påstand om grøn komplet preflight. Commit-hookens root-afhængigheder blev efterfølgende installeret isoleret i worktreet. Ingen ændring af produktkode eller dependency-manifester foretaget.
+**Patch notes:** ændringerne skrives i frontend/src/data/patchNotes.js, som PatchNotesPage render; selve render-siden ændres ikke. Ingen publicering/Discord-opslag udføres her.

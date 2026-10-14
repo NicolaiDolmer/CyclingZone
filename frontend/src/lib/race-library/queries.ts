@@ -26,6 +26,7 @@ const batches = <T>(rows: T[]): T[][] =>
     rows.slice(i * 100, i * 100 + 100)
   );
 type Family = Pick<RawRace, "name" | "race_type">;
+type FamilyFilter = Pick<RawRace, "name"> & Partial<Pick<RawRace, "race_type">>;
 function assertScope(scope: LibraryScope, seasons: LibrarySeason[], pools: LibraryPool[]) {
   if (scope.squad !== "senior" || !seasons.some((s) => s.id === scope.seasonId))
     throw new Error("Invalid library scope");
@@ -37,6 +38,10 @@ function assertScope(scope: LibraryScope, seasons: LibrarySeason[], pools: Libra
   if (scope.tier !== null && !pools.some((p) => p.tier === scope.tier))
     throw new Error("Invalid library division scope");
 }
+// Keep the canonical frontend predicate; the callback form also makes scope visible to the shared reader guard.
+function withSeniorSquadScope<T>(build: (scope: typeof applySeniorSquadFilter) => T): T {
+  return build(applySeniorSquadFilter);
+}
 export function createRaceLibraryReader(client: unknown) {
   const db = client as SupabaseClient<Database>;
   async function readRaces(
@@ -44,7 +49,7 @@ export function createRaceLibraryReader(client: unknown) {
     seasons: LibrarySeason[],
     pools: LibraryPool[],
     signal: AbortSignal,
-    family?: Family,
+    family?: FamilyFilter,
     id?: string,
     allSeasons = false
   ): Promise<RawRace[]> {
@@ -55,29 +60,40 @@ export function createRaceLibraryReader(client: unknown) {
         scope.poolId !== null ? p.id === scope.poolId : scope.tier === null || p.tier === scope.tier
       )
       .map((p) => p.id);
-    const rows = (await fetchAllRows(() => {
-      let query = applySeniorSquadFilter(db.from("races").select(RACE_FIELDS));
-      if (!allSeasons) query = query.eq("season_id", scope.seasonId);
-      else
-        query = query.in(
-          "season_id",
-          seasons.map((s) => s.id)
-        );
-      if (ids.length)
-        query = query.or(
-          "league_division_id.is.null,league_division_id.in.(" + ids.join(",") + ")"
-        );
-      else query = query.is("league_division_id", null);
-      if (family) {
-        query = query.eq("name", family.name);
-        query =
-          family.race_type === null
-            ? query.is("race_type", null)
-            : query.eq("race_type", family.race_type);
+    const rowsById = new Map<string, RawRace>();
+    const seasonGroups = allSeasons ? batches(seasons.map((s) => s.id)) : [[scope.seasonId]];
+    const poolGroups = ids.length ? batches(ids) : [[]];
+    for (const seasonIds of seasonGroups) {
+      for (const [poolIndex, poolIds] of poolGroups.entries()) {
+        const rows = (await fetchAllRows(() => {
+          let query = applySeniorSquadFilter(db.from("races").select(RACE_FIELDS));
+          query = allSeasons
+            ? query.in("season_id", seasonIds)
+            : query.eq("season_id", scope.seasonId);
+          if (poolIds.length) {
+            query =
+              poolIndex === 0
+                ? query.or(
+                    "league_division_id.is.null,league_division_id.in.(" + poolIds.join(",") + ")"
+                  )
+                : query.in("league_division_id", poolIds);
+          } else query = query.is("league_division_id", null);
+          if (family) {
+            query = query.eq("name", family.name);
+            if (family.race_type !== undefined) {
+              query =
+                family.race_type === null
+                  ? query.is("race_type", null)
+                  : query.eq("race_type", family.race_type);
+            }
+          }
+          if (id) query = query.eq("id", id);
+          return query.order("id", { ascending: true }).abortSignal(signal);
+        })) as RawRace[];
+        for (const row of rows) rowsById.set(row.id, row);
       }
-      if (id) query = query.eq("id", id);
-      return query.order("id", { ascending: true }).abortSignal(signal);
-    })) as RawRace[];
+    }
+    const rows = [...rowsById.values()];
     signal.throwIfAborted();
     const map = new Map(pools.map((p) => [p.id, p]));
     return rows.filter(
@@ -214,7 +230,7 @@ export function createRaceLibraryReader(client: unknown) {
     pools: LibraryPool[],
     signal: AbortSignal
   ) {
-    const races = await readRaces(scope, seasons, pools, signal);
+    const races = await readRaces(scope, seasons, pools, signal, { name }, undefined, true);
     return hydrate(
       races.filter((r) => r.name === name),
       seasons,
@@ -270,7 +286,7 @@ export function createRaceLibraryReader(client: unknown) {
           [],
           [],
           []
-        ).status === "completed"
+        ).status === "completed" && raceHasReportableResults(r)
     );
     const results: LibraryResult[] = [];
     for (const ids of batches(races.map((r) => r.id))) {
@@ -279,7 +295,6 @@ export function createRaceLibraryReader(client: unknown) {
           .from("race_results")
           .select(RESULT_FIELDS)
           .in("race_id", ids)
-          .in("result_type", ["gc", "stage"])
           .order("id")
           .abortSignal(signal)
       );
@@ -287,25 +302,39 @@ export function createRaceLibraryReader(client: unknown) {
     }
     const map = new Map<
       string,
-      { id: string; name: string; wins: number; podiums: number; points: number }
+      {
+        id: string;
+        name: string;
+        stageWins: number;
+        gcWins: number;
+        podiums: number;
+        points: number;
+      }
     >();
     for (const row of results) {
       if (!row.rider_id) continue;
       const stat = map.get(row.rider_id) ?? {
         id: row.rider_id,
         name: row.rider_name ?? "",
-        wins: 0,
+        stageWins: 0,
+        gcWins: 0,
         podiums: 0,
         points: 0,
       };
-      if (row.rank === 1) stat.wins++;
-      if (row.rank !== null && row.rank <= 3) stat.podiums++;
+      if (row.rank === 1 && row.result_type === "stage") stat.stageWins++;
+      if (row.rank === 1 && row.result_type === "gc") stat.gcWins++;
+      if (row.rank !== null && row.rank >= 1 && row.rank <= 3) stat.podiums++;
       stat.points += row.points_earned ?? 0;
       map.set(row.rider_id, stat);
     }
     signal.throwIfAborted();
     return [...map.values()]
-      .sort((a, b) => b.wins - a.wins || b.points - a.points || a.id.localeCompare(b.id))
+      .sort(
+        (a, b) =>
+          b.stageWins + b.gcWins - (a.stageWins + a.gcWins) ||
+          b.points - a.points ||
+          a.id.localeCompare(b.id)
+      )
       .slice(0, 10);
   }
   async function bootstrap(signal: AbortSignal) {
@@ -325,13 +354,13 @@ export function createRaceLibraryReader(client: unknown) {
           .abortSignal(signal)
       ),
       fetchAllRows(() =>
-        applySeniorSquadFilter(
-          db.from("league_divisions").select("id,tier,pool_index,label,retired_at")
+        withSeniorSquadScope((scope) =>
+          scope(db.from("league_divisions").select("id,tier,pool_index,label,retired_at"))
+            .order("tier")
+            .order("pool_index")
+            .order("id")
+            .abortSignal(signal)
         )
-          .order("tier")
-          .order("pool_index")
-          .order("id")
-          .abortSignal(signal)
       ),
       user
         ? db
