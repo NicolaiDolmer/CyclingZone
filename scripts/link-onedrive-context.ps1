@@ -26,6 +26,8 @@ $ErrorActionPreference = "Stop"
 
 $Script:Conflicts = @()
 
+. (Join-Path $PSScriptRoot 'lib\cross-pc-env.ps1')
+
 function Add-Conflict([string]$category, [string]$details) {
   $Script:Conflicts += [PSCustomObject]@{ Category = $category; Details = $details }
 }
@@ -385,6 +387,36 @@ if (Test-Path $claudeSettingsSource) {
   Write-Host "  [skip] claude-settings ikke i OneDrive endnu - skip indtil etableret paa primary PC"
 }
 
+# --- 3c-pre. Pin kritiske OneDrive-mapper lokalt (#6602) ---
+# Files On-Demand goer filer cloud-only paa en PC der ikke har vaeret brugt laenge;
+# memory bliver saa langsom eller mangler offline. Pin de smaa, kritiske mapper
+# ("Always keep on this device"). Store mapper (private-handoffs, transcripts) pinnes IKKE.
+# Idempotent: attrib +P -U paa allerede pinnede filer er en no-op.
+Write-Section "Pin kritiske OneDrive-mapper lokalt (#6602)"
+
+foreach ($pinName in @("memory", "codex-memories", "codex-local", "tools", "claude-settings")) {
+  $pinDir = Join-Path $contextRoot $pinName
+  if (-not (Test-Path -LiteralPath $pinDir)) {
+    Write-Host "  [skip] $pinName findes ikke i OneDrive-context"
+    continue
+  }
+  $before = Get-CloudOnlyFileCount $pinDir
+  if ($DryRun) {
+    Write-Host ("  [would-pin] {0} ({1} cloud-only fil(er))" -f $pinName, $before) -ForegroundColor Cyan
+    continue
+  }
+  $null = & attrib +P -U "$pinDir" 2>&1
+  $null = & attrib +P -U "$pinDir\*" /S /D 2>&1
+  $pinExit = $LASTEXITCODE
+  $after = Get-CloudOnlyFileCount $pinDir
+  $note = if ($after -gt 0) { " - OneDrive henter resten i baggrunden" } else { "" }
+  if ($pinExit -ne 0) {
+    Write-Host ("  [warn] attrib exit {0} for {1} (cloud-only: {2} -> {3})" -f $pinExit, $pinName, $before, $after) -ForegroundColor Yellow
+  } else {
+    Write-Host ("  [ok] {0} pinnet (cloud-only: {1} -> {2}){3}" -f $pinName, $before, $after, $note)
+  }
+}
+
 # --- 3c. Cross-PC transcript sync (#391 Phase 2) ---
 # Triggers cross-pc-sync.sh i background ved hver SessionStart, så vi catcher
 # sessioner der døde uden clean Stop-hook. Stop-hook gør samme thing — dette er
@@ -400,11 +432,17 @@ if (Test-Path $syncScript) {
     Write-Host "  [would-trigger] bash scripts/cross-pc-sync.sh (background)"
   } else {
     # Fire-and-forget: bash starter, vi venter ikke. Logger til ~/.claude/cross-pc-sync.log.
-    try {
-      Start-Process -FilePath "bash" -ArgumentList @($syncScript) -NoNewWindow -PassThru -ErrorAction Stop | Out-Null
-      Write-Host "  [triggered] bash cross-pc-sync.sh (background; log: ~/.claude/cross-pc-sync.log)" -ForegroundColor Green
-    } catch {
-      Write-Host ("  [warn] kunne ikke starte bash-sync: {0}" -f $_.Exception.Message) -ForegroundColor Yellow
+    # Git Bash ligger ikke altid paa PATH (kun i Program Files\Git\bin), saa resolve den (#6602).
+    $bashExe = Resolve-GitBash
+    if (-not $bashExe) {
+      Write-Host ("STOP-MESSAGE: Git Bash ikke fundet paa {0} (hverken PATH eller Program Files\Git\bin) - cross-pc-sync.sh koerer ikke. Installer Git eller koer scripts/bootstrap-pc.ps1." -f $env:COMPUTERNAME)
+    } else {
+      try {
+        Start-Process -FilePath $bashExe -ArgumentList @("`"$syncScript`"") -NoNewWindow -PassThru -ErrorAction Stop | Out-Null
+        Write-Host "  [triggered] $bashExe cross-pc-sync.sh (background; log: ~/.claude/cross-pc-sync.log)" -ForegroundColor Green
+      } catch {
+        Write-Host ("  [warn] kunne ikke starte bash-sync ({0}): {1}" -f $bashExe, $_.Exception.Message) -ForegroundColor Yellow
+      }
     }
   }
 } else {
