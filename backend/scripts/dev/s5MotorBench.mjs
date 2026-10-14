@@ -177,8 +177,24 @@ export function riderTypeById(field) {
   return new Map(field.abilities.map(({ rider_id, ...abilities }) => [rider_id, computeRiderTypes(abilities, { mean, std }).primary.key]));
 }
 
+/** Evnerne vinderprofilen vises i (percentil i feltet, 0-100). */
+export const PROFILE_ABILITIES = Object.freeze(["sprint", "acceleration", "punch", "climbing", "time_trial", "durability"]);
+
+/** Hver rytters percentil i feltet pr. PROFILE_ABILITIES (andel af feltet med lavere evne). */
+export function abilityPercentiles(field) {
+  const out = new Map(field.abilities.map((a) => [a.rider_id, {}]));
+  for (const k of PROFILE_ABILITIES) {
+    const xs = field.abilities.map((a) => Number(a[k]) || 0);
+    for (const a of field.abilities) {
+      const v = Number(a[k]) || 0;
+      out.get(a.rider_id)[k] = (100 * xs.filter((x) => x < v).length) / Math.max(1, xs.length - 1);
+    }
+  }
+  return out;
+}
+
 /** Etapens maalinger fra motorens output (ren). */
-export function measureStage({ profile, out, typeById }) {
+export function measureStage({ profile, out, typeById, percentileById = null }) {
   const fin = (out?.results ?? []).filter((r) => r.status === "finished").sort((a, b) => a.time_seconds - b.time_seconds || a.rank - b.rank);
   const finish = s5FinishOf(profile);
   const tt = finish === "solo_tt" || finish === "ttt";
@@ -191,6 +207,7 @@ export function measureStage({ profile, out, typeById }) {
     breakawayWon: tt ? false : breakawayWin(out).won,
     winnerType: fin[0] ? typeById.get(fin[0].rider_id) ?? null : null,
     top10Types: fin.slice(0, 10).map((r) => typeById.get(r.rider_id) ?? null),
+    winnerPercentiles: fin[0] && percentileById ? percentileById.get(fin[0].rider_id) ?? null : null,
   };
 }
 
@@ -202,6 +219,7 @@ export async function runS5MotorBench({ races = buildS5BenchRaces(), simSeeds = 
   const engine = v4 ?? await loadRaceEngineV4();
   const field = loadBenchField();
   const typeById = riderTypeById(field);
+  const percentileById = abilityPercentiles(field);
   const rows = [];
   for (const { seasonId, race, stages, grandTour } of races) {
     const raceId = `${race.id}:${seasonId}`;
@@ -211,7 +229,7 @@ export async function runS5MotorBench({ races = buildS5BenchRaces(), simSeeds = 
       runStagesInOrder({
         v4: engine, data, revision, seedTag: `s5bench-${seed}`,
         onStage: ({ profile, res }) => {
-          rows.push({ seasonId, raceId: race.id, raceName: race.name, grandTour, simSeed: seed, ...measureStage({ profile, out: res.v4Output, typeById }) });
+          rows.push({ seasonId, raceId: race.id, raceName: race.name, grandTour, simSeed: seed, ...measureStage({ profile, out: res.v4Output, typeById, percentileById }) });
         },
       });
     }
@@ -234,6 +252,8 @@ function groupStats(rows) {
     breakawayWinPct: rows.length ? round1((rows.filter((r) => r.breakawayWon).length / rows.length) * 100) : null,
     winnerTypesPct: typeShares(rows.map((r) => r.winnerType)),
     top10TypesPct: typeShares(rows.flatMap((r) => r.top10Types)),
+    // Vinderens median-percentil i feltet pr. evne (50 = midt i feltet).
+    winnerProfile: Object.fromEntries(PROFILE_ABILITIES.map((k) => [k, round1(median(rows.map((r) => r.winnerPercentiles?.[k]).filter((v) => v != null)))])),
   };
 }
 
@@ -319,11 +339,12 @@ export function fixtureFromSummary(summary) {
 }
 
 function table(title, groups, bench = null) {
-  const ud = [`### ${title}`, "", "| Gruppe | n | gap10 median | p25-p75 | udbrud vandt | vindertyper | top-10-typer |" + (bench ? " benchmark median (p25-p75, n) |" : ""), "|---|---|---|---|---|---|---|" + (bench ? "---|" : "")];
+  const ud = [`### ${title}`, "", "| Gruppe | n | gap10 median | p25-p75 | udbrud vandt | vindertyper | top-10-typer | vinder-percentil (spurt/acc/punch/klatr/tt/dur) |" + (bench ? " benchmark median (p25-p75, n) |" : ""), "|---|---|---|---|---|---|---|---|" + (bench ? "---|" : "")];
   const fmt = (o) => Object.entries(o).slice(0, 4).map(([k, v]) => `${k} ${v} %`).join(", ");
   for (const [k, g] of Object.entries(groups)) {
     const b = bench?.[k];
-    ud.push(`| ${k} | ${g.n} | ${g.median ?? "-"} s | ${g.p25 ?? "-"}-${g.p75 ?? "-"} s | ${g.breakawayWinPct ?? "-"} % | ${fmt(g.winnerTypesPct)} | ${fmt(g.top10TypesPct)} |` + (bench ? ` ${b ? `${round1(b.median)} s (${round1(b.p25)}-${round1(b.p75)}, n=${b.n})` : "-"} |` : ""));
+    const prof = PROFILE_ABILITIES.map((a) => g.winnerProfile[a] ?? "-").join("/");
+    ud.push(`| ${k} | ${g.n} | ${g.median ?? "-"} s | ${g.p25 ?? "-"}-${g.p75 ?? "-"} s | ${g.breakawayWinPct ?? "-"} % | ${fmt(g.winnerTypesPct)} | ${fmt(g.top10TypesPct)} | ${prof} |` + (bench ? ` ${b ? `${round1(b.median)} s (${round1(b.p25)}-${round1(b.p75)}, n=${b.n})` : "-"} |` : ""));
   }
   return [...ud, ""];
 }
