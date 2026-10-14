@@ -43,8 +43,11 @@ sent angreb fra `lateAttack.ts`) flytter navngivne ryttere; `group_merged` slår
 grupper sammen. Ryttere ingen hændelse har nævnt, kører i **resten**
 (`includes_rest: true`, følger `peloton-0` gennem sammenlægninger), så
 historien virker uden startliste. Et uheldsoffer kører i en `solo-m10-*`-gruppe
-som uheldet ikke navngiver; rytteren knyttes til den første ukendte
-`solo-m10-*`-gruppe loggen nævner efter uheldet (`members_inferred: true`).
+som uheldet ikke navngiver; rytteren udledes af gruppe-id'ets segment og seq
+med motorens egen navngivning (`incidents.ts`: segmentets uheld i rider_id-
+orden, udgåelser tæller med), aldrig af rækkefølgen grupperne nævnes i
+(`members_inferred: true`). Et uheld fra en anden mekanik (`cause`) får ingen
+`solo-m10-*`-gruppe.
 Indtil da står rytteren i `pending_rider_ids` og er ikke i resten (hullet er
 ukendt). En udgået rytter (`incident` med `outcome: "abandoned"`, eller
 `outside_time_limit`) er fra det km aldrig i resten, venter ikke på en

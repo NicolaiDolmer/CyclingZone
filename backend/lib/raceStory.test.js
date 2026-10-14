@@ -385,6 +385,69 @@ test("review (4): replay viser en gruppe indtil dens faktiske merge-punkt, ikke 
   assert.ok(split.find((f) => f.km === 93).groups.some((g) => g.group_id === "chase-1"));
 });
 
+// ── 4. Review-runde 3 på PR #6632 ────────────────────────────────────────────
+
+test("review-runde 3 (1): uheldsgrupper knyttes efter rytter-identitet (motorens seq), ikke efter rækkefølge", () => {
+  // Samme segment: f (km 12) og e (km 14) taber tid, d (km 16) udgår. Motoren
+  // giver seq i rider_id-orden og tæller udgåelsen med: d=0, e=1, f=2. Loggen
+  // står i km-orden, så ventelisten er [f, e] - en FIFO ville bytte dem.
+  const solo = (km, id, gap, leader) => ev(km, "gap_update", { group_id: id, gap_seconds: gap, exact_km: km, exact_time: leader + gap });
+  const events = [
+    ...oneDayTimeline(),
+    ev(12, "incident", { rider_id: "f", kind: "crash", outcome: "time_loss", time_loss_seconds: 60, exact_km: 12 }),
+    ev(14, "incident", { rider_id: "e", kind: "puncture", outcome: "time_loss", time_loss_seconds: 140, exact_km: 14 }),
+    ev(16, "incident", { rider_id: "d", kind: "crash", outcome: "abandoned", exact_km: 16 }),
+    solo(20, "solo-m10-0-0", 3600, 1600),
+    solo(20, "solo-m10-0-1", 200, 1600),
+    solo(20, "solo-m10-0-2", 120, 1600),
+    // Næste segment: g's uheld (M10) og h's nedkørselsstyrt (anden mekanik,
+    // intet solo-m10-id). h må aldrig få g's gruppe.
+    ev(30, "incident", { rider_id: "h", kind: "crash", outcome: "time_loss", time_loss_seconds: 30, cause: "descent_attack", exact_km: 30 }),
+    ev(32, "incident", { rider_id: "g", kind: "crash", outcome: "time_loss", time_loss_seconds: 90, exact_km: 32 }),
+    solo(40, "solo-m10-1-0", 300, 3200),
+  ];
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  const snap20 = story.snapshots.find((s) => s.km === 20);
+  const members = (snap, id) => snap.groups.find((g) => g.group_id === id)?.rider_ids ?? [];
+  assert.deepEqual(members(snap20, "solo-m10-0-0"), [], "d's gruppe: d er udgået, ingen anden rytter får den");
+  assert.deepEqual(members(snap20, "solo-m10-0-1"), ["e"]);
+  assert.deepEqual(members(snap20, "solo-m10-0-2"), ["f"]);
+  assert.equal(checkpointGapForRider(snap20, "e").gap_s, 200);
+  assert.equal(checkpointGapForRider(snap20, "f").gap_s, 120);
+  assert.equal(snap20.groups.find((g) => g.includes_rest).size, 5, "10 - udbruddet (2) - d, e, f");
+  const snap40 = story.snapshots.find((s) => s.km === 40);
+  assert.deepEqual(members(snap40, "solo-m10-1-0"), ["g"]);
+  assert.deepEqual(snap40.pending_rider_ids, ["h"], "nedkørselsofferets gruppe er ukendt, ikke g's");
+  assert.equal(checkpointGapForRider(snap40, "h"), null);
+});
+
+test("review-runde 3 (2): kildegruppen afgiver rytterne fra split-punktet i replayets mellem-frames", () => {
+  const events = oneDayTimeline();
+  const at = events.findIndex((e) => e.type === "kom_passage");
+  events.splice(at, 0,
+    // b falder af udbruddet på km 45 (eksplicit kildegruppe), c splitter fra
+    // feltet på km 55 (resten). Begge kildegrupper står i snapshot 40 og 60.
+    ev(45, "breakaway_dropped", { group_id: "chase-2", from_group_id: "breakaway-0", rider_ids: ["b"], exact_km: 45 }),
+    ev(55, "peloton_splits", { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["c"], exact_km: 55 }),
+    ev(60, "gap_update", { group_id: "chase-2", gap_seconds: 50, exact_km: 60, exact_time: 5050 }),
+    ev(60, "gap_update", { group_id: "chase-1", gap_seconds: 90, exact_km: 60, exact_time: 5090 }));
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  const frames = replayFrames(story, { finaleKm: 60 }).filter((f) => f.km >= 40 && f.km <= 60);
+  const size = (f, id) => f.groups.find((g) => g.group_id === id)?.size;
+  for (const f of frames) {
+    const total = f.groups.reduce((sum, g) => sum + (g.size ?? 0), 0);
+    assert.equal(total, 10, `km ${f.km}: grupperne rummer feltet (${f.groups.map((g) => `${g.group_id}=${g.size}`).join(", ")})`);
+  }
+  const at50 = frames.find((f) => f.km === 50);
+  assert.equal(size(at50, "breakaway-0"), 1, "km 50: b har forladt udbruddet");
+  assert.equal(size(at50, "chase-2"), 1);
+  assert.equal(size(at50, "peloton-0"), 8, "km 50: c er stadig i feltet");
+  assert.equal(size(frames.find((f) => f.km === 44), "breakaway-0"), 2, "km 44: før droppet");
+  const at56 = frames.find((f) => f.km === 56);
+  assert.equal(size(at56, "peloton-0"), 7, "km 56: c har forladt feltet");
+  assert.equal(size(at56, "chase-1"), 1);
+});
+
 test("review (5): serverens historie får målresultatet, så udbrydernes udfald er mærkernes", () => {
   // b falder af udbruddet (motorens egen drop), men kører alene hjem foran feltet.
   const base = oneDayTimeline().filter((e) => e.type !== "breakaway_caught" && e.type !== "group_merged");
