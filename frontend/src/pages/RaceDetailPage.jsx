@@ -81,6 +81,9 @@ import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
 import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
 import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
+import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
+import StagePageV2, { resolveV2Tab } from "../components/race/stagePageV2/StagePageV2.tsx"; // #6570
+import { defaultStage } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -666,12 +669,15 @@ export default function RaceDetailPage() {
   // stage-N-faner ("samlet" har allerede sine data fra loadAll's overallSeedStage-
   // preload). in-flight-refen forhindrer et dobbelt round-trip + duplikerede rækker
   // hvis brugeren klikker væk og tilbage før første hentning er landet.
-  useEffect(() => {
-    if (!resultView.startsWith("stage-")) return;
-    const n = Number(resultView.slice("stage-".length));
+  // #6570: selve hentningen er delt mellem Resultater-fanens etapeskift og
+  // etapeside 2.0's valgte etape. To effekter kan nu starte en hentning, saa en
+  // oprydning maa ikke kassere en anden effekts svar: svaret droppes kun hvis
+  // siden i mellemtiden er skiftet til et andet loeb.
+  const currentRaceIdRef = useRef(raceId);
+  useEffect(() => { currentRaceIdRef.current = raceId; }, [raceId]);
+  const startStageFetch = useCallback((n) => {
     if (!Number.isFinite(n) || loadedStages.has(n) || stageFetchInFlightRef.current.has(n)) return;
-
-    let cancelled = false;
+    const forRace = raceId;
     stageFetchInFlightRef.current.add(n);
     fetchStageResultRows(raceId, n)
       .catch((err) => {
@@ -679,15 +685,37 @@ export default function RaceDetailPage() {
         return [];
       })
       .then((newRows) => {
-        if (cancelled) return;
+        if (currentRaceIdRef.current !== forRace) return;
         if (newRows.length) setResults((prev) => [...prev, ...withFinishSafetyNet(newRows)]); // #6185
         setLoadedStages((prev) => new Set(prev).add(n));
       })
       .finally(() => {
         stageFetchInFlightRef.current.delete(n);
       });
-    return () => { cancelled = true; };
-  }, [resultView, raceId, loadedStages]);
+  }, [raceId, loadedStages]);
+
+  useEffect(() => {
+    if (!resultView.startsWith("stage-")) return;
+    startStageFetch(Number(resultView.slice("stage-".length)));
+  }, [resultView, startStageFetch]);
+
+  // #6570: etapeside 2.0 bag stage_page_v2 (null = flaget hentes endnu). Den
+  // valgte etape er ?stage=N naar den findes, ellers dagens etape (dansk tid),
+  // ellers den senest koerte. Notifikationers ?stage=N lander dermed direkte
+  // paa den etape (#5832).
+  const stagePageV2 = useStagePageV2();
+  const v2Total = race?.stages ?? 1;
+  const v2Ridden = race?.stages_completed ?? 0;
+  const v2TodayStage = useMemo(
+    () => defaultStage({ totalStages: v2Total, stagesCompleted: v2Ridden, schedule, now: new Date(nowMs) }),
+    [v2Total, v2Ridden, schedule, nowMs],
+  );
+  const v2StageParam = Number(searchParams.get("stage"));
+  const v2SelectedStage = Number.isInteger(v2StageParam) && v2StageParam >= 1 && v2StageParam <= v2Total ? v2StageParam : v2TodayStage;
+  useEffect(() => {
+    if (stagePageV2 !== true || v2SelectedStage > v2Ridden) return;
+    startStageFetch(v2SelectedStage);
+  }, [stagePageV2, v2SelectedStage, v2Ridden, startStageFetch]);
 
   useEffect(() => {
     if (race?.id) logEvent("race_viewed", { race_id: race.id });
@@ -917,7 +945,9 @@ export default function RaceDetailPage() {
   // Full-bleed-ruten får ingen Layout-padding — loading/fejl/not-found-grenene
   // sætter derfor selv side-padding, nu efter T3-kort-revisionens ydre
   // container-opskrift (#2849 bølge 5c: pt-4 md:pt-6, samme som kortet nedenfor).
-  if (loading) return (
+  // #6570: flag-svaret er hurtigt og koerer parallelt med loadAll; siden
+  // vises foerst naar begge er landet, saa ingen ser den ene side blinke over i den anden.
+  if (loading || stagePageV2 === null) return (
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <PageLoader />
     </div>
@@ -1076,6 +1106,235 @@ export default function RaceDetailPage() {
     ? scheduledStageNums.indexOf(scheduledStage)
     : 0;
 
+  // #6570: fanernes indhold som funktion af fanen, saa etapeside 2.0 kan
+  // genbruge Standings/Team/Tactics UAENDRET som slots. Den nuvaerende side
+  // kalder den med sin aktive fane, praecis som foer.
+  const renderTabContent = (tab) => (
+    <>
+          {tab === "overview" && (
+            <RaceOverviewTab
+              raceId={race.id}
+              phase={phase}
+              isStageRace={race.race_type === "stage_race"}
+              stages={totalStages}
+              stagesCompleted={ridden}
+              profileByStage={profileByStage}
+              standingsRows={gcRows}
+              myTeamId={myTeamId}
+              riderNameById={riderNameById}
+              teamNameById={teamNameById}
+              stageRoles={stageRoles}
+              onOpenTab={changeMainTab}
+              onOpenStageResult={openStageResult}
+              recapSlot={<RaceRecap results={results} scopeType="overall" incidents={incidents} />}
+            />
+          )}
+
+          {tab === "team" && (
+            <RaceTeamTab
+              raceId={race.id}
+              phase={phase}
+              stageRoles={stageRoles}
+              onReload={reloadStageRoles}
+              gcRankByRider={gcRankByRider}
+              /* #4979: profilen over Hold-fanens kort foelger hero'ens etape
+                 ("Stage N locks") — foer loebet den valgte, under loebet den
+                 koerende. Etaper-fanen har sin egen fulde profil; de to faner
+                 er aldrig synlige samtidig. */
+              stageProfile={teamTabProfile}
+              stageProfileLabel={totalStages > 1 ? t("detail.tabStage", { number: focusStage }) : null}
+              hasClassifications={race.race_type === "stage_race"}
+              selectedStageIndex={selectedStageIndexForPanel}
+              selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
+              selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
+              selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
+              /* #5419: Hold-fanens EGEN etape-stribe (FØR løbet, holdudtagelsen) —
+                 genbruger Etaper-fanens StageStripe (samme `changeStage`/?stage=,
+                 samme udseende) i stedet for at tvinge et hop via Etaper-fanen
+                 for at se rute-match/FitBar for en anden etape. Kun navigation:
+                 stages/onSelect ændrer INTET af hvad der gemmes. */
+              stageStripeStages={stageProfiles}
+              stageStripeActiveStage={scheduledStage}
+              onSelectStage={changeStage}
+              stageStripeTimes={stripeTimes}
+            />
+          )}
+
+          {tab === "tactics" && (
+            <RaceTacticsTab raceId={race.id} profileByStage={profileByStage} showOrders={TACTICS_V4_PREVIEW} />
+          )}
+
+          {tab === "stages" && (
+            <div className="flex flex-col gap-3">
+              {/* Etape-striben er etape-fanens egen navigation: den bærer terræn-
+                  og tids-information pr. etape som tekst-faner ville tabe. */}
+              {scheduledStageNums.length > 1 && (() => {
+                const counts = bucketCounts(stageProfiles);
+                return counts.length ? (
+                  <p className="text-cz-3 text-2xs">
+                    <span className="text-2xs uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
+                    {" "}
+                    {counts.map((c, i) => (
+                      <span key={c.bucket} className="text-2xs">{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
+                    ))}
+                  </p>
+                ) : null;
+              })()}
+              {scheduledStageNums.length > 0 && (
+                <StageStripe stages={stageProfiles} activeStage={stagesTabStage} onSelect={changeStage} times={stripeTimes} />
+              )}
+              {/* Sub-4 (#2448): ruten SKAL være synlig i fuld tier her — det er
+                  siden man planlægger efter, og stigningernes navn/længde/
+                  gradient er præcis det man planlægger på. */}
+              <StageDetailPanel
+                profile={profileByStage[stagesTabStage]}
+                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: stagesTabStage }) : undefined}
+                tier="full"
+                hasClassifications={race.race_type === "stage_race"}
+              />
+              {scheduledStageNums.length === 0 && (
+                <EmptyState
+                  icon={<FlagIcon size={26} aria-hidden="true" />}
+                  title={t("racePage.stages.emptyTitle")}
+                  description={t("racePage.stages.emptyHint")}
+                />
+              )}
+            </div>
+          )}
+
+          {tab === "results" && !hasAnyResults && (
+            <EmptyState
+              icon={<FlagIcon size={26} aria-hidden="true" />}
+              title={t("empty.noResultsImportedRace")}
+              description={t("empty.noResultsImportedRaceHint")}
+              action={
+                <Link to="/resultater?tab=archive" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                  {t("empty.noResultsImportedRaceCta")}
+                </Link>
+              }
+            />
+          )}
+
+          {/* #3914: LØB MED RESULTATER — resultatet vises DIREKTE (etape-stribe,
+              klassement-sub-faner og tabel), nu inde i Resultater-fanen. */}
+          {tab === "results" && hasAnyResults && isStageRace && (
+            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
+              <StageStripe
+                stages={stageNumbers.map((n) => profileByStage[n] || { stage_number: n, profile_type: "flat" })}
+                activeStage={resultView === "samlet" ? "overall" : Number(resultView.slice("stage-".length))}
+                showOverall
+                onSelect={(v) => changeResultView(v === "overall" ? "samlet" : `stage-${v}`)}
+              />
+              {teamFilterBar}
+
+              {resultView === "samlet" && (
+                <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
+                  <SectionStack>
+                    {liveStandings
+                      ? <LiveOverallTab byType={liveByTypeWithGaps} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={liveClassificationTotals} />
+                      : <OverallTab finalByType={finalByTypeWithGaps} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={finalClassificationTotals} />}
+                  </SectionStack>
+                  <SectionStack>
+                    <RaceRecap results={results} scopeType="overall" incidents={incidents} />
+                    <WhyPanel moments={moments} stageNumber={stageNumbers[stageNumbers.length - 1]} mode="finalOnly" riderNameById={riderNameById} t={t} />
+                    <DnfSection incidents={incidents} scopeType="overall" t={t} />
+                  </SectionStack>
+                </div>
+              )}
+              {/* #4581: etapens race_results hentes on-demand ved skift (se effekten
+                  ovenfor) — mens den er undervejs viser vi kortets kanoniske
+                  sektions-loading (docs/design/PAGE_TEMPLATES.md: skeleton-linjer
+                  inde i en Section, aldrig en spinner) i stedet for et tomt/forkert
+                  resultat. */}
+              {stageNumbers.map(n => resultView === `stage-${n}` && (
+                loadedStages.has(n)
+                  ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
+                      filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
+                      moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
+                      raceId={race.id} raceName={race.name} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} />
+                  : <Section key={n}><SkeletonLines lines={6} /></Section>
+              ))}
+            </div>
+          )}
+
+          {/* Enkeltdagsløb — ingen etape-stribe, bare måltavlen (+ holdklassement) */}
+          {tab === "results" && hasAnyResults && !isStageRace && (
+            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
+              {/* #2810: løbet er kørt — ruten er kontekst, ikke beslutningsgrundlag.
+                  Den store graf hører hjemme på Etaper-fanen. */}
+              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="compact" hasClassifications={false} />
+              {teamFilterBar}
+              <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
+                <SectionStack>
+                  <ResultTable
+                    title={t("detail.tableResult")}
+                    rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
+                    highlightTeamId={resolvedTeamFilter}
+                    myOwnTeamId={myTeamId}
+                    moments={moments}
+                    stageNumber={1}
+                    raceId={race.id}
+                    participationHistory={oneDayParticipation}
+                  />
+                  {finalByType.team?.length > 0 && (
+                    <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} />
+                  )}
+                </SectionStack>
+                <SectionStack>
+                  {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
+                      løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
+                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
+                  <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
+                  <DnfSection incidents={incidents} scopeType="overall" t={t} />
+                </SectionStack>
+              </div>
+            </div>
+          )}
+    </>
+  );
+
+  // #6570: etapeside 2.0 (kun naar stage_page_v2 er sandt for vieweren).
+  const v2IsStageRace = race.race_type === "stage_race";
+  const changeV2Tab = (tab) => {
+    // Standings aabner paa den etape man kom fra, hvis den er koert.
+    if (tab === "standings" && v2IsStageRace && v2SelectedStage <= ridden) setResultView(`stage-${v2SelectedStage}`);
+    changeMainTab(tab);
+  };
+  const stagePageV2El = stagePageV2 === true ? (
+    <StagePageV2
+      isStageRace={v2IsStageRace}
+      totalStages={totalStages}
+      stagesCompleted={ridden}
+      raceFinished={phase === "after"}
+      selectedStage={v2SelectedStage}
+      todayStage={v2TodayStage}
+      onSelectStage={changeStage}
+      activeTab={resolveV2Tab(searchParams.get("tab"))}
+      onChangeTab={changeV2Tab}
+      profileByStage={profileByStage}
+      schedule={schedule}
+      timeLabelFor={(d) => formatStageTime(d, locale)}
+      results={results}
+      stagePointRows={stagePointsRows}
+      stageLoaded={loadedStages.has(v2SelectedStage)}
+      myTeamId={myTeamId}
+      stageRoles={stageRoles}
+      careerEvents={careerEvents}
+      standingsSlot={renderTabContent("results")}
+      teamSlot={renderTabContent("team")}
+      tacticsSlot={renderTabContent("tactics")}
+      nowMs={nowMs}
+      emptyStageSlot={
+        <EmptyState
+          icon={<FlagIcon size={26} aria-hidden="true" />}
+          title={t("racePage.stages.emptyTitle")}
+          description={t("racePage.stages.emptyHint")}
+          action={<Button size="sm" variant="secondary" onClick={() => changeV2Tab("team")}>{t("stagePageV2.tab.team")}</Button>}
+        />
+      }
+    />
+  ) : null;
+
   return (
     // #2253: translate="no" — race-resultat-listerne opdaterer live under løb;
     // browser-oversættere der muterer tekst-noderne er samme crash-klasse som de
@@ -1133,7 +1392,7 @@ export default function RaceDetailPage() {
         {/* #3398 (Maiden Win Engine): career-first-momentkort for DETTE løb —
             placeret UNDER hero'en, over fanerne, så det er synligt uanset
             hvilken fane der er valgt (momenterne er hele-løbs-begivenheder). */}
-        {careerEvents.length > 0 && (
+        {stagePageV2 !== true && careerEvents.length > 0 && (
           <div className="mt-5 bg-cz-card border border-cz-border rounded-cz p-4">
             {careerEvents.map((event) => (
               <CareerFirstMomentRow key={event.id} event={event} t={t} showRaceLink={false} />
@@ -1143,199 +1402,23 @@ export default function RaceDetailPage() {
 
         {/* T3's fane-stribe (docs/design/PAGE_TEMPLATES.md) — samme delte
             Tabs/TabList/Tab som rytterprofilen, flush på sidens baggrund. */}
-        <div className="mt-5">
-          <Tabs value={activeMainTab} onChange={changeMainTab}>
-            <TabList label={t("racePage.tabsAria")}>
-              {tabs.map((key) => (
-                <Tab key={key} value={key}>{t(`racePage.tab.${key}`)}</Tab>
-              ))}
-            </TabList>
-          </Tabs>
-        </div>
+        {stagePageV2 !== true && (
+          <div className="mt-5">
+            <Tabs value={activeMainTab} onChange={changeMainTab}>
+              <TabList label={t("racePage.tabsAria")}>
+                {tabs.map((key) => (
+                  <Tab key={key} value={key}>{t(`racePage.tab.${key}`)}</Tab>
+                ))}
+              </TabList>
+            </Tabs>
+          </div>
+        )}
       </div>
 
       <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
         <div className="flex flex-col gap-[14px]">
 
-          {activeMainTab === "overview" && (
-            <RaceOverviewTab
-              raceId={race.id}
-              phase={phase}
-              isStageRace={race.race_type === "stage_race"}
-              stages={totalStages}
-              stagesCompleted={ridden}
-              profileByStage={profileByStage}
-              standingsRows={gcRows}
-              myTeamId={myTeamId}
-              riderNameById={riderNameById}
-              teamNameById={teamNameById}
-              stageRoles={stageRoles}
-              onOpenTab={changeMainTab}
-              onOpenStageResult={openStageResult}
-              recapSlot={<RaceRecap results={results} scopeType="overall" incidents={incidents} />}
-            />
-          )}
-
-          {activeMainTab === "team" && (
-            <RaceTeamTab
-              raceId={race.id}
-              phase={phase}
-              stageRoles={stageRoles}
-              onReload={reloadStageRoles}
-              gcRankByRider={gcRankByRider}
-              /* #4979: profilen over Hold-fanens kort foelger hero'ens etape
-                 ("Stage N locks") — foer loebet den valgte, under loebet den
-                 koerende. Etaper-fanen har sin egen fulde profil; de to faner
-                 er aldrig synlige samtidig. */
-              stageProfile={teamTabProfile}
-              stageProfileLabel={totalStages > 1 ? t("detail.tabStage", { number: focusStage }) : null}
-              hasClassifications={race.race_type === "stage_race"}
-              selectedStageIndex={selectedStageIndexForPanel}
-              selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
-              selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
-              selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
-              /* #5419: Hold-fanens EGEN etape-stribe (FØR løbet, holdudtagelsen) —
-                 genbruger Etaper-fanens StageStripe (samme `changeStage`/?stage=,
-                 samme udseende) i stedet for at tvinge et hop via Etaper-fanen
-                 for at se rute-match/FitBar for en anden etape. Kun navigation:
-                 stages/onSelect ændrer INTET af hvad der gemmes. */
-              stageStripeStages={stageProfiles}
-              stageStripeActiveStage={scheduledStage}
-              onSelectStage={changeStage}
-              stageStripeTimes={stripeTimes}
-            />
-          )}
-
-          {activeMainTab === "tactics" && (
-            <RaceTacticsTab raceId={race.id} profileByStage={profileByStage} showOrders={TACTICS_V4_PREVIEW} />
-          )}
-
-          {activeMainTab === "stages" && (
-            <div className="flex flex-col gap-3">
-              {/* Etape-striben er etape-fanens egen navigation: den bærer terræn-
-                  og tids-information pr. etape som tekst-faner ville tabe. */}
-              {scheduledStageNums.length > 1 && (() => {
-                const counts = bucketCounts(stageProfiles);
-                return counts.length ? (
-                  <p className="text-cz-3 text-2xs">
-                    <span className="text-2xs uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
-                    {" "}
-                    {counts.map((c, i) => (
-                      <span key={c.bucket} className="text-2xs">{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
-                    ))}
-                  </p>
-                ) : null;
-              })()}
-              {scheduledStageNums.length > 0 && (
-                <StageStripe stages={stageProfiles} activeStage={stagesTabStage} onSelect={changeStage} times={stripeTimes} />
-              )}
-              {/* Sub-4 (#2448): ruten SKAL være synlig i fuld tier her — det er
-                  siden man planlægger efter, og stigningernes navn/længde/
-                  gradient er præcis det man planlægger på. */}
-              <StageDetailPanel
-                profile={profileByStage[stagesTabStage]}
-                stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: stagesTabStage }) : undefined}
-                tier="full"
-                hasClassifications={race.race_type === "stage_race"}
-              />
-              {scheduledStageNums.length === 0 && (
-                <EmptyState
-                  icon={<FlagIcon size={26} aria-hidden="true" />}
-                  title={t("racePage.stages.emptyTitle")}
-                  description={t("racePage.stages.emptyHint")}
-                />
-              )}
-            </div>
-          )}
-
-          {activeMainTab === "results" && !hasAnyResults && (
-            <EmptyState
-              icon={<FlagIcon size={26} aria-hidden="true" />}
-              title={t("empty.noResultsImportedRace")}
-              description={t("empty.noResultsImportedRaceHint")}
-              action={
-                <Link to="/resultater?tab=archive" className={buttonClass({ variant: "secondary", size: "sm" })}>
-                  {t("empty.noResultsImportedRaceCta")}
-                </Link>
-              }
-            />
-          )}
-
-          {/* #3914: LØB MED RESULTATER — resultatet vises DIREKTE (etape-stribe,
-              klassement-sub-faner og tabel), nu inde i Resultater-fanen. */}
-          {activeMainTab === "results" && hasAnyResults && isStageRace && (
-            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
-              <StageStripe
-                stages={stageNumbers.map((n) => profileByStage[n] || { stage_number: n, profile_type: "flat" })}
-                activeStage={resultView === "samlet" ? "overall" : Number(resultView.slice("stage-".length))}
-                showOverall
-                onSelect={(v) => changeResultView(v === "overall" ? "samlet" : `stage-${v}`)}
-              />
-              {teamFilterBar}
-
-              {resultView === "samlet" && (
-                <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
-                  <SectionStack>
-                    {liveStandings
-                      ? <LiveOverallTab byType={liveByTypeWithGaps} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={liveClassificationTotals} />
-                      : <OverallTab finalByType={finalByTypeWithGaps} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} moments={moments} pointsTotals={finalClassificationTotals} />}
-                  </SectionStack>
-                  <SectionStack>
-                    <RaceRecap results={results} scopeType="overall" incidents={incidents} />
-                    <WhyPanel moments={moments} stageNumber={stageNumbers[stageNumbers.length - 1]} mode="finalOnly" riderNameById={riderNameById} t={t} />
-                    <DnfSection incidents={incidents} scopeType="overall" t={t} />
-                  </SectionStack>
-                </div>
-              )}
-              {/* #4581: etapens race_results hentes on-demand ved skift (se effekten
-                  ovenfor) — mens den er undervejs viser vi kortets kanoniske
-                  sektions-loading (docs/design/PAGE_TEMPLATES.md: skeleton-linjer
-                  inde i en Section, aldrig en spinner) i stedet for et tomt/forkert
-                  resultat. */}
-              {stageNumbers.map(n => resultView === `stage-${n}` && (
-                loadedStages.has(n)
-                  ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
-                      filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
-                      moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                      raceId={race.id} raceName={race.name} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} />
-                  : <Section key={n}><SkeletonLines lines={6} /></Section>
-              ))}
-            </div>
-          )}
-
-          {/* Enkeltdagsløb — ingen etape-stribe, bare måltavlen (+ holdklassement) */}
-          {activeMainTab === "results" && hasAnyResults && !isStageRace && (
-            <div id="race-results-anchor" className="flex flex-col gap-[14px] scroll-mt-4">
-              {/* #2810: løbet er kørt — ruten er kontekst, ikke beslutningsgrundlag.
-                  Den store graf hører hjemme på Etaper-fanen. */}
-              <StageProfileSlot profile={profileByStage[1]} passages={passages} tier="compact" hasClassifications={false} />
-              {teamFilterBar}
-              <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
-                <SectionStack>
-                  <ResultTable
-                    title={t("detail.tableResult")}
-                    rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
-                    highlightTeamId={resolvedTeamFilter}
-                    myOwnTeamId={myTeamId}
-                    moments={moments}
-                    stageNumber={1}
-                    raceId={race.id}
-                    participationHistory={oneDayParticipation}
-                  />
-                  {finalByType.team?.length > 0 && (
-                    <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} />
-                  )}
-                </SectionStack>
-                <SectionStack>
-                  {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
-                      løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
-                  <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
-                  <WhyPanel moments={moments} stageNumber={1} mode="full" riderNameById={riderNameById} t={t} />
-                  <DnfSection incidents={incidents} scopeType="overall" t={t} />
-                </SectionStack>
-              </div>
-            </div>
-          )}
+          {stagePageV2 === true ? stagePageV2El : renderTabContent(activeMainTab)}
         </div>
       </div>
     </div>

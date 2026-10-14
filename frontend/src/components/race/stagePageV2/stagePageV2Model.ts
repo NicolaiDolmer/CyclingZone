@@ -390,7 +390,10 @@ export function lineupFor(riders: RoleRider[], overrides: RoleOverride[], stageN
 export function tacticsProgress(riders: RoleRider[], overrides: RoleOverride[], stageNumber: number): { done: number; total: number } {
   const picked = (riders || []).length > 0;
   const captain = (riders || []).some((r) => r.race_role === "captain");
-  const intention = stageHasIntention({ overrides, stageNumber });
+  const intention = stageHasIntention({
+    overrides: (overrides || []).map((o) => ({ stage_number: o.stage_number, rider_id: o.rider_id, effort: o.effort ?? undefined })),
+    stageNumber,
+  });
   return { done: [picked, captain, intention].filter(Boolean).length, total: 3 };
 }
 

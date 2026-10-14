@@ -1,4 +1,85 @@
 {
+  "stagePageV2": {
+    "tabsAria": "Løbets visninger",
+    "tab": { "stage": "Etape", "standings": "Stillinger", "team": "Hold", "tactics": "Taktik" },
+    "stripAria": "Etaper",
+    "stripStage": "Etape {number}",
+    "today": "I dag",
+    "stripResult": "{name} #{rank}",
+    "stripRidden": "Kørt",
+    "profile": {
+      "title": "Etape {number} · ruten",
+      "titleOneDay": "Ruten",
+      "stats": "{km} km · {gain} højdemeter · {climbs, plural, one {# stigning} other {# stigninger}}",
+      "aria": "Etapeprofil, {km} km, farvet efter stigning.",
+      "tipToGo": "{km} km til mål",
+      "tipToTop": "{km} km til toppen af {name}",
+      "finish": "Mål · {m} m",
+      "toGoAxis": "{km} km til mål",
+      "drawn": "Tegnet ud fra stigningerne og de samlede højdemeter. Procenterne mellem stigningerne er omtrentlige.",
+      "legend": { "flat": "under 3 %", "band2": "3-6 %", "band3": "6-8 %", "band4": "8-10 %", "band5": "over 10 %", "down": "nedkørsel" },
+      "sprint": "Spurt km {km}"
+    },
+    "axes": {
+      "terrain": "Terræn",
+      "finish": "Afslutning",
+      "surface": "Underlag",
+      "surfaceValue": "{kind, select, gravel {Grus} other {Brosten}} · {count, plural, one {# sektor} other {# sektorer}}, {km} km"
+    },
+    "climbs": {
+      "title": "Stigningerne",
+      "hint": "Tryk på en stigning på profilen eller her",
+      "length": "Længde",
+      "average": "Gennemsnit",
+      "steepest": "Stejleste km",
+      "hardest5": "Hårdeste 5 km",
+      "top": "Top",
+      "steepestValue": "{grade} % · km {index}",
+      "topValue": "{m} m · km {km}",
+      "toFinish": "Til mål",
+      "perKmAria": "{name}, stigning pr. kilometer",
+      "noPerKm": "Stigning kilometer for kilometer kommer med den rigtige etapeprofil.",
+      "none": "Ingen kategoriserede stigninger på etapen."
+    },
+    "demands": { "title": "Dagen kræver", "decides": "Afgør den", "matters": "Betyder noget", "helps": "Hjælper" },
+    "lineup": {
+      "title": "Din opstilling",
+      "fit": "Rutematch",
+      "fitAria": "Rutematch {fit} af 100",
+      "empty": "Du har ingen ryttere i løbet."
+    },
+    "cta": {
+      "setTactics": "Sæt taktik for etape {number} · {done} af {total} klar",
+      "setTacticsLocks": "Sæt taktik for etape {number} · {done} af {total} klar · låser {time}",
+      "setTacticsOneDay": "Sæt taktik · {done} af {total} klar",
+      "fullResult": "Fuldt resultat"
+    },
+    "favourites": {
+      "title": "Favoritter",
+      "foot": "Ud fra løbet indtil nu. Rutematch kun for dine egne ryttere.",
+      "leadsOverall": "Fører samlet",
+      "overall": "#{rank} samlet, {gap}",
+      "wonStage": "vandt etape {number}",
+      "you": "Dig"
+    },
+    "yourDay": {
+      "title": "Din dag · etape {number}",
+      "titleOneDay": "Din dag",
+      "classAria": "Klassement",
+      "stage": "Etape",
+      "overall": "Samlet",
+      "top3": "Top 3",
+      "yourRiders": "Dine ryttere",
+      "noRiders": "Ingen af dine ryttere er med i resultatet.",
+      "bestOverall": "Din bedste samlet",
+      "bestOverallGap": "{name} · {gap} efter {leader}",
+      "bestOverallLeads": "{name} fører løbet",
+      "whyGap": "{winner} vandt, {gap} foran {second}.",
+      "whySame": "{winner} vandt foran {second} på samme tid.",
+      "mineLine": "Din bedste var {name}, #{rank}, {gap} efter.",
+      "mineWon": "Din rytter {name} vandt etapen."
+    }
+  },
   "hub": {
     "title": "Planlægning",
     "tabSelection": "Holdudtagelse",
