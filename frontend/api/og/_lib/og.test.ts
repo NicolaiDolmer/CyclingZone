@@ -170,7 +170,7 @@ for (const key of Object.keys(DEMO_STAGES)) {
     assert.equal(style.width, OG_WIDTH);
     assert.equal(style.height, OG_HEIGHT);
     assert.ok(a.includes(route.race));
-    assert.ok(a.includes("cyclingzone.org"));
+    assert.match(a, /cyclingzone\.org/);
     assert.ok(!a.includes("undefined") && !a.includes("NaN"));
   });
 }
