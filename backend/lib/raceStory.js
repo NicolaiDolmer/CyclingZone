@@ -502,7 +502,10 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       const span = openSpans.get(groupId);
       if (!span || !into || into === groupId) return [];
       const opened = openSpan(into, placeKm(event), null);
-      span.to_km = round2(placeKm(event));
+      // Motoren kan placere et split og en sammenlægning i samme segment med
+      // kontaktpunktet før separationspunktet (to skøn fra samme endepunkter).
+      // Levetiden er da nul på split-punktet, aldrig negativ.
+      span.to_km = round2(Math.max(span.from_km, placeKm(event)));
       span.into_group_id = into;
       openSpans.delete(groupId);
       spans.push(span);
@@ -890,6 +893,7 @@ function groupsBetween(story, a, b, km) {
   const gone = new Set([...(a.out_rider_ids ?? []), ...(a.pending_rider_ids ?? [])]);
   const transitions = [];
   for (const s of spans) {
+    if (s.to_km != null && s.to_km < s.from_km - EPS) continue; // ingen levetid på vejen
     if (s.from_km >= a.km - EPS && s.from_km <= km + EPS) transitions.push({ km: s.from_km, order: 0, span: s });
     if (s.to_km != null && s.to_km >= a.km - EPS && s.to_km < km - EPS) transitions.push({ km: s.to_km, order: 1, span: s });
   }

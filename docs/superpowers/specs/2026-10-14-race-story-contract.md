@@ -101,7 +101,7 @@ const story = buildRaceStory({
 | `moments` | `Moment[]` | Se 3.2. km-sorteret. |
 | `checkpoints` | `Checkpoint[]` | Se 3.3. |
 | `snapshots` | `Snapshot[]` | Se 3.4. |
-| `group_spans` | `[{group_id, from_km, to_km, source_group_id, into_group_id}]` | Gruppernes levetid på vejen: fra dannelse/split (`source_group_id` = gruppen den kom fra) til sammenlægning (`into_group_id`), på hændelsens sande km. `to_km: null` = gruppen findes stadig ved mål. Tom for enkeltstart. |
+| `group_spans` | `[{group_id, from_km, to_km, source_group_id, into_group_id, rider_ids}]` | Gruppernes levetid på vejen: fra dannelse/split (`source_group_id` = gruppen den kom fra) til sammenlægning (`into_group_id`), på hændelsens sande km. `rider_ids` = gruppens eksplicitte medlemmer lige efter dannelsen (tom for resten). `to_km: null` = gruppen findes stadig ved mål; `to_km` er aldrig mindre end `from_km`. Tom for enkeltstart. |
 | `breakaway` | `{morning_rider_ids, outcomes}`\|null | Dagens udbryderes udfald (`caught`/`dropped`/`survived`/null), samme projektion som mærkerne og de gemte flag (`raceParticipationHistory.ts`). Med `results` afgøres de mod målresultatet. |
 
 ### 3.2 `Moment`
@@ -150,8 +150,12 @@ const story = buildRaceStory({
 
 Grupperne er tilstanden **på passagen**: et snapshot på samme km, ellers
 grupperne efter loggen til og med passagens km med de sidst meldte huller
-(`gap_source: "carried"`). Et senere snapshot bruges aldrig (fremtidige huller
-og splits hører ikke til passagen).
+(`gap_source: "carried"`). "Til og med" gælder hændelsens sande km
+(`exact_km`): en strukturel hændelse stemplet ved segmentets slut, men med
+`exact_km` før passagen, er sket på passagen. En gruppe dannet siden sidste
+melding får sin egen måling (`exact_time` på `exact_km`) eller hullet fra
+gruppen den kom fra (også `carried`). Et senere snapshot bruges aldrig
+(fremtidige huller og splits hører ikke til passagen).
 
 `checkpointGapForRider(checkpoint, riderId)` giver
 `{ group_id, gap_s, time_s, in_front, via_rest } | null` (null: udgået, dvs.
@@ -184,6 +188,9 @@ på stedet. Frame-medlemskabet bygges fra tilstanden før frame'en og
 smelter sammen inde i et interval, er på vejen til sit merge-punkt og lukker
 lineært ind på gruppen den smelter ind i; en gruppe der splitter sig ud inde i
 et interval, er på vejen fra sit split-punkt og starter i gruppen den kom fra.
+En gruppe der både opstår og forsvinder mellem to snapshots, er på vejen i hele
+sin levetid (`group_spans` med `rider_ids`), og hver rytter tæller i præcis én
+gruppe: en sammenlægning flytter rytterne ind i gruppen de smelter ind i.
 En gruppe uden registreret split/merge vises kun hvor loggen kender den.
 
 ### 3.5 Tekst-nøgler

@@ -553,6 +553,16 @@ test("review-runde 4 (3): en hændelse på et snapshots km, stemplet først sene
     assert.ok(f.groups.some((g) => g.group_id === "chase-1"), `km ${f.km}: chase-1 er på vejen`);
     assert.equal(total(f), 10, `km ${f.km}`);
   }
+  // Motoren kan skønne kontakten før separationen i samme segment (set i de
+  // frosne proxy-etaper): levetiden er da nul, aldrig negativ, og ingen rytter
+  // forsvinder ud af replayet.
+  const inverted = oneDayTimeline();
+  inverted.splice(inverted.findIndex((e) => e.km === 80), 0,
+    ev(80, "breakaway_dropped", { group_id: "chase-1", from_group_id: "breakaway-0", rider_ids: ["b"], exact_km: 77 }),
+    ev(80, "group_merged", { group_id: "chase-1", into_group_id: "breakaway-0", rider_ids: ["b"], exact_km: 75 }));
+  const invStory = buildRaceStory({ events: inverted, timelineVersion: 2 });
+  assert.deepEqual(invStory.group_spans.filter((s) => s.group_id === "chase-1").map((s) => [s.from_km, s.to_km]), [[77, 77]]);
+  for (const f of replayFrames(invStory, { finaleKm: 45 }).filter((x) => x.km > 60 && x.km < 80)) assert.equal(total(f), 10, `km ${f.km}`);
   // Indhentning på km 80 (exact_km = snapshottets km), stemplet på km 90:
   // udbryderne forsvinder ikke ud af replayet, de kører i feltet.
   const caught = oneDayTimeline().map((e) => (e.km === 90 ? ev(90, e.type, { ...e.params, exact_km: 80, exact_time: 6600 }) : e));
