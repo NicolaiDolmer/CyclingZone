@@ -35,6 +35,8 @@ export function createStagePageV2Router({ supabase, requireAuth, isViewerBetaTes
       res.set("Cache-Control", "no-store");
       res.json({ enabled: enabled === true });
     } catch (error) {
+      // best-effort: rapporteret via reportError (captureException i api.js); en
+      // fejl viser den nuvaerende side, den vaelter ikke loebssiden.
       reportError(error, { tags: { route: "/races/stage-page-v2" } });
       res.json({ enabled: false });
     }
