@@ -12,7 +12,7 @@ import { join } from "node:path";
 import {
   gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
   scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar, loadCutoverPoolRetirement,
-  formatGrandTourOrder, s5GateRacesFromPlan, runS5BenchmarkGateForPlan,
+  formatGrandTourOrder, s5GateRacesFromPlan, runS5BenchmarkGateForPlan, resolveBuildSeasonWindow,
 } from "./buildSeasonCalendar.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas } from "../lib/raceStageProfileGenerator.js";
 import { resolveTargetStructure } from "../lib/calendarTargetStructure.js";
@@ -565,3 +565,37 @@ test("#6367 runSquadCalendar: en roed S5-gate fra materializerens plan blokerer 
   assert.equal(calls.length, 0, "materializeren maa ikke kaldes med writes");
   assert.equal(process.exitCode, 1);
 }));
+
+// #5833 (ejer 14/10): fra S5 slutter sæsonen LØRDAG. CLI'ens §2-vindue sender sæsonnummeret
+// videre, så --season 5 dømmes efter lørdagsreglen og --season 4 efter søndagsreglen.
+test("#5833 resolveBuildSeasonWindow: --season 5 --first-day 2026-10-28 --last-day 2026-11-28 accepteres", () => {
+  const r = resolveBuildSeasonWindow({ seasonNumber: 5, firstRaceDay: "2026-10-28", lastDayArg: "2026-11-28" });
+  assert.equal(r.window.lastRaceDay, "2026-11-28");
+  assert.equal(r.window.raceDays, 32);
+  assert.equal(r.finishLabel, "lørdag");
+  assert.equal(r.seasonDefaultDays, null, "S5 har intet ejer-valgt længde-default; --last-day skal med ved --apply");
+});
+
+test("#5833 resolveBuildSeasonWindow: --season 5 med søndags-slut (29/11) afvises", () => {
+  assert.throws(
+    () => resolveBuildSeasonWindow({ seasonNumber: 5, firstRaceDay: "2026-10-28", lastDayArg: "2026-11-29" }),
+    /is not a Saturday/,
+  );
+  assert.throws(
+    () => resolveBuildSeasonWindow({ seasonNumber: 5, firstRaceDay: "2026-10-28", raceDaysArg: "33" }),
+    /is not a Saturday/,
+  );
+});
+
+test("#5833 resolveBuildSeasonWindow: --season 4 er uændret (ejer-default 28 → søndag 25/10)", () => {
+  const r = resolveBuildSeasonWindow({ seasonNumber: 4, firstRaceDay: "2026-09-28" });
+  assert.equal(r.window.lastRaceDay, "2026-10-25");
+  assert.equal(r.window.raceDays, 28);
+  assert.equal(r.window.derived, false);
+  assert.equal(r.seasonDefaultDays, 28);
+  assert.equal(r.finishLabel, "søndag");
+  assert.throws(
+    () => resolveBuildSeasonWindow({ seasonNumber: 4, firstRaceDay: "2026-09-28", lastDayArg: "2026-10-24" }),
+    /is not a Sunday/,
+  );
+});

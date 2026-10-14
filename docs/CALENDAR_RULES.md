@@ -231,10 +231,12 @@ Alle puljer i en division kører stadig den samme kalender (#2276), så D4's lø
 
 | Regel | Værdi | Låst | Kilde |
 |---|---|---|---|
+| **Løbsdatoer, sæson 5** | **32** (ons 28/10 → **lør** 28/11) | **14/10** | [#5833](https://github.com/NicolaiDolmer/CyclingZone/issues/5833) (forum-afstemning). Ikke i `SEASON_RACE_DAYS_DEFAULT`: `--last-day 2026-11-28` skal med ved `--apply` |
 | **Løbsdatoer, sæson 4** | **28** (man 28/9 → søn 25/10) | **3/9** | [#4270](https://github.com/NicolaiDolmer/CyclingZone/issues/4270), `SEASON_RACE_DAYS_DEFAULT` i `calendarStartDate.js` |
 | Løbsdatoer pr. sæson (S3) | 31 (28/8-27/9) | 25/8 | [#4218](https://github.com/NicolaiDolmer/CyclingZone/issues/4215) |
 | **Løb hver kalenderdag** | **ingen løbsfri dage inde i sæsonen — i ALLE divisioner** | 25/8 | [#4218](https://github.com/NicolaiDolmer/CyclingZone/issues/4215) |
-| Sæsonen slutter | altid en søndag | 23/8 | [#4131](https://github.com/NicolaiDolmer/CyclingZone/issues/4131) |
+| **Sæsonen slutter, fra S5** | **altid en lørdag** (erstatter søndagsreglen fra S5; søndag afvises) | **14/10** | [#5833](https://github.com/NicolaiDolmer/CyclingZone/issues/5833), `seasonFinishWeekday` i `calendarStartDate.js` |
+| Sæsonen slutter, S1-S4 | altid en søndag (uændret; S4 slutter søndag 25/10) | 23/8 | [#4131](https://github.com/NicolaiDolmer/CyclingZone/issues/4131) |
 | Bufferdag efter cutover | 1 dag uden løb | 18/8 | [#3467](https://github.com/NicolaiDolmer/CyclingZone/issues/3467) |
 | Puljer i samme division | deler identisk kalender-form | — | [#2276](https://github.com/NicolaiDolmer/CyclingZone/issues/2276) |
 | Inaktiv manager | 30 dage uden login (`users.last_seen`, `backend/lib/managerActivity.js`) — parkeres uden for divisionerne ved sæsonskifte (S4, 28/9), frigør plads i puljen. Parkeringen (del 2) er IKKE bygget endnu, kun definitionen + rapportering | 2/9 | [#4592](https://github.com/NicolaiDolmer/CyclingZone/issues/4592), [#4307](https://github.com/NicolaiDolmer/CyclingZone/issues/4307) |
@@ -245,7 +247,9 @@ Det er en regel om KALENDERDAGE, ikke løbsdage, og den gælder pr. division. En
 
 **S4-vinduet, præcist (ejer 3/9).** Første løbsdag er **mandag 28/9** (S3 slutter søndag 27/9), og en mandags-start kan kun have længder der er hele uger: 21, 28, 35 eller 42. **31 findes ikke som mulighed** — mandag + 30 dage er en onsdag. 35 blev målt umulig: D3 leverede 50 af 105 løbsdage og fik 18 kalenderdage uden løb, altså §2's ejer-regel brudt i en hel division. 28 er den eneste lovlige længde der er målt grøn på dækning i alle fire divisioner. Tallet står som data i `SEASON_RACE_DAYS_DEFAULT`, så `buildSeasonCalendar.js` ikke kræver `--race-days` for S4; alle andre sæsoner får fortsat et udledt forslag ejeren skal bekræfte.
 
-> ⚠ **Længden er ikke længere 27.** Værdien stod låst på 27 fra 23/8 og blev ændret til 31 den 25/8, da sæsonstarten blev udskudt fra tirsdag 25/8 til fredag 28/8 med uændret slutdato søndag 27/9. Ændrer du startdatoen igen, skal `realDays` efterregnes: **antal løbsdatoer = slutdato − startdato + 1**, og slutdatoen skal ramme en søndag.
+**Lørdag fra S5 (ejer 14/10 kl. 20:35, [#5833](https://github.com/NicolaiDolmer/CyclingZone/issues/5833)).** Efter forum-afstemningen (slutdag: lørdag flest stemmer; pause: 2 fridage) er S5 låst til **onsdag 28/10 → lørdag 28/11 = 32 løbsdatoer**. S6 følger samme regel (foreløbig mandag 30/11 → lørdag 26/12, 27 løbsdatoer; ikke låst). Søndagsreglen (#4131) gælder kun S1-S4 og ændres ikke for en kørende sæson: S4 slutter søndag 25/10 som planlagt. Håndhævet i `resolveSeasonWindow(..., seasonNumber)`: til og med S4 skal sidste løbsdag være en søndag, fra S5 en lørdag (`SATURDAY_FINISH_FROM_SEASON`), og en S5 med søndags-slut **afvises** (bevidst, så den gamle regel ikke sniger sig ind). Uden sæsonnummer gælder søndag, så ældre S4-værktøjer er uændrede; `buildSeasonCalendar.js` sender altid `--season`. Det udledte forslag fra onsdag 28/10 er netop 32 (lovlige lørdags-længder: 25, 32, 39). Sæsonens sidste løbsdag har stadig de korte sæsonskifte-tider (§2f) — reglen følger datoen, ikke ugedagen, så den gælder nu om lørdagen.
+
+> ⚠ **Længden er ikke længere 27.** Værdien stod låst på 27 fra 23/8 og blev ændret til 31 den 25/8, da sæsonstarten blev udskudt fra tirsdag 25/8 til fredag 28/8 med uændret slutdato søndag 27/9. Ændrer du startdatoen igen, skal `realDays` efterregnes: **antal løbsdatoer = slutdato − startdato + 1**, og slutdatoen skal ramme sæsonens slut-ugedag (søndag til og med S4, lørdag fra S5).
 
 ---
 
@@ -385,7 +389,8 @@ diff skulle kunne læses og vurderes af et menneske først). Vurderingen er gjor
 ### Længden udledes af §2 - den arves ikke
 
 `resolveSeasonWindow` (`backend/lib/calendarStartDate.js`) håndhæver §2's to regler:
-slutdatoen skal være en **søndag**, og løbsdatoer = slutdato − startdato + 1. **S3's 31 er
+slutdatoen skal være en **søndag til og med S4 og en lørdag fra S5** (#5833; sæsonnummeret
+sendes fra `--season`), og løbsdatoer = slutdato − startdato + 1. **S3's 31 er
 ikke en konstant** - det er dét reglerne gav for en fredags-start. En mandags-start kan
 kun have længder der er hele uger. Uden `--race-days`/`--last-day` FORESLÅR scriptet den
 lovlige længde tættest på 31 og markerer den som udledt; `--apply` nægter at køre på et
@@ -418,7 +423,8 @@ Scorecardet er den SAMME kode CI kører (`lib/calendarScorecardReport.js`, delt 
 
 ### Hvad ejeren skal vælge før en sæson bygges
 
-1. **Længden** (`--race-days`), blandt de søndags-afsluttede muligheder scriptet printer.
+1. **Længden** (`--race-days` eller `--last-day`), blandt de muligheder scriptet printer
+   (søndags-afsluttede til og med S4, lørdags-afsluttede fra S5).
 2. **Om §6b-tilten skal være tændt** (`--uniform-tilt`). Den er kalibreret mod en
    TIDLIGERE sæsons måling og skal efterprøves mod den sæson der bygges - for S4 gjorde
    den planen målt ringere, se `docs/audits/season4-calendar-dryrun-2026-09-03.md`.
@@ -492,7 +498,7 @@ Reglen gælder **kun de to dage omkring sæsonskiftet**. Alle andre dage, også 
 
 | Dag | Hvad | Anker |
 |---|---|---|
-| **Sæsonens sidste løbsdag** (§2's søndags-slut, dagen før skiftet) | Slutter kl. 15 i **hver** division, så skiftet kan ske tidligt på dagen, og den nye sæsons første dag ikke skubbes sent | `SEASON_LAST_DAY_END_SLOT` (15:00) |
+| **Sæsonens sidste løbsdag** (§2's slut-dag: søndag til og med S4, lørdag fra S5; dagen før skiftet) | Slutter kl. 15 i **hver** division, så skiftet kan ske tidligt på dagen, og den nye sæsons første dag ikke skubbes sent | `SEASON_LAST_DAY_END_SLOT` (15:00) |
 | **Den nye sæsons første løbsdag** | Første etape ligger i **hver** division mindst 24 timer efter det **tidligst mulige** sæsonskifte | forrige sæsons seneste etape på tværs af alle divisioner + 30 min, eller et senere planlagt skifte |
 
 **Etape-tiderne** (`slotsFor` i `backend/lib/calendarPlanningWindow.js`):
@@ -509,7 +515,7 @@ Den nye sæsons første løbsdag har ingen fast tabel: dens slots presses sammen
 **Mekanikken, så den ikke skal gættes næste gang:**
 
 - **Én kilde.** `TIER_STAGE_SLOTS` er en almindelig dag og bor i `calendarPlanningWindow.js` (re-eksporteret af `tierCalendarMaterializer.js`). `slotsFor(tier, dato, { seasonLastRaceDay, notBefore })` udleder de to dage af den: sæsonens sidste løbsdag fordeles jævnt fra dagens normale første slot til 15:00 (`seasonLastDaySlots`), og første løbsdag presses sammen fra `notBefore` (`applySeasonStartNotBefore`, rører kun datoen for `notBefore`). Uden kontekst er enhver dato en almindelig dag. Der findes ingen tabel ved siden af; ændres en divisions normale slots, følger de to dage med.
-- **Hvilken dag er "sidste løbsdag".** Materializerens `seasonLastRaceDay`: `buildSeasonCalendar.js` sender §2-vinduets sidste dag (S4: søndag 25/10). Uden værdi bruges kalenderens sidste dato (`lastCalendarDay(from, realDays)`), som er den samme dag; i en midt-sæson-aktivering (§2e) slutter horisonten på sæsonens sidste etape-dato, så en pulje der vågner midt i sæsonen også slutter kl. 15 den dag. `null` slår reglen fra.
+- **Hvilken dag er "sidste løbsdag".** Materializerens `seasonLastRaceDay`: `buildSeasonCalendar.js` sender §2-vinduets sidste dag (S4: søndag 25/10; S5: lørdag 28/11). Reglen rammer datoen, ikke en ugedag, så lørdagsslutningen fra S5 (#5833) krævede ingen ændring her. Uden værdi bruges kalenderens sidste dato (`lastCalendarDay(from, realDays)`), som er den samme dag; i en midt-sæson-aktivering (§2e) slutter horisonten på sæsonens sidste etape-dato, så en pulje der vågner midt i sæsonen også slutter kl. 15 den dag. `null` slår reglen fra.
 - **Antal slots, baner og datoer er urørte.** En dag har stadig præcis `density` slots (§1), bane k kører stadig i slot k, og det er kun klokkeslættet der flytter sig. Den gyldne kalender-diff er derfor uændret (den måler datoer), og alle §1-§7-gates er de samme. Sidste løbsdag starter som normalt; kun dens sidste etaper rykker frem.
 - **Beviset i dry-runnet.** Sektionen "#5592 planlægningsvindue ved sæsonskiftet" tæller pr. division de datoer hvor en etape ikke ligger på de normale slots (`datesOffNormalSlots`). Kun første og sidste løbsdag må stå der; enhver anden dato markeres ❌.
 - **Det tidligst mulige sæsonskifte** (`resolveEarliestSeasonTransition`, diff-tjek 24/9). "Afslut sæson" er spærret til hvert løb er afviklet (`assessSeasonEndBlockers`), så skiftet kan tidligst ske ved **starten på forrige sæsons seneste etape på tværs af alle divisioner + `SEASON_TRANSITION_PROCESSING_BUFFER_MINUTES` (30)**: afviklingen af etapen (målt op til 10,7 min forsinket) plus selve skiftet. Er `app_config.season_transition_planned_at` sat og **senere**, vinder den; en tidligere værdi kan ikke nås og taber (det gør en efterladt værdi fra en tidligere sæson også). Kendes forrige sæsons etaper ikke, gælder det seneste af den planlagte værdi og konventionen *aftenen før første løbsdag kl. 18* (`computeSeasonTransitionBoundary`). Loftet for bufferen er 60 min: med D1's etape kl. 19 som S3's sidste kan D1's 5 etaper på S4's første dag højst starte kl. 20 for at slutte kl. 22.
@@ -531,7 +537,7 @@ Den nye sæsons første løbsdag har ingen fast tabel: dens slots presses sammen
 
 S4's første dag er den eneste dag hvor en etape ligger efter kl. 19; træningssweepen venter selv på dagens sidste afslutning (`trainingDayCloseTrigger.js`, loft kl. 23).
 
-> Fra S4 slutter hver sæson på en søndag med sidste etape kl. 15, så det tidligst mulige skifte er kl. 15:30, og den nye sæsons første dag (mandag) starter tidligst kl. 15:30.
+> Fra S4 slutter hver sæson med sidste etape kl. 15, så det tidligst mulige skifte er kl. 15:30. S4 slutter søndag 25/10; fra S5 slutter sæsonen **lørdag** (#5833). Ligger den nye sæsons første dag dagen efter, starter den tidligst kl. 15:30; med S5's to fridage (første dag onsdag 28/10) og S6's foreløbige mandagsstart efter lørdag 28/11 ligger første dag mere end 24 t efter skiftet og har normale tider (testet i `calendarPlanningWindow.test.js`).
 
 | Hvor | Hvad |
 |---|---|
@@ -1313,7 +1319,7 @@ Fixene, i rækkefølge:
 | Etapeløbs-spænd ≤ etaper + 3 | findes (`raceCalendarLanePackerInvariants.test.js:141`) | mangler | **kan bygges** |
 | `TIER_DENSITY` som etaper pr. kalenderdag | mangler | mangler | **kan bygges**, group by dato |
 | Løb hver kalenderdag i alle divisioner | findes (`calendarScorecard4218.mjs`, del af `grønt`/exit-koden) | findes (samme script, sæsonskifte-preflighten #4572) | findes (`--from-db`, ADVISORY — #4573) |
-| Sæsonen slutter søndag | mangler | findes (`regenSeason3Calendar.mjs:197`) | **kan bygges**, `extract(dow)` |
+| Sæsonen slutter på §2's ugedag (søndag ≤ S4, lørdag fra S5) | mangler | findes (`resolveSeasonWindow` med `seasonNumber` i `buildSeasonCalendar.js`, #5833; før: `regenSeason3Calendar.mjs:197`) | **kan bygges**, `extract(dow)` pr. sæson |
 | `GRAND_TOUR_REST_DAYS` = 2 | mangler | mangler | **kan bygges**: spænd skal være `etaper + 2`, verificeret sand for alle 3 GT'er |
 | Kvote-opfyldelse, EKSAKT (§1b) | **findes** (`calendarInvariantsCiGate4123.test.js`) | **findes** (`calendarPlacementGates.detectQuotaViolations`, stopper `--apply`) | **kan bygges** |
 | Monument uden for GT-spænd (§4/#4203) | **findes** (`calendarPlacementGates.test.js`) | **findes** (stopper `--apply`) | **kan bygges** — `game_day`-akse, group by løb |
