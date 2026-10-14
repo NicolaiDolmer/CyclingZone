@@ -260,6 +260,10 @@ try {
   node scripts/ci/check-workflow-checkout.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "workflow-checkout-guard" }
 
+  Write-Host "== preflight/static-guards parity (#6616) ==" -ForegroundColor Cyan
+  node --test scripts/preflight-static-guard-parity.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "preflight-static-guard-parity" }
+
   # #6616: repo-regel - nye frontend-filer er .ts/.tsx. Kun NYE filer (diff-filter=A)
   # mod origin/main; eksisterende .js/.jsx røres ikke. Hurtig: ét git-kald.
   Write-Host "== new-frontend-file-ts-rule (nye frontend/src/**/*.js(x) er forbudt, #6616) ==" -ForegroundColor Cyan
