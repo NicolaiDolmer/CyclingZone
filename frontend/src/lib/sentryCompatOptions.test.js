@@ -9,6 +9,7 @@ import { SENTRY_V10_COMPAT_OPTIONS } from "./sentryCompatOptions.js";
 test("v10-baseline: ingen bruger-IP, cookies eller bodies", () => {
   const { attachStacktrace, dataCollection } = SENTRY_V10_COMPAT_OPTIONS;
   assert.equal(attachStacktrace, false);
+  assert.equal(SENTRY_V10_COMPAT_OPTIONS.traceLifecycle, "static");
   assert.equal(dataCollection.userInfo, false);
   assert.equal(dataCollection.cookies, false);
   assert.deepEqual(dataCollection.httpBodies, []);

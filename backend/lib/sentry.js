@@ -13,9 +13,12 @@ let enabled = false;
 // `attachStacktrace: false` bevarer v10-grupperingen: v11 sætter som default en
 // syntetisk stack på captureMessage og ikke-Error-værdier, hvilket splitter
 // eksisterende issue-grupper og tæller beskeder som "errored" sessions.
+// `traceLifecycle: "static"` holder v10's transaktions-model (v11-default er
+// span streaming), anbefalet i #6121 som start.
 const PII_DENY = ["forwarded", "-ip", "remote-", "via", "-user"];
 export const SENTRY_V10_COMPAT_OPTIONS = Object.freeze({
   attachStacktrace: false,
+  traceLifecycle: "static",
   dataCollection: {
     userInfo: false,
     cookies: false,

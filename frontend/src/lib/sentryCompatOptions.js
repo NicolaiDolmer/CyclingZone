@@ -9,12 +9,15 @@
 // syntetisk stack paa captureMessage (fx "chunk-selfheal reloaded" i main.jsx),
 // hvilket splitter eksisterende issue-grupper og taeller beskeden som en
 // "errored" session.
+// `traceLifecycle: "static"` holder v10's transaktions-model (v11-default er span
+// streaming), anbefalet i #6121 som start.
 //
 // Ren .js-fil uden @sentry/react-import, saa den kan unit-testes direkte.
 const PII_DENY = ["forwarded", "-ip", "remote-", "via", "-user"];
 
 export const SENTRY_V10_COMPAT_OPTIONS = Object.freeze({
   attachStacktrace: false,
+  traceLifecycle: "static",
   dataCollection: {
     userInfo: false,
     cookies: false,

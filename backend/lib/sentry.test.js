@@ -334,6 +334,7 @@ test("normalizeEventMessages — to udfald af samme outage får samme gruppering
 test("SENTRY_V10_COMPAT_OPTIONS — bevarer v10's restriktive data-indsamling (#6607)", () => {
   const { attachStacktrace, dataCollection } = SENTRY_V10_COMPAT_OPTIONS;
   assert.equal(attachStacktrace, false);
+  assert.equal(SENTRY_V10_COMPAT_OPTIONS.traceLifecycle, "static");
   assert.equal(dataCollection.userInfo, false);
   assert.equal(dataCollection.cookies, false);
   assert.deepEqual(dataCollection.httpBodies, []);
