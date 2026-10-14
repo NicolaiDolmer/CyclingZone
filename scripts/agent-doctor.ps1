@@ -708,11 +708,18 @@ foreach ($pkgDir in @(".", "backend", "frontend", "marketing")) {
     continue
   }
   try {
-    $outdatedText = (& npm outdated --json --prefix $pkgPath 2>&1) -join "`n"
-    # npm outdated exit 1 = der FINDES forældede pakker; kun tom/ugyldig JSON er en fejl.
+    # Kun stdout parses som JSON; stderr (fx "npm warn ...") droppes.
+    $outdatedText = (& npm outdated --json --prefix $pkgPath 2>$null) -join "`n"
+    $npmExit = $LASTEXITCODE
+    # npm outdated exit 1 = der FINDES forældede pakker. Andre exit-koder (>1) = fejl.
+    # Tom stdout er kun OK ved exit 0; ellers (offline/registry-fejl) SKIP, aldrig OK.
+    if ($npmExit -gt 1 -or ($npmExit -ne 0 -and -not $outdatedText.Trim())) {
+      Add-Check $checkName "SKIP" "npm outdated fejlede (exit $npmExit, offline?)"
+      continue
+    }
     $outdated = if ($outdatedText.Trim()) { $outdatedText | ConvertFrom-Json } else { $null }
   } catch {
-    Add-Check $checkName "SKIP" "npm outdated kunne ikke køre (offline?)"
+    Add-Check $checkName "SKIP" "npm outdated gav ingen gyldig JSON (offline?)"
     continue
   }
   if ($null -eq $outdated) { Add-Check $checkName "OK" "ingen forældede pakker"; continue }
