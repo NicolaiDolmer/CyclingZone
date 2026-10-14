@@ -44,8 +44,9 @@ import { TERRAIN_FAMILY_BY_PROFILE_TYPE, TIER_TERRAIN_FAMILY_MIN, TIER_TERRAIN_F
 
 // K-B-kategorierne generatoren kan flytte (TTT genereres ikke, #2411).
 const KB_CATEGORIES = Object.freeze(["flat", "hilly", "mountain", "itt", "cobbles"]);
-// §6b: profiltyper pr. uniform akse (calendarCompositionTargets.computeUniformTierStats).
-const UNIFORM_AXIS_TYPES = Object.freeze({ itt: ["itt", "itt_hilly"], cobbles: ["cobbles"], high_mountain: ["high_mountain"] });
+// §6b: profiltyper pr. uniform akse, PRAECIS som calendarCompositionTargets.computeUniformTierStats
+// taeller dem (grus taeller som brosten, #4105/#4270), saa kvoten optimerer det gaten maaler.
+const UNIFORM_AXIS_TYPES = Object.freeze({ itt: ["itt", "itt_hilly"], cobbles: ["cobbles", "gravel"], high_mountain: ["high_mountain"] });
 // Bjerg-familien i #3327's forstand: et etapeløb med en af dem er ikke bjergfrit.
 const MOUNTAIN_FAMILY_TYPES = Object.freeze(new Set(["mountain", "high_mountain", "medium_mountain"]));
 

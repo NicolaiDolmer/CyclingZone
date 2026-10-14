@@ -28,8 +28,9 @@ test("#6367: S5's låste vindue er grønt på alle kalender-gates uden override 
   assert.deepEqual(r.tierCompositionDrift, [], "§6 pr. division");
 });
 
-test("#6367: §1d — S5's mål er ikke sat uden ejer-go", () => {
-  assert.equal(SEASON_RACE_DAY_TARGET[5], undefined, "ejer-beslutning: tilføj først S5-tallet efter ejerens ordrette go");
+test("#6367: §1d — S5's mål er ejerens 160 (go 14/10) og lig forslaget", () => {
+  assert.equal(SEASON_RACE_DAY_TARGET[5], 160);
+  assert.equal(SEASON_RACE_DAY_TARGET[5], S5_PROPOSED_RACE_DAY_TARGET);
 });
 
 test("#6367: §1d — med forslaget (160) rammer alle fire divisioner det", async () => {

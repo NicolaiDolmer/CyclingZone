@@ -8,7 +8,7 @@ Ejer 14/10 kl. 21:40: "Ret generatoren" — ingen regel løsnes. Udgangspunkt: t
 
 | Fund i tørkørslen | Rodårsag | Rettelse |
 |---|---|---|
-| §1d: D1 har klart flere løbsdage end D2-D4 | S5 havde intet mål i `SEASON_RACE_DAY_TARGET`, så aksen var pakkerens naturlige længde pr. division | **Ikke sat i koden — afventer ejer-go.** Forslag: S5 = 160 = 32 løbsdatoer × 5 (samme regel som S4's 140, §1e-b) |
+| §1d: D1 har klart flere løbsdage end D2-D4 | S5 havde intet mål i `SEASON_RACE_DAY_TARGET`, så aksen var pakkerens naturlige længde pr. division | **S5 = 160, ejer-go 14/10.** 32 løbsdatoer × 5 (samme regel som S4's 140, §1e-b) |
 | §5: D1's bølget-familie under gulvet | Filler-terræn trukket frit pr. etape; ingen arketype garanterer bølget | Terræn-kvote pr. division (§7c) |
 | §6: D1 bjerg over tolerancen, kuperet under; sæson-K-B uden for ±2 pp | S5's Grand Tours bygges af ejerens faste, bjergtunge kvoter, alle i D1, og intet i den frie filler kompenserede | Terræn-kvote pr. division |
 | §6b: højbjerg og enkeltstart uden for ±2 pp i flere divisioner | Samme: en divisions andel var en stikprøve omkring vægtene, standardfejl på størrelse med tolerancen | Terræn-kvote pr. division |

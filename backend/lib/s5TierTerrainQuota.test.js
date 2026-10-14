@@ -179,3 +179,14 @@ test("#6367 makeS5TierProfileGenerator: Grand Tours og endagsløb er uændrede, 
     assert.ok(Math.abs(tierTerrainLoss(counts, tier) - info.lossAfter) < 1e-9, `D${tier}: de genererede etaper er ikke dem fordelingen regnede med`);
   }
 });
+
+test("#6367 review: grus taeller mod brosten-aksen, saa kvoten ikke tilfoejer ekstra brosten", () => {
+  // 100 etaper med 5 grus og 0 brosten: §6b-maalet for brosten er allerede ramt, fordi gaten
+  // (computeUniformTierStats) taeller cobbles + gravel. Kvoten maa derfor ikke tilfoeje brosten.
+  const counts = { flat: 30, hilly: 25, rolling: 8, mountain: 10, high_mountain: 12, itt: 10, gravel: 5 };
+  const slots = Array.from({ length: 6 }, (_, i) => slot(`g${i}`, ["flat"], ["flat", "hilly"], ["flat", "hilly", "cobbles"]));
+  const { fillerById } = allocateS5TierFillers({ tier: 2, counts, slots });
+  const cobbles = [...fillerById.values()].flat().filter((t) => t === "cobbles").length;
+  // Foer rettelsen tilfoejede kvoten 4 (grus talte som 0); nu hoejst 1 (det bloede K-B-maal).
+  assert.ok(cobbles <= 1, `kvoten tilfoejede ${cobbles} brosten selvom grus allerede daekker aksen`);
+});
