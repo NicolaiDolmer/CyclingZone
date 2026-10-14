@@ -58,3 +58,30 @@ export function jerseyHoldersForStage(results, stage, jerseyDefs) {
     }))
     .filter((j) => j.holder);
 }
+
+// #6570 (CodeRabbit, PR #6633): en etapes on-demand-hentning. Kun et svar der
+// faktisk kom tilbage maa markere etapen som loaded. Foer blev en fejl slugt til
+// [] og etapen markeret loaded, saa den aldrig blev hentet igen i samme besoeg.
+// En fejlet etape startes ikke automatisk igen (det ville blive et loop mod en
+// nede backend); den venter paa brugerens "Proev igen", som fjerner den fra failed.
+export function shouldStartStageFetch(n, { loaded, inFlight, failed }) {
+  return Number.isFinite(n) && !loaded.has(n) && !inFlight.has(n) && !failed.has(n);
+}
+
+// Hvad etapens flade skal vise: data, fejl med retry, eller skeleton.
+export function stageFetchState(n, { loaded, failed }) {
+  if (loaded.has(n)) return "loaded";
+  if (failed.has(n)) return "failed";
+  return "loading";
+}
+
+// Samler hentningens udfald i en vaerdi, saa kalderen kan skelne "ingen raekker"
+// (ok, rows: []) fra "hentningen fejlede" (ok: false). En rejected promise maa
+// aldrig blive til en tom liste.
+export async function settleStageFetch(fetchRows) {
+  try {
+    return { ok: true, rows: (await fetchRows()) ?? [] };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}

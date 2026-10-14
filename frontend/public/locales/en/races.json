@@ -1,4 +1,85 @@
 {
+  "stagePageV2": {
+    "tabsAria": "Race views",
+    "tab": { "stage": "Stage", "standings": "Standings", "team": "Team", "tactics": "Tactics" },
+    "stripAria": "Stages",
+    "stripStage": "Stage {number}",
+    "today": "Today",
+    "stripResult": "{name} #{rank}",
+    "stripRidden": "Finished",
+    "profile": {
+      "title": "Stage {number} · the route",
+      "titleOneDay": "The route",
+      "stats": "{km} km · {gain} m climbing · {climbs, plural, one {# climb} other {# climbs}}",
+      "aria": "Stage profile, {km} km, coloured by gradient.",
+      "tipToGo": "{km} km to go",
+      "tipToTop": "{km} km to the top of {name}",
+      "finish": "Finish · {m} m",
+      "toGoAxis": "{km} km to go",
+      "drawn": "Drawn from the climbs and the total climbing. Gradients between the climbs are approximate.",
+      "legend": { "flat": "under 3 %", "band2": "3-6 %", "band3": "6-8 %", "band4": "8-10 %", "band5": "over 10 %", "down": "downhill" },
+      "sprint": "Sprint km {km}"
+    },
+    "axes": {
+      "terrain": "Terrain",
+      "finish": "Finish",
+      "surface": "Surface",
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Cobbles}} · {count, plural, one {# sector} other {# sectors}}, {km} km"
+    },
+    "climbs": {
+      "title": "The climbs",
+      "hint": "Tap a climb on the profile or here",
+      "length": "Length",
+      "average": "Average",
+      "steepest": "Steepest km",
+      "hardest5": "Hardest 5 km",
+      "top": "Top",
+      "steepestValue": "{grade} % · km {index}",
+      "topValue": "{m} m · km {km}",
+      "toFinish": "To the finish",
+      "perKmAria": "{name}, gradient per kilometre",
+      "noPerKm": "Kilometre-by-kilometre gradients come with the real stage profile.",
+      "none": "No categorised climbs on this stage."
+    },
+    "demands": { "title": "The day demands", "decides": "Decides it", "matters": "Matters", "helps": "Helps" },
+    "lineup": {
+      "title": "Your line-up",
+      "fit": "Route fit",
+      "fitAria": "Route fit {fit} of 100",
+      "empty": "You have no riders in this race."
+    },
+    "cta": {
+      "setTactics": "Set tactics for stage {number} · {done} of {total} done",
+      "setTacticsLocks": "Set tactics for stage {number} · {done} of {total} done · locks {time}",
+      "setTacticsOneDay": "Set tactics · {done} of {total} done",
+      "fullResult": "Full result"
+    },
+    "favourites": {
+      "title": "Favourites",
+      "foot": "Based on this race so far. Route fit only for your own riders.",
+      "leadsOverall": "Leads the overall",
+      "overall": "#{rank} overall, {gap}",
+      "wonStage": "Won stage {number}",
+      "you": "You"
+    },
+    "yourDay": {
+      "title": "Your day · stage {number}",
+      "titleOneDay": "Your day",
+      "classAria": "Classification",
+      "stage": "Stage",
+      "overall": "Overall",
+      "top3": "Top 3",
+      "yourRiders": "Your riders",
+      "noRiders": "None of your riders are in this result.",
+      "bestOverall": "Your best overall",
+      "bestOverallGap": "{name} · {gap} to {leader}",
+      "bestOverallLeads": "{name} leads the race",
+      "whyGap": "{winner} won, {gap} ahead of {second}.",
+      "whySame": "{winner} won ahead of {second} on the same time.",
+      "mineLine": "Your best was {name}, #{rank}, {gap} down.",
+      "mineWon": "Your rider {name} won the stage."
+    }
+  },
   "hub": {
     "title": "Planning",
     "tabSelection": "Team selection",
@@ -992,6 +1073,7 @@
   "detail": {
     "loadError": {
       "message": "Couldn't load the race. Nothing was lost. Try again.",
+      "stageMessage": "Couldn't load this stage's results. Nothing was lost. Try again.",
       "retry": "Try again"
     },
     "stat": {
