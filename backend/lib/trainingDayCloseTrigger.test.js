@@ -15,6 +15,7 @@ import {
   __resetTrainingDayCloseStateForTests,
   TEAM_CONCURRENCY_CONFIG_KEY, MAX_TEAM_CONCURRENCY, parseTeamConcurrency, resolveTeamConcurrency,
   startTrainingDayCloseAfterStages,
+  formatTrainingDayCloseFailure, formatTrainingDayCloseFailures, createTrainingDayCloseFailureTracker,
 } from "./trainingDayCloseTrigger.js";
 import {
   runNormalizedTrainingDateSweep, forEachTeamBounded, __resetNormalizedTrainingDateCacheForTests,
@@ -1264,5 +1265,65 @@ describe("startTrainingDayCloseAfterStages (#5911: start straks efter dagens sid
     });
     assert.equal(result, null);
     assert.equal(errors.length, 1);
+  });
+});
+
+// ── #6609: laesbare Sentry-failures + error kun ved gentagelse ───────────────
+describe("training day-close failure formatting + escalation (#6609)", () => {
+  const fail = (teamId, gameDay, message = "boom") => ({ teamId, gameDay, message });
+  const res = (failures, tickDate = "2026-10-13") => ({ ran: true, tickDate, failed: failures.length, failures });
+
+  it("formats a failure as a plain string that survives Sentry normalization", () => {
+    assert.equal(formatTrainingDayCloseFailure(fail("t1", 77, "net down"), "2026-10-13"), "2026-10-13|t1|77|net down");
+    assert.equal(formatTrainingDayCloseFailure({ tickDate: "2026-10-12", teamId: "t2", gameDay: 3, message: "x" }, "2026-10-13"), "2026-10-12|t2|3|x");
+    const out = formatTrainingDayCloseFailures(res([fail("t1", 1), fail("t2", 2)]));
+    assert.deepEqual(out, ["2026-10-13|t1|1|boom", "2026-10-13|t2|2|boom"]);
+    assert.ok(out.every((x) => typeof x === "string"));
+  });
+
+  it("first failure is a warning, never an error", () => {
+    const t = createTrainingDayCloseFailureTracker();
+    const r = t.track(res([fail("t1", 77)]));
+    assert.equal(r.capture, true);
+    assert.equal(r.level, "warning");
+  });
+
+  it("error only when the same (team, game day) fails again at the next tick", () => {
+    const t = createTrainingDayCloseFailureTracker();
+    assert.equal(t.track(res([fail("t1", 77)])).level, "warning");
+    const again = t.track(res([fail("t1", 77)]));
+    assert.equal(again.level, "error");
+    assert.equal(again.capture, true);
+  });
+
+  it("a transient failure that heals never escalates", () => {
+    const t = createTrainingDayCloseFailureTracker();
+    assert.equal(t.track(res([fail("t1", 77)])).level, "warning");
+    assert.equal(t.track({ ran: true, tickDate: "2026-10-13", failed: 0, failures: [] }).capture, false);
+    assert.equal(t.track(res([fail("t1", 77)])).level, "warning");
+  });
+
+  it("a different team or game day is not a repeat", () => {
+    const t = createTrainingDayCloseFailureTracker();
+    t.track(res([fail("t1", 77)]));
+    assert.equal(t.track(res([fail("t2", 77)])).level, "warning");
+    assert.equal(t.track(res([fail("t2", 78)])).level, "warning");
+  });
+
+  it("keeps the #6004 dedupe: unchanged set captures one error, not one per tick", () => {
+    const t = createTrainingDayCloseFailureTracker();
+    t.track(res([fail("t1", 77)]));
+    assert.equal(t.track(res([fail("t1", 77)])).capture, true);
+    const third = t.track(res([fail("t1", 77)]));
+    assert.equal(third.capture, false);
+    assert.equal(third.repeated, true);
+  });
+
+  it("repeat with a changed message still escalates (identity ignores message)", () => {
+    const t = createTrainingDayCloseFailureTracker();
+    t.track(res([fail("t1", 77, "a")]));
+    const r = t.track(res([fail("t1", 77, "b")]));
+    assert.equal(r.level, "error");
+    assert.equal(r.capture, true);
   });
 });

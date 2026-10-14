@@ -1102,7 +1102,7 @@ export function startTrainingDayCloseAfterStages({
         logger.log?.(`  🚴 Traenings-lukning startet af stage-scheduler: ${result.swept} tick(s), ${result.failed} fejl, ${Math.round((result.durationMs ?? 0) / 1000)} s`);
       }
       if (result?.failed) {
-        logger.error?.(`  ❌ Traenings-lukning (stage-scheduler): ${result.failed} fejl - cron proever igen`, result.failures?.slice(0, 20));
+        logger.error?.(`  ❌ Traenings-lukning (stage-scheduler): ${result.failed} fejl - cron proever igen`, formatTrainingDayCloseFailures(result));
       }
       return result;
     })
@@ -1112,4 +1112,57 @@ export function startTrainingDayCloseAfterStages({
       logger.error?.("  ❌ Traenings-lukning (stage-scheduler) fejlede - cron proever igen:", err?.message ?? err);
       return null;
     });
+}
+
+// ─── Laesbare Sentry-failures + eskalering ved gentagelse (#6609) ─────────────
+// Sentrys normalize-dybde flader objekter til "[Object]", saa failures sendes som
+// strenge: `${tickDate}|${teamId}|${gameDay}|${message}`.
+export function formatTrainingDayCloseFailure(failure, tickDate = null) {
+  const date = failure?.tickDate ?? tickDate ?? "?";
+  return `${date}|${failure?.teamId ?? "?"}|${failure?.gameDay ?? "?"}|${failure?.message ?? ""}`;
+}
+
+export function formatTrainingDayCloseFailures(result, limit = 20) {
+  return (result?.failures ?? []).slice(0, limit).map((f) => formatTrainingDayCloseFailure(f, result?.tickDate));
+}
+
+// Identitet for et (dato, hold, loebsdag)-tilfaelde uden besked: en forbigaaende
+// fejl med skiftende tekst er stadig "samme hold, samme loebsdag" naar den gentager.
+function failureIdentity(failure, tickDate) {
+  return `${failure?.tickDate ?? tickDate ?? "?"}|${failure?.teamId ?? "?"}|${failure?.gameDay ?? "?"}`;
+}
+
+/**
+ * Tracker for cron'ens Sentry-capture. Ét kald pr. tick med sweep-resultatet.
+ *  - level "warning": foerste gang et (hold, loebsdag) fejler (retry heler typisk).
+ *  - level "error": mindst ét (hold, loebsdag) fejlede ogsaa i forrige tick.
+ * #6004-dedupe bevares: uaendret saet giver kun EN capture pr. level, ikke en pr. tick.
+ * @returns {{ track(result): { capture: boolean, level: "warning"|"error"|null, failures: string[], repeated: boolean } }}
+ */
+export function createTrainingDayCloseFailureTracker() {
+  let prevIdentities = new Set();
+  let prevKey = "";
+  let prevEscalated = false;
+  return {
+    track(result) {
+      if (!result?.failed) {
+        prevIdentities = new Set();
+        prevKey = "";
+        prevEscalated = false;
+        return { capture: false, level: null, failures: [], repeated: false };
+      }
+      const tickDate = result.tickDate ?? null;
+      const failures = formatTrainingDayCloseFailures(result);
+      const identities = new Set((result.failures ?? []).map((f) => failureIdentity(f, tickDate)));
+      const key = `${result.failed}|${(result.failures ?? []).map((f) => formatTrainingDayCloseFailure(f, tickDate)).sort().join("||")}`;
+      const level = [...identities].some((id) => prevIdentities.has(id)) ? "error" : "warning";
+      const unchanged = key === prevKey;
+      const capture = !unchanged || (level === "error" && !prevEscalated);
+      const escalated = level === "error";
+      prevIdentities = identities;
+      prevKey = key;
+      prevEscalated = escalated;
+      return { capture, level, failures, repeated: unchanged && !capture };
+    },
+  };
 }
