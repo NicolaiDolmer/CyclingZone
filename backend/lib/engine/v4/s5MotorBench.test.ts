@@ -13,15 +13,22 @@
 //   5. Vindertypen: stigende spurt -> spurtere, bjergtop -> klatrere. Altid som "hyppigste
 //      vinder"; den praecise andels-taerskel er privat (balance-internals/6362/
 //      winner-thresholds.json), og fixturen baerer kun dommen, som gaten blokerer paa.
+//      CI haandhaever dommen uden taersklen: fixturens winnerDigests skal matche den
+//      genkoerte benchs maalinger, ellers kan dommen ikke genberegnes og testen er roed.
+//   6. Etapeloeb koeres med akkumuleret traethed og hviledage, PRAECIS raceRunner's
+//      sekvens (entrantFatigueSequences), ikke med friske ryttere paa hver etape.
 //
 // Tal og taerskler staar ikke her (hard rule 17); de ligger i balance-internals/6362/.
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  S5_MOTOR_BENCH_CONFIG, S5_WINNER_EXPECTATIONS, buildS5BenchRaces, dominantWinnerType, finishesNeedingSeasonSample,
-  gateMeasurement, gateRowsFor, loadWinnerThresholds, runS5MotorBench, winnerVerdicts,
+  S5_MOTOR_BENCH_CONFIG, S5_WINNER_EXPECTATIONS, benchStageFatigues, buildS5BenchRaces, dominantWinnerType, finishesNeedingSeasonSample,
+  gateMeasurement, gateRowsFor, loadBenchField, loadWinnerThresholds, runS5MotorBench, winnerRowsDigests, winnerVerdicts,
 } from "../../../scripts/dev/s5MotorBench.mjs";
+import { sortedStages, splitEntrants } from "../../../scripts/dev/lib/tourScorecard.mjs";
+import { entrantFatigueSequences } from "../../raceRunner.js";
+import { loadRaceEngineV4 } from "../../raceEngineV4Bridge.js";
 import {
   evaluateMotorGaps, evaluateS5BenchmarkGate, formatS5BenchmarkReport, loadMotorGapFile, loadS5Benchmark,
   MOTOR_GAP_VERDICTS, MOTOR_WINNER_VERDICTS,
@@ -34,7 +41,7 @@ type WinnerVerdict = { expected: string; verdict: string };
 const BENCHMARK = loadS5Benchmark();
 const FIXTURE = loadMotorGapFile() as {
   stub: boolean; config: Record<string, unknown>; verdicts: Record<string, string>; sources: Record<string, string>;
-  winners: Record<string, WinnerVerdict>;
+  winners: Record<string, WinnerVerdict>; winnerDigests: Record<string, string>;
 };
 
 // Én koersel af den kanoniske bench, delt af testene nedenfor.
@@ -107,8 +114,67 @@ test("#6362: fixturens vindertype-dom er bestaaet og blokerer gaten ved fail", (
   assert.equal(part.violations.some((v: string) => v.includes("vinder ikke")), failed, "en fejlet vindertype er et brud i del (4)");
 });
 
+// CI-haandhaevelsen (review-runde 3): dommen er en ren funktion af (maalinger, privat
+// taerskel). Er maalingerne de samme som da dommen blev skrevet, er dommen stadig den
+// rigtige; er de ikke, kan den ikke genberegnes uden taersklen, og testen er roed. Saa kan
+// en motor-aendring ikke skubbe den forventede type under taersklen og beholde et "pass".
+test("#6362: vindertype-dommen er bundet til de genkoerte maalinger (CI, uden taersklen)", () => {
+  assert.deepEqual(Object.keys(FIXTURE.winnerDigests ?? {}).sort(), Object.keys(S5_WINNER_EXPECTATIONS).sort());
+  for (const d of Object.values(FIXTURE.winnerDigests)) assert.match(d, /^sha256:[0-9a-f]{64}$/);
+  assert.deepEqual(
+    winnerRowsDigests(ROWS), FIXTURE.winnerDigests,
+    "vindertype-maalingerne har flyttet sig: den committede dom kan ikke genberegnes uden den private taerskel. Koer `node backend/scripts/dev/s5MotorBench.mjs --write-fixture` med balance-internals/6362/winner-thresholds.json (eller CZ_6362_WINNER_THRESHOLDS) og gennemse dommen",
+  );
+});
+
+test("#6362: winnerRowsDigests reagerer paa een flyttet vinder og ignorerer raekkefoelgen", () => {
+  const rows = gateRowsFor(ROWS, "long_climb").rows;
+  const base = winnerRowsDigests(ROWS).long_climb;
+  assert.equal(winnerRowsDigests([...ROWS].reverse()).long_climb, base, "raekkefoelge-uafhaengig");
+  const i = ROWS.indexOf(rows[0]);
+  const flipped = ROWS.map((r, j) => (j === i ? { ...r, winnerType: r.winnerType === "climber" ? "sprinter" : "climber" } : r));
+  assert.notEqual(winnerRowsDigests(flipped).long_climb, base, "een vinder skiftet -> anden digest");
+});
+
+test("#6362: etapeloeb koeres med raceRunner's akkumulerede traethed og hviledage", async () => {
+  const gt = buildS5BenchRaces({ scope: "gt" })[0];
+  const field = loadBenchField();
+  const raceId = `${gt.race.id}:${gt.seasonId}`;
+  const profiles = gt.stages.map((p) => ({ ...p, race_id: raceId }));
+  const data = { ...field, race: { ...field.race, id: raceId, stages: profiles.length }, profiles };
+
+  // Sekvensen er PRAECIS raceRunner's (samme funktion, samme input), ikke en kopi.
+  const { stagesSorted, fatigueById } = benchStageFatigues(data);
+  const expected = entrantFatigueSequences({ stagesSorted: sortedStages(data), entrants: splitEntrants(data).entrants, rulesRevision: S5_MOTOR_BENCH_CONFIG.revision });
+  assert.deepEqual(fatigueById, expected);
+
+  // Grand Tour'en har kalender-hviledage, og traetheden falder over dem.
+  const restIdx = stagesSorted.map((s: { game_day: number | null }, i: number) => (i > 0 && s.game_day! - stagesSorted[i - 1].game_day! > 1 ? i : -1)).filter((i: number) => i > 0);
+  assert.ok(restIdx.length >= 1, "S5-Grand Tour'en har mindst een hviledag i kalender-planen");
+  const anyRider = [...fatigueById.values()][0] as number[];
+  assert.equal(anyRider[0], 0, "etape 1 koeres frisk");
+  assert.ok(anyRider[anyRider.length - 1] > 0, "sidste etape koeres med akkumuleret traethed");
+  const noRest = entrantFatigueSequences({ stagesSorted: stagesSorted.map((s: object) => ({ ...s, game_day: null })), entrants: splitEntrants(data).entrants, rulesRevision: S5_MOTOR_BENCH_CONFIG.revision });
+  const [id0] = [...fatigueById.keys()];
+  assert.ok(fatigueById.get(id0)![restIdx[0]] < noRest.get(id0)![restIdx[0]], "hviledagen restituerer");
+
+  // Motoren faar faktisk sekvensen: hver etapes entrants baerer etapens traethed.
+  const engine = await loadRaceEngineV4();
+  const seen: Array<Map<string, number>> = [];
+  const recording = { ...engine, simulateStage: (args: { entrants: Array<{ rider_id: string; fatigue: number }> }) => {
+    seen.push(new Map(args.entrants.map((e) => [e.rider_id, e.fatigue])));
+    return (engine.simulateStage as (a: unknown) => unknown)(args);
+  } };
+  await runS5MotorBench({ races: [gt], simSeeds: 1, v4: recording });
+  assert.equal(seen.length, stagesSorted.length);
+  seen.forEach((byRider, i) => {
+    for (const [id, f] of byRider) assert.equal(f, fatigueById.get(id)![i], `etape ${i + 1}, rytter ${id}`);
+  });
+});
+
 // Den praecise taerskel er motor-intern og ligger privat (hard rule 17). Lokalt med filen
-// genkoeres dommen og skal give fixturens; i CI (ingen fil) gaelder fixturens dom ovenfor.
+// genkoeres dommen og skal give fixturens; i CI (ingen fil) haandhaeves den via
+// winnerDigests ovenfor.
 const WINNER_THRESHOLDS = loadWinnerThresholds();
 test(
   "#6362: genkoert vindertype-dom mod den private taerskel = fixturens",
