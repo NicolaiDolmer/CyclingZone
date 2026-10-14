@@ -24,6 +24,7 @@ import { attachRoute, attachRouteS5, regionOf, S5_SUMMIT_CATEGORIES } from "./ra
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 import { attachSegmentsAndWeather } from "./routeSegments.js";
+import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders } from "./stageProfileTypes.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
@@ -78,6 +79,8 @@ export function toStageProfileRow(raceId, p) {
     sectors: p.sectors,
     segments: p.segments,
     weather: p.weather,
+    // #6594: kun S5-etaper har serien; v5-rækker får ingen ny nøgle (bit-identiske).
+    ...(p.elevation_profile !== undefined ? { elevation_profile: p.elevation_profile } : {}),
     generator_version: p.generator_version ?? GENERATOR_VERSION,
     is_manual: false,
   };
@@ -1421,7 +1424,9 @@ function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = n
   };
   const merged = { ...base, ...route };
   const { segments, weather } = attachSegmentsAndWeather(merged, race, stageNumber);
-  return { ...merged, segments, weather, generator_version: S5_GENERATOR_VERSION };
+  // #6594: højdeprofilen har sin egen rng-strøm; alle felter ovenfor er uændrede.
+  const elevation_profile = buildElevationProfile({ ...merged, segments }, elevationSeedKey(race, stageNumber));
+  return { ...merged, segments, weather, elevation_profile, generator_version: S5_GENERATOR_VERSION };
 }
 
 // ── Grand Tours (spec §5, kort 5): ejerens kvoter pr. GT-type ──────────────────────
