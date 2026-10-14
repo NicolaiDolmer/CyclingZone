@@ -80,6 +80,12 @@ if (lastDayArg != null) {
   }
   REAL_DAYS = Math.round((Date.parse(`${lastDayArg}T00:00:00Z`) - Date.parse(`${firstDay}T00:00:00Z`)) / 86_400_000) + 1;
 } else if (raceDaysArg != null) {
+  // Et flag uden vaerdi giver arg() === true, og Number(true) er 1: afvis i stedet for en
+  // stille een-dags-toerkoersel (samme krav om en streng som --last-day).
+  if (typeof raceDaysArg !== "string" || !/^\d+$/.test(raceDaysArg)) {
+    console.error("--race-days kræver et heltal (antal løbsdatoer), fx --race-days=33.");
+    process.exit(2);
+  }
   REAL_DAYS = Number(raceDaysArg);
 }
 if (!Number.isInteger(REAL_DAYS) || REAL_DAYS < 1) {
