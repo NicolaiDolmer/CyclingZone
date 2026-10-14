@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura nr. 2 (61,25 kr., Sentry -62) afstemmes i Dinero, derefter Claude: Pro-afvigelse · CodeRabbit-loft nået (ejer) · `INDEXNOW_KEY` som GitHub-secret (#6558) · post Discord-tekst for 7.359 (docs/drafts/patch-7359) + app-opslag i forum.
+> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft · `INDEXNOW_KEY` (#6558) · post Discord 7.356-7.360 (`docs/drafts/discord-patch-7356-7360-2026-10-14.md`) · tænd beta for etapeside 2.0 (`stage_page_v2`) når klar.
 >
-> **🎯 Next action (startprompt `docs/sessions/2026-10-14-aften-s5-kalender.md`):** (1) Forum-afstemningerne (lukket kl. 20) → S5-start i #5833 → generatoren. (2) S5-profiler + kalender live senest lør 18/10 (#6369: #6360 #6362 #6364, #6570), første bølge med 6 laner. Datokort tor (#6601, forberedt i OneDrive `private-handoffs/2026-10-14-datokort-forberedelse-6601.md`). (3) Højdeprofil live (#6599/#6577); S5-tørkørsel tor. (4) Google Play-kort (#6584 spor 3) · push-tænding (VAPID, #6590). (5) #6490 aften 2 → DROP INDEX-kort. (6) Forretning frem mod 21/10: #6601 (privat del i OneDrive-context/private-handoffs).
+> **🎯 Next action (startprompt `docs/sessions/2026-10-15-s5-kalender-merge-og-beta.md`):** (1) Merg kalender-PR #6637 (#6367, §1d=160 ejer-go) → prod dry-run → vis ejeren → `--apply` på ordret go; åbne gates: motor-del (#6362/#6363) + bølget-afslutningsbånd. Live senest lør 18/10 (#6369). (2) Løbshistorien på etapeside 2.0 (#6570 del 2, kontrakt fra #6632). (3) Datokort tor (#6601). (4) Landingpage "mennesket bag" (#1369, P01-P20). (5) Codex-audit af svageste områder → kort.
 >
-> **14/10 pc1 merget + verificeret:** major-efterslæb #6604 (Sentry 11 events fra Railway+prod, @vercel/og 1.0 live, React 19-lint, ESLint 10 marketing) · -80 læselig (#6614) · 6 laner på NICOLAIPC (#6619) · preflight = CI-vagter (#6620). Åbent: #6616 pkt 2, #6617, #6618. **13-14/10:** app/PWA (#6585) · push bag slukket flag (#6591) · højdeprofil (#6599) + road book (#6577, med i S5) · Dagens etaper (#6576) · patch 7.359. Ingen nye løbende udgifter.
+> **14/10 aften DOLMERPC merget:** S5 = ons 28/10 - lør 28/11 (#5833, forum) · lørdagsslut fra S5 (#6635) · S5-gate på alle skrivestier (#6630) · motor-bench (#6631) · løbslog-korrekthed + race-story-kontrakt (#6632) · etapeside 2.0 bag `stage_page_v2`=off (#6633) · patch 7.360 · CodeQL 0 åbne (#6628). **14/10 pc1:** major-efterslæb #6604, 6 laner NICOLAIPC (#6619). Åbent: #6616 pkt 2, #6617, #6618.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude DOLMERPC 14/10 aften: S5-bølge (#6367, #6362), #6570, #6628, #6629. Codex → #6601.
+> **🤖 Working agent:** Ingen aktiv session (DOLMERPC lukket 14/10 ~23:30). Codex på pc1: audit svageste områder.
