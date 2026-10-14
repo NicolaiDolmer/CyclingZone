@@ -12,13 +12,15 @@
 //
 // Pr. etape maales: afslutning (s5FinishOf), terraen (B+), gap10 (tid vinder -> nr. 10,
 // raa tider, samme definition som benchmarken), om udbruddet vandt, vinderens og top-10's
-// ryttertype (computeRiderTypes mod den voksne baseline).
+// ryttertype (computeRiderTypes z-scoret mod feltet, se riderTypeById).
 //
-// TO SCOPES.
-//   gt   Grand Tours (som benchmarken). Det er HER gatens dom kommer fra: median gap10 pr.
-//        afslutning mod benchmarkens kvartil-interval -> "inside" / "below" / "above".
-//   all  alle unikke loeb i saesonen (etapeloeb koeres i raekkefoelge med klassement).
-//        Kun til rapporten (mellembjerg og stigende spurt har faa GT-etaper).
+// SCOPES (etapeloeb koeres altid i raekkefoelge med klassement).
+//   gate  (default) Grand Tours som benchmarken, plus saesonens andre loeb for de
+//         afslutninger GT'erne har for faa etaper af (finishesNeedingSeasonSample). Herfra
+//         kommer gatens dom: median gap10 pr. afslutning mod benchmarkens kvartil-interval
+//         -> "inside" / "below" / "above".
+//   gt    kun Grand Tours.
+//   all   alle unikke loeb i saesonen (rapporten: mellembjerg og stigende spurt).
 //
 // HARD RULE 17. Maalte tal (medianer, fordelinger) skrives KUN til balance-internals/
 // (gitignoreret). Den committede fixture (backend/lib/__fixtures__/s5MotorBench.json)
@@ -26,7 +28,7 @@
 // kraever at dommen stadig passer, saa fixturen kan ikke drive fra motoren.
 //
 // Koer (offline, ingen DB, intet netvaerk):
-//   node backend/scripts/dev/s5MotorBench.mjs                      # gt-scope, rapport til stdout
+//   node backend/scripts/dev/s5MotorBench.mjs                      # gate-scope, rapport til stdout
 //   node backend/scripts/dev/s5MotorBench.mjs --scope=all --out=balance-internals/6362
 //   node backend/scripts/dev/s5MotorBench.mjs --write-fixture      # opdaterer dommen i fixturen
 //
@@ -39,11 +41,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
 import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
-import { computeRiderTypes } from "../../lib/riderTypes.js";
+import { ABILITY_KEYS, computeRiderTypes } from "../../lib/riderTypes.js";
 import { loadRaceEngineV4 } from "../../lib/raceEngineV4Bridge.js";
 import {
   benchmarkGapIntervals, deriveTerrainTypeBPlus, isGrandTourRace, loadS5Benchmark, motorGapVerdicts,
-  DEFAULT_MOTOR_BENCH_PATH, s5FinishOf,
+  DEFAULT_MOTOR_BENCH_PATH, MOTOR_GAP_MIN_BENCHMARK_N, s5FinishOf,
 } from "../../lib/s5BenchmarkGate.js";
 import { breakawayWin, runStagesInOrder } from "./lib/tourScorecard.mjs";
 
@@ -52,7 +54,6 @@ const BACKEND = path.resolve(here, "..", "..");
 const REPO_ROOT = path.resolve(BACKEND, "..");
 const CATALOG_FIXTURE = path.join(BACKEND, "lib", "__fixtures__", "racePoolCatalog.prod.json");
 const FIELD_FIXTURE = path.join(BACKEND, "scripts", "baselines", "giro-field-6088-2026-10-02.json");
-const TYPES_BASELINE = path.join(BACKEND, "lib", "riderTypesBaseline.json");
 const REAL_DAYS = 28;
 
 /**
@@ -83,13 +84,46 @@ function quantile(xs, p) {
 }
 const round1 = (x) => (x == null ? null : Math.round(x * 10) / 10);
 
+/** Antal forskellige etaper (saeson-traek x loeb x etape) pr. afslutning. */
+function distinctStagesByFinish(races) {
+  const by = {};
+  for (const { stages } of races) for (const s of stages) { const f = s5FinishOf(s); by[f] = (by[f] ?? 0) + 1; }
+  return by;
+}
+
+/**
+ * Afslutninger gaten doemmer (benchmarken har mindst MOTOR_GAP_MIN_BENCHMARK_N etaper),
+ * men som S5-Grand Tours har for faa etaper af til en median (fx mur: matrixen tillader
+ * den, men GT-kvoterne giver ingen). Dem maaler benchen paa resten af saesonens loeb.
+ */
+export function finishesNeedingSeasonSample(gtRaces, benchmark = loadS5Benchmark()) {
+  const gtCounts = distinctStagesByFinish(gtRaces);
+  return Object.entries(benchmarkGapIntervals(benchmark))
+    .filter(([finish, iv]) => iv.n >= MOTOR_GAP_MIN_BENCHMARK_N && (gtCounts[finish] ?? 0) < MOTOR_GAP_MIN_BENCHMARK_N)
+    .map(([finish]) => finish)
+    .sort();
+}
+
 /**
  * S5-loebene for hvert saeson-traek, som dry-run-scriptet bygger dem: kalender-planen fra
  * prod-katalog-fixturen, hver divisions repraesentative pulje, og hvert unikt loeb (samme
  * loeb i flere divisioner = samme parcours) genereret med profileModel "s5".
+ *   scope "gate"  Grand Tours + de andre loeb der har en afslutning GT'erne har for faa af
+ *                 (finishesNeedingSeasonSample). Det er gatens maaling.
+ *   scope "gt"    kun Grand Tours.   scope "all"   alle loeb (rapporten).
  * @returns {Array<{ seasonId: string, race: object, stages: object[], grandTour: boolean }>}
  */
-export function buildS5BenchRaces({ firstDay = S5_MOTOR_BENCH_CONFIG.firstDay, genSeeds = S5_MOTOR_BENCH_CONFIG.genSeeds, scope = "gt" } = {}) {
+export function buildS5BenchRaces({ firstDay = S5_MOTOR_BENCH_CONFIG.firstDay, genSeeds = S5_MOTOR_BENCH_CONFIG.genSeeds, scope = "gate" } = {}) {
+  if (!["gate", "gt", "all"].includes(scope)) throw new Error(`ukendt scope "${scope}" (gate, gt, all)`);
+  const all = generateS5Season({ firstDay, genSeeds });
+  if (scope === "all") return all;
+  const gt = all.filter((r) => r.grandTour);
+  if (scope === "gt") return gt;
+  const missing = new Set(finishesNeedingSeasonSample(gt));
+  return all.filter((r) => r.grandTour || r.stages.some((s) => missing.has(s5FinishOf(s))));
+}
+
+function generateS5Season({ firstDay, genSeeds }) {
   const { pools, catalog } = JSON.parse(readFileSync(CATALOG_FIXTURE, "utf8"));
   const nowDay = new Date(Date.parse(`${firstDay}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
   const from = resolveCalendarFrom({ firstRaceDate: firstDay, now: new Date(`${nowDay}T12:00:00Z`) });
@@ -111,8 +145,7 @@ export function buildS5BenchRaces({ firstDay = S5_MOTOR_BENCH_CONFIG.firstDay, g
           external_id: externalId.get(r.pool_race_id) ?? null, terrain_archetype: archetype.get(r.pool_race_id) ?? null,
           race_class: r.race_class ?? null, season_id: seasonId, season_variant: 0,
         };
-        const grandTour = isGrandTourRace({ ...race, stages: [] }) || race.terrain_archetype === "grand_tour";
-        if (scope === "gt" && !grandTour) continue;
+        const grandTour = isGrandTourRace({ ...race, stages: [] });
         out.push({ seasonId, race, stages: generateRaceStageProfiles(race, { profileModel: "s5" }), grandTour });
       }
     }
@@ -126,10 +159,22 @@ export function loadBenchField() {
   return { ...field, orders: [], teams: field.teams.map((t) => ({ ...t, is_ai: true })) };
 }
 
-/** Primaer ryttertype pr. rytter (samme klassifikator som spillet, voksen-baselinen). */
+/**
+ * Primaer ryttertype pr. rytter: spillets klassifikator (computeRiderTypes, samme vaegte),
+ * men z-scoret mod FELTETS egen fordeling. Spillets baseline er fittet paa evne-lofterne
+ * (caps); feltets afledte evner ligger paa en anden skala, og mod den baseline bliver
+ * hovedparten af feltet "climber" (ogsaa ryttere med punch langt over klatring).
+ */
 export function riderTypeById(field) {
-  const baseline = JSON.parse(readFileSync(TYPES_BASELINE, "utf8"));
-  return new Map(field.abilities.map(({ rider_id, ...abilities }) => [rider_id, computeRiderTypes(abilities, baseline).primary.key]));
+  const mean = {};
+  const std = {};
+  for (const k of ABILITY_KEYS) {
+    const xs = field.abilities.map((a) => Number(a[k]) || 0);
+    const mu = xs.reduce((s, x) => s + x, 0) / xs.length;
+    mean[k] = mu;
+    std[k] = Math.sqrt(xs.reduce((s, x) => s + (x - mu) ** 2, 0) / xs.length) || 1;
+  }
+  return new Map(field.abilities.map(({ rider_id, ...abilities }) => [rider_id, computeRiderTypes(abilities, { mean, std }).primary.key]));
 }
 
 /** Etapens maalinger fra motorens output (ren). */
@@ -224,16 +269,35 @@ export function benchmarkByTerrainFinish(benchmark) {
   return Object.fromEntries([...by].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, { n: v.length, median: round1(median(v)), p25: round1(quantile(v, 0.25)), p75: round1(quantile(v, 0.75)) }]));
 }
 
+/**
+ * Gatens maaling: pr. afslutning Grand Tour-etaperne, naar der er mindst
+ * MOTOR_GAP_MIN_BENCHMARK_N forskellige af dem; ellers alle bench-etaper med afslutningen
+ * (saesonens andre loeb, se finishesNeedingSeasonSample). Kilden staar i `sources`.
+ */
+export function gateMeasurement(rows, benchmark) {
+  const distinct = (rs) => new Set(rs.map((r) => `${r.seasonId}:${r.raceId}:${r.stage_number}`)).size;
+  const medians = {};
+  const sources = {};
+  for (const finish of [...new Set(rows.map((r) => r.finish))].sort()) {
+    const gt = rows.filter((r) => r.finish === finish && r.grandTour);
+    const useGt = distinct(gt) >= MOTOR_GAP_MIN_BENCHMARK_N;
+    const pick = useGt ? gt : rows.filter((r) => r.finish === finish);
+    const m = benchMedians(pick)[finish];
+    if (m == null) continue;
+    medians[finish] = m;
+    sources[finish] = useGt ? "grand_tours" : "season";
+  }
+  return { medians, sources, verdicts: motorGapVerdicts({ medians, benchmark }) };
+}
+
 /** Hele opsummeringen (tal; skrives kun til balance-internals). */
 export function summarizeS5MotorBench(rows, benchmark) {
   const gt = rows.filter((r) => r.grandTour);
-  const medians = benchMedians(gt);
   return {
+    gate: gateMeasurement(rows, benchmark),
     gt: {
       byFinish: groupBy(gt, (r) => r.finish),
       byTerrainFinish: groupBy(gt, (r) => `${r.terrain}/${r.finish}`),
-      medians,
-      verdicts: motorGapVerdicts({ medians, benchmark }),
     },
     all: {
       byFinish: groupBy(rows, (r) => r.finish),
@@ -247,9 +311,10 @@ export function summarizeS5MotorBench(rows, benchmark) {
 export function fixtureFromSummary(summary) {
   return {
     stub: false,
-    source: "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, Grand Tours, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval. Tal: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+    source: "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Tal: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
     config: { ...S5_MOTOR_BENCH_CONFIG },
-    verdicts: summary.gt.verdicts,
+    verdicts: summary.gate.verdicts,
+    sources: summary.gate.sources,
   };
 }
 
@@ -269,11 +334,14 @@ export function renderS5MotorBenchMarkdown(summary, { scope, config }) {
     "",
     `Revision ${config.revision} (kun bench) · foerste loebsdag ${config.firstDay} · ${config.genSeeds} saeson-traek · ${config.simSeeds} motor-seeds · felt ${config.field} · scope ${scope}`,
     "",
-    "## Gatens del 4 (Grand Tours)",
+    "## Gatens del 4",
     "",
-    "| Afslutning | motor median | dom |",
-    "|---|---|---|",
-    ...Object.entries(summary.gt.verdicts).map(([k, v]) => `| ${k} | ${summary.gt.medians[k] ?? "-"} s | ${v} |`),
+    "| Afslutning | kilde | motor median | benchmark p25-p75 | dom |",
+    "|---|---|---|---|---|",
+    ...Object.entries(summary.gate.medians).map(([k, m]) => {
+      const b = summary.benchmark.byFinish[k];
+      return `| ${k} | ${summary.gate.sources[k]} | ${m} s | ${b ? `${round1(b.p25)}-${round1(b.p75)} s (n=${b.n})` : "-"} | ${summary.gate.verdicts[k] ?? "ikke dømt"} |`;
+    }),
     "",
     ...table("Grand Tours pr. afslutning", summary.gt.byFinish, summary.benchmark.byFinish),
     ...table("Grand Tours pr. terraen/afslutning", summary.gt.byTerrainFinish),
@@ -293,8 +361,7 @@ function arg(argv, name, fallback = null) {
 }
 
 async function main(argv) {
-  const scope = arg(argv, "scope", "gt");
-  if (scope !== "gt" && scope !== "all") throw new Error("--scope skal vaere gt eller all");
+  const scope = arg(argv, "scope", "gate");
   const outDir = arg(argv, "out", null);
   const config = S5_MOTOR_BENCH_CONFIG;
   const t0 = performance.now();
@@ -312,7 +379,7 @@ async function main(argv) {
     console.log(md);
   }
   if (arg(argv, "write-fixture") === true) {
-    if (scope !== "gt") throw new Error("--write-fixture kraever --scope=gt (gatens dom er Grand Tours)");
+    if (scope === "gt") throw new Error("--write-fixture kraever --scope=gate eller all (gt-scope mangler saesonens stikproeve)");
     writeFileSync(DEFAULT_MOTOR_BENCH_PATH, `${JSON.stringify(fixtureFromSummary(summary), null, 2)}\n`);
     console.error(`skrev ${DEFAULT_MOTOR_BENCH_PATH}`);
   }

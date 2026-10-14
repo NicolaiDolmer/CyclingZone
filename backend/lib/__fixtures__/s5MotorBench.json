@@ -1,0 +1,29 @@
+{
+  "stub": false,
+  "source": "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Tal: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+  "config": {
+    "revision": "s5_profiles_v1",
+    "firstDay": "2026-10-26",
+    "genSeeds": 3,
+    "simSeeds": 3,
+    "field": "giro-field-6088-2026-10-02"
+  },
+  "verdicts": {
+    "punch": "inside",
+    "flat_sprint": "inside",
+    "solo_tt": "below",
+    "descent": "inside",
+    "long_climb": "inside",
+    "wall_finish": "inside",
+    "uphill_sprint": "inside"
+  },
+  "sources": {
+    "descent": "grand_tours",
+    "flat_sprint": "grand_tours",
+    "long_climb": "grand_tours",
+    "punch": "season",
+    "solo_tt": "grand_tours",
+    "uphill_sprint": "grand_tours",
+    "wall_finish": "season"
+  }
+}
