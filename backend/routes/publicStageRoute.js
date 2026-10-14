@@ -86,7 +86,7 @@ export async function loadPublicStageRoute(supabase, stageId) {
   const base = "id, race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sprints, sectors, segments";
   let { data: profile, error } = await read(`${base}, elevation_profile`);
   // Kolonnen kommer med #6594-migrationen; før den er anvendt (undefined_column) læses ruten uden serien.
-  if (error && (error.code === "42703" || /elevation_profile/.test(error.message ?? ""))) ({ data: profile, error } = await read(base));
+  if (error?.code === "42703") ({ data: profile, error } = await read(base));
   if (error) throw new Error(`race_stage_profiles: ${error.message}`);
   if (!profile) return null;
   const { data: race, error: raceError } = await supabase
