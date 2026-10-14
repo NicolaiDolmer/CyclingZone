@@ -190,6 +190,21 @@ if ($userPath -notlike "*$localBin*") {
   Write-Host "  [skip]    ~/.local/bin allerede i User-PATH"
 }
 
+# Git for Windows laegger kun Git\cmd paa PATH, ikke Git\bin (bash.exe). Hooks og
+# scripts/cross-pc-sync.sh kalder bash, saa sikr Git\bin bagest i User-PATH (#6602).
+$gitBin = Join-Path $env:ProgramFiles 'Git\bin'
+$fullPath = @([Environment]::GetEnvironmentVariable('Path', 'Machine'), [Environment]::GetEnvironmentVariable('Path', 'User')) -join ';'
+if (-not (Test-Path (Join-Path $gitBin 'bash.exe'))) {
+  Write-Host "  [skip]    $gitBin\bash.exe findes ikke (Git ikke installeret i Program Files)"
+} elseif (($fullPath -split ';') -notcontains $gitBin) {
+  $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+  [Environment]::SetEnvironmentVariable('Path', ((@($userPath, $gitBin) | Where-Object { $_ }) -join ';'), 'User')
+  Write-Host "  [ok]      Git\bin tilfoejet til User-PATH"
+  Update-SessionPath
+} else {
+  Write-Host "  [skip]    Git\bin allerede paa PATH"
+}
+
 # --- 4. VS Code-extensions -------------------------------------------------
 
 Write-Host "`n[4/8] VS Code-extensions"

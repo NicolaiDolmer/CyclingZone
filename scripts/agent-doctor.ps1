@@ -9,6 +9,8 @@ $ErrorActionPreference = "Stop"
 
 $results = New-Object System.Collections.Generic.List[object]
 
+. (Join-Path $PSScriptRoot 'lib\cross-pc-env.ps1')
+
 function Add-Check {
   param(
     [string]$Name,
@@ -593,6 +595,27 @@ if (-not (Test-Path $memoryDir)) {
     }
   } catch {
     Add-Check "memory-refs" "WARN" "baseline unreadable: $($_.Exception.Message)"
+  }
+}
+
+# cross-pc (#6602): Git Bash skal kunne resolves (cross-pc-sync.sh + hooks), og
+# memory i OneDrive maa ikke ligge cloud-only (Files On-Demand) - ellers er memory
+# langsom eller mangler offline. Fix: scripts/link-onedrive-context.ps1 pinner mapperne.
+$gitBash = Resolve-GitBash
+if ($gitBash) {
+  Add-Check "git-bash" "OK" $gitBash
+} else {
+  Add-Check "git-bash" "WARN" "Git Bash not found (PATH or Program Files\Git\bin) - cross-pc-sync.sh cannot run; install Git or run scripts/bootstrap-pc.ps1"
+}
+$oneDriveMemory = if ($env:OneDrive) { Join-Path $env:OneDrive "CyclingZone-context\memory" } else { $null }
+if (-not $oneDriveMemory -or -not (Test-Path -LiteralPath $oneDriveMemory)) {
+  Add-Check "memory-cloud-only" "OK" "OneDrive memory not present on this PC - check not applicable"
+} else {
+  $cloudOnly = Get-CloudOnlyFileCount $oneDriveMemory
+  if ($cloudOnly -eq 0) {
+    Add-Check "memory-cloud-only" "OK" "all memory files available offline"
+  } else {
+    Add-Check "memory-cloud-only" "WARN" "$cloudOnly cloud-only file(s) in $oneDriveMemory - run scripts/link-onedrive-context.ps1 to pin locally"
   }
 }
 
