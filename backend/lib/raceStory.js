@@ -1,7 +1,8 @@
 // backend/lib/raceStory.js
 // #6350 #6234 #6469 #6512 (spor A for etapeside 2.0, #6570): løbshistorien som
 // én ren afledning af etapens tidslinje (race_stage_timelines.events).
-// Kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md
+// Regler (SSOT): docs/RACE_ENGINE_RULES.md, afsnittet "Løbshistorien".
+// Kontrakt (felter): docs/superpowers/specs/2026-10-14-race-story-contract.md
 //
 // Leverer tre ting til siden, alt udledt af loggen, intet opdigtet:
 //   1. moments    - de afgørende øjeblikke: km (eller ærligt km-spænd), race-tid,

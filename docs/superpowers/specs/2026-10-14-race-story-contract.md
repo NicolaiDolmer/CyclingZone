@@ -1,6 +1,7 @@
 # Løbshistorie-kontrakten (race story) — spor A for etapeside 2.0
 
 > **Refs:** #6570 (etapeside 2.0, ejer design-go 14/10) · #6350 · #6234 · #6469 · #6512
+> **SSOT:** [`docs/RACE_ENGINE_RULES.md`](../../RACE_ENGINE_RULES.md), afsnittet "Løbshistorien" (race-motor, ruter og taktik). Reglerne står dér; denne kontrakt beskriver felterne. Ved uenighed vinder SSOT'en.
 > **Kode:** `backend/lib/raceStory.js` (ren funktion) · tests: `backend/lib/raceStory.test.js`
 > **Status:** leveret i spor A. Spor B bygger siden imod denne kontrakt.
 
@@ -37,12 +38,16 @@ motorens log (engine/v4):
 
 Gruppernes medlemmer findes ved at afspille loggen: feltet starter i
 `peloton-0`; `breakaway_formed`, `peloton_splits`, `breakaway_dropped` og
-`finale_attack` (med ryttere) flytter navngivne ryttere; `group_merged` slår
+`finale_attack` (med ryttere i `rider_ids` eller `rider_id`, som et rigtigt
+sent angreb fra `lateAttack.ts`) flytter navngivne ryttere; `group_merged` slår
 grupper sammen. Ryttere ingen hændelse har nævnt, kører i **resten**
 (`includes_rest: true`, følger `peloton-0` gennem sammenlægninger), så
 historien virker uden startliste. Et uheldsoffer kører i en `solo-m10-*`-gruppe
 som uheldet ikke navngiver; rytteren knyttes til den første ukendte
 `solo-m10-*`-gruppe loggen nævner efter uheldet (`members_inferred: true`).
+En udgået rytter (`incident` med `outcome: "abandoned"`, eller
+`outside_time_limit`) er fra det km aldrig i resten, venter ikke på en
+solo-gruppe og står i `out_rider_ids`.
 
 **Verificeret mod motoren** (testen kører de frosne proxy-etaper på den aktuelle
 revision): alle ryttere har samme sluttid i historien som i motorens resultat
@@ -55,19 +60,26 @@ en gruppe bærer et lidt forældet hul).
 To veje, samme output:
 
 - **Server:** `GET /api/races/:raceId/timeline?stage=N&story=1` giver det
-  sædvanlige svar plus `story`. Uden `story=1` er svaret uændret.
+  sædvanlige svar plus `story`. Uden `story=1` er svaret uændret. Serveren
+  giver etapens målresultat og startliste med (`storyInputsFromResults` over
+  `race_results`: etapens `stage`-rækker, for et endagsløb uden dem
+  `gc`-rækkerne, samme valg som mærkerne på etapesiden), så `story.breakaway`
+  er afgjort som mærkerne. Fejler opslaget, udelades `story` (tidslinjen
+  svares stadig).
 - **Klient:** `buildRaceStory` er ren og kan importeres direkte i frontend (som
-  `raceParticipationHistory.ts` allerede gøres), fx når siden også vil give
-  `results` med.
+  `raceParticipationHistory.ts` allerede gøres). Giv `results` og `startlist`
+  med (`storyInputsFromResults(rows, stage)`), ellers er udbrydernes udfald
+  uafgjort mod målresultatet.
 
 ```js
-import { buildRaceStory, checkpointGapForRider, replayFrames, leaderTimeAt } from "backend/lib/raceStory.js";
+import { buildRaceStory, checkpointGapForRider, replayFrames, leaderTimeAt, storyInputsFromResults } from "backend/lib/raceStory.js";
 
 const story = buildRaceStory({
   events,            // race_stage_timelines.events
   timelineVersion,   // race_stage_timelines.timeline_version
-  results,           // valgfri: [{ rider_id, rank }] fra race_results (etapen)
-  startlist,         // valgfri: rider_id-liste (bruges af udbruds-projektionen)
+  ...storyInputsFromResults(raceResultRows, stage),
+  // = results:   [{ rider_id, rank }] (etapens målresultat)
+  //   startlist: rider_id-liste (bruges af udbruds-projektionen)
 });
 ```
 
@@ -85,6 +97,7 @@ const story = buildRaceStory({
 | `moments` | `Moment[]` | Se 3.2. km-sorteret. |
 | `checkpoints` | `Checkpoint[]` | Se 3.3. |
 | `snapshots` | `Snapshot[]` | Se 3.4. |
+| `group_spans` | `[{group_id, from_km, to_km, source_group_id, into_group_id}]` | Gruppernes levetid på vejen: fra dannelse/split (`source_group_id` = gruppen den kom fra) til sammenlægning (`into_group_id`), på hændelsens sande km. `to_km: null` = gruppen findes stadig ved mål. Tom for enkeltstart. |
 | `breakaway` | `{morning_rider_ids, outcomes}`\|null | Dagens udbryderes udfald (`caught`/`dropped`/`survived`/null), samme projektion som mærkerne og de gemte flag (`raceParticipationHistory.ts`). Med `results` afgøres de mod målresultatet. |
 
 ### 3.2 `Moment`
@@ -124,19 +137,26 @@ const story = buildRaceStory({
   leader_time_s: number|null,
   leader_group_id: string|null, leader_rider_ids: string[],
   groups: GroupAt[],          // som i Snapshot, med time_s på kontrolpunktet
-  groups_from_km: number|null,// snapshot-km grupperne er taget fra
-  interpolated: boolean,      // true når kontrolpunktet ikke selv er et tjekpunkt
+  groups_from_km: number|null,// km for tilstanden grupperne er taget fra
+  interpolated: boolean,      // true når passagens km ikke har en gap_update (hullerne er båret)
+  out_rider_ids: string[],    // udgået til og med passagen
 }
 ```
 
+Grupperne er tilstanden **på passagen**: et snapshot på samme km, ellers
+grupperne efter loggen til og med passagens km med de sidst meldte huller
+(`gap_source: "carried"`). Et senere snapshot bruges aldrig (fremtidige huller
+og splits hører ikke til passagen).
+
 `checkpointGapForRider(checkpoint, riderId)` giver
-`{ group_id, gap_s, time_s, in_front, via_rest } | null` (null: udgået, eller
-gruppen er ukendt).
+`{ group_id, gap_s, time_s, in_front, via_rest } | null` (null: udgået, dvs.
+i `out_rider_ids`, eller gruppen er ukendt). En udgået rytter får aldrig
+restgruppens tid.
 
 ### 3.4 `Snapshot` og replay
 
 ```ts
-Snapshot = { km, leader_time_s, groups: GroupAt[] }
+Snapshot = { km, leader_time_s, groups: GroupAt[], out_rider_ids: string[] }
 GroupAt  = {
   group_id, rider_ids,         // eksplicitte medlemmer (sorteret)
   size: number|null,           // inkl. resten for rest-gruppen
@@ -153,8 +173,12 @@ hul (motoren melder kun ændringer); `front` = gruppen kører forrest.
 `[{ km, leader_time_s, groups: [{group_id, size, includes_rest, gap_s, km_behind}] }]`
 på hvert tjekpunkt og pr. km over de sidste 5 km. Mellem tjekpunkter
 interpoleres hullet lineært; `km_behind` er hullet omregnet med førerens fart
-på stedet. En gruppe der opstår inde i et interval vises fra det tjekpunkt
-loggen kender den.
+på stedet. Frame-medlemskabet bygges fra tilstanden før frame'en og
+`group_spans`, aldrig ved at projicere næste snapshot baglæns: en gruppe der
+smelter sammen inde i et interval, er på vejen til sit merge-punkt og lukker
+lineært ind på gruppen den smelter ind i; en gruppe der splitter sig ud inde i
+et interval, er på vejen fra sit split-punkt og starter i gruppen den kom fra.
+En gruppe uden registreret split/merge vises kun hvor loggen kender den.
 
 ### 3.5 Tekst-nøgler
 
