@@ -702,5 +702,17 @@
       "testTitle": "Discord DM works",
       "testDescription": "You will now receive DMs from Cycling Zone for auctions, transfers and board updates."
     }
+  },
+  "push": {
+    "digest": {
+      "title": "Since you last looked",
+      "count": {
+        "auctions": "{count, plural, one {# auction update} other {# auction updates}}",
+        "races": "{count, plural, one {# race result} other {# race results}}",
+        "transfers": "{count, plural, one {# transfer offer} other {# transfer offers}}",
+        "deadlines": "{count, plural, one {# deadline} other {# deadlines}}",
+        "academy": "{count, plural, one {# academy update} other {# academy updates}}"
+      }
+    }
   }
 }

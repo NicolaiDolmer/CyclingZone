@@ -124,5 +124,31 @@
     "columnsLabel": "Vælg kolonner",
     "moreRight": "Flere kolonner til højre"
   },
-  "networkError": "Kan ikke nå serveren lige nu. Tjek din forbindelse og prøv igen."
+  "networkError": "Kan ikke nå serveren lige nu. Tjek din forbindelse og prøv igen.",
+  "push": {
+    "title": "Push-notifikationer",
+    "subtitle": "Jeg giver kun besked, når det betyder noget. Aldrig mellem 22 og 08, og højst 6 om dagen.",
+    "enable": "Slå push til",
+    "disable": "Slå fra på denne enhed",
+    "statusOn": "Slået til på denne enhed",
+    "denied": "Din browser blokerer notifikationer fra Cycling Zone. Tillad dem i sidens indstillinger, og prøv igen.",
+    "iosInstall": "På iPhone og iPad virker push, når Cycling Zone ligger på din hjemmeskærm: tryk Del, og vælg Føj til hjemmeskærm.",
+    "unsupported": "Denne browser kan ikke modtage push-notifikationer.",
+    "error": "Det lykkedes ikke. Prøv igen.",
+    "categoriesHeading": "Hvad jeg sender",
+    "category": {
+      "auctions": { "label": "Auktioner, sidste minut", "desc": "Overbudt lige før slut, og vundet." },
+      "races": { "label": "Løb", "desc": "Ét resumé pr. løbsdag." },
+      "transfers": { "label": "Transfertilbud", "desc": "Et tilbud venter på dit svar." },
+      "deadlines": { "label": "Hold og frister", "desc": "Frister der koster, hvis du misser dem." },
+      "academy": { "label": "Akademi og træning", "desc": "Kun i morgenresuméet." }
+    },
+    "offer": {
+      "regionAriaLabel": "Push-notifikationer",
+      "title": "Vil du have besked, hvis du bliver overbudt før slut?",
+      "accept": "Ja tak",
+      "later": "Ikke nu",
+      "done": "Klaret. Du kan altid ændre det under Profil, Notifikationer."
+    }
+  }
 }

@@ -29,8 +29,8 @@
  *      worker aendrer kun offline-siden og navigationsruten, aldrig hvilken
  *      app-version spilleren koerer.
  *
- * Push (spor 2) kommer hertil senere; designet staar i
- * docs/superpowers/specs/2026-10-13-6584-push-og-twa-design.md.
+ * Push (spor 2, #6590): push- og notificationclick-handlerne nederst. De viser
+ * kun den tekst backenden sendte og caches intet; kontrakten ovenfor gaelder.
  *
  * Bump SW_VERSION naar offline-siden eller fetch-logikken aendres.
  */
@@ -168,6 +168,61 @@ self.addEventListener("fetch", (event) => {
       } catch {
         return offlineResponse(request);
       }
+    })(),
+  );
+});
+
+// ── Push (#6590) ────────────────────────────────────────────────────────────
+// Payload (backend/lib/pushService.js): { title, body, tag, url, unread }.
+// Samme tag pr. kategori: en ny besked erstatter den gamle i stedet for at
+// stable sig. Kun stier paa vores eget domaene aabnes.
+function safePath(url) {
+  try {
+    const parsed = new URL(url || "/notifications", self.location.origin);
+    return parsed.origin === self.location.origin ? parsed.pathname + parsed.search : "/notifications";
+  } catch {
+    return "/notifications";
+  }
+}
+
+self.addEventListener("push", (event) => {
+  let data;
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  if (!data || typeof data !== "object") data = {};
+  const title = typeof data.title === "string" && data.title ? data.title : "Cycling Zone";
+  const tasks = [
+    self.registration.showNotification(title, {
+      body: typeof data.body === "string" ? data.body : "",
+      tag: typeof data.tag === "string" ? data.tag : "cz",
+      renotify: true,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/monochrome-512.png",
+      data: { url: safePath(data.url) },
+    }),
+  ];
+  if (typeof data.unread === "number" && "setAppBadge" in self.navigator) {
+    tasks.push((data.unread > 0 ? self.navigator.setAppBadge(data.unread) : self.navigator.clearAppBadge()).catch(() => {}));
+  }
+  event.waitUntil(Promise.all(tasks));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const path = safePath(event.notification.data && event.notification.data.url);
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of windows) {
+        if (new URL(client.url).origin !== self.location.origin) continue;
+        await client.focus().catch(() => {});
+        if ("navigate" in client) await client.navigate(path).catch(() => {});
+        return;
+      }
+      await self.clients.openWindow(path);
     })(),
   );
 });

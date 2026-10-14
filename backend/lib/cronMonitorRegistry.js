@@ -241,4 +241,9 @@ export const UNMONITORED_CRON_TICKS = [
   // (CRON_MONITOR_60MIN) forventer succes hver time; det ville false-positive
   // alarmere resten af ugen. Se runSundayIntakeTick.js for gate-logikken.
   "sunday-intake-drip",
+  // #6590: web push-sweepen er bag app_config.push_enabled (startstadie off) og
+  // no-op'er uden VAPID-noegler. En ny Sentry-cron-monitor er en ny loebende
+  // udgift; fejl naar stadig Sentry via trackedTick + captureException i sweepen.
+  // Tilfoej monitorCron(...) naar push er "on" og der er budget til monitoren.
+  "push sweep",
 ];
