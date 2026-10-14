@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { SENTRY_V10_COMPAT_OPTIONS } from "./sentryCompatOptions.js";
+import { SENTRY_V10_COMPAT_OPTIONS } from "./sentryCompatOptions.ts";
 
 // #6607: Sentry 11's dataCollection-default er mere tilladende end v10 (IP,
 // cookies, bodies). Baseline'en skal eksplicit holde v10's restriktive adfaerd.
@@ -14,7 +14,7 @@ test("v10-baseline: ingen bruger-IP, cookies eller bodies", () => {
   assert.equal(dataCollection.cookies, false);
   assert.deepEqual(dataCollection.httpBodies, []);
   assert.deepEqual(dataCollection.genAI, { inputs: false, outputs: false });
-  for (const direction of ["request", "response"]) {
+  for (const direction of ["request", "response"] as const) {
     assert.ok(dataCollection.httpHeaders[direction].deny.includes("forwarded"));
     assert.ok(dataCollection.httpHeaders[direction].deny.includes("-ip"));
   }
