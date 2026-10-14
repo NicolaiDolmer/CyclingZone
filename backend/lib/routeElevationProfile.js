@@ -121,15 +121,19 @@ export function buildElevationProfile(route, seedKey) {
   // forfra på samme rng-strøm, så resultatet er deterministisk.
   let built = buildAttempt(route, seedKey, 0);
   for (let k = 1; built.rest !== 0 && k <= PLATEAU_MAX_STEPS; k++) built = buildAttempt(route, seedKey, k * PLATEAU_STEP_M);
+  // Sidste udvej (fx meget korte etaper uden en strækning på MIN_RUN_STEPS skridt): resten lægges
+  // som jævn stigning på de frie skridt, stadig inden for op-loftet.
+  if (built.rest !== 0) built = buildAttempt(route, seedKey, PLATEAU_MAX_STEPS * PLATEAU_STEP_M, true);
   return built.profile;
 }
 
 /**
  * @param {any} route @param {string} seedKey
  * @param {number} plateau  m over dalen hvor nedkørsler mellem stigningerne stopper
+ * @param {boolean} [lastResort]  læg en rest på frie skridt uden for bølge-strækningerne
  * @returns {{ profile: { v: number, step_km: number, h: number[] }, rest: number }}  rest = gain der ikke fik plads
  */
-function buildAttempt(route, seedKey, plateau) {
+function buildAttempt(route, seedKey, plateau, lastResort = false) {
   const D = Number(route.distance_km);
   const rng = makeRng(stableSeed(String(seedKey)));
   const n = elevationStepCount(D);
@@ -299,6 +303,11 @@ function buildAttempt(route, seedKey, plateau) {
       negIdx.forEach((j, q) => { pos[k][j] = -dn[q]; });
     });
     useRuns.forEach((run, k) => run.forEach((i, j) => { delta[i] += pos[k][j]; }));
+  }
+  if (lastResort && rest > 0) {
+    const open = free.filter((i) => delta[i] === 0);
+    const each = open.length ? largestRemainder(Math.min(rest, open.length * capUp), open.map(() => 1)) : [];
+    open.forEach((i, q) => { delta[i] = each[q]; rest -= each[q]; });
   }
 
   const h = [start];

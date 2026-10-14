@@ -171,6 +171,15 @@ test("ren funktion: muterer ikke ruten; null uden distance; kort etape får ét 
   assert.equal(tiny.h.length, 2);
 });
 
+test("meget korte etaper uden en bølge-strækning får stadig hele budgettet inden for op-loftet", () => {
+  for (const [D, gain] of [[0.2, 1], [1, 10], [1.4, 20]]) {
+    const p = buildElevationProfile({ distance_km: D, elevation_gain_m: gain, segments: [] }, `short:${D}`);
+    assert.equal(elevationProfileGain(p.h), gain, `D=${D}`);
+    const step = D / (p.h.length - 1);
+    for (let i = 1; i < p.h.length; i++) assert.ok(((p.h[i] - p.h[i - 1]) / (step * 1000)) * 100 <= UNCATEGORIZED_MAX_UP_PCT + 1e-9, `D=${D} skridt ${i}`);
+  }
+});
+
 test("egen rng-strøm: nøglen er ':elevation:' og adskilt fra rute/segment-strømmene", () => {
   const race = { id: "r", external_id: "ext-1", season_id: "s5" };
   assert.match(elevationSeedKey(race, 3), /:elevation:3$/);
