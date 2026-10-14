@@ -1730,7 +1730,10 @@ test("#6367 resolveSeasonProfileModel fejler lukket: laesefejl og ugyldigt numme
 });
 
 function s5Tier3State(seasons = []) {
-  const league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
+  // Division 1 findes (som i prod), saa `tiers: [3]` er et UDSNIT af saesonen: benchmark-gaten
+  // doemmer det med scope "partial" (del 1, 2 for GT'er der er med, 4). Grand Tours ligger i
+  // division 1, og en hel saeson uden dem er roed (se #6367-gate-testene nedenfor).
+  const league_divisions = [{ id: 1, tier: 1, pool_index: 0, label: "Division 1" }, { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
   const teams = [mgrTeam("a1", 4), mgrTeam("a2", 4)];
   return { seasons, league_divisions, teams, race_pool: tier3Catalog().map((c) => ({ ...c, external_id: `ext-${c.id}` })) };
 }
@@ -1794,6 +1797,9 @@ test("#6367 apply: saeson 4 skriver stadig v5 (generator_version 5, ingen hoejde
 test("#6367 reconcile: en pulje der vaagner i S5 faar S5-profiler (aktiv saesons nummer sendes videre)", async () => {
   const state = tier4ActivationState();
   state.seasons = [{ id: "s1", number: 5, status: "active", start_date: "2026-10-28" }];
+  // Division 1 findes (som i prod): aktiveringen er et UDSNIT af saesonen, og benchmark-gaten
+  // doemmer det med scope "partial".
+  state.league_divisions.push({ id: 1, tier: 1, pool_index: 0, label: "Division 1" });
   const calls = [];
   const recording = async (args) => { calls.push(args); return materializeTierCalendars(args); };
   const sb = makeSupabase(state);
@@ -1802,4 +1808,71 @@ test("#6367 reconcile: en pulje der vaagner i S5 faar S5-profiler (aktiv saesons
   assert.equal(summary.profileModel, "s5");
   assert.ok(sb.state.race_stage_profiles.length > 0);
   for (const p of sb.state.race_stage_profiles) assert.equal(p.generator_version, S5_GENERATOR_VERSION);
+});
+
+// ── #6367 review (P1): benchmark-gaten paa HVER skrivesti ─────────────────────────────
+// Hullet: kun buildSeasonCalendar.js koerte gaten. Admin-knappen, seasonTransition's
+// auto_calendar-fase, relaunch og pulje-aktiveringen kunne skrive en S5-kalender med roed
+// gate. Gaten koeres nu i materializeTierCalendars, som ALLE stier skriver igennem.
+// En motor-maaling uden tal er en RIGTIG maaling (ikke stubben) og altid roed paa del (4).
+const RED_MOTOR = { s5BenchmarkInputs: { motor: { source: "test", medians: {} } } };
+const writtenRows = (sb) => sb.state.races.length + sb.state.race_stage_profiles.length + sb.state.race_stage_schedule.length;
+
+test("#6367 gate: roed S5-gate naegter apply FOER foerste insert; dry-run rapporterer den uden at kaste", async () => {
+  const state = s5Tier3State([{ id: "season-5", number: 5, status: "upcoming" }]);
+  const dry = await materializeTierCalendars({ supabase: makeSupabase(state), seasonId: "season-5", from: FROM, dryRun: true, tiers: [3], ...LEGACY_MIX, ...RED_MOTOR });
+  assert.equal(dry.s5Benchmark.applies, true);
+  assert.equal(dry.s5Benchmark.scope, "partial");
+  assert.equal(dry.s5Benchmark.green, false);
+  assert.ok(dry.s5Benchmark.blocking.some((b) => b.startsWith("S5 (4) motor")), dry.s5Benchmark.blocking.join(" · "));
+
+  const sb = makeSupabase(state);
+  await assert.rejects(
+    () => materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX, ...RED_MOTOR }),
+    /S5 benchmark gate red \(apply refused, #6367\)/,
+  );
+  assert.equal(writtenRows(sb), 0, "en roed gate maa ikke efterlade en eneste skrevet raekke");
+});
+
+test("#6367 gate: groen S5-gate skriver; apply-summary'en er kompakt (logges i admin-loggen)", async () => {
+  const sb = makeSupabase(s5Tier3State([{ id: "season-5", number: 5, status: "upcoming" }]));
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX });
+  assert.deepEqual(summary.s5Benchmark, { applies: true, scope: "partial", green: true, blockingCount: 0 });
+  assert.ok(sb.state.races.length > 0);
+});
+
+test("#6367 gate: en HEL saeson uden Grand Tours er roed (scope season) — ogsaa med motor-stubben", async () => {
+  const state = s5Tier3State([{ id: "season-5", number: 5, status: "upcoming" }]);
+  state.league_divisions = state.league_divisions.filter((d) => d.tier === 3);
+  const dry = await materializeTierCalendars({ supabase: makeSupabase(state), seasonId: "season-5", from: FROM, dryRun: true, ...LEGACY_MIX });
+  assert.equal(dry.s5Benchmark.scope, "season");
+  assert.equal(dry.s5Benchmark.green, false);
+  const sb = makeSupabase(state);
+  await assert.rejects(
+    () => materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, ...LEGACY_MIX }),
+    /ingen Grand Tours i sæsonen/,
+  );
+  assert.equal(writtenRows(sb), 0);
+});
+
+test("#6367 gate: S4 doemmes ikke (v5-modellen) — heller ikke med en roed motor-maaling", async () => {
+  const sb = makeSupabase(s5Tier3State([{ id: "season-4", number: 4, status: "upcoming" }]));
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-4", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX, ...RED_MOTOR });
+  assert.equal(summary.s5Benchmark.applies, false);
+  assert.ok(sb.state.races.length > 0, "S1-S4 skriver uaendret");
+});
+
+test("#6367 gate: en pulje der vaagner i S5 med roed gate faar INGEN kalender (reconcile kaster videre)", async () => {
+  const state = tier4ActivationState();
+  state.seasons = [{ id: "s1", number: 5, status: "active", start_date: "2026-10-28" }];
+  state.league_divisions.push({ id: 1, tier: 1, pool_index: 0, label: "Division 1" });
+  const sb = makeSupabase(state);
+  await assert.rejects(
+    () => reconcilePoolCalendarOnActivation({
+      supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX,
+      materialize: (args) => materializeTierCalendars({ ...args, ...RED_MOTOR }),
+    }),
+    /S5 benchmark gate red/,
+  );
+  assert.equal(writtenRows(sb), 0);
 });

@@ -46,9 +46,72 @@ import { SQUAD_CALENDAR, CALENDAR_SQUADS } from "./calendarTierCaps.js";
 import { packSquadCalendar } from "./squadCalendarPacker.js";
 // #6367: hvilken profil-model en saeson SKAL genereres med (v5 til og med S4, "s5" fra S5).
 // Afledt af saesonnummeret, aldrig af et flag - samme kilde som benchmark-gaten bruger.
-import { profileModelForSeason } from "./s5BenchmarkGate.js";
+import {
+  profileModelForSeason, S5_PROFILE_MODEL, evaluateS5BenchmarkGate, formatS5BenchmarkReport,
+  loadS5Benchmark, loadMotorGapFile, DEFAULT_MOTOR_STUB_PATH,
+} from "./s5BenchmarkGate.js";
 
 export { TIER_CLASS_WHITELIST };
+
+/**
+ * #6367: loebene benchmark-gaten maaler, formet af den PLANLAGTE kalender. Samme profiler
+ * som scorecardet og apply-stien (materializerens `profilesByPoolRaceId`), een
+ * repraesentativ pulje pr. division (puljer i en division deler parcours, #2276). Samme
+ * loeb i flere divisioner deduplikeres af gaten selv (pool_race_id).
+ */
+export function s5GateRacesFromPlan(plan) {
+  const archetypeByPoolRace = plan?.archetypeByPoolRace ?? new Map();
+  const races = [];
+  for (const t of plan?.planTiers ?? []) {
+    const pool = (t.pools ?? [])[0];
+    const profiles = t.profilesByPoolRaceId ?? new Map();
+    for (const r of pool?.raceRows ?? []) {
+      races.push({
+        pool_race_id: r.pool_race_id, name: r.name, race_type: r.race_type, race_class: r.race_class ?? null,
+        terrain_archetype: archetypeByPoolRace.get(r.pool_race_id) ?? null,
+        stages: profiles.get(r.pool_race_id) ?? [],
+      });
+    }
+  }
+  return races;
+}
+
+/**
+ * #6367: koer benchmark-gaten for en planlagt kalender. Returnerer gaten + om den DOEMMER
+ * (kun S5-modellen, profileModelForSeason). For S1-S4 maales intet: deres etiketter er v5's
+ * og ville altid vaere roede her, og deres egne gates (K-B, §7b, realisme) gaelder uaendret.
+ *
+ * `scope`:
+ *   - "season" (default): hele seniorkalenderen planlaegges i kaldet. Alle fire dele doemmer.
+ *   - "partial": kun en del af saesonen planlaegges (en enkelt division, fx en pulje der
+ *     vaagner midt i saesonen, eller en trups kalender). Del (3) (afslutnings-andele over
+ *     saesonens Grand Tours) og kravet om mindst een Grand Tour kan ikke vurderes paa et
+ *     udsnit; de blev doemt da seniorkalenderen blev skrevet. Del (1), del (2) for de Grand
+ *     Tours der ER med, og del (4) doemmer stadig.
+ *
+ * @param {{ plan: object, seasonNumber: number|null, motorBenchPath?: string|null,
+ *   benchmark?: object[], motor?: object, scope?: "season"|"partial" }} args
+ *   benchmark/motor kan injiceres i tests; motorBenchPath er buildSeasonCalendar's --motor-bench
+ */
+export function runS5BenchmarkGateForPlan({ plan, seasonNumber, motorBenchPath = null, benchmark, motor, scope = "season" }) {
+  const profileModel = profileModelForSeason(seasonNumber);
+  if (profileModel !== S5_PROFILE_MODEL) return { profileModel, applies: false, scope, green: true, blocking: [], gate: null, lines: [] };
+  const gate = evaluateS5BenchmarkGate({
+    races: s5GateRacesFromPlan(plan),
+    benchmark: benchmark ?? loadS5Benchmark(),
+    motor: motor ?? loadMotorGapFile(motorBenchPath ?? DEFAULT_MOTOR_STUB_PATH),
+  });
+  const blocking = scope === "partial"
+    ? [
+      ...gate.parts.stages.violations.map((v) => `S5 (1) etape — ${v}`),
+      ...gate.parts.grandTours.violations.map((v) => `S5 (2) Grand Tour — ${v}`),
+      ...(gate.parts.motor.stub ? [] : gate.parts.motor.violations.map((v) => `S5 (4) motor — ${v}`)),
+    ]
+    : gate.blocking;
+  const lines = formatS5BenchmarkReport(gate);
+  if (scope === "partial") lines.push(`  (udsnit af saesonen: del (3) og GT-kravet doemmes ikke her → ${blocking.length ? `❌ ${blocking.length} brud` : "✅ GRØN"})`);
+  return { profileModel, applies: true, scope, green: blocking.length === 0, blocking, gate, lines };
+}
 
 /**
  * #6367: profil-modellen for den saeson der materialiseres. `seasonNumber` (eksplicit fra
@@ -865,6 +928,10 @@ export async function materializeTierCalendars({
   // "s5" fra S5) for BAADE daeknings-verifikationen, realisme-gen-traekket og skrive-stien.
   // null = slaa det op paa seasonId (resolveSeasonProfileModel).
   seasonNumber = null,
+  // #6367: benchmark-gatens input ({ motorBenchPath } fra buildSeasonCalendar's --motor-bench,
+  // eller { benchmark, motor } injiceret i tests). Det er INGEN override: gaten koeres altid
+  // for S5-modellen, og en roed gate naegter apply. null = benchmarken + motor-stubben.
+  s5BenchmarkInputs = null,
 } = {}) {
   assertCalendarSquad(squad);
   const isSenior = squad === "senior";
@@ -985,6 +1052,11 @@ export async function materializeTierCalendars({
     seasonNumber: resolvedSeasonNumber, profileModel,
   };
 
+  // #6367: to gennemloeb. Det FOERSTE loeser hver tiers parcours (tilt, realisme-gen-traek,
+  // profiler, daekning) uden at skrive. Derefter doemmer S5-benchmark-gaten HELE den
+  // planlagte kalender, og foerst det ANDET gennemloeb skriver. Saa kan en roed gate aldrig
+  // efterlade en halvt skrevet kalender.
+  const preparedTiers = [];
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
 
@@ -1052,14 +1124,44 @@ export async function materializeTierCalendars({
       // apply-stien har ingen brug for det, og summary'en skal ikke bære unødig vægt.
       if (dryRun) {
         tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant }));
-        // #4270: de PRÆCIS samme profiler dæknings-verifikationen (og dermed insert'et)
-        // bruger — så kalender-scorecardet i buildSeasonCalendar.js's dry-run måler det
-        // parcours der ville blive skrevet, med tilt og re-draw indregnet, og ikke et nyt
-        // træk. Kun dry-run: apply-stien har ingen brug for dem.
-        tierPlan.profilesByPoolRaceId = profiles;
       }
+      // #4270: de PRÆCIS samme profiler dæknings-verifikationen (og dermed insert'et)
+      // bruger — så kalender-scorecardet i buildSeasonCalendar.js's dry-run måler det
+      // parcours der ville blive skrevet, med tilt og re-draw indregnet, og ikke et nyt
+      // træk. #6367: sættes også ved apply, fordi S5-benchmark-gaten nedenfor måler dem
+      // før noget skrives (planTiers returneres stadig kun i dry-run).
+      tierPlan.profilesByPoolRaceId = profiles;
     }
+    preparedTiers.push({ tierPlan, archetypeProfilesForTier, seasonVariant, tierProfiles });
+  }
 
+  // #6367 (spec §5, AGENTS.md): S5-BENCHMARK-GATEN paa HVER skrivesti. Koeres her, i den
+  // ene funktion alle stier skriver igennem (buildSeasonCalendar --apply, admin-knappen
+  // POST /admin/seasons/:id/generate-calendar, seasonTransition's auto_calendar-fase,
+  // relaunch og reconcilePoolCalendarOnActivation), saa ingen kalder kan glemme den. Haardt
+  // krav uden override: roed gate -> apply kaster FOER foerste insert (fail-closed). Dry-run
+  // rapporterer den paa summary.s5Benchmark, saa kalderne kan vise og doemme den foer apply.
+  // Et udsnit af saesonen (en del af divisionerne, eller en trup) doemmes med scope "partial".
+  const liveTiers = new Set(pools.filter((p) => p.retiredAt == null).map((p) => p.tier));
+  const fullSeason = isSenior && [...liveTiers].every((t) => targetTiers.has(t));
+  const s5 = runS5BenchmarkGateForPlan({
+    plan: { planTiers: preparedTiers.map((p) => p.tierPlan), archetypeByPoolRace },
+    seasonNumber: resolvedSeasonNumber,
+    scope: fullSeason ? "season" : "partial",
+    ...(s5BenchmarkInputs ?? {}),
+  });
+  if (s5.applies) for (const line of s5.lines) log(line);
+  if (!dryRun && s5.applies && !s5.green) {
+    const shown = s5.blocking.slice(0, 10).join(" · ");
+    const more = s5.blocking.length > 10 ? ` · ... og ${s5.blocking.length - 10} flere` : "";
+    throw new Error(`S5 benchmark gate red (apply refused, #6367): ${s5.blocking.length} brud — ${shown}${more}`);
+  }
+  // Apply-summary'en logges i admin-loggen (seasonTransition) og holdes kompakt.
+  summary.s5Benchmark = dryRun
+    ? { applies: s5.applies, scope: s5.scope, green: s5.green, blocking: s5.blocking, lines: s5.lines, gate: s5.gate }
+    : { applies: s5.applies, scope: s5.scope, green: s5.green, blockingCount: s5.blocking.length };
+
+  for (const { tierPlan, archetypeProfilesForTier, seasonVariant, tierProfiles } of preparedTiers) {
     // #2251: nægt at APPLY'e en plan med kalender-invariant-brud (GT i tier >1 /
     // GT-rygrad-overlap / #3327-#3328-dækningsbrud). dryRun må gerne rapportere planen,
     // så bruddene kan inspiceres.
