@@ -44,7 +44,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 11. **Påstande om systemtilstand kræver en positiv observation.** "Jeg fandt ingen" er ikke "der er ingen". Brug det værktøj der ser den tilstand du udtaler dig om, og sig hvilket.
 
-12. **PR-loftet er fjernet (ejer-beslutning 22/9, variant B, #5510).** Bremsen på igangværende arbejde er lanerne (loft pr. maskine) og verifikations-semaforen (2), ikke et antal åbne PR'er.
+12. **PR-loftet er fjernet (ejer-beslutning 22/9, variant B, #5510).** Bremsen på igangværende arbejde er lanerne (pr. maskine) og verifikations-semaforen (2), ikke et antal åbne PR'er.
 
 13. **Ingen påstand uden en måling. Issue-tal ældre end en uge GENMÅLES, de citeres ikke.**
 
@@ -68,7 +68,7 @@ Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbøl
 
 23. **Post-merge guard-tjek af main.** Efter en salve verificeres at required checks OG de bløde vagter (warning-budget, feature-liveness, patch-note-guard) stadig er grønne på main-HEAD — en PR kan være grøn på egen base og alligevel knække main i kombination.
 
-24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd. **Loftet er siden 11/9 ([#5142](https://github.com/NicolaiDolmer/CyclingZone/issues/5142)) maks 2 tunge verifikationer samtidig (var 3), håndhævet af `scripts/verify-lock.ps1`; parallelt byggearbejde startes via `.claude/workflows/wave.js` eller Codex' `scripts/codex-wave.mjs` (#5467), maks laner pr. maskine i `scripts/wave-capacity.json` (default 4, NICOLAIPC 6, #6615) og faelles eksklusiv boelgemarkoer. Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1`; starter en kørsel udenom, er den usynlig for loftet, og disciplinen er stadig din.**
+24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd. **Loftet er siden 11/9 (#5142) maks 2 tunge verifikationer samtidig (var 3), håndhævet af `scripts/verify-lock.ps1`; parallelt byggearbejde startes via `.claude/workflows/wave.js` eller Codex' `scripts/codex-wave.mjs` (#5467), maks laner pr. maskine (`scripts/wave-capacity.json`, #6615) og faelles eksklusiv boelgemarkoer. Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1`; starter en kørsel udenom, er den usynlig for loftet, og disciplinen er stadig din.**
 
 25. **Design-gate før build** (ejer-mandat 13/8, [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)). En ny spillervendt funktion implementeres ALDRIG uden forudgående design-blok med ejeren: problem, løsningsskitse (mockup/show_widget/artboard/preview) og et eksplicit "godkendt til build". Godkendelsen refereres i PR-body ("Design-go: dato/link"). **Skærpet 8/10 (ejer: "sådan vil jeg arbejde fast"):** gælder også rettelser, der ændrer hvad spilleren ser, læser eller oplever (tekst, tal, layout, regler) — problem + løsning godkendes FØR byg. Kun refactors, ops og rettelser uden synlig ændring er undtaget. Bølgen afviser et spillervendt spor uden registreret design-go på issuet (håndhævelse i `wave.js`, bølge 2 8/10).
 
