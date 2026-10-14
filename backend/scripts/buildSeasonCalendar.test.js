@@ -521,6 +521,6 @@ test("#6367 runS5BenchmarkGateForPlan: sæson 5 på den nuværende v5-generator 
   assert.ok(s5.gate.blocking.some((b) => b.startsWith("S5 (1) etape")));
   assert.ok(s5.gate.blocking.some((b) => b.startsWith("S5 (2) Grand Tour")));
   assert.equal(s5.gate.parts.grandTours.races.length, 3, "samme løb i D1 og D2 tælles én gang");
-  assert.equal(s5.gate.parts.motor.status, "stub", "uden --motor-bench bruges stubben");
+  assert.equal(s5.gate.parts.motor.stub, false, "uden --motor-bench bruges den rigtige motor-bench (#6362)");
   assert.ok(s5.lines.some((l) => l.includes("RØD")));
 });
