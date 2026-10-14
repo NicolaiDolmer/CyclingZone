@@ -26,6 +26,9 @@
 // (gitignoreret). Den committede fixture (backend/lib/__fixtures__/s5MotorBench.json)
 // indeholder kun dommen pr. afslutning; s5MotorBench.test.ts koerer benchen igen og
 // kraever at dommen stadig passer, saa fixturen kan ikke drive fra motoren.
+// Vindertype-dommen (stigende spurt -> spurtere, bjergtop -> klatrere) bruger en PRIVAT
+// taerskel fra balance-internals/6362/winner-thresholds.json (eller CZ_6362_WINNER_THRESHOLDS);
+// kun dommen "pass"/"fail" staar i fixturen, aldrig taersklen eller andelen.
 //
 // Koer (offline, ingen DB, intet netvaerk):
 //   node backend/scripts/dev/s5MotorBench.mjs                      # gate-scope, rapport til stdout
@@ -34,7 +37,7 @@
 //
 // Refs #6362 #6367
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -72,6 +75,30 @@ export const S5_MOTOR_BENCH_CONFIG = Object.freeze({
   simSeeds: 3,
   field: "giro-field-6088-2026-10-02",
 });
+
+/**
+ * Hvilken ryttertype der skal vinde en afslutning (cykelsporten, kvalitativt). Hvor stor
+ * en andel der kraeves er en motor-intern taerskel og ligger privat (hard rule 17).
+ */
+export const S5_WINNER_EXPECTATIONS = Object.freeze({ uphill_sprint: "sprinter", long_climb: "climber" });
+
+/** Den private taerskelfil (gitignoreret). CZ_6362_WINNER_THRESHOLDS overstyrer stien. */
+export const DEFAULT_WINNER_THRESHOLDS_PATH = path.join(REPO_ROOT, "balance-internals", "6362", "winner-thresholds.json");
+
+/**
+ * Laeser de private vinder-taerskler: `{ minWinnerShare: { [finish]: andel i [0, 1) } }` for
+ * hver afslutning i S5_WINNER_EXPECTATIONS. Mangler filen: null (CI har den ikke; dommen i
+ * fixturen gaelder stadig, se s5MotorBench.test.ts). En fil med forkert form er en fejl.
+ */
+export function loadWinnerThresholds(file = process.env.CZ_6362_WINNER_THRESHOLDS || DEFAULT_WINNER_THRESHOLDS_PATH) {
+  if (!existsSync(file)) return null;
+  const j = JSON.parse(readFileSync(file, "utf8"));
+  for (const finish of Object.keys(S5_WINNER_EXPECTATIONS)) {
+    const x = j?.minWinnerShare?.[finish];
+    if (!(typeof x === "number" && x >= 0 && x < 1)) throw new Error(`vinder-taerskelfil ${file}: minWinnerShare.${finish} mangler eller er ikke en andel`);
+  }
+  return j;
+}
 
 const median = (xs) => quantile(xs, 0.5);
 function quantile(xs, p) {
@@ -295,19 +322,59 @@ export function benchmarkByTerrainFinish(benchmark) {
  * (saesonens andre loeb, se finishesNeedingSeasonSample). Kilden staar i `sources`.
  */
 export function gateMeasurement(rows, benchmark) {
-  const distinct = (rs) => new Set(rs.map((r) => `${r.seasonId}:${r.raceId}:${r.stage_number}`)).size;
   const medians = {};
   const sources = {};
   for (const finish of [...new Set(rows.map((r) => r.finish))].sort()) {
-    const gt = rows.filter((r) => r.finish === finish && r.grandTour);
-    const useGt = distinct(gt) >= MOTOR_GAP_MIN_BENCHMARK_N;
-    const pick = useGt ? gt : rows.filter((r) => r.finish === finish);
+    const { rows: pick, source } = gateRowsFor(rows, finish);
     const m = benchMedians(pick)[finish];
     if (m == null) continue;
     medians[finish] = m;
-    sources[finish] = useGt ? "grand_tours" : "season";
+    sources[finish] = source;
   }
   return { medians, sources, verdicts: motorGapVerdicts({ medians, benchmark }) };
+}
+
+/**
+ * Raekkerne gaten maaler en afslutning paa: Grand Tour-etaperne naar der er mindst
+ * MOTOR_GAP_MIN_BENCHMARK_N forskellige af dem, ellers alle bench-etaper med afslutningen.
+ */
+export function gateRowsFor(rows, finish) {
+  const distinct = (rs) => new Set(rs.map((r) => `${r.seasonId}:${r.raceId}:${r.stage_number}`)).size;
+  const gt = rows.filter((r) => r.finish === finish && r.grandTour);
+  const useGt = distinct(gt) >= MOTOR_GAP_MIN_BENCHMARK_N;
+  return { rows: useGt ? gt : rows.filter((r) => r.finish === finish), source: useGt ? "grand_tours" : "season" };
+}
+
+/** Ryttertypen der vinder flest af raekkerne (null uden vindere). Uafgjort: alfabetisk. */
+export function dominantWinnerType(rows) {
+  const counts = {};
+  for (const r of rows) if (r.winnerType) counts[r.winnerType] = (counts[r.winnerType] ?? 0) + 1;
+  const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return ranked[0]?.[0] ?? null;
+}
+
+/** Andelen af raekkerne den forventede type vinder (tal: kun til balance-internals). */
+export function expectedWinnerShares(rows) {
+  const out = {};
+  for (const [finish, type] of Object.entries(S5_WINNER_EXPECTATIONS)) {
+    const rs = gateRowsFor(rows, finish).rows;
+    out[finish] = rs.length ? rs.filter((r) => r.winnerType === type).length / rs.length : null;
+  }
+  return out;
+}
+
+/**
+ * Vindertype-dommen pr. afslutning i S5_WINNER_EXPECTATIONS, maalt paa gatens raekker
+ * (gateRowsFor): "pass" naar den forventede type vinder en stoerre andel end den private
+ * taerskel, ellers "fail". Ingen tal i resultatet (det er det fixturen baerer).
+ */
+export function winnerVerdicts(rows, thresholds) {
+  if (!thresholds?.minWinnerShare) throw new Error("winnerVerdicts: de private vinder-taerskler mangler (balance-internals/6362/winner-thresholds.json)");
+  const shares = expectedWinnerShares(rows);
+  return Object.fromEntries(Object.entries(S5_WINNER_EXPECTATIONS).map(([finish, expected]) => {
+    const s = shares[finish];
+    return [finish, { expected, verdict: s != null && s > thresholds.minWinnerShare[finish] ? "pass" : "fail" }];
+  }));
 }
 
 /** Hele opsummeringen (tal; skrives kun til balance-internals). */
@@ -315,6 +382,7 @@ export function summarizeS5MotorBench(rows, benchmark) {
   const gt = rows.filter((r) => r.grandTour);
   return {
     gate: gateMeasurement(rows, benchmark),
+    expectedWinnerShares: expectedWinnerShares(rows),
     gt: {
       byFinish: groupBy(gt, (r) => r.finish),
       byTerrainFinish: groupBy(gt, (r) => `${r.terrain}/${r.finish}`),
@@ -327,14 +395,16 @@ export function summarizeS5MotorBench(rows, benchmark) {
   };
 }
 
-/** Fixturen gaten laeser: kun dommen pr. afslutning, ingen tal (hard rule 17). */
-export function fixtureFromSummary(summary) {
+/** Fixturen gaten laeser: kun dommene, ingen tal og ingen taerskler (hard rule 17). */
+export function fixtureFromSummary(summary, winners) {
+  if (!winners) throw new Error("fixtureFromSummary: vindertype-dommen mangler");
   return {
     stub: false,
-    source: "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Tal: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+    source: "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
     config: { ...S5_MOTOR_BENCH_CONFIG },
     verdicts: summary.gate.verdicts,
     sources: summary.gate.sources,
+    winners,
   };
 }
 
@@ -349,7 +419,7 @@ function table(title, groups, bench = null) {
   return [...ud, ""];
 }
 
-export function renderS5MotorBenchMarkdown(summary, { scope, config }) {
+export function renderS5MotorBenchMarkdown(summary, { scope, config, thresholds = null }) {
   const lines = [
     `# S5 motor-bench (#6362) - PRIVAT (hard rule 17)`,
     "",
@@ -362,6 +432,17 @@ export function renderS5MotorBenchMarkdown(summary, { scope, config }) {
     ...Object.entries(summary.gate.medians).map(([k, m]) => {
       const b = summary.benchmark.byFinish[k];
       return `| ${k} | ${summary.gate.sources[k]} | ${m} s | ${b ? `${round1(b.p25)}-${round1(b.p75)} s (n=${b.n})` : "-"} | ${summary.gate.verdicts[k] ?? "ikke dømt"} |`;
+    }),
+    "",
+    "### Vindertype (privat taerskel: balance-internals/6362/winner-thresholds.json)",
+    "",
+    "| Afslutning | forventet type | andel vundet af typen | taerskel | dom |",
+    "|---|---|---|---|---|",
+    ...Object.entries(S5_WINNER_EXPECTATIONS).map(([k, type]) => {
+      const s = summary.expectedWinnerShares?.[k];
+      const t = thresholds?.minWinnerShare?.[k];
+      const verdict = s == null || t == null ? "-" : s > t ? "pass" : "fail";
+      return `| ${k} | ${type} | ${s == null ? "-" : `${round1(s * 100)} %`} | ${t == null ? "mangler" : `> ${round1(t * 100)} %`} | ${verdict} |`;
     }),
     "",
     ...table("Grand Tours pr. afslutning", summary.gt.byFinish, summary.benchmark.byFinish),
@@ -389,7 +470,8 @@ async function main(argv) {
   const rows = await runS5MotorBench({ races: buildS5BenchRaces({ scope }) });
   const benchmark = loadS5Benchmark();
   const summary = summarizeS5MotorBench(rows, benchmark);
-  const md = renderS5MotorBenchMarkdown(summary, { scope, config });
+  const thresholds = loadWinnerThresholds();
+  const md = renderS5MotorBenchMarkdown(summary, { scope, config, thresholds });
   if (outDir) {
     const dir = path.isAbsolute(outDir) ? outDir : path.join(REPO_ROOT, outDir);
     mkdirSync(dir, { recursive: true });
@@ -401,7 +483,8 @@ async function main(argv) {
   }
   if (arg(argv, "write-fixture") === true) {
     if (scope === "gt") throw new Error("--write-fixture kraever --scope=gate eller all (gt-scope mangler saesonens stikproeve)");
-    writeFileSync(DEFAULT_MOTOR_BENCH_PATH, `${JSON.stringify(fixtureFromSummary(summary), null, 2)}\n`);
+    if (!thresholds) throw new Error(`--write-fixture kraever de private vinder-taerskler: ${DEFAULT_WINNER_THRESHOLDS_PATH} (eller CZ_6362_WINNER_THRESHOLDS)`);
+    writeFileSync(DEFAULT_MOTOR_BENCH_PATH, `${JSON.stringify(fixtureFromSummary(summary, winnerVerdicts(rows, thresholds)), null, 2)}\n`);
     console.error(`skrev ${DEFAULT_MOTOR_BENCH_PATH}`);
   }
   console.error(`${rows.length} etape-koersler paa ${((performance.now() - t0) / 1000).toFixed(1)} s`);

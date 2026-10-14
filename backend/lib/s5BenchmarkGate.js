@@ -20,7 +20,8 @@
 //                 i benchmarkens kvartil-interval. #6362: dommen kommer fra den rigtige
 //                 motor-bench (backend/scripts/dev/s5MotorBench.mjs: v4 under s5_profiles_v1
 //                 paa S5-ruter fra generatoren) via __fixtures__/s5MotorBench.json, og den
-//                 BLOKERER ved fail. Fixturen baerer kun dommen pr. afslutning (hard rule 17);
+//                 BLOKERER ved fail. Fixturen baerer kun dommene (gab + vindertype pr.
+//                 afslutning), aldrig tal eller taerskler (hard rule 17);
 //                 engine/v4/s5MotorBench.test.ts genkoerer benchen og kraever samme dom.
 //
 // HVEM GATEN GAELDER. KUN S5-modellen (profileModelForSeason). Saeson 1-4 har deres egne
@@ -491,6 +492,8 @@ export function checkSeasonFinishShares({ stages = [], benchmark }) {
 
 /** #6362: dommen pr. afslutning i del (4). Kun "inside" er groen. */
 export const MOTOR_GAP_VERDICTS = Object.freeze(["inside", "below", "above"]);
+/** #6362: vindertype-dommen pr. afslutning i del (4). Kun "pass" er groen. */
+export const MOTOR_WINNER_VERDICTS = Object.freeze(["pass", "fail"]);
 
 function gapVerdict(m, iv) {
   if (m < iv.p25 - 1e-9) return "below";
@@ -527,6 +530,8 @@ export function motorGapVerdicts({ medians = {}, benchmark }) {
  *   - Mangler motorens tal/dom for en afslutning med et interval, er det et brud ("ikke maalt").
  *   - stub: true -> `status: "stub"`: sammenlignes og vises, men BLOKERER IKKE (en stub er
  *     ikke en maaling af motoren). Den rigtige bench er ikke en stub og blokerer ved fail.
+ *   - `winners` (valgfri): { [finish]: { expected, verdict: "pass"|"fail" } } fra benchen;
+ *     andet end "pass" er et brud. Taersklen bag dommen er privat (hard rule 17).
  */
 export function evaluateMotorGaps({ motor, benchmark }) {
   const intervals = benchmarkGapIntervals(benchmark);
@@ -552,8 +557,18 @@ export function evaluateMotorGaps({ motor, benchmark }) {
         : `${finish}: motorens median gap10 ligger ${where} benchmarkens interval ${iv.p25}-${iv.p75} s (median ${iv.median} s)`);
     }
   }
+  // Vindertype (#6362): { [finish]: { expected, verdict: "pass"|"fail" } }. Taersklen er
+  // privat (balance-internals); her doemmes kun dommen. Alt andet end "pass" er et brud.
+  const winnerRows = [];
+  if (motor?.winners && typeof motor.winners === "object") {
+    for (const [finish, w] of Object.entries(motor.winners)) {
+      const verdict = MOTOR_WINNER_VERDICTS.includes(w?.verdict) ? w.verdict : null;
+      winnerRows.push({ finish, expected: w?.expected ?? null, verdict, pass: verdict === "pass" });
+      if (verdict !== "pass") violations.push(`${finish}: ${w?.expected ?? "den forventede ryttertype"} vinder ikke afslutningen ofte nok på motor-benchen${verdict ? "" : " (dom mangler)"}`);
+    }
+  }
   const stub = motor?.stub === true;
-  return { status: stub ? "stub" : (violations.length ? "red" : "green"), stub, source: motor?.source ?? null, rows, violations };
+  return { status: stub ? "stub" : (violations.length ? "red" : "green"), stub, source: motor?.source ?? null, rows, winnerRows, violations };
 }
 
 /** Laeser motor-bench-fixturen (#6362) eller en fil med samme form (medianer eller domme). */
@@ -678,6 +693,7 @@ export function formatS5BenchmarkReport(result, { maxLines = 15, judged = true }
     const shown = r.motor != null ? `${r.motor} s` : r.verdict ? VERDICT_LABEL[r.verdict] : "—";
     ud.push(`       ${r.finish.padEnd(14)} motor ${shown}  benchmark ${r.p25}-${r.p75} s (median ${r.median} s)  ${verdict}`);
   }
+  for (const w of m.winnerRows ?? []) ud.push(`       ${w.finish.padEnd(14)} vindertype ${w.expected ?? "—"}  ${w.pass ? "OK" : "FEJL"}`);
   for (const v of (m.stub ? [] : m.violations)) ud.push(`       · ${v}`);
 
   ud.push(`  ${judged ? (result.green ? "✅ GRØN" : `❌ RØD (${result.blocking.length} brud) — hårdt krav, ingen override`) : `-- ${result.blocking.length} brud målt`}`);
