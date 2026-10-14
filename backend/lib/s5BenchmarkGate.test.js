@@ -15,7 +15,7 @@ import {
   grandTourTypeOf, isGrandTourRace, expectedGrandTourCounts, checkGrandTour,
   loadS5Benchmark, benchmarkFinishShares, benchmarkGapIntervals, SEASON_FINISH_CLASSES,
   checkSeasonFinishShares, evaluateMotorGaps, loadMotorGapFile, MOTOR_GAP_MIN_BENCHMARK_N, motorGapVerdicts,
-  evaluateS5BenchmarkGate, formatS5BenchmarkReport,
+  MOTOR_WINNER_VERDICTS, evaluateS5BenchmarkGate, formatS5BenchmarkReport,
 } from "./s5BenchmarkGate.js";
 import * as routeGenerator from "./raceRouteGenerator.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas } from "./raceStageProfileGenerator.js";
@@ -318,6 +318,32 @@ test("#6362: gatens standard-fil er den rigtige motor-bench (ingen stub), og en 
   const gate = evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: real });
   assert.equal(gate.blocking.some((b) => b.startsWith("S5 (4) motor")), part.status === "red");
   assert.throws(() => loadMotorGapFile(new URL("./__fixtures__/racePoolCatalog.prod.json", import.meta.url)), /mangler "medians" eller "verdicts"/);
+});
+
+test("#6362: vindertype-dommen i del (4): kun 'pass' er grøn, 'fail' og manglende dom blokerer, ingen tal", () => {
+  const winners = { uphill_sprint: { expected: "sprinter", verdict: "pass" }, long_climb: { expected: "climber", verdict: "pass" } };
+  const green = evaluateMotorGaps({ motor: { ...ALL_INSIDE, winners }, benchmark: BENCHMARK });
+  assert.equal(green.status, "green");
+  assert.equal(green.winnerRows.length, 2);
+
+  const failed = { ...ALL_INSIDE, winners: { ...winners, long_climb: { expected: "climber", verdict: "fail" } } };
+  const red = evaluateMotorGaps({ motor: failed, benchmark: BENCHMARK });
+  assert.equal(red.status, "red");
+  assert.deepEqual(red.violations, ["long_climb: climber vinder ikke afslutningen ofte nok på motor-benchen"]);
+  const gate = evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: failed });
+  assert.ok(gate.blocking.includes("S5 (4) motor — long_climb: climber vinder ikke afslutningen ofte nok på motor-benchen"), "en fejlet vindertype blokerer");
+  assert.ok(formatS5BenchmarkReport(gate).some((l) => l.includes("long_climb") && l.includes("FEJL")));
+  assert.ok(!formatS5BenchmarkReport(gate).some((l) => /vindertype.*\d/.test(l)), "rapporten viser ingen andel eller taerskel");
+
+  const unknown = evaluateMotorGaps({ motor: { ...ALL_INSIDE, winners: { uphill_sprint: { expected: "sprinter", verdict: "maybe" } } }, benchmark: BENCHMARK });
+  assert.ok(unknown.violations.some((x) => x.endsWith("(dom mangler)")), "ukendt dom = brud");
+
+  assert.equal(evaluateMotorGaps({ motor: ALL_INSIDE, benchmark: BENCHMARK }).status, "green", "uden winners: gab-dommen alene");
+  const real = loadMotorGapFile();
+  for (const w of Object.values(real.winners ?? {})) {
+    assert.deepEqual(Object.keys(w).sort(), ["expected", "verdict"], "fixturen baerer kun dommen");
+    assert.ok(MOTOR_WINNER_VERDICTS.includes(w.verdict));
+  }
 });
 
 // ── 5. Hele gaten ─────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 {
   "stub": false,
-  "source": "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Tal: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+  "source": "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
   "config": {
     "revision": "s5_profiles_v1",
     "firstDay": "2026-10-26",
@@ -25,5 +25,15 @@
     "solo_tt": "grand_tours",
     "uphill_sprint": "grand_tours",
     "wall_finish": "season"
+  },
+  "winners": {
+    "uphill_sprint": {
+      "expected": "sprinter",
+      "verdict": "pass"
+    },
+    "long_climb": {
+      "expected": "climber",
+      "verdict": "pass"
+    }
   }
 }
