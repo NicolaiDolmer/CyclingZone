@@ -412,8 +412,12 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
         if (leader != null) {
           const gap = round2(Math.max(0, finite(p.exact_time) - leader));
           // Kun målinger på et tjekpunkt indgår i snapshots; inde i et segment
-          // er det kun hændelsens egen tid.
-          if (event.type === "gap_update" || Math.abs(placeKm(event) - km) < 1e-6) {
+          // er det kun hændelsens egen tid. En indhentning/sammenlægning måler
+          // den gruppe der forsvinder (eller en afgjort indhentning på stregen,
+          // groups.ts), så den er aldrig en gruppe-måling (CodeRabbit).
+          const live = (m.groups.get(p.group_id)?.size ?? 0) > 0 || p.group_id === m.restId;
+          if (event.type === "gap_update"
+            || (Math.abs(placeKm(event) - km) < 1e-6 && live && event.type !== "breakaway_caught" && event.type !== "group_merged")) {
             observations.push({ km, group_id: p.group_id, gap });
           }
         }

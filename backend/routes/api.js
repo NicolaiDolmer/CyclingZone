@@ -6335,7 +6335,8 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
     }
     if (!data) return res.status(404).json({ error: "timeline_not_found" });
     // #6350: ?story=1 tilføjer løbshistorien (kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md).
-    const story = req.query.story === "1" ? buildRaceStory({ events: data.events, timelineVersion: data.timeline_version }) : null;
+    let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
+    if (req.query.story === "1") try { story = buildRaceStory({ events: data.events, timelineVersion: data.timeline_version }); } catch (storyErr) { captureException(storyErr); }
     res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events, ...(story ? { story } : {}) });
   } catch (err) {
     captureException(err);
