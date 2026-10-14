@@ -108,6 +108,27 @@ test("runRelaunchSeason1 (apply): materialiserer kalender efter transition med s
   assert.equal(summary.calendar?.racesInserted, 42, "summary skal vise materialiserings-resultatet");
 });
 
+// #6367 (review P1): S5-benchmark-gaten koeres i materializeTierCalendars. Relaunchen maa
+// hverken sende gate-input (ingen omgaaelse) eller sluge en naegtelse: en roed gate stopper
+// relaunchen foer de efterfoelgende trin (fail-closed).
+test("runRelaunchSeason1 (apply): en naegtet kalender (S5-benchmark-gaten) stopper relaunchen (#6367)", async () => {
+  const order = [];
+  const deps = makeDeps(order);
+  let calArgs = null;
+  deps.materializeTierCalendars = async (opts = {}) => {
+    calArgs = opts;
+    order.push({ name: "calendar" });
+    throw new Error("S5 benchmark gate red (apply refused, #6367): 1 brud — S5 (1) etape — test");
+  };
+  await assert.rejects(
+    () => runRelaunchSeason1({}, { dryRun: false, startDate: "2026-06-20", deps }),
+    /S5 benchmark gate red/,
+  );
+  assert.equal("s5BenchmarkInputs" in calArgs, false, "relaunchen maa ikke give gaten andet input end defaulten");
+  const idxCalendar = order.findIndex((o) => o.name === "calendar");
+  assert.equal(order.slice(idxCalendar + 1).length, 0, "ingen trin efter en naegtet kalender");
+});
+
 // Dry-run må ikke skrive — kalender-materialiseringen springes over (kræver den aktive
 // sæson-1-row + AI-fyldte puljer der først findes efter apply).
 test("runRelaunchSeason1 (dryRun): springer kalender-materialisering over", async () => {

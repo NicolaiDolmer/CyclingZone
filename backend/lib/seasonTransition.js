@@ -1473,7 +1473,15 @@ export async function transitionToNextSeason({
         // fanges af catch'en nedenfor (ingen kalender hellere end natte-etaper).
         seasonTransitionAt: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
       });
-      const { blocking, compositionDrift, tierCompositionDrift } = gatePlanFn(dryPlan);
+      const gated = gatePlanFn(dryPlan);
+      const { compositionDrift, tierCompositionDrift } = gated;
+      // #6367: S5-benchmark-gaten koeres i materializeren (dryPlan.s5Benchmark) og doemmes her
+      // sammen med gatePlan, saa en roed gate logges som gate_blocked i stedet for at apply-
+      // kaldet kaster. Apply-kaldet naegter ogsaa selv (fail-closed), hvis denne linje mangler.
+      const blocking = [
+        ...(gated.blocking ?? []),
+        ...(dryPlan?.s5Benchmark?.applies && !dryPlan.s5Benchmark.green ? (dryPlan.s5Benchmark.blocking ?? []) : []),
+      ];
 
       if (blocking.length) {
         log.push({

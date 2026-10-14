@@ -1322,6 +1322,65 @@ test("transitionToNextSeason — auto_calendar ON + gatePlan blokerer: nægter a
   assert.equal(result.log.find((p) => p.phase === "season_entry_generator"), undefined, "entry-generatoren må IKKE køre når kalenderen blev nægtet");
 });
 
+// #6367 (review P1): S5-benchmark-gaten paa auto_calendar-stien. Materializeren koerer gaten
+// og rapporterer den paa dry-run-planen (s5Benchmark); en roed gate er gate_blocked, og
+// apply kaldes aldrig. gatePlan siger "alt groent", saa det er S5-gaten alene der naegter.
+function autoCalendarTransition(materializeTierCalendars, extraDeps = {}) {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+  return transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
+      isAutoCalendarEnabled: async () => true,
+      isAutoEntryGeneratorEnabled: async () => true,
+      runRaceEntryGenerator: async () => { throw new Error("entry-generatoren maa ikke koere uden kalender"); },
+      materializeTierCalendars,
+      gatePlan: () => ({ blocking: [], compositionDrift: [], tierCompositionDrift: [] }),
+      ...extraDeps,
+    },
+  });
+}
+
+test("transitionToNextSeason — auto_calendar ON + roed S5-benchmark-gate: gate_blocked, apply kaldes ALDRIG (#6367)", async () => {
+  const materializeCalls = [];
+  const result = await autoCalendarTransition(async (args) => {
+    materializeCalls.push(args.dryRun);
+    return {
+      racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [],
+      s5Benchmark: { applies: true, scope: "season", green: false, blocking: ["S5 (2) Grand Tour — test"] },
+    };
+  });
+  assert.equal(result.ok, true, "en naegtet auto-kalender maa IKKE vaelte hele transitionen");
+  const calPhase = result.log.find((p) => p.phase === "season_calendar");
+  assert.equal(calPhase.skipped, true);
+  assert.equal(calPhase.reason, "gate_blocked");
+  assert.ok(calPhase.blocking.includes("S5 (2) Grand Tour — test"), JSON.stringify(calPhase.blocking));
+  assert.deepEqual(materializeCalls, [true], "kun dry-run-kaldet; apply maa aldrig kaldes ved roed S5-gate");
+  assert.equal(result.log.find((p) => p.phase === "season_entry_generator"), undefined);
+});
+
+test("transitionToNextSeason — auto_calendar ON: apply der naegter paa S5-gaten efterlader ingen kalender og ingen entries (#6367)", async () => {
+  // Dry-run'en siger groent, men apply-kaldets egen gate (materializeren) naegter: fasen
+  // fanger fejlen, logger den, og entry-generatoren koerer ikke (fail-closed).
+  const result = await autoCalendarTransition(async (args) => {
+    if (!args.dryRun) throw new Error("S5 benchmark gate red (apply refused, #6367): 1 brud — S5 (1) etape — test");
+    return { racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [], s5Benchmark: { applies: true, scope: "season", green: true, blocking: [] } };
+  });
+  assert.equal(result.ok, true);
+  const calPhase = result.log.find((p) => p.phase === "season_calendar");
+  assert.match(calPhase.error, /S5 benchmark gate red/);
+  assert.equal(result.log.find((p) => p.phase === "season_entry_generator"), undefined);
+  assert.ok(result.log.find((p) => p.phase === "admin_log"), "resten af transitionen fuldfoeres");
+});
+
 // #5592: fase 17 planlægger mod det FAKTISKE sæsonskifte (første etape ≥ 24 t efter), i
 // både dry-run og apply — ikke konventionens kl. 18, som kan ligge før et sent skifte.
 test("transitionToNextSeason — auto_calendar ON: dry-run OG apply får seasonTransitionAt = transitionAt (#5592)", async () => {
