@@ -12,6 +12,11 @@
 // Kun disse der er i forbindelse med sæsonskiftet." Alle andre dage, også søndage og
 // mandage midt i sæsonen, har TIER_STAGE_SLOTS uændret.
 //
+// UGEDAGS-UAFHÆNGIG (#5833). Ejerens "søndag/mandag" var S4's ugedage. Fra S5 slutter
+// sæsonen LØRDAG (CALENDAR_RULES §2, ejer 14/10), og reglen nedenfor følger med uden
+// ændring: den rammer den DATO der sendes som seasonLastRaceDay (§2-vinduets sidste dag),
+// ikke en ugedag. Der findes ingen søndags-test i denne fil.
+//
 // TO REGLER, begge i dansk tid (Europe/Copenhagen) og målt i VIRKELIGE timer:
 //
 //   1. SÆSONENS SIDSTE LØBSDAG (dagen før skiftet) slutter tidligt: dagens slots presses
@@ -193,7 +198,8 @@ export function firstCalendarDay(from) {
 /**
  * Den danske kalenderdato for kalenderens SIDSTE dag: real_day realDays-1 = from + realDays
  * (buildScheduleRows). Det er sæsonens sidste løbsdag: horisonten er sæsonvinduet (§2's
- * søndags-slut i buildSeasonCalendar, sæsonens sidste etape-dato i en midt-sæson-aktivering).
+ * faste slut-ugedag i buildSeasonCalendar: søndag til og med S4, lørdag fra S5 (#5833);
+ * sæsonens sidste etape-dato i en midt-sæson-aktivering).
  */
 export function lastCalendarDay(from, realDays) {
   return addDaysToDate(copenhagenDateString(from), realDays);

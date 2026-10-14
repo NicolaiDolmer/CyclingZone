@@ -325,6 +325,32 @@ test("#5592 CLI: forrige sæsons sidste etape pr. division", () => {
   assert.deepEqual(out, { 1: "2026-09-27T17:00:00.000Z", 2: "2026-09-27T16:00:00.000Z" });
 });
 
+test("#5833 S5 slutter LØRDAG 28/11: den dag får de korte sæsonskifte-tider, søndage midt i sæsonen er normale", () => {
+  // S5: onsdag 28/10 → lørdag 28/11 (§2-vinduet, ejer 14/10). from = dagen FØR første løbsdag.
+  const window = resolveSeasonWindow({ firstRaceDay: "2026-10-28", lastRaceDay: "2026-11-28", seasonNumber: 5 });
+  const from = new Date("2026-10-27T12:00:00Z");
+  assert.equal(lastCalendarDay(from, window.raceDays), window.lastRaceDay, "§2-vinduet = kalenderens sidste dato");
+  // S4's sidste etape: søndag 25/10 kl. 15 CET (14:00Z) → tidligst mulige skifte kl. 15:30.
+  const transition = resolveEarliestSeasonTransition({ previousSeasonLastStageAt: "2026-10-25T14:00:00Z", firstRaceDay: "2026-10-28" });
+  const notBefore = resolveSeasonStartNotBefore({ from, seasonTransitionAt: transition.at });
+  for (const t of TIERS) {
+    const rows = scheduleFor(t, from, window.raceDays, { notBefore, seasonLastRaceDay: window.lastRaceDay });
+    const { off } = datesOffNormalSlots({ tier: t, stageRows: rows });
+    // 2 fridage: første dag (onsdag 28/10) ligger > 24 t efter skiftet og har normale tider.
+    assert.deepEqual(off, ["2026-11-28"], `tier ${t}: kun lørdag 28/11 afviger`);
+    const { days } = measurePlanningWindows(rows);
+    assert.equal(copenhagenClock(days.get("2026-11-28").last).minutes, toMin(SEASON_LAST_DAY_END_SLOT), `tier ${t}: lørdag 28/11 slutter kl. 15`);
+    for (const sunday of ["2026-11-01", "2026-11-08", "2026-11-15", "2026-11-22"]) {
+      assert.equal(copenhagenClock(days.get(sunday).last).minutes, toMin(TIER_STAGE_SLOTS[t].at(-1)), `tier ${t} søndag ${sunday} er normal`);
+    }
+    assert.deepEqual(detectPlanningWindowViolations({ tier: t, stageRows: rows, notBefore, seasonLastRaceDay: window.lastRaceDay }), []);
+  }
+  // S5 → S6 (foreløbig mandag 30/11): sidste etape lørdag kl. 15 → S6's første dag er normal.
+  const s6Transition = resolveEarliestSeasonTransition({ previousSeasonLastStageAt: "2026-11-28T14:00:00Z", firstRaceDay: "2026-11-30" });
+  const s6NotBefore = resolveSeasonStartNotBefore({ from: new Date("2026-11-29T12:00:00Z"), seasonTransitionAt: s6Transition.at });
+  for (const t of TIERS) assert.deepEqual(slotsFor(t, "2026-11-30", { notBefore: s6NotBefore }), [...TIER_STAGE_SLOTS[t]], `tier ${t}: S6 mandag 30/11`);
+});
+
 test("#5592 CLI: rapporten viser skiftet, første og sidste løbsdag, og at alle andre datoer er normale", () => {
   const transition = resolveEarliestSeasonTransition({ previousSeasonLastStageAt: "2026-09-27T17:00:00Z", firstRaceDay: "2026-09-28" });
   const notBefore = resolveSeasonStartNotBefore({ from: S4_FROM, seasonTransitionAt: transition.at, previousSeasonLastStageAt: "2026-09-27T16:00:00Z" });

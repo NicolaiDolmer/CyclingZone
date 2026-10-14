@@ -49,12 +49,35 @@ export function resolveCalendarFrom({ firstRaceDate, now = new Date() } = {}) {
 }
 
 // ── §2's sæsonvindue (#4270) ───────────────────────────────────────────────────
-// docs/CALENDAR_RULES.md §2, ejer-låst 23/8 (#4131): "Sæsonen slutter altid en søndag",
-// og "antal løbsdatoer = slutdato − startdato + 1". De 31 dage i S3 er IKKE en konstant —
-// de er dét de to regler gav for en FREDAGS-start (28/8 → søn 27/9). Starter en sæson på
-// en anden ugedag, giver samme regel andre længder, og længden skal derfor UDLEDES, ikke
-// genbruges. Denne funktion er det ene sted udledningen bor, så hverken et script eller en
-// agent skal regne den forfra (og gætte forkert).
+// docs/CALENDAR_RULES.md §2: sæsonens sidste løbsdag ligger på en FAST UGEDAG, og
+// "antal løbsdatoer = slutdato − startdato + 1". Ugedagen afhænger af sæsonen:
+//   · S1-S4: søndag (ejer-låst 23/8, #4131). S4 slutter søndag 25/10 som planlagt.
+//   · Fra S5: LØRDAG (ejer-beslutning 14/10 efter forum-afstemningen, #5833). S5 kører
+//     onsdag 28/10 → lørdag 28/11.
+// De 31 dage i S3 er IKKE en konstant — de er dét reglerne gav for en FREDAGS-start (28/8 →
+// søn 27/9). Starter en sæson på en anden ugedag, giver samme regel andre længder, og
+// længden skal derfor UDLEDES, ikke genbruges. Denne fil er det ene sted udledningen bor,
+// så hverken et script eller en agent skal regne den forfra (og gætte forkert).
+
+/** Første sæson hvor sidste løbsdag er en LØRDAG (#5833, ejer 14/10). Før: søndag (#4131). */
+export const SATURDAY_FINISH_FROM_SEASON = 5;
+
+const WEEKDAY_NAME = Object.freeze({ 0: "Sunday", 6: "Saturday" });
+
+/**
+ * Ugedagen sæsonens sidste løbsdag SKAL ligge på (0 = søndag, 6 = lørdag), §2.
+ * Uden sæsonnummer gælder den gamle søndagsregel: kald-steder fra før #5833 (S4-værktøjer
+ * og tests) kender ikke sæsonen. En ny sæsons kalender bygges af buildSeasonCalendar.js,
+ * som ALTID sender `seasonNumber`.
+ */
+export function seasonFinishWeekday(seasonNumber = null) {
+  if (seasonNumber == null) return 0;
+  const n = typeof seasonNumber === "string" && seasonNumber.trim() === "" ? NaN : Number(seasonNumber);
+  // En ugyldig sæson må ikke tavst falde tilbage til søndag: det er netop den fejl der ville
+  // bygge S5 efter den gamle regel.
+  if (!Number.isInteger(n) || n < 1) throw new Error(`seasonFinishWeekday: invalid season number ${seasonNumber}`);
+  return n >= SATURDAY_FINISH_FROM_SEASON ? 6 : 0;
+}
 
 /** S3's længde, 31 løbsdatoer (§2). Referencen længde-forslaget måles imod — ikke et krav. */
 export const REFERENCE_SEASON_RACE_DAYS = 31;
@@ -69,17 +92,22 @@ export const REFERENCE_SEASON_RACE_DAYS = 31;
 export const SEASON_RACE_DAYS_DEFAULT = Object.freeze({ 4: 28 });
 
 /**
- * Alle §2-lovlige længder for en given første løbsdag: dem hvor sidste løbsdag er en
- * søndag. Sorteret stigende.
+ * Alle §2-lovlige længder for en given første løbsdag: dem hvor sidste løbsdag ligger på
+ * `finishWeekday` (0 = søndag, 6 = lørdag). Sorteret stigende.
  * @returns {Array<{lastRaceDay:string, raceDays:number}>}
  */
-export function sundayEndCandidates(firstRaceDay, { minRaceDays = 21, maxRaceDays = 42 } = {}) {
+export function seasonEndCandidates(firstRaceDay, { finishWeekday = 0, minRaceDays = 21, maxRaceDays = 42 } = {}) {
   const out = [];
   for (let n = minRaceDays; n <= maxRaceDays; n += 1) {
     const last = addDays(firstRaceDay, n - 1);
-    if (weekday(last) === 0) out.push({ lastRaceDay: last, raceDays: n });
+    if (weekday(last) === finishWeekday) out.push({ lastRaceDay: last, raceDays: n });
   }
   return out;
+}
+
+/** Søndags-udgaven (S1-S4, #4131). Bevaret som navngivet indgang for eksisterende kald. */
+export function sundayEndCandidates(firstRaceDay, { minRaceDays = 21, maxRaceDays = 42 } = {}) {
+  return seasonEndCandidates(firstRaceDay, { finishWeekday: 0, minRaceDays, maxRaceDays });
 }
 
 /**
@@ -88,17 +116,24 @@ export function sundayEndCandidates(firstRaceDay, { minRaceDays = 21, maxRaceDay
  * Præcedens: eksplicit `raceDays` > eksplicit `lastRaceDay` > udledt forslag.
  * Det UDLEDTE forslag er den §2-lovlige længde der ligger tættest på S3's 31 (ved
  * uafgjort: den korteste). Det er et FORSLAG scriptet printer og ejeren kan overstyre —
- * ikke en ny låst konstant. Kaster hvis den valgte slutdato ikke er en søndag, så §2's
- * ejer-låste regel ikke kan brydes ved et uheld.
+ * ikke en ny låst konstant. Kaster hvis den valgte slutdato ikke ligger på sæsonens
+ * slut-ugedag (seasonFinishWeekday: søndag til og med S4, lørdag fra S5), så §2's
+ * ejer-regel ikke kan brydes ved et uheld.
  *
- * @returns {{firstRaceDay:string, lastRaceDay:string, raceDays:number, candidates:Array, derived:boolean}}
+ * @param {{firstRaceDay:string, raceDays?:number|null, lastRaceDay?:string|null,
+ *          seasonNumber?:number|null, referenceRaceDays?:number}} args
+ *   seasonNumber: afgør slut-ugedagen. Uden den gælder søndag (reglen fra før #5833).
+ * @returns {{firstRaceDay:string, lastRaceDay:string, raceDays:number, candidates:Array,
+ *            derived:boolean, finishWeekday:number, finishWeekdayName:string}}
  */
 export function resolveSeasonWindow({
-  firstRaceDay, raceDays = null, lastRaceDay = null,
+  firstRaceDay, raceDays = null, lastRaceDay = null, seasonNumber = null,
   referenceRaceDays = REFERENCE_SEASON_RACE_DAYS,
 } = {}) {
   if (!firstRaceDay) throw new Error("resolveSeasonWindow: firstRaceDay is required");
-  const candidates = sundayEndCandidates(firstRaceDay);
+  const finishWeekday = seasonFinishWeekday(seasonNumber);
+  const finishWeekdayName = WEEKDAY_NAME[finishWeekday];
+  const candidates = seasonEndCandidates(firstRaceDay, { finishWeekday });
 
   let chosenDays = null;
   let derived = false;
@@ -111,7 +146,7 @@ export function resolveSeasonWindow({
     if (diff < 0) throw new Error(`last race day ${lastRaceDay} is BEFORE first race day ${firstRaceDay}`);
     chosenDays = diff + 1;
   } else {
-    if (!candidates.length) throw new Error(`no Sunday-ending season length exists for first race day ${firstRaceDay}`);
+    if (!candidates.length) throw new Error(`no ${finishWeekdayName}-ending season length exists for first race day ${firstRaceDay}`);
     const best = candidates.slice().sort((a, b) => {
       const da = Math.abs(a.raceDays - referenceRaceDays), db = Math.abs(b.raceDays - referenceRaceDays);
       return da === db ? a.raceDays - b.raceDays : da - db;
@@ -121,11 +156,12 @@ export function resolveSeasonWindow({
   }
 
   const last = addDays(firstRaceDay, chosenDays - 1);
-  if (weekday(last) !== 0) {
+  if (weekday(last) !== finishWeekday) {
+    const seasonLabel = seasonNumber == null ? "" : ` for season ${seasonNumber}`;
     throw new Error(
-      `last race day ${last} is not a Sunday (weekday ${weekday(last)}) - CALENDAR_RULES.md section 2 requires a Sunday finish. ` +
+      `last race day ${last} is not a ${finishWeekdayName} (weekday ${weekday(last)}) - CALENDAR_RULES.md section 2 requires a ${finishWeekdayName} finish${seasonLabel}. ` +
       `Legal lengths for ${firstRaceDay}: ${candidates.map((c) => `${c.raceDays} (to ${c.lastRaceDay})`).join(" · ")}`,
     );
   }
-  return { firstRaceDay, lastRaceDay: last, raceDays: chosenDays, candidates, derived };
+  return { firstRaceDay, lastRaceDay: last, raceDays: chosenDays, candidates, derived, finishWeekday, finishWeekdayName };
 }
