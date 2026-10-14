@@ -192,10 +192,12 @@ if ($userPath -notlike "*$localBin*") {
 
 # Git for Windows laegger kun Git\cmd paa PATH, ikke Git\bin (bash.exe). Hooks og
 # scripts/cross-pc-sync.sh kalder bash, saa sikr Git\bin bagest i User-PATH (#6602).
-$gitBin = Join-Path $env:ProgramFiles 'Git\bin'
+. (Join-Path $PSScriptRoot 'lib\cross-pc-env.ps1')
+$gitBash = Resolve-GitBash
+$gitBin = if ($gitBash) { Split-Path $gitBash -Parent } else { $null }
 $fullPath = @([Environment]::GetEnvironmentVariable('Path', 'Machine'), [Environment]::GetEnvironmentVariable('Path', 'User')) -join ';'
-if (-not (Test-Path (Join-Path $gitBin 'bash.exe'))) {
-  Write-Host "  [skip]    $gitBin\bash.exe findes ikke (Git ikke installeret i Program Files)"
+if (-not $gitBin) {
+  Write-Host "  [skip]    Git Bash ikke fundet (hverken PATH, Program Files eller LOCALAPPDATA\Programs)"
 } elseif (($fullPath -split ';') -notcontains $gitBin) {
   $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
   [Environment]::SetEnvironmentVariable('Path', ((@($userPath, $gitBin) | Where-Object { $_ }) -join ';'), 'User')

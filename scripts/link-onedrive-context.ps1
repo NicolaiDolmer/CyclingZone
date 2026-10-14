@@ -438,7 +438,7 @@ if (Test-Path $syncScript) {
       Write-Host ("STOP-MESSAGE: Git Bash ikke fundet paa {0} (hverken PATH eller Program Files\Git\bin) - cross-pc-sync.sh koerer ikke. Installer Git eller koer scripts/bootstrap-pc.ps1." -f $env:COMPUTERNAME)
     } else {
       try {
-        Start-Process -FilePath $bashExe -ArgumentList @($syncScript) -NoNewWindow -PassThru -ErrorAction Stop | Out-Null
+        Start-Process -FilePath $bashExe -ArgumentList @("`"$syncScript`"") -NoNewWindow -PassThru -ErrorAction Stop | Out-Null
         Write-Host "  [triggered] $bashExe cross-pc-sync.sh (background; log: ~/.claude/cross-pc-sync.log)" -ForegroundColor Green
       } catch {
         Write-Host ("  [warn] kunne ikke starte bash-sync ({0}): {1}" -f $bashExe, $_.Exception.Message) -ForegroundColor Yellow
