@@ -2916,7 +2916,8 @@
         "sprints",
         "sectors",
         "segments",
-        "weather"
+        "weather",
+        "elevation_profile"
       ]
     },
     "race_stage_roles": {
