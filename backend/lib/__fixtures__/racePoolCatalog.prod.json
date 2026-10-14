@@ -1,99 +1,99 @@
 {
-  "_note": "Snapshot af prod-kataloget, hentet read-only. Gør kalender-generatoren koerbar lokalt og i CI UDEN prod-credentials (#4103/#4121). Kilde: race_pool WHERE retired_at IS NULL + league_divisions. Opdateres naar kataloget aendres (scripts/dev/dumpRacePoolFixture.mjs). #5405 (20/9): de tre nye ProSeries-summit_tour-loeb er tilfoejet i HAANDEN i samme PR som migrationen database/2026-09-20-5405-tre-nye-bjergloeb.sql, saa CI ser samme forsyning som de haevede summit_tour-reservationer forudsaetter. Deres id er en deterministisk pladsholder (ffffffff-...), ikke prods rigtige uuid - prod faar sin ved insert. id indgaar KUN som tiebreaker i udvaelgelsens raekkefoelge (tierRaceSelection.seededKey), ikke i parcours-seeden (den er external_id). Naeste dumpRacePoolFixture.mjs-koersel mod prod erstatter pladsholderen. #5644 (24/9): puljerne har S4-formen efter #4592 (ejer 24/9): D4 E-H er pensioneret (retired_at, spor A2) og D4 A-D har ingen aegte managers (alle rykket op i D3). Saa viser den gyldne kalender-diff S4's 1/2/4/4-pyramide. dumpRacePoolFixture.mjs laeser endnu ikke retired_at, saa en ny dump skal bevare de to felter i haanden.",
-  "hentet": "2026-09-03",
+  "_note": "Snapshot af prod-kataloget, hentet read-only. Gør kalender-generatoren koerbar lokalt og i CI UDEN prod-credentials (#4103/#4121). Kilde: race_pool WHERE retired_at IS NULL AND squad senior + league_divisions (senior). Opdateres naar kataloget aendres (scripts/dev/dumpRacePoolFixture.mjs). #6367 (14/10): genopfrisket fra prod (READ-ONLY SELECT). Kataloget er uaendret siden 3/9 bortset fra at #5405's tre pladsholder-id'er (ffffffff-...) nu er prods rigtige uuid'er; realManagerCount er prods tal 14/10. #5644 (24/9): D4 E-H er pensioneret (retired_at, spor A2). dumpRacePoolFixture.mjs laeser endnu ikke retired_at, saa en ny dump skal bevare feltet i haanden.",
+  "hentet": "2026-10-14",
   "pools": [
     {
       "id": 1,
       "tier": 1,
       "label": "Division 1",
-      "realManagerCount": 24
+      "realManagerCount": 21
     },
     {
       "id": 2,
       "tier": 2,
       "label": "Division 2 — A",
-      "realManagerCount": 24
+      "realManagerCount": 18
     },
     {
       "id": 3,
       "tier": 2,
       "label": "Division 2 — B",
-      "realManagerCount": 24
+      "realManagerCount": 14
     },
     {
       "id": 4,
       "tier": 3,
       "label": "Division 3 — A",
-      "realManagerCount": 23
+      "realManagerCount": 15
     },
     {
       "id": 5,
       "tier": 3,
       "label": "Division 3 — B",
-      "realManagerCount": 24
+      "realManagerCount": 15
     },
     {
       "id": 6,
       "tier": 3,
       "label": "Division 3 — C",
-      "realManagerCount": 23
+      "realManagerCount": 15
     },
     {
       "id": 7,
       "tier": 3,
       "label": "Division 3 — D",
-      "realManagerCount": 24
+      "realManagerCount": 14
     },
     {
       "id": 8,
       "tier": 4,
       "label": "Division 4 — A",
-      "realManagerCount": 0
+      "realManagerCount": 5
     },
     {
       "id": 9,
       "tier": 4,
       "label": "Division 4 — B",
-      "realManagerCount": 0
+      "realManagerCount": 5
     },
     {
       "id": 10,
       "tier": 4,
       "label": "Division 4 — C",
-      "realManagerCount": 0
+      "realManagerCount": 5
     },
     {
       "id": 11,
       "tier": 4,
       "label": "Division 4 — D",
-      "realManagerCount": 0
+      "realManagerCount": 5
     },
     {
       "id": 12,
       "tier": 4,
       "label": "Division 4 — E",
-      "realManagerCount": 8,
+      "realManagerCount": 0,
       "retired_at": "2026-09-27T20:00:00Z"
     },
     {
       "id": 13,
       "tier": 4,
       "label": "Division 4 — F",
-      "realManagerCount": 8,
+      "realManagerCount": 0,
       "retired_at": "2026-09-27T20:00:00Z"
     },
     {
       "id": 14,
       "tier": 4,
       "label": "Division 4 — G",
-      "realManagerCount": 8,
+      "realManagerCount": 0,
       "retired_at": "2026-09-27T20:00:00Z"
     },
     {
       "id": 15,
       "tier": 4,
       "label": "Division 4 — H",
-      "realManagerCount": 8,
+      "realManagerCount": 0,
       "retired_at": "2026-09-27T20:00:00Z"
     }
   ],
@@ -207,6 +207,16 @@
       "race_type": "stage_race",
       "stages": 5,
       "date_text": "2/9 - 6/9"
+    },
+    {
+      "id": "0c41d89e-6385-4d66-bda0-d8b424bb6f96",
+      "external_id": "4adca5fb36d7264d",
+      "terrain_archetype": "summit_tour",
+      "name": "Volta Galega",
+      "race_class": "ProSeries",
+      "race_type": "stage_race",
+      "stages": 5,
+      "date_text": "14/4 - 18/4"
     },
     {
       "id": "0dc1b6b0-d97d-404e-86d7-59eb4f184252",
@@ -529,6 +539,16 @@
       "date_text": "8/3 - 15/3"
     },
     {
+      "id": "332a2fd4-122e-458e-a983-b8f1ba5cdec3",
+      "external_id": "3823e08096f72db9",
+      "terrain_archetype": "summit_tour",
+      "name": "Rundfahrt der Hohen Tauern",
+      "race_class": "ProSeries",
+      "race_type": "stage_race",
+      "stages": 5,
+      "date_text": "9/7 - 13/7"
+    },
+    {
       "id": "343c425c-1445-457f-a027-16d2038f25a7",
       "external_id": "e7c6d51672e7031d",
       "terrain_archetype": "flat_sprint",
@@ -597,6 +617,16 @@
       "race_type": "single",
       "stages": 1,
       "date_text": "21/3"
+    },
+    {
+      "id": "3a39666b-75de-4380-b414-a891976e7eae",
+      "external_id": "cc776090c82ec546",
+      "terrain_archetype": "summit_tour",
+      "name": "Volta Portuguesa",
+      "race_class": "ProSeries",
+      "race_type": "stage_race",
+      "stages": 5,
+      "date_text": "6/8 - 10/8"
     },
     {
       "id": "3bf686a1-a36b-46f7-ab59-d15ce52cc806",
@@ -2237,36 +2267,6 @@
       "race_type": "stage_race",
       "stages": 3,
       "date_text": "28/4 - 30/4"
-    },
-    {
-      "id": "ffffffff-0000-4000-8000-3823e08096f7",
-      "external_id": "3823e08096f72db9",
-      "terrain_archetype": "summit_tour",
-      "name": "Rundfahrt der Hohen Tauern",
-      "race_class": "ProSeries",
-      "race_type": "stage_race",
-      "stages": 5,
-      "date_text": "9/7 - 13/7"
-    },
-    {
-      "id": "ffffffff-0000-4000-8000-4adca5fb36d7",
-      "external_id": "4adca5fb36d7264d",
-      "terrain_archetype": "summit_tour",
-      "name": "Volta Galega",
-      "race_class": "ProSeries",
-      "race_type": "stage_race",
-      "stages": 5,
-      "date_text": "14/4 - 18/4"
-    },
-    {
-      "id": "ffffffff-0000-4000-8000-cc776090c82e",
-      "external_id": "cc776090c82ec546",
-      "terrain_archetype": "summit_tour",
-      "name": "Volta Portuguesa",
-      "race_class": "ProSeries",
-      "race_type": "stage_race",
-      "stages": 5,
-      "date_text": "6/8 - 10/8"
     }
   ]
 }

@@ -1168,6 +1168,8 @@ Ugestrukturen (del 2): ingen højbjerg i første tredjedel · kongeetapen (en et
 
 **Hvor den håndhæves:**
 
+- `backend/lib/tierCalendarMaterializer.js` (`materializeTierCalendars`): på **hver** skrivesti (CLI'ens `--apply`, admin-knappen, auto-kalenderen i `seasonTransition`, relaunch, pulje-aktivering). En rød gate nægter apply før første insert. Et udsnit af sæsonen (en division eller en trup) dømmes uden del (3) og Grand Tour-kravet.
+
 - `backend/scripts/buildSeasonCalendar.js`: fra sæson 5 er gaten et **hårdt krav uden override**, i samme klasse som placerings-gatesne. Den stopper `--apply`; dry-runnet måler videre og slutter med exit 1. For S5 **erstatter** den §7b's finale-bånd (de kender udbrud som afslutning); §7b printes stadig, men stopper ikke.
 - `backend/scripts/dev/calendarGoldenDiff.mjs` (#4123) har en S5-sektion. Default måles den offline kalender med den generator der ville køre og vises som *målt, ikke dømt*; `--profile-model s5` dømmer (exit 1 ved rød). Placering og terræn er to spørgsmål: golden-diffen dømmer placeringen, benchmarken terrænet.
 - Del (4) kører på en **stub** (`backend/lib/__fixtures__/s5MotorBenchStub.json`, benchmarkens egne medianer) indtil motor-sporet ([#6363](https://github.com/NicolaiDolmer/CyclingZone/issues/6363)) leverer en rigtig motor-bench. Stubben vises som STUB og blokerer ikke. En rigtig måling gives med `--motor-bench <fil>` (`{ "medians": { "<afslutning>": sekunder } }`) og blokerer når den er rød.
