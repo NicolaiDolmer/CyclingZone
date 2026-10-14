@@ -2,7 +2,8 @@
 // Vercel OG (satori + resvg, WASM): 0 kr. ekstra, ingen ekstern tjeneste, ingen hemmeligheder.
 //
 //   /api/og/stage?id=<race_stage_profiles.id>[&lang=da]   etapens rigtige rute, hentet server-side
-//   /api/og/stage?demo=high|hilly|flat|cobbles[&lang=da]  faste udsnit af rigtige etaper (preview/test)
+//   /api/og/stage?demo=high|hilly|flat|cobbles|s5-mountain|s5-high|s5-hilly[&lang=da]
+//                                                         faste eksempler (preview/test); s5-* har højdeprofil (#6594)
 //
 // Ruten hentes fra backendens offentlige, read-only endpoint (se _lib/stageRoute.ts for hvorfor);
 // URL'en bærer kun etape-id og sprog, aldrig kurven. Billedet caches på Vercels CDN.

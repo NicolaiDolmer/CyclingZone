@@ -13,6 +13,11 @@
 // Etapens samlede højdemeter (elevation_gain_m) står som tal i hovedet; kurven påstår ikke at
 // summere til det, fordi det ikke-kategoriserede bølgeterræn ikke har nogen placering i dataene.
 //
+// #6594: har etapen en rigtig højdeserie (elevation_profile, ét punkt pr. 0,5 km), tegnes den i stedet:
+// ét stykke pr. skridt, farvet efter skridtets egen stigningsprocent (samme skala), nedkørsel dæmpet.
+// Serien kommer fra generatoren og summerer til etapens højdemeter. Mangler den (S1-S4), er alt
+// ovenstående uændret.
+//
 // Ældre rækker uden segments: stigningerne giver ramperne, og efter hver top lægges en nedkørsel
 // efter samme loft (frem til næste stignings fod eller dalen). Resten er vandret.
 import { DESCENT_M_PER_KM, elevationScaleFor, valleyBaseFor } from "../../../src/lib/stageRouteProfile.js";
@@ -30,7 +35,12 @@ export interface TerrainRun {
   category?: Category;
 }
 export interface Terrain {
+  /** Det der tegnes: ét stykke pr. segment (uden serie) eller pr. skridt (med serie). */
   runs: TerrainRun[];
+  /** Altid rutens segment-stykker; km-båndet (bølget/brosten) læser dem også når profilen er en serie. */
+  segmentRuns: TerrainRun[];
+  /** true når profilen er den rigtige højdeserie. */
+  fromSeries: boolean;
   valley: number;
   peak: number;
   /** Fast højdeloft pr. etapetype (ejer-låst 23/8, #4107); udvides kun hvis toppen ligger over. */
@@ -87,6 +97,21 @@ function segmentsFromClimbs(route: StageRoute): RawSeg[] {
   return out;
 }
 
+/** Ét stykke pr. skridt af højdeserien; punkterne ligger jævnt over [0, D]. */
+function seriesRuns(h: number[], D: number): TerrainRun[] {
+  const stepKm = D / (h.length - 1);
+  const out: TerrainRun[] = [];
+  for (let i = 0; i < h.length - 1; i++) {
+    const pct = ((h[i + 1] - h[i]) / (stepKm * 1000)) * 100;
+    const band = gradeBand(pct);
+    out.push({
+      kind: band > 0 ? "climb" : band < 0 ? "descent" : "flat",
+      from_km: i * stepKm, to_km: (i + 1) * stepKm, startM: h[i], endM: h[i + 1], band, gradient: pct,
+    });
+  }
+  return out;
+}
+
 export function buildTerrain(route: StageRoute): Terrain {
   const D = route.distance_km;
   const valley = valleyBaseFor(route.type);
@@ -111,20 +136,25 @@ export function buildTerrain(route: StageRoute): Terrain {
     alt = end;
   }
 
-  const peak = runs.reduce((m, r) => Math.max(m, r.startM, r.endM), valley);
+  const segmentRuns = runs;
+  const series = route.elevation;
+  const drawn = series ? seriesRuns(series.h, D) : runs;
+  const base = series ? Math.min(...series.h) : valley;
+
+  const peak = drawn.reduce((m, r) => Math.max(m, r.startM, r.endM), base);
   const maxY = Math.max(elevationScaleFor(route.type), peak * 1.04);
 
   const elevationAt = (km: number): number => {
-    if (!runs.length) return valley;
-    if (km <= runs[0].from_km) return runs[0].startM;
-    for (const r of runs) {
+    if (!drawn.length) return valley;
+    if (km <= drawn[0].from_km) return drawn[0].startM;
+    for (const r of drawn) {
       if (km <= r.to_km) {
         const t = (km - r.from_km) / (r.to_km - r.from_km || 1);
         return r.startM + t * (r.endM - r.startM);
       }
     }
-    return runs[runs.length - 1].endM;
+    return drawn[drawn.length - 1].endM;
   };
 
-  return { runs, valley, peak, maxY, derived, elevationAt };
+  return { runs: drawn, segmentRuns, fromSeries: Boolean(series), valley: base, peak, maxY, derived: series ? false : derived, elevationAt };
 }

@@ -82,10 +82,22 @@ export function layoutStage(route: StageRoute, lang: Lang = "en") {
   const f1 = (n: number) => n.toFixed(1);
 
   // 1) Ét fyld pr. terræn-stykke, farvet efter stykkets egen stigningsprocent fra ruten.
-  const fills = terrain.runs.map((r) => ({
-    band: r.band,
-    d: `M${f1(X(r.from_km))},${baseline} L${f1(X(r.from_km))},${f1(Y(r.startM))} L${f1(X(r.to_km))},${f1(Y(r.endM))} L${f1(X(r.to_km))},${baseline} Z`,
-  }));
+  // Efterfølgende stykker med samme bånd slås sammen til ét fyld (en højdeserie har ét stykke pr. 0,5 km).
+  const groups: { band: number; runs: typeof terrain.runs }[] = [];
+  for (const r of terrain.runs) {
+    const g = groups[groups.length - 1];
+    if (g && g.band === r.band) g.runs.push(r);
+    else groups.push({ band: r.band, runs: [r] });
+  }
+  const fills = groups.map(({ band, runs }) => {
+    const first = runs[0];
+    const last = runs[runs.length - 1];
+    const top = [[first.from_km, first.startM], ...runs.map((r) => [r.to_km, r.endM])];
+    return {
+      band,
+      d: `M${f1(X(first.from_km))},${baseline} L${top.map(([k, m]) => `${f1(X(k))},${f1(Y(m))}`).join(" L")} L${f1(X(last.to_km))},${baseline} Z`,
+    };
+  });
   const pts = terrain.runs.length
     ? [[terrain.runs[0].from_km, terrain.runs[0].startM], ...terrain.runs.map((r) => [r.to_km, r.endM])]
     : [[0, terrain.valley], [D, terrain.valley]];
@@ -140,10 +152,10 @@ export function layoutStage(route: StageRoute, lang: Lang = "en") {
   for (const f of flags) f.poleH = geo(f, f.level, f.rightSide).poleH;
 
   // 3) Km-båndet: bølget terræn og brosten fra ruten, stigninger i kategori-farve, sprints.
-  const rollingBands = terrain.runs.filter((r) => r.kind === "rolling").map((r) => ({ x: X(r.from_km), w: X(r.to_km) - X(r.from_km) }));
+  const rollingBands = terrain.segmentRuns.filter((r) => r.kind === "rolling").map((r) => ({ x: X(r.from_km), w: X(r.to_km) - X(r.from_km) }));
   const cobbleSpans = route.sectors.length
     ? route.sectors.map((s) => [s.start_km, Math.min(D, s.start_km + s.length_km)])
-    : terrain.runs.filter((r) => r.kind === "cobbles").map((r) => [r.from_km, r.to_km]);
+    : terrain.segmentRuns.filter((r) => r.kind === "cobbles").map((r) => [r.from_km, r.to_km]);
   const cobbleBands = cobbleSpans.map(([a, b]) => ({ x: X(a), w: Math.max(3, X(b) - X(a)) }));
   const sprints = route.sprints.map((km) => ({ px: X(km), py: Y(terrain.elevationAt(km)), km }));
 

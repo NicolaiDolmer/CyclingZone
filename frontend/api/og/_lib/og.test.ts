@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { buildStageCard, layoutStage, gradeBand, fmtInt, COLORS, OG_WIDTH, OG_HEIGHT } from "./card.ts";
 import { DEMO_STAGES } from "./demo.ts";
 import { buildTerrain } from "./terrain.ts";
-import { cleanText, normalizeStageRoute, fetchStageRoute, type StageRoute } from "./stageRoute.ts";
+import { cleanText, normalizeElevation, normalizeStageRoute, fetchStageRoute, type StageRoute } from "./stageRoute.ts";
 
 const STAGE_ID = "11111111-2222-4333-8444-555555555555";
 const demo = (key: string): StageRoute => {
@@ -86,6 +86,63 @@ test("buildTerrain: ældre række uden segments afleder ramper + nedkørsler af 
   assert.ok(t.runs.some((r) => r.kind === "descent"));
   const covered = t.runs.reduce((s, r) => s + (r.to_km - r.from_km), 0);
   assert.ok(Math.abs(covered - route.distance_km) < 1e-6);
+});
+
+test("normalizeElevation (#6594): kun en brugbar serie der dækker etapens afstand, ellers null", () => {
+  const ok = { v: 1, step_km: 0.5, h: [100, 110, 120.4, 118, 118] };
+  assert.deepEqual(normalizeElevation(ok, 2), { step_km: 0.5, h: [100, 110, 120, 118, 118] });
+  const bad: unknown[] = [
+    null, "x", {}, { ...ok, v: 2 }, { ...ok, step_km: 0 }, { ...ok, step_km: 9 }, { ...ok, h: [1] }, { ...ok, h: "12" },
+    { ...ok, h: [1, 2, null, 4, 5] }, { ...ok, h: [1, 2, "x", 4, 5] }, { ...ok, h: [1, 2, 3, 4, 99999] },
+    { ...ok, h: new Array(1201).fill(5) },
+  ];
+  for (const raw of bad) assert.equal(normalizeElevation(raw, 2), null, JSON.stringify(raw)?.slice(0, 40));
+  assert.equal(normalizeElevation(ok, 40), null, "serien dækker ikke 40 km");
+  assert.equal(normalizeStageRoute({ ...DEMO_STAGES.flat, elevation_profile: ok })?.elevation, null, "forkert længde for etapen");
+  assert.equal(demo("flat").elevation, null, "ældre etaper har ingen serie");
+});
+
+test("buildTerrain (#6594): med serie tegnes den rigtige profil; uden serie er alt som før", () => {
+  const route = demo("s5-high");
+  assert.ok(route.elevation, "demoen har en serie");
+  const h = route.elevation.h;
+  const t = buildTerrain(route);
+  assert.equal(t.fromSeries, true);
+  assert.equal(t.derived, false);
+  assert.equal(t.runs.length, h.length - 1, "ét stykke pr. skridt");
+  assert.ok(Math.abs(t.runs[t.runs.length - 1].to_km - route.distance_km) < 1e-6);
+  assert.equal(t.peak, Math.max(...h));
+  assert.equal(t.valley, Math.min(...h));
+  assert.equal(t.elevationAt(0), h[0]);
+  assert.equal(t.elevationAt(route.distance_km), h[h.length - 1]);
+  const stepKm = route.distance_km / (h.length - 1);
+  assert.ok(Math.abs(t.elevationAt(stepKm * 1.5) - (h[1] + h[2]) / 2) < 1e-6, "lineær interpolation mellem punkterne");
+  t.runs.forEach((r, i) => {
+    const pct = ((h[i + 1] - h[i]) / (stepKm * 1000)) * 100;
+    assert.equal(r.band, gradeBand(pct), "farve efter skridtets egen stigningsprocent");
+    assert.equal(r.kind, r.band > 0 ? "climb" : r.band < 0 ? "descent" : "flat");
+  });
+  assert.ok(t.runs.some((r) => r.band >= 3), "en højbjergetape har stejle skridt");
+  assert.ok(t.runs.some((r) => r.band === -1), "og nedkørsler");
+  assert.ok(t.segmentRuns.length > 0 && t.segmentRuns.every((r) => r.kind !== undefined), "rutens segmenter bevares til km-båndet");
+
+  const legacy = buildTerrain({ ...route, elevation: null });
+  assert.equal(legacy.fromSeries, false);
+  assert.deepEqual(legacy.runs, legacy.segmentRuns);
+  assert.ok(legacy.runs.every((r) => r.endM === r.startM || r.kind !== "flat"));
+});
+
+test("layoutStage (#6594): serien giver glat kontur og sammenslåede fyld; stigningsflag står på profilen", () => {
+  const route = demo("s5-mountain");
+  const L = layoutStage(route);
+  const n = route.elevation?.h.length ?? 0;
+  assert.equal(L.outline.split(" L").length, n, "ét punkt pr. højdepunkt");
+  assert.ok(L.fills.length < n - 1, "nabo-skridt i samme bånd slås sammen");
+  for (let i = 1; i < L.fills.length; i++) assert.notEqual(L.fills[i].band, L.fills[i - 1].band);
+  for (const f of L.flags) assert.ok(Math.abs(f.py - L.Y(L.terrain.elevationAt(f.crest))) < 1e-6);
+  const withoutSeries = layoutStage({ ...route, elevation: null });
+  assert.notEqual(L.outline, withoutSeries.outline, "serien ændrer profilen");
+  assert.deepEqual(L.rollingBands, withoutSeries.rollingBands, "km-båndet er uændret");
 });
 
 for (const key of Object.keys(DEMO_STAGES)) {

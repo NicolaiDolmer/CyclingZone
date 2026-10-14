@@ -24,7 +24,11 @@ const SEGMENT_KINDS: ReadonlySet<string> = new Set(["flat", "rolling", "climb", 
 export interface Climb { name: string; category: Category; crest_km: number; length_km: number; avg_gradient: number; summit_finish: boolean }
 export interface Sector { name: string; start_km: number; length_km: number }
 export interface Segment { kind: SegmentKind; from_km: number; to_km: number; avg_gradient?: number; category?: Category }
+/** #6594: etapens rigtige højdeprofil, ét punkt pr. step_km, hele meter; h[0] = start, h[sidste] = mål. */
+export interface ElevationSeries { step_km: number; h: number[] }
 export interface StageRoute {
+  /** null for ældre etaper (S1-S4) uden serie: road book tegner da dagens afledte profil. */
+  elevation: ElevationSeries | null;
   race: string;
   stage: number;
   stageCount: number;
@@ -58,6 +62,24 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 function category(raw: unknown): Category {
   const c = String(raw ?? "").toUpperCase();
   return (CATEGORIES as readonly string[]).includes(c) ? (c as Category) : "3";
+}
+
+/**
+ * Højdeserien {v:1, step_km, h[]}. Alt der ikke er en brugbar serie (forkert version, for få punkter,
+ * ikke-tal, eller et antal punkter der ikke dækker etapens afstand) giver null, så billedet tegner
+ * dagens profil i stedet for at gætte.
+ */
+export function normalizeElevation(raw: unknown, distanceKm: number): ElevationSeries | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as { v?: unknown; step_km?: unknown; h?: unknown };
+  const step = num(r.step_km);
+  if (r.v !== 1 || !Number.isFinite(step) || step < 0.1 || step > 5 || !Array.isArray(r.h)) return null;
+  if (r.h.length < 2 || r.h.length > 1200) return null;
+  const h = r.h.map((m) => (m === null || m === "" ? NaN : Number(m)));
+  if (!h.every((m) => Number.isFinite(m) && m > -500 && m < 6000)) return null;
+  // Serien skal dække [0, D] (± ét skridt); ellers hører den til en anden afstand.
+  if (Math.abs((h.length - 1) * step - distanceKm) > step * 1.01) return null;
+  return { step_km: step, h: h.map(Math.round) };
 }
 
 /**
@@ -127,6 +149,7 @@ export function normalizeStageRoute(raw: Record<string, unknown> | null | undefi
     sprints,
     sectors,
     segments,
+    elevation: normalizeElevation(raw.elevation_profile, D),
   };
 }
 
