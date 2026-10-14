@@ -8,23 +8,13 @@
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  myBestByStage, scheduleFor, stagePhase, tacticsProgress,
-  type ResultRow, type RoleOverride, type RoleRider, type ScheduleRow, type StageProfile,
+  myBestByStage, resolveV2Tab, scheduleFor, STAGE_PAGE_V2_TABS, stagePhase, tacticsProgress,
+  type ResultRow, type RoleOverride, type RoleRider, type ScheduleRow, type StagePageV2Tab, type StageProfile,
 } from "./stagePageV2Model.ts";
 import StageStripV2, { type StripStage } from "./StageStripV2.tsx";
 import StageTabV2 from "./StageTabV2.tsx";
 import type { CareerEvent } from "./YourDayCard.tsx";
 import { Tab, TabList, Tabs } from "./ui.ts";
-
-export const STAGE_PAGE_V2_TABS = ["stage", "standings", "team", "tactics"] as const;
-export type StagePageV2Tab = (typeof STAGE_PAGE_V2_TABS)[number];
-
-/** ?tab= → v2-fane. Gamle vaerdier fra den nuvaerende side oversaettes. */
-export function resolveV2Tab(param: string | null): StagePageV2Tab {
-  if (param && (STAGE_PAGE_V2_TABS as readonly string[]).includes(param)) return param as StagePageV2Tab;
-  if (param === "results") return "standings";
-  return "stage";
-}
 
 export interface StagePageV2Props {
   isStageRace: boolean;

@@ -15,6 +15,18 @@ import { stageHasIntention } from "../../../lib/raceOverviewLogic.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
 import { parseGapSeconds } from "../../../lib/raceLiveStandings.js";
 
+// Fanerne bor her (ikke i StagePageV2.tsx), saa RaceDetailPage kan laese ?tab=
+// uden at hente den lazy-loadede v2-flade.
+export const STAGE_PAGE_V2_TABS = ["stage", "standings", "team", "tactics"] as const;
+export type StagePageV2Tab = (typeof STAGE_PAGE_V2_TABS)[number];
+
+/** ?tab= → v2-fane. Gamle vaerdier fra den nuvaerende side oversaettes. */
+export function resolveV2Tab(param: string | null): StagePageV2Tab {
+  if (param && (STAGE_PAGE_V2_TABS as readonly string[]).includes(param)) return param as StagePageV2Tab;
+  if (param === "results") return "standings";
+  return "stage";
+}
+
 // ── Typer ──────────────────────────────────────────────────────────────────
 
 export interface Climb {

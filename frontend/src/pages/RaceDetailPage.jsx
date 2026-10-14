@@ -82,8 +82,7 @@ import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTi
 import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
-import StagePageV2, { resolveV2Tab } from "../components/race/stagePageV2/StagePageV2.tsx"; // #6570
-import { defaultStage } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
+import { defaultStage, resolveV2Tab } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
 // Section, "The Final Kilometre") i stedet for altid-øverst — lazy-loadet
@@ -93,6 +92,9 @@ import { defaultStage } from "../components/race/stagePageV2/stagePageV2Model.ts
 // App.jsx's route-chunks; en stale-chunk-fejl skal klassificeres som
 // chunk_load_error, ikke render_error (CYCLINGZONE-5H).
 const FinalKilometrePlayback = lazyWithRetry(() => import("../components/race/FinalKilometrePlayback.jsx"));
+// #6570: etapeside 2.0 i eget chunk, saa spillere uden stage_page_v2 ikke
+// henter v2-fladen (kun modellen, som RaceDetailPage selv bruger, er statisk).
+const StagePageV2 = lazyWithRetry(() => import("../components/race/stagePageV2/StagePageV2.tsx"));
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -1418,7 +1420,7 @@ export default function RaceDetailPage() {
       <div className="max-w-5xl mx-auto pt-5 px-4 md:px-8 pb-24 md:pb-16">
         <div className="flex flex-col gap-[14px]">
 
-          {stagePageV2 === true ? stagePageV2El : renderTabContent(activeMainTab)}
+          {stagePageV2 === true ? <Suspense fallback={null}>{stagePageV2El}</Suspense> : renderTabContent(activeMainTab)}
         </div>
       </div>
     </div>
