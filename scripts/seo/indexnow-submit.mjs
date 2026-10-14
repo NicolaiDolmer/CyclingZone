@@ -25,7 +25,13 @@ const MAX_URLS = 10000;
 // kommenteret URL aldrig indsendes. Kun URL'er paa `host` (IndexNow kraever at
 // urlList hoerer til samme host som noeglefilen); alt andet droppes.
 export function extractSitemapUrls(xml, host = DEFAULT_HOST) {
-  const withoutComments = String(xml || "").replace(/<!--[\s\S]*?-->/g, "");
+  // Gentag til teksten er stabil, saa indlejrede/overlappende kommentarer
+  // (fx "<!<!-- -->-- x -->") ikke efterlader en ny "<!--" (CodeQL #374).
+  let withoutComments = String(xml || "");
+  for (let prev = null; prev !== withoutComments; ) {
+    prev = withoutComments;
+    withoutComments = withoutComments.replace(/<!--[\s\S]*?-->/g, "");
+  }
   const seen = new Set();
   const urls = [];
   for (const match of withoutComments.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)) {
