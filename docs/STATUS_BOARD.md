@@ -10,8 +10,6 @@
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (7d) — groen
-- #6564 chore(deps-dev): Bump eslint from 9.39.5 to 10.12.0 in /marketing (0d) — roed
-- #6603 fix(ops): resolve Git Bash + pin OneDrive-memory lokalt (cross-PC) (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -22,7 +20,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1173 Vækst/viralitets-loop: referral (del spillet med en ven) (126d)
 - #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (126d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (125d)
-- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (117d)
+- #1461 security(email): DMARC enforcement — p=none → quarantine → reject (118d)
 - #2236 Organic community outreach — Reddit + Discord posting (99d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (92d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (89d)
@@ -44,7 +42,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **Ikke-draft med roed tilstand:**
 
-- #6564 chore(deps-dev): Bump eslint from 9.39.5 to 10.12.0 in /marketing (0d) — roed
+- ingen
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -54,17 +52,17 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (112d)
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (89d)
 - #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (87d)
-- #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (84d)
+- #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (85d)
 - #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (83d)
-- #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (82d)
+- #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (83d)
 - #2884 [feature] Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vind… (81d)
 - #3154 [ops] Ejer-direktiv 26/7: backlog ned til ~200 åbne issues på 7-14 dage + fuld prioriteri… (76d)
 - #3426 [balance] Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjerg… (69d)
 - #3461 [bug/balance] Restitutionens timing: 'Træn i dag' om morgenen brænder dagens eneste resti… (68d)
-- #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (67d)
-- #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (65d)
+- #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (68d)
+- #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (66d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (57d)
-- …og 741 mere
+- …og 744 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -74,7 +72,6 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6456 [motor] Tidsgab nr. 10 på bjergetaper uden topankomst og uden nedkørselsfinale har intet… (3d)
 - #5842 [bug] Ejer-direktiv 27/9: rytterværdierne ændrede sig søndag ved sæsonskiftet - det må de… (16d)
 - #6464 [motor] Bjerg i D2-D4: nr. 10 er 3-8 min efter vinderen på topankomster (mål 1:00-2:30 i… (3d)
-- #5162 [Epic] Chunk-fejl CYCLINGZONE-56: samlet aarsagskaede og rettelsesplan efter Codex-audit… (32d)
 - #6531 [security] CodeQL: 'Incomplete URL substring sanitization' (High) i scripts/ops/db-watchd… (2d)
 - #6428 [race-engine/v4] Kuperet endagsløb: udbruddet vinder med 9-16 min til feltet under offici… (3d)
 - #6543 [races] Auto-udtag dobbeltbooker: binding-opslaget afkortes ved over 1000 entries pr. hol… (1d)
@@ -84,4 +81,5 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6367 [S5-profiler] Benchmark-gate: S5-kalenderen målt mod rigtige Grand Tours før live (5d)
 - #6363 [S5-profiler] Ny finale: mur-finale (wall_finish) (5d)
 - #6579 [ops] Engangs-refusion: 9 scout-missioner (54.000) ramt af #6551 (0d)
-- …og 2 mere
+- #6551 [bug] Scout-mission: 'rapport klar'-besked men ingen rapport, 6.000 betalt uden resultat… (1d)
+- …og 9 mere

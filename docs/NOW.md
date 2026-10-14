@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren 14/10:** Alunta-faktura nr. 2 (61,25 kr., Sentry CYCLINGZONE-62) afstemmes/krediteres i Dinero, derefter Claude: Pro-afvigelse · CodeRabbit-loft nået (ejer) · `INDEXNOW_KEY` som GitHub-secret (#6558) · post Discord-tekst for 7.359 (docs/drafts/patch-7359) + app-opslag i forum.
+> **⏰ Påmind ejeren:** Alunta-faktura nr. 2 (61,25 kr., Sentry -62) afstemmes i Dinero, derefter Claude: Pro-afvigelse · CodeRabbit-loft nået (ejer) · `INDEXNOW_KEY` som GitHub-secret (#6558) · post Discord-tekst for 7.359 (docs/drafts/patch-7359) + app-opslag i forum.
 >
-> **🎯 Next action 14/10 (pc1: `docs/sessions/2026-10-14-pc1-efter-genstart.md`):** (0) Bølge #6604: alle major-efterslæb i dag. (1) Sentry -56/-80 fra Hvad brænder. (2) Kl. 20: forum-afstemningerne lukker → S5-start til generatoren (#5833) + datokort tor 15/10 til lanceringsteksterne (#6601). (3) Højdeprofil live (#6599/#6577); S5-tørkørsel tor. (4) Google Play-kort (#6584 spor 3) · push-tænding (VAPID, #6590). (5) #6490 aften 2 → DROP INDEX-kort. (6) Forretning frem mod 21/10: #6601 (privat del i OneDrive-context/private-handoffs).
+> **🎯 Next action (startprompt `docs/sessions/2026-10-14-aften-s5-kalender.md`):** (1) Forum-afstemningerne (lukket kl. 20) → S5-start i #5833 → generatoren. (2) S5-profiler + kalender live senest lør 18/10 (#6369: #6360 #6362 #6364, #6570), første bølge med 6 laner. Datokort tor (#6601, forberedt i OneDrive `private-handoffs/2026-10-14-datokort-forberedelse-6601.md`). (3) Højdeprofil live (#6599/#6577); S5-tørkørsel tor. (4) Google Play-kort (#6584 spor 3) · push-tænding (VAPID, #6590). (5) #6490 aften 2 → DROP INDEX-kort. (6) Forretning frem mod 21/10: #6601 (privat del i OneDrive-context/private-handoffs).
 >
-> **13-14/10 merget + verificeret live:** app/PWA (#6585) · push bag slukket flag (#6591, migration ok) · scout-fix (#6581) + refusion 54.000 udført (#6579) · SEO noindex/404 (#6578) + asset-404-fix (#6600) · højdeprofil (#6599, kolonne ok) + road book (#6577) · Dagens etaper (#6576) · Hvad brænder (#6575) · merge-kø 502-fix (#6593) · patch 7.359. Højdeprofil med i S5 (ejer). Postmortem: `.claude/learnings/2026-10-14-merget-er-ikke-live.md`. Ingen nye løbende udgifter.
+> **14/10 pc1 merget + verificeret:** major-efterslæb #6604 (Sentry 11 events fra Railway+prod, @vercel/og 1.0 live, React 19-lint, ESLint 10 marketing) · -80 læselig (#6614) · 6 laner på NICOLAIPC (#6619) · preflight = CI-vagter (#6620). Åbent: #6616 pkt 2, #6617, #6618. **13-14/10:** app/PWA (#6585) · push bag slukket flag (#6591) · højdeprofil (#6599) + road book (#6577, med i S5) · Dagens etaper (#6576) · patch 7.359. Ingen nye løbende udgifter.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude pc1 14/10: bølge #6604 (#6605-#6608) + Sentry -56/-80. Codex planlægger på DOLMERPC → #6601.
+> **🤖 Working agent:** Ingen aktiv session (pc1 lukket 14/10 ~15:30). Codex planlægger på DOLMERPC → #6601.
