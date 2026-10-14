@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-88 poster: live 67 · beta 3 · dormant 3 · building 10 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+89 poster: live 67 · beta 3 · dormant 3 · building 11 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -22,6 +22,10 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 ## race-day
 
 **live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage scheduler (`stage-scheduler`) 2026-09-06
+
+| Feature | State | Flag | SSOT | Epic | Verified | Note |
+| --- | --- | --- | --- | --- | --- | --- |
+| Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) | building | - | - | #6570 | 2026-10-14 | PR #6633; stadie-flag stage_page_v2 (off/beta/on) seedes off ved migration post-merge, ejeren flytter til beta. Sæt flag-feltet når rækken findes i prod. |
 
 ## market
 

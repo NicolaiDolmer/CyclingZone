@@ -220,6 +220,15 @@ features:
     verified: 2026-10-06
     note: PR #6141; on for alle 6/10 kl. 19.52 efter ejer-go (beta siden 4/10), læst tilbage i prod. Off gendanner #4980-vælgeren.
 
+  - id: stage-page-v2
+    area: race-day
+    title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
+    title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
+    state: building
+    epic: 6570
+    verified: 2026-10-14
+    note: PR #6633; stadie-flag stage_page_v2 (off/beta/on) seedes off ved migration post-merge, ejeren flytter til beta. Sæt flag-feltet når rækken findes i prod.
+
   - id: race-day-development
     area: race-day
     title_en: Race day development
