@@ -6,6 +6,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, sharedRunDir, REPO } from './wave-policy.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
+import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
 import { classifyStall, commitAgeMinutes, resolveTrackTimeoutMinutes, WAVE_FREEZE } from './wave-freeze.mjs';
 
 const json = p => JSON.parse(fs.readFileSync(p, 'utf8'));
@@ -22,10 +23,11 @@ function modelSelection(role, track) {
   };
 }
 
-export function executionPlan(options) {
+export function executionPlan(options, limit = hostLaneCap()) {
   const tracks = validateTracks(options.tracks);
   const lanes = options.lanes === undefined ? 2 : options.lanes;
-  if (!Number.isInteger(lanes) || lanes < 1 || lanes > 4) throw Error('lanes must be an integer from 1 to 4');
+  // #6615: cap per machine (scripts/wave-capacity.json), shared with wave-policy.mjs.
+  assertLaneCount(lanes, limit);
   for (const track of tracks) {
     for (const key of ['model', 'effort', 'reviewerModel', 'reviewerEffort']) {
       if (track[key] !== undefined && (typeof track[key] !== 'string' || !track[key].trim())) {
@@ -65,8 +67,8 @@ function resultSchema(role) {
 export async function runWave(options, supplied = {}) {
   const { root, runDir, owner } = options;
   const tracks = validateTracks(options.tracks);
-  const execution = executionPlan(options);
-  const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, ...supplied };
+  const deps = { now: () => Date.now(), bootId: hostBootId, readPrs: getOpenPrs, laneLimit: hostLaneCap, ...supplied };
+  const execution = executionPlan(options, deps.laneLimit());
   const wave = await acquireWave(runDir, { runtime: 'codex', owner, pid: process.pid, bootId: deps.bootId(), dispatchStarted: false, processTracking: 'registered', children: [], cwd: root, now: deps.now(), tracks }, deps.readPrs);
   const evidence = path.join(runDir, 'waves', wave.waveId);
   fs.mkdirSync(evidence, { recursive: true });
@@ -98,7 +100,7 @@ export async function runWave(options, supplied = {}) {
         try {
           // Recheck live state directly before every writer, including a fixer.
           // No PR-count re-check: the shared cap was removed (ejer-beslutning
-          // 22/9, #5510). Lanes (4) and the verify semaphore (2) remain the brake.
+          // 22/9, #5510). The per-machine lane cap (#6615) and the verify semaphore (2) remain the brake.
           await deps.prefilter(track, context);
           row.worker = await deps.runAgent('worker', track, context);
           if (row.worker?.status !== 'ready') throw Error('Worker reported blocked or invalid result');
@@ -127,7 +129,7 @@ export async function runWave(options, supplied = {}) {
         checkpoint('pending');
       }
     }
-    // Four child processes at most, including reviewers; each lane reviews
+    // At most one child process per lane (host cap, #6615), reviewers included; each lane reviews
     // serially with a fresh process. Main session remains the architect.
     const count = execution.lanes;
     await Promise.all(Array.from({ length: count }, lane));

@@ -3,7 +3,7 @@
 
 ## Godkendte runtime-indgange (#5142, #5467)
 
-Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer. PR-loftet paa 8 er fjernet 22/9 (variant B, ejer-beslutning, #5510) - lanerne (4) og verifikations-semaforen (2) er fortsat bremsen. Resten af det historiske playbook laeses med disse aendringer: merge kun efter mandat i AGENTS.md regel 35, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
+Claude Code bruger `.claude/workflows/wave.js`; Codex bruger `scripts/codex-wave.mjs` som beskrevet nedenfor. Ejer-beslutningen 21/9 i #5467 giver begge fulde boelger. Faelles admission i `scripts/wave-policy.mjs` erstatter den gamle Workflow-undtagelse: en boelge kan ikke starte oven i en eksisterende markoer. PR-loftet paa 8 er fjernet 22/9 (variant B, ejer-beslutning, #5510) - lanerne (loft pr. maskine, se [Claude-indgangen](#claude-indgangen)) og verifikations-semaforen (2) er fortsat bremsen. Resten af det historiske playbook laeses med disse aendringer: merge kun efter mandat i AGENTS.md regel 35, ingen global cleanup, og ingen TTL-baseret overtagelse af et levende spor.
 
 ## Codex-boelger (#5467)
 
@@ -14,7 +14,7 @@ node scripts/codex-wave.mjs plan.json --dry-run
 node scripts/codex-wave.mjs plan.json --run
 ```
 
-Planen indeholder `lanes` (heltal 1-4; udeladt bevarer default 2) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `reviewerModel`, `reviewerEffort`, `ownNodeModules` og `checkedMergedPrs`. Nye planer vaelger `lanes` eksplicit efter uafhaengige spor og faelles kapacitet; fire er et loft, ikke et maal. Ugyldige lane-tal/model-felttyper afvises foer admission. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
+Planen indeholder `lanes` (heltal fra 1 til værtens loft i `scripts/wave-capacity.json`, default 4 og NICOLAIPC 6; udeladt bevarer default 2) og `tracks`: `issue`, `branch`, `title`, `scopeText`, `ownership`, `tier`, `verifyCommands`, eventuelt `model`, `effort`, `reviewerModel`, `reviewerEffort`, `ownNodeModules` og `checkedMergedPrs`. Nye planer vaelger `lanes` eksplicit efter uafhaengige spor og faelles kapacitet; vaertens loft er et loft, ikke et maal. Ugyldige lane-tal/model-felttyper afvises foer admission. `checkedMergedPrs` er de merged soegeresultater arkitekten har laest og afgraenset fra scopet. Uafklarede hits stopper sporet. Dry-run skriver intet og starter ingen agent; den er ikke et live kapacitetsbevis.
 
 **Rollespecifikke modeller (#605):** `model`/`effort` gaelder worker, fixer og permission-probe. Reviewer arver dem medmindre `reviewerModel`/`reviewerEffort` er angivet. Et eksplicit `reviewerModel` uden `reviewerEffort` sender ingen effort-override til CLI; byggerens effort overfoeres ikke til den valgte reviewer-model. Eksempel paa nye spor: `"model":"gpt-6.1-sol", "effort":"medium", "reviewerModel":"gpt-6-astra", "reviewerEffort":"high"`. Ingen global model aendres, og tilgaengelighed kontrolleres inden en rigtig boelge.
 
@@ -54,7 +54,7 @@ Metadata er koordinationskontrol under samme OS-bruger, ikke en sikkerheds-ACL.
 | Egenskab | Haandhaevelse og graense |
 |---|---|
 | Gensidig boelgelaas | Atomisk filoprettelse i faelles run-mappe; eksisterende/malformed markoer blokerer |
-| Samtidighed | PR-loftet er fjernet (#5510); maks 4 laner og 2 tunge verifikationer |
+| Samtidighed | PR-loftet er fjernet (#5510); maks laner pr. maskine (`scripts/wave-capacity.json`: default 4, NICOLAIPC 6, #6615) og 2 tunge verifikationer |
 | Filansvar | Plan-overlap afvises; Codex kontrollerer committed diff foer review. Ikke en fil-ACL |
 | Worker-isolation | Eget worktree + CLI cwd/sandbox. Rettigheder skal probes i den konkrete installation |
 | Reviewer | Frisk read-only CLI-proces; workerens egen godkendelse accepteres ikke |
@@ -121,7 +121,7 @@ Fejler proeven: stop og observer alle egne agenter, behold ukendte claims, og br
 
 Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })`, aldrig med håndskrevne Agent-spawns. Resten af dette dokument beskriver **hvorfor** protokollen ser ud som den gør; workflowet er **hvordan** den udføres, og det håndhæver den selv.
 
-- **Loftet er 4 laner** hele døgnet (DOLMERPC, 8 kerner, 32 GB). Erstatter det tidligere "3 parallelle subagents" i TL;DR nedenfor — tallet var dimensioneret efter en ældre maskine og en ældre arbejdsform.
+- **Lane-loftet er pr. maskine** og ens hele døgnet: `scripts/wave-capacity.json` (`{ "NICOLAIPC": 6, "default": 4 }`, nøgle = værtsnavn i versaler; ukendt vært får `default`). DOLMERPC (8 kerner, 32 GB) bruger default 4, indtil den er målt. NICOLAIPC fik 6 efter måling 14/10 ([#6615](https://github.com/NicolaiDolmer/CyclingZone/issues/6615)): med 4 spor var flaskehalsen verifikation, ikke antal spor, og den bremser semaforen. Begge admissions (`scripts/wave-policy.mjs` for `wave.js`, `scripts/codex-wave.mjs`) læser samme fil via `scripts/wave-capacity.mjs` og afviser lanes over værtens loft; fejlteksten nævner værten. `wave.js` kan ikke læse disk, så orkestratoren sender `args.lanes: 6` på NICOLAIPC (udeladt = 4). Ny maskine eller nyt loft: ret JSON-filen efter en måling. Det oprindelige loft på 4 erstattede det tidligere "3 parallelle subagents" i TL;DR nedenfor — tallet var dimensioneret efter en ældre maskine og en ældre arbejdsform.
 - **Verifikations-semafor: maks 2 tunge kørsler ad gangen** på tværs af alle worktrees (`scripts/verify-lock.ps1`). Erstatter "maks 3 tunge verifikationer samtidig" i AGENTS.md hard rule 24. Målt 11/9 på DOLMERPC: 9 workers uden semafor = 100 % CPU i timevis, 6 = 83 %. Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1`; brief-generatoren er det eneste sted der håndhæver wrappingen, så en kørsel der starter udenom er usynlig for loftet.
 - **Håndhævelse:** `scripts/hooks/guard-agent-spawn.sh` (PreToolUse på `Agent`/`Workflow`) afviser spawns mens `.claude/run/wave-active.json` findes, og mere end 4 spawns pr. 45 min uden for bølger. Igennem slipper bølgens egne præfikser (`WAVE-LANE:`, `WAVE-REVIEW:`, `WAVE-FOLLOWUP:`, `WAVE-SETUP:` - også den delte intake-agent `WAVE-SETUP: intake` ved rullende optag, #5562 - og `WAVE-CLEANUP:`), read-only-agenter (`READ-ONLY:` eller subagent_type `Explore`/`Plan`) og `Workflow({ scriptPath: ".claude/workflows/wave.js" })` selv. Håndskrevet byggearbejde: kun én opfølgning ad gangen med præfikset `WAVE-FOLLOWUP:`.
 - **Livstegn måles på branchen, ikke på tavshed** (#5178, se [Livstegn og frys](#livstegn-og-frys) nedenfor): spor-vindue 120 min, hårdt loft 180, frys først når branchen har stået stille i 45 min.
@@ -136,7 +136,7 @@ Parallelt byggearbejde startes med `Workflow({ scriptPath: "C:\Dev\CyclingZone\.
 
 ## TL;DR
 
-Master-session kører `wave.js` med 4 laner (1 worktree pr. lane, semafor 2 på tunge kørsler, opdateret 11/9 pr. #5142 — tallet var 3 indtil da) → PRs merges sekventielt med rebase → én samlet close-out. Effektivitet maales paa de reelle pilotopgaver i [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md); ingen aktuel hastigheds- eller tokengevinst er dokumenteret.
+Master-session kører `wave.js` med op til værtens lane-loft (default 4, NICOLAIPC 6 siden 14/10, #6615; 1 worktree pr. lane, semafor 2 på tunge kørsler, opdateret 11/9 pr. #5142 — tallet var 3 indtil da) → PRs merges sekventielt med rebase → én samlet close-out. Effektivitet maales paa de reelle pilotopgaver i [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md); ingen aktuel hastigheds- eller tokengevinst er dokumenteret.
 
 ## ⚠️ KRITISK forudsætning (2026-05-29, #684): brug `permissions.deny` til hard-blocks — ikke hooks alene
 

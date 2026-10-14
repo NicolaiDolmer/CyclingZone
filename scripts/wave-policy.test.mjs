@@ -10,6 +10,7 @@ import { acquireWave, releaseWave, checkCapacity, validateTracks, handleHook, up
   flattenPrFilePages, findOwnershipConflicts, MAX_PENDING_TRACKS, assertCompatibleWithActive, sharedTouchPlan, trackTouches,
   requiredModel, designGateHits, assertDesignGate } from './wave-policy.mjs';
 import { assertWaveOwnership } from './wave-ownership.mjs';
+import { assertLaneCount, currentHost, hostLaneCap, readWaveCapacity } from './wave-capacity.mjs';
 import { normalizeBootId } from './wave-boot-identity.mjs';
 
 const now = 1790000000000;
@@ -49,7 +50,7 @@ test('capacity includes drafts and reserves all planned new PRs as info, never r
 });
 
 // Ejer-beslutning 22/9 (variant B, #5510): loftet paa 8 er fjernet. En boelge
-// maa ikke afvises fordi der allerede er 8+ aabne PR'er - lanerne (4) og
+// maa ikke afvises fordi der allerede er 8+ aabne PR'er - lanerne (loft pr. maskine) og
 // verifikations-semaforen (2) er fortsat bremsen.
 test('a wave is not rejected at 8 or more open PRs', () => {
   const manyPrs = Array.from({ length: 12 }, (_, i) => ({ number: i, headRefName: `other/${i}`, isDraft: true }));
@@ -113,8 +114,41 @@ test('Claude wave-prefixed agents cannot join a Codex wave', async (t) => {
 
 test('Claude lane override cannot exceed the machine budget', async (t) => {
   const dir = fixture(t);
-  await assert.rejects(handleHook({ session_id: 'fixture', tool_name: 'Workflow', tool_input: { name: 'wave', args: { lanes: 5, tracks: [track(1)] } } }, dir, async () => [], now), /lanes/);
+  await assert.rejects(handleHook({ session_id: 'fixture', tool_name: 'Workflow', tool_input: { name: 'wave', args: { lanes: 5, tracks: [track(1)] } } }, dir, async () => [], now,
+    undefined, undefined, () => hostLaneCap('FIXTURE-UNKNOWN-HOST')), /Wave lanes must be an integer from 1 to 4 \(lane cap on FIXTURE-UNKNOWN-HOST/);
   assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+});
+
+test('#6615: lane cap is per machine; NICOLAIPC admits six, an unknown host rejects five', async (t) => {
+  const workflow = lanes => ({ session_id: 'fixture', tool_name: 'Workflow', tool_input: { name: 'wave', args: { lanes, tracks: [track(1)] } } });
+  const nicolai = () => hostLaneCap('NICOLAIPC');
+  const unknown = () => hostLaneCap('FIXTURE-UNKNOWN-HOST');
+  const over = fixture(t);
+  await assert.rejects(handleHook(workflow(7), over, async () => [], now, undefined, () => process.pid, nicolai), /from 1 to 6 \(lane cap on NICOLAIPC/);
+  await assert.rejects(handleHook(workflow(5), over, async () => [], now, undefined, () => process.pid, unknown), /from 1 to 4/);
+  assert.equal(existsSync(path.join(over, 'wave-active.json')), false);
+  const six = fixture(t);
+  await handleHook(workflow(6), six, async () => [], now, undefined, () => process.pid, nicolai);
+  assert.equal(JSON.parse(readFileSync(path.join(six, 'wave-active.json'))).runtime, 'claude');
+});
+
+test('#6615: wave-capacity.json is the shared source; host lookup is case-insensitive and fails closed', (t) => {
+  const capacity = readWaveCapacity();
+  assert.deepEqual(capacity, { NICOLAIPC: 6, default: 4 });
+  assert.deepEqual(hostLaneCap('nicolaipc', capacity), { host: 'NICOLAIPC', cap: 6 });
+  assert.deepEqual(hostLaneCap('DOLMERPC', capacity), { host: 'DOLMERPC', cap: 4 });
+  assert.deepEqual(hostLaneCap('', capacity), { host: 'unknown', cap: 4 });
+  assert.equal(hostLaneCap('default', { default: 4, DEFAULT: 9 }).cap, 4);
+  assert.equal(currentHost(() => 'nicolaipc', {}), 'NICOLAIPC');
+  assert.equal(currentHost(() => '', { COMPUTERNAME: 'dolmerpc' }), 'DOLMERPC');
+  assert.throws(() => assertLaneCount(5, { host: 'X', cap: 4 }), /from 1 to 4 \(lane cap on X/);
+  assert.equal(assertLaneCount(4, { host: 'X', cap: 4 }), 4);
+  const dir = fixture(t);
+  for (const bad of ['{"NICOLAIPC": 6}', '{"default": 0}', '{"default": 4, "X": 2.5}', '[4]', 'not json']) {
+    const file = path.join(dir, 'capacity.json');
+    writeFileSync(file, bad);
+    assert.throws(() => readWaveCapacity(file));
+  }
 });
 
 test('concurrent marker writers preserve every read-modify-write update', async t => {

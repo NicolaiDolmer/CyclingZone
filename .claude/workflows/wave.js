@@ -11,7 +11,11 @@
 // for i den handling der starter arbejdet. Dette script ER den handling.
 //
 // Standarden (ejer 11/9, DOLMERPC: 8 kerner, 32 GB, dedikeret til Claude Code):
-//   - 4 laner, eet uniformt loft hele doegnet (ikke "faerre om dagen").
+//   - Lane-loft pr. maskine, eet uniformt loft hele doegnet (ikke "faerre om
+//     dagen"): default 4, NICOLAIPC 6 (maalt 14/10, #6615). Kilden er
+//     scripts/wave-capacity.json. Workflow-scripts kan ikke laese disk, saa
+//     orkestratoren sender args.lanes (fx 6 paa NICOLAIPC); admission i
+//     scripts/wave-policy.mjs afviser alt over vaertens loft.
 //   - Maks 2 tunge verifikationer ad gangen paa tvaers af alle worktrees
 //     (scripts/verify-lock.ps1; brief'en tvinger workers igennem den).
 //   - Livstegn: draft-PR inden 30 min, push hvert 15. min, spor-vindue 120 min
@@ -44,7 +48,7 @@
 //     cleanup: "dry-run",             // kompatibilitets-metadata; oprydning er ALTID afgraenset til egen boelge (#5467)
 //     allowExistingPr: false,         // true = koer spor der allerede har en aaben PR
 //     expiresInMinutes: 240,          // kun metadata i planen; markoeren har ingen TTL, ejerskab + liveness afgoer (wave-policy.mjs)
-//     lanes: 4,                       // override af lane-loftet (brug sjaeldent)
+//     lanes: 4,                       // antal laner; udeladt = 4. Maks = vaertens loft i scripts/wave-capacity.json (NICOLAIPC 6, ellers 4), haandhaevet af admission (#6615)
 //     trackTimeoutMinutes: 120,       // foerste spor-vindue (klemmes til 10-180)
 //     rollingIntake: true             // false = ingen rullende optag (#5562, se punkt 7)
 //   }
@@ -177,11 +181,11 @@
 
 export const meta = {
   name: 'wave',
-  description: 'Boelge: 4 laner, verifikations-semafor 2, livstegn, reviewer pr. spor, oprydning (#5142)',
+  description: 'Boelge: lane-loft pr. maskine (default 4, NICOLAIPC 6), verifikations-semafor 2, livstegn, reviewer pr. spor, oprydning (#5142)',
   whenToUse: 'Naar 2+ uafhaengige issues skal bygges parallelt. Eneste godkendte indgang til parallelt byggearbejde - haandskrevne Agent-spawns er blokeret af scripts/hooks/guard-agent-spawn.sh mens en boelge koerer.',
   phases: [
     { title: 'Fase 0 - opsaetning', detail: 'wave-active.json, worktrees, briefs, lane-watch' },
-    { title: 'Laner', detail: '4 laner, tungeste spor foerst, rullende optag, spor-vindue 120 min (loft 180), frys maalt paa branch-aktivitet' },
+    { title: 'Laner', detail: 'lane-loft pr. maskine (default 4, NICOLAIPC 6), tungeste spor foerst, rullende optag, spor-vindue 120 min (loft 180), frys maalt paa branch-aktivitet' },
     { title: 'Review', detail: 'read-only reviewer pr. spor paa opus (30 min, eet gen-spawn), skema-bevisregel + ret-trin ved BLOKERENDE' },
     { title: 'Oprydning', detail: 'stop lane-watch, fjern wave-active.json, prune mergede worktrees' },
   ],
