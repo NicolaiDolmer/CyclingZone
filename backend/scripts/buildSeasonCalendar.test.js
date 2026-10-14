@@ -523,4 +523,41 @@ test("#6367 runS5BenchmarkGateForPlan: sæson 5 på den nuværende v5-generator 
   assert.equal(s5.gate.parts.grandTours.races.length, 3, "samme løb i D1 og D2 tælles én gang");
   assert.equal(s5.gate.parts.motor.stub, false, "uden --motor-bench bruges den rigtige motor-bench (#6362)");
   assert.ok(s5.lines.some((l) => l.includes("RØD")));
+  assert.equal(s5.green, false);
+  assert.deepEqual(s5.blocking, s5.gate.blocking, "scope season (default) doemmer alle fire dele");
 });
+
+test("#6367 runS5BenchmarkGateForPlan scope partial: del (3) og GT-kravet doemmes ikke paa et udsnit", () => {
+  const noGt = { planTiers: [{ tier: 3, pools: [{ raceRows: [] }], profilesByPoolRaceId: new Map() }] };
+  const season = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5 });
+  assert.equal(season.green, false, "en hel saeson uden Grand Tours er roed");
+  const partial = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5, scope: "partial" });
+  assert.equal(partial.scope, "partial");
+  assert.deepEqual(partial.blocking, []);
+  assert.equal(partial.green, true);
+  // Del (1) og (2) for GT'er der ER med doemmer stadig paa et udsnit.
+  const red = runS5BenchmarkGateForPlan({ plan: s5Plan(), seasonNumber: 5, scope: "partial" });
+  assert.ok(red.blocking.some((b) => b.startsWith("S5 (1) etape")));
+  assert.ok(red.blocking.some((b) => b.startsWith("S5 (2) Grand Tour")));
+  assert.ok(!red.blocking.some((b) => b.startsWith("S5 (3)")));
+  // Del (4) med en rigtig (ikke-stub) maaling doemmer ogsaa paa et udsnit.
+  const motor = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5, scope: "partial", motor: { medians: {} } });
+  assert.ok(motor.blocking.some((b) => b.startsWith("S5 (4) motor")));
+});
+
+test("#6367 runSquadCalendar: en roed S5-gate fra materializerens plan blokerer truppens kalender", () => withExitCode(async () => {
+  const supabase = fakeSupabase({ countOverrides: { "races.season_id": 500 } });
+  const calls = [];
+  const plan = { ...squadPlan(), s5Benchmark: { applies: true, scope: "partial", green: false, blocking: ["S5 (1) etape — test"], lines: ["S5-rapport"] } };
+  const res = await runSquadCalendar({
+    supabase, squad: "u23", seasonId: "season-5", seasonNumber: 5, seasonRow: { status: "upcoming" },
+    writeGate: { allowed: true, code: "upcoming" }, replacement: { mode: "fresh" }, existingRaces: [],
+    apply: true, firstDay: "2026-10-26", window: { derived: false }, plan,
+    materialize: async (args) => { calls.push(args); return { racesInserted: 1, stageProfiles: 0, stageSchedules: 0 }; },
+    materializeArgs: {}, log: () => {}, logError: () => {},
+  });
+  assert.ok(res.blocking.includes("S5 (1) etape — test"));
+  assert.equal(res.applied, false);
+  assert.equal(calls.length, 0, "materializeren maa ikke kaldes med writes");
+  assert.equal(process.exitCode, 1);
+}));
