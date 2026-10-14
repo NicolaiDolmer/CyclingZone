@@ -17,9 +17,11 @@
 //   (3) saeson    afslutnings-andelene over saesonens GT-etaper mod benchmarkens fordeling,
 //                 med et binomialt stikproeve-tillaeg (samme metode som stageFinaleMetrics).
 //   (4) motor     median gap10 (tid vinder -> nr. 10) pr. afslutning fra motor-bench ligger
-//                 i benchmarkens kvartil-interval. Indtil motor-sporet (#6363) leverer en
-//                 rigtig bench, koeres delen paa en STUB-fixture og meldes som STUB: den
-//                 viser at maalingen virker, men doemmer ikke motoren (se evaluateMotorGaps).
+//                 i benchmarkens kvartil-interval. #6362: dommen kommer fra den rigtige
+//                 motor-bench (backend/scripts/dev/s5MotorBench.mjs: v4 under s5_profiles_v1
+//                 paa S5-ruter fra generatoren) via __fixtures__/s5MotorBench.json, og den
+//                 BLOKERER ved fail. Fixturen baerer kun dommen pr. afslutning (hard rule 17);
+//                 engine/v4/s5MotorBench.test.ts genkoerer benchen og kraever samme dom.
 //
 // HVEM GATEN GAELDER. KUN S5-modellen (profileModelForSeason). Saeson 1-4 har deres egne
 // gates (K-B, §7b-finalebaand, realisme), og S4-etiketterne ville ALTID vaere roede her
@@ -45,7 +47,10 @@ import { checkElevationProfile, ELEVATION_PROFILE_MIN_GENERATOR_VERSION } from "
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_BENCHMARK_PATH = join(__dirname, "..", "..", "docs", "design", "s5-benchmark", "gt-2021-2025.json");
-export const DEFAULT_MOTOR_STUB_PATH = join(__dirname, "__fixtures__", "s5MotorBenchStub.json");
+/** #6362: den rigtige motor-benchs dom (erstatter #6367's stub). */
+export const DEFAULT_MOTOR_BENCH_PATH = join(__dirname, "__fixtures__", "s5MotorBench.json");
+/** Bagudkompatibelt navn (buildSeasonCalendar, calendarGoldenDiff): peger nu paa den rigtige bench. */
+export const DEFAULT_MOTOR_STUB_PATH = DEFAULT_MOTOR_BENCH_PATH;
 
 // ── 0. Hvem gaten gaelder ──────────────────────────────────────────────────────────
 
@@ -484,41 +489,78 @@ export function checkSeasonFinishShares({ stages = [], benchmark }) {
   return { n, rows, violations };
 }
 
+/** #6362: dommen pr. afslutning i del (4). Kun "inside" er groen. */
+export const MOTOR_GAP_VERDICTS = Object.freeze(["inside", "below", "above"]);
+
+function gapVerdict(m, iv) {
+  if (m < iv.p25 - 1e-9) return "below";
+  if (m > iv.p75 + 1e-9) return "above";
+  return "inside";
+}
+
+/**
+ * #6362: motorens medianer -> dom pr. doemt afslutning ("inside" / "below" / "above").
+ * Afslutninger med for faa benchmark-etaper og afslutninger motoren ikke har maalt er
+ * ikke med (evaluateMotorGaps melder de sidste som "ikke maalt").
+ * @param {{ medians: Record<string, number>, benchmark: object[] }} args
+ */
+export function motorGapVerdicts({ medians = {}, benchmark }) {
+  const out = {};
+  for (const [finish, iv] of Object.entries(benchmarkGapIntervals(benchmark))) {
+    if (iv.n < MOTOR_GAP_MIN_BENCHMARK_N) continue;
+    const m = medians[finish];
+    if (m == null || !Number.isFinite(Number(m))) continue;
+    out[finish] = gapVerdict(Number(m), iv);
+  }
+  return out;
+}
+
 /**
  * Del (4): motorens median gap10 pr. afslutning mod benchmarkens kvartil-interval.
  *
- * `motor` = { stub?: boolean, source?: string, medians: { [finish]: sekunder } }.
+ * `motor` har en af to former:
+ *   { stub?: boolean, source?, medians: { [finish]: sekunder } }   tallene (lokalt, tests)
+ *   { stub: false, source?, verdicts: { [finish]: "inside"|"below"|"above" } }
+ *       dommen fra motor-benchen (#6362, __fixtures__/s5MotorBench.json): tallene ligger
+ *       i balance-internals (hard rule 17), og s5MotorBench.test.ts holder dommen sand.
  *   - En afslutning med for faa benchmark-etaper (< MOTOR_GAP_MIN_BENCHMARK_N) doemmes ikke.
- *   - Mangler motorens tal for en afslutning med et interval, er det et brud ("ikke maalt").
- *   - stub: true -> resultatet er `status: "stub"`: tallene sammenlignes og vises, men
- *     delen BLOKERER IKKE, fordi en stub ikke er en maaling af motoren. Den rigtige maaling
- *     kommer fra motor-bench (backend/scripts/dev/motorBench.mjs) naar #6363 er landet.
+ *   - Mangler motorens tal/dom for en afslutning med et interval, er det et brud ("ikke maalt").
+ *   - stub: true -> `status: "stub"`: sammenlignes og vises, men BLOKERER IKKE (en stub er
+ *     ikke en maaling af motoren). Den rigtige bench er ikke en stub og blokerer ved fail.
  */
 export function evaluateMotorGaps({ motor, benchmark }) {
   const intervals = benchmarkGapIntervals(benchmark);
   const medians = motor?.medians ?? {};
+  const verdicts = motor?.verdicts && typeof motor.verdicts === "object" ? motor.verdicts : null;
   const rows = [];
   const violations = [];
   for (const [finish, iv] of Object.entries(intervals)) {
-    if (iv.n < MOTOR_GAP_MIN_BENCHMARK_N) {
-      rows.push({ finish, ...iv, motor: medians[finish] ?? null, judged: false, pass: null });
-      continue;
-    }
     const m = medians[finish];
     const has = m != null && Number.isFinite(Number(m));
-    const pass = has && Number(m) >= iv.p25 - 1e-9 && Number(m) <= iv.p75 + 1e-9;
-    rows.push({ finish, ...iv, motor: has ? Number(m) : null, judged: true, pass });
-    if (!has) violations.push(`${finish}: motorens median gap10 er ikke målt`);
-    else if (!pass) violations.push(`${finish}: motor ${Number(m)} s uden for benchmarkens interval ${iv.p25}-${iv.p75} s (median ${iv.median} s)`);
+    const verdict = verdicts ? (MOTOR_GAP_VERDICTS.includes(verdicts[finish]) ? verdicts[finish] : null) : (has ? gapVerdict(Number(m), iv) : null);
+    if (iv.n < MOTOR_GAP_MIN_BENCHMARK_N) {
+      rows.push({ finish, ...iv, motor: has ? Number(m) : null, verdict, judged: false, pass: null });
+      continue;
+    }
+    const pass = verdict === "inside";
+    rows.push({ finish, ...iv, motor: has ? Number(m) : null, verdict, judged: true, pass });
+    if (!verdict) violations.push(`${finish}: motorens median gap10 er ikke målt`);
+    else if (!pass) {
+      const where = verdict === "below" ? "under" : "over";
+      violations.push(has
+        ? `${finish}: motor ${Number(m)} s uden for benchmarkens interval ${iv.p25}-${iv.p75} s (median ${iv.median} s)`
+        : `${finish}: motorens median gap10 ligger ${where} benchmarkens interval ${iv.p25}-${iv.p75} s (median ${iv.median} s)`);
+    }
   }
   const stub = motor?.stub === true;
   return { status: stub ? "stub" : (violations.length ? "red" : "green"), stub, source: motor?.source ?? null, rows, violations };
 }
 
-/** Laeser motor-stub-fixturen (eller en rigtig motor-bench-fil med samme form). */
-export function loadMotorGapFile(path = DEFAULT_MOTOR_STUB_PATH) {
+/** Laeser motor-bench-fixturen (#6362) eller en fil med samme form (medianer eller domme). */
+export function loadMotorGapFile(path = DEFAULT_MOTOR_BENCH_PATH) {
   const j = JSON.parse(readFileSync(path, "utf8"));
-  if (!j || typeof j.medians !== "object") throw new Error(`motor-gap-fil ${path}: mangler "medians"`);
+  const ok = j && (typeof j.medians === "object" || typeof j.verdicts === "object") && (j.medians ?? j.verdicts) !== null;
+  if (!ok) throw new Error(`motor-gap-fil ${path}: mangler "medians" eller "verdicts"`);
   return j;
 }
 
@@ -629,10 +671,12 @@ export function formatS5BenchmarkReport(result, { maxLines = 15, judged = true }
 
   const m = p.motor;
   const mMark = m.status === "stub" ? "⚠" : mark(m.status === "green");
-  ud.push(`  ${mMark} (4) motor: median gap10 pr. afslutning i benchmarkens kvartil-interval${m.stub ? " — STUB, ikke en måling af motoren (blokerer ikke; rigtig motor-bench kommer med #6363)" : ""}`);
+  ud.push(`  ${mMark} (4) motor: median gap10 pr. afslutning i benchmarkens kvartil-interval${m.stub ? " — STUB, ikke en måling af motoren (blokerer ikke)" : ""}`);
+  const VERDICT_LABEL = { inside: "inden for", below: "under", above: "over" };
   for (const r of m.rows) {
     const verdict = !r.judged ? `ikke dømt (n=${r.n})` : r.pass ? "OK" : "UDENFOR";
-    ud.push(`       ${r.finish.padEnd(14)} motor ${r.motor == null ? "—" : `${r.motor} s`}  benchmark ${r.p25}-${r.p75} s (median ${r.median} s)  ${verdict}`);
+    const shown = r.motor != null ? `${r.motor} s` : r.verdict ? VERDICT_LABEL[r.verdict] : "—";
+    ud.push(`       ${r.finish.padEnd(14)} motor ${shown}  benchmark ${r.p25}-${r.p75} s (median ${r.median} s)  ${verdict}`);
   }
   for (const v of (m.stub ? [] : m.violations)) ud.push(`       · ${v}`);
 
