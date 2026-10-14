@@ -237,3 +237,15 @@ function robotsRuleMatches(rule, path) {
   if (rule.endsWith("$")) return path === rule.slice(0, -1);
   return path.startsWith(rule);
 }
+
+test("manglende /assets/-fil går til ren 404-funktion, ikke 404.html (#4545/#6557)", () => {
+  const rewrites = config.rewrites;
+  const assetIdx = rewrites.findIndex((r) => r.source === "/assets/:path*" && r.destination === "/api/asset-miss");
+  const spaIdx = rewrites.findIndex((r) => r.destination === "/app.html");
+  assert.ok(assetIdx >= 0, "rewrite /assets/:path* -> /api/asset-miss mangler");
+  assert.ok(assetIdx < spaIdx, "asset-miss-rewriten skal stå før SPA-fallbacken");
+  const fn = readFileSync(join(here, "api", "asset-miss.ts"), "utf8");
+  assert.match(fn, /status:\s*404/);
+  assert.match(fn, /text\/plain/);
+  assert.doesNotMatch(fn, /text\/html/);
+});
