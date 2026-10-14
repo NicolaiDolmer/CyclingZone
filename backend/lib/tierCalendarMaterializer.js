@@ -17,7 +17,7 @@ import { packLaneCalendar, reshapeCobblesFractionToTwoWindows } from "./raceCale
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, toStageProfileRow } from "./raceStageProfileGenerator.js";
 import { applyUniformTierTilt } from "./tierUniformFillerTilt.js";
-import { applyS5TierFillerTilt, S5_TIER_FILLER_TILT } from "./s5TierFillerCalibration.js";
+import { makeS5TierProfileGenerator } from "./s5TierTerrainQuota.js";
 import { resolveTierDraw } from "./raceRouteRealismDraw.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { filterSeniorSquadRows, selectSeniorRacePool } from "./racePoolCatalog.js";
@@ -268,8 +268,11 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, s
 // #6367: ctx.profileModel er saesonens model (resolveSeasonProfileModel). S5-etaper har ingen
 // finale-kontekst, saa balanceFinaleQuotas lader dem uroerte (S5 vaelger selv inden for
 // matrixen); for v5 er kaldet bit-identisk med foer.
+// #6367: ctx.generate = S5-seniorens kvote-generator (s5TierTerrainQuota.js); ellers det frie
+// traek pr. loeb som foer.
 function coverageProfilesFor(raceRows, ctx) {
-  const generated = raceRows.map((r) => generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles, profileModel: ctx.profileModel ?? "v5" }));
+  const generate = ctx.generate ?? ((seedRace) => generateRaceStageProfiles(seedRace, { archetypeProfiles: ctx.archetypeProfiles, profileModel: ctx.profileModel ?? "v5" }));
+  const generated = raceRows.map((r) => generate(seedRaceFor(r, ctx)));
   const balanced = balanceFinaleQuotas(generated);
   return new Map(raceRows.map((r, i) => [r.pool_race_id, balanced[i]]));
 }
@@ -933,10 +936,6 @@ export async function materializeTierCalendars({
   // eller { benchmark, motor } injiceret i tests). Det er INGEN override: gaten koeres altid
   // for S5-modellen, og en roed gate naegter apply. null = benchmarken + motor-stubben.
   s5BenchmarkInputs = null,
-  // #6367: S5-modellens pr.-division-kalibrering (s5TierFillerCalibration.js). Default =
-  // den kalibrerede tabel; KUN kalibrerings-harnessen (calibrateS5TierFillers.mjs) sender
-  // en kandidat-tabel. Ignoreres for v5 (S1-S4).
-  s5TierFillerTilt = S5_TIER_FILLER_TILT,
 } = {}) {
   assertCalendarSquad(squad);
   const isSenior = squad === "senior";
@@ -1068,12 +1067,11 @@ export async function materializeTierCalendars({
     // #4103: ÉN gang pr. tier, genbrugt af BÅDE dæknings-verifikationen og skrive-stien
     // nedenfor — undefined (default-adfærd) medmindre useUniformTierTilt er slået til.
     // #5644: tilten er kalibreret pr. SENIORdivision (§6b) og gælder ikke en trup.
-    // #6367: S5-modellen har sin egen, soegte pr.-division-kalibrering (s5TierFillerCalibration.js)
-    // og bruger den paa ALLE stier. Den afloeser S3-tilten (useUniformTierTilt), som er
-    // kalibreret mod v5 og et andet loebsudvalg; v5 (S1-S4) er uaendret.
-    const archetypeProfilesForTier = !isSenior ? undefined
-      : profileModel === S5_PROFILE_MODEL ? applyS5TierFillerTilt({ tier: tierPlan.tier, tiltByTier: s5TierFillerTilt })
-        : useUniformTierTilt ? applyUniformTierTilt({ tier: tierPlan.tier }) : undefined;
+    // #6367: S5-modellen fordeler etapeloebenes filler-terraen efter KVOTE pr. division
+    // (s5TierTerrainQuota.js) i stedet for S3-tilten: tilten flytter kun vaegtene, og en
+    // divisions andel var stadig en stikproeve omkring dem. v5 (S1-S4) er uaendret.
+    const isS5 = profileModel === S5_PROFILE_MODEL;
+    const archetypeProfilesForTier = useUniformTierTilt && isSenior && !isS5 ? applyUniformTierTilt({ tier: tierPlan.tier }) : undefined;
 
     // #3327/#3328: dækningsverifikation EFTER selection/packing men FØR apply-gaten —
     // beregnet fra ÉN repræsentativ pulje (identisk kalender pr. tier, #2276). Fejl her
@@ -1089,14 +1087,23 @@ export async function materializeTierCalendars({
     let tierProfiles = null;
     if (repPool) {
       const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId }));
+      // #6367: S5-seniorens profiler kommer fra divisionens kvote-generator (filler-terraen
+      // fordelt over HELE loebssaettet, s5TierTerrainQuota.js). Den samme funktion bruges af
+      // gen-traekket, daeknings-verifikationen og dermed insert'et (tierProfiles).
+      const tierGenerate = isS5 && isSenior
+        ? makeS5TierProfileGenerator({
+          tier: tierPlan.tier, seedRaces,
+          onAllocate: (a) => { if (a.changes) log(`  tier ${a.tier}: S5 terraen-kvote (#6367) aendrede ${a.changes} filler-etaper (variant ${a.variant})`); },
+        })
+        : null;
       // #5644: realisme-båndene er seniordivisionernes (#2755/#2769) — en trup bruger det
       // kanoniske træk (attempt 0) og måles ikke mod dem.
       if (isSenior) {
         // #6367: for S5 skal gen-traekket maale PRAECIS de profiler der skrives: S5-modellen
-        // OG tierens tilt (samme argumenter som coverageProfilesFor og insert-stien). v5 bruger
-        // drawTierAttempt's egen default og er bit-identisk med foer.
+        // med divisionens terraen-kvote (samme generator som coverageProfilesFor og insert-stien).
+        // v5 bruger drawTierAttempt's egen default og er bit-identisk med foer.
         const s5DrawArgs = profileModel === "v5" ? {} : {
-          generateProfiles: (seedRace) => generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier, profileModel }),
+          generateProfiles: tierGenerate ?? ((seedRace) => generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier, profileModel })),
         };
         const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces, ...s5DrawArgs });
         seasonVariant = draw.attempt;
@@ -1105,7 +1112,7 @@ export async function materializeTierCalendars({
         if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
       }
 
-      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier, profileModel });
+      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier, profileModel, generate: tierGenerate });
       tierProfiles = profiles;
       const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
       const coverageViolations = detectCoverageViolations({
