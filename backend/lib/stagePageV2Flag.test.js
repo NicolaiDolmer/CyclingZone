@@ -62,13 +62,16 @@ async function callRoute({ value, beta, betaThrows = false }) {
     readLimiter: (_req, _res, next) => next(),
     reportError: (e) => reported.push(e),
   }));
-  const server = app.listen(0);
+  const server = await new Promise((resolve) => { const s = app.listen(0, "127.0.0.1", () => resolve(s)); });
   try {
     const { port } = server.address();
     const res = await fetch(`http://127.0.0.1:${port}/races/stage-page-v2`);
     return { status: res.status, body: await res.json(), cache: res.headers.get("cache-control"), reported };
   } finally {
-    server.close();
+    // Luk keep-alive-forbindelser fra fetch og vent paa lukningen, saa testen
+    // ikke haenger eller meldes aktiv efter sin afslutning (CodeRabbit CLI).
+    server.closeAllConnections?.();
+    await new Promise((resolve) => server.close(resolve));
   }
 }
 
