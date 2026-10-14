@@ -7,7 +7,7 @@ export default [
   // v2.11: react-rules løftet fra .js-only til .{js,jsx} efter sanity-pass af 71 pre-
   // eksisterende issues (immutability, static-components, unescaped-entities, no-empty,
   // useless-assignment, purity). Se `docs/archive/` for sanity-detaljer. set-state-in-
-  // effect er bevidst disabled (forklaring nedenfor).
+  // effect er foreløbig slukket (forklaring nedenfor, #6618).
   { ...js.configs.recommended, files: ["**/*.{js,jsx}"] },
   {
     files: ["**/*.{js,jsx}"],
@@ -23,7 +23,7 @@ export default [
       sourceType: "module",
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
-    settings: { react: { version: "18.3" } },
+    settings: { react: { version: "19.3" } },
     rules: {
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
@@ -31,12 +31,8 @@ export default [
       "react/prop-types": "off",
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "no-console": "off",
-      // react-hooks v7 inkluderer React-Compiler-rules der antager React 19-mønstre.
-      // Vi kører React 18.3.1 hvor "load data on mount → setState i async fn fra useEffect"
-      // er det idiomatiske pattern (data-fetching, polling, countdown-timers, derived
-      // state from props). Reglen vil have alt flyttet til use() eller useTransition,
-      // hvilket ikke giver mening uden compiler. Hvis vi opgraderer til React 19 +
-      // compiler, så genoverveje.
+      // React 19-regel; 163 eksisterende load-on-mount/prop-sync-effekter (målt 14/10)
+      // kræver en refaktor med adfærdsændring - migreres gradvist i #6618.
       "react-hooks/set-state-in-effect": "off",
     },
   },
