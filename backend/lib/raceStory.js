@@ -199,13 +199,6 @@ function applyMembership(m, event) {
   if (event.type === "gap_update") ensureGroup(m, groupId);
 }
 
-function groupOfRider(m, riderId) {
-  if (m.abandoned.has(riderId)) return null;
-  if (m.placed.has(riderId)) return m.placed.get(riderId);
-  if (m.pendingSolo.includes(riderId)) return null;
-  return m.restId;
-}
-
 function groupView(m, groupId) {
   const explicit = [...(m.groups.get(groupId) ?? [])].sort();
   if (groupId !== m.restId) {
@@ -400,8 +393,13 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       if (event.type === "breakaway_caught") {
         const caught = ids(p.rider_ids);
         const morningCaught = caught.filter((id) => morning.has(id));
+        // Jagtgruppen før kontakten (egen replay): rummer den kun udbrydere, er
+        // det en samling i udbruddet. Resten (feltet) rummer altid andre.
+        const chaseId = str(p.chase_group_id);
+        const chasers = chaseId && chaseId !== m.restId ? [...(m.groups.get(chaseId) ?? [])].filter((id) => !caught.includes(id)) : [];
+        const escapeesOnly = chasers.length > 0 && chasers.every((id) => morning.has(id));
         let key = "story.breakaway_caught";
-        if (regroupCatches.has(event)) key = "story.breakaway_regrouped";
+        if (regroupCatches.has(event) || escapeesOnly) key = "story.breakaway_regrouped";
         else if (morningCaught.length === 0) key = "story.group_caught";
         moments.push(momentFor(event, { key, importance: key === "story.breakaway_caught" ? "key" : "detail" }));
       } else if (!SKIPPED_TYPES.has(event.type)) {
