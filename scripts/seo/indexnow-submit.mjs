@@ -21,11 +21,27 @@ const KEY_PATTERN = /^[a-zA-Z0-9-]{8,128}$/;
 // IndexNow tillader maks 10.000 URL'er pr. kald; sitemap'en er langt under.
 const MAX_URLS = 10000;
 
+// Fjerner XML-kommentarer i én lineær gennemgang (CodeQL #374). En uafsluttet
+// "<!--" kasserer resten af teksten, saa en kommenteret URL aldrig slipper igennem,
+// og hver kommentar erstattes af et mellemrum, saa stykkerne ikke kan danne en ny "<!--".
+export function stripXmlComments(text) {
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const start = text.indexOf("<!--", i);
+    if (start < 0) return out + text.slice(i);
+    out += text.slice(i, start) + " "; // mellemrum, ikke tom streng: "<!" + "--" kan ikke samles til en ny "<!--"
+    const end = text.indexOf("-->", start + 4);
+    if (end < 0) return out;
+    i = end + 3;
+  }
+}
+
 // Udtraekker <loc>-vaerdier fra en sitemap. Kommentarer fjernes foerst, saa en
 // kommenteret URL aldrig indsendes. Kun URL'er paa `host` (IndexNow kraever at
 // urlList hoerer til samme host som noeglefilen); alt andet droppes.
 export function extractSitemapUrls(xml, host = DEFAULT_HOST) {
-  const withoutComments = String(xml || "").replace(/<!--[\s\S]*?-->/g, "");
+  const withoutComments = stripXmlComments(String(xml || ""));
   const seen = new Set();
   const urls = [];
   for (const match of withoutComments.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)) {
