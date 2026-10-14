@@ -260,7 +260,7 @@ case "$VERDICT" in
       "" \
       "Goer i stedet ET af disse:" \
       "  1. Vent til et af de igangvaerende spor er faerdigt." \
-      "  2. Skal der koeres flere spor: brug .claude/workflows/wave.js (4 laner + semafor)." \
+      "  2. Skal der koeres flere spor: brug .claude/workflows/wave.js (lane-loft pr. maskine: default 4, NICOLAIPC 6 + semafor)." \
       "  3. Er et spor reelt slut, men registret ikke opdateret:" \
       "     pwsh -File scripts/agent-slot-release.ps1" \
       >&2

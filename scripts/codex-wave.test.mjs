@@ -183,7 +183,7 @@ test('dispatch counts open PRs, including parked drafts, but never rejects on co
 
 // Ejer-beslutning 22/9 (variant B, #5510): loftet paa 8 aabne PR'er er
 // fjernet. En boelge maa ikke afvises fordi der allerede er 8+ aabne PR'er -
-// lanerne (4) og verifikations-semaforen (2) er fortsat bremsen.
+// lanerne (loft pr. maskine, #6615) og verifikations-semaforen (2) er fortsat bremsen.
 test('a wave is not rejected when 8 or more PRs are already open', async (t) => {
   const root = fixture(t);
   const prs = Array.from({ length: 10 }, (_, i) => ({ number: i + 20, headRefName: `parked/${i}`, isDraft: true }));

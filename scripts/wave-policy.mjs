@@ -239,7 +239,7 @@ export function assertDesignGate(tracks) {
 }
 
 // Ejer-beslutning 22/9 (variant B, #5510): PR-loftet paa 8 er fjernet helt.
-// Optaellingen bevares som info til planen (lanerne (4) og
+// Optaellingen bevares som info til planen (lanerne (loft pr. maskine, #6615) og
 // verifikations-semaforen (2) er fortsat bremsen). Fail-closed bevares: en
 // uhentbar PR-liste maa aldrig stiltiende tillade en boelge - en GitHub-fejl
 // skal opdages, ikke maskeres som "ingen aabne PR'er".

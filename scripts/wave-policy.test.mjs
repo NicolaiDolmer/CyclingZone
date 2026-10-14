@@ -50,7 +50,7 @@ test('capacity includes drafts and reserves all planned new PRs as info, never r
 });
 
 // Ejer-beslutning 22/9 (variant B, #5510): loftet paa 8 er fjernet. En boelge
-// maa ikke afvises fordi der allerede er 8+ aabne PR'er - lanerne (4) og
+// maa ikke afvises fordi der allerede er 8+ aabne PR'er - lanerne (loft pr. maskine) og
 // verifikations-semaforen (2) er fortsat bremsen.
 test('a wave is not rejected at 8 or more open PRs', () => {
   const manyPrs = Array.from({ length: 12 }, (_, i) => ({ number: i, headRefName: `other/${i}`, isDraft: true }));
