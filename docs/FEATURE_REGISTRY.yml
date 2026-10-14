@@ -481,12 +481,12 @@ features:
     area: training
     title_en: Training programs per race day
     title_da: Træningsprogrammer pr. løbsdag
-    state: beta
+    state: live
     flag: training_programs
     ssot: docs/TRAINING_RULES.md
     epic: 4629
-    verified: 2026-10-04
-    note: 'PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil.'
+    verified: 2026-10-14
+    note: 'On for alle 9/10 (læst i prod 14/10). PR #5801; standardprogrammer kopieres ind i planen ved tildeling.'
 
   - id: training-program-cells
     area: training
@@ -514,23 +514,23 @@ features:
     area: training
     title_en: Train now (no bonus)
     title_da: Træn nu (uden bonus)
-    state: beta
+    state: live
     flag: training_train_now
     ssot: docs/TRAINING_RULES.md
     epic: 4847
-    verified: 2026-10-04
-    note: Beta læst i prod 4/10; kræver training_condition_per_date. Flip til alle er ejer-only.
+    verified: 2026-10-14
+    note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
 
   - id: training-groups
     area: training
     title_en: Training groups
     title_da: Træningsgrupper
-    state: beta
+    state: live
     flag: training_groups
     ssot: docs/TRAINING_RULES.md
     epic: 6000
-    verified: 2026-10-04
-    note: Beta læst i prod 4/10; kræver training_program_cells. Flip til alle er ejer-only.
+    verified: 2026-10-14
+    note: 'On for alle 9/10 (læst i prod 14/10); kræver training_program_cells.'
 
   # --- academy -------------------------------------------------------------
   - id: academy

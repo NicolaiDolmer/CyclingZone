@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-89 poster: live 67 · beta 3 · dormant 3 · building 11 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+89 poster: live 70 · dormant 3 · building 11 · spec 1 · idea 2 · retired 2. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -49,13 +49,10 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## training
 
-**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-10-04 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training score 1-99 (`training-score`) 2026-09-24 · Training tick per race day (`training-tick-per-race-day`) 2026-09-28
+**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-10-04 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Training groups (`training-groups`) 2026-10-14 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training programs per race day (`training-programs`) 2026-10-14 · Training score 1-99 (`training-score`) 2026-09-24 · Training tick per race day (`training-tick-per-race-day`) 2026-09-28 · Train now (no bonus) (`training-train-now`) 2026-10-14
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Training groups (`training-groups`) | beta | `training_groups` | [TRAINING_RULES](TRAINING_RULES.md) | #6000 | 2026-10-04 | Beta læst i prod 4/10; kræver training_program_cells. Flip til alle er ejer-only. |
-| Training programs per race day (`training-programs`) | beta | `training_programs` | [TRAINING_RULES](TRAINING_RULES.md) | #4629 | 2026-10-04 | PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil. |
-| Train now (no bonus) (`training-train-now`) | beta | `training_train_now` | [TRAINING_RULES](TRAINING_RULES.md) | #4847 | 2026-10-04 | Beta læst i prod 4/10; kræver training_condition_per_date. Flip til alle er ejer-only. |
 | Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
