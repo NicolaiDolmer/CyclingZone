@@ -1,0 +1,28 @@
+{
+  "tracks": [
+    {
+      "issue": 5578,
+      "branch": "feat/5578-breakaway-robust-hilly-mountain",
+      "title": "[motor] official_times_v2: udbrud skal vinde kuperet og bjerg inden for maal 2, ogsaa naar spillerhold saetter jagt",
+      "scopeText": "Ejer-beslutning 9/10 (A): maal 2 (virkelige data, #1021-baandet) styrer; maal 3 (legacy-niveau) gaelder kun flad/rullende og maales paa udbrudssejre. Problem: paa prod-data 9/10 (41 holdordrer, et ekstra menneskehold med 'chase' paa naesten alle etaper) vinder udbruddet under official_times_v2 kun kuperet 0,13 og bjerg 0 (Hexagone, 10 seeds); paa 8/10-data (21 ordrer) var det 0,33/0,6. Kalibreringen i SHARED_TIME_MODEL_V2_TUNING (backend/lib/engine/v4/mechanics/timeModel.ts) er en klippekant (etape 8 skala 3,5->0,2). Maal: kuperet og bjerg udbrudssejre ca. 0,20-0,35 (inden for 15-45 % / 15-50 %), flad 1-10 %, rullende 4-15 %, hoejfjeld 0-15 %, ROBUST paa tvaers af tre felter: (1) C:/Dev/CyclingZone-worktrees/tmp-tour-6376-main/balance-internals/tour-9-10b/cache.json (9/10), (2) C:/Dev/CyclingZone-worktrees/feat-5578-breakaway-targets-official-v2/balance-internals/5578-official-v2/cache-hexagone.json (8/10), (3) --fixture=giro; 20 seeds hver. Kopier cachene ind i dit worktrees balance-internals/ (gitignoreret). Et ekstra jagtende hold maa reducere, ikke udslette, udbrudssejre (fx: jagt fra et hold uden GC-interesse eller uden kapacitet skal ikke alene kunne lukke et udbrud; lad-gaa-loftet maa ikke falde brat med antal jagende hold). Haarde krav maa ALDRIG brydes: ownTeamChasesOwn 0, clampedAtCap 0, labelContradictions 0, minuteLossAtZeroKm 0, gcTop10InBreakOver5Min 0 (#5978/#6373-maalingen paa main). GC-maalingerne (gcTo10AfterWeek1/Final, gcWinnerMargin) maa ikke falde fra PASS. Kun knapper der laeses under official_times_v2; orders_gc_v3 og aeldre revisioner byte-identiske (eksisterende digest-tests). Laes FOERST docs/RACE_ENGINE_RULES.md 'Udbrudsmaal' + 'Samlet Tour-revision', og C:/Dev/CyclingZone-worktrees/feat-5578-breakaway-targets-official-v2/balance-internals/5578-official-v2/tal-2026-10-09.md (aarsager + forkastede veje). Maaling: node backend/scripts/dev/tourDryRun.mjs --cache=<fil> --revision=official_times_v2 --compare=orders_gc_v2 --seeds=20 og --fixture=giro. Tal skrives KUN privat i balance-internals/ (hard rule 17); PR-body kvalitativ + PASS/WARN/FAIL. Ingen aendring af docs/RACE_ENGINE_RULES.md (orkestratoren skriver beslutningen). Ingen patch note. DEADLINE: PR klar til review senest loer 10/10 kl. 13:00 dansk tid (motor-fristen er loer 18:00 inkl. merge+deploy). Kan maalet ikke naas robust, stop og rapporter bedste kandidat + hvad der mangler, i stedet for at overfitte. Refs #5578.",
+      "model": "opus",
+      "effort": "high",
+      "noVisibleChange": true,
+      "noVisibleReason": "motorkalibrering bag official_times_v2-knapper; ingen UI-filer",
+      "tier": "TARGETED",
+      "ownership": [
+        "backend/lib/engine/v4/mechanics/timeModel.ts",
+        "backend/lib/engine/v4/mechanics/gcThreat.ts",
+        "backend/lib/engine/v4/mechanics/breakaway.ts"
+      ],
+      "touches": [
+        "backend/lib/engine/v4/mechanics/breakawayPermission.ts"
+      ],
+      "verifyCommands": [
+        "npx tsc -p backend/tsconfig.engine.json --noEmit",
+        "node --test backend/lib/engine/v4",
+        "node --test backend/lib/raceEngineRulesRevision.test.ts"
+      ]
+    }
+  ]
+}
