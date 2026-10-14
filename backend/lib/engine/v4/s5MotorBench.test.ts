@@ -136,25 +136,30 @@ test("#6362: winnerRowsDigests reagerer paa een flyttet vinder og ignorerer raek
   assert.notEqual(winnerRowsDigests(flipped).long_climb, base, "een vinder skiftet -> anden digest");
 });
 
+type BenchStage = { stage_number: number; game_day: number | null };
+type FatigueSeqs = Map<string, number[]>;
+const fatigueSequences = entrantFatigueSequences as unknown as (opts: Record<string, unknown>) => FatigueSeqs;
+const stageFatigues = benchStageFatigues as unknown as (data: unknown) => { stagesSorted: BenchStage[]; fatigueById: FatigueSeqs };
+
 test("#6362: etapeloeb koeres med raceRunner's akkumulerede traethed og hviledage", async () => {
-  const gt = buildS5BenchRaces({ scope: "gt" })[0];
+  const gt = buildS5BenchRaces({ scope: "gt" })[0] as { seasonId: string; race: { id: string }; stages: object[]; grandTour: boolean };
   const field = loadBenchField();
   const raceId = `${gt.race.id}:${gt.seasonId}`;
   const profiles = gt.stages.map((p) => ({ ...p, race_id: raceId }));
   const data = { ...field, race: { ...field.race, id: raceId, stages: profiles.length }, profiles };
 
   // Sekvensen er PRAECIS raceRunner's (samme funktion, samme input), ikke en kopi.
-  const { stagesSorted, fatigueById } = benchStageFatigues(data);
-  const expected = entrantFatigueSequences({ stagesSorted: sortedStages(data), entrants: splitEntrants(data).entrants, rulesRevision: S5_MOTOR_BENCH_CONFIG.revision });
+  const { stagesSorted, fatigueById } = stageFatigues(data);
+  const expected = fatigueSequences({ stagesSorted: sortedStages(data), entrants: splitEntrants(data).entrants, rulesRevision: S5_MOTOR_BENCH_CONFIG.revision });
   assert.deepEqual(fatigueById, expected);
 
   // Grand Tour'en har kalender-hviledage, og traetheden falder over dem.
-  const restIdx = stagesSorted.map((s: { game_day: number | null }, i: number) => (i > 0 && s.game_day! - stagesSorted[i - 1].game_day! > 1 ? i : -1)).filter((i: number) => i > 0);
+  const restIdx = stagesSorted.map((s, i) => (i > 0 && s.game_day! - stagesSorted[i - 1].game_day! > 1 ? i : -1)).filter((i) => i > 0);
   assert.ok(restIdx.length >= 1, "S5-Grand Tour'en har mindst een hviledag i kalender-planen");
-  const anyRider = [...fatigueById.values()][0] as number[];
+  const anyRider = [...fatigueById.values()][0];
   assert.equal(anyRider[0], 0, "etape 1 koeres frisk");
   assert.ok(anyRider[anyRider.length - 1] > 0, "sidste etape koeres med akkumuleret traethed");
-  const noRest = entrantFatigueSequences({ stagesSorted: stagesSorted.map((s: object) => ({ ...s, game_day: null })), entrants: splitEntrants(data).entrants, rulesRevision: S5_MOTOR_BENCH_CONFIG.revision });
+  const noRest = fatigueSequences({ stagesSorted: stagesSorted.map((s) => ({ ...s, game_day: null })), entrants: splitEntrants(data).entrants, rulesRevision: S5_MOTOR_BENCH_CONFIG.revision });
   const [id0] = [...fatigueById.keys()];
   assert.ok(fatigueById.get(id0)![restIdx[0]] < noRest.get(id0)![restIdx[0]], "hviledagen restituerer");
 
