@@ -59,7 +59,7 @@
       "foot": "Based on this race so far. Route fit only for your own riders.",
       "leadsOverall": "Leads the overall",
       "overall": "#{rank} overall, {gap}",
-      "wonStage": "won stage {number}",
+      "wonStage": "Won stage {number}",
       "you": "You"
     },
     "yourDay": {

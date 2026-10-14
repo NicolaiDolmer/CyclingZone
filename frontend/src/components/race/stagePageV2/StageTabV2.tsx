@@ -78,6 +78,7 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb }
 
 export interface StageTabV2Props {
   stageNumber: number;
+  stagesCompleted: number;
   isStageRace: boolean;
   phase: "before" | "after";
   profile: StageProfile | null;
@@ -93,7 +94,7 @@ export interface StageTabV2Props {
 }
 
 export default function StageTabV2({
-  stageNumber, isStageRace, phase, profile, results, stagePointRows, stageLoaded, myTeamId,
+  stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, stageLoaded, myTeamId,
   stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
@@ -104,7 +105,7 @@ export default function StageTabV2({
   const riders = stageRoles ? stageRoles.riders ?? [] : [];
   const overrides = stageRoles ? stageRoles.overrides ?? [] : [];
   const lineup = lineupFor(riders, overrides, stageNumber);
-  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId);
+  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted);
   const fitById = new Map(lineup.map((r) => [r.riderId, r.fit]));
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
@@ -160,9 +161,11 @@ export default function StageTabV2({
             {lineup.length > 0 && (
               <ul className="mb-3">
                 {lineup.map((r) => (
-                  <li key={r.riderId} className="flex min-h-11 items-center gap-2.5 border-t border-cz-border px-1">
-                    <RiderLink id={r.riderId} className="min-w-0 flex-1 truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>
-                    {r.role && <span className="w-28 flex-none truncate text-xs text-cz-2">{t(`tacticsOrders.roleLabel.${r.role}`)}</span>}
+                  <li key={r.riderId} className="flex min-h-11 items-center gap-2.5 border-t border-cz-border px-1 py-1.5">
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <RiderLink id={r.riderId} className="truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>
+                      {r.role && <span className="truncate text-2xs text-cz-3">{t(`tacticsOrders.roleLabel.${r.role}`)}</span>}
+                    </span>
                     {r.fit !== null ? <FitBar fit={r.fit} /> : <span className="w-[102px] flex-none text-right font-data text-xs text-cz-3">-</span>}
                   </li>
                 ))}
@@ -179,13 +182,17 @@ export default function StageTabV2({
                 {favourites.map((f, i) => {
                   const fit = f.mine ? fitById.get(f.riderId) ?? null : null;
                   return (
-                    <li key={f.riderId} className={`flex min-h-11 items-center gap-2.5 border-t border-cz-border px-1 ${f.mine ? "bg-cz-subtle" : ""}`}>
+                    <li key={f.riderId} className={`flex min-h-11 items-center gap-2.5 border-t border-cz-border px-1 py-1.5 ${f.mine ? "bg-cz-subtle" : ""}`}>
                       <span className="w-4 flex-none font-data text-xs tabular-nums text-cz-3">{i + 1}</span>
                       {f.nation && <Flag code={f.nation} className="flex-none" />}
-                      <RiderLink id={f.riderId} className="flex-none truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{f.name}</RiderLink>
-                      {f.mine && <span className="flex-none rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.favourites.you")}</span>}
-                      <span className="min-w-0 flex-1 truncate text-xs text-cz-2">
-                        {f.reasons.map((r) => t(`stagePageV2.favourites.${r.key}`, r.params)).join(" · ")}
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <RiderLink id={f.riderId} className="truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{f.name}</RiderLink>
+                          {f.mine && <span className="flex-none rounded-sm bg-cz-1 px-1.5 py-0.5 font-data text-3xs font-bold uppercase tracking-[.08em] text-cz-body">{t("stagePageV2.favourites.you")}</span>}
+                        </span>
+                        <span className="text-2xs text-cz-2">
+                          {f.reasons.map((r) => t(`stagePageV2.favourites.${r.key}`, r.params)).join(" · ")}
+                        </span>
                       </span>
                       {fit !== null && <span className="flex-none font-data text-xs tabular-nums text-cz-1">{fit}</span>}
                     </li>

@@ -403,11 +403,12 @@ export interface Favourite { riderId: string; name: string; nation: string | nul
 
 /**
  * Favoritter til etape N ud fra loebet indtil nu: top i det samlede efter
- * etape N-1 og etapevindere. Foer foerste etape er der intet aerligt grundlag
+ * den senest koerte etape foer N og etapevindere. Foer foerste etape er der intet aerligt grundlag
  * i loebet, og listen er tom (kortet udelades).
  */
-export function favouritesFor(results: ResultRow[], stagePointRows: ResultRow[], stageNumber: number, myTeamId: string | null, limit = 5): Favourite[] {
-  const prev = stageNumber - 1;
+export function favouritesFor(results: ResultRow[], stagePointRows: ResultRow[], stageNumber: number, myTeamId: string | null, stagesCompleted: number, limit = 5): Favourite[] {
+  // Det seneste samlede FOER etape N som findes: etape N-1, eller den senest koerte.
+  const prev = Math.min(stageNumber - 1, stagesCompleted);
   if (prev < 1) return [];
   const gc = classificationRowsForStage(results, prev, "gc") as ResultRow[];
   const byRider = new Map<string, Favourite>();

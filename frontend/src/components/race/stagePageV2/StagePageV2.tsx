@@ -114,6 +114,7 @@ export default function StagePageV2(props: StagePageV2Props) {
         <StageTabV2
           key={selectedStage}
           stageNumber={selectedStage}
+          stagesCompleted={stagesCompleted}
           isStageRace={isStageRace}
           phase={phase}
           profile={profileByStage[selectedStage] ?? null}

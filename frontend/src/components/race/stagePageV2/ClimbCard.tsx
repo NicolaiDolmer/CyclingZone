@@ -26,10 +26,10 @@ function PerKmChart({ detail, name }: { detail: ReturnType<typeof climbDetail>; 
           <g key={k.index}>
             <rect x={x + 1} y={H - B - h} width={Math.max(2, colW * k.fraction - 2)} height={h} fill={f.fill} fillOpacity={f.opacity} />
             {colW >= 28 && (
-              <text x={x + colW / 2} y={H - B - h - 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-1)" className="font-data tabular-nums">{one(k.grade)}</text>
+              <text x={x + (colW * k.fraction) / 2} y={H - B - h - 4} textAnchor="middle" fontSize={11} fontWeight={700} fill="var(--text-1)" className="font-data tabular-nums">{one(k.grade)}</text>
             )}
             {colW >= 16 && (
-              <text x={x + colW / 2} y={H - 8} textAnchor="middle" fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{k.index}</text>
+              <text x={x + (colW * k.fraction) / 2} y={H - 8} textAnchor="middle" fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{k.index}</text>
             )}
           </g>
         );

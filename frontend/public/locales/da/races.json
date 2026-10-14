@@ -59,7 +59,7 @@
       "foot": "Ud fra løbet indtil nu. Rutematch kun for dine egne ryttere.",
       "leadsOverall": "Fører samlet",
       "overall": "#{rank} samlet, {gap}",
-      "wonStage": "vandt etape {number}",
+      "wonStage": "Vandt etape {number}",
       "you": "Dig"
     },
     "yourDay": {

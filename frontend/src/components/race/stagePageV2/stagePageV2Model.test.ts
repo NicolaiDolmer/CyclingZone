@@ -167,9 +167,10 @@ test("lineupFor + tacticsProgress", () => {
 });
 
 test("favouritesFor: fra loebet indtil nu; tom foer foerste etape", () => {
-  assert.deepEqual(favouritesFor(RESULTS, [], 1, MINE), []);
+  assert.deepEqual(favouritesFor(RESULTS, [], 1, MINE, 0), []);
   const stageRows: ResultRow[] = [{ result_type: "stage", stage_number: 2, rank: 1, rider_id: "rid-Carl Rojas", team_id: OTHER }];
-  const f = favouritesFor(RESULTS, stageRows, 3, MINE);
+  const f = favouritesFor(RESULTS, stageRows, 3, MINE, 2);
+  assert.equal(favouritesFor(RESULTS, stageRows, 4, MINE, 2)[0].name, "Carl Rojas", "etape 4 bruger det samlede efter etape 2 naar 3 ikke er koert");
   assert.equal(f[0].name, "Carl Rojas");
   assert.deepEqual(f[0].reasons.map((r) => r.key), ["leadsOverall", "wonStage"]);
   const mine = f.find((x) => x.mine);

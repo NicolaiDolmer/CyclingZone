@@ -61,7 +61,15 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
   const BOT = 30;
   const W = Math.max(1, width);
 
-  const segs = useMemo(() => colouredSegments(series), [series]);
+  const runs = useMemo(() => {
+    const out: ReturnType<typeof colouredSegments>[] = [];
+    for (const s of colouredSegments(series)) {
+      const last = out[out.length - 1];
+      if (last && last[0].band === s.band) last.push(s);
+      else out.push([s]);
+    }
+    return out;
+  }, [series]);
   const maxH = Math.max(...series.hs);
   const minH = Math.min(...series.hs);
   const floor = Math.max(0, Math.floor((minH - 80) / 100) * 100);
@@ -78,8 +86,9 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
   }, [floor, ceil]);
 
   const sprints = (Array.isArray(profile.sprints) ? profile.sprints : []).filter((s) => s.kind === "intermediate");
-  const lastClimbTop = climbs.length ? Number(climbs[climbs.length - 1].crest_km) : null;
   const finishH = Math.round(series.hs[series.hs.length - 1]);
+  // Maal paa toppen: stigningens eget maerke bærer hoejden, saa maal-teksten udelades.
+  const summitFinish = climbs.length > 0 && D - Number(climbs[climbs.length - 1].crest_km) < 1;
 
   function onPointer(e: ReactPointerEvent<SVGSVGElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -133,18 +142,17 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
               opacity={0.05}
             />
           )}
-          {segs.map((s, i) => {
-            const f = bandFill(s.band);
-            const x0 = X(s.km0), x1 = X(s.km1);
+          {runs.map((run, i) => {
+            // Sammenhaengende skridt i samme baand tegnes som EEN flade, saa
+            // der ingen soemme er mellem dem.
+            const f = bandFill(run[0].band);
+            const top = run.map((s, j) => `${j === 0 ? `L${X(s.km0)},${Y(s.h0)} ` : ""}L${X(s.km1)},${Y(s.h1)}`).join(" ");
             return (
               <path
                 key={i}
-                d={`M${x0},${H - BOT} L${x0},${Y(s.h0)} L${x1},${Y(s.h1)} L${x1},${H - BOT} Z`}
+                d={`M${X(run[0].km0)},${H - BOT} ${top} L${X(run[run.length - 1].km1)},${H - BOT} Z`}
                 fill={f.fill}
                 fillOpacity={f.opacity}
-                stroke={f.fill}
-                strokeOpacity={f.opacity}
-                strokeWidth={0.5}
               />
             );
           })}
@@ -187,7 +195,7 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
                     )}
                   </g>
                 )}
-                <text x={tx} y={H - BOT + 24} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-2)" className="font-data tabular-nums">{Math.round(top)}</text>
+                {D - top >= 4 && <text x={tx} y={H - BOT + 24} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-2)" className="font-data tabular-nums">{i === climbs.length - 1 && D - top >= 3 && !narrow ? `${Math.round(top)} · ${t("stagePageV2.profile.toGoAxis", { km: formatNumber(Math.round(D - top)) })}` : Math.round(top)}</text>}
               </g>
             );
           })}
@@ -203,16 +211,13 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
             );
           })}
           <line x1={W - 1} x2={W - 1} y1={Y(finishH)} y2={TOP - 30} stroke="var(--text-2)" strokeWidth={1} />
-          <text x={W - 6} y={TOP - 34} textAnchor="end" fontSize={11} fontWeight={700} fill="var(--text-1)" className="font-data tabular-nums">
-            {t("stagePageV2.profile.finish", { m: formatNumber(finishH) })}
-          </text>
-          <text x={0} y={H - 2} fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">0 km</text>
-          <text x={W} y={H - 2} textAnchor="end" fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{`${formatNumber(Math.round(D))} km`}</text>
-          {lastClimbTop !== null && D - lastClimbTop >= 3 && !narrow && (
-            <text x={X(lastClimbTop) + 6} y={H - 2} fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">
-              {t("stagePageV2.profile.toGoAxis", { km: formatNumber(Math.round(D - lastClimbTop)) })}
+          {!summitFinish && (
+            <text x={W - 6} y={TOP - 34} textAnchor="end" fontSize={11} fontWeight={700} fill="var(--text-1)" className="font-data tabular-nums">
+              {t("stagePageV2.profile.finish", { m: formatNumber(finishH) })}
             </text>
           )}
+          <text x={0} y={H - 2} fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">0 km</text>
+          <text x={W} y={H - 2} textAnchor="end" fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{`${formatNumber(Math.round(D))} km`}</text>
           {tip && <line x1={X(tip.km)} x2={X(tip.km)} y1={TOP - 30} y2={H - BOT} stroke="var(--text-1)" strokeOpacity={0.5} strokeWidth={1} />}
         </svg>
       )}
