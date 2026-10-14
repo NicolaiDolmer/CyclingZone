@@ -6338,9 +6338,8 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
     let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
     if (req.query.story === "1") try {
       // Målresultatet afgør udbrydernes udfald med samme svar som mærkerne (#6350 review).
-      const { data: resultRows, error: resultsError } = await supabase.from("race_results").select("rider_id, rank, result_type, stage_number")
-        .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`);
-      if (resultsError) throw resultsError;
+      const resultRows = await fetchAllRows(() => supabase.from("race_results").select("rider_id, rank, result_type, stage_number")
+        .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`).order("id"));
       story = buildRaceStory({ events: data.events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
     } catch (storyErr) { captureException(storyErr); }
     res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events, ...(story ? { story } : {}) });
