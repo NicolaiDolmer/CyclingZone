@@ -67,15 +67,20 @@
  * Saetter du en ny saeson ind her, skal tallet efterregnes mod et dry-run af netop den
  * saesons D1-pakning (CALENDAR_RULES.md §1d) - ikke arves fra S4.
  *
- * S5 = 160 (#6367): samme regel som S4's 140, regnet paa S5's laaste vindue (onsdag 28/10
- * -> loerdag 28/11 = 32 loebsdatoer, #5833) x D1's 5 slots = 5 loebsdage paa HVER
- * kalenderdato (§1e-b, ejer-valg 20/9). Efterregnet mod S5-toerkoerslen: D1's naturlige
- * pakning ligger over enhver lavere vaerdi (padding kan kun TILFOEJE loebsdage), og et
- * mål under 160 fordeler sig ikke jaevnt pr. dato, saa §1e's traeningsrytme gaar roed.
- * Uden et S5-tal arver traenings-deleren 140 (resolveRaceDaysPerSeason) mens aksen er
- * pakkerens naturlige - to tal der ikke maa vaere forskellige.
+ * S5: INTET TAL ENDNU - FORSLAG 160 AFVENTER EJER-GO (#6367). Tallet er spillervendt
+ * (traenings-deleren, injuryRaceDays, seasonTransition laeser det) og maa ikke saettes her
+ * uden ejerens ordrette go. Begrundelsen for forslaget: samme regel som S4's 140, regnet
+ * paa S5's laaste vindue (onsdag 28/10 -> loerdag 28/11 = 32 loebsdatoer, #5833) x D1's 5
+ * slots = 5 loebsdage paa HVER kalenderdato (§1e-b, ejer-valg 20/9). Efterregnet offline
+ * mod S5-toerkoerslen: D1's naturlige pakning ligger over briefens 64 (padding kan kun
+ * TILFOEJE loebsdage), og et maal der ikke er et multiplum af loebsdatoerne fordeler sig
+ * ikke jaevnt pr. dato, saa §1e's traeningsrytme gaar roed.
+ * Indtil ejeren har valgt har S5 intet maal: uligheden (offline D1 91 · D2-D4 64) staar i
+ * rapporten, men stopper IKKE --apply (scorecardet doemmer kun §1d naar saesonen har et
+ * maal, calendarScorecardReport.js). S5 maa derfor ikke bygges med --apply foer tallet er
+ * valgt. Ejer-go = tilfoej `5: <tal>` her.
  */
-export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140, 5: 160 });
+export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140 });
 
 /**
  * Divisionerne der skal have samme antal loebsdage. Ikke udledt af TIER_DENSITY, fordi

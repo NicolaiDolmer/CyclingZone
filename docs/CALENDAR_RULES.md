@@ -125,7 +125,7 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 
 | Hvor | Hvad |
 |---|---|
-| Målet (data) | `SEASON_RACE_DAY_TARGET` i `backend/lib/calendarRaceDayTargets.js` — S4 = **140**, S5 = **160** |
+| Målet (data) | `SEASON_RACE_DAY_TARGET` i `backend/lib/calendarRaceDayTargets.js` — S4 = **140** (S5: forslag 160 afventer ejer-go, se nedenfor) |
 | Mekanik i pakkeren | `padAxisWithTrainingDays` i `raceCalendarLanePacker.js` — efterbehandling, ikke en binding (se §1e) |
 | Gate | `detectRaceDayEqualityViolations` — **hårdt krav uden override**, stopper `--apply` (som §1b) |
 | CLI | `node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-day-target 140` (udelades flaget, bruges sæsonens eget mål; `--race-day-target 0` slår reglen fra) |
@@ -136,7 +136,7 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 
 **Træningsdagene fordeles jævnt: 5 løbsdage på HVER kalenderdato (ejer-valg 20/9).** Prisen er at en tom løbsdag også må ligge inde i et etapeløbs forløb — se §1e-b nedenfor for begge sætningers nye ordlyd.
 
-**S5 = 160 ([#6367](https://github.com/NicolaiDolmer/CyclingZone/issues/6367), 14/10).** Samme regel som S4's 140, regnet på S5's låste vindue: 32 løbsdatoer (onsdag 28/10 → lørdag 28/11, #5833) × 5 løbsdage pr. dato (§1e-b). Det er det eneste tal der ikke løsner en anden regel: D1's naturlige pakning har langt flere løbsdage end D2-D4, og padding kan kun tilføje (§1d), så et lavere mål lader D1 stå over målet og bryder §1d's lighed; et mål der ikke er et multiplum af løbsdatoerne fordeles ikke jævnt og bryder §1e's træningsrytme. Målt i den offline tørkørsel: 160 i alle fire divisioner, §1e grøn. Uden et S5-tal arvede træningens budget-deler S4's 140, mens aksen var pakkerens naturlige længde pr. division.
+**S5: forslag 160, afventer ejer-go ([#6367](https://github.com/NicolaiDolmer/CyclingZone/issues/6367), 14/10).** Intet S5-tal står i `SEASON_RACE_DAY_TARGET` før ejeren har sagt ja, fordi tallet er spillervendt (træningens budget-deler, skader, sæsonskiftet). Forslaget er samme regel som S4's 140, regnet på S5's låste vindue: 32 løbsdatoer (onsdag 28/10 → lørdag 28/11, #5833) × 5 løbsdage pr. dato (§1e-b). Briefens 64 (D2-D4's naturlige tal) kan ikke nås: D1's naturlige pakning har langt flere løbsdage, og padding kan kun tilføje (§1d); et mål der ikke er et multiplum af løbsdatoerne fordeles ikke jævnt og bryder §1e's træningsrytme. Målt i den offline tørkørsel med `--race-day-target 160`: 160 i alle fire divisioner, §1e grøn. Indtil ejer-go har S5 intet mål: uligheden (offline D1 91 · D2-D4 64) står i rapporten, men stopper **ikke** `--apply`, fordi scorecardet kun dømmer §1d når sæsonen har et mål. S5 må derfor ikke bygges med `--apply` før tallet er valgt.
 
 #### 1d-vægen er væk (#5267, 19/9) — men kun fordi målet holdt op med at være en søgebinding
 
