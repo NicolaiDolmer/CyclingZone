@@ -45,7 +45,7 @@ test("#6362: fixturen er den rigtige bench (ikke en stub), skrevet med den kanon
 test("#6362: benchen koerer paa S5-ruter fra generatoren: Grand Tours + saesonens loeb for de afslutninger GT'erne mangler", () => {
   const gts = buildS5BenchRaces({ scope: "gt" });
   assert.equal(gts.length, 3 * S5_MOTOR_BENCH_CONFIG.genSeeds, "tre Grand Tours pr. saeson-traek");
-  assert.ok(gts.every((r) => r.stages.every((s: { generator_version: number }) => s.generator_version >= 6)), "S5-modellen");
+  assert.ok(gts.every((r) => r.stages.every((s) => (s as { generator_version: number }).generator_version >= 6)), "S5-modellen");
   const missing = finishesNeedingSeasonSample(gts);
   assert.ok(missing.includes("wall_finish"), "S5-GT'erne har ingen mur; den maales paa resten af saesonen");
   for (const finish of missing) assert.equal(MEASURED.sources[finish], "season", finish);
@@ -65,9 +65,9 @@ test("#6362: gatens del (4) doemmer paa benchen og blokerer ved fail", () => {
   for (const r of judged) assert.ok(r.verdict, `${r.finish} er maalt`);
   const allInside = judged.every((r: { verdict: string }) => r.verdict === "inside");
   assert.equal(part.status, allInside ? "green" : "red");
-  const gate = evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: FIXTURE });
+  const gate = (evaluateS5BenchmarkGate as unknown as (args: { races: unknown[]; benchmark: unknown[]; motor: unknown }) => { blocking: string[] })({ races: [], benchmark: BENCHMARK, motor: FIXTURE });
   assert.equal(gate.blocking.some((b: string) => b.startsWith("S5 (4) motor")), !allInside, "en roed bench blokerer");
-  assert.ok(!formatS5BenchmarkReport(gate).some((l: string) => l.includes("STUB")));
+  assert.ok(!formatS5BenchmarkReport(gate as never).some((l: string) => l.includes("STUB")));
 });
 
 test("#6362: tidsgabene stiger med afslutningens sværhed, som i cykelsporten", () => {
