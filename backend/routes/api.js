@@ -216,6 +216,7 @@ import { buildRiderInterest } from "../lib/riderInterest.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildGlobalTradeFeed, parseTradeFeedQuery } from "../lib/tradeListFeed.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
+import { buildRaceStory } from "../lib/raceStory.js"; // #6350: ?story=1 på /timeline
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
@@ -6333,7 +6334,9 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
     if (!data) return res.status(404).json({ error: "timeline_not_found" });
-    res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events });
+    // #6350: ?story=1 tilføjer løbshistorien (kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md).
+    const story = req.query.story === "1" ? buildRaceStory({ events: data.events, timelineVersion: data.timeline_version }) : null;
+    res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events, ...(story ? { story } : {}) });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
