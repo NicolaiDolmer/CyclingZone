@@ -216,7 +216,7 @@ import { buildRiderInterest } from "../lib/riderInterest.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildGlobalTradeFeed, parseTradeFeedQuery } from "../lib/tradeListFeed.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
-import { buildRaceStory } from "../lib/raceStory.js"; // #6350: ?story=1 på /timeline
+import { buildRaceStory, storyInputsFromResults } from "../lib/raceStory.js"; // #6350: ?story=1 på /timeline
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { getScoutState, startTargetAssignment, startMission, cancelAssignment, loadScout, loadScoutHistory } from "../lib/scoutAssignmentService.js";
@@ -6336,7 +6336,13 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
     if (!data) return res.status(404).json({ error: "timeline_not_found" });
     // #6350: ?story=1 tilføjer løbshistorien (kontrakt: docs/superpowers/specs/2026-10-14-race-story-contract.md).
     let story = null; // en fejl i historien må aldrig tage tidslinjen med sig
-    if (req.query.story === "1") try { story = buildRaceStory({ events: data.events, timelineVersion: data.timeline_version }); } catch (storyErr) { captureException(storyErr); }
+    if (req.query.story === "1") try {
+      // Målresultatet afgør udbrydernes udfald med samme svar som mærkerne (#6350 review).
+      const { data: resultRows, error: resultsError } = await supabase.from("race_results").select("rider_id, rank, result_type, stage_number")
+        .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`);
+      if (resultsError) throw resultsError;
+      story = buildRaceStory({ events: data.events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
+    } catch (storyErr) { captureException(storyErr); }
     res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events, ...(story ? { story } : {}) });
   } catch (err) {
     captureException(err);

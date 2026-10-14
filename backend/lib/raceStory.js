@@ -88,6 +88,17 @@ function str(value) {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+/**
+ * Rytterne en hændelse navngiver: `rider_ids` (liste) og/eller `rider_id`
+ * (ental). Et rigtigt sent angreb (lateAttack.ts) skriver kun `rider_id`.
+ */
+function namedRiders(p) {
+  const out = ids(p?.rider_ids);
+  const single = str(p?.rider_id);
+  if (single && !out.includes(single)) out.push(single);
+  return out;
+}
+
 function cleanParams(params) {
   const out = {};
   for (const [key, value] of Object.entries(params ?? {})) {
@@ -137,6 +148,9 @@ function placeRiders(m, groupId, riderIds) {
   if (!groupId) return;
   if (!m.groups.has(groupId)) m.groups.set(groupId, new Set());
   for (const id of riderIds) {
+    // En udgået rytter kører aldrig igen, heller ikke hvis en senere hændelse
+    // (fx en sammenlægning) stadig nævner ham.
+    if (m.abandoned.has(id)) continue;
     removeRider(m, id);
     m.pendingSolo = m.pendingSolo.filter((p) => p !== id);
     m.groups.get(groupId).add(id);
@@ -167,6 +181,14 @@ function mergeGroups(m, fromId, intoId, namedIds) {
   if (m.inferred.has(fromId)) m.inferred.add(intoId);
 }
 
+function abandonRider(m, id) {
+  removeRider(m, id);
+  // Et uheldsoffer der senere udgår, venter ikke længere på sin solo-gruppe
+  // (ellers tælles han dobbelt uden for resten og kan knyttes til en gruppe).
+  m.pendingSolo = m.pendingSolo.filter((p) => p !== id);
+  m.abandoned.add(id);
+}
+
 function applyMembership(m, event) {
   const p = event.params ?? {};
   const named = ids(p.rider_ids);
@@ -177,21 +199,24 @@ function applyMembership(m, event) {
     case "breakaway_dropped":
       if (groupId && named.length) placeRiders(m, groupId, named);
       break;
-    case "finale_attack":
-      if (groupId && named.length && !BOOKKEEPING_ATTACK_KINDS.has(p.kind)) placeRiders(m, groupId, named);
+    case "finale_attack": {
+      // lateAttack.ts navngiver angriberen i `rider_id` (ental).
+      const attackers = namedRiders(p);
+      if (groupId && attackers.length && !BOOKKEEPING_ATTACK_KINDS.has(p.kind)) placeRiders(m, groupId, attackers);
       break;
+    }
     case "group_merged":
       mergeGroups(m, groupId, str(p.into_group_id), named);
       break;
     case "incident": {
       const rider = str(p.rider_id);
-      if (!rider) break;
-      if (p.outcome === "abandoned") { removeRider(m, rider); m.abandoned.add(rider); }
+      if (!rider || m.abandoned.has(rider)) break;
+      if (p.outcome === "abandoned") abandonRider(m, rider);
       else if (p.outcome === "time_loss") { removeRider(m, rider); m.pendingSolo.push(rider); }
       break;
     }
     case "outside_time_limit":
-      for (const id of named) { removeRider(m, id); m.abandoned.add(id); }
+      for (const id of named) abandonRider(m, id);
       break;
     default:
       break;
@@ -297,6 +322,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     moments: [],
     snapshots: [],
     checkpoints: [],
+    group_spans: [],
     breakaway: null,
   };
 
@@ -319,7 +345,9 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   const observations = []; // { km, group_id, gap } (alle gruppe-målinger)
   const snapshotsByKm = new Map();
 
-  const takeSnapshot = (km) => {
+  // record=false: tilstanden ved en passage uden gap_update på samme km (til
+  // kontrolpunktet), ikke et snapshot i replay-rækken.
+  const takeSnapshot = (km, { record = true } = {}) => {
     const leaderTime = leaderTimeAt(story, km);
     const reportedHere = new Map(observations.filter((o) => Math.abs(o.km - km) < 1e-6).map((o) => [o.group_id, o.gap]));
     const groups = [];
@@ -354,10 +382,54 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       delete g.source;
     }
     groups.sort((a, b) => a.gap_s - b.gap_s || (b.size ?? 0) - (a.size ?? 0) || a.group_id.localeCompare(b.group_id));
-    const snapshot = { km: round2(km), leader_time_s: leaderTime, groups };
-    snapshotsByKm.set(round2(km), snapshot);
+    // Udgåede ryttere (uheld eller uden for tidsgrænsen) indtil dette km: de
+    // har hverken mellemtid eller måltid herfra.
+    const snapshot = { km: round2(km), leader_time_s: leaderTime, groups, out_rider_ids: [...m.abandoned].sort() };
+    if (record) snapshotsByKm.set(round2(km), snapshot);
     return snapshot;
   };
+
+  // Gruppernes levetid på vejen (replay): fra split/dannelse til sammenlægning,
+  // på hændelsens sande km.
+  const openSpans = new Map([[REST_GROUP_ID, { group_id: REST_GROUP_ID, from_km: 0, to_km: null, source_group_id: null, into_group_id: null }]]);
+  const spans = [];
+  const openSpan = (groupId, fromKm, sourceId) => {
+    if (!groupId || openSpans.has(groupId)) return;
+    openSpans.set(groupId, { group_id: groupId, from_km: round2(fromKm), to_km: null, source_group_id: sourceId ?? null, into_group_id: null });
+  };
+  const trackSpans = (event) => {
+    const p = event.params ?? {};
+    const groupId = str(p.group_id);
+    switch (event.type) {
+      case "breakaway_formed":
+        if (ids(p.rider_ids).length) openSpan(groupId, placeKm(event), m.restId);
+        break;
+      case "peloton_splits":
+      case "breakaway_dropped":
+        if (ids(p.rider_ids).length) openSpan(groupId, placeKm(event), str(p.source_group_id) ?? str(p.from_group_id));
+        break;
+      case "finale_attack":
+        if (namedRiders(p).length && !BOOKKEEPING_ATTACK_KINDS.has(p.kind)) openSpan(groupId, placeKm(event), str(p.source_group_id));
+        break;
+      case "gap_update":
+        openSpan(groupId, placeKm(event), null);
+        break;
+      case "group_merged": {
+        const into = str(p.into_group_id);
+        const span = openSpans.get(groupId);
+        if (!span || !into || into === groupId) break;
+        openSpan(into, placeKm(event), null);
+        span.to_km = round2(placeKm(event));
+        span.into_group_id = into;
+        openSpans.delete(groupId);
+        spans.push(span);
+        break;
+      }
+      default:
+        break;
+    }
+  };
+  const passageStates = new Map(); // km -> tilstand ved en passage uden snapshot
 
   const momentFor = (event, extra = {}) => {
     const p = event.params ?? {};
@@ -406,6 +478,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
         const moment = describeMoment(event, momentFor, m);
         if (moment) moments.push(moment);
       }
+      trackSpans(event);
       applyMembership(m, event);
       if (event.params && str(p.group_id) && finite(p.exact_time) != null && event.type !== "incident") {
         const leader = leaderTimeAt(story, placeKm(event));
@@ -424,7 +497,15 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       }
     }
     const hasCheckpoint = atKm.some((e) => e.type === "gap_update" || e.type === "finish" || e.type === "stage_start");
-    if (!hasCheckpoint || timeTrial) continue;
+    if (timeTrial) continue;
+    if (!hasCheckpoint) {
+      // Motoren melder ikke et uændret hul, så en top/spurt kan mangle en
+      // gap_update. Kontrolpunktet får tilstanden PÅ passagen: grupperne som
+      // de er efter loggen til og med dette km, hullerne båret fra sidste
+      // melding. Aldrig et senere snapshot (det er fremtid).
+      if (atKm.some((e) => PASSAGES.has(e.type))) passageStates.set(round2(km), takeSnapshot(km, { record: false }));
+      continue;
+    }
     const previous = new Map(lastGap);
     const snapshot = takeSnapshot(km);
     for (const g of snapshot.groups) lastGap.set(g.group_id, { km, gap: g.gap_s });
@@ -477,7 +558,9 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     .map((moment, i) => ({ moment, i }))
     .sort((a, b) => a.moment.km - b.moment.km || Number(Boolean(a.moment.km_span)) - Number(Boolean(b.moment.km_span)) || a.i - b.i)
     .map(({ moment }) => moment);
-  story.checkpoints = buildCheckpoints(ordered, story);
+  story.group_spans = timeTrial ? [] : [...spans, ...openSpans.values()]
+    .sort((a, b) => a.from_km - b.from_km || a.group_id.localeCompare(b.group_id));
+  story.checkpoints = buildCheckpoints(ordered, story, passageStates);
   story.breakaway = breakawaySummary(history, results);
   return story;
 }
@@ -510,8 +593,9 @@ function describeMoment(event, momentFor, m) {
     case "incident":
       return momentFor(event, { importance: p.outcome === "protected_three_km_rule" ? "detail" : "key" });
     case "finale_attack":
-      if (BOOKKEEPING_ATTACK_KINDS.has(p.kind) || ids(p.rider_ids).length === 0) return null;
-      return momentFor(event, { importance: "key" });
+      if (BOOKKEEPING_ATTACK_KINDS.has(p.kind) || namedRiders(p).length === 0) return null;
+      // Siden læser altid `data.rider_ids` (også når motoren skrev ental).
+      return momentFor(event, { importance: "key", data: { ...cleanParams(p), rider_ids: namedRiders(p) } });
     case "peloton_splits": {
       // Et split fra gruppen der kører forrest/resten er en selektion; et split
       // inde i en gruppetto er en detalje.
@@ -529,13 +613,17 @@ function describeMoment(event, momentFor, m) {
   }
 }
 
-function buildCheckpoints(ordered, story) {
+function buildCheckpoints(ordered, story, passageStates) {
   const points = ordered.filter((e) => PASSAGES.has(e.type) || e.type === "finish");
   return points.map((event) => {
     const km = placeKm(event);
     const recorded = recordedKm(event);
+    // Tilstanden PÅ passagen: et snapshot på samme km, ellers tilstanden der
+    // blev taget ved passagen, ellers det seneste snapshot før (båret). Aldrig
+    // et senere snapshot: det ville give passagen fremtidens huller.
     const snapshot = story.snapshots.find((s) => Math.abs(s.km - recorded) < 1e-6)
-      ?? story.snapshots.find((s) => s.km >= recorded) ?? null;
+      ?? passageStates.get(round2(recorded))
+      ?? [...story.snapshots].reverse().find((s) => s.km <= recorded) ?? null;
     const leaderTime = leaderTimeAt(story, km);
     const front = snapshot?.groups.find((g) => g.gap_s === 0) ?? snapshot?.groups[0] ?? null;
     return {
@@ -549,9 +637,32 @@ function buildCheckpoints(ordered, story) {
       leader_rider_ids: front?.rider_ids ?? [],
       groups: (snapshot?.groups ?? []).map((g) => ({ ...g, time_s: leaderTime == null ? null : round2(leaderTime + g.gap_s) })),
       groups_from_km: snapshot?.km ?? null,
-      interpolated: !snapshot || Math.abs(snapshot.km - recorded) >= 1e-6,
+      // true = ingen gap_update på passagens km: hullerne er båret fra sidste melding.
+      interpolated: !story.snapshots.some((s) => Math.abs(s.km - recorded) < 1e-6),
+      out_rider_ids: snapshot?.out_rider_ids ?? [],
     };
   });
+}
+
+/**
+ * Etapens målresultat og startliste til buildRaceStory ud fra race_results-
+ * rækker, med samme valg som etapesidens mærker (RaceDetailPage +
+ * raceParticipationMarkers.historyForStage): etapens `stage`-rækker, og for et
+ * endagsløb (etape 1) uden etape-rækker dets `gc`-rækker. Så afgør serverens
+ * `story.breakaway` udbrydernes udfald med samme svar som mærkerne.
+ * @param {Array<{rider_id?: string|null, rank?: number|null, result_type?: string|null, stage_number?: number|null}>|null} rows
+ * @param {number} stageNumber
+ */
+export function storyInputsFromResults(rows, stageNumber) {
+  const list = Array.isArray(rows) ? rows.filter(Boolean) : [];
+  const onStage = (row) => row.stage_number === stageNumber || (stageNumber === 1 && row.stage_number == null);
+  const stageRows = list.filter((row) => row.result_type === "stage" && onStage(row));
+  const dayRows = stageRows.length ? stageRows : stageNumber === 1 ? list.filter((row) => row.result_type === "gc") : [];
+  const results = dayRows
+    .filter((row) => typeof row.rider_id === "string" && typeof row.rank === "number")
+    .map((row) => ({ rider_id: row.rider_id, rank: row.rank }));
+  const startlist = [...new Set(dayRows.map((row) => row.rider_id).filter((id) => typeof id === "string" && id.length > 0))];
+  return { results, startlist };
 }
 
 function breakawaySummary(history, results) {
@@ -571,31 +682,64 @@ function breakawaySummary(history, results) {
  */
 export function checkpointGapForRider(checkpoint, riderId) {
   if (!checkpoint || !riderId) return null;
+  // En udgået rytter er aldrig i resten og har hverken mellemtid eller måltid.
+  if (Array.isArray(checkpoint.out_rider_ids) && checkpoint.out_rider_ids.includes(riderId)) return null;
   const explicit = checkpoint.groups.find((g) => g.rider_ids.includes(riderId));
   const group = explicit ?? checkpoint.groups.find((g) => g.includes_rest) ?? null;
   if (!group) return null;
   return { group_id: group.group_id, gap_s: group.gap_s, time_s: group.time_s, in_front: group.gap_s === 0, via_rest: !explicit };
 }
 
-function gapAt(story, groupId, km) {
-  const snaps = story.snapshots;
-  let prev = null;
-  for (const s of snaps) {
-    const g = s.groups.find((x) => x.group_id === groupId);
-    if (s.km <= km) { if (g) prev = { km: s.km, gap: g.gap_s }; else prev = null; continue; }
-    if (!g) return prev && Math.abs(prev.km - km) < 1e-6 ? prev.gap : null;
-    if (!prev) return null;
-    return round2(prev.gap + ((g.gap_s - prev.gap) * (km - prev.km)) / (s.km - prev.km));
+function lerp(fromKm, fromGap, toKm, toGap, km) {
+  if (Math.abs(toKm - fromKm) < 1e-9) return round2(toGap);
+  return round2(fromGap + ((toGap - fromGap) * (km - fromKm)) / (toKm - fromKm));
+}
+
+/**
+ * Gruppernes hul ved et km mellem to snapshots (a <= km < b). Frame-medlemskab
+ * bygges fra tilstanden FØR km (snapshot a) og den registrerede levetid
+ * (`group_spans`), aldrig ved at projicere næste snapshot baglæns:
+ *   - en gruppe i både a og b interpoleres lineært;
+ *   - en gruppe der forsvinder før b, er på vejen til sit faktiske merge-punkt
+ *     og lukker linjært ind på den gruppe den smelter ind i;
+ *   - en gruppe der opstår før b, er på vejen fra sit faktiske split-punkt og
+ *     starter i den gruppe den kom fra.
+ * En gruppe uden registreret merge/split vises kun hvor loggen kender den.
+ */
+function groupsBetween(story, a, b, km) {
+  const spans = Array.isArray(story.group_spans) ? story.group_spans : [];
+  const inA = new Map(a.groups.map((g) => [g.group_id, g]));
+  const inB = new Map(b.groups.map((g) => [g.group_id, g]));
+  // Linjens hul i intervallet for en gruppe der står i a og/eller b.
+  const lineGap = (id, x) => {
+    const ga = inA.get(id); const gb = inB.get(id);
+    if (ga && gb) return lerp(a.km, ga.gap_s, b.km, gb.gap_s, x);
+    return (ga ?? gb)?.gap_s ?? null;
+  };
+  const out = [];
+  for (const [id, g] of inA) {
+    if (inB.has(id)) { out.push({ meta: g, gap: lineGap(id, km) }); continue; }
+    const end = spans.find((s) => s.group_id === id && s.to_km != null && s.to_km > a.km + 1e-9 && s.to_km <= b.km + 1e-9);
+    if (!end || km > end.to_km + 1e-9) continue;
+    const target = lineGap(end.into_group_id, end.to_km) ?? g.gap_s;
+    out.push({ meta: g, gap: lerp(a.km, g.gap_s, end.to_km, target, km) });
   }
-  return prev && Math.abs(prev.km - km) < 1e-6 ? prev.gap : null;
+  for (const [id, g] of inB) {
+    if (inA.has(id)) continue;
+    const start = spans.find((s) => s.group_id === id && s.from_km > a.km + 1e-9 && s.from_km <= b.km + 1e-9);
+    if (!start || km < start.from_km - 1e-9) continue;
+    const origin = (start.source_group_id ? lineGap(start.source_group_id, start.from_km) : null) ?? g.gap_s;
+    out.push({ meta: g, gap: lerp(start.from_km, origin, b.km, g.gap_s, km) });
+  }
+  return out;
 }
 
 /**
  * Replay-frames: gruppernes hul (og afstand i km) til føreren ved hvert
  * tjekpunkt og pr. km over de sidste `finaleKm` km. Mellem to tjekpunkter
- * interpoleres lineært (motorens konstante tempo pr. interval). En gruppe der
- * først opstår inde i et interval vises fra det tjekpunkt hvor loggen kender
- * den. Afstanden i km bruger førerens fart på stedet.
+ * interpoleres lineært (motorens konstante tempo pr. interval), og en gruppe
+ * er på vejen fra sit split-punkt til sit merge-punkt (groupsBetween).
+ * Afstanden i km bruger førerens fart på stedet.
  */
 export function replayFrames(story, { finaleKm = REPLAY_FINALE_KM, stepKm = 1 } = {}) {
   if (!story?.snapshots?.length || story.distance_km == null) return [];
@@ -604,17 +748,19 @@ export function replayFrames(story, { finaleKm = REPLAY_FINALE_KM, stepKm = 1 } 
   for (let km = Math.max(0, end - finaleKm); km < end - 1e-9; km += stepKm) kms.add(round2(km));
   kms.add(round2(end));
   const ordered = [...kms].filter((km) => km >= 0 && km <= end + 1e-9).sort((a, b) => a - b);
+  const snaps = story.snapshots;
   return ordered.map((km) => {
     const leader = leaderTimeAt(story, km);
     const speed = leaderSpeedAt(story, km);
-    const next = story.snapshots.find((s) => s.km >= km - 1e-9);
-    const ids = next ? next.groups.map((g) => g.group_id) : [];
-    const groups = ids.map((id) => {
-      const gap = gapAt(story, id, km);
-      if (gap == null) return null;
-      const meta = next.groups.find((g) => g.group_id === id);
-      return { group_id: id, size: meta.size, includes_rest: meta.includes_rest, gap_s: gap, km_behind: speed == null ? null : round2(gap * speed) };
-    }).filter(Boolean).sort((a, b) => a.gap_s - b.gap_s);
+    let a = null; let b = null;
+    for (const s of snaps) { if (s.km <= km + 1e-9) a = s; else { b = s; break; } }
+    let rows;
+    if (!a) rows = [];
+    else if (Math.abs(a.km - km) < 1e-6 || !b) rows = Math.abs(a.km - km) < 1e-6 ? a.groups.map((g) => ({ meta: g, gap: g.gap_s })) : [];
+    else rows = groupsBetween(story, a, b, km);
+    const groups = rows
+      .map(({ meta, gap }) => ({ group_id: meta.group_id, size: meta.size, includes_rest: meta.includes_rest, gap_s: Math.max(0, gap), km_behind: speed == null ? null : round2(Math.max(0, gap) * speed) }))
+      .sort((x, y) => x.gap_s - y.gap_s || x.group_id.localeCompare(y.group_id));
     return { km, leader_time_s: leader, groups };
   });
 }

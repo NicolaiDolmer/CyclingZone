@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { frozenStageOutput, physicsOf } from "./engine/v4/testUtils/oldRevisionDigests6199.ts";
 import {
-  buildRaceStory, checkpointGapForRider, leaderTimeAt, replayFrames,
+  buildRaceStory, checkpointGapForRider, leaderTimeAt, replayFrames, storyInputsFromResults,
   GAP_CHANGE_EXPLAIN_SECONDS, REPLAY_FINALE_KM,
 } from "./raceStory.js";
 
@@ -267,4 +267,132 @@ test("uheldsoffer: rytteren knyttes til sin solo-gruppe (udledt) og får sit ege
   assert.equal(solo.members_inferred, true);
   assert.equal(checkpointGapForRider(snap, "d").gap_s, 150);
   assert.equal(snap.groups.find((g) => g.includes_rest).size, 7);
+});
+
+// ── 3. Review-runden på PR #6632 (én regressionstest pr. punkt) ─────────────
+
+const round = (n) => Math.round(n * 100) / 100;
+
+test("review (1): et rigtigt sent angreb (rider_id i ental, lateAttack.ts) er et øjeblik og flytter angriberen", () => {
+  const events = oneDayTimeline();
+  // Samme params-form som lateAttack.ts skriver: rider_id (ental), ny solo-gruppe.
+  events.splice(events.length - 2, 0, ev(95, "finale_attack", {
+    kind: "late_attack", rider_id: "c", group_id: "solo-95900", source_group_id: "peloton-0", gained_seconds: 8, exact_km: 95,
+  }));
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  const attack = story.moments.find((m) => m.type === "finale_attack");
+  assert.ok(attack, "angrebet er en linje i historien");
+  assert.equal(attack.importance, "key");
+  assert.deepEqual(attack.data.rider_ids, ["c"]);
+  const finish = story.checkpoints.find((c) => c.kind === "finish");
+  const gap = checkpointGapForRider(finish, "c");
+  assert.equal(gap.group_id, "solo-95900", "angriberen kører i sin egen gruppe, ikke i den gamle");
+  assert.equal(gap.via_rest, false);
+  // Bogførings-angreb er stadig ingen linje.
+  const kept = buildRaceStory({ events: [...oneDayTimeline().slice(0, -1), ev(100, "finale_attack", { kind: "stage_decided", rider_id: "c" }), oneDayTimeline().at(-1)], timelineVersion: 2 });
+  assert.ok(!kept.moments.some((m) => m.type === "finale_attack"));
+});
+
+test("review (2): et kontrolpunkt uden gap_update får tilstanden PÅ passagen, aldrig et senere snapshot", () => {
+  const events = oneDayTimeline();
+  // Top på km 50 uden melding (uændret hul meldes ikke); et split først på km 55.
+  const at = events.findIndex((e) => e.type === "kom_passage");
+  events.splice(at, 0,
+    ev(50, "kom_passage", { name: "Mellem", category: "3", exact_km: 50, top: [{ rider_id: "a", points: 2 }] }),
+    ev(55, "peloton_splits", { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["c"], exact_km: 55 }));
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  const mid = story.checkpoints.find((c) => c.name === "Mellem");
+  // Seneste melding før toppen (km 40) er 200 s; km 60's 100 s er fremtid.
+  assert.equal(mid.groups.find((g) => g.group_id === "peloton-0").gap_s, 200);
+  assert.equal(mid.groups.find((g) => g.group_id === "peloton-0").gap_source, "carried");
+  assert.equal(mid.groups_from_km, 50);
+  assert.equal(mid.interpolated, true);
+  // Splittet efter toppen er ikke sket endnu: c kører stadig i resten.
+  assert.ok(!mid.groups.some((g) => g.group_id === "chase-1"));
+  assert.deepEqual(checkpointGapForRider(mid, "c"), { group_id: "peloton-0", gap_s: 200, time_s: round(mid.leader_time_s + 200), in_front: false, via_rest: true });
+  // Passagen er ikke et replay-snapshot.
+  assert.ok(!story.snapshots.some((s) => s.km === 50));
+});
+
+test("review (3): en udgået rytter er aldrig i resten og får hverken mellemtid eller måltid", () => {
+  const events = oneDayTimeline();
+  // d styrter (tidstab) og udgår, før loggen navngiver hans solo-gruppe.
+  events.splice(3, 0,
+    ev(12, "incident", { rider_id: "d", kind: "crash", outcome: "time_loss", time_loss_seconds: 90, exact_km: 12 }),
+    ev(15, "incident", { rider_id: "d", kind: "crash", outcome: "abandoned", exact_km: 15 }),
+    ev(30, "incident", { rider_id: "e", kind: "crash", outcome: "abandoned", exact_km: 30 }));
+  events.splice(6, 0, ev(20, "gap_update", { group_id: "solo-m10-0-0", gap_seconds: 150, exact_km: 20, exact_time: 1750 }));
+  // f kommer i mål uden for tidsgrænsen (motoren stempler det på mål-km).
+  events.push(ev(100, "outside_time_limit", { rider_ids: ["f"], rider_count: 1 }));
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  const snap20 = story.snapshots.find((s) => s.km === 20);
+  // d er ikke knyttet til solo-gruppen og tælles ikke dobbelt uden for resten.
+  assert.deepEqual(snap20.groups.find((g) => g.group_id === "solo-m10-0-0")?.rider_ids ?? [], []);
+  assert.equal(checkpointGapForRider(snap20, "d"), null);
+  assert.equal(snap20.groups.find((g) => g.includes_rest).size, 7, "10 - udbruddet (2) - d (udgået)");
+  const finish = story.checkpoints.find((c) => c.kind === "finish");
+  for (const id of ["d", "e", "f"]) assert.equal(checkpointGapForRider(finish, id), null, `${id} har ingen måltid`);
+  assert.deepEqual(finish.out_rider_ids, ["d", "e", "f"]);
+  // e udgik på km 30, før toppen på km 60: ingen mellemtid dér heller.
+  const climb = story.checkpoints.find((c) => c.kind === "climb");
+  assert.equal(checkpointGapForRider(climb, "e"), null);
+  // En rytter der ikke er udgået, har stadig sin tid via resten.
+  assert.equal(checkpointGapForRider(finish, "c").via_rest, true);
+});
+
+test("review (4): replay viser en gruppe indtil dens faktiske merge-punkt, ikke kun til forrige snapshot", () => {
+  const story = buildRaceStory({ events: oneDayTimeline(), timelineVersion: 2 });
+  const span = story.group_spans.find((s) => s.group_id === "breakaway-0");
+  assert.deepEqual(span, { group_id: "breakaway-0", from_km: 10, to_km: 88.5, source_group_id: "peloton-0", into_group_id: "peloton-0" });
+  // Udbruddet hentes på km 88,5; næste snapshot er målet (km 100).
+  const frames = replayFrames(story, { finaleKm: 20 });
+  for (const f of frames.filter((x) => x.km > 80 && x.km < 100)) {
+    const breakaway = f.groups.find((g) => g.group_id === "breakaway-0");
+    const peloton = f.groups.find((g) => g.group_id === "peloton-0");
+    assert.ok(peloton, `km ${f.km}: feltet er på vejen`);
+    if (f.km <= 88.5) {
+      assert.ok(breakaway, `km ${f.km}: udbruddet er stadig på vejen`);
+      assert.ok(breakaway.gap_s <= peloton.gap_s, `km ${f.km}: udbruddet er foran feltet`);
+    } else {
+      assert.equal(breakaway, undefined, `km ${f.km}: udbruddet er hentet`);
+    }
+  }
+  // En gruppe der splitter sig ud inde i et interval, er på vejen fra split-punktet.
+  const events = oneDayTimeline();
+  events.splice(events.length - 2, 0,
+    ev(92, "peloton_splits", { group_id: "chase-1", source_group_id: "peloton-0", rider_ids: ["c"], exact_km: 92 }),
+    ev(100, "gap_update", { group_id: "chase-1", gap_seconds: 20, exact_km: 100, exact_time: 8220 }));
+  const split = replayFrames(buildRaceStory({ events, timelineVersion: 2 }), { finaleKm: 20 });
+  assert.ok(!split.find((f) => f.km === 91).groups.some((g) => g.group_id === "chase-1"));
+  assert.ok(split.find((f) => f.km === 93).groups.some((g) => g.group_id === "chase-1"));
+});
+
+test("review (5): serverens historie får målresultatet, så udbrydernes udfald er mærkernes", () => {
+  // b falder af udbruddet (motorens egen drop), men kører alene hjem foran feltet.
+  const base = oneDayTimeline().filter((e) => e.type !== "breakaway_caught" && e.type !== "group_merged");
+  const events = [
+    ...base.slice(0, 3),
+    ev(30, "breakaway_dropped", { group_id: "chase-1", from_group_id: "breakaway-0", rider_ids: ["b"], exact_km: 30 }),
+    ...base.slice(3, -2),
+    ev(100, "breakaway_survived", { group_id: "breakaway-0", rider_ids: ["a"], exact_km: 100, exact_time: 8200 }),
+    ...base.slice(-2),
+  ];
+  // Rækker som race_results: etapens stage-rækker, gc, og en anden etape.
+  const rows = [
+    { result_type: "stage", stage_number: 1, rider_id: "a", rank: 1 },
+    { result_type: "stage", stage_number: 1, rider_id: "b", rank: 2 },
+    { result_type: "stage", stage_number: 1, rider_id: "c", rank: 3 },
+    { result_type: "stage", stage_number: 2, rider_id: "c", rank: 1 },
+    { result_type: "gc", stage_number: null, rider_id: "c", rank: 1 },
+  ];
+  const inputs = storyInputsFromResults(rows, 1);
+  assert.deepEqual(inputs.results, [{ rider_id: "a", rank: 1 }, { rider_id: "b", rank: 2 }, { rider_id: "c", rank: 3 }]);
+  assert.deepEqual(inputs.startlist, ["a", "b", "c"]);
+  const withResults = buildRaceStory({ events, timelineVersion: 2, ...inputs });
+  assert.deepEqual(withResults.breakaway.outcomes, { a: "survived", b: "survived" }, "samme svar som mærkerne");
+  const without = buildRaceStory({ events, timelineVersion: 2 });
+  assert.equal(without.breakaway.outcomes.b, "dropped", "uden målresultatet er b's udfald uafgjort som et drop");
+  // Endagsløb uden etape-rækker: gc-rækkerne er målresultatet.
+  assert.deepEqual(storyInputsFromResults([{ result_type: "gc", stage_number: null, rider_id: "x", rank: 1 }], 1).results, [{ rider_id: "x", rank: 1 }]);
+  assert.deepEqual(storyInputsFromResults(rows, 3), { results: [], startlist: [] });
 });
