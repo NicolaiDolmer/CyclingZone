@@ -199,6 +199,8 @@ export async function runNormalizedTrainingDateSweep({
       }
       if (!days?.length) return;
       let tracked = workByTeam.has(team.id);
+      // #6609: failure identity carries the race day being settled (or the date race days when it fails before the loop).
+      let failingGameDay = null;
       try {
         const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now });
         tracked = true;
@@ -224,6 +226,7 @@ export async function runNormalizedTrainingDateSweep({
         if (!readiness.eligibleRiderIds.length) return;
         if (team.league_division_id) divisions.add(team.league_division_id);
         for (const gameDay of work.game_days) {
+          failingGameDay = gameDay;
           allDays.add(gameDay); summary.planned++;
           const result = await runDay({
             supabase, teamId: team.id, seasonId: job.season.id, seasonNumber: job.season.number,
@@ -236,7 +239,7 @@ export async function runNormalizedTrainingDateSweep({
         }
       } catch (error) {
         // best-effort per team: retain durable work and continue unaffected teams.
-        summary.failed++; summary.failures.push({ teamId: team.id, tickDate: job.tickDate, message: error.message });
+        summary.failed++; summary.failures.push({ teamId: team.id, tickDate: job.tickDate, gameDay: failingGameDay ?? (days.length === 1 ? days[0] : days.join(",")), message: error.message });
         if (!tracked) untrackedFailure = true;
         logger.error?.('[training-date] team retained for retry', team.id, error.message);
       }

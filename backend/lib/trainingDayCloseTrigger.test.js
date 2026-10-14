@@ -1218,6 +1218,46 @@ describe("paritet: sekventiel og parallel datoafregning giver samme resultat (#5
   });
 });
 
+describe("normaliseret datoafregning: failure-identitet har loebsdag (#6609)", () => {
+  const days = [10, 11];
+  const opening = { r1: { form: 50, fatigue: 20 } };
+  const sweepOptions = (failDays) => ({
+    supabase: {}, elapsedClock: () => 0, logger: { error() {} },
+    now: new Date("2026-10-11T18:05:00Z"),
+    loadIndex: async () => ({ today: "2026-10-11", activeSeasonId: "season",
+      jobs: [{ tickDate: "2026-10-11", season: { id: "season", number: 4 }, forceRetry: true }] }),
+    loadWorkRows: async () => [{ team_id: "t1", game_days: days, expected_rider_ids: ["r1"], status: "pending",
+      opening_conditions: opening, quarantined_rider_ids: [] }],
+    loadContext: async () => ({ teams: [{ id: "t1", league_division_id: "div" }], riders: [{ id: "r1", team_id: "t1" }],
+      races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
+      gameDaysByDivision: new Map([["div", days]]) }),
+    quarantineRiders: async () => {},
+    refreshRankings: async () => {},
+    dispatchAlarms: async () => ({ dates: 0, failed: 0 }),
+    runDay: async ({ gameDay }) => { if (failDays.has(gameDay)) throw new Error("boom"); return { alreadyRan: false }; },
+  });
+
+  it("failures carry the race day, so the string and the identity are per (team, race day)", async () => {
+    __resetNormalizedTrainingDateCacheForTests();
+    const first = await runNormalizedTrainingDateSweep(sweepOptions(new Set([10])));
+    assert.deepEqual(first.failures.map((f) => f.gameDay), [10]);
+    assert.deepEqual(formatTrainingDayCloseFailures(first), ["2026-10-11|t1|10|boom"]);
+
+    // Same team, a different race day: not a repeat, stays a warning.
+    __resetNormalizedTrainingDateCacheForTests();
+    const tracker = createTrainingDayCloseFailureTracker();
+    assert.equal(tracker.track(first).level, "warning");
+    const other = await runNormalizedTrainingDateSweep(sweepOptions(new Set([11])));
+    assert.deepEqual(formatTrainingDayCloseFailures(other), ["2026-10-11|t1|11|boom"]);
+    assert.equal(tracker.track(other).level, "warning");
+
+    // Same team and race day again: escalates to error.
+    __resetNormalizedTrainingDateCacheForTests();
+    const again = await runNormalizedTrainingDateSweep(sweepOptions(new Set([11])));
+    assert.equal(tracker.track(again).level, "error");
+  });
+});
+
 describe("startTrainingDayCloseAfterStages (#5911: start straks efter dagens sidste etape)", () => {
   beforeEach(() => __resetTrainingDayCloseStateForTests());
   const evening = () => new Date("2026-10-11T18:20:00Z"); // 20:20 CEST
