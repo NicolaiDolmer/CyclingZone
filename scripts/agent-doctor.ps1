@@ -602,7 +602,9 @@ if (-not (Test-Path $memoryDir)) {
 # memory i OneDrive maa ikke ligge cloud-only (Files On-Demand) - ellers er memory
 # langsom eller mangler offline. Fix: scripts/link-onedrive-context.ps1 pinner mapperne.
 $gitBash = Resolve-GitBash
-if ($gitBash) {
+if (-not $IsWindows) {
+  Add-Check "git-bash" "OK" "non-Windows - check not applicable"
+} elseif ($gitBash) {
   Add-Check "git-bash" "OK" $gitBash
 } else {
   Add-Check "git-bash" "WARN" "Git Bash not found (PATH or Program Files\Git\bin) - cross-pc-sync.sh cannot run; install Git or run scripts/bootstrap-pc.ps1"

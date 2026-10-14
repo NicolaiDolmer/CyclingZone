@@ -11,6 +11,9 @@ function Resolve-GitBash {
   # Raekkefoelge: bash paa PATH (WSL-launcheren i System32 springes over, den
   # kan ikke koere Windows-stier), Program Files\Git, og sidst en sti afledt
   # af `git --exec-path` (<git>\mingw64\libexec\git-core -> <git>\bin\bash.exe).
+  # Kun Windows: paa Linux-CI (agent-doctor i quality-inbox/lockfile-drift) er
+  # $env:SystemRoot/$env:LOCALAPPDATA tomme, og Join-Path ville kaste under Stop.
+  if (-not $IsWindows) { return $null }
   $sys32 = Join-Path $env:SystemRoot 'System32'
   foreach ($cmd in @(Get-Command bash -CommandType Application -All -ErrorAction SilentlyContinue)) {
     if ($cmd.Source -and -not $cmd.Source.StartsWith($sys32, [StringComparison]::OrdinalIgnoreCase)) {
