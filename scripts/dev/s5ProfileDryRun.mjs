@@ -72,6 +72,12 @@ if (lastDayArg != null) {
     console.error("--last-day skal vaere YYYY-MM-DD.");
     process.exit(2);
   }
+  // En umulig dato (fx 2026-11-31) normaliseres af Date.parse til en anden dag; afvis den.
+  const lastMs = Date.parse(`${lastDayArg}T00:00:00Z`);
+  if (!Number.isFinite(lastMs) || new Date(lastMs).toISOString().slice(0, 10) !== lastDayArg) {
+    console.error(`--last-day ${lastDayArg} er ikke en gyldig dato.`);
+    process.exit(2);
+  }
   REAL_DAYS = Math.round((Date.parse(`${lastDayArg}T00:00:00Z`) - Date.parse(`${firstDay}T00:00:00Z`)) / 86_400_000) + 1;
 } else if (raceDaysArg != null) {
   REAL_DAYS = Number(raceDaysArg);

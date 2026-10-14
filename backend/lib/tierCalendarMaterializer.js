@@ -869,11 +869,6 @@ export async function materializeTierCalendars({
   assertCalendarSquad(squad);
   const isSenior = squad === "senior";
   const { seasonNumber: resolvedSeasonNumber, profileModel } = await resolveSeasonProfileModel({ supabase, seasonId, seasonNumber });
-  // #6367: realisme-gen-traekket skal maale de profiler der faktisk skrives. For v5 bruges
-  // drawTierAttempt's egen default (bit-identisk med foer); for S5 traekkes med S5-modellen.
-  const generateDrawProfiles = profileModel === "v5"
-    ? undefined
-    : (seedRace) => generateRaceStageProfiles(seedRace, { profileModel });
   const editionYear = editionYearFrom(seasonStartDate);
   const cutoverRetired = new Set(cutoverRetiredPoolIds ?? []);
   if (cutoverRetired.size && !isSenior) {
@@ -1015,7 +1010,13 @@ export async function materializeTierCalendars({
       // #5644: realisme-båndene er seniordivisionernes (#2755/#2769) — en trup bruger det
       // kanoniske træk (attempt 0) og måles ikke mod dem.
       if (isSenior) {
-        const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces, ...(generateDrawProfiles ? { generateProfiles: generateDrawProfiles } : {}) });
+        // #6367: for S5 skal gen-traekket maale PRAECIS de profiler der skrives: S5-modellen
+        // OG tierens tilt (samme argumenter som coverageProfilesFor og insert-stien). v5 bruger
+        // drawTierAttempt's egen default og er bit-identisk med foer.
+        const s5DrawArgs = profileModel === "v5" ? {} : {
+          generateProfiles: (seedRace) => generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier, profileModel }),
+        };
+        const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces, ...s5DrawArgs });
         seasonVariant = draw.attempt;
         tierPlan.realismDraw = { attempt: draw.attempt, exhausted: draw.exhausted, firstDrawFailures: draw.firstDrawFailures };
         if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kanonisk parcours-træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → deterministisk gen-træk ${draw.attempt} (#3347)`);
