@@ -125,7 +125,7 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 
 | Hvor | Hvad |
 |---|---|
-| Målet (data) | `SEASON_RACE_DAY_TARGET` i `backend/lib/calendarRaceDayTargets.js` — S4 = **140** |
+| Målet (data) | `SEASON_RACE_DAY_TARGET` i `backend/lib/calendarRaceDayTargets.js` — S4 = **140**, S5 = **160** |
 | Mekanik i pakkeren | `padAxisWithTrainingDays` i `raceCalendarLanePacker.js` — efterbehandling, ikke en binding (se §1e) |
 | Gate | `detectRaceDayEqualityViolations` — **hårdt krav uden override**, stopper `--apply` (som §1b) |
 | CLI | `node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-day-target 140` (udelades flaget, bruges sæsonens eget mål; `--race-day-target 0` slår reglen fra) |
@@ -135,6 +135,8 @@ Alle fire divisioner har løb på alle 31 kalenderdage, så §2's ejer-regel om 
 **Og målet kan ikke sættes under `løbsdatoer × den tætteste dags naturlige antal løbsdage`** (#5267, 20/9). Træningsdagene fordeles jævnt, så hver kalenderdato har kvoten `mål / løbsdatoer`, og padding kan kun TILFØJE løbsdage. Har en dato allerede flere end sin kvote, kan den ikke fyldes ned — så bliver aksen længere end målet, og det rapporteres (`raceDayPerDateDeviations`, `raceDayPaddingHeld: false`) og fælder §1d's gate i stedet for at blive rundet væk. For S4 er 140 = 28 × 5, og 5 er D1's density, altså loftet for hvor mange løbsdage én dato kan bære.
 
 **Træningsdagene fordeles jævnt: 5 løbsdage på HVER kalenderdato (ejer-valg 20/9).** Prisen er at en tom løbsdag også må ligge inde i et etapeløbs forløb — se §1e-b nedenfor for begge sætningers nye ordlyd.
+
+**S5 = 160 ([#6367](https://github.com/NicolaiDolmer/CyclingZone/issues/6367), 14/10).** Samme regel som S4's 140, regnet på S5's låste vindue: 32 løbsdatoer (onsdag 28/10 → lørdag 28/11, #5833) × 5 løbsdage pr. dato (§1e-b). Det er det eneste tal der ikke løsner en anden regel: D1's naturlige pakning har langt flere løbsdage end D2-D4, og padding kan kun tilføje (§1d), så et lavere mål lader D1 stå over målet og bryder §1d's lighed; et mål der ikke er et multiplum af løbsdatoerne fordeles ikke jævnt og bryder §1e's træningsrytme. Målt i den offline tørkørsel: 160 i alle fire divisioner, §1e grøn. Uden et S5-tal arvede træningens budget-deler S4's 140, mens aksen var pakkerens naturlige længde pr. division.
 
 #### 1d-vægen er væk (#5267, 19/9) — men kun fordi målet holdt op med at være en søgebinding
 
@@ -924,7 +926,7 @@ Loftet er **bevidst optimistisk**: det ser bort fra den grådige prestige-række
 
 > **Målt 19/9 mod det committede katalog: intet mål ligger over sit loft, og ingen gruppe af divisioner er bestridt.** Den bindende grænse for S4's kalender er altså **ikke** at løbene mangler — den er at kvoten er fast, så mål der konkurrerer om den samme kvote ikke kan mættes samtidigt. Undersøgelsen i `docs/audits/2026-09-19-5405-bjergdage-bytte.md` nåede frem til det samme ad en helt anden vej (dens F1: det bjergrige løb Division 3 manglede, lå ubrugt i kataloget).
 >
-> Det ENE kendte fund er at **`rolling` ikke har nogen garanteret kilde i nogen division** — ingen arketype garanterer en rullende etape, så §5's rullende-gulv hviler udelukkende på filler-trækket. Det er ikke en hypotese: målt i S3 leverede D4 **nul** rullende etaper. Fundet er låst i `KNOWN_SUPPLY_DEVIATIONS` som en navngiven afvigelse med udløbsdato, så CI er grøn i dag og går rød hvis forsyningen forværres. Det lukkes af §6b's genkalibrering af filler-vægtene pr. division (S5-opgaven) eller af en arketype med en rullende garanti — ikke ved at sænke gulvet.
+> Det ENE kendte fund er at **`rolling` ikke har nogen garanteret kilde i nogen division** — ingen arketype garanterer en rullende etape, så §5's rullende-gulv hviler udelukkende på filler-trækket. Det er ikke en hypotese: målt i S3 leverede D4 **nul** rullende etaper. Fundet er låst i `KNOWN_SUPPLY_DEVIATIONS` som en navngiven afvigelse med udløbsdato, så CI er grøn i dag og går rød hvis forsyningen forværres. Det lukkes af §6b's genkalibrering af filler-vægtene pr. division (S5-opgaven) eller af en arketype med en rullende garanti — ikke ved at sænke gulvet. *Fra sæson 5 holder terræn-kvoten pr. division (§7c, #6367) rolling-båndet med én etapes margin; forsynings-afvigelsen står til den udløber.*
 
 ### Hvornår den skal køres (binding)
 
@@ -1035,6 +1037,8 @@ Fed = uden for ±2 pp. **6 brud.** Højbjerg er brudt i **tre** af fire division
 > ⚠ **Ejer-beslutning 3/9: S4 bygges UDEN `--uniform-tilt`.** Tilten er kalibreret proportionalt mod S3's live-måling, og kørt mod S4's faktiske løbsudvalg gør den planen **målt dårligere**: 5 §6b-brud i stedet for 4, og én ekstra blokerende gate. D1's højbjerg går 12,9 → 14,3 % (fra grøn til rød) og D3's ITT 13,1 → 15,5 %. Årsagen er dokumenteret i `tierUniformFillerTilt.js`s egen docstring: den er en **proportional førstetilnærmelse afledt af en ANDEN sæsons løbsudvalg**, ikke en søgning mod S4's.
 >
 > **Genkalibreringen pr. division er en S5-opgave.** Den er en søgning (samme metode som `scripts/calibrateCalendarComposition.js` bruger for K-B), ikke en regnestykke-rettelse, og den kan ikke nå at blive verificeret før 28/9. Det er også den opgave der skal løfte D4's `rolling`-gulv (§5) og lukke §6's resterende ±2 pp-afvigelser — de er alle sammen filler-vægte, og de kan ikke lukkes af kataloget.
+>
+> **Løst for S5-modellen med en kvote, ikke en vægt ([#6367](https://github.com/NicolaiDolmer/CyclingZone/issues/6367), 14/10).** En søgt filler-tilt pr. division blev prøvet først: den kunne ramme ét bestemt sæson-træk, men en divisions andel var stadig en stikprøve omkring vægtene, så de samme regler faldt på andre træk (målt offline over mange træk). Fra sæson 5 fordeles etapeløbenes filler-terræn derfor efter kvote pr. division — se §7c "Terræn-kvoten pr. division". `--uniform-tilt` gælder ikke S5-modellen.
 
 > ⚠ **Tallene ovenfor er MÅLT FØR generator-koblingen** (30/8, mod den kalender S3 allerede havde). **Ejer-beslutning 31/8 (#4103, "valg A"):** S3 røres ikke — den kørende kalender står som den er, med de 6 brud ovenfor uændret. I stedet er §6b's tre mål koblet ind i `ARCHETYPE_PROFILES`' filler-vægte som en OPT-IN pr.-tier-tilt (`backend/lib/tierUniformFillerTilt.js`, `materializeTierCalendars({ useUniformTierTilt: true })`), klar til S4-genereringen. Kalibreringen er en PROPORTIONAL førstetilnærmelse afledt af tabellen ovenfor (mål ÷ målt pr. tier), ikke en fuld pipeline-søgning mod S4's (endnu ikke valgte) løbsudvalg — den bør efterprøves mod S4's faktiske katalog, samme metode som `scripts/calibrateCalendarComposition.js` bruger for K-B.
 
@@ -1183,6 +1187,23 @@ Ugestrukturen (del 2): ingen højbjerg i første tredjedel · kongeetapen (en et
 **Gatens egen test:** den nuværende v5-generator er rød på (1) og (2), og S5-generatoren er grøn på (1)-(3). Begge låses af `s5BenchmarkGate.test.js`; den sidste aktiverer sig selv, når generatoren kender `profileModel: "s5"`.
 
 **Hvad gaten ikke dækker:** afslutnings-andelene (del 3) måles kun over Grand Tour-etaper, fordi benchmarken er Grand Tours. Endagsløb og korte etapeløb bindes af del (1) (B+ og matrixen), ikke af en fordeling.
+
+### Terræn-kvoten pr. division ([#6367](https://github.com/NicolaiDolmer/CyclingZone/issues/6367), 14/10)
+
+**Rodårsagen.** §5, §6 og §6b er regler pr. division med tolerancer på ±2 pp (§6b, sæson-K-B) til ±5-10 pp (§6 pr. division). Generatoren trak hver filler-etape uafhængigt af `ARCHETYPE_PROFILES`' vægte, så en divisions andel var en stikprøve omkring vægten med en standardfejl på samme størrelse som tolerancen. S5 gjorde det værre: Grand Tours bygges af ejerens faste kvoter (spec §5) og ligger alle i D1, så en tredjedel af D1's etaper er låst og bjergtunge, og intet i den frie filler kompenserede. S5-tørkørslen 14/10 viste D1's bjerg over §6's tolerance, D1's rolling under §5-gulvet, D1's højbjerg og flere divisioners enkeltstart uden for §6b, og sæson-K-B'en uden for ±2 pp.
+
+**Reglen fra sæson 5** (`backend/lib/s5TierTerrainQuota.js`, samme mønster som §7b's finale-kvoter):
+
+1. Hvert løb trækkes som før (samme seed, samme filler-træk).
+2. Divisionens terræn tælles over HELE dens repræsentative løbssæt. Endagsløb, Grand Tours og etapeløbenes garantier er faste.
+3. Etapeløbenes filler-pladser justeres én ad gangen, grådigt og deterministisk, så længe det bringer divisionen tættere på målene: gated bånd først (§6b ±2 pp og §6's pr.-division-tolerance, med margin), §5's gulve og rolling-bånd med én etapes margin, derefter de stramme ±2 pp-mål. Kun typer arketypens filler kan trække er lovlige, TT-loftet holder, et bjergfrit etapeløb får ingen bjergetape, og løbets ordnings-arketype skal stadig kunne lade sig gøre.
+4. Løbene bygges med de fordelte typer; rækkefølge, rute (B+) og afslutning følger S5-modellen uændret.
+
+Det bruges på alle skrivestier (realisme-gen-trækket, dæknings-verifikationen, scorecardet og insert'et i `tierCalendarMaterializer.js`), af `calendarGoldenDiff.mjs --profile-model s5` og af `scripts/dev/s5ProfileDryRun.mjs`. Sæson 1-4 (v5) er uændrede.
+
+**Målt offline** (fixturen er prod-kataloget 14/10, `backend/scripts/dev/seasonCalendarGatesOffline.mjs`): sæson 5's rigtige træk har ingen rød gate ud over motor-delen (4), og over mange alternative parcours-træk af samme løbsudvalg er langt de fleste grønne, hvor ingen var det før. De tilbageværende fund på andre træk ligger uden for filleren (Grand Tours' afslutninger, endagsløbs-enkeltstarter). Tal i `balance-internals/6367/`.
+
+**Bølgede etapers afslutninger er ikke §7b's bånd for S5.** §7b's rolling-bånd (fladt 25-45 %, udbrud 55-75 %) bygger på udbrud som afslutning. S5 har ingen udbruds-afslutning (spec §3; udbrud er motoradfærd, #6368), og matrixen tillader flad spurt, stigende spurt og bakke på bølget terræn. S5_FINISH_WEIGHTS for bølget følger benchmarken, og del (3) dømmer afslutningerne. Om bølgede etaper skal have en bakke-andel benchmarken ikke viser, er et ejer-spørgsmål (#6367), ikke en generator-fejl.
 
 ---
 

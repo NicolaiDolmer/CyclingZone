@@ -757,7 +757,13 @@ if (isMain) {
       console.log(`  ⚠ LÆNGDEN ER UDLEDT, IKKE VALGT. Lovlige længder for ${firstRaceDay}: ${window.candidates.map((c) => `${c.raceDays} (til ${c.lastRaceDay})`).join(" · ")}`);
       console.log(`     Forslaget er den der ligger tættest på S3's 31. Ejeren skal bekræfte — brug --race-days N eller --last-day YYYY-MM-DD.`);
     }
-    console.log(`  §6b pr.-division filler-tilt (#4103): ${uniformTilt ? "TIL (--uniform-tilt)" : "FRA — sæt --uniform-tilt for at generere mod §6b's mål"}`);
+    if (profileModelForSeason(seasonNumber) === "s5") {
+      // #6367: S5-modellen fordeler etapeloebenes filler-terraen efter kvote pr. division
+      // (s5TierTerrainQuota.js, CALENDAR_RULES §7c); S3-tilten gaelder ikke.
+      console.log(`  §5/§6/§6b pr. division: S5 terræn-kvote (#6367)${uniformTilt ? " — --uniform-tilt gælder ikke S5-modellen og ignoreres" : ""}`);
+    } else {
+      console.log(`  §6b pr.-division filler-tilt (#4103): ${uniformTilt ? "TIL (--uniform-tilt)" : "FRA — sæt --uniform-tilt for at generere mod §6b's mål"}`);
+    }
 
     // Sæson-rækken skal findes: races.season_id har FK til seasons.id.
     const { data: seasonRow } = await supabase.from("seasons").select("id, number, status, start_date").eq("id", seasonId).maybeSingle();
