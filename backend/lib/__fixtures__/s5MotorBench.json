@@ -1,0 +1,43 @@
+{
+  "stub": false,
+  "source": "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt, etapeloeb med akkumuleret traethed og hviledage (raceRunner.entrantFatigueSequences). Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel; winnerDigests binder dommen til maalingerne, saa CI kan haandhaeve den uden taersklen. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+  "config": {
+    "revision": "s5_profiles_v1",
+    "firstDay": "2026-10-26",
+    "genSeeds": 3,
+    "simSeeds": 3,
+    "field": "giro-field-6088-2026-10-02"
+  },
+  "verdicts": {
+    "punch": "inside",
+    "flat_sprint": "inside",
+    "solo_tt": "below",
+    "descent": "inside",
+    "long_climb": "inside",
+    "wall_finish": "inside",
+    "uphill_sprint": "inside"
+  },
+  "sources": {
+    "descent": "grand_tours",
+    "flat_sprint": "grand_tours",
+    "long_climb": "grand_tours",
+    "punch": "season",
+    "solo_tt": "grand_tours",
+    "uphill_sprint": "grand_tours",
+    "wall_finish": "season"
+  },
+  "winners": {
+    "uphill_sprint": {
+      "expected": "sprinter",
+      "verdict": "pass"
+    },
+    "long_climb": {
+      "expected": "climber",
+      "verdict": "pass"
+    }
+  },
+  "winnerDigests": {
+    "uphill_sprint": "sha256:5db23669f2391c64eb56c479109592c73ad8e9f4209f9ea17f0e6cd5ca5fb48a",
+    "long_climb": "sha256:f4bc59c7c16e015d07a192876c8fd5f15592f30fd9af662070e1a03e726fa6c3"
+  }
+}

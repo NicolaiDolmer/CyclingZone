@@ -14,8 +14,8 @@ import {
   S5_GT_QUOTAS, S5_GT_ROAD_TERRAINS, S5_GT_QUOTA_TOLERANCE,
   grandTourTypeOf, isGrandTourRace, expectedGrandTourCounts, checkGrandTour,
   loadS5Benchmark, benchmarkFinishShares, benchmarkGapIntervals, SEASON_FINISH_CLASSES,
-  checkSeasonFinishShares, evaluateMotorGaps, loadMotorGapFile, MOTOR_GAP_MIN_BENCHMARK_N,
-  evaluateS5BenchmarkGate, formatS5BenchmarkReport,
+  checkSeasonFinishShares, evaluateMotorGaps, loadMotorGapFile, MOTOR_GAP_MIN_BENCHMARK_N, motorGapVerdicts,
+  MOTOR_REQUIRED_WINNERS, MOTOR_WINNER_VERDICTS, evaluateS5BenchmarkGate, formatS5BenchmarkReport,
 } from "./s5BenchmarkGate.js";
 import * as routeGenerator from "./raceRouteGenerator.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas } from "./raceStageProfileGenerator.js";
@@ -266,20 +266,130 @@ test("checkSeasonFinishShares: benchmark-fordelingen er grøn, en ren spurt-sæs
   assert.deepEqual(checkSeasonFinishShares({ stages: [], benchmark: BENCHMARK }).violations.length, 1);
 });
 
-test("evaluateMotorGaps: stub blokerer ikke; en rigtig måling uden for intervallet gør", () => {
-  const stub = loadMotorGapFile();
-  assert.equal(stub.stub, true);
-  const s = evaluateMotorGaps({ motor: stub, benchmark: BENCHMARK });
-  assert.equal(s.status, "stub");
-  assert.deepEqual(s.violations, [], "stubbens tal er benchmarkens egne medianer");
+// Benchmarkens egne medianer: en "motor" der rammer dem, er inden for hvert interval.
+const BENCHMARK_MEDIANS = Object.fromEntries(Object.entries(benchmarkGapIntervals(BENCHMARK)).map(([k, iv]) => [k, iv.median]));
+const STUB = { stub: true, source: "test-stub", medians: BENCHMARK_MEDIANS };
+// Alle paakraevede vindertype-tjek bestaaet (#6362): en groen maaling skal baere dem.
+const ALL_WINNERS_PASS = Object.fromEntries(Object.entries(MOTOR_REQUIRED_WINNERS).map(([f, expected]) => [f, { expected, verdict: "pass" }]));
+const ALL_INSIDE = { stub: false, source: "test", verdicts: motorGapVerdicts({ medians: BENCHMARK_MEDIANS, benchmark: BENCHMARK }), winners: ALL_WINNERS_PASS };
 
-  const real = { stub: false, medians: { ...stub.medians, long_climb: 30 } };
+test("evaluateMotorGaps: stub blokerer ikke; en rigtig måling uden for intervallet gør", () => {
+  const s = evaluateMotorGaps({ motor: STUB, benchmark: BENCHMARK });
+  assert.equal(s.status, "stub");
+  assert.deepEqual(s.rows.filter((r) => r.judged && !r.pass), [], "benchmarkens egne medianer");
+  assert.ok(s.violations.every((v) => v.includes("vindertype-dommen mangler")), "stubben har ingen vindertype-domme (vises, blokerer ikke)");
+
+  const real = { stub: false, medians: { ...BENCHMARK_MEDIANS, long_climb: 30 }, winners: ALL_WINNERS_PASS };
   const r = evaluateMotorGaps({ motor: real, benchmark: BENCHMARK });
   assert.equal(r.status, "red");
   assert.ok(r.violations.some((v) => v.startsWith("long_climb: motor 30 s uden for")));
 
   const missing = { stub: false, medians: { flat_sprint: 0 } };
   assert.ok(evaluateMotorGaps({ motor: missing, benchmark: BENCHMARK }).violations.some((v) => v.includes("ikke målt")));
+});
+
+test("#6362 motorGapVerdicts + dom-formen: inden for / under / over, og kun 'inside' er grøn", () => {
+  const iv = benchmarkGapIntervals(BENCHMARK).long_climb;
+  const v = motorGapVerdicts({ medians: { long_climb: iv.p25 - 1, punch: BENCHMARK_MEDIANS.punch, wall_finish: 1e6, ttt: 0 }, benchmark: BENCHMARK });
+  assert.equal(v.long_climb, "below");
+  assert.equal(v.punch, "inside");
+  assert.equal(v.wall_finish, "above");
+  assert.equal(v.ttt, undefined, "holdtidskørslen har for få benchmark-etaper til en dom");
+
+  const green = evaluateMotorGaps({ motor: ALL_INSIDE, benchmark: BENCHMARK });
+  assert.equal(green.status, "green");
+  assert.deepEqual(green.violations, []);
+
+  const red = evaluateMotorGaps({ motor: { ...ALL_INSIDE, verdicts: { ...ALL_INSIDE.verdicts, solo_tt: "below" } }, benchmark: BENCHMARK });
+  assert.equal(red.status, "red");
+  assert.ok(red.violations.some((x) => x.startsWith("solo_tt: motorens median gap10 ligger under")));
+  assert.ok(formatS5BenchmarkReport({ ...evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: ALL_INSIDE }) }).some((l) => l.includes("inden for")));
+
+  const { solo_tt: _drop, ...rest } = ALL_INSIDE.verdicts;
+  const missing = evaluateMotorGaps({ motor: { ...ALL_INSIDE, verdicts: rest }, benchmark: BENCHMARK });
+  assert.ok(missing.violations.some((x) => x === "solo_tt: motorens median gap10 er ikke målt"));
+  const unknown = evaluateMotorGaps({ motor: { ...ALL_INSIDE, verdicts: { ...ALL_INSIDE.verdicts, solo_tt: "maybe" } }, benchmark: BENCHMARK });
+  assert.ok(unknown.violations.some((x) => x === "solo_tt: motorens median gap10 er ikke målt"), "ukendt dom = ikke målt");
+});
+
+test("#6362: gatens standard-fil er den rigtige motor-bench (ingen stub), og en rød dom blokerer", () => {
+  const real = loadMotorGapFile();
+  assert.equal(real.stub, false);
+  assert.equal(typeof real.verdicts, "object");
+  assert.equal(real.medians, undefined, "maalte tal hoerer til i balance-internals (hard rule 17)");
+  const part = evaluateMotorGaps({ motor: real, benchmark: BENCHMARK });
+  const gate = evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: real });
+  assert.equal(gate.blocking.some((b) => b.startsWith("S5 (4) motor")), part.status === "red");
+  assert.throws(() => loadMotorGapFile(new URL("./__fixtures__/racePoolCatalog.prod.json", import.meta.url)), /mangler "medians" eller "verdicts"/);
+});
+
+test("#6362: vindertype-dommen i del (4): kun 'pass' er grøn, 'fail' og manglende dom blokerer, ingen tal", () => {
+  const winners = { uphill_sprint: { expected: "sprinter", verdict: "pass" }, long_climb: { expected: "climber", verdict: "pass" } };
+  const green = evaluateMotorGaps({ motor: { ...ALL_INSIDE, winners }, benchmark: BENCHMARK });
+  assert.equal(green.status, "green");
+  assert.equal(green.winnerRows.length, 2);
+
+  const failed = { ...ALL_INSIDE, winners: { ...winners, long_climb: { expected: "climber", verdict: "fail" } } };
+  const red = evaluateMotorGaps({ motor: failed, benchmark: BENCHMARK });
+  assert.equal(red.status, "red");
+  assert.deepEqual(red.violations, ["long_climb: climber vinder ikke afslutningen ofte nok på motor-benchen"]);
+  const gate = evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: failed });
+  assert.ok(gate.blocking.includes("S5 (4) motor — long_climb: climber vinder ikke afslutningen ofte nok på motor-benchen"), "en fejlet vindertype blokerer");
+  assert.ok(formatS5BenchmarkReport(gate).some((l) => l.includes("long_climb") && l.includes("FEJL")));
+  assert.ok(!formatS5BenchmarkReport(gate).some((l) => /vindertype.*\d/.test(l)), "rapporten viser ingen andel eller taerskel");
+
+  const unknown = evaluateMotorGaps({ motor: { ...ALL_INSIDE, winners: { ...winners, uphill_sprint: { expected: "sprinter", verdict: "maybe" } } }, benchmark: BENCHMARK });
+  assert.ok(unknown.violations.some((x) => x.endsWith("(dom mangler)")), "ukendt dom = brud");
+
+  const real = loadMotorGapFile();
+  for (const w of Object.values(real.winners ?? {})) {
+    assert.deepEqual(Object.keys(w).sort(), ["expected", "verdict"], "fixturen baerer kun dommen");
+    assert.ok(MOTOR_WINNER_VERDICTS.includes(w.verdict));
+  }
+});
+
+test("#6362 fail-closed: en ikke-stub-maaling uden gyldige vindertype-domme er roed på del (4)", () => {
+  // Bench-filens tjek er gatens paakraevede tjek (drift: s5MotorBench.test.ts binder fixturen til benchen).
+  const real = loadMotorGapFile();
+  assert.deepEqual(Object.fromEntries(Object.entries(real.winners).map(([f, w]) => [f, w.expected])), { ...MOTOR_REQUIRED_WINNERS });
+  const required = Object.keys(MOTOR_REQUIRED_WINNERS);
+  assert.ok(required.length > 0);
+  const { winners: _w, ...gapsOnly } = ALL_INSIDE;
+
+  // --motor-bench med kun domme (verdicts) eller kun medianer, uden winners: roed, hvert tjek mangler.
+  for (const motor of [gapsOnly, { stub: false, source: "test", medians: BENCHMARK_MEDIANS }, { source: "test", verdicts: gapsOnly.verdicts, winners: null }, { ...gapsOnly, winners: [] }]) {
+    const part = evaluateMotorGaps({ motor, benchmark: BENCHMARK });
+    assert.equal(part.status, "red", JSON.stringify(Object.keys(motor)));
+    assert.deepEqual(part.violations, required.map((f) => `${f}: vindertype-dommen mangler på motor-benchen (${MOTOR_REQUIRED_WINNERS[f]} forventes)`));
+    assert.deepEqual(part.winnerRows.map((r) => [r.finish, r.pass]), required.map((f) => [f, false]));
+    const gate = evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor });
+    for (const f of required) assert.ok(gate.blocking.some((b) => b.startsWith(`S5 (4) motor — ${f}: vindertype-dommen mangler`)), `${f} blokerer`);
+  }
+
+  // Et enkelt manglende tjek er nok til roed; de andre bestaaede tjek redder det ikke.
+  const [first, ...others] = required;
+  const partial = { ...gapsOnly, winners: Object.fromEntries(others.map((f) => [f, ALL_WINNERS_PASS[f]])) };
+  assert.deepEqual(evaluateMotorGaps({ motor: partial, benchmark: BENCHMARK }).violations, [`${first}: vindertype-dommen mangler på motor-benchen (${MOTOR_REQUIRED_WINNERS[first]} forventes)`]);
+
+  // Ekstra tjek erstatter ikke de paakraevede: "pass" paa en anden afslutning er ikke nok.
+  const extraOnly = { ...gapsOnly, winners: { flat_sprint: { expected: "sprinter", verdict: "pass" } } };
+  const extra = evaluateMotorGaps({ motor: extraOnly, benchmark: BENCHMARK });
+  assert.equal(extra.status, "red");
+  assert.equal(extra.violations.length, required.length);
+
+  // En "pass" for en anden ryttertype end den forventede er ikke en dom over tjekket.
+  const wrongType = { ...gapsOnly, winners: { ...ALL_WINNERS_PASS, [first]: { expected: "rouleur", verdict: "pass" } } };
+  assert.deepEqual(evaluateMotorGaps({ motor: wrongType, benchmark: BENCHMARK }).violations, [`${first}: vindertype-dommen gælder rouleur, men ${MOTOR_REQUIRED_WINNERS[first]} forventes`]);
+
+  // Alle paakraevede "pass" (med eller uden expected i filen) er groen.
+  assert.equal(evaluateMotorGaps({ motor: ALL_INSIDE, benchmark: BENCHMARK }).status, "green");
+  const noExpected = { ...gapsOnly, winners: Object.fromEntries(required.map((f) => [f, { verdict: "pass" }])) };
+  assert.equal(evaluateMotorGaps({ motor: noExpected, benchmark: BENCHMARK }).status, "green");
+
+  // En stub doemmes og vises, men blokerer stadig ikke (uaendret).
+  const stub = evaluateMotorGaps({ motor: STUB, benchmark: BENCHMARK });
+  assert.equal(stub.status, "stub");
+  assert.equal(evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: STUB }).blocking.some((b) => b.startsWith("S5 (4)")), false);
 });
 
 // ── 5. Hele gaten ─────────────────────────────────────────────────────────────────
@@ -293,14 +403,14 @@ function gtRacesFromCatalog() {
 
 test("gaten: syntetisk perfekt sæson er grøn på (1)-(3); stub-motor blokerer ikke", () => {
   const tours = [perfectTour(), { ...perfectTour(), pool_race_id: "gt-2", name: "Tour de Test 2" }, { ...perfectTour(), pool_race_id: "gt-3", name: "Tour de Test 3" }];
-  const res = evaluateS5BenchmarkGate({ races: tours, benchmark: BENCHMARK, motor: loadMotorGapFile() });
+  const res = evaluateS5BenchmarkGate({ races: tours, benchmark: BENCHMARK, motor: STUB });
   assert.equal(res.parts.stages.green, true);
   assert.equal(res.parts.grandTours.green, true);
   assert.equal(res.parts.motor.status, "stub");
   // (3) kan være rød på en kunstig sæson af tre ens Tours; resten afgør om den blokerer.
   assert.equal(res.green, res.parts.season.green);
   // Samme løb i to divisioner tælles én gang.
-  const dup = evaluateS5BenchmarkGate({ races: [tours[0], tours[0]], benchmark: BENCHMARK, motor: loadMotorGapFile() });
+  const dup = evaluateS5BenchmarkGate({ races: [tours[0], tours[0]], benchmark: BENCHMARK, motor: STUB });
   assert.equal(dup.parts.grandTours.races.length, 1);
   // Ingen motor-fil = del (4) ikke målt = blokerende.
   const noMotor = evaluateS5BenchmarkGate({ races: tours, benchmark: BENCHMARK, motor: null });
@@ -329,7 +439,9 @@ test("S5-modellen (aktiveres når generatoren kan profileModel: \"s5\", #6359) e
     return;
   }
   const races = seeds.map((r) => ({ ...r, stages: generateRaceStageProfiles(r, { profileModel: "s5" }) }));
-  const res = evaluateS5BenchmarkGate({ races, benchmark: BENCHMARK, motor: loadMotorGapFile() });
+  // Del (4) doemmes paa den rigtige motor-bench i s5MotorBench.test.ts (#6362);
+  // her er motoren "alt inden for", saa `green` er (1)-(3)'s dom.
+  const res = evaluateS5BenchmarkGate({ races, benchmark: BENCHMARK, motor: ALL_INSIDE });
   assert.deepEqual(res.parts.stages.violations, []);
   assert.deepEqual(res.parts.grandTours.violations, []);
   assert.deepEqual(res.parts.season.violations, []);

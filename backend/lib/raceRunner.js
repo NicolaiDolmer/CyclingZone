@@ -497,33 +497,8 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
 
   // #1306-fix + #1307: form/fatigue/race_role SKAL med ind i simulatoren — det er
   // præcis condition-berigelsen og rollerne der adskiller prod-stien fra rå abilities.
-  // #1021-hybrid (ejer-valgt 2026-06-17): træthed AKKUMULERER mellem etaper — en
-  // 21-etapers tour bliver en udmattelseskamp. Hver rytters start-træthed
-  // (rider_condition.fatigue, eller 0) + summen af tidligere etapers belastning.
-  // Fylder seamen raceSimulator.js:74 beskriver, uden at røre simulateStage-kontrakten.
-  const stageProfiles = stagesSorted.map((s) => s.profile_type);
-  const stageNumbers = stagesSorted.map((s) => s.stage_number || 1);
-  // #3470: GT-hviledage FØR hver etape (game_day-hul) — REN, udledt af stagesSorted's
-  // .game_day (attacheret af kaldestedet, se attachStageGameDays). Alt 0 når data
-  // mangler/ikke er attacheret → BIT-IDENTISK med før #3470 (stageEnteringFatigues'
-  // restDaysBefore no-op'er på alt-0).
-  const restDaysBefore = restDaysBeforeEachStage(stagesSorted);
-  // S3 (#2034): per-rytter per-etape effort-sekvens til fatigue-akkumuleringen —
-  // KUN når v3=true (flag-off skal forblive bit-identisk). effortsSequenceForRider
-  // returnerer null når stageRoleOverrides er tom/undefined → stageEnteringFatigues
-  // falder tilbage til sit gamle enkelt-effort-flow, uændret adfærd.
-  const fatigueSeqById = new Map(
-    entrants.map((e) => {
-      const efforts = v3 ? effortsSequenceForRider(stageRoleOverrides, e.rider_id, stageNumbers) : null;
-      return [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles, {
-        ...(efforts ? { efforts } : {}),
-        restDaysBefore,
-        trainingOwnsRecovery,
-        recoveryAbility: e.abilities?.recovery,
-        ...v4RulesRevisionArg(rulesRevision), // #6079: save-træthed pr. profil under orders_gc_v1
-      })];
-    })
-  );
+  // #1021-hybrid: træthed AKKUMULERER mellem etaper (se entrantFatigueSequences).
+  const fatigueSeqById = entrantFatigueSequences({ stagesSorted, entrants, v3, stageRoleOverrides, trainingOwnsRecovery, rulesRevision });
 
   const simEntrants = entrants.map((e) => ({
     rider_id: e.rider_id,
@@ -953,6 +928,37 @@ export function restDaysBeforeEachStage(stagesSorted) {
     }
   }
   return gaps;
+}
+
+/**
+ * #1021-hybrid (ejer-valgt 2026-06-17): træthed AKKUMULERER mellem etaper i et helt
+ * løb — en 21-etapers tour bliver en udmattelseskamp. Hver rytters start-træthed
+ * (rider_condition.fatigue, eller 0) + summen af tidligere etapers belastning, med
+ * GT-hviledagenes restitution (#3470: game_day-hullet før hver etape, se
+ * restDaysBeforeEachStage; alt 0 når .game_day mangler → no-op).
+ * S3 (#2034): effort-sekvensen pr. rytter KUN når v3=true (flag-off bit-identisk);
+ * effortsSequenceForRider giver null ved tomme overrides → stageEnteringFatigues'
+ * enkelt-effort-flow.
+ * REN. Eksporteret så #6362's motor-bench (scripts/dev/s5MotorBench.mjs) koerer
+ * PRAECIS samme sekvens som buildRaceResults i stedet for en kopi.
+ * @returns {Map<string, number[]>} rider_id → træthed gående ind til hver etape (index-parallel med stagesSorted)
+ */
+export function entrantFatigueSequences({ stagesSorted, entrants, v3 = false, stageRoleOverrides, trainingOwnsRecovery = false, rulesRevision = "legacy" }) {
+  const stageProfiles = stagesSorted.map((s) => s.profile_type);
+  const stageNumbers = stagesSorted.map((s) => s.stage_number || 1);
+  const restDaysBefore = restDaysBeforeEachStage(stagesSorted);
+  return new Map(
+    entrants.map((e) => {
+      const efforts = v3 ? effortsSequenceForRider(stageRoleOverrides, e.rider_id, stageNumbers) : null;
+      return [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles, {
+        ...(efforts ? { efforts } : {}),
+        restDaysBefore,
+        trainingOwnsRecovery,
+        recoveryAbility: e.abilities?.recovery,
+        ...v4RulesRevisionArg(rulesRevision), // #6079: save-træthed pr. profil under orders_gc_v1
+      })];
+    })
+  );
 }
 
 // #3470: hæft game_day på hver stage (mutation, samme livscyklus som attachPeakContext's
