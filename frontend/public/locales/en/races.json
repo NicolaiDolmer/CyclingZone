@@ -1073,6 +1073,7 @@
   "detail": {
     "loadError": {
       "message": "Couldn't load the race. Nothing was lost. Try again.",
+      "stageMessage": "Couldn't load this stage's results. Nothing was lost. Try again.",
       "retry": "Try again"
     },
     "stat": {

@@ -1073,6 +1073,7 @@
   "detail": {
     "loadError": {
       "message": "Løbet kunne ikke indlæses. Intet gik tabt. Prøv igen.",
+      "stageMessage": "Etapens resultater kunne ikke indlæses. Intet gik tabt. Prøv igen.",
       "retry": "Prøv igen"
     },
     "stat": {

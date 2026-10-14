@@ -85,6 +85,8 @@ export interface StageTabV2Props {
   results: ResultRow[];
   stagePointRows: ResultRow[];
   stageLoaded: boolean;
+  /** Erstatter "Your day" naar etapens resultater ikke kunne hentes (#6570). */
+  stageErrorSlot: ReactNode;
   myTeamId: string | null;
   stageRoles: null | false | { riders?: RoleRider[]; overrides?: RoleOverride[] };
   careerEvents: CareerEvent[];
@@ -94,7 +96,7 @@ export interface StageTabV2Props {
 }
 
 export default function StageTabV2({
-  stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, stageLoaded, myTeamId,
+  stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, stageLoaded, stageErrorSlot, myTeamId,
   stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
@@ -113,16 +115,18 @@ export default function StageTabV2({
   if (phase === "after") {
     return (
       <SectionStack>
-        <YourDayCard
-          results={results}
-          stageNumber={stageNumber}
-          isStageRace={isStageRace}
-          loaded={stageLoaded}
-          myTeamId={myTeamId}
-          careerEvents={careerEvents}
-          primaryAction={tacticsAction}
-          onOpenStandings={onOpenStandings}
-        />
+        {stageErrorSlot ?? (
+          <YourDayCard
+            results={results}
+            stageNumber={stageNumber}
+            isStageRace={isStageRace}
+            loaded={stageLoaded}
+            myTeamId={myTeamId}
+            careerEvents={careerEvents}
+            primaryAction={tacticsAction}
+            onOpenStandings={onOpenStandings}
+          />
+        )}
         {profile && series && <ProfileCard profile={profile} stageLabel={stageLabel} band selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} />}
       </SectionStack>
     );

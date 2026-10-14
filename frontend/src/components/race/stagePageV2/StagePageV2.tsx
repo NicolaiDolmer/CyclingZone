@@ -34,6 +34,8 @@ export interface StagePageV2Props {
   results: ResultRow[];
   stagePointRows: ResultRow[];
   stageLoaded: boolean;
+  /** Fejl + "Try again" naar etapens resultater ikke kunne hentes; null ellers. */
+  stageErrorSlot: ReactNode;
   myTeamId: string | null;
   stageRoles: null | false | { riders?: RoleRider[]; overrides?: RoleOverride[] };
   careerEvents: CareerEvent[];
@@ -48,7 +50,7 @@ export interface StagePageV2Props {
 export default function StagePageV2(props: StagePageV2Props) {
   const {
     isStageRace, totalStages, stagesCompleted, raceFinished, selectedStage, todayStage, onSelectStage,
-    activeTab, onChangeTab, onOpenTactics, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded,
+    activeTab, onChangeTab, onOpenTactics, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded, stageErrorSlot,
     myTeamId, stageRoles, careerEvents, standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs,
   } = props;
   const { t } = useTranslation("races");
@@ -113,6 +115,7 @@ export default function StagePageV2(props: StagePageV2Props) {
           results={results}
           stagePointRows={stagePointRows}
           stageLoaded={stageLoaded}
+          stageErrorSlot={stageErrorSlot}
           myTeamId={myTeamId}
           stageRoles={stageRoles}
           careerEvents={careerEvents}

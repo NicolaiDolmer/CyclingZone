@@ -9,6 +9,9 @@ import {
   validateInitialStage,
   stagesToPreload,
   jerseyHoldersForStage,
+  shouldStartStageFetch,
+  stageFetchState,
+  settleStageFetch,
 } from "./raceResultsSelectors.js";
 
 test("deriveStageNumbers: etapeløb med kørte etaper -> [1..N]", () => {
@@ -107,4 +110,64 @@ test("jerseyHoldersForStage: legacy-rækker uden rank (default 1) matcher stadig
 test("jerseyHoldersForStage: tomme results giver ingen trøjer", () => {
   assert.deepEqual(jerseyHoldersForStage([], 3, JERSEY_DEFS), []);
   assert.deepEqual(jerseyHoldersForStage(null, 3, JERSEY_DEFS), []);
+});
+
+// #6570 (CodeRabbit, PR #6633): en fejlet etape-hentning maa ikke markere etapen
+// som loaded, og skal kunne hentes igen via "Try again".
+test("settleStageFetch: en fejl bliver ok:false, aldrig en tom liste", async () => {
+  const err = new Error("network down");
+  const outcome = await settleStageFetch(() => Promise.reject(err));
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.error, err);
+  assert.equal("rows" in outcome, false);
+});
+
+test("settleStageFetch: et tomt svar er ok med rows []", async () => {
+  assert.deepEqual(await settleStageFetch(() => Promise.resolve([])), { ok: true, rows: [] });
+  assert.deepEqual(await settleStageFetch(() => Promise.resolve(null)), { ok: true, rows: [] });
+  assert.deepEqual(await settleStageFetch(() => Promise.resolve([{ id: 1 }])), { ok: true, rows: [{ id: 1 }] });
+});
+
+test("shouldStartStageFetch: kun en etape der hverken er loaded, i gang eller fejlet", () => {
+  const none = new Set();
+  assert.equal(shouldStartStageFetch(3, { loaded: none, inFlight: none, failed: none }), true);
+  assert.equal(shouldStartStageFetch(3, { loaded: new Set([3]), inFlight: none, failed: none }), false);
+  assert.equal(shouldStartStageFetch(3, { loaded: none, inFlight: new Set([3]), failed: none }), false);
+  assert.equal(shouldStartStageFetch(3, { loaded: none, inFlight: none, failed: new Set([3]) }), false);
+  assert.equal(shouldStartStageFetch(Number.NaN, { loaded: none, inFlight: none, failed: none }), false);
+});
+
+test("stageFetchState: loaded > failed > loading", () => {
+  assert.equal(stageFetchState(2, { loaded: new Set([2]), failed: new Set() }), "loaded");
+  assert.equal(stageFetchState(2, { loaded: new Set(), failed: new Set([2]) }), "failed");
+  assert.equal(stageFetchState(2, { loaded: new Set(), failed: new Set() }), "loading");
+});
+
+test("forloeb: fejl -> failed (ikke loaded) -> retry -> hentes igen -> loaded", async () => {
+  // Spejler RaceDetailPage.startStageFetch/retryStageFetch uden React.
+  const loaded = new Set();
+  const failed = new Set();
+  const inFlight = new Set();
+  let calls = 0;
+  const fetchRows = () => (++calls === 1 ? Promise.reject(new Error("timeout")) : Promise.resolve([{ id: 7 }]));
+  const run = async (n) => {
+    if (!shouldStartStageFetch(n, { loaded, inFlight, failed })) return;
+    inFlight.add(n);
+    const outcome = await settleStageFetch(fetchRows);
+    inFlight.delete(n);
+    if (!outcome.ok) failed.add(n);
+    else loaded.add(n);
+  };
+
+  await run(4);
+  assert.equal(stageFetchState(4, { loaded, failed }), "failed");
+  assert.equal(loaded.has(4), false, "en fejlet hentning maa ikke markere etapen loaded");
+
+  await run(4); // effekten koerer igen uden brugerhandling: ingen ny hentning
+  assert.equal(calls, 1, "en fejlet etape hentes ikke automatisk igen");
+
+  failed.delete(4); // "Try again"
+  await run(4);
+  assert.equal(calls, 2);
+  assert.equal(stageFetchState(4, { loaded, failed }), "loaded");
 });

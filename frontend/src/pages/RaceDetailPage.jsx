@@ -53,6 +53,9 @@ import {
   validateInitialStage,
   stagesToPreload,
   jerseyHoldersForStage,
+  shouldStartStageFetch,
+  stageFetchState,
+  settleStageFetch,
 } from "../lib/raceResultsSelectors.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import {
@@ -401,6 +404,9 @@ export default function RaceDetailPage() {
   // preload + etapeskift on-demand) — `results` er UNIONEN af disse, aldrig hentet
   // to gange for samme etape i én session. Nulstilles i loadAll ved raceId-skift.
   const [loadedStages, setLoadedStages] = useState(() => new Set());
+  // #6570: etaper hvis on-demand-hentning fejlede. Vises som fejl med "Proev igen";
+  // hentes ikke automatisk igen foer brugeren beder om det (se shouldStartStageFetch).
+  const [failedStages, setFailedStages] = useState(() => new Set());
   const stageFetchInFlightRef = useRef(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
   const [resultView, setResultView] = useState(() => {
@@ -653,6 +659,7 @@ export default function RaceDetailPage() {
     // #4581: nulstiller (ikke tilføjer til) det tidligere loaded-set — et raceId-skift
     // er et helt nyt løb, gamle stage-numre fra det forrige løb må ikke overleve.
     setLoadedStages(new Set(preloadStages));
+    setFailedStages(new Set());
     stageFetchInFlightRef.current = new Set();
     setStageProfiles(profiles ?? []);
     setSchedule(scheduleRows ?? []);
@@ -676,24 +683,44 @@ export default function RaceDetailPage() {
   // siden i mellemtiden er skiftet til et andet loeb.
   const currentRaceIdRef = useRef(raceId);
   useEffect(() => { currentRaceIdRef.current = raceId; }, [raceId]);
+  // #6570 (CodeRabbit, PR #6633): kun et svar der faktisk kom tilbage markerer
+  // etapen som loaded. En fejl markerer den som failed (fejl + "Proev igen") i
+  // stedet for at blive slugt til [] og laase etapen tom resten af besoeget.
   const startStageFetch = useCallback((n) => {
-    if (!Number.isFinite(n) || loadedStages.has(n) || stageFetchInFlightRef.current.has(n)) return;
+    if (!shouldStartStageFetch(n, { loaded: loadedStages, inFlight: stageFetchInFlightRef.current, failed: failedStages })) return;
     const forRace = raceId;
     stageFetchInFlightRef.current.add(n);
-    fetchStageResultRows(raceId, n)
-      .catch((err) => {
-        console.warn("race_results per-stage fetch failed:", err.message);
-        return [];
-      })
-      .then((newRows) => {
+    settleStageFetch(() => fetchStageResultRows(raceId, n))
+      .then((outcome) => {
         if (currentRaceIdRef.current !== forRace) return;
-        if (newRows.length) setResults((prev) => [...prev, ...withFinishSafetyNet(newRows)]); // #6185
+        if (!outcome.ok) {
+          console.warn("race_results per-stage fetch failed:", outcome.error?.message);
+          setFailedStages((prev) => new Set(prev).add(n));
+          return;
+        }
+        if (outcome.rows.length) setResults((prev) => [...prev, ...withFinishSafetyNet(outcome.rows)]); // #6185
         setLoadedStages((prev) => new Set(prev).add(n));
       })
       .finally(() => {
         stageFetchInFlightRef.current.delete(n);
       });
-  }, [raceId, loadedStages]);
+  }, [raceId, loadedStages, failedStages]);
+  // "Proev igen": fjern etapen fra failed. startStageFetch skifter identitet, saa
+  // effekterne nedenfor starter hentningen igen for den viste etape.
+  const retryStageFetch = useCallback((n) => {
+    setFailedStages((prev) => {
+      if (!prev.has(n)) return prev;
+      const next = new Set(prev);
+      next.delete(n);
+      return next;
+    });
+  }, []);
+  const stageLoadErrorFor = (n) => (
+    <ErrorState
+      description={t("detail.loadError.stageMessage")}
+      action={<Button size="sm" variant="secondary" onClick={() => retryStageFetch(n)}>{t("detail.loadError.retry")}</Button>}
+    />
+  );
 
   useEffect(() => {
     if (!resultView.startsWith("stage-")) return;
@@ -1263,7 +1290,9 @@ export default function RaceDetailPage() {
                   inde i en Section, aldrig en spinner) i stedet for et tomt/forkert
                   resultat. */}
               {stageNumbers.map(n => resultView === `stage-${n}` && (
-                loadedStages.has(n)
+                stageFetchState(n, { loaded: loadedStages, failed: failedStages }) === "failed"
+                  ? <div key={n}>{stageLoadErrorFor(n)}</div>
+                  : loadedStages.has(n)
                   ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
@@ -1340,6 +1369,7 @@ export default function RaceDetailPage() {
       results={results}
       stagePointRows={stagePointsRows}
       stageLoaded={loadedStages.has(v2SelectedStage)}
+      stageErrorSlot={stageFetchState(v2SelectedStage, { loaded: loadedStages, failed: failedStages }) === "failed" ? stageLoadErrorFor(v2SelectedStage) : null}
       myTeamId={myTeamId}
       stageRoles={stageRoles}
       careerEvents={careerEvents}
