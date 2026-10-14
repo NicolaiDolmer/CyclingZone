@@ -45,7 +45,8 @@ grupper sammen. Ryttere ingen hændelse har nævnt, kører i **resten**
 historien virker uden startliste. Et uheldsoffer kører i en `solo-m10-*`-gruppe
 som uheldet ikke navngiver; rytteren knyttes til den første ukendte
 `solo-m10-*`-gruppe loggen nævner efter uheldet (`members_inferred: true`).
-En udgået rytter (`incident` med `outcome: "abandoned"`, eller
+Indtil da står rytteren i `pending_rider_ids` og er ikke i resten (hullet er
+ukendt). En udgået rytter (`incident` med `outcome: "abandoned"`, eller
 `outside_time_limit`) er fra det km aldrig i resten, venter ikke på en
 solo-gruppe og står i `out_rider_ids`.
 
@@ -140,6 +141,7 @@ const story = buildRaceStory({
   groups_from_km: number|null,// km for tilstanden grupperne er taget fra
   interpolated: boolean,      // true når passagens km ikke har en gap_update (hullerne er båret)
   out_rider_ids: string[],    // udgået til og med passagen
+  pending_rider_ids: string[],// uheldsofre uden kendt solo-gruppe endnu
 }
 ```
 
@@ -150,13 +152,14 @@ og splits hører ikke til passagen).
 
 `checkpointGapForRider(checkpoint, riderId)` giver
 `{ group_id, gap_s, time_s, in_front, via_rest } | null` (null: udgået, dvs.
-i `out_rider_ids`, eller gruppen er ukendt). En udgået rytter får aldrig
+i `out_rider_ids`; uheldsoffer i `pending_rider_ids`; eller gruppen er
+ukendt). Hverken en udgået rytter eller et uheldsoffer uden kendt gruppe får
 restgruppens tid.
 
 ### 3.4 `Snapshot` og replay
 
 ```ts
-Snapshot = { km, leader_time_s, groups: GroupAt[], out_rider_ids: string[] }
+Snapshot = { km, leader_time_s, groups: GroupAt[], out_rider_ids: string[], pending_rider_ids: string[] }
 GroupAt  = {
   group_id, rider_ids,         // eksplicitte medlemmer (sorteret)
   size: number|null,           // inkl. resten for rest-gruppen

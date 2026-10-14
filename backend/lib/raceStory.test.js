@@ -340,6 +340,24 @@ test("review (3): en udgået rytter er aldrig i resten og får hverken mellemtid
   assert.equal(checkpointGapForRider(finish, "c").via_rest, true);
 });
 
+test("review (3b): et uheldsoffer uden kendt solo-gruppe endnu får ikke restens hul", () => {
+  const events = oneDayTimeline();
+  // d taber tid på km 30; loggen navngiver først hans solo-gruppe på km 50.
+  events.splice(4, 0, ev(30, "incident", { rider_id: "d", kind: "crash", outcome: "time_loss", time_loss_seconds: 90, exact_km: 30 }));
+  events.splice(6, 0, ev(50, "gap_update", { group_id: "solo-m10-0-0", gap_seconds: 320, exact_km: 50, exact_time: 4400 }));
+  const story = buildRaceStory({ events, timelineVersion: 2 });
+  const snap40 = story.snapshots.find((s) => s.km === 40);
+  assert.deepEqual(snap40.pending_rider_ids, ["d"]);
+  assert.equal(checkpointGapForRider(snap40, "d"), null, "hullet er ukendt, ikke restens");
+  assert.equal(checkpointGapForRider(snap40, "c").via_rest, true, "en anden rytter har stadig restens tid");
+  // Når gruppen er navngivet, har d sin egen gruppes hul.
+  const climb = story.checkpoints.find((c) => c.kind === "climb");
+  assert.deepEqual(climb.pending_rider_ids, []);
+  const d = checkpointGapForRider(climb, "d");
+  assert.equal(d?.group_id, "solo-m10-0-0");
+  assert.equal(d.via_rest, false);
+});
+
 test("review (4): replay viser en gruppe indtil dens faktiske merge-punkt, ikke kun til forrige snapshot", () => {
   const story = buildRaceStory({ events: oneDayTimeline(), timelineVersion: 2 });
   const span = story.group_spans.find((s) => s.group_id === "breakaway-0");

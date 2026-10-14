@@ -385,7 +385,9 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     groups.sort((a, b) => a.gap_s - b.gap_s || (b.size ?? 0) - (a.size ?? 0) || a.group_id.localeCompare(b.group_id));
     // Udgåede ryttere (uheld eller uden for tidsgrænsen) indtil dette km: de
     // har hverken mellemtid eller måltid herfra.
-    const snapshot = { km: round2(km), leader_time_s: leaderTime, groups, out_rider_ids: [...m.abandoned].sort() };
+    // Uheldsofre der endnu ikke er knyttet til deres solo-gruppe: de er ikke i
+    // resten, og deres hul kendes først når loggen navngiver gruppen.
+    const snapshot = { km: round2(km), leader_time_s: leaderTime, groups, out_rider_ids: [...m.abandoned].sort(), pending_rider_ids: [...m.pendingSolo].sort() };
     if (record) snapshotsByKm.set(round2(km), snapshot);
     return snapshot;
   };
@@ -641,6 +643,7 @@ function buildCheckpoints(ordered, story, passageStates) {
       // true = ingen gap_update på passagens km: hullerne er båret fra sidste melding.
       interpolated: !story.snapshots.some((s) => Math.abs(s.km - recorded) < 1e-6),
       out_rider_ids: snapshot?.out_rider_ids ?? [],
+      pending_rider_ids: snapshot?.pending_rider_ids ?? [],
     };
   });
 }
@@ -686,6 +689,8 @@ export function checkpointGapForRider(checkpoint, riderId) {
   // En udgået rytter er aldrig i resten og har hverken mellemtid eller måltid.
   if (Array.isArray(checkpoint.out_rider_ids) && checkpoint.out_rider_ids.includes(riderId)) return null;
   const explicit = checkpoint.groups.find((g) => g.rider_ids.includes(riderId));
+  // Et uheldsoffer uden kendt gruppe endnu er ikke i resten: hullet er ukendt.
+  if (!explicit && Array.isArray(checkpoint.pending_rider_ids) && checkpoint.pending_rider_ids.includes(riderId)) return null;
   const group = explicit ?? checkpoint.groups.find((g) => g.includes_rest) ?? null;
   if (!group) return null;
   return { group_id: group.group_id, gap_s: group.gap_s, time_s: group.time_s, in_front: group.gap_s === 0, via_rest: !explicit };
