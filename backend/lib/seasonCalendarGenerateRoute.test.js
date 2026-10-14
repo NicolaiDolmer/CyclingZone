@@ -64,3 +64,17 @@ test("POST-handler 404'er på ukendt sæson-id FØR nogen generator-kode kaldes"
     "404-guarden skal stå FØR materializeTierCalendars-kaldet",
   );
 });
+
+// #6367 (review P1): S5-benchmark-gaten koeres i materializeTierCalendars, saa admin-knappen
+// faar den uden egen kode. Laaser at knappen (a) ikke giver gaten andet input end defaulten,
+// (b) kalder materializeren FOER admin_log-raekken, og (c) svarer en fejl (500) naar
+// materializeren naegter, i stedet for success. Selve naegtelsen (ingen raekker skrevet) er
+// testet i tierCalendarMaterializer.test.js ("#6367 gate: ...").
+test("POST-handler: S5-benchmark-gaten kan ikke omgaas, og en naegtelse svarer 500 (#6367)", () => {
+  const block = handlerBlock('router.post("/admin/seasons/:id/generate-calendar"');
+  assert.doesNotMatch(block, /s5BenchmarkInputs/, "knappen maa ikke give benchmark-gaten input (ingen omgaaelse)");
+  const iCall = block.indexOf("materializeTierCalendars(");
+  assert.ok(iCall > -1 && iCall < block.indexOf("logActivity("), "materializeren (med gaten) koerer foer admin_log");
+  assert.ok(block.indexOf("try {") < iCall, "materializer-kaldet skal staa i try-blokken");
+  assert.match(block, /catch \(e\) \{[\s\S]*?res\.status\(500\)/, "en naegtelse skal svare 500, ikke success");
+});

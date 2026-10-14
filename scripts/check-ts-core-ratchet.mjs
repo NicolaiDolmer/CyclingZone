@@ -356,7 +356,16 @@ function runTsc(backendDir) {
     stdout = execFileSync(
       process.execPath,
       [tscEntry, "-p", "tsconfig.core.json", "--pretty", "false"],
-      { cwd: backendDir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      {
+        cwd: backendDir,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        // Default-maxBuffer er 1 MiB. tsc-outputtet for kernen ligger taet paa
+        // den graense (checkJs+strict paa hele programmet), og en overskridelse
+        // giver ENOBUFS i stedet for en laesbar fejl. 64 MiB giver rigeligt
+        // luft uden at skjule en reel eksplosion i fejlantal (#6367).
+        maxBuffer: 64 * 1024 * 1024,
+      },
     );
   } catch (err) {
     // tsc afslutter med kode 1 naar der er type-fejl — det er den FORVENTEDE
