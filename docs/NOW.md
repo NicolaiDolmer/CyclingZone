@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren 14/10:** Alunta-faktura nr. 2 (61,25 kr., Sentry CYCLINGZONE-62) afstemmes/krediteres i Dinero, derefter Claude: Pro-afvigelse · CodeRabbit-loft nået (ejer) · `INDEXNOW_KEY` som GitHub-secret (#6558) · post Discord-tekst for 7.359 (docs/drafts/patch-7359) + app-opslag i forum.
 >
-> **🎯 Next action 14/10:** (1) Hvad brænder kom kl. 08 (#6575)? (2) Kl. 20: forum-afstemningerne lukker → S5-start til generatoren (#5833) + datokort tor 15/10 til lanceringsteksterne (#6601). (3) Højdeprofil live (#6599/#6577); S5-tørkørsel tor. (4) Google Play-kort (#6584 spor 3) · push-tænding (VAPID, #6590). (5) #6490 aften 2 → DROP INDEX-kort. (6) Forretning frem mod 21/10: #6601 (privat del i OneDrive-context/private-handoffs).
+> **🎯 Next action 14/10 (pc1: `docs/sessions/2026-10-14-pc1-efter-genstart.md`):** (0) Bølge #6604: alle major-efterslæb i dag. (1) Sentry -56/-80 fra Hvad brænder. (2) Kl. 20: forum-afstemningerne lukker → S5-start til generatoren (#5833) + datokort tor 15/10 til lanceringsteksterne (#6601). (3) Højdeprofil live (#6599/#6577); S5-tørkørsel tor. (4) Google Play-kort (#6584 spor 3) · push-tænding (VAPID, #6590). (5) #6490 aften 2 → DROP INDEX-kort. (6) Forretning frem mod 21/10: #6601 (privat del i OneDrive-context/private-handoffs).
 >
 > **13-14/10 merget + verificeret live:** app/PWA (#6585) · push bag slukket flag (#6591, migration ok) · scout-fix (#6581) + refusion 54.000 udført (#6579) · SEO noindex/404 (#6578) + asset-404-fix (#6600) · højdeprofil (#6599, kolonne ok) + road book (#6577) · Dagens etaper (#6576) · Hvad brænder (#6575) · merge-kø 502-fix (#6593) · patch 7.359. Højdeprofil med i S5 (ejer). Postmortem: `.claude/learnings/2026-10-14-merget-er-ikke-live.md`. Ingen nye løbende udgifter.
 >
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (DOLMERPC lukket 14/10 ~11:00; ejer fortsætter på pc1/NICOLAIPC). Codex-handoff modtaget → #6601.
+> **🤖 Working agent:** Ingen aktiv session (pc1 lukket 14/10 ~13 til genstart; klar, #6602). Codex planlægger på DOLMERPC → #6601.
