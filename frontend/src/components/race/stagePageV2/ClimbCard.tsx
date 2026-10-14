@@ -3,7 +3,7 @@
 // uden den viser kortet de tal der er sande (laengde, snit, top) og siger det.
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
-import { climbDetail, type Climb, type ElevationSeries, type StageProfile } from "./stagePageV2Model.ts";
+import { climbDetail, perKmGradeCeil, type Climb, type ElevationSeries, type StageProfile } from "./stagePageV2Model.ts";
 import { bandFill, categoryLabel } from "./StageProfileV2.tsx";
 import { Section, SectionHeader } from "./ui.ts";
 
@@ -14,7 +14,10 @@ function PerKmChart({ detail, name }: { detail: ReturnType<typeof climbDetail>; 
   const n = detail.perKm.length;
   if (!n) return null;
   const W = 600, H = 170, B = 26, T = 18;
-  const maxG = Math.max(4, ...detail.perKm.map((k) => k.grade));
+  // Fast procent-skala (samme princip som profilens terraenskala, #4107): en
+  // 4 %-stigning ser lav ud ved siden af en 11 %-stigning, i stedet for at hver
+  // stigning fylder hele kortet.
+  const maxG = perKmGradeCeil(detail.perKm);
   const colW = W / n;
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={t("stagePageV2.climbs.perKmAria", { name })}>

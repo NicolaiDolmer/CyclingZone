@@ -686,13 +686,19 @@ export default function RaceDetailPage() {
   // #6570 (CodeRabbit, PR #6633): kun et svar der faktisk kom tilbage markerer
   // etapen som loaded. En fejl markerer den som failed (fejl + "Proev igen") i
   // stedet for at blive slugt til [] og laase etapen tom resten af besoeget.
+  // #6570 (CodeRabbit, PR #6633): in-flight-saettet er hentningens generation.
+  // loadAll erstatter det (nyt loeb ELLER "Proev igen" paa samme loeb), saa en
+  // hentning rydder kun op i SIT eget saet, og et svar fra en tidligere
+  // generation droppes. Ellers kunne et gammelt svar slette den nye generations
+  // markering (dobbelt hentning) eller laegge raekker oven i et genindlaest saet.
   const startStageFetch = useCallback((n) => {
-    if (!shouldStartStageFetch(n, { loaded: loadedStages, inFlight: stageFetchInFlightRef.current, failed: failedStages })) return;
+    const inFlight = stageFetchInFlightRef.current;
+    if (!shouldStartStageFetch(n, { loaded: loadedStages, inFlight, failed: failedStages })) return;
     const forRace = raceId;
-    stageFetchInFlightRef.current.add(n);
+    inFlight.add(n);
     settleStageFetch(() => fetchStageResultRows(raceId, n))
       .then((outcome) => {
-        if (currentRaceIdRef.current !== forRace) return;
+        if (currentRaceIdRef.current !== forRace || stageFetchInFlightRef.current !== inFlight) return;
         if (!outcome.ok) {
           console.warn("race_results per-stage fetch failed:", outcome.error?.message);
           setFailedStages((prev) => new Set(prev).add(n));
@@ -702,7 +708,7 @@ export default function RaceDetailPage() {
         setLoadedStages((prev) => new Set(prev).add(n));
       })
       .finally(() => {
-        stageFetchInFlightRef.current.delete(n);
+        inFlight.delete(n);
       });
   }, [raceId, loadedStages, failedStages]);
   // "Proev igen": fjern etapen fra failed. startStageFetch skifter identitet, saa

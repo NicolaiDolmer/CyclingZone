@@ -8,7 +8,7 @@
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  myBestByStage, resolveV2Tab, scheduleFor, STAGE_PAGE_V2_TABS, stagePhase, tacticsProgress,
+  activeRiders, myBestByStage, resolveV2Tab, scheduleFor, STAGE_PAGE_V2_TABS, stagePhase, tacticsProgress,
   type ResultRow, type RoleOverride, type RoleRider, type ScheduleRow, type StagePageV2Tab, type StageProfile,
 } from "./stagePageV2Model.ts";
 import StageStripV2, { type StripStage } from "./StageStripV2.tsx";
@@ -76,7 +76,8 @@ export default function StagePageV2(props: StagePageV2Props) {
   const tacticsStage = phase === "before" ? selectedStage : selectedStage + 1;
   const tacticsAt = scheduleFor(schedule, tacticsStage);
   const started = tacticsAt !== null && tacticsAt.getTime() <= nowMs;
-  const hasOpenTactics = !raceFinished && !started && tacticsStage <= totalStages && tacticsStage > stagesCompleted && riders.length > 0;
+  // Kun ryttere der stadig er i loebet: er hele holdet udgaaet, er der ingen taktik at saette.
+  const hasOpenTactics = !raceFinished && !started && tacticsStage <= totalStages && tacticsStage > stagesCompleted && activeRiders(riders).length > 0;
   let tacticsAction: { label: string; onClick: () => void } | null = null;
   if (hasOpenTactics) {
     const progress = tacticsProgress(riders, overrides, tacticsStage);

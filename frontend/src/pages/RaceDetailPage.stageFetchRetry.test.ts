@@ -53,6 +53,19 @@ test("#6570 begge etapeflader viser fejl + Try again for en fejlet etape", () =>
   assert.match(stageTabV2, /\{stageErrorSlot \?\? \(/);
 });
 
+test("#6570 hentningen rydder kun op i sit eget in-flight-saet og dropper svar fra en tidligere generation", () => {
+  const body = startStageFetchBody();
+  // Saettet fanges FOER guarden og tilfoejelsen ...
+  const captureIdx = body.indexOf("const inFlight = stageFetchInFlightRef.current;");
+  assert.ok(captureIdx >= 0, "in-flight-saettet fanges i en lokal");
+  assert.ok(body.indexOf("inFlight.add(n)") > captureIdx, "etapen tilfoejes det fangede saet");
+  // ... og finally sletter fra DET saet, aldrig fra ref'ens (maaske nye) saet.
+  assert.match(body, /\.finally\(\(\) => \{\s*inFlight\.delete\(n\);\s*\}\)/);
+  assert.doesNotMatch(body, /stageFetchInFlightRef\.current\.delete\(/);
+  // Et svar fra en erstattet generation (loadAll: nyt loeb eller "Proev igen") droppes.
+  assert.match(body, /stageFetchInFlightRef\.current !== inFlight\) return;/);
+});
+
 test("#6570 loadAll nulstiller failed-saettet ved nyt loeb", () => {
   assert.match(page, /setLoadedStages\(new Set\(preloadStages\)\);\s*setFailedStages\(new Set\(\)\);/);
 });

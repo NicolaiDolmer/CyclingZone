@@ -5,8 +5,10 @@ import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
   surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
   yourDay, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage,
+  activeRiders, profileScale, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
+import { elevationScaleFor } from "../../../lib/stageRouteProfile.js";
 
 const MOUNTAIN: StageProfile = {
   race_id: "r1", stage_number: 2, profile_type: "mountain", finale_type: "descent",
@@ -193,6 +195,52 @@ test("lineupFor + tacticsProgress", () => {
   assert.deepEqual(l.map((r) => [r.name, r.role, r.fit]), [["Ana Ibarra", "captain", 88], ["Mads Holm", "hunter", 61]]);
   assert.deepEqual(tacticsProgress(riders, [], 3), { done: 2, total: 3 });
   assert.equal(tacticsProgress([], [], 3).done, 0);
+});
+
+test("tacticsProgress: regnes fra den aktive opstilling for maaletapen", () => {
+  // Udgaaet kaptajn taeller ikke som "kaptajn sat".
+  const abandonedCaptain = [
+    { rider_id: "a", name: "Ana Ibarra", race_role: "captain", abandoned: true },
+    { rider_id: "b", name: "Mads Holm", race_role: "helper" },
+  ];
+  assert.deepEqual(tacticsProgress(abandonedCaptain, [], 3), { done: 1, total: 3 });
+  // Kaptajn sat via etapens override taeller, men kun for netop den etape.
+  const promote = [{ stage_number: 3, rider_id: "b", race_role: "captain" }];
+  assert.deepEqual(tacticsProgress(abandonedCaptain, promote, 3), { done: 2, total: 3 });
+  assert.deepEqual(tacticsProgress(abandonedCaptain, promote, 4), { done: 1, total: 3 });
+  // En override der fratager basis-kaptajnen rollen paa etapen, fjerner fluebenet.
+  const base = [{ rider_id: "a", name: "Ana Ibarra", race_role: "captain" }];
+  assert.equal(tacticsProgress(base, [{ stage_number: 3, rider_id: "a", race_role: "helper" }], 3).done, 1);
+  // Kun udgaaede ryttere: intet hold, og en udgaaet rytters intention taeller ikke.
+  const allOut = [{ rider_id: "a", name: "Ana Ibarra", race_role: "captain", abandoned: true }];
+  assert.deepEqual(tacticsProgress(allOut, [{ stage_number: 3, rider_id: "a", effort: "protect" }], 3), { done: 0, total: 3 });
+  // Intention fra en aktiv rytter paa maaletapen taeller.
+  assert.deepEqual(tacticsProgress(base, [{ stage_number: 3, rider_id: "a", effort: "protect" }], 3), { done: 3, total: 3 });
+  assert.deepEqual(activeRiders(abandonedCaptain).map((r) => r.rider_id), ["b"]);
+});
+
+test("profileScale: fast terraenskala pr. profile_type, aldrig etapens egen top", () => {
+  const flatA = elevationSeries({ ...MOUNTAIN, profile_type: "flat", climbs: [], elevation_profile: { v: 1, step_km: 0.5, h: [100, 120, 110] } })!;
+  const flatB = elevationSeries({ ...MOUNTAIN, profile_type: "flat", climbs: [], elevation_profile: { v: 1, step_km: 0.5, h: [100, 400, 110] } })!;
+  // To flade etaper med forskellig top deler loft = elevationScaleFor("flat") (genbrugt, ikke kopieret).
+  assert.deepEqual(profileScale({ profile_type: "flat" }, flatA), { floor: 0, ceil: elevationScaleFor("flat") });
+  assert.deepEqual(profileScale({ profile_type: "flat" }, flatB), { floor: 0, ceil: elevationScaleFor("flat") });
+  // Bjerg og flad faar forskelligt loft: samme hoejde fylder mindre paa bjergskalaen.
+  assert.equal(profileScale({ profile_type: "mountain" }, flatA).ceil, elevationScaleFor("mountain"));
+  assert.equal(profileScale({ profile_type: "high_mountain" }, flatA).ceil, elevationScaleFor("high_mountain"));
+  // Ukendt type: samme fallback som elevationScaleFor.
+  assert.equal(profileScale({ profile_type: "nope" }, flatA).ceil, elevationScaleFor("nope"));
+  // Outlier over loftet udvider loftet (rundet op til 100 m) i stedet for at klippe kurven.
+  const outlier = elevationSeries({ ...MOUNTAIN, profile_type: "flat", climbs: [], elevation_profile: { v: 1, step_km: 0.5, h: [100, elevationScaleFor("flat") + 37, 110] } })!;
+  assert.equal(profileScale({ profile_type: "flat" }, outlier).ceil, Math.ceil((elevationScaleFor("flat") + 37) / 100) * 100);
+});
+
+test("perKmGradeCeil: fast procentloft, kun en outlier udvider det", () => {
+  const km = (grade: number) => ({ index: 1, grade, band: gradeBand(grade), fraction: 1 });
+  assert.equal(perKmGradeCeil([km(3), km(4)]), PER_KM_GRADE_CEIL_PCT);
+  assert.equal(perKmGradeCeil([km(9), km(11.5)]), PER_KM_GRADE_CEIL_PCT);
+  assert.equal(perKmGradeCeil([km(14.2)]), 15);
+  assert.equal(perKmGradeCeil([]), PER_KM_GRADE_CEIL_PCT);
 });
 
 test("favouritesFor: fra loebet indtil nu; tom foer foerste etape", () => {

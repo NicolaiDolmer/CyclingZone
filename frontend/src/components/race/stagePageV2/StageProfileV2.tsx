@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointer
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import {
-  colouredSegments, elevationAt, gradePct, gradeBand,
+  colouredSegments, elevationAt, gradePct, gradeBand, profileScale,
   type Climb, type ElevationSeries, type GradeBand, type StageProfile,
 } from "./stagePageV2Model.ts";
 
@@ -70,10 +70,8 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
     }
     return out;
   }, [series]);
-  const maxH = Math.max(...series.hs);
-  const minH = Math.min(...series.hs);
-  const floor = Math.max(0, Math.floor((minH - 80) / 100) * 100);
-  const ceil = Math.max(floor + 300, Math.ceil((maxH + 60) / 100) * 100);
+  // Fast terraenskala pr. profile_type (#4107), aldrig etapens egen top/bund.
+  const { floor, ceil } = useMemo(() => profileScale(profile, series), [profile, series]);
   const X = (km: number) => (km / D) * W;
   const Y = (h: number) => H - BOT - ((h - floor) / (ceil - floor)) * (H - BOT - TOP);
 

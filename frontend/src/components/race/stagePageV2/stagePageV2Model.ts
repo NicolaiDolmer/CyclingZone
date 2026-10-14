@@ -9,7 +9,7 @@
 //   - race_stage_schedule (tider)
 // Kan noget ikke afledes aerligt, returneres null/[] og fladen udelader det.
 
-import { buildProfileSeries, hasRouteData } from "../../../lib/stageRouteProfile.js";
+import { buildProfileSeries, elevationScaleFor, hasRouteData } from "../../../lib/stageRouteProfile.js";
 import { topDemands } from "../../../lib/stageTerrain.js";
 import { stageHasIntention } from "../../../lib/raceOverviewLogic.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
@@ -102,6 +102,21 @@ export function elevationSeries(profile: StageProfile | null | undefined): Eleva
   const s = buildProfileSeries(profile);
   if (!s) return null;
   return { kms: s.xs.slice(), hs: s.ys.slice(), source: "synthetic" };
+}
+
+/**
+ * Lodret skala for en etapeprofil: FAST pr. profile_type (ejer-laast 23/8,
+ * #4107), aldrig etapens egen top eller bund. Bunden er 0 m, loftet er
+ * terraen-typens loft fra stageRouteProfile.elevationScaleFor; kun en reel
+ * outlier over loftet udvider det (rundet op til 100 m), saa kurven ikke klippes.
+ * Saa fylder en kort stigning lidt og et bjergmassiv meget, ogsaa side om side
+ * i etapestriben.
+ */
+export function profileScale(profile: StageProfile | null | undefined, series: ElevationSeries): { floor: number; ceil: number } {
+  const fixed = Number(elevationScaleFor(profile?.profile_type ?? undefined));
+  const peak = series.hs.length ? Math.max(...series.hs) : 0;
+  const ceil = peak > fixed ? Math.ceil(peak / 100) * 100 : fixed;
+  return { floor: 0, ceil: Math.max(1, ceil) };
 }
 
 /** Lineaer interpolation af hoejden ved km. */
@@ -221,6 +236,17 @@ export function climbDetail(profile: StageProfile, series: ElevationSeries | nul
     steepest,
     hardest5,
   };
+}
+
+/**
+ * Fast loft (%) for km-for-km-soejlerne, saa stigninger kan sammenlignes:
+ * toppen af det stejleste farvebaand (>= 10 %) plus luft. Kun en reel outlier
+ * udvider loftet (rundet op), saa en soejle aldrig klippes.
+ */
+export const PER_KM_GRADE_CEIL_PCT = 12;
+export function perKmGradeCeil(perKm: ClimbKm[]): number {
+  const steepest = perKm.length ? Math.max(...perKm.map((k) => k.grade)) : 0;
+  return steepest > PER_KM_GRADE_CEIL_PCT ? Math.ceil(steepest) : PER_KM_GRADE_CEIL_PCT;
 }
 
 // ── Underlag: kun naar det ikke er asfalt (ejer 14/10) ─────────────────────
@@ -394,8 +420,7 @@ export function lineupFor(riders: RoleRider[], overrides: RoleOverride[], stageN
   const roleOverride = new Map<string, string>();
   for (const o of overrides || []) if (o.stage_number === stageNumber && o.race_role) roleOverride.set(o.rider_id, o.race_role);
   const order: Record<string, number> = { captain: 0, sprint_captain: 1, hunter: 2, free_role: 3, helper: 4 };
-  return (riders || [])
-    .filter((r) => !r.abandoned)
+  return activeRiders(riders)
     .map((r) => {
       const fitRaw = r.stage_fit ? r.stage_fit[String(stageNumber)] : undefined;
       return {
@@ -408,12 +433,26 @@ export function lineupFor(riders: RoleRider[], overrides: RoleOverride[], stageN
     .sort((a, b) => (order[a.role ?? ""] ?? 5) - (order[b.role ?? ""] ?? 5) || (b.fit ?? -1) - (a.fit ?? -1));
 }
 
-/** "x of 3 done": hold udtaget, kaptajn sat, intention sat for etape N. */
+/** Ryttere der stadig er i loebet (udgaaede taeller ikke med nogen steder). */
+export function activeRiders(riders: RoleRider[]): RoleRider[] {
+  return (riders || []).filter((r) => !r.abandoned);
+}
+
+/**
+ * "x of 3 done" for etape N, regnet fra den AKTIVE opstilling for netop den
+ * etape (samme kilde som lineupFor): udgaaede ryttere taeller ikke, og en
+ * kaptajn sat via etapens overrides taeller (en override der fratager basis-
+ * kaptajnen rollen, goer ogsaa).
+ */
 export function tacticsProgress(riders: RoleRider[], overrides: RoleOverride[], stageNumber: number): { done: number; total: number } {
-  const picked = (riders || []).length > 0;
-  const captain = (riders || []).some((r) => r.race_role === "captain");
+  const lineup = lineupFor(riders, overrides, stageNumber);
+  const activeIds = new Set(lineup.map((r) => r.riderId));
+  const picked = lineup.length > 0;
+  const captain = lineup.some((r) => r.role === "captain");
   const intention = stageHasIntention({
-    overrides: (overrides || []).map((o) => ({ stage_number: o.stage_number, rider_id: o.rider_id, effort: o.effort ?? undefined })),
+    overrides: (overrides || [])
+      .filter((o) => activeIds.has(o.rider_id))
+      .map((o) => ({ stage_number: o.stage_number, rider_id: o.rider_id, effort: o.effort ?? undefined })),
     stageNumber,
   });
   return { done: [picked, captain, intention].filter(Boolean).length, total: 3 };

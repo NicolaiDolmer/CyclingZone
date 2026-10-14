@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { profileLabelKey } from "../../../lib/stageProfileConfig.js";
-import { elevationSeries, shortName, type StageProfile } from "./stagePageV2Model.ts";
+import { elevationSeries, profileScale, shortName, type StageProfile } from "./stagePageV2Model.ts";
 
 export interface StripStage {
   number: number;
@@ -18,7 +18,9 @@ function Mini({ profile, active }: { profile: StageProfile | null; active: boole
     const s = elevationSeries(profile);
     if (!s) return null;
     const D = s.kms[s.kms.length - 1] || 1;
-    const max = Math.max(600, ...s.hs);
+    // Samme faste terraenskala som den store profil (#4107): en flad etape ser
+    // flad ud ved siden af en bjergetape, i stedet for at fylde sin egen boks.
+    const max = profileScale(profile, s).ceil;
     const step = Math.max(1, Math.floor(s.kms.length / 60));
     const pts: string[] = [];
     for (let i = 0; i < s.kms.length; i += step) pts.push(`L${((s.kms[i] / D) * 100).toFixed(2)},${(30 - (s.hs[i] / max) * 26).toFixed(2)}`);
