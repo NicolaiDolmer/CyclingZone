@@ -6,7 +6,7 @@
 
 **MÅLT EVIDENS:** Git/kode på NICOLAIPC, hoved-checkout `C:/Dev/CyclingZone`, udgangspunkt `0ce0959e8`. Supabase-projekt `ghwvkxzhsbbltzfnuhhz`, udelukkende SELECT efter opslag i `database/schema-snapshot.json`. Browserkontrol af offentlig Hjælp på 390×844 og 1280×900. Ingen kodeændringer eller manuelle deploys.
 
-Brugsvinduet er **14/9 kl. 00 til 14/10 kl. 00 dansk tid**. Clarity-MCP er ikke tilgængelig i denne session; søgning i plugin-kataloget fandt heller ingen Clarity-forbindelse. **Ingen evidens for Clarity-sessioner, scroll depth, aktiv tid, dead/rage clicks eller quickbacks pr. URL.**
+Brugsvinduet er **14/9 kl. 00 til 14/10 kl. 00 dansk tid**. Clarity-MCP er ikke tilgængelig; plugin-søgning fandt ingen Clarity-forbindelse. Clarity blev også åbnet i Codex-browseren 14/10: login kræves. Ejeren logger ind senere samme dag; ingen projektdata er læst. **Ingen evidens for Clarity-sessioner, scroll depth, aktiv tid, dead/rage clicks eller quickbacks pr. URL.** Opfølgningen skal filtrere self-referral og følge `ANALYTICS_STACK.md`/`docs/clarity/README.md`: Clarity måler friktionsmønstre, ikke hele spillerbasen.
 
 PostHog-projekt 259474 har 18.657 sidevisninger i vinduet, men den første er **6/10 kl. 21.01 dansk tid**. URL-tabellen dækker altså cirka en uge, ikke 30 komplette dage. Det modsiger den historiske beskrivelse af et tomt projekt i `ANALYTICS_STACK.md`; dokumentet er ikke ændret her. Besøgende er PostHogs målte personer, ikke alle spillere. UUID-ruter er samlet før distinct-optælling; arkivets navneruter er samlet særskilt. Den afledte SQL tæller også interne besøg, mens web-tabellen brugte projektets testfilter. Begge er stikprøver. Alle returnerede gennemsnitstider var nul; eventlisten indeholdt ingen `$pageleave`. Tid og bounce bruges derfor ikke som friktionsbevis. Se [PostHogs måleforudsætninger](https://posthog.com/docs/health-checks/pageleave-events).
 
@@ -45,7 +45,7 @@ Råt “ingen aktivitet”-tal bruges ikke: årsmøde, sæsonarkiv, ungdomsresul
 
 ## Fem løft, ejeren kan tage stilling til
 
-### 1. Resultatarkiv: gør spillets historie værd at vende tilbage til (L)
+### 1. Løbsbibliotek: historik og kommende løb (L)
 
 **Spillerproblem:** Jeg kan ikke sikkert finde løbet eller hurtigt genopleve, hvem der vandt. Et spil om karrierer mister sin hukommelse, når arkivet er besværligt. Det er dårligt produktarbejde, også når den aktuelle løbsside er god.
 
@@ -54,9 +54,10 @@ Råt “ingen aktivitet”-tal bruges ikke: årsmøde, sæsonarkiv, ungdomsresul
 - Én søgeindgang til løb, udgaver og relevante rekordholdere; ingen krav om præcis stavning af et langt løbsnavn.
 - Første visning: udgaver, vindere og sæsoner. Detaljer indlæses, når de åbnes; hele resultatmængden skal ikke være adgangsbillet.
 - Vis holdets og rytternes spor gennem historien med links og dokumenterede resultater, aldrig opdigtet fortælling.
+- **Ejerens tilføjelse 14/10:** samme bibliotek skal give overblik over kommende løb. To indgange, Kommende og Historik, med søgning og filtre for sæson, division, løbstype og terræn. En kommende udgave viser offentliggjort dato, klasse, distance/etapetal og kendte ruteprofiler; løbets tidligere udgaver ligger ved siden af. På 390 px skal løbsnavn, dato og type kunne læses uden vandret scroll. Ukendt kalender eller pulje markeres ærligt; ingen konstruerede datoer eller gentagelsesregler.
 - **Fjern:** guldgraderede dekorationssøjler, gentagne top-10-visninger og klientens samlede resultathentning som startkrav.
 
-**A/B:** A: et sammenhængende, søgbart historiebibliotek. B: kun reparation af den eksisterende sejrliste. **Anbefaling A**, med en første leverance der gør søgning og udgaver pålidelige. SSOT: `SOCIAL_RULES.md`; resultatdefinitioner fra `RACE_ENGINE_RULES.md` før design, uden ændringer af de beskyttede løbsflader. Genbrug **#6514**.
+**A/B:** A: sammenhængende bibliotek. B: kun reparation af sejrliste. **Ejeren valgte A 14/10, med kommende løb.** Det godkender retningen, ikke build. **MÅLT EVIDENS:** `PlanningHubPage.jsx` monterer allerede kalender og sæsonvisning; `ResultaterPage.jsx` monterer arkivtabel og WorldCatalog. #3900 har et eksisterende godkendt kalenderdesign, #5841 ejer næste-sæson-visning, og #1010 er lukket med dokumenteret levering af kommende profiler. **FORTOLKNING:** problemet er et sammenhængende, let fundet bibliotek, ikke bevist fravær af alle fremtidsflader. **Ingen evidens** for det nye biblioteks brug eller mobiloplevelse; score 13 gælder historikdelen. SSOT: `SOCIAL_RULES.md`, `RACE_ENGINE_RULES.md`, `CALENDAR_RULES.md`, `PLANNING_CENTER_RULES.md`. Genbrug **#6514**, afstem med **#3900/#1106**; ingen S5-/løbssideændringer. Testplan: søgning på navnevarianter, korrekt sæson/division, historik kontra kommende status, manglende kalender og profiler samt 390 px/desktop.
 
 ### 2. Økonomi: et beslutningsværktøj, man kan stole på (M)
 
@@ -120,4 +121,4 @@ Ingen `.sweep-daily-*` findes lokalt. De to juli-sweeps er uden for perioden og 
 
 Før build: ejerens problem/løsnings-go pr. område, desktop/mobil-mockup og eksplicit testplan. Før release: ægte login-QA på 390 px og desktop, lys/mørk, tom/loading/fejl samt områdets centrale handling. Arkivets DB/ydelsesdesign kræver målt lokal PG17-baseline efter regel 36; finansens afstemning skal testes mod faktiske ledgers. Ingen tunge tests er kørt for denne docs-audit. Dokumentkontrollen har verificeret ordgrænse, eksisterende kildestier, CSV-struktur og fravær af spilleridentiteter/prosa-em-dash. Repoets tokenhygiejne-check fejler på det uændrede AGENTS.md-budget; ingen regel-/styringsfiler er redigeret. PR-preflight er fravalgt for denne rene docs-commit på main, jf. docs-undtagelsen i push-hooken. Patch notes er ikke nødvendige: ingen spilleradfærd eller spillertekst er ændret.
 
-**Første beslutning:** vælg arkiv A eller B. Anbefalingen er A: spillets historie skal blive en grund til at åbne Cycling Zone, ikke en teknisk restside. #930/#26 forbliver parkerede, indtil ejeren udtrykkeligt løfter dem.
+**Beslutning 14/10:** ejeren valgte arkiv A og tilføjede kommende løb. Næste ejer-gate er en konkret mobil-/desktop-skitse af bibliotekets indgang, afstemt med #3900s kalenderdesign, før build. Clarity-opfølgning afventer login; friktionsrangeringen er foreløbig. #930/#26 forbliver parkerede, indtil ejeren udtrykkeligt løfter dem.
