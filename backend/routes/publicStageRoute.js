@@ -9,7 +9,8 @@
 //
 // KONTRAKT (ren læsning, ingen skrivning):
 //   200 { stage: { id, race_name, stage_number, stage_count, profile_type, distance_km,
-//                  elevation_gain_m, climbs[], sprints[], sectors[], segments[] } }
+//                  elevation_gain_m, climbs[], sprints[], sectors[], segments[],
+//                  elevation_profile } }  (#6594: {v,step_km,h[]} eller null for ældre etaper)
 //   400 invalid_stage_id · 404 stage_not_found · 500 stage_route_failed
 // Cache: public, 5 min i browseren, 1 time på en delt cache. Etapen er offentligt indhold.
 //
@@ -33,6 +34,14 @@ function str(value, max = 60) {
 }
 const arr = (v) => (Array.isArray(v) ? v : []);
 
+/** #6594: højdeserien {v:1, step_km, h[]} (hele meter) eller null. Ugyldigt = null, aldrig en fejl. */
+export function toPublicElevationProfile(raw) {
+  const step = num(raw?.step_km);
+  if (raw?.v !== 1 || step === null || step < 0.1 || step > 5 || !Array.isArray(raw.h)) return null;
+  if (raw.h.length < 2 || raw.h.length > 1200 || !raw.h.every((m) => m !== null && Number.isFinite(Number(m)))) return null;
+  return { v: 1, step_km: step, h: raw.h.map((m) => Math.round(Number(m))) };
+}
+
 /**
  * Whitelist af én race_stage_profiles-række + løbet. Eksporteret så testen kan låse,
  * at intet ud over rute-felterne slipper ud (fx top_elevation_m, demand_vector, weather).
@@ -46,6 +55,7 @@ export function toPublicStageRoute(profile, race) {
     profile_type: str(profile.profile_type, 32),
     distance_km: num(profile.distance_km),
     elevation_gain_m: num(profile.elevation_gain_m),
+    elevation_profile: toPublicElevationProfile(profile.elevation_profile),
     climbs: arr(profile.climbs).map((c) => ({
       name: str(c?.name),
       category: str(String(c?.category ?? ""), 3),
@@ -72,11 +82,11 @@ export function toPublicStageRoute(profile, race) {
 
 /** Læser én etape. Eksporteret så testen kan køre den uden Express. Null = findes ikke. */
 export async function loadPublicStageRoute(supabase, stageId) {
-  const { data: profile, error } = await supabase
-    .from("race_stage_profiles")
-    .select("id, race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sprints, sectors, segments")
-    .eq("id", stageId)
-    .maybeSingle();
+  const read = (cols) => supabase.from("race_stage_profiles").select(cols).eq("id", stageId).maybeSingle();
+  const base = "id, race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sprints, sectors, segments";
+  let { data: profile, error } = await read(`${base}, elevation_profile`);
+  // Kolonnen kommer med #6594-migrationen; før den er anvendt (undefined_column) læses ruten uden serien.
+  if (error && (error.code === "42703" || /elevation_profile/.test(error.message ?? ""))) ({ data: profile, error } = await read(base));
   if (error) throw new Error(`race_stage_profiles: ${error.message}`);
   if (!profile) return null;
   const { data: race, error: raceError } = await supabase

@@ -9,16 +9,19 @@ import { createPublicStageRouteRouter, toPublicStageRoute } from "./publicStageR
 const STAGE_ID = "11111111-2222-4333-8444-555555555555";
 const RACE_ID = "race-a";
 
-function fakeSupabase(tables, { failOn = null } = {}) {
+function fakeSupabase(tables, { failOn = null, noColumn = null } = {}) {
   return {
     from(table) {
       let rows = [...(tables[table] ?? [])];
+      let missing = false;
       const api = {
-        select() { return api; },
+        select(cols) { missing = Boolean(noColumn && String(cols).includes(noColumn)); return api; },
         eq(col, val) { rows = rows.filter((r) => r[col] === val); return api; },
         maybeSingle() { return api; },
         then(resolve, reject) {
-          const result = table === failOn
+          const result = missing
+            ? { data: null, error: { code: "42703", message: `column ${noColumn} does not exist` } }
+            : table === failOn
             ? { data: null, error: { message: "boom" } }
             : { data: rows[0] ?? null, error: null };
           return Promise.resolve(result).then(resolve, reject);
@@ -90,6 +93,40 @@ test("500 when the read fails, never cached", async () => {
     const res = await fetch(`${base}/${STAGE_ID}`);
     assert.equal(res.status, 500);
     assert.equal(res.headers.get("cache-control"), "no-store");
+  });
+});
+
+const SERIES = { v: 1, step_km: 0.5, h: [500, 504, 510.4, 509], hidden: "x" };
+
+test("elevation_profile (#6594): whitelisted series is returned, legacy rows get null", async () => {
+  const tables = { ...TABLES, race_stage_profiles: [{ ...PROFILE, elevation_profile: SERIES }] };
+  await withServer(fakeSupabase(tables), async (base) => {
+    const { stage } = await (await fetch(`${base}/${STAGE_ID}`)).json();
+    assert.deepEqual(stage.elevation_profile, { v: 1, step_km: 0.5, h: [500, 504, 510, 509] });
+    assert.ok(!JSON.stringify(stage).includes("hidden"));
+  });
+  await withServer(fakeSupabase(TABLES), async (base) => {
+    const { stage } = await (await fetch(`${base}/${STAGE_ID}`)).json();
+    assert.equal(stage.elevation_profile, null);
+  });
+});
+
+test("elevation_profile (#6594): malformed series becomes null, never an error", () => {
+  const bad = [
+    null, {}, { v: 2, step_km: 0.5, h: [1, 2] }, { v: 1, step_km: 0, h: [1, 2] }, { v: 1, step_km: 0.5, h: [1] },
+    { v: 1, step_km: 0.5, h: [1, "x"] }, { v: 1, step_km: 0.5, h: [1, null] }, { v: 1, step_km: 0.5, h: "12" },
+    { v: 1, step_km: 0.5, h: new Array(1201).fill(5) },
+  ];
+  for (const raw of bad) assert.equal(toPublicStageRoute({ ...PROFILE, elevation_profile: raw }, null).elevation_profile, null);
+});
+
+test("reads the route without the series while the #6594 column does not exist yet", async () => {
+  await withServer(fakeSupabase(TABLES, { noColumn: "elevation_profile" }), async (base) => {
+    const res = await fetch(`${base}/${STAGE_ID}`);
+    assert.equal(res.status, 200);
+    const { stage } = await res.json();
+    assert.equal(stage.elevation_profile, null);
+    assert.equal(stage.distance_km, 160);
   });
 });
 
