@@ -8,6 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
 import { measureBootIdentity, sameBoot } from './wave-boot-identity.mjs';
+import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
@@ -722,7 +723,7 @@ export function stopWaveWatch(wave, observedBootId) {
   }
 }
 
-export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captureBoot = () => undefined, resolveOwnerPid = claudeOwnerPid) {
+export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captureBoot = () => undefined, resolveOwnerPid = claudeOwnerPid, laneLimit = hostLaneCap) {
   const input = payload.tool_input || {};
   if (payload.hook_event_name === 'PostToolUse') {
     if (payload.tool_name !== 'Workflow' || !fs.existsSync(path.join(dir, 'wave-active.json'))) return;
@@ -750,7 +751,8 @@ export async function handleHook(payload, dir, readPrs = getOpenPrs, now, captur
     const args = input.args || {};
     if (args.dryRun === true) return;
     if (fs.existsSync(path.join(dir, 'wave-active.json'))) throw Error('wave-active.json exists; inspect owner, never overwrite it');
-    if (args.lanes !== undefined && (!Number.isInteger(args.lanes) || args.lanes < 1 || args.lanes > 4)) throw Error('Wave lanes must be an integer from 1 to 4');
+    // #6615: cap per machine (scripts/wave-capacity.json), not a hard-coded 4.
+    if (args.lanes !== undefined) assertLaneCount(args.lanes, laneLimit(), 'Wave lanes');
     if (!payload.session_id) throw Error('Wave admission requires session_id');
     const pid = resolveOwnerPid(payload.session_id);
     if (!Number.isSafeInteger(pid) || pid < 1) throw Error('Cannot verify admission owner process');

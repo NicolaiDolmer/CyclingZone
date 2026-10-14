@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { runWave, childArgs } from './codex-wave.mjs';
 import * as runner from './codex-wave.mjs';
+import { hostLaneCap } from './wave-capacity.mjs';
 
 const localAppData = 'C:\\Users\\Fixture\\AppData\\Local';
 const appCli = `${localAppData}\\OpenAI\\Codex\\bin\\current\\codex.exe`;
@@ -115,9 +116,33 @@ test('invalid lane counts fail before admission or worktree setup', async t => {
     await assert.rejects(runWave({ root, runDir: root, tracks, owner: 'fixture', lanes }, deps({
       readPrs: async () => { assert.fail('invalid plan reached admission'); },
       prepare: async () => { assert.fail('invalid plan reached setup'); },
-    })), /lanes must be an integer from 1 to 4/);
+    })), /lanes must be an integer from 1 to 4 \(lane cap on FIXTURE-UNKNOWN-HOST/);
     assert.equal(existsSync(path.join(root, 'wave-active.json')), false);
   }
+});
+
+test('#6615: NICOLAIPC allows six lanes, an unknown host still rejects five', async t => {
+  const root = fixture(t);
+  const six = [1, 2, 3, 4, 5, 6].map(issue => ({ ...tracks[0], issue, branch: `codex/${issue}-fixture`, ownership: [`fixtures/${issue}`] }));
+  assert.equal(runner.executionPlan({ tracks: six, lanes: 6 }, hostLaneCap('NICOLAIPC')).lanes, 6);
+  assert.equal(runner.executionPlan({ tracks: six, lanes: 6 }, hostLaneCap('nicolaipc')).lanes, 6);
+  assert.throws(() => runner.executionPlan({ tracks: six, lanes: 7 }, hostLaneCap('NICOLAIPC')), /from 1 to 6 \(lane cap on NICOLAIPC/);
+  assert.throws(() => runner.executionPlan({ tracks: six, lanes: 5 }, hostLaneCap('DOLMERPC')), /from 1 to 4 \(lane cap on DOLMERPC/);
+  let active = 0, peak = 0;
+  const result = await runWave({ root, runDir: root, tracks: six, owner: 'fixture', lanes: 6 }, deps({
+    laneLimit: () => hostLaneCap('NICOLAIPC'),
+    runAgent: async role => {
+      active++; peak = Math.max(peak, active);
+      await new Promise(resolve => setImmediate(resolve));
+      active--;
+      return role === 'reviewer' ? { verdict: 'approved', findings: [] } : { status: 'ready', tests: ['pass'] };
+    },
+  }));
+  assert.equal(peak, 6);
+  assert.equal(JSON.parse(readFileSync(result.report)).execution.verifyMax, 2);
+  await assert.rejects(runWave({ root, runDir: root, tracks: six, owner: 'fixture', lanes: 5 }, deps({
+    readPrs: async () => { assert.fail('over-cap plan reached admission'); },
+  })), /from 1 to 4 \(lane cap on FIXTURE-UNKNOWN-HOST/);
 });
 
 test('reports record explicit capacity and model requests without claiming resolved CLI defaults', async t => {
@@ -139,8 +164,11 @@ test('omitted capacity remains two lanes and is visible as a default', async t =
   assert.equal(report.execution.laneSource, 'default');
 });
 
+// Host-independent: the suite runs on machines with different caps (#6615).
+const unknownHost = () => hostLaneCap('FIXTURE-UNKNOWN-HOST');
+
 function deps(overrides = {}) {
-  return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], prefilter: async () => {},
+  return { now: () => now, bootId: () => 'fixture-boot', readPrs: async () => [], prefilter: async () => {}, laneLimit: unknownHost,
     prepare: async t => ({ ...t, worktree: `/fixture/${t.issue}` }),
     runAgent: async (role, t) => role === 'reviewer' ? { verdict: 'approved', findings: [] } : { status: 'ready', summary: 'fixture', tests: ['pass'] },
     verifyPermissions: async () => {}, validateResult: async () => {}, ...overrides };
