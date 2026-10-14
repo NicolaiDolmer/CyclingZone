@@ -251,6 +251,7 @@ import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js"
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
+import { createStagePageV2Router } from "../lib/stagePageV2Flag.js"; // #6570
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
@@ -953,6 +954,7 @@ router.use("/rankings", createRankingsRouter({
 }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
+router.use(createStagePageV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6570
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.

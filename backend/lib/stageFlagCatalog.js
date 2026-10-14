@@ -73,6 +73,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_matrix_mobile", area: "season", label: "Sæsonmatrix på mobil — ny visning" },
   // #6590: web push, seedet off. Kræver VAPID_* på backend. Flip er ejer-only.
   { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
+  // #6570: etapeside 2.0, seedet off. Beta foerst (ejer 14/10).
+  { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
