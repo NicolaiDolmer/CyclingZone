@@ -266,10 +266,10 @@ try {
 
   # #6616: repo-regel - nye frontend-filer er .ts/.tsx. Kun NYE filer (diff-filter=A)
   # mod origin/main; eksisterende .js/.jsx røres ikke. Hurtig: ét git-kald.
-  Write-Host "== new-frontend-file-ts-rule (nye frontend/src/**/*.js(x) er forbudt, #6616) ==" -ForegroundColor Cyan
+  Write-Host "== new-frontend-file-ts-rule (nye frontend/src+tests .js(x) er forbudt, #6616) ==" -ForegroundColor Cyan
   $newJsFiles = @()
   try {
-    $addedOutput = & git --no-pager diff --name-only --diff-filter=A origin/main...HEAD -- frontend/src 2>$null
+    $addedOutput = & git --no-pager diff --name-only --diff-filter=A origin/main...HEAD -- frontend/src frontend/tests 2>$null
     if ($LASTEXITCODE -eq 0 -and $addedOutput) {
       $newJsFiles = @($addedOutput | Where-Object { $_ -match '\.jsx?$' })
     }
@@ -280,7 +280,7 @@ try {
     foreach ($f in $newJsFiles) { Write-Host "  NY .js/.jsx-fil: $f (skal være .ts/.tsx)" -ForegroundColor Red }
     $failed += "new-frontend-file-ts-rule"
   } else {
-    Write-Host "  (ingen nye .js/.jsx-filer under frontend/src mod origin/main)" -ForegroundColor DarkGray
+    Write-Host "  (ingen nye .js/.jsx-filer under frontend/src eller frontend/tests mod origin/main)" -ForegroundColor DarkGray
   }
 }
 finally {
