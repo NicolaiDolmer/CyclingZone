@@ -711,6 +711,9 @@ export default function RaceDetailPage() {
     () => defaultStage({ totalStages: v2Total, stagesCompleted: v2Ridden, schedule, now: new Date(nowMs) }),
     [v2Total, v2Ridden, schedule, nowMs],
   );
+  // Etapen guld-knappen "Set tactics for stage N" naevner; null = Tactics-fanen
+  // er aabnet direkte og bruger RaceTacticsTabs egen regel.
+  const [v2TacticsStage, setV2TacticsStage] = useState(null);
   const v2StageParam = Number(searchParams.get("stage"));
   const v2SelectedStage = Number.isInteger(v2StageParam) && v2StageParam >= 1 && v2StageParam <= v2Total ? v2StageParam : v2TodayStage;
   useEffect(() => {
@@ -1110,7 +1113,8 @@ export default function RaceDetailPage() {
   // #6570: fanernes indhold som funktion af fanen, saa etapeside 2.0 kan
   // genbruge Standings/Team/Tactics UAENDRET som slots. Den nuvaerende side
   // kalder den med sin aktive fane, praecis som foer.
-  const renderTabContent = (tab) => (
+  // tacticsStage (kun v2): etapen Tactics-fanen skal aabne paa.
+  const renderTabContent = (tab, { tacticsStage = null } = {}) => (
     <>
           {tab === "overview" && (
             <RaceOverviewTab
@@ -1162,7 +1166,13 @@ export default function RaceDetailPage() {
           )}
 
           {tab === "tactics" && (
-            <RaceTacticsTab raceId={race.id} profileByStage={profileByStage} showOrders={TACTICS_V4_PREVIEW} />
+            <RaceTacticsTab
+              key={tacticsStage ?? "default"}
+              raceId={race.id}
+              profileByStage={profileByStage}
+              showOrders={TACTICS_V4_PREVIEW}
+              initialStage={tacticsStage}
+            />
           )}
 
           {tab === "stages" && (
@@ -1299,7 +1309,13 @@ export default function RaceDetailPage() {
   const changeV2Tab = (tab) => {
     // Standings aabner paa den etape man kom fra, hvis den er koert.
     if (tab === "standings" && v2IsStageRace && v2SelectedStage <= ridden) setResultView(`stage-${v2SelectedStage}`);
+    setV2TacticsStage(null);
     changeMainTab(tab);
+  };
+  // Guld-knappen naevner en bestemt etape; Tactics aabner paa praecis den.
+  const openV2Tactics = (stageNumber) => {
+    changeV2Tab("tactics");
+    setV2TacticsStage(stageNumber);
   };
   const stagePageV2El = stagePageV2 === true ? (
     <StagePageV2
@@ -1312,6 +1328,7 @@ export default function RaceDetailPage() {
       onSelectStage={changeStage}
       activeTab={resolveV2Tab(searchParams.get("tab"))}
       onChangeTab={changeV2Tab}
+      onOpenTactics={openV2Tactics}
       profileByStage={profileByStage}
       schedule={schedule}
       timeLabelFor={(d) => formatStageTime(d, locale)}
@@ -1323,7 +1340,7 @@ export default function RaceDetailPage() {
       careerEvents={careerEvents}
       standingsSlot={renderTabContent("results")}
       teamSlot={renderTabContent("team")}
-      tacticsSlot={renderTabContent("tactics")}
+      tacticsSlot={renderTabContent("tactics", { tacticsStage: v2TacticsStage })}
       nowMs={nowMs}
       emptyStageSlot={
         <EmptyState

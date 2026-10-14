@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
   surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
-  yourDay, lineupFor, tacticsProgress, favouritesFor, winningMargin,
+  yourDay, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
 
@@ -104,6 +104,23 @@ test("defaultStage: i dag (dansk tid), ellers senest koerte, ellers 1", () => {
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-14T23:30:00Z") }), 3);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-20T08:00:00Z") }), 2);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule: [], now: new Date("2026-10-14T08:00:00Z") }), 1);
+});
+
+test("tacticsStartStage: guld-knappens etape naar den er aaben, ellers dagens regel", () => {
+  const stages = [
+    { stage_number: 5, locked: true },
+    { stage_number: 6, locked: false },
+    { stage_number: 7, locked: false },
+  ];
+  // Knappen naevner etape 7, mens 6 er den foerste aabne: 7 vinder.
+  assert.equal(tacticsStartStage(stages, 7), 7);
+  // Ingen etape naevnt, laast etape eller ukendt etape: foerste aabne.
+  assert.equal(tacticsStartStage(stages, null), 6);
+  assert.equal(tacticsStartStage(stages, 5), 6);
+  assert.equal(tacticsStartStage(stages, 9), 6);
+  // Alt laast: sidste etape read-only (firstOpenStage).
+  assert.equal(tacticsStartStage([{ stage_number: 1, locked: true }, { stage_number: 2, locked: true }], 2), 2);
+  assert.equal(tacticsStartStage([], 3), null);
 });
 
 test("stagePhase + navne + tidshuller", () => {

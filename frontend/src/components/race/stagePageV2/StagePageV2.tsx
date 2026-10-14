@@ -26,6 +26,8 @@ export interface StagePageV2Props {
   onSelectStage: (n: number) => void;
   activeTab: StagePageV2Tab;
   onChangeTab: (tab: StagePageV2Tab) => void;
+  /** Guld-knappen: aabn Tactics paa praecis den etape knappen naevner. */
+  onOpenTactics: (stageNumber: number) => void;
   profileByStage: Record<number, StageProfile>;
   schedule: ScheduleRow[];
   timeLabelFor: (date: Date) => string;
@@ -46,7 +48,7 @@ export interface StagePageV2Props {
 export default function StagePageV2(props: StagePageV2Props) {
   const {
     isStageRace, totalStages, stagesCompleted, raceFinished, selectedStage, todayStage, onSelectStage,
-    activeTab, onChangeTab, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded,
+    activeTab, onChangeTab, onOpenTactics, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded,
     myTeamId, stageRoles, careerEvents, standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs,
   } = props;
   const { t } = useTranslation("races");
@@ -82,7 +84,7 @@ export default function StagePageV2(props: StagePageV2Props) {
       : at
         ? t("stagePageV2.cta.setTacticsLocks", { number: tacticsStage, done: progress.done, total: progress.total, time: timeLabelFor(at) })
         : t("stagePageV2.cta.setTactics", { number: tacticsStage, done: progress.done, total: progress.total });
-    tacticsAction = { label, onClick: () => onChangeTab("tactics") };
+    tacticsAction = { label, onClick: () => onOpenTactics(tacticsStage) };
   }
 
   return (

@@ -112,7 +112,8 @@ import {
   toggleTryBreak,
 } from "../../lib/tacticsPlan.js";
 import { fetchTeamOrders, orderForStage, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
-import { isStageLockedForTactics, firstOpenStage } from "../../lib/racePageTabs.js";
+import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
+import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -295,7 +296,9 @@ function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
   );
 }
 
-export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = true }) {
+// #6570: initialStage = etapen etapeside 2.0's guld-knap naevner ("Set tactics
+// for stage N"). Aaben etape → fanen aabner paa den; ellers dagens regel.
+export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders: showOrdersProp = true, initialStage = null }) {
   const { t } = useTranslation("races");
   // #6067: løbets regel-revision, bundet til DET løb den er læst for. Et skift
   // af raceId kan derfor aldrig arve et andet løbs revision, og en fejlet
@@ -391,11 +394,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       const list = orderCtx?.stages?.length
         ? orderCtx.stages
         : stageNumbers.map((sn) => ({ stage_number: sn, locked: sn <= (rolesBody.stages_completed ?? 0) }));
-      return firstOpenStage(list);
+      return tacticsStartStage(list, initialStage);
     });
     // NB: status/errorKey nulstilles bevidst IKKE her — "Gemt"-kvitteringen
     // (sat af save() lige før den awaiter load()) må ikke overskrives.
-  }, [raceId]);
+  }, [raceId, initialStage]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -669,9 +672,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #4980: rollen skrives fra den FØRSTE ulåste etape og løbet ud — noten i
   // vælgerens hoved siger det med det etapenummer det gælder fra, så et skift
   // midt i et etapeløb ikke kan læses som "kun i dag".
-  // NB: hedder ikke firstOpenStage — det navn er importeret fra racePageTabs.js
-  // og bruges af load(); en lokal const med samme navn ville skygge for den i
-  // hele komponent-scopet (TDZ ved mount).
+  // NB: hedder ikke firstOpenStage — det navn er en racePageTabs.js-hjaelper
+  // (brugt af load() via tacticsStartStage); en lokal const med samme navn ville
+  // forvirre og kunne skygge for den ved en senere direkte import.
   const firstEditableStage = editableStages.length ? editableStages[0] : activeStage;
   const roleScopeNote = isOneDay
     ? t("racePage.tactics.roleScopeRaceDay")

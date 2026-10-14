@@ -14,6 +14,7 @@ import { topDemands } from "../../../lib/stageTerrain.js";
 import { stageHasIntention } from "../../../lib/raceOverviewLogic.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
 import { parseGapSeconds } from "../../../lib/raceLiveStandings.js";
+import { firstOpenStage } from "../../../lib/racePageTabs.js";
 
 // Fanerne bor her (ikke i StagePageV2.tsx), saa RaceDetailPage kan laese ?tab=
 // uden at hente den lazy-loadede v2-flade.
@@ -407,6 +408,16 @@ export function tacticsProgress(riders: RoleRider[], overrides: RoleOverride[], 
     stageNumber,
   });
   return { done: [picked, captain, intention].filter(Boolean).length, total: 3 };
+}
+
+/**
+ * Den etape taktik-fanen aabner paa. Guld-knappen naevner en bestemt etape
+ * (`requested`); er den aaben, er det den. Ellers dagens regel
+ * (firstOpenStage: foerste aabne, eller sidste read-only).
+ */
+export function tacticsStartStage(stages: Array<{ stage_number: number; locked?: boolean }>, requested: number | null | undefined): number | null {
+  if (requested != null && (stages || []).some((s) => s.stage_number === requested && !s.locked)) return requested;
+  return firstOpenStage(stages) as number | null;
 }
 
 // ── Favoritter: fra loebet indtil nu, uden route fit for andre ─────────────
