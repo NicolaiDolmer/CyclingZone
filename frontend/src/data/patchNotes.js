@@ -1,5 +1,64 @@
 export const PATCHES = [
   {
+    "version": "7.360",
+    "date": "2026-10-14",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Economy",
+        "en": {
+          "title": "Rider values no longer change at the season switch",
+          "body": "Rider values now only update in the Sunday run, which starts at 14:00 Danish time every Sunday. On the day of a season switch, the Sunday run waits until the switch is done, so values update once."
+        },
+        "da": {
+          "title": "Rytterværdier ændrer sig ikke længere ved sæsonskiftet",
+          "body": "Rytterværdier opdateres nu kun i søndagskørslen, som starter kl. 14 dansk tid hver søndag. På dagen for et sæsonskifte venter søndagskørslen, til skiftet er færdigt, så værdierne opdateres én gang."
+        },
+        "refs": [
+          5842,
+          6403
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "A rider you bought no longer shows as sold",
+          "body": "Your finance history could show both a sale and a purchase for a rider you only bought at auction. It now only shows the purchase."
+        },
+        "da": {
+          "title": "En rytter, du har købt, vises ikke længere som solgt",
+          "body": "Din økonomihistorik kunne vise både et salg og et køb for en rytter, du kun havde købt på auktion. Nu vises kun købet."
+        },
+        "refs": [
+          6474,
+          6481
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Auto-selection no longer picks a rider who is already booked",
+          "body": "For teams with many past race entries, auto-selection could pick a rider who was already booked, and the entry then failed. It now sees all your entries and skips riders who are already booked."
+        },
+        "da": {
+          "title": "Auto-udtagning vælger ikke længere en rytter, der allerede er booket",
+          "body": "For hold med mange tidligere løbstilmeldinger kunne auto-udtagningen vælge en rytter, der allerede var booket, og så fejlede tilmeldingen. Nu ser den alle dine tilmeldinger og springer ryttere over, der allerede er booket."
+        },
+        "refs": [
+          6544
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.359",
     "date": "2026-10-13",
     "changes": [
