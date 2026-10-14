@@ -896,6 +896,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: node scripts/ci/check-workflow-checkout.mjs
 
+      # #6616: paritetstest - fejler hvis en "Run ..."-vagt i dette job ikke ogsaa
+      # koeres af scripts/preflight-pr.ps1 (eller staar paa EXEMPT med begrundelse).
+      - name: Test preflight/static-guards parity (#6616)
+        if: ${{ !cancelled() }}
+        run: node --test scripts/preflight-static-guard-parity.test.mjs
+
   ops-script-tests:
     runs-on: ubuntu-latest
     permissions:

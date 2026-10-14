@@ -233,6 +233,55 @@ try {
   Write-Host "== eslint-warning-budget (backend + frontend, max 0 advarsler, #4783) ==" -ForegroundColor Cyan
   node scripts/check-eslint-warning-budget.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "eslint-warning-budget" }
+
+  # #6616: de resterende "Run ..."-vagter fra CI-jobbet static-guards, som
+  # preflight ikke dækkede. #6613 var grøn i preflight men rød i CI på
+  # eslint-disable-count (163 nye direktiver). Alle fem er rene node-scripts
+  # uden npm ci og kører hver under ~25 s. scripts/preflight-static-guard-parity.test.mjs
+  # fejler hvis en ny "Run"-vagt i static-guards hverken står her eller på
+  # undtagelseslisten.
+  Write-Host "== ui-anti-drift-guard (ny raa hex/slop-tell/emoji over baseline, #671) ==" -ForegroundColor Cyan
+  node scripts/lint-ui-slop.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "ui-anti-drift-guard" }
+
+  Write-Host "== eslint-disable-guard (ratchet mod nye eslint-disable-direktiver, #4332/#6616) ==" -ForegroundColor Cyan
+  node scripts/check-eslint-disable-count.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "eslint-disable-guard" }
+
+  Write-Host "== rls-classification-guard (#4440) ==" -ForegroundColor Cyan
+  node scripts/check-rls-classification-coverage.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "rls-classification-guard" }
+
+  Write-Host "== rate-limit-coverage-guard (#530) ==" -ForegroundColor Cyan
+  node scripts/check-rate-limit-coverage.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "rate-limit-coverage-guard" }
+
+  Write-Host "== workflow-checkout-guard (persist-credentials, #5441) ==" -ForegroundColor Cyan
+  node scripts/ci/check-workflow-checkout.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "workflow-checkout-guard" }
+
+  Write-Host "== preflight/static-guards parity (#6616) ==" -ForegroundColor Cyan
+  node --test scripts/preflight-static-guard-parity.test.mjs
+  if ($LASTEXITCODE -ne 0) { $failed += "preflight-static-guard-parity" }
+
+  # #6616: repo-regel - nye frontend-filer er .ts/.tsx. Kun NYE filer (diff-filter=A)
+  # mod origin/main; eksisterende .js/.jsx røres ikke. Hurtig: ét git-kald.
+  Write-Host "== new-frontend-file-ts-rule (nye frontend/src+tests .js(x) er forbudt, #6616) ==" -ForegroundColor Cyan
+  $newJsFiles = @()
+  try {
+    $addedOutput = & git --no-pager diff --name-only --diff-filter=A origin/main...HEAD -- frontend/src frontend/tests 2>$null
+    if ($LASTEXITCODE -eq 0 -and $addedOutput) {
+      $newJsFiles = @($addedOutput | Where-Object { $_ -match '\.jsx?$' })
+    }
+  } catch {
+    # origin/main mangler lokalt - spring over i stedet for at fejle på git-infrastruktur.
+  }
+  if ($newJsFiles.Count -gt 0) {
+    foreach ($f in $newJsFiles) { Write-Host "  NY .js/.jsx-fil: $f (skal være .ts/.tsx)" -ForegroundColor Red }
+    $failed += "new-frontend-file-ts-rule"
+  } else {
+    Write-Host "  (ingen nye .js/.jsx-filer under frontend/src eller frontend/tests mod origin/main)" -ForegroundColor DarkGray
+  }
 }
 finally {
   Pop-Location
