@@ -295,6 +295,13 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             {
+              // #6514: shared read-only library views compress together; no vendor or other route moves.
+              name: "race-library",
+              includeDependenciesRecursively: false,
+              test: /src[\\/](components[\\/]race-library[\\/]|lib[\\/]race-library[\\/]|hooks[\\/]useRaceLibrary\.ts|pages[\\/](ResultaterPage|RaceHistoryPage)\.jsx)/,
+              priority: 20,
+            },
+            {
               name: "react-vendor",
               test: /node_modules[\\/](react|react-dom|scheduler|react-is)[\\/]/,
               priority: 30,

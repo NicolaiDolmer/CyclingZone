@@ -35,3 +35,8 @@ Mechanics are inherited from [CALENDAR_RULES](CALENDAR_RULES.md) §0/0b, [PLANNI
 Legacy exact-name URLs search known seasons; a unique current-season candidate takes precedence, otherwise a sole historical candidate opens in its persisted season. Multiple candidates require explicit selection. React Router decodes the path once; wildcard characters are literal. Missing stage counts remain unknown.
 URL filters and optional full-table mode survive edition navigation; the list restores its opening scroll position. DataTable accepts optional fullTable/onFullTableChange; absent props preserve its existing local-state behaviour.
 Historical rider statistics retain separate GC/stage wins and points/podiums across all stored classifications, scoped to completed reportable editions. They load only on the statistics tab. Season, pool and race ID selectors are batched at 100; shared editions are deduplicated by race.id.
+
+## Review follow-up, 14 October
+
+Completed/live editions link to the existing /races/:id results without modifying that implementation. All-division rows/selectors and the concrete edition header identify division and pool. With unknown stage totals, options come from distinct persisted profile/schedule stage numbers; no synthetic 1..length options.
+Library components/read model and the two permitted route entries use one bounded chunk group with dependency recursion disabled. Shared vendors/other routes remain outside the group. Owner approved +2 KB gzip budget on 14/10; preserve upstream S5 budget increments on main reconciliation. The entry size is unchanged in measured local builds.

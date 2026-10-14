@@ -1,5 +1,5 @@
 import { test, expect } from "./e2e-base.js";
-import { prepareLibrary, id } from "./race-library.fixture.ts";
+import { prepareLibrary, id, races } from "./race-library.fixture.ts";
 test("upcoming is the default and searches the reported accent/name variants", async ({ page }) => {
   await prepareLibrary(page);
   await page.goto("/resultater?tab=archive");
@@ -185,4 +185,54 @@ test("English at 320px keeps long race names inside the viewport", async ({ page
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
   ).toBeTruthy();
+});
+
+test("completed editions retain a link to their existing results", async ({ page }) => {
+  await prepareLibrary(page);
+  await page.goto(
+    "/race-archive/" + encodeURIComponent("Giro della Penisola") + "?raceId=" + id(4)
+  );
+  await expect(page.getByRole("link", { name: "Se resultater", exact: true })).toHaveAttribute(
+    "href",
+    "/races/" + id(4)
+  );
+});
+test("all-division browsing identifies the concrete division and pool", async ({ page }) => {
+  await prepareLibrary(page);
+  await page.goto("/resultater?tab=archive&division=all&pool=all");
+  await page.locator("summary").filter({ hasText: "Flere filtre" }).click();
+  const pool = page.getByRole("combobox", { name: "Pulje", exact: true });
+  await expect(pool.locator("option[value='2']")).toHaveText("Division 2 · Pulje 1");
+  await expect(pool.locator("option[value='3']")).toHaveText("Division 3 · Pulje 1");
+  await page.getByRole("button", { name: "Åbn Vuelta Ibérica", exact: true }).first().click();
+  await expect(page.getByText("Division 2 · Pulje 1", { exact: true }).first()).toBeVisible();
+});
+test("unknown stage total offers only recorded sparse stage numbers", async ({ page }) => {
+  await prepareLibrary(page);
+  await page.route("**/rest/v1/races**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([{ ...races[0], stages: null }]),
+    })
+  );
+  await page.route("**/rest/v1/race_stage_profiles**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        { race_id: id(1), stage_number: 3, distance_km: 130, elevation_profile: null },
+        { race_id: id(1), stage_number: 5, distance_km: 150, elevation_profile: null },
+      ]),
+    })
+  );
+  await page.route("**/rest/v1/race_stage_schedule**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: "[]" })
+  );
+  await page.goto("/race-archive/" + encodeURIComponent("Vuelta Ibérica") + "?raceId=" + id(1));
+  const stage = page.getByRole("combobox", { name: "Etape", exact: true });
+  await expect(stage.locator("option")).toHaveText(["Etape 3", "Etape 5"]);
+  await expect(stage).toHaveValue("3");
+  await stage.selectOption("5");
+  await expect(page.getByText("Distance: 150 km", { exact: true })).toBeVisible();
 });

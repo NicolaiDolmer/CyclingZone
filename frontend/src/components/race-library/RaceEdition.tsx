@@ -17,7 +17,7 @@ import {
   ChevronLeftIcon,
 } from "../ui/index.js";
 import { DataTable, ErrorState } from "./ui.ts";
-import { editionDate, editionHref } from "./RaceLibrary.tsx";
+import { editionDate, editionHref, libraryPoolLabel } from "./navigation.ts";
 import {
   useLibraryContext,
   useLibraryRequest,
@@ -172,7 +172,7 @@ function RaceEditionContent() {
       render: (r: RaceEditionSummary) =>
         r.poolId === null
           ? t("library.shared")
-          : (pools.find((p) => p.id === r.poolId)?.label ?? t("library.unknown")),
+          : libraryPoolLabel(r.poolId, pools, t, scope?.tier === null),
     },
     {
       key: "open",
@@ -195,14 +195,20 @@ function RaceEditionContent() {
       }
     />
   );
-  const requestedStage = Number(params.get("stage") ?? 1);
-  const stageNumber =
-    Number.isInteger(requestedStage) &&
-    requestedStage >= 1 &&
-    requestedStage <=
-      (row?.stages ?? Math.max(1, ...(detail.data?.profiles.map((p) => p.stage_number) ?? [])))
-      ? requestedStage
-      : 1;
+  const stageNumbers =
+    row?.stages !== null && row?.stages !== undefined
+      ? Array.from({ length: row.stages }, (_, i) => i + 1)
+      : [
+          ...new Set(
+            [...(detail.data?.profiles ?? []), ...(detail.data?.schedule ?? [])]
+              .map((p) => p.stage_number)
+              .filter((n) => Number.isInteger(n) && n >= 1)
+          ),
+        ].sort((a, b) => a - b);
+  const requestedStage = Number(params.get("stage"));
+  const stageNumber = stageNumbers.includes(requestedStage)
+    ? requestedStage
+    : (stageNumbers[0] ?? null);
   const profile = detail.data?.profiles.find((p) => p.stage_number === stageNumber) ?? null;
   const schedule = detail.data?.schedule.find((p) => p.stage_number === stageNumber) ?? null;
   const sectors = sectorsOf(profile);
@@ -232,6 +238,15 @@ function RaceEditionContent() {
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-cz-2">
             {status(row)}
             <span>{t("library.seasonOption", { number: row.seasonNumber })}</span>
+            <span>{libraryPoolLabel(row.poolId, pools, t, true)}</span>
+            {(row.status === "completed" || row.status === "live") && (
+              <Link
+                to={"/races/" + row.id}
+                className="inline-flex min-h-11 items-center text-cz-1 underline underline-offset-4"
+              >
+                {t("library.viewResults")}
+              </Link>
+            )}
             <span>
               {t("classOption." + row.raceClass, {
                 ns: "races",
@@ -278,7 +293,7 @@ function RaceEditionContent() {
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-cz-border pt-4">
             <Select
               size="sm"
-              value={stageNumber}
+              value={stageNumber ?? ""}
               aria-label={t("library.stage")}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                 setParams((previous) => {
@@ -288,9 +303,9 @@ function RaceEditionContent() {
                 })
               }
             >
-              {Array.from({ length: row.stages ?? detail.data?.profiles.length ?? 0 }, (_, i) => (
-                <option key={i} value={i + 1}>
-                  {t("library.stage") + " " + (i + 1)}
+              {stageNumbers.map((number) => (
+                <option key={number} value={number}>
+                  {t("library.stage") + " " + number}
                 </option>
               ))}
             </Select>
@@ -494,7 +509,7 @@ function RaceEditionContent() {
                       subline: (r: RaceEditionSummary) =>
                         r.poolId === null
                           ? t("library.shared")
-                          : (pools.find((p) => p.id === r.poolId)?.label ?? t("library.unknown")),
+                          : libraryPoolLabel(r.poolId, pools, t, scope?.tier === null),
                     },
                     {
                       key: "date",

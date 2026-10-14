@@ -139,6 +139,7 @@
     "backToResults": "Tilbage til resultater",
     "scope": "{season} · {division} · {pool}",
     "gcWins": "Samlede sejre",
-    "stageWins": "Etapesejre"
+    "stageWins": "Etapesejre",
+    "viewResults": "Se resultater"
   }
 }

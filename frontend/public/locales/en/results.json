@@ -139,6 +139,7 @@
     "backToResults": "Back to results",
     "scope": "{season} · {division} · {pool}",
     "gcWins": "Overall wins",
-    "stageWins": "Stage wins"
+    "stageWins": "Stage wins",
+    "viewResults": "View results"
   }
 }

@@ -24,27 +24,9 @@ import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
 import { useRealtimeRefetch } from "../../hooks/useRealtimeRefetch.js";
 import { filterLibrary } from "../../lib/race-library/model.ts";
 import { formatNumber } from "../../lib/intl.js";
+import { editionDate, editionHref, libraryPoolLabel } from "./navigation.ts";
 import type { LibraryScope, RaceEditionSummary } from "../../lib/race-library/types.ts";
 const REALTIME_TABLES = ["races"];
-export function editionHref(row: RaceEditionSummary, params: URLSearchParams, returnTo?: string) {
-  const next = new URLSearchParams(params);
-  next.set("raceId", row.id);
-  next.set("season", String(row.seasonNumber));
-  next.delete("tab");
-  if (returnTo) next.set("returnTo", returnTo);
-  return "/race-archive/" + encodeURIComponent(row.name) + "?" + next.toString();
-}
-export function editionDate(row: RaceEditionSummary, locale = "en-GB"): string {
-  if (!row.startAt) return "";
-  const formatter = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    timeZone: "Europe/Copenhagen",
-  });
-  const start = formatter.format(new Date(row.startAt));
-  const end = row.endAt ? formatter.format(new Date(row.endAt)) : start;
-  return end === start ? start : start + " - " + end;
-}
 export default function RaceLibrary() {
   return (
     <I18nReadyGate ns={["results", "races"]}>
@@ -182,11 +164,7 @@ function RaceLibraryContent() {
         </div>
       ),
       subline: (r: RaceEditionSummary) =>
-        r.poolId === null
-          ? t("library.shared")
-          : t("library.poolOption", {
-              number: (pools.find((p) => p.id === r.poolId)?.pool_index ?? 0) + 1,
-            }),
+        libraryPoolLabel(r.poolId, pools, t, scope?.tier === null),
     },
     {
       key: "date",
@@ -390,7 +368,7 @@ function RaceLibraryContent() {
             .filter((p) => scope?.tier === null || p.tier === scope?.tier)
             .map((pool) => (
               <option key={pool.id} value={pool.id}>
-                {t("library.poolOption", { number: pool.pool_index + 1 })}
+                {libraryPoolLabel(pool.id, pools, t, scope?.tier === null)}
               </option>
             ))}
         </Select>
