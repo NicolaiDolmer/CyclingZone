@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
   surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
-  yourDay, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage,
+  yourDay, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
 
@@ -104,6 +104,18 @@ test("defaultStage: i dag (dansk tid), ellers senest koerte, ellers 1", () => {
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-14T23:30:00Z") }), 3);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-20T08:00:00Z") }), 2);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule: [], now: new Date("2026-10-14T08:00:00Z") }), 1);
+});
+
+test("todaysStage: kun en etape der koeres i dag, aldrig fallbacken", () => {
+  const schedule = [
+    { stage_number: 1, scheduled_at: "2026-05-09T13:00:00Z" },
+    { stage_number: 2, scheduled_at: "2026-05-10T13:00:00Z" },
+  ];
+  assert.equal(todaysStage({ totalStages: 2, schedule, now: new Date("2026-05-10T08:00:00Z") }), 2);
+  // Afsluttet loeb: defaultStage lander paa den senest koerte, men den er ikke "i dag".
+  const now = new Date("2026-06-24T16:00:00Z");
+  assert.equal(todaysStage({ totalStages: 2, schedule, now }), null);
+  assert.equal(defaultStage({ totalStages: 2, stagesCompleted: 2, schedule, now }), 2);
 });
 
 test("tacticsStartStage: guld-knappens etape naar den er aaben, ellers dagens regel", () => {

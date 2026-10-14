@@ -253,6 +253,17 @@ export function copenhagenDay(d: Date): string {
  * (dansk tid). Ellers den senest koerte, ellers etape 1.
  */
 export function defaultStage({ totalStages, stagesCompleted, schedule, now }: { totalStages: number; stagesCompleted: number; schedule: ScheduleRow[]; now: Date }): number {
+  const today = todaysStage({ totalStages, schedule, now });
+  if (today != null) return today;
+  if (stagesCompleted > 0) return Math.min(totalStages, stagesCompleted);
+  return 1;
+}
+
+/**
+ * Etapen der koeres i dag (dansk tid), ellers null. Kun den faar "Today"-
+ * maerket i striben; defaultStage's fallback (senest koerte) er ikke "i dag".
+ */
+export function todaysStage({ totalStages, schedule, now }: { totalStages: number; schedule: ScheduleRow[]; now: Date }): number | null {
   const today = copenhagenDay(now);
   const todays = (schedule || [])
     .filter((s) => {
@@ -261,9 +272,7 @@ export function defaultStage({ totalStages, stagesCompleted, schedule, now }: { 
     })
     .map((s) => s.stage_number)
     .filter((n) => n >= 1 && n <= totalStages);
-  if (todays.length) return Math.min(...todays);
-  if (stagesCompleted > 0) return Math.min(totalStages, stagesCompleted);
-  return 1;
+  return todays.length ? Math.min(...todays) : null;
 }
 
 export function stagePhase(stageNumber: number, stagesCompleted: number): "before" | "after" {

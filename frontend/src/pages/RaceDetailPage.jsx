@@ -82,7 +82,7 @@ import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTi
 import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
-import { defaultStage, resolveV2Tab } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
+import { defaultStage, resolveV2Tab, todaysStage } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
 import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfilesQuery.ts"; // #6570
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -707,15 +707,20 @@ export default function RaceDetailPage() {
   const stagePageV2 = useStagePageV2();
   const v2Total = race?.stages ?? 1;
   const v2Ridden = race?.stages_completed ?? 0;
-  const v2TodayStage = useMemo(
+  const v2DefaultStage = useMemo(
     () => defaultStage({ totalStages: v2Total, stagesCompleted: v2Ridden, schedule, now: new Date(nowMs) }),
     [v2Total, v2Ridden, schedule, nowMs],
+  );
+  // Kun en etape der faktisk koeres i dag faar "Today"-maerket (ikke fallbacken).
+  const v2TodayStage = useMemo(
+    () => todaysStage({ totalStages: v2Total, schedule, now: new Date(nowMs) }),
+    [v2Total, schedule, nowMs],
   );
   // Etapen guld-knappen "Set tactics for stage N" naevner; null = Tactics-fanen
   // er aabnet direkte og bruger RaceTacticsTabs egen regel.
   const [v2TacticsStage, setV2TacticsStage] = useState(null);
   const v2StageParam = Number(searchParams.get("stage"));
-  const v2SelectedStage = Number.isInteger(v2StageParam) && v2StageParam >= 1 && v2StageParam <= v2Total ? v2StageParam : v2TodayStage;
+  const v2SelectedStage = Number.isInteger(v2StageParam) && v2StageParam >= 1 && v2StageParam <= v2Total ? v2StageParam : v2DefaultStage;
   useEffect(() => {
     if (stagePageV2 !== true || v2SelectedStage > v2Ridden) return;
     startStageFetch(v2SelectedStage);
