@@ -24,6 +24,7 @@ interface ProfilesClient {
 }
 
 export async function fetchStageProfiles(supabase: ProfilesClient, raceId: string): Promise<QueryResult> {
+  // pagination-safe: filtreret paa eet race_id, hoejst een raekke pr. etape (et loeb har faa etaper).
   const read = (cols: string) => supabase.from("race_stage_profiles").select(cols).eq("race_id", raceId).order("stage_number");
   const res = await read(STAGE_PROFILE_COLUMNS);
   if (res.error?.code === "42703") return read(STAGE_PROFILE_BASE_COLUMNS);
