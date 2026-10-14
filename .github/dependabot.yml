@@ -40,10 +40,16 @@ updates:
         update-types:
           - minor
           - patch
-    # Ingen ignore-entries: frontend kører tailwindcss 4 (den gamle semver-major-
-    # ignore er fjernet, #6605). vite- og @vitejs/plugin-react-ignores blev
-    # fjernet 2026-09-01 (#4551). Major-bumps lever som separate, ejer-gatede
-    # PRs. Luk aldrig en major-PR med @dependabot ignore (GITHUB_WORKFLOW.md).
+    ignore:
+      # @vercel/og er låst på 1.0.1. 1.0.2+ edge-bundlen importerer 'module'
+      # (via fflate), som Vercel-buildet ikke kan løse, så hele frontend-
+      # deployet fejler. Ikke en major-ignore. #6626 - review 2026-12-14
+      - dependency-name: "@vercel/og"
+        versions: [">1.0.1 <1.1.0"]
+    # Frontend kører tailwindcss 4 (den gamle semver-major-ignore er fjernet,
+    # #6605). vite- og @vitejs/plugin-react-ignores blev fjernet 2026-09-01
+    # (#4551). Major-bumps lever som separate, ejer-gatede PRs. Luk aldrig en
+    # major-PR med @dependabot ignore (GITHUB_WORKFLOW.md).
 
   # Marketing-site (Next.js) — tilføjet 10/9 efter Dependabot #43-46 (to
   # critical i next, sharp, js-yaml) lå åbne uden patch-PR: mappen manglede i
