@@ -7,7 +7,7 @@
 // kontrakt (#6350), indtil da staar den nuvaerende film under Standings.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatGap, winningMargin, yourDay, type DayRow, type ResultRow } from "./stagePageV2Model.ts";
+import { formatGap, yourDay, type DayRow, type ResultRow } from "./stagePageV2Model.ts";
 import { parseGapSeconds } from "../../../lib/raceLiveStandings.js";
 import { Button, Flag, RiderLink, Section, Segmented, SkeletonLines } from "./ui.ts";
 
@@ -58,9 +58,10 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
   const second = (stageDay.top3.length ? stageDay.top3 : day.top3)[1] ?? null;
 
   let why: string | null = null;
-  if (winner && second) {
-    const margin = winningMargin(results, stageNumber) ?? (second.gap ? parseGapSeconds(second.gap) : null);
-    why = margin && margin > 0
+  // Kun et tidshul vi kan laese ("+M:SS") giver en linje; ukendt hul = ingen linje.
+  if (winner && second && /^\+?\d+:\d{1,2}$/.test(second.gap ?? "")) {
+    const margin = parseGapSeconds(second.gap);
+    why = margin > 0
       ? t("stagePageV2.yourDay.whyGap", { winner: winner.name, gap: formatGap(margin), second: second.name })
       : t("stagePageV2.yourDay.whySame", { winner: winner.name, second: second.name });
   }

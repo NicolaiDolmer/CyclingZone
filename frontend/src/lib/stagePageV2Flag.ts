@@ -24,7 +24,21 @@ export function parseStagePageV2Response(data: unknown): boolean {
   return typeof data === "object" && data !== null && (data as { enabled?: unknown }).enabled === true;
 }
 
-export async function fetchStagePageV2Enabled(): Promise<boolean> {
+/** Loebssiden venter paa svaret; et haengende kald maa aldrig blokere den. */
+export const STAGE_PAGE_V2_TIMEOUT_MS = 4000;
+
+/** Ren: svaret, eller false hvis det ikke er landet inden `ms`. */
+export function withTimeout(p: Promise<boolean>, ms: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), ms);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      () => { clearTimeout(timer); resolve(false); },
+    );
+  });
+}
+
+async function requestStagePageV2(): Promise<boolean> {
   try {
     const headers = await authHeaders({ json: false });
     if (!headers) return false;
@@ -33,6 +47,10 @@ export async function fetchStagePageV2Enabled(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export function fetchStagePageV2Enabled(): Promise<boolean> {
+  return withTimeout(requestStagePageV2(), STAGE_PAGE_V2_TIMEOUT_MS);
 }
 
 /** null = henter endnu, ellers boolean. */
