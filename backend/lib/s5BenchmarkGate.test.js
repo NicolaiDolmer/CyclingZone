@@ -14,7 +14,7 @@ import {
   S5_GT_QUOTAS, S5_GT_ROAD_TERRAINS, S5_GT_QUOTA_TOLERANCE,
   grandTourTypeOf, isGrandTourRace, expectedGrandTourCounts, checkGrandTour,
   loadS5Benchmark, benchmarkFinishShares, benchmarkGapIntervals, SEASON_FINISH_CLASSES,
-  checkSeasonFinishShares, evaluateMotorGaps, loadMotorGapFile, MOTOR_GAP_MIN_BENCHMARK_N,
+  checkSeasonFinishShares, evaluateMotorGaps, loadMotorGapFile, MOTOR_GAP_MIN_BENCHMARK_N, motorGapVerdicts,
   evaluateS5BenchmarkGate, formatS5BenchmarkReport,
 } from "./s5BenchmarkGate.js";
 import * as routeGenerator from "./raceRouteGenerator.js";
@@ -266,20 +266,58 @@ test("checkSeasonFinishShares: benchmark-fordelingen er grøn, en ren spurt-sæs
   assert.deepEqual(checkSeasonFinishShares({ stages: [], benchmark: BENCHMARK }).violations.length, 1);
 });
 
-test("evaluateMotorGaps: stub blokerer ikke; en rigtig måling uden for intervallet gør", () => {
-  const stub = loadMotorGapFile();
-  assert.equal(stub.stub, true);
-  const s = evaluateMotorGaps({ motor: stub, benchmark: BENCHMARK });
-  assert.equal(s.status, "stub");
-  assert.deepEqual(s.violations, [], "stubbens tal er benchmarkens egne medianer");
+// Benchmarkens egne medianer: en "motor" der rammer dem, er inden for hvert interval.
+const BENCHMARK_MEDIANS = Object.fromEntries(Object.entries(benchmarkGapIntervals(BENCHMARK)).map(([k, iv]) => [k, iv.median]));
+const STUB = { stub: true, source: "test-stub", medians: BENCHMARK_MEDIANS };
+const ALL_INSIDE = { stub: false, source: "test", verdicts: motorGapVerdicts({ medians: BENCHMARK_MEDIANS, benchmark: BENCHMARK }) };
 
-  const real = { stub: false, medians: { ...stub.medians, long_climb: 30 } };
+test("evaluateMotorGaps: stub blokerer ikke; en rigtig måling uden for intervallet gør", () => {
+  const s = evaluateMotorGaps({ motor: STUB, benchmark: BENCHMARK });
+  assert.equal(s.status, "stub");
+  assert.deepEqual(s.violations, [], "benchmarkens egne medianer");
+
+  const real = { stub: false, medians: { ...BENCHMARK_MEDIANS, long_climb: 30 } };
   const r = evaluateMotorGaps({ motor: real, benchmark: BENCHMARK });
   assert.equal(r.status, "red");
   assert.ok(r.violations.some((v) => v.startsWith("long_climb: motor 30 s uden for")));
 
   const missing = { stub: false, medians: { flat_sprint: 0 } };
   assert.ok(evaluateMotorGaps({ motor: missing, benchmark: BENCHMARK }).violations.some((v) => v.includes("ikke målt")));
+});
+
+test("#6362 motorGapVerdicts + dom-formen: inden for / under / over, og kun 'inside' er grøn", () => {
+  const iv = benchmarkGapIntervals(BENCHMARK).long_climb;
+  const v = motorGapVerdicts({ medians: { long_climb: iv.p25 - 1, punch: BENCHMARK_MEDIANS.punch, wall_finish: 1e6, ttt: 0 }, benchmark: BENCHMARK });
+  assert.equal(v.long_climb, "below");
+  assert.equal(v.punch, "inside");
+  assert.equal(v.wall_finish, "above");
+  assert.equal(v.ttt, undefined, "holdtidskørslen har for få benchmark-etaper til en dom");
+
+  const green = evaluateMotorGaps({ motor: ALL_INSIDE, benchmark: BENCHMARK });
+  assert.equal(green.status, "green");
+  assert.deepEqual(green.violations, []);
+
+  const red = evaluateMotorGaps({ motor: { ...ALL_INSIDE, verdicts: { ...ALL_INSIDE.verdicts, solo_tt: "below" } }, benchmark: BENCHMARK });
+  assert.equal(red.status, "red");
+  assert.ok(red.violations.some((x) => x.startsWith("solo_tt: motorens median gap10 ligger under")));
+  assert.ok(formatS5BenchmarkReport({ ...evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: ALL_INSIDE }) }).some((l) => l.includes("inden for")));
+
+  const { solo_tt: _drop, ...rest } = ALL_INSIDE.verdicts;
+  const missing = evaluateMotorGaps({ motor: { ...ALL_INSIDE, verdicts: rest }, benchmark: BENCHMARK });
+  assert.ok(missing.violations.some((x) => x === "solo_tt: motorens median gap10 er ikke målt"));
+  const unknown = evaluateMotorGaps({ motor: { ...ALL_INSIDE, verdicts: { ...ALL_INSIDE.verdicts, solo_tt: "maybe" } }, benchmark: BENCHMARK });
+  assert.ok(unknown.violations.some((x) => x === "solo_tt: motorens median gap10 er ikke målt"), "ukendt dom = ikke målt");
+});
+
+test("#6362: gatens standard-fil er den rigtige motor-bench (ingen stub), og en rød dom blokerer", () => {
+  const real = loadMotorGapFile();
+  assert.equal(real.stub, false);
+  assert.equal(typeof real.verdicts, "object");
+  assert.equal(real.medians, undefined, "maalte tal hoerer til i balance-internals (hard rule 17)");
+  const part = evaluateMotorGaps({ motor: real, benchmark: BENCHMARK });
+  const gate = evaluateS5BenchmarkGate({ races: [], benchmark: BENCHMARK, motor: real });
+  assert.equal(gate.blocking.some((b) => b.startsWith("S5 (4) motor")), part.status === "red");
+  assert.throws(() => loadMotorGapFile(new URL("./__fixtures__/racePoolCatalog.prod.json", import.meta.url)), /mangler "medians" eller "verdicts"/);
 });
 
 // ── 5. Hele gaten ─────────────────────────────────────────────────────────────────
@@ -293,14 +331,14 @@ function gtRacesFromCatalog() {
 
 test("gaten: syntetisk perfekt sæson er grøn på (1)-(3); stub-motor blokerer ikke", () => {
   const tours = [perfectTour(), { ...perfectTour(), pool_race_id: "gt-2", name: "Tour de Test 2" }, { ...perfectTour(), pool_race_id: "gt-3", name: "Tour de Test 3" }];
-  const res = evaluateS5BenchmarkGate({ races: tours, benchmark: BENCHMARK, motor: loadMotorGapFile() });
+  const res = evaluateS5BenchmarkGate({ races: tours, benchmark: BENCHMARK, motor: STUB });
   assert.equal(res.parts.stages.green, true);
   assert.equal(res.parts.grandTours.green, true);
   assert.equal(res.parts.motor.status, "stub");
   // (3) kan være rød på en kunstig sæson af tre ens Tours; resten afgør om den blokerer.
   assert.equal(res.green, res.parts.season.green);
   // Samme løb i to divisioner tælles én gang.
-  const dup = evaluateS5BenchmarkGate({ races: [tours[0], tours[0]], benchmark: BENCHMARK, motor: loadMotorGapFile() });
+  const dup = evaluateS5BenchmarkGate({ races: [tours[0], tours[0]], benchmark: BENCHMARK, motor: STUB });
   assert.equal(dup.parts.grandTours.races.length, 1);
   // Ingen motor-fil = del (4) ikke målt = blokerende.
   const noMotor = evaluateS5BenchmarkGate({ races: tours, benchmark: BENCHMARK, motor: null });
@@ -329,7 +367,9 @@ test("S5-modellen (aktiveres når generatoren kan profileModel: \"s5\", #6359) e
     return;
   }
   const races = seeds.map((r) => ({ ...r, stages: generateRaceStageProfiles(r, { profileModel: "s5" }) }));
-  const res = evaluateS5BenchmarkGate({ races, benchmark: BENCHMARK, motor: loadMotorGapFile() });
+  // Del (4) doemmes paa den rigtige motor-bench i engine/v4/s5MotorBench.test.ts (#6362);
+  // her er motoren "alt inden for", saa `green` er (1)-(3)'s dom.
+  const res = evaluateS5BenchmarkGate({ races, benchmark: BENCHMARK, motor: ALL_INSIDE });
   assert.deepEqual(res.parts.stages.violations, []);
   assert.deepEqual(res.parts.grandTours.violations, []);
   assert.deepEqual(res.parts.season.violations, []);
