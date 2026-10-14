@@ -40,18 +40,10 @@ updates:
         update-types:
           - minor
           - patch
-    ignore:
-      # Tailwind 4 kræver postcss-plugin migration — #134 - review 2026-12-01
-      # (#134 er formelt lukket COMPLETED, men frontend/package.json viser stadig
-      # tailwindcss ^3.4.14 og migrationen er IKKE udført — se PR-body for #4551.
-      # Reference bevidst bevaret indtil ejeren har taget stilling til issuet.)
-      - dependency-name: "tailwindcss"
-        update-types: ["version-update:semver-major"]
-      # vite- og @vitejs/plugin-react-ignores fjernet 2026-09-01 (#4551): repoet
-      # kører allerede vite@8.2.2 og @vitejs/plugin-react@6.0.2 — de major-bumps
-      # ignoren blokerede (5→8, samt v6 der krævede Vite 5+) er begge allerede
-      # landet. Fremtidige majors (fx vite@9) er nu almindelige ejer-gatede
-      # Dependabot-PRs uden for backend-minor-patch/frontend-minor-patch-grupperne.
+    # Ingen ignore-entries: frontend kører tailwindcss 4 (den gamle semver-major-
+    # ignore er fjernet, #6605). vite- og @vitejs/plugin-react-ignores blev
+    # fjernet 2026-09-01 (#4551). Major-bumps lever som separate, ejer-gatede
+    # PRs. Luk aldrig en major-PR med @dependabot ignore (GITHUB_WORKFLOW.md).
 
   # Marketing-site (Next.js) — tilføjet 10/9 efter Dependabot #43-46 (to
   # critical i next, sharp, js-yaml) lå åbne uden patch-PR: mappen manglede i
