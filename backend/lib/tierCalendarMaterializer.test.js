@@ -1,14 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildTierMaterializationPlan, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST, isMissingRetiredAtColumnError, loadCalendarPools, tierGameDayQuotasFor, DEFAULT_CALENDAR_REAL_DAYS } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, materializeTierCalendars, resolveSeasonProfileModel, reconcilePoolCalendarOnActivation, detectCalendarViolations, detectPoolSignatureMismatch, TIER_CLASS_WHITELIST, isMissingRetiredAtColumnError, loadCalendarPools, tierGameDayQuotasFor, DEFAULT_CALENDAR_REAL_DAYS } from "./tierCalendarMaterializer.js";
 import { quotasForRaceDays as supplyQuotasForRaceDays } from "./catalogSupplyCheck.js";
 import { detectPlanRaceDayViolations, gatePlan } from "./seasonCalendarGate.js";
 import { resolveCalendarFrom } from "./calendarStartDate.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { TIER_DENSITY, SQUAD_CALENDAR } from "./calendarTierCaps.js";
-import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION, S5_GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { resolveEarliestSeasonTransition, latestInstant, TIER_STAGE_SLOTS } from "./calendarPlanningWindow.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
@@ -1702,4 +1702,104 @@ test("#5658 regressionsvagt: med den gamle konstant får division 4 en kortere a
   const { blocking, raceDayViolations } = gatePlan({ tiers: tierPlans });
   assert.ok(raceDayViolations.some((v) => v.startsWith("tier 4:")), `division 4's afstand til målet skal stå som brud: ${raceDayViolations.join(" · ")}`);
   assert.ok(blocking.some((b) => b.startsWith("løbsdage pr. division")), "auto-stien skal nægte at skrive kalenderen");
+});
+
+// ── #6367: saesonens profil-model (v5 til og med S4, "s5" fra S5) ─────────────────────
+// Hullet: materializeren kaldte generatoren uden profileModel, saa en S5-kalender blev
+// genereret med v5, og benchmark-gaten (profileModelForSeason) var roed paa en kalender den
+// aldrig ville se skrevet. Modellen afledes af saesonnummeret, aldrig af et flag.
+
+test("#6367 resolveSeasonProfileModel: S1-S4 = v5, S5+ = s5; eksplicit nummer vinder over opslaget", async () => {
+  const sb = makeSupabase({ seasons: [{ id: "s5", number: 5 }, { id: "s4", number: 4 }] });
+  assert.deepEqual(await resolveSeasonProfileModel({ supabase: sb, seasonId: "x", seasonNumber: 4 }), { seasonNumber: 4, profileModel: "v5" });
+  assert.deepEqual(await resolveSeasonProfileModel({ supabase: sb, seasonId: "x", seasonNumber: 5 }), { seasonNumber: 5, profileModel: "s5" });
+  assert.deepEqual(await resolveSeasonProfileModel({ supabase: sb, seasonId: "x", seasonNumber: 6 }), { seasonNumber: 6, profileModel: "s5" });
+  // Opslag paa seasonId naar kalderen ikke sender nummeret (admin-knappen, relaunch, reparationer).
+  assert.deepEqual(await resolveSeasonProfileModel({ supabase: sb, seasonId: "s5" }), { seasonNumber: 5, profileModel: "s5" });
+  assert.deepEqual(await resolveSeasonProfileModel({ supabase: sb, seasonId: "s4" }), { seasonNumber: 4, profileModel: "v5" });
+  // Ukendt saeson: nummeret kan ikke afgoeres -> v5 (derfor sender buildSeasonCalendar det eksplicit).
+  assert.deepEqual(await resolveSeasonProfileModel({ supabase: sb, seasonId: "findes-ikke" }), { seasonNumber: null, profileModel: "v5" });
+});
+
+test("#6367 resolveSeasonProfileModel fejler lukket: laesefejl og ugyldigt nummer kaster", async () => {
+  const failing = { from: () => ({ select() { return this; }, eq() { return this; }, maybeSingle: async () => ({ data: null, error: { message: "netvaerk" } }) }) };
+  await assert.rejects(() => resolveSeasonProfileModel({ supabase: failing, seasonId: "s5" }), /seasons \(profil-model, #6367\): netvaerk/);
+  const sb = makeSupabase({});
+  await assert.rejects(() => resolveSeasonProfileModel({ supabase: sb, seasonId: "s5", seasonNumber: "fem" }), /ikke et heltal/);
+  await assert.rejects(() => resolveSeasonProfileModel({ supabase: sb, seasonId: "s5", seasonNumber: 0 }), /ikke et heltal/);
+});
+
+function s5Tier3State(seasons = []) {
+  const league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
+  const teams = [mgrTeam("a1", 4), mgrTeam("a2", 4)];
+  return { seasons, league_divisions, teams, race_pool: tier3Catalog().map((c) => ({ ...c, external_id: `ext-${c.id}` })) };
+}
+
+// Det materializeren SKAL have genereret for et loeb: samme seed-form som seedRaceFor,
+// tierens resolverede gen-traek og den givne model.
+function expectedProfilesFor(row, { seasonId, seasonVariant, profileModel, catalog }) {
+  const c = catalog.find((x) => x.id === row.pool_race_id);
+  return generateRaceStageProfiles({
+    id: row.pool_race_id, name: row.name, race_type: row.race_type, stages: row.stages,
+    external_id: c.external_id ?? null, terrain_archetype: c.terrain_archetype ?? null,
+    race_class: row.race_class ?? null, season_id: seasonId, season_variant: seasonVariant,
+  }, { profileModel });
+}
+
+test("#6367 dry-run: saeson 5 genereres med S5-modellen, saeson 4 er uaendret v5", async () => {
+  for (const [seasonNumber, model, version] of [[5, "s5", S5_GENERATOR_VERSION], [4, "v5", undefined]]) {
+    const state = s5Tier3State();
+    const sb = makeSupabase(state);
+    const summary = await materializeTierCalendars({ supabase: sb, seasonId: `s${seasonNumber}`, seasonNumber, from: FROM, dryRun: true, tiers: [3], ...LEGACY_MIX });
+    assert.equal(summary.profileModel, model, `saeson ${seasonNumber}: summary skal sige ${model}`);
+    assert.equal(summary.seasonNumber, seasonNumber);
+    const t3 = summary.planTiers.find((t) => t.tier === 3);
+    const rows = t3.pools[0].raceRows;
+    assert.ok(rows.length > 0, "praemissen: tier 3 har loeb");
+    const seasonVariant = summary.tiers.find((t) => t.tier === 3).realismDraw?.attempt ?? 0;
+    for (const row of rows) {
+      const got = t3.profilesByPoolRaceId.get(row.pool_race_id);
+      for (const p of got) assert.equal(p.generator_version, version, `saeson ${seasonNumber}: ${row.name} etape ${p.stage_number} stemplet ${p.generator_version}`);
+      if (model === "s5") {
+        // S5 har ingen finale-kvotefordeling: parcourset er PRAECIS generatorens S5-traek.
+        assert.deepEqual(got, expectedProfilesFor(row, { seasonId: `s${seasonNumber}`, seasonVariant, profileModel: "s5", catalog: state.race_pool }), `${row.name}: S5-parcours`);
+      }
+    }
+  }
+});
+
+test("#6367 apply: saeson 5 skriver S5-profiler (v6) i race_stage_profiles; modellen slaas op paa seasonId naar nummeret mangler", async () => {
+  const state = s5Tier3State([{ id: "season-5", number: 5, status: "upcoming" }]);
+  const sb = makeSupabase(state);
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX });
+  assert.equal(summary.profileModel, "s5");
+  assert.ok(sb.state.race_stage_profiles.length > 0, "der skal skrives profiler");
+  for (const p of sb.state.race_stage_profiles) {
+    assert.equal(p.generator_version, S5_GENERATOR_VERSION, "hver skrevet etape skal vaere S5 (generator_version 6)");
+    assert.ok(p.elevation_profile != null, "S5-etaper skriver hoejdeprofilen (#6594)");
+  }
+});
+
+test("#6367 apply: saeson 4 skriver stadig v5 (generator_version 5, ingen hoejdeprofil-noegle)", async () => {
+  const sb = makeSupabase(s5Tier3State([{ id: "season-4", number: 4, status: "upcoming" }]));
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-4", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX });
+  assert.equal(summary.profileModel, "v5");
+  assert.ok(sb.state.race_stage_profiles.length > 0);
+  for (const p of sb.state.race_stage_profiles) {
+    assert.equal(p.generator_version, GENERATOR_VERSION);
+    assert.equal("elevation_profile" in p, false);
+  }
+});
+
+test("#6367 reconcile: en pulje der vaagner i S5 faar S5-profiler (aktiv saesons nummer sendes videre)", async () => {
+  const state = tier4ActivationState();
+  state.seasons = [{ id: "s1", number: 5, status: "active", start_date: "2026-10-28" }];
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return materializeTierCalendars(args); };
+  const sb = makeSupabase(state);
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX, materialize: recording });
+  assert.equal(calls[0].seasonNumber, 5);
+  assert.equal(summary.profileModel, "s5");
+  assert.ok(sb.state.race_stage_profiles.length > 0);
+  for (const p of sb.state.race_stage_profiles) assert.equal(p.generator_version, S5_GENERATOR_VERSION);
 });

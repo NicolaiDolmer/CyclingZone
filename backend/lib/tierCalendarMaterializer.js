@@ -44,8 +44,35 @@ import { withSeniorSquadScope } from "./squads.js";
 // lille pakker og sin egen taethed (SQUAD_CALENDAR). Senior er default og bit-identisk.
 import { SQUAD_CALENDAR, CALENDAR_SQUADS } from "./calendarTierCaps.js";
 import { packSquadCalendar } from "./squadCalendarPacker.js";
+// #6367: hvilken profil-model en saeson SKAL genereres med (v5 til og med S4, "s5" fra S5).
+// Afledt af saesonnummeret, aldrig af et flag - samme kilde som benchmark-gaten bruger.
+import { profileModelForSeason } from "./s5BenchmarkGate.js";
 
 export { TIER_CLASS_WHITELIST };
+
+/**
+ * #6367: profil-modellen for den saeson der materialiseres. `seasonNumber` (eksplicit fra
+ * kalderen) vinder; ellers slaas seasons.number op paa seasonId (kun SELECT), saa ALLE
+ * materialiserings-stier (admin-knappen, relaunch, reparations-scripts) faar samme model som
+ * buildSeasonCalendar uden at hver kalder skal huske at sende den. Findes raekken ikke, er
+ * saesonnummeret ukendt og modellen v5 - netop derfor sender buildSeasonCalendar det
+ * eksplicit (S5-raekken findes foerst efter --apply har oprettet den). En LAESEFEJL fejler
+ * lukket: en S5-kalender maa aldrig skrives med v5, fordi en forespoergsel gik galt.
+ *
+ * @returns {Promise<{ seasonNumber: number|null, profileModel: string }>}
+ */
+export async function resolveSeasonProfileModel({ supabase, seasonId, seasonNumber = null }) {
+  if (seasonNumber != null) {
+    const n = Number(seasonNumber);
+    if (!Number.isInteger(n) || n < 1) throw new Error(`seasonNumber "${seasonNumber}" er ikke et heltal >= 1 (#6367)`);
+    return { seasonNumber: n, profileModel: profileModelForSeason(n) };
+  }
+  if (seasonId == null) return { seasonNumber: null, profileModel: profileModelForSeason(null) };
+  const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId).maybeSingle();
+  if (error) throw new Error(`seasons (profil-model, #6367): ${error.message}`);
+  const n = data?.number != null ? Number(data.number) : null;
+  return { seasonNumber: Number.isInteger(n) ? n : null, profileModel: profileModelForSeason(n) };
+}
 
 /**
  * #5644: er fejlen "kolonnen league_divisions.retired_at findes IKKE"? Kolonnen tilfoejes af
@@ -174,8 +201,11 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, s
 // #5405: finale-typerne fordeles efter kvote over tierens HELE løbssæt
 // (balanceFinaleQuotas), samme skridt som realisme-gen-trækket tager i drawTierAttempt.
 // Kortet her er derfor også det skrive-stien persisterer — se insert-løkken nedenfor.
+// #6367: ctx.profileModel er saesonens model (resolveSeasonProfileModel). S5-etaper har ingen
+// finale-kontekst, saa balanceFinaleQuotas lader dem uroerte (S5 vaelger selv inden for
+// matrixen); for v5 er kaldet bit-identisk med foer.
 function coverageProfilesFor(raceRows, ctx) {
-  const generated = raceRows.map((r) => generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles }));
+  const generated = raceRows.map((r) => generateRaceStageProfiles(seedRaceFor(r, ctx), { archetypeProfiles: ctx.archetypeProfiles, profileModel: ctx.profileModel ?? "v5" }));
   const balanced = balanceFinaleQuotas(generated);
   return new Map(raceRows.map((r, i) => [r.pool_race_id, balanced[i]]));
 }
@@ -831,9 +861,19 @@ export async function materializeTierCalendars({
   // (retiredAt sat) og får ingen løb. Kun planen: retired_at i databasen røres ikke.
   // null/tom = uændret adfærd.
   cutoverRetiredPoolIds = null,
+  // #6367: saesonens nummer. Afgoer profil-modellen (profileModelForSeason: v5 til og med S4,
+  // "s5" fra S5) for BAADE daeknings-verifikationen, realisme-gen-traekket og skrive-stien.
+  // null = slaa det op paa seasonId (resolveSeasonProfileModel).
+  seasonNumber = null,
 } = {}) {
   assertCalendarSquad(squad);
   const isSenior = squad === "senior";
+  const { seasonNumber: resolvedSeasonNumber, profileModel } = await resolveSeasonProfileModel({ supabase, seasonId, seasonNumber });
+  // #6367: realisme-gen-traekket skal maale de profiler der faktisk skrives. For v5 bruges
+  // drawTierAttempt's egen default (bit-identisk med foer); for S5 traekkes med S5-modellen.
+  const generateDrawProfiles = profileModel === "v5"
+    ? undefined
+    : (seedRace) => generateRaceStageProfiles(seedRace, { profileModel });
   const editionYear = editionYearFrom(seasonStartDate);
   const cutoverRetired = new Set(cutoverRetiredPoolIds ?? []);
   if (cutoverRetired.size && !isSenior) {
@@ -944,7 +984,11 @@ export async function materializeTierCalendars({
     oneDayShareTargets, classStageLengthBand, priorityArchetypes, archetypeReservations, raceDayTarget,
     seasonTransitionAt, previousSeasonLastStageAtByTier, seasonLastRaceDay, squad,
   });
-  const summary = { dryRun, squad, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
+  const summary = {
+    dryRun, squad, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [],
+    // #6367: hvilken model kalenderen er genereret med, saa en toerkoersel kan efterproeves.
+    seasonNumber: resolvedSeasonNumber, profileModel,
+  };
 
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
@@ -971,14 +1015,14 @@ export async function materializeTierCalendars({
       // #5644: realisme-båndene er seniordivisionernes (#2755/#2769) — en trup bruger det
       // kanoniske træk (attempt 0) og måles ikke mod dem.
       if (isSenior) {
-        const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces });
+        const draw = resolveTierDraw({ tier: tierPlan.tier, seedRaces, ...(generateDrawProfiles ? { generateProfiles: generateDrawProfiles } : {}) });
         seasonVariant = draw.attempt;
         tierPlan.realismDraw = { attempt: draw.attempt, exhausted: draw.exhausted, firstDrawFailures: draw.firstDrawFailures };
         if (draw.attempt > 0) log(`  tier ${tierPlan.tier}: kanonisk parcours-træk brød realisme-båndene (${draw.firstDrawFailures.join(" · ")}) → deterministisk gen-træk ${draw.attempt} (#3347)`);
         if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
       }
 
-      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier });
+      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier, profileModel });
       tierProfiles = profiles;
       const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
       const coverageViolations = detectCoverageViolations({
@@ -1078,7 +1122,7 @@ export async function materializeTierCalendars({
         let profiles = tierProfiles?.get(race.pool_race_id);
         if (!profiles) {
           const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
-          profiles = generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier });
+          profiles = generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier, profileModel });
         }
         for (const p of profiles) profileRows.push(toStageProfileRow(race.id, p));
       }
@@ -1307,6 +1351,9 @@ export async function reconcilePoolCalendarOnActivation({
   const summary = await materialize({
     supabase, seasonId: season.id, seasonStartDate: season.start_date ?? null,
     from, tiers: [division.tier], dryRun: false, log, ...horizon, ...coverageOverrides,
+    // #6367: den aktive saesons nummer afgoer profil-modellen (S5+ = "s5"). Raekken er
+    // allerede laest, saa materializeren behoever ikke slaa den op igen.
+    seasonNumber: season.number ?? null,
     // #5592: en pulje der vågner midt i sæsonen er ikke en sæsonstart — første-dags-reglen
     // gælder ikke her. Sidste-dags-reglen gælder stadig: horisonten slutter på sæsonens
     // sidste etape-dato, så puljens sidste dag slutter kl. 15 som de øvrige divisioners.

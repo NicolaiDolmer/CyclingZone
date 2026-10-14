@@ -887,7 +887,7 @@ if (isMain) {
 
     // 1) Planlæg (altid dry-run først — også når vi skal apply'e).
     const plan = await materializeTierCalendars({
-      supabase, seasonId, seasonStartDate: firstRaceDay, from, dryRun: true, log: () => {},
+      supabase, seasonId, seasonNumber, seasonStartDate: firstRaceDay, from, dryRun: true, log: () => {},
       realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, squad, ...cutoverArgs,
     });
 
@@ -898,7 +898,7 @@ if (isMain) {
       await runSquadCalendar({
         supabase, squad, seasonId, seasonNumber, seasonRow, writeGate, replacement, existingRaces,
         apply, replaceExisting, snapshotDir, firstDay, window, plan,
-        materializeArgs: { seasonStartDate: firstDay, from, realDays, quotas, raceDayTarget, ...planningWindowArgs },
+        materializeArgs: { seasonNumber, seasonStartDate: firstDay, from, realDays, quotas, raceDayTarget, ...planningWindowArgs },
       });
       process.exit(process.exitCode ?? 0);
     }
@@ -915,6 +915,14 @@ if (isMain) {
     for (const v of poolStructure) blocking.push(`pulje-struktur — ${v}`);
 
     console.log(`\n── Plan ──`);
+    // #6367: modellen kalenderen FAKTISK er genereret med. Gaten (profileModelForSeason)
+    // og materializeren skal vaere enige; ellers maaler benchmark-gaten et andet parcours end
+    // det --apply ville skrive, og det er et haardt brud uden override.
+    const expectedModel = profileModelForSeason(seasonNumber);
+    console.log(`  profil-model: ${plan.profileModel ?? "(ukendt)"} (sæson ${seasonNumber} kræver ${expectedModel})`);
+    if (plan.profileModel !== expectedModel) {
+      blocking.push(`profil-model — kalenderen er genereret med ${plan.profileModel ?? "(ukendt)"}, sæson ${seasonNumber} kræver ${expectedModel} (#6367)`);
+    }
     for (const t of plan.tiers) {
       console.log(`  tier ${t.tier}: ${t.totalGameDays}/${t.quota} game-days · ${t.pools.length} pulje(r) · ${t.pools.reduce((s, p) => s + p.selected, 0)} løb i alt${t.realismDraw?.attempt ? ` · realisme-gen-træk ${t.realismDraw.attempt}` : ""}`);
     }
@@ -1180,7 +1188,7 @@ if (isMain) {
       // godkendte. Kalenderen genereres kun EEN gang pr. saeson (§2c), saa den fejl kunne
       // ikke rettes bagefter.
       const applied = await materializeTierCalendars({
-        supabase, seasonId, seasonStartDate: firstDay, from, dryRun: false, log: (m) => console.log(m),
+        supabase, seasonId, seasonNumber, seasonStartDate: firstDay, from, dryRun: false, log: (m) => console.log(m),
         realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, ...cutoverArgs,
       });
       console.log(`\n  ${applied.racesInserted} løb · ${applied.stageProfiles} etape-profiler · ${applied.stageSchedules} etape-tider indsat.`);
