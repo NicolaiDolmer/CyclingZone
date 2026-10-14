@@ -16,7 +16,7 @@ const page = readFileSync(join(__dirname, "RaceDetailPage.jsx"), "utf8");
 const stagePageV2 = readFileSync(join(__dirname, "..", "components", "race", "stagePageV2", "StagePageV2.tsx"), "utf8");
 const stageTabV2 = readFileSync(join(__dirname, "..", "components", "race", "stagePageV2", "StageTabV2.tsx"), "utf8");
 
-function startStageFetchBody() {
+function startStageFetchBody(): string {
   const start = page.indexOf("const startStageFetch = useCallback(");
   assert.ok(start >= 0, "startStageFetch findes");
   const end = page.indexOf("}, [raceId, loadedStages, failedStages]);", start);
