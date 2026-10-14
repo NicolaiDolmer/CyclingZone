@@ -123,9 +123,21 @@ function placeKm(event) {
 // Feltet starter samlet i "peloton-0". Ryttere der ikke er nævnt i en anden
 // gruppe, kører i "resten" (rest-gruppen følger peloton-0's id gennem merges),
 // så historien virker uden startliste. Et uheldsoffer kører i sin egen solo-
-// gruppe (`solo-m10-...`), som incident-eventet ikke navngiver: rytteren
-// knyttes til den første ukendte solo-m10-gruppe loggen nævner efter uheldet
-// (`members_inferred: true`).
+// gruppe (`solo-m10-<segment>-<seq>`), som incident-eventet ikke navngiver.
+// Rytteren udledes af id'et med motorens egen navngivning (incidents.ts,
+// makeIncidentSoloGroupId), ikke af rækkefølgen grupperne nævnes i
+// (`members_inferred: true`):
+//   - M10 behandler et segments kandidater i rider_id-orden (localeCompare),
+//     og hvert uheld der tager rytteren ud af gruppen (tidstab ELLER
+//     udgåelse, ikke 3 km-reglen) får næste <seq>. Et uheld fra en anden
+//     mekanik (`cause`, fx nedkørslen) får ikke et solo-m10-id.
+//   - Segmentets uheld er de endnu ikke tildelte M10-uheld på eller før det
+//     km hvor gruppen først nævnes (motoren melder en ny gruppe ved
+//     segmentets slut), afgrænset af de segmenter der allerede er tildelt.
+// Kan id'et ikke føres tilbage til en ventende rytter, forbliver han ventende
+// (hullet er ukendt), hellere end at få en anden rytters gruppe.
+
+const INCIDENT_SOLO_ID = /^solo-m10-(\d+)-(\d+)$/;
 
 function createMembership(fieldCount) {
   return {
@@ -136,6 +148,9 @@ function createMembership(fieldCount) {
     abandoned: new Set(),
     pendingSolo: [], // uheldsofre uden kendt gruppe endnu
     inferred: new Set(), // gruppe-id'er hvis medlemmer er udledt
+    m10Incidents: [], // { rider, km, assigned } - M10-uheld der tog rytteren ud af gruppen
+    m10Segments: new Map(), // segment -> { riders (seq-orden), minKm, maxKm }
+    m10Seen: new Set(), // solo-m10-id'er der allerede er ført tilbage
   };
 }
 
@@ -162,11 +177,36 @@ function placeRiders(m, groupId, riderIds) {
 function ensureGroup(m, groupId) {
   if (!groupId || m.groups.has(groupId) || groupId === m.restId) return;
   m.groups.set(groupId, new Set());
-  if (groupId.startsWith("solo-m10-") && m.pendingSolo.length > 0) {
-    const rider = m.pendingSolo.shift();
-    placeRiders(m, groupId, [rider]);
-    m.inferred.add(groupId);
+}
+
+/** Segmentets M10-uheld i motorens seq-orden (se blokken øverst). */
+function incidentSegmentRiders(m, segment, km) {
+  const known = m.m10Segments.get(segment);
+  if (known) return known.riders;
+  let lo = -Infinity;
+  let hi = Infinity;
+  for (const [s, info] of m.m10Segments) {
+    if (info.minKm == null) continue;
+    if (s < segment) lo = Math.max(lo, info.maxKm);
+    else if (s > segment) hi = Math.min(hi, info.minKm);
   }
+  const inSegment = m.m10Incidents.filter((x) => !x.assigned && x.km <= km + 1e-9 && x.km >= lo - 1e-9 && x.km <= hi + 1e-9);
+  for (const x of inSegment) x.assigned = true;
+  const riders = inSegment.map((x) => x.rider).sort((a, b) => a.localeCompare(b));
+  const kms = inSegment.map((x) => x.km);
+  m.m10Segments.set(segment, { riders, minKm: kms.length ? Math.min(...kms) : null, maxKm: kms.length ? Math.max(...kms) : null });
+  return riders;
+}
+
+/** Første gang loggen nævner en uheldsgruppe: knyt dens rytter til den. */
+function resolveIncidentGroup(m, groupId, km) {
+  const match = INCIDENT_SOLO_ID.exec(groupId ?? "");
+  if (!match || m.m10Seen.has(groupId)) return;
+  m.m10Seen.add(groupId);
+  const rider = incidentSegmentRiders(m, Number(match[1]), km)[Number(match[2])];
+  if (!rider || !m.pendingSolo.includes(rider)) return;
+  placeRiders(m, groupId, [rider]);
+  m.inferred.add(groupId);
 }
 
 function mergeGroups(m, fromId, intoId, namedIds) {
@@ -194,6 +234,9 @@ function applyMembership(m, event) {
   const p = event.params ?? {};
   const named = ids(p.rider_ids);
   const groupId = str(p.group_id);
+  for (const id of [p.group_id, p.into_group_id, p.source_group_id, p.from_group_id, p.chase_group_id]) {
+    if (str(id)) resolveIncidentGroup(m, id, recordedKm(event));
+  }
   switch (event.type) {
     case "breakaway_formed":
     case "peloton_splits":
@@ -212,6 +255,10 @@ function applyMembership(m, event) {
     case "incident": {
       const rider = str(p.rider_id);
       if (!rider || m.abandoned.has(rider)) break;
+      // M10's egne uheld (uden `cause`) tager et solo-m10-seq, også en udgåelse.
+      if (p.cause == null && (p.outcome === "abandoned" || p.outcome === "time_loss")) {
+        m.m10Incidents.push({ rider, km: recordedKm(event), assigned: false });
+      }
       if (p.outcome === "abandoned") abandonRider(m, rider);
       else if (p.outcome === "time_loss") { removeRider(m, rider); m.pendingSolo.push(rider); }
       break;
@@ -709,7 +756,10 @@ function lerp(fromKm, fromGap, toKm, toGap, km) {
  *   - en gruppe der forsvinder før b, er på vejen til sit faktiske merge-punkt
  *     og lukker linjært ind på den gruppe den smelter ind i;
  *   - en gruppe der opstår før b, er på vejen fra sit faktiske split-punkt og
- *     starter i den gruppe den kom fra.
+ *     starter i den gruppe den kom fra;
+ *   - fra det split-punkt har kildegruppen afgivet de ryttere: dens størrelse
+ *     og medlemmer i mellem-frames er a's minus dem (ellers tæller rytterne
+ *     med i begge grupper indtil b).
  * En gruppe uden registreret merge/split vises kun hvor loggen kender den.
  */
 function groupsBetween(story, a, b, km) {
@@ -722,17 +772,41 @@ function groupsBetween(story, a, b, km) {
     if (ga && gb) return lerp(a.km, ga.gap_s, b.km, gb.gap_s, x);
     return (ga ?? gb)?.gap_s ?? null;
   };
+  const startOf = (id) => spans.find((s) => s.group_id === id && s.from_km > a.km + 1e-9 && s.from_km <= b.km + 1e-9);
+  // Ryttere der ved km har forladt en gruppe fra a (split/drop/angreb mellem
+  // a og b). En unavngiven rytter i a (ikke i nogen gruppes liste, hverken
+  // udgået eller ventende) kørte i resten.
+  const namedInA = new Set([...a.groups.flatMap((g) => g.rider_ids), ...(a.out_rider_ids ?? []), ...(a.pending_rider_ids ?? [])]);
+  const departed = new Map(); // kildegruppe -> Set(rider)
+  for (const [id, g] of inB) {
+    if (inA.has(id)) continue;
+    const start = startOf(id);
+    if (!start || km < start.from_km - 1e-9 || !start.source_group_id) continue;
+    const source = inA.get(start.source_group_id);
+    if (!source) continue;
+    const moved = g.rider_ids.filter((r) => source.rider_ids.includes(r) || (source.includes_rest && !namedInA.has(r)));
+    if (!moved.length) continue;
+    if (!departed.has(source.group_id)) departed.set(source.group_id, new Set());
+    for (const r of moved) departed.get(source.group_id).add(r);
+  }
+  const metaAt = (g) => {
+    const gone = departed.get(g.group_id);
+    if (!gone?.size) return g;
+    const riderIds = g.rider_ids.filter((r) => !gone.has(r));
+    const size = g.includes_rest ? (g.size == null ? null : Math.max(riderIds.length, g.size - gone.size)) : riderIds.length;
+    return { ...g, rider_ids: riderIds, size };
+  };
   const out = [];
   for (const [id, g] of inA) {
-    if (inB.has(id)) { out.push({ meta: g, gap: lineGap(id, km) }); continue; }
+    if (inB.has(id)) { out.push({ meta: metaAt(g), gap: lineGap(id, km) }); continue; }
     const end = spans.find((s) => s.group_id === id && s.to_km != null && s.to_km > a.km + 1e-9 && s.to_km <= b.km + 1e-9);
     if (!end || km > end.to_km + 1e-9) continue;
     const target = lineGap(end.into_group_id, end.to_km) ?? g.gap_s;
-    out.push({ meta: g, gap: lerp(a.km, g.gap_s, end.to_km, target, km) });
+    out.push({ meta: metaAt(g), gap: lerp(a.km, g.gap_s, end.to_km, target, km) });
   }
   for (const [id, g] of inB) {
     if (inA.has(id)) continue;
-    const start = spans.find((s) => s.group_id === id && s.from_km > a.km + 1e-9 && s.from_km <= b.km + 1e-9);
+    const start = startOf(id);
     if (!start || km < start.from_km - 1e-9) continue;
     const origin = (start.source_group_id ? lineGap(start.source_group_id, start.from_km) : null) ?? g.gap_s;
     out.push({ meta: g, gap: lerp(start.from_km, origin, b.km, g.gap_s, km) });
