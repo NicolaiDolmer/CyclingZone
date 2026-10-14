@@ -333,6 +333,7 @@ Målstatus: Dependabot security updates, secret scanning og push protection enab
 2. Review ændringslog for den pågældende pakke for breaking changes
 3. Merge direkte hvis minor/patch og CI er grøn
 4. Koordinér med Claude ved major version bumps der kræver kodeændringer
+5. **Luk aldrig en major-PR med `@dependabot ignore`.** Det gemmer afvisningen i Dependabot og glemmes. Er majoren ikke klar nu, opret et issue med årsagen (hvad blokerer, hvad skal til) og luk PR'en med henvisning til issuet. `scripts/agent-doctor.ps1` advarer (`major-behind`) om direkte afhængigheder der er en major bagud.
 
 ### Når CodeQL finder et alert
 

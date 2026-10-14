@@ -695,6 +695,51 @@ if ($auditPrefix.Count -gt 0 -or ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_K
   Add-Check "feature-liveness" "WARN" "skipped (no auth — $skipHint)"
 }
 
+# --- major-behind: direkte afhaengigheder der er en major bagud (#6605) ---
+# npm outdated --json. Offline-sikkert: intet netvaerk/registry = SKIP, aldrig FAIL.
+# Kun WARN, saa en major-PR der er lukket uden issue ikke gemmes af vejen.
+$repoRootForOutdated = Split-Path -Parent $PSScriptRoot
+foreach ($pkgDir in @(".", "backend", "frontend", "marketing")) {
+  $checkName = "major-behind:" + $(if ($pkgDir -eq ".") { "root" } else { $pkgDir })
+  $pkgPath = Join-Path $repoRootForOutdated $pkgDir
+  if (-not (Test-Path (Join-Path $pkgPath "package.json"))) { continue }
+  if (-not (Test-Path (Join-Path $pkgPath "node_modules"))) {
+    Add-Check $checkName "SKIP" "node_modules mangler (kør npm ci)"
+    continue
+  }
+  try {
+    # Kun stdout parses som JSON; stderr (fx "npm warn ...") droppes.
+    $outdatedText = (& npm outdated --json --prefix $pkgPath 2>$null) -join "`n"
+    $npmExit = $LASTEXITCODE
+    # npm outdated exit 1 = der FINDES forældede pakker. Andre exit-koder (>1) = fejl.
+    # Tom stdout er kun OK ved exit 0; ellers (offline/registry-fejl) SKIP, aldrig OK.
+    if ($npmExit -gt 1 -or ($npmExit -ne 0 -and -not $outdatedText.Trim())) {
+      Add-Check $checkName "SKIP" "npm outdated fejlede (exit $npmExit, offline?)"
+      continue
+    }
+    $outdated = if ($outdatedText.Trim()) { $outdatedText | ConvertFrom-Json } else { $null }
+  } catch {
+    Add-Check $checkName "SKIP" "npm outdated gav ingen gyldig JSON (offline?)"
+    continue
+  }
+  if ($null -eq $outdated) { Add-Check $checkName "OK" "ingen forældede pakker"; continue }
+  $direct = @()
+  foreach ($prop in $outdated.PSObject.Properties) {
+    $info = $prop.Value
+    if (-not ($info.PSObject.Properties.Name -contains "current") -or -not ($info.PSObject.Properties.Name -contains "latest")) { continue }
+    $cur = [string]$info.current; $lat = [string]$info.latest
+    if ($cur -notmatch '^(\d+)\.' ) { continue }
+    $curMajor = [int]$Matches[1]
+    if ($lat -notmatch '^(\d+)\.') { continue }
+    if ([int]$Matches[1] -gt $curMajor) { $direct += "$($prop.Name) $cur->$lat" }
+  }
+  if ($direct.Count -eq 0) {
+    Add-Check $checkName "OK" "ingen major-efterslæb"
+  } else {
+    Add-Check $checkName "WARN" ("$($direct.Count) en major bagud: " + ($direct -join ", ") + " (opret issue med årsag, luk ikke med @dependabot ignore)")
+  }
+}
+
 $failures = @($results | Where-Object { $_.Status -eq "FAIL" })
 $warnings = @($results | Where-Object { $_.Status -eq "WARN" })
 $okCount = @($results | Where-Object { $_.Status -eq 'OK' }).Count
