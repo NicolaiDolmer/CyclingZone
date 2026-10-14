@@ -35,7 +35,7 @@
 //
 // Ren: ingen DB. Deterministisk givet løbssættet og seed-nøglerne.
 
-import { generateRaceStageProfiles, s5StageRaceFillerSlots, isTimeTrial } from "./raceStageProfileGenerator.js";
+import { generateRaceStageProfiles, s5StageRaceFillerSlots, isTimeTrial, isOrderArchetypeFeasible } from "./raceStageProfileGenerator.js";
 import {
   ACTIVE_TARGET, COMPOSITION_TOLERANCE_PP, TIER_COMPOSITION_TOLERANCE_PP, TIER_UNIFORM_TARGET_FRACTIONS, TIER_UNIFORM_TOLERANCE_PP,
   compositionCategory, toleranceFor,
@@ -109,7 +109,7 @@ export function tierTerrainLoss(counts, tier) {
  * Fordel én divisions filler-pladser efter kvote.
  *
  * @param {{ tier: number, counts: Record<string, number>,
- *   slots: Array<{ id: string, guaranteed: string[], natural: string[], options: string[], ttCap: number }> }} args
+ *   slots: Array<{ id: string, guaranteed: string[], natural: string[], options: string[], ttCap: number, orderArchetype?: string }> }} args
  *   counts  divisionens type-tal med det NATURLIGE træk (alle løb, alle etaper)
  *   slots   arketype-etapeløbenes filler-pladser (s5StageRaceFillerSlots), i løbssættets rækkefølge
  * @returns {{ fillerById: Map<string, string[]>, changes: number, lossBefore: number, lossAfter: number }}
@@ -118,6 +118,8 @@ export function allocateS5TierFillers({ tier, counts, slots }) {
   const cur = { ...counts };
   const fillers = slots.map((s) => s.natural.slice());
   const mountainFree = slots.map((s) => ![...s.guaranteed, ...s.natural].some((t) => MOUNTAIN_FAMILY_TYPES.has(t)));
+  // Ordnings-arketypen må ikke blive umulig hvis det naturlige træk kunne bære den.
+  const keepFeasible = slots.map((s) => Boolean(s.orderArchetype) && isOrderArchetypeFeasible(/** @type {string} */ (s.orderArchetype), [...s.guaranteed, ...s.natural]));
   const lossBefore = tierTerrainLoss(cur, tier);
   let loss = lossBefore;
   let changes = 0;
@@ -133,6 +135,10 @@ export function allocateS5TierFillers({ tier, counts, slots }) {
           if (to === from) continue;
           if (isTimeTrial(to) && !isTimeTrial(from) && tts + 1 > s.ttCap) continue;
           if (mountainFree[i] && MOUNTAIN_FAMILY_TYPES.has(to)) continue;
+          if (keepFeasible[i]) {
+            const after = fillers[i].slice(); after[j] = to;
+            if (!isOrderArchetypeFeasible(s.orderArchetype, [...s.guaranteed, ...after])) continue;
+          }
           cur[from] -= 1; cur[to] = (cur[to] ?? 0) + 1;
           const wasChanged = changedFrom(i, j);
           const willChange = to !== s.natural[j];

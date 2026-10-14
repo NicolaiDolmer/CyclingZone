@@ -1287,11 +1287,13 @@ export function applyOpeningVariety(rng, ordered) {
 /**
  * @param {S5Rng} rng @param {string[]} types @param {number} stages @param {any} race
  * @param {string | null} terrainArchetype @param {number} protectedCount @param {StageFactory} [make]
+ * @param {string[] | null} [fillerTypes]  kun S5 (#6367), se applyFillerTypes
  */
-function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, protectedCount, make = toStage) {
+function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, protectedCount, make = toStage, fillerTypes = null) {
   types.length = stages; // defensiv trim (parity med orderAndBuildGrandTour)
   const weights = orderWeightsFor(terrainArchetype);
   const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, weights);
+  if (fillerTypes) applyFillerTypes(types, protectedCount, fillerTypes, orderArchetype, stages, race);
   // #3371: bryd bjerg-blokke op FØR finale-arketypen anvendes (samme rækkefølge som GT's
   // egen weaveGrandTourScaffold → toGrandTourFinale) — se weaveMountainFamilyBlocks'
   // docstring for hvorfor loft=2 og "hårdeste sidst" ikke tvinges her.
@@ -1362,17 +1364,33 @@ function drawArchetypeTypes(rng, stages, cfg) {
  */
 function buildStageRaceArchetype(rng, stages, cfg, race, make = toStage, fillerTypes = null) {
   const { types, protectedCount } = drawArchetypeTypes(rng, stages, cfg);
-  if (fillerTypes) {
-    if (fillerTypes.length !== types.length - protectedCount) {
-      throw new Error(`fillerTypes: ${fillerTypes.length} types for ${types.length - protectedCount} filler slots (${race?.name ?? race?.id})`);
-    }
-    types.splice(protectedCount, fillerTypes.length, ...fillerTypes);
-    if (types.filter(isTimeTrial).length > timeTrialCap(types.slice(0, protectedCount), stages)) {
-      throw new Error(`fillerTypes exceed the time-trial cap (#2029) for ${race?.name ?? race?.id}`);
-    }
-  }
   if (cfg.grandTourOrder) return orderAndBuildGrandTour(rng, types, stages, race, cfg.openingItt ? "itt" : null);
-  return orderAndBuildFinaleDriven(rng, types, stages, race, race?.terrain_archetype, protectedCount, make);
+  return orderAndBuildFinaleDriven(rng, types, stages, race, race?.terrain_archetype, protectedCount, make, fillerTypes);
+}
+
+/**
+ * #6367: erstat filler-pladserne med divisionens kvote-fordelte typer. Sker EFTER
+ * ordnings-arketypen er valgt (og evt. har forceret en filler-plads, forceFillerType), så
+ * fordelingen ser løbets endelige type-multisæt. Arketypen skal stadig kunne lade sig gøre,
+ * og TT-loftet (#2029) holder.
+ * @param {string[]} types @param {number} protectedCount @param {string[]} fillerTypes
+ * @param {string} orderArchetype @param {number} stages @param {any} race
+ */
+function applyFillerTypes(types, protectedCount, fillerTypes, orderArchetype, stages, race) {
+  const label = race?.name ?? race?.id;
+  if (fillerTypes.length !== types.length - protectedCount) {
+    throw new Error(`fillerTypes: ${fillerTypes.length} types for ${types.length - protectedCount} filler slots (${label})`);
+  }
+  // summit_finale vælges uden feasibility-tjek (resolveOrderArchetype); kravet er derfor kun
+  // at fordelingen ikke gør en arketype umulig som det naturlige træk kunne.
+  const wasFeasible = isFeasibleOrderArchetype(orderArchetype, types);
+  types.splice(protectedCount, fillerTypes.length, ...fillerTypes);
+  if (types.filter(isTimeTrial).length > timeTrialCap(types.slice(0, protectedCount), stages)) {
+    throw new Error(`fillerTypes exceed the time-trial cap (#2029) for ${label}`);
+  }
+  if (wasFeasible && !isFeasibleOrderArchetype(orderArchetype, types)) {
+    throw new Error(`fillerTypes make the order archetype "${orderArchetype}" infeasible for ${label}`);
+  }
 }
 
 // Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
@@ -1660,11 +1678,14 @@ export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCH
  *
  * @param {any} race  samme seed-form som generateRaceStageProfiles
  * @param {{ seed?: number, archetypeProfiles?: Record<string, any> }} [opts]
- * @returns {null | { guaranteed: string[], natural: string[], options: string[], ttCap: number, stages: number }}
- *   guaranteed  garanti-pladserne (ændres aldrig)
- *   natural     filler-pladsernes naturlige træk (efter TT-loftet)
- *   options     filler-vægtenes typer med vægt > 0 (de eneste lovlige erstatninger)
- *   ttCap       TT-loftet for løbet (#2029)
+ * @returns {null | { guaranteed: string[], natural: string[], options: string[], ttCap: number, stages: number, orderArchetype: string }}
+ *   guaranteed      garanti-pladserne (ændres aldrig)
+ *   natural         filler-pladsernes naturlige træk: efter TT-loftet OG efter at
+ *                   ordnings-arketypen evt. har forceret en plads (forceFillerType), altså
+ *                   præcis løbets endelige type-multisæt
+ *   options         de lovlige filler-typer: filler-vægtene med vægt > 0 + det naturlige træk
+ *   ttCap           TT-loftet for løbet (#2029)
+ *   orderArchetype  løbets ordnings-arketype; fillerTypes skal holde den mulig
  */
 export function s5StageRaceFillerSlots(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES } = {}) {
   if (!race?.id || race.race_type !== "stage_race") return null;
@@ -1672,12 +1693,24 @@ export function s5StageRaceFillerSlots(race, { seed, archetypeProfiles = ARCHETY
   if (cfg?.kind !== "stage" || cfg.grandTourOrder) return null;
   const stages = Math.max(2, Number(race.stages) || 2);
   const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
+  // Samme rng-forløb som buildStageRaceArchetype → orderAndBuildFinaleDriven frem til
+  // applyFillerTypes: typerne, trim, ordnings-arketypen (som kan forcere en filler-plads).
   const { types, protectedCount } = drawArchetypeTypes(rng, stages, cfg);
+  types.length = stages;
+  const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, orderWeightsFor(race?.terrain_archetype));
+  const natural = types.slice(protectedCount);
+  const fromWeights = cfg.filler.filter((/** @type {any} */ it) => it.weight > 0).map((/** @type {any} */ it) => it.value);
   return {
     guaranteed: types.slice(0, protectedCount),
-    natural: types.slice(protectedCount),
-    options: cfg.filler.filter((/** @type {any} */ it) => it.weight > 0).map((/** @type {any} */ it) => it.value),
+    natural,
+    options: [...new Set([...fromWeights, ...natural])],
     ttCap: timeTrialCap(types.slice(0, protectedCount), stages),
     stages,
+    orderArchetype,
   };
+}
+
+/** #6367: kan ordnings-arketypen lade sig gøre med disse typer? (s5TierTerrainQuota.js) */
+export function isOrderArchetypeFeasible(name, types) {
+  return isFeasibleOrderArchetype(name, types);
 }

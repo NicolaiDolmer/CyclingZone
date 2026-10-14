@@ -52,6 +52,7 @@ import {
 } from "./lib/calendarGoldenDiffReport.mjs";
 import { buildS3OfflineCalendarPlan, FIXTURE_PATH } from "./lib/s3OfflineCalendarPlan.mjs";
 import { generateRaceStageProfiles, balanceFinaleQuotas } from "../../lib/raceStageProfileGenerator.js";
+import { makeS5TierProfileGenerator } from "../../lib/s5TierTerrainQuota.js";
 import {
   evaluateS5BenchmarkGate, loadS5Benchmark, loadMotorGapFile, S5_PROFILE_MODEL,
 } from "../../lib/s5BenchmarkGate.js";
@@ -83,7 +84,10 @@ export function buildOfflineS5GateRaces({ profileModel = "v5" } = {}) {
         race_class: r.race_class ?? null, season_id: "golden-offline", season_variant: 0,
       };
     });
-    let generated = seeds.map((s) => generateRaceStageProfiles(s, { profileModel }));
+    // #6367: S5 maales med divisionens terraen-kvote (s5TierTerrainQuota.js), samme generator
+    // som materializeren skriver med; v5 med de kvote-fordelte finaler som foer.
+    const s5Generate = profileModel === S5_PROFILE_MODEL ? makeS5TierProfileGenerator({ tier: plan.tier, seedRaces: seeds }) : null;
+    let generated = seeds.map((s) => (s5Generate ? s5Generate(s) : generateRaceStageProfiles(s, { profileModel })));
     if (profileModel !== S5_PROFILE_MODEL) generated = balanceFinaleQuotas(generated);
     seeds.forEach((s, i) => races.push({ pool_race_id: s.id, name: s.name, race_type: s.race_type, race_class: s.race_class, terrain_archetype: s.terrain_archetype, stages: generated[i] }));
   }

@@ -36,6 +36,7 @@ import {
   generateRaceStageProfiles, balanceFinaleQuotas, isTimeTrial, grandTourTypeFor, S5_GRAND_TOUR_QUOTAS,
 } from "../../backend/lib/raceStageProfileGenerator.js";
 import { deriveTerrainType } from "../../backend/lib/raceRouteGenerator.js";
+import { makeS5TierProfileGenerator } from "../../backend/lib/s5TierTerrainQuota.js";
 import { buildElevationProfile, checkElevationProfile, elevationSeedKey } from "../../backend/lib/routeElevationProfile.js";
 import { TERRAIN_TYPES, isFinishAllowed, canonicalFinaleType } from "../../backend/lib/stageProfileTypes.js";
 
@@ -140,7 +141,10 @@ function measure(model, plan, seasonId) {
   for (const tierPlan of plan.tierPlans) {
     const rows = tierPlan.pools?.[0]?.raceRows ?? [];
     const races = rows.map((r) => seedRace(r, plan, seasonId));
-    let generated = races.map((race) => generateRaceStageProfiles(race, { profileModel: model }));
+    // #6367: S5 genereres med divisionens terraen-kvote (s5TierTerrainQuota.js), samme
+    // generator som materializeren skriver med; v5 med de kvote-fordelte finaler.
+    const s5Generate = model === "s5" ? makeS5TierProfileGenerator({ tier: tierPlan.tier, seedRaces: races }) : null;
+    let generated = races.map((race) => (s5Generate ? s5Generate(race) : generateRaceStageProfiles(race, { profileModel: model })));
     if (model === "v5") generated = balanceFinaleQuotas(generated);
     // #6367: terræn efter B+ pr. division (uden dedup: et løb tæller i hver division det kører i).
     const tierCounts = (byTier[tierPlan.tier] ??= { n: 0, ...emptyCounts() });
