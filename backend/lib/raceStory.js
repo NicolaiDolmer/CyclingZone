@@ -286,6 +286,9 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
   const fieldCount = finite(start?.params?.field_count) ?? (Array.isArray(startlist) ? startlist.length : null);
   const finishKm = finish ? recordedKm(finish) : distanceKm;
   const precise = ordered.some((e) => finite(e.params?.exact_time) != null);
+  // En enkeltstart/holdtidskørsel har ingen grupper at fortælle om: mellem-
+  // og sluttider står i resultatet (siden bruger race_results), ikke i loggen.
+  const timeTrial = /^(itt|ttt)/.test(String(start?.params?.profile_type ?? ""));
 
   const history = deriveParticipationHistory(ordered, Array.isArray(startlist) ? startlist : []);
   const morning = history.morningRiderIds;
@@ -296,7 +299,8 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
     distance_km: distanceKm,
     field_count: fieldCount,
     precise_times: precise,
-    leader_line: buildLeaderLine(ordered, finishKm),
+    time_trial: timeTrial,
+    leader_line: timeTrial ? [] : buildLeaderLine(ordered, finishKm),
     moments: [],
     snapshots: [],
     checkpoints: [],
@@ -333,7 +337,28 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       if (reportedHere.has(id)) { gap = reportedHere.get(id); source = "reported"; }
       else if (lastGap.has(id)) { gap = lastGap.get(id).gap; source = "carried"; }
       else { gap = 0; source = "front"; }
-      groups.push({ group_id: id, ...view, gap_s: round2(Math.max(0, gap)), time_s: leaderTime == null ? null : round2(leaderTime + Math.max(0, gap)), gap_source: source });
+      groups.push({ group_id: id, ...view, gap: Math.max(0, gap), source });
+    }
+    // Fronten meldes aldrig (hul 0). Er ingen gruppe på 0, er en ikke-meldt
+    // gruppe kommet forrest igen: den med mindst båret hul. Motoren har da
+    // flyttet nulpunktet med netop det hul, så de andre bårne huller flyttes
+    // med (en meldt gruppe står allerede mod den nye front).
+    if (groups.length && !groups.some((g) => g.gap === 0)) {
+      const carried = groups.filter((g) => g.source === "carried");
+      if (carried.length) {
+        const shift = Math.min(...carried.map((g) => g.gap));
+        for (const g of carried) {
+          g.gap = Math.max(0, g.gap - shift);
+          if (g.gap === 0) g.source = "front";
+        }
+      }
+    }
+    for (const g of groups) {
+      g.gap_s = round2(g.gap);
+      g.time_s = leaderTime == null ? null : round2(leaderTime + g.gap);
+      g.gap_source = g.source;
+      delete g.gap;
+      delete g.source;
     }
     groups.sort((a, b) => a.gap_s - b.gap_s || (b.size ?? 0) - (a.size ?? 0) || a.group_id.localeCompare(b.group_id));
     const snapshot = { km: round2(km), leader_time_s: leaderTime, groups };
@@ -397,7 +422,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       }
     }
     const hasCheckpoint = atKm.some((e) => e.type === "gap_update" || e.type === "finish" || e.type === "stage_start");
-    if (!hasCheckpoint) continue;
+    if (!hasCheckpoint || timeTrial) continue;
     const previous = new Map(lastGap);
     const snapshot = takeSnapshot(km);
     for (const g of snapshot.groups) lastGap.set(g.group_id, { km, gap: g.gap_s });
@@ -410,6 +435,8 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
       return touched.some((id) => id === groupId || leaderIds.has(id));
     });
     const leaderIds = new Set(snapshot.groups.filter((g) => g.gap_s === 0).map((g) => g.group_id));
+    // Løbets hul er hullet mellem fronten og den første gruppe bag den.
+    const firstChaseId = snapshot.groups.find((g) => g.gap_s > 0)?.group_id ?? null;
     for (const g of snapshot.groups) {
       const prev = previous.get(g.group_id);
       if (!prev || g.gap_source !== "reported") continue;
@@ -428,7 +455,7 @@ export function buildRaceStory({ events = [], timelineVersion = null, results = 
         recorded_km: round2(km),
         race_time_s: snapshot.leader_time_s,
         time_source: snapshot.leader_time_s != null ? "leader_line" : null,
-        importance: "key",
+        importance: g.group_id === firstChaseId || g.includes_rest ? "key" : "detail",
         data: {
           group_id: g.group_id,
           group_size: g.size,
