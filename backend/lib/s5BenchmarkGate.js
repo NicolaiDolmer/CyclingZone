@@ -22,7 +22,7 @@
 //                 paa S5-ruter fra generatoren) via __fixtures__/s5MotorBench.json, og den
 //                 BLOKERER ved fail. Fixturen baerer kun dommene (gab + vindertype pr.
 //                 afslutning), aldrig tal eller taerskler (hard rule 17);
-//                 engine/v4/s5MotorBench.test.ts genkoerer benchen og kraever samme dom.
+//                 s5MotorBench.test.ts genkoerer benchen og kraever samme dom.
 //
 // HVEM GATEN GAELDER. KUN S5-modellen (profileModelForSeason). Saeson 1-4 har deres egne
 // gates (K-B, §7b-finalebaand, realisme), og S4-etiketterne ville ALTID vaere roede her

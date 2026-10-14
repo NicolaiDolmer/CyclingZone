@@ -393,7 +393,7 @@ test("S5-modellen (aktiveres når generatoren kan profileModel: \"s5\", #6359) e
     return;
   }
   const races = seeds.map((r) => ({ ...r, stages: generateRaceStageProfiles(r, { profileModel: "s5" }) }));
-  // Del (4) doemmes paa den rigtige motor-bench i engine/v4/s5MotorBench.test.ts (#6362);
+  // Del (4) doemmes paa den rigtige motor-bench i s5MotorBench.test.ts (#6362);
   // her er motoren "alt inden for", saa `green` er (1)-(3)'s dom.
   const res = evaluateS5BenchmarkGate({ races, benchmark: BENCHMARK, motor: ALL_INSIDE });
   assert.deepEqual(res.parts.stages.violations, []);

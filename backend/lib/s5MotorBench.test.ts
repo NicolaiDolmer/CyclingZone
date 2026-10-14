@@ -1,4 +1,4 @@
-// backend/lib/engine/v4/s5MotorBench.test.ts
+// backend/lib/s5MotorBench.test.ts
 // #6362 (S5-etapeprofiler): den rigtige motor-bench bag benchmark-gatens del (4).
 //
 //   1. Fixturen (__fixtures__/s5MotorBench.json) er ikke en stub og er skrevet med den
@@ -25,15 +25,15 @@ import assert from "node:assert/strict";
 import {
   S5_MOTOR_BENCH_CONFIG, S5_WINNER_EXPECTATIONS, benchStageFatigues, buildS5BenchRaces, dominantWinnerType, finishesNeedingSeasonSample,
   gateMeasurement, gateRowsFor, loadBenchField, loadWinnerThresholds, runS5MotorBench, winnerRowsDigests, winnerVerdicts,
-} from "../../../scripts/dev/s5MotorBench.mjs";
-import { sortedStages, splitEntrants } from "../../../scripts/dev/lib/tourScorecard.mjs";
-import { entrantFatigueSequences } from "../../raceRunner.js";
-import { loadRaceEngineV4 } from "../../raceEngineV4Bridge.js";
+} from "../scripts/dev/s5MotorBench.mjs";
+import { sortedStages, splitEntrants } from "../scripts/dev/lib/tourScorecard.mjs";
+import { entrantFatigueSequences } from "./raceRunner.js";
+import { loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
 import {
   evaluateMotorGaps, evaluateS5BenchmarkGate, formatS5BenchmarkReport, loadMotorGapFile, loadS5Benchmark,
   MOTOR_GAP_VERDICTS, MOTOR_WINNER_VERDICTS,
-} from "../../s5BenchmarkGate.js";
-import { CURRENT_RACE_RULES_REVISION } from "../../raceEngineRulesRevision.ts";
+} from "./s5BenchmarkGate.js";
+import { CURRENT_RACE_RULES_REVISION } from "./raceEngineRulesRevision.ts";
 
 type Row = { finish: string; grandTour: boolean; gap10: number | null; winnerType: string | null; seasonId: string; raceId: string; stage_number: number };
 type WinnerVerdict = { expected: string; verdict: string };
