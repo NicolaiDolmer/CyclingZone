@@ -14,7 +14,11 @@
 // raa tider, samme definition som benchmarken), om udbruddet vandt, vinderens og top-10's
 // ryttertype (computeRiderTypes z-scoret mod feltet, se riderTypeById).
 //
-// SCOPES (etapeloeb koeres altid i raekkefoelge med klassement).
+// Etapeloeb koeres altid i raekkefoelge med klassement OG akkumuleret traethed: samme
+// sekvens som buildRaceResults (raceRunner.entrantFatigueSequences), med Grand Tour-
+// hviledagene fra kalender-planens game_day (se benchStageFatigues).
+//
+// SCOPES.
 //   gate  (default) Grand Tours som benchmarken, plus saesonens andre loeb for de
 //         afslutninger GT'erne har for faa etaper af (finishesNeedingSeasonSample). Herfra
 //         kommer gatens dom: median gap10 pr. afslutning mod benchmarkens kvartil-interval
@@ -28,7 +32,8 @@
 // kraever at dommen stadig passer, saa fixturen kan ikke drive fra motoren.
 // Vindertype-dommen (stigende spurt -> spurtere, bjergtop -> klatrere) bruger en PRIVAT
 // taerskel fra balance-internals/6362/winner-thresholds.json (eller CZ_6362_WINNER_THRESHOLDS);
-// kun dommen "pass"/"fail" staar i fixturen, aldrig taersklen eller andelen.
+// kun dommen "pass"/"fail" staar i fixturen, aldrig taersklen eller andelen. CI haandhaever
+// dommen uden taersklen via winnerDigests (se winnerRowsDigests).
 //
 // Koer (offline, ingen DB, intet netvaerk):
 //   node backend/scripts/dev/s5MotorBench.mjs                      # gate-scope, rapport til stdout
@@ -37,6 +42,7 @@
 //
 // Refs #6362 #6367
 
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -50,7 +56,8 @@ import {
   benchmarkGapIntervals, deriveTerrainTypeBPlus, isGrandTourRace, loadS5Benchmark, motorGapVerdicts,
   DEFAULT_MOTOR_BENCH_PATH, MOTOR_GAP_MIN_BENCHMARK_N, s5FinishOf,
 } from "../../lib/s5BenchmarkGate.js";
-import { breakawayWin, runStagesInOrder } from "./lib/tourScorecard.mjs";
+import { entrantFatigueSequences } from "../../lib/raceRunner.js";
+import { breakawayWin, runStagesInOrder, sortedStages, splitEntrants } from "./lib/tourScorecard.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND = path.resolve(here, "..", "..");
@@ -164,7 +171,8 @@ function generateS5Season({ firstDay, genSeeds }) {
     const seasonId = `s5-dryrun-${i}`;
     const seen = new Set();
     for (const tierPlan of tierPlans) {
-      for (const r of tierPlan.pools?.[0]?.raceRows ?? []) {
+      const pool = tierPlan.pools?.[0];
+      for (const r of pool?.raceRows ?? []) {
         if (seen.has(r.pool_race_id)) continue;
         seen.add(r.pool_race_id);
         const race = {
@@ -173,11 +181,23 @@ function generateS5Season({ firstDay, genSeeds }) {
           race_class: r.race_class ?? null, season_id: seasonId, season_variant: 0,
         };
         const grandTour = isGrandTourRace({ ...race, stages: [] });
-        out.push({ seasonId, race, stages: generateRaceStageProfiles(race, { profileModel: "s5" }), grandTour });
+        const stages = withGameDays(generateRaceStageProfiles(race, { profileModel: "s5" }), pool.stageRows, r.pool_race_id);
+        out.push({ seasonId, race, stages, grandTour });
       }
     }
   }
   return out;
+}
+
+/**
+ * Haefter kalender-planens game_day paa hver etape, som prod's attachStageGameDays goer
+ * fra race_stage_schedule (samme planlaegning skriver begge). Uden den har raceRunner's
+ * traethedssekvens ingen Grand Tour-hviledage at restituere paa. Haeftes efter
+ * generatoren, saa ruterne er uaendrede (v4 laeser ikke game_day).
+ */
+function withGameDays(stages, stageRows, poolRaceId) {
+  const gameDay = new Map((stageRows ?? []).filter((s) => s.pool_race_id === poolRaceId).map((s) => [s.stage_number, s.game_day]));
+  return stages.map((s) => ({ ...s, game_day: gameDay.get(s.stage_number ?? 1) ?? null }));
 }
 
 /** Det anonymiserede felt med alle hold som AI-hold og uden ordrer fra en anden rute. */
@@ -239,6 +259,24 @@ export function measureStage({ profile, out, typeById, percentileById = null }) 
 }
 
 /**
+ * Traethed gaaende ind til hver etape pr. rytter: raceRunner's entrantFatigueSequences
+ * (samme funktion som buildRaceResults), saa en Grand Tours sene etaper koeres med
+ * akkumuleret traethed og hviledagenes restitution, ikke med friske ryttere.
+ *   - Start-traethed 0 (feltet har ingen rider_condition; prod: rytterens aktuelle vaerdi).
+ *   - trainingOwnsRecovery false: loebets egen akkumulering + hviledage. Med
+ *     training_condition_per_date (prod) afregnes traetheden i stedet pr. dato af
+ *     traeningen og laeses fra DB foer hver etape; den sti har ingen ren funktion, saa
+ *     benchen bruger loebsmotorens egen rene model (samme belastning pr. profil).
+ *   - Ingen etape-roller (alle hold er AI-hold) -> ingen effort-sekvens (v3 udeladt).
+ * @returns {{ stagesSorted: object[], fatigueById: Map<string, number[]> }}
+ */
+export function benchStageFatigues(data, revision = S5_MOTOR_BENCH_CONFIG.revision) {
+  const stagesSorted = sortedStages(data);
+  const fatigueById = entrantFatigueSequences({ stagesSorted, entrants: splitEntrants(data).entrants, trainingOwnsRecovery: false, rulesRevision: revision });
+  return { stagesSorted, fatigueById };
+}
+
+/**
  * Koerer benchen. Returnerer een raekke pr. (loeb, etape, motor-seed).
  * @param {{ races?: ReturnType<typeof buildS5BenchRaces>, simSeeds?: number, revision?: string, v4?: object }} [opts]
  */
@@ -252,11 +290,19 @@ export async function runS5MotorBench({ races = buildS5BenchRaces(), simSeeds = 
     const raceId = `${race.id}:${seasonId}`;
     const profiles = stages.map((p) => ({ ...p, race_id: raceId }));
     const data = { ...field, race: { ...field.race, id: raceId, stages: profiles.length }, profiles };
+    const { stagesSorted, fatigueById } = benchStageFatigues(data, revision);
     for (let seed = 1; seed <= simSeeds; seed++) {
+      const entrants = splitEntrants(data).entrants;
+      // Som buildRaceResults (se.fatigue = sekvens[i]): traetheden saettes paa de SAMME
+      // entrant-objekter foer hver etape. runStagesInOrder kalder onStage efter etape i og
+      // foer etape i+1, og feltet (inRace) er et filter af de samme objekter.
+      const enterStage = (i) => { for (const e of entrants) e.fatigue = fatigueById.get(e.rider_id)[i]; };
+      enterStage(0);
       runStagesInOrder({
-        v4: engine, data, revision, seedTag: `s5bench-${seed}`,
-        onStage: ({ profile, res }) => {
+        v4: engine, data, revision, seedTag: `s5bench-${seed}`, stages: stagesSorted, entrants,
+        onStage: ({ profile, index, res }) => {
           rows.push({ seasonId, raceId: race.id, raceName: race.name, grandTour, simSeed: seed, ...measureStage({ profile, out: res.v4Output, typeById, percentileById }) });
+          if (index + 1 < stagesSorted.length) enterStage(index + 1);
         },
       });
     }
@@ -377,6 +423,27 @@ export function winnerVerdicts(rows, thresholds) {
   }));
 }
 
+/**
+ * CI's haandhaevelse af den private taerskel (#6362 review-runde 3). Vindertype-dommen er
+ * en ren funktion af (maalinger, privat taerskel). Fixturen baerer pr. afslutning et
+ * sha256 over PRAECIS de maalinger dommen bygger paa: hver af gatens raekker
+ * (gateRowsFor) som "saeson|loeb|etape|seed|vandt den forventede type (1/0)", sorteret.
+ * CI genkoerer benchen og kraever samme digest: aendrer en motor- eller generator-
+ * aendring blot een af de raekker, kan den committede dom ikke laengere genberegnes uden
+ * taersklen, og testen er roed indtil dommen er skrevet igen med den private fil
+ * (--write-fixture). Digesten afsloerer ingen andel: den er over hele raekke-sekvensen
+ * (ikke brute-force-bar til en optaelling), og maalingerne kan alligevel genskabes ved at
+ * koere den offentlige bench. Taersklen indgaar ikke.
+ */
+export function winnerRowsDigests(rows) {
+  return Object.fromEntries(Object.entries(S5_WINNER_EXPECTATIONS).map(([finish, type]) => {
+    const lines = gateRowsFor(rows, finish).rows
+      .map((r) => `${r.seasonId}|${r.raceId}|${r.stage_number}|${r.simSeed}|${r.winnerType === type ? 1 : 0}`)
+      .sort();
+    return [finish, `sha256:${createHash("sha256").update(lines.join("\n")).digest("hex")}`];
+  }));
+}
+
 /** Hele opsummeringen (tal; skrives kun til balance-internals). */
 export function summarizeS5MotorBench(rows, benchmark) {
   const gt = rows.filter((r) => r.grandTour);
@@ -396,15 +463,17 @@ export function summarizeS5MotorBench(rows, benchmark) {
 }
 
 /** Fixturen gaten laeser: kun dommene, ingen tal og ingen taerskler (hard rule 17). */
-export function fixtureFromSummary(summary, winners) {
+export function fixtureFromSummary(summary, winners, winnerDigests) {
   if (!winners) throw new Error("fixtureFromSummary: vindertype-dommen mangler");
+  if (!winnerDigests) throw new Error("fixtureFromSummary: vindertype-digesten mangler");
   return {
     stub: false,
-    source: "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt. Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+    source: "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt, etapeloeb med akkumuleret traethed og hviledage (raceRunner.entrantFatigueSequences). Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel; winnerDigests binder dommen til maalingerne, saa CI kan haandhaeve den uden taersklen. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
     config: { ...S5_MOTOR_BENCH_CONFIG },
     verdicts: summary.gate.verdicts,
     sources: summary.gate.sources,
     winners,
+    winnerDigests,
   };
 }
 
@@ -484,7 +553,7 @@ async function main(argv) {
   if (arg(argv, "write-fixture") === true) {
     if (scope === "gt") throw new Error("--write-fixture kraever --scope=gate eller all (gt-scope mangler saesonens stikproeve)");
     if (!thresholds) throw new Error(`--write-fixture kraever de private vinder-taerskler: ${DEFAULT_WINNER_THRESHOLDS_PATH} (eller CZ_6362_WINNER_THRESHOLDS)`);
-    writeFileSync(DEFAULT_MOTOR_BENCH_PATH, `${JSON.stringify(fixtureFromSummary(summary, winnerVerdicts(rows, thresholds)), null, 2)}\n`);
+    writeFileSync(DEFAULT_MOTOR_BENCH_PATH, `${JSON.stringify(fixtureFromSummary(summary, winnerVerdicts(rows, thresholds), winnerRowsDigests(rows)), null, 2)}\n`);
     console.error(`skrev ${DEFAULT_MOTOR_BENCH_PATH}`);
   }
   console.error(`${rows.length} etape-koersler paa ${((performance.now() - t0) / 1000).toFixed(1)} s`);
