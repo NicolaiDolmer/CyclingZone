@@ -41,6 +41,7 @@ import {
 } from "./stageProfileTypes.js";
 import { regionOf } from "./raceRouteGenerator.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+import { checkElevationProfile, ELEVATION_PROFILE_MIN_GENERATOR_VERSION } from "./routeElevationProfile.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_BENCHMARK_PATH = join(__dirname, "..", "..", "docs", "design", "s5-benchmark", "gt-2021-2025.json");
@@ -198,6 +199,11 @@ export function checkStage(stage) {
     violations.push(`type ${pt} ≠ B+ ${terrain}`);
   } else if (!TERRAIN_TYPES.includes(pt) && !isTimeTrial && !["cobbles", "gravel", "classic"].includes(pt)) {
     violations.push(`ukendt profile_type ${pt ?? "(tom)"}`);
+  }
+  // #6594: S5-etaper har en højdeprofil, og den summerer til elevation_gain_m uden negative højder.
+  if (Number(stage?.generator_version) >= ELEVATION_PROFILE_MIN_GENERATOR_VERSION) {
+    const elevation = checkElevationProfile(stage);
+    if (elevation) violations.push(elevation);
   }
 
   if (isTimeTrial) {

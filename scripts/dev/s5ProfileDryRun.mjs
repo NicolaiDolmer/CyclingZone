@@ -33,6 +33,7 @@ import {
   generateRaceStageProfiles, balanceFinaleQuotas, isTimeTrial, grandTourTypeFor, S5_GRAND_TOUR_QUOTAS,
 } from "../../backend/lib/raceStageProfileGenerator.js";
 import { deriveTerrainType } from "../../backend/lib/raceRouteGenerator.js";
+import { buildElevationProfile, checkElevationProfile, elevationSeedKey } from "../../backend/lib/routeElevationProfile.js";
 import { TERRAIN_TYPES, isFinishAllowed, canonicalFinaleType } from "../../backend/lib/stageProfileTypes.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -94,7 +95,7 @@ function emptyCounts() {
 }
 
 function measure(model, plan, seasonId) {
-  const all = { n: 0, byTerrain: emptyCounts(), typeMismatch: 0, terrainStages: 0, outsideMatrix: 0, finishes: {}, elevationByTerrain: {} };
+  const all = { n: 0, byTerrain: emptyCounts(), typeMismatch: 0, terrainStages: 0, outsideMatrix: 0, finishes: {}, elevationByTerrain: {}, series: { n: 0, bad: 0, bytes: 0, ms: 0 } };
   const grandTours = [];
   const seen = new Set();
   for (const tierPlan of plan.tierPlans) {
@@ -110,6 +111,11 @@ function measure(model, plan, seasonId) {
       for (const p of stages) {
         all.n += 1;
         all.finishes[p.finale_type] = (all.finishes[p.finale_type] ?? 0) + 1;
+        if (p.elevation_profile !== undefined) { // #6594: højdeprofilen (tid målt ved genberegning)
+          const t0 = performance.now();
+          buildElevationProfile(p, elevationSeedKey(race, p.stage_number));
+          Object.assign(all.series, { n: all.series.n + 1, bad: all.series.bad + (checkElevationProfile(p) ? 1 : 0), bytes: all.series.bytes + JSON.stringify(p.elevation_profile).length, ms: all.series.ms + performance.now() - t0 });
+        }
         if (isTimeTrial(p.profile_type)) { all.byTerrain.tt += 1; continue; }
         const terrain = deriveTerrainType(p.climbs);
         all.byTerrain[terrain] += 1;
@@ -204,4 +210,6 @@ lines.push("|---|---|---|---|");
 for (const t of TERRAIN_TYPES) {
   lines.push(`| ${TERRAIN_LABEL[t]} | ${median(runs[0].v5.all.elevationByTerrain[t] ?? []) ?? "-"} | ${median(runs[0].s5.all.elevationByTerrain[t] ?? []) ?? "-"} | ${bench[t] ?? "-"} |`);
 }
+const es = runs[0].s5.all.series;
+lines.push("", `Højdeprofil (#6594, S5, første træk): ${es.n} af ${runs[0].s5.all.n} etaper med serie · ${es.bad} med sum ≠ elevation_gain_m eller negativ højde · gns. ${es.n ? Math.round(es.bytes / es.n) : 0} B · ${es.n ? (es.ms / es.n).toFixed(2) : "-"} ms/etape`);
 console.log(lines.join("\n"));
