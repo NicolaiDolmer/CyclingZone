@@ -20,6 +20,7 @@ import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
 import {
   evaluateSeasonCalendarWriteGate, RACE_DEPENDENCY_TABLES, dependencyKey,
 } from "../lib/seasonCalendarGate.js";
+import { benchmarkGapIntervals, loadS5Benchmark } from "../lib/s5BenchmarkGate.js";
 
 // Minimal, gyldig tier-plan-fixture. `seedRaces` udelades bevidst (null) i de fleste
 // tests — det udløser gatePlan's "ingen tier leverede et løbssæt at score realisme på"
@@ -531,7 +532,10 @@ test("#6367 runS5BenchmarkGateForPlan scope partial: del (3) og GT-kravet doemme
   const noGt = { planTiers: [{ tier: 3, pools: [{ raceRows: [] }], profilesByPoolRaceId: new Map() }] };
   const season = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5 });
   assert.equal(season.green, false, "en hel saeson uden Grand Tours er roed");
-  const partial = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5, scope: "partial" });
+  // #6362: en groen motor-maaling injiceres (standard er den rigtige bench, hvis dom kan
+  // vaere roed); her testes scope-reglen, ikke benchens aktuelle dom.
+  const greenMotor = { stub: false, source: "test", verdicts: Object.fromEntries(Object.keys(benchmarkGapIntervals(loadS5Benchmark())).map((f) => [f, "inside"])) };
+  const partial = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5, scope: "partial", motor: greenMotor });
   assert.equal(partial.scope, "partial");
   assert.deepEqual(partial.blocking, []);
   assert.equal(partial.green, true);

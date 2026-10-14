@@ -10,6 +10,7 @@ import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { TIER_DENSITY, SQUAD_CALENDAR } from "./calendarTierCaps.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas, GENERATOR_VERSION, S5_GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 import { resolveEarliestSeasonTransition, latestInstant, TIER_STAGE_SLOTS } from "./calendarPlanningWindow.js";
+import { benchmarkGapIntervals, loadS5Benchmark } from "./s5BenchmarkGate.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
 
@@ -1771,10 +1772,15 @@ test("#6367 dry-run: saeson 5 genereres med S5-modellen, saeson 4 er uaendret v5
   }
 });
 
+// #6362: en GROEN motor-maaling (dommen "inside" pr. afslutning, ingen tal). Standard-motoren
+// er den rigtige bench, hvis dom kan vaere roed; tests der skal skrive under en groen gate
+// injicerer derfor en groen maaling i stedet for at arve benchens aktuelle dom.
+const GREEN_MOTOR = { s5BenchmarkInputs: { motor: { stub: false, source: "test", verdicts: Object.fromEntries(Object.keys(benchmarkGapIntervals(loadS5Benchmark())).map((f) => [f, "inside"])) } } };
+
 test("#6367 apply: saeson 5 skriver S5-profiler (v6) i race_stage_profiles; modellen slaas op paa seasonId naar nummeret mangler", async () => {
   const state = s5Tier3State([{ id: "season-5", number: 5, status: "upcoming" }]);
   const sb = makeSupabase(state);
-  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX });
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX, ...GREEN_MOTOR });
   assert.equal(summary.profileModel, "s5");
   assert.ok(sb.state.race_stage_profiles.length > 0, "der skal skrives profiler");
   for (const p of sb.state.race_stage_profiles) {
@@ -1801,7 +1807,7 @@ test("#6367 reconcile: en pulje der vaagner i S5 faar S5-profiler (aktiv saesons
   // doemmer det med scope "partial".
   state.league_divisions.push({ id: 1, tier: 1, pool_index: 0, label: "Division 1" });
   const calls = [];
-  const recording = async (args) => { calls.push(args); return materializeTierCalendars(args); };
+  const recording = async (args) => { calls.push(args); return materializeTierCalendars({ ...args, ...GREEN_MOTOR }); };
   const sb = makeSupabase(state);
   const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, coverageOverrides: LEGACY_MIX, materialize: recording });
   assert.equal(calls[0].seasonNumber, 5);
@@ -1836,7 +1842,7 @@ test("#6367 gate: roed S5-gate naegter apply FOER foerste insert; dry-run rappor
 
 test("#6367 gate: groen S5-gate skriver; apply-summary'en er kompakt (logges i admin-loggen)", async () => {
   const sb = makeSupabase(s5Tier3State([{ id: "season-5", number: 5, status: "upcoming" }]));
-  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX });
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "season-5", from: FROM, dryRun: false, tiers: [3], ...LEGACY_MIX, ...GREEN_MOTOR });
   assert.deepEqual(summary.s5Benchmark, { applies: true, scope: "partial", green: true, blockingCount: 0 });
   assert.ok(sb.state.races.length > 0);
 });
