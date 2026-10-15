@@ -3,7 +3,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { posix } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   classifyFile,
@@ -102,6 +101,13 @@ test("classifyFile: authorize/authorization er auth, Author (forum) er ikke", ()
   assert.equal(classifyFile("backend/lib/forumAuthorName.js"), null);
 });
 
+test("classifyFile: RLS er case-sensitivt (urlState er ikke RLS)", () => {
+  assert.equal(classifyFile("backend/lib/rlsAudit.js"), "auth");
+  assert.equal(classifyFile("backend/lib/teamRlsPolicy.js"), "auth");
+  assert.equal(classifyFile("backend/lib/applyRLSGrants.js"), "auth");
+  assert.equal(classifyFile("frontend/src/lib/ridersUrlState.js"), null);
+});
+
 test("classifyFile: UI, docs, scripts og tests er lav risiko", () => {
   assert.equal(classifyFile("frontend/src/pages/RacePage.jsx"), null);
   assert.equal(classifyFile("docs/GITHUB_WORKFLOW.md"), null);
@@ -127,16 +133,45 @@ test("classifyRisk: een hoejrisiko-fil goer hele PR'en hoejrisiko; labels risk:h
   assert.equal(classifyRisk(["docs/a.md"], ["risk:med"]).level, "low");
 });
 
+// Case-sensitiv glob-matcher (som CodeRabbit). path.posix.matchesGlob er
+// case-INsensitiv paa Windows og ville skjule uoverensstemmelser lokalt.
+// Understoetter det path_filters bruger: **, *, ?, [..] og {a,b}.
+function globToRegExp(glob) {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*" && glob[i + 1] === "*") {
+      if (glob[i + 2] === "/") { re += "(?:.*/)?"; i += 2; } else { re += ".*"; i += 1; }
+    } else if (c === "*") re += "[^/]*";
+    else if (c === "?") re += "[^/]";
+    else if (c === "[") { const end = glob.indexOf("]", i); re += glob.slice(i, end + 1); i = end; }
+    else if (c === "{") { const end = glob.indexOf("}", i); re += `(?:${glob.slice(i + 1, end).split(",").map((s) => s.replace(/[.+^$()|\\]/g, "\\$&")).join("|")})`; i = end; }
+    else re += c.replace(/[.+^$()|\\]/g, "\\$&");
+  }
+  return new RegExp(`^${re}$`);
+}
+
+test("globToRegExp: case-sensitiv og sti-bevidst", () => {
+  assert.ok(globToRegExp("backend/**/*[Cc]ron*").test("backend/cron.js"));
+  assert.ok(globToRegExp("backend/**/*[Rr]ls*").test("backend/lib/x/rlsAudit.js"));
+  assert.ok(!globToRegExp("backend/**/*[Rr]ls*").test("frontend/src/lib/ridersUrlState.js"));
+  assert.ok(!globToRegExp("{backend,frontend/src/lib}/**/*[Rr]ls*").test("frontend/src/lib/ridersUrlState.js"), "rlS er ikke rls");
+  assert.ok(globToRegExp("{backend,frontend/src/lib}/**/*[Aa]uth*").test("frontend/src/lib/getAuthedUser.js"));
+  assert.ok(!globToRegExp("backend/server.*").test("backend/lib/server.js"));
+});
+
 function coderabbitFilters() {
   const yaml = readFileSync(new URL("../.coderabbit.yaml", import.meta.url), "utf8");
   const block = yaml.split(/^\s*path_filters:\s*$/m)[1].split(/^\s*[a-z_]+:\s*$/m)[0];
   const all = [...block.matchAll(/^\s*-\s*"([^"]+)"\s*$/gm)].map((m) => m[1]);
   const globs = all.filter((g) => !g.startsWith("!"));
   const excludes = all.filter((g) => g.startsWith("!")).map((g) => g.slice(1));
+  const globRes = globs.map(globToRegExp);
+  const excludeRes = excludes.map(globToRegExp);
   return {
     globs,
-    covered: (f) => globs.some((g) => posix.matchesGlob(f, g)),
-    excluded: (f) => excludes.some((g) => posix.matchesGlob(f, g)),
+    covered: (f) => globRes.some((g) => g.test(f)),
+    excluded: (f) => excludeRes.some((g) => g.test(f)),
   };
 }
 

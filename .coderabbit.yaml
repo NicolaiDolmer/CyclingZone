@@ -85,6 +85,7 @@ reviews:
     - "{backend,frontend/src/lib}/**/*[Tt]oken*"
     - "{backend,frontend/src/lib}/**/*[Ss]ecurity*"
     - "{backend,frontend/src/lib}/**/*[Rr]ls*"
+    - "{backend,frontend/src/lib}/**/*RLS*"
     - "{backend,frontend/src/lib}/**/*[Gg]rant*"
     - "{backend,frontend/src/lib}/**/*[Pp]ermission*"
     - "{backend,frontend/src/lib}/**/*[Aa]dmin*"

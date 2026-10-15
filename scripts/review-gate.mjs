@@ -62,7 +62,9 @@ const HIGH_RISK_RULES = Object.freeze([
   { reason: "cron", re: backendName("cron|scheduler") },
   // Auth/sikkerhed: backend + frontend-lib (login, tokens, admin-adgang, RLS/grants).
   // "Author" (forum) er ikke auth, men authorize/authorization er.
-  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|rls|grant|permission|urlSafety|admin)[^/]*$/i },
+  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|grant|permission|urlSafety|admin)[^/]*$/i },
+  // RLS case-sensitivt: "urlState" indeholder "rlS" og er ikke RLS.
+  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(rls|Rls|RLS)[^/]*$/ },
   // API-fladen (efter auth, saa admin-routes melder "auth"): hver route haandhaever
   // selv auth/ejerskab, og server.js monterer dem.
   { reason: "api", re: /^backend\/(routes|api)\/|^backend\/server\.[cm]?[jt]s$/ },
