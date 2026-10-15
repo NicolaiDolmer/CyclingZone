@@ -118,7 +118,17 @@ export function parseArgs(argv) {
     throw new Error("--mix-junior tager ingen værdi");
   }
   const mixJunior = mixRaw === true;
-  return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior };
+  // #6668 (ejer 15/10 på #6667): --regroup lægger ALLE hold om efter en ny plan,
+  // også når grupperne findes (ellers topper en genkørsel kun op). Det er hele
+  // pointen med "menneskehold samles i færre grupper", så antallet af managers pr.
+  // gruppe SKAL vælges eksplicit og dokumenteres; intet default.
+  const regroupRaw = get("regroup");
+  if (regroupRaw !== undefined && regroupRaw !== true) throw new Error("--regroup tager ingen værdi");
+  const regroup = regroupRaw === true;
+  if (regroup && managersPerGroup == null) {
+    throw new Error("--regroup kræver --managers-per-group=<tal> (gruppetallet er et dokumenteret valg, intet default)");
+  }
+  return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior, regroup };
 }
 
 // ── Rene hjælpere (testes i seedYouthPools.test.js) ─────────────────────────
@@ -152,6 +162,7 @@ export function currentGroups({ pools, teams, squad }) {
  */
 export function buildSquadPlan({
   squad, pools, teams, globalRanks, riders, groupSize = YOUTH_GROUP_SIZE, managersPerGroup = null, mixJunior = false,
+  regroup = false,
 }) {
   const col = fkColumn(squad);
   const counts = youthRidersByTeam(riders, squad);
@@ -162,9 +173,9 @@ export function buildSquadPlan({
 
   const existing = currentGroups({ pools, teams, squad });
   const assignedCount = existing.reduce((n, g) => n + g.managerTeamIds.length + g.aiTeamIds.length, 0);
-  const mode = assignedCount === 0 ? "fresh" : "top-up";
+  const mode = regroup ? "regroup" : (assignedCount === 0 ? "fresh" : "top-up");
 
-  const plan = mode === "fresh"
+  const plan = mode !== "top-up"
     ? planYouthGroups({ teams: managers, aiTeams, globalRanks, squad, groupSize, managersPerGroup, mixJunior })
     : planYouthTopUp({ groups: existing, teams: managers, aiTeams, globalRanks, squad, groupSize });
 
@@ -175,9 +186,21 @@ export function buildSquadPlan({
   const unusedPools = [...existingIndexes].filter((i) => !plan.groups.some((g) => g.poolIndex === i)).sort((a, b) => a - b);
 
   const updates = [];
-  if (mode === "fresh") {
+  if (mode !== "top-up") {
+    const placed = new Set();
+    const currentIndex = new Map(existing.flatMap((g) => [...g.managerTeamIds, ...g.aiTeamIds].map((id) => [id, g.poolIndex])));
     for (const g of plan.groups) {
-      for (const id of [...g.managerTeamIds, ...g.aiTeamIds]) updates.push({ teamId: id, column: col, poolIndex: g.poolIndex });
+      for (const id of [...g.managerTeamIds, ...g.aiTeamIds]) {
+        placed.add(id);
+        // regroup: et hold der allerede står i sin nye gruppe skrives ikke igen.
+        if (mode === "regroup" && currentIndex.get(id) === g.poolIndex) continue;
+        updates.push({ teamId: id, column: col, poolIndex: g.poolIndex });
+      }
+    }
+    // regroup: hold der stod i en gruppe men ikke har plads i den nye plan
+    // (AI-overløb), mister deres plads. Deres ungdom træner i stedet for at køre.
+    for (const id of currentIndex.keys()) {
+      if (!placed.has(id)) updates.push({ teamId: id, column: col, poolIndex: null });
     }
   } else {
     for (const m of plan.moves) updates.push({ teamId: m.teamId, column: col, poolIndex: m.poolIndex });
@@ -185,7 +208,13 @@ export function buildSquadPlan({
     for (const d of plan.displacedAi) if (!moved.has(d.teamId)) updates.push({ teamId: d.teamId, column: col, poolIndex: null });
   }
 
-  return { squad, mode, plan, poolsToCreate, unusedPools, updates };
+  // Startklare hold pr. gruppe, delt på menneske/AI (#6668: feltets AI-andel).
+  const startersByPool = plan.groups.map((g) => ({
+    poolIndex: g.poolIndex,
+    managerStarters: g.managerTeamIds.filter((id) => (counts.get(id) || 0) >= MIN_RACE_ENTRIES).length,
+    aiStarters: g.aiTeamIds.filter((id) => (counts.get(id) || 0) >= MIN_RACE_ENTRIES).length,
+  }));
+  return { squad, mode, plan, poolsToCreate, unusedPools, updates, startersByPool };
 }
 
 /**
@@ -204,9 +233,27 @@ export function applyParkingForecast(teams, { toPark = [], toUnpark = [] } = {})
 }
 
 /** Kort tal-udgave af en trup-plan (prognose-tabellen). */
-export function squadNumbers({ squad, plan }) {
+export function squadNumbers({ squad, plan, startersByPool = [] }) {
   const { managers, aiTeams, groupCount, largestGroup, smallestGroup } = plan.summary;
-  return { squad, managers, aiTeams, groupCount, largestGroup, smallestGroup };
+  return { squad, managers, aiTeams, groupCount, largestGroup, smallestGroup, ...starterShares(startersByPool) };
+}
+
+/**
+ * #6668: hvor stor en andel af de startklare hold er AI, samlet og i den mest
+ * AI-tunge gruppe. Ren; kun tal (ingen hold).
+ */
+export function starterShares(startersByPool = []) {
+  const m = startersByPool.reduce((s, g) => s + g.managerStarters, 0);
+  const a = startersByPool.reduce((s, g) => s + g.aiStarters, 0);
+  const share = (x, y) => (x + y > 0 ? y / (x + y) : null);
+  const perGroup = startersByPool.map((g) => share(g.managerStarters, g.aiStarters)).filter((x) => x != null);
+  return {
+    managerStarters: m,
+    aiStarters: a,
+    aiStarterShare: share(m, a),
+    maxGroupAiStarterShare: perGroup.length ? Math.max(...perGroup) : null,
+    minGroupManagerStarters: startersByPool.length ? Math.min(...startersByPool.map((g) => g.managerStarters)) : null,
+  };
 }
 
 /**
@@ -220,9 +267,10 @@ export function publicSummary(squadPlans, { generatedAt, eligibleManagers, eligi
     mode: "dry-run",
     input: { eligibleManagers, eligibleAi, globalRankRows },
     forecastAfterParking: forecast,
-    squads: squadPlans.map(({ squad, mode, plan, poolsToCreate, unusedPools, updates }) => ({
+    squads: squadPlans.map(({ squad, mode, plan, poolsToCreate, unusedPools, updates, startersByPool = [] }) => ({
       squad,
       mode,
+      ...starterShares(startersByPool),
       groupSize: plan.groupSize,
       managers: plan.summary.managers,
       aiTeams: plan.summary.aiTeams,
@@ -244,10 +292,14 @@ export function publicSummary(squadPlans, { generatedAt, eligibleManagers, eligi
         aiTeams: g.aiTeamIds.length,
         size: g.size,
         startersNow: g.starters,
+        managerStarters: startersByPool.find((x) => x.poolIndex === g.poolIndex)?.managerStarters ?? null,
+        aiStarters: startersByPool.find((x) => x.poolIndex === g.poolIndex)?.aiStarters ?? null,
       })),
     })),
   };
 }
+
+const pct = (x) => (x == null ? "-" : `${Math.round(100 * x)} %`);
 
 export function renderMarkdown(summary) {
   const lines = [
@@ -281,11 +333,12 @@ export function renderMarkdown(summary) {
       `- Største gruppe: ${s.largestGroup} · mindste: ${s.smallestGroup}`,
       `- Managers uden Global Rank (lagt sidst): ${s.managersWithoutGlobalRank}`,
       `- Grupper under ${s.minRaceEntries} startklare hold i dag: ${s.groupsBelowMinStarters} (AI-holdene har ingen ungdomsryttere før A6)`,
-      `- AI-hold uden plads: ${s.aiOverflow} · grupper der oprettes: ${s.poolsToCreate} · FK-opdateringer: ${s.teamUpdates}`,
+      `- AI-hold uden plads: ${s.aiOverflow} · grupper der oprettes: ${s.poolsToCreate} · ubrugte grupper: ${s.unusedPools} · FK-opdateringer: ${s.teamUpdates}`,
+      `- Startklare nu: managers ${s.managerStarters} · AI ${s.aiStarters} · AI-andel ${pct(s.aiStarterShare)} (mest AI-tunge gruppe ${pct(s.maxGroupAiStarterShare)}) · færrest startklare managers i en gruppe: ${s.minGroupManagerStarters ?? "-"}`,
       "",
-      "| Gruppe | Managers | AI | I alt | Startklare nu |",
-      "|---|---:|---:|---:|---:|",
-      ...s.groups.map((g) => `| ${g.label} | ${g.managers} | ${g.aiTeams} | ${g.size} | ${g.startersNow} |`),
+      "| Gruppe | Managers | AI | I alt | Startklare nu | heraf managers | heraf AI |",
+      "|---|---:|---:|---:|---:|---:|---:|",
+      ...s.groups.map((g) => `| ${g.label} | ${g.managers} | ${g.aiTeams} | ${g.size} | ${g.startersNow} | ${g.managerStarters ?? "-"} | ${g.aiStarters ?? "-"} |`),
       "",
     );
   }
@@ -362,9 +415,10 @@ export async function main(argv = process.argv.slice(2)) {
   if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_KEY mangler (kør via railway run eller backend/.env).");
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-  console.log(`UNGDOMSGRUPPER (#5646) ${args.apply ? "APPLY (skriver til prod)" : "DRY-RUN (read-only)"} · trupper: ${args.squads.join(", ")}`);
+  console.log(`UNGDOMSGRUPPER (#5646) ${args.apply ? "APPLY (skriver til prod)" : "DRY-RUN (read-only)"} · trupper: ${args.squads.join(", ")}${args.regroup ? ` · REGROUP, ${args.managersPerGroup} managers pr. gruppe` : ""}`);
   const state = await loadState(supabase);
-  const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, ...state }));
+  const planOpts = { groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, regroup: args.regroup };
+  const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, ...planOpts, ...state }));
 
   // Prognose: samme plan efter parkerings-sweepen ved sæsonskiftet (read-only;
   // udvælgelsen er managerParking.js' egne rene funktioner, ingen kopi).
@@ -377,7 +431,7 @@ export async function main(argv = process.argv.slice(2)) {
   const forecast = {
     parked: toPark.length,
     unparked: toUnpark.length,
-    squads: args.squads.map((squad) => squadNumbers(buildSquadPlan({ squad, groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, ...state, teams: forecastTeams }))),
+    squads: args.squads.map((squad) => squadNumbers(buildSquadPlan({ squad, ...planOpts, ...state, teams: forecastTeams }))),
   };
 
   const generatedAt = new Date().toISOString();
@@ -402,7 +456,7 @@ export async function main(argv = process.argv.slice(2)) {
   writeFileSync(fullPath, JSON.stringify({ generated_at: generatedAt, squadPlans }, null, 2));
 
   for (const s of summary.squads) {
-    console.log(`  ${s.squad} (${s.mode}): ${s.managers} managers + ${s.aiTeams} AI → ${s.groupCount} grupper, størst ${s.largestGroup}, mindst ${s.smallestGroup}, ${s.groupsBelowMinStarters} under ${s.minRaceEntries} startklare, ${s.teamUpdates} FK-opdateringer`);
+    console.log(`  ${s.squad} (${s.mode}): ${s.managers} managers + ${s.aiTeams} AI → ${s.groupCount} grupper, størst ${s.largestGroup}, mindst ${s.smallestGroup}, ${s.groupsBelowMinStarters} under ${s.minRaceEntries} startklare, ${s.teamUpdates} FK-opdateringer, AI-andel af startklare ${pct(s.aiStarterShare)}`);
   }
   console.log(`  prognose efter parkering (${forecast.parked} parkeres, ${forecast.unparked} genindplaceres): ${forecast.squads.map((s) => `${s.squad} ${s.managers}+${s.aiTeams} → ${s.groupCount} grupper (${s.smallestGroup}-${s.largestGroup})`).join(" · ")}`);
   console.log(`  snapshot: ${relative(REPO_ROOT, jsonPath)} + .md · fuld plan: ${relative(REPO_ROOT, fullPath)}`);
