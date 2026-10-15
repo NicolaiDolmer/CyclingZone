@@ -327,6 +327,7 @@
     "pendingMigration": "Board requests are waiting for a database migration",
     "changesHeading": "What the board reacted to",
     "focusLabel": "Focus",
+    "changesTo": "changes to",
     "sending": "Sending...",
     "send": "Send request",
     "errorFallback": "Could not send the board request.",

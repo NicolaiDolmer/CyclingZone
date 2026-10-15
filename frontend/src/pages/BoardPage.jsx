@@ -1148,7 +1148,7 @@ function BoardRequestChangeList({ t, focusChanged, focusBefore, focusAfter, goal
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("request.focusLabel")}</p>
           <p className="text-cz-2 text-sm mt-1">
-            {getFocusLabel(t, focusBefore)} <ChevronRightIcon size={14} className="inline align-[-2px]" aria-hidden="true" /> {getFocusLabel(t, focusAfter)}
+            {getFocusLabel(t, focusBefore)} <ChevronRightIcon size={14} className="inline align-[-2px]" aria-hidden="true" /><span className="sr-only">{t("request.changesTo")}</span> {getFocusLabel(t, focusAfter)}
           </p>
         </div>
       )}
@@ -1168,7 +1168,7 @@ function BoardRequestChangeList({ t, focusChanged, focusBefore, focusAfter, goal
                     : formatBoardCopy(change.before_label)}
                 </p>
                 <p className="text-cz-3 text-xs mt-1">
-                  <ChevronRightIcon size={12} className="inline align-[-2px]" aria-hidden="true" /> {change.after_goal
+                  <ChevronRightIcon size={12} className="inline align-[-2px]" aria-hidden="true" /><span className="sr-only">{t("request.changesTo")}</span> {change.after_goal
                     ? getBoardGoalLabel(t, change.after_goal)
                     : formatBoardCopy(change.after_label)}
                 </p>

@@ -327,6 +327,7 @@
     "pendingMigration": "Bestyrelsesforespørgsler venter på database-migration",
     "changesHeading": "Det reagerede bestyrelsen på",
     "focusLabel": "Fokus",
+    "changesTo": "ændres til",
     "sending": "Sender...",
     "send": "Send request",
     "errorFallback": "Kunne ikke sende bestyrelsesforespørgslen.",
