@@ -1107,9 +1107,10 @@ const s5Profiles = {
     maxGainSeconds: 45,
   },
   // #6201 (ejer 5/10, udbrudstrappen): et overfyldt morgenforsoeg (flere end feltet
-  // lader gaa) giver et udbrud omkring pladsen, uanset hvor mange der forsoeger, saa
-  // trappen holder i felter med mange AI-hold. Kalibreret privat (balance-internals/6201/).
-  breakawaySize: { roomCrowdWeight: 1, roomByProfile: {} as Partial<Record<ProfileType, number>> },
+  // lader gaa) giver et udbrud omkring pladsen, uanset hvor mange der forsoeger, og paa
+  // bjerg taeller et farligt forsoeg med i traengslen, saa trappen holder i felter med
+  // mange AI-hold og et taet klassement. Kalibreret privat (balance-internals/6201/).
+  breakawaySize: { roomCrowdWeight: 1, dangerousInRoomProfiles: ["mountain", "high_mountain"] as readonly ProfileType[] },
   // Mellembjerg i motorens terraen-bucket: kuperet-mekanikken (spec §5: mellembjergets
   // tidsgab ligger som kuperets), bjerg-mekanikken naar etapen ender paa toppen.
   mediumMountainBucket: "hilly" as ProfileType,
