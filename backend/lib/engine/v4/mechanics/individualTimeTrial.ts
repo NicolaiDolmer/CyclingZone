@@ -77,7 +77,7 @@ import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
 import { applyEffortToDemand } from "./effortCost.ts";
-import { isOfficialTimesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater } from "../../../raceEngineRulesRevision.ts";
 import {
   runTimeTrialStage,
   type TeamRoster,
@@ -131,6 +131,43 @@ export const INDIVIDUAL_TIME_TRIAL_TUNING = Object.freeze({
 });
 
 export type IndividualTimeTrialTuning = { abilitySpeedSlope: number; stageNoiseSd: number };
+
+/**
+ * #6645 (KUN s5_profiles_v1): enkeltstartens tempo-evne er rytterens
+ * tidskoersels-evne alene, ikke finale-tuningens `solo_tt`-blanding.
+ *
+ * ROD-AARSAGEN (maalt paa S5-benchen foer rettelsen, tal i balance-internals/6645/):
+ * `solo_tt`-vektoren laegger en stor andel paa tempo og udholdenhed. Dem har
+ * feltets klatrere og klassementsryttere i top, saa blandingen klemmer toppen
+ * af enkeltstarten sammen: en klatrer med middel tidskoersels-evne scorede
+ * naesten som en specialist. Foelgen var en for taet top-10 (median gap10 under
+ * benchmarkens kvartil-interval paa alle distancer), en favorit der sjaeldent
+ * vandt, og en enkeltstart der flyttede for lidt i et klassement (#6595).
+ * Halen af feltet var derimod taet paa virkeligheden, saa haeldningen,
+ * terraen-vaegten og stoejen er uaendrede: det var evne-grundlaget, ikke
+ * tids-skalaen, der var forkert.
+ *
+ * Udholdenhed taeller stadig, gennem M7's distance-slid (applyDistanceFatigueToCp).
+ * Stigningerne paa en kuperet enkeltstart blandes stadig med `long_climb`
+ * efter stigningsandelen (#6349). Aeldre revisioner (S4) regner som foer.
+ */
+export const S5_ITT_ABILITY_VECTOR: Readonly<Partial<Record<keyof Entrant["abilities"], number>>> = Object.freeze({ time_trial: 1 });
+
+/**
+ * #6645: tuningen enkeltstarten regner evne med. Under s5_profiles_v1 er
+ * `solo_tt`-vektoren S5_ITT_ABILITY_VECTOR; ellers praecis den givne tuning
+ * (samme objekt, byte-identisk for S4). Kun ittAbilityScore laeser vektoren.
+ */
+export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): EngineTuning {
+  if (!isS5ProfilesV1OrLater(rulesRevision)) return tuning;
+  return {
+    ...tuning,
+    finale: {
+      ...tuning.finale,
+      demandVectorByFinaleType: { ...tuning.finale.demandVectorByFinaleType, solo_tt: S5_ITT_ABILITY_VECTOR },
+    },
+  };
+}
 
 // ── Evne og fart ─────────────────────────────────────────────────────────────
 
@@ -382,9 +419,11 @@ export function simulateIndividualTimeTrialStage(
   route: RouteV2,
   startlist: readonly Entrant[],
   seed: string,
-  tuning: EngineTuning,
+  engineTuning: EngineTuning,
   options: IndividualTimeTrialOptions = {},
 ): StageOutput {
+  // #6645: kun s5_profiles_v1 faar enkeltstartens egen evne-vektor; ellers samme objekt.
+  const tuning = ittAbilityTuning(engineTuning, options.rulesRevision);
   const ittTuning = options.ittTuning ?? INDIVIDUAL_TIME_TRIAL_TUNING;
   const units: TeamRoster[] = startlist.map((entrant) => ({ team_id: entrant.rider_id, riders: [entrant] }));
   // #6349: kun official_times_v3. Aeldre revisioner faar `undefined` og regner
