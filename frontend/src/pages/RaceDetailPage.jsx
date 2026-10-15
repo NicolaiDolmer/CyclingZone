@@ -324,7 +324,7 @@ function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
       value={value}
       onChange={e => onChange(e.target.value)}
       aria-label={t("detail.teamFilter.label")}
-      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-56 cursor-pointer
+      className={`px-3 py-2 rounded-cz text-sm font-medium transition-all border max-w-56 cursor-pointer
         focus:outline-hidden focus:ring-1 focus:ring-cz-accent
         ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}`}>
       <option value="all">{t("detail.teamFilter.all")}</option>

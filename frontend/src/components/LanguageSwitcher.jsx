@@ -112,7 +112,7 @@ export default function LanguageSwitcher({ className = "" }) {
         aria-expanded={open}
         aria-label={t("language.switchTooltip")}
         title={t("language.switchTooltip")}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-cz-2 hover:bg-cz-subtle focus:outline-hidden focus:ring-2 focus:ring-cz-accent"
+        className="inline-flex items-center gap-1.5 rounded-cz px-2 py-1 text-sm text-cz-2 hover:bg-cz-subtle focus:outline-hidden focus:ring-2 focus:ring-cz-accent"
       >
         <LanguageSwitcherFlag code={active.flag} />
         <span className="hidden sm:inline uppercase text-xs font-medium">{active.code}</span>
@@ -138,7 +138,7 @@ export default function LanguageSwitcher({ className = "" }) {
             // must always win over nav (z-nav) and any open drawer (z-overlay),
             // so it uses the same tier as a modal (the closest "always on top,
             // no matter what surrounds the trigger" semantic).
-            className="z-modal min-w-[140px] overflow-y-auto rounded-md border border-cz-border bg-cz-card shadow-lg py-1"
+            className="z-modal min-w-[140px] overflow-y-auto rounded-cz border border-cz-border bg-cz-card shadow-lg py-1"
           >
             {OPTIONS.map((opt) => {
               const selected = opt.code === language;
