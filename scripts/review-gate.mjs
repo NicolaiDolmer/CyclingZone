@@ -6,7 +6,8 @@
 //     uloeste Codex-fund (en Codex-traad er loest naar den er markeret
 //     "Resolve conversation"). Review-bevis fra et aeldre commit taeller ikke.
 //   - HOEJRISIKO (motor, database/migrationer/RLS, penge/oekonomi, auth/
-//     sikkerhed, workflows, eller label risk:high/security): derudover en
+//     sikkerhed, cron, backend-routes/API, workflows, eller label
+//     risk:high/security): derudover en
 //     Claude-review-markoer for HEAD uden blokerende fund:
 //         <!-- claude-review: clean|notes|blocking sha=<HEAD-commit> -->
 //     Seneste markoer for HEAD fra en betroet konto (OWNER/MEMBER/COLLABORATOR)
@@ -41,15 +42,30 @@ export const ESCAPED_DEFECT_LABEL = "escaped-defect";
 // ── Risiko-klassifikation ──────────────────────────────────────────────────
 
 const TEST_FILE_RE = /(^|\/)[^/]+\.(test|spec)\.[cm]?[jt]sx?$|(^|\/)__tests__\/|(^|\/)tests?\//;
+// Fejlsikker retning: hellere en Claude-review for meget end en motor-/pengefil
+// der glider igennem som lav risiko. Noegleordene matcher hele filnavnet (ikke
+// stien), uden forskel paa store/smaa bogstaver. HOLD I SYNC med path_filters i
+// .coderabbit.yaml - testen i review-gate.test.mjs sammenligner dem fil for fil.
+const backendName = (words) => new RegExp(`^backend\\/(.*\\/)?[^/]*(${words})[^/]*$`, "i");
 const HIGH_RISK_RULES = Object.freeze([
   { reason: "motor", re: /^backend\/lib\/engine\// },
   { reason: "database", re: /^(database|supabase)\// },
   { reason: "workflow", re: /^\.github\/(workflows|actions)\// },
   { reason: "sikkerhed", re: /^(\.gitleaks\.toml|SECURITY\.md)$/ },
-  // Penge/oekonomi: backend-kode hvis filnavn handler om penge.
-  { reason: "penge", re: /^backend\/(.*\/)?[^/]*(econom|financ|salar|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid)[^/]*$/i },
+  // Penge/oekonomi: backend-kode hvis filnavn handler om penge (saldo, overfoersler, kontrakter).
+  { reason: "penge", re: backendName("econom|financ|salar|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation") },
+  // Motor uden for backend/lib/engine/: simulator, bro/flag, finalisering, etaperesultater.
+  { reason: "motor", re: backendName("race|stage|finaliz|simulat|engine") },
+  // Database-RPC-wrappere (skriver via Postgres-funktioner).
+  { reason: "database", re: backendName("rpc") },
+  // Planlagte job: kalder motor, finalisering og udbetalinger uden menneske i loopet.
+  { reason: "cron", re: backendName("cron|scheduler") },
   // Auth/sikkerhed: backend + frontend-lib (login, tokens, admin-adgang, RLS/grants).
-  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|token|security|rls|grant|permission|urlSafety|admin)[^/]*$/i },
+  // "Author" (forum) er ikke auth, men authorize/authorization er.
+  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|rls|grant|permission|urlSafety|admin)[^/]*$/i },
+  // API-fladen (efter auth, saa admin-routes melder "auth"): hver route haandhaever
+  // selv auth/ejerskab, og server.js monterer dem.
+  { reason: "api", re: /^backend\/(routes|api)\/|^backend\/server\.[cm]?[jt]s$/ },
 ]);
 
 const norm = (p) => String(p || "").replace(/\\/g, "/").replace(/^\.\//, "");
@@ -63,11 +79,17 @@ export function shaMatchesHead(sha, headSha) {
 }
 const short = (sha) => String(sha || "?").slice(0, 7);
 
+/** Testfil (aendrer ingen prod-adfaerd)? Filer under .github/ er aldrig "bare tests". */
+export function isTestFile(path) {
+  const p = norm(path);
+  return TEST_FILE_RE.test(p) && !p.startsWith(".github/");
+}
+
 /** @returns {string|null} hoejrisiko-grunden for en fil, ellers null. Tests er aldrig hoejrisiko. */
 export function classifyFile(path) {
   const p = norm(path);
   // Workflows er altid hoejrisiko; tests ellers aldrig (de aendrer ingen prod-adfaerd).
-  if (TEST_FILE_RE.test(p) && !p.startsWith(".github/")) return null;
+  if (isTestFile(p)) return null;
   for (const rule of HIGH_RISK_RULES) if (rule.re.test(p)) return rule.reason;
   return null;
 }

@@ -1,10 +1,13 @@
 // node --test scripts/review-gate.test.mjs  (#6654)
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { posix } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   classifyFile,
+  isTestFile,
   classifyRisk,
   parseCodexSummary,
   evaluateCodex,
@@ -61,10 +64,49 @@ test("classifyFile: motor, database, workflows, penge og auth er hoejrisiko", ()
   assert.equal(classifyFile(".gitleaks.toml"), "sikkerhed");
 });
 
+// Kerne-motor og penge uden for backend/lib/engine/ (review-fund paa #6657):
+// filerne der foer gled igennem som lav risiko.
+const CORE_MOTOR_MONEY = Object.freeze({
+  "backend/lib/raceSimulator.js": "motor",
+  "backend/lib/raceEngineV4Bridge.js": "motor",
+  "backend/lib/raceEngineFlag.js": "motor",
+  "backend/lib/raceFinalizeState.js": "motor",
+  "backend/lib/raceFinalizeWatch.js": "motor",
+  "backend/lib/stageResultRpc.js": "motor",
+  "backend/lib/availableBalance.js": "penge",
+  "backend/lib/balanceRpc.js": "penge",
+  "backend/lib/poolBalance.js": "penge",
+  "backend/lib/transferExecution.js": "penge",
+  "backend/lib/contractExpiryRelease.js": "penge",
+  "backend/lib/sponsorContractsService.js": "penge",
+  "backend/cron.js": "cron",
+  "backend/routes/api.js": "api",
+});
+
+test("classifyFile: kerne-motor, penge, cron og routes er hoejrisiko", () => {
+  for (const [f, reason] of Object.entries(CORE_MOTOR_MONEY)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("backend/lib/someWriteRpc.js"), "database");
+  assert.equal(classifyFile("backend/lib/stageScheduler.js"), "motor");
+  assert.equal(classifyFile("backend/lib/weeklyScheduler.js"), "cron");
+  assert.equal(classifyFile("backend/routes/rankings.ts"), "api");
+  assert.equal(classifyFile("backend/api/featureFlagsApi.js"), "api");
+  assert.equal(classifyFile("backend/server.js"), "api");
+  assert.equal(classifyFile("backend/routes/raceSelectionBulk.routes.test.js"), null, "route-tests er stadig tests");
+  assert.equal(classifyFile("backend/cron.test.js"), null);
+});
+
+test("classifyFile: authorize/authorization er auth, Author (forum) er ikke", () => {
+  assert.equal(classifyFile("backend/lib/authorizeTeamAction.js"), "auth");
+  assert.equal(classifyFile("backend/lib/requestAuthorization.js"), "auth");
+  assert.equal(classifyFile("frontend/src/lib/authorisation.js"), "auth");
+  assert.equal(classifyFile("backend/lib/forumAuthorName.js"), null);
+});
+
 test("classifyFile: UI, docs, scripts og tests er lav risiko", () => {
   assert.equal(classifyFile("frontend/src/pages/RacePage.jsx"), null);
   assert.equal(classifyFile("docs/GITHUB_WORKFLOW.md"), null);
   assert.equal(classifyFile("scripts/review-gate.mjs"), null);
+  assert.equal(classifyFile("backend/lib/abilityRegistry.js"), null);
   assert.equal(classifyFile("backend/lib/economyEngine.test.js"), null, "test af pengekode aendrer ingen prod-adfaerd");
   assert.equal(classifyFile("backend/lib/engine/v4/foo.test.ts"), null);
   assert.equal(classifyFile("frontend/src/components/forum/ForumAuthorIdentity.jsx"), null, "Author er ikke auth");
@@ -85,27 +127,59 @@ test("classifyRisk: een hoejrisiko-fil goer hele PR'en hoejrisiko; labels risk:h
   assert.equal(classifyRisk(["docs/a.md"], ["risk:med"]).level, "low");
 });
 
-test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavrisiko-stier", () => {
+function coderabbitFilters() {
   const yaml = readFileSync(new URL("../.coderabbit.yaml", import.meta.url), "utf8");
   const block = yaml.split(/^\s*path_filters:\s*$/m)[1].split(/^\s*[a-z_]+:\s*$/m)[0];
-  const globs = [...block.matchAll(/^\s*-\s*"([^"!][^"]*)"\s*$/gm)].map((m) => m[1]);
+  const all = [...block.matchAll(/^\s*-\s*"([^"]+)"\s*$/gm)].map((m) => m[1]);
+  const globs = all.filter((g) => !g.startsWith("!"));
+  const excludes = all.filter((g) => g.startsWith("!")).map((g) => g.slice(1));
+  return {
+    globs,
+    covered: (f) => globs.some((g) => posix.matchesGlob(f, g)),
+    excluded: (f) => excludes.some((g) => posix.matchesGlob(f, g)),
+  };
+}
+
+test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavrisiko-stier", () => {
+  const { globs, covered } = coderabbitFilters();
   assert.ok(globs.length > 5, "positive path_filters fundet");
-  const covered = (f) => globs.some((g) => posix.matchesGlob(f, g));
   const high = [
     "backend/lib/engine/v4/mechanics/lateAttack.ts", "database/2026-10-14-x.sql", ".github/workflows/ci.yml",
     "backend/lib/economyEngine.js", "backend/lib/seasonFinanceReport.js", "backend/lib/prizePayoutEngine.js",
     "backend/lib/loanEngine.js", "backend/lib/transferPriceBand.js", "backend/lib/midSeasonSponsor.js",
     "backend/lib/authTokenVerification.js", "backend/routes/adminRoadmap.js", "frontend/src/lib/getAuthedUser.js",
-    "backend/lib/urlSafety.js", ".gitleaks.toml",
+    "backend/lib/urlSafety.js", ".gitleaks.toml", "backend/lib/someWriteRpc.js", "backend/lib/weeklyScheduler.js",
+    "backend/api/featureFlagsApi.js", "backend/server.js", "backend/lib/authorizeTeamAction.js",
+    ...Object.keys(CORE_MOTOR_MONEY),
   ];
   for (const f of high) {
     assert.ok(classifyFile(f), `klassifikatoren: ${f} er hoejrisiko`);
     assert.ok(covered(f), `.coderabbit.yaml mangler et filter for ${f}`);
   }
-  for (const f of ["frontend/src/pages/RacePage.jsx", "docs/GITHUB_WORKFLOW.md", "scripts/review-gate.mjs", "backend/lib/raceStory.js"]) {
+  for (const f of ["frontend/src/pages/RacePage.jsx", "docs/GITHUB_WORKFLOW.md", "scripts/review-gate.mjs", "backend/lib/abilityRegistry.js"]) {
     assert.equal(classifyFile(f), null);
     assert.ok(!covered(f), `${f} er lav risiko og maa ikke bruge CodeRabbit-kvote`);
   }
+});
+
+test(".coderabbit.yaml og klassifikatoren er enige om hver fil i repoet", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const files = execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+    .split(/\r?\n/).filter(Boolean);
+  assert.ok(files.length > 1000, "git ls-files gav repoets filer");
+  const { covered, excluded } = coderabbitFilters();
+  const missing = [];
+  const extra = [];
+  for (const f of files) {
+    if (excluded(f)) continue;
+    const high = classifyFile(f) !== null;
+    // Hoejrisiko => CodeRabbit-filter. Omvendt maa et filter kun ramme hoejrisiko-
+    // filer eller tests ved siden af dem (tests reviewes gerne sammen med koden).
+    if (high && !covered(f)) missing.push(f);
+    if (!high && covered(f) && !isTestFile(f)) extra.push(f);
+  }
+  assert.deepEqual(missing, [], "hoejrisiko-filer uden CodeRabbit-filter (tilfoej glob i .coderabbit.yaml)");
+  assert.deepEqual(extra, [], "CodeRabbit-filtre der rammer lavrisiko-filer (stram glob eller klassifikator)");
 });
 
 // ── Codex ──

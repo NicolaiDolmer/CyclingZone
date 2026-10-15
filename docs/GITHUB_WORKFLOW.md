@@ -108,7 +108,7 @@ CI-checket `review-gate` (`.github/workflows/review-gate.yml`, logik + tests i `
 
 | Risiko | Hvornår | Krav ud over grøn CI |
 |---|---|---|
-| **Høj** | `backend/lib/engine/**`, `database/**`, penge/økonomi i `backend/` (economy, finance, salary, prize, sponsor, loan, price, auction …), auth/sikkerhed (auth, token, rls, grant, admin …), `.github/workflows/**`, eller label `risk:high`/`security` | Codex-review uden uløste fund **+** Claude-review-markør uden blokerende fund |
+| **Høj** | `backend/lib/engine/**`, `database/**`, motor i `backend/` (race, stage, finaliz, simulat, engine), penge/økonomi i `backend/` (economy, finance, salary, prize, sponsor, balance, transfer, contract, price, auction …), RPC-wrappere, cron/scheduler, `backend/routes/**` + `backend/api/**` + `server.js`, auth/sikkerhed (auth, authorize, token, rls, grant, admin …), `.github/workflows/**`, eller label `risk:high`/`security` | Codex-review uden uløste fund **+** Claude-review-markør uden blokerende fund |
 | **Lav** | alt andet (tests er altid lav) | Codex-review uden uløste fund |
 
 - **Codex:** reviewer automatisk når en PR åbnes eller markeres ready (ellers kommentér `@codex review`). Et fund er uløst til tråden er rettet og markeret *Resolve conversation*. Reviewet skal gælde PR'ens **aktuelle HEAD**: efter et push er det gamle review forældet, kommentér `@codex review` igen.
