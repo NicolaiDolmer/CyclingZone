@@ -52,3 +52,11 @@ Ingen edits i RaceDetailPage, components/race/*, race-centre, App.jsx, S5-kalend
 Main7cd2e5f95 integreret i bibliotekets egen branch. Eneste konflikt: budget, løst ved main1205 + godkendte2KB=1207. Ingen ændring af beskyttede stier i diff mod main. Begge små reviewpunkter er korrigeret: gyldige statistik-kolonnenøgler og konkret genfinding fra ugyldigt scope (observeret RED før rettelse).
 
 Målt: FULL backend14089pass/6skip/7TODO, frontend4658/4658. Preflight/typecheck grønne. Gzip1266.4KB mod1267.4KB loft. Alle tal er lokale syntetiske checks; ingen prodlatens-/adfærdspåstand. Hele browsersuiten på opdateret kode kører; endelig GREEN og CI registreres efter afslutning. Arkitekturens bibliotek-redirect er afstemt med App.jsx.
+
+## Afsluttende verifikation 15/10
+
+Status: bygget og lokalt verificeret; ejer-preview/merge/release åbent. [Samlet bevis](../audits/2026-10-15-loebsbibliotek-verifikation.md) erstatter tidligere afventende verifikationsstatus ovenfor.
+- Hele e2e: 1718 bestået, 175 skipped, 0 fejl. FULL: backend14089pass/6skip/7TODO, frontend4658/4658.
+- Sidste locale-overskrift rettet med observeret RED; afsluttende bibliotekssuite54/54, preflight/typecheck/offlinebuild grønne. Gzip1266,3KB mod1267,4KB loft.
+- Alle fem oprindelige reviewfund rettet. Mobil/desktop/lys/mørk og tom/fejl/loading-billeder fornyet. Beskyttede stier, NOW og MASTERPLAN urørte.
+- Næste handling: kontroller afsluttende SHA-CI/botreview på #6636; ejer afprøver preview. Ingen evidens for autentificeret prodlatens/RLS eller spilleradfærd. Luk ikke #6514 før accept.

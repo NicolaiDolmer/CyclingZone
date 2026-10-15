@@ -44,3 +44,5 @@ Library components/read model and the two permitted route entries use one bounde
 ## Recovery
 
 An invalid edition season/division/pool exposes an action to the valid default library; it never retries an unchanged invalid scope. Transient read failures retain retry. Statistics mobile defaults explicitly use gcWins/podiums/points; other columns remain selectable through canonical DataTable chips.
+
+Library and edition error headings use the existing common.actions.error translation; the shared primitive fallback must not introduce English headings into Danish views.

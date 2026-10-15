@@ -344,6 +344,7 @@ function RaceEditionContent() {
       <div className="mt-4">
         {error ? (
           <ErrorState
+            title={t("actions.error", { ns: "common" })}
             description={t(resolved.error ? "library.scopeError" : "library.error")}
             action={
               <Button
@@ -552,6 +553,7 @@ function RaceEditionContent() {
                   empty={
                     editions.error ? (
                       <ErrorState
+                        title={t("actions.error", { ns: "common" })}
                         description={t("library.error")}
                         action={
                           <Button size="sm" variant="secondary" onClick={editions.reload}>
@@ -597,6 +599,7 @@ function RaceEditionContent() {
                       </div>
                     ) : stats.error ? (
                       <ErrorState
+                        title={t("actions.error", { ns: "common" })}
                         description={t("library.error")}
                         action={
                           <Button size="sm" variant="secondary" onClick={stats.reload}>

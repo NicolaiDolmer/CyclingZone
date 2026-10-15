@@ -131,3 +131,5 @@ Ejeren skal på preview finde Vuelta uden præcis accent, vælge ældre L'Enfer-
 **Afvigelser med bevis:** katalog-IDs skifter på S1-S4 for tre GT-familier. Præcist gemt navn + løbstype identificerer derfor kandidater; race.id og scope identificerer altid udgaven. Se [SSOT](../../RACE_LIBRARY_RULES.md) og [PG17-baseline](../../audits/2026-10-14-loebsbibliotek-baseline.md). Ingen evidens for autentificeret produktsvartid eller forbedret spilleradfærd. Tidligere arkivsøgning kunne ikke reproduceres i en autentificeret produktionssession.
 
 **Patch notes:** ændringerne skrives i frontend/src/data/patchNotes.js, som PatchNotesPage render; selve render-siden ændres ikke. Ingen publicering/Discord-opslag udføres her.
+
+**Udførelse 15/10:** alle tre leverancer bygget i #6636, oprindelige reviewfund rettet og lokal FULL/hele browsersuiten afsluttet. Præcise resultater og åbne acceptgrænser: [verifikationsrapport](../../audits/2026-10-15-loebsbibliotek-verifikation.md). Oprindelige checkbokse bevares som acceptliste; autentificeret prodlatens og ejerens previewaccept er fortsat uden evidens.

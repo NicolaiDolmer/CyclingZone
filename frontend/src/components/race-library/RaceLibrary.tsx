@@ -229,6 +229,7 @@ function RaceLibraryContent() {
     </div>
   ) : error ? (
     <ErrorState
+      title={t("actions.error", { ns: "common" })}
       description={t(resolved.error ? "library.scopeError" : "library.error")}
       action={
         <Button
