@@ -2267,7 +2267,9 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                         // #6684 (D-047, ejer-go 15/10): på mobil står holdet under rytteren i
                         // stedet for i egen kolonne, så tid og point kan stå uden vandret scroll.
                         <span className="mt-0.5 block max-w-[11rem] truncate text-xs text-cz-3 sm:hidden" title={r.rider?.team?.name || r.team_name || undefined}>
-                          {r.rider?.team?.name || r.team_name || t("common.free")}
+                          <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
+                            {r.rider?.team?.name || r.team_name || t("common.free")}
+                          </TeamLink>
                         </span>
                       )}
                     </td>
