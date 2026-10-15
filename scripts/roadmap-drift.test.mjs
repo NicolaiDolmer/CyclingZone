@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { planIssueNumbers, findDrift, formatDrift, findFlagDrift } from "./roadmap-drift.mjs";
+import { planIssueNumbers, findDrift, formatDrift, findFlagDrift, findFlagsWithoutItem } from "./roadmap-drift.mjs";
 
 test("planIssueNumbers læser issue-numre fra Brand og Lovet, ikke fra resten", () => {
   const md = [
@@ -100,4 +100,40 @@ test("formatDrift viser Beta-drift og hvordan den rettes", () => {
   assert.match(text, /Beta-drift \(1\)/);
   assert.match(text, /--resync/);
   assert.match(formatDrift({ missing: [], stale: [], flagDrift: [] }), /Beta-drift \(0\)/);
+});
+
+test("findFlagsWithoutItem: beta uden punkt vises altid, on kun med roadmap-tekst i registret", () => {
+  const flags = {
+    beta_no_item: "beta",
+    beta_linked: "beta",
+    on_with_text: "on",
+    bool_on_with_text: true,
+    on_no_text: "on",
+    off_with_text: "off",
+    number_cfg: 42,
+  };
+  const items = [{ flag_key: "beta_linked", status: "archived" }];
+  const registry = [
+    { id: "a", flag: "on_with_text", roadmap_en: "A", roadmap_da: "A" },
+    { id: "b", flag: "bool_on_with_text", roadmap_en: "B", roadmap_da: "B" },
+    { id: "c", flag: "off_with_text", roadmap_en: "C", roadmap_da: "C" },
+    { id: "d", flag: "on_no_text" },
+  ];
+  const out = findFlagsWithoutItem({ items, flags, registry });
+  assert.deepEqual(out.map((f) => f.flag_key), ["beta_no_item", "bool_on_with_text", "on_with_text"]);
+  assert.equal(out[0].registry_id, null);
+  assert.equal(out[2].registry_id, "a");
+});
+
+test("formatDrift viser flag uden roadmap-punkt og hvordan det rettes", () => {
+  const text = formatDrift({
+    missing: [],
+    stale: [],
+    flagDrift: [],
+    flagsWithoutItem: [{ flag_key: "stage_page_v2", flag: "beta", registry_id: null }],
+  });
+  assert.match(text, /Flag i beta\/on uden roadmap-punkt \(1\)/);
+  assert.match(text, /stage_page_v2  beta  \(ingen roadmap-tekst i registret\)/);
+  assert.match(text, /roadmap-sync-registry\.mjs --apply/);
+  assert.match(formatDrift({ missing: [], stale: [] }), /uden roadmap-punkt \(0\)/);
 });

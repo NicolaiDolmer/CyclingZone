@@ -1,0 +1,82 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { AREAS } from "./generate-feature-status.mjs";
+import { AREA_ENGINE, itemFromEntry, planSync, formatPlan, parseArgs } from "./roadmap-sync-registry.mjs";
+
+const ENGINES = ["races", "training", "youth", "market", "club"];
+const entry = (o) => ({
+  id: "stage-page",
+  area: "race-day",
+  state: "beta",
+  flag: "stage_page_v2",
+  roadmap_en: "New stage page",
+  roadmap_da: "Ny etapeside",
+  ...o,
+});
+
+test("AREA_ENGINE daekker alle registrets areas med et lovligt engine", () => {
+  for (const area of AREAS) {
+    assert.ok(ENGINES.includes(AREA_ENGINE[area]), `area ${area} mangler et lovligt engine`);
+  }
+});
+
+test("itemFromEntry: approved, planned, flag_key, horizon default next, epic -> issue_ref", () => {
+  assert.deepEqual(itemFromEntry(entry({ epic: "6100" })), {
+    engine: "races",
+    sort_order: 0,
+    title_en: "New stage page",
+    title_da: "Ny etapeside",
+    approved: true,
+    status: "planned",
+    horizon: "next",
+    issue_ref: 6100,
+    flag_key: "stage_page_v2",
+  });
+  const later = itemFromEntry(entry({ roadmap_horizon: "later" }));
+  assert.equal(later.horizon, "later");
+  assert.equal(later.issue_ref, null);
+});
+
+test("planSync: opretter kun poster med tekst og flag, som ikke allerede har et punkt", () => {
+  const entries = [
+    entry({ id: "a", flag: "flag_a" }),
+    entry({ id: "b", flag: "flag_b" }),
+    entry({ id: "c", flag: "flag_c", roadmap_en: undefined, roadmap_da: undefined }),
+    entry({ id: "d", flag: undefined }),
+    entry({ id: "e", flag: "flag_e", state: "retired" }),
+  ];
+  const plan = planSync({ entries, existingFlagKeys: ["flag_b"] });
+  assert.deepEqual(plan.inserts.map((p) => p.id), ["a"]);
+  assert.deepEqual(plan.skipped.map((s) => s.id), ["d", "e"]);
+});
+
+test("planSync er idempotent: anden koersel efter oprettelse planlaegger intet", () => {
+  const entries = [entry({ id: "a", flag: "flag_a" }), entry({ id: "b", flag: "flag_b" })];
+  const first = planSync({ entries, existingFlagKeys: [] });
+  assert.equal(first.inserts.length, 2);
+  const second = planSync({ entries, existingFlagKeys: first.inserts.map((p) => p.row.flag_key) });
+  assert.equal(second.inserts.length, 0);
+});
+
+test("planSync: to poster med samme flag giver kun eet punkt", () => {
+  const plan = planSync({
+    entries: [entry({ id: "a", flag: "same" }), entry({ id: "b", flag: "same" })],
+    existingFlagKeys: [],
+  });
+  assert.deepEqual(plan.inserts.map((p) => p.id), ["a"]);
+});
+
+test("formatPlan skelner dry-run fra apply", () => {
+  const plan = planSync({ entries: [entry({})], existingFlagKeys: [] });
+  assert.match(formatPlan(plan, { apply: false }), /dry-run/);
+  assert.match(formatPlan(plan, { apply: false }), /--apply/);
+  assert.match(formatPlan(plan, { apply: true }), /^Opretter 1/);
+  assert.match(formatPlan({ inserts: [], skipped: [] }, { apply: false }), /ingen/);
+});
+
+test("parseArgs: dry-run er default, ukendte argumenter fejler", () => {
+  assert.deepEqual(parseArgs([]), { apply: false });
+  assert.deepEqual(parseArgs(["--apply"]), { apply: true });
+  assert.throws(() => parseArgs(["--force"]), /Ukendt argument/);
+});
