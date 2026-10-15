@@ -2,6 +2,7 @@
 
 > **Refs:** #6490 · #6491 · #6492 · #6184 · **Status:** design + målt baseline (AGENTS hard rule 36), ingen kode. Read-only prod-måling 15/10 kl. 13:06.
 > Ejer-beslutninger står som A/B-kort på #6490 (DROP INDEX), #6491 (worker-placering) og #6492 (bibliotek).
+> **SSOT:** [`docs/TRAINING_RULES.md`](../../TRAINING_RULES.md) ejer afregningens kontrakt: tick-enheden (flag on: ét hold, én trup, én `game_day`) og idempotens-låsen `(team_id, season_id, squad, game_day)` (tabellen "Tick-enheden"/"Idempotens-lås"). Denne spec ændrer ingen af dem: et job = én eksisterende tick-enhed, og låsen forbliver den, der afgør dubletter. Ændres orkestreringskontrakten senere, opdateres TRAINING_RULES.md i samme PR.
 
 ## 1. Målt baseline for aftenspidsen
 
@@ -57,7 +58,9 @@ Se kommentaren på #6490 (fakta, risiko, rollback og A/B). Kort: indekset `idx_t
 2. **60 s-loftet.** Max er 55,0 s i dag mod service_role `statement_timeout=60s`. GIN vokser ca. 54 MB/døgn ved 1x, og flushes rammer større indeks. Ved 10x må vi forvente kald, der bliver dræbt. Det er en antagelse; ingen 10x-måling.
 3. **WAL/checkpoint.** 2,0-2,2 GB pr. aftenvindue ved 1x giver ca. 20 GB ved 10x (lineært, antagelse). max_wal_size=4 GB, så der kommer requested checkpoints og flere full-page writes. Checkpoints skriver allerede op til 37 % af shared_buffers pr. runde.
 4. Forbindelser og samtidighed, hvis afregningen paralleliseres for at løse punkt 1: max_connections=120 og PostgREST-poolen. **Ikke målt.**
-Konklusion: DROP INDEX (punkt 2-3) og parallel kø (punkt 1) er begge nødvendige. Ingen af dem er nok alene.
+**Rettelse 15/10 (Codex-review): afregningen kan allerede køre parallelt.** `training_day_close_team_concurrency` (app_config, `backend/lib/trainingDayCloseTrigger.js`, 1-16) sendes til `runNormalizedTrainingDateSweep`, og `training_date_work` bevarer ventende arbejde til genforsøg. I prod mangler nøglen (målt 15/10), så værdien er 1 = serielt. At hæve den er et ejer-skridt efter load-test-gaten #5904.
+
+Konklusion: rækkefølgen er (1) DROP INDEX (#6490, punkt 2-3), (2) mål den eksisterende knap 1/4/8 i #5904-harnessen (lokal PG17-kopi ved 1x og 10x) og hæv den på ejer-go, (3) job-kø (#6491) kun for det, knappen ikke løser: jobs der overlever deploy og ikke kører i web-processen. Vægur-tiden ved 10x er **ikke målt** med knappen > 1; tallet ovenfor er serielt.
 
 ## 3. (b) #6491 job-kø
 | | pg-boss | Supabase Queues (pgmq) | BullMQ (Redis) |
@@ -66,7 +69,7 @@ Konklusion: DROP INDEX (punkt 2-3) og parallel kø (punkt 1) er begge nødvendig
 | Cost | Ny dependency + `pgboss`-schema; kræver direkte PG-forbindelse (#6492), session-mode/direct anbefales | Ingen retry-politik, cron eller concurrency i klienten; vi skal selv bygge worker-loop, visibility-timeout og dead-letter | Ny infrastruktur (Redis) = ny løbende udgift; data uden for Postgres |
 | Alternativ | - | Godt til simple køer fra SQL-triggere | Afvist: ejerens regel om ingen nye udgifter før indtægt |
 
-**Anbefaling: pg-boss.** Første job er træningsafregningen: ét job pr. (team_id, tick_date, squad) med `singletonKey`, concurrency 4-8. Tallet skal vælges ud fra måling; forbindelsesloftet er **ikke målt**. Den eksisterende RPC er allerede idempotent via unik nøgle (`uniq_training_day_runs_team_season_squad_game_day`).
+**Anbefaling: pg-boss, efter skridt (2).** Første job er træningsafregningen: ét job pr. tick-enhed `(team_id, season_id, squad, game_day)` med `singletonKey` på netop den nøgle og køpolitikken **`stately`** (højst ét ventende og ét aktivt job pr. nøgle). Uden en politik dedupliker `singletonKey` ikke på en `standard`-kø, så cron-, deploy- og retry-producenter kunne lægge dubletter, der bruger worker- og DB-kapacitet i netop spidsen. Concurrency vælges ud fra skridt (2)s måling. Tallet skal vælges ud fra måling; forbindelsesloftet er **ikke målt**. Den eksisterende RPC er allerede idempotent via unik nøgle (`uniq_training_day_runs_team_season_squad_game_day`).
 
 **Railway worker-proces:** separat service med samme image og startkommando `node worker.js`. **Beslutning for ejeren:** en ekstra Railway-service er en ny løbende udgift, og beløbet er **ikke målt**. Billigere alternativ: workeren kører som separat proces i den eksisterende service. Så overlever jobs deploy (de ligger i Postgres), men der er ingen isolation fra web-processen.
 
@@ -78,5 +81,15 @@ Konklusion: DROP INDEX (punkt 2-3) og parallel kø (punkt 1) er begge nødvendig
 
 **Anbefaling: postgres.js nu, Kysely senere hvis query-mængden vokser.** Forbindelse: Supavisor **transaction mode (6543) med `prepare: false`** til korte job-transaktioner. pg-boss bruger session mode (5432) eller direct, fordi den holder længere sessioner. Mønster: én transaktion pr. (hold, dato) med `SET LOCAL statement_timeout` og `SET LOCAL lock_timeout`. Kald den eksisterende `commit_training_date_tick` i samme transaktion; skriv ikke logikken om i første skridt. Typer: genereret fra `database/schema-snapshot.json`/`supabase gen types` og tjekket i CI. PostgREST beholdes til frontend under RLS.
 
-## 4. Målplan (før/efter, samme forespørgsler som baseline ovenfor)
+## 4. Verifikationsplan (gates før build og før rollout)
+
+| Gate | Hvad | Hvem |
+|---|---|---|
+| Lokal | Unit- og paritetstests for afregningen uændret grønne; #5904-harnessen (lokal PG17-kopi af de berørte tabeller) ved 1x og 10x med knappen 1/4/8 og, for #6491/#6492, med worker + postgres.js. Tier FULL (backend + DB-adgangslag). | Claude |
+| Staging | Én fuld aftenafregning på staging med samme konfiguration; ingen 23505-dubletter ud over forventet `alreadyRan`, ingen statement timeouts, samme paritet som #6538 (0 afvigelser). | Claude |
+| Ejer-review | Ejeren ser målingerne (tabel som i §1, før/efter) og godkender konfiguration og rollout-vindue på kortet. Ingen tænding uden ordret go. | Ejer |
+| Rollout | Bag et app_config-flag (knap/worker on/off), i et roligt vindue; første aften måles mod §1. | Claude, på ejer-go |
+| Rollback | Knappen tilbage til 1 / workeren af via app_config (ingen deploy); den gamle serielle sti forbliver koden indtil to rolige aftener. | Claude |
+
+## 5. Målplan (før/efter, samme forespørgsler som baseline ovenfor)
 Pr. aften: antal afregninger; p50/p95/p99/max fra edge_logs `origin_time` (efter #6492: fra worker-log); **antal > 2 s (mål 0)**; samlet DB-tid; første → sidste afregning og **sidste etape → sidste afregning (mål < 2 min)**; WAL i vinduet (checkpoint-LSN) og pr. kald (pss-delta); GIN-størrelse pr. døgn (indtil drop); statement timeouts/lock waits i postgres_logs; spillernes rest-p95/p99/max 20:00-20:15 mod rolig 19:30-19:45. 10x: lokal PG17-kopi af de berørte tabeller (#5904-harness) ved 1x og 10x, før merge.
