@@ -537,6 +537,7 @@ export function createCountingSupabase(state, { clock, latencyMs = 0, onCall = (
 
     const q = {
       select(cols = "*", opts = {}) {
+        parseSelect(cols); // fejl straks på en ukendt indlejret ressource
         select = cols;
         countMode = opts.count ?? null;
         head = Boolean(opts.head);
