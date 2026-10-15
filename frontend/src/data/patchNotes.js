@@ -1,5 +1,83 @@
 export const PATCHES = [
   {
+    "version": "7.361",
+    "date": "2026-10-15",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Season 5 starts Wednesday 28 October and ends on a Saturday",
+          "body": "Season 4 ends Sunday 25 October. Season 5 runs from Wednesday 28 October to Saturday 28 November, 32 race dates. From season 5 the last race day of a season is a Saturday, as you voted in the forum."
+        },
+        "da": {
+          "title": "Sæson 5 starter onsdag 28. oktober og slutter en lørdag",
+          "body": "Sæson 4 slutter søndag 25. oktober. Sæson 5 kører fra onsdag 28. oktober til lørdag 28. november, 32 løbsdatoer. Fra sæson 5 er sæsonens sidste løbsdag en lørdag, som I stemte for i forummet."
+        },
+        "refs": [
+          5833,
+          6635
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Races",
+        "en": {
+          "title": "Stage page 2.0, in the beta group",
+          "body": "A race opens on today's stage. Before the stage you see the profile, the climbs km by km, what the day demands, your line-up and one button to set tactics for that stage. After the stage, your day is on top: the top 3, where your riders finished and your best rider overall."
+        },
+        "da": {
+          "title": "Etapeside 2.0, i beta-gruppen",
+          "body": "Et løb åbner på dagens etape. Før etapen ser du profilen, stigningerne km for km, hvad dagen kræver, din opstilling og én knap til at sætte taktik for netop den etape. Efter etapen står din dag øverst: top 3, hvor dine ryttere sluttede, og din bedste rytter samlet."
+        },
+        "refs": [
+          6570,
+          6633
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Training",
+        "en": {
+          "title": "Set the day for many riders at once, in the beta group",
+          "body": "On the Today tab of Daily training, one line sets today's session for all riders in the view, or only the ones you tick."
+        },
+        "da": {
+          "title": "Sæt dagen for mange ryttere på én gang, i beta-gruppen",
+          "body": "På fanen I dag under Daglig træning sætter én linje dagens træning for alle ryttere i visningen eller kun dem, du markerer."
+        },
+        "refs": [
+          6523,
+          6533
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "New managers",
+        "en": {
+          "title": "Your first race card for new teams",
+          "body": "A new team sees its first race at the top of the dashboard: when it starts in your own time zone, how many stages, and one button to set your line-up."
+        },
+        "da": {
+          "title": "Kortet Dit første løb for nye hold",
+          "body": "Et nyt hold ser sit første løb øverst på dashboardet: hvornår det starter i din egen tidszone, hvor mange etaper, og én knap til at sætte din opstilling."
+        },
+        "refs": [
+          1140,
+          6534
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.360",
     "date": "2026-10-14",
     "changes": [
