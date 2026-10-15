@@ -8,7 +8,7 @@
 >
 > **🎯 Next action:** (1) Akademi før søn 18/10 kl. 00: ejer vælger #6673 (2.0) eller #6662, derefter flag-flip på ordret go (#6155). (2) #6677 merge formiddag. (3) Ejer-go: #6692 ikoner (billede sendt) · #6694 roadmap auto-beta (migration) · patch note #6661 ny ordlyd · idébanken E på https://claude.ai/artifact/WZUTZr9bRMgvo43KAYC5n6 · #6643 animation · #6691 hjælpetekst. (4) #6490 genmål 16/10 aften. (5) Codex-løkke på #6657 #6671 #6680: merge ved ren gate.
 >
-> **15/10:** pc1 merget #6637 #6639 #6640 #6646 #6652 #6659 #6663 #6669 #6670 #6672 #6675 #6689 #6658 · DOLMERPC merget #6664 #6676 #6678 #6682 #6685 #6688 · flag: =beta, =beta, =on · aften: aftenspidsen max 50 s → 1,1 s (#6490) · triage 23 + 12 undersøgelser på issues · roadmap A-C i prod (backup ).
+> **15/10:** pc1 merget #6637 #6639 #6640 #6646 #6652 #6659 #6663 #6669 #6670 #6672 #6675 #6689 #6658 · DOLMERPC merget #6664 #6676 #6678 #6682 #6685 #6688 · flag: `stage_page_v2`=beta, `training_bulk_day`=beta, `first_race_card`=on · aften: aftenspidsen max 50 s → 1,1 s (#6490) · triage 23 + 12 undersøgelser på issues · roadmap A-C i prod (backup `backup_*_20261015`).
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
