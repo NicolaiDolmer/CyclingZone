@@ -298,9 +298,9 @@ video {
      brand tokens are the only "soft" radii:
        rounded-cz       = 5px  (cards, inputs, buttons — the default surface)
        rounded-cz-pill  = 9999 (pills/chips)
-     none/sm/DEFAULT/md/lg/full are Tailwind's v3 defaults, kept verbatim for
-     the ~470 legitimate callsites (rounded, rounded-md, rounded-lg,
-     rounded-full). */
+     none/sm/DEFAULT/md/lg/full are Tailwind's v3 defaults. md/lg stay defined
+     but are BANNED in JSX since #6686 (owner 15/10: one radius, 5px):
+     scripts/lint-ui-slop.mjs blocks rounded-md/rounded-lg; use rounded-cz. */
   --radius-*: initial;
   --radius-none: 0px;
   --radius-sm: 0.125rem;

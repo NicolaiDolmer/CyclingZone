@@ -70,24 +70,24 @@ export default function BoardTestModeSection({ getAuth, onMsg }) {
         <button
           onClick={() => handleBoardTest("open-live", "Åbn bestyrelsen LIVE med ÆGTE økonomi?\n\n• Nulstiller board-profiler til ren baseline (signerede planer ryddes)\n• Åbner onboarding-forhandling (5yr→3yr→1yr) for alle testere\n• Board-økonomien er ÆGTE — sponsor-modifier, bonusser og tvangssalg/pullout virker for alvor\n\nHandlingen kan ikke fortrydes (board-profiler nulstilles).")}
           disabled={loading["open-live"]}
-          className="px-3 py-2 text-xs bg-cz-accent text-white border border-cz-accent rounded-lg hover:opacity-90 disabled:opacity-50 transition-all">
+          className="px-3 py-2 text-xs bg-cz-accent text-white border border-cz-accent rounded-cz hover:opacity-90 disabled:opacity-50 transition-all">
           {loading["open-live"] ? "..." : "Åbn board LIVE (ægte økonomi)"}
         </button>
         <button
           onClick={() => handleBoardTest("open-test", "Åbn bestyrelsen for test med frosset økonomi?\n\n• Nulstiller board-profiler til ren baseline (signerede planer ryddes)\n• Åbner onboarding-forhandling (5yr→3yr→1yr) for alle testere\n• Fryser board-økonomien (ingen rigtige penge flytter sig)\n\nHandlingen kan ikke fortrydes (board-profiler nulstilles).")}
           disabled={loading["open-test"]}
-          className="px-3 py-2 text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 rounded-lg hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
+          className="px-3 py-2 text-xs bg-cz-accent/10 text-cz-accent-t border border-cz-accent/40 rounded-cz hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
           {loading["open-test"] ? "..." : "Åbn board for test (frosset)"}
         </button>
         <button
           onClick={() => handleBoardTest("close-test", "Luk board-test-tilstanden?\n\nØkonomi-frysningen ophæves (board_test_mode=false). Board-data og window-state efterlades urørt.")}
           disabled={loading["close-test"]}
-          className="px-3 py-2 text-xs bg-cz-subtle text-cz-2 border border-cz-border rounded-lg hover:bg-cz-hover disabled:opacity-50 transition-all">
+          className="px-3 py-2 text-xs bg-cz-subtle text-cz-2 border border-cz-border rounded-cz hover:bg-cz-hover disabled:opacity-50 transition-all">
           {loading["close-test"] ? "..." : "Ophæv frysning"}
         </button>
       </div>
       {result && (
-        <div className="mt-3 bg-cz-subtle border border-cz-border rounded-lg p-3 text-xs text-cz-2 font-mono">
+        <div className="mt-3 bg-cz-subtle border border-cz-border rounded-cz p-3 text-xs text-cz-2 font-mono">
           <p className="font-semibold mb-1">Kvittering — board/{result.action}</p>
           <p>board_test_mode: {String(result.board_test_mode)}{result.window_id ? ` · window: ${result.window_id}` : ""}</p>
           {result.board_profiles_reset && (

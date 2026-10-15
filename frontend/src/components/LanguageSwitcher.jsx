@@ -140,7 +140,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
             // must always win over nav (z-nav) and any open drawer (z-overlay),
             // so it uses the same tier as a modal (the closest "always on top,
             // no matter what surrounds the trigger" semantic).
-            className="z-modal min-w-[140px] overflow-y-auto rounded-md border border-cz-border bg-cz-card shadow-lg py-1"
+            className="z-modal min-w-[140px] overflow-y-auto rounded-cz border border-cz-border bg-cz-card shadow-lg py-1"
           >
             {OPTIONS.map((opt) => {
               const selected = opt.code === language;

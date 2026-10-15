@@ -79,7 +79,7 @@ export default function NextActionsCard({
             <li key={item.key}>
               <Link
                 to={item.to}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-cz-subtle border border-cz-border
+                className="flex items-center gap-3 px-3 py-2 rounded-cz bg-cz-subtle border border-cz-border
                   hover:bg-cz-accent/10 hover:border-cz-accent/30 transition-colors group">
                 <item.Icon size={16} className="shrink-0 text-cz-2" />
                 <span className="text-cz-1 text-sm flex-1">{item.label}</span>

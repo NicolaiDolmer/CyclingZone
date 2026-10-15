@@ -266,7 +266,7 @@ function HealthView({ getAuth, onMsg }) {
       </div>
 
       <button onClick={refresh} disabled={loading}
-        className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs font-medium hover:bg-cz-card disabled:opacity-50">
+        className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs font-medium hover:bg-cz-card disabled:opacity-50">
         {loading ? "Opdaterer..." : "↻ Genberegn"}
       </button>
     </div>
@@ -345,7 +345,7 @@ function OverviewView({ getAuth, onMsg }) {
         <div>
           <label className="block text-cz-3 text-xs mb-1">Division</label>
           <select value={filters.division} onChange={(e) => setFilters((f) => ({ ...f, division: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm">
             <option value="">Alle</option>
             <option value="1">D1</option>
             <option value="2">D2</option>
@@ -357,11 +357,11 @@ function OverviewView({ getAuth, onMsg }) {
           <input type="text" value={filters.q} onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
             onKeyDown={(e) => { if (e.key === "Enter") refresh(); }}
             placeholder="Filter..."
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm" />
         </div>
         <div className="flex items-end">
           <button onClick={refresh} disabled={loading}
-            className="w-full px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+            className="w-full px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
             {loading ? "..." : "Anvend"}
           </button>
         </div>
@@ -382,7 +382,7 @@ function OverviewView({ getAuth, onMsg }) {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-cz-border">
+      <div className="overflow-x-auto rounded-cz border border-cz-border">
         <table data-sortable className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
@@ -584,21 +584,21 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
         <div>
           <label className="block text-cz-3 text-xs mb-1">Hvem udløste</label>
           <select value={filters.actor_type} onChange={(e) => setFilters((f) => ({ ...f, actor_type: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm">
             {ACTOR_TYPES.map((a) => <option key={a} value={a}>{a ? actorLabel(a) : "Alle"}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Begivenhed</label>
           <select value={filters.reason_code} onChange={(e) => setFilters((f) => ({ ...f, reason_code: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm">
             {REASON_CODES.map((r) => <option key={r} value={r}>{r ? reasonLabel(r) : "Alle"}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Retning</label>
           <select value={filters.type} onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm">
             {TX_TYPES.map((t) => <option key={t} value={t}>{t ? txTypeLabel(t) : "Alle"}</option>)}
           </select>
         </div>
@@ -610,7 +610,7 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
             onChange={(e) => setFilters((f) => ({ ...f, source_path: e.target.value }))}
             placeholder="fx auctionFinalization"
             onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Hold-ID</label>
@@ -618,7 +618,7 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
             onChange={(e) => setFilters((f) => ({ ...f, team_id: e.target.value }))}
             placeholder="UUID"
             onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm font-mono" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Sæson-ID</label>
@@ -626,43 +626,43 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
             onChange={(e) => setFilters((f) => ({ ...f, season_id: e.target.value }))}
             placeholder="UUID"
             onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm font-mono" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Fra dato</label>
           <input type="date" value={filters.date_from}
             onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Til dato</label>
           <input type="date" value={filters.date_to}
             onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Min beløb</label>
           <input type="number" value={filters.amount_min}
             onChange={(e) => setFilters((f) => ({ ...f, amount_min: e.target.value }))}
             placeholder="-100000"
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Max beløb</label>
           <input type="number" value={filters.amount_max}
             onChange={(e) => setFilters((f) => ({ ...f, amount_max: e.target.value }))}
             placeholder="100000"
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <button onClick={applyFilters} disabled={loading}
-          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
           {loading ? "..." : "Anvend filtre"}
         </button>
         <button onClick={resetFilters} disabled={loading}
-          className="px-3 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-card disabled:opacity-50">
+          className="px-3 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-sm hover:bg-cz-card disabled:opacity-50">
           Nulstil
         </button>
         <span className="ms-auto text-xs text-cz-3">
@@ -670,7 +670,7 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-cz-border">
+      <div className="overflow-x-auto rounded-cz border border-cz-border">
         <table data-sort-exempt="Transaktions-log; server-ordnet + filtre/pagination" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
@@ -716,15 +716,15 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
           <label className="text-cz-3 text-xs">Pr. side</label>
           <select value={limit}
             onChange={(e) => { const n = parseInt(e.target.value, 10); setLimit(n); setTimeout(() => refresh(0), 0); }}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-2 py-1.5 text-cz-1 text-xs">
+            className="bg-cz-subtle border border-cz-border rounded-cz px-2 py-1.5 text-cz-1 text-xs">
             {[25, 50, 100, 200].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => refresh(Math.max(0, offset - limit))} disabled={loading || offset === 0}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1"><ChevronLeftIcon size={13} aria-hidden="true" /> Forrige</button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs disabled:opacity-50 inline-flex items-center gap-1"><ChevronLeftIcon size={13} aria-hidden="true" /> Forrige</button>
           <button onClick={() => refresh(offset + limit)} disabled={loading || offset + limit >= total}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1">Næste <ChevronRightIcon size={13} aria-hidden="true" /></button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs disabled:opacity-50 inline-flex items-center gap-1">Næste <ChevronRightIcon size={13} aria-hidden="true" /></button>
         </div>
       </div>
 
@@ -766,7 +766,7 @@ function AdminLogDetailModal({ entry, onClose }) {
         </dl>
         <div className="border-t border-cz-border pt-3">
           <p className="text-cz-3 text-xs mb-1">Tekniske detaljer (JSON)</p>
-          <pre className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-2xs text-cz-1 font-mono overflow-x-auto">
+          <pre className="bg-cz-subtle border border-cz-border rounded-cz p-3 text-2xs text-cz-1 font-mono overflow-x-auto">
 {entry.meta ? JSON.stringify(entry.meta, null, 2) : "(tom)"}
           </pre>
         </div>
@@ -827,7 +827,7 @@ function AdminLogView({ getAuth, onMsg }) {
         <div>
           <label className="block text-cz-3 text-xs mb-1">Handling</label>
           <select value={filters.action_type} onChange={(e) => setFilters((f) => ({ ...f, action_type: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm">
             {ADMIN_ACTION_TYPES.map((a) => <option key={a} value={a}>{a ? adminActionLabel(a) : "Alle"}</option>)}
           </select>
         </div>
@@ -837,7 +837,7 @@ function AdminLogView({ getAuth, onMsg }) {
             onChange={(e) => setFilters((f) => ({ ...f, admin_user_id: e.target.value }))}
             placeholder="UUID"
             onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm font-mono" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Berørt hold (ID)</label>
@@ -845,7 +845,7 @@ function AdminLogView({ getAuth, onMsg }) {
             onChange={(e) => setFilters((f) => ({ ...f, target_team_id: e.target.value }))}
             placeholder="UUID"
             onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm font-mono" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Berørt rytter (ID)</label>
@@ -853,29 +853,29 @@ function AdminLogView({ getAuth, onMsg }) {
             onChange={(e) => setFilters((f) => ({ ...f, target_rider_id: e.target.value }))}
             placeholder="UUID"
             onKeyDown={(e) => { if (e.key === "Enter") applyFilters(); }}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm font-mono" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm font-mono" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Fra dato</label>
           <input type="date" value={filters.date_from}
             onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Til dato</label>
           <input type="date" value={filters.date_to}
             onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <button onClick={applyFilters} disabled={loading}
-          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
           {loading ? "..." : "Anvend filtre"}
         </button>
         <button onClick={resetFilters} disabled={loading}
-          className="px-3 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-card disabled:opacity-50">
+          className="px-3 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-sm hover:bg-cz-card disabled:opacity-50">
           Nulstil
         </button>
         <span className="ms-auto text-xs text-cz-3">
@@ -883,7 +883,7 @@ function AdminLogView({ getAuth, onMsg }) {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-cz-border">
+      <div className="overflow-x-auto rounded-cz border border-cz-border">
         <table data-sort-exempt="Admin-log; server-ordnet + filtre/pagination" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
@@ -917,15 +917,15 @@ function AdminLogView({ getAuth, onMsg }) {
           <label className="text-cz-3 text-xs">Pr. side</label>
           <select value={limit}
             onChange={(e) => { const n = parseInt(e.target.value, 10); setLimit(n); setTimeout(() => refresh(0), 0); }}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-2 py-1.5 text-cz-1 text-xs">
+            className="bg-cz-subtle border border-cz-border rounded-cz px-2 py-1.5 text-cz-1 text-xs">
             {[25, 50, 100, 200].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => refresh(Math.max(0, offset - limit))} disabled={loading || offset === 0}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1"><ChevronLeftIcon size={13} aria-hidden="true" /> Forrige</button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs disabled:opacity-50 inline-flex items-center gap-1"><ChevronLeftIcon size={13} aria-hidden="true" /> Forrige</button>
           <button onClick={() => refresh(offset + limit)} disabled={loading || offset + limit >= total}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 inline-flex items-center gap-1">Næste <ChevronRightIcon size={13} aria-hidden="true" /></button>
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs disabled:opacity-50 inline-flex items-center gap-1">Næste <ChevronRightIcon size={13} aria-hidden="true" /></button>
         </div>
       </div>
 
@@ -982,7 +982,7 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
           <label className="block text-cz-3 text-xs mb-1">Hvem udløste</label>
           <select value={filters.actor_type}
             onChange={(e) => setFilters((f) => ({ ...f, actor_type: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm">
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm">
             {ACTOR_TYPES.map((a) => <option key={a} value={a}>{a ? actorLabel(a) : "Alle"}</option>)}
           </select>
         </div>
@@ -994,31 +994,31 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
             onChange={(e) => setFilters((f) => ({ ...f, source_path: e.target.value }))}
             placeholder="fx sponsorPayout"
             onKeyDown={(e) => { if (e.key === "Enter") refresh(); }}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Fra dato</label>
           <input type="date" value={filters.date_from}
             onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Til dato</label>
           <input type="date" value={filters.date_to}
             onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
         <div>
           <label className="block text-cz-3 text-xs mb-1">Vindue (sek)</label>
           <input type="number" value={windowSeconds} min={1} max={300}
             onChange={(e) => setWindowSeconds(parseInt(e.target.value, 10) || 5)}
-            className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2 text-cz-1 text-sm" />
+            className="w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-2 text-cz-1 text-sm" />
         </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-2">
         <button onClick={refresh} disabled={loading}
-          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+          className="px-3 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
           {loading ? "..." : "Anvend filtre"}
         </button>
         <span className="ms-auto text-xs text-cz-3">
@@ -1030,7 +1030,7 @@ function CorrelationView({ getAuth, onMsg, onDrillDown }) {
         Klik en række for at drille ned i Transaktioner-fanen med samme udløser + kilde + tidsvindue.
       </p>
 
-      <div className="overflow-x-auto rounded-lg border border-cz-border">
+      <div className="overflow-x-auto rounded-cz border border-cz-border">
         <table data-sort-exempt="Korrelations-drilldown; server-ordnet" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border bg-cz-subtle">
@@ -1189,12 +1189,12 @@ function LevelCorrectionView({ getAuth, onMsg }) {
 
       <div className="flex flex-wrap gap-2">
         <button onClick={refreshGate} disabled={loading}
-          className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs font-medium hover:bg-cz-card disabled:opacity-50">
+          className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs font-medium hover:bg-cz-card disabled:opacity-50">
           {loading ? "Opdaterer..." : "↻ Genindlæs gate"}
         </button>
         {gate?.gate_status === "green" && (
           <button onClick={runDryRun} disabled={dryRunLoading}
-            className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-xs hover:brightness-110 disabled:opacity-50">
+            className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-xs hover:brightness-110 disabled:opacity-50">
             {dryRunLoading ? "Beregner..." : "Kør dry-run-rapport"}
           </button>
         )}
@@ -1295,7 +1295,7 @@ export default function EconomyAdminSection({ getAuth, onMsg }) {
       <div className="flex flex-wrap gap-1 mb-4 border-b border-cz-border pb-2">
         {SUB_TABS.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+            className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all
               ${tab === t.key
                 ? "bg-cz-accent text-cz-on-accent"
                 : "bg-cz-subtle text-cz-2 hover:bg-cz-card"}`}>

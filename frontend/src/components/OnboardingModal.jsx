@@ -74,7 +74,7 @@ export default function OnboardingModal({ onClose }) {
           </Link>
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-cz-accent hover:brightness-110 text-white font-bold rounded-lg text-sm transition-colors"
+            className="px-5 py-2 bg-cz-accent hover:brightness-110 text-white font-bold rounded-cz text-sm transition-colors"
           >
             {t("onboardingModal.dismiss")}
           </button>

@@ -163,7 +163,7 @@ export default function AdminEconomyTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Hold</label>
             <select value={balTeam} onChange={e => setBalTeam(e.target.value)}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg hold...</option>
               {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
             </select>
@@ -172,24 +172,24 @@ export default function AdminEconomyTab() {
             <label className="block text-cz-3 text-xs mb-1">Beløb (positiv = indsæt, negativ = træk)</label>
             <input type="number" value={balAmount} onChange={e => setBalAmount(e.target.value)}
               placeholder="fx 500 eller -200"
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden font-mono" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden font-mono" />
           </div>
           <div>
             <label className="block text-cz-3 text-xs mb-1">Årsag</label>
             <input type="text" value={balReason} onChange={e => setBalReason(e.target.value)}
               placeholder="Beskriv årsag..."
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
           </div>
         </div>
         <button onClick={handleAdjustBalance} disabled={loading.balance || !balTeam || !balAmount}
-          className="mt-3 px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
+          className="mt-3 px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
           {loading.balance ? "Justerer..." : "Juster balance"}
         </button>
       </AdminSection>
 
       <AdminSection title="Lånekonfiguration">
         {loanConfigs.length > 0 && (
-          <div className="overflow-hidden rounded-lg border border-cz-border mb-3">
+          <div className="overflow-hidden rounded-cz border border-cz-border mb-3">
             <table data-sort-exempt="Fast laane-konfiguration, faa raekker" className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
@@ -246,9 +246,9 @@ export default function AdminEconomyTab() {
         {editingLoan && (
           <div className="flex gap-2">
             <button onClick={() => saveLoanConfig(editingLoan)}
-              className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-xs hover:brightness-110">Gem</button>
+              className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-xs hover:brightness-110">Gem</button>
             <button onClick={() => setEditingLoan(null)}
-              className="px-3 py-1.5 bg-cz-subtle text-cz-2 rounded-lg text-xs hover:bg-cz-subtle">Annuller</button>
+              className="px-3 py-1.5 bg-cz-subtle text-cz-2 rounded-cz text-xs hover:bg-cz-subtle">Annuller</button>
           </div>
         )}
       </AdminSection>
@@ -257,26 +257,26 @@ export default function AdminEconomyTab() {
         {auctionConfig && !editingAuctionConfig && (
           <div className="mb-3">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-              <div className="bg-cz-subtle rounded-lg px-3 py-2">
+              <div className="bg-cz-subtle rounded-cz px-3 py-2">
                 <p className="text-cz-3 text-xs mb-0.5">Varighed (aktive timer)</p>
                 <p className="text-cz-1 font-mono font-semibold">{auctionConfig.duration_hours} timer</p>
               </div>
-              <div className="bg-cz-subtle rounded-lg px-3 py-2">
+              <div className="bg-cz-subtle rounded-cz px-3 py-2">
                 <p className="text-cz-3 text-xs mb-0.5">Hverdag aktiv</p>
                 <p className="text-cz-1 font-mono font-semibold">{auctionConfig.weekday_open_hour}:00 – {auctionConfig.weekday_close_hour}:00</p>
               </div>
-              <div className="bg-cz-subtle rounded-lg px-3 py-2">
+              <div className="bg-cz-subtle rounded-cz px-3 py-2">
                 <p className="text-cz-3 text-xs mb-0.5">Weekend aktiv</p>
                 <p className="text-cz-1 font-mono font-semibold">{auctionConfig.weekend_open_hour}:00 – {auctionConfig.weekend_close_hour}:00</p>
               </div>
-              <div className="bg-cz-subtle rounded-lg px-3 py-2">
+              <div className="bg-cz-subtle rounded-cz px-3 py-2">
                 <p className="text-cz-3 text-xs mb-0.5">Forlængelse ved bud</p>
                 <p className="text-cz-1 font-mono font-semibold">{auctionConfig.extension_minutes} min</p>
               </div>
             </div>
             <p className="text-cz-3 text-xs mb-3">Timer uden for det aktive vindue tæller ikke med i varigheden. Bud inden for de sidste {auctionConfig.extension_minutes} minutter forlænger auktionen.</p>
             <button onClick={() => setEditingAuctionConfig({ ...auctionConfig })}
-              className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs hover:text-cz-1 transition-all">
+              className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs hover:text-cz-1 transition-all">
               Rediger regler
             </button>
           </div>
@@ -288,46 +288,46 @@ export default function AdminEconomyTab() {
                 <label className="block text-cz-3 text-xs mb-1">Varighed (aktive timer)</label>
                 <input type="number" min="1" max="72" value={editingAuctionConfig.duration_hours}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, duration_hours: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Hverdag åbner (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekday_open_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekday_open_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Hverdag lukker (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekday_close_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekday_close_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Weekend åbner (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekend_open_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekend_open_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Weekend lukker (time)</label>
                 <input type="number" min="0" max="23" value={editingAuctionConfig.weekend_close_hour}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, weekend_close_hour: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
               <div>
                 <label className="block text-cz-3 text-xs mb-1">Forlængelse (minutter)</label>
                 <input type="number" min="1" max="60" value={editingAuctionConfig.extension_minutes}
                   onChange={e => setEditingAuctionConfig(c => ({ ...c, extension_minutes: parseInt(e.target.value) }))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
+                  className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 font-mono text-sm focus:outline-hidden" />
               </div>
             </div>
             <div className="flex gap-2">
               <button onClick={saveAuctionConfig} disabled={loading.auctionCfg}
-                className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-xs hover:brightness-110 disabled:opacity-50">
+                className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-xs hover:brightness-110 disabled:opacity-50">
                 {loading.auctionCfg ? "Gemmer..." : "Gem"}
               </button>
               <button onClick={() => setEditingAuctionConfig(null)}
-                className="px-3 py-1.5 bg-cz-subtle text-cz-2 rounded-lg text-xs hover:bg-cz-subtle">Annuller</button>
+                className="px-3 py-1.5 bg-cz-subtle text-cz-2 rounded-cz text-xs hover:bg-cz-subtle">Annuller</button>
             </div>
           </div>
         )}
@@ -342,13 +342,13 @@ export default function AdminEconomyTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Sæson</label>
             <select value={prizePayoutSeason} onChange={e => { setPrizePayoutSeason(e.target.value); setPrizePreview(null); setPrizePayResult(null); }}
-              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent">
+              className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent">
               <option value="">Vælg sæson</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
           </div>
           <button onClick={loadPrizePreview} disabled={loading.prize_preview || !prizePayoutSeason}
-            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
+            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
             {loading.prize_preview ? "Henter..." : "Se status"}
           </button>
         </div>
@@ -356,7 +356,7 @@ export default function AdminEconomyTab() {
         {prizePreview && (
           <div className="space-y-4">
             {prizePreview.totals && (
-              <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+              <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
                 <p className="text-cz-2 font-semibold mb-2">Sæson-total (completed-løb)</p>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
@@ -376,7 +376,7 @@ export default function AdminEconomyTab() {
             )}
 
             {prizePreview.team_totals?.length > 0 && (
-              <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+              <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
                 <p className="text-cz-2 font-semibold mb-2">Pr. hold — hvad hvert hold står til at tjene</p>
                 <div className="overflow-x-auto">
                   <table data-sort-exempt="Admin praemie-oversigt; sortering er opfoelgning" className="w-full">
@@ -404,7 +404,7 @@ export default function AdminEconomyTab() {
             )}
 
             {prizePreview.warnings?.length > 0 && (
-              <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-xs space-y-1">
+              <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-cz px-4 py-3 text-xs space-y-1">
                 <p className="text-cz-warning font-semibold">⚠️ Advarsler — {prizePreview.warnings.length} løb</p>
                 {prizePreview.warnings.map(w => (
                   <div key={w.race_id} className="flex justify-between gap-3 text-cz-warning">
@@ -416,7 +416,7 @@ export default function AdminEconomyTab() {
             )}
 
             {prizePreview.pending_payment.length > 0 && (
-              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-4 py-3 text-xs space-y-2">
+              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz px-4 py-3 text-xs space-y-2">
                 <p className="text-cz-accent-t font-semibold">
                   Udestående præmier — {prizePreview.pending_payment.length} løb · i alt {prizePreview.total_pending.toLocaleString("da-DK")} CZ$
                 </p>
@@ -429,13 +429,13 @@ export default function AdminEconomyTab() {
                   ))}
                 </div>
                 <button onClick={handlePayPrizes} disabled={loading.prize_pay}
-                  className="mt-2 px-4 py-2 bg-cz-accent text-white rounded-lg text-sm font-medium hover:bg-cz-accent/80 disabled:opacity-50 transition-all">
+                  className="mt-2 px-4 py-2 bg-cz-accent text-white rounded-cz text-sm font-medium hover:bg-cz-accent/80 disabled:opacity-50 transition-all">
                   {loading.prize_pay ? "Udbetaler..." : `Udbetal ${prizePreview.total_pending.toLocaleString("da-DK")} CZ$ til alle hold`}
                 </button>
               </div>
             )}
             {prizePreview.already_paid.length > 0 && (
-              <div className="bg-cz-success-bg border border-cz-success/30 rounded-lg px-4 py-3 text-xs space-y-1">
+              <div className="bg-cz-success-bg border border-cz-success/30 rounded-cz px-4 py-3 text-xs space-y-1">
                 <p className="text-cz-success font-semibold">Allerede udbetalt — {prizePreview.already_paid.length} løb</p>
                 {prizePreview.already_paid.map(r => {
                   const rec = prizePreview.reconciliation?.find(x => x.race_id === r.race_id);
@@ -463,7 +463,7 @@ export default function AdminEconomyTab() {
         )}
 
         {prizePayResult && (
-          <div className="bg-cz-success-bg border border-cz-success/30 rounded-lg px-4 py-3 text-xs space-y-1">
+          <div className="bg-cz-success-bg border border-cz-success/30 rounded-cz px-4 py-3 text-xs space-y-1">
             <p className="text-cz-success font-semibold">
               Udbetaling gennemført — {prizePayResult.races_paid} løb · {prizePayResult.total_paid.toLocaleString("da-DK")} CZ$
             </p>

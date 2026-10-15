@@ -331,7 +331,7 @@ function NavItem({ to, label, badge, beta, dot, dotLabel, dotLabelUrgent, onClic
   // isActive her, så Link + vores eget aria-current er den ene sandhed.
   return (
     <Link to={to} onClick={onClick} title={title} aria-current={isActive ? "page" : undefined}
-      className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
+      className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-cz text-[13px] transition-all duration-150
         ${isActive
           ? "bg-cz-accent/12 text-cz-accent font-medium cursor-default"
           : "text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover"}`}>
@@ -463,7 +463,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         <button
           type="button"
           onClick={() => { onNav?.(); onOpenFeedback?.(); }}
-          className="group relative flex items-center w-full mx-2 px-3 py-2 rounded-lg text-[13px] text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150"
+          className="group relative flex items-center w-full mx-2 px-3 py-2 rounded-cz text-[13px] text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150"
         >
           <span className="flex items-center gap-2.5 min-w-0">
             <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150" />

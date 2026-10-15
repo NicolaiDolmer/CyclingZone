@@ -268,7 +268,7 @@ export default function AuctionHistoryPage() {
           <>
             <NavLink to="/auctions" end
               className={({ isActive }) =>
-                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                `px-3 py-1.5 rounded-cz text-sm font-medium transition-all border ${
                   isActive
                     ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                     : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -276,7 +276,7 @@ export default function AuctionHistoryPage() {
             </NavLink>
             <NavLink to="/auctions/history"
               className={({ isActive }) =>
-                `px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                `px-3 py-1.5 rounded-cz text-sm font-medium transition-all border ${
                   isActive
                     ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                     : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -309,7 +309,7 @@ export default function AuctionHistoryPage() {
           { key: "sold", label: t("history.filterSold", { count: mySales }) },
         ].map(tab => (
           <button key={tab.key} onClick={() => setFilter(tab.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+            className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
               ${filter === tab.key
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>

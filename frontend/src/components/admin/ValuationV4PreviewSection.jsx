@@ -74,13 +74,13 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
 
   if (notFitted) {
     return (
-      <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
         <p className="text-cz-2">
           v4-modellen er ikke fittet endnu — kør fit-scriptet (<code className="font-mono text-cz-3">backend/scripts/fitRiderValuationV4.js</code>)
           for at generere <code className="font-mono text-cz-3">backend/lib/riderValuationModelV4.json</code>.
         </p>
         <p className="text-cz-3 mt-1">V4 model not fitted yet — run the fit script to generate the model file.</p>
-        <button onClick={load} className="mt-2 px-3 py-1.5 bg-cz-bg text-cz-2 border border-cz-border rounded-lg text-xs hover:text-cz-1">
+        <button onClick={load} className="mt-2 px-3 py-1.5 bg-cz-bg text-cz-2 border border-cz-border rounded-cz text-xs hover:text-cz-1">
           ↻ Prøv igen
         </button>
       </div>
@@ -88,7 +88,7 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
   }
 
   if (!data) return (
-    <button onClick={load} className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs hover:text-cz-1">
+    <button onClick={load} className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs hover:text-cz-1">
       Indlæs forhåndsvisning
     </button>
   );
@@ -101,7 +101,7 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
   return (
     <div className="space-y-4">
       {/* Model-metadata v3 vs v4 + ærlig caveat */}
-      <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
         <p className="text-cz-2 font-semibold mb-2">Model v3 vs v4 (karriere-NPV, sim-produktion · #2428 SHADOW — styrer endnu intet)</p>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -130,7 +130,7 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
       </div>
 
       {/* Type-økonomi */}
-      <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
         <p className="text-cz-2 font-semibold mb-2">Type-økonomi — v3-offset vs v4-fordeling pr. speciale</p>
         <div className="overflow-x-auto">
           <table data-sort-exempt="Fast type-oekonomi-tabel" className="w-full">
@@ -163,7 +163,7 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
       </div>
 
       {/* Fordeling v3 vs v4 */}
-      <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
         <p className="text-cz-2 font-semibold mb-2">Fordeling — {(d.count ?? 0).toLocaleString("da-DK")} ryttere (CZ$)</p>
         <table data-sort-exempt="Fast fordelings-tabel, 2 raekker" className="w-full">
           <thead>
@@ -198,9 +198,9 @@ export default function ValuationV4PreviewSection({ getAuth, onMsg }) {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Søg rytter…"
-          className="w-full sm:w-64 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden mb-2"
+          className="w-full sm:w-64 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden mb-2"
         />
-        <div className="overflow-x-auto rounded-lg border border-cz-border">
+        <div className="overflow-x-auto rounded-cz border border-cz-border">
           <table data-sortable className="w-full text-xs">
             <thead>
               <tr className="border-b border-cz-border text-cz-3">
