@@ -78,7 +78,7 @@ import type {
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { fieldFinaleTypeBehindBreakaway, isBunchCatchRoute } from "../finale.ts";
-import { BREAKAWAY_CHASE_V3_TUNING, BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_CHASE_V3_TUNING, BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, S5_PROFILES_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 import {
   applySmallBreakPullCost,
@@ -347,19 +347,42 @@ function attemptFormation(
 }
 
 /**
- * #6201 (KUN official_times_v3): profilens trin plus revisionens ekstra
- * succes-tillaeg (BREAKAWAY_SIZE_OFFICIAL_V3_EXTRA). Samme objekt ellers.
- */
-/**
  * #6201/#6431: dannelsens trin for etapen. orders_gc_v3/official_times_v2:
  * breakawaySizeProfileV3 (flad: intet). official_times_v3: også flad
  * (breakawaySizeProfileOfficialV3), plus revisionens ekstra tillaeg.
+ * s5_profiles_v1: samme trin, men trængslen er S5's (s5BreakawaySizeProfile).
  */
 function sizeProfileFor(ctx: BreakawayHookContext): BreakawaySizeProfile | null {
   if (ctx.ordersGcV3 !== true) return null;
   const v3 = ctx.sharedGroupTime?.timeModelGeneration === 3;
   const base = v3 ? breakawaySizeProfileOfficialV3(ctx.route.profile_type) : breakawaySizeProfileV3(ctx.route.profile_type);
-  return base ? officialTimesV3SizeProfile(base, ctx) : null;
+  if (!base) return null;
+  const sized = officialTimesV3SizeProfile(base, ctx);
+  return ctx.s5ProfilesV1 === true ? s5BreakawaySizeProfile(sized) : sized;
+}
+
+/**
+ * #6201 (KUN s5_profiles_v1, ejer 5/10 udbrudstrappen): et overfyldt forsoeg
+ * giver et udbrud omkring profilens plads, uanset hvor mange der forsoeger
+ * (S5_PROFILES_TUNING.breakawaySize). Under de aeldre revisioner voksede
+ * udbruddet med antallet af forsoeg, saa bjergudbruddet i et felt med mange
+ * AI-hold laa over trappen. Pladsen, loftet, tillaegget og "ingen fyldning"
+ * er uaendrede. Eksporteret for kontrakt-tests.
+ */
+export function s5BreakawaySizeProfile(size: BreakawaySizeProfile): BreakawaySizeProfile {
+  return { ...size, roomCrowdWeight: S5_PROFILES_TUNING.breakawaySize.roomCrowdWeight };
+}
+
+/**
+ * #6201 R3 (official_times_v3 og senere): et farligt forsoeg fylder ikke i
+ * traengslen for de andre. KUN s5_profiles_v1 paa bjerg og hoejfjeld taeller
+ * det med igen: i et taet klassement er mange forsoeg farlige, og uden dem i
+ * traengslen gik bjergudbruddet til loftet. Den haarde modstand mod netop den
+ * farlige rytter er uaendret. Eksporteret for kontrakt-tests.
+ */
+export function dangerousAttemptOutsideRoom(ctx: Pick<BreakawayHookContext, "sharedGroupTime" | "s5ProfilesV1" | "route">): boolean {
+  if (ctx.sharedGroupTime?.timeModelGeneration !== 3) return false;
+  return !(ctx.s5ProfilesV1 === true && S5_PROFILES_TUNING.breakawaySize.dangerousInRoomProfiles.includes(ctx.route.profile_type));
 }
 
 function officialTimesV3SizeProfile(size: BreakawaySizeProfile, ctx: BreakawayHookContext): BreakawaySizeProfile {
@@ -424,8 +447,8 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     // #5578 robust (KUN official_times_v2): klassementets forreste moeder den haardeste modstand.
     ...(dangerTeams && gcContext ? rankedFormationPressure(gcContext, timeModelTuningFor(ctx).gcDanger) : {}),
     ...(sizeProfileFor(ctx) ? { sizeProfile: sizeProfileFor(ctx)! } : {}), // #6201/#6431
-    // #6201 R3 (KUN official_times_v3): et farligt forsoeg fylder ikke i traengslen.
-    ...(ctx.sharedGroupTime?.timeModelGeneration === 3 ? { dangerousOutsideRoom: true } : {}),
+    // #6201 R3 (KUN official_times_v3): et farligt forsoeg fylder ikke i traengslen (S5 bjerg: jo).
+    ...(dangerousAttemptOutsideRoom(ctx) ? { dangerousOutsideRoom: true } : {}),
   });
   if (formation.attempted.length === 0) return { state, events };
 
