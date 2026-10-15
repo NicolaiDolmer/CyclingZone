@@ -65,6 +65,7 @@
     "noWinner": "Ingen vinder registreret",
     "noRoute": "Ruten er ikke registreret",
     "allEditions": "Alle {count} udgaver",
+    "firstEdition": "Første udgave",
     "th": {
       "race": "Løb",
       "champion": "Forsvarende mester",
@@ -73,7 +74,7 @@
       "bestShort": "Bedste",
       "decided": "Afgøres typisk i",
       "decidedShort": "Afgøres i",
-      "winners": "Vindere pr. sæson"
+      "winners": "Tidligere vindere"
     },
     "group": {
       "high_mountain": "højbjerg",

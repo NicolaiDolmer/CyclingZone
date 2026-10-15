@@ -30,6 +30,12 @@ function chunks(list) {
   return out;
 }
 
+// "Jonas Riedel" -> "J. Riedel": tre tidligere vindere skal kunne stå på én linje.
+function shortName(name) {
+  const parts = String(name).trim().split(/\s+/);
+  return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(" ")}` : String(name);
+}
+
 async function readChunked(ids, build) {
   const out = [];
   for (const part of chunks(ids)) {
@@ -201,10 +207,9 @@ export default function RaceHistoryLibrary() {
       header: t("raceHistory.th.decided"),
       mobileHeader: t("raceHistory.th.decidedShort"),
       render: (r) => (r.decided.length ? (
-        <span className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[13px]">
-          {r.decided.map((d, i) => (
-            <span key={d.group} className="inline-flex items-center gap-1">
-              {i > 0 && <span className="text-cz-3" aria-hidden="true">+</span>}
+        <span className="block space-y-0.5 text-[13px]">
+          {r.decided.map((d) => (
+            <span key={d.group} className="flex items-center gap-1.5">
               <span aria-hidden="true" className="h-2 w-2 shrink-0" style={{ backgroundColor: groupColor(d.group) }} />
               <span>
                 {t(`raceHistory.group.${d.group}`)}
@@ -216,28 +221,32 @@ export default function RaceHistoryLibrary() {
       ) : <span className="text-cz-3">{t("raceHistory.noRoute")}</span>),
     },
     {
+      // Vindere pr. sæson: den nyeste udgave står allerede som forsvarende
+      // mester, så her står de tidligere (intet navn to gange i samme række).
       key: "winners",
       header: t("raceHistory.th.winners"),
-      render: (r) => (
-        <ul className="m-0 list-none space-y-0.5 p-0">
-          {r.editions.slice(0, 4).map((ed) => (
-            <li key={ed.raceId} className="flex items-baseline gap-2">
-              <span className="w-7 shrink-0 font-data text-3xs uppercase tracking-[.04em] text-cz-3 tabular-nums">{seasonTag(ed.season)}</span>
-              <Link to={`/races/${ed.raceId}`} className="min-w-0 truncate text-cz-2 hover:text-cz-accent-t">
-                {ed.winner?.name ?? t("raceHistory.noWinner")}
-              </Link>
-            </li>
-          ))}
-          {r.editions.length > 4 && (
-            <li>
+      render: (r) => {
+        const earlier = r.editions.slice(1);
+        if (!earlier.length) return <span className="text-cz-3">{t("raceHistory.firstEdition")}</span>;
+        return (
+          <span className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[13px]">
+            {earlier.slice(0, 3).map((ed) => (
+              <span key={ed.raceId} className="inline-flex items-baseline gap-1">
+                <span className="font-data text-3xs uppercase tracking-[.04em] text-cz-3 tabular-nums">{seasonTag(ed.season)}</span>
+                <Link to={`/races/${ed.raceId}`} className="text-cz-2 hover:text-cz-accent-t">
+                  {ed.winner?.name ? shortName(ed.winner.name) : t("raceHistory.noWinner")}
+                </Link>
+              </span>
+            ))}
+            {earlier.length > 3 && (
               <Link to={`/race-archive/${encodeURIComponent(r.name)}`} className="inline-flex items-center gap-0.5 text-2xs text-cz-accent-t hover:underline">
                 {t("raceHistory.allEditions", { count: r.editions.length })}
                 <ChevronRightIcon size={12} aria-hidden="true" />
               </Link>
-            </li>
-          )}
-        </ul>
-      ),
+            )}
+          </span>
+        );
+      },
     },
   ];
 
@@ -299,6 +308,7 @@ export default function RaceHistoryLibrary() {
             rows={pg.rows}
             columns={columns}
             mobileDefaults={["champion", "best", "decided"]}
+            dense
             empty={emptyNode}
           />
           {pg.total > 0 && (
