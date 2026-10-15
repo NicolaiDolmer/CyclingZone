@@ -1,9 +1,9 @@
 // #6514 · Løbskortet i Planlægning → Kalender (bag race_library_v2).
 //
-// Ejer-beslutning 15/10: klik/hold på et løb åbner et lille kort med
-// etapestrimmel (farve pr. profile_type, INGEN samlet km), hvad løbet afgøres
-// i, "passer til holdet" 0-100 + bedste bud, min status og én guld-knap til
-// udtagelsen. "Åbn løbet" fører til løbssiden som i dag. Kalenderens visning er
+// Ejer-beslutning 15/10: klik/hold på et løb åbner et lille kort med løbets
+// terræn (TerrainTypeGlyph, én pr. type, højst 3, hårdeste først, INGEN samlet
+// km; ejer 14:06/14:43 erstattede etapestrimlen og "Afgøres i"), "passer til
+// holdet" 0-100 + bedste bud, min status og én guld-knap til udtagelsen. "Åbn løbet" fører til løbssiden som i dag. Kalenderens visning er
 // ellers uændret.
 //
 // Kortet er UI-kittets Modal (PAGE_TEMPLATES: ingen ny dialog-markup). Al
@@ -13,12 +13,13 @@ import { Link } from "react-router";
 import { supabase, authHeaders } from "../../lib/supabase.ts";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import {
-  stripSegments, decidedIn, groupColor, bucketGroup, raceDateRange, teamFit, selectionHref,
-  type CalendarEntryLike, type FitRider, type RaceStatus, type StripSegment, type StageProfileLike,
+  raceTerrain, bucketProfileType, raceDateRange, teamFit, selectionHref,
+  type CalendarEntryLike, type FitRider, type RaceStatus, type RaceTerrain, type StageProfileLike,
 } from "../../lib/racePeek.ts";
+import RaceTerrainGlyphs from "../race/RaceTerrainGlyphs.tsx";
 import ModalBase from "../ui/Modal.jsx";
 import StatusBadgeBase from "../ui/StatusBadge.jsx";
-import SkeletonBase, { SkeletonLines as SkeletonLinesBase } from "../ui/Skeleton.jsx";
+import SkeletonBase from "../ui/Skeleton.jsx";
 import { buttonClass } from "../ui/buttonStyles.js";
 
 // Primitiverne i components/ui er stadig .jsx uden typer (samme greb som
@@ -37,7 +38,6 @@ interface ModalProps {
 const Modal = ModalBase as unknown as ComponentType<ModalProps>;
 const StatusBadge = StatusBadgeBase as unknown as ComponentType<{ state: string; children?: ReactNode }>;
 const Skeleton = SkeletonBase as unknown as ComponentType<{ className?: string }>;
-const SkeletonLines = SkeletonLinesBase as unknown as ComponentType<{ lines?: number }>;
 
 type Translate = (key: string, opts?: Record<string, unknown>) => string;
 
@@ -110,17 +110,15 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
     return () => { alive = false; };
   }, [raceId, mine, seasonNumber]);
 
-  // Strimlen: race_stage_profiles; mangler de, falder kortet tilbage til
+  // Terræn: race_stage_profiles; mangler de, falder kortet tilbage til
   // kalenderens egen terræn-bucket pr. etape (aldrig et tomt kort).
-  const segments = useMemo<StripSegment[]>(() => {
+  const terrain = useMemo<RaceTerrain[]>(() => {
     if (!entry) return [];
-    if (profiles && profiles.length) return stripSegments(profiles);
-    const sched = (entry.stageSchedule || []).slice().sort((a, b) => a.stage - b.stage);
-    if (sched.length) return sched.map((s) => ({ stage: s.stage, profileType: null, group: bucketGroup(s.terrain) }));
-    return entry.terrain ? [{ stage: 1, profileType: null, group: bucketGroup(entry.terrain) }] : [];
+    if (profiles && profiles.length) return raceTerrain(profiles.map((p) => p.profile_type));
+    const sched = entry.stageSchedule || [];
+    if (sched.length) return raceTerrain(sched.map((s) => bucketProfileType(s.terrain)));
+    return entry.terrain ? raceTerrain([bucketProfileType(entry.terrain)]) : [];
   }, [entry, profiles]);
-
-  const decided = useMemo(() => decidedIn(segments.map((s) => s.group)), [segments]);
 
   const fit = useMemo(() => {
     if (!fitData || !raceId) return null;
@@ -141,8 +139,6 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
 
   const raceHref = `/races/${entry.id}`;
   const canPick = mine && (status === "missing" || status === "selected" || status === "gtBound");
-  const stripLabel = segments.map((s) => t("peek.stageItem", { n: s.stage, type: t(`peek.group.${s.group}`) })).join(", ");
-  const showCount = segments.length > 1;
 
   return (
     <Modal
@@ -166,34 +162,16 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
       )}
     >
       <div className="space-y-4" data-testid="race-peek-card">
-        {profiles === null ? (
-          <SkeletonLines lines={1} />
-        ) : (
-          <div role="img" aria-label={t("peek.stripAria", { list: stripLabel })} className="flex h-2.5 gap-px" data-testid="race-peek-strip">
-            {segments.map((s) => (
-              <span key={s.stage} className="min-w-0 flex-1" style={{ backgroundColor: groupColor(s.group) }}
-                title={t("peek.stageItem", { n: s.stage, type: t(`peek.group.${s.group}`) })} />
-            ))}
-          </div>
-        )}
-
         <dl className="divide-y divide-cz-border text-[13px]">
-          <Row label={t("peek.decidedIn")}>
-            {profiles === null ? <Skeleton className="ms-auto h-3 w-20" /> : decided.length === 0 ? (
+          <Row label={t("peek.terrain")}>
+            {profiles === null ? <Skeleton className="ms-auto h-3 w-20" /> : terrain.length === 0 ? (
               <span className="text-cz-3">{t("peek.noProfile")}</span>
             ) : (
-              <span className="inline-flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
-                {decided.map((d, i) => (
-                  <span key={d.group} className="inline-flex items-center gap-1.5">
-                    {i > 0 && <span className="text-cz-3" aria-hidden="true">+</span>}
-                    <span aria-hidden="true" className="h-2 w-2 shrink-0" style={{ backgroundColor: groupColor(d.group) }} />
-                    <span className="text-cz-1">
-                      {t(`peek.group.${d.group}`)}
-                      {showCount && <span className="font-data tabular-nums text-cz-2"> ({d.count})</span>}
-                    </span>
-                  </span>
-                ))}
-              </span>
+              <RaceTerrainGlyphs
+                terrain={terrain}
+                label={(x) => t("peek.terrainCount", { type: t(`terrain.${x.kind}`), count: x.count })}
+                testId="race-peek-terrain"
+              />
             )}
           </Row>
           {mine && (

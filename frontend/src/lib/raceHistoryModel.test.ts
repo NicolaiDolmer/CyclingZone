@@ -64,15 +64,19 @@ test("#6514 buildRaceHistory: dit bedste = laveste placering i den endelige stil
   assert.equal(omloop.myBest, null);
 });
 
-test("#6514 buildRaceHistory: typisk afgørelse fra nyeste udgave med rute", () => {
+test("#6514 buildRaceHistory: terræn fra nyeste udgave med rute, hårdeste først", () => {
   const profiles = [
     { race_id: "g2", stage_number: 1, profile_type: "flat" },
     { race_id: "g2", stage_number: 2, profile_type: "high_mountain" },
     { race_id: "g2", stage_number: 3, profile_type: "itt" },
   ];
   const giro = pick(buildRaceHistory({ races: RACES, winnerRows: WINNERS, profiles }), "Giro");
-  assert.deepEqual(giro.decided, [{ group: "high_mountain", count: 1 }, { group: "itt", count: 1 }]);
-  assert.equal(giro.decidedStageCount, 3);
+  assert.deepEqual(giro.terrain, [
+    { kind: "mountain", profileType: "high_mountain", count: 1 },
+    { kind: "itt", profileType: "itt", count: 1 },
+    { kind: "sprint", profileType: "flat", count: 1 },
+  ]);
+  assert.deepEqual(pick(buildRaceHistory({ races: RACES, winnerRows: WINNERS }), "Omloop").terrain, []);
 });
 
 test("#6514 defendingChampion: ingen vinder i nyeste udgave = ingen mester (aldrig en ældre)", () => {

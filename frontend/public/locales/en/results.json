@@ -72,21 +72,8 @@
       "championShort": "Champion",
       "best": "Your best",
       "bestShort": "Best",
-      "decided": "Usually decided in",
-      "decidedShort": "Decided in",
+      "terrain": "Terrain",
       "winners": "Earlier winners"
-    },
-    "group": {
-      "high_mountain": "high mountains",
-      "mountain": "mountains",
-      "medium_mountain": "medium mountains",
-      "itt": "time trial",
-      "ttt": "team time trial",
-      "cobbles": "cobbles",
-      "gravel": "gravel",
-      "hilly": "hills",
-      "rolling": "rolling roads",
-      "flat": "flat roads"
     },
     "empty": {
       "title": "Pick another division",

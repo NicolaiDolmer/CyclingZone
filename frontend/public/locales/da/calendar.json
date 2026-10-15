@@ -80,7 +80,7 @@
   "peek": {
     "stages": "{count, plural, one {# etape} other {# etaper}}",
     "oneDay": "Endagsløb",
-    "decidedIn": "Afgøres i",
+    "terrain": "Terræn",
     "noProfile": "Ruten er ikke offentliggjort endnu",
     "teamFit": "Passer til holdet",
     "bestBet": "Bedste bud: {name} ({score})",
@@ -94,19 +94,6 @@
     "pick": "Udtag hold",
     "editSquad": "Ret udtagelse",
     "openRace": "Åbn løbet",
-    "stripAria": "Etaper: {list}",
-    "stageItem": "etape {n} {type}",
-    "group": {
-      "high_mountain": "højbjerg",
-      "mountain": "bjerge",
-      "medium_mountain": "mellembjerge",
-      "itt": "enkeltstart",
-      "ttt": "holdtidskørsel",
-      "cobbles": "brosten",
-      "gravel": "grus",
-      "hilly": "bakker",
-      "rolling": "bølget terræn",
-      "flat": "fladt terræn"
-    }
+    "terrainCount": "{type} ×{count}"
   }
 }

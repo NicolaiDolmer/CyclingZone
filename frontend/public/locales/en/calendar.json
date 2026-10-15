@@ -80,7 +80,7 @@
   "peek": {
     "stages": "{count, plural, one {# stage} other {# stages}}",
     "oneDay": "One-day race",
-    "decidedIn": "Decided in",
+    "terrain": "Terrain",
     "noProfile": "Route not published yet",
     "teamFit": "Team fit",
     "bestBet": "Best bet: {name} ({score})",
@@ -94,19 +94,6 @@
     "pick": "Pick squad",
     "editSquad": "Edit squad",
     "openRace": "Open race",
-    "stripAria": "Stages: {list}",
-    "stageItem": "stage {n} {type}",
-    "group": {
-      "high_mountain": "high mountains",
-      "mountain": "mountains",
-      "medium_mountain": "medium mountains",
-      "itt": "time trial",
-      "ttt": "team time trial",
-      "cobbles": "cobbles",
-      "gravel": "gravel",
-      "hilly": "hills",
-      "rolling": "rolling roads",
-      "flat": "flat roads"
-    }
+    "terrainCount": "{type} ×{count}"
   }
 }

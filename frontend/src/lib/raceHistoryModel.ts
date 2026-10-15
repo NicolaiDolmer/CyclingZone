@@ -2,7 +2,8 @@
 // React/IO, så `node --test` kan loade den.
 //
 // Ejer-beslutning 15/10: kun afsluttede løb; pr. løb vindere pr. sæson, dit
-// bedste resultat, forsvarende mester og typisk afgørelse. Ingen km. Søgning og
+// bedste resultat, forsvarende mester og terræn (ejer 14:06: "Afgøres i" udgår,
+// terrænkolonnen dækker den; samme terrænsprog som kalenderens løbskort). Ingen km. Søgning og
 // paginering genbruger idéerne fra codex/6514-loebsbibliotek (PR #6636):
 // accent-uafhængig navnesøgning og faste sider.
 //
@@ -12,7 +13,7 @@
 //   - etapeløb:  result_type "gc" ved løbets sidste etape (højeste stage_number),
 //     samme regel som løbssiden ("endeligt klassement = højeste etape-nummer").
 
-import { decidedIn, profileGroup, type DecidedGroup, type PeekGroup } from "./racePeek.ts";
+import { raceTerrain, type RaceTerrain } from "./racePeek.ts";
 
 export interface HistoryRace {
   id: string;
@@ -44,8 +45,7 @@ export interface HistoryRow {
   latestSeason: number | null;
   editions: Edition[];
   myBest: { rank: number; season: number | null; raceId: string } | null;
-  decided: DecidedGroup[];
-  decidedStageCount: number;
+  terrain: RaceTerrain[];
   champion: Champion | null;
 }
 
@@ -134,13 +134,9 @@ export function buildRaceHistory({ races = [], winnerRows = [], myRows = [], pro
       if (!myBest || ed.myRank < myBest.rank) myBest = { rank: ed.myRank, season: ed.season, raceId: ed.raceId };
     }
 
-    // Typisk afgørelse: den nyeste udgave med en offentliggjort rute.
+    // Terræn: den nyeste udgave med en offentliggjort rute.
     const withProfiles = editions.find((r) => (profilesByRace.get(r.id) || []).length > 0);
-    const groups: PeekGroup[] = withProfiles
-      ? (profilesByRace.get(withProfiles.id) || [])
-        .slice().sort((a, b) => (a.stage_number ?? 0) - (b.stage_number ?? 0))
-        .map((p) => profileGroup(p.profile_type))
-      : [];
+    const profileTypes = withProfiles ? (profilesByRace.get(withProfiles.id) || []).map((p) => p.profile_type) : [];
 
     const row: HistoryRow = {
       key,
@@ -151,8 +147,7 @@ export function buildRaceHistory({ races = [], winnerRows = [], myRows = [], pro
       latestSeason: latest.season_number ?? null,
       editions: eds,
       myBest,
-      decided: decidedIn(groups),
-      decidedStageCount: groups.length,
+      terrain: raceTerrain(profileTypes),
       champion: null,
     };
     row.champion = defendingChampion(row);

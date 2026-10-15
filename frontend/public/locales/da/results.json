@@ -72,21 +72,8 @@
       "championShort": "Mester",
       "best": "Dit bedste",
       "bestShort": "Bedste",
-      "decided": "Afgøres typisk i",
-      "decidedShort": "Afgøres i",
+      "terrain": "Terræn",
       "winners": "Tidligere vindere"
-    },
-    "group": {
-      "high_mountain": "højbjerg",
-      "mountain": "bjerge",
-      "medium_mountain": "mellembjerge",
-      "itt": "enkeltstart",
-      "ttt": "holdtidskørsel",
-      "cobbles": "brosten",
-      "gravel": "grus",
-      "hilly": "bakker",
-      "rolling": "bølget terræn",
-      "flat": "fladt terræn"
     },
     "empty": {
       "title": "Vælg en anden division",

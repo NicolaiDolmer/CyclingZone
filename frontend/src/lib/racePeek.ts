@@ -1,19 +1,17 @@
 // #6514 · Kalenderens løbskort (klik/hold på et løb) og Løbshistorikkens
-// "typisk afgørelse". Ren logik uden React, så `node --test` kan loade den.
+// terrænkolonne. Ren logik uden React, så `node --test` kan loade den.
 //
-// Ejer-beslutning 15/10 (#6514): kortet viser en etapestrimmel (farve pr.
-// profile_type) i stedet for km, hvad løbet afgøres i, "passer til holdet"
-// 0-100 + bedste bud, min status og én knap til udtagelsen. Status-prikken på
-// kalenderfeltet bruger samme status-regel, så kort og prik aldrig er uenige.
+// Ejer-beslutning 15/10 (#6514): kortet viser løbets terræn (TerrainTypeGlyph,
+// én pr. type, ingen km), "passer til holdet" 0-100 + bedste bud, min status og
+// én knap til udtagelsen. Status-prikken på kalenderfeltet bruger samme
+// status-regel, så kort og prik aldrig er uenige.
 //
 // Intet her opfinder data: alt regnes fra race_stage_profiles, kalenderens
 // eget svar og sæsonmatrixens trup/rute-match (GET /api/races/selection/season).
 
 import { riderSuitability } from "./suitability.js";
 
-export type PeekGroup =
-  | "high_mountain" | "mountain" | "medium_mountain" | "itt" | "ttt"
-  | "cobbles" | "gravel" | "hilly" | "rolling" | "flat";
+export type TerrainKind = "mountain" | "itt" | "ttt" | "cobbles" | "hilly" | "sprint";
 
 export type RaceStatus = "selected" | "gtBound" | "missing";
 
@@ -29,8 +27,8 @@ export interface CalendarEntryLike {
 }
 
 export interface StageProfileLike { stage_number: number | string | null; profile_type?: string | null }
-export interface StripSegment { stage: number; profileType: string | null; group: PeekGroup }
-export interface DecidedGroup { group: PeekGroup; count: number }
+/** Én terræntype i et løb: kalender-kategorien, profile_type'en glyffen tegnes med, og antal etaper. */
+export interface RaceTerrain { kind: TerrainKind; profileType: string; count: number }
 export interface DateRange { start: string; end: string }
 
 export interface FitRider {
@@ -42,89 +40,75 @@ export interface FitRider {
 }
 export interface TeamFit { score: number; best: { id: string; name: string; score: number }; counted: number }
 
-// ── Terrængrupper ─────────────────────────────────────────────────────────────
-// profile_type → den gruppe kortet taler om. Tidskørsel og kuperet tidskørsel er
-// ét "enkeltstart"; klassiker læses som kuperet (blandet terræn med korte stik,
-// stageProfileConfig.js). Ukendt type → flat (samme fallback som silhuetterne).
-const GROUP_BY_PROFILE: Readonly<Record<string, PeekGroup>> = Object.freeze({
-  flat: "flat",
-  rolling: "rolling",
-  hilly: "hilly",
-  classic: "hilly",
-  medium_mountain: "medium_mountain",
+// ── Terræn ───────────────────────────────────────────────────────────────────
+// Ejer 15/10 (#6514, 14:06 + 14:43): ingen etapestrimmel og ingen "Afgøres i".
+// Terræn vises med den nuværende TerrainTypeGlyph, hver type én gang pr. løb,
+// højst 3, den hårdeste først (bjerg, enkeltstart, brosten, kuperet, sprint).
+// Antallet står kun i tooltip. "Type" er kalenderens egne kategorier
+// (calendar.json terrain.*), så kort, kalenderchip og legende taler samme sprog.
+// #6683 skifter ikonerne ud i TerrainTypeGlyph, ét sted for alle.
+export const TERRAIN_KINDS: readonly TerrainKind[] = Object.freeze(["mountain", "itt", "ttt", "cobbles", "hilly", "sprint"]);
+
+// profile_type → kalender-kategori. Ukendt type → sprint (samme fallback som
+// lib/terrainBucket.ts's toTerrainBucket).
+const KIND_BY_PROFILE: Readonly<Record<string, TerrainKind>> = Object.freeze({
+  high_mountain: "mountain",
   mountain: "mountain",
-  high_mountain: "high_mountain",
+  medium_mountain: "mountain",
   itt: "itt",
   itt_hilly: "itt",
   ttt: "ttt",
   cobbles: "cobbles",
-  gravel: "gravel",
+  gravel: "cobbles",
+  hilly: "hilly",
+  classic: "hilly",
+  rolling: "sprint",
+  flat: "sprint",
 });
 
-export const PEEK_GROUPS: readonly PeekGroup[] = Object.freeze([
-  "high_mountain", "mountain", "medium_mountain", "itt", "ttt", "cobbles", "gravel", "hilly", "rolling", "flat",
-]);
-
-// De grupper der AFGØR et løb (samlet eller på dagen). Rækkefølgen er visnings-
-// rækkefølgen: de hårdeste bjerge først, så tidskørsel, så underlag.
-const DECIDING_GROUPS: readonly PeekGroup[] = Object.freeze(["high_mountain", "mountain", "medium_mountain", "itt", "ttt", "cobbles", "gravel"]);
-// Uden nogen af dem afgøres løbet af det terræn der er mest af.
-const FALLBACK_GROUPS: readonly PeekGroup[] = Object.freeze(["hilly", "rolling", "flat"]);
-
-export function profileGroup(profileType: string | null | undefined): PeekGroup {
-  return (profileType && GROUP_BY_PROFILE[profileType]) || "flat";
-}
-
-// Kalenderens wire-svar bærer kun terræn-bucketen pr. etape (raceCalendar.js).
-// Bruges når profilerne ikke kan hentes, så kortet aldrig står tomt.
-const GROUP_BY_BUCKET: Readonly<Record<string, PeekGroup>> = Object.freeze({ sprint: "flat", cobbles: "cobbles", hilly: "hilly", mountain: "mountain", itt: "itt", ttt: "ttt" });
-export function bucketGroup(bucket: string | null | undefined): PeekGroup {
-  return (bucket && GROUP_BY_BUCKET[bucket]) || "flat";
-}
-
-// Farve pr. gruppe: appens kategoriske chart-tokens (index.css, --cz-chart-N),
-// aldrig rå hex og aldrig guld (guld er rationeret, TASTE P3).
-const GROUP_TOKEN: Readonly<Record<PeekGroup, number>> = Object.freeze({
-  flat: 3, // grøn
-  rolling: 6, // cyan
-  hilly: 4, // rav
-  medium_mountain: 7, // pink
-  mountain: 5, // rød
-  high_mountain: 2, // violet
-  itt: 1, // blå
-  ttt: 1,
-  cobbles: 9, // skifer
-  gravel: 9,
+// Kalenderens wire-svar bærer kun kategorien pr. etape (raceCalendar.js). Bruges
+// når profilerne ikke kan hentes, så kortet aldrig står tomt.
+const PROFILE_BY_BUCKET: Readonly<Record<TerrainKind, string>> = Object.freeze({
+  mountain: "mountain", itt: "itt", ttt: "ttt", cobbles: "cobbles", hilly: "hilly", sprint: "flat",
 });
-export function groupColor(group: PeekGroup): string {
-  return `rgb(var(--cz-chart-${GROUP_TOKEN[group] ?? 9}))`;
+
+export function terrainKind(profileType: string | null | undefined): TerrainKind {
+  return (profileType && KIND_BY_PROFILE[profileType]) || "sprint";
 }
 
-/** Etapestrimlen: én blok pr. etape, sorteret på etapenummer. */
-export function stripSegments(profiles: readonly StageProfileLike[] | null | undefined = []): StripSegment[] {
-  return (profiles || [])
-    .filter((p) => p && Number.isFinite(Number(p.stage_number)))
-    .slice()
-    .sort((a, b) => Number(a.stage_number) - Number(b.stage_number))
-    .map((p) => ({ stage: Number(p.stage_number), profileType: p.profile_type ?? null, group: profileGroup(p.profile_type) }));
+/** Kalender-bucket (sprint/cobbles/hilly/mountain/itt/ttt) → profile_type til glyffen. */
+export function bucketProfileType(bucket: string | null | undefined): string {
+  return (bucket && PROFILE_BY_BUCKET[bucket as TerrainKind]) || "flat";
 }
 
 /**
- * "Afgøres i": de afgørende grupper med antal etaper, hårdeste først.
- * Fx [{group:"high_mountain",count:4},{group:"itt",count:2}].
- * Uden bjerg/tidskørsel/underlag: den mest udbredte af kuperet/bølget/fladt.
+ * Løbets terræn: hver kategori én gang, hårdeste først, højst `max`.
+ * profileType = kategoriens hyppigste profile_type (glyffen); count = etaper.
+ * Fx 4 højbjerg + 2 enkeltstart + 3 flade → mountain ×4, itt ×2, sprint ×3.
  */
-export function decidedIn(groups: readonly PeekGroup[] = [], { max = 2 }: { max?: number } = {}): DecidedGroup[] {
-  const counts = new Map<PeekGroup, number>();
-  for (const g of groups || []) counts.set(g, (counts.get(g) || 0) + 1);
-  const deciding = DECIDING_GROUPS.filter((g) => counts.has(g)).map((g) => ({ group: g, count: counts.get(g) ?? 0 }));
-  if (deciding.length) return deciding.slice(0, max);
-  let best: DecidedGroup | null = null;
-  for (const g of FALLBACK_GROUPS) {
-    const c = counts.get(g) || 0;
-    if (c > 0 && (!best || c > best.count)) best = { group: g, count: c };
+export function raceTerrain(profileTypes: ReadonlyArray<string | null | undefined> = [], { max = 3 }: { max?: number } = {}): RaceTerrain[] {
+  const byKind = new Map<TerrainKind, Map<string, number>>();
+  for (const raw of profileTypes || []) {
+    const pt = raw && KIND_BY_PROFILE[raw] ? raw : "flat";
+    const kind = terrainKind(pt);
+    const types = byKind.get(kind) ?? new Map<string, number>();
+    types.set(pt, (types.get(pt) || 0) + 1);
+    byKind.set(kind, types);
   }
-  return best ? [best] : [];
+  const out: RaceTerrain[] = [];
+  for (const kind of TERRAIN_KINDS) {
+    const types = byKind.get(kind);
+    if (!types) continue;
+    let profileType = "";
+    let top = 0;
+    let count = 0;
+    for (const [pt, n] of types) {
+      count += n;
+      if (n > top) { top = n; profileType = pt; }
+    }
+    out.push({ kind, profileType, count });
+  }
+  return out.slice(0, max);
 }
 
 // ── Datoer ───────────────────────────────────────────────────────────────────

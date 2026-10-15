@@ -1,56 +1,48 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  profileGroup, bucketGroup, groupColor, stripSegments, decidedIn, raceDateRange,
-  isGrandTour, myRaceStatus, teamFit, selectionDayOrdinal, selectionHref, PEEK_GROUPS,
-  type PeekGroup,
+  terrainKind, bucketProfileType, raceTerrain, TERRAIN_KINDS, raceDateRange,
+  isGrandTour, myRaceStatus, teamFit, selectionDayOrdinal, selectionHref,
 } from "./racePeek.ts";
 
-test("#6514 profileGroup: tidskørsler samles, klassiker er kuperet, ukendt er fladt", () => {
-  assert.equal(profileGroup("itt"), "itt");
-  assert.equal(profileGroup("itt_hilly"), "itt");
-  assert.equal(profileGroup("classic"), "hilly");
-  assert.equal(profileGroup("medium_mountain"), "medium_mountain");
-  assert.equal(profileGroup("nope"), "flat");
-  assert.equal(profileGroup(undefined), "flat");
+test("#6514 terrainKind: kalenderens kategorier, ukendt er sprint", () => {
+  assert.equal(terrainKind("high_mountain"), "mountain");
+  assert.equal(terrainKind("medium_mountain"), "mountain");
+  assert.equal(terrainKind("itt_hilly"), "itt");
+  assert.equal(terrainKind("gravel"), "cobbles");
+  assert.equal(terrainKind("classic"), "hilly");
+  assert.equal(terrainKind("rolling"), "sprint");
+  assert.equal(terrainKind("nope"), "sprint");
+  assert.equal(terrainKind(undefined), "sprint");
 });
 
-test("#6514 bucketGroup: kalenderens buckets peger på de samme grupper", () => {
-  assert.equal(bucketGroup("sprint"), "flat");
-  assert.equal(bucketGroup("mountain"), "mountain");
-  assert.equal(bucketGroup("itt"), "itt");
-  assert.equal(bucketGroup("weird"), "flat");
+test("#6514 bucketProfileType: kalender-bucket til glyffens profile_type", () => {
+  assert.equal(bucketProfileType("sprint"), "flat");
+  assert.equal(bucketProfileType("mountain"), "mountain");
+  assert.equal(bucketProfileType("ttt"), "ttt");
+  assert.equal(bucketProfileType("weird"), "flat");
 });
 
-test("#6514 groupColor: kun chart-tokens, aldrig rå hex eller guld", () => {
-  for (const g of PEEK_GROUPS) {
-    assert.match(groupColor(g), /^rgb\(var\(--cz-chart-\d\)\)$/, g);
-  }
-});
-
-test("#6514 stripSegments: sorteret på etapenummer, én blok pr. etape", () => {
-  const segs = stripSegments([
-    { stage_number: 3, profile_type: "itt" },
-    { stage_number: 1, profile_type: "flat" },
-    { stage_number: 2, profile_type: "high_mountain" },
+test("#6514 raceTerrain: hver type én gang, hårdeste først, antal kun som tal (ejer 14:06/14:43)", () => {
+  const types = ["flat", "high_mountain", "itt", "high_mountain", "flat", "high_mountain", "itt", "high_mountain", "hilly"];
+  assert.deepEqual(raceTerrain(types), [
+    { kind: "mountain", profileType: "high_mountain", count: 4 },
+    { kind: "itt", profileType: "itt", count: 2 },
+    { kind: "hilly", profileType: "hilly", count: 1 },
   ]);
-  assert.deepEqual(segs.map((s) => s.stage), [1, 2, 3]);
-  assert.deepEqual(segs.map((s) => s.group), ["flat", "high_mountain", "itt"]);
 });
 
-test("#6514 decidedIn: hårdeste afgørende grupper først, med antal (ejerens eksempel)", () => {
-  const groups: PeekGroup[] = ["flat", "high_mountain", "itt", "high_mountain", "flat", "high_mountain", "itt", "high_mountain", "hilly"];
-  assert.deepEqual(decidedIn(groups), [{ group: "high_mountain", count: 4 }, { group: "itt", count: 2 }]);
+test("#6514 raceTerrain: højst 3 typer, rækkefølge bjerg, enkeltstart, brosten, kuperet, sprint", () => {
+  const types = ["flat", "cobbles", "hilly", "itt", "mountain"];
+  assert.deepEqual(raceTerrain(types).map((x) => x.kind), ["mountain", "itt", "cobbles"]);
+  assert.deepEqual(raceTerrain(types, { max: 5 }).map((x) => x.kind), ["mountain", "itt", "cobbles", "hilly", "sprint"]);
+  assert.deepEqual(TERRAIN_KINDS, ["mountain", "itt", "ttt", "cobbles", "hilly", "sprint"]);
 });
 
-test("#6514 decidedIn: uden bjerg/tidskørsel/underlag vinder det mest udbredte terræn", () => {
-  assert.deepEqual(decidedIn(["flat", "flat", "hilly"]), [{ group: "flat", count: 2 }]);
-  assert.deepEqual(decidedIn(["rolling", "hilly"]), [{ group: "hilly", count: 1 }]);
-  assert.deepEqual(decidedIn([]), []);
-});
-
-test("#6514 decidedIn: brosten afgør et endagsløb", () => {
-  assert.deepEqual(decidedIn(["cobbles"]), [{ group: "cobbles", count: 1 }]);
+test("#6514 raceTerrain: glyffen er kategoriens hyppigste profile_type; ukendt tæller som fladt", () => {
+  assert.deepEqual(raceTerrain(["flat", "rolling", "flat", "mystery"]), [{ kind: "sprint", profileType: "flat", count: 4 }]);
+  assert.deepEqual(raceTerrain(["mountain", "high_mountain", "high_mountain"]), [{ kind: "mountain", profileType: "high_mountain", count: 3 }]);
+  assert.deepEqual(raceTerrain([]), []);
 });
 
 test("#6514 raceDateRange: etapeplanen først, ellers entry.date", () => {

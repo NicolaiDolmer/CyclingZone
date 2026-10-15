@@ -1,8 +1,8 @@
 // #6514 · Løbshistorik: Resultater → Arkiv bag race_library_v2.
 //
 // Ejer-beslutning 15/10: kun afsluttede løb; pr. løb vindere pr. sæson, dit
-// bedste resultat, forsvarende mester og typisk afgørelse (samme "afgøres i"
-// som kalenderens løbskort, lib/racePeek.ts). Ingen km, ingen fjerde side:
+// bedste resultat, forsvarende mester og terræn (samme glyffer og kalender-
+// kategorier som kalenderens løbskort; ejer 14:06: "Afgøres i" udgår). Ingen km, ingen fjerde side:
 // løbets navn fører til den eksisterende løbsside (/race-archive/:navn), og
 // hver udgave til sit eget resultat (/races/:id).
 //
@@ -15,7 +15,6 @@ import { Link } from "react-router";
 import { supabase } from "../../lib/supabase.ts";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { applySeniorSquadFilter } from "../../lib/seniorScope.ts";
-import { groupColor } from "../../lib/racePeek.ts";
 import {
   buildRaceHistory, matchesSearch, paginate, HISTORY_PAGE_SIZE,
   type HistoryRace, type HistoryRow, type ProfileRow, type ResultRow,
@@ -27,6 +26,7 @@ import { SkeletonLines as SkeletonLinesBase } from "../ui/Skeleton.jsx";
 import ErrorStateBase from "../ui/ErrorState.jsx";
 import EmptyStateBase from "../ui/EmptyState.jsx";
 import ButtonBase from "../ui/Button.jsx";
+import RaceTerrainGlyphs from "./RaceTerrainGlyphs.tsx";
 import { FlagIcon, ChevronLeftIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
 
 // Primitiverne i components/ui er stadig .jsx uden typer (samme greb som
@@ -162,7 +162,7 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
     myRows = parts.flat();
   }
 
-  // Typisk afgørelse: ruten for hvert løbs nyeste udgave.
+  // Terræn: ruten for hvert løbs nyeste udgave.
   const latestByFamily = new Map<string, HistoryRace>();
   for (const r of flat) {
     const key = `${r.name}|${r.race_type ?? ""}`;
@@ -179,7 +179,7 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
 
 
 export default function RaceHistoryLibrary() {
-  const { t } = useTranslation(["results", "races"]);
+  const { t } = useTranslation(["results", "races", "calendar"]);
   const [pools, setPools] = useState<Pool[]>([]);
   const [team, setTeam] = useState<{ id: string; poolId: number | null } | null>(null);
   const [poolId, setPoolId] = useState<number | null>(null);
@@ -274,21 +274,14 @@ export default function RaceHistoryLibrary() {
       ) : <span className="text-cz-3">{t("raceHistory.notPlaced")}</span>),
     },
     {
-      key: "decided",
-      header: t("raceHistory.th.decided"),
-      mobileHeader: t("raceHistory.th.decidedShort"),
-      render: (r) => (r.decided.length ? (
-        <span className="block space-y-0.5 text-[13px]">
-          {r.decided.map((d) => (
-            <span key={d.group} className="flex items-center gap-1.5">
-              <span aria-hidden="true" className="h-2 w-2 shrink-0" style={{ backgroundColor: groupColor(d.group) }} />
-              <span>
-                {t(`raceHistory.group.${d.group}`)}
-                {r.decidedStageCount > 1 && <span className="font-data tabular-nums text-cz-3"> ({d.count})</span>}
-              </span>
-            </span>
-          ))}
-        </span>
+      // Samme terrænsprog som kalenderens løbskort (calendar:terrain.*).
+      key: "terrain",
+      header: t("raceHistory.th.terrain"),
+      render: (r) => (r.terrain.length ? (
+        <RaceTerrainGlyphs
+          terrain={r.terrain}
+          label={(x) => t("calendar:peek.terrainCount", { type: t(`calendar:terrain.${x.kind}`), count: x.count })}
+        />
       ) : <span className="text-cz-3">{t("raceHistory.noRoute")}</span>),
     },
     {
@@ -378,7 +371,7 @@ export default function RaceHistoryLibrary() {
             rowKey={(r) => r.key}
             rows={pg.rows}
             columns={columns}
-            mobileDefaults={["champion", "best", "decided"]}
+            mobileDefaults={["champion", "best", "terrain"]}
             dense
             empty={emptyNode}
           />
