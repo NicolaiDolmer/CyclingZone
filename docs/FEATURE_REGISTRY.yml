@@ -538,12 +538,12 @@ features:
     area: training
     title_en: Set the training day for several riders at once
     title_da: Sæt træningsdagen for flere ryttere på én gang
-    state: dormant
+    state: beta
     flag: training_bulk_day
     ssot: docs/TRAINING_RULES.md
     epic: 6523
     verified: 2026-10-15
-    note: PR #6533 (12/10); off i prod (læst 15/10), ejeren flytter flaget fra admin-fladen.
+    note: PR #6533 (12/10); beta siden 15/10 10:16 UTC efter ejer-go på før/efter-billedet (læst tilbage i prod).
 
   # --- academy -------------------------------------------------------------
   - id: academy
@@ -856,11 +856,11 @@ features:
     area: onboarding
     title_en: Your first race card on the dashboard (new teams)
     title_da: Dit første løb-kort på dashboardet (nye hold)
-    state: dormant
+    state: live
     flag: first_race_card
     epic: 1140
     verified: 2026-10-15
-    note: PR #6534 (12/10); off i prod (læst 15/10), ejeren flytter flaget fra admin-fladen.
+    note: PR #6534 (12/10); on for alle siden 15/10 10:17 UTC efter ejer-go (nye hold er aldrig beta-testere, så beta ville vise kortet for ingen). Vises kun for hold uden første løb. Opfølgning dag 2-3-genkomst ca. 29/10 (#1140).
 
   # --- comms ---------------------------------------------------------------
   - id: email-loop
