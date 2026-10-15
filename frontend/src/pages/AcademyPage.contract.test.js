@@ -252,7 +252,7 @@ test("rosterets prognose læres gennem træning når Optag 2.0 er tændt (#6666 
 
 test("profil-kortet vises kun med Optag 2.0 og har ingen guld-knap (#6666 punkt 4-5)", () => {
   assert.match(pageSource, /intakePull\.enabled && academyProfile && \(/);
-  const card = readFileSync(join(__dirname, "..", "components", "AcademyProfileCard.jsx"), "utf8");
+  const card = readFileSync(join(__dirname, "..", "components", "AcademyProfileCard.tsx"), "utf8");
   assert.doesNotMatch(card, /variant="primary"/, "sidens eneste guld er hent-knappen (TASTE: ét guld pr. view)");
   assert.match(apiSource, /router\.put\("\/academy\/profile"/);
 });

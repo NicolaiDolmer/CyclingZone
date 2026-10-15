@@ -10,9 +10,18 @@
 // Ingen guld-knap: sidens eneste primære handling er "Hent ugens kandidater"
 // (TASTE: ét guld pr. view). Gem er secondary.
 import { useMemo, useState } from "react";
+import type { ChangeEvent, ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
-import { Card, Button, Field, Select, SectionHeader } from "./ui";
+import { Card, Button, Select, Field as FieldJs, SectionHeader as SectionHeaderJs } from "./ui/index.js";
+
+// Kit-primitiverne er .jsx uden egne typer; kontrakten skrives ned her (samme
+// greb som race/stagePageV2/ui.ts).
+const SectionHeader = SectionHeaderJs as unknown as ComponentType<{ title: ReactNode; meta?: ReactNode }>;
+const Field = FieldJs as unknown as ComponentType<{
+  label: ReactNode; htmlFor: string; helper?: ReactNode; children: ReactNode;
+}>;
+type SelectChange = ChangeEvent<HTMLSelectElement>;
 import { buttonClass } from "./ui/buttonStyles.js";
 import { getCountryName } from "../lib/countryUtils";
 import { formatDate } from "../lib/intl.js";
@@ -20,16 +29,34 @@ import { formatDate } from "../lib/intl.js";
 const REGION = "region:";
 const TYPE = "type:";
 
-function initialChoice(profile) {
+export interface ProfileValue {
+  origins: string[];
+  types: string[];
+  effectiveFrom?: string;
+}
+
+export interface AcademyProfile {
+  tier: number;
+  candidatesPerWeek: number;
+  slots: { origins: number; types: number; extra: number };
+  active: ProfileValue | null;
+  pending: ProfileValue | null;
+  options: { nations: string[]; regions: string[]; types: string[]; delayDays: number };
+}
+
+interface Choice { origin: string; type: string; extra: string }
+type SaveResult = { ok: boolean; result?: { effectiveFrom?: string }; error?: string };
+
+function initialChoice(profile: ProfileValue | null | undefined): Choice {
   const origins = profile?.origins ?? [];
   const types = profile?.types ?? [];
   let extra = "";
-  if (origins.length > 1) extra = origins[1];
+  if (origins.length > 1) extra = origins[1] ?? "";
   else if (types.length > 1) extra = `${TYPE}${types[1]}`;
   return { origin: origins[0] ?? "", type: types[0] ?? "", extra };
 }
 
-export function choiceToProfile({ origin, type, extra }) {
+export function choiceToProfile({ origin, type, extra }: Choice): ProfileValue {
   const origins = [origin].filter(Boolean);
   const types = [type].filter(Boolean);
   if (extra?.startsWith(TYPE)) types.push(extra.slice(TYPE.length));
@@ -37,7 +64,10 @@ export function choiceToProfile({ origin, type, extra }) {
   return { origins: [...new Set(origins)], types: [...new Set(types)] };
 }
 
-export default function AcademyProfileCard({ profile, onSave }) {
+export default function AcademyProfileCard({ profile, onSave }: {
+  profile: AcademyProfile | null;
+  onSave: (profile: ProfileValue) => Promise<SaveResult>;
+}) {
   const { t, i18n } = useTranslation("academy");
   const { t: tTypes } = useTranslation("riderTypes");
   const slots = profile?.slots ?? { origins: 0, types: 0, extra: 0 };
@@ -45,14 +75,14 @@ export default function AcademyProfileCard({ profile, onSave }) {
   const locked = (profile?.tier ?? 0) === 0 || slots.origins === 0;
   const [choice, setChoice] = useState(() => initialChoice(profile?.pending ?? profile?.active));
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState(null); // { kind: "ok"|"error", text }
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
-  const originLabel = (o) => (o.startsWith(REGION)
+  const originLabel = (o: string): string => (o.startsWith(REGION)
     ? t(`profile.regions.${o.slice(REGION.length)}`)
     : getCountryName(o, i18n.language));
-  const describe = (p) => [
+  const describe = (p: ProfileValue | null | undefined): string => [
     ...(p?.origins ?? []).map(originLabel),
-    ...(p?.types ?? []).map((k) => tTypes(`types.${k}`)),
+    ...(p?.types ?? []).map((k: string) => tTypes(`types.${k}`)),
   ].join(" · ");
 
   const nations = useMemo(
@@ -108,14 +138,14 @@ export default function AcademyProfileCard({ profile, onSave }) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field label={t("profile.origin")} htmlFor="academy-profile-origin">
                 <Select id="academy-profile-origin" size="sm" value={choice.origin}
-                  onChange={(e) => setChoice((c) => ({ ...c, origin: e.target.value }))}>
+                  onChange={(e: SelectChange) => setChoice((c) => ({ ...c, origin: e.target.value }))}>
                   {originOptions}
                 </Select>
               </Field>
               <Field label={t("profile.type")} htmlFor="academy-profile-type"
                 helper={slots.types === 0 ? t("profile.typeLocked") : undefined}>
                 <Select id="academy-profile-type" size="sm" value={choice.type} disabled={slots.types === 0}
-                  onChange={(e) => setChoice((c) => ({ ...c, type: e.target.value }))}>
+                  onChange={(e: SelectChange) => setChoice((c) => ({ ...c, type: e.target.value }))}>
                   <option value="">{t("profile.none")}</option>
                   {typeOptions()}
                 </Select>
@@ -123,7 +153,7 @@ export default function AcademyProfileCard({ profile, onSave }) {
               <Field label={t("profile.extra")} htmlFor="academy-profile-extra"
                 helper={slots.extra === 0 ? t("profile.extraLocked") : undefined}>
                 <Select id="academy-profile-extra" size="sm" value={choice.extra} disabled={slots.extra === 0}
-                  onChange={(e) => setChoice((c) => ({ ...c, extra: e.target.value }))}>
+                  onChange={(e: SelectChange) => setChoice((c) => ({ ...c, extra: e.target.value }))}>
                   <option value="">{t("profile.none")}</option>
                   <optgroup label={t("profile.groupRegions")}>
                     {options.regions.map((r) => <option key={r} value={`${REGION}${r}`}>{t(`profile.regions.${r}`)}</option>)}

@@ -34,7 +34,7 @@ import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
 import { AcademyReleaseConfirmModal } from "../components/AcademyReleaseConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
-import AcademyProfileCard from "../components/AcademyProfileCard.jsx"; // #6666
+import AcademyProfileCard from "../components/AcademyProfileCard.tsx"; // #6666
 import {
   Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable,
   Section, SectionHeader, SectionAction,

@@ -57,7 +57,7 @@ export async function buildIntake2View(supabase, { teamId, roster, intake, seaso
     riderIds.length > 0 ? loadScout(teamId, supabase) : null,
     loadTrainingDaysOnTeam(supabase, { teamId, riderIds }),
     riderIds.length > 0
-      ? supabase.from("riders").select("id, potentiale, birthdate, primary_type, secondary_type").in("id", riderIds)
+      ? supabase.from("riders").select("id, potentiale, birthdate, primary_type, secondary_type").in("id", riderIds).limit(riderIds.length)
       : { data: [] },
     riderIds.length > 0
       ? supabase.from("rider_derived_abilities").select("*").in("rider_id", riderIds)
