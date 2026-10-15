@@ -14,6 +14,7 @@ import {
   riderIntentKeys,
   toggleLeadout,
   hasSprintCaptain,
+  withIntentionEfforts,
 } from "./tacticsPlan.js";
 
 test("defaultTeamOrder — neutrale defaults for hver rytter (T4)", () => {
@@ -167,4 +168,27 @@ test("#4632 effortCounts — taeller mod serverens vokabular (tre eller fem trin
   });
   // Tre-trins-fallback ignorerer de to yderpunkter i staedet for at kaste.
   assert.deepEqual(effortCounts(riders), { protect: 0, normal: 1, save: 0 });
+});
+
+// #6647: skrivevejen der gav "normal" i race_team_orders.riders. Taktik-fanen
+// gemmer ordren fra rollens standard (mergeOrderWithRoster), og den bærer
+// effort "normal" for hver rytter, uanset hvad manageren valgte i intentionen.
+test("#6647 rollens standardordre bærer altid 'normal' (derfor må den ikke gemmes rå)", () => {
+  const defaultOrder = { breakaway_stance: "neutral", riders: [
+    { rider_id: "r1", effort: "normal", try_break: false, leadout: false },
+    { rider_id: "r2", effort: "normal", try_break: true, leadout: false },
+  ] };
+  const order = mergeOrderWithRoster({ breakaway_stance: "neutral", riders: [] }, ["r1", "r2"], defaultOrder);
+  assert.deepEqual(order.riders.map((r) => r.effort), ["normal", "normal"]);
+});
+
+test("#6647 withIntentionEfforts — ordren der gemmes bærer intentionens beskyt/spar", () => {
+  const order = mergeOrderWithRoster(null, ["r1", "r2", "r3"]);
+  const intention = { r1: "protect", r2: "save" };
+  const saved = withIntentionEfforts(order, (id) => intention[id]);
+  assert.deepEqual(saved.riders.map((r) => [r.rider_id, r.effort]), [["r1", "protect"], ["r2", "save"], ["r3", "normal"]]);
+  // Ingen andre felter flytter sig, og input muteres ikke.
+  assert.equal(saved.breakaway_stance, order.breakaway_stance);
+  assert.equal(order.riders[0].effort, "normal");
+  assert.equal(saved.riders[1].try_break, false);
 });

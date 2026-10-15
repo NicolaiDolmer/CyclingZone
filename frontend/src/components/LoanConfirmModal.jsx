@@ -87,7 +87,7 @@ export function LoanConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
               bg-cz-subtle text-cz-2 border border-cz-border hover:text-cz-1 transition-colors disabled:opacity-50"
           >
             {t("common:actions.cancel")}
@@ -96,7 +96,7 @@ export function LoanConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
               bg-cz-accent text-cz-on-accent hover:brightness-110 transition-all disabled:opacity-60"
           >
             {busy ? t("finance:loans.take.processing") : t("finance:loans.confirmModal.confirm")}

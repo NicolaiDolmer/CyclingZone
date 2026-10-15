@@ -400,22 +400,37 @@ const EFFORTS = new Set(["grupetto", "save", "normal", "protect", "all_out"]);
  * Den indsats motoren faktisk koerte paa, samme forrang som raceRunner
  * (#5580): paa en v4-etape vinder holdets ordre (race_team_orders.riders[].
  * effort); stage-roles-overriden er kun fallback. v3-etaper: kun overriden.
+ * #6647: "normal" i en ordre er rollens standard, ikke et valg (backend
+ * orderEffortByRiderForStage), saa den overskriver ikke overridens beskyt/spar.
+ * Men kun for etaper koert EFTER rettelsen: foer den vandt ordrens "normal"
+ * faktisk i motoren, og siden skal vise den indsats rytteren reelt koerte paa.
+ * `ranAt` er etapens tidslinje-tidspunkt (race_stage_timelines.created_at).
  */
+export const EFFORT_NORMAL_NOT_A_CHOICE_FROM = "2026-10-15T12:58:00.000Z"; // foerste etape-tick efter deploy af #6652 (merget ca. 12:15 UTC)
+
+/** Ren: koerte motoren etapen med #6647-forrangen? Ukendt tidspunkt = ja. */
+export function stageUsesEffortFix6647(ranAt: unknown): boolean {
+  const t = typeof ranAt === "string" ? Date.parse(ranAt) : NaN;
+  return Number.isNaN(t) || t >= Date.parse(EFFORT_NORMAL_NOT_A_CHOICE_FROM);
+}
+
 export function effectiveEffortByRider(
   stageRoles: unknown,
   teamOrders: unknown,
   stageNumber: number,
-  { v4 = false }: { v4?: boolean } = {},
+  { v4 = false, ranAt = null }: { v4?: boolean; ranAt?: string | null } = {},
 ): Map<string, string> {
   const out = effortByRiderForStage(stageRoles, stageNumber);
   if (!v4) return out;
   const orders = (teamOrders as { orders?: unknown } | null)?.orders;
   if (!Array.isArray(orders)) return out;
+  const normalIsNotAChoice = stageUsesEffortFix6647(ranAt);
   for (const row of orders as Array<Record<string, unknown>>) {
     if (Number(row?.stage_number) !== stageNumber || !Array.isArray(row?.riders)) continue;
     for (const r of row.riders as Array<Record<string, unknown>>) {
       const rider = str(r?.rider_id);
       const effort = str(r?.effort);
+      if (effort === "normal" && normalIsNotAChoice) continue; // #6647: ikke et valg
       if (rider && effort && EFFORTS.has(effort)) out.set(rider, effort);
     }
   }

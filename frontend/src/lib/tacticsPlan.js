@@ -69,6 +69,26 @@ export function setRiderEffort(order, riderId, effort) {
   return { ...order, riders: order.riders.map((r) => (r.rider_id === riderId ? { ...r, effort } : r)) };
 }
 
+/**
+ * #6647: ordren der gemmes skal bære managerens indsatsvalg fra intentions-
+ * kolonnen (rolle-overlayet), ikke rollens standard. Før blev hver rytter gemt
+ * med "normal" fra standardordren, og den ordre overskrev beskyt/spar i
+ * motoren. Én kilde: det spilleren valgte i fanen er det ordren gemmer.
+ * Ren: ny ordre returneres; ryttere uden et valg beholder deres effort.
+ *
+ * @param {{riders?: Array<{rider_id: string, effort?: string}>}} order
+ * @param {(riderId: string) => string|null|undefined} effortForRider
+ */
+export function withIntentionEfforts(order, effortForRider) {
+  return {
+    ...order,
+    riders: (order?.riders ?? []).map((r) => {
+      const effort = effortForRider?.(r.rider_id);
+      return effort ? { ...r, effort } : r;
+    }),
+  };
+}
+
 export function toggleTryBreak(order, riderId) {
   return { ...order, riders: order.riders.map((r) => (r.rider_id === riderId ? { ...r, try_break: !r.try_break } : r)) };
 }

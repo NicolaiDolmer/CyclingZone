@@ -110,6 +110,7 @@ import {
   teamPlanKey,
   toggleLeadout,
   toggleTryBreak,
+  withIntentionEfforts,
 } from "../../lib/tacticsPlan.js";
 import { fetchTeamOrders, orderForStage, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
@@ -597,7 +598,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // 2) Ordrerne for DEN ÅBNE etape (endpointet er én-etape-scopet). Springes
       // over når ordre-halvdelen er gated væk — så gemmer fanen kun det
       // spilleren faktisk kunne se og røre.
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order });
+      // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
+      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId })) });
       setStatus("saved");
       setOpenRiderId(null);
       setOpenRoleRiderId(null);

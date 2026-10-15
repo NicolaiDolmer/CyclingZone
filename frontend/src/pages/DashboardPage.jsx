@@ -1891,7 +1891,7 @@ export default function DashboardPage() {
                         leder-guldet. Samme opdeling som .cz-me / .cz-me-bar i
                         tabellerne, saa dashboardet ser ud som /standings. */}
                     <Link to={standingsLink}
-                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/8" : "hover:bg-cz-subtle"}`}>
+                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-cz transition-colors ${isLeader ? "bg-cz-accent/8" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
                       {/* vk-movement-signals — divisionsplacerings-bevægelse siden
                           sidste løbsdag, KUN på egen række. null/0 = ingen løbsdag endnu
@@ -2084,7 +2084,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-1">
               {riderRanking.map((r, i) => (
                 <RiderLink key={r.rider_id} id={r.rider_id}
-                  className="flex items-center gap-3 py-1.5 hover:bg-cz-subtle rounded-lg -mx-2 px-2 transition-colors">
+                  className="flex items-center gap-3 py-1.5 hover:bg-cz-subtle rounded-cz -mx-2 px-2 transition-colors">
                   <span className={`font-mono text-xs w-4 text-right shrink-0 ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>#{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-cz-1 text-sm truncate">

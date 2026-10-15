@@ -194,7 +194,7 @@ export default function AdminDataTab() {
 
       <AdminSection title="Løbskalender">
         {races.length > 0 && (
-          <div className="mb-5 overflow-hidden rounded-lg border border-cz-border">
+          <div className="mb-5 overflow-hidden rounded-cz border border-cz-border">
             <table data-sortable className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
@@ -249,13 +249,13 @@ export default function AdminDataTab() {
                               <label className="block text-cz-3 text-xs mb-1">Løbsnavn</label>
                               <input type="text" value={editingRace.name}
                                 onChange={e => setEditingRace(er => ({ ...er, name: e.target.value }))}
-                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent" />
+                                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent" />
                             </div>
                             <div>
                               <label className="block text-cz-3 text-xs mb-1">Løbsklasse</label>
                               <select value={editingRace.race_class || ""}
                                 onChange={e => setEditingRace(er => ({ ...er, race_class: e.target.value }))}
-                                className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent">
+                                className="w-full bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent">
                                 <option value="">— Ingen klasse —</option>
                                 {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
                                   <optgroup key={type} label={type}>
@@ -270,7 +270,7 @@ export default function AdminDataTab() {
                               <label className="block text-cz-3 text-xs mb-1">Type</label>
                               <select value={editingRace.race_type}
                                 onChange={e => setEditingRace(er => ({ ...er, race_type: e.target.value }))}
-                                className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+                                className="w-full bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
                                 <option value="stage_race">Etapeløb</option>
                                 <option value="single">Enkeltdagsløb</option>
                               </select>
@@ -279,16 +279,16 @@ export default function AdminDataTab() {
                               <label className="block text-cz-3 text-xs mb-1">Etaper</label>
                               <input type="number" min={1} value={editingRace.stages}
                                 onChange={e => setEditingRace(er => ({ ...er, stages: e.target.value }))}
-                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
+                                className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
                             </div>
                           </div>
                           <div className="flex gap-2">
                             <button onClick={saveRaceEdit} disabled={loading.raceEdit}
-                              className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+                              className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
                               {loading.raceEdit ? "Gemmer..." : "Gem ændringer"}
                             </button>
                             <button onClick={() => setEditingRace(null)}
-                              className="px-4 py-2 bg-cz-subtle text-cz-2 rounded-lg text-sm hover:bg-cz-subtle">
+                              className="px-4 py-2 bg-cz-subtle text-cz-2 rounded-cz text-sm hover:bg-cz-subtle">
                               Annuller
                             </button>
                           </div>
@@ -307,7 +307,7 @@ export default function AdminDataTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Sæson</label>
             <select value={raceForm.season_id} onChange={e => setRaceForm(f => ({ ...f, season_id: e.target.value }))} required
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
@@ -322,7 +322,7 @@ export default function AdminDataTab() {
               onFocus={() => setPoolSearchOpen(true)}
               onBlur={() => setTimeout(() => setPoolSearchOpen(false), 150)}
               autoComplete="off"
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
             {poolSearchOpen && raceForm.name.length >= 1 && (() => {
               const q = raceForm.name.toLowerCase().trim();
               const matches = racePool
@@ -333,7 +333,7 @@ export default function AdminDataTab() {
                 races.filter(r => r.season_id === raceForm.season_id).map(r => r.name.toLowerCase())
               );
               return (
-                <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border rounded-cz shadow-lg max-h-72 overflow-y-auto">
                   {matches.map(p => {
                     const alreadyInSeason = seasonRaceNames.has(p.name.toLowerCase());
                     return (
@@ -366,7 +366,7 @@ export default function AdminDataTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Løbsklasse</label>
             <select value={raceForm.race_class} onChange={e => setRaceForm(f => ({ ...f, race_class: e.target.value }))}
-              className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+              className="w-full bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">— Ingen klasse —</option>
               {["Grand Tour", "WorldTour", "Endagsløb", "Continental Circuit"].map(type => (
                 <optgroup key={type} label={type}>
@@ -380,7 +380,7 @@ export default function AdminDataTab() {
           <div>
             <label className="block text-cz-3 text-xs mb-1">Type</label>
             <select value={raceForm.race_type} onChange={e => setRaceForm(f => ({ ...f, race_type: e.target.value }))}
-              className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+              className="w-full bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="stage_race">Etapeløb</option>
               <option value="single">Enkeltdagsløb</option>
             </select>
@@ -389,11 +389,11 @@ export default function AdminDataTab() {
             <label className="block text-cz-3 text-xs mb-1">Etaper</label>
             <input type="number" min={1} value={raceForm.stages}
               onChange={e => setRaceForm(f => ({ ...f, stages: e.target.value }))}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden" />
           </div>
           <div className="flex items-end">
             <button type="submit" disabled={loading.race}
-              className="w-full px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+              className="w-full px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
               {loading.race ? "..." : "Tilføj løb"}
             </button>
           </div>
@@ -418,13 +418,13 @@ export default function AdminDataTab() {
           <p className="text-cz-3 text-xs italic">preview virker altid; ægte afvikling kræver flag ON</p>
           <button
             onClick={loadEngineStatus}
-            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all">
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all">
             Genindlæs
           </button>
         </div>
 
         {engineStatus?.races?.length > 0 && (
-          <div className="mb-4 overflow-hidden rounded-lg border border-cz-border">
+          <div className="mb-4 overflow-hidden rounded-cz border border-cz-border">
             <table data-sort-exempt="Admin race-engine-liste; sortering er opfoelgning" className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
@@ -484,14 +484,14 @@ export default function AdminDataTab() {
         )}
 
         {simPreview && (
-          <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 text-xs space-y-3 mb-3">
+          <div className="bg-cz-subtle border border-cz-border rounded-cz p-4 text-xs space-y-3 mb-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <p className="text-cz-1 font-semibold">
                 Preview — {simPreview.race.name}
               </p>
               <button
                 onClick={() => setSimPreview(null)}
-                className="px-3 py-1.5 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-xs hover:text-cz-1">
+                className="px-3 py-1.5 bg-cz-subtle text-cz-3 border border-cz-border rounded-cz text-xs hover:text-cz-1">
                 Luk
               </button>
             </div>

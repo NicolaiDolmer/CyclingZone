@@ -23,6 +23,15 @@
 > eller en manglende rapport stopper skiftet; volumengrænsen sænkes ikke uden ejer-go.
 > Kørsel og forudsætninger: `docs/runbooks/STAGING_LOADTEST_PREP.md` afsnit 5. Aldrig mod prod.
 
+> **Første trin: løbsdags-dry-run (#5904). Køres før 28/10/2026 og før hvert sæsonskifte**,
+> på den commit der går i prod: `node backend/scripts/loadtestRaceDay.mjs` fra repo-roden.
+> Den simulerer en fuld løbsdag med den nye sæsons puljestruktur (senior + U23 + junior, alle
+> puljer) i hukommelsen, uden netværk og uden DB, og afslutter med exit 1, hvis en grænse er
+> brudt. Exit 1 stopper skiftet, indtil årsagen er rettet eller ejeren har set tallene og
+> godkendt dem. Dry-run'en er billig og fanger strukturfejl før staging-kørslen; den
+> erstatter IKKE staging-gaten ovenfor. Grænser, kilder og aflæsning: se
+> [Løbsdags-dry-run](#løbsdags-dry-run-5904) under Reference.
+
 ---
 
 ## Hvad er anderledes end S1→S2 (læs dette først)
@@ -787,6 +796,50 @@ Alle afhjælpninger er prod-skrivninger. De kræver ejer-go og køres **før** t
 > Kilde: status quo-forslag 1 (ejer-ja 22/9), read-only research 23/9. Planen taender intet; hvert trin kraever ejerens go.
 
 ## Reference
+
+### Løbsdags-dry-run (#5904)
+
+```powershell
+node backend/scripts/loadtestRaceDay.mjs                       # normal dag + sæsonens sidste dag
+node backend/scripts/loadtestRaceDay.mjs --json --out <fil>    # maskinlæsbar rapport
+node backend/scripts/loadtestRaceDay.mjs --profile legacy-s4-day1   # kontrol: SKAL give exit 1
+```
+
+**Hvad der er ægte, og hvad der er model.** `runStageScheduler` kører uændret på
+tick-gitteret (hvert 5. minut, hele døgnet) mod en tællende in-memory DB. Dens udvælgelse
+af forfaldne etaper, tomme puljer, dagligt loft og egne DB-kald er målt. Etape-tiderne
+kommer fra `slotsFor`/`TIER_STAGE_SLOTS` og `SQUAD_CALENDAR`, puljerne fra
+`SENIOR_CALENDAR_POOLS_FROM_S4` og `YOUTH_GROUP_SIZE`. Selve etapeafviklingen (motor,
+afslutning, bestyrelse, aftentræning, rangliste-refresh) er en omkostningsmodel
+(`COST_PROFILES` i scriptet) kalibreret på målinger fra #6275, #3624, #5893 og #6184.
+Aftentræningens kald er en antagelse uden måling. Ændres motorens eller afslutningens
+omkostning, skal profilen genkalibreres, helst fra en staging-kørsel.
+
+**Grænser (exit 1 hvis én brydes):**
+
+| Check | Grænse | Begrundelse |
+|---|---|---|
+| `coverage` | alle planlagte etaper i alle trupper kører | S4 løbsdag 1: 0 af 20 ungdomsløb kørte, uden fejl (#5890) |
+| `errors` | 0 | Scheduler-fejl eller Sentry-captures i løbet af dagen |
+| `peak_calls_per_minute` | 5.376 kald/min | S4 løbsdag 1 faldt ved ca. 6.800 kald/min (til ca. 150 under udfaldet, #5893). Browsernes peak er 1.424/min (#6275); løbsdagens backend må bruge resten |
+| `tick_duration` | 300 s | Et tick skal være færdigt før det næste (#6275), ellers springer overlap-guarden over |
+| `ticks_skipped` | 0 | Samme kriterie set fra køen |
+| `stage_delay` | 15 min fra planlagt tid til færdig | #3624's måling af forsinkede etaper |
+| `sweep_calls_per_tick` | 80 | Sweepen kører 288 gange i døgnet: ca. 9 faste kald + ét pr. igangværende løb. Et kald pr. hold ville sprænge loftet |
+| `rows_per_response` | 999 | Et svar på 1.000 rækker er afkortet af PostgREST (P0 2/7) |
+
+**Aflæsning.** Ved FAIL står den brudte grænse og det travleste tick i rapporten. Ret
+årsagen og kør igen; ejeren afgør, om en modelleret overskridelse må accepteres. Sænk
+ikke en grænse for at få grønt. Scenarierne kan styres med `--scenarios`,
+`--youth-groups`, `--final-share` (andel af dagens etaper der afslutter et løb, default 1 =
+værst tænkelige) og `--latency-ms`.
+
+**Kørt 15/10/2026 (main + denne gate, `current`-profil):** normal dag PASS. Sæsonens
+sidste løbsdag FAIL på `tick_duration` (ca. 320 s mod 300 s): kl. 15 samles 11 senior-
+og 10 U23-afslutninger i ét tick, fordi også U23's etape rykkes til 15:00. Overskridelsen
+er lille og bygger på modellerede varigheder; den skal måles på staging, før den bruges
+som beslutningsgrundlag. Kontrolprofilen `legacy-s4-day1` fejler som forventet (tick ca.
+560 s).
 
 ### Load-testens dataprerequisites (#5904, ejer-valg A 4/10)
 
