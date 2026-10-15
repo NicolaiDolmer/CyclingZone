@@ -75,6 +75,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "push_enabled", area: "notifications", label: "Push-notifikationer" },
   // #6570: etapeside 2.0, seedet off. Beta foerst (ejer 14/10).
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
+  // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
+  { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
