@@ -171,4 +171,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // maerket skifter til "Now for everyone" naar kontakten er on for alle.
   "rider_best_role_display",
   "training_programs",
+  // 7.361: beta-noterne for etapeside 2.0 og bulk-dag skifter til
+  // "Now for everyone", naar kontakterne er on for alle.
+  "stage_page_v2",
+  "training_bulk_day",
 ]);

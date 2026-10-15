@@ -25,6 +25,7 @@ export const PATCHES = [
         "category": "new",
         "audience": "player",
         "rollout": "beta",
+        "flag": "stage_page_v2",
         "topic": "Races",
         "en": {
           "title": "Stage page 2.0, in the beta group",
@@ -43,6 +44,7 @@ export const PATCHES = [
         "category": "new",
         "audience": "player",
         "rollout": "beta",
+        "flag": "training_bulk_day",
         "topic": "Training",
         "en": {
           "title": "Set the day for many riders at once, in the beta group",
