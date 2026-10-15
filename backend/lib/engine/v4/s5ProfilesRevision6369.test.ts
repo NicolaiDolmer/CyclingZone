@@ -41,6 +41,8 @@ test("#6369: motoren kender s5_profiles_v1 (ingen kast), ukendte revisioner kast
 function s5Untouched(input: StageInput): boolean {
   const route = input.route;
   if (route.profile_type === "medium_mountain" || route.finale_type === "breakaway") return false;
+  // #6645: enkeltstartens evne er tidskoerselsevnen under s5_profiles_v1 (individualTimeTrial.ts).
+  if (route.profile_type === "itt" || route.profile_type === "itt_hilly") return false;
   if (route.finale_type && (S5_PROFILES_TUNING.finaleBase[route.finale_type] || S5_PROFILES_TUNING.finaleTiers[route.finale_type])) return false;
   if (route.finale_type === "flat_sprint" || route.finale_type === "wall_finish" || route.finale_type === "uphill_sprint") return false;
   return lateAttackChance(route) === 0;
