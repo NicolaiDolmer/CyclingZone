@@ -5,8 +5,8 @@
 //   - ALLE PR'er: Codex-review gennemfoert for PR'ens AKTUELLE HEAD og ingen
 //     uloeste Codex-fund (en Codex-traad er loest naar den er markeret
 //     "Resolve conversation"). Review-bevis fra et aeldre commit taeller ikke.
-//   - HOEJRISIKO (motor, database/migrationer/RLS, penge/oekonomi, auth/
-//     sikkerhed, cron, backend-routes/API, workflows, eller label
+//   - HOEJRISIKO (motor, database/migrationer/RLS, penge/oekonomi, betaling/
+//     abonnement, auth/sikkerhed/webhooks, cron, backend-routes/API, workflows, eller label
 //     risk:high/security): derudover en
 //     Claude-review-markoer for HEAD uden blokerende fund:
 //         <!-- claude-review: clean|notes|blocking sha=<HEAD-commit> -->
@@ -53,7 +53,12 @@ const HIGH_RISK_RULES = Object.freeze([
   { reason: "workflow", re: /^\.github\/(workflows|actions)\// },
   { reason: "sikkerhed", re: /^(\.gitleaks\.toml|SECURITY\.md)$/ },
   // Penge/oekonomi: backend-kode hvis filnavn handler om penge (saldo, overfoersler, kontrakter).
-  { reason: "penge", re: backendName("econom|financ|salar|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation") },
+  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation") },
+  // Betaling/abonnement (rigtige penge): checkout, kundeportal, abonnementsstatus,
+  // adgang til betalt indhold og betalingsudbyderens webhook.
+  { reason: "betaling", re: backendName("billing|checkout|subscription|entitlement|alunta|refund|invoice") },
+  // Indgaaende webhooks: signaturtjek og afsender-validering er sikkerhedsflade.
+  { reason: "sikkerhed", re: backendName("webhook") },
   // Motor uden for backend/lib/engine/: simulator, bro/flag, finalisering, etaperesultater.
   { reason: "motor", re: backendName("race|stage|finaliz|simulat|engine") },
   // Database-RPC-wrappere (skriver via Postgres-funktioner).
@@ -63,8 +68,10 @@ const HIGH_RISK_RULES = Object.freeze([
   // Auth/sikkerhed: backend + frontend-lib (login, tokens, admin-adgang, RLS/grants).
   // "Author" (forum) er ikke auth, men authorize/authorization er.
   { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|grant|permission|urlSafety|admin)[^/]*$/i },
-  // RLS case-sensitivt: "urlState" indeholder "rlS" og er ikke RLS.
-  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(rls|Rls|RLS)[^/]*$/ },
+  // RLS case-sensitivt og som ord: "rls" kun forrest i navnet eller efter _ . -,
+  // ellers "Rls"/"RLS" (camelCase/versaler). "urlState" (rlS) og "denyUrls"
+  // (Urls) er URL'er, ikke RLS.
+  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?([^/]*[_.-])?rls[^/]*$|^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(Rls|RLS)[^/]*$/ },
   // API-fladen (efter auth, saa admin-routes melder "auth"): hver route haandhaever
   // selv auth/ejerskab, og server.js monterer dem.
   { reason: "api", re: /^backend\/(routes|api)\/|^backend\/server\.[cm]?[jt]s$/ },
@@ -131,7 +138,23 @@ export function parseCodexSummary(body) {
   });
   const commit = (rows[rows.length - 1][2] || "").match(/[0-9a-f]{7,40}/i)?.[0] || null;
   const state = states.includes("pending") ? "pending" : states.includes("completed") ? "completed" : "failed";
-  return { state, commit };
+  // Maskinlaesbar tilstand (<!-- codex-review-state:v1 {...} -->) baerer den fulde
+  // SHA; den vinder over tabellens forkortede commit naar den findes.
+  const machine = parseCodexReviewState(text);
+  return { state, commit: machine?.commit || commit };
+}
+
+/** code_review fra Codex' "codex-review-state:v1"-JSON, ellers null. */
+export function parseCodexReviewState(body) {
+  const m = String(body || "").match(/<!--\s*codex-review-state:v1\s+(\{.*?\})\s*-->/s);
+  if (!m) return null;
+  try {
+    const cr = JSON.parse(m[1])?.code_review;
+    const sha = typeof cr?.commit_sha === "string" && /^[0-9a-f]{7,40}$/i.test(cr.commit_sha) ? cr.commit_sha.toLowerCase() : null;
+    return sha ? { commit: sha, status: cr.status ?? null } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** "**Reviewed commit:** `fda8692284`" i en Codex-review-krop. */
@@ -140,14 +163,16 @@ export function parseCodexReviewedCommit(body) {
 }
 
 /**
- * Codex-bevis taeller kun for PR'ens aktuelle HEAD (headSha): summary-commit,
- * review.commit / "Reviewed commit", og en 👍-reaktion kun hvis den er afgivet
- * efter HEAD-commit'et (headCommittedAt; reaktioner baerer ingen SHA).
- * @param {{comments?: object[], reviews?: object[], reactions?: object[], threads?: object[], headSha?: string, headCommittedAt?: string}} input
- *   comments: {author, body}; reviews: {author, body, commit}; reactions: {author, content, at}; threads: {author, isResolved}
+ * Codex-bevis taeller kun for PR'ens aktuelle HEAD (headSha): summary-kommentarens
+ * commit eller review.commit / "Reviewed commit". En 👍-reaktion taeller IKKE:
+ * den baerer ingen SHA, og et tidspunkt kan ikke bindes sikkert til HEAD
+ * (committer-datoen er forfatter-styret). Codex' summary-kommentar opdateres
+ * ogsaa ved et rent review og baerer HEAD-commit'et.
+ * @param {{comments?: object[], reviews?: object[], threads?: object[], headSha?: string}} input
+ *   comments: {author, body}; reviews: {author, body, commit}; threads: {author, isResolved}
  * @returns {{ok: boolean, state: string, unresolved: number, detail: string}}
  */
-export function evaluateCodex({ comments = [], reviews = [], reactions = [], threads = [], headSha = null, headCommittedAt = null } = {}) {
+export function evaluateCodex({ comments = [], reviews = [], threads = [], headSha = null } = {}) {
   const isCodex = (x) => login(x.author) === CODEX_LOGIN;
   const unresolved = threads.filter((t) => isCodex(t) && !t.isResolved).length;
   const summaries = comments.filter(isCodex).map((c) => parseCodexSummary(c.body)).filter((s) => s.state !== "unknown");
@@ -156,10 +181,8 @@ export function evaluateCodex({ comments = [], reviews = [], reactions = [], thr
   let state = summary ? summary.state : "missing";
   if (state !== "pending" && state !== "completed") {
     const reviewedHead = reviews.some((r) => isCodex(r) && shaMatchesHead(r.commit || parseCodexReviewedCommit(r.body), headSha));
-    const thumbsAfterHead = Boolean(headCommittedAt) && reactions.some((r) => isCodex(r) && r.content === "+1" &&
-      Boolean(r.at) && Date.parse(r.at) >= Date.parse(headCommittedAt));
-    if (reviewedHead || thumbsAfterHead) state = "completed";
-    else if (state === "missing" && (summaries.length > 0 || reviews.some(isCodex) || reactions.some((r) => isCodex(r) && r.content === "+1"))) state = "stale";
+    if (reviewedHead) state = "completed";
+    else if (state === "missing" && (summaries.length > 0 || reviews.some(isCodex))) state = "stale";
   }
   if (unresolved > 0) {
     return { ok: false, state, unresolved, detail: `${unresolved} uloest(e) Codex-fund: ret dem og marker traaden "Resolve conversation"` };
@@ -216,7 +239,7 @@ export function evaluateClaude(items, risk, headSha = null) {
 }
 
 /** Selve gaten. Input er normaliseret PR-data (se fetchPrData); bevis bindes til headSha. */
-export function evaluateGate({ author, draft = false, files = [], labels = [], comments = [], reviews = [], reactions = [], threads = [], headSha = null, headCommittedAt = null }) {
+export function evaluateGate({ author, draft = false, files = [], labels = [], comments = [], reviews = [], threads = [], headSha = null }) {
   const risk = classifyRisk(files, labels);
   if (EXEMPT_AUTHORS.includes(login(author))) {
     return { ok: true, risk, exempt: true, codex: null, claude: null, summary: `undtaget: ${author} (rule 35 c - CI + dependency-review er gaten)` };
@@ -224,7 +247,7 @@ export function evaluateGate({ author, draft = false, files = [], labels = [], c
   if (draft) {
     return { ok: false, risk, exempt: false, codex: null, claude: null, summary: "draft: gaten evalueres naar PR'en er ready" };
   }
-  const codex = evaluateCodex({ comments, reviews, reactions, threads, headSha, headCommittedAt });
+  const codex = evaluateCodex({ comments, reviews, threads, headSha });
   const claude = evaluateClaude([...comments, ...reviews], risk, headSha);
   const ok = codex.ok && claude.ok;
   const summary = `${ok ? "OK" : "BLOKERET"} (${risk.level === "high" ? "hoejrisiko" : "lav risiko"}): Codex - ${codex.detail}; Claude - ${claude.detail}`;
@@ -371,21 +394,13 @@ export function fetchPrData(repo, pr) {
     .map((c) => ({ author: c.user?.login, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
   const reviews = ghLines(`repos/${repo}/pulls/${pr}/reviews?per_page=100`)
     .map((r) => ({ author: r.user?.login, association: r.author_association, body: r.body, at: r.submitted_at, commit: r.commit_id }));
-  const reactions = ghLines(`repos/${repo}/issues/${pr}/reactions?per_page=100`)
-    .map((r) => ({ author: r.user?.login, content: r.content, at: r.created_at }));
-  const headSha = meta.head?.sha;
-  let headCommittedAt = null;
-  try {
-    headCommittedAt = ghJson(["api", `repos/${repo}/commits/${headSha}`]).commit?.committer?.date || null;
-  } catch { /* uden tidspunkt taeller en 👍-reaktion ikke (fail-closed) */ }
   return {
     number: pr,
     author: meta.user?.login,
     draft: Boolean(meta.draft),
-    headSha,
-    headCommittedAt,
+    headSha: meta.head?.sha,
     labels: (meta.labels || []).map((l) => l.name),
-    files, comments, reviews, reactions,
+    files, comments, reviews,
     threads: fetchThreads(repo, pr),
   };
 }

@@ -34,7 +34,7 @@ reviews:
       - "main"
 
   # KUN højrisiko-stier (#6654): motor, database/RLS, penge/økonomi,
-  # auth/sikkerhed, cron, backend-routes/API, workflows. Hold i sync med
+  # betaling/abonnement, auth/sikkerhed/webhooks, cron, backend-routes/API, workflows. Hold i sync med
   # HIGH_RISK_RULES i scripts/review-gate.mjs (review-gate.test.mjs sammenligner
   # dem for hver fil i repoet). Derefter: skær støj fra (genereret, binært, lockfiles).
   path_filters:
@@ -48,6 +48,7 @@ reviews:
     - "backend/**/*[Ee]conom*"
     - "backend/**/*[Ff]inanc*"
     - "backend/**/*[Ss]alar*"
+    - "backend/**/*[Ww]age*"
     - "backend/**/*[Pp]rize*"
     - "backend/**/*[Ss]ponsor*"
     - "backend/**/*[Ll]oan*"
@@ -70,6 +71,14 @@ reviews:
     - "backend/**/*[Tt]ransaction*"
     - "backend/**/*[Ll]edger*"
     - "backend/**/*[Vv]aluation*"
+    - "backend/**/*[Bb]illing*"
+    - "backend/**/*[Cc]heckout*"
+    - "backend/**/*[Ss]ubscription*"
+    - "backend/**/*[Ee]ntitlement*"
+    - "backend/**/*[Aa]lunta*"
+    - "backend/**/*[Rr]efund*"
+    - "backend/**/*[Ii]nvoice*"
+    - "backend/**/*[Ww]ebhook*"
     - "backend/**/*[Rr]ace*"
     - "backend/**/*[Ss]tage*"
     - "backend/**/*[Ff]inaliz*"
@@ -84,7 +93,9 @@ reviews:
     - "{backend,frontend/src/lib}/**/*[Aa]uth*"
     - "{backend,frontend/src/lib}/**/*[Tt]oken*"
     - "{backend,frontend/src/lib}/**/*[Ss]ecurity*"
-    - "{backend,frontend/src/lib}/**/*[Rr]ls*"
+    - "{backend,frontend/src/lib}/**/rls*"
+    - "{backend,frontend/src/lib}/**/*[_.-]rls*"
+    - "{backend,frontend/src/lib}/**/*Rls*"
     - "{backend,frontend/src/lib}/**/*RLS*"
     - "{backend,frontend/src/lib}/**/*[Gg]rant*"
     - "{backend,frontend/src/lib}/**/*[Pp]ermission*"

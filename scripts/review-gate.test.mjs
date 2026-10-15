@@ -22,6 +22,7 @@ import {
   shouldRerun,
   shaMatchesHead,
   parseCodexReviewedCommit,
+  parseCodexReviewState,
   pickGateRun,
   CODEX_SUMMARY_MARKER,
 } from "./review-gate.mjs";
@@ -94,6 +95,28 @@ test("classifyFile: kerne-motor, penge, cron og routes er hoejrisiko", () => {
   assert.equal(classifyFile("backend/cron.test.js"), null);
 });
 
+// Betaling/abonnement og webhooks (Codex-fund paa #6657): rigtige penge og
+// signaturtjek gled igennem som lav risiko.
+const BILLING_WEBHOOK = Object.freeze({
+  "backend/lib/billingCheckout.js": "betaling",
+  "backend/lib/billingPortal.js": "betaling",
+  "backend/lib/aluntaWebhook.js": "betaling",
+  "backend/lib/alunta.js": "betaling",
+  "backend/lib/aluntaSubscriptionReconcile.js": "betaling",
+  "backend/lib/subscriptionPlanInterval.js": "betaling",
+  "backend/lib/entitlement.js": "betaling",
+  "backend/scripts/reconcileAluntaSubscriptions.js": "betaling",
+  "backend/lib/wageDeductionSweep.js": "penge",
+  "backend/lib/resendWebhook.js": "sikkerhed",
+  "backend/lib/opsWebhook.js": "sikkerhed",
+});
+
+test("classifyFile: betaling, abonnement og webhooks er hoejrisiko", () => {
+  for (const [f, reason] of Object.entries(BILLING_WEBHOOK)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("backend/lib/billingCheckout.test.js"), null, "tests er stadig tests");
+  assert.equal(classifyFile("frontend/src/pages/BillingPage.jsx"), null, "UI om betaling er ikke betalingskode");
+});
+
 test("classifyFile: authorize/authorization er auth, Author (forum) er ikke", () => {
   assert.equal(classifyFile("backend/lib/authorizeTeamAction.js"), "auth");
   assert.equal(classifyFile("backend/lib/requestAuthorization.js"), "auth");
@@ -106,6 +129,9 @@ test("classifyFile: RLS er case-sensitivt (urlState er ikke RLS)", () => {
   assert.equal(classifyFile("backend/lib/teamRlsPolicy.js"), "auth");
   assert.equal(classifyFile("backend/lib/applyRLSGrants.js"), "auth");
   assert.equal(classifyFile("frontend/src/lib/ridersUrlState.js"), null);
+  assert.equal(classifyFile("frontend/src/lib/sentryDenyUrls.js"), null, "Urls er ikke RLS");
+  assert.equal(classifyFile("backend/scripts/audit-rls-coverage.js"), "auth", "rls efter bindestreg");
+  assert.equal(classifyFile("backend/lib/team_rls.js"), "auth", "rls efter underscore");
 });
 
 test("classifyFile: UI, docs, scripts og tests er lav risiko", () => {
@@ -156,6 +182,9 @@ test("globToRegExp: case-sensitiv og sti-bevidst", () => {
   assert.ok(globToRegExp("backend/**/*[Rr]ls*").test("backend/lib/x/rlsAudit.js"));
   assert.ok(!globToRegExp("backend/**/*[Rr]ls*").test("frontend/src/lib/ridersUrlState.js"));
   assert.ok(!globToRegExp("{backend,frontend/src/lib}/**/*[Rr]ls*").test("frontend/src/lib/ridersUrlState.js"), "rlS er ikke rls");
+  assert.ok(!globToRegExp("{backend,frontend/src/lib}/**/rls*").test("frontend/src/lib/sentryDenyUrls.js"), "Urls er ikke rls");
+  assert.ok(!globToRegExp("{backend,frontend/src/lib}/**/*[_.-]rls*").test("frontend/src/lib/sentryDenyUrls.js"));
+  assert.ok(globToRegExp("{backend,frontend/src/lib}/**/*[_.-]rls*").test("backend/scripts/audit-rls-coverage.js"));
   assert.ok(globToRegExp("{backend,frontend/src/lib}/**/*[Aa]uth*").test("frontend/src/lib/getAuthedUser.js"));
   assert.ok(!globToRegExp("backend/server.*").test("backend/lib/server.js"));
 });
@@ -185,13 +214,13 @@ test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavri
     "backend/lib/authTokenVerification.js", "backend/routes/adminRoadmap.js", "frontend/src/lib/getAuthedUser.js",
     "backend/lib/urlSafety.js", ".gitleaks.toml", "backend/lib/someWriteRpc.js", "backend/lib/weeklyScheduler.js",
     "backend/api/featureFlagsApi.js", "backend/server.js", "backend/lib/authorizeTeamAction.js",
-    ...Object.keys(CORE_MOTOR_MONEY),
+    ...Object.keys(CORE_MOTOR_MONEY), ...Object.keys(BILLING_WEBHOOK), "backend/scripts/audit-rls-coverage.js",
   ];
   for (const f of high) {
     assert.ok(classifyFile(f), `klassifikatoren: ${f} er hoejrisiko`);
     assert.ok(covered(f), `.coderabbit.yaml mangler et filter for ${f}`);
   }
-  for (const f of ["frontend/src/pages/RacePage.jsx", "docs/GITHUB_WORKFLOW.md", "scripts/review-gate.mjs", "backend/lib/abilityRegistry.js"]) {
+  for (const f of ["frontend/src/pages/RacePage.jsx", "docs/GITHUB_WORKFLOW.md", "scripts/review-gate.mjs", "backend/lib/abilityRegistry.js", "frontend/src/lib/sentryDenyUrls.js"]) {
     assert.equal(classifyFile(f), null);
     assert.ok(!covered(f), `${f} er lav risiko og maa ikke bruge CodeRabbit-kvote`);
   }
@@ -251,12 +280,26 @@ test("evaluateCodex: intet review / koerer / fejlet -> ikke ok med handlingsanvi
   assert.match(evaluateCodex({ comments: [{ author: CODEX, body: summary("Failed") }], headSha: HEAD }).detail, /fejlede/);
 });
 
-test("evaluateCodex: Codex-review for HEAD uden summary, eller 👍 efter HEAD-commit'et, taeller som gennemfoert", () => {
+test("evaluateCodex: Codex-review for HEAD uden summary taeller som gennemfoert", () => {
   assert.equal(evaluateCodex({ reviews: [{ author: CODEX, body: "### 💡 Codex Review", commit: HEAD }], headSha: HEAD }).ok, true);
   assert.equal(evaluateCodex({ reviews: [{ author: CODEX, body: "**Reviewed commit:** `b1f0c58e2d`" }], headSha: HEAD }).ok, true);
-  const committed = "2026-10-15T10:00:00Z";
-  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "+1", at: "2026-10-15T10:05:00Z" }], headSha: HEAD, headCommittedAt: committed }).ok, true);
-  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "eyes", at: "2026-10-15T10:05:00Z" }], headSha: HEAD, headCommittedAt: committed }).ok, false);
+});
+
+test("evaluateCodex: 👍-reaktion er aldrig HEAD-bevis (kan ikke bindes til en SHA, #6657 Codex-fund)", () => {
+  const thumbs = [{ author: CODEX, content: "+1", at: "2026-10-15T11:00:00Z" }];
+  assert.equal(evaluateCodex({ reactions: thumbs, headSha: HEAD, headCommittedAt: "2026-10-15T10:00:00Z" }).ok, false,
+    "👍 efter en (forfatter-styret) committer-dato er ikke nok");
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], reactions: thumbs, headSha: HEAD }).ok, false);
+});
+
+test("parseCodexSummary: codex-review-state-JSON giver den fulde SHA", () => {
+  const state = `<!-- codex-review-state:v1 {"code_review":{"commit_sha":"${HEAD}","has_any_findings":false,"has_unresolved_findings":false,"status":"completed"},"security_review":{"commit_sha":null}} -->`;
+  const body = summary("✅ **Completed**", "b1f0c58").replace(CODEX_SUMMARY_MARKER, `${CODEX_SUMMARY_MARKER}\n${state}`);
+  assert.deepEqual(parseCodexSummary(body), { state: "completed", commit: HEAD });
+  assert.deepEqual(parseCodexReviewState(body), { commit: HEAD, status: "completed" });
+  assert.equal(parseCodexReviewState("<!-- codex-review-state:v1 {ugyldig} -->"), null);
+  assert.equal(parseCodexReviewState(`<!-- codex-review-state:v1 {"code_review":{"commit_sha":null}} -->`), null);
+  assert.equal(evaluateCodex({ comments: [{ author: CODEX, body }], headSha: HEAD }).ok, true);
 });
 
 test("evaluateCodex: foraeldet bevis fra et aeldre commit -> roed (#6657 review)", () => {
@@ -266,10 +309,6 @@ test("evaluateCodex: foraeldet bevis fra et aeldre commit -> roed (#6657 review)
   assert.equal(r.state, "stale");
   assert.match(r.detail, /512c930.*@codex review/);
   assert.equal(evaluateCodex({ reviews: [{ author: CODEX, body: "x", commit: OLD }], headSha: HEAD }).ok, false, "review paa gammelt commit");
-  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "+1", at: "2026-10-15T09:00:00Z" }], headSha: HEAD, headCommittedAt: "2026-10-15T10:00:00Z" }).ok, false,
-    "👍 afgivet foer HEAD blev committet");
-  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "+1", at: "2026-10-15T11:00:00Z" }], headSha: HEAD }).ok, false,
-    "👍 uden kendt HEAD-tidspunkt er fail-closed");
   assert.equal(evaluateCodex({ comments: [codexDone] }).ok, false, "ukendt HEAD matcher intet");
   assert.equal(evaluateCodex({ comments: [stale, codexDone], headSha: HEAD }).ok, true, "frisk summary for HEAD -> groen");
 });
