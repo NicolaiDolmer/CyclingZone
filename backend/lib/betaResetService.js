@@ -2,6 +2,7 @@ import { createBaselineProfile } from "./boardEngine.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
 import { MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
+import { isPoolRetired, withPoolRetiredColumn } from "./aiTeamGenerator.js";
 import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 import { seniorSquadPatch, withSeniorSquadScope } from "./squads.js";
 
@@ -242,12 +243,14 @@ export async function allocateLeaguePools(supabase) {
   }
 
   // #5536: kun seniorpuljer. Ungdomspuljerne har samme tier 1-4, og et managerhold må
-  // aldrig få en ungdomspulje som sin seniorpulje.
-  const poolsResult = ensureOk(await withSeniorSquadScope((senior) => senior(supabase
-    .from("league_divisions")
-    .select("id"))
-    .eq("tier", MANAGER_ENTRY_DIVISION)));
-  const entryPools = poolsResult.data || [];
+  // aldrig få en ungdomspulje som sin seniorpulje. #6650: entry er D4, hvor E-H er
+  // pensioneret fra S4 (#5642) uden kalender og AI-felt; de er aldrig et mål.
+  const poolsResult = ensureOk(await withPoolRetiredColumn((retiredCol) =>
+    withSeniorSquadScope((senior) => senior(supabase
+      .from("league_divisions")
+      .select(`id${retiredCol}`))
+      .eq("tier", MANAGER_ENTRY_DIVISION))));
+  const entryPools = (poolsResult.data || []).filter((pool) => !isPoolRetired(pool));
 
   if (entryPools.length === 0) {
     // Pre-migration-fallback: ingen puljer at sprede på. Flyt holdene til entry-divisionen
