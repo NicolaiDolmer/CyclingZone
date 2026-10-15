@@ -47,6 +47,8 @@ export interface StageProfileV2Props {
   selectedClimb: number | null;
   onSelectClimb: (index: number) => void;
   band?: boolean;
+  /** #6643: baandet faar ruteprofilens hoejde paa desktop (mobil uaendret). */
+  bandTall?: boolean;
   /** #6570 replay: profilen daempes efter dette km (ikke koert endnu). */
   progressKm?: number | null;
   /** #6570 replay: eget lag oeverst i profilen (grupperne som prikker). */
@@ -64,15 +66,16 @@ export interface ProfileGeometry {
   narrow: boolean;
 }
 
-export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false, progressKm = null, overlay }: StageProfileV2Props) {
+export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false, bandTall = false, progressKm = null, overlay }: StageProfileV2Props) {
   const { t } = useTranslation("races");
   const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>();
   const [hoverKm, setHoverKm] = useState<number | null>(null);
 
   const D = Number(profile.distance_km) || series.kms[series.kms.length - 1];
   const narrow = width > 0 && width < 640;
-  const H = band ? (narrow ? 130 : 170) : (narrow ? 220 : 320);
-  const TOP = band ? 34 : (narrow ? 48 : 78);
+  const short = band && (narrow || !bandTall);
+  const H = short ? (narrow ? 130 : 170) : (narrow ? 220 : 320);
+  const TOP = short ? 34 : (narrow ? 48 : 78);
   const BOT = 30;
   const W = Math.max(1, width);
 
@@ -170,15 +173,7 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
           onPointerDown={onPointer}
           onPointerLeave={() => setHoverKm(null)}
         >
-          {grid.map((v, gi) => (
-            <g key={v}>
-              <line x1={0} x2={W} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />
-              {(grid.length - 1 - gi) % gridLabelEvery === 0 && (
-                // Kortets baggrund som kontur, saa maerket kan laeses oven paa profilen.
-                <text x={4} y={Y(v) - 4} fontSize={10} fill="var(--text-3)" stroke="var(--bg-card)" strokeWidth={3} paintOrder="stroke" className="font-data tabular-nums">{`${formatNumber(v)} m`}</text>
-              )}
-            </g>
-          ))}
+          {grid.map((v) => <line key={v} x1={0} x2={W} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />)}
           {selectedClimb !== null && climbs[selectedClimb] && !band && (
             <rect
               x={X(Math.max(0, Number(climbs[selectedClimb].crest_km) - Number(climbs[selectedClimb].length_km)))}
@@ -210,6 +205,10 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
             strokeWidth={1.6}
             strokeLinejoin="round"
           />
+          {grid.map((v, gi) => (grid.length - 1 - gi) % gridLabelEvery === 0 && (
+            // Tegnes efter profilen (#6643), med kortets baggrund som kontur, saa maerket kan laeses oven paa den.
+            <text key={`gl-${v}`} x={4} y={Y(v) - 4} fontSize={10} fill="var(--text-3)" stroke="var(--bg-card)" strokeWidth={3} paintOrder="stroke" className="font-data tabular-nums">{`${formatNumber(v)} m`}</text>
+          ))}
           <rect x={0} y={H - BOT + 6} width={W} height={3} fill="var(--bg-subtle)" />
           {climbs.map((c, i) => {
             const top = Number(c.crest_km);

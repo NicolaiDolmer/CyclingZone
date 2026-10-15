@@ -148,6 +148,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
             selectedClimb={null}
             onSelectClimb={() => {}}
             band
+            bandTall
             progressKm={km}
             overlay={story.precise_times ? (geo) => (
               <g aria-hidden="true">
