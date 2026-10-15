@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft (1 review/time) · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · post Discord 7.356-7.360 (`docs/drafts/discord-patch-7356-7360-2026-10-14.md`). · **læs landingpage-udkast i dag** (#1369, https://claude.ai/artifact/7mEWN2iyHtZnUJwyStDFye), derefter build-go.
+> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft (1 review/time) · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.361 + færdiggør patch-PR #6661 via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action (pc1, 15/10):** (1) S5-kalenderen er SKREVET 15/10 (437 løb, #6367); næste: U23/junior-kalendere (§1f) + GT-træthed (#5928) før S5-start 28/10. (2) Motor-bølge: merge #6656 #6660 #6662 #6657 inden for bånd (#6157); #5978/#6201 bygger. (3) Akademi pull-optag tændes før søn 18/10 kl. 00 på ejer-go (#6155). (4) Motortjek: `docs/audits/2026-10-15-motor-gennemgang.md`. **DOLMERPC:** løbshistorien #6570, så 🔴 Brand-stabilitet.
+> **🎯 Next action:** start `docs/sessions/2026-10-16-samlet-startprompt.md` (eneste session; driver selv merge-køen). (1) Akademi pull-optag før søn 18/10 kl. 00 (#6155). (2) #6677 merge i formiddag efter CodeRabbit. (3) #6490 mål aftenerne 15+16/10. (4) Ejer-valg: #6643 animation · #6657 review-gate · designvalg 3 (tekstpile).
 >
-> **15/10 pc1:** merget #6637 #6639 #6640 #6646 #6652 · flag: `stage_page_v2`=beta, `training_bulk_day`=beta, `first_race_card`=on (ejer-go).
+> **15/10:** pc1 merget #6637 #6639 #6640 #6646 #6652 #6659 #6663 #6669 #6670 #6672 #6675 · DOLMERPC merget #6664 #6676 #6678 #6685 (+ #6682/#6688 med ejer-go, se startprompten) · flag: `stage_page_v2`=beta, `training_bulk_day`=beta, `first_race_card`=on.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code på NICOLAIPC (pc1) 15/10 - startprompt `docs/sessions/2026-10-15-pc1-dynamisk-workflow.md`. Codex-bibliotek PR #6636 holdes adskilt. DOLMERPC-rester: OneDrive `recovery/DOLMERPC-2026-10-15/`. **DOLMERPC:** Claude Code 15/10 - løbshistorien #6570, så #1369.
+> **🤖 Working agent:** Ingen aktiv session (pc1 og DOLMERPC afsluttet 15/10). Codex-bibliotek PR #6636 holdes adskilt. DOLMERPC-rester: OneDrive `recovery/DOLMERPC-2026-10-15/`.

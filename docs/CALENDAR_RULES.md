@@ -221,7 +221,8 @@ Alle puljer i en division kører stadig den samme kalender (#2276), så D4's lø
 
 - **Katalog:** kun truppens egne rækker (`race_pool.squad`). Navne-dedup gælder inden for truppen, ikke på tværs af trupper (spec §4.2).
 - **Én kalender pr. trup og tier:** alle truppens grupper i samme tier deler samme kalender, præcis som seniorens puljer. I S4 er det ca. 9 grupper à 24 i tier 1 pr. trup (ejer 24/9), og de kører samme løb på samme tid.
-- **Tæthed (`SQUAD_CALENDAR` i `calendarTierCaps.js`):** løb tælles efter start-dato pr. kalenderuge; U23 skal ligge på 1-2 og junior på 1 i hver uge. Højst halvdelen af datoerne har en etape ("de fleste er rene træningsdage"). Aldrig to ungdomsløb samtidig, fordi en ungdomstrup kun har få ryttere. Udvalget er prestige-først som seniorens, og rækkefølgen følger løbenes rigtige dato.
+- **Tæthed (`SQUAD_CALENDAR` i `calendarTierCaps.js`):** løb tælles efter start-dato pr. kalenderuge; U23 skal ligge på 1-2 og junior på 1 i hver uge. Andelen af datoer med en etape har et loft pr. trup (oprindeligt halvdelen, "de fleste er rene træningsdage"; fra #6667 se nedenfor). Aldrig to ungdomsløb samtidig, fordi en ungdomstrup kun har få ryttere. Udvalget er prestige-først som seniorens, og rækkefølgen følger løbenes rigtige dato.
+- **U23 over junior + byggeregler ([#6667](https://github.com/NicolaiDolmer/CyclingZone/issues/6667), ejer 15/10):** U23 kører flere løbsdatoer end junior (loft ~18 mod ~12 af S5's 32 datoer, `maxRacingDayShare` pr. trup). To hårde regler i `squadCalendarPacker.js`: ingen ny start dagen efter et etapeløb slutter, og sæsonens sidste uge (de sidste 7 datoer) har altid en ungdomsetape. Ligger en ungdomsetape inden for en halv time af seniorens første etape på datoen (sæsonens første dag, hvor planlægningsvinduet skubber begge), flyttes den til sin egen tid (#5893).
 - **Løbsdags-aksen:** samme mål som senioren (140), fem løbsdage pr. dato (§1e-b). Ungdomsetapen ligger på datoens første løbsdag; resten er rene træningsdage.
 - **Tider:** én etape-tid pr. trup, på halve timer, så den aldrig rammer samme minut som en senior-slot. Sæsonens første og sidste dag følger §2f som seniorens.
 - **Gates:** kalender-invarianterne, identiske grupper, planlægningsvinduet (§2f) og tætheden ovenfor er hårde. Seniorens dæknings-gulve, K-B-komposition, scorecard og realisme-bånd er kalibreret mod divisionerne og er kun måling for en trup (spec §4.3).
@@ -343,6 +344,10 @@ node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-day
 Trin 4 findes kun fordi §2c blev ændret 19/9. Det er en **sletning** af sæsonens nuværende
 løb og kalender-form, og den kræver sit eget ejer-go — ikke det samme go som trin 3. Kør
 altid trin 1 igen umiddelbart før: erstatnings-gatens tal er en måling, ikke en hukommelse.
+
+### Ejeren ser kalenderen før `--apply` (`--dump-plan`, 15/10)
+
+`--dump-plan <fil>` gemmer tørkørslens plan som JSON (samme plan som `--apply` skriver: løb, etaper, tider, profiler pr. division). Den bruges til at vise ejeren kalenderen visuelt og holde den op mod forrige sæson, før skrivningen godkendes (S5 15/10). Flaget kræver en filsti og stopper ellers med exit 2, før der planlægges. Det skriver kun en lokal fil og ændrer intet i prod.
 
 ### Trin 0: den gyldne kalender-diff (obligatorisk, [#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123))
 

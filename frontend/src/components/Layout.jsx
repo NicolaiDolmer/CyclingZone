@@ -487,7 +487,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
               topbar (nedenfor) baerer KUN wordmarket, saa CTA'en lever her og
               i nav'ets fulde DiscordJoinLink (linje ovenfor) i stedet. */}
           <DiscordJoinLink variant="icon" label={t("sidebar.joinDiscord")} onClick={onNav} />
-          <LanguageSwitcher />
+          <LanguageSwitcher surface="sidebar" />
         </div>
       </div>
     </div>
@@ -985,7 +985,7 @@ export default function Layout() {
             <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>
           <div className="flex items-center gap-2">
-            <LanguageSwitcher />
+            <LanguageSwitcher surface="sidebar" />
             <NavLink to="/notifications" aria-label={t("a11y.openNotifications")} className="relative">
               <BellIcon aria-hidden="true" className="w-5 h-5 text-cz-sidebar-2 hover:text-cz-sidebar-1" />
               {unread > 0 && (

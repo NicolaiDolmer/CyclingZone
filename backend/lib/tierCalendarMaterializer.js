@@ -44,7 +44,7 @@ import { withSeniorSquadScope } from "./squads.js";
 // #5644 (Y5): en trups kalender (u23/junior) bygges fra truppens eget katalog med sin egen
 // lille pakker og sin egen taethed (SQUAD_CALENDAR). Senior er default og bit-identisk.
 import { SQUAD_CALENDAR, CALENDAR_SQUADS } from "./calendarTierCaps.js";
-import { packSquadCalendar } from "./squadCalendarPacker.js";
+import { packSquadCalendar, squadSlotsForDate } from "./squadCalendarPacker.js";
 // #6367: hvilken profil-model en saeson SKAL genereres med (v5 til og med S4, "s5" fra S5).
 // Afledt af saesonnummeret, aldrig af et flag - samme kilde som benchmark-gaten bruger.
 import {
@@ -446,7 +446,9 @@ function buildSquadTierPlan({
   const slotsByDate = new Map();
   const slotsForDate = (localDate) => {
     if (!slotsByDate.has(localDate)) {
-      slotsByDate.set(localDate, slotsFor(tier, localDate, { slots: squadSlots, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay }));
+      // #6667 (#5893): egen starttid, aldrig inden for en halv time af seniorens foerste etape.
+      const otherSquadSlots = Object.entries(SQUAD_CALENDAR).filter(([s]) => s !== squad).map(([, c]) => c.stageSlot);
+      slotsByDate.set(localDate, squadSlotsForDate({ squad, tier, localDate, squadSlots: squadSlots[tier], otherSquadSlots, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay }));
     }
     return slotsByDate.get(localDate);
   };
