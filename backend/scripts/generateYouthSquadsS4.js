@@ -579,7 +579,9 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
     const team = teamsById.get(r.team_id);
     if (!team) { skipped.noTeam++; continue; }
     const tier = r.archetype_draw?.birth?.tier;
-    if (!isBornFromPriors(r) || (tier !== "youth" && tier !== U23_BIRTH_TIER)) { skipped.noMarker++; continue; }
+    // Generatorens egne ryttere kendes på truppen: et tidligere løft kan have skiftet markørens tier.
+    const generatorBorn = r.squad === "u23" || r.squad === "junior" || tier === "youth" || tier === U23_BIRTH_TIER;
+    if (!isBornFromPriors(r) || !generatorBorn) { skipped.noMarker++; continue; }
     const age = ageForSeason(r.birthdate, targetSeason);
     if (!Number.isInteger(age) || age < JUNIOR_AGE_MIN || age > U23_BIRTH_AGE_MAX) { skipped.graduated++; continue; }
     const level = Number.isFinite(Number(r.level))
@@ -770,6 +772,22 @@ export async function loadActiveAiTeams(supabase) {
     .map((t) => ({ id: t.id, name: t.name, tier: tierByPool.get(t.league_division_id) }));
 }
 
+/**
+ * Idempotens-grundlag pr. AI-hold. U23-truppen kendes på `squad === "u23"` ELLER
+ * U23-markøren: `--lift-existing`/`--match-human-level` kan skifte markørens tier til
+ * en voksen-tier, så markøren alene må ikke afgøre om holdet har en U23-trup (#6668).
+ */
+export function summarizeExistingByTeam(aiRiders) {
+  const existingByTeam = new Map();
+  for (const r of aiRiders) {
+    const e = existingByTeam.get(r.team_id) ?? { u23Born: false, juniors: 0 };
+    if (r.squad === "u23" || r.archetype_draw?.birth?.tier === U23_BIRTH_TIER) e.u23Born = true;
+    if (r.squad === "junior") e.juniors++;
+    existingByTeam.set(r.team_id, e);
+  }
+  return existingByTeam;
+}
+
 export async function loadPopulation(supabase, aiTeamIds) {
   // schema-columns-ok: riders.squad findes i prod (database/2026-09-15-4619-riders-squad.sql,
   // #4619, verificeret 23/9 i information_schema); schema-snapshot.json er ikke gen-dumpet siden.
@@ -781,13 +799,7 @@ export async function loadPopulation(supabase, aiTeamIds) {
   const aiRiders = active.filter((r) => r.team_id && aiSet.has(r.team_id));
   // Idempotens pr. trup. AI-hold får intet akademi-intake (runAcademyIntake er
   // kun for menneskehold), så en junior på et AI-hold stammer fra denne generator.
-  const existingByTeam = new Map();
-  for (const r of aiRiders) {
-    const e = existingByTeam.get(r.team_id) ?? { u23Born: false, juniors: 0 };
-    if (r.archetype_draw?.birth?.tier === U23_BIRTH_TIER) e.u23Born = true;
-    if (r.squad === "junior") e.juniors++;
-    existingByTeam.set(r.team_id, e);
-  }
+  const existingByTeam = summarizeExistingByTeam(aiRiders);
   const aiTeamsWithYouth = new Set(aiRiders.filter((r) => r.is_academy === true || isYouthSquad(r.squad)).map((r) => r.team_id));
   const aiSeniorIds = aiRiders.filter((r) => r.is_academy !== true && !isYouthSquad(r.squad)).map((r) => r.id);
   return {

@@ -19,6 +19,7 @@ import {
   rankBirthCandidates,
   planYouthLift,
   applyLift,
+  summarizeExistingByTeam,
   summarizeLevels,
 } from "./generateYouthSquadsS4.js";
 import {
@@ -556,4 +557,36 @@ test("gap10BySquadTerrain + benchmarkGapByTerrain + gapVerdict", () => {
   assert.equal(gapVerdict(null, ref.get("hilly")), null);
   assert.equal(describeLevels([3, 1, 2]).median, 2);
   assert.equal(describeLevels([]).n, 0);
+});
+
+test("#6668: efter et løft genkender idempotensen stadig U23-truppen (ingen nye U23-rækker)", () => {
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S });
+  const lift = planYouthLift({
+    riders,
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S,
+    levelProfile: profile,
+    ...MODELS,
+  });
+  // Tving alle U23-markører over på en voksen-tier, som et løft over U23-båndet kan gøre.
+  const lifted = riders.map((r) => {
+    const row = lift.rows.find((x) => x.riderId === r.id);
+    const base = row?.changed ? { ...r, archetype_draw: row.archetype_draw } : r;
+    return base.squad === "u23"
+      ? { ...base, team_id: base.team_id, archetype_draw: { ...base.archetype_draw, birth: { ...base.archetype_draw.birth, tier: "solid" } } }
+      : base;
+  });
+  const existingByTeam = summarizeExistingByTeam(lifted);
+  const again = plan({ existingByTeam });
+  assert.equal(again.rows.filter((r) => r.squad === "u23").length, 0);
+  // Løftede ryttere tælles ikke som noMarker ved en genkørsel.
+  const second = planYouthLift({
+    riders: lifted,
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S,
+    levelProfile: profile,
+    ...MODELS,
+  });
+  assert.equal(second.skipped.noMarker, 0);
 });
