@@ -212,3 +212,13 @@ test("akademi-siden viser aldrig stjerner på intake-kort (#5844)", () => {
   assert.doesNotMatch(pageSource, /PotentialeStars/, "AcademyPage må ikke importere/rendere PotentialeStars");
   assert.match(pageSource, /potentialPending/, "manglende bånd skal vise en tekst, ikke et stjerne-fallback");
 });
+
+test("hent-knappen vises uanset åbne tilbud, og 'provisional value' kun på pull-kandidater (#6155)", () => {
+  const cardIdx = pageSource.indexOf('t("intakePull.pullBtn")');
+  assert.ok(cardIdx > 0, "hent-knappen findes");
+  const before = pageSource.slice(Math.max(0, cardIdx - 900), cardIdx);
+  assert.match(before, /intakePull\.enabled && !intakePull\.pulledThisWeek && \(/);
+  assert.doesNotMatch(before, /regularIntake\.length === 0 && intakePull\.enabled && !intakePull\.pulledThisWeek \?/);
+  assert.match(pageSource, /isPull \? t\("intakePull\.provisionalValue"\) : t\("colValue"\)/);
+  assert.match(pageSource, /isPull && \(\s*<p[^>]*>\{t\("intakePull\.valuationNote"\)\}/);
+});

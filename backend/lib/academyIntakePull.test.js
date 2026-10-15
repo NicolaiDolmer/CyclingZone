@@ -188,6 +188,7 @@ test("pullWeeklyAcademyIntake (happy path): genererer SUNDAY_DRIP_COUNT kandidat
     seedCohortFn: async (_sb, opts) => {
       seedCalls.push(opts);
       assert.equal(opts.countOverride, SUNDAY_DRIP_COUNT, "pull-kuldet bruger samme størrelse som det gamle drip");
+      assert.equal(opts.source, "pull", "#6155: pull-kandidater markeres source=pull");
       return ["rider-1", "rider-2"];
     },
     deriveRiders: async (_sb, ids) => { derivedCalls.push(ids); },

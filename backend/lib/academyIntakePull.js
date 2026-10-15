@@ -24,6 +24,7 @@ import { deriveForRiderIds } from "./backfillCores.js";
 import { SUNDAY_DRIP_COUNT } from "./sundayIntakeTick.js";
 
 const PULL_SEED_BASE = 3550;
+export const INTAKE_PULL_SOURCE = "pull";
 
 // ── Symbolsk start (ejer-beslutning 19/8, punkt 2) ────────────────────────────
 // Ved hentning trækkes kandidatens market_value uniformt i dette interval — IKKE
@@ -145,6 +146,7 @@ export async function pullWeeklyAcademyIntake(supabase, {
     rng,
     identityBasis: teamRow?.season_1_identity_basis || null,
     countOverride: SUNDAY_DRIP_COUNT,
+    source: INTAKE_PULL_SOURCE, // #6155: kortet viser kun 'provisional value' på pull-kandidater
   });
 
   if (newIds.length > 0) {

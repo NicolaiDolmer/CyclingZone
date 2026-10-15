@@ -53,6 +53,8 @@ import { GiftIcon } from "../components/ui/icons/index.jsx";
 
 // #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
 const BOARD_GIFT_SOURCE = "board_gift";
+// #6155: kun kandidater hentet med knappen har en symbolsk startværdi.
+const PULL_SOURCE = "pull";
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -463,6 +465,7 @@ export default function AcademyPage() {
   const renderIntakeCard = (item) => {
     const rider = item.rider;
     const isBoardGift = item.source === BOARD_GIFT_SOURCE;
+    const isPull = item.source === PULL_SOURCE;
     const age = getRiderAge(rider.birthdate, seasonYear);
     const busy = actionState[rider.id] != null;
     const err = actionErrors[rider.id];
@@ -551,7 +554,7 @@ export default function AcademyPage() {
             (1 sæsons intro-kontrakt), og forklarer at den rigtige værdi
             sættes ved førstkommende søndags-opdatering (punkt 5). */}
         <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border-t border-cz-border pt-2">
-          <dt className="text-cz-3">{intakePull.enabled ? t("intakePull.provisionalValue") : t("colValue")}</dt>
+          <dt className="text-cz-3">{isPull ? t("intakePull.provisionalValue") : t("colValue")}</dt>
           <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(getRiderMarketValue(rider))} CZ$</dd>
           <dt className="text-cz-3">{t("signingFee")}</dt>
           {/* #5844: bestyrelsens gave signes gratis (backend sender signingFee 0). */}
@@ -565,7 +568,7 @@ export default function AcademyPage() {
             </>
           )}
         </dl>
-        {intakePull.enabled && (
+        {isPull && (
           <p className="text-3xs text-cz-3">{t("intakePull.valuationNote")}</p>
         )}
 
@@ -704,11 +707,12 @@ export default function AcademyPage() {
 
         {/* #3550 (ejer-beslutning 19/8, ungdomspakken): pull-baseret intake.
             intakePull.enabled=false (default indtil cutover-flip 23/8) → uændret
-            visning (auto-drip-tomtilstand nedenfor). enabled=true bytter tomme-
-            tilstanden ud med en hent-knap (tilstand a) medmindre ugens kuld
-            allerede er hentet OG opbrugt (tilstand b var kandidat-kortene). */}
-        {regularIntake.length === 0 && intakePull.enabled && !intakePull.pulledThisWeek ? (
-          <Card className="p-5 flex flex-col items-start gap-3">
+            visning (auto-drip-tomtilstand nedenfor). enabled=true viser en
+            hent-knap så længe ugens kuld ikke er hentet. */}
+        {/* #6155: knappen vises uanset åbne tilbud (kun ugens hentning afgør det)
+            og står over de eksisterende kort. */}
+        {intakePull.enabled && !intakePull.pulledThisWeek && (
+          <Card className={`p-5 flex flex-col items-start gap-3${regularIntake.length > 0 ? " mb-4" : ""}`}>
             <h3 className="text-sm font-semibold text-cz-1">{t("intakePull.title")}</h3>
             <p className="text-xs text-cz-2 max-w-md">{t("intakePull.description")}</p>
             <p className="text-3xs uppercase tracking-wide text-cz-3">{t("intakePull.deadlineNote")}</p>
@@ -717,7 +721,9 @@ export default function AcademyPage() {
               {t("intakePull.pullBtn")}
             </Button>
           </Card>
-        ) : regularIntake.length === 0 && intakePull.enabled ? (
+        )}
+        {regularIntake.length === 0 && intakePull.enabled && !intakePull.pulledThisWeek ? null
+          : regularIntake.length === 0 && intakePull.enabled ? (
           <EmptyState
             title={t("emptyIntakeTitle")}
             description={t("intakePull.emptyAfterPull")}
