@@ -37,7 +37,7 @@
     }
   },
   "winnerDigests": {
-    "uphill_sprint": "sha256:e78663de8357525cc1cc567966000f301fb374663c3f398a20a9b53ebf3f019b",
-    "long_climb": "sha256:cbb58ab33a9f95500492772bd3eda32f66560c9943897122429e98dec30ec4e9"
+    "uphill_sprint": "sha256:1b881099da684a2d135503d14b21fd47c3062d08e2f4f11d584f238e76509f8e",
+    "long_climb": "sha256:a3285600ef621d9f86c6e4f706f9ffc77b08317290542d5e2ede5a0db61f74e7"
   }
 }
