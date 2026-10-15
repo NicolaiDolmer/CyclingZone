@@ -62,12 +62,13 @@
   },
   "potentialLearned": "Læres gennem træning",
   "prognosis": {
-    "learning": "Læres gennem træning",
-    "learningDays": "Første bud om {days} træningsdage",
+    "learning": "Læres",
+    "daysLeft": "{days} dage igen",
+    "learningDays": "Første bud om {days} træningsdage.",
     "broad": "Groft bud",
     "narrow": "Skarpere bud",
     "final": "Endeligt bud",
-    "nextDays": "Skarpere om {days} træningsdage",
+    "nextDays": "Skarpere om {days} træningsdage.",
     "tooltip": "Prognosen snævrer ind, jo flere træningsdage han har på dit hold. En bedre træner og træningsfacilitet gør dig sikker hurtigere. De ændrer aldrig hans talent."
   },
   "profile": {

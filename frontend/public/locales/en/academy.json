@@ -62,12 +62,13 @@
   },
   "potentialLearned": "Learned through training",
   "prognosis": {
-    "learning": "Learned through training",
-    "learningDays": "First read in {days} training days",
+    "learning": "Learning",
+    "daysLeft": "{days} days left",
+    "learningDays": "First read in {days} training days.",
     "broad": "Rough read",
     "narrow": "Sharper read",
     "final": "Final read",
-    "nextDays": "Sharper in {days} training days",
+    "nextDays": "Sharper in {days} training days.",
     "tooltip": "The forecast narrows the more training days he has with your team. A better coach and training facility make you sure faster. They never change his talent."
   },
   "profile": {
