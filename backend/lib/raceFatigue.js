@@ -11,6 +11,7 @@ import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.j
 import { effortFatigueMultiplier } from "./raceRoles.js";
 import { nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
+import { isS5ProfilesV1OrLater } from "./raceEngineRulesRevision.ts";
 
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
@@ -142,9 +143,145 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
 
 // #6079: `rulesRevision` (løbets bundne engine_rules_revision) gør save's
 // multiplikator profil-afhængig under orders_gc_v1; udeladt/legacy = bit-identisk.
-export function raceConditionLoads(riderIds, profileType, effortByRider = null, rulesRevision = null) {
+// #5928: under s5_profiles_v1 (og KUN dér) vokser etapens belastning med etapens
+// plads i løbet og med det arbejde rytteren faktisk lavede (se stageRaceConditionLoad).
+// `work` = { stageNumber, efforts?, exposure? } fra raceRunner; udeladt = kun etapens plads.
+export function raceConditionLoads(riderIds, profileType, effortByRider = null, rulesRevision = null, work = null) {
+  if (isS5ProfilesV1OrLater(rulesRevision)) {
+    return [...new Set(riderIds)].map((riderId) => ({
+      rider_id: riderId,
+      load: stageRaceConditionLoad({
+        profileType,
+        stageNumber: work?.stageNumber ?? 1,
+        effort: work?.efforts?.get(riderId) ?? effortByRider?.get(riderId) ?? "normal",
+        exposure: work?.exposure?.get(riderId) ?? null,
+        rulesRevision,
+      }),
+    }));
+  }
   return [...new Set(riderIds)].map(riderId => ({rider_id:riderId,load:raceFatigueLoad(profileType)*effortFatigueMultiplier(effortByRider?.get(riderId) ?? 'normal', { profileType, rulesRevision })}));
 }
+
+// ── #5928: Grand Tour-træthed (KUN s5_profiles_v1) ──────────────────────────────
+//
+// Ejer 15/10: GT'en skal være svær gennem træthed der hober sig op over hele løbet,
+// så uge 3 bliver hård, og en hjælper der arbejder skal trættes mere end en der
+// spares. Tilstanden afregnes stadig ÉN gang pr. dato med datoens samlede belastning
+// fra de 5 løbsdage (trainingDateCondition.settleTrainingDateCondition, uændret), og
+// en etape optager stadig ét af datoens 5 pladser. To ting ændres i etapens belastning:
+//   1. Etapens plads i løbet: hver etape ud over den første koster lidt mere, op til
+//      et loft. Et 5-etapers løb mærker det knap; en GT's sidste uge koster markant
+//      mere end den første (kroppen når ikke at komme sig mellem etaperne).
+//   2. Det reelle arbejde: indsatsen motoren faktisk kørte rytteren på (managerens
+//      ordre ELLER AI-holdets ordre), og hvor stor del af etapen han lå i et udbrud,
+//      alene eller i en jagtgruppe (mere) eller i grupettoen (mindre). Enkeltstarter
+//      er ens for alle: alle kører alene og fuldt ud.
+// Konstanterne er balance (hard rule 17: målte fordelinger kun i balance-internals/).
+
+/** Profiler S5-generatoren skriver, som den gamle tabel ikke kender (ellers 12). */
+const S5_EXTRA_FATIGUE_BY_PROFILE = Object.freeze({ medium_mountain: 16, gravel: 16 });
+
+export const GT_FATIGUE_TUNING = Object.freeze({
+  // Etapens plads: +andel pr. etape efter den første, loft efter capStages etaper.
+  accumulationPerStage: 0.05,
+  accumulationCapStages: 20,
+  // Arbejde: fuld etape i front (udbrud/alene/jagt) = +frontWork; fuld etape i grupettoen = -shelterRelief.
+  frontWork: 0.5,
+  shelterRelief: 0.3,
+  workFactorMin: 0.7,
+  workFactorMax: 1.5,
+});
+
+const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+const FRONT_GROUP_KINDS = new Set(["breakaway", "solo", "chase"]);
+
+/** Profil-belastning under S5 (de nye profiler får en rigtig værdi i stedet for 12). */
+export function s5RaceFatigueLoad(profileType) {
+  return S5_EXTRA_FATIGUE_BY_PROFILE[profileType] ?? raceFatigueLoad(profileType);
+}
+
+/** Etapens plads i løbet som multiplikator (1 på etape 1, aldrig faldende, loft). */
+export function stageAccumulationMultiplier(stageNumber, tuning = GT_FATIGUE_TUNING) {
+  const n = Math.max(1, Math.floor(Number(stageNumber) || 1));
+  return 1 + tuning.accumulationPerStage * Math.min(n - 1, tuning.accumulationCapStages);
+}
+
+/** Arbejds-multiplikator ud fra rytterens andel af etapen i front/grupetto (0-1 hver). */
+export function workExposureMultiplier(exposure, { profileType = null, tuning = GT_FATIGUE_TUNING } = {}) {
+  if (!exposure || TIME_TRIAL_PROFILES.has(profileType)) return 1;
+  const front = clamp01(exposure.front);
+  const shelter = clamp01(exposure.shelter);
+  const raw = 1 + tuning.frontWork * front - tuning.shelterRelief * shelter;
+  return Math.max(tuning.workFactorMin, Math.min(tuning.workFactorMax, raw));
+}
+
+/**
+ * REN: én rytters belastning for én etape under s5_profiles_v1.
+ * profil × indsats × arbejde × etapens plads. Indsatsen er den motoren kørte.
+ */
+export function stageRaceConditionLoad({ profileType, stageNumber = 1, effort = "normal", exposure = null, rulesRevision = null, tuning = GT_FATIGUE_TUNING }) {
+  const effortMult = TIME_TRIAL_PROFILES.has(profileType) ? 1 : effortFatigueMultiplier(effort, { profileType, rulesRevision });
+  return s5RaceFatigueLoad(profileType)
+    * effortMult
+    * workExposureMultiplier(exposure, { profileType, tuning })
+    * stageAccumulationMultiplier(stageNumber, tuning);
+}
+
+/**
+ * REN: hver rytters andel af etapen (km-vægtet) i front (udbrud, alene, jagtgruppe) og
+ * i grupettoen, fra motorens egne gruppe-snapshots (v4Output.groupSnapshots). Et snapshot
+ * gælder strækningen fra forrige snapshot til dets eget km. Enkeltstarter og manglende
+ * snapshots giver et tomt kort (= intet arbejdstillæg).
+ * @returns {Map<string, {front:number, shelter:number}>}
+ */
+export function stageWorkExposure(v4Output, profileType = null) {
+  const out = new Map();
+  const snaps = Array.isArray(v4Output?.groupSnapshots) ? v4Output.groupSnapshots : [];
+  if (!snaps.length || TIME_TRIAL_PROFILES.has(profileType)) return out;
+  const sorted = snaps.slice().sort((a, b) => Number(a.km) - Number(b.km));
+  const total = Math.max(0, Number(sorted[sorted.length - 1].km) || 0);
+  if (total <= 0) return out;
+  let prevKm = 0;
+  for (const snap of sorted) {
+    const km = Number(snap.km) || 0;
+    const w = Math.max(0, km - prevKm) / total;
+    prevKm = Math.max(prevKm, km);
+    if (w <= 0) continue;
+    for (const g of snap.groups ?? []) {
+      const front = FRONT_GROUP_KINDS.has(g.kind);
+      const shelter = g.kind === "gruppetto";
+      if (!front && !shelter) continue;
+      for (const id of g.rider_ids ?? []) {
+        const key = String(id);
+        const e = out.get(key) ?? { front: 0, shelter: 0 };
+        if (front) e.front += w;
+        else e.shelter += w;
+        out.set(key, e);
+      }
+    }
+  }
+  for (const e of out.values()) { e.front = round3(clamp01(e.front)); e.shelter = round3(clamp01(e.shelter)); }
+  return out;
+}
+
+/**
+ * REN: det raceRunner hæfter på en v4-etapes run, så belastningen kan fryses med det
+ * reelle arbejde. Kun under s5_profiles_v1; ellers null (ingen ændring af run-objektet).
+ */
+export function stageConditionWork({ rulesRevision, stageNumber, profileType, v4Result }) {
+  if (!isS5ProfilesV1OrLater(rulesRevision) || !v4Result) return null;
+  return {
+    stageNumber,
+    efforts: v4Result.efforts instanceof Map ? v4Result.efforts : null,
+    exposure: stageWorkExposure(v4Result.v4Output, profileType),
+  };
+}
+
+function clamp01(x) {
+  const v = Number(x);
+  return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
+}
+function round3(x) { return Math.round(x * 1000) / 1000; }
 
 /**
  * #3470 — REN KERNE: hviledags-restitueret træthed. Et GT-game_day-hul (mellem to

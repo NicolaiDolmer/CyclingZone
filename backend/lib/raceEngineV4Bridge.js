@@ -627,6 +627,9 @@ export function createRaceEngineV4Adapter(modules) {
           stageNumber,
         }),
         v4Output,
+        // #5928: the effort the engine actually raced each rider on (AI orders included),
+        // so the stage's fatigue load follows the same intent as the race itself.
+        efforts: new Map(input.startlist.map((e) => [String(e.rider_id), e.effort])),
       };
     },
   };
