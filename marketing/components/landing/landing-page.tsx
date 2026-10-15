@@ -7,7 +7,7 @@
 //     (stram, 600-700), brødtekst DM Sans, tal tabulære.
 //   - Billedsproget er spillet selv: ægte, beskårne udsnit fra et rigtigt hold og
 //     en rigtig etape (Bad At Names, Vuelta al Alto Aragón etape 6, taget 15/10),
-//     vist i spillets mørke tema som "vinduer" på den lyse side. Ingen mock, intet
+//     vist i spillets lyse tema (ejer 15/10: lys side = lyse billeder). Ingen mock, intet
 //     redigeret, ingen stock, ingen gradienter, ingen skygger (hairline + 5 px).
 //   - Guld er rationeret: kun "Create your team" (top, kom i gang, afslutning;
 //     aldrig to på samme skærm). Ingen guld-tal, ingen bjælker.
@@ -39,14 +39,14 @@ const PATHS = {
 // Hvert sprog har sine egne billeder, så /da viser spillet på dansk.
 const SHOTS = {
   en: {
-    team: { d: ["/landing/team-desktop.webp", 1700, 1222], m: ["/landing/team-mobile.webp", 1010, 1240] },
-    plan: { d: ["/landing/plan-desktop.webp", 1970, 828], m: ["/landing/plan-mobile.webp", 1010, 979] },
-    result: { d: ["/landing/result-desktop.webp", 1157, 1149], m: ["/landing/result-mobile.webp", 990, 1145] },
+    team: { d: ["/landing/team-desktop.webp", 1735, 1222], m: ["/landing/team-mobile.webp", 1040, 1240] },
+    plan: { d: ["/landing/plan-desktop.webp", 1965, 905], m: ["/landing/plan-mobile.webp", 1022, 1000] },
+    result: { d: ["/landing/result-desktop.webp", 1203, 1197], m: ["/landing/result-mobile.webp", 1022, 1190] },
   },
   da: {
     team: { d: ["/landing/team-desktop-da.webp", 1735, 1222], m: ["/landing/team-mobile-da.webp", 1040, 1240] },
-    plan: { d: ["/landing/plan-desktop-da.webp", 1970, 806], m: ["/landing/plan-mobile-da.webp", 1040, 980] },
-    result: { d: ["/landing/result-desktop-da.webp", 1167, 1162], m: ["/landing/result-mobile-da.webp", 1008, 1160] },
+    plan: { d: ["/landing/plan-desktop-da.webp", 1965, 905], m: ["/landing/plan-mobile-da.webp", 1022, 1000] },
+    result: { d: ["/landing/result-desktop-da.webp", 1207, 1210], m: ["/landing/result-mobile-da.webp", 1022, 1190] },
   },
 } as const;
 
@@ -68,7 +68,7 @@ function Shot({
   const { d, m } = SHOTS[lang][shot];
   return (
     <figure className="m-0 min-w-0">
-      <div className="overflow-hidden rounded-cz border border-cz-shot-border bg-cz-shot">
+      <div className="overflow-hidden rounded-cz border border-cz-border bg-cz-card">
         <picture>
           <source media="(min-width: 768px)" srcSet={d[0]} width={d[1]} height={d[2]} />
           <img
