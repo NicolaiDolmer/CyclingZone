@@ -66,8 +66,19 @@
  *
  * Saetter du en ny saeson ind her, skal tallet efterregnes mod et dry-run af netop den
  * saesons D1-pakning (CALENDAR_RULES.md §1d) - ikke arves fra S4.
+ *
+ * S5 = 160: EJER-GO 14/10 kl. ~23 i Claude Code-session (#6367). Tallet er spillervendt
+ * (traenings-deleren, injuryRaceDays, seasonTransition laeser det) og maa ikke saettes her
+ * uden ejerens ordrette go. Begrundelsen for forslaget: samme regel som S4's 140, regnet
+ * paa S5's laaste vindue (onsdag 28/10 -> loerdag 28/11 = 32 loebsdatoer, #5833) x D1's 5
+ * slots = 5 loebsdage paa HVER kalenderdato (§1e-b, ejer-valg 20/9). Efterregnet offline
+ * mod S5-toerkoerslen: D1's naturlige pakning ligger over briefens 64 (padding kan kun
+ * TILFOEJE loebsdage), og et maal der ikke er et multiplum af loebsdatoerne fordeler sig
+ * ikke jaevnt pr. dato, saa §1e's traeningsrytme gaar roed.
+ * Med maalet saat doemmer scorecardet §1d for S5 (calendarScorecardReport.js), saa --apply
+ * stopper hvis en division ikke rammer 160.
  */
-export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140 });
+export const SEASON_RACE_DAY_TARGET = Object.freeze({ 4: 140, 5: 160 });
 
 /**
  * Divisionerne der skal have samme antal loebsdage. Ikke udledt af TIER_DENSITY, fordi

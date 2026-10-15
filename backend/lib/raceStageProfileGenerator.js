@@ -1287,11 +1287,13 @@ export function applyOpeningVariety(rng, ordered) {
 /**
  * @param {S5Rng} rng @param {string[]} types @param {number} stages @param {any} race
  * @param {string | null} terrainArchetype @param {number} protectedCount @param {StageFactory} [make]
+ * @param {string[] | null} [fillerTypes]  kun S5 (#6367), se applyFillerTypes
  */
-function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, protectedCount, make = toStage) {
+function orderAndBuildFinaleDriven(rng, types, stages, race, terrainArchetype, protectedCount, make = toStage, fillerTypes = null) {
   types.length = stages; // defensiv trim (parity med orderAndBuildGrandTour)
   const weights = orderWeightsFor(terrainArchetype);
   const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, weights);
+  if (fillerTypes) applyFillerTypes(types, protectedCount, fillerTypes, orderArchetype, stages, race);
   // #3371: bryd bjerg-blokke op FØR finale-arketypen anvendes (samme rækkefølge som GT's
   // egen weaveGrandTourScaffold → toGrandTourFinale) — se weaveMountainFamilyBlocks'
   // docstring for hvorfor loft=2 og "hårdeste sidst" ikke tvinges her.
@@ -1342,20 +1344,62 @@ function buildStageRaceGeneric(rng, stages, race, make = toStage) {
 // #3326: grandTourOrder (kun grand_tour) bruger sin egen finale-drevne GT-ordning
 // (orderAndBuildGrandTour); alle andre arketyper går gennem den generelle
 // ORDER_ARCHETYPES-fordeling.
-/** @param {S5Rng} rng @param {number} stages @param {any} cfg @param {any} race @param {StageFactory} [make] */
-function buildStageRaceArchetype(rng, stages, cfg, race, make = toStage) {
+// Garantier + filler-træk + TT-loft: etapeløbets type-multisæt FØR rækkefølgen. Første
+// rng-forbruger i et arketype-etapeløb, så s5StageRaceFillerSlots kan genskabe det præcise
+// naturlige træk uden at bygge løbet.
+/** @param {S5Rng} rng @param {number} stages @param {any} cfg */
+function drawArchetypeTypes(rng, stages, cfg) {
   const types = cfg.guarantees.slice(0, stages);
   const protectedCount = types.length; // guarantees = beskyttet region
   while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
   capTimeTrials(rng, types, protectedCount, cfg.filler, stages);
+  return { types, protectedCount };
+}
+
+/**
+ * @param {S5Rng} rng @param {number} stages @param {any} cfg @param {any} race @param {StageFactory} [make]
+ * @param {string[] | null} [fillerTypes]  kun S5 (#6367): divisionens kvote-fordelte filler-typer
+ *   (s5TierTerrainQuota.js). Trækket ovenfor forbruges uændret, så rækkefølgens rng-strøm er
+ *   den samme; kun filler-pladsernes værdier erstattes.
+ */
+function buildStageRaceArchetype(rng, stages, cfg, race, make = toStage, fillerTypes = null) {
+  const { types, protectedCount } = drawArchetypeTypes(rng, stages, cfg);
   if (cfg.grandTourOrder) return orderAndBuildGrandTour(rng, types, stages, race, cfg.openingItt ? "itt" : null);
-  return orderAndBuildFinaleDriven(rng, types, stages, race, race?.terrain_archetype, protectedCount, make);
+  return orderAndBuildFinaleDriven(rng, types, stages, race, race?.terrain_archetype, protectedCount, make, fillerTypes);
+}
+
+/**
+ * #6367: erstat filler-pladserne med divisionens kvote-fordelte typer. Sker EFTER
+ * ordnings-arketypen er valgt (og evt. har forceret en filler-plads, forceFillerType), så
+ * fordelingen ser løbets endelige type-multisæt. Arketypen skal stadig kunne lade sig gøre,
+ * og TT-loftet (#2029) holder.
+ * @param {string[]} types @param {number} protectedCount @param {string[]} fillerTypes
+ * @param {string} orderArchetype @param {number} stages @param {any} race
+ */
+function applyFillerTypes(types, protectedCount, fillerTypes, orderArchetype, stages, race) {
+  const label = race?.name ?? race?.id;
+  if (fillerTypes.length !== types.length - protectedCount) {
+    throw new Error(`fillerTypes: ${fillerTypes.length} types for ${types.length - protectedCount} filler slots (${label})`);
+  }
+  // summit_finale vælges uden feasibility-tjek (resolveOrderArchetype); kravet er derfor kun
+  // at fordelingen ikke gør en arketype umulig som det naturlige træk kunne.
+  const wasFeasible = isFeasibleOrderArchetype(orderArchetype, types);
+  types.splice(protectedCount, fillerTypes.length, ...fillerTypes);
+  if (types.filter(isTimeTrial).length > timeTrialCap(types.slice(0, protectedCount), stages)) {
+    throw new Error(`fillerTypes exceed the time-trial cap (#2029) for ${label}`);
+  }
+  if (wasFeasible && !isFeasibleOrderArchetype(orderArchetype, types)) {
+    throw new Error(`fillerTypes make the order archetype "${orderArchetype}" infeasible for ${label}`);
+  }
 }
 
 // Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
-/** @param {S5Rng} rng @param {number} stages @param {any} cfg @param {any} race @param {StageFactory} [make] */
-function buildStageRace(rng, stages, cfg, race, make = toStage) {
-  return cfg?.kind === "stage" ? buildStageRaceArchetype(rng, stages, cfg, race, make) : buildStageRaceGeneric(rng, stages, race, make);
+/**
+ * @param {S5Rng} rng @param {number} stages @param {any} cfg @param {any} race @param {StageFactory} [make]
+ * @param {string[] | null} [fillerTypes]
+ */
+function buildStageRace(rng, stages, cfg, race, make = toStage, fillerTypes = null) {
+  return cfg?.kind === "stage" ? buildStageRaceArchetype(rng, stages, cfg, race, make, fillerTypes) : buildStageRaceGeneric(rng, stages, race, make);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════
@@ -1603,19 +1647,70 @@ function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
  *                     matrix-afslutninger, GT-kvoter + ugestruktur, højdemeter af ruten).
  *   allowTtt          kun S5: generér Vuelta-typens holdtidskørsel (kræver motorens TTT,
  *                     #3463). Default false = enkeltstart i stedet.
+ *   fillerTypes       kun S5 (#6367): filler-pladsernes typer for et arketype-etapeløb (ikke
+ *                     Grand Tour), fordelt efter kvote over divisionens løbssæt af
+ *                     s5TierTerrainQuota.js. Længden skal være antallet af filler-pladser
+ *                     (s5StageRaceFillerSlots). Ignoreres aldrig i tavshed: v5 kaster.
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */
-export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false } = {}) {
+export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false, fillerTypes = null } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
   const cfg = archetypeFor(race, archetypeProfiles);
   const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
   if (profileModel === "s5") {
+    const fillerApplies = isStageRace && cfg?.kind === "stage" && !cfg.grandTourOrder;
+    if (fillerTypes && !fillerApplies) throw new Error(`fillerTypes only applies to S5 archetype stage races outside Grand Tours (${race.name ?? race.id})`);
     if (!isStageRace) return buildSingle(rng, cfg, race, toStageS5);
     if (cfg?.kind === "stage" && cfg.grandTourOrder) return buildGrandTourS5(rng, stages, race, { allowTtt });
-    return buildStageRace(rng, stages, cfg, race, toStageS5);
+    return buildStageRace(rng, stages, cfg, race, toStageS5, fillerTypes);
   }
   if (profileModel !== "v5") throw new Error(`unknown profileModel "${profileModel}"`);
+  if (fillerTypes) throw new Error("fillerTypes only applies to profileModel \"s5\" (#6367)");
   return isStageRace ? buildStageRace(rng, stages, cfg, race) : buildSingle(rng, cfg, race);
+}
+
+/**
+ * #6367: et S5-arketype-etapeløbs filler-pladser, PRÆCIS som generateRaceStageProfiles
+ * ville trække dem (samme seed, samme første rng-træk), uden at bygge løbet. null for
+ * endagsløb, Grand Tours (bygges af kvoten) og løb uden kendt etapeløbs-arketype.
+ *
+ * @param {any} race  samme seed-form som generateRaceStageProfiles
+ * @param {{ seed?: number, archetypeProfiles?: Record<string, any> }} [opts]
+ * @returns {null | { guaranteed: string[], natural: string[], options: string[], ttCap: number, stages: number, orderArchetype: string }}
+ *   guaranteed      garanti-pladserne (ændres aldrig)
+ *   natural         filler-pladsernes naturlige træk: efter TT-loftet OG efter at
+ *                   ordnings-arketypen evt. har forceret en plads (forceFillerType), altså
+ *                   præcis løbets endelige type-multisæt
+ *   options         de lovlige filler-typer: filler-vægtene med vægt > 0 + det naturlige træk
+ *   ttCap           TT-loftet for løbet (#2029)
+ *   orderArchetype  løbets ordnings-arketype; fillerTypes skal holde den mulig
+ */
+export function s5StageRaceFillerSlots(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES } = {}) {
+  if (!race?.id || race.race_type !== "stage_race") return null;
+  const cfg = archetypeFor(race, archetypeProfiles);
+  if (cfg?.kind !== "stage" || cfg.grandTourOrder) return null;
+  const stages = Math.max(2, Number(race.stages) || 2);
+  const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
+  // Samme rng-forløb som buildStageRaceArchetype → orderAndBuildFinaleDriven frem til
+  // applyFillerTypes: typerne, trim, ordnings-arketypen (som kan forcere en filler-plads).
+  const { types, protectedCount } = drawArchetypeTypes(rng, stages, cfg);
+  types.length = stages;
+  const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, orderWeightsFor(race?.terrain_archetype));
+  const natural = types.slice(protectedCount);
+  const fromWeights = cfg.filler.filter((/** @type {any} */ it) => it.weight > 0).map((/** @type {any} */ it) => it.value);
+  return {
+    guaranteed: types.slice(0, protectedCount),
+    natural,
+    options: [...new Set([...fromWeights, ...natural])],
+    ttCap: timeTrialCap(types.slice(0, protectedCount), stages),
+    stages,
+    orderArchetype,
+  };
+}
+
+/** #6367: kan ordnings-arketypen lade sig gøre med disse typer? (s5TierTerrainQuota.js) */
+export function isOrderArchetypeFeasible(name, types) {
+  return isFeasibleOrderArchetype(name, types);
 }

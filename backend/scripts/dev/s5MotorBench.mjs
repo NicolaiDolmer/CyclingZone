@@ -49,7 +49,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildTierMaterializationPlan, TIER_DENSITY } from "../../lib/tierCalendarMaterializer.js";
 import { resolveCalendarFrom } from "../../lib/calendarStartDate.js";
-import { generateRaceStageProfiles } from "../../lib/raceStageProfileGenerator.js";
+import { makeS5TierProfileGenerator } from "../../lib/s5TierTerrainQuota.js";
 import { ABILITY_KEYS, computeRiderTypes } from "../../lib/riderTypes.js";
 import { loadRaceEngineV4 } from "../../lib/raceEngineV4Bridge.js";
 import {
@@ -64,7 +64,8 @@ const BACKEND = path.resolve(here, "..", "..");
 const REPO_ROOT = path.resolve(BACKEND, "..");
 const CATALOG_FIXTURE = path.join(BACKEND, "lib", "__fixtures__", "racePoolCatalog.prod.json");
 const FIELD_FIXTURE = path.join(BACKEND, "scripts", "baselines", "giro-field-6088-2026-10-02.json");
-const REAL_DAYS = 28;
+// S5's laaste vindue (ejer 14/10, #5833): onsdag 28/10 - loerdag 28/11 = 32 loebsdatoer.
+const REAL_DAYS = 32;
 
 /**
  * Den kanoniske bench. Fixturens dom er skrevet med PRAECIS denne konfiguration, og testen
@@ -77,7 +78,7 @@ const REAL_DAYS = 28;
  */
 export const S5_MOTOR_BENCH_CONFIG = Object.freeze({
   revision: "s5_profiles_v1",
-  firstDay: "2026-10-26",
+  firstDay: "2026-10-28",
   genSeeds: 3,
   simSeeds: 3,
   field: "giro-field-6088-2026-10-02",
@@ -172,16 +173,21 @@ function generateS5Season({ firstDay, genSeeds }) {
     const seen = new Set();
     for (const tierPlan of tierPlans) {
       const pool = tierPlan.pools?.[0];
+      const toRace = (r) => ({
+        id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
+        external_id: externalId.get(r.pool_race_id) ?? null, terrain_archetype: archetype.get(r.pool_race_id) ?? null,
+        race_class: r.race_class ?? null, season_id: seasonId, season_variant: 0,
+      });
+      // #6367 (review): ruterne skal komme fra SAMME generator som kalenderen der skrives,
+      // dvs. divisionens terraen-kvote over hele loebssaettet (tierCalendarMaterializer), ikke
+      // generateRaceStageProfiles direkte. Ellers maaler gatens del (4) andre ruter.
+      const tierGenerate = makeS5TierProfileGenerator({ tier: tierPlan.tier, seedRaces: (pool?.raceRows ?? []).map(toRace) });
       for (const r of pool?.raceRows ?? []) {
         if (seen.has(r.pool_race_id)) continue;
         seen.add(r.pool_race_id);
-        const race = {
-          id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
-          external_id: externalId.get(r.pool_race_id) ?? null, terrain_archetype: archetype.get(r.pool_race_id) ?? null,
-          race_class: r.race_class ?? null, season_id: seasonId, season_variant: 0,
-        };
+        const race = toRace(r);
         const grandTour = isGrandTourRace({ ...race, stages: [] });
-        const stages = withGameDays(generateRaceStageProfiles(race, { profileModel: "s5" }), pool.stageRows, r.pool_race_id);
+        const stages = withGameDays(tierGenerate(race), pool.stageRows, r.pool_race_id);
         out.push({ seasonId, race, stages, grandTour });
       }
     }
