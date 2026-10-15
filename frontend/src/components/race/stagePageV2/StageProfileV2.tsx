@@ -124,6 +124,9 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
   }
 
   const kmFmt = (v: number) => formatNumber(Math.round(v * 10) / 10, { maximumFractionDigits: 1 });
+  const endLabelW = `${formatNumber(Math.round(D))} km`.length * 6;
+  // Hoejde-maerker: kun hvert andet, naar linjerne ligger under 16 px fra hinanden (mobil, smalt baand).
+  const gridLabelEvery = grid.length > 1 && Math.abs(Y(grid[0]) - Y(grid[1])) < 16 ? 2 : 1;
 
   return (
     <div ref={wrapRef} className="relative select-none">
@@ -139,10 +142,13 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
           onPointerDown={onPointer}
           onPointerLeave={() => setHoverKm(null)}
         >
-          {grid.map((v) => (
+          {grid.map((v, gi) => (
             <g key={v}>
               <line x1={0} x2={W} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />
-              <text x={4} y={Y(v) - 4} fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{`${formatNumber(v)} m`}</text>
+              {(grid.length - 1 - gi) % gridLabelEvery === 0 && (
+                // Kortets baggrund som kontur, saa maerket kan laeses oven paa profilen.
+                <text x={4} y={Y(v) - 4} fontSize={10} fill="var(--text-3)" stroke="var(--bg-card)" strokeWidth={3} paintOrder="stroke" className="font-data tabular-nums">{`${formatNumber(v)} m`}</text>
+              )}
             </g>
           ))}
           {selectedClimb !== null && climbs[selectedClimb] && !band && (
@@ -208,7 +214,15 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
                     )}
                   </g>
                 )}
-                {D - top >= 4 && <text x={tx} y={H - BOT + 24} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-2)" className="font-data tabular-nums">{i === climbs.length - 1 && D - top >= 3 && !narrow ? `${Math.round(top)} · ${t("stagePageV2.profile.toGoAxis", { km: formatNumber(Math.round(D - top)) })}` : Math.round(top)}</text>}
+                {(() => {
+                  // Aksemaerket maa ikke loebe ind i "0 km"/"N km" i hjoernerne:
+                  // lang form -> kort form -> udeladt (bredde ca. 6 px pr. tegn ved 10 px).
+                  const long = `${Math.round(top)} · ${t("stagePageV2.profile.toGoAxis", { km: formatNumber(Math.round(D - top)) })}`;
+                  const short = String(Math.round(top));
+                  const fits = (s: string) => tx - (s.length * 6) / 2 > 34 && tx + (s.length * 6) / 2 < W - endLabelW - 6;
+                  const label = i === climbs.length - 1 && D - top >= 3 && !narrow && fits(long) ? long : fits(short) ? short : null;
+                  return label && <text x={tx} y={H - BOT + 24} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-2)" className="font-data tabular-nums">{label}</text>;
+                })()}
               </g>
             );
           })}

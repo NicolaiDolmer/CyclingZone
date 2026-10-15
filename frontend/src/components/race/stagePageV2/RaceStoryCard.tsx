@@ -151,7 +151,8 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
               <g aria-hidden="true">
                 {[...groups].sort((a, b) => b.gapS - a.gapS).map((g) => {
                   if (g.km == null) return null;
-                  const x = geo.X(g.km), y = geo.Y(geo.elevation(g.km)) - 6;
+                  // Ringen (r 10 + streg) maa ikke klippes ved maal eller start.
+                  const x = Math.max(12, Math.min(geo.W - 12, geo.X(g.km))), y = geo.Y(geo.elevation(g.km)) - 6;
                   return (
                     <g key={g.groupId}>
                       <circle cx={x} cy={y} r={g.front ? 6 : 4.5} fill={g.front ? "rgb(var(--accent))" : "var(--text-1)"} stroke="var(--bg-card)" strokeWidth={1.5} />
