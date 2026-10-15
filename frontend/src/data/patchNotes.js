@@ -129,24 +129,6 @@ export const PATCHES = [
           6681,
           6682
         ]
-      },
-      {
-        "category": "improved",
-        "audience": "player",
-        "rollout": "live",
-        "topic": "Interface",
-        "en": {
-          "title": "One corner shape everywhere",
-          "body": "Buttons, dialogs and highlighted rows now have the same small rounded corners as the rest of the game."
-        },
-        "da": {
-          "title": "Samme hjørner overalt",
-          "body": "Knapper, dialogbokse og fremhævede rækker har nu de samme små runde hjørner som resten af spillet."
-        },
-        "refs": [
-          6686,
-          6688
-        ]
       }
     ]
   },
