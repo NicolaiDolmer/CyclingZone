@@ -4942,7 +4942,7 @@ router.get("/races/calendar", requireAuth, cached({
       // #5517: seniorkalenderen — ungdomsløb holdes ude (squads.withSeniorSquadScope).
       withSeniorSquadScope((senior) => senior(supabase
         .from("races")
-        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start"))
+        .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id, game_day_start"))
         .eq("season_id", season.id)),
       fetchTeamSeasonRaceEntries(supabase, req.team?.id, season.id),
     ]);

@@ -75,6 +75,11 @@ test("#6514 myRaceStatus: udtaget, bundet af GT, mangler udtagelse", () => {
   assert.equal(myRaceStatus({ id: "d", isMine: true, entered: false, date: TODAY }, [], TODAY), "missing");
 });
 
+test("#6514 myRaceStatus: frossen udtagelse (afviklet eller i gang) har ingen status, ogsaa paa dagens loeb", () => {
+  assert.equal(myRaceStatus({ id: "e", isMine: true, entered: false, date: TODAY, lineupFrozen: true }, [], TODAY), null);
+  assert.equal(myRaceStatus({ id: "f", isMine: true, entered: true, date: "2026-10-20", lineupFrozen: true }, [], TODAY), null);
+});
+
 test("#6514 myRaceStatus: en GT holdet ikke har udtaget til binder ingenting", () => {
   const openGt = { ...gt, entered: false };
   const clash = { id: "b", isMine: true, entered: false, date: "2026-10-18" };

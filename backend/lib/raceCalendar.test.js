@@ -287,3 +287,16 @@ test("toCalendarWireEntry dropper de felter ingen kalender-klient læser (#2861)
     assert.ok(!(dead in wire), `${dead} må ikke sendes til kalender-klienten`);
   }
 });
+
+test("#6514 lineupFrozen: afviklet eller igangvaerende loeb er laast, kun sendt paa wire naar true", () => {
+  const input = sampleInput();
+  input.races[0] = { ...input.races[0], status: "completed" };
+  input.races[1] = { ...input.races[1], stages_completed: 2 };
+  const [done, running] = buildCalendarModel(input).entries.sort((a, b) => a.id.localeCompare(b.id)).reverse();
+  assert.equal(done.lineupFrozen, true);
+  assert.equal(running.lineupFrozen, true);
+  assert.equal(toCalendarWireEntry(done).lineupFrozen, true);
+  const open = buildCalendarModel(sampleInput()).entries[0];
+  assert.equal(open.lineupFrozen, false);
+  assert.ok(!("lineupFrozen" in toCalendarWireEntry(open)), "intet felt naar udtagelsen er aaben");
+});

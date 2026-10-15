@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
@@ -17,6 +17,10 @@ export default function RaceHistoryPage() {
   const { t } = useTranslation("races");
   const { raceSlug } = useParams();
   const raceName = decodeURIComponent(raceSlug);
+  // #6514: Løbshistorikken linker med ?type=, så et endagsløb og et etapeløb med samme
+  // navn ikke blandes i én historik. Uden param (ældre links) er opførslen uændret.
+  const [searchParams] = useSearchParams();
+  const raceTypeFilter = searchParams.get("type");
 
   const [editions, setEditions] = useState([]);
   const [riderStats, setRiderStats] = useState([]);
@@ -32,10 +36,12 @@ export default function RaceHistoryPage() {
     setLoadError(false);
 
     try {
-      const { data: races, error: racesError } = await supabase
+      let racesQuery = supabase
         .from("races")
         .select("id, name, race_type, stages, edition_year, status, season:season_id(id, number, status)")
-        .ilike("name", raceName)
+        .ilike("name", raceName);
+      if (raceTypeFilter) racesQuery = racesQuery.eq("race_type", raceTypeFilter);
+      const { data: races, error: racesError } = await racesQuery
         .order("edition_year", { ascending: false, nullsFirst: false });
 
       if (racesError) { setLoadError(true); return; }
@@ -116,7 +122,7 @@ export default function RaceHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [raceName]);
+  }, [raceName, raceTypeFilter]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 

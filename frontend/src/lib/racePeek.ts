@@ -21,6 +21,8 @@ export interface CalendarEntryLike {
   id: string;
   isMine?: boolean;
   entered?: boolean;
+  /** Udtagelsen er låst (løbet er afviklet eller i gang). Sendes kun når true. */
+  lineupFrozen?: boolean;
   raceClass?: string | null;
   date?: string | null;
   stageSchedule?: StageScheduleItem[] | null;
@@ -144,7 +146,7 @@ export function myRaceStatus(
   entries: readonly CalendarEntryLike[] = [],
   todayIso = "",
 ): RaceStatus | null {
-  if (!entry?.isMine) return null;
+  if (!entry?.isMine || entry.lineupFrozen) return null;
   const range = raceDateRange(entry);
   if (!range || (todayIso && range.start < todayIso)) return null;
   if (entry.entered) return "selected";

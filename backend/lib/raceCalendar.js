@@ -235,6 +235,9 @@ export function buildCalendarModel({
       isMine,
       leaderSet: teamLeaderRaceIds.has(race.id),
       entered: teamEntryRaceIds.has(race.id),
+      // #6514: udtagelsen er låst (afviklet eller i gang). Samme regel som isRaceLineupFrozen (raceActiveGuard.js), inlinet fordi
+      // dette modul er rent og ikke maa traekke sentry ind.
+      lineupFrozen: race.status === "completed" || (race.stages_completed ?? 0) > 0,
       ...(restGameDays.length ? { restGameDays } : {}), // #3470: kun til stede når ikke-tom
     });
   }
@@ -294,6 +297,7 @@ export function toCalendarWireEntry(entry) {
     stageSchedule: entry.stageSchedule,
     isMine: entry.isMine,
     leaderSet: entry.leaderSet,
+    ...(entry.lineupFrozen ? { lineupFrozen: true } : {}), // #6514: kun når låst (wire-trimning)
     ...(entry.restGameDays?.length ? { restGameDays: entry.restGameDays } : {}),
   };
 }

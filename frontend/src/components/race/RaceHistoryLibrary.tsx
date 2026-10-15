@@ -178,6 +178,12 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
 }
 
 
+// Løbets historikside, med løbstypen så et endagsløb og et etapeløb med samme navn holdes ude fra hinanden.
+function archiveHref(r: HistoryRow): string {
+  const base = `/race-archive/${encodeURIComponent(r.name)}`;
+  return r.raceType ? `${base}?type=${encodeURIComponent(r.raceType)}` : base;
+}
+
 export default function RaceHistoryLibrary() {
   const { t } = useTranslation(["results", "races", "calendar"]);
   const [pools, setPools] = useState<Pool[]>([]);
@@ -198,10 +204,10 @@ export default function RaceHistoryLibrary() {
         const [poolsRes, teamRes] = await Promise.all([
           withSeniorSquadScope((scope) => scope(supabase.from("league_divisions").select("id, tier, pool_index, label"))
             .order("tier").order("pool_index")),
-          user ? supabase.from("teams").select("id, league_division_id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+          user ? supabase.from("teams").select("id, league_division_id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null, error: null }),
         ]);
         if (!alive) return;
-        if (poolsRes.error) { setLoadError(true); setRows([]); return; }
+        if (poolsRes.error || teamRes.error) { setLoadError(true); setRows([]); return; }
         const list = (poolsRes.data || []) as Pool[];
         setPools(list);
         const own = teamRes.data ? { id: teamRes.data.id, poolId: teamRes.data.league_division_id ?? null } : null;
@@ -244,7 +250,7 @@ export default function RaceHistoryLibrary() {
       header: t("raceHistory.th.race"),
       sticky: true,
       render: (r) => (
-        <Link to={`/race-archive/${encodeURIComponent(r.name)}`} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t">
+        <Link to={archiveHref(r)} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t">
           {r.name}
         </Link>
       ),
@@ -303,7 +309,7 @@ export default function RaceHistoryLibrary() {
               </span>
             ))}
             {earlier.length > 3 && (
-              <Link to={`/race-archive/${encodeURIComponent(r.name)}`} className="inline-flex items-center gap-0.5 text-2xs text-cz-accent-t hover:underline">
+              <Link to={archiveHref(r)} className="inline-flex items-center gap-0.5 text-2xs text-cz-accent-t hover:underline">
                 {t("raceHistory.allEditions", { count: r.editions.length })}
                 <ChevronRightIcon size={12} aria-hidden="true" />
               </Link>
