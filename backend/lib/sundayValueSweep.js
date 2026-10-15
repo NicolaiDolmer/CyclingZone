@@ -7,20 +7,14 @@
 // 6/8, kun tidspunktet og ejerskabet flytter sig hertil. (#5842 flytter
 // tidspunktet igen, til eftermiddagen; se TIDSPUNKTET nedenfor.)
 //
-// RÆKKEFØLGEN ER HELE POINTEN (uændret fra trainingSweep.js's tidligere
-// kommentar): refreshChangedRiderValues genberegner base_value RENT fra v4 og
-// skriver alt der afviger. Kørte markedsblendet først og v4-refresh'en
-// bagefter, ville refresh'en skrive blendet væk igen for præcis de ryttere
-// blendet havde flyttet. Featuren ville se ud til at virke og reelt være en
-// no-op. Derfor: v4-refresh FØRST, markedsblend SIDST, i ét ordnet flow.
+// MARKEDSBLENDET (#3448) er fjernet (#6642): værdimodel v6 afløste det (#4449
+// lukket 12/10), så pipelinen er nu kun værdi-refresh'en + trin-tælleren.
+// rider_value_sunday_log's market_sweep_*-kolonner skrives ikke længere og
+// står på deres defaults.
 //
 // CLAIM FØR MUTATION: rider_value_sunday_log (UNIQUE run_date) claimes FØR
-// første skrivning, og claim'et dækker HELE pipelinen, ikke kun blendet.
-// Uden det kunne en Railway-genstart senere samme søndag køre v4-refresh'en
-// igen; den ville så skrive dagens markedsblend væk, mens blendets eget
-// dato-claim blokerede en genberegning. Præcis den fejlmode
-// marketValueSundaySweep.js's header advarer imod, bare udløst af en genstart
-// i stedet for af en forkert rækkefølge.
+// første skrivning, og claim'et dækker HELE pipelinen. Uden det kunne en
+// Railway-genstart senere samme søndag køre refresh'en igen.
 //
 // FAIL-SAFE: mangler log-tabellen (migration ikke kørt endnu), kører vi INTET.
 // En værdi-mutation af hele populationen uden dedup-anker er farligere end en
@@ -37,9 +31,6 @@
 // (På sigt skal træningsscoren indgå i selve værdiberegningen, men den score
 // er ikke bygget endnu. Det er en input-afhængighed i modellen, ikke en gate
 // på om jobbet kører.)
-//
-// marketValueSundaySweep har fortsat sit EGET flag (market_value_sweep) - det
-// er den sweeps egen nødbremse og har intet med træning at gøre.
 //
 // TIDSPUNKTET (#5842, ejer 28/9): ét fast tidspunkt hver søndag, et sted
 // mellem kl. 14 og 20 dansk tid, aldrig om morgenen. Timen bor i
@@ -65,7 +56,6 @@
 
 import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
 import { refreshChangedRiderValues } from "./riderValueRefresh.js";
-import { runMarketValueSundaySweep } from "./marketValueSundaySweep.js";
 import { captureException } from "./sentry.js";
 import { ADMIN_ACTION_TYPE, SUNDAY_VALUE_FROM_HOUR } from "./economyConstants.js";
 import { nextPhaseStep, readPhaseStepStrict, writePhaseStep } from "./riderValuationModelSelect.js";
@@ -177,8 +167,7 @@ async function defaultClaimRunDate({ supabase, runDate }) {
   throw new Error(`sunday-value-sweep claim: ${error.message}`);
 }
 
-// FRIGIV dagens claim igen. Kaldes KUN når v4-refresh'en fejlede, altså før
-// markedsblendet har skrevet noget: uden den ville et enkelt 8-sekunders
+// FRIGIV dagens claim igen. Kaldes KUN når v4-refresh'en fejlede: uden den ville et enkelt 8-sekunders
 // statement-timeout koste hele ugens værdiopdatering, fordi næste tick blot
 // fandt claim-rækken og svarede already_ran_today. Før #4419 lå refresh'en i
 // trainingSweep, som cron kaldte hvert 5. minut, så en transient fejl helede
@@ -198,8 +187,6 @@ async function defaultCompleteRun({ supabase, runDate, summary }) {
       scanned: summary.scanned ?? null,
       changed: summary.changed ?? null,
       written: summary.written ?? null,
-      market_sweep_ran: summary.marketSweepRan,
-      market_sweep_written: summary.marketSweepWritten ?? null,
       completed_at: new Date().toISOString(),
     })
     .eq("run_date", runDate);
@@ -218,14 +205,12 @@ async function defaultCompleteRun({ supabase, runDate, summary }) {
  *   lade tests læse vægur-tiden, og et søndags-gated job ville så bestå eller
  *   fejle afhængigt af hvilken ugedag suiten kører.
  * @returns {Promise<{ran: boolean, skipped?: string, runDate?: string,
- *   claimReleased?: boolean, valueRefresh?: object|null,
- *   marketValueSweep?: object|null}>}
+ *   claimReleased?: boolean, valueRefresh?: object|null}>}
  */
 export async function runSundayValueSweep({
   supabase,
   now,
   refreshValues = refreshChangedRiderValues,
-  runMarketValueSweep = runMarketValueSundaySweep,
   claimRunDate = defaultClaimRunDate,
   releaseRunDate = defaultReleaseRunDate,
   completeRun = defaultCompleteRun,
@@ -298,10 +283,7 @@ export async function runSundayValueSweep({
     phaseStep = nextPhaseStep(await readPhaseStep(supabase));
     valueRefresh = await refreshValues(supabase, { log, phaseStep });
   } catch (err) {
-    // FEJLET REFRESH ⇒ FRIGIV DAGEN OG PRØV IGEN. Vi gør bevidst IKKE noget
-    // andet her: markedsblendet springes over, fordi næste forsøgs v4-refresh
-    // ville skrive et blend fra dette tick væk igen (samme rækkefølge-fejlmode
-    // som headeren beskriver). Retry er sikker, også når refresh'en nåede at
+    // FEJLET REFRESH ⇒ FRIGIV DAGEN OG PRØV IGEN. Retry er sikker, også når refresh'en nåede at
     // skrive nogle ryttere: den genberegner rent fra v4 og skriver kun diffs.
     // Loftet er cadencen selv: det timelige tick giver et forsøg pr. time fra
     // SUNDAY_VALUE_FROM_HOUR til midnat (#5842: ca. 10 med kl. 14).
@@ -319,15 +301,7 @@ export async function runSundayValueSweep({
     return { ran: false, skipped: "value_refresh_failed", runDate, claimReleased: true };
   }
 
-  // ── 2. Markedsblend (#3448), SIDSTE skridt, bærer selv sine egne gates ──
-  let marketValueSweep = null;
-  try {
-    marketValueSweep = await runMarketValueSweep({ supabase, now });
-  } catch (err) {
-    log(`market-value sweep fejlede: ${err.message}`);
-    captureExceptionFn(err, { tags: { cron: "sunday-value-sweep", stage: "market-value-sweep" } });
-  }
-
+  // ── 2. Opsummering (markedsblendet, der lå her, er fjernet i #6642) ──
   try {
     await completeRun({
       supabase,
@@ -336,8 +310,6 @@ export async function runSundayValueSweep({
         scanned: valueRefresh?.scanned,
         changed: valueRefresh?.changed,
         written: valueRefresh?.written,
-        marketSweepRan: marketValueSweep?.ran === true,
-        marketSweepWritten: marketValueSweep?.written,
       },
     });
   } catch (err) {
@@ -366,7 +338,7 @@ export async function runSundayValueSweep({
   }
   log(sundaySweepSummaryLine({ valueRefresh, phase }));
 
-  return { ran: true, runDate, valueRefresh, marketValueSweep, phase };
+  return { ran: true, runDate, valueRefresh, phase };
 }
 
 /**

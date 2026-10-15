@@ -1169,8 +1169,8 @@ async function runMarketValueLevelCorrectionGateSweepCron() {
 }
 
 // ─── Søndagens værdi-pipeline (#4419) ─────────────────────────────────────────
-// v4-refresh (base_value/CPV/typer følger udviklede evner) + markedsblendet
-// (#3448) i ét ordnet flow, søndag fra SUNDAY_VALUE_FROM_HOUR dansk tid (#5842). Selv-gated (søndag +
+// Værdi-refresh (base_value/CPV/typer følger udviklede evner; markedsblendet
+// #3448 fjernet i #6642), søndag fra SUNDAY_VALUE_FROM_HOUR dansk tid (#5842). Selv-gated (søndag +
 // vindue + persisteret dato-claim), så timelig polling + boot-run er sikre.
 // Ejer 28/9 (#5842): én gang om ugen, søndag eftermiddag, aldrig om morgenen;
 // på skiftedagen først efter det fuldførte sæsonskifte.
@@ -1181,7 +1181,6 @@ async function runSundayValueSweepCron() {
       const v = r.valueRefresh;
       console.log(
         `💰 Søndags-værdier (${r.runDate}): ${v?.scanned ?? 0} scannet · ${v?.changed ?? 0} ændret` +
-        (r.marketValueSweep?.ran ? ` · markedsblend ${r.marketValueSweep.written ?? 0} skrevet` : " · markedsblend slukket") +
         // #5497: post-verify af trin-tælleren og løngrundlaget, direkte i Railway.
         ` · model ${v?.modelId ?? "?"} · phase step ${r.phase?.step ?? "-"} · production_value changed: ${v?.productionChanged ?? "?"}`
       );
@@ -2184,8 +2183,8 @@ export function startCron() {
     60 * 60 * 1000
   );
 
-  // Every 60 minutes: søndagens værdi-pipeline (#4419): v4-refresh + markedsblend
-  // i ét ordnet flow. Modulet er selv søndags-gated (SUNDAY_VALUE_FROM_HOUR, #5842) og
+  // Every 60 minutes: søndagens værdi-pipeline (#4419): værdi-refresh
+  // (markedsblendet fjernet i #6642). Modulet er selv søndags-gated (SUNDAY_VALUE_FROM_HOUR, #5842) og
   // claim-idempotent pr. dato, så en times cadence bare fylder søndagens vindue op.
   // Samme monitor-begrundelse som market-value-level-correction-gate ovenfor:
   // tikket returnerer normalt (ran:false) på ikke-søndage, så CRON_MONITOR_60MIN
@@ -2309,12 +2308,6 @@ export function startCron() {
     trackedTick("cron heartbeat sweep", monitorCron("cron-heartbeat-sweep", runCronHeartbeatSweepCronTick, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
-
-  // #3448/#4419: markedsblendet har BEVIDST ingen selvstændig tick. Det køres
-  // som SIDSTE skridt i søndagens værdi-pipeline (sundayValueSweep.js, tick-et
-  // ovenfor), efter v4-refresh-en. En uafhængig tick ville lade v4-refresh-en
-  // skrive markedsblendet væk igen. Se marketValueSundaySweep.js s
-  // "RÆKKEFØLGE PÅ SØNDAGE".
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
