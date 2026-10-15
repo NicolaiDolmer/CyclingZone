@@ -156,6 +156,18 @@ test("#6667 egen starttid: en ungdomsetape inden for en halv time af seniorens f
   }
 });
 
+test("#6667 egen starttid: en tid langt fra seniorens foerste etape tjekkes mod ALLE senior-tider (Codex P1 #6670)", () => {
+  // Planlaegningsvinduet 15:45 presser seniorens tider sammen; U23 bliver paa 16:30, som nu er en senior-tid.
+  const senior = ["15:45", "16:15", "16:30", "17:00"];
+  const [u] = youthSlotsApartFromSenior({ squad: "u23", slots: ["16:30"], seniorSlots: senior });
+  assert.ok(!senior.includes(u), `u23: ${u} er en senior-tid`);
+  assert.equal(u, "16:35");
+  // Rammer den en anden trups tid, rykker den ogsaa.
+  assert.deepEqual(youthSlotsApartFromSenior({ squad: "u23", slots: ["16:30"], seniorSlots: ["15:45"], otherSquadSlots: ["16:30"] }), ["16:35"]);
+  // En fri tid langt fra den foerste etape er stadig uroert.
+  assert.deepEqual(youthSlotsApartFromSenior({ squad: "u23", slots: ["16:40"], seniorSlots: senior }), ["16:40"]);
+});
+
 test("#6667 squadSlotsForDate: sæsonens første dag (planlægningsvinduet 15:30) giver junior egen tid; andre dage er SQUAD_CALENDAR's", () => {
   const notBefore = new Date("2026-10-28T14:30:00Z"); // 15:30 dansk tid (CET)
   const firstDay = (squad) => squadSlotsForDate({

@@ -239,7 +239,8 @@ const toHHMM = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${Stri
  * senior-etape (det sker paa saesonens foerste dag, hvor planlaegningsvinduet skubber begge
  * til samme minut), flyttes den til seniorens foerste etape + den halve time + truppens
  * forskydning, og videre i 5-minutters skridt til den hverken rammer en senior-tid eller en
- * anden trups tid. Alle andre dage er uaendrede. Kaster hvis tiden ville passere
+ * anden trups tid. Rammer en ellers uaendret tid praecis en senere senior-tid (eller en anden
+ * trups tid), rykkes den 5 minutter ad gangen fra sin egen tid. Alle andre tider er uaendrede. Kaster hvis tiden ville passere
  * LATEST_STAGE_SLOT: saa er saesonstarten forkert, ikke klokkeslaettet.
  *
  * @param {{ squad: string, slots: string[], seniorSlots: string[], otherSquadSlots?: string[], latest?: string }} args
@@ -252,8 +253,11 @@ export function youthSlotsApartFromSenior({ squad, slots = [], seniorSlots = [],
   const taken = new Set([...seniorMinutes, ...otherSquadSlots.map(toMinutes)]);
   return slots.map((slot) => {
     const own = toMinutes(slot);
-    if (Math.abs(own - first) >= SENIOR_FIRST_STAGE_GAP_MINUTES) return slot;
-    let at = first + SENIOR_FIRST_STAGE_GAP_MINUTES + (SQUAD_SHIFT_MINUTES[squad] ?? 0);
+    const farFromFirst = Math.abs(own - first) >= SENIOR_FIRST_STAGE_GAP_MINUTES;
+    // Tjek ALLE senior-tider, ikke kun den foerste: paa en presset dag kan en senere
+    // senior-etape lande paa praecis ungdommens minut (Codex P1 paa #6670).
+    if (farFromFirst && !taken.has(own)) return slot;
+    let at = farFromFirst ? own : first + SENIOR_FIRST_STAGE_GAP_MINUTES + (SQUAD_SHIFT_MINUTES[squad] ?? 0);
     while (taken.has(at)) at += SLOT_STEP_MINUTES;
     if (at > toMinutes(latest)) {
       throw new Error(`#6667: ${squad} stage at ${slot} must move away from the senior's first stage (${toHHMM(first)}) but ${toHHMM(at)} is after ${latest} — move the first race day or the season transition`);
