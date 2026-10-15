@@ -56,7 +56,7 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
     }
     return data.t0;
   }, [data]);
-  const [t, setT] = useState(() => Math.max(data.t0, Math.min(tEnd, flammeT)));
+  const [raceT, setRaceT] = useState(() => Math.max(data.t0, Math.min(tEnd, flammeT)));
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>("12");
   const last = useRef(0);
@@ -69,7 +69,7 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
       const dt = (now - last.current) / 1000;
       last.current = now;
       let done = false;
-      setT((prev) => {
+      setRaceT((prev) => {
         const next = Math.min(tEnd, prev + dt * Number(speed));
         if (next >= tEnd) done = true;
         return next;
@@ -83,12 +83,12 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
 
   function togglePlay() {
     if (playing) { setPlaying(false); return; }
-    if (prefersReducedMotion()) { setT(tEnd); return; }
-    if (t >= tEnd - 0.01) setT(data.t0);
+    if (prefersReducedMotion()) { setRaceT(tEnd); return; }
+    if (raceT >= tEnd - 0.01) setRaceT(data.t0);
     setPlaying(true);
   }
 
-  const state = finaleStateAt(story, data, cast, t);
+  const state = finaleStateAt(story, data, cast, raceT);
   const narrow = width > 0 && width < 560;
   const { shown, rest } = pickGroups(state.groups, narrow ? 2 : 3);
   const captions = useMemo(() => finaleCaptions(lines, data), [lines, data]);
@@ -217,7 +217,7 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
               ))}
               <text x={18} y={narrow ? 36 : 52} fontSize={narrow ? 30 : 44} fill="var(--text-sidebar-1)" className="font-display" letterSpacing=".02em">{toGoText(state.toGoKm)}</text>
               <text x={20} y={narrow ? 50 : 72} fontSize={narrow ? 9 : 11} fontWeight={700} letterSpacing=".16em" fill="var(--text-sidebar-3)" className="font-data">{stageLabel.toUpperCase()}</text>
-              <text x={W - 18} y={narrow ? 28 : 40} textAnchor="end" fontSize={narrow ? 17 : 24} fontWeight={600} fill="var(--text-sidebar-1)" className="font-data tabular-nums">{formatClock(Math.min(t, tEnd))}</text>
+              <text x={W - 18} y={narrow ? 28 : 40} textAnchor="end" fontSize={narrow ? 17 : 24} fontWeight={600} fill="var(--text-sidebar-1)" className="font-data tabular-nums">{formatClock(Math.min(raceT, tEnd))}</text>
               <text x={W - 18} y={narrow ? 44 : 62} textAnchor="end" fontSize={narrow ? 10 : 12} fill="var(--text-sidebar-2)" className="font-data tabular-nums">
                 {state.leaderFinished ? t("stagePageV2.story.final.winningTime") : speedKmh ? t("stagePageV2.story.final.speed", { kmh: formatNumber(Math.round(speedKmh)) }) : ""}
               </text>
@@ -289,8 +289,8 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
           min={data.t0}
           max={tEnd}
           step={0.5}
-          value={t}
-          onChange={(e) => { setPlaying(false); setT(Number(e.target.value)); }}
+          value={raceT}
+          onChange={(e) => { setPlaying(false); setRaceT(Number(e.target.value)); }}
           aria-label={t("stagePageV2.story.final.scrubAria")}
           aria-valuetext={toGoText(state.toGoKm)}
           className="h-11 min-w-32 flex-1 accent-cz-1"

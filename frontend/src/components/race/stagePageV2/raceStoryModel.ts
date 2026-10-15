@@ -243,13 +243,20 @@ function baseLine(m: StoryMoment, kind: LineKind, priority: number, cast: Cast, 
   };
 }
 
-/** Saml linjer af samme slags inden for CLUSTER_KM (regnet fra klyngens foerste km). */
+/** En klynge strækker sig aldrig over mere end dette (km). */
+export const CLUSTER_MAX_SPAN_KM = 5;
+
+/**
+ * Saml linjer af samme slags: hver ny linje inden for CLUSTER_KM af klyngens
+ * seneste linje (og hoejst CLUSTER_MAX_SPAN_KM fra dens start) bliver en del af den.
+ */
 function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLine[] {
   const sorted = [...lines].sort((a, b) => a.km - b.km);
   const out: StoryLine[] = [];
   for (const line of sorted) {
     const last = out[out.length - 1];
-    if (last && line.km - last.km <= CLUSTER_KM) {
+    const lastKm = last ? Math.max(last.km, last.kmTo ?? last.km) : 0;
+    if (last && line.km - lastKm <= CLUSTER_KM && line.km - last.km <= CLUSTER_MAX_SPAN_KM) {
       const ids = [...new Set([...last.riderIds, ...line.riderIds])];
       const end = Math.max(last.kmTo ?? last.km, line.kmTo ?? line.km);
       last.kmTo = end > last.km ? end : null;
@@ -269,9 +276,10 @@ function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLin
 /**
  * Etapens ~50 oejeblikke -> hoejst MAX_STORY_LINES linjer i km-orden.
  * Prioritet (lavt tal = vigtigst): maal 0, udbrud dannet / indhentet / holder
- * hjem 1, angreb med ryttere og ny foerer 2, uheld med tidstab, store toppe og
+ * hjem 1, angreb med ryttere 2, uheld med tidstab, store toppe, ny foerer og
  * en favorit der knaekker 3, hul der vokser/skrumper mellem front og foerste
  * jagt samt splits 4, samlinger 6. Linjer med dine ryttere rykker et trin op.
+ * Samme prioritet: stoerst foerst (grupper, hul), saa senest i etapen.
  */
 export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINES): StoryLine[] {
   const single: StoryLine[] = [];
@@ -299,7 +307,7 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
       case "story.gc_change": {
         const id = typeof m.data.new_leader_id === "string" ? m.data.new_leader_id : null;
         if (!id) break;
-        const line = baseLine(m, "gcLead", 2, cast);
+        const line = baseLine(m, "gcLead", 3, cast);
         line.riderIds = [id];
         line.mineIds = cast.mine.has(id) ? [id] : [];
         line.count = 1;
@@ -392,7 +400,10 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
     seen.set(line.id, n + 1);
     if (n) line.id = `${line.id}-${n}`;
   }
-  const chosen = [...all].sort((a, b) => a.priority - b.priority || a.km - b.km).slice(0, max);
+  // Samme prioritet: det stoerste (flest grupper/ryttere, stoerste hul) foerst,
+  // derefter det senere i etapen (taettere paa afgoerelsen).
+  const weight = (l: StoryLine) => (l.kind === "gap" ? Math.abs(Number(l.data.after) - Number(l.data.before)) / 60 : l.kind === "split" || l.kind === "joined" ? l.count : 0);
+  const chosen = [...all].sort((a, b) => a.priority - b.priority || weight(b) - weight(a) || b.km - a.km).slice(0, max);
   return chosen.sort((a, b) => a.km - b.km || a.priority - b.priority);
 }
 
@@ -616,15 +627,17 @@ export function replayGroupsAt(story: RaceStory, frames: ReplayFrame[], km: numb
 }
 
 /**
- * Hvilke grupper der faar et navn: fronten, dine grupper og hoejst `extra`
- * andre i hul-orden. Resten samles (antal grupper, ryttere, hul-spaend).
+ * Hvilke grupper der faar et navn: fronten, din forreste gruppe (altid) og
+ * hoejst `extra` andre i hul-orden. Resten samles (antal grupper, ryttere,
+ * hul-spaend). Dine ryttere i senere grupper staar i den samlede linje.
  */
 export function pickGroups<T extends { groupId: string; gapS: number; size: number | null; front: boolean; mine: string[] }>(groups: T[], extra = 3): { shown: T[]; rest: { groups: number; riders: number; minGap: number; maxGap: number } | null } {
   const sorted = [...groups].sort((a, b) => a.gapS - b.gapS || a.groupId.localeCompare(b.groupId));
   const shown: T[] = [];
   const front = sorted.find((g) => g.front) ?? sorted[0];
   if (front) shown.push(front);
-  for (const g of sorted) if (g !== front && g.mine.length) shown.push(g);
+  const mineFirst = sorted.find((g) => g.mine.length);
+  if (mineFirst && mineFirst !== front) shown.push(mineFirst);
   let added = 0;
   for (const g of sorted) {
     if (added >= extra) break;

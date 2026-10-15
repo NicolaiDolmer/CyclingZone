@@ -117,6 +117,10 @@ test("curateMoments: prod-form med ~50 oejeblikke (mange splits, samlinger, hull
   assert.ok(lines.some((l) => l.kind === "formed"));
   assert.ok(lines.some((l) => l.kind === "caught"));
   assert.equal(lines.filter((l) => l.kind === "joined").length, 0, "samlinger har laveste prioritet");
+  // 30 splits hver 2. km: en kaede af naere splits bliver til klynger paa hoejst 5 km.
+  for (const l of curateMoments(s, cast(), 99).filter((x) => x.kind === "split")) {
+    assert.ok((l.kmTo ?? l.km) - l.km <= 5 + 1e-9, `klynge km ${l.km}-${l.kmTo}`);
+  }
 });
 
 test("curateMoments: uden praecise tider (aeldre log) faar et km-spaend aldrig en tid", () => {
@@ -231,6 +235,9 @@ test("pickGroups: 25 grupper i finalen = front + hoejst 3 + din gruppe, resten s
   assert.deepEqual(shown.map((g) => g.groupId), ["g0", "g1", "g2", "g3", "g20"]);
   assert.deepEqual(rest, { groups: 20, riders: 60, minGap: 40, maxGap: 240 });
   assert.equal(pickGroups(groups.slice(0, 3)).rest, null);
+  // Dine ryttere i flere grupper: kun din forreste faar plads; resten er i den samlede linje.
+  const spread = groups.map((g, i) => ({ ...g, mine: i === 12 || i === 20 ? ["m"] : [] }));
+  assert.deepEqual(pickGroups(spread).shown.map((g) => g.groupId), ["g0", "g1", "g2", "g3", "g12"]);
 });
 
 test("enkeltstart: ingen gruppehistorie, ingen replay, ingen Final 5 km", () => {
