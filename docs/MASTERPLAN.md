@@ -10,7 +10,7 @@
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
-- **Stabilitet:** databasevagten #5878 kører ikke (secrets mangler) · #5692 matview · aftenspidsen #6490 (træning ved 10×, job-kø #6491, Postgres #6492) · chunk #5162.
+- **Stabilitet:** aftenspidsen #6490 (målt 15/10: 39-50 min, max 50 s mod 60 s-loft; ejer-kort DROP INDEX) → job-kø #6491 + Postgres #6492 (spec #6655, ejer-valg). Verificeret 15/10: databasevagten #5878 kører, #5692 matview 0 låsefejl, chunk #5162 restsymptom (klar til lukning).
 - **Løbsmotoren:** v4-bjergetaper pr. division (#6456 #6464, luk kun på ejer-go) · Tour-bjerg 13/10 + 15/10 · D3-rute #6486 · "Long day" #6475 · udbrud vinder kuperet endagsløb #6428.
 
 ## 🟠 Nu · højst 5
