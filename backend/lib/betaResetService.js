@@ -222,7 +222,8 @@ export async function resetBetaBalances(supabase, { clearTransactions = false, b
 }
 
 // #1608 Task 6 / #1688 (ejer-besluttet 22/6) · pulje-spredende reset-allokering.
-// Forever-relaunch-politik: ægte managere kommer ind i MANAGER_ENTRY_DIVISION (=3),
+// Forever-relaunch-politik: ægte managere kommer ind i MANAGER_ENTRY_DIVISION (=3 til
+// 15/10, nu 4 = bunden, #6650; resten af denne kommentar beskriver 22/6-politikken),
 // IKKE i den strukturelle bund (tier 4). Hvert ægte-manager-hold placeres i den p.t.
 // mindst-fyldte entry-pulje (league_divisions med tier = MANAGER_ENTRY_DIVISION), så
 // puljerne fyldes jævnt (mindst-fyldte-først) — kritisk for race-levedygtighed (et tomt

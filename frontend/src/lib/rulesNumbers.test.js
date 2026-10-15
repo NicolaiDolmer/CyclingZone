@@ -71,6 +71,7 @@ test("economy numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.debtD1, DEBT_CEILING_BY_DIVISION[1]);
   assert.equal(RULES_NUMBERS.debtD2, DEBT_CEILING_BY_DIVISION[2]);
   assert.equal(RULES_NUMBERS.debtD3, DEBT_CEILING_BY_DIVISION[3]);
+  assert.equal(RULES_NUMBERS.debtD4, DEBT_CEILING_BY_DIVISION[4]);
   assert.equal(RULES_NUMBERS.prizePerPoint, PRIZE_PER_POINT);
   assert.equal(RULES_NUMBERS.starValue, STAR_RIDER_MARKET_VALUE);
 });

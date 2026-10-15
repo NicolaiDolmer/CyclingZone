@@ -54,7 +54,7 @@
     "balance": "Balance",
     "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
     "division": "Division {division}",
-    "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 3 the entry tier.",
+    "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 4 the entry tier.",
     "onlineNow": "{count} online now",
     "joinDiscord": "Join Discord"
   },

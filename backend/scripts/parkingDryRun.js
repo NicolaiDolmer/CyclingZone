@@ -35,7 +35,7 @@ import {
 } from '../lib/managerParking.js';
 import { choosePoolForNewTeam, NEW_TEAM_PLACEMENT_TEAM_COLUMNS } from '../lib/teamProfileEngine.js';
 import { daysSinceLastSeen } from '../lib/managerActivity.js';
-import { MANAGER_ENTRY_DIVISION, MAX_DIVISION, POOL_TARGET_SIZE } from '../lib/economyConstants.js';
+import { MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE } from '../lib/economyConstants.js';
 
 const wantJson = process.argv.includes('--json');
 
@@ -79,7 +79,7 @@ export function simulateParkingSweep({ humanTeams, users, subscriptions, pools, 
     const sim = simById.get(t.id);
     if (sim) sim.league_division_id = null;
   }
-  const placementPools = pools.filter((p) => p.tier === MANAGER_ENTRY_DIVISION || p.tier === MAX_DIVISION);
+  const placementPools = pools.filter((p) => p.tier === MANAGER_ENTRY_DIVISION);
   const placements = [];
   for (const t of wouldUnpark) {
     const choice = choosePoolForNewTeam({ pools: placementPools, teams: simTeams });

@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.361",
+    "date": "2026-10-15",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Help now says new teams start in Division 4",
+          "body": "New teams have started in Division 4 since season 4, but the help pages and the division tooltip still said Division 3. They now say Division 4, and the debt ceilings include Division 4 (400,000 CZ$). Nothing changes for your team."
+        },
+        "da": {
+          "title": "Hjælpen siger nu, at nye hold starter i Division 4",
+          "body": "Nye hold er startet i Division 4 siden sæson 4, men hjælpesiderne og divisions-tooltippet sagde stadig Division 3. Nu står der Division 4, og gældslofterne viser også Division 4 (400.000 CZ$). Intet ændrer sig for dit hold."
+        },
+        "refs": [
+          6650
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.360",
     "date": "2026-10-14",
     "changes": [

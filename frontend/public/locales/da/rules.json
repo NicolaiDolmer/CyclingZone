@@ -54,7 +54,7 @@
         },
         "debtCeiling": {
           "title": "Gældsloft",
-          "text": "Hver division har et gældsmaksimum: Division 1 {debtD1} CZ$, Division 2 {debtD2} CZ$, Division 3 {debtD3} CZ$. Nye lån afvises hvis lånet plus dets gebyr ville skubbe dig over loftet. Automatiske nødlån kan overskride det, men du får en advarsel og skal skære i omkostninger."
+          "text": "Hver division har et gældsmaksimum: Division 1 {debtD1} CZ$, Division 2 {debtD2} CZ$, Division 3 {debtD3} CZ$, Division 4 {debtD4} CZ$. Nye lån afvises hvis lånet plus dets gebyr ville skubbe dig over loftet. Automatiske nødlån kan overskride det, men du får en advarsel og skal skære i omkostninger."
         },
         "emergencyLoan": {
           "title": "Nødlån",
