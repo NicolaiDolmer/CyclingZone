@@ -179,7 +179,7 @@
         },
         "noBoardForBots": {
           "title": "AI-, bank- & frosne hold",
-          "text": "AI-hold, banken og frosne hold får aldrig bestyrelses-funktioner; de er kun for managers. De udløser heller aldrig bestyrelses-konsekvenser."
+          "text": "AI-hold, banken og frosne hold får aldrig bestyrelses-funktioner; de er kun for managere. De udløser heller aldrig bestyrelses-konsekvenser."
         }
       }
     }

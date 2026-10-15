@@ -1,8 +1,8 @@
 {
   "page": {
     "title": "Transfers",
-    "subtitle": "Forhandle direkte med andre managers",
-    "subtitleWithBalance": "Forhandle direkte med andre managers · Balance {balance} CZ$",
+    "subtitle": "Forhandle direkte med andre managere",
+    "subtitleWithBalance": "Forhandle direkte med andre managere · Balance {balance} CZ$",
     "balance": "Balance",
     "loadingAria": "Indlæser transfers"
   },
@@ -236,7 +236,7 @@
   },
   "empty": {
     "received": "Kig på markedet imens",
-    "receivedHint": "Andre managers sender tilbud på dine ryttere fra rytterens side.",
+    "receivedHint": "Andre managere sender tilbud på dine ryttere fra rytterens side.",
     "sent": "Send dit første tilbud",
     "sentHint": "Åbn en rytters side og klik \"Send transfertilbud\".",
     "archive": "Se dine åbne forhandlinger",

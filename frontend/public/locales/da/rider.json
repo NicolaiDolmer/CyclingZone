@@ -45,7 +45,7 @@
     "watchlistToggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen.",
     "compare": "⇄ Sammenlign",
     "compareTitle": "Sammenlign med andre ryttere",
-    "watchlistCount": "👁 {count, plural, one {1 manager følger denne rytter} other {# managers følger denne rytter}}",
+    "watchlistCount": "👁 {count, plural, one {1 manager følger denne rytter} other {# managere følger denne rytter}}",
     "visitors": "👀 {count, plural, one {1 unik besøgende} other {# unikke besøgende}} (7d)",
     "visitors24h": "{count, plural, one {1 de seneste 24t} other {# de seneste 24t}}",
     "visitorsNew": "Ny",
