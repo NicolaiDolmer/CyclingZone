@@ -119,6 +119,7 @@
     "satisfactionPenalty": "-{count} if not met",
     "memberReacts": "{member} reacts",
     "relativeRankDetail": "You are #{rank} of {total} managers in the division, beating {actual} (target: {target}<check/>).",
+    "targetMet": "target met",
     "rankInDivisionShort": "You are #{rank} of {total} managers in the division.",
     "sponsorGrowthDetail": "Sponsor growth is {actual}% against the {target}% target due by now.",
     "progress": "Progress",

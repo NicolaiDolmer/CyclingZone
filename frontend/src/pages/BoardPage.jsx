@@ -648,7 +648,7 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
               }}
               components={{
                 check: evaluation.actual >= evaluation.target
-                  ? <CheckIcon size={12} className="inline ms-1 align-[-2px]" aria-hidden="true" />
+                  ? <span><CheckIcon size={12} className="inline ms-1 align-[-2px]" aria-hidden="true" /><span className="sr-only">{t("goal.targetMet")}</span></span>
                   : <></>,
               }}
             />
