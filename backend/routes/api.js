@@ -308,6 +308,8 @@ import {
 } from "../lib/academyIntake.js";
 import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
+import { buildIntake2View } from "../lib/academyIntake2View.js"; // #6666
+import { saveAcademyProfile } from "../lib/academyIntakeProfile.js"; // #6666
 import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
@@ -18643,16 +18645,21 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     const intakePulledThisWeek = intakePullEnabled
       ? await hasPulledThisWeek(supabase, { teamId })
       : false;
+    // #6666 Optag 2.0 (samme flag): potentiale læres gennem træning + akademiets profil.
+    const intake2 = intakePullEnabled
+      ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: graduationSeasonNumber })
+      : null;
 
     res.json({
       enabled: true,
       squads,
       seniorCount,
       seniorMax,
-      roster,
-      intake,
+      roster: intake2?.roster ?? roster,
+      intake: intake2?.intake ?? intake,
       graduations,
       intakePull: { enabled: intakePullEnabled, pulledThisWeek: intakePulledThisWeek },
+      academyProfile: intake2?.profile ?? null,
     });
   } catch (err) {
     captureException(err);
@@ -18782,6 +18789,23 @@ router.post("/academy/intake/pull", requireAuth, marketWriteLimiter, async (req,
     const result = await pullWeeklyAcademyIntake(supabase, { teamId: req.team.id });
     if (!result.ok) return res.status(409).json({ error: result.reason });
 
+    res.json(result);
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/academy/profile — #6666: akademiets ønskede profil (virker efter 14 dage).
+// Body: { origins: string[], types: string[] }. Samme flag som pull-optaget.
+router.put("/academy/profile", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    if (!(await isAcademyEnabled(supabase, { isBetaTester }))) return res.status(409).json({ error: "academy_disabled" });
+    if (!(await isAcademyIntakePullEnabled(supabase))) return res.status(409).json({ error: "intake_pull_disabled" });
+    const result = await saveAcademyProfile(supabase, { teamId: req.team.id, input: req.body ?? {} });
+    if (!result.ok) return res.status(400).json({ error: result.error });
     res.json(result);
   } catch (err) {
     captureException(err);
