@@ -21,7 +21,7 @@
       "label": "Kom i gang",
       "intro": {
         "title": "Hvad er Cycling Zone Manager?",
-        "text": "Cycling Zone Manager er et fantasy-cykelmanagerspil hvor du bygger og leder et cykelhold. Du køber ryttere på auktion, forhandler transfers med andre managers, opfylder bestyrelsens mål og konkurrerer om at klatre i divisionerne."
+        "text": "Cycling Zone Manager er et fantasy-cykelmanagerepil hvor du bygger og leder et cykelhold. Du køber ryttere på auktion, forhandler transfers med andre managere, opfylder bestyrelsens mål og konkurrerer om at klatre i divisionerne."
       },
       "firstSteps": {
         "title": "Første skridt",
@@ -178,7 +178,7 @@
       "label": "Auktioner",
       "whatAuctions": {
         "title": "Hvad er auktioner?",
-        "text": "Auktioner bruges primært til at købe frie ryttere (ryttere uden hold). Du sætter en rytter til auktion, alle managers kan byde, og højeste bud vinder. Du kan også sætte dine egne ryttere til auktion. Starter du en auktion på en fri rytter, er du kun initiator af auktionen: du får ikke salgsprovenuet, medmindre rytteren faktisk var på dit hold. Ryttere på et AI-styret hold kan slet ikke sættes til auktion; kun frie ryttere og ryttere på en anden managers hold kan listes."
+        "text": "Auktioner bruges primært til at købe frie ryttere (ryttere uden hold). Du sætter en rytter til auktion, alle managere kan byde, og højeste bud vinder. Du kan også sætte dine egne ryttere til auktion. Starter du en auktion på en fri rytter, er du kun initiator af auktionen: du får ikke salgsprovenuet, medmindre rytteren faktisk var på dit hold. Ryttere på et AI-styret hold kan slet ikke sættes til auktion; kun frie ryttere og ryttere på en anden managere hold kan listes."
       },
       "howToStart": {
         "title": "Sådan starter du en auktion",
@@ -200,7 +200,7 @@
       },
       "autoBidCap": {
         "title": "Autobud loft",
-        "text": "Autobud loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører, placerer autobud minimumsbuddet for dig med det samme, så du tager føringen. Derefter byder det automatisk for dig hver gang nogen overbyder dig, og hæver dit bud 1 CZ$ ad gangen, aldrig over dit loft. Du bliver ved med at føre, indtil en anden manager går højere end dit loft, og først dér er du overbudt. Dit loft er privat, så andre managers ser det aldrig. Hvis din balance ikke længere kan dække dit loft, stopper autobuddet, indtil du frigør midler."
+        "text": "Autobud loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører, placerer autobud minimumsbuddet for dig med det samme, så du tager føringen. Derefter byder det automatisk for dig hver gang nogen overbyder dig, og hæver dit bud 1 CZ$ ad gangen, aldrig over dit loft. Du bliver ved med at føre, indtil en anden manager går højere end dit loft, og først dér er du overbudt. Dit loft er privat, så andre managere ser det aldrig. Hvis din balance ikke længere kan dække dit loft, stopper autobuddet, indtil du frigør midler."
       },
       "anonymityAndReveal": {
         "title": "Anonyme bud, derefter fuldt reveal",
@@ -231,7 +231,7 @@
       "label": "Transfers",
       "whatTransfers": {
         "title": "Hvad er transfersystemet?",
-        "text": "Transfersystemet lader dig forhandle direkte med andre managers om at købe eller sælge ryttere, ligesom i Football Manager. Du kan sende et tilbud på enhver rytter, uanset om den er sat til salg eller ej."
+        "text": "Transfersystemet lader dig forhandle direkte med andre managere om at købe eller sælge ryttere, ligesom i Football Manager. Du kan sende et tilbud på enhver rytter, uanset om den er sat til salg eller ej."
       },
       "allTrades": {
         "title": "Se alle handler i spillet",
@@ -274,7 +274,7 @@
       },
       "finalConfirmation": {
         "title": "Endelig bekræftelse",
-        "text": "Når et tilbud eller modbud accepteres, går handlen i en kort bekræftelsesfase. Begge managers skal bekræfte den endelige aftale, og systemet tjekker igen ejerskab, saldo og holdgrænser lige før handlen gennemføres."
+        "text": "Når et tilbud eller modbud accepteres, går handlen i en kort bekræftelsesfase. Begge managere skal bekræfte den endelige aftale, og systemet tjekker igen ejerskab, saldo og holdgrænser lige før handlen gennemføres."
       },
       "midRaceTransfers": {
         "title": "Handler under et aktivt etapeløb",
@@ -286,14 +286,14 @@
       },
       "privacy": {
         "title": "Privathed",
-        "text": "Tilbud er private. Kun du og sælger kan se jeres forhandling. Andre managers kan ikke se hvem der har budt på samme rytter."
+        "text": "Tilbud er private. Kun du og sælger kan se jeres forhandling. Andre managere kan ikke se hvem der har budt på samme rytter."
       },
       "archiveCompleted": {
         "title": "Arkivér afsluttede forhandlinger",
         "text": "Tilbud og bytteforslag der er afvist, trukket tilbage eller på anden vis afsluttet kan arkiveres fra Transfers-siden. Arkivering fjerner dem fra aktive lister, så igangværende forhandlinger altid er nemme at finde."
       }
     },
-    "managers": {
+    "managere": {
       "label": "Manager & Profil",
       "profile": {
         "title": "Manager-profil",
@@ -321,11 +321,11 @@
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik betyder de er offline lige nu. Du kan se dette på managerprofiler og ved hvert hold i Liga & rangliste."
+        "text": "En grøn prik ved en managere navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik betyder de er offline lige nu. Du kan se dette på managerprofiler og ved hvert hold i Liga & rangliste."
       },
-      "managersOnline": {
-        "title": "Antal managers online",
-        "text": "På Dashboard kan du se hvor mange managers der er aktive i spillet lige nu. Dette opdateres automatisk."
+      "managereOnline": {
+        "title": "Antal managere online",
+        "text": "På Dashboard kan du se hvor mange managere der er aktive i spillet lige nu. Dette opdateres automatisk."
       },
       "headToHead": {
         "title": "Sammenlign to hold (Head-to-Head)",
@@ -363,11 +363,11 @@
       "label": "Beskeder",
       "starting": {
         "title": "Hvordan starter jeg en samtale?",
-        "text": "Åbn en managers profil eller tryk på navnet i forummet og vælg Besked. På et transfertilbud eller en auktion kan du også trykke Skriv til modparten for at skrive til dem med tilbuddet citeret i første linje."
+        "text": "Åbn en managere profil eller tryk på navnet i forummet og vælg Besked. På et transfertilbud eller en auktion kan du også trykke Skriv til modparten for at skrive til dem med tilbuddet citeret i første linje."
       },
       "whereTheyLive": {
         "title": "Hvor ligger mine samtaler?",
-        "text": "Under Beskeder i indbakken. Hver samtale viser den anden managers navn og din seneste besked."
+        "text": "Under Beskeder i indbakken. Hver samtale viser den anden managere navn og din seneste besked."
       },
       "block": {
         "title": "Hvad sker der, hvis jeg blokerer en manager?",
@@ -430,11 +430,11 @@
             "Ja"
           ],
           [
-            "En ny auktion oprettes (alle managers)",
+            "En ny auktion oprettes (alle managere)",
             "Nej, kun kanal"
           ],
           [
-            "Transfer fuldført (alle managers)",
+            "Transfer fuldført (alle managere)",
             "Nej, kun kanal"
           ],
           [
@@ -521,7 +521,7 @@
       },
       "watchlistCounter": {
         "title": "Watchlist-tæller",
-        "text": "På en rytters statistikside kan du se 'X managers følger denne rytter'. Dette viser det samlede antal managers der har rytteren på deres ønskeliste, uden at afsløre hvem. Brug dette som et signal om efterspørgsel."
+        "text": "På en rytters statistikside kan du se 'X managere følger denne rytter'. Dette viser det samlede antal managere der har rytteren på deres ønskeliste, uden at afsløre hvem. Brug dette som et signal om efterspørgsel."
       },
       "features": {
         "title": "Funktioner i Talentspejder",
@@ -827,7 +827,7 @@
       },
       "newManagers": {
         "title": "Hvad med nye managere?",
-        "text": "En ny managers første sæson tæller til fuld vægt fra dag ét, side om side med veteraners halverede, ældre point, så der er ingen anciennitets-straf. Rookies (managere i deres første sæson) fremhæves også separat i panelet \"Bedste nye manager\"."
+        "text": "En ny managere første sæson tæller til fuld vægt fra dag ét, side om side med veteraners halverede, ældre point, så der er ingen anciennitets-straf. Rookies (managere i deres første sæson) fremhæves også separat i panelet \"Bedste nye manager\"."
       },
       "inactive": {
         "title": "Hvorfor er jeg forsvundet fra listen?",
@@ -1147,7 +1147,7 @@
           ],
           [
             "Transfer gennemført",
-            "En transfer mellem to managers er accepteret"
+            "En transfer mellem to managere er accepteret"
           ],
           [
             "Sæson startet",
@@ -1261,6 +1261,10 @@
       "youthRacesFromS4": {
         "title": "Kører U23-holdet og Juniorholdet faktisk løb?",
         "text": "Ja, fra sæson 4. Hver trup kører på sin egen kalender med sin egen stilling, på samme løbsmotor som senior. Der er ingen præmiepenge i ungdomsløb til at starte med."
+      },
+      "startFloor": {
+        "title": "Hvor mange ryttere skal jeg bruge for at starte et ungdomsløb?",
+        "text": "Mindst 6, ligesom i senior. Har dit U23-hold eller Juniorhold under 6 ryttere i opstillingen, når løbet starter, stiller det ikke op, og så er der intet resultat fra det. Under Youth races står en advarsel under Dit hold ved hvert åbent løb med under 6; åbn løbet og tilføj ryttere. Du kan stadig gemme færre end 6, intet blokerer dig. Når løbet er startet, er opstillingen låst."
       },
       "trainOnly": {
         "title": "Kan en ungdomstrup springe løbene over og kun træne?",
@@ -1455,7 +1459,7 @@
     },
     "relaunchTeamMoney": {
       "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
-      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk {initialSquad}-rytters hold og en startkapital på {startingBalance} CZ$, præcis som alle andre managers."
+      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk {initialSquad}-rytters hold og en startkapital på {startingBalance} CZ$, præcis som alle andre managere."
     },
     "relaunchRiderNames": {
       "q": "Hvorfor er rytternavnene anderledes efter relaunchen?",
@@ -1495,7 +1499,7 @@
     },
     "aiDirectOffers": {
       "q": "Kan jeg købe AI-ryttere med direkte tilbud?",
-      "a": "Nej. Ryttere på et AI-styret hold kan slet ikke erhverves: hverken via direkte transfer- eller byttetilbud, og heller ikke via auktion. Kun frie ryttere (uden hold) og ryttere på en anden managers hold kan skifte hold."
+      "a": "Nej. Ryttere på et AI-styret hold kan slet ikke erhverves: hverken via direkte transfer- eller byttetilbud, og heller ikke via auktion. Kun frie ryttere (uden hold) og ryttere på en anden managere hold kan skifte hold."
     },
     "auctionExpiry": {
       "q": "Hvornår udløber en auktion?",
@@ -1519,11 +1523,11 @@
     },
     "onlineStatusFaq": {
       "q": "Hvad er online status?",
-      "a": "En grøn prik ved en managers navn betyder de har været aktive inden for de sidste 5 minutter. Du kan se dette overalt i spillet."
+      "a": "En grøn prik ved en managere navn betyder de har været aktive inden for de sidste 5 minutter. Du kan se dette overalt i spillet."
     },
     "watchlistCounterFaq": {
       "q": "Hvad betyder watchlist-tælleren på en rytterside?",
-      "a": "Det viser hvor mange managers der har den pågældende rytter på deres ønskeliste. Du kan ikke se hvem, kun det samlede antal."
+      "a": "Det viser hvor mange managere der har den pågældende rytter på deres ønskeliste. Du kan ikke se hvem, kun det samlede antal."
     },
     "scoutVisibilityFaq": {
       "q": "Kan andre managere se at jeg har scoutet en rytter?",
@@ -1730,8 +1734,8 @@
       "a": "Youth_development-fokus får nu et 5. mål: 'Gennemsnitlig U25-stat-gevinst ≥3 stat-points/sæson'. Det måler om dine U25-ryttere faktisk udvikler sig, ikke kun at de er på holdet. Plan-start-baseline snapshottes automatisk ved sæson-slut, og bestyrelsen sammenligner mod nuværende gennemsnit. Et udviklings-program der bare flytter unge ryttere ind men ikke udvikler dem opfylder ikke målet. Bestyrelsen forventer at se faktisk vækst."
     },
     "balancedRelativeRank": {
-      "q": "Hvad er 'slut foran X andre managers' i balanced-planer?",
-      "a": "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managers i divisionen'. Det handler ikke om absolut rangering, men om relativ: du skal slå over halvdelen i din division. Skalerer automatisk når flere managers joiner: hvis der er 5 humane managers i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 -> målet er ikke opfyldt. Det aflæses af din aktuelle placering i divisionen mod antallet af humane managers i den."
+      "q": "Hvad er 'slut foran X andre managere' i balanced-planer?",
+      "a": "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managere i divisionen'. Det handler ikke om absolut rangering, men om relativ: du skal slå over halvdelen i din division. Skalerer automatisk når flere managere joiner: hvis der er 5 humane managere i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 -> målet er ikke opfyldt. Det aflæses af din aktuelle placering i divisionen mod antallet af humane managere i den."
     },
     "boardUnsatisfiedConsequences": {
       "q": "Hvad sker der når bestyrelsen er meget utilfreds, kan jeg blive fyret?",
@@ -1794,8 +1798,8 @@
       "a": "Badgen vises når et mål er hævet pga. en tradeoff-låsning fra en tidligere request. Hvis du fx fik godkendt 'Sænk resultatpresset' i forrige sæson, får din nye plans U25- eller national-mål +1 i krav (eller sponsor_growth +5pp ved 'Lemp identitetskrav'). Det er den deferrede konsekvens af at have lempet noget: bestyrelsen forventer at se mere af noget andet til gengæld. Stramningen forsvinder igen efter ÉN sæson."
     },
     "relativeRankLive": {
-      "q": "Hvordan virker 'slut foran X andre managers'-mål live?",
-      "a": "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du står #4 af 8 managers i divisionen, slår 4 (mål: 3 ✓)'. Tallet opdateres efter hver løbsdag når stillingen genberegnes. Måler relativt til antallet af humane managers i din division, så det skalerer naturligt fra ~19 nu til 100+ managers efter open beta uden cross-division-støj."
+      "q": "Hvordan virker 'slut foran X andre managere'-mål live?",
+      "a": "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du står #4 af 8 managere i divisionen, slår 4 (mål: 3 ✓)'. Tallet opdateres efter hver løbsdag når stillingen genberegnes. Måler relativt til antallet af humane managere i din division, så det skalerer naturligt fra ~19 nu til 100+ managere efter open beta uden cross-division-støj."
     },
     "season0To1Special": {
       "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",

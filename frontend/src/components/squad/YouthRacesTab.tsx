@@ -12,6 +12,7 @@ import { formatDateTime, formatNumber } from "../../lib/intl.js";
 import { DataTable, ErrorState, type DataTableColumn } from "./squadUi.ts";
 import { YouthRacesEmptyState } from "./SquadEmptyStates.tsx";
 import { useYouthRaces } from "./useYouthRaces.ts";
+import { MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js";
 import { youthSelectionOpen, type YouthRaceItem } from "../../lib/youthRaceCalendar.ts";
 import type { YouthSquad } from "../../lib/youthSquadPages.ts";
 
@@ -56,9 +57,18 @@ export default function YouthRacesTab({ squad, tab, trainOnly = false }: { squad
         : <span className="text-cz-3">{t("youthRaces.team.none")}</span>;
     }
     if (r.selection === "none") return <span className="text-cz-3">{t(isTraining(r) ? "youthRaces.team.training" : "youthRaces.team.none")}</span>;
+    // #5907: under gulvet stiller holdet ikke op; kun mens udtagelsen er åben.
+    const belowFloor = youthSelectionOpen(r) && r.riders < MIN_RACE_ENTRIES;
     return (
-      <span className="text-cz-2">
-        {t(r.selection === "auto" ? "youthRaces.team.auto" : "youthRaces.team.manual", { count: r.riders })}
+      <span className="flex flex-col">
+        <span className="text-cz-2">
+          {t(r.selection === "auto" ? "youthRaces.team.auto" : "youthRaces.team.manual", { count: r.riders })}
+        </span>
+        {belowFloor && (
+          <span className="text-xs text-cz-warning" data-testid={`youth-race-below-floor-${r.id}`}>
+            {t("youthRaces.team.belowFloor", { min: MIN_RACE_ENTRIES })}
+          </span>
+        )}
       </span>
     );
   };

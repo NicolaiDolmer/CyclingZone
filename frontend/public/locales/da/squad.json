@@ -123,7 +123,8 @@
       "training": "Ikke tilmeldt · træner",
       "auto": "{count, plural, one {1 rytter, auto-udtaget} other {# ryttere, auto-udtaget}}",
       "manual": "{count, plural, one {1 rytter udtaget} other {# ryttere udtaget}}",
-      "rode": "{count, plural, one {1 rytter} other {# ryttere}}"
+      "rode": "{count, plural, one {1 rytter} other {# ryttere}}",
+      "belowFloor": "Under {min} ryttere: tilføj flere for at stille op"
     },
     "action": {
       "pick": "Udtag ryttere",

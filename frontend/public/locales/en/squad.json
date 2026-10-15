@@ -123,7 +123,8 @@
       "training": "Not entered · training",
       "auto": "{count, plural, one {1 rider, auto-picked} other {# riders, auto-picked}}",
       "manual": "{count, plural, one {1 rider picked} other {# riders picked}}",
-      "rode": "{count, plural, one {1 rider} other {# riders}}"
+      "rode": "{count, plural, one {1 rider} other {# riders}}",
+      "belowFloor": "Under {min} riders: add more to start"
     },
     "action": {
       "pick": "Pick riders",
