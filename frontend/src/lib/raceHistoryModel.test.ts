@@ -31,7 +31,7 @@ const WINNERS = [
   { race_id: "g2", stage_number: 3, result_type: "gc", rank: 1, rider_id: "rC", rider_name: "Rytter C", team_name: "Hold C" },
   // Etapesejr i et etapeløb er ikke løbets vinder.
   { race_id: "g2", stage_number: 2, result_type: "stage", rank: 1, rider_id: "rX", rider_name: "Rytter X", team_name: "Hold X" },
-  { race_id: "o3", stage_number: 1, result_type: "stage", rank: 1, rider_id: "rD", rider_name: "Rytter D", team_name: "Hold D" },
+  { race_id: "o3", stage_number: 1, result_type: "gc", rank: 1, rider_id: "rD", rider_name: "Rytter D", team_name: "Hold D" },
 ];
 
 test("#6514 finalStageByRace: højeste gc-etape for etapeløb, 1 for endagsløb", () => {

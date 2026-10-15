@@ -9,7 +9,7 @@
 //
 // "Et løb" er en familie af udgaver med samme navn og løbstype i én pulje, én
 // udgave pr. sæson. Vindere og placeringer læses af race_results:
-//   - endagsløb: result_type "stage"
+//   - endagsløb: result_type "gc" ved etape 1 (kanonisk, GAME_INVARIANTS)
 //   - etapeløb:  result_type "gc" ved løbets sidste etape (højeste stage_number),
 //     samme regel som løbssiden ("endeligt klassement = højeste etape-nummer").
 
@@ -64,7 +64,8 @@ export function matchesSearch(name: string, query: string): boolean {
 }
 
 const isStageRace = (race: HistoryRace | undefined) => race?.race_type === "stage_race";
-const primaryType = (race: HistoryRace | undefined) => (isStageRace(race) ? "gc" : "stage");
+// Motoren gemmer ALTID den endelige klassifikation som "gc" (endagsløb: etape 1).
+const primaryType = (_race: HistoryRace | undefined) => "gc";
 
 /** Sidste etapes nummer pr. løb ud fra rank-1-rækkerne (gc for etapeløb). */
 export function finalStageByRace(races: readonly HistoryRace[] = [], winnerRows: readonly ResultRow[] = []): Map<string, number> {

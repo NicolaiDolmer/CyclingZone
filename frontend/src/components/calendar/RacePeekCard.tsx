@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from
 import { Link } from "react-router";
 import { supabase, authHeaders } from "../../lib/supabase.ts";
 import { apiFetch } from "../../lib/apiFetch.ts";
+import { isViewerChangeEvent } from "../../lib/viewerChange.ts";
 import {
   raceTerrain, bucketProfileType, raceDateRange, teamFit, selectionHref,
   type CalendarEntryLike, type FitRider, type RaceStatus, type RaceTerrain, type StageProfileLike,
@@ -55,7 +56,18 @@ interface SeasonFitData { enabled?: boolean; races?: SeasonFitRace[]; riders?: F
 // Sæsonmatrixens svar pr. sæson (trup + rute-match pr. løb). Hentes først når et
 // kort for holdets eget løb åbnes, og kun én gang pr. sæson pr. sideindlæsning.
 const seasonFitCache = new Map<string, Promise<SeasonFitData | null>>();
+let fitAuthListenerInstalled = false;
+// Codex-fund: svaret er den indloggede managers trup. Modulet overlever logout i
+// samme SPA-fane, så cachen tømmes når viewer skifter.
+function installFitAuthListener(): void {
+  if (fitAuthListenerInstalled) return;
+  fitAuthListenerInstalled = true;
+  supabase.auth.onAuthStateChange((event) => {
+    if (isViewerChangeEvent(event)) seasonFitCache.clear();
+  });
+}
 function loadSeasonFit(seasonNumber: number | null | undefined): Promise<SeasonFitData | null> {
+  installFitAuthListener();
   const key = String(seasonNumber ?? "active");
   const cached = seasonFitCache.get(key);
   if (cached) return cached;

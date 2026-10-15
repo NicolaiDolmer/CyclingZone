@@ -123,7 +123,7 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
     readChunked<ResultRow>(oneDayIds, (ids) => supabase
       // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
       .from("race_results").select(winnerCols)
-      .in("race_id", ids).eq("result_type", "stage").eq("rank", 1).order("id", { ascending: true })),
+      .in("race_id", ids).eq("result_type", "gc").eq("stage_number", 1).eq("rank", 1).order("id", { ascending: true })),
     readChunked<ResultRow>(stageIds, (ids) => supabase
       // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
       .from("race_results").select(winnerCols)
@@ -131,7 +131,7 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
   ]);
   const winnerRows = [...oneDayWinners, ...stageWinners];
 
-  // Holdets placeringer: kun den endelige stilling. Endagsløb = stage; etapeløb =
+  // Holdets placeringer: kun den endelige stilling. Endagsløb = gc ved etape 1; etapeløb =
   // gc ved sidste etape, grupperet pr. sidste-etape-nummer så hver forespørgsel
   // kun henter den ene etapes gc-rækker.
   let myRows: ResultRow[] = [];
@@ -152,7 +152,7 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
       readChunked<ResultRow>(oneDayIds, (ids) => supabase
         // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
         .from("race_results").select("race_id, stage_number, result_type, rank")
-        .in("race_id", ids).eq("team_id", teamId).eq("result_type", "stage").order("id", { ascending: true })),
+        .in("race_id", ids).eq("team_id", teamId).eq("result_type", "gc").eq("stage_number", 1).order("id", { ascending: true })),
       ...[...byFinal].map(([n, ids]) => readChunked<ResultRow>(ids, (part) => supabase
         // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
         .from("race_results").select("race_id, stage_number, result_type, rank")

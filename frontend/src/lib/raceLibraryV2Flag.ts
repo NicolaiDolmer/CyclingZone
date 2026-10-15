@@ -11,7 +11,8 @@
 // tages på samme preview. Parameteren virker KUN i preview-bygget.
 import { useEffect, useState } from "react";
 import { apiFetch } from "./apiFetch.ts";
-import { authHeaders } from "./supabase.ts";
+import { isViewerChangeEvent } from "./viewerChange.ts";
+import { authHeaders, supabase } from "./supabase.ts";
 
 /** Ren: preview-svaret ud fra URL'ens query. null = ikke preview. */
 export function resolveRaceLibraryPreviewOverride(search: string, isPreview: boolean): boolean | null {
@@ -47,11 +48,22 @@ async function requestRaceLibraryV2(): Promise<boolean> {
   }
 }
 
-// Ét kald pr. sideindlæsning: kalenderen og Resultater spørger begge, og svaret
+// Ét kald pr. viewer pr. sideindlæsning: kalenderen og Resultater spørger begge, og svaret
 // ændrer sig kun når ejeren flytter flaget. Kun et sandt svar huskes; et false
 // (fx før login er klar, eller et timeout) spørges igen ved næste mount.
 let cached: Promise<boolean> | null = null;
+let authListenerInstalled = false;
+// Codex-fund: svaret er viewer-bundet. Modulet overlever logout i samme SPA-fane,
+// så cachen tømmes når viewer skifter (samme mønster som logEvent.js).
+function installAuthListener(): void {
+  if (authListenerInstalled) return;
+  authListenerInstalled = true;
+  supabase.auth.onAuthStateChange((event) => {
+    if (isViewerChangeEvent(event)) cached = null;
+  });
+}
 function fetchRaceLibraryV2Enabled(): Promise<boolean> {
+  installAuthListener();
   if (!cached) {
     cached = withTimeout(requestRaceLibraryV2(), RACE_LIBRARY_V2_TIMEOUT_MS).then((v) => {
       if (!v) cached = null;
