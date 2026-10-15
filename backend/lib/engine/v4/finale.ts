@@ -809,7 +809,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let prevScore: number | null = null;
   let tailStarted = false;
   // #6363 + #6648 (KUN s5_profiles_v1): tiden i maal kommer af loebet (S5_PROFILES_TUNING.
-  // finishGaps, se s5FinishGap nedenfor). En stigende spurt er en massefinale i alt andet
+  // finishGaps, se s5FinishGapSeconds). En stigende spurt er en massefinale i alt andet
   // end tiden: de forreste deler tid naar de er taet. Aeldre revisioner: alt som foer.
   const s5FinishGaps = ctx.s5ProfilesV1 === true ? S5_PROFILES_TUNING.finishGaps : undefined;
   const s5OwnGap = s5FinishGaps && route.finale_type ? s5FinishGaps[route.finale_type] : undefined;
