@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { getBoardGoalLabel } from "../lib/boardGoalLabel";
@@ -637,14 +637,21 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
           && evaluation?.rank_in_division != null
           && evaluation?.division_manager_count != null && (
           <p className="text-2xs text-cz-3 mt-1.5 leading-relaxed">
-            {t("goal.relativeRankDetail", {
-              rank: evaluation.rank_in_division,
-              total: evaluation.division_manager_count,
-              actual: evaluation.actual ?? 0,
-              target: evaluation.target,
-              check: "",
-            })}
-            {evaluation.actual >= evaluation.target && <CheckIcon size={12} className="inline ms-1 align-[-2px]" aria-hidden="true" />}
+            <Trans
+              t={t}
+              i18nKey="goal.relativeRankDetail"
+              values={{
+                rank: evaluation.rank_in_division,
+                total: evaluation.division_manager_count,
+                actual: evaluation.actual ?? 0,
+                target: evaluation.target,
+              }}
+              components={{
+                check: evaluation.actual >= evaluation.target
+                  ? <CheckIcon size={12} className="inline ms-1 align-[-2px]" aria-hidden="true" />
+                  : <></>,
+              }}
+            />
           </p>
         )}
         {/* #3494 · sponsor_growth-tælleren/-nævneren er begge pro-raterede procenter

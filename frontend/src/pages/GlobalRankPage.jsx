@@ -34,8 +34,9 @@ function MovementBadge({ movement, t }) {
     <span
       className={`font-mono text-xs font-bold inline-flex items-center gap-0.5 ${up ? "text-cz-success" : "text-cz-danger"}`}
       title={up ? t("movementUpTooltip", { n: movement }) : t("movementDownTooltip", { n: Math.abs(movement) })}>
+      <span className="sr-only">{up ? t("movementUpTooltip", { n: movement }) : t("movementDownTooltip", { n: Math.abs(movement) })}</span>
       {up ? <ArrowUpIcon size={12} aria-hidden="true" /> : <ArrowDownIcon size={12} aria-hidden="true" />}
-      {Math.abs(movement)}
+      <span aria-hidden="true">{Math.abs(movement)}</span>
     </span>
   );
 }

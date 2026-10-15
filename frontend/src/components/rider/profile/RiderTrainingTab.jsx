@@ -362,7 +362,7 @@ function DailyLogCard({ riderId, runs, t }) {
           } else if (jumps.length === 1) {
             const j = jumps[0];
             result = j.from != null && j.to != null
-              ? <>{j.from}<ChevronRightIcon size={10} className="inline align-[-1px]" aria-hidden="true" />{j.to} {t(`racePreview.derived.${j.ability}`)}</>
+              ? <><span aria-hidden="true">{j.from}<ChevronRightIcon size={10} className="inline align-[-1px]" aria-hidden="true" />{j.to}</span><span className="sr-only">{tTraining("dailyReceipt.change", { from: j.from, to: j.to })}</span> {t(`racePreview.derived.${j.ability}`)}</>
               : `+${j.n} ${t(`racePreview.derived.${j.ability}`)}`;
             resultClass = "text-cz-success";
           } else if (jumps.length > 1) {
