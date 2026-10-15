@@ -329,10 +329,22 @@ test("points and mountain classification show distinct jersey-point vs prize-poi
 
   // Kolonne-overskrifter: trøjepoint og præmiepoint er nu tydeligt adskilte,
   // ikke to unavngivne tal ved siden af hinanden (roden til #3913).
-  await expect(pointsCard.getByText("Trøjepoint")).toBeVisible();
-  await expect(pointsCard.getByText("Præmiepoint")).toBeVisible();
-  await expect(mountainCard.getByText("Trøjepoint")).toBeVisible();
-  await expect(mountainCard.getByText("Præmiepoint")).toBeVisible();
+  // #6684: på telefon står overskrifterne i kort form ("Trøje"/"Præmie", fuld tekst i
+  // title), så begge kolonner kan stå uden vandret scroll. Begge kolonner skal stadig ses.
+  const mobile = testInfo.project.name.startsWith("mobile");
+  const jersey = mobile ? "Trøje" : "Trøjepoint";
+  const prize = mobile ? "Præmie" : "Præmiepoint";
+  await expect(pointsCard.getByText(jersey, { exact: true })).toBeVisible();
+  await expect(pointsCard.getByText(prize, { exact: true })).toBeVisible();
+  await expect(mountainCard.getByText(jersey, { exact: true })).toBeVisible();
+  await expect(mountainCard.getByText(prize, { exact: true })).toBeVisible();
+  if (mobile) {
+    // Ingen vandret scroll i klassement-tabellerne på telefon (D-047).
+    for (const card of [pointsCard, mountainCard]) {
+      const t = card.locator("table");
+      expect(await t.evaluate(el => el.scrollWidth <= el.parentElement.clientWidth + 1)).toBe(true);
+    }
+  }
 
   // Pointkonkurrence: trøje-totalen (sprint_points-sum) — IKKE points_earned.
   await expect(pointsCard.getByText("29 point")).toBeVisible();

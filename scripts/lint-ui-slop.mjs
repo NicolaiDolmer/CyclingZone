@@ -100,6 +100,9 @@ export const SLOP_PATTERNS = [
   ["rounded-xl", /\brounded-xl\b/g],
   ["rounded-2xl", /\brounded-2xl\b/g],
   ["rounded-3xl", /\brounded-3xl\b/g],
+  // #6686 (ejer 15/10): ét hjørnemål. 8 px/6 px er slop; brug rounded-cz (5 px).
+  ["rounded-lg", /\brounded-(?:(?:t|b|l|r|s|e|tl|tr|bl|br|ss|se|es|ee)-)?lg\b/g],
+  ["rounded-md", /\brounded-(?:(?:t|b|l|r|s|e|tl|tr|bl|br|ss|se|es|ee)-)?md\b/g],
   ["glow-shadow", /shadow-\[0_0/g],
   ["backdrop-blur", /\bbackdrop-blur\b/g],
   ["blob-blur", /\bblur-(?:2xl|3xl)\b/g],
@@ -201,7 +204,9 @@ function walk(dir, match, out = []) {
   return out;
 }
 
-const matchSource = (f) => /\.(jsx?|css)$/.test(f) && !/\.test\.(jsx?|mjs)$/.test(f);
+// #6686: ogsaa .ts/.tsx (nye frontend-filer SKAL vaere TypeScript), ellers kan
+// forbudte klasser komme tilbage via den primaere vej. Tests og .d.ts er undtaget.
+const matchSource = (f) => /\.(jsx?|tsx?|css)$/.test(f) && !/\.test\.(jsx?|mjs|tsx?)$/.test(f) && !/\.d\.ts$/.test(f);
 const matchLocale = (f) => /\.json$/.test(f);
 
 // Returnér { "<rel-sti>": {hex, slop, colour, emoji, arrowglyph} } for filer

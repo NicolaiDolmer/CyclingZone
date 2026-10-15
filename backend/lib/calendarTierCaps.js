@@ -97,16 +97,18 @@ export const SENIOR_CALENDAR_POOLS_FIRST_SEASON = 4;
 //   racesPerWeek   min/max loeb der STARTER i hver kalenderuge. Generatoren planlaegger max,
 //                  min er gulvet gaten doemmer paa.
 //   maxRacingDayShare  loft for andelen af kalenderdatoerne der baerer en ungdomsetape.
-//                  0,5 er §10.5's "de fleste er rene traeningsdage" som et tal: hoejst
-//                  halvdelen af datoerne har et loeb.
+//                  Var 0,5 for begge (§10.5's "de fleste er rene traeningsdage"). Fra
+//                  #6667 (ejer 15/10) pr. trup: U23 over junior. Pakkeren fylder op mod
+//                  loftet, saa det er ogsaa maalet.
 //   overlapCap     1: aldrig to ungdomsloeb samtidig. En ungdomstrup er 6-12 ryttere (U23-loft
 //                  12, AI-trup 6-9) og MIN_RACE_ENTRIES er 6, saa to samtidige loeb ville
 //                  tvinge holdene til at vaelge.
 //   stageSlot      dagens ene etape-tid (dansk tid). Halve timer, saa den aldrig falder paa
 //                  samme minut som en senior-slot (TIER_STAGE_SLOTS er hele timer).
 export const SQUAD_CALENDAR = Object.freeze({
-  u23: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 2 }), maxRacingDayShare: 0.5, overlapCap: 1, stageSlot: "16:30" }),
-  junior: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 1 }), maxRacingDayShare: 0.5, overlapCap: 1, stageSlot: "14:30" }),
+  // #6667 (ejer 15/10): U23 faar flere loebsdatoer end junior, "U23 ~18, junior ~12 af 32".
+  u23: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 2 }), maxRacingDayShare: 18 / 32, overlapCap: 1, stageSlot: "16:30" }),
+  junior: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 1 }), maxRacingDayShare: 12 / 32, overlapCap: 1, stageSlot: "14:30" }),
 });
 export const CALENDAR_SQUADS = Object.freeze(["senior", ...Object.keys(SQUAD_CALENDAR)]);
 

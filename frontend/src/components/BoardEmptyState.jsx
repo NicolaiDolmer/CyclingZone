@@ -32,7 +32,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
 
       <div data-tour="board-plans" className="grid sm:grid-cols-3 gap-2 mb-4">
         {EMPTY_STATE_PLANS.map(plan => (
-          <div key={plan.id} className="bg-cz-subtle border border-cz-border rounded-lg p-3">
+          <div key={plan.id} className="bg-cz-subtle border border-cz-border rounded-cz p-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30 flex items-center justify-center text-2xs font-bold text-cz-accent-t">{plan.badge}</span>
               <p className="text-cz-1 text-sm font-semibold">{t(`emptyState.plans.${plan.id}.label`)}</p>
@@ -43,7 +43,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
       </div>
       <p className="text-cz-3 text-xs mb-4 -mt-2">{t("emptyState.plansFooter")}</p>
 
-      <div data-tour="board-satisfaction" className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-4">
+      <div data-tour="board-satisfaction" className="bg-cz-subtle border border-cz-border rounded-cz p-3 mb-4">
         <p className="text-cz-3 text-3xs uppercase tracking-wider mb-1">{t("emptyState.satisfactionLabel")}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
           <span className="text-cz-success font-mono">{t("emptyState.bands.high")}</span>
@@ -65,7 +65,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onOpenWizard}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-1 bg-cz-accent text-cz-on-accent px-4 py-2.5 rounded-lg text-sm font-bold hover:brightness-110 transition-all"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-1 bg-cz-accent text-cz-on-accent px-4 py-2.5 rounded-cz text-sm font-bold hover:brightness-110 transition-all"
         >
           {t("emptyState.ctaNegotiate")}
           <ChevronRightIcon size={14} aria-hidden="true" />

@@ -5,7 +5,7 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("⚠️  Supabase env vars missing — check .env file");
+  console.warn("Supabase env vars missing: check the .env file");
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {

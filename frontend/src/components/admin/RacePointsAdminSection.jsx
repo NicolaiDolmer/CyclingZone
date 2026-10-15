@@ -188,7 +188,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
             key={tab.key}
             type="button"
             onClick={() => setMode(tab.key)}
-            className={`px-3 py-1 rounded-md text-xs border transition-colors
+            className={`px-3 py-1 rounded-cz text-xs border transition-colors
               ${mode === tab.key
                 ? "bg-cz-accent text-cz-bg border-cz-accent"
                 : "bg-cz-card text-cz-2 border-cz-border hover:border-cz-accent/50"}`}
@@ -224,7 +224,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
                         key={c.key}
                         type="button"
                         onClick={() => { setSelectedClass(c.key); setEditingId(null); }}
-                        className={`px-3 py-1 rounded-md text-xs border transition-colors
+                        className={`px-3 py-1 rounded-cz text-xs border transition-colors
                           ${active
                             ? "bg-cz-accent text-cz-bg border-cz-accent"
                             : "bg-cz-card text-cz-2 border-cz-border hover:border-cz-accent/50"}`}
@@ -240,7 +240,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
 
           {/* Grid */}
           {selectedClass && (
-            <div className="overflow-x-auto rounded-lg border border-cz-border">
+            <div className="overflow-x-auto rounded-cz border border-cz-border">
               <table data-sort-exempt="Point-matrix: result-typer x rank, ikke en liste" className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-cz-border">
@@ -339,12 +339,12 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
 
           {/* Sticky save bar */}
           {dirtyCount > 0 && (
-            <div className="mt-4 sticky bottom-2 z-sticky flex items-center justify-end gap-2 bg-cz-card border border-cz-accent/40 rounded-lg px-4 py-2 shadow-lg">
+            <div className="mt-4 sticky bottom-2 z-sticky flex items-center justify-end gap-2 bg-cz-card border border-cz-accent/40 rounded-cz px-4 py-2 shadow-lg">
               <button
                 type="button"
                 onClick={discardAll}
                 disabled={saving}
-                className="px-3 py-1.5 rounded-md text-xs border border-cz-border text-cz-2 hover:text-cz-1 disabled:opacity-50"
+                className="px-3 py-1.5 rounded-cz text-xs border border-cz-border text-cz-2 hover:text-cz-1 disabled:opacity-50"
               >
                 {t("racePoints.discard")}
               </button>
@@ -352,7 +352,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
                 type="button"
                 onClick={saveAll}
                 disabled={saving}
-                className="px-3 py-1.5 rounded-md text-xs bg-cz-accent text-cz-bg font-medium disabled:opacity-50"
+                className="px-3 py-1.5 rounded-cz text-xs bg-cz-accent text-cz-bg font-medium disabled:opacity-50"
               >
                 {saving ? t("racePoints.saving") : t("racePoints.save", { count: dirtyCount })}
               </button>

@@ -38,13 +38,13 @@ function formatPriceIn(currency, amount) {
 
 function LanguageToggle({ language, onChange, label }) {
   return (
-    <div className="inline-flex items-center gap-1 bg-cz-subtle border border-cz-border rounded-lg p-0.5" role="group" aria-label={label}>
+    <div className="inline-flex items-center gap-1 bg-cz-subtle border border-cz-border rounded-cz p-0.5" role="group" aria-label={label}>
       <button
         type="button"
         onClick={() => onChange("da")}
         aria-pressed={language === "da"}
         className={
-          "px-3 py-1 text-xs font-semibold rounded-md transition-all " +
+          "px-3 py-1 text-xs font-semibold rounded-cz transition-all " +
           (language === "da" ? "bg-cz-accent text-cz-on-accent" : "text-cz-2 hover:text-cz-1")
         }
       >
@@ -55,7 +55,7 @@ function LanguageToggle({ language, onChange, label }) {
         onClick={() => onChange("en")}
         aria-pressed={language === "en"}
         className={
-          "px-3 py-1 text-xs font-semibold rounded-md transition-all " +
+          "px-3 py-1 text-xs font-semibold rounded-cz transition-all " +
           (language === "en" ? "bg-cz-accent text-cz-on-accent" : "text-cz-2 hover:text-cz-1")
         }
       >

@@ -298,9 +298,9 @@ video {
      brand tokens are the only "soft" radii:
        rounded-cz       = 5px  (cards, inputs, buttons — the default surface)
        rounded-cz-pill  = 9999 (pills/chips)
-     none/sm/DEFAULT/md/lg/full are Tailwind's v3 defaults, kept verbatim for
-     the ~470 legitimate callsites (rounded, rounded-md, rounded-lg,
-     rounded-full). */
+     none/sm/DEFAULT/md/lg/full are Tailwind's v3 defaults. md/lg stay defined
+     but are BANNED in JSX since #6686 (owner 15/10: one radius, 5px):
+     scripts/lint-ui-slop.mjs blocks rounded-md/rounded-lg; use rounded-cz. */
   --radius-*: initial;
   --radius-none: 0px;
   --radius-sm: 0.125rem;
@@ -583,8 +583,8 @@ video {
   --bg-subtle:   #ece9e1;   /* recessed inset / hover (progress tracks, nested panels) */
   --border:      #e5e0d5;
   --text-1:      #0e0f15;   /* light-mode foreground navy (D-P3B) */
-  --text-2:      #66637a;
-  --text-3:      #9896b0;
+  --text-2:      #4c4a5e;   /* AA+ (ejer B 15/10, #6681) - was #66637a */
+  --text-3:      #67657e;   /* AA fix (ejer B 15/10, #6681) - was #9896b0 (2,4-2,8:1, FAILed AA) */
   --accent:      232 197 71;
   --accent-t:    160 120 0;
   --on-accent:   #1a1f38;
@@ -681,7 +681,7 @@ video {
      rgb(var / alpha) virker. Dæmpet navy-grå, holder division-markøren inden
      for guld+navy i stedet for den tidligere fremmede violet (--cz-chart-2).
      Tema-bevidst: lysere på den mørke canvas. */
-  --div-3: 152 150 176;   /* matcher --text-3 #9896b0 (light) */
+  --div-3: 152 150 176;   /* divisions-farve (grafik, ikke tekst); var lig --text-3 foer #6681 */
 }
 
 [data-theme="dark"] {

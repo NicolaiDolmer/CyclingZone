@@ -570,6 +570,25 @@ test("allocateLeaguePools placerer ægte managere i tier 4 + spreder dem på div
   }
 });
 
+test("#6650 allocateLeaguePools placerer aldrig et managerhold i en pensioneret D4-pulje (E-H)", async () => {
+  const initialState = createInitialState();
+  initialState.league_divisions = initialState.league_divisions.map((pool) => (
+    pool.tier === MANAGER_ENTRY_DIVISION && pool.pool_index >= 4 ? { ...pool, retired_at: "2026-09-27T20:00:00Z" } : pool));
+  for (let i = 2; i <= 6; i += 1) {
+    initialState.teams.push({ id: `team-${i}`, user_id: `user-${i}`, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 2, league_division_id: 1 });
+  }
+  const supabase = createBetaResetSupabase(initialState);
+
+  await allocateLeaguePools(supabase);
+
+  const retired = new Set(supabase.state.league_divisions.filter((p) => p.retired_at).map((p) => p.id));
+  assert.equal(retired.size, 4, "testen har 4 pensionerede puljer");
+  for (let i = 1; i <= 6; i += 1) {
+    const team = supabase.state.teams.find((t) => t.id === `team-${i}`);
+    assert.ok(!retired.has(team.league_division_id), `team-${i} landede i pensioneret pulje ${team.league_division_id}`);
+  }
+});
+
 test("#5536 allocateLeaguePools placerer aldrig et managerhold i en ungdomspulje (senior bit-identisk)", async () => {
   const withTeams = (state) => {
     state.teams.push(

@@ -48,7 +48,7 @@ export function AcademyReleaseConfirmModal({
           {riderName ? <span className="font-bold text-cz-1">{riderName}</span> : null}?
         </p>
 
-        <dl className="text-sm border border-cz-border rounded-lg divide-y divide-cz-border mb-5 text-left">
+        <dl className="text-sm border border-cz-border rounded-cz divide-y divide-cz-border mb-5 text-left">
           <div className="flex items-center justify-between px-3 py-2">
             <dt className="text-cz-3">{t("academy:releaseModal.feeLabel")}</dt>
             <dd className="font-mono font-bold text-cz-danger">
@@ -75,7 +75,7 @@ export function AcademyReleaseConfirmModal({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
               bg-cz-subtle text-cz-2 border border-cz-border hover:text-cz-1 transition-colors disabled:opacity-50"
           >
             {t("common:actions.cancel")}
@@ -84,7 +84,7 @@ export function AcademyReleaseConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={busy || feeLoading || cannotAfford}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-white transition-all
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold text-white transition-all
               disabled:opacity-60 disabled:cursor-not-allowed bg-cz-danger hover:brightness-110"
           >
             {busy || feeLoading ? t("common:actions.loadingShort") : t("academy:releaseModal.confirm")}
