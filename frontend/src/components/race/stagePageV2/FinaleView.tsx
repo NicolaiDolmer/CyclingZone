@@ -96,7 +96,7 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
 
   const labelFor = (g: FinaleGroup): string => {
     if (isPeloton(g.rest, g.size)) return t("stagePageV2.story.group.peloton");
-    const names = namesList(g.riderIds, cast, 2);
+    const names = namesList(g.riderIds, cast, 2, g.size);
     if (names) return names;
     return t("stagePageV2.story.group.riders", { count: g.size ?? 0 });
   };

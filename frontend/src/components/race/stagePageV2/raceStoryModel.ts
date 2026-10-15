@@ -151,12 +151,15 @@ export function castFrom(results: ResultRow[], roles: RoleRider[], stageNumber: 
   };
 }
 
-/** "Rojas, Marchetti +3" - bedst placerede foerst, kun kendte navne. */
-export function namesList(ids: string[], cast: Cast, max = 2): string {
+/**
+ * "Rojas, Marchetti +3" - bedst placerede foerst, kun kendte navne. `total`
+ * er gruppens stoerrelse naar den er stoerre end de navngivne (resten).
+ */
+export function namesList(ids: string[], cast: Cast, max = 2, total: number | null = null): string {
   const known = [...new Set(ids)].filter((id) => cast.nameOf(id));
   known.sort((a, b) => (cast.rankOf(a) ?? 9999) - (cast.rankOf(b) ?? 9999) || String(cast.nameOf(a)).localeCompare(String(cast.nameOf(b))));
   const shown = known.slice(0, max).map((id) => cast.nameOf(id) as string);
-  const more = ids.length - shown.length;
+  const more = Math.max(ids.length, total ?? 0) - shown.length;
   if (!shown.length) return "";
   return more > 0 ? `${shown.join(", ")} +${more}` : shown.join(", ");
 }

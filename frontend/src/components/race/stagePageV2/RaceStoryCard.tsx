@@ -129,7 +129,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
 
   const labelFor = (g: ReplayGroup): string => {
     if (isPeloton(g.rest, g.size)) return t("stagePageV2.story.group.peloton");
-    return namesList(g.riderIds, cast, 2) || t("stagePageV2.story.group.riders", { count: g.size ?? 0 });
+    return namesList(g.riderIds, cast, 2, g.size) || t("stagePageV2.story.group.riders", { count: g.size ?? 0 });
   };
   const { shown, rest } = pickGroups(groups, 2);
   const kmText = formatNumber(Math.round(km * 10) / 10, { maximumFractionDigits: 1 });
@@ -291,7 +291,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
       : t("stagePageV2.story.splits.top", { name: r.name ?? t("stagePageV2.story.splits.climb") });
   const leading = (r: SplitRow) => {
     if (isPeloton(r.leaderIsRest, r.leaderSize)) return t("stagePageV2.story.group.peloton");
-    return namesList(r.leaderIds, cast, 2) || (r.leaderSize ? t("stagePageV2.story.group.riders", { count: r.leaderSize }) : "-");
+    return namesList(r.leaderIds, cast, 2, r.leaderSize) || (r.leaderSize ? t("stagePageV2.story.group.riders", { count: r.leaderSize }) : "-");
   };
   const myGap = (r: SplitRow) => {
     if (!r.myGap) return "-";
@@ -312,7 +312,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
         {rows.map((r) => (
           <tr key={r.key}>
             <td className="border-t border-cz-border py-2 pr-2 align-top">
-              <span className="block truncate font-semibold text-cz-1">{pointName(r)}</span>
+              <span className="block font-semibold text-cz-1 [overflow-wrap:anywhere]">{pointName(r)}</span>
               <span className="block text-2xs text-cz-3">{t("stagePageV2.story.kmAt", { km: formatNumber(Math.round(r.km * 10) / 10, { maximumFractionDigits: 1 }) })}</span>
             </td>
             <td className="border-t border-cz-border py-2 pr-2 text-right align-top text-cz-1">{precise && r.leaderTime != null ? formatClock(r.leaderTime) : "-"}</td>

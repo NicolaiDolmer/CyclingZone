@@ -130,6 +130,8 @@ try {
         }
         throw err;
       }
+      // Sticky faner/etapestribe daekker ellers kortets top i element-billedet.
+      await page.addStyleTag({ content: ".sticky{position:static !important} [class*=\"fixed\"][class*=\"bottom-0\"]{display:none !important}" });
       await page.waitForTimeout(600);
       for (const [view, label] of [["stage", "Whole stage"], ["route", "The route"], ["final", "Final 5 km"]]) {
         await card.getByRole("button", { name: label, exact: true }).click();
