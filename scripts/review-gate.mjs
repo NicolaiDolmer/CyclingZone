@@ -53,7 +53,9 @@ const HIGH_RISK_RULES = Object.freeze([
   { reason: "workflow", re: /^\.github\/(workflows|actions)\// },
   { reason: "sikkerhed", re: /^(\.gitleaks\.toml|SECURITY\.md)$/ },
   // Penge/oekonomi: backend-kode hvis filnavn handler om penge (saldo, overfoersler, kontrakter).
-  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation") },
+  // "value" = rytter-vaerdi (riderValueRefresh, sundayValueSweep, marketValue*): skriver
+  // base_value og loenvaerdi for alle ryttere, ogsaa fra cron.
+  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation|value") },
   // Betaling/abonnement (rigtige penge): checkout, kundeportal, abonnementsstatus,
   // adgang til betalt indhold og betalingsudbyderens webhook.
   { reason: "betaling", re: backendName("billing|checkout|subscription|entitlement|alunta|refund|invoice") },
@@ -66,8 +68,9 @@ const HIGH_RISK_RULES = Object.freeze([
   // Planlagte job: kalder motor, finalisering og udbetalinger uden menneske i loopet.
   { reason: "cron", re: backendName("cron|scheduler") },
   // Auth/sikkerhed: backend + frontend-lib (login, tokens, admin-adgang, RLS/grants).
-  // "Author" (forum) er ikke auth, men authorize/authorization er.
-  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|grant|permission|urlSafety|admin)[^/]*$/i },
+  // "Author" (forum) er ikke auth, men authorize/authorization er. ownerGate er
+  // OWNER_USER_IDS-allowlisten (fail-closed) bag ejer-only admin-endpoints.
+  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|grant|permission|urlSafety|admin|ownerGate)[^/]*$/i },
   // RLS case-sensitivt og som ord: "rls" kun forrest i navnet eller efter _ . -,
   // ellers "Rls"/"RLS" (camelCase/versaler). "urlState" (rlS) og "denyUrls"
   // (Urls) er URL'er, ikke RLS.

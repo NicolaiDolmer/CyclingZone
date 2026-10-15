@@ -117,12 +117,15 @@ function Get-PrPlanEntry([int]$number) {
       if ($leagueExit -notin @(0, 1, 8)) {
         $checksExit = 1
       } else {
-        $checksExit = Get-LeagueCheckExitCode -Checks @(($leagueJson -join "") | ConvertFrom-Json)
-        # #6654: review-gate (rule 35) stopper koeen ogsaa foer ejeren goer den required.
-        # Rod = stop, afventer = vent; mangler (PR fra foer gaten) = advarsel.
-        $gate = @(@(($leagueJson -join "") | ConvertFrom-Json) | Where-Object { $_.name -eq 'review-gate' } | Sort-Object { if ($_.startedAt) { [datetime]$_.startedAt } else { [datetime]::MaxValue } } -Descending)
-        if ($checksExit -eq 0 -and $gate.Count -ge 1 -and $gate[0].bucket -ne 'pass') { $checksExit = $(if ($gate[0].bucket -eq 'pending') { 8 } else { 1 }) }
-        elseif ($gate.Count -eq 0) { Write-Host "      (PR #${number}: intet review-gate-check endnu, #6654)" -ForegroundColor DarkYellow }
+        $allChecks = @(($leagueJson -join "") | ConvertFrom-Json)
+        $leagueCode = Get-LeagueCheckExitCode -Checks $allChecks
+        # #6654: review-gate (rule 35) stopper koeen ogsaa foer ejeren goer den
+        # required. Rod/mangler = stop, afventer = vent (scripts/lib/league-check.ps1).
+        $gateCode = Get-ReviewGateCheckExitCode -Checks $allChecks
+        $checksExit = $(if ($leagueCode -eq 1 -or $gateCode -eq 1) { 1 } elseif ($leagueCode -eq 8 -or $gateCode -eq 8) { 8 } else { 0 })
+        if (@($allChecks | Where-Object { $_.name -eq 'review-gate' }).Count -eq 0) {
+          Write-Host "      (PR #${number}: intet review-gate-check - push et commit eller skift en label for at starte det, #6654)" -ForegroundColor DarkYellow
+        }
       }
     } catch { $checksExit = 1 }
   }

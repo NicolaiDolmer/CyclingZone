@@ -117,6 +117,23 @@ test("classifyFile: betaling, abonnement og webhooks er hoejrisiko", () => {
   assert.equal(classifyFile("frontend/src/pages/BillingPage.jsx"), null, "UI om betaling er ikke betalingskode");
 });
 
+// Codex-fund paa #6657 (runde 3): rytter-vaerdi-opdatering og ejer-allowlisten
+// gled igennem som lav risiko.
+const VALUE_OWNER_GATE = Object.freeze({
+  "backend/lib/riderValueRefresh.js": "penge",
+  "backend/lib/sundayValueSweep.js": "penge",
+  "backend/lib/marketValueLevelCorrectionGate.js": "penge",
+  "backend/lib/riderValuesBulkWriteFlag.js": "penge",
+  "backend/lib/ownerGate.js": "auth",
+});
+
+test("classifyFile: rytter-vaerdi er penge, ownerGate er auth", () => {
+  for (const [f, reason] of Object.entries(VALUE_OWNER_GATE)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("backend/lib/riderValueRefresh.test.js"), null, "tests er stadig tests");
+  assert.equal(classifyFile("backend/lib/ownerGate.test.js"), null);
+  assert.equal(classifyFile("frontend/src/components/RiderValueChart.jsx"), null, "UI om vaerdi er ikke oekonomikode");
+});
+
 test("classifyFile: authorize/authorization er auth, Author (forum) er ikke", () => {
   assert.equal(classifyFile("backend/lib/authorizeTeamAction.js"), "auth");
   assert.equal(classifyFile("backend/lib/requestAuthorization.js"), "auth");
@@ -214,7 +231,8 @@ test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavri
     "backend/lib/authTokenVerification.js", "backend/routes/adminRoadmap.js", "frontend/src/lib/getAuthedUser.js",
     "backend/lib/urlSafety.js", ".gitleaks.toml", "backend/lib/someWriteRpc.js", "backend/lib/weeklyScheduler.js",
     "backend/api/featureFlagsApi.js", "backend/server.js", "backend/lib/authorizeTeamAction.js",
-    ...Object.keys(CORE_MOTOR_MONEY), ...Object.keys(BILLING_WEBHOOK), "backend/scripts/audit-rls-coverage.js",
+    ...Object.keys(CORE_MOTOR_MONEY), ...Object.keys(BILLING_WEBHOOK), ...Object.keys(VALUE_OWNER_GATE),
+    "backend/scripts/audit-rls-coverage.js",
   ];
   for (const f of high) {
     assert.ok(classifyFile(f), `klassifikatoren: ${f} er hoejrisiko`);
