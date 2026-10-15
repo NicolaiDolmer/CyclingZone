@@ -60,3 +60,5 @@ Status: bygget og lokalt verificeret; ejer-preview/merge/release åbent. [Samlet
 - Sidste locale-overskrift rettet med observeret RED; afsluttende bibliotekssuite54/54, preflight/typecheck/offlinebuild grønne. Gzip1266,3KB mod1267,4KB loft.
 - Alle fem oprindelige reviewfund rettet. Mobil/desktop/lys/mørk og tom/fejl/loading-billeder fornyet. Beskyttede stier, NOW og MASTERPLAN urørte.
 - Næste handling: kontroller afsluttende SHA-CI/botreview på #6636; ejer afprøver preview. Ingen evidens for autentificeret prodlatens/RLS eller spilleradfærd. Luk ikke #6514 før accept.
+
+CodeRabbit-opfølgning15/10: ét minor +to trivial rettet (udgavernes tomtilstand, abortcheck, numerisk sortering). Ny lokalrunde57/57 +18/18, type/build grønne, gzip1266,4KB. CI3875416cf havde kun artifact-upload ETIMEDOUT efter beståede lane-tests; næste reviewcommit skal have ny CI. To ekstra tom-udgavebilleder gemt.

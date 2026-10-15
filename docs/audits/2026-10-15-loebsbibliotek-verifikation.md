@@ -32,3 +32,11 @@ De målte checks understøtter korrekt navigation og afgrænset læsning under d
 Endelig commit-CI og botreview kontrolleres på PR #6636. Ejeren skal på preview afprøve Kommende løb, finde Vuelta uden præcis accent, åbne en ældre udgave og vende tilbage med filtre/scroll, på mobil og desktop. Visuelt accept- og merge/release-mandat er fortsat åbent. Issue #6514 forbliver åbent.
 
 Close-out: cleanup fandt ingen efterladte watchers/preview/Playwright-processer. Token-hygiejne har én eksisterende fejl: AGENTS.md, 6738 approx tokens mod Codex-budgettet; filen er urørt i PR. Øvrige nye rapporter ændrer ikke dette. Status-board-generatoren blev kørt; dens globale datodrift er ikke medtaget i bibliotekets diff.
+
+## CodeRabbit-opfølgning
+
+CodeRabbit afsluttede review af 3875416cf: ét minor (tom udgaveliste viste permanent skeleton) og to trivial (abortcheck før vinderbatch, numerisk divisionssortering). Alle tre er runtime-/kodeverificeret og rettet. Tomtilstandens test blev først korrigeret til eksisterende dansk ordlyd, derefter observeret RED af den faktiske manglende tomtilstand. Afsluttende bibliotekssuite efter rettelser: **57/57** i tre projekter uden retries; model/query **18/18**, typecheck og offline client/SSR/prerender bestået. Gzip **1266,4 KB mod1267,4 KB**. Nye faktiske billeder: editions-empty-desktop/mobile, uden ydre overflow/pageerrors.
+
+CI på 3875416cf: frontend-build/backend/perf og alle testassertions i den berørte mobile-chromium-lane bestod (279pass/37skip). Lane og samlet frontend-smoke blev røde på GitHubs artifact-upload: ETIMEDOUT, efter tests exit0. Det er en observeret infrastrukturfejl, ikke grøn samlet CI. Den næste commit med reviewrettelser udløser en ny komplet CI; dens status læses på PR'en.
+
+GitHub-connectorens samlede botkommentar blev blokeret af secretfilterets high-entropy-heuristik før visning. Reviewfundene blev derefter læst via lokalt metadatafiltreret API-udtræk. Ingen kendt secretværdi blev vist; ingen rotation eller ændring af sikkerhedsfilter udført.

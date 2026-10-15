@@ -551,7 +551,11 @@ function RaceEditionContent() {
                   label={t("library.editions")}
                   mobileDefaults={["date", "result", "open"]}
                   empty={
-                    editions.error ? (
+                    editions.loading ? (
+                      <div className="p-5">
+                        <SkeletonLines lines={4} />
+                      </div>
+                    ) : editions.error ? (
                       <ErrorState
                         title={t("actions.error", { ns: "common" })}
                         description={t("library.error")}
@@ -562,9 +566,7 @@ function RaceEditionContent() {
                         }
                       />
                     ) : (
-                      <div className="p-5">
-                        <SkeletonLines lines={4} />
-                      </div>
+                      empty
                     )
                   }
                 />

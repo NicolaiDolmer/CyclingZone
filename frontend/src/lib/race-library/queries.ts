@@ -150,6 +150,7 @@ export function createRaceLibraryReader(client: unknown) {
         ).status === "completed"
     );
     for (const ids of batches(completed.map((r) => r.id))) {
+      signal.throwIfAborted();
       const rows = await fetchAllRows(() =>
         db
           .from("race_results")

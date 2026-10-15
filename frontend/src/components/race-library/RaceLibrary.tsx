@@ -352,11 +352,13 @@ function RaceLibraryContent() {
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => update("division", e.target.value)}
         >
           <option value="all">{t("library.allDivisions")}</option>
-          {[...new Set(pools.map((p) => p.tier))].sort().map((tier) => (
-            <option key={tier} value={tier}>
-              {t("library.divisionOption", { number: tier })}
-            </option>
-          ))}
+          {[...new Set(pools.map((p) => p.tier))]
+            .sort((a, b) => a - b)
+            .map((tier) => (
+              <option key={tier} value={tier}>
+                {t("library.divisionOption", { number: tier })}
+              </option>
+            ))}
         </Select>
         <Select
           size="sm"

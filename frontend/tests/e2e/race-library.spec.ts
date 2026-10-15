@@ -252,3 +252,25 @@ test("invalid edition scope offers a working route back to a valid library", asy
     "true"
   );
 });
+
+test("empty editions finish loading and offer return navigation", async ({ page }) => {
+  await prepareLibrary(page);
+  await page.route("**/rest/v1/races**", async (route) => {
+    if (new URL(route.request().url()).searchParams.has("name")) {
+      await route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    } else await route.fallback();
+  });
+  await page.goto(
+    "/race-archive/" +
+      encodeURIComponent("Vuelta Ibérica") +
+      "?raceId=" +
+      id(1) +
+      "&detail=editions"
+  );
+  await expect(page.getByRole("heading", { name: "Vuelta Ibérica", exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Denne løbsudgave er ikke tilgængelig", { exact: true })
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Løbsbibliotek", exact: true }).click();
+  await expect(page).toHaveURL(/\/resultater\?tab=archive$/);
+});

@@ -11,3 +11,5 @@ Alle billeder er faktiske browser-renderinger med syntetiske, anonyme fixtures. 
 Ni afsluttende populated/history/empty/error-visninger: målt ydre overflow 0 og pageerrors 0. Loading er særskilt kontrolleret. Testdata omfatter 12 sæsoner, live/scheduled/completed, fælles løb og valideret pulje. Ingen S5-generering, udtagelse eller produktionsskrivning.
 
 [Verifikationsrapport](../../docs/audits/2026-10-15-loebsbibliotek-verifikation.md). Ingen evidens for autentificeret produktionslatens, RLS i ejerens browsersession eller forbedret spilleradfærd. Ejerens previewgennemgang er stadig åben.
+
+Efter CodeRabbit: editions-empty-desktop/mobile viser en afsluttet tom udgavesøgning med tydelig genfinding; begge faktisk renderet efter 57/57-regressionsrunden, uden ydre overflow/pageerrors.
