@@ -37,7 +37,12 @@ const PAIRS = [
   // --- LIGHT MODE (LOCKED P2 = E "Chalk" #f4f2ec; card #fcfbf7, elevated #ffffff) ---
   ['LIGHT CHALK', 'Body text-1 on canvas', '#1c1b26', '#f4f2ec', 'text'],
   ['LIGHT CHALK', 'Body text-1 on card', '#1c1b26', '#fcfbf7', 'text'],
-  ['LIGHT CHALK', 'Muted text-2 on canvas', '#66637a', '#f4f2ec', 'text'],
+  ['LIGHT CHALK', 'Muted text-2 on canvas', '#4c4a5e', '#f4f2ec', 'text'],
+  ['LIGHT CHALK', 'Muted text-2 on subtle', '#4c4a5e', '#ece9e1', 'text'],
+  // text-3 (ejer B 15/10, #6681): var #9896b0 (2,36-2,77:1, FAIL)
+  ['LIGHT CHALK', 'Faint text-3 on canvas', '#67657e', '#f4f2ec', 'text'],
+  ['LIGHT CHALK', 'Faint text-3 on card', '#67657e', '#fcfbf7', 'text'],
+  ['LIGHT CHALK', 'Faint text-3 on subtle', '#67657e', '#ece9e1', 'text'],
   ['LIGHT CHALK', 'Gold accent on canvas (expected FAIL)', '#e8c547', '#f4f2ec', 'large'],
   ['LIGHT CHALK', 'Deep-gold accent on canvas', '#a07800', '#f4f2ec', 'large'],
   ['LIGHT CHALK', 'Navy foreground on canvas', '#0e0f15', '#f4f2ec', 'text'],
