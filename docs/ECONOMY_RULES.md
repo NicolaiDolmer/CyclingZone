@@ -212,7 +212,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 | /rules- og /help-tallenes drift-guard | Player-facing lønprocent er pinnet til `SALARY_RATE_PRODUCTION`, altså den konstant der faktisk fryser kontrakten | `frontend/src/lib/rulesNumbers.test.js` (#4479 repinnede den fra legacy-`SALARY_RATE`) |
 | Løftede-vagter-guard | Ingen SSOT-doc eller kodekommentar må navngive en testfil der ikke findes | `backend/lib/promisedTestFilesExist.test.js` (#4479) |
 | Route-gate | Auktions-startpris uden for [gulv,loft] afvises | `auctionRules.getAuctionStartPriceIssue` |
-| Fail-safe app_config-læsning | DB-fejl på et økonomi-flag falder ALTID til den nuværende, ikke en ny, adfærd | `wageDeductionConfig.js`, `transferPriceBand.js`, `marketValueSweepConfig.js` — samme mønster i alle tre |
+| Fail-safe app_config-læsning | DB-fejl på et økonomi-flag falder ALTID til den nuværende, ikke en ny, adfærd | `wageDeductionConfig.js`, `transferPriceBand.js` — samme mønster i begge (`marketValueSweepConfig.js` blev slettet 15/10, #6642) |
 | Simulér-før-ship-harness | Ingen løn-/værdiændring ships uden dry-run scorecard mod ægte population | `salaryDecouplingScorecard.js`-mønsteret, gentaget for hver økonomi-ændring siden |
 | v4-scorecardets sum-kontinuitet (#5445) | Median-drift-gaten (skala-kontinuitet) fangede IKKE at kandidat-modeller kunne flytte den **samlede** rytterværdi (Σ base_value) på menneskehold voldsomt op eller ned og stadig bestå alle gates (se #5443 for den målte evidens). Scorecardet har nu to ekstra hårde gates: Σ base_value før/efter (menneskehold + hele populationen, rapporteret hver for sig) og top-1 %-elite-andel af Σ (kontrol for omfordeling). Båndets bredde er en PARAMETER (`DEFAULT_SUM_DRIFT_PCT`), ikke fastlåst — ejer-beslutning ligesom pengemængde-båndet i §9 | `backend/lib/valuationV4Scorecard.js` (`sumContinuityGate`, `eliteShareGate`) |
 | ~~Intet i dag~~ | ~~Der findes **ingen** CI/prod-invariant der fanger at et player-facing tal (fx `academySalaryPct`) driver fra den formel der faktisk kører~~ — **lukket 31/8 (#4479)** for løn-tallene: `salaryRatePct` og `academySalaryPct` er nu pinnet til `SALARY_RATE_PRODUCTION`. Gapet består stadig for de player-facing tal der slet ikke ligger i `RULES_NUMBERS` | `rulesNumbers.test.js` |
@@ -262,7 +262,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 **Punkt 1 er bevidst IKKE gated af `daily_training_enabled`** (ejer-beslutning 31/8). Træning og værdiopdatering er to uafhængige systemer: der skal kunne trænes hver dag, og værdier skal opdateres hver søndag — aldrig andre dage — uanset træningens tilstand. Et review foreslog gaten, fordi værdi-refresh'en historisk lå bag trænings-sweepens flag-gate, men den kobling var et artefakt af hvor koden lå, ikke en spilregel. På sigt skal træningsscoren indgå i selve værdiberegningen; det bliver en input-afhængighed i modellen, ikke en gate på om jobbet kører. **Sæsonskiftet er derimod en gate (#5842, ejer 28/9).** Den tidligere regel (31/8) om at `no_active_season` ikke måtte gate, er erstattet: ejeren vil have én værdiskrivning efter det fuldførte skifte, også selvom det koster en uges opdatering, når en søndag falder mellem "Afslut sæson" og et skifte der først kører senere. Reglerne står i §9.1 punkt 1.
 
-### 9.2 Markedsdrevne værdier: hvad der er lovet, bygget og ikke tændt
+### 9.2 Markedsblendet (historik, afløst af værdimodel v6, fjernet 15/10)
 
 **Lovet spillerne** (ejerens Discord-besked 11/8, #the-roadbook): næste værdiopdatering bruger 75 % gammel formel og 25 % ny, derefter gradvist mod 100 % spillerdrevne værdier. Retningen genåbnes ikke; den er bindende forudsætning.
 
@@ -270,7 +270,7 @@ Om flaget faktisk står `true` i prod pr. 25/8 er **ikke verificeret** i denne o
 
 **Fjernet 15/10 (#6642).** Ejeren lukkede #4449 12/10 som afløst af værdimodel v6, så sweepen, dens config, `marketValueModel.js` og V1-artefaktet er slettet. Historikken nedenfor står som dokumentation. app_config-nøglerne og `market_value_sunday_sweep_log` ligger stadig i prod; en migration der sletter dem kræver ejer-go.
 
-**Stadig ikke tændt. Ejer-go 30/8 lød på søndag 6/9 med 15 % global markedsvægt** (uændret ugeloft ±25 %, derefter i skridt med scorecard + ejer-go pr. skridt). **Rettet 20/9 (#5443): det flip skete aldrig.** Verificeret read-only mod prod 20/9 — `market_value_sweep_ran = false` for både 6/9, 13/9 og 20/9, og blokkeren fra #4449 (runtime læser V1-artefaktet, ikke den nyere fittede markedsmodel) står stadig. Dokumentet lovede en tilstand der ikke findes; markedet har aldrig flyttet en eneste rytterværdi. Eksekvering: [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449). Næste skridt efter v5 (§1.1) er en gen-fittet markedsmodel mod den nye typefordeling — de gamle koefficienter er fittet på en typefordeling der ikke eksisterer længere. Tilstand verificeret i prod 30/8, uændret siden:
+**Historik (gælder ikke længere; intet her er et åbent skridt):** Ejer-go 30/8 lød på søndag 6/9 med 15 % global markedsvægt (uændret ugeloft ±25 %, derefter i skridt med scorecard + ejer-go pr. skridt). **Rettet 20/9 (#5443): det flip skete aldrig.** Verificeret read-only mod prod 20/9 — `market_value_sweep_ran = false` for både 6/9, 13/9 og 20/9, og blokkeren fra #4449 (runtime læser V1-artefaktet, ikke den nyere fittede markedsmodel) står stadig. Dokumentet lovede en tilstand der ikke findes; markedet har aldrig flyttet en eneste rytterværdi. #4449 blev lukket 12/10 som afløst af v6; en gen-fittet markedsmodel er ikke planlagt. Tilstand i prod 30/8 (nøglerne står stadig, ubrugte):
 
 | Nøgle | Værdi |
 |---|---|
@@ -303,9 +303,9 @@ Læsningen 30/8: den forhandlede kanal ligger nu meget tæt på 1,0 mod de korri
 
 | Issue | Hvad | Status 30/8 |
 |---|---|---|
-| [#3448](https://github.com/NicolaiDolmer/CyclingZone/issues/3448) | Markedsdrevne værdier: blend-kadence og vej mod 100 % spillerdrevet | **Afklaret 30/8.** Modsigelsen mellem issuets 50/50 og udmeldingen 11/8 (75/25) er afgjort: **15 % global vægt fra søndag 6/9**, derefter i skridt, ingen dato for 100 %. Eksekvering i #4449 |
-| [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449) | Tænd markedsblendet 6/9 med 15 % vægt | Åben. Blokkerende før flip: runtime skal læse v2-artefaktet (evidensvægt `Z = n/(n+K)`, kvalificeret evidens, `type_column`), tørkørsel mod prod, ejer-go på selve flippet, spillerkommunikation |
-| [#3750](https://github.com/NicolaiDolmer/CyclingZone/issues/3750) | 739 bank-salg til mekanisk 25 % indgår som "markedsevidens", så modellen trænes delvist på sit eget tal | Åben, men **datasiden er løst**: `marketValueModelV2.json` (fittet 17/8) trænes kun på kvalificeret evidens, 391 af 1.288 handler overlevede filteret. Det der udestår er at RUNTIME bruger artefaktet, se #4449 |
+| [#3448](https://github.com/NicolaiDolmer/CyclingZone/issues/3448) | Markedsdrevne værdier: blend-kadence og vej mod 100 % spillerdrevet | Lukket 3/10. Historik: 15 % global vægt fra 6/9 blev besluttet 30/8, men aldrig tændt; afløst af v6 (#4449 lukket 12/10, kode fjernet i #6642) |
+| [#4449](https://github.com/NicolaiDolmer/CyclingZone/issues/4449) | Tænd markedsblendet 6/9 med 15 % vægt | **Lukket 12/10 af ejeren som afløst af værdimodel v6.** Sweep-koden er fjernet (#6642); må ikke genoplives uden ny ejer-beslutning |
+| [#3750](https://github.com/NicolaiDolmer/CyclingZone/issues/3750) | 739 bank-salg til mekanisk 25 % indgår som "markedsevidens", så modellen trænes delvist på sit eget tal | Lukket 31/8. Historik: `marketValueModelV2.json` (fittet 17/8) trænes kun på kvalificeret evidens, 391 af 1.288 handler overlevede filteret. Runtime-delen bortfaldt med #4449 (afløst af v6) |
 | [#3353](https://github.com/NicolaiDolmer/CyclingZone/issues/3353) | Re-fit af v4 mod den caps-baserede ryttertype-klassifikation, fjerner #3345's frysning | Åben |
 | [#4000](https://github.com/NicolaiDolmer/CyclingZone/issues/4000) | Typen skal fylde mindre i værdiformlen (regulariseret offset-tabel + alpha) | `claude:done`, flippet 23/8 sammen med niveaukorrektionen (PR #4135) |
 | [#4195](https://github.com/NicolaiDolmer/CyclingZone/issues/4195) | Værdimodellen er så stejl i toppen at ét overall-point giver +20 mio.; 40-mio.-loftet brydes på 44 % af seeds | Åben, `needs-decision` |
@@ -316,7 +316,7 @@ Læsningen 30/8: den forhandlede kanal ligger nu meget tæt på 1,0 mod de korri
 | [#3656](https://github.com/NicolaiDolmer/CyclingZone/issues/3656) | Lønnormalisering (absurd lave og absurd høje lønninger) | Åben, betinget: hænger på at værdierne har sat sig |
 | [#4419](https://github.com/NicolaiDolmer/CyclingZone/issues/4419) | Søndag kl. 06 i eget job, ingen værdiopdatering ved manuel træning | Denne ændring |
 
-**Ikke-merged arbejde der ikke må glemmes:** branchen `feat/3448-level-anchor` (tip `e3dd70f5`) ligger på origin uden PR. Den implementerer `a_floor_shift` i `predictMarketPrice`. Feltet står allerede som `0` i `marketValueModelV1.json` på main, men **ingen kode på main læser det**: sætter man det til et andet tal for at flytte prisniveauet, sker der ingenting, tavst og uden fejl.
+**Historik:** branchen `feat/3448-level-anchor` (tip `e3dd70f5`, aldrig merget) implementerede `a_floor_shift` i den nu slettede markedsmodel. Den er forældet efter #6642 og skal ikke genoptages.
 
 ---
 
