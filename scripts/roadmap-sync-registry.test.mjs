@@ -46,10 +46,11 @@ test("planSync: opretter kun poster med tekst og flag, som ikke allerede har et 
     entry({ id: "c", flag: "flag_c", roadmap_en: undefined, roadmap_da: undefined }),
     entry({ id: "d", flag: undefined }),
     entry({ id: "e", flag: "flag_e", state: "retired" }),
+    entry({ id: "f", flag: "flag_f", state: "live" }),
   ];
   const plan = planSync({ entries, existingFlagKeys: ["flag_b"] });
   assert.deepEqual(plan.inserts.map((p) => p.id), ["a"]);
-  assert.deepEqual(plan.skipped.map((s) => s.id), ["d", "e"]);
+  assert.deepEqual(plan.skipped.map((s) => s.id), ["d", "e", "f"]);
 });
 
 test("planSync: sync saetter aldrig approved = true, uanset registrets state", () => {

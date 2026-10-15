@@ -20,6 +20,8 @@
 // er flaget allerede beta, bliver punktet in_progress med beta_since; on ->
 // shipped. Derefter flytter triggeren paa app_config punktet ved hvert flip.
 //
+// Poster med state live eller retired springes over: kun foer-live-stadier faar et nyt punkt.
+//
 // Dry-run er default og skriver intet. --apply indsaetter.
 // Koeres automatisk efter merge til main af .github/workflows/roadmap-sync.yml.
 //
@@ -94,8 +96,8 @@ export function planSync({ entries, existingFlagKeys, maxSortOrder = 0 }) {
       skipped.push({ id: e.id, reason: "roadmap-tekst uden flag (sync er noeglet paa flag_key)" });
       continue;
     }
-    if (e.state === "retired") {
-      skipped.push({ id: e.id, reason: "state retired" });
+    if (e.state === "retired" || e.state === "live") {
+      skipped.push({ id: e.id, reason: `state ${e.state}` });
       continue;
     }
     if (taken.has(e.flag)) continue;
