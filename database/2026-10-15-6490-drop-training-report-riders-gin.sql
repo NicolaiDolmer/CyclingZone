@@ -5,7 +5,7 @@
 -- ordrette go til A på #6490 (givet 15/10). Merge når som helst uden for
 -- 19:30-21:00 (aftenafregningen), fordi auto-migrate kører filen lige efter merge.
 -- Testet lokalt på PG17 15/10 (database/manual/2026-10-15-6490-local-pg17-test.sh):
--- 161 ms med 200 samtidige skrivninger, idempotent, rollback gyldig, vagten stopper.
+-- under 0,3 s med 200 samtidige skrivninger, idempotent, rollback gyldig, vagten stopper.
 --
 -- Hvorfor (målt read-only 15/10, spec docs/superpowers/specs/
 -- 2026-10-15-training-10x-jobqueue-direct-pg-design.md):
