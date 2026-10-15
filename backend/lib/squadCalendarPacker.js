@@ -21,10 +21,33 @@
 // LOEBSDAGS-AKSEN: samme maal som senioren (raceDayTarget, 140 i S4), fordelt jaevnt pr.
 // kalenderdato som §1e-b (140/28 = 5). En ungdomsetape ligger paa datoens FOERSTE loebsdag;
 // datoens andre loebsdage, og alle loebsdage paa datoer uden etape, er rene traeningsdage.
+//
+// BYGGEREGLERNE (#6667, ejer 15/10 efter S4's ungdomskalender):
+//   1. Ingen ny start dagen efter et etapeloeb slutter (STAGE_RACE_REST_DAYS). S4's U23 koerte
+//      et langt etapeloeb og to endagsloeb i traek: ni loebsdatoer uden en eneste fridag.
+//   2. Sidste uge er aldrig tom (LAST_WEEK_DAYS): mindst een ungdomsetape paa saesonens
+//      sidste syv datoer.
+//   Begge er haarde brud i detectSquadCalendarViolations, saa en kalender der bryder dem
+//   aldrig kan skrives.
+// EGEN STARTTID (#6667/#5893): en ungdomsetape ligger aldrig inden for en halv time af
+// seniorens foerste etape paa datoen (youthSlotsApartFromSenior). S4's foerste loebsdag
+// startede senior og ungdom paa samme minut, og databasen faldt.
 
 import { PRESTIGE_RANK, GRAND_TOUR_MIN_STAGES } from "./tierRaceSelection.js";
+import { TIER_STAGE_SLOTS, LATEST_STAGE_SLOT, slotsFor } from "./calendarPlanningWindow.js";
 
 const DAYS_PER_WEEK = 7;
+
+/** #6667 regel 1: fridage mellem et etapeloebs sidste etape og truppens naeste start. */
+export const STAGE_RACE_REST_DAYS = 1;
+/** #6667 regel 2: saesonens sidste uge (de sidste N datoer) skal baere mindst een etape. */
+export const LAST_WEEK_DAYS = DAYS_PER_WEEK;
+/** #6667: mindste afstand fra seniorens foerste etape paa datoen til en ungdomsetape. */
+export const SENIOR_FIRST_STAGE_GAP_MINUTES = 30;
+// Naar en ungdomsetape maa flyttes vaek fra seniorens foerste etape, faar trupperne hver sin
+// forskydning (kvarter efter den halve time), saa U23 og junior heller ikke lander sammen.
+const SQUAD_SHIFT_MINUTES = Object.freeze({ junior: 15, u23: 45 });
+const SLOT_STEP_MINUTES = 5;
 
 const prestigeOf = (rc) => PRESTIGE_RANK[rc] ?? 99;
 const stagesOf = (r) => Math.max(1, Number(r?.stages) || 1);
@@ -93,7 +116,8 @@ export function selectSquadRaces({ catalog = [], count = 0, stageBudget = 0, see
 
 // Placér loebene uge for uge. `byWeek[w]` er ugens loeb i den raekkefoelge de skal koeres.
 // Loeb j af k i en uge sigter paa ugens start + j·(ugens laengde)/k, men starter tidligst
-// dagen efter forrige loebs sidste etape (overlapCap 1).
+// dagen efter forrige loebs sidste etape (overlapCap 1), og efter et etapeloeb tidligst
+// STAGE_RACE_REST_DAYS senere (#6667 regel 1).
 function placeByWeek({ byWeek, weeks, days }) {
   const placements = [];
   const violations = [];
@@ -108,7 +132,7 @@ function placeByWeek({ byWeek, weeks, days }) {
       if (start >= we) violations.push(`week ${w + 1}: race ${race.id} (${race.name ?? "?"}) cannot start inside its week (earliest day ${start + 1})`);
       if (start + s > days) violations.push(`race ${race.id} (${race.name ?? "?"}) ends after the season's last calendar day`);
       placements.push({ race, startRealDay: start, stages: s });
-      cursor = start + s;
+      cursor = start + s + (s > 1 ? STAGE_RACE_REST_DAYS : 0);
     }
   }
   return { placements, violations };
@@ -166,7 +190,9 @@ export function weeklyRaceStarts(placements = [], days = 0) {
 
 /**
  * Gaten for en trups kalender: hver uge mellem min og max loeb (efter start-dato), hoejst
- * maxRacingDayShare af datoerne med en etape, og aldrig to etaper paa samme dato.
+ * maxRacingDayShare af datoerne med en etape, aldrig to etaper paa samme dato, ingen start
+ * dagen efter et etapeloeb slutter (#6667 regel 1) og en etape i saesonens sidste uge
+ * (#6667 regel 2).
  * @returns {string[]} brud som tekst (tom = ren)
  */
 export function detectSquadCalendarViolations({ squad, placements = [], days = 0, racesPerWeek, maxRacingDayShare }) {
@@ -186,7 +212,71 @@ export function detectSquadCalendarViolations({ squad, placements = [], days = 0
   if (maxRacingDayShare != null && days > 0 && racingDates.size > Math.floor(days * maxRacingDayShare)) {
     violations.push(`${squad}: ${racingDates.size} of ${days} dates carry a stage, above the training-day floor (#5644 §10.5)`);
   }
+  for (const p of placements) {
+    if (p.stages <= 1) continue;
+    const restEnd = p.startRealDay + p.stages + STAGE_RACE_REST_DAYS;
+    const tooSoon = placements.filter((q) => q !== p && q.startRealDay >= p.startRealDay + p.stages && q.startRealDay < restEnd);
+    for (const q of tooSoon) {
+      violations.push(`${squad}: a race starts on day ${q.startRealDay + 1}, the day after a stage race ends (day ${p.startRealDay + p.stages}) (#6667 rule 1)`);
+    }
+  }
+  if (days > 0) {
+    const lastWeekStart = Math.max(0, days - LAST_WEEK_DAYS);
+    if (![...racingDates.keys()].some((d) => d >= lastWeekStart && d < days)) {
+      violations.push(`${squad}: the season's last week (day ${lastWeekStart + 1}-${days}) has no youth stage (#6667 rule 2)`);
+    }
+  }
   return violations;
+}
+
+const toMinutes = (hhmm) => { const [h, m] = String(hhmm).split(":").map(Number); return h * 60 + m; };
+const toHHMM = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+/**
+ * #6667 (#5893): truppens etape-tid(er) paa een dato, flyttet vaek fra seniorens foerste etape.
+ *
+ * Ligger en ungdomsetape mindre end SENIOR_FIRST_STAGE_GAP_MINUTES fra datoens tidligste
+ * senior-etape (det sker paa saesonens foerste dag, hvor planlaegningsvinduet skubber begge
+ * til samme minut), flyttes den til seniorens foerste etape + den halve time + truppens
+ * forskydning, og videre i 5-minutters skridt til den hverken rammer en senior-tid eller en
+ * anden trups tid. Rammer en ellers uaendret tid praecis en senere senior-tid (eller en anden
+ * trups tid), rykkes den 5 minutter ad gangen fra sin egen tid. Alle andre tider er uaendrede. Kaster hvis tiden ville passere
+ * LATEST_STAGE_SLOT: saa er saesonstarten forkert, ikke klokkeslaettet.
+ *
+ * @param {{ squad: string, slots: string[], seniorSlots: string[], otherSquadSlots?: string[], latest?: string }} args
+ * @returns {string[]}
+ */
+export function youthSlotsApartFromSenior({ squad, slots = [], seniorSlots = [], otherSquadSlots = [], latest = LATEST_STAGE_SLOT }) {
+  if (!seniorSlots.length) return [...slots];
+  const seniorMinutes = seniorSlots.map(toMinutes);
+  const first = Math.min(...seniorMinutes);
+  const taken = new Set([...seniorMinutes, ...otherSquadSlots.map(toMinutes)]);
+  return slots.map((slot) => {
+    const own = toMinutes(slot);
+    const farFromFirst = Math.abs(own - first) >= SENIOR_FIRST_STAGE_GAP_MINUTES;
+    // Tjek ALLE senior-tider, ikke kun den foerste: paa en presset dag kan en senere
+    // senior-etape lande paa praecis ungdommens minut (Codex P1 paa #6670).
+    if (farFromFirst && !taken.has(own)) return slot;
+    let at = farFromFirst ? own : first + SENIOR_FIRST_STAGE_GAP_MINUTES + (SQUAD_SHIFT_MINUTES[squad] ?? 0);
+    while (taken.has(at)) at += SLOT_STEP_MINUTES;
+    if (at > toMinutes(latest)) {
+      throw new Error(`#6667: ${squad} stage at ${slot} must move away from the senior's first stage (${toHHMM(first)}) but ${toHHMM(at)} is after ${latest} — move the first race day or the season transition`);
+    }
+    return toHHMM(at);
+  });
+}
+
+/**
+ * #6667: truppens etape-tider for en dansk dato. Samme kilde som senioren (slotsFor med
+ * planlaegningsvinduet og saesonens sidste dag), og derefter flyttet vaek fra seniorens foerste
+ * etape (youthSlotsApartFromSenior). Seniorens tider er alle divisioners slots paa datoen
+ * under samme planlaegningsvindue.
+ */
+export function squadSlotsForDate({ squad, tier, localDate, squadSlots, otherSquadSlots = [], notBefore = null, seasonLastRaceDay = null, seniorSlotTable = TIER_STAGE_SLOTS }) {
+  const own = slotsFor(tier, localDate, { slots: { [tier]: squadSlots }, notBefore, seasonLastRaceDay });
+  const seniorSlots = Object.keys(seniorSlotTable)
+    .flatMap((t) => slotsFor(Number(t), localDate, { slots: seniorSlotTable, notBefore, seasonLastRaceDay }));
+  return youthSlotsApartFromSenior({ squad, slots: own, seniorSlots, otherSquadSlots });
 }
 
 /**

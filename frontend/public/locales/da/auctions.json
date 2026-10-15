@@ -47,7 +47,7 @@
   "filter": {
     "mySituation": "Mine auktioner ({count})",
     "all": "Alle ({count})",
-    "otherManagers": "Andre managers ({count})",
+    "otherManagers": "Andre managere ({count})",
     "wishlistButton": "Kun ønskeliste",
     "feedButton": "Live bud",
     "feedTitleOn": "Skjul live bud-panelet",

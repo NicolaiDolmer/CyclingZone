@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { useYouthSquadPages } from "../../lib/useYouthSquadPages.ts";
+import { SQUAD_MAX_SEASON_AGE } from "../../lib/squadTarget.ts";
 import {
   ALL_GROUPS_VISIBLE,
   countSquadGroups,
@@ -86,8 +87,8 @@ function SquadGroupFilter({ filter, counts }: {
   const label: Record<SquadGroup, string> = {
     senior: t("squad.filter.seniors", { count: counts.senior }),
     academy: t("squad.filter.academy", { count: counts.academy }),
-    u23: tSquad("filter.u23", { count: counts.u23 }),
-    junior: tSquad("filter.junior", { count: counts.junior }),
+    u23: tSquad("filter.u23", { count: counts.u23, age: SQUAD_MAX_SEASON_AGE.u23 }),
+    junior: tSquad("filter.junior", { count: counts.junior, age: SQUAD_MAX_SEASON_AGE.junior }),
   };
   return (
     <div className="flex flex-wrap items-center gap-2" data-testid="squad-group-filter">
