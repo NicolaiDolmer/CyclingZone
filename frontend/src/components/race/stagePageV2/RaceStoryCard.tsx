@@ -28,6 +28,8 @@ export interface RaceStoryCardProps {
   climbs: Climb[];
   cast: Cast;
   title: string;
+  /** Endagsloeb: fanen hedder "Whole race" i stedet for "Whole stage". */
+  oneDay?: boolean;
   /** Kort etikette til TV-grafikken, fx "Stage 3". */
   hudLabel: string;
   /** "The route": profilen som foer etapen (StageTabV2 tegner den). */
@@ -35,7 +37,7 @@ export interface RaceStoryCardProps {
   onOpenStandings: () => void;
 }
 
-export default function RaceStoryCard({ story, profile, series, climbs, cast, title, hudLabel, routeBody, onOpenStandings }: RaceStoryCardProps) {
+export default function RaceStoryCard({ story, profile, series, climbs, cast, title, oneDay = false, hudLabel, routeBody, onOpenStandings }: RaceStoryCardProps) {
   const { t } = useTranslation("races");
   const D = story.distance_km ?? (Number(profile?.distance_km) || 0);
   const finale = useMemo(() => finaleData(story), [story]);
@@ -58,7 +60,7 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
 
   const options = [
     { value: "route", label: t("stagePageV2.story.view.route") },
-    { value: "stage", label: t("stagePageV2.story.view.stage") },
+    { value: "stage", label: t(oneDay ? "stagePageV2.story.view.race" : "stagePageV2.story.view.stage") },
     ...(finale ? [{ value: "final", label: t("stagePageV2.story.view.final") }] : []),
   ];
 

@@ -29,7 +29,8 @@ export function useStoryText(cast: Cast) {
       case "attack": {
         const gain = typeof d.gain === "number" && d.gain >= 1 ? formatClock(d.gain) : null;
         if (!names) return t("stagePageV2.story.line.attackAnon");
-        return gain ? t("stagePageV2.story.line.attackGain", { names, gain }) : t("stagePageV2.story.line.attack", { names });
+        const count = Math.max(1, line.riderIds.length);
+        return gain ? t("stagePageV2.story.line.attackGain", { names, gain, count }) : t("stagePageV2.story.line.attack", { names, count });
       }
       case "incident": {
         const outcome = d.outcome === "abandoned" ? "abandoned" : typeof d.loss === "number" && d.loss >= 1 ? "loss" : "plain";

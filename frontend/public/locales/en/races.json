@@ -64,12 +64,13 @@
     },
     "story": {
       "title": "How stage {number} was raced",
-      "titleOneDay": "How the race was raced",
+      "titleOneDay": "How the race played out",
       "hudOneDay": "Race",
       "viewsAria": "Profile view",
       "view": {
         "route": "The route",
         "stage": "Whole stage",
+        "race": "Whole race",
         "final": "Final 5 km"
       },
       "noFinal": "Final 5 km needs exact times in the race log. This stage was raced before they were logged, so it shows places in km only.",
@@ -96,8 +97,8 @@
         "formed": "{count, plural, one {# rider goes clear} other {# riders go clear}}",
         "caught": "{count, plural, one {# rider from the break is caught} other {# riders from the break are caught}}",
         "survived": "The break stays away to the finish",
-        "attack": "{names} attacks",
-        "attackGain": "{names} attacks and gains {gain}",
+        "attack": "{count, plural, one {{names} attacks} other {{names} attack}}",
+        "attackGain": "{count, plural, one {{names} attacks and gains {gain}} other {{names} attack and gain {gain}}}",
         "attackAnon": "A late attack",
         "incident": "{name} {kind, select, crash {crashes} mechanical {has a mechanical} other {has an incident}}{outcome, select, abandoned { and abandons} loss { and loses {loss}} other {}}",
         "climb": "Top of {name}",

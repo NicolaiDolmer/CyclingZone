@@ -282,3 +282,12 @@ test("castFrom: raekker uden placering (rank null) er aldrig vinderen (Codex P2)
   assert.equal(c.finishers[0].riderId, "w");
   assert.ok(!c.finishers.some((f) => f.riderId === "dnf"));
 });
+
+test("curateMoments: en gruppe der kommer i maal efter vinderen er ikke 'hentet'; maal staar sidst (endagsloeb, prod 15/10)", () => {
+  const events = hillyTimeline();
+  events.push(ev(100, "breakaway_caught", { group_id: "late-1", rider_ids: ["x1", "x2"], chase_group_id: "peloton-0", chase_group_kind: "peloton", exact_km: 100, exact_time: 8642 }));
+  const lines = curateMoments(story(events), cast(), 99);
+  const finishIdx = lines.findIndex((l) => l.kind === "finish");
+  assert.equal(finishIdx, lines.length - 1, lines.map((l) => `${l.kind}@${l.km}`).join(","));
+  assert.ok(!lines.some((l) => l.kind === "caught" && l.km >= 100));
+});

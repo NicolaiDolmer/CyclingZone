@@ -403,6 +403,16 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
     ...cluster(dropped, "dropped", 5),
     ...cluster(joins, "joined", 6),
   ];
+  // En gruppe der kommer i maal efter vinderen, er ikke "hentet": udelad gruppe-
+  // bogfoering paa maal-km der ligger efter maal-tiden (eller uden tid at sammenligne).
+  const fin = all.find((l) => l.kind === "finish");
+  if (fin) {
+    const bookkeeping = new Set(["caught", "joined", "split", "dropped"]);
+    for (let i = all.length - 1; i >= 0; i--) {
+      const l = all[i];
+      if (bookkeeping.has(l.kind) && l.km >= fin.km - 1e-6 && (fin.time == null || l.time == null || l.time > fin.time)) all.splice(i, 1);
+    }
+  }
   for (const line of all) if (line.mineIds.length && line.kind !== "finish") line.priority = Math.max(0, line.priority - 1);
   // Unikke id'er (samme slags paa samme km kan forekomme to gange).
   const seen = new Map<string, number>();
@@ -415,7 +425,7 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
   // derefter det senere i etapen (taettere paa afgoerelsen).
   const weight = (l: StoryLine) => (l.kind === "gap" ? Math.abs(Number(l.data.after) - Number(l.data.before)) / 60 : l.kind === "split" || l.kind === "joined" ? l.count : 0);
   const chosen = [...all].sort((a, b) => a.priority - b.priority || weight(b) - weight(a) || b.km - a.km).slice(0, max);
-  return chosen.sort((a, b) => a.km - b.km || a.priority - b.priority);
+  return chosen.sort((a, b) => a.km - b.km || Number(a.kind === "finish") - Number(b.kind === "finish") || (a.time ?? 0) - (b.time ?? 0) || a.priority - b.priority);
 }
 
 /** km hvor replayet skal staa naar man trykker paa linjen (slut-km for et stykke vej). */

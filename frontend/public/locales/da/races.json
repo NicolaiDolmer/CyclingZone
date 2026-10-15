@@ -70,6 +70,7 @@
       "view": {
         "route": "Ruten",
         "stage": "Hele etapen",
+        "race": "Hele løbet",
         "final": "Sidste 5 km"
       },
       "noFinal": "Sidste 5 km kræver præcise tider i løbsloggen. Etapen blev kørt før de blev logget, så den viser kun steder i km.",

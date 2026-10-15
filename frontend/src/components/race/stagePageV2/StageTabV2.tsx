@@ -146,6 +146,7 @@ export default function StageTabV2({
             series={series}
             climbs={climbs}
             cast={cast}
+            oneDay={!isStageRace}
             title={isStageRace ? t("stagePageV2.story.title", { number: stageNumber }) : t("stagePageV2.story.titleOneDay")}
             hudLabel={isStageRace ? t("stagePageV2.stripStage", { number: stageNumber }) : t("stagePageV2.story.hudOneDay")}
             routeBody={profile && series ? <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} bare /> : null}
