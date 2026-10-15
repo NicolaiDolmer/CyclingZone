@@ -54,7 +54,7 @@
         },
         "debtCeiling": {
           "title": "Debt ceiling",
-          "text": "Each division has a maximum debt: Division 1 {debtD1} CZ$, Division 2 {debtD2} CZ$, Division 3 {debtD3} CZ$. New loans are rejected if the loan plus its fee would push you over the ceiling. Automatic emergency loans can exceed it, but you get a warning and must cut costs."
+          "text": "Each division has a maximum debt: Division 1 {debtD1} CZ$, Division 2 {debtD2} CZ$, Division 3 {debtD3} CZ$, Division 4 {debtD4} CZ$. New loans are rejected if the loan plus its fee would push you over the ceiling. Automatic emergency loans can exceed it, but you get a warning and must cut costs."
         },
         "emergencyLoan": {
           "title": "Emergency loans",
@@ -129,7 +129,7 @@
       "blocks": {
         "structure": {
           "title": "Division structure",
-          "text": "There are {divisions} divisions. Division {minDivision} is the top; Division {maxDivision} is the bottom. Each upper division targets {divisionCapacity} real teams; the bottom division is overflow and can grow past that."
+          "text": "There are {divisions} divisions. Division {minDivision} is the top; Division {maxDivision} is the bottom, and new teams start there."
         },
         "promotion": {
           "title": "Promotion & relegation",

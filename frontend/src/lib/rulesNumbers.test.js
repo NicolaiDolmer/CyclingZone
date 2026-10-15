@@ -26,7 +26,6 @@ import {
   STAR_RIDER_MARKET_VALUE,
   MIN_DIVISION,
   MAX_DIVISION,
-  DIVISION_CAPACITY,
   DIVISION_BONUSES,
   FIRST_PROMOTION_RELEGATION_SEASON,
 } from "../../../backend/lib/economyConstants.js";
@@ -71,6 +70,7 @@ test("economy numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.debtD1, DEBT_CEILING_BY_DIVISION[1]);
   assert.equal(RULES_NUMBERS.debtD2, DEBT_CEILING_BY_DIVISION[2]);
   assert.equal(RULES_NUMBERS.debtD3, DEBT_CEILING_BY_DIVISION[3]);
+  assert.equal(RULES_NUMBERS.debtD4, DEBT_CEILING_BY_DIVISION[4]);
   assert.equal(RULES_NUMBERS.prizePerPoint, PRIZE_PER_POINT);
   assert.equal(RULES_NUMBERS.starValue, STAR_RIDER_MARKET_VALUE);
 });
@@ -79,7 +79,6 @@ test("season structure matches backend constants", () => {
   assert.equal(RULES_NUMBERS.minDivision, MIN_DIVISION);
   assert.equal(RULES_NUMBERS.maxDivision, MAX_DIVISION);
   assert.equal(RULES_NUMBERS.divisions, MAX_DIVISION - MIN_DIVISION + 1);
-  assert.equal(RULES_NUMBERS.divisionCapacity, DIVISION_CAPACITY);
   assert.equal(RULES_NUMBERS.firstPromotionSeason, FIRST_PROMOTION_RELEGATION_SEASON);
 });
 

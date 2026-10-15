@@ -26,9 +26,9 @@ import { dirname, join, relative, sep } from "node:path";
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // Kun søndags-jobbet må importere dem. Nøglen er stien relativt til backend/.
+// (runMarketValueSundaySweep stod her til markedsblendet blev fjernet, #6642.)
 const ALLOWED_IMPORTERS = {
   refreshChangedRiderValues: ["lib/sundayValueSweep.js"],
-  runMarketValueSundaySweep: ["lib/sundayValueSweep.js"],
 };
 
 const SKIP_DIRS = new Set(["node_modules", "scripts", ".git"]);

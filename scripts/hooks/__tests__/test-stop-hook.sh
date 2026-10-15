@@ -102,6 +102,36 @@ else
   echo "PASS  No budget warning on compliant file"
 fi
 
+# Test: EN gang pr. session (ejer 15/10). Samme session_id -> anden kørsel tavs;
+# ny session -> vises igen; uden session_id -> uændret (vises hver gang).
+SID="test-$$-dedupe"
+SID2="test-$$-dedupe2"
+SEEN=".claude/run/closeout-reminder-$SID.seen"
+SEEN2=".claude/run/closeout-reminder-$SID2.seen"
+rm -f "$SEEN" "$SEEN2"
+{ echo "# NOW"; for i in $(seq 1 35); do echo "line $i"; done; } > docs/NOW.md
+O1=$(printf '{"session_id":"%s"}' "$SID" | bash scripts/check-now-md.sh 2>/dev/null)
+O2=$(printf '{"session_id":"%s"}' "$SID" | bash scripts/check-now-md.sh 2>/dev/null)
+O3=$(printf '{"session_id":"%s"}' "$SID2" | bash scripts/check-now-md.sh 2>/dev/null)
+O4=$(bash scripts/check-now-md.sh </dev/null 2>/dev/null)
+O5=$(bash scripts/check-now-md.sh </dev/null 2>/dev/null)
+rm -f "$SEEN" "$SEEN2"
+if printf '%s' "$O1" | grep -q "$NOW_WARN_MARKER" && ! printf '%s' "$O2" | grep -q "$NOW_WARN_MARKER"; then
+  PASS=$((PASS+1)); echo "PASS  Same session: reminder shown once, then silent"
+else
+  FAIL=$((FAIL+1)); echo "FAIL  Same session repeated the reminder (spam)"
+fi
+if printf '%s' "$O3" | grep -q "$NOW_WARN_MARKER"; then
+  PASS=$((PASS+1)); echo "PASS  New session sees the reminder again"
+else
+  FAIL=$((FAIL+1)); echo "FAIL  New session did not see the reminder"
+fi
+if printf '%s' "$O4" | grep -q "$NOW_WARN_MARKER" && printf '%s' "$O5" | grep -q "$NOW_WARN_MARKER"; then
+  PASS=$((PASS+1)); echo "PASS  Without session_id the hook behaves as before"
+else
+  FAIL=$((FAIL+1)); echo "FAIL  Without session_id the reminder was suppressed"
+fi
+
 echo ""
 echo "Results: $PASS pass, $FAIL fail"
 [ "$FAIL" = "0" ]

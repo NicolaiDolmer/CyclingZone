@@ -12,7 +12,7 @@
     "salaryPerSeasonTooltip": "Samlet sæsonløn for din trup",
     "teamValue": "Holdværdi: {value} CZ$",
     "division": "Division {n}",
-    "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 3 er startniveauet.",
+    "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 4 er startniveauet.",
     "balance": "{value} CZ$",
     "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
     "ownAuctionsBanner": "{count, plural, one {# af dine ryttere er på auktion} other {# af dine ryttere er på auktion}} · se auktioner"
@@ -111,7 +111,7 @@
       "move": "Flyt trup"
     },
     "auction": {
-      "description": "Start auktion. Andre managers kan byde.",
+      "description": "Start auktion. Andre managere kan byde.",
       "startButton": "Start",
       "startFlashButton": "Start Flash",
       "flashLabel": "Flash Auktion (30 min)",
