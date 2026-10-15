@@ -28,7 +28,13 @@ const { buildRaceStory } = await import(pathToFileURL(resolve(root, "backend/lib
 
 const RACE_ID = "d49d48cf-637b-439c-b0ab-d496f0205e98";
 const STAGE = 3;
-const events = JSON.parse(readFileSync(resolve(dataDir, "prod-events.json"), "utf8"));
+// SHOTS_VARIANT=imprecise: samme etape uden exact_km/exact_time (aeldre log, kun km).
+const IMPRECISE = process.env.SHOTS_VARIANT === "imprecise";
+const events = JSON.parse(readFileSync(resolve(dataDir, "prod-events.json"), "utf8")).map((e) => {
+  if (!IMPRECISE) return e;
+  const { exact_km: _k, exact_time: _t, ...params } = e.params ?? {};
+  return { ...e, params };
+});
 const raw = JSON.parse(readFileSync(resolve(dataDir, "prod-results.json"), "utf8"));
 const MY_ALIAS = 12;
 const teamId = (alias) => (alias === MY_ALIAS ? TEST_TEAM.id : `team-${alias}`);
@@ -84,13 +90,13 @@ const vite = spawn(process.execPath, [resolve(frontend, "node_modules/vite/bin/v
   stdio: "ignore",
 });
 
-const OUT = here;
+const OUT = process.env.SHOTS_OUT || here;
 mkdirSync(OUT, { recursive: true });
 try {
   await waitForServer();
   const browser = await chromium.launch();
-  for (const vp of [{ name: "desktop-1440", width: 1440, height: 1000 }, { name: "mobile-390", width: 390, height: 844 }]) {
-    for (const theme of ["light", "dark"]) {
+  for (const vp of [{ name: "desktop-1440", width: 1440, height: 1000 }, { name: "mobile-390", width: 390, height: 844 }].slice(0, IMPRECISE ? 1 : 2)) {
+    for (const theme of ["light", "dark"].slice(0, IMPRECISE ? 1 : 2)) {
       const context = await browser.newContext({ baseURL: BASE, viewport: { width: vp.width, height: vp.height }, deviceScaleFactor: 1, colorScheme: theme });
       const page = await context.newPage();
       if (process.env.SHOTS_DEBUG) {
@@ -133,7 +139,7 @@ try {
       // Sticky faner/etapestribe daekker ellers kortets top i element-billedet.
       await page.addStyleTag({ content: ".sticky{position:static !important} [class*=\"fixed\"][class*=\"bottom-0\"]{display:none !important}" });
       await page.waitForTimeout(600);
-      for (const [view, label] of [["stage", "Whole stage"], ["route", "The route"], ["final", "Final 5 km"]]) {
+      for (const [view, label] of [["stage", "Whole stage"], ["route", "The route"], ["final", "Final 5 km"]].slice(0, IMPRECISE ? 2 : 3)) {
         await card.getByRole("button", { name: label, exact: true }).click();
         await page.waitForTimeout(500);
         await card.screenshot({ path: resolve(OUT, `${vp.name}-${theme}-${view}.png`) });

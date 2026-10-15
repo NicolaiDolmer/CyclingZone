@@ -146,7 +146,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
             onSelectClimb={() => {}}
             band
             progressKm={km}
-            overlay={(geo) => (
+            overlay={story.precise_times ? (geo) => (
               <g aria-hidden="true">
                 {[...groups].sort((a, b) => b.gapS - a.gapS).map((g) => {
                   if (g.km == null) return null;
@@ -159,7 +159,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
                   );
                 })}
               </g>
-            )}
+            ) : undefined}
           />
           <div className="mt-2"><GradientLegend /></div>
         </div>
@@ -190,7 +190,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
             : t("stagePageV2.story.kmAt", { km: kmText })}
         </span>
       </div>
-      {shown.length > 0 && (
+      {story.precise_times && shown.length > 0 && (
         <ul className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
           {shown.map((g) => (
             <li key={g.groupId} className="flex min-h-11 items-center gap-2.5 border-t border-cz-border py-1.5">
@@ -298,6 +298,38 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
     return r.myGap.in_front ? "0:00" : `+${formatClock(r.myGap.gap_s)}`;
   };
   if (!rows.length) return <p className="m-0 border-t border-cz-border py-2 text-sm text-cz-3">{t("stagePageV2.story.splits.none")}</p>;
+  const kmCell = (r: SplitRow) => (
+    <td className="border-t border-cz-border py-2 pr-2 align-top">
+      <span className="block font-semibold text-cz-1 [overflow-wrap:anywhere]">{pointName(r)}</span>
+      <span className="block text-2xs text-cz-3">{t("stagePageV2.story.kmAt", { km: formatNumber(Math.round(r.km * 10) / 10, { maximumFractionDigits: 1 }) })}</span>
+    </td>
+  );
+  // Uden praecise tider: kun stedet og hvem der var foerst over (passagens
+  // point; for maal etapens vinder i resultatet).
+  const firstName = (r: SplitRow) => {
+    const id = r.firstId ?? (r.kind === "finish" ? cast.finishers[0]?.riderId ?? null : null);
+    return (id && cast.nameOf(id)) || "-";
+  };
+  if (!precise) {
+    return (
+      <table className="w-full table-fixed border-collapse font-data text-xs tabular-nums sm:text-[13px]">
+        <thead>
+          <tr className="text-left font-data text-3xs font-semibold uppercase tracking-[.12em] text-cz-3">
+            <th scope="col" className="w-[55%] border-b border-cz-border py-1.5 pr-2 font-semibold">{t("stagePageV2.story.splits.point")}</th>
+            <th scope="col" className="border-b border-cz-border py-1.5 font-semibold">{t("stagePageV2.story.splits.first")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key}>
+              {kmCell(r)}
+              <td className="border-t border-cz-border py-2 align-top text-cz-1"><span className="block truncate">{firstName(r)}</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
   return (
     <table className="w-full table-fixed border-collapse font-data text-xs tabular-nums sm:text-[13px]">
       <thead>
@@ -311,11 +343,8 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
       <tbody>
         {rows.map((r) => (
           <tr key={r.key}>
-            <td className="border-t border-cz-border py-2 pr-2 align-top">
-              <span className="block font-semibold text-cz-1 [overflow-wrap:anywhere]">{pointName(r)}</span>
-              <span className="block text-2xs text-cz-3">{t("stagePageV2.story.kmAt", { km: formatNumber(Math.round(r.km * 10) / 10, { maximumFractionDigits: 1 }) })}</span>
-            </td>
-            <td className="border-t border-cz-border py-2 pr-2 text-right align-top text-cz-1">{precise && r.leaderTime != null ? formatClock(r.leaderTime) : "-"}</td>
+            {kmCell(r)}
+            <td className="border-t border-cz-border py-2 pr-2 text-right align-top text-cz-1">{r.leaderTime != null ? formatClock(r.leaderTime) : "-"}</td>
             <td className="border-t border-cz-border py-2 pr-2 align-top text-cz-1"><span className="block truncate">{leading(r)}</span></td>
             {me && <td className="border-t border-cz-border py-2 text-right align-top font-semibold text-cz-1">{myGap(r)}</td>}
           </tr>

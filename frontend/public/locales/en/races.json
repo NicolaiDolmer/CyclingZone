@@ -117,6 +117,7 @@
         "point": "Point",
         "leaderTime": "Leader",
         "leading": "Leading",
+        "first": "First over",
         "top": "Top {name}",
         "climb": "climb",
         "sprint": "Sprint",

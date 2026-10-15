@@ -133,7 +133,11 @@ test("curateMoments: uden praecise tider (aeldre log) faar et km-spaend aldrig e
   const lines = curateMoments(s, cast());
   for (const l of lines) if (l.span) assert.equal(l.time, null, `${l.kind} paa km-spaend uden tid`);
   assert.ok(lines.some((l) => l.span), "loggens checkpoint-stemplede haendelser vises som spaend");
-  for (const row of splitRows(s, "m1")) assert.equal(row.leaderTime, null);
+  for (const row of splitRows(s, "m1")) {
+    assert.equal(row.leaderTime, null);
+    assert.equal(row.myGap, null, "uden tider kendes hullet ikke");
+  }
+  assert.equal(splitRows(s, "m1").find((r) => r.kind === "climb")?.firstId, "b1", "foerst over toppen staar stadig i loggen");
   assert.equal(finaleData(s), null, "ingen Final 5 km uden praecise tider");
 });
 

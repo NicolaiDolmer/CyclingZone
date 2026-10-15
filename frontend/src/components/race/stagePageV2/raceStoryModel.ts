@@ -436,6 +436,8 @@ export interface SplitRow {
   leaderIds: string[];
   leaderIsRest: boolean;
   leaderSize: number | null;
+  /** Foerst over toppen/spurten (passagens point i loggen); kendt ogsaa uden praecise tider. */
+  firstId: string | null;
   myGap: RiderGap | null;
 }
 
@@ -452,7 +454,9 @@ export function splitRows(story: RaceStory, myRiderId: string | null): SplitRow[
       leaderIds: c.leader_rider_ids ?? [],
       leaderIsRest: Boolean(front?.includes_rest),
       leaderSize: front?.size ?? (c.leader_rider_ids?.length || null),
-      myGap: myRiderId ? checkpointGapForRider(c, myRiderId) : null,
+      firstId: typeof c.top?.[0]?.rider_id === "string" ? c.top[0].rider_id : null,
+      // Uden praecise tider kender loggen ikke hullerne (spec §6): intet hul.
+      myGap: myRiderId && story.precise_times ? checkpointGapForRider(c, myRiderId) : null,
     };
   });
 }
