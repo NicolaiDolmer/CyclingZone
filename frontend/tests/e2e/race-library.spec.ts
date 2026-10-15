@@ -236,3 +236,19 @@ test("unknown stage total offers only recorded sparse stage numbers", async ({ p
   await stage.selectOption("5");
   await expect(page.getByText("Distance: 150 km", { exact: true })).toBeVisible();
 });
+
+test("invalid edition scope offers a working route back to a valid library", async ({ page }) => {
+  await prepareLibrary(page);
+  await page.goto("/race-archive/" + encodeURIComponent("Giro della Penisola") + "?season=999");
+  await expect(
+    page.getByText("Sæsonen eller puljen er ikke tilgængelig. Vælg en anden visning.", {
+      exact: true,
+    })
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Løbsbibliotek", exact: true }).click();
+  await expect(page).toHaveURL(/\/resultater\?tab=archive$/);
+  await expect(page.getByRole("tab", { name: "Kommende løb", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+});

@@ -12,10 +12,11 @@
 // etaper hvis type ikke passer med ruten, afslutninger uden for matrixen, Grand Tour-kvoter
 // og højdemeter pr. terræn mod benchmarken (docs/design/s5-benchmark/gt-2021-2025.json).
 //
-// S5's første løbsdag er ikke fastlagt (#5833), så datoen er en PARAMETER og kræves:
-//   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-26
-//   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-26 --seeds=5 --json
-//   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-28 --last-day=2026-11-29 --seeds=5
+// Datoen er en PARAMETER og kræves. S5 er låst til onsdag 28/10 → lørdag 28/11 (ejer 14/10,
+// #5833; fra S5 slutter sæsonen lørdag, CALENDAR_RULES §2):
+//   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-28 --last-day=2026-11-28 --seeds=5
+//   node scripts/dev/s5ProfileDryRun.mjs --first-day=2026-10-28 --last-day=2026-11-28 --seeds=5 --json
+// Scriptet er en offline måling og dømmer ikke §2-ugedagen; det gør buildSeasonCalendar.
 // --last-day (inklusiv) eller --race-days N saetter saesonens laengde; default 28 (#6367).
 // --now (default dagen før --first-day) fryser "i dag", så kørslen er gentagelig.
 // --seeds=N kører N sæson-træk (season_id "s5-dryrun-<i>"); default 3.

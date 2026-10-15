@@ -1,6 +1,6 @@
 # Løbsbibliotek — handoff 14/10/2026
 
-Status: **in_progress, session afsluttes på ejerens anmodning**. Intet merge/release. Arbejdet fortsætter i morgen.
+Status ved pausen14/10: **in_progress, session afsluttet på ejerens anmodning**. Genoptaget15/10 efter ejer-go; se den seneste verifikation nederst.
 
 ## Delt state
 
@@ -46,3 +46,9 @@ Ingen edits i RaceDetailPage, components/race/*, race-centre, App.jsx, S5-kalend
 ## Afsluttende snapshotkontrol
 
 18unit/query bestået igen, typecheck grøn, komplet preflight grøn, branchdiff-check grøn og beskyttede stier uden diff. Lokal bundle-gate bestået. Fuld e2e stoppet og egen runner/server afsluttet. Frisk reviewer er færdig; ingen aktiv agent skal fortsætte i nat. Endelig commit/SHA og remoteverifikation står på #6514/#6636.
+
+## Genoptaget15/10
+
+Main7cd2e5f95 integreret i bibliotekets egen branch. Eneste konflikt: budget, løst ved main1205 + godkendte2KB=1207. Ingen ændring af beskyttede stier i diff mod main. Begge små reviewpunkter er korrigeret: gyldige statistik-kolonnenøgler og konkret genfinding fra ugyldigt scope (observeret RED før rettelse).
+
+Målt: FULL backend14089pass/6skip/7TODO, frontend4658/4658. Preflight/typecheck grønne. Gzip1266.4KB mod1267.4KB loft. Alle tal er lokale syntetiske checks; ingen prodlatens-/adfærdspåstand. Hele browsersuiten på opdateret kode kører; endelig GREEN og CI registreres efter afslutning. Arkitekturens bibliotek-redirect er afstemt med App.jsx.

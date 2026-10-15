@@ -346,8 +346,12 @@ function RaceEditionContent() {
           <ErrorState
             description={t(resolved.error ? "library.scopeError" : "library.error")}
             action={
-              <Button variant="secondary" size="sm" onClick={retry}>
-                {t("library.retry")}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={resolved.error ? () => navigate("/resultater?tab=archive") : retry}
+              >
+                {t(resolved.error ? "library.backLibrary" : "library.retry")}
               </Button>
             }
           />
@@ -585,7 +589,7 @@ function RaceEditionContent() {
                   rows={stats.data ?? []}
                   rowKey={(r: { id: string }) => r.id}
                   label={t("library.statistics")}
-                  mobileDefaults={["wins", "podiums", "points"]}
+                  mobileDefaults={["gcWins", "podiums", "points"]}
                   empty={
                     stats.loading ? (
                       <div className="p-5">

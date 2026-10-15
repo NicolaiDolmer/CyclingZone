@@ -40,3 +40,7 @@ Historical rider statistics retain separate GC/stage wins and points/podiums acr
 
 Completed/live editions link to the existing /races/:id results without modifying that implementation. All-division rows/selectors and the concrete edition header identify division and pool. With unknown stage totals, options come from distinct persisted profile/schedule stage numbers; no synthetic 1..length options.
 Library components/read model and the two permitted route entries use one bounded chunk group with dependency recursion disabled. Shared vendors/other routes remain outside the group. Owner approved +2 KB gzip budget on 14/10; preserve upstream S5 budget increments on main reconciliation. The entry size is unchanged in measured local builds.
+
+## Recovery
+
+An invalid edition season/division/pool exposes an action to the valid default library; it never retries an unchanged invalid scope. Transient read failures retain retry. Statistics mobile defaults explicitly use gcWins/podiums/points; other columns remain selectable through canonical DataTable chips.

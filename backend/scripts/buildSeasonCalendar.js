@@ -40,8 +40,10 @@
 //   · Første løbsdag SKAL være i fremtiden — resolveCalendarFrom kaster ellers. Det er
 //     guarden fra 27/6-blitzen, hvor en kalender materialiseret i fortiden fik
 //     race-scheduleren til at afvikle en hel sæson på minutter.
-//   · Sidste løbsdag SKAL være en søndag (§2, ejer-låst 23/8, #4131) — resolveSeasonWindow
-//     kaster ellers og printer de lovlige længder.
+//   · Sidste løbsdag SKAL ligge på sæsonens slut-ugedag (§2): søndag til og med S4
+//     (ejer-låst 23/8, #4131), LØRDAG fra S5 (ejer 14/10 efter forum-afstemningen, #5833).
+//     resolveSeasonWindow (via resolveBuildSeasonWindow) kaster ellers og printer de
+//     lovlige længder.
 //   · En sæson der IKKE er `upcoming` afvises (#5405, se nedenfor). Fail-closed.
 //   · Findes der allerede løb for sæsonen, STOPPER --apply medmindre --replace-existing
 //     er sat, og erstatningen nægtes hvis nogen spillerdata peger på de løb (#5405).
@@ -97,7 +99,8 @@
 //      frem for af en regel (§5b).
 //
 // #5592 — MINDST 24 TIMER TIL TRUPUDTAGELSE, KUN VED SÆSONSKIFTET (ejer 23/9 + 24/9):
-//   Sæsonens sidste løbsdag (§2-vinduets sidste søndag) slutter kl. 15, og sæsonens første
+//   Sæsonens sidste løbsdag (§2-vinduets sidste dag: søndag til og med S4, lørdag fra S5,
+//   #5833) slutter kl. 15, og sæsonens første
 //   etape ligger i HVER division mindst 24 timer efter det TIDLIGST MULIGE sæsonskifte:
 //   forrige sæsons seneste etape på tværs af alle divisioner + afviklingsbufferen, eller et
 //   senere planlagt skifte (resolveEarliestSeasonTransition). Alle andre dage, også søndage
@@ -394,6 +397,27 @@ export async function replaceSeasonCalendarRows({ supabase, seasonId, seasonNumb
   if (left !== 0) throw new Error(`erstatningen efterlod ${left} ${squad}-løb for season_id=${seasonId} — STOP før materialisering. Rollback fra ${snapshotPath}`);
 
   return { snapshotPath, deletedRaces: races.length };
+}
+
+/**
+ * §2-vinduet for en ny sæsons kalender, ren og DB-fri (#5833 trak den ud af main for at
+ * kunne teste den). Præcedens: --race-days > --last-day > ejer-valgt sæsonvindue
+ * (SEASON_RACE_DAYS_DEFAULT) > udledt forslag. Slut-ugedagen følger sæsonen: søndag til og
+ * med S4 (#4131), lørdag fra S5 (#5833). resolveSeasonWindow kaster ved en forkert ugedag.
+ *
+ * @returns {{ window: object, seasonDefaultDays: number|null, explicitDays: number|null, finishLabel: string }}
+ */
+export function resolveBuildSeasonWindow({ seasonNumber, firstRaceDay, raceDaysArg = null, lastDayArg = null }) {
+  const seasonDefaultDays = SEASON_RACE_DAYS_DEFAULT[seasonNumber] ?? null;
+  const explicitDays = raceDaysArg != null ? Number(raceDaysArg) : null;
+  const window = resolveSeasonWindow({
+    firstRaceDay,
+    seasonNumber,
+    raceDays: explicitDays ?? (lastDayArg ? null : seasonDefaultDays),
+    lastRaceDay: lastDayArg || null,
+  });
+  const finishLabel = window.finishWeekday === 6 ? "lørdag" : "søndag";
+  return { window, seasonDefaultDays, explicitDays, finishLabel };
 }
 
 /** Kvoten pr. tier: density × løbsdatoer (CALENDAR_RULES.md §1b — den gyldige af de tre). */
@@ -709,25 +733,22 @@ if (isMain) {
     // resolveCalendarFrom's `from` er dagen FØR dag 0; første løbsdag er dagen efter.
     const firstRaceDay = new Date(from.getTime() + 86_400_000).toISOString().slice(0, 10);
 
-    // §2: længden UDLEDES (søndags-slut, løbsdatoer = slut − start + 1). Uden et eksplicit
-    // valg foreslås den lovlige længde tættest på S3's 31 — se resolveSeasonWindow.
+    // §2: længden UDLEDES (fast slut-ugedag, løbsdatoer = slut − start + 1). Slut-ugedagen
+    // er søndag til og med S4 (#4131) og lørdag fra S5 (#5833, ejer 14/10). Uden et
+    // eksplicit valg foreslås den lovlige længde tættest på S3's 31 — se resolveSeasonWindow.
     // #4270 (ejer 3/9): en saeson med et EJER-VALGT vindue (SEASON_RACE_DAYS_DEFAULT) skal
     // ikke kraeve --race-days paa kommandolinjen. S4 = 28. Alle andre saesoner faar fortsat
     // et udledt forslag som skal bekraeftes eksplicit foer --apply.
     // Praecedens: --race-days > --last-day > ejer-valgt saesonvindue > udledt forslag.
-    const seasonDefaultDays = SEASON_RACE_DAYS_DEFAULT[seasonNumber] ?? null;
-    const explicitDays = raceDaysArg != null ? Number(raceDaysArg) : null;
-    const window = resolveSeasonWindow({
-      firstRaceDay,
-      raceDays: explicitDays ?? (lastDayArg ? null : seasonDefaultDays),
-      lastRaceDay: lastDayArg || null,
+    const { window, seasonDefaultDays, explicitDays, finishLabel } = resolveBuildSeasonWindow({
+      seasonNumber, firstRaceDay, raceDaysArg, lastDayArg,
     });
     const realDays = window.raceDays;
     const quotas = quotasForRaceDays(realDays);
 
     console.log(`  første løbsdag = ${firstRaceDay}${firstDay ? "" : " (næste mandag)"} · from-anker = ${from.toISOString()}`);
     console.log(`\n── §2 sæsonvindue ──`);
-    console.log(`  ${firstRaceDay} → ${window.lastRaceDay} · ${realDays} løbsdatoer · sidste dag er en søndag: OK`);
+    console.log(`  ${firstRaceDay} → ${window.lastRaceDay} · ${realDays} løbsdatoer · sidste dag er en ${finishLabel} (sæson ${seasonNumber}): OK`);
     if (explicitDays == null && !lastDayArg && seasonDefaultDays != null) {
       console.log(`  længden er sæson ${seasonNumber}'s EJER-VALGTE vindue (${seasonDefaultDays} løbsdatoer, docs/CALENDAR_RULES.md §2) — ikke et udledt forslag.`);
     }
@@ -836,7 +857,8 @@ if (isMain) {
       firstRaceDay,
     });
     const previousSeasonLastStageAtByTier = previousSeasonLastStages.byTier;
-    // Sæsonens sidste løbsdag = §2-vinduets sidste dag (en søndag), samme dato som
+    // Sæsonens sidste løbsdag = §2-vinduets sidste dag (søndag til og med S4, lørdag fra S5,
+    // #5833), samme dato som
     // kalenderens sidste (from + realDays). Den slutter kl. 15, så skiftet kan ske tidligt.
     const planningWindowArgs = {
       seasonTransitionAt: transition.at, previousSeasonLastStageAtByTier, seasonLastRaceDay: window.lastRaceDay,

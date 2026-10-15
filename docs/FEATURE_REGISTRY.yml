@@ -220,6 +220,15 @@ features:
     verified: 2026-10-06
     note: PR #6141; on for alle 6/10 kl. 19.52 efter ejer-go (beta siden 4/10), læst tilbage i prod. Off gendanner #4980-vælgeren.
 
+  - id: stage-page-v2
+    area: race-day
+    title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
+    title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
+    state: building
+    epic: 6570
+    verified: 2026-10-14
+    note: PR #6633; stadie-flag stage_page_v2 (off/beta/on) seedes off ved migration post-merge, ejeren flytter til beta. Sæt flag-feltet når rækken findes i prod.
+
   - id: race-day-development
     area: race-day
     title_en: Race day development
@@ -472,12 +481,12 @@ features:
     area: training
     title_en: Training programs per race day
     title_da: Træningsprogrammer pr. løbsdag
-    state: beta
+    state: live
     flag: training_programs
     ssot: docs/TRAINING_RULES.md
     epic: 4629
-    verified: 2026-10-04
-    note: 'PR #5801 merget 27/9; 22 standardprogrammer kopieres ind i planen ved tildeling. Opfoelger: fold kataloget sammen paa mobil.'
+    verified: 2026-10-14
+    note: 'On for alle 9/10 (læst i prod 14/10). PR #5801; standardprogrammer kopieres ind i planen ved tildeling.'
 
   - id: training-program-cells
     area: training
@@ -505,23 +514,23 @@ features:
     area: training
     title_en: Train now (no bonus)
     title_da: Træn nu (uden bonus)
-    state: beta
+    state: live
     flag: training_train_now
     ssot: docs/TRAINING_RULES.md
     epic: 4847
-    verified: 2026-10-04
-    note: Beta læst i prod 4/10; kræver training_condition_per_date. Flip til alle er ejer-only.
+    verified: 2026-10-14
+    note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
 
   - id: training-groups
     area: training
     title_en: Training groups
     title_da: Træningsgrupper
-    state: beta
+    state: live
     flag: training_groups
     ssot: docs/TRAINING_RULES.md
     epic: 6000
-    verified: 2026-10-04
-    note: Beta læst i prod 4/10; kræver training_program_cells. Flip til alle er ejer-only.
+    verified: 2026-10-14
+    note: 'On for alle 9/10 (læst i prod 14/10); kræver training_program_cells.'
 
   # --- academy -------------------------------------------------------------
   - id: academy

@@ -12,7 +12,7 @@ import { join } from "node:path";
 import {
   gatePlan, countRaceDependencies, describeSeasonCalendarWriteGate, replaceSeasonCalendarRows,
   scopeRacesToSquad, detectSeniorPoolStructureViolations, runSquadCalendar, loadCutoverPoolRetirement,
-  formatGrandTourOrder, s5GateRacesFromPlan, runS5BenchmarkGateForPlan,
+  formatGrandTourOrder, s5GateRacesFromPlan, runS5BenchmarkGateForPlan, resolveBuildSeasonWindow,
 } from "./buildSeasonCalendar.js";
 import { generateRaceStageProfiles, balanceFinaleQuotas } from "../lib/raceStageProfileGenerator.js";
 import { resolveTargetStructure } from "../lib/calendarTargetStructure.js";
@@ -20,6 +20,7 @@ import { computeCompositionStats } from "../lib/calendarCompositionTargets.js";
 import {
   evaluateSeasonCalendarWriteGate, RACE_DEPENDENCY_TABLES, dependencyKey,
 } from "../lib/seasonCalendarGate.js";
+import { benchmarkGapIntervals, loadS5Benchmark, MOTOR_REQUIRED_WINNERS } from "../lib/s5BenchmarkGate.js";
 
 // Minimal, gyldig tier-plan-fixture. `seedRaces` udelades bevidst (null) i de fleste
 // tests — det udløser gatePlan's "ingen tier leverede et løbssæt at score realisme på"
@@ -521,7 +522,7 @@ test("#6367 runS5BenchmarkGateForPlan: sæson 5 på den nuværende v5-generator 
   assert.ok(s5.gate.blocking.some((b) => b.startsWith("S5 (1) etape")));
   assert.ok(s5.gate.blocking.some((b) => b.startsWith("S5 (2) Grand Tour")));
   assert.equal(s5.gate.parts.grandTours.races.length, 3, "samme løb i D1 og D2 tælles én gang");
-  assert.equal(s5.gate.parts.motor.status, "stub", "uden --motor-bench bruges stubben");
+  assert.equal(s5.gate.parts.motor.stub, false, "uden --motor-bench bruges den rigtige motor-bench (#6362)");
   assert.ok(s5.lines.some((l) => l.includes("RØD")));
   assert.equal(s5.green, false);
   assert.deepEqual(s5.blocking, s5.gate.blocking, "scope season (default) doemmer alle fire dele");
@@ -531,7 +532,10 @@ test("#6367 runS5BenchmarkGateForPlan scope partial: del (3) og GT-kravet doemme
   const noGt = { planTiers: [{ tier: 3, pools: [{ raceRows: [] }], profilesByPoolRaceId: new Map() }] };
   const season = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5 });
   assert.equal(season.green, false, "en hel saeson uden Grand Tours er roed");
-  const partial = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5, scope: "partial" });
+  // #6362: en groen motor-maaling injiceres (standard er den rigtige bench, hvis dom kan
+  // vaere roed); her testes scope-reglen, ikke benchens aktuelle dom.
+  const greenMotor = { stub: false, source: "test", verdicts: Object.fromEntries(Object.keys(benchmarkGapIntervals(loadS5Benchmark())).map((f) => [f, "inside"])), winners: Object.fromEntries(Object.entries(MOTOR_REQUIRED_WINNERS).map(([f, expected]) => [f, { expected, verdict: "pass" }])) };
+  const partial = runS5BenchmarkGateForPlan({ plan: noGt, seasonNumber: 5, scope: "partial", motor: greenMotor });
   assert.equal(partial.scope, "partial");
   assert.deepEqual(partial.blocking, []);
   assert.equal(partial.green, true);
@@ -561,3 +565,37 @@ test("#6367 runSquadCalendar: en roed S5-gate fra materializerens plan blokerer 
   assert.equal(calls.length, 0, "materializeren maa ikke kaldes med writes");
   assert.equal(process.exitCode, 1);
 }));
+
+// #5833 (ejer 14/10): fra S5 slutter sæsonen LØRDAG. CLI'ens §2-vindue sender sæsonnummeret
+// videre, så --season 5 dømmes efter lørdagsreglen og --season 4 efter søndagsreglen.
+test("#5833 resolveBuildSeasonWindow: --season 5 --first-day 2026-10-28 --last-day 2026-11-28 accepteres", () => {
+  const r = resolveBuildSeasonWindow({ seasonNumber: 5, firstRaceDay: "2026-10-28", lastDayArg: "2026-11-28" });
+  assert.equal(r.window.lastRaceDay, "2026-11-28");
+  assert.equal(r.window.raceDays, 32);
+  assert.equal(r.finishLabel, "lørdag");
+  assert.equal(r.seasonDefaultDays, null, "S5 har intet ejer-valgt længde-default; --last-day skal med ved --apply");
+});
+
+test("#5833 resolveBuildSeasonWindow: --season 5 med søndags-slut (29/11) afvises", () => {
+  assert.throws(
+    () => resolveBuildSeasonWindow({ seasonNumber: 5, firstRaceDay: "2026-10-28", lastDayArg: "2026-11-29" }),
+    /is not a Saturday/,
+  );
+  assert.throws(
+    () => resolveBuildSeasonWindow({ seasonNumber: 5, firstRaceDay: "2026-10-28", raceDaysArg: "33" }),
+    /is not a Saturday/,
+  );
+});
+
+test("#5833 resolveBuildSeasonWindow: --season 4 er uændret (ejer-default 28 → søndag 25/10)", () => {
+  const r = resolveBuildSeasonWindow({ seasonNumber: 4, firstRaceDay: "2026-09-28" });
+  assert.equal(r.window.lastRaceDay, "2026-10-25");
+  assert.equal(r.window.raceDays, 28);
+  assert.equal(r.window.derived, false);
+  assert.equal(r.seasonDefaultDays, 28);
+  assert.equal(r.finishLabel, "søndag");
+  assert.throws(
+    () => resolveBuildSeasonWindow({ seasonNumber: 4, firstRaceDay: "2026-09-28", lastDayArg: "2026-10-24" }),
+    /is not a Sunday/,
+  );
+});
