@@ -15,6 +15,7 @@ import {
   reviewersOnPr,
   tallyReviewerStats,
   formatEscapedReport,
+  shouldRerun,
   CODEX_SUMMARY_MARKER,
 } from "./review-gate.mjs";
 
@@ -182,6 +183,16 @@ test("buildClaudeMarkerComment: markoeren parses tilbage af findClaudeVerdict", 
   const body = buildClaudeMarkerComment("notes", "512C930ABCDEF", "Smaating.");
   assert.deepEqual(findClaudeVerdict([{ association: "OWNER", body, at: "t" }]), { verdict: "notes", sha: "512c930abcdef", at: "t" });
   assert.throws(() => buildClaudeMarkerComment("ok", "abc1234"), /ukendt verdict/);
+});
+
+test("shouldRerun: kun naar udfaldet er skiftet, aldrig midt i en koersel eller paa en draft-koersel", () => {
+  assert.equal(shouldRerun(null, true).rerun, false);
+  assert.equal(shouldRerun({ id: 1, status: "in_progress" }, true).rerun, false);
+  assert.equal(shouldRerun({ id: 1, status: "completed", conclusion: "skipped" }, true).rerun, false);
+  assert.equal(shouldRerun({ id: 1, status: "completed", conclusion: "failure" }, false).rerun, false);
+  assert.equal(shouldRerun({ id: 1, status: "completed", conclusion: "success" }, true).rerun, false);
+  assert.deepEqual(shouldRerun({ id: 1, status: "completed", conclusion: "failure" }, true), { rerun: true, why: "nu groen" });
+  assert.deepEqual(shouldRerun({ id: 1, status: "completed", conclusion: "success" }, false), { rerun: true, why: "nu roed" });
 });
 
 // ── Escaped defects ──

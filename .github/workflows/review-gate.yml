@@ -1,0 +1,165 @@
+name: Review gate
+
+# Risikostyret review-gate (#6654, ejer 15/10). Regel: AGENTS.md hard rule 35 +
+# docs/GITHUB_WORKFLOW.md "Review-gate". Logik + tests: scripts/review-gate.mjs.
+#
+#   - Alle PR'er: Codex-review gennemfoert, ingen uloeste Codex-traade.
+#   - Hoejrisiko (motor, database, penge, auth/sikkerhed, workflows, label
+#     risk:high/security): derudover Claude-review-markoer uden blokerende fund.
+#   - CodeRabbit er bonus, aldrig krav. Dependabot er undtaget (rule 35 c).
+#
+# Check'et hedder `review-gate` og produceres KUN af pull_request-jobbet herunder
+# (eet stabilt check-navn, jf. scripts/check-required-ci-jobs.mjs). Codex-
+# kommentarer, Claude-markoerer, reviews og loeste traade aendrer ikke HEAD; de
+# genkoerer i stedet den seneste review-gate-koersel for PR'ens HEAD
+# (refresh-jobbet). Traad-"Resolve" har ingen workflow-trigger, saa en
+# planlagt refresh samler dem op hver halve time; vil man ikke vente:
+#   gh workflow run review-gate.yml -f pr=<N>
+#
+# Scriptet hentes fra main, ikke fra PR'en, saa en PR ikke kan goere sig selv
+# groen ved at aendre klassifikatoren (bootstrap: kun indtil scriptet er paa main).
+#
+# Required-check er EJERENS indstilling (branch protection) - se PR #6657.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  issue_comment:
+    types: [created, edited]
+  schedule:
+    # Refresh af aabne, roede gates (traad-resolve har ingen trigger).
+    - cron: '7,37 * * * *'
+    # Maanedlig escaped-defect-rapport (fanget/misset pr. reviewer).
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'PR-nummer der skal genevalueres (tom = alle aabne ready PR-er)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  review-gate:
+    name: review-gate
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    concurrency:
+      group: review-gate-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Hent gate-scriptet fra main
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/review-gate.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Bootstrap (scriptet findes endnu ikke paa main)
+        if: hashFiles('scripts/review-gate.mjs') == ''
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          echo "::warning::scripts/review-gate.mjs findes ikke paa main endnu - bruger PR'ens version (kun foer #6654 er merget)."
+          git fetch --depth=1 origin "$HEAD_SHA"
+          git checkout FETCH_HEAD -- scripts/review-gate.mjs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      - name: Evaluer review-gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node scripts/review-gate.mjs evaluate --pr "$PR_NUMBER"
+
+  refresh:
+    name: review-gate-refresh
+    if: >-
+      github.event_name == 'pull_request_review' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '7,37 * * * *') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+        (github.event.comment.user.login == 'chatgpt-codex-connector[bot]' ||
+         contains(github.event.comment.body, '<!-- claude-review:')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+    concurrency:
+      group: review-gate-refresh-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'all' }}
+      cancel-in-progress: false
+    steps:
+      - name: Hent gate-scriptet fra main
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/review-gate.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Bootstrap (scriptet findes endnu ikke paa main)
+        if: hashFiles('scripts/review-gate.mjs') == '' && github.event.pull_request.head.sha != ''
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --depth=1 origin "$HEAD_SHA"
+          git checkout FETCH_HEAD -- scripts/review-gate.mjs
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      - name: Genkoer review-gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            node scripts/review-gate.mjs refresh --pr "$PR_NUMBER"
+          else
+            node scripts/review-gate.mjs refresh
+          fi
+
+  escaped-report:
+    name: escaped-defect-report
+    if: github.event_name == 'schedule' && github.event.schedule == '0 6 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Hent rapport-scriptet fra main
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/review-gate.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      - name: Escaped defects sidste maaned (job summary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/review-gate.mjs escaped-report

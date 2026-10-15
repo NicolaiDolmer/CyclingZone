@@ -325,18 +325,31 @@ export function fetchPrData(repo, pr) {
   };
 }
 
+/**
+ * Skal den seneste gate-koersel genkoeres? Kun naar dens udfald ikke laengere
+ * matcher en frisk evaluering (spar runner-tid og stoej i Actions-listen).
+ */
+export function shouldRerun(run, freshOk) {
+  if (!run) return { rerun: false, why: "ingen pull_request-koersel for HEAD endnu" };
+  if (run.status !== "completed") return { rerun: false, why: `koersel ${run.id} koerer allerede` };
+  if (run.conclusion === "skipped") return { rerun: false, why: "seneste koersel var draft (skipped)" };
+  const wasOk = run.conclusion === "success";
+  if (wasOk === freshOk) return { rerun: false, why: `uaendret (${freshOk ? "groen" : "roed"})` };
+  return { rerun: true, why: freshOk ? "nu groen" : "nu roed" };
+}
+
 /** Genkoer seneste pull_request-koersel af gaten for PR'ens HEAD (check'et opdateres paa stedet). */
 function rerunGate(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   if (meta.state !== "open" || meta.draft) return `#${pr}: springes over (${meta.state}${meta.draft ? ", draft" : ""})`;
   const runs = ghJson(["api", `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=pull_request&head_sha=${meta.head.sha}&per_page=20`]).workflow_runs || [];
   const run = runs.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
-  if (!run) return `#${pr}: ingen pull_request-koersel for ${meta.head.sha.slice(0, 7)} endnu`;
-  if (run.status !== "completed") return `#${pr}: koersel ${run.id} koerer allerede`;
-  if (run.conclusion === "success") return `#${pr}: allerede groen (${run.id})`;
+  const fresh = evaluateGate(fetchPrData(repo, pr));
+  const decision = shouldRerun(run, fresh.ok);
+  if (!decision.rerun) return `#${pr}: ${decision.why}`;
   try {
     gh(["api", "-X", "POST", `repos/${repo}/actions/runs/${run.id}/rerun`]);
-    return `#${pr}: genkoert ${run.id}`;
+    return `#${pr}: genkoert ${run.id} (${decision.why})`;
   } catch (err) {
     return `#${pr}: genkoersel fejlede (${String(err.stderr || err.message).trim().split("\n")[0]})`;
   }
@@ -457,7 +470,8 @@ export function main(argv = process.argv.slice(2)) {
 
   if (cmd === "escaped-report") {
     const now = new Date();
-    const until = typeof args.until === "string" ? args.until : isoDate(now);
+    // Default: hele forrige maaned (koeres den 1.: fra den 1. i forrige maaned til i gaar).
+    const until = typeof args.until === "string" ? args.until : isoDate(new Date(now.getTime() - 24 * 3600 * 1000));
     const since = typeof args.since === "string" ? args.since : isoDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)));
     const report = escapedReport(repo, since, until);
     console.log(report);
