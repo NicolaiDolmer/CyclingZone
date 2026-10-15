@@ -150,26 +150,45 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
   }
 
   // Callouts i faste baner: fronten oeverst, saa i hul-orden, saa linjerne aldrig krydser.
-  const laneGroups = narrow ? shown.filter((g) => g.front || g.mine.length).slice(0, 2) : shown;
-  const callouts = laneGroups.map((g, lane) => {
-    if (g.km < data.startKm) return null;
-    const l1 = labelFor(g) + (g.mine.length ? ` · ${t("stagePageV2.story.you")}` : "");
-    const l2 = g.front ? t("stagePageV2.story.group.leads") : `+${formatClock(g.gapS)}${g.size ? ` · ${t("stagePageV2.story.group.riders", { count: g.size })}` : ""}`;
-    const fs = narrow ? 11 : 12;
-    const w = Math.max(l1.length, l2.length) * (fs * 0.6) + 18;
-    const h = 2 * (fs + 4) + 8;
-    const x = X(g.km);
-    const bx = Math.max(6, Math.min(W - w - 6, x - w / 2));
-    const by = (narrow ? 58 : 86) + lane * (h + 6);
-    return (
-      <g key={`c-${g.groupId}`}>
-        <line x1={x} x2={x} y1={by + h} y2={Y(g.km) - 14} stroke="var(--text-sidebar-3)" strokeWidth={1} />
-        <rect x={bx} y={by} width={w} height={h} rx={3} fill="var(--bg-sidebar)" stroke={g.front ? "rgb(var(--accent))" : "var(--border-sidebar)"} />
-        <text x={bx + 9} y={by + fs + 4} fontSize={fs} fontWeight={700} fill="var(--text-sidebar-1)" className="font-data">{l1}</text>
-        <text x={bx + 9} y={by + 2 * (fs + 4) + 1} fontSize={fs} fill="var(--text-sidebar-2)" className="font-data tabular-nums">{l2}</text>
-      </g>
-    );
-  });
+  // En boks maa aldrig daekke vejen eller prikkerne under sig (vejen ligger hoejt i
+  // venstre side). Passer alle ikke, viger fremmede grupper (stoerste hul foerst), saa
+  // fronten og din gruppe beholder deres boks; de udeladte staar stadig i "Gaps".
+  const fs = narrow ? 11 : 12;
+  const boxH = 2 * (fs + 4) + 8;
+  type Box = { g: FinaleGroup; l1: string; l2: string; x: number; bx: number; by: number; w: number };
+  const layout = (list: FinaleGroup[]): { boxes: Box[]; misfit: FinaleGroup[] } => {
+    const boxes: Box[] = [], misfit: FinaleGroup[] = [];
+    list.forEach((g, lane) => {
+      const l1 = labelFor(g) + (g.mine.length ? ` · ${t("stagePageV2.story.you")}` : "");
+      const l2 = g.front ? t("stagePageV2.story.group.leads") : `+${formatClock(g.gapS)}${g.size ? ` · ${t("stagePageV2.story.group.riders", { count: g.size })}` : ""}`;
+      const w = Math.max(l1.length, l2.length) * (fs * 0.6) + 18;
+      const x = X(g.km);
+      const bx = Math.max(6, Math.min(W - w - 6, x - w / 2));
+      const by = (narrow ? 58 : 86) + lane * (boxH + 6);
+      let roadTopUnderBox = Infinity;
+      for (const [rx, ry] of road) if (rx >= bx && rx <= bx + w) roadTopUnderBox = Math.min(roadTopUnderBox, ry);
+      if (by + boxH > roadTopUnderBox - 30) misfit.push(g);
+      else boxes.push({ g, l1, l2, x, bx, by, w });
+    });
+    return { boxes, misfit };
+  };
+  let laneGroups = (narrow ? shown.filter((g) => g.front || g.mine.length).slice(0, 2) : shown).filter((g) => g.km >= data.startKm);
+  let placed = layout(laneGroups);
+  while (placed.misfit.some((g) => g.front || g.mine.length)) {
+    const yieldable = laneGroups.filter((g) => !g.front && !g.mine.length);
+    if (!yieldable.length) break;
+    const drop = yieldable.reduce((a, b) => (b.gapS > a.gapS ? b : a));
+    laneGroups = laneGroups.filter((g) => g !== drop);
+    placed = layout(laneGroups);
+  }
+  const callouts = placed.boxes.map(({ g, l1, l2, x, bx, by, w }) => (
+    <g key={`c-${g.groupId}`}>
+      <line x1={x} x2={x} y1={by + boxH} y2={Y(g.km) - 14} stroke="var(--text-sidebar-3)" strokeWidth={1} />
+      <rect x={bx} y={by} width={w} height={boxH} rx={3} fill="var(--bg-sidebar)" stroke={g.front ? "rgb(var(--accent))" : "var(--border-sidebar)"} />
+      <text x={bx + 9} y={by + fs + 4} fontSize={fs} fontWeight={700} fill="var(--text-sidebar-1)" className="font-data">{l1}</text>
+      <text x={bx + 9} y={by + 2 * (fs + 4) + 1} fontSize={fs} fill="var(--text-sidebar-2)" className="font-data tabular-nums">{l2}</text>
+    </g>
+  ));
   const behind = shown.filter((g) => g.km < data.startKm);
 
   // Sprint close-up: et vindue paa 300 m der foelger foereren fra 500 m.
