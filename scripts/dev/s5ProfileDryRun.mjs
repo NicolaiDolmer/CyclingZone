@@ -10,7 +10,7 @@
 //
 // Det er byg-planens §2.2-måling gjort permanent: terræn-fordeling efter B+, andelen af
 // etaper hvis type ikke passer med ruten, afslutninger uden for matrixen, Grand Tour-kvoter
-// og højdemeter pr. terræn mod benchmarken (docs/design/s5-benchmark/gt-2021-2025.json).
+// og højdemeter pr. terræn mod benchmarken (backend/lib/__fixtures__/s5Benchmark.gt-2021-2025.json).
 //
 // Datoen er en PARAMETER og kræves. S5 er låst til onsdag 28/10 → lørdag 28/11 (ejer 14/10,
 // #5833; fra S5 slutter sæsonen lørdag, CALENDAR_RULES §2):
@@ -41,7 +41,7 @@ import { TERRAIN_TYPES, isFinishAllowed, canonicalFinaleType } from "../../backe
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const FIXTURE = join(ROOT, "backend", "lib", "__fixtures__", "racePoolCatalog.prod.json");
-const BENCHMARK = join(ROOT, "docs", "design", "s5-benchmark", "gt-2021-2025.json");
+const BENCHMARK = join(ROOT, "backend", "lib", "__fixtures__", "s5Benchmark.gt-2021-2025.json");
 const DEFAULT_REAL_DAYS = 28;
 
 function arg(name, fallback = null) {

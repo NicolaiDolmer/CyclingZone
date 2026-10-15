@@ -50,7 +50,7 @@ Generatoren vælger kun inden for matrixen; motor-tests fejler ved en ulovlig ko
 
 ## 5. Kvoter og Grand Tour-struktur (kort 5)
 
-Benchmark: 315 etaper, Tour/Giro/Vuelta 2021-2025 (ProCyclingStats + cyclingstage), data i `docs/design/s5-benchmark/`.
+Benchmark: 315 etaper, Tour/Giro/Vuelta 2021-2025 (ProCyclingStats + cyclingstage), data i `backend/lib/__fixtures__/s5Benchmark.gt-2021-2025.json` (flyttet fra `docs/design/s5-benchmark/` 15/10, #6367: Railway bygger kun `backend/`; kilder og noter står i `docs/design/s5-benchmark/README.md`).
 
 | Antal etaper | Tour-typen (18) | Giro-typen (17) | Vuelta-typen (17) |
 |---|---|---|---|

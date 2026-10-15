@@ -10,6 +10,10 @@
 | Backend | Railway | GitHub-connected service |
 | Database/Auth | Supabase | Cloud-hosted |
 
+### Backend ser kun `backend/` (#6367)
+
+Railway-servicen bygger med root directory `/backend`. Alt uden for `backend/` (fx `docs/`, `scripts/`, `database/`) findes ikke i prod. Data, som backend-kode læser ved runtime, skal derfor ligge under `backend/` (typisk `backend/lib/__fixtures__/`), aldrig via `join(__dirname, "..", "..", ...)`. Lokalt og i CI virker den forkerte sti, fordi hele repoet er tjekket ud, så fejlen viser sig først i prod. Vagt: `backend/lib/s5BenchmarkGateFiles.test.js` (S5-gaten).
+
 ---
 
 ## Aktuelle live-targets
