@@ -139,7 +139,7 @@ export function castFrom(results: ResultRow[], roles: RoleRider[], stageNumber: 
   let rows = classificationRowsForStage(results, stageNumber, "stage") as ResultRow[];
   if (!rows.length && stageNumber === 1) rows = classificationRowsForStage(results, stageNumber, "gc") as ResultRow[];
   const finishers = rows
-    .filter((r) => r.rider_id && Number.isFinite(Number(r.rank)))
+    .filter((r) => r.rider_id && r.rank != null && Number.isFinite(Number(r.rank)))
     .map((r) => ({ riderId: String(r.rider_id), rank: Number(r.rank), gap: r.finish_time ?? null }))
     .sort((a, b) => a.rank - b.rank);
   const rank = new Map(finishers.map((f) => [f.riderId, f.rank]));
@@ -501,7 +501,8 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): R
   }
   const [first, second] = cast.finishers;
   const winnerName = first ? cast.nameOf(first.riderId) : null;
-  if (first && winnerName) {
+  // Vandt din rytter, bruges kun din egen saetning (mineWon nedenfor), ikke begge.
+  if (first && winnerName && !cast.mine.has(first.riderId)) {
     const secondName = second ? cast.nameOf(second.riderId) : null;
     const gapS = second ? parseGap(second.gap) : null;
     if (secondName && gapS != null && gapS > 0) out.push({ key: "winnerGap", params: { winner: winnerName, second: secondName, gap: formatGapPlain(gapS) } });

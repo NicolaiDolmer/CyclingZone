@@ -267,3 +267,18 @@ test("asStory, formatClock og parseGap", () => {
   assert.equal(isPeloton(true, 1), false, "resten paa een rytter er ikke et felt");
   assert.equal(isPeloton(false, 40), false);
 });
+
+test("buildReport: din rytter vandt naevnes kun een gang (Codex P2)", () => {
+  const s = story();
+  const results = RESULTS.map((r) => (r.rider_id === "m1" ? { ...r, rank: 1 } : r.rider_id === "w" ? { ...r, rank: 5 } : r));
+  const c = castFrom(results, ROLES, 3, "t-me");
+  const keys = buildReport(s, curateMoments(s, c), c).map((r) => r.key);
+  assert.equal(keys.filter((k) => k === "mineWon" || k.startsWith("winner")).length, 1, keys.join(","));
+});
+
+test("castFrom: raekker uden placering (rank null) er aldrig vinderen (Codex P2)", () => {
+  const withNull = [{ ...rr(0, "dnf", "Nobody", "t-z", ""), rank: null } as unknown as ResultRow, ...RESULTS];
+  const c = castFrom(withNull, ROLES, 3, "t-me");
+  assert.equal(c.finishers[0].riderId, "w");
+  assert.ok(!c.finishers.some((f) => f.riderId === "dnf"));
+});
