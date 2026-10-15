@@ -106,6 +106,7 @@ test("tællende fake: hvert kald tælles, !inner-filter og HEAD-count virker", a
   const calls = [];
   const sb = createCountingSupabase(state, { clock, latencyMs: 10, onCall: (c) => calls.push(c) });
 
+  // pagination-safe: in-memory fake med to rækker, ingen PostgREST involveret
   const { data } = await sb.from("race_stage_schedule")
     .select("race_id, stage_number, races!inner(status)")
     .lte("scheduled_at", "2026-10-29T11:00:00.000Z")
