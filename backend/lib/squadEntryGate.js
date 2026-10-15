@@ -17,7 +17,7 @@
 //     (et trup-skift midt i læsningen må ikke give en falsk alarm) og alarmerer i
 //     Sentry ved > 0. Reparerer intet.
 
-import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { isEligibleRider, raceSquadOf } from "./riderEligibility.js";
 
 /** Samme "ikke startet" som triggeren og squadEntryCleanup.offSquadOpenRaceIds. */
@@ -114,12 +114,32 @@ export async function confirmViolations(supabase, violations) {
   const riders = await fetchRidersByIds(supabase, riderIds);
   const races = await fetchAllRowsChunkedIn(raceIds, (ids) => supabase.from("races")
     .select(RACE_COLUMNS).in("id", ids).order("id"));
-  const entries = await fetchAllRowsChunkedIn(riderIds, (ids) => supabase.from("race_entries")
-    .select("race_id, team_id, rider_id")
-    .in("rider_id", ids)
-    .in("race_id", raceIds)
-    .order("race_id").order("rider_id"));
+  const entries = await fetchViolationEntries(supabase, violations, raceIds);
   return findSquadEntryViolations({ races, entries, riders }).violations;
+}
+
+/**
+ * Genlæs entries for fundene med BEGGE id-dimensioner opdelt: race-id'erne i
+ * chunks, og pr. race-chunk kun de ryttere der har fund i netop de løb, også i
+ * chunks. Én .in() med alle race-id'er sprænger PostgREST-gatewayens request-line
+ * ved et bredt brud (#6677-review). Hvert (løb, rytter)-par ligger i præcis én
+ * race-chunk, så der kommer ingen dubletter.
+ */
+async function fetchViolationEntries(supabase, violations, raceIds) {
+  const entries = [];
+  for (let i = 0; i < raceIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const raceChunk = raceIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+    const inChunk = new Set(raceChunk);
+    const chunkRiderIds = [...new Set(
+      violations.filter((v) => inChunk.has(v.race_id)).map((v) => v.rider_id),
+    )];
+    entries.push(...await fetchAllRowsChunkedIn(chunkRiderIds, (ids) => supabase.from("race_entries")
+      .select("race_id, team_id, rider_id")
+      .in("rider_id", ids)
+      .in("race_id", raceChunk)
+      .order("race_id").order("rider_id")));
+  }
+  return entries;
 }
 
 const SAMPLE_LIMIT = 10;

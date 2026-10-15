@@ -326,3 +326,43 @@ test("confirmViolations: genberegner på frisk læsning", async () => {
   const out = await confirmViolations(stub, [{ race_id: "x", team_id: "t1", rider_id: "r1", kind: "off_squad" }]);
   assert.deepEqual(out, []);
 });
+
+test("confirmViolations: bredt brud (>430 løb) opdeler BÅDE race- og rytter-id'er i hver .in() (#6677-review)", async () => {
+  // Over ca. 430 UUID'er i én .in() sprænger PostgREST-gatewayens request-line.
+  const RACES = 450;
+  const RIDERS = 250;
+  const uuid = (prefix, n) => `${prefix}-0000-0000-0000-${String(n).padStart(12, "0")}`;
+  const tables = { riders: [], races: [], race_entries: [] };
+  const violations = [];
+  for (let r = 0; r < RIDERS; r += 1) {
+    tables.riders.push({ id: uuid("00000000", r), team_id: TEAM_A, squad: "junior", is_academy: true, is_retired: false });
+  }
+  for (let i = 0; i < RACES; i += 1) {
+    const raceId = uuid("11111111", i);
+    const riderId = uuid("00000000", i % RIDERS);
+    tables.races.push({ id: raceId, squad: "senior", status: "scheduled", stages_completed: 0 });
+    tables.race_entries.push({ race_id: raceId, team_id: TEAM_A, rider_id: riderId });
+    violations.push({ race_id: raceId, team_id: TEAM_A, rider_id: riderId, kind: "off_squad" });
+  }
+
+  const inSizes = [];
+  const stub = {
+    from(table) {
+      const filters = [];
+      const q = {
+        select: () => q, order: () => q,
+        in: (col, ids) => { inSizes.push(ids.length); filters.push([col, new Set(ids)]); return q; },
+        range: async (from, to) => ({
+          data: tables[table].filter((row) => filters.every(([col, set]) => set.has(row[col]))).slice(from, to + 1),
+          error: null,
+        }),
+      };
+      return q;
+    },
+  };
+
+  const out = await confirmViolations(stub, violations);
+  assert.equal(out.length, RACES, "hvert brud bekræftes præcis én gang (ingen dubletter, intet tabt)");
+  assert.ok(inSizes.length > 0);
+  assert.ok(Math.max(...inSizes) <= 100, `største .in() var ${Math.max(...inSizes)} id'er`);
+});
