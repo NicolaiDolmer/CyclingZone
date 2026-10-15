@@ -15,13 +15,13 @@
     "imageAlt": "Cycling Zone team overview with a manager's riders, their rating, role, age, potential and value"
   },
   "race": {
-    "title": "See how you plan a race.",
-    "body": "Study the route, choose your riders and name your captain. Set your tactics, then see how your team fares against other managers.",
+    "title": "Plan your race.",
+    "body": "Study the route, choose your riders and name your captain. Set your tactics, then follow how your team does against other managers.",
     "scenario": "A mountain stage. Who will you ride for?",
     "beforeCaption": "Before the race: the route and your team's plan.",
     "afterCaption": "After the race: your riders in the results.",
     "beforeAlt": "Race preview in Cycling Zone: the profile of a 170 km mountain stage with three climbs, and the team's plan with its captain and sprint train",
-    "afterAlt": "Stage results in Cycling Zone with the manager's rider in fifth place, 1:29 behind the winner"
+    "afterAlt": "Stage summary in Cycling Zone: the top 3 and the manager's own riders, the best of them fifth, 1:29 behind the winner"
   },
   "develop": {
     "title": "Develop your team, season after season.",
@@ -69,7 +69,7 @@
     "paragraphs": [
       "I'm Dolmer, from Denmark, and I build Cycling Zone on my own. It started in 2025 as a multiplayer league in Pro Cycling Manager, run with shared documents.",
       "I wanted a cycling manager where you don't just click through numbers, but build something up over time: strategy, development, rivalry, and the feeling of following your team from small steps to big results. So I built my own game, with its own race engine and its own riders.",
-      "In May 2026 I decided to give it a real chance and work on it seriously, hoping to make a living from it one day. The game has been in open beta since then. Every change goes into the patch notes in the game, and players on Discord help decide what I build next."
+      "In May 2026 I decided to give it a real chance and work on it seriously, hoping to make a living from it one day. The game has been in open beta since then, and players on Discord help decide what I build next."
     ],
     "link": "Join the Discord"
   },
@@ -82,7 +82,7 @@
       },
       {
         "q": "Do I have to be online when my riders race?",
-        "a": "No. The race engine runs every race on its own, and you can follow what happened afterwards. You pick your riders and tactics beforehand. If you haven't picked a lineup, the assistant picks one for you before the start."
+        "a": "No. The race engine runs every race on its own, and you can follow what happened afterwards. You pick your riders and tactics beforehand. If you haven't picked a lineup, the game picks one for you before the start."
       },
       {
         "q": "Can I play on my phone?",
@@ -90,7 +90,7 @@
       },
       {
         "q": "Is it free?",
-        "a": "Yes. You can build your team, train your riders and compete against other managers for free. CZ Pro is an optional subscription with extras such as saved filters and rider ability history across seasons."
+        "a": "Yes. Everything you need to play is free. CZ Pro is an optional subscription with a few extras."
       },
       {
         "q": "Can I pay to win?",

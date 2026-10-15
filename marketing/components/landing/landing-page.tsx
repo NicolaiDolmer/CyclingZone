@@ -41,12 +41,12 @@ const SHOTS = {
   en: {
     team: { d: ["/landing/team-desktop.webp", 1735, 1222], m: ["/landing/team-mobile.webp", 1040, 1240] },
     plan: { d: ["/landing/plan-desktop.webp", 1965, 905], m: ["/landing/plan-mobile.webp", 1022, 1000] },
-    result: { d: ["/landing/result-desktop.webp", 1203, 1197], m: ["/landing/result-mobile.webp", 1022, 1190] },
+    result: { d: ["/landing/result-desktop.webp", 1400, 1071], m: ["/landing/result-mobile.webp", 976, 1445] },
   },
   da: {
     team: { d: ["/landing/team-desktop-da.webp", 1735, 1222], m: ["/landing/team-mobile-da.webp", 1040, 1240] },
     plan: { d: ["/landing/plan-desktop-da.webp", 1965, 905], m: ["/landing/plan-mobile-da.webp", 1022, 1000] },
-    result: { d: ["/landing/result-desktop-da.webp", 1207, 1210], m: ["/landing/result-mobile-da.webp", 1022, 1190] },
+    result: { d: ["/landing/result-desktop-da.webp", 1400, 1071], m: ["/landing/result-mobile-da.webp", 976, 1445] },
   },
 } as const;
 

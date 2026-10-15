@@ -1,13 +1,13 @@
 {
   "meta": {
     "title": "Gratis cykelmanagerspil i browseren · Cycling Zone",
-    "description": "Byg dit eget cykelhold i browseren. Hent ryttere, udvikl talenter og læg taktikken mod andre managers. Gratis at spille, ingen installation.",
+    "description": "Byg dit eget cykelhold i browseren. Hent ryttere, udvikl talenter og læg taktikken mod andre managere. Gratis at spille, ingen installation.",
     "ogAlt": "Cycling Zone: byg dit eget cykelhold"
   },
   "hero": {
     "intro": "Gratis cykelmanagerspil i browseren",
     "title": "Byg dit eget cykelhold.",
-    "body": "Hent ryttere, udvikl talenter og læg taktikken til næste løb. Konkurrér mod andre managers, sæson efter sæson.",
+    "body": "Hent ryttere, udvikl talenter og læg taktikken til næste løb. Konkurrér mod andre managere, sæson efter sæson.",
     "cta": "Opret dit hold",
     "ctaSecondary": "Se spillet",
     "micro": "Gratis at spille. CZ Pro er et valgfrit abonnement.",
@@ -15,13 +15,13 @@
     "imageAlt": "Holdoversigt i Cycling Zone med managerens ryttere, deres rating, rolle, alder, potentiale og værdi"
   },
   "race": {
-    "title": "Se, hvordan du planlægger et løb.",
-    "body": "Se ruten, vælg dine ryttere og udpeg kaptajnen. Læg taktikken, og følg hvordan dit hold klarer sig mod andre managers.",
+    "title": "Planlæg dit løb.",
+    "body": "Studér ruten, vælg dine ryttere og udpeg kaptajnen. Læg taktikken, og følg, hvordan dit hold klarer sig mod andre managere.",
     "scenario": "En bjergetape. Hvem kører du for?",
     "beforeCaption": "Før løbet: ruten og holdets plan.",
     "afterCaption": "Efter løbet: dine ryttere i resultatlisten.",
     "beforeAlt": "Løbsforhåndsvisning i Cycling Zone: profilen af en 170 km lang bjergetape med tre stigninger, og holdets plan med kaptajn og spurttog",
-    "afterAlt": "Etaperesultat i Cycling Zone med managerens rytter på femtepladsen, 1:29 efter vinderen"
+    "afterAlt": "Etapeoversigt i Cycling Zone: top 3 og managerens egne ryttere, den bedste på femtepladsen, 1:29 efter vinderen"
   },
   "develop": {
     "title": "Udvikl dit hold sæson efter sæson.",
@@ -53,7 +53,7 @@
         "body": "Se dine rytteres styrker, og find ud af, hvem du vil bygge holdet omkring."
       },
       {
-        "title": "Tag de første valg",
+        "title": "Træf dine første valg",
         "body": "Vælg træningsfokus, og planlæg, hvilke ryttere du vil sende til de kommende løb."
       }
     ],
@@ -61,7 +61,7 @@
   },
   "pro": {
     "title": "Gratis at spille. CZ Pro er valgfrit.",
-    "body": "Byg dit hold, træn dine ryttere og konkurrér mod andre managers gratis. CZ Pro er et valgfrit abonnement med ekstra funktioner som gemte filtre og historik over rytternes evner på tværs af sæsoner.",
+    "body": "Byg dit hold, træn dine ryttere og konkurrér mod andre managere gratis. CZ Pro er et valgfrit abonnement med ekstra funktioner som gemte filtre og historik over rytternes evner på tværs af sæsoner.",
     "fairness": "Spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater."
   },
   "person": {
@@ -69,7 +69,7 @@
     "paragraphs": [
       "Jeg hedder Dolmer, er fra Danmark og bygger Cycling Zone alene. Det startede i 2025 som en multiplayer-liga i Pro Cycling Manager, holdt sammen af delte dokumenter.",
       "Jeg ville have et cykelmanagerspil, hvor man ikke bare klikker sig igennem nogle tal, men bygger noget op over tid: strategi, udvikling, konkurrence og følelsen af at følge sit hold fra små fremskridt til store resultater. Så jeg byggede mit eget spil, med sin egen løbsmotor og sine egne ryttere.",
-      "I maj 2026 besluttede jeg at give det en reel chance og arbejde seriøst med det, med håbet om en dag at kunne leve af det. Spillet har været i åben beta siden. Alle ændringer står i patch notes i spillet, og spillerne på Discord er med til at bestemme, hvad jeg bygger næste gang."
+      "I maj 2026 besluttede jeg at give det en reel chance og arbejde seriøst med det, med håbet om en dag at kunne leve af det. Spillet har været i åben beta siden, og spillerne på Discord er med til at bestemme, hvad jeg bygger næste gang."
     ],
     "link": "Kom med på Discord"
   },
@@ -82,7 +82,7 @@
       },
       {
         "q": "Skal jeg være online, når mine ryttere kører?",
-        "a": "Nej. Løbsmotoren afvikler alle løb selv, og bagefter kan du se, hvad der skete. Du vælger ryttere og taktik på forhånd. Har du ikke valgt et hold, vælger assistenten et for dig inden start."
+        "a": "Nej. Løbsmotoren afvikler alle løb selv, og bagefter kan du se, hvad der skete. Du vælger ryttere og taktik på forhånd. Har du ikke valgt et hold, vælger spillet et for dig inden start."
       },
       {
         "q": "Kan jeg spille på min telefon?",
@@ -90,7 +90,7 @@
       },
       {
         "q": "Er det gratis?",
-        "a": "Ja. Du kan bygge dit hold, træne dine ryttere og konkurrere mod andre managers gratis. CZ Pro er et valgfrit abonnement med ekstra funktioner som gemte filtre og historik over rytternes evner på tværs af sæsoner."
+        "a": "Ja. Alt, du skal bruge for at spille, er gratis. CZ Pro er et valgfrit abonnement med nogle ekstra funktioner."
       },
       {
         "q": "Kan jeg betale mig til sejre?",
