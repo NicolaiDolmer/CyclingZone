@@ -400,6 +400,8 @@ const EFFORTS = new Set(["grupetto", "save", "normal", "protect", "all_out"]);
  * Den indsats motoren faktisk koerte paa, samme forrang som raceRunner
  * (#5580): paa en v4-etape vinder holdets ordre (race_team_orders.riders[].
  * effort); stage-roles-overriden er kun fallback. v3-etaper: kun overriden.
+ * #6647: "normal" i en ordre er rollens standard, ikke et valg (backend
+ * orderEffortByRiderForStage), saa den overskriver ikke overridens beskyt/spar.
  */
 export function effectiveEffortByRider(
   stageRoles: unknown,
@@ -416,6 +418,7 @@ export function effectiveEffortByRider(
     for (const r of row.riders as Array<Record<string, unknown>>) {
       const rider = str(r?.rider_id);
       const effort = str(r?.effort);
+      if (effort === "normal") continue; // #6647: ikke et valg
       if (rider && effort && EFFORTS.has(effort)) out.set(rider, effort);
     }
   }

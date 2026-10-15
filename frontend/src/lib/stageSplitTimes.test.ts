@@ -184,6 +184,15 @@ test("effectiveEffortByRider: v4-ordren vinder over stage-roles, v3 bruger kun s
   assert.equal(effectiveEffortByRider(null, null, 2, { v4: true }).size, 0);
 });
 
+test("#6647 effectiveEffortByRider: en ordre med 'normal' overskriver ikke rollens beskyt/spar", () => {
+  const roles = { overrides: [{ stage_number: 4, rider_id: "r1", effort: "save" }, { stage_number: 4, rider_id: "r2", effort: "protect" }] };
+  const neutral = { orders: [{ stage_number: 4, riders: [{ rider_id: "r1", effort: "normal" }, { rider_id: "r2", effort: "normal" }] }] };
+  assert.deepEqual([...effectiveEffortByRider(roles, neutral, 4, { v4: true })], [["r1", "save"], ["r2", "protect"]]);
+  assert.equal(effectiveEffortByRider(null, neutral, 4, { v4: true }).size, 0);
+  const mixed = { orders: [{ stage_number: 4, riders: [{ rider_id: "r1", effort: "normal" }, { rider_id: "r2", effort: "all_out" }] }] };
+  assert.deepEqual([...effectiveEffortByRider(roles, mixed, 4, { v4: true })], [["r1", "save"], ["r2", "all_out"]]);
+});
+
 test("formatSplitGap", () => {
   assert.equal(formatSplitGap(0), null);
   assert.equal(formatSplitGap(65), "+1:05");
