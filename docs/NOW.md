@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft · `INDEXNOW_KEY` (#6558) · post Discord 7.356-7.360 (`docs/drafts/discord-patch-7356-7360-2026-10-14.md`) · tænd beta for etapeside 2.0 (`stage_page_v2`) når klar.
+> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft (1 review/time) · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · post Discord 7.356-7.360 (`docs/drafts/discord-patch-7356-7360-2026-10-14.md`). · **læs landingpage-udkast i dag** (#1369, https://claude.ai/artifact/7mEWN2iyHtZnUJwyStDFye), derefter build-go.
 >
-> **🎯 Next action (startprompt `docs/sessions/2026-10-15-pc1-dynamisk-workflow.md`):** (0) #6639 merget 15/10 (S5-benchmark under backend/); #6640 (vagt) åben. (1) Merg kalender-PR #6637 (#6367, §1d=160 ejer-go) → prod dry-run → vis ejeren → `--apply` på ordret go; åbne gates: motor-del (#6362/#6363) + bølget-afslutningsbånd. Live senest lør 18/10 (#6369). (2) Løbshistorien på etapeside 2.0 (#6570 del 2, kontrakt fra #6632). (3) Datokort tor (#6601). (4) Landingpage "mennesket bag" (#1369, P01-P20); FAQ: start i D4 (#6650). (5) Codex-audit af svageste områder → kort.
+> **🎯 Next action (pc1, 15/10):** (1) S5: #6645 enkeltstart-fix (bølge) → ny prod-tørkørsel → vis ejeren → `--apply` på ordret go; live senest lør 18/10 (#6369). (2) Motor-bølge 6 spor (`#6648 #5978 #6201 #6155 #6475 #6186`) + #6647/#6649 i kø; motor-PR'er merges af Claude inden for benchmark-bånd, tænding = ejer-go (#6157 15/10). (3) Akademi pull-optag tændes før søn 18/10 kl. 00 på ejer-go (#6155). (4) Motortjek: `docs/audits/2026-10-15-motor-gennemgang.md`. **DOLMERPC:** løbshistorien #6570, derefter 🔴 Brand-stabilitet.
 >
-> **14/10 aften DOLMERPC merget:** S5 = ons 28/10 - lør 28/11 (#5833, forum) · lørdagsslut fra S5 (#6635) · S5-gate på alle skrivestier (#6630) · motor-bench (#6631) · løbslog-korrekthed + race-story-kontrakt (#6632) · etapeside 2.0 bag `stage_page_v2`=off (#6633) · patch 7.360. Åbent: #6616 pkt 2, #6617, #6618.
+> **15/10 pc1:** merget #6637 #6639 #6640 · `stage_page_v2`=beta · `training_bulk_day`=beta · `first_race_card`=on (alle ejer-go) · nye issues #6641 #6642 #6645 #6647 #6648 #6649. · #6653 start i D4 (#6650) klar til kø
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
