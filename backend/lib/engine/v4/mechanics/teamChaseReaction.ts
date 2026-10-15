@@ -46,6 +46,17 @@ export const TEAM_REACTION_TUNING = Object.freeze({
   minWorkerFreshness: TEAM_PLAY_EXTRA_TUNING.minCpFactor + 0.02,
 });
 
+/**
+ * #5978 (KUN s5_profiles_v1, GcThreat.danger sat): jo farligere rytteren er, jo
+ * haardere jager rivalerne. Intensiteten gaar lineaert fra den almindelige
+ * (danger 0) mod fuld (danger 1); budgettet pr. etape er uaendret (ejer 30/9).
+ */
+export function dangerScaledIntensity(base: number, danger: number | undefined): number {
+  if (danger === undefined || !Number.isFinite(danger)) return base;
+  const d = Math.max(0, Math.min(1, danger));
+  return base + (1 - base) * d;
+}
+
 /** En leder trækker ikke (samme rolle-skel som breakaway.ts's CHASE_EXEMPT_ROLES). */
 const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
 
@@ -120,12 +131,14 @@ export function planTeamReaction(input: {
 
   // Eksplicit jagt: ordren styrer, undtagelsens budget gaelder ikke.
   if (input.stance === "chase") return none("explicit_chase");
+  // #5978 (KUN s5_profiles_v1): rivalerne jager haardere jo farligere rytteren er.
+  const danger = input.threat.danger;
   if (input.threat.severity === "none") {
     if (input.leash && input.threat.leash_hold === true && prior.status === "reacting" && prior.mode) {
       if (input.availableWorkers.length === 0) return none("no_workers");
-      if (prior.mode === "neutral") return { intensity: tuning.neutralModerateIntensity, mode: "neutral", budgetRemaining, reason: "leash" };
+      if (prior.mode === "neutral") return { intensity: dangerScaledIntensity(tuning.neutralModerateIntensity, danger), mode: "neutral", budgetRemaining, reason: "leash" };
       if (budgetRemaining <= 0) return none("budget_exhausted");
-      return { intensity: tuning.preventiveIntensity, mode: "preventive", budgetRemaining, reason: "leash" };
+      return { intensity: dangerScaledIntensity(tuning.preventiveIntensity, danger), mode: "preventive", budgetRemaining, reason: "leash" };
     }
     return none(input.threat.reason);
   }
@@ -133,7 +146,7 @@ export function planTeamReaction(input: {
   if (input.stance === "neutral") {
     if (input.availableWorkers.length === 0) return none("no_workers");
     const intensity = input.threat.severity === "serious" ? tuning.neutralSeriousIntensity : tuning.neutralModerateIntensity;
-    return { intensity, mode: "neutral", budgetRemaining, reason: input.threat.reason };
+    return { intensity: dangerScaledIntensity(intensity, danger), mode: "neutral", budgetRemaining, reason: input.threat.reason };
   }
 
   // #5978 (KUN orders_gc_v3): lad-gaa-undtagelsen beskytter kun klassementet.
@@ -147,7 +160,7 @@ export function planTeamReaction(input: {
   if (prior.status === "exhausted" || budgetRemaining <= 0) return none("budget_exhausted");
   if (input.availableWorkers.length === 0) return none("no_workers");
   const reason = input.threat.severity === "serious" ? input.threat.reason : "leash";
-  return { intensity: tuning.preventiveIntensity, mode: "preventive", budgetRemaining, reason };
+  return { intensity: dangerScaledIntensity(tuning.preventiveIntensity, danger), mode: "preventive", budgetRemaining, reason };
 }
 
 /**

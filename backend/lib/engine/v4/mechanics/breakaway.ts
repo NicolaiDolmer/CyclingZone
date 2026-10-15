@@ -97,6 +97,7 @@ import {
 import {
   assessGcThreat,
   formationDangerTeams,
+  isSyntheticFirstStage,
   normalizeGcContext,
   oneDayProtectedRider,
   protectedRiderForTeam,
@@ -494,11 +495,14 @@ function formationDangerLookup(
  * forreste (rang <= rivalRankAlways) moeder de forsvarende holds modstand med
  * sin egen vaegt; alle andre farlige forsoeg som under orders_gc_v3. Uden
  * knappen (orders_gc_v3 og aeldre): intet (bit-identisk).
+ * #5978 (KUN s5_profiles_v1): paa S5's syntetiske foerste etape staar alle paa
+ * rang 1 uden et rigtigt klassement, saa ingen er "forrest" (som assessGcThreat).
  */
 export function rankedFormationPressure(gcContext: GcContext, danger: GcDangerTuning | null): { dangerPressureWeight?: (riderId: string) => number } {
   const weight = danger?.formationRankedPressureWeight;
   const rankLimit = danger?.rivalRankAlways;
   if (typeof weight !== "number" || typeof rankLimit !== "number" || gcContext.status !== "standings") return {};
+  if (isSyntheticFirstStage(gcContext)) return {};
   const ranked = new Set(gcContext.standings.filter((s) => s.rank <= rankLimit).map((s) => s.rider_id));
   return { dangerPressureWeight: (riderId) => (ranked.has(riderId) ? weight : DANGEROUS_ATTEMPT_TUNING.pressureWeight) };
 }
