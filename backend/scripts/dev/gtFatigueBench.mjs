@@ -90,8 +90,7 @@ function runGt({ v4, field, race, stages, seasonId, simSeed, model, tuning }) {
   const stageRows = [];
   const dateRows = [];
   const riderStats = new Map(entrants.map((e) => [e.rider_id, { role: e.race_role, team: e.team_id, training: trainingIntensityForTeam(teamIndex.get(e.team_id)), load: 0, front: 0, shelter: 0, protect: 0, stages: 0, risk: 0, peak: 0, cpByWeek: { 1: [], 2: [], 3: [] } }]));
-  let currentDate = 0;
-  const enterDate = (d) => { for (const e of entrants) e.fatigue = cond.get(e.rider_id).fatigue; currentDate = d; };
+  const enterDate = () => { for (const e of entrants) e.fatigue = cond.get(e.rider_id).fatigue; };
   const settleDate = (d, inRaceIds) => {
     const loads = loadsByDate.get(d) ?? new Map();
     const opening = [];
@@ -111,7 +110,7 @@ function runGt({ v4, field, race, stages, seasonId, simSeed, model, tuning }) {
     const closing = inRaceIds.map((id) => cond.get(id).fatigue);
     dateRows.push({ date: d, week: weekOfDate(d, nDates), openMean: mean(opening), closeMean: mean(closing), closeP90: q(closing, 0.9), closeMax: Math.max(...closing), share70: closing.filter((f) => f >= 70).length / closing.length });
   };
-  enterDate(0);
+  enterDate();
   let inRace = entrants;
   const gcFinal = runStagesInOrder({
     v4, data, revision: REVISION, seedTag: `gt5928-${simSeed}`, stages: sorted, entrants,
@@ -142,7 +141,7 @@ function runGt({ v4, field, race, stages, seasonId, simSeed, model, tuning }) {
       const nextD = index + 1 < sorted.length ? dateIdx[index + 1] : nDates;
       if (nextD !== d) {
         for (let dd = d; dd < nextD; dd++) settleDate(dd, inRace.map((e) => e.rider_id));
-        enterDate(nextD);
+        enterDate();
       }
     },
   });
