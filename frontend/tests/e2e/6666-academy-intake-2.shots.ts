@@ -36,11 +36,12 @@ const VIEWPORTS: Viewport[] = [
 
 const createdAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 const expiresAt = new Date(new Date(createdAt).getTime() + 7 * 86_400_000).toISOString();
-const PULLED = [
+type PulledRow = [string, string, string, string, string, string, number];
+const PULLED = ([
   ["Mathias", "Holm", "2009-06-15", "dk", "climber", "gc", 3200],
   ["Oskar", "Lind", "2008-06-15", "se", "climber", "puncheur", 2100],
   ["Pieter", "Claes", "2007-06-15", "be", "rouleur", "brostensrytter", 4400],
-].map(([firstname, lastname, birthdate, nat, p, s, value], i) => ({
+] as PulledRow[]).map(([firstname, lastname, birthdate, nat, p, s, value], i) => ({
   intakeId: `pull-${i}`,
   riderId: `pull-r${i}`,
   is_serious: false,
@@ -85,7 +86,7 @@ function payloadFor(variant: "before" | "after") {
   return {
     ...SEED_ACADEMY,
     intake: PULLED,
-    roster: SEED_ACADEMY.roster.map((r, i) => ({ ...r, prognosis: ROSTER_PROGNOSIS[i % ROSTER_PROGNOSIS.length] })),
+    roster: SEED_ACADEMY.roster.map((r: Record<string, unknown>, i: number) => ({ ...r, prognosis: ROSTER_PROGNOSIS[i % ROSTER_PROGNOSIS.length] })),
     intakePull: { enabled: true, pulledThisWeek: true },
     academyProfile: PROFILE,
   };
@@ -94,7 +95,7 @@ function payloadFor(variant: "before" | "after") {
 const serve = sirv(DIST, { single: "app.html", etag: true, dev: true });
 const server = http.createServer(serve);
 server.keepAliveTimeout = 0;
-await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
+await new Promise<void>((ok) => server.listen(0, "127.0.0.1", () => ok()));
 const BASE = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
 mkdirSync(OUT, { recursive: true });
