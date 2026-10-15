@@ -60,6 +60,10 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>("12");
   const last = useRef(0);
+  // Afspilningen regner naeste tid ud fra en ref, ikke inde i en state-updater,
+  // saa stop-betingelsen aldrig afhaenger af hvornaar React koerer updateren.
+  const raceTRef = useRef(raceT);
+  useEffect(() => { raceTRef.current = raceT; }, [raceT]);
 
   useEffect(() => {
     if (!playing) return undefined;
@@ -68,13 +72,10 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
     const tick = (now: number) => {
       const dt = (now - last.current) / 1000;
       last.current = now;
-      let done = false;
-      setRaceT((prev) => {
-        const next = Math.min(tEnd, prev + dt * Number(speed));
-        if (next >= tEnd) done = true;
-        return next;
-      });
-      if (done) { setPlaying(false); return; }
+      const next = Math.min(tEnd, raceTRef.current + dt * Number(speed));
+      raceTRef.current = next;
+      setRaceT(next);
+      if (next >= tEnd) { setPlaying(false); return; }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

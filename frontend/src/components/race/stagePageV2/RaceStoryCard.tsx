@@ -79,7 +79,8 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
           className="[&>button]:min-h-11"
         />
       </div>
-      {!finale && <p className="m-0 mb-3 text-xs text-cz-3">{t("stagePageV2.story.noFinal")}</p>}
+      {/* Forklaringen gaelder kun en log uden praecise tider (CodeRabbit). */}
+      {!finale && !story.precise_times && <p className="m-0 mb-3 text-xs text-cz-3">{t("stagePageV2.story.noFinal")}</p>}
 
       {view === "route" && routeBody}
       {view === "stage" && (
