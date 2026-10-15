@@ -2,30 +2,79 @@
 //
 // Ejer-beslutning 15/10: kun afsluttede løb; pr. løb vindere pr. sæson, dit
 // bedste resultat, forsvarende mester og typisk afgørelse (samme "afgøres i"
-// som kalenderens løbskort, lib/racePeek.js). Ingen km, ingen fjerde side:
+// som kalenderens løbskort, lib/racePeek.ts). Ingen km, ingen fjerde side:
 // løbets navn fører til den eksisterende løbsside (/race-archive/:navn), og
 // hver udgave til sit eget resultat (/races/:id).
 //
 // T2 (PAGE_TEMPLATES): FilterBar (søg + én pulje-vælger) + DataTable med D-047
 // på mobil (navn + tre kolonner, "Fuld tabel" til resten). Data hentes pr.
-// pulje, så en udgave pr. sæson er entydig. Modellen er lib/raceHistoryModel.js.
-import { useCallback, useEffect, useMemo, useState } from "react";
+// pulje, så en udgave pr. sæson er entydig. Modellen er lib/raceHistoryModel.ts.
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ComponentType, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { supabase } from "../../lib/supabase";
-import { fetchAllRows } from "../../lib/supabasePagination";
+import { supabase } from "../../lib/supabase.ts";
+import { fetchAllRows } from "../../lib/supabasePagination.js";
 import { applySeniorSquadFilter } from "../../lib/seniorScope.ts";
-import { groupColor } from "../../lib/racePeek.js";
-import { buildRaceHistory, matchesSearch, paginate, HISTORY_PAGE_SIZE } from "../../lib/raceHistoryModel.js";
+import { groupColor } from "../../lib/racePeek.ts";
 import {
-  FilterBar, DataTable, Section, SkeletonLines, ErrorState, EmptyState, Button,
-  FlagIcon, ChevronLeftIcon, ChevronRightIcon,
-} from "../ui";
+  buildRaceHistory, matchesSearch, paginate, HISTORY_PAGE_SIZE,
+  type HistoryRace, type HistoryRow, type ProfileRow, type ResultRow,
+} from "../../lib/raceHistoryModel.ts";
+import FilterBarBase from "../ui/FilterBar.jsx";
+import { DataTable as DataTableBase } from "../ui/DataTable.jsx";
+import SectionBase from "../ui/Section.jsx";
+import { SkeletonLines as SkeletonLinesBase } from "../ui/Skeleton.jsx";
+import ErrorStateBase from "../ui/ErrorState.jsx";
+import EmptyStateBase from "../ui/EmptyState.jsx";
+import ButtonBase from "../ui/Button.jsx";
+import { FlagIcon, ChevronLeftIcon, ChevronRightIcon } from "../ui/icons/index.jsx";
+
+// Primitiverne i components/ui er stadig .jsx uden typer (samme greb som
+// TradeListPage.tsx): kontrakten skrives ned her, læst af filerne selv.
+interface Column {
+  key: string;
+  header: string;
+  sticky?: boolean;
+  numeric?: boolean;
+  mobileHeader?: string;
+  render: (row: HistoryRow) => ReactNode;
+  subline?: (row: HistoryRow) => ReactNode;
+}
+interface FilterBarProps {
+  className?: string;
+  search?: { value: string; onChange: (e: ChangeEvent<HTMLInputElement>) => void; placeholder: string; testId?: string };
+  filters?: { key: string; value: string; onChange: (e: ChangeEvent<HTMLSelectElement>) => void; ariaLabel: string; options: { value: string; label: string }[] }[];
+  meta?: ReactNode;
+}
+interface DataTableProps {
+  label: string;
+  rowKey: (row: HistoryRow) => string;
+  rows: HistoryRow[];
+  columns: Column[];
+  mobileDefaults?: string[];
+  dense?: boolean;
+  empty?: ReactNode;
+}
+interface StateProps { icon?: ReactNode; title?: string; description?: string; action?: ReactNode }
+interface ButtonProps {
+  size?: string; variant?: string; disabled?: boolean; onClick?: () => void;
+  iconLeft?: ReactNode; iconRight?: ReactNode; children?: ReactNode;
+}
+const FilterBar = FilterBarBase as unknown as ComponentType<FilterBarProps>;
+const DataTable = DataTableBase as unknown as ComponentType<DataTableProps>;
+const Section = SectionBase as unknown as ComponentType<{ children?: ReactNode }>;
+const SkeletonLines = SkeletonLinesBase as unknown as ComponentType<{ lines?: number }>;
+const ErrorState = ErrorStateBase as unknown as ComponentType<StateProps>;
+const EmptyState = EmptyStateBase as unknown as ComponentType<StateProps>;
+const Button = ButtonBase as unknown as ComponentType<ButtonProps>;
+
+interface Pool { id: number; tier: number; pool_index: number; label: string }
+interface RaceRow { id: string; name: string; race_type: string | null; race_class: string | null; stages: number | null; season: { number: number | null } | null }
 
 const ID_CHUNK = 100; // samme loft som biblioteket i #6636 (URL-længde på .in())
 
-function chunks(list) {
-  const out = [];
+function chunks<T>(list: readonly T[]): T[][] {
+  const out: T[][] = [];
   for (let i = 0; i < list.length; i += ID_CHUNK) out.push(list.slice(i, i + ID_CHUNK));
   return out;
 }
@@ -33,43 +82,51 @@ function chunks(list) {
 // Seniorpuljer (squad null/senior), også pensionerede: historikken dækker
 // tidligere sæsoner. Callback-formen gør scopet synligt for #5517-vagten
 // (backend/lib/squadSeniorReaders.test.js), samme greb som #6636.
-function withSeniorSquadScope(build) {
+function withSeniorSquadScope<R>(build: (scope: typeof applySeniorSquadFilter) => R): R {
   return build(applySeniorSquadFilter);
 }
 
 // "Jonas Riedel" -> "J. Riedel": tre tidligere vindere skal kunne stå på én linje.
-function shortName(name) {
+function shortName(name: string): string {
   const parts = String(name).trim().split(/\s+/);
   return parts.length > 1 ? `${parts[0][0]}. ${parts.slice(1).join(" ")}` : String(name);
 }
 
-async function readChunked(ids, build) {
-  const out = [];
+// Henter alle rækker for en id-liste: id-chunks (URL-længde) og fetchAllRows pr.
+// chunk (PostgREST' 1000-rækkers loft).
+async function readChunked<T>(ids: readonly string[], build: (ids: string[]) => unknown): Promise<T[]> {
+  const out: T[] = [];
   for (const part of chunks(ids)) {
-    const rows = await fetchAllRows(() => build(part));
+    const rows = (await fetchAllRows(() => build(part))) as T[];
     out.push(...rows);
   }
   return out;
 }
 
 // Hele læsningen for én pulje. Kaster ved fejl (ErrorState + retry).
-async function loadHistory({ poolId, teamId }) {
-  // pagination-safe: fetchAllRows + id-chunks; én pulje = én udgave pr. løb pr. sæson.
-  const races = await fetchAllRows(() => applySeniorSquadFilter(supabase
+async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string | null }): Promise<HistoryRow[]> {
+  // pagination-safe: fetchAllRows; én pulje = én udgave pr. løb pr. sæson.
+  const races = (await fetchAllRows(() => applySeniorSquadFilter(supabase
     .from("races")
     .select("id, name, race_type, race_class, stages, status, season:season_id(number)"))
     .eq("league_division_id", poolId)
     .eq("status", "completed")
-    .order("id", { ascending: true }));
-  const flat = races.map((r) => ({ ...r, season_number: r.season?.number ?? null }));
+    .order("id", { ascending: true }))) as RaceRow[];
+  const flat: HistoryRace[] = races.map((r) => ({
+    id: r.id, name: r.name, race_type: r.race_type, race_class: r.race_class, stages: r.stages, season_number: r.season?.number ?? null,
+  }));
   const oneDayIds = flat.filter((r) => r.race_type !== "stage_race").map((r) => r.id);
   const stageIds = flat.filter((r) => r.race_type === "stage_race").map((r) => r.id);
   const winnerCols = "race_id, stage_number, result_type, rank, rider_id, rider_name, team_name";
 
   const [oneDayWinners, stageWinners] = await Promise.all([
-    readChunked(oneDayIds, (ids) => supabase.from("race_results").select(winnerCols)
+    readChunked<ResultRow>(oneDayIds, (ids) => supabase
+      // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
+      .from("race_results").select(winnerCols)
       .in("race_id", ids).eq("result_type", "stage").eq("rank", 1).order("id", { ascending: true })),
-    readChunked(stageIds, (ids) => supabase.from("race_results").select(winnerCols)
+    readChunked<ResultRow>(stageIds, (ids) => supabase
+      // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
+      .from("race_results").select(winnerCols)
       .in("race_id", ids).eq("result_type", "gc").eq("rank", 1).order("id", { ascending: true })),
   ]);
   const winnerRows = [...oneDayWinners, ...stageWinners];
@@ -77,23 +134,28 @@ async function loadHistory({ poolId, teamId }) {
   // Holdets placeringer: kun den endelige stilling. Endagsløb = stage; etapeløb =
   // gc ved sidste etape, grupperet pr. sidste-etape-nummer så hver forespørgsel
   // kun henter den ene etapes gc-rækker.
-  let myRows = [];
+  let myRows: ResultRow[] = [];
   if (teamId) {
-    const lastStage = new Map();
+    const lastStage = new Map<string, number>();
     for (const w of stageWinners) {
       const n = Number(w.stage_number) || 1;
-      if (!lastStage.has(w.race_id) || n > lastStage.get(w.race_id)) lastStage.set(w.race_id, n);
+      const cur = lastStage.get(w.race_id);
+      if (cur === undefined || n > cur) lastStage.set(w.race_id, n);
     }
-    const byFinal = new Map();
+    const byFinal = new Map<number, string[]>();
     for (const [raceId, n] of lastStage) {
-      if (!byFinal.has(n)) byFinal.set(n, []);
-      byFinal.get(n).push(raceId);
+      const list = byFinal.get(n) ?? [];
+      list.push(raceId);
+      byFinal.set(n, list);
     }
     const parts = await Promise.all([
-      readChunked(oneDayIds, (ids) => supabase.from("race_results").select("race_id, stage_number, result_type, rank")
+      readChunked<ResultRow>(oneDayIds, (ids) => supabase
+        // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
+        .from("race_results").select("race_id, stage_number, result_type, rank")
         .in("race_id", ids).eq("team_id", teamId).eq("result_type", "stage").order("id", { ascending: true })),
-      ...[...byFinal].map(([n, ids]) => readChunked(ids, (part) => supabase.from("race_results")
-        .select("race_id, stage_number, result_type, rank")
+      ...[...byFinal].map(([n, ids]) => readChunked<ResultRow>(ids, (part) => supabase
+        // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
+        .from("race_results").select("race_id, stage_number, result_type, rank")
         .in("race_id", part).eq("team_id", teamId).eq("result_type", "gc").eq("stage_number", n)
         .order("id", { ascending: true }))),
     ]);
@@ -101,25 +163,27 @@ async function loadHistory({ poolId, teamId }) {
   }
 
   // Typisk afgørelse: ruten for hvert løbs nyeste udgave.
-  const latestByFamily = new Map();
+  const latestByFamily = new Map<string, HistoryRace>();
   for (const r of flat) {
     const key = `${r.name}|${r.race_type ?? ""}`;
     const cur = latestByFamily.get(key);
     if (!cur || (r.season_number ?? 0) > (cur.season_number ?? 0)) latestByFamily.set(key, r);
   }
-  const profiles = await readChunked([...latestByFamily.values()].map((r) => r.id), (ids) => supabase
+  const profiles = await readChunked<ProfileRow>([...latestByFamily.values()].map((r) => r.id), (ids) => supabase
+    // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
     .from("race_stage_profiles").select("race_id, stage_number, profile_type")
     .in("race_id", ids).order("race_id").order("stage_number"));
 
   return buildRaceHistory({ races: flat, winnerRows, myRows, profiles });
 }
 
+
 export default function RaceHistoryLibrary() {
   const { t } = useTranslation(["results", "races"]);
-  const [pools, setPools] = useState([]);
-  const [team, setTeam] = useState(null); // { id, poolId }
-  const [poolId, setPoolId] = useState(null);
-  const [rows, setRows] = useState(null); // null = henter
+  const [pools, setPools] = useState<Pool[]>([]);
+  const [team, setTeam] = useState<{ id: string; poolId: number | null } | null>(null);
+  const [poolId, setPoolId] = useState<number | null>(null);
+  const [rows, setRows] = useState<HistoryRow[] | null>(null); // null = henter
   const [loadError, setLoadError] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const [search, setSearch] = useState("");
@@ -138,7 +202,7 @@ export default function RaceHistoryLibrary() {
         ]);
         if (!alive) return;
         if (poolsRes.error) { setLoadError(true); setRows([]); return; }
-        const list = poolsRes.data || [];
+        const list = (poolsRes.data || []) as Pool[];
         setPools(list);
         const own = teamRes.data ? { id: teamRes.data.id, poolId: teamRes.data.league_division_id ?? null } : null;
         setTeam(own);
@@ -170,11 +234,11 @@ export default function RaceHistoryLibrary() {
   const filtered = useMemo(() => (rows || []).filter((r) => matchesSearch(r.name, search)), [rows, search]);
   const pg = paginate(filtered, page, HISTORY_PAGE_SIZE);
 
-  const seasonTag = (n) => (n != null ? t("raceHistory.seasonShort", { number: n }) : "");
-  const classLabel = (r) => (r.raceClass ? t(`races:classOption.${r.raceClass}`, { defaultValue: r.raceClass }) : null);
-  const typeLabel = (r) => (r.raceType === "stage_race" ? t("raceHistory.stages", { count: r.stages }) : t("raceHistory.oneDay"));
+  const seasonTag = (n: number | null | undefined) => (n != null ? t("raceHistory.seasonShort", { number: n }) : "");
+  const classLabel = (r: HistoryRow) => (r.raceClass ? t(`races:classOption.${r.raceClass}`, { defaultValue: r.raceClass }) : null);
+  const typeLabel = (r: HistoryRow) => (r.raceType === "stage_race" ? t("raceHistory.stages", { count: r.stages }) : t("raceHistory.oneDay"));
 
-  const columns = [
+  const columns: Column[] = [
     {
       key: "name",
       header: t("raceHistory.th.race"),

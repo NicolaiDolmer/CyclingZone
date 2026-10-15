@@ -7,43 +7,88 @@
 // ellers uændret.
 //
 // Kortet er UI-kittets Modal (PAGE_TEMPLATES: ingen ny dialog-markup). Al
-// regning bor i lib/racePeek.js (ren, testet); denne fil er render + IO.
-import { useEffect, useMemo, useState } from "react";
+// regning bor i lib/racePeek.ts (ren, testet); denne fil er render + IO.
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { Link } from "react-router";
-import { supabase, authHeaders } from "../../lib/supabase";
+import { supabase, authHeaders } from "../../lib/supabase.ts";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import {
   stripSegments, decidedIn, groupColor, bucketGroup, raceDateRange, teamFit, selectionHref,
-} from "../../lib/racePeek.js";
-import { Modal, StatusBadge, Skeleton, SkeletonLines } from "../ui";
+  type CalendarEntryLike, type FitRider, type RaceStatus, type StripSegment, type StageProfileLike,
+} from "../../lib/racePeek.ts";
+import ModalBase from "../ui/Modal.jsx";
+import StatusBadgeBase from "../ui/StatusBadge.jsx";
+import SkeletonBase, { SkeletonLines as SkeletonLinesBase } from "../ui/Skeleton.jsx";
 import { buttonClass } from "../ui/buttonStyles.js";
+
+// Primitiverne i components/ui er stadig .jsx uden typer (samme greb som
+// TradeListPage.tsx): kontrakten skrives ned her, læst af de tre filer.
+interface ModalProps {
+  open: boolean;
+  onClose: () => void;
+  title?: ReactNode;
+  description?: ReactNode;
+  footer?: ReactNode;
+  size?: string;
+  closeLabel?: string;
+  ariaLabelledby?: string;
+  children?: ReactNode;
+}
+const Modal = ModalBase as unknown as ComponentType<ModalProps>;
+const StatusBadge = StatusBadgeBase as unknown as ComponentType<{ state: string; children?: ReactNode }>;
+const Skeleton = SkeletonBase as unknown as ComponentType<{ className?: string }>;
+const SkeletonLines = SkeletonLinesBase as unknown as ComponentType<{ lines?: number }>;
+
+type Translate = (key: string, opts?: Record<string, unknown>) => string;
+
+export interface PeekEntry extends CalendarEntryLike {
+  name: string;
+  raceType?: string | null;
+  stages?: number | null;
+  poolLabel?: string | null;
+  terrain?: string | null;
+}
+
+interface SeasonFitRace { id: string; demandVector?: Record<string, number> | null; sizeMax?: number | null }
+interface SeasonFitData { enabled?: boolean; races?: SeasonFitRace[]; riders?: FitRider[] }
 
 // Sæsonmatrixens svar pr. sæson (trup + rute-match pr. løb). Hentes først når et
 // kort for holdets eget løb åbnes, og kun én gang pr. sæson pr. sideindlæsning.
-const seasonFitCache = new Map();
-function loadSeasonFit(seasonNumber) {
+const seasonFitCache = new Map<string, Promise<SeasonFitData | null>>();
+function loadSeasonFit(seasonNumber: number | null | undefined): Promise<SeasonFitData | null> {
   const key = String(seasonNumber ?? "active");
-  if (!seasonFitCache.has(key)) {
-    const p = (async () => {
-      const headers = await authHeaders({ json: false });
-      if (!headers) return null;
-      const qs = Number.isFinite(seasonNumber) ? `?season_number=${seasonNumber}` : "";
-      const res = await apiFetch(`/api/races/selection/season${qs}`, { headers });
-      return res.ok && res.data?.enabled ? res.data : null;
-    })().catch(() => null);
-    p.then((v) => { if (!v) seasonFitCache.delete(key); });
-    seasonFitCache.set(key, p);
-  }
-  return seasonFitCache.get(key);
+  const cached = seasonFitCache.get(key);
+  if (cached) return cached;
+  const p = (async () => {
+    const headers = await authHeaders({ json: false });
+    if (!headers) return null;
+    const qs = Number.isFinite(seasonNumber) ? `?season_number=${seasonNumber}` : "";
+    const res = await apiFetch(`/api/races/selection/season${qs}`, { headers });
+    const data = res.data as SeasonFitData | null;
+    return res.ok && data?.enabled ? data : null;
+  })().catch(() => null);
+  p.then((v) => { if (!v) seasonFitCache.delete(key); });
+  seasonFitCache.set(key, p);
+  return p;
 }
 
-const STATUS_BADGE = { missing: "closing", selected: "won", gtBound: "info" };
+const STATUS_BADGE: Record<RaceStatus, string> = { missing: "closing", selected: "won", gtBound: "info" };
 
-export default function RacePeekCard({ entry, status, days, seasonNumber, t, locale, onClose }) {
+interface RacePeekCardProps {
+  entry: PeekEntry | null;
+  status: RaceStatus | null;
+  days: ReadonlyArray<{ date?: string | null }>;
+  seasonNumber?: number | null;
+  t: Translate;
+  locale?: string;
+  onClose: () => void;
+}
+
+export default function RacePeekCard({ entry, status, days, seasonNumber, t, locale, onClose }: RacePeekCardProps) {
   const open = entry != null;
   const raceId = entry?.id ?? null;
-  const [profiles, setProfiles] = useState(null); // null = henter
-  const [fitData, setFitData] = useState(undefined); // undefined = henter, null = intet
+  const [profiles, setProfiles] = useState<StageProfileLike[] | null>(null); // null = henter
+  const [fitData, setFitData] = useState<SeasonFitData | null | undefined>(undefined); // undefined = henter
 
   useEffect(() => {
     if (!raceId) return undefined;
@@ -51,7 +96,7 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
     setProfiles(null);
     // pagination-safe: filtreret på ét race_id, højst én række pr. etape.
     supabase.from("race_stage_profiles").select("stage_number, profile_type").eq("race_id", raceId).order("stage_number")
-      .then(({ data, error }) => { if (alive) setProfiles(error ? [] : data || []); },
+      .then(({ data, error }) => { if (alive) setProfiles(error ? [] : (data as StageProfileLike[] | null) || []); },
         () => { if (alive) setProfiles([]); });
     return () => { alive = false; };
   }, [raceId]);
@@ -67,7 +112,7 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
 
   // Strimlen: race_stage_profiles; mangler de, falder kortet tilbage til
   // kalenderens egen terræn-bucket pr. etape (aldrig et tomt kort).
-  const segments = useMemo(() => {
+  const segments = useMemo<StripSegment[]>(() => {
     if (!entry) return [];
     if (profiles && profiles.length) return stripSegments(profiles);
     const sched = (entry.stageSchedule || []).slice().sort((a, b) => a.stage - b.stage);
@@ -84,7 +129,7 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
     return teamFit({ demandVector: race.demandVector, riders: fitData.riders, size: race.sizeMax });
   }, [fitData, raceId]);
 
-  if (!open) return null;
+  if (!entry) return null;
 
   const range = raceDateRange(entry);
   const isStageRace = entry.raceType === "stage_race";
@@ -175,7 +220,7 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
   );
 }
 
-function Row({ label, children }) {
+function Row({ label, children }: { label: string; children?: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
       <dt className="shrink-0 text-cz-2">{label}</dt>
@@ -184,13 +229,13 @@ function Row({ label, children }) {
   );
 }
 
-// "18.-25. okt." / "18-25 Oct": Intl's egen interval-formattering, Europe/Copenhagen.
-function formatRange({ start, end }, locale) {
-  const toDate = (iso) => {
+// "26.-28. okt." / "Oct 26 - 28": Intl's egen interval-formattering, Europe/Copenhagen.
+function formatRange({ start, end }: { start: string; end: string }, locale?: string): string {
+  const toDate = (iso: string) => {
     const [y, m, d] = iso.split("-").map(Number);
     return new Date(Date.UTC(y, m - 1, d, 12));
   };
   const fmt = new Intl.DateTimeFormat(locale || "en", { timeZone: "Europe/Copenhagen", day: "numeric", month: "short" });
-  if (start === end || typeof fmt.formatRange !== "function") return fmt.format(toDate(start));
+  if (start === end) return fmt.format(toDate(start));
   return fmt.formatRange(toDate(start), toDate(end));
 }

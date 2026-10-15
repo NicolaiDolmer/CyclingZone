@@ -8,7 +8,7 @@ import RacePointsPage from "./RacePointsPage";
 import RaceArchiveTable from "../components/race/RaceArchiveTable.jsx";
 import CompletedRacesExplorer from "../components/race/CompletedRacesExplorer.jsx";
 import WorldCatalog from "../components/race/WorldCatalog.jsx";
-import RaceHistoryLibrary from "../components/race/RaceHistoryLibrary.jsx"; // #6514
+import RaceHistoryLibrary from "../components/race/RaceHistoryLibrary.tsx"; // #6514
 import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
 import { Flag } from "../components/Flag";
 import { formatNumber, formatDate } from "../lib/intl";

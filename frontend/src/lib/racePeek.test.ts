@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {
   profileGroup, bucketGroup, groupColor, stripSegments, decidedIn, raceDateRange,
   isGrandTour, myRaceStatus, teamFit, selectionDayOrdinal, selectionHref, PEEK_GROUPS,
-} from "./racePeek.js";
+  type PeekGroup,
+} from "./racePeek.ts";
 
 test("#6514 profileGroup: tidskørsler samles, klassiker er kuperet, ukendt er fladt", () => {
   assert.equal(profileGroup("itt"), "itt");
@@ -38,7 +39,7 @@ test("#6514 stripSegments: sorteret på etapenummer, én blok pr. etape", () => 
 });
 
 test("#6514 decidedIn: hårdeste afgørende grupper først, med antal (ejerens eksempel)", () => {
-  const groups = ["flat", "high_mountain", "itt", "high_mountain", "flat", "high_mountain", "itt", "high_mountain", "hilly"];
+  const groups: PeekGroup[] = ["flat", "high_mountain", "itt", "high_mountain", "flat", "high_mountain", "itt", "high_mountain", "hilly"];
   assert.deepEqual(decidedIn(groups), [{ group: "high_mountain", count: 4 }, { group: "itt", count: 2 }]);
 });
 
@@ -53,9 +54,9 @@ test("#6514 decidedIn: brosten afgør et endagsløb", () => {
 });
 
 test("#6514 raceDateRange: etapeplanen først, ellers entry.date", () => {
-  assert.deepEqual(raceDateRange({ stageSchedule: [{ date: "2026-10-20" }, { date: "2026-10-18" }] }), { start: "2026-10-18", end: "2026-10-20" });
-  assert.deepEqual(raceDateRange({ date: "2026-10-05" }), { start: "2026-10-05", end: "2026-10-05" });
-  assert.equal(raceDateRange({}), null);
+  assert.deepEqual(raceDateRange({ id: "x", stageSchedule: [{ stage: 2, date: "2026-10-20" }, { stage: 1, date: "2026-10-18" }] }), { start: "2026-10-18", end: "2026-10-20" });
+  assert.deepEqual(raceDateRange({ id: "x", date: "2026-10-05" }), { start: "2026-10-05", end: "2026-10-05" });
+  assert.equal(raceDateRange({ id: "x" }), null);
 });
 
 test("#6514 isGrandTour: kun de to GT-klasser", () => {
@@ -65,7 +66,7 @@ test("#6514 isGrandTour: kun de to GT-klasser", () => {
 });
 
 const TODAY = "2026-10-15";
-const gt = { id: "gt", isMine: true, entered: true, raceClass: "GiroVuelta", stageSchedule: [{ date: "2026-10-16" }, { date: "2026-10-22" }] };
+const gt = { id: "gt", isMine: true, entered: true, raceClass: "GiroVuelta", stageSchedule: [{ stage: 1, date: "2026-10-16" }, { stage: 2, date: "2026-10-22" }] };
 
 test("#6514 myRaceStatus: andres løb og kørte løb har ingen status", () => {
   assert.equal(myRaceStatus({ id: "a", isMine: false, date: "2026-10-20" }, [], TODAY), null);
@@ -88,7 +89,7 @@ test("#6514 myRaceStatus: en GT holdet ikke har udtaget til binder ingenting", (
   assert.equal(myRaceStatus(clash, [openGt, clash], TODAY), "missing");
 });
 
-const ab = (over) => ({ climbing: 50, time_trial: 50, sprint: 50, ...over });
+const ab = (over: Record<string, number>) => ({ climbing: 50, time_trial: 50, sprint: 50, ...over });
 
 test("#6514 teamFit: gennemsnit af de N bedste mod løbets demand, bedste bud er nr. 1", () => {
   const riders = [
@@ -97,6 +98,7 @@ test("#6514 teamFit: gennemsnit af de N bedste mod løbets demand, bedste bud er
     { id: "r3", name: "C", abilities: ab({ climbing: 40 }) },
   ];
   const fit = teamFit({ demandVector: { climbing: 1 }, riders, size: 2 });
+  assert.ok(fit);
   assert.equal(fit.best.id, "r1");
   assert.equal(fit.best.score, 100);
   assert.equal(fit.counted, 2);
@@ -111,12 +113,13 @@ test("#6514 teamFit: skadede, solgte og ryttere uden evner tæller ikke", () => 
     { id: "r4", name: "D", abilities: ab({ climbing: 60 }) },
   ];
   const fit = teamFit({ demandVector: { climbing: 1 }, riders, size: 6 });
+  assert.ok(fit);
   assert.equal(fit.best.id, "r4");
   assert.equal(fit.counted, 1);
 });
 
 test("#6514 teamFit: ingen demand eller ingen ryttere giver null (intet opdigtet tal)", () => {
-  assert.equal(teamFit({ demandVector: null, riders: [{ id: "x", abilities: ab({}) }] }), null);
+  assert.equal(teamFit({ demandVector: null, riders: [{ id: "x", name: "X", abilities: ab({}) }] }), null);
   assert.equal(teamFit({ demandVector: { climbing: 1 }, riders: [] }), null);
 });
 

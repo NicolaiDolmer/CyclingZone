@@ -16,8 +16,8 @@ import {
   stepMonth,
 } from "../lib/calendarGrid.js";
 import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
-import { myRaceStatus } from "../lib/racePeek.js"; // #6514
-import RacePeekCard from "../components/calendar/RacePeekCard.jsx"; // #6514
+import { myRaceStatus } from "../lib/racePeek.ts"; // #6514
+import RacePeekCard from "../components/calendar/RacePeekCard.tsx"; // #6514
 
 const API = import.meta.env.VITE_API_URL;
 
