@@ -288,6 +288,15 @@ test("toCalendarWireEntry dropper de felter ingen kalender-klient læser (#2861)
   }
 });
 
+test("#6514 withdrawn: afmeldt loeb markeres, kun sendt paa wire naar true", () => {
+  const { entries } = buildCalendarModel(sampleInput({ teamWithdrawnRaceIds: new Set(["r-single"]) }));
+  const single = entries.find((e) => e.id === "r-single");
+  const stage = entries.find((e) => e.id === "r-stage");
+  assert.equal(single.withdrawn, true);
+  assert.equal(toCalendarWireEntry(single).withdrawn, true);
+  assert.ok(!("withdrawn" in toCalendarWireEntry(stage)));
+});
+
 test("#6514 lineupFrozen: afviklet eller igangvaerende loeb er laast, kun sendt paa wire naar true", () => {
   const input = sampleInput();
   input.races[0] = { ...input.races[0], status: "completed" };

@@ -4938,13 +4938,15 @@ router.get("/races/calendar", requireAuth, cached({
 
     // Bølge 2 — løbene og holdets entries afhænger begge KUN af season.id. Entry-loadet
     // ventede før på raceIds (og sendte dem som id-liste); joinet gør det unødvendigt.
-    const [racesRes, teamEntryRows] = await Promise.all([
+    const [racesRes, teamEntryRows, teamWithdrawnRaceIds] = await Promise.all([
       // #5517: seniorkalenderen — ungdomsløb holdes ude (squads.withSeniorSquadScope).
       withSeniorSquadScope((senior) => senior(supabase
         .from("races")
         .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id, game_day_start"))
         .eq("season_id", season.id)),
       fetchTeamSeasonRaceEntries(supabase, req.team?.id, season.id),
+      // #6514: afmeldte løb (entries bevares ved afmelding) må ikke ligne en udtagelse i kalenderkortet.
+      req.team?.id ? loadWithdrawnRaceIdsForTeam({ supabase, teamId: req.team.id }) : Promise.resolve(new Set()),
     ]);
     if (racesRes.error) throw new Error(`races (calendar): ${racesRes.error.message}`);
     const raceList = racesRes.data || [];
@@ -4974,6 +4976,7 @@ router.get("/races/calendar", requireAuth, cached({
       teamDivisionId: ownPoolId,
       teamEntryRaceIds,
       teamLeaderRaceIds,
+      teamWithdrawnRaceIds,
     });
 
     res.json({

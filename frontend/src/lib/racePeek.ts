@@ -23,6 +23,7 @@ export interface CalendarEntryLike {
   entered?: boolean;
   /** Udtagelsen er låst (løbet er afviklet eller i gang). Sendes kun når true. */
   lineupFrozen?: boolean;
+  withdrawn?: boolean;
   raceClass?: string | null;
   date?: string | null;
   stageSchedule?: StageScheduleItem[] | null;
@@ -146,11 +147,11 @@ export function myRaceStatus(
   entries: readonly CalendarEntryLike[] = [],
   todayIso = "",
 ): RaceStatus | null {
-  if (!entry?.isMine || entry.lineupFrozen) return null;
+  if (!entry?.isMine || entry.lineupFrozen || entry.withdrawn) return null;
   const range = raceDateRange(entry);
   if (!range || (todayIso && range.start < todayIso)) return null;
   if (entry.entered) return "selected";
-  const gt = (entries || []).find((e) => e && e.id !== entry.id && e.isMine && e.entered
+  const gt = (entries || []).find((e) => e && e.id !== entry.id && e.isMine && e.entered && !e.withdrawn
     && isGrandTour(e.raceClass) && rangesOverlap(range, raceDateRange(e)));
   return gt ? "gtBound" : "missing";
 }
