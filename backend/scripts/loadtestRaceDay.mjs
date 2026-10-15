@@ -47,6 +47,9 @@ import { YOUTH_GROUP_SIZE } from "../lib/youthPoolAssignment.js";
 import { copenhagenHourToUTC, copenhagenMidnightUTC } from "../lib/copenhagenTime.js";
 import { isStageSchedulerEnabled, STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled, RACE_ENGINE_V2_FLAG_KEY } from "../lib/raceEngineFlag.js";
+// Samme kl. 20-gate som prod: startTrainingDayCloseAfterStages og runTrainingDayCloseSweep
+// starter ingen sweep før shouldSweepNow(now) tillader det.
+import { shouldSweepNow } from "../lib/trainingDayCloseTrigger.js";
 
 // ─── Referencetal og grænser ──────────────────────────────────────────────────
 
@@ -223,6 +226,30 @@ export function copenhagenHHMM(ms) {
 export function firstTickAtOrAfter(fromMs) {
   const k = Math.ceil((fromMs - STAGE_TICK_OFFSET_MS) / STAGE_TICK_PERIOD_MS);
   return k * STAGE_TICK_PERIOD_MS + STAGE_TICK_OFFSET_MS;
+}
+
+/**
+ * Kadencen for cron'ens "training day-close" (backend/cron.js: setInterval 5 min).
+ * Dens fase afhænger af hvornår processen startede; modellen lægger den på hele
+ * 5-minutter, så den tidligst mulige start er præcis kl. 20:00 dansk tid.
+ */
+export const TRAINING_DAY_CLOSE_CRON_PERIOD_MS = 5 * 60 * 1000;
+
+/**
+ * Hvornår aftentræningen starter i prod, givet tidspunktet hvor dagens sidste etape
+ * blev færdig. Slutter den efter kl. 20, starter stage-scheduleren den med det samme
+ * (startTrainingDayCloseAfterStages). Slutter den før, afviser kl. 20-gaten den tidlige
+ * start, og cron'en starter den på sit første tick, hvor shouldSweepNow er sand.
+ *
+ * @returns {{ startMs: number, trigger: "stage-scheduler" | "cron" }}
+ */
+export function trainingCloseStart(lastStageEndMs) {
+  if (shouldSweepNow(new Date(lastStageEndMs))) return { startMs: lastStageEndMs, trigger: "stage-scheduler" };
+  const period = TRAINING_DAY_CLOSE_CRON_PERIOD_MS;
+  let at = Math.ceil(lastStageEndMs / period) * period;
+  // Gaten er time-baseret i dansk tid; gå frem til første cron-tick inden for vinduet.
+  while (!shouldSweepNow(new Date(at))) at += period;
+  return { startMs: at, trigger: "cron" };
 }
 
 // ─── Fixture: én S5-løbsdag ───────────────────────────────────────────────────
@@ -638,10 +665,16 @@ export async function simulateRaceDay({
   const errors = [];
   const concurrentJobs = [];
   let trainingCloseStarted = false;
+  let lastStageClosedMs = null;
 
-  const emitJob = (kind, startMs, durationMs, calls) => {
+  const emitJob = (kind, startMs, durationMs, calls, trigger = null) => {
     spreadCalls(minuteBuckets, startMs, durationMs, calls);
-    concurrentJobs.push({ kind, startMs, durationMs, calls });
+    concurrentJobs.push({ kind, startMs, durationMs, calls, trigger });
+  };
+  const emitTrainingClose = (startMs, trigger) => {
+    trainingCloseStarted = true;
+    const per = profile.trainingClosePerTeam;
+    emitJob("training_close", startMs, per.ms * fixture.teamsTotal, per.calls * fixture.teamsTotal, trigger);
   };
 
   const runStageFn = async ({ raceId, stageIndex }) => {
@@ -683,13 +716,16 @@ export async function simulateRaceDay({
     }
   };
 
+  // Prod-stien (startTrainingDayCloseAfterStages): kun efter et tick med etaper, kun når
+  // dagens etaper er lukket, og kun inden for kl. 20-vinduet. Før kl. 20 starter cron'en
+  // den i stedet (se trainingCloseStart efter tick-løkken).
   const startTrainingDayClose = ({ stagesRan }) => {
     if (trainingCloseStarted || !stagesRan) return;
     const remaining = expected.filter((e) => (raceById.get(e.raceId)?.stages_completed ?? 0) < e.stageNumber);
     if (remaining.length) return;
-    trainingCloseStarted = true;
-    const per = profile.trainingClosePerTeam;
-    emitJob("training_close", clock.now, per.ms * fixture.teamsTotal, per.calls * fixture.teamsTotal);
+    lastStageClosedMs ??= clock.now;
+    if (!shouldSweepNow(new Date(clock.now))) return;
+    emitTrainingClose(clock.now, "stage-scheduler");
   };
 
   const dayStartMs = copenhagenMidnightUTC(new Date(copenhagenSlotMs(date, "12:00"))).getTime();
@@ -747,6 +783,13 @@ export async function simulateRaceDay({
     console.error = origError;
   }
 
+  // Cron-stien: sidste etape sluttede før kl. 20, så gaten afviste den tidlige start, og
+  // cron'en (5-min-kadence, egen gate) starter aftentræningen ved vinduets åbning.
+  if (!trainingCloseStarted && lastStageClosedMs != null) {
+    const { startMs, trigger } = trainingCloseStart(lastStageClosedMs);
+    emitTrainingClose(startMs, trigger);
+  }
+
   // ── Målinger ──
   const ranKeys = new Set(stageRuns.map((r) => `${r.raceId}:${r.stageNumber}`));
   const missing = expected.filter((e) => !ranKeys.has(`${e.raceId}:${e.stageNumber}`));
@@ -799,7 +842,14 @@ export async function simulateRaceDay({
     stageDelayMsP50: Math.round(percentile(delays, 50)),
     stageDelayMsP90: Math.round(percentile(delays, 90)),
     stageDelayMsMax: Math.round(delays.at(-1) ?? 0),
-    concurrentJobs: concurrentJobs.map((j) => ({ kind: j.kind, at: copenhagenHHMM(j.startMs), durationMs: j.durationMs, calls: j.calls })),
+    concurrentJobs: concurrentJobs.map((j) => ({
+      kind: j.kind, at: copenhagenHHMM(j.startMs), durationMs: j.durationMs, calls: j.calls,
+      ...(j.trigger ? { trigger: j.trigger } : {}),
+    })),
+    trainingClose: (() => {
+      const job = concurrentJobs.find((j) => j.kind === "training_close");
+      return job ? { at: copenhagenHHMM(job.startMs), trigger: job.trigger, calls: job.calls } : null;
+    })(),
     emptyPoolSkipLines: logs.emptyPoolSkips,
     errors: errors.length,
     errorSamples: errors.slice(0, 3),
@@ -839,6 +889,7 @@ export function renderMarkdown(report) {
     lines.push("");
     lines.push(`Puljer: senior ${m.pools.senior}, U23 ${m.pools.u23}, junior ${m.pools.junior} · hold ${fmt(m.teams)} · etaper ${m.stagesRan}/${m.stagesExpected} (${m.finalsRan} afslutninger) · ${m.ticksRun} ticks`);
     lines.push(`Travleste tick: ${m.busiestTick ? `kl. ${m.busiestTick.at}, ${m.busiestTick.stages} etaper, ${fmt(m.busiestTick.calls)} kald` : "ingen"} · kald i døgnet ${fmt(m.totalCalls)} (sweep ${fmt(m.sweepCallsTotal)})`);
+    lines.push(`Aftentræning: ${m.trainingClose ? `kl. ${m.trainingClose.at} (startet af ${m.trainingClose.trigger}), ${fmt(m.trainingClose.calls)} kald` : "ikke startet"}`);
     lines.push("");
     lines.push("| Check | Resultat | Værdi | Grænse | Note |");
     lines.push("|---|---|---|---|---|");
