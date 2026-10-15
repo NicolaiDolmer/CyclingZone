@@ -54,15 +54,22 @@ jobs:
       - name: Selftests
         run: node --test scripts/feature-registry-roadmap-check.test.mjs scripts/roadmap-sync-registry.test.mjs scripts/roadmap-drift.test.mjs
 
+      # Vaekst-tjekket (nye id'er i baseline) giver kun mening mod PR'ens base.
+      # Paa main sammenlignes ikke: origin/main kan allerede vaere laengere fremme.
       - name: Hent main til baseline-sammenligning
+        if: github.event_name == 'pull_request'
         run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
 
-      - name: Spillervendte flag har roadmap-tekst (baseline maa kun skrumpe)
+      - name: Spillervendte flag har roadmap-tekst (PR, baseline maa kun skrumpe)
+        if: github.event_name == 'pull_request'
         run: node scripts/feature-registry-roadmap-check.mjs --base-ref origin/main
+
+      - name: Spillervendte flag har roadmap-tekst
+        if: github.event_name != 'pull_request'
+        run: node scripts/feature-registry-roadmap-check.mjs
 
   sync:
     name: sync
-    needs: roadmap-text
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
