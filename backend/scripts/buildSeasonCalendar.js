@@ -678,6 +678,12 @@ if (isMain) {
   const allowUniformDrift = process.argv.includes("--allow-uniform-target-drift");
   // #6367: en rigtig motor-bench-fil ({ medians: { <afslutning>: sek } }) til benchmark-
   // gatens del (4). Uden den bruges stubben. Flaget er et INPUT, ikke en override.
+  // Ejer-visning før --apply (15/10): --dump-plan <fil> skal have en rigtig sti, ellers stop
+  // FØR planlægning, så "--dump-plan --apply" aldrig skriver en fil ved navn "--apply" og fortsætter.
+  const dumpPlanArg = argOf("--dump-plan");
+  if (process.argv.includes("--dump-plan") && (!dumpPlanArg || dumpPlanArg.startsWith("--"))) {
+    console.error("--dump-plan kræver en filsti"); process.exit(2);
+  }
   const motorBenchArg = argOf("--motor-bench");
   if (process.argv.includes("--motor-bench") && (!motorBenchArg || motorBenchArg.startsWith("--"))) {
     console.error("--motor-bench kræver en filsti"); process.exit(2);
@@ -889,7 +895,7 @@ if (isMain) {
 
     // Ejer ser kalenderen FØR --apply (15/10, S5): --dump-plan <fil> gemmer tørkørslens
     // plan som JSON (Map → objekt), så den kan vises som kalender. Skriver kun lokalt.
-    const dumpPlanPath = argOf("--dump-plan");
+    const dumpPlanPath = dumpPlanArg;
     if (dumpPlanPath) {
       const toJson = (_k, v) => (v instanceof Map ? Object.fromEntries(v) : v instanceof Set ? [...v] : v);
       writeFileSync(resolve(dumpPlanPath), JSON.stringify({ seasonNumber, firstRaceDay, plan }, toJson, 1));

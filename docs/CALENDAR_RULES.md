@@ -344,6 +344,10 @@ Trin 4 findes kun fordi §2c blev ændret 19/9. Det er en **sletning** af sæson
 løb og kalender-form, og den kræver sit eget ejer-go — ikke det samme go som trin 3. Kør
 altid trin 1 igen umiddelbart før: erstatnings-gatens tal er en måling, ikke en hukommelse.
 
+### Ejeren ser kalenderen før `--apply` (`--dump-plan`, 15/10)
+
+`--dump-plan <fil>` gemmer tørkørslens plan som JSON (samme plan som `--apply` skriver: løb, etaper, tider, profiler pr. division). Den bruges til at vise ejeren kalenderen visuelt og holde den op mod forrige sæson, før skrivningen godkendes (S5 15/10). Flaget kræver en filsti og stopper ellers med exit 2, før der planlægges. Det skriver kun en lokal fil og ændrer intet i prod.
+
 ### Trin 0: den gyldne kalender-diff (obligatorisk, [#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123))
 
 **Kør den FØR tørkørslen.** Spørgsmålet "hvad har koden ændret siden sidste gang nogen
