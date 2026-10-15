@@ -33,6 +33,7 @@ const VIDEOGAME_LD = {
   "@type": "VideoGame",
   name: "Cycling Zone",
   url: "https://cyclingzone.org/",
+  inLanguage: "en",
   description: en.meta.description,
   genre: "Sports/Manager",
   gamePlatform: "Web browser",
