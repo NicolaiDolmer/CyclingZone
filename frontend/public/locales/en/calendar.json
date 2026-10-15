@@ -76,5 +76,37 @@
     "description": "Something went wrong loading the race calendar. Try again in a moment.",
     "retry": "Try again",
     "session": "Your session has ended. Sign in again to see the calendar."
+  },
+  "peek": {
+    "stages": "{count, plural, one {# stage} other {# stages}}",
+    "oneDay": "One-day race",
+    "decidedIn": "Decided in",
+    "noProfile": "Route not published yet",
+    "teamFit": "Team fit",
+    "bestBet": "Best bet: {name} ({score})",
+    "fitUnavailable": "Not available for this race",
+    "status": {
+      "label": "Your status",
+      "missing": "Needs selection",
+      "selected": "Selected",
+      "gtBound": "Tied up by your Grand Tour"
+    },
+    "pick": "Pick squad",
+    "editSquad": "Edit squad",
+    "openRace": "Open race",
+    "stripAria": "Stages: {list}",
+    "stageItem": "stage {n} {type}",
+    "group": {
+      "high_mountain": "high mountains",
+      "mountain": "mountains",
+      "medium_mountain": "medium mountains",
+      "itt": "time trial",
+      "ttt": "team time trial",
+      "cobbles": "cobbles",
+      "gravel": "gravel",
+      "hilly": "hills",
+      "rolling": "rolling roads",
+      "flat": "flat roads"
+    }
   }
 }
