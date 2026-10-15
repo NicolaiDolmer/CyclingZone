@@ -44,7 +44,7 @@ export default function ReleaseStaffModal({
         </h2>
         <p className="text-cz-2 text-sm mb-4">{t("release.body")}</p>
 
-        <dl className="text-sm border border-cz-border rounded-lg divide-y divide-cz-border mb-4 text-left">
+        <dl className="text-sm border border-cz-border rounded-cz divide-y divide-cz-border mb-4 text-left">
           <div className="flex items-center justify-between px-3 py-2">
             <dt className="text-cz-3">{t("release.severanceLabel", { multiplier: STAFF_RELEASE_SEVERANCE_WEEKS, weeklyWage: formatNumber(weeklyWage) })}</dt>
             <dd className="font-mono font-bold text-cz-danger">−{formatNumber(severance)} CZ$</dd>
@@ -68,7 +68,7 @@ export default function ReleaseStaffModal({
             type="button"
             onClick={onCancel}
             disabled={busy}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
               bg-cz-subtle text-cz-2 border border-cz-border hover:text-cz-1 transition-colors disabled:opacity-50"
           >
             {t("release.keepButton")}
@@ -77,7 +77,7 @@ export default function ReleaseStaffModal({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold bg-cz-danger text-white
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold bg-cz-danger text-white
               hover:brightness-110 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {busy ? t("release.confirmBusy") : t("release.confirmButton", { amount: formatNumber(severance) })}

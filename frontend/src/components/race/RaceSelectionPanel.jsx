@@ -926,7 +926,7 @@ export default function RaceSelectionPanel({
               type="button"
               onClick={autoSelect}
               disabled={busy || fullyTrainNowLocked}
-              className="px-4 py-2 rounded-lg border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-cz border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t("selection.autoFill")}
             </button>
@@ -939,7 +939,7 @@ export default function RaceSelectionPanel({
               onClick={(event) => saveBlock.guard(save)(event)}
               disabled={busy || fullyTrainNowLocked}
               {...saveBlock.blockedProps}
-              className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              className="px-4 py-2 rounded-cz bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
               {saving ? t("selection.saving") : t(fullyTrainNowLocked ? "selection.saveLocked" : "selection.save")}
             </button>

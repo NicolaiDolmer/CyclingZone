@@ -407,7 +407,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
             return (
               <div
                 key={cls.key}
-                className={`flex justify-between items-center px-3 py-2 rounded-lg border ${
+                className={`flex justify-between items-center px-3 py-2 rounded-cz border ${
                   s.count === 0
                     ? "border-cz-border opacity-50"
                     : "border-cz-border"
@@ -435,7 +435,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           <select
             value={selectedSeasonId}
             onChange={(e) => setSelectedSeasonId(e.target.value)}
-            className="w-full bg-cz-bg border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm"
+            className="w-full bg-cz-bg border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm"
           >
             <option value="">— vælg sæson —</option>
             {seasons.map((s) => (
@@ -502,7 +502,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
               max="200"
               value={raceDaysTarget}
               onChange={(e) => setRaceDaysTarget(e.target.value)}
-              className="w-full bg-cz-bg border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm"
+              className="w-full bg-cz-bg border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm"
             />
           </div>
           <div>
@@ -518,7 +518,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
               max="20"
               value={stageRaceQuota}
               onChange={(e) => setStageRaceQuota(e.target.value)}
-              className="w-full bg-cz-bg border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm"
+              className="w-full bg-cz-bg border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm"
             />
           </div>
           <div className="text-sm self-end">
@@ -553,7 +553,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
         <button
           onClick={generatePreview}
           disabled={generating || !selectedSeasonId}
-          className="w-full sm:w-auto px-4 py-2 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
+          className="w-full sm:w-auto px-4 py-2 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded-cz text-sm font-medium hover:brightness-110 disabled:opacity-50"
         >
           {generating ? "Genererer…" : "Generér forslag"}
         </button>
@@ -596,7 +596,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           </div>
 
           {/* Valgte løb */}
-          <div className="max-h-96 overflow-y-auto border border-cz-border rounded-lg divide-y divide-cz-border">
+          <div className="max-h-96 overflow-y-auto border border-cz-border rounded-cz divide-y divide-cz-border">
             {filteredSelected.map((r) => {
               const isUnchecked = unselectedFromPreview.has(r.id);
               return (
@@ -630,7 +630,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
 
           {/* Omitted (sprunget over af generatoren) — kan inkluderes manuelt */}
           {preview.omitted && preview.omitted.length > 0 && (
-            <div className="border border-cz-border rounded-lg">
+            <div className="border border-cz-border rounded-cz">
               <button
                 onClick={() => setShowOmitted(!showOmitted)}
                 className="w-full px-3 py-2 text-left text-cz-2 text-sm hover:bg-cz-bg flex justify-between items-center"
@@ -681,7 +681,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
 
           {/* Replace-toggle */}
           {existingRaceCount > 0 && (
-            <div className="bg-cz-danger-bg/10 border border-cz-danger/20 rounded-lg p-3">
+            <div className="bg-cz-danger-bg/10 border border-cz-danger/20 rounded-cz p-3">
               <label className="flex items-start gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -705,7 +705,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
           <button
             onClick={saveSelection}
             disabled={saving || finalSelected.length === 0}
-            className="w-full sm:w-auto px-4 py-2 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 bg-cz-accent/10 text-cz-accent border border-cz-accent/30 rounded-cz text-sm font-medium hover:brightness-110 disabled:opacity-50"
           >
             {saving
               ? "Gemmer…"

@@ -238,19 +238,19 @@ export default function AdminSystemTab() {
           <button
             onClick={() => pauseMarket("auctions")}
             disabled={marketPause.level !== "none" || loading.pause_auctions}
-            className="px-4 py-2 bg-cz-warning-bg text-cz-warning border border-cz-warning/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
+            className="px-4 py-2 bg-cz-warning-bg text-cz-warning border border-cz-warning/30 rounded-cz text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
             {loading.pause_auctions ? "..." : "🛑 Frys auktioner"}
           </button>
           <button
             onClick={() => pauseMarket("all")}
             disabled={marketPause.level === "all" || loading.pause_all}
-            className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
+            className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
             {loading.pause_all ? "..." : "🛑 Frys hele markedet"}
           </button>
           <button
             onClick={resumeMarket}
             disabled={marketPause.level === "none" || loading.market_resume}
-            className="px-4 py-2 bg-cz-success-bg text-cz-success border border-cz-success/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
+            className="px-4 py-2 bg-cz-success-bg text-cz-success border border-cz-success/30 rounded-cz text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed">
             {loading.market_resume ? "..." : "▶ Genoptag"}
           </button>
         </div>
@@ -266,7 +266,7 @@ export default function AdminSystemTab() {
             {webhooks.map(w => {
               const result = formatWebhookTest(webhookTestResults[w.id]);
               return (
-              <div key={w.id} className="flex items-center justify-between bg-cz-subtle rounded-lg px-3 py-2">
+              <div key={w.id} className="flex items-center justify-between bg-cz-subtle rounded-cz px-3 py-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-cz-1 text-sm font-medium">{w.webhook_name}</p>
@@ -305,18 +305,18 @@ export default function AdminSystemTab() {
         <div className="flex gap-2 flex-wrap">
           <input type="text" placeholder="Navn" value={newWebhook.webhook_name}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_name: e.target.value }))}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-36 focus:outline-hidden" />
+            className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm w-36 focus:outline-hidden" />
           <input type="text" placeholder="Webhook URL" value={newWebhook.webhook_url}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_url: e.target.value }))}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm flex-1 min-w-[200px] focus:outline-hidden" />
+            className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm flex-1 min-w-[200px] focus:outline-hidden" />
           <select value={newWebhook.webhook_type}
             onChange={e => setNewWebhook(w => ({ ...w, webhook_type: e.target.value }))}
-            className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+            className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
             <option value="general">General</option>
             <option value="transfer_history">Transferhistorik</option>
           </select>
           <button onClick={addWebhook} disabled={loading.webhook_add}
-            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 transition-all disabled:opacity-50">
+            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-sm hover:bg-cz-subtle hover:text-cz-1 transition-all disabled:opacity-50">
             {loading.webhook_add ? "..." : "Tilføj"}
           </button>
         </div>

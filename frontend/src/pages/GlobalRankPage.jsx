@@ -102,7 +102,7 @@ export default function GlobalRankPage() {
     </div>
   );
 
-  // #2849 bølge 3: hand-rolled fejl-banner (rounded-lg + ad-hoc knap) erstattet
+  // #2849 bølge 3: hand-rolled fejl-banner (rounded-cz + ad-hoc knap) erstattet
   // af den kanoniske ErrorState — samme genindlæsning (setPage(0) + reload()).
   if (error) return (
     <ErrorState

@@ -9,7 +9,7 @@ const API = import.meta.env.VITE_API_URL;
 function MasterCard({ t, titleKey, rts, anchorOf, setAnchor, anchorEdits }) {
   if (!rts.length) return null;
   return (
-    <div className="rounded-lg border border-cz-border p-3">
+    <div className="rounded-cz border border-cz-border p-3">
       <p className="text-cz-2 text-xs font-medium mb-2">{t(titleKey)}</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {rts.map((rt) => {
@@ -245,7 +245,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
 
       {/* Kaskade-grid */}
       <p className="text-cz-3 text-xs uppercase tracking-wide mb-2">{t("racePoints.model.cascadeTitle")}</p>
-      <div className="overflow-x-auto rounded-lg border border-cz-border">
+      <div className="overflow-x-auto rounded-cz border border-cz-border">
         <table data-sort-exempt="Pivot-grid: race-klasser x result-typer, ikke en liste" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border">
@@ -312,7 +312,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
       </div>
 
       {/* Sticky action bar */}
-      <div className="mt-4 sticky bottom-2 z-sticky flex items-center justify-end gap-3 bg-cz-card border border-cz-accent/40 rounded-lg px-4 py-2 shadow-lg">
+      <div className="mt-4 sticky bottom-2 z-sticky flex items-center justify-end gap-3 bg-cz-card border border-cz-accent/40 rounded-cz px-4 py-2 shadow-lg">
         {dirtyCount > 0 && (
           <>
             <span className="text-cz-warn text-xs me-auto">{t("racePoints.model.dirty", { count: dirtyCount })}</span>
@@ -320,7 +320,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
               type="button"
               onClick={discardAll}
               disabled={saving}
-              className="px-3 py-1.5 rounded-md text-xs border border-cz-border text-cz-2 hover:text-cz-1 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-cz text-xs border border-cz-border text-cz-2 hover:text-cz-1 disabled:opacity-50"
             >
               {t("racePoints.model.discard")}
             </button>
@@ -330,7 +330,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
           type="button"
           onClick={saveAndGenerate}
           disabled={saving}
-          className="px-3 py-1.5 rounded-md text-xs bg-cz-accent text-cz-bg font-medium disabled:opacity-50"
+          className="px-3 py-1.5 rounded-cz text-xs bg-cz-accent text-cz-bg font-medium disabled:opacity-50"
         >
           {saving ? t("racePoints.model.generating") : t("racePoints.model.save")}
         </button>

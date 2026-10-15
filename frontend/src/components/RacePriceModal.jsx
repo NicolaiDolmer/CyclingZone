@@ -40,14 +40,14 @@ export function RacePriceModal({ show, newPrice, newMinBid, onCancel, onConfirm 
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
               bg-cz-subtle text-cz-2 border border-cz-border hover:text-cz-1 transition-colors"
           >
             {t("common:actions.cancel")}
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold
+            className="flex-1 px-4 py-2.5 rounded-cz text-sm font-bold
               bg-cz-accent text-cz-on-accent hover:brightness-110 transition-all"
           >
             {t("priceChanged.bidCta", { amount: formatNumber(newMinBid) })}
