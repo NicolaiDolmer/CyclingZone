@@ -120,3 +120,16 @@ test("simulateParkingSweep: alle entry-puljer AI-fyldt ⇒ genindplacering i pul
   assert.deepEqual(sim.wouldPark, []);
   assert.deepEqual(sim.placements.map((pl) => [pl.division, pl.leagueDivisionId]), [[MANAGER_ENTRY_DIVISION, "d4c"]]);
 });
+
+test("simulateParkingSweep: pensionerede puljer og ungdomspuljer er aldrig et genindplaceringsmål (#6650)", () => {
+  const base = scenario();
+  base.users.find((u) => u.id === "u-dormant").last_seen = daysAgo(1);
+  base.pools = [
+    ...POOLS,
+    { id: "d4e", tier: MANAGER_ENTRY_DIVISION, pool_index: 4, label: "D4 E", retired_at: "2026-09-27T20:00:00Z" },
+    { id: "u23", tier: MANAGER_ENTRY_DIVISION, pool_index: 0, label: "U23", squad: "u23" },
+  ];
+
+  const sim = simulateParkingSweep(base);
+  assert.deepEqual(sim.placements.map((pl) => pl.leagueDivisionId), ["d4c"]);
+});

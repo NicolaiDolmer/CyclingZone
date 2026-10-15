@@ -129,7 +129,7 @@
       "blocks": {
         "structure": {
           "title": "Divisionsstruktur",
-          "text": "Der er {divisions} divisioner. Division {minDivision} er toppen; Division {maxDivision} er bunden. Hver øvre division sigter mod {divisionCapacity} rigtige hold; bunddivisionen er overløb og kan vokse forbi det."
+          "text": "Der er {divisions} divisioner. Division {minDivision} er toppen; Division {maxDivision} er bunden, og nye hold starter der."
         },
         "promotion": {
           "title": "Op- og nedrykning",

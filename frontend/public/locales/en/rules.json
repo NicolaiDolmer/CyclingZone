@@ -129,7 +129,7 @@
       "blocks": {
         "structure": {
           "title": "Division structure",
-          "text": "There are {divisions} divisions. Division {minDivision} is the top; Division {maxDivision} is the bottom. Each upper division targets {divisionCapacity} real teams; the bottom division is overflow and can grow past that."
+          "text": "There are {divisions} divisions. Division {minDivision} is the top; Division {maxDivision} is the bottom, and new teams start there."
         },
         "promotion": {
           "title": "Promotion & relegation",
