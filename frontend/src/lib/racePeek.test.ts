@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   terrainKind, bucketProfileType, raceTerrain, TERRAIN_KINDS, raceDateRange,
   isGrandTour, myRaceStatus, teamFit, selectionDayOrdinal, selectionHref,
+  raceDetailHref, raceArchiveHref,
 } from "./racePeek.ts";
 
 test("#6514 terrainKind: kalenderens kategorier, ukendt er sprint", () => {
@@ -133,4 +134,18 @@ test("#6514 selectionDayOrdinal: dag 1 = sæsonens tidligste dato", () => {
   assert.equal(selectionDayOrdinal(null, days), null);
   assert.equal(selectionHref("2026-10-10", days), "/planning?tab=selection&day=10");
   assert.equal(selectionHref(null, days), "/planning?tab=selection");
+});
+
+test("#6514 raceDetailHref: etape bevares, uden etape er linket uaendret", () => {
+  assert.equal(raceDetailHref("r1"), "/races/r1");
+  assert.equal(raceDetailHref("r1", null), "/races/r1");
+  assert.equal(raceDetailHref("r1", 1), "/races/r1?stage=1");
+  assert.equal(raceDetailHref("r1", 3), "/races/r1?stage=3");
+});
+
+test("#6514 raceArchiveHref: type og valgt pulje bevares", () => {
+  assert.equal(raceArchiveHref("Tour & Co"), "/race-archive/Tour%20%26%20Co");
+  assert.equal(raceArchiveHref("X", "stage_race"), "/race-archive/X?type=stage_race");
+  assert.equal(raceArchiveHref("X", "stage_race", 7), "/race-archive/X?type=stage_race&pool=7");
+  assert.equal(raceArchiveHref("X", null, 7), "/race-archive/X?pool=7");
 });

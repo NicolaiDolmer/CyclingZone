@@ -205,13 +205,14 @@ export default function CalendarPage() {
   // off (eller endnu ukendt) = kalenderen præcis som før.
   const libraryV2 = useRaceLibraryV2() === true;
   const [peekRaceId, setPeekRaceId] = useState(null);
+  const [peekStage, setPeekStage] = useState(null); // klikket etape, bevares til "Aabn loeb"
   const entryById = useMemo(() => new Map((data?.entries || []).map((e) => [e.id, e])), [data]);
   const statusByRace = useMemo(() => {
     if (!libraryV2) return null;
     const list = data?.entries || [];
     return new Map(list.map((e) => [e.id, myRaceStatus(e, list, todayISO)]));
   }, [libraryV2, data, todayISO]);
-  const openPeek = libraryV2 ? (raceId) => { setExpandedDayIso(null); setPeekRaceId(raceId); } : null;
+  const openPeek = libraryV2 ? (raceId, stage = null) => { setExpandedDayIso(null); setPeekRaceId(raceId); setPeekStage(stage); } : null;
 
   if (loading) return <PageLoader label={t("loadingAria")} />;
 
@@ -437,7 +438,8 @@ export default function CalendarPage() {
           seasonNumber={data.season?.number}
           t={t}
           locale={i18n.language}
-          onClose={() => setPeekRaceId(null)}
+          stage={peekStage}
+          onClose={() => { setPeekRaceId(null); setPeekStage(null); }}
         />
       )}
 
@@ -633,7 +635,7 @@ function StageChip({ ev, t, className = "", onPeek = null, status = null }) {
   const missing = status === "missing";
   const Tag = onPeek ? "button" : Link;
   const tagProps = onPeek
-    ? { type: "button", onClick: () => onPeek(ev.raceId), "aria-haspopup": "dialog" }
+    ? { type: "button", onClick: () => onPeek(ev.raceId, isStageRace ? ev.stage : null), "aria-haspopup": "dialog" }
     : { to: `/races/${ev.raceId}${isStageRace ? `?stage=${ev.stage}` : ""}` };
   const openLabel = t("chip.openRace", { name: ev.name });
 

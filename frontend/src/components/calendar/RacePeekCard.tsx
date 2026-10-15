@@ -14,7 +14,7 @@ import { supabase, authHeaders } from "../../lib/supabase.ts";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { isViewerChangeEvent } from "../../lib/viewerChange.ts";
 import {
-  raceTerrain, bucketProfileType, raceDateRange, teamFit, selectionHref,
+  raceTerrain, bucketProfileType, raceDateRange, teamFit, selectionHref, raceDetailHref,
   type CalendarEntryLike, type FitRider, type RaceStatus, type RaceTerrain, type StageProfileLike,
 } from "../../lib/racePeek.ts";
 import RaceTerrainGlyphs from "../race/RaceTerrainGlyphs.tsx";
@@ -94,9 +94,10 @@ interface RacePeekCardProps {
   t: Translate;
   locale?: string;
   onClose: () => void;
+  stage?: number | null; // klikket etape, bevares i loebslinket
 }
 
-export default function RacePeekCard({ entry, status, days, seasonNumber, t, locale, onClose }: RacePeekCardProps) {
+export default function RacePeekCard({ entry, status, days, seasonNumber, t, locale, onClose, stage = null }: RacePeekCardProps) {
   const open = entry != null;
   const raceId = entry?.id ?? null;
   const [profiles, setProfiles] = useState<StageProfileLike[] | null>(null); // null = henter
@@ -149,7 +150,7 @@ export default function RacePeekCard({ entry, status, days, seasonNumber, t, loc
     entry.poolLabel,
   ].filter(Boolean).join(" · ");
 
-  const raceHref = `/races/${entry.id}`;
+  const raceHref = raceDetailHref(entry.id, isStageRace ? stage : null);
   const canPick = mine && (status === "missing" || status === "selected" || status === "gtBound");
 
   return (

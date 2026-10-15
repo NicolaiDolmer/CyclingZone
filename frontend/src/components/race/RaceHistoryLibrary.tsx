@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { supabase } from "../../lib/supabase.ts";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
+import { raceArchiveHref } from "../../lib/racePeek.ts";
 import { applySeniorSquadFilter } from "../../lib/seniorScope.ts";
 import {
   buildRaceHistory, matchesSearch, paginate, HISTORY_PAGE_SIZE,
@@ -179,10 +180,6 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
 
 
 // Løbets historikside, med løbstypen så et endagsløb og et etapeløb med samme navn holdes ude fra hinanden.
-function archiveHref(r: HistoryRow): string {
-  const base = `/race-archive/${encodeURIComponent(r.name)}`;
-  return r.raceType ? `${base}?type=${encodeURIComponent(r.raceType)}` : base;
-}
 
 export default function RaceHistoryLibrary() {
   const { t } = useTranslation(["results", "races", "calendar"]);
@@ -250,7 +247,7 @@ export default function RaceHistoryLibrary() {
       header: t("raceHistory.th.race"),
       sticky: true,
       render: (r) => (
-        <Link to={archiveHref(r)} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t">
+        <Link to={raceArchiveHref(r.name, r.raceType, poolId)} className="text-[13.5px] font-medium text-cz-1 hover:text-cz-accent-t">
           {r.name}
         </Link>
       ),
@@ -309,7 +306,7 @@ export default function RaceHistoryLibrary() {
               </span>
             ))}
             {earlier.length > 3 && (
-              <Link to={archiveHref(r)} className="inline-flex items-center gap-0.5 text-2xs text-cz-accent-t hover:underline">
+              <Link to={raceArchiveHref(r.name, r.raceType, poolId)} className="inline-flex items-center gap-0.5 text-2xs text-cz-accent-t hover:underline">
                 {t("raceHistory.allEditions", { count: r.editions.length })}
                 <ChevronRightIcon size={12} aria-hidden="true" />
               </Link>

@@ -203,3 +203,18 @@ export function selectionHref(startIso: string | null | undefined, days: Readonl
   const day = selectionDayOrdinal(startIso, days);
   return day != null ? `/planning?tab=selection&day=${day}` : "/planning?tab=selection";
 }
+
+// Loebsside fra kalender-previewet; en klikket etape (2+) bevares som ?stage=N.
+export function raceDetailHref(raceId: string | number, stage?: number | null): string {
+  const base = `/races/${raceId}`;
+  return stage != null && Number.isFinite(stage) && stage >= 1 ? `${base}?stage=${stage}` : base;
+}
+
+// Loebshistorik-link: loebstype adskiller endagsloeb/etapeloeb, pulje holder historikken i valgt pulje.
+export function raceArchiveHref(name: string, raceType?: string | null, poolId?: number | null): string {
+  const params: string[] = [];
+  if (raceType) params.push(`type=${encodeURIComponent(raceType)}`);
+  if (poolId != null && Number.isFinite(poolId)) params.push(`pool=${encodeURIComponent(String(poolId))}`);
+  const base = `/race-archive/${encodeURIComponent(name)}`;
+  return params.length ? `${base}?${params.join("&")}` : base;
+}

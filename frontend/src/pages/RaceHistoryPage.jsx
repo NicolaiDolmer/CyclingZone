@@ -21,6 +21,8 @@ export default function RaceHistoryPage() {
   // navn ikke blandes i én historik. Uden param (ældre links) er opførslen uændret.
   const [searchParams] = useSearchParams();
   const raceTypeFilter = searchParams.get("type");
+  // Valgt pulje fra Loebshistorik-biblioteket; uden param (aeldre links) er alle puljer med som foer.
+  const poolFilter = searchParams.get("pool");
 
   const [editions, setEditions] = useState([]);
   const [riderStats, setRiderStats] = useState([]);
@@ -41,6 +43,7 @@ export default function RaceHistoryPage() {
         .select("id, name, race_type, stages, edition_year, status, season:season_id(id, number, status)")
         .ilike("name", raceName);
       if (raceTypeFilter) racesQuery = racesQuery.eq("race_type", raceTypeFilter);
+      if (poolFilter && Number.isFinite(Number(poolFilter))) racesQuery = racesQuery.eq("league_division_id", Number(poolFilter));
       const { data: races, error: racesError } = await racesQuery
         .order("edition_year", { ascending: false, nullsFirst: false });
 
@@ -122,7 +125,7 @@ export default function RaceHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [raceName, raceTypeFilter]);
+  }, [raceName, raceTypeFilter, poolFilter]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
