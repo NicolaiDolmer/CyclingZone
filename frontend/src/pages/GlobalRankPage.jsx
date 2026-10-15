@@ -6,7 +6,7 @@ import TeamLink from "../components/TeamLink";
 import { formatNumber } from "../lib/intl";
 import { useGlobalRank } from "../hooks/useGlobalRank";
 import {
-  Card, EmptyState, ErrorState, Input, Select, Button, DataTable, SkeletonLines, PodiumIcon,
+  Card, EmptyState, ErrorState, Input, Select, Button, DataTable, SkeletonLines, PodiumIcon, ArrowUpIcon, ArrowDownIcon,
 } from "../components/ui";
 import { WRAP } from "../components/ui/dataTableStyles.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -34,7 +34,8 @@ function MovementBadge({ movement, t }) {
     <span
       className={`font-mono text-xs font-bold inline-flex items-center gap-0.5 ${up ? "text-cz-success" : "text-cz-danger"}`}
       title={up ? t("movementUpTooltip", { n: movement }) : t("movementDownTooltip", { n: Math.abs(movement) })}>
-      {up ? "▲" : "▼"} {Math.abs(movement)}
+      {up ? <ArrowUpIcon size={12} aria-hidden="true" /> : <ArrowDownIcon size={12} aria-hidden="true" />}
+      {Math.abs(movement)}
     </span>
   );
 }

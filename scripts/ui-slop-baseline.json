@@ -1,47 +1,19 @@
 {
   "$comment": "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Kategorier: hex/slop/colour/emoji/arrowglyph. Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3, #1578 WP0, #3422. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. WP1 skrumper emoji, WP2 skrumper colour/hex, #3422 skrumper arrowglyph.",
   "files": {
-    "frontend/public/locales/da/auctions.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
-    },
     "frontend/public/locales/da/backendMessages.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 7,
-      "arrowglyph": 3
+      "emoji": 6,
+      "arrowglyph": 0
     },
     "frontend/public/locales/da/board.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 6
-    },
-    "frontend/public/locales/da/dashboard.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
-    "frontend/public/locales/da/finance.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
-    },
-    "frontend/public/locales/da/help.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 7
+      "arrowglyph": 0
     },
     "frontend/public/locales/da/klub.json": {
       "hex": 0,
@@ -99,47 +71,19 @@
       "emoji": 1,
       "arrowglyph": 0
     },
-    "frontend/public/locales/en/auctions.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
-    },
     "frontend/public/locales/en/backendMessages.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
-      "emoji": 7,
-      "arrowglyph": 3
+      "emoji": 6,
+      "arrowglyph": 0
     },
     "frontend/public/locales/en/board.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 6
-    },
-    "frontend/public/locales/en/dashboard.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
-    "frontend/public/locales/en/finance.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
-    },
-    "frontend/public/locales/en/help.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 7
+      "arrowglyph": 0
     },
     "frontend/public/locales/en/klub.json": {
       "hex": 0,
@@ -209,21 +153,21 @@
       "slop": 0,
       "colour": 0,
       "emoji": 8,
-      "arrowglyph": 0
+      "arrowglyph": 1
     },
     "frontend/src/components/admin/EconomyAdminSection.jsx": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 14,
-      "arrowglyph": 2
+      "arrowglyph": 4
     },
     "frontend/src/components/admin/RacePoolSection.jsx": {
       "hex": 0,
       "slop": 0,
       "colour": 1,
       "emoji": 10,
-      "arrowglyph": 0
+      "arrowglyph": 2
     },
     "frontend/src/components/admin/SeasonCycleSection.jsx": {
       "hex": 0,
@@ -237,7 +181,14 @@
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 1
+      "arrowglyph": 3
+    },
+    "frontend/src/components/admin/ValuationV4PreviewSection.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 2
     },
     "frontend/src/components/admin/sections/BetaToolsSection.jsx": {
       "hex": 0,
@@ -274,20 +225,6 @@
       "emoji": 5,
       "arrowglyph": 0
     },
-    "frontend/src/components/planner/plannerShared.js": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
-    "frontend/src/components/rider/profile/RiderTrainingTab.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 1
-    },
     "frontend/src/lib/statColor.js": {
       "hex": 2,
       "slop": 0,
@@ -307,14 +244,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 2
-    },
-    "frontend/src/pages/BoardPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0,
-      "arrowglyph": 2
+      "arrowglyph": 4
     },
     "frontend/src/pages/KitchenSinkPage.jsx": {
       "hex": 1,
@@ -356,7 +286,7 @@
       "slop": 0,
       "colour": 1,
       "emoji": 12,
-      "arrowglyph": 0
+      "arrowglyph": 1
     }
   }
 }

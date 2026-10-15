@@ -123,6 +123,8 @@ const EMOJI_TEXT_EXEMPT = new Set(["©", "®", "™"]); // © ® ™
 // ("A → B" i en hjaelpetekst) rammes ogsaa — det er bevidst; locale-siden
 // laeses igennem manuelt (#3422 punkt 3), ikke auto-fixes.
 const ARROW_RE = /[←-↕↩↪‹›«»]/g;
+// #6690: tekstsymboler brugt som ikon i JSX (▲ ▼ ✓ ✕) — kun .jsx/.tsx, ikke locale/.js-data.
+const GLYPH_RE = /[▲▼✓✕]/g;
 
 // Raa Tailwind-palette-farve (#1578 WP0, ratchet ned i WP2): en utility-prefix
 // (bg/text/border/ring/from/to/via/fill/stroke/divide/outline/decoration/
@@ -174,18 +176,23 @@ export function countArrow(src) {
   return (clean.match(ARROW_RE) ?? []).length;
 }
 
+export function countGlyph(src) {
+  GLYPH_RE.lastIndex = 0;
+  return (stripComments(src).match(GLYPH_RE) ?? []).length;
+}
+
 export function countColor(src) {
   TW_COLOR_RE.lastIndex = 0;
   return (stripComments(src).match(TW_COLOR_RE) ?? []).length;
 }
 
-export function scanSource(src) {
+export function scanSource(src, { jsx = true } = {}) {
   return {
     hex: countHex(src),
     slop: countSlop(src),
     colour: countColor(src),
     emoji: countEmoji(src),
-    arrowglyph: countArrow(src),
+    arrowglyph: countArrow(src) + (jsx ? countGlyph(src) : 0),
   };
 }
 
@@ -217,7 +224,7 @@ export function scanRepo() {
   for (const file of walk(SRC_DIR, matchSource)) {
     const rel = relative(ROOT, file).replaceAll("\\", "/");
     if (EXEMPT_FILES.has(rel)) continue;
-    const r = scanSource(readFileSync(file, "utf8"));
+    const r = scanSource(readFileSync(file, "utf8"), { jsx: /\.[jt]sx$/.test(file) });
     if (r.hex || r.slop || r.colour || r.emoji || r.arrowglyph) counts[rel] = r;
   }
   for (const file of walk(LOCALES_DIR, matchLocale)) {

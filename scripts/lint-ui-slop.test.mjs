@@ -82,6 +82,13 @@ test("countArrow flags unicode arrow glyphs used as icons", () => {
   assert.equal(countArrow("plain ascii text"), 0);
 });
 
+test("scanSource counts text-symbol icons (▲ ▼ ✓ ✕) as arrowglyph in JSX only (#6690)", () => {
+  assert.equal(scanSource("<span>▲ 3</span>").arrowglyph, 1);
+  assert.equal(scanSource("<b>✓</b><b>✕</b><i>▼</i>").arrowglyph, 3);
+  assert.equal(scanSource("// ✓ kommentar").arrowglyph, 0);
+  assert.equal(scanSource("{\"a\": \"✓ ok\"}", { jsx: false }).arrowglyph, 0);
+});
+
 test("countArrow ignores arrows inside comments", () => {
   assert.equal(countArrow("// flow: A → B"), 0);
   assert.equal(countArrow("/* ↑ scroll to top */"), 0);

@@ -34,6 +34,7 @@ import AbilityReceiptRow, { AbilityReceiptHeader } from "../../training/AbilityR
 import FocusPanel from "../../training/FocusPanel.jsx";
 import { dayTypeForProgram, sessionForProgram } from "../../../lib/trainingDayTypes.js";
 import IconBase from "../../ui/icons/IconBase.jsx";
+import { ChevronRightIcon } from "../../ui/icons/index.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
 
@@ -361,7 +362,7 @@ function DailyLogCard({ riderId, runs, t }) {
           } else if (jumps.length === 1) {
             const j = jumps[0];
             result = j.from != null && j.to != null
-              ? `${j.from}→${j.to} ${t(`racePreview.derived.${j.ability}`)}`
+              ? <>{j.from}<ChevronRightIcon size={10} className="inline align-[-1px]" aria-hidden="true" />{j.to} {t(`racePreview.derived.${j.ability}`)}</>
               : `+${j.n} ${t(`racePreview.derived.${j.ability}`)}`;
             resultClass = "text-cz-success";
           } else if (jumps.length > 1) {

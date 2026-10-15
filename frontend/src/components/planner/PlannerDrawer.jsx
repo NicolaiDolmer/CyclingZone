@@ -175,7 +175,7 @@ function RaceDrawer({ race, riders: allRiders, maxPerRider, today, onCreatePeak,
               </span>
               <span className="font-mono text-[12px] text-cz-1 w-6 text-right">{score}</span>
               {peaking ? (
-                <span className="text-3xs text-cz-accent-t w-[74px] text-right">✓ {t("drawer.race.alreadyPeaking")}</span>
+                <span className="text-3xs text-cz-accent-t w-[74px] text-right inline-flex items-center justify-end gap-0.5"><CheckIcon size={10} aria-hidden="true" /> {t("drawer.race.alreadyPeaking")}</span>
               ) : !raceOpen ? (
                 <span className="text-3xs text-cz-3 w-[74px] text-right">{t("drawer.race.started")}</span>
               ) : divisionPending ? (
