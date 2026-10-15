@@ -12,6 +12,7 @@ import { formatDateTime, formatNumber } from "../../lib/intl.js";
 import { DataTable, ErrorState, type DataTableColumn } from "./squadUi.ts";
 import { YouthRacesEmptyState } from "./SquadEmptyStates.tsx";
 import { useYouthRaces } from "./useYouthRaces.ts";
+import { youthBelowFloor, youthIsTraining } from "./youthRacesModel.ts";
 import { MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js";
 import { youthSelectionOpen, type YouthRaceItem } from "../../lib/youthRaceCalendar.ts";
 import type { YouthSquad } from "../../lib/youthSquadPages.ts";
@@ -48,7 +49,7 @@ export default function YouthRacesTab({ squad, tab, trainOnly = false }: { squad
 
   const hrefFor = (r: YouthRaceItem) => `/races/${r.id}?tab=${tab === "calendar" ? "team" : "results"}`;
 
-  const isTraining = (r: YouthRaceItem) => trainOnly && youthSelectionOpen(r) && r.selection === "none";
+  const isTraining = (r: YouthRaceItem) => youthIsTraining(r, trainOnly);
 
   const teamCell = (r: YouthRaceItem) => {
     if (tab === "results") {
@@ -56,19 +57,27 @@ export default function YouthRacesTab({ squad, tab, trainOnly = false }: { squad
         ? <span className="text-cz-2">{t("youthRaces.team.rode", { count: r.riders })}</span>
         : <span className="text-cz-3">{t("youthRaces.team.none")}</span>;
     }
-    if (r.selection === "none") return <span className="text-cz-3">{t(isTraining(r) ? "youthRaces.team.training" : "youthRaces.team.none")}</span>;
-    // #5907: under gulvet stiller holdet ikke op; kun mens udtagelsen er åben.
-    const belowFloor = youthSelectionOpen(r) && r.riders < MIN_RACE_ENTRIES;
+    // #5907/#5920: under gulvet stiller holdet ikke op; også ved 0 udtagne, men ikke train-only.
+    const belowFloor = youthBelowFloor(r, trainOnly);
+    const floorNote = belowFloor && (
+      <span className="text-xs text-cz-warning" data-testid={`youth-race-below-floor-${r.id}`}>
+        {t("youthRaces.team.belowFloor", { min: MIN_RACE_ENTRIES })}
+      </span>
+    );
+    if (r.selection === "none") {
+      return (
+        <span className="flex flex-col">
+          <span className="text-cz-3">{t(isTraining(r) ? "youthRaces.team.training" : "youthRaces.team.none")}</span>
+          {floorNote}
+        </span>
+      );
+    }
     return (
       <span className="flex flex-col">
         <span className="text-cz-2">
           {t(r.selection === "auto" ? "youthRaces.team.auto" : "youthRaces.team.manual", { count: r.riders })}
         </span>
-        {belowFloor && (
-          <span className="text-xs text-cz-warning" data-testid={`youth-race-below-floor-${r.id}`}>
-            {t("youthRaces.team.belowFloor", { min: MIN_RACE_ENTRIES })}
-          </span>
-        )}
+        {floorNote}
       </span>
     );
   };
