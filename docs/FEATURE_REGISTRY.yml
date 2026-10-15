@@ -792,7 +792,7 @@ features:
     title_da: Resultater og løbshistorik
     state: live
     verified: 2026-09-06
-    note: 3 historik-sider.
+    note: 3 historik-sider. Bibliotek-redesign under #6514 er bygget og lokalt testet, afventer ejeraccept; ovenstående live-verifikation gælder den hidtidige version.
 
   - id: profiles
     area: stats

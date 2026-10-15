@@ -61,6 +61,7 @@ import {
 // dermed væk (afløser TASTE P10 fork 6 / PAGE_TEMPLATES T2 "Mobile ≤640px").
 // Desktop er uændret.
 //
+//   fullTable / onFullTableChange: optional URL-controlled mode; absent props keep local state.
 //   mobileDefaults: ["ovr", "value", "salary"]  // sidens tre standardkolonner
 //
 // "Ingen vandret scroll" er HÅNDHÆVET, ikke håbet: standardtilstanden ligger i
@@ -91,6 +92,8 @@ export function DataTable({
   toolbar = null,
   empty = null,
   mobileDefaults = null,
+  fullTable: fullTableOverride = undefined,
+  onFullTableChange = null,
 }) {
   const { t } = useTranslation("common");
   const isMobile = useIsMobileViewport();
@@ -112,7 +115,8 @@ export function DataTable({
   }
 
   const [mobileKeys, setMobileKeys] = useState(() => defaultMobileColumnKeys(columns, mobileDefaults));
-  const [fullTable, setFullTable] = useState(false);
+  const [localFullTable, setLocalFullTable] = useState(false);
+  const fullTable = fullTableOverride ?? localFullTable;
   // En `mobileDefaults`-nøgle der peger på en fold- eller sticky-kolonne (eller
   // på en kolonne der er blevet omdøbt) bliver STILLE kasseret, og pladsen
   // fyldes af den første numeriske kolonne i stedet. Akademiet ramte præcis det
@@ -187,7 +191,11 @@ export function DataTable({
             selected={mobileKeys}
             onPick={pickColumn}
             fullTable={fullTable}
-            onToggleFullTable={() => setFullTable((v) => !v)}
+            onToggleFullTable={() => {
+              const next = !fullTable;
+              setLocalFullTable(next);
+              onFullTableChange?.(next);
+            }}
             t={t}
           />
         )}

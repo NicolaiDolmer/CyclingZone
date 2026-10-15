@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.361",
+    "date": "2026-10-14",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Upcoming races and history in one race library",
+          "body": "The race archive opens on upcoming races. Search by race name, choose a season and open a specific edition to see its stages, recorded route data and previous editions. History shows completed races and their recorded winners."
+        },
+        "da": {
+          "title": "Kommende løb og historik i ét løbsbibliotek",
+          "body": "Løbsarkivet åbner på kommende løb. Søg efter løbsnavn, vælg en sæson og åbn en bestemt udgave for at se etaper, gemte rutedata og tidligere udgaver. Historik viser afsluttede løb og deres registrerede vindere."
+        },
+        "refs": [
+          6514
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.360",
     "date": "2026-10-14",
     "changes": [

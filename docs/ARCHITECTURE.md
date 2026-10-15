@@ -59,15 +59,17 @@ registreret i prod. En konkret kompensationskørsel kræver separat ejer-go.
 /head-to-head         → HeadToHeadPage
 /patch-notes          → PatchNotesPage
 /races                → RacesPage (hub: tabs Kalender · Bibliotek · Point & præmier · Indberét · Godkend [admin]; ?tab= styrer initial tab)
-/resultater           → ResultaterPage
+/resultater           → ResultaterPage (tab=archive: RaceLibrary; Kommende løb er bibliotekets startfane)
 /rider-rankings       → RiderRankingsPage
-/race-archive         → redirect → /races?tab=library
-/race-archive/:raceSlug → RaceHistoryPage
+/race-archive         → redirect → /resultater?tab=archive
+/race-archive/:raceSlug → RaceHistoryPage → RaceEdition (read-only udgaveopslag)
 /race-points          → RacePointsPage (alias for /races?tab=points)
 /admin                → AdminLayout (tabs: season · economy · users · data · system — pages/admin/*)
 ```
 
 ---
+
+Løbsbibliotekets kontrakt: [RACE_LIBRARY_RULES.md](RACE_LIBRARY_RULES.md). TypeScript-læselaget under frontend/src/lib/race-library bruger eksisterende tabeller med senior/sæson/pulje-scope, paginering og ID-batches. UI under components/race-library ændrer ikke kalendergenerering eller løbsdetaljer.
 
 ## Backend API Endpoints (primært `backend/routes/api.js`)
 

@@ -5,9 +5,8 @@ import { supabase } from "../lib/supabase";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
-import RaceArchiveTable from "../components/race/RaceArchiveTable.jsx";
+import RaceLibrary from "../components/race-library/RaceLibrary.tsx";
 import CompletedRacesExplorer from "../components/race/CompletedRacesExplorer.jsx";
-import WorldCatalog from "../components/race/WorldCatalog.jsx";
 import { Flag } from "../components/Flag";
 import { formatNumber, formatDate } from "../lib/intl";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
@@ -73,6 +72,11 @@ const HUB_LINKS = [
 ];
 
 export default function ResultaterPage() {
+  const [params] = useSearchParams();
+  return params.get("tab") === "archive" ? <RaceLibrary /> : <ResultsHubPage />;
+}
+
+function ResultsHubPage() {
   // races-namespacet leverer løbs-taksonomien (klasse, type) som kortene deler
   // med kalender- og arkiv-fladerne. Nøglerne beskriver løb, ikke hubben.
   const { t } = useTranslation(["results", "races"]);
@@ -379,7 +383,7 @@ export default function ResultaterPage() {
 
   // #3197: sæson/division/pulje er nu del af forespørgslen (ikke kun tab) — et
   // ændret filter skal genindlæse data. tab udelades bevidst: Arkiv/Point ejer
-  // deres egen data-hentning (RaceArchiveTable/RacePointsPage), et fane-skift
+  // deres egen data-hentning (RaceLibrary/RacePointsPage), et fane-skift
   // alene skal ikke re-fetche denne sides "Seneste"-forespørgsel.
   useEffect(() => { loadAll(); }, [loadAll]);
   useRealtimeRefetch("resultater-live", REALTIME_TABLES, loadAll);
@@ -630,12 +634,7 @@ export default function ResultaterPage() {
           Begge er rene KIGGE-flader og hørte aldrig hjemme sammen med
           holdudtagelses-boardet. Etape 3: verdens-kataloget fulgte med ind
           under Arkiv da /races blev opløst — samme kigge-flade-argument. */}
-      {tab === "archive" && (
-        <div className="space-y-[14px]">
-          <RaceArchiveTable />
-          <WorldCatalog />
-        </div>
-      )}
+
       {tab === "points" && <div className="-mt-2"><RacePointsPage /></div>}
     </div>
   );
