@@ -124,7 +124,35 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
   }
 
   const kmFmt = (v: number) => formatNumber(Math.round(v * 10) / 10, { maximumFractionDigits: 1 });
-  const endLabelW = `${formatNumber(Math.round(D))} km`.length * 6;
+  // Stigningsnavne maa ikke overlappe hinanden eller andre stigningers/spurtens
+  // maerker. Haardeste kategori placeres foerst (HC/1 foer 2 foer 3); hver tekst
+  // proever sin normale side, saa den anden; passer ingen, vises kun maerket.
+  // Bredde anslaas til ca. 7 px pr. tegn (navn, 12 px) og 6,2 px (tal, 11 px).
+  const catRank = (c: Climb) => { const k = categoryLabel(c.category); return k === "HC" ? 0 : Number(k) || 9; };
+  const climbTextSide: Array<"left" | "right" | null> = climbs.map(() => null);
+  {
+    const markers = [
+      ...climbs.map((c) => X(Number(c.crest_km))),
+      ...sprints.map((s) => X(Number(s.km))),
+    ];
+    const placed: Array<[number, number]> = [];
+    const order = climbs.map((_, i) => i).sort((a, b) => catRank(climbs[a]) - catRank(climbs[b]) || a - b);
+    for (const i of order) {
+      const c = climbs[i];
+      const tx = X(Number(c.crest_km));
+      const stats = `${kmFmt(Number(c.length_km))} km · ${kmFmt(Number(c.avg_gradient))} % · ${formatNumber(Math.round(elevationAt(series, Number(c.crest_km))))} m`;
+      const w = Math.max(String(c.name ?? "").length * 7, stats.length * 6.2);
+      const preferred: Array<"left" | "right"> = tx > W * 0.6 ? ["left", "right"] : ["right", "left"];
+      for (const side of preferred) {
+        const box: [number, number] = side === "right" ? [tx + 16, tx + 16 + w] : [tx - 16 - w, tx - 16];
+        const inside = box[0] >= 0 && box[1] <= W;
+        const hitsMarker = markers.some((m) => m !== tx && m + 14 > box[0] && m - 14 < box[1]);
+        const hitsLabel = placed.some(([a, b]) => a < box[1] + 8 && b > box[0] - 8);
+        if (inside && !hitsMarker && !hitsLabel) { climbTextSide[i] = side; placed.push(box); break; }
+      }
+    }
+  }
+  const endLabelW =`${formatNumber(Math.round(D))} km`.length * 6;
   // Hoejde-maerker: kun hvert andet, naar linjerne ligger under 16 px fra hinanden (mobil, smalt baand).
   const gridLabelEvery = grid.length > 1 && Math.abs(Y(grid[0]) - Y(grid[1])) < 16 ? 2 : 1;
 
@@ -187,7 +215,6 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
             const top = Number(c.crest_km);
             const start = Math.max(0, top - Number(c.length_km));
             const tx = X(top), ty = Y(elevationAt(series, top));
-            const rightSide = tx > W * 0.6;
             const cat = categoryLabel(c.category);
             return (
               <g key={`${c.name}-${i}`}>
@@ -204,10 +231,10 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
                     <line x1={tx} x2={tx} y1={ty} y2={ty - 26} stroke="var(--text-3)" strokeWidth={1} />
                     <rect x={tx - 11} y={ty - 48} width={22} height={20} rx={3} fill={cat === "HC" || cat === "1" ? "rgb(var(--climb-grad-4))" : "rgb(var(--climb-grad-3))"} />
                     <text x={tx} y={ty - 34} textAnchor="middle" fontSize={cat === "HC" ? 10 : 12} fontWeight={700} fill="white" className="font-data">{cat}</text>
-                    {!narrow && (
+                    {!narrow && climbTextSide[i] && (
                       <>
-                        <text x={tx + (rightSide ? -16 : 16)} y={ty - 40} textAnchor={rightSide ? "end" : "start"} fontSize={12} fontWeight={700} fill="var(--text-1)" className="font-data">{c.name}</text>
-                        <text x={tx + (rightSide ? -16 : 16)} y={ty - 26} textAnchor={rightSide ? "end" : "start"} fontSize={11} fill="var(--text-2)" className="font-data tabular-nums">
+                        <text x={tx + (climbTextSide[i] === "left" ? -16 : 16)} y={ty - 40} textAnchor={climbTextSide[i] === "left" ? "end" : "start"} fontSize={12} fontWeight={700} fill="var(--text-1)" className="font-data">{c.name}</text>
+                        <text x={tx + (climbTextSide[i] === "left" ? -16 : 16)} y={ty - 26} textAnchor={climbTextSide[i] === "left" ? "end" : "start"} fontSize={11} fill="var(--text-2)" className="font-data tabular-nums">
                           {`${kmFmt(Number(c.length_km))} km · ${kmFmt(Number(c.avg_gradient))} % · ${formatNumber(Math.round(elevationAt(series, top)))} m`}
                         </text>
                       </>
