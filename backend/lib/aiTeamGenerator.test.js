@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, __testables } from "./aiTeamGenerator.js";
-import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
+import { POOL_TARGET_SIZE, MAX_DIVISION } from "./economyConstants.js";
 import { AI_SQUAD, AI_TIER_STAT_WINDOWS, AI_TIER_VALUE_CAP } from "./starterSquadAllocator.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { isBornFromPriors, deriveBirthAbilities, birthAbilityKeys, statLevelToAbility } from "./riderBirthPriors.js";
@@ -468,7 +468,7 @@ test("#1739 reconcileAiTeamsForPool: første manager i tom entry-pulje top-up'er
   // En tom tier-3-pulje fyldes IKKE af generatoren (politik), men når den FØRSTE
   // manager rykker ind skal feltet fyldes op til target (managere medregnes).
   const pools = seedPools();
-  const t3b = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 1);
+  const t3b = poolByTierIndex(pools, 3, 1);
   const supabase = makeSupabase({
     league_divisions: pools,
     teams: [
@@ -487,7 +487,7 @@ test("#1739 reconcileAiTeamsForPool: første manager i tom entry-pulje top-up'er
 
 test("#1739 reconcileAiTeamsForPool: idempotent — no-op når puljen allerede er på target", async () => {
   const pools = seedPools();
-  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
+  const t3a = poolByTierIndex(pools, 3, 0);
   const supabase = makeSupabase({
     league_divisions: pools,
     teams: [
