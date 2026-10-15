@@ -89,8 +89,8 @@ features:
     state: building
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
-    verified: 2026-10-07
-    note: "Built behind official_times_v1, branching from v2. Default unchanged; DB allow-list proposal and separate owner activation approval required."
+    verified: 2026-10-15
+    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v4 (timeModel.ts, segmentLoop.ts). Prod 15/10: løb bundet til v2, v3 og v4 (flest v4) via races.engine_rules_revision (#6642)."
 
   - id: race-notify-outbox
     area: race-engine
@@ -151,9 +151,9 @@ features:
     title_da: Indsatsvalg pr. etape
     state: building
     ssot: docs/RACE_ENGINE_RULES.md
-    epic: 4632
-    verified: 2026-09-07
-    note: UI live; effekt venter v4-flip.
+    epic: 6641
+    verified: 2026-10-15
+    note: UI live; v4 er on, men flaget race_day_intention_enabled findes ikke i prod (læst 15/10). Kalibrering + beta i #6641.
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -224,10 +224,11 @@ features:
     area: race-day
     title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
     title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
-    state: building
+    state: beta
+    flag: stage_page_v2
     epic: 6570
-    verified: 2026-10-14
-    note: PR #6633; stadie-flag stage_page_v2 (off/beta/on) seedes off ved migration post-merge, ejeren flytter til beta. Sæt flag-feltet når rækken findes i prod.
+    verified: 2026-10-15
+    note: PR #6633; beta siden 15/10 efter ejer-go (læst i prod 15/10).
 
   - id: race-day-development
     area: race-day
@@ -280,10 +281,12 @@ features:
     area: market
     title_en: Auction entry gate
     title_da: Adgangsport til auktioner
-    state: building
+    state: dormant
     flag: auction_entry_gate_enabled
     ssot: docs/TRANSFER_MARKET_RULES.md
-    verified: 2026-09-06
+    epic: 3134
+    verified: 2026-10-15
+    note: Bygget; #3134 lukket af ejeren 18/8. Flaget står false i prod (læst 15/10); kun ejeren flipper.
 
   - id: ai-unsolicited-bids
     area: market
@@ -299,12 +302,11 @@ features:
     area: market
     title_en: Market value blend sweep
     title_da: Markedsblend af rytterværdier
-    state: dormant
-    flag: market_value_sweep_enabled
+    state: retired
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
-    verified: 2026-09-07
-    note: Afventer ejer-go (#4449).
+    verified: 2026-10-15
+    note: Afløst af værdimodel v6 (#4449 lukket af ejeren 12/10); sweep-koden fjernet i #6642. app_config-rækken market_value_sweep_enabled står stadig off.
 
   - id: rider-valuation-v5
     area: market
@@ -532,6 +534,17 @@ features:
     verified: 2026-10-14
     note: 'On for alle 9/10 (læst i prod 14/10); kræver training_program_cells.'
 
+  - id: training-bulk-day
+    area: training
+    title_en: Set the training day for several riders at once
+    title_da: Sæt træningsdagen for flere ryttere på én gang
+    state: beta
+    flag: training_bulk_day
+    ssot: docs/TRAINING_RULES.md
+    epic: 6523
+    verified: 2026-10-15
+    note: PR #6533 (12/10); beta siden 15/10 10:16 UTC efter ejer-go på før/efter-billedet (læst tilbage i prod).
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy
@@ -585,10 +598,12 @@ features:
     area: academy
     title_en: Season academy intake
     title_da: Akademi-optag ved sæsonskifte
-    state: building
+    state: dormant
     flag: season_academy_intake_enabled
     ssot: docs/YOUTH_RULES.md
-    verified: 2026-09-06
+    epic: 2911
+    verified: 2026-10-15
+    note: Sikkerhedsventil efter ejer-beslutning (#2911); off i prod (læst 15/10), kun ejeren flipper.
 
   - id: three-squads
     area: academy
@@ -651,9 +666,10 @@ features:
     area: season
     title_en: AI pool retirement
     title_da: Atomisk nedlæggelse af AI-hold i puljer
-    state: building
-    verified: 2026-09-09
-    note: 'v2-flag: off, afventer ejer-go.'
+    state: live
+    flag: ai_pool_retirement_v2_enabled
+    verified: 2026-10-15
+    note: On i prod siden 9/9 (læst 15/10).
 
   - id: season-documentary-llm
     area: season
@@ -662,6 +678,16 @@ features:
     state: building
     flag: season_documentary_llm_enabled
     verified: 2026-09-06
+
+  - id: development-v2-aging
+    area: season
+    title_en: Development 2.0 part 1 (decline at season change, only manager teams develop)
+    title_da: Udvikling 2.0 del 1 (tilbagegang ved sæsonskiftet, kun managerhold udvikler sig)
+    state: dormant
+    flag: development_v2_aging_enabled
+    epic: 6499
+    verified: 2026-10-15
+    note: PR #6501 (11/10); off i prod (læst 15/10). Fail-safe off, beta læses som off; kun ejeren flipper.
 
   # --- economy -------------------------------------------------------------
   - id: sponsors
@@ -826,6 +852,16 @@ features:
     state: live
     verified: 2026-09-06
 
+  - id: first-race-card
+    area: onboarding
+    title_en: Your first race card on the dashboard (new teams)
+    title_da: Dit første løb-kort på dashboardet (nye hold)
+    state: live
+    flag: first_race_card
+    epic: 1140
+    verified: 2026-10-15
+    note: PR #6534 (12/10); on for alle siden 15/10 10:17 UTC efter ejer-go (nye hold er aldrig beta-testere, så beta ville vise kortet for ingen). Vises kun for hold uden første løb. Opfølgning dag 2-3-genkomst ca. 29/10 (#1140).
+
   # --- comms ---------------------------------------------------------------
   - id: email-loop
     area: comms
@@ -834,8 +870,8 @@ features:
     state: live
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
-    verified: 2026-10-06
-    note: Velkomst-, dag 1- og løbsoversigt-mails er on for alle (30 dage til 6/10: 34/34/309 sendt). Kun win-back er slukket (`winback_send_enabled`=false) og afventer ejer-go (#2760, #4592).
+    verified: 2026-10-15
+    note: Velkomst-, dag 1- og løbsoversigt-mails er on for alle. Win-back (`winback_send_enabled`=false) er en kill-switch der kun flippes pr. kørsel (#2760, kørt 22/9).
 
   - id: in-app-survey
     area: comms
@@ -876,6 +912,16 @@ features:
     verified: 2026-10-04
     note: Live for alle 4/10, intet flag; /roadmap og /admin/growth?tab=roadmap; #5387/#5388; patch note 7.340.
 
+  - id: push-notifications
+    area: comms
+    title_en: Push notifications
+    title_da: Push-notifikationer
+    state: dormant
+    flag: push_enabled
+    epic: 6590
+    verified: 2026-10-15
+    note: PR #6591 (14/10) bag slukket flag; off i prod (læst 15/10), kun ejeren flipper.
+
   # --- billing -------------------------------------------------------------
   - id: cz-pro
     area: billing
@@ -909,6 +955,7 @@ features:
     area: ops
     title_en: Survey banner
     title_da: Undersøgelsesbanner
-    state: building
-    flag: survey_banner_enabled
-    verified: 2026-09-06
+    state: retired
+    epic: 2467
+    verified: 2026-10-15
+    note: SurveyBanner.jsx slettet (#2467); kun seed-rækkerne survey_banner_enabled/survey_banner_url står tilbage i app_config.

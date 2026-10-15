@@ -104,7 +104,6 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
-  { key: "market_value_sweep_enabled", area: "market", label: "Markedsværdi-sweep" },
   { key: "rider_values_bulk_write_enabled", area: "market", label: "Ryttereværdier — bulk-skrivning" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
   { key: "alunta_reconcile_enabled", area: "billing", label: "Alunta-afstemning" },
