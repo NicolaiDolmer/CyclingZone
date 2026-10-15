@@ -120,8 +120,8 @@ test("generator: uden profil er traekkene bit-identiske med foer (determinisme)"
   assert.deepEqual(a.map((c) => c.rider), b.map((c) => c.rider));
 });
 
-function buildSaveMock({ tier = 2 } = {}) {
-  const capture = { deletes: [], inserts: [] };
+function buildSaveMock({ tier = 2, insertError = null } = {}) {
+  const capture = { deletes: [], inserts: [], ops: [] };
   return {
     capture,
     from(table) {
@@ -132,16 +132,51 @@ function buildSaveMock({ tier = 2 } = {}) {
       if (table === "academy_intake_profiles") {
         return {
           delete() {
-            const api = { eq() { return api; }, gt(col, val) { capture.deletes.push(val); return Promise.resolve({ error: null }); } };
+            capture.ops.push("delete");
+            const filters = {};
+            const api = {
+              eq(col, val) { filters[`eq:${col}`] = val; return api; },
+              gt(col, val) { filters[`gt:${col}`] = val; return api; },
+              neq(col, val) {
+                filters[`neq:${col}`] = val;
+                capture.deletes.push(filters);
+                return Promise.resolve({ error: null });
+              },
+            };
             return api;
           },
-          insert(row) { capture.inserts.push(row); return Promise.resolve({ error: null }); },
+          insert(row) {
+            capture.ops.push("insert");
+            capture.inserts.push(row);
+            const api = {
+              select() { return api; },
+              single: async () => (insertError ? { data: null, error: insertError } : { data: { id: 99 }, error: null }),
+            };
+            return api;
+          },
         };
       }
       throw new Error(`uventet tabel ${table}`);
     },
   };
 }
+
+test("saveAcademyProfile: indsaetter foer oprydning og rydder aldrig den nye raekke", async () => {
+  const sb = buildSaveMock({ tier: 2 });
+  await saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: [] } });
+  assert.deepEqual(sb.capture.ops, ["insert", "delete"]);
+  assert.equal(sb.capture.deletes[0]["neq:id"], 99);
+  assert.equal(sb.capture.deletes[0]["eq:team_id"], "team-A");
+});
+
+test("saveAcademyProfile: fejler indsaettelsen, roeres den ventende profil ikke", async () => {
+  const sb = buildSaveMock({ tier: 2, insertError: { message: "transient" } });
+  await assert.rejects(
+    saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: [] } }),
+    /academy-profile save: transient/,
+  );
+  assert.deepEqual(sb.capture.ops, ["insert"], "ingen sletning naar indsaettelsen fejler");
+});
 
 test("saveAcademyProfile: gemmer med 14 dages forsinkelse og rydder en ventende aendring", async () => {
   const sb = buildSaveMock({ tier: 2 });

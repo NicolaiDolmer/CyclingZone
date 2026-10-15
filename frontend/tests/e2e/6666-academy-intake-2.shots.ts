@@ -7,9 +7,10 @@
 // "Før" = det spillerne ser i dag (flaget academy_intake_pull_enabled er off);
 // "efter" = samme side med Optag 2.0 tændt. Alle data er fiktive.
 //
-//   node tests/e2e/6666-academy-intake-2.shots.mjs [outDir]
+//   node tests/e2e/6666-academy-intake-2.shots.ts [outDir]   (Node 24: native TS-stripping)
 
 import { chromium } from "@playwright/test";
+import type { AddressInfo } from "node:net";
 import http from "node:http";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve, join } from "node:path";
@@ -27,7 +28,8 @@ const { SEED_ACADEMY } = await import(
 const OUT = resolve(process.argv[2] || resolve(__dirname, "../../../pr-screens/6666"));
 const DIST = join(__dirname, "..", "..", "dist");
 
-const VIEWPORTS = [
+type Viewport = { name: string; width: number; height: number };
+const VIEWPORTS: Viewport[] = [
   { name: "desktop-1440", width: 1440, height: 900 },
   { name: "mobile-390", width: 390, height: 844 },
 ];
@@ -78,7 +80,7 @@ const PROFILE = {
   },
 };
 
-function payloadFor(variant) {
+function payloadFor(variant: "before" | "after") {
   if (variant === "before") return { ...SEED_ACADEMY, intakePull: { enabled: false, pulledThisWeek: false } };
   return {
     ...SEED_ACADEMY,
@@ -93,12 +95,12 @@ const serve = sirv(DIST, { single: "app.html", etag: true, dev: true });
 const server = http.createServer(serve);
 server.keepAliveTimeout = 0;
 await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
-const BASE = `http://127.0.0.1:${server.address().port}`;
+const BASE = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
 mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch(process.env.CZ_CHROMIUM ? { executablePath: process.env.CZ_CHROMIUM } : {});
 
-async function shoot(vp, variant, extra = "") {
+async function shoot(vp: Viewport, variant: "before" | "after", extra = "") {
   const context = await browser.newContext({
     baseURL: BASE,
     viewport: { width: vp.width, height: vp.height },

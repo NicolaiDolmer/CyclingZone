@@ -6,14 +6,17 @@ import { KNOWLEDGE_DAYS } from "./academyProspectKnowledge.ts";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 
 test("maskPullCandidate: intet potentiale forlader serveren for en hentet kandidat (punkt 1)", () => {
-  const item = { source: "pull", potentialEstimate: { lo: 2, hi: 3 }, potentialBand: { prog: { lo: 40, hi: 60 } } };
+  const item = { source: "pull", is_serious: true, potentialEstimate: { lo: 2, hi: 3 }, potentialBand: { prog: { lo: 40, hi: 60 } } };
   const masked = maskPullCandidate(item);
   assert.equal(masked.potentialEstimate, null);
   assert.equal(masked.potentialBand, null);
   assert.equal(masked.potentialLearned, true);
+  // "Seriøs"-maerket er en potentiale-klassifikation og maa heller ikke laekke.
+  assert.equal(masked.is_serious, false);
   // Bestyrelsens gave og gamle tilbud er uroerte.
-  const gift = { source: "board_gift", potentialBand: { prog: { lo: 1, hi: 2 } } };
+  const gift = { source: "board_gift", is_serious: true, potentialBand: { prog: { lo: 1, hi: 2 } } };
   assert.equal(maskPullCandidate(gift), gift);
+  assert.equal(maskPullCandidate(gift).is_serious, true);
 });
 
 const abilities = {

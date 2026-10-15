@@ -279,18 +279,24 @@ export async function saveAcademyProfile(
   const checked = validateProfileInput(input, tier);
   if (!checked.ok) return checked;
   const effectiveFrom = new Date(new Date(now).getTime() + PROFILE_DELAY_DAYS * DAY_MS).toISOString();
-  // En ventende ændring der endnu ikke er trådt i kraft, er stadig kun et ønske:
-  // ryd den, så der aldrig står to planlagte profiler.
-  const { error: delErr } = await supabase
-    .from("academy_intake_profiles").delete().eq("team_id", teamId).gt("effective_from", new Date(now).toISOString());
-  if (delErr) throw new Error(`academy-profile clear pending: ${delErr.message}`);
-  const { error } = await supabase.from("academy_intake_profiles").insert({
+  // Indsæt FØR oprydning: fejler indsættelsen, står den tidligere ventende
+  // ændring urørt (intet valg går tabt). Først når den nye række findes, ryddes
+  // de ældre ventende ønsker, så der aldrig står to planlagte profiler.
+  const { data: inserted, error } = await supabase.from("academy_intake_profiles").insert({
     team_id: teamId,
     origins: checked.profile.origins,
     rider_types: checked.profile.types,
     effective_from: effectiveFrom,
-  });
+  }).select("id").single();
   if (error) throw new Error(`academy-profile save: ${error.message}`);
+  if (inserted?.id == null) throw new Error("academy-profile save: insert returned no id");
+  // Fejler oprydningen, er den nye profil gemt; et nyt forsøg rydder de gamle.
+  const { error: delErr } = await supabase
+    .from("academy_intake_profiles").delete()
+    .eq("team_id", teamId)
+    .gt("effective_from", new Date(now).toISOString())
+    .neq("id", inserted.id);
+  if (delErr) throw new Error(`academy-profile clear pending: ${delErr.message}`);
   return { ok: true, profile: checked.profile, effectiveFrom };
 }
 

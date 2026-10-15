@@ -51,10 +51,14 @@ export type Intake2View = {
   };
 };
 
-/** Fjern alt potentiale fra en ikke-underskrevet pull-kandidat. */
+/**
+ * Fjern alt potentiale fra en ikke-underskrevet pull-kandidat. `is_serious` er
+ * generatorens potentiale-klassifikation (et "højt potentiale"-mærke), så den
+ * lækker lige så meget som estimatet og båndet og skjules også.
+ */
 export function maskPullCandidate<T extends IntakeItem | null | undefined>(item: T): T {
   if (item?.source !== PULL_SOURCE) return item;
-  return { ...item, potentialEstimate: null, potentialBand: null, potentialLearned: true };
+  return { ...item, is_serious: false, potentialEstimate: null, potentialBand: null, potentialLearned: true };
 }
 
 /** Akademirytterens prognose på holdets nuværende kendskabs-niveau. */
