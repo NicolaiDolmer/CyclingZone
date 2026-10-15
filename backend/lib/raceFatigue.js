@@ -183,7 +183,7 @@ const S5_EXTRA_FATIGUE_BY_PROFILE = Object.freeze({ medium_mountain: 16, gravel:
 
 export const GT_FATIGUE_TUNING = Object.freeze({
   // Etapens plads: +andel pr. etape efter den første, loft efter capStages etaper.
-  accumulationPerStage: 0.05,
+  accumulationPerStage: 0.075,
   accumulationCapStages: 20,
   // Arbejde: fuld etape i front (udbrud/alene/jagt) = +frontWork; fuld etape i grupettoen = -shelterRelief.
   frontWork: 0.5,
@@ -275,6 +275,21 @@ export function stageConditionWork({ rulesRevision, stageNumber, profileType, v4
     efforts: v4Result.efforts instanceof Map ? v4Result.efforts : null,
     exposure: stageWorkExposure(v4Result.v4Output, profileType),
   };
+}
+
+/**
+ * Hæfter etapens arbejde på et run-objekt som en IKKE-enumerérbar egenskab: run'et
+ * persisteres felt for felt (raceRunner.persistRuns) og sammenlignes i determinisme-
+ * testene, så formen må ikke ændre sig. work=null (alt andet end s5_profiles_v1) = no-op.
+ */
+export function attachConditionWork(run, work) {
+  if (run && work) Object.defineProperty(run, "conditionWork", { value: work, enumerable: false, configurable: true, writable: true });
+  return run;
+}
+
+/** Arbejdet til raceConditionLoads for et run: det hæftede, ellers kun etapens nummer. */
+export function conditionWorkForRun(run) {
+  return run?.conditionWork ?? { stageNumber: Number(run?.stage_number) || 1 };
 }
 
 function clamp01(x) {
