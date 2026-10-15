@@ -74,6 +74,79 @@ export const PATCHES = [
           1140,
           6534
         ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Race standings fit your phone",
+          "body": "On a phone, the four standings of a race show the team under each rider, so time and points fit without scrolling sideways."
+        },
+        "da": {
+          "title": "Løbets stillinger passer til din telefon",
+          "body": "På en telefon står holdet nu under hver rytter i løbets fire stillinger, så tid og point kan ses uden at scrolle til siden."
+        },
+        "refs": [
+          6684,
+          6685
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Youth races warn below 6 riders",
+          "body": "A youth race now warns you when fewer than 6 riders are picked, because a youth team needs 6 to start. The squad filter on My Team shows the age limit: U23 up to 22, juniors up to 18."
+        },
+        "da": {
+          "title": "Ungdomsløb advarer under 6 ryttere",
+          "body": "Et ungdomsløb advarer nu, når der er udtaget under 6 ryttere, fordi et ungdomshold skal have 6 for at stille op. Trup-filteret på Mit hold viser aldersgrænsen: U23 op til 22, juniorer op til 18."
+        },
+        "refs": [
+          5907,
+          5920,
+          6678
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Grey text is easier to read in the light theme",
+          "body": "Small grey text, like column headers, inactive tabs and short notes, is darker in the light theme, so it is easier to read."
+        },
+        "da": {
+          "title": "Grå tekst er lettere at læse i lyst tema",
+          "body": "Lille grå tekst som kolonneoverskrifter, faner du ikke står på og korte noter er mørkere i lyst tema, så den er lettere at læse."
+        },
+        "refs": [
+          6681,
+          6682
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "One corner shape everywhere",
+          "body": "Buttons, dialogs and highlighted rows now have the same small rounded corners as the rest of the game."
+        },
+        "da": {
+          "title": "Samme hjørner overalt",
+          "body": "Knapper, dialogbokse og fremhævede rækker har nu de samme små runde hjørner som resten af spillet."
+        },
+        "refs": [
+          6686,
+          6688
+        ]
       }
     ]
   },
