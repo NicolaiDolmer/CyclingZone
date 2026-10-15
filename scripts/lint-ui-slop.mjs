@@ -232,7 +232,9 @@ export function scanRepo() {
     if (EXEMPT_FILES.has(rel)) continue;
     const src = readFileSync(file, "utf8");
     const emoji = countEmoji(src);
-    const arrowglyph = countArrow(src);
+    // #6690 (Codex): ogsaa ✓/✕/▲/▼ i oversaettelser taeller, saa nye glyffer ikke
+    // kan snige sig ind via copy. Eksisterende copy ligger i baselinen (ratchet).
+    const arrowglyph = countArrow(src) + countGlyph(src);
     if (emoji || arrowglyph) counts[rel] = { hex: 0, slop: 0, colour: 0, emoji, arrowglyph };
   }
   return counts;

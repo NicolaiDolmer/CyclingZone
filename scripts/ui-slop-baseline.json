@@ -13,7 +13,21 @@
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 0
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/da/common.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/da/help.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 2
     },
     "frontend/public/locales/da/klub.json": {
       "hex": 0,
@@ -48,7 +62,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 18,
-      "arrowglyph": 1
+      "arrowglyph": 2
     },
     "frontend/public/locales/da/training.json": {
       "hex": 0,
@@ -62,7 +76,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 14,
-      "arrowglyph": 0
+      "arrowglyph": 8
     },
     "frontend/public/locales/da/watchlist.json": {
       "hex": 0,
@@ -83,7 +97,21 @@
       "slop": 0,
       "colour": 0,
       "emoji": 2,
-      "arrowglyph": 0
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/en/common.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/en/help.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 2
     },
     "frontend/public/locales/en/klub.json": {
       "hex": 0,
@@ -118,7 +146,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 18,
-      "arrowglyph": 1
+      "arrowglyph": 2
     },
     "frontend/public/locales/en/training.json": {
       "hex": 0,
@@ -132,7 +160,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 14,
-      "arrowglyph": 0
+      "arrowglyph": 8
     },
     "frontend/public/locales/en/watchlist.json": {
       "hex": 0,
