@@ -339,7 +339,7 @@ export function generateBoardGoals({
       {
         type: "relative_rank",
         target: 3,
-        label: "Slut foran mindst 3 andre managers i divisionen",
+        label: "Slut foran mindst 3 andre managere i divisionen",
         satisfaction_bonus: 12,
         satisfaction_penalty: 8,
       },
@@ -1612,7 +1612,7 @@ export function buildGoalLabel(goal = {}) {
     case "u25_development_delta":
       return `Gennemsnitlig U25-stat-gevinst >= ${goal.target} stat-points/saeson`;
     case "relative_rank":
-      return `Slut foran mindst ${goal.target} andre managers i divisionen`;
+      return `Slut foran mindst ${goal.target} andre managere i divisionen`;
     case "domestic_dominance":
       return `Mindst ${goal.target} sejre i hjemlandsloeb pr. saeson`;
     default:
