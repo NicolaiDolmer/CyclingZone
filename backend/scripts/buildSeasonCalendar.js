@@ -7,6 +7,7 @@
 //   ... --apply --replace-existing   # REGENERERING: sletter sæsonens nuværende kalender først
 //   ... --squad u23 | --squad junior # #5644: truppens egen kalender (EFTER seniorens); en
 //                                    # --replace-existing sletter da KUN truppens løb
+//   ... --dump-plan <fil>             # tørkørslens plan som JSON til ejerens visning før --apply
 //   ... --target-structure s4        # #5795: planlæg mod S4's målstruktur (D4 E-H behandles
 //                                    # som pensioneret), så kalenderen kan skrives FØR
 //                                    # "Afslut sæson". Rører ikke retired_at. Kun senior.
@@ -885,6 +886,15 @@ if (isMain) {
       supabase, seasonId, seasonNumber, seasonStartDate: firstRaceDay, from, dryRun: true, log: () => {}, s5BenchmarkInputs,
       realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, squad, ...cutoverArgs,
     });
+
+    // Ejer ser kalenderen FØR --apply (15/10, S5): --dump-plan <fil> gemmer tørkørslens
+    // plan som JSON (Map → objekt), så den kan vises som kalender. Skriver kun lokalt.
+    const dumpPlanPath = argOf("--dump-plan");
+    if (dumpPlanPath) {
+      const toJson = (_k, v) => (v instanceof Map ? Object.fromEntries(v) : v instanceof Set ? [...v] : v);
+      writeFileSync(resolve(dumpPlanPath), JSON.stringify({ seasonNumber, firstRaceDay, plan }, toJson, 1));
+      console.log(`  plan gemt: ${resolve(dumpPlanPath)}`);
+    }
 
     // #5644 (Y5): en trups kalender har sin egen, kortere vej: ingen K-B-komposition,
     // scorecard eller realisme-bånd (de er kalibreret mod seniordivisionerne, spec 2026-09-15
