@@ -9,12 +9,12 @@ export const PATCHES = [
         "rollout": "live",
         "topic": "Season",
         "en": {
-          "title": "Season 5 starts Wednesday 28 October and ends on a Saturday",
-          "body": "Season 4 ends Sunday 25 October. Season 5 runs from Wednesday 28 October to Saturday 28 November, 32 race dates. From season 5 the last race day of a season is a Saturday, as you voted in the forum."
+          "title": "Season 5 starts Wednesday 28 October",
+          "body": "Season 4 ends the Sunday before. From season 5 the last race day of a season is a Saturday, as you voted in the forum."
         },
         "da": {
-          "title": "Sæson 5 starter onsdag 28. oktober og slutter en lørdag",
-          "body": "Sæson 4 slutter søndag 25. oktober. Sæson 5 kører fra onsdag 28. oktober til lørdag 28. november, 32 løbsdatoer. Fra sæson 5 er sæsonens sidste løbsdag en lørdag, som I stemte for i forummet."
+          "title": "Sæson 5 starter onsdag 28. oktober",
+          "body": "Sæson 4 slutter søndagen før. Fra sæson 5 er sæsonens sidste løbsdag en lørdag, som I stemte for i forummet."
         },
         "refs": [
           5833,
@@ -102,11 +102,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Youth races warn below 6 riders",
-          "body": "A youth race now warns you when fewer than 6 riders are picked, because a youth team needs 6 to start. The squad filter on My Team shows the age limit: U23 up to 22, juniors up to 18."
+          "body": "A youth race now warns you when you have picked too few riders to start. The squad filter on My Team shows each squad's age limit."
         },
         "da": {
           "title": "Ungdomsløb advarer under 6 ryttere",
-          "body": "Et ungdomsløb advarer nu, når der er udtaget under 6 ryttere, fordi et ungdomshold skal have 6 for at stille op. Trup-filteret på Mit hold viser aldersgrænsen: U23 op til 22, juniorer op til 18."
+          "body": "Et ungdomsløb advarer nu, når du har udtaget for få ryttere til at stille op. Trup-filteret på Mit hold viser hver trups aldersgrænse."
         },
         "refs": [
           5907,
