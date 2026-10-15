@@ -46,7 +46,9 @@ const OPTIONS = [...LANGUAGES]
 const MENU_EST_HEIGHT = 88;
 const GAP = 4;
 
-export default function LanguageSwitcher({ className = "" }) {
+// surface="sidebar": knappen staar paa den moerke sidebar/topbar (ogsaa i lyst tema), saa den
+// bruger sidebarens egne tekst-tokens. Lyse flader (login) beholder text-cz-2 (#6681, AA).
+export default function LanguageSwitcher({ className = "", surface = "page" }) {
   const { t } = useTranslation("common");
   const { language, setLanguage } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -112,7 +114,7 @@ export default function LanguageSwitcher({ className = "" }) {
         aria-expanded={open}
         aria-label={t("language.switchTooltip")}
         title={t("language.switchTooltip")}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-cz-2 hover:bg-cz-subtle focus:outline-hidden focus:ring-2 focus:ring-cz-accent"
+        className={`inline-flex items-center gap-1.5 rounded-cz px-2 py-1 text-sm ${surface === "sidebar" ? "text-cz-sidebar-2 hover:bg-cz-sidebar-hover" : "text-cz-2 hover:bg-cz-subtle"} focus:outline-hidden focus:ring-2 focus:ring-cz-accent`}
       >
         <LanguageSwitcherFlag code={active.flag} />
         <span className="hidden sm:inline uppercase text-xs font-medium">{active.code}</span>
