@@ -293,6 +293,21 @@ jobs:
       - name: Run tone em-dash guard
         run: node scripts/tone-check-em-dash.mjs
 
+      # #6694 (Codex): roadmap-teksten er spillervendt copy og skal blokere en
+      # merge. Den koerer her i et REQUIRED job, fordi roadmap-sync.yml's eget
+      # roadmap-text-job ikke er required (branch protection er ejerens).
+      - name: Hent main til roadmap-baseline-sammenligning
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+
+      - name: Spillervendte flag i beta har roadmap-tekst (PR, baseline maa kun skrumpe)
+        if: github.event_name == 'pull_request'
+        run: node scripts/feature-registry-roadmap-check.mjs --base-ref origin/main
+
+      - name: Spillervendte flag i beta har roadmap-tekst
+        if: github.event_name != 'pull_request'
+        run: node scripts/feature-registry-roadmap-check.mjs
+
   tone-terms:
     runs-on: ubuntu-latest
     permissions:

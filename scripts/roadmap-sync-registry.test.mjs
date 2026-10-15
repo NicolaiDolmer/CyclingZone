@@ -53,6 +53,18 @@ test("planSync: opretter kun poster med tekst og flag, som ikke allerede har et 
   assert.deepEqual(plan.skipped.map((s) => s.id), ["d", "e", "f"]);
 });
 
+test("planSync: kun spillervendte pre-live poster (ikke spec/idea/ops) (#6694)", () => {
+  const entries = [
+    entry({ id: "b", flag: "fb", state: "building" }),
+    entry({ id: "s", flag: "fs", state: "spec" }),
+    entry({ id: "i", flag: "fi", state: "idea" }),
+    entry({ id: "o", flag: "fo", state: "beta", area: "ops" }),
+  ];
+  const plan = planSync({ entries, existingFlagKeys: [] });
+  assert.deepEqual(plan.inserts.map((p) => p.id), ["b"]);
+  assert.deepEqual(plan.skipped.map((s) => s.id), ["s", "i", "o"]);
+});
+
 test("planSync: sync saetter aldrig approved = true, uanset registrets state", () => {
   const plan = planSync({
     entries: [entry({ id: "a", flag: "fa", state: "beta" }), entry({ id: "b", flag: "fb", state: "building" })],

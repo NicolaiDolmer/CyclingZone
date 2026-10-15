@@ -34,6 +34,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { REGISTRY_PATH, parseRegistry, validate } from "./generate-feature-status.mjs";
+import { isPlayerFacingFlag } from "./feature-registry-roadmap-check.mjs";
 
 /**
  * Registrets area -> roadmap_items.engine (CHECK: races, training, youth,
@@ -96,8 +97,11 @@ export function planSync({ entries, existingFlagKeys, maxSortOrder = 0 }) {
       skipped.push({ id: e.id, reason: "roadmap-tekst uden flag (sync er noeglet paa flag_key)" });
       continue;
     }
-    if (e.state === "retired" || e.state === "live") {
-      skipped.push({ id: e.id, reason: `state ${e.state}` });
+    // Samme positive regel som CI-gaten (Codex #6694): kun spillervendte flag
+    // paa vej ud (building/dormant/beta, ikke area ops). spec/idea/live/retired
+    // og intern drift oprettes aldrig, saa de ikke kan publiceres ved et flip.
+    if (!isPlayerFacingFlag(e)) {
+      skipped.push({ id: e.id, reason: `ikke spillervendt pre-live (state ${e.state}, area ${e.area})` });
       continue;
     }
     if (taken.has(e.flag)) continue;
