@@ -6,16 +6,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { simulateParkingSweep } from "./parkingDryRun.js";
-import { MANAGER_ENTRY_DIVISION, MAX_DIVISION, POOL_TARGET_SIZE } from "../lib/economyConstants.js";
+import { MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE } from "../lib/economyConstants.js";
 
 const NOW = new Date("2026-09-28T09:00:00Z");
 const DAY_MS = 86_400_000;
 const daysAgo = (d) => new Date(NOW.getTime() - d * DAY_MS).toISOString();
 
 const POOLS = [
-  { id: "d3a", tier: MANAGER_ENTRY_DIVISION, pool_index: 0, label: "D3 A" },
-  { id: "d3b", tier: MANAGER_ENTRY_DIVISION, pool_index: 1, label: "D3 B" },
-  { id: "d4a", tier: MAX_DIVISION, pool_index: 0, label: "D4 A" },
+  { id: "d4a", tier: MANAGER_ENTRY_DIVISION, pool_index: 0, label: "D4 A" },
+  { id: "d4b", tier: MANAGER_ENTRY_DIVISION, pool_index: 1, label: "D4 B" },
+  { id: "d4c", tier: MANAGER_ENTRY_DIVISION, pool_index: 2, label: "D4 C" },
 ];
 
 function human(id, overrides = {}) {
@@ -29,7 +29,7 @@ function human(id, overrides = {}) {
     user_id: `u-${id}`,
     parked_at: null,
     next_season_signup_at: null,
-    league_division_id: "d3a",
+    league_division_id: "d4a",
     division: MANAGER_ENTRY_DIVISION,
     ...overrides,
   };
@@ -54,10 +54,10 @@ function seatRow(team) {
   };
 }
 
-function scenario({ d3bFull = true } = {}) {
+function scenario({ d4bFull = true } = {}) {
   const humans = [
-    human("dormant", { league_division_id: "d3a" }),
-    human("paying", { league_division_id: "d3b" }),
+    human("dormant", { league_division_id: "d4a" }),
+    human("paying", { league_division_id: "d4b" }),
     human("back", { league_division_id: null, division: 2, parked_at: daysAgo(90), next_season_signup_at: daysAgo(2) }),
   ];
   const users = [
@@ -68,8 +68,9 @@ function scenario({ d3bFull = true } = {}) {
   const subscriptions = [{ id: "s1", team_id: "paying", status: "active", current_period_end: null, last_event_at: daysAgo(3) }];
   const seatTeams = [
     ...humans.map(seatRow),
-    ...aiFill("d3a", POOL_TARGET_SIZE - 1),
-    ...aiFill("d3b", d3bFull ? POOL_TARGET_SIZE - 1 : POOL_TARGET_SIZE - 3),
+    ...aiFill("d4a", POOL_TARGET_SIZE - 1),
+    ...aiFill("d4b", d4bFull ? POOL_TARGET_SIZE - 1 : POOL_TARGET_SIZE - 3),
+    ...aiFill("d4c", POOL_TARGET_SIZE),
   ];
   return { humanTeams: humans, users, subscriptions, pools: POOLS, seatTeams, now: NOW };
 }
@@ -81,24 +82,24 @@ test("simulateParkingSweep: parkerer, springer abonnement over og genindplacerer
   assert.deepEqual(sim.subscriptionSkipped.map((t) => t.id), ["paying"]);
   assert.deepEqual(
     sim.placements.map((pl) => ({ id: pl.team.id, division: pl.division, pool: pl.leagueDivisionId })),
-    [{ id: "back", division: MANAGER_ENTRY_DIVISION, pool: "d3a" }],
+    [{ id: "back", division: MANAGER_ENTRY_DIVISION, pool: "d4a" }],
     "den eneste ledige entry-plads er den parkeringen frigjorde",
   );
 
-  const d3a = sim.poolSizes.find((p) => p.pool_id === "d3a");
+  const d4a = sim.poolSizes.find((p) => p.pool_id === "d4a");
   assert.deepEqual(
-    { before: d3a.before, parked_out: d3a.parked_out, placed_in: d3a.placed_in, after: d3a.after },
+    { before: d4a.before, parked_out: d4a.parked_out, placed_in: d4a.placed_in, after: d4a.after },
     { before: POOL_TARGET_SIZE, parked_out: 1, placed_in: 1, after: POOL_TARGET_SIZE },
   );
 
-  const div3 = sim.byDivision.find((d) => d.division === MANAGER_ENTRY_DIVISION);
-  assert.deepEqual(div3, {
+  const div4 = sim.byDivision.find((d) => d.division === MANAGER_ENTRY_DIVISION);
+  assert.deepEqual(div4, {
     division: MANAGER_ENTRY_DIVISION, before: 2, parked: 1, subscription_skipped: 1, placed_in: 1, after: 2,
   });
 });
 
 test("simulateParkingSweep: simulerer placeringerne ét hold ad gangen (to tilbage-tilmeldte deler ikke én plads)", () => {
-  const base = scenario({ d3bFull: false }); // d3b har to ledige pladser
+  const base = scenario({ d4bFull: false }); // d4b har to ledige pladser
   base.humanTeams.push(human("back2", { league_division_id: null, division: 2, parked_at: daysAgo(90), next_season_signup_at: daysAgo(1) }));
   base.users.push({ id: "u-back2", last_seen: daysAgo(1) });
   base.seatTeams.push(seatRow(base.humanTeams.at(-1)));
@@ -107,15 +108,28 @@ test("simulateParkingSweep: simulerer placeringerne ét hold ad gangen (to tilba
   const pools = sim.placements.map((pl) => pl.leagueDivisionId);
   assert.equal(pools.length, 2);
   const after = Object.fromEntries(sim.poolSizes.map((p) => [p.pool_id, p.after]));
-  assert.ok(after.d3a <= POOL_TARGET_SIZE && after.d3b <= POOL_TARGET_SIZE, "ingen entry-pulje fyldes over målet af simuleringen");
+  assert.ok(after.d4a <= POOL_TARGET_SIZE && after.d4b <= POOL_TARGET_SIZE, "ingen entry-pulje fyldes over målet af simuleringen");
 });
 
-test("simulateParkingSweep: fuld entry-division ⇒ genindplacering i overflow-divisionen", () => {
+test("simulateParkingSweep: alle entry-puljer AI-fyldt ⇒ genindplacering i puljen med færrest rigtige managere (#6650)", () => {
   const base = scenario();
   // Ingen parkering denne gang: den inaktive manager har logget ind igen.
   base.users.find((u) => u.id === "u-dormant").last_seen = daysAgo(1);
 
   const sim = simulateParkingSweep(base);
   assert.deepEqual(sim.wouldPark, []);
-  assert.deepEqual(sim.placements.map((pl) => [pl.division, pl.leagueDivisionId]), [[MAX_DIVISION, "d4a"]]);
+  assert.deepEqual(sim.placements.map((pl) => [pl.division, pl.leagueDivisionId]), [[MANAGER_ENTRY_DIVISION, "d4c"]]);
+});
+
+test("simulateParkingSweep: pensionerede puljer og ungdomspuljer er aldrig et genindplaceringsmål (#6650)", () => {
+  const base = scenario();
+  base.users.find((u) => u.id === "u-dormant").last_seen = daysAgo(1);
+  base.pools = [
+    ...POOLS,
+    { id: "d4e", tier: MANAGER_ENTRY_DIVISION, pool_index: 4, label: "D4 E", retired_at: "2026-09-27T20:00:00Z" },
+    { id: "u23", tier: MANAGER_ENTRY_DIVISION, pool_index: 0, label: "U23", squad: "u23" },
+  ];
+
+  const sim = simulateParkingSweep(base);
+  assert.deepEqual(sim.placements.map((pl) => pl.leagueDivisionId), ["d4c"]);
 });

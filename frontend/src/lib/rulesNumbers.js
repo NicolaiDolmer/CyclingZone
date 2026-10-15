@@ -48,12 +48,12 @@ export const RULES_NUMBERS = {
   debtD1: 1200000, // DEBT_CEILING_BY_DIVISION[1]
   debtD2: 900000, // DEBT_CEILING_BY_DIVISION[2]
   debtD3: 600000, // DEBT_CEILING_BY_DIVISION[3]
+  debtD4: 400000, // DEBT_CEILING_BY_DIVISION[4]
   prizePerPoint: 75, // PRIZE_PER_POINT (#1816: 1500 → 75, ÷20)
   starValue: 8000000, // STAR_RIDER_MARKET_VALUE
   divisions: 4, // MAX_DIVISION - MIN_DIVISION + 1 (#1608 form-frys: 4-tier-pyramide)
   minDivision: 1, // MIN_DIVISION
   maxDivision: 4, // MAX_DIVISION (#1608 form-frys: tier 4 = bunden)
-  divisionCapacity: 20, // DIVISION_CAPACITY
   firstPromotionSeason: 1, // FIRST_PROMOTION_RELEGATION_SEASON
 
   // --- Division bonus (backend/lib/economyConstants.js DIVISION_BONUSES) ---

@@ -15,7 +15,6 @@ import { YOUTH_POOL_SQUADS, YOUTH_GROUP_TIER, YOUTH_GROUP_SIZE, pickYouthGroupFo
 import {
   INITIAL_BALANCE,
   MANAGER_ENTRY_DIVISION,
-  MAX_DIVISION,
   POOL_TARGET_SIZE,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
@@ -167,13 +166,12 @@ function getEconomyRepairValues(team) {
   return repair;
 }
 
-// #1608 Task 9 / #1688 (ejer-besluttet 22/6) · pulje-bevidst placering. ERSTATTER #962
-// fyld-fra-toppen for ÆGTE nye managere: forever-relaunch-politikken er at managere kommer
-// ind i MANAGER_ENTRY_DIVISION (=3, IKKE den strukturelle bund tier 4) og rykker op over
-// sæsoner. Et nyt hold placeres i den MINDST-FYLDTE entry-pulje (league_divisions med tier
-// = MANAGER_ENTRY_DIVISION), op til POOL_TARGET_SIZE som blød cap (vi lander altid i mindst-
-// fyldte pulje, også når alle er forbi target). Kun "rigtige" hold tæller mod pulje-fyldningen
-// — samme filter som ranglisten (StandingsPage): AI-, test- og frosne hold ignoreres.
+// #1608 Task 9 / #1688 · pulje-bevidst placering. ERSTATTER #962 fyld-fra-toppen for ÆGTE
+// nye managere: de kommer ind i MANAGER_ENTRY_DIVISION og rykker op over sæsoner.
+// #6650 (ejer 15/10): entry er bunden, Division 4 (= MAX_DIVISION), og nye managere
+// spredes jævnt på dens aktive puljer. Før S4 var entry div 3 med D4 som overflow (#2055),
+// men pyramiden 1/2/4/4 (#5642) AI-fyldte D3, så overflow-grenen kørte ved hver
+// tilmelding. Den gren er fjernet; reglen er nu én tier.
 //
 // Returnerer { division, leagueDivisionId }. Graceful fallback: hvis ingen entry-puljer
 // findes (pre-migration / minimal test-mock), placeres holdet stadig i entry-divisionen med
@@ -191,7 +189,7 @@ export async function pickDivisionForNewTeam(supabase) {
     withSeniorSquadScope((senior) => senior(supabase
       .from("league_divisions")
       .select(`id, tier${retiredCol}`))
-      .in("tier", [MANAGER_ENTRY_DIVISION, MAX_DIVISION])));
+      .eq("tier", MANAGER_ENTRY_DIVISION)));
 
   if (poolsError) {
     throw createHttpError(500, poolsError.message);
@@ -222,21 +220,19 @@ export const NEW_TEAM_PLACEMENT_TEAM_COLUMNS =
   "league_division_id, is_ai, is_test_account, is_frozen, is_bank, pending_removal_at";
 
 /**
- * Ren del af pickDivisionForNewTeam: givet puljerne (entry + overflow-tier) og ALLE
- * holds placerings-felter, hvilken pulje lander et nyt hold i? Ingen DB — så et
- * dry-run kan simulere flere placeringer i træk ved at lægge hvert placeret hold
- * ind i `teams` før næste kald.
+ * Ren del af pickDivisionForNewTeam: givet puljerne og ALLE holds placerings-felter,
+ * hvilken entry-pulje lander et nyt hold i? Ingen DB — så et dry-run kan simulere
+ * flere placeringer i træk ved at lægge hvert placeret hold ind i `teams` før
+ * næste kald. Puljer i andre tiers end MANAGER_ENTRY_DIVISION ignoreres.
  *
  * @param {{ pools: Array<{id:any, tier:number}>, teams: object[] }} args
  * @returns {{ division:number, leagueDivisionId:any }}
  */
 export function choosePoolForNewTeam({ pools = [], teams = [] } = {}) {
   // #5642: en pensioneret pulje (D4 E-H fra S4) har ingen pladser, ingen AI og ingen
-  // kalender. Den udelades før BÅDE mætnings-testen og valget, så D4-overflow kun
-  // spreder på de aktive puljer A-D.
-  const allPools = (pools || []).filter((pool) => !isPoolRetired(pool));
-  const entryPools = allPools.filter((pool) => pool.tier === MANAGER_ENTRY_DIVISION);
-  const overflowPools = allPools.filter((pool) => pool.tier === MAX_DIVISION);
+  // kalender, så den er aldrig et mål.
+  const entryPools = (pools || [])
+    .filter((pool) => !isPoolRetired(pool) && pool.tier === MANAGER_ENTRY_DIVISION);
 
   if (entryPools.length === 0) {
     return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: null };
@@ -249,18 +245,11 @@ export function choosePoolForNewTeam({ pools = [], teams = [] } = {}) {
   // og ikke allerede er markeret til fjernelse holder en plads. Et FROSSET hold
   // staar stadig i puljen, i kalenderen og i loebene - dets plads er optaget.
   //
-  // realManagers = "hvor mange spillere er der i forvejen?" Bruges KUN til at
-  // sprede spillere jaevnt i overflow-divisionen, hvor AI-fyldet altid holder
-  // puljen paa 24, og hvor reconcileAiTeamsForPool trimmer et AI-hold naar en
-  // spiller rykker ind.
-  //
-  // Foer #4183 brugte MAETNINGS-testen realManagers. Et frosset hold gjorde
-  // derfor sin egen plads usynlig, og en fuld entry-pulje saa ud til at have
-  // plads. Maalt i prod 24/8: D3-A og D3-C havde hver ét frosset hold, laeste
-  // 24 i stedet for 25, og fik derfor BEGGE dagens nye tilmeldinger - i strid
-  // med #2377 (praecis 24 hold pr. pulje).
-  const occupancy = new Map(allPools.map((pool) => [pool.id, 0]));
-  const realManagers = new Map(allPools.map((pool) => [pool.id, 0]));
+  // realManagers = "hvor mange spillere er der i forvejen?" Bruges til at sprede
+  // spillere jaevnt naar alle puljer er AI-fyldt til 24; reconcileAiTeamsForPool
+  // trimmer et AI-hold naar en spiller rykker ind.
+  const occupancy = new Map(entryPools.map((pool) => [pool.id, 0]));
+  const realManagers = new Map(entryPools.map((pool) => [pool.id, 0]));
   for (const team of teams || []) {
     if (!occupancy.has(team.league_division_id)) continue;
     if (team.is_bank === true || team.pending_removal_at != null) continue;
@@ -269,29 +258,16 @@ export function choosePoolForNewTeam({ pools = [], teams = [] } = {}) {
     realManagers.set(team.league_division_id, realManagers.get(team.league_division_id) + 1);
   }
 
-  // #2055 overflow: hvis ALLE entry-puljer er ved/over POOL_TARGET_SIZE (rigtige
-  // managers, AI tæller ikke med — den er evict-bar), og der findes mindst én
-  // MAX_DIVISION-pulje, fald igennem dertil. Ellers: uændret blød-cap-adfærd i
-  // entry-divisionen (graceful fallback, fx pre-migration/test-mock uden
-  // MAX_DIVISION-puljer).
-  // #4183: maetning maales paa OCCUPANCY - en plads er optaget uanset hvem der
-  // sidder paa den. AI-hold i overflow-divisionen er stadig evict-bare, men det
-  // haandteres af reconcileAiTeamsForPool NAAR holdet er placeret, ikke ved at
-  // lade som om pladsen var tom paa forhaand.
-  const entryIsSaturated = entryPools.every((pool) => occupancy.get(pool.id) >= POOL_TARGET_SIZE);
-  const useOverflow = entryIsSaturated && overflowPools.length > 0;
-  const targetPools = useOverflow ? overflowPools : entryPools;
-  const targetDivision = useOverflow ? MAX_DIVISION : MANAGER_ENTRY_DIVISION;
-
-  // Mindst-fyldte maalpulje (deterministisk: foerste pulje ved lige fyldning).
-  // Entry-divisionen spreder paa OCCUPANCY - der er ingen AI at trimme dér, saa
-  // pladsen er den bindende ressource. Overflow-divisionen spreder paa
-  // REALMANAGERS, saa spillere fordeles jaevnt i stedet for at klumpe i den
-  // pulje der tilfaeldigvis har faerrest AI-hold.
-  const spread = useOverflow ? realManagers : occupancy;
-  let chosenPoolId = targetPools[0].id;
+  // Har mindst én pulje en ledig plads, vinder den mindst-fyldte (OCCUPANCY): pladsen
+  // er den bindende ressource. Er ALLE puljer ved POOL_TARGET_SIZE (normaltilstanden,
+  // AI-fyldt), spredes på REALMANAGERS, saa spillere fordeles jaevnt i stedet for at
+  // klumpe i den pulje der tilfaeldigvis har faerrest AI-hold. Deterministisk: foerste
+  // pulje ved lige fyldning.
+  const allSaturated = entryPools.every((pool) => occupancy.get(pool.id) >= POOL_TARGET_SIZE);
+  const spread = allSaturated ? realManagers : occupancy;
+  let chosenPoolId = entryPools[0].id;
   let chosenCount = spread.get(chosenPoolId);
-  for (const pool of targetPools) {
+  for (const pool of entryPools) {
     const count = spread.get(pool.id);
     if (count < chosenCount) {
       chosenPoolId = pool.id;
@@ -299,7 +275,7 @@ export function choosePoolForNewTeam({ pools = [], teams = [] } = {}) {
     }
   }
 
-  return { division: targetDivision, leagueDivisionId: chosenPoolId };
+  return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: chosenPoolId };
 }
 
 async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId = null }) {
