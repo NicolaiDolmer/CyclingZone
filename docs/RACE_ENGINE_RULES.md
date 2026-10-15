@@ -463,6 +463,10 @@ læring om at et scorecard der hænger på et absolut tal måler feltstørrelsen
 
 ---
 
+### Rutemærket "Long day"/"Short day" gælder ikke enkeltstarter ([#6475](https://github.com/NicolaiDolmer/CyclingZone/issues/6475), 15/10)
+
+Etapekortets lang/kort-mærke (`routeReadKeys` i `frontend/src/lib/stageRouteProfile.js`) sammenligner distancen med profilens typiske længde. På `itt`, `itt_hilly` og `ttt` vises mærket ALDRIG: en enkeltstart på 40 km er ikke en "lang dag", og v4 lægger intet ekstra udholdenheds-slid på enkeltstarter under 150 km. Enkeltstarten afgøres af tidskørselsevnen (se afsnittet om `s5_profiles_v1` ovenfor). Kommer der senere et nyt rutemærke, skal undtagelsen stå her.
+
 ## 2c. Incidents — hvad koster hvad (M10)
 
 To modeller lever side om side indtil v4-flippet: **v4's trappe** (den ejer-besluttede, gældende fremad) og **v3's binære model** (den spillerne møder i dag).
