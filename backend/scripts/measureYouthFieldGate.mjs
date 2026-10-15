@@ -75,6 +75,7 @@ import { loadS5Benchmark } from "../lib/s5BenchmarkGate.js";
 // Samme evne-liste som generatorens niveau-mål (bestAbility over de synlige evner).
 import { VISIBLE_ABILITIES as LEVEL_ABILITIES } from "../lib/abilityDerivation.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
+import { ACADEMY } from "../lib/academyFlag.js";
 import { SQUAD_MAX_AGE, SQUAD_CAPS, isYouthSquad, squadForSeasonAge } from "../lib/squads.js";
 import { MIN_RACE_ENTRIES, selectionSizeForRace } from "../lib/raceAutopick.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
@@ -113,8 +114,8 @@ export const RACE_DAYS = 140;
 /** Gulve (startende hold) gaten vises ved. Ikke en beslutning — se topkommentaren. */
 export const MIN_TEAM_FLOORS = Object.freeze([2, 4, 6, 8, 12]);
 export const DEFAULT_UNAVAILABLE = Object.freeze([0, 0.05, 0.1, 0.15]);
-/** Løbsberettiget fra sæsonalder 17 (YOUTH_RULES §2.1: 16-årige træner, kører ikke). */
-export const JUNIOR_RACE_MIN_AGE = 17;
+/** Løbsberettiget fra sæsonalder 16 (YOUTH_RULES §2.1, ejer 24/9 #5645: hele juniortruppen 16-18 må køre). Deles med akademiets mindstealder. */
+export const JUNIOR_RACE_MIN_AGE = ACADEMY.MIN_AGE;
 const SEED = 0x5518c1;
 
 // ── Rene funktioner ──────────────────────────────────────────────────────────

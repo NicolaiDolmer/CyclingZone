@@ -970,6 +970,12 @@ export async function loadLevelInputs(supabase, aiTeamIds) {
   };
 }
 
+/** Grund til at et løft ikke må anvendes (null = ok). Tjekkes FØR applyPlan skriver nye kuld (#6668). */
+export function liftBlockedReason(lift) {
+  if (!lift || !(lift.totals?.overValueCap > 0)) return null;
+  return `STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret før første skrivning (#2065, #6668).`;
+}
+
 /**
  * Apply af løftet: restore-fil FØR første skrivning → ny fødsels-markør pr. rytter
  * → deriveForRiderIds med SAMME modeller som spejlingen → post-verify. Kontrakt og
@@ -1123,6 +1129,13 @@ async function main() {
     console.error(`STOP: målsæsonen er S${plan.targetSeason}, men den aktive sæson er ${season ? `S${season.number}` : "ingen"}. `
       + "deriveForRiderIds regner alder mod den AKTIVE sæson (#4876) — kør apply når målsæsonen er aktiv.");
     process.exit(2);
+  }
+
+  // Afvis et ugyldigt løft FØR første skrivning: applyPlan indsætter og deriverer nye kuld, og et løft
+  // der først afvises i applyLift ville efterlade prod halvt opdateret (en genkørsel springer så kuldene over).
+  if (liftBlockedReason(lift)) {
+    console.error(liftBlockedReason(lift));
+    process.exit(1);
   }
 
   console.log("APPLY (--owner-go givet)");

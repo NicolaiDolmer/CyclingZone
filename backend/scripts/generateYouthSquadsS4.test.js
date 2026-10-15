@@ -19,6 +19,7 @@ import {
   rankBirthCandidates,
   planYouthLift,
   applyLift,
+  liftBlockedReason,
   summarizeExistingByTeam,
   summarizeLevels,
 } from "./generateYouthSquadsS4.js";
@@ -343,7 +344,7 @@ test("C1: ungdomstruppen tæller kun ungdomsryttere i truppens alder, under loft
   const junior = youthRosterByTeam({ riders, humanTeamIds, squad: "junior", season });
   assert.deepEqual(junior.get("H"), ["d"]);
   const sixteen = youthRosterByTeam({ riders: [{ id: "y", team_id: "H", birthdate: born(16), squad: "junior", is_academy: true }], humanTeamIds, squad: "junior", season });
-  assert.equal(sixteen.size, 0, "16-årige er ikke løbsberettigede");
+  assert.deepEqual(sixteen.get("H"), ["y"], "16-årige er løbsberettigede (YOUTH_RULES §2.1, ejer 24/9)");
 });
 
 test("C1: et hold starter kun med mindst MIN_RACE_ENTRIES, og gaten er 100 % af løbsdagene", () => {
@@ -629,4 +630,10 @@ test("#6668: efter et løft genkender idempotensen stadig U23-truppen (ingen nye
     ...MODELS,
   });
   assert.equal(second.skipped.noMarker, 0);
+});
+
+test("#6668: et løft over værdiloftet afvises før første skrivning (ingen halv apply)", () => {
+  assert.equal(liftBlockedReason(null), null);
+  assert.equal(liftBlockedReason({ totals: { overValueCap: 0 } }), null);
+  assert.match(liftBlockedReason({ totals: { overValueCap: 2 } }), /apply blokeret før første skrivning/);
 });
