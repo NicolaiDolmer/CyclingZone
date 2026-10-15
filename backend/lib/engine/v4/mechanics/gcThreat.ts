@@ -108,7 +108,8 @@ export function isS5ThreatModel(gc: GcContext | null | undefined): boolean {
   return !!gc && gc.status === "standings" && (gc as GcContext & S5GcMarks).threat_model === "s5";
 }
 
-function isSyntheticFirstStage(gc: GcContext): boolean {
+/** #5978 (KUN s5_profiles_v1): broens syntetiske foerste-etape-klassement (alle staar lige, rang 1). */
+export function isSyntheticFirstStage(gc: GcContext): boolean {
   return gc.status === "standings" && (gc as GcContext & S5GcMarks).first_stage === true;
 }
 

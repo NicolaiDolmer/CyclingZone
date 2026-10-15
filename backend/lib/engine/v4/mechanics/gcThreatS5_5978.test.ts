@@ -22,6 +22,8 @@ import {
 } from "./gcThreat.ts";
 import { dangerScaledIntensity, planTeamReaction, TEAM_REACTION_TUNING } from "./teamChaseReaction.ts";
 import { resolveMorningBreakFormation, type FormationRider } from "./breakawayPermission.ts";
+import { rankedFormationPressure } from "./breakaway.ts";
+import { SHARED_TIME_MODEL_V2_TUNING } from "./timeModel.ts";
 import { buildGcContext, buildV4StageInput as buildV4StageInputJs, withS5ThreatModel } from "../../../raceEngineV4Bridge.js";
 import type { AbilityKey, Entrant, GcContext, RaceGroup, RouteV2 } from "../types.ts";
 
@@ -252,4 +254,20 @@ test("#5978 foerste etape: dannelsen kender faren pr. hold (kun S5)", () => {
   assert.equal(list.danger?.get("A"), 1);
   const plainFirst = normalizeGcContext({ status: "first_stage", stage_number: 1 });
   assert.deepEqual([...formationDangerTeams({ gcContext: plainFirst, riderId: "equal", teamIds, groups, entrants: ENTRANTS, route: MOUNTAIN, km: 0, dangerModel: MODEL })], []);
+});
+
+test("#5978 foerste etape: det syntetiske klassement giver ingen rang-vaegt ved dannelsen (kun S5)", () => {
+  const danger = SHARED_TIME_MODEL_V2_TUNING.gcDanger!;
+  assert.equal(typeof danger.formationRankedPressureWeight, "number", "knappen findes, saa testen rammer vagten");
+  assert.deepEqual(rankedFormationPressure(FIRST_S5, danger), {}, "alle staar paa rang 1, men ingen er forrest");
+  // Et rigtigt klassement (S4 og S5 fra etape 2) beholder rang-vaegten uaendret.
+  const real = normalizeGcContext({
+    status: "standings", stage_number: 2, leader_id: "cap",
+    standings: STARTERS.map((rider_id, i) => ({ rider_id, rank: i + 1, gap_seconds: i * 10 })),
+  });
+  const { dangerPressureWeight } = rankedFormationPressure(real, danger);
+  assert.ok(dangerPressureWeight);
+  assert.equal(dangerPressureWeight(STARTERS[0]), danger.formationRankedPressureWeight);
+  const s5Real = normalizeGcContext(withS5ThreatModel(real, STARTERS.map((rider_id) => ({ rider_id }))));
+  assert.equal(rankedFormationPressure(s5Real, danger).dangerPressureWeight?.(STARTERS[0]), danger.formationRankedPressureWeight);
 });
