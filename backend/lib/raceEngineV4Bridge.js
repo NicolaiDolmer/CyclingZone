@@ -1,5 +1,5 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
-import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
 //
 // HVAD DEN ER: seamen mellem den UÆNDREDE resultat-pipeline (raceRunner.js →
@@ -447,6 +447,19 @@ export function buildGcContext({ isStageRace, stageNumber, standings, starterIds
 }
 
 /**
+ * #5978 (KUN s5_profiles_v1): GC-konteksten med S5-trusselsmodellens maerker
+ * (mechanics/gcThreat.ts S5GcMarks). REN. Foerste etape bliver et klassement hvor
+ * alle dagens startere staar lige (rang 1, intet hul, ingen foerer); et klassement
+ * faar maerket; endagsloeb og manglende data er uaendrede.
+ */
+export function withS5ThreatModel(gcContext, startlist) {
+  if (gcContext?.status === "standings") return { ...gcContext, threat_model: "s5" };
+  if (gcContext?.status !== "first_stage" || !Array.isArray(startlist) || startlist.length === 0) return gcContext;
+  const standings = startlist.map((e) => ({ rider_id: String(e.rider_id), rank: 1, gap_seconds: 0 }));
+  return { status: "standings", stage_number: gcContext.stage_number, leader_id: null, standings, threat_model: "s5", first_stage: true };
+}
+
+/**
  * Byg v4's StageInput af PRÆCIS de data raceRunner allerede har i hånden.
  * REN: ingen DB-kald (kaldstedet henter etape-rækken og ordre-rækkerne).
  *
@@ -531,6 +544,9 @@ export function buildV4StageInput({
       standings: gcStandings,
       starterIds: startlist.map((e) => e.rider_id),
     });
+    // #5978 (KUN s5_profiles_v1): S5-trusselsmodellen (gcThreat.ts). Paa foerste etape
+    // staar alle dagens startere lige (rang 1, intet hul), saa feltet ogsaa dér reagerer.
+    if (isS5ProfilesV1OrLater(rulesRevision)) input.gc_context = withS5ThreatModel(input.gc_context, startlist);
     // #5978 (KUN orders_gc_v3): etaper tilbage efter i dag (farlighedens potentiale).
     if (isOrdersGcV3OrLater(rulesRevision) && input.gc_context.status === "standings" && Array.isArray(raceStages)) {
       input.gc_context.stages_remaining = raceStages.filter((s) => (Number(s?.stage_number) || 1) > Number(stageNumber)).length;
@@ -627,6 +643,9 @@ export function createRaceEngineV4Adapter(modules) {
           stageNumber,
         }),
         v4Output,
+        // #5928: the effort the engine actually raced each rider on (AI orders included),
+        // so the stage's fatigue load follows the same intent as the race itself.
+        efforts: new Map(input.startlist.map((e) => [String(e.rider_id), e.effort])),
       };
     },
   };

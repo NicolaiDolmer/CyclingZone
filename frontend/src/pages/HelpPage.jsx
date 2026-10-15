@@ -448,6 +448,7 @@ const SECTION_DEFS = [
       { id: "graduationDayAt23", kind: "text" },
       { id: "youthRacesFromS4", kind: "text" },
       { id: "trainOnly", kind: "text" },
+      { id: "startFloor", kind: "text" },
       { id: "noUpkeepAtSeasonChange", kind: "text" },
     ],
   },

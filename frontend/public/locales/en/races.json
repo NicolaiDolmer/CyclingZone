@@ -1662,7 +1662,9 @@
     },
     "table": {
       "prizePoints": "Prize points",
-      "jerseyPoints": "Jersey points"
+      "jerseyPoints": "Jersey points",
+      "prizePointsShort": "Prize",
+      "jerseyPointsShort": "Jersey"
     },
     "jumpToResults": "See results"
   },
