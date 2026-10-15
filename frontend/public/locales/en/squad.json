@@ -57,8 +57,8 @@
     "hint": "How each rider's rating is expected to grow with your training, and the highest rating his role can reach."
   },
   "filter": {
-    "u23": "U23 ({count})",
-    "junior": "Juniors ({count})"
+    "u23": "U23 · max age {age} ({count})",
+    "junior": "Juniors · max age {age} ({count})"
   },
   "standings": {
     "headers": {
@@ -124,7 +124,7 @@
       "auto": "{count, plural, one {1 rider, auto-picked} other {# riders, auto-picked}}",
       "manual": "{count, plural, one {1 rider picked} other {# riders picked}}",
       "rode": "{count, plural, one {1 rider} other {# riders}}",
-      "belowFloor": "Under {min} riders: add more to start"
+      "belowFloor": "Under {min}: add riders"
     },
     "action": {
       "pick": "Pick riders",

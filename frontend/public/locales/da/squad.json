@@ -57,8 +57,8 @@
     "hint": "Hvordan hver rytters rating ventes at vokse med din træning, og den højeste rating hans rolle kan nå."
   },
   "filter": {
-    "u23": "U23 ({count})",
-    "junior": "Juniorer ({count})"
+    "u23": "U23 · højst {age} år ({count})",
+    "junior": "Juniorer · højst {age} år ({count})"
   },
   "standings": {
     "headers": {
@@ -124,7 +124,7 @@
       "auto": "{count, plural, one {1 rytter, auto-udtaget} other {# ryttere, auto-udtaget}}",
       "manual": "{count, plural, one {1 rytter udtaget} other {# ryttere udtaget}}",
       "rode": "{count, plural, one {1 rytter} other {# ryttere}}",
-      "belowFloor": "Under {min} ryttere: tilføj flere for at stille op"
+      "belowFloor": "Under {min}: tilføj ryttere"
     },
     "action": {
       "pick": "Udtag ryttere",
