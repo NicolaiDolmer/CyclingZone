@@ -13,6 +13,13 @@ import {
   JUNIOR_AGE_MIN,
   JUNIOR_AGE_MAX,
   DEFAULT_TARGET_SEASON,
+  buildHumanLevelProfile,
+  levelQuantile,
+  levelOf,
+  rankBirthCandidates,
+  planYouthLift,
+  applyLift,
+  summarizeLevels,
 } from "./generateYouthSquadsS4.js";
 import {
   mirrorPool,
@@ -22,6 +29,11 @@ import {
   simulateForm,
   gatePasses,
   PYRAMID_FORMS,
+  finishTimeSeconds,
+  gap10BySquadTerrain,
+  benchmarkGapByTerrain,
+  gapVerdict,
+  describeLevels,
 } from "./measureYouthFieldGate.mjs";
 import { deriveForRiderIds } from "../lib/backfillCores.js";
 import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
@@ -364,4 +376,184 @@ test("summarizePlan: vækst regnes mod bestanden", () => {
   assert.equal(s.load.newRiders, p.totals.riders);
   assert.equal(s.load.growthPct, (100 * p.totals.riders) / 1000);
   assert.equal(s.u23.count + s.junior.count, p.totals.riders);
+});
+
+// ── #6668: niveau-matchning mod menneskeholdenes ungdom ──────────────────────
+const S = DEFAULT_TARGET_SEASON;
+const birthOf = (age) => `${2026 + (S - 1) - age}-06-15`;
+/** En syntetisk menneske-fordeling: `n` ryttere pr. alder, niveau lineært i [lo, hi]. */
+function humanRows({ ages = [17, 18, 19, 20, 21, 22], n = 40, lo = 10, hi = 60 } = {}) {
+  return ages.flatMap((age) => Array.from({ length: n }, (_, i) => ({ birthdate: birthOf(age), level: lo + ((hi - lo) * i) / (n - 1) })));
+}
+
+test("parseArgs: --lift-existing indebærer --match-human-level; flagene tager ingen værdi", () => {
+  assert.equal(parseArgs(["--juniors=0"]).matchHumanLevel, false);
+  assert.equal(parseArgs(["--juniors=0", "--match-human-level"]).matchHumanLevel, true);
+  const lift = parseArgs(["--juniors=0", "--lift-existing"]);
+  assert.equal(lift.liftExisting, true);
+  assert.equal(lift.matchHumanLevel, true);
+  assert.throws(() => parseArgs(["--juniors=0", "--lift-existing=1"]), /ingen værdi/);
+});
+
+test("buildHumanLevelProfile: pr. målsæsonens alder, sorteret, kun aldre med nok ryttere", () => {
+  const rows = [...humanRows({ ages: [19], n: 25 }), ...humanRows({ ages: [17], n: 5 })];
+  const p = buildHumanLevelProfile(rows, { season: S });
+  assert.deepEqual([...p.keys()], [19]);
+  const xs = p.get(19);
+  assert.equal(xs.length, 25);
+  assert.ok(xs.every((x, i) => i === 0 || xs[i - 1] <= x));
+  assert.equal(levelQuantile(xs, 0), xs[0]);
+  assert.equal(levelQuantile(xs, 0.999), xs[24]);
+  assert.equal(levelQuantile(undefined, 0.5), null);
+});
+
+test("rankBirthCandidates: uden mål = truppens eget bånd; med mål = tættest først, deterministisk", () => {
+  const row = plan().rows.find((r) => r.squad === "u23").payload;
+  const seed = row.archetype_draw.birth.seed;
+  const age = row.archetype_draw.birth.age;
+  const none = rankBirthCandidates({ row, seed, age, target: null });
+  assert.equal(none.length, 1);
+  assert.equal(none[0].birth.tier, U23_BIRTH_TIER);
+  const a = rankBirthCandidates({ row, seed, age, target: 50 });
+  const b = rankBirthCandidates({ row, seed, age, target: 50 });
+  assert.deepEqual(a, b);
+  assert.ok(a.every((c, i) => i === 0 || a[i - 1].distance <= c.distance));
+  assert.ok(a[0].distance <= 3, `bedste kandidat ${a[0].level} ligger tæt på målet`);
+});
+
+test("planYouthSquads med levelProfile: kuldet følger menneske-fordelingen, og derive reproducerer markøren", () => {
+  const profile = buildHumanLevelProfile(humanRows({ lo: 20, hi: 60 }), { season: S });
+  const base = plan();
+  const lifted = plan({ levelProfile: profile });
+  // Struktur uændret: samme hold, aldre, trupper og navne.
+  assert.deepEqual(lifted.rows.map((r) => [r.teamId, r.squad, r.age, r.payload.lastname]), base.rows.map((r) => [r.teamId, r.squad, r.age, r.payload.lastname]));
+  const matched = lifted.rows.filter((r) => r.target != null);
+  assert.ok(matched.length > 0);
+  for (const r of matched) {
+    assert.ok(Math.abs(levelOf(r.mirror.abilities) - r.target) <= 3, `niveau ${levelOf(r.mirror.abilities)} mod mål ${r.target}`);
+    // Spejlingen ER det derive persisterer: markøren alene reproducerer niveauet.
+    const again = mirrorDerive({ ...r.payload, id: "x" }, { seasonNumber: S, ...MODELS });
+    assert.equal(levelOf(again.abilities), levelOf(r.mirror.abilities));
+  }
+  const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+  assert.ok(mean(matched.map((r) => levelOf(r.mirror.abilities))) > mean(base.rows.filter((r) => r.age >= 17).map((r) => levelOf(r.mirror.abilities))));
+});
+
+test("planYouthSquads uden levelProfile er bit for bit som før (#6668 ændrer intet uden flaget)", () => {
+  const a = plan();
+  const b = plan({ levelProfile: null });
+  assert.deepEqual(a.rows.map((r) => r.payload), b.rows.map((r) => r.payload));
+});
+
+function existingAiRiders() {
+  return plan().rows.map((r, i) => ({ ...r.payload, id: `ai-${i}`, archetype_draw: { ...r.payload.archetype_draw, note: "bevares" } }));
+}
+
+test("planYouthLift: løfter mod fordelingen, bevarer rangorden, sænker aldrig og rører kun fødsels-markøren", () => {
+  // Ét år frem: S4-kuldet målt i S5 (U23 22 → 23 er vokset ud).
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S + 1 });
+  const lift = planYouthLift({
+    riders,
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S + 1,
+    levelProfile: profile,
+    ...MODELS,
+  });
+  assert.equal(lift.skipped.graduated, riders.filter((r) => ageForSeason(r.birthdate, S + 1) > U23_BIRTH_AGE_MAX).length);
+  assert.ok(lift.totals.changed > 0);
+  for (const r of lift.rows) assert.ok(r.after >= r.before, "løftet sænker aldrig");
+  for (const r of lift.rows.filter((x) => x.changed)) {
+    const old = riders.find((x) => x.id === r.riderId).archetype_draw;
+    assert.equal(r.archetype_draw.note, "bevares");
+    assert.equal(r.archetype_draw.primary, old.primary);
+    assert.deepEqual(r.previousBirth, old.birth);
+  }
+  // Rangorden pr. alder bevares (stratificerede mål).
+  for (const age of new Set(lift.rows.map((r) => r.age))) {
+    const rows = lift.rows.filter((r) => r.age === age).sort((a, b) => a.before - b.before || String(a.riderId).localeCompare(String(b.riderId)));
+    assert.ok(rows.every((r, i) => i === 0 || rows[i - 1].target <= r.target));
+  }
+  const levels = summarizeLevels({ humanProfile: profile, lift });
+  assert.ok(levels.some((l) => l.aiAfter.n > 0 && l.aiAfter.mean > l.aiBefore.mean));
+});
+
+test("planYouthLift: uden menneske-fordeling på en alder står rytterne uændret", () => {
+  const lift = planYouthLift({
+    riders: existingAiRiders(),
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S,
+    levelProfile: new Map(),
+    ...MODELS,
+  });
+  assert.equal(lift.totals.changed, 0);
+  assert.throws(() => planYouthLift({ riders: [], teamsById: new Map(), targetSeason: S, ...MODELS }), /levelProfile/);
+});
+
+test("applyLift: restore før skrivning, kun archetype_draw skrives, derive + post-verify", async () => {
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S });
+  const lift = planYouthLift({ riders, teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S, levelProfile: profile, ...MODELS });
+  const changed = lift.rows.filter((r) => r.changed);
+  const calls = [];
+  const fake = {
+    from: () => ({
+      update: (patch) => ({ eq: (_c, id) => { calls.push({ id, keys: Object.keys(patch) }); return Promise.resolve({ error: null }); } }),
+      select: () => ({
+        in: (_c, ids) => ({
+          order: () => ({
+            range: () => Promise.resolve({
+              // rider-type-write-ok: test-fake af tilbagelæsningen, intet skrives.
+              data: ids.map((id) => { const r = changed.find((x) => x.riderId === id); return { id, base_value: r.mirror.base_value, primary_type: r.mirror.primary_type }; }),
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    }),
+  };
+  let restored = null;
+  let derived = null;
+  const res = await applyLift(fake, lift, {
+    ...MODELS,
+    derive: async (_s, ids) => { derived = ids; },
+    log: () => {},
+    writeRestore: (rows) => { restored = rows; assert.equal(calls.length, 0, "restore skrives før første update"); },
+  });
+  assert.equal(restored.length, changed.length);
+  assert.ok(calls.every((c) => c.keys.length === 1 && c.keys[0] === "archetype_draw"));
+  assert.deepEqual(derived, changed.map((r) => r.riderId));
+  assert.deepEqual(res.mismatches, []);
+});
+
+// ── #6668: benchmark af gab (measureYouthFieldGate) ──────────────────────────
+test("finishTimeSeconds læser resultatlistens tidsformat", () => {
+  assert.equal(finishTimeSeconds("+0:00"), 0);
+  assert.equal(finishTimeSeconds("+3:40"), 220);
+  assert.equal(finishTimeSeconds("+1:02:03"), 3723);
+  assert.equal(finishTimeSeconds(null), null);
+  assert.equal(finishTimeSeconds("s.t."), null);
+});
+
+test("gap10BySquadTerrain + benchmarkGapByTerrain + gapVerdict", () => {
+  const gaps = gap10BySquadTerrain([
+    { squad: "junior", profile_type: "hilly", finish_time: "+3:40" },
+    { squad: "junior", profile_type: "hilly", finish_time: "+0:20" },
+    { squad: null, profile_type: "hilly", finish_time: "+0:10" },
+    { squad: "u23", profile_type: null, finish_time: "+1:00" },
+  ]);
+  assert.equal(gaps.get("junior").get("hilly").n, 2);
+  assert.equal(gaps.get("junior").get("hilly").median, 120);
+  assert.equal(gaps.get("senior").get("hilly").median, 10);
+  assert.equal(gaps.has("u23"), false, "uden profil kan terrænet ikke afgøres");
+  const ref = benchmarkGapByTerrain([
+    { terrain: "kuperet", gap10_s: 0 }, { terrain: "kuperet", gap10_s: 10 }, { terrain: "kuperet", gap10_s: 60 },
+    { terrain: "ttt", gap10_s: 5 }, { terrain: "kuperet", gap10_s: null },
+  ]);
+  assert.deepEqual([...ref.keys()], ["hilly"]);
+  assert.equal(gapVerdict(120, ref.get("hilly")), "above");
+  assert.equal(gapVerdict(10, ref.get("hilly")), "inside");
+  assert.equal(gapVerdict(null, ref.get("hilly")), null);
+  assert.equal(describeLevels([3, 1, 2]).median, 2);
+  assert.equal(describeLevels([]).n, 0);
 });

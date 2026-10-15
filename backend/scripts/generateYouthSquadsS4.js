@@ -51,6 +51,15 @@
 //   node backend/scripts/generateYouthSquadsS4.js --juniors=N --out=balance-internals/<fil>.md
 //   node backend/scripts/generateYouthSquadsS4.js --juniors=N --apply --owner-go   # KRÆVER EJER-GO
 //
+// #6668 (ejer 15/10 på #6667) — AI-ungdommen løftes til menneskeholdenes niveau:
+//   --match-human-level   nye kuld får et mål-niveau pr. alder fra menneske-
+//                         holdenes ungdom (se "Niveau-matchning" nedenfor)
+//   --lift-existing       løfter OGSÅ de AI-ungdomsryttere der allerede findes
+//                         (ny fødsels-markør + derive; navn, kontrakt og løn
+//                         urørt). Indebærer --match-human-level.
+//   S5-kørslen:  --juniors=0 --season=5 --lift-existing --out=balance-internals/<fil>.md
+//   Apply som før: kun med --apply --owner-go, og kun når målsæsonen er aktiv.
+//
 // --apply skriver mod prod og er gated bag BEGGE flag. Kør ALDRIG --apply uden et
 // eksplicit ejer-go på netop de tal dry-run'en har vist (feedback_explicit_go_per_prod_step).
 // --out må kun pege ind i balance-internals/ (gitignoreret): rapporten har
@@ -378,7 +387,7 @@ export function rankBirthCandidates({ row, seed, age, target, tries = LEVEL_MATC
     });
   }
   out.sort((a, b) => (a.distance - b.distance) || (a.order - b.order));
-  return out.map(({ order, ...c }) => c);
+  return out.map(({ birth, level, distance }) => ({ birth, level, distance }));
 }
 
 /**

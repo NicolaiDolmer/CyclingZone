@@ -36,6 +36,14 @@
 //   node scripts/seedYouthPools.js                      # dry-run, begge trupper
 //   node scripts/seedYouthPools.js --squad=u23          # kun U23
 //   node scripts/seedYouthPools.js --apply --owner-go   # EJER-GATED
+//
+// REGROUP (#6668, ejer 15/10 på #6667: "menneskehold samles i færre grupper"):
+//   --regroup --managers-per-group=<tal> lægger ALLE hold om efter en ny plan, også
+//   når grupperne findes. Eksisterende gruppe-rækker genbruges; grupper planen ikke
+//   bruger, står tomme (unusedPools); AI-hold der ikke er plads til, får FK = null
+//   (deres ungdom træner). Hold der allerede står rigtigt, skrives ikke igen.
+//   Valgt til S5: 20 managers pr. gruppe (begrundelse i docs/YOUTH_RULES.md §2.3).
+//   node scripts/seedYouthPools.js --regroup --managers-per-group=20 --mix-junior   # dry-run
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -233,9 +241,9 @@ export function applyParkingForecast(teams, { toPark = [], toUnpark = [] } = {})
 }
 
 /** Kort tal-udgave af en trup-plan (prognose-tabellen). */
-export function squadNumbers({ squad, plan, startersByPool = [] }) {
+export function squadNumbers({ squad, plan }) {
   const { managers, aiTeams, groupCount, largestGroup, smallestGroup } = plan.summary;
-  return { squad, managers, aiTeams, groupCount, largestGroup, smallestGroup, ...starterShares(startersByPool) };
+  return { squad, managers, aiTeams, groupCount, largestGroup, smallestGroup };
 }
 
 /**
@@ -334,7 +342,7 @@ export function renderMarkdown(summary) {
       `- Managers uden Global Rank (lagt sidst): ${s.managersWithoutGlobalRank}`,
       `- Grupper under ${s.minRaceEntries} startklare hold i dag: ${s.groupsBelowMinStarters} (AI-holdene har ingen ungdomsryttere før A6)`,
       `- AI-hold uden plads: ${s.aiOverflow} · grupper der oprettes: ${s.poolsToCreate} · ubrugte grupper: ${s.unusedPools} · FK-opdateringer: ${s.teamUpdates}`,
-      `- Startklare nu: managers ${s.managerStarters} · AI ${s.aiStarters} · AI-andel ${pct(s.aiStarterShare)} (mest AI-tunge gruppe ${pct(s.maxGroupAiStarterShare)}) · færrest startklare managers i en gruppe: ${s.minGroupManagerStarters ?? "-"}`,
+      `- Startklare nu: managers ${s.managerStarters} · AI-hold ${s.aiStarters} · AI-andel ${pct(s.aiStarterShare)} (mest AI-tunge gruppe ${pct(s.maxGroupAiStarterShare)}) · færrest startklare managers i en gruppe: ${s.minGroupManagerStarters ?? "-"}`,
       "",
       "| Gruppe | Managers | AI | I alt | Startklare nu | heraf managers | heraf AI |",
       "|---|---:|---:|---:|---:|---:|---:|",
@@ -431,7 +439,10 @@ export async function main(argv = process.argv.slice(2)) {
   const forecast = {
     parked: toPark.length,
     unparked: toUnpark.length,
-    squads: args.squads.map((squad) => squadNumbers(buildSquadPlan({ squad, ...planOpts, ...state, teams: forecastTeams }))),
+    squads: args.squads.map((squad) => {
+      const sp = buildSquadPlan({ squad, ...planOpts, ...state, teams: forecastTeams });
+      return { ...squadNumbers(sp), ...starterShares(sp.startersByPool) };
+    }),
   };
 
   const generatedAt = new Date().toISOString();

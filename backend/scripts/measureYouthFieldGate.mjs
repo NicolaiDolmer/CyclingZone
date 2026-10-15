@@ -52,6 +52,14 @@
 //   infisical run --env=prod --silent -- node scripts/measureYouthFieldGate.mjs --juniors=N
 //   ... --squad=u23|junior|both   (default u23; junior kræver --juniors)
 //   ... --out=../balance-internals/<fil>.md
+//   ... --season=5 --gap-season=4   # benchmark af gab (default: sæsonen før målsæsonen)
+//   ... --no-benchmark              # kun felt-gaten
+//
+// #6668: AI-holdenes EKSISTERENDE ungdom tælles med (efter S4-cutover har de deres
+// trupper; planen giver kun nye kuld til hold uden trup, samme idempotens som
+// generatoren), og rapporten får en benchmark af gab: gap10 pr. terræn i ungdoms-
+// løbene mod senior og mod Grand Tour-referencen, og niveau-gabet menneske vs. AI
+// (i dag og efter løftet) med seniorernes bånd ved siden af.
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY. Kun SELECT — scriptet har ingen skrivesti.
 // Exit: 0 = rapport skrevet, 2 = kald-/konfigurationsfejl.

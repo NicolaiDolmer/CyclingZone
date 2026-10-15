@@ -11,6 +11,7 @@ import {
   renderMarkdown,
   applyParkingForecast,
   squadNumbers,
+  starterShares,
 } from "./seedYouthPools.js";
 
 const pad = (n) => String(n).padStart(3, "0");
@@ -32,7 +33,7 @@ function world({ managers = 40, ai = 20 } = {}) {
 }
 
 test("parseArgs: dry-run default, begge trupper, --apply kræver --owner-go", () => {
-  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false });
+  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false, regroup: false });
   assert.deepEqual(parseArgs(["--squad=junior"]).squads, ["junior"]);
   assert.deepEqual(parseArgs(["--squad=all"]).squads, ["u23", "junior"]);
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
@@ -120,4 +121,68 @@ test("publicSummary/renderMarkdown indeholder ingen holdnavne eller team-id'er",
   assert.doesNotMatch(text, /Hold M|AI 0|\bm0\d\d\b|\ba0\d\d\b/);
   assert.equal(summary.squads[0].groupCount, 3);
   assert.match(renderMarkdown(summary), /U23 Group A/);
+});
+
+// ── #6668: --regroup samler menneskeholdene i færre grupper ───────────────────
+test("parseArgs: --regroup kræver et eksplicit --managers-per-group (dokumenteret valg)", () => {
+  assert.throws(() => parseArgs(["--regroup"]), /managers-per-group/);
+  assert.throws(() => parseArgs(["--regroup=yes", "--managers-per-group=20"]), /regroup/);
+  const a = parseArgs(["--regroup", "--managers-per-group=20"]);
+  assert.equal(a.regroup, true);
+  assert.equal(a.managersPerGroup, 20);
+});
+
+function seeded(w, squad = "u23") {
+  const first = buildSquadPlan({ squad, ...w });
+  const pools = [...w.pools, ...first.poolsToCreate.map((p, i) => ({ ...p, id: 100 + i }))];
+  const idByIndex = new Map(pools.filter((p) => p.squad === squad).map((p) => [p.pool_index, p.id]));
+  const target = new Map(first.updates.map((u) => [u.teamId, idByIndex.get(u.poolIndex)]));
+  const teams = w.teams.map((t) => ({ ...t, [fkColumn(squad)]: target.get(t.id) ?? null }));
+  return { pools, teams, idByIndex };
+}
+
+test("buildSquadPlan --regroup: eksisterende grupper lægges om til færre, AI-overløb mister pladsen", () => {
+  const w = world({ managers: 40, ai: 20 });
+  const { pools, teams } = seeded(w);
+  // Uden regroup: top-up, ingen ændring.
+  assert.equal(buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20 }).mode, "top-up");
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20, regroup: true });
+  assert.equal(sp.mode, "regroup");
+  assert.equal(sp.plan.groups.length, 2, "40 managers / 20 = 2 grupper (før 3)");
+  assert.deepEqual(sp.poolsToCreate, [], "de eksisterende grupper genbruges");
+  assert.deepEqual(sp.unusedPools, [2]);
+  const placed = new Set(sp.plan.groups.flatMap((g) => [...g.managerTeamIds, ...g.aiTeamIds]));
+  assert.equal(placed.size, 48, "2 grupper à 24");
+  // Alle managers har en plads; de AI-hold der ikke er plads til, får FK = null.
+  const nulls = sp.updates.filter((u) => u.poolIndex === null).map((u) => u.teamId);
+  assert.equal(nulls.length, 12);
+  assert.ok(nulls.every((id) => id.startsWith("a")), "kun AI-hold mister plads");
+  // Hold der allerede står i deres nye gruppe, skrives ikke igen.
+  const current = new Map(teams.map((t) => [t.id, t.u23_league_division_id]));
+  const idOf = new Map(pools.filter((p) => p.squad === "u23").map((p) => [p.pool_index, p.id]));
+  assert.ok(sp.updates.every((u) => u.poolIndex === null || current.get(u.teamId) !== idOf.get(u.poolIndex)));
+});
+
+test("buildSquadPlan --regroup genkørt efter apply = 0 skrivninger", () => {
+  const w = world({ managers: 40, ai: 20 });
+  const { pools, teams, idByIndex } = seeded(w);
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20, regroup: true });
+  const after = new Map(teams.map((t) => [t.id, t.u23_league_division_id]));
+  for (const u of sp.updates) after.set(u.teamId, u.poolIndex == null ? null : idByIndex.get(u.poolIndex));
+  const teams2 = teams.map((t) => ({ ...t, u23_league_division_id: after.get(t.id) }));
+  const again = buildSquadPlan({ squad: "u23", ...w, pools, teams: teams2, managersPerGroup: 20, regroup: true });
+  assert.deepEqual(again.updates, []);
+});
+
+test("starterShares: AI-andel af de startklare hold, samlet og i den mest AI-tunge gruppe", () => {
+  const s = starterShares([
+    { poolIndex: 0, managerStarters: 6, aiStarters: 2 },
+    { poolIndex: 1, managerStarters: 2, aiStarters: 6 },
+  ]);
+  assert.equal(s.managerStarters, 8);
+  assert.equal(s.aiStarters, 8);
+  assert.equal(s.aiStarterShare, 0.5);
+  assert.equal(s.maxGroupAiStarterShare, 0.75);
+  assert.equal(s.minGroupManagerStarters, 2);
+  assert.equal(starterShares([]).aiStarterShare, null);
 });
