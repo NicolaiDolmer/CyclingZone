@@ -1886,8 +1886,8 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
     return () => { live = false; };
   }, [raceId, isV4Timeline]);
   const effortByRider = useMemo(
-    () => effectiveEffortByRider(stageRoles, teamOrders, stage, { v4: isV4Timeline }),
-    [stageRoles, teamOrders, stage, isV4Timeline],
+    () => effectiveEffortByRider(stageRoles, teamOrders, stage, { v4: isV4Timeline, ranAt: timeline?.created_at ?? null }),
+    [stageRoles, teamOrders, stage, isV4Timeline, timeline?.created_at],
   );
   const participationHistory = useMemo(() => {
     const stageRows = (results || []).filter((row) => row.result_type === "stage" && row.stage_number === stage);
