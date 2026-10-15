@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { maskPullCandidate, rosterPrognosis } from "./academyIntake2View.js";
-import { KNOWLEDGE_DAYS } from "./academyProspectKnowledge.js";
+import { maskPullCandidate, rosterPrognosis } from "./academyIntake2View.ts";
+import { KNOWLEDGE_DAYS } from "./academyProspectKnowledge.ts";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 
 test("maskPullCandidate: intet potentiale forlader serveren for en hentet kandidat (punkt 1)", () => {

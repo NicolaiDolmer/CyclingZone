@@ -160,13 +160,7 @@ export default function AcademyProfileCard({ profile, onSave }: {
                 helper={slots.extra === 0 ? t("profile.extraLocked") : undefined}>
                 <Select id="academy-profile-extra" size="sm" value={choice.extra} disabled={slots.extra === 0}
                   onChange={(e: SelectChange) => setChoice((c) => ({ ...c, extra: e.target.value }))}>
-                  <option value="">{t("profile.none")}</option>
-                  <optgroup label={t("profile.groupRegions")}>
-                    {options.regions.map((r) => <option key={r} value={`${REGION}${r}`}>{t(`profile.regions.${r}`)}</option>)}
-                  </optgroup>
-                  <optgroup label={t("profile.groupNations")}>
-                    {nations.map((n) => <option key={n} value={n}>{getCountryName(n, i18n.language)}</option>)}
-                  </optgroup>
+                  {originOptions}
                   <optgroup label={t("profile.groupTypes")}>{typeOptions(TYPE)}</optgroup>
                 </Select>
               </Field>

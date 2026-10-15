@@ -25,7 +25,7 @@ import {
   buildProfileGeneratorOptions,
   candidatesForTier,
   loadAcademyProfileState,
-} from "./academyIntakeProfile.js";
+} from "./academyIntakeProfile.ts";
 
 const PULL_SEED_BASE = 3550;
 export const INTAKE_PULL_SOURCE = "pull";

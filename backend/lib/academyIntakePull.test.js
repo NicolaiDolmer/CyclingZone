@@ -9,7 +9,7 @@ import {
   INTAKE_PULL_VALUE_MIN,
   INTAKE_PULL_VALUE_MAX,
 } from "./academyIntakePull.js";
-import { candidatesForTier } from "./academyIntakeProfile.js";
+import { candidatesForTier } from "./academyIntakeProfile.ts";
 
 // ─── Mock-supabase helper ──────────────────────────────────────────────────────
 //

@@ -1,4 +1,4 @@
-// backend/lib/academyProspectKnowledge.js
+// backend/lib/academyProspectKnowledge.ts
 // #6666 (ejer-beslutning 15/10, punkt 2): prognosen LÆRES gennem træning.
 //
 // Ved hentning ser manageren kun basis (navn, alder, nationalitet, type, evner);
@@ -18,6 +18,16 @@ import { SCOUTING_CONFIG } from "./scouting.js";
 import { staffEffectFactor } from "./facilityEngine.js";
 import { MAX_FACILITY_TIER } from "./facilityConstants.js";
 
+// Supabase-klienten er utypet i kernen (samme som resten af akademi-modulerne).
+type Db = any;
+export type KnowledgeStageKey = "learning" | "broad" | "narrow" | "final";
+export type KnowledgeStage = {
+  stage: KnowledgeStageKey;
+  level: number | null;
+  effectiveDays: number;
+  nextStageDays: number | null;
+};
+
 export const KNOWLEDGE_DAYS = Object.freeze({
   broad: 10,   // første bånd
   narrow: 30,  // smalt bånd
@@ -33,7 +43,9 @@ export const KNOWLEDGE_SPEED = Object.freeze({
 });
 
 /** Hvor meget én træningsløbsdag tæller for holdets kendskab til rytteren. */
-export function learningSpeed({ facilityTier = 0, staff = null } = {}) {
+export function learningSpeed(
+  { facilityTier = 0, staff = null }: { facilityTier?: number | null; staff?: object | null } = {},
+): number {
   const tier = Math.max(0, Math.min(MAX_FACILITY_TIER, Number(facilityTier) || 0));
   // staffEffectFactor: 0.5 uden træner → 1.0 for en perfekt træner. Omsat til 0..1.
   const coachQuality = staff ? Math.max(0, Math.min(1, (staffEffectFactor(staff) - 0.5) * 2)) : 0;
@@ -42,16 +54,14 @@ export function learningSpeed({ facilityTier = 0, staff = null } = {}) {
 
 /**
  * Kendskabs-trinnet for en akademirytter.
- * @returns {{ stage: "learning"|"broad"|"narrow"|"final", level: number|null,
- *   effectiveDays: number, nextStageDays: number|null }}
  *   level = det scout-niveau prognose-båndet vises på (null = intet bånd endnu).
  *   nextStageDays = træningsløbsdage (rå, uden fart) til næste trin, eller null.
  */
-export function knowledgeStage(daysOnTeam, speed = 1) {
+export function knowledgeStage(daysOnTeam: unknown, speed: unknown = 1): KnowledgeStage {
   const days = Math.max(0, Number(daysOnTeam) || 0);
   const s = Math.max(1, Number(speed) || 1);
   const effectiveDays = days * s;
-  const toNext = (threshold) => Math.max(1, Math.ceil(threshold / s - days));
+  const toNext = (threshold: number): number => Math.max(1, Math.ceil(threshold / s - days));
   if (effectiveDays >= KNOWLEDGE_DAYS.final) {
     return { stage: "final", level: SCOUTING_CONFIG.maxLevel, effectiveDays, nextStageDays: null };
   }
@@ -68,11 +78,13 @@ export function knowledgeStage(daysOnTeam, speed = 1) {
  * Træningsløbsdage pr. rytter PÅ DETTE HOLD (én rider_training_scores-række pr.
  * rytter pr. løbsdag, unik pr. rytter+sæson+løbsdag). Optælling pr. rytter med
  * head:true, så der aldrig hentes rækker (ingen 1000-rækkers-loft).
- * @returns {Promise<Map<string, number>>}
  */
-export async function loadTrainingDaysOnTeam(supabase, { teamId, riderIds }) {
-  const ids = [...new Set((riderIds ?? []).filter(Boolean))];
-  const out = new Map();
+export async function loadTrainingDaysOnTeam(
+  supabase: Db,
+  { teamId, riderIds }: { teamId: string; riderIds: (string | null | undefined)[] | null | undefined },
+): Promise<Map<string, number>> {
+  const ids = [...new Set((riderIds ?? []).filter((id): id is string => Boolean(id)))];
+  const out = new Map<string, number>();
   await Promise.all(ids.map(async (riderId) => {
     const { count, error } = await supabase
       .from("rider_training_scores")

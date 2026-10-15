@@ -1,4 +1,4 @@
-// backend/lib/academyIntakeProfile.js
+// backend/lib/academyIntakeProfile.ts
 // #6666 (ejer-beslutninger 15/10, punkt 4-5; D-039): akademiets PROFIL.
 //
 // Manageren angiver en ønsket profil for akademiet (nationalitet/region og
@@ -31,11 +31,41 @@ import { MAX_FACILITY_TIER } from "./facilityConstants.js";
 export const PROFILE_DELAY_DAYS = 14;
 const DAY_MS = 86_400_000;
 
+// ── Typer ────────────────────────────────────────────────────────────────────
+// Supabase-klienten er utypet i kernen (samme som resten af akademi-modulerne);
+// den holdes som `any` ved grænsen, mens modulets egne data er typede.
+type Db = any;
+export type TierRules = Readonly<{ candidates: number; origins: number; types: number; extra: number; share: number }>;
+export type AcademyProfile = { origins: string[]; types: string[] };
+export type ResolvedProfile = AcademyProfile & { effectiveFrom: string };
+export type ProfileRow = {
+  origins?: unknown;
+  rider_types?: unknown;
+  effective_from?: string | null;
+  created_at?: string | null;
+};
+type DatedProfileRow = ProfileRow & { effective_from: string };
+export type ProfileInput = { origins?: unknown; types?: unknown } | null | undefined;
+export type ProfileError = "invalid_origin" | "invalid_type" | "profile_locked" | "type_locked" | "too_many_fields";
+export type ValidationResult = { ok: true; profile: AcademyProfile } | { ok: false; error: ProfileError };
+export type ProfileGeneratorOptions = {
+  nationalityWeights?: { value: string; weight: number }[];
+  primaryArchetypeDistribution?: Record<string, number>;
+};
+export type AcademyProfileState = {
+  tier: number;
+  rules: TierRules;
+  active: ResolvedProfile | null;
+  pending: ResolvedProfile | null;
+  effective: AcademyProfile | null;
+};
+type DateInput = Date | string | number;
+
 // Model 1. `origins`/`types` = hvor mange felter niveauet låser op; `extra` =
 // niveau 4's ene ekstra felt, som manageren selv lægger på nationalitet ELLER type.
 // `share` = andelen af hvert træk der tages fra profilen (resten fra den normale
 // fordeling, så profilen aldrig bliver 100 %).
-export const PROFILE_TIERS = Object.freeze({
+export const PROFILE_TIERS: Readonly<Record<number, TierRules>> = Object.freeze({
   0: Object.freeze({ candidates: 2, origins: 0, types: 0, extra: 0, share: 0 }),
   1: Object.freeze({ candidates: 2, origins: 1, types: 0, extra: 0, share: 0.35 }),
   2: Object.freeze({ candidates: 3, origins: 1, types: 1, extra: 0, share: 0.35 }),
@@ -45,11 +75,13 @@ export const PROFILE_TIERS = Object.freeze({
 });
 
 // Kun nationer kuldet faktisk kan trække (navne-klynger + vægte findes).
-export const PROFILE_NATIONS = Object.freeze(DEFAULT_NATIONALITY_WEIGHTS.map((e) => e.value));
+export const PROFILE_NATIONS: readonly string[] = Object.freeze(
+  (DEFAULT_NATIONALITY_WEIGHTS as { value: string }[]).map((e) => e.value),
+);
 
 // Regioner = grupper af kuld-nationer. Nøglen er stabil (i18n + DB); medlemmerne
 // er altid en delmængde af PROFILE_NATIONS (testet).
-export const PROFILE_REGIONS = Object.freeze({
+export const PROFILE_REGIONS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   nordic: Object.freeze(["DK", "NO", "SE"]),
   benelux: Object.freeze(["BE", "NL"]),
   iberia: Object.freeze(["ES", "PT"]),
@@ -63,36 +95,36 @@ export const PROFILE_REGIONS = Object.freeze({
 
 const REGION_PREFIX = "region:";
 
-export function clampTier(tier) {
+export function clampTier(tier: unknown): number {
   const n = Math.floor(Number(tier) || 0);
   return Math.max(0, Math.min(MAX_FACILITY_TIER, n));
 }
 
-export function tierRules(tier) {
+export function tierRules(tier: unknown): TierRules {
   return PROFILE_TIERS[clampTier(tier)];
 }
 
 /** Antal kandidater i ugens kuld for et akademi-niveau. */
-export function candidatesForTier(tier) {
+export function candidatesForTier(tier: unknown): number {
   return tierRules(tier).candidates;
 }
 
 /** Er `origin` en gyldig profil-oprindelse ("DK" eller "region:nordic")? */
-export function isValidOrigin(origin) {
+export function isValidOrigin(origin: unknown): origin is string {
   if (typeof origin !== "string") return false;
   if (origin.startsWith(REGION_PREFIX)) return Object.hasOwn(PROFILE_REGIONS, origin.slice(REGION_PREFIX.length));
   return PROFILE_NATIONS.includes(origin);
 }
 
 /** Nationerne en oprindelse dækker. */
-export function nationsForOrigin(origin) {
+export function nationsForOrigin(origin: unknown): string[] {
   if (!isValidOrigin(origin)) return [];
   if (origin.startsWith(REGION_PREFIX)) return [...PROFILE_REGIONS[origin.slice(REGION_PREFIX.length)]];
   return [origin];
 }
 
-function uniqueStrings(list) {
-  return [...new Set((Array.isArray(list) ? list : []).filter((v) => typeof v === "string" && v.length > 0))];
+function uniqueStrings(list: unknown): string[] {
+  return [...new Set((Array.isArray(list) ? list : []).filter((v): v is string => typeof v === "string" && v.length > 0))];
 }
 
 /**
@@ -100,12 +132,12 @@ function uniqueStrings(list) {
  * `{ ok: true, profile: { origins, types } }` eller `{ ok: false, error }`.
  * En tom profil (ingen felter) er altid gyldig: den rydder profilen.
  */
-export function validateProfileInput(input, tier) {
+export function validateProfileInput(input: ProfileInput, tier: unknown): ValidationResult {
   const rules = tierRules(tier);
   const origins = uniqueStrings(input?.origins);
   const types = uniqueStrings(input?.types);
   if (origins.some((o) => !isValidOrigin(o))) return { ok: false, error: "invalid_origin" };
-  if (types.some((t) => !ARCHETYPE_TYPES.includes(t))) return { ok: false, error: "invalid_type" };
+  if (types.some((t) => !(ARCHETYPE_TYPES as readonly string[]).includes(t))) return { ok: false, error: "invalid_type" };
   if (rules.origins === 0 && (origins.length > 0 || types.length > 0)) return { ok: false, error: "profile_locked" };
   if (types.length > 0 && rules.types === 0) return { ok: false, error: "type_locked" };
   const extraOrigins = Math.max(0, origins.length - rules.origins);
@@ -118,19 +150,22 @@ export function validateProfileInput(input, tier) {
  * Del et holds profil-rækker (nyeste sidst eller først, rækkefølgen er ligegyldig)
  * i den AKTIVE profil og en evt. VENTENDE ændring.
  */
-export function resolveProfileRows(rows, now = new Date()) {
+export function resolveProfileRows(
+  rows: ProfileRow[] | null | undefined,
+  now: DateInput = new Date(),
+): { active: ResolvedProfile | null; pending: ResolvedProfile | null } {
   const nowMs = new Date(now).getTime();
   const sorted = [...(rows ?? [])]
-    .filter((r) => r && r.effective_from)
+    .filter((r): r is DatedProfileRow => Boolean(r && r.effective_from))
     .sort((a, b) => new Date(a.effective_from).getTime() - new Date(b.effective_from).getTime()
       || new Date(a.created_at ?? 0).getTime() - new Date(b.created_at ?? 0).getTime());
-  let active = null;
-  let pending = null;
+  let active: DatedProfileRow | null = null;
+  let pending: DatedProfileRow | null = null;
   for (const row of sorted) {
     if (new Date(row.effective_from).getTime() <= nowMs) active = row;
     else pending = row; // senest planlagte ændring vinder
   }
-  const shape = (row) => (row ? {
+  const shape = (row: DatedProfileRow | null): ResolvedProfile | null => (row ? {
     origins: uniqueStrings(row.origins),
     types: uniqueStrings(row.rider_types),
     effectiveFrom: row.effective_from,
@@ -143,7 +178,7 @@ export function resolveProfileRows(rows, now = new Date()) {
  * nedgraderet efter profilen blev sat, falder de felter der ikke længere er
  * låst op væk, i stedet for at profilen holder op med at virke helt.
  */
-export function clampProfileToTier(profile, tier) {
+export function clampProfileToTier(profile: AcademyProfile | null | undefined, tier: unknown): AcademyProfile | null {
   if (!profile) return null;
   const rules = tierRules(tier);
   if (rules.origins === 0) return null;
@@ -162,18 +197,22 @@ export function clampProfileToTier(profile, tier) {
  * gør at profilen ALDRIG er 100 %: kandidater uden for profilen forekommer altid.
  * Returnerer null når der intet er at overvægte (uændret generator-adfærd).
  */
-export function buildProfileGeneratorOptions(profile, tier) {
+export function buildProfileGeneratorOptions(
+  profile: AcademyProfile | null | undefined,
+  tier: unknown,
+): ProfileGeneratorOptions | null {
   const clamped = clampProfileToTier(profile, tier);
   const share = tierRules(tier).share;
   if (!clamped || share <= 0) return null;
-  const out = {};
+  const out: ProfileGeneratorOptions = {};
 
   const profileNations = [...new Set(clamped.origins.flatMap(nationsForOrigin))];
   if (profileNations.length > 0) {
-    const baseTotal = DEFAULT_NATIONALITY_WEIGHTS.reduce((s, e) => s + e.weight, 0);
-    const inProfile = DEFAULT_NATIONALITY_WEIGHTS.filter((e) => profileNations.includes(e.value));
+    const weights = DEFAULT_NATIONALITY_WEIGHTS as { value: string; weight: number }[];
+    const baseTotal = weights.reduce((s, e) => s + e.weight, 0);
+    const inProfile = weights.filter((e) => profileNations.includes(e.value));
     const profileTotal = inProfile.reduce((s, e) => s + e.weight, 0);
-    out.nationalityWeights = DEFAULT_NATIONALITY_WEIGHTS.map((e) => ({
+    out.nationalityWeights = weights.map((e) => ({
       value: e.value,
       weight: (1 - share) * (e.weight / baseTotal)
         + (profileNations.includes(e.value) && profileTotal > 0 ? share * (e.weight / profileTotal) : 0),
@@ -181,11 +220,13 @@ export function buildProfileGeneratorOptions(profile, tier) {
   }
 
   if (clamped.types.length > 0) {
-    const baseTotal = ARCHETYPE_TYPES.reduce((s, t) => s + (DEFAULT_DISTRIBUTION[t] ?? 0), 0);
+    const baseDist = DEFAULT_DISTRIBUTION as Readonly<Record<string, number>>;
+    const archetypeTypes = ARCHETYPE_TYPES as readonly string[];
+    const baseTotal = archetypeTypes.reduce((s, t) => s + (baseDist[t] ?? 0), 0);
     const each = share / clamped.types.length;
-    const dist = {};
-    for (const t of ARCHETYPE_TYPES) {
-      dist[t] = (1 - share) * ((DEFAULT_DISTRIBUTION[t] ?? 0) / baseTotal) + (clamped.types.includes(t) ? each : 0);
+    const dist: Record<string, number> = {};
+    for (const t of archetypeTypes) {
+      dist[t] = (1 - share) * ((baseDist[t] ?? 0) / baseTotal) + (clamped.types.includes(t) ? each : 0);
     }
     out.primaryArchetypeDistribution = dist;
   }
@@ -194,14 +235,14 @@ export function buildProfileGeneratorOptions(profile, tier) {
 }
 
 /** Holdets akademi-facilitetsniveau (0 når intet er købt). */
-export async function loadAcademyFacilityTier(supabase, teamId) {
+export async function loadAcademyFacilityTier(supabase: Db, teamId: string): Promise<number> {
   const { data, error } = await supabase
     .from("team_facilities").select("tier").eq("team_id", teamId).eq("track", "academy").maybeSingle();
   if (error) throw new Error(`academy-profile facility lookup: ${error.message}`);
   return clampTier(data?.tier ?? 0);
 }
 
-async function loadProfileRows(supabase, teamId) {
+async function loadProfileRows(supabase: Db, teamId: string): Promise<ProfileRow[]> {
   const { data, error } = await supabase
     .from("academy_intake_profiles")
     .select("origins, rider_types, effective_from, created_at")
@@ -212,11 +253,11 @@ async function loadProfileRows(supabase, teamId) {
   return data ?? [];
 }
 
-/**
- * Profil-tilstanden til GET /api/academy/me og til ugens hentning.
- * @returns {Promise<{tier:number, rules:object, active:object|null, pending:object|null, effective:object|null}>}
- */
-export async function loadAcademyProfileState(supabase, { teamId, now = new Date() }) {
+/** Profil-tilstanden til GET /api/academy/me og til ugens hentning. */
+export async function loadAcademyProfileState(
+  supabase: Db,
+  { teamId, now = new Date() }: { teamId: string; now?: DateInput },
+): Promise<AcademyProfileState> {
   const [tier, rows] = await Promise.all([
     loadAcademyFacilityTier(supabase, teamId),
     loadProfileRows(supabase, teamId),
@@ -229,7 +270,10 @@ export async function loadAcademyProfileState(supabase, { teamId, now = new Date
  * Gem en ny ønsket profil. Den virker først efter PROFILE_DELAY_DAYS; en
  * tidligere ventende ændring erstattes (den nyeste planlagte vinder).
  */
-export async function saveAcademyProfile(supabase, { teamId, input, now = new Date() }) {
+export async function saveAcademyProfile(
+  supabase: Db,
+  { teamId, input, now = new Date() }: { teamId: string; input: ProfileInput; now?: DateInput },
+): Promise<ValidationResult | { ok: true; profile: AcademyProfile; effectiveFrom: string }> {
   if (!teamId) throw new Error("teamId required");
   const tier = await loadAcademyFacilityTier(supabase, teamId);
   const checked = validateProfileInput(input, tier);
@@ -251,7 +295,7 @@ export async function saveAcademyProfile(supabase, { teamId, input, now = new Da
 }
 
 /** Valgmulighederne UI'et må vise (ingen tal, kun nøgler). */
-export function profileOptions() {
+export function profileOptions(): { nations: string[]; regions: string[]; types: string[]; delayDays: number } {
   return {
     nations: [...PROFILE_NATIONS],
     regions: Object.keys(PROFILE_REGIONS),

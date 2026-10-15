@@ -89,6 +89,10 @@ export function drawPotentiale(rng) {
 // stats OG ankeret der holder secondary_type fast mod den natlige genberegning.
 // #6666: `primaryDistribution` (akademiets profil) flytter KUN primærens fordeling;
 // sekundæren trækkes som altid fra standardfordelingen. Samme to rng()-kald.
+/**
+ * @param {() => number} rng
+ * @param {Record<string, number>|null} [primaryDistribution]
+ */
 function pickYouthArchetype(rng, primaryDistribution = null) {
   if (!primaryDistribution) return drawArchetypePair(rng);
   const primary = drawArchetype(rng, primaryDistribution);
@@ -117,6 +121,8 @@ function pickYouthArchetype(rng, primaryDistribution = null) {
  * @param {number|null} [opts.topTalentIndex]  (5844) kandidaten på dette indeks
  *   trækker potentiale betinget på ≥ topTalentMin. null = ingen garanti.
  * @param {number} [opts.topTalentMin]
+ * @param {Record<string, number>|null} [opts.primaryArchetypeDistribution]  (6666) akademiets
+ *   type-profil: erstatter KUN primærens fordeling. null = uændret.
  * @returns {{ is_serious: boolean, rider: object }[]}
  */
 export function generateAcademyCandidates({

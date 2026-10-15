@@ -14,7 +14,7 @@ import {
   resolveProfileRows,
   saveAcademyProfile,
   validateProfileInput,
-} from "./academyIntakeProfile.js";
+} from "./academyIntakeProfile.ts";
 import { generateAcademyCandidates } from "./academyGenerator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 

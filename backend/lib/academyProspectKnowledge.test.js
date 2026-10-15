@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { KNOWLEDGE_DAYS, knowledgeStage, learningSpeed, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.js";
+import { KNOWLEDGE_DAYS, knowledgeStage, learningSpeed, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
 import { SCOUTING_CONFIG } from "./scouting.js";
 
 test("knowledgeStage: intet baand foer de foerste traeningsloebsdage", () => {

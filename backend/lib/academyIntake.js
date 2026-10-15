@@ -163,7 +163,7 @@ export async function seedAcademyCohortForTeam(supabase, {
   existingNames,
   rng,
   identityBasis = null,
-  countOverride = null,
+  countOverride = /** @type {number|null} */ (null), // #6666: pull sender candidatesForTier(tier)
   generatorOptions = null,
   source = /** @type {string|null} */ (null), // #6155: "pull" fra ugens hent-knap
 }) {

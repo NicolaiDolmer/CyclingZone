@@ -308,8 +308,8 @@ import {
 } from "../lib/academyIntake.js";
 import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
-import { buildIntake2View } from "../lib/academyIntake2View.js"; // #6666
-import { saveAcademyProfile } from "../lib/academyIntakeProfile.js"; // #6666
+import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
+import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
 import { computeFrozenSalary } from "../lib/contractSeed.js";
 import {
   computeDebtRatio,
