@@ -8,7 +8,7 @@
 >
 > **🎯 Next action (pc1, 15/10):** (1) S5: #6645 enkeltstart-fix (bølge) → ny prod-tørkørsel → vis ejeren → `--apply` på ordret go; live senest lør 18/10 (#6369). (2) Motor-bølge 6 spor (`#6648 #5978 #6201 #6155 #6475 #6186`) + #6647/#6649 i kø; motor-PR'er merges af Claude inden for benchmark-bånd, tænding = ejer-go (#6157 15/10). (3) Akademi pull-optag tændes før søn 18/10 kl. 00 på ejer-go (#6155). (4) Motortjek: `docs/audits/2026-10-15-motor-gennemgang.md`. **DOLMERPC:** løbshistorien #6570, derefter 🔴 Brand-stabilitet.
 >
-> **15/10 pc1:** merget #6637 #6639 #6640 · `stage_page_v2`=beta · `training_bulk_day`=beta · `first_race_card`=on (alle ejer-go) · nye issues #6641 #6642 #6645 #6647 #6648 #6649. · #6653 start i D4 (#6650) klar til kø
+> **15/10 pc1:** merget #6637 #6639 #6640 · `stage_page_v2`=beta · `training_bulk_day`=beta · `first_race_card`=on (alle ejer-go) · nye issues #6641 #6642 #6645 #6647 #6648 #6649.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
