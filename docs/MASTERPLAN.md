@@ -10,8 +10,8 @@
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
-- **Stabilitet:** aftenspidsen #6490 (målt 15/10: 39-50 min, max 50 s mod 60 s-loft; ejer-kort DROP INDEX) → job-kø #6491 + Postgres #6492 (spec #6655, ejer-valg). Verificeret 15/10: databasevagten #5878 kører, #5692 matview 0 låsefejl, chunk #5162 restsymptom (klar til lukning).
-- **Løbsmotoren:** v4-bjergetaper pr. division (#6456 #6464, luk kun på ejer-go) · Tour-bjerg 13/10 + 15/10 · D3-rute #6486 · "Long day" #6475 · udbrud vinder kuperet endagsløb #6428.
+- **Stabilitet:** aftenspidsen #6490: GIN-indeks droppet (#6663); 15/10-aftenen max 50 s → 1,1 s, 0 kald > 2 s, DB-tid halveret, vinduet stadig ~34 min (backend-løkken) → genmål 16/10, så job-kø #6491 + Postgres #6492 (spec #6655). Databasevagten #5878 kører, #5692 matview 0 låsefejl, chunk #5162 klar til lukning.
+- **Løbsmotoren:** v4-bjergetaper pr. division (#6456 #6464, luk kun på ejer-go) · D3-rute #6486 · udbrud vinder kuperet endagsløb #6428 · S5-udbrud #6201 merget 15/10 (bag `s5_profiles_v1`). "Long day" #6475 rettet (#6660).
 
 ## 🟠 Nu · højst 5
 
@@ -33,7 +33,7 @@ Kun det der ødelægger spillet i dag. Tomt = godt.
 
 ## Faste rutiner
 
-**Luk sløjfen (dagligt):** hver spillerrapport får issue + svar inden 24 t (Claude skriver udkast, ejeren poster) · Known issues følger patch notes · ugentligt "Status på jeres rapporter" · 0 `triage:new` > 24 t · intet blokeret uden næste skridt · done-flip ved merge. **Ejer-beslutninger:** ét kort ad gangen i morgenblokken (08:30); åbne kort står på issues med `needs-decision`. **Merge:** morgen og aften via `scripts/merge-queue.ps1`. **Roadmap på siden** spejler Brand + Nu + `priority:next` (ejeren godkender hvad spillerne ser).
+**Luk sløjfen (dagligt):** hver spillerrapport får issue + svar inden 24 t (Claude skriver udkast, ejeren poster) · Known issues følger patch notes · ugentligt "Status på jeres rapporter" · 0 `triage:new` > 24 t · intet blokeret uden næste skridt · done-flip ved merge. **Ejer-beslutninger:** ét kort ad gangen i morgenblokken (08:30); åbne kort står på issues med `needs-decision`. **Merge:** morgen og aften via `scripts/merge-queue.ps1`. **Roadmap på siden** spejler Brand + Nu + `priority:next` (ejeren godkender hvad spillerne ser); en feature i beta kommer selv på roadmappet med tekst godkendt ved byg (#6693).
 
 ## Doktrin (viger aldrig)
 
