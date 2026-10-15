@@ -4,7 +4,7 @@
 //
 // Tegnes i pixel-koordinater ud fra beholderens maalte bredde (ResizeObserver),
 // saa tekst aldrig straekkes. Efter etapen vises den som et smalt baand.
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import {
@@ -23,7 +23,7 @@ export function categoryLabel(cat: string | null | undefined): string {
   return c === "HC" ? "HC" : c || "?";
 }
 
-function useMeasuredWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
+export function useMeasuredWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
   const ref = useRef<T | null>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -47,9 +47,24 @@ export interface StageProfileV2Props {
   selectedClimb: number | null;
   onSelectClimb: (index: number) => void;
   band?: boolean;
+  /** #6570 replay: profilen daempes efter dette km (ikke koert endnu). */
+  progressKm?: number | null;
+  /** #6570 replay: eget lag oeverst i profilen (grupperne som prikker). */
+  overlay?: (geo: ProfileGeometry) => ReactNode;
 }
 
-export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false }: StageProfileV2Props) {
+export interface ProfileGeometry {
+  X: (km: number) => number;
+  Y: (h: number) => number;
+  elevation: (km: number) => number;
+  W: number;
+  H: number;
+  top: number;
+  bottom: number;
+  narrow: boolean;
+}
+
+export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false, progressKm = null, overlay }: StageProfileV2Props) {
   const { t } = useTranslation("races");
   const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>();
   const [hoverKm, setHoverKm] = useState<number | null>(null);
@@ -216,6 +231,10 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
           )}
           <text x={0} y={H - 2} fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">0 km</text>
           <text x={W} y={H - 2} textAnchor="end" fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{`${formatNumber(Math.round(D))} km`}</text>
+          {progressKm != null && progressKm < D && (
+            <rect x={X(Math.max(0, progressKm))} y={0} width={Math.max(0, W - X(Math.max(0, progressKm)))} height={H - BOT + 12} fill="var(--bg-card)" opacity={0.62} />
+          )}
+          {overlay?.({ X, Y, elevation: (km) => elevationAt(series, Math.max(0, Math.min(D, km))), W, H, top: TOP, bottom: H - BOT, narrow })}
           {tip && <line x1={X(tip.km)} x2={X(tip.km)} y1={TOP - 30} y2={H - BOT} stroke="var(--text-1)" strokeOpacity={0.5} strokeWidth={1} />}
         </svg>
       )}

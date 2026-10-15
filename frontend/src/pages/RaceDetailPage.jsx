@@ -1383,6 +1383,7 @@ export default function RaceDetailPage() {
       teamSlot={renderTabContent("team")}
       tacticsSlot={renderTabContent("tactics", { tacticsStage: v2TacticsStage })}
       nowMs={nowMs}
+      raceId={raceId}
       emptyStageSlot={
         <EmptyState
           icon={<FlagIcon size={26} aria-hidden="true" />}

@@ -14,6 +14,8 @@ import {
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent } from "./YourDayCard.tsx";
+import RaceStoryCard from "./RaceStoryCard.tsx";
+import { castFrom, type RaceStory } from "./raceStoryModel.ts";
 import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines } from "./ui.ts";
 
 function FitBar({ fit }: { fit: number }) {
@@ -31,7 +33,7 @@ function FitBar({ fit }: { fit: number }) {
   );
 }
 
-function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb }: { profile: StageProfile; stageLabel: string; band: boolean; selectedClimb: number; onSelectClimb: (i: number) => void }) {
+function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, bare = false }: { profile: StageProfile; stageLabel: string; band: boolean; selectedClimb: number; onSelectClimb: (i: number) => void; bare?: boolean }) {
   const { t } = useTranslation("races");
   const series = useMemo(() => elevationSeries(profile), [profile]);
   const climbs = useMemo(() => sortedClimbs(profile), [profile]);
@@ -44,16 +46,14 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb }
   if (surface) axes.push([t("stagePageV2.axes.surface"), t("stagePageV2.axes.surfaceValue", { kind: surface.kind, count: surface.count, km: formatNumber(surface.km) })]);
   const sprint = (profile.sprints ?? []).find((s) => s.kind === "intermediate");
 
-  return (
-    <Section aria-label={stageLabel}>
-      <SectionHeader
-        title={stageLabel}
-        meta={t("stagePageV2.profile.stats", {
-          km: formatNumber(Math.round(Number(profile.distance_km) || 0)),
-          gain: formatNumber(Math.round(Number(profile.elevation_gain_m) || 0)),
-          climbs: climbs.length,
-        })}
-      />
+  const stats = t("stagePageV2.profile.stats", {
+    km: formatNumber(Math.round(Number(profile.distance_km) || 0)),
+    gain: formatNumber(Math.round(Number(profile.elevation_gain_m) || 0)),
+    climbs: climbs.length,
+  });
+  const body = (
+    <>
+      {bare && <p className="m-0 mb-3 font-data text-xs tabular-nums text-cz-3">{stats}</p>}
       {!band && axes.length > 0 && (
         <dl className="mb-3 flex flex-wrap gap-2">
           {axes.map(([label, value]) => (
@@ -72,6 +72,15 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb }
         {sprint && <span className="ml-auto font-data text-2xs tabular-nums text-cz-3">{t("stagePageV2.profile.sprint", { km: formatNumber(Math.round(Number(sprint.km))) })}</span>}
       </div>
       {series?.source === "synthetic" && !band && <p className="m-0 mt-2 text-xs text-cz-3">{t("stagePageV2.profile.drawn")}</p>}
+    </>
+  );
+  // #6570: "The route" i loebshistoriens kort er samme profil uden egen ramme.
+  if (bare) return body;
+
+  return (
+    <Section aria-label={stageLabel}>
+      <SectionHeader title={stageLabel} meta={stats} />
+      {body}
     </Section>
   );
 }
@@ -93,24 +102,27 @@ export interface StageTabV2Props {
   tacticsAction: { label: string; onClick: () => void } | null;
   onOpenStandings: () => void;
   emptyState: ReactNode;
+  /** #6570 spor 2: loebshistorien fra loebsloggen; null = ingen (nuvaerende visning). */
+  story?: RaceStory | null;
 }
 
 export default function StageTabV2({
   stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState,
+  stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState, story = null,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
   const climbs = useMemo(() => sortedClimbs(profile), [profile]);
   const series = useMemo(() => elevationSeries(profile), [profile]);
   const stageLabel = isStageRace ? t("stagePageV2.profile.title", { number: stageNumber }) : t("stagePageV2.profile.titleOneDay");
-  const riders = stageRoles ? stageRoles.riders ?? [] : [];
+  const riders = useMemo(() => (stageRoles ? stageRoles.riders ?? [] : []), [stageRoles]);
   const overrides = stageRoles ? stageRoles.overrides ?? [] : [];
   const lineup = lineupFor(riders, overrides, stageNumber);
   const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted);
   const fitById = new Map(lineup.map((r) => [r.riderId, r.fit]));
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
+  const cast = useMemo(() => castFrom(results, riders, stageNumber, myTeamId), [results, riders, stageNumber, myTeamId]);
 
   if (phase === "after") {
     return (
@@ -127,7 +139,19 @@ export default function StageTabV2({
             onOpenStandings={onOpenStandings}
           />
         )}
-        {profile && series && <ProfileCard profile={profile} stageLabel={stageLabel} band selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} />}
+        {story ? (
+          <RaceStoryCard
+            story={story}
+            profile={profile}
+            series={series}
+            climbs={climbs}
+            cast={cast}
+            title={isStageRace ? t("stagePageV2.story.title", { number: stageNumber }) : t("stagePageV2.story.titleOneDay")}
+            hudLabel={isStageRace ? t("stagePageV2.stripStage", { number: stageNumber }) : t("stagePageV2.story.hudOneDay")}
+            routeBody={profile && series ? <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} bare /> : null}
+            onOpenStandings={onOpenStandings}
+          />
+        ) : profile && series && <ProfileCard profile={profile} stageLabel={stageLabel} band selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} />}
       </SectionStack>
     );
   }
