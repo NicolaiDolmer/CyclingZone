@@ -31,7 +31,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { loadRaceEngineV4 } from "../../lib/raceEngineV4Bridge.js";
 import { buildS5BenchRaces, benchStageFatigues, loadBenchField } from "./s5MotorBench.mjs";
-import { breakawaySets, runStagesInOrder, splitEntrants } from "./lib/tourScorecard.mjs";
+import { breakawaySets, breakawayWin, runStagesInOrder, splitEntrants } from "./lib/tourScorecard.mjs";
 
 /** Feltets GC-evne-rang (1 = bedst) der maales i hunterVsCaptain (prod-fundets 16-30). */
 export const MID_RANKS = Object.freeze([16, 30]);
@@ -86,7 +86,11 @@ export function measureRace({ stageOutputs, finalGc, roleById, rankById }) {
     if (!(rank >= lo && rank <= hi)) continue;
     mid.push({ role: roleById.get(r.rider_id) ?? null, top10: top10.has(r.rider_id), inBreak: member.has(r.rider_id) });
   }
+  const road = stageOutputs.filter((s) => !TT_PROFILES.has(s.profile.profile_type));
   return {
+    // Udbrudssejre paa vejetaperne (maa ikke forsvinde: udbrud skal stadig kunne vinde etaper).
+    roadStages: road.length,
+    breakawayStageWins: road.filter((s) => s.won === true).length,
     winnerInBreak: winner !== null && member.has(winner),
     winnerInHeldBreak: winner !== null && held.has(winner),
     // Foerste etape (1 = loebets foerste) hvor GC-vinderen sad i udbruddet, ellers null.
@@ -117,7 +121,7 @@ export async function runGcFromBreakaway({ revision = "s5_profiles_v1", genSeeds
         const finalGc = runStagesInOrder({
           v4: engine, data, revision, seedTag: `gc5978-${seed}`, stages: stagesSorted, entrants,
           onStage: ({ profile, index, res }) => {
-            stageOutputs.push({ profile, out: { timeline: { events: (res.v4Output?.timeline?.events ?? []).filter((e) => e.type === "breakaway_formed" || e.type === "breakaway_survived") } } });
+            stageOutputs.push({ profile, won: !TT_PROFILES.has(profile.profile_type) && breakawayWin(res.v4Output).won, out: { timeline: { events: (res.v4Output?.timeline?.events ?? []).filter((e) => e.type === "breakaway_formed" || e.type === "breakaway_survived") } } });
             if (index + 1 < stagesSorted.length) enterStage(index + 1);
           },
         });
@@ -145,6 +149,8 @@ export function summarize(rows) {
       gcWinnerInBreakPct: pct(rs.filter((r) => r.winnerInBreak).length, rs.length),
       gcWinnerInHeldBreakPct: pct(rs.filter((r) => r.winnerInHeldBreak).length, rs.length),
       gcWinnerInStage1BreakPct: pct(rs.filter((r) => r.winnerBreakStage === 1).length, rs.length),
+      breakawayStageWinPct: pct(rs.reduce((s, r) => s + r.breakawayStageWins, 0), rs.reduce((s, r) => s + r.roadStages, 0)),
+      breakawayStageWinPctGrandTours: pct(rs.filter((r) => r.grandTour).reduce((s, r) => s + r.breakawayStageWins, 0), rs.filter((r) => r.grandTour).reduce((s, r) => s + r.roadStages, 0)),
       midRanks: byRole,
     };
   }

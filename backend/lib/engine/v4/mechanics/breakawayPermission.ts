@@ -155,6 +155,13 @@ export const DANGEROUS_ATTEMPT_TUNING = Object.freeze({
 });
 
 /**
+ * #5978 (KUN s5_profiles_v1, ejer 15/10): et forsvarende holds modstand mod et
+ * farligt forsoeg vokser med faren (1 + gain x fare, fare i [0, 1]); loftet
+ * (maxPressure) er uaendret. START-KANDIDAT, kalibreret privat (balance-internals/5978/).
+ */
+export const S5_FORMATION_DANGER_GAIN = 1;
+
+/**
  * #6201 (KUN orders_gc_v3, ejer-beslutning 5/10): udbruddets stoerrelse foelger
  * etapens profil. Trappen (typisk / loft): flad 3-6 / 8 (uaendret), kuperet og
  * rullende 5-9 / 12, bjerg og hoejfjeld 6-12 / 16. START-KANDIDATER, kalibreret
@@ -352,12 +359,17 @@ export function resolveMorningBreakFormation(input: {
   // #5978 (KUN orders_gc_v3): farlige forsoeg og de hold der har noget at forsvare imod dem.
   const represented = new Set(attempted.map((r) => r.team_id).filter((id): id is string => !!id));
   const dangerTo = new Map<string, string[]>();
+  // #5978 (KUN s5_profiles_v1): faren pr. forsvarende hold (gcThreat.FormationDangerTeams.danger).
+  const dangerLevel = new Map<string, ReadonlyMap<string, number>>();
   if (input.dangerTeams) {
     for (const rider of attempted) {
-      const teams = [...input.dangerTeams(rider.rider_id)]
+      const list = input.dangerTeams(rider.rider_id);
+      const teams = [...list]
         .filter((teamId) => !represented.has(teamId) && (input.stances.get(teamId) ?? "neutral") !== "let_go")
         .sort((a, b) => a.localeCompare(b));
       if (teams.length > 0) dangerTo.set(rider.rider_id, teams);
+      const level = (list as { danger?: ReadonlyMap<string, number> }).danger;
+      if (teams.length > 0 && level) dangerLevel.set(rider.rider_id, level);
     }
   }
   const defendingTeams = new Set([...dangerTo.values()].flat());
@@ -407,7 +419,10 @@ export function resolveMorningBreakFormation(input: {
   // holds faktiske arbejdere (ingen arbejdere = ingen ekstra modstand).
   const dangerPressure = new Map<string, number>();
   for (const [riderId, teams] of dangerTo) {
-    const sum = teams.reduce((s, teamId) => s + (teamPull.get(teamId) ?? 0), 0);
+    // #5978 (KUN s5_profiles_v1): jo farligere forsoeget er for holdet, jo haardere lukker det.
+    const level = dangerLevel.get(riderId);
+    const gain = (teamId: string) => (level ? 1 + S5_FORMATION_DANGER_GAIN * Math.max(0, Math.min(1, level.get(teamId) ?? 0)) : 1);
+    const sum = teams.reduce((s, teamId) => s + (teamPull.get(teamId) ?? 0) * gain(teamId), 0);
     dangerPressure.set(riderId, clamp(sum, 0, DANGEROUS_ATTEMPT_TUNING.maxPressure));
   }
 
