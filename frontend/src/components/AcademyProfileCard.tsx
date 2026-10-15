@@ -104,7 +104,13 @@ export default function AcademyProfileCard({ profile, onSave }: {
     <option key={k} value={`${prefix}${k}`}>{tTypes(`types.${k}`)}</option>
   ));
 
-  const current = choiceToProfile(choice);
+  // Kun de felter niveauet har låst op sendes (en nedgraderet facilitet kan have
+  // efterladt et gemt valg i et nu låst felt).
+  const current = choiceToProfile({
+    origin: choice.origin,
+    type: slots.types > 0 ? choice.type : "",
+    extra: slots.extra > 0 ? choice.extra : "",
+  });
   const saved = profile?.pending ?? profile?.active ?? { origins: [], types: [] };
   const dirty = JSON.stringify(current) !== JSON.stringify({ origins: saved.origins ?? [], types: saved.types ?? [] });
 
