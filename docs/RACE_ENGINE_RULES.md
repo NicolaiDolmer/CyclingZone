@@ -201,6 +201,10 @@ Måling: Motor-testbænken (`backend/scripts/dev/motorBench.mjs`) dømmer nr. 10
 
 Slukket med S5-revisionen; S4 (`official_times_v4` og ældre) er byte-identisk. **Årsagen:** enkeltstartens evne var finale-tuningens `solo_tt`-blanding, hvor tempo og udholdenhed fylder meget. Klatrere og klassementsryttere har dem i top, så toppen af enkeltstarten blev for tæt (nr. 10 under S5-benchmarkens interval), favoritten vandt sjældent, og en enkeltstart flyttede for lidt i et klassement. **Reglen:** mod uret er evnen tidskørselsevnen alene; udholdenhed tæller stadig gennem distance-sliddet (M7), og stigningerne på en kuperet enkeltstart blandes stadig med klatre-evnen efter stigningsandelen (#6349). Hældning, terrænvægt og dagsudsving er uændrede. Tal: `balance-internals/6645/`. Kode: `mechanics/individualTimeTrial.ts` (`S5_ITT_ABILITY_VECTOR`, `ittAbilityTuning`). Test: `test/engine/ittTopSpread6645.test.ts`.
 
+## Målgabet kommer af løbet, ikke af et fast trin, under `s5_profiles_v1` (ejer-go 15/10, [#6648](https://github.com/NicolaiDolmer/CyclingZone/issues/6648))
+
+Slukket med S5-revisionen; S4 (`official_times_v4` og ældre) er byte-identisk. **Årsagen:** på en selektiv afslutning fik hver placering i finalens pulje sin egen tid som et trin på gruppe-tærsklen plus en margin og lidt tilfældighed; evneforskellen fyldte næsten intet. Nr. 2 på en bjergtop kom derfor næsten altid få sekunder efter vinderen, top-5 lå i faste spring, og et mellemstort forspring (i virkeligheden den mest almindelige zone) var sjældent. **Reglen:** en rytters tid til vinderen kommer af hvor meget svagere han kørte finalen, og hvor lang og hård den afgørende indsats var. Mere stigning tilbage giver større gab, mens en mur, bakke eller stigende spurt er kort og har et loft. Ryttere tæt på hinanden deler tid som en gruppe, og der er ingen tilfældighed og intet fast trin. Rækkefølgen er stadig scorens. Den præcise formel og tærsklerne står i `balance-internals/6648/` (privat, AGENTS 17). Erstatter #6363's `finaleTiers`. Motor-benchens domme er uændrede. Tal: `balance-internals/6648/`. Kode: `finale.ts` (`s5FinishGapSeconds`, `finishEffortSeconds`), `tuning.ts` (`S5_PROFILES_TUNING.finishGaps`). Test: `finale.finishGaps6648.test.ts`.
+
 ## Udbruddets størrelse følger etapens profil under `orders_gc_v3` (#6201)
 
 Ejer-beslutning 5/10: på bjergetaper er der oftere større udbrud end på flade etaper, og større grupper kommer afsted på de dage, hvor udbrud har bedre chance for at holde hjem; det er aldrig en garanti, og få ryttere ude skal have lavere chance. Hører til `orders_gc_v3`; legacy, `orders_gc_v1` og `orders_gc_v2` er byte-identiske (låst af fastfrosne etape-digests med AI-ordrer i `mechanics/breakawaySize6201.test.ts` på en flad, en kuperet og en bjergrute).
@@ -463,6 +467,10 @@ måler RELATIONER mod evne-fordelingen, ikke faste tal — [#4604](https://githu
 læring om at et scorecard der hænger på et absolut tal måler feltstørrelsen.
 
 ---
+
+### Rutemærket "Long day"/"Short day" gælder ikke enkeltstarter ([#6475](https://github.com/NicolaiDolmer/CyclingZone/issues/6475), 15/10)
+
+Etapekortets lang/kort-mærke (`routeReadKeys` i `frontend/src/lib/stageRouteProfile.js`) sammenligner distancen med profilens typiske længde. På `itt`, `itt_hilly` og `ttt` vises mærket ALDRIG: en enkeltstart på 40 km er ikke en "lang dag", og v4 lægger intet ekstra udholdenheds-slid på enkeltstarter under 150 km. Enkeltstarten afgøres af tidskørselsevnen (se afsnittet om `s5_profiles_v1` ovenfor). Kommer der senere et nyt rutemærke, skal undtagelsen stå her.
 
 ## 2c. Incidents — hvad koster hvad (M10)
 

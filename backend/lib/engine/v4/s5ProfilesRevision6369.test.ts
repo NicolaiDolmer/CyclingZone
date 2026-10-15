@@ -17,6 +17,7 @@ import { normalizeRulesRevision } from "./segmentLoop.ts";
 import type { StageInput } from "./types.ts";
 import { S5_PROFILES_TUNING } from "./tuning.ts";
 import { lateAttackChance } from "./mechanics/lateAttack.ts";
+import { isMassFinishRoute } from "./finale.ts";
 
 const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -43,14 +44,17 @@ function s5Untouched(input: StageInput): boolean {
   if (route.profile_type === "medium_mountain" || route.finale_type === "breakaway") return false;
   // #6645: enkeltstartens evne er tidskoerselsevnen under s5_profiles_v1 (individualTimeTrial.ts).
   if (route.profile_type === "itt" || route.profile_type === "itt_hilly") return false;
-  if (route.finale_type && (S5_PROFILES_TUNING.finaleBase[route.finale_type] || S5_PROFILES_TUNING.finaleTiers[route.finale_type])) return false;
+  if (route.finale_type && (S5_PROFILES_TUNING.finaleBase[route.finale_type] || S5_PROFILES_TUNING.finishGaps[route.finale_type])) return false;
+  // #6648: under s5_profiles_v1 kommer tiden i maal paa enhver selektiv afslutning af loebet (finishGaps).
+  if (!isMassFinishRoute(route)) return false;
   if (route.finale_type === "flat_sprint" || route.finale_type === "wall_finish" || route.finale_type === "uphill_sprint") return false;
   return lateAttackChance(route) === 0;
 }
 
 test("#6369: s5_profiles_v1 er tom - samme StageOutput som official_times_v4 paa alle motor-fixtures", () => {
   const fixtures = fixtureInputs().filter(({ input }) => s5Untouched(input));
-  assert.ok(fixtures.length >= 3, `forventede motor-fixtures i ${FIXTURES_DIR}`);
+  // #6648: alle selektive afslutninger er nu S5-adfaerd; massespurten er tilbage som vagt.
+  assert.ok(fixtures.length >= 1, `forventede motor-fixtures i ${FIXTURES_DIR}`);
   for (const { name, input } of fixtures) {
     const v4 = simulateStageV4({ ...input, rules_revision: "official_times_v4" });
     const s5 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v1" });
