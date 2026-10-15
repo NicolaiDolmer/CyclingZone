@@ -103,7 +103,11 @@ tabellen (INSERT og UPDATE af `report`) tilføjer nye ryttere, så både
 dato-stien og den gamle `game_day IS NULL`-sti dækkes. Tabellen er insert-only
 og glemmer ikke af sig selv: den der sletter rapporter (beta-reset, recovery-
 rollback) kalder `rebuild_rider_training_seen()` bagefter. Semantikken i de tre
-første-brugs-vagter er uændret; GIN-indekset står indtil separat ejer-go.
+første-brugs-vagter er uændret. GIN-indekset på `report->'riders'` er fjernet
+(ejer-go 15/10, migration `2026-10-15-6490-drop-training-report-riders-gin.sql`).
+Ny kode må ikke bruge containment (`@>`) på `report->'riders'`: læs fra
+`rider_training_seen`. Gendannelse: `database/manual/2026-10-15-6490-recreate-
+training-report-riders-gin.sql`.
 
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
