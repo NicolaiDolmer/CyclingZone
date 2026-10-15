@@ -34,7 +34,8 @@ reviews:
       - "main"
 
   # KUN højrisiko-stier (#6654): motor, database/RLS, penge/økonomi,
-  # betaling/abonnement, auth/sikkerhed/webhooks, cron, backend-routes/API, workflows. Hold i sync med
+  # betaling/abonnement, auth/sikkerhed/webhooks/CORS/rate-limit, cron,
+  # backend-routes/API, workflows og review-gaten selv. Hold i sync med
   # HIGH_RISK_RULES i scripts/review-gate.mjs (review-gate.test.mjs sammenligner
   # dem for hver fil i repoet). Derefter: skær støj fra (genereret, binært, lockfiles).
   path_filters:
@@ -45,6 +46,13 @@ reviews:
     - ".github/actions/**"
     - ".gitleaks.toml"
     - "SECURITY.md"
+    - ".coderabbit.yaml"
+    - "scripts/review-gate.mjs"
+    - "scripts/merge-queue.ps1"
+    - "scripts/lib/league-check.ps1"
+    - "backend/**/*[Cc]ors*"
+    - "backend/**/*[Rr]ate[Ll]imit*"
+    - "backend/**/*[Rr]ate[Gg]uard*"
     - "backend/**/*[Ee]conom*"
     - "backend/**/*[Ff]inanc*"
     - "backend/**/*[Ss]alar*"

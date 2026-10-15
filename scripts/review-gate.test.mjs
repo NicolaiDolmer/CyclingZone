@@ -23,6 +23,7 @@ import {
   shaMatchesHead,
   parseCodexReviewedCommit,
   parseCodexReviewState,
+  codexStatusToState,
   pickGateRun,
   CODEX_SUMMARY_MARKER,
 } from "./review-gate.mjs";
@@ -134,6 +135,29 @@ test("classifyFile: rytter-vaerdi er penge, ownerGate er auth", () => {
   assert.equal(classifyFile("frontend/src/components/RiderValueChart.jsx"), null, "UI om vaerdi er ikke oekonomikode");
 });
 
+// Codex-fund paa #6657 (runde 4): gaten selv og CORS/rate-limit gled igennem
+// som lav risiko.
+const GATE_SECURITY = Object.freeze({
+  "scripts/review-gate.mjs": "review-gate",
+  ".coderabbit.yaml": "review-gate",
+  "scripts/merge-queue.ps1": "review-gate",
+  "scripts/lib/league-check.ps1": "review-gate",
+  ".github/workflows/review-gate.yml": "workflow",
+  "backend/lib/corsOrigin.js": "sikkerhed",
+  "backend/lib/rateLimiters.js": "sikkerhed",
+  "backend/lib/discordDmRateGuard.js": "sikkerhed",
+});
+
+test("classifyFile: review-gaten selv og CORS/rate-limit er hoejrisiko", () => {
+  for (const [f, reason] of Object.entries(GATE_SECURITY)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("scripts/review-gate.test.mjs"), null, "tests er stadig tests");
+  assert.equal(classifyFile("backend/lib/corsOrigin.test.js"), null);
+  assert.equal(classifyFile("backend/lib/rateLimiters.test.js"), null);
+  assert.equal(classifyFile("scripts/test-league-check.ps1"), null, "test-scriptet aendrer ingen haandhaevelse");
+  assert.equal(classifyFile("docs/review-gate-notes.md"), null);
+  assert.equal(classifyRisk(["scripts/review-gate.mjs"]).level, "high");
+});
+
 test("classifyFile: authorize/authorization er auth, Author (forum) er ikke", () => {
   assert.equal(classifyFile("backend/lib/authorizeTeamAction.js"), "auth");
   assert.equal(classifyFile("backend/lib/requestAuthorization.js"), "auth");
@@ -154,7 +178,7 @@ test("classifyFile: RLS er case-sensitivt (urlState er ikke RLS)", () => {
 test("classifyFile: UI, docs, scripts og tests er lav risiko", () => {
   assert.equal(classifyFile("frontend/src/pages/RacePage.jsx"), null);
   assert.equal(classifyFile("docs/GITHUB_WORKFLOW.md"), null);
-  assert.equal(classifyFile("scripts/review-gate.mjs"), null);
+  assert.equal(classifyFile("scripts/make-wave-brief.mjs"), null);
   assert.equal(classifyFile("backend/lib/abilityRegistry.js"), null);
   assert.equal(classifyFile("backend/lib/economyEngine.test.js"), null, "test af pengekode aendrer ingen prod-adfaerd");
   assert.equal(classifyFile("backend/lib/engine/v4/foo.test.ts"), null);
@@ -232,13 +256,13 @@ test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavri
     "backend/lib/urlSafety.js", ".gitleaks.toml", "backend/lib/someWriteRpc.js", "backend/lib/weeklyScheduler.js",
     "backend/api/featureFlagsApi.js", "backend/server.js", "backend/lib/authorizeTeamAction.js",
     ...Object.keys(CORE_MOTOR_MONEY), ...Object.keys(BILLING_WEBHOOK), ...Object.keys(VALUE_OWNER_GATE),
-    "backend/scripts/audit-rls-coverage.js",
+    ...Object.keys(GATE_SECURITY), "backend/scripts/audit-rls-coverage.js",
   ];
   for (const f of high) {
     assert.ok(classifyFile(f), `klassifikatoren: ${f} er hoejrisiko`);
     assert.ok(covered(f), `.coderabbit.yaml mangler et filter for ${f}`);
   }
-  for (const f of ["frontend/src/pages/RacePage.jsx", "docs/GITHUB_WORKFLOW.md", "scripts/review-gate.mjs", "backend/lib/abilityRegistry.js", "frontend/src/lib/sentryDenyUrls.js"]) {
+  for (const f of ["frontend/src/pages/RacePage.jsx", "docs/GITHUB_WORKFLOW.md", "scripts/make-wave-brief.mjs", "backend/lib/abilityRegistry.js", "frontend/src/lib/sentryDenyUrls.js", "scripts/test-league-check.ps1"]) {
     assert.equal(classifyFile(f), null);
     assert.ok(!covered(f), `${f} er lav risiko og maa ikke bruge CodeRabbit-kvote`);
   }
@@ -271,6 +295,49 @@ test("parseCodexSummary: completed / pending / failed / ukendt", () => {
   assert.equal(parseCodexSummary(summary("⏳ **In progress**")).state, "pending");
   assert.equal(parseCodexSummary(summary("❌ **Failed**")).state, "failed");
   assert.equal(parseCodexSummary("ingen markoer | x | y |").state, "unknown");
+});
+
+// Codex-fund paa #6657 (runde 4): tilstanden skal komme fra Code Review-raekken,
+// ikke fra en vilkaarlig anden raekke i samme summary.
+function multiSummary(codeStatus, otherStatus, { machine = null, commit = "b1f0c58" } = {}) {
+  return [
+    CODEX_SUMMARY_MARKER,
+    ...(machine ? [`<!-- codex-review-state:v1 ${JSON.stringify(machine)} -->`] : []),
+    "| Review | Status | Commit | Review trigger |",
+    "| --- | --- | --- | --- |",
+    `| 📝 **Code Review** | ${codeStatus} | \`${commit}\` | Manual request |`,
+    `| 🔒 **Security Review** | ${otherStatus} | \`${commit}\` | Manual request |`,
+  ].join("\n");
+}
+
+test("parseCodexSummary: fejlet Code Review + gennemfoert Security Review -> failed (ikke completed)", () => {
+  assert.equal(parseCodexSummary(multiSummary("❌ **Failed**", "✅ **Completed**")).state, "failed");
+  assert.equal(parseCodexSummary(multiSummary("✅ **Completed**", "❌ **Failed**")).state, "completed", "security-raekken paavirker ikke code review");
+  assert.equal(parseCodexSummary(multiSummary("✅ **Completed**", "⏳ **In progress**")).state, "completed");
+  assert.equal(parseCodexSummary(multiSummary("⏳ **In progress**", "✅ **Completed**")).state, "pending");
+  const failedMachine = { code_review: { commit_sha: HEAD, status: "failed" }, security_review: { commit_sha: HEAD, status: "completed" } };
+  const body = multiSummary("❌ **Failed**", "✅ **Completed**", { machine: failedMachine });
+  assert.deepEqual(parseCodexSummary(body), { state: "failed", commit: HEAD });
+  assert.equal(evaluateCodex({ comments: [{ author: CODEX, body }], headSha: HEAD }).ok, false, "fejlet code review for HEAD maa aldrig give groen gate");
+  // Maskin-status vinder over tabellen (tabellen kan vaere ude af trit).
+  const machineDone = { code_review: { commit_sha: HEAD, status: "completed" } };
+  assert.equal(parseCodexSummary(multiSummary("❌ **Failed**", "❌ **Failed**", { machine: machineDone })).state, "completed");
+  const machineRunning = { code_review: { commit_sha: HEAD, status: "in_progress" } };
+  assert.equal(parseCodexSummary(multiSummary("✅ **Completed**", "✅ **Completed**", { machine: machineRunning })).state, "pending");
+});
+
+test("parseCodexSummary: kun en Security Review-raekke er intet code review (fail-closed)", () => {
+  const body = [CODEX_SUMMARY_MARKER, "| Review | Status | Commit | Review trigger |", "| --- | --- | --- | --- |",
+    `| 🔒 **Security Review** | ✅ **Completed** | \`b1f0c58\` | Manual request |`].join("\n");
+  assert.equal(parseCodexSummary(body).state, "unknown");
+  assert.equal(evaluateCodex({ comments: [{ author: CODEX, body }], headSha: HEAD }).ok, false);
+});
+
+test("codexStatusToState", () => {
+  assert.equal(codexStatusToState("completed"), "completed");
+  assert.equal(codexStatusToState("in_progress"), "pending");
+  assert.equal(codexStatusToState("failed"), "failed");
+  assert.equal(codexStatusToState(null), "failed");
 });
 
 test("evaluateCodex: gennemfoert uden traade -> ok", () => {

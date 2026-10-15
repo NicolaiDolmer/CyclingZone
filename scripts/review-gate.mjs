@@ -6,7 +6,8 @@
 //     uloeste Codex-fund (en Codex-traad er loest naar den er markeret
 //     "Resolve conversation"). Review-bevis fra et aeldre commit taeller ikke.
 //   - HOEJRISIKO (motor, database/migrationer/RLS, penge/oekonomi, betaling/
-//     abonnement, auth/sikkerhed/webhooks, cron, backend-routes/API, workflows, eller label
+//     abonnement, auth/sikkerhed/webhooks/CORS/rate-limit, cron, backend-routes/API,
+//     workflows, review-gaten selv (inkl. .coderabbit.yaml og merge-koeen), eller label
 //     risk:high/security): derudover en
 //     Claude-review-markoer for HEAD uden blokerende fund:
 //         <!-- claude-review: clean|notes|blocking sha=<HEAD-commit> -->
@@ -52,6 +53,11 @@ const HIGH_RISK_RULES = Object.freeze([
   { reason: "database", re: /^(database|supabase)\// },
   { reason: "workflow", re: /^\.github\/(workflows|actions)\// },
   { reason: "sikkerhed", re: /^(\.gitleaks\.toml|SECURITY\.md)$/ },
+  // Review-gaten selv: klassifikator/gate, CodeRabbit-daekningen og merge-koeens
+  // haandhaevelse. En PR der svaekker dem svaekker reviewet af alle senere PR'er.
+  { reason: "review-gate", re: /^(scripts\/review-gate\.mjs|\.coderabbit\.yaml|scripts\/merge-queue\.ps1|scripts\/lib\/league-check\.ps1)$/ },
+  // CORS-allowlisten (corsOrigin) og misbrugsvaernet (rateLimiters, DM-rate-guard).
+  { reason: "sikkerhed", re: backendName("cors|rateLimit|rateGuard") },
   // Penge/oekonomi: backend-kode hvis filnavn handler om penge (saldo, overfoersler, kontrakter).
   // "value" = rytter-vaerdi (riderValueRefresh, sundayValueSweep, marketValue*): skriver
   // base_value og loenvaerdi for alle ryttere, ogsaa fra cron.
@@ -132,19 +138,32 @@ export function parseCodexSummary(body) {
     .filter((l) => l.trim().startsWith("|"))
     .map((l) => l.split("|").slice(1, -1).map((c) => c.trim()))
     .filter((cells) => cells.length >= 3 && !/^-+$/.test(cells[0]) && !/^review$/i.test(cells[0]));
-  if (rows.length === 0) return { state: "unknown", commit: null };
-  const states = rows.map((cells) => {
-    const s = cells[1];
-    if (/in progress|running|queued|pending|started|reviewing/i.test(s)) return "pending";
-    if (/completed|done|finished/i.test(s)) return "completed";
-    return "failed";
-  });
-  const commit = (rows[rows.length - 1][2] || "").match(/[0-9a-f]{7,40}/i)?.[0] || null;
-  const state = states.includes("pending") ? "pending" : states.includes("completed") ? "completed" : "failed";
-  // Maskinlaesbar tilstand (<!-- codex-review-state:v1 {...} -->) baerer den fulde
-  // SHA; den vinder over tabellens forkortede commit naar den findes.
+  // Kun Code Review-raekken taeller (#6657 Codex-fund): en anden raekke (fx
+  // Security Review) der er gennemfoert maa aldrig goere et fejlet code review
+  // groent. En enkelt raekke uden "security" godtages som code review; ellers
+  // skal raekken hedde "Code Review" - ingen match = ukendt (fail-closed).
+  const isCodeReviewRow = (cells) => /code\s*review/i.test(cells[0]) && !/security/i.test(cells[0]);
+  const codeRows = rows.filter(isCodeReviewRow);
+  const row = codeRows.length > 0 ? codeRows[codeRows.length - 1]
+    : rows.length === 1 && !/security/i.test(rows[0][0]) ? rows[0] : null;
+  // Maskinlaesbar tilstand (<!-- codex-review-state:v1 {...} -->) gaelder code_review
+  // alene og baerer den fulde SHA; den vinder over tabellen naar den findes.
   const machine = parseCodexReviewState(text);
-  return { state, commit: machine?.commit || commit };
+  if (machine) {
+    const state = codexStatusToState(machine.status ?? (row ? row[1] : null));
+    return { state, commit: machine.commit };
+  }
+  if (!row) return { state: "unknown", commit: null };
+  const commit = (row[2] || "").match(/[0-9a-f]{7,40}/i)?.[0] || null;
+  return { state: codexStatusToState(row[1]), commit };
+}
+
+/** Codex-status (tabelcelle eller code_review.status) -> pending|completed|failed. Ukendt = failed. */
+export function codexStatusToState(status) {
+  const s = String(status ?? "");
+  if (/in[\s_-]*progress|running|queued|pending|started|reviewing/i.test(s)) return "pending";
+  if (/completed|done|finished/i.test(s)) return "completed";
+  return "failed";
 }
 
 /** code_review fra Codex' "codex-review-state:v1"-JSON, ellers null. */
