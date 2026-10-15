@@ -111,13 +111,18 @@ function Get-PrPlanEntry([int]$number) {
   # #4753: the production invariant is mandatory even before GitHub settings
   # are updated. Missing, pending, skipped and failing all stop this queue.
   if ($checksExit -eq 0) {
-    $leagueJson = & gh pr checks $number --repo $Repo --json name,bucket
+    $leagueJson = & gh pr checks $number --repo $Repo --json name,bucket,startedAt
     $leagueExit = $LASTEXITCODE
     try {
       if ($leagueExit -notin @(0, 1, 8)) {
         $checksExit = 1
       } else {
         $checksExit = Get-LeagueCheckExitCode -Checks @(($leagueJson -join "") | ConvertFrom-Json)
+        # #6654: review-gate (rule 35) stopper koeen ogsaa foer ejeren goer den required.
+        # Rod = stop, afventer = vent; mangler (PR fra foer gaten) = advarsel.
+        $gate = @(@(($leagueJson -join "") | ConvertFrom-Json) | Where-Object { $_.name -eq 'review-gate' } | Sort-Object { if ($_.startedAt) { [datetime]$_.startedAt } else { [datetime]::MaxValue } } -Descending)
+        if ($checksExit -eq 0 -and $gate.Count -ge 1 -and $gate[0].bucket -ne 'pass') { $checksExit = $(if ($gate[0].bucket -eq 'pending') { 8 } else { 1 }) }
+        elseif ($gate.Count -eq 0) { Write-Host "      (PR #${number}: intet review-gate-check endnu, #6654)" -ForegroundColor DarkYellow }
       }
     } catch { $checksExit = 1 }
   }
