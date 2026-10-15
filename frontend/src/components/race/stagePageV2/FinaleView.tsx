@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import { elevationAt, type ElevationSeries } from "./stagePageV2Model.ts";
 import {
-  finaleCaptions, finaleEndTime, finaleStateAt, formatClock, namesList, pickGroups,
+  finaleCaptions, finaleEndTime, finaleStateAt, formatClock, isPeloton, namesList, pickGroups,
   type Cast, type FinaleData, type FinaleGroup, type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
 import { useMeasuredWidth } from "./StageProfileV2.tsx";
@@ -95,7 +95,7 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
   const caption = [...captions].reverse().find((l) => l.km <= state.leaderKm + 1e-6) ?? null;
 
   const labelFor = (g: FinaleGroup): string => {
-    if (g.rest && g.riderIds.length < 3) return t("stagePageV2.story.group.peloton");
+    if (isPeloton(g.rest, g.size)) return t("stagePageV2.story.group.peloton");
     const names = namesList(g.riderIds, cast, 2);
     if (names) return names;
     return t("stagePageV2.story.group.riders", { count: g.size ?? 0 });

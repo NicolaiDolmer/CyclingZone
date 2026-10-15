@@ -161,6 +161,14 @@ export function namesList(ids: string[], cast: Cast, max = 2): string {
   return more > 0 ? `${shown.join(", ")} +${more}` : shown.join(", ");
 }
 
+/** Under dette antal er resten ikke "feltet" laengere, men en gruppe der navngives. */
+export const PELOTON_MIN_SIZE = 10;
+
+/** Gruppen hedder "Peloton" naar den baerer resten og stadig er et felt. */
+export function isPeloton(includesRest: boolean, size: number | null): boolean {
+  return includesRest && (size == null || size >= PELOTON_MIN_SIZE);
+}
+
 /** Din bedste rytter i etapen: bedste placering, ellers den foerste i historien. */
 export function myBestRider(story: RaceStory, cast: Cast): string | null {
   const ranked = [...cast.mine].filter((id) => cast.rankOf(id) != null).sort((a, b) => (cast.rankOf(a) as number) - (cast.rankOf(b) as number));

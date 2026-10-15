@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { buildRaceStory } from "../../../../../backend/lib/raceStory.js";
 import {
   asStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleStateAt, formatClock, frameAt,
-  groupMembersAt, groupOfRider, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, parseGap, pickGroups,
+  groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
@@ -258,4 +258,8 @@ test("asStory, formatClock og parseGap", () => {
   assert.equal(parseGap("+1:10"), 70);
   assert.equal(parseGap("2:23:20"), 8600);
   assert.equal(parseGap("DNF"), null);
+  assert.equal(isPeloton(true, null), true);
+  assert.equal(isPeloton(true, 40), true);
+  assert.equal(isPeloton(true, 1), false, "resten paa een rytter er ikke et felt");
+  assert.equal(isPeloton(false, 40), false);
 });

@@ -12,7 +12,7 @@ import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts
 import {
   buildReport, curateMoments, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, frameAt,
-  type Cast, type RaceStory, type ReplayGroup, type SplitRow, type StoryLine,
+  isPeloton, type Cast, type RaceStory, type ReplayGroup, type SplitRow, type StoryLine,
 } from "./raceStoryModel.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import FinaleView, { PlayIcon, prefersReducedMotion } from "./FinaleView.tsx";
@@ -128,7 +128,7 @@ function ReplayView({ story, profile, series, climbs, cast, km, onKm }: {
   }
 
   const labelFor = (g: ReplayGroup): string => {
-    if (g.rest && g.riderIds.length < 3) return t("stagePageV2.story.group.peloton");
+    if (isPeloton(g.rest, g.size)) return t("stagePageV2.story.group.peloton");
     return namesList(g.riderIds, cast, 2) || t("stagePageV2.story.group.riders", { count: g.size ?? 0 });
   };
   const { shown, rest } = pickGroups(groups, 2);
@@ -241,7 +241,7 @@ function StorySection({ story, lines, cast, km, onJump }: { story: RaceStory; li
                   type="button"
                   onClick={() => onJump(l)}
                   aria-current={current?.id === l.id ? "step" : undefined}
-                  className={`grid min-h-11 w-full grid-cols-[64px_minmax(0,1fr)] gap-2.5 border-t border-cz-border px-1 py-2 text-left hover:bg-cz-subtle ${current?.id === l.id ? "bg-cz-subtle" : ""} ${later ? "opacity-45" : ""}`}
+                  className={`grid min-h-11 w-full grid-cols-[84px_minmax(0,1fr)] gap-2.5 border-t border-cz-border px-1 py-2 text-left hover:bg-cz-subtle ${current?.id === l.id ? "bg-cz-subtle" : ""} ${later ? "opacity-45" : ""}`}
                 >
                   <span className="flex flex-col font-data text-xs font-semibold tabular-nums text-cz-2">
                     <span>{text.kmLabel(l)}</span>
@@ -290,7 +290,7 @@ function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast;
       ? r.name ?? t("stagePageV2.story.splits.sprint")
       : t("stagePageV2.story.splits.top", { name: r.name ?? t("stagePageV2.story.splits.climb") });
   const leading = (r: SplitRow) => {
-    if (r.leaderIsRest && r.leaderIds.length < 3) return t("stagePageV2.story.group.peloton");
+    if (isPeloton(r.leaderIsRest, r.leaderSize)) return t("stagePageV2.story.group.peloton");
     return namesList(r.leaderIds, cast, 2) || (r.leaderSize ? t("stagePageV2.story.group.riders", { count: r.leaderSize }) : "-");
   };
   const myGap = (r: SplitRow) => {
