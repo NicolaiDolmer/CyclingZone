@@ -22,8 +22,11 @@ import {
 } from "./gcThreat.ts";
 import { dangerScaledIntensity, planTeamReaction, TEAM_REACTION_TUNING } from "./teamChaseReaction.ts";
 import { resolveMorningBreakFormation, type FormationRider } from "./breakawayPermission.ts";
-import { buildGcContext, buildV4StageInput, withS5ThreatModel } from "../../../raceEngineV4Bridge.js";
+import { buildGcContext, buildV4StageInput as buildV4StageInputJs, withS5ThreatModel } from "../../../raceEngineV4Bridge.js";
 import type { AbilityKey, Entrant, GcContext, RaceGroup, RouteV2 } from "../types.ts";
+
+// Broens JSDoc kender ikke rulesRevision/gcStandings eller gc_context paa svaret; testen kalder den raat.
+const buildV4StageInput = buildV4StageInputJs as unknown as (args: Record<string, unknown>) => { gc_context: any };
 
 const KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch", "endurance",
