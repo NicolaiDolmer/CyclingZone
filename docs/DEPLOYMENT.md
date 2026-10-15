@@ -12,7 +12,7 @@
 
 ### Backend ser kun `backend/` (#6367)
 
-Railway-servicen bygger med root directory `/backend`. Alt uden for `backend/` (fx `docs/`, `scripts/`, `database/`) findes ikke i prod. Data, som backend-kode læser ved runtime, skal derfor ligge under `backend/` (typisk `backend/lib/__fixtures__/`), aldrig via `join(__dirname, "..", "..", ...)`. Lokalt og i CI virker den forkerte sti, fordi hele repoet er tjekket ud, så fejlen viser sig først i prod. Vagt: `backend/lib/s5BenchmarkGateFiles.test.js` (S5-gaten).
+Railway-servicen bygger med root directory `/backend`. Alt uden for `backend/` (fx `docs/`, `scripts/`, `database/`) findes ikke i prod. Data, som backend-kode læser ved runtime, skal derfor ligge under `backend/` (typisk `backend/lib/__fixtures__/`), aldrig via `join(__dirname, "..", "..", ...)`. Lokalt og i CI virker den forkerte sti, fordi hele repoet er tjekket ud, så fejlen viser sig først i prod. Vagt: `backend/railway.backendOnlyFiles.test.js` følger importgrafen fra Railways `startCommand` (server.js, instrument.mjs, cron.js, routes, dynamiske imports og de `backend/scripts/`-moduler runtime importerer) og fejler, hvis et modul importerer eller bygger en sti uden for `backend/`. CLI-scripts som `backend/scripts/dev/` må gerne læse uden for `backend/`, så længe runtime ikke importerer dem. Undtagelser kræver en begrundelse i testens `ALLOWED`.
 
 ---
 
