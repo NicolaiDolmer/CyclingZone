@@ -1,0 +1,14 @@
+{
+  "_comment": "Spillervendte flag uden roadmap-tekst da gaten kom (#6693). Maa kun skrumpe: node scripts/feature-registry-roadmap-check.mjs --update-baseline fjerner forældede id'er.",
+  "ids": [
+    "academy-drift-kill-switch",
+    "academy-intake-pull",
+    "auction-entry-gate",
+    "development-v2-aging",
+    "push-notifications",
+    "season-academy-intake",
+    "season-documentary-llm",
+    "stage-page-v2",
+    "training-bulk-day"
+  ]
+}
