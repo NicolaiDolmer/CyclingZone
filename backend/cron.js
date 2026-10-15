@@ -127,7 +127,9 @@ import {
   ALL_CRON_MONITORS,
 } from "./lib/cronMonitorRegistry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
+// cron.js ligger i backend/-roden: ".env" er backend/.env (som server.js). "../.env" pegede
+// uden for backend/ (#6367, fanget af railway.backendOnlyFiles.test.js).
+dotenv.config({ path: join(__envdir, ".env"), quiet: true });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 

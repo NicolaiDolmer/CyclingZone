@@ -3,10 +3,11 @@
 // seasonTransition auto_calendar, relaunch, reconcilePoolCalendarOnActivation). Railway
 // bygger med rootDirectory /backend, saa en gate-fil uden for backend/ findes ikke i prod:
 // loadS5Benchmark() kaster ENOENT, og ingen S5-kalender kan skrives via backenden.
-// Testen fejler, hvis en af gatens filer ligger (eller peger) uden for backend/.
+// Testen fejler, hvis en af gatens filer ligger uden for backend/ eller ikke kan laeses.
+// Den generelle vagt for al runtime-kode er backend/railway.backendOnlyFiles.test.js.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,13 +34,4 @@ test("#6367: gatens default-filer kan laeses uden argumenter", () => {
   const rows = loadS5Benchmark();
   assert.equal(rows.length, 315, "benchmarken er de 315 GT-etaper 2021-2025");
   assert.ok(loadMotorGapFile(DEFAULT_MOTOR_STUB_PATH));
-});
-
-test("#6367: gate-modulerne laeser ingen fil via en sti der forlader backend/", () => {
-  // Fanger en ny konstant med et andet navn end de to ovenfor, fx join(__dirname, "..", "..", "docs", ...).
-  for (const file of ["s5BenchmarkGate.js", "tierCalendarMaterializer.js"]) {
-    const src = readFileSync(join(__dirname, file), "utf8");
-    assert.doesNotMatch(src, /join\(\s*__dirname\s*,\s*["']\.\.["']\s*,\s*["']\.\.["']/, `${file}: join(__dirname, "..", "..", ...) peger uden for backend/`);
-    assert.doesNotMatch(src, /["']\.\.\/\.\.\/(docs|scripts|database)\//, `${file}: en "../../"-sti peger uden for backend/`);
-  }
 });
