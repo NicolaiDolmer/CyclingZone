@@ -201,6 +201,8 @@ export function formatSquadPlanReport({ plan, squad }) {
       ` · ${t.racingDates ?? 0} af ${t.realDays} datoer med en etape` +
       ` · ${t.raceDayAxisLength ?? 0} løbsdage (${t.trainingGameDayCount ?? 0} rene træningsdage)`,
     );
+    // #6667: truppens foerste etape-tid (egen starttid, aldrig i seniorens foerste halve time).
+    if (t.planningWindow?.firstStageAt) lines.push(`    første etape: ${new Date(t.planningWindow.firstStageAt).toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" })} (dansk tid)`);
     for (const v of t.calendarViolations ?? []) lines.push(`    ❌ ${v}`);
   }
   for (const t of plan?.tiers ?? []) {

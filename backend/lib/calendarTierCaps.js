@@ -97,8 +97,9 @@ export const SENIOR_CALENDAR_POOLS_FIRST_SEASON = 4;
 //   racesPerWeek   min/max loeb der STARTER i hver kalenderuge. Generatoren planlaegger max,
 //                  min er gulvet gaten doemmer paa.
 //   maxRacingDayShare  loft for andelen af kalenderdatoerne der baerer en ungdomsetape.
-//                  0,5 er §10.5's "de fleste er rene traeningsdage" som et tal: hoejst
-//                  halvdelen af datoerne har et loeb.
+//                  Var 0,5 for begge (§10.5's "de fleste er rene traeningsdage"). Fra
+//                  #6667 (ejer 15/10) pr. trup: U23 over junior. Pakkeren fylder op mod
+//                  loftet, saa det er ogsaa maalet.
 //   overlapCap     1: aldrig to ungdomsloeb samtidig. En ungdomstrup er 6-12 ryttere (U23-loft
 //                  12, AI-trup 6-9) og MIN_RACE_ENTRIES er 6, saa to samtidige loeb ville
 //                  tvinge holdene til at vaelge.
