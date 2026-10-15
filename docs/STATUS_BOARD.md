@@ -18,11 +18,9 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6676 test(loadtest): fuld S5-løbsdag som dry-run-gate før sæsonskifte (#5904) (0d) — groen
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (0d) — groen
 - #6685 fix(ux): løbets stillinger på telefon uden vandret scroll (D-047) (0d) — groen
-- #6669 ops(calendar): --dump-plan til ejerens kalendervisning før --apply (0d) — groen
-- #6670 fix(calendar): S5-ungdomskalender - flere U23-løbsdage, byggeregler, egen starttid (#6667) (0d) — groen
 - #6678 feat(youth): advarsel under 6 ryttere + aldersgraense i trup-filter (#5907 #5920) (0d) — groen
-- #6659 fix(engine): farlige klassementsryttere i udbrud faar kortere snor under S5 (#5978) (0d) — groen
 - #6643 feat(stage-page-v2): løbshistorien - replay, øjeblikke, mellemtider, Final 5 km, referat… (0d) — groen
+- #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -39,7 +37,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1461 security(email): DMARC enforcement — p=none → quarantine → reject (119d)
 - #2236 Organic community outreach — Reddit + Discord posting (100d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (93d)
-- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (90d)
+- #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (91d)
 - #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (88d)
 - #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (84d)
 - …og 70 mere
@@ -47,7 +45,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (8d) — groen
-- #6658 fix(engine): større udbrud på kuperede og bjergetaper (#6201) (0d) — groen
+- #6658 fix(engine): større udbrud på kuperede og bjergetaper (#6201) (0d) — DIRTY
 - #6685 fix(ux): løbets stillinger på telefon uden vandret scroll (D-047) (0d) — groen
 
 ## 3) Bygget men ikke merget
@@ -55,10 +53,9 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 - #6634 docs: implementeringsplan for løbsbibliotek med kommende løb og historik (0d) — groen
 - #6661 docs(patch-notes): 7.361 samlet patch note (15/10) (0d) — groen
-- #6658 fix(engine): større udbrud på kuperede og bjergetaper (#6201) (0d) — groen
+- #6658 fix(engine): større udbrud på kuperede og bjergetaper (#6201) (0d) — DIRTY
 - #6671 fix(youth): AI-ungdom på menneskeholdenes niveau + færre menneskegrupper (#6668) (0d) — groen
 - #6673 feat(academy): optag 2.0 - hent ugens kandidater, prognose gennem traening, profil via fa… (0d) — roed
-- #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
@@ -103,4 +100,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6551 [bug] Scout-mission: 'rapport klar'-besked men ingen rapport, 6.000 betalt uden resultat… (2d)
 - #6574 [growth] Delbart road book-billede pr. etape (OG-billede, 0 kr.) til S5-lanceringen (1d)
 - #6602 ops: cross-PC sync kræver bash på PATH + OneDrive-memory ligger cloud-only (1d)
-- …og 13 mere
+- …og 17 mere
