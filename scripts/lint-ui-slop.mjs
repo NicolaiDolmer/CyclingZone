@@ -123,8 +123,9 @@ const EMOJI_TEXT_EXEMPT = new Set(["©", "®", "™"]); // © ® ™
 // ("A → B" i en hjaelpetekst) rammes ogsaa — det er bevidst; locale-siden
 // laeses igennem manuelt (#3422 punkt 3), ikke auto-fixes.
 const ARROW_RE = /[←-↕↩↪‹›«»]/g;
-// #6690: tekstsymboler brugt som ikon i JSX (▲ ▼ ✓ ✕) — kun .jsx/.tsx, ikke locale/.js-data.
-const GLYPH_RE = /[▲▼✓✕]/g;
+// #6690: tekstsymboler brugt som ikon (hele TASTE P7-listen: ▲ ▼ ✓ ✕ ✦ ○ ⓘ) i
+// JSX og i oversaettelser; .js-data og kommentarer taeller ikke.
+const GLYPH_RE = /[▲▼✓✕✦○ⓘ]/g;
 
 // Raa Tailwind-palette-farve (#1578 WP0, ratchet ned i WP2): en utility-prefix
 // (bg/text/border/ring/from/to/via/fill/stroke/divide/outline/decoration/

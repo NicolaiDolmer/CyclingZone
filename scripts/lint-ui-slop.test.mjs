@@ -89,6 +89,11 @@ test("scanSource counts text-symbol icons (▲ ▼ ✓ ✕) as arrowglyph in JSX
   assert.equal(scanSource("{\"a\": \"✓ ok\"}", { jsx: false }).arrowglyph, 0);
 });
 
+test("countGlyph covers the full TASTE P7 list (✦ ○ ⓘ too) (#6690)", () => {
+  assert.equal(scanSource("<span>✦</span><span>○</span><span>ⓘ</span>").arrowglyph, 3);
+  assert.equal(scanSource("// ✦ ○ ⓘ kommentar").arrowglyph, 0);
+});
+
 test("countArrow ignores arrows inside comments", () => {
   assert.equal(countArrow("// flow: A → B"), 0);
   assert.equal(countArrow("/* ↑ scroll to top */"), 0);

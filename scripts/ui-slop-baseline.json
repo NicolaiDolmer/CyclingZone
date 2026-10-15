@@ -27,7 +27,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 2
+      "arrowglyph": 3
     },
     "frontend/public/locales/da/klub.json": {
       "hex": 0,
@@ -111,7 +111,7 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0,
-      "arrowglyph": 2
+      "arrowglyph": 3
     },
     "frontend/public/locales/en/klub.json": {
       "hex": 0,
