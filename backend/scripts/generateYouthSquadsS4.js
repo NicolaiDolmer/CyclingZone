@@ -71,6 +71,7 @@ import { ACADEMY } from "../lib/academyFlag.js";
 import { makeRng, BIRTH_MODE_OWN_PRIORS } from "../lib/fictionalRiderGenerator.js";
 import { deriveTeamSeed, aiValueCapForTier } from "../lib/starterSquadAllocator.js";
 import {
+  makeBirthMarker,
   makeU23BirthMarker,
   makeYouthBirthMarker,
   deriveBirthAbilities,
@@ -257,6 +258,129 @@ export function mirrorDerive(row, { seasonNumber, valuationModel, productionValu
   };
 }
 
+// ── Niveau-matchning mod menneskeholdenes ungdom (#6668, ejer 15/10 på #6667) ─
+//
+// HVORFOR: S4's AI-ungdom blev født i akademiets/U23-båndet (lave evner), mens
+// menneskeholdenes ungdom også rummer trænede akademiryttere og rigtige unge
+// ryttere managerne selv har flyttet ned. Felterne blev mest AI, og menneske-
+// holdene vandt næsten alt. Ejer-beslutning 15/10: AI-ungdommen løftes til SAMME
+// niveaufordeling som menneskeholdenes ungdom, PR. ALDER.
+//
+// HVORDAN (ingen ny formel, intet nyt bånd): niveauet er rytterens bedste synlige
+// evne (`bestAbility`, samme mål som rapporten altid har brugt). For hver alder
+// læses menneskeholdenes ungdoms-fordeling (empirisk, fra prod ved kørslen). Hver
+// AI-rytter får et mål-niveau fra den fordeling, og fødslen vælges blandt de
+// fødsels-markører spillet allerede kender — truppens eget bånd (youth/u23) og
+// voksen-tiers (`makeBirthMarker`) — over et lille, deterministisk sæt af
+// fødsels-seeds. Den markør hvis reproducerede evner ligger tættest på målet
+// vinder. Markøren persisteres som altid, så `deriveForRiderIds` og enhver
+// heal-sweep reproducerer PRÆCIS det valgte træk (RIDER_GENERATION §8b).
+//
+// For få menneske-ryttere på en alder (fx de 16-årige før sæsonens første
+// intake) → ingen løft: truppens eget bånd, uændret.
+/** Færre menneske-ryttere end dette på en alder = ingen fordeling at matche. */
+export const LEVEL_MATCH_MIN_SAMPLES = 20;
+/** Fødsels-seeds pr. opskrift i søgningen (deterministiske). */
+export const LEVEL_MATCH_SEED_TRIES = 12;
+/** Voksen-tiers søgningen må vælge ud over truppens eget bånd (laveste først). */
+export const LEVEL_MATCH_ADULT_TIERS = Object.freeze(["domestique", "solid", "star", "superstar"]);
+const LEVEL_OFFSET = 6668;
+
+/** Niveau-målet: bedste synlige evne. */
+export const levelOf = (abilities) => bestAbility(abilities);
+
+/**
+ * Menneskeholdenes ungdoms-niveau pr. alder i målsæsonen. Ren funktion.
+ * @param {Array<{birthdate:string, level:number}>} rows  menneskeholdenes ungdomsryttere
+ * @param {{season:number, minSamples?:number}} opts
+ * @returns {Map<number, number[]>} alder → sorterede niveauer (kun aldre med nok ryttere)
+ */
+export function buildHumanLevelProfile(rows, { season, minSamples = LEVEL_MATCH_MIN_SAMPLES }) {
+  const byAge = new Map();
+  for (const r of rows || []) {
+    const age = ageForSeason(r.birthdate, season);
+    const level = Number(r.level);
+    if (!Number.isFinite(age) || !Number.isFinite(level)) continue;
+    if (!byAge.has(age)) byAge.set(age, []);
+    byAge.get(age).push(level);
+  }
+  const out = new Map();
+  for (const [age, xs] of [...byAge].sort((a, b) => a[0] - b[0])) {
+    if (xs.length >= minSamples) out.set(age, xs.slice().sort((a, b) => a - b));
+  }
+  return out;
+}
+
+/** Kvantil u∈[0,1) af en sorteret liste (nærmeste rang). null hvis listen mangler. */
+export function levelQuantile(sorted, u) {
+  if (!sorted?.length) return null;
+  const i = Math.min(sorted.length - 1, Math.max(0, Math.floor(u * sorted.length)));
+  return sorted[i];
+}
+
+/** Truppens eget fødsels-bånd for en alder (samme valg som planen altid har truffet). */
+function nativeMarker(seed, age) {
+  return age >= U23_BIRTH_AGE_MIN && age <= U23_BIRTH_AGE_MAX
+    ? makeU23BirthMarker({ seed, age })
+    : makeYouthBirthMarker({ seed, age });
+}
+
+/** Seed nr. k i søgningen. k = 0 er rytterens egen fødsels-seed (ingen ændring). */
+function triedSeed(seed, k) {
+  return k === 0 ? seed >>> 0 : deriveTeamSeed((seed + LEVEL_OFFSET) >>> 0, `level-${k}`);
+}
+
+/**
+ * Vælg den fødsels-markør hvis reproducerede niveau ligger tættest på målet.
+ * Ren + deterministisk. Kandidaterne er sorteret efter afstand (tie → truppens
+ * eget bånd før voksen-tiers, lavere seed-nr. først), så kalderen kan gå videre
+ * til næste kandidat hvis den bedste fx ligger over holdets værdiloft.
+ *
+ * @param {object} args
+ * @param {object} args.row     payload-række (archetype_draw.primary/secondary, potentiale, birthdate)
+ * @param {number} args.seed    rytterens fødsels-seed
+ * @param {number} args.age     fødsels-alderen (= sæsonalder i målsæsonen)
+ * @param {number|null} args.target  mål-niveau; null = truppens eget bånd, uændret
+ * @returns {Array<{birth:object, level:number, distance:number}>}
+ */
+export function rankBirthCandidates({ row, seed, age, target, tries = LEVEL_MATCH_SEED_TRIES }) {
+  const native = nativeMarker(seed, age);
+  const levelFor = (birth) => levelOf(deriveBirthAbilities(
+    { ...row, archetype_draw: { primary: row.archetype_draw.primary, secondary: row.archetype_draw.secondary ?? null, birth } },
+    { age, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE },
+  ));
+  if (target == null) return [{ birth: native, level: levelFor(native), distance: 0 }];
+  const out = [];
+  for (let k = 0; k < tries; k++) {
+    const s = triedSeed(seed, k);
+    const recipes = [nativeMarker(s, age), ...LEVEL_MATCH_ADULT_TIERS.map((tier) => makeBirthMarker({ tier, seed: s, age }))];
+    recipes.forEach((birth, r) => {
+      const level = levelFor(birth);
+      out.push({ birth, level, distance: Math.abs(level - target), order: k * recipes.length + r });
+    });
+  }
+  out.sort((a, b) => (a.distance - b.distance) || (a.order - b.order));
+  return out.map(({ order, ...c }) => c);
+}
+
+/**
+ * Første kandidat der kan stå på holdet (under værdiloftet). Spejler derive for
+ * hver kandidat der prøves. Ligger alle over loftet, returneres den bedste med
+ * `overValueCap: true`, så apply-gaten blokerer som før.
+ */
+function chooseBirth({ payload, candidates, valueCap, mirrorOpts, idHint }) {
+  let first = null;
+  for (const c of candidates) {
+    const draw = { primary: payload.archetype_draw.primary, secondary: payload.archetype_draw.secondary ?? null, birth: c.birth };
+    const mirror = mirrorDerive({ ...payload, archetype_draw: draw, id: idHint }, mirrorOpts);
+    const over = valueCap != null && mirror.base_value != null && mirror.base_value > valueCap;
+    const pick = { draw, mirror, level: c.level, overValueCap: over };
+    if (!first) first = pick;
+    if (!over) return pick;
+  }
+  return first;
+}
+
 // ── Planen (ren) ─────────────────────────────────────────────────────────────
 /**
  * Byg HELE kuldet for en liste AI-hold. Ren funktion uden I/O: dry-run og apply
@@ -284,6 +408,7 @@ export function planYouthSquads({
   valuationModel,
   productionValuationModel,
   existingByTeam = new Map(),
+  levelProfile = null,
 }) {
   if (!Number.isInteger(juniorsPerTeam) || juniorsPerTeam < 0) {
     throw new Error("planYouthSquads: juniorsPerTeam er påkrævet (helt tal ≥ 0)");
@@ -325,6 +450,9 @@ export function planYouthSquads({
     });
 
     const valueCap = aiValueCapForTier(team.tier);
+    // Egen strøm til mål-niveauet (#4180-princippet): uden --match-human-level
+    // trækkes den aldrig, og kuldet er bit for bit som før.
+    const levelRng = levelProfile ? makeRng(deriveTeamSeed((base + LEVEL_OFFSET) >>> 0, team.id)) : null;
     const teamRows = candidates.map((c, i) => {
       const squad = i < u23Count ? "u23" : "junior";
       const [lo, hi] = squad === "u23" ? [U23_BIRTH_AGE_MIN, U23_BIRTH_AGE_MAX] : [JUNIOR_AGE_MIN, JUNIOR_AGE_MAX];
@@ -349,10 +477,16 @@ export function planYouthSquads({
         generation_tag: `s${targetSeason}`,
         archetype_draw: { primary: c.archetypeDraw.primary, secondary: c.archetypeDraw.secondary, birth },
       };
-      const mirror = mirrorDerive(
-        { ...payload, id: `plan-${team.id}-${i}` },
-        { seasonNumber: targetSeason, valuationModel, productionValuationModel },
-      );
+      const mirrorOpts = { seasonNumber: targetSeason, valuationModel, productionValuationModel };
+      if (levelRng) {
+        // Rækkefølgen i strømmen følger kuldets rækkefølge: ét træk pr. rytter.
+        const target = levelQuantile(levelProfile.get(age), levelRng());
+        const ranked = rankBirthCandidates({ row: payload, seed: birthSeed, age, target });
+        const pick = chooseBirth({ payload, candidates: ranked, valueCap, mirrorOpts, idHint: `plan-${team.id}-${i}` });
+        payload.archetype_draw = pick.draw;
+        return { teamId: team.id, squad, age, payload, mirror: pick.mirror, overValueCap: pick.overValueCap, target };
+      }
+      const mirror = mirrorDerive({ ...payload, id: `plan-${team.id}-${i}` }, mirrorOpts);
       const overValueCap = valueCap != null && mirror.base_value != null && mirror.base_value > valueCap;
       return { teamId: team.id, squad, age, payload, mirror, overValueCap };
     });
@@ -388,6 +522,115 @@ export function planYouthSquads({
   };
 }
 
+/**
+ * Løft af de AI-ungdomsryttere der ALLEREDE står i trupperne (#6668). Ren funktion.
+ *
+ * Samme matchning som et nyt kuld, men målet er STRATIFICERET pr. alder: AI-
+ * rytterne sorteres efter nuværende niveau og får hver sin kvantil af menneske-
+ * fordelingen ((i + ½)/n). Rangordenen bevares (den bedste AI-junior forbliver den
+ * bedste), og fordelingen rammes uden lodtræknings-støj. Rytteren BEHOLDER navn,
+ * kontrakt, løn og anlæg; kun fødsels-markøren skiftes og derive gentages.
+ *
+ * Løftet sænker aldrig: ligger den bedste kandidat under rytterens nuværende
+ * niveau, står han uændret. Ryttere der er vokset ud af ungdommen i målsæsonen
+ * (Graduation Day), og ryttere uden en ungdoms-/U23-markør, røres ikke.
+ *
+ * @param {object} args
+ * @param {Array<{id:string, team_id:string, birthdate:string, potentiale:number,
+ *   archetype_draw:object, squad:string, level?:number}>} args.riders
+ *   AI-holdenes ungdomsryttere; `level` = nuværende niveau (DB), ellers reproduceres det.
+ * @param {Map<string,{tier:number,name?:string}>} args.teamsById
+ * @param {number} args.targetSeason
+ * @param {Map<number,number[]>} args.levelProfile  fra buildHumanLevelProfile
+ */
+export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel }) {
+  if (!(levelProfile instanceof Map)) throw new Error("planYouthLift: levelProfile er påkrævet");
+  const mirrorOpts = { seasonNumber: targetSeason, valuationModel, productionValuationModel };
+  const eligible = [];
+  const skipped = { graduated: 0, noMarker: 0, noTeam: 0 };
+  for (const r of riders || []) {
+    const team = teamsById.get(r.team_id);
+    if (!team) { skipped.noTeam++; continue; }
+    const tier = r.archetype_draw?.birth?.tier;
+    if (!isBornFromPriors(r) || (tier !== "youth" && tier !== U23_BIRTH_TIER)) { skipped.noMarker++; continue; }
+    const age = ageForSeason(r.birthdate, targetSeason);
+    if (!Number.isInteger(age) || age < JUNIOR_AGE_MIN || age > U23_BIRTH_AGE_MAX) { skipped.graduated++; continue; }
+    const level = Number.isFinite(Number(r.level))
+      ? Number(r.level)
+      : levelOf(deriveBirthAbilities(r, { age, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE }));
+    eligible.push({ rider: r, team, age, level });
+  }
+
+  const rows = [];
+  const byAge = new Map();
+  for (const e of eligible) {
+    if (!byAge.has(e.age)) byAge.set(e.age, []);
+    byAge.get(e.age).push(e);
+  }
+  for (const [age, list] of [...byAge].sort((a, b) => a[0] - b[0])) {
+    list.sort((a, b) => (a.level - b.level) || String(a.rider.id).localeCompare(String(b.rider.id)));
+    const profile = levelProfile.get(age);
+    list.forEach((e, i) => {
+      const target = levelQuantile(profile, (i + 0.5) / list.length);
+      const base = { riderId: e.rider.id, teamId: e.rider.team_id, squad: e.rider.squad, age, before: e.level, target };
+      if (target == null || target <= e.level) {
+        rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
+        return;
+      }
+      const ranked = rankBirthCandidates({ row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target });
+      const pick = chooseBirth({
+        payload: e.rider,
+        candidates: ranked,
+        valueCap: aiValueCapForTier(e.team.tier),
+        mirrorOpts,
+        idHint: e.rider.id,
+      });
+      if (!pick || pick.level <= e.level) {
+        rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
+        return;
+      }
+      rows.push({
+        ...base,
+        after: pick.level,
+        changed: true,
+        overValueCap: pick.overValueCap,
+        // Kun fødsels-markøren skiftes; resten af archetype_draw bevares.
+        archetype_draw: { ...e.rider.archetype_draw, birth: pick.draw.birth },
+        previousBirth: e.rider.archetype_draw.birth,
+        mirror: pick.mirror,
+      });
+    });
+  }
+  return {
+    targetSeason,
+    rows,
+    skipped,
+    totals: {
+      riders: rows.length,
+      changed: rows.filter((r) => r.changed).length,
+      overValueCap: rows.filter((r) => r.overValueCap).length,
+    },
+  };
+}
+
+/**
+ * Niveau-fordeling pr. trup og alder: menneske vs. AI før vs. AI efter. Ren.
+ * @returns {Array<{squad:string, age:number, human:object, aiBefore:object, aiAfter:object}>}
+ */
+export function summarizeLevels({ humanProfile, lift, newRows = [] }) {
+  const ages = new Set([...(humanProfile?.keys() ?? []), ...lift.rows.map((r) => r.age), ...newRows.map((r) => r.age)]);
+  return [...ages].sort((a, b) => a - b).map((age) => {
+    const liftRows = lift.rows.filter((r) => r.age === age);
+    const fresh = newRows.filter((r) => r.age === age).map((r) => levelOf(r.mirror.abilities));
+    return {
+      age,
+      human: describe(humanProfile?.get(age) ?? []),
+      aiBefore: describe(liftRows.map((r) => r.before)),
+      aiAfter: describe([...liftRows.map((r) => r.after), ...fresh]),
+    };
+  });
+}
+
 // ── Rapport (tal til balance-internals, aldrig til repoet) ───────────────────
 const q = (xs, p) => {
   const s = xs.filter(Number.isFinite).slice().sort((a, b) => a - b);
@@ -396,7 +639,9 @@ const q = (xs, p) => {
 };
 const bestAbility = (a) => Math.max(...VISIBLE_ABILITIES.map((k) => Number(a?.[k])).filter(Number.isFinite));
 function describe(xs) {
-  return { n: xs.filter(Number.isFinite).length, p10: q(xs, 0.1), median: q(xs, 0.5), p90: q(xs, 0.9), max: q(xs, 1) };
+  const f = xs.filter(Number.isFinite);
+  const mean = f.length ? f.reduce((s, x) => s + x, 0) / f.length : null;
+  return { n: f.length, mean, p10: q(xs, 0.1), median: q(xs, 0.5), p90: q(xs, 0.9), max: q(xs, 1) };
 }
 
 /**
