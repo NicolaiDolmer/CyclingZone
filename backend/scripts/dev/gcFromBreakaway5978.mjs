@@ -66,10 +66,14 @@ export function fieldForArm(field, arm, rankById = gcRankById(field)) {
 export function measureRace({ stageOutputs, finalGc, roleById, rankById }) {
   const member = new Set();
   const held = new Set();
+  const firstBreakStage = new Map();
   for (const { profile, out } of stageOutputs) {
     if (TT_PROFILES.has(profile.profile_type)) continue;
     const { formed } = breakawaySets(out);
-    for (const id of formed) member.add(id);
+    for (const id of formed) {
+      member.add(id);
+      if (!firstBreakStage.has(id)) firstBreakStage.set(id, profile.stage_number);
+    }
     const events = out?.timeline?.events ?? [];
     for (const e of events) if (e.type === "breakaway_survived") for (const id of e.params?.rider_ids ?? []) if (formed.has(id)) held.add(id);
   }
@@ -82,7 +86,13 @@ export function measureRace({ stageOutputs, finalGc, roleById, rankById }) {
     if (!(rank >= lo && rank <= hi)) continue;
     mid.push({ role: roleById.get(r.rider_id) ?? null, top10: top10.has(r.rider_id), inBreak: member.has(r.rider_id) });
   }
-  return { winnerInBreak: winner !== null && member.has(winner), winnerInHeldBreak: winner !== null && held.has(winner), mid };
+  return {
+    winnerInBreak: winner !== null && member.has(winner),
+    winnerInHeldBreak: winner !== null && held.has(winner),
+    // Foerste etape (1 = loebets foerste) hvor GC-vinderen sad i udbruddet, ellers null.
+    winnerBreakStage: winner !== null ? firstBreakStage.get(winner) ?? null : null,
+    mid,
+  };
 }
 
 export async function runGcFromBreakaway({ revision = "s5_profiles_v1", genSeeds = 1, simSeeds = 2, maxStages = 99, scope = "all", arms = ["base", "odd", "even"], v4 = null } = {}) {
@@ -134,6 +144,7 @@ export function summarize(rows) {
       races: rs.length,
       gcWinnerInBreakPct: pct(rs.filter((r) => r.winnerInBreak).length, rs.length),
       gcWinnerInHeldBreakPct: pct(rs.filter((r) => r.winnerInHeldBreak).length, rs.length),
+      gcWinnerInStage1BreakPct: pct(rs.filter((r) => r.winnerBreakStage === 1).length, rs.length),
       midRanks: byRole,
     };
   }
