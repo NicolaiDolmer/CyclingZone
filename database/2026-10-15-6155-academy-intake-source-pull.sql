@@ -1,6 +1,7 @@
 -- #6155: academy_intake.source faar vaerdien 'pull' (kandidater hentet med
 -- ugens hent-knap, #3550). Frontend viser kun "Provisional value" paa dem.
 -- Idempotent, ikke destruktiv: udvider kun CHECK-constrainten.
+SET lock_timeout = '3s';
 ALTER TABLE public.academy_intake DROP CONSTRAINT IF EXISTS academy_intake_source_check;
 ALTER TABLE public.academy_intake
   ADD CONSTRAINT academy_intake_source_check CHECK (source IN ('intake', 'board_gift', 'pull'));

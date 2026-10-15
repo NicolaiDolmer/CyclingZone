@@ -165,7 +165,7 @@ export async function seedAcademyCohortForTeam(supabase, {
   identityBasis = null,
   countOverride = null,
   generatorOptions = null,
-  source = null,
+  source = /** @type {string|null} */ (null), // #6155: "pull" fra ugens hent-knap
 }) {
   const candidates = generateAcademyCandidates({
     rng,
