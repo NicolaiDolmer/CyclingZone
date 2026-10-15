@@ -28,6 +28,10 @@ Ny session på pc1. Kør `git pull --ff-only`, læs `docs/NOW.md` og denne fil. 
 7. **#6186 tekst-PR** til help.json (EN+DA) + RACE_ENGINE_RULES.md, kun kvalitativt (hard rule 17).
 8. **Patch note 7.361 (#6661):** DOLMERPC har tilføjet sine 4 merged ændringer (stillinger på telefon, ungdomsadvarsel, læsbar grå tekst, ét hjørnemål). Få ejerens go på hele noten via kommunikations-sessionen, og merge.
 
+## Værktøj
+
+- **Skærmbilleder uden login:** `scripts/shots/owner-session.mjs` holder ejerens session i en lokal browserprofil uden for repoet. På en ny pc: `node scripts/shots/owner-session.mjs login` én gang (ejeren logger ind), derefter `check`. `scripts/shots/local-build-on-prod.mjs` viser en lokal frontend-build med ejerens rigtige prod-data; byg med `npm run build` i `frontend/`, ikke e2e-builden.
+
 ## Oprydning
 
 - `pwsh -File scripts/close-out-cleanup.ps1` (dry-run, derefter `-Execute`). Advarsel #6687: tjek bagefter hovedcheckoutens `node_modules`; kør `npm run sync-deps`, hvis de er tomme.
