@@ -20,6 +20,7 @@ Ny session på pc1. Kør `git pull --ff-only`, læs `docs/NOW.md` og denne fil. 
 
 1. **Akademi pull-optag før søndag 18/10 kl. 00** (#6155): afklar PR #6662 (hent-knap) og #6673 (optag 2.0, draft, røde checks). Flag-tænding kun på ejerens ordrette go.
 2. **#6677 merge i formiddag** (se ovenfor).
+   Samme kø: **#6689** (lint-guarden scanner også .ts/.tsx, Codex-fund på #6688), teknisk, merges ved grøn CI.
 3. **#6490: mål aftenens træningsafregning 15/10 og 16/10** mod baseline efter indeks-droppet (spec `docs/superpowers/specs/2026-10-15-training-10x-jobqueue-direct-pg-design.md`). Valget postgres.js er truffet (#6492); concurrency-knappen måles før worker-placering (#6491).
 4. **S5-start 28/10:** U23/junior-kalender dry-run (`buildSeasonCalendar.js ... --dump-plan`) til ejeren før noget skrives.
 5. **#6680 kalender-kort → #6683 ikoner + Kalender | Tabel** (review-fund og røde checks står på #6680).
