@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft · `INDEXNOW_KEY` (#6558) · post Discord 7.356-7.360 (`docs/drafts/discord-patch-7356-7360-2026-10-14.md`) · tænd beta for etapeside 2.0 (`stage_page_v2`) når klar.
 >
-> **🎯 Next action (startprompt `docs/sessions/2026-10-15-s5-kalender-merge-og-beta.md`):** (1) Merg kalender-PR #6637 (#6367, §1d=160 ejer-go) → prod dry-run → vis ejeren → `--apply` på ordret go; åbne gates: motor-del (#6362/#6363) + bølget-afslutningsbånd. Live senest lør 18/10 (#6369). (2) Løbshistorien på etapeside 2.0 (#6570 del 2, kontrakt fra #6632). (3) Datokort tor (#6601). (4) Landingpage "mennesket bag" (#1369, P01-P20). (5) Codex-audit af svageste områder → kort.
+> **🎯 Next action (startprompt `docs/sessions/2026-10-15-s5-kalender-merge-og-beta.md`):** (0) #6639 FØR #6637 (S5-gate ENOENT på Railway), så #6640. (1) Merg kalender-PR #6637 (#6367, §1d=160 ejer-go) → prod dry-run → vis ejeren → `--apply` på ordret go; åbne gates: motor-del (#6362/#6363) + bølget-afslutningsbånd. Live senest lør 18/10 (#6369). (2) Løbshistorien på etapeside 2.0 (#6570 del 2, kontrakt fra #6632). (3) Datokort tor (#6601). (4) Landingpage "mennesket bag" (#1369, P01-P20). (5) Codex-audit af svageste områder → kort.
 >
 > **14/10 aften DOLMERPC merget:** S5 = ons 28/10 - lør 28/11 (#5833, forum) · lørdagsslut fra S5 (#6635) · S5-gate på alle skrivestier (#6630) · motor-bench (#6631) · løbslog-korrekthed + race-story-kontrakt (#6632) · etapeside 2.0 bag `stage_page_v2`=off (#6633) · patch 7.360 · CodeQL 0 åbne (#6628). **14/10 pc1:** major-efterslæb #6604, 6 laner NICOLAIPC (#6619). Åbent: #6616 pkt 2, #6617, #6618.
 >
