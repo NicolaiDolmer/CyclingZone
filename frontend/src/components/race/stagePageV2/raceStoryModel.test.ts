@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildRaceStory } from "../../../../../backend/lib/raceStory.js";
 import {
-  asStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleStateAt, formatClock, frameAt,
+  asStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
   groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
@@ -290,4 +290,22 @@ test("curateMoments: en gruppe der kommer i maal efter vinderen er ikke 'hentet'
   const finishIdx = lines.findIndex((l) => l.kind === "finish");
   assert.equal(finishIdx, lines.length - 1, lines.map((l) => `${l.kind}@${l.km}`).join(","));
   assert.ok(!lines.some((l) => l.kind === "caught" && l.km >= 100));
+});
+
+test("#6643: Final 5 km-maerkernes tekst overlapper aldrig (desktop og mobil)", () => {
+  for (const [plotW, fs] of [[653, 11], [318, 9], [900, 11]]) {
+    const pxPerKm = (plotW - 40) / 5;
+    const X = (kmFromStart: number) => 20 + kmFromStart * pxPerKm;
+    const markers = [0, 1, 2, 3].map((i) => ({ x: X(i), label: `${5 - i} KM`, start: i === 0 }))
+      .concat([{ x: X(4), label: "1 KM", start: false }, { x: X(4.5), label: "500 M", start: false }, { x: X(4.8), label: "200 M", start: false }]);
+    const shown = finaleMarkerLabelsShown(markers, fs);
+    assert.deepEqual(shown.slice(0, 5), [true, true, true, true, true], "km-maerkerne og flamme rouge vises altid");
+    const boxes = markers.filter((_, i) => shown[i]).map(({ x, label, start }) => {
+      const w = label.length * fs * 0.72;
+      return start ? [x, x + w] : [x - w / 2, x + w / 2];
+    });
+    for (let i = 1; i < boxes.length; i++) {
+      for (let j = 0; j < i; j++) assert.ok(boxes[i][0] >= boxes[j][1] || boxes[i][1] <= boxes[j][0], `${plotW}px: ingen overlap`);
+    }
+  }
 });

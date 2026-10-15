@@ -792,3 +792,23 @@ export function finaleEndTime(story: RaceStory, data: FinaleData, cast: Cast): n
 export function finaleCaptions(lines: StoryLine[], data: FinaleData): StoryLine[] {
   return lines.filter((l) => l.km >= data.startKm - 1e-6 && !l.span).sort((a, b) => a.km - b.km);
 }
+
+/**
+ * #6643 · Hvilke afstandsmaerker i Final 5 km der faar tekst. Stregerne tegnes
+ * altid; teksten springes over naar den ville ramme et maerke med hoejere
+ * prioritet (beta 15/10: "500 M200 M" mast sammen paa PC, "1 KM500 M" paa mobil).
+ * Prioritet = raekkefoelgen i `markers` (km-maerkerne foerst, saa 500 m, saa 200 m).
+ * `x` er maerkets midte i px; det foerste maerke er venstrestillet (anchor start).
+ */
+export function finaleMarkerLabelsShown(markers: Array<{ x: number; label: string; start?: boolean }>, fontSize: number, minGapPx = 6): boolean[] {
+  // Bred skrift + .08em spatiering: ca. 0,72 em pr. tegn (overvurderer hellere end under).
+  const widthOf = (label: string) => label.length * fontSize * 0.72;
+  const placed: Array<[number, number]> = [];
+  return markers.map(({ x, label, start }) => {
+    const w = widthOf(label);
+    const box: [number, number] = start ? [x, x + w] : [x - w / 2, x + w / 2];
+    if (placed.some(([a, b]) => box[0] < b + minGapPx && box[1] > a - minGapPx)) return false;
+    placed.push(box);
+    return true;
+  });
+}

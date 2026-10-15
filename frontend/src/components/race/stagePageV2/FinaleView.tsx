@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import { elevationAt, type ElevationSeries } from "./stagePageV2Model.ts";
 import {
-  finaleCaptions, finaleEndTime, finaleStateAt, formatClock, isPeloton, namesList, pickGroups,
+  finaleCaptions, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, isPeloton, namesList, pickGroups,
   type Cast, type FinaleData, type FinaleGroup, type RaceStory, type StoryLine,
 } from "./raceStoryModel.ts";
 import { useMeasuredWidth } from "./StageProfileV2.tsx";
@@ -132,6 +132,14 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
   const pxPerKm = (FR - FL) / (data.endKm - data.startKm);
   const markers: Array<[number, string]> = [0, 1, 2, 3].map((i) => [data.startKm + i, `${5 - i} KM`]);
   markers.push([data.endKm - 0.5, "500 M"], [data.endKm - 0.2, "200 M"]);
+  const markerFs = narrow ? 9 : 11;
+  // Flamme rouge ("1 KM", roed) tegnes for sig, men taeller med som optaget plads.
+  const flammeKm = data.endKm - 1;
+  const markerText = finaleMarkerLabelsShown([
+    ...markers.slice(0, 4).map(([k, label]) => ({ x: X(k), label, start: k === data.startKm })),
+    { x: X(flammeKm), label: "1 KM" },
+    ...markers.slice(4).map(([k, label]) => ({ x: X(k), label })),
+  ], markerFs).filter((_, i) => i !== 4);
 
   function dots(g: FinaleGroup) {
     const n = Math.max(1, Math.min(narrow ? 16 : 26, g.size ?? 1));
@@ -203,10 +211,10 @@ export default function FinaleView({ story, data, cast, lines, series, stageLabe
             <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("stagePageV2.story.final.aria")} className="block">
               <path d={`M${FL},${H} ${road.map(([x, y]) => `L${x},${y}`).join(" ")} L${FR},${H} Z`} fill="var(--bg-sidebar-hover)" />
               <path d={`M${road.map(([x, y]) => `${x},${y}`).join(" L")}`} fill="none" stroke="var(--text-sidebar-3)" strokeWidth={3} strokeLinecap="round" />
-              {markers.map(([k, label]) => (
+              {markers.map(([k, label], mi) => (
                 <g key={label}>
                   <line x1={X(k)} x2={X(k)} y1={Y(k)} y2={Y(k) - (narrow ? 50 : 80)} stroke="var(--border-sidebar)" strokeDasharray="2 4" />
-                  <text x={X(k) + (k === data.startKm ? 2 : 0)} y={Y(k) + 20} textAnchor={k === data.startKm ? "start" : "middle"} fontSize={narrow ? 9 : 11} fontWeight={700} letterSpacing=".08em" fill="var(--text-sidebar-3)" className="font-data">{label}</text>
+                  {markerText[mi] && <text x={X(k) + (k === data.startKm ? 2 : 0)} y={Y(k) + 20} textAnchor={k === data.startKm ? "start" : "middle"} fontSize={markerFs} fontWeight={700} letterSpacing=".08em" fill="var(--text-sidebar-3)" className="font-data">{label}</text>}
                 </g>
               ))}
               {(() => {
