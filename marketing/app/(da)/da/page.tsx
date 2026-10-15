@@ -30,7 +30,9 @@ const VIDEOGAME_LD = {
   "@context": "https://schema.org",
   "@type": "VideoGame",
   name: "Cycling Zone",
-  url: "https://cyclingzone.org/",
+  // #1369 SEO-review 15/10: den danske side peger på sin egen adresse, ikke EN-forsiden.
+  url: "https://cyclingzone.org/da",
+  inLanguage: "da",
   description: da.meta.description,
   genre: "Sports/Manager",
   gamePlatform: "Web browser",

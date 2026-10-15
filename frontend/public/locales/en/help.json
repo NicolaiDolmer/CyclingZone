@@ -29,7 +29,7 @@
           "Create an account and log in.",
           "Pick a team name and a manager name in the welcome wizard. Both fields are required before you can continue.",
           "The welcome modal opens automatically the first time and walks you through the three core features: Market, Auctions and Board. It links directly to Help & Rules.",
-          "You start in Division 3 with a starting budget of {startingBalance} CZ$.",
+          "You start in Division 4 with a starting budget of {startingBalance} CZ$.",
           "Go to Riders and find free riders you want to bid on.",
           "Start an auction on a rider. If you win the auction, the rider is yours.",
           "You begin with a {initialSquad}-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
@@ -774,7 +774,7 @@
       "label": "Divisions",
       "overview": {
         "title": "Division overview",
-        "text": "The game has 4 divisions. Division 1 is the highest. Everyone starts in Division 3."
+        "text": "The game has 4 divisions. Division 1 is the highest. New teams start in Division 4."
       },
       "sizePerDivision": {
         "title": "Squad size per division",
@@ -1623,7 +1623,7 @@
     },
     "debtCeiling": {
       "q": "What is the debt ceiling, and when does it apply?",
-      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. New short-term and long-term loans are rejected if the loan plus its fee would push your total debt over the ceiling. The fee counts towards the cap, so the max you can borrow is a bit less than the room under the cap. The loan form on the Finances page shows your current max, plus what next season's interest would add to your debt if you repay nothing. If a loan would push your debt to 50% or more of the ceiling, you get a confirmation step showing the same numbers before it goes through, so you always see the season cost up front. Automatic emergency loans can exceed the ceiling, but you get a warning and must cut costs. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
+      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$, Division 4: 400,000 CZ$. New short-term and long-term loans are rejected if the loan plus its fee would push your total debt over the ceiling. The fee counts towards the cap, so the max you can borrow is a bit less than the room under the cap. The loan form on the Finances page shows your current max, plus what next season's interest would add to your debt if you repay nothing. If a loan would push your debt to 50% or more of the ceiling, you get a confirmation step showing the same numbers before it goes through, so you always see the season cost up front. Automatic emergency loans can exceed the ceiling, but you get a warning and must cut costs. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
@@ -1835,7 +1835,7 @@
     },
     "newPlayerEconomyFaq": {
       "q": "How much money do I start with, and when should I take a loan?",
-      "a": "You start with a {startingBalance} CZ$ budget in Division 3. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries and loan interest are deducted automatically at the start of each season, and so is upkeep unless it is paid per race day as Travel & staff. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 3: 600,000 CZ$) that caps how much you can borrow at once."
+      "a": "You start with a {startingBalance} CZ$ budget in Division 4. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries and loan interest are deducted automatically at the start of each season, and so is upkeep unless it is paid per race day as Travel & staff. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 4: 400,000 CZ$) that caps how much you can borrow at once."
     },
     "academyIntakeScoutingFaq": {
       "q": "How often do I get new Academy prospects, and does scouting reset?",

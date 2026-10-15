@@ -420,3 +420,58 @@ test("#5580 resolvedEffortByRiderForStage: traetheden bruger samme kilde som mot
   assert.equal(resolvedEffortByRiderForStage(undefined, 2, null), null);
   assert.deepEqual([...resolvedEffortByRiderForStage(undefined, 3, orderEffortByRiderForStage(ORDER_ROWS, 3)).entries()], [["r1", "grupetto"]]);
 });
+
+// ── #6647: managerens beskyt/spar maa aldrig overskrives af en ordre der ikke ──
+// har valgt noget. Taktik-fanens gem skrev ordren med rollens standard
+// (effort "normal" for hver rytter), og "normal" vandt over rolle-overlayets
+// protect/save. "normal" i en ordre er "ikke valgt" (RACE_ENGINE_RULES §1b).
+
+// Praecis den form prod-raekkerne har: hele truppen, alle "normal".
+const NEUTRAL_ORDER_ROWS = [
+  { team_id: "t1", stage_number: 4, riders: [
+    { rider_id: "r1", effort: "normal", try_break: false, leadout: false },
+    { rider_id: "r2", effort: "normal", try_break: false, leadout: false },
+    { rider_id: "r3", effort: "normal", try_break: true, leadout: false },
+  ] },
+];
+
+test("#6647 rolle-effort protect/save + ordre uden eksplicit valg => motoren faar protect/save", () => {
+  const overridesForStage = new Map([
+    ["r1", { race_role: "captain", effort: "protect" }],
+    ["r2", { race_role: "helper", effort: "save" }],
+  ]);
+  const orderEffort = orderEffortByRiderForStage(NEUTRAL_ORDER_ROWS, 4);
+  const entrants = [
+    { rider_id: "r1", team_id: "t1", race_role: "captain" },
+    { rider_id: "r2", team_id: "t1", race_role: "helper" },
+    { rider_id: "r3", team_id: "t1", race_role: "hunter" },
+  ];
+  const { entrants: out } = resolveStageEntrants(entrants, overridesForStage, { orderEffortByRider: orderEffort });
+  assert.equal(out[0].effort, "protect", "beskyt fra rolle-overlayet naar motoren");
+  assert.equal(out[1].effort, "save", "spar fra rolle-overlayet naar motoren");
+  assert.equal(out[2].effort, "normal", "intet valg nogen steder = normal");
+});
+
+test("#6647 traetheden efter etapen bruger samme valg som motoren (ingen tavs normal)", () => {
+  const stageRoleOverrides = new Map([[4, new Map([
+    ["r1", { race_role: "captain", effort: "protect" }],
+    ["r2", { race_role: "helper", effort: "save" }],
+  ])]]);
+  const merged = resolvedEffortByRiderForStage(stageRoleOverrides, 4, orderEffortByRiderForStage(NEUTRAL_ORDER_ROWS, 4));
+  assert.equal(merged.get("r1"), "protect");
+  assert.equal(merged.get("r2"), "save");
+});
+
+test("#6647 orderEffortByRiderForStage: en ordre med kun 'normal' baerer intet indsatsvalg", () => {
+  assert.equal(orderEffortByRiderForStage(NEUTRAL_ORDER_ROWS, 4), null);
+  const mixed = orderEffortByRiderForStage([
+    { stage_number: 4, riders: [{ rider_id: "r1", effort: "normal" }, { rider_id: "r2", effort: "protect" }] },
+  ], 4);
+  assert.deepEqual([...mixed.entries()], [["r2", "protect"]]);
+});
+
+test("#6647 et eksplicit ordre-valg (ikke normal) vinder stadig over rolle-overlayet (#5580)", () => {
+  const overridesForStage = new Map([["r1", { race_role: "captain", effort: "save" }]]);
+  const orderEffort = orderEffortByRiderForStage([{ stage_number: 4, riders: [{ rider_id: "r1", effort: "protect" }] }], 4);
+  assert.equal(resolveStageEntrant({ rider_id: "r1" }, overridesForStage, orderEffort).effort, "protect");
+});

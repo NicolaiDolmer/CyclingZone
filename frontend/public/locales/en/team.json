@@ -12,7 +12,7 @@
     "salaryPerSeasonTooltip": "Total salary your squad earns per season",
     "teamValue": "Team value: {value} CZ$",
     "division": "Division {n}",
-    "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 3 the entry tier.",
+    "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 4 the entry tier.",
     "balance": "{value} CZ$",
     "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
     "ownAuctionsBanner": "{count, plural, one {# of your riders is up for auction} other {# of your riders are up for auction}} · view auctions"

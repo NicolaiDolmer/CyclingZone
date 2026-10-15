@@ -29,7 +29,7 @@
           "Opret en konto og log ind.",
           "Vælg holdnavn og managernavn i velkomst-wizarden. Du skal udfylde begge felter for at fortsætte.",
           "Velkomstmodalen vises automatisk første gang og gennemgår de tre vigtigste funktioner: Marked, Auktioner og Bestyrelse. Den linker direkte til Hjælp & Regler.",
-          "Du starter i Division 3 med et startbudget på {startingBalance} CZ$.",
+          "Du starter i Division 4 med et startbudget på {startingBalance} CZ$.",
           "Gå til Ryttere og find frie ryttere du vil byde på.",
           "Start en auktion på en rytter. Vinder du auktionen, er rytteren din.",
           "Du begynder med en {initialSquad}-rytters start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
@@ -774,7 +774,7 @@
       "label": "Divisioner",
       "overview": {
         "title": "Divisionsoversigt",
-        "text": "Spillet har 4 divisioner. Division 1 er den højeste. Alle starter i Division 3."
+        "text": "Spillet har 4 divisioner. Division 1 er den højeste. Nye hold starter i Division 4."
       },
       "sizePerDivision": {
         "title": "Holdstørrelse per division",
@@ -1623,7 +1623,7 @@
     },
     "debtCeiling": {
       "q": "Hvad er gældsloftet, og hvornår gælder det?",
-      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Nye korte og lange lån afvises, hvis lånet plus gebyret ville skubbe din samlede gæld over loftet. Gebyret tæller med under loftet, så det maksimale du kan låne er lidt mindre end pladsen under loftet. Låneformularen på Økonomi-siden viser dit aktuelle max, samt hvad næste sæsons rente lægger oveni din gæld hvis du ikke betaler af. Vil et lån skubbe din gæld til 50% eller mere af loftet, får du et bekræftelsestrin med de samme tal FØR det gennemføres, så du altid ser sæsonprisen på forhånd. Automatiske nødlån kan overskride loftet, men du får en advarsel og skal skære i omkostningerne. Lånerenter tilskrives ved sæsonstart oveni eksisterende gæld (flyttet fra sæsonslut i v3.78)."
+      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$, Division 4: 400.000 CZ$. Nye korte og lange lån afvises, hvis lånet plus gebyret ville skubbe din samlede gæld over loftet. Gebyret tæller med under loftet, så det maksimale du kan låne er lidt mindre end pladsen under loftet. Låneformularen på Økonomi-siden viser dit aktuelle max, samt hvad næste sæsons rente lægger oveni din gæld hvis du ikke betaler af. Vil et lån skubbe din gæld til 50% eller mere af loftet, får du et bekræftelsestrin med de samme tal FØR det gennemføres, så du altid ser sæsonprisen på forhånd. Automatiske nødlån kan overskride loftet, men du får en advarsel og skal skære i omkostningerne. Lånerenter tilskrives ved sæsonstart oveni eksisterende gæld (flyttet fra sæsonslut i v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",
@@ -1835,7 +1835,7 @@
     },
     "newPlayerEconomyFaq": {
       "q": "Hvor mange penge starter jeg med, og hvornår skal jeg tage et lån?",
-      "a": "Du starter med et budget på {startingBalance} CZ$ i Division 3. Præmiepenge fra løb, sponsorudbetalinger ved sæsonstart og rytter-salg giver indtægt; lønninger og lånerenter trækkes automatisk ved hver sæsons start, og det gør drift også, medmindre den betales pr. løbsdag som Rejse og personale. Kan din balance og sponsor ikke dække den sæsons lønninger, optager spillet automatisk et nødlån for at dække underskuddet, så du aldrig blokeres fra at betale løn. Du kan også selv tage et lån fra Finances-siden, hvis du vil byde stort på en rytter før din indtægt følger med. Hver division har et gældsloft (Division 3: 600.000 CZ$), der sætter et loft for hvor meget du kan låne ad gangen."
+      "a": "Du starter med et budget på {startingBalance} CZ$ i Division 4. Præmiepenge fra løb, sponsorudbetalinger ved sæsonstart og rytter-salg giver indtægt; lønninger og lånerenter trækkes automatisk ved hver sæsons start, og det gør drift også, medmindre den betales pr. løbsdag som Rejse og personale. Kan din balance og sponsor ikke dække den sæsons lønninger, optager spillet automatisk et nødlån for at dække underskuddet, så du aldrig blokeres fra at betale løn. Du kan også selv tage et lån fra Finances-siden, hvis du vil byde stort på en rytter før din indtægt følger med. Hver division har et gældsloft (Division 4: 400.000 CZ$), der sætter et loft for hvor meget du kan låne ad gangen."
     },
     "academyIntakeScoutingFaq": {
       "q": "Hvor ofte får jeg nye akademi-emner, og resetter scouting?",
