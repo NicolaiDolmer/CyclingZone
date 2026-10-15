@@ -30,6 +30,13 @@ function chunks(list) {
   return out;
 }
 
+// Seniorpuljer (squad null/senior), også pensionerede: historikken dækker
+// tidligere sæsoner. Callback-formen gør scopet synligt for #5517-vagten
+// (backend/lib/squadSeniorReaders.test.js), samme greb som #6636.
+function withSeniorSquadScope(build) {
+  return build(applySeniorSquadFilter);
+}
+
 // "Jonas Riedel" -> "J. Riedel": tre tidligere vindere skal kunne stå på én linje.
 function shortName(name) {
   const parts = String(name).trim().split(/\s+/);
@@ -125,8 +132,8 @@ export default function RaceHistoryLibrary() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const [poolsRes, teamRes] = await Promise.all([
-          applySeniorSquadFilter(supabase.from("league_divisions").select("id, tier, pool_index, label"))
-            .order("tier").order("pool_index"),
+          withSeniorSquadScope((scope) => scope(supabase.from("league_divisions").select("id, tier, pool_index, label"))
+            .order("tier").order("pool_index")),
           user ? supabase.from("teams").select("id, league_division_id").eq("user_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
         ]);
         if (!alive) return;
