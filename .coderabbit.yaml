@@ -1,11 +1,14 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 #
 # CodeRabbit-konfiguration for CyclingZone.
-# Rolle: eneste AI-AUTO-reviewer på PR'er (Claude-auto-review pensioneres når
-# CodeRabbit er bevist — se docs/NOW.md / claude-review.yml).
-# Princip: ADVISORY. De hårde merge-gates er de deterministiske CI-checks
-# (backend-tests, frontend-build, dependency-review, i18n, leak-check). CodeRabbit
-# tilføjes IKKE som required status check — det skal aldrig blokere en merge.
+# Rolle (#6654, ejer 15/10): BONUS, aldrig et krav. Review-kravet ejes af
+# CI-checket `review-gate` (Codex på alle PR'er, + Claude på højrisiko; se
+# scripts/review-gate.mjs). Gratis-planen giver ~1 review i timen, så
+# auto-review er begrænset til HØJRISIKO-stierne (path_filters herunder, samme
+# liste som review-gate-klassifikatoren): PR'er uden højrisiko-filer har intet
+# at reviewe og springes over. Label risk:high/security kan ikke OR'es ind i
+# CodeRabbit-config'en; review-gaten kræver i stedet Claude-review på dem.
+# Princip: ADVISORY. CodeRabbit tilføjes IKKE som required status check.
 
 language: "en-US"
 early_access: false
@@ -30,8 +33,39 @@ reviews:
     base_branches:
       - "main"
 
-  # Skær støj fra: genereret, binært, lockfiles, snapshots, store data-dumps.
+  # KUN højrisiko-stier (#6654): motor, database/RLS, penge/økonomi,
+  # auth/sikkerhed, workflows. Hold i sync med HIGH_RISK_RULES i
+  # scripts/review-gate.mjs. Derefter: skær støj fra (genereret, binært, lockfiles).
   path_filters:
+    - "backend/lib/engine/**"
+    - "database/**"
+    - "supabase/**"
+    - ".github/workflows/**"
+    - ".github/actions/**"
+    - ".gitleaks.toml"
+    - "SECURITY.md"
+    - "backend/**/*[Ee]conom*"
+    - "backend/**/*[Ff]inanc*"
+    - "backend/**/*[Ss]alar*"
+    - "backend/**/*[Pp]rize*"
+    - "backend/**/*[Ss]ponsor*"
+    - "backend/**/*[Ll]oan*"
+    - "backend/**/*[Pp]ayout*"
+    - "backend/**/*[Pp]ric*"
+    - "backend/**/*[Pp]ayment*"
+    - "backend/**/*[Ww]allet*"
+    - "backend/**/*[Bb]udget*"
+    - "backend/**/*[Dd]ebt*"
+    - "backend/**/*[Aa]uction*"
+    - "backend/**/*[Bb]id*"
+    - "{backend,frontend/src/lib}/**/*[Aa]uth*"
+    - "{backend,frontend/src/lib}/**/*[Tt]oken*"
+    - "{backend,frontend/src/lib}/**/*[Ss]ecurity*"
+    - "{backend,frontend/src/lib}/**/*[Rr]ls*"
+    - "{backend,frontend/src/lib}/**/*[Gg]rant*"
+    - "{backend,frontend/src/lib}/**/*[Pp]ermission*"
+    - "{backend,frontend/src/lib}/**/*[Aa]dmin*"
+    - "{backend,frontend/src/lib}/**/urlSafety*"
     - "!**/node_modules/**"
     - "!**/dist/**"
     - "!**/build/**"

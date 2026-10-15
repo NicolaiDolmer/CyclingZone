@@ -85,6 +85,31 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: node scripts/review-gate.mjs evaluate --pr "$PR_NUMBER"
 
+  unit-tests:
+    # Gatens egne tests paa PR'ens kode (gaten selv koerer mains version).
+    name: review-gate-tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out PR
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/review-gate.mjs
+            scripts/review-gate.test.mjs
+            .coderabbit.yaml
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+
+      - name: node --test scripts/review-gate.test.mjs
+        run: node --test scripts/review-gate.test.mjs
+
   refresh:
     name: review-gate-refresh
     if: >-

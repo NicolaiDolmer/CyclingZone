@@ -88,9 +88,12 @@ test("instruerer draft-PR ved foerste push og gh pr ready som sidste handling (C
   assert.match(brief, /gh pr ready/);
 });
 
-test("instruerer CodeRabbit CLI-review foer gh pr ready, maks EEN runde (#5220)", () => {
+test("CodeRabbit CLI-review er VALGFRIT foer gh pr ready, maks EEN runde (#5220, #6654)", () => {
   const brief = generateBrief(baseConfig);
   assert.match(brief, /coderabbit review --base main --committed/);
+  assert.match(brief, /VALGFRIT/);
+  assert.match(brief, /blokerer aldrig `gh pr ready`/);
+  assert.doesNotMatch(brief, /den ENE CodeRabbit CLI-runde er koert/);
   assert.match(brief, /Ret aegte fund/);
   assert.match(brief, /maks 1 CodeRabbit CLI-runde pr\. spor/);
   assert.match(brief, /koer IKKE CLI-reviewet igen, den ene runde er brugt/);

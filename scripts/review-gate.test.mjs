@@ -1,6 +1,8 @@
 // node --test scripts/review-gate.test.mjs  (#6654)
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { posix } from "node:path";
 import {
   classifyFile,
   classifyRisk,
@@ -76,6 +78,29 @@ test("classifyRisk: een hoejrisiko-fil goer hele PR'en hoejrisiko; labels risk:h
   assert.equal(classifyRisk(["docs/a.md"], ["Security"]).level, "high");
   assert.equal(classifyRisk(["docs/a.md"], ["risk:high"]).level, "high");
   assert.equal(classifyRisk(["docs/a.md"], ["risk:med"]).level, "low");
+});
+
+test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavrisiko-stier", () => {
+  const yaml = readFileSync(new URL("../.coderabbit.yaml", import.meta.url), "utf8");
+  const block = yaml.split(/^\s*path_filters:\s*$/m)[1].split(/^\s*[a-z_]+:\s*$/m)[0];
+  const globs = [...block.matchAll(/^\s*-\s*"([^"!][^"]*)"\s*$/gm)].map((m) => m[1]);
+  assert.ok(globs.length > 5, "positive path_filters fundet");
+  const covered = (f) => globs.some((g) => posix.matchesGlob(f, g));
+  const high = [
+    "backend/lib/engine/v4/mechanics/lateAttack.ts", "database/2026-10-14-x.sql", ".github/workflows/ci.yml",
+    "backend/lib/economyEngine.js", "backend/lib/seasonFinanceReport.js", "backend/lib/prizePayoutEngine.js",
+    "backend/lib/loanEngine.js", "backend/lib/transferPriceBand.js", "backend/lib/midSeasonSponsor.js",
+    "backend/lib/authTokenVerification.js", "backend/routes/adminRoadmap.js", "frontend/src/lib/getAuthedUser.js",
+    "backend/lib/urlSafety.js", ".gitleaks.toml",
+  ];
+  for (const f of high) {
+    assert.ok(classifyFile(f), `klassifikatoren: ${f} er hoejrisiko`);
+    assert.ok(covered(f), `.coderabbit.yaml mangler et filter for ${f}`);
+  }
+  for (const f of ["frontend/src/pages/RacePage.jsx", "docs/GITHUB_WORKFLOW.md", "scripts/review-gate.mjs", "backend/lib/raceStory.js"]) {
+    assert.equal(classifyFile(f), null);
+    assert.ok(!covered(f), `${f} er lav risiko og maa ikke bruge CodeRabbit-kvote`);
+  }
 });
 
 // ── Codex ──

@@ -214,8 +214,8 @@ function prSkabelonBlok(issue, wd, branch) {
     "- Skal indeholde `## Brugerverifikation` med mindst ét `- [x]`, ELLER label `docs-only`/`backend-only`.",
     `- Foerste push: opret PR'en som DRAFT: \`gh pr create --draft --base main --head ${branch} --title "..." --body-file "${wd}/.tmp-${issue}-pr.md" --label docs-only\` (skift label efter omfang).`,
     "- Push wip-commits mod draften som normalt (livstegn-reglen gaelder uaendret).",
-    "- FOER `gh pr ready`: koer `coderabbit review --base main --committed` i arbejdsmappen PRAECIS EEN gang (maks 1 CodeRabbit CLI-runde pr. spor, #5220 - CLI'en har egen kvote, adskilt fra skyens auto-review paa den endelige inkrementelle omgang). Tager ca. 2,5 min. Ret aegte fund; afvis stoej med en kort begrundelse i slutrapporten. Fandt reviewet noget der skulle rettes: commit + push rettelsen - koer IKKE CLI-reviewet igen, den ene runde er brugt. Noter i slutrapporten hvilke fund der blev rettet uden en ny CLI-bekraeftelse.",
-    "- Markér FOERST PR'en klar naar preflight er groen, den ENE CodeRabbit CLI-runde er koert (og eventuelle fund er rettet og pushet) og PR-body er faerdig, som SIDSTE handling: `gh pr ready <N>` (CodeRabbit-attempts, 7/9 - undgaar at hvert wip-push taeller som et review-forsoeg).",
+    "- VALGFRIT (#6654 - CodeRabbit er bonus, aldrig krav; review-kravet er CI-checket `review-gate`): FOER `gh pr ready`, KUN hvis `coderabbit` er installeret (`command -v coderabbit`), koer `coderabbit review --base main --committed` i arbejdsmappen PRAECIS EEN gang (maks 1 CodeRabbit CLI-runde pr. spor, #5220). Ret aegte fund; afvis stoej med en kort begrundelse i slutrapporten; koer IKKE CLI-reviewet igen, den ene runde er brugt. Mangler CLI'en: spring over og skriv det i slutrapporten - det blokerer aldrig `gh pr ready`.",
+    "- Markér FOERST PR'en klar naar preflight er groen og PR-body er faerdig, som SIDSTE handling: `gh pr ready <N>` (draft indtil da: Codex reviewer ved ready, og wip-pushes taeller ikke som review-forsoeg, 7/9).",
     `- Refs #${issue} i PR-body, ikke "Closes" - projektets close-protokol er "Refs #N", brugeren lukker selv.`,
   ].join("\n");
 }
