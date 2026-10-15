@@ -21,7 +21,11 @@ import {
 import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
-import { SUNDAY_DRIP_COUNT } from "./sundayIntakeTick.js";
+import {
+  buildProfileGeneratorOptions,
+  candidatesForTier,
+  loadAcademyProfileState,
+} from "./academyIntakeProfile.js";
 
 const PULL_SEED_BASE = 3550;
 export const INTAKE_PULL_SOURCE = "pull";
@@ -109,6 +113,7 @@ export async function pullWeeklyAcademyIntake(supabase, {
   deriveRiders = deriveForRiderIds,
   isEnabled = isAcademyIntakePullEnabled,
   seedCohortFn = seedAcademyCohortForTeam,
+  loadProfileState = loadAcademyProfileState,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -138,6 +143,12 @@ export async function pullWeeklyAcademyIntake(supabase, {
   const existingNames = await fetchExistingFoldedRiderNames(supabase);
   const rng = makeRng(((seed >>> 0) ^ hashStringToSeed(`${teamId}:${weekSunday}`)) >>> 0);
 
+  // #6666 punkt 4: akademi-facilitetens niveau afgør kuldets størrelse og hvor
+  // meget den AKTIVE profil (den der er trådt i kraft, punkt 5) må overvægte.
+  // Potentiale-trækket er urørt: profilen flytter nationalitet og anlæg, ikke talent.
+  const profileState = await loadProfileState(supabase, { teamId, now });
+  const generatorOptions = buildProfileGeneratorOptions(profileState.effective, profileState.tier);
+
   const newIds = await seedCohortFn(supabase, {
     teamId,
     season,
@@ -145,7 +156,8 @@ export async function pullWeeklyAcademyIntake(supabase, {
     existingNames,
     rng,
     identityBasis: teamRow?.season_1_identity_basis || null,
-    countOverride: SUNDAY_DRIP_COUNT,
+    countOverride: candidatesForTier(profileState.tier),
+    generatorOptions,
     source: INTAKE_PULL_SOURCE, // #6155: kortet viser kun 'provisional value' på pull-kandidater
   });
 

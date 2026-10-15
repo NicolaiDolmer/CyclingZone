@@ -18,7 +18,7 @@ import {
 import { clusterForNationality } from "./fictionalRiderNames.js";
 import { NAME_CLUSTERS } from "./fictionalRiderNames.js";
 import { ACADEMY } from "./academyFlag.js";
-import { drawArchetypePair } from "./archetypeDistribution.js";
+import { drawArchetype, drawArchetypePair, drawSecondaryArchetype } from "./archetypeDistribution.js";
 import { RIDER_TYPES } from "./riderTypes.js";
 import {
   drawYouthBirthAbilities, makeBirthRng, makeYouthBirthMarker,
@@ -87,8 +87,12 @@ export function drawPotentiale(rng) {
 // rytterens type — kun `deriveForRiderIds`-kæden (physiology→abilities→caps→
 // klassifikator) tildeler den endelige type; dette er en formnings-PRIOR for
 // stats OG ankeret der holder secondary_type fast mod den natlige genberegning.
-function pickYouthArchetype(rng) {
-  return drawArchetypePair(rng);
+// #6666: `primaryDistribution` (akademiets profil) flytter KUN primærens fordeling;
+// sekundæren trækkes som altid fra standardfordelingen. Samme to rng()-kald.
+function pickYouthArchetype(rng, primaryDistribution = null) {
+  if (!primaryDistribution) return drawArchetypePair(rng);
+  const primary = drawArchetype(rng, primaryDistribution);
+  return { primary, secondary: drawSecondaryArchetype(rng, primary) };
 }
 
 /**
@@ -127,6 +131,7 @@ export function generateAcademyCandidates({
   nationalityWeights = null,
   topTalentIndex = null,
   topTalentMin = 3,
+  primaryArchetypeDistribution = null, // #6666: akademiets type-profil; null = uændret
 }) {
   if (mode !== BIRTH_MODE_OWN_PRIORS && mode !== BIRTH_MODE_PCM) {
     throw new Error(`generateAcademyCandidates: unknown mode ${mode}`);
@@ -184,7 +189,7 @@ export function generateAcademyCandidates({
     // fra arketype-mål-fordelingen (#3458 fase 2; altid to-delt siden #3632); de lave stats giver
     // via fallback-derivationen lave evner i ungdoms-båndet.
     /** @type {{ primary: string, secondary: string, birth?: object }} */
-    const archetypeDraw = pickYouthArchetype(rng); // { primary, secondary }
+    const archetypeDraw = pickYouthArchetype(rng, primaryArchetypeDistribution); // { primary, secondary }
 
     // #5269: på own-priors-stien trækkes INGEN stats. Evnerne fødes direkte i
     // ungdomsbåndet (riderBirthPriors.YOUTH_BIRTH_BAND — den samme ramme som

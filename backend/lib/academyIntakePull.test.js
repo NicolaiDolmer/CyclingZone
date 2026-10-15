@@ -9,7 +9,7 @@ import {
   INTAKE_PULL_VALUE_MIN,
   INTAKE_PULL_VALUE_MAX,
 } from "./academyIntakePull.js";
-import { SUNDAY_DRIP_COUNT } from "./sundayIntakeTick.js";
+import { candidatesForTier } from "./academyIntakeProfile.js";
 
 // ─── Mock-supabase helper ──────────────────────────────────────────────────────
 //
@@ -87,6 +87,25 @@ function buildMockSupabase({
             return api;
           },
         };
+      }
+
+      // #6666: akademi-faciliteten + profilen (ingen køb, ingen profil = niveau 0).
+      if (table === "team_facilities") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() { return Promise.resolve({ data: null, error: null }); },
+        };
+        return api;
+      }
+      if (table === "academy_intake_profiles") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          order() { return api; },
+          limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return api;
       }
 
       throw new Error(`buildMockSupabase: uventet tabel ${table}`);
@@ -176,7 +195,41 @@ test("pullWeeklyAcademyIntake: allerede hentet denne uge → alreadyPulled, inge
   assert.equal(seedCalled, false, "claim-guarden forhindrer et andet kuld samme uge");
 });
 
-test("pullWeeklyAcademyIntake (happy path): genererer SUNDAY_DRIP_COUNT kandidater, kører derive, sætter provisorisk værdi 1.000-5.000 EFTER derive", async () => {
+test("pullWeeklyAcademyIntake (#6666): akademi-niveauet styrer kuldets størrelse og profilens overvægt", async () => {
+  const supabase = buildMockSupabase({ claimed: false });
+  const seen = [];
+  await pullWeeklyAcademyIntake(supabase, {
+    teamId: "team-A",
+    now: new Date("2026-08-19T10:00:00Z"),
+    isEnabled: async () => true,
+    loadProfileState: async () => ({
+      tier: 4,
+      effective: { origins: ["DK"], types: ["climber", "gc"] },
+    }),
+    seedCohortFn: async (_sb, opts) => { seen.push(opts); return []; },
+    deriveRiders: async () => {},
+  });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].countOverride, candidatesForTier(4));
+  assert.ok(seen[0].generatorOptions?.nationalityWeights, "nationalitets-overvægt sendt til generatoren");
+  assert.ok(seen[0].generatorOptions?.primaryArchetypeDistribution, "type-overvægt sendt til generatoren");
+});
+
+test("pullWeeklyAcademyIntake (#6666): uden profil og uden facilitet = niveau 0, ingen overvægt", async () => {
+  const supabase = buildMockSupabase({ claimed: false });
+  const seen = [];
+  await pullWeeklyAcademyIntake(supabase, {
+    teamId: "team-A",
+    now: new Date("2026-08-19T10:00:00Z"),
+    isEnabled: async () => true,
+    seedCohortFn: async (_sb, opts) => { seen.push(opts); return []; },
+    deriveRiders: async () => {},
+  });
+  assert.equal(seen[0].countOverride, candidatesForTier(0));
+  assert.equal(seen[0].generatorOptions, null);
+});
+
+test("pullWeeklyAcademyIntake (happy path): genererer niveau-0-kuldet, kører derive, sætter provisorisk værdi 1.000-5.000 EFTER derive", async () => {
   const supabase = buildMockSupabase({ claimed: false });
   const derivedCalls = [];
   const seedCalls = [];
@@ -187,7 +240,7 @@ test("pullWeeklyAcademyIntake (happy path): genererer SUNDAY_DRIP_COUNT kandidat
     isEnabled: async () => true,
     seedCohortFn: async (_sb, opts) => {
       seedCalls.push(opts);
-      assert.equal(opts.countOverride, SUNDAY_DRIP_COUNT, "pull-kuldet bruger samme størrelse som det gamle drip");
+      assert.equal(opts.countOverride, candidatesForTier(0), "#6666: niveau 0 (ingen akademi-facilitet)");
       assert.equal(opts.source, "pull", "#6155: pull-kandidater markeres source=pull");
       return ["rider-1", "rider-2"];
     },
