@@ -34,6 +34,6 @@ Følg close-out i CLAUDE.md:
 - NOW.md: Next action + "🤖 Working agent: Ingen aktiv session".
 - Done-flip på merged issues.
 - `check-agent-token-hygiene.ps1` (MEMORY.md ligger lige under loftet; AGENTS.md er over).
-- `close-out-cleanup.ps1 -Execute` og `generate-status-board.mjs`.
+- `close-out-cleanup.ps1 -Execute` og `generate-status-board.mjs`. **Advarsel (#6687):** oprydningen kan tømme hovedcheckoutens `node_modules`, hvis et worktree har en node_modules-junction. Tjek bagefter, og kør `npm run sync-deps`, hvis de er tomme.
 - Push alt, og tjek at ingen worktree er dirty eller har upushede commits.
 - Skriv den samlede startprompt til `docs/sessions/` og push den.
