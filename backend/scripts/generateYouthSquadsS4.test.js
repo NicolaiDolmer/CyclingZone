@@ -35,6 +35,7 @@ import {
   benchmarkGapByTerrain,
   gapVerdict,
   describeLevels,
+  loadLiveValuationModels,
 } from "./measureYouthFieldGate.mjs";
 import { deriveForRiderIds } from "../lib/backfillCores.js";
 import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
@@ -477,6 +478,45 @@ test("planYouthLift: løfter mod fordelingen, bevarer rangorden, sænker aldrig 
   }
   const levels = summarizeLevels({ humanProfile: profile, lift });
   assert.ok(levels.some((l) => l.aiAfter.n > 0 && l.aiAfter.mean > l.aiBefore.mean));
+});
+
+test("planYouthLift: rangordenen bevares efter kandidatvalget (nyt niveau stiger med det gamle), også med snævre og brede fordelinger", () => {
+  const riders = existingAiRiders();
+  for (const [lo, hi] of [[25, 70], [40, 45], [10, 90], [60, 62]]) {
+    const profile = buildHumanLevelProfile(humanRows({ lo, hi }), { season: S + 1 });
+    const lift = planYouthLift({
+      riders, teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S + 1, levelProfile: profile, ...MODELS,
+    });
+    for (const age of new Set(lift.rows.map((r) => r.age))) {
+      const rows = lift.rows.filter((r) => r.age === age)
+        .sort((a, b) => a.before - b.before || String(a.riderId).localeCompare(String(b.riderId)));
+      rows.forEach((r, i) => {
+        if (i > 0) assert.ok(r.after >= rows[i - 1].after, `alder ${age}, fordeling ${lo}-${hi}: ${r.after} under ${rows[i - 1].after}`);
+      });
+    }
+  }
+});
+
+test("loadLiveValuationModels: vælger modellerne som generatoren (app_config), ikke en hårdkodet v4", async () => {
+  const calls = [];
+  const live = { id: "live-model" };
+  const prod = { id: "prod-model" };
+  const out = await loadLiveValuationModels({ fake: true }, {
+    loadValuationModel: async (s) => { calls.push(["valuation", s.fake]); return live; },
+    loadProductionValueModel: async (s) => { calls.push(["production", s.fake]); return prod; },
+    loadValuationModelById: () => { throw new Error("fallback må ikke bruges når app_config svarer"); },
+  });
+  assert.equal(out.valuationModel, live);
+  assert.equal(out.productionValuationModel, prod);
+  assert.deepEqual(calls, [["valuation", true], ["production", true]]);
+  // Fail-safe: en loader der ikke finder en model falder tilbage til standard-modellen.
+  const fb = { id: "fallback" };
+  const out2 = await loadLiveValuationModels({}, {
+    loadValuationModel: async () => null,
+    loadProductionValueModel: async () => prod,
+    loadValuationModelById: () => fb,
+  });
+  assert.equal(out2.valuationModel, fb);
 });
 
 test("planYouthLift: uden menneske-fordeling på en alder står rytterne uændret", () => {

@@ -12,6 +12,7 @@ import {
   applyParkingForecast,
   squadNumbers,
   starterShares,
+  poolRetirement,
 } from "./seedYouthPools.js";
 
 const pad = (n) => String(n).padStart(3, "0");
@@ -172,6 +173,18 @@ test("buildSquadPlan --regroup genkørt efter apply = 0 skrivninger", () => {
   const teams2 = teams.map((t) => ({ ...t, u23_league_division_id: after.get(t.id) }));
   const again = buildSquadPlan({ squad: "u23", ...w, pools, teams: teams2, managersPerGroup: 20, regroup: true });
   assert.deepEqual(again.updates, []);
+});
+
+test("poolRetirement: regroup pensionerer de tomme puljer og genbruger de brugte; top-up rører intet", () => {
+  const w = world({ managers: 40, ai: 20 });
+  const { pools, teams } = seeded(w);
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20, regroup: true });
+  const r = poolRetirement(sp);
+  assert.deepEqual(r.retireIndexes, [2], "den fjernede gruppe pensioneres, så kalenderen ikke bygger løb for den");
+  assert.deepEqual(r.reviveIndexes.sort(), [0, 1]);
+  assert.ok(r.retireIndexes.every((i) => !r.reviveIndexes.includes(i)));
+  const topUp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20 });
+  assert.deepEqual(poolRetirement(topUp), { retireIndexes: [], reviveIndexes: [] });
 });
 
 test("starterShares: AI-andel af de startklare hold, samlet og i den mest AI-tunge gruppe", () => {

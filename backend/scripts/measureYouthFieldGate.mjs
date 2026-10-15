@@ -79,7 +79,12 @@ import { SQUAD_MAX_AGE, SQUAD_CAPS, isYouthSquad, squadForSeasonAge } from "../l
 import { MIN_RACE_ENTRIES, selectionSizeForRace } from "../lib/raceAutopick.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { hashStringToSeed } from "../lib/starterSquadAllocator.js";
-import { loadValuationModelById, DEFAULT_VALUATION_MODEL_ID } from "../lib/riderValuationModelSelect.js";
+import {
+  loadValuationModel,
+  loadProductionValueModel,
+  loadValuationModelById,
+  DEFAULT_VALUATION_MODEL_ID,
+} from "../lib/riderValuationModelSelect.js";
 import {
   planYouthSquads,
   planYouthLift,
@@ -493,6 +498,21 @@ async function loadSeniorLevels(supabase, seasonNumber) {
   return rows.map((r) => Math.max(...LEVEL_ABILITIES.map((k) => Number(r[k])).filter(Number.isFinite)));
 }
 
+/**
+ * #6668: de modeller app_config VÆLGER lige nu, præcis som generatoren (og derive'en)
+ * henter dem. Løftets kandidatvalg afhænger af værdiloftet, så en hårdkodet model
+ * ville vælge andre kandidater end apply og give en forkert "AI efter løft"-fordeling.
+ * Fail-safe (v4) ligger i loaderne; loaderne kan injiceres til test.
+ */
+export async function loadLiveValuationModels(supabase, loaders = {}) {
+  const loadValuation = loaders.loadValuationModel ?? loadValuationModel;
+  const loadProduction = loaders.loadProductionValueModel ?? loadProductionValueModel;
+  const fallback = loaders.loadValuationModelById ?? loadValuationModelById;
+  const valuationModel = await loadValuation(supabase) ?? fallback(DEFAULT_VALUATION_MODEL_ID);
+  const productionValuationModel = await loadProduction(supabase);
+  return { valuationModel, productionValuationModel };
+}
+
 async function main() {
   let args;
   try {
@@ -513,7 +533,7 @@ async function main() {
   // A6-kuldet fra SAMME plan-funktion som generatoren. Navnene er ligegyldige
   // her (tomt navne-sæt), antal og alder er det der tæller — og de afhænger
   // kun af seed + hold-id, ikke af navnene.
-  const model = loadValuationModelById(DEFAULT_VALUATION_MODEL_ID);
+  const { valuationModel, productionValuationModel } = await loadLiveValuationModels(supabase);
   const aiTeams = await loadActiveAiTeams(supabase);
   // #6668: hold der allerede HAR en trup (efter S4-cutover) får ikke et nyt kuld
   // i planen — samme idempotens som generatoren. Deres eksisterende ryttere tælles
@@ -521,7 +541,7 @@ async function main() {
   const population = await loadPopulation(supabase, aiTeams.map((t) => t.id));
   const plan = planYouthSquads({
     teams: aiTeams, juniorsPerTeam: args.juniors, targetSeason: args.season, seed: DEFAULT_SEED,
-    valuationModel: model, productionValuationModel: model,
+    valuationModel, productionValuationModel,
     existingByTeam: population.existingByTeam,
   });
 
@@ -578,8 +598,8 @@ async function main() {
       teamsById: new Map(aiTeams.map((t) => [t.id, t])),
       targetSeason: args.season,
       levelProfile: profile,
-      valuationModel: model,
-      productionValuationModel: model,
+      valuationModel,
+      productionValuationModel,
     });
     const inSquad = (squad, age) => age != null && age <= SQUAD_MAX_AGE[squad]
       && age >= (squad === "junior" ? JUNIOR_RACE_MIN_AGE : SQUAD_MAX_AGE.junior + 1);

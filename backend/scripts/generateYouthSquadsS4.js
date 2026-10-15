@@ -599,14 +599,22 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
   for (const [age, list] of [...byAge].sort((a, b) => a[0] - b[0])) {
     list.sort((a, b) => (a.level - b.level) || String(a.rider.id).localeCompare(String(b.rider.id)));
     const profile = levelProfile.get(age);
+    // Rangordenen bevares EFTER kandidatvalget: hver rytters nye niveau må ikke ligge
+    // under den foregående (svagere) rytters nye niveau, selv om to nærmeste-kandidat-
+    // søgninger rammer deres stigende mål forskelligt. `floor` er løbende maksimum.
+    let floor = -Infinity;
     list.forEach((e, i) => {
       const target = levelQuantile(profile, (i + 0.5) / list.length);
       const base = { riderId: e.rider.id, teamId: e.rider.team_id, squad: e.rider.squad, age, before: e.level, target };
-      if (target == null || target <= e.level) {
+      const needsFloor = floor > e.level;
+      if (target == null || (target <= e.level && !needsFloor)) {
         rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
+        floor = Math.max(floor, e.level);
         return;
       }
-      const ranked = rankBirthCandidates({ row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target });
+      const ranked = rankBirthCandidates({
+        row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target: Math.max(target, floor),
+      }).filter((c) => c.level >= floor);
       const pick = chooseBirth({
         payload: e.rider,
         candidates: ranked,
@@ -616,8 +624,10 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
       });
       if (!pick || pick.level <= e.level) {
         rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
+        floor = Math.max(floor, e.level);
         return;
       }
+      floor = Math.max(floor, pick.level);
       rows.push({
         ...base,
         after: pick.level,

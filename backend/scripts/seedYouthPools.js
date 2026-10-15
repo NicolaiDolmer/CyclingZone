@@ -373,6 +373,21 @@ async function loadState(supabase) {
   return { teams, pools, globalRanks, riders };
 }
 
+/**
+ * #6668: hvilke puljer en regroup skal pensionere og hvilke den skal genbruge.
+ * Kalenderbyggeren (tierCalendarMaterializer.loadCalendarPools) læser hver pulje
+ * uden retired_at som aktiv, så en pulje regroup har tømt skal have retired_at,
+ * ellers får den løb uden felt. Puljer planen bruger igen (en tidligere regroup
+ * kan have pensioneret dem) får retired_at fjernet. Kun regroup rører ved dem.
+ */
+export function poolRetirement(squadPlan) {
+  if (squadPlan.mode !== "regroup") return { retireIndexes: [], reviveIndexes: [] };
+  return {
+    retireIndexes: [...(squadPlan.unusedPools || [])],
+    reviveIndexes: (squadPlan.plan?.groups || []).map((g) => g.poolIndex),
+  };
+}
+
 async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
   const { squad, poolsToCreate, updates } = squadPlan;
   const col = fkColumn(squad);
@@ -383,7 +398,7 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     if (error) throw new Error(`league_divisions insert (${squad}): ${error.message}`);
   }
   const { data: pools, error: poolErr } = await supabase.from("league_divisions")
-    .select("id, pool_index, squad").eq("squad", squad).eq("tier", YOUTH_GROUP_TIER);
+    .select("id, pool_index, squad, retired_at").eq("squad", squad).eq("tier", YOUTH_GROUP_TIER);
   if (poolErr) throw new Error(`league_divisions (${squad}): ${poolErr.message}`);
   const poolIdByIndex = new Map(pools.map((p) => [p.pool_index, p.id]));
 
@@ -392,7 +407,13 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     ? await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("teams").select(`id, ${col}`).in("id", chunk).order("id"))
     : [];
   const restorePath = join(internalsDir, `youth-pools-restore-${squad}-${stamp}.json`);
-  writeFileSync(restorePath, JSON.stringify({ squad, column: col, teams: before }, null, 2));
+  const { retireIndexes, reviveIndexes } = poolRetirement(squadPlan);
+  const retireIds = pools.filter((p) => retireIndexes.includes(p.pool_index) && p.retired_at == null).map((p) => p.id);
+  const reviveIds = pools.filter((p) => reviveIndexes.includes(p.pool_index) && p.retired_at != null).map((p) => p.id);
+  // Restore-filen husker også puljernes tidligere retired_at, så en regroup kan rulles tilbage.
+  const poolsBefore = pools.filter((p) => retireIds.includes(p.id) || reviveIds.includes(p.id))
+    .map((p) => ({ id: p.id, pool_index: p.pool_index, retired_at: p.retired_at ?? null }));
+  writeFileSync(restorePath, JSON.stringify({ squad, column: col, teams: before, pools: poolsBefore }, null, 2));
   console.log(`  restore-fil: ${relative(REPO_ROOT, restorePath)}`);
 
   const byTarget = new Map();
@@ -406,6 +427,14 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
   for (const { target, ids: teamIds } of byTarget.values()) {
     const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
     if (error) throw new Error(`teams.${col} update: ${error.message}`);
+  }
+  if (reviveIds.length) {
+    const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
+    if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
+  }
+  if (retireIds.length) {
+    const { error } = await supabase.from("league_divisions").update({ retired_at: new Date().toISOString() }).in("id", retireIds);
+    if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
   }
 
   const after = ids.length
