@@ -308,6 +308,8 @@ export function komPointsForClimb(climb) {
   return doubles ? points * 2 : points;
 }
 
+const TIME_TRIAL_TYPES = new Set(["itt", "itt_hilly", "ttt"]);
+
 /**
  * Etapens "hvad betyder ruten"-nøgler til i18n. Betingelserne er IDENTISKE med
  * motorens (stageGapModel + isTechnicalFinale i raceSimulator.js) — chippen må
@@ -344,7 +346,8 @@ export function routeReadKeys(profile) {
     || sectors.some((s) => Number(s.start_km) + Number(s.length_km) >= D - 10);
   if (isTechnical) keys.push({ key: "technical" });
 
-  const mid = DISTANCE_BAND_MIDPOINTS[profile.profile_type];
+  // #6475: enkeltstart/holdtempo har ingen lang/kort dag — v4 sliber ikke distancen her.
+  const mid = TIME_TRIAL_TYPES.has(profile.profile_type) ? null : DISTANCE_BAND_MIDPOINTS[profile.profile_type];
   if (mid) {
     const ratio = D / mid;
     if (ratio >= LONG_DAY_RATIO) keys.push({ key: "long" });

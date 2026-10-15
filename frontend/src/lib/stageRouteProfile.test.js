@@ -262,6 +262,15 @@ test("routeReadKeys: lang/kort dag omkring DISTANCE_BAND_MIDPOINTS.flat (175 km)
   assert.ok(!neither.some((k) => k.key === "long" || k.key === "short"));
 });
 
+test("routeReadKeys: enkeltstart/holdtempo får aldrig lang/kort-mærke (#6475)", () => {
+  for (const t of ["itt", "itt_hilly", "ttt"]) {
+    for (const km of [15, 35, 40]) {
+      const keys = routeReadKeys({ profile_type: t, distance_km: km, climbs: [], sprints: [], sectors: [] });
+      assert.ok(!keys.some((k) => k.key === "long" || k.key === "short"), `${t} ${km} km`);
+    }
+  }
+});
+
 test("routeReadKeys: uden rutedata → tom liste", () => {
   assert.deepEqual(routeReadKeys({ profile_type: "flat" }), []);
   assert.deepEqual(routeReadKeys(null), []);
