@@ -29,8 +29,10 @@ const BACKEND_ROOT = dirname(fileURLToPath(import.meta.url));
 const CODE_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts"]);
 const MODULE_EXTENSIONS = new Set([...CODE_EXTENSIONS, ".json"]);
 
-// Undtagelser: "<fil relativt til backend/>": "begrundelse". Kun for en sti der
-// BEVISELIGT aldrig laeses i prod (fx kun i en CLI-main-blok). Tom er maalet.
+// Undtagelser pr. (modul, maalsti): { "<modul rel. backend/>": { "<maal rel. backend/>": "begrundelse" } },
+// fx { "lib/a.js": { "../docs/x.json": "kun i CLI-main-blok" } }. Undtagelsen daekker kun
+// netop den sti, aldrig resten af modulet. Kun for en sti der BEVISELIGT aldrig laeses
+// i prod. Tom er maalet.
 const ALLOWED = Object.freeze({});
 
 function isInside(root, p) {
@@ -167,10 +169,11 @@ export function scanBackendOnlyFiles(root, entrypoints, allowed = {}) {
   const violations = [];
   const seen = new Set();
   const queue = entrypoints.map((e) => resolve(root, e));
-  const report = (file, detail) => {
-    const rel = relative(root, file).replaceAll("\\", "/");
-    if (allowed[rel]) return;
-    violations.push(`${rel}: ${detail}`);
+  const toRel = (p) => relative(root, p).replaceAll("\\", "/");
+  const report = (file, target, detail) => {
+    const rel = toRel(file);
+    if (allowed[rel]?.[toRel(target)]) return;
+    violations.push(`${rel}: ${detail} (${toRel(target)})`);
   };
 
   while (queue.length > 0) {
@@ -191,7 +194,7 @@ export function scanBackendOnlyFiles(root, entrypoints, allowed = {}) {
       if (!/^\.\.?\//.test(value) && value !== "..") continue;
       const target = resolve(moduleDir, value);
       if (!isInside(root, target)) {
-        report(file, `sti "${value}" peger uden for backend/ (${relative(root, target).replaceAll("\\", "/")})`);
+        report(file, target, `sti "${value}" peger uden for backend/`);
         continue;
       }
       const ext = extname(target);
@@ -205,7 +208,7 @@ export function scanBackendOnlyFiles(root, entrypoints, allowed = {}) {
       const parts = [...m[2].matchAll(new RegExp(STRING_LITERAL, "g"))].map((x) => unquote(x[0]));
       const target = resolve(dirs.get(m[1]), ...parts);
       if (!isInside(root, target)) {
-        report(file, `${m[0].replace(/[,)]$/, ")")} peger uden for backend/ (${relative(root, target).replaceAll("\\", "/")})`);
+        report(file, target, `${m[0].replace(/[,)]$/, ")")} peger uden for backend/`);
       }
     }
   }
@@ -237,8 +240,13 @@ test("#6367: intet modul serveren loader laeser eller importerer en fil uden for
   ].join("\n"));
 });
 
-test("#6367: ALLOWED-undtagelser peger paa moduler der stadig findes", () => {
-  for (const rel of Object.keys(ALLOWED)) assert.ok(existsSync(join(BACKEND_ROOT, rel)), `${rel} findes ikke - fjern undtagelsen`);
+test("#6367: ALLOWED-undtagelser peger paa moduler der stadig findes og har en begrundelse", () => {
+  for (const [rel, paths] of Object.entries(ALLOWED)) {
+    assert.ok(existsSync(join(BACKEND_ROOT, rel)), `${rel} findes ikke - fjern undtagelsen`);
+    for (const [target, reason] of Object.entries(paths)) {
+      assert.ok(typeof reason === "string" && reason.trim(), `${rel} -> ${target} mangler begrundelse`);
+    }
+  }
 });
 
 // Negativ proeve: vagten skal kunne fejle. Bygger en mini-backend i tmp med hver
@@ -282,6 +290,13 @@ test("#6367: vagten fanger hver fejlklasse og lader CLI-scripts vaere", () => {
     assert.ok(!violations.some((v) => v.startsWith("server.js:")), `kommentar/regex gav falsk alarm: ${violations.join(" | ")}`);
     assert.ok(!violations.some((v) => v.includes("ok.json")), `lovlig sti under backend/ gav falsk alarm: ${violations.join(" | ")}`);
     assert.equal(violations.length, 4, violations.join("\n"));
+
+    // En undtagelse daekker kun sin egen sti: docs-stien undtages, database-stien i
+    // samme modul skal stadig fanges.
+    const scoped = scanBackendOnlyFiles(root, ["server.js"], { "lib/a.js": { "../docs/bench.json": "fixture" } }).violations;
+    assert.ok(!scoped.some((v) => v.includes("docs/bench.json")), `undtaget sti blev stadig rapporteret: ${scoped.join(" | ")}`);
+    assert.ok(scoped.some((v) => v.startsWith("lib/a.js:") && v.includes("database")), `undtagelse skjulte en anden sti i samme modul: ${scoped.join(" | ")}`);
+    assert.equal(scoped.length, 3, scoped.join("\n"));
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }
