@@ -27,7 +27,9 @@ import type {
   ProfileType,
   RaceGroup,
   RiderState,
+  Segment,
   SegmentHookContext,
+  SegmentKind,
   SegmentHookResult,
   TimelineEvent,
 } from "./types.ts";
@@ -37,7 +39,7 @@ import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
 import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
-import { finishDescentIndexFor, finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
+import { climbTimeSeconds, finishDescentIndexFor, finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
 import { s5FinaleDemandVector } from "./s5Profiles.ts";
 import { S5_PROFILES_TUNING } from "./tuning.ts";
 
@@ -81,6 +83,40 @@ const MASS_FINISH_PROFILE_TYPES: ReadonlySet<ProfileType> = new Set(["flat", "ro
 export function isMassFinishRoute(route: { finale_type: FinaleType | null; profile_type: ProfileType }): boolean {
   if (route.finale_type) return MASS_FINISH_FINALE_TYPES.has(route.finale_type);
   return MASS_FINISH_PROFILE_TYPES.has(route.profile_type);
+}
+
+/**
+ * #6648 (KUN s5_profiles_v1): varigheden (s) af den afgoerende indsats paa
+ * finalesegmentet: segmentet i referencefart, paa en stigning stigningens egen fart
+ * (mechanics/timeModel.ts climbTimeSeconds, samme fart som klatre-selektionen bruger),
+ * hoejst `maxEffortSeconds` (en mur eller bakke er kort). Eksporteret for kontrakt-tests.
+ */
+export function finishEffortSeconds(
+  segment: Segment,
+  baseSpeedKmh: Readonly<Record<SegmentKind, number>>,
+  maxEffortSeconds = Infinity,
+): number {
+  const km = Math.max(0, (Number(segment.to_km) || 0) - (Number(segment.from_km) || 0));
+  const speed = baseSpeedKmh[segment.kind];
+  const seconds = segment.kind === "climb"
+    ? climbTimeSeconds(segment.avg_gradient, km)
+    : speed > 0 ? (km / speed) * 3600 : 0;
+  const cap = Number.isFinite(maxEffortSeconds) ? Math.max(0, maxEffortSeconds) : Infinity;
+  return Math.min(seconds, cap);
+}
+
+/**
+ * #6648 (KUN s5_profiles_v1): en rytters tidstab (s) til vinderen i maal: score-afstanden
+ * x det relative fartab pr. score-enhed x den afgoerende indsats' varighed. 0 ved 0
+ * afstand og monotont ikke-faldende i afstanden og indsatsen, saa en hoejere score aldrig
+ * giver et stoerre tab (raekkefoelgen er scorens). Intet fast trin, ingen jitter: hele
+ * spredningen kommer af evneforskellen paa dagen og hvor lang den afgoerende indsats er.
+ */
+export function s5FinishGapSeconds(scoreDeficit: number, effortSeconds: number, lossPerScoreUnit: number): number {
+  const deficit = Number.isFinite(scoreDeficit) ? Math.max(0, scoreDeficit) : 0;
+  const effort = Number.isFinite(effortSeconds) ? Math.max(0, effortSeconds) : 0;
+  const loss = Number.isFinite(lossPerScoreUnit) ? Math.max(0, lossPerScoreUnit) : 0;
+  return round2(deficit * loss * effort);
 }
 
 /**
@@ -772,14 +808,15 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   let cumulativeGap = 0;
   let prevScore: number | null = null;
   let tailStarted = false;
-  // #6363 (KUN s5_profiles_v1): mur, bakke og stigende spurt har deres egen
-  // tids-spredning i maal (S5_PROFILES_TUNING.finaleTiers). En stigende spurt er en
-  // massefinale i alt andet end tiden: de forreste deler tid naar de er taet, ellers
-  // faar de faa sekunder. Uden raekke (alle aeldre revisioner) er alt som foer.
-  const s5Tiers = ctx.s5ProfilesV1 === true && route.finale_type ? S5_PROFILES_TUNING.finaleTiers[route.finale_type] : undefined;
-  const massPlacement = isMassFinishRoute(route) && !s5Tiers;
-  const gapScoreScale = s5Tiers?.gapScoreScale ?? extra.placementGapScoreScale;
-  const tieEpsilon = s5Tiers ? s5Tiers.tieScoreEpsilon : ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
+  // #6363 + #6648 (KUN s5_profiles_v1): tiden i maal kommer af loebet (S5_PROFILES_TUNING.
+  // finishGaps, se s5FinishGap nedenfor). En stigende spurt er en massefinale i alt andet
+  // end tiden: de forreste deler tid naar de er taet. Aeldre revisioner: alt som foer.
+  const s5FinishGaps = ctx.s5ProfilesV1 === true ? S5_PROFILES_TUNING.finishGaps : undefined;
+  const s5OwnGap = s5FinishGaps && route.finale_type ? s5FinishGaps[route.finale_type] : undefined;
+  const massPlacement = isMassFinishRoute(route) && !s5OwnGap;
+  const s5Gap = s5FinishGaps && !massPlacement ? s5OwnGap ?? s5FinishGaps.default : undefined;
+  const gapScoreScale = extra.placementGapScoreScale;
+  const tieEpsilon = ctx.ordersGcV3 === true ? TIME_MODEL_V3_TUNING.finaleTieScoreEpsilon : null;
   // #6199 (KUN official_times_v2): paa en selektiv finale er tids-tiers et fysisk
   // tidstab paa sidste stykke, ikke kun en placering i en faelles pulje. Kun en
   // massefinale deler én tid. En tier kommer aldrig bag en overlevende gruppe:
@@ -806,6 +843,41 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       rider_ids: [...scored.map((s) => s.riderId), ...unscoredContenderIds],
       gap_seconds: 0,
       cohesion: 1,
+    });
+  } else if (s5Gap) {
+    // #6648 (KUN s5_profiles_v1): hver rytters tid er hans eget tidstab til vinderen
+    // (score-afstand x den afgoerende indsats, s5FinishGapSeconds), aldrig et fast trin
+    // pr. placering. Gap-reglen: inden for gruppe-taersklen (+ margin, saa segmentLoop's
+    // mergeGroups ikke folder to tiers sammen) af tierens foerste rytter deler han dens
+    // tid; ellers starter han en ny tier paa sin egen tid. Aldrig bag en overlevende
+    // gruppe (tierCap). Fra placementFullResolutionCount er resten én haleklump.
+    const effortSeconds = finishEffortSeconds(segment, tuning.terrain.baseSpeedKmh, s5Gap.maxEffortSeconds);
+    const sameTimeSeconds = mergeThreshold + extra.placementGapMarginSeconds;
+    const topScore = scored[0]?.score ?? 0;
+    let tierGap = 0;
+    scored.forEach((entry, rank) => {
+      const last = placementGroups[placementGroups.length - 1];
+      if (tailStarted) {
+        last.rider_ids.push(entry.riderId);
+        last.kind = "peloton";
+        return;
+      }
+      const inTailZone = rank >= extra.placementFullResolutionCount;
+      const own = Math.min(s5FinishGapSeconds(topScore - entry.score, effortSeconds, s5Gap.lossPerScoreUnit), Math.max(tierGap, tierCap));
+      if (!last || own - tierGap >= sameTimeSeconds) {
+        tierGap = last ? own : 0;
+        placementGroups.push({
+          id: inTailZone ? `finale-tail-${seq++}` : tierGap === 0 ? `finale-winner-${seq++}` : `finale-tier-${seq++}`,
+          kind: inTailZone ? "peloton" : "solo",
+          rider_ids: [entry.riderId],
+          gap_seconds: tierGap,
+          cohesion: 1,
+        });
+      } else {
+        last.rider_ids.push(entry.riderId);
+        last.kind = "peloton";
+      }
+      if (inTailZone) tailStarted = true;
     });
   } else scored.forEach((entry, rank) => {
     const inTailZone = rank >= extra.placementFullResolutionCount;
