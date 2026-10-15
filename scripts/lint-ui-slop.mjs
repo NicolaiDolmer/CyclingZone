@@ -204,7 +204,9 @@ function walk(dir, match, out = []) {
   return out;
 }
 
-const matchSource = (f) => /\.(jsx?|css)$/.test(f) && !/\.test\.(jsx?|mjs)$/.test(f);
+// #6686: ogsaa .ts/.tsx (nye frontend-filer SKAL vaere TypeScript), ellers kan
+// forbudte klasser komme tilbage via den primaere vej. Tests og .d.ts er undtaget.
+const matchSource = (f) => /\.(jsx?|tsx?|css)$/.test(f) && !/\.test\.(jsx?|mjs|tsx?)$/.test(f) && !/\.d\.ts$/.test(f);
 const matchLocale = (f) => /\.json$/.test(f);
 
 // Returnér { "<rel-sti>": {hex, slop, colour, emoji, arrowglyph} } for filer
