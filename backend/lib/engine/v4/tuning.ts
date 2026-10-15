@@ -1065,15 +1065,19 @@ const s5Profiles = {
     punch: { punch: 0.45, acceleration: 0.25, positioning: 0.1 },
     uphill_sprint: { sprint: 0.35, acceleration: 0.25, positioning: 0.2 },
   } as Partial<Record<import("./types.ts").FinaleType, Partial<Record<import("./types.ts").AbilityKey, number>>>>,
-  // Tids-spredningen i maal pr. kort afslutning: sekunder pr. score-enhed mellem to
-  // naboplaceringer (afloeser finaleExtra.placementGapScoreScale) og den score-afstand
-  // under hvilken ryttere deler tid (afloeser finaleTieScoreEpsilon). Stigende spurt
-  // er en massefinale i alt andet end tiden (finale.ts).
-  finaleTiers: {
-    wall_finish: { gapScoreScale: 140, tieScoreEpsilon: 0.005 },
-    punch: { gapScoreScale: 34, tieScoreEpsilon: 0.01 },
-    uphill_sprint: { gapScoreScale: 3, tieScoreEpsilon: 0.12 },
-  } as Partial<Record<import("./types.ts").FinaleType, { gapScoreScale: number; tieScoreEpsilon: number }>>,
+  // #6648: tiden i maal paa en selektiv eller kort afslutning kommer af loebet, ikke af
+  // et fast trin pr. placering (afloeser #6363's finaleTiers). Tidstabet til vinderen =
+  // score-afstanden x `lossPerScoreUnit` (relativt fartab pr. score-enhed) x den
+  // afgoerende indsats' varighed: finalesegmentet i referencefart (paa en stigning
+  // stigningens egen fart), hoejst `maxEffortSeconds` (en mur eller bakke er kort).
+  // Stigende spurt er en massefinale i alt andet end tiden (finale.ts). Finaler uden
+  // egen raekke (bjergtop, nedkoersel) bruger `default`. Maalt mod motor-bench.
+  finishGaps: {
+    default: { lossPerScoreUnit: 0.07 },
+    wall_finish: { lossPerScoreUnit: 1.33, maxEffortSeconds: 150 },
+    punch: { lossPerScoreUnit: 0.3, maxEffortSeconds: 300 },
+    uphill_sprint: { lossPerScoreUnit: 0.33, maxEffortSeconds: 60 },
+  } as Partial<Record<import("./types.ts").FinaleType | "default", { lossPerScoreUnit: number; maxEffortSeconds?: number }>>,
   hybridWeight: 0.2,
   hybridPunchMaxPriorClimbs: 1,
   hybridDurabilityFullPriorClimbs: 4,
