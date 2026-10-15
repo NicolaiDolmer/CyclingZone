@@ -132,7 +132,7 @@ export default function CookieBanner() {
             <button
               type="button"
               onClick={() => saveConsent(draft)}
-              className="bg-cz-accent-t text-white font-semibold text-sm rounded-lg px-4 py-2 hover:opacity-90"
+              className="bg-cz-accent-t text-white font-semibold text-sm rounded-cz px-4 py-2 hover:opacity-90"
             >
               {t("consent.save")}
             </button>
@@ -140,7 +140,7 @@ export default function CookieBanner() {
             <button
               type="button"
               onClick={() => setExpanded(true)}
-              className="bg-cz-subtle text-cz-1 font-semibold text-sm rounded-lg px-4 py-2 hover:bg-cz-subtle/70"
+              className="bg-cz-subtle text-cz-1 font-semibold text-sm rounded-cz px-4 py-2 hover:bg-cz-subtle/70"
             >
               {t("consent.customize")}
             </button>
@@ -148,14 +148,14 @@ export default function CookieBanner() {
           <button
             type="button"
             onClick={rejectAll}
-            className="bg-cz-subtle text-cz-1 font-semibold text-sm rounded-lg px-4 py-2 hover:bg-cz-subtle/70"
+            className="bg-cz-subtle text-cz-1 font-semibold text-sm rounded-cz px-4 py-2 hover:bg-cz-subtle/70"
           >
             {t("consent.rejectAll")}
           </button>
           <button
             type="button"
             onClick={acceptAll}
-            className="bg-cz-accent-t text-white font-semibold text-sm rounded-lg px-4 py-2 hover:opacity-90 sm:ms-auto"
+            className="bg-cz-accent-t text-white font-semibold text-sm rounded-cz px-4 py-2 hover:opacity-90 sm:ms-auto"
           >
             {t("consent.acceptAll")}
           </button>

@@ -64,7 +64,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
 
   if (loading && !data) return <p className="text-cz-3 text-xs">Henter forhåndsvisning…</p>;
   if (!data) return (
-    <button onClick={load} className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs hover:text-cz-1">
+    <button onClick={load} className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs hover:text-cz-1">
       Indlæs forhåndsvisning
     </button>
   );
@@ -76,7 +76,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
   return (
     <div className="space-y-4">
       {/* Model-metadata + ærlig caveat */}
-      <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
         <p className="text-cz-2 font-semibold mb-2">Model (data-drevet · #1101 SHADOW — styrer endnu intet)</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
           <Stat label="Trænet på" value={`${m.n_train} salg`} />
@@ -93,7 +93,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
       </div>
 
       {/* Koefficienter — hvad betaler managers for */}
-      <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
         <p className="text-cz-2 font-semibold mb-2">Hvad betaler managers for? (standardiserede vægte)</p>
         <div className="space-y-1">
           {data.coefficients.map((c) => (
@@ -115,7 +115,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
       </div>
 
       {/* Fordeling gammel vs ny */}
-      <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-xs">
         <p className="text-cz-2 font-semibold mb-2">Fordeling — {d.count.toLocaleString("da-DK")} ryttere (CZ$)</p>
         <table data-sort-exempt="Fast fordelings-tabel, 2 raekker" className="w-full">
           <thead>
@@ -150,9 +150,9 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Søg rytter…"
-          className="w-full sm:w-64 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden mb-2"
+          className="w-full sm:w-64 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden mb-2"
         />
-        <div className="overflow-x-auto rounded-lg border border-cz-border">
+        <div className="overflow-x-auto rounded-cz border border-cz-border">
           <table data-sortable className="w-full text-xs">
             <thead>
               <tr className="border-b border-cz-border text-cz-3">

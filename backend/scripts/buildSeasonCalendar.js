@@ -7,6 +7,7 @@
 //   ... --apply --replace-existing   # REGENERERING: sletter sæsonens nuværende kalender først
 //   ... --squad u23 | --squad junior # #5644: truppens egen kalender (EFTER seniorens); en
 //                                    # --replace-existing sletter da KUN truppens løb
+//   ... --dump-plan <fil>             # tørkørslens plan som JSON til ejerens visning før --apply
 //   ... --target-structure s4        # #5795: planlæg mod S4's målstruktur (D4 E-H behandles
 //                                    # som pensioneret), så kalenderen kan skrives FØR
 //                                    # "Afslut sæson". Rører ikke retired_at. Kun senior.
@@ -201,6 +202,8 @@ export function formatSquadPlanReport({ plan, squad }) {
       ` · ${t.racingDates ?? 0} af ${t.realDays} datoer med en etape` +
       ` · ${t.raceDayAxisLength ?? 0} løbsdage (${t.trainingGameDayCount ?? 0} rene træningsdage)`,
     );
+    // #6667: truppens foerste etape-tid (egen starttid, aldrig i seniorens foerste halve time).
+    if (t.planningWindow?.firstStageAt) lines.push(`    første etape: ${new Date(t.planningWindow.firstStageAt).toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" })} (dansk tid)`);
     for (const v of t.calendarViolations ?? []) lines.push(`    ❌ ${v}`);
   }
   for (const t of plan?.tiers ?? []) {
@@ -677,6 +680,12 @@ if (isMain) {
   const allowUniformDrift = process.argv.includes("--allow-uniform-target-drift");
   // #6367: en rigtig motor-bench-fil ({ medians: { <afslutning>: sek } }) til benchmark-
   // gatens del (4). Uden den bruges stubben. Flaget er et INPUT, ikke en override.
+  // Ejer-visning før --apply (15/10): --dump-plan <fil> skal have en rigtig sti, ellers stop
+  // FØR planlægning, så "--dump-plan --apply" aldrig skriver en fil ved navn "--apply" og fortsætter.
+  const dumpPlanArg = argOf("--dump-plan");
+  if (process.argv.includes("--dump-plan") && (!dumpPlanArg || dumpPlanArg.startsWith("--"))) {
+    console.error("--dump-plan kræver en filsti"); process.exit(2);
+  }
   const motorBenchArg = argOf("--motor-bench");
   if (process.argv.includes("--motor-bench") && (!motorBenchArg || motorBenchArg.startsWith("--"))) {
     console.error("--motor-bench kræver en filsti"); process.exit(2);
@@ -885,6 +894,15 @@ if (isMain) {
       supabase, seasonId, seasonNumber, seasonStartDate: firstRaceDay, from, dryRun: true, log: () => {}, s5BenchmarkInputs,
       realDays, quotas, useUniformTierTilt: uniformTilt, raceDayTarget, ...planningWindowArgs, squad, ...cutoverArgs,
     });
+
+    // Ejer ser kalenderen FØR --apply (15/10, S5): --dump-plan <fil> gemmer tørkørslens
+    // plan som JSON (Map → objekt), så den kan vises som kalender. Skriver kun lokalt.
+    const dumpPlanPath = dumpPlanArg;
+    if (dumpPlanPath) {
+      const toJson = (_k, v) => (v instanceof Map ? Object.fromEntries(v) : v instanceof Set ? [...v] : v);
+      writeFileSync(resolve(dumpPlanPath), JSON.stringify({ seasonNumber, firstRaceDay, plan }, toJson, 1));
+      console.log(`  plan gemt: ${resolve(dumpPlanPath)}`);
+    }
 
     // #5644 (Y5): en trups kalender har sin egen, kortere vej: ingen K-B-komposition,
     // scorecard eller realisme-bånd (de er kalibreret mod seniordivisionerne, spec 2026-09-15

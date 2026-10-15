@@ -111,7 +111,7 @@
       "move": "Flyt trup"
     },
     "auction": {
-      "description": "Start auktion. Andre managers kan byde.",
+      "description": "Start auktion. Andre managere kan byde.",
       "startButton": "Start",
       "startFlashButton": "Start Flash",
       "flashLabel": "Flash Auktion (30 min)",

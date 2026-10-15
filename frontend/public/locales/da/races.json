@@ -1662,7 +1662,9 @@
     },
     "table": {
       "prizePoints": "Præmiepoint",
-      "jerseyPoints": "Trøjepoint"
+      "jerseyPoints": "Trøjepoint",
+      "prizePointsShort": "Præmie",
+      "jerseyPointsShort": "Trøje"
     },
     "jumpToResults": "Se resultater"
   },

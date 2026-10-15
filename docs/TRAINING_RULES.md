@@ -103,7 +103,11 @@ tabellen (INSERT og UPDATE af `report`) tilføjer nye ryttere, så både
 dato-stien og den gamle `game_day IS NULL`-sti dækkes. Tabellen er insert-only
 og glemmer ikke af sig selv: den der sletter rapporter (beta-reset, recovery-
 rollback) kalder `rebuild_rider_training_seen()` bagefter. Semantikken i de tre
-første-brugs-vagter er uændret; GIN-indekset står indtil separat ejer-go.
+første-brugs-vagter er uændret. GIN-indekset på `report->'riders'` er fjernet
+(ejer-go 15/10, migration `2026-10-15-6490-drop-training-report-riders-gin.sql`).
+Ny kode må ikke bruge containment (`@>`) på `report->'riders'`: læs fra
+`rider_training_seen`. Gendannelse: `database/manual/2026-10-15-6490-recreate-
+training-report-riders-gin.sql`.
 
 Driftalarmen skelner via sit gemte bevis mellem utilgængelige ryttere/starttilstande
 og manglende løbsaktivitet. Et begrænset udsnit serialiseres, så årsagen kan læses
@@ -122,6 +126,8 @@ i Sentry. Leveringens varige genforsøg består. Ingen balancerater ændres.
 Forudsætning: `training_tick_per_race_day` skal være aktivt for motoren, før `training_condition_per_date` må være aktivt. Inkonsistente flag og fejlede flagopslag afvises før skrivning i træning, løbsbelastning og cutover. Løbsdagsaksen er nulbaseret; datoen kommer fra kalenderen, aldrig fra en udledning af løbsdagsnummeret.
 
 `training_condition_per_date` er bygget med standard `off`; ingen aktivering er godkendt. Ejerens efterfølgende build-go 29/9 normaliserer den SAMLEDE løbs- og træningsbelastning: hver etape optager ét af datoens fem slots. Evner udvikles fortsat på alle sæsonens 140 løbsdage. Datoens fem trin bruger samme gemte udgangspunkt for udviklingens form-/træthedsfaktor. Kun sidste trin afregner tilstanden, efter de fire tidligere rapporter er færdige: gennemsnittet af eksisterende belastninger, én restitution, én formændring og ét datoseedet skadesrul baseret på datoens starttilstand. Løb skriver under flaget kun idempotente belastningsrækker i `training_race_loads`, med eksisterende profil og indsats. Eksisterende restitutionskonstanter følger fortsat `race_day_engine_enabled`; skadens løbsdagsvarighed består. Ny formsemantik er ikke en del af rettelsen.
+
+**#5928 (ejer 15/10, kun `s5_profiles_v1`):** etapens belastning i datoens slot vokser med etapens plads i etapeløbet og med rytterens reelle arbejde (se [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md)). Afregningen, restitutionen pr. dato og managerens valg af træning på GT-datoerne er uændrede; hård træning oven på en trættende GT koster som altid (træthed, form, skaderisiko over grænsen).
 
 Evner, historik, score, rapport, belastningsforbrug og tilstandsændring committes atomisk af `commit_training_date_tick`. Dubletter gør intet; fejl ruller hele trinnet tilbage. En ændret belastningsliste kræver genforsøg; nye løbsbelastninger efter afregning afvises. Manglende tidligere trin, blandet gammel/ny kadence eller uafsluttet tidligere dato stopper til genforsøg/recovery. Den manuelle knap og aftenens sweep bruger samme motor. Rollout sker ved en ubrugt dato eller via ejer-godkendt atomisk cutover fra dokumenteret starttilstand og faktiske etapelaster; aldrig midt i træningens fem trin. Legacy-finalisering skal være stoppet og observeret afsluttet før cutover. Skader bevares. #5926 må ikke frigives alene. Acceptmålinger og fuld verifikation afventer hovedsessionen; den historiske median-gate er midlertidigt fraveget af ejeren, og enhedstest er ikke populationsbevis. Se [implementeringsplanen](superpowers/plans/2026-09-29-training-condition-date.md).
 

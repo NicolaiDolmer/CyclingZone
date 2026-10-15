@@ -1262,6 +1262,10 @@
         "title": "Do U23 team and Junior team actually race?",
         "text": "Yes, from season 4. Each tier races on its own calendar with its own standings, on the same race engine as Senior. There is no prize money for youth races to start with."
       },
+      "startFloor": {
+        "title": "How many riders do I need to start a youth race?",
+        "text": "At least 6, the same as for senior. If your U23 or junior team has fewer than 6 riders in the line-up when the race starts, it does not start, so there is no result from it. Youth races shows a warning under Your team for every open race below 6; open the race and add riders. You can still save fewer than 6, nothing blocks you. Once the race starts the line-up is locked."
+      },
       "trainOnly": {
         "title": "Can a youth squad skip races and only train?",
         "text": "Yes. On the U23 team or Junior team page, set Races to Train only. The assistant then stops entering that squad, and you can't enter it by hand. It takes effect from the next race day that isn't locked: riders already entered for a locked day ride that race, and entries for later races are removed. Your riders train on every day without a race. Switch back to Enter races and the assistant enters the squad again from the next unlocked race day. Your senior team is not affected."

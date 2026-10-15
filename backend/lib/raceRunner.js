@@ -77,7 +77,7 @@ import {
 import { buildStageTimeline, buildStageTimelineV4 } from "./raceTimeline.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRaceFatigue, raceConditionLoads, stageEnteringFatigues, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
+import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import {
   loadStageRoleOverrides,
   resolveStageEntrants,
@@ -584,7 +584,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const jerseyLeaders = v4Engine && isStageRace ? jerseyLeadersFromComps(stageEntrants, pointsComp, komComp) : null;
     // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape); legacy-kaldet er uændret.
     const gcStandings = v4Engine && isStageRace && isOrdersGcRulesRevision(rulesRevision) ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
-    const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
+    const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = v4Engine
       ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}) })
       : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
     for (const inc of incidents) {
@@ -666,6 +666,8 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       // balance-drift-vagtens datasæt med tomme rækker — derfor udelades de.
       ...(v3 && !v4Engine ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
     });
+    // #5928: etapens reelle arbejde til trætheden (kun s5_profiles_v1; ellers no-op).
+    attachConditionWork(runs[runs.length - 1], stageConditionWork({ rulesRevision, stageNumber, profileType: stage.profile_type, v4Result: v4Engine ? { v4Output: v4StageOutput, efforts: v4StageEfforts } : null }));
 
     stageNumbersSoFar.add(stageNumber);
     for (const r of ranked) {
@@ -1807,7 +1809,7 @@ async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageR
       const effortByRider=!v3?null:v4Engine
         ?resolvedEffortByRiderForStage(stageRoleOverrides,run.stage_number,orderEffortByRiderForStage(teamOrderRows,run.stage_number))
         :effortByRiderForStage(stageRoleOverrides,run.stage_number);
-      run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision);
+      run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision,conditionWorkForRun(run));
     }
   }
 }
@@ -2738,7 +2740,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const priorGcAcc = v4Engine && isOrdersGcRulesRevision(rulesRevision) && stageIndex > 0 && priorStageRows.length ? accumulateStageRows({ stageRows: priorStageRows }) : null;
   const gcStandings = v4Engine && isOrdersGcRulesRevision(rulesRevision) ? (stageIndex === 0 ? [] : priorGcAcc ? rankByCumTimeAsc(filterCompletedEntrants(simEntrants, priorGcAcc.stagesByRider, priorGcAcc.stageNumbers), priorGcAcc.cumTime, priorGcAcc.posSum) : null) : undefined;
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
-  const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null } = v4Engine
+  const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = v4Engine
     ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}) })
     : simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
@@ -2800,6 +2802,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     // buildRaceResults' tilsvarende note.
     ...(v3 && !v4Engine ? { riderScores: ranked.map((r) => ({ rider_id: r.rider_id, rank: r.rank, components: r.components })) } : {}),
   }];
+  // #5928: se buildRaceResults' tilsvarende note.
+  attachConditionWork(runs[0], stageConditionWork({ rulesRevision, stageNumber, profileType: thisStage.profile_type, v4Result: v4Engine ? { v4Output: v4StageOutput, efforts: v4StageEfforts } : null }));
 
   // Dagens etaperækker (samme form som buildRaceResults' stage-emission).
   for (const r of ranked) {

@@ -324,7 +324,7 @@ function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
       value={value}
       onChange={e => onChange(e.target.value)}
       aria-label={t("detail.teamFilter.label")}
-      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-56 cursor-pointer
+      className={`px-3 py-2 rounded-cz text-sm font-medium transition-all border max-w-56 cursor-pointer
         focus:outline-hidden focus:ring-1 focus:ring-cz-accent
         ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}`}>
       <option value="all">{t("detail.teamFilter.all")}</option>
@@ -2226,16 +2226,19 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   <tr className="text-3xs uppercase tracking-wide text-cz-3">
                     <th className="ps-3 pe-1 sm:px-4 py-1 font-medium" scope="col"></th>
                     <th className="ps-1 pe-2 sm:px-2 py-1 font-medium" scope="col"></th>
-                    {showTeamCol && <th className="ps-1 pe-2 sm:px-2 py-1 font-medium" scope="col"></th>}
-                    {showTime && <th className="ps-1 pe-3 sm:px-3 py-1 font-medium" scope="col"></th>}
+                    {showTeamCol && <th className="hidden sm:table-cell ps-1 pe-2 sm:px-2 py-1 font-medium" scope="col"></th>}
+                    {showTime && <th className="ps-1 pe-1.5 sm:px-3 py-1 font-medium" scope="col"></th>}
                     {showPointsTotal && (
-                      <th className="px-4 py-1 text-right font-medium whitespace-nowrap" scope="col">
-                        {t("detail.table.jerseyPoints")}
+                      <th className="ps-1 pe-3 sm:px-4 py-1 text-right font-medium whitespace-nowrap" scope="col">
+                        <abbr className="no-underline sm:hidden" title={t("detail.table.jerseyPoints")}>{t("detail.table.jerseyPointsShort")}</abbr>
+                        <span className="hidden sm:inline">{t("detail.table.jerseyPoints")}</span>
                       </th>
                     )}
                     {showPoints && (
-                      <th className="px-4 py-1 text-right font-medium whitespace-nowrap" scope="col">
-                        {t("detail.table.prizePoints")}
+                      <th className="ps-1 pe-3 sm:px-4 py-1 text-right font-medium whitespace-nowrap" scope="col">
+                        {/* #6684: kort overskrift paa telefon, saa begge pointkolonner kan staa uden vandret scroll */}
+                        <abbr className="no-underline sm:hidden" title={t("detail.table.prizePoints")}>{t("detail.table.prizePointsShort")}</abbr>
+                        <span className="hidden sm:inline">{t("detail.table.prizePoints")}</span>
                       </th>
                     )}
                   </tr>
@@ -2260,9 +2263,18 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                     <td className={`ps-3 pe-1 sm:px-4 py-2 w-8 sm:w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                     <td className="ps-1 pe-2 sm:px-2 py-2">
                       <ResultEntityCell row={r} highlightWinner={highlightWinner} isMine={isMine} t={t} moments={moments} stageNumber={stageNumber} raceId={raceId}  participationHistory={participationHistory} />
+                      {showTeamCol && resultEntity(r).kind === "rider" && (
+                        // #6684 (D-047, ejer-go 15/10): på mobil står holdet under rytteren i
+                        // stedet for i egen kolonne, så tid og point kan stå uden vandret scroll.
+                        <span className="mt-0.5 block max-w-[11rem] truncate text-xs text-cz-3 sm:hidden" title={r.rider?.team?.name || r.team_name || undefined}>
+                          <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
+                            {r.rider?.team?.name || r.team_name || t("common.free")}
+                          </TeamLink>
+                        </span>
+                      )}
                     </td>
                     {showTeamCol && (
-                      <td className="ps-1 pe-2 sm:px-2 py-2 text-cz-3 text-xs whitespace-nowrap">
+                      <td className="hidden sm:table-cell ps-1 pe-2 sm:px-2 py-2 text-cz-3 text-xs whitespace-nowrap">
                         {resultEntity(r).kind === "rider" && (
                           // #6384: loft over holdnavnet på mobil, så tid-kolonnen kan stå uden at
                           // tabellen scroller; fuldt navn i title.
@@ -2275,19 +2287,19 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                       </td>
                     )}
                     {showTime && (
-                      <td className="ps-1 pe-3 sm:px-3 py-2 text-right text-cz-2 font-mono text-xs whitespace-nowrap tabular-nums">
+                      <td className="ps-1 pe-1.5 sm:px-3 py-2 text-right text-cz-2 font-mono text-xs whitespace-nowrap tabular-nums">
                         {r.finish_time || ""}
                       </td>
                     )}
                     {showPointsTotal && (
-                      <td className="px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap tabular-nums">
+                      <td className="ps-1 pe-3 sm:px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap tabular-nums">
                         {(pointsTotalByRider.get(r.rider_id) ?? 0) > 0
                           ? t("detail.passages.points", { count: pointsTotalByRider.get(r.rider_id) })
                           : ""}
                       </td>
                     )}
                     {showPoints && (
-                      <td className="px-4 py-2 text-right text-cz-3 font-mono text-xs whitespace-nowrap">
+                      <td className="ps-1 pe-3 sm:px-4 py-2 text-right text-cz-3 font-mono text-xs whitespace-nowrap tabular-nums">
                         {(r.points_earned ?? 0) > 0 ? `${formatNumber(r.points_earned)} pt` : ""}
                       </td>
                     )}

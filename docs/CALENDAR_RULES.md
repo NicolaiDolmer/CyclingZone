@@ -221,7 +221,8 @@ Alle puljer i en division kører stadig den samme kalender (#2276), så D4's lø
 
 - **Katalog:** kun truppens egne rækker (`race_pool.squad`). Navne-dedup gælder inden for truppen, ikke på tværs af trupper (spec §4.2).
 - **Én kalender pr. trup og tier:** alle truppens grupper i samme tier deler samme kalender, præcis som seniorens puljer. I S4 er det ca. 9 grupper à 24 i tier 1 pr. trup (ejer 24/9), og de kører samme løb på samme tid.
-- **Tæthed (`SQUAD_CALENDAR` i `calendarTierCaps.js`):** løb tælles efter start-dato pr. kalenderuge; U23 skal ligge på 1-2 og junior på 1 i hver uge. Højst halvdelen af datoerne har en etape ("de fleste er rene træningsdage"). Aldrig to ungdomsløb samtidig, fordi en ungdomstrup kun har få ryttere. Udvalget er prestige-først som seniorens, og rækkefølgen følger løbenes rigtige dato.
+- **Tæthed (`SQUAD_CALENDAR` i `calendarTierCaps.js`):** løb tælles efter start-dato pr. kalenderuge; U23 skal ligge på 1-2 og junior på 1 i hver uge. Andelen af datoer med en etape har et loft pr. trup (oprindeligt halvdelen, "de fleste er rene træningsdage"; fra #6667 se nedenfor). Aldrig to ungdomsløb samtidig, fordi en ungdomstrup kun har få ryttere. Udvalget er prestige-først som seniorens, og rækkefølgen følger løbenes rigtige dato.
+- **U23 over junior + byggeregler ([#6667](https://github.com/NicolaiDolmer/CyclingZone/issues/6667), ejer 15/10):** U23 kører flere løbsdatoer end junior (loft ~18 mod ~12 af S5's 32 datoer, `maxRacingDayShare` pr. trup). To hårde regler i `squadCalendarPacker.js`: ingen ny start dagen efter et etapeløb slutter, og sæsonens sidste uge (de sidste 7 datoer) har altid en ungdomsetape. Ligger en ungdomsetape inden for en halv time af seniorens første etape på datoen (sæsonens første dag, hvor planlægningsvinduet skubber begge), flyttes den til sin egen tid (#5893).
 - **Løbsdags-aksen:** samme mål som senioren (140), fem løbsdage pr. dato (§1e-b). Ungdomsetapen ligger på datoens første løbsdag; resten er rene træningsdage.
 - **Tider:** én etape-tid pr. trup, på halve timer, så den aldrig rammer samme minut som en senior-slot. Sæsonens første og sidste dag følger §2f som seniorens.
 - **Gates:** kalender-invarianterne, identiske grupper, planlægningsvinduet (§2f) og tætheden ovenfor er hårde. Seniorens dæknings-gulve, K-B-komposition, scorecard og realisme-bånd er kalibreret mod divisionerne og er kun måling for en trup (spec §4.3).
@@ -343,6 +344,10 @@ node scripts/buildSeasonCalendar.js --season 4 --first-day 2026-09-28 --race-day
 Trin 4 findes kun fordi §2c blev ændret 19/9. Det er en **sletning** af sæsonens nuværende
 løb og kalender-form, og den kræver sit eget ejer-go — ikke det samme go som trin 3. Kør
 altid trin 1 igen umiddelbart før: erstatnings-gatens tal er en måling, ikke en hukommelse.
+
+### Ejeren ser kalenderen før `--apply` (`--dump-plan`, 15/10)
+
+`--dump-plan <fil>` gemmer tørkørslens plan som JSON (samme plan som `--apply` skriver: løb, etaper, tider, profiler pr. division). Den bruges til at vise ejeren kalenderen visuelt og holde den op mod forrige sæson, før skrivningen godkendes (S5 15/10). Flaget kræver en filsti og stopper ellers med exit 2, før der planlægges. Det skriver kun en lokal fil og ændrer intet i prod.
 
 ### Trin 0: den gyldne kalender-diff (obligatorisk, [#4123](https://github.com/NicolaiDolmer/CyclingZone/issues/4123))
 
@@ -580,6 +585,8 @@ Ejer-ordlyd 22/8 (aftalt med @thelamba i #feedback-and-ideas): *"Agree on no day
 **En hviledag ER en løbsdag** som GT'en optager uden at køre på. Spændet er derfor `etaper + 2` sammenhængende løbsdage, og rytteren er bundet henover — som i virkeligheden, hvor man ikke forlader Giroen på hviledagen for at køre et andet løb. Det er allerede hvad spænd-bindingen (#4217) gør, så det ændrer intet for spilleren. Positionerne er efter etape 9 og 15 (`GT_REST_DAY_PATTERN[2]`).
 
 > ⚠ **Sådan ser det ud siden §1e-b (20/9), afklaret med ejeren 15/10.** "2 hviledage" og spændet `etaper + 2` beskriver ikke længere den genererede kalender. Med 5 løbsdage pr. dato (§1d) fordeles en GT på ca. 6 datoer med 1-4 etaper pr. dato, og spændet bliver `etaper + 8-11` løbsdage (S4 og S5). De ekstra løbsdage er **ikke hviledage**: på en dato med etape træner rytteren datoens øvrige løbsdage efter managerens program (TRAINING_RULES, ejer 28/9 valg A). Kun hele datoer uden etape er hvile. Andre løb kører samtidig med GT'en (S5 D1: 1-2 andre løb på hver Tour-dato). **Ejer-beslutning 15/10:** kalenderen beholdes sådan. Manageren styrer træningen under en GT, og GT'en bliver svær gennem trætheden, der hober sig op over hele løbet, så uge 3 bliver hård ([#5928](https://github.com/NicolaiDolmer/CyclingZone/issues/5928)). Hele hviledatoer midt i en GT er ikke valgt.
+
+> **Bygget (#5928, bag `s5_profiles_v1`, slukket):** trætheden fra etaperne hober sig op over hele GT'en og følger det reelle arbejde; kalenderen er uændret. Se [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md).
 
 > 🔒 **Låst 4/9 2026 (ejer-beslutning 3/9, [#4209](https://github.com/NicolaiDolmer/CyclingZone/issues/4209) L = A): en rytter udtaget til en Grand Tour er bundet på ALLE løbsdage i GT'ens spænd, hviledagene inkluderet, og kan ikke udtages til noget andet løb undervejs.** Håndhæves af `race_entry_days_rebuild`'s `generate_series(min(game_day), max(game_day))` (#4217) + `no_rider_double_booking_day`, spejlet af `raceBindingWindow` (JS-pre-flight) og `replace_race_selection`-guarden (#4283). Målt read-only mod prod 4/9: **0** GT-ryttere udtaget til et andet løb på en hviledag i de to ikke-afviklede S3-GT'er. Regressions-vagt: `backend/lib/testdb/raceEntryDaysGtRestDay.integration.test.js` (bevist rød uden #4217) + `scripts/race-entry-days-drift-audit.sql`.
 

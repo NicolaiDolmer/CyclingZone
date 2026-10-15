@@ -231,8 +231,8 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
 
     const filter = page.getByTestId("squad-group-filter");
     await expect(filter.getByRole("button", { name: `Seniorer (1)` })).toBeVisible();
-    await expect(filter.getByRole("button", { name: `U23 (${U23.length})` })).toBeVisible();
-    const juniorToggle = filter.getByRole("button", { name: `Juniorer (${JUNIORS.length})` });
+    await expect(filter.getByRole("button", { name: `U23 · højst 22 år (${U23.length})` })).toBeVisible();
+    const juniorToggle = filter.getByRole("button", { name: `Juniorer · højst 18 år (${JUNIORS.length})` });
     await expect(juniorToggle).toHaveAttribute("aria-pressed", "true");
     await expect(filter.getByRole("button", { name: /^Akademi/ })).toHaveCount(0);
 
@@ -245,7 +245,7 @@ test.describe("U23 team og Junior team på niveau med My Team (#5631)", () => {
 
     // Delt state: Stats-fanen har samme fravalg.
     await page.getByRole("tab", { name: "Statistik" }).click();
-    await expect(page.getByTestId("squad-group-filter").getByRole("button", { name: `Juniorer (${JUNIORS.length})` })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByTestId("squad-group-filter").getByRole("button", { name: `Juniorer · højst 18 år (${JUNIORS.length})` })).toHaveAttribute("aria-pressed", "false");
     for (const rider of JUNIORS) {
       await expect(page.getByRole("link", { name: `${rider.firstname} ${rider.lastname}`, exact: true })).toHaveCount(0);
     }

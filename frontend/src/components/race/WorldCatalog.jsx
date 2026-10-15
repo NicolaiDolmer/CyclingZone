@@ -59,7 +59,7 @@ export default function WorldCatalog() {
               <button
                 key={opt.value}
                 onClick={() => setWorldFilterClass(worldFilterClass === opt.value ? "" : opt.value)}
-                className={`flex justify-between items-center px-3 py-2 rounded-lg border text-left transition-all
+                className={`flex justify-between items-center px-3 py-2 rounded-cz border text-left transition-all
                   ${worldFilterClass === opt.value
                     ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t"
                     : "border-cz-border text-cz-2 hover:bg-cz-subtle"}`}
