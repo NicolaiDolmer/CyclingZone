@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft (1 review/time) · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · post Discord 7.356-7.360 (`docs/drafts/discord-patch-7356-7360-2026-10-14.md`). · **læs landingpage-udkast i dag** (#1369, https://claude.ai/artifact/7mEWN2iyHtZnUJwyStDFye), derefter build-go.
 >
-> **🎯 Next action (pc1, 15/10):** (1) S5: #6645 enkeltstart-fix (bølge) → ny prod-tørkørsel → vis ejeren → `--apply` på ordret go; live senest lør 18/10 (#6369). (2) Motor-bølge 6 spor (`#6648 #5978 #6201 #6155 #6475 #6186`) + #6647/#6649 i kø; motor-PR'er merges af Claude inden for benchmark-bånd, tænding = ejer-go (#6157 15/10). (3) Akademi pull-optag tændes før søn 18/10 kl. 00 på ejer-go (#6155). (4) Motortjek: `docs/audits/2026-10-15-motor-gennemgang.md`. **DOLMERPC:** løbshistorien #6570, derefter 🔴 Brand-stabilitet.
+> **🎯 Next action (pc1, 15/10):** (1) S5-kalenderen er SKREVET 15/10 (437 løb, #6367); næste: U23/junior-kalendere (§1f) + GT-træthed (#5928) før S5-start 28/10. (2) Motor-bølge: merge #6656 #6660 #6662 #6657 inden for bånd (#6157); #5978/#6201 bygger. (3) Akademi pull-optag tændes før søn 18/10 kl. 00 på ejer-go (#6155). (4) Motortjek: `docs/audits/2026-10-15-motor-gennemgang.md`. **DOLMERPC:** løbshistorien #6570, så 🔴 Brand-stabilitet.
 >
 > **15/10 pc1:** merget #6637 #6639 #6640 #6646 #6652 · flag: `stage_page_v2`=beta, `training_bulk_day`=beta, `first_race_card`=on (ejer-go).
 >
