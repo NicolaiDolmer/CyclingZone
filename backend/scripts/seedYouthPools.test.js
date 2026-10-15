@@ -100,6 +100,23 @@ test("buildSquadPlan genkørt efter apply = top-up med 0 skrivninger (idempotent
   assert.deepEqual(again.poolsToCreate, []);
 });
 
+test("top-up efter regroup placerer aldrig et nyt hold i en pensioneret pulje (#6668)", () => {
+  const w = world({ managers: 5, ai: 0 });
+  const pools = [
+    ...w.pools,
+    { id: 100, tier: 5, pool_index: 0, squad: "u23", retired_at: null },
+    { id: 101, tier: 5, pool_index: 1, squad: "u23", retired_at: "2026-10-15T00:00:00.000Z" },
+  ];
+  // m001-m004 står i den aktive pulje; den pensionerede pulje er tom; m005 er nyt.
+  const teams = w.teams.map((t) => (t.id === "m005" ? t : { ...t, u23_league_division_id: 100 }));
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams });
+  assert.equal(sp.mode, "top-up");
+  const m005 = sp.updates.find((u) => u.teamId === "m005");
+  assert.equal(m005.poolIndex, 0, "nyt hold lander i den aktive pulje");
+  assert.ok(sp.updates.every((u) => u.poolIndex !== 1), "ingen skrivning peger på den pensionerede pulje");
+  assert.ok(sp.plan.groups.every((g) => g.poolIndex !== 1));
+});
+
 test("applyParkingForecast: sweepens parkerede hold falder ud, genindplacerede kommer med", () => {
   const w = world({ managers: 30, ai: 0 });
   w.teams.push(manager(31, { parked_at: "2026-08-01" }));

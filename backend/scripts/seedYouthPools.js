@@ -179,9 +179,14 @@ export function buildSquadPlan({
   // AI-hold uden seniorpulje er rester (samme krav som A6's loadActiveAiTeams).
   const aiTeams = (teams || []).filter((t) => t.is_ai === true && t.league_division_id != null).map(withCount);
 
-  const existing = currentGroups({ pools, teams, squad });
-  const assignedCount = existing.reduce((n, g) => n + g.managerTeamIds.length + g.aiTeamIds.length, 0);
+  const allGroups = currentGroups({ pools, teams, squad });
+  const assignedCount = allGroups.reduce((n, g) => n + g.managerTeamIds.length + g.aiTeamIds.length, 0);
   const mode = regroup ? "regroup" : (assignedCount === 0 ? "fresh" : "top-up");
+  // #6668: en top-up må aldrig placere et hold i en pulje en tidligere regroup har
+  // pensioneret (retired_at): kalenderbyggeren ignorerer den, så holdet fik ingen løb.
+  // Kun regroup ser pensionerede puljer (den kan genbruge dem).
+  const retiredPoolIds = new Set((pools || []).filter((p) => p.retired_at != null).map((p) => p.id));
+  const existing = mode === "top-up" ? allGroups.filter((g) => !retiredPoolIds.has(g.poolId)) : allGroups;
 
   const plan = mode !== "top-up"
     ? planYouthGroups({ teams: managers, aiTeams, globalRanks, squad, groupSize, managersPerGroup, mixJunior })
@@ -361,7 +366,7 @@ async function loadState(supabase) {
     fetchAllRows(() => supabase.from("teams")
       .select("id, name, is_ai, is_bank, is_frozen, is_test_account, parked_at, retired_at, pending_removal_at, division, league_division_id, u23_league_division_id, junior_league_division_id")
       .order("id")),
-    fetchAllRows(() => supabase.from("league_divisions").select("id, tier, pool_index, label, squad").order("id")),
+    fetchAllRows(() => supabase.from("league_divisions").select("id, tier, pool_index, label, squad, retired_at").order("id")),
     fetchAllRows(() => supabase.from("global_rank_mv")
       .select("team_id, global_points, global_rank, active_recent")
       .order("team_id")),
