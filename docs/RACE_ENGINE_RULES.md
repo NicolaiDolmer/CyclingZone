@@ -337,7 +337,7 @@ De tre midterste er de oprindelige S3-værdier med **uændret navn og semantik**
 | Udbrud (`mechanics/breakaway.ts`) | en kaptajn/sprint-kaptajn på `protect` følger angreb (lille plus); for hjælpere betyder `protect` at arbejde |
 | Prisen (`mechanics/effortCost.ts`) | `all_out`-prisen følger **segmentets** terræn, ikke etapens profil |
 
-Alle led er 0 på `normal`, så et felt hvor alle kører `normal` er bit-uændret. Trappens orden (ikke-faldende op ad trappen) er låst af tests. **Én kilde:** når v4 kører, vinder `race_team_orders`' effort over `race_stage_roles` i både motoren og trætheden efter etapen (`raceStageRoles.js`); v3-stien er uændret. Målingen er `backend/scripts/v4EffortTwinMeasure.js` (hele trappen, hjælper + kaptajn, `--orders=ai`); tal ligger i `balance-internals/`, aldrig her.
+Alle led er 0 på `normal`, så et felt hvor alle kører `normal` er bit-uændret. Trappens orden (ikke-faldende op ad trappen) er låst af tests. **Én kilde:** når v4 kører, vinder et EKSPLICIT indsatsvalg i `race_team_orders` (et trin ≠ `normal`) over `race_stage_roles` i både motoren og trætheden efter etapen (`raceStageRoles.js` `orderEffortByRiderForStage`). `normal` i en ordre er rollens standard og ikke et valg, så den overskriver aldrig rollens beskyt/spar (#6647, fra 15/10; før det vandt ordrens `normal`, og 4.132 valg nåede ikke motoren). Uden noget valg er indsatsen `normal`. Etapesiden viser for etaper kørt før rettelsen den indsats motoren faktisk brugte (`stageSplitTimes.ts` `EFFORT_NORMAL_NOT_A_CHOICE_FROM`). v3-stien er uændret. Målingen er `backend/scripts/v4EffortTwinMeasure.js` (hele trappen, hjælper + kaptajn, `--orders=ai`); tal ligger i `balance-internals/`, aldrig her.
 
 ---
 

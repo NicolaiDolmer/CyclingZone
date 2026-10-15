@@ -6323,7 +6323,7 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
     }
     const { data, error } = await supabase
       .from("race_stage_timelines")
-      .select("timeline_version, stage_number, events")
+      .select("timeline_version, stage_number, events, created_at")
       .eq("race_id", req.params.raceId)
       .eq("stage_number", stageNumber)
       .maybeSingle();
@@ -6344,7 +6344,7 @@ router.get("/races/:raceId/timeline", requireAuth, async (req, res) => {
         .eq("race_id", req.params.raceId).in("result_type", ["stage", "gc"]).or(`stage_number.eq.${stageNumber},stage_number.is.null`).order("id"));
       story = buildRaceStory({ events: data.events, timelineVersion: data.timeline_version, ...storyInputsFromResults(resultRows, stageNumber) });
     } catch (storyErr) { captureException(storyErr); }
-    res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events, ...(story ? { story } : {}) });
+    res.json({ timeline_version: data.timeline_version, stage_number: data.stage_number, events: data.events, created_at: data.created_at ?? null, ...(story ? { story } : {}) });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

@@ -53,6 +53,9 @@ export async function loadStageRoleOverrides({ supabase, raceId }) {
  * raceTeamOrdersApi.js). Uden kortet (default) er resultatet bit-identisk med
  * før. raceRunner giver kun kortet når løbsmotor v4 kører (flaget
  * race_engine_v4), så v3-stien er uændret.
+ * #6647: kortet bærer kun EKSPLICITTE valg (≠ "normal"), se
+ * orderEffortByRiderForStage — en neutral ordre kan ikke overskrive rollens
+ * beskyt/spar.
  *
  * @param {{rider_id: string, race_role?: string}} entrant  ORIGINAL entrant (base race_role fra race_entries) — ikke en allerede-mutéret sim-entrant
  * @param {Map<string, {race_role:string, effort:string}>} [overridesForStage]  KUN denne etapes overrides
@@ -226,6 +229,15 @@ const EFFORT_LEVELS = new Set(["grupetto", "save", "normal", "protect", "all_out
  * løbsmotor v4 får). Ren, ingen DB. null når etapen ingen ordre-effort har, så
  * kald-stedet falder tilbage til stage-rækkerne præcis som før.
  *
+ * #6647: "normal" i en ordre er IKKE et valg. RACE_ENGINE_RULES §1b: "ikke
+ * valgt" = normal, og rollens standardordre (teamOrderContract
+ * defaultTeamOrderForRoster) bærer altid "normal". Taktik-fanens gem skrev
+ * hele truppen med netop den standard, så en ordre-linje med "normal" er ikke
+ * til at skelne fra "manageren valgte intet her". Talte den med, vandt den
+ * over managerens beskyt/spar i rolle-overlayet (race_stage_roles), og
+ * motoren kørte "normal" uden at nogen havde valgt det. Kun et trin ≠ normal
+ * er derfor et indsatsvalg; ellers er stage-rækken (eller normal) kilden.
+ *
  * @param {Array<{stage_number:number, riders?: Array<{rider_id:string, effort?:string}>}>} [teamOrderRows]
  * @param {number} stageNumber
  * @returns {Map<string,string>|null}
@@ -237,6 +249,7 @@ export function orderEffortByRiderForStage(teamOrderRows, stageNumber) {
     if (Number(row?.stage_number) !== Number(stageNumber)) continue;
     for (const rider of Array.isArray(row.riders) ? row.riders : []) {
       if (rider?.rider_id == null || !EFFORT_LEVELS.has(rider.effort)) continue;
+      if (rider.effort === "normal") continue; // #6647: ikke et valg, se ovenfor
       out.set(String(rider.rider_id), rider.effort);
     }
   }
