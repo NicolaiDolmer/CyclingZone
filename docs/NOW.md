@@ -8,7 +8,7 @@
 >
 > **🎯 Next action:** start `docs/sessions/2026-10-16-samlet-startprompt.md` (eneste session; driver selv merge-køen). (1) Akademi pull-optag før søn 18/10 kl. 00 (#6155). (2) #6677 merge i formiddag efter CodeRabbit. (3) #6490 mål aftenerne 15+16/10. (4) Ejer-valg: #6643 animation · #6657 review-gate · designvalg 3 (tekstpile).
 >
-> **15/10:** pc1 merget #6637 #6639 #6640 #6646 #6652 #6659 #6663 #6669 #6670 #6672 #6675 · DOLMERPC merget #6664 #6676 #6678 #6685 (+ #6682/#6688 med ejer-go, se startprompten) · flag: `stage_page_v2`=beta, `training_bulk_day`=beta, `first_race_card`=on.
+> **15/10:** pc1 merget #6637 #6639 #6640 #6646 #6652 #6659 #6663 #6669 #6670 #6672 #6675 · DOLMERPC merget #6664 #6676 #6678 #6682 #6685 #6688 · flag: `stage_page_v2`=beta, `training_bulk_day`=beta, `first_race_card`=on.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

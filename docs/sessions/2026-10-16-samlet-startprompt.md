@@ -4,12 +4,11 @@ Ny session på pc1. Kør `git pull --ff-only`, læs `docs/NOW.md` og denne fil. 
 
 ## Status fra DOLMERPC 15/10
 
-- **Merget:** #6664 (dansk JSON-LD), #6676 (belastningstest før sæsonskiftet, #5904), #6678 (ungdom: advarsel under 6 ryttere + aldersgrænse, #5907/#5920), #6685 (løbets stillinger på telefon uden vandret scroll, #6684), #6675 ("managere"), #6663 (ubrugt GIN-indeks droppet, #6490; post-verificeret af pc1).
-- **Ejer-go, venter kun på merge:** #6682 (læsbar lysegrå tekst i lyst tema, ejer-valg B, #6681) og derefter #6688 (ét hjørnemål, 8 → 5 px, #6686). Begge har visuelt go. #6688 rører samme linje i `LanguageSwitcher.jsx` som #6682: merge #6682 først, og løs konflikten ved at beholde `surface`-varianten og `rounded-cz`. *(Se NOW.md: måske merget samme aften.)*
+- **Merget:** #6664 (dansk JSON-LD), #6682 (læsbar lysegrå tekst i lyst tema, #6681), #6688 (ét hjørnemål 8 → 5 px + lint-regel, #6686), #6676 (belastningstest før sæsonskiftet, #5904), #6678 (ungdom: advarsel under 6 ryttere + aldersgrænse, #5907/#5920), #6685 (løbets stillinger på telefon uden vandret scroll, #6684), #6675 ("managere"), #6663 (ubrugt GIN-indeks droppet, #6490; post-verificeret af pc1).
 - **#6677 databaseporten for trup-skift (#6489):** grøn og Codex-reviewet. Ejer 15/10: merges i morgen formiddag efter CodeRabbit-review og uden for 19:30-21:00. Migrationen appliceres af auto-migrate; post-verificér straks.
 - **Svarlisten** (https://claude.ai/artifact/2xfBUeM4dJgfktCimNdoBr) har 4 nye svar øverst ("Nye 15/10 eftermiddag"). Ejeren poster selv. Status står på #6319.
 - **Forsiden #6665:** ejeren læser den i ro og mag og deler den med andre. Spørg ikke til den, før ejeren selv tager den op. Tekstgennemsyn: https://claude.ai/artifact/V8EPkRboQjV2jP9Qq6ZQoS. Når #6665 er merget: giv `marketing/app/globals.css` samme text-2/text-3-værdier som #6682.
-- **Designoprydning (ejer: ét spørgsmål ad gangen med visuelle eksempler):** valg 1 stillinger (merget) og valg 2 hjørner (#6688) er klaret. Valg 3 mangler: tekstpile (→ ✓ ▲) i stedet for stroke-ikoner. Mål først, hvor mange der er UI-chrome og ikke copy (agentens tal 391 var et loft), og vis ét før/efter-billede.
+- **Designoprydning (ejer: ét spørgsmål ad gangen med visuelle eksempler):** valg 1 stillinger (merget) og valg 2 hjørner (merget) er klaret. Valg 3 mangler: tekstpile (→ ✓ ▲) i stedet for stroke-ikoner. Mål først, hvor mange der er UI-chrome og ikke copy (agentens tal 391 var et loft), og vis ét før/efter-billede.
 
 ## Spørg ejeren først (ét ad gangen, med anbefaling)
 
@@ -26,7 +25,7 @@ Ny session på pc1. Kør `git pull --ff-only`, læs `docs/NOW.md` og denne fil. 
 5. **#6680 kalender-kort → #6683 ikoner + Kalender | Tabel** (review-fund og røde checks står på #6680).
 6. **Motor-drafts inden for bånd:** #6658 (udbrudsstørrelse), #6671 (AI-ungdom).
 7. **#6186 tekst-PR** til help.json (EN+DA) + RACE_ENGINE_RULES.md, kun kvalitativt (hard rule 17).
-8. **Patch note 7.361 (#6661):** tilføj 15/10-ændringerne fra DOLMERPC, der er merget (stillinger på telefon, ungdomsadvarsel, læsbar grå tekst og ét hjørnemål, når de er merget), og få ejerens go via kommunikations-sessionen.
+8. **Patch note 7.361 (#6661):** DOLMERPC har tilføjet sine 4 merged ændringer (stillinger på telefon, ungdomsadvarsel, læsbar grå tekst, ét hjørnemål). Få ejerens go på hele noten via kommunikations-sessionen, og merge.
 
 ## Oprydning
 
