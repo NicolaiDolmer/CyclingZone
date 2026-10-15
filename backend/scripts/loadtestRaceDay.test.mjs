@@ -7,6 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -22,10 +23,14 @@ import {
   parseArgs,
   renderMarkdown,
   simulateRaceDay,
+  trainingCloseStart,
+  TRAINING_DAY_CLOSE_CRON_PERIOD_MS,
 } from "./loadtestRaceDay.mjs";
 import { STAGE_TICK_PERIOD_MS, STAGE_TICK_OFFSET_MS } from "../lib/schedulerTick.js";
+import { startTrainingDayCloseAfterStages, SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
 
 const SCRIPT = fileURLToPath(new URL("./loadtestRaceDay.mjs", import.meta.url));
+const CRON_SRC = readFileSync(fileURLToPath(new URL("../cron.js", import.meta.url)), "utf8");
 const DATE = "2026-10-29";
 
 test("grænsen er kollaps-niveauet fra S4 løbsdag 1 minus browsernes peak", () => {
@@ -144,9 +149,57 @@ test("nuværende profil: en normal S5-løbsdag består alle grænser", async () 
   // Sweepen kører hele døgnet, også når intet er forfaldent.
   assert.ok(run.metrics.ticksRun >= 288);
   assert.ok(run.metrics.sweepCallsPerTickMedian > 0);
-  // Aftentræningen startes én gang efter dagens sidste etape.
-  assert.equal(run.metrics.concurrentJobs.filter((j) => j.kind === "training_close").length, 1);
+  // Aftentræningen startes én gang. Dagens sidste etape slutter før kl. 20, så kl. 20-
+  // gaten afviser den tidlige start, og cron'en starter den ved vinduets åbning.
+  const training = run.metrics.concurrentJobs.filter((j) => j.kind === "training_close");
+  assert.equal(training.length, 1);
+  assert.deepEqual({ at: training[0].at, trigger: training[0].trigger }, { at: "20:00", trigger: "cron" });
+  assert.equal(run.metrics.trainingClose.at, "20:00");
   assert.match(renderMarkdown({ ...run, passed: run.passed, profile: "p", date: DATE, latencyMs: 10, finalShare: 1, scenarios: [run] }), /## normal: PASS/);
+});
+
+test("aftentræning: sæsonens sidste løbsdag (sidste etape ca. 15) starter også først kl. 20 via cron", async () => {
+  const run = await simulateRaceDay({ date: DATE, scenario: "season-last-day", youthGroups: 2 });
+  const training = run.metrics.concurrentJobs.filter((j) => j.kind === "training_close");
+  assert.equal(training.length, 1);
+  assert.equal(training[0].at, "20:00");
+  assert.equal(training[0].trigger, "cron");
+  // Ingen træningskald før kl. 20: peak-minuttet ligger ved eftermiddagens etaper.
+  assert.ok(run.metrics.peakMinute < "20:00", run.metrics.peakMinute);
+  assert.match(renderMarkdown({ ...run, profile: "p", date: DATE, latencyMs: 10, finalShare: 1, scenarios: [run] }), /Aftentræning: kl\. 20:00 \(startet af cron\)/);
+});
+
+test("trainingCloseStart: før kl. 20 venter den på cron, efter kl. 20 starter scheduleren straks", () => {
+  // Normal dag: sidste etape ca. 19:00 -> cron kl. 20:00 (ikke 19:00).
+  const at1900 = copenhagenSlotMs(DATE, "19:00") + 17_000;
+  assert.deepEqual(trainingCloseStart(at1900), { startMs: copenhagenSlotMs(DATE, "20:00"), trigger: "cron" });
+  // Sæsonens sidste løbsdag: sidste etape ca. 15:00 -> stadig kl. 20:00.
+  assert.deepEqual(trainingCloseStart(copenhagenSlotMs(DATE, "15:03")), { startMs: copenhagenSlotMs(DATE, "20:00"), trigger: "cron" });
+  // Lige før vinduet: første cron-tick ER vinduets åbning.
+  assert.equal(trainingCloseStart(copenhagenSlotMs(DATE, "19:59")).startMs, copenhagenSlotMs(DATE, "20:00"));
+  // Sidste etape efter kl. 20 -> stage-scheduleren starter den med det samme.
+  const at2007 = copenhagenSlotMs(DATE, "20:07") + 3_000;
+  assert.deepEqual(trainingCloseStart(at2007), { startMs: at2007, trigger: "stage-scheduler" });
+  // Sommertid: gaten er dansk tid, ikke UTC.
+  const summer = "2026-06-20";
+  assert.deepEqual(trainingCloseStart(copenhagenSlotMs(summer, "18:10")), { startMs: copenhagenSlotMs(summer, "20:00"), trigger: "cron" });
+});
+
+test("paritet: trainingCloseStart følger prod-gaten i startTrainingDayCloseAfterStages", () => {
+  assert.equal(SWEEP_FROM_HOUR, 20);
+  const quiet = { log() {}, error() {} };
+  const runSweep = async () => ({ ran: false });
+  for (const hhmm of ["14:59", "15:04", "19:00", "19:59", "20:00", "20:01", "21:30", "23:55"]) {
+    const t = copenhagenSlotMs(DATE, hhmm);
+    const prod = startTrainingDayCloseAfterStages({ supabase: { from() {} }, stagesRan: 1, clock: () => new Date(t), runSweep, logger: quiet });
+    const modelImmediate = trainingCloseStart(t).trigger === "stage-scheduler";
+    assert.equal(prod !== null, modelImmediate, `kl. ${hhmm}`);
+  }
+});
+
+test("paritet: cron-kadencen for training day-close er 5 min som i cron.js", () => {
+  assert.equal(TRAINING_DAY_CLOSE_CRON_PERIOD_MS, 5 * 60 * 1000);
+  assert.match(CRON_SRC, /trackedTick\("training day-close",[^\n]*\),\s*5 \* 60 \* 1000\s*\)/);
 });
 
 test("#5890-klassen: ungdomspuljer ukendt for scheduleren -> coverage fejler", async () => {
