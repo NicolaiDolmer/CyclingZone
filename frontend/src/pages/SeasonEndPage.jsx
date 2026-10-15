@@ -875,7 +875,7 @@ export default function SeasonEndPage() {
                   });
                   return (
                     <div key={race.id}
-                      onClick={() => navigate(`/race-archive/${encodeURIComponent(race.name)}`)}
+                      onClick={() => navigate(`/race-archive/${encodeURIComponent(race.name)}?raceId=${encodeURIComponent(race.id)}&season=${selectedSeason.number}&division=all&pool=all`)}
                       className="flex items-center gap-3 py-2.5 border-b border-cz-border last:border-0 -mx-1 px-1 rounded hover:bg-cz-subtle cursor-pointer transition-colors">
                       <div className="flex-1 min-w-0">
                         <p className="text-cz-1 text-sm font-medium truncate">{race.name}</p>

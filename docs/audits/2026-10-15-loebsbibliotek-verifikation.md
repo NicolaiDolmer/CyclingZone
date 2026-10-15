@@ -40,3 +40,9 @@ CodeRabbit afsluttede review af 3875416cf: ét minor (tom udgaveliste viste perm
 CI på 3875416cf: frontend-build/backend/perf og alle testassertions i den berørte mobile-chromium-lane bestod (279pass/37skip). Lane og samlet frontend-smoke blev røde på GitHubs artifact-upload: ETIMEDOUT, efter tests exit0. Det er en observeret infrastrukturfejl, ikke grøn samlet CI. Den næste commit med reviewrettelser udløser en ny komplet CI; dens status læses på PR'en.
 
 GitHub-connectorens samlede botkommentar blev blokeret af secretfilterets high-entropy-heuristik før visning. Reviewfundene blev derefter læst via lokalt metadatafiltreret API-udtræk. Ingen kendt secretværdi blev vist; ingen rotation eller ændring af sikkerhedsfilter udført.
+
+## Historisk indgang, P2-review
+
+Codex-connectorens separate review fandt et gammelt navne-link fra SeasonEndPage. MÅLT EVIDENS: browserklik fra Sæson3 åbnede først Kommende/Sæson4 for samme løb; regression observeret RED. Minimal ændring: eksisterende kliklink sender race.id og valgt sæson med. Sæsonlisten viser også andre puljer; en udvidet regression var RED, da detailopslaget arvede egen pulje. Linket bevarer derfor listets all-division/all-pool-scope sammen med konkret ID. Ingen layout-, kalendergenererings- eller S5-ændring. SeasonEndPage er den eneste yderligere indgang ud over planens to wrappers; ændringen er nødvendig for bibliotekets bagudkompatibilitet.
+
+Efter den historiske linkrettelse: **76 bestået, 2 skipped, 0 fejl** i en samlet runde (bibliotekets60 cases +18 eksisterende sæson-honours-cases, tre browserprojekter). Typecheck/offlineclient/SSR/prerender bestået. Endelig gzip1266,3KB mod1267,4KB loft. Historisk klik med anden pulje er nu GREEN i alle tre browsere. historical-edition-desktop/mobile viser faktisk Sæson3, Division3 og korrekt resultatslink efter klik fra sæsonlisten, uden ydre overflow/pageerrors.

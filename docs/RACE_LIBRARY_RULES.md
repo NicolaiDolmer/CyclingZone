@@ -48,3 +48,5 @@ An invalid edition season/division/pool exposes an action to the valid default l
 Library and edition error headings use the existing common.actions.error translation; the shared primitive fallback must not introduce English headings into Danish views.
 
 Edition lists distinguish loading, errors and a completed zero-row response. A zero-row response uses the canonical no-edition state with return navigation, never a permanent skeleton. Winner batches check cancellation before issuing each request; division choices sort numerically.
+
+Historical season-calendar links carry the clicked race.id and selected season number. Their all-division/all-pool scope preserves the originating season list; resolving a name alone must not replace the clicked historical edition with the active-season edition. SeasonEndPage changes only this existing navigation link, not calendar generation or layout.

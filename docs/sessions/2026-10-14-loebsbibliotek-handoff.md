@@ -62,3 +62,7 @@ Status: bygget og lokalt verificeret; ejer-preview/merge/release åbent. [Samlet
 - Næste handling: kontroller afsluttende SHA-CI/botreview på #6636; ejer afprøver preview. Ingen evidens for autentificeret prodlatens/RLS eller spilleradfærd. Luk ikke #6514 før accept.
 
 CodeRabbit-opfølgning15/10: ét minor +to trivial rettet (udgavernes tomtilstand, abortcheck, numerisk sortering). Ny lokalrunde57/57 +18/18, type/build grønne, gzip1266,4KB. CI3875416cf havde kun artifact-upload ETIMEDOUT efter beståede lane-tests; næste reviewcommit skal have ny CI. To ekstra tom-udgavebilleder gemt.
+
+Separat P2-review: SeasonEndPages historiske navne-link mistede den klikkede sæson/udgave. Reproduceret RED (S3→Kommende/S4); én linkændring sender konkret ID+sæson og bevarer listets tværpulje-scope. Ingen S5-kalenderændring. Endelige testtal og commit på #6636/#6514.
+
+Sidste kompatibilitetsrunde: bibliotek60/60 plus eksisterende sæson-honours16pass/2skip, samlet76pass/2skip/0fail; type/build grøn, gzip1266,3KB. Faktiske historical-edition-billeder viser S3/D3 efter klik fra gammel sæsonliste. CodeRabbit-rate-limit på efterfølgende commit er ikke et nyt review; de kendte fund er rettet med testbevis.

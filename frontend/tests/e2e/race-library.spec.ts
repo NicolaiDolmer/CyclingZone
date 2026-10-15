@@ -274,3 +274,31 @@ test("empty editions finish loading and offer return navigation", async ({ page 
   await page.getByRole("button", { name: "Løbsbibliotek", exact: true }).click();
   await expect(page).toHaveURL(/\/resultater\?tab=archive$/);
 });
+
+test("a completed season calendar opens the clicked historical edition", async ({ page }) => {
+  await prepareLibrary(page);
+  // The season calendar includes other pools; the clicked edition must stay readable.
+  const historical = { ...races[4], league_division_id: 3 };
+  await page.route("**/rest/v1/races**", async (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    if (
+      params.get("season_id") === "eq." + id(102) ||
+      params.get("id") === "eq." + id(5) ||
+      params.has("name")
+    ) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([historical]),
+      });
+    } else await route.fallback();
+  });
+  await page.goto("/seasons/" + id(102));
+  await page.getByText("L'Enfer du Nord", { exact: true }).click();
+  await expect(page).toHaveURL(new RegExp("raceId=" + id(5)));
+  await expect(page).toHaveURL(/season=3/);
+  await expect(page.getByRole("link", { name: "Se resultater", exact: true })).toHaveAttribute(
+    "href",
+    "/races/" + id(5)
+  );
+});

@@ -13,3 +13,5 @@ Ni afsluttende populated/history/empty/error-visninger: målt ydre overflow 0 og
 [Verifikationsrapport](../../docs/audits/2026-10-15-loebsbibliotek-verifikation.md). Ingen evidens for autentificeret produktionslatens, RLS i ejerens browsersession eller forbedret spilleradfærd. Ejerens previewgennemgang er stadig åben.
 
 Efter CodeRabbit: editions-empty-desktop/mobile viser en afsluttet tom udgavesøgning med tydelig genfinding; begge faktisk renderet efter 57/57-regressionsrunden, uden ydre overflow/pageerrors.
+
+historical-edition-desktop/mobile: faktisk navigation fra afsluttet sæson3 til dens klikkede udgave i division3, selv om testholdet aktuelt er i division2. Den oprindelige sæsonside ændres kun i linkets URL. Billederne er taget efter den endelige76pass/2skip-runde; ingen ydre overflow/pageerrors.
