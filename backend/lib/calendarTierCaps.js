@@ -105,8 +105,9 @@ export const SENIOR_CALENDAR_POOLS_FIRST_SEASON = 4;
 //   stageSlot      dagens ene etape-tid (dansk tid). Halve timer, saa den aldrig falder paa
 //                  samme minut som en senior-slot (TIER_STAGE_SLOTS er hele timer).
 export const SQUAD_CALENDAR = Object.freeze({
-  u23: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 2 }), maxRacingDayShare: 0.5, overlapCap: 1, stageSlot: "16:30" }),
-  junior: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 1 }), maxRacingDayShare: 0.5, overlapCap: 1, stageSlot: "14:30" }),
+  // #6667 (ejer 15/10): U23 faar flere loebsdatoer end junior, "U23 ~18, junior ~12 af 32".
+  u23: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 2 }), maxRacingDayShare: 18 / 32, overlapCap: 1, stageSlot: "16:30" }),
+  junior: Object.freeze({ racesPerWeek: Object.freeze({ min: 1, max: 1 }), maxRacingDayShare: 12 / 32, overlapCap: 1, stageSlot: "14:30" }),
 });
 export const CALENDAR_SQUADS = Object.freeze(["senior", ...Object.keys(SQUAD_CALENDAR)]);
 
