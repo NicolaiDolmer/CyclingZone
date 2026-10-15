@@ -35,9 +35,10 @@
 #   note      max 1 linje. Kun det der ikke kan udledes af felterne ovenfor.
 #             Obligatorisk ved state: dormant.
 #   roadmap_en / roadmap_da / roadmap_horizon (next|later, valgfri) - spillerens
-#             roadmap-tekst (#6693), godkendt af ejeren i flagets PR. Kraeves for
-#             spillervendte flag (flag + state building/dormant/beta + area ikke ops);
-#             scripts/roadmap-sync-registry.mjs opretter punktet efter merge.
+#             roadmap-tekst (#6693), godkendt af ejeren. Kraeves for spillervendte
+#             flag (flag + area ikke ops) naar state er beta; building/dormant giver
+#             kun en advarsel. scripts/roadmap-sync-registry.mjs opretter punktet
+#             skjult efter merge; det bliver synligt naar flaget gaar i beta/on.
 #
 # FLAG-GATEN (check-feature-registry-flags.mjs):
 #   state: live    + flag → flagværdi skal være on/true

@@ -4,10 +4,16 @@
 // Opretter manglende roadmap-punkter ud fra docs/FEATURE_REGISTRY.yml (#6693).
 //
 // En registerpost med flag + roadmap_en + roadmap_da faar et roadmap_items-
-// punkt (approved, status planned, flag_key = flaget). Idempotent paa
-// flag_key: findes der allerede et punkt med samme flag_key - uanset status,
-// ogsaa archived - roeres intet. Teksten paa et eksisterende punkt opdateres
-// heller ikke; det er adminens felt efter oprettelsen.
+// punkt (status planned, flag_key = flaget), sidst i planens raekkefoelge.
+// Idempotent paa flag_key: findes der allerede et punkt med samme flag_key -
+// uanset status, ogsaa archived - roeres intet. Teksten paa et eksisterende
+// punkt opdateres heller ikke; det er adminens felt efter oprettelsen.
+//
+// EJER-GATE: punktet oprettes SKJULT (approved = false, publish_on_beta = true).
+// Triggeren roadmap_items_sync_publish (database/2026-10-15-6693-roadmap-sync-
+// owner-gate.sql) goer det synligt, naar kontakten staar paa beta eller on -
+// ved oprettelsen eller ved flippet. Flag-flips er ejer-only, saa ejeren ser
+// teksten ved flip-go. Scriptet saetter aldrig selv approved = true.
 //
 // Den eksisterende BEFORE INSERT-trigger roadmap_items_sync_flag (database/
 // 2026-10-05-5387-roadmap-hub.sql) laeser flagets stadie ved oprettelsen:
@@ -50,16 +56,20 @@ export const AREA_ENGINE = {
   ops: "club",
 };
 
-/** Raekken der indsaettes for en registerpost med roadmap-tekst. */
-export function itemFromEntry(e) {
+/** Afstand mellem punkter i planen; samme som admin-fanens nextSortOrder (frontend/src/lib/roadmapAdminModel.ts). */
+export const SORT_STEP = 10;
+
+/** Raekken der indsaettes for en registerpost med roadmap-tekst. Altid skjult: se EJER-GATE i toppen. */
+export function itemFromEntry(e, sortOrder = SORT_STEP) {
   const engine = AREA_ENGINE[e.area];
   if (!engine) throw new Error(`${e.id}: intet engine for area "${e.area}"`);
   return {
     engine,
-    sort_order: 0,
+    sort_order: sortOrder,
     title_en: e.roadmap_en,
     title_da: e.roadmap_da,
-    approved: true,
+    approved: false,
+    publish_on_beta: true,
     status: "planned",
     horizon: e.roadmap_horizon || "next",
     issue_ref: e.epic ? Number(e.epic) : null,
@@ -68,14 +78,16 @@ export function itemFromEntry(e) {
 }
 
 /**
- * Ren planlaegger: ingen I/O.
- * @param {{ entries: Array<Record<string,string>>, existingFlagKeys: Iterable<string> }} args
+ * Ren planlaegger: ingen I/O. Nye punkter laegges sidst i planen (efter den
+ * hoejeste eksisterende sort_order), i registrets raekkefoelge.
+ * @param {{ entries: Array<Record<string,string>>, existingFlagKeys: Iterable<string>, maxSortOrder?: number }} args
  * @returns {{ inserts: object[], skipped: Array<{ id: string, reason: string }> }}
  */
-export function planSync({ entries, existingFlagKeys }) {
+export function planSync({ entries, existingFlagKeys, maxSortOrder = 0 }) {
   const taken = new Set(existingFlagKeys);
   const inserts = [];
   const skipped = [];
+  let nextSort = (Number.isFinite(maxSortOrder) ? maxSortOrder : 0) + SORT_STEP;
   for (const e of entries) {
     if (!e.roadmap_en || !e.roadmap_da) continue;
     if (!e.flag) {
@@ -88,7 +100,8 @@ export function planSync({ entries, existingFlagKeys }) {
     }
     if (taken.has(e.flag)) continue;
     taken.add(e.flag);
-    inserts.push({ id: e.id, row: itemFromEntry(e) });
+    inserts.push({ id: e.id, row: itemFromEntry(e, nextSort) });
+    nextSort += SORT_STEP;
   }
   return { inserts, skipped };
 }
@@ -135,18 +148,31 @@ async function main() {
   const { createClient } = await import("@supabase/supabase-js");
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  const existing = await db.from("roadmap_items").select("flag_key").not("flag_key", "is", null);
+  // Lille tabel (et par hundrede raekker): alt hentes, saa planen kender baade
+  // optagne flag_key og den hoejeste sort_order.
+  const existing = await db.from("roadmap_items").select("flag_key, sort_order");
   if (existing.error) throw new Error(`roadmap_items: ${existing.error.message}`);
-  const plan = planSync({ entries, existingFlagKeys: existing.data.map((r) => r.flag_key) });
+  const plan = planSync({
+    entries,
+    existingFlagKeys: existing.data.map((r) => r.flag_key).filter(Boolean),
+    maxSortOrder: existing.data.reduce((m, r) => Math.max(m, Number(r.sort_order) || 0), 0),
+  });
   console.log(formatPlan(plan, args));
 
   if (!args.apply || plan.inserts.length === 0) return;
   const { data, error } = await db
     .from("roadmap_items")
     .insert(plan.inserts.map((p) => p.row))
-    .select("flag_key, status");
-  if (error) throw new Error(`insert roadmap_items: ${error.message}`);
-  for (const r of data) console.log(`  oprettet: ${r.flag_key} -> ${r.status}`);
+    .select("flag_key, status, approved");
+  if (error) {
+    const hint = /publish_on_beta/.test(error.message)
+      ? " (migrationen database/2026-10-15-6693-roadmap-sync-owner-gate.sql er ikke applied endnu; koer workflowet igen efter auto-migrate)"
+      : "";
+    throw new Error(`insert roadmap_items: ${error.message}${hint}`);
+  }
+  for (const r of data) {
+    console.log(`  oprettet: ${r.flag_key} -> ${r.status}, ${r.approved ? "synlig (flaget er beta/on)" : "skjult til flaget gaar i beta"}`);
+  }
 }
 
 const invokedDirectly =

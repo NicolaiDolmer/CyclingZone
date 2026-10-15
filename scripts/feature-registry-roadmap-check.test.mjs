@@ -6,7 +6,9 @@ import { REGISTRY_PATH, parseRegistry, validate } from "./generate-feature-statu
 import {
   BASELINE_PATH,
   isPlayerFacingFlag,
+  requiresRoadmapText,
   missingRoadmapText,
+  upcomingWithoutText,
   checkRoadmapText,
   baselineGrowth,
   parseBaseline,
@@ -28,10 +30,35 @@ test("spillervendt = flag + ikke ops + building/dormant/beta", () => {
   assert.equal(isPlayerFacingFlag(e({ state: "idea" })), false);
 });
 
-test("et nyt spillervendt flag uden roadmap-tekst fejler", () => {
+test("teksten kraeves kun i beta; building/dormant er spillervendte, men kraever den ikke endnu", () => {
+  assert.equal(requiresRoadmapText(e({})), true);
+  assert.equal(requiresRoadmapText(e({ state: "building" })), false);
+  assert.equal(requiresRoadmapText(e({ state: "dormant" })), false);
+  assert.equal(requiresRoadmapText(e({ area: "ops" })), false);
+});
+
+test("et nyt spillervendt flag i beta uden roadmap-tekst fejler", () => {
   const r = checkRoadmapText([e({ id: "new-beta" })], []);
   assert.deepEqual(r.missing, ["new-beta"]);
-  assert.match(formatResult(r), /uden roadmap-tekst \(1\)/);
+  assert.match(formatResult(r), /i beta uden roadmap-tekst \(1\)/);
+});
+
+test("et flag under byg uden tekst giver kun en advarsel, aldrig en fejl", () => {
+  const entries = [e({ id: "wip", state: "building" }), e({ id: "parked", state: "dormant" }), e({ id: "ok", state: "building", roadmap_en: "A", roadmap_da: "B" })];
+  const r = checkRoadmapText(entries, []);
+  assert.deepEqual(r.missing, []);
+  assert.deepEqual(r.stale, []);
+  assert.deepEqual(r.warnings, ["parked", "wip"]);
+  assert.deepEqual(upcomingWithoutText(entries), ["parked", "wip"]);
+  const text = formatResult(r);
+  assert.match(text, /^Roadmap-tekst OK/);
+  assert.match(text, /Advarsel \(fejler ikke\)/);
+});
+
+test("en baselinet post der rykker tilbage fra beta til building er foraeldet i baseline", () => {
+  const r = checkRoadmapText([e({ id: "moved", state: "building" })], ["moved"]);
+  assert.deepEqual(r.stale, ["moved"]);
+  assert.deepEqual(r.warnings, ["moved"]);
 });
 
 test("flag med tekst passerer; halv tekst taeller som manglende", () => {

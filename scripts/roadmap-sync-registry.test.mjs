@@ -21,13 +21,14 @@ test("AREA_ENGINE daekker alle registrets areas med et lovligt engine", () => {
   }
 });
 
-test("itemFromEntry: approved, planned, flag_key, horizon default next, epic -> issue_ref", () => {
-  assert.deepEqual(itemFromEntry(entry({ epic: "6100" })), {
+test("itemFromEntry: skjult med publish_on_beta (ejer-gate), planned, flag_key, horizon default next, epic -> issue_ref", () => {
+  assert.deepEqual(itemFromEntry(entry({ epic: "6100" }), 70), {
     engine: "races",
-    sort_order: 0,
+    sort_order: 70,
     title_en: "New stage page",
     title_da: "Ny etapeside",
-    approved: true,
+    approved: false,
+    publish_on_beta: true,
     status: "planned",
     horizon: "next",
     issue_ref: 6100,
@@ -49,6 +50,28 @@ test("planSync: opretter kun poster med tekst og flag, som ikke allerede har et 
   const plan = planSync({ entries, existingFlagKeys: ["flag_b"] });
   assert.deepEqual(plan.inserts.map((p) => p.id), ["a"]);
   assert.deepEqual(plan.skipped.map((s) => s.id), ["d", "e"]);
+});
+
+test("planSync: sync saetter aldrig approved = true, uanset registrets state", () => {
+  const plan = planSync({
+    entries: [entry({ id: "a", flag: "fa", state: "beta" }), entry({ id: "b", flag: "fb", state: "building" })],
+    existingFlagKeys: [],
+  });
+  for (const p of plan.inserts) {
+    assert.equal(p.row.approved, false, p.id);
+    assert.equal(p.row.publish_on_beta, true, p.id);
+  }
+});
+
+test("planSync: nye punkter laegges sidst i planen med 10 i afstand, i registrets raekkefoelge", () => {
+  const plan = planSync({
+    entries: [entry({ id: "a", flag: "fa" }), entry({ id: "b", flag: "fb" }), entry({ id: "c", flag: "fc" })],
+    existingFlagKeys: ["fb"],
+    maxSortOrder: 996,
+  });
+  assert.deepEqual(plan.inserts.map((p) => [p.id, p.row.sort_order]), [["a", 1006], ["c", 1016]]);
+  const empty = planSync({ entries: [entry({ id: "a", flag: "fa" })], existingFlagKeys: [] });
+  assert.equal(empty.inserts[0].row.sort_order, 10);
 });
 
 test("planSync er idempotent: anden koersel efter oprettelse planlaegger intet", () => {

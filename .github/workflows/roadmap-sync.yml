@@ -2,15 +2,16 @@ name: Roadmap sync
 
 # Feature i beta kommer automatisk paa roadmappet (#6693).
 #
-#   roadmap-text — gate paa PR og main: et spillervendt flag i
-#     docs/FEATURE_REGISTRY.yml skal have roadmap_en + roadmap_da (reglen og
-#     baseline-skralden staar i scripts/feature-registry-roadmap-check.mjs).
-#     Rent fil-tjek, ingen secrets.
+#   roadmap-text — gate paa PR og main: et spillervendt flag i beta i
+#     docs/FEATURE_REGISTRY.yml skal have roadmap_en + roadmap_da; under byg
+#     (building/dormant) kun en advarsel (reglen og baseline-skralden staar i
+#     scripts/feature-registry-roadmap-check.mjs). Rent fil-tjek, ingen secrets.
 #
-#   sync — efter merge til main: scripts/roadmap-sync-registry.mjs --apply
-#     opretter manglende roadmap_items (approved, planned, flag_key) ud fra
-#     registret, idempotent paa flag_key. Punktet findes dermed foer flaget
-#     tændes; triggeren paa app_config flytter det til beta/shipped ved flippet.
+#   sync — efter merge til main, og kun naar roadmap-text er groen:
+#     scripts/roadmap-sync-registry.mjs --apply opretter manglende roadmap_items
+#     SKJULT (approved = false, publish_on_beta, planned, flag_key) ud fra
+#     registret, idempotent paa flag_key. Triggerne i databasen goer punktet
+#     synligt og flytter det til beta/shipped, naar ejeren flipper flaget.
 #     Samme moenster som auto-migrate.yml: kun push til main + manuel dispatch.
 
 on:
@@ -70,6 +71,7 @@ jobs:
 
   sync:
     name: sync
+    needs: roadmap-text
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:

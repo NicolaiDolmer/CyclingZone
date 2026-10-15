@@ -17,6 +17,12 @@
 // for dem ville kun fylde "Faerdigt"-listen. Et flag der ikke er spillervendt,
 // hoerer under area: ops.
 //
+// HVORNAAR teksten KRAEVES: foerst ved state: beta (flippet er ejer-only, og
+// registret opdateres i samme PR, hard rule 30e). For building/dormant giver
+// gaten kun en ADVARSEL: et krav allerede ved byg ville presse agenter til at
+// skrive spillertekst, ejeren ikke har godkendt. Sync opretter punktet skjult
+// uanset state; det bliver synligt naar flaget gaar i beta eller on.
+//
 // BASELINE (skralde, maa kun skrumpe): scripts/feature-registry-roadmap-baseline.json
 // lister de poster der manglede tekst da gaten kom. De fejler ikke, men:
 //   - en post der ikke laengere mangler tekst (tekst skrevet, gaaet live,
@@ -43,6 +49,8 @@ const BASELINE_GIT_PATH = "scripts/feature-registry-roadmap-baseline.json";
 
 export const NON_PLAYER_AREAS = ["ops"];
 export const PRE_LIVE_STATES = ["building", "dormant", "beta"];
+/** States hvor teksten kraeves (fejl); de oevrige PRE_LIVE_STATES giver kun en advarsel. */
+export const REQUIRED_STATES = ["beta"];
 
 /** @param {Record<string, string>} e */
 export function isPlayerFacingFlag(e) {
@@ -50,14 +58,27 @@ export function isPlayerFacingFlag(e) {
 }
 
 /** @param {Record<string, string>} e */
+export function requiresRoadmapText(e) {
+  return isPlayerFacingFlag(e) && REQUIRED_STATES.includes(e.state);
+}
+
+/** @param {Record<string, string>} e */
 export function hasRoadmapText(e) {
   return Boolean(e.roadmap_en && e.roadmap_da);
 }
 
-/** Id'er paa spillervendte flag uden roadmap-tekst, sorteret. */
+/** Id'er paa spillervendte flag i beta uden roadmap-tekst, sorteret. */
 export function missingRoadmapText(entries) {
   return entries
-    .filter((e) => isPlayerFacingFlag(e) && !hasRoadmapText(e))
+    .filter((e) => requiresRoadmapText(e) && !hasRoadmapText(e))
+    .map((e) => e.id)
+    .sort();
+}
+
+/** Id'er paa spillervendte flag under byg (building/dormant) uden tekst endnu: kun advarsel. */
+export function upcomingWithoutText(entries) {
+  return entries
+    .filter((e) => isPlayerFacingFlag(e) && !requiresRoadmapText(e) && !hasRoadmapText(e))
     .map((e) => e.id)
     .sort();
 }
@@ -65,10 +86,11 @@ export function missingRoadmapText(entries) {
 /**
  * @param {Array<Record<string, string>>} entries
  * @param {string[]} baselineIds
- * @returns {{ missing: string[], baselined: string[], stale: string[] }}
- *   missing   = mangler tekst og staar ikke i baseline (fejl)
- *   baselined = mangler tekst, men staar i baseline (tilladt indtil videre)
- *   stale     = staar i baseline, men mangler ikke laengere tekst (fejl: fjern dem)
+ * @returns {{ missing: string[], baselined: string[], stale: string[], warnings: string[] }}
+ *   missing   = i beta, mangler tekst og staar ikke i baseline (fejl)
+ *   baselined = i beta, mangler tekst, men staar i baseline (tilladt indtil videre)
+ *   stale     = staar i baseline, men kraever ikke laengere tekst (fejl: fjern dem)
+ *   warnings  = under byg uden tekst endnu (advarsel, aldrig fejl)
  */
 export function checkRoadmapText(entries, baselineIds) {
   const base = new Set(baselineIds);
@@ -78,6 +100,7 @@ export function checkRoadmapText(entries, baselineIds) {
     missing: lacking.filter((id) => !base.has(id)),
     baselined: lacking.filter((id) => base.has(id)),
     stale: [...base].filter((id) => !lackingSet.has(id)).sort(),
+    warnings: upcomingWithoutText(entries),
   };
 }
 
@@ -99,10 +122,10 @@ export function serializeBaseline(ids, comment) {
   return `${JSON.stringify({ _comment: comment, ids: [...ids].sort() }, null, 2)}\n`;
 }
 
-export function formatResult({ missing, baselined, stale, growth }) {
+export function formatResult({ missing, baselined, stale, growth, warnings = [] }) {
   const lines = [];
   if (missing.length) {
-    lines.push(`Spillervendte flag uden roadmap-tekst (${missing.length}):`);
+    lines.push(`Spillervendte flag i beta uden roadmap-tekst (${missing.length}):`);
     lines.push(...missing.map((id) => `  - ${id}`));
     lines.push("  Fix: saet roadmap_en + roadmap_da (og evt. roadmap_horizon: next|later) paa posten i");
     lines.push("  docs/FEATURE_REGISTRY.yml, med teksten godkendt af ejeren. Er flaget ikke spillervendt: area: ops.");
@@ -119,6 +142,11 @@ export function formatResult({ missing, baselined, stale, growth }) {
   }
   if (!lines.length) {
     lines.push(`Roadmap-tekst OK. Baseline: ${baselined.length} post(er) uden tekst endnu.`);
+  }
+  if (warnings.length) {
+    lines.push(`Advarsel (fejler ikke): flag under byg uden roadmap-tekst endnu (${warnings.length}):`);
+    lines.push(...warnings.map((id) => `  - ${id}`));
+    lines.push("  Teksten kraeves foerst naar posten gaar i state: beta. Skriv den kun med ejerens godkendelse.");
   }
   return lines.join("\n");
 }
@@ -148,7 +176,7 @@ export function parseArgs(argv) {
 }
 
 const BASELINE_COMMENT =
-  "Spillervendte flag uden roadmap-tekst da gaten kom (#6693). Maa kun skrumpe: " +
+  "Spillervendte flag i beta uden roadmap-tekst da gaten kom (#6693). Maa kun skrumpe: " +
   "node scripts/feature-registry-roadmap-check.mjs --update-baseline fjerner forældede id'er.";
 
 function main() {
