@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Known issues 15/10</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#2a2f3a;--tx:#e8e6e1;--mu:#9aa0ab;--gold:#d4a62a;--ok:#4caf7a;--new:#5b9bd5;--chg:#d48a2a}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,Segoe UI,sans-serif;padding:20px}
+h1{font-size:20px;margin:0 0 4px}p.s{color:var(--mu);margin:0 0 18px}
+h2{font-size:15px;margin:22px 0 8px;display:flex;gap:8px;align-items:center}
+.tag{font-size:11px;padding:2px 7px;border-radius:5px;border:1px solid}
+.new{color:var(--new);border-color:var(--new)}.ok{color:var(--ok);border-color:var(--ok)}.chg{color:var(--chg);border-color:var(--chg)}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:5px}
+td,th{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{color:var(--mu);font-weight:500;font-size:12px}
+.b{color:var(--mu);text-decoration:line-through}.a{color:var(--tx)}.n{font-variant-numeric:tabular-nums;color:var(--mu);white-space:nowrap}
+</style></head><body>
+<h1>Known issues under roadmappen: før → efter</h1>
+<p class="s">Prod har 30 åbne + 34 rettede offentlige poster. Forslaget: 7 flyttes til "Rettet", 3 får ny tekst eller status, 6 nye kommer på (heraf én der i dag er skjult). Intet er skrevet i prod.</p>
+
+<h2><span class="tag new">NY</span> 6 nye poster</h2>
+<table><tr><th>Issue</th><th>Område · status</th><th>Spillertekst (EN / DA)</th></tr>
+<tr><td class="n">#6647</td><td>Løb · fixing</td><td>Protect and Save can be replaced by Normal when your team has a team order.<br><span class="b" style="text-decoration:none">Beskyt og Spar kan blive erstattet af Normal, når holdet har en holdordre.</span></td></tr>
+<tr><td class="n">#6645</td><td>Løb · fixing</td><td>Time trials end too close: the top 10 are only seconds apart.<br><span class="b" style="text-decoration:none">Enkeltstarter ender for tæt: top 10 skilles kun af sekunder.</span></td></tr>
+<tr><td class="n">#6648</td><td>Løb · confirmed</td><td>On mountain finishes, second place is often exactly 3 seconds behind.<br><span class="b" style="text-decoration:none">På bjergafslutninger er nr. 2 tit præcis 3 sekunder efter.</span></td></tr>
+<tr><td class="n">#6155</td><td>Ungdom · fixing</td><td>The academy sends far too many candidate offers. You will soon pick candidates yourself instead.<br><span class="b" style="text-decoration:none">Akademiet sender alt for mange kandidattilbud. Snart henter du selv kandidater i stedet.</span></td></tr>
+<tr><td class="n">#6638</td><td>Marked · checking</td><td>You can't offer a contract to some riders whose contract should have ended.<br><span class="b" style="text-decoration:none">Du kan ikke give kontrakttilbud til nogle ryttere, hvis kontrakt burde være udløbet.</span></td></tr>
+<tr><td class="n">#6156</td><td>Løb · fixing</td><td><b>Ligger skjult i dag.</b> Foreslås offentliggjort: Form does not affect races right now. It comes back with the race engine update.<br><span class="b" style="text-decoration:none">Form påvirker ikke løbene lige nu. Den kommer tilbage med motoropdateringen.</span></td></tr>
+</table>
+
+<h2><span class="tag chg">ÆNDRES</span> 3 eksisterende får ny tekst eller status</h2>
+<table><tr><th>Issue</th><th>Før</th><th>Efter</th></tr>
+<tr><td class="n">#5978</td><td class="b">A dangerous GC rider can get into the break without the GC teams reacting.</td><td class="a">The overall win is too often decided by a rider in the breakaway. <span class="n">(fixing)</span></td></tr>
+<tr><td class="n">#6201</td><td class="b">Breakaways on mountain stages are often too small.</td><td class="a">Breakaways on mountain stages are often too small and almost never win on the high mountains. <span class="n">(fixing)</span></td></tr>
+<tr><td class="n">#5162</td><td class="b">confirmed</td><td class="a">fixing + opdatering: "A fix on 1/10 cut these errors from about 28 a day to 1-3. I'm still on the rest."</td></tr>
+</table>
+
+<h2><span class="tag ok">RETTET</span> 7 flyttes til "Rettet"</h2>
+<table><tr><th>Issue</th><th>Post</th><th>Bevis</th></tr>
+<tr><td class="n">#5928</td><td>Fatigue and form moved far more in a day than they should.</td><td>Rettet 29/9, stod stadig som "fixing"</td></tr>
+<tr><td class="n">#6129</td><td>Some riders missed evening training on several days.</td><td>Kompensation givet 5/10 (28 ryttere), ingen nye siden 6/10</td></tr>
+<tr><td class="n">#5864</td><td>Some riders with an expired contract are still on their team.</td><td>Lukket 12/10</td></tr>
+<tr><td class="n">#6206</td><td>The contract expiry icon is missing on U23 and junior squads.</td><td>Lukket 12/10</td></tr>
+<tr><td class="n">#5949</td><td>A rider who drops out of a stage race rests instead of training.</td><td>Lukket 12/10</td></tr>
+<tr><td class="n">#5903</td><td>Moving riders between squads can leave them on the wrong start list.</td><td>Lukket 12/10</td></tr>
+<tr><td class="n">#5842</td><td>Rider values changed at the season switch.</td><td>PR #6403 merget 11/10: fra S5 ændres værdier kun søndag kl. 14</td></tr>
+</table>
+<p class="s" style="margin-top:14px">Uændret: de øvrige 23 åbne poster (fx taktik-scrollbar, rutematch, salgspenge før skifte, scoutmission 4/5) er stadig åbne på GitHub og bliver stående.</p>
+</body></html>
