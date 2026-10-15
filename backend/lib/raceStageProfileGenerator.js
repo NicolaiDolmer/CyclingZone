@@ -1421,7 +1421,7 @@ function buildStageRace(rng, stages, cfg, race, make = toStage, fillerTypes = nu
 // ═══════════════════════════════════════════════════════════════════════════════════
 
 // Afslutnings-vægte pr. terræn. Kilden er benchmarkens 315 Grand Tour-etaper
-// (docs/design/s5-benchmark/gt-2021-2025.json): antallet af hver afslutning pr. terræn,
+// (backend/lib/__fixtures__/s5Benchmark.gt-2021-2025.json): antallet af hver afslutning pr. terræn,
 // MED de celler matrixen (spec §3) ikke tillader fjernet - benchmarken blev klassificeret
 // før kort 5's rettelser og har derfor enkelte afslutninger matrixen nu forbyder. En
 // afslutning med vægt 0 fandtes ikke i benchmarken for det terræn; matrixen tillader den,
