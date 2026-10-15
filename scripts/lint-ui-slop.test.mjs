@@ -89,6 +89,11 @@ test("scanSource counts text-symbol icons (▲ ▼ ✓ ✕) as arrowglyph in JSX
   assert.equal(scanSource("{\"a\": \"✓ ok\"}", { jsx: false }).arrowglyph, 0);
 });
 
+test("full-repo-scannet taeller glyffer i .js/.ts-data der kan naa UI'et (#6690)", () => {
+  const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "lint-ui-slop.mjs"), "utf8");
+  assert.match(src, /jsx: !\/\\\.css\$\/\.test\(file\)/);
+});
+
 test("countGlyph covers the full TASTE P7 list (✦ ○ ⓘ too) (#6690)", () => {
   assert.equal(scanSource("<span>✦</span><span>○</span><span>ⓘ</span>").arrowglyph, 3);
   assert.equal(scanSource("// ✦ ○ ⓘ kommentar").arrowglyph, 0);

@@ -225,7 +225,9 @@ export function scanRepo() {
   for (const file of walk(SRC_DIR, matchSource)) {
     const rel = relative(ROOT, file).replaceAll("\\", "/");
     if (EXEMPT_FILES.has(rel)) continue;
-    const r = scanSource(readFileSync(file, "utf8"), { jsx: /\.[jt]sx$/.test(file) });
+    // #6690 (Codex): ogsaa .js/.ts kan levere UI-tekst (fx abilityRegistry), saa
+    // glyffer taelles i alle kildefiler, ikke kun .jsx/.tsx. CSS har ingen glyf-UI.
+    const r = scanSource(readFileSync(file, "utf8"), { jsx: !/\.css$/.test(file) });
     if (r.hex || r.slop || r.colour || r.emoji || r.arrowglyph) counts[rel] = r;
   }
   for (const file of walk(LOCALES_DIR, matchLocale)) {

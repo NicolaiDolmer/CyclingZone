@@ -253,6 +253,13 @@
       "emoji": 5,
       "arrowglyph": 0
     },
+    "frontend/src/lib/generated/abilityRegistry.js": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 2
+    },
     "frontend/src/lib/statColor.js": {
       "hex": 2,
       "slop": 0,
