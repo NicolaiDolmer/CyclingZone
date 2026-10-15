@@ -8,6 +8,8 @@ import RacePointsPage from "./RacePointsPage";
 import RaceArchiveTable from "../components/race/RaceArchiveTable.jsx";
 import CompletedRacesExplorer from "../components/race/CompletedRacesExplorer.jsx";
 import WorldCatalog from "../components/race/WorldCatalog.jsx";
+import RaceHistoryLibrary from "../components/race/RaceHistoryLibrary.jsx"; // #6514
+import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
 import { Flag } from "../components/Flag";
 import { formatNumber, formatDate } from "../lib/intl";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
@@ -77,6 +79,7 @@ export default function ResultaterPage() {
   // med kalender- og arkiv-fladerne. Nøglerne beskriver løb, ikke hubben.
   const { t } = useTranslation(["results", "races"]);
   const navigate = useNavigate();
+  const raceLibraryV2 = useRaceLibraryV2() === true; // #6514: Arkiv → Løbshistorik
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [season, setSeason] = useState(null);
@@ -428,7 +431,7 @@ export default function ResultaterPage() {
         <TabList label={t("title")}>
           {[
             { key: "latest", label: t("tabs.latest") },
-            { key: "archive", label: t("tabs.archive") },
+            { key: "archive", label: raceLibraryV2 ? t("tabs.raceHistory") : t("tabs.archive") },
             { key: "points", label: t("tabs.points") },
           ].map(tb => (
             <Tab key={tb.key} value={tb.key}>{tb.label}</Tab>
@@ -630,7 +633,8 @@ export default function ResultaterPage() {
           Begge er rene KIGGE-flader og hørte aldrig hjemme sammen med
           holdudtagelses-boardet. Etape 3: verdens-kataloget fulgte med ind
           under Arkiv da /races blev opløst — samme kigge-flade-argument. */}
-      {tab === "archive" && (
+      {tab === "archive" && raceLibraryV2 && <RaceHistoryLibrary />}
+      {tab === "archive" && !raceLibraryV2 && (
         <div className="space-y-[14px]">
           <RaceArchiveTable />
           <WorldCatalog />
