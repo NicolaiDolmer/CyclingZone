@@ -137,10 +137,14 @@ function runGt({ v4, field, race, stages, seasonId, simSeed, model, tuning }) {
       const rankById = new Map(res.ranked.map((r) => [r.rider_id, r.rank]));
       const loadVals = loads.map((l) => l.load);
       stageRows.push({ stage: profile.stage_number, profile: profile.profile_type, date: d, week: weekOfDate(d, nDates), rankById, loadMean: mean(loadVals), loadSd: sd(loadVals), loadMin: Math.min(...loadVals), loadMax: Math.max(...loadVals) });
+      // Datoens afregning foer udgaede fjernes: en rytter der udgaar/OTL paa datoens etaper
+      // har allerede belastning fra datoen (prod: startlistens snapshot) og skal afregnes med den.
+      const dateRiderIds = [...new Set([...inRace.map((e) => e.rider_id), ...byRider.keys()])];
       inRace = inRace.filter((e) => rankById.has(e.rider_id));
       const nextD = index + 1 < sorted.length ? dateIdx[index + 1] : nDates;
       if (nextD !== d) {
-        for (let dd = d; dd < nextD; dd++) settleDate(dd, inRace.map((e) => e.rider_id));
+        settleDate(d, dateRiderIds);
+        for (let dd = d + 1; dd < nextD; dd++) settleDate(dd, inRace.map((e) => e.rider_id));
         enterDate();
       }
     },
