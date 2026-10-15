@@ -1,6 +1,6 @@
 # S5-etapeprofiler: byg-plan + målt baseline (13/10)
 
-Epic **#6369**. Spec (design-go ejer 12/10): [`../specs/2026-10-12-s5-etapeprofiler-design.md`](../specs/2026-10-12-s5-etapeprofiler-design.md). Benchmark: `docs/design/s5-benchmark/gt-2021-2025.json` (315 GT-etaper). Deadline: S5-kalenderen live senest **lørdag 18/10**. Ingen låste beslutninger er genåbnet her; alle tal i §5 og §3 er ejerens.
+Epic **#6369**. Spec (design-go ejer 12/10): [`../specs/2026-10-12-s5-etapeprofiler-design.md`](../specs/2026-10-12-s5-etapeprofiler-design.md). Benchmark: `backend/lib/__fixtures__/s5Benchmark.gt-2021-2025.json` (315 GT-etaper; flyttet fra `docs/design/s5-benchmark/` 15/10, #6367). Deadline: S5-kalenderen live senest **lørdag 18/10**. Ingen låste beslutninger er genåbnet her; alle tal i §5 og §3 er ejerens.
 
 Hard rule 36: motor/DB-delene har målt baseline (§2) før første PR.
 
