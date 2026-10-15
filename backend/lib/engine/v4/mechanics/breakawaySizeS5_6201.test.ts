@@ -1,6 +1,7 @@
 // backend/lib/engine/v4/mechanics/breakawaySizeS5_6201.test.ts
-// #6201 (ejer 5/10, udbrudstrappen) under s5_profiles_v1: flad typisk 3-6 (loft 8),
-// kuperet og rullende 5-9 (loft 12), bjerg og hoejfjeld 6-12 (loft 16).
+// #6201 (ejer 5/10, udbrudstrappen) under s5_profiles_v1: flad har de mindste udbrud,
+// kuperet og rullende stoerre, bjerg og hoejfjeld de stoerste, hver med sit eget loft.
+// Baandene laeses fra TOUR_BENCHMARKS (tourScorecard.mjs) og profilens loft/plads.
 //
 // Under official_times_v3/v4 voksede bjergudbruddet med antallet af forsoeg, saa et
 // felt med mange AI-hold og et taet klassement gav udbrud paa loftet. Under S5:
