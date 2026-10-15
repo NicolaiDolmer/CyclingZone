@@ -2,13 +2,15 @@
 // scripts/review-gate.mjs - risikostyret review-gate (#6654, ejer 15/10).
 //
 // Regel (AGENTS.md hard rule 35 + docs/GITHUB_WORKFLOW.md "Review-gate"):
-//   - ALLE PR'er: Codex-review gennemfoert og ingen uloeste Codex-fund
-//     (en Codex-traad er loest naar den er markeret "Resolve conversation").
+//   - ALLE PR'er: Codex-review gennemfoert for PR'ens AKTUELLE HEAD og ingen
+//     uloeste Codex-fund (en Codex-traad er loest naar den er markeret
+//     "Resolve conversation"). Review-bevis fra et aeldre commit taeller ikke.
 //   - HOEJRISIKO (motor, database/migrationer/RLS, penge/oekonomi, auth/
 //     sikkerhed, workflows, eller label risk:high/security): derudover en
-//     Claude-review-markoer uden blokerende fund:
-//         <!-- claude-review: clean|notes|blocking [sha=<commit>] -->
-//     Seneste markoer fra en betroet konto (OWNER/MEMBER/COLLABORATOR) gaelder.
+//     Claude-review-markoer for HEAD uden blokerende fund:
+//         <!-- claude-review: clean|notes|blocking sha=<HEAD-commit> -->
+//     Seneste markoer for HEAD fra en betroet konto (OWNER/MEMBER/COLLABORATOR)
+//     gaelder. Efter et push skal der en ny markoer til.
 //   - CodeRabbit er bonus, aldrig et krav. Dependabot er undtaget (Codex
 //     reviewer ikke Dependabot-PR'er; rule 35 (c) daekker dem med CI).
 //
@@ -52,6 +54,14 @@ const HIGH_RISK_RULES = Object.freeze([
 
 const norm = (p) => String(p || "").replace(/\\/g, "/").replace(/^\.\//, "");
 const login = (l) => String(l || "").replace(/\[bot\]$/i, "").toLowerCase();
+
+/** Peger en (evt. forkortet, >= 7 tegn) commit-SHA paa HEAD? Ukendt HEAD matcher intet. */
+export function shaMatchesHead(sha, headSha) {
+  const a = String(sha || "").toLowerCase();
+  const h = String(headSha || "").toLowerCase();
+  return a.length >= 7 && h.length >= 7 && (h.startsWith(a) || a.startsWith(h));
+}
+const short = (sha) => String(sha || "?").slice(0, 7);
 
 /** @returns {string|null} hoejrisiko-grunden for en fil, ellers null. Tests er aldrig hoejrisiko. */
 export function classifyFile(path) {
@@ -100,27 +110,43 @@ export function parseCodexSummary(body) {
   return { state, commit };
 }
 
+/** "**Reviewed commit:** `fda8692284`" i en Codex-review-krop. */
+export function parseCodexReviewedCommit(body) {
+  return String(body || "").match(/reviewed commit:\**\s*`?([0-9a-f]{7,40})/i)?.[1]?.toLowerCase() || null;
+}
+
 /**
- * @param {{comments?: object[], reviews?: object[], reactions?: object[], threads?: object[]}} input
- *   comments/reviews: {author, body}; reactions: {author, content}; threads: {author, isResolved}
+ * Codex-bevis taeller kun for PR'ens aktuelle HEAD (headSha): summary-commit,
+ * review.commit / "Reviewed commit", og en 👍-reaktion kun hvis den er afgivet
+ * efter HEAD-commit'et (headCommittedAt; reaktioner baerer ingen SHA).
+ * @param {{comments?: object[], reviews?: object[], reactions?: object[], threads?: object[], headSha?: string, headCommittedAt?: string}} input
+ *   comments: {author, body}; reviews: {author, body, commit}; reactions: {author, content, at}; threads: {author, isResolved}
  * @returns {{ok: boolean, state: string, unresolved: number, detail: string}}
  */
-export function evaluateCodex({ comments = [], reviews = [], reactions = [], threads = [] } = {}) {
+export function evaluateCodex({ comments = [], reviews = [], reactions = [], threads = [], headSha = null, headCommittedAt = null } = {}) {
   const isCodex = (x) => login(x.author) === CODEX_LOGIN;
   const unresolved = threads.filter((t) => isCodex(t) && !t.isResolved).length;
-  const summary = comments.filter(isCodex).map((c) => parseCodexSummary(c.body)).find((s) => s.state !== "unknown");
+  const summaries = comments.filter(isCodex).map((c) => parseCodexSummary(c.body)).filter((s) => s.state !== "unknown");
+  const summary = summaries.find((s) => shaMatchesHead(s.commit, headSha));
+  const staleCommit = summaries.find((s) => !shaMatchesHead(s.commit, headSha))?.commit || null;
   let state = summary ? summary.state : "missing";
   if (state !== "pending" && state !== "completed") {
-    const reviewed = reviews.some(isCodex) || reactions.some((r) => isCodex(r) && r.content === "+1");
-    if (reviewed) state = "completed";
+    const reviewedHead = reviews.some((r) => isCodex(r) && shaMatchesHead(r.commit || parseCodexReviewedCommit(r.body), headSha));
+    const thumbsAfterHead = Boolean(headCommittedAt) && reactions.some((r) => isCodex(r) && r.content === "+1" &&
+      Boolean(r.at) && Date.parse(r.at) >= Date.parse(headCommittedAt));
+    if (reviewedHead || thumbsAfterHead) state = "completed";
+    else if (state === "missing" && (summaries.length > 0 || reviews.some(isCodex) || reactions.some((r) => isCodex(r) && r.content === "+1"))) state = "stale";
   }
   if (unresolved > 0) {
     return { ok: false, state, unresolved, detail: `${unresolved} uloest(e) Codex-fund: ret dem og marker traaden "Resolve conversation"` };
   }
   if (state === "completed") {
-    return { ok: true, state, unresolved, detail: `Codex-review gennemfoert${summary?.commit ? ` (commit ${summary.commit})` : ""}, ingen uloeste fund` };
+    return { ok: true, state, unresolved, detail: `Codex-review gennemfoert for HEAD ${short(headSha)}, ingen uloeste fund` };
   }
   if (state === "pending") return { ok: false, state, unresolved, detail: "Codex-review koerer stadig" };
+  if (state === "stale") {
+    return { ok: false, state, unresolved, detail: `Codex-review gaelder et aeldre commit${staleCommit ? ` (${short(staleCommit)})` : ""}, ikke HEAD ${short(headSha)}: kommenter \`@codex review\`` };
+  }
   if (state === "failed") return { ok: false, state, unresolved, detail: "Codex-review fejlede: kommenter `@codex review` paa PR'en" };
   return { ok: false, state, unresolved, detail: "intet Codex-review endnu: marker PR'en ready, eller kommenter `@codex review`" };
 }
@@ -146,18 +172,27 @@ export function findClaudeVerdict(items = []) {
   return best;
 }
 
-export function evaluateClaude(items, risk) {
+export function evaluateClaude(items, risk, headSha = null) {
   if (risk.level !== "high") return { required: false, ok: true, verdict: null, detail: "ikke paakraevet (lav risiko)" };
-  const found = findClaudeVerdict(items);
+  const hint = "`node scripts/review-gate.mjs post-claude-review --pr N --verdict clean`";
+  // Kun markoerer for HEAD taeller; en markoer uden sha= eller for et aeldre commit er foraeldet efter et push.
+  const found = findClaudeVerdict(items.filter((i) => {
+    const m = String(i.body || "").match(CLAUDE_MARKER_RE);
+    return Boolean(m) && shaMatchesHead(m[2], headSha);
+  }));
   if (!found) {
-    return { required: true, ok: false, verdict: null, detail: "hoejrisiko: mangler Claude-review-markoer (`node scripts/review-gate.mjs post-claude-review --pr N --verdict clean`)" };
+    const any = findClaudeVerdict(items);
+    if (any) {
+      return { required: true, ok: false, verdict: null, detail: `hoejrisiko: Claude-review-markoeren gaelder ${any.sha ? `commit ${short(any.sha)}` : "intet commit (sha= mangler)"}, ikke HEAD ${short(headSha)}: review det nye commit og skriv ny markoer (${hint})` };
+    }
+    return { required: true, ok: false, verdict: null, detail: `hoejrisiko: mangler Claude-review-markoer for HEAD ${short(headSha)} (${hint})` };
   }
   if (found.verdict === "blocking") return { required: true, ok: false, verdict: found.verdict, detail: "Claude-review har blokerende fund" };
   return { required: true, ok: true, verdict: found.verdict, detail: `Claude-review: ${found.verdict}${found.sha ? ` (commit ${found.sha.slice(0, 7)})` : ""}` };
 }
 
-/** Selve gaten. Input er normaliseret PR-data (se fetchPrData). */
-export function evaluateGate({ author, draft = false, files = [], labels = [], comments = [], reviews = [], reactions = [], threads = [] }) {
+/** Selve gaten. Input er normaliseret PR-data (se fetchPrData); bevis bindes til headSha. */
+export function evaluateGate({ author, draft = false, files = [], labels = [], comments = [], reviews = [], reactions = [], threads = [], headSha = null, headCommittedAt = null }) {
   const risk = classifyRisk(files, labels);
   if (EXEMPT_AUTHORS.includes(login(author))) {
     return { ok: true, risk, exempt: true, codex: null, claude: null, summary: `undtaget: ${author} (rule 35 c - CI + dependency-review er gaten)` };
@@ -165,8 +200,8 @@ export function evaluateGate({ author, draft = false, files = [], labels = [], c
   if (draft) {
     return { ok: false, risk, exempt: false, codex: null, claude: null, summary: "draft: gaten evalueres naar PR'en er ready" };
   }
-  const codex = evaluateCodex({ comments, reviews, reactions, threads });
-  const claude = evaluateClaude([...comments, ...reviews], risk);
+  const codex = evaluateCodex({ comments, reviews, reactions, threads, headSha, headCommittedAt });
+  const claude = evaluateClaude([...comments, ...reviews], risk, headSha);
   const ok = codex.ok && claude.ok;
   const summary = `${ok ? "OK" : "BLOKERET"} (${risk.level === "high" ? "hoejrisiko" : "lav risiko"}): Codex - ${codex.detail}; Claude - ${claude.detail}`;
   return { ok, risk, exempt: false, codex, claude, summary };
@@ -311,14 +346,20 @@ export function fetchPrData(repo, pr) {
   const comments = ghLines(`repos/${repo}/issues/${pr}/comments?per_page=100`)
     .map((c) => ({ author: c.user?.login, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
   const reviews = ghLines(`repos/${repo}/pulls/${pr}/reviews?per_page=100`)
-    .map((r) => ({ author: r.user?.login, association: r.author_association, body: r.body, at: r.submitted_at }));
+    .map((r) => ({ author: r.user?.login, association: r.author_association, body: r.body, at: r.submitted_at, commit: r.commit_id }));
   const reactions = ghLines(`repos/${repo}/issues/${pr}/reactions?per_page=100`)
-    .map((r) => ({ author: r.user?.login, content: r.content }));
+    .map((r) => ({ author: r.user?.login, content: r.content, at: r.created_at }));
+  const headSha = meta.head?.sha;
+  let headCommittedAt = null;
+  try {
+    headCommittedAt = ghJson(["api", `repos/${repo}/commits/${headSha}`]).commit?.committer?.date || null;
+  } catch { /* uden tidspunkt taeller en 👍-reaktion ikke (fail-closed) */ }
   return {
     number: pr,
     author: meta.user?.login,
     draft: Boolean(meta.draft),
-    headSha: meta.head?.sha,
+    headSha,
+    headCommittedAt,
     labels: (meta.labels || []).map((l) => l.name),
     files, comments, reviews, reactions,
     threads: fetchThreads(repo, pr),
@@ -338,12 +379,26 @@ export function shouldRerun(run, freshOk) {
   return { rerun: true, why: freshOk ? "nu groen" : "nu roed" };
 }
 
-/** Genkoer seneste pull_request-koersel af gaten for PR'ens HEAD (check'et opdateres paa stedet). */
+/**
+ * Find PR'ens seneste pull_request-koersel af gaten. Matcher paa PR-associationen
+ * (run.pull_requests[].number), ikke paa run.head_sha alene: for pull_request-
+ * workflows kan koerslens SHA vaere merge-commit'et. Koersler for HEAD foretraekkes.
+ */
+export function pickGateRun(runs = [], pr, headSha) {
+  const ofPr = (r) => (r.pull_requests || []).filter((p) => Number(p.number) === Number(pr));
+  const forPr = runs.filter((r) => ofPr(r).length > 0);
+  const newest = (list) => [...list].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
+  const atHead = forPr.filter((r) => shaMatchesHead(r.head_sha, headSha) || ofPr(r).some((p) => shaMatchesHead(p.head?.sha, headSha)));
+  return newest(atHead) || newest(forPr);
+}
+
+/** Genkoer seneste pull_request-koersel af gaten for PR'en (check'et opdateres paa stedet). */
 function rerunGate(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   if (meta.state !== "open" || meta.draft) return `#${pr}: springes over (${meta.state}${meta.draft ? ", draft" : ""})`;
-  const runs = ghJson(["api", `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=pull_request&head_sha=${meta.head.sha}&per_page=20`]).workflow_runs || [];
-  const run = runs.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0];
+  const branch = encodeURIComponent(meta.head.ref);
+  const runs = ghJson(["api", `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=pull_request&branch=${branch}&per_page=50`]).workflow_runs || [];
+  const run = pickGateRun(runs, pr, meta.head.sha);
   const fresh = evaluateGate(fetchPrData(repo, pr));
   const decision = shouldRerun(run, fresh.ok);
   if (!decision.rerun) return `#${pr}: ${decision.why}`;

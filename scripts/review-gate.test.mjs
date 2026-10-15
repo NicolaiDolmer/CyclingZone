@@ -18,10 +18,15 @@ import {
   tallyReviewerStats,
   formatEscapedReport,
   shouldRerun,
+  shaMatchesHead,
+  parseCodexReviewedCommit,
+  pickGateRun,
   CODEX_SUMMARY_MARKER,
 } from "./review-gate.mjs";
 
 const CODEX = "chatgpt-codex-connector[bot]";
+const HEAD = "b1f0c58e2d4c6a8b0c2e4f6a8b0c2d4e6f8a0b2c";
+const OLD = "512c930aa1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
 
 function summary(status, commit = "b1f0c58") {
   return [
@@ -37,8 +42,8 @@ function summary(status, commit = "b1f0c58") {
   ].join("\n");
 }
 const codexDone = { author: CODEX, association: "NONE", body: summary("✅ **Completed** <relative-time>x</relative-time>"), at: "2026-10-15T10:00:00Z" };
-const marker = (verdict, at = "2026-10-15T11:00:00Z", association = "OWNER") =>
-  ({ author: "owner", association, body: `<!-- claude-review: ${verdict} sha=512c930 -->\n**Claude-review**`, at });
+const marker = (verdict, at = "2026-10-15T11:00:00Z", association = "OWNER", sha = HEAD.slice(0, 7)) =>
+  ({ author: "owner", association, body: `<!-- claude-review: ${verdict}${sha ? ` sha=${sha}` : ""} -->\n**Claude-review**`, at });
 
 // ── classifyFile / classifyRisk ──
 
@@ -113,7 +118,7 @@ test("parseCodexSummary: completed / pending / failed / ukendt", () => {
 });
 
 test("evaluateCodex: gennemfoert uden traade -> ok", () => {
-  const r = evaluateCodex({ comments: [codexDone] });
+  const r = evaluateCodex({ comments: [codexDone], headSha: HEAD });
   assert.equal(r.ok, true);
   assert.match(r.detail, /b1f0c58/);
 });
@@ -124,23 +129,50 @@ test("evaluateCodex: uloeste Codex-traade blokerer, loeste og andres traade goer
     { author: "chatgpt-codex-connector", isResolved: true },
     { author: "coderabbitai", isResolved: false },
   ];
-  const r = evaluateCodex({ comments: [codexDone], threads });
+  const r = evaluateCodex({ comments: [codexDone], threads, headSha: HEAD });
   assert.equal(r.ok, false);
   assert.equal(r.unresolved, 1);
   assert.match(r.detail, /1 uloest/);
-  assert.equal(evaluateCodex({ comments: [codexDone], threads: threads.slice(1) }).ok, true, "CodeRabbit-traade er aldrig et krav");
+  assert.equal(evaluateCodex({ comments: [codexDone], threads: threads.slice(1), headSha: HEAD }).ok, true, "CodeRabbit-traade er aldrig et krav");
 });
 
 test("evaluateCodex: intet review / koerer / fejlet -> ikke ok med handlingsanvisning", () => {
   assert.match(evaluateCodex({}).detail, /@codex review/);
-  assert.equal(evaluateCodex({ comments: [{ author: CODEX, body: summary("In progress") }] }).state, "pending");
-  assert.match(evaluateCodex({ comments: [{ author: CODEX, body: summary("Failed") }] }).detail, /fejlede/);
+  assert.equal(evaluateCodex({ comments: [{ author: CODEX, body: summary("In progress") }], headSha: HEAD }).state, "pending");
+  assert.match(evaluateCodex({ comments: [{ author: CODEX, body: summary("Failed") }], headSha: HEAD }).detail, /fejlede/);
 });
 
-test("evaluateCodex: Codex-review uden summary eller 👍-reaktion taeller som gennemfoert", () => {
-  assert.equal(evaluateCodex({ reviews: [{ author: CODEX, body: "### 💡 Codex Review" }] }).ok, true);
-  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "+1" }] }).ok, true);
-  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "eyes" }] }).ok, false);
+test("evaluateCodex: Codex-review for HEAD uden summary, eller 👍 efter HEAD-commit'et, taeller som gennemfoert", () => {
+  assert.equal(evaluateCodex({ reviews: [{ author: CODEX, body: "### 💡 Codex Review", commit: HEAD }], headSha: HEAD }).ok, true);
+  assert.equal(evaluateCodex({ reviews: [{ author: CODEX, body: "**Reviewed commit:** `b1f0c58e2d`" }], headSha: HEAD }).ok, true);
+  const committed = "2026-10-15T10:00:00Z";
+  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "+1", at: "2026-10-15T10:05:00Z" }], headSha: HEAD, headCommittedAt: committed }).ok, true);
+  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "eyes", at: "2026-10-15T10:05:00Z" }], headSha: HEAD, headCommittedAt: committed }).ok, false);
+});
+
+test("evaluateCodex: foraeldet bevis fra et aeldre commit -> roed (#6657 review)", () => {
+  const stale = { ...codexDone, body: summary("✅ **Completed**", OLD.slice(0, 7)) };
+  const r = evaluateCodex({ comments: [stale], headSha: HEAD });
+  assert.equal(r.ok, false);
+  assert.equal(r.state, "stale");
+  assert.match(r.detail, /512c930.*@codex review/);
+  assert.equal(evaluateCodex({ reviews: [{ author: CODEX, body: "x", commit: OLD }], headSha: HEAD }).ok, false, "review paa gammelt commit");
+  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "+1", at: "2026-10-15T09:00:00Z" }], headSha: HEAD, headCommittedAt: "2026-10-15T10:00:00Z" }).ok, false,
+    "👍 afgivet foer HEAD blev committet");
+  assert.equal(evaluateCodex({ reactions: [{ author: CODEX, content: "+1", at: "2026-10-15T11:00:00Z" }], headSha: HEAD }).ok, false,
+    "👍 uden kendt HEAD-tidspunkt er fail-closed");
+  assert.equal(evaluateCodex({ comments: [codexDone] }).ok, false, "ukendt HEAD matcher intet");
+  assert.equal(evaluateCodex({ comments: [stale, codexDone], headSha: HEAD }).ok, true, "frisk summary for HEAD -> groen");
+});
+
+test("shaMatchesHead + parseCodexReviewedCommit", () => {
+  assert.equal(shaMatchesHead("b1f0c58", HEAD), true);
+  assert.equal(shaMatchesHead(HEAD.toUpperCase(), HEAD), true);
+  assert.equal(shaMatchesHead("b1f0c5", HEAD), false, "under 7 tegn er for tvetydigt");
+  assert.equal(shaMatchesHead("512c930", HEAD), false);
+  assert.equal(shaMatchesHead("b1f0c58", null), false);
+  assert.equal(parseCodexReviewedCommit("**Reviewed commit:** `fda8692284`"), "fda8692284");
+  assert.equal(parseCodexReviewedCommit("intet"), null);
 });
 
 test("evaluateCodex: en summary-kommentar fra en anden konto taeller ikke", () => {
@@ -155,7 +187,7 @@ test("findClaudeVerdict: seneste betroede markoer vinder; ubetroede ignoreres", 
     marker("clean", "2026-10-15T12:00:00Z"),
     marker("blocking", "2026-10-15T13:00:00Z", "NONE"),
   ];
-  assert.deepEqual(findClaudeVerdict(items), { verdict: "clean", sha: "512c930", at: "2026-10-15T12:00:00Z" });
+  assert.deepEqual(findClaudeVerdict(items), { verdict: "clean", sha: "b1f0c58", at: "2026-10-15T12:00:00Z" });
   assert.equal(findClaudeVerdict([{ association: "OWNER", body: "claude-review: clean (ingen markoer)" }]), null);
 });
 
@@ -163,31 +195,52 @@ test("evaluateClaude: kun paakraevet ved hoejrisiko; blocking og manglende bloke
   const low = { level: "low", reasons: [] };
   const high = { level: "high", reasons: ["motor: x"] };
   assert.equal(evaluateClaude([], low).ok, true);
-  assert.equal(evaluateClaude([], high).ok, false);
-  assert.match(evaluateClaude([], high).detail, /post-claude-review/);
-  assert.equal(evaluateClaude([marker("blocking")], high).ok, false);
-  assert.equal(evaluateClaude([marker("notes")], high).ok, true);
-  assert.equal(evaluateClaude([marker("clean")], high).ok, true);
+  assert.equal(evaluateClaude([], high, HEAD).ok, false);
+  assert.match(evaluateClaude([], high, HEAD).detail, /post-claude-review/);
+  assert.equal(evaluateClaude([marker("blocking")], high, HEAD).ok, false);
+  assert.equal(evaluateClaude([marker("notes")], high, HEAD).ok, true);
+  assert.equal(evaluateClaude([marker("clean")], high, HEAD).ok, true);
+});
+
+test("evaluateClaude: markoer for et aeldre commit eller uden sha= taeller ikke efter push (#6657 review)", () => {
+  const high = { level: "high", reasons: ["motor: x"] };
+  const stale = evaluateClaude([marker("clean", "2026-10-15T11:00:00Z", "OWNER", "512c930")], high, HEAD);
+  assert.equal(stale.ok, false);
+  assert.match(stale.detail, /512c930.*ikke HEAD b1f0c58/);
+  assert.equal(evaluateClaude([marker("clean", "2026-10-15T11:00:00Z", "OWNER", null)], high, HEAD).ok, false, "markoer uden sha=");
+  assert.equal(evaluateClaude([marker("clean")], high, null).ok, false, "ukendt HEAD matcher intet");
+  // Ny markoer for HEAD efter en gammel blocking -> groen; blocking for HEAD efter clean for gammelt commit -> roed.
+  assert.equal(evaluateClaude([marker("blocking", "2026-10-15T09:00:00Z", "OWNER", "512c930"), marker("clean", "2026-10-15T12:00:00Z")], high, HEAD).ok, true);
+  assert.equal(evaluateClaude([marker("clean", "2026-10-15T13:00:00Z", "OWNER", "512c930"), marker("blocking", "2026-10-15T12:00:00Z")], high, HEAD).ok, false);
 });
 
 // ── Gaten samlet ──
 
 test("evaluateGate: lav risiko kraever kun Codex", () => {
-  const r = evaluateGate({ author: "NicolaiDolmer", files: ["docs/a.md"], comments: [codexDone] });
+  const r = evaluateGate({ author: "NicolaiDolmer", files: ["docs/a.md"], comments: [codexDone], headSha: HEAD });
   assert.equal(r.ok, true);
   assert.equal(r.claude.required, false);
 });
 
 test("evaluateGate: hoejrisiko kraever Codex OG Claude", () => {
-  const base = { author: "NicolaiDolmer", files: ["backend/lib/engine/v4/x.ts"] };
+  const base = { author: "NicolaiDolmer", files: ["backend/lib/engine/v4/x.ts"], headSha: HEAD };
   assert.equal(evaluateGate({ ...base, comments: [codexDone] }).ok, false, "Claude mangler");
   assert.equal(evaluateGate({ ...base, comments: [marker("clean")] }).ok, false, "Codex mangler");
   assert.equal(evaluateGate({ ...base, comments: [codexDone, marker("clean")] }).ok, true);
   assert.equal(evaluateGate({ ...base, comments: [codexDone, marker("blocking")] }).ok, false);
 });
 
+test("evaluateGate: groen gate bliver roed efter push til nyt HEAD indtil begge reviews er fornyet", () => {
+  const evidence = { author: "NicolaiDolmer", files: ["backend/lib/engine/v4/x.ts"], comments: [codexDone, marker("clean")] };
+  assert.equal(evaluateGate({ ...evidence, headSha: HEAD }).ok, true, "frisk bevis -> groen");
+  const pushed = evaluateGate({ ...evidence, headSha: OLD });
+  assert.equal(pushed.ok, false, "foraeldet bevis -> roed");
+  assert.equal(pushed.codex.state, "stale");
+  assert.equal(pushed.claude.ok, false);
+});
+
 test("evaluateGate: CodeRabbit er aldrig et krav (ingen CodeRabbit-data -> stadig groen)", () => {
-  const r = evaluateGate({ author: "x", files: ["frontend/src/x.jsx"], comments: [codexDone], threads: [{ author: "coderabbitai", isResolved: false }] });
+  const r = evaluateGate({ author: "x", files: ["frontend/src/x.jsx"], comments: [codexDone], threads: [{ author: "coderabbitai", isResolved: false }], headSha: HEAD });
   assert.equal(r.ok, true);
 });
 
@@ -218,6 +271,20 @@ test("shouldRerun: kun naar udfaldet er skiftet, aldrig midt i en koersel eller 
   assert.equal(shouldRerun({ id: 1, status: "completed", conclusion: "success" }, true).rerun, false);
   assert.deepEqual(shouldRerun({ id: 1, status: "completed", conclusion: "failure" }, true), { rerun: true, why: "nu groen" });
   assert.deepEqual(shouldRerun({ id: 1, status: "completed", conclusion: "success" }, false), { rerun: true, why: "nu roed" });
+});
+
+test("pickGateRun: finder koerslen via PR-associationen, ogsaa naar run.head_sha er merge-commit'et (#6657 review)", () => {
+  const MERGE = "9999999aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const runs = [
+    { id: 1, created_at: "2026-10-15T10:00:00Z", head_sha: OLD, pull_requests: [{ number: 42, head: { sha: OLD } }] },
+    { id: 2, created_at: "2026-10-15T11:00:00Z", head_sha: MERGE, pull_requests: [{ number: 42, head: { sha: HEAD } }] },
+    { id: 3, created_at: "2026-10-15T12:00:00Z", head_sha: HEAD, pull_requests: [{ number: 7, head: { sha: HEAD } }] },
+  ];
+  assert.equal(pickGateRun(runs, 42, HEAD).id, 2, "merge-SHA i run.head_sha, PR-head i pull_requests");
+  assert.equal(pickGateRun(runs.slice(0, 1), 42, HEAD).id, 1, "ingen koersel for HEAD -> seneste for PR'en");
+  assert.equal(pickGateRun(runs, 43, HEAD), null, "andre PR'ers koersler bruges aldrig");
+  assert.equal(pickGateRun([{ id: 5, created_at: "t", head_sha: HEAD, pull_requests: [{ number: 42 }] }], 42, HEAD).id, 5);
+  assert.equal(pickGateRun([], 42, HEAD), null);
 });
 
 // ── Escaped defects ──

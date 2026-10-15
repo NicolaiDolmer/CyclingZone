@@ -111,8 +111,8 @@ CI-checket `review-gate` (`.github/workflows/review-gate.yml`, logik + tests i `
 | **Høj** | `backend/lib/engine/**`, `database/**`, penge/økonomi i `backend/` (economy, finance, salary, prize, sponsor, loan, price, auction …), auth/sikkerhed (auth, token, rls, grant, admin …), `.github/workflows/**`, eller label `risk:high`/`security` | Codex-review uden uløste fund **+** Claude-review-markør uden blokerende fund |
 | **Lav** | alt andet (tests er altid lav) | Codex-review uden uløste fund |
 
-- **Codex:** reviewer automatisk når en PR åbnes eller markeres ready (ellers kommentér `@codex review`). Et fund er uløst til tråden er rettet og markeret *Resolve conversation*.
-- **Claude-markør:** efter bølgens opus-reviewer eller `/code-review`: `node scripts/review-gate.mjs post-claude-review --pr N --verdict clean|notes|blocking`. Seneste markør fra ejer/collaborator gælder; `blocking` holder gaten rød.
+- **Codex:** reviewer automatisk når en PR åbnes eller markeres ready (ellers kommentér `@codex review`). Et fund er uløst til tråden er rettet og markeret *Resolve conversation*. Reviewet skal gælde PR'ens **aktuelle HEAD**: efter et push er det gamle review forældet, kommentér `@codex review` igen.
+- **Claude-markør:** efter bølgens opus-reviewer eller `/code-review`: `node scripts/review-gate.mjs post-claude-review --pr N --verdict clean|notes|blocking`. Markøren bærer `sha=<HEAD>` og gælder kun det commit; efter et push skal der en ny. Seneste markør for HEAD fra ejer/collaborator gælder; `blocking` holder gaten rød.
 - **CodeRabbit** er bonus: auto-review kun på højrisiko-stier (`.coderabbit.yaml`), aldrig et krav. Bølgernes CodeRabbit-CLI-runde er valgfri. **Dependabot** er undtaget (rule 35 c).
 - **Genevaluering:** Codex-kommentarer, markører og reviews genkører gaten selv; et løst tråd-fund samles op inden for 30 min, eller straks med `gh workflow run review-gate.yml -f pr=N`. Lokalt: `node scripts/review-gate.mjs evaluate --pr N`.
 - **Required check** sættes af ejeren i branch protection; indtil da håndhæves gaten af rule 35 og merge-køen.
