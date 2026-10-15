@@ -37,6 +37,8 @@
   --color-cz-success: rgb(var(--success));
   --color-cz-danger: rgb(var(--danger));
   --color-cz-danger-bg: var(--danger-bg);
+  --color-cz-shot: var(--shot-bg);
+  --color-cz-shot-border: var(--shot-border);
 
   --z-index-sticky: 1100;
   --z-index-toast: 1400;
@@ -144,6 +146,9 @@
   --danger-bg: rgba(168, 30, 30, 0.08);
   --radius-sm: 5px;
   --radius-pill: 9999px;
+  /* #1369: rammen om spillets skærmbilleder (appens mørke flade + hairline). */
+  --shot-bg: #12141c;
+  --shot-border: #262a3b;
 }
 
 body {
