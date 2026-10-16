@@ -19,7 +19,9 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
-import { teamWillStart } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
+import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import {
   applyRiderEligibilityFilter, raceSquadOf, isRiderInjured, raceSelectionReferenceDateStr,
 } from "./riderEligibility.js";
@@ -34,10 +36,20 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 // frie her, så udsigten overvurderer de frie og fejler mod "stiller op". Banneret
 // "stiller ikke op" vises derfor kun når holdet entydigt ikke kan nå gulvet. Ren
 // berigelse: ALDRIG throw, enhver fejl giver { starts: true } (som før #5945).
+//
+// #6740: et afmeldt hold og et hold der ikke kom med i det faktiske felt (fjernet ved
+// start) får ikke længere en taktik-matrix (Friis 16/10: "Lineup locked" + taktik for et
+// løb holdet ikke kørte). Før start tæller Train now-låste ryttere ikke som frie.
 async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
-  const fallback = { starts: true, min: teamWillStart({}).min };
+  const fallback = { starts: true, min: teamWillStart({}).min, reason: null };
   try {
-    if ((race.stages_completed ?? 0) > 0) return fallback;
+    const withdrawn = (await loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds: [race.id] })).has(race.id);
+    if (withdrawn) return teamWillStart({ withdrawn });
+    const stagesCompleted = race.stages_completed ?? 0;
+    if (stagesCompleted > 0) {
+      const inField = (await loadTeamsInStartedField({ supabase, raceIds: [race.id], teamId })).get(race.id) ?? null;
+      return teamWillStart({ stagesCompleted, inField });
+    }
     const { data: roster, error: rosterErr } = await applyRiderEligibilityFilter(
       // pagination-safe: .eq("team_id") afgraenser til ÉT holds egen trup (typisk < 30 ryttere),
       // langt under PostgREST's 1000-raekkers-loft.
@@ -57,10 +69,11 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
       }
     }
     const entered = new Set(entryRiderIds);
+    const locked = (await loadRaceTrainNowLock({ supabase, raceId: race.id, riderIds: rosterIds })).riderIds;
     return teamWillStart({
       entryCount: entryRiderIds.filter((id) => !injuredIds.has(id)).length,
-      freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id)).length,
-      stagesCompleted: race.stages_completed ?? 0,
+      freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id)).length,
+      stagesCompleted,
     });
   } catch {
     // best-effort: ren berigelse, fejler mod "stiller op" (som før #5945).
@@ -338,7 +351,7 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
   // #5945: kun relevant når holdet har en udtagelse at vise taktik for.
   const start_outlook = riderIds.length
     ? await loadStartOutlook({ supabase, race, teamId, entryRiderIds: riderIds })
-    : { starts: true, min: teamWillStart({}).min };
+    : { starts: true, min: teamWillStart({}).min, reason: null };
 
   return {
     stages_completed: race.stages_completed ?? 0,

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   runTrainNow, loadTrainNowStatus, trainNowGameDays, splitTrainNowRiders,
-  createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY,
+  createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces,
 } from "./trainNow.js";
 import {
   TRAIN_NOW_LOCK_TABLE, loadRaceTrainNowLock, loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates,
@@ -471,4 +471,33 @@ test("sameWeekdayCell ignores key order", () => {
   assert.equal(sameWeekdayCell({ a: 1, b: { c: 2, d: 3 } }, { b: { d: 3, c: 2 }, a: 1 }), true);
   assert.equal(sameWeekdayCell({ a: 1 }, { a: 2 }), false);
   assert.equal(sameWeekdayCell(undefined, null), true);
+});
+
+// ── #6740: advarsel foer tryk naar dagens loeb ender under gulvet ─────────────
+
+test("trainNowShortRaces: Friis' sag - 6 udtaget, 1 skadet -> advarsel (5 raske)", () => {
+  const entries = ["a", "b", "c", "d", "e", "f"].map((rider_id) => ({ race_id: "leman", rider_id }));
+  assert.deepEqual(trainNowShortRaces({
+    races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled" }],
+    entries, injuredIds: new Set(["f"]),
+  }), [{ id: "leman", name: "Tour du Léman", fit: 5, min: 6 }]);
+});
+
+test("trainNowShortRaces: fuld trup, startede, afmeldte og ryddede loeb giver ingen advarsel", () => {
+  const six = (race_id) => ["a", "b", "c", "d", "e", "f"].map((rider_id) => ({ race_id, rider_id }));
+  const out = trainNowShortRaces({
+    races: [
+      { id: "full", name: "Full", stages_completed: 0 },
+      { id: "started", name: "Started", stages_completed: 2 },
+      { id: "withdrawn", name: "Withdrawn", stages_completed: 0 },
+      { id: "cleared", name: "Cleared", stages_completed: 0 },
+    ],
+    entries: six("full"), withdrawnIds: new Set(["withdrawn"]), clearedIds: new Set(["cleared"]),
+  });
+  assert.deepEqual(out, []);
+});
+
+test("trainNowShortRaces: ingen udtagelse -> advarsel (assistenten kan ikke fylde op efter trykket)", () => {
+  assert.deepEqual(trainNowShortRaces({ races: [{ id: "r", name: "R", stages_completed: 0 }], entries: [] }),
+    [{ id: "r", name: "R", fit: 0, min: 6 }]);
 });

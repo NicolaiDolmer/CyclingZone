@@ -488,7 +488,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       <Section>
         <SectionHeader title={t("racePage.tactics.title")} />
         <p role="status" data-testid="tactics-not-starting" className="text-xs text-cz-warning">
-          {t("selection.willNotStart", { min: roles.start_outlook.min })}
+          {/* #6740: tre årsager, tre sætninger — afmeldt, kom ikke med ved start, under gulvet. */}
+          {roles.start_outlook.reason === "did_not_start"
+            ? t("racehub.column.didNotStartNote", { min: roles.start_outlook.min })
+            : roles.start_outlook.reason === "withdrawn"
+              ? t("racehub.column.withdrawnNote")
+              : t("selection.willNotStart", { min: roles.start_outlook.min })}
         </p>
       </Section>
     );

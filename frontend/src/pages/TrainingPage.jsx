@@ -45,7 +45,7 @@ import {
   PageHeader, Card, Button, Select, Checkbox,
   PageLoader, EmptyState, SkeletonLines, ChevronDownIcon, TeamIcon,
   ArrowUpIcon, ArrowDownIcon, StarIcon, ChevronRightIcon, PlayIcon,
-  Tabs, TabList, Tab, TabPanel,
+  Tabs, TabList, Tab, TabPanel, Modal,
 } from "../components/ui";
 import { WRAP, COUNT } from "../components/ui/dataTableStyles.js";
 import { useIsMobileViewport, useMediaQuery } from "../hooks/useMediaQuery.ts";
@@ -63,7 +63,7 @@ import { useTrainingGroups } from "../components/training/groups/useTrainingGrou
 import { planForWithGroups, groupNameByRider, groupIdOf, groupValue, NEW_GROUP_VALUE } from "../components/training/groups/trainingGroupsModel.ts";
 // #4847: "Train now" uden bonus (egne filer, minimal indsaettelse her).
 import { useTrainNow } from "../components/training/TrainNowClient.ts";
-import { trainNowRunGate, trainNowSaveErrorKey } from "../components/training/TrainNowState.ts";
+import { trainNowRunGate, trainNowSaveErrorKey, trainNowNeedsConfirm, trainNowWarnings } from "../components/training/TrainNowState.ts";
 import TrainNowNote from "../components/training/TrainNowNote.tsx";
 import FatigueForecast from "../components/training/FatigueForecast.tsx";
 import { useFatigueForecast, raceSlotsFor } from "../components/training/FatigueForecastData.ts";
@@ -588,6 +588,8 @@ export default function TrainingPage() {
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
   const [runError, setRunError] = useState(null);
+  // #6740: ask before a Train now press that costs one of today's race starts.
+  const [confirmTrainNow, setConfirmTrainNow] = useState(false);
 
   // #2465: roster-radens Fokus-select/clear-knap/intensitet-knapper kaldte tidligere
   // setPlan/clearPlan uden await og uden at læse {ok,error} — en fejl (session,
@@ -778,7 +780,11 @@ export default function TrainingPage() {
   async function handleRunToday() {
     setRunError(null);
     // #4847: fejl og laast-status vises af TrainNowNote under knappen.
-    if (trainNow.status.enabled) { await trainNow.press(); return; }
+    if (trainNow.status.enabled) {
+      if (trainNowNeedsConfirm(trainNow.status)) { setConfirmTrainNow(true); return; }
+      await trainNow.press();
+      return;
+    }
     const result = await runToday();
     if (result && !result.ok) {
       setRunError(result.error || "failed");
@@ -2364,6 +2370,30 @@ export default function TrainingPage() {
 
       {isMobile && primaryButton}
       <TrainNowNote status={trainNow.status} result={trainNow.result} error={trainNow.error} className="mb-3" />
+      {/* #6740: the press locks every rider for today, so a race below the start floor
+          can no longer be topped up and the team will not start. Asked once, here. */}
+      <Modal
+        open={confirmTrainNow}
+        onClose={() => setConfirmTrainNow(false)}
+        size="sm"
+        title={t("trainNow.confirm.title")}
+        closeLabel={t("trainNow.confirm.cancel")}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setConfirmTrainNow(false)}>{t("trainNow.confirm.cancel")}</Button>
+            <Button variant="primary" data-testid="training-train-now-confirm"
+              onClick={async () => { setConfirmTrainNow(false); await trainNow.press(); }}>
+              {t("trainNow.confirm.go")}
+            </Button>
+          </>
+        )}
+      >
+        <ul className="space-y-1.5" data-testid="training-train-now-confirm-list">
+          {trainNowWarnings(trainNow.status).map((w) => (
+            <li key={`${w.key}:${w.params.race}`}>{t(w.key, w.params)}</li>
+          ))}
+        </ul>
+      </Modal>
 
       {/* #5485: fanerne hedder Today / Week plan / Development / Report.
           Tallet ved Today er antallet af ryttere der mangler en dag.

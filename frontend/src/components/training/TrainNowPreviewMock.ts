@@ -32,6 +32,8 @@ function status() {
     locked, lockedAt, settled: false,
     // #6139: the preview seed's race ("race-up-1" in seedData.js).
     todayRaces: [{ id: "race-up-1", name: "Tour de Preview" }],
+    // #6740: ?trainNow=short shows the warning + confirm (5 fit riders selected, needs 6).
+    shortRaces: !locked && mode() === "short" ? [{ id: "race-up-1", name: "Tour de Preview", fit: 5, min: 6 }] : [],
   };
 }
 

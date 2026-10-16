@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.363",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "You see when your team does not start",
+          "body": "A team that withdrew, or had fewer than 6 fit riders at the start, no longer shows as racing in Planning, Tactics or Daily Training. Planning says Did not start, and your inbox tells you."
+        },
+        "da": {
+          "title": "Du kan se, når dit hold ikke stiller op",
+          "body": "Et hold, der har meldt fra eller havde færre end 6 raske ryttere ved start, står ikke længere som deltager i Planlægning, Taktik eller Daglig træning. Planlægning skriver Stillede ikke op, og du får besked i indbakken."
+        },
+        "refs": [
+          6740
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Crashes and Train now warn you",
+          "body": "When a rider is injured in a crash, your inbox says until when and which of your races he misses, and he is marked Injured in your lineups. Train now warns you and asks first if a race today would end up with fewer than 6 fit riders."
+        },
+        "da": {
+          "title": "Styrt og Træn nu advarer dig",
+          "body": "Når en rytter bliver skadet i et styrt, står det i indbakken, til hvornår og hvilke af dine løb han misser, og han er markeret Skadet i dine udtagelser. Træn nu advarer og spørger først, hvis et løb i dag ender med færre end 6 raske ryttere."
+        },
+        "refs": [
+          6740
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.362",
     "date": "2026-10-16",
     "changes": [

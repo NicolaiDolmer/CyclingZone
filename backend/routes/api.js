@@ -106,6 +106,7 @@ import {
 // #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
 import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey } from "../lib/raceWithdrawal.js";
+import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
 import { normalizeSupabaseErrorMessage, withSupabaseRetry } from "../lib/supabaseErrorNormalize.js";
@@ -5315,6 +5316,19 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       }));
     }
 
+    // #6740: et startet løb hvor holdet ikke kom med i feltet (fjernet ved start, under
+    // gulvet) viste "Lineup locked" med rytterne, som om holdet kørte (Friis 16/10).
+    // Best-effort: svigter opslaget, vises kolonnen som før (låst).
+    let inFieldByRace = new Map();
+    const startedColIds = cols.filter((r) => (r.stages_completed ?? 0) > 0 && !withdrawnSet.has(r.id)).map((r) => r.id);
+    if (startedColIds.length) {
+      try {
+        inFieldByRace = await loadTeamsInStartedField({ supabase, raceIds: startedColIds, teamId: req.team.id });
+      } catch (err) {
+        captureException(err);
+      }
+    }
+
     const columns = [];
     for (const race of cols) {
       const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
@@ -5346,6 +5360,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
         withdrawn: withdrawnSet.has(race.id),
         lineup_locked: startedHere,
+        did_not_start: startedHere && !withdrawnSet.has(race.id) && inFieldByRace.get(race.id) === false,
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
         bindingRiderIds,
         // #3102 PR 2: peaks/payback-overlay til løbskortet (rytter-navne slås op

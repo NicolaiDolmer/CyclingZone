@@ -136,6 +136,7 @@ import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
 import { requestRankingMatviewRefresh } from "./refreshRankingMatviews.js"; // #5911: gated + samlet
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
+import { notifyRaceInjuries, notifyTeamsDidNotStart } from "./raceAvailabilityNotifications.js"; // #6740
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
 // udtrukket til raceClassifications.js så helt-løb-stien og stage-by-stage-
 // akkumuleringsstien deler PRÆCIS samme semantik.
@@ -1678,6 +1679,16 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
       console.log(
         `[race ${race.id}] ${droppedTeamIds.length} hold stiller ikke op: under ${MIN_RACE_ENTRIES} udtagne ryttere (#4295)`
       );
+      // #6740: holdet fik ingen besked og stod som "Lineup locked" (Friis/knud 16/10).
+      // Kun ved en rigtig start (persist), aldrig i en dry-run. Afmeldte hold er filtreret
+      // fra ovenfor og når ikke hertil. Fejl isoleres: beskeden må aldrig vælte starten.
+      if (persist) {
+        try {
+          await notifyTeamsDidNotStart({ supabase, race, teamIds: droppedTeamIds });
+        } catch (err) {
+          captureException(err, { tags: { flow: "race-run", stage: "did-not-start-notice" }, raceId: race.id });
+        }
+      }
     }
     entries = kept;
   }
@@ -2065,6 +2076,15 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers, seaso
   }
   const { error: injErr } = await supabase.from("rider_condition").upsert(injuryRows, { onConflict: "rider_id" });
   if (injErr) throw new Error(`rider_condition (incident injury): ${injErr.message}`);
+
+  // #6740: manageren skal vide det. En rytter der kører i mål efter et hårdt styrt ser
+  // ellers rask ud (Friis 16/10). Efter den bekræftede skrivning; en fejl her må aldrig
+  // vælte etapen. notifyTeamOwner's 24t-dedup dækker en gen-kørsel af samme etape.
+  try {
+    await notifyRaceInjuries({ supabase, race, injuryRows });
+  } catch (err) {
+    captureException(err, { tags: { flow: "race-run", stage: "injury-notice" }, raceId: race.id });
+  }
 }
 
 // Sub-2 (#2770): persistér race_stage_passages (idempotent delete-then-insert

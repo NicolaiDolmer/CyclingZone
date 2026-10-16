@@ -41,6 +41,9 @@ import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
+import { MIN_RACE_ENTRIES } from "./raceAutopick.js"; // #6740
+import { isRiderInjured } from "./riderEligibility.js"; // #6740
+import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
@@ -122,6 +125,52 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate }) {
 }
 
 /**
+ * PURE (#6740): today's races where a press leaves the team below the start floor.
+ * After a press every rider is locked, so nobody can be added and the assistant
+ * cannot top up (raceRunner skips locked riders). The team then starts with its
+ * fit entered riders only. Started, withdrawn and cleared races are not warned about.
+ */
+export function trainNowShortRaces({ races, entries, injuredIds = new Set(), withdrawnIds = new Set(), clearedIds = new Set(), min = MIN_RACE_ENTRIES }) {
+  const out = [];
+  for (const race of races ?? []) {
+    if ((Number(race.stages_completed) || 0) > 0 || race.status === "completed") continue;
+    if (withdrawnIds.has(race.id) || clearedIds.has(race.id)) continue;
+    const fit = (entries ?? []).filter((e) => e.race_id === race.id && !injuredIds.has(e.rider_id)).length;
+    if (fit < min) out.push({ id: race.id, name: race.name ?? null, fit, min });
+  }
+  return out;
+}
+
+/**
+ * #6740: the warning under the button. Best-effort: a failed read gives no warning,
+ * never a failed status (the press itself does not depend on it).
+ */
+export async function loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate }) {
+  try {
+    const raceIds = (todayRaces ?? []).map((r) => r.id);
+    if (!raceIds.length) return [];
+    const [races, entries, withdrawnIds, cleared] = await Promise.all([
+      checked(supabase.from("races").select("id, name, stages_completed, status").in("id", raceIds), "short races"),
+      // pagination-safe: one team's entries in today's races (a few squads of ≤ 9).
+      checked(supabase.from("race_entries").select("race_id, rider_id").eq("team_id", team.id).in("race_id", raceIds), "short race entries"),
+      loadWithdrawnRaceIdsForTeam({ supabase, teamId: team.id, raceIds }),
+      checked(supabase.from("race_entry_clears").select("race_id").eq("team_id", team.id).in("race_id", raceIds), "short race clears"),
+    ]);
+    const riderIds = [...new Set((entries ?? []).map((e) => e.rider_id))];
+    const conditions = riderIds.length
+      ? await checked(supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", riderIds), "short race injuries")
+      : [];
+    const injuredIds = new Set((conditions ?? []).filter((c) => isRiderInjured(c.injured_until ?? null, tickDate)).map((c) => c.rider_id));
+    return trainNowShortRaces({
+      races: races ?? [], entries: entries ?? [], injuredIds, withdrawnIds,
+      clearedIds: new Set((cleared ?? []).map((c) => c.race_id)),
+    }).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Read-only state for the panel. Cheap: no roster scan; one small read of today's races.
  * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean, todayRaces:Array<{id:string,name:string|null}>}>}
  */
@@ -143,7 +192,9 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
   const lockedAt = locked ? locks.map((row) => row.pressed_at).filter(Boolean).sort()[0] ?? null : null;
   const settled = SETTLED_STATUSES.has(work?.status);
   const reason = settled ? "date_settled" : locked ? "locked" : earlierOpen ? "previous_date_open" : null;
-  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces };
+  // #6740: only while the press is still possible; afterwards there is nothing to warn about.
+  const shortRaces = reason === null ? await loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate }) : [];
+  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces, shortRaces };
 }
 
 /**
