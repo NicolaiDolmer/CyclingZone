@@ -73,6 +73,12 @@ async function main() {
     const sidebar = await page.locator("nav, aside").first().isVisible().catch(() => false); // catch-ok
     console.log(width, "url", page.url(), "sidebar-or-nav visible:", sidebar);
     await page.screenshot({ path: resolve(OUT, `${PREFIX}-board-meeting-${width}.png`), clip: { x: 0, y: 0, width, height: width >= 768 ? 520 : height } });
+    if (width < 768) {
+      // Footer-clearance: scroll helt i bund, saa den sidste knap og den faste bundnavigation ses sammen.
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: resolve(OUT, `${PREFIX}-board-meeting-${width}-bottom.png`) });
+    }
     await context.close();
     }
   } finally {
