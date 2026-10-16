@@ -41,6 +41,11 @@ Codex-stopregel (ejer 16/10): P1-fund rettes; er der kun P2-nuancer tilbage efte
 | #6643 | Løbshistorien med animationer | Ejer 16/10: idé om at sætte siden i beta UDEN animationer først; tages med ejeren |
 | #6636, #6634, #6248 | Codex-bibliotek (holdes adskilt), plan-docs, gammel træning | Spørg ejeren før handling |
 
+**Nye fund ved sessionens slutning (16/10 ca. kl. 11, ikke rettet endnu):**
+- **#6699 (S5-tænding):** merge-konflikt med main. CodeRabbit (major): migrationen skal tilføje den nye CHECK som `NOT VALID` og køre `VALIDATE CONSTRAINT` i en separat transaktion (ellers lang ACCESS EXCLUSIVE-lås på `races`). CodeRabbit (major): backend må ikke binde `s5_profiles_v1` før migrationen er applied (deploy før auto-migrate = CHECK-fejl ved første etape-claim); løs rækkefølgen, fx migration i separat PR først. Codex (P1): patch noten skal med i samme PR som tændingen (teksten godkendes af ejeren).
+- **#6702 (scout-alder):** Codex: i sæsonpausen er der ingen `active` sæson, og `getActiveSeasonNumber()` falder tilbage til 1, så alle ryttere får sæson-1-alder; håndtér transition-sæsonen eksplicit. Codex mener desuden, at ændringen er spillervendt (prognose/pastPeak) og kræver patch note; afklar med ejeren.
+- **#6705 (flag-udløb):** Codex: `decide_by` skal valideres som ægte kalenderdato (ikke kun formatet).
+
 Kendt CI-særhed: merge-køen kræver checket `league-size-invariant`; mangler det på en PR, merge `origin/main` ind for en frisk CI-kørsel. Smoke-fejl af typen "e2e-laner blev afbrudt (cancelled)" skyldes et nyt push, ikke en test.
 
 ## Andre åbne spor fra 16/10
