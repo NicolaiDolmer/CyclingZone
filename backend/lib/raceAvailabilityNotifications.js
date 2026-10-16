@@ -15,6 +15,7 @@
 import { notifyTeamOwner } from "./notificationService.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export const RACE_AVAILABILITY_NOTIFICATION_TYPE = "selection_warning";
 
@@ -102,22 +103,19 @@ export async function notifyRaceInjuries({ supabase, race, injuryRows, notify = 
   const { data: riders, error: riderErr } = await supabase.from("riders")
     .select("id, firstname, lastname, team_id").in("id", riderIds);
   if (riderErr) throw new Error(`riders (injury notice): ${riderErr.message}`);
-  // pagination-safe: de samme ryttere, kun deres egne tilmeldinger (få pr. rytter).
+  // Kun tilmeldinger i løb der ikke er startet: race_entries bevares som historik, så et
+  // uafgrænset opslag ville vokse med rytterens karriere (review #6742). Det indlejrede
+  // races!inner-filter holder svaret på de få kommende løb.
   const { data: entries, error: entryErr } = await supabase.from("race_entries")
-    .select("race_id, rider_id, team_id").in("rider_id", riderIds);
+    .select("race_id, rider_id, team_id, races!inner(id, name, stages_completed, status)")
+    .in("rider_id", riderIds).eq("races.stages_completed", 0).neq("races.status", "completed");
   if (entryErr) throw new Error(`race_entries (injury notice): ${entryErr.message}`);
-  const raceIds = [...new Set((entries ?? []).map((e) => e.race_id))];
-  let races = [];
+  const races = [...new Map((entries ?? []).filter((e) => e?.races?.id).map((e) => [e.races.id, e.races])).values()];
+  const raceIds = races.map((r) => r.id);
   const firstStageDateByRace = new Map();
   if (raceIds.length) {
-    const { data: raceRows, error: raceErr } = await supabase.from("races")
-      .select("id, name, stages_completed, status").in("id", raceIds);
-    if (raceErr) throw new Error(`races (injury notice): ${raceErr.message}`);
-    races = raceRows ?? [];
-    // pagination-safe: kun løb nogle få ryttere er tilmeldt (få løb × ≤ 21 etaper).
-    const { data: sched, error: schedErr } = await supabase.from("race_stage_schedule")
-      .select("race_id, scheduled_at").in("race_id", raceIds);
-    if (schedErr) throw new Error(`race_stage_schedule (injury notice): ${schedErr.message}`);
+    const sched = await fetchAllRows(() => supabase.from("race_stage_schedule")
+      .select("race_id, scheduled_at").in("race_id", raceIds).order("race_id").order("stage_number"));
     for (const row of sched ?? []) {
       if (!row?.scheduled_at) continue;
       const day = copenhagenDateString(new Date(row.scheduled_at));

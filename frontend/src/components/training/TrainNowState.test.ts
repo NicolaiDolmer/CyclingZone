@@ -88,23 +88,26 @@ test("parse: shortRaces from the server, malformed rows dropped", () => {
   const s = parseTrainNowStatus({ enabled: true, available: true, shortRaces: [
     { id: "leman", name: "Tour du Léman", fit: 5, min: 6 }, { name: "no id" }, null,
   ] });
-  assert.deepEqual(s.shortRaces, [{ id: "leman", name: "Tour du Léman", fit: 5, min: 6 }]);
+  assert.deepEqual(s.shortRaces, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
   assert.deepEqual(parseTrainNowStatus({ enabled: true }).shortRaces, []);
 });
 
 test("warnings: one line per short race, empty lineup has its own sentence", () => {
   const status = { ...available, shortRaces: [
-    { id: "leman", name: "Tour du Léman", fit: 5, min: 6 }, { id: "x", name: "Race X", fit: 0, min: 6 },
+    { id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6 }, { id: "x", name: "Race X", fit: 0, entered: 0, min: 6 },
+    // Udtaget, men alle skadede: "kun 0 af 6 raske", ikke "ingen udtaget" (review #6742).
+    { id: "y", name: "Race Y", fit: 0, entered: 3, min: 6 },
   ] };
   assert.deepEqual(trainNowWarnings(status), [
     { key: "trainNow.shortRace", params: { race: "Tour du Léman", fit: 5, min: 6 } },
     { key: "trainNow.shortRaceEmpty", params: { race: "Race X", fit: 0, min: 6 } },
+    { key: "trainNow.shortRace", params: { race: "Race Y", fit: 0, min: 6 } },
   ]);
   assert.equal(trainNowNeedsConfirm(status), true);
 });
 
 test("warnings: none once the date is locked or the press is unavailable", () => {
-  const short = [{ id: "leman", name: "Tour du Léman", fit: 5, min: 6 }];
+  const short = [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6 }];
   assert.deepEqual(trainNowWarnings({ ...locked, shortRaces: short }), []);
   assert.deepEqual(trainNowWarnings({ ...available, available: false, reason: "previous_date_open", shortRaces: short }), []);
   assert.equal(trainNowNeedsConfirm({ ...available, shortRaces: [] }), false);

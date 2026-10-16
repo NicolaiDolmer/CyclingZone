@@ -33,7 +33,7 @@ function status() {
     // #6139: the preview seed's race ("race-up-1" in seedData.js).
     todayRaces: [{ id: "race-up-1", name: "Tour de Preview" }],
     // #6740: ?trainNow=short shows the warning + confirm (5 fit riders selected, needs 6).
-    shortRaces: !locked && mode() === "short" ? [{ id: "race-up-1", name: "Tour de Preview", fit: 5, min: 6 }] : [],
+    shortRaces: !locked && mode() === "short" ? [{ id: "race-up-1", name: "Tour de Preview", fit: 5, entered: 6, min: 6 }] : [],
   };
 }
 

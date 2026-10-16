@@ -480,7 +480,7 @@ test("trainNowShortRaces: Friis' sag - 6 udtaget, 1 skadet -> advarsel (5 raske)
   assert.deepEqual(trainNowShortRaces({
     races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled" }],
     entries, injuredIds: new Set(["f"]),
-  }), [{ id: "leman", name: "Tour du Léman", fit: 5, min: 6 }]);
+  }), [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6 }]);
 });
 
 test("trainNowShortRaces: fuld trup, startede, afmeldte og ryddede loeb giver ingen advarsel", () => {
@@ -499,5 +499,5 @@ test("trainNowShortRaces: fuld trup, startede, afmeldte og ryddede loeb giver in
 
 test("trainNowShortRaces: ingen udtagelse -> advarsel (assistenten kan ikke fylde op efter trykket)", () => {
   assert.deepEqual(trainNowShortRaces({ races: [{ id: "r", name: "R", stages_completed: 0 }], entries: [] }),
-    [{ id: "r", name: "R", fit: 0, min: 6 }]);
+    [{ id: "r", name: "R", fit: 0, entered: 0, min: 6 }]);
 });

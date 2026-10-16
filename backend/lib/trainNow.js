@@ -135,8 +135,10 @@ export function trainNowShortRaces({ races, entries, injuredIds = new Set(), wit
   for (const race of races ?? []) {
     if ((Number(race.stages_completed) || 0) > 0 || race.status === "completed") continue;
     if (withdrawnIds.has(race.id) || clearedIds.has(race.id)) continue;
-    const fit = (entries ?? []).filter((e) => e.race_id === race.id && !injuredIds.has(e.rider_id)).length;
-    if (fit < min) out.push({ id: race.id, name: race.name ?? null, fit, min });
+    const raceEntries = (entries ?? []).filter((e) => e.race_id === race.id);
+    const fit = raceEntries.filter((e) => !injuredIds.has(e.rider_id)).length;
+    // `entered` skelner "ingen udtaget" fra "udtaget, men skadet" i advarslens tekst.
+    if (fit < min) out.push({ id: race.id, name: race.name ?? null, fit, entered: raceEntries.length, min });
   }
   return out;
 }

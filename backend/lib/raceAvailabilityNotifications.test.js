@@ -68,7 +68,11 @@ function fakeDb(tables) {
   return {
     from(table) {
       const rows = tables[table] ?? [];
-      const q = { select: () => q, in: () => q, eq: () => q, then: (r) => r({ data: rows, error: null }) };
+      const q = {
+        select: () => q, in: () => q, eq: () => q, neq: () => q, order: () => q,
+        range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
+        then: (r) => r({ data: rows, error: null }),
+      };
       return q;
     },
   };
@@ -78,13 +82,10 @@ test("notifyRaceInjuries: én besked pr. skadet rytter til holdets ejer, med de 
   const sent = [];
   const supabase = fakeDb({
     riders: [{ id: "adrien", firstname: "Adrien", lastname: "Charpentier", team_id: "lorraine" }],
+    // Svaret efter races!inner-filteret: kun løb der ikke er startet (Westkust er væk).
     race_entries: [
-      { race_id: "westkust", rider_id: "adrien", team_id: "lorraine" },
-      { race_id: "leman", rider_id: "adrien", team_id: "lorraine" },
-    ],
-    races: [
-      { id: "westkust", name: "Westkust Klassieker", stages_completed: 1, status: "completed" },
-      { id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled" },
+      { race_id: "leman", rider_id: "adrien", team_id: "lorraine",
+        races: { id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled" } },
     ],
     race_stage_schedule: [
       { race_id: "westkust", scheduled_at: "2026-10-16T09:00:00Z" },

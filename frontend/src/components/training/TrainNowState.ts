@@ -19,7 +19,7 @@ export type TrainNowStatus = {
   shortRaces: TrainNowShortRace[];
 };
 
-export type TrainNowShortRace = { id: string; name: string | null; fit: number; min: number };
+export type TrainNowShortRace = { id: string; name: string | null; fit: number; entered: number; min: number };
 
 export type TrainNowPressResult = {
   settledRiderIds: string[];
@@ -75,6 +75,8 @@ function parseShortRaces(value: unknown): TrainNowShortRace[] {
       id: r.id as string,
       name: typeof r.name === "string" ? r.name : null,
       fit: Number.isFinite(r.fit) ? Number(r.fit) : 0,
+      // Ældre backend uden `entered`: antag at de raske er de udtagne.
+      entered: Number.isFinite(r.entered) ? Number(r.entered) : (Number.isFinite(r.fit) ? Number(r.fit) : 0),
       min: Number.isFinite(r.min) ? Number(r.min) : 6,
     }));
 }
@@ -86,7 +88,7 @@ function parseShortRaces(value: unknown): TrainNowShortRace[] {
 export function trainNowWarnings(status: TrainNowStatus): Array<{ key: string; params: Record<string, string | number> }> {
   if (!status.enabled || !status.available) return [];
   return status.shortRaces.map((r) => ({
-    key: r.fit > 0 ? "trainNow.shortRace" : "trainNow.shortRaceEmpty",
+    key: r.entered > 0 ? "trainNow.shortRace" : "trainNow.shortRaceEmpty",
     params: { race: r.name ?? "", fit: r.fit, min: r.min },
   }));
 }
