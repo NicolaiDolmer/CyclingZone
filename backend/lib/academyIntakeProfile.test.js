@@ -159,8 +159,9 @@ test("saveAcademyProfile: gemmer via een atomisk RPC, aldrig separat insert + de
 
 test("saveAcademyProfile: fejler RPC'en, kastes fejlen (transaktionen ruller sletningen tilbage)", async () => {
   const sb = buildSaveMock({ tier: 2, rpcError: { message: "transient" } });
+  const now = new Date("2026-10-15T12:00:00Z");
   await assert.rejects(
-    saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: [] } }),
+    saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: [] }, now }),
     /academy-profile save: transient/,
   );
   assert.equal(sb.capture.ops.length, 1, "eet forsoeg, ingen efterfoelgende oprydning uden for transaktionen");
@@ -198,7 +199,7 @@ test("save_academy_intake_profile: serialiseret pr. hold og service-role-only", 
 
 test("saveAcademyProfile: et laast felt afvises uden skrivning", async () => {
   const sb = buildSaveMock({ tier: 1 });
-  const r = await saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: ["gc"] } });
+  const r = await saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: ["gc"] }, now: new Date("2026-10-15T12:00:00Z") });
   assert.equal(r.ok, false);
   assert.equal(r.error, "type_locked");
   assert.equal(sb.capture.inserts.length, 0);
