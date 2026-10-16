@@ -106,6 +106,7 @@ export async function notifyRaceInjuries({ supabase, race, injuryRows, notify = 
   // Kun tilmeldinger i løb der ikke er startet: race_entries bevares som historik, så et
   // uafgrænset opslag ville vokse med rytterens karriere (review #6742). Det indlejrede
   // races!inner-filter holder svaret på de få kommende løb.
+  // pagination-safe: en etapes styrtede ryttere (en håndfuld) × deres ikke-startede løb (få pr. rytter).
   const { data: entries, error: entryErr } = await supabase.from("race_entries")
     .select("race_id, rider_id, team_id, races!inner(id, name, stages_completed, status)")
     .in("rider_id", riderIds).eq("races.stages_completed", 0).neq("races.status", "completed");
