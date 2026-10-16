@@ -82,7 +82,7 @@
     "type": "Ryttertype",
     "extra": "Ekstra valg",
     "extraLocked": "Låses op på niveau 4",
-    "typeLocked": "Låses op på niveau 2",
+    "typeLocked": "Låses op på niveau 3",
     "none": "Ingen præference",
     "groupNations": "Nationer",
     "groupRegions": "Regioner",

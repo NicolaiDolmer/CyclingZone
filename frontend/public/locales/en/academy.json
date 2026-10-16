@@ -82,7 +82,7 @@
     "type": "Rider type",
     "extra": "Extra choice",
     "extraLocked": "Unlocks at level 4",
-    "typeLocked": "Unlocks at level 2",
+    "typeLocked": "Unlocks at level 3",
     "none": "No preference",
     "groupNations": "Nations",
     "groupRegions": "Regions",
