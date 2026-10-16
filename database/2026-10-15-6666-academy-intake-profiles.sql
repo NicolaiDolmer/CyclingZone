@@ -31,3 +31,42 @@ COMMIT;
 
 COMMENT ON TABLE public.academy_intake_profiles IS
   '#6666: akademiets oenskede profil pr. hold. origins = ISO2 eller region:<noegle>; rider_types = arketype-noegler. Virker fra effective_from (gemt + 14 dage). Service-role-only.';
+
+-- Gem en ny ventende profil atomisk (Codex-fund paa PR #6673). Uden en
+-- serialisering kunne to samtidige PUT /api/academy/profile for samme hold
+-- (fx to faner) hver indsaette sin raekke og derefter slette den andens, saa
+-- ingen ventende profil stod tilbage. Her sker oprydning og indsaettelse i een
+-- transaktion bag en advisory-laas pr. hold: den sidst gemte vinder, og fejler
+-- indsaettelsen, rulles sletningen tilbage (det tidligere valg gaar aldrig tabt).
+CREATE OR REPLACE FUNCTION public.save_academy_intake_profile(
+  p_team_id uuid,
+  p_origins text[],
+  p_rider_types text[],
+  p_effective_from timestamptz,
+  p_now timestamptz
+) RETURNS bigint
+  LANGUAGE plpgsql
+  -- Forward-guard (#927, advisor 0011): search_path i SAMME statement.
+  SET search_path = public, pg_catalog
+  AS $$
+DECLARE
+  v_id bigint;
+BEGIN
+  IF p_team_id IS NULL OR p_effective_from IS NULL OR p_now IS NULL THEN
+    RAISE EXCEPTION 'save_academy_intake_profile: team, effective_from og now er paakraevet';
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('academy_intake_profiles:' || p_team_id::text, 0));
+  DELETE FROM public.academy_intake_profiles
+   WHERE team_id = p_team_id
+     AND effective_from > p_now;
+  INSERT INTO public.academy_intake_profiles (team_id, origins, rider_types, effective_from)
+  VALUES (p_team_id, coalesce(p_origins, '{}'), coalesce(p_rider_types, '{}'), p_effective_from)
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- ACL: service_role only, samme moenster som demote_rider_to_academy.
+REVOKE ALL     ON FUNCTION public.save_academy_intake_profile(uuid, text[], text[], timestamptz, timestamptz) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.save_academy_intake_profile(uuid, text[], text[], timestamptz, timestamptz) FROM anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.save_academy_intake_profile(uuid, text[], text[], timestamptz, timestamptz) TO service_role;

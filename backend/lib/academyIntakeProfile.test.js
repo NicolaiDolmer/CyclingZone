@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   PROFILE_TIERS,
@@ -120,8 +123,11 @@ test("generator: uden profil er traekkene bit-identiske med foer (determinisme)"
   assert.deepEqual(a.map((c) => c.rider), b.map((c) => c.rider));
 });
 
-function buildSaveMock({ tier = 2, insertError = null } = {}) {
-  const capture = { deletes: [], inserts: [], ops: [] };
+// Gem gaar gennem RPC'en save_academy_intake_profile (oprydning + indsaettelse i
+// een transaktion bag en advisory-laas pr. hold). Mocken fanger rpc-kaldene;
+// enhver direkte insert/delete paa tabellen er en regression og kaster.
+function buildSaveMock({ tier = 2, rpcError = null } = {}) {
+  const capture = { inserts: [], ops: [] };
   return {
     capture,
     from(table) {
@@ -130,63 +136,64 @@ function buildSaveMock({ tier = 2, insertError = null } = {}) {
         return api;
       }
       if (table === "academy_intake_profiles") {
-        return {
-          delete() {
-            capture.ops.push("delete");
-            const filters = {};
-            const api = {
-              eq(col, val) { filters[`eq:${col}`] = val; return api; },
-              gt(col, val) { filters[`gt:${col}`] = val; return api; },
-              neq(col, val) {
-                filters[`neq:${col}`] = val;
-                capture.deletes.push(filters);
-                return Promise.resolve({ error: null });
-              },
-            };
-            return api;
-          },
-          insert(row) {
-            capture.ops.push("insert");
-            capture.inserts.push(row);
-            const api = {
-              select() { return api; },
-              single: async () => (insertError ? { data: null, error: insertError } : { data: { id: 99 }, error: null }),
-            };
-            return api;
-          },
-        };
+        throw new Error("direkte skrivning til academy_intake_profiles: brug RPC'en (atomisk pr. hold)");
       }
       throw new Error(`uventet tabel ${table}`);
+    },
+    async rpc(name, args) {
+      capture.ops.push(name);
+      capture.inserts.push(args);
+      return rpcError ? { data: null, error: rpcError } : { data: 99, error: null };
     },
   };
 }
 
-test("saveAcademyProfile: indsaetter foer oprydning og rydder aldrig den nye raekke", async () => {
+test("saveAcademyProfile: gemmer via een atomisk RPC, aldrig separat insert + delete", async () => {
   const sb = buildSaveMock({ tier: 2 });
-  await saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: [] } });
-  assert.deepEqual(sb.capture.ops, ["insert", "delete"]);
-  assert.equal(sb.capture.deletes[0]["neq:id"], 99);
-  assert.equal(sb.capture.deletes[0]["eq:team_id"], "team-A");
+  const now = new Date("2026-10-15T12:00:00Z");
+  await saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: [] }, now });
+  assert.deepEqual(sb.capture.ops, ["save_academy_intake_profile"]);
+  assert.equal(sb.capture.inserts[0].p_team_id, "team-A");
+  assert.equal(sb.capture.inserts[0].p_now, now.toISOString(), "oprydningen maaler 'ventende' mod samme tidspunkt som gemningen");
 });
 
-test("saveAcademyProfile: fejler indsaettelsen, roeres den ventende profil ikke", async () => {
-  const sb = buildSaveMock({ tier: 2, insertError: { message: "transient" } });
+test("saveAcademyProfile: fejler RPC'en, kastes fejlen (transaktionen ruller sletningen tilbage)", async () => {
+  const sb = buildSaveMock({ tier: 2, rpcError: { message: "transient" } });
   await assert.rejects(
     saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["DK"], types: [] } }),
     /academy-profile save: transient/,
   );
-  assert.deepEqual(sb.capture.ops, ["insert"], "ingen sletning naar indsaettelsen fejler");
+  assert.equal(sb.capture.ops.length, 1, "eet forsoeg, ingen efterfoelgende oprydning uden for transaktionen");
 });
 
-test("saveAcademyProfile: gemmer med 14 dages forsinkelse og rydder en ventende aendring", async () => {
+test("saveAcademyProfile: gemmer med 14 dages forsinkelse", async () => {
   const sb = buildSaveMock({ tier: 2 });
   const now = new Date("2026-10-15T12:00:00Z");
   const r = await saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["region:nordic"], types: ["climber"] }, now });
   assert.equal(r.ok, true);
   assert.equal(new Date(r.effectiveFrom).getTime() - now.getTime(), PROFILE_DELAY_DAYS * 86_400_000);
-  assert.equal(sb.capture.deletes.length, 1);
-  assert.deepEqual(sb.capture.inserts[0].origins, ["region:nordic"]);
-  assert.deepEqual(sb.capture.inserts[0].rider_types, ["climber"]);
+  assert.equal(sb.capture.inserts[0].p_effective_from, r.effectiveFrom);
+  assert.deepEqual(sb.capture.inserts[0].p_origins, ["region:nordic"]);
+  assert.deepEqual(sb.capture.inserts[0].p_rider_types, ["climber"]);
+});
+
+// SQL-kontrakten bag RPC'en: laas pr. hold, oprydning FOER indsaettelse i samme
+// funktion (= samme transaktion), og kun service_role maa kalde den.
+test("save_academy_intake_profile: serialiseret pr. hold og service-role-only", () => {
+  const sql = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "..", "..", "database", "2026-10-15-6666-academy-intake-profiles.sql"),
+    "utf8",
+  );
+  const start = sql.indexOf("CREATE OR REPLACE FUNCTION public.save_academy_intake_profile(");
+  assert.ok(start > 0, "RPC'en findes i migrationen");
+  const body = sql.slice(start, sql.indexOf("$$;", start));
+  const lock = body.indexOf("pg_advisory_xact_lock(");
+  const del = body.indexOf("DELETE FROM public.academy_intake_profiles");
+  const ins = body.indexOf("INSERT INTO public.academy_intake_profiles");
+  assert.ok(lock > 0 && lock < del && del < ins, "laas, saa oprydning, saa indsaettelse");
+  assert.match(body, /p_team_id::text/, "laasen er pr. hold");
+  assert.match(sql, /REVOKE EXECUTE ON FUNCTION public\.save_academy_intake_profile\([^)]*\) FROM anon, authenticated;/);
+  assert.match(sql, /GRANT {2}EXECUTE ON FUNCTION public\.save_academy_intake_profile\([^)]*\) TO service_role;/);
 });
 
 test("saveAcademyProfile: et laast felt afvises uden skrivning", async () => {

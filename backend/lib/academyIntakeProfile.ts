@@ -279,24 +279,19 @@ export async function saveAcademyProfile(
   const checked = validateProfileInput(input, tier);
   if (!checked.ok) return checked;
   const effectiveFrom = new Date(new Date(now).getTime() + PROFILE_DELAY_DAYS * DAY_MS).toISOString();
-  // Indsæt FØR oprydning: fejler indsættelsen, står den tidligere ventende
-  // ændring urørt (intet valg går tabt). Først når den nye række findes, ryddes
-  // de ældre ventende ønsker, så der aldrig står to planlagte profiler.
-  const { data: inserted, error } = await supabase.from("academy_intake_profiles").insert({
-    team_id: teamId,
-    origins: checked.profile.origins,
-    rider_types: checked.profile.types,
-    effective_from: effectiveFrom,
-  }).select("id").single();
+  // Oprydning af ældre ventende ønsker + indsættelse sker i ÉN transaktion bag
+  // en advisory-lås pr. hold (RPC'en i 2026-10-15-6666-academy-intake-profiles.sql).
+  // To samtidige gem (fx to faner) kan derfor ikke slette hinandens række; den
+  // sidst gemte vinder. Fejler indsættelsen, rulles sletningen tilbage.
+  const { data: insertedId, error } = await supabase.rpc("save_academy_intake_profile", {
+    p_team_id: teamId,
+    p_origins: checked.profile.origins,
+    p_rider_types: checked.profile.types,
+    p_effective_from: effectiveFrom,
+    p_now: new Date(now).toISOString(),
+  });
   if (error) throw new Error(`academy-profile save: ${error.message}`);
-  if (inserted?.id == null) throw new Error("academy-profile save: insert returned no id");
-  // Fejler oprydningen, er den nye profil gemt; et nyt forsøg rydder de gamle.
-  const { error: delErr } = await supabase
-    .from("academy_intake_profiles").delete()
-    .eq("team_id", teamId)
-    .gt("effective_from", new Date(now).toISOString())
-    .neq("id", inserted.id);
-  if (delErr) throw new Error(`academy-profile clear pending: ${delErr.message}`);
+  if (insertedId == null) throw new Error("academy-profile save: rpc returned no id");
   return { ok: true, profile: checked.profile, effectiveFrom };
 }
 
