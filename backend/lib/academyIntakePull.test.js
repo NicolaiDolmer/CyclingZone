@@ -26,13 +26,17 @@ function buildMockSupabase({
   claimed = false, // true = allerede claimet denne uge (boot-race/gentaget klik)
   failRiderUpdate = false, // #6666: provisorisk værdi fejler (efter claim + kuld + derive)
   failRiderDelete = false, // #6666: oprydningen selv fejler
+  keptIntake = [], // Codex 16/10: kandidater der blev signeret/afvist i en anden fane under hentningen
 } = {}) {
   const capture = { upserts: [], riderUpdates: [], deletes: [], claimDeletes: [] };
   let claimHeld = claimed; // stateful: en oprydning frigiver claimet, så ugen kan hentes igen
   const deleteIn = (table, fail) => ({
     in(col, ids) {
       capture.deletes.push({ table, col, ids });
-      return Promise.resolve({ error: fail ? { message: `${table} delete boom` } : null });
+      const p = Promise.resolve({ error: fail ? { message: `${table} delete boom` } : null });
+      // @ts-ignore - mock: .eq() kædes på sletningen af intake-rækker
+      p.eq = () => p;
+      return p;
     },
   });
   const supabase = {
@@ -113,7 +117,10 @@ function buildMockSupabase({
       }
 
       if (table === "academy_intake") {
-        return { delete() { return deleteIn("academy_intake", false); } };
+        return {
+          delete() { return deleteIn("academy_intake", false); },
+          select() { return { in: () => Promise.resolve({ data: keptIntake.map((id) => ({ rider_id: id })), error: null }) }; },
+        };
       }
 
       // #6666: akademi-faciliteten + profilen (ingen køb, ingen profil = niveau 0).
@@ -373,6 +380,19 @@ test("pullWeeklyAcademyIntake (#6666): derive-fejl → kuldets intake-rækker + 
   ]);
   assert.deepEqual(supabase._capture.claimDeletes, [{ team_id: "team-A", tick_date: PULL_WEEK }]);
   assert.equal(supabase._capture.riderUpdates.length, 0, "ingen provisoriske værdier efter en derive-fejl");
+});
+
+test("pullWeeklyAcademyIntake (Codex 16/10): en kandidat signeret i en anden fane slettes ikke, og ugens claim beholdes", async () => {
+  const supabase = buildMockSupabase({ keptIntake: ["rider-2"] });
+  await assert.rejects(
+    pullWeeklyAcademyIntake(supabase, pullOpts({ deriveRiders: async () => { throw new Error("derive boom"); } })),
+    /derive boom/,
+  );
+  assert.deepEqual(supabase._capture.deletes, [
+    { table: "academy_intake", col: "rider_id", ids: ["rider-1", "rider-2"] },
+    { table: "riders", col: "id", ids: ["rider-1"] },
+  ]);
+  assert.equal(supabase._capture.claimDeletes.length, 0, "en afgjort kandidat = ugen er brugt");
 });
 
 test("pullWeeklyAcademyIntake (#6666): fejl i provisorisk værdi → hele kuldet + claimet ryddes", async () => {

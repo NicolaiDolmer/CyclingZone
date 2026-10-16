@@ -195,13 +195,27 @@ export async function pullWeeklyAcademyIntake(supabase, {
  */
 async function rollbackPull(supabase, { teamId, weekSunday, riderIds, cause }) {
   const failures = [];
+  let keepClaim = false;
   if (riderIds.length > 0) {
-    const { error: intakeErr } = await supabase.from("academy_intake").delete().in("rider_id", riderIds);
+    // Codex 16/10 (P1): kun kandidater der STADIG er 'offered' må slettes. En
+    // kandidat der er signeret (gebyr betalt) eller afvist i en anden fane i
+    // mellemtiden, røres ikke, og så beholdes ugens claim også.
+    const { error: intakeErr } = await supabase.from("academy_intake")
+      .delete().in("rider_id", riderIds).eq("status", "offered");
     if (intakeErr) failures.push(`intake rows: ${intakeErr.message}`);
-    const { error: riderErr } = await supabase.from("riders").delete().in("id", riderIds);
-    if (riderErr) failures.push(`riders: ${riderErr.message}`);
+    // Det der er tilbage, er afgjort (signeret/afvist) og skal blive.
+    const { data: kept, error: keptErr } = await supabase.from("academy_intake")
+      .select("rider_id").in("rider_id", riderIds);
+    if (keptErr) failures.push(`intake check: ${keptErr.message}`);
+    const keptIds = new Set((kept ?? []).map((r) => r.rider_id));
+    if (keptIds.size > 0) keepClaim = true;
+    const toDelete = riderIds.filter((id) => !keptIds.has(id));
+    if (!intakeErr && !keptErr && toDelete.length > 0) {
+      const { error: riderErr } = await supabase.from("riders").delete().in("id", toDelete);
+      if (riderErr) failures.push(`riders: ${riderErr.message}`);
+    }
   }
-  if (failures.length === 0) {
+  if (failures.length === 0 && !keepClaim) {
     const { error: claimErr } = await supabase
       .from("academy_intake_ticks").delete().eq("team_id", teamId).eq("tick_date", weekSunday);
     if (claimErr) failures.push(`claim: ${claimErr.message}`);
