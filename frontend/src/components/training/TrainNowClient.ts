@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import {
-  TRAIN_NOW_OFF, parseTrainNowStatus,
+  TRAIN_NOW_OFF, parseTrainNowStatus, parseShortRaces,
   type TrainNowPressResult, type TrainNowStatus,
 } from "./TrainNowState.ts";
 
@@ -33,7 +33,11 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
   // sends nothing (state updates are not visible until the next render).
   const inFlight = useRef(false);
 
-  const press = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+  // #6740: `confirmedShortRaceIds` is the explicit yes for the races the warning showed.
+  // The server re-checks today's races on every first press and answers 409
+  // short_races_confirm with the fresh list when a race is not covered by that yes;
+  // the page then asks again (no error line: nothing failed).
+  const press = useCallback(async ({ confirmedShortRaceIds = [] }: { confirmedShortRaceIds?: string[] } = {}): Promise<{ ok: boolean; error?: string }> => {
     if (inFlight.current) return { ok: false, error: "in_flight" };
     inFlight.current = true;
     setPressing(true);
@@ -41,10 +45,17 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
     try {
       const headers = await authHeaders();
       if (!headers) return { ok: false, error: "auth" };
-      const res = await apiFetch(PATH, { method: "POST", headers }, { source: "training-train-now" });
+      const res = await apiFetch(PATH, {
+        method: "POST", headers, body: JSON.stringify({ confirmedShortRaceIds }),
+      }, { source: "training-train-now" });
       const data = (res.data ?? {}) as {
         error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
+        shortRaces?: unknown;
       };
+      if (!res.ok && data.error === "short_races_confirm") {
+        setStatus((prev) => ({ ...prev, shortRaces: parseShortRaces(data.shortRaces) }));
+        return { ok: false, error: "short_races_confirm" };
+      }
       if (!res.ok) {
         const code = data.error || "failed";
         setError(code);

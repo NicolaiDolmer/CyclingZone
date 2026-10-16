@@ -296,9 +296,7 @@
       "emptyCta": "View full standings",
       "emptyHint": "Standings update after each completed race day.",
       "aiBadge": "AI",
-      "managerRank": "#{rank} among managers",
-      "movementTitle": "Division placement since last race day",
-      "pointsDeltaTitle": "Points earned on the last race day"
+      "managerRank": "#{rank} among managers"
     },
     "board": {
       "title": "Board status",

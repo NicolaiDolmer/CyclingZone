@@ -160,6 +160,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // #5519: HelpPage gater den nye youthSquads-sektion paa dette flag, saa
   // U23/junior-hjaelpeteksterne foerst vises naar siderne faktisk er live.
   "youth_squad_pages",
+  // #6666: HelpPage gater optag 2.0-blokkene (profil, prognose) paa dette flag.
+  "academy_intake_pull_enabled",
   // #4854: HelpPage gater traethedsgraense-blokken paa dette flag.
   "training_fatigue_rules",
   // #5124: SeasonMatrix vaelger mobilvisningen paa dette flag.

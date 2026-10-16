@@ -31,7 +31,8 @@ import ScoutablePotentiale from "../ScoutablePotentiale";
 import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
 import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
-import { retirementRiskBadgeKey } from "../../../lib/riderAge";
+import { retirementRiskBadgeKey, seasonNumberFromReferenceYear } from "../../../lib/riderAge";
+import { contractOfferEligibility, CONTRACT_STATE } from "../../../../../backend/lib/contractOfferEligibility.js";
 import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
 import { riderReputationBand, riderReputationValue } from "../../../lib/riderReputationView.ts";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
@@ -203,9 +204,23 @@ export default function RiderProfileHero({
   // længere mod det, så suffikset og forklaringen siger det, i stedet for at
   // stå ukommenteret ved siden af prognosen.
   const potPastPeak = potEstimate?.pastPeak === true;
-  const contractText = rider.contract_end_season != null
-    ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
-    : t("header.noContract");
+  // #6638: "Season 3" midt i saeson 4 lignede en fri rytter. En udloebet kontrakt
+  // paa et hold siges nu ud (frigives ved skiftet), og en fri agent viser aldrig et
+  // efterladt saesonnummer.
+  const contractOffer = contractOfferEligibility({
+    teamId: rider.team_id,
+    contractEndSeason: rider.contract_end_season,
+    activeSeasonNumber: seasonNumberFromReferenceYear(seasonYear),
+  });
+  const hasContractSeason = rider.contract_end_season != null && contractOffer.state !== CONTRACT_STATE.FREE_AGENT;
+  const contractText = contractOffer.awaitingRelease
+    ? t("profile.hero.contractExpired")
+    : hasContractSeason
+      ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
+      : t("header.noContract");
+  const contractSub = contractOffer.awaitingRelease ? (
+    <p className="text-2xs text-cz-3 mt-1">{t("profile.hero.contractExpiredSub")}</p>
+  ) : null;
   const reputationValue = riderReputationValue(rider, reputationOn);
   // Niveauet (Ukendt..Legende) hører kun til omdømmet: off/shadow viser popularitet uden label.
   const reputationBand = reputationOn ? riderReputationBand(reputationValue) : null;
@@ -379,8 +394,9 @@ export default function RiderProfileHero({
         />
         <HeroStat
           label={t("profile.hero.contract")}
-          value={<span className={rider.contract_end_season != null ? "text-cz-accent-t" : undefined}>{contractText}</span>}
+          value={<span className={hasContractSeason && !contractOffer.awaitingRelease ? "text-cz-accent-t" : undefined}>{contractText}</span>}
           valueClassName="text-[20px] font-[650] truncate"
+          sub={contractSub}
         />
       </div>
 

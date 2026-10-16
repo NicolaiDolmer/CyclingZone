@@ -136,6 +136,7 @@ import { flushDeferredAcademySigningsForRace } from "./academySigningDefer.js";
 import { requestRankingMatviewRefresh } from "./refreshRankingMatviews.js"; // #5911: gated + samlet
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
+import { notifyRaceInjuries, notifyTeamsDidNotStart } from "./raceAvailabilityNotifications.js"; // #6740
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
 // udtrukket til raceClassifications.js så helt-løb-stien og stage-by-stage-
 // akkumuleringsstien deler PRÆCIS samme semantik.
@@ -1564,7 +1565,7 @@ export async function resolveRaceSquad({ supabase, race }) {
 // med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
 // stages bruges af autopick til egnethedsscore (suitabilityScore pr. terrain).
-export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true }) {
+export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true, onTeamsDropped = null }) {
   // #4357: Postgres garanterer INGEN rækkefølge uden ORDER BY — kan skifte efter
   // updates/vacuum/planændring. Selve motoren (buildTeamContext) er nu FØRSTE-
   // vinder-deterministisk uafhængigt af denne rækkefølge (se raceSimulator.js), men
@@ -1594,6 +1595,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     const teamDivisionById = new Map((teamDivs || []).map((t) => [t.id, teamPoolIdForSquad(t, raceSquad)]));
     existingEntries = filterEntriesToRaceDivision({ entries: existingEntries, teamDivisionById, raceDivisionId: race.league_division_id });
   }
+  // #6740: holdene med en udtagelse i løbets egen pulje, FØR ghost-/skade-/spent-filtrene.
+  // Mister et hold alle sine entries dér og kan assistenten ikke nå 6, når det aldrig
+  // gulv-filteret nedenfor, men det stillede stadig ikke op og skal have besked (review #6742).
+  const selectedTeamIds = new Set(existingEntries.map((e) => e.team_id).filter(Boolean));
+  let withdrawnTeamIds = new Set();
   // Rod B (#1742/#1800): drop committede ghost-entries — rytter solgt/fyret (off-team),
   // blevet akademi eller pensioneret EFTER udtagelse. Krydses mod rytterens NUVÆRENDE
   // tilstand, så en fremmed/uegnet rytter aldrig kører for et hold han har forladt
@@ -1641,10 +1647,12 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // "reddes" op til feltet af sen-rednings- eller minimum-logikken (koordination #4295).
   // Et hold uden entries er ikke i feltet, ingen ny tilstand, samme mekanik som
   // division/ghost/skade-filtrene ovenfor.
-  if (existingEntries.length) {
-    const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
-    if (withdrawnTeams.size) {
-      existingEntries = existingEntries.filter((e) => !withdrawnTeams.has(e.team_id));
+  // #6740: læses også når filtrene ovenfor tømte listen, så et afmeldt hold aldrig får
+  // en "stillede ikke op"-besked (selectedTeamIds nedenfor).
+  if (existingEntries.length || selectedTeamIds.size) {
+    withdrawnTeamIds = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
+    if (withdrawnTeamIds.size) {
+      existingEntries = existingEntries.filter((e) => !withdrawnTeamIds.has(e.team_id));
     }
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
@@ -1679,6 +1687,15 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
         `[race ${race.id}] ${droppedTeamIds.length} hold stiller ikke op: under ${MIN_RACE_ENTRIES} udtagne ryttere (#4295)`
       );
     }
+    // #6740: holdet fik ingen besked og stod som "Lineup locked" (Friis/knud 16/10).
+    // Kun ved en rigtig start (persist). Kalderen sender beskeden FØRST når etape 1 er
+    // skrevet: fejler starten bagefter (tomt felt, sim-fejl), må ingen have fået
+    // "dit hold stillede ikke op" for en start der aldrig skete. Ud over gulvets hold
+    // tæller et hold der havde en udtagelse, men mistede alle entries i filtrene; et
+    // afmeldt hold tæller aldrig.
+    const keptTeamIds = new Set(kept.map((e) => e.team_id));
+    const notStartedTeamIds = notStartedTeams({ droppedTeamIds, selectedTeamIds, keptTeamIds, withdrawnTeamIds });
+    if (persist && notStartedTeamIds.length) onTeamsDropped?.(notStartedTeamIds);
     entries = kept;
   }
   if (!entries.length) return [];
@@ -1986,6 +2003,27 @@ export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayBySt
 // når v3=true OG incidents ikke er tom (kald-stedets ansvar). Upsert-semantikken
 // (supabase-js: UPDATE-stien rører KUN de angivne kolonner) betyder form/fatigue
 // ALDRIG røres her — spejler raceFatigue.applyRaceFatigue's samme garanti.
+// #6740 (PURE): hvilke hold stillede ikke op? Gulvets hold + hold der havde en udtagelse
+// i løbets pulje men ikke er i det endelige felt. Afmeldte hold er aldrig med.
+export function notStartedTeams({ droppedTeamIds = [], selectedTeamIds = new Set(), keptTeamIds = new Set(), withdrawnTeamIds = new Set() }) {
+  const out = new Set(droppedTeamIds.filter((id) => !withdrawnTeamIds.has(id)));
+  for (const id of selectedTeamIds) {
+    if (!keptTeamIds.has(id) && !withdrawnTeamIds.has(id)) out.add(id);
+  }
+  return [...out].sort();
+}
+
+// #6740: "dit hold stillede ikke op" — kaldes kun EFTER at etape 1's resultater er
+// committet. Fejl isoleres: en besked må aldrig vælte en afviklet etape.
+async function sendDidNotStartNotices({ supabase, race, teamIds }) {
+  if (!teamIds?.length) return;
+  try {
+    await notifyTeamsDidNotStart({ supabase, race, teamIds });
+  } catch (err) {
+    captureException(err, { tags: { flow: "race-run", stage: "did-not-start-notice" }, raceId: race.id });
+  }
+}
+
 async function persistIncidents({ supabase, race, incidents, stageNumbers, seasonNumber }) {
   if (!incidents?.length) return;
   const rows = incidents.map((inc) => ({
@@ -2065,6 +2103,15 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers, seaso
   }
   const { error: injErr } = await supabase.from("rider_condition").upsert(injuryRows, { onConflict: "rider_id" });
   if (injErr) throw new Error(`rider_condition (incident injury): ${injErr.message}`);
+
+  // #6740: manageren skal vide det. En rytter der kører i mål efter et hårdt styrt ser
+  // ellers rask ud (Friis 16/10). Efter den bekræftede skrivning; en fejl her må aldrig
+  // vælte etapen. notifyTeamOwner's 24t-dedup dækker en gen-kørsel af samme etape.
+  try {
+    await notifyRaceInjuries({ supabase, race, injuryRows });
+  } catch (err) {
+    captureException(err, { tags: { flow: "race-run", stage: "injury-notice" }, raceId: race.id });
+  }
 }
 
 // Sub-2 (#2770): persistér race_stage_passages (idempotent delete-then-insert
@@ -2309,7 +2356,10 @@ export async function simulateRace({
     }
   }
 
-  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: !dryRun });
+  const droppedAtStart = []; // #6740: beskeden sendes efter result-skrivningen nedenfor
+  const entrants = await loadEntrantsForRace({
+    supabase, race, stages, persist: !dryRun, onTeamsDropped: (ids) => droppedAtStart.push(...ids),
+  });
   if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
 
   const racePoints = await loadRacePoints(supabase, race.race_class);
@@ -2382,6 +2432,7 @@ export async function simulateRace({
     ensureSeasonStandings,
     updateStandings,
   });
+  await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
 
   // #5675 (CodeRabbit-fund, Y7-opfølgning): ungdomsstillingen genberegnes samme
   // sted som seniorstillingen ovenfor — denne heldags-/endagsløbs-sti
@@ -3218,13 +3269,17 @@ export async function simulateStageByIndex({
   let moments = [];
   let timelines = [];
   let applied = { rowsImported: 0 };
+  const droppedAtStart = []; // #6740
   // #4418: start-felt-ryttere der ikke kunne stille til start paa DENNE etape fordi
   // de var skadet. Samles ved frysningen nedenfor, skrives efter persistIncidents.
   let injuryWithdrawals = [];
 
   if (!finalizationPending) {
     // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
-    entrants = await loadEntrantsForRace({ supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0 });
+    entrants = await loadEntrantsForRace({
+      supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0,
+      onTeamsDropped: (ids) => droppedAtStart.push(...ids), // #6740: sendes efter result-skrivningen
+    });
 
     // #2352: kill-switch læst ÉN gang pr. etape-invokation (hver stageIndex-kald
     // er sit eget I/O-kald — flippes flaget mellem to etaper, gælder den NYE
@@ -3425,6 +3480,8 @@ export async function simulateStageByIndex({
       };
     }
     applied = { rowsImported };
+    // #6740: etape 1 er committet (låsen vundet) — først nu er "stillede ikke op" sandt.
+    await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
 
     // Standings-recompute kører EFTER den atomære result-write committer. updateStandings
     // er en fuld re-derivation fra race_results (alle etaper) — inhærent idempotent og

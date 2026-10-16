@@ -163,5 +163,5 @@ test("board thank-you cohort: own section, free signing, weekly pull still offer
   await expect(section).toContainText(/1[34]d left|1[34]d tilbage/i);
   // Ingen guld-knap i gave-sektionen; ugens hent-knap står stadig.
   await expect(section.locator("button.bg-cz-accent")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Scout this week|Scout denne uge/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Bring in this week's intake|Hent ugens kandidater/i })).toBeVisible();
 });

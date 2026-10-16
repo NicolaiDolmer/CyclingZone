@@ -303,8 +303,10 @@ export default function RaceSelectionPanel({
   // (dagsboardet) kalder den STADIG med et ægte raceLive (`locked`), det er kun panelets
   // egen, altid-falske kopi der er væk. Serverens spejl-guard (#1825/selection_race_started
   // i raceSelection.js) håndhæver frysningen uændret — den er backend, ikke denne fil.
+  // #6740: en skadet udtaget rytter tæller ikke med i gulvet: motoren fjerner ham ved start.
+  const fitSelected = selectedRiders.filter((r) => !r.injured).length;
   const outlook = partialSquadOutlook({
-    selected: sel.riderIds.length, free: freeLeft, fieldMax: size.max,
+    selected: fitSelected, free: freeLeft, fieldMax: size.max,
   });
   // #4295 opfølgning: en 0-valgt trup er IKKE det samme udsagn som en delvis trup — se
   // partialSquadOutlook. `emptySelection` vælger de to dedikerede sætninger i stedet for
