@@ -782,7 +782,9 @@ export default function TrainingPage() {
     // #4847: fejl og laast-status vises af TrainNowNote under knappen.
     if (trainNow.status.enabled) {
       if (trainNowNeedsConfirm(trainNow.status)) { setConfirmTrainNow(true); return; }
-      await trainNow.press();
+      // #6740: the server re-checks at the press; something changed since the page loaded.
+      const pressed = await trainNow.press();
+      if (pressed?.error === "short_races_confirm") setConfirmTrainNow(true);
       return;
     }
     const result = await runToday();
@@ -2382,7 +2384,7 @@ export default function TrainingPage() {
           <>
             <Button variant="secondary" onClick={() => setConfirmTrainNow(false)}>{t("trainNow.confirm.cancel")}</Button>
             <Button variant="primary" data-testid="training-train-now-confirm"
-              onClick={async () => { setConfirmTrainNow(false); await trainNow.press(); }}>
+              onClick={async () => { setConfirmTrainNow(false); await trainNow.press({ confirmShortRaces: true }); }}>
               {t("trainNow.confirm.go")}
             </Button>
           </>

@@ -69,7 +69,8 @@ function fakeSupabase(state, { missing = [] } = {}) {
     };
     return q;
   }
-  return { from: query, writes };
+  // #6740: find_spent_race_days (the Train now re-check) - no spent riders in these tests.
+  return { from: query, writes, rpc: async () => ({ data: [], error: null }) };
 }
 
 function baseState(flag = "on") {
@@ -511,13 +512,36 @@ test("loadTrainNowShortRaces: en solgt rytter i udtagelsen taeller ikke (review 
     // "sold" er nu paa et andet hold: motoren fjerner entryen foer gulvet.
     riders: six.map((id) => ({ id, team_id: id === "sold" ? "t2" : "t1", squad: "senior", is_academy: false, is_retired: false })),
   };
-  const supabase = { from: (table) => {
-    const q = {};
-    for (const m of ["select", "eq", "in", "neq", "order", "is", "or"]) q[m] = () => q;
-    q.range = () => Promise.resolve({ data: tables[table] ?? [], error: null });
-    q.then = (resolve, reject) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(resolve, reject);
-    return q;
-  } };
+  const out = await loadTrainNowShortRaces({ supabase: shortRaceDb(tables), team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
+  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6, startsShort: false }]);
+});
+
+function shortRaceDb(tables, { spent = [], failTable = null } = {}) {
+  return {
+    rpc: async () => ({ data: spent, error: null }),
+    from: (table) => {
+      const q = {};
+      for (const m of ["select", "eq", "in", "neq", "order", "is", "or"]) q[m] = () => q;
+      const res = table === failTable ? { data: null, error: { message: "db down" } } : { data: tables[table] ?? [], error: null };
+      q.range = () => Promise.resolve(res);
+      q.then = (resolve, reject) => Promise.resolve(res).then(resolve, reject);
+      return q;
+    },
+  };
+}
+
+const SIX_TABLES = () => {
+  const six = ["a", "b", "c", "d", "e", "f"];
+  return {
+    races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled", squad: "senior" }],
+    race_withdrawals: [], race_entry_clears: [], rider_condition: [],
+    race_entries: six.map((rider_id) => ({ race_id: "leman", rider_id, team_id: "t1" })),
+    riders: six.map((id) => ({ id, team_id: "t1", squad: "senior", is_academy: false, is_retired: false })),
+  };
+};
+
+test("loadTrainNowShortRaces: en rytter der allerede har brugt loebsdagen taeller ikke (review #6742)", async () => {
+  const supabase = shortRaceDb(SIX_TABLES(), { spent: [{ rider_id: "f", race_id: "other", game_day: 94 }] });
   const out = await loadTrainNowShortRaces({ supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
   assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6, startsShort: false }]);
 });
@@ -528,4 +552,43 @@ test("trainNowShortRaces: regel B kun naar holdet havde gulvet og mindst 1 rask 
   assert.equal(trainNowShortRaces({ races: race, entries: ids(5), injuredIds: new Set(["x0"]) })[0].startsShort, false, "5 udtaget havde aldrig gulvet");
   assert.equal(trainNowShortRaces({ races: race, entries: ids(6), injuredIds: new Set(["x0","x1","x2","x3","x4","x5"]) })[0].startsShort, false, "ingen raske tilbage");
   assert.equal(trainNowShortRaces({ races: race, entries: ids(7), injuredIds: new Set(["x0","x1"]) })[0].startsShort, true);
+});
+
+test("loadTrainNowShortRaces: GET fejler aabent, trykkets strict-tjek fejler lukket (review #6742)", async () => {
+  const supabase = shortRaceDb(SIX_TABLES(), { failTable: "race_entries" });
+  const args = { supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" };
+  assert.deepEqual(await loadTrainNowShortRaces(args), []);
+  await assert.rejects(() => loadTrainNowShortRaces({ ...args, strict: true }), /short race entries/);
+});
+
+// ── #6740 review: the press re-checks short races; the page's yes is explicit ──
+const SHORT = [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6 }];
+
+test("press: a race below the floor without the explicit yes -> 409, nothing locked", async () => {
+  const state = baseState();
+  const { deps, calls } = harness(state);
+  const result = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "short_races_confirm");
+  assert.deepEqual(result.body.shortRaces, SHORT);
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 0, "no lock before the yes");
+  assert.equal(calls.length, 0);
+});
+
+test("press: with the explicit yes the press runs as before", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  let asked = 0;
+  const result = await runTrainNow({ ...deps, confirmShortRaces: true, loadShortRaces: async () => { asked += 1; return SHORT; } });
+  assert.equal(result.status, 200);
+  assert.equal(asked, 0, "the yes skips the re-check");
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 2);
+});
+
+test("press: a repeated press (locks already written) is never asked again", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  await runTrainNow({ ...deps, confirmShortRaces: true });
+  const again = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
+  assert.equal(again.status, 200);
 });

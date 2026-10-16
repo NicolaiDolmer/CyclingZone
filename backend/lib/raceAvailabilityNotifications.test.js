@@ -5,6 +5,10 @@ import {
   racesMissedByInjury, notifyRaceInjuries, notifyTeamsDidNotStart, RACE_AVAILABILITY_NOTIFICATION_TYPE,
 } from "./raceAvailabilityNotifications.js";
 import { NOTIFICATION_TYPES } from "./notificationTypes.js";
+import { notStartedTeams } from "./raceRunner.js";
+
+// Fast tidspunkt: testene maa aldrig laese uret (clock-drift-invarianten, AGENTS.md).
+const NOW = new Date("2026-10-16T12:00:00Z");
 
 test("typen findes allerede i notifications_type_check (ingen migration)", () => {
   assert.ok(NOTIFICATION_TYPES.includes(RACE_AVAILABILITY_NOTIFICATION_TYPE));
@@ -96,7 +100,7 @@ test("notifyRaceInjuries: én besked pr. skadet rytter til holdets ejer, med de 
   const out = await notifyRaceInjuries({
     supabase, race: { id: "westkust", name: "Westkust Klassieker" },
     injuryRows: [{ rider_id: "adrien", injured_until: "2026-10-19" }],
-    notify: async (args) => { sent.push(args); return { delivered: true }; },
+    now: NOW, notify: async (args) => { sent.push(args); return { delivered: true }; },
   });
   assert.equal(out.sent, 1);
   assert.equal(sent[0].teamId, "lorraine");
@@ -105,14 +109,14 @@ test("notifyRaceInjuries: én besked pr. skadet rytter til holdets ejer, med de 
 
 test("notifyRaceInjuries: ingen skaderaekker -> ingen opslag, ingen beskeder", async () => {
   const supabase = { from: () => { throw new Error("should not query"); } };
-  assert.deepEqual(await notifyRaceInjuries({ supabase, race: { id: "r" }, injuryRows: [] }), { sent: 0 });
+  assert.deepEqual(await notifyRaceInjuries({ supabase, race: { id: "r" }, injuryRows: [], now: NOW }), { sent: 0 });
 });
 
 test("notifyTeamsDidNotStart: én besked pr. hold (dubletter samlet)", async () => {
   const sent = [];
   const out = await notifyTeamsDidNotStart({
     supabase: {}, race: { id: "danube", name: "Tour du Danube" }, teamIds: ["csc", "csc", "talent"],
-    notify: async (args) => { sent.push(args.teamId); return { delivered: true }; },
+    now: NOW, notify: async (args) => { sent.push(args.teamId); return { delivered: true }; },
   });
   assert.equal(out.sent, 2);
   assert.deepEqual(sent, ["csc", "talent"]);
@@ -132,8 +136,19 @@ test("notifyRaceInjuries: et loeb holdet har meldt fra, naevnes ikke (review #67
   await notifyRaceInjuries({
     supabase, race: { id: "westkust", name: "Westkust Klassieker" },
     injuryRows: [{ rider_id: "adrien", injured_until: "2026-10-19" }],
-    notify: async (args) => { sent.push(args); return { delivered: true }; },
+    now: NOW, notify: async (args) => { sent.push(args); return { delivered: true }; },
   });
   assert.equal(sent[0].message, "Adrien Charpentier crashed in Westkust Klassieker and is injured until 19/10.");
   assert.equal(sent[0].relatedId, "westkust");
+});
+
+// ── #6740 review: hold der mistede alle entries foer gulvet faar ogsaa besked ──
+test("notStartedTeams: gulvets hold + hold uden entries tilbage, aldrig afmeldte", () => {
+  assert.deepEqual(notStartedTeams({
+    droppedTeamIds: ["floor"],
+    selectedTeamIds: new Set(["floor", "all-ghosts", "started", "withdrawn"]),
+    keptTeamIds: new Set(["started"]),
+    withdrawnTeamIds: new Set(["withdrawn"]),
+  }), ["all-ghosts", "floor"]);
+  assert.deepEqual(notStartedTeams({}), []);
 });

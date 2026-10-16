@@ -68,7 +68,7 @@ export function parseTrainNowStatus(data: unknown): TrainNowStatus {
   };
 }
 
-function parseShortRaces(value: unknown): TrainNowShortRace[] {
+export function parseShortRaces(value: unknown): TrainNowShortRace[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((r): r is Record<string, unknown> => !!r && typeof (r as { id?: unknown }).id === "string")
