@@ -9,21 +9,56 @@
 //     hold der har købt (kun muligt når facilities_enabled ELLER admin-testgaten, A4b).
 //     Intet køb → { facilityTier: 0, staff: null } → multiplikator PRÆCIS 1.0.
 //     Dermed kan ejeren teste effekten som admin på prod FØR flip.
-//   • BEST-EFFORT: en fejl her må ALDRIG vælte en træningsdag (clubben er en
-//     forstærkning, ikke en forudsætning) → fang + warn + neutral kontekst.
+//   • BEST-EFFORT ved VEDVARENDE fejl (fx skema-drift): en sådan fejl må ikke
+//     blokere alle holds træning → fang + Sentry + neutral kontekst.
+//   • #6596: en FORBIGÅENDE fejl (Supabase 502/503/504, Cloudflare-fejlside,
+//     netværk, statement-timeout) giver ALDRIG neutral kontekst. Holdet ville ellers
+//     afregnes uden den betalte facilitets-/trænerbonus, og dagen kan ikke køres om.
+//     I stedet kastes TrainingStaffContextRetryError: dailyTrainingEngine sletter
+//     reservationen i sin phase-1-catch, og næste sweep tager holdet igen (samme vej
+//     som `plans load`-fejl; idempotent via run-rækkens unikke nøgle).
 //   • Self-heal (samme mønster som getStaffProfileHandler): mangler ability-rækken
 //     (staff ansat før A4-migrationen) afledes profilen deterministisk on-the-fly.
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import { normalizeLevelBands } from "./staffAbilityConstants.js";
 import { captureException } from "./sentry.js";
+import { isTransientSupabaseError, normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 
 const NEUTRAL = Object.freeze({ facilityTier: 0, staff: null });
+
+// HTTP-status fra postgrest-svaret der betyder "gateway/netværk, prøv igen".
+// 0 = fetch fejlede helt (postgrest-js' netværks-fallback). Supplerer
+// isTransientSupabaseError, som kun ser på beskeden/koden.
+const TRANSIENT_HTTP_STATUS = new Set([0, 502, 503, 504, 520, 521, 522, 523, 524]);
+
+// Kastes ved forbigående load-fejl. Beskeden er kort (HTML-fejlsider er kogt ned
+// via normalizeSupabaseErrorMessage) og ASCII, så sweep-loggen forbliver én linje.
+export class TrainingStaffContextRetryError extends Error {
+  constructor(message, options) {
+    super(message, options);
+    this.name = "TrainingStaffContextRetryError";
+    this.retryable = true;
+  }
+}
+
+function shortMessage(error) {
+  const raw = typeof error === "string" ? error : (error?.message ?? "");
+  return normalizeSupabaseErrorMessage(String(raw)) || "unknown error";
+}
+
+// Bygger load-fejlen for ét postgrest-svar og markerer om den er forbigående.
+function loadError(label, res) {
+  const err = new Error(`${label}: ${shortMessage(res.error)}`);
+  err.transient = isTransientSupabaseError(res.error) || TRANSIENT_HTTP_STATUS.has(res.status);
+  return err;
+}
 
 /**
  * Load trænings-facilitets-kontekst for ét hold.
  * @param {object} supabase — service-role client
  * @param {string} teamId
  * @returns {Promise<{ facilityTier: number, staff: object|null }>}
+ * @throws {TrainingStaffContextRetryError} ved forbigående DB-/gateway-fejl (#6596).
  */
 export async function loadTrainingStaffContext(supabase, teamId) {
   try {
@@ -31,8 +66,8 @@ export async function loadTrainingStaffContext(supabase, teamId) {
       supabase.from("team_facilities").select("track, tier").eq("team_id", teamId).eq("track", "training"),
       supabase.from("team_staff").select("id, name, role, tier, status").eq("team_id", teamId).eq("role", "training").eq("status", "active"),
     ]);
-    if (facRes.error) throw new Error(`team_facilities load: ${facRes.error.message}`);
-    if (staffRes.error) throw new Error(`team_staff load: ${staffRes.error.message}`);
+    if (facRes.error) throw loadError("team_facilities load", facRes);
+    if (staffRes.error) throw loadError("team_staff load", staffRes);
 
     const facilityTier = facRes.data?.[0]?.tier ?? 0;
     // #3489: op til MAX_STAFF_SLOTS_PER_ROLE (2) aktive trænings-staff nu (fx en
@@ -47,12 +82,12 @@ export async function loadTrainingStaffContext(supabase, teamId) {
 
     let staff = null;
     if (staffRows.length > 0) {
-      const { data: abilityRows, error: abilityError } = await supabase
+      const abilityRes = await supabase
         .from("staff_derived_abilities")
         .select("staff_id, overall, dimensions, levels")
         .in("staff_id", staffRows.map((r) => r.id));
-      if (abilityError) throw new Error(`staff_derived_abilities load: ${abilityError.message}`);
-      const abilityByStaffId = new Map((abilityRows ?? []).map((a) => [a.staff_id, a]));
+      if (abilityRes.error) throw loadError("staff_derived_abilities load", abilityRes);
+      const abilityByStaffId = new Map((abilityRes.data ?? []).map((a) => [a.staff_id, a]));
       const profiles = staffRows.map((staffRow) =>
         abilityByStaffId.get(staffRow.id)
           ?? deriveStaffAbilities({ role: staffRow.role, tier: staffRow.tier, name: staffRow.name })
@@ -68,10 +103,24 @@ export async function loadTrainingStaffContext(supabase, teamId) {
     }
     return { facilityTier, staff };
   } catch (err) {
-    // Best-effort adfærd (neutral kontekst, ingen crash) MEN ikke tavs: en
-    // persistent fejl her deaktiverer den betalte facilitets-/staff-bonus for ALLE
-    // hold usynligt (#2395). Capture så det opdages; NEUTRAL bevarer træningsdagen.
-    console.error(`  ⚠️ trainingStaffContext load failed for team ${teamId} (continuing without bonus):`, err.message);
+    const message = shortMessage(err);
+    // #6596: egne load-fejl bærer klassifikationen; uventede kast (fx en afvist
+    // fetch) klassificeres ud fra beskeden.
+    const transient = typeof err?.transient === "boolean" ? err.transient : isTransientSupabaseError(err);
+    if (transient) {
+      // Ingen neutral kontekst: kast, så holdet tages igen ved næste sweep.
+      // Sweepen logger selv "team retained for retry" med denne korte besked.
+      console.warn(`  ⚠️ trainingStaffContext load failed for team ${teamId} (transient, retry on next sweep): ${message}`);
+      throw new TrainingStaffContextRetryError(
+        `trainingStaffContext load (team ${teamId}): ${message} - refusing to tick without facility/staff bonus, retry on next sweep`,
+        { cause: err },
+      );
+    }
+    // Vedvarende fejl: best-effort adfærd (neutral kontekst, ingen crash) MEN ikke
+    // tavs: en persistent fejl her deaktiverer den betalte facilitets-/staff-bonus
+    // for ALLE hold usynligt (#2395). Capture så det opdages; NEUTRAL bevarer
+    // træningsdagen.
+    console.error(`  ⚠️ trainingStaffContext load failed for team ${teamId} (continuing without bonus): ${message}`);
     captureException(err, { tags: { lib: "trainingStaffContext" }, extra: { teamId } });
     return NEUTRAL;
   }

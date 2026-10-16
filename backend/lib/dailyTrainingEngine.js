@@ -642,7 +642,8 @@ export async function runTeamTrainingDay({
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
-  // (nul regression). Best-effort inde i loaderen — kan aldrig vælte træningsdagen.
+  // (nul regression). Vedvarende fejl: neutral i loaderen. #6596: forbigaaende fejl
+  // KASTER, saa catch'en nedenfor sletter reservationen og naeste sweep proever igen.
   const { facilityTier: trainingFacilityTier, staff: trainingStaff } =
     await loadTrainingStaffContext(supabase, teamId);
 

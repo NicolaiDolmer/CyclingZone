@@ -1,7 +1,7 @@
 // Plan B (#1441) — loadTrainingStaffContext: DB → { facilityTier, staff } for trænings-motoren.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadTrainingStaffContext } from "./trainingStaffContext.js";
+import { loadTrainingStaffContext, TrainingStaffContextRetryError } from "./trainingStaffContext.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 
 const TEAM_ID = "team-1";
@@ -15,9 +15,16 @@ function createSupabaseMock(state, opts = {}) {
       select() { return builder(table, filters); },
       eq(col, val) { return builder(table, [...filters, { col, eq: val }]); },
       in(col, vals) { return builder(table, [...filters, { col, in: vals }]); },
-      then(resolve) {
+      then(resolve, reject) {
+        // #6596: opts.throwTable → selve kaldet afvises (fx en fetch der kaster).
+        if (opts.throwTable === table) {
+          return Promise.reject(opts.thrown ?? new Error("TypeError: fetch failed")).then(resolve, reject);
+        }
         if (opts.errorTable === table) {
-          return Promise.resolve({ data: null, error: { message: "boom" } }).then(resolve);
+          // #6596: opts.error/opts.status simulerer et konkret postgrest-svar
+          // (fx Cloudflares 502-HTML-side). Default = vedvarende fejl uden status.
+          const error = opts.error ?? { message: "boom" };
+          return Promise.resolve({ data: null, error, status: opts.status ?? 400 }).then(resolve);
         }
         const rows = (state[table] ?? []).filter((r) =>
           filters.every((f) => ("eq" in f ? r[f.col] === f.eq : f.in.includes(r[f.col]))));
@@ -113,8 +120,89 @@ test("fyret chef (status != active) tæller ikke", async () => {
   assert.deepEqual(ctx, { facilityTier: 1, staff: null });
 });
 
-test("BEST-EFFORT: DB-fejl → neutral kontekst, kaster ALDRIG (træningsdagen må ikke vælte)", async () => {
+test("BEST-EFFORT: vedvarende DB-fejl → neutral kontekst, kaster ikke (træningsdagen må ikke vælte)", async () => {
   const supabase = createSupabaseMock({}, { errorTable: "team_facilities" });
   const ctx = await loadTrainingStaffContext(supabase, TEAM_ID);
   assert.deepEqual(ctx, { facilityTier: 0, staff: null });
+});
+
+// ── #6596: forbigående fejl må ALDRIG give neutral kontekst ──────────────────
+// Kort udgave af den HTML-side Supabase-gatewayen (Cloudflare) sender ved 502.
+// Den rigtige side er ca. 120 linjer; længden testes nedenfor.
+const CF_502_HTML = [
+  "<!DOCTYPE html>",
+  "<html class=\"no-js\" lang=\"en-US\"><head>",
+  "<title>supabase.co | 502: Bad gateway</title>",
+  "<meta charset=\"UTF-8\" />",
+  "</head><body><div id=\"cf-error-details\">",
+  "<span class=\"code-label\">Error code 502</span>",
+  ...Array.from({ length: 100 }, (_, i) => `<p class="filler-${i}">Cloudflare Ray ID: 8f00000000000000</p>`),
+  "</div></body></html>",
+].join("\n");
+const FAC_TIER4 = { team_facilities: [{ team_id: TEAM_ID, track: "training", tier: 4 }] };
+const ONE_COACH = {
+  ...FAC_TIER4,
+  team_staff: [{ id: "st-1", team_id: TEAM_ID, role: "training", status: "active", tier: 4, name: "Coach" }],
+};
+
+async function assertRetry(supabase, labelRe) {
+  await assert.rejects(
+    () => loadTrainingStaffContext(supabase, TEAM_ID),
+    (err) => {
+      assert.ok(err instanceof TrainingStaffContextRetryError, `forventede retry-fejl, fik ${err?.name}`);
+      assert.equal(err.retryable, true);
+      assert.match(err.message, labelRe);
+      assert.match(err.message, /retry on next sweep/);
+      assert.doesNotMatch(err.message, /<!DOCTYPE|<html|cf-error-details/i, "ingen HTML i fejlbeskeden");
+      assert.ok(err.message.length < 300, `beskeden er kort (${err.message.length} tegn)`);
+      return true;
+    },
+  );
+}
+
+test("#6596: 502 Cloudflare-HTML på team_facilities → kaster retry-fejl, ingen neutral kontekst", async () => {
+  const supabase = createSupabaseMock(FAC_TIER4, {
+    errorTable: "team_facilities", error: { message: CF_502_HTML }, status: 502,
+  });
+  await assertRetry(supabase, /team_facilities load: Supabase unavailable \(502 Bad gateway\)/);
+});
+
+test("#6596: 503 på team_staff → kaster retry-fejl", async () => {
+  const supabase = createSupabaseMock(ONE_COACH, {
+    errorTable: "team_staff", error: { message: "Service Unavailable" }, status: 503,
+  });
+  await assertRetry(supabase, /team_staff load: Service Unavailable/);
+});
+
+test("#6596: 504 på staff_derived_abilities → kaster retry-fejl", async () => {
+  const supabase = createSupabaseMock(ONE_COACH, {
+    errorTable: "staff_derived_abilities", error: { message: "upstream request timeout" }, status: 504,
+  });
+  await assertRetry(supabase, /staff_derived_abilities load: upstream request timeout/);
+});
+
+test("#6596: netværksfejl (postgrest status 0) → kaster retry-fejl", async () => {
+  const supabase = createSupabaseMock(FAC_TIER4, {
+    errorTable: "team_facilities", error: { message: "TypeError: fetch failed", code: "" }, status: 0,
+  });
+  await assertRetry(supabase, /team_facilities load: TypeError: fetch failed/);
+});
+
+test("#6596: statement-timeout (57014) → kaster retry-fejl", async () => {
+  const supabase = createSupabaseMock(FAC_TIER4, {
+    errorTable: "team_facilities", error: { message: "canceling statement due to statement timeout", code: "57014" }, status: 500,
+  });
+  await assertRetry(supabase, /team_facilities load: canceling statement/);
+});
+
+test("#6596: afvist kald (fetch kaster) → kaster retry-fejl", async () => {
+  const supabase = createSupabaseMock(FAC_TIER4, { throwTable: "team_facilities" });
+  await assertRetry(supabase, /trainingStaffContext load \(team team-1\): TypeError: fetch failed/);
+});
+
+test("#6596: vedvarende fejl (permission denied, 403) → stadig neutral (ingen retry-løkke)", async () => {
+  const supabase = createSupabaseMock(FAC_TIER4, {
+    errorTable: "team_facilities", error: { message: "permission denied for table team_facilities", code: "42501" }, status: 403,
+  });
+  assert.deepEqual(await loadTrainingStaffContext(supabase, TEAM_ID), { facilityTier: 0, staff: null });
 });
