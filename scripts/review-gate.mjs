@@ -40,7 +40,7 @@ export const HIGH_RISK_LABELS = Object.freeze(["risk:high", "security"]);
 export const EXEMPT_AUTHORS = Object.freeze(["dependabot"]);
 export const ESCAPED_DEFECT_LABEL = "escaped-defect";
 export const LOW_RISK_CLAUDE_DETAIL =
-  "ikke paakraevet af gaten (lav risiko); autonom merge af en teknisk kode-PR kraever stadig opus-review (rule 35 d)";
+  "ikke paakraevet (lav risiko); Codex + groen CI er nok til autonom merge (rule 35 d, ejer 16/10)";
 
 // ── Risiko-klassifikation ──────────────────────────────────────────────────
 
@@ -246,8 +246,8 @@ export function findClaudeVerdict(items = []) {
 }
 
 export function evaluateClaude(items, risk, headSha = null) {
-  // Gaten er CI-gulvet (ejer 15/10: lav risiko = Codex). Rule 35 (d) er uaendret: autonom
-  // merge af en teknisk kode-PR kraever stadig opus-review; det haandhaeves ikke her.
+  // Gaten er CI-gulvet (ejer 15/10: lav risiko = Codex). Ejer 16/10: rule 35 (d) er rettet,
+  // saa lav risiko merges autonomt paa Codex + groen CI; opus-review kun paa hoejrisiko.
   if (risk.level !== "high") return { required: false, ok: true, verdict: null, detail: LOW_RISK_CLAUDE_DETAIL };
   const hint = "`node scripts/review-gate.mjs post-claude-review --pr N --verdict clean`";
   // Kun markoerer for HEAD taeller; en markoer uden sha= eller for et aeldre commit er foraeldet efter et push.

@@ -466,15 +466,14 @@ test("evaluateGate: lav risiko kraever kun Codex", () => {
   assert.equal(r.claude.required, false);
 });
 
-// Codex-fund paa #6657 (runde 5): gaten er CI-gulvet, ikke en erstatning for rule 35 (d).
-// En lav-risiko teknisk PR er groen paa Codex alene, men rapporten siger at autonom
-// merge stadig kraever opus-review, saa en groen gate ikke laeses som merge-go.
-test("evaluateGate: lav risiko teknisk PR er groen paa Codex, men rapporten minder om rule 35 (d)", () => {
+// Ejer 16/10: rule 35 (d) er rettet, saa en lav-risiko teknisk PR merges autonomt paa
+// Codex + groen CI; opus-review kraeves kun paa hoejrisiko. Rapporten siger det.
+test("evaluateGate: lav risiko teknisk PR er groen paa Codex, og rapporten siger at det er nok (rule 35 d)", () => {
   const r = evaluateGate({ author: "NicolaiDolmer", files: ["backend/lib/abilityRegistry.js"], comments: [codexDone], headSha: HEAD });
   assert.equal(r.ok, true);
   assert.equal(r.claude.required, false);
-  assert.match(r.claude.detail, /opus-review \(rule 35 d\)/);
-  assert.match(formatReport(r, 1), /Claude \(kun hoejrisiko\): ok - .*opus-review \(rule 35 d\)/);
+  assert.match(r.claude.detail, /Codex \+ groen CI er nok til autonom merge \(rule 35 d/);
+  assert.match(formatReport(r, 1), /Claude \(kun hoejrisiko\): ok - .*Codex \+ groen CI er nok/);
 });
 
 test("evaluateGate: hoejrisiko kraever Codex OG Claude", () => {
