@@ -21,9 +21,9 @@ function defaultChoices(goals) {
   return Object.fromEntries((goals || []).map((g) => [g.goalKey, "keep"]));
 }
 
-// #4557 (S-M2c) · Aarsmoedet — fuldskaerms-takeover (spec §4.7, mockup
+// #4557 (S-M2c) · Aarsmoedet — indholdsbredt moede INDE i Layout (spec §4.7, #5848, mockup
 // AnnualMeeting.dc.html). Hele forhandlingen paa ét scroll (fold-disciplinen
-// for T1-sider gaelder ikke denne fullscreen-undtagelse, samme familie som
+// for T1-sider gaelder ikke denne full-bleed-undtagelse, samme familie som
 // SetupWizardModal den erstatter): fokus, mandat, evt. vision-slot,
 // anmodning, underskrift. Hurtigste vej er "Sign mandate" med alt paa Keep —
 // to klik i alt fra Boardroom.

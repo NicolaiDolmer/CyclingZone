@@ -48,6 +48,7 @@ export function useScouting() {
   const [pendingTargets, setPendingTargets] = useState({}); // { <rider_id>: { readyOn, readyAt } }
   const [jobCapacity, setJobCapacity] = useState(1);
   const [jobActiveCount, setJobActiveCount] = useState(0);
+  const [nextFreeAt, setNextFreeAt] = useState(null); // #5852: tidligste ready_at blandt ALLE aktive opgaver (ogsaa missioner)
   const [jobConfig, setJobConfig] = useState(null); // { targetEtaMinutes, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
 
   const requestedRef = useRef(new Set()); // ids vi allerede har bedt om (dedup)
@@ -105,6 +106,7 @@ export function useScouting() {
       }
       setPendingTargets(nextPending);
       setJobActiveCount(active.length);
+      setNextFreeAt(earliestReadyAt(active.map((a) => ({ readyAt: a.ready_at ?? null }))));
       setJobCapacity(data.jobModel?.capacity ?? 1);
       setJobConfig(data.jobModel?.jobConfig ?? null);
     } catch {
@@ -248,7 +250,7 @@ export function useScouting() {
   return {
     slots, maxLevel, levels, teamId, loading, scoutingId, scoutSystemEnabled,
     jobCapacity, jobActiveCount, jobConfig,
-    nextFreeAt: earliestReadyAt(pendingTargets), // #5852
+    nextFreeAt, // #5852
     scout, refresh, levelFor, pendingFor, requestEstimates, estimateFor, estimates,
   };
 }

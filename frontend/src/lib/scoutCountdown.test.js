@@ -126,3 +126,14 @@ test("earliestReadyAt: tidligste gyldige readyAt, ellers null (#5852)", () => {
     "2026-08-14T10:10:00.000Z",
   );
 });
+
+test("earliestReadyAt: tager ogsaa missioner med (liste af alle aktive opgaver) (#5852)", () => {
+  const active = [
+    { kind: "target", ready_at: "2026-08-14T12:00:00.000Z" },
+    { kind: "mission", ready_at: "2026-08-14T10:20:00.000Z" },
+  ];
+  assert.equal(
+    earliestReadyAt(active.map((a) => ({ readyAt: a.ready_at }))),
+    "2026-08-14T10:20:00.000Z",
+  );
+});

@@ -2,8 +2,10 @@
 // Ad-hoc capture-script, ikke en del af CI-suiten (testMatch fanger kun *.spec.*).
 // Serverer en allerede bygget dist/ fra en sirv-server inde i processen; data er preview-mockens seed.
 //
-//   node tests/e2e/5819-squad-filter.shots.mjs [outDir] [--before]
+//   node tests/e2e/5819-squad-filter.shots.ts [outDir] [--before]
 import { chromium } from "@playwright/test";
+import type { Browser } from "@playwright/test";
+import type { AddressInfo } from "node:net";
 import http from "node:http";
 import { mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -17,19 +19,19 @@ const { wantsObject } = await import(pathToFileURL(resolve(__dirname, "../../src
 
 const { installOptOutMocks } = await import(pathToFileURL(resolve(__dirname, "5944-mocks.ts")).href);
 
-const args =process.argv.slice(2);
+const args = process.argv.slice(2);
 const OUT = resolve(args.find((a) => !a.startsWith("--")) || resolve(__dirname, "../../../pr-screens/5852"));
 const PREFIX = args.includes("--before") ? "before" : "after";
 const DIST = resolve(__dirname, "../../dist");
 // Valgfri: peg paa en allerede installeret browser naar Playwright-versionen ikke matcher cachen.
 const CHROME_EXE = args.find((a) => a.startsWith("--exe="))?.slice(6);
 
-async function shoot(browser, base, { width, height, lang }) {
+async function shoot(browser: Browser, base: string, { width, height, lang }: { width: number; height: number; lang: string }) {
   const context = await browser.newContext({ baseURL: base, viewport: { width, height }, deviceScaleFactor: 1, locale: "en-US" });
   const page = await context.newPage();
   await installNetworkMocks(page);
   await installOptOutMocks(page, { available: false, trainOnly: false, puts: [] });
-  await page.addInitScript((l) => {
+  await page.addInitScript((l: string) => {
     window.localStorage.setItem("cz_lang", l);
     window.localStorage.setItem("cz-theme", "light");
     window.localStorage.setItem("cz_consent_v1", JSON.stringify({
@@ -48,7 +50,7 @@ async function shoot(browser, base, { width, height, lang }) {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fallback();
     const url = request.url();
-    const asSingle = (rows) => (wantsObject(request.headers().accept || "") ? (rows[0] || {}) : rows);
+    const asSingle = (rows: unknown[]) => (wantsObject(request.headers().accept || "") ? (rows[0] || {}) : rows);
     if (url.includes("pending_team_id=eq.")) return json(route, asSingle([]));
     if (url.includes(`team_id=eq.${TEST_TEAM.id}`)) return json(route, asSingle(roster));
     return route.fallback();
@@ -58,7 +60,7 @@ async function shoot(browser, base, { width, height, lang }) {
   await filter.waitFor();
   await page.waitForTimeout(400);
   const metrics = await filter.evaluate((el) => {
-    const q = (e) => {
+    const q = (e: Element) => {
       const r = e.getBoundingClientRect();
       const cs = getComputedStyle(e);
       return { t: e.textContent, x: Math.round(r.x), y: Math.round(r.y * 10) / 10, w: Math.round(r.width), h: Math.round(r.height * 10) / 10, fs: cs.fontSize, ff: cs.fontFamily.slice(0, 30), fw: cs.fontWeight };
@@ -66,6 +68,7 @@ async function shoot(browser, base, { width, height, lang }) {
     return [...el.children].map(q);
   });
   const box = await filter.boundingBox();
+  if (!box) throw new Error("squad-group-filter har ingen bounding box");
   const pad = 14;
   const area = { x: Math.max(0, box.x - pad), y: Math.max(0, box.y - pad), width: width - Math.max(0, box.x - pad), height: box.height + pad * 2 };
   await page.screenshot({ path: resolve(OUT, `${PREFIX}-filter-${lang}-${width}.png`), clip: area });
@@ -78,11 +81,11 @@ async function main() {
   mkdirSync(OUT, { recursive: true });
   const handler = sirv(DIST, { single: true, etag: true, dev: true });
   const server = http.createServer((req, res) => handler(req, res, () => { res.statusCode = 404; res.end(); }));
-  await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
-  const base = `http://127.0.0.1:${server.address().port}`;
+  await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const browser = await chromium.launch(CHROME_EXE ? { executablePath: CHROME_EXE } : {});
   try {
-    for (const [width, height] of [[1440, 900], [390, 844]]) {
+    for (const [width, height] of [[1440, 900], [375, 812]]) {
       for (const lang of ["en", "da"]) {
         console.log(width, lang, JSON.stringify(await shoot(browser, base, { width, height, lang }), null, 0));
       }

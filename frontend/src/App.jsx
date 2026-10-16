@@ -69,8 +69,8 @@ const BoardPage = lazy(() => import("./pages/BoardPage"));
 const SponsorsPage = lazy(() => import("./pages/SponsorsPage"));
 // #4557 (S-M2b): tynd kill-switch-wrapper — se pages/boardroom/BoardroomRoute.jsx.
 const BoardroomRoute = lazy(() => import("./pages/boardroom/BoardroomRoute"));
-// #4557 (S-M2c): aarsmoedet — fuldskaerms-takeover, UDEN for Layout/sidebar
-// (spec §4.7: navy-baandet spaender hele bredden, matcher mockuppen 1:1).
+// #4557 (S-M2c): aarsmoedet — INDE i Layout (venstremenuen bliver, #5848); navy-baandet
+// spaender hele indholdsbredden (FULL_BLEED i Layout.jsx).
 const AnnualMeetingRoute = lazy(() => import("./pages/annualMeeting/AnnualMeetingRoute"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
 const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage"));
