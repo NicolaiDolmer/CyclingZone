@@ -197,6 +197,8 @@
       "salary": "Løn",
       "contract": "Kontrakt",
       "contractSeason": "Sæson {season}",
+      "contractExpired": "Udløbet",
+      "contractExpiredSub": "Fri agent ved sæsonskiftet",
       "aiTag": "AI",
       "valueTrend": "{value} seneste {days} dage",
       "valueTrendTitle": "Værdiændring siden {date}",
