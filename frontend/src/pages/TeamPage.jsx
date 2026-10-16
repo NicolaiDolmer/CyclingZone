@@ -31,6 +31,7 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
+import PromotionPendingPanel from "../components/squad/PromotionPendingPanel.jsx"; // #6710
 import { useSquadGroupFilter, squadGroupFilterToolbar } from "../components/squad/SquadGroupFilter.tsx";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
@@ -1268,6 +1269,9 @@ export function TeamPage() {
           <ChevronRightIcon size={14} aria-hidden="true" />
         </Link>
       )}
+
+      {/* #6710: "Afventer oprykning" — skjult når flaget er off eller ingen venter. */}
+      <PromotionPendingPanel onPromoted={loadAll} />
 
       {/* #4628 (audit 2026-09 række #2): fanerne var tegnet som fire kantede
           knapper. PAGE_TEMPLATES er utvetydig — "Tabs are underline-tabs, never
