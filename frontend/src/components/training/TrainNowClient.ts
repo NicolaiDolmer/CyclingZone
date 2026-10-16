@@ -33,10 +33,11 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
   // sends nothing (state updates are not visible until the next render).
   const inFlight = useRef(false);
 
-  // #6740: `confirmShortRaces` is the explicit yes after the "will not start" warning.
-  // Without it the server re-checks today's races and may answer 409 short_races_confirm
-  // with the fresh list; the page then asks first (no error line: nothing failed).
-  const press = useCallback(async ({ confirmShortRaces = false }: { confirmShortRaces?: boolean } = {}): Promise<{ ok: boolean; error?: string }> => {
+  // #6740: `confirmedShortRaceIds` is the explicit yes for the races the warning showed.
+  // The server re-checks today's races on every first press and answers 409
+  // short_races_confirm with the fresh list when a race is not covered by that yes;
+  // the page then asks again (no error line: nothing failed).
+  const press = useCallback(async ({ confirmedShortRaceIds = [] }: { confirmedShortRaceIds?: string[] } = {}): Promise<{ ok: boolean; error?: string }> => {
     if (inFlight.current) return { ok: false, error: "in_flight" };
     inFlight.current = true;
     setPressing(true);
@@ -45,7 +46,7 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       const headers = await authHeaders();
       if (!headers) return { ok: false, error: "auth" };
       const res = await apiFetch(PATH, {
-        method: "POST", headers, body: JSON.stringify({ confirmShortRaces }),
+        method: "POST", headers, body: JSON.stringify({ confirmedShortRaceIds }),
       }, { source: "training-train-now" });
       const data = (res.data ?? {}) as {
         error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];

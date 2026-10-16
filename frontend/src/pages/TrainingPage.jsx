@@ -2384,7 +2384,13 @@ export default function TrainingPage() {
           <>
             <Button variant="secondary" onClick={() => setConfirmTrainNow(false)}>{t("trainNow.confirm.cancel")}</Button>
             <Button variant="primary" data-testid="training-train-now-confirm"
-              onClick={async () => { setConfirmTrainNow(false); await trainNow.press({ confirmShortRaces: true }); }}>
+              onClick={async () => {
+                setConfirmTrainNow(false);
+                // #6740: the yes covers exactly the races this dialog showed; a new short
+                // race since then comes back as 409 and the dialog opens again.
+                const pressed = await trainNow.press({ confirmedShortRaceIds: trainNow.status.shortRaces.map((r) => r.id) });
+                if (pressed?.error === "short_races_confirm") setConfirmTrainNow(true);
+              }}>
               {t("trainNow.confirm.go")}
             </Button>
           </>

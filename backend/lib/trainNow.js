@@ -249,10 +249,10 @@ export async function runTrainNow({
   loadContext = loadTrainingDateContext,
   registerWork = registerTrainingDateWork,
   loadDaySpans,
-  // #6740 (review #6742): the warning is re-checked HERE, not only on the page's GET.
-  // A rider injured or sold after the page loaded would otherwise let a press skip the
-  // confirmation and cost the race start. `confirmShortRaces` is the page's explicit yes.
-  confirmShortRaces = false,
+  // #6740 (review #6742): the warning is re-checked HERE on every first press, not only
+  // on the page's GET. `confirmedShortRaceIds` is the page's explicit yes, bound to the
+  // races it showed: a race that fell below the floor since then is asked about again.
+  confirmedShortRaceIds = [],
   loadShortRaces = defaultLoadShortRaces,
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
@@ -271,13 +271,15 @@ export async function runTrainNow({
     return { status: 409, body: { error: "previous_date_open", tickDate } };
   }
 
-  // #6740: a first press with a race below the floor needs the explicit yes. A repeated
-  // press (locks already written) decides nothing new and is never asked again.
-  if (!confirmShortRaces) {
-    const existingLocks = await loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate });
-    if (!existingLocks.length) {
-      const shortRaces = await loadShortRaces({ supabase, team, tickDate });
-      if (shortRaces.length) return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
+  // #6740: a first press with a race below the floor needs the explicit yes for exactly
+  // the races below the floor NOW. A repeated press (locks already written) decides
+  // nothing new and is never asked again.
+  const existingLocks = await loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate });
+  if (!existingLocks.length) {
+    const shortRaces = await loadShortRaces({ supabase, team, tickDate });
+    const confirmed = new Set(Array.isArray(confirmedShortRaceIds) ? confirmedShortRaceIds : []);
+    if (shortRaces.some((race) => !confirmed.has(race.id))) {
+      return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
     }
   }
 
