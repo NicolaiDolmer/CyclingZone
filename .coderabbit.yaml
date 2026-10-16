@@ -24,7 +24,9 @@ reviews:
   changed_files_summary: true
 
   auto_review:
-    enabled: true
+    # Ejer 16/10: slået fra. Codex reviewer alle PR'er; CodeRabbit var låst på
+    # 1 review/time og dublerede Codex. Manuel "@coderabbitai review" virker stadig.
+    enabled: false
     # Matcher eksisterende politik: drafts får ikke auto-review.
     drafts: false
     base_branches:
