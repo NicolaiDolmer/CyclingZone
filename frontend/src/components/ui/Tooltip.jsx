@@ -13,9 +13,13 @@ import { placeTooltip, tooltipMaxWidth } from "./tooltipPlacement.ts";
 export default function Tooltip({ label, side = "top", open = false, id, className = "", children }) {
   const anchorRef = useRef(null);
   const bubbleRef = useRef(null);
-  const [active, setActive] = useState(false);
+  // Hover og fokus holdes hver for sig, som group-hover/group-focus-within
+  // gjorde før: musen der forlader et fokuseret anker må ikke lukke boblen,
+  // og blur må ikke lukke den, mens musen stadig er over (Codex-review #6734).
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [pos, setPos] = useState(null);
-  const visible = active || open;
+  const visible = hovered || focused || open;
   // Codex-review #6734: boblen findes kun, mens den er åben, så skærmlæsere
   // får teksten fra en altid tilstedeværende sr-only-kopi, som ankeret peger
   // på via aria-describedby.
@@ -52,8 +56,8 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
 
   return (
     <span ref={anchorRef} className="group relative inline-flex"
-      onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}
-      onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
       {trigger}
       <span id={descId} className="sr-only">{label}</span>
       {visible && (

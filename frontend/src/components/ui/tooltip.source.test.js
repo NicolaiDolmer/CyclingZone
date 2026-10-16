@@ -13,7 +13,7 @@ test("Tooltip er group-ankret med role=tooltip + tooltipClass", () => {
 });
 
 test("open tvinger boblen synlig (kitchen-sink/snapshot)", () => {
-  assert.match(src, /active \|\| open/);
+  assert.match(src, /hovered \|\| focused \|\| open/);
   assert.match(src, /opacity-100!/);
 });
 
@@ -31,6 +31,13 @@ test("lukket boble renderes ikke; aaben boble ligger i en Portal med fixed posit
 test("ankeret faar aria-describedby til en sr-only-kopi af teksten", () => {
   assert.match(src, /"aria-describedby"/);
   assert.match(src, /<span id=\{descId\} className="sr-only">\{label\}<\/span>/);
+});
+
+// Codex-review #6734: hover og fokus er hver sin tilstand, saa den ene ikke
+// lukker boblen, mens den anden stadig er aktiv.
+test("hover og fokus spores hver for sig", () => {
+  assert.match(src, /onMouseLeave=\{\(\) => setHovered\(false\)\}/);
+  assert.match(src, /onBlur=\{\(\) => setFocused\(false\)\}/);
 });
 
 // Codex-review #6734: boblen skal maales med det endelige bredde-loft, ellers
