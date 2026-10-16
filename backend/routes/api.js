@@ -19002,14 +19002,14 @@ router.get("/team/promotion-pending", requireAuth, presencePulseLimiter, async (
   try {
     const out = await handleListPendingRequest(supabase, { teamId: req.team.id, seasonNumber: await getActiveSeasonNumber() });
     res.status(out.status).json(out.body);
-  } catch (err) { captureException(err); res.status(500).json({ error: err?.message ?? "" }); }
+  } catch (err) { captureException(err); res.status(500).json({ error: "Could not load riders awaiting promotion", errorCode: "promotion_pending_failed" }); }
 });
 router.post("/riders/:id/promote-pending", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const out = await handlePromotePendingRequest(supabase, { teamId: req.team.id, riderId: req.params.id, seasonNumber: await getActiveSeasonNumber() });
     res.status(out.status).json(out.body);
-  } catch (err) { captureException(err); res.status(500).json({ error: err?.message ?? "" }); }
+  } catch (err) { captureException(err); res.status(500).json({ error: "Could not promote the rider", errorCode: "promotion_pending_failed" }); }
 });
 
 export default router;

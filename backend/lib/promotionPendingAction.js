@@ -134,8 +134,14 @@ export async function handleListPendingRequest(supabase, {
     try {
       const out = await list(supabase, { teamId, seasonNumber });
       return { status: 200, body: { enabled: false, ...out } };
-    } catch { // best-effort: foer migrationen findes kolonnerne ikke; flag off = tom liste er korrekt
-      return { status: 200, body: { enabled: false, riders: [], room: {} } };
+    } catch (err) {
+      // Foer migrationen findes kolonnerne ikke (Postgres 42703): flag off = tom
+      // liste er korrekt. Alle andre fejl kastes, saa routen logger dem.
+      const e = /** @type {any} */ (err);
+      if (e?.code === "42703" || /does not exist/i.test(String(e?.message ?? ""))) {
+        return { status: 200, body: { enabled: false, riders: [], room: {} } };
+      }
+      throw err;
     }
   }
   const out = await list(supabase, { teamId, seasonNumber });

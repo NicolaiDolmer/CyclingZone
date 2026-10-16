@@ -86,6 +86,7 @@
     "academy_full": "Your academy is full",
     "academy_disabled": "The academy isn't available right now",
     "promotion_pending_disabled": "Promotion from the waiting list isn't available right now",
+    "promotion_pending_failed": "Something went wrong with promotion from the waiting list. Try again in a moment",
     "rider_retired_listing": "This rider has retired and can't be listed for sale",
     "rider_already_listed": "This rider is already listed on the transfer market",
     "listing_not_found": "Listing not found",
