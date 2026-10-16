@@ -55,3 +55,7 @@ test("fund 10: synes-godt-om har samme hoejde og skrift som Citér/Rapportér (B
 test("fund 13: reglernes sidemenu er bred nok fra lg", () => {
   assert.match(read("RulesPage.jsx"), /hidden md:block w-40 lg:w-52 shrink-0/);
 });
+
+test("fund 11: et langt forfatternavn uden mellemrum kan krympe og bryde (ingen vandret scroll)", () => {
+  assert.match(read("ForumPage.jsx"), /<span className="min-w-0 \[overflow-wrap:anywhere\]">\s*\{t\("list\.by"/);
+});

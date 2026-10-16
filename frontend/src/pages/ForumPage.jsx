@@ -100,7 +100,7 @@ function PostRow({ post, t, language }) {
       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
         {post.is_pinned && <span className="text-cz-accent-t">{t("post.pinnedTag")}</span>}
         {post.has_poll && <span className="text-cz-accent-t">{t("list.poll")}</span>}
-        <span className="break-words">
+        <span className="min-w-0 [overflow-wrap:anywhere]">
           {t("list.by", { name: authorDisplayName(post.author) })}
         </span>
         {/* #4649: Founder-mærke ved forfatterlinjen. */}
