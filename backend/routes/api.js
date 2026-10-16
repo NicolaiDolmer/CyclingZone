@@ -136,6 +136,7 @@ import {
   notifyForumMentions,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
+import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -8661,11 +8662,13 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
     }
 
-    await supabase.from("transfer_offers").update({
+    // #6463: betinget på at modbuddet STADIG er åbent (sælgeren kan have trukket det tilbage).
+    const claim = await claimCounterForAccept({ supabase, offerId: offer.id, patch: {
       status: "awaiting_confirmation",
       buyer_confirmed: true,
       seller_confirmed: false,
-    }).eq("id", offer.id);
+    } });
+    if (!claim.ok) return res.status(claim.status).json({ error: claim.error, errorCode: claim.errorCode });
 
     await notifyTeamOwnerBuilt(offer.seller_team_id, transferNotif.buildTransferCounterAcceptedNotification({
       buyerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
@@ -8765,6 +8768,16 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       riderId: offer.rider.id,
     }), offer.id);
     return res.json({ success: true, action: "withdrawn" });
+  }
+
+  // WITHDRAW COUNTER — seller withdraws their own open counteroffer (#6463)
+  if (action === "withdraw_counter") {
+    const result = await withdrawCounterOffer({ supabase, offer, teamId: req.team.id });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, errorCode: result.errorCode });
+    await notifyTeamOwnerBuilt(offer.buyer_team_id, buildCounterOfferWithdrawnNotification({
+      sellerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`, riderId: offer.rider.id,
+    }), offer.id);
+    return res.json({ success: true, action: "counter_withdrawn" });
   }
 
   return res.status(400).json({ error: "Ugyldig handling", errorCode: "invalid_action" });
