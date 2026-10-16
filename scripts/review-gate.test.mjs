@@ -25,6 +25,7 @@ import {
   parseCodexReviewState,
   codexStatusToState,
   pickGateRun,
+  gateRunsPath,
   CODEX_SUMMARY_MARKER,
 } from "./review-gate.mjs";
 
@@ -318,7 +319,7 @@ test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavri
     "backend/lib/urlSafety.js", ".gitleaks.toml", "backend/lib/someWriteRpc.js", "backend/lib/weeklyScheduler.js",
     "backend/api/featureFlagsApi.js", "backend/server.js", "backend/lib/authorizeTeamAction.js",
     ...Object.keys(CORE_MOTOR_MONEY), ...Object.keys(BILLING_WEBHOOK), ...Object.keys(VALUE_OWNER_GATE),
-    ...Object.keys(GATE_SECURITY), ...Object.keys(ROUND6), "backend/scripts/audit-rls-coverage.js",
+    ...Object.keys(GATE_SECURITY), ...Object.keys(ROUND6), ...Object.keys(ROUND7), "backend/scripts/audit-rls-coverage.js",
   ];
   for (const f of high) {
     assert.ok(classifyFile(f), `klassifikatoren: ${f} er hoejrisiko`);
@@ -635,4 +636,32 @@ test("tallyReviewerStats: indfoerende PR uden for perioden hentes via introducin
   const stats = tallyReviewerStats({ prs: [], escaped: [{ issue: 7, prs: [5] }], introducing: [old] });
   assert.equal(stats.claude.missed, 1);
   assert.equal(stats.claude.reviewedPrs, 0, "kun PR'er merget i perioden taeller som reviewet");
+});
+
+// Codex-fund paa #6657 (runde 7): markedet (kill switch), delegeret merge-
+// haandhaevelse og gate-koersel-opslag paa pull_request_target.
+const ROUND7 = Object.freeze({
+  "backend/lib/marketPause.js": "penge",
+  "backend/lib/marketUtils.js": "penge",
+  "backend/lib/youthMarket.js": "penge",
+  "scripts/wave-policy.mjs": "review-gate",
+  "scripts/wave-ownership.mjs": "review-gate",
+  "scripts/lib/merge-pr-owned.ps1": "review-gate",
+});
+
+test("classifyFile: markedet og delegeret merge-haandhaevelse er hoejrisiko (#6657)", () => {
+  for (const [f, reason] of Object.entries(ROUND7)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("backend/lib/marketPause.test.js"), null, "tests er stadig tests");
+  assert.equal(classifyFile("scripts/wave-policy.test.mjs"), null);
+  assert.equal(classifyFile("frontend/src/pages/MarketPage.jsx"), null, "UI er ikke backend-pengekode");
+  assert.equal(classifyFile("scripts/wave-capacity.mjs"), null, "kun haandhaevelsen, ikke al wave-tooling");
+});
+
+test("gateRunsPath: filtrerer aldrig paa PR'ens kilde-branch (pull_request_target koerer paa base)", () => {
+  const p = gateRunsPath("o/r", HEAD);
+  assert.ok(!/branch=/.test(p), "ingen branch-filter");
+  assert.ok(p.includes("event=pull_request_target"));
+  assert.ok(p.includes(`head_sha=${HEAD}`));
+  assert.ok(!gateRunsPath("o/r", "").includes("head_sha"), "uden SHA kun event");
+  assert.ok(!gateRunsPath("o/r", "x; rm").includes("head_sha"), "ugyldig SHA udelades");
 });

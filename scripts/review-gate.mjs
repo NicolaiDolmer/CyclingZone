@@ -57,8 +57,10 @@ const HIGH_RISK_RULES = Object.freeze([
   { reason: "workflow", re: /^\.github\/(workflows|actions)\// },
   { reason: "sikkerhed", re: /^(\.gitleaks\.toml|SECURITY\.md)$/ },
   // Review-gaten selv: klassifikator/gate, CodeRabbit-daekningen og merge-koeens
-  // haandhaevelse. En PR der svaekker dem svaekker reviewet af alle senere PR'er.
-  { reason: "review-gate", re: /^(scripts\/review-gate\.mjs|\.coderabbit\.yaml|scripts\/merge-queue\.ps1|scripts\/lib\/league-check\.ps1)$/ },
+  // haandhaevelse, inkl. det koeen delegerer til: wave-policy (assert-merge-allowed,
+  // guarded-merge), wave-ownership (ejerskabstjek) og merge-pr-owned (head-pinning +
+  // --admin merge). En PR der svaekker dem svaekker reviewet af alle senere PR'er.
+  { reason: "review-gate", re: /^(scripts\/review-gate\.mjs|\.coderabbit\.yaml|scripts\/merge-queue\.ps1|scripts\/lib\/league-check\.ps1|scripts\/wave-(policy|ownership)\.mjs|scripts\/lib\/merge-pr-owned\.ps1)$/ },
   // CI-vagterne workflows koerer (check-required-ci-jobs, lint-*, audit-*, scripts/ci/ ...)
   // og deres baselines: en PR der svaekker en vagt er lige saa farlig som en der
   // aendrer workflow-YAML'en (Codex-fund #6657). Navnefamilien er kontrakten;
@@ -71,7 +73,9 @@ const HIGH_RISK_RULES = Object.freeze([
   // base_value og loenvaerdi for alle ryttere, ogsaa fra cron.
   // "facilit" = facilitetskoeb/-opgradering og personale-loen (facilityService debiterer
   // via economyEngine og tjekker saldo; Codex-fund #6657).
-  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation|value|facilit") },
+  // "market" = markedet: marketPause (kill switch + auktions-sluttider), marketUtils,
+  // youthMarket, marketValue* (Codex-fund #6657).
+  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation|value|facilit|market") },
   // Betaling/abonnement (rigtige penge): checkout, kundeportal, abonnementsstatus,
   // adgang til betalt indhold og betalingsudbyderens webhook.
   { reason: "betaling", re: backendName("billing|checkout|subscription|entitlement|alunta|refund|invoice") },
@@ -479,13 +483,24 @@ export function pickGateRun(runs = [], pr, headSha) {
 /** Event gate-check'et produceres af. Kun koersler herfra taeller (merge-koeen filtrerer ogsaa paa det). */
 export const GATE_EVENT = "pull_request_target";
 
+/**
+ * API-sti til gatens koersler. pull_request_target koerer i base-branchens kontekst,
+ * saa run.head_branch er IKKE PR'ens kilde-branch: der filtreres aldrig paa
+ * head.ref (Codex-fund #6657). Kun event, og evt. head_sha; PR'en findes bagefter
+ * via pickGateRun.
+ */
+export function gateRunsPath(repo, headSha = "") {
+  const sha = /^[0-9a-f]{7,40}$/i.test(String(headSha || "")) ? `&head_sha=${headSha}` : "";
+  return `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=${GATE_EVENT}${sha}&per_page=100`;
+}
+
 /** Genkoer seneste pull_request_target-koersel af gaten for PR'en (check'et opdateres paa stedet). */
 function rerunGate(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   if (meta.state !== "open" || meta.draft) return `#${pr}: springes over (${meta.state}${meta.draft ? ", draft" : ""})`;
-  const branch = encodeURIComponent(meta.head.ref);
-  const runs = ghJson(["api", `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=${GATE_EVENT}&branch=${branch}&per_page=50`]).workflow_runs || [];
-  const run = pickGateRun(runs, pr, meta.head.sha);
+  const listRuns = (sha) => ghJson(["api", gateRunsPath(repo, sha)]).workflow_runs || [];
+  // Foerst praecist paa HEAD; findes intet, saa alle nyeste target-koersler (PR-association).
+  const run = pickGateRun(listRuns(meta.head.sha), pr, meta.head.sha) || pickGateRun(listRuns(""), pr, meta.head.sha);
   const fresh = evaluateGate(fetchPrData(repo, pr));
   const decision = shouldRerun(run, fresh.ok);
   if (!decision.rerun) return `#${pr}: ${decision.why}`;
