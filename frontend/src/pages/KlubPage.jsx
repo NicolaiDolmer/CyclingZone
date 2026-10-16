@@ -83,10 +83,9 @@ export default function KlubPage() {
   const ordered = TRACK_ORDER.map((tr) => byTrack[tr]).filter(Boolean);
   // Live faciliteter først (købbare), derefter "Coming soon"-teasers; TRACK_ORDER
   // bevares inden for hver gruppe (#1441 Slice 1).
-  const groupedFacilities = [
-    ...ordered.filter((f) => f.effectLive),
-    ...ordered.filter((f) => !f.effectLive),
-  ];
+  const liveFacilities = ordered.filter((f) => f.effectLive);
+  const soonFacilities = ordered.filter((f) => !f.effectLive);
+  const groupedFacilities = [...liveFacilities, ...soonFacilities];
   const primaryTrack = primaryUpgradeTrack(groupedFacilities);
   const staffFacility = staffTrack ? byTrack[staffTrack] : null;
   const pendingFacility = pendingUpgrade ? byTrack[pendingUpgrade] : null;
@@ -159,20 +158,23 @@ export default function KlubPage() {
           )}
 
           {/* Kort i 3 kolonner (1 på telefon). Live faciliteter først, så "kommer
-              snart". Kun ét kort får den gyldne knap: den billigste mulige
-              opgradering (TASTE: ét guld pr. view). */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[14px]">
-            {groupedFacilities.map((f) => (
-              <FacilityTrackCard
-                key={f.track}
-                facility={f}
-                primary={f.track === primaryTrack}
-                busy={busyTrack === f.track}
-                onUpgrade={setPendingUpgrade}
-                onOpenStaff={setStaffTrack}
-              />
-            ))}
-          </div>
+              snart" i deres egne rækker, så et lavt teaser-kort aldrig strækkes
+              op til et live-korts højde. Kun ét kort får den gyldne knap: den
+              billigste mulige opgradering (TASTE: ét guld pr. view). */}
+          {[liveFacilities, soonFacilities].map((group, i) => group.length > 0 && (
+            <div key={i} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[14px] mb-[14px]">
+              {group.map((f) => (
+                <FacilityTrackCard
+                  key={f.track}
+                  facility={f}
+                  primary={f.track === primaryTrack}
+                  busy={busyTrack === f.track}
+                  onUpgrade={setPendingUpgrade}
+                  onOpenStaff={setStaffTrack}
+                />
+              ))}
+            </div>
+          ))}
         </>
       )}
 
