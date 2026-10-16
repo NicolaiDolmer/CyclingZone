@@ -254,6 +254,8 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
   const isPending = offer.status === "pending";
   const isAwaiting = offer.status === "awaiting_confirmation";
+  // #6463: sælgerens eget modbud står åbent → sælgeren kan trække det tilbage.
+  const isCountered = offer.status === "countered";
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = statusCfg(t, offer.status);
   // #4156: ét beløb, én kilde — samme regel som backend afregner efter.
@@ -400,6 +402,13 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
             {t("offerCard.buttons.cancelDeal")}
           </button>
         </div>
+      )}
+
+      {isCountered && (
+        <Button variant="secondary" size="sm" fullWidth
+          onClick={() => doAction("withdraw_counter")} disabled={loading}>
+          {t("offerCard.buttons.withdrawCounter")}
+        </Button>
       )}
 
       {canArchive && (
@@ -1473,6 +1482,7 @@ export default function TransfersPage() {
             counter:         t("toast.counterSent"),
             new_offer:       t("toast.newOfferSent"),
             withdraw:        t("toast.offerWithdrawn"),
+            withdraw_counter: t("toast.counterWithdrawn"),
             archive:         t("toast.offerArchived"),
           };
           showMsg(msgs[action] || t("toast.updated"));

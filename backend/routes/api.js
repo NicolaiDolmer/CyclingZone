@@ -136,6 +136,7 @@ import {
   notifyForumMentions,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
+import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -8662,11 +8663,13 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
     }
 
-    await supabase.from("transfer_offers").update({
+    // #6463: betinget på at modbuddet STADIG er åbent (sælgeren kan have trukket det tilbage).
+    const claim = await claimCounterForAccept({ supabase, offerId: offer.id, patch: {
       status: "awaiting_confirmation",
       buyer_confirmed: true,
       seller_confirmed: false,
-    }).eq("id", offer.id);
+    } });
+    if (!claim.ok) return res.status(claim.status).json({ error: claim.error, errorCode: claim.errorCode });
 
     await notifyTeamOwnerBuilt(offer.seller_team_id, transferNotif.buildTransferCounterAcceptedNotification({
       buyerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
@@ -8744,13 +8747,22 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 
   // NEW OFFER — buyer sends new amount (counter to counter)
   if (action === "new_offer" && isBuyer && counter_amount) {
-    await supabase.from("transfer_offers").update({
+    // #6463: kun et ÅBENT modbud kan besvares med et nyt bud. Betinget på status,
+    // så et forældet kort ikke kan genåbne et tilbagetrukket eller afsluttet tilbud.
+    if (offer.status !== "countered") {
+      return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
+    }
+    const { data: reopened, error: reopenError } = await supabase.from("transfer_offers").update({
       offer_amount: counter_amount,
       counter_amount: null,
       status: "pending",
       message: message || offer.message,
       round: (offer.round || 1) + 1,
-    }).eq("id", offer.id);
+    }).eq("id", offer.id).eq("status", "countered").select("id");
+    if (reopenError) return res.status(500).json({ error: reopenError.message });
+    if (!reopened?.length) {
+      return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
+    }
     await notifyTeamOwnerBuilt(offer.seller_team_id, transferNotif.buildTransferNewBidNotification({
       buyerName: req.team.name, amount: counter_amount,
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`, riderId: offer.rider.id,
@@ -8766,6 +8778,16 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       riderId: offer.rider.id,
     }), offer.id);
     return res.json({ success: true, action: "withdrawn" });
+  }
+
+  // WITHDRAW COUNTER — seller withdraws their own open counteroffer (#6463)
+  if (action === "withdraw_counter") {
+    const result = await withdrawCounterOffer({ supabase, offer, teamId: req.team.id });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, errorCode: result.errorCode });
+    await notifyTeamOwnerBuilt(offer.buyer_team_id, buildCounterOfferWithdrawnNotification({
+      sellerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`, riderId: offer.rider.id,
+    }), offer.id);
+    return res.json({ success: true, action: "counter_withdrawn" });
   }
 
   return res.status(400).json({ error: "Ugyldig handling", errorCode: "invalid_action" });
