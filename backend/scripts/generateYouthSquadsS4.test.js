@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   parseArgs,
@@ -19,6 +20,8 @@ import {
   rankBirthCandidates,
   planYouthLift,
   applyLift,
+  restoreLift,
+  snapshotLiftState,
   liftBlockedReason,
   summarizeExistingByTeam,
   summarizeLevels,
@@ -556,16 +559,126 @@ test("applyLift: restore før skrivning, kun archetype_draw skrives, derive + po
   };
   let restored = null;
   let derived = null;
+  let snapshotted = null;
   const res = await applyLift(fake, lift, {
     ...MODELS,
     derive: async (_s, ids) => { derived = ids; },
+    snapshot: async (_s, ids) => {
+      snapshotted = ids;
+      assert.equal(calls.length, 0, "snapshot læses før første update");
+      return ids.map((id) => ({ id, rider: { id, base_value: 1 }, derivedAbilities: { rider_id: id, climbing: 7 }, physiology: { rider_id: id } }));
+    },
     log: () => {},
     writeRestore: (rows) => { restored = rows; assert.equal(calls.length, 0, "restore skrives før første update"); },
   });
+  assert.deepEqual(snapshotted, changed.map((r) => r.riderId));
   assert.equal(restored.length, changed.length);
+  assert.deepEqual(restored[0].birth, changed[0].previousBirth);
+  assert.equal(restored[0].derivedAbilities.climbing, 7, "restore-filen bærer de trænede evner, ikke kun markøren");
   assert.ok(calls.every((c) => c.keys.length === 1 && c.keys[0] === "archetype_draw"));
   assert.deepEqual(derived, changed.map((r) => r.riderId));
   assert.deepEqual(res.mismatches, []);
+});
+
+// ── #6668 (Codex P1 på #6671): eksakt tilbagerulning af løftet ───────────────
+// In-memory supabase med netop de kald applyLift/snapshotLiftState/restoreLift bruger.
+function memoryDb(tables) {
+  const keyOf = { riders: "id", rider_derived_abilities: "rider_id", rider_physiology_profiles: "rider_id" };
+  const clone = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+  return {
+    tables,
+    from(table) {
+      const rows = tables[table];
+      return {
+        select: (cols) => ({
+          in: (col, ids) => ({
+            order: () => ({
+              range: () => {
+                const pick = (r) => (cols === "*" ? clone(r) : Object.fromEntries(cols.split(", ").map((c) => [c, clone(r[c])])));
+                return Promise.resolve({ data: rows.filter((r) => ids.includes(r[col])).map(pick), error: null });
+              },
+            }),
+          }),
+        }),
+        update: (patch) => ({
+          eq: (col, id) => {
+            const r = rows.find((x) => x[col] === id);
+            if (r) Object.assign(r, clone(patch));
+            return Promise.resolve({ error: null });
+          },
+        }),
+        upsert: (batch) => {
+          for (const b of batch) {
+            const i = rows.findIndex((x) => x[keyOf[table]] === b[keyOf[table]]);
+            if (i === -1) rows.push(clone(b)); else rows[i] = clone(b);
+          }
+          return Promise.resolve({ error: null });
+        },
+      };
+    },
+  };
+}
+
+test("applyLift → restoreLift: tilbagerulning gendanner de trænede evner, ikke fødsels-trækket (#6668)", async () => {
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S });
+  const lift = planYouthLift({ riders, teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S, levelProfile: profile, ...MODELS });
+  const changed = lift.rows.filter((r) => r.changed);
+  assert.ok(changed.length > 0);
+  const byId = new Map(riders.map((r) => [r.id, r]));
+  const db = memoryDb({
+    riders: changed.map((r) => ({
+      id: r.riderId, archetype_draw: byId.get(r.riderId).archetype_draw, primary_type: "pre-type", secondary_type: null,
+      valuation_type: "pre-type", base_value: 111, current_production_value: 22, name: "urørt",
+    })),
+    // Trænede evner: afviger fra fødsels-trækket og har akkumuleret progress.
+    rider_derived_abilities: changed.map((r) => ({ rider_id: r.riderId, climbing: 61, sprint: 44, ability_progress: { climbing: 0.4 }, ability_caps: { climbing: 70 } })),
+    rider_physiology_profiles: changed.map((r) => ({ id: `p-${r.riderId}`, rider_id: r.riderId, ftp_wkg: 4.1 })),
+  });
+  const original = JSON.parse(JSON.stringify(db.tables));
+  let restoreFile = null;
+  // Derive som i prod: evnerne reproduceres fra den NYE markør (træningen væk), progress bevares.
+  const derive = async (supabase, ids) => {
+    for (const id of ids) {
+      const a = db.tables.rider_derived_abilities.find((x) => x.rider_id === id);
+      Object.assign(a, { climbing: 1, sprint: 1 });
+      const m = changed.find((x) => x.riderId === id).mirror;
+      Object.assign(db.tables.riders.find((x) => x.id === id), { base_value: m.base_value, primary_type: m.primary_type });
+      Object.assign(db.tables.rider_physiology_profiles.find((x) => x.rider_id === id), { ftp_wkg: 3 });
+    }
+  };
+  const res = await applyLift(db, lift, { ...MODELS, derive, log: () => {}, writeRestore: (rows) => { restoreFile = JSON.parse(JSON.stringify({ restore: rows })); } });
+  assert.deepEqual(res.mismatches, []);
+  assert.notDeepEqual(db.tables, original, "løftet har skrevet");
+  // Kun markøren var ikke nok: den gamle restore-fil (birth alene) afvises.
+  await assert.rejects(restoreLift(db, restoreFile.restore.map((r) => ({ id: r.id, birth: r.birth })), { log: () => {} }), /evne-snapshot/);
+  const back = await restoreLift(db, restoreFile.restore, { log: () => {} });
+  assert.deepEqual(back.mismatches, []);
+  assert.deepEqual(back.restored, changed.map((r) => r.riderId));
+  assert.deepEqual(db.tables, original, "riders, evner (inkl. progress/caps) og fysiologi er præcis som før løftet");
+});
+
+test("snapshotLiftState: mangler en evne-række, stopper apply før første skrivning (#6668)", async () => {
+  const db = memoryDb({
+    riders: [{ id: "x1" }, { id: "x2" }],
+    rider_derived_abilities: [{ rider_id: "x1" }],
+    rider_physiology_profiles: [{ rider_id: "x1" }, { rider_id: "x2" }],
+  });
+  await assert.rejects(snapshotLiftState(db, ["x1", "x2"]), /restore-snapshot mangler 1/);
+  assert.deepEqual(await snapshotLiftState(db, []), []);
+});
+
+test("parseArgs --restore-lift: egen tilstand, kun balance-internals, apply kræver owner-go (#6668)", () => {
+  // Absolut sti, så testen ikke afhænger af arbejdsmappen.
+  const file = fileURLToPath(new URL("../../balance-internals/6668-lift-restore-s5-1.json", import.meta.url));
+  const dry = parseArgs([`--restore-lift=${file}`]);
+  assert.equal(dry.apply, false);
+  assert.equal(dry.restoreLift, file);
+  assert.equal(dry.juniors, undefined, "--juniors gælder ikke i restore-tilstanden");
+  assert.throws(() => parseArgs([`--restore-lift=${fileURLToPath(new URL("../../docs/x.json", import.meta.url))}`]), /--restore-lift skal pege/);
+  assert.throws(() => parseArgs(["--restore-lift"]), /stien/);
+  assert.throws(() => parseArgs([`--restore-lift=${file}`, "--apply"]), /--owner-go/);
+  assert.equal(parseArgs([`--restore-lift=${file}`, "--apply", "--owner-go"]).apply, true);
 });
 
 // ── #6668: benchmark af gab (measureYouthFieldGate) ──────────────────────────

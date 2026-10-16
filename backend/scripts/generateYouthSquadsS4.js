@@ -59,6 +59,9 @@
 //                         urørt). Indebærer --match-human-level.
 //   S5-kørslen:  --juniors=0 --season=5 --lift-existing --out=balance-internals/<fil>.md
 //   Apply som før: kun med --apply --owner-go, og kun når målsæsonen er aktiv.
+//   --restore-lift=balance-internals/<restore-fil>.json   ruller et løft tilbage fra
+//                         snapshottet (fødsels-markør + trænede evner, ingen derive).
+//                         Dry-run default; skriver kun med --apply --owner-go.
 //
 // --apply skriver mod prod og er gated bag BEGGE flag. Kør ALDRIG --apply uden et
 // eksplicit ejer-go på netop de tal dry-run'en har vist (feedback_explicit_go_per_prod_step).
@@ -171,6 +174,21 @@ export function parseArgs(argv) {
     return Number(raw);
   };
 
+  // #6668: --restore-lift=<restore-fil> ruller et løft tilbage (egen tilstand; --juniors gælder ikke).
+  const restoreRaw = get("restore-lift");
+  if (restoreRaw !== undefined) {
+    if (restoreRaw === true || restoreRaw === "") throw new Error("--restore-lift kræver stien til restore-filen");
+    const restoreApply = get("apply") === true;
+    if (restoreApply && get("owner-go") !== true) {
+      throw new Error("--apply kræver OGSÅ --owner-go. Kør dry-run først og få ejerens go på netop de tal.");
+    }
+    return {
+      restoreLift: assertBalanceInternalsPath(restoreRaw, { flag: "--restore-lift" }),
+      apply: restoreApply,
+      ownerGo: get("owner-go") === true,
+    };
+  }
+
   const juniorsRaw = get("juniors");
   if (juniorsRaw === undefined) {
     throw new Error(
@@ -224,11 +242,11 @@ export function parseArgs(argv) {
  * @param {string} p
  * @returns {string} absolut sti
  */
-export function assertBalanceInternalsPath(p, { root = REPO_ROOT, cwd = process.cwd() } = {}) {
+export function assertBalanceInternalsPath(p, { root = REPO_ROOT, cwd = process.cwd(), flag = "--out" } = {}) {
   const abs = resolve(cwd, p);
   const rel = relative(join(root, "balance-internals"), abs);
   if (rel === "" || rel.startsWith("..") || rel.split(sep)[0] === ".." || resolve(abs) === resolve(root, "balance-internals")) {
-    throw new Error(`--out skal pege på en fil inde i balance-internals/ (fik ${p})`);
+    throw new Error(`${flag} skal pege på en fil inde i balance-internals/ (fik ${p})`);
   }
   return abs;
 }
@@ -986,15 +1004,102 @@ export function liftBlockedReason(lift) {
   return `STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret før første skrivning (#2065, #6668).`;
 }
 
+// ── Restore-snapshot af løftet (#6668, Codex P1 på #6671) ────────────────────
+// Fødsels-markøren alene kan IKKE rulle et løft tilbage: deriveForRiderIds
+// reproducerer evnerne fra markøren og bevarer kun `ability_progress`, så evne-
+// point optjent ved træning ville forsvinde. Snapshottet tager derfor ALT derive
+// skriver (riders-felterne nedenfor + hele rider_derived_abilities- og
+// rider_physiology_profiles-rækken), og en rollback skriver det tilbage UDEN derive.
+export const LIFT_SNAPSHOT_RIDER_COLUMNS = Object.freeze([
+  "id", "archetype_draw", "primary_type", "secondary_type", "valuation_type", "base_value", "current_production_value",
+]);
+
 /**
- * Apply af løftet: restore-fil FØR første skrivning → ny fødsels-markør pr. rytter
- * → deriveForRiderIds med SAMME modeller som spejlingen → post-verify. Kontrakt og
- * løn røres ikke (løn er frosset ved signering, #1309).
+ * Læs løftets ryttere som de står FØR første skrivning. Kun SELECT. Mangler en
+ * rytter, hans evne-række eller fysiologi, kastes der: så kan tilbagerulningen ikke
+ * blive eksakt, og apply skal stoppe før noget er skrevet.
+ * @returns {Promise<Array<{id:string, rider:object, derivedAbilities:object, physiology:object}>>}
+ */
+export async function snapshotLiftState(supabase, ids) {
+  if (!ids.length) return [];
+  const read = (table, select, col) => fetchAllRowsChunkedIn(ids, (chunk) => supabase.from(table)
+    .select(select)
+    .in(col, chunk)
+    .order(col));
+  const [riders, abilities, physiology] = await Promise.all([
+    read("riders", LIFT_SNAPSHOT_RIDER_COLUMNS.join(", "), "id"),
+    read("rider_derived_abilities", "*", "rider_id"),
+    read("rider_physiology_profiles", "*", "rider_id"),
+  ]);
+  const riderById = new Map(riders.map((r) => [r.id, r]));
+  const abilitiesById = new Map(abilities.map((r) => [r.rider_id, r]));
+  const physiologyById = new Map(physiology.map((r) => [r.rider_id, r]));
+  const missing = ids.filter((id) => !riderById.has(id) || !abilitiesById.has(id) || !physiologyById.has(id));
+  if (missing.length) {
+    throw new Error(`STOP: restore-snapshot mangler ${missing.length} rytter(e) (${missing.slice(0, 5).join(", ")}) — `
+      + "tilbagerulningen kan ikke blive eksakt; apply blokeret før første skrivning (#6668).");
+  }
+  return ids.map((id) => ({
+    id,
+    rider: riderById.get(id),
+    derivedAbilities: abilitiesById.get(id),
+    physiology: physiologyById.get(id),
+  }));
+}
+
+/**
+ * Rul et løft tilbage fra restore-filen: skriver de snapshottede rækker tilbage
+ * PRÆCIS som de var (trænede evner, ability_progress, caps, fysiologi, type og
+ * værdi). Kører bevidst IKKE derive: derive ville gendanne fødsels-trækket, ikke
+ * rytterens faktiske evner. En restore-fil fra før snapshottet (kun `birth`) afvises.
+ * @returns {Promise<{restored:string[], mismatches:Array<{id:string}>}>}
+ */
+export async function restoreLift(supabase, restoreRows, { log = console.log } = {}) {
+  const rows = restoreRows || [];
+  const incomplete = rows.filter((r) => !r?.id || !r.rider || !r.derivedAbilities || !r.physiology);
+  if (incomplete.length) {
+    throw new Error(`STOP: ${incomplete.length} restore-række(r) uden evne-snapshot — kan ikke rulles eksakt tilbage (#6668).`);
+  }
+  for (let i = 0; i < rows.length; i += WRITE_CONCURRENCY) {
+    await Promise.all(rows.slice(i, i + WRITE_CONCURRENCY).map((r) => {
+      const { id: _id, ...patch } = r.rider;
+      return supabase.from("riders").update(patch).eq("id", r.id).then(({ error }) => {
+        if (error) throw new Error(`restore ${r.id}: ${error.message}`);
+      });
+    }));
+  }
+  for (const [table, key] of [["rider_derived_abilities", "derivedAbilities"], ["rider_physiology_profiles", "physiology"]]) {
+    for (let i = 0; i < rows.length; i += WRITE_CONCURRENCY) {
+      const { error } = await supabase.from(table)
+        .upsert(rows.slice(i, i + WRITE_CONCURRENCY).map((r) => r[key]), { onConflict: "rider_id" });
+      if (error) throw new Error(`restore ${table}: ${error.message}`);
+    }
+  }
+  log(`  ryttere rullet tilbage: ${rows.length}`);
+  const ids = rows.map((r) => r.id);
+  if (!ids.length) return { restored: [], mismatches: [] };
+  const persisted = await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("rider_derived_abilities")
+    .select(["rider_id", ...VISIBLE_ABILITIES].join(", "))
+    .in("rider_id", chunk)
+    .order("rider_id"));
+  const byId = new Map(persisted.map((p) => [p.rider_id, p]));
+  const mismatches = rows
+    .filter((r) => VISIBLE_ABILITIES.some((k) => byId.get(r.id)?.[k] !== r.derivedAbilities[k]))
+    .map((r) => ({ id: r.id }));
+  return { restored: ids, mismatches };
+}
+
+/**
+ * Apply af løftet: restore-snapshot (fødsels-markør + trænede evner) FØR første
+ * skrivning → ny fødsels-markør pr. rytter → deriveForRiderIds med SAMME modeller
+ * som spejlingen → post-verify. Kontrakt og løn røres ikke (løn er frosset ved
+ * signering, #1309).
  */
 export async function applyLift(supabase, lift, {
   valuationModel,
   productionValuationModel,
   derive = deriveForRiderIds,
+  snapshot = snapshotLiftState,
   log = console.log,
   writeRestore = () => {},
 } = {}) {
@@ -1005,7 +1110,9 @@ export async function applyLift(supabase, lift, {
     throw new Error(`STOP: ${lift.totals.rankFloorUnmet} løft kan ikke bevare rangordenen — apply blokeret (#6668)`);
   }
   const changed = lift.rows.filter((r) => r.changed);
-  writeRestore(changed.map((r) => ({ id: r.riderId, birth: r.previousBirth })));
+  const before = await snapshot(supabase, changed.map((r) => r.riderId));
+  const beforeById = new Map(before.map((s) => [s.id, s]));
+  writeRestore(changed.map((r) => ({ birth: r.previousBirth, ...beforeById.get(r.riderId), id: r.riderId })));
   for (let i = 0; i < changed.length; i += WRITE_CONCURRENCY) {
     await Promise.all(changed.slice(i, i + WRITE_CONCURRENCY).map((r) =>
       supabase.from("riders").update({ archetype_draw: r.archetype_draw }).eq("id", r.riderId).then(({ error }) => {
@@ -1066,6 +1173,22 @@ async function main() {
     process.exit(2);
   }
   const supabase = createClient(url, key, { auth: { persistSession: false } });
+
+  if (args.restoreLift) {
+    const rows = JSON.parse(readFileSync(args.restoreLift, "utf8")).restore ?? [];
+    console.log(`#6668 tilbagerulning af løft: ${rows.length} rytter(e) fra ${relative(REPO_ROOT, args.restoreLift)} (${args.apply ? "APPLY" : "DRY-RUN, read-only"})`);
+    if (!args.apply) {
+      console.log("DRY-RUN (read-only). Intet skrevet. Tilbagerulning: --apply --owner-go\n");
+      process.exit(0);
+    }
+    const { mismatches } = await restoreLift(supabase, rows);
+    if (mismatches.length > 0) {
+      console.error(`  RESTORE-AFVIGELSE: ${mismatches.length} rytter(e) har ikke de snapshottede evner efter tilbagerulningen.`);
+      process.exit(1);
+    }
+    console.log("  restore-verify: 0 afvigelser");
+    process.exit(0);
+  }
 
   // Modellerne VÆLGES af app_config præcis som derive'en gør, og det SAMME objekt
   // sendes til både spejlingen og derive (#5443). Fail-safe v4 ligger i loaderen.
@@ -1188,7 +1311,8 @@ async function main() {
       productionValuationModel,
       writeRestore: (rows) => {
         writeFileSync(restorePath, JSON.stringify({ restore: rows }, null, 2));
-        console.log(`  restore-fil (gamle fødsels-markører): ${relative(REPO_ROOT, restorePath)}`);
+        console.log(`  restore-fil (fødsels-markører + trænede evner før løftet): ${relative(REPO_ROOT, restorePath)}`);
+        console.log(`  tilbagerulning: node backend/scripts/generateYouthSquadsS4.js --restore-lift=${relative(REPO_ROOT, restorePath)} --apply --owner-go`);
       },
     });
     if (liftResult.mismatches.length > 0) {
