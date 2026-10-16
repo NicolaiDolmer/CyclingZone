@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Academy",
         "en": {
           "title": "Academy 2.0: bring in this week's intake",
-          "body": "Each week you bring in your academy intake with one click on the Academy page. The new Academy Expansion on the Club page decides how many candidates you get (2 without it, up to 4) and lets you give the intake a profile: a nationality or region, a rider type and one extra choice. You learn a prospect's potential through training after you sign him."
+          "body": "Each week you bring in your academy intake with one click on the Academy page. The new Academy Expansion on the Club page decides how many candidates you get and lets you give the intake a profile: a nationality or region, a rider type and one extra choice. You learn a prospect's potential through training after you sign him."
         },
         "da": {
           "title": "Akademi 2.0: hent ugens optag",
-          "body": "Hver uge henter du dit akademi-optag med ét klik på akademisiden. Den nye Akademi-udvidelse på Klub-siden afgør, hvor mange kandidater du får (2 uden den, op til 4), og lader dig give optaget en profil: en nationalitet eller region, en ryttertype og ét ekstra valg. Du lærer en kandidats potentiale at kende gennem træning, efter du har skrevet kontrakt."
+          "body": "Hver uge henter du dit akademi-optag med ét klik på akademisiden. Den nye Akademi-udvidelse på Klub-siden afgør, hvor mange kandidater du får, og lader dig give optaget en profil: en nationalitet eller region, en ryttertype og ét ekstra valg. Du lærer en kandidats potentiale at kende gennem træning, efter du har skrevet kontrakt."
         },
         "refs": [
           6666,
