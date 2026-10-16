@@ -123,6 +123,8 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const pending = scoutSystemEnabled ? pendingFor?.(riderId) : undefined;
   const pendingCountdown = useScoutCountdown(pending?.readyAt ?? null);
   const pendingReadyClock = scoutReadyClock(pending?.readyAt);
+  // #5852: optaget spejder (job-model) er ikke "ingen slots" — vis hvornår han er ledig.
+  const nextFreeCountdown = useScoutCountdown(scouting.nextFreeAt ?? null);
 
   const estimate = estimateFor(riderId);
 
@@ -184,7 +186,13 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
       type="button"
       onClick={handleScout}
       disabled={!canScout}
-      title={remaining <= 0 ? t("rider:scouting.noSlots") : t("rider:scouting.scoutTitle")}
+      title={remaining <= 0
+        ? (scoutSystemEnabled
+          ? (nextFreeCountdown?.state === "counting"
+            ? t("rider:scouting.scoutBusy", { minutes: nextFreeCountdown.minutes })
+            : t("rider:scouting.scoutBusyNow"))
+          : t("rider:scouting.noSlots"))
+        : t("rider:scouting.scoutTitle")}
       className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
     >
       {busy ? (

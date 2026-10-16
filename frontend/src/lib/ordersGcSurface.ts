@@ -26,7 +26,8 @@ export type RulesRevision = "legacy" | "orders_gc_v1";
 // #6464: official_times_v4 is the whole official_times_v3 package plus engine
 // changes without a surface of their own; same orders surface.
 // #6369: s5_profiles_v1 (switched off, empty) is the whole official_times_v4 package.
-const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"]);
+// #6462: official_times_v5 (switched off) is official_times_v4 + the sprint-train default rule.
+const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"]);
 
 /**
  * Løbets effektive regel-revision for spillerfladerne. #6084: orders_gc_v2 er

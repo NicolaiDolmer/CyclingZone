@@ -212,3 +212,59 @@ test("akademi-siden viser aldrig stjerner på intake-kort (#5844)", () => {
   assert.doesNotMatch(pageSource, /PotentialeStars/, "AcademyPage må ikke importere/rendere PotentialeStars");
   assert.match(pageSource, /potentialPending/, "manglende bånd skal vise en tekst, ikke et stjerne-fallback");
 });
+
+test("hent-knappen vises uanset åbne tilbud, og 'provisional value' kun på pull-kandidater (#6155)", () => {
+  const cardIdx = pageSource.indexOf('t("intakePull.pullBtn")');
+  assert.ok(cardIdx > 0, "hent-knappen findes");
+  const before = pageSource.slice(Math.max(0, cardIdx - 900), cardIdx);
+  assert.match(before, /intakePull\.enabled && !intakePull\.pulledThisWeek && \(/);
+  assert.doesNotMatch(before, /regularIntake\.length === 0 && intakePull\.enabled && !intakePull\.pulledThisWeek \?/);
+  assert.match(pageSource, /isPull \? t\("intakePull\.provisionalValue"\) : t\("colValue"\)/);
+  assert.match(pageSource, /isPull && \(\s*<p[^>]*>\{t\("intakePull\.valuationNote"\)\}/);
+});
+
+// #6666 Optag 2.0 (ejer-beslutninger 15/10).
+const localesDir = join(__dirname, "..", "..", "public", "locales");
+const academyLocale = (lng) => JSON.parse(readFileSync(join(localesDir, lng, "academy.json"), "utf8"));
+
+test("hent-knappen siger aldrig 'scout' (#6666 punkt 3)", () => {
+  assert.equal(academyLocale("en").intakePull.pullBtn, "Bring in this week's intake");
+  assert.equal(academyLocale("da").intakePull.pullBtn, "Hent ugens kandidater");
+  for (const lng of ["en", "da"]) {
+    const pull = JSON.stringify(academyLocale(lng).intakePull);
+    assert.doesNotMatch(pull, /scout/i, `${lng}: intakePull-teksterne må ikke love scouting`);
+  }
+});
+
+test("hentede kandidater viser 'Learned through training', og backend maskerer båndet (#6666 punkt 1)", () => {
+  assert.match(pageSource, /item\.potentialLearned && \(/);
+  assert.match(pageSource, /t\("potentialLearned"\)/);
+  assert.equal(academyLocale("en").potentialLearned, "Learned through training");
+  // Maskeringen sker i backend, bag samme flag som pull-optaget.
+  assert.match(academyMeBlock, /intakePullEnabled\s*\?\s*await buildIntake2View\(/);
+  assert.match(academyMeBlock, /intake: intake2\?\.intake \?\? intake/);
+});
+
+test("hentede kandidater viser nuværende evner, som SSOT og copy lover (#6666 punkt 1, Codex-fund)", () => {
+  // Copy'en lover "age, nationality, type and current abilities"; kortet skal holde det.
+  assert.match(academyLocale("en").intakePull.description, /current abilities/);
+  assert.match(pageSource, /const abilitiesNow = isPull \? pullCandidateAbilities\(item\) : null;/);
+  assert.match(pageSource, /data-testid="intake-abilities-now"/);
+  assert.match(pageSource, /t\("intakePull\.abilitiesNow"\)/);
+  assert.equal(academyLocale("en").intakePull.abilitiesNow, "Abilities now");
+  assert.equal(academyLocale("da").intakePull.abilitiesNow, "Evner nu");
+  // Tabulære tal på al numerik (TASTE).
+  assert.match(pageSource, /font-data text-3xs tabular-nums/);
+});
+
+test("rosterets prognose læres gennem træning når Optag 2.0 er tændt (#6666 punkt 2)", () => {
+  assert.match(pageSource, /r\.prognosis\s*\n?\s*\? <AcademyPrognosisCell/);
+  assert.match(pageSource, /: <ScoutablePotentiale rider=\{r\}/, "flag off: uændret scouting-visning");
+});
+
+test("profil-kortet vises kun med Optag 2.0 og har ingen guld-knap (#6666 punkt 4-5)", () => {
+  assert.match(pageSource, /intakePull\.enabled && academyProfile && \(/);
+  const card = readFileSync(join(__dirname, "..", "components", "AcademyProfileCard.tsx"), "utf8");
+  assert.doesNotMatch(card, /variant="primary"/, "sidens eneste guld er hent-knappen (TASTE: ét guld pr. view)");
+  assert.match(apiSource, /router\.put\("\/academy\/profile"/);
+});

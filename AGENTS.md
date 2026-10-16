@@ -155,11 +155,7 @@ Kritiske facts:
 ## Worktree-disciplin (alle agenter)
 
 - **Hoved-checkoutet (`C:\Dev\CyclingZone`) er ejerens og Claudes.** Enhver anden agent — Codex inkluderet — arbejder ALTID i en worktree (`scripts/new-worktree.ps1`), også til trivielle docs-commits. To agenter i samme working tree betyder branch-skift under hinandens fødder, og hard rule 18 fanger det først EFTER skaden. Maskinlæsbart session-claim er sporet i [#4016](https://github.com/NicolaiDolmer/CyclingZone/issues/4016); indtil da er `🤖 Working agent` i `docs/NOW.md` den eneste lås — den skal sættes ved start, pushes, og nulstilles ved close-out.
-- Worktrees i `.claude/worktrees/<navn>/` cleanes efter ship via SessionStart-hook
-- Manuel fallback hvis hook fejler: `git worktree remove <path>` + `git branch -D <branch>` på PC'en der oprettede worktreen
-- Per-PC handling — gentages på den anden PC ved næste session der
-- **Parallel-sessions samme PC:** se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](docs/AGENT_ARCHITECTURE.md#parallel-session-safety-samme-pc-flere-claude-sessions-samtidigt) for kollisions-matrix + worktree-recipe
-- ⚠️ **Sti-baserede hard-blocks SKAL stå i `permissions.deny`, ikke kun hooks (#684):** På Claude Code ≥2.1.154 bypasser `permissions.allow` PreToolUse-hookenes `exit 2` OG JSON-`permissionDecision: deny` ([anthropics/claude-code#18312](https://github.com/anthropics/claude-code/issues/18312)). Fix D (verificeret 2026-05-29 i frisk acceptEdits-session): statiske `permissions.deny`-globs overlever allow-listen (`deny > allow`-precedence) — `Write`/`Edit`/`NotebookEdit(docs/archive/**)` er nu i `permissions.deny`, så arkiv-beskyttelsen håndhæves selvom de tre tools er allow-listede (#591). **Tilbageværende gap:** indholds-baserede guardrails (NOW.md 30-linjers-grænse, dynamisk secret-pattern) kan ikke udtrykkes som deny-globs → stadig hook-only og afvæbnede for allow-listede tools indtil #18312. Hold dem i menneske-review ved autonome parallel-runs — se [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md) top-note.
+- Oprydning, parallel-sessioner og `permissions.deny`-gap (#684): [`docs/AI_OPS_REFERENCE.md#worktree-disciplin-detaljer`](docs/AI_OPS_REFERENCE.md#worktree-disciplin-detaljer).
 
 ---
 
@@ -167,12 +163,7 @@ Kritiske facts:
 
 Resten af AI-ops-disciplinen er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md)** — læs efter behov:
 
-- **Token-effektiv kontekst** — doc-til-trigger-tabel + cold-start-recipe + anti-patterns
-- **Rolle-fordeling mellem AI-assistenter** — Manus / Claude / Codex / Clarity (kort version; fuld council-kontrakt i [`docs/AI_COUNCIL.md`](docs/AI_COUNCIL.md))
-- **Hvornår skifter AI-ejerskab** — scenarie→AI-tabel + konflikt-resolution
-- **Cross-PC setup** — repo-placering, synk-arkitektur, drift-protokol, ikke-rør-for-Codex
-- **Session-rytme & token-effektivitet** — 🟢/🟡/🔴/🆕-signaler, close-out-tjeklister, hvornår man starter ny session
-- **Reference til loops** — quick-ref A-I (fuld spec: [`docs/AI_LOOPS.md`](docs/AI_LOOPS.md))
+- Token-effektiv kontekst · rolle-fordeling (fuld: [`docs/AI_COUNCIL.md`](docs/AI_COUNCIL.md)) · AI-ejerskab · cross-PC setup · session-rytme · loops (fuld: [`docs/AI_LOOPS.md`](docs/AI_LOOPS.md)).
 
 ---
 
