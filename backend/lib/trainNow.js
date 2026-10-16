@@ -166,6 +166,8 @@ export async function loadTrainNowShortRaces({ supabase, team, todayRaces, tickD
       clearedIds: new Set((cleared ?? []).map((c) => c.race_id)),
     }).sort((a, b) => String(a.name).localeCompare(String(b.name)));
   } catch {
+    // best-effort: the warning only decorates the button; a failed read must never
+    // fail the status or the press (same contract as loadTodayRacesForTeam above).
     return [];
   }
 }
