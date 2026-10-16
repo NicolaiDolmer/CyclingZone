@@ -9,20 +9,46 @@
 // TASTE: hairline-Section, ingen guld (rækkeknapper er altid secondary),
 // stroke-ikon, én linje kontekst.
 import { useCallback, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import RiderLink from "../RiderLink";
-import { Button, Section, SectionHeader, ArrowUpIcon } from "../ui";
+import {
+  Button as ButtonJs,
+  Section as SectionJs,
+  SectionHeader as SectionHeaderJs,
+  ArrowUpIcon as ArrowUpIconJs,
+} from "../ui/index.js";
+import { RiderLink } from "./squadUi.ts";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
-import { promotionErrorKey, pendingRidersFromResponse } from "./promotionPendingModel.js";
+import { promotionErrorKey, pendingRidersFromResponse, type PendingRider } from "./promotionPendingModel.ts";
+
+// Kit-primitiverne er .jsx uden egne typer; kontrakten skrives ned her (samme
+// greb som squadUi.ts / stagePageV2/ui.ts).
+interface SectionProps { className?: string; children: ReactNode; "data-testid"?: string }
+interface SectionHeaderProps { title: ReactNode; meta?: ReactNode }
+interface ButtonProps {
+  variant?: "primary" | "secondary" | "ghost";
+  size?: "sm" | "md";
+  disabled?: boolean;
+  onClick?: () => void;
+  children: ReactNode;
+  "data-testid"?: string;
+}
+interface IconProps { size?: number; "aria-hidden"?: boolean | "true" }
+const Section = SectionJs as unknown as (props: SectionProps) => ReactNode;
+const SectionHeader = SectionHeaderJs as unknown as (props: SectionHeaderProps) => ReactNode;
+const Button = ButtonJs as unknown as (props: ButtonProps) => ReactNode;
+const ArrowUpIcon = ArrowUpIconJs as unknown as (props: IconProps) => ReactNode;
 
 const API = import.meta.env.VITE_API_URL;
 
-export default function PromotionPendingPanel({ onPromoted }) {
+interface Notice { tone: "success" | "danger"; text: string }
+
+export default function PromotionPendingPanel({ onPromoted }: { onPromoted?: () => void }) {
   const { t } = useTranslation("team");
-  const [riders, setRiders] = useState([]);
-  const [busyId, setBusyId] = useState(null);
-  const [notice, setNotice] = useState(null); // { tone: "success"|"danger", text }
+  const [riders, setRiders] = useState<PendingRider[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -35,9 +61,9 @@ export default function PromotionPendingPanel({ onPromoted }) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  async function promote(rider) {
+  async function promote(rider: PendingRider) {
     setBusyId(rider.id);
     setNotice(null);
     try {
@@ -53,7 +79,8 @@ export default function PromotionPendingPanel({ onPromoted }) {
         await load();
         onPromoted?.();
       } else {
-        setNotice({ tone: "danger", text: t(promotionErrorKey(res.data?.errorCode)) });
+        const code = (res.data as { errorCode?: unknown } | null)?.errorCode;
+        setNotice({ tone: "danger", text: t(promotionErrorKey(code)) });
       }
     } catch {
       setNotice({ tone: "danger", text: t("promotionPending.error.generic") });
@@ -79,7 +106,7 @@ export default function PromotionPendingPanel({ onPromoted }) {
                 <span className="text-2xs text-cz-3">{t(`promotionPending.waitingFor.${r.to}`)}</span>
               </div>
               {r.canPromote ? (
-                <Button variant="secondary" size="sm" disabled={busyId !== null} onClick={() => promote(r)}
+                <Button variant="secondary" size="sm" disabled={busyId !== null} onClick={() => { void promote(r); }}
                   data-testid="promotion-pending-promote">
                   <ArrowUpIcon size={14} aria-hidden="true" />
                   {t("promotionPending.promote")}

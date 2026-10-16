@@ -85,6 +85,7 @@
     "rider_listed": "Rytteren er på transferlisten. Fjern listingen før du flytter rytteren til akademiet",
     "academy_full": "Dit akademi er fuldt",
     "academy_disabled": "Akademiet er ikke tilgængeligt lige nu",
+    "promotion_pending_disabled": "Oprykning fra ventelisten er ikke tilgængelig lige nu",
     "rider_retired_listing": "Rytteren er pensioneret og kan ikke sættes til salg",
     "rider_already_listed": "Rytteren er allerede til salg på transfermarkedet",
     "listing_not_found": "Listing findes ikke",

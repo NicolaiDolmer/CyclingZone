@@ -31,7 +31,7 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
-import PromotionPendingPanel from "../components/squad/PromotionPendingPanel.jsx"; // #6710
+import PromotionPendingPanel from "../components/squad/PromotionPendingPanel.tsx"; // #6710
 import { useSquadGroupFilter, squadGroupFilterToolbar } from "../components/squad/SquadGroupFilter.tsx";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";

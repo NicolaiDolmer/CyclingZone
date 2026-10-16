@@ -18997,7 +18997,7 @@ router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, re
 });
 
 // #6710: "Afventer oprykning" — trupsidens liste + "Ryk op" (promotionPendingAction.js).
-router.get("/team/promotion-pending", requireAuth, async (req, res) => {
+router.get("/team/promotion-pending", requireAuth, presencePulseLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const out = await handleListPendingRequest(supabase, { teamId: req.team.id, seasonNumber: await getActiveSeasonNumber() });

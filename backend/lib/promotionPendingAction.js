@@ -45,6 +45,7 @@ export async function listPendingPromotions(supabase, {
   if (!teamId) throw new Error("listPendingPromotions: teamId required");
 
   // schema-columns-ok: se PENDING_RIDER_SELECT ovenfor (#6710).
+  // pagination-safe: ét holds ryttere (trup-lofterne holder det langt under 1000).
   const { data, error } = await supabase.from("riders")
     .select(PENDING_RIDER_SELECT)
     .eq("team_id", teamId)

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { promotionErrorKey, pendingRidersFromResponse } from "./promotionPendingModel.js";
+import { promotionErrorKey, pendingRidersFromResponse } from "./promotionPendingModel.ts";
 
 test("promotionErrorKey: kendte koder faar egen tekst, resten den generiske", () => {
   assert.equal(promotionErrorKey("squad_full"), "promotionPending.error.squad_full");
