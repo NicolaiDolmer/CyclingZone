@@ -176,7 +176,11 @@ export async function pullWeeklyAcademyIntake(supabase, {
       await applyProvisionalValues(supabase, newIds, rng);
     }
   } catch (err) {
-    await rollbackPull(supabase, { teamId, weekSunday, riderIds: newIds, cause: err });
+    // Codex 16/10: fejlede kuld-oprettelsen OG dens egen oprydning, bærer fejlen
+    // de efterladte ryttere; så ryddes de her, og lykkes det ikke, beholdes claimet.
+    const orphanIds = /** @type {any} */ (err)?.orphanRiderIds;
+    const ids = newIds.length > 0 ? newIds : (Array.isArray(orphanIds) ? orphanIds : []);
+    await rollbackPull(supabase, { teamId, weekSunday, riderIds: ids, cause: err });
     throw err;
   }
 

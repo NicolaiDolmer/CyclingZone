@@ -211,7 +211,11 @@ export async function seedAcademyCohortForTeam(supabase, {
     // uden intake-række (kalderen kender ikke deres id'er når vi kaster).
     const { error: cleanupErr } = await supabase.from("riders").delete().in("id", insertedIds);
     const cleanupNote = cleanupErr ? `; cleanup of ${insertedIds.length} riders failed: ${cleanupErr.message}` : "";
-    throw new Error(`academy-intake intake insert (team ${teamId}): ${intakeErr.message}${cleanupNote}`);
+    const seedErr = new Error(`academy-intake intake insert (team ${teamId}): ${intakeErr.message}${cleanupNote}`);
+    // Codex 16/10: fejlede oprydningen, skal kalderen vide hvilke ryttere der
+    // ligger tilbage, saa ugens claim ikke frigives over forældreløse ryttere.
+    if (cleanupErr) /** @type {any} */ (seedErr).orphanRiderIds = insertedIds;
+    throw seedErr;
   }
 
   return insertedIds;

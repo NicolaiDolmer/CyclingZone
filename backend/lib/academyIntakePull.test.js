@@ -382,6 +382,21 @@ test("pullWeeklyAcademyIntake (#6666): derive-fejl → kuldets intake-rækker + 
   assert.equal(supabase._capture.riderUpdates.length, 0, "ingen provisoriske værdier efter en derive-fejl");
 });
 
+test("pullWeeklyAcademyIntake (Codex 16/10): kuld-fejl hvor kuldets egen oprydning fejlede → ryttere ryddes her", async () => {
+  const supabase = buildMockSupabase();
+  const seedCohortFn = async () => {
+    const e = new Error("intake insert boom; cleanup failed");
+    // @ts-ignore - mock
+    e.orphanRiderIds = ["orphan-1", "orphan-2"];
+    throw e;
+  };
+  await assert.rejects(pullWeeklyAcademyIntake(supabase, pullOpts({ seedCohortFn })), /intake insert boom/);
+  assert.deepEqual(supabase._capture.deletes.map((d) => [d.table, d.ids]), [
+    ["academy_intake", ["orphan-1", "orphan-2"]],
+    ["riders", ["orphan-1", "orphan-2"]],
+  ]);
+});
+
 test("pullWeeklyAcademyIntake (Codex 16/10): en kandidat signeret i en anden fane slettes ikke, og ugens claim beholdes", async () => {
   const supabase = buildMockSupabase({ keptIntake: ["rider-2"] });
   await assert.rejects(
