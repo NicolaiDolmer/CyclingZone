@@ -358,11 +358,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     let rolesBody = null;
     let orderCtx = null;
     try {
-      const [rolesRes, orderResult, revisionRes] = await Promise.all([
+      // #6462: togreglen for loebet kommer med team-orders-svaret (sprintTrainFlatOnly):
+      // motorens revision, ogsaa for et loeb der endnu ikke er bundet.
+      const [rolesRes, orderResult] = await Promise.all([
         apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers }),
         fetchTeamOrders({ raceId }).catch(() => null),
-        // #6462: den raa revision (toget er kun standard paa flade etaper under s5_profiles_v1).
-        supabase.from("races").select("engine_rules_revision").eq("id", raceId).maybeSingle().then((r) => r, () => null),
       ]);
       // #5242 (CodeRabbit-fund): et 2xx med tom/ikke-JSON krop giver apiFetch's
       // res.data:null — uden dette tjek ville rolesBody.stage_count nedenfor
@@ -372,7 +372,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         return;
       }
       rolesBody = rolesRes.data;
-      orderCtx = orderResult && { ...orderResult, rulesRevision: revisionRes?.data?.engine_rules_revision ?? null };
+      orderCtx = orderResult;
     } catch {
       setRoles(false);
       return;

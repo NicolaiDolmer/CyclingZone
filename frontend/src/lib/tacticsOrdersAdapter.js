@@ -59,6 +59,8 @@ export async function fetchTeamOrders({ raceId }) {
     raceCompleted: body.race_completed === true,
     riders: body.riders ?? [],
     defaultOrder: body.default_order ?? null,
+    // #6462: serverens svar for loebets revision (toget kun standard paa flade etaper).
+    sprintTrainFlatOnly: body.sprint_train_flat_only === true,
     orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
   };
@@ -66,11 +68,12 @@ export async function fetchTeamOrders({ raceId }) {
 
 /**
  * #6462: rollernes standardordre for ÉN etape, som motoren koerer den. Toget er
- * kun standard paa en flad etape under s5_profiles_v1 (`context.rulesRevision`,
- * den raa `races.engine_rules_revision`). Ren funktion.
+ * kun standard paa en flad etape, naar serveren siger det for loebet
+ * (`context.sprintTrainFlatOnly`: motorens revision, ogsaa foer foerste claim).
+ * Ren funktion.
  */
 export function defaultOrderForStage(context, profileType) {
-  return trainDefaultForStage(context?.defaultOrder ?? null, { profileType, rulesRevision: context?.rulesRevision ?? null });
+  return trainDefaultForStage(context?.defaultOrder ?? null, { profileType, flatOnly: context?.sprintTrainFlatOnly === true });
 }
 
 /**

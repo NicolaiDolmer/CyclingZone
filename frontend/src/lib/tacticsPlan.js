@@ -29,11 +29,6 @@ export function defaultTeamOrder(riderIds = []) {
 // #6462: motorens tog-etaper (backend mechanics/leadout.ts isSprintTrainProfile).
 const SPRINT_TRAIN_PROFILES = new Set(["flat"]);
 
-/** #6462: spejler backend raceEngineRulesRevision.isS5ProfilesV1OrLater (naeste, slukkede revision). */
-function isS5ProfilesV1OrLater(revision) {
-  return revision === "s5_profiles_v1";
-}
-
 /** #6462: etapen er en tog-etape (flad). En ukendt profil er det ikke: intet forvalg. */
 export function isSprintTrainStage(profileType) {
   return SPRINT_TRAIN_PROFILES.has(profileType);
@@ -41,16 +36,19 @@ export function isSprintTrainStage(profileType) {
 
 /**
  * #6462 (ejer 16/10): sprint-toget er kun STANDARD paa en flad etape. Spejler
- * motorens adapter (teamOrdersAdapter.ts trainIsDefaultOnStage + withoutDefaultTrain):
- * under s5_profiles_v1 faar hjaelperne ingen tog-standard paa bjerg, enkeltstart,
- * kuperet og brosten; official_times_v4 og aeldre (frosne motor-digests) beholder
- * rollens standard paa alle etaper, i motoren og derfor ogsaa her.
+ * motorens adapter (teamOrdersAdapter.ts trainIsDefaultOnStage + withoutDefaultTrain).
+ * `flatOnly` er serverens svar for loebet (team-orders `sprint_train_flat_only`):
+ * den revision motoren koerer loebet paa, ogsaa for et loeb der endnu ikke er
+ * bundet (backend raceTeamOrdersApi.sprintTrainFlatOnlyForRace). Fladen gaetter
+ * aldrig selv revisionen. Med flatOnly faar hjaelperne ingen tog-standard paa
+ * bjerg, enkeltstart, kuperet og brosten; uden beholder rollens standard alle
+ * etaper (official_times_v4 og aeldre), i motoren og derfor ogsaa her.
  * Gemte valg roeres ikke (de ligger i de gemte raekker, ikke i standardordren).
  * Ren: returnerer en ny ordre; null/undefined passerer uaendret igennem.
  */
-export function trainDefaultForStage(defaultOrder, { profileType = null, rulesRevision = null } = {}) {
+export function trainDefaultForStage(defaultOrder, { profileType = null, flatOnly = false } = {}) {
   if (!defaultOrder) return defaultOrder;
-  if (!isS5ProfilesV1OrLater(rulesRevision) || isSprintTrainStage(profileType)) return defaultOrder;
+  if (flatOnly !== true || isSprintTrainStage(profileType)) return defaultOrder;
   return { ...defaultOrder, riders: (defaultOrder.riders ?? []).map((r) => ({ ...r, leadout: false })) };
 }
 

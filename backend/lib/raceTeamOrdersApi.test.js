@@ -9,7 +9,9 @@ import {
   VALID_BREAKAWAY_STANCES,
   VALID_RIDER_ORDER_FIELDS,
   REJECTED_RIDER_ORDER_FIELDS,
+  sprintTrainFlatOnlyForRace,
 } from "./raceTeamOrdersApi.js";
+import { CURRENT_RACE_RULES_REVISION, isOfficialTimesV5OrLater } from "./raceEngineRulesRevision.ts";
 import { VALID_EFFORTS_FIVE_STEP } from "./raceRoles.js";
 import {
   validateTeamOrder as validateAgainstEngineContract,
@@ -154,4 +156,19 @@ test("#4246: en gemt raekke fra spiller-stien ACCEPTERES af motorens kontrakt (r
   const saved = normalizeTeamOrder(validOrder);
   const result = validateAgainstEngineContract({ team_id: "t1", ...saved });
   assert.deepEqual(result, { ok: true }, JSON.stringify(result));
+});
+
+// #6462 (Codex P1): fladen faar motorens revision, ikke den raa kolonne. Et
+// ikke-startet loeb (NULL) bindes til den aktuelle ved foerste claim; fladen
+// skal derfor vise den aktuelles togregel, ikke legacy.
+test("#6462 sprintTrainFlatOnlyForRace: gemt revision, ellers den aktuelle for et ikke-startet loeb, ellers legacy", () => {
+  assert.equal(sprintTrainFlatOnlyForRace({ engine_rules_revision: "official_times_v5", stages_completed: 3 }), true);
+  assert.equal(sprintTrainFlatOnlyForRace({ engine_rules_revision: "s5_profiles_v1", stages_completed: 0 }), true);
+  assert.equal(sprintTrainFlatOnlyForRace({ engine_rules_revision: "official_times_v4", stages_completed: 0 }), false);
+  // NULL + ikke startet = den aktuelle revision (som motoren binder).
+  assert.equal(sprintTrainFlatOnlyForRace({ engine_rules_revision: null, stages_completed: 0 }), isOfficialTimesV5OrLater(CURRENT_RACE_RULES_REVISION));
+  // NULL + startet = legacy; ukendt gemt vaerdi = legacy (aldrig nyeste regler paa usikkert grundlag).
+  assert.equal(sprintTrainFlatOnlyForRace({ engine_rules_revision: null, stages_completed: 2 }), false);
+  assert.equal(sprintTrainFlatOnlyForRace({ engine_rules_revision: "official_times_v9", stages_completed: 0 }), false);
+  assert.equal(sprintTrainFlatOnlyForRace(null), isOfficialTimesV5OrLater(CURRENT_RACE_RULES_REVISION));
 });
