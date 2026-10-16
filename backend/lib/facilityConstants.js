@@ -154,6 +154,8 @@ export function staffReleaseSeverance(salary) {
 // effectiveBonus = FACILITY_BASE_EFFECT[track][facilityTier] × staffUtilization(staffTier)
 // staffUtilization: 0.5 uden staff; 0.6..1.0 ved staff-tier 1..5.
 // Effekt-tallene er per-track multiplikator-bonusser (0 = ingen effekt).
+// academy-værdierne nedenfor er den gamle slot-model (kun harness-kalibrering); den live
+// effekt (#6666) er kuldstørrelse + klubprofil, se isTrackEffectLive længere nede.
 // KUN 'training' og 'commercial' har live effekt-hooks i A1-scope; scouting/medical/academy
 // får deres hooks i egne opfølgnings-slices (spec §2.1) — deres base-effekt er defineret
 // her så priser/harness kan kalibreres samlet.
@@ -191,3 +193,18 @@ export const COMMERCIAL_MIN_PAYBACK_SEASONS = 4;
 export const EFFECT_LIVE_BY_TRACK = Object.freeze({
   training: true, scouting: true, medical: false, academy: false, commercial: false,
 });
+
+// #6666 (ejer 16/10): akademi-sporet åbner SAMMEN med optag 2.0 — køb og effekt
+// følger app_config-flaget academy_intake_pull_enabled (runtime, ingen deploy).
+// EFFECT_LIVE_BY_TRACK.academy forbliver false som kompileret default; alle steder
+// der afgør live-status (oversigt, holdside, køb) går gennem denne funktion.
+// Effekten er optag 2.0: niveauet styrer kuldets størrelse og klubprofilen
+// (PROFILE_TIERS i academyIntakeProfile.ts), ikke de gamle "ekstra slots" ovenfor.
+export function isTrackEffectLive(track, { academyIntakePullEnabled = false } = {}) {
+  if (track === "academy") return academyIntakePullEnabled === true;
+  return EFFECT_LIVE_BY_TRACK[track] ?? false;
+}
+
+// Spor uden staff-effekt: ingen chef kan ansættes (en løn uden effekt er en fælde).
+// Akademi 2.0 bruger kun facilitets-niveauet; prognose-farten bruger træningschefen.
+export const TRACKS_WITHOUT_STAFF = Object.freeze(["academy"]);

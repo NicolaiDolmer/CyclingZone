@@ -7,10 +7,13 @@ import {
   FACILITIES_ENABLED,
   FACILITY_TRACKS,
   FACILITY_TIER_UPKEEP,
-  EFFECT_LIVE_BY_TRACK,
   MAX_FACILITY_TIER,
   MAX_STAFF_SLOTS_PER_ROLE,
+  TRACKS_WITHOUT_STAFF,
+  isTrackEffectLive,
 } from "./facilityConstants.js";
+import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
+import { candidatesForTier } from "./academyIntakeProfile.ts";
 import { getUpgradePrice, effectiveBonus, primaryStaff } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
@@ -31,6 +34,22 @@ const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
 // #6261-#6264: insufficient_available_balance bærer det låste beløb, så UI'et kan vise det.
 function lockedFields(result) {
   return result.locked != null ? { locked: result.locked, available: result.available } : {};
+}
+
+// #6666: akademi-sporets live-status følger academy_intake_pull_enabled. Kan injiceres
+// via flags (tests/route); ellers læses app_config her (fail-safe: fejl → slukket).
+export async function resolveTrackLiveFlags(flags, supabaseClient) {
+  const academyIntakePullEnabled = typeof flags?.academyIntakePullEnabled === "boolean"
+    ? flags.academyIntakePullEnabled
+    : await isAcademyIntakePullEnabled(supabaseClient);
+  return { academyIntakePullEnabled };
+}
+
+// #6666: akademiets effekt vises som kuldstørrelse pr. uge (optag 2.0), ikke den gamle
+// slot-kurve. Øvrige spor: uændret facilityEngine.effectiveBonus.
+export function displayTrackBonus(track, tier, staff) {
+  if (track === "academy") return candidatesForTier(tier);
+  return effectiveBonus(track, tier, staff);
 }
 
 function statusForError(error, overrides = {}) {
@@ -78,6 +97,7 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
     staffByRole.set(s.role, list);
   }
   for (const list of staffByRole.values()) list.sort((a, b) => (a.slot ?? 1) - (b.slot ?? 1));
+  const liveFlags = await resolveTrackLiveFlags(flags, supabaseClient);
 
   const facilities = FACILITY_TRACKS.map((track) => {
     const tier = tierByTrack.get(track) ?? 0;
@@ -109,15 +129,16 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
       staff: primaryStaffOut,
       staffList: staffOutList,
       staffSlotsUsed: staffOutList.length,
-      staffSlotsMax: MAX_STAFF_SLOTS_PER_ROLE,
+      // #6666: 0 for spor uden staff-effekt (akademi) — UI'et viser så ingen ansæt-knap.
+      staffSlotsMax: TRACKS_WITHOUT_STAFF.includes(track) ? 0 : MAX_STAFF_SLOTS_PER_ROLE,
       // #2216 A4 (Task 6): display-magnitude = base × staffEffectFactor(staff) — ability-
       // drevet (overall), IKKE tier-skalaren. staffOut bærer overall (eller null = gulv).
-      effectiveBonus: effectiveBonus(track, tier, primaryStaffOut),
-      effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
+      effectiveBonus: displayTrackBonus(track, tier, primaryStaffOut),
+      effectLive: isTrackEffectLive(track, liveFlags),
       // #2311 (Slice 2): tier-preview før køb — hvad NÆSTE tier giver, samme staff
       // holdt konstant (spejler kilden effectiveBonus bruger). null ved max tier
       // (ingen "undefined"-preview i UI).
-      nextTierBonus: tier >= MAX_FACILITY_TIER ? null : effectiveBonus(track, tier + 1, primaryStaffOut),
+      nextTierBonus: tier >= MAX_FACILITY_TIER ? null : displayTrackBonus(track, tier + 1, primaryStaffOut),
     };
   });
 
@@ -138,6 +159,10 @@ export async function postFacilityUpgradeHandler(
   supabaseClient,
   { flags = DEFAULT_FLAGS, purchaseFacilityUpgrade = defaultPurchase } = {}
 ) {
+  // #6666: akademiet kan kun købes når optag 2.0 er tændt (køb og effekt samtidig).
+  if (track === "academy" && !isTrackEffectLive(track, await resolveTrackLiveFlags(flags, supabaseClient))) {
+    return { status: 403, body: { error: "facility_track_unavailable" } };
+  }
   const result = await purchaseFacilityUpgrade({ teamId, track, seasonId, seasonNumber }, supabaseClient, flags);
   if (!result.ok) return { status: statusForError(result.error), body: { error: result.error, ...lockedFields(result) } };
   return { status: 200, body: result };
@@ -152,6 +177,7 @@ export async function getStaffCandidatesHandler(
 ) {
   if (!flags.facilitiesEnabled) return { status: 403, body: { error: "facilities_disabled" } };
   if (!FACILITY_TRACKS.includes(role)) return { status: 400, body: { error: "invalid_role" } };
+  if (TRACKS_WITHOUT_STAFF.includes(role)) return { status: 400, body: { error: "staff_role_unavailable" } };
 
   const { data, error } = await supabaseClient
     .from("team_facilities")
@@ -189,6 +215,8 @@ export async function postStaffHireHandler(
   supabaseClient,
   { flags = DEFAULT_FLAGS, hireStaff = defaultHire } = {}
 ) {
+  // #6666: en akademichef har ingen effekt i optag 2.0 — ingen løn for ingenting.
+  if (TRACKS_WITHOUT_STAFF.includes(role)) return { status: 400, body: { error: "staff_role_unavailable" } };
   const result = await hireStaff({ teamId, role, candidateName, seasonId, seasonNumber }, supabaseClient, flags);
   if (!result.ok) {
     return {
