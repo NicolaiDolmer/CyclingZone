@@ -200,9 +200,14 @@ export const EFFECT_LIVE_BY_TRACK = Object.freeze({
 // der afgør live-status (oversigt, holdside, køb) går gennem denne funktion.
 // Effekten er optag 2.0: niveauet styrer kuldets størrelse og klubprofilen
 // (PROFILE_TIERS i academyIntakeProfile.ts), ikke de gamle "ekstra slots" ovenfor.
+/**
+ * @param {string} track
+ * @param {{ academyIntakePullEnabled?: boolean }} [flags]
+ * @returns {boolean}
+ */
 export function isTrackEffectLive(track, { academyIntakePullEnabled = false } = {}) {
   if (track === "academy") return academyIntakePullEnabled === true;
-  return EFFECT_LIVE_BY_TRACK[track] ?? false;
+  return /** @type {Record<string, boolean>} */ (EFFECT_LIVE_BY_TRACK)[track] ?? false;
 }
 
 // Spor uden staff-effekt: ingen chef kan ansættes (en løn uden effekt er en fælde).

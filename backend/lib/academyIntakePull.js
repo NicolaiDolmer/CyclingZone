@@ -140,6 +140,7 @@ export async function pullWeeklyAcademyIntake(supabase, {
   // fejlen kastes videre, så samme uge kan hentes igen (ingen halve kuld, intet
   // "allerede hentet" uden kandidater). Claimet slettes SIDST: mens oprydningen
   // kører, blokerer det stadig et parallelt klik.
+  /** @type {string[]} */
   let newIds = [];
   try {
     const { data: teamRow, error: teamErr } = await supabase
@@ -188,6 +189,9 @@ export async function pullWeeklyAcademyIntake(supabase, {
  * riders) og derefter claimet. Fejler sletningen af kuldet, BEHOLDES claimet:
  * et nyt forsøg ville ellers lægge et andet kuld oven i resterne. Fejlen bærer
  * så begge årsager, så den kan ryddes manuelt.
+ *
+ * @param {any} supabase
+ * @param {{ teamId: string, weekSunday: string, riderIds: string[], cause: unknown }} ctx
  */
 async function rollbackPull(supabase, { teamId, weekSunday, riderIds, cause }) {
   const failures = [];
