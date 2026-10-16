@@ -575,20 +575,30 @@ test("press: a race below the floor without the explicit yes -> 409, nothing loc
   assert.equal(calls.length, 0);
 });
 
-test("press: with the explicit yes the press runs as before", async () => {
+test("press: the yes for exactly the short races runs the press, still re-checked", async () => {
   const state = baseState();
   const { deps } = harness(state);
   let asked = 0;
-  const result = await runTrainNow({ ...deps, confirmShortRaces: true, loadShortRaces: async () => { asked += 1; return SHORT; } });
+  const result = await runTrainNow({ ...deps, confirmedShortRaceIds: ["leman"], loadShortRaces: async () => { asked += 1; return SHORT; } });
   assert.equal(result.status, 200);
-  assert.equal(asked, 0, "the yes skips the re-check");
+  assert.equal(asked, 1, "every first press re-checks");
   assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 2);
+});
+
+test("press: a race that fell below the floor after the dialog is asked again (review #6742)", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  const fresh = [...SHORT, { id: "danube", name: "Tour du Danube", fit: 4, entered: 6, min: 6 }];
+  const result = await runTrainNow({ ...deps, confirmedShortRaceIds: ["leman"], loadShortRaces: async () => fresh });
+  assert.equal(result.status, 409);
+  assert.deepEqual(result.body.shortRaces, fresh);
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 0);
 });
 
 test("press: a repeated press (locks already written) is never asked again", async () => {
   const state = baseState();
   const { deps } = harness(state);
-  await runTrainNow({ ...deps, confirmShortRaces: true });
+  await runTrainNow({ ...deps, confirmedShortRaceIds: ["leman"], loadShortRaces: async () => SHORT });
   const again = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
   assert.equal(again.status, 200);
 });
