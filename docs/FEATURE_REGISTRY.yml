@@ -702,6 +702,18 @@ features:
     verified: 2026-10-15
     note: PR #6501 (11/10); off i prod (læst 15/10). Fail-safe off, beta læses som off; kun ejeren flipper.
 
+  - id: promotion-pending
+    area: academy
+    title_en: Awaiting promotion instead of auto-sale when the next squad is full
+    title_da: Afventer oprykning i stedet for automatisk salg ved fuld trup
+    state: building
+    ssot: docs/YOUTH_RULES.md
+    epic: 5833
+    verified: 2026-10-16
+    decision: ejer-beslutning
+    decide_by: 2026-10-24
+    note: "#6710 plan-PR 1. Flag-nøgle promotion_pending_enabled (oprettes off af migrationen); flyttes til flag-feltet når rækken findes i prod."
+
   # --- economy -------------------------------------------------------------
   - id: sponsors
     area: economy
