@@ -6381,6 +6381,7 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     const { error: upErr } = await supabase
       .from("race_withdrawals").upsert({ race_id: race.id, team_id: req.team.id }, { onConflict: "race_id,team_id" });
     if (upErr) return res.status(500).json({ error: upErr.message });
+    invalidateNamespace("calendar"); // #6514: kalenderkortet bærer holdets afmeldt-status
     res.json({ ok: true, withdrawn: true });
   } catch (err) {
     captureException(err);
@@ -6421,6 +6422,7 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
     const { error: delErr } = await supabase
       .from("race_withdrawals").delete().eq("race_id", req.params.raceId).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, withdrawn: false });
   } catch (err) {
     captureException(err);

@@ -128,6 +128,17 @@ function rangesOverlap(a: DateRange | null, b: DateRange | null): boolean {
   return Boolean(a && b) && (a as DateRange).start <= (b as DateRange).end && (b as DateRange).start <= (a as DateRange).end;
 }
 
+/**
+ * Binding regnes i in-game-dage (game_day), som backendens raceBindingWindow. Flere game_days kan
+ * ligge paa samme kalenderdato, saa datoer alene giver falske konflikter. Mangler game_day-spanet
+ * paa et af loebene, falder vi tilbage til datoerne.
+ */
+function bindsOverlap(a: CalendarEntryLike, b: CalendarEntryLike): boolean {
+  const ok = [a.gameDayStart, a.gameDayEnd, b.gameDayStart, b.gameDayEnd].every((x) => Number.isFinite(x));
+  if (ok) return (a.gameDayStart as number) <= (b.gameDayEnd as number) && (b.gameDayStart as number) <= (a.gameDayEnd as number);
+  return rangesOverlap(raceDateRange(a), raceDateRange(b));
+}
+
 const GRAND_TOUR_CLASSES = new Set(["TourFrance", "GiroVuelta"]);
 export function isGrandTour(raceClass: string | null | undefined): boolean {
   return Boolean(raceClass) && GRAND_TOUR_CLASSES.has(raceClass as string);
@@ -152,7 +163,7 @@ export function myRaceStatus(
   if (!range || (todayIso && range.start < todayIso)) return null;
   if (entry.entered) return "selected";
   const gt = (entries || []).find((e) => e && e.id !== entry.id && e.isMine && e.entered && !e.withdrawn
-    && isGrandTour(e.raceClass) && rangesOverlap(range, raceDateRange(e)));
+    && isGrandTour(e.raceClass) && bindsOverlap(entry, e));
   return gt ? "gtBound" : "missing";
 }
 

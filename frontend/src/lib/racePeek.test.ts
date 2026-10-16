@@ -149,3 +149,12 @@ test("#6514 raceArchiveHref: type og valgt pulje bevares", () => {
   assert.equal(raceArchiveHref("X", "stage_race", 7), "/race-archive/X?type=stage_race&pool=7");
   assert.equal(raceArchiveHref("X", null, 7), "/race-archive/X?pool=7");
 });
+
+test("#6514 myRaceStatus: Grand Tour-konflikt regnes i game_days, ikke kun datoer", () => {
+  const tour = { id: "gt2", isMine: true, entered: true, raceClass: "TourFrance", date: "2026-10-20", stageSchedule: [{ stage: 1, date: "2026-10-20" }, { stage: 2, date: "2026-10-22" }], gameDayStart: 100, gameDayEnd: 102 };
+  // Samme kalenderdato som GT'ens sidste dag, men game_day efter spanet: ingen binding.
+  const after = { id: "x1", isMine: true, entered: false, date: "2026-10-22", gameDayStart: 103, gameDayEnd: 103 };
+  assert.equal(myRaceStatus(after, [tour, after], TODAY), "missing");
+  const inside = { id: "x2", isMine: true, entered: false, date: "2026-10-21", gameDayStart: 101, gameDayEnd: 101 };
+  assert.equal(myRaceStatus(inside, [tour, inside], TODAY), "gtBound");
+});
