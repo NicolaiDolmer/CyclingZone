@@ -31,8 +31,8 @@ test("formatOrdinalShort: '12 Jun'-form", () => {
 });
 
 test("statusMeta: redundant glyf pr. status (ikke kun farve)", () => {
-  assert.equal(statusMeta("on_track").glyph, "✓");
-  assert.equal(statusMeta("at_risk").glyph, "↓");
+  assert.equal(statusMeta("on_track").icon, "check");
+  assert.equal(statusMeta("at_risk").icon, "down");
   assert.equal(statusMeta("pending").glyph, "•");
   assert.equal(statusMeta("unknown").key, "pending");
 });
