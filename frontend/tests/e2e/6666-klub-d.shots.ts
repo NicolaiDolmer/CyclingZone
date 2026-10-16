@@ -37,8 +37,8 @@ const PRICE: Record<number, number> = { 1: 12_000, 2: 26_000, 3: 50_000, 4: 100_
 const UPKEEP: Record<number, number> = { 0: 0, 1: 1_500, 2: 3_500, 3: 8_000, 4: 15_000, 5: 30_000 };
 // Træning uden chef = halv udnyttelse af grundeffekten.
 const TRAINING_NO_CHEF: Record<number, number> = { 0: 0, 1: 0.015, 2: 0.0225, 3: 0.037, 4: 0.055, 5: 0.0825 };
-const CANDIDATES: Record<number, number> = { 0: 2, 1: 2, 2: 3, 3: 3, 4: 4, 5: 4 };
-const ACADEMY_UNLOCK: Record<number, string | null> = { 1: "origin", 2: "type", 3: "stronger", 4: "extra", 5: "stronger" };
+const CANDIDATES: Record<number, number> = { 0: 2, 1: 2, 2: 3, 3: 3, 4: 3, 5: 4 };
+const ACADEMY_UNLOCK: Record<number, string | null> = { 1: "origin", 2: "stronger", 3: "type", 4: "extra", 5: "stronger" };
 
 function ladder(track: string, bonusFor: (t: number) => number) {
   return [1, 2, 3, 4, 5].map((tier) => ({
