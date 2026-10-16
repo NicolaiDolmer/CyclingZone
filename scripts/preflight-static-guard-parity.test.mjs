@@ -22,9 +22,14 @@ export const EXEMPT = {
 
 // Udtraek "run:"-linjer i static-guards-jobbet (indtil naeste top-level job).
 export function staticGuardsRunCommands(yml) {
+  return jobRunCommands(yml, "static-guards");
+}
+
+// #6724: samme udtraek for et vilkaarligt job i en workflow-fil.
+export function jobRunCommands(yml, job) {
   const lines = yml.split(/\r?\n/);
-  const start = lines.findIndex((l) => /^  static-guards:\s*$/.test(l));
-  assert.ok(start >= 0, "job static-guards findes ikke i ci.yml");
+  const start = lines.findIndex((l) => l.replace(/\s+$/, "") === `  ${job}:`);
+  assert.ok(start >= 0, `job ${job} findes ikke`);
   const out = [];
   for (let i = start + 1; i < lines.length; i++) {
     if (/^  [A-Za-z0-9_-]+:\s*$/.test(lines[i])) break;
@@ -37,7 +42,7 @@ export function staticGuardsRunCommands(yml) {
 // Kun "node <script>"-vagter (ikke "node --test ...", som er selvtests).
 export function guardScripts(commands) {
   return commands
-    .map((c) => c.match(/^node\s+(scripts\/\S+?\.mjs)(?:\s|$)/))
+    .map((c) => c.match(/^node\s+(scripts\/\S+?\.m?js)(?:\s|$)/))
     .filter(Boolean)
     .map((m) => m[1]);
 }
@@ -70,4 +75,58 @@ test("EXEMPT-poster har en begrundelse og er stadig en static-guards-vagt", () =
 test("preflight har ny-fil-reglen for frontend/src .js/.jsx", () => {
   assert.match(preflight, /--diff-filter=A/);
   assert.match(preflight, /new-frontend-file-ts-rule/);
+});
+
+// #6724: de oevrige statiske CI-jobs (ingen npm ci, kun node-scripts). PR'er gik
+// 5-6 CI-runder paa netop dem, fordi preflight kun spejlede static-guards.
+// Workflow-fil -> job-navne. Et nyt "node scripts/..."-trin i et af dem skal
+// enten koeres i preflight eller staa paa EXEMPT_CI_JOBS med en begrundelse.
+export const CI_JOBS = {
+  ".github/workflows/ci.yml": [
+    "migration-idempotency",
+    "workflow-output-guard",
+    "dependabot-exceptions-guard",
+    "postgrest-cap-guard",
+    "maybesingle-unique-scope-guard",
+    "getuser-guard",
+    "rankings-fetch-guard",
+    "riders-column-grant-guard",
+    "swallowed-catch-guard",
+    "silent-mutation-guard",
+    "finance-type-guard",
+    "dropped-supabase-error-guard",
+  ],
+  ".github/workflows/table-grants.yml": ["table-grants"],
+  ".github/workflows/ts-core-ratchet.yml": ["ts-core-ratchet"],
+  ".github/workflows/feature-registry-check.yml": ["registry-freshness"],
+};
+
+export const EXEMPT_CI_JOBS = {
+  // "scriptsti": "begrundelse"
+};
+
+test("de oevrige statiske CI-jobs koeres i preflight eller er undtaget (#6724)", () => {
+  const missing = [];
+  let seen = 0;
+  for (const [wf, jobs] of Object.entries(CI_JOBS)) {
+    const yml = readFileSync(join(root, wf), "utf8");
+    for (const job of jobs) {
+      for (const script of guardScripts(jobRunCommands(yml, job))) {
+        seen++;
+        if (!preflight.includes(script) && !EXEMPT_CI_JOBS[script]) missing.push(`${wf}#${job}: ${script}`);
+      }
+    }
+  }
+  assert.ok(seen >= 15, `kun ${seen} vagter fundet - er parseren blind?`);
+  assert.deepEqual(
+    missing,
+    [],
+    `CI koerer ${missing.join(", ")}, men scripts/preflight-pr.ps1 goer ikke. ` +
+      "Tilfoej vagten til preflight, eller til EXEMPT_CI_JOBS med en begrundelse (#6724).",
+  );
+});
+
+test("preflight laeser paths-filtre fra workflowet i stedet for at kopiere dem (#6724)", () => {
+  assert.match(preflight, /scripts\/ci\/workflow-paths-match\.mjs/);
+  assert.match(preflight, /param\(\[switch\] \$All\)/);
 });

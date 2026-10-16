@@ -12,6 +12,12 @@
 # tunge), CodeRabbit, samt check-verification (PR-body-regel: mindst én "- [x]"
 # i Brugerverifikation-sektionen ELLER label docs-only/backend-only).
 # Husk også: ingen em-dash i PR-bodies og issue-kommentarer (samme tone-regel).
+#
+# -All (#6724): koer ogsaa de vagter, der ellers springes over, fordi ingen
+# aendret fil matcher workflowets paths-filter, og koer migration-lock-guarden
+# paa hele traeet i stedet for kun de aendrede filer.
+
+param([switch] $All)
 
 $ErrorActionPreference = "Stop"
 $root = (& git rev-parse --show-toplevel).Trim()
@@ -263,6 +269,70 @@ try {
   Write-Host "== preflight/static-guards parity (#6616) ==" -ForegroundColor Cyan
   node --test scripts/preflight-static-guard-parity.test.mjs
   if ($LASTEXITCODE -ne 0) { $failed += "preflight-static-guard-parity" }
+
+  # #6724: resten af CI's statiske vagter. PR'er (fx #6714) gik 5-6 CI-runder
+  # paa vagter, der kunne vaere fanget her. Vagter fra workflows med et
+  # paths-filter koeres kun, naar en aendret fil matcher; filteret laeses
+  # direkte fra workflow-filen (scripts/ci/workflow-paths-match.mjs), saa det
+  # ikke kan glide fra CI. Vagter uden paths-filter i CI koeres altid. Maalt
+  # 16/10: ca. 11 s i en almindelig PR, ca. 35 s med -All.
+  # CI differ mod PR'ens base-SHA paa en merge-commit; lokalt svarer det til
+  # merge-basen med origin/main (origin/main alene ville tage andres nyere
+  # aendringer paa main med som "omvendte" aendringer).
+  $mergeBase = "origin/main"
+  try {
+    $mb = (& git merge-base HEAD origin/main 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $mb) { $mergeBase = $mb.Trim() }
+  } catch { }
+  $ciJobGuards = @(
+    @{ Name = "migration-idempotency-guard (#6724)"; Cmd = @("scripts/lint-migration-idempotency.mjs") },
+    @{ Name = "postgrest-cap-guard (#6724)"; Cmd = @("scripts/lint-postgrest-in-cap.mjs") },
+    @{ Name = "getuser-guard (#6724)"; Cmd = @("scripts/lint-getuser-guard.mjs") },
+    @{ Name = "rankings-fetch-guard (#6724)"; Cmd = @("scripts/lint-rankings-raceresults-fetch.mjs") },
+    @{ Name = "silent-mutation-guard (#6724)"; Cmd = @("scripts/lint-silent-mutations.mjs") },
+    @{ Name = "finance-type-guard (#6724)"; Cmd = @("scripts/lint-finance-types.mjs") },
+    @{ Name = "patch-notes-version-guard (#6724)"; Cmd = @("scripts/check-patch-notes-version.js") },
+    @{ Name = "ts-core-ratchet (#6724)"; Workflow = ".github/workflows/ts-core-ratchet.yml"; Cmd = @("scripts/check-ts-core-ratchet.mjs") },
+    @{ Name = "table-grants (skabelon, #6724)"; Workflow = ".github/workflows/table-grants.yml"; Cmd = @("scripts/audit-table-grants.mjs", "database/templates/new-public-table.sql") },
+    @{ Name = "table-grants (aendrede SQL, #6724)"; Workflow = ".github/workflows/table-grants.yml"; Cmd = @("scripts/audit-table-grants.mjs", "--base", $mergeBase) },
+    @{ Name = "feature-status-sync (#6724)"; Workflow = ".github/workflows/feature-registry-check.yml"; Cmd = @("scripts/generate-feature-status.mjs", "--check") },
+    @{ Name = "feature-registry-flag-expiry (#6724)"; Workflow = ".github/workflows/feature-registry-check.yml"; Cmd = @("scripts/feature-registry-flag-expiry.mjs", "--base-ref", "origin/main") },
+    @{ Name = "feature-registry-roadmap-check (#6724)"; Workflow = ".github/workflows/roadmap-sync.yml"; Cmd = @("scripts/feature-registry-roadmap-check.mjs", "--base-ref", "origin/main") },
+    @{ Name = "action-pinning (#6724)"; Workflow = ".github/workflows/secret-scan.yml"; Cmd = @("scripts/lint-action-pinning.mjs") }
+  )
+  foreach ($g in $ciJobGuards) {
+    Write-Host "== $($g.Name) ==" -ForegroundColor Cyan
+    if ($g.Workflow -and -not $All) {
+      node scripts/ci/workflow-paths-match.mjs $g.Workflow
+      if ($LASTEXITCODE -eq 3) { continue }
+    }
+    $cmdArgs = $g.Cmd
+    node @cmdArgs
+    if ($LASTEXITCODE -ne 0) { $failed += $g.Name }
+  }
+
+  # lint-migration-locks.mjs bruger ~24 s paa hele traeet (database/2026-*.sql
+  # + backend/). Scriptet tager filer som argumenter, saa uden -All faar det kun
+  # de aendrede filer i samme omfang. Hele traeet koeres, naar selve guarden
+  # eller dens tokeniser er aendret.
+  Write-Host "== migration-lock-guard (#6724) ==" -ForegroundColor Cyan
+  $changedAll = @(node scripts/ci/workflow-paths-match.mjs --changed)
+  $changedOk = ($LASTEXITCODE -eq 0)
+  $guardTouched = @($changedAll | Where-Object { $_ -match '^scripts/lint-migration-(locks|idempotency)\.mjs$' }).Count -gt 0
+  if ($All -or -not $changedOk -or $guardTouched) {
+    node scripts/lint-migration-locks.mjs
+    if ($LASTEXITCODE -ne 0) { $failed += "migration-lock-guard" }
+  } else {
+    $lockFiles = @($changedAll | Where-Object {
+      ($_ -match '^database/2026-[^/]*\.sql$' -or $_ -match '^backend/') -and (Test-Path $_ -PathType Leaf)
+    })
+    if ($lockFiles.Count -gt 0) {
+      node scripts/lint-migration-locks.mjs @lockFiles
+      if ($LASTEXITCODE -ne 0) { $failed += "migration-lock-guard" }
+    } else {
+      Write-Host "  sprunget over: ingen aendrede database/2026-*.sql- eller backend/-filer" -ForegroundColor DarkGray
+    }
+  }
 
   # #6616: repo-regel - nye frontend-filer er .ts/.tsx. Kun NYE filer (diff-filter=A)
   # mod origin/main; eksisterende .js/.jsx røres ikke. Hurtig: ét git-kald.
