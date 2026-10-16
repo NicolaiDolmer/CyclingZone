@@ -209,7 +209,7 @@ const SERVER_DEFAULT_6462 = {
 const trainOn = (order) => order.riders.filter((r) => r.leadout).map((r) => r.rider_id);
 
 test("#6462 trainDefaultForStage — flad etape: hjaelperne er i toget som standard", () => {
-  for (const rulesRevision of ["official_times_v3", "official_times_v4", "s5_profiles_v1"]) {
+  for (const rulesRevision of ["s5_profiles_v1"]) {
     const def = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "flat", rulesRevision });
     assert.deepEqual(trainOn(def), ["h1"], rulesRevision);
     const fresh = mergeOrderWithRoster({ breakaway_stance: "neutral", riders: [] }, ["spr", "h1", "hunter"], def);
@@ -219,24 +219,24 @@ test("#6462 trainDefaultForStage — flad etape: hjaelperne er i toget som stand
 
 test("#6462 trainDefaultForStage — bjerg, enkeltstart, kuperet, brosten og ukendt profil: intet tog", () => {
   for (const profileType of ["mountain", "high_mountain", "itt", "itt_hilly", "ttt", "hilly", "rolling", "cobbles", "gravel", "classic", null, undefined]) {
-    const def = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType, rulesRevision: "official_times_v4" });
+    const def = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType, rulesRevision: "s5_profiles_v1" });
     assert.deepEqual(trainOn(def), [], String(profileType));
     assert.equal(def.riders[2].try_break, true, "oevrige defaults uroert");
     const fresh = mergeOrderWithRoster({ breakaway_stance: "neutral", riders: [] }, ["spr", "h1", "hunter"], def);
     assert.deepEqual(trainOn(fresh), [], `${profileType}: en uroert etape viser intet tog`);
   }
   assert.equal(SERVER_DEFAULT_6462.riders[1].leadout, true, "muterer aldrig input");
-  assert.equal(trainDefaultForStage(null, { profileType: "mountain", rulesRevision: "official_times_v4" }), null);
+  assert.equal(trainDefaultForStage(null, { profileType: "mountain", rulesRevision: "s5_profiles_v1" }), null);
 });
 
 test("#6462 trainDefaultForStage — gemt valg vinder; aeldre revisioner er uaendrede", () => {
-  const mountain = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "mountain", rulesRevision: "official_times_v4" });
+  const mountain = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "mountain", rulesRevision: "s5_profiles_v1" });
   const savedOn = mergeOrderWithRoster({ riders: [{ rider_id: "h1", leadout: true }] }, ["spr", "h1"], mountain);
   assert.deepEqual(trainOn(savedOn), ["h1"], "et gemt tog paa bjerget staar");
-  const flat = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "flat", rulesRevision: "official_times_v4" });
+  const flat = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "flat", rulesRevision: "s5_profiles_v1" });
   const savedOff = mergeOrderWithRoster({ riders: [{ rider_id: "h1", leadout: false }] }, ["spr", "h1"], flat);
   assert.deepEqual(trainOn(savedOff), [], "et gemt 'intet tog' paa en flad etape staar");
-  for (const rulesRevision of ["official_times_v2", "orders_gc_v3", "legacy", null]) {
+  for (const rulesRevision of ["official_times_v4", "official_times_v3", "official_times_v2", "orders_gc_v3", "legacy", null]) {
     assert.equal(trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "mountain", rulesRevision }), SERVER_DEFAULT_6462, String(rulesRevision));
   }
   assert.equal(isSprintTrainStage("flat"), true);

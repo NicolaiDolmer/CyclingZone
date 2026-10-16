@@ -582,14 +582,14 @@ test("#6441 v3: et hold uden evner paa startlisten beholder den neutrale standar
   assert.equal(stances.t1, "chase");
 });
 
-// ── #6462 (KUN official_times_v3+, ejer 16/10): toget er kun standard paa flade etaper ──
+// ── #6462 (KUN s5_profiles_v1, ejer 16/10): toget er kun standard paa flade etaper ──
 //
 // Hjaelperne koerer i sprint-toget som standard KUN paa en flad etape. Bjerg,
 // enkeltstart, kuperet og brosten: intet tog, medmindre manageren selv har sat
 // det. Samme regel for menneske- og AI-hold. Taktik-fladen spejler den
 // (frontend/src/lib/tacticsPlan.js, trainDefaultForStage).
 
-const ctx6462 = (profile_type: RouteV2["profile_type"], rules_revision = "official_times_v4") => ({
+const ctx6462 = (profile_type: RouteV2["profile_type"], rules_revision = "s5_profiles_v1") => ({
   route: { profile_type, finale_type: profile_type === "flat" ? ("bunch_sprint" as const) : ("long_climb" as const) },
   race: { is_stage_race: false, later_stages: [] },
   rules_revision,
@@ -604,7 +604,7 @@ const trainOf = (plan: ReturnType<typeof buildStageOrderPlan>, teamId: string) =
   parseLeadoutOrders(plan.orders).find((o) => o.team_id === teamId) ?? null;
 
 test("#6462: paa en flad etape koerer hjaelperne i toget som standard (menneske og AI)", () => {
-  for (const rev of ["official_times_v3", "official_times_v4"]) {
+  for (const rev of ["s5_profiles_v1"]) {
     const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: ctx6462("flat", rev) });
     for (const team of ["hum", "ai"]) {
       const flags = trainFlags(plan, team);
@@ -643,8 +643,8 @@ test("#6462: manageren gemte valg vinder, ogsaa paa bjerget og ogsaa 'intet tog'
   assert.ok(trainOf(flat, "ai"), "andre hold beholder deres standard");
 });
 
-test("#6462: official_times_v2 og aeldre samt uden kontekst er uaendrede (toget er standard paa alle etaper)", () => {
-  for (const rev of ["official_times_v2", "orders_gc_v3"]) {
+test("#6462: official_times_v4 og aeldre (frosne digests) samt uden kontekst er uaendrede (toget er standard paa alle etaper)", () => {
+  for (const rev of ["official_times_v4", "official_times_v3", "official_times_v2", "orders_gc_v3"]) {
     const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: ctx6462("mountain", rev) });
     assert.equal(trainFlags(plan, "hum")["hum-train"], true, rev);
     assert.ok(trainOf(plan, "hum"), rev);
@@ -656,8 +656,8 @@ test("#6462: official_times_v2 og aeldre samt uden kontekst er uaendrede (toget 
 test("#6462: trainIsDefaultOnStage + withoutDefaultTrain (ren, muterer ikke)", () => {
   assert.equal(trainIsDefaultOnStage(ctx6462("flat")), true);
   assert.equal(trainIsDefaultOnStage(ctx6462("mountain")), false);
-  assert.equal(trainIsDefaultOnStage(ctx6462("itt", "official_times_v3")), false);
-  assert.equal(trainIsDefaultOnStage(ctx6462("mountain", "official_times_v2")), true);
+  assert.equal(trainIsDefaultOnStage(ctx6462("itt")), false);
+  assert.equal(trainIsDefaultOnStage(ctx6462("mountain", "official_times_v4")), true);
   assert.equal(trainIsDefaultOnStage(undefined), true);
   const order = { team_id: "t", breakaway_stance: "neutral" as const, riders: [{ rider_id: "a", effort: "normal" as const, try_break: true, leadout: true }] };
   const stripped = withoutDefaultTrain(order);

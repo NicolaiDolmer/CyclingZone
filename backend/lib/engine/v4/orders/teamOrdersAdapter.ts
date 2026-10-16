@@ -43,7 +43,7 @@
 // kaldstedet saetter paa startlisten. Menneskeholdenes indsatskilde roeres
 // ikke her (den er #5580's "én kilde til effort").
 //
-// #6462 (KUN official_times_v3 og senere, ejer 16/10): sprint-toget er kun
+// #6462 (KUN s5_profiles_v1, ejer 16/10): sprint-toget er kun
 // STANDARD paa en flad etape (motorens egen tog-klassifikation,
 // leadout.isSprintTrainProfile). Paa bjerg, enkeltstart, kuperet og brosten
 // koerer ingen i toget, medmindre manageren selv har sat det for etapen
@@ -74,7 +74,7 @@ import {
 } from "../ai/teamOrderContract.ts";
 import { TEAM_TACTICS_ORDER_KIND } from "../mechanics/breakaway.ts";
 import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
-import { isOfficialTimesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater } from "../../../raceEngineRulesRevision.ts";
 
 export type { BreakawayStance, TeamTacticsOrder };
 
@@ -257,12 +257,13 @@ function humanDefaultOrderV3(
 
 /**
  * #6462 (ejer 16/10): er sprint-toget STANDARD paa dagens etape? Under
- * official_times_v3 og senere kun paa en flad etape (isSprintTrainProfile).
- * Aeldre revisioner og et kald uden kontekst (ruten er ukendt) beholder den
- * gamle regel: rollens standard gaelder paa alle etaper.
+ * s5_profiles_v1 (naeste, slukkede revision) kun paa en flad etape
+ * (isSprintTrainProfile). official_times_v4 og aeldre (frosne digests) samt et
+ * kald uden kontekst (ruten er ukendt) beholder den gamle regel: rollens
+ * standard gaelder paa alle etaper.
  */
 export function trainIsDefaultOnStage(context: StageOrderContext | undefined): boolean {
-  if (context === undefined || !isOfficialTimesV3OrLater(context.rules_revision)) return true;
+  if (context === undefined || !isS5ProfilesV1OrLater(context.rules_revision)) return true;
   return isSprintTrainProfile(context.route.profile_type);
 }
 

@@ -361,7 +361,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       const [rolesRes, orderResult, revisionRes] = await Promise.all([
         apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers }),
         fetchTeamOrders({ raceId }).catch(() => null),
-        // #6462: den raa revision (toget er kun standard paa flade etaper fra official_times_v3).
+        // #6462: den raa revision (toget er kun standard paa flade etaper under s5_profiles_v1).
         supabase.from("races").select("engine_rules_revision").eq("id", raceId).maybeSingle().then((r) => r, () => null),
       ]);
       // #5242 (CodeRabbit-fund): et 2xx med tom/ikke-JSON krop giver apiFetch's

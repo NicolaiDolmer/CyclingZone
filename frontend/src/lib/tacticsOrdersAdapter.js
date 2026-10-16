@@ -66,7 +66,7 @@ export async function fetchTeamOrders({ raceId }) {
 
 /**
  * #6462: rollernes standardordre for ÉN etape, som motoren koerer den. Toget er
- * kun standard paa en flad etape fra official_times_v3 (`context.rulesRevision`,
+ * kun standard paa en flad etape under s5_profiles_v1 (`context.rulesRevision`,
  * den raa `races.engine_rules_revision`). Ren funktion.
  */
 export function defaultOrderForStage(context, profileType) {
