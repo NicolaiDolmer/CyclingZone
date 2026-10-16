@@ -645,7 +645,7 @@ test("#6462: manageren gemte valg vinder, ogsaa paa bjerget og ogsaa 'intet tog'
   assert.ok(trainOf(flat, "ai"), "andre hold beholder deres standard");
 });
 
-test("#6462: official_times_v4 (den aktuelle, indtil taend) og aeldre samt uden kontekst er uaendrede (toget er standard paa alle etaper)", () => {
+test("#6462: official_times_v4 (aktuel indtil taend af v5) og aeldre samt uden kontekst er uaendrede (toget er standard paa alle etaper)", () => {
   for (const rev of ["official_times_v4", "official_times_v3", "official_times_v2", "orders_gc_v3"]) {
     const plan = buildStageOrderPlan({ rows: [], stageNumber: 1, roster: mixedField(), context: ctx6462("mountain", rev) });
     assert.equal(trainFlags(plan, "hum")["hum-train"], true, rev);
