@@ -268,7 +268,7 @@ import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelecti
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
-import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked } from "../lib/raceTeamOrdersApi.js";
+import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
@@ -6231,7 +6231,7 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
   try {
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed")
+      .select("id, status, stages, stages_completed, engine_rules_revision")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6264,6 +6264,9 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #4246: rollens standardordre. Kortet viser "Standard: <rolle>. I dag:
       // <afvigelse>" ved at sammenholde en gemt etape-ordre med denne.
       default_order: ctx.default_order,
+      // #6462: toget er kun standard paa flade etaper under loebets revision
+      // (gemt, ellers den motoren binder ved foerste claim). Fladen spejler det.
+      sprint_train_flat_only: sprintTrainFlatOnlyForRace(race),
     });
   } catch (err) {
     captureException(err);
