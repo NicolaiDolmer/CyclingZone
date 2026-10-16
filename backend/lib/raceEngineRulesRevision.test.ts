@@ -510,20 +510,36 @@ test("#6369: a new race binds to s5_profiles_v1 by default; a stored one keeps i
 
 const S5_MIGRATION = "2026-10-16-6369-engine-rules-revision-s5.sql";
 
+// #6369 ordering gate: the migration lands in its own PR (chore/6369-s5-revision-check-migration)
+// and must be on main (and applied) before the ignition PR merges. Until main carries it,
+// these tests fail on purpose, so the ignition PR cannot go green ahead of its migration.
+async function readS5Migration(): Promise<string> {
+  const { existsSync, readFileSync } = await import("node:fs");
+  const url = new URL(`../../database/${S5_MIGRATION}`, import.meta.url);
+  assert.ok(
+    existsSync(url),
+    `${S5_MIGRATION} is missing: merge the migration PR (chore/6369-s5-revision-check-migration) to main, apply it, then merge main into this branch`,
+  );
+  return readFileSync(url, "utf8");
+}
+
 test("#6369: the S5 migration allows every known revision incl. the current one, additively and idempotently", async () => {
-  const { readFileSync } = await import("node:fs");
-  const migration = readFileSync(new URL(`../../database/${S5_MIGRATION}`, import.meta.url), "utf8");
+  const migration = await readS5Migration();
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
+  // Hot table: add NOT VALID (no scan under ACCESS EXCLUSIVE), validate as its own statement.
+  assert.match(migration, /\)\)\s*NOT VALID;/);
+  assert.match(migration, /COMMIT;\s*(?:--[^\n]*\n\s*)*ALTER TABLE public\.races\s+VALIDATE CONSTRAINT races_engine_rules_revision_check;/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
   // The current revision must be a value the constraint allows, or the first claim fails on CHECK.
   assert.ok(check[1].includes(`'${CURRENT_RACE_RULES_REVISION}'`));
 });
 
 test("#6369: only the S5 migration makes s5_profiles_v1 legal (no older revision migration was edited)", async () => {
+  await readS5Migration();
   const { readdirSync, readFileSync } = await import("node:fs");
   const dir = new URL("../../database/", import.meta.url);
   const legal: string[] = [];

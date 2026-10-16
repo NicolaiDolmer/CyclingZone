@@ -45,7 +45,9 @@
 // + S5-motoren (#6363/#6362/#6368, engine/v4/s5Profiles.ts): S5-motorens
 // nye finaler, mellembjerg-terraen og udbrud-som-adfaerd bag isS5ProfilesV1OrLater. Aktuel
 // for nye loeb fra ejerens ordrette "taend" (taend-PR'en, #6369); migrationen
-// 2026-10-16-6369-engine-rules-revision-s5.sql goer vaerdien lovlig.
+// 2026-10-16-6369-engine-rules-revision-s5.sql goer vaerdien lovlig; den lander i
+// sin egen PR (chore/6369-s5-revision-check-migration) og SKAL vaere merget og
+// applied foer taend-PR'en merges.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
@@ -187,8 +189,8 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * finaler, mellembjerg, udbrud som adfaerd m.m.) er aktuel for ALLE loeb hvis
  * foerste etape claimes efter deploy. Loeb der allerede er bundet til
  * official_times_v4 (eller aeldre) faerdiggoeres paa den. Migrationen
- * 2026-10-16-6369-engine-rules-revision-s5.sql SKAL vaere applied foer foerste
- * claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten. Rollback =
+ * 2026-10-16-6369-engine-rules-revision-s5.sql (egen PR, merges foerst) SKAL
+ * vaere applied foer denne konstant deployes; ellers fejler bindingen hoejlydt paa CHECK-constrainten. Rollback =
  * revert af denne konstant (migrationen kan blive staaende).
  */
 export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "s5_profiles_v1";
