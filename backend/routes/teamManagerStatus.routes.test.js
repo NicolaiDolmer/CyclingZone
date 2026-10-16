@@ -42,8 +42,8 @@ test("henter KUN last_seen fra users — ikke email/discord_id/consent_preferenc
   assert.match(routeBlock, /\.from\("users"\)\s*\n?\s*\.select\("last_seen"\)/);
 });
 
-test("is_online beregnes med samme 5-minutters-vindue som GET /managers/:teamId", () => {
-  assert.match(routeBlock, /5 \* 60 \* 1000/);
+test("is_online beregnes med det delte online-vindue (#5385)", () => {
+  assert.match(routeBlock, /isOnlineSince\(lastSeen\)/);
 });
 
 test("handleren er try/catch-indpakket (ingen hængende request ved DB-fejl)", () => {
