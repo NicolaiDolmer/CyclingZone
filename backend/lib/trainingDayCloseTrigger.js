@@ -55,7 +55,7 @@ import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
-import { runNormalizedTrainingDateSweep } from './trainingDateClose.js';
+import { isLegacyCalendarTickTeam, runNormalizedTrainingDateSweep } from './trainingDateClose.js';
 
 /**
  * Fjern den indlejrede `races`-join fra etape-rækkerne, så resten af filen ser
@@ -582,8 +582,13 @@ export async function loadDayCloseSpans({
  * udvikler sig altsaa videre i samme takt som i dag — de foelger bare ikke
  * loebsdags-aksen, fordi de ikke HAR en.
  *
+ * PARKEREDE HOLD (#6536) faar INTET tick. Parkering nulstiller league_division_id
+ * (managerParking.js), saa et parkeret menneskehold lignede foer et division-loest
+ * AI-hold og fik et legacy-tick hver aften. Et parkeret hold er uroert ud over
+ * parked_at. Legacy-grenen gaelder derfor kun AI-hold (isLegacyCalendarTickTeam).
+ *
  * @param {object} args
- * @param {Array<{id: string, league_division_id?: string|null}>} args.teams
+ * @param {Array<{id: string, league_division_id?: string|null, is_ai?: boolean|null, parked_at?: string|null}>} args.teams
  * @param {Map<string, number[]>} args.gameDaysByDivisionMap
  * @param {Set<string>} args.alreadyRanRaceDayKeys  — `${teamId}#${squad}#${gameDay}`
  * @param {Set<string>} args.alreadyRanLegacyTeamIds
@@ -598,9 +603,10 @@ export function buildSweepPlan({
 }) {
   const plan = [];
   for (const team of teams ?? []) {
+    if (team.parked_at != null) continue; // samme regel som managerParking.isParkedTeam
     const divisionId = team.league_division_id ?? null;
     if (!divisionId) {
-      if (!alreadyRanLegacyTeamIds.has(team.id)) {
+      if (isLegacyCalendarTickTeam(team) && !alreadyRanLegacyTeamIds.has(team.id)) {
         plan.push({ teamId: team.id, gameDay: null, squad });
       }
       continue;
@@ -918,10 +924,12 @@ async function runTrainingDayCloseSweepGuarded({
     const raceDayEngineOn = await isRaceDayEngineEnabled(supabase);
     let teamsQuery = supabase
       .from("teams")
-      .select("id, league_division_id")
+      .select("id, league_division_id, is_ai, parked_at")
       .eq("is_bank", false)
       .eq("is_frozen", false)
-      .eq("is_test_account", false);
+      .eq("is_test_account", false)
+      // #6536: parkerede hold er uroerte ud over parked_at, ogsaa i traeningen.
+      .is("parked_at", null);
     if (!raceDayEngineOn) teamsQuery = teamsQuery.eq("is_ai", false);
     const { data: teams, error: teamsError } = await teamsQuery;
     if (teamsError) throw new Error(`teams: ${teamsError.message}`);

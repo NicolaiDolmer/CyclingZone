@@ -3,6 +3,25 @@ import { fetchAllRows } from './supabasePagination.js';
 import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
 import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
 
+/**
+ * #6536: who gets the division-less calendar-day tick (gameDay null)?
+ *
+ * Only AI teams without a `league_division_id` (spec §3.2): they have no race-day
+ * axis, so one tick on the old calendar-day key keeps them developing. A parked
+ * human team also loses its division (managerParking.js), but parking leaves the
+ * team untouched apart from parked_at, so it must not train. A missing `is_ai`
+ * counts as human: an unknown team never trains silently on the legacy key.
+ *
+ * Both writers use this one rule: buildSweepPlan (trainingDayCloseTrigger.js)
+ * and the per-date sweep below.
+ *
+ * @param {{league_division_id?: string|null, is_ai?: boolean|null, parked_at?: string|null}} team
+ * @returns {boolean}
+ */
+export function isLegacyCalendarTickTeam(team) {
+  return !team?.league_division_id && team?.is_ai === true && team?.parked_at == null;
+}
+
 async function checked(query, label) {
   const { data, error } = await query;
   if (error) throw new Error(`${label}: ${error.message}`);
@@ -183,8 +202,10 @@ export async function runNormalizedTrainingDateSweep({
         (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd)).map(rider => rider.id);
       if (!currentIds.length && !workByTeam.has(team.id)) return;
       const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(team.league_division_id);
-      // Division-less teams retain their existing calendar-day fallback.
+      // Division-less AI teams retain their existing calendar-day fallback. A
+      // division-less human team is parked (#6536) and gets no tick at all.
       if (!team.league_division_id && !workByTeam.has(team.id)) {
+        if (!isLegacyCalendarTickTeam(team)) return;
         try {
           const legacyRan = await loadLegacyRan();
           if (legacyRan.has(team.id)) return;
