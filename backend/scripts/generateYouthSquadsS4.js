@@ -570,7 +570,7 @@ export function planYouthSquads({
  * @param {number} args.targetSeason
  * @param {Map<number,number[]>} args.levelProfile  fra buildHumanLevelProfile
  */
-export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel }) {
+export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel, rankCandidates = rankBirthCandidates }) {
   if (!(levelProfile instanceof Map)) throw new Error("planYouthLift: levelProfile er påkrævet");
   const mirrorOpts = { seasonNumber: targetSeason, valuationModel, productionValuationModel };
   const eligible = [];
@@ -612,7 +612,7 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
         floor = Math.max(floor, e.level);
         return;
       }
-      const ranked = rankBirthCandidates({
+      const ranked = rankCandidates({
         row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target: Math.max(target, floor),
       }).filter((c) => c.level >= floor);
       const pick = chooseBirth({
@@ -622,6 +622,12 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
         mirrorOpts,
         idHint: e.rider.id,
       });
+      if (needsFloor && !pick) {
+        // Ingen kandidat når gulvet: rytteren ville stå under en svagere rytters nye niveau.
+        // Det er ikke et gyldigt løft; marker rækken, så apply blokerer (aldrig stille brud på rangordenen).
+        rows.push({ ...base, after: e.level, changed: false, overValueCap: false, rankFloorUnmet: true });
+        return;
+      }
       if (!pick || pick.level <= e.level) {
         rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
         floor = Math.max(floor, e.level);
@@ -648,6 +654,7 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
       riders: rows.length,
       changed: rows.filter((r) => r.changed).length,
       overValueCap: rows.filter((r) => r.overValueCap).length,
+      rankFloorUnmet: rows.filter((r) => r.rankFloorUnmet).length,
     },
   };
 }
@@ -972,6 +979,9 @@ export async function loadLevelInputs(supabase, aiTeamIds) {
 
 /** Grund til at et løft ikke må anvendes (null = ok). Tjekkes FØR applyPlan skriver nye kuld (#6668). */
 export function liftBlockedReason(lift) {
+  if (lift?.totals?.rankFloorUnmet > 0) {
+    return `STOP: ${lift.totals.rankFloorUnmet} løft kan ikke bevare rangordenen (ingen kandidat når gulvet) — apply blokeret før første skrivning (#6668).`;
+  }
   if (!lift || !(lift.totals?.overValueCap > 0)) return null;
   return `STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret før første skrivning (#2065, #6668).`;
 }
@@ -990,6 +1000,9 @@ export async function applyLift(supabase, lift, {
 } = {}) {
   if (lift.totals.overValueCap > 0) {
     throw new Error(`STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret (#2065)`);
+  }
+  if (lift.totals.rankFloorUnmet > 0) {
+    throw new Error(`STOP: ${lift.totals.rankFloorUnmet} løft kan ikke bevare rangordenen — apply blokeret (#6668)`);
   }
   const changed = lift.rows.filter((r) => r.changed);
   writeRestore(changed.map((r) => ({ id: r.riderId, birth: r.previousBirth })));
