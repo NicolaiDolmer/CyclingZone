@@ -192,13 +192,15 @@ export default function PatchNotesPage() {
       </div>
 
       {/* #6717: én segment-række (Alle · Nyt · Forbedret · Rettet) + en lille
-          "Kun beta"-kontakt, på én linje også på 375 px. */}
-      <div className="flex items-center justify-between gap-3 mb-6">
+          "Kun beta"-kontakt, på én linje også på 375 px. Segmenterne krymper
+          aldrig (Segmented klipper med overflow-hidden); er skærmen smallere end
+          det hele, ombrydes kontakten til næste linje i stedet. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-6">
         <Segmented
           label={t("filter.ariaLabel")}
           value={category}
           onChange={setCategory}
-          className="min-w-0"
+          className="shrink-0"
           options={CATEGORIES.map((cat) => ({ value: cat, label: t(`filter.category.${cat}`) }))}
         />
         <Toggle
