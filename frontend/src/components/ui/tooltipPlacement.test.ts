@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { EDGE, placeTooltip } from "./tooltipPlacement.ts";
+import { EDGE, MAX_WIDTH, placeTooltip, tooltipMaxWidth } from "./tooltipPlacement.ts";
+
+test("tooltipMaxWidth: max-w-xs paa brede skaerme, skaermen minus to kanter paa smalle", () => {
+  assert.equal(tooltipMaxWidth(1440), MAX_WIDTH);
+  assert.equal(tooltipMaxWidth(320), 320 - EDGE * 2);
+});
 
 const phone = { width: 375, height: 812 };
 const rect = (left: number, top: number, width: number, height: number) =>

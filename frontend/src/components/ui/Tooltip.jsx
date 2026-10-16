@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import Portal from "./Portal.jsx";
 import { tooltipClass } from "./tooltipStyles.js";
-import { placeTooltip } from "./tooltipPlacement.ts";
+import { placeTooltip, tooltipMaxWidth } from "./tooltipPlacement.ts";
 
 // #6728: en lukket boble renderes ikke. Før lå den usynligt (opacity-0) og
 // absolut placeret i siden, og ved skærmkanten gjorde den siden bredere end
@@ -21,6 +21,10 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
     const anchor = anchorRef.current;
     const bubble = bubbleRef.current;
     if (!anchor || !bubble) return;
+    // Sæt det endelige bredde-loft FØR målingen: på en smal skærm ombrydes
+    // teksten ellers anderledes end ved målingen, og top beregnes ud fra en
+    // forkert højde (Codex-review på #6734). Gælder også ved resize.
+    bubble.style.maxWidth = `${tooltipMaxWidth(window.innerWidth)}px`;
     const b = bubble.getBoundingClientRect();
     setPos(placeTooltip(anchor.getBoundingClientRect(), side, { width: b.width, height: b.height },
       { width: window.innerWidth, height: window.innerHeight }));
@@ -51,7 +55,7 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
                står boblen skjult øverst til venstre, så den kan måles. */
             style={{
               position: "fixed", left: pos?.left ?? 0, top: pos?.top ?? 0, right: "auto", bottom: "auto",
-              transform: "none", translate: "none", maxWidth: pos?.maxWidth ?? 320,
+              transform: "none", translate: "none", maxWidth: pos?.maxWidth ?? tooltipMaxWidth(window.innerWidth),
               visibility: pos ? "visible" : "hidden",
             }}>
             {label}

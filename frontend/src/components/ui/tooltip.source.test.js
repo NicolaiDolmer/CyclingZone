@@ -25,3 +25,11 @@ test("lukket boble renderes ikke; aaben boble ligger i en Portal med fixed posit
   assert.match(src, /position: "fixed"/);
   assert.match(src, /placeTooltip\(/);
 });
+
+// Codex-review #6734: boblen skal maales med det endelige bredde-loft, ellers
+// passer hoejden ikke paa skaerme under 336 px.
+test("bredde-loftet saettes foer boblen maales", () => {
+  const set = src.indexOf("bubble.style.maxWidth");
+  const measure = src.indexOf("bubble.getBoundingClientRect()");
+  assert.ok(set > 0 && measure > set, "maxWidth skal saettes foer getBoundingClientRect");
+});

@@ -11,8 +11,14 @@ export const EDGE = 8;
 export const GAP = 8;
 export const MAX_WIDTH = 320; // max-w-xs
 
+// Boblens bredde-loft på en given skærmbredde. Boblen skal MÅLES med samme loft,
+// som den vises med, ellers ombrydes teksten anderledes, og højden passer ikke.
+export function tooltipMaxWidth(viewportWidth: number): number {
+  return Math.min(MAX_WIDTH, viewportWidth - EDGE * 2);
+}
+
 export function placeTooltip(rect: Rect, side: Side | string, bubble: Size, viewport: Size): Placement {
-  const maxWidth = Math.min(MAX_WIDTH, viewport.width - EDGE * 2);
+  const maxWidth = tooltipMaxWidth(viewport.width);
   const w = Math.min(bubble.width, maxWidth);
   const h = bubble.height;
   let left: number;
