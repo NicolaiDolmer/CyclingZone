@@ -62,7 +62,9 @@ export const STATES = ["live", "beta", "dormant", "building", "spec", "idea", "r
 
 const REQUIRED_FIELDS = ["id", "area", "title_en", "title_da", "state", "verified"];
 // roadmap_*: spillerens roadmap-tekst (#6693); se scripts/feature-registry-roadmap-check.mjs.
-const KNOWN_FIELDS = new Set([...REQUIRED_FIELDS, "flag", "ssot", "epic", "note", "roadmap_en", "roadmap_da", "roadmap_horizon"]);
+const KNOWN_FIELDS = new Set([...REQUIRED_FIELDS, "flag", "ssot", "epic", "note", "roadmap_en", "roadmap_da", "roadmap_horizon", "decision", "decide_by"]);
+// decision/decide_by: udloebsregel for ikke-live poster (#6701); se scripts/feature-registry-flag-expiry.mjs.
+export const DECISIONS = ["taend", "goer-faerdigt", "fjern", "noedbremse", "ejer-beslutning"];
 
 const ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -181,6 +183,9 @@ export function validate(entries) {
     if (!e.roadmap_en !== !e.roadmap_da) errors.push(`${label}: roadmap_en og roadmap_da saettes sammen (#6693)`);
     if (e.roadmap_horizon && !["next", "later"].includes(e.roadmap_horizon)) errors.push(`${label}: roadmap_horizon skal vaere next eller later`);
     if (e.roadmap_horizon && !e.roadmap_en) errors.push(`${label}: roadmap_horizon kraever roadmap_en/roadmap_da`);
+    if (!e.decision !== !e.decide_by) errors.push(`${label}: decision og decide_by saettes sammen (#6701)`);
+    if (e.decision && !DECISIONS.includes(e.decision)) errors.push(`${label}: decision skal vaere en af ${DECISIONS.join(", ")}`);
+    if (e.decide_by && !DATE_RE.test(e.decide_by)) errors.push(`${label}: decide_by skal vaere YYYY-MM-DD`);
     if (e.state === "dormant" && !e.note) {
       errors.push(`${label}: state dormant kraever en note om hvem/hvad der flipper den (#4928)`);
     }

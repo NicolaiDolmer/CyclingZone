@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-94 poster: live 73 · beta 2 · dormant 6 · building 6 · spec 1 · idea 2 · retired 4. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+94 poster: live 74 · beta 2 · dormant 6 · building 4 · spec 1 · idea 2 · retired 5. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -17,7 +17,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-15 | UI live; v4 er on, men flaget race_day_intention_enabled findes ikke i prod (læst 15/10). Kalibrering + beta i #6641. |
-| Official time persistence revision (`race-official-times-v1`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-15 | official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v4 (timeModel.ts, segmentLoop.ts). Prod 15/10: løb bundet til v2, v3 og v4 (flest v4) via races.engine_rules_revision (#6642). |
+| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v4 (timeModel.ts, segmentLoop.ts). Prod 15/10: løb bundet til v2, v3 og v4 (flest v4) via races.engine_rules_revision (#6642). |
 
 ## race-day
 
@@ -49,12 +49,11 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## training
 
-**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-10-04 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Training groups (`training-groups`) 2026-10-14 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training programs per race day (`training-programs`) 2026-10-14 · Training score 1-99 (`training-score`) 2026-09-24 · Training tick per race day (`training-tick-per-race-day`) 2026-09-28 · Train now (no bonus) (`training-train-now`) 2026-10-14
+**live:** Daily training (`daily-training`) 2026-09-06 · Peak planner (`peak-planner`) 2026-10-04 · Season fatigue and form reset (`season-fatigue-reset`) 2026-09-06 · Daily rider training receipt (`training-daily-receipt`) 2026-10-04 · Fatigue limit (player-set rules) (`training-fatigue-rules`) 2026-10-04 · Training groups (`training-groups`) 2026-10-14 · Hard sessions for cobbles, echelons and attacks (`training-hard-sessions-cobbles-echelon-attack`) 2026-09-15 · Training page on mobile (`training-mobile-table`) 2026-09-24 · Training cells per race day (35 cells) (`training-program-cells`) 2026-10-04 · Training programs per race day (`training-programs`) 2026-10-14 · Training score 1-99 (`training-score`) 2026-09-24 · Training tick per race day (`training-tick-per-race-day`) 2026-09-28 · Training tick system (`training-tick-system`) 2026-10-16 · Train now (no bonus) (`training-train-now`) 2026-10-14
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Set the training day for several riders at once (`training-bulk-day`) | beta | `training_bulk_day` | [TRAINING_RULES](TRAINING_RULES.md) | #6523 | 2026-10-15 | PR #6533 (12/10); beta siden 15/10 10:16 UTC efter ejer-go på før/efter-billedet (læst tilbage i prod). |
-| Training tick system (`training-tick-system`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #4850 | 2026-09-06 | - |
 
 ## academy
 
