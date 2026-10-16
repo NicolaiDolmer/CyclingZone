@@ -9,14 +9,11 @@
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (9d) — DIRTY
+- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (9d) — groen
 - #6636 feat(race-library): upcoming races and scoped edition history (1d) — groen
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (1d) — groen
-- #6662 feat(academy): hent-knappen vises selv med åbne tilbud (#6155) (0d) — DIRTY
-- #6643 feat(stage-page-v2): løbshistorien - replay, øjeblikke, mellemtider, Final 5 km, referat… (0d) — DIRTY
-- #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — DIRTY
-- #6742 fix(races): hold der ikke stiller op, skade-besked og Train now-advarsel (#6740) (0d) — roed
-- #6743 docs(patch-notes): 7.363 - sprinttog, modbud, ny Klub-side, dashboard og tekst på telefon (0d) — roed
+- #6643 feat(stage-page-v2): løbshistorien - replay, øjeblikke, mellemtider, Final 5 km, referat… (0d) — groen
+- #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -40,7 +37,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (9d) — DIRTY
+- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (9d) — groen
 - #6703 fix(training): forbigaaende DB-fejl giver ny koersel, ikke traening uden bonus (#6596) (0d) — groen
 
 ## 3) Bygget men ikke merget
@@ -49,18 +46,17 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6634 docs: implementeringsplan for løbsbibliotek med kommende løb og historik (2d) — groen
 - #6703 fix(training): forbigaaende DB-fejl giver ny koersel, ikke traening uden bonus (#6596) (0d) — groen
 - #6704 fix(training): parkerede hold koerer ikke laengere legacy-traening (#6536) (0d) — groen
-- #6699 [EJER-GO KRÆVES - TÆNDING] S5-motorregler: s5_profiles_v1 bliver aktuel revision (#6369) (0d) — DIRTY
+- #6699 [EJER-GO KRÆVES - TÆNDING] S5-motorregler: s5_profiles_v1 bliver aktuel revision (#6369) (0d) — roed
 - #6712 fix(engine): S5-profiler mountain-gap og udbrudsrate (#6369) (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
-- #6742 fix(races): hold der ikke stiller op, skade-besked og Train now-advarsel (#6740) (0d) — roed
-- #6743 docs(patch-notes): 7.363 - sprinttog, modbud, ny Klub-side, dashboard og tekst på telefon (0d) — roed
+- #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
 
-- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (143d)
+- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (144d)
 - #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (118d)
 - #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (114d)
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (91d)
@@ -75,7 +71,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (70d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (68d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (60d)
-- …og 737 mere
+- …og 731 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -95,4 +91,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6608 deps(frontend): @vercel/og 0.9 -> 1.0, OG-billede verificeret (2d)
 - #6606 deps(frontend): eslint react.version 18.3 -> 19.3 + React 19-regler til igen (2d)
 - #6607 deps: Sentry 10 -> 11 i frontend + backend, events verificeret (2d)
-- …og 45 mere
+- …og 53 mere
