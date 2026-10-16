@@ -45,7 +45,7 @@ async function shoot(browser: Browser, base: string, { width, height, lang }: { 
   await page.getByPlaceholder("••••••••").fill("playwright-password");
   await page.getByRole("button", { name: /log in|log ind/i }).click();
   await page.waitForURL(/\/dashboard$/);
-  const roster = [RIDERS.find((r) => r.id === "rider-1"), ...PREVIEW_YOUTH_RIDERS.map((r) => ({ ...r, pending_team_id: null }))];
+  const roster = [RIDERS.find((r: { id: string }) => r.id === "rider-1"), ...PREVIEW_YOUTH_RIDERS.map((r: Record<string, unknown>) => ({ ...r, pending_team_id: null }))];
   await page.route("**/rest/v1/riders**", (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fallback();
