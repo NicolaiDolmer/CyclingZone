@@ -38,6 +38,7 @@ COMMENT ON TABLE public.academy_intake_profiles IS
 -- ingen ventende profil stod tilbage. Her sker oprydning og indsaettelse i een
 -- transaktion bag en advisory-laas pr. hold: den sidst gemte vinder, og fejler
 -- indsaettelsen, rulles sletningen tilbage (det tidligere valg gaar aldrig tabt).
+BEGIN;
 CREATE OR REPLACE FUNCTION public.save_academy_intake_profile(
   p_team_id uuid,
   p_origins text[],
@@ -66,7 +67,10 @@ BEGIN
 END;
 $$;
 
--- ACL: service_role only, samme moenster som demote_rider_to_academy.
+-- ACL: service_role only, samme moenster som demote_rider_to_academy. Oprettelse og
+-- REVOKE/GRANT i SAMME transaktion: en ny funktion har EXECUTE for PUBLIC som
+-- default, saa den maa aldrig staa committet foer laasningen.
 REVOKE ALL     ON FUNCTION public.save_academy_intake_profile(uuid, text[], text[], timestamptz, timestamptz) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.save_academy_intake_profile(uuid, text[], text[], timestamptz, timestamptz) FROM anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.save_academy_intake_profile(uuid, text[], text[], timestamptz, timestamptz) TO service_role;
+COMMIT;
