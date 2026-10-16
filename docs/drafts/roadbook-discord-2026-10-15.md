@@ -20,6 +20,9 @@ Everything I know is broken is under Known issues on the roadmap: <https://cycli
 - Season 4 ends Sunday 25 October.
 - Season 5 runs from 28 October to Saturday 28 November, 32 race dates. From season 5 the season ends on a Saturday, as you voted.
 
+**The lost training day from 28 Sept is back**
+On 28 Sept riders who raced a stage, including youth riders, got a rest day on the date's other race days instead of training. I gave that day back to every rider on a human team on 1 Oct (1,031 riders). The rule is fixed: a rider who races one stage on a date now trains on the date's other race days.
+
 **New right now**
 - **Stage page 2.0 (beta):** the stage you're racing today opens first, with the profile, the climbs km by km, what the day demands, your line-up and one button to set tactics. After the stage, your day is on top.
 - **Set the day for many riders at once (beta):** on the training page, set today's session for all or selected riders in one go.
