@@ -97,6 +97,16 @@ features:
     verified: 2026-10-15
     note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v4 (timeModel.ts, segmentLoop.ts). Prod 15/10: løb bundet til v2, v3 og v4 (flest v4) via races.engine_rules_revision (#6642)."
 
+  - id: race-engine-s5-profiles
+    area: race-engine
+    title_en: S5 engine rules (s5_profiles_v1)
+    title_da: S5-motorregler (s5_profiles_v1)
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6369
+    verified: 2026-10-16
+    note: "CURRENT_RACE_RULES_REVISION fra tænd-PR'en (ejer-go): løb hvis første etape claimes efter deploy binder til S5, startede løb beholder deres revision; rollback = revert af konstanten."
+
   - id: race-notify-outbox
     area: race-engine
     title_en: Async delivery of race result posts
