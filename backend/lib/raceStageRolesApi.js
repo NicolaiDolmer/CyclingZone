@@ -22,6 +22,7 @@ import { stageVersions } from "./stageRolesWriteScope.ts";
 import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
+import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import {
   applyRiderEligibilityFilter, raceSquadOf, isRiderInjured, raceSelectionReferenceDateStr,
 } from "./riderEligibility.js";
@@ -73,13 +74,17 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
     // #6740: kun udtagne der stadig er i løbets trup tæller (motoren dropper solgte,
     // akademi- og pensionerede ryttere før gulvet); ellers kunne regel B redde et hold her,
     // som motoren fjerner.
+    // #6740 (Codex P2): en rytter der allerede har brugt løbsdagen fjernes også før regel B
+    // og fyldes aldrig ind. Best-effort: svigter opslaget, tæller ingen som spent.
+    const spent = new Set((await loadSpentRaceDays({ supabase, raceId: race.id, riderIds: [...new Set([...entryRiderIds, ...rosterIds])] })
+      .catch(() => [])).map((row) => row.rider_id));
     const rosterSet = new Set(rosterIds);
-    const keptEntryIds = [...new Set(entryRiderIds)].filter((id) => rosterSet.has(id));
+    const keptEntryIds = [...new Set(entryRiderIds)].filter((id) => rosterSet.has(id) && !spent.has(id));
     return teamWillStart({
       entryCount: keptEntryIds.filter((id) => !injuredIds.has(id)).length,
       // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
       injuredEntryCount: keptEntryIds.filter((id) => injuredIds.has(id)).length,
-      freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id)).length,
+      freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id) && !spent.has(id)).length,
       stagesCompleted,
     });
   } catch {

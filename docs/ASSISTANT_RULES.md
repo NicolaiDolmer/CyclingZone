@@ -366,7 +366,11 @@ const rule = isRescue
 `raceRunner.js:977-979`
 
 **Redningen sætter aldrig en anden kaptajn end den spilleren selv valgte**
-(`race_role: isRescue ? "helper" : pick.race_role`, `raceRunner.js:988`).
+(`race_role: existingCount > 0 ? "helper" : pick.race_role`, `raceRunner.js`).
+**Eneste undtagelse (#6740 regel B, ejer 16/10):** er ALLE udtagne skadet, står ingen af
+spillerens egne ryttere tilbage til at bære kaptajnen. Redningen fylder da op til 6 som en
+redning (ingen felt-cap, ingen "assistenten udtog dit hold"-besked), men med autopickens
+roller, så holdet får en kaptajn blandt de frie ryttere.
 
 **Når gulvet ikke kan nås, skrives intet:**
 ```js

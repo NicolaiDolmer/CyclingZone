@@ -18,6 +18,7 @@ import { applyRiderEligibilityFilter, isRiderInjured, raceSquadOf } from "./ride
 import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { loadTrainNowLocksForRaces } from "./trainNowLock.js"; // #6740
+import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 
 // Ren sammenkobling — INGEN I/O. Holdets (race_id, rider_id)-entries krydses mod
 // mængden af race_id'er der har en etape planlagt i dag, og løbsnavnet slås op.
@@ -169,11 +170,16 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
         for (const id of otherRiders) boundElsewhere.add(id);
       }
       const locked = lockByRace.get(raceId)?.riderIds ?? new Set();
+      // #6740 (Codex P2): en rytter der allerede har brugt løbsdagen fjernes af motoren før
+      // regel B og fyldes aldrig ind. Best-effort: svigter opslaget, tæller ingen som spent.
+      const spent = new Set((await loadSpentRaceDays({ supabase, raceId, riderIds: [...new Set([...entered, ...roster])] })
+        .catch(() => [])).map((row) => row.rider_id));
       const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)
-        && !locked.has(id)).length;
-      // #6740: kun udtagne der stadig er i løbets trup tæller, som i motoren (ghost-filteret).
+        && !locked.has(id) && !spent.has(id)).length;
+      // #6740: kun udtagne der stadig er i løbets trup og ikke har brugt dagen tæller, som i
+      // motoren (ghost- og spent-filtrene).
       const rosterSet = new Set(roster);
-      const keptEntered = [...entered].filter((id) => rosterSet.has(id));
+      const keptEntered = [...entered].filter((id) => rosterSet.has(id) && !spent.has(id));
       const { starts: willStart } = teamWillStart({
         entryCount: keptEntered.filter((id) => !injured.has(id)).length,
         // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
