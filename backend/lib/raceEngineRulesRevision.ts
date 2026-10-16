@@ -44,9 +44,10 @@
 // #6369 (S5-etapeprofiler, Fase 0, SLUKKET): "s5_profiles_v1" = hele official_times_v4-pakken
 // + S5-motoren (#6363/#6362/#6368, engine/v4/s5Profiles.ts): S5-motorens
 // nye finaler, mellembjerg-terraen og udbrud-som-adfaerd bag isS5ProfilesV1OrLater. Den er
-// IKKE aktuel (CURRENT_RACE_RULES_REVISION er uaendret), og races_engine_rules_revision_check
-// kender den ikke endnu: CHECK-udvidelsen hoerer til taend-PR'en (ejer-only), saa et forsoeg
-// paa at binde et loeb til den fejler hoejlydt.
+// IKKE aktuel (CURRENT_RACE_RULES_REVISION er uaendret): ingen nye loeb binder til den
+// foer taend-PR'en (ejer-only) flytter konstanten. races_engine_rules_revision_check goer
+// vaerdien lovlig via 2026-10-16-6369-engine-rules-revision-s5.sql, som skal vaere applied
+// foer taend-PR'en merges.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 

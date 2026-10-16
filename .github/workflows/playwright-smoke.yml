@@ -349,10 +349,31 @@ jobs:
         with:
           node-version: 24
 
+      # #6723: et nyt push afløser kørslen (cancel-in-progress), og så ender
+      # shards/changes som 'cancelled'. Det er ikke en fejl i koden, og dommen
+      # hører til den nye SHA's egen kørsel. Er PR'ens head flyttet, dømmes denne
+      # kørsel ikke (ingen rød, ingen PR-kommentar). Checket er pr. SHA, så en
+      # afløst SHA kan aldrig merges på dette grønne.
+      - name: Detect superseded PR run
+        id: stale
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -o pipefail
+          head=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq .head.sha) || { echo "::warning::Kunne ikke læse PR'ens head - dømmer kørslen som normalt."; exit 0; }
+          if [ -n "$head" ] && [ "$head" != "$RUN_SHA" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Afløst af nyere push ($head). Denne kørsel ($RUN_SHA) dømmes ikke; se den nye kørsel."
+          fi
+
       # Path-filteret er selv en gate: fejler det, ved vi ikke om suiten SKULLE
       # have kørt, og så må samle-checket ikke lyse grønt.
       - name: Fail if the path filter itself failed
-        if: needs.changes.result == 'failure' || needs.changes.result == 'cancelled'
+        if: steps.stale.outputs.stale != 'true' && (needs.changes.result == 'failure' || needs.changes.result == 'cancelled')
         run: |
           echo "::error::changes-jobbet endte som ${{ needs.changes.result }} - vi ved ikke om e2e-suiten skulle køre. frontend-smoke kan ikke give grønt lys."
           exit 1
@@ -361,7 +382,7 @@ jobs:
       # laner ser ud som en grøn suite. Uden planen ved vi heller ikke HVILKE
       # laner der skulle have rapporteret, så gaten kan ikke dømme.
       - name: Fail if the shard plan could not be expanded
-        if: needs.plan.result != 'success'
+        if: steps.stale.outputs.stale != 'true' && needs.plan.result != 'success'
         run: |
           echo "::error::plan-jobbet endte som ${{ needs.plan.result }} - frontend/tests/e2e/shard-plan.json kunne ikke udfoldes til en matrix. frontend-smoke kan ikke give grønt lys."
           exit 1
@@ -370,10 +391,11 @@ jobs:
       # den værste fejlklasse et budget-check kan have: et grønt check der har
       # mistet sin evne til at blive rødt.
       - name: Unit-test the gate scripts
+        if: steps.stale.outputs.stale != 'true'
         run: node --test scripts/check-e2e-shard-budget.test.mjs scripts/extract-e2e-flakes.test.mjs
 
       - name: Download shard metrics
-        if: needs.e2e-shard.result != 'skipped'
+        if: steps.stale.outputs.stale != 'true' && needs.e2e-shard.result != 'skipped'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: e2e-shard-metrics-*
@@ -381,11 +403,11 @@ jobs:
           path: e2e-shard-metrics
 
       - name: Merge flake reports
-        if: needs.e2e-shard.result != 'skipped'
+        if: steps.stale.outputs.stale != 'true' && needs.e2e-shard.result != 'skipped'
         run: node scripts/extract-e2e-flakes.mjs --merge e2e-shard-metrics --out e2e-flakes.json
 
       - name: Upload flake report
-        if: needs.e2e-shard.result != 'skipped'
+        if: steps.stale.outputs.stale != 'true' && needs.e2e-shard.result != 'skipped'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: e2e-flakes
@@ -400,6 +422,7 @@ jobs:
       # de sidste sekunder på. Præcis den forveksling blokerede #5308, som ikke
       # fejlede noget. På PR'er står anbefalingen i job-summary som info.
       - name: Lane ceiling gate + plan verdict
+        if: steps.stale.outputs.stale != 'true'
         env:
           SHARDS_RESULT: ${{ needs.e2e-shard.result }}
           ENFORCE_PLAN: ${{ github.event_name == 'schedule' }}
