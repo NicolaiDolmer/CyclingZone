@@ -88,16 +88,16 @@ test("instruerer draft-PR ved foerste push og gh pr ready som sidste handling (C
   assert.match(brief, /gh pr ready/);
 });
 
-test("instruerer CodeRabbit CLI-review foer gh pr ready, maks EEN runde (#5220)", () => {
+test("instruerer lokal Codex-review foer gh pr ready, maks EEN runde (ejer 16/10, tiltag B)", () => {
   const brief = generateBrief(baseConfig);
-  assert.match(brief, /coderabbit review --base main --committed/);
+  assert.match(brief, /codex review --base origin\/main/);
   assert.match(brief, /Ret aegte fund/);
-  assert.match(brief, /maks 1 CodeRabbit CLI-runde pr\. spor/);
+  assert.match(brief, /maks 1 lokal Codex-runde pr\. spor/);
   assert.match(brief, /koer IKKE CLI-reviewet igen, den ene runde er brugt/);
   // Den gamle "koer CLI-reviewet igen" (flere runder) maa vaere vaek - #5220
   // saetter et hardt loft paa EEN CLI-runde pr. spor.
   assert.doesNotMatch(brief, /koer CLI-reviewet igen paa den endelige committed diff/);
-  const cliIdx = brief.indexOf("coderabbit review --base main --committed");
+  const cliIdx = brief.indexOf("codex review --base origin/main");
   const readyIdx = brief.indexOf("gh pr ready <N>");
   assert.ok(cliIdx > 0 && readyIdx > cliIdx, "CLI-review skal staa FOER gh pr ready");
 });
@@ -236,7 +236,7 @@ test("kind: 'investigate' udelader ALLE build-only-blokke (livstegn, TIER-verifi
   assert.doesNotMatch(brief, /# Verifikation, niveau TIER WAVE/);
   assert.doesNotMatch(brief, /# PR-skabelon/);
   assert.doesNotMatch(brief, /guard-commit-branch\.sh/);
-  assert.doesNotMatch(brief, /coderabbit review/);
+  assert.doesNotMatch(brief, /codex review/);
   assert.doesNotMatch(brief, /gh pr ready/);
   assert.match(brief, /Dette spor bygger INTET/);
 });

@@ -13,6 +13,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
+import { isContractAwaitingRelease } from "../../../backend/lib/contractOfferEligibility.js"; // #6638
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, detectStartPriceTypo } from "../lib/marketValues.js";
 import { formatHour } from "../lib/auctionEndTime.js";
@@ -848,7 +849,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       compact: true,
       render: (r) => (
         <span className="text-cz-2 whitespace-nowrap">
-          {r.contract_end_season != null ? t("squad.headers.contractUntil", { season: r.contract_end_season }) : "—"}
+          {r.contract_end_season == null ? "—"
+            : isContractAwaitingRelease(r.contract_end_season, activeSeasonNumber) ? t("squad.headers.contractExpired") /* #6638 */
+            : t("squad.headers.contractUntil", { season: r.contract_end_season })}
         </span>
       ),
     },
