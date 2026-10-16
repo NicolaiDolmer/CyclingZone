@@ -308,7 +308,7 @@ test("loadRacingTodayByRider: afmeldt hold har ingen badge, selvom entries er be
     races: [{ id: "race-a", name: "Tour du Danube", stages_completed: 0 }],
     withdrawals: [{ race_id: "race-a" }],
   });
-  assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date()), {});
+  assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date("2026-10-16T08:00:00Z")), {});
 });
 
 test("loadRacingTodayByRider: startet loeb uden holdet i feltet giver ingen badge (#6740)", async () => {
@@ -319,7 +319,7 @@ test("loadRacingTodayByRider: startet loeb uden holdet i feltet giver ingen badg
     withdrawals: [],
     runs: [{ race_id: "race-a", entrant_snapshot: ["someone-else"] }],
   });
-  assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date()), {});
+  assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date("2026-10-16T08:00:00Z")), {});
 });
 
 test("loadRacingTodayByRider: startet loeb med holdet i feltet beholder badget (#6740)", async () => {
@@ -330,7 +330,7 @@ test("loadRacingTodayByRider: startet loeb med holdet i feltet beholder badget (
     withdrawals: [],
     runs: [{ race_id: "race-a", entrant_snapshot: SIX_IDS }],
   });
-  assert.equal(Object.keys(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date())).length, 6);
+  assert.equal(Object.keys(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date("2026-10-16T08:00:00Z"))).length, 6);
 });
 
 test("loadRacingTodayByRider: Train now-laaste ryttere taeller ikke som frie reserver (#6740, Friis 16/10)", async () => {
