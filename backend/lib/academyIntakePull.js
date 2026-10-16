@@ -207,7 +207,7 @@ async function rollbackPull(supabase, { teamId, weekSunday, riderIds, cause }) {
     const { data: kept, error: keptErr } = await supabase.from("academy_intake")
       .select("rider_id").in("rider_id", riderIds);
     if (keptErr) failures.push(`intake check: ${keptErr.message}`);
-    const keptIds = new Set((kept ?? []).map((r) => r.rider_id));
+    const keptIds = new Set((kept ?? []).map((/** @type {{ rider_id: string }} */ r) => r.rider_id));
     if (keptIds.size > 0) keepClaim = true;
     const toDelete = riderIds.filter((id) => !keptIds.has(id));
     if (!intakeErr && !keptErr && toDelete.length > 0) {
