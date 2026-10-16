@@ -97,6 +97,5 @@ export function effectiveRollout(change, liveFlags) {
 
 export function filterByRollout(changes, mode, liveFlags) {
   if (mode === "beta") return changes.filter((c) => effectiveRollout(c, liveFlags) === "beta");
-  if (mode === "now_live") return changes.filter((c) => effectiveRollout(c, liveFlags) === "beta_to_live");
   return changes;
 }

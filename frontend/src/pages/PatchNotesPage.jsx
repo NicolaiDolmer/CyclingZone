@@ -7,13 +7,12 @@ import {
 import { loadAnonymousFlags } from "../lib/featureStage.ts";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import {
-  PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader, Segmented,
+  PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader, Segmented, Toggle,
   SearchIcon, ChevronDownIcon, ChevronRightIcon,
 } from "../components/ui";
 
 const LAST_SEEN_KEY = "cz_patchnotes_last_seen";
 const CATEGORIES = ["all", "new", "improved", "fixed"];
-const ROLLOUT_FILTERS = ["all", "beta", "now_live"];
 
 // #6014: fast udrulnings-markering pr. change (docs/PATCH_NOTES_RULES.md §2a).
 // "live" (for alle) faar ingen chip; de fire andre faar en rolig hairline-chip.
@@ -59,7 +58,9 @@ export default function PatchNotesPage() {
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
-  const [rolloutMode, setRolloutMode] = useState("all");
+  // #6717: "Kun beta" er en lille kontakt ved siden af kategorierne; "Nu for alle" er fjernet.
+  const [betaOnly, setBetaOnly] = useState(false);
+  const rolloutMode = betaOnly ? "beta" : "all";
   const [liveFlags, setLiveFlags] = useState(null);
   const [openDays, setOpenDays] = useState(() => new Set());
   const [openChanges, setOpenChanges] = useState(() => new Set());
@@ -190,42 +191,23 @@ export default function PatchNotesPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
-        <div
-          className="flex flex-wrap gap-2"
-          role="group"
-          aria-label={t("filter.ariaLabel")}
-        >
-          {CATEGORIES.map((cat) => {
-            const active = category === cat;
-            const meta = CATEGORY_META[cat];
-            const label = t(`category.${cat}`);
-            return (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                aria-pressed={active}
-                className={`text-xs px-3 py-1.5 rounded-cz-pill border transition-colors flex items-center gap-2 ${
-                  active
-                    ? "border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t"
-                    : "border-cz-border text-cz-2 hover:text-cz-1"
-                }`}
-              >
-                {meta && <span className={`w-1.5 h-1.5 rounded-cz-pill ${meta.dot}`} />}
-                {label}
-              </button>
-            );
-          })}
-        </div>
-          <Segmented
-            label={t("filter.rollout.ariaLabel")}
-            value={rolloutMode}
-            onChange={setRolloutMode}
-            options={ROLLOUT_FILTERS.map((m) => ({
-              value: m,
-              label: t(`filter.rollout.${m === "now_live" ? "nowLive" : m}`),
-            }))}
-          />
+      {/* #6717: én segment-række (Alle · Nyt · Forbedret · Rettet) + en lille
+          "Kun beta"-kontakt, på én linje også på 375 px. */}
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <Segmented
+          label={t("filter.ariaLabel")}
+          value={category}
+          onChange={setCategory}
+          className="min-w-0"
+          options={CATEGORIES.map((cat) => ({ value: cat, label: t(`filter.category.${cat}`) }))}
+        />
+        <Toggle
+          id="patchnotes-beta-only"
+          checked={betaOnly}
+          onChange={(e) => setBetaOnly(e.target.checked)}
+          className="scale-90"
+          label={<span className="text-xs text-cz-2 whitespace-nowrap">{t("filter.betaOnly")}</span>}
+        />
       </div>
 
       {days.length === 0 ? (
