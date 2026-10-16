@@ -15,6 +15,7 @@ import {
   toggleLeadout,
   hasSprintCaptain,
   withIntentionEfforts,
+  withoutPreselectedTrain,
 } from "./tacticsPlan.js";
 
 test("defaultTeamOrder — neutrale defaults for hver rytter (T4)", () => {
@@ -191,4 +192,27 @@ test("#6647 withIntentionEfforts — ordren der gemmes bærer intentionens besky
   assert.equal(saved.breakaway_stance, order.breakaway_stance);
   assert.equal(order.riders[0].effort, "normal");
   assert.equal(saved.riders[1].try_break, false);
+});
+
+test("#6462 withoutPreselectedTrain — ingen forvalgt tog, øvrige defaults og gemte valg urørt", () => {
+  const server = {
+    team_id: "t",
+    breakaway_stance: "neutral",
+    riders: [
+      { rider_id: "cap", effort: "normal", try_break: false, leadout: false },
+      { rider_id: "h1", effort: "normal", try_break: false, leadout: true },
+      { rider_id: "hunter", effort: "normal", try_break: true, leadout: false },
+    ],
+  };
+  const def = withoutPreselectedTrain(server);
+  assert.deepEqual(def.riders.map((r) => r.leadout), [false, false, false]);
+  assert.equal(def.riders[2].try_break, true);
+  assert.equal(server.riders[1].leadout, true, "muterer aldrig input");
+  assert.equal(withoutPreselectedTrain(null), null);
+  // En uberørt etape (ingen gemt ordre) viser intet tog ...
+  const fresh = mergeOrderWithRoster({ breakaway_stance: "neutral", riders: [] }, ["cap", "h1", "hunter"], def);
+  assert.equal(fresh.riders.filter((r) => r.leadout).length, 0);
+  // ... men et GEMT valg overlever.
+  const saved = mergeOrderWithRoster({ riders: [{ rider_id: "h1", leadout: true }] }, ["cap", "h1"], def);
+  assert.equal(saved.riders.find((r) => r.rider_id === "h1").leadout, true);
 });

@@ -27,6 +27,18 @@ export function defaultTeamOrder(riderIds = []) {
 }
 
 /**
+ * #6462: sprint-toget er ALDRIG forudvalgt. Serverens standardordre giver
+ * hjaelperne `leadout: true` naar holdet har en spurt-kaptajn; fladen viser og
+ * gemmer i stedet "ingen i toget" til manageren selv vaelger. Gemte valg
+ * roeres ikke (de ligger i de gemte raekker, ikke i standardordren).
+ * Ren: returnerer en ny ordre; null/undefined passerer uaendret igennem.
+ */
+export function withoutPreselectedTrain(defaultOrder) {
+  if (!defaultOrder) return defaultOrder;
+  return { ...defaultOrder, riders: (defaultOrder.riders ?? []).map((r) => ({ ...r, leadout: false })) };
+}
+
+/**
  * Standardordren for én rytter, som serveren regnede den ud af rollen.
  * Ukendt rytter (fx netop udtaget) falder til den neutrale ordre.
  */

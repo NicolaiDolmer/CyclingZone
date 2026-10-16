@@ -16,7 +16,7 @@
 
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { defaultTeamOrder, mergeOrderWithRoster } from "./tacticsPlan.js";
+import { defaultTeamOrder, mergeOrderWithRoster, withoutPreselectedTrain } from "./tacticsPlan.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -58,7 +58,7 @@ export async function fetchTeamOrders({ raceId }) {
     stagesCompleted: body.stages_completed ?? 0,
     raceCompleted: body.race_completed === true,
     riders: body.riders ?? [],
-    defaultOrder: body.default_order ?? null,
+    defaultOrder: withoutPreselectedTrain(body.default_order) ?? null, // #6462: intet forvalgt tog
     orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
   };
