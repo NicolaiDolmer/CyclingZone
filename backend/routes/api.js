@@ -553,6 +553,7 @@ import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory, buildPrizeBreakdown, buildSponsorPayoutLine } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
+import { isOnlineSince, onlineCutoffIso } from "../lib/presenceWindow.js"; // #5385
 import { SEASON_RACE_DAY_TARGET } from "../lib/calendarRaceDayTargets.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 import { createValuePreviewService, parseValuePreviewQuery } from "../lib/adminValuePreview.js"; // #5686
@@ -9482,7 +9483,7 @@ router.get("/teams/:id/manager-status", requireAuth, presencePulseLimiter, async
       .select("last_seen").eq("id", team.user_id).maybeSingle();
     if (userError) throw userError;
     const lastSeen = user?.last_seen || null;
-    const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
+    const isOnline = isOnlineSince(lastSeen);
     res.json({ last_seen: lastSeen, is_online: isOnline });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
@@ -15538,7 +15539,7 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 
 // #6343: tallet gemmes i 30 s pr. proces, så COUNT-forespørgslen mod users ikke
 // vokser med antallet af åbne faner (hver fane sender presence hvert 60. sekund).
-// "Online" er i forvejen 5-min-granularitet, så 30 s forsinkelse er usynlig.
+// "Online" er i forvejen 30-min-granularitet (#5385), så 30 s forsinkelse er usynlig.
 const ONLINE_COUNT_TTL_MS = 30 * 1000;
 let onlineCountCache = { value: null, at: 0 };
 
@@ -15546,7 +15547,7 @@ async function countOnlineUsers() {
   if (onlineCountCache.value !== null && Date.now() - onlineCountCache.at < ONLINE_COUNT_TTL_MS) {
     return onlineCountCache.value;
   }
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const cutoff = onlineCutoffIso();
   try {
     const { count, error } = await supabase.from("users")
       .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
@@ -15565,7 +15566,7 @@ async function countOnlineUsers() {
 // POST /api/presence — heartbeat, opdater last_seen (throttlet)
 // Bruger touch_user_presence-RPC der KUN skriver hvis last_seen er >60s gammelt,
 // så heartbeat-spam ikke laver en row-write (+WAL+dead tuple) ved hvert kald.
-// Online-prik, /online-count og "sidst set" bruger alle 5-min-granularitet, så
+// Online-prik, /online-count og "sidst set" bruger alle 30-min-vinduet (#5385), så
 // 60s-throttle er funktionelt usynlig. Rettede en disk-IO write-amplification
 // (281k UPDATEs) — se database/2026-06-29-db-io-temp-spills-presence.sql.
 router.post("/presence", requireAuth, presencePulseLimiter, async (req, res) => {
@@ -15596,7 +15597,7 @@ router.post("/login-streak", requireAuth, presencePulseLimiter, async (req, res)
   res.json({ streak, user_id: req.user.id });
 });
 
-// GET /api/online-count — brugere aktive inden for de seneste 5 minutter
+// GET /api/online-count — brugere aktive inden for online-vinduet (30 min, #5385)
 router.get("/online-count", requireAuth, async (req, res) => {
   const count = await countOnlineUsers();
   if (count === null) return res.status(500).json({ error: "online-count unavailable" });
@@ -16538,9 +16539,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
     // et svar). AI-hold nås reelt via transfer-historikkens køber/sælger-links.
     const userData = userRes.data || null;
     if (userData) {
-      userData.is_online = userData.last_seen
-        ? (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000
-        : false;
+      userData.is_online = isOnlineSince(userData.last_seen);
       // #5012 (CodeRabbit-fund): discord_id er det PRIVATE bot-DM-kobling-ID
       // (#2161) — det har ALDRIG været eksponeret af dette endpoint før denne
       // PR. Uden dette guard ville enhver authenticated bruger kunne se en

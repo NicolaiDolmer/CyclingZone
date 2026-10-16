@@ -321,7 +321,7 @@
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik betyder de er offline lige nu. Du kan se dette på managerprofiler og ved hvert hold i Liga & rangliste."
+        "text": "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 30 minutter). En grå prik betyder de er offline lige nu. Du kan se dette på managerprofiler og ved hvert hold i Liga & rangliste."
       },
       "managersOnline": {
         "title": "Antal managere online",
@@ -1523,7 +1523,7 @@
     },
     "onlineStatusFaq": {
       "q": "Hvad er online status?",
-      "a": "En grøn prik ved en managers navn betyder de har været aktive inden for de sidste 5 minutter. Du kan se dette overalt i spillet."
+      "a": "En grøn prik ved en managers navn betyder de har været aktive inden for de sidste 30 minutter. Du kan se dette overalt i spillet."
     },
     "watchlistCounterFaq": {
       "q": "Hvad betyder watchlist-tælleren på en rytterside?",
