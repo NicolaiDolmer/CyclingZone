@@ -6,6 +6,7 @@
 import {
   FACILITIES_ENABLED,
   FACILITY_TRACKS,
+  FACILITY_TIER_PRICE,
   FACILITY_TIER_UPKEEP,
   MAX_FACILITY_TIER,
   MAX_STAFF_SLOTS_PER_ROLE,
@@ -13,7 +14,7 @@ import {
   isTrackEffectLive,
 } from "./facilityConstants.js";
 import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
-import { candidatesForTier } from "./academyIntakeProfile.ts";
+import { candidatesForTier, tierRules } from "./academyIntakeProfile.ts";
 import { getUpgradePrice, effectiveBonus, primaryStaff } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
@@ -50,6 +51,36 @@ export async function resolveTrackLiveFlags(flags, supabaseClient) {
 export function displayTrackBonus(track, tier, staff) {
   if (track === "academy") return candidatesForTier(tier);
   return effectiveBonus(track, tier, staff);
+}
+
+// #6666 (Klub retning D): hvad et akademi-niveau låser op i forhold til niveauet
+// under. Kun en etiket — selve overvægten (share) forlader aldrig backend.
+// "origin" = nationalitet/region, "type" = ryttertype, "extra" = ét ekstra felt,
+// "stronger" = samme felter men stærkere overvægt, null = intet nyt.
+export function academyTierUnlock(tier) {
+  const cur = tierRules(tier);
+  const prev = tierRules(tier - 1);
+  if (cur.origins > prev.origins) return "origin";
+  if (cur.types > prev.types) return "type";
+  if (cur.extra > prev.extra) return "extra";
+  if (cur.share > prev.share) return "stronger";
+  return null;
+}
+
+// #6666 (Klub retning D): hele niveau-trappen for ét spor, så kortet kan vise hvad
+// hvert niveau giver og koster. bonus = samme display-effekt som effectiveBonus/
+// nextTierBonus (staff holdt konstant). Akademi får desuden niveauets oplåsning.
+export function facilityLadder(track, staff) {
+  return Array.from({ length: MAX_FACILITY_TIER }, (_, i) => {
+    const tier = i + 1;
+    return {
+      tier,
+      price: FACILITY_TIER_PRICE[tier],
+      upkeep: FACILITY_TIER_UPKEEP[tier] ?? 0,
+      bonus: displayTrackBonus(track, tier, staff),
+      ...(track === "academy" ? { unlock: academyTierUnlock(tier) } : {}),
+    };
+  });
 }
 
 function statusForError(error, overrides = {}) {
@@ -139,6 +170,8 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
       // holdt konstant (spejler kilden effectiveBonus bruger). null ved max tier
       // (ingen "undefined"-preview i UI).
       nextTierBonus: tier >= MAX_FACILITY_TIER ? null : displayTrackBonus(track, tier + 1, primaryStaffOut),
+      // #6666 (Klub retning D): alle 5 niveauer med pris, drift og effekt.
+      ladder: facilityLadder(track, primaryStaffOut),
     };
   });
 

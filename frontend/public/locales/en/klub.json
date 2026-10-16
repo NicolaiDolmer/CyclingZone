@@ -2,74 +2,89 @@
   "page": {
     "title": "Club",
     "subtitle": "Facilities and staff",
-    "intro": "Facilities make your riders develop faster, recover better, and scout smarter. Each one you build costs money every season, so invest where it fits your plan.",
     "balance": "Balance",
     "division": "Division {division}"
+  },
+  "summary": {
+    "upkeep": "Upkeep per season",
+    "wages": "Wages",
+    "balance": "Balance"
   },
   "sections": {
     "facilities": "Facilities",
     "staff": "Staff"
   },
-  "cost": {
-    "upkeep": "Upkeep",
-    "payroll": "Payroll",
-    "balance": "Balance",
-    "seasonLine": "Every season you pay {upkeep} upkeep + {payroll} wages = {total} CZ$. Budget for it before you upgrade."
-  },
   "facilities": {
     "tier": "Tier {tier} / {max}",
     "notBuilt": "Not built",
-    "upgradeTo": "Upgrade to T{tier}",
-    "buildTier": "Build T{tier}",
-    "upkeep": "Upkeep {amount}/season",
     "maxed": "Fully upgraded",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "upgrade": "Upgrade",
+    "build": "Build",
+    "upkeepAt": "Upkeep at level {tier}: {amount}/season",
+    "upkeepNow": "Upkeep {amount}/season"
   },
   "roi": {
-    "training": "Your riders train {value} faster every day",
     "trainingBuild": "Build it to start training your riders faster",
-    "trainingNext": "Next: Level {tier} → your riders would train {value} faster every day",
-    "scouting": "Unlocks hiring a chief scout: sharper rider evaluations. A chief scout rated about 80 overall runs two scouting assignments at once",
     "scoutingBuild": "Build it to unlock hiring a chief scout",
-    "scoutingNext": "Next: Level {tier} unlocks a higher-tier chief scout",
-    "academy": "{value} candidates a week, and your intake leans towards your profile",
-    "academyBuild": "Build it for more weekly candidates and a profile for your intake",
-    "academyNext": "Next: Level {tier} gives {value} candidates a week and more say over the profile"
+    "academyBuild": "Build it for more weekly candidates and a profile for your intake"
   },
-  "nextTier": {
-    "generic": "Next: Level {tier} → {value}"
+  "badge": {
+    "active": "Active"
+  },
+  "hero": {
+    "trainingSub": "faster training every day",
+    "scouting": "Chief scout",
+    "scoutingSub": "You can hire up to a tier {tier} chief",
+    "academy": "{value} candidates",
+    "academySub": "a week, and your profile shapes the intake"
+  },
+  "ladder": {
+    "label": "Levels",
+    "now": "now",
+    "scouting": "Chief T{tier}",
+    "academy": "{value} cand.",
+    "unlock": {
+      "origin": "nation/region",
+      "type": "+ rider type",
+      "extra": "+1 extra",
+      "stronger": "stronger lean"
+    }
   },
   "effect": {
-    "label": "Effect",
     "live": "Active now",
-    "target": "Coming soon",
-    "note": "Not every effect is live yet"
+    "target": "Coming soon"
   },
   "tracks": {
     "training": {
       "name": "Training Center",
       "effect": "training",
-      "soon": "Faster rider development"
+      "soon": "Faster rider development",
+      "teaser": "Your riders train faster every day."
     },
     "scouting": {
       "name": "Scouting Network",
       "effect": "rider insight",
-      "soon": "Sharper rider insight"
+      "soon": "Sharper rider insight",
+      "teaser": "Hire a chief scout for sharper rider evaluations."
     },
     "medical": {
       "name": "Medical Department",
       "effect": "recovery",
-      "soon": "Faster recovery"
+      "soon": "Faster recovery",
+      "teaser": "Your riders get their form back faster after hard races."
     },
     "academy": {
       "name": "Academy Expansion",
       "effect": "candidates a week",
-      "soon": "A bigger weekly intake with your own profile"
+      "soon": "A bigger weekly intake with your own profile",
+      "teaser": "A bigger weekly intake that leans towards the riders you want."
     },
     "commercial": {
       "name": "Commercial Department",
       "effect": "sponsor (capped)",
-      "soon": "Long-term sponsor income"
+      "soon": "Long-term sponsor income",
+      "teaser": "Long-term extra sponsor income."
     }
   },
   "roles": {
