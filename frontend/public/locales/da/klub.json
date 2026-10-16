@@ -45,10 +45,10 @@
     "scouting": "Chef T{tier}",
     "academy": "{value} kand.",
     "unlock": {
-      "origin": "nation/region",
-      "type": "+ ryttertype",
+      "origin": "region",
+      "type": "+ type",
       "extra": "+1 ekstra",
-      "stronger": "stærkere"
+      "stronger": "mere træk"
     }
   },
   "effect": {

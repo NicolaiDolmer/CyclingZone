@@ -60,7 +60,7 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
     headline = t("facilities.notBuilt");
     subline = t(`roi.${track}Build`, { defaultValue: "" });
   } else if (track === "academy") {
-    headline = t("hero.academy", { count: effectiveBonus });
+    headline = t("hero.academy", { value: effectiveBonus });
     subline = t("hero.academySub");
   } else if (track === "scouting") {
     headline = t("hero.scouting");

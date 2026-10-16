@@ -45,10 +45,10 @@
     "scouting": "Chief T{tier}",
     "academy": "{value} cand.",
     "unlock": {
-      "origin": "nation/region",
-      "type": "+ rider type",
+      "origin": "region",
+      "type": "+ type",
       "extra": "+1 extra",
-      "stronger": "stronger lean"
+      "stronger": "more pull"
     }
   },
   "effect": {

@@ -23,7 +23,7 @@ function useStepEffect(track: string) {
   const { t } = useTranslation("klub");
   return (row: LadderRow): string | null => {
     if (track === "scouting") return t("ladder.scouting", { tier: row.tier });
-    if (track === "academy") return t("ladder.academy", { count: row.bonus });
+    if (track === "academy") return t("ladder.academy", { value: row.bonus });
     if (track === "training") return formatTrackEffect(track, row.bonus);
     return null;
   };
@@ -37,7 +37,7 @@ export default function TierStair({ facility }: { facility: Facility }) {
 
   return (
     <div className="overflow-x-auto">
-      <ol aria-label={t("ladder.label")} className="grid grid-cols-5 gap-[3px] min-w-[250px]">
+      <ol aria-label={t("ladder.label")} className="grid grid-cols-5 gap-[2px] min-w-[240px]">
         {rows.map((row) => {
           const state = stepState(row.tier, facility.tier);
           const effect = effectFor(row);
@@ -47,7 +47,7 @@ export default function TierStair({ facility }: { facility: Facility }) {
             <li
               key={row.tier}
               aria-current={state === "current" ? "step" : undefined}
-              className={`flex flex-col gap-[2px] rounded-cz border px-[6px] py-[5px] min-w-0 ${STEP_CLASS[state]}`}
+              className={`flex flex-col gap-[2px] rounded-cz border px-[4px] py-[5px] min-w-0 ${STEP_CLASS[state]}`}
             >
               <span className="text-2xs font-semibold font-data tabular-nums whitespace-nowrap">
                 {row.tier}
