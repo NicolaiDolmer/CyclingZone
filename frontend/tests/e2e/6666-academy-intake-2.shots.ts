@@ -34,8 +34,16 @@ const VIEWPORTS: Viewport[] = [
   { name: "mobile-390", width: 390, height: 844 },
 ];
 
-const createdAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+// Fast ur (som oevrige shots): fixtur og browserur deler samme instant, saa billederne kan genskabes.
+const FIXED_NOW = new Date("2026-10-05T12:00:00Z");
+const createdAt = new Date(FIXED_NOW.getTime() - 60 * 60 * 1000).toISOString();
 const expiresAt = new Date(new Date(createdAt).getTime() + 7 * 86_400_000).toISOString();
+// Display-safe nuvaerende evner (kun registry-noegler), fiktive vaerdier.
+const ABILITIES = [
+  { climbing: 62, tempo: 55, endurance: 58, punch: 44, sprint: 31, flat: 40, recovery: 52 },
+  { climbing: 57, tempo: 49, punch: 53, endurance: 50, sprint: 38, flat: 42, recovery: 47 },
+  { flat: 60, cobblestone: 64, tempo: 56, endurance: 54, sprint: 45, punch: 48, positioning: 51 },
+];
 type PulledRow = [string, string, string, string, string, string, number];
 const PULLED = ([
   ["Mathias", "Holm", "2009-06-15", "dk", "climber", "gc", 3200],
@@ -60,6 +68,7 @@ const PULLED = ([
   potentialEstimate: null,
   potentialBand: null,
   potentialLearned: true,
+  rider_derived_abilities: ABILITIES[i],
 }));
 
 const ROSTER_PROGNOSIS = [
@@ -114,6 +123,7 @@ async function shoot(vp: Viewport, variant: "before" | "after", extra = "") {
     : payloadFor(variant);
   await page.route("**/api/academy/me**", (route) => json(route, payload));
   await stabilizePage(page);
+  await page.clock.setFixedTime(FIXED_NOW);
   await login(page);
   await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
   await page.goto("/academy");
