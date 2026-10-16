@@ -23,8 +23,8 @@ import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 //
 // #6711 (#5833 plan-PR 2, ejer-go 16/10): deleren er FORANKRET i loebsdage pr. DATO,
 // ikke i saesonens samlede antal loebsdage. Foer #6711 laeste deleren saesonens maal
-// (SEASON_RACE_DAY_TARGET), saa en laengere saeson tyndede hver loebsdag ud: S5 med 160
-// loebsdage gav 12,5 % mindre pr. dag end S4 med 140, og S6 med 135 ville give mere.
+// (SEASON_RACE_DAY_TARGET), saa en laengere saeson tyndede hver loebsdag ud og en
+// kortere gav mere pr. dag.
 // Kalenderen pakker altid 5 loebsdage paa hver kalenderdato (CALENDAR_RULES §1e-b), saa
 // et fast udbytte pr. loebsdag er et fast udbytte pr. VIRKELIG dato. En laengere saeson
 // giver derfor mere samlet udvikling, fordi den har flere datoer - ikke mindre pr. dato.
