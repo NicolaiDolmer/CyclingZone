@@ -52,7 +52,7 @@ export default function ForumHighlightsCard() {
             <li key={thread.id}>
               <Link
                 to={`/forum/${thread.id}`}
-                className="flex items-center justify-between gap-3 py-2.5 transition-colors hover:bg-cz-subtle -mx-2 px-2"
+                className="flex flex-col gap-0.5 py-2.5 transition-colors hover:bg-cz-subtle -mx-2 px-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   {thread.is_unread && (
@@ -61,12 +61,12 @@ export default function ForumHighlightsCard() {
                       <span className="sr-only">{t("forum:list.unread")}</span>
                     </span>
                   )}
-                  {/* #5383: titlen klippes haardt i den smalle celle paa mobil.
-                      `title` goer afkortningen tilsigtet OG omgaaelig — hele
-                      overskriften er stadig tilgaengelig uden at aabne traaden. */}
+                  {/* #6728 (fund 4): paa mobil staar titlen paa sin egen linje
+                      og ombrydes i stedet for at blive klippet; svar og tid
+                      ligger under. Fra sm og op er der plads paa een linje. */}
                   <span
                     title={thread.title}
-                    className={`min-w-0 truncate text-[13.5px] text-cz-1 ${thread.is_unread ? "font-semibold" : "font-medium text-cz-2"}`}
+                    className={`min-w-0 break-words sm:truncate text-[13.5px] text-cz-1 ${thread.is_unread ? "font-semibold" : "font-medium text-cz-2"}`}
                   >
                     {thread.title}
                   </span>

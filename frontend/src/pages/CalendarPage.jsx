@@ -602,16 +602,19 @@ function StageChip({ ev, t, className = "" }) {
           ? "border-cz-accent/40 bg-cz-accent/[0.07] hover:bg-cz-accent/[0.14]"
           : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"} ${className}`}
     >
-      <div className="flex items-center gap-1.5">
+      {/* #6728 (fund 9): navnet ombrydes ved mellemrum i stedet for at blive
+          klippet. Paa smalle skaerme staar terraen-ikonet over navnet, saa
+          navnet faar hele cellens bredde og ord ikke knaekker midt i. */}
+      <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:gap-1.5">
         {/* #4143 v2: ejeren afviste bogstavkoder (3/9) — tilbage til den
             miniature-terræn-silhuet (samme tegning som StageStripe's
             MiniSilhouette, se components/calendar/TerrainGlyph.jsx), nu delt
             med planlæggerens MasterCanvas via lib/terrainBucket.ts. */}
-        <TerrainGlyph bucket={toTerrainBucket(ev.terrain)} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
-        <span className={`truncate text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
+        <TerrainGlyph bucket={toTerrainBucket(ev.terrain)} width={18} height={10} className={`mt-0.5 shrink-0 ${mine ? "text-cz-1" : "text-cz-3"}`} />
+        <span className={`min-w-0 break-words text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
       </div>
       {secondLine && (
-        <p className={`mt-0.5 truncate text-3xs tabular-nums ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
+        <p className={`mt-0.5 break-words text-3xs tabular-nums ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
           {secondLine}
         </p>
       )}

@@ -1770,10 +1770,10 @@ export default function TrainingPage() {
         type="button"
         onClick={handleOpenAssistantPanel}
         data-testid="training-assistant-row"
-        className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-cz border border-cz-border bg-cz-card px-3 text-start transition-colors hover:bg-cz-subtle"
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-cz border border-cz-border bg-cz-card px-3 text-start text-xs transition-colors hover:bg-cz-subtle"
       >
-        <StarIcon size={16} className="flex-none text-cz-3" aria-hidden="true" />
-        <span className="flex-1 text-[13px] font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
+        <StarIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
+        <span className="flex-1 text-xs font-semibold text-cz-1">{t("mobile.assistantTitle")}</span>
         <span className="font-data text-2xs tabular-nums text-cz-3">
           {t("mobile.assistantCount", { n: assistantSuggestionRows.length })}
         </span>
