@@ -140,7 +140,10 @@
         "mineGap": "Your best was {name}, #{rank}, {gap} down.",
         "mineWon": "Your rider {name} won.",
         "climb": "The race went over {name} at km {km}.",
-        "climbFirst": "{rider} was first over {name}."
+        "climbFirst": "{rider} was first over {name}.",
+        "sameTime": "{count} riders finished on the winner's time.",
+        "third": "{name} was third.",
+        "thirdGap": "{name} was third, {gap} down."
       },
       "final": {
         "aria": "The final 5 km: groups on the road with distance to go, gaps and race clock",

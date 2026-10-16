@@ -542,6 +542,27 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): R
       }
     }
   }
+  // Sparsom log (fx flad spurtetape: kun start, spurt og maal): fyld op med fakta fra
+  // resultatlisten, placeret lige efter vinder-saetningen. Aldrig opdigtet (Codex P2).
+  const afterWinner = () => {
+    const i = out.findIndex((r) => r.key.startsWith("winner") || r.key === "mineWon");
+    return i >= 0 ? i + 1 : out.length;
+  };
+  if (out.length < 3) {
+    // Vinderen staar med absolut tid; de andre med hul til ham.
+    const sameTime = cast.finishers.filter((f, i) => i === 0 || parseGap(f.gap) === 0).length;
+    if (sameTime >= 3) out.splice(afterWinner(), 0, { key: "sameTime", params: { count: sameTime } });
+  }
+  if (out.length < 3) {
+    const third = cast.finishers.find((f) => f.rank === 3);
+    const thirdName = third && !cast.mine.has(third.riderId) ? cast.nameOf(third.riderId) : null;
+    if (third && thirdName) {
+      const gapS = parseGap(third.gap);
+      out.splice(afterWinner() + (out[afterWinner()]?.key === "sameTime" ? 1 : 0), 0, gapS != null && gapS > 0
+        ? { key: "thirdGap", params: { name: thirdName, gap: formatGapPlain(gapS) } }
+        : { key: "third", params: { name: thirdName } });
+    }
+  }
   // Hoejst 5: angrebet ryger foerst, saa udfaldet.
   while (out.length > 5) {
     const i = out.findIndex((s) => s.key.startsWith("attack"));

@@ -140,7 +140,10 @@
         "mineGap": "Din bedste var {name}, nr. {rank}, {gap} efter.",
         "mineWon": "Din rytter {name} vandt.",
         "climb": "Løbet gik over {name} ved km {km}.",
-        "climbFirst": "{rider} var først over {name}."
+        "climbFirst": "{rider} var først over {name}.",
+        "sameTime": "{count} ryttere kom i mål på vinderens tid.",
+        "third": "{name} blev nummer tre.",
+        "thirdGap": "{name} blev nummer tre, {gap} efter."
       },
       "final": {
         "aria": "De sidste 5 km: grupperne på vejen med afstand til mål, huller og løbsur",
