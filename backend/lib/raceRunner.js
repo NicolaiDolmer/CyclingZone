@@ -121,7 +121,7 @@ import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
-import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadSpentRaceDays } from './raceSpentDays.js';
@@ -1197,6 +1197,10 @@ async function dropRetiredRiderRows({ supabase, rows }) {
 //      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
 export async function fillMissingTeamEntries({
   supabase, race, stages, existingEntries, persist = true,
+  // #6740: hold under gulvet kun pga. skade efter udtagelsen (raceFieldIntegrity.
+  // injuryShortTeamIds). Assistenten fylder dem med de frie ryttere den har, også når
+  // 6 ikke nås, for holdet starter alligevel (regel B).
+  injuryShortTeamIds = new Set(),
   // #4759: injicérbar for test (samme mønster som notificationService.js's
   // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
   notify = notifyAssistantFilledSquad,
@@ -1405,7 +1409,9 @@ export async function fillMissingTeamEntries({
     // Rækker kun hvis holdet FAKTISK når gulvet. Kan det ikke (for få frie ryttere),
     // stiller det ikke op alligevel — og så skal der ikke skrives auto-entries der
     // binder rytterne på løbsdagen for et startfelt de aldrig kommer i.
-    if (existingCount + picks.length < MIN_RACE_ENTRIES) continue;
+    // #6740: et skade-kort hold starter alligevel (regel B), så dér skrives det der kan.
+    if (existingCount + picks.length < MIN_RACE_ENTRIES && !injuryShortTeamIds.has(teamId)) continue;
+    if (!picks.length) continue;
     // #4759: kun den FULDE udtagelse (existingCount===0) er "assistenten udtog
     // dit hold, du havde intet inde" — en redning der topper en delvis trup op
     // (isRescue) fandt netop en udtagelse manageren allerede havde lavet.
@@ -1620,6 +1626,8 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // (Discord-bug 17/8, Cooper Bennett). Kører på HVER etape-build (mirror ghost-filteret
   // ovenfor) — for etape 2+ fryser #1844 feltet alligevel til etape-1-snapshottet, så
   // denne eksklusion reelt kun kan ændre feltet FØR løbet er startet.
+  // #6740: de skadede udtagne huskes til gulvet nedenfor (regel B).
+  let injuredEntries = [];
   if (existingEntries.length) {
     const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
     const { data: conditions, error: condErr } = await selectInChunks({
@@ -1628,9 +1636,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     });
     if (condErr) throw new Error(`rider_condition (injured): ${condErr.message}`);
     const injuredUntilByRider = new Map((conditions || []).map((c) => [c.rider_id, c.injured_until]));
-    existingEntries = filterOutInjuredEntries({
+    const fit = new Set(filterOutInjuredEntries({
       entries: existingEntries, injuredUntilByRider, todayStr: copenhagenDateString(),
-    });
+    }));
+    injuredEntries = existingEntries.filter((e) => !fit.has(e));
+    existingEntries = existingEntries.filter((e) => fit.has(e));
   }
   // #4306: hold der har trukket sig fra løbet (Fase 0b, frivillig deltagelse) deltager
   // ikke, heller ikke med BEVAREDE entries fra før afmeldingen. loadWithdrawnTeamIds
@@ -1646,6 +1656,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
     if (withdrawnTeams.size) {
       existingEntries = existingEntries.filter((e) => !withdrawnTeams.has(e.team_id));
+      injuredEntries = injuredEntries.filter((e) => !withdrawnTeams.has(e.team_id));
     }
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
@@ -1660,8 +1671,14 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     }
     existingEntries=existingEntries.filter(row=>!spent.has(row.rider_id));
   }
+  // #6740 (ejer-beslutning B 16/10): hold der kun er under gulvet fordi udtagne ryttere
+  // blev skadet efter udtagelsen. Måles EFTER afmelding og spent days ovenfor, så de
+  // grunde aldrig tæller som skade (6 udtaget, 1 skadet, 1 spent = 5: gulvet gælder).
+  const injuryShort = allowAutofill
+    ? injuryShortTeamIds({ entries: existingEntries, injuredEntries })
+    : new Set();
   const autopicked = allowAutofill
-    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist })
+    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist, injuryShortTeamIds: injuryShort })
     : [];
   let entries = [...existingEntries, ...autopicked];
   // #4295 (ejer-beslutning 27/8): GULVET. Et hold skal have mindst 6 ryttere for at
@@ -1674,7 +1691,15 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // har taget en rytter fra en trup der startede med præcis 6: gulvet gælder hvem der
   // STILLER OP, ikke hvem der stadig er i løbet på etape 4.
   if (allowAutofill) {
-    const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries });
+    // #6740: skade-korte hold starter med de raske ryttere de har (mindst 1).
+    const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries, exemptTeamIds: injuryShort });
+    const keptTeams = new Set(kept.map((e) => e.team_id));
+    const startsShort = [...injuryShort].filter((id) => keptTeams.has(id));
+    if (startsShort.length) {
+      console.log(
+        `[race ${race.id}] ${startsShort.length} hold starter under ${MIN_RACE_ENTRIES} ryttere: udtagne ryttere skadet efter udtagelsen (#6740)`
+      );
+    }
     if (droppedTeamIds.length) {
       console.log(
         `[race ${race.id}] ${droppedTeamIds.length} hold stiller ikke op: under ${MIN_RACE_ENTRIES} udtagne ryttere (#4295)`

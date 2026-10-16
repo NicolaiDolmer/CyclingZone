@@ -2376,7 +2376,7 @@ export default function TrainingPage() {
         open={confirmTrainNow}
         onClose={() => setConfirmTrainNow(false)}
         size="sm"
-        title={t("trainNow.confirm.title")}
+        title={t(trainNow.status.shortRaces.every((r) => r.startsShort) ? "trainNow.confirm.titleShort" : "trainNow.confirm.title")}
         closeLabel={t("trainNow.confirm.cancel")}
         footer={(
           <>

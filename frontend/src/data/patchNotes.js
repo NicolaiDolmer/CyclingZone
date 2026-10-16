@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.364",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "An injury no longer costs you the start",
+          "body": "If you had 6 riders selected and one gets injured after you picked him, your team now starts with the fit riders it has left. Your assistant still adds free riders first. Below 6 for any other reason, your team still does not start."
+        },
+        "da": {
+          "title": "En skade koster dig ikke længere starten",
+          "body": "Havde du 6 ryttere udtaget, og bliver en af dem skadet efter udtagelsen, starter dit hold nu med de raske ryttere, det har tilbage. Din assistent sætter stadig først frie ryttere ind. Er I under 6 af andre grunde, stiller holdet stadig ikke op."
+        },
+        "refs": [
+          6740
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.363",
     "date": "2026-10-16",
     "changes": [

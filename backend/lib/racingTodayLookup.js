@@ -166,7 +166,10 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
       const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)
         && !locked.has(id)).length;
       const { starts: willStart } = teamWillStart({
-        entryCount: [...entered].filter((id) => !injured.has(id)).length, freeEligibleCount, stagesCompleted,
+        entryCount: [...entered].filter((id) => !injured.has(id)).length,
+        // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
+        injuredEntryCount: [...entered].filter((id) => injured.has(id)).length,
+        freeEligibleCount, stagesCompleted,
       });
       starts.set(raceId, willStart);
     }

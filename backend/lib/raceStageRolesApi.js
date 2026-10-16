@@ -72,6 +72,8 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
     const locked = (await loadRaceTrainNowLock({ supabase, raceId: race.id, riderIds: rosterIds })).riderIds;
     return teamWillStart({
       entryCount: entryRiderIds.filter((id) => !injuredIds.has(id)).length,
+      // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
+      injuredEntryCount: entryRiderIds.filter((id) => injuredIds.has(id)).length,
       freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id)).length,
       stagesCompleted,
     });

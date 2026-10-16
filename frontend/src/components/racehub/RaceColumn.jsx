@@ -145,11 +145,14 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const fitSelected = selectedIds.filter((id) => !ridersById.get(id)?.injured).length;
   const outlook = column.withdrawn ? null : partialSquadOutlook({
     selected: fitSelected,
+    injured: selectedIds.length - fitSelected,
     free: freeRiderCountForColumn({ column, roster, bindingMap }),
     fieldMax: column.size?.max,
     raceLive: locked,
   });
   const willNotStart = outlook?.kind === "willNotStart" ? outlook : null;
+  // #6740 regel B: skade efter udtagelsen, holdet starter med færre end gulvet.
+  const startsShort = outlook?.kind === "startsShort" ? outlook : null;
 
   // #1925: kolonnen er en drop-zone — slip en rytter her for at tilføje/flytte ham hertil.
   // Frosne/afmeldte løb tager ikke imod drops (forælderen validerer også via dropAction).
@@ -202,6 +205,11 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         {willNotStart && (
           <p data-testid="column-will-not-start" className="mt-1.5 text-3xs text-cz-warning">
             {t("selection.willNotStartShort", willNotStart)}
+          </p>
+        )}
+        {startsShort && (
+          <p data-testid="column-starts-short" className="mt-1.5 text-3xs text-cz-warning">
+            {t("selection.startsShortShort", startsShort)}
           </p>
         )}
         {/* #3102 PR 2: peaks/payback fra formplanen, synligt hvor udtagelsen sker. */}
