@@ -61,12 +61,13 @@ function chain(rows) {
 }
 
 function fakeSupabase({ entries, sched, races, entryError, schedError, raceError, conditions, conditionError, riders,
-  withdrawals, results, locks, lockSched } = {}) {
+  withdrawals, results, locks, lockSched, runs } = {}) {
   const roster = riders ?? SIX_IDS.map((id) => ({ id, squad: "senior" }));
   return {
     from(table) {
       if (table === "race_withdrawals" && withdrawals) return chain(withdrawals);
       if (table === "race_results" && results) return chain(results);
+      if (table === "race_simulation_runs" && runs) return chain(runs);
       if (table === "training_train_now_locks" && locks) return chain(locks);
       if (table === "riders") {
         const state = { squad: null };
@@ -316,7 +317,7 @@ test("loadRacingTodayByRider: startet loeb uden holdet i feltet giver ingen badg
     sched: [{ race_id: "race-a" }],
     races: [{ id: "race-a", name: "Tour du Danube", stages_completed: 1 }],
     withdrawals: [],
-    results: [],
+    runs: [{ race_id: "race-a", entrant_snapshot: ["someone-else"] }],
   });
   assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date()), {});
 });
@@ -327,7 +328,7 @@ test("loadRacingTodayByRider: startet loeb med holdet i feltet beholder badget (
     sched: [{ race_id: "race-a" }],
     races: [{ id: "race-a", name: "Tour du Danube", stages_completed: 1 }],
     withdrawals: [],
-    results: [{ race_id: "race-a" }],
+    runs: [{ race_id: "race-a", entrant_snapshot: SIX_IDS }],
   });
   assert.equal(Object.keys(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date())).length, 6);
 });

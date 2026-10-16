@@ -40,7 +40,7 @@ test("teamWillStart: manglende/ugyldige input kaster aldrig", () => {
   assert.equal(teamWillStart({ entryCount: -4, freeEligibleCount: NaN }).starts, false);
 });
 
-function resultsStub(rows, calls = []) {
+function tablesStub(tables, calls = []) {
   return {
     from(table) {
       const filters = { table };
@@ -50,9 +50,9 @@ function resultsStub(rows, calls = []) {
         in(col, vals) { filters[col] = vals; return q; },
         then(resolve) {
           calls.push(filters);
-          const data = rows.filter((r) => r.team_id === filters.team_id && filters.race_id.includes(r.race_id)
-            && r.stage_number === filters.stage_number && filters.result_type.includes(r.result_type));
-          resolve({ data, error: null });
+          const rows = (tables[table] ?? []).filter((r) => Object.entries(filters).every(([col, val]) => col === "table"
+            || (Array.isArray(val) ? val.includes(r[col]) : r[col] === val)));
+          resolve({ data: rows, error: null });
         },
       };
       return q;
@@ -60,22 +60,31 @@ function resultsStub(rows, calls = []) {
   };
 }
 
-test("loadTeamsInStartedField: rytterraekker paa etape 1 (stage/gc) afgoer feltet (#6740)", async () => {
+test("loadTeamsInStartedField: det frosne startfelt afgoer, ogsaa naar alle udgik paa etape 1 (#6740)", async () => {
   const calls = [];
-  const supabase = resultsStub([
-    { race_id: "stage-race", team_id: "t1", stage_number: 1, result_type: "stage" },
-    { race_id: "one-day", team_id: "t1", stage_number: 1, result_type: "gc" },
-    { race_id: "dropped", team_id: "t2", stage_number: 1, result_type: "stage" },
-  ], calls);
-  const out = await loadTeamsInStartedField({ supabase, raceIds: ["stage-race", "one-day", "dropped", "stage-race"], teamId: "t1" });
-  assert.deepEqual([...out], [["stage-race", true], ["one-day", true], ["dropped", false]]);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].table, "race_results");
+  const supabase = tablesStub({
+    race_simulation_runs: [
+      // Holdets ryttere stod i startfeltet, men har ingen resultatrække (udgik/OTL).
+      { race_id: "all-abandoned", stage_number: 1, entrant_snapshot: ["a1", "x"] },
+      // Lorraine/Léman 16/10: fjernet ved start, ingen af holdets ryttere i snapshottet.
+      { race_id: "leman", stage_number: 1, entrant_snapshot: [{ rider_id: "x" }, { rider_id: "y" }] },
+    ],
+    race_entries: [
+      { race_id: "all-abandoned", rider_id: "a1", team_id: "t1" },
+      { race_id: "leman", rider_id: "l1", team_id: "t1" },
+      { race_id: "legacy", rider_id: "g1", team_id: "t1" },
+    ],
+    race_results: [{ race_id: "legacy", team_id: "t1", stage_number: 1, result_type: "gc" }],
+  }, calls);
+  const out = await loadTeamsInStartedField({ supabase, raceIds: ["all-abandoned", "leman", "legacy"], teamId: "t1" });
+  assert.deepEqual([...out], [["all-abandoned", true], ["leman", false], ["legacy", true]]);
+  const resultsCall = calls.find((c) => c.table === "race_results");
+  assert.deepEqual(resultsCall.race_id, ["legacy"], "race_results laeses kun for loeb uden snapshot");
 });
 
 test("loadTeamsInStartedField: ingen loeb eller intet hold -> ingen DB-kald", async () => {
   const calls = [];
-  const supabase = resultsStub([], calls);
+  const supabase = tablesStub({}, calls);
   assert.equal((await loadTeamsInStartedField({ supabase, raceIds: [], teamId: "t1" })).size, 0);
   assert.deepEqual([...(await loadTeamsInStartedField({ supabase, raceIds: ["r"], teamId: null }))], [["r", false]]);
   assert.equal(calls.length, 0);

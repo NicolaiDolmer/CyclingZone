@@ -40,20 +40,39 @@ export function teamWillStart({ entryCount = 0, freeEligibleCount = 0, stagesCom
 
 /**
  * #6740: for startede løb — står holdet i det faktiske startfelt? Map<raceId, boolean>.
- * Kilden er race_results: motoren skriver kun rækker for hold der kørte etape 1, og
- * stages_completed tælles først op efter skrivningen. Løb der ikke er startet kommer
- * ikke i mappet. Kaster ved DB-fejl; kalderne er best-effort og fejler mod "stiller op".
+ * Kilden er det frosne startfelt (race_simulation_runs.entrant_snapshot for etape 1,
+ * #1844): det rummer også ryttere der udgik eller kom ind uden for tidsgrænsen på
+ * etape 1, som race_results udelader. Holdet er med, hvis en af dets tilmeldte ryttere
+ * står i snapshottet. Et startet løb uden snapshot (legacy) falder tilbage til
+ * rytterens etape-1-række i race_results ("stage" i etapeløb, "gc" i endagsløb).
+ * Kaster ved DB-fejl; kalderne er best-effort og fejler mod "stiller op".
  */
 export async function loadTeamsInStartedField({ supabase, raceIds, teamId }) {
   const ids = [...new Set((raceIds ?? []).filter(Boolean))];
   const out = new Map(ids.map((id) => [id, false]));
   if (!ids.length || !teamId) return out;
-  // Rytterens etape-1-række: "stage" i etapeløb, "gc" i endagsløb (målt 16/10). Holdrækken
-  // alene duer ikke: et hold uden nok ryttere i mål får måske ingen.
-  // pagination-safe: ét hold, etape 1, to rækketyper — højst én trup (≤ 9) pr. løb.
-  const { data, error } = await supabase.from("race_results").select("race_id")
-    .eq("team_id", teamId).eq("stage_number", 1).in("result_type", ["stage", "gc"]).in("race_id", ids);
-  if (error) throw new Error(`race_results (started field): ${error.message ?? error}`);
-  for (const row of data ?? []) out.set(row.race_id, true);
+  // pagination-safe: etape 1 for få løb (ét snapshot pr. løb) og ét holds tilmeldinger.
+  const [runsRes, entriesRes] = await Promise.all([
+    supabase.from("race_simulation_runs").select("race_id, entrant_snapshot").eq("stage_number", 1).in("race_id", ids),
+    supabase.from("race_entries").select("race_id, rider_id").eq("team_id", teamId).in("race_id", ids),
+  ]);
+  if (runsRes.error) throw new Error(`race_simulation_runs (started field): ${runsRes.error.message ?? runsRes.error}`);
+  if (entriesRes.error) throw new Error(`race_entries (started field): ${entriesRes.error.message ?? entriesRes.error}`);
+  const snapshotByRace = new Map();
+  for (const run of runsRes.data ?? []) {
+    if (!Array.isArray(run?.entrant_snapshot)) continue;
+    snapshotByRace.set(run.race_id, new Set(run.entrant_snapshot.map((x) => (typeof x === "string" ? x : x?.rider_id)).filter(Boolean)));
+  }
+  for (const entry of entriesRes.data ?? []) {
+    if (snapshotByRace.get(entry.race_id)?.has(entry.rider_id)) out.set(entry.race_id, true);
+  }
+  const legacyIds = ids.filter((id) => !snapshotByRace.has(id));
+  if (legacyIds.length) {
+    // pagination-safe: ét hold, etape 1, to rækketyper — højst én trup (≤ 9) pr. løb.
+    const { data, error } = await supabase.from("race_results").select("race_id")
+      .eq("team_id", teamId).eq("stage_number", 1).in("result_type", ["stage", "gc"]).in("race_id", legacyIds);
+    if (error) throw new Error(`race_results (started field): ${error.message ?? error}`);
+    for (const row of data ?? []) out.set(row.race_id, true);
+  }
   return out;
 }
