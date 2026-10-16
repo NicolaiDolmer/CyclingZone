@@ -69,7 +69,8 @@ function fakeSupabase(state, { missing = [] } = {}) {
     };
     return q;
   }
-  return { from: query, writes };
+  // #6740: find_spent_race_days (the Train now re-check) - no spent riders in these tests.
+  return { from: query, writes, rpc: async () => ({ data: [], error: null }) };
 }
 
 function baseState(flag = "on") {
@@ -511,15 +512,45 @@ test("loadTrainNowShortRaces: en solgt rytter i udtagelsen taeller ikke (review 
     // "sold" er nu paa et andet hold: motoren fjerner entryen foer gulvet.
     riders: six.map((id) => ({ id, team_id: id === "sold" ? "t2" : "t1", squad: "senior", is_academy: false, is_retired: false })),
   };
-  const supabase = { from: (table) => {
-    const q = {};
-    for (const m of ["select", "eq", "in", "neq", "order", "is", "or"]) q[m] = () => q;
-    q.range = () => Promise.resolve({ data: tables[table] ?? [], error: null });
-    q.then = (resolve, reject) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(resolve, reject);
-    return q;
-  } };
+  const out = await loadTrainNowShortRaces({ supabase: shortRaceDb(tables), team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
+  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
+});
+
+function shortRaceDb(tables, { spent = [], failTable = null } = {}) {
+  return {
+    rpc: async () => ({ data: spent, error: null }),
+    from: (table) => {
+      const q = {};
+      for (const m of ["select", "eq", "in", "neq", "order", "is", "or"]) q[m] = () => q;
+      const res = table === failTable ? { data: null, error: { message: "db down" } } : { data: tables[table] ?? [], error: null };
+      q.range = () => Promise.resolve(res);
+      q.then = (resolve, reject) => Promise.resolve(res).then(resolve, reject);
+      return q;
+    },
+  };
+}
+
+const SIX_TABLES = () => {
+  const six = ["a", "b", "c", "d", "e", "f"];
+  return {
+    races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled", squad: "senior" }],
+    race_withdrawals: [], race_entry_clears: [], rider_condition: [],
+    race_entries: six.map((rider_id) => ({ race_id: "leman", rider_id, team_id: "t1" })),
+    riders: six.map((id) => ({ id, team_id: "t1", squad: "senior", is_academy: false, is_retired: false })),
+  };
+};
+
+test("loadTrainNowShortRaces: en rytter der allerede har brugt loebsdagen taeller ikke (review #6742)", async () => {
+  const supabase = shortRaceDb(SIX_TABLES(), { spent: [{ rider_id: "f", race_id: "other", game_day: 94 }] });
   const out = await loadTrainNowShortRaces({ supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
   assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
+});
+
+test("loadTrainNowShortRaces: GET fejler aabent, trykkets strict-tjek fejler lukket (review #6742)", async () => {
+  const supabase = shortRaceDb(SIX_TABLES(), { failTable: "race_entries" });
+  const args = { supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" };
+  assert.deepEqual(await loadTrainNowShortRaces(args), []);
+  await assert.rejects(() => loadTrainNowShortRaces({ ...args, strict: true }), /short race entries/);
 });
 
 // ── #6740 review: the press re-checks short races; the page's yes is explicit ──
