@@ -166,6 +166,7 @@ test("pullWeeklyAcademyIntake: flag off → no-op, ingen writes", async () => {
   const supabase = { from: () => { throw new Error("må ikke røres når flaget er slukket"); } };
   const r = await pullWeeklyAcademyIntake(supabase, {
     teamId: "team-A",
+    now: new Date("2026-08-19T10:00:00Z"),
     isEnabled: async () => false,
   });
   assert.deepEqual(r, { ok: false, reason: "flag_off" });
@@ -175,6 +176,7 @@ test("pullWeeklyAcademyIntake: ingen aktiv sæson → no-op", async () => {
   const supabase = buildMockSupabase({ season: null });
   const r = await pullWeeklyAcademyIntake(supabase, {
     teamId: "team-A",
+    now: new Date("2026-08-19T10:00:00Z"),
     isEnabled: async () => true,
   });
   assert.deepEqual(r, { ok: false, reason: "no_active_season" });

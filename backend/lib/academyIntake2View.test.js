@@ -73,6 +73,7 @@ test("buildIntake2View: pull-kandidaten faar sine evner fra samme evne-opslag so
     roster: [],
     intake: [{ source: "pull", riderId: "cand-1", rider: { id: "cand-1" } }, { source: "board_gift", riderId: "gift-1", rider: { id: "gift-1" } }],
     seasonNumber: 4,
+    now: new Date("2026-10-15T12:00:00Z"),
   });
   assert.deepEqual(queried, ["cand-1"], "kun pull-kandidaten slaas op (rosteret er tomt, gaven er uroert)");
   assert.equal(view.intake[0].rider_derived_abilities.climbing, 33);
