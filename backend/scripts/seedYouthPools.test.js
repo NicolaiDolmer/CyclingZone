@@ -13,6 +13,7 @@ import {
   squadNumbers,
   starterShares,
   poolRetirement,
+  isRaceAgeEligible,
 } from "./seedYouthPools.js";
 
 const pad = (n) => String(n).padStart(3, "0");
@@ -69,18 +70,30 @@ test("youthRidersByTeam med sæson: kun startberettigede efter sæsonalder (#666
     { id: "old", team_id: "m001", squad: "u23", birthdate: "2003-03-03" },
     { id: "nobd", team_id: "m001", squad: "u23" },
     { id: "jr", team_id: "m001", squad: "junior", birthdate: "2010-01-01" },
-    { id: "jrtoo-young", team_id: "m001", squad: "junior", birthdate: "2012-01-01" },
+    { id: "jr-old", team_id: "m001", squad: "junior", birthdate: "2007-01-01" },
   ];
   const u23 = youthRidersByTeam(riders, "u23", { seasonNumber: 1 });
   assert.equal(u23.get("m001"), 5);
   assert.equal(youthRidersByTeam(riders, "u23").get("m001"), 7, "uden sæson: ingen alders-filtrering");
-  assert.equal(youthRidersByTeam(riders, "junior", { seasonNumber: 1 }).get("m001"), 1);
+  assert.equal(youthRidersByTeam(riders, "junior", { seasonNumber: 1 }).get("m001"), 1, "en 19-årig i junior er vokset ud");
   const sp = buildSquadPlan({ squad: "u23", teams: [manager(1)], riders, globalRanks: [], pools: [], seasonNumber: 1 });
   assert.equal(sp.plan.groups[0].managerTeamIds.length, 1);
   assert.equal(sp.startersByPool[0].managerStarters, 0, "5 berettigede er under startgulvet");
   const withSixth = [...riders, { id: "e5", team_id: "m001", squad: "u23", birthdate: "2006-02-02" }];
   assert.equal(buildSquadPlan({ squad: "u23", teams: [manager(1)], riders: withSixth, globalRanks: [], pools: [], seasonNumber: 1 }).startersByPool[0].managerStarters, 1);
   assert.equal(buildSquadPlan({ squad: "u23", teams: [manager(1)], riders, globalRanks: [], pools: [] }).startersByPool[0].managerStarters, 1, "uden sæson tæller den 23-årige med");
+});
+
+test("youthRidersByTeam med sæson: juniorer flyttet op på U23 tæller med (kun aldersloft, #6668)", () => {
+  // Sæson 1 = 2026: fødselsår 2008-2010 giver 16-18. YOUTH_RULES §2.2: opad er altid tilladt,
+  // og startberettigelsen følger den tildelte trup, ikke en mindstealder.
+  const young = Array.from({ length: 6 }, (_, i) => ({ id: `y${i}`, team_id: "m001", squad: "u23", birthdate: `${2008 + (i % 3)}-06-01` }));
+  assert.equal(isRaceAgeEligible(young[0], "u23", 1), true);
+  assert.equal(isRaceAgeEligible({ birthdate: "2003-03-03" }, "u23", 1), false, "23-årig er over U23-loftet");
+  assert.equal(isRaceAgeEligible({}, "u23", 1), false, "ukendt alder tæller aldrig");
+  assert.equal(youthRidersByTeam(young, "u23", { seasonNumber: 1 }).get("m001"), 6);
+  const sp = buildSquadPlan({ squad: "u23", teams: [manager(1)], riders: young, globalRanks: [], pools: [], seasonNumber: 1 });
+  assert.equal(sp.startersByPool[0].managerStarters, 1, "seks unge U23-ryttere gør holdet startklart");
 });
 
 test("buildSquadPlan fresh: opretter grupperne og en FK-opdatering pr. placeret hold", () => {

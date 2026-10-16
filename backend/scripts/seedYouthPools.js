@@ -44,8 +44,9 @@
 //   (deres ungdom træner). Hold der allerede står rigtigt, skrives ikke igen.
 //   Valgt til S5: 20 managers pr. gruppe (begrundelse i docs/YOUTH_RULES.md §2.3).
 //   node scripts/seedYouthPools.js --regroup --managers-per-group=20 --mix-junior   # dry-run
-//   Startklare hold tælles kun med startberettigede ryttere efter sæsonalder (U23 19-22,
-//   junior 16-18). --season=<tal> vælger sæsonen alderen måles mod (default: aktiv sæson).
+//   Startklare hold tælles kun med startberettigede ryttere efter sæsonalder: kun
+//   trup'ens aldersloft (U23 til og med 22, junior til og med 18); en yngre rytter
+//   flyttet op tæller med. --season=<tal> vælger sæsonen alderen måles mod (default: aktiv sæson).
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -66,8 +67,7 @@ import {
 } from "../lib/youthPoolAssignment.js";
 import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
-import { SQUAD_MAX_AGE } from "../lib/squads.js";
-import { ACADEMY } from "../lib/academyFlag.js";
+import { fitsSquadAge } from "../lib/squads.js";
 import {
   loadParkingInputs,
   selectActiveSubscriptionTeamIds,
@@ -154,20 +154,19 @@ export function parseArgs(argv) {
 // ── Rene hjælpere (testes i seedYouthPools.test.js) ─────────────────────────
 
 /**
- * #6668: er rytteren løbsberettiget i trup'en efter sæsonalder (YOUTH_RULES §2.1)?
- * U23 = 19-22, junior = fra akademiets mindstealder op til 18. Ukendt fødselsdato
- * tæller ikke (aldrig et gæt). Alders-SSOT: riderSeasonAge.js + squads.SQUAD_MAX_AGE.
+ * #6668: er rytteren løbsberettiget i trup'en efter sæsonalder?
+ * Berettigelsen følger den TILDELTE trup; kun trup'ens aldersloft gælder, ingen
+ * mindstealder (YOUTH_RULES §2.2: "opad er altid tilladt", en 17-årig må stå på
+ * U23 team og køre dens løb). Samme kontrakt som squads.fitsSquadAge, så der ikke
+ * findes en anden kopi af aldersreglen. Ukendt fødselsdato tæller ikke (aldrig et gæt).
  */
 export function isRaceAgeEligible(rider, squad, seasonNumber) {
-  const age = ageForSeason(rider?.birthdate, seasonNumber);
-  if (!Number.isFinite(age)) return false;
-  const minAge = squad === "junior" ? ACADEMY.MIN_AGE : SQUAD_MAX_AGE.junior + 1;
-  return age >= minAge && age <= SQUAD_MAX_AGE[squad];
+  return fitsSquadAge({ squad, seasonAge: ageForSeason(rider?.birthdate, seasonNumber) });
 }
 
 /**
  * Antal aktive ryttere pr. hold i trup'en. Med `seasonNumber` tælles kun
- * startberettigede (sæsonalder inden for trup'ens aldersvindue); ryttere der er
+ * startberettigede (sæsonalder under trup'ens aldersloft); ryttere der er
  * vokset ud, men endnu ikke flyttet af Graduation Day, tæller ikke med (#6668).
  * Uden `seasonNumber` tælles alle aktive i trup'en (ingen alders-filtrering).
  */
