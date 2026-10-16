@@ -28,6 +28,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { daysUntil } from "./scoutingCentralDisplay.js";
+import { earliestReadyAt } from "./scoutCountdown.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "./sharedRequestCache.js";
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
@@ -247,6 +248,7 @@ export function useScouting() {
   return {
     slots, maxLevel, levels, teamId, loading, scoutingId, scoutSystemEnabled,
     jobCapacity, jobActiveCount, jobConfig,
+    nextFreeAt: earliestReadyAt(pendingTargets), // #5852
     scout, refresh, levelFor, pendingFor, requestEstimates, estimateFor, estimates,
   };
 }

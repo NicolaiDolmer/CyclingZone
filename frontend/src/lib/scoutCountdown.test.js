@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { msUntilReady, scoutCountdownParts, scoutReadyClock, missionReadyLabel } from "./scoutCountdown.js";
+import { msUntilReady, scoutCountdownParts, scoutReadyClock, missionReadyLabel, earliestReadyAt } from "./scoutCountdown.js";
 
 // #3548 — enheds-test af rest-tid/formatering. Selve tikket (useScoutCountdown)
 // er en tynd setInterval-indpakning omkring scoutCountdownParts og testes ikke
@@ -115,4 +115,14 @@ test("missionReadyLabel: længere ude end i morgen (flerdages-mission) giver dat
 test("missionReadyLabel: manglende eller ugyldigt tidspunkt giver null", () => {
   assert.equal(missionReadyLabel(null, NOW), null);
   assert.equal(missionReadyLabel("not-a-timestamp", NOW), null);
+});
+
+test("earliestReadyAt: tidligste gyldige readyAt, ellers null (#5852)", () => {
+  assert.equal(earliestReadyAt({}), null);
+  assert.equal(earliestReadyAt(null), null);
+  assert.equal(earliestReadyAt({ a: { readyAt: null }, b: { readyAt: "ikke-en-dato" } }), null);
+  assert.equal(
+    earliestReadyAt({ a: { readyAt: "2026-08-14T10:30:00.000Z" }, b: { readyAt: "2026-08-14T10:10:00.000Z" } }),
+    "2026-08-14T10:10:00.000Z",
+  );
 });

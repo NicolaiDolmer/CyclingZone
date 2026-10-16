@@ -131,7 +131,7 @@ export default function AnnualMeetingPage({ initialMeeting, confidenceValue }) {
   if (!mandate) return null;
 
   return (
-    <main className="min-h-screen bg-cz-body pb-16">
+    <div className="min-h-screen bg-cz-body pb-16">
       <div className="bg-cz-sidebar py-[22px]">
         <div className="mx-auto flex max-w-[896px] flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -244,6 +244,6 @@ export default function AnnualMeetingPage({ initialMeeting, confidenceValue }) {
       </div>
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />
-    </main>
+    </div>
   );
 }
