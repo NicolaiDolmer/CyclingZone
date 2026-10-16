@@ -39,7 +39,7 @@ const data = JSON.parse(readFileSync(FIXTURE, "utf8"));
 const stages: any[] = sortedStages(data);
 // #6452: den live revision. official_times_v2 er frosset byte-identisk
 // (officialTimesV2Frozen6200.test.ts), saa retningen gates paa den nye.
-const REVISION = "official_times_v4";
+const REVISION = "s5_profiles_v1";
 
 /** Bjergetapen med lang slutstigning (klatring afgoer). */
 const CLIMB_STAGE = 11;

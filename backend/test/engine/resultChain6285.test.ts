@@ -38,7 +38,7 @@ const FIXTURE = path.join(here, "..", "..", "scripts", "baselines", "giro-field-
 const data = JSON.parse(readFileSync(FIXTURE, "utf8"));
 // #6452: den live revision. official_times_v2 er frosset byte-identisk
 // (officialTimesV2Frozen6200.test.ts), saa kaeden gates paa den nye.
-const REVISION = "official_times_v4";
+const REVISION = "s5_profiles_v1";
 const SEEDS = 3;
 const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 const BREAK_EVENT_TYPES = new Set(["breakaway_formed", "breakaway_caught", "breakaway_dropped", "breakaway_survived"]);

@@ -41,12 +41,11 @@
 // evne-point) + et maal for bjergetaper uden topankomst. Aktuel for nye loeb fra
 // ejerens ordrette "taend"; migrationen
 // 2026-10-12-race-engine-rules-revision-official-times-v4.sql goer vaerdien lovlig.
-// #6369 (S5-etapeprofiler, Fase 0, SLUKKET): "s5_profiles_v1" = hele official_times_v4-pakken
+// #6369 (S5-etapeprofiler): "s5_profiles_v1" = hele official_times_v4-pakken
 // + S5-motoren (#6363/#6362/#6368, engine/v4/s5Profiles.ts): S5-motorens
-// nye finaler, mellembjerg-terraen og udbrud-som-adfaerd bag isS5ProfilesV1OrLater. Den er
-// IKKE aktuel (CURRENT_RACE_RULES_REVISION er uaendret), og races_engine_rules_revision_check
-// kender den ikke endnu: CHECK-udvidelsen hoerer til taend-PR'en (ejer-only), saa et forsoeg
-// paa at binde et loeb til den fejler hoejlydt.
+// nye finaler, mellembjerg-terraen og udbrud-som-adfaerd bag isS5ProfilesV1OrLater. Aktuel
+// for nye loeb fra ejerens ordrette "taend" (taend-PR'en, #6369); migrationen
+// 2026-10-16-6369-engine-rules-revision-s5.sql goer vaerdien lovlig.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
@@ -106,7 +105,7 @@ export function isOfficialTimesV4OrLater(revision: unknown): boolean {
 }
 
 /**
- * #6369 (slukket, tom): S5-etapeprofilernes motor-regler. Kaldsteder for S5-adfaerd
+ * #6369 (aktuel fra ejerens "taend"): S5-etapeprofilernes motor-regler. Kaldsteder for S5-adfaerd
  * (nye finaler, mellembjerg, udbrud som adfaerd) spoerger HER, aldrig paa strengen.
  * #6363: S5-motoren (engine/v4/s5Profiles.ts) ligger bag denne; alt andet er official_times_v4.
  */
@@ -183,8 +182,16 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * official_times_v3 (fx Touren) faerdiggoeres paa den. Migrationen
  * 2026-10-12-race-engine-rules-revision-official-times-v4.sql SKAL vaere applied
  * foer foerste claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten.
+ *
+ * "s5_profiles_v1" fra ejerens ordrette "taend" (#6369): S5-motoren (nye
+ * finaler, mellembjerg, udbrud som adfaerd m.m.) er aktuel for ALLE loeb hvis
+ * foerste etape claimes efter deploy. Loeb der allerede er bundet til
+ * official_times_v4 (eller aeldre) faerdiggoeres paa den. Migrationen
+ * 2026-10-16-6369-engine-rules-revision-s5.sql SKAL vaere applied foer foerste
+ * claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten. Rollback =
+ * revert af denne konstant (migrationen kan blive staaende).
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v4";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "s5_profiles_v1";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;
