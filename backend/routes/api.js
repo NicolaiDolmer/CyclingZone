@@ -378,6 +378,7 @@ import {
 import { loadValuationModelCached } from "../lib/riderValuationModelSelect.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderProgressionEngine.js";
+import { scoutBandAge } from "../lib/scoutBandAge.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   resolveRetirementNotice,
@@ -2839,9 +2840,8 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     // Uden caps eller alder kan loft-bånd/projektion ikke beregnes — degradér ærligt
     // (frontend viser den registrerede kurve uden projektions-lag).
     const caps = ab?.ability_caps && typeof ab.ability_caps === "object" ? ab.ability_caps : null;
-    const age = rider.birthdate
-      ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
-      : null;
+    // #6700: saesonalder (SSOT), ikke kalenderaar - ellers glider projektionen fra saeson 2.
+    const age = scoutBandAge(rider.birthdate, await getActiveSeasonNumber());
     if (!caps || !ab || age == null) {
       return res.json({ level, maxLevel: state.maxLevel, own, capsMissing: true });
     }
