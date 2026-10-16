@@ -8,7 +8,10 @@
 //   - HOEJRISIKO (motor, database/migrationer/RLS, penge/oekonomi, betaling/
 //     abonnement, auth/sikkerhed/webhooks/CORS/rate-limit, cron, backend-routes/API
 //     (inkl. *Handlers), workflows og CI-vagt-scripts, review-gaten selv (inkl.
-//     .coderabbit.yaml og merge-koeen), eller label
+//     .coderabbit.yaml og merge-koeen), review-/CI-konfiguration (CODEOWNERS, hooks, lokale vagter,
+//     baselines), scripts der skriver til prod, deploy-konfiguration, nye kontos finans-gates og
+//     andre moduler der debiterer/krediterer penge, en AFKORTET PR-filliste (GitHub max 3000 filer;
+//     fail-closed), eller label
 //     risk:high/security): derudover en
 //     Claude-review-markoer for HEAD uden blokerende fund:
 //         <!-- claude-review: clean|notes|blocking sha=<HEAD-commit> -->
@@ -55,17 +58,31 @@ const HIGH_RISK_RULES = Object.freeze([
   { reason: "motor", re: /^backend\/lib\/engine\// },
   { reason: "database", re: /^(database|supabase)\// },
   { reason: "workflow", re: /^\.github\/(workflows|actions)\// },
-  { reason: "sikkerhed", re: /^(\.gitleaks\.toml|SECURITY\.md)$/ },
+  // Hemmelighedsscanneren (+ dens ignore-liste, der kan skjule fund) og Infisical-opsaetningen.
+  { reason: "sikkerhed", re: /^(\.gitleaks\.toml|\.gitleaksignore|\.infisical\.json|SECURITY\.md)$/ },
+  // Deploy-konfiguration: backend-deploy (Railway) og frontend-headers/rewrites (Vercel).
+  { reason: "deploy", re: /^(backend\/railway\.json|frontend\/vercel\.json|frontend\/\.env\.production)$/ },
   // Review-gaten selv: klassifikator/gate, CodeRabbit-daekningen og merge-koeens
   // haandhaevelse, inkl. det koeen delegerer til: wave-policy (assert-merge-allowed,
-  // guarded-merge), wave-ownership (ejerskabstjek) og merge-pr-owned (head-pinning +
-  // --admin merge). En PR der svaekker dem svaekker reviewet af alle senere PR'er.
-  { reason: "review-gate", re: /^(scripts\/review-gate\.mjs|\.coderabbit\.yaml|scripts\/merge-queue\.ps1|scripts\/lib\/league-check\.ps1|scripts\/wave-(policy|ownership)\.mjs|scripts\/lib\/merge-pr-owned\.ps1)$/ },
+  // guarded-merge), wave-ownership (ejerskabstjek), wave-owner-override (ejer-undtagelse
+  // fra ejerskabstjekket), merge-queue-* (klassifikation/filer) og merge-pr-owned
+  // (head-pinning + --admin merge). En PR der svaekker dem svaekker reviewet af alle senere PR'er.
+  { reason: "review-gate", re: /^(scripts\/review-gate\.mjs|\.coderabbit\.yaml|scripts\/merge-queue[^/]*|scripts\/lib\/league-check\.ps1|scripts\/wave-(policy|ownership|owner-override)\.mjs|scripts\/lib\/merge-pr-owned\.ps1)$/ },
+  // Review-/CI-konfiguration uden for workflows: CODEOWNERS (hvem skal reviewe),
+  // Dependabot og CodeQL, Claude-hooks (secret-blokering, agent-spawn, settings),
+  // wave-orkestratoren og git-hooks. Test-fixtures til hookene er ikke hooks.
+  { reason: "ci", re: /^(\.github\/(CODEOWNERS|dependabot\.yml|codeql\/)|\.claude\/(settings\.json|workflows\/|hooks\/(?!test-fixtures\/|sanitize-secrets-tests\/))|scripts\/hooks\/)/ },
   // CI-vagterne workflows koerer (check-required-ci-jobs, lint-*, audit-*, scripts/ci/ ...)
   // og deres baselines: en PR der svaekker en vagt er lige saa farlig som en der
   // aendrer workflow-YAML'en (Codex-fund #6657). Navnefamilien er kontrakten;
   // review-gate.test.mjs tjekker at hver vagt som en workflow koerer er med.
-  { reason: "ci", re: /^scripts\/(ci\/.+|(ci|check|lint|audit|i18n-check|tone-check)-[^/]+|[^/]+-baseline\.js)$/ },
+  // verify-/preflight-/guard-* er de lokale vagter (verify-lock, preflight-pr, guard-commit-branch),
+  // scripts/lib/ er det de deler (js-source-scan, league-audit-check, gh-retry ...), og
+  // baselines er baade .js og .json (en hoejere baseline svaekker ratchet'en).
+  { reason: "ci", re: /^scripts\/(ci\/.+|(ci|check|lint|audit|i18n-check|tone-check|verify|preflight|guard)-[^/]+|[^/]+-baseline\.(js|json)|lib\/.+)$/ },
+  // Sikkerheds-vaerktoej i scripts/: GitHub-/Supabase-sikkerhed, secrets (Infisical, noegle-rotation og
+  // -probes), branch protection, git-hook-installation, test-tokens/-konti, DB-backup/-restore og domaene-opsaetning.
+  { reason: "sikkerhed", re: /^scripts\/([^/]*(security|infisical|rotate|branch-protection|hook|get-test-token|setup-test-accounts|set-vercel)[^/]*|db-[^/]*|probe-[^/]*-keys[^/]*)$/ },
   // CORS-allowlisten (corsOrigin) og misbrugsvaernet (rateLimiters, DM-rate-guard).
   { reason: "sikkerhed", re: backendName("cors|rateLimit|rateGuard") },
   // Penge/oekonomi: backend-kode hvis filnavn handler om penge (saldo, overfoersler, kontrakter).
@@ -75,16 +92,26 @@ const HIGH_RISK_RULES = Object.freeze([
   // via economyEngine og tjekker saldo; Codex-fund #6657).
   // "market" = markedet: marketPause (kill switch + auktions-sluttider), marketUtils,
   // youthMarket, marketValue* (Codex-fund #6657).
-  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation|value|facilit|market") },
+  // Moduler hvis navn ikke siger penge, men som debiterer/krediterer eller gater penge (gennemgang
+  // af alle backend/lib-moduler der importerer economyEngine/balanceRpc/availableBalance, runde 8):
+  // "newAccount" = nye kontos finans-gates (anti-misbrug paa lan, overfoersel og auktion; importeres af
+  // alle tre stier), "credit"/"debit" (kreditering/debitering), "squadEnforce" (auto-koeb + noedlaan ved vinduesluk), "scoutAssign" (debiterer
+  // rejseomkostning), "comeback" (krediterer forholdsmaessig sponsor), "academyIntake"/"academyGraduat"
+  // (saldo-gate og salg), "boardConsequence" (sponsor-pullout + haardblokke paa kob),
+  // "seasonTransition"/"seasonStart"/"seasonCarryOver"/"seasonAutoTransition" (loen, renter, sponsor, praemier).
+  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation|value|facilit|market|credit|debit|newAccount|squadEnforce|scoutAssign|comeback|academyIntake|academyGraduat|boardConsequence|seasonTransition|seasonStart|seasonCarryOver|seasonAutoTransition") },
   // Betaling/abonnement (rigtige penge): checkout, kundeportal, abonnementsstatus,
   // adgang til betalt indhold og betalingsudbyderens webhook.
-  { reason: "betaling", re: backendName("billing|checkout|subscription|entitlement|alunta|refund|invoice") },
+  { reason: "betaling", re: backendName("billing|checkout|subscription|entitlement|alunta|refund|invoice|founder") },
   // Indgaaende webhooks: signaturtjek og afsender-validering er sikkerhedsflade.
-  { reason: "sikkerhed", re: backendName("webhook") },
+  { reason: "sikkerhed", re: backendName("webhook|botDetection|fairplay|betaAccess|likeEscape") },
   // Motor uden for backend/lib/engine/: simulator, bro/flag, finalisering, etaperesultater.
   { reason: "motor", re: backendName("race|stage|finaliz|simulat|engine") },
   // Database-RPC-wrappere (skriver via Postgres-funktioner).
   { reason: "database", re: backendName("rpc") },
+  // Destruktive/nulstillende flows: beta-reset og relaunch (sletter og genopbygger spillerdata),
+  // rytter-oprydning med sletning og FK-reset-audit.
+  { reason: "database", re: backendName("betaReset|relaunch|cleanupDeletion|resetFk") },
   // Planlagte job: kalder motor, finalisering og udbetalinger uden menneske i loopet.
   { reason: "cron", re: backendName("cron|scheduler") },
   // Auth/sikkerhed: backend + frontend-lib (login, tokens, admin-adgang, RLS/grants).
@@ -100,12 +127,20 @@ const HIGH_RISK_RULES = Object.freeze([
   // Frontendens kanoniske Supabase-klient: login/signup/logout, session og
   // Authorization-headeren som alle API-kald bruger (Codex-fund #6657).
   { reason: "auth", re: /^frontend\/src\/lib\/supabase\.[^/]+$/ },
+  // Login-/nulstil-adgangskode-siderne og admin-auth-hooken (useAdminAuth) uden for frontend/src/lib.
+  { reason: "auth", re: /^frontend\/src\/(pages\/(Login|ResetPassword)[^/]*|(.*\/)?use[A-Za-z]*Auth[^/]*)$/ },
   // API-fladen (efter auth, saa admin-routes melder "auth"): hver route haandhaever
   // selv auth/ejerskab, og server.js monterer dem. *Handlers i backend/ er route-
   // logikken bag tynde wrappers i routes/api.js (service-role, ejerskabsfiltre;
   // Codex-fund #6657).
   { reason: "api", re: /^backend\/(routes|api)\/|^backend\/server\.[cm]?[jt]s$/ },
   { reason: "api", re: backendName("handlers") },
+  // Catch-all til sidst, saa mere specifikke aarsager (penge, auth, motor ...) vinder paa navnet.
+  // Scripts der skriver til prod eller er destruktive: backend/scripts (reparationer, saesonafslutning,
+  // kreditering), scripts/ops, oneoff, migrations-manual og staging (Staging-Guard holder prod ude),
+  // samt rod-scripts hvis navn siger slet/reparer/refunder/send/import. Koeres med service-role.
+  { reason: "prod-script", re: /^(backend\/(scripts|lib\/dev)\/|scripts\/(ops|oneoff|migrations-manual|staging)\/)/ },
+  { reason: "prod-script", re: /^scripts\/[^/]*(delete|repair|wipe|purge|-send|trainingRecovery|run-value-event|sync-dyn)[^/]*$|^scripts\/(sweep-|import_)[^/]*$/ },
 ]);
 
 const norm = (p) => String(p || "").replace(/\\/g, "/").replace(/^\.\//, "");
@@ -134,9 +169,26 @@ export function classifyFile(path) {
   return null;
 }
 
-/** @returns {{level: "high"|"low", reasons: string[]}} */
-export function classifyRisk(files = [], labels = []) {
+/** GitHubs PR-fil-endpoint returnerer hoejst 3000 filer, uanset paginering. */
+export const PR_FILES_API_CAP = 3000;
+
+/**
+ * Er fillisten afkortet? changedFiles er PR'ens egen taeller (meta.changed_files). Mangler den, er en
+ * liste paa API-loftet ogsaa mistaenkelig. Afkortet liste = en motor-/penge-/auth-fil kan ligge uden
+ * for den, saa risikoen kan ikke afgoeres fra listen (Codex-fund #6657, runde 8).
+ */
+export function filesTruncated(files = [], changedFiles = null) {
+  if (Number.isInteger(changedFiles)) return files.length < changedFiles;
+  return files.length >= PR_FILES_API_CAP;
+}
+
+/** @returns {{level: "high"|"low", reasons: string[]}} fail-closed: afkortet filliste = hoejrisiko. */
+export function classifyRisk(files = [], labels = [], { changedFiles = null } = {}) {
   const reasons = [];
+  if (filesTruncated(files, changedFiles)) {
+    const total = Number.isInteger(changedFiles) ? changedFiles : `mindst ${PR_FILES_API_CAP}`;
+    reasons.push(`filliste afkortet: GitHub gav ${files.length} af ${total} filer, risiko kan ikke afgoeres (fail-closed)`);
+  }
   for (const label of labels) {
     if (HIGH_RISK_LABELS.includes(String(label).toLowerCase())) reasons.push(`label ${label}`);
   }
@@ -285,8 +337,8 @@ export function evaluateClaude(items, risk, headSha = null) {
 }
 
 /** Selve gaten. Input er normaliseret PR-data (se fetchPrData); bevis bindes til headSha. */
-export function evaluateGate({ author, draft = false, files = [], labels = [], comments = [], reviews = [], threads = [], headSha = null }) {
-  const risk = classifyRisk(files, labels);
+export function evaluateGate({ author, draft = false, files = [], changedFiles = null, labels = [], comments = [], reviews = [], threads = [], headSha = null }) {
+  const risk = classifyRisk(files, labels, { changedFiles });
   if (EXEMPT_AUTHORS.includes(login(author))) {
     return { ok: true, risk, exempt: true, codex: null, claude: null, summary: `undtaget: ${author} (rule 35 c - CI + dependency-review er gaten)` };
   }
@@ -446,7 +498,7 @@ export function fetchPrData(repo, pr) {
     draft: Boolean(meta.draft),
     headSha: meta.head?.sha,
     labels: (meta.labels || []).map((l) => l.name),
-    files, comments, reviews,
+    files, changedFiles: Number.isInteger(meta.changed_files) ? meta.changed_files : null, comments, reviews,
     threads: fetchThreads(repo, pr),
   };
 }
@@ -456,7 +508,7 @@ export function fetchPrData(repo, pr) {
  * matcher en frisk evaluering (spar runner-tid og stoej i Actions-listen).
  */
 export function shouldRerun(run, freshOk) {
-  if (!run) return { rerun: false, why: "ingen gate-koersel for HEAD endnu" };
+  if (!run) return { rerun: false, why: "ingen gate-koersel for PR'en endnu (naeste push, label eller ready-skift opretter den)" };
   if (run.status !== "completed") return { rerun: false, why: `koersel ${run.id} koerer allerede` };
   if (run.conclusion === "skipped") return { rerun: false, why: "seneste koersel var draft (skipped)" };
   const wasOk = run.conclusion === "success";
@@ -464,43 +516,60 @@ export function shouldRerun(run, freshOk) {
   return { rerun: true, why: freshOk ? "nu groen" : "nu roed" };
 }
 
-/**
- * Find PR'ens seneste koersel af gaten. Gaten koerer paa pull_request_target
- * (YAML fra main, Codex-fund #6657), og dens koersler har en TOM pull_requests-
- * liste men run.head_sha = PR'ens HEAD; de matches paa HEAD. En koersel der er
- * associeret med en ANDEN PR bruges aldrig. Koersler med PR-association matches
- * paa nummeret (run.head_sha kan vaere merge-commit'et). Koersler for HEAD foretraekkes.
- */
-export function pickGateRun(runs = [], pr, headSha) {
-  const ofPr = (r) => (r.pull_requests || []).filter((p) => Number(p.number) === Number(pr));
-  const unassociatedAtHead = (r) => (r.pull_requests || []).length === 0 && shaMatchesHead(r.head_sha, headSha);
-  const forPr = runs.filter((r) => ofPr(r).length > 0 || unassociatedAtHead(r));
-  const newest = (list) => [...list].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
-  const atHead = forPr.filter((r) => shaMatchesHead(r.head_sha, headSha) || ofPr(r).some((p) => shaMatchesHead(p.head?.sha, headSha)));
-  return newest(atHead) || newest(forPr);
-}
-
 /** Event gate-check'et produceres af. Kun koersler herfra taeller (merge-koeen filtrerer ogsaa paa det). */
 export const GATE_EVENT = "pull_request_target";
 
 /**
- * API-sti til gatens koersler. pull_request_target koerer i base-branchens kontekst,
- * saa run.head_branch er IKKE PR'ens kilde-branch: der filtreres aldrig paa
- * head.ref (Codex-fund #6657). Kun event, og evt. head_sha; PR'en findes bagefter
- * via pickGateRun.
+ * Koerslens navn (run-name i review-gate.yml, sat af main-YAML'en): bindes til PR-NUMMERET.
+ * pull_request_target-koersler har tom pull_requests-liste, run.head_sha = base-branchens
+ * seneste commit (IKKE PR'ens HEAD) og run.head_branch = base-branchen, saa hverken SHA
+ * eller branch kan identificere PR'en (Codex-fund #6657, runde 8). Navnet kan en PR ikke
+ * forfalske: event=pull_request_target-koersler bruger altid mains workflow-fil.
  */
-export function gateRunsPath(repo, headSha = "") {
-  const sha = /^[0-9a-f]{7,40}$/i.test(String(headSha || "")) ? `&head_sha=${headSha}` : "";
-  return `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=${GATE_EVENT}${sha}&per_page=100`;
+export const GATE_RUN_NAME_RE = /^review-gate PR#(\d+)(?:\s|$)/;
+export const gateRunName = (pr, action = "") => `review-gate PR#${Number(pr)}${action ? ` ${action}` : ""}`;
+
+/**
+ * Find PR'ens seneste koersel af gaten, uafhaengigt af PR'ens head-SHA. En koersel hoerer til
+ * PR'en hvis (a) dens pull_requests-liste indeholder PR'en, eller (b) listen er tom og
+ * koerselsnavnet siger "review-gate PR#<nr>". En koersel der er associeret med en ANDEN PR
+ * eller navngivet efter en anden PR bruges aldrig; kun GATE_EVENT-koersler taeller. Nyeste vinder.
+ */
+export function pickGateRun(runs = [], pr) {
+  const n = Number(pr);
+  const belongs = (r) => {
+    if (r.event && r.event !== GATE_EVENT) return false;
+    const assoc = r.pull_requests || [];
+    if (assoc.length > 0) return assoc.some((p) => Number(p.number) === n);
+    const named = GATE_RUN_NAME_RE.exec(String(r.display_title || r.name || ""));
+    return Boolean(named) && Number(named[1]) === n;
+  };
+  const rank = (r) => `${String(r.created_at)}|${String(r.id ?? "").padStart(20, "0")}`;
+  return runs.filter(belongs).sort((a, b) => rank(b).localeCompare(rank(a)))[0] || null;
+}
+
+/**
+ * API-sti til gatens koersler (side for side, nyeste foerst). pull_request_target koerer i
+ * base-branchens kontekst: der filtreres aldrig paa head.ref eller head_sha (begge er
+ * base-branchens); PR'en findes bagefter via pickGateRun.
+ */
+export function gateRunsPath(repo, page = 1) {
+  const p = Number.isInteger(page) && page > 0 ? page : 1;
+  return `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=${GATE_EVENT}&per_page=100&page=${p}`;
 }
 
 /** Genkoer seneste pull_request_target-koersel af gaten for PR'en (check'et opdateres paa stedet). */
 function rerunGate(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   if (meta.state !== "open" || meta.draft) return `#${pr}: springes over (${meta.state}${meta.draft ? ", draft" : ""})`;
-  const listRuns = (sha) => ghJson(["api", gateRunsPath(repo, sha)]).workflow_runs || [];
-  // Foerst praecist paa HEAD; findes intet, saa alle nyeste target-koersler (PR-association).
-  const run = pickGateRun(listRuns(meta.head.sha), pr, meta.head.sha) || pickGateRun(listRuns(""), pr, meta.head.sha);
+  // Nyeste target-koersler foerst, side for side, til PR'ens koersel er fundet (identificeres
+  // via koerselsnavnet, aldrig via SHA: target-koerslens head_sha er base-branchens).
+  let run = null;
+  for (let page = 1; page <= 5 && !run; page += 1) {
+    const runs = ghJson(["api", gateRunsPath(repo, page)]).workflow_runs || [];
+    run = pickGateRun(runs, pr);
+    if (runs.length < 100) break;
+  }
   const fresh = evaluateGate(fetchPrData(repo, pr));
   const decision = shouldRerun(run, fresh.ok);
   if (!decision.rerun) return `#${pr}: ${decision.why}`;

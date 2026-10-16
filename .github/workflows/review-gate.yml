@@ -1,5 +1,11 @@
 name: Review gate
 
+# Koerselsnavnet bindes til PR-NUMMERET (scripts/review-gate.mjs, gateRunName/pickGateRun):
+# en pull_request_target-koersel har tom pull_requests-liste og head_sha/head_branch fra
+# base-branchen, saa PR'en kan ikke genkendes paa SHA eller branch (Codex-fund #6657).
+# Navnet saettes af mains YAML (target-event) og kan ikke forfalskes af en PR.
+run-name: ${{ github.event_name == 'pull_request_target' && format('review-gate PR#{0} {1}', github.event.pull_request.number, github.event.action) || format('{0} ({1})', github.workflow, github.event_name) }}
+
 # Risikostyret review-gate (#6654, ejer 15/10). Regel: AGENTS.md hard rule 35 +
 # docs/GITHUB_WORKFLOW.md "Review-gate". Logik + tests: scripts/review-gate.mjs.
 #

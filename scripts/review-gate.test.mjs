@@ -26,6 +26,9 @@ import {
   codexStatusToState,
   pickGateRun,
   gateRunsPath,
+  gateRunName,
+  GATE_RUN_NAME_RE,
+  filesTruncated,
   CODEX_SUMMARY_MARKER,
 } from "./review-gate.mjs";
 
@@ -586,23 +589,44 @@ test("pickGateRun: finder koerslen via PR-associationen, ogsaa naar run.head_sha
     { id: 2, created_at: "2026-10-15T11:00:00Z", head_sha: MERGE, pull_requests: [{ number: 42, head: { sha: HEAD } }] },
     { id: 3, created_at: "2026-10-15T12:00:00Z", head_sha: HEAD, pull_requests: [{ number: 7, head: { sha: HEAD } }] },
   ];
-  assert.equal(pickGateRun(runs, 42, HEAD).id, 2, "merge-SHA i run.head_sha, PR-head i pull_requests");
-  assert.equal(pickGateRun(runs.slice(0, 1), 42, HEAD).id, 1, "ingen koersel for HEAD -> seneste for PR'en");
-  assert.equal(pickGateRun(runs, 43, HEAD), null, "andre PR'ers koersler bruges aldrig");
-  assert.equal(pickGateRun([{ id: 5, created_at: "t", head_sha: HEAD, pull_requests: [{ number: 42 }] }], 42, HEAD).id, 5);
-  assert.equal(pickGateRun([], 42, HEAD), null);
+  assert.equal(pickGateRun(runs, 42).id, 2, "nyeste koersel associeret med PR'en");
+  assert.equal(pickGateRun(runs.slice(0, 1), 42).id, 1);
+  assert.equal(pickGateRun(runs, 43), null, "andre PR'ers koersler bruges aldrig");
+  assert.equal(pickGateRun([{ id: 5, created_at: "t", head_sha: HEAD, pull_requests: [{ number: 42 }] }], 42).id, 5);
+  assert.equal(pickGateRun([], 42), null);
 });
 
-test("pickGateRun: pull_request_target-koersler (tom pull_requests) matches paa HEAD (#6657 Codex-fund)", () => {
-  // Maalt paa repoet: pull_request_target-koersler har pull_requests: [] og head_sha = PR'ens HEAD.
+// Codex-fund paa #6657 (runde 8): en pull_request_target-koersel har head_sha = BASE-branchens
+// seneste commit (ikke PR'ens HEAD), head_branch = base og tom pull_requests. PR'en kendes kun paa
+// koerselsnavnet (run-name i review-gate.yml).
+test("pickGateRun: pull_request_target-koersler identificeres paa koerselsnavnet, aldrig paa PR'ens head-SHA (#6657 Codex-fund)", () => {
+  const BASE_SHA = "ba5e000000000000000000000000000000000000";
+  const target = (id, at, pr, extra = {}) => ({
+    id, created_at: at, event: "pull_request_target", head_sha: BASE_SHA, head_branch: "main",
+    display_title: gateRunName(pr, "synchronize"), pull_requests: [], ...extra,
+  });
   const runs = [
-    { id: 10, created_at: "2026-10-16T09:00:00Z", head_sha: OLD, pull_requests: [] },
-    { id: 11, created_at: "2026-10-16T10:00:00Z", head_sha: HEAD, pull_requests: [] },
-    { id: 12, created_at: "2026-10-16T11:00:00Z", head_sha: HEAD, pull_requests: [{ number: 7, head: { sha: HEAD } }] },
+    target(10, "2026-10-16T09:00:00Z", 42),
+    target(11, "2026-10-16T10:00:00Z", 42),
+    target(12, "2026-10-16T11:00:00Z", 7),
   ];
-  assert.equal(pickGateRun(runs, 42, HEAD).id, 11, "uassocieret koersel for HEAD");
-  assert.equal(pickGateRun(runs.slice(0, 1), 42, HEAD), null, "uassocieret koersel for et andet commit bruges aldrig");
-  assert.equal(pickGateRun(runs.slice(2), 42, HEAD), null, "koersel associeret med en anden PR bruges aldrig");
+  assert.equal(pickGateRun(runs, 42).id, 11, "nyeste koersel for PR 42 trods base-SHA i head_sha");
+  assert.equal(pickGateRun(runs, 7).id, 12);
+  assert.equal(pickGateRun(runs, 43), null, "ingen koersel for en PR uden koersler");
+  assert.equal(pickGateRun(runs, 4), null, "PR#4 er ikke praefiks-match paa PR#42");
+  assert.equal(pickGateRun([{ id: 1, created_at: "t", event: "pull_request_target", head_sha: HEAD, pull_requests: [] }], 42), null,
+    "en koersel uden navn bindes ikke til en PR bare fordi SHA'en tilfaeldigvis er PR'ens HEAD");
+  assert.equal(pickGateRun([target(20, "t", 42, { event: "pull_request" })], 42), null, "kun pull_request_target-koersler taeller");
+  assert.equal(pickGateRun([target(21, "t", 42, { pull_requests: [{ number: 7 }] })], 42), null, "association med en anden PR vinder over navnet");
+});
+
+test("gateRunName + GATE_RUN_NAME_RE: roundtrip, og workflow-YAML'en saetter praecis dette navn", () => {
+  assert.equal(gateRunName(6657, "opened"), "review-gate PR#6657 opened");
+  assert.equal(GATE_RUN_NAME_RE.exec(gateRunName(6657, "opened"))[1], "6657");
+  assert.equal(GATE_RUN_NAME_RE.exec(gateRunName(6657))[1], "6657");
+  assert.equal(GATE_RUN_NAME_RE.exec("Review gate (schedule)"), null);
+  const yml = readFileSync(new URL("../.github/workflows/review-gate.yml", import.meta.url), "utf8");
+  assert.match(yml, /^run-name: .*format\('review-gate PR#\{0\} \{1\}', github\.event\.pull_request\.number, github\.event\.action\)/m);
 });
 
 // ── Escaped defects ──
@@ -657,11 +681,171 @@ test("classifyFile: markedet og delegeret merge-haandhaevelse er hoejrisiko (#66
   assert.equal(classifyFile("scripts/wave-capacity.mjs"), null, "kun haandhaevelsen, ikke al wave-tooling");
 });
 
-test("gateRunsPath: filtrerer aldrig paa PR'ens kilde-branch (pull_request_target koerer paa base)", () => {
-  const p = gateRunsPath("o/r", HEAD);
+test("gateRunsPath: kun event + side; aldrig branch- eller SHA-filter (pull_request_target koerer paa base)", () => {
+  const p = gateRunsPath("o/r");
   assert.ok(!/branch=/.test(p), "ingen branch-filter");
+  assert.ok(!/head_sha=/.test(p), "ingen SHA-filter: target-koerslens head_sha er base-branchens");
   assert.ok(p.includes("event=pull_request_target"));
-  assert.ok(p.includes(`head_sha=${HEAD}`));
-  assert.ok(!gateRunsPath("o/r", "").includes("head_sha"), "uden SHA kun event");
-  assert.ok(!gateRunsPath("o/r", "x; rm").includes("head_sha"), "ugyldig SHA udelades");
+  assert.ok(p.includes("per_page=100&page=1"));
+  assert.ok(gateRunsPath("o/r", 3).endsWith("page=3"));
+  assert.ok(gateRunsPath("o/r", "x; rm").endsWith("page=1"), "ugyldig side -> side 1");
+});
+
+// Codex-fund paa #6657 (runde 8): nye kontos finans-gates er anti-misbrugsvaernet paa lan, overfoersel og
+// auktion. Resten af listen er fundet ved at gennemgaa ALLE backend/lib-moduler der importerer
+// economyEngine/balanceRpc/availableBalance/finance_transactions, og scripts/ + .claude/ + .github/ systematisk.
+const ROUND8_MONEY = Object.freeze({
+  "backend/lib/newAccountGates.js": "penge",
+  "backend/lib/squadEnforcement.js": "penge",
+  "backend/lib/scoutAssignmentService.js": "penge",
+  "backend/lib/comebackService.js": "penge",
+  "backend/lib/academyIntake.js": "penge",
+  "backend/lib/academyGraduation.js": "penge",
+  "backend/lib/boardConsequences.js": "penge",
+  "backend/lib/seasonTransition.js": "penge",
+  "backend/lib/seasonStartHooks.js": "penge",
+  "backend/lib/seasonCarryOver.js": "penge",
+  "backend/lib/seasonAutoTransition.js": "penge",
+  "backend/lib/founderSeats.js": "betaling",
+  "backend/lib/botDetection.js": "sikkerhed",
+  "backend/lib/fairplayScoring.js": "sikkerhed",
+  "backend/lib/betaAccess.js": "sikkerhed",
+  "backend/lib/likeEscape.js": "sikkerhed",
+  "backend/lib/betaResetService.js": "database",
+  "backend/lib/relaunchOrchestrator.js": "database",
+  "backend/lib/riderCleanupDeletion.js": "database",
+  "backend/lib/resetFkAudit.js": "database",
+});
+const ROUND8_SECURITY_MERGE = Object.freeze({
+  ".github/CODEOWNERS": "ci",
+  ".github/dependabot.yml": "ci",
+  ".github/codeql/codeql-config.yml": "ci",
+  ".claude/settings.json": "ci",
+  ".claude/workflows/wave.js": "ci",
+  ".claude/hooks/block-dangerous-secret-commands.sh": "ci",
+  ".claude/hooks/sanitize-secrets.ps1": "ci",
+  "scripts/hooks/guard-agent-spawn.sh": "ci",
+  "scripts/hooks/lib/scan-secrets.py": "ci",
+  ".gitleaksignore": "sikkerhed",
+  ".infisical.json": "sikkerhed",
+  "backend/railway.json": "deploy",
+  "frontend/vercel.json": "deploy",
+  "frontend/.env.production": "deploy",
+  "scripts/merge-queue-classify.mjs": "review-gate",
+  "scripts/merge-queue-files.mjs": "review-gate",
+  "scripts/wave-owner-override.mjs": "review-gate",
+  "scripts/lib/git-merge-detection.ps1": "ci",
+  "scripts/lib/league-audit-check.cjs": "ci",
+  "scripts/lib/gh-retry.sh": "ci",
+  "scripts/verify-lock.ps1": "ci",
+  "scripts/verify-local.ps1": "ci",
+  "scripts/preflight-pr.ps1": "ci",
+  "scripts/guard-commit-branch.sh": "ci",
+  "scripts/guard-node-modules-junction.mjs": "ci",
+  "scripts/anti-slop-baseline.json": "ci",
+  "scripts/ts-core-ratchet-baseline.json": "ci",
+  "scripts/feature-registry-flag-expiry-baseline.json": "ci",
+  "scripts/pre-push-hook.ps1": "sikkerhed",
+  "scripts/install-git-hooks.ps1": "sikkerhed",
+  "scripts/enable-github-security.ps1": "sikkerhed",
+  "scripts/security-grants.sql": "sikkerhed",
+  "scripts/apply-collab-branch-protection.sh": "sikkerhed",
+  "scripts/seed-infisical.ps1": "sikkerhed",
+  "scripts/rotate-supabase-key-dev-from-prod.ps1": "sikkerhed",
+  "scripts/probe-railway-keys.sh": "sikkerhed",
+  "scripts/get-test-token.mjs": "sikkerhed",
+  "scripts/db-backup.mjs": "sikkerhed",
+  "scripts/db-verify-restore.mjs": "sikkerhed",
+  "scripts/set-vercel-domain-redirect.ps1": "sikkerhed",
+  "frontend/src/pages/LoginPage.jsx": "auth",
+  "frontend/src/pages/ResetPasswordPage.jsx": "auth",
+  "frontend/src/components/admin/shared/useAdminAuth.js": "auth",
+});
+const ROUND8_PROD_SCRIPTS = Object.freeze({
+  "backend/scripts/endSeasonS2.mjs": "prod-script",
+  "backend/scripts/creditDivisionAdjustment-4376.mjs": "penge",
+  "backend/scripts/dev/wipeSeason3Calendar.mjs": "prod-script",
+  "backend/lib/dev/backfill3746Core.js": "prod-script",
+  "scripts/ops/refund-6551-scout-missions.mjs": "prod-script",
+  "scripts/ops/cancel-fairplay-auctions.mjs": "prod-script",
+  "scripts/oneoff/2026-08-03-repair-ai-rider-fatigue-3015.sql": "prod-script",
+  "scripts/migrations-manual/2026-06-10-669-fictional-rider-names-rename-PLAN.sql": "prod-script",
+  "scripts/staging/Staging-Guard.ps1": "prod-script",
+  "scripts/delete-orphan-test-teams.mjs": "prod-script",
+  "scripts/trainingRecovery5928.apply.mjs": "prod-script",
+  "scripts/winback-send.mjs": "prod-script",
+  "scripts/season-signup-reminder-send.mjs": "prod-script",
+  "scripts/run-value-event-5443.ps1": "prod-script",
+  "scripts/sweep-forum-image-orphans.mjs": "prod-script",
+  "scripts/import_riders.py": "prod-script",
+});
+
+test("classifyFile: nye kontos finans-gates og de oevrige penge-, sikkerheds- og reset-moduler er hoejrisiko (#6657 runde 8)", () => {
+  for (const [f, reason] of Object.entries(ROUND8_MONEY)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("backend/lib/newAccountGates.test.js"), null, "tests er stadig tests");
+  assert.equal(classifyFile("backend/lib/squadEnforcement.test.js"), null);
+  assert.equal(classifyRisk(["backend/lib/newAccountGates.js"]).level, "high", "en PR der kun roerer gaten er hoejrisiko");
+  assert.equal(classifyRisk(["backend/lib/newAccountGates.js"]).reasons[0], "penge: backend/lib/newAccountGates.js");
+  // Bevidst lav risiko: gameplay/kosmetik i samme familier.
+  for (const f of ["backend/lib/boardGoals.js", "backend/lib/academyFlag.js", "backend/lib/managerParking.js", "backend/lib/seasonLookup.js",
+    "backend/lib/seasonFormReset.js", "backend/lib/squadEntryGate.js", "backend/lib/humanTeamFilter.js"]) {
+    assert.equal(classifyFile(f), null, `${f} er gameplay, ikke penge/sikkerhed`);
+  }
+});
+
+test("classifyFile: review-/CI-konfiguration, hooks, lokale vagter, sikkerheds-vaerktoej og login er hoejrisiko (#6657 runde 8)", () => {
+  for (const [f, reason] of Object.entries(ROUND8_SECURITY_MERGE)) assert.equal(classifyFile(f), reason, f);
+  // Fixtures og tests til hookene, issue-templates og almindeligt vaerktoej er ikke vagter.
+  for (const f of [".claude/hooks/test-fixtures/dangerous-env.json", ".claude/hooks/sanitize-secrets-tests/screenshot-data-uri-safe.json",
+    ".github/ISSUE_TEMPLATE/bug.yml", ".github/PULL_REQUEST_TEMPLATE.md", "scripts/test-guard-commit-branch.sh", "scripts/test-sanitize-secrets.ps1",
+    "scripts/test-block-dangerous-secret-commands.sh", "scripts/lib/patchNotesTransform.test.mjs", "scripts/wave-capacity.mjs",
+    "scripts/discord/sweep-daily.mjs", "scripts/monday-numbers.mjs", "scripts/fairplay/3136-segmentation.sql", "frontend/src/pages/RacePage.jsx",
+    "frontend/src/components/forum/ForumAuthorIdentity.jsx", "frontend/src/pages/LoginPage.test.jsx"]) {
+    assert.equal(classifyFile(f), null, f);
+  }
+});
+
+test("classifyFile: scripts der skriver til prod er hoejrisiko, men mere specifikke aarsager vinder (#6657 runde 8)", () => {
+  for (const [f, reason] of Object.entries(ROUND8_PROD_SCRIPTS)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("backend/scripts/endSeasonS2.test.mjs"), null, "tests er stadig tests");
+  assert.equal(classifyFile("scripts/ops/railway-log-watch.test.mjs"), null);
+  assert.equal(classifyFile("scripts/report-orphan-worktree-dirs.mjs"), null, "worktree-rapport er ikke en prod-skrivning");
+});
+
+test("classifyFile: de nye regler er med i CodeRabbit-filtrene (spejlet fil for fil)", () => {
+  const { covered } = coderabbitFilters();
+  for (const f of [...Object.keys(ROUND8_MONEY), ...Object.keys(ROUND8_SECURITY_MERGE), ...Object.keys(ROUND8_PROD_SCRIPTS)]) {
+    if (f.startsWith(".claude/hooks/test-fixtures/")) continue;
+    assert.ok(covered(f), `.coderabbit.yaml mangler et filter for ${f}`);
+  }
+});
+
+// Codex-fund paa #6657 (runde 8, P2): GitHub afkorter PR-fillisten ved 3000 filer. En liste der er kortere end
+// PR'ens egen changed_files-taeller maa aldrig kunne give "lav risiko".
+test("filesTruncated + classifyRisk: afkortet filliste er hoejrisiko (fail-closed)", () => {
+  const docs = (n) => Array.from({ length: n }, (_, i) => `docs/note-${i}.md`);
+  assert.equal(filesTruncated(docs(3000), 3001), true);
+  assert.equal(filesTruncated(docs(3000), 3000), false, "komplet liste paa loftet er ikke afkortet");
+  assert.equal(filesTruncated(docs(5), 5), false);
+  assert.equal(filesTruncated(docs(5), null), false, "ukendt taeller, kort liste");
+  assert.equal(filesTruncated(docs(3000), null), true, "ukendt taeller og liste paa API-loftet");
+  assert.deepEqual(classifyRisk(docs(3), [], { changedFiles: 3 }), { level: "low", reasons: [] });
+  const r = classifyRisk(docs(3000), [], { changedFiles: 3250 });
+  assert.equal(r.level, "high");
+  assert.match(r.reasons[0], /^filliste afkortet: GitHub gav 3000 af 3250 filer/);
+  const unknown = classifyRisk(docs(3000));
+  assert.equal(unknown.level, "high", "uden changed_files fejler loftet lukket");
+  assert.match(unknown.reasons[0], /mindst 3000/);
+});
+
+test("evaluateGate: afkortet filliste kraever Claude-review (og lav risiko goer det ikke)", () => {
+  const files = Array.from({ length: 3000 }, (_, i) => `docs/note-${i}.md`);
+  const base = { author: "x", files, comments: [codexDone], headSha: HEAD };
+  const truncated = evaluateGate({ ...base, changedFiles: 3400 });
+  assert.equal(truncated.risk.level, "high");
+  assert.equal(truncated.ok, false);
+  assert.equal(truncated.claude.required, true);
+  assert.equal(evaluateGate({ ...base, changedFiles: 3000 }).ok, true, "komplet liste af docs er lav risiko");
+  const reviewed = evaluateGate({ ...base, changedFiles: 3400, comments: [codexDone, marker("clean")] });
+  assert.equal(reviewed.ok, true, "med Claude-markoer for HEAD kan den afkortede PR passere");
 });
