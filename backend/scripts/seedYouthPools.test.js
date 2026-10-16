@@ -34,7 +34,7 @@ function world({ managers = 40, ai = 20 } = {}) {
 }
 
 test("parseArgs: dry-run default, begge trupper, --apply kræver --owner-go", () => {
-  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false, regroup: false });
+  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false, regroup: false, season: null });
   assert.deepEqual(parseArgs(["--squad=junior"]).squads, ["junior"]);
   assert.deepEqual(parseArgs(["--squad=all"]).squads, ["u23", "junior"]);
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
@@ -59,6 +59,28 @@ test("youthRidersByTeam tæller aktive ryttere i trup'en", () => {
   const counts = youthRidersByTeam(world().riders, "u23");
   assert.equal(counts.get("m001"), 7);
   assert.equal(youthRidersByTeam(world().riders, "junior").get("m001"), 1);
+});
+
+test("youthRidersByTeam med sæson: kun startberettigede efter sæsonalder (#6668)", () => {
+  // Sæson 1 = 2026: fødselsår 2005-2007 giver 19-21 (U23), 2003 giver 23 (for gammel).
+  const eligible = Array.from({ length: 5 }, (_, i) => ({ id: `e${i}`, team_id: "m001", squad: "u23", birthdate: `${2005 + (i % 3)}-06-01` }));
+  const riders = [
+    ...eligible,
+    { id: "old", team_id: "m001", squad: "u23", birthdate: "2003-03-03" },
+    { id: "nobd", team_id: "m001", squad: "u23" },
+    { id: "jr", team_id: "m001", squad: "junior", birthdate: "2010-01-01" },
+    { id: "jrtoo-young", team_id: "m001", squad: "junior", birthdate: "2012-01-01" },
+  ];
+  const u23 = youthRidersByTeam(riders, "u23", { seasonNumber: 1 });
+  assert.equal(u23.get("m001"), 5);
+  assert.equal(youthRidersByTeam(riders, "u23").get("m001"), 7, "uden sæson: ingen alders-filtrering");
+  assert.equal(youthRidersByTeam(riders, "junior", { seasonNumber: 1 }).get("m001"), 1);
+  const sp = buildSquadPlan({ squad: "u23", teams: [manager(1)], riders, globalRanks: [], pools: [], seasonNumber: 1 });
+  assert.equal(sp.plan.groups[0].managerTeamIds.length, 1);
+  assert.equal(sp.startersByPool[0].managerStarters, 0, "5 berettigede er under startgulvet");
+  const withSixth = [...riders, { id: "e5", team_id: "m001", squad: "u23", birthdate: "2006-02-02" }];
+  assert.equal(buildSquadPlan({ squad: "u23", teams: [manager(1)], riders: withSixth, globalRanks: [], pools: [], seasonNumber: 1 }).startersByPool[0].managerStarters, 1);
+  assert.equal(buildSquadPlan({ squad: "u23", teams: [manager(1)], riders, globalRanks: [], pools: [] }).startersByPool[0].managerStarters, 1, "uden sæson tæller den 23-årige med");
 });
 
 test("buildSquadPlan fresh: opretter grupperne og en FK-opdatering pr. placeret hold", () => {

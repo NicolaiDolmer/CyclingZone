@@ -44,6 +44,8 @@
 //   (deres ungdom træner). Hold der allerede står rigtigt, skrives ikke igen.
 //   Valgt til S5: 20 managers pr. gruppe (begrundelse i docs/YOUTH_RULES.md §2.3).
 //   node scripts/seedYouthPools.js --regroup --managers-per-group=20 --mix-junior   # dry-run
+//   Startklare hold tælles kun med startberettigede ryttere efter sæsonalder (U23 19-22,
+//   junior 16-18). --season=<tal> vælger sæsonen alderen måles mod (default: aktiv sæson).
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -63,6 +65,9 @@ import {
   youthGroupLabel,
 } from "../lib/youthPoolAssignment.js";
 import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
+import { SQUAD_MAX_AGE } from "../lib/squads.js";
+import { ACADEMY } from "../lib/academyFlag.js";
 import {
   loadParkingInputs,
   selectActiveSubscriptionTeamIds,
@@ -136,16 +141,41 @@ export function parseArgs(argv) {
   if (regroup && managersPerGroup == null) {
     throw new Error("--regroup kræver --managers-per-group=<tal> (gruppetallet er et dokumenteret valg, intet default)");
   }
-  return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior, regroup };
+  // #6668: sæsonen startberettigelsen (alder) måles mod; default = den aktive sæson.
+  const seasonRaw = get("season");
+  if (seasonRaw === true || seasonRaw === "") throw new Error("--season kræver et tal efter =");
+  const season = seasonRaw === undefined ? null : Number(seasonRaw);
+  if (season != null && (!Number.isInteger(season) || season < 1)) {
+    throw new Error(`--season skal være et helt tal ≥ 1 (fik ${JSON.stringify(seasonRaw)})`);
+  }
+  return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior, regroup, season };
 }
 
 // ── Rene hjælpere (testes i seedYouthPools.test.js) ─────────────────────────
 
-/** Antal aktive ryttere pr. hold i trup'en. */
-export function youthRidersByTeam(riders, squad) {
+/**
+ * #6668: er rytteren løbsberettiget i trup'en efter sæsonalder (YOUTH_RULES §2.1)?
+ * U23 = 19-22, junior = fra akademiets mindstealder op til 18. Ukendt fødselsdato
+ * tæller ikke (aldrig et gæt). Alders-SSOT: riderSeasonAge.js + squads.SQUAD_MAX_AGE.
+ */
+export function isRaceAgeEligible(rider, squad, seasonNumber) {
+  const age = ageForSeason(rider?.birthdate, seasonNumber);
+  if (!Number.isFinite(age)) return false;
+  const minAge = squad === "junior" ? ACADEMY.MIN_AGE : SQUAD_MAX_AGE.junior + 1;
+  return age >= minAge && age <= SQUAD_MAX_AGE[squad];
+}
+
+/**
+ * Antal aktive ryttere pr. hold i trup'en. Med `seasonNumber` tælles kun
+ * startberettigede (sæsonalder inden for trup'ens aldersvindue); ryttere der er
+ * vokset ud, men endnu ikke flyttet af Graduation Day, tæller ikke med (#6668).
+ * Uden `seasonNumber` tælles alle aktive i trup'en (ingen alders-filtrering).
+ */
+export function youthRidersByTeam(riders, squad, { seasonNumber = null } = {}) {
   const out = new Map();
   for (const r of riders || []) {
     if (!r?.team_id || r.squad !== squad || r.is_retired === true) continue;
+    if (seasonNumber != null && !isRaceAgeEligible(r, squad, seasonNumber)) continue;
     out.set(r.team_id, (out.get(r.team_id) || 0) + 1);
   }
   return out;
@@ -170,10 +200,10 @@ export function currentGroups({ pools, teams, squad }) {
  */
 export function buildSquadPlan({
   squad, pools, teams, globalRanks, riders, groupSize = YOUTH_GROUP_SIZE, managersPerGroup = null, mixJunior = false,
-  regroup = false,
+  regroup = false, seasonNumber = null,
 }) {
   const col = fkColumn(squad);
-  const counts = youthRidersByTeam(riders, squad);
+  const counts = youthRidersByTeam(riders, squad, { seasonNumber });
   const withCount = (t) => ({ ...t, youthRiders: counts.get(t.id) || 0 });
   const managers = (teams || []).filter((t) => t.is_ai !== true).map(withCount);
   // AI-hold uden seniorpulje er rester (samme krav som A6's loadActiveAiTeams).
@@ -371,11 +401,18 @@ async function loadState(supabase) {
       .select("team_id, global_points, global_rank, active_recent")
       .order("team_id")),
     fetchAllRows(() => supabase.from("riders")
-      .select("id, team_id, squad, is_retired")
+      .select("id, team_id, squad, is_retired, birthdate")
       .in("squad", YOUTH_POOL_SQUADS)
       .order("id")),
   ]);
   return { teams, pools, globalRanks, riders };
+}
+
+async function loadActiveSeasonNumber(supabase) {
+  const { data, error } = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`seasons: ${error.message}`);
+  if (!Number.isFinite(data?.number)) throw new Error("ingen aktiv sæson fundet; angiv --season=<tal>");
+  return data.number;
 }
 
 /**
@@ -459,7 +496,9 @@ export async function main(argv = process.argv.slice(2)) {
 
   console.log(`UNGDOMSGRUPPER (#5646) ${args.apply ? "APPLY (skriver til prod)" : "DRY-RUN (read-only)"} · trupper: ${args.squads.join(", ")}${args.regroup ? ` · REGROUP, ${args.managersPerGroup} managers pr. gruppe` : ""}`);
   const state = await loadState(supabase);
-  const planOpts = { groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, regroup: args.regroup };
+  const seasonNumber = args.season ?? await loadActiveSeasonNumber(supabase);
+  console.log(`  startberettigelse efter sæsonalder i sæson ${seasonNumber}`);
+  const planOpts = { groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, regroup: args.regroup, seasonNumber };
   const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, ...planOpts, ...state }));
 
   // Prognose: samme plan efter parkerings-sweepen ved sæsonskiftet (read-only;
