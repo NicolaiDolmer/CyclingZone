@@ -92,7 +92,7 @@ const WIDE_CONTENT_ROUTES = new Set(["/riders", "/watchlist", "/auctions", "/tea
 // detalje-ruterne: list-siderne (/riders, /staff, …) er exact-paths uden slash.
 // #3102 etape 3: FULL_BLEED_EXCLUDE ("/races/strategy") udgik — ruten
 // redirecter til Planlægnings-hubben, så prefixet matcher kun /races/:raceId nu.
-const FULL_BLEED_PREFIXES = ["/races/", "/riders/", "/teams/", "/managers/", "/staff/"];
+const FULL_BLEED_PREFIXES = ["/races/", "/riders/", "/teams/", "/managers/", "/staff/", "/board/meeting"];
 function isFullBleedRoute(pathname) {
   return FULL_BLEED_PREFIXES.some(p => pathname.startsWith(p));
 }
