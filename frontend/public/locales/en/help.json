@@ -321,7 +321,7 @@
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
+        "text": "A green dot next to a manager's name means they are active right now (last seen within 30 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
       },
       "managersOnline": {
         "title": "Managers online count",
@@ -1531,7 +1531,7 @@
     },
     "onlineStatusFaq": {
       "q": "What is online status?",
-      "a": "A green dot next to a manager's name means they've been active within the last 5 minutes. You can see this everywhere in the game."
+      "a": "A green dot next to a manager's name means they've been active within the last 30 minutes. You can see this everywhere in the game."
     },
     "watchlistCounterFaq": {
       "q": "What does the watchlist counter on a rider page mean?",

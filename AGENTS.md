@@ -19,7 +19,7 @@ _Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kon
 
 4. **Undersøg teknisk tvivl; spørg ved en beslutningsgrænse** (ejer 29/9). Træf reversible tekniske valg inden for godkendt scope efter opslag/test. Spørg ved uafklaret spilleroplevelse, balance, prioritet eller manglende mandat; med bevis, anbefaling og konsekvens. Genbrug givne godkendelser. Hovedsessionen følger leverancen til verificeret afslutning, jf. [Codex-workflow](docs/CODEX_WORKFLOWS.md); øvrige ejer-gates består.
 
-5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Git-hooks er aktive efter installation: pre-commit scanner secrets, pre-push scanner secret-stier/diffs og PatchNotes-versioner. Versionskontrol beviser ikke patch-notes-dækning. Lokalt secret-lag positivt bevist 9/9; CI og øvrige vagter har separat bevisstatus i `docs/GUARD_INVENTORY.md`.
+5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Bølge-PR'er samler patch noten ved close-out (PR-body siger det); det er ikke et review-fund. Git-hooks er aktive efter installation: pre-commit scanner secrets, pre-push scanner secret-stier/diffs og PatchNotes-versioner. Versionskontrol beviser ikke patch-notes-dækning. Lokalt secret-lag positivt bevist 9/9; CI og øvrige vagter har separat bevisstatus i `docs/GUARD_INVENTORY.md`.
 
 6. **Slice close-out kræver:**
    - `docs/NOW.md` opdateret + relevante GitHub-issues lukket eller opdateret med status (`gh issue comment N --body "..."` / `gh issue close N --reason completed`)
@@ -113,7 +113,7 @@ Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [mig
 
 ## Start-sekvens (hver session)
 
-0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** · **merge-mekanik** (merge-køen). **Codex (ejer 3/10):** `docs/OPERATING_PLAN.md` §Codex; rør aldrig NOW/MASTERPLAN/spillertekst.
+0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** · **merge-mekanik** (merge-køen). **Codex (ejer 3/10):** `docs/OPERATING_PLAN.md` §Codex; rør aldrig NOW/MASTERPLAN/spillertekst (gælder Codex som forfatter; Claude-commits må skrive spillertekst).
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
 2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
 3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.
@@ -177,3 +177,7 @@ Resten af AI-ops-disciplinen er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/
 ---
 
 _Sidst opdateret: 2026-09-29. Beslutningsgrænser og Codex-pilot: #605. Lean-core-split: #733._
+
+## Review guidelines (Codex-review på GitHub)
+
+P1 kun for fejl der rammer spillerdata, penge, sikkerhed, prod-drift eller spilleroplevelsen, og for brud på regel 16-17. Manglende patch note i bølge-PR, SSOT/doc-opdatering, PR-billeder og filendelser er P2.

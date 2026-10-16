@@ -84,7 +84,7 @@ community-copy skal verificeres mod koden før den påstår at noget mangler
 | Roadmap-kategorien (kun ejeren opretter) | **Live** siden #4818 | `forum_category_post_roles`, se §0 |
 | Holdprofil (offentlig) | **Live** | `frontend/src/pages/TeamProfilePage.jsx`, rute `teams/:id` |
 | Managerprofil (offentlig) | **Live** | `frontend/src/pages/ManagerProfilePage.jsx`, rute `managers/:teamId` |
-| Online-prik + "sidst set" | **Live**, 5-min-granularitet | `api.js:13856`, `OnlineBadge.jsx` |
+| Online-prik + "sidst set" | **Live**, 30-min-vindue fra sidste livstegn (#5385) | `api.js:13856`, `OnlineBadge.jsx` |
 | Global rangliste | **Live**, 231 hold rangeret | `globalRankFormula.js`, `global_rank_mv` |
 | Beskeder mellem managers (1:1) | **Live** siden 8/9 | `directMessages.js`, `/api/messages`, se §6a |
 | **Notifikation når du låser en achievement op** | **FINDES IKKE** | `achievement` optræder ikke i `notificationService.js` |
@@ -650,8 +650,8 @@ titlen "???" (`ManagerProfilePage.jsx:59-66`), altså anden forsvarslinje oven p
 | Regel | Værdi | Hvor |
 |---|---|---|
 | Skrive-throttle | RPC `touch_user_presence` skriver **kun** hvis `last_seen` er over 60 s gammel | `api.js:13850-13859` |
-| Online-tærskel | **5 minutter** | `api.js:14398-14399`, `TeamProfilePage.jsx:175` |
-| Online-tæller | `GET /api/online-count`, samme 5-min-vindue | `api.js:13882-13887` |
+| Online-tærskel | **30 minutter** fra sidste livstegn (#5385, `backend/lib/presenceWindow.js` `ONLINE_WINDOW_MS`) | `api.js:14398-14399`, `TeamProfilePage.jsx:175` |
+| Online-tæller | `GET /api/online-count`, samme 30-min-vindue | `api.js:13882-13887` |
 | Rate limit | `presencePulseLimiter` | `api.js:13856` |
 | Visning | prik plus "sidst set" i relativ tid | `frontend/src/components/OnlineBadge.jsx` |
 
@@ -712,7 +712,7 @@ denne fil.
 | 7 | **Skal achievement-kategorierne oversættes til engelsk i databasen?** De er danske (`auktioner`, `hemmelig`, `hold`, `sæson`, `transfers`) i et EN-first spil | 5 kategorier, alle danske; per-achievement-i18n findes derimod, 46/46 nøgler i begge sprog |
 | 8 | **Skal Discord-nudgens dismiss persisteres server-side?** I dag kun `localStorage`, altså pr. browser | `DashboardPage.jsx:758-762`, mod onboarding-kortet der blev flyttet server-side i #2439 |
 | 9 | **Skal `race_result_digest` have sin egen præference-nøgle?** I dag kan den kun slås fra ved at slukke for alle DM'er | `DM_TYPE_TO_PREF_KEY` mapper ikke typen, `discordDmPrefs.js:23-32` |
-| 10 | **Skal 5-minutters online-tærsklen ligge i en delt konstant?** Den står som magisk tal to steder | `api.js:14399` og `TeamProfilePage.jsx:175` |
+| 10 | **Løst 16/10 (#5385):** tærsklen ligger i `presenceWindow.js` (30 min). **Skal 5-minutters online-tærsklen ligge i en delt konstant?** Den står som magisk tal to steder | `api.js:14399` og `TeamProfilePage.jsx:175` |
 | 11 | **Forummets rolle over for Discord.** Åben ejer-beslutning med aflæsningsdato | [#4235](https://github.com/NicolaiDolmer/CyclingZone/issues/4235), aflæses **15/9 2026** |
 | 12 | **"For sjov"-achievement-kategori og referral-rangliste.** Ønsket, ikke besluttet; afhænger af #3044 | [#3051](https://github.com/NicolaiDolmer/CyclingZone/issues/3051) |
 | 13 | **Fast ugentlig kommunikations-rytme.** Rytmen er defineret (mandag uge-note, onsdag ét spørgsmål, søndag ugens øjeblik), men issuet er åbent og løbende | [#428](https://github.com/NicolaiDolmer/CyclingZone/issues/428), `needs-user-action` |

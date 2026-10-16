@@ -445,6 +445,10 @@
         "title": "Offer withdrawn",
         "message": "{buyerName} withdrew their offer on {riderName}"
       },
+      "counterWithdrawn": {
+        "title": "Counter offer withdrawn",
+        "message": "{sellerName} withdrew their counter offer on {riderName}. You can make a new offer."
+      },
       "onAuctionCancelled": {
         "title": "Transfer cancelled",
         "message": "{riderName} went to an active auction. The deal was cancelled. Bid on the auction instead."
