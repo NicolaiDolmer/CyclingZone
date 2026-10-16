@@ -160,6 +160,9 @@
     "rider-double-booking-watch": [
       "backend/lib/riderDoubleBookingWatch.js"
     ],
+    "squad-entry-gate-watch": [
+      "backend/lib/squadEntryGate.js"
+    ],
     "training-slot-health-watch": [
       "backend/lib/discordNotifier.js",
       "backend/lib/trainingSlotHealthWatch.js"
