@@ -26,6 +26,6 @@ test("divisionsstillingen viser ikke laengere ↓N / +N (bevaegelses-signaler fj
 test("'I gang' paa kommende loeb er spillets status-maerke, ikke en rund guld-pille", () => {
   const i = src.indexOf('t("dashboard:cards.races.live")');
   const around = src.slice(i - 300, i);
-  assert.match(around, /<StatusBadge state="raceLive" emphasis>/);
+  assert.match(around, /<StatusBadge state="info" emphasis>/);
   assert.doesNotMatch(around, /rounded-full/);
 });

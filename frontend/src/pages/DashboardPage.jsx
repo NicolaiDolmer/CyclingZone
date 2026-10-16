@@ -1795,8 +1795,9 @@ export default function DashboardPage() {
                     {deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live" ? (
                       <span className="inline-flex flex-col items-end gap-0.5">
                         {/* #6717: spillets status-maerke (5 px radius, samme anatomi som
-                            "Overgaaet" paa bestyrelseskortet), ikke en rund guld-pille. */}
-                        <StatusBadge state="raceLive" emphasis>
+                            "Overgaaet" paa bestyrelseskortet), ikke en rund guld-pille. Rolig
+                            info-tone (ejer 16/10): et loeb i gang er normal drift, ikke en fejl. */}
+                        <StatusBadge state="info" emphasis>
                           {t("dashboard:cards.races.live")}
                           {race.race_type === "stage_race" && (
                             <span>{race.stages_completed}/{race.stages}</span>
