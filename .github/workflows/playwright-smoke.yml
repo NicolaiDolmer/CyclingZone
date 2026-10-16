@@ -361,7 +361,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           RUN_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
         run: |
+          set -o pipefail
           head=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq .head.sha) || { echo "::warning::Kunne ikke læse PR'ens head - dømmer kørslen som normalt."; exit 0; }
           if [ -n "$head" ] && [ "$head" != "$RUN_SHA" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
