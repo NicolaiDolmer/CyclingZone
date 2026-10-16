@@ -650,3 +650,17 @@ test("getStageRolesContext (#6740): Train now-laaste reserver kan ikke fylde op 
   });
   assert.deepEqual(lockedSix.start_outlook, { starts: true, min: 6, reason: null }, "regel B: Friis' sag starter med 5");
 });
+
+test("getStageRolesContext (#6740): en solgt udtaget rytter redder ikke holdet via regel B", async () => {
+  // 6 udtaget: r2-r6 + en solgt rytter (ikke i truppen). r6 skadet, reserver laast.
+  // Motoren dropper den solgte foer gulvet: 4 raske + 1 skadet = 5 -> gulvet gaelder.
+  const entries = [...SIX_ENTRIES.slice(1), { rider_id: "sold-1", race_role: "helper" }];
+  const conditions = [{ rider_id: "r6", form: 50, fatigue: 0, injured_until: "2999-01-01" }];
+  const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
+  const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
+  const ctx = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries, riders: OUTLOOK_RIDERS, conditions, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)) }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
+  });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "below_min" });
+});

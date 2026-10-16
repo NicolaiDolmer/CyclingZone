@@ -1310,8 +1310,10 @@ export async function fillMissingTeamEntries({
   // at cappe det væk ville betyde at manageren blev skåret ud af sit eget løb, og
   // strength-summen ville desuden være undervurderet for netop dem (deres udtagne
   // ryttere er filtreret ud af `riders` ovenfor).
-  const rescueTeamIds = missingTeamIds.filter((id) => (entryCountByTeam.get(id) || 0) > 0);
-  let emptyTeamIds = missingTeamIds.filter((id) => !(entryCountByTeam.get(id) || 0));
+  // #6740: et skade-kort hold uden raske tilbage havde en udtagelse; det er en redning, ikke et tomt hold.
+  const hadSelection = (id) => (entryCountByTeam.get(id) || 0) > 0 || injuryShortTeamIds.has(id);
+  const rescueTeamIds = missingTeamIds.filter(hadSelection);
+  let emptyTeamIds = missingTeamIds.filter((id) => !hadSelection(id));
   if (emptyTeamIds.length > POOL_TARGET_SIZE) {
     const strengthByTeam = new Map(emptyTeamIds.map((id) => [id, 0]));
     for (const r of riders || []) {
@@ -1400,8 +1402,11 @@ export async function fillMissingTeamEntries({
     //   1..5 entries → SEN REDNING: fyld præcis op til gulvet (6), ikke op til feltet.
     //                Managerens egne picks og roller står; de tilføjede er hjælpere, så
     //                redningen aldrig sætter en anden kaptajn end den han selv valgte.
+    //   #6740: et skade-kort hold med NUL raske tilbage er også en redning (op til 6, ingen
+    //                "assistenten udtog dit hold"-besked), men får autopickens roller, for
+    //                ingen af managerens egne ryttere står tilbage at bære kaptajnen.
     const existingCount = entryCountByTeam.get(teamId) || 0;
-    const isRescue = existingCount > 0;
+    const isRescue = existingCount > 0 || injuryShortTeamIds.has(teamId);
     const rule = isRescue
       ? { min: MIN_RACE_ENTRIES - existingCount, max: MIN_RACE_ENTRIES - existingCount }
       : sizeRule;
@@ -1419,7 +1424,7 @@ export async function fillMissingTeamEntries({
     for (const pick of picks) {
       rows.push({
         race_id: race.id, rider_id: pick.rider_id, team_id: teamId,
-        race_role: isRescue ? "helper" : pick.race_role, is_auto_filled: true,
+        race_role: existingCount > 0 ? "helper" : pick.race_role, is_auto_filled: true,
         // #5246: eksplicit kilde, saa redningen ved start skilles fra assistentens
         // late-fill i maalingen. Triggeren giver ingen default (uden kilde = unknown).
         auto_filled_source: AUTO_FILL_SOURCES.START_RESCUE,

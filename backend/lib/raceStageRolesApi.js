@@ -70,10 +70,15 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
     }
     const entered = new Set(entryRiderIds);
     const locked = (await loadRaceTrainNowLock({ supabase, raceId: race.id, riderIds: rosterIds })).riderIds;
+    // #6740: kun udtagne der stadig er i løbets trup tæller (motoren dropper solgte,
+    // akademi- og pensionerede ryttere før gulvet); ellers kunne regel B redde et hold her,
+    // som motoren fjerner.
+    const rosterSet = new Set(rosterIds);
+    const keptEntryIds = [...new Set(entryRiderIds)].filter((id) => rosterSet.has(id));
     return teamWillStart({
-      entryCount: entryRiderIds.filter((id) => !injuredIds.has(id)).length,
+      entryCount: keptEntryIds.filter((id) => !injuredIds.has(id)).length,
       // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
-      injuredEntryCount: entryRiderIds.filter((id) => injuredIds.has(id)).length,
+      injuredEntryCount: keptEntryIds.filter((id) => injuredIds.has(id)).length,
       freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id)).length,
       stagesCompleted,
     });

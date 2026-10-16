@@ -103,3 +103,9 @@ test("gulvet uændret: 5 udtaget og 1 skadet (havde aldrig gulvet) -> starter ik
   const { countByTeam } = await startField({ F: { entered: 5, injured: 1 } });
   assert.equal(countByTeam.F, undefined);
 });
+
+test("regel B: alle udtagne skadede, 2 frie -> assistenten redder holdet med 2 (redning, ikke tomt hold)", async () => {
+  const { countByTeam, entrants } = await startField({ G: { entered: 6, injured: 6, free: 2 } });
+  assert.equal(countByTeam.G, 2);
+  assert.ok(entrants.every((e) => !["G-r0", "G-r1", "G-r2", "G-r3", "G-r4", "G-r5"].includes(e.rider_id)));
+});
