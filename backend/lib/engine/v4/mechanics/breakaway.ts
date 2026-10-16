@@ -62,7 +62,7 @@ import { pursuitContactKm } from "../exactPlace.ts";
 //    SIDSTE segment, emitteres `breakaway_survived` (finale.ts afgoer derefter
 //    om forspringet baeres helt i maal eller indhentes i selve finalen).
 
-import { bookFinishDescentClosure, finishDescentIndexFor, finishDescentRemainingCapSeconds, timeModelTuningFor } from "./timeModel.ts";
+import { bookFinishDescentClosure, finishDescentIndexFor, finishDescentRemainingCapSeconds, S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE, timeModelTuningFor } from "./timeModel.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -1860,6 +1860,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       // skal jagten hente det fysisk; feltet giver derfor et andet lad-gaa-loft,
       // #5578: kalibreret pr. etapeprofil mod udbrudsmaalene.
       maxGapSeconds *= letGoTuning.letGoMaxGapScaleByProfile[ctx.route.profile_type] ?? letGoTuning.letGoMaxGapScale;
+      // #6369 (KUN s5_profiles_v1, endagsloeb): uden klassementshold der lofter
+      // udbruddet skal bjerg-bucket'ens loft vaere endagsloebets eget (timeModel.ts).
+      if (ctx.s5ProfilesV1 === true && gcContext?.status === "one_day") {
+        maxGapSeconds *= S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE[ctx.route.profile_type] ?? 1;
+      }
       // #5578 (KUN official_times_v2, udbrudsmaal 6): et farligt udbrud vokser aldrig
       // forbi det mindste forspring de bremsende hold tolererer. #5578 robust: ogsaa
       // troejens tolerance lofter (alle reagerende hold, ikke kun de farlige).
