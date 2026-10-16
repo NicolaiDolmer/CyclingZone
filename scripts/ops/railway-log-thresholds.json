@@ -14,6 +14,7 @@
     "health": 1,
     "express": 1,
     "dealValueSnapshot": 3,
+    "counterOfferWithdraw": 5,
     "auth": 300,
     "rate-limit": 25,
     "academyHealSweep": 10,

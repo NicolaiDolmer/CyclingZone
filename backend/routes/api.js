@@ -136,6 +136,7 @@ import {
   notifyForumMentions,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
+import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
 import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
@@ -298,6 +299,7 @@ import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.ts";
 import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
+import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/promotionPendingAction.js"; // #6710
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
 import { computeAcademyCurrent, computeAcademyCumulative, buildAcademySales, summarizeAcademyPnl } from "../lib/academyPnl.js";
@@ -379,6 +381,7 @@ import {
 import { loadValuationModelCached } from "../lib/riderValuationModelSelect.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 import { ageForSeason } from "../lib/riderProgressionEngine.js";
+import { scoutBandAge, resolveScoutBandSeasonNumber } from "../lib/scoutBandAge.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
   resolveRetirementNotice,
@@ -553,6 +556,7 @@ import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 import { pickLatestTeamRace, summarizeTeamRace, trimRecapRows, buildSeasonHistory, buildPrizeBreakdown, buildSponsorPayoutLine } from "../lib/myTeamLatestResult.js";
 import { buildTierMaterializationPlan, materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
+import { isOnlineSince, onlineCutoffIso } from "../lib/presenceWindow.js"; // #5385
 import { SEASON_RACE_DAY_TARGET } from "../lib/calendarRaceDayTargets.js";
 import { fetchLatestGate as fetchLatestLevelCorrectionGate, getDryRunReport as getLevelCorrectionDryRunReport } from "../scripts/marketValueLevelCorrectionApply.js";
 import { createValuePreviewService, parseValuePreviewQuery } from "../lib/adminValuePreview.js"; // #5686
@@ -2841,9 +2845,8 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     // Uden caps eller alder kan loft-bånd/projektion ikke beregnes — degradér ærligt
     // (frontend viser den registrerede kurve uden projektions-lag).
     const caps = ab?.ability_caps && typeof ab.ability_caps === "object" ? ab.ability_caps : null;
-    const age = rider.birthdate
-      ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
-      : null;
+    // #6700: saesonalder (SSOT), ikke kalenderaar; saesonpausen haandteres i resolveren.
+    const age = scoutBandAge(rider.birthdate, await resolveScoutBandSeasonNumber(supabase));
     if (!caps || !ab || age == null) {
       return res.json({ level, maxLevel: state.maxLevel, own, capsMissing: true });
     }
@@ -8675,11 +8678,13 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       return res.status(403).json({ error: signingBlock.reason, code: signingBlock.code, layer: signingBlock.layer });
     }
 
-    await supabase.from("transfer_offers").update({
+    // #6463: betinget på at modbuddet STADIG er åbent (sælgeren kan have trukket det tilbage).
+    const claim = await claimCounterForAccept({ supabase, offerId: offer.id, patch: {
       status: "awaiting_confirmation",
       buyer_confirmed: true,
       seller_confirmed: false,
-    }).eq("id", offer.id);
+    } });
+    if (!claim.ok) return res.status(claim.status).json({ error: claim.error, errorCode: claim.errorCode });
 
     await notifyTeamOwnerBuilt(offer.seller_team_id, transferNotif.buildTransferCounterAcceptedNotification({
       buyerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
@@ -8757,13 +8762,22 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 
   // NEW OFFER — buyer sends new amount (counter to counter)
   if (action === "new_offer" && isBuyer && counter_amount) {
-    await supabase.from("transfer_offers").update({
+    // #6463: kun et ÅBENT modbud kan besvares med et nyt bud. Betinget på status,
+    // så et forældet kort ikke kan genåbne et tilbagetrukket eller afsluttet tilbud.
+    if (offer.status !== "countered") {
+      return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
+    }
+    const { data: reopened, error: reopenError } = await supabase.from("transfer_offers").update({
       offer_amount: counter_amount,
       counter_amount: null,
       status: "pending",
       message: message || offer.message,
       round: (offer.round || 1) + 1,
-    }).eq("id", offer.id);
+    }).eq("id", offer.id).eq("status", "countered").select("id");
+    if (reopenError) return res.status(500).json({ error: reopenError.message });
+    if (!reopened?.length) {
+      return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
+    }
     await notifyTeamOwnerBuilt(offer.seller_team_id, transferNotif.buildTransferNewBidNotification({
       buyerName: req.team.name, amount: counter_amount,
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`, riderId: offer.rider.id,
@@ -8779,6 +8793,16 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
       riderId: offer.rider.id,
     }), offer.id);
     return res.json({ success: true, action: "withdrawn" });
+  }
+
+  // WITHDRAW COUNTER — seller withdraws their own open counteroffer (#6463)
+  if (action === "withdraw_counter") {
+    const result = await withdrawCounterOffer({ supabase, offer, teamId: req.team.id });
+    if (!result.ok) return res.status(result.status).json({ error: result.error, errorCode: result.errorCode });
+    await notifyTeamOwnerBuilt(offer.buyer_team_id, buildCounterOfferWithdrawnNotification({
+      sellerName: req.team.name, riderName: `${offer.rider.firstname} ${offer.rider.lastname}`, riderId: offer.rider.id,
+    }), offer.id);
+    return res.json({ success: true, action: "counter_withdrawn" });
   }
 
   return res.status(400).json({ error: "Ugyldig handling", errorCode: "invalid_action" });
@@ -9496,7 +9520,7 @@ router.get("/teams/:id/manager-status", requireAuth, presencePulseLimiter, async
       .select("last_seen").eq("id", team.user_id).maybeSingle();
     if (userError) throw userError;
     const lastSeen = user?.last_seen || null;
-    const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
+    const isOnline = isOnlineSince(lastSeen);
     res.json({ last_seen: lastSeen, is_online: isOnline });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
@@ -10302,10 +10326,17 @@ router.get("/me/selection-reminder", requireAuth, presencePulseLimiter, async (r
     const candidateIds = [...new Set(windowRows.map((r) => r.race_id))];
     if (!candidateIds.length) return res.json({ ...empty(true), urgent_hours: lateFillHours });
 
+    // #5851: kun den AKTIVE saesons loeb. Naeste saesons foerste etape ligger inde i
+    // vinduet foer skiftet, men udtagelse kan foerst gemmes naar saesonen er aktiv
+    // (#5405, seasonAllowsSelectionWrites). Ingen aktiv saeson = intet at minde om.
+    const { data: reminderSeason } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (!reminderSeason?.id) return res.json({ ...empty(true), urgent_hours: lateFillHours });
+
     const [raceRows, scheduleRows, entryRows, withdrawalRows] = await Promise.all([
       fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
         .from("races").select("id, name, status, stages_completed, league_division_id, race_class")
-        .in("id", chunk).eq("status", "scheduled").order("id")),
+        .in("id", chunk).eq("status", "scheduled").eq("season_id", reminderSeason.id).order("id")),
       fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
         .from("race_stage_schedule").select("race_id, scheduled_at")
         .in("race_id", chunk).order("race_id").order("stage_number")),
@@ -15552,7 +15583,7 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 
 // #6343: tallet gemmes i 30 s pr. proces, så COUNT-forespørgslen mod users ikke
 // vokser med antallet af åbne faner (hver fane sender presence hvert 60. sekund).
-// "Online" er i forvejen 5-min-granularitet, så 30 s forsinkelse er usynlig.
+// "Online" er i forvejen 30-min-granularitet (#5385), så 30 s forsinkelse er usynlig.
 const ONLINE_COUNT_TTL_MS = 30 * 1000;
 let onlineCountCache = { value: null, at: 0 };
 
@@ -15560,7 +15591,7 @@ async function countOnlineUsers() {
   if (onlineCountCache.value !== null && Date.now() - onlineCountCache.at < ONLINE_COUNT_TTL_MS) {
     return onlineCountCache.value;
   }
-  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const cutoff = onlineCutoffIso();
   try {
     const { count, error } = await supabase.from("users")
       .select("id", { count: "exact", head: true }).gte("last_seen", cutoff);
@@ -15579,7 +15610,7 @@ async function countOnlineUsers() {
 // POST /api/presence — heartbeat, opdater last_seen (throttlet)
 // Bruger touch_user_presence-RPC der KUN skriver hvis last_seen er >60s gammelt,
 // så heartbeat-spam ikke laver en row-write (+WAL+dead tuple) ved hvert kald.
-// Online-prik, /online-count og "sidst set" bruger alle 5-min-granularitet, så
+// Online-prik, /online-count og "sidst set" bruger alle 30-min-vinduet (#5385), så
 // 60s-throttle er funktionelt usynlig. Rettede en disk-IO write-amplification
 // (281k UPDATEs) — se database/2026-06-29-db-io-temp-spills-presence.sql.
 router.post("/presence", requireAuth, presencePulseLimiter, async (req, res) => {
@@ -15610,7 +15641,7 @@ router.post("/login-streak", requireAuth, presencePulseLimiter, async (req, res)
   res.json({ streak, user_id: req.user.id });
 });
 
-// GET /api/online-count — brugere aktive inden for de seneste 5 minutter
+// GET /api/online-count — brugere aktive inden for online-vinduet (30 min, #5385)
 router.get("/online-count", requireAuth, async (req, res) => {
   const count = await countOnlineUsers();
   if (count === null) return res.status(500).json({ error: "online-count unavailable" });
@@ -16552,9 +16583,7 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
     // et svar). AI-hold nås reelt via transfer-historikkens køber/sælger-links.
     const userData = userRes.data || null;
     if (userData) {
-      userData.is_online = userData.last_seen
-        ? (Date.now() - new Date(userData.last_seen).getTime()) < 5 * 60 * 1000
-        : false;
+      userData.is_online = isOnlineSince(userData.last_seen);
       // #5012 (CodeRabbit-fund): discord_id er det PRIVATE bot-DM-kobling-ID
       // (#2161) — det har ALDRIG været eksponeret af dette endpoint før denne
       // PR. Uden dette guard ville enhver authenticated bruger kunne se en
@@ -19007,6 +19036,22 @@ router.post("/riders/:id/squad", requireAuth, marketWriteLimiter, async (req, re
     captureException(err);
     res.status(500).json({ error: err?.message ?? "" });
   }
+});
+
+// #6710: "Afventer oprykning" — trupsidens liste + "Ryk op" (promotionPendingAction.js).
+router.get("/team/promotion-pending", requireAuth, presencePulseLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const out = await handleListPendingRequest(supabase, { teamId: req.team.id, seasonNumber: await getActiveSeasonNumber() });
+    res.status(out.status).json(out.body);
+  } catch (err) { captureException(err); res.status(500).json({ error: "Could not load riders awaiting promotion", errorCode: "promotion_pending_failed" }); }
+});
+router.post("/riders/:id/promote-pending", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const out = await handlePromotePendingRequest(supabase, { teamId: req.team.id, riderId: req.params.id, seasonNumber: await getActiveSeasonNumber() });
+    res.status(out.status).json(out.body);
+  } catch (err) { captureException(err); res.status(500).json({ error: "Could not promote the rider", errorCode: "promotion_pending_failed" }); }
 });
 
 export default router;

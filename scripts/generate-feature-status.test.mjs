@@ -303,3 +303,24 @@ test("--check exit 1 paa et ugyldigt register", () => {
     (err) => err.status === 1,
   );
 });
+
+test("validate afviser decide_by der ikke er en aegte kalenderdato (#6708)", () => {
+  const mk = (d) => parseRegistry(`features:
+  - id: dated-dormant
+    area: ops
+    title_en: X
+    title_da: X
+    state: dormant
+    flag: x_enabled
+    verified: 2026-09-07
+    note: Bygget; flaget aabnes ved cutover.
+    decision: taend
+    decide_by: ${d}
+`);
+  for (const bad of ["2026-13-40", "2026-02-30", "2027-02-29", "2026-00-10"]) {
+    assert.match(validate(mk(bad)).join(" "), /decide_by skal vaere en aegte kalenderdato/, bad);
+  }
+  for (const ok of ["2026-12-31", "2028-02-29"]) {
+    assert.deepEqual(validate(mk(ok)), [], ok);
+  }
+});

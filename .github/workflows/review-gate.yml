@@ -1,0 +1,192 @@
+name: Review gate
+
+# Koerselsnavnet bindes til PR-NUMMERET (scripts/review-gate.mjs, gateRunName/pickGateRun):
+# en pull_request_target-koersel har tom pull_requests-liste og head_sha/head_branch fra
+# base-branchen, saa PR'en kan ikke genkendes paa SHA eller branch (Codex-fund #6657).
+# Navnet saettes af mains YAML (target-event) og kan ikke forfalskes af en PR.
+run-name: ${{ github.event_name == 'pull_request_target' && format('review-gate PR#{0} {1}', github.event.pull_request.number, github.event.action) || format('{0} ({1})', github.workflow, github.event_name) }}
+
+# Risikostyret review-gate (#6654, ejer 15/10). Regel: AGENTS.md hard rule 35 +
+# docs/GITHUB_WORKFLOW.md "Review-gate". Logik + tests: scripts/review-gate.mjs.
+#
+#   - Alle PR'er: Codex-review gennemfoert, ingen uloeste Codex-traade.
+#   - Hoejrisiko (motor, database, penge, auth/sikkerhed, workflows, label
+#     risk:high/security): derudover Claude-review-markoer uden blokerende fund.
+#   - CodeRabbit er bonus, aldrig krav. Dependabot er undtaget (rule 35 c).
+#
+# Check'et hedder `review-gate` og produceres KUN af pull_request_target-jobbet
+# herunder (eet stabilt check-navn). Codex-kommentarer, Claude-markoerer, reviews
+# og loeste traade aendrer ikke HEAD; de genkoerer i stedet den seneste
+# review-gate-koersel for PR'ens HEAD (refresh-jobbet). Traad-"Resolve" har
+# ingen workflow-trigger, saa en planlagt refresh samler dem op hver halve
+# time; vil man ikke vente:
+#   gh workflow run review-gate.yml -f pr=<N>
+#
+# Tillid (Codex-fund #6657): gate-jobbet koerer paa pull_request_target, saa
+# baade DENNE YAML og scriptet kommer fra main. En PR kan hverken aendre
+# klassifikatoren eller erstatte evaluerings-steppet med en no-op; en PR der
+# aendrer filen her, er selv hoejrisiko og evalueres af mains version. Jobbet
+# checker aldrig PR'ens kode ud og har kun laese-rettigheder. Merge-koeen
+# (scripts/lib/league-check.ps1) taeller kun review-gate-checks fra
+# pull_request_target, saa et job med samme navn i en PR-styret workflow ikke
+# kan efterligne gaten. Foer filen er paa main, findes check'et ikke (bootstrap).
+#
+# Required-check er EJERENS indstilling (branch protection) - se PR #6657.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  pull_request:
+    # Kun gatens egne unit-tests (paa PR'ens kode); selve gaten er pull_request_target.
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  issue_comment:
+    types: [created, edited]
+  schedule:
+    # Refresh af aabne, roede gates (traad-resolve har ingen trigger).
+    - cron: '7,37 * * * *'
+    # Maanedlig escaped-defect-rapport (fanget/misset pr. reviewer).
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'PR-nummer der skal genevalueres (tom = alle aabne ready PR-er)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  review-gate:
+    name: review-gate
+    # pull_request_target: YAML + script fra main (se headeren). Checker ALDRIG PR'ens kode ud.
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    concurrency:
+      group: review-gate-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Hent gate-scriptet fra main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/review-gate.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: Evaluer review-gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node scripts/review-gate.mjs evaluate --pr "$PR_NUMBER"
+
+  unit-tests:
+    # Gatens egne tests paa PR'ens kode (gaten selv koerer mains version).
+    name: review-gate-tests
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out PR
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/review-gate.mjs
+            scripts/review-gate.test.mjs
+            .coderabbit.yaml
+            .github/
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: node --test scripts/review-gate.test.mjs
+        run: node --test scripts/review-gate.test.mjs
+
+  refresh:
+    name: review-gate-refresh
+    if: >-
+      github.event_name == 'pull_request_review' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.event.schedule == '7,37 * * * *') ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+        (github.event.comment.user.login == 'chatgpt-codex-connector[bot]' ||
+         contains(github.event.comment.body, '<!-- claude-review:')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+      issues: read
+      pull-requests: read
+    concurrency:
+      group: review-gate-refresh-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'all' }}
+      cancel-in-progress: false
+    steps:
+      - name: Hent gate-scriptet fra main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts/review-gate.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: Genkoer review-gate
+        # Foer #6654 er merget, findes scriptet ikke paa main og der er intet at genkoere.
+        if: hashFiles('scripts/review-gate.mjs') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            node scripts/review-gate.mjs refresh --pr "$PR_NUMBER"
+          else
+            node scripts/review-gate.mjs refresh
+          fi
+
+  escaped-report:
+    name: escaped-defect-report
+    if: github.event_name == 'schedule' && github.event.schedule == '0 6 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Hent rapport-scriptet fra main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/review-gate.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: Escaped defects sidste maaned (job summary)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/review-gate.mjs escaped-report

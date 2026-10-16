@@ -1,5 +1,47 @@
 export const PATCHES = [
   {
+    "version": "7.362",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Cleaner icons",
+          "body": "Arrows, ticks and the close cross in rankings, the season planner, the board and training now use the same icons as the rest of the game."
+        },
+        "da": {
+          "title": "Renere ikoner",
+          "body": "Pile, flueben og lukkekrydset i ranglister, sæsonplanlæggeren, bestyrelsen og træningen bruger nu de samme ikoner som resten af spillet."
+        },
+        "refs": [
+          6690,
+          6692
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Help matches how races work",
+          "body": "The Help pages about breakaways, efforts, Ride easy and GC reactions now describe the current race rules."
+        },
+        "da": {
+          "title": "Hjælpen passer til løbene",
+          "body": "Hjælpesiderne om udbrud, indsats, Kør roligt og GC-reaktion beskriver nu de nuværende løbsregler."
+        },
+        "refs": [
+          6186,
+          6691
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.361",
     "date": "2026-10-15",
     "changes": [

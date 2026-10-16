@@ -18,7 +18,7 @@
 // READ-ONLY: ingen writes her. Udgangen (oprykning hvis plads+raad, ellers fri
 // agent — ejer 6/9) ligger i academyGraduation.resolveUnsoldGraduate.
 
-import { isGraduateAge } from "./academyGraduation.js";
+import { isGraduateAge, PROMOTION_PENDING_GRAD_STATUS } from "./academyGraduation.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
@@ -126,7 +126,7 @@ export async function findStuckAcademyGraduates(supabase, {
   const grads = await fetchAllRows(() =>
     supabase
       .from("academy_graduation")
-      .select("id, rider_id, status, deadline, created_at")
+      .select("id, rider_id, team_id, status, deadline, created_at")
       .in("rider_id", riderIds)
       .order("rider_id"));
 
@@ -149,8 +149,22 @@ export async function findStuckAcademyGraduates(supabase, {
     inGraceWindow.add(g.rider_id);
   }
 
+  // #6710: "afventer oprykning" er en lovlig tilstand. Holdets NYESTE grad-raekke
+  // for rytteren staar som 'expired' (PROMOTION_PENDING_GRAD_STATUS): vinduet
+  // udloeb med fuld seniortrup, og rytteren venter i sin trup paa plads. Den
+  // status bruges ikke af andre stier, saa den alene afgoer det — ingen ny
+  // kolonne i vagtens prædikat. Naeste saesons vindue (ny 'pending'-raekke)
+  // overtager som nyeste og vurderes som foer.
+  const awaitingPromotion = new Set();
+  for (const { rider } of overAge) {
+    const own = (gradsByRider.get(rider.id) ?? []).filter((g) => g.team_id === rider.team_id);
+    if (own.length === 0) continue;
+    const newest = own.reduce((a, b) => (String(b.created_at ?? "") > String(a.created_at ?? "") ? b : a));
+    if (newest.status === PROMOTION_PENDING_GRAD_STATUS) awaitingPromotion.add(rider.id);
+  }
+
   const stuck = overAge
-    .filter(({ rider }) => !onOpenAuction.has(rider.id) && !inGraceWindow.has(rider.id))
+    .filter(({ rider }) => !onOpenAuction.has(rider.id) && !inGraceWindow.has(rider.id) && !awaitingPromotion.has(rider.id))
     .map(({ rider, age }) => ({
       riderId: rider.id,
       teamId: rider.team_id,

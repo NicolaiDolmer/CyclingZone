@@ -39,6 +39,13 @@
 #             flag (flag + area ikke ops) naar state er beta; building/dormant giver
 #             kun en advarsel. scripts/roadmap-sync-registry.mjs opretter punktet
 #             skjult efter merge; det bliver synligt naar flaget gaar i beta/on.
+#   decision / decide_by (valgfri, saettes sammen; #6701) - udloebsregel for poster
+#             der ikke er live (building/dormant/beta): hvad sker der med dem.
+#             decision = taend | goer-faerdigt | fjern | noedbremse | ejer-beslutning,
+#             decide_by = YYYY-MM-DD. Nye ikke-live poster kraever begge felter;
+#             eksisterende staar i scripts/feature-registry-flag-expiry-baseline.json
+#             (ratchet, maa kun skrumpe) til ejeren har besluttet dem. Overskredne
+#             frister listes af scripts/feature-registry-flag-expiry.mjs.
 #
 # FLAG-GATEN (check-feature-registry-flags.mjs):
 #   state: live    + flag → flagværdi skal være on/true
@@ -91,10 +98,10 @@ features:
     area: race-engine
     title_en: Official time persistence revision
     title_da: Revision for lagring af officielle tider
-    state: building
+    state: retired
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
-    verified: 2026-10-15
+    verified: 2026-10-16
     note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v4 (timeModel.ts, segmentLoop.ts). Prod 15/10: løb bundet til v2, v3 og v4 (flest v4) via races.engine_rules_revision (#6642)."
 
   - id: race-notify-outbox
@@ -426,10 +433,11 @@ features:
     area: training
     title_en: Training tick system
     title_da: Tick-baseret træning
-    state: building
+    state: live
     ssot: docs/TRAINING_RULES.md
     epic: 4850
-    verified: 2026-09-06
+    verified: 2026-10-16
+    note: Tick-baseret træning er on i prod (flag training_tick_per_race_day, se posten nedenfor).
 
   - id: training-tick-per-race-day
     area: training
@@ -703,6 +711,18 @@ features:
     epic: 6499
     verified: 2026-10-15
     note: PR #6501 (11/10); off i prod (læst 15/10). Fail-safe off, beta læses som off; kun ejeren flipper.
+
+  - id: promotion-pending
+    area: academy
+    title_en: Awaiting promotion instead of auto-sale when the next squad is full
+    title_da: Afventer oprykning i stedet for automatisk salg ved fuld trup
+    state: building
+    ssot: docs/YOUTH_RULES.md
+    epic: 5833
+    verified: 2026-10-16
+    decision: ejer-beslutning
+    decide_by: 2026-10-24
+    note: "#6710 plan-PR 1. Flag-nøgle promotion_pending_enabled (oprettes off af migrationen); flyttes til flag-feltet når rækken findes i prod."
 
   # --- economy -------------------------------------------------------------
   - id: sponsors

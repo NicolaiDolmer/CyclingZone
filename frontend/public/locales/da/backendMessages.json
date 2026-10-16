@@ -215,6 +215,11 @@
       "unsoldTitle": "Akademirytter sluppet fri",
       "unsold": "Der kom ingen bud på {name}, og han forlod dit akademi som fri agent."
     },
+    "promotionPending": {
+      "title": "Afventer oprykning: {name}",
+      "u23": "{name} er klar til din U23-trup, men den er fuld. Han bliver i sin nuværende trup på samme kontrakt. Gør plads, og ryk ham op fra din holdside.",
+      "senior": "{name} er klar til din seniortrup, men den er fuld. Han bliver i sin nuværende trup på samme kontrakt. Gør plads, og ryk ham op fra din holdside."
+    },
     "academySigningDeferred": {
       "title": "Akademi-signing bekræftet",
       "message": "{riderName} bliver en del af dit akademi, når hans etapeløb er kørt færdigt - han kører stadig for din seniortrup indtil da."
@@ -444,6 +449,10 @@
       "withdrawn": {
         "title": "Tilbud trukket tilbage",
         "message": "{buyerName} har trukket deres tilbud på {riderName} tilbage"
+      },
+      "counterWithdrawn": {
+        "title": "Modbud trukket tilbage",
+        "message": "{sellerName} har trukket sit modbud på {riderName} tilbage. Du kan give et nyt tilbud."
       },
       "onAuctionCancelled": {
         "title": "Transfer annulleret",

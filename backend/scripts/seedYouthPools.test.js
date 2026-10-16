@@ -11,6 +11,9 @@ import {
   renderMarkdown,
   applyParkingForecast,
   squadNumbers,
+  starterShares,
+  poolRetirement,
+  isRaceAgeEligible,
 } from "./seedYouthPools.js";
 
 const pad = (n) => String(n).padStart(3, "0");
@@ -32,7 +35,7 @@ function world({ managers = 40, ai = 20 } = {}) {
 }
 
 test("parseArgs: dry-run default, begge trupper, --apply kræver --owner-go", () => {
-  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false });
+  assert.deepEqual(parseArgs([]), { squads: ["u23", "junior"], apply: false, ownerGo: false, groupSize: 24, managersPerGroup: null, mixJunior: false, regroup: false, season: null });
   assert.deepEqual(parseArgs(["--squad=junior"]).squads, ["junior"]);
   assert.deepEqual(parseArgs(["--squad=all"]).squads, ["u23", "junior"]);
   assert.throws(() => parseArgs(["--apply"]), /owner-go/);
@@ -57,6 +60,40 @@ test("youthRidersByTeam tæller aktive ryttere i trup'en", () => {
   const counts = youthRidersByTeam(world().riders, "u23");
   assert.equal(counts.get("m001"), 7);
   assert.equal(youthRidersByTeam(world().riders, "junior").get("m001"), 1);
+});
+
+test("youthRidersByTeam med sæson: kun startberettigede efter sæsonalder (#6668)", () => {
+  // Sæson 1 = 2026: fødselsår 2005-2007 giver 19-21 (U23), 2003 giver 23 (for gammel).
+  const eligible = Array.from({ length: 5 }, (_, i) => ({ id: `e${i}`, team_id: "m001", squad: "u23", birthdate: `${2005 + (i % 3)}-06-01` }));
+  const riders = [
+    ...eligible,
+    { id: "old", team_id: "m001", squad: "u23", birthdate: "2003-03-03" },
+    { id: "nobd", team_id: "m001", squad: "u23" },
+    { id: "jr", team_id: "m001", squad: "junior", birthdate: "2010-01-01" },
+    { id: "jr-old", team_id: "m001", squad: "junior", birthdate: "2007-01-01" },
+  ];
+  const u23 = youthRidersByTeam(riders, "u23", { seasonNumber: 1 });
+  assert.equal(u23.get("m001"), 5);
+  assert.equal(youthRidersByTeam(riders, "u23").get("m001"), 7, "uden sæson: ingen alders-filtrering");
+  assert.equal(youthRidersByTeam(riders, "junior", { seasonNumber: 1 }).get("m001"), 1, "en 19-årig i junior er vokset ud");
+  const sp = buildSquadPlan({ squad: "u23", teams: [manager(1)], riders, globalRanks: [], pools: [], seasonNumber: 1 });
+  assert.equal(sp.plan.groups[0].managerTeamIds.length, 1);
+  assert.equal(sp.startersByPool[0].managerStarters, 0, "5 berettigede er under startgulvet");
+  const withSixth = [...riders, { id: "e5", team_id: "m001", squad: "u23", birthdate: "2006-02-02" }];
+  assert.equal(buildSquadPlan({ squad: "u23", teams: [manager(1)], riders: withSixth, globalRanks: [], pools: [], seasonNumber: 1 }).startersByPool[0].managerStarters, 1);
+  assert.equal(buildSquadPlan({ squad: "u23", teams: [manager(1)], riders, globalRanks: [], pools: [] }).startersByPool[0].managerStarters, 1, "uden sæson tæller den 23-årige med");
+});
+
+test("youthRidersByTeam med sæson: juniorer flyttet op på U23 tæller med (kun aldersloft, #6668)", () => {
+  // Sæson 1 = 2026: fødselsår 2008-2010 giver 16-18. YOUTH_RULES §2.2: opad er altid tilladt,
+  // og startberettigelsen følger den tildelte trup, ikke en mindstealder.
+  const young = Array.from({ length: 6 }, (_, i) => ({ id: `y${i}`, team_id: "m001", squad: "u23", birthdate: `${2008 + (i % 3)}-06-01` }));
+  assert.equal(isRaceAgeEligible(young[0], "u23", 1), true);
+  assert.equal(isRaceAgeEligible({ birthdate: "2003-03-03" }, "u23", 1), false, "23-årig er over U23-loftet");
+  assert.equal(isRaceAgeEligible({}, "u23", 1), false, "ukendt alder tæller aldrig");
+  assert.equal(youthRidersByTeam(young, "u23", { seasonNumber: 1 }).get("m001"), 6);
+  const sp = buildSquadPlan({ squad: "u23", teams: [manager(1)], riders: young, globalRanks: [], pools: [], seasonNumber: 1 });
+  assert.equal(sp.startersByPool[0].managerStarters, 1, "seks unge U23-ryttere gør holdet startklart");
 });
 
 test("buildSquadPlan fresh: opretter grupperne og en FK-opdatering pr. placeret hold", () => {
@@ -98,6 +135,23 @@ test("buildSquadPlan genkørt efter apply = top-up med 0 skrivninger (idempotent
   assert.deepEqual(again.poolsToCreate, []);
 });
 
+test("top-up efter regroup placerer aldrig et nyt hold i en pensioneret pulje (#6668)", () => {
+  const w = world({ managers: 5, ai: 0 });
+  const pools = [
+    ...w.pools,
+    { id: 100, tier: 5, pool_index: 0, squad: "u23", retired_at: null },
+    { id: 101, tier: 5, pool_index: 1, squad: "u23", retired_at: "2026-10-15T00:00:00.000Z" },
+  ];
+  // m001-m004 står i den aktive pulje; den pensionerede pulje er tom; m005 er nyt.
+  const teams = w.teams.map((t) => (t.id === "m005" ? t : { ...t, u23_league_division_id: 100 }));
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams });
+  assert.equal(sp.mode, "top-up");
+  const m005 = sp.updates.find((u) => u.teamId === "m005");
+  assert.equal(m005.poolIndex, 0, "nyt hold lander i den aktive pulje");
+  assert.ok(sp.updates.every((u) => u.poolIndex !== 1), "ingen skrivning peger på den pensionerede pulje");
+  assert.ok(sp.plan.groups.every((g) => g.poolIndex !== 1));
+});
+
 test("applyParkingForecast: sweepens parkerede hold falder ud, genindplacerede kommer med", () => {
   const w = world({ managers: 30, ai: 0 });
   w.teams.push(manager(31, { parked_at: "2026-08-01" }));
@@ -120,4 +174,80 @@ test("publicSummary/renderMarkdown indeholder ingen holdnavne eller team-id'er",
   assert.doesNotMatch(text, /Hold M|AI 0|\bm0\d\d\b|\ba0\d\d\b/);
   assert.equal(summary.squads[0].groupCount, 3);
   assert.match(renderMarkdown(summary), /U23 Group A/);
+});
+
+// ── #6668: --regroup samler menneskeholdene i færre grupper ───────────────────
+test("parseArgs: --regroup kræver et eksplicit --managers-per-group (dokumenteret valg)", () => {
+  assert.throws(() => parseArgs(["--regroup"]), /managers-per-group/);
+  assert.throws(() => parseArgs(["--regroup=yes", "--managers-per-group=20"]), /regroup/);
+  const a = parseArgs(["--regroup", "--managers-per-group=20"]);
+  assert.equal(a.regroup, true);
+  assert.equal(a.managersPerGroup, 20);
+});
+
+function seeded(w, squad = "u23") {
+  const first = buildSquadPlan({ squad, ...w });
+  const pools = [...w.pools, ...first.poolsToCreate.map((p, i) => ({ ...p, id: 100 + i }))];
+  const idByIndex = new Map(pools.filter((p) => p.squad === squad).map((p) => [p.pool_index, p.id]));
+  const target = new Map(first.updates.map((u) => [u.teamId, idByIndex.get(u.poolIndex)]));
+  const teams = w.teams.map((t) => ({ ...t, [fkColumn(squad)]: target.get(t.id) ?? null }));
+  return { pools, teams, idByIndex };
+}
+
+test("buildSquadPlan --regroup: eksisterende grupper lægges om til færre, AI-overløb mister pladsen", () => {
+  const w = world({ managers: 40, ai: 20 });
+  const { pools, teams } = seeded(w);
+  // Uden regroup: top-up, ingen ændring.
+  assert.equal(buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20 }).mode, "top-up");
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20, regroup: true });
+  assert.equal(sp.mode, "regroup");
+  assert.equal(sp.plan.groups.length, 2, "40 managers / 20 = 2 grupper (før 3)");
+  assert.deepEqual(sp.poolsToCreate, [], "de eksisterende grupper genbruges");
+  assert.deepEqual(sp.unusedPools, [2]);
+  const placed = new Set(sp.plan.groups.flatMap((g) => [...g.managerTeamIds, ...g.aiTeamIds]));
+  assert.equal(placed.size, 48, "2 grupper à 24");
+  // Alle managers har en plads; de AI-hold der ikke er plads til, får FK = null.
+  const nulls = sp.updates.filter((u) => u.poolIndex === null).map((u) => u.teamId);
+  assert.equal(nulls.length, 12);
+  assert.ok(nulls.every((id) => id.startsWith("a")), "kun AI-hold mister plads");
+  // Hold der allerede står i deres nye gruppe, skrives ikke igen.
+  const current = new Map(teams.map((t) => [t.id, t.u23_league_division_id]));
+  const idOf = new Map(pools.filter((p) => p.squad === "u23").map((p) => [p.pool_index, p.id]));
+  assert.ok(sp.updates.every((u) => u.poolIndex === null || current.get(u.teamId) !== idOf.get(u.poolIndex)));
+});
+
+test("buildSquadPlan --regroup genkørt efter apply = 0 skrivninger", () => {
+  const w = world({ managers: 40, ai: 20 });
+  const { pools, teams, idByIndex } = seeded(w);
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20, regroup: true });
+  const after = new Map(teams.map((t) => [t.id, t.u23_league_division_id]));
+  for (const u of sp.updates) after.set(u.teamId, u.poolIndex == null ? null : idByIndex.get(u.poolIndex));
+  const teams2 = teams.map((t) => ({ ...t, u23_league_division_id: after.get(t.id) }));
+  const again = buildSquadPlan({ squad: "u23", ...w, pools, teams: teams2, managersPerGroup: 20, regroup: true });
+  assert.deepEqual(again.updates, []);
+});
+
+test("poolRetirement: regroup pensionerer de tomme puljer og genbruger de brugte; top-up rører intet", () => {
+  const w = world({ managers: 40, ai: 20 });
+  const { pools, teams } = seeded(w);
+  const sp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20, regroup: true });
+  const r = poolRetirement(sp);
+  assert.deepEqual(r.retireIndexes, [2], "den fjernede gruppe pensioneres, så kalenderen ikke bygger løb for den");
+  assert.deepEqual(r.reviveIndexes.sort(), [0, 1]);
+  assert.ok(r.retireIndexes.every((i) => !r.reviveIndexes.includes(i)));
+  const topUp = buildSquadPlan({ squad: "u23", ...w, pools, teams, managersPerGroup: 20 });
+  assert.deepEqual(poolRetirement(topUp), { retireIndexes: [], reviveIndexes: [] });
+});
+
+test("starterShares: AI-andel af de startklare hold, samlet og i den mest AI-tunge gruppe", () => {
+  const s = starterShares([
+    { poolIndex: 0, managerStarters: 6, aiStarters: 2 },
+    { poolIndex: 1, managerStarters: 2, aiStarters: 6 },
+  ]);
+  assert.equal(s.managerStarters, 8);
+  assert.equal(s.aiStarters, 8);
+  assert.equal(s.aiStarterShare, 0.5);
+  assert.equal(s.maxGroupAiStarterShare, 0.75);
+  assert.equal(s.minGroupManagerStarters, 2);
+  assert.equal(starterShares([]).aiStarterShare, null);
 });
