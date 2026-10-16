@@ -15,9 +15,11 @@ foreach ($case in $cases) {
   if ($actual -ne $case.Expected) { throw "$($case.Name): expected $($case.Expected), got $actual" }
 }
 
-# #6654: review-gate. Formen matcher `gh pr checks --json name,bucket,startedAt`
+# #6654: review-gate. Formen matcher `gh pr checks --json name,bucket,startedAt,event`
 # (ConvertFrom-Json giver pscustomobject med startedAt altid til stede).
-function Gate([string]$bucket, $startedAt) { [pscustomobject]@{ name = 'review-gate'; bucket = $bucket; startedAt = $startedAt } }
+function Gate([string]$bucket, $startedAt, [string]$event = 'pull_request_target') { [pscustomobject]@{ name = 'review-gate'; bucket = $bucket; startedAt = $startedAt; event = $event } }
+# Uden event-felt (gammelt JSON-format): kan ikke bevises at komme fra main.
+$gateNoEvent = [pscustomobject]@{ name = 'review-gate'; bucket = 'pass'; startedAt = '2026-10-15T10:00:00Z' }
 $league = [pscustomobject]@{ name = 'league-size-invariant'; bucket = 'pass'; startedAt = '2026-10-15T10:00:00Z' }
 $gateCases = @(
   @{ Name='gate missing (PR from before the gate)'; Checks=@($league); Expected=1 },
@@ -29,7 +31,11 @@ $gateCases = @(
   @{ Name='newest run wins (old fail, new pass)'; Checks=@((Gate 'fail' '2026-10-15T09:00:00Z'), (Gate 'pass' '2026-10-15T11:00:00Z')); Expected=0 },
   @{ Name='newest run wins (old pass, new fail)'; Checks=@((Gate 'pass' '2026-10-15T09:00:00Z'), (Gate 'fail' '2026-10-15T11:00:00Z')); Expected=1 },
   @{ Name='unstarted run counts as newest (null)'; Checks=@((Gate 'pass' '2026-10-15T09:00:00Z'), (Gate 'pending' $null)); Expected=8 },
-  @{ Name='unstarted run counts as newest (zero date)'; Checks=@((Gate 'pass' '2026-10-15T09:00:00Z'), (Gate 'pending' '0001-01-01T00:00:00Z')); Expected=8 }
+  @{ Name='unstarted run counts as newest (zero date)'; Checks=@((Gate 'pass' '2026-10-15T09:00:00Z'), (Gate 'pending' '0001-01-01T00:00:00Z')); Expected=8 },
+  # Codex-fund #6657: et PR-styret job (pull_request) med samme navn kan ikke efterligne gaten.
+  @{ Name='spoofed pull_request check alone = missing'; Checks=@($league, (Gate 'pass' '2026-10-15T10:00:00Z' 'pull_request')); Expected=1 },
+  @{ Name='spoofed newer pass ignored, trusted fail wins'; Checks=@((Gate 'fail' '2026-10-15T09:00:00Z'), (Gate 'pass' '2026-10-15T11:00:00Z' 'pull_request')); Expected=1 },
+  @{ Name='check without event field is untrusted'; Checks=@($league, $gateNoEvent); Expected=1 }
 )
 foreach ($case in $gateCases) {
   $actual = Get-ReviewGateCheckExitCode -Checks $case.Checks

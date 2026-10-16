@@ -111,7 +111,7 @@ function Get-PrPlanEntry([int]$number) {
   # #4753: the production invariant is mandatory even before GitHub settings
   # are updated. Missing, pending, skipped and failing all stop this queue.
   if ($checksExit -eq 0) {
-    $leagueJson = & gh pr checks $number --repo $Repo --json name,bucket,startedAt
+    $leagueJson = & gh pr checks $number --repo $Repo --json name,bucket,startedAt,event
     $leagueExit = $LASTEXITCODE
     try {
       if ($leagueExit -notin @(0, 1, 8)) {
@@ -123,8 +123,8 @@ function Get-PrPlanEntry([int]$number) {
         # required. Rod/mangler = stop, afventer = vent (scripts/lib/league-check.ps1).
         $gateCode = Get-ReviewGateCheckExitCode -Checks $allChecks
         $checksExit = $(if ($leagueCode -eq 1 -or $gateCode -eq 1) { 1 } elseif ($leagueCode -eq 8 -or $gateCode -eq 8) { 8 } else { 0 })
-        if (@($allChecks | Where-Object { $_.name -eq 'review-gate' }).Count -eq 0) {
-          Write-Host "      (PR #${number}: intet review-gate-check - push et commit eller skift en label for at starte det, #6654)" -ForegroundColor DarkYellow
+        if (@($allChecks | Where-Object { Test-TrustedReviewGateCheck $_ }).Count -eq 0) {
+          Write-Host "      (PR #${number}: intet review-gate-check fra pull_request_target - push et commit eller skift en label for at starte det, #6654)" -ForegroundColor DarkYellow
         }
       }
     } catch { $checksExit = 1 }

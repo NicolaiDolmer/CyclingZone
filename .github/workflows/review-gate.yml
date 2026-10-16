@@ -8,22 +8,31 @@ name: Review gate
 #     risk:high/security): derudover Claude-review-markoer uden blokerende fund.
 #   - CodeRabbit er bonus, aldrig krav. Dependabot er undtaget (rule 35 c).
 #
-# Check'et hedder `review-gate` og produceres KUN af pull_request-jobbet herunder
-# (eet stabilt check-navn, jf. scripts/check-required-ci-jobs.mjs). Codex-
-# kommentarer, Claude-markoerer, reviews og loeste traade aendrer ikke HEAD; de
-# genkoerer i stedet den seneste review-gate-koersel for PR'ens HEAD
-# (refresh-jobbet). Traad-"Resolve" har ingen workflow-trigger, saa en
-# planlagt refresh samler dem op hver halve time; vil man ikke vente:
+# Check'et hedder `review-gate` og produceres KUN af pull_request_target-jobbet
+# herunder (eet stabilt check-navn). Codex-kommentarer, Claude-markoerer, reviews
+# og loeste traade aendrer ikke HEAD; de genkoerer i stedet den seneste
+# review-gate-koersel for PR'ens HEAD (refresh-jobbet). Traad-"Resolve" har
+# ingen workflow-trigger, saa en planlagt refresh samler dem op hver halve
+# time; vil man ikke vente:
 #   gh workflow run review-gate.yml -f pr=<N>
 #
-# Scriptet hentes fra main, ikke fra PR'en, saa en PR ikke kan goere sig selv
-# groen ved at aendre klassifikatoren (bootstrap: kun indtil scriptet er paa main).
+# Tillid (Codex-fund #6657): gate-jobbet koerer paa pull_request_target, saa
+# baade DENNE YAML og scriptet kommer fra main. En PR kan hverken aendre
+# klassifikatoren eller erstatte evaluerings-steppet med en no-op; en PR der
+# aendrer filen her, er selv hoejrisiko og evalueres af mains version. Jobbet
+# checker aldrig PR'ens kode ud og har kun laese-rettigheder. Merge-koeen
+# (scripts/lib/league-check.ps1) taeller kun review-gate-checks fra
+# pull_request_target, saa et job med samme navn i en PR-styret workflow ikke
+# kan efterligne gaten. Foer filen er paa main, findes check'et ikke (bootstrap).
 #
 # Required-check er EJERENS indstilling (branch protection) - se PR #6657.
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  pull_request:
+    # Kun gatens egne unit-tests (paa PR'ens kode); selve gaten er pull_request_target.
+    types: [opened, synchronize, reopened, ready_for_review]
   pull_request_review:
     types: [submitted, edited, dismissed]
   issue_comment:
@@ -46,7 +55,8 @@ permissions:
 jobs:
   review-gate:
     name: review-gate
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    # pull_request_target: YAML + script fra main (se headeren). Checker ALDRIG PR'ens kode ud.
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -64,15 +74,6 @@ jobs:
           persist-credentials: false
           sparse-checkout: scripts/review-gate.mjs
           sparse-checkout-cone-mode: false
-
-      - name: Bootstrap (scriptet findes endnu ikke paa main)
-        if: hashFiles('scripts/review-gate.mjs') == ''
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          echo "::warning::scripts/review-gate.mjs findes ikke paa main endnu - bruger PR'ens version (kun foer #6654 er merget)."
-          git fetch --depth=1 origin "$HEAD_SHA"
-          git checkout FETCH_HEAD -- scripts/review-gate.mjs
 
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
@@ -100,6 +101,7 @@ jobs:
             scripts/review-gate.mjs
             scripts/review-gate.test.mjs
             .coderabbit.yaml
+            .github/
           sparse-checkout-cone-mode: false
 
       - name: Set up Node.js
@@ -138,20 +140,14 @@ jobs:
           sparse-checkout: scripts/review-gate.mjs
           sparse-checkout-cone-mode: false
 
-      - name: Bootstrap (scriptet findes endnu ikke paa main)
-        if: hashFiles('scripts/review-gate.mjs') == '' && github.event.pull_request.head.sha != ''
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git fetch --depth=1 origin "$HEAD_SHA"
-          git checkout FETCH_HEAD -- scripts/review-gate.mjs
-
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24
 
       - name: Genkoer review-gate
+        # Foer #6654 er merget, findes scriptet ikke paa main og der er intet at genkoere.
+        if: hashFiles('scripts/review-gate.mjs') != ''
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}

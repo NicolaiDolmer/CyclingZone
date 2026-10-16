@@ -6,8 +6,9 @@
 //     uloeste Codex-fund (en Codex-traad er loest naar den er markeret
 //     "Resolve conversation"). Review-bevis fra et aeldre commit taeller ikke.
 //   - HOEJRISIKO (motor, database/migrationer/RLS, penge/oekonomi, betaling/
-//     abonnement, auth/sikkerhed/webhooks/CORS/rate-limit, cron, backend-routes/API,
-//     workflows, review-gaten selv (inkl. .coderabbit.yaml og merge-koeen), eller label
+//     abonnement, auth/sikkerhed/webhooks/CORS/rate-limit, cron, backend-routes/API
+//     (inkl. *Handlers), workflows og CI-vagt-scripts, review-gaten selv (inkl.
+//     .coderabbit.yaml og merge-koeen), eller label
 //     risk:high/security): derudover en
 //     Claude-review-markoer for HEAD uden blokerende fund:
 //         <!-- claude-review: clean|notes|blocking sha=<HEAD-commit> -->
@@ -58,12 +59,19 @@ const HIGH_RISK_RULES = Object.freeze([
   // Review-gaten selv: klassifikator/gate, CodeRabbit-daekningen og merge-koeens
   // haandhaevelse. En PR der svaekker dem svaekker reviewet af alle senere PR'er.
   { reason: "review-gate", re: /^(scripts\/review-gate\.mjs|\.coderabbit\.yaml|scripts\/merge-queue\.ps1|scripts\/lib\/league-check\.ps1)$/ },
+  // CI-vagterne workflows koerer (check-required-ci-jobs, lint-*, audit-*, scripts/ci/ ...)
+  // og deres baselines: en PR der svaekker en vagt er lige saa farlig som en der
+  // aendrer workflow-YAML'en (Codex-fund #6657). Navnefamilien er kontrakten;
+  // review-gate.test.mjs tjekker at hver vagt som en workflow koerer er med.
+  { reason: "ci", re: /^scripts\/(ci\/.+|(ci|check|lint|audit|i18n-check|tone-check)-[^/]+|[^/]+-baseline\.js)$/ },
   // CORS-allowlisten (corsOrigin) og misbrugsvaernet (rateLimiters, DM-rate-guard).
   { reason: "sikkerhed", re: backendName("cors|rateLimit|rateGuard") },
   // Penge/oekonomi: backend-kode hvis filnavn handler om penge (saldo, overfoersler, kontrakter).
   // "value" = rytter-vaerdi (riderValueRefresh, sundayValueSweep, marketValue*): skriver
   // base_value og loenvaerdi for alle ryttere, ogsaa fra cron.
-  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation|value") },
+  // "facilit" = facilitetskoeb/-opgradering og personale-loen (facilityService debiterer
+  // via economyEngine og tjekker saldo; Codex-fund #6657).
+  { reason: "penge", re: backendName("econom|financ|salar|wage|prize|sponsor|loan|payout|price|pricing|payment|wallet|budget|debt|auction|bid|balance|transfer|contract|money|cash|revenue|income|expense|transaction|ledger|valuation|value|facilit") },
   // Betaling/abonnement (rigtige penge): checkout, kundeportal, abonnementsstatus,
   // adgang til betalt indhold og betalingsudbyderens webhook.
   { reason: "betaling", re: backendName("billing|checkout|subscription|entitlement|alunta|refund|invoice") },
@@ -85,9 +93,15 @@ const HIGH_RISK_RULES = Object.freeze([
   // ellers "Rls"/"RLS" (camelCase/versaler). "urlState" (rlS) og "denyUrls"
   // (Urls) er URL'er, ikke RLS.
   { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?([^/]*[_.-])?rls[^/]*$|^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(Rls|RLS)[^/]*$/ },
+  // Frontendens kanoniske Supabase-klient: login/signup/logout, session og
+  // Authorization-headeren som alle API-kald bruger (Codex-fund #6657).
+  { reason: "auth", re: /^frontend\/src\/lib\/supabase\.[^/]+$/ },
   // API-fladen (efter auth, saa admin-routes melder "auth"): hver route haandhaever
-  // selv auth/ejerskab, og server.js monterer dem.
+  // selv auth/ejerskab, og server.js monterer dem. *Handlers i backend/ er route-
+  // logikken bag tynde wrappers i routes/api.js (service-role, ejerskabsfiltre;
+  // Codex-fund #6657).
   { reason: "api", re: /^backend\/(routes|api)\/|^backend\/server\.[cm]?[jt]s$/ },
+  { reason: "api", re: backendName("handlers") },
 ]);
 
 const norm = (p) => String(p || "").replace(/\\/g, "/").replace(/^\.\//, "");
@@ -438,7 +452,7 @@ export function fetchPrData(repo, pr) {
  * matcher en frisk evaluering (spar runner-tid og stoej i Actions-listen).
  */
 export function shouldRerun(run, freshOk) {
-  if (!run) return { rerun: false, why: "ingen pull_request-koersel for HEAD endnu" };
+  if (!run) return { rerun: false, why: "ingen gate-koersel for HEAD endnu" };
   if (run.status !== "completed") return { rerun: false, why: `koersel ${run.id} koerer allerede` };
   if (run.conclusion === "skipped") return { rerun: false, why: "seneste koersel var draft (skipped)" };
   const wasOk = run.conclusion === "success";
@@ -447,24 +461,30 @@ export function shouldRerun(run, freshOk) {
 }
 
 /**
- * Find PR'ens seneste pull_request-koersel af gaten. Matcher paa PR-associationen
- * (run.pull_requests[].number), ikke paa run.head_sha alene: for pull_request-
- * workflows kan koerslens SHA vaere merge-commit'et. Koersler for HEAD foretraekkes.
+ * Find PR'ens seneste koersel af gaten. Gaten koerer paa pull_request_target
+ * (YAML fra main, Codex-fund #6657), og dens koersler har en TOM pull_requests-
+ * liste men run.head_sha = PR'ens HEAD; de matches paa HEAD. En koersel der er
+ * associeret med en ANDEN PR bruges aldrig. Koersler med PR-association matches
+ * paa nummeret (run.head_sha kan vaere merge-commit'et). Koersler for HEAD foretraekkes.
  */
 export function pickGateRun(runs = [], pr, headSha) {
   const ofPr = (r) => (r.pull_requests || []).filter((p) => Number(p.number) === Number(pr));
-  const forPr = runs.filter((r) => ofPr(r).length > 0);
+  const unassociatedAtHead = (r) => (r.pull_requests || []).length === 0 && shaMatchesHead(r.head_sha, headSha);
+  const forPr = runs.filter((r) => ofPr(r).length > 0 || unassociatedAtHead(r));
   const newest = (list) => [...list].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0] || null;
   const atHead = forPr.filter((r) => shaMatchesHead(r.head_sha, headSha) || ofPr(r).some((p) => shaMatchesHead(p.head?.sha, headSha)));
   return newest(atHead) || newest(forPr);
 }
 
-/** Genkoer seneste pull_request-koersel af gaten for PR'en (check'et opdateres paa stedet). */
+/** Event gate-check'et produceres af. Kun koersler herfra taeller (merge-koeen filtrerer ogsaa paa det). */
+export const GATE_EVENT = "pull_request_target";
+
+/** Genkoer seneste pull_request_target-koersel af gaten for PR'en (check'et opdateres paa stedet). */
 function rerunGate(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   if (meta.state !== "open" || meta.draft) return `#${pr}: springes over (${meta.state}${meta.draft ? ", draft" : ""})`;
   const branch = encodeURIComponent(meta.head.ref);
-  const runs = ghJson(["api", `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=pull_request&branch=${branch}&per_page=50`]).workflow_runs || [];
+  const runs = ghJson(["api", `repos/${repo}/actions/workflows/${WORKFLOW_FILE}/runs?event=${GATE_EVENT}&branch=${branch}&per_page=50`]).workflow_runs || [];
   const run = pickGateRun(runs, pr, meta.head.sha);
   const fresh = evaluateGate(fetchPrData(repo, pr));
   const decision = shouldRerun(run, fresh.ok);

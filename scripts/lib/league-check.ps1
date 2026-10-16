@@ -12,9 +12,18 @@ function Get-LeagueCheckExitCode {
 # GitHubs nul-dato, er endnu ikke startet og regnes som nyest). Rod, skippet og
 # MANGLENDE check = stop (1): en PR uden gate-koersel har intet review-bevis.
 # Afventer = vent (8).
+# Kun checks fra event pull_request_target taeller (Codex-fund #6657): dér kommer
+# YAML'en fra main. Et job med samme navn i en PR-styret workflow (pull_request)
+# kan ikke efterligne gaten. Inputtet er `gh pr checks --json name,bucket,startedAt,event`.
+function Test-TrustedReviewGateCheck($Check) {
+  if ($Check.name -ne 'review-gate') { return $false }
+  $eventProp = $Check.PSObject.Properties['event']
+  return [bool]($eventProp -and $eventProp.Value -eq 'pull_request_target')
+}
+
 function Get-ReviewGateCheckExitCode {
   param([object[]] $Checks)
-  $runs = @($Checks | Where-Object { $_.name -eq 'review-gate' })
+  $runs = @($Checks | Where-Object { Test-TrustedReviewGateCheck $_ })
   if ($runs.Count -eq 0) { return 1 }
   $gate = @($runs | Sort-Object -Descending {
       $at = $_.startedAt

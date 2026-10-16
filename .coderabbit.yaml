@@ -35,7 +35,8 @@ reviews:
 
   # KUN højrisiko-stier (#6654): motor, database/RLS, penge/økonomi,
   # betaling/abonnement, auth/sikkerhed/webhooks/CORS/rate-limit, cron,
-  # backend-routes/API, workflows og review-gaten selv. Hold i sync med
+  # backend-routes/API (inkl. *Handlers), workflows, CI-vagt-scripts og
+  # review-gaten selv. Hold i sync med
   # HIGH_RISK_RULES i scripts/review-gate.mjs (review-gate.test.mjs sammenligner
   # dem for hver fil i repoet). Derefter: skær støj fra (genereret, binært, lockfiles).
   path_filters:
@@ -50,6 +51,14 @@ reviews:
     - "scripts/review-gate.mjs"
     - "scripts/merge-queue.ps1"
     - "scripts/lib/league-check.ps1"
+    - "scripts/ci/**"
+    - "scripts/ci-*"
+    - "scripts/check-*"
+    - "scripts/lint-*"
+    - "scripts/audit-*"
+    - "scripts/i18n-check-*"
+    - "scripts/tone-check-*"
+    - "scripts/*-baseline.js"
     - "backend/**/*[Cc]ors*"
     - "backend/**/*[Rr]ate[Ll]imit*"
     - "backend/**/*[Rr]ate[Gg]uard*"
@@ -80,6 +89,7 @@ reviews:
     - "backend/**/*[Ll]edger*"
     - "backend/**/*[Vv]aluation*"
     - "backend/**/*[Vv]alue*"
+    - "backend/**/*[Ff]acilit*"
     - "backend/**/*[Bb]illing*"
     - "backend/**/*[Cc]heckout*"
     - "backend/**/*[Ss]ubscription*"
@@ -99,6 +109,8 @@ reviews:
     - "backend/routes/**"
     - "backend/api/**"
     - "backend/server.*"
+    - "backend/**/*[Hh]andlers*"
+    - "frontend/src/lib/supabase.*"
     - "{backend,frontend/src/lib}/**/*[Aa]uth*"
     - "{backend,frontend/src/lib}/**/*[Tt]oken*"
     - "{backend,frontend/src/lib}/**/*[Ss]ecurity*"

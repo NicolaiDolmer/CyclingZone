@@ -169,6 +169,57 @@ test("classifyFile: afmeldings-linket (emailUnsub*) er auth", () => {
   assert.equal(classifyRisk(["backend/lib/emailUnsubRoute.js"]).level, "high");
 });
 
+// Codex-fund paa #6657 (runde 6): Supabase-klienten (login/session/Bearer-header),
+// route-handlerne bag routes/api.js, facilitetskoeb og CI-vagt-scripts gled
+// igennem som lav risiko.
+const ROUND6 = Object.freeze({
+  "frontend/src/lib/supabase.ts": "auth",
+  "backend/lib/facilityService.js": "penge",
+  "backend/lib/facilityEngine.js": "penge",
+  "backend/lib/facilityRoutesHandlers.js": "penge",
+  "backend/lib/staffOverviewHandlers.js": "api",
+  "backend/lib/teamPublicProfileHandlers.js": "api",
+  "scripts/check-required-ci-jobs.mjs": "ci",
+  "scripts/ci-required-checks.js": "ci",
+  "scripts/ci/check-workflow-checkout.mjs": "ci",
+  "scripts/ci/cron-source-map.json": "ci",
+  "scripts/lint-swallowed-catches.mjs": "ci",
+  "scripts/audit-rls-coverage.js": "ci",
+  "scripts/i18n-check-keys.mjs": "ci",
+  "scripts/tone-check-em-dash.mjs": "ci",
+  "scripts/eslint-disable-baseline.js": "ci",
+});
+
+test("classifyFile: Supabase-klienten, *Handlers, faciliteter og CI-vagter er hoejrisiko", () => {
+  for (const [f, reason] of Object.entries(ROUND6)) assert.equal(classifyFile(f), reason, f);
+  assert.equal(classifyFile("frontend/src/lib/supabasePagination.js"), null, "kun den kanoniske klient");
+  assert.equal(classifyFile("scripts/check-required-ci-jobs.test.mjs"), null, "tests er stadig tests");
+  assert.equal(classifyFile("scripts/ci/cron-deploy-verification.test.mjs"), null);
+  assert.equal(classifyFile("backend/lib/facilityService.test.js"), null);
+  assert.equal(classifyFile("frontend/src/pages/FacilitiesPage.jsx"), null, "UI om faciliteter er ikke pengekode");
+  assert.equal(classifyFile("scripts/make-wave-brief.mjs"), null, "vaerktoej uden for vagt-familien");
+  assert.equal(classifyRisk(["frontend/src/lib/supabase.ts"]).level, "high");
+});
+
+test("hver CI-vagt som en workflow koerer, er hoejrisiko (vagt-familien er komplet)", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const tracked = new Set(execFileSync("git", ["ls-files"], { cwd: root, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+    .split(/\r?\n/).filter(Boolean));
+  const workflows = [...tracked].filter((f) => /^\.github\/(workflows|actions)\/.+\.ya?ml$/.test(f));
+  const referenced = new Set();
+  for (const wf of workflows) {
+    const text = readFileSync(new URL(`../${wf}`, import.meta.url), "utf8");
+    for (const m of text.matchAll(/scripts\/[A-Za-z0-9_./-]+\.(?:mjs|cjs|js|ts|ps1|sh|json)/g)) {
+      if (tracked.has(m[0]) && !isTestFile(m[0])) referenced.add(m[0]);
+    }
+  }
+  assert.ok(referenced.has("scripts/check-required-ci-jobs.mjs"), "workflows koerer check-required-ci-jobs");
+  // En vagt = et script hvis navn siger check/lint/audit, eller som ligger i scripts/ci/.
+  const isGuard = (f) => f.startsWith("scripts/ci/") || /(^|\/)(ci|check|lint|audit|i18n-check|tone-check)-[^/]+$/.test(f);
+  const missing = [...referenced].filter((f) => isGuard(f) && classifyFile(f) === null);
+  assert.deepEqual(missing, [], "CI-vagter uden hoejrisiko-regel (udvid ci-reglen + .coderabbit.yaml)");
+});
+
 test("classifyFile: authorize/authorization er auth, Author (forum) er ikke", () => {
   assert.equal(classifyFile("backend/lib/authorizeTeamAction.js"), "auth");
   assert.equal(classifyFile("backend/lib/requestAuthorization.js"), "auth");
@@ -267,7 +318,7 @@ test(".coderabbit.yaml: auto-review daekker alle hoejrisiko-stier og ingen lavri
     "backend/lib/urlSafety.js", ".gitleaks.toml", "backend/lib/someWriteRpc.js", "backend/lib/weeklyScheduler.js",
     "backend/api/featureFlagsApi.js", "backend/server.js", "backend/lib/authorizeTeamAction.js",
     ...Object.keys(CORE_MOTOR_MONEY), ...Object.keys(BILLING_WEBHOOK), ...Object.keys(VALUE_OWNER_GATE),
-    ...Object.keys(GATE_SECURITY), "backend/scripts/audit-rls-coverage.js",
+    ...Object.keys(GATE_SECURITY), ...Object.keys(ROUND6), "backend/scripts/audit-rls-coverage.js",
   ];
   for (const f of high) {
     assert.ok(classifyFile(f), `klassifikatoren: ${f} er hoejrisiko`);
@@ -539,6 +590,18 @@ test("pickGateRun: finder koerslen via PR-associationen, ogsaa naar run.head_sha
   assert.equal(pickGateRun(runs, 43, HEAD), null, "andre PR'ers koersler bruges aldrig");
   assert.equal(pickGateRun([{ id: 5, created_at: "t", head_sha: HEAD, pull_requests: [{ number: 42 }] }], 42, HEAD).id, 5);
   assert.equal(pickGateRun([], 42, HEAD), null);
+});
+
+test("pickGateRun: pull_request_target-koersler (tom pull_requests) matches paa HEAD (#6657 Codex-fund)", () => {
+  // Maalt paa repoet: pull_request_target-koersler har pull_requests: [] og head_sha = PR'ens HEAD.
+  const runs = [
+    { id: 10, created_at: "2026-10-16T09:00:00Z", head_sha: OLD, pull_requests: [] },
+    { id: 11, created_at: "2026-10-16T10:00:00Z", head_sha: HEAD, pull_requests: [] },
+    { id: 12, created_at: "2026-10-16T11:00:00Z", head_sha: HEAD, pull_requests: [{ number: 7, head: { sha: HEAD } }] },
+  ];
+  assert.equal(pickGateRun(runs, 42, HEAD).id, 11, "uassocieret koersel for HEAD");
+  assert.equal(pickGateRun(runs.slice(0, 1), 42, HEAD), null, "uassocieret koersel for et andet commit bruges aldrig");
+  assert.equal(pickGateRun(runs.slice(2), 42, HEAD), null, "koersel associeret med en anden PR bruges aldrig");
 });
 
 // ── Escaped defects ──
