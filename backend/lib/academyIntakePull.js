@@ -21,9 +21,14 @@ import {
 import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
-import { SUNDAY_DRIP_COUNT } from "./sundayIntakeTick.js";
+import {
+  buildProfileGeneratorOptions,
+  candidatesForTier,
+  loadAcademyProfileState,
+} from "./academyIntakeProfile.ts";
 
 const PULL_SEED_BASE = 3550;
+export const INTAKE_PULL_SOURCE = "pull";
 
 // ── Symbolsk start (ejer-beslutning 19/8, punkt 2) ────────────────────────────
 // Ved hentning trækkes kandidatens market_value uniformt i dette interval — IKKE
@@ -108,6 +113,7 @@ export async function pullWeeklyAcademyIntake(supabase, {
   deriveRiders = deriveForRiderIds,
   isEnabled = isAcademyIntakePullEnabled,
   seedCohortFn = seedAcademyCohortForTeam,
+  loadProfileState = loadAcademyProfileState,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -129,30 +135,96 @@ export async function pullWeeklyAcademyIntake(supabase, {
   if (claimErr) throw new Error(`academy-intake-pull claim: ${claimErr.message}`);
   if (!claim?.length) return { ok: true, alreadyPulled: true, weekSunday, candidates: [] };
 
-  const { data: teamRow, error: teamErr } = await supabase
-    .from("teams").select("id, season_1_identity_basis").eq("id", teamId).maybeSingle();
-  if (teamErr) throw new Error(`academy-intake-pull team lookup: ${teamErr.message}`);
+  // #6666 (CodeRabbit Major): claim + kuld + derive + provisoriske værdier er ÉN
+  // handling. Fejler et trin efter claimet, fjernes kuldets rækker OG claimet før
+  // fejlen kastes videre, så samme uge kan hentes igen (ingen halve kuld, intet
+  // "allerede hentet" uden kandidater). Claimet slettes SIDST: mens oprydningen
+  // kører, blokerer det stadig et parallelt klik.
+  /** @type {string[]} */
+  let newIds = [];
+  try {
+    const { data: teamRow, error: teamErr } = await supabase
+      .from("teams").select("id, season_1_identity_basis").eq("id", teamId).maybeSingle();
+    if (teamErr) throw new Error(`academy-intake-pull team lookup: ${teamErr.message}`);
 
-  const referenceYear = referenceYearForSeason(season);
-  const existingNames = await fetchExistingFoldedRiderNames(supabase);
-  const rng = makeRng(((seed >>> 0) ^ hashStringToSeed(`${teamId}:${weekSunday}`)) >>> 0);
+    const referenceYear = referenceYearForSeason(season);
+    const existingNames = await fetchExistingFoldedRiderNames(supabase);
+    const rng = makeRng(((seed >>> 0) ^ hashStringToSeed(`${teamId}:${weekSunday}`)) >>> 0);
 
-  const newIds = await seedCohortFn(supabase, {
-    teamId,
-    season,
-    referenceYear,
-    existingNames,
-    rng,
-    identityBasis: teamRow?.season_1_identity_basis || null,
-    countOverride: SUNDAY_DRIP_COUNT,
-  });
+    // #6666 punkt 4: akademi-facilitetens niveau afgør kuldets størrelse og hvor
+    // meget den AKTIVE profil (den der er trådt i kraft, punkt 5) må overvægte.
+    // Potentiale-trækket er urørt: profilen flytter nationalitet og anlæg, ikke talent.
+    const profileState = await loadProfileState(supabase, { teamId, now });
+    const generatorOptions = buildProfileGeneratorOptions(profileState.effective, profileState.tier);
 
-  if (newIds.length > 0) {
-    await deriveRiders(supabase, newIds, { dryRun: false });
-    // #3550 punkt 2: provisorisk værdi skrives EFTER derive (som ellers ville
-    // regne den "rigtige" værdi ud fra evnerne) og FØR noget kan signes.
-    await applyProvisionalValues(supabase, newIds, rng);
+    newIds = await seedCohortFn(supabase, {
+      teamId,
+      season,
+      referenceYear,
+      existingNames,
+      rng,
+      identityBasis: teamRow?.season_1_identity_basis || null,
+      countOverride: candidatesForTier(profileState.tier),
+      generatorOptions,
+      source: INTAKE_PULL_SOURCE, // #6155: kortet viser kun 'provisional value' på pull-kandidater
+    });
+
+    if (newIds.length > 0) {
+      await deriveRiders(supabase, newIds, { dryRun: false });
+      // #3550 punkt 2: provisorisk værdi skrives EFTER derive (som ellers ville
+      // regne den "rigtige" værdi ud fra evnerne) og FØR noget kan signes.
+      await applyProvisionalValues(supabase, newIds, rng);
+    }
+  } catch (err) {
+    // Codex 16/10: fejlede kuld-oprettelsen OG dens egen oprydning, bærer fejlen
+    // de efterladte ryttere; så ryddes de her, og lykkes det ikke, beholdes claimet.
+    const orphanIds = /** @type {any} */ (err)?.orphanRiderIds;
+    const ids = newIds.length > 0 ? newIds : (Array.isArray(orphanIds) ? orphanIds : []);
+    await rollbackPull(supabase, { teamId, weekSunday, riderIds: ids, cause: err });
+    throw err;
   }
 
   return { ok: true, alreadyPulled: false, weekSunday, candidates: newIds };
+}
+
+/**
+ * Kompenserende oprydning for en fejlet hentning (#6666). Sletter kuldets
+ * intake-rækker og ryttere (derive-rækkerne følger med via ON DELETE CASCADE på
+ * riders) og derefter claimet. Fejler sletningen af kuldet, BEHOLDES claimet:
+ * et nyt forsøg ville ellers lægge et andet kuld oven i resterne. Fejlen bærer
+ * så begge årsager, så den kan ryddes manuelt.
+ *
+ * @param {any} supabase
+ * @param {{ teamId: string, weekSunday: string, riderIds: string[], cause: unknown }} ctx
+ */
+async function rollbackPull(supabase, { teamId, weekSunday, riderIds, cause }) {
+  const failures = [];
+  let keepClaim = false;
+  if (riderIds.length > 0) {
+    // Codex 16/10 (P1): kun kandidater der STADIG er 'offered' må slettes. En
+    // kandidat der er signeret (gebyr betalt) eller afvist i en anden fane i
+    // mellemtiden, røres ikke, og så beholdes ugens claim også.
+    const { error: intakeErr } = await supabase.from("academy_intake")
+      .delete().in("rider_id", riderIds).eq("status", "offered");
+    if (intakeErr) failures.push(`intake rows: ${intakeErr.message}`);
+    // Det der er tilbage, er afgjort (signeret/afvist) og skal blive.
+    const { data: kept, error: keptErr } = await supabase.from("academy_intake")
+      .select("rider_id").in("rider_id", riderIds);
+    if (keptErr) failures.push(`intake check: ${keptErr.message}`);
+    const keptIds = new Set((kept ?? []).map((/** @type {{ rider_id: string }} */ r) => r.rider_id));
+    if (keptIds.size > 0) keepClaim = true;
+    const toDelete = riderIds.filter((id) => !keptIds.has(id));
+    if (!intakeErr && !keptErr && toDelete.length > 0) {
+      const { error: riderErr } = await supabase.from("riders").delete().in("id", toDelete);
+      if (riderErr) failures.push(`riders: ${riderErr.message}`);
+    }
+  }
+  if (failures.length === 0 && !keepClaim) {
+    const { error: claimErr } = await supabase
+      .from("academy_intake_ticks").delete().eq("team_id", teamId).eq("tick_date", weekSunday);
+    if (claimErr) failures.push(`claim: ${claimErr.message}`);
+  }
+  if (failures.length > 0 && cause instanceof Error) {
+    cause.message = `${cause.message} (academy-intake-pull rollback incomplete for team ${teamId}, week ${weekSunday}: ${failures.join("; ")})`;
+  }
 }

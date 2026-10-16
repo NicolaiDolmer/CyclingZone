@@ -69,8 +69,8 @@ const BoardPage = lazy(() => import("./pages/BoardPage"));
 const SponsorsPage = lazy(() => import("./pages/SponsorsPage"));
 // #4557 (S-M2b): tynd kill-switch-wrapper — se pages/boardroom/BoardroomRoute.jsx.
 const BoardroomRoute = lazy(() => import("./pages/boardroom/BoardroomRoute"));
-// #4557 (S-M2c): aarsmoedet — fuldskaerms-takeover, UDEN for Layout/sidebar
-// (spec §4.7: navy-baandet spaender hele bredden, matcher mockuppen 1:1).
+// #4557 (S-M2c): aarsmoedet — INDE i Layout (venstremenuen bliver, #5848); navy-baandet
+// spaender hele indholdsbredden (FULL_BLEED i Layout.jsx).
 const AnnualMeetingRoute = lazy(() => import("./pages/annualMeeting/AnnualMeetingRoute"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
 const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage"));
@@ -320,16 +320,6 @@ export default function App() {
               loggede-ind ryger til appen. */}
           <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
 
-          {/* #4557 (S-M2c) — aarsmoedet er en fuldskaerms-takeover UDEN for
-              Layout (ingen sidebar, spec §4.7's navy-baand spaender hele
-              bredden). Egen ProtectedRoute-instans, registreret foer Layout-
-              blokken saa den aldrig arver sidebaren. */}
-          <Route path="/board/meeting" element={
-            <ProtectedRoute session={session}>
-              <I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><AnnualMeetingRoute /></I18nReadyGate></I18nReadyGate>
-            </ProtectedRoute>
-          } />
-
           {/* App-flader: pathless protected layout-route — URL'erne (/dashboard, /riders ...)
               er uændrede, men "/" er ikke længere forælder, så landing kan eje roden. */}
           <Route element={
@@ -354,6 +344,9 @@ export default function App() {
                 Rytterrangliste · Global Rank som faner). ?view=/?compare=-dybe
                 links lander uændret på liga-fanen (default). */}
             <Route path="standings" element={<I18nReadyGate ns="standings"><RankingsHubPage /></I18nReadyGate>} />
+            {/* #5848: aarsmoedet bor INDE i Layout (sidebaren bliver); Layout.jsx goer
+                ruten full-bleed, saa spec §4.7's navy-baand stadig spaender bredden. */}
+            <Route path="board/meeting" element={<I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><AnnualMeetingRoute /></I18nReadyGate></I18nReadyGate>} />
             <Route path="board" element={<I18nReadyGate ns="board"><I18nReadyGate ns="backendMessages"><BoardroomRoute LegacyBoardPage={BoardPage} /></I18nReadyGate></I18nReadyGate>} />
             {/* #4265: sponsorerne har egen side under Klubhus — forhandlingen er
                 flyttet af Board-fladen (BOARD_RULES.md §5). */}

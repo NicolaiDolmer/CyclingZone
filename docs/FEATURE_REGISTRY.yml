@@ -102,7 +102,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v4 (timeModel.ts, segmentLoop.ts). Prod 15/10: løb bundet til v2, v3 og v4 (flest v4) via races.engine_rules_revision (#6642)."
+    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). Aktuel er official_times_v5 fra ejerens \"tænd\" 16/10 (#6462, sprinttog kun standard på flade etaper); løb bundet til v2-v4 færdiggøres på deres revision (#6642)."
 
   - id: race-notify-outbox
     area: race-engine
@@ -600,12 +600,12 @@ features:
     area: academy
     title_en: Academy intake pull
     title_da: Træk af akademi-optag
-    state: dormant
+    state: live
     flag: academy_intake_pull_enabled
     ssot: docs/YOUTH_RULES.md
     epic: 3550
-    verified: 2026-09-07
-    note: Erstatter søndagsdrip (#3550).
+    verified: 2026-10-16
+    note: "Erstatter søndagsdrip (#3550). Tændt med Akademi 2.0 (#6666) på ejerens \"tænd\" 16/10; flag on læst i prod 16/10."
 
   - id: season-academy-intake
     area: academy

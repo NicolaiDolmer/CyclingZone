@@ -917,6 +917,8 @@
     "scouting": "Scouter…",
     "scoutTitle": "Send din spejder ud for at skærpe rytterens potentiale-estimat. Hvor meget skarpere det bliver afhænger af din spejders rating",
     "noSlots": "Ingen scout-slots tilbage i denne sæson",
+    "scoutBusy": "Spejderen er optaget, ledig om {minutes, plural, one {1 min} other {# min}}",
+    "scoutBusyNow": "Spejderen er optaget, ledig om et øjeblik",
     "levelUseless": "Din chefspejder har nået sin egen præcisionsgrænse: endnu et niveau ville ikke indsnævre estimatet",
     "levelTitle": "Scout-niveau. Højere er mere præcist, op til din egen spejders præcisionsgrænse",
     "potentialBandTitle": "Forventet niveau som {role}: {lo}-{hi}.",
