@@ -48,14 +48,13 @@
 // foer taend-PR'en (ejer-only) flytter konstanten. races_engine_rules_revision_check goer
 // vaerdien lovlig via 2026-10-16-6369-engine-rules-revision-s5.sql, som skal vaere applied
 // foer taend-PR'en merges.
-// #6462 (ejer 16/10, SLUKKET): "official_times_v5" = hele official_times_v4-pakken + togreglen
+// #6462 (ejer 16/10): "official_times_v5" = hele official_times_v4-pakken + togreglen
 // (sprint-toget er kun STANDARD paa en flad etape; bjerg, enkeltstart, kuperet og brosten har
 // intet tog, medmindre manageren selv saetter det). Reglen ligger i ordre-adapteren
 // (engine/v4/orders/teamOrdersAdapter.ts trainIsDefaultOnStage) bag isOfficialTimesV5OrLater;
 // motoren selv er uaendret. s5_profiles_v1 arver den (S5 = official_times_v5 + S5-motoren).
-// Den er IKKE aktuel: nye loeb binder foerst til den, naar taend-PR'en (ejer-only) flytter
-// CURRENT_RACE_RULES_REVISION. Migrationen 2026-10-16-6462-engine-rules-revision-official-times-v5.sql
-// goer vaerdien lovlig og skal vaere applied foer taend-PR'en merges.
+// Aktuel for nye loeb fra ejerens ordrette "taend"; migrationen
+// 2026-10-16-6462-engine-rules-revision-official-times-v5.sql goer vaerdien lovlig.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
@@ -120,7 +119,7 @@ export function isOfficialTimesV4OrLater(revision: unknown): boolean {
 }
 
 /**
- * #6462 (ejer 16/10, slukket): official_times_v5 eller senere. Sprint-toget er
+ * #6462 (ejer 16/10, aktuel fra ejerens "taend"): official_times_v5 eller senere. Sprint-toget er
  * kun STANDARD paa en flad etape (ordre-adapterens trainIsDefaultOnStage);
  * resten er official_times_v4. s5_profiles_v1 arver reglen.
  */
@@ -206,10 +205,15 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * official_times_v3 (fx Touren) faerdiggoeres paa den. Migrationen
  * 2026-10-12-race-engine-rules-revision-official-times-v4.sql SKAL vaere applied
  * foer foerste claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten.
+ *
+ * "official_times_v5" fra ejerens ordrette "taend" (#6462): togreglen (sprint-
+ * toget er kun STANDARD paa en flad etape) er aktuel for ALLE loeb hvis foerste
+ * etape claimes efter deploy. Loeb der allerede er bundet til official_times_v4
+ * (eller aeldre) faerdiggoeres paa den. Migrationen
+ * 2026-10-16-6462-engine-rules-revision-official-times-v5.sql SKAL vaere applied
+ * foer foerste claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten.
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v4";
-// #6462: official_times_v5 (togreglen) er bygget, men IKKE aktuel. At flytte
-// konstanten hertil er taend-PR'en og kraever ejerens ordrette go.
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "official_times_v5";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;
