@@ -171,8 +171,24 @@ jobs:
           for _ in $(seq 1 20); do
             REVIEW_JSON=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=review" --jq '.check_runs[0] // empty')
             if [ -z "$REVIEW_JSON" ]; then
-              echo "No advisory review check found; continuing."
-              exit 0
+              # Ejer 16/10: CodeRabbit auto-review er slaaet fra; Codex er revieweren.
+              # Fail-closed: kraev Codex' review-state for netop HEAD, faerdig og uden
+              # uloeste fund. Mangler den, venter vi; efter loekken stopper auto-merge.
+              CODEX_STATE=$(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/comments" --paginate --jq '[.[] | select(.user.login == "chatgpt-codex-connector[bot]") | .body | capture("codex-review-state:v1 (?<s>[{].*[}]) -->")? | .s] | last // empty' | tail -n 1)
+              if [ -n "$CODEX_STATE" ]; then
+                C_SHA=$(echo "$CODEX_STATE" | jq -r '.code_review.commit_sha // ""')
+                C_STATUS=$(echo "$CODEX_STATE" | jq -r '.code_review.status // ""')
+                C_OPEN=$(echo "$CODEX_STATE" | jq -r '.code_review.has_unresolved_findings // "unknown"')
+                if [ "$C_SHA" = "$HEAD_SHA" ] && [ "$C_STATUS" = "completed" ] && [ "$C_OPEN" = "false" ]; then
+                  echo "Codex review completed on HEAD without unresolved findings; continuing."
+                  exit 0
+                fi
+                echo "Codex review not clean yet (sha=$C_SHA status=$C_STATUS open=$C_OPEN); waiting."
+              else
+                echo "No Codex review state yet; waiting."
+              fi
+              sleep 15
+              continue
             fi
             STATUS=$(echo "$REVIEW_JSON" | jq -r '.status')
             CONCLUSION=$(echo "$REVIEW_JSON" | jq -r '.conclusion // ""')
