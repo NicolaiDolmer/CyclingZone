@@ -192,7 +192,7 @@ test("buildReport: din rytter vandt = egen saetning; ingen udbrud = ingen udbrud
 test("buildReport: sparsom flad spurt (kun start, spurt, maal) fyldes op til 3 fakta-saetninger (Codex P2)", () => {
   const events = hillyTimeline().filter((e) => ["stage_start", "sprint_decided", "finish"].includes(e.type));
   const s = story(events);
-  const results = RESULTS.map((r) => (r.rank === 1 ? r : r.rank <= 4 ? { ...r, finish_time: "+0:00" } : r));
+  const results = RESULTS.map((r) => (r.rank === 1 ? r : (r.rank ?? 99) <= 4 ? { ...r, finish_time: "+0:00" } : r));
   const c = castFrom(results, [], 3, "t-none");
   const report = buildReport(s, curateMoments(s, c), c);
   const keys = report.map((r) => r.key);
