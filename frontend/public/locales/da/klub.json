@@ -31,7 +31,10 @@
     "trainingNext": "Næste: Niveau {tier} → dine ryttere vil træne {value} hurtigere hver dag",
     "scouting": "Låser op for at ansætte en chefscout: skarpere rytter-vurderinger. En chefscout med omkring 80 i overall kører to spejder-opgaver ad gangen",
     "scoutingBuild": "Byg den for at låse op for at ansætte en chefscout",
-    "scoutingNext": "Næste: Niveau {tier} låser op for en højere-tier chefscout"
+    "scoutingNext": "Næste: Niveau {tier} låser op for en højere-tier chefscout",
+    "academy": "{value} kandidater om ugen, og optaget trækker mod din profil",
+    "academyBuild": "Byg den for flere kandidater om ugen og en profil til dit optag",
+    "academyNext": "Næste: Niveau {tier} giver {value} kandidater om ugen og mere at sige over profilen"
   },
   "nextTier": {
     "generic": "Næste: Niveau {tier} → {value}"
@@ -60,8 +63,8 @@
     },
     "academy": {
       "name": "Akademi-udvidelse",
-      "effect": "intake-slots",
-      "soon": "Flere intake-slots"
+      "effect": "kandidater om ugen",
+      "soon": "Større ugentligt optag med din egen profil"
     },
     "commercial": {
       "name": "Kommerciel afdeling",

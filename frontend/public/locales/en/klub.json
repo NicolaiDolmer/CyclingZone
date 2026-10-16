@@ -31,7 +31,10 @@
     "trainingNext": "Next: Level {tier} → your riders would train {value} faster every day",
     "scouting": "Unlocks hiring a chief scout: sharper rider evaluations. A chief scout rated about 80 overall runs two scouting assignments at once",
     "scoutingBuild": "Build it to unlock hiring a chief scout",
-    "scoutingNext": "Next: Level {tier} unlocks a higher-tier chief scout"
+    "scoutingNext": "Next: Level {tier} unlocks a higher-tier chief scout",
+    "academy": "{value} candidates a week, and your intake leans towards your profile",
+    "academyBuild": "Build it for more weekly candidates and a profile for your intake",
+    "academyNext": "Next: Level {tier} gives {value} candidates a week and more say over the profile"
   },
   "nextTier": {
     "generic": "Next: Level {tier} → {value}"
@@ -60,8 +63,8 @@
     },
     "academy": {
       "name": "Academy Expansion",
-      "effect": "intake slots",
-      "soon": "More intake slots"
+      "effect": "candidates a week",
+      "soon": "A bigger weekly intake with your own profile"
     },
     "commercial": {
       "name": "Commercial Department",

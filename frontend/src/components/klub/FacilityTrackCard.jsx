@@ -77,8 +77,8 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
           {roiText
             ? <span className="text-cz-1">{roiText}</span>
             : <>{t("effect.label")} <span className="font-data text-cz-1">{formatTrackEffect(track, effectiveBonus)}</span> {t(`tracks.${track}.effect`)}</>}
-          {" · "}
-          {staffList.length > 0 ? (
+          {staffSlotsMax > 0 && " · "}
+          {staffSlotsMax === 0 ? null : staffList.length > 0 ? (
             <>
               {staffList.map((s, i) => (
                 <span key={s.id}>
