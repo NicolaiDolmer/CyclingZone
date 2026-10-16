@@ -19,6 +19,10 @@
 
 BEGIN;
 
+-- riders er en varm tabel: giv hellere op end at staa i koe bag en lang laas
+-- (auto-migrate kan koeres igen).
+SET lock_timeout = '3s';
+
 ALTER TABLE public.riders
   ADD COLUMN IF NOT EXISTS promotion_pending_to text,
   ADD COLUMN IF NOT EXISTS promotion_pending_since timestamptz;
@@ -42,10 +46,8 @@ COMMENT ON COLUMN public.riders.promotion_pending_to IS
 COMMENT ON COLUMN public.riders.promotion_pending_since IS
   'Promotion pending (#6710): when the wait started. NULL when not pending.';
 
--- Delvist indeks: kun de faa ventende ryttere (trupsiden + daglige opslag).
-CREATE INDEX IF NOT EXISTS idx_riders_promotion_pending
-  ON public.riders (team_id)
-  WHERE promotion_pending_to IS NOT NULL;
+-- Intet nyt indeks: trupsidens opslag filtrerer paa team_id (et holds ryttere),
+-- og et indeks paa riders kraever CONCURRENTLY uden for transaktionen (#6342).
 
 INSERT INTO public.app_config (key, value, description)
 VALUES (
