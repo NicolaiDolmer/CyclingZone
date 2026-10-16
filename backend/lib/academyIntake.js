@@ -205,7 +205,14 @@ export async function seedAcademyCohortForTeam(supabase, {
   const { error: intakeErr } = await supabase
     .from("academy_intake")
     .insert(intakeRows);
-  if (intakeErr) throw new Error(`academy-intake intake insert (team ${teamId}): ${intakeErr.message}`);
+  if (intakeErr) {
+    // #6666: ryd de netop indsatte ryttere, så en fejl aldrig efterlader kandidater
+    // uden intake-række (kalderen kender ikke deres id'er når vi kaster).
+    const riderIds = insertedRiders.map((r) => r.id);
+    const { error: cleanupErr } = await supabase.from("riders").delete().in("id", riderIds);
+    const cleanupNote = cleanupErr ? `; cleanup of ${riderIds.length} riders failed: ${cleanupErr.message}` : "";
+    throw new Error(`academy-intake intake insert (team ${teamId}): ${intakeErr.message}${cleanupNote}`);
+  }
 
   return insertedRiders.map((r) => r.id);
 }
