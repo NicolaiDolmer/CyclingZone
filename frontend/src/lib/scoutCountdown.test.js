@@ -137,3 +137,14 @@ test("earliestReadyAt: tager ogsaa missioner med (liste af alle aktive opgaver) 
     "2026-08-14T10:20:00.000Z",
   );
 });
+
+test("earliestReadyAt: ny opgave sammenlignes med eksisterende tidligste (#5852)", () => {
+  assert.equal(
+    earliestReadyAt([{ readyAt: null }, { readyAt: "2026-08-14T10:40:00.000Z" }]),
+    "2026-08-14T10:40:00.000Z",
+  );
+  assert.equal(
+    earliestReadyAt([{ readyAt: "2026-08-14T10:20:00.000Z" }, { readyAt: "2026-08-14T10:40:00.000Z" }]),
+    "2026-08-14T10:20:00.000Z",
+  );
+});

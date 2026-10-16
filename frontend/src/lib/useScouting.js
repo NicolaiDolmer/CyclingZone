@@ -193,6 +193,8 @@ export function useScouting() {
           [riderId]: { readyOn: data.assignment.readyOn, readyAt: data.assignment.readyAt ?? null },
         }));
         setJobActiveCount((prev) => prev + 1);
+        // #5852: ny opgave kan vaere den tidligste ledige spejder — hold ledig-om i takt uden refetch.
+        setNextFreeAt((prev) => earliestReadyAt([{ readyAt: prev }, { readyAt: data.assignment.readyAt ?? null }]));
       }
       return { ok: true, assignment: data.assignment };
     } catch {
