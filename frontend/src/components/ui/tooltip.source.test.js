@@ -26,6 +26,13 @@ test("lukket boble renderes ikke; aaben boble ligger i en Portal med fixed posit
   assert.match(src, /placeTooltip\(/);
 });
 
+// Codex-review #6734: boblen findes kun aaben, saa ankeret skal pege paa en
+// altid tilstedevaerende sr-only-kopi af teksten.
+test("ankeret faar aria-describedby til en sr-only-kopi af teksten", () => {
+  assert.match(src, /"aria-describedby"/);
+  assert.match(src, /<span id=\{descId\} className="sr-only">\{label\}<\/span>/);
+});
+
 // Codex-review #6734: boblen skal maales med det endelige bredde-loft, ellers
 // passer hoejden ikke paa skaerme under 336 px.
 test("bredde-loftet saettes foer boblen maales", () => {

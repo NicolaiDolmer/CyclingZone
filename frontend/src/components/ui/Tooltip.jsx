@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { cloneElement, isValidElement, useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import Portal from "./Portal.jsx";
 import { tooltipClass } from "./tooltipStyles.js";
 import { placeTooltip, tooltipMaxWidth } from "./tooltipPlacement.ts";
@@ -16,6 +16,15 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
   const [active, setActive] = useState(false);
   const [pos, setPos] = useState(null);
   const visible = active || open;
+  // Codex-review #6734: boblen findes kun, mens den er åben, så skærmlæsere
+  // får teksten fra en altid tilstedeværende sr-only-kopi, som ankeret peger
+  // på via aria-describedby.
+  const descId = `${useId()}-desc`;
+  const trigger = isValidElement(children)
+    ? cloneElement(children, {
+      "aria-describedby": [children.props["aria-describedby"], descId].filter(Boolean).join(" "),
+    })
+    : children;
 
   const place = useCallback(() => {
     const anchor = anchorRef.current;
@@ -45,7 +54,8 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
     <span ref={anchorRef} className="group relative inline-flex"
       onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}
       onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
-      {children}
+      {trigger}
+      <span id={descId} className="sr-only">{label}</span>
       {visible && (
         <Portal>
           <span ref={bubbleRef} role="tooltip" id={id}
