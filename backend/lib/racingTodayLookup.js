@@ -31,15 +31,17 @@ import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 // badge — ellers står rytteren som "løber i dag" mens motoren fjerner holdet ved
 // start. Manglende nøgle = stiller op (bit-identisk med før #5945).
 //
-// #6740 (Codex P2): injuredRiderIds er udtagne ryttere der er skadet i dag. Motoren
-// fjerner dem fra startfeltet, også når holdet starter via regel B, så de løber ikke.
-export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map(), startsByRaceId = new Map(), injuredRiderIds = new Set() } = {}) {
+// #6740 (Codex P2): notStartingByRaceId (race_id -> Set<rider_id>) er udtagne ryttere i et
+// løb der IKKE er startet endnu, som motoren fjerner ved start (skadet eller brugt dagen),
+// også når holdet starter via regel B. Et startet løb har intet sæt: en rytter der
+// styrtede i dagens løb, kørte det.
+export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map(), startsByRaceId = new Map(), notStartingByRaceId = new Map() } = {}) {
   const todaySet = new Set(todayRaceIds);
   const out = {};
   for (const entry of entryRows) {
     if (!todaySet.has(entry.race_id)) continue;
     if (startsByRaceId.get(entry.race_id) === false) continue;
-    if (injuredRiderIds.has(entry.rider_id)) continue;
+    if (notStartingByRaceId.get(entry.race_id)?.has(entry.rider_id)) continue;
     out[entry.rider_id] = { race: raceNameById.get(entry.race_id) ?? null };
   }
   return out;
@@ -84,10 +86,10 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
     if (raceErr) return {};
 
     const raceNameById = new Map((raceRows ?? []).map((r) => [r.id, r.name]));
-    const { starts: startsByRaceId, injured: injuredRiderIds } = await loadStartsByRaceId({
+    const { starts: startsByRaceId, notStarting: notStartingByRaceId } = await loadStartsByRaceId({
       supabase, now, teamId, entryRows: entryRows ?? [], raceRows: raceRows ?? [], todaySet,
     });
-    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId, injuredRiderIds });
+    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId, notStartingByRaceId });
   } catch {
     // best-effort: en synkron/netværks-fejl her må ALDRIG vælte hele
     // /api/training/me-responsen pga. én best-effort-berigelse (samme fail-safe-
@@ -105,9 +107,10 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
 // det, tæller ingen som skadet, så udsigten fejler mod "stiller op" (badge som før)
 // frem for at skjule et badge pga. en fejl. Kaster aldrig.
 //
-// #6740: returnerer også de skadede ryttere, så computeRacingTodayByRider kan udelade dem.
+// #6740: returnerer også, pr. ikke-startet løb, de udtagne motoren fjerner ved start.
 async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, todaySet }) {
   const starts = new Map();
+  const notStarting = new Map();
   let injured = new Set();
   try {
     const raceById = new Map(raceRows.map((r) => [r.id, r]));
@@ -180,6 +183,7 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
       // motoren (ghost- og spent-filtrene).
       const rosterSet = new Set(roster);
       const keptEntered = [...entered].filter((id) => rosterSet.has(id) && !spent.has(id));
+      notStarting.set(raceId, new Set([...entered].filter((id) => injured.has(id) || spent.has(id))));
       const { starts: willStart } = teamWillStart({
         entryCount: keptEntered.filter((id) => !injured.has(id)).length,
         // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
@@ -190,7 +194,7 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
     }
   } catch {
     // best-effort: ren berigelse, tomt map = badge som før #5945.
-    return { starts: new Map(), injured: new Set() };
+    return { starts: new Map(), notStarting: new Map() };
   }
-  return { starts, injured };
+  return { starts, notStarting };
 }

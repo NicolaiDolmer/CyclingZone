@@ -357,7 +357,13 @@ test("computeRacingTodayByRider: en skadet udtaget rytter løber ikke, selv om h
   const out = computeRacingTodayByRider({
     entryRows: [{ race_id: "leman", rider_id: "fit" }, { race_id: "leman", rider_id: "hurt" }],
     todayRaceIds: ["leman"], raceNameById: new Map([["leman", "Tour du Léman"]]),
-    startsByRaceId: new Map([["leman", true]]), injuredRiderIds: new Set(["hurt"]),
+    startsByRaceId: new Map([["leman", true]]), notStartingByRaceId: new Map([["leman", new Set(["hurt"])]]),
   });
   assert.deepEqual(out, { fit: { race: "Tour du Léman" } });
+  // Startet løb (intet sæt): en rytter der styrtede i dagens løb, kørte det (Codex P2).
+  const started = computeRacingTodayByRider({
+    entryRows: [{ race_id: "leman", rider_id: "hurt" }], todayRaceIds: ["leman"],
+    raceNameById: new Map([["leman", "Tour du Léman"]]), startsByRaceId: new Map([["leman", true]]),
+  });
+  assert.deepEqual(started, { hurt: { race: "Tour du Léman" } });
 });
