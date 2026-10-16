@@ -209,3 +209,13 @@ test("i18n: notifikations- og fejlkoder findes i en + da", () => {
     }
   }
 });
+
+test("#6463: new_offer kan kun svare på et ÅBENT modbud (forældet kort genåbner aldrig)", () => {
+  const api = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../routes/api.js"), "utf8");
+  const start = api.indexOf('if (action === "new_offer" && isBuyer && counter_amount)');
+  assert.ok(start > 0, "new_offer-grenen findes");
+  const block = api.slice(start, start + 1500);
+  assert.match(block, /offer\.status !== "countered"/);
+  assert.match(block, /\.eq\("status", "countered"\)/);
+  assert.match(block, /counter_offer_not_open/);
+});

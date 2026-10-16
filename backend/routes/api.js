@@ -8746,13 +8746,22 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 
   // NEW OFFER — buyer sends new amount (counter to counter)
   if (action === "new_offer" && isBuyer && counter_amount) {
-    await supabase.from("transfer_offers").update({
+    // #6463: kun et ÅBENT modbud kan besvares med et nyt bud. Betinget på status,
+    // så et forældet kort ikke kan genåbne et tilbagetrukket eller afsluttet tilbud.
+    if (offer.status !== "countered") {
+      return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
+    }
+    const { data: reopened, error: reopenError } = await supabase.from("transfer_offers").update({
       offer_amount: counter_amount,
       counter_amount: null,
       status: "pending",
       message: message || offer.message,
       round: (offer.round || 1) + 1,
-    }).eq("id", offer.id);
+    }).eq("id", offer.id).eq("status", "countered").select("id");
+    if (reopenError) return res.status(500).json({ error: reopenError.message });
+    if (!reopened?.length) {
+      return res.status(409).json({ error: "The counter offer is no longer open", errorCode: "counter_offer_not_open" });
+    }
     await notifyTeamOwnerBuilt(offer.seller_team_id, transferNotif.buildTransferNewBidNotification({
       buyerName: req.team.name, amount: counter_amount,
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`, riderId: offer.rider.id,
