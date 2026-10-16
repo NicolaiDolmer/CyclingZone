@@ -11,11 +11,12 @@
   },
   "filter": {
     "ariaLabel": "Filter by category",
-    "rollout": {
-      "ariaLabel": "Filter by rollout",
+    "betaOnly": "Beta only",
+    "category": {
       "all": "All",
-      "beta": "Beta",
-      "nowLive": "Now live for all"
+      "new": "New",
+      "improved": "Improved",
+      "fixed": "Fixed"
     }
   },
   "category": {
