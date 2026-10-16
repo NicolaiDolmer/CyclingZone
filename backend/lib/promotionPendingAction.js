@@ -127,7 +127,17 @@ export async function promotePendingRider(supabase, {
 export async function handleListPendingRequest(supabase, {
   teamId, seasonNumber, isEnabled = isPromotionPendingEnabled, list = listPendingPromotions,
 } = /** @type {any} */ ({})) {
-  if (!(await isEnabled(supabase))) return { status: 200, body: { enabled: false, riders: [], room: {} } };
+  if (!(await isEnabled(supabase))) {
+    // Rollback-sikkert (Codex 16/10): slås flaget fra, efter at ryttere er
+    // sat til at afvente, skal de stadig kunne ses og rykkes op. Før
+    // migrationen findes kolonnerne ikke; så er listen bare tom.
+    try {
+      const out = await list(supabase, { teamId, seasonNumber });
+      return { status: 200, body: { enabled: false, ...out } };
+    } catch {
+      return { status: 200, body: { enabled: false, riders: [], room: {} } };
+    }
+  }
   const out = await list(supabase, { teamId, seasonNumber });
   return { status: 200, body: { enabled: true, ...out } };
 }
@@ -141,16 +151,22 @@ export async function handleListPendingRequest(supabase, {
 export async function handlePromotePendingRequest(supabase, {
   teamId, riderId, seasonNumber, isEnabled = isPromotionPendingEnabled, promote = promotePendingRider,
 } = /** @type {any} */ ({})) {
-  if (!(await isEnabled(supabase))) {
-    return { status: 409, body: { error: "promotion_pending_disabled", errorCode: "promotion_pending_disabled" } };
-  }
+  // Ingen flag-port her (Codex 16/10): en rytter der allerede afventer, skal
+  // kunne rykkes op, også efter at flaget er slået fra igen. promote() afviser
+  // selv ryttere, der ikke afventer (not_pending).
   try {
     const result = await promote(supabase, { teamId, riderId, seasonNumber });
     return { status: 200, body: result };
   } catch (err) {
     const code = /** @type {any} */ (err)?.message ?? "";
     const status = code === "not_pending" ? 409 : moveSquadErrorStatus(code);
-    if (status === null) throw err;
+    if (status === null) {
+      // Før migrationen (kolonnerne findes ikke) og flaget slukket: pæn 409.
+      if (!(await isEnabled(supabase))) {
+        return { status: 409, body: { error: "promotion_pending_disabled", errorCode: "promotion_pending_disabled" } };
+      }
+      throw err;
+    }
     return { status, body: { error: code, errorCode: code } };
   }
 }

@@ -13,7 +13,7 @@ test("promotionErrorKey: kendte koder faar egen tekst, resten den generiske", ()
 test("pendingRidersFromResponse: flag off, fejl og skrald giver tom liste", () => {
   assert.deepEqual(pendingRidersFromResponse(null), []);
   assert.deepEqual(pendingRidersFromResponse({ ok: false, data: { enabled: true, riders: [{ id: "a", to: "u23" }] } }), []);
-  assert.deepEqual(pendingRidersFromResponse({ ok: true, data: { enabled: false, riders: [{ id: "a", to: "u23" }] } }), []);
+  assert.deepEqual(pendingRidersFromResponse({ ok: true, data: { enabled: false, riders: [{ id: "a", to: "u23" }] } }).map((r) => r.id), ["a"], "flag off: allerede afventende vises stadig");
   assert.deepEqual(pendingRidersFromResponse({ ok: true, data: { enabled: true, riders: "nope" } }), []);
 });
 

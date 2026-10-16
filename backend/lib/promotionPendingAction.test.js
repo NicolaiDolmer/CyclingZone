@@ -91,6 +91,8 @@ const ALREADY_MOVED = {
 };
 const EXPIRED_GRAD = { id: "g1", team_id: "t1", rider_id: "r1", status: "expired" };
 
+const FIXED_NOW = new Date("2026-10-16T12:00:00Z");
+
 test("#6710 listPendingPromotions: viser kun aktive ventende med plads pr. maal-trup", async () => {
   const { supabase } = makeSupabase({ riders: [JUNIOR_WAITING, U23_WAITING, ALREADY_MOVED] });
   const checked = [];
@@ -108,7 +110,7 @@ test("#6710 promotePendingRider: flytter via moveRider til maal-truppen, rydder 
   const { supabase, rec } = makeSupabase({ riders: [JUNIOR_WAITING], gradRows: [EXPIRED_GRAD] });
   const moves = [];
   const move = async (_sb, args) => { moves.push(args); return { riderId: args.riderId, action: "moved", from: "junior", to: args.targetSquad }; };
-  const res = await promotePendingRider(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 5, move });
+  const res = await promotePendingRider(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 5, move, now: FIXED_NOW });
 
   assert.equal(moves.length, 1);
   assert.equal(moves[0].targetSquad, "u23");
@@ -124,25 +126,32 @@ test("#6710 promotePendingRider: flytter via moveRider til maal-truppen, rydder 
 test("#6710 promotePendingRider: fuld maal-trup → moveRider's squad_full bobler op, intet ryddes", async () => {
   const { supabase, rec } = makeSupabase({ riders: [U23_WAITING], gradRows: [] });
   const move = async () => { throw new Error("squad_full"); };
-  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 5, move }), /squad_full/);
+  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 5, move, now: FIXED_NOW }), /squad_full/);
   assert.equal(rec.riderUpdates.length, 0);
 });
 
 test("#6710 promotePendingRider: andet hold / ikke ventende / ukendt rytter afvises uden flytning", async () => {
   const { supabase } = makeSupabase({ riders: [{ ...JUNIOR_WAITING, team_id: "t2" }, ALREADY_MOVED] });
   const move = async () => { throw new Error("must not move"); };
-  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 5, move }), /not_owned/);
-  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "r3", seasonNumber: 5, move }), /not_pending/);
-  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "nope", seasonNumber: 5, move }), /rider_not_found/);
+  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 5, move, now: FIXED_NOW }), /not_owned/);
+  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "r3", seasonNumber: 5, move, now: FIXED_NOW }), /not_pending/);
+  await assert.rejects(() => promotePendingRider(supabase, { teamId: "t1", riderId: "nope", seasonNumber: 5, move, now: FIXED_NOW }), /rider_not_found/);
 });
 
-test("#6710 handleListPendingRequest: flag off → tom liste uden at laese de nye kolonner", async () => {
-  let listed = false;
+test("#6710 handleListPendingRequest: flag off → allerede afventende ryttere vises stadig (rollback-sikker)", async () => {
   const out = await handleListPendingRequest({}, {
-    teamId: "t1", seasonNumber: 5, isEnabled: async () => false, list: async () => { listed = true; return {}; },
+    teamId: "t1", seasonNumber: 5, isEnabled: async () => false,
+    list: async () => ({ riders: [{ id: "r1" }], room: { u23: true } }),
+  });
+  assert.deepEqual(out, { status: 200, body: { enabled: false, riders: [{ id: "r1" }], room: { u23: true } } });
+});
+
+test("#6710 handleListPendingRequest: flag off foer migrationen (kolonne mangler) → tom liste", async () => {
+  const out = await handleListPendingRequest({}, {
+    teamId: "t1", seasonNumber: 5, isEnabled: async () => false,
+    list: async () => { throw new Error("column riders.promotion_pending_to does not exist"); },
   });
   assert.deepEqual(out, { status: 200, body: { enabled: false, riders: [], room: {} } });
-  assert.equal(listed, false);
 });
 
 test("#6710 handleListPendingRequest: flag on → listen + enabled", async () => {
@@ -153,14 +162,22 @@ test("#6710 handleListPendingRequest: flag on → listen + enabled", async () =>
   assert.deepEqual(out, { status: 200, body: { enabled: true, riders: [{ id: "r1" }], room: { u23: true } } });
 });
 
-test("#6710 handlePromotePendingRequest: flag off → 409 uden kald", async () => {
-  let called = false;
+test("#6710 handlePromotePendingRequest: flag off → en afventende rytter kan stadig rykkes op", async () => {
   const out = await handlePromotePendingRequest({}, {
-    teamId: "t1", riderId: "r1", seasonNumber: 5, isEnabled: async () => false, promote: async () => { called = true; },
+    teamId: "t1", riderId: "r1", seasonNumber: 5, isEnabled: async () => false,
+    promote: async () => ({ riderId: "r1", promotedFromPending: true }),
+  });
+  assert.equal(out.status, 200);
+  assert.equal(out.body.promotedFromPending, true);
+});
+
+test("#6710 handlePromotePendingRequest: flag off + ukendt fejl (foer migrationen) → 409 disabled", async () => {
+  const out = await handlePromotePendingRequest({}, {
+    teamId: "t1", riderId: "r1", seasonNumber: 5, isEnabled: async () => false,
+    promote: async () => { throw new Error("column riders.promotion_pending_to does not exist"); },
   });
   assert.equal(out.status, 409);
   assert.equal(out.body.errorCode, "promotion_pending_disabled");
-  assert.equal(called, false);
 });
 
 test("#6710 handlePromotePendingRequest: forventede afvisninger → 4xx med errorCode; uventede kastes", async () => {

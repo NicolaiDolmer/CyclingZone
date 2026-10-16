@@ -28,7 +28,7 @@ export function promotionErrorKey(code: unknown): string {
  */
 export function pendingRidersFromResponse(res: { ok?: boolean; data?: unknown } | null | undefined): PendingRider[] {
   const data = res?.data as { enabled?: unknown; riders?: unknown } | null | undefined;
-  if (!res?.ok || data?.enabled !== true || !Array.isArray(data.riders)) return [];
+  if (!res?.ok || !Array.isArray(data?.riders)) return []; // Codex 16/10: også med flaget slukket, så afventende ryttere ikke strander.
   return data.riders.filter((r): r is PendingRider =>
     !!r && typeof r === "object"
     && typeof (r as PendingRider).id === "string" && (r as PendingRider).id.length > 0
