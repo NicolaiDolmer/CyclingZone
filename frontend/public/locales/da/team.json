@@ -80,7 +80,7 @@
       "type": "Type",
       "contract": "Kontrakt",
       "contractUntil": "Til sæson {season}",
-      "contractExpired": "Udløbet, fri ved sæsonskiftet",
+      "contractExpired": "Udløbet",
       "action": "Handling"
     },
     "reputation": {
