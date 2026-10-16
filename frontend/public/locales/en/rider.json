@@ -197,6 +197,8 @@
       "salary": "Salary",
       "contract": "Contract",
       "contractSeason": "Season {season}",
+      "contractExpired": "Expired",
+      "contractExpiredSub": "Free agent at the season change unless extended",
       "aiTag": "AI",
       "valueTrend": "{value} last {days} days",
       "valueTrendTitle": "Value change since {date}",

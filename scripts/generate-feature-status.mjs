@@ -68,6 +68,12 @@ export const DECISIONS = ["taend", "goer-faerdigt", "fjern", "noedbremse", "ejer
 
 const ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+// Aegte kalenderdato (round-trip): 2026-13-40 og 2026-02-30 afvises (#6708).
+function isCalendarDate(v) {
+  if (typeof v !== "string" || !DATE_RE.test(v)) return false;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v;
+}
 
 // Samme loft som "FEATURE_STATUS.md" i scripts/check-agent-token-hygiene.ps1 (#4921).
 // Holdes i sync i haanden - de to scripts er hhv. Node og pwsh og deler ikke fil.
@@ -185,7 +191,7 @@ export function validate(entries) {
     if (e.roadmap_horizon && !e.roadmap_en) errors.push(`${label}: roadmap_horizon kraever roadmap_en/roadmap_da`);
     if (!e.decision !== !e.decide_by) errors.push(`${label}: decision og decide_by saettes sammen (#6701)`);
     if (e.decision && !DECISIONS.includes(e.decision)) errors.push(`${label}: decision skal vaere en af ${DECISIONS.join(", ")}`);
-    if (e.decide_by && !DATE_RE.test(e.decide_by)) errors.push(`${label}: decide_by skal vaere YYYY-MM-DD`);
+    if (e.decide_by && !isCalendarDate(e.decide_by)) errors.push(`${label}: decide_by skal vaere en aegte kalenderdato (YYYY-MM-DD)`);
     if (e.state === "dormant" && !e.note) {
       errors.push(`${label}: state dormant kraever en note om hvem/hvad der flipper den (#4928)`);
     }
