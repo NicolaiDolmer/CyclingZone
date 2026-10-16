@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft (1 review/time) · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.361 + færdiggør patch-PR #6661 via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
+> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft (1 review/time) · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.362 (7.361 merget 16/10, 7.362 = #6707) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** (1) Akademi før søn 18/10 kl. 00: ejer vælger #6673 (2.0) eller #6662, derefter flag-flip på ordret go (#6155). (2) #6677 merge formiddag. (3) Ejer-go: #6692 ikoner (billede sendt) · #6694 roadmap auto-beta (migration) · patch note #6661 ny ordlyd · idébanken E på https://claude.ai/artifact/WZUTZr9bRMgvo43KAYC5n6 · #6643 animation · #6691 hjælpetekst. (4) #6490 genmål 16/10 aften. (5) Codex-løkke på #6657 #6671 #6680: merge ved ren gate.
+> **🎯 Next action:** start `docs/sessions/2026-10-16-naeste-session.md`. Ejerens rækkefølge: merge-flowet først (Codex-stopregel) · spillerkommunikation (Claude udkast, ejer sender) · udskudte opgaver · planer up to date · Codex-planen #5833 · spillerønsker. Frister: #6673 merge før lør 17/10 kl. 12 (fallback #6662), akademi-flip før søn 00 på ordret go · S5-tænding #6699 (draft) kun på ordret go efter dommer · aldring prøvekørsel 23/10. #6490 genmål 16/10 aften. **Intet PR-loft** (ejer 16/10).
 >
-> **15/10:** pc1 merget #6637 #6639 #6640 #6646 #6652 #6659 #6663 #6669 #6670 #6672 #6675 #6689 #6658 · DOLMERPC merget #6664 #6676 #6678 #6682 #6685 #6688 · flag: `stage_page_v2`=beta, `training_bulk_day`=beta, `first_race_card`=on · aften: aftenspidsen max 50 s → 1,1 s (#6490) · triage 23 + 12 undersøgelser på issues · roadmap A-C i prod (backup `backup_*_20261015`).
+> **15-16/10:** flag `stage_page_v2`/`training_bulk_day`=beta, `first_race_card`=on · aftenspidsen max 50 s → 1,1 s (#6490) · merget 16/10: #6694 #6661 #6692 #6677 #6691 (migrationer verificeret) · roadmap + idébank opdateret i prod (backups `backup_*_2026101[56]`).
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** pc1 (NicolaiPC) samlet session 15/10 aften, driver merge-køen; ingen bølge kører.
+> **🤖 Working agent:** Ingen aktiv session (pc1 samlet session 15-16/10 afsluttet ca. kl. 11). Næste: `docs/sessions/2026-10-16-naeste-session.md`.
