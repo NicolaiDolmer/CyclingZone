@@ -111,7 +111,17 @@ export async function notifyRaceInjuries({ supabase, race, injuryRows, notify = 
     .select("race_id, rider_id, team_id, races!inner(id, name, stages_completed, status)")
     .in("rider_id", riderIds).eq("races.stages_completed", 0).neq("races.status", "completed");
   if (entryErr) throw new Error(`race_entries (injury notice): ${entryErr.message}`);
-  const races = [...new Map((entries ?? []).filter((e) => e?.races?.id).map((e) => [e.races.id, e.races])).values()];
+  // Et afmeldt hold bevarer sine entries (#4306); det løb misser rytteren ikke (review #6742).
+  const entryRaceIds = [...new Set((entries ?? []).map((e) => e.race_id))];
+  const withdrawnPairs = new Set();
+  if (entryRaceIds.length) {
+    // pagination-safe: afmeldinger i de få kommende løb fra opslaget ovenfor.
+    const { data: wd, error: wdErr } = await supabase.from("race_withdrawals").select("race_id, team_id").in("race_id", entryRaceIds);
+    if (wdErr) throw new Error(`race_withdrawals (injury notice): ${wdErr.message}`);
+    for (const w of wd ?? []) withdrawnPairs.add(`${w.race_id}:${w.team_id}`);
+  }
+  const activeEntries = (entries ?? []).filter((e) => !withdrawnPairs.has(`${e.race_id}:${e.team_id}`));
+  const races = [...new Map(activeEntries.filter((e) => e?.races?.id).map((e) => [e.races.id, e.races])).values()];
   const raceIds = races.map((r) => r.id);
   const firstStageDateByRace = new Map();
   if (raceIds.length) {
@@ -130,7 +140,7 @@ export async function notifyRaceInjuries({ supabase, race, injuryRows, notify = 
     const rider = riderById.get(row.rider_id);
     if (!rider?.team_id) continue;
     const missedRaces = racesMissedByInjury({
-      entries: (entries ?? []).filter((e) => e.rider_id === row.rider_id && e.team_id === rider.team_id),
+      entries: activeEntries.filter((e) => e.rider_id === row.rider_id && e.team_id === rider.team_id),
       races, firstStageDateByRace, injuredUntil: row.injured_until, crashRaceId: race.id,
     });
     const payload = buildRiderInjuredNotification({

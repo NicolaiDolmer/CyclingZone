@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   runTrainNow, loadTrainNowStatus, trainNowGameDays, splitTrainNowRiders,
-  createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces,
+  createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces, loadTrainNowShortRaces,
 } from "./trainNow.js";
 import {
   TRAIN_NOW_LOCK_TABLE, loadRaceTrainNowLock, loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates,
@@ -500,4 +500,24 @@ test("trainNowShortRaces: fuld trup, startede, afmeldte og ryddede loeb giver in
 test("trainNowShortRaces: ingen udtagelse -> advarsel (assistenten kan ikke fylde op efter trykket)", () => {
   assert.deepEqual(trainNowShortRaces({ races: [{ id: "r", name: "R", stages_completed: 0 }], entries: [] }),
     [{ id: "r", name: "R", fit: 0, entered: 0, min: 6 }]);
+});
+
+test("loadTrainNowShortRaces: en solgt rytter i udtagelsen taeller ikke (review #6742)", async () => {
+  const six = ["a", "b", "c", "d", "e", "sold"];
+  const tables = {
+    races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled", squad: "senior" }],
+    race_withdrawals: [], race_entry_clears: [], rider_condition: [],
+    race_entries: six.map((rider_id) => ({ race_id: "leman", rider_id, team_id: "t1" })),
+    // "sold" er nu paa et andet hold: motoren fjerner entryen foer gulvet.
+    riders: six.map((id) => ({ id, team_id: id === "sold" ? "t2" : "t1", squad: "senior", is_academy: false, is_retired: false })),
+  };
+  const supabase = { from: (table) => {
+    const q = {};
+    for (const m of ["select", "eq", "in", "neq", "order", "is", "or"]) q[m] = () => q;
+    q.range = () => Promise.resolve({ data: tables[table] ?? [], error: null });
+    q.then = (resolve, reject) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(resolve, reject);
+    return q;
+  } };
+  const out = await loadTrainNowShortRaces({ supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
+  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
 });

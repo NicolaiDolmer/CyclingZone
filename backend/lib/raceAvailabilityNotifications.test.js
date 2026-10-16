@@ -117,3 +117,23 @@ test("notifyTeamsDidNotStart: én besked pr. hold (dubletter samlet)", async () 
   assert.equal(out.sent, 2);
   assert.deepEqual(sent, ["csc", "talent"]);
 });
+
+test("notifyRaceInjuries: et loeb holdet har meldt fra, naevnes ikke (review #6742)", async () => {
+  const sent = [];
+  const supabase = fakeDb({
+    riders: [{ id: "adrien", firstname: "Adrien", lastname: "Charpentier", team_id: "lorraine" }],
+    race_entries: [
+      { race_id: "leman", rider_id: "adrien", team_id: "lorraine",
+        races: { id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled" } },
+    ],
+    race_withdrawals: [{ race_id: "leman", team_id: "lorraine" }],
+    race_stage_schedule: [{ race_id: "leman", scheduled_at: "2026-10-16T17:00:00Z" }],
+  });
+  await notifyRaceInjuries({
+    supabase, race: { id: "westkust", name: "Westkust Klassieker" },
+    injuryRows: [{ rider_id: "adrien", injured_until: "2026-10-19" }],
+    notify: async (args) => { sent.push(args); return { delivered: true }; },
+  });
+  assert.equal(sent[0].message, "Adrien Charpentier crashed in Westkust Klassieker and is injured until 19/10.");
+  assert.equal(sent[0].relatedId, "westkust");
+});

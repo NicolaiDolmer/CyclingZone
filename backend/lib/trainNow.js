@@ -42,7 +42,8 @@ import { stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js"; // #6740
-import { isRiderInjured } from "./riderEligibility.js"; // #6740
+import { isRiderInjured, raceSquadOf } from "./riderEligibility.js"; // #6740
+import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
@@ -151,13 +152,29 @@ export async function loadTrainNowShortRaces({ supabase, team, todayRaces, tickD
   try {
     const raceIds = (todayRaces ?? []).map((r) => r.id);
     if (!raceIds.length) return [];
-    const [races, entries, withdrawnIds, cleared] = await Promise.all([
-      checked(supabase.from("races").select("id, name, stages_completed, status").in("id", raceIds), "short races"),
-      // pagination-safe: one team's entries in today's races (a few squads of ≤ 9).
-      checked(supabase.from("race_entries").select("race_id, rider_id").eq("team_id", team.id).in("race_id", raceIds), "short race entries"),
+    const [races, withdrawnIds, cleared] = await Promise.all([
+      checked(supabase.from("races").select("id, name, stages_completed, status, squad").in("id", raceIds), "short races"),
       loadWithdrawnRaceIdsForTeam({ supabase, teamId: team.id, raceIds }),
       checked(supabase.from("race_entry_clears").select("race_id").eq("team_id", team.id).in("race_id", raceIds), "short race clears"),
     ]);
+    // Only entries the engine would keep: loadEntrantsForRace drops ghosts (sold, retired,
+    // academy, other squad) before the floor, so a stale 6/6 must not hide the warning.
+    // Grouped per squad, the same shared loader and filter as the engine (review #6742).
+    const idsBySquad = new Map();
+    for (const race of races ?? []) {
+      const squad = raceSquadOf(race);
+      if (!idsBySquad.has(squad)) idsBySquad.set(squad, []);
+      idsBySquad.get(squad).push(race.id);
+    }
+    const entries = (await Promise.all([...idsBySquad].map(async ([squad, ids]) => {
+      const { data, error } = await loadEligibleEntries({
+        supabase, squad,
+        // pagination-safe: one team's entries in today's races (a few squads of ≤ 9).
+        baseQuery: () => supabase.from("race_entries").select("race_id, rider_id, team_id").eq("team_id", team.id).in("race_id", ids),
+      });
+      if (error) throw new Error(`short race entries: ${error.message ?? error}`);
+      return data ?? [];
+    }))).flat();
     const riderIds = [...new Set((entries ?? []).map((e) => e.rider_id))];
     const conditions = riderIds.length
       ? await checked(supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", riderIds), "short race injuries")
