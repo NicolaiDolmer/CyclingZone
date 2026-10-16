@@ -50,7 +50,8 @@ test("validateProfileInput: felterne laases op pr. niveau (model 1)", () => {
   assert.equal(validateProfileInput({ origins: [], types: [] }, 0).ok, true, "en tom profil er altid gyldig");
   assert.equal(validateProfileInput({ origins: ["DK"] }, 1).ok, true);
   assert.equal(validateProfileInput({ origins: ["DK"], types: ["climber"] }, 1).error, "type_locked");
-  assert.equal(validateProfileInput({ origins: ["DK"], types: ["climber"] }, 2).ok, true);
+  assert.equal(validateProfileInput({ origins: ["DK"], types: ["climber"] }, 2).error, "type_locked", "forslag D: type fra niveau 3");
+  assert.equal(validateProfileInput({ origins: ["DK"], types: ["climber"] }, 3).ok, true);
   assert.equal(validateProfileInput({ origins: ["DK", "NO"] }, 3).error, "too_many_fields");
   // Niveau 4: EEN ekstra, paa nationalitet ELLER type, ikke begge.
   assert.equal(validateProfileInput({ origins: ["DK", "region:benelux"], types: ["climber"] }, 4).ok, true);
@@ -76,7 +77,8 @@ test("resolveProfileRows: profilen virker foerst fra effective_from (punkt 5)", 
 test("clampProfileToTier: en nedgraderet facilitet beskaerer profilen i stedet for at slukke den", () => {
   const p = { origins: ["DK"], types: ["climber", "gc"] };
   assert.deepEqual(clampProfileToTier(p, 4), p);
-  assert.deepEqual(clampProfileToTier(p, 2), { origins: ["DK"], types: ["climber"] });
+  assert.deepEqual(clampProfileToTier(p, 3), { origins: ["DK"], types: ["climber"] });
+  assert.deepEqual(clampProfileToTier(p, 2), { origins: ["DK"], types: [] });
   assert.deepEqual(clampProfileToTier(p, 1), { origins: ["DK"], types: [] });
   assert.equal(clampProfileToTier(p, 0), null);
 });
@@ -168,7 +170,7 @@ test("saveAcademyProfile: fejler RPC'en, kastes fejlen (transaktionen ruller sle
 });
 
 test("saveAcademyProfile: gemmer med 14 dages forsinkelse", async () => {
-  const sb = buildSaveMock({ tier: 2 });
+  const sb = buildSaveMock({ tier: 3 });
   const now = new Date("2026-10-15T12:00:00Z");
   const r = await saveAcademyProfile(sb, { teamId: "team-A", input: { origins: ["region:nordic"], types: ["climber"] }, now });
   assert.equal(r.ok, true);
@@ -203,4 +205,20 @@ test("saveAcademyProfile: et laast felt afvises uden skrivning", async () => {
   assert.equal(r.ok, false);
   assert.equal(r.error, "type_locked");
   assert.equal(sb.capture.inserts.length, 0);
+});
+
+// Ejer 16/10 (forslag D): trappen skal kunne udvides til 15 niveauer uden at
+// tage noget fra spillerne. Intet niveau maa give mindre end det forrige, og
+// hvert niveau over 0 skal give noget mere (share stiger altid).
+test("PROFILE_TIERS: monoton paa alle felter, og hvert niveau giver mere (forslag D)", () => {
+  const tiers = Object.keys(PROFILE_TIERS).map(Number).sort((a, b) => a - b);
+  for (let i = 1; i < tiers.length; i += 1) {
+    const prev = PROFILE_TIERS[tiers[i - 1]];
+    const cur = PROFILE_TIERS[tiers[i]];
+    for (const k of ["candidates", "origins", "types", "extra", "share"]) {
+      assert.ok(cur[k] >= prev[k], `niveau ${tiers[i]}: ${k} falder`);
+    }
+    assert.ok(cur.share > prev.share, `niveau ${tiers[i]} skal goere profilen staerkere`);
+  }
+  assert.deepEqual(tiers.map((t) => PROFILE_TIERS[t].candidates), [2, 2, 3, 3, 3, 4]);
 });

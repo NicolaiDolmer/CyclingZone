@@ -244,7 +244,8 @@ test("GET facilities: ladder = alle 5 niveauer med pris, drift og effekt (#6666 
 
   const academy = body.facilities.find((f) => f.track === "academy");
   assert.equal(academy.ladder[0].unlock, "origin");
-  assert.equal(academy.ladder[1].unlock, "type");
+  assert.equal(academy.ladder[1].unlock, "stronger", "forslag D: niveau 2 = +1 kandidat");
+  assert.equal(academy.ladder[2].unlock, "type");
   assert.equal(academy.ladder[3].unlock, "extra");
   assert.ok(academy.ladder.every((r) => !("share" in r)), "overvægten forlader aldrig backend");
 });

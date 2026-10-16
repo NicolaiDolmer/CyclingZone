@@ -65,13 +65,17 @@ type DateInput = Date | string | number;
 // niveau 4's ene ekstra felt, som manageren selv lægger på nationalitet ELLER type.
 // `share` = andelen af hvert træk der tages fra profilen (resten fra den normale
 // fordeling, så profilen aldrig bliver 100 %).
+// Ejer 16/10 (forslag D): trappen er bygget til op til 15 niveauer på sigt.
+// Hvert niveau gør profilen 5 procentpoint stærkere OG har én synlig milepæl;
+// intet niveau giver nogensinde mindre end det forrige (testet), så senere
+// niveauer kan lægges ovenpå uden at tage noget fra spillerne.
 export const PROFILE_TIERS: Readonly<Record<number, TierRules>> = Object.freeze({
   0: Object.freeze({ candidates: 2, origins: 0, types: 0, extra: 0, share: 0 }),
-  1: Object.freeze({ candidates: 2, origins: 1, types: 0, extra: 0, share: 0.35 }),
-  2: Object.freeze({ candidates: 3, origins: 1, types: 1, extra: 0, share: 0.35 }),
-  3: Object.freeze({ candidates: 3, origins: 1, types: 1, extra: 0, share: 0.5 }),
-  4: Object.freeze({ candidates: 4, origins: 1, types: 1, extra: 1, share: 0.5 }),
-  5: Object.freeze({ candidates: 4, origins: 1, types: 1, extra: 1, share: 0.65 }),
+  1: Object.freeze({ candidates: 2, origins: 1, types: 0, extra: 0, share: 0.3 }),
+  2: Object.freeze({ candidates: 3, origins: 1, types: 0, extra: 0, share: 0.35 }),
+  3: Object.freeze({ candidates: 3, origins: 1, types: 1, extra: 0, share: 0.4 }),
+  4: Object.freeze({ candidates: 3, origins: 1, types: 1, extra: 1, share: 0.45 }),
+  5: Object.freeze({ candidates: 4, origins: 1, types: 1, extra: 1, share: 0.5 }),
 });
 
 // Kun nationer kuldet faktisk kan trække (navne-klynger + vægte findes).
