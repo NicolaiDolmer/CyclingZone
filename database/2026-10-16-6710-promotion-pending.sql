@@ -35,7 +35,7 @@ END $$;
 
 -- riders er kolonne-gatet (#1162/#2241): nye kolonner er ikke klient-laesbare
 -- uden egen GRANT.
-GRANT SELECT (promotion_pending_to, promotion_pending_since) ON public.riders TO anon, authenticated;
+GRANT SELECT (promotion_pending_to, promotion_pending_since) ON public.riders TO authenticated;
 
 COMMENT ON COLUMN public.riders.promotion_pending_to IS
   'Promotion pending (#6710): target squad (u23|senior) the rider waits for because it was full at graduation. NULL = not pending. Rider keeps team, contract and current squad.';

@@ -69,8 +69,12 @@ export async function isPromotionPendingEnabled(supabase) {
   return value === true || value === "on";
 }
 
+/**
+ * @param {string|null|undefined} squad
+ * @returns {number} -1 for en ukendt trup
+ */
 function squadRank(squad) {
-  return SQUADS.indexOf(squad);
+  return squad ? SQUADS.indexOf(squad) : -1;
 }
 
 /**
@@ -87,7 +91,10 @@ function squadRank(squad) {
 export function isPromotionPendingActive(rider, seasonAge = null) {
   const to = rider?.promotion_pending_to;
   if (squadRank(to) < 0) return false;
-  const current = effectiveSquad(rider, seasonAge);
+  const current = effectiveSquad({
+    squad: rider?.squad ?? undefined,
+    is_academy: rider?.is_academy ?? undefined,
+  }, seasonAge);
   return squadRank(current) >= 0 && squadRank(current) < squadRank(to);
 }
 
@@ -95,6 +102,8 @@ export function isPromotionPendingActive(rider, seasonAge = null) {
  * Notifikationen "rytteren venter på plads". Én kilde til koder og fallback.
  * Typen er den eksisterende 'academy_graduated' (notifications_type_check
  * kender den), så migrationen ikke skal røre constrainten.
+ *
+ * @param {{rider:{id:string, firstname:string, lastname:string}, targetSquad:string}} args
  */
 export function buildPromotionPendingNotification({ rider, targetSquad }) {
   const name = `${rider.firstname} ${rider.lastname}`;
@@ -763,7 +772,9 @@ export async function completeStuckPromotion(supabase, {
  * frem foerst rammer 0 raekker og rapporteres som `skipped/already_resolved` i
  * stedet for at flytte en rytter der ikke laengere er fanget.
  *
- * @returns {Promise<{riderId:string, action:'promoted'|'released'|'skipped', reason?:string, salary?:number}>}
+ * #6710: med promotion_pending_enabled on kan udfaldet også være 'pending'.
+ *
+ * @returns {Promise<{riderId:string, action:'promoted'|'released'|'skipped'|'pending', reason?:string, salary?:number}>}
  */
 export async function resolveUnsoldGraduate(supabase, {
   teamId, riderId, rider = null, seasonNumber, now = new Date(),
@@ -920,6 +931,10 @@ export async function resolveNeverGraduated(supabase, {
 // log og fortsaet.
 // #6710: `fromStatus` lader "Ryk op" rette en 'expired' (afventer oprykning)
 // række til 'promoted' med samme best-effort-mønster.
+/**
+ * @param {any} supabase
+ * @param {{teamId:string, riderId:string, now:Date, status:string, fromStatus?:string}} args
+ */
 export async function restampSoldGraduation(supabase, { teamId, riderId, now, status, fromStatus = "sold" }) {
   try {
     const { data, error } = await supabase.from("academy_graduation")
