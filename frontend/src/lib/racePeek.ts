@@ -24,6 +24,9 @@ export interface CalendarEntryLike {
   /** Udtagelsen er låst (løbet er afviklet eller i gang). Sendes kun når true. */
   lineupFrozen?: boolean;
   withdrawn?: boolean;
+  /** In-game-dagspan (game_day). Bindingen regnes i game_days, ikke kalenderdatoer. */
+  gameDayStart?: number | null;
+  gameDayEnd?: number | null;
   raceClass?: string | null;
   date?: string | null;
   stageSchedule?: StageScheduleItem[] | null;
