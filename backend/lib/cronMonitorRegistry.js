@@ -174,6 +174,10 @@ export const ALL_CRON_MONITORS = [
   ["entry-generator", CRON_MONITOR_60MIN],
   ["ownership-invariant-watch", CRON_MONITOR_24H],
   ["rider-double-booking-watch", CRON_MONITOR_24H],
+  // #6489: trup-port-vagt — daglig READ-ONLY tælling af startliste-rækker i
+  // ikke-startede løb som rytteren ikke må køre (anden trup, andet hold,
+  // pensioneret). DB-triggeren holder tallet på 0; vagten beviser det.
+  ["squad-entry-gate-watch", CRON_MONITOR_24H],
   // #3639: trænings-slot-vagt — daglig tælling af træningsfokus uden hovedrum.
   ["training-slot-health-watch", CRON_MONITOR_24H],
   ["intake-offer-expiry", CRON_MONITOR_24H],
