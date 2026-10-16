@@ -20,7 +20,7 @@ export type TrainNowStatus = {
 };
 
 // startsShort (#6740 rule B): the team had the floor, injuries took it below; it still starts with `fit`.
-export type TrainNowShortRace = { id: string; name: string | null; fit: number; entered: number; min: number; startsShort: boolean };
+export type TrainNowShortRace = { id: string; name: string | null; fit: number; entered: number; min: number; startsShort?: boolean };
 
 export type TrainNowPressResult = {
   settledRiderIds: string[];

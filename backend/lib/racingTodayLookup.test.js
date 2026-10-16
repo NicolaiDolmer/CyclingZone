@@ -352,3 +352,12 @@ test("loadRacingTodayByRider: Train now-laaste ryttere taeller ikke som frie res
   ] }), "team-1", [...SIX_IDS, "rider-7"], today);
   assert.deepEqual(locked, {}, "alle reserver laast: holdet stiller ikke op, intet badge");
 });
+
+test("computeRacingTodayByRider: en skadet udtaget rytter løber ikke, selv om holdet starter (regel B, #6740)", () => {
+  const out = computeRacingTodayByRider({
+    entryRows: [{ race_id: "leman", rider_id: "fit" }, { race_id: "leman", rider_id: "hurt" }],
+    todayRaceIds: ["leman"], raceNameById: new Map([["leman", "Tour du Léman"]]),
+    startsByRaceId: new Map([["leman", true]]), injuredRiderIds: new Set(["hurt"]),
+  });
+  assert.deepEqual(out, { fit: { race: "Tour du Léman" } });
+});

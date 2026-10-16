@@ -1673,15 +1673,20 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).
-  if(allowAutofill && race.season_id && !race.finalize_state && !(Number(race.stages_completed)>0) && existingEntries.length) {
-    const spent=new Set((await loadSpentRaceDays({supabase,raceId:race.id,riderIds:existingEntries.map(row=>row.rider_id)})).map(row=>row.rider_id));
-    if(persist && spent.size>0) {
+  // #6740 (Codex P1): de skadede udtagne tjekkes også, så en rytter der både er skadet og
+  // har brugt løbsdagen ikke tæller som skade i regel B nedenfor. Oprydningen (prune)
+  // rører stadig kun de raske, som før.
+  if(allowAutofill && race.season_id && !race.finalize_state && !(Number(race.stages_completed)>0) && (existingEntries.length || injuredEntries.length)) {
+    const spent=new Set((await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...existingEntries,...injuredEntries].map(row=>row.rider_id)})).map(row=>row.rider_id));
+    const spentFit=existingEntries.filter(row=>spent.has(row.rider_id)).map(row=>row.rider_id);
+    if(persist && spentFit.length>0) {
       // Lock/check the fresh race row: never delete recorded participants based
       // on a stale JS race object. Entry-day rows follow the existing cascade.
-      const {error:pruneError}=await supabase.rpc('prune_spent_race_entries',{p_race_id:race.id,p_rider_ids:[...spent]});
+      const {error:pruneError}=await supabase.rpc('prune_spent_race_entries',{p_race_id:race.id,p_rider_ids:[...new Set(spentFit)]});
       if(pruneError) throw new Error(`spent race selection cleanup: ${pruneError.message}`);
     }
     existingEntries=existingEntries.filter(row=>!spent.has(row.rider_id));
+    injuredEntries=injuredEntries.filter(row=>!spent.has(row.rider_id));
   }
   // #6740 (ejer-beslutning B 16/10): hold der kun er under gulvet fordi udtagne ryttere
   // blev skadet efter udtagelsen. Måles EFTER afmelding og spent days ovenfor, så de

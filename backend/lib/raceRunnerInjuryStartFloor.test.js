@@ -37,7 +37,11 @@ function makeFilterAwareSupabase(canned = {}) {
     };
     return b;
   }
-  return { from, rpc: () => Promise.resolve({ error: null }) };
+  // find_spent_race_days: ryttere i canned.spent har allerede brugt løbsdagen.
+  const rpc = (name, args) => Promise.resolve(name === "find_spent_race_days"
+    ? { data: (args.p_rider_ids || []).filter((id) => (canned.spent || []).includes(id)).map((rider_id) => ({ rider_id, race_id: "other", game_day: 1 })), error: null }
+    : { error: null });
+  return { from, rpc };
 }
 
 const ABIL = { sprint: 60, climbing: 60, time_trial: 60, one_day: 60, gc: 60, hills: 60, cobbles: 60, aggression: 60 };
@@ -61,10 +65,10 @@ function canned(teams) {
   return out;
 }
 
-async function startField(teams) {
+async function startField(teams, { race = RACE, spent = [] } = {}) {
   const dropped = [];
   const entrants = await loadEntrantsForRace({
-    supabase: makeFilterAwareSupabase(canned(teams)), race: RACE, stages: STAGES,
+    supabase: makeFilterAwareSupabase({ ...canned(teams), spent }), race, stages: STAGES,
     allowAutofill: true, persist: false, onTeamsDropped: (ids) => dropped.push(...ids),
   });
   const countByTeam = {};
@@ -108,4 +112,14 @@ test("regel B: alle udtagne skadede, 2 frie -> assistenten redder holdet med 2 (
   const { countByTeam, entrants } = await startField({ G: { entered: 6, injured: 6, free: 2 } });
   assert.equal(countByTeam.G, 2);
   assert.ok(entrants.every((e) => !["G-r0", "G-r1", "G-r2", "G-r3", "G-r4", "G-r5"].includes(e.rider_id)));
+});
+
+test("regel B: en skadet rytter der OGSÅ har brugt løbsdagen tæller ikke som skade (Codex P1)", async () => {
+  const race = { ...RACE, season_id: "s1" };
+  // 6 udtaget, A-r0 skadet og spent: 5 raske + 0 skadede der tæller = 5 -> gulvet gælder.
+  const spentToo = await startField({ A: { entered: 6, injured: 1 } }, { race, spent: ["A-r0"] });
+  assert.equal(spentToo.countByTeam.A, undefined);
+  // Kontrol: samme hold uden spent starter med 5.
+  const injuredOnly = await startField({ A: { entered: 6, injured: 1 } }, { race });
+  assert.equal(injuredOnly.countByTeam.A, 5);
 });

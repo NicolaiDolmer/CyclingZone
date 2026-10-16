@@ -29,12 +29,16 @@ import { loadTrainNowLocksForRaces } from "./trainNowLock.js"; // #6740
 // hvor holdet IKKE stiller op (under startgulvet, kan ikke fyldes op) giver ingen
 // badge — ellers står rytteren som "løber i dag" mens motoren fjerner holdet ved
 // start. Manglende nøgle = stiller op (bit-identisk med før #5945).
-export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map(), startsByRaceId = new Map() } = {}) {
+//
+// #6740 (Codex P2): injuredRiderIds er udtagne ryttere der er skadet i dag. Motoren
+// fjerner dem fra startfeltet, også når holdet starter via regel B, så de løber ikke.
+export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map(), startsByRaceId = new Map(), injuredRiderIds = new Set() } = {}) {
   const todaySet = new Set(todayRaceIds);
   const out = {};
   for (const entry of entryRows) {
     if (!todaySet.has(entry.race_id)) continue;
     if (startsByRaceId.get(entry.race_id) === false) continue;
+    if (injuredRiderIds.has(entry.rider_id)) continue;
     out[entry.rider_id] = { race: raceNameById.get(entry.race_id) ?? null };
   }
   return out;
@@ -79,10 +83,10 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
     if (raceErr) return {};
 
     const raceNameById = new Map((raceRows ?? []).map((r) => [r.id, r.name]));
-    const startsByRaceId = await loadStartsByRaceId({
+    const { starts: startsByRaceId, injured: injuredRiderIds } = await loadStartsByRaceId({
       supabase, now, teamId, entryRows: entryRows ?? [], raceRows: raceRows ?? [], todaySet,
     });
-    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId });
+    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId, injuredRiderIds });
   } catch {
     // best-effort: en synkron/netværks-fejl her må ALDRIG vælte hele
     // /api/training/me-responsen pga. én best-effort-berigelse (samme fail-safe-
@@ -99,8 +103,11 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
 // hentes, sættes løbet ikke i mappet (badge som før #5945). Skadesopslaget er best-effort: svigter
 // det, tæller ingen som skadet, så udsigten fejler mod "stiller op" (badge som før)
 // frem for at skjule et badge pga. en fejl. Kaster aldrig.
+//
+// #6740: returnerer også de skadede ryttere, så computeRacingTodayByRider kan udelade dem.
 async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, todaySet }) {
   const starts = new Map();
+  let injured = new Set();
   try {
     const raceById = new Map(raceRows.map((r) => [r.id, r]));
     const squads = [...new Set(raceRows.filter((r) => todaySet.has(r.id)).map((r) => raceSquadOf(r)))];
@@ -115,7 +122,6 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
       if (!error) rosterBySquad.set(squad, (data ?? []).map((r) => r.id));
     }));
     const conditionIds = [...new Set([...rosterBySquad.values()].flat().concat(entryRows.map((e) => e.rider_id)))];
-    let injured = new Set();
     try {
       const { data, error } = conditionIds.length
         ? await supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", conditionIds)
@@ -178,7 +184,7 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
     }
   } catch {
     // best-effort: ren berigelse, tomt map = badge som før #5945.
-    return new Map();
+    return { starts: new Map(), injured: new Set() };
   }
-  return starts;
+  return { starts, injured };
 }
