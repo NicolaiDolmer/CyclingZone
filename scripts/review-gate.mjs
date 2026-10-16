@@ -39,6 +39,8 @@ export const TRUSTED_ASSOCIATIONS = Object.freeze(["OWNER", "MEMBER", "COLLABORA
 export const HIGH_RISK_LABELS = Object.freeze(["risk:high", "security"]);
 export const EXEMPT_AUTHORS = Object.freeze(["dependabot"]);
 export const ESCAPED_DEFECT_LABEL = "escaped-defect";
+export const LOW_RISK_CLAUDE_DETAIL =
+  "ikke paakraevet af gaten (lav risiko); autonom merge af en teknisk kode-PR kraever stadig opus-review (rule 35 d)";
 
 // ── Risiko-klassifikation ──────────────────────────────────────────────────
 
@@ -76,7 +78,9 @@ const HIGH_RISK_RULES = Object.freeze([
   // Auth/sikkerhed: backend + frontend-lib (login, tokens, admin-adgang, RLS/grants).
   // "Author" (forum) er ikke auth, men authorize/authorization er. ownerGate er
   // OWNER_USER_IDS-allowlisten (fail-closed) bag ejer-only admin-endpoints.
-  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|grant|permission|urlSafety|admin|ownerGate)[^/]*$/i },
+  // "unsub" = afmeldings-linket (emailUnsubRoute/-Token/-Url): ingen session-login,
+  // det signerede token er eneste adgangskontrol foer en service-role-skrivning.
+  { reason: "auth", re: /^(backend|frontend\/src\/lib)\/(.*\/)?[^/]*(auth(?!or)|authori[sz]|token|security|grant|permission|urlSafety|admin|ownerGate|unsub)[^/]*$/i },
   // RLS case-sensitivt og som ord: "rls" kun forrest i navnet eller efter _ . -,
   // ellers "Rls"/"RLS" (camelCase/versaler). "urlState" (rlS) og "denyUrls"
   // (Urls) er URL'er, ikke RLS.
@@ -242,7 +246,9 @@ export function findClaudeVerdict(items = []) {
 }
 
 export function evaluateClaude(items, risk, headSha = null) {
-  if (risk.level !== "high") return { required: false, ok: true, verdict: null, detail: "ikke paakraevet (lav risiko)" };
+  // Gaten er CI-gulvet (ejer 15/10: lav risiko = Codex). Rule 35 (d) er uaendret: autonom
+  // merge af en teknisk kode-PR kraever stadig opus-review; det haandhaeves ikke her.
+  if (risk.level !== "high") return { required: false, ok: true, verdict: null, detail: LOW_RISK_CLAUDE_DETAIL };
   const hint = "`node scripts/review-gate.mjs post-claude-review --pr N --verdict clean`";
   // Kun markoerer for HEAD taeller; en markoer uden sha= eller for et aeldre commit er foraeldet efter et push.
   const found = findClaudeVerdict(items.filter((i) => {

@@ -158,6 +158,17 @@ test("classifyFile: review-gaten selv og CORS/rate-limit er hoejrisiko", () => {
   assert.equal(classifyRisk(["scripts/review-gate.mjs"]).level, "high");
 });
 
+// Codex-fund paa #6657 (runde 5): afmeldings-routen har intet session-login; det
+// signerede token er eneste adgangskontrol foer service-role-skrivningen.
+test("classifyFile: afmeldings-linket (emailUnsub*) er auth", () => {
+  assert.equal(classifyFile("backend/lib/emailUnsubRoute.js"), "auth");
+  assert.equal(classifyFile("backend/lib/emailUnsubToken.js"), "auth");
+  assert.equal(classifyFile("backend/lib/emailUnsubUrl.js"), "auth");
+  assert.equal(classifyFile("frontend/src/lib/unsubscribeLink.js"), "auth");
+  assert.equal(classifyFile("backend/lib/emailUnsubRoute.test.js"), null, "tests er stadig tests");
+  assert.equal(classifyRisk(["backend/lib/emailUnsubRoute.js"]).level, "high");
+});
+
 test("classifyFile: authorize/authorization er auth, Author (forum) er ikke", () => {
   assert.equal(classifyFile("backend/lib/authorizeTeamAction.js"), "auth");
   assert.equal(classifyFile("backend/lib/requestAuthorization.js"), "auth");
@@ -453,6 +464,17 @@ test("evaluateGate: lav risiko kraever kun Codex", () => {
   const r = evaluateGate({ author: "NicolaiDolmer", files: ["docs/a.md"], comments: [codexDone], headSha: HEAD });
   assert.equal(r.ok, true);
   assert.equal(r.claude.required, false);
+});
+
+// Codex-fund paa #6657 (runde 5): gaten er CI-gulvet, ikke en erstatning for rule 35 (d).
+// En lav-risiko teknisk PR er groen paa Codex alene, men rapporten siger at autonom
+// merge stadig kraever opus-review, saa en groen gate ikke laeses som merge-go.
+test("evaluateGate: lav risiko teknisk PR er groen paa Codex, men rapporten minder om rule 35 (d)", () => {
+  const r = evaluateGate({ author: "NicolaiDolmer", files: ["backend/lib/abilityRegistry.js"], comments: [codexDone], headSha: HEAD });
+  assert.equal(r.ok, true);
+  assert.equal(r.claude.required, false);
+  assert.match(r.claude.detail, /opus-review \(rule 35 d\)/);
+  assert.match(formatReport(r, 1), /Claude \(kun hoejrisiko\): ok - .*opus-review \(rule 35 d\)/);
 });
 
 test("evaluateGate: hoejrisiko kraever Codex OG Claude", () => {

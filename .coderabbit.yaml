@@ -111,6 +111,7 @@ reviews:
     - "{backend,frontend/src/lib}/**/*[Aa]dmin*"
     - "{backend,frontend/src/lib}/**/*[Oo]wner[Gg]ate*"
     - "{backend,frontend/src/lib}/**/urlSafety*"
+    - "{backend,frontend/src/lib}/**/*[Uu]nsub*"
     - "!**/node_modules/**"
     - "!**/dist/**"
     - "!**/build/**"
