@@ -16,6 +16,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { captureException } from "./sentry.js";
 
 export const RACE_AVAILABILITY_NOTIFICATION_TYPE = "selection_warning";
 
@@ -147,10 +148,21 @@ export async function notifyRaceInjuries({ supabase, race, injuryRows, notify = 
       riderName: [rider.firstname, rider.lastname].filter(Boolean).join(" "),
       raceName: race.name, raceId: race.id, injuredUntil: row.injured_until, missedRaces,
     });
-    const result = await notify({ supabase, teamId: rider.team_id, now, ...payload });
-    if (result?.delivered) sent += 1;
+    if (await deliverOne({ notify, supabase, teamId: rider.team_id, now, payload, raceId: race.id })) sent += 1;
   }
   return { sent };
+}
+
+// Én modtagers fejl (ejer-opslag, insert) må aldrig koste de øvrige managers deres
+// besked (review #6742): fanget og sendt til Sentry pr. modtager, løkken fortsætter.
+async function deliverOne({ notify, supabase, teamId, now, payload, raceId }) {
+  try {
+    const result = await notify({ supabase, teamId, now, ...payload });
+    return Boolean(result?.delivered);
+  } catch (err) {
+    captureException(err, { tags: { flow: "race-run", stage: "race-availability-notice" }, raceId, teamId });
+    return false;
+  }
 }
 
 /** Én besked pr. hold der blev fjernet ved start (gulvet). Afmeldte hold får ingen. */
@@ -158,8 +170,7 @@ export async function notifyTeamsDidNotStart({ supabase, race, teamIds, notify =
   let sent = 0;
   for (const teamId of new Set(teamIds ?? [])) {
     const payload = buildTeamDidNotStartNotification({ raceId: race.id, raceName: race.name });
-    const result = await notify({ supabase, teamId, now, ...payload });
-    if (result?.delivered) sent += 1;
+    if (await deliverOne({ notify, supabase, teamId, now, payload, raceId: race.id })) sent += 1;
   }
   return { sent };
 }

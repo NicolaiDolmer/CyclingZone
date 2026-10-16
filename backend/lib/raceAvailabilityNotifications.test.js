@@ -152,3 +152,17 @@ test("notStartedTeams: gulvets hold + hold uden entries tilbage, aldrig afmeldte
   }), ["all-ghosts", "floor"]);
   assert.deepEqual(notStartedTeams({}), []);
 });
+
+test("notifyTeamsDidNotStart: én fejlende modtager stopper ikke de oevrige (review #6742)", async () => {
+  const sent = [];
+  const out = await notifyTeamsDidNotStart({
+    supabase: {}, race: { id: "danube", name: "Tour du Danube" }, teamIds: ["broken", "csc", "talent"], now: NOW,
+    notify: async (args) => {
+      if (args.teamId === "broken") throw new Error("owner lookup failed");
+      sent.push(args.teamId);
+      return { delivered: true };
+    },
+  });
+  assert.equal(out.sent, 2);
+  assert.deepEqual(sent, ["csc", "talent"]);
+});
