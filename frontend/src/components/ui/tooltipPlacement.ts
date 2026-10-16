@@ -24,14 +24,26 @@ export function placeTooltip(rect: Rect, side: Side | string, bubble: Size, view
   const maxWidth = tooltipMaxWidth(viewport.width);
   const w = Math.min(bubble.width, maxWidth);
   const h = bubble.height;
+  // Mangler den ønskede side plads, vendes boblen til den modsatte side FØR
+  // klemningen. Ellers klemmes den ind oven i ankeret (Codex-review #6734:
+  // anker top 4/bund 26 og 30 px boble endte på top 8).
+  const roomAbove = rect.top - GAP - h >= EDGE;
+  const roomBelow = rect.bottom + GAP + h <= viewport.height - EDGE;
+  const roomLeft = rect.left - GAP - w >= EDGE;
+  const roomRight = rect.right + GAP + w <= viewport.width - EDGE;
+  let actual = side;
+  if (side === "top" && !roomAbove && roomBelow) actual = "bottom";
+  else if (side === "bottom" && !roomBelow && roomAbove) actual = "top";
+  else if (side === "left" && !roomLeft && roomRight) actual = "right";
+  else if (side === "right" && !roomRight && roomLeft) actual = "left";
   let left: number;
   let top: number;
-  if (side === "left" || side === "right") {
-    left = side === "left" ? rect.left - GAP - w : rect.right + GAP;
+  if (actual === "left" || actual === "right") {
+    left = actual === "left" ? rect.left - GAP - w : rect.right + GAP;
     top = rect.top + rect.height / 2 - h / 2;
   } else {
     left = rect.left + rect.width / 2 - w / 2;
-    top = side === "bottom" ? rect.bottom + GAP : rect.top - GAP - h;
+    top = actual === "bottom" ? rect.bottom + GAP : rect.top - GAP - h;
   }
   const hidden = rect.bottom <= 0 || rect.top >= viewport.height || rect.right <= 0 || rect.left >= viewport.width;
   return {

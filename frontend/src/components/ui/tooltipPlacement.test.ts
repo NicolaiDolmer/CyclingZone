@@ -35,6 +35,22 @@ test("ankeret scrollet ud af skaermen: boblen skjules i stedet for at svaeve", (
   assert.equal(placeTooltip(rect(100, 400, 40, 22), "top", { width: 100, height: 30 }, phone).hidden, false);
 });
 
+test("ingen plads over ankeret: boblen vendes ned under i stedet for at daekke det", () => {
+  // Codex-review #6734: anker top 4 / bund 26, boble 30 px
+  const p = placeTooltip(rect(100, 4, 40, 22), "top", { width: 100, height: 30 }, phone);
+  assert.equal(p.top, 26 + 8);
+});
+
+test("ingen plads under ankeret: boblen vendes op over det", () => {
+  const p = placeTooltip(rect(100, 790, 40, 20), "bottom", { width: 100, height: 30 }, phone);
+  assert.equal(p.top, 790 - 8 - 30);
+});
+
+test("ingen plads til venstre: boblen vendes til hoejre", () => {
+  const p = placeTooltip(rect(10, 400, 40, 22), "left", { width: 100, height: 30 }, phone);
+  assert.equal(p.left, 50 + 8);
+});
+
 test("plads nok: boblen centreres over ankeret", () => {
   const p = placeTooltip(rect(150, 400, 60, 22), "top", { width: 100, height: 30 }, phone);
   assert.equal(p.left, 150 + 30 - 50);
