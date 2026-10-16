@@ -1,0 +1,100 @@
+name: Roadmap sync
+
+# Feature i beta kommer automatisk paa roadmappet (#6693).
+#
+#   roadmap-text — gate paa PR og main: et spillervendt flag i beta i
+#     docs/FEATURE_REGISTRY.yml skal have roadmap_en + roadmap_da; under byg
+#     (building/dormant) kun en advarsel (reglen og baseline-skralden staar i
+#     scripts/feature-registry-roadmap-check.mjs). Rent fil-tjek, ingen secrets.
+#
+#   sync — efter merge til main, og kun naar roadmap-text er groen:
+#     scripts/roadmap-sync-registry.mjs --apply opretter manglende roadmap_items
+#     SKJULT (approved = false, publish_on_beta, planned, flag_key) ud fra
+#     registret, idempotent paa flag_key. Triggerne i databasen goer punktet
+#     synligt og flytter det til beta/shipped, naar ejeren flipper flaget.
+#     Samme moenster som auto-migrate.yml: kun push til main + manuel dispatch.
+
+on:
+  pull_request:
+    paths:
+      - 'docs/FEATURE_REGISTRY.yml'
+      - 'scripts/generate-feature-status.mjs'
+      - 'scripts/feature-registry-roadmap-*'
+      - 'scripts/roadmap-sync-registry*'
+      - 'scripts/roadmap-drift*'
+      - '.github/workflows/roadmap-sync.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/FEATURE_REGISTRY.yml'
+      - 'scripts/generate-feature-status.mjs'
+      - 'scripts/feature-registry-roadmap-*'
+      - 'scripts/roadmap-sync-registry*'
+      - 'scripts/roadmap-drift*'
+      - '.github/workflows/roadmap-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  roadmap-text:
+    name: roadmap-text
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      - name: Selftests
+        run: node --test scripts/feature-registry-roadmap-check.test.mjs scripts/roadmap-sync-registry.test.mjs scripts/roadmap-drift.test.mjs
+
+      # Vaekst-tjekket (nye id'er i baseline) giver kun mening mod PR'ens base.
+      # Paa main sammenlignes ikke: origin/main kan allerede vaere laengere fremme.
+      - name: Hent main til baseline-sammenligning
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+
+      - name: Spillervendte flag har roadmap-tekst (PR, baseline maa kun skrumpe)
+        if: github.event_name == 'pull_request'
+        run: node scripts/feature-registry-roadmap-check.mjs --base-ref origin/main
+
+      - name: Spillervendte flag har roadmap-tekst
+        if: github.event_name != 'pull_request'
+        run: node scripts/feature-registry-roadmap-check.mjs
+
+  sync:
+    name: sync
+    needs: roadmap-text
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: roadmap-sync-prod
+      cancel-in-progress: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Opret manglende roadmap-punkter
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node scripts/roadmap-sync-registry.mjs --apply
