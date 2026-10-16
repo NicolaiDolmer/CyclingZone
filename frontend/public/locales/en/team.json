@@ -80,6 +80,7 @@
       "type": "Type",
       "contract": "Contract",
       "contractUntil": "Until season {season}",
+      "contractExpired": "Expired",
       "action": "Action"
     },
     "reputation": {
