@@ -35,7 +35,17 @@ test("KlubPage grupperer live faciliteter før coming-soon (#1441 Slice 1)", () 
   assert.match(src, /filter\(\(f\) => !f\.effectLive\)/);
 });
 
-test("KlubPage viser intro + sæson-omkostning i klartekst", () => {
-  assert.match(src, /page\.intro/);
-  assert.match(src, /cost\.seasonLine/);
+// #6666 retning D: opsummering øverst (drift, løn, saldo) erstatter introtekst +
+// sæson-sætning; kort-gitter 1→3 kolonner; ét guld-kort = billigste opgradering.
+test("KlubPage viser opsummering (drift/løn/saldo) og ingen introtekst", () => {
+  assert.match(src, /summary\.upkeep/);
+  assert.match(src, /summary\.wages/);
+  assert.match(src, /summary\.balance/);
+  assert.ok(!/page\.intro/.test(src), "introteksten er væk (TASTE: ingen intro mellem sidehoved og indhold)");
+});
+
+test("KlubPage: kort i et gitter (1 kolonne på telefon, 3 på desktop) og ét guld-kort", () => {
+  assert.match(src, /grid-cols-1 md:grid-cols-2 xl:grid-cols-3/);
+  assert.match(src, /primaryUpgradeTrack\(groupedFacilities\)/);
+  assert.match(src, /primary=\{f\.track === primaryTrack\}/);
 });
