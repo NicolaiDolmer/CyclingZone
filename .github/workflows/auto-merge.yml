@@ -148,7 +148,7 @@ jobs:
               if [ -n "$CODEX_STATE" ]; then
                 C_SHA=$(echo "$CODEX_STATE" | jq -r '.code_review.commit_sha // ""')
                 C_STATUS=$(echo "$CODEX_STATE" | jq -r '.code_review.status // ""')
-                C_OPEN=$(echo "$CODEX_STATE" | jq -r '.code_review.has_unresolved_findings // "unknown"')
+                C_OPEN=$(echo "$CODEX_STATE" | jq -r '.code_review.has_unresolved_findings | tostring')
                 if [ "$C_SHA" = "$HEAD_SHA" ] && [ "$C_STATUS" = "completed" ] && [ "$C_OPEN" = "false" ]; then
                   echo "Codex review completed on HEAD without unresolved findings; continuing."
                   exit 0
