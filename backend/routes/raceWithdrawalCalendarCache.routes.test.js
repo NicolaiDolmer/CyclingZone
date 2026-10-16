@@ -24,3 +24,17 @@ test("POST /races/:raceId/withdrawal invaliderer calendar-cachen", () => {
 test("DELETE /races/:raceId/withdrawal invaliderer calendar-cachen", () => {
   assert.match(block('router.delete("/races/:raceId/withdrawal"'), /invalidateNamespace\("calendar"\)/);
 });
+
+// Kalenderens `entered` kommer fra udtagelsen, saa hver vellykket udtagelses-skrivning
+// (gem/ryd, bulk, auto-udfyld) skal ogsaa invalidere cachen (Codex P2 paa PR #6680).
+for (const marker of [
+  'router.put("/races/:raceId/selection"',
+  'router.put("/races/selection/bulk"',
+  'router.post("/races/:raceId/selection/auto"',
+  'router.post("/races/distribution/regenerate"',
+  'router.post("/races/distribution/clear"',
+]) {
+  test(`${marker} invaliderer calendar-cachen efter vellykket skrivning`, () => {
+    assert.match(block(marker), /invalidateNamespace\("calendar"\)/);
+  });
+}

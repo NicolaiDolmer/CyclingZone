@@ -60,7 +60,7 @@ export default function RaceHistoryPage() {
       try {
         results = await fetchAllRows(() => supabase
           .from("race_results")
-          .select("race_id, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+          .select("race_id, stage_number, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
           .in("race_id", raceIds)
           .order("rank")
           .order("id", { ascending: true }));
@@ -68,15 +68,16 @@ export default function RaceHistoryPage() {
         setLoadError(true); return;
       }
 
-      const raceType = races[0].race_type;
-      const primaryType = raceType === "stage_race" ? "gc" : "stage";
+      // Kanonisk (GAME_INVARIANTS, raceHistoryModel): vinderen er rank 1 i "gc" — endagsløb ved etape 1, etapeløb ved højeste etape.
+      const primaryType = "gc";
 
       const editionMap = {};
       races.forEach(r => { editionMap[r.id] = { ...r, winner: null }; });
       (results || []).forEach(res => {
         const ed = editionMap[res.race_id];
         if (!ed) return;
-        if (res.rank === 1 && res.result_type === primaryType && !ed.winner) {
+        if (res.rank === 1 && res.result_type === primaryType
+          && (!ed.winner || (Number(res.stage_number) || 1) > (Number(ed.winner.stage_number) || 1))) {
           ed.winner = res;
         }
       });

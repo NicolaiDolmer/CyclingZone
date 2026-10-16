@@ -5724,6 +5724,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         .delete().eq("race_id", race.id).eq("team_id", req.team.id);
       if (clearCleanupErr) captureException(new Error(`race_entry_clears cleanup (manual save): ${clearCleanupErr.message}`));
     }
+    invalidateNamespace("calendar"); // #6514: kalenderens entered-status følger udtagelsen
     res.json({ ok: true });
   } catch (err) {
     // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.
@@ -5927,6 +5928,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       }
     }
 
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, saved: changes.length });
   } catch (err) {
     // #2256/#4283-mønsteret: RPC'ens deferred binding-backstop tabte kapløbet for os (en
@@ -6093,6 +6095,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       return res.status(500).json({ error: insErr.message });
     }
 
+    invalidateNamespace("calendar"); // #6514
     res.json({
       ok: true,
       rider_ids: picks.map((p) => p.rider_id),
@@ -6581,6 +6584,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
       write: async (args) => await writeRegeneratedLineups({ ...args }),
     });
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
     captureException(err);
@@ -6703,6 +6707,7 @@ router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async 
       .upsert(markerRows, { onConflict: "race_id,team_id" });
     if (markErr) throw new Error(`race_entry_clears upsert: ${markErr.message}`);
 
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, cleared: targetIds.length, skipped, scope });
   } catch (err) {
     captureException(err);
