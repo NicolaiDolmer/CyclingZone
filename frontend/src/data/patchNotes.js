@@ -6,7 +6,7 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
-        "rollout": "live",
+        "rollout": "switched_on",
         "topic": "Academy",
         "en": {
           "title": "Academy 2.0: bring in this week's intake",
@@ -24,7 +24,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "rollout": "live",
+        "rollout": "switched_on",
         "topic": "Races",
         "en": {
           "title": "Sprint trains only by default on flat stages",
