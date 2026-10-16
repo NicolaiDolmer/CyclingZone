@@ -852,7 +852,7 @@ Grundlag: før/efter-billede + fakta-ark med prod-tal (kilde: [#4850, kommentar 
 | # | Beslutning | Konsekvens |
 |---|---|---|
 | 1 | **Løbsdagen er tick-enheden** (bekræftet mod billedet) | uændret fra 6/9 |
-| 2 | **140 løbsdage pr. sæson i alle divisioner**, ikke 80. Antal LØB pr. division er urørt ("jeg vil ikke have at dette laver om i løbskalenderen") | `SEASON_RACE_DAY_TARGET[4] = 140` (= 28 løbsdatoer × D1's 5 slots); ekstra løbsdage er rene træningsdage. Deleren i `trainingRaceDayTick.js` kalibreres til 140. Skrivetryk ≈ 5× → gate G6 er krav før flip |
+| 2 | **140 løbsdage pr. sæson i alle divisioner**, ikke 80. Antal LØB pr. division er urørt ("jeg vil ikke have at dette laver om i løbskalenderen") | `SEASON_RACE_DAY_TARGET[4] = 140` (= 28 løbsdatoer × D1's 5 slots); ekstra løbsdage er rene træningsdage. Deleren i `trainingRaceDayTick.js` kalibreres til 140 (siden #6711 forankret i 5 løbsdage pr. dato, se §13.3c). Skrivetryk ≈ 5× → gate G6 er krav før flip |
 | 3 | **Dagens træning kører samlet** (alle dagens løbsdage i ÉN sweep efter dagens sidste finalization) **+ frivillig knap "Kør dagens træning nu" uden bonus** | 25 %-bonussen fjernes stadig (beslutning 2, 6/9). Knappen giver ingen fordel, kun utålmodighed |
 | 4 | **Tidligst kl. 20 dansk tid** (målt: aktive spillerdage/time kl. 16 = 218, 17-20 ≈ 185-199, 21 = 127) | Træningsrapport i indbakken kl. 20 = dagens øjeblik |
 | 5 | **U23-kalenderen (#4620) bygges MED i S4-cutover**; én løbsdags-akse pr. trup (senior/U23/junior), samme 140-mål | #4620 ind i Bane 1. Risiko flagget (13 dage, nul buffer) |
@@ -895,6 +895,16 @@ Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fu
 
 **"Train now" og løbsudtagelsen (#4847; pr. rytter siden #6139, ejer 8/10 valg A).** Et tryk skriver én lås pr. rytter i trykkets frosne trup (`training_train_now_locks`). Kun de ryttere er afgjort for datoen: en låst rytter kan hverken sættes ind i eller tages ud af et løb med en etape den dato. Ryttere uden lås (købt eller flyttet efter trykket) kan stadig udtages. Det gælder alle veje: manuel/bulk, auto-udfyld, regenerering, "Train only", entry-sweep og løbsstartens autofyld. Regel 2 er uændret. Låsen vises på udtagelsen (banner med tidspunkt, grå ryttere) og på træningssiden. Kode: `trainNowLock.js`.
 
+### 13.3c Fast udbytte pr. dato uanset sæsonens længde (#6711, ejer-go 16/10)
+
+Plan-PR 2 i [`docs/superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md`](superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md).
+
+- **Regel.** Udbyttet pr. løbsdag er det samme i alle sæsoner. Budget-deleren (`raceDayBudgetDivisor`) er forankret i kalenderens **5 løbsdage pr. dato** og kalibreret mod S4 (28 datoer × 5 = 140), ikke mod sæsonens samlede antal løbsdage.
+- **Hvorfor.** Før #6711 læste deleren sæsonens mål (`SEASON_RACE_DAY_TARGET`). En længere sæson tyndede derfor hver løbsdag ud: S5 med 160 løbsdage gav 12,5 % mindre pr. dag end S4 med 140, og en sæson med 135 ville give mere.
+- **Konsekvens.** Forventet udvikling pr. virkelig dato er ens for 140, 160 og 135 løbsdage. En længere sæson giver mere samlet udvikling, fordi den har flere datoer, ikke fordi hver dato giver mere.
+- **S4 er bit-identisk.** Ankeret rammer S4's 140 eksakt, så S4's deler og udvikling er uændret. Bevist i `backend/lib/trainingRaceDayTick.test.js` (#6711-testene: deler, dato-kurve og `applyDailyTick`).
+- **Sæsonens mål** læses stadig fra kalenderen, men kun til aksens længde (`resolveCalendarRaceDayTarget`, §13.3b "Kanterne"). `resolveRaceDayBudgetDivisor({ seasonNumber })` beholder parameteren for kald-stederne, men svaret er det samme for alle sæsoner. Trænings-slot-vagtens kalenderdags-ækvivalenter (G9, §13.4) følger med og er nu også ens pr. dato i alle sæsoner.
+
 ### 13.4 Status 28/9 (24/9 som baseline; hvad der er bygget bag flaget, og hvad der mangler)
 
 Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-only prodmåling 28/9). Flag off bruger kalenderdags-ticket, nu uden manager-klik-bonus. **Én undtagelse:** off-seasonens loglinje og returværdi (#4848, se "B5" nedenfor) gælder uanset flaget, men kun når der ingen aktiv sæson er; selve træningen er uændret.
@@ -908,7 +918,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-o
 | Overlap-guard + dags-claim på sweepen (G6) | **bygget**, kode-invariant + test | `trainingDayCloseTrigger.js` |
 | Maks-ventetid på hængende finalization (kl. 23) + Sentry-alarm | **bygget** | `trainingDayCloseTrigger.js`, `cron.js` |
 | Frivillig knap "Run today's training now" / "Kør dagens træning nu", uden bonus, samme åbne-betingelse som sweepen | **bygget** | `POST /api/training/run-today`, `TrainingPage.jsx` |
-| Deleren kalibreret til 140 løbsdage, **læst** fra `calendarRaceDayTargets.js` (#4845) | **bygget**, statisk import (#4846; PR #5169 er merget, den defensive dynamiske import er fjernet) | `trainingRaceDayTick.js` |
+| Deleren kalibreret mod S4's 140 løbsdage og **forankret i 5 løbsdage pr. dato**, ens for alle sæsoner (#6711, ejer-go 16/10). Sæsonens mål i `calendarRaceDayTargets.js` styrer kun aksens længde | **bygget** (#6711; før da læst fra sæsonens mål, #4845/#4846) — se §13.3c | `trainingRaceDayTick.js` |
 | Trup-akse i nøglen (`squad`, default `senior`) til #4620's tre akser pr. hold | **bygget** | `database/2026-09-15-4847-training-day-close-trigger.sql` |
 | Manager-klik-bonussen i vækstformlen (B3) | **fjernet i #5281** fra både løbsdags- og kalenderdagsstien. `bonus_applied` består som historisk audit-felt, men påvirker ikke udvikling; knappen er frivillig. | `dailyTraining.js`, `dailyTrainingEngine.js` |
 | Skadesvarighed i løbsdage (beslutning 7) | **bygget bag flag** (PR #5465 merget). Begge skrivere bruger sæsonaksen; ukendt akse beholder kalenderfallback. En skade hen over sæsonslut bruger den konservative datofallback og genbruger aldrig en gammel akse | `injuryRaceDays.js`, `dailyTrainingEngine.js`, `raceRunner.js` |
