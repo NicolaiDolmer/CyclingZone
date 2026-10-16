@@ -18,7 +18,14 @@
     "previousOpen": "Yesterday's training is still being settled. Try again in a moment.",
     "noRaceDay": "There is no race day today, so there is nothing to lock.",
     "error": "Today could not be locked. Try again.",
-    "planLocked": "Today's fields are locked. You can still change tomorrow."
+    "planLocked": "Today's fields are locked. You can still change tomorrow.",
+    "shortRace": "{race}: only {fit} of {min} fit riders selected. After Train now no rider can be added, so your team will not start.",
+    "shortRaceEmpty": "{race}: no riders selected. After Train now the assistant cannot pick any, so your team will not start.",
+    "confirm": {
+      "title": "Your team will not start",
+      "go": "Train anyway",
+      "cancel": "Cancel"
+    }
   },
   "trainedToday_you": "Trained today (by you)",
   "trainedToday_assistant": "Trained today (by assistant)",

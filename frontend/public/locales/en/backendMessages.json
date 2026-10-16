@@ -634,6 +634,15 @@
       "title": "{count, plural, one {New message} other {# new messages}}",
       "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Another manager sent you a message} other {# new messages from another manager}}"
+    },
+    "riderInjured": {
+      "title": "Rider injured",
+      "message": "{rider} crashed in {race} and is injured until {until}.",
+      "messageMissed": "{rider} crashed in {race} and is injured until {until}. He will not ride {missed}."
+    },
+    "teamDidNotStart": {
+      "title": "Your team did not start",
+      "message": "Your team did not start {race}: fewer than {min} fit riders at the start."
     }
   },
   "error": {

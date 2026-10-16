@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { computeColumnStatus, raceDateRangeLabel, raceGameDayLabel, freeRiderCountForColumn } from "../../lib/raceHubLogic.js";
-import { partialSquadOutlook } from "../../lib/raceSelectionLogic.js";
+import { partialSquadOutlook, MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js";
 import RaceDayOverlapRow from "./RaceDayOverlapRow.jsx";
 import { terrainBucket } from "../../lib/stageTerrain.js";
 import { ROLE_KEYS, ROLE_KEYS_V3 } from "../../lib/roleHint.js";
@@ -22,12 +22,26 @@ const STATUS_CLASS = {
   overfull: "bg-cz-danger/10 text-cz-danger border-cz-danger/40",
   withdrawn: "bg-cz-subtle text-cz-3 border-cz-border",
   locked: "bg-cz-subtle text-cz-2 border-cz-border",
+  // #6740: samme advarsels-tone som "mangler ryttere": en konsekvens, ikke en fejl.
+  didNotStart: "bg-cz-warning-bg text-cz-warning border-cz-warning/40",
 };
 // #2376: freeRole tilføjet — badge-label slår op i "selection.freeRole" (samme
 // opslagssti som de øvrige roller i udtagelses-panelet).
 const ROLE_KEY = { captain: "captain", sprint_captain: "sprintCaptain", hunter: "hunter", free_role: "freeRole" };
 
 const RIDER_GRID = "grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,.75fr)_minmax(0,.55fr)_1.5rem] items-center gap-1 px-3";
+
+// #6740: en udtaget rytter der er skadet starter ikke (raceRunner fjerner ham ved start).
+// Mærket står ved navnet i både den låste og den redigerbare række, så manageren ser det
+// før start — Friis 16/10 så kun en rask rytter med fatigue 1.
+function InjuredBadge({ label }) {
+  return (
+    <span data-testid="race-rider-injured"
+      className="mt-0.5 inline-block text-3xs uppercase tracking-wide px-1.5 py-px rounded-full border border-cz-danger/40 text-cz-danger">
+      {label}
+    </span>
+  );
+}
 
 // #5930: both row states use the same existing payload values. Reserving the
   // grid cells also keep unavailable values under the correct heading.
@@ -60,6 +74,10 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const peakNames = (column.peakRiderIds || []).map(nameOf).filter(Boolean);
   const paybackNames = (column.paybackRiders || []).map((p) => nameOf(p.riderId)).filter(Boolean);
   const locked = !!column.lineup_locked;
+  // #6740: startet, men holdet kom ikke med i feltet (fjernet ved start, under gulvet).
+  // Afmeldt har forrang (#4306); begge viser en note i stedet for en "låst" trup.
+  const didNotStart = !column.withdrawn && locked && !!column.did_not_start;
+  const inactive = !!column.withdrawn || didNotStart;
   // #6383: ryttere der har trænet i dag (Train now) er afgjort for dette løb: grånet,
   // kan hverken fjernes eller trækkes — samme regel som udtagelsespanelet (#6139).
   const trainNowIds = new Set(column.trainNowLock?.riderIds ?? []);
@@ -110,19 +128,23 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   // "withdrawn" fra og med etape 1.
   const status = column.withdrawn
     ? { kind: "withdrawn", selected: column.counts.selected, target: column.counts.target }
+    : didNotStart
+    ? { kind: "didNotStart" }
     : locked
     ? { kind: "locked" }
     : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, max: column.size?.max, withdrawn: column.withdrawn });
-  const statusLabel = status.kind === "locked"
-    ? t("racehub.status.locked")
+  const statusLabel = status.kind === "locked" || status.kind === "didNotStart"
+    ? t(`racehub.status.${status.kind}`)
     : t(`racehub.status.${status.kind}`, { selected: status.selected, target: status.target });
   // #4295: gulvet (6 udtagne for at stille op) skal stå HER og ikke kun i løbssidens panel
   // — brættet er hvor dagens udtagelse faktisk foregår. Samme rene regel som panelet
   // (partialSquadOutlook), så de to flader ikke kan sige hver sit om samme løb. Kun
   // konsekvensen vises her; "assistenten fylder pladserne" er allerede dækket af
   // status-chippens tal, og kolonnen er for smal til begge.
+  // #6740: en skadet udtaget rytter tæller ikke med: motoren fjerner ham ved start.
+  const fitSelected = selectedIds.filter((id) => !ridersById.get(id)?.injured).length;
   const outlook = column.withdrawn ? null : partialSquadOutlook({
-    selected: selectedIds.length,
+    selected: fitSelected,
     free: freeRiderCountForColumn({ column, roster, bindingMap }),
     fieldMax: column.size?.max,
     raceLive: locked,
@@ -183,13 +205,14 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
           </p>
         )}
         {/* #3102 PR 2: peaks/payback fra formplanen, synligt hvor udtagelsen sker. */}
-        {peakNames.length > 0 && (
+        {/* #6740: et løb holdet ikke kører, har ingen form-top eller payback at vise. */}
+        {!inactive && peakNames.length > 0 && (
           <p className="mt-1.5 flex items-start gap-1 text-3xs text-cz-accent-t">
             <StarIcon size={12} aria-hidden="true" className="mt-px shrink-0" />
             <span>{t("racehub.column.peaksHere", { names: peakNames.join(", ") })}</span>
           </p>
         )}
-        {paybackNames.length > 0 && (
+        {!inactive && paybackNames.length > 0 && (
           <p className="mt-1 flex items-start gap-1 text-3xs text-cz-warning">
             <AlertTriangleIcon size={12} aria-hidden="true" className="mt-px shrink-0" />
             <span>
@@ -204,7 +227,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
       {/* #4296: et afmeldt løb binder ingenting (Rod A, #1823) - overlap-raekken
           rendres derfor aldrig for withdrawn kolonner, selvom spændet stadig står
           i meta-linjen ovenfor (det er en kendsgerning om løbet). */}
-      {!column.withdrawn && (
+      {!inactive && (
         <RaceDayOverlapRow
           overlaps={overlaps}
           clashes={clashes}
@@ -213,7 +236,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         />
       )}
 
-      {!column.withdrawn && (
+      {!inactive && (
         <>
           <p data-testid="race-number-explanation" className="px-3 py-2 text-2xs text-cz-3 border-b border-cz-border">
             {t("racehub.column.numbersExplanation")}
@@ -238,6 +261,12 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
           <InfoIcon size={14} className="shrink-0 mt-px" aria-hidden="true" />
           <span>{t("racehub.column.withdrawnNote")}</span>
         </div>
+      ) : didNotStart ? (
+        // #6740: holdet kørte ikke. Ingen trup at vise som "låst", ingen tal der lyver.
+        <div data-testid="column-did-not-start" className="flex-1 flex items-start gap-2 px-3 py-4 text-xs text-cz-warning">
+          <AlertTriangleIcon size={14} className="shrink-0 mt-px" aria-hidden="true" />
+          <span>{t("racehub.column.didNotStartNote", { min: MIN_RACE_ENTRIES })}</span>
+        </div>
       ) : locked ? (
         <div className="py-1 flex-1">
           {selectedIds.map((id) => {
@@ -249,6 +278,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
               <div key={id} className={`${RIDER_GRID} py-1.5 ${trainedToday ? "opacity-60" : ""}`}>
                 <span className="min-w-0">
                   <span data-testid="race-rider-name" className="block truncate text-xs text-cz-1">{r.name}</span>
+                  {r.injured && <InjuredBadge label={t("selection.injured")} />}
                   {trainedToday && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
                 </span>
                 <span data-testid="race-rider-order" className={`min-w-0 wrap-break-word text-2xs ${role ? "text-cz-accent-t" : "text-cz-2"}`}>{orderLabel(role)}</span>
@@ -287,6 +317,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
                     aria-haspopup="menu" aria-expanded={roleMenuFor === id}
                     className="group/role text-left min-w-0 disabled:opacity-50">
                     <span data-testid="race-rider-name" className="block truncate text-xs text-cz-1 transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
+                    {r.injured && <InjuredBadge label={t("selection.injured")} />}
                     {trainedToday && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
                   </button>
                   <button type="button" data-testid="race-rider-order"

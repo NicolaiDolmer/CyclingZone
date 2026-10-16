@@ -19,7 +19,9 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
-import { teamWillStart } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
+import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import {
   applyRiderEligibilityFilter, raceSquadOf, isRiderInjured, raceSelectionReferenceDateStr,
 } from "./riderEligibility.js";
@@ -34,10 +36,20 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 // frie her, så udsigten overvurderer de frie og fejler mod "stiller op". Banneret
 // "stiller ikke op" vises derfor kun når holdet entydigt ikke kan nå gulvet. Ren
 // berigelse: ALDRIG throw, enhver fejl giver { starts: true } (som før #5945).
-async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
-  const fallback = { starts: true, min: teamWillStart({}).min };
+//
+// #6740: et afmeldt hold og et hold der ikke kom med i det faktiske felt (fjernet ved
+// start) får ikke længere en taktik-matrix (Friis 16/10: "Lineup locked" + taktik for et
+// løb holdet ikke kørte). Før start tæller Train now-låste ryttere ikke som frie.
+async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = new Date() }) {
+  const fallback = { starts: true, min: teamWillStart({}).min, reason: null };
   try {
-    if ((race.stages_completed ?? 0) > 0) return fallback;
+    const withdrawn = (await loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds: [race.id] })).has(race.id);
+    if (withdrawn) return teamWillStart({ withdrawn });
+    const stagesCompleted = race.stages_completed ?? 0;
+    if (stagesCompleted > 0) {
+      const inField = (await loadTeamsInStartedField({ supabase, raceIds: [race.id], teamId })).get(race.id) ?? null;
+      return teamWillStart({ stagesCompleted, inField });
+    }
     const { data: roster, error: rosterErr } = await applyRiderEligibilityFilter(
       // pagination-safe: .eq("team_id") afgraenser til ÉT holds egen trup (typisk < 30 ryttere),
       // langt under PostgREST's 1000-raekkers-loft.
@@ -52,15 +64,16 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
       const { data: cond, error: condErr } = await supabase
         .from("rider_condition").select("rider_id, injured_until").in("rider_id", candidateIds);
       if (!condErr) {
-        const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
+        const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString(now));
         injuredIds = new Set((cond || []).filter((c) => isRiderInjured(c.injured_until ?? null, todayStr)).map((c) => c.rider_id));
       }
     }
     const entered = new Set(entryRiderIds);
+    const locked = (await loadRaceTrainNowLock({ supabase, raceId: race.id, riderIds: rosterIds })).riderIds;
     return teamWillStart({
       entryCount: entryRiderIds.filter((id) => !injuredIds.has(id)).length,
-      freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id)).length,
-      stagesCompleted: race.stages_completed ?? 0,
+      freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id)).length,
+      stagesCompleted,
     });
   } catch {
     // best-effort: ren berigelse, fejler mod "stiller op" (som før #5945).
@@ -204,7 +217,8 @@ export function validateStageRoleOverrides({
  *
  * @param {{supabase, race: {id, stages, stages_completed}, teamId: string}} args
  */
-export async function getStageRolesContext({ supabase, race, teamId }) {
+// `now` er injicérbart (AGENTS.md regel 16: tests læser aldrig vægur-tiden).
+export async function getStageRolesContext({ supabase, race, teamId, now = new Date() }) {
   const { data: entries, error: entriesErr } = await supabase
     .from("race_entries")
     .select("rider_id, race_role")
@@ -328,7 +342,6 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     .select("stage_number, scheduled_at")
     .eq("race_id", race.id)
     .order("stage_number", { ascending: true }));
-  const now = new Date();
   const timeLockedStages = new Set(
     (schedRows || [])
       .filter((s) => isStageLocked({ stageNumber: s.stage_number, stagesCompleted: race.stages_completed ?? 0, scheduledAt: s.scheduled_at, now }))
@@ -337,8 +350,8 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
 
   // #5945: kun relevant når holdet har en udtagelse at vise taktik for.
   const start_outlook = riderIds.length
-    ? await loadStartOutlook({ supabase, race, teamId, entryRiderIds: riderIds })
-    : { starts: true, min: teamWillStart({}).min };
+    ? await loadStartOutlook({ supabase, race, teamId, entryRiderIds: riderIds, now })
+    : { starts: true, min: teamWillStart({}).min, reason: null };
 
   return {
     stages_completed: race.stages_completed ?? 0,

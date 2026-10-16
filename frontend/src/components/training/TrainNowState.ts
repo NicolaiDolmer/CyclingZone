@@ -15,7 +15,11 @@ export type TrainNowStatus = {
   settled: boolean;
   // #6139: the team's races with a stage today, so the button can say which race selection it locks.
   todayRaces: Array<{ id: string; name: string | null }>;
+  // #6740: today's races where a press leaves the team below the start floor (fit = fit riders selected).
+  shortRaces: TrainNowShortRace[];
 };
+
+export type TrainNowShortRace = { id: string; name: string | null; fit: number; entered: number; min: number };
 
 export type TrainNowPressResult = {
   settledRiderIds: string[];
@@ -38,7 +42,7 @@ export function trainNowPressCounts(result: TrainNowPressResult | null): { train
 
 export const TRAIN_NOW_OFF: TrainNowStatus = {
   enabled: false, available: false, reason: "flag_off", tickDate: null, locked: false, lockedAt: null, settled: false,
-  todayRaces: [],
+  todayRaces: [], shortRaces: [],
 };
 
 // `=== true` everywhere: an older backend without the route gives the old page.
@@ -59,7 +63,39 @@ export function parseTrainNowStatus(data: unknown): TrainNowStatus {
         !!r && typeof (r as { id?: unknown }).id === "string")
         .map((r) => ({ id: r.id, name: typeof r.name === "string" ? r.name : null }))
       : [],
+    shortRaces: parseShortRaces(d.shortRaces),
   };
+}
+
+export function parseShortRaces(value: unknown): TrainNowShortRace[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((r): r is Record<string, unknown> => !!r && typeof (r as { id?: unknown }).id === "string")
+    .map((r) => ({
+      id: r.id as string,
+      name: typeof r.name === "string" ? r.name : null,
+      fit: Number.isFinite(r.fit) ? Number(r.fit) : 0,
+      // Ældre backend uden `entered`: antag at de raske er de udtagne.
+      entered: Number.isFinite(r.entered) ? Number(r.entered) : (Number.isFinite(r.fit) ? Number(r.fit) : 0),
+      min: Number.isFinite(r.min) ? Number(r.min) : 6,
+    }));
+}
+
+/**
+ * #6740: the warning lines under the button, one per race the press would leave below
+ * the floor. Only while the press is possible; never after it (nothing to decide then).
+ */
+export function trainNowWarnings(status: TrainNowStatus): Array<{ key: string; params: Record<string, string | number> }> {
+  if (!status.enabled || !status.available) return [];
+  return status.shortRaces.map((r) => ({
+    key: r.entered > 0 ? "trainNow.shortRace" : "trainNow.shortRaceEmpty",
+    params: { race: r.name ?? "", fit: r.fit, min: r.min },
+  }));
+}
+
+/** #6740: ask before pressing when the press costs a race start. */
+export function trainNowNeedsConfirm(status: TrainNowStatus): boolean {
+  return trainNowWarnings(status).length > 0;
 }
 
 type DayClose = { open?: boolean | null; opensAtHour?: number } | null | undefined;

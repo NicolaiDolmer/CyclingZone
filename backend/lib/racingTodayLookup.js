@@ -15,7 +15,9 @@
 
 import { copenhagenMidnightUTC, copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter, isRiderInjured, raceSquadOf } from "./riderEligibility.js";
-import { teamWillStart } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
+import { loadTrainNowLocksForRaces } from "./trainNowLock.js"; // #6740
 
 // Ren sammenkobling — INGEN I/O. Holdets (race_id, rider_id)-entries krydses mod
 // mængden af race_id'er der har en etape planlagt i dag, og løbsnavnet slås op.
@@ -133,17 +135,38 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
       if (!entriesByRace.has(e.race_id)) entriesByRace.set(e.race_id, new Set());
       entriesByRace.get(e.race_id).add(e.rider_id);
     }
+    // #6740: afmeldte hold (entries bevares, #4306), det faktiske felt for startede løb,
+    // og Train now-låste ryttere (aldrig frie ved start, raceRunner/#6139). Hver læsning er
+    // best-effort for sig: svigter den, gælder reglen fra før #6740 for netop den del.
+    const raceIds = [...entriesByRace.keys()];
+    const startedIds = raceIds.filter((id) => (stagesCompletedByRace.get(id) ?? 0) > 0);
+    const [withdrawnIds, inFieldByRace, lockByRace] = await Promise.all([
+      loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds }).catch(() => new Set()),
+      startedIds.length ? loadTeamsInStartedField({ supabase, raceIds: startedIds, teamId }).catch(() => new Map()) : new Map(),
+      loadTrainNowLocksForRaces({ supabase, raceIds, riderIds: conditionIds, teamId }).catch(() => new Map()),
+    ]);
     for (const [raceId, entered] of entriesByRace) {
+      const stagesCompleted = stagesCompletedByRace.get(raceId) ?? 0;
+      const withdrawn = withdrawnIds.has(raceId);
+      const inField = inFieldByRace.has(raceId) ? inFieldByRace.get(raceId) : null;
+      // Afmeldt eller startet: rosteret er ligegyldigt, svaret afgøres uden det.
+      if (withdrawn || stagesCompleted > 0) {
+        starts.set(raceId, teamWillStart({ stagesCompleted, inField, withdrawn }).starts);
+        continue;
+      }
       const roster = rosterBySquad.get(raceSquadOf(raceById.get(raceId)));
       if (!roster) continue;
       const boundElsewhere = new Set();
       for (const [otherId, otherRiders] of entriesByRace) {
-        if (otherId === raceId) continue;
+        // Et afmeldt løb binder ingen (Rod A, #1823).
+        if (otherId === raceId || withdrawnIds.has(otherId)) continue;
         for (const id of otherRiders) boundElsewhere.add(id);
       }
-      const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)).length;
+      const locked = lockByRace.get(raceId)?.riderIds ?? new Set();
+      const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)
+        && !locked.has(id)).length;
       const { starts: willStart } = teamWillStart({
-        entryCount: [...entered].filter((id) => !injured.has(id)).length, freeEligibleCount, stagesCompleted: stagesCompletedByRace.get(raceId) ?? 0,
+        entryCount: [...entered].filter((id) => !injured.has(id)).length, freeEligibleCount, stagesCompleted,
       });
       starts.set(raceId, willStart);
     }

@@ -634,6 +634,15 @@
       "title": "{count, plural, one {Ny besked} other {# nye beskeder}}",
       "message": "{count, plural, one {{senderName} har skrevet til dig} other {# nye beskeder fra {senderName}}}",
       "messageUnknownSender": "{count, plural, one {En anden manager har skrevet til dig} other {# nye beskeder fra en anden manager}}"
+    },
+    "riderInjured": {
+      "title": "Rytter skadet",
+      "message": "{rider} styrtede i {race} og er skadet til {until}.",
+      "messageMissed": "{rider} styrtede i {race} og er skadet til {until}. Han kører ikke {missed}."
+    },
+    "teamDidNotStart": {
+      "title": "Dit hold stillede ikke op",
+      "message": "Dit hold stillede ikke op i {race}: færre end {min} raske ryttere ved start."
     }
   },
   "error": {
