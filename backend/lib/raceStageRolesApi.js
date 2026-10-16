@@ -40,7 +40,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 // #6740: et afmeldt hold og et hold der ikke kom med i det faktiske felt (fjernet ved
 // start) får ikke længere en taktik-matrix (Friis 16/10: "Lineup locked" + taktik for et
 // løb holdet ikke kørte). Før start tæller Train now-låste ryttere ikke som frie.
-async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
+async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = new Date() }) {
   const fallback = { starts: true, min: teamWillStart({}).min, reason: null };
   try {
     const withdrawn = (await loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds: [race.id] })).has(race.id);
@@ -64,7 +64,7 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds }) {
       const { data: cond, error: condErr } = await supabase
         .from("rider_condition").select("rider_id, injured_until").in("rider_id", candidateIds);
       if (!condErr) {
-        const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
+        const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString(now));
         injuredIds = new Set((cond || []).filter((c) => isRiderInjured(c.injured_until ?? null, todayStr)).map((c) => c.rider_id));
       }
     }
@@ -217,7 +217,8 @@ export function validateStageRoleOverrides({
  *
  * @param {{supabase, race: {id, stages, stages_completed}, teamId: string}} args
  */
-export async function getStageRolesContext({ supabase, race, teamId }) {
+// `now` er injicérbart (AGENTS.md regel 16: tests læser aldrig vægur-tiden).
+export async function getStageRolesContext({ supabase, race, teamId, now = new Date() }) {
   const { data: entries, error: entriesErr } = await supabase
     .from("race_entries")
     .select("rider_id, race_role")
@@ -341,7 +342,6 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
     .select("stage_number, scheduled_at")
     .eq("race_id", race.id)
     .order("stage_number", { ascending: true }));
-  const now = new Date();
   const timeLockedStages = new Set(
     (schedRows || [])
       .filter((s) => isStageLocked({ stageNumber: s.stage_number, stagesCompleted: race.stages_completed ?? 0, scheduledAt: s.scheduled_at, now }))
@@ -350,7 +350,7 @@ export async function getStageRolesContext({ supabase, race, teamId }) {
 
   // #5945: kun relevant når holdet har en udtagelse at vise taktik for.
   const start_outlook = riderIds.length
-    ? await loadStartOutlook({ supabase, race, teamId, entryRiderIds: riderIds })
+    ? await loadStartOutlook({ supabase, race, teamId, entryRiderIds: riderIds, now })
     : { starts: true, min: teamWillStart({}).min, reason: null };
 
   return {
