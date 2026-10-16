@@ -956,6 +956,43 @@ test("Plan B: trænings-facilitet + chef løfter dags-score; uden club-data = bi
   assert.equal(zeroResult.report.riders[0].score, baseScore, "tier 0 → bit-identisk med baseline");
 });
 
+// #6596: et kort Supabase-502 paa facilitets-opslaget maa ALDRIG afregne holdet uden
+// bonus. Tick'et skal kaste, reservationen slettes, og intet er skrevet, saa naeste
+// sweep tager holdet igen og faar bonussen med.
+test("#6596: 502 paa team_facilities → tick kaster, reservation slettet, ingen afregning uden bonus", async () => {
+  const deleteCalls = [];
+  const state = seedState();
+  state.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 5 }];
+  const abilitiesBefore = structuredClone(state.rider_derived_abilities);
+  const conditionsBefore = structuredClone(state.rider_condition);
+  const base = createMockSupabase(state, { deleteCalls });
+  const html502 = "<!DOCTYPE html><html><head><title>supabase.co | 502: Bad gateway</title></head><body>cf-error-details</body></html>";
+  const gateway502 = { data: null, error: { message: html502 }, status: 502 };
+  const failing = { select: () => failing, eq: () => failing, then: (resolve) => Promise.resolve(gateway502).then(resolve) };
+  const supabase = { ...base, from: (table) => (table === "team_facilities" ? failing : base.from(table)) };
+
+  await assert.rejects(
+    () => runTeamTrainingDay({
+      supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "assistant", now: NOW,
+    }),
+    (err) => err.retryable === true && /502 Bad gateway/.test(err.message) && !/<html/i.test(err.message),
+  );
+  assert.equal(deleteCalls.filter((c) => c.table === "training_day_runs").length, 1, "reservationen slettes");
+  assert.equal(state.training_day_runs.length, 0, "ingen run-raekke: naeste sweep tager holdet igen");
+  assert.deepEqual(state.rider_derived_abilities, abilitiesBefore, "ingen ability-writes uden bonus");
+  assert.deepEqual(state.rider_condition, conditionsBefore, "ingen condition-writes");
+
+  // Naeste sweep (gatewayen er oppe igen) kan afregne holdet, nu med facilitets-
+  // konteksten indlaest (bonus-effekten selv daekkes af Plan B-testen ovenfor).
+  const retry = await runTeamTrainingDay({
+    supabase: base, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "assistant", now: NOW,
+  });
+  assert.equal(retry.alreadyRan, false);
+  assert.equal(state.training_day_runs.length, 1);
+});
+
 // ── #3459 fase 2a: løbsdags-motoren (D1 løbsdags-gate + D3 recovery-konstanter) ──
 // NOW = 2026-06-12T10:00+02:00 → tickDate "2026-06-12" i dansk tid.
 const IMPORTED_AT_TODAY = "2026-06-12T08:00:00Z"; // 10:00 CEST — inde i tickDate's danske døgn
