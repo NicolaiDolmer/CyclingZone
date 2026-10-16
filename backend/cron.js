@@ -87,6 +87,7 @@ import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
+import { runSquadEntryGateWatch } from "./lib/squadEntryGate.js"; // #6489
 import { buildAlertSignature, shouldAlertOnChange } from "./lib/opsAlertDedupe.js";
 import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; // #3639
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
@@ -1495,6 +1496,21 @@ async function runRiderDoubleBookingWatchCron() {
   }
 }
 
+// ─── Trup-port-vagt (#6489) ───────────────────────────────────────────────────
+// Daglig READ-ONLY tælling af startliste-rækker i ikke-startede løb som rytteren
+// ikke må køre. DB-triggeren (trg_cleanup_ineligible_future_entries) holder tallet
+// på 0 for alle stier; vagten alarmerer i Sentry hvis en sti alligevel slipper
+// forbi. Reparerer intet.
+async function runSquadEntryGateWatchCron() {
+  const result = await runSquadEntryGateWatch({ supabase, captureExceptionFn: sentryCapture });
+  if (result.alerted) {
+    console.error(
+      `🚨 Trup-port-vagt: ${result.offSquad + result.ghosts} forkerte startliste-rækker ` +
+      `(anden trup: ${result.offSquad}, ikke på holdet/pensioneret: ${result.ghosts}) (#6489)`
+    );
+  }
+}
+
 // ─── Email retention-loop (#2725) ─────────────────────────────────────────────
 // Ships DORMANT: alle tre sweeps no-op'er internt (isEmailLoopActive/
 // isEmailLoopEnabled fail-safe OFF) indtil ejeren har godkendt e-mail-teksterne
@@ -2160,6 +2176,12 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: trup-port-vagt (#6489) — READ-ONLY. Alarmerer; reparerer intet.
+  setInterval(
+    trackedTick("squad-entry-gate-watch", monitorCron("squad-entry-gate-watch", runSquadEntryGateWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 24 hours: akademi-intake-udløb (#2627) — 'offered'-tilbud ældre end 7
   // dage sættes til 'expired', så rytteren frigives fra is_offered_intake_rider-
   // skjulet. Gated bag intake_offer_expiry_enabled (fail-safe OFF). Idempotent
@@ -2343,6 +2365,8 @@ export function startCron() {
   // #3113: samme begrundelse — read-only, ingen writes. Boot-run betyder at et brud
   // opdages ved næste deploy i stedet for at vente op til 24 timer.
   trackedTick("rider-double-booking-watch", runRiderDoubleBookingWatchCron)();
+  // #6489: read-only, ingen writes. Boot-run gør 24h-monitoren ærlig.
+  trackedTick("squad-entry-gate-watch", runSquadEntryGateWatchCron)();
   // #3639: upsert på (snapshot_date, focus) + edge-triggered alarm-dedup → boot-run
   // er idempotent og kan ikke re-spamme ops ved gentagne deploys.
   trackedTick("training-slot-health-watch", runTrainingSlotHealthWatchCron)();
