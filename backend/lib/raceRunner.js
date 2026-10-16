@@ -1595,6 +1595,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     const teamDivisionById = new Map((teamDivs || []).map((t) => [t.id, teamPoolIdForSquad(t, raceSquad)]));
     existingEntries = filterEntriesToRaceDivision({ entries: existingEntries, teamDivisionById, raceDivisionId: race.league_division_id });
   }
+  // #6740: holdene med en udtagelse i løbets egen pulje, FØR ghost-/skade-/spent-filtrene.
+  // Mister et hold alle sine entries dér og kan assistenten ikke nå 6, når det aldrig
+  // gulv-filteret nedenfor, men det stillede stadig ikke op og skal have besked (review #6742).
+  const selectedTeamIds = new Set(existingEntries.map((e) => e.team_id).filter(Boolean));
+  let withdrawnTeamIds = new Set();
   // Rod B (#1742/#1800): drop committede ghost-entries — rytter solgt/fyret (off-team),
   // blevet akademi eller pensioneret EFTER udtagelse. Krydses mod rytterens NUVÆRENDE
   // tilstand, så en fremmed/uegnet rytter aldrig kører for et hold han har forladt
@@ -1642,10 +1647,12 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // "reddes" op til feltet af sen-rednings- eller minimum-logikken (koordination #4295).
   // Et hold uden entries er ikke i feltet, ingen ny tilstand, samme mekanik som
   // division/ghost/skade-filtrene ovenfor.
-  if (existingEntries.length) {
-    const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
-    if (withdrawnTeams.size) {
-      existingEntries = existingEntries.filter((e) => !withdrawnTeams.has(e.team_id));
+  // #6740: læses også når filtrene ovenfor tømte listen, så et afmeldt hold aldrig får
+  // en "stillede ikke op"-besked (selectedTeamIds nedenfor).
+  if (existingEntries.length || selectedTeamIds.size) {
+    withdrawnTeamIds = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
+    if (withdrawnTeamIds.size) {
+      existingEntries = existingEntries.filter((e) => !withdrawnTeamIds.has(e.team_id));
     }
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
@@ -1679,13 +1686,16 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
       console.log(
         `[race ${race.id}] ${droppedTeamIds.length} hold stiller ikke op: under ${MIN_RACE_ENTRIES} udtagne ryttere (#4295)`
       );
-      // #6740: holdet fik ingen besked og stod som "Lineup locked" (Friis/knud 16/10).
-      // Kun ved en rigtig start (persist). Kalderen sender beskeden FØRST når etape 1 er
-      // skrevet: fejler starten bagefter (tomt felt, sim-fejl), må ingen have fået
-      // "dit hold stillede ikke op" for en start der aldrig skete. Afmeldte hold er
-      // filtreret fra ovenfor og når ikke hertil.
-      if (persist) onTeamsDropped?.(droppedTeamIds);
     }
+    // #6740: holdet fik ingen besked og stod som "Lineup locked" (Friis/knud 16/10).
+    // Kun ved en rigtig start (persist). Kalderen sender beskeden FØRST når etape 1 er
+    // skrevet: fejler starten bagefter (tomt felt, sim-fejl), må ingen have fået
+    // "dit hold stillede ikke op" for en start der aldrig skete. Ud over gulvets hold
+    // tæller et hold der havde en udtagelse, men mistede alle entries i filtrene; et
+    // afmeldt hold tæller aldrig.
+    const keptTeamIds = new Set(kept.map((e) => e.team_id));
+    const notStartedTeamIds = notStartedTeams({ droppedTeamIds, selectedTeamIds, keptTeamIds, withdrawnTeamIds });
+    if (persist && notStartedTeamIds.length) onTeamsDropped?.(notStartedTeamIds);
     entries = kept;
   }
   if (!entries.length) return [];
@@ -1993,6 +2003,16 @@ export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayBySt
 // når v3=true OG incidents ikke er tom (kald-stedets ansvar). Upsert-semantikken
 // (supabase-js: UPDATE-stien rører KUN de angivne kolonner) betyder form/fatigue
 // ALDRIG røres her — spejler raceFatigue.applyRaceFatigue's samme garanti.
+// #6740 (PURE): hvilke hold stillede ikke op? Gulvets hold + hold der havde en udtagelse
+// i løbets pulje men ikke er i det endelige felt. Afmeldte hold er aldrig med.
+export function notStartedTeams({ droppedTeamIds = [], selectedTeamIds = new Set(), keptTeamIds = new Set(), withdrawnTeamIds = new Set() }) {
+  const out = new Set(droppedTeamIds.filter((id) => !withdrawnTeamIds.has(id)));
+  for (const id of selectedTeamIds) {
+    if (!keptTeamIds.has(id) && !withdrawnTeamIds.has(id)) out.add(id);
+  }
+  return [...out].sort();
+}
+
 // #6740: "dit hold stillede ikke op" — kaldes kun EFTER at etape 1's resultater er
 // committet. Fejl isoleres: en besked må aldrig vælte en afviklet etape.
 async function sendDidNotStartNotices({ supabase, race, teamIds }) {

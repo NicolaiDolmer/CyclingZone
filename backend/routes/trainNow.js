@@ -37,7 +37,9 @@ export function createTrainNowRouter({
     try {
       const isBetaTester = await isViewerBetaTester(req);
       const season = await loadActiveSeason();
-      const result = await run({ supabase, team: req.team, season, isBetaTester, loadDaySpans });
+      // #6740: the page's explicit yes after the "your team will not start" warning.
+      const confirmShortRaces = req.body?.confirmShortRaces === true;
+      const result = await run({ supabase, team: req.team, season, isBetaTester, loadDaySpans, confirmShortRaces });
       res.status(result.status).json(result.body);
     } catch (err) {
       captureExceptionFn(err);

@@ -191,6 +191,12 @@ export async function loadTrainNowShortRaces({ supabase, team, todayRaces, tickD
   }
 }
 
+/** #6740: the default re-check for the press (both reads are best-effort, never throw). */
+async function defaultLoadShortRaces({ supabase, team, tickDate }) {
+  const todayRaces = await loadTodayRacesForTeam({ supabase, team, tickDate });
+  return loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate });
+}
+
 /**
  * Read-only state for the panel. Cheap: no roster scan; one small read of today's races.
  * @returns {Promise<{enabled:boolean, available:boolean, reason:string|null, tickDate:string, locked:boolean, lockedAt:string|null, settled:boolean, todayRaces:Array<{id:string,name:string|null}>}>}
@@ -228,6 +234,11 @@ export async function runTrainNow({
   loadContext = loadTrainingDateContext,
   registerWork = registerTrainingDateWork,
   loadDaySpans,
+  // #6740 (review #6742): the warning is re-checked HERE, not only on the page's GET.
+  // A rider injured or sold after the page loaded would otherwise let a press skip the
+  // confirmation and cost the race start. `confirmShortRaces` is the page's explicit yes.
+  confirmShortRaces = false,
+  loadShortRaces = defaultLoadShortRaces,
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
@@ -243,6 +254,16 @@ export async function runTrainNow({
   }
   if (await hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate })) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
+  }
+
+  // #6740: a first press with a race below the floor needs the explicit yes. A repeated
+  // press (locks already written) decides nothing new and is never asked again.
+  if (!confirmShortRaces) {
+    const existingLocks = await loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate });
+    if (!existingLocks.length) {
+      const shortRaces = await loadShortRaces({ supabase, team, tickDate });
+      if (shortRaces.length) return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
+    }
   }
 
   const context = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });

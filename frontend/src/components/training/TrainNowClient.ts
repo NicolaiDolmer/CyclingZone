@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import {
-  TRAIN_NOW_OFF, parseTrainNowStatus,
+  TRAIN_NOW_OFF, parseTrainNowStatus, parseShortRaces,
   type TrainNowPressResult, type TrainNowStatus,
 } from "./TrainNowState.ts";
 
@@ -33,7 +33,10 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
   // sends nothing (state updates are not visible until the next render).
   const inFlight = useRef(false);
 
-  const press = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+  // #6740: `confirmShortRaces` is the explicit yes after the "will not start" warning.
+  // Without it the server re-checks today's races and may answer 409 short_races_confirm
+  // with the fresh list; the page then asks first (no error line: nothing failed).
+  const press = useCallback(async ({ confirmShortRaces = false }: { confirmShortRaces?: boolean } = {}): Promise<{ ok: boolean; error?: string }> => {
     if (inFlight.current) return { ok: false, error: "in_flight" };
     inFlight.current = true;
     setPressing(true);
@@ -41,10 +44,17 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
     try {
       const headers = await authHeaders();
       if (!headers) return { ok: false, error: "auth" };
-      const res = await apiFetch(PATH, { method: "POST", headers }, { source: "training-train-now" });
+      const res = await apiFetch(PATH, {
+        method: "POST", headers, body: JSON.stringify({ confirmShortRaces }),
+      }, { source: "training-train-now" });
       const data = (res.data ?? {}) as {
         error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
+        shortRaces?: unknown;
       };
+      if (!res.ok && data.error === "short_races_confirm") {
+        setStatus((prev) => ({ ...prev, shortRaces: parseShortRaces(data.shortRaces) }));
+        return { ok: false, error: "short_races_confirm" };
+      }
       if (!res.ok) {
         const code = data.error || "failed";
         setError(code);

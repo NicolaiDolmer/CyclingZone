@@ -5,6 +5,7 @@ import {
   racesMissedByInjury, notifyRaceInjuries, notifyTeamsDidNotStart, RACE_AVAILABILITY_NOTIFICATION_TYPE,
 } from "./raceAvailabilityNotifications.js";
 import { NOTIFICATION_TYPES } from "./notificationTypes.js";
+import { notStartedTeams } from "./raceRunner.js";
 
 test("typen findes allerede i notifications_type_check (ingen migration)", () => {
   assert.ok(NOTIFICATION_TYPES.includes(RACE_AVAILABILITY_NOTIFICATION_TYPE));
@@ -136,4 +137,15 @@ test("notifyRaceInjuries: et loeb holdet har meldt fra, naevnes ikke (review #67
   });
   assert.equal(sent[0].message, "Adrien Charpentier crashed in Westkust Klassieker and is injured until 19/10.");
   assert.equal(sent[0].relatedId, "westkust");
+});
+
+// ── #6740 review: hold der mistede alle entries foer gulvet faar ogsaa besked ──
+test("notStartedTeams: gulvets hold + hold uden entries tilbage, aldrig afmeldte", () => {
+  assert.deepEqual(notStartedTeams({
+    droppedTeamIds: ["floor"],
+    selectedTeamIds: new Set(["floor", "all-ghosts", "started", "withdrawn"]),
+    keptTeamIds: new Set(["started"]),
+    withdrawnTeamIds: new Set(["withdrawn"]),
+  }), ["all-ghosts", "floor"]);
+  assert.deepEqual(notStartedTeams({}), []);
 });

@@ -521,3 +521,35 @@ test("loadTrainNowShortRaces: en solgt rytter i udtagelsen taeller ikke (review 
   const out = await loadTrainNowShortRaces({ supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
   assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
 });
+
+// ── #6740 review: the press re-checks short races; the page's yes is explicit ──
+const SHORT = [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6 }];
+
+test("press: a race below the floor without the explicit yes -> 409, nothing locked", async () => {
+  const state = baseState();
+  const { deps, calls } = harness(state);
+  const result = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "short_races_confirm");
+  assert.deepEqual(result.body.shortRaces, SHORT);
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 0, "no lock before the yes");
+  assert.equal(calls.length, 0);
+});
+
+test("press: with the explicit yes the press runs as before", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  let asked = 0;
+  const result = await runTrainNow({ ...deps, confirmShortRaces: true, loadShortRaces: async () => { asked += 1; return SHORT; } });
+  assert.equal(result.status, 200);
+  assert.equal(asked, 0, "the yes skips the re-check");
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 2);
+});
+
+test("press: a repeated press (locks already written) is never asked again", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  await runTrainNow({ ...deps, confirmShortRaces: true });
+  const again = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
+  assert.equal(again.status, 200);
+});
