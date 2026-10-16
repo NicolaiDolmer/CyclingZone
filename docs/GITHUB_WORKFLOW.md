@@ -102,6 +102,26 @@ Typisk label-valg:
 | Produktvalg mangler | `needs-decision` |
 | AI må ikke shippe uden menneske | `manual-review` |
 
+## Review-gate (#6654)
+
+CI-checket `review-gate` (`.github/workflows/review-gate.yml`, logik + tests i `scripts/review-gate.mjs`) erstatter CodeRabbit som review-krav i rule 35. Det læser PR'ens filer og labels via GitHub-API'et:
+
+| Risiko | Hvornår | Krav ud over grøn CI |
+|---|---|---|
+| **Høj** | `backend/lib/engine/**`, `database/**`, motor i `backend/` (race, stage, finaliz, simulat, engine), penge/økonomi i `backend/` (economy, finance, salary, wage, prize, sponsor, balance, transfer, contract, price, auction, facility …), betaling/abonnement (billing, checkout, subscription, entitlement, alunta …), webhooks, CORS/rate-limit (corsOrigin, rateLimiters), RPC-wrappere, cron/scheduler, `backend/routes/**` + `backend/api/**` + `server.js` + `*Handlers`, auth/sikkerhed (auth, authorize, token, rls, grant, admin, `frontend/src/lib/supabase.*` …), `.github/workflows/**` + CI-vagt-scripts (`scripts/ci/**`, `check-*`, `lint-*`, `audit-*`, `*-baseline.js` …), review-gaten selv (`scripts/review-gate.mjs`, `.coderabbit.yaml`, merge-køen), eller label `risk:high`/`security` | Codex-review uden uløste fund **+** Claude-review-markør uden blokerende fund |
+| **Lav** | alt andet (tests er altid lav) | Codex-review uden uløste fund |
+
+- **Codex:** reviewer automatisk når en PR åbnes eller markeres ready (ellers kommentér `@codex review`). Et fund er uløst til tråden er rettet og markeret *Resolve conversation*. Reviewet skal gælde PR'ens **aktuelle HEAD**: efter et push er det gamle review forældet, kommentér `@codex review` igen.
+- **Claude-markør:** efter bølgens opus-reviewer eller `/code-review`: `node scripts/review-gate.mjs post-claude-review --pr N --verdict clean|notes|blocking`. Markøren bærer `sha=<HEAD>` og gælder kun det commit; efter et push skal der en ny. Seneste markør for HEAD fra ejer/collaborator gælder; `blocking` holder gaten rød.
+- **CodeRabbit** er bonus: auto-review kun på højrisiko-stier (`.coderabbit.yaml`), aldrig et krav. Bølgernes CodeRabbit-CLI-runde er valgfri. **Dependabot** er undtaget (rule 35 c).
+- **Genevaluering:** Codex-kommentarer, markører og reviews genkører gaten selv; et løst tråd-fund samles op inden for 30 min, eller straks med `gh workflow run review-gate.yml -f pr=N`. Lokalt: `node scripts/review-gate.mjs evaluate --pr N`.
+- **Tillid:** gate-jobbet kører på `pull_request_target`, så YAML og script kommer fra main; en PR kan ikke slå gaten fra ved at ændre workflowen. Merge-køen tæller kun `review-gate`-checks fra `pull_request_target`.
+- **Required check** sættes af ejeren i branch protection; indtil da håndhæves gaten af rule 35 og merge-køen.
+
+### Fejl der slap igennem (`escaped-defect`)
+
+Når en bug i prod viser sig at være indført af en merget PR: sæt label `escaped-defect` på bug-issuet og skriv `Indført af: #<PR>` i body eller en kommentar (`gh label create escaped-defect --color B60205 --description "Bug indført af en merget PR (review-gate-opfølgning)"` første gang). Den 1. i hver måned skriver `review-gate.yml` en rapport i job summary: pr. reviewer (Codex, Claude, CodeRabbit) antal PR'er reviewet, fund postet og fejl der slap igennem på PR'er den reviewede. Manuelt: `node scripts/review-gate.mjs escaped-report --since 2026-10-01 --until 2026-10-31`.
+
 ## Sådan samarbejder vi via issues
 
 ### Manus-dispatch uden copy-paste
