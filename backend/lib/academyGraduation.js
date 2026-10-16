@@ -8,7 +8,8 @@
 // rigtige penge — promover/sælg/slip købes/udføres med in-game-økonomi.
 
 import { ageForSeason } from "./riderProgressionEngine.js";
-import { SQUAD_MAX_AGE, effectiveSquad, transitionForRider, isYouthSquad, wouldExceedSquadCap } from "./squads.js";
+import { SQUAD_MAX_AGE, SQUADS, effectiveSquad, transitionForRider, isYouthSquad, wouldExceedSquadCap } from "./squads.js";
+import { readFlagStage } from "./featureStage.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { buildKeyedNotification, notifyTeamOwner } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
@@ -37,6 +38,132 @@ export const GRADUATION = Object.freeze({
 });
 
 const VALID_ACTIONS = new Set(["promote", "sell", "release"]);
+
+// ─── #6710: "Afventer oprykning" (plan-PR 1 i #5833, ejer-go 16/10) ──────────
+//
+// Før: fuld MÅL-trup ved en graduering → default-kæden sælger rytteren (og en
+// usolgt auktion slipper ham). Ved 25/10 ville det ramme mange juniorer på
+// menneskehold, hvis U23-trup allerede er fuld. Med flaget on bliver rytteren i
+// stedet stående i sin GAMLE trup med klub og kontrakt og venter på plads:
+// `riders.promotion_pending_to` (u23|senior) + `promotion_pending_since`.
+// Manageren rykker ham selv op fra trupsiden, når der er plads
+// (promotionPendingAction.js). Flag off = den gamle kæde, bit for bit.
+//
+// Grad-rækken lukkes med den EKSISTERENDE status 'expired' (CHECK-listen fra
+// 2026-06-18-academy-graduation.sql): vinduet udløb, og rytteren venter. Den
+// status brugtes aldrig før, så den er entydig — vagten (stuckAcademyGraduates)
+// læser netop den og behøver ingen ny kolonne.
+export const PROMOTION_PENDING_FLAG_KEY = "promotion_pending_enabled";
+export const PROMOTION_PENDING_GRAD_STATUS = "expired";
+
+/**
+ * Er "afventer oprykning" slået til? Kun 'on'/true tænder — beta tæller som
+ * slukket, fordi det er en live spilleregel uden skyggedata (samme valg som
+ * development_v2_aging_enabled). Fail-safe: fejl/fravær → false (gammel kæde).
+ *
+ * @param {any} supabase
+ * @returns {Promise<boolean>}
+ */
+export async function isPromotionPendingEnabled(supabase) {
+  const value = await readFlagStage(supabase, PROMOTION_PENDING_FLAG_KEY);
+  return value === true || value === "on";
+}
+
+function squadRank(squad) {
+  return SQUADS.indexOf(squad);
+}
+
+/**
+ * Venter rytteren STADIG på oprykning? Felterne ryddes ikke af de gamle stier
+ * (manuel flytning, salg, Graduation Day) — de må ikke skrive nye kolonner, mens
+ * flaget er off. Derfor afgøres tilstanden her: kun aktiv så længe rytterens
+ * nuværende trup ligger UNDER mål-truppen. Flyttes han op ad en anden vej,
+ * eller sælges han ud i en seniortrup, er de gamle felter harmløse.
+ *
+ * @param {{promotion_pending_to?:string|null, squad?:string|null, is_academy?:boolean|null}|null|undefined} rider
+ * @param {number|null} [seasonAge]
+ * @returns {boolean}
+ */
+export function isPromotionPendingActive(rider, seasonAge = null) {
+  const to = rider?.promotion_pending_to;
+  if (squadRank(to) < 0) return false;
+  const current = effectiveSquad(rider, seasonAge);
+  return squadRank(current) >= 0 && squadRank(current) < squadRank(to);
+}
+
+/**
+ * Notifikationen "rytteren venter på plads". Én kilde til koder og fallback.
+ * Typen er den eksisterende 'academy_graduated' (notifications_type_check
+ * kender den), så migrationen ikke skal røre constrainten.
+ */
+export function buildPromotionPendingNotification({ rider, targetSquad }) {
+  const name = `${rider.firstname} ${rider.lastname}`;
+  return {
+    type: "academy_graduated",
+    relatedId: rider.id,
+    ...buildKeyedNotification({
+      titleCode: "notif.promotionPending.title",
+      messageCode: targetSquad === "u23" ? "notif.promotionPending.u23" : "notif.promotionPending.senior",
+      titleParams: { name },
+      messageParams: { name },
+      metadata: { riderId: rider.id, promotionPendingTo: targetSquad },
+    }),
+  };
+}
+
+/**
+ * Sæt rytteren til "afventer oprykning" i stedet for at sælge/slippe ham.
+ *
+ * Rytteren beholder hold, kontrakt og NUVÆRENDE trup (riders.squad røres ikke),
+ * så han tæller i den gamle trup og ikke i mål-truppen. Idempotent: står han
+ * allerede og venter på samme trup, beholdes `promotion_pending_since`, og der
+ * sendes ingen ny besked. Kaldes KUN når flaget er on (kolonnerne findes da).
+ *
+ * @param {any} supabase
+ * @param {{teamId:string, riderId:string, targetSquad:string, grad?:{id:string}|null,
+ *   gradStatusFrom?:string|null, now?:Date, notify?:Function}} args
+ *   `grad` lukkes som 'expired'. `gradStatusFrom` (fx 'sold') restempler i stedet
+ *   holdets nyeste række med den status — brugt af den usolgte auktions-sti.
+ * @returns {Promise<{riderId:string, action:'pending'|'skipped', to?:string, reason?:string}>}
+ */
+export async function markPromotionPending(supabase, {
+  teamId, riderId, targetSquad, grad = null, gradStatusFrom = null, now = new Date(), notify = notifyTeamOwner,
+} = /** @type {any} */ ({})) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!teamId || !riderId) throw new Error("markPromotionPending: teamId + riderId required");
+  if (targetSquad !== "u23" && targetSquad !== "senior") throw new Error("markPromotionPending: invalid targetSquad");
+
+  // schema-columns-ok: promotion_pending_* tilfoejes af database/2026-10-16-6710-promotion-pending.sql
+  // (#6710). Laeses kun naar promotion_pending_enabled er on, og flaget flippes
+  // foerst efter migrationen.
+  const { data: rider, error } = await supabase.from("riders")
+    .select("id, team_id, firstname, lastname, promotion_pending_to, promotion_pending_since")
+    .eq("id", riderId).maybeSingle();
+  if (error) throw new Error(`markPromotionPending rider lookup: ${error.message}`);
+  if (!rider) return { riderId, action: "skipped", reason: "rider_not_found" };
+  if (rider.team_id !== teamId) return { riderId, action: "skipped", reason: "not_on_team" };
+
+  const alreadyWaiting = rider.promotion_pending_to === targetSquad && !!rider.promotion_pending_since;
+  const since = alreadyWaiting ? rider.promotion_pending_since : now.toISOString();
+  const { error: updErr } = await supabase.from("riders")
+    .update({ promotion_pending_to: targetSquad, promotion_pending_since: since })
+    .eq("id", riderId).eq("team_id", teamId);
+  if (updErr) throw new Error(`markPromotionPending update: ${updErr.message}`);
+
+  if (grad?.id) {
+    const { error: gradErr } = await supabase.from("academy_graduation")
+      .update({ status: PROMOTION_PENDING_GRAD_STATUS, resolved_at: now.toISOString() })
+      .eq("id", grad.id);
+    if (gradErr) throw new Error(`markPromotionPending grad update: ${gradErr.message}`);
+  } else if (gradStatusFrom) {
+    await restampSoldGraduation(supabase, { teamId, riderId, now, status: PROMOTION_PENDING_GRAD_STATUS, fromStatus: gradStatusFrom });
+  }
+
+  if (!alreadyWaiting) {
+    await notify({ supabase, teamId, ...buildPromotionPendingNotification({ rider, targetSquad }) });
+  }
+  return { riderId, action: "pending", to: targetSquad };
+}
 
 /**
  * Slå den AKTUELLE pending graduerings-række op for (hold, rytter).
@@ -405,6 +532,7 @@ export async function resolveGraduation(supabase, {
 export async function defaultResolveGraduate(supabase, {
   teamId, riderId, seasonNumber, now = new Date(),
   getMarketState = getTeamMarketState, countSquad = countSquadMembers, auctionConfig, notify = notifyTeamOwner,
+  isPendingEnabled = isPromotionPendingEnabled,
 } = {}) {
   // #4619: "er der plads" måles mod MÅL-truppen (samme gate som
   // resolveGraduation's promote-gren bruger), ikke ubetinget mod seniortruppen.
@@ -415,11 +543,29 @@ export async function defaultResolveGraduate(supabase, {
   const state = await getMarketState(supabase, teamId);
   const balance = Number(state?.balance ?? 0);
   const room = await hasRoomInTargetSquad(supabase, { teamId, targetSquad, getMarketState, countSquad });
+
+  // #6710: fuld mål-trup → "afventer oprykning" i stedet for salg. Kun pladsen
+  // ændrer udfaldet: plads + negativ saldo sælger stadig, som før. Flaget læses
+  // kun når der IKKE er plads, så flag off koster intet ekstra opslag på den
+  // almindelige sti.
+  const pendingInstead = async () => grad
+    && await isPendingEnabled(supabase)
+    && await markPromotionPending(supabase, { teamId, riderId, targetSquad, grad, now, notify });
+  if (!room) {
+    const pending = await pendingInstead();
+    if (pending) return pending;
+  }
+
   const action = room && balance >= 0 ? "promote" : "sell";
   try {
     return await resolveGraduation(supabase, { teamId, riderId, action, seasonNumber, now, getMarketState, countSquad, auctionConfig, notify });
   } catch (err) {
     if (action === "promote") {
+      // #6710: pladsen forsvandt mellem tjek og skriv → vent i stedet for at sælge.
+      if (err?.message === "squad_cap_violation") {
+        const pending = await pendingInstead();
+        if (pending) return pending;
+      }
       return await resolveGraduation(supabase, { teamId, riderId, action: "sell", seasonNumber, now, getMarketState, countSquad, auctionConfig, notify });
     }
     throw err;
@@ -622,6 +768,7 @@ export async function completeStuckPromotion(supabase, {
 export async function resolveUnsoldGraduate(supabase, {
   teamId, riderId, rider = null, seasonNumber, now = new Date(),
   getMarketState = getTeamMarketState, notify = notifyTeamOwner,
+  isPendingEnabled = isPromotionPendingEnabled,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   const id = riderId ?? rider?.id;
@@ -648,8 +795,9 @@ export async function resolveUnsoldGraduate(supabase, {
     const cap = state?.squad_limits?.max ?? 30;
     const future = state?.future_count ?? state?.rider_count ?? 0;
     const balance = Number(state?.balance ?? 0);
+    let noRoom = future + 1 > cap;
 
-    if (future + 1 <= cap && balance >= 0) {
+    if (!noRoom && balance >= 0) {
       const name = `${target.firstname} ${target.lastname}`;
       try {
         const res = await completeStuckPromotion(supabase, {
@@ -672,7 +820,20 @@ export async function resolveUnsoldGraduate(supabase, {
         if (err.message !== "squad_cap_violation") throw err;
         // Racet mellem tjek og skriv (en anden handling tog pladsen imens) —
         // fald igennem til slip, samme fallback som defaultResolveGraduate.
+        noRoom = true;
       }
+    }
+
+    // #6710: en usolgt auktion slipper aldrig rytteren PGA. PLADS. Med flaget on
+    // venter han i sin trup på en senior-plads (samme mål som oprykningen ovenfor
+    // bruger). Plads + negativ saldo slipper stadig, som før.
+    if (noRoom && await isPendingEnabled(supabase)) {
+      const res = await markPromotionPending(supabase, {
+        teamId, riderId: id, targetSquad: "senior", gradStatusFrom: "sold", now, notify,
+      });
+      return res.action === "pending"
+        ? { riderId: id, action: "pending" }
+        : { riderId: id, action: "skipped", reason: res.reason };
     }
   }
 
@@ -757,11 +918,13 @@ export async function resolveNeverGraduated(supabase, {
 // (UNIQUE(rider_id, season_id), #4484), og det er den seneste der hoerer til den
 // netop afsluttede auktion. Best-effort som resolvePendingGraduationOnSale:
 // log og fortsaet.
-async function restampSoldGraduation(supabase, { teamId, riderId, now, status }) {
+// #6710: `fromStatus` lader "Ryk op" rette en 'expired' (afventer oprykning)
+// række til 'promoted' med samme best-effort-mønster.
+export async function restampSoldGraduation(supabase, { teamId, riderId, now, status, fromStatus = "sold" }) {
   try {
     const { data, error } = await supabase.from("academy_graduation")
       .select("id")
-      .eq("team_id", teamId).eq("rider_id", riderId).eq("status", "sold")
+      .eq("team_id", teamId).eq("rider_id", riderId).eq("status", fromStatus)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
