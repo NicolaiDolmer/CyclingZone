@@ -245,6 +245,18 @@ test("hentede kandidater viser 'Learned through training', og backend maskerer b
   assert.match(academyMeBlock, /intake: intake2\?\.intake \?\? intake/);
 });
 
+test("hentede kandidater viser nuværende evner, som SSOT og copy lover (#6666 punkt 1, Codex-fund)", () => {
+  // Copy'en lover "age, nationality, type and current abilities"; kortet skal holde det.
+  assert.match(academyLocale("en").intakePull.description, /current abilities/);
+  assert.match(pageSource, /const abilitiesNow = isPull \? pullCandidateAbilities\(item\) : null;/);
+  assert.match(pageSource, /data-testid="intake-abilities-now"/);
+  assert.match(pageSource, /t\("intakePull\.abilitiesNow"\)/);
+  assert.equal(academyLocale("en").intakePull.abilitiesNow, "Abilities now");
+  assert.equal(academyLocale("da").intakePull.abilitiesNow, "Evner nu");
+  // Tabulære tal på al numerik (TASTE).
+  assert.match(pageSource, /font-data text-3xs tabular-nums/);
+});
+
 test("rosterets prognose læres gennem træning når Optag 2.0 er tændt (#6666 punkt 2)", () => {
   assert.match(pageSource, /r\.prognosis\s*\n?\s*\? <AcademyPrognosisCell/);
   assert.match(pageSource, /: <ScoutablePotentiale rider=\{r\}/, "flag off: uændret scouting-visning");

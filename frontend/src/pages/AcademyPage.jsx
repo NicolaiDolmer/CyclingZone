@@ -51,6 +51,9 @@ import { scoutSortValue } from "../lib/scouting.js";
 import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
 import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
 import { GiftIcon } from "../components/ui/icons/index.jsx";
+import { ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities.js"; // #6666
+import { riderOverallRating } from "../lib/riderRating.js";
+import { statPlateStyle } from "../lib/statColor.js";
 
 // #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
 const BOARD_GIFT_SOURCE = "board_gift";
@@ -63,6 +66,22 @@ const PULL_SOURCE = "pull";
 function formatMoney(n) {
   if (n == null) return "–";
   return formatNumber(Math.round(Number(n)), { maximumFractionDigits: 0 });
+}
+
+// #6666 punkt 1: en hentet kandidat viser sine NUVÆRENDE evner (backend sender
+// kun registrets evne-felter, aldrig potentiale). Kortet viser rating-pladen i
+// hans egen rolle + hans tre stærkeste evner; hele profilen ses efter underskrift.
+function pullCandidateAbilities(item) {
+  if (!item?.rider_derived_abilities) return null;
+  const flat = flattenAbilities({ ...item.rider, rider_derived_abilities: item.rider_derived_abilities });
+  const top = ABILITY_KEYS
+    .map((key) => ({ key, value: flat[key] }))
+    .filter((a) => Number.isFinite(a.value))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  const rating = riderOverallRating(flat);
+  if (top.length === 0 && !Number.isFinite(rating)) return null;
+  return { rating: Number.isFinite(rating) ? rating : null, top };
 }
 
 function daysUntil(deadline) {
@@ -509,6 +528,7 @@ export default function AcademyPage() {
     const busy = actionState[rider.id] != null;
     const err = actionErrors[rider.id];
     const potential = item.potentialEstimate;
+    const abilitiesNow = isPull ? pullCandidateAbilities(item) : null;
     // #2796: tilbuddet udløber efter 7 dage (academyIntakeExpirySweep) —
     // hjælpeteksten har lovet det siden #2627, men kortet viste det aldrig.
     const expiryDays = daysUntil(item.expiresAt);
@@ -566,6 +586,25 @@ export default function AcademyPage() {
         </div>
 
         <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} className="self-start" />
+
+        {abilitiesNow && (
+          <div className="flex items-center gap-2 flex-wrap" data-testid="intake-abilities-now">
+            <span className="text-xs text-cz-3">{t("intakePull.abilitiesNow")}</span>
+            {abilitiesNow.rating != null && (
+              <span
+                className="inline-flex h-[22px] min-w-[30px] items-center justify-center rounded-cz px-1.5 font-data text-xs tabular-nums"
+                style={statPlateStyle(abilitiesNow.rating)}
+              >
+                {abilitiesNow.rating}
+              </span>
+            )}
+            {abilitiesNow.top.map(({ key, value }) => (
+              <span key={key} className="font-data text-3xs tabular-nums text-cz-1">
+                <span className="text-cz-3">{ABILITY_SHORT[key]}</span> {value}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* #2454/#3746: potentiale i RATING-point, samme enhed som resten
             af spillet. `prog` er prognose-båndets navn; `ceil` er en

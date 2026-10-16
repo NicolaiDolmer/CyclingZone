@@ -12,6 +12,7 @@ import { buildTypePrognosisBands } from "./scoutingReport.js";
 import { loadScout } from "./scoutAssignmentService.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { ageForSeason } from "./riderSeasonAge.js";
+import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 import { knowledgeStage, learningSpeed, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
 import type { KnowledgeStageKey } from "./academyProspectKnowledge.ts";
 import { loadAcademyProfileState, profileOptions } from "./academyIntakeProfile.ts";
@@ -52,13 +53,34 @@ export type Intake2View = {
 };
 
 /**
+ * De viste evner fra en rider_derived_abilities-række, og KUN dem. Rækken bærer
+ * også hidden_potential, ability_caps og ability_progress (potentiale-orakler),
+ * så den sendes aldrig rå til klienten. null når rækken mangler.
+ */
+export function displaySafeAbilities(row: Row | null | undefined): Record<string, number | null> | null {
+  if (!row) return null;
+  const out: Record<string, number | null> = {};
+  for (const key of REGISTRY_ABILITY_KEYS as readonly string[]) out[key] = row[key] ?? null;
+  return out;
+}
+
+/**
  * Fjern alt potentiale fra en ikke-underskrevet pull-kandidat. `is_serious` er
  * generatorens potentiale-klassifikation (et "højt potentiale"-mærke), så den
  * lækker lige så meget som estimatet og båndet og skjules også.
+ * Kandidatens NUVÆRENDE evner sendes med (display-safe, samme felter som
+ * gradueringskortet), så holdet kan vurdere ham før underskrift (punkt 1).
  */
-export function maskPullCandidate<T extends IntakeItem | null | undefined>(item: T): T {
+export function maskPullCandidate<T extends IntakeItem | null | undefined>(item: T, abilities?: Row | null): T {
   if (item?.source !== PULL_SOURCE) return item;
-  return { ...item, is_serious: false, potentialEstimate: null, potentialBand: null, potentialLearned: true };
+  return {
+    ...item,
+    is_serious: false,
+    potentialEstimate: null,
+    potentialBand: null,
+    potentialLearned: true,
+    rider_derived_abilities: displaySafeAbilities(abilities),
+  };
 }
 
 /** Akademirytterens prognose på holdets nuværende kendskabs-niveau. */
@@ -104,6 +126,12 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
   now?: Date | string | number;
 }): Promise<Intake2View> {
   const riderIds = (roster ?? []).map((r) => r.id).filter(Boolean);
+  // Pull-kandidaternes nuværende evner hentes i samme forespørgsel som rosterets.
+  const pullIds = (intake ?? [])
+    .filter((item) => item?.source === PULL_SOURCE)
+    .map((item) => item.riderId ?? item.rider?.id)
+    .filter(Boolean) as string[];
+  const abilityIds = [...new Set([...riderIds, ...pullIds])];
   const [profileState, staffCtx, scout, daysByRider, potRes, abRes] = await Promise.all([
     loadAcademyProfileState(supabase, { teamId, now }),
     loadTrainingStaffContext(supabase, teamId),
@@ -112,8 +140,8 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
     riderIds.length > 0
       ? supabase.from("riders").select("id, potentiale, birthdate, primary_type, secondary_type").in("id", riderIds).limit(riderIds.length)
       : { data: [] },
-    riderIds.length > 0
-      ? supabase.from("rider_derived_abilities").select("*").in("rider_id", riderIds)
+    abilityIds.length > 0
+      ? supabase.from("rider_derived_abilities").select("*").in("rider_id", abilityIds).limit(abilityIds.length)
       : { data: [] },
   ]);
   if (potRes.error) throw new Error(`academy-view potentiale: ${potRes.error.message}`);
@@ -123,7 +151,7 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
   const speed = learningSpeed(staffCtx);
 
   return {
-    intake: (intake ?? []).map(maskPullCandidate),
+    intake: (intake ?? []).map((item) => maskPullCandidate(item, abById.get(item?.riderId ?? item?.rider?.id))),
     roster: (roster ?? []).map((rider) => ({
       ...rider,
       prognosis: rosterPrognosis({

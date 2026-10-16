@@ -57,6 +57,7 @@
     "provisionalValue": "Provisorisk værdi",
     "wageOneSeason": "Løn (1 sæson)",
     "valuationNote": "Fuld værdisætning søndag",
+    "abilitiesNow": "Evner nu",
     "emptyAfterPull": "Ingen kandidater tilbage at tage stilling til. Næste uges kuld åbner mandag.",
     "errorFailed": "Kunne ikke hente ugens kandidater. Prøv igen."
   },

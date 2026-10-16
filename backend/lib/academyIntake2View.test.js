@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { maskPullCandidate, rosterPrognosis } from "./academyIntake2View.ts";
+import { buildIntake2View, displaySafeAbilities, maskPullCandidate, rosterPrognosis } from "./academyIntake2View.ts";
 import { KNOWLEDGE_DAYS } from "./academyProspectKnowledge.ts";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 
@@ -17,6 +17,67 @@ test("maskPullCandidate: intet potentiale forlader serveren for en hentet kandid
   const gift = { source: "board_gift", is_serious: true, potentialBand: { prog: { lo: 1, hi: 2 } } };
   assert.equal(maskPullCandidate(gift), gift);
   assert.equal(maskPullCandidate(gift).is_serious, true);
+});
+
+test("maskPullCandidate: kandidatens nuvaerende evner sendes med, men aldrig potentiale-felterne", () => {
+  const row = {
+    rider_id: "r9",
+    ...Object.fromEntries(REGISTRY_ABILITY_KEYS.map((k) => [k, 41])),
+    hidden_potential: 99,
+    ability_caps: { climbing: 80 },
+    ability_progress: { climbing: 0.4 },
+    formula_version: 7,
+  };
+  const masked = maskPullCandidate({ source: "pull", riderId: "r9", potentialBand: { prog: { lo: 1, hi: 2 } } }, row);
+  assert.ok(masked.rider_derived_abilities, "evnerne er med paa kortet (SSOT: navn, alder, nationalitet, type, evner)");
+  assert.deepEqual(Object.keys(masked.rider_derived_abilities).sort(), [...REGISTRY_ABILITY_KEYS].sort());
+  assert.equal(masked.rider_derived_abilities.climbing, 41);
+  for (const leak of ["hidden_potential", "ability_caps", "ability_progress", "formula_version", "rider_id"]) {
+    assert.equal(leak in masked.rider_derived_abilities, false, `${leak} maa ikke forlade serveren`);
+  }
+  assert.equal(masked.potentialBand, null);
+  // Mangler evne-raekken endnu (afledning ikke koert), staar feltet som null.
+  assert.equal(maskPullCandidate({ source: "pull", riderId: "r0" }).rider_derived_abilities, null);
+});
+
+test("displaySafeAbilities: kun registrets evne-noegler", () => {
+  assert.equal(displaySafeAbilities(null), null);
+  const safe = displaySafeAbilities({ climbing: 50, hidden_potential: 3 });
+  assert.equal(safe.climbing, 50);
+  assert.equal("hidden_potential" in safe, false);
+});
+
+test("buildIntake2View: pull-kandidaten faar sine evner fra samme evne-opslag som rosteret", async () => {
+  const queried = [];
+  const evneRow = { rider_id: "cand-1", ...Object.fromEntries(REGISTRY_ABILITY_KEYS.map((k) => [k, 33])), hidden_potential: 5 };
+  const supabase = {
+    from(table) {
+      const api = {
+        _ids: null,
+        select() { return api; },
+        eq() { return api; },
+        order() { return api; },
+        in(_col, ids) { api._ids = ids; if (table === "rider_derived_abilities") queried.push(...ids); return api; },
+        limit() {
+          if (table === "rider_derived_abilities") return Promise.resolve({ data: [evneRow], error: null });
+          return Promise.resolve({ data: [], error: null });
+        },
+        maybeSingle: async () => ({ data: null, error: null }),
+        then(resolve) { return Promise.resolve({ data: [], error: null }).then(resolve); },
+      };
+      return api;
+    },
+  };
+  const view = await buildIntake2View(supabase, {
+    teamId: "t1",
+    roster: [],
+    intake: [{ source: "pull", riderId: "cand-1", rider: { id: "cand-1" } }, { source: "board_gift", riderId: "gift-1", rider: { id: "gift-1" } }],
+    seasonNumber: 4,
+  });
+  assert.deepEqual(queried, ["cand-1"], "kun pull-kandidaten slaas op (rosteret er tomt, gaven er uroert)");
+  assert.equal(view.intake[0].rider_derived_abilities.climbing, 33);
+  assert.equal("hidden_potential" in view.intake[0].rider_derived_abilities, false);
+  assert.equal("rider_derived_abilities" in view.intake[1], false);
 });
 
 const abilities = {
