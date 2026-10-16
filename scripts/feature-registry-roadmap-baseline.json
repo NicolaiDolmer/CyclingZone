@@ -1,0 +1,7 @@
+{
+  "_comment": "Spillervendte flag i beta uden roadmap-tekst da gaten kom (#6693). Maa kun skrumpe: node scripts/feature-registry-roadmap-check.mjs --update-baseline fjerner forældede id'er.",
+  "ids": [
+    "stage-page-v2",
+    "training-bulk-day"
+  ]
+}

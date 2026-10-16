@@ -143,7 +143,7 @@ test('real source map covers every registry job and stall aggregates reach watch
   assert.ok(jobs.length < 55, 'an unrelated graph/prose reference must not widen every cron');
   assert.deepEqual(affectedCronJobs([{ filename: 'docs/DEPLOYMENT.md', status: 'modified' }]), []);
   const savedMap = JSON.parse(readFileSync(new URL('./cron-source-map.json', import.meta.url)));
-  assert.equal(Object.keys(savedMap.sourcePathsBySlug).length, 55);
+  assert.equal(Object.keys(savedMap.sourcePathsBySlug).length, 56);
 });
 
 test('unknown relative dependency always includes its job rather than silently dropping an edge', () => {
