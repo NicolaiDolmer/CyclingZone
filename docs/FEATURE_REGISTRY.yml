@@ -240,6 +240,7 @@ features:
     title_en: Calendar race card and race history library
     title_da: Kalender-løbskort og løbshistorik
     state: building
+    ssot: docs/CALENDAR_RULES.md
     epic: 6514
     verified: 2026-10-15
     note: PR #6680; flag-nøglen race_library_v2 oprettes som off af migrationen efter merge, ejer flytter den til beta.
