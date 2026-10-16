@@ -6,7 +6,7 @@
 
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
-import { AlertTriangleIcon } from "./ui";
+import { AlertTriangleIcon, XIcon } from "./ui";
 
 export default function OverbidToast({ toasts, onDismiss }) {
   const { t } = useTranslation(["auctions", "common"]);
@@ -40,7 +40,7 @@ export default function OverbidToast({ toasts, onDismiss }) {
             className="text-cz-3 hover:text-cz-1 text-base leading-none min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0 -me-2"
             aria-label={t("common:actions.close")}
           >
-            ✕
+            <XIcon size={16} aria-hidden="true" />
           </button>
         </div>
       ))}

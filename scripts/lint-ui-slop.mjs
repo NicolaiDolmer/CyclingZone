@@ -123,6 +123,9 @@ const EMOJI_TEXT_EXEMPT = new Set(["©", "®", "™"]); // © ® ™
 // ("A → B" i en hjaelpetekst) rammes ogsaa — det er bevidst; locale-siden
 // laeses igennem manuelt (#3422 punkt 3), ikke auto-fixes.
 const ARROW_RE = /[←-↕↩↪‹›«»]/g;
+// #6690: tekstsymboler brugt som ikon (hele TASTE P7-listen: ▲ ▼ ✓ ✕ ✦ ○ ⓘ) i
+// JSX og i oversaettelser; .js-data og kommentarer taeller ikke.
+const GLYPH_RE = /[▲▼✓✕✦○ⓘ]/g;
 
 // Raa Tailwind-palette-farve (#1578 WP0, ratchet ned i WP2): en utility-prefix
 // (bg/text/border/ring/from/to/via/fill/stroke/divide/outline/decoration/
@@ -174,18 +177,23 @@ export function countArrow(src) {
   return (clean.match(ARROW_RE) ?? []).length;
 }
 
+export function countGlyph(src) {
+  GLYPH_RE.lastIndex = 0;
+  return (stripComments(src).match(GLYPH_RE) ?? []).length;
+}
+
 export function countColor(src) {
   TW_COLOR_RE.lastIndex = 0;
   return (stripComments(src).match(TW_COLOR_RE) ?? []).length;
 }
 
-export function scanSource(src) {
+export function scanSource(src, { jsx = true } = {}) {
   return {
     hex: countHex(src),
     slop: countSlop(src),
     colour: countColor(src),
     emoji: countEmoji(src),
-    arrowglyph: countArrow(src),
+    arrowglyph: countArrow(src) + (jsx ? countGlyph(src) : 0),
   };
 }
 
@@ -217,7 +225,9 @@ export function scanRepo() {
   for (const file of walk(SRC_DIR, matchSource)) {
     const rel = relative(ROOT, file).replaceAll("\\", "/");
     if (EXEMPT_FILES.has(rel)) continue;
-    const r = scanSource(readFileSync(file, "utf8"));
+    // #6690 (Codex): ogsaa .js/.ts kan levere UI-tekst (fx abilityRegistry), saa
+    // glyffer taelles i alle kildefiler, ikke kun .jsx/.tsx. CSS har ingen glyf-UI.
+    const r = scanSource(readFileSync(file, "utf8"), { jsx: !/\.css$/.test(file) });
     if (r.hex || r.slop || r.colour || r.emoji || r.arrowglyph) counts[rel] = r;
   }
   for (const file of walk(LOCALES_DIR, matchLocale)) {
@@ -225,7 +235,9 @@ export function scanRepo() {
     if (EXEMPT_FILES.has(rel)) continue;
     const src = readFileSync(file, "utf8");
     const emoji = countEmoji(src);
-    const arrowglyph = countArrow(src);
+    // #6690 (Codex): ogsaa ✓/✕/▲/▼ i oversaettelser taeller, saa nye glyffer ikke
+    // kan snige sig ind via copy. Eksisterende copy ligger i baselinen (ratchet).
+    const arrowglyph = countArrow(src) + countGlyph(src);
     if (emoji || arrowglyph) counts[rel] = { hex: 0, slop: 0, colour: 0, emoji, arrowglyph };
   }
   return counts;

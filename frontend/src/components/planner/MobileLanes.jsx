@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { statStyle } from "../../lib/statColor";
 import { Flag } from "../Flag";
 import RiderTypeBadge from "../rider/RiderTypeBadge";
-import { StarIcon, FlagIcon, ChevronRightIcon } from "../ui";
+import { StarIcon, FlagIcon, ChevronRightIcon, CheckIcon, ArrowDownIcon } from "../ui";
 import { dateToOrdinal, formatRaceDateLabel, statusMeta, riderShortName } from "./plannerShared";
 import { isYouthPlannerRider } from "./plannerSquadModel";
 
@@ -129,7 +129,7 @@ export default function MobileLanes({ riders: allRiders, races, filter, today, s
                   <StarIcon size={11} aria-hidden="true" />
                 </span>
               ) : chip && (
-                <span className="text-3xs shrink-0" style={{ color: chip.tone === "good" ? "rgb(var(--accent))" : "rgb(var(--accent-t))" }}>{chip.glyph}</span>
+                <span className="text-3xs shrink-0" style={{ color: chip.tone === "good" ? "rgb(var(--accent))" : "rgb(var(--accent-t))" }}><span aria-hidden="true">{chip.icon === "check" ? <CheckIcon size={10} aria-hidden="true" /> : chip.icon === "down" ? <ArrowDownIcon size={10} aria-hidden="true" /> : chip.glyph}</span><span className="sr-only">{t(`status.${chip.key}`)}</span></span>
               )}
               <ChevronRightIcon size={16} className="text-cz-3 shrink-0" aria-hidden="true" />
             </button>

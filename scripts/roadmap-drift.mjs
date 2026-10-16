@@ -12,6 +12,10 @@
 //             stadig staar som planlagt, i gang eller aaben.
 //   Beta-drift - roadmap-punkter, hvis status ikke passer med deres kontakt i
 //             app_config (triggeren springer laaste raekker over, bevidst).
+//   Uden punkt - flag i beta/on uden roadmap-punkt med samme flag_key (#6693):
+//             alle app_config-noegler i beta, plus noegler i on hvis registret
+//             har roadmap-tekst til dem (saa burde roadmap-sync-registry.mjs
+//             have oprettet punktet). Flag i on uden tekst er historik og vises ikke.
 // Exit 0 ogsaa ved fund: det er en rapport, ikke en gate.
 // Skriver kun med --resync: kalder rpc roadmap_resync_flags() (admin/service_role).
 //
@@ -24,6 +28,7 @@ import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseRegistry } from "./generate-feature-status.mjs";
 
 // Sektioner i docs/MASTERPLAN.md, hvis issues spillerne kan maerke.
 const PLAN_SECTIONS = [/^## .*Brand/, /^## Bane 1 · Lovet/];
@@ -94,6 +99,27 @@ export function findFlagDrift({ items, flags }) {
   return out;
 }
 
+/**
+ * Flag i beta/on uden roadmap-punkt (#6693). `items` er alle punkter med
+ * flag_key, uanset status (et arkiveret punkt taeller: det er et bevidst valg).
+ * `registry` er registrets poster; et flag i on medtages kun, hvis posten har
+ * roadmap-tekst. Ikke-stadie-noegler (tal, objekter) giver stage null og ignoreres.
+ */
+export function findFlagsWithoutItem({ items, flags, registry = [] }) {
+  const linked = new Set(items.map((i) => i.flag_key).filter(Boolean));
+  const withText = new Map(
+    registry.filter((e) => e.flag && e.roadmap_en && e.roadmap_da).map((e) => [e.flag, e.id]),
+  );
+  const out = [];
+  for (const [key, value] of Object.entries(flags)) {
+    if (linked.has(key)) continue;
+    const stage = flagStage(value);
+    if (stage === "beta") out.push({ flag_key: key, flag: stage, registry_id: withText.get(key) || null });
+    else if (stage === "on" && withText.has(key)) out.push({ flag_key: key, flag: stage, registry_id: withText.get(key) });
+  }
+  return out.sort((a, b) => a.flag_key.localeCompare(b.flag_key, "en"));
+}
+
 export function formatDrift(drift) {
   const lines = [];
   lines.push(`Lovet/brand uden roadmap-punkt eller kendt fejl (${drift.missing.length}):`);
@@ -111,6 +137,18 @@ export function formatDrift(drift) {
       ? [
           ...flagDrift.map((f) => `  roadmap_items ${String(f.id).slice(0, 8)}  ${f.status}  ${f.title}  (${f.reason})`),
           "  Ret med: infisical run -- node scripts/roadmap-drift.mjs --resync",
+        ]
+      : ["  ingen"]),
+  );
+  const noItem = drift.flagsWithoutItem || [];
+  lines.push(`Flag i beta/on uden roadmap-punkt (${noItem.length}):`);
+  lines.push(
+    ...(noItem.length
+      ? [
+          ...noItem.map((f) =>
+            `  ${f.flag_key}  ${f.flag}  ${f.registry_id ? `(tekst i registret: ${f.registry_id})` : "(ingen roadmap-tekst i registret)"}`,
+          ),
+          "  Ret med: roadmap_en/roadmap_da i docs/FEATURE_REGISTRY.yml, derefter node scripts/roadmap-sync-registry.mjs --apply",
         ]
       : ["  ingen"]),
   );
@@ -166,6 +204,8 @@ async function main() {
   });
   const flags = Object.fromEntries(configRes.data.map((r) => [r.key, r.value]));
   drift.flagDrift = findFlagDrift({ items: flagItemsRes.data, flags });
+  const registry = parseRegistry(readFileSync(resolve(here, "..", "docs", "FEATURE_REGISTRY.yml"), "utf8"));
+  drift.flagsWithoutItem = findFlagsWithoutItem({ items: flagItemsRes.data, flags, registry });
   console.log(formatDrift(drift));
 
   if (resync) {
