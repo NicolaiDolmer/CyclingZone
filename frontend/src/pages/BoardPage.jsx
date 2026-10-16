@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { getBoardGoalLabel } from "../lib/boardGoalLabel";
@@ -637,13 +637,21 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
           && evaluation?.rank_in_division != null
           && evaluation?.division_manager_count != null && (
           <p className="text-2xs text-cz-3 mt-1.5 leading-relaxed">
-            {t("goal.relativeRankDetail", {
-              rank: evaluation.rank_in_division,
-              total: evaluation.division_manager_count,
-              actual: evaluation.actual ?? 0,
-              target: evaluation.target,
-              check: evaluation.actual >= evaluation.target ? " ✓" : "",
-            })}
+            <Trans
+              t={t}
+              i18nKey="goal.relativeRankDetail"
+              values={{
+                rank: evaluation.rank_in_division,
+                total: evaluation.division_manager_count,
+                actual: evaluation.actual ?? 0,
+                target: evaluation.target,
+              }}
+              components={{
+                check: evaluation.actual >= evaluation.target
+                  ? <span><CheckIcon size={12} className="inline ms-1 align-[-2px]" aria-hidden="true" /><span className="sr-only">{t("goal.targetMet")}</span></span>
+                  : <></>,
+              }}
+            />
           </p>
         )}
         {/* #3494 · sponsor_growth-tælleren/-nævneren er begge pro-raterede procenter
@@ -1140,7 +1148,7 @@ function BoardRequestChangeList({ t, focusChanged, focusBefore, focusAfter, goal
         <div className="bg-cz-subtle border border-cz-border rounded-cz p-3">
           <p className="text-cz-3 text-3xs uppercase tracking-wider">{t("request.focusLabel")}</p>
           <p className="text-cz-2 text-sm mt-1">
-            {getFocusLabel(t, focusBefore)} → {getFocusLabel(t, focusAfter)}
+            {getFocusLabel(t, focusBefore)} <ChevronRightIcon size={14} className="inline align-[-2px]" aria-hidden="true" /><span className="sr-only">{t("request.changesTo")}</span> {getFocusLabel(t, focusAfter)}
           </p>
         </div>
       )}
@@ -1160,7 +1168,7 @@ function BoardRequestChangeList({ t, focusChanged, focusBefore, focusAfter, goal
                     : formatBoardCopy(change.before_label)}
                 </p>
                 <p className="text-cz-3 text-xs mt-1">
-                  → {change.after_goal
+                  <ChevronRightIcon size={12} className="inline align-[-2px]" aria-hidden="true" /><span className="sr-only">{t("request.changesTo")}</span> {change.after_goal
                     ? getBoardGoalLabel(t, change.after_goal)
                     : formatBoardCopy(change.after_label)}
                 </p>

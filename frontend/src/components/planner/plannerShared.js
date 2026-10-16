@@ -120,9 +120,11 @@ export function effectivePlannerFilter(filter, divisionPending) {
 // Trænings-status-chip: farve + redundant ikon-glyf (ikke kun farve — a11y §5.4).
 export function statusMeta(status) {
   switch (status) {
-    case "on_track": return { key: "onTrack", glyph: "✓", tone: "good" };
-    case "at_risk": return { key: "atRisk", glyph: "↓", tone: "warn" };
-    default: return { key: "pending", glyph: "•", tone: "muted" };
+    // #6690: `icon` er en nøgle ("check"/"down") som MasterCanvas/MobileLanes
+    // tegner som stroke-ikon; `glyph` bruges kun til den neutrale prik.
+    case "on_track": return { key: "onTrack", icon: "check", glyph: null, tone: "good" };
+    case "at_risk": return { key: "atRisk", icon: "down", glyph: null, tone: "warn" };
+    default: return { key: "pending", icon: null, glyph: "•", tone: "muted" };
   }
 }
 

@@ -13,7 +13,7 @@ import { sampleFormCurves } from "../../lib/plannerCurve";
 import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
 import { Flag } from "../Flag";
-import { StarIcon, FlagIcon } from "../ui";
+import { StarIcon, FlagIcon, CheckIcon, ArrowDownIcon } from "../ui";
 import TerrainGlyph from "../calendar/TerrainGlyph.jsx";
 import { toTerrainBucket } from "../../lib/terrainBucket";
 import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel, formatOrdinalShort } from "./plannerShared";
@@ -437,9 +437,18 @@ export default function MasterCanvas({ riders: allRiders, races, today, leadupDa
                     </div>
                   </foreignObject>
                 ) : (
-                  <text x={rx0 + 9} y={y0 + 52.5} fontSize="10" fill={chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep} style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    {chip.glyph} {t(`status.${chip.key}`)}
-                  </text>
+                  <>
+                    {chip.icon && (
+                      <g style={{ color: chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep }}>
+                        {chip.icon === "check"
+                          ? <CheckIcon x={rx0 + 9} y={y0 + 44} size={10} aria-hidden="true" />
+                          : <ArrowDownIcon x={rx0 + 9} y={y0 + 44} size={10} aria-hidden="true" />}
+                      </g>
+                    )}
+                    <text x={rx0 + (chip.icon ? 21 : 9)} y={y0 + 52.5} fontSize="10" fill={chip.tone === "good" ? "var(--on-accent)" : CZ.goldDeep} style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      {chip.glyph ? `${chip.glyph} ` : ""}{t(`status.${chip.key}`)}
+                    </text>
+                  </>
                 )}
               </g>
             )}

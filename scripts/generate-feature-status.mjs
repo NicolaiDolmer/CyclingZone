@@ -61,7 +61,8 @@ export const AREAS = [
 export const STATES = ["live", "beta", "dormant", "building", "spec", "idea", "retired"];
 
 const REQUIRED_FIELDS = ["id", "area", "title_en", "title_da", "state", "verified"];
-const KNOWN_FIELDS = new Set([...REQUIRED_FIELDS, "flag", "ssot", "epic", "note"]);
+// roadmap_*: spillerens roadmap-tekst (#6693); se scripts/feature-registry-roadmap-check.mjs.
+const KNOWN_FIELDS = new Set([...REQUIRED_FIELDS, "flag", "ssot", "epic", "note", "roadmap_en", "roadmap_da", "roadmap_horizon"]);
 
 const ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -177,6 +178,9 @@ export function validate(entries) {
     if (e.verified && !DATE_RE.test(e.verified)) errors.push(`${label}: verified skal vaere YYYY-MM-DD`);
     if (e.epic && !/^\d+$/.test(e.epic)) errors.push(`${label}: epic skal vaere et issue-nummer uden #`);
     if (e.note && e.note.includes("|")) errors.push(`${label}: note maa ikke indeholde | (bryder tabellen)`);
+    if (!e.roadmap_en !== !e.roadmap_da) errors.push(`${label}: roadmap_en og roadmap_da saettes sammen (#6693)`);
+    if (e.roadmap_horizon && !["next", "later"].includes(e.roadmap_horizon)) errors.push(`${label}: roadmap_horizon skal vaere next eller later`);
+    if (e.roadmap_horizon && !e.roadmap_en) errors.push(`${label}: roadmap_horizon kraever roadmap_en/roadmap_da`);
     if (e.state === "dormant" && !e.note) {
       errors.push(`${label}: state dormant kraever en note om hvem/hvad der flipper den (#4928)`);
     }
