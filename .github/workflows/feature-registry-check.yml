@@ -27,6 +27,7 @@ on:
       - 'docs/FEATURE_STATUS.md'
       - 'scripts/generate-feature-status.mjs'
       - 'scripts/check-feature-registry-flags.mjs'
+      - 'scripts/feature-registry-flag-expiry*'
       - '.github/workflows/feature-registry-check.yml'
   push:
     branches: [main]
@@ -35,6 +36,7 @@ on:
       - 'docs/FEATURE_STATUS.md'
       - 'scripts/generate-feature-status.mjs'
       - 'scripts/check-feature-registry-flags.mjs'
+      - 'scripts/feature-registry-flag-expiry*'
       - '.github/workflows/feature-registry-check.yml'
   # Mandag 04:30 UTC - efter feature-liveness-audit (04:00), saa de to
   # DB-laesende vagter ikke rammer prod samtidig.
@@ -68,6 +70,22 @@ jobs:
 
       - name: docs/FEATURE_STATUS.md er i sync med registret
         run: node scripts/generate-feature-status.mjs --check
+
+      - name: Udloebsregel selftest (#6701)
+        run: node --test scripts/feature-registry-flag-expiry.test.mjs
+
+      # Vaekst-tjekket (nye id'er i baseline) giver kun mening mod PR'ens base.
+      - name: Hent main til baseline-sammenligning
+        if: github.event_name == 'pull_request'
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+
+      - name: Ikke-live poster har decision + decide_by (PR, baseline maa kun skrumpe)
+        if: github.event_name == 'pull_request'
+        run: node scripts/feature-registry-flag-expiry.mjs --base-ref origin/main
+
+      - name: Ikke-live poster har decision + decide_by
+        if: github.event_name != 'pull_request'
+        run: node scripts/feature-registry-flag-expiry.mjs
 
   registry-flags:
     name: registry-flags
