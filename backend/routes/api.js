@@ -10288,10 +10288,17 @@ router.get("/me/selection-reminder", requireAuth, presencePulseLimiter, async (r
     const candidateIds = [...new Set(windowRows.map((r) => r.race_id))];
     if (!candidateIds.length) return res.json({ ...empty(true), urgent_hours: lateFillHours });
 
+    // #5851: kun den AKTIVE saesons loeb. Naeste saesons foerste etape ligger inde i
+    // vinduet foer skiftet, men udtagelse kan foerst gemmes naar saesonen er aktiv
+    // (#5405, seasonAllowsSelectionWrites). Ingen aktiv saeson = intet at minde om.
+    const { data: reminderSeason } = await supabase
+      .from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (!reminderSeason?.id) return res.json({ ...empty(true), urgent_hours: lateFillHours });
+
     const [raceRows, scheduleRows, entryRows, withdrawalRows] = await Promise.all([
       fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
         .from("races").select("id, name, status, stages_completed, league_division_id, race_class")
-        .in("id", chunk).eq("status", "scheduled").order("id")),
+        .in("id", chunk).eq("status", "scheduled").eq("season_id", reminderSeason.id).order("id")),
       fetchAllRowsChunkedIn(candidateIds, (chunk) => supabase
         .from("race_stage_schedule").select("race_id, scheduled_at")
         .in("race_id", chunk).order("race_id").order("stage_number")),
