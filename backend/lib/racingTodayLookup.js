@@ -18,6 +18,7 @@ import { applyRiderEligibilityFilter, isRiderInjured, raceSquadOf } from "./ride
 import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { loadTrainNowLocksForRaces } from "./trainNowLock.js"; // #6740
+import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 
 // Ren sammenkobling — INGEN I/O. Holdets (race_id, rider_id)-entries krydses mod
 // mængden af race_id'er der har en etape planlagt i dag, og løbsnavnet slås op.
@@ -29,12 +30,18 @@ import { loadTrainNowLocksForRaces } from "./trainNowLock.js"; // #6740
 // hvor holdet IKKE stiller op (under startgulvet, kan ikke fyldes op) giver ingen
 // badge — ellers står rytteren som "løber i dag" mens motoren fjerner holdet ved
 // start. Manglende nøgle = stiller op (bit-identisk med før #5945).
-export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map(), startsByRaceId = new Map() } = {}) {
+//
+// #6740 (Codex P2): notStartingByRaceId (race_id -> Set<rider_id>) er udtagne ryttere i et
+// løb der IKKE er startet endnu, som motoren fjerner ved start (skadet eller brugt dagen),
+// også når holdet starter via regel B. Et startet løb har intet sæt: en rytter der
+// styrtede i dagens løb, kørte det.
+export function computeRacingTodayByRider({ entryRows = [], todayRaceIds = [], raceNameById = new Map(), startsByRaceId = new Map(), notStartingByRaceId = new Map() } = {}) {
   const todaySet = new Set(todayRaceIds);
   const out = {};
   for (const entry of entryRows) {
     if (!todaySet.has(entry.race_id)) continue;
     if (startsByRaceId.get(entry.race_id) === false) continue;
+    if (notStartingByRaceId.get(entry.race_id)?.has(entry.rider_id)) continue;
     out[entry.rider_id] = { race: raceNameById.get(entry.race_id) ?? null };
   }
   return out;
@@ -79,10 +86,10 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
     if (raceErr) return {};
 
     const raceNameById = new Map((raceRows ?? []).map((r) => [r.id, r.name]));
-    const startsByRaceId = await loadStartsByRaceId({
+    const { starts: startsByRaceId, notStarting: notStartingByRaceId } = await loadStartsByRaceId({
       supabase, now, teamId, entryRows: entryRows ?? [], raceRows: raceRows ?? [], todaySet,
     });
-    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId });
+    return computeRacingTodayByRider({ entryRows: entryRows ?? [], todayRaceIds, raceNameById, startsByRaceId, notStartingByRaceId });
   } catch {
     // best-effort: en synkron/netværks-fejl her må ALDRIG vælte hele
     // /api/training/me-responsen pga. én best-effort-berigelse (samme fail-safe-
@@ -99,8 +106,12 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
 // hentes, sættes løbet ikke i mappet (badge som før #5945). Skadesopslaget er best-effort: svigter
 // det, tæller ingen som skadet, så udsigten fejler mod "stiller op" (badge som før)
 // frem for at skjule et badge pga. en fejl. Kaster aldrig.
+//
+// #6740: returnerer også, pr. ikke-startet løb, de udtagne motoren fjerner ved start.
 async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, todaySet }) {
   const starts = new Map();
+  const notStarting = new Map();
+  let injured = new Set();
   try {
     const raceById = new Map(raceRows.map((r) => [r.id, r]));
     const squads = [...new Set(raceRows.filter((r) => todaySet.has(r.id)).map((r) => raceSquadOf(r)))];
@@ -115,7 +126,6 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
       if (!error) rosterBySquad.set(squad, (data ?? []).map((r) => r.id));
     }));
     const conditionIds = [...new Set([...rosterBySquad.values()].flat().concat(entryRows.map((e) => e.rider_id)))];
-    let injured = new Set();
     try {
       const { data, error } = conditionIds.length
         ? await supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", conditionIds)
@@ -163,16 +173,28 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
         for (const id of otherRiders) boundElsewhere.add(id);
       }
       const locked = lockByRace.get(raceId)?.riderIds ?? new Set();
+      // #6740 (Codex P2): en rytter der allerede har brugt løbsdagen fjernes af motoren før
+      // regel B og fyldes aldrig ind. Best-effort: svigter opslaget, tæller ingen som spent.
+      const spent = new Set((await loadSpentRaceDays({ supabase, raceId, riderIds: [...new Set([...entered, ...roster])] })
+        .catch(() => [])).map((row) => row.rider_id));
       const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)
-        && !locked.has(id)).length;
+        && !locked.has(id) && !spent.has(id)).length;
+      // #6740: kun udtagne der stadig er i løbets trup og ikke har brugt dagen tæller, som i
+      // motoren (ghost- og spent-filtrene).
+      const rosterSet = new Set(roster);
+      const keptEntered = [...entered].filter((id) => rosterSet.has(id) && !spent.has(id));
+      notStarting.set(raceId, new Set([...entered].filter((id) => injured.has(id) || spent.has(id))));
       const { starts: willStart } = teamWillStart({
-        entryCount: [...entered].filter((id) => !injured.has(id)).length, freeEligibleCount, stagesCompleted,
+        entryCount: keptEntered.filter((id) => !injured.has(id)).length,
+        // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
+        injuredEntryCount: keptEntered.filter((id) => injured.has(id)).length,
+        freeEligibleCount, stagesCompleted,
       });
       starts.set(raceId, willStart);
     }
   } catch {
     // best-effort: ren berigelse, tomt map = badge som før #5945.
-    return new Map();
+    return { starts: new Map(), notStarting: new Map() };
   }
-  return starts;
+  return { starts, notStarting };
 }

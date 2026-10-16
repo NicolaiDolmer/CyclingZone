@@ -306,13 +306,13 @@ export default function RaceSelectionPanel({
   // #6740: en skadet udtaget rytter tæller ikke med i gulvet: motoren fjerner ham ved start.
   const fitSelected = selectedRiders.filter((r) => !r.injured).length;
   const outlook = partialSquadOutlook({
-    selected: fitSelected, free: freeLeft, fieldMax: size.max,
+    selected: fitSelected, injured: selectedRiders.length - fitSelected, free: freeLeft, fieldMax: size.max,
   });
   // #4295 opfølgning: en 0-valgt trup er IKKE det samme udsagn som en delvis trup — se
   // partialSquadOutlook. `emptySelection` vælger de to dedikerede sætninger i stedet for
   // "N pladser åbne", som ville være tomt/misvisende når intet er valgt endnu.
   const partialHint = outlook
-    ? t(`selection.${outlook.kind === "willNotStart"
+    ? t(`selection.${outlook.kind === "startsShort" ? "startsShort" : outlook.kind === "willNotStart"
       ? (outlook.emptySelection ? "willNotStartEmpty" : "willNotStart")
       : outlook.kind === "assistantFills"
         ? (outlook.emptySelection ? "assistantFillsEmpty" : "partialHint")
@@ -888,7 +888,7 @@ export default function RaceSelectionPanel({
               <p
                 data-testid="selection-partial-hint"
                 data-outlook={outlook.kind}
-                className={`text-xs ${outlook.kind === "willNotStart" ? "text-cz-warning" : "text-cz-3"}`}
+                className={`text-xs ${(outlook.kind === "willNotStart" || outlook.kind === "startsShort") ? "text-cz-warning" : "text-cz-3"}`}
               >
                 {partialHint}
               </p>

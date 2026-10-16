@@ -94,3 +94,14 @@ test("loadTeamsInStartedField: DB-fejl kastes (kalderne fejler selv mod 'stiller
   const supabase = { from: () => { const q = { select: () => q, eq: () => q, in: () => q, then: (r) => r({ data: null, error: { message: "boom" } }) }; return q; } };
   await assert.rejects(() => loadTeamsInStartedField({ supabase, raceIds: ["r"], teamId: "t1" }), /started field\): boom/);
 });
+
+test("teamWillStart: regel B, skade efter udtagelsen holder holdet i loebet (#6740)", () => {
+  // Friis/Léman: 6 udtaget, 1 skadet, ingen frie -> starter med 5.
+  assert.deepEqual(teamWillStart({ entryCount: 5, injuredEntryCount: 1, freeEligibleCount: 0 }), { starts: true, min: MIN_RACE_ENTRIES, reason: null });
+  // Havde aldrig gulvet: 4 raske + 1 skadet.
+  assert.equal(teamWillStart({ entryCount: 4, injuredEntryCount: 1, freeEligibleCount: 0 }).starts, false);
+  // Alle skadede, ingen frie: ingen at starte med.
+  assert.equal(teamWillStart({ entryCount: 0, injuredEntryCount: 6, freeEligibleCount: 0 }).starts, false);
+  // Alle skadede, 2 frie: assistenten fylder, holdet starter med 2.
+  assert.equal(teamWillStart({ entryCount: 0, injuredEntryCount: 6, freeEligibleCount: 2 }).starts, true);
+});

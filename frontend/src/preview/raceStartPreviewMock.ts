@@ -4,6 +4,8 @@
 //                       (Injured badge, and the column says the team will not start)
 //   ?raceStart=dns      first race has started, the team was removed at the start
 //                       (Did not start instead of Lineup locked)
+//   ?raceStart=short    first race: 6 selected, one injured, no free riders. Rule B: the
+//                       column says the team starts with 5 (#6740 PR 2)
 // Both modes also put the two new inbox messages at the top of the inbox.
 
 type Column = { id: string; name?: string; selection?: { rider_ids?: string[] } | null; riders?: Array<{ id: string } & Record<string, unknown>> } & Record<string, unknown>;
@@ -19,8 +21,15 @@ function mode(): string | null {
 
 export function raceStartBoardPreview(body: BoardBody): BoardBody {
   const m = mode();
-  if ((m !== "injured" && m !== "dns") || !Array.isArray(body?.columns) || !body.columns.length) return body;
+  if ((m !== "injured" && m !== "dns" && m !== "short") || !Array.isArray(body?.columns) || !body.columns.length) return body;
   const [first, ...rest] = body.columns;
+  if (m === "short") {
+    // The board reads the roster from the first column, so six selected riders and nobody else = no free riders.
+    const base = first.riders?.[0] ?? { id: "rider-1" };
+    const riders = Array.from({ length: 6 }, (_, i) => ({ ...base, id: i === 0 ? base.id : `preview-short-${i + 1}`, injured: i === 0 }));
+    const counts = { ...(first.counts as Record<string, unknown> ?? {}), selected: 6 };
+    return { ...body, columns: [{ ...first, riders, counts, selection: { ...(first.selection ?? {}), rider_ids: riders.map((r) => r.id) } }, ...rest] };
+  }
   if (m === "dns") {
     return { ...body, columns: [{ ...first, lineup_locked: true, stages_completed: 1, did_not_start: true }, ...rest] };
   }

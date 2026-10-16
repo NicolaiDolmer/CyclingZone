@@ -19,7 +19,8 @@ export type TrainNowStatus = {
   shortRaces: TrainNowShortRace[];
 };
 
-export type TrainNowShortRace = { id: string; name: string | null; fit: number; entered: number; min: number };
+// startsShort (#6740 rule B): the team had the floor, injuries took it below; it still starts with `fit`.
+export type TrainNowShortRace = { id: string; name: string | null; fit: number; entered: number; min: number; startsShort?: boolean };
 
 export type TrainNowPressResult = {
   settledRiderIds: string[];
@@ -78,6 +79,7 @@ export function parseShortRaces(value: unknown): TrainNowShortRace[] {
       // Ældre backend uden `entered`: antag at de raske er de udtagne.
       entered: Number.isFinite(r.entered) ? Number(r.entered) : (Number.isFinite(r.fit) ? Number(r.fit) : 0),
       min: Number.isFinite(r.min) ? Number(r.min) : 6,
+      startsShort: r.startsShort === true,
     }));
 }
 
@@ -88,7 +90,7 @@ export function parseShortRaces(value: unknown): TrainNowShortRace[] {
 export function trainNowWarnings(status: TrainNowStatus): Array<{ key: string; params: Record<string, string | number> }> {
   if (!status.enabled || !status.available) return [];
   return status.shortRaces.map((r) => ({
-    key: r.entered > 0 ? "trainNow.shortRace" : "trainNow.shortRaceEmpty",
+    key: r.startsShort ? "trainNow.shortRaceStarts" : r.entered > 0 ? "trainNow.shortRace" : "trainNow.shortRaceEmpty",
     params: { race: r.name ?? "", fit: r.fit, min: r.min },
   }));
 }

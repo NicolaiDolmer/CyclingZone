@@ -21,8 +21,10 @@
     "planLocked": "Today's fields are locked. You can still change tomorrow.",
     "shortRace": "{race}: only {fit} of {min} fit riders selected. After Train now no rider can be added, so your team will not start.",
     "shortRaceEmpty": "{race}: no riders selected. After Train now the assistant cannot pick any, so your team will not start.",
+    "shortRaceStarts": "{race}: only {fit} of {min} fit riders selected. After Train now no rider can be added, so your team starts with {fit}.",
     "confirm": {
       "title": "Your team will not start",
+      "titleShort": "Your team starts with fewer riders",
       "go": "Train anyway",
       "cancel": "Cancel"
     }
