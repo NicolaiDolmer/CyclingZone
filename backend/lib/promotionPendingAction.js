@@ -134,7 +134,7 @@ export async function handleListPendingRequest(supabase, {
     try {
       const out = await list(supabase, { teamId, seasonNumber });
       return { status: 200, body: { enabled: false, ...out } };
-    } catch {
+    } catch { // best-effort: foer migrationen findes kolonnerne ikke; flag off = tom liste er korrekt
       return { status: 200, body: { enabled: false, riders: [], room: {} } };
     }
   }
