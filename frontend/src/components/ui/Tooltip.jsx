@@ -56,7 +56,7 @@ export default function Tooltip({ label, side = "top", open = false, id, classNa
             style={{
               position: "fixed", left: pos?.left ?? 0, top: pos?.top ?? 0, right: "auto", bottom: "auto",
               transform: "none", translate: "none", maxWidth: pos?.maxWidth ?? tooltipMaxWidth(window.innerWidth),
-              visibility: pos ? "visible" : "hidden",
+              visibility: pos && !pos.hidden ? "visible" : "hidden",
             }}>
             {label}
           </span>

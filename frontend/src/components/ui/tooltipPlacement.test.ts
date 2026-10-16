@@ -29,6 +29,12 @@ test("maks-bredden er skaermen minus to kanter paa en smal skaerm", () => {
   assert.equal(p.left, EDGE);
 });
 
+test("ankeret scrollet ud af skaermen: boblen skjules i stedet for at svaeve", () => {
+  assert.equal(placeTooltip(rect(100, -60, 40, 22), "top", { width: 100, height: 30 }, phone).hidden, true);
+  assert.equal(placeTooltip(rect(100, 900, 40, 22), "bottom", { width: 100, height: 30 }, phone).hidden, true);
+  assert.equal(placeTooltip(rect(100, 400, 40, 22), "top", { width: 100, height: 30 }, phone).hidden, false);
+});
+
 test("plads nok: boblen centreres over ankeret", () => {
   const p = placeTooltip(rect(150, 400, 60, 22), "top", { width: 100, height: 30 }, phone);
   assert.equal(p.left, 150 + 30 - 50);

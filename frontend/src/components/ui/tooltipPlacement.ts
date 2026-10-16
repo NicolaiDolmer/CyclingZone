@@ -5,7 +5,10 @@
 export type Side = "top" | "bottom" | "left" | "right";
 export interface Rect { left: number; top: number; right: number; bottom: number; width: number; height: number }
 export interface Size { width: number; height: number }
-export interface Placement { left: number; top: number; maxWidth: number }
+// hidden: ankeret er scrollet ud af skærmen. Boblen ligger fixed, så uden det
+// flag ville klemningen holde den svævende over andet indhold (kitchen-sink på
+// webkit: en tvunget åben boble lå oven i stat-colours-sektionen).
+export interface Placement { left: number; top: number; maxWidth: number; hidden: boolean }
 
 export const EDGE = 8;
 export const GAP = 8;
@@ -30,9 +33,11 @@ export function placeTooltip(rect: Rect, side: Side | string, bubble: Size, view
     left = rect.left + rect.width / 2 - w / 2;
     top = side === "bottom" ? rect.bottom + GAP : rect.top - GAP - h;
   }
+  const hidden = rect.bottom <= 0 || rect.top >= viewport.height || rect.right <= 0 || rect.left >= viewport.width;
   return {
     left: Math.max(EDGE, Math.min(left, viewport.width - w - EDGE)),
     top: Math.max(EDGE, Math.min(top, viewport.height - h - EDGE)),
     maxWidth,
+    hidden,
   };
 }
