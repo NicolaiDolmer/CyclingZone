@@ -13,5 +13,15 @@ test("Tooltip er group-ankret med role=tooltip + tooltipClass", () => {
 });
 
 test("open tvinger boblen synlig (kitchen-sink/snapshot)", () => {
+  assert.match(src, /active \|\| open/);
   assert.match(src, /opacity-100!/);
+});
+
+// #6728: en lukket boble maa ikke ligge usynligt i siden, ellers kan den goere
+// siden bredere end skaermen (loebssiden var 461 px bred paa 375 px).
+test("lukket boble renderes ikke; aaben boble ligger i en Portal med fixed position", () => {
+  assert.match(src, /\{visible && \(/);
+  assert.match(src, /<Portal>/);
+  assert.match(src, /position: "fixed"/);
+  assert.match(src, /placeTooltip\(/);
 });
