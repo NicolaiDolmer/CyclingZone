@@ -626,9 +626,11 @@ test("getStageRolesContext (#6740): afmeldt hold -> withdrawn, ogsaa foer start"
   assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "withdrawn" });
 });
 
-test("getStageRolesContext (#6740): Train now-laaste reserver kan ikke fylde op -> below_min", async () => {
+test("getStageRolesContext (#6740): Train now-laaste reserver kan ikke fylde op -> regel B / below_min", async () => {
   // 5 raske udtaget (r6 skadet), r7/r8 frie, men laast af Train now paa loebsdagen.
-  const entries = SIX_ENTRIES;
+  // Regel B (ejer 16/10): holdet havde 6 udtaget, kun skaden tog det under -> starter med 5.
+  // Uden r1 i udtagelsen havde holdet aldrig gulvet (4 raske + 1 skadet) -> below_min.
+  const entries = SIX_ENTRIES.slice(1);
   const conditions = [{ rider_id: "r6", form: 50, fatigue: 0, injured_until: "2999-01-01" }];
   const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
   const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
@@ -642,4 +644,9 @@ test("getStageRolesContext (#6740): Train now-laaste reserver kan ikke fylde op 
     race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
   });
   assert.deepEqual(locked.start_outlook, { starts: false, min: 6, reason: "below_min" });
+  const lockedSix = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS, conditions, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)) }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
+  });
+  assert.deepEqual(lockedSix.start_outlook, { starts: true, min: 6, reason: null }, "regel B: Friis' sag starter med 5");
 });
