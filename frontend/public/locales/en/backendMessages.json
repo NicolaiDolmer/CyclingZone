@@ -215,6 +215,11 @@
       "unsoldTitle": "Academy graduate released",
       "unsold": "{name} drew no bids and left your academy as a free agent."
     },
+    "promotionPending": {
+      "title": "Awaiting promotion: {name}",
+      "u23": "{name} is ready for your U23 squad, but it is full. He stays in his current squad on the same contract. Free a spot and promote him from your team page.",
+      "senior": "{name} is ready for your senior squad, but it is full. He stays in his current squad on the same contract. Free a spot and promote him from your team page."
+    },
     "academySigningDeferred": {
       "title": "Academy signing confirmed",
       "message": "{riderName} will join your academy once his current stage race is finished. He keeps racing for your senior squad until then."
