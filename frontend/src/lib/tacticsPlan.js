@@ -11,7 +11,9 @@
 // med i GET-svaret (`default_order`), regnet af motorens egen kontrakt. Sådan
 // findes tabellen ét sted i stedet for at blive en femte kopi.
 
-export const BREAKAWAY_STANCES = ["chase", "neutral", "let_go"];
+import { isOfficialTimesV3OrLater } from "./raceClassificationGaps.js";
+
+export const BREAKAWAY_STANCES =["chase", "neutral", "let_go"];
 
 // #4632: fald tilbage på de tre oprindelige trin når serveren ikke har sendt
 // sit vokabular (den femtrins-intention er bag eget flag).
@@ -26,15 +28,25 @@ export function defaultTeamOrder(riderIds = []) {
   return { team_id: null, breakaway_stance: "neutral", riders: riderIds.map(defaultRiderOrder) };
 }
 
+// #6462: motorens tog-etaper (backend mechanics/leadout.ts isSprintTrainProfile).
+const SPRINT_TRAIN_PROFILES = new Set(["flat"]);
+
+/** #6462: etapen er en tog-etape (flad). En ukendt profil er det ikke: intet forvalg. */
+export function isSprintTrainStage(profileType) {
+  return SPRINT_TRAIN_PROFILES.has(profileType);
+}
+
 /**
- * #6462: sprint-toget er ALDRIG forudvalgt. Serverens standardordre giver
- * hjaelperne `leadout: true` naar holdet har en spurt-kaptajn; fladen viser og
- * gemmer i stedet "ingen i toget" til manageren selv vaelger. Gemte valg
- * roeres ikke (de ligger i de gemte raekker, ikke i standardordren).
+ * #6462 (ejer 16/10): sprint-toget er kun STANDARD paa en flad etape. Spejler
+ * motorens adapter (teamOrdersAdapter.ts trainIsDefaultOnStage + withoutDefaultTrain):
+ * fra official_times_v3 faar hjaelperne ingen tog-standard paa bjerg, enkeltstart,
+ * kuperet og brosten; aeldre revisioner beholder rollens standard paa alle etaper.
+ * Gemte valg roeres ikke (de ligger i de gemte raekker, ikke i standardordren).
  * Ren: returnerer en ny ordre; null/undefined passerer uaendret igennem.
  */
-export function withoutPreselectedTrain(defaultOrder) {
+export function trainDefaultForStage(defaultOrder, { profileType = null, rulesRevision = null } = {}) {
   if (!defaultOrder) return defaultOrder;
+  if (!isOfficialTimesV3OrLater(rulesRevision) || isSprintTrainStage(profileType)) return defaultOrder;
   return { ...defaultOrder, riders: (defaultOrder.riders ?? []).map((r) => ({ ...r, leadout: false })) };
 }
 

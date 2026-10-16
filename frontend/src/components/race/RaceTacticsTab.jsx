@@ -60,7 +60,7 @@
 // Revisionen læses direkte fra races (RLS: offentlig SELECT); en fejlet
 // læsning betyder legacy, aldrig de nye regler. Prosaen bor i Hjælp.
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import i18n from "i18next";
@@ -112,7 +112,7 @@ import {
   toggleTryBreak,
   withIntentionEfforts,
 } from "../../lib/tacticsPlan.js";
-import { fetchTeamOrders, orderForStage, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
+import { defaultOrderForStage, fetchTeamOrders, orderForStage, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 
@@ -349,15 +349,20 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // samme regel som holdudtagelses-panelet). Sat: "desc" | "asc".
   const [routeSortDir, setRouteSortDir] = useState(null);
 
+  // #6462: etapeprofilerne (togets standard) i en ref, saa load ikke genskabes af en ny objekt-identitet.
+  const profileByStageRef = useRef(profileByStage);
+  useEffect(() => { profileByStageRef.current = profileByStage; }, [profileByStage]);
   const load = useCallback(async () => {
     const headers = await authHeaders({ json: false });
     if (!headers) { setRoles(false); return; }
     let rolesBody = null;
     let orderCtx = null;
     try {
-      const [rolesRes, orderResult] = await Promise.all([
+      const [rolesRes, orderResult, revisionRes] = await Promise.all([
         apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers }),
         fetchTeamOrders({ raceId }).catch(() => null),
+        // #6462: den raa revision (toget er kun standard paa flade etaper fra official_times_v3).
+        supabase.from("races").select("engine_rules_revision").eq("id", raceId).maybeSingle().then((r) => r, () => null),
       ]);
       // #5242 (CodeRabbit-fund): et 2xx med tom/ikke-JSON krop giver apiFetch's
       // res.data:null — uden dette tjek ville rolesBody.stage_count nedenfor
@@ -367,7 +372,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         return;
       }
       rolesBody = rolesRes.data;
-      orderCtx = orderResult;
+      orderCtx = orderResult && { ...orderResult, rulesRevision: revisionRes?.data?.engine_rules_revision ?? null };
     } catch {
       setRoles(false);
       return;
@@ -382,7 +387,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       stagesCompleted: rolesBody.stages_completed ?? 0,
     });
     const seededOrders = {};
-    for (const sn of stageNumbers) seededOrders[sn] = orderForStage(orderCtx, sn);
+    for (const sn of stageNumbers) seededOrders[sn] = orderForStage(orderCtx, sn, profileByStageRef.current[sn]?.profile_type);
 
     setRoles(rolesBody);
     setOrders(orderCtx);
@@ -507,7 +512,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const saving = status === "saving";
   const activeMeta = stageList.find((s) => s.stage_number === activeStage) ?? { locked: false, scheduled_at: null };
   const stageLocked = activeMeta.locked;
-  const order = ordersByStage[activeStage] ?? orderForStage(orders, activeStage);
+  const order = ordersByStage[activeStage] ?? orderForStage(orders, activeStage, profileByStage[activeStage]?.profile_type);
   const initialOrder = initialOrdersByStage[activeStage];
   const ordersDirty = JSON.stringify(order) !== JSON.stringify(initialOrder);
   const dirty = !stageLocked && (isDirty(draftMatrix, initialMatrix) || (showOrders && ordersDirty));
@@ -797,7 +802,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
 
   function renderOrdersCell(rider) {
     const id = rider.rider_id;
-    const ro = orderByRider.get(id) || roleDefaultFor(orders?.defaultOrder, id);
+    const ro = orderByRider.get(id) || roleDefaultFor(defaultOrderForStage(orders, profileByStage[activeStage]?.profile_type), id);
     if (stageLocked || rider.abandoned) {
       return (
         <span className="inline-flex items-center gap-1 text-3xs text-cz-3">

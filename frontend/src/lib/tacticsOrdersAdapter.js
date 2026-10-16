@@ -16,7 +16,7 @@
 
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { defaultTeamOrder, mergeOrderWithRoster, withoutPreselectedTrain } from "./tacticsPlan.js";
+import { defaultTeamOrder, mergeOrderWithRoster, trainDefaultForStage } from "./tacticsPlan.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -58,28 +58,39 @@ export async function fetchTeamOrders({ raceId }) {
     stagesCompleted: body.stages_completed ?? 0,
     raceCompleted: body.race_completed === true,
     riders: body.riders ?? [],
-    defaultOrder: withoutPreselectedTrain(body.default_order) ?? null, // #6462: intet forvalgt tog
+    defaultOrder: body.default_order ?? null,
     orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
   };
 }
 
 /**
+ * #6462: rollernes standardordre for ÉN etape, som motoren koerer den. Toget er
+ * kun standard paa en flad etape fra official_times_v3 (`context.rulesRevision`,
+ * den raa `races.engine_rules_revision`). Ren funktion.
+ */
+export function defaultOrderForStage(context, profileType) {
+  return trainDefaultForStage(context?.defaultOrder ?? null, { profileType, rulesRevision: context?.rulesRevision ?? null });
+}
+
+/**
  * Ordren for ÉN etape, udledt af `fetchTeamOrders`-svaret. Har holdet ikke gemt
  * noget for etapen, ER rollernes standardordre svaret (T4 — passivitet straffes
- * aldrig). Ren funktion: intet netværk, testbar.
+ * aldrig). `profileType` er etapens profil (#6462: toget er kun standard paa en
+ * flad etape). Ren funktion: intet netværk, testbar.
  */
-export function orderForStage(context, stage) {
+export function orderForStage(context, stage, profileType = null) {
   const riderIds = (context?.riders ?? []).map((r) => r.rider_id);
   const saved = (context?.orders ?? []).find((o) => o.stage_number === stage) ?? null;
+  const defaultOrder = defaultOrderForStage(context, profileType);
   // #6067: uden gemt ordre er ROLLENS standard svaret. defaultTeamOrder()'s
   // neutrale rytter-rækker (try_break:false) overskrev før rolledefaulten, så
   // en udbrudsjæger viste "ikke Forsøg udbrud", og et gem blev et eksplicit
   // fravalg (#5955: fravær af override og try_break=false er to ting).
   return mergeOrderWithRoster(
-    saved ?? (context?.defaultOrder ? { breakaway_stance: context.defaultOrder.breakaway_stance, riders: [] } : defaultTeamOrder(riderIds)),
+    saved ?? (defaultOrder ? { breakaway_stance: defaultOrder.breakaway_stance, riders: [] } : defaultTeamOrder(riderIds)),
     riderIds,
-    context?.defaultOrder ?? null,
+    defaultOrder,
   );
 }
 
