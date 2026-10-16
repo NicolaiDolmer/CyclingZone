@@ -20,19 +20,29 @@ import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 //
 // Rule 17 (AGENTS.md §17): formler, eksponenter og maalte drift-tal hoerer ikke
 // hjemme i det offentlige repo — de er delt med ejeren i chat.
+//
+// #6711 (#5833 plan-PR 2, ejer-go 16/10): deleren er FORANKRET i loebsdage pr. DATO,
+// ikke i saesonens samlede antal loebsdage. Foer #6711 laeste deleren saesonens maal
+// (SEASON_RACE_DAY_TARGET), saa en laengere saeson tyndede hver loebsdag ud: S5 med 160
+// loebsdage gav 12,5 % mindre pr. dag end S4 med 140, og S6 med 135 ville give mere.
+// Kalenderen pakker altid 5 loebsdage paa hver kalenderdato (CALENDAR_RULES §1e-b), saa
+// et fast udbytte pr. loebsdag er et fast udbytte pr. VIRKELIG dato. En laengere saeson
+// giver derfor mere samlet udvikling, fordi den har flere datoer - ikke mindre pr. dato.
+const RACE_DAYS_PER_DATE = 5;
+const LEGACY_DAYS_PER_SEASON = 28;
+
 export const TRAINING_RACE_DAY_CONFIG = Object.freeze({
-  // #4847 (ejer-beslutning 15/9, TRAINING_RULES.md §13.3 beslutning 2): 140 loebsdage
-  // pr. saeson i ALLE fire divisioner (= 28 loebsdatoer x D1's 5 slots). Tallet er
-  // IKKE frit her: `resolveRaceDaysPerSeason()` nedenfor LAESER det fra
-  // calendarRaceDayTargets.js' SEASON_RACE_DAY_TARGET, saa kalenderpakkeren og
-  // traeningsdeleren ALDRIG kan divergere. Vaerdien her bruges kun hvis tabellen
-  // ikke baerer et eneste positivt maal.
-  raceDaysPerSeason: 140,
+  // #6711: ankeret. Kalenderens loebsdage pr. kalenderdato (D1's 5 slots, §1e-b).
+  raceDaysPerDate: RACE_DAYS_PER_DATE,
+  // Reference-saesonen deleren er kalibreret mod (G1): 28 loebsdatoer x 5 = S4's 140.
+  // UDLEDT af ankeret, ikke et frit tal, og IKKE laest fra SEASON_RACE_DAY_TARGET
+  // laengere (#6711): saesonens eget maal styrer kun aksens laengde, aldrig udbyttet.
+  raceDaysPerSeason: RACE_DAYS_PER_DATE * LEGACY_DAYS_PER_SEASON,
   // Maalt antal kalenderdags-ticks pr. sæson i dag (S3), spec §3.2.
   calendarTicksPerSeasonToday: 31,
   // DAILY_TRAINING_CONFIG.daysPerSeason — gentaget her som reference for deleren.
   // Bevidst ikke importeret: dailyTraining.js skal kunne koere uden denne fil.
-  legacyDaysPerSeason: 28,
+  legacyDaysPerSeason: LEGACY_DAYS_PER_SEASON,
   // #4801: loftet paa hele point pr. evne pr. tick. Med loebsdagen som tick-enhed
   // betyder "+1 pr. evne pr. dag" +1 pr. LOEBSDAG. Roret (hardDailyCap) har altid
   // vaeret der; reglen er ny (spec §3.1).
@@ -40,55 +50,27 @@ export const TRAINING_RACE_DAY_CONFIG = Object.freeze({
 });
 
 /**
- * Budget-deleren der holder sæsonens samlede udvikling uaendret (G1).
- * D = raceDaysPerSeason × legacyDaysPerSeason / calendarTicksPerSeasonToday.
+ * Budget-deleren der holder udbyttet pr. loebsdag fast (G1, forankret i #6711).
+ * D = (raceDaysPerDate × legacyDaysPerSeason) × legacyDaysPerSeason / calendarTicksPerSeasonToday.
+ *
+ * Reference-saesonen (raceDaysPerDate × legacyDaysPerSeason) er S4's antal loebsdage, saa
+ * S4 faar PRAECIS den deler den havde foer #6711 (alle led er hele tal, saa produktet er
+ * eksakt og float-resultatet bit-identisk). Deleren afhaenger ikke af saesonens laengde.
  * @returns {number}
  */
 export function raceDayBudgetDivisor(cfg = TRAINING_RACE_DAY_CONFIG) {
-  return (cfg.raceDaysPerSeason * cfg.legacyDaysPerSeason) / cfg.calendarTicksPerSeasonToday;
+  const referenceRaceDays = cfg.raceDaysPerDate * cfg.legacyDaysPerSeason;
+  return (referenceRaceDays * cfg.legacyDaysPerSeason) / cfg.calendarTicksPerSeasonToday;
 }
 
-// ── Loebsdags-maalet laeses fra kalenderen, ikke duplikeret ───────────────────
+// ── Saesonens maal styrer aksen, ikke udbyttet (#6711) ────────────────────────
 //
-// #4847 punkt 5 (kommentar paa #4845 15/9): deleren SKAL kalibreres mod det tal
-// kalenderpakkeren rent faktisk pakker efter. To kopier af "140" — een i pakkeren og
-// een her — er praecis den divergens der giver systematisk under- eller overtraening
-// naar ejeren senere aendrer maalet ét af stederne.
-//
-// STATISK IMPORT (#4846). Foer #5169 var merget fandtes calendarRaceDayTargets.js ikke
-// paa main, og en defensiv dynamisk import med fallback holdt backenden bootbar. Filen
-// er nu paa main, og kalenderpakkeren kan ikke koere uden den, saa den dynamiske sti
-// kunne kun skjule en fejl (en ny import-fejl ville tavst give fallback-tallet i stedet
-// for at vaelte boot). Den statiske import goer ogsaa opslaget SYNKRONT, saa
-// traenings-lukningen (trainingDayCloseTrigger.js) kan bruge det rent.
-
-/**
- * Antal loebsdage pr. saeson for EN given saeson.
- *
- * Praecedens: SEASON_RACE_DAY_TARGET[seasonNumber] > det hoejeste maal i tabellen >
- * TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason. Den mellemste tager hoejde for at
- * tabellen i dag kun har `{ 4: 140 }`: en saeson 5 uden eget tal skal arve S4's maal
- * frem for at falde tilbage paa en konstant der kan vaere aeldre end kalenderen.
- *
- * KUN TIL BUDGET-DELEREN. Arven er rigtig for deleren, men FORKERT for aksens laengde:
- * kalenderen giver en saeson uden eget tal INTET maal (se `resolveCalendarRaceDayTarget`
- * nedenfor), og aksen er da typisk kortere end det arvede tal.
- *
- * @param {{seasonNumber?: number|null, cfg?: object, table?: object}} [args]
- *   `table` er kun et test-hook; default er kalenderens SEASON_RACE_DAY_TARGET.
- * @returns {number}
- */
-export function resolveRaceDaysPerSeason({
-  seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG, table = SEASON_RACE_DAY_TARGET,
-} = {}) {
-  if (table && typeof table === "object") {
-    const exact = Number(table[seasonNumber]);
-    if (Number.isFinite(exact) && exact > 0) return exact;
-    const known = Object.values(table).map(Number).filter((n) => Number.isFinite(n) && n > 0);
-    if (known.length) return Math.max(...known);
-  }
-  return cfg.raceDaysPerSeason;
-}
+// Foer #6711 laeste deleren SEASON_RACE_DAY_TARGET (#4847 punkt 5) for at undgaa to
+// kopier af "140". Det koblede udbyttet pr. loebsdag til saesonens laengde, saa S5's 160
+// tyndede hver dag ud. Ankeret er nu kalenderens loebsdage pr. DATO, som er den regel
+// pakkeren selv bruger til at regne et saesonmaal ud (datoer x 5, se
+// calendarRaceDayTargets.js). Maalet laeses stadig fra kalenderen, men kun til aksens
+// laengde: `resolveCalendarRaceDayTarget` nedenfor.
 
 /**
  * Loebsdags-AKSENS laengde for en saeson, laest med PRAECIS kalenderens regel (#4846).
@@ -96,9 +78,9 @@ export function resolveRaceDaysPerSeason({
  * Kalenderen pakker efter `SEASON_RACE_DAY_TARGET[saesonnummer] ?? null`, baade i
  * auto-stien (seasonTransition.js) og i CLI-stien (buildSeasonCalendar.js). En saeson
  * UDEN eget tal faar altsaa INTET maal, og aksen er pakkerens naturlige laengde. Det er
- * det tal traenings-lukningen skal forlaenge saesonens sidste loebsdato til — ikke
- * `resolveRaceDaysPerSeason`'s arvede maal, som ville ticke loebsdage kalenderen aldrig
- * har pakket (diff-tjekket af PR #5608, 24/9).
+ * det tal traenings-lukningen skal forlaenge saesonens sidste loebsdato til — aldrig et
+ * arvet maal, som ville ticke loebsdage kalenderen aldrig har pakket (diff-tjekket af
+ * PR #5608, 24/9).
  *
  * @param {{seasonNumber?: number|null, table?: object}} [args]
  *   `table` er kun et test-hook; default er kalenderens SEASON_RACE_DAY_TARGET.
@@ -116,18 +98,17 @@ export function resolveCalendarRaceDayTarget({ seasonNumber = null, table = SEAS
 }
 
 /**
- * Budget-deleren for en KONKRET saeson, med maalet laest fra kalenderen.
- * Synkron siden importen blev statisk (#4846). To kald-steder, begge kun paa flag
- * on-stien (`training_tick_per_race_day`): dailyTrainingEngine.js og
- * trainingSlotHealthWatch.js. Begge `await`'er den stadig, hvilket er harmloest paa en
- * almindelig vaerdi.
+ * Budget-deleren for en KONKRET saeson. Siden #6711 er den ens for alle saesoner
+ * (forankret i loebsdage pr. dato), saa `seasonNumber` paavirker den ikke. Parameteren
+ * beholdes, fordi kald-stederne (dailyTrainingEngine.js, trainingSlotHealthWatch.js og
+ * dev-scripts) sender den, og fordi "deleren for saeson N" stadig er det rigtige
+ * spoergsmaal at stille: svaret er bare det samme for alle N.
  *
  * @param {{seasonNumber?: number|null, cfg?: object}} [args]
  * @returns {number}
  */
-export function resolveRaceDayBudgetDivisor({ seasonNumber = null, cfg = TRAINING_RACE_DAY_CONFIG } = {}) {
-  const raceDaysPerSeason = resolveRaceDaysPerSeason({ seasonNumber, cfg });
-  return (raceDaysPerSeason * cfg.legacyDaysPerSeason) / cfg.calendarTicksPerSeasonToday;
+export function resolveRaceDayBudgetDivisor({ cfg = TRAINING_RACE_DAY_CONFIG } = {}) {
+  return raceDayBudgetDivisor(cfg);
 }
 
 /**
