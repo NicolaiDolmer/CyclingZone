@@ -14,35 +14,16 @@ import { apiFetch } from "./apiFetch.ts";
 import { isViewerChangeEvent } from "./viewerChange.ts";
 import { authHeaders, supabase } from "./supabase.ts";
 
-/** Ren: preview-svaret ud fra URL'ens query. null = ikke preview. */
-export function resolveRaceLibraryPreviewOverride(search: string, isPreview: boolean): boolean | null {
-  if (!isPreview) return null;
-  return new URLSearchParams(search).get("lib2") !== "off";
-}
-
-/** Ren: { enabled } fra serveren → boolean. Alt andet end præcis true = false. */
-export function parseRaceLibraryV2Response(data: unknown): boolean {
-  return typeof data === "object" && data !== null && (data as { enabled?: unknown }).enabled === true;
-}
-
-export const RACE_LIBRARY_V2_TIMEOUT_MS = 4000;
-
-function withTimeout(p: Promise<boolean>, ms: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(false), ms);
-    p.then(
-      (v) => { clearTimeout(timer); resolve(v); },
-      () => { clearTimeout(timer); resolve(false); },
-    );
-  });
-}
+// requestRaceLibraryV2 kaster aldrig; kun et haengende kald skal give false efter timeout.
+const withTimeout = (p: Promise<boolean>, ms: number): Promise<boolean> =>
+  Promise.race([p, new Promise<boolean>((resolve) => setTimeout(resolve, ms, false))]);
 
 async function requestRaceLibraryV2(): Promise<boolean> {
   try {
     const headers = await authHeaders({ json: false });
     if (!headers) return false;
     const res = await apiFetch("/api/races/race-library-v2", { headers });
-    return res.ok ? parseRaceLibraryV2Response(res.data) : false;
+    return res.ok && (res.data as { enabled?: unknown } | null)?.enabled === true;
   } catch {
     return false;
   }
@@ -65,7 +46,7 @@ function installAuthListener(): void {
 function fetchRaceLibraryV2Enabled(): Promise<boolean> {
   installAuthListener();
   if (!cached) {
-    cached = withTimeout(requestRaceLibraryV2(), RACE_LIBRARY_V2_TIMEOUT_MS).then((v) => {
+    cached = withTimeout(requestRaceLibraryV2(), 4000).then((v) => {
       if (!v) cached = null;
       return v;
     });
@@ -76,8 +57,8 @@ function fetchRaceLibraryV2Enabled(): Promise<boolean> {
 /** null = henter endnu, ellers boolean. */
 export function useRaceLibraryV2(): boolean | null {
   const isPreview = Boolean(import.meta.env.VITE_PREVIEW_MOCK);
-  const search = typeof window !== "undefined" ? window.location.search : "";
-  const override = resolveRaceLibraryPreviewOverride(search, isPreview);
+  // Preview: "beta for mig" = true; ?lib2=off viser den nuvaerende visning.
+  const override = isPreview ? new URLSearchParams(window.location.search).get("lib2") !== "off" : null;
   const [enabled, setEnabled] = useState<boolean | null>(override);
 
   useEffect(() => {

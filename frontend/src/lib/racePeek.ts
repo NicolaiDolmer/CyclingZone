@@ -53,11 +53,11 @@ export interface TeamFit { score: number; best: { id: string; name: string; scor
 // Antallet står kun i tooltip. "Type" er kalenderens egne kategorier
 // (calendar.json terrain.*), så kort, kalenderchip og legende taler samme sprog.
 // #6683 skifter ikonerne ud i TerrainTypeGlyph, ét sted for alle.
-export const TERRAIN_KINDS: readonly TerrainKind[] = Object.freeze(["mountain", "itt", "ttt", "cobbles", "hilly", "sprint"]);
+export const TERRAIN_KINDS: readonly TerrainKind[] = ["mountain", "itt", "ttt", "cobbles", "hilly", "sprint"];
 
 // profile_type → kalender-kategori. Ukendt type → sprint (samme fallback som
 // lib/terrainBucket.ts's toTerrainBucket).
-const KIND_BY_PROFILE: Readonly<Record<string, TerrainKind>> = Object.freeze({
+const KIND_BY_PROFILE: Readonly<Record<string, TerrainKind>> = {
   high_mountain: "mountain",
   mountain: "mountain",
   medium_mountain: "mountain",
@@ -70,13 +70,13 @@ const KIND_BY_PROFILE: Readonly<Record<string, TerrainKind>> = Object.freeze({
   classic: "hilly",
   rolling: "sprint",
   flat: "sprint",
-});
+};
 
 // Kalenderens wire-svar bærer kun kategorien pr. etape (raceCalendar.js). Bruges
 // når profilerne ikke kan hentes, så kortet aldrig står tomt.
-const PROFILE_BY_BUCKET: Readonly<Record<TerrainKind, string>> = Object.freeze({
+const PROFILE_BY_BUCKET: Readonly<Record<TerrainKind, string>> = {
   mountain: "mountain", itt: "itt", ttt: "ttt", cobbles: "cobbles", hilly: "hilly", sprint: "flat",
-});
+};
 
 export function terrainKind(profileType: string | null | undefined): TerrainKind {
   return (profileType && KIND_BY_PROFILE[profileType]) || "sprint";

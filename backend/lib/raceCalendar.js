@@ -300,6 +300,9 @@ export function toCalendarWireEntry(entry) {
     stageSchedule: entry.stageSchedule,
     isMine: entry.isMine,
     leaderSet: entry.leaderSet,
+    // #6514: in-game-dag-spanet; klientens GT-bindingskonflikt (racePeek.bindsOverlap) regnes i game_days.
+    gameDayStart: entry.gameDayStart,
+    gameDayEnd: entry.gameDayEnd,
     ...(entry.lineupFrozen ? { lineupFrozen: true } : {}), // #6514: kun når låst (wire-trimning)
     ...(entry.withdrawn ? { withdrawn: true } : {}), // #6514: kun når holdet har meldt fra
     ...(entry.restGameDays?.length ? { restGameDays: entry.restGameDays } : {}),
