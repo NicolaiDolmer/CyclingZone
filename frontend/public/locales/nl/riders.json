@@ -1,0 +1,145 @@
+{
+  "page": {
+    "title": "Rennersdatabase",
+    "subtitle": "{count} renners",
+    "watchlistLink": "Mijn volglijst ({count})",
+    "loadingAria": "Renners laden"
+  },
+  "loadError": "De renners konden niet worden geladen. Probeer het opnieuw.",
+  "retry": "Probeer opnieuw",
+  "watchlistToggleFailed": "Je volglijst kon niet worden bijgewerkt. Probeer het opnieuw.",
+  "table": {
+    "nation": "Land",
+    "rider": "Renner",
+    "rating": "Rating",
+    "ratingTitle": "Het gewogen gemiddelde van de vaardigheden die zijn eigen rol nodig heeft. Hetzelfde getal betekent hetzelfde niveau in elke rol.",
+    "team": "Team",
+    "badges": "Status",
+    "age": "Leeftijd",
+    "type": "Type",
+    "value": "Waarde",
+    "salary": "Salaris",
+    "popularity": "Populariteit",
+    "popularityTitle": "Populariteit bij de fans (0-100). Bestaande sterrenrenner-doelen van het bestuur houden de maatstaf waaronder ze zijn afgesproken.",
+    "reputationLabel": "Reputatie",
+    "reputationTitle": "Reputatie in de koers. Tijdens de overgang staat hij nooit onder de oude populariteit van deze renner. Het bestuur leest dit getal voor nieuwe profieldoelen.",
+    "reputation": {
+      "band": {
+        "unknown": "Onbekend",
+        "known": "Bekend",
+        "profile": "Profiel",
+        "star": "Ster",
+        "legend": "Legende"
+      }
+    },
+    "compareTooltip": "Selecteren om te vergelijken",
+    "teamFree": "Vrij",
+    "pendingTransfer": "Transfer in behandeling: sluit zich aan bij {team} zodra zijn huidige etappekoers is afgelopen"
+  },
+  "abilityLegend": {
+    "toggle": "Wat betekenen de codes?"
+  },
+  "mobileSort": {
+    "label": "Sorteren op",
+    "ascAria": "Oplopend gesorteerd, tik voor aflopend",
+    "descAria": "Aflopend gesorteerd, tik voor oplopend"
+  },
+  "pagination": {
+    "showing": "{from}-{to} van {total} getoond",
+    "prev": "Vorige",
+    "next": "Volgende"
+  },
+  "tour": {
+    "filters": {
+      "title": "Filter de lijst op je budget",
+      "body": "Stel 'Waarde max' in op je saldo om alleen renners te zien die je kunt betalen. De schakelaars U25 / Transfervrij openen goedkopere wegen."
+    },
+    "list": {
+      "title": "Klik op een renner",
+      "body": "De detailpagina toont alle statistieken, de contractstatus en de opties om te kopen of te veilen. Vanaf daar kun je een veiling starten of een aanbieding versturen."
+    },
+    "watchlist": {
+      "title": "Gebruik de volglijst",
+      "body": "Met de ster zet je de renner op je volglijst, zodat je er makkelijk op terug kunt komen. De lijst staat ook in het menu onder Markt: Volglijst."
+    }
+  },
+  "emptyState": {
+    "title": "Bouw je eerste team",
+    "intro": "Je hebt nog geen renners. Gebruik de filters hieronder om de renners te vinden die bij je strategie en budget passen.",
+    "balance": "Je saldo",
+    "tipValue": "<strong>Waardefilters</strong> = prijsplafond in CZ$. Stel het maximum onder je saldo in om alleen betaalbare renners te zien.",
+    "tipStats": "<strong>Statistiekfilters</strong> = vaardigheden van renners zoals klimmen, sprinten en tijdrijden. Begin breed en vernauw later.",
+    "tipBudget": "<strong>U25 / Transfervrij</strong> = budgetvriendelijke wegen: jonger potentieel of renners zonder contract.",
+    "ctaFindFirst": "Vind je eerste renner (≤ {balance} CZ$)",
+    "ctaTour": "Laat me rondkijken"
+  },
+  "rankings": {
+    "title": "Rennersranglijst",
+    "season": "Seizoen {n}",
+    "noActiveSeason": "Geen actief seizoen",
+    "completedSeasonNote": "· Afgerond seizoen. Het nieuwe seizoen is nog niet begonnen.",
+    "ridersCount": "{count} renners",
+    "filterIndicator": "Divisie {division} getoond",
+    "divisionFilterLabel": "Filteren op divisie",
+    "divisionFilterAll": "Alle divisies",
+    "divisionFilterOption": "Divisie {n}",
+    "poolFilterLabel": "Filteren op poule",
+    "poolFilterAll": "Alle poules",
+    "ownerFilterLabel": "Filteren op eigenaar",
+    "searchPlaceholder": "Zoek op rennersnaam…",
+    "noResults": "Geen resultaten gevonden",
+    "noResultsFor": "Geen resultaten gevonden voor \"{q}\"",
+    "loadError": "De ranglijst kon niet worden geladen. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "thNation": "Land",
+    "thRider": "Renner",
+    "thTeam": "Team",
+    "thBadges": "Status",
+    "teamFree": "Transfervrij",
+    "ownerAll": "Alle",
+    "ownerManager": "Van managers",
+    "ownerAi": "Van AI",
+    "ownerFree": "Transfervrije renners",
+    "teamFilterLabel": "Filteren op team",
+    "teamFilterAll": "Alle teams",
+    "colPoints": "Punten",
+    "colTotalWins": "Totaal aantal zeges",
+    "colStageWins": "Etappezeges",
+    "colGcWins": "Eindklassementszeges",
+    "colClassicWins": "Klassiekerzeges",
+    "colPtsWins": "Puntenklassement",
+    "colMtnWins": "Bergklassement",
+    "colYoungWins": "Jongerenklassement",
+    "colPrize": "Gewonnen prijzengeld",
+    "colTop3": "Top 3",
+    "colTop10": "Top 10",
+    "colYellowDays": "Dagen in geel",
+    "colGreenDays": "Dagen in groen",
+    "colPolkaDays": "Dagen in de bergtrui",
+    "colWhiteDays": "Dagen in wit",
+    "shortPoints": "Pnt",
+    "shortTotalWins": "Zeges",
+    "shortStageWins": "Etap",
+    "shortGcWins": "EK",
+    "shortClassicWins": "Kla",
+    "shortPtsWins": "PKL",
+    "shortMtnWins": "Ber",
+    "shortYoungWins": "U25",
+    "shortPrize": "Prijs",
+    "shortTop3": "T3",
+    "shortTop10": "T10",
+    "shortYellowDays": "Gel",
+    "shortGreenDays": "Gro",
+    "shortPolkaDays": "Ber",
+    "shortWhiteDays": "Wit",
+    "columnsButton": "Kolommen",
+    "columnsHeading": "Kolommen tonen",
+    "legendStage": "Etap = etappezeges",
+    "legendGc": "EK = eindklassementszeges in etappekoersen",
+    "legendClassic": "Kla = zeges in eendagsklassiekers",
+    "legendPcl": "PKL = puntenklassement",
+    "legendMtn": "Ber = bergklassement",
+    "legendU25": "U25 = jongerenklassement",
+    "legendSort": "Klik op een kolom om te sorteren"
+  }
+}
