@@ -16,6 +16,8 @@ on:
       - 'backend/lib/**'
       - 'scripts/i18n-check-keys.mjs'
       - 'scripts/i18n-check-keys.test.mjs'
+      - 'scripts/i18n-check-key-parity.mjs'
+      - 'scripts/i18n-check-key-parity.test.mjs'
       - 'scripts/i18n-check-delta-pending.mjs'
       - 'scripts/i18n-check-delta-pending.test.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
@@ -69,6 +71,12 @@ jobs:
 
       - name: Run i18n key-coverage check
         run: node scripts/i18n-check-keys.mjs
+
+      - name: Test i18n key-parity gate
+        run: node --test scripts/i18n-check-key-parity.test.mjs
+
+      - name: Run i18n key-parity gate (blocking for new languages, advisory for da)
+        run: node scripts/i18n-check-key-parity.mjs
 
   delta-pending:
     runs-on: ubuntu-latest
