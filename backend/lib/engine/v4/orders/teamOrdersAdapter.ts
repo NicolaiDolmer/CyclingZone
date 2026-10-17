@@ -42,6 +42,13 @@
 // returnerer derfor AI-holdenes indsats pr. rytter (`aiEffortByRider`), som
 // kaldstedet saetter paa startlisten. Menneskeholdenes indsatskilde roeres
 // ikke her (den er #5580's "én kilde til effort").
+//
+// #6462 (KUN official_times_v5 og s5_profiles_v1, ejer 16/10): sprint-toget er kun
+// STANDARD paa en flad etape (motorens egen tog-klassifikation,
+// leadout.isSprintTrainProfile). Paa bjerg, enkeltstart, kuperet og brosten
+// koerer ingen i toget, medmindre manageren selv har sat det for etapen
+// (overlayet vinder altid). Samme regel for menneske- og AI-hold, og taktik-
+// fladen (frontend/src/lib/tacticsPlan.js) viser praecis det samme.
 
 import type { AbilityKey, TeamOrder as EngineTeamOrder } from "../types.ts";
 import {
@@ -66,8 +73,8 @@ import {
   type TeamOrder as TeamTacticsOrder,
 } from "../ai/teamOrderContract.ts";
 import { TEAM_TACTICS_ORDER_KIND } from "../mechanics/breakaway.ts";
-import { LEADOUT_ORDER_KIND, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
-import { isOfficialTimesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
+import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater } from "../../../raceEngineRulesRevision.ts";
 
 export type { BreakawayStance, TeamTacticsOrder };
 
@@ -249,6 +256,24 @@ function humanDefaultOrderV3(
 }
 
 /**
+ * #6462 (ejer 16/10): er sprint-toget STANDARD paa dagens etape? Under
+ * official_times_v5 og senere (isOfficialTimesV5OrLater, slukket indtil
+ * taend-PR'en) kun paa en flad etape (isSprintTrainProfile). official_times_v4
+ * og aeldre (loeb der allerede er bundet, frosne digests) samt et kald uden
+ * kontekst (ruten er ukendt) beholder den gamle regel: rollens standard gaelder
+ * paa alle etaper.
+ */
+export function trainIsDefaultOnStage(context: StageOrderContext | undefined): boolean {
+  if (context === undefined || !isOfficialTimesV5OrLater(context.rules_revision)) return true;
+  return isSprintTrainProfile(context.route.profile_type);
+}
+
+/** #6462: standardordren uden tog-flag. Ny ordre; input muteres ikke. */
+export function withoutDefaultTrain(order: TeamTacticsOrder): TeamTacticsOrder {
+  return { ...order, riders: order.riders.map((r) => ({ ...r, leadout: false })) };
+}
+
+/**
  * Alle raekker for ÉN etape + startlistens hold og roller → komplet
  * `StageInput.orders` + AI-holdenes indsats pr. rytter.
  *
@@ -287,12 +312,13 @@ export function buildStageOrderPlan(args: {
   }
   // Hele dagens startliste: M14 placerer kaptajnen i FELTET, ikke i holdet.
   const field: AiFieldRider[] = [...abilitiesByRider.entries()].map(([rider_id, abilities]) => ({ rider_id, abilities }));
+  const trainByDefault = trainIsDefaultOnStage(context);
 
   const orders: EngineTeamOrder[] = [];
   const aiEffortByRider = new Map<string, EffortLevel>();
   for (const [teamId, teamRoster] of rosterByTeam(roster)) {
     const isAiTeam = context !== undefined && aiTeams.has(teamId);
-    const base = isAiTeam
+    const roleBase = isAiTeam
       ? generateAiTeamOrder({
           team_id: teamId,
           route: context.route,
@@ -308,6 +334,8 @@ export function buildStageOrderPlan(args: {
       : v3HumanStance
         ? humanDefaultOrderV3(teamId, teamRoster, context.route, field, rawAbilitiesByRider)
         : defaultTeamOrderForRoster(teamId, teamRoster);
+    // #6462: toget er kun standard paa en flad etape; manageren gemte valg (overlayet) vinder.
+    const base = trainByDefault ? roleBase : withoutDefaultTrain(roleBase);
     const row = byTeam.get(teamId);
     const order = row ? applyStageOverlayToOrder(base, rowToStageOverlay(row)) : base;
     if (isAiTeam) {

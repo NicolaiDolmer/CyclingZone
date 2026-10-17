@@ -34,6 +34,7 @@ import RiderBadges from "../components/rider/RiderBadges.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
 import { AcademyReleaseConfirmModal } from "../components/AcademyReleaseConfirmModal.jsx";
 import AcademyPnl from "../components/AcademyPnl.jsx";
+import AcademyProfileCard from "../components/AcademyProfileCard.tsx"; // #6666
 import {
   Card, Button, EmptyState, PageLoader, ErrorState, PageHeader, DataTable,
   Section, SectionHeader, SectionAction,
@@ -50,9 +51,14 @@ import { scoutSortValue } from "../lib/scouting.js";
 import { useYouthSquadPages } from "../lib/useYouthSquadPages.ts"; // #5519
 import { academyTargetSquad, isSquadFull, squadCapRows, SQUAD_CAPS } from "../lib/squadCaps.ts"; // #5568
 import { GiftIcon } from "../components/ui/icons/index.jsx";
+import { ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities.js"; // #6666
+import { riderOverallRating } from "../lib/riderRating.js";
+import { statPlateStyle } from "../lib/statColor.js";
 
 // #5844: academy_intake.source for bestyrelsens gave-kuld (backend academyIntakeSource.js).
 const BOARD_GIFT_SOURCE = "board_gift";
+// #6155: kun kandidater hentet med knappen har en symbolsk startværdi.
+const PULL_SOURCE = "pull";
 
 // #2796: var hardkodet Intl.NumberFormat("en-US") midt på en side der ellers
 // bruger den locale-bevidste formatNumber — en dansk bruger så "45,000 CZ$" i
@@ -60,6 +66,22 @@ const BOARD_GIFT_SOURCE = "board_gift";
 function formatMoney(n) {
   if (n == null) return "–";
   return formatNumber(Math.round(Number(n)), { maximumFractionDigits: 0 });
+}
+
+// #6666 punkt 1: en hentet kandidat viser sine NUVÆRENDE evner (backend sender
+// kun registrets evne-felter, aldrig potentiale). Kortet viser rating-pladen i
+// hans egen rolle + hans tre stærkeste evner; hele profilen ses efter underskrift.
+function pullCandidateAbilities(item) {
+  if (!item?.rider_derived_abilities) return null;
+  const flat = flattenAbilities({ ...item.rider, rider_derived_abilities: item.rider_derived_abilities });
+  const top = ABILITY_KEYS
+    .map((key) => ({ key, value: flat[key] }))
+    .filter((a) => Number.isFinite(a.value))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  const rating = riderOverallRating(flat);
+  if (top.length === 0 && !Number.isFinite(rating)) return null;
+  return { rating: Number.isFinite(rating) ? rating : null, top };
 }
 
 function daysUntil(deadline) {
@@ -88,6 +110,35 @@ const ROSTER_ACCESSORS = {
 // er det forventede første klik, ikke "vis mig de billigste".
 const ROSTER_DESC_FIRST = new Set(["age", "potential", "market_value", "salary", "contract_end_season"]);
 
+// #6666 (ejer-beslutning 15/10 punkt 2): prognosen læres gennem træning. Før de
+// første træningsdage er der intet bånd, kun hvor langt der er til et første bud;
+// derefter et bånd i rating-point, der snævrer ind (groft → skarpere → endeligt).
+function AcademyPrognosisCell({ prognosis, t }) {
+  const { stage, band, nextStageDays } = prognosis;
+  // Kort på fladen (mobilens smalle kolonne); forklaringen og dage til næste
+  // trin står i tooltip'en.
+  const title = [
+    t("prognosis.tooltip"),
+    nextStageDays != null ? t(band ? "prognosis.nextDays" : "prognosis.learningDays", { days: nextStageDays }) : null,
+  ].filter(Boolean).join(" ");
+  if (!band) {
+    return (
+      <span className="flex flex-col leading-tight" title={title} data-testid="academy-prognosis-learning">
+        <span className="text-xs text-cz-2">{t("prognosis.learning")}</span>
+        {nextStageDays != null && (
+          <span className="text-3xs text-cz-3 tabular-nums whitespace-nowrap">{t("prognosis.daysLeft", { days: nextStageDays })}</span>
+        )}
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-col leading-tight" title={title} data-testid="academy-prognosis-band">
+      <span className="font-mono tabular-nums text-[13px] text-cz-1">{band.lo}–{band.hi}</span>
+      <span className="text-3xs text-cz-3 whitespace-nowrap">{t(`prognosis.${stage}`)}</span>
+    </span>
+  );
+}
+
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
   // #3045: mobil-fold-tekst for ryttertype (samme namespace som /riders' #2849 bølge 2).
@@ -101,7 +152,7 @@ export default function AcademyPage() {
     enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance,
     intakePull, loading, error, signCandidate, rejectCandidate, promoteRider,
     fetchReleaseQuote, releaseRider,
-    pullIntake,
+    pullIntake, academyProfile, saveProfile,
   } = useAcademy();
   // #5844: bestyrelsens gave-kuld ("A thank-you from the board") vises i sin
   // egen sektion og tæller IKKE med i ugens optag: pull-knappen afgøres kun af
@@ -137,8 +188,15 @@ export default function AcademyPage() {
 
   // #1162-mønstret fra holdsiden: dekorér med estimat-midtpunktet, så
   // potentiale-kolonnen kan sorteres uden det server-skjulte rå potentiale.
+  // #6666: med Optag 2.0 kommer prognosen fra akademiets eget kendskab
+  // (træningsdage på holdet), ikke fra scouting-estimatet.
   const rosterRows = useMemo(
-    () => roster.map((r) => ({ ...r, _potMid: scoutSortValue(scouting.estimateFor(r.id)) })),
+    () => roster.map((r) => ({
+      ...r,
+      _potMid: r.prognosis
+        ? (r.prognosis.band ? (r.prognosis.band.lo + r.prognosis.band.hi) / 2 : null)
+        : scoutSortValue(scouting.estimateFor(r.id)),
+    })),
     [roster, scouting],
   );
   const { rows: sortedRoster, sort, sortDir, handleSort } = useTableSort(
@@ -228,7 +286,9 @@ export default function AcademyPage() {
       sortKey: "potential",
       // #2796: labelAsTitle — stjernerne bærer informationen, den kvalitative
       // tekst ligger i tooltip'en.
-      render: (r) => <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle />,
+      render: (r) => (r.prognosis
+        ? <AcademyPrognosisCell prognosis={r.prognosis} t={t} />
+        : <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle />),
     },
     {
       key: "value",
@@ -463,10 +523,12 @@ export default function AcademyPage() {
   const renderIntakeCard = (item) => {
     const rider = item.rider;
     const isBoardGift = item.source === BOARD_GIFT_SOURCE;
+    const isPull = item.source === PULL_SOURCE;
     const age = getRiderAge(rider.birthdate, seasonYear);
     const busy = actionState[rider.id] != null;
     const err = actionErrors[rider.id];
     const potential = item.potentialEstimate;
+    const abilitiesNow = isPull ? pullCandidateAbilities(item) : null;
     // #2796: tilbuddet udløber efter 7 dage (academyIntakeExpirySweep) —
     // hjælpeteksten har lovet det siden #2627, men kortet viste det aldrig.
     const expiryDays = daysUntil(item.expiresAt);
@@ -525,13 +587,40 @@ export default function AcademyPage() {
 
         <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} className="self-start" />
 
+        {abilitiesNow && (
+          <div className="flex items-center gap-2 flex-wrap" data-testid="intake-abilities-now">
+            <span className="text-xs text-cz-3">{t("intakePull.abilitiesNow")}</span>
+            {abilitiesNow.rating != null && (
+              <span
+                className="inline-flex h-[22px] min-w-[30px] items-center justify-center rounded-cz px-1.5 font-data text-xs tabular-nums"
+                style={statPlateStyle(abilitiesNow.rating)}
+              >
+                {abilitiesNow.rating}
+              </span>
+            )}
+            {abilitiesNow.top.map(({ key, value }) => (
+              <span key={key} className="font-data text-3xs tabular-nums text-cz-1">
+                <span className="text-cz-3">{ABILITY_SHORT[key]}</span> {value}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* #2454/#3746: potentiale i RATING-point, samme enhed som resten
             af spillet. `prog` er prognose-båndets navn; `ceil` er en
             alias (samme tal) for ældre klient-cache.
             #5844 (ejer 28/9): ALDRIG stjerner i akademiet. Mangler båndet
             (kandidatens afledte evner er ikke klar, jf. #5818), står der en
             ærlig tekst i stedet for et stjerne-fallback. */}
-        {(item.potentialBand || potential) && (
+        {/* #6666 punkt 1: en hentet kandidat viser basis; potentialet læres
+            gennem træning efter underskrift (backend sender intet bånd). */}
+        {item.potentialLearned && (
+          <div className="flex items-center gap-2" data-testid="intake-potential-learned">
+            <span className="text-xs text-cz-3">{t("potential")}</span>
+            <span className="text-xs text-cz-2">{t("potentialLearned")}</span>
+          </div>
+        )}
+        {!item.potentialLearned && (item.potentialBand || potential) && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-cz-3">{t("potential")}</span>
             {item.potentialBand ? (
@@ -551,7 +640,7 @@ export default function AcademyPage() {
             (1 sæsons intro-kontrakt), og forklarer at den rigtige værdi
             sættes ved førstkommende søndags-opdatering (punkt 5). */}
         <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs border-t border-cz-border pt-2">
-          <dt className="text-cz-3">{intakePull.enabled ? t("intakePull.provisionalValue") : t("colValue")}</dt>
+          <dt className="text-cz-3">{isPull ? t("intakePull.provisionalValue") : t("colValue")}</dt>
           <dd className="text-right font-data tabular-nums text-cz-1">{formatMoney(getRiderMarketValue(rider))} CZ$</dd>
           <dt className="text-cz-3">{t("signingFee")}</dt>
           {/* #5844: bestyrelsens gave signes gratis (backend sender signingFee 0). */}
@@ -565,7 +654,7 @@ export default function AcademyPage() {
             </>
           )}
         </dl>
-        {intakePull.enabled && (
+        {isPull && (
           <p className="text-3xs text-cz-3">{t("intakePull.valuationNote")}</p>
         )}
 
@@ -704,11 +793,12 @@ export default function AcademyPage() {
 
         {/* #3550 (ejer-beslutning 19/8, ungdomspakken): pull-baseret intake.
             intakePull.enabled=false (default indtil cutover-flip 23/8) → uændret
-            visning (auto-drip-tomtilstand nedenfor). enabled=true bytter tomme-
-            tilstanden ud med en hent-knap (tilstand a) medmindre ugens kuld
-            allerede er hentet OG opbrugt (tilstand b var kandidat-kortene). */}
-        {regularIntake.length === 0 && intakePull.enabled && !intakePull.pulledThisWeek ? (
-          <Card className="p-5 flex flex-col items-start gap-3">
+            visning (auto-drip-tomtilstand nedenfor). enabled=true viser en
+            hent-knap så længe ugens kuld ikke er hentet. */}
+        {/* #6155: knappen vises uanset åbne tilbud (kun ugens hentning afgør det)
+            og står over de eksisterende kort. */}
+        {intakePull.enabled && !intakePull.pulledThisWeek && (
+          <Card className={`p-5 flex flex-col items-start gap-3${regularIntake.length > 0 ? " mb-4" : ""}`}>
             <h3 className="text-sm font-semibold text-cz-1">{t("intakePull.title")}</h3>
             <p className="text-xs text-cz-2 max-w-md">{t("intakePull.description")}</p>
             <p className="text-3xs uppercase tracking-wide text-cz-3">{t("intakePull.deadlineNote")}</p>
@@ -717,7 +807,9 @@ export default function AcademyPage() {
               {t("intakePull.pullBtn")}
             </Button>
           </Card>
-        ) : regularIntake.length === 0 && intakePull.enabled ? (
+        )}
+        {regularIntake.length === 0 && intakePull.enabled && !intakePull.pulledThisWeek ? null
+          : regularIntake.length === 0 && intakePull.enabled ? (
           <EmptyState
             title={t("emptyIntakeTitle")}
             description={t("intakePull.emptyAfterPull")}
@@ -743,6 +835,12 @@ export default function AcademyPage() {
           </div>
         )}
       </section>
+
+      {/* #6666: akademiets profil (låses op af akademi-faciliteten). Står lige
+          under optaget, fordi den styrer næste uges kuld. */}
+      {intakePull.enabled && academyProfile && (
+        <AcademyProfileCard profile={academyProfile} onSave={saveProfile} />
+      )}
 
       {/* ROSTER-sektion — #3045: DataTable (T2-recipen), sticky navnekolonne +
           Type/Værdi foldet ind i portræt-underlinjen (se rosterColumns). */}

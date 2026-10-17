@@ -18,7 +18,7 @@ test("#4295 panelet afleder linjen af den DELTE regel, ikke af sin egen tælling
   // To flader der hver regner selv ender med at sige hver sit om samme løb. Reglen
   // ligger i partialSquadOutlook; begge flader kalder den.
   assert.match(panel, /import \{[^}]*partialSquadOutlook[^}]*\} from "\.\.\/\.\.\/lib\/raceSelectionLogic\.js";/);
-  assert.match(column, /import \{ partialSquadOutlook \} from "\.\.\/\.\.\/lib\/raceSelectionLogic\.js";/);
+  assert.match(column, /import \{ partialSquadOutlook, MIN_RACE_ENTRIES \} from "\.\.\/\.\.\/lib\/raceSelectionLogic\.js";/);
 });
 
 test("#4295 panelet fodrer reglen med ryttere der er frie til NETOP dette løb", () => {
@@ -31,7 +31,8 @@ test("#4295 panelet fodrer reglen med ryttere der er frie til NETOP dette løb",
   );
   assert.match(
     panel,
-    /partialSquadOutlook\(\{\s*selected: sel\.riderIds\.length, free: freeLeft, fieldMax: size\.max,\s*\}\)/,
+    // #6740: en skadet udtaget rytter tæller ikke med (motoren fjerner ham ved start).
+    /partialSquadOutlook\(\{\s*selected: fitSelected, free: freeLeft, fieldMax: size\.max,\s*\}\)/,
   );
   // #4917: panelets EGEN `raceLive` (stages_completed > 0) er fjernet — panelet
   // mountes kun for løbssidens "before"-fase (racePhase), som kræver stages_completed

@@ -19,7 +19,7 @@ _Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kon
 
 4. **Undersøg teknisk tvivl; spørg ved en beslutningsgrænse** (ejer 29/9). Træf reversible tekniske valg inden for godkendt scope efter opslag/test. Spørg ved uafklaret spilleroplevelse, balance, prioritet eller manglende mandat; med bevis, anbefaling og konsekvens. Genbrug givne godkendelser. Hovedsessionen følger leverancen til verificeret afslutning, jf. [Codex-workflow](docs/CODEX_WORKFLOWS.md); øvrige ejer-gates består.
 
-5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Git-hooks er aktive efter installation: pre-commit scanner secrets, pre-push scanner secret-stier/diffs og PatchNotes-versioner. Versionskontrol beviser ikke patch-notes-dækning. Lokalt secret-lag positivt bevist 9/9; CI og øvrige vagter har separat bevisstatus i `docs/GUARD_INVENTORY.md`.
+5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Bølge-PR'er samler patch noten ved close-out (PR-body siger det); det er ikke et review-fund. Git-hooks er aktive efter installation: pre-commit scanner secrets, pre-push scanner secret-stier/diffs og PatchNotes-versioner. Versionskontrol beviser ikke patch-notes-dækning. Lokalt secret-lag positivt bevist 9/9; CI og øvrige vagter har separat bevisstatus i `docs/GUARD_INVENTORY.md`.
 
 6. **Slice close-out kræver:**
    - `docs/NOW.md` opdateret + relevante GitHub-issues lukket eller opdateret med status (`gh issue comment N --body "..."` / `gh issue close N --reason completed`)
@@ -101,7 +101,7 @@ Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [mig
 
 ### Merge-regler (ejer 22/9 + 24/9 + 4/10, #5508)
 
-35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI, rent uafhængigt diff-tjek, ingen blokerende CodeRabbit-fund og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`/regel-revision, uden spillerændring/ny rød måling (ikke #5580/#5581) · **(c)** Dependabot inkl. sikkerhed, docs/CI/hooks/test/ops uden spillertekst · **(d) ejer 8/10:** tekniske PR'er uden spillervendt tekst/UI (også værktøj, migrationer uden spillervendt effekt, deploy-/overvågningsvagter) ved grøn CI + opus-review uden blokerende fund, og spillervendte PR'er hvis design-go blev givet FØR byg og de er bygget, testet og reviewet som aftalt; meld bagefter (spillervendte med billede). **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`.
+35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI inkl. `review-gate` (#6654, CodeRabbit valgfri), rent uafhængigt diff-tjek og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`/regel-revision, uden spillerændring/ny rød måling (ikke #5580/#5581) · **(c)** Dependabot inkl. sikkerhed, docs/CI/hooks/test/ops uden spillertekst · **(d) ejer 8/10:** tekniske PR'er uden spillervendt tekst/UI (også værktøj, migrationer uden spillervendt effekt, deploy-/overvågningsvagter) ved grøn CI + grøn `review-gate` (Codex på alt; Claude/opus-review kun på højrisiko: motor, database, penge, sikkerhed, CI; ejer 16/10), og spillervendte PR'er hvis design-go blev givet FØR byg og de er bygget, testet og reviewet som aftalt; meld bagefter (spillervendte med billede). **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`. **Codex-stop (ejer 16/10):** efter 2. Codex-runde blokerer kun fund om spillerdata, penge, sikkerhed eller prod-nedbrud; resten (også "P1" om tests/scripts/docs) → ét opfølgnings-issue, merge ved grøn CI.
 
 36. **Teknisk design + måling før byg** (ejer 12/10, #6490): DB/motor/samtidighed/ydelse kræver read-only designgennemgang + målt baseline i lokal PG17 FØR 1. PR; maks 2 stablede drafts; 4 t uden resultat → stop med status; ingen polling. `.claude/learnings/2026-10-12-codex-6490-retro.md`.
 
@@ -113,7 +113,7 @@ Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [mig
 
 ## Start-sekvens (hver session)
 
-0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** · **merge-mekanik** (merge-køen). **Codex (ejer 3/10):** `docs/OPERATING_PLAN.md` §Codex; rør aldrig NOW/MASTERPLAN/spillertekst.
+0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** · **merge-mekanik** (merge-køen). **Codex (ejer 3/10):** `docs/OPERATING_PLAN.md` §Codex; rør aldrig NOW/MASTERPLAN/spillertekst (gælder Codex som forfatter; Claude-commits må skrive spillertekst).
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
 2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
 3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.
@@ -155,11 +155,7 @@ Kritiske facts:
 ## Worktree-disciplin (alle agenter)
 
 - **Hoved-checkoutet (`C:\Dev\CyclingZone`) er ejerens og Claudes.** Enhver anden agent — Codex inkluderet — arbejder ALTID i en worktree (`scripts/new-worktree.ps1`), også til trivielle docs-commits. To agenter i samme working tree betyder branch-skift under hinandens fødder, og hard rule 18 fanger det først EFTER skaden. Maskinlæsbart session-claim er sporet i [#4016](https://github.com/NicolaiDolmer/CyclingZone/issues/4016); indtil da er `🤖 Working agent` i `docs/NOW.md` den eneste lås — den skal sættes ved start, pushes, og nulstilles ved close-out.
-- Worktrees i `.claude/worktrees/<navn>/` cleanes efter ship via SessionStart-hook
-- Manuel fallback hvis hook fejler: `git worktree remove <path>` + `git branch -D <branch>` på PC'en der oprettede worktreen
-- Per-PC handling — gentages på den anden PC ved næste session der
-- **Parallel-sessions samme PC:** se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](docs/AGENT_ARCHITECTURE.md#parallel-session-safety-samme-pc-flere-claude-sessions-samtidigt) for kollisions-matrix + worktree-recipe
-- ⚠️ **Sti-baserede hard-blocks SKAL stå i `permissions.deny`, ikke kun hooks (#684):** På Claude Code ≥2.1.154 bypasser `permissions.allow` PreToolUse-hookenes `exit 2` OG JSON-`permissionDecision: deny` ([anthropics/claude-code#18312](https://github.com/anthropics/claude-code/issues/18312)). Fix D (verificeret 2026-05-29 i frisk acceptEdits-session): statiske `permissions.deny`-globs overlever allow-listen (`deny > allow`-precedence) — `Write`/`Edit`/`NotebookEdit(docs/archive/**)` er nu i `permissions.deny`, så arkiv-beskyttelsen håndhæves selvom de tre tools er allow-listede (#591). **Tilbageværende gap:** indholds-baserede guardrails (NOW.md 30-linjers-grænse, dynamisk secret-pattern) kan ikke udtrykkes som deny-globs → stadig hook-only og afvæbnede for allow-listede tools indtil #18312. Hold dem i menneske-review ved autonome parallel-runs — se [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md) top-note.
+- Oprydning, parallel-sessioner og `permissions.deny`-gap (#684): [`docs/AI_OPS_REFERENCE.md#worktree-disciplin-detaljer`](docs/AI_OPS_REFERENCE.md#worktree-disciplin-detaljer).
 
 ---
 
@@ -167,13 +163,12 @@ Kritiske facts:
 
 Resten af AI-ops-disciplinen er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md)** — læs efter behov:
 
-- **Token-effektiv kontekst** — doc-til-trigger-tabel + cold-start-recipe + anti-patterns
-- **Rolle-fordeling mellem AI-assistenter** — Manus / Claude / Codex / Clarity (kort version; fuld council-kontrakt i [`docs/AI_COUNCIL.md`](docs/AI_COUNCIL.md))
-- **Hvornår skifter AI-ejerskab** — scenarie→AI-tabel + konflikt-resolution
-- **Cross-PC setup** — repo-placering, synk-arkitektur, drift-protokol, ikke-rør-for-Codex
-- **Session-rytme & token-effektivitet** — 🟢/🟡/🔴/🆕-signaler, close-out-tjeklister, hvornår man starter ny session
-- **Reference til loops** — quick-ref A-I (fuld spec: [`docs/AI_LOOPS.md`](docs/AI_LOOPS.md))
+- Token-effektiv kontekst · rolle-fordeling (fuld: [`docs/AI_COUNCIL.md`](docs/AI_COUNCIL.md)) · AI-ejerskab · cross-PC setup · session-rytme · loops (fuld: [`docs/AI_LOOPS.md`](docs/AI_LOOPS.md)).
 
 ---
 
 _Sidst opdateret: 2026-09-29. Beslutningsgrænser og Codex-pilot: #605. Lean-core-split: #733._
+
+## Review guidelines (Codex-review på GitHub)
+
+P1 kun for fejl der rammer spillerdata, penge, sikkerhed, prod-drift eller spilleroplevelsen, og for brud på regel 16-17. Manglende patch note i bølge-PR, SSOT/doc-opdatering, PR-billeder og filendelser er P2.

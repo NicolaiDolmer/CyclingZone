@@ -218,7 +218,8 @@
       "understaffed": "{selected} / {target} · understaffed",
       "overfull": "{selected} / {target} · too many",
       "withdrawn": "Withdrawn",
-      "locked": "Lineup locked"
+      "locked": "Lineup locked",
+      "didNotStart": "Did not start"
     },
     "pool": {
       "title": "Available riders · {count}-squad",
@@ -253,6 +254,7 @@
       "withdraw": "Withdraw",
       "reenter": "Re-enter",
       "withdrawnNote": "Your team is voluntarily not starting this race",
+      "didNotStartNote": "Your team did not start: fewer than {min} fit riders at the start.",
       "remove": "Remove rider",
       "openRace": "Open {name}",
       "peaksHere": "Peaking here: {names}",

@@ -17,6 +17,23 @@
     "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
     "ownAuctionsBanner": "{count, plural, one {# of your riders is up for auction} other {# of your riders are up for auction}} · view auctions"
   },
+  "promotionPending": {
+    "title": "Awaiting promotion",
+    "hint": "Their next squad is full. They keep racing in their current squad on the same contract.",
+    "waitingFor": {
+      "u23": "Waiting for a U23 spot",
+      "senior": "Waiting for a senior spot"
+    },
+    "promote": "Promote",
+    "noRoom": "No spot yet",
+    "promoted": "{name} moved up.",
+    "error": {
+      "squad_full": "That squad is full. Free a spot first.",
+      "rider_on_market": "He is up for auction. Promote him when the auction ends.",
+      "rider_in_stage_race": "He is in a stage race. Promote him when it is over.",
+      "generic": "Could not promote the rider. Try again."
+    }
+  },
   "tabs": {
     "ariaLabel": "Team sections",
     "squad": "Squad ({count})",
@@ -80,6 +97,7 @@
       "type": "Type",
       "contract": "Contract",
       "contractUntil": "Until season {season}",
+      "contractExpired": "Expired",
       "action": "Action"
     },
     "reputation": {

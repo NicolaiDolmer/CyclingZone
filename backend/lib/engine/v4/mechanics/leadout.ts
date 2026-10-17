@@ -106,6 +106,11 @@ export function parseLeadoutOrders(orders: readonly TeamOrder[]): LeadoutOrder[]
 /** Etapetyper hvor kaptajnen kan vaere togets maal (samme som teamPlay's sprint-profiler). */
 const SPRINT_TRAIN_PROFILES: ReadonlySet<string> = new Set(["flat"]);
 
+/** #6462: etapen er en tog-etape (flad). Den ene klassifikation adapteren og fladen spejler. */
+export function isSprintTrainProfile(profileType: string | null | undefined): boolean {
+  return SPRINT_TRAIN_PROFILES.has(String(profileType));
+}
+
 /** Finale-evnerne sprinterprofilen sammenlignes med. */
 const RIVAL_PROFILE_KEYS: AbilityKey[] = ["climbing", "time_trial", "punch", "cobblestone"];
 
@@ -143,7 +148,7 @@ export function sprintTrainLeadoutOrder(input: SprintTrainInput): TeamOrder | nu
   const sprintCaptain = input.roster.find((r) => r.role === "sprint_captain");
   const captain = sprintCaptain
     ? null
-    : input.roster.find((r) => r.role === "captain" && SPRINT_TRAIN_PROFILES.has(String(input.profileType)) && hasSprinterProfile(r.abilities));
+    : input.roster.find((r) => r.role === "captain" && isSprintTrainProfile(input.profileType) && hasSprinterProfile(r.abilities));
   const target = sprintCaptain ?? captain;
   if (!target) return null;
   const effortById = new Map(input.riders.map((r) => [r.rider_id, r.effort]));

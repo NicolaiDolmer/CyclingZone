@@ -5,19 +5,19 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-94 poster: live 74 · beta 2 · dormant 6 · building 4 · spec 1 · idea 2 · retired 5. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+94 poster: live 74 · beta 2 · dormant 5 · building 5 · spec 1 · idea 2 · retired 5. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
 
 ## race-engine
 
-**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · S5 engine rules (s5_profiles_v1) (`race-engine-s5-profiles`) 2026-10-16 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
+**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-15 | UI live; v4 er on, men flaget race_day_intention_enabled findes ikke i prod (læst 15/10). Kalibrering + beta i #6641. |
-| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v4 (timeModel.ts, segmentLoop.ts). Prod 15/10: løb bundet til v2, v3 og v4 (flest v4) via races.engine_rules_revision (#6642). |
+| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). Aktuel er official_times_v5 fra ejerens \"tænd\" 16/10 (#6462, sprinttog kun standard på flade etaper); løb bundet til v2-v4 færdiggøres på deres revision (#6642). |
 
 ## race-day
 
@@ -57,12 +57,12 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## academy
 
-**live:** Academy (`academy`) 2026-09-06 · Sunday talent drip (`academy-sunday-drip`) 2026-09-06 · Intake offer expiry (`intake-offer-expiry`) 2026-09-06 · Scouting (`scout-system`) 2026-09-06
+**live:** Academy (`academy`) 2026-09-06 · Academy intake pull (`academy-intake-pull`) 2026-10-16 · Sunday talent drip (`academy-sunday-drip`) 2026-09-06 · Intake offer expiry (`intake-offer-expiry`) 2026-09-06 · Scouting (`scout-system`) 2026-09-06
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Academy intake pull (`academy-intake-pull`) | dormant | `academy_intake_pull_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #3550 | 2026-09-07 | Erstatter søndagsdrip (#3550). |
 | Season academy intake (`season-academy-intake`) | dormant | `season_academy_intake_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #2911 | 2026-10-15 | Sikkerhedsventil efter ejer-beslutning (#2911); off i prod (læst 15/10), kun ejeren flipper. |
+| Awaiting promotion instead of auto-sale when the next squad is full (`promotion-pending`) | building | - | [YOUTH_RULES](YOUTH_RULES.md) | #5833 | 2026-10-16 | #6710 plan-PR 1. Flag-nøgle promotion_pending_enabled (oprettes off af migrationen); flyttes til flag-feltet når rækken findes i prod. |
 | Three squads (`three-squads`) | spec | - | [YOUTH_RULES](YOUTH_RULES.md) | #2492 | 2026-09-06 | Slice 0 er leveret; resten er spec. |
 
 ## season

@@ -43,12 +43,18 @@
 // 2026-10-12-race-engine-rules-revision-official-times-v4.sql goer vaerdien lovlig.
 // #6369 (S5-etapeprofiler): "s5_profiles_v1" = hele official_times_v4-pakken
 // + S5-motoren (#6363/#6362/#6368, engine/v4/s5Profiles.ts): S5-motorens
-// nye finaler, mellembjerg-terraen og udbrud-som-adfaerd bag isS5ProfilesV1OrLater. Aktuel
-// for nye loeb fra ejerens ordrette "taend" (taend-PR'en, #6369); migrationen
-// 2026-10-16-6369-engine-rules-revision-s5.sql goer vaerdien lovlig; den lander i
-// sin egen PR (chore/6369-s5-revision-check-migration) og SKAL vaere merget og
-// applied foer taend-PR'en merges.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"] as const;
+// nye finaler, mellembjerg-terraen og udbrud-som-adfaerd bag isS5ProfilesV1OrLater.
+// Aktuel for nye loeb fra ejerens ordrette "taend" (taend-PR'en, #6369);
+// races_engine_rules_revision_check goer vaerdien lovlig via
+// 2026-10-16-6369-engine-rules-revision-s5.sql (applied og verificeret 16/10).
+// #6462 (ejer 16/10): "official_times_v5" = hele official_times_v4-pakken + togreglen
+// (sprint-toget er kun STANDARD paa en flad etape; bjerg, enkeltstart, kuperet og brosten har
+// intet tog, medmindre manageren selv saetter det). Reglen ligger i ordre-adapteren
+// (engine/v4/orders/teamOrdersAdapter.ts trainIsDefaultOnStage) bag isOfficialTimesV5OrLater;
+// motoren selv er uaendret. s5_profiles_v1 arver den (S5 = official_times_v5 + S5-motoren).
+// Aktuel for nye loeb fra ejerens ordrette "taend"; migrationen
+// 2026-10-16-6462-engine-rules-revision-official-times-v5.sql goer vaerdien lovlig.
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -73,12 +79,17 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   official_times_v4: 3,
   // #6369: official_times_v4 + the S5 engine (#6363); same v3 mechanics.
   s5_profiles_v1: 3,
+  // #6462: official_times_v4 + the sprint-train default rule (order adapter only); same v3 mechanics.
+  official_times_v5: 3,
 });
 
-const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"]);
+const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"]);
 
-/** #6369: revisionerne der arver HELE official_times_v4-pakken (v4 selv + S5). */
-const OFFICIAL_TIMES_V4_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v4", "s5_profiles_v1"]);
+/** #6369: revisionerne der arver HELE official_times_v4-pakken (v4 selv + S5; #6462: + v5). */
+const OFFICIAL_TIMES_V4_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v4", "s5_profiles_v1", "official_times_v5"]);
+
+/** #6462: revisionerne der arver togreglen (official_times_v5 selv + S5). */
+const OFFICIAL_TIMES_V5_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v5", "s5_profiles_v1"]);
 
 /**
  * #6200: the shared time model's generation. 3 = official_times_v3 OR LATER
@@ -104,6 +115,15 @@ export function isOfficialTimesV3OrLater(revision: unknown): boolean {
  */
 export function isOfficialTimesV4OrLater(revision: unknown): boolean {
   return OFFICIAL_TIMES_V4_LINEAGE.has(revision);
+}
+
+/**
+ * #6462 (ejer 16/10, aktuel fra ejerens "taend"): official_times_v5 eller senere. Sprint-toget er
+ * kun STANDARD paa en flad etape (ordre-adapterens trainIsDefaultOnStage);
+ * resten er official_times_v4. s5_profiles_v1 arver reglen.
+ */
+export function isOfficialTimesV5OrLater(revision: unknown): boolean {
+  return OFFICIAL_TIMES_V5_LINEAGE.has(revision);
 }
 
 /**
@@ -185,13 +205,19 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * 2026-10-12-race-engine-rules-revision-official-times-v4.sql SKAL vaere applied
  * foer foerste claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten.
  *
+ * "official_times_v5" fra ejerens ordrette "taend" (#6462): togreglen (sprint-
+ * toget er kun STANDARD paa en flad etape) er aktuel for ALLE loeb hvis foerste
+ * etape claimes efter deploy. Loeb der allerede er bundet til official_times_v4
+ * (eller aeldre) faerdiggoeres paa den. Migrationen
+ * 2026-10-16-6462-engine-rules-revision-official-times-v5.sql SKAL vaere applied
+ * foer foerste claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten.
+ *
  * "s5_profiles_v1" fra ejerens ordrette "taend" (#6369): S5-motoren (nye
- * finaler, mellembjerg, udbrud som adfaerd m.m.) er aktuel for ALLE loeb hvis
- * foerste etape claimes efter deploy. Loeb der allerede er bundet til
- * official_times_v4 (eller aeldre) faerdiggoeres paa den. Migrationen
- * 2026-10-16-6369-engine-rules-revision-s5.sql (egen PR, merges foerst) SKAL
- * vaere applied foer denne konstant deployes; ellers fejler bindingen hoejlydt paa CHECK-constrainten. Rollback =
- * revert af denne konstant (migrationen kan blive staaende).
+ * finaler, mellembjerg, udbrud som adfaerd, enkeltstart, maalgab, GC-snor) +
+ * togreglen fra v5 er aktuel for ALLE loeb hvis foerste etape claimes efter
+ * deploy. Loeb der allerede er bundet til official_times_v5 (eller aeldre)
+ * faerdiggoeres paa den. Migrationen 2026-10-16-6369-engine-rules-revision-s5.sql
+ * er applied. Rollback = revert af denne konstant (migrationen kan blive staaende).
  */
 export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "s5_profiles_v1";
 
@@ -260,6 +286,27 @@ export function resolveRaceRulesRevision(input: {
       currentRevision,
     );
   }
+  return currentRevision;
+}
+
+/**
+ * #6462: den revision en spillerflade skal vise reglerne for, FOER motoren har
+ * bundet noget. En gemt, kendt revision er svaret. Et ikke-startet loeb uden
+ * gemt revision bindes til den aktuelle ved foerste etape-claim, saa fladen
+ * viser den aktuelle (samme regel som resolveRaceRulesRevision). Et startet loeb
+ * uden gemt revision er legacy; en ukendt gemt vaerdi ligesaa (motoren afviser
+ * at koere den, og fladen maa aldrig vise nyeste regler paa usikkert grundlag).
+ */
+export function surfaceRulesRevision(input: {
+  race: RulesRevisionRace | null | undefined;
+  storedRevision: unknown;
+  currentRevision?: unknown;
+}): RaceRulesRevision {
+  const { race, storedRevision, currentRevision = CURRENT_RACE_RULES_REVISION } = input;
+  if (storedRevision !== null && storedRevision !== undefined) {
+    return isKnownRulesRevision(storedRevision) ? storedRevision : LEGACY_RULES_REVISION;
+  }
+  if (raceHasStarted(race) || !isKnownRulesRevision(currentRevision)) return LEGACY_RULES_REVISION;
   return currentRevision;
 }
 

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   parseArgs,
@@ -13,6 +14,17 @@ import {
   JUNIOR_AGE_MIN,
   JUNIOR_AGE_MAX,
   DEFAULT_TARGET_SEASON,
+  buildHumanLevelProfile,
+  levelQuantile,
+  levelOf,
+  rankBirthCandidates,
+  planYouthLift,
+  applyLift,
+  restoreLift,
+  snapshotLiftState,
+  liftBlockedReason,
+  summarizeExistingByTeam,
+  summarizeLevels,
 } from "./generateYouthSquadsS4.js";
 import {
   mirrorPool,
@@ -22,6 +34,12 @@ import {
   simulateForm,
   gatePasses,
   PYRAMID_FORMS,
+  finishTimeSeconds,
+  gap10BySquadTerrain,
+  benchmarkGapByTerrain,
+  gapVerdict,
+  describeLevels,
+  loadLiveValuationModels,
 } from "./measureYouthFieldGate.mjs";
 import { deriveForRiderIds } from "../lib/backfillCores.js";
 import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
@@ -329,7 +347,7 @@ test("C1: ungdomstruppen tæller kun ungdomsryttere i truppens alder, under loft
   const junior = youthRosterByTeam({ riders, humanTeamIds, squad: "junior", season });
   assert.deepEqual(junior.get("H"), ["d"]);
   const sixteen = youthRosterByTeam({ riders: [{ id: "y", team_id: "H", birthdate: born(16), squad: "junior", is_academy: true }], humanTeamIds, squad: "junior", season });
-  assert.equal(sixteen.size, 0, "16-årige er ikke løbsberettigede");
+  assert.deepEqual(sixteen.get("H"), ["y"], "16-årige er løbsberettigede (YOUTH_RULES §2.1, ejer 24/9)");
 });
 
 test("C1: et hold starter kun med mindst MIN_RACE_ENTRIES, og gaten er 100 % af løbsdagene", () => {
@@ -364,4 +382,392 @@ test("summarizePlan: vækst regnes mod bestanden", () => {
   assert.equal(s.load.newRiders, p.totals.riders);
   assert.equal(s.load.growthPct, (100 * p.totals.riders) / 1000);
   assert.equal(s.u23.count + s.junior.count, p.totals.riders);
+});
+
+// ── #6668: niveau-matchning mod menneskeholdenes ungdom ──────────────────────
+const S = DEFAULT_TARGET_SEASON;
+const birthOf = (age) => `${2026 + (S - 1) - age}-06-15`;
+/** En syntetisk menneske-fordeling: `n` ryttere pr. alder, niveau lineært i [lo, hi]. */
+function humanRows({ ages = [17, 18, 19, 20, 21, 22], n = 40, lo = 10, hi = 60 } = {}) {
+  return ages.flatMap((age) => Array.from({ length: n }, (_, i) => ({ birthdate: birthOf(age), level: lo + ((hi - lo) * i) / (n - 1) })));
+}
+
+test("parseArgs: --lift-existing indebærer --match-human-level; flagene tager ingen værdi", () => {
+  assert.equal(parseArgs(["--juniors=0"]).matchHumanLevel, false);
+  assert.equal(parseArgs(["--juniors=0", "--match-human-level"]).matchHumanLevel, true);
+  const lift = parseArgs(["--juniors=0", "--lift-existing"]);
+  assert.equal(lift.liftExisting, true);
+  assert.equal(lift.matchHumanLevel, true);
+  assert.throws(() => parseArgs(["--juniors=0", "--lift-existing=1"]), /ingen værdi/);
+});
+
+test("buildHumanLevelProfile: pr. målsæsonens alder, sorteret, kun aldre med nok ryttere", () => {
+  const rows = [...humanRows({ ages: [19], n: 25 }), ...humanRows({ ages: [17], n: 5 })];
+  const p = buildHumanLevelProfile(rows, { season: S });
+  assert.deepEqual([...p.keys()], [19]);
+  const xs = p.get(19);
+  assert.equal(xs.length, 25);
+  assert.ok(xs.every((x, i) => i === 0 || xs[i - 1] <= x));
+  assert.equal(levelQuantile(xs, 0), xs[0]);
+  assert.equal(levelQuantile(xs, 0.999), xs[24]);
+  assert.equal(levelQuantile(undefined, 0.5), null);
+});
+
+test("rankBirthCandidates: uden mål = truppens eget bånd; med mål = tættest først, deterministisk", () => {
+  const row = plan().rows.find((r) => r.squad === "u23").payload;
+  const seed = row.archetype_draw.birth.seed;
+  const age = row.archetype_draw.birth.age;
+  const none = rankBirthCandidates({ row, seed, age, target: null });
+  assert.equal(none.length, 1);
+  assert.equal(none[0].birth.tier, U23_BIRTH_TIER);
+  const a = rankBirthCandidates({ row, seed, age, target: 50 });
+  const b = rankBirthCandidates({ row, seed, age, target: 50 });
+  assert.deepEqual(a, b);
+  assert.ok(a.every((c, i) => i === 0 || a[i - 1].distance <= c.distance));
+  assert.ok(a[0].distance <= 3, `bedste kandidat ${a[0].level} ligger tæt på målet`);
+});
+
+test("planYouthSquads med levelProfile: kuldet følger menneske-fordelingen, og derive reproducerer markøren", () => {
+  const profile = buildHumanLevelProfile(humanRows({ lo: 20, hi: 60 }), { season: S });
+  const base = plan();
+  const lifted = plan({ levelProfile: profile });
+  // Struktur uændret: samme hold, aldre, trupper og navne.
+  assert.deepEqual(lifted.rows.map((r) => [r.teamId, r.squad, r.age, r.payload.lastname]), base.rows.map((r) => [r.teamId, r.squad, r.age, r.payload.lastname]));
+  const matched = lifted.rows.filter((r) => r.target != null);
+  assert.ok(matched.length > 0);
+  for (const r of matched) {
+    assert.ok(Math.abs(levelOf(r.mirror.abilities) - r.target) <= 3, `niveau ${levelOf(r.mirror.abilities)} mod mål ${r.target}`);
+    // Spejlingen ER det derive persisterer: markøren alene reproducerer niveauet.
+    const again = mirrorDerive({ ...r.payload, id: "x" }, { seasonNumber: S, ...MODELS });
+    assert.equal(levelOf(again.abilities), levelOf(r.mirror.abilities));
+  }
+  const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+  assert.ok(mean(matched.map((r) => levelOf(r.mirror.abilities))) > mean(base.rows.filter((r) => r.age >= 17).map((r) => levelOf(r.mirror.abilities))));
+});
+
+test("planYouthSquads uden levelProfile er bit for bit som før (#6668 ændrer intet uden flaget)", () => {
+  const a = plan();
+  const b = plan({ levelProfile: null });
+  assert.deepEqual(a.rows.map((r) => r.payload), b.rows.map((r) => r.payload));
+});
+
+function existingAiRiders() {
+  return plan().rows.map((r, i) => ({ ...r.payload, id: `ai-${i}`, archetype_draw: { ...r.payload.archetype_draw, note: "bevares" } }));
+}
+
+test("planYouthLift: løfter mod fordelingen, bevarer rangorden, sænker aldrig og rører kun fødsels-markøren", () => {
+  // Ét år frem: S4-kuldet målt i S5 (U23 22 → 23 er vokset ud).
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S + 1 });
+  const lift = planYouthLift({
+    riders,
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S + 1,
+    levelProfile: profile,
+    ...MODELS,
+  });
+  assert.equal(lift.skipped.graduated, riders.filter((r) => ageForSeason(r.birthdate, S + 1) > U23_BIRTH_AGE_MAX).length);
+  assert.ok(lift.totals.changed > 0);
+  for (const r of lift.rows) assert.ok(r.after >= r.before, "løftet sænker aldrig");
+  for (const r of lift.rows.filter((x) => x.changed)) {
+    const old = riders.find((x) => x.id === r.riderId).archetype_draw;
+    assert.equal(r.archetype_draw.note, "bevares");
+    assert.equal(r.archetype_draw.primary, old.primary);
+    assert.deepEqual(r.previousBirth, old.birth);
+  }
+  // Rangorden pr. alder bevares (stratificerede mål).
+  for (const age of new Set(lift.rows.map((r) => r.age))) {
+    const rows = lift.rows.filter((r) => r.age === age).sort((a, b) => a.before - b.before || String(a.riderId).localeCompare(String(b.riderId)));
+    assert.ok(rows.every((r, i) => i === 0 || rows[i - 1].target <= r.target));
+  }
+  const levels = summarizeLevels({ humanProfile: profile, lift });
+  assert.ok(levels.some((l) => l.aiAfter.n > 0 && l.aiAfter.mean > l.aiBefore.mean));
+});
+
+test("planYouthLift: rangordenen bevares efter kandidatvalget (nyt niveau stiger med det gamle), også med snævre og brede fordelinger", () => {
+  const riders = existingAiRiders();
+  for (const [lo, hi] of [[25, 70], [40, 45], [10, 90], [60, 62]]) {
+    const profile = buildHumanLevelProfile(humanRows({ lo, hi }), { season: S + 1 });
+    const lift = planYouthLift({
+      riders, teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S + 1, levelProfile: profile, ...MODELS,
+    });
+    for (const age of new Set(lift.rows.map((r) => r.age))) {
+      const rows = lift.rows.filter((r) => r.age === age)
+        .sort((a, b) => a.before - b.before || String(a.riderId).localeCompare(String(b.riderId)));
+      rows.forEach((r, i) => {
+        if (i > 0) assert.ok(r.after >= rows[i - 1].after, `alder ${age}, fordeling ${lo}-${hi}: ${r.after} under ${rows[i - 1].after}`);
+      });
+    }
+  }
+});
+
+test("loadLiveValuationModels: vælger modellerne som generatoren (app_config), ikke en hårdkodet v4", async () => {
+  const calls = [];
+  const live = { id: "live-model" };
+  const prod = { id: "prod-model" };
+  const out = await loadLiveValuationModels({ fake: true }, {
+    loadValuationModel: async (s) => { calls.push(["valuation", s.fake]); return live; },
+    loadProductionValueModel: async (s) => { calls.push(["production", s.fake]); return prod; },
+    loadValuationModelById: () => { throw new Error("fallback må ikke bruges når app_config svarer"); },
+  });
+  assert.equal(out.valuationModel, live);
+  assert.equal(out.productionValuationModel, prod);
+  assert.deepEqual(calls, [["valuation", true], ["production", true]]);
+  // Fail-safe: en loader der ikke finder en model falder tilbage til standard-modellen.
+  const fb = { id: "fallback" };
+  const out2 = await loadLiveValuationModels({}, {
+    loadValuationModel: async () => null,
+    loadProductionValueModel: async () => prod,
+    loadValuationModelById: () => fb,
+  });
+  assert.equal(out2.valuationModel, fb);
+});
+
+test("planYouthLift: uden menneske-fordeling på en alder står rytterne uændret", () => {
+  const lift = planYouthLift({
+    riders: existingAiRiders(),
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S,
+    levelProfile: new Map(),
+    ...MODELS,
+  });
+  assert.equal(lift.totals.changed, 0);
+  assert.throws(() => planYouthLift({ riders: [], teamsById: new Map(), targetSeason: S, ...MODELS }), /levelProfile/);
+});
+
+test("applyLift: restore før skrivning, kun archetype_draw skrives, derive + post-verify", async () => {
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S });
+  const lift = planYouthLift({ riders, teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S, levelProfile: profile, ...MODELS });
+  const changed = lift.rows.filter((r) => r.changed);
+  const calls = [];
+  const fake = {
+    from: () => ({
+      update: (patch) => ({ eq: (_c, id) => { calls.push({ id, keys: Object.keys(patch) }); return Promise.resolve({ error: null }); } }),
+      select: () => ({
+        in: (_c, ids) => ({
+          order: () => ({
+            range: () => Promise.resolve({
+              // rider-type-write-ok: test-fake af tilbagelæsningen, intet skrives.
+              data: ids.map((id) => { const r = changed.find((x) => x.riderId === id); return { id, base_value: r.mirror.base_value, primary_type: r.mirror.primary_type }; }),
+              error: null,
+            }),
+          }),
+        }),
+      }),
+    }),
+  };
+  let restored = null;
+  let derived = null;
+  let snapshotted = null;
+  const res = await applyLift(fake, lift, {
+    ...MODELS,
+    derive: async (_s, ids) => { derived = ids; },
+    snapshot: async (_s, ids) => {
+      snapshotted = ids;
+      assert.equal(calls.length, 0, "snapshot læses før første update");
+      return ids.map((id) => ({ id, rider: { id, base_value: 1 }, derivedAbilities: { rider_id: id, climbing: 7 }, physiology: { rider_id: id } }));
+    },
+    log: () => {},
+    writeRestore: (rows) => { restored = rows; assert.equal(calls.length, 0, "restore skrives før første update"); },
+  });
+  assert.deepEqual(snapshotted, changed.map((r) => r.riderId));
+  assert.equal(restored.length, changed.length);
+  assert.deepEqual(restored[0].birth, changed[0].previousBirth);
+  assert.equal(restored[0].derivedAbilities.climbing, 7, "restore-filen bærer de trænede evner, ikke kun markøren");
+  assert.ok(calls.every((c) => c.keys.length === 1 && c.keys[0] === "archetype_draw"));
+  assert.deepEqual(derived, changed.map((r) => r.riderId));
+  assert.deepEqual(res.mismatches, []);
+});
+
+// ── #6668 (Codex P1 på #6671): eksakt tilbagerulning af løftet ───────────────
+// In-memory supabase med netop de kald applyLift/snapshotLiftState/restoreLift bruger.
+function memoryDb(tables) {
+  const keyOf = { riders: "id", rider_derived_abilities: "rider_id", rider_physiology_profiles: "rider_id" };
+  const clone = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+  return {
+    tables,
+    from(table) {
+      const rows = tables[table];
+      return {
+        select: (cols) => ({
+          in: (col, ids) => ({
+            order: () => ({
+              range: () => {
+                const pick = (r) => (cols === "*" ? clone(r) : Object.fromEntries(cols.split(", ").map((c) => [c, clone(r[c])])));
+                return Promise.resolve({ data: rows.filter((r) => ids.includes(r[col])).map(pick), error: null });
+              },
+            }),
+          }),
+        }),
+        update: (patch) => ({
+          eq: (col, id) => {
+            const r = rows.find((x) => x[col] === id);
+            if (r) Object.assign(r, clone(patch));
+            return Promise.resolve({ error: null });
+          },
+        }),
+        upsert: (batch) => {
+          for (const b of batch) {
+            const i = rows.findIndex((x) => x[keyOf[table]] === b[keyOf[table]]);
+            if (i === -1) rows.push(clone(b)); else rows[i] = clone(b);
+          }
+          return Promise.resolve({ error: null });
+        },
+      };
+    },
+  };
+}
+
+test("applyLift → restoreLift: tilbagerulning gendanner de trænede evner, ikke fødsels-trækket (#6668)", async () => {
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S });
+  const lift = planYouthLift({ riders, teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S, levelProfile: profile, ...MODELS });
+  const changed = lift.rows.filter((r) => r.changed);
+  assert.ok(changed.length > 0);
+  const byId = new Map(riders.map((r) => [r.id, r]));
+  const db = memoryDb({
+    riders: changed.map((r) => ({
+      id: r.riderId, archetype_draw: byId.get(r.riderId).archetype_draw, primary_type: "pre-type", secondary_type: null,
+      valuation_type: "pre-type", base_value: 111, current_production_value: 22, name: "urørt",
+    })),
+    // Trænede evner: afviger fra fødsels-trækket og har akkumuleret progress.
+    rider_derived_abilities: changed.map((r) => ({ rider_id: r.riderId, climbing: 61, sprint: 44, ability_progress: { climbing: 0.4 }, ability_caps: { climbing: 70 } })),
+    rider_physiology_profiles: changed.map((r) => ({ id: `p-${r.riderId}`, rider_id: r.riderId, ftp_wkg: 4.1 })),
+  });
+  const original = JSON.parse(JSON.stringify(db.tables));
+  let restoreFile = null;
+  // Derive som i prod: evnerne reproduceres fra den NYE markør (træningen væk), progress bevares.
+  const derive = async (supabase, ids) => {
+    for (const id of ids) {
+      const a = db.tables.rider_derived_abilities.find((x) => x.rider_id === id);
+      Object.assign(a, { climbing: 1, sprint: 1 });
+      const m = changed.find((x) => x.riderId === id).mirror;
+      Object.assign(db.tables.riders.find((x) => x.id === id), { base_value: m.base_value, primary_type: m.primary_type });
+      Object.assign(db.tables.rider_physiology_profiles.find((x) => x.rider_id === id), { ftp_wkg: 3 });
+    }
+  };
+  const res = await applyLift(db, lift, { ...MODELS, derive, log: () => {}, writeRestore: (rows) => { restoreFile = JSON.parse(JSON.stringify({ restore: rows })); } });
+  assert.deepEqual(res.mismatches, []);
+  assert.notDeepEqual(db.tables, original, "løftet har skrevet");
+  // Kun markøren var ikke nok: den gamle restore-fil (birth alene) afvises.
+  await assert.rejects(restoreLift(db, restoreFile.restore.map((r) => ({ id: r.id, birth: r.birth })), { log: () => {} }), /evne-snapshot/);
+  const back = await restoreLift(db, restoreFile.restore, { log: () => {} });
+  assert.deepEqual(back.mismatches, []);
+  assert.deepEqual(back.restored, changed.map((r) => r.riderId));
+  assert.deepEqual(db.tables, original, "riders, evner (inkl. progress/caps) og fysiologi er præcis som før løftet");
+});
+
+test("snapshotLiftState: mangler en evne-række, stopper apply før første skrivning (#6668)", async () => {
+  const db = memoryDb({
+    riders: [{ id: "x1" }, { id: "x2" }],
+    rider_derived_abilities: [{ rider_id: "x1" }],
+    rider_physiology_profiles: [{ rider_id: "x1" }, { rider_id: "x2" }],
+  });
+  await assert.rejects(snapshotLiftState(db, ["x1", "x2"]), /restore-snapshot mangler 1/);
+  assert.deepEqual(await snapshotLiftState(db, []), []);
+});
+
+test("parseArgs --restore-lift: egen tilstand, kun balance-internals, apply kræver owner-go (#6668)", () => {
+  // Absolut sti, så testen ikke afhænger af arbejdsmappen.
+  const file = fileURLToPath(new URL("../../balance-internals/6668-lift-restore-s5-1.json", import.meta.url));
+  const dry = parseArgs([`--restore-lift=${file}`]);
+  assert.equal(dry.apply, false);
+  assert.equal(dry.restoreLift, file);
+  assert.equal(dry.juniors, undefined, "--juniors gælder ikke i restore-tilstanden");
+  assert.throws(() => parseArgs([`--restore-lift=${fileURLToPath(new URL("../../docs/x.json", import.meta.url))}`]), /--restore-lift skal pege/);
+  assert.throws(() => parseArgs(["--restore-lift"]), /stien/);
+  assert.throws(() => parseArgs([`--restore-lift=${file}`, "--apply"]), /--owner-go/);
+  assert.equal(parseArgs([`--restore-lift=${file}`, "--apply", "--owner-go"]).apply, true);
+});
+
+// ── #6668: benchmark af gab (measureYouthFieldGate) ──────────────────────────
+test("finishTimeSeconds læser resultatlistens tidsformat", () => {
+  assert.equal(finishTimeSeconds("+0:00"), 0);
+  assert.equal(finishTimeSeconds("+3:40"), 220);
+  assert.equal(finishTimeSeconds("+1:02:03"), 3723);
+  assert.equal(finishTimeSeconds(null), null);
+  assert.equal(finishTimeSeconds("s.t."), null);
+});
+
+test("gap10BySquadTerrain + benchmarkGapByTerrain + gapVerdict", () => {
+  const gaps = gap10BySquadTerrain([
+    { squad: "junior", profile_type: "hilly", finish_time: "+3:40" },
+    { squad: "junior", profile_type: "hilly", finish_time: "+0:20" },
+    { squad: null, profile_type: "hilly", finish_time: "+0:10" },
+    { squad: "u23", profile_type: null, finish_time: "+1:00" },
+  ]);
+  assert.equal(gaps.get("junior").get("hilly").n, 2);
+  assert.equal(gaps.get("junior").get("hilly").median, 120);
+  assert.equal(gaps.get("senior").get("hilly").median, 10);
+  assert.equal(gaps.has("u23"), false, "uden profil kan terrænet ikke afgøres");
+  const ref = benchmarkGapByTerrain([
+    { terrain: "kuperet", gap10_s: 0 }, { terrain: "kuperet", gap10_s: 10 }, { terrain: "kuperet", gap10_s: 60 },
+    { terrain: "ttt", gap10_s: 5 }, { terrain: "kuperet", gap10_s: null },
+  ]);
+  assert.deepEqual([...ref.keys()], ["hilly"]);
+  assert.equal(gapVerdict(120, ref.get("hilly")), "above");
+  assert.equal(gapVerdict(10, ref.get("hilly")), "inside");
+  assert.equal(gapVerdict(null, ref.get("hilly")), null);
+  assert.equal(describeLevels([3, 1, 2]).median, 2);
+  assert.equal(describeLevels([]).n, 0);
+});
+
+test("#6668: efter et løft genkender idempotensen stadig U23-truppen (ingen nye U23-rækker)", () => {
+  const riders = existingAiRiders();
+  const profile = buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S });
+  const lift = planYouthLift({
+    riders,
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S,
+    levelProfile: profile,
+    ...MODELS,
+  });
+  // Tving alle U23-markører over på en voksen-tier, som et løft over U23-båndet kan gøre.
+  const lifted = riders.map((r) => {
+    const row = lift.rows.find((x) => x.riderId === r.id);
+    const base = row?.changed ? { ...r, archetype_draw: row.archetype_draw } : r;
+    return base.squad === "u23"
+      ? { ...base, team_id: base.team_id, archetype_draw: { ...base.archetype_draw, birth: { ...base.archetype_draw.birth, tier: "solid" } } }
+      : base;
+  });
+  const existingByTeam = summarizeExistingByTeam(lifted);
+  const again = plan({ existingByTeam });
+  assert.equal(again.rows.filter((r) => r.squad === "u23").length, 0);
+  // Løftede ryttere tælles ikke som noMarker ved en genkørsel.
+  const second = planYouthLift({
+    riders: lifted,
+    teamsById: new Map(TEAMS.map((t) => [t.id, t])),
+    targetSeason: S,
+    levelProfile: profile,
+    ...MODELS,
+  });
+  assert.equal(second.skipped.noMarker, 0);
+});
+
+test("#6668: et løft over værdiloftet afvises før første skrivning (ingen halv apply)", () => {
+  assert.equal(liftBlockedReason(null), null);
+  assert.equal(liftBlockedReason({ totals: { overValueCap: 0 } }), null);
+  assert.match(liftBlockedReason({ totals: { overValueCap: 2 } }), /apply blokeret før første skrivning/);
+});
+
+test("planYouthLift: når ingen kandidat når rangorden-gulvet, afvises løftet i stedet for at udsende en rytter under gulvet (#6668)", async () => {
+  const all = existingAiRiders();
+  const age = ageForSeason(all[0].birthdate, S + 1);
+  const pair = all.filter((r) => ageForSeason(r.birthdate, S + 1) === age).slice(0, 2);
+  assert.equal(pair.length, 2);
+  const [weak, strong] = [{ ...pair[0], level: 10 }, { ...pair[1], level: 20 }];
+  const profile = buildHumanLevelProfile(humanRows({ ages: [age - 1], lo: 80, hi: 99 }), { season: S + 1 });
+  // Svagest løftes højt; næste rytters kandidater når aldrig gulvet.
+  const rankCandidates = ({ row }) => [{ birth: row.archetype_draw.birth, level: row.id === weak.id ? 92 : 36, distance: 0 }];
+  const lift = planYouthLift({
+    riders: [weak, strong], teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S + 1, levelProfile: profile, ...MODELS, rankCandidates,
+  });
+  assert.equal(lift.totals.rankFloorUnmet, 1);
+  const bad = lift.rows.find((r) => r.riderId === strong.id);
+  assert.equal(bad.rankFloorUnmet, true);
+  assert.equal(bad.changed, false);
+  assert.match(liftBlockedReason(lift), /rangordenen/);
+  assert.match(liftBlockedReason(lift), /før første skrivning/);
+  await assert.rejects(applyLift({ from: () => { throw new Error("må ikke skrive"); } }, lift, { ...MODELS }), /rangordenen/);
 });

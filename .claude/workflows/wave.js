@@ -807,7 +807,7 @@ function laneBrief(track) {
     `- Commit-besked-fil: ${track.scratch}\\msg-${track.slug}.txt (uden for worktreet). Aldrig heredoc.`,
     `- Tunge kommandoer wrappes: \`pwsh -File "${track.worktree}\\scripts\\verify-lock.ps1" -Max 2 -Timeout 1800 -- <kommando>\`.`,
     '- Draft-PR inden 30 min, push mindst hvert 15. minut, alt i FORGRUNDEN, ingen baggrundsjob, ingen under-agenter.',
-    '- Maks EEN CodeRabbit CLI-runde pr. spor (`coderabbit review --base main --committed`), koert praecis eengang foer `gh pr ready` (#5220).',
+    '- CodeRabbit CLI er VALGFRI (#6654): kun hvis `coderabbit` er installeret, maks EEN runde (`coderabbit review --base main --committed`) foer `gh pr ready` (#5220). Mangler den, blokerer det aldrig `gh pr ready`.',
     `- Refs #${track.issue} i PR-body (ikke Closes).`,
     '',
     `Issue: #${track.issue} - ${track.title}`,

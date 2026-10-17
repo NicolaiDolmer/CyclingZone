@@ -296,9 +296,7 @@
       "emptyCta": "Se den fulde rangliste",
       "emptyHint": "Stillingen opdateres efter hver afsluttet løbsdag.",
       "aiBadge": "AI",
-      "managerRank": "#{rank} blandt managere",
-      "movementTitle": "Divisionsplacering siden sidste løbsdag",
-      "pointsDeltaTitle": "Point optjent på sidste løbsdag"
+      "managerRank": "#{rank} blandt managere"
     },
     "board": {
       "title": "Bestyrelsens status",

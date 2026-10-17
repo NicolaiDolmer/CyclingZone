@@ -65,10 +65,11 @@ const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 const LIVE_REVISION = "s5_profiles_v1";
 /**
  * De tidligere prod-revisioner, Tour-revisionen, den officielle tidsmodel
- * (#6284), de forrige live (official_times_v2, official_times_v3 og official_times_v4; loeb bundet
- * til dem koerer faerdig paa dem, fx Touren paa v3) og den live.
+ * (#6284), de forrige live (official_times_v2, official_times_v3,
+ * official_times_v4 og official_times_v5; loeb bundet til dem koerer faerdig paa
+ * dem, fx Touren paa v3) og den live.
  */
-const REVISIONS = ["orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", LIVE_REVISION] as const;
+const REVISIONS = ["orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "official_times_v5", LIVE_REVISION] as const;
 type Revision = (typeof REVISIONS)[number];
 type Check = keyof typeof KNOWN_OPEN_GATES;
 
@@ -93,8 +94,6 @@ type StageHit = {
   chaseChances: number;
   /** #5951: minuttab paa 0 km i loebsfilmen; null = filmen kan intet vise. */
   zeroKmLoss: number | null;
-  /** Vejetapen har en loebsfilm (tidslinje med events), uanset om der er gruppe-gab. */
-  hasFilm: boolean;
   /** Morgenudbruddenes stoerrelser og dem over profilens loft (#6201). */
   breakSizes: number[];
   breakOverCap: number[];
@@ -128,7 +127,6 @@ function tourHits(revision: Revision): StageHit[] {
           ownChase: road ? ownChaseViolations(events, teamByRider).length : 0,
           chaseChances: events.filter((e: any) => (e.type === "gc_reaction" && e.params?.status === "started") || (e.type === "breakaway_caught" && (e.params?.chasing_team_ids ?? []).length > 0)).length,
           zeroKmLoss: road ? minuteLossAtZeroKm(res.timeline?.events ?? null, { riderIds }) : null,
-          hasFilm: road && (res.timeline?.events ?? []).length > 0,
           breakSizes: events.filter((e: any) => e.type === "breakaway_formed").map((e: any) => (e.params?.rider_ids ?? []).length),
           breakOverCap: road ? breakawaysOverSizeCap(res.v4Output, profile) : [],
         });
@@ -287,13 +285,8 @@ test(`#6285 ${LIVE_REVISION}: et hold jagter aldrig sine egne (#6187)`, () => {
 
 test(`#6285 ${LIVE_REVISION}: ingen taber tid eller staar bagud i loebsfilmen paa 0 km (#5951)`, () => {
   const road = tourHits(LIVE_REVISION).filter((h) => h.road);
-  // Ikke-tom forudsaetning: hver vejetape skal have en loebsfilm, og loebet skal
-  // kunne maales (som de andre live-gates: forudsaetningen er pr. loeb). En etape
-  // uden et eneste gruppe-gab (null) er ikke #5951: under s5_profiles_v1 kan
-  // morgenudbruddet hentes foer foerste gab-punkt, og feltet koerer samlet resten
-  // (Giro etape 2 seed 1: hentet ved km 17,9). Saa er der intet at tabe paa 0 km.
-  assert.deepEqual(road.filter((h) => !h.hasFilm).map(where), [], "hver vejetape skal have en loebsfilm");
-  assert.ok(road.some((h) => h.zeroKmLoss !== null), "loebsfilmen skal have gruppe-gab paa loebets vejetaper");
+  // Ikke-tom forudsaetning: filmen skal kunne maales (null = ingen tidslinje eller ingen gruppe-gab).
+  assert.deepEqual(road.filter((h) => h.zeroKmLoss === null).map(where), [], "hver vejetape skal have en loebsfilm med gruppe-gab");
   assert.deepEqual(road.filter((h) => (h.zeroKmLoss ?? 0) > 0).map((h) => `${where(h)}: ${h.zeroKmLoss} ryttere`), []);
 });
 

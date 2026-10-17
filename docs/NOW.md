@@ -4,17 +4,17 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft (1 review/time) · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.362 (7.361 merget 16/10, 7.362 = #6707) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
+> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** start `docs/sessions/2026-10-16-naeste-session.md`. Ejerens rækkefølge: merge-flowet først (Codex-stopregel) · spillerkommunikation (Claude udkast, ejer sender) · udskudte opgaver · planer up to date · Codex-planen #5833 · spillerønsker. Frister: #6673 merge før lør 17/10 kl. 12 (fallback #6662), akademi-flip før søn 00 på ordret go · S5-tænding #6699 (draft) kun på ordret go efter dommer · aldring prøvekørsel 23/10. #6490 genmål 16/10 aften. **Intet PR-loft** (ejer 16/10).
+> **🎯 Next action:** søndag 18/10: start `docs/sessions/2026-10-18-soendag-startprompt.md` (ejer-go pr. ny opgave + planlagt dag, ejer 16/10). Søndag: flip `promotion_pending_enabled` (55 ryttere, dry-run 16/10) på ordret "tænd" + help.json samme dag · Discord-webhook i Infisical (ejeren kører kommandoen) · roadbook + Discord 7.361-7.363 (ejeren poster) · billeder + go på #6680 · go på #6744 (#6742 merget). Mandag: #6724 (DOLMERPC) · #6731 · #6683 genbruger #6636, luk så #6636/#6634 · S5-genmåling #6712 → tænd-kort #6699 · #6703/#6704 prod-målinger.
 >
-> **15-16/10:** flag `stage_page_v2`/`training_bulk_day`=beta, `first_race_card`=on · aftenspidsen max 50 s → 1,1 s (#6490) · merget 16/10: #6694 #6661 #6692 #6677 #6691 (migrationer verificeret) · roadmap + idébank opdateret i prod (backups `backup_*_2026101[56]`).
+> **16/10 (pc1):** 27 PR'er merget, bl.a. Akademi 2.0 (#6673, flag `academy_intake_pull_enabled` on ca. 21:15, trappe D) og sprinttog kun på flade etaper (`official_times_v5` aktuel, #6741), afventer oprykning bygget (flag off). Codex-stop (AGENTS 35), review-gate (#6657), CodeRabbit fra.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
+> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse (ny forekomst 16/10, CYCLINGZONE-9B). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (pc1 samlet session 15-16/10 afsluttet ca. kl. 11). Næste: `docs/sessions/2026-10-16-naeste-session.md`.
+> **🤖 Working agent:** Ingen aktiv session (pc1 16/10 afsluttet aften). Næste: `docs/sessions/2026-10-18-soendag-startprompt.md`.

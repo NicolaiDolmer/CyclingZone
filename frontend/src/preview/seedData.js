@@ -32,10 +32,6 @@ export const TEST_TEAM = {
 // for den rene tæller-query (league_division_id=eq UDEN pool_race-join). Dashboards
 // "næste løb"-liste joiner pool_race og får SEED_RACES (#1906), så den nu — korrekt —
 // viser holdets kommende løb i stedet for en tom tabel.
-// vk-movement-signals: id + game_day_start tilføjet (samme query, 2 ekstra
-// kolonner) — driver findLastCompletedRaceDay(). "pool-race-done-2" har det højeste
-// game_day_start blandt completed-løb og er derfor "sidste løbsdag" (se
-// SEED_TEAM_RACE_POINTS_MV nedenfor for de holdpoint der knytter sig til den).
 export const POOL_RACES = [
   { id: "pool-race-done-1", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 2 },
   { id: "pool-race-done-2", status: "completed", stages: 1, stages_completed: 1, league_division_id: 2, game_day_start: 9 },
@@ -767,14 +763,10 @@ export const SEED_TEAM_HALL_OF_FAME = [
 // #3197: league_division_id (2 = "Division 2 — A", TEST_TEAM's egen pulje) med
 // på team-joinet, så Resultat-hubbens Tophold-boks kan pulje-filtreres på
 // preview/e2e ligesom den ægte season_standings-query.
-// vk-movement-signals: "team-ai-preview"s total_points er tættere på
-// TEST_TEAM end før (var 4990) — mere realistisk enkelt-løbsdags-afstand.
 // NB: Dashboardets EGEN "teams"-query (restRows case "teams" nedenfor) er
 // hardcodet til KUN [TEST_TEAM, RIVAL_TEAM] uanset filter — "team-ai-preview"
 // vises derfor ALDRIG på dashboardets "My division standings"-modul (kun på
-// /resultater, som læser season_standings direkte). Rank-klatringen kan derfor
-// ikke demonstreres i preview med kun 2 hold (se dashboardMovementSignals.test.js
-// for den unit-testede klatre-sag); "+86" holdpoint-deltaet vises fortsat.
+// /resultater, som læser season_standings direkte).
 export const SEED_SEASON_STANDINGS = [
   { id: "hub-standing-1", season_id: ACTIVE_SEASON.id, team_id: RIVAL_TEAM.id, total_points: 6120, stage_wins: 4, gc_wins: 2, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },
   { id: "hub-standing-2", season_id: ACTIVE_SEASON.id, team_id: TEST_TEAM.id, total_points: 5480, stage_wins: 3, gc_wins: 1, team: { id: TEST_TEAM.id, name: TEST_TEAM.name, is_ai: false, division: 2, league_division_id: 2 } },

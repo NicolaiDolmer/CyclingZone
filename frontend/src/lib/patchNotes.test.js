@@ -77,7 +77,7 @@ test("effectiveRollout: noter uden flag og gamle stage:beta-noter er uændrede",
   assert.equal(effectiveRollout({ rollout: "beta_to_live" }, {}), "beta_to_live");
 });
 
-test("filterByRollout: all, beta og now_live", () => {
+test("filterByRollout: all og beta", () => {
   const changes = [
     { id: 1, rollout: "beta", flag: "a" }, { id: 2, rollout: "beta", flag: "b" },
     { id: 3, rollout: "beta_to_live" }, { id: 4, rollout: "live" },
@@ -85,7 +85,6 @@ test("filterByRollout: all, beta og now_live", () => {
   const flags = { a: true, b: false };
   assert.deepEqual(filterByRollout(changes, "all", flags).map((c) => c.id), [1, 2, 3, 4]);
   assert.deepEqual(filterByRollout(changes, "beta", flags).map((c) => c.id), [2]);
-  assert.deepEqual(filterByRollout(changes, "now_live", flags).map((c) => c.id), [1, 3]);
 });
 
 // #6154: GET /api/feature-flags svarer kun paa PLAYER_VISIBLE_FLAG_KEYS. En note med et

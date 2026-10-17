@@ -149,7 +149,7 @@ export default function RulesPage() {
       </div>
 
       <div className="flex gap-4">
-        <div className="hidden md:block w-40 shrink-0">
+        <div className="hidden md:block w-40 lg:w-52 shrink-0">
           <div className="sticky top-4 flex flex-col gap-1">
             {SECTION_DEFS.map((s) => (
               <button

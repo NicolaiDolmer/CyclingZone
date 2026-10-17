@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { EmptyState, ErrorState, PageLoader, Button, Section, SectionHeader, Tabs, TabList, Tab, ChevronRightIcon } from "../components/ui";
+import { EmptyState, ErrorState, PageLoader, Button, Tabs, TabList, Tab, ChevronRightIcon } from "../components/ui";
 import StaffOverviewPage from "./StaffOverviewPage.jsx";
 import I18nReadyGate from "../components/I18nReadyGate.jsx"; // #3697
 import { formatNumber } from "../lib/intl";
 import { useFacilities } from "../lib/useFacilities";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
 import { TRACK_ORDER } from "../lib/facilityDisplay";
-import FacilityTrackCard from "../components/klub/FacilityTrackCard";
+import { primaryUpgradeTrack } from "../lib/klubFacilityModel.ts";
+import FacilityTrackCard from "../components/klub/FacilityTrackCard.tsx";
 import StaffPanel from "../components/klub/StaffPanel";
 import ConfirmModal from "../components/klub/ConfirmModal";
 
@@ -24,6 +25,9 @@ import ConfirmModal from "../components/klub/ConfirmModal";
 // (facs.error) er lukket med ErrorState + retry.
 // #3104 etape C: gyldige faner — Klub (faciliteter, default) · Personale
 // (StaffOverviewPage, før egen rute /staff der nu redirecter hertil).
+// #6666 retning D (ejer-valgt 16/10): Faciliteter-fanen er nu en kort
+// opsummering (drift/løn/saldo) + kort i 3 kolonner med hele niveau-trappen i
+// hvert kort; Section-listen, introteksten og sæson-sætningen er erstattet.
 const VALID_TABS = ["club", "staff"];
 
 export default function KlubPage() {
@@ -79,10 +83,10 @@ export default function KlubPage() {
   const ordered = TRACK_ORDER.map((tr) => byTrack[tr]).filter(Boolean);
   // Live faciliteter først (købbare), derefter "Coming soon"-teasers; TRACK_ORDER
   // bevares inden for hver gruppe (#1441 Slice 1).
-  const groupedFacilities = [
-    ...ordered.filter((f) => f.effectLive),
-    ...ordered.filter((f) => !f.effectLive),
-  ];
+  const liveFacilities = ordered.filter((f) => f.effectLive);
+  const soonFacilities = ordered.filter((f) => !f.effectLive);
+  const groupedFacilities = [...liveFacilities, ...soonFacilities];
+  const primaryTrack = primaryUpgradeTrack(groupedFacilities);
   const staffFacility = staffTrack ? byTrack[staffTrack] : null;
   const pendingFacility = pendingUpgrade ? byTrack[pendingUpgrade] : null;
 
@@ -136,32 +140,41 @@ export default function KlubPage() {
         <I18nReadyGate ns="staffOverview"><StaffOverviewPage /></I18nReadyGate>
       ) : (
         <>
-      <p className="text-[13px] text-cz-2 leading-relaxed mb-4 max-w-[56ch]">{t("page.intro")}</p>
+          {/* #6666 retning D: kort opsummering øverst (drift, løn, saldo) i stedet
+              for introtekst + sæson-sætning i bunden. */}
+          {facs.seasonCost && (
+            <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-1 mb-4">
+              {[
+                ["summary.upkeep", facs.seasonCost.totalUpkeep],
+                ["summary.wages", facs.seasonCost.totalPayroll],
+                ["summary.balance", facs.seasonCost.balance],
+              ].map(([key, value]) => (
+                <div key={key} className="flex items-baseline gap-[6px]">
+                  <dt className="text-xs text-cz-2">{t(key)}</dt>
+                  <dd className="font-data text-[17px] font-semibold tabular-nums text-cz-1">{formatNumber(value)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
 
-      <Section>
-        <SectionHeader title={t("sections.facilities")} meta={t("effect.note")} />
-        <div className="flex flex-col">
-          {groupedFacilities.map((f) => (
-            <FacilityTrackCard
-              key={f.track}
-              facility={f}
-              busy={busyTrack === f.track}
-              onUpgrade={setPendingUpgrade}
-              onOpenStaff={setStaffTrack}
-            />
+          {/* Kort i 3 kolonner (1 på telefon). Live faciliteter først, så "kommer
+              snart" i deres egne rækker, så et lavt teaser-kort aldrig strækkes
+              op til et live-korts højde. Kun ét kort får den gyldne knap: den
+              billigste mulige opgradering (TASTE: ét guld pr. view). */}
+          {[liveFacilities, soonFacilities].map((group, i) => group.length > 0 && (
+            <div key={i} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[14px] mb-[14px]">
+              {group.map((f) => (
+                <FacilityTrackCard
+                  key={f.track}
+                  facility={f}
+                  primary={f.track === primaryTrack}
+                  busy={busyTrack === f.track}
+                  onUpgrade={setPendingUpgrade}
+                  onOpenStaff={setStaffTrack}
+                />
+              ))}
+            </div>
           ))}
-        </div>
-      </Section>
-
-      {facs.seasonCost && (
-        <div className="mt-4 text-xs text-cz-2 leading-relaxed border-t border-cz-border pt-3">
-          {t("cost.seasonLine", {
-            upkeep: formatNumber(facs.seasonCost.totalUpkeep),
-            payroll: formatNumber(facs.seasonCost.totalPayroll),
-            total: formatNumber(facs.seasonCost.totalUpkeep + facs.seasonCost.totalPayroll),
-          })}
-        </div>
-      )}
         </>
       )}
 

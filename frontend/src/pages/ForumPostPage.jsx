@@ -232,7 +232,7 @@ function SupportButton({ active, count, onToggle, disabled, t }) {
       aria-pressed={active}
       aria-label={t(active ? "support.ariaOn" : "support.ariaOff", { count })}
       title={t("support.count", { count })}
-      className={`inline-flex items-center gap-1.5 rounded-cz border px-2.5 py-1 font-data text-2xs tabular-nums transition-colors disabled:opacity-60 ${
+      className={`inline-flex items-center gap-1.5 rounded-cz border px-3 py-1.5 text-xs font-semibold tabular-nums transition-colors disabled:opacity-60 ${
         active ? "border-cz-accent/50 text-cz-accent-t" : "border-cz-border text-cz-2 hover:border-cz-3"
       }`}
     >

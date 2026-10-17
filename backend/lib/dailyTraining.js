@@ -136,7 +136,9 @@ export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
 // kontrakt som staff/facility/academy ovenfor. Udeladt/ugyldig ⇒ cfg.daysPerSeason,
 // altsaa praecis dagens model. Sat ⇒ kalibreret deler for en anden tick-kadence.
 // Gate G1 kraever at T/D er konstant naar T (ticks pr. sæson) skifter; formlen og
-// tallene staar i trainingRaceDayTick.js (raceDayBudgetDivisor).
+// tallene staar i trainingRaceDayTick.js (raceDayBudgetDivisor). Siden #6711 er D
+// forankret i loebsdage pr. DATO og dermed ens for alle saesoner: udbyttet pr. loebsdag
+// afhaenger ikke af hvor mange loebsdage saesonen har.
 // #4851 (fase A1): `riderQualityMult` er VALGFRI med samme "udeladt =
 // bit-identisk"-kontrakt som staff/facility/academy/budgetDivisor ovenfor.
 // Udeladt/null ⇒ den gamle inline-kaede (conditionMult × youthMultiplier ×
