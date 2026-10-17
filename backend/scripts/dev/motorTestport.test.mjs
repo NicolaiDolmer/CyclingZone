@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -227,4 +227,10 @@ test("#6777 (Codex): genoptagelse uden --thresholds beholder den gemte tærskels
   assert.equal(resolveThresholdsFile(prev, { thresholds: "balance-internals/default.json", thresholdsExplicit: false }), "balance-internals/custom.json");
   assert.equal(resolveThresholdsFile(prev, { thresholds: "balance-internals/ny.json", thresholdsExplicit: true }), "balance-internals/ny.json");
   assert.equal(resolveThresholdsFile(null, { thresholds: "balance-internals/default.json", thresholdsExplicit: false }), "balance-internals/default.json");
+});
+
+test("#6805: loeb uden startfelt springes over og taelles, raekkefoelgen bevares", () => {
+  assert.deepEqual(splitByStartField(["a", "b", "c", "d"], new Set(["c", "a"])), { ids: ["a", "c"], skippedNoField: 2 });
+  assert.deepEqual(splitByStartField([], new Set()), { ids: [], skippedNoField: 0 });
+  assert.deepEqual(splitByStartField(["a"], new Set(["a"])), { ids: ["a"], skippedNoField: 0 });
 });
