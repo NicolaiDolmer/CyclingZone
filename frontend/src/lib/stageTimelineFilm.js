@@ -146,7 +146,9 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
           const points = explicitPoints(formed.params.group_id, newKm, newCatchKm);
           if (!points.length) continue;
           const lastKm = gapCurve.length ? gapCurve[gapCurve.length - 1].km : null;
-          if (lastKm != null && newKm > lastKm) gapCurve.push({ km: newKm, gapSeconds: 0 });
+          // Nul ved det nye udbruds start, ogsaa naar der ingen kurve var foer
+          // (Codex #6809): ellers starter filmens markoer paa foerste positive hul.
+          if (lastKm == null ? points[0].km > newKm : newKm > lastKm) gapCurve.push({ km: newKm, gapSeconds: 0 });
           gapCurve.push(...points);
           if (newCatchKm != null) gapCurve.push({ km: newCatchKm, gapSeconds: 0 });
         }

@@ -116,3 +116,10 @@ test("#6803 a stage with one break is unchanged by the reformation lookup", () =
   const events = twoBreaks().filter((e) => !(e.km >= 23 && e.km <= 74));
   assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [{ km: 14, gapSeconds: 50 }, { km: 18, gapSeconds: 0 }]);
 });
+
+test("#6803 a later-only curve starts at zero where the new break forms", () => {
+  const events = twoBreaks().filter((e) => !(e.type === "gap_update" && e.params?.group_id === "breakaway-0"));
+  assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [
+    { km: 23, gapSeconds: 0 }, { km: 30, gapSeconds: 80 }, { km: 50, gapSeconds: 35 }, { km: 74, gapSeconds: 0 },
+  ]);
+});
