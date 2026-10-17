@@ -1,0 +1,370 @@
+{
+  "page": {
+    "title": "Finances",
+    "subtitle": "Solde, emprunts et historique des transactions",
+    "seasonReport": "Rapport de saison",
+    "loadingAria": "Chargement des finances"
+  },
+  "tabs": {
+    "overview": "Aperçu",
+    "loans": "Emprunts",
+    "history": "Historique",
+    "sponsors": "Sponsor",
+    "seasonSwitch": "Changement de saison"
+  },
+  "loanSummary": {
+    "active": "{count, plural, one {1 emprunt actif} other {# emprunts actifs}}",
+    "owed": "{value} CZ$ restants",
+    "none": "Aucun emprunt actif",
+    "view": "Gérer les emprunts"
+  },
+  "history": {
+    "interestSplit": "Intérêts {interest} CZ$ · Capital {principal} CZ$",
+    "seasonPicker": "Saison",
+    "allSeasons": "Toutes les saisons",
+    "option": "Saison {number}",
+    "optionActive": "Saison {number} (en cours)",
+    "categoryFilterAria": "Filtrer les transactions par catégorie",
+    "category": {
+      "all": "Tout",
+      "salary": "Salaires",
+      "prizes": "Gains",
+      "loans": "Emprunts",
+      "transfers": "Transferts et enchères",
+      "sponsor": "Sponsor",
+      "other": "Autre"
+    },
+    "loadMore": "Afficher plus",
+    "loadingMore": "Chargement...",
+    "txLoadError": "Impossible de charger les transactions. Réessaie."
+  },
+  "loadError": {
+    "message": "Impossible de charger tes finances. Réessaie.",
+    "retry": "Réessayer"
+  },
+  "balance": {
+    "label": "Solde",
+    "division": "Division {division}",
+    "available": "{value} CZ$ disponibles",
+    "lockedInBids": "{value} CZ$ bloqués dans des enchères"
+  },
+  "debt": {
+    "label": "Dette totale",
+    "ceiling": "Plafond : {value} CZ$",
+    "headroom": "Marge sous le plafond : {value} CZ$",
+    "accruedInterest": "Dont {value} CZ$ d'intérêts courus"
+  },
+  "prize": {
+    "label": "Gains (saison {season})",
+    "labelNoSeason": "Gains",
+    "raceCount": "{count, plural, one {1 course} other {# courses}}",
+    "allSeasons": "toutes saisons : {amount} CZ$"
+  },
+  "prizeList": {
+    "title": "Gains des courses",
+    "fallbackName": "Gains",
+    "viewRace": "Voir la course",
+    "header": {
+      "race": "Course",
+      "date": "Date",
+      "amount": "Gains"
+    }
+  },
+  "loans": {
+    "types": {
+      "short": "Emprunt à court terme",
+      "long": "Emprunt à long terme",
+      "emergency": "Emprunt d'urgence"
+    },
+    "active": {
+      "title": "Emprunts actifs",
+      "empty": "Aucun emprunt actif",
+      "createdAt": "Souscrit {when}",
+      "remaining": "restants",
+      "principal": "Capital",
+      "interestPerSeason": "Intérêts/saison",
+      "seasonsRemaining": "Saisons restantes",
+      "accruedInterest": "Intérêts courus",
+      "startRepay": "Payer une échéance",
+      "startRepayBlocked": "Rien à rembourser pour l'instant : ton solde disponible est immobilisé dans des enchères en cours.",
+      "startRepayMaxPlaceholder": "Max {value}",
+      "repayPlaceholder": "0",
+      "repayBtn": "Payer",
+      "repayingBtn": "...",
+      "cancelRepayAria": "Annuler"
+    },
+    "take": {
+      "title": "Souscrire un emprunt",
+      "noConfig": "Aucune configuration d'emprunt disponible pour la division {division}",
+      "typeLabel": "Type d'emprunt",
+      "amountLabel": "Montant (CZ$)",
+      "amountPlaceholder": "p. ex. 500",
+      "feeLabel": "Frais ({pct} %)",
+      "feeValue": "{value} CZ$",
+      "interestLabel": "Intérêts/saison",
+      "interestValue": "{pct} %",
+      "totalLabel": "Remboursement total",
+      "totalValue": "{value} CZ$",
+      "maxBorrowable": "Emprunt max. actuel : {value} CZ$",
+      "maxBorrowableDetail": "Les frais de {fee} CZ$ s'ajoutent à ta dette, qui atteint donc {total} CZ$ sur un plafond de {ceiling} CZ$.",
+      "useMax": "Utiliser le max.",
+      "maxZero": "Pas de place pour un nouvel emprunt. Ta dette est au plafond de la division, soit {ceiling} CZ$.",
+      "exceedsMax": "Cela te ferait dépasser le plafond de dette, car les frais y comptent. Emprunt max. actuel : {value} CZ$.",
+      "costPerSeason": "Intérêts de la saison prochaine si tu ne rembourses rien : {interest} CZ$ -> la dette atteindrait {projected} CZ$",
+      "submit": "Souscrire l'emprunt",
+      "processing": "Traitement..."
+    },
+    "confirmModal": {
+      "title": "Confirmer un gros emprunt",
+      "body": "Tu es sur le point d'emprunter <strong>{principal} CZ$</strong> plus <strong>{fee} CZ$</strong> de frais. Ta dette totale devient <strong>{newTotalDebt} CZ$</strong>, soit {pct} % du plafond de dette de {ceiling} CZ$ de ta division.",
+      "interestForecast": "Si tu ne rembourses rien, les seuls intérêts de la saison prochaine ajoutent <strong>{interest} CZ$</strong>, ce qui porte ta dette à <strong>{projected} CZ$</strong>.",
+      "ceilingWarning": "Rien que par les intérêts, c'est au-dessus du plafond de ta division. Si tu es toujours au-dessus au prochain changement de saison, la direction gèle les transferts et peut forcer la vente de tes coureurs pour combler l'écart.",
+      "question": "Souscrire cet emprunt quand même ?",
+      "confirm": "Souscrire l'emprunt"
+    },
+    "terms": {
+      "title": "Conditions d'emprunt, division {division}",
+      "headers": {
+        "type": "Type",
+        "fee": "Frais",
+        "interest": "Intérêts/saison",
+        "seasons": "Saisons",
+        "debtCeiling": "Plafond de dette"
+      }
+    }
+  },
+  "transactions": {
+    "history": {
+      "title": "Historique des transactions",
+      "empty": "Aucune transaction pour l'instant"
+    },
+    "type": {
+      "sponsor": "Revenu de sponsor",
+      "salary": "Salaires",
+      "transfer_out": "Transfert (acheté)",
+      "transfer_in": "Transfert (vendu)",
+      "loan_received": "Emprunt reçu",
+      "loan_repayment": "Échéance d'emprunt",
+      "loan_interest": "Intérêts d'emprunt",
+      "emergency_loan": "Emprunt d'urgence",
+      "prize": "Gains",
+      "bonus": "Prime de division",
+      "admin_adjustment": "Ajustement admin",
+      "interest": "Intérêts",
+      "academy_signing": "Signature à l'académie",
+      "academy_drift": "Entretien de l'académie",
+      "facility_upkeep": "Entretien des installations",
+      "staff_salary": "Salaires du staff",
+      "parachute": "Parachute de relégation",
+      "sponsor_race_day": "Revenu de sponsor par étape",
+      "sponsor_signing_bonus": "Prime de signature du sponsor",
+      "sponsor_objective_bonus": "Prime d'objectif du sponsor",
+      "sponsor_result_bonus": "Prime de résultat du sponsor",
+      "facility_purchase": "Amélioration d'installation",
+      "staff_severance": "Indemnité de départ du staff",
+      "upkeep": "Entretien",
+      "travel_staff": "Déplacements et staff",
+      "scout_travel": "Déplacements du recruteur",
+      "auto_squad_purchase": "Achat automatique d'effectif",
+      "auto_squad_sale": "Vente automatique d'effectif",
+      "forced_debt_sale": "Vente forcée (plafond de dette)",
+      "squad_violation_fine": "Amende de taille d'effectif",
+      "starting_budget": "Budget de départ",
+      "division_adjustment": "Ajustement de division",
+      "sponsor_division_correction_clawback": "Correction du sponsor (remboursement)"
+    }
+  },
+  "timeAgo": {
+    "unknown": "Inconnu",
+    "now": "À l'instant",
+    "minutes": "il y a {m} min",
+    "hours": "il y a {h} h",
+    "days": "il y a {d} j"
+  },
+  "msg": {
+    "loanCreated": "Emprunt de {amount} CZ$ créé",
+    "loanRepaidFull": "Emprunt entièrement remboursé !",
+    "loanRepaidPartial": "{paid} CZ$ payés, {remaining} CZ$ restants",
+    "errorPrefix": ""
+  },
+  "tour": {
+    "balance": {
+      "title": "Ton solde et ta trésorerie",
+      "body": "Le solde évolue avec le sponsor (revenu en début de saison), les salaires (payés au début de la saison suivante, une fois le sponsor arrivé), les transferts et les gains (en continu). Les chiffres rouges signifient un solde négatif, et le mécanisme d'emprunt d'urgence se déclenche au début de la saison suivante si le sponsor et le solde ne couvrent pas les salaires et les intérêts."
+    },
+    "debtCeiling": {
+      "title": "Plafond de dette par division",
+      "body": "Chaque division a un plafond de dette totale (D1 1 200 K · D2 900 K · D3 600 K). Une fois le plafond atteint, les nouveaux emprunts sont bloqués, et la direction pénalise aussi les dépenses excessives lors de l'évaluation de la saison."
+    },
+    "txHistory": {
+      "title": "Suis la trésorerie",
+      "body": "Le sponsor et les salaires tombent une fois par saison (tous deux en début de saison : le sponsor d'abord, puis les salaires), tandis que les gains et les transferts arrivent en continu. Tu vois ici chaque transaction : sers-t'en pour vérifier que tes finances vont dans le bon sens."
+    }
+  },
+  "hint": {
+    "title": "Comment fonctionnent tes finances",
+    "subtitle": "Quatre flux de revenus et de dépenses font bouger ton solde. Comprends-les, et tu pourras donner la priorité au sport, à la croissance et à la dette.",
+    "dismissAria": "Masquer",
+    "sponsor": {
+      "title": "Revenu de sponsor",
+      "before": "Échelonné par division (D1 600 000 · D2 400 000 · D3 340 000 CZ$) par saison × ton ",
+      "linkText": "modificateur de la direction",
+      "after": ". Versé en une seule fois au début de la saison."
+    },
+    "salary": {
+      "title": "Salaires des coureurs",
+      "body": "Le salaire d'un coureur est le prix de ce qu'il apporte cette saison, pas de ce qu'il vaut sur le marché. C'est une part fixe de sa valeur de production actuelle, la même part pour toutes les équipes de toutes les divisions : un meilleur coureur coûte donc toujours plus cher. Les salaires sont figés à la signature ou à la prolongation, le salaire d'un coureur ne bouge donc pas ensuite avec sa valeur de marché. Prélevé en une seule fois au début de la saison suivante, juste après l'arrivée du sponsor."
+    },
+    "debt": {
+      "title": "Plafond de dette par division",
+      "body": "D1 1 200 K · D2 900 K · D3 600 K. Dépasse le plafond et les nouveaux emprunts sont bloqués, et la direction sanctionne les dépenses excessives."
+    },
+    "loans": {
+      "title": "Emprunts, court ou long terme",
+      "body": "Emprunt court : frais bas, remboursement rapide. Emprunt long : montant plus important sur plusieurs saisons. Utilise-les pour les pics de transferts, pas pour combler les trous de fonctionnement."
+    },
+    "showTour": "Fais-moi visiter",
+    "skip": "Passer"
+  },
+  "seasonSwitch": {
+    "loading": "Chargement du règlement du changement de saison…",
+    "receipt": {
+      "title": "Règlement saison {current} -> {next}",
+      "subtitle": "Ce qui arrive à ton solde quand les comptes se ferment et que la saison {next} démarre, dans l'ordre exact où le jeu le prélève.",
+      "balanceAfter": "Solde : {value} CZ$",
+      "step": {
+        "books_close": {
+          "label": "Clôture des comptes",
+          "detail": "Ton solde tel qu'il est à l'instant, reporté dans le changement."
+        },
+        "sponsor": {
+          "label": "Arrivée du sponsor",
+          "detail": "Base {base} + prime de performance {variable} selon le rang/les points de la saison dernière, créditées ensemble en un seul paiement au début de la saison."
+        },
+        "loan_interest": {
+          "label": "Intérêts d'emprunt",
+          "detail": "Intérêts sur la dette restante de tes emprunts actifs, calculés juste après l'arrivée du paiement du sponsor. Ajoutés à l'emprunt lui-même, pas déduits de ton solde."
+        },
+        "salary": {
+          "label": "Les salaires de la saison {next} sont prélevés",
+          "detail": "Recalculés selon les règles de la saison {next} à partir de la valeur de production actuelle de chaque coureur le jour du changement, et non des chiffres de contrat figés de la saison dernière."
+        },
+        "academy_drift": {
+          "label": "Entretien de l'académie",
+          "detail": "Coût de dérive de début de saison pour tes places d'académie."
+        },
+        "upkeep": {
+          "label": "Entretien de la division",
+          "detail": "Coût fixe défini par ta division, prélevé au début de la saison."
+        },
+        "facility_upkeep": {
+          "label": "Entretien des installations",
+          "detail": "Entretien de début de saison pour les pistes d'installation que tu as construites."
+        },
+        "staff_salary": {
+          "label": "Salaires du staff",
+          "detail": "Salaires de début de saison pour le staff que tu as recruté."
+        },
+        "start_s3": {
+          "label": "Tu démarres la saison prochaine avec",
+          "detail": "Ton solde après tous les prélèvements de début de saison ci-dessus."
+        }
+      }
+    },
+    "footnote": "Aperçu du règlement, pas une garantie. Les gains et le revenu de sponsor par étape n'y sont pas inclus, car ils dépendent de courses pas encore disputées, pas plus que tout ce qui est conditionnel, comme les intérêts d'emprunt d'urgence si ton solde devient négatif ou une vente forcée si ta dette dépasse le plafond. Les déplacements du recruteur, les transferts, les achats d'installations, les changements de staff et les signatures à l'académie n'y sont pas inclus non plus, car rien de tout cela n'est connu à l'avance.",
+    "footnoteLink": "Qu'est-ce qui est inclus exactement ?",
+    "salaryTable": {
+      "title": "Salaires : contrat actuel contre saison prochaine",
+      "subtitle": "Le salaire de contrat figé de chaque coureur sous contrat, à côté de ce que la formule de la saison {next} leur donnerait aujourd'hui.",
+      "empty": "Aucun coureur sous contrat.",
+      "header": {
+        "rider": "Coureur",
+        "contract": "Contrat (S{current})",
+        "projection": "Projection S{next}",
+        "delta": "Écart"
+      },
+      "total": "Total",
+      "viewAll": "Voir les {count} coureurs",
+      "showLess": "Afficher moins"
+    }
+  },
+  "report": {
+    "season": "Saison {n}",
+    "livePreview": " · aperçu en direct",
+    "cashflowOverview": "Aperçu de la trésorerie",
+    "ongoing": " – en cours",
+    "netCashflow": "Trésorerie nette",
+    "transactionCount": "{count} transactions",
+    "income": "Revenus",
+    "expense": "Dépenses",
+    "nonCashLoanInterest": "Intérêts courus sur la dette (hors trésorerie, exclus du net)",
+    "total": "Total",
+    "activeLoans": "Emprunts actifs",
+    "noActiveLoans": "Aucun emprunt actif.",
+    "loanType": "Type",
+    "loanRemaining": "Dette restante",
+    "loanInterest": "Intérêts",
+    "loanSeasons": "Saisons",
+    "loanNextInterest": "Intérêts de la saison prochaine",
+    "loanAccruedInterest": "Intérêts courus",
+    "loanShort": "Emprunt court",
+    "loanLong": "Emprunt long",
+    "loanEmergency": "Emprunt d'urgence",
+    "mustLogin": "Tu dois être connecté.",
+    "errorStatus": "Erreur {status}",
+    "loadError": "Impossible de charger le rapport",
+    "back": "Retour",
+    "title": "Rapport financier · saison {n}",
+    "adminView": " · vue admin",
+    "donutIncomeTitle": "Revenus par source",
+    "donutExpenseTitle": "Dépenses par catégorie",
+    "donutIncomeEmpty": "Aucun revenu enregistré cette saison.",
+    "donutExpenseEmpty": "Aucune dépense enregistrée cette saison.",
+    "topInTitle": "Top 3 des revenus",
+    "topOutTitle": "Top 3 des dépenses",
+    "topInEmpty": "Aucun revenu enregistré.",
+    "topOutEmpty": "Aucune dépense enregistrée.",
+    "sponsorTitle": "Courbe du modificateur de sponsor",
+    "sponsorBody": "Disponible à partir de la saison 2. Demande l'historique de plan de la direction d'au moins une saison clôturée.",
+    "reasonCode": {
+      "season_start_sponsor": "Sponsor",
+      "season_start_upkeep": "Entretien et maintenance",
+      "race_day_travel_staff": "Déplacements et staff",
+      "season_start_parachute": "Parachute de relégation",
+      "season_start_academy_drift": "Entretien de l'académie",
+      "season_end_salary": "Salaires",
+      "season_end_division_bonus": "Prime de division",
+      "season_end_negative_interest": "Intérêts négatifs",
+      "season_end_loan_interest": "Intérêts d'emprunt",
+      "starting_budget": "Budget de départ",
+      "race_prize_payout": "Gains",
+      "auction_winner_payment": "Achat aux enchères",
+      "auction_seller_payout": "Vente aux enchères",
+      "auction_guaranteed_bank_sale": "Vente garantie par la banque",
+      "intake_expiry_auction_compensation": "Compensation d'expiration du recrutement",
+      "transfer_purchase": "Achat par transfert",
+      "transfer_sale": "Vente par transfert",
+      "swap_cash_delta": "Échange (différence en cash)",
+      "sponsor_race_day": "Sponsor (par étape)",
+      "rider_release_buyout": "Indemnité de libération",
+      "loan_fee_paid": "Frais de prêt payés",
+      "loan_fee_received": "Frais de prêt reçus",
+      "loan_fee_refunded": "Frais de prêt remboursés",
+      "loan_principal_received": "Emprunt souscrit",
+      "loan_repayment": "Remboursement d'emprunt",
+      "loan_buyout": "Prêt racheté",
+      "loan_origination_fee": "Frais de dossier d'emprunt",
+      "emergency_loan_received": "Emprunt d'urgence",
+      "squad_auto_purchase": "Achat forcé de coureur",
+      "squad_auto_sale": "Vente forcée de coureur",
+      "squad_violation_fine": "Amende de composition d'effectif",
+      "board_bonus_accepted": "Prime de la direction",
+      "admin_balance_adjustment": "Ajustement admin",
+      "admin_force_prize": "Gains attribués par l'admin",
+      "admin_beta_reset": "Réinitialisation bêta",
+      "facility_purchase": "Achats d'installations",
+      "scout_travel": "Déplacements du recruteur",
+      "unknown": "Autre"
+    }
+  }
+}
