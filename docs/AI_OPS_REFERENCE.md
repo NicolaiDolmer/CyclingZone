@@ -332,3 +332,13 @@ Quick reference:
 ---
 
 _Sidst opdateret: 2026-09-07 — Metrik-brud-log tilføjet (1/9-telemetribrud, [#4963](https://github.com/NicolaiDolmer/CyclingZone/issues/4963)). Forrige: 2026-08-31 — PR-preflight/verifikations-tiers + dependency-sync flyttet hertil fra `CLAUDE.md` per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682) (token-trim). Oprettet 2026-05-29 ved split af `AGENTS.md` per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733); indhold flyttet fra AGENTS.md (delt context-disciplin: GitHub/OneDrive er sandhed, lokale agent-filer er kun caches)._
+
+## Worktree-disciplin (detaljer)
+
+Flyttet fra AGENTS.md 16/10 (token-budget); reglerne er uændrede.
+
+- Worktrees i `.claude/worktrees/<navn>/` cleanes efter ship via SessionStart-hook
+- Manuel fallback hvis hook fejler: `git worktree remove <path>` + `git branch -D <branch>` på PC'en der oprettede worktreen
+- Per-PC handling — gentages på den anden PC ved næste session der
+- **Parallel-sessions samme PC:** se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](docs/AGENT_ARCHITECTURE.md#parallel-session-safety-samme-pc-flere-claude-sessions-samtidigt) for kollisions-matrix + worktree-recipe
+- ⚠️ **Sti-baserede hard-blocks SKAL stå i `permissions.deny`, ikke kun hooks (#684):** På Claude Code ≥2.1.154 bypasser `permissions.allow` PreToolUse-hookenes `exit 2` OG JSON-`permissionDecision: deny` ([anthropics/claude-code#18312](https://github.com/anthropics/claude-code/issues/18312)). Fix D (verificeret 2026-05-29 i frisk acceptEdits-session): statiske `permissions.deny`-globs overlever allow-listen (`deny > allow`-precedence) — `Write`/`Edit`/`NotebookEdit(docs/archive/**)` er nu i `permissions.deny`, så arkiv-beskyttelsen håndhæves selvom de tre tools er allow-listede (#591). **Tilbageværende gap:** indholds-baserede guardrails (NOW.md 30-linjers-grænse, dynamisk secret-pattern) kan ikke udtrykkes som deny-globs → stadig hook-only og afvæbnede for allow-listede tools indtil #18312. Hold dem i menneske-review ved autonome parallel-runs — se [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md) top-note.

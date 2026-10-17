@@ -656,6 +656,13 @@ export type EngineState = {
   // spurter. Hooket kaldes pr. segment og kan ikke se hverken sine egne
   // tidligere kald eller maalstregen uden en baerer.
   stage_passages?: StagePassage[];
+  // #6369 (ADDITIVT, KUN s5_profiles_v1): hvor mange gange et nyt udbrud er
+  // forsoegt efter en tidlig indhentning (breakaway.ts withS5Reformation).
+  // Udeladt = 0. Ingen aeldre revision saetter eller laeser feltet.
+  breakaway_reformations?: number;
+  // #6369 (ADDITIVT, KUN s5_profiles_v1): rytterne i det seneste udbrud, saa
+  // et nyt udbrud efter indhentningen kan udelukke dem.
+  s5_last_break_rider_ids?: readonly string[];
   // #5582 (ADDITIVT, valgfrit): uheldsofre paa jagt tilbage bag foelgebilerne,
   // rider_id -> mode. Saettes af uheldets split (mechanics/incidents.ts og M3's
   // nedkoerselsstyrt i mechanics/descent.ts), kun ved et tidstab. INTERN

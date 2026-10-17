@@ -1,5 +1,460 @@
 export const PATCHES = [
   {
+    "version": "7.367",
+    "date": "2026-10-17",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials spread out more",
+          "body": "The gaps in a time trial are now closer to real racing, so a strong time triallist can gain real time in the general classification."
+        },
+        "da": {
+          "title": "Enkeltstarter spreder sig mere",
+          "body": "Tidsforskellene i en enkeltstart ligger nu tættere på virkeligheden, så en stærk enkeltstartsrytter kan vinde reel tid i klassementet."
+        },
+        "refs": [
+          6645,
+          6595
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Gaps at the finish come from the race",
+          "body": "No more fixed steps of a few seconds between riders. The gap now depends on how much stronger a rider was and how much climbing was left."
+        },
+        "da": {
+          "title": "Tidsforskelle i mål kommer af løbet",
+          "body": "Ikke flere faste trin på få sekunder mellem rytterne. Forskellen afhænger nu af, hvor meget stærkere en rytter var, og hvor meget stigning der var tilbage."
+        },
+        "refs": [
+          6648
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Bigger breakaways on hills and mountains",
+          "body": "More riders can go in the breakaway on hilly and mountain stages."
+        },
+        "da": {
+          "title": "Større udbrud på bakker og bjerge",
+          "body": "Flere ryttere kan komme med i udbruddet på kuperede etaper og bjergetaper."
+        },
+        "refs": [
+          6201
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "GC riders get a shorter leash",
+          "body": "A dangerous GC rider in the breakaway is chased harder, so the overall win is rarely decided by a breakaway."
+        },
+        "da": {
+          "title": "Klassementsryttere får kortere snor",
+          "body": "En farlig klassementsrytter i udbruddet bliver jagtet hårdere, så den samlede sejr sjældent afgøres af et udbrud."
+        },
+        "refs": [
+          5978
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "A new breakaway after an early catch",
+          "body": "If the breakaway is caught early, a new one can go without the dangerous riders, so flat stages still have a breakaway up the road."
+        },
+        "da": {
+          "title": "Nyt udbrud efter en tidlig indhentning",
+          "body": "Bliver udbruddet hentet tidligt, kan et nyt køre uden de farlige ryttere, så der stadig er et udbrud på flade etaper."
+        },
+        "refs": [
+          6369
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Late solo attacks",
+          "body": "A strong rider can now attack alone late in a stage and try to hold off the group."
+        },
+        "da": {
+          "title": "Sene soloangreb",
+          "body": "En stærk rytter kan nu angribe alene sent på en etape og prøve at holde gruppen bag sig."
+        },
+        "refs": [
+          6368
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Grand Tours get harder in week 3",
+          "body": "Fatigue builds up over the whole race and follows the work a rider actually did, so the third week of a Grand Tour is tough."
+        },
+        "da": {
+          "title": "Grand Tours bliver hårdere i uge 3",
+          "body": "Trætheden hober sig op gennem hele løbet og følger det arbejde, rytteren faktisk lavede, så tredje uge af en Grand Tour er hård."
+        },
+        "refs": [
+          5928
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.366",
+    "date": "2026-10-17",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders are free when your team does not start",
+          "body": "If your team did not start a stage race, its riders were still tied to that race until it ended. They are now free for other races straight away."
+        },
+        "da": {
+          "title": "Rytterne er frie, når dit hold ikke stiller op",
+          "body": "Stillede dit hold ikke op i et etapeløb, var rytterne stadig bundet til løbet, til det sluttede. Nu er de frie til andre løb med det samme."
+        },
+        "refs": [
+          6740
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.365",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "An injury no longer costs you the start",
+          "body": "If you had 6 riders selected and one gets injured after you picked him, your team now starts with the fit riders it has left. Your assistant still adds free riders first. Below 6 for any other reason, your team still does not start."
+        },
+        "da": {
+          "title": "En skade koster dig ikke længere starten",
+          "body": "Havde du 6 ryttere udtaget, og bliver en af dem skadet efter udtagelsen, starter dit hold nu med de raske ryttere, det har tilbage. Din assistent sætter stadig først frie ryttere ind. Er I under 6 af andre grunde, stiller holdet stadig ikke op."
+        },
+        "refs": [
+          6740
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.364",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "You see when your team does not start",
+          "body": "A team that withdrew, or had fewer than 6 fit riders at the start, no longer shows as racing in Planning, Tactics or Daily Training. Planning says Did not start, and your inbox tells you."
+        },
+        "da": {
+          "title": "Du kan se, når dit hold ikke stiller op",
+          "body": "Et hold, der har meldt fra eller havde færre end 6 raske ryttere ved start, står ikke længere som deltager i Planlægning, Taktik eller Daglig træning. Planlægning skriver Stillede ikke op, og du får besked i indbakken."
+        },
+        "refs": [
+          6740
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Crashes and Train now warn you",
+          "body": "When a rider is injured in a crash, your inbox says until when and which of your races he misses, and he is marked Injured in your lineups. Train now warns you and asks first if a race today would end up with fewer than 6 fit riders."
+        },
+        "da": {
+          "title": "Styrt og Træn nu advarer dig",
+          "body": "Når en rytter bliver skadet i et styrt, står det i indbakken, til hvornår og hvilke af dine løb han misser, og han er markeret Skadet i dine udtagelser. Træn nu advarer og spørger først, hvis et løb i dag ender med færre end 6 raske ryttere."
+        },
+        "refs": [
+          6740
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.363",
+    "date": "2026-10-16",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy 2.0: bring in this week's intake",
+          "body": "Each week you bring in your academy intake with one click on the Academy page. The new Academy Expansion on the Club page decides how many candidates you get and lets you give the intake a profile: a nationality or region, a rider type and one extra choice. You learn a prospect's potential through training after you sign him."
+        },
+        "da": {
+          "title": "Akademi 2.0: hent ugens optag",
+          "body": "Hver uge henter du dit akademi-optag med ét klik på akademisiden. Den nye Akademi-udvidelse på Klub-siden afgør, hvor mange kandidater du får, og lader dig give optaget en profil: en nationalitet eller region, en ryttertype og ét ekstra valg. Du lærer en kandidats potentiale at kende gennem træning, efter du har skrevet kontrakt."
+        },
+        "refs": [
+          6666,
+          6673
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Sprint trains only by default on flat stages",
+          "body": "Your helpers now ride a lead-out by default only on flat stages. On mountain, time trial, hilly and cobbled stages they no longer do, unless you set it yourself. Applies to races that start from today; races already running keep their rules."
+        },
+        "da": {
+          "title": "Sprinttog kun som standard på flade etaper",
+          "body": "Dine hjælpere kører nu kun sprinttog som standard på flade etaper. På bjerg-, enkeltstarts-, kuperede og brostensetaper gør de det ikke længere, medmindre du selv sætter det. Gælder løb der starter fra i dag; løb der allerede kører, beholder deres regler."
+        },
+        "refs": [
+          6462,
+          6720,
+          6741
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "Withdraw a counter offer",
+          "body": "You can now take back a counter offer you sent. An old price can no longer be accepted later."
+        },
+        "da": {
+          "title": "Træk et modbud tilbage",
+          "body": "Du kan nu trække et modbud tilbage. En gammel pris kan ikke længere accepteres senere."
+        },
+        "refs": [
+          6463,
+          6716
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Club",
+        "en": {
+          "title": "New Club page",
+          "body": "Each facility is now a card with its current effect, all five levels with what they give and cost, and the upkeep for the next level. Upkeep, wages and balance sit at the top."
+        },
+        "da": {
+          "title": "Ny Klub-side",
+          "body": "Hver facilitet er nu et kort med effekten nu, alle fem niveauer med hvad de giver og koster, og driften ved næste niveau. Drift, løn og saldo står øverst."
+        },
+        "refs": [
+          6666,
+          6673
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Clearer dashboard",
+          "body": "Board goals show the full goal name with status and percent below it. The ↓/+ markers on your division row are gone. \"In progress\" uses the same status badge as the rest of the game."
+        },
+        "da": {
+          "title": "Tydeligere dashboard",
+          "body": "Bestyrelsens mål viser hele målets navn med status og procent under. ↓/+ på din række i divisionen er væk. \"I gang\" bruger samme status-mærke som resten af spillet."
+        },
+        "refs": [
+          6717,
+          6735
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Text fits on phones",
+          "body": "Tooltips no longer push a page sideways. Forum titles and authors, race names on rider results and in the calendar now wrap instead of being cut off, and buttons that sit side by side match in size."
+        },
+        "da": {
+          "title": "Tekst passer på telefonen",
+          "body": "Tooltips skubber ikke længere siden til siden. Forumtitler og forfattere og løbsnavne på rytterens resultater og i kalenderen ombrydes nu i stedet for at blive skåret af, og knapper side om side har samme størrelse."
+        },
+        "refs": [
+          6728,
+          6734,
+          6736
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "One filter row on Patch notes",
+          "body": "Patch notes have one filter row (All, New, Improved, Fixed) and a small \"Beta only\" switch."
+        },
+        "da": {
+          "title": "Én filterrække på Patch notes",
+          "body": "Patch notes har én filterrække (Alle, Nyt, Forbedret, Rettet) og en lille \"Kun beta\"-kontakt."
+        },
+        "refs": [
+          6717,
+          6735
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squad",
+        "en": {
+          "title": "No squad warning before the season starts",
+          "body": "The reminder to pick riders only shows when you can actually pick them."
+        },
+        "da": {
+          "title": "Ingen trup-advarsel før sæsonstart",
+          "body": "Påmindelsen om at udtage ryttere vises kun, når du faktisk kan udtage dem."
+        },
+        "refs": [
+          5851,
+          6713
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squad",
+        "en": {
+          "title": "Expired contracts are shown clearly",
+          "body": "A rider whose contract has run out now says \"Expired, free agent at the season change unless extended\". You can still extend him."
+        },
+        "da": {
+          "title": "Udløbne kontrakter vises tydeligt",
+          "body": "En rytter med udløbet kontrakt står nu som \"Udløbet, fri agent ved sæsonskiftet, hvis kontrakten ikke forlænges\". Du kan stadig forlænge ham."
+        },
+        "refs": [
+          6638,
+          6713
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scout tooltip says when your scout is free",
+          "body": "When your scouts are busy, the tooltip now says when one is free again, counting missions too."
+        },
+        "da": {
+          "title": "Scout-tooltippen siger hvornår spejderen er ledig",
+          "body": "Når dine spejdere er optaget, siger tooltippen nu, hvornår én er ledig igen, også med missioner."
+        },
+        "refs": [
+          5852,
+          6719
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "Correct age in the scout range",
+          "body": "Between seasons the scout range uses the right season age."
+        },
+        "da": {
+          "title": "Rigtig alder i scout-intervallet",
+          "body": "Mellem sæsonerne bruger scout-intervallet den rigtige sæsonalder."
+        },
+        "refs": [
+          6700,
+          6702
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Squad filter and board meeting",
+          "body": "On My Team the U23 and Junior filters line up with the rest, and the board meeting keeps the left menu."
+        },
+        "da": {
+          "title": "Trup-filter og bestyrelsesmøde",
+          "body": "På Mit hold står U23 og Junior på linje med resten, og bestyrelsesmødet beholder venstremenuen."
+        },
+        "refs": [
+          5819,
+          5848,
+          6719
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Community",
+        "en": {
+          "title": "Online means the last 30 minutes",
+          "body": "A manager now counts as online for 30 minutes after their last activity, the same everywhere in the game."
+        },
+        "da": {
+          "title": "Online betyder de seneste 30 minutter",
+          "body": "En manager regnes nu som online i 30 minutter efter sidste aktivitet, ens overalt i spillet."
+        },
+        "refs": [
+          5385,
+          6721
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.362",
     "date": "2026-10-16",
     "changes": [

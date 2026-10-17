@@ -1197,6 +1197,14 @@
         "title": "Sæsonens indtagelseskuld",
         "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Talenterne er teenagere og starter derfor med lave, rå stats: vurdér dem primært på deres potentiale frem for deres nuværende tal, og scout et talent for at indsnævre hvor langt det kan nå. Derefter beslutter du, hvor mange (om nogen) du vil signere, og du er aldrig tvunget til at signere nogen. Nye akademi-kandidater ankommer hver søndag. Kandidater du hverken signerer eller afviser, udløber efter 7 dage."
       },
+      "intakeProfile": {
+        "title": "Ugens optag og akademi-udvidelsen",
+        "text": "Hver uge henter du dit optag med ét klik på akademisiden. Akademi-udvidelsen på klubsiden afgør, hvor stort det er: 2 kandidater uden den, 3 fra niveau 2 og 4 på niveau 5. Fra niveau 1 kan du give optaget en profil, en nationalitet eller region, fra niveau 3 også en ryttertype og fra niveau 4 ét ekstra valg. Hvert niveau får profilen til at trække lidt hårdere, men den bestemmer aldrig hele optaget, og talentet trækkes ens på alle niveauer. Du kan ændre profilen når som helst; en ændring virker efter 2 uger. Akademi-udvidelsen har ingen chef."
+      },
+      "prognosisTraining": {
+        "title": "Sådan lærer du et talents potentiale",
+        "text": "Når du henter en kandidat, ser du navn, alder, nationalitet, ryttertype og nuværende evner. Potentialet står som Læres gennem træning: du finder ud af det ved at have ham på holdet. Efter omkring 10 løbsdage med træning får du en første, bred prognose, efter omkring 30 en smal, og efter en hel sæson den endelige. Et bedre træningscenter og en stærkere sportsdirektør får dig hurtigere i mål. De gør dig mere sikker på rytteren, de gør ham ikke bedre."
+      },
       "signingProspects": {
         "title": "Signering af talenter",
         "steps": [
@@ -1306,8 +1314,8 @@
           ],
           [
             "Akademi-udvidelse",
-            "Tilføjer ekstra akademi-intake-slots",
-            "Kommer snart"
+            "Flere kandidater i ugens optag og en profil til det (ingen chef)",
+            "Åbner med ugens optag"
           ],
           [
             "Kommerciel afdeling",
@@ -1349,7 +1357,7 @@
       "label": "Holdudtagelse",
       "what": {
         "title": "Udtag din løbstrup",
-        "text": "Hvert løb har en feltstørrelse bestemt af sin klasse: 6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours. Gå til løbssiden og brug panelet Holdudtagelse. Du kan gemme færre ryttere end feltet rummer, og Gem bliver aldrig blokeret. Men dit hold skal have mindst 6 ryttere i opstillingen for at stille op, i alle løb, uanset feltstørrelsen. Er I færre end 6, stiller holdet ikke op, og så får I hverken resultat eller løbsdags-indtægt fra det. Lader du et løb stå tomt eller under 6, fylder din assistent op til 6 ved løbstid med de ryttere du har frie, og den springer løb over som du har afmeldt dig fra eller ryddet med vilje. Panelet fortæller dig, før du forlader siden, om dit hold stiller op. Vil du stå over et løb, så afmeld dig det; vil du have flere ryttere at vælge imellem, så hent fri-agenter."
+        "text": "Hvert løb har en feltstørrelse bestemt af sin klasse: 6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours. Gå til løbssiden og brug panelet Holdudtagelse. Du kan gemme færre ryttere end feltet rummer, og Gem bliver aldrig blokeret. Men dit hold skal have mindst 6 ryttere i opstillingen for at stille op, i alle løb, uanset feltstørrelsen. Er I færre end 6, stiller holdet ikke op, og så får I hverken resultat eller løbsdags-indtægt fra det. Én undtagelse: havde du 6 ryttere udtaget, og bliver nogle af dem skadet efter udtagelsen, starter holdet alligevel med de raske ryttere det har tilbage, efter at assistenten har sat eventuelle frie ryttere ind. Lader du et løb stå tomt eller under 6, fylder din assistent op til 6 ved løbstid med de ryttere du har frie, og den springer løb over som du har afmeldt dig fra eller ryddet med vilje. Panelet fortæller dig, før du forlader siden, om dit hold stiller op. Vil du stå over et løb, så afmeld dig det; vil du have flere ryttere at vælge imellem, så hent fri-agenter."
       },
       "seasonOverview": {
         "title": "Sæson-visningen på planlægnings-boardet",

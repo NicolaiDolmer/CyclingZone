@@ -9,7 +9,10 @@ import assert from "node:assert/strict";
 import { assessGcThreat, V3_DANGER_TUNING, type DangerModel } from "./gcThreat.ts";
 import { isLetGoChaseGroup, letGoMaxGapSeconds, rankedFormationPressure } from "./breakaway.ts";
 import { DANGEROUS_ATTEMPT_TUNING, resolveMorningBreakFormation, type FormationRider } from "./breakawayPermission.ts";
-import { SHARED_TIME_MODEL_V2_TUNING, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./timeModel.ts";
+import { readFileSync } from "node:fs";
+import { S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE, SHARED_TIME_MODEL_V2_TUNING, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./timeModel.ts";
+import { __resetRaceEngineV4Cache, loadRaceEngineV4 } from "../../../raceEngineV4Bridge.js";
+import { breakawaySets, breakawayWin, splitEntrants } from "../../../../scripts/dev/lib/tourScorecard.mjs";
 import { BREAKAWAY_EXTRA_TUNING } from "../tuning.ts";
 import type { AbilityKey, Entrant, GcContext, RaceGroup, RouteV2 } from "../types.ts";
 
@@ -161,4 +164,66 @@ test("#5578: uden for de forreste er kun en mindst lige saa staerk rytter en riv
   const weaker = assess("r10", ["r12"], 30, official);
   assert.notEqual(weaker.leash_hold, true);
   assert.notEqual(weaker.severity, "serious");
+});
+
+// ── #6369 (KUN s5_profiles_v1, endagsloeb): bjerg-bucket'ens lad-gaa-loft ────────
+// Bjergets loft er kalibreret paa etapeloeb, hvor klassementsholdene lofter udbruddet.
+// I et endagsloeb paa en bjergprofil var der intet loft, og morgenudbruddet koerte
+// hjem med et forspring ingen jagt kunne hente. Under S5 har endagsloebet sit eget
+// loft paa bjerg-bucket'en; etapeloeb og alle aeldre revisioner er uroerte
+// (oldRevisionDigests6199 m.fl. laaser de aeldre). Tallene: balance-internals/6367/.
+
+test("#6369: endags-loftet findes kun for bjerg-bucket'en og kan kun goere loftet mindre", () => {
+  assert.ok(Object.isFrozen(S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE));
+  assert.deepEqual(Object.keys(S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE), ["mountain"]);
+  const scale = S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE.mountain as number;
+  assert.ok(scale > 0 && scale < 1, "et loft, aldrig et loeft");
+});
+
+// Et endagsloeb paa en bjergprofil: to kat. 1-stigninger, topankomst.
+const ONE_DAY_MOUNTAIN = {
+  race_id: "race-6369-one-day", stage_number: 1, profile_type: "mountain", finale_type: "long_climb", distance_km: 160,
+  climbs: [
+    { category: "1", crest_km: 96, length_km: 11.1, avg_gradient: 6.5, summit_finish: false },
+    { category: "1", crest_km: 160, length_km: 12.2, avg_gradient: 7.5, summit_finish: true },
+  ],
+  sprints: [{ km: 160, kind: "finish", name: "Finish" }],
+  sectors: [],
+  segments: [
+    { kind: "rolling", from_km: 0, to_km: 84.9 },
+    { kind: "climb", from_km: 84.9, to_km: 96, category: "1", avg_gradient: 6.5, top_elevation_m: 971 },
+    { kind: "descent", from_km: 96, to_km: 110, technicality: 2 },
+    { kind: "rolling", from_km: 110, to_km: 147.8 },
+    { kind: "climb", from_km: 147.8, to_km: 160, category: "1", avg_gradient: 7.5, top_elevation_m: 1886 },
+  ],
+  weather: { kind: "sun", wind_exposure: 0.37 },
+};
+
+test("#6369: S5-endagsloeb paa bjerg - udbruddet koerer ikke laengere hjem med et uindhenteligt forspring", async () => {
+  const raw = JSON.parse(readFileSync(new URL("../../../../scripts/baselines/giro-field-6088-2026-10-02.json", import.meta.url), "utf8"));
+  const field = { ...raw, orders: [], teams: raw.teams.map((t: Record<string, unknown>) => ({ ...t, is_ai: true })) };
+  __resetRaceEngineV4Cache();
+  const v4 = await loadRaceEngineV4();
+  const data = { ...field, race: { ...field.race, id: ONE_DAY_MOUNTAIN.race_id, stages: 1 }, profiles: [ONE_DAY_MOUNTAIN] };
+  const SEEDS = 6;
+  const run = (revision: string) => Array.from({ length: SEEDS }, (_, i) => {
+    const res = v4.simulateStage({
+      entrants: splitEntrants(data).entrants, stageProfile: ONE_DAY_MOUNTAIN, seedString: `${ONE_DAY_MOUNTAIN.race_id}:1:t${i + 1}`,
+      stageNumber: 1, teamOrderRows: [], isStageRace: false, raceStages: [ONE_DAY_MOUNTAIN], squad: null, rulesRevision: revision, gcStandings: null,
+    });
+    const out = res.v4Output;
+    const fin = (out.results ?? []).filter((r: { status: string }) => r.status === "finished")
+      .sort((a: { time_seconds: number }, b: { time_seconds: number }) => a.time_seconds - b.time_seconds);
+    const { formed } = breakawaySets(out);
+    const firstOutside = fin.find((r: { rider_id: string }) => !formed.has(r.rider_id));
+    return { won: breakawayWin(out).won as boolean, margin: firstOutside ? firstOutside.time_seconds - fin[0].time_seconds : 0 };
+  });
+  const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)];
+  const old = run("official_times_v4");
+  const s5 = run("s5_profiles_v1");
+  // Fejlen (uaendret under official_times_v4): udbruddet vinder hver gang, langt foran.
+  assert.equal(old.filter((r) => r.won).length, SEEDS, "official_times_v4 er uroert: udbruddet vinder hvert seed");
+  // S5: forspringet er en broekdel af det gamle, og udbruddet vinder ikke hver gang.
+  assert.ok(median(s5.map((r) => r.margin)) * 4 < median(old.map((r) => r.margin)), `S5 ${median(s5.map((r) => r.margin))} s mod v4 ${median(old.map((r) => r.margin))} s`);
+  assert.ok(s5.filter((r) => r.won).length < SEEDS, "S5: udbruddet vinder ikke hvert seed");
 });

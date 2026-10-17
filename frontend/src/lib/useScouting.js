@@ -28,6 +28,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { authHeaders } from "./supabase"; // #4348: kanonisk kopi
 import { daysUntil } from "./scoutingCentralDisplay.js";
+import { earliestReadyAt } from "./scoutCountdown.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "./sharedRequestCache.js";
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt paa 429 + centraliseret 401-vej
 
@@ -47,6 +48,7 @@ export function useScouting() {
   const [pendingTargets, setPendingTargets] = useState({}); // { <rider_id>: { readyOn, readyAt } }
   const [jobCapacity, setJobCapacity] = useState(1);
   const [jobActiveCount, setJobActiveCount] = useState(0);
+  const [nextFreeAt, setNextFreeAt] = useState(null); // #5852: tidligste ready_at blandt ALLE aktive opgaver (ogsaa missioner)
   const [jobConfig, setJobConfig] = useState(null); // { targetEtaMinutes, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
 
   const requestedRef = useRef(new Set()); // ids vi allerede har bedt om (dedup)
@@ -104,6 +106,7 @@ export function useScouting() {
       }
       setPendingTargets(nextPending);
       setJobActiveCount(active.length);
+      setNextFreeAt(earliestReadyAt(active.map((a) => ({ readyAt: a.ready_at ?? null }))));
       setJobCapacity(data.jobModel?.capacity ?? 1);
       setJobConfig(data.jobModel?.jobConfig ?? null);
     } catch {
@@ -190,6 +193,8 @@ export function useScouting() {
           [riderId]: { readyOn: data.assignment.readyOn, readyAt: data.assignment.readyAt ?? null },
         }));
         setJobActiveCount((prev) => prev + 1);
+        // #5852: ny opgave kan vaere den tidligste ledige spejder — hold ledig-om i takt uden refetch.
+        setNextFreeAt((prev) => earliestReadyAt([{ readyAt: prev }, { readyAt: data.assignment.readyAt ?? null }]));
       }
       return { ok: true, assignment: data.assignment };
     } catch {
@@ -247,6 +252,7 @@ export function useScouting() {
   return {
     slots, maxLevel, levels, teamId, loading, scoutingId, scoutSystemEnabled,
     jobCapacity, jobActiveCount, jobConfig,
+    nextFreeAt, // #5852
     scout, refresh, levelFor, pendingFor, requestEstimates, estimateFor, estimates,
   };
 }

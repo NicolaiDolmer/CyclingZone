@@ -150,7 +150,7 @@ for (const vp of VIEWPORTS) {
     await login(page);
     await page.goto("/academy");
     if (state.name === "not-pulled") {
-      await page.getByText(/Scout this week's intake/i).first().waitFor();
+      await page.getByText(/Bring in this week's intake/i).first().waitFor();
     } else {
       await page.getByText(/Emil Kristiansen/i).first().waitFor();
     }

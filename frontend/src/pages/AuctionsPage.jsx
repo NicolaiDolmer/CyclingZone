@@ -484,7 +484,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                    are secondary sm, never gold in rows"). Byd stod i guld i hver
                    eneste raekke, saa guld ikke laengere betoed noget paa siden
                    (audit 2026-09). Status-tilstandene er uaendrede. */
-                className={`px-3 py-1.5 rounded-cz text-xs font-bold transition-colors duration-150 whitespace-nowrap
+                className={`px-3 py-1.5 rounded-cz text-xs font-semibold transition-colors duration-150 whitespace-nowrap
                   ${bidStatus === "error"   ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                     "bg-transparent text-cz-1 border border-cz-border hover:border-cz-3"}
@@ -512,7 +512,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, seniorCount
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label={t("auctions:bid.proxy.set")}
-                  className="inline-flex min-h-[28px] items-center justify-center rounded-cz border border-cz-border bg-transparent px-2 py-1 text-3xs font-bold text-cz-2 hover:border-cz-3 hover:text-cz-1 whitespace-nowrap"
+                  className="inline-flex items-center justify-center rounded-cz border border-cz-border bg-transparent px-3 py-1.5 text-xs font-semibold text-cz-1 hover:border-cz-3 whitespace-nowrap"
                 >
                   {t("auctions:bid.proxy.buttonAdd")}
                 </button>
@@ -826,7 +826,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 aria-label={imWinning ? t("auctions:bid.buttonRaiseAria") : t("auctions:bid.buttonPlaceAria")}
                 /* #4628: samme guld-rationering som i tabelraekken — ét kort pr.
                    auktion betyder ellers N guld-knapper paa mobil-skaermen. */
-                className={`min-h-[44px] px-4 py-2 rounded-cz text-sm font-bold transition-colors duration-150 whitespace-nowrap
+                className={`min-h-[44px] px-3 py-2 rounded-cz text-xs font-semibold transition-colors duration-150 whitespace-nowrap
                   ${bidStatus === "error" ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30" :
                     bidStatus === "success" ? "bg-cz-success-bg text-cz-success border border-cz-success/30" :
                     "bg-transparent text-cz-1 border border-cz-border hover:border-cz-3"}
@@ -860,7 +860,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, seniorCoun
                 <button
                   onClick={() => setProxyExpanded(true)}
                   aria-label={t("auctions:bid.proxy.set")}
-                  className="min-h-[44px] rounded-cz border border-cz-border bg-transparent px-3 text-xs font-bold text-cz-2 hover:border-cz-3 hover:text-cz-1 whitespace-nowrap"
+                  className="min-h-[44px] rounded-cz border border-cz-border bg-transparent px-3 text-xs font-semibold text-cz-1 hover:border-cz-3 whitespace-nowrap"
                 >
                   {t("auctions:bid.proxy.buttonAddCard")}
                 </button>

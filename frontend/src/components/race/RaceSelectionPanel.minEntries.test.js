@@ -18,7 +18,7 @@ test("#4295 panelet afleder linjen af den DELTE regel, ikke af sin egen tælling
   // To flader der hver regner selv ender med at sige hver sit om samme løb. Reglen
   // ligger i partialSquadOutlook; begge flader kalder den.
   assert.match(panel, /import \{[^}]*partialSquadOutlook[^}]*\} from "\.\.\/\.\.\/lib\/raceSelectionLogic\.js";/);
-  assert.match(column, /import \{ partialSquadOutlook \} from "\.\.\/\.\.\/lib\/raceSelectionLogic\.js";/);
+  assert.match(column, /import \{ partialSquadOutlook, MIN_RACE_ENTRIES \} from "\.\.\/\.\.\/lib\/raceSelectionLogic\.js";/);
 });
 
 test("#4295 panelet fodrer reglen med ryttere der er frie til NETOP dette løb", () => {
@@ -31,7 +31,9 @@ test("#4295 panelet fodrer reglen med ryttere der er frie til NETOP dette løb",
   );
   assert.match(
     panel,
-    /partialSquadOutlook\(\{\s*selected: sel\.riderIds\.length, free: freeLeft, fieldMax: size\.max,\s*\}\)/,
+    // #6740: en skadet udtaget rytter tæller ikke med (motoren fjerner ham ved start),
+    // men holder holdet i løbet (regel B), så antallet skadede sendes med.
+    /partialSquadOutlook\(\{\s*selected: fitSelected, injured: selectedRiders\.length - fitSelected, free: freeLeft, fieldMax: size\.max,\s*\}\)/,
   );
   // #4917: panelets EGEN `raceLive` (stages_completed > 0) er fjernet — panelet
   // mountes kun for løbssidens "before"-fase (racePhase), som kræver stages_completed
@@ -48,10 +50,10 @@ test("#4295 panelet viser konsekvensen som en linje i panelet, aldrig som en toa
   assert.match(panel, /data-outlook=\{outlook\.kind\}/, "linjen bærer hvilken af de tre sætninger der vises");
   assert.match(
     panel,
-    /outlook\.kind === "willNotStart" \? "text-cz-warning" : "text-cz-3"/,
+    /\(outlook\.kind === "willNotStart" \|\| outlook\.kind === "startsShort"\) \? "text-cz-warning" : "text-cz-3"/,
     "konsekvens er text-cz-warning (ikke text-cz-danger: en delvis trup er stadig lovlig at gemme)",
   );
-  assert.match(panel, /t\(`selection\.\$\{outlook\.kind === "willNotStart"/);
+  assert.match(panel, /t\(`selection\.\$\{outlook\.kind === "startsShort" \? "startsShort" : outlook\.kind === "willNotStart"/);
 });
 
 // #4295 opfølgning (blokerende fund #4301, målt 27/8): 195 af 226 hold har nul

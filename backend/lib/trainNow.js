@@ -41,6 +41,11 @@ import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
+import { MIN_RACE_ENTRIES } from "./raceAutopick.js"; // #6740
+import { isRiderInjured, raceSquadOf } from "./riderEligibility.js"; // #6740
+import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
+import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
+import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
@@ -99,7 +104,7 @@ async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
  * button can name the race selection a press locks. Decoration only: a failed read
  * gives an empty list, never a failed status.
  */
-export async function loadTodayRacesForTeam({ supabase, team, tickDate }) {
+export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict = false }) {
   try {
     const { start, end } = trainingDateBounds(tickDate);
     const stages = await checked(supabase.from("race_stage_schedule").select("race_id")
@@ -114,11 +119,101 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate }) {
         && race.league_division_id === teamPoolIdForSquad(team, race.squad ?? "senior"))
       .map((race) => ({ id: race.id, name: race.name ?? null }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  } catch {
-    // best-effort: the race names only decorate the button line; a failed read must
-    // never fail the status (the press itself does not depend on it).
+  } catch (err) {
+    // best-effort for the GET: the race names only decorate the button line, a failed
+    // read must never fail the status. `strict` (#6740, the press's re-check) fails closed.
+    if (strict) throw err;
     return [];
   }
+}
+
+/**
+ * PURE (#6740): today's races where a press leaves the team below the start floor.
+ * After a press every rider is locked, so nobody can be added and the assistant
+ * cannot top up (raceRunner skips locked riders). The team then starts with its
+ * fit entered riders only. Started, withdrawn and cleared races are not warned about.
+ * Rule B (#6740, owner 16/10): when the team had the floor and only injuries took it
+ * below, it still starts with its fit riders (at least 1): `startsShort` says so.
+ */
+export function trainNowShortRaces({ races, entries, injuredIds = new Set(), withdrawnIds = new Set(), clearedIds = new Set(), min = MIN_RACE_ENTRIES }) {
+  const out = [];
+  for (const race of races ?? []) {
+    if ((Number(race.stages_completed) || 0) > 0 || race.status === "completed") continue;
+    if (withdrawnIds.has(race.id) || clearedIds.has(race.id)) continue;
+    const raceEntries = (entries ?? []).filter((e) => e.race_id === race.id);
+    const fit = raceEntries.filter((e) => !injuredIds.has(e.rider_id)).length;
+    // `entered` skelner "ingen udtaget" fra "udtaget, men skadet" i advarslens tekst.
+    if (fit >= min) continue;
+    const entered = raceEntries.length;
+    out.push({ id: race.id, name: race.name ?? null, fit, entered, min, startsShort: entered >= min && fit >= 1 });
+  }
+  return out;
+}
+
+/**
+ * #6740: the warning under the button. Best-effort for the GET: a failed read gives no
+ * warning, never a failed status. `strict` is the press's re-check: it fails closed
+ * (throws), so a press never writes locks without an established list (review #6742).
+ */
+export async function loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate, strict = false }) {
+  try {
+    const raceIds = (todayRaces ?? []).map((r) => r.id);
+    if (!raceIds.length) return [];
+    const [races, withdrawnIds, cleared] = await Promise.all([
+      checked(supabase.from("races").select("id, name, stages_completed, status, squad").in("id", raceIds), "short races"),
+      loadWithdrawnRaceIdsForTeam({ supabase, teamId: team.id, raceIds }),
+      checked(supabase.from("race_entry_clears").select("race_id").eq("team_id", team.id).in("race_id", raceIds), "short race clears"),
+    ]);
+    // Only entries the engine would keep: loadEntrantsForRace drops ghosts (sold, retired,
+    // academy, other squad) before the floor, so a stale 6/6 must not hide the warning.
+    // Grouped per squad, the same shared loader and filter as the engine (review #6742).
+    const idsBySquad = new Map();
+    for (const race of races ?? []) {
+      const squad = raceSquadOf(race);
+      if (!idsBySquad.has(squad)) idsBySquad.set(squad, []);
+      idsBySquad.get(squad).push(race.id);
+    }
+    const entries = (await Promise.all([...idsBySquad].map(async ([squad, ids]) => {
+      const { data, error } = await loadEligibleEntries({
+        supabase, squad,
+        // pagination-safe: one team's entries in today's races (a few squads of ≤ 9).
+        baseQuery: () => supabase.from("race_entries").select("race_id, rider_id, team_id").eq("team_id", team.id).in("race_id", ids),
+      });
+      if (error) throw new Error(`short race entries: ${error.message ?? error}`);
+      return data ?? [];
+    }))).flat();
+    // A rider who already rode this race day in another race is removed by the engine
+    // before the floor (loadSpentRaceDays, raceRunner #5860); he is not one of the 6.
+    const spentPairs = new Set();
+    for (const raceId of [...new Set(entries.map((e) => e.race_id))]) {
+      const ids = entries.filter((e) => e.race_id === raceId).map((e) => e.rider_id);
+      for (const row of await loadSpentRaceDays({ supabase, raceId, riderIds: ids })) spentPairs.add(`${raceId}:${row.rider_id}`);
+    }
+    const keptEntries = entries.filter((e) => !spentPairs.has(`${e.race_id}:${e.rider_id}`));
+    const riderIds = [...new Set(keptEntries.map((e) => e.rider_id))];
+    const conditions = riderIds.length
+      ? await checked(supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", riderIds), "short race injuries")
+      : [];
+    const injuredIds = new Set((conditions ?? []).filter((c) => isRiderInjured(c.injured_until ?? null, tickDate)).map((c) => c.rider_id));
+    return trainNowShortRaces({
+      races: races ?? [], entries: keptEntries, injuredIds, withdrawnIds,
+      clearedIds: new Set((cleared ?? []).map((c) => c.race_id)),
+    }).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  } catch (err) {
+    // best-effort for the GET: the warning only decorates the button; a failed read
+    // must never fail the status. The press's re-check (`strict`) fails closed.
+    if (strict) throw err;
+    return [];
+  }
+}
+
+/**
+ * #6740: the press's re-check. Strict: a failed read throws before any lock is written,
+ * and the route answers 500 train_now_failed (logged). Never fail open here (review #6742).
+ */
+async function defaultLoadShortRaces({ supabase, team, tickDate }) {
+  const todayRaces = await loadTodayRacesForTeam({ supabase, team, tickDate, strict: true });
+  return loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate, strict: true });
 }
 
 /**
@@ -143,7 +238,9 @@ export async function loadTrainNowStatus({ supabase, team, seasonId, isBetaTeste
   const lockedAt = locked ? locks.map((row) => row.pressed_at).filter(Boolean).sort()[0] ?? null : null;
   const settled = SETTLED_STATUSES.has(work?.status);
   const reason = settled ? "date_settled" : locked ? "locked" : earlierOpen ? "previous_date_open" : null;
-  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces };
+  // #6740: only while the press is still possible; afterwards there is nothing to warn about.
+  const shortRaces = reason === null ? await loadTrainNowShortRaces({ supabase, team, todayRaces, tickDate }) : [];
+  return { ...enabled, available: reason === null, reason, locked, lockedAt, settled, todayRaces, shortRaces };
 }
 
 /**
@@ -156,6 +253,11 @@ export async function runTrainNow({
   loadContext = loadTrainingDateContext,
   registerWork = registerTrainingDateWork,
   loadDaySpans,
+  // #6740 (review #6742): the warning is re-checked HERE on every first press, not only
+  // on the page's GET. `confirmedShortRaceIds` is the page's explicit yes, bound to the
+  // races it showed: a race that fell below the floor since then is asked about again.
+  confirmedShortRaceIds = [],
+  loadShortRaces = defaultLoadShortRaces,
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
@@ -171,6 +273,18 @@ export async function runTrainNow({
   }
   if (await hasOpenEarlierDate({ supabase, teamId: team.id, seasonId: season.id, tickDate })) {
     return { status: 409, body: { error: "previous_date_open", tickDate } };
+  }
+
+  // #6740: a first press with a race below the floor needs the explicit yes for exactly
+  // the races below the floor NOW. A repeated press (locks already written) decides
+  // nothing new and is never asked again.
+  const existingLocks = await loadTeamTrainNowLocks({ supabase, teamId: team.id, tickDate });
+  if (!existingLocks.length) {
+    const shortRaces = await loadShortRaces({ supabase, team, tickDate });
+    const confirmed = new Set(Array.isArray(confirmedShortRaceIds) ? confirmedShortRaceIds : []);
+    if (shortRaces.some((race) => !confirmed.has(race.id))) {
+      return { status: 409, body: { error: "short_races_confirm", tickDate, shortRaces } };
+    }
   }
 
   const context = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });

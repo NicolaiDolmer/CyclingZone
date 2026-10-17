@@ -1,4 +1,4 @@
-# Slice S-M2c · Årsmødet (fuldskærm) — slice-spec
+# Slice S-M2c · Årsmødet (indholdsbredt, inde i Layout) — slice-spec
 
 **Status:** UDKAST 2/9-2026, afventer ejer-svar på spørgsmålene i §9 FØR byg. Skrevet mod mockup `docs/design/board-mandate-mockups/AnnualMeeting.dc.html` (ejer-godkendt 1/9).
 **Grundlag:** [Spec 7/8](../superpowers/specs/2026-08-07-board-mandate-rework-design.md) §3.2 + §3.1 · [Addendum 1/9](../superpowers/specs/2026-09-01-board-mandate-addendum-personer-med-stemme.md) (A7, stemme-kontrakten punkt 4: `meeting_easier`/`meeting_keep`/`meeting_stretch`) · [MASTER](09-board-mandate-rework-MASTER.md) S-M2c · [PAGE_TEMPLATES](../design/PAGE_TEMPLATES.md) · [TASTE](../design/TASTE.md).
@@ -6,7 +6,7 @@
 
 ## 1. Mål
 
-Ét fuldskærms-møde pr. sæsonskifte, hvor bestyrelsen foreslår mandatet og manageren justerer, beder om én ting og underskriver. Hurtigste vej er to klik: "Enter annual meeting" → "Sign mandate". Mødet erstatter wizarden (3 trin + kø), "Forny plan"-knappen og den sekventielle 5→3→1-onboarding for alle hold bag flaget. Nordstjerne fra MASTER: hver bevægelse har en kvittering, forhandling er en dialog med modtilbud, alt kan nås på ≤2 klik.
+Ét møde pr. sæsonskifte (indholdsbredt, inde i Layout — venstremenuen bliver, #5848), hvor bestyrelsen foreslår mandatet og manageren justerer, beder om én ting og underskriver. Hurtigste vej er to klik: "Enter annual meeting" → "Sign mandate". Mødet erstatter wizarden (3 trin + kø), "Forny plan"-knappen og den sekventielle 5→3→1-onboarding for alle hold bag flaget. Nordstjerne fra MASTER: hver bevægelse har en kvittering, forhandling er en dialog med modtilbud, alt kan nås på ≤2 klik.
 
 ## 2. Runtime-evidens (læst 2/9)
 
@@ -72,9 +72,9 @@ Serveren: validerer justerings-budget, bygger de endelige mål (`finalizeMandate
 
 Weekend-, sæson-slut- og konsekvens-motoren evaluerer stadig `board_profiles` (1yr). Ved underskrift skrives derfor OGSÅ `board_profiles` 1yr-rækken som `/board/sign` gør i dag (`current_goals` = mandatets mål, `negotiation_status = completed`, plan-vindue = sæsonen), så motoren og kvitterings-events (goal_states, #4578) fortsætter uændret. Fjernes i S-M2d-flippets oprydning når `BoardPage.jsx` slettes (spec §3.6). 3yr/5yr-planer røres ikke (de er visionen nu).
 
-### 4.7 Frontend (per mockup, T1-header + fuldskærms-bånd)
+### 4.7 Frontend (per mockup, T1-header + indholdsbredt bånd inde i Layout)
 
-- Rute `/board/meeting` (lazy, `board`-ns). Adgang: kun når `GET /board/meeting` svarer `{ available: true }`; ellers redirect til `/board`.
+- Rute `/board/meeting` (lazy, `board`-ns). Adgang: kun når `GET /board/meeting` svarer `{ available: true }`; ellers redirect til `/board`. **Layout-kontrakt (#5848, ændrer den oprindelige fuldskærms-takeover):** ruten ligger INDE i `Layout`, så venstremenuen på desktop og mobil-header + bundnavigation på mobil bliver. Båndet er full-bleed i indholdsområdet (`FULL_BLEED_PREFIXES` i `Layout.jsx`), ikke over hele skærmen. Der er ikke længere en fullscreen-undtagelse; mobilen skal have bund-clearance til den faste navigation.
 - Layout: navy bånd (titel "ANNUAL MEETING · SEASON N" i Bebas, undertitel, højre: "Confidence X · Y adjustments available" + "Unanswered mandates sign automatically in N days"), trin-strip 1 Focus / 2 Mandate / 3 Request / 4 Sign, 896px indholdsspor, kort med hairline-borders, 5px radius, pille-knapper til Easier/Keep/Stretch, én gold-knap ("Sign mandate") i footeren, "Back" sekundær. Fokus-trinnet = samme fokus-valg som legacy (eksisterende `focus.*`-i18n), default forvalgt så trin 1 kan springes over.
 - Boardroom-header: gold-CTA "Enter annual meeting" vises KUN når `available` (ellers ingen knap, ikke en deaktiveret).
 - Mobil (S-M2d): stakkes, lodrette modtilbud, fuld-bredde gold-CTA — kun forberedt her (ingen mobil-tuning i denne slice, men ingen fast bredde i markup).
