@@ -107,7 +107,7 @@ function parseBranches(body) {
 function pluralCategory(value, language) {
   try {
     if (language) return new Intl.PluralRules(language).select(Number(value));
-  } catch { /* ugyldig locale: fald tilbage */ }
+  } catch { /* best-effort: ugyldig locale falder tilbage til en/da-reglen */ }
   return Number(value) === 1 ? "one" : "other";
 }
 

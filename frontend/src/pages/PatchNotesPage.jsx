@@ -6,6 +6,7 @@ import {
 } from "../lib/patchNotes.js";
 import { loadAnonymousFlags } from "../lib/featureStage.ts";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
 import {
   PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader, Segmented, Toggle,
   SearchIcon, ChevronDownIcon, ChevronRightIcon,
@@ -53,7 +54,7 @@ export default function PatchNotesPage() {
     title: ready ? t("meta.title") : undefined,
     description: ready ? t("meta.description") : undefined,
     canonical: "https://cyclingzone.org/patch-notes",
-    lang,
+    lang: documentLang(i18n.language),
   });
 
   const [query, setQuery] = useState("");
