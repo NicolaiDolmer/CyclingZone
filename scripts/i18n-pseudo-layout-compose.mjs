@@ -6,7 +6,8 @@
 // <mappe> er en `i18n-pseudo-layout.mjs --out X --label L`-koersel (X/L med
 // findings.json og skaermbillederne). Hver case klipper samme udsnit af siden
 // foer og efter. Roede rammer = nye fund i foer-koerslen, ravgule = fund der
-// stadig staar i efter-koerslen; ingen ramme paa efter-siden = rettet.
+// stadig staar i efter-koerslen. Efter-maerket (rettet/rest/ikke målt) afledes
+// af efter-koerslens egne maalinger, ikke af at der "ingen ramme" er (#6816).
 //
 // Billederne laeses som data-URI'er og males af Chromium (Playwright fra
 // frontend/node_modules). Ingen server, ingen netvaerk, ingen efterladt proces.
@@ -15,6 +16,8 @@ import { createRequire } from "node:module";
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { afterStatus, bottomNavIssues } from "./i18n-pseudo-layout.lib.mjs";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const req = createRequire(join(REPO_ROOT, "frontend", "package.json"));
@@ -39,7 +42,7 @@ const after = load(afterDir);
 // Hver case: side + viewport, et udvalg af foer-fund (`pick`) der afgraenser
 // udsnittet, eller et fast udsnit (`fixed`). `shot` vaelger viewport-billedet.
 const CASES = [
-  { title: "Bundnavigation 375: label klippes i venstre kant", page: "dashboard", viewport: "mobile", shot: "-viewport", fixed: { x: 0, y: 740, w: 375, h: 72 }, mark: [{ x: 0, y: 756, w: 75, h: 56 }] },
+  { title: "Bundnavigation 375: label klippes i venstre kant", page: "dashboard", viewport: "mobile", shot: "-viewport", nav: true, fixed: { x: 0, y: 740, w: 375, h: 72 }, mark: [{ x: 0, y: 756, w: 75, h: 56 }] },
   { title: "Rangliste 375: holdnavn knuses til ét tegn pr. linje", page: "standings", viewport: "mobile", pick: (f) => f.kind === "wrap-control", pad: 60, cropX: [0, 375] },
   { title: "Rytterdatabase 375: Potential-kolonnen skubbes ud af kanten", page: "riders", viewport: "mobile", pick: (f) => f.kind === "clipped-by-ancestor", pad: 60, cropX: [0, 375] },
   { title: "Mit hold 375: Salary-kolonnen klippes", page: "team", viewport: "mobile", pick: (f) => f.kind === "clipped-by-ancestor", pad: 60, cropX: [0, 375] },
@@ -60,6 +63,12 @@ function unionRect(rects, pad) {
   return { x: Math.max(0, x0 - pad), y: Math.max(0, y0 - pad), w: x1 - x0 + 2 * pad, h: y1 - y0 + 2 * pad };
 }
 
+const STATUS_TAG = {
+  fixed: { cls: "a", text: "rettet" },
+  rest: { cls: "w", text: "rest" },
+  unknown: { cls: "u", text: "ikke målt" },
+};
+
 const blocks = [];
 for (const c of CASES) {
   const b = findingsOf(before, c);
@@ -73,7 +82,16 @@ for (const c of CASES) {
   let region = c.fixed;
   let beforeMarks = c.mark ?? [];
   let afterMarks = [];
-  if (c.pick) {
+  let status;
+  if (c.nav) {
+    // Bundnavigationen har ingen fund i `new`; Efter-status kommer fra efter-
+    // koerslens egne navigationsmaalinger (#6816), aldrig fra at der "intet er".
+    const bIssues = bottomNavIssues(b.bottomNav).filter((n) => n.rect);
+    if (bIssues.length > 0) beforeMarks = bIssues.map((n) => n.rect);
+    const aIssues = bottomNavIssues(a.bottomNav);
+    afterMarks = aIssues.filter((n) => n.rect).map((n) => n.rect);
+    status = afterStatus({ ok: a.ok, measured: (a.bottomNav ?? []).length > 0, remaining: aIssues.length });
+  } else if (c.pick) {
     const hits = b.new.filter(c.pick);
     if (hits.length === 0) continue;
     const capped = hits.slice(0, 12);
@@ -83,12 +101,14 @@ for (const c of CASES) {
       region.w = c.cropX[1] - c.cropX[0];
     }
     beforeMarks = capped.map((f) => f.rect);
-    afterMarks = a.new.filter(c.pick).slice(0, 12).map((f) => f.rect);
+    const remaining = a.new.filter(c.pick);
+    afterMarks = remaining.slice(0, 12).map((f) => f.rect);
+    status = afterStatus({ ok: a.ok, measured: true, remaining: remaining.length });
   }
   // Maksimalt 900px lodret udsnit, saa kortet ikke bliver uendeligt langt.
   region.h = Math.min(region.h, 900);
   const scale = Math.min(2, Math.max(0.5, 640 / region.w));
-  blocks.push({ c, region, scale, beforeMarks, afterMarks, bImg: dataUri(bFile), aImg: dataUri(aFile), afterOk: afterMarks.length === 0 });
+  blocks.push({ c, region, scale, beforeMarks, afterMarks, bImg: dataUri(bFile), aImg: dataUri(aFile), status });
 }
 
 if (blocks.length === 0) throw new Error("ingen cases kunne bygges (mangler billeder eller fund)");
@@ -108,17 +128,17 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   .row{display:flex;gap:18px;align-items:flex-start}
   .col{flex:1;min-width:0}
   .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:3px;margin-bottom:6px}
-  .tag.b{background:#fbe3e0;color:#a4261b}.tag.a{background:#e0f0e1;color:#1d6a2a}.tag.w{background:#fbefd3;color:#8a5a00}
+  .tag.b{background:#fbe3e0;color:#a4261b}.tag.a{background:#e0f0e1;color:#1d6a2a}.tag.w{background:#fbefd3;color:#8a5a00}.tag.u{background:#e6e6e6;color:#444}
   .pane{position:relative;overflow:hidden;border:1px solid #cfcabd;background:#fff}
   .box{position:absolute;border:2px solid;box-sizing:border-box;border-radius:2px}
 </style></head><body>
 <h1>Layout i pseudo-locale en-XA (+30 % tegn): foer og efter</h1>
-<p class="sub">Roed ramme = nyt klip/overloeb fundet i foer-koerslen. Ingen ramme efter = rettet. Skaermbillederne er maalt mod Playwright-mocks, ikke prod-data.</p>
+<p class="sub">Roed ramme = nyt klip/overloeb fundet i foer-koerslen. Efter-maerket er afledt af efter-koerslens egne maalinger: rettet = maalt og intet tilbage, rest = fund staar stadig, ikke målt = efter-koerslen kan ikke dokumentere det. Skaermbillederne er maalt mod Playwright-mocks, ikke prod-data.</p>
 ${blocks
   .map(
     (k) => `<div class="case"><h2>${k.c.title}</h2><div class="row">
   <div class="col"><span class="tag b">Foer</span>${pane(k.bImg, k.region, k.scale, k.beforeMarks, "#d6342a")}</div>
-  <div class="col"><span class="tag ${k.afterOk ? "a" : "w"}">Efter${k.afterOk ? " · rettet" : " · rest"}</span>${pane(k.aImg, k.region, k.scale, k.afterMarks, "#d98b00")}</div>
+  <div class="col"><span class="tag ${STATUS_TAG[k.status].cls}">Efter · ${STATUS_TAG[k.status].text}</span>${pane(k.aImg, k.region, k.scale, k.afterMarks, "#d98b00")}</div>
 </div></div>`,
   )
   .join("\n")}

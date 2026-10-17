@@ -7,7 +7,43 @@
 //   2. Rene hjaelpere (nøgle-normalisering, diff mod baseline, markdown) som
 //      testes med `node --test scripts/i18n-pseudo-layout.test.mjs`.
 
+import { createHash } from "node:crypto";
+
 export const SEVERITY_ORDER = { high: 0, medium: 1, low: 2, info: 3 };
+
+/**
+ * Antal visuelle linjer ud fra tekstnoders linjerektangler (Range.getClientRects).
+ * Rektangler hvis lodrette midte ligger inden for den aktuelle linje hoerer til
+ * den; ellers starter en ny linje. Taeller dermed hvad teksten faktisk fylder,
+ * ikke hoejden paa kontrollen rundt om (#6816).
+ *
+ * VIGTIGT: `measureLayout` har en ordret kopi (den koerer i browseren og kan
+ * ikke importere). Testen "measureLayout indeholder lineCountFromRects" holder
+ * de to ens. Ret begge steder, og ingen kommentarer inde i funktionen.
+ *
+ * @param {ArrayLike<{ top: number, bottom: number, width: number, height: number }>} rects
+ */
+export function lineCountFromRects(rects) {
+  const boxes = Array.from(rects)
+    .filter((r) => r.width >= 1 && r.height >= 1)
+    .map((r) => ({ top: r.top, bottom: r.bottom }))
+    .sort((a, b) => a.top - b.top || a.bottom - b.bottom);
+  let lines = 0;
+  let lineTop = 0;
+  let lineBottom = 0;
+  for (const box of boxes) {
+    const mid = (box.top + box.bottom) / 2;
+    if (lines > 0 && mid >= lineTop && mid <= lineBottom) {
+      lineTop = Math.min(lineTop, box.top);
+      lineBottom = Math.max(lineBottom, box.bottom);
+    } else {
+      lines += 1;
+      lineTop = box.top;
+      lineBottom = box.bottom;
+    }
+  }
+  return lines;
+}
 
 export const KIND_LABELS = {
   "page-overflow": "Siden kan scrolles vandret",
@@ -112,12 +148,60 @@ export function measureLayout(opts = {}) {
   const isControl = (el) =>
     el.matches(INTERACTIVE_SEL) || PILL_RE.test(el.getAttribute("class") || "") || el.getAttribute("data-slot") === "badge";
 
-  const linesOf = (el, style) => {
-    const lh = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.25;
-    const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
-    const inner = el.getBoundingClientRect().height - padY;
-    return Math.max(1, Math.round(inner / lh));
+  // Ordret kopi af `lineCountFromRects` ovenfor (browseren kan ikke importere).
+  function lineCountFromRects(rects) {
+    const boxes = Array.from(rects)
+      .filter((r) => r.width >= 1 && r.height >= 1)
+      .map((r) => ({ top: r.top, bottom: r.bottom }))
+      .sort((a, b) => a.top - b.top || a.bottom - b.bottom);
+    let lines = 0;
+    let lineTop = 0;
+    let lineBottom = 0;
+    for (const box of boxes) {
+      const mid = (box.top + box.bottom) / 2;
+      if (lines > 0 && mid >= lineTop && mid <= lineBottom) {
+        lineTop = Math.min(lineTop, box.top);
+        lineBottom = Math.max(lineBottom, box.bottom);
+      } else {
+        lines += 1;
+        lineTop = box.top;
+        lineBottom = box.bottom;
+      }
+    }
+    return lines;
+  }
+
+  // Tekstnodernes egne linjerektangler under `el`. Skjulte/sr-only forfaedre
+  // (display:none, visibility:hidden, boks <= 1px) taeller ikke med.
+  const textRects = (el) => {
+    const rects = [];
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+    while (node) {
+      if (node.textContent.trim()) {
+        let hidden = false;
+        for (let p = node.parentElement; p && p !== el.parentElement; p = p.parentElement) {
+          const pr = p.getBoundingClientRect();
+          const ps = cs(p);
+          if (pr.width <= 1 || pr.height <= 1 || ps.display === "none" || ps.visibility === "hidden") {
+            hidden = true;
+            break;
+          }
+        }
+        if (!hidden) {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          for (const r of range.getClientRects()) rects.push(r);
+        }
+      }
+      node = walker.nextNode();
+    }
+    return rects;
   };
+
+  // Linjer = hvad teksten faktisk fylder, ikke kontrollens hoejde (#6816): en
+  // fast/minimal hoejde eller et ikon over teksten taeller ikke som ombrydning.
+  const linesOf = (el) => Math.max(1, lineCountFromRects(textRects(el)));
 
   // 1) Hele siden
   if (docEl.scrollWidth > vw + 1) {
@@ -181,7 +265,7 @@ export function measureLayout(opts = {}) {
 
     // 5) Knap/fane/badge der ombrydes
     if (control && (ownT || el.children.length <= 3) && style.display !== "inline" && style.whiteSpace !== "nowrap") {
-      const lines = linesOf(el, style);
+      const lines = linesOf(el);
       if (lines >= 2) {
         add("wrap-control", lines >= 3 ? "high" : "medium", el, `${lines} linjer`, { lines, control });
       }
@@ -237,10 +321,11 @@ export function measureLayout(opts = {}) {
       bottomNav.push({
         label: fullText(label),
         tabWidth: Math.round(lr.width),
+        rect: { x: Math.round(lr.x), y: Math.round(lr.y), w: Math.round(lr.width), h: Math.round(lr.height) },
         labelBox: Math.round(avail),
         textWidth: Math.round(textW),
         scrollWidth: label.scrollWidth,
-        lines: linesOf(label, ls),
+        lines: linesOf(label),
         ellipsis: ls.textOverflow === "ellipsis" && label.scrollWidth > label.clientWidth + 1,
         clipped: label.scrollWidth > label.clientWidth + 1,
       });
@@ -289,6 +374,46 @@ export function sortFindings(list) {
 /** Bundnavigation: hvor taet er hver fane paa at klippe? headroom = ledig plads i px. */
 export function navHeadroom(row) {
   return row.labelBox - row.textWidth;
+}
+
+/**
+ * Faner i bundnavigationen der stadig har et problem: label klippet/afkortet,
+ * ombrudt til 2+ linjer, eller bredere end fanens indre plads (#6816).
+ */
+export function bottomNavIssues(rows) {
+  return (rows ?? []).filter((r) => r.clipped || r.ellipsis || r.lines >= 2 || navHeadroom(r) < 0);
+}
+
+/**
+ * Efter-status i foer/efter-kortet, afledt af efter-koerslens egne maalinger:
+ *   "unknown" = koerslen fejlede eller maalte ikke noget (kan ikke kaldes rettet)
+ *   "rest"    = der staar stadig fund/faner med problemer
+ *   "fixed"   = maalt, og intet tilbage
+ *
+ * @param {{ ok?: boolean, measured: boolean, remaining: number }} input
+ */
+export function afterStatus({ ok, measured, remaining }) {
+  if (ok === false || !measured) return "unknown";
+  return remaining > 0 ? "rest" : "fixed";
+}
+
+/**
+ * Byg-maerke for frontend/dist: HEAD-commit + hash af lokale aendringer i
+ * frontend/ + base-URL'en der er bagt ind i buildet. Aendres noget af det, er
+ * en gammel dist ikke laengere det der skal maales (#6816).
+ * Returnerer null uden HEAD, saa kalderen altid bygger om.
+ */
+export function computeBuildStamp({ head, status = "", diff = "", base = "" }) {
+  const sha = String(head ?? "").trim();
+  if (!sha) return null;
+  const dirty = `${status}\n${diff}`.trim();
+  const dirtyHash = dirty ? createHash("sha1").update(dirty).digest("hex").slice(0, 12) : "clean";
+  return `${sha}|${dirtyHash}|${base}`;
+}
+
+/** Er det gemte byg-maerke praecis det forventede? Manglende/ulaeseligt = nej. */
+export function isBuildCurrent(stored, expected) {
+  return typeof stored === "string" && typeof expected === "string" && expected !== "" && stored.trim() === expected;
 }
 
 function esc(s) {
