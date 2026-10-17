@@ -196,7 +196,7 @@
     "seasonFinished": "Afgelopen",
     "seasonPoints": "Punten",
     "seasonStageWins": "Etappezeges",
-    "seasonGcWins": "Eindklassementszeges",
+    "seasonGcWins": "Klassementszeges",
     "tabSquad": "Selectie ({count})",
     "tabResults": "Uitslagen",
     "tabPalmares": "Palmarès",
@@ -258,7 +258,7 @@
     "total": "Totaal · {count, plural, one {# uitslag} other {# uitslagen}}",
     "type": {
       "stage": "Etappe",
-      "gc": "Algemeen (eindklassement)",
+      "gc": "Algemeen klassement",
       "oneday": "Eendagsuitslag",
       "points": "Puntenklassement",
       "mountain": "Bergklassement",

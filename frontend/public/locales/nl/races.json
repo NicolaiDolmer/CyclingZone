@@ -518,7 +518,7 @@
     "type": {
       "Klassement": {
         "label": "Algemeen klassement",
-        "desc": "Eindklassementsplaats in etappekoersen"
+        "desc": "Plaats in het algemeen klassement in etappekoersen"
       },
       "Klassiker": {
         "label": "Klassiekers",
@@ -932,7 +932,7 @@
       "legend": "Goud is wat je koos. Grijs is de standaard van de rol, die je met rust liet.",
       "loadError": "Je team voor deze koers kon niet worden geladen.",
       "noRiders": "Je hebt geen renners in deze koers.",
-      "gc": "EK",
+      "gc": "AK",
       "stageShort": "Et {number}",
       "dnf": "DNF",
       "jerseyShortcutNote": "{name} leidt het algemeen klassement maar is niet je kopman.",
@@ -1148,7 +1148,7 @@
       "bonus": "+{count}s"
     },
     "classification": {
-      "gc": "Algemeen (eindklassement)",
+      "gc": "Algemeen klassement",
       "points": "Puntenklassement",
       "mountain": "Bergklassement",
       "young": "Jongerenklassement",
@@ -1314,7 +1314,7 @@
     "why": {
       "title": "Het grotere plaatje",
       "gcTakeover": "{rider} nam de leiding in het klassement over van {previousLeader}.",
-      "finalGc": "Eindklassement: {first}, {second} en {third}.",
+      "finalGc": "Eindstand algemeen klassement: {first}, {second} en {third}.",
       "helperShift": "{captain} eindigde in de top 5 nadat {count} ploeggenoten hun eigen resultaat opgaven om hem te steunen.",
       "favoriteOffDay": "{rider} startte de etappe als sterkste renner op papier maar eindigde buiten de top 15: {reason, select, jour_sans {hij had een slechte dag} incident {een valpartij of materiaalpech kostte hem de dag} helper_work {hij gaf zich helemaal voor een ploeggenoot} other {er kwam geen duidelijke reden naar boven}}.",
       "formPeak": "{rider} kwam in uitstekende vorm aan de start en maakte dat waar."
@@ -1469,7 +1469,7 @@
         },
         "final_gc": {
           "v1": "{rider} wint {race}",
-          "v2": "De eindzege in {race} gaat naar {rider}"
+          "v2": "De klassementszege in {race} gaat naar {rider}"
         }
       },
       "lede": {
@@ -1702,7 +1702,7 @@
     "bestRiders": "Beste renners",
     "bestRidersSub": "Opgeteld over alle edities",
     "noResultsYet": "Nog geen uitslagen",
-    "statGc": "{count} eindklassement",
+    "statGc": "{count} klassement",
     "statStageWins": "{count} etappezeges",
     "statTop3": "{count} top-3",
     "noWins": "Geen zeges",

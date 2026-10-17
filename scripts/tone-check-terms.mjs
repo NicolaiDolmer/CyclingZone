@@ -62,6 +62,11 @@ const EXEMPT_LOCALE_FILES = new Map([
     "frontend/public/locales/da/founder.json",
     "Samme side, dansk. Se linjen ovenfor.",
   ],
+  [
+    "frontend/public/locales/nl/founder.json",
+    "Samme side, hollandsk beta-sprog (#6831). Faithful oversaettelse af den gamle " +
+      "venteliste; lukkes sammen med en/da naar copyen er ejer-godkendt.",
+  ],
 ]);
 
 // Hvert mønster: navn + regex. Regex'erne er bevidst snævre, så et alment ord

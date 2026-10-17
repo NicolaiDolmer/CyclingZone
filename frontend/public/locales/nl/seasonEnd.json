@@ -32,7 +32,7 @@
       "points": "Gelijk op punten. De alfabetische volgorde bepaalt wie bovenaan staat.",
       "wins": "Gelijk op zeges. Punten bepalen de volgorde."
     },
-    "note": "Zeges tellen etappe-, eindklassements-, eendags-, punten-, berg- en jongerenklassementszeges, hetzelfde totaal als de kolom Zeges in de rennersranglijst.",
+    "note": "Zeges tellen etappe-, klassements-, eendags-, punten-, berg- en jongerenklassementszeges, hetzelfde totaal als de kolom Zeges in de rennersranglijst.",
     "noRider": "Nog geen renner.",
     "noTeam": "Geen team",
     "empty": {

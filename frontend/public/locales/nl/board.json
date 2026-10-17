@@ -93,8 +93,8 @@
     "signatureRider": "{count, plural, one {Minstens 1 renner met grote naamsbekendheid} other {Minstens # renners met grote naamsbekendheid}}",
     "stageWins": "{target, plural, one {Minstens 1 koerszege} other {Minstens # koerszeges}}",
     "stageWinsPlanPeriod": "Minstens {target} koerszeges over de planperiode",
-    "gcWins": "{target, plural, one {Minstens 1 eindzege} other {Minstens # eindzeges}}",
-    "gcWinsPlanPeriod": "Minstens {target} eindzeges over de planperiode",
+    "gcWins": "{target, plural, one {Minstens 1 klassementszege} other {Minstens # klassementszeges}}",
+    "gcWinsPlanPeriod": "Minstens {target} klassementszeges over de planperiode",
     "minU25Riders": "Min. {target} U25-renners in het team",
     "minRiders": "Houd minstens {target} renners",
     "sponsorGrowth": "Sponsorinkomsten {target}% hoger",
@@ -136,7 +136,7 @@
     "relative_rank": "Divisieranglijst",
     "top_n_finish": "Divisie-eindstand",
     "stage_wins": "Koerszeges",
-    "gc_wins": "Eindzeges",
+    "gc_wins": "Klassementszeges",
     "sponsor_growth": "Sponsorgroei",
     "domestic_dominance": "Thuisdominantie"
   },
@@ -2028,7 +2028,7 @@
     "counted": {
       "top_n_finish": "je huidige plaats in de divisieranglijst.",
       "stage_wins": "koerszeges, etappezeges en eendagszeges samen.",
-      "gc_wins": "eindzeges in etappekoersen.",
+      "gc_wins": "klassementszeges in etappekoersen.",
       "min_u25_riders": "U25-renners die nu in je team zitten.",
       "min_national_riders": "renners uit het land van het doel die nu in je team zitten.",
       "min_riders": "renners die nu in je team zitten.",

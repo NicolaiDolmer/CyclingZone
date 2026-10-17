@@ -180,7 +180,7 @@
       "firstRaceIntroAt": "Afgerond om {time} terwijl je weg was. Zo ging het.",
       "firstRaceCta": "Lees het hele koersverhaal",
       "firstRaceNext": "Volgende koers: {race}, {count, plural, one {over # dag} other {over # dagen}}",
-      "confettiTitleGc": "Eindklassement gewonnen!",
+      "confettiTitleGc": "Algemeen klassement gewonnen!",
       "confettiTitleRace": "Koers gewonnen!",
       "breakdown": {
         "show": "Uitsplitsing bekijken",
@@ -330,7 +330,7 @@
       "empty": "Uitslagen verschijnen hier na de eerste koersen",
       "emptyCta": "De koerskalender openen",
       "stageWins": "{count, plural, one {1 etappezege} other {# etappezeges}}",
-      "gcWins": "{count} eindklassement",
+      "gcWins": "{count} klassement",
       "classicWins": "{count} klassieker",
       "points": "{points} pnt",
       "aiBadge": "AI"
