@@ -20,8 +20,10 @@
 --   3) oprydning:  drop schema cz_loadtest cascade;  analyze public.race_results;
 --
 -- Raekkefoelgen i hver etape er en deterministisk md5-hash, ikke motor-output. Ingen prod-data.
--- Triggere er slukket i portionen (session_replication_role = replica), som i
--- synthesize-race-results.sql: spent-day-vagten og binding-resync er for live-skrivninger.
+-- Triggere er TAENDT (MCP-rollen maa ikke saette session_replication_role, maalt 17/10):
+-- spent-day-vagten fylder race_day_participation som i prod, statusskiftet genopbygger
+-- race_entry_days, og ranglisten markeres dirty. Ryttere, der allerede har en anden
+-- deltagelse samme game day, udelades, saa vagten aldrig afviser portionen.
 -- Afsluttede loeb faar prize_paid_at (ingen udbetaling sker; markoeren holder praemie-stien vaek).
 
 create schema if not exists cz_loadtest;
@@ -29,11 +31,14 @@ revoke all on schema cz_loadtest from public, anon, authenticated;
 
 create or replace function cz_loadtest.syn_stage(p_race uuid, p_stage int, p_multi boolean)
 returns bigint language plpgsql as $f$
-declare v_rows bigint := 0; v_n bigint;
+declare v_rows bigint := 0; v_n bigint; v_season uuid; v_day int;
 begin
   if exists (select 1 from public.race_results x where x.race_id = p_race and x.stage_number = p_stage) then
     return 0;
   end if;
+  select r.season_id, s.game_day into v_season, v_day
+  from public.races r join public.race_stage_schedule s on s.race_id = r.id
+  where r.id = p_race and s.stage_number = p_stage;
 
   insert into public.race_results (race_id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name,
     finish_time, points_earned, prize_money, entrant_uid, imported_at)
@@ -45,8 +50,14 @@ begin
            row_number() over (partition by ty.result_type
                               order by md5(p_race::text || p_stage || ty.result_type || f.rider_id::text)) as rnk
     -- distinct on rytter: race_results_entrant_unique er pr. (loeb, etape, type, entrant).
+    -- Spent-day-vagten (admit_race_participant) afviser en rytter, der allerede har koert
+    -- et andet loeb samme game day; saadan en rytter udelades her i stedet.
     from (select distinct on (e.rider_id) e.rider_id, e.team_id from public.race_entries e
-          where e.race_id = p_race and e.rider_id is not null order by e.rider_id, e.team_id) f
+          where e.race_id = p_race and e.rider_id is not null
+            and not exists (select 1 from public.race_day_participation p
+                            where p.rider_id = e.rider_id and p.season_id = v_season and p.game_day = v_day
+                              and (p.race_id <> p_race or p.stage_number <> p_stage))
+          order by e.rider_id, e.team_id) f
     join (values ('stage', false), ('gc', false), ('points', false), ('mountain', false), ('young', false),
                  ('points_day', true), ('mountain_day', true), ('young_day', true)) as ty(result_type, multi_only)
       on (not ty.multi_only or p_multi)
@@ -75,7 +86,6 @@ returns jsonb language plpgsql as $f$
 declare
   v_race record; v_stage record; v_rows bigint := 0; v_done int := 0; v_last int; v_remaining bigint;
 begin
-  perform set_config('session_replication_role', 'replica', true);
   perform set_config('statement_timeout', '0', true);
   for v_race in
     select r.id, r.stages, coalesce(r.stages_completed, 0) as done
