@@ -257,6 +257,9 @@ async function measurePage(context, target, mode, vpName) {
       // (fullPage-billedet lægger den midt i siden).
       await page.screenshot({ path: join(OUT, `${target.name}-${vpName}-${mode}-viewport.png`) });
     }
+    if (opts.shots && vpName === "mobile") {
+      await page.addStyleTag({ content: "[data-mobile-quick-nav]{display:none !important}" });
+    }
     if (opts.shots && (mode === "pseudo" || process.env.I18N_PSEUDO_ALL_SHOTS === "1")) {
       await page.screenshot({ path: join(OUT, `${target.name}-${vpName}-${mode}.png`), fullPage: true });
     }

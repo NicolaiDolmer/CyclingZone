@@ -40,13 +40,13 @@ const after = load(afterDir);
 // udsnittet, eller et fast udsnit (`fixed`). `shot` vaelger viewport-billedet.
 const CASES = [
   { title: "Bundnavigation 375: label klippes i venstre kant", page: "dashboard", viewport: "mobile", shot: "-viewport", fixed: { x: 0, y: 740, w: 375, h: 72 }, mark: [{ x: 0, y: 756, w: 75, h: 56 }] },
-  { title: "Rangliste 375: holdnavn knuses til ét tegn pr. linje", page: "standings", viewport: "mobile", pick: (f) => f.kind === "wrap-control", pad: 24 },
-  { title: "Rytterdatabase 375: Potential-kolonnen skubbes ud af kanten", page: "riders", viewport: "mobile", pick: (f) => f.kind === "clipped-by-ancestor", pad: 24 },
-  { title: "Mit hold 375: Salary-kolonnen klippes", page: "team", viewport: "mobile", pick: (f) => f.kind === "clipped-by-ancestor", pad: 24 },
+  { title: "Rangliste 375: holdnavn knuses til ét tegn pr. linje", page: "standings", viewport: "mobile", pick: (f) => f.kind === "wrap-control", pad: 60, cropX: [0, 375] },
+  { title: "Rytterdatabase 375: Potential-kolonnen skubbes ud af kanten", page: "riders", viewport: "mobile", pick: (f) => f.kind === "clipped-by-ancestor", pad: 60, cropX: [0, 375] },
+  { title: "Mit hold 375: Salary-kolonnen klippes", page: "team", viewport: "mobile", pick: (f) => f.kind === "clipped-by-ancestor", pad: 60, cropX: [0, 375] },
   { title: "Formplan 1440: siden kan scrolles vandret", page: "planning-form", viewport: "desktop", pick: (f) => f.kind === "beyond-viewport", pad: 24, cropX: [720, 1440] },
-  { title: "Formplan 375: række-meta presser siden bredere end skærmen", page: "planning-form", viewport: "mobile", pick: (f) => f.kind === "beyond-viewport" && !/nav/.test(f.path), pad: 24 },
+  { title: "Formplan 375: række-meta presser siden bredere end skærmen", page: "planning-form", viewport: "mobile", pick: (f) => f.kind === "beyond-viewport" && !/nav/.test(f.path), pad: 60, cropX: [0, 375] },
   { title: "Rytterprofil 1440: kontraktfeltet klippes", page: "rider-profile", viewport: "desktop", pick: (f) => f.kind === "clipped-by-ancestor", pad: 40 },
-  { title: "Træning 375: oversigtsfelterne afkorter deres label", page: "training", viewport: "mobile", pick: (f) => f.kind === "ellipsis" && /training-overview/.test(f.path), pad: 12, fallbackAny: true },
+  { title: "Træning 375: oversigtsfelterne afkorter deres label", page: "training", viewport: "mobile", pick: (f) => f.kind === "ellipsis" && /training-overview/.test(f.path), pad: 40, cropX: [0, 375] },
 ];
 
 const findingsOf = (run, c) => run.find((r) => r.page === c.page && r.viewport === c.viewport);
