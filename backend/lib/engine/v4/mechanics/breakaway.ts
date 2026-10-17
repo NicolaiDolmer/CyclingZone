@@ -385,12 +385,36 @@ function withS5Reformation(result: SegmentHookResult, ctx: BreakawayHookContext)
   // Indhentningens km: motorens eget breakaway_caught i dette segment, ellers
   // segmentets start (sammenlaegningen skete i slutningen af det forrige).
   const caughtEvent = result.events.find((e) => e.type === "breakaway_caught");
+  // #6748 (KUN s5_profiles_v2): kun en rigtig indhentning giver et nyt udbrud.
+  // Et udbrud der forsvandt uden en (sidste udbryder flyttet af et uheld/split
+  // til en gruppe for sig selv) venter, til feltet faktisk har ham.
+  if (ctx.s5ProfilesV2 === true && !caughtEvent && !s5BreakMergedWithField(result.state, last)) return result;
   const caughtKm = caughtEvent ? Number(caughtEvent.params?.exact_km ?? caughtEvent.km) : ctx.segment.from_km;
   if (!(ctx.route.distance_km > 0) || !Number.isFinite(caughtKm) || caughtKm > ctx.route.distance_km * S5_REFORMATION_TUNING.maxStageFraction) return result;
   const km = round2(Math.min(ctx.segment.to_km, caughtKm + S5_REFORMATION_TUNING.afterCatchKm));
-  const excluded = new Set([...last, ...s5ReformationExcludedRiders(normalizeGcContext(ctx.gcContext), ctx.entrants, S5_REFORMATION_TUNING.excludeGcRankAtMost)]);
+  // #6748 (KUN s5_profiles_v2): paa foerste etape udelukkes feltets bedste paa klassementsevne.
+  const v2Exclusion = ctx.s5ProfilesV2 === true ? { abilityOnFirstStage: true, racingRiderIds: new Set(result.state.groups.flatMap((g) => g.rider_ids)) } : undefined;
+  const excluded = new Set([...last, ...s5ReformationExcludedRiders(normalizeGcContext(ctx.gcContext), ctx.entrants, S5_REFORMATION_TUNING.excludeGcRankAtMost, v2Exclusion)]);
   const formed = attemptFormation(result.state, ctx, flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders)), { excluded, km });
-  return { state: { ...formed.state, breakaway_reformations: used + 1 }, events: [...result.events, ...formed.events] };
+  // #6748 (KUN s5_profiles_v2): det nye udbrud er sin egen formation (raceParticipationHistory.ts).
+  const events = ctx.s5ProfilesV2 === true
+    ? formed.events.map((e) => e.type === "breakaway_formed" && e.params.reformation === true ? { ...e, params: { ...e.params, separate_formation: true } } : e)
+    : formed.events;
+  return { state: { ...formed.state, breakaway_reformations: used + 1 }, events: [...result.events, ...events] };
+}
+
+/**
+ * #6748 (KUN s5_profiles_v2): bevis paa en rigtig indhentning. Mindst én af
+ * udbrudets ryttere der stadig sad i udbruddet (ikke meldt sat af,
+ * `breakaway_dropped_ids`), koerer nu i samme gruppe som en rytter der aldrig
+ * var med i det (`roster`). Et udbrud der blot forsvandt (uheld/split til en
+ * gruppe for sig selv, eller kun med andre udbrydere) er ikke hentet.
+ * Eksporteret for kontrakt-tests.
+ */
+export function s5BreakMergedWithField(state: Pick<EngineState, "groups" | "breakaway_dropped_ids">, roster: readonly string[]): boolean {
+  const inRoster = new Set(roster);
+  const dropped = new Set(state.breakaway_dropped_ids ?? []);
+  return state.groups.some((g) => g.rider_ids.some((id) => inRoster.has(id) && !dropped.has(id)) && g.rider_ids.some((id) => !inRoster.has(id)));
 }
 
 /**
