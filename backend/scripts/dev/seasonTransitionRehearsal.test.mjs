@@ -127,6 +127,10 @@ test("parseArgs: flag, defaults og validering", () => {
   assert.equal(o.fromSeason, 5);
   assert.equal(o.issue, "7000");
   assert.throws(() => parseArgs(["--apply"]), /Ukendt argument/);
+  // #6781: tom --only gav tidligere 0 trin og "Ingen røde trin" med exit 0.
+  assert.throws(() => parseArgs(["--only="]), /mindst ét trin-id/);
+  assert.throws(() => parseArgs(["--only=,  ,"]), /mindst ét trin-id/);
+  assert.throws(() => selectSteps(buildPlan({ fromSeason: 4 }), { prod: false, only: [] }), /mindst ét trin-id/);
   assert.throws(() => parseArgs(["--from=0"]), /positivt heltal/);
   assert.throws(() => parseArgs(["--issue=../x"]), /issue-nummer/);
 });
