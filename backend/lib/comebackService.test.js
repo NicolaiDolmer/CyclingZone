@@ -462,7 +462,7 @@ test("deploy-vinduet: mangler teams.comeback_at, flyttes holdet alligevel", asyn
   const { deps } = makeDeps(supabase);
   const warn = console.warn; console.warn = () => {};
   try {
-    const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+    const result = await returnParkedTeam({ supabase, teamId: TEAM, now: new Date("2026-10-12T08:00:00Z"), deps });
     assert.equal(result.returned, true);
   } finally { console.warn = warn; }
   const team = supabase.state.teams.find((t) => t.id === TEAM);
