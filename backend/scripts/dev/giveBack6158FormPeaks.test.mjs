@@ -642,7 +642,7 @@ test("runApply resumes after an interrupted run: finishes the receipt for rows d
   const supabase = fakeSupabase(db);
   const { plan } = await load(supabase);
   assert.equal(approvedListHash(plan), approvedListHash(buildPlan(fixture())));
-  const res = await runApply({ supabase, plan, seasonId: "S4", ownerGo: true, approvedHash: approvedListHash(plan) });
+  const res = await runApply({ supabase, plan, seasonId: "S4", ownerGo: true, approvedHash: approvedListHash(plan), now: "2026-10-28T08:00:00Z" });
   assert.deepEqual(res, { planned: 2, deleted: 2, alreadyGivenBack: 1, receipted: 3, remainingAfter: 0 });
 });
 
@@ -659,7 +659,7 @@ test("after give-back the rider's quota slot is free again (quota counts rows)",
   const { plan } = await load(supabase);
   const before = db.rider_peak_plans.filter((p) => p.rider_id === uuid(1)).length;
   assert.equal(before, MAX_PEAK_PLANS_PER_SEASON, "rider 1 starts with a full quota");
-  await runApply({ supabase, plan, seasonId: "S4", ownerGo: true, approvedHash: approvedListHash(plan) });
+  await runApply({ supabase, plan, seasonId: "S4", ownerGo: true, approvedHash: approvedListHash(plan), now: "2026-10-28T08:00:00Z" });
   const { canCreatePeakPlan } = await import("../../lib/riderPeakPlans.js");
   const existing = supabase.db.rider_peak_plans.filter((p) => p.rider_id === uuid(1)).map((p) => p.target_race_id);
   assert.deepEqual(canCreatePeakPlan({ existingTargetRaceIds: existing, targetRaceId: "R3" }), { ok: true, reason: null });
