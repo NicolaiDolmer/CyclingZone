@@ -1,6 +1,6 @@
 import { ensureNoError, expectMaybeSingle, expectMutation } from "./marketUtils.js";
 import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
-import { buildKeyedNotification } from "./notificationService.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 
 const NOOP = async () => {};
 const CANCELLABLE_STATUSES = ["active", "extended"];

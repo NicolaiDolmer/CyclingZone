@@ -35,7 +35,7 @@ import {
   getSquadLimits,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
-import { buildKeyedNotification } from "./notificationService.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,

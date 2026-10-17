@@ -19,7 +19,8 @@ import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
-import { buildContractExpiringNotification, buildKeyedNotification } from "./notificationService.js";
+import { buildContractExpiringNotification } from "./notificationService.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 import {
   buildSwapCancelledStaleNotification,
   buildSwapCompletedNotification,

@@ -4,7 +4,7 @@ import {
 } from "./auctionRules.js";
 import { isAuctionExpired, isLateBidTriggerError } from "./auctionEngine.js";
 import { captureException } from "./sentry.js";
-import { buildKeyedNotification } from "./notificationService.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 
 // #6801: "dit autobud er stoppet (for lidt balance)" bruges to steder i cascaden;
 // teksten ligger i backendMessages (notif.autoBidStopped), ikke som dansk streng.

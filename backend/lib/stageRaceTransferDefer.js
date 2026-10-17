@@ -20,7 +20,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
-import { buildKeyedNotification } from "./notificationService.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 
 const NOOP = () => {};
 
