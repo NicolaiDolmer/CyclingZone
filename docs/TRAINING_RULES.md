@@ -513,6 +513,13 @@ et øjebliksbillede af hele bestanden.
 som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
 fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
 
+**Formtoppe i løbsmotor v4 (#6156, `s5_profiles_v2`, slukket).** Under v4 når formen motoren fra
+`official_times_v3` (uden top). Toppen kobles på under revisionen `s5_profiles_v2`, som ingen løb
+bindes til før ejerens "tænd" (S5): én samlet form = rytterens form + toppens tillæg i
+peak-vinduet, minus dykket i tilbagebetalingen bagefter, klampet til 0-100. Tillægget er det
+samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
+Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
+
 ### 5.4 Skader fra træning
 
 | Regel | Kilde |
