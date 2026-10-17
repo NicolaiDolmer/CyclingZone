@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "title": "Hoja de ruta · Cycling Zone",
+    "description": "Qué se está construyendo en Cycling Zone, qué pueden votar los jugadores, qué está en beta y qué problemas se están corrigiendo."
+  },
+  "page": {
+    "title": "Hoja de ruta",
+    "subtitle": "Lo que estoy construyendo, lo que puedes votar y lo que estoy arreglando."
+  },
+  "labels": {
+    "new": "Nuevo"
+  },
+  "loginToVote": {
+    "text": "Inicia sesión para valorar los planes y avisar de problemas.",
+    "link": "Iniciar sesión"
+  },
+  "filter": {
+    "onlyUnrated": "Solo lo que no he valorado",
+    "rated": "Valorados {rated} de {total}"
+  },
+  "tabs": {
+    "label": "Secciones de la hoja de ruta",
+    "plan": "Plan",
+    "beta": "Beta",
+    "vote": "Votar",
+    "issues": "Problemas conocidos",
+    "done": "Hecho"
+  },
+  "voting": {
+    "idea": "¿Buena idea?",
+    "importance": "¿Es importante para ti?",
+    "saved": "Guardado",
+    "error": "Tu voto no se guardó. Inténtalo de nuevo."
+  },
+  "plan": {
+    "inProgress": "En curso",
+    "planned": "Planificado",
+    "plannedHint": "Más o menos en este orden",
+    "later": "Más adelante · {count} más"
+  },
+  "beta": {
+    "inBeta": "Ahora en beta",
+    "inBetaHint": "Los beta testers ya lo tienen. El resto lo recibe cuando esté listo.",
+    "coming": "Próximamente en beta",
+    "badgeInBeta": "En beta",
+    "badgeSoon": "Para todos pronto",
+    "badgeNext": "Lo siguiente en beta",
+    "since": "en beta desde {date}",
+    "join": "Unirme a la beta",
+    "member": "Estás en la beta",
+    "pending": "Solicitud enviada"
+  },
+  "vote": {
+    "title": "Ideas que estoy considerando",
+    "hint": "Tus valoraciones deciden qué pasa al plan",
+    "areaLabel": "Área",
+    "all": "Todas",
+    "forum": "¿Tienes una idea propia? Publícala en el foro"
+  },
+  "issues": {
+    "areaLabel": "Área",
+    "all": "Todas",
+    "confirmed": "Confirmados",
+    "confirmedHint": "Problemas que he visto yo mismo o cuya causa he encontrado.",
+    "checking": "Notificados, en revisión",
+    "checkingHint": "Los jugadores han notificado estos. No los he confirmado y no prometo ningún cambio.",
+    "checkingMore": "{count} más",
+    "checkingMoreOwn": "{count} más · {own} notificados por ti",
+    "status": {
+      "checking": "En revisión",
+      "confirmed": "Confirmado",
+      "fixing": "Corrección en curso",
+      "fixed": "Corregido",
+      "dismissed": "No se encontró ningún problema"
+    },
+    "affectsMe": "A mí también me afecta",
+    "seeToo": "Yo también lo veo",
+    "reported": "Notificado",
+    "reportError": "No se guardó. Inténtalo de nuevo.",
+    "updated": "actualizado {date}",
+    "reportedByPlayers": "notificado por jugadores",
+    "earlierUpdates": "Actualizaciones anteriores · {count}",
+    "dismissed": "Revisados, sin problema · últimos 14 días",
+    "fixed": "Corregidos en los últimos 14 días"
+  },
+  "done": {
+    "title": "Hecho",
+    "hint": "Lo más nuevo primero",
+    "feature": "Función",
+    "fix": "Corrección",
+    "showMore": "Mostrar más"
+  },
+  "empty": {
+    "plan": {
+      "title": "Mostrar los planes que has valorado",
+      "description": "Has valorado todo lo que hay en el plan.",
+      "action": "Mostrar todo"
+    },
+    "planNone": {
+      "title": "Valora las ideas en su lugar",
+      "description": "Ahora mismo no hay nada planificado.",
+      "action": "Ir a Votar"
+    },
+    "vote": {
+      "title": "Mostrar las ideas que has valorado",
+      "description": "Has valorado todas las ideas.",
+      "action": "Mostrar todo"
+    },
+    "voteNone": {
+      "title": "Comparte tu propia idea",
+      "description": "Ahora mismo no hay ideas que votar.",
+      "action": "Ir al foro"
+    },
+    "beta": {
+      "title": "Únete a la beta",
+      "description": "Ahora mismo no hay nada en beta. Las funciones nuevas aparecen aquí cuando pasan a beta.",
+      "memberTitle": "Mira qué está planificado",
+      "memberAction": "Ir a Plan"
+    },
+    "issues": {
+      "title": "Avísame si algo parece ir mal",
+      "description": "Ahora mismo no hay problemas conocidos.",
+      "action": "Enviar comentarios",
+      "loginAction": "Iniciar sesión"
+    },
+    "done": {
+      "title": "Mira qué está planificado",
+      "description": "Todavía no hay nada terminado.",
+      "action": "Ir a Plan"
+    }
+  },
+  "engines": {
+    "races": { "title": "Carreras" },
+    "training": { "title": "Entrenamiento" },
+    "youth": { "title": "Desarrollo juvenil" },
+    "market": { "title": "Fichajes y subastas" },
+    "club": { "title": "Club y mundo" },
+    "other": { "title": "Otros" }
+  }
+}
