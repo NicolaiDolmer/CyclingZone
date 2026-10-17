@@ -413,9 +413,9 @@ async function runMidSeasonReviewCron() {
 }
 
 // ─── Season Auto-Transition ──────────────────────────────────────────────────
-// Når et vindue er fuldt-wrapped (status=closed, final whistle sendt, squad
-// enforcement done), fyrer transitionToNextSeason automatisk. Sponsor lander
-// ~5-15 min efter window-close.
+// Når kildesæsonen er afsluttet (season-end kørt) og skifte-gaten er grøn,
+// fyrer transitionToNextSeason automatisk (#6784: læser ikke transfer_windows).
+// Slukket via SEASON_AUTO_TRANSITION_ENABLED=false.
 
 async function runSeasonAutoTransitionCron() {
   try {
