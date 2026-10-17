@@ -125,7 +125,7 @@ test("engelsk er den eneste inline-bundle: ingen messages.<lng>-import i entry-g
     const src = read(file);
     assert.doesNotMatch(
       src,
-      /^\s*import\b[^\n]*messages\.[a-z-]+\.js/m,
+      /^\s*import\b[^\n]*messages\.[a-z-]+\.(js|ts)/m,
       `${file} importerer en sprog-bundle statisk`
     );
   }
@@ -231,7 +231,7 @@ test("hver beta-bundle dækker praecis de samme namespaces som den danske", () =
   const da = ns(read("messages.da.js"));
   assert.ok(da.length > 0);
   for (const code of REGISTERED_BETA) {
-    const src = read(`messages.${code}.js`);
+    const src = read(`messages.${code}.ts`);
     const own = ns(src);
     assert.deepEqual(own.map((m) => m[1]), da.map((m) => m[1]), `${code}: namespace-liste afviger fra da`);
     assert.ok(own.every((m) => m[2] === code), `${code}: importerer et andet sprogs locale-filer`);
