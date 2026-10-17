@@ -1,0 +1,370 @@
+{
+  "page": {
+    "title": "Finanzas",
+    "subtitle": "Saldo, préstamos e historial de transacciones",
+    "seasonReport": "Informe de temporada",
+    "loadingAria": "Cargando finanzas"
+  },
+  "tabs": {
+    "overview": "Resumen",
+    "loans": "Préstamos",
+    "history": "Historial",
+    "sponsors": "Patrocinador",
+    "seasonSwitch": "Cambio de temporada"
+  },
+  "loanSummary": {
+    "active": "{count, plural, one {1 préstamo activo} other {# préstamos activos}}",
+    "owed": "{value} CZ$ pendientes",
+    "none": "Sin préstamos activos",
+    "view": "Gestionar préstamos"
+  },
+  "history": {
+    "interestSplit": "Intereses {interest} CZ$ · Capital {principal} CZ$",
+    "seasonPicker": "Temporada",
+    "allSeasons": "Todas las temporadas",
+    "option": "Temporada {number}",
+    "optionActive": "Temporada {number} (en curso)",
+    "categoryFilterAria": "Filtrar transacciones por categoría",
+    "category": {
+      "all": "Todas",
+      "salary": "Salarios",
+      "prizes": "Premios",
+      "loans": "Préstamos",
+      "transfers": "Fichajes y subastas",
+      "sponsor": "Patrocinador",
+      "other": "Otras"
+    },
+    "loadMore": "Mostrar más",
+    "loadingMore": "Cargando...",
+    "txLoadError": "No se pudieron cargar las transacciones. Inténtalo de nuevo."
+  },
+  "loadError": {
+    "message": "No se pudieron cargar tus finanzas. Inténtalo de nuevo.",
+    "retry": "Reintentar"
+  },
+  "balance": {
+    "label": "Saldo",
+    "division": "División {division}",
+    "available": "{value} CZ$ disponibles",
+    "lockedInBids": "{value} CZ$ bloqueados en pujas"
+  },
+  "debt": {
+    "label": "Deuda total",
+    "ceiling": "Tope: {value} CZ$",
+    "headroom": "Margen bajo el tope: {value} CZ$",
+    "accruedInterest": "Incl. {value} CZ$ de intereses acumulados"
+  },
+  "prize": {
+    "label": "Premios en metálico (temporada {season})",
+    "labelNoSeason": "Premios en metálico",
+    "raceCount": "{count, plural, one {1 carrera} other {# carreras}}",
+    "allSeasons": "todas las temporadas: {amount} CZ$"
+  },
+  "prizeList": {
+    "title": "Premios de carrera",
+    "fallbackName": "Premios en metálico",
+    "viewRace": "Ver carrera",
+    "header": {
+      "race": "Carrera",
+      "date": "Fecha",
+      "amount": "Premio"
+    }
+  },
+  "loans": {
+    "types": {
+      "short": "Préstamo a corto plazo",
+      "long": "Préstamo a largo plazo",
+      "emergency": "Préstamo de emergencia"
+    },
+    "active": {
+      "title": "Préstamos activos",
+      "empty": "Sin préstamos activos",
+      "createdAt": "Contratado {when}",
+      "remaining": "pendiente",
+      "principal": "Capital",
+      "interestPerSeason": "Intereses/temporada",
+      "seasonsRemaining": "Temporadas restantes",
+      "accruedInterest": "Intereses acumulados",
+      "startRepay": "Pagar cuota",
+      "startRepayBlocked": "Ahora mismo no hay nada que devolver: tu saldo disponible está comprometido en pujas activas.",
+      "startRepayMaxPlaceholder": "Máx. {value}",
+      "repayPlaceholder": "0",
+      "repayBtn": "Pagar",
+      "repayingBtn": "...",
+      "cancelRepayAria": "Cancelar"
+    },
+    "take": {
+      "title": "Contratar un préstamo",
+      "noConfig": "No hay configuración de préstamos disponible para la División {division}",
+      "typeLabel": "Tipo de préstamo",
+      "amountLabel": "Importe (CZ$)",
+      "amountPlaceholder": "p. ej. 500",
+      "feeLabel": "Comisión ({pct} %)",
+      "feeValue": "{value} CZ$",
+      "interestLabel": "Intereses/temporada",
+      "interestValue": "{pct} %",
+      "totalLabel": "Devolución total",
+      "totalValue": "{value} CZ$",
+      "maxBorrowable": "Préstamo máximo ahora mismo: {value} CZ$",
+      "maxBorrowableDetail": "La comisión de {fee} CZ$ se suma a tu deuda, que llega a {total} CZ$ del tope de {ceiling} CZ$.",
+      "useMax": "Usar el máximo",
+      "maxZero": "No hay margen para un préstamo nuevo. Tu deuda está en el tope de la división, de {ceiling} CZ$.",
+      "exceedsMax": "Esto te haría superar el tope de deuda, porque la comisión cuenta para él. Préstamo máximo ahora mismo: {value} CZ$.",
+      "costPerSeason": "Intereses de la próxima temporada si no devuelves nada: {interest} CZ$ -> la deuda llegaría a {projected} CZ$",
+      "submit": "Contratar préstamo",
+      "processing": "Procesando..."
+    },
+    "confirmModal": {
+      "title": "Confirmar préstamo grande",
+      "body": "Vas a pedir prestados <strong>{principal} CZ$</strong> más una comisión de <strong>{fee} CZ$</strong>. Tu deuda total pasa a ser de <strong>{newTotalDebt} CZ$</strong>, el {pct} % del tope de deuda de tu división, de {ceiling} CZ$.",
+      "interestForecast": "Si no devuelves nada, solo los intereses de la próxima temporada suman <strong>{interest} CZ$</strong> y llevan tu deuda a <strong>{projected} CZ$</strong>.",
+      "ceilingWarning": "Eso supera el tope de tu división solo por los intereses. Si sigue por encima en el próximo cambio de temporada, la directiva congela los fichajes y puede obligarte a vender ciclistas para cerrar la diferencia.",
+      "question": "¿Contratar este préstamo de todos modos?",
+      "confirm": "Contratar préstamo"
+    },
+    "terms": {
+      "title": "Condiciones de los préstamos, División {division}",
+      "headers": {
+        "type": "Tipo",
+        "fee": "Comisión",
+        "interest": "Intereses/temporada",
+        "seasons": "Temporadas",
+        "debtCeiling": "Tope de deuda"
+      }
+    }
+  },
+  "transactions": {
+    "history": {
+      "title": "Historial de transacciones",
+      "empty": "Aún no hay transacciones"
+    },
+    "type": {
+      "sponsor": "Ingresos de patrocinio",
+      "salary": "Salarios",
+      "transfer_out": "Fichaje (comprado)",
+      "transfer_in": "Fichaje (vendido)",
+      "loan_received": "Préstamo recibido",
+      "loan_repayment": "Cuota del préstamo",
+      "loan_interest": "Intereses del préstamo",
+      "emergency_loan": "Préstamo de emergencia",
+      "prize": "Premios en metálico",
+      "bonus": "Bonus de división",
+      "admin_adjustment": "Ajuste del administrador",
+      "interest": "Intereses",
+      "academy_signing": "Fichaje para la academia",
+      "academy_drift": "Mantenimiento de la academia",
+      "facility_upkeep": "Mantenimiento de instalaciones",
+      "staff_salary": "Salarios del personal técnico",
+      "parachute": "Paracaídas por descenso",
+      "sponsor_race_day": "Ingresos de patrocinio por etapa",
+      "sponsor_signing_bonus": "Prima de firma del patrocinador",
+      "sponsor_objective_bonus": "Prima por objetivo del patrocinador",
+      "sponsor_result_bonus": "Prima por resultado del patrocinador",
+      "facility_purchase": "Mejora de instalaciones",
+      "staff_severance": "Indemnización del personal técnico",
+      "upkeep": "Mantenimiento",
+      "travel_staff": "Viajes y personal",
+      "scout_travel": "Viajes del ojeador",
+      "auto_squad_purchase": "Compra automática de plantilla",
+      "auto_squad_sale": "Venta automática de plantilla",
+      "forced_debt_sale": "Venta forzosa (tope de deuda)",
+      "squad_violation_fine": "Multa por tamaño de plantilla",
+      "starting_budget": "Presupuesto inicial",
+      "division_adjustment": "Ajuste de división",
+      "sponsor_division_correction_clawback": "Corrección de patrocinio (reembolso)"
+    }
+  },
+  "timeAgo": {
+    "unknown": "Desconocido",
+    "now": "Ahora mismo",
+    "minutes": "hace {m} min",
+    "hours": "hace {h} h",
+    "days": "hace {d} d"
+  },
+  "msg": {
+    "loanCreated": "Préstamo de {amount} CZ$ creado",
+    "loanRepaidFull": "¡Préstamo devuelto por completo!",
+    "loanRepaidPartial": "{paid} CZ$ pagados, {remaining} CZ$ pendientes",
+    "errorPrefix": ""
+  },
+  "tour": {
+    "balance": {
+      "title": "Tu saldo y tu flujo de caja",
+      "body": "El saldo cambia con el patrocinio (ingreso al inicio de la temporada), los salarios (se pagan al inicio de la temporada siguiente, después de que llegue el patrocinio), los fichajes y los premios en metálico (continuos). Los números rojos indican saldo negativo, y el mecanismo de préstamo de emergencia entra en juego al inicio de la próxima temporada si el patrocinio y el saldo no cubren el salario y los intereses."
+    },
+    "debtCeiling": {
+      "title": "Tope de deuda por división",
+      "body": "Cada división tiene un tope de deuda total (D1 1.200K · D2 900K · D3 600K). Cuando se alcanza el tope, los préstamos nuevos se bloquean, y la directiva también penaliza el gasto excesivo en la evaluación de la temporada."
+    },
+    "txHistory": {
+      "title": "Sigue el flujo de caja",
+      "body": "El patrocinio y el salario son únicos por temporada (ambos al inicio de la temporada: primero el patrocinio, luego el salario), mientras que los premios en metálico y los fichajes entran de forma continua. Aquí ves cada transacción; úsalo para comprobar si las finanzas van por buen camino."
+    }
+  },
+  "hint": {
+    "title": "Cómo funcionan tus finanzas",
+    "subtitle": "Cuatro flujos de ingresos y gastos mueven tu saldo. Entiéndelos y podrás priorizar el deporte, el crecimiento y la deuda.",
+    "dismissAria": "Ocultar",
+    "sponsor": {
+      "title": "Ingresos de patrocinio",
+      "before": "Escalados por división (D1 600.000 · D2 400.000 · D3 340.000 CZ$) por temporada × tu ",
+      "linkText": "modificador de la directiva",
+      "after": ". Se paga de una sola vez al inicio de la temporada."
+    },
+    "salary": {
+      "title": "Salarios de los ciclistas",
+      "body": "El salario de un ciclista es el precio de lo que aporta esta temporada, no de lo que vale en el mercado. Es una proporción fija de su valor de producción actual, la misma para todos los equipos de todas las divisiones, así que un ciclista mejor siempre cuesta más. Los salarios se fijan al firmar o ampliar, por lo que el salario de un ciclista no se mueve después con su valor de mercado. Se descuenta de una sola vez al inicio de la temporada siguiente, justo después de que llegue el patrocinio."
+    },
+    "debt": {
+      "title": "Tope de deuda por división",
+      "body": "D1 1.200K · D2 900K · D3 600K. Si superas el tope, los préstamos nuevos se bloquean y la directiva castiga el gasto excesivo."
+    },
+    "loans": {
+      "title": "Préstamos, cortos o largos",
+      "body": "Préstamo corto: comisión baja, devolución rápida. Préstamo largo: importe mayor repartido en varias temporadas. Úsalos para picos de fichajes, no para huecos de funcionamiento."
+    },
+    "showTour": "Enséñame el juego",
+    "skip": "Saltar"
+  },
+  "seasonSwitch": {
+    "loading": "Cargando la liquidación del cambio de temporada…",
+    "receipt": {
+      "title": "Liquidación de la temporada {current} -> {next}",
+      "subtitle": "Lo que le pasa a tu saldo cuando se cierran las cuentas y empieza la temporada {next}, en el mismo orden en que el juego lo cobra realmente.",
+      "balanceAfter": "Saldo: {value} CZ$",
+      "step": {
+        "books_close": {
+          "label": "Cierre de cuentas",
+          "detail": "Tu saldo tal como está ahora mismo, trasladado al cambio."
+        },
+        "sponsor": {
+          "label": "Llega el patrocinio",
+          "detail": "Base {base} + prima de rendimiento {variable} según el puesto/puntos de la temporada pasada, abonadas juntas en un solo pago al inicio de la temporada."
+        },
+        "loan_interest": {
+          "label": "Intereses de los préstamos",
+          "detail": "Intereses sobre la deuda pendiente de tus préstamos activos, calculados justo después de que llegue el pago del patrocinio. Se suman al propio préstamo, no se descuentan de tu saldo."
+        },
+        "salary": {
+          "label": "Se cobran los salarios de la temporada {next}",
+          "detail": "Recalculados con las reglas de la temporada {next} a partir del valor de producción actual de cada ciclista el día del cambio, no con las cifras fijadas de los contratos de la temporada pasada."
+        },
+        "academy_drift": {
+          "label": "Mantenimiento de la academia",
+          "detail": "Coste de inicio de temporada de tus plazas de la academia."
+        },
+        "upkeep": {
+          "label": "Mantenimiento de la división",
+          "detail": "Coste fijo según tu división, cobrado al inicio de la temporada."
+        },
+        "facility_upkeep": {
+          "label": "Mantenimiento de instalaciones",
+          "detail": "Mantenimiento de inicio de temporada de las líneas de instalaciones que has construido."
+        },
+        "staff_salary": {
+          "label": "Salarios del personal técnico",
+          "detail": "Salarios de inicio de temporada del personal técnico que has contratado."
+        },
+        "start_s3": {
+          "label": "Empiezas la próxima temporada con",
+          "detail": "Tu saldo después de todos los cargos de inicio de temporada de arriba."
+        }
+      }
+    },
+    "footnote": "Vista previa de la liquidación, no una garantía. No se incluyen los premios en metálico ni los ingresos de patrocinio por etapa, porque dependen de carreras que aún no se han corrido, ni nada condicional, como los intereses del préstamo de emergencia si tu saldo se vuelve negativo o una venta forzosa si tu deuda supera el tope. Tampoco se incluyen los viajes del ojeador, los fichajes, las mejoras de instalaciones, los cambios de personal técnico ni los fichajes para la academia, porque nada de eso se sabe de antemano.",
+    "footnoteLink": "¿Qué se incluye exactamente?",
+    "salaryTable": {
+      "title": "Salarios: contrato actual frente a la próxima temporada",
+      "subtitle": "El salario fijado en el contrato de cada ciclista firmado junto a lo que la fórmula de la temporada {next} le asignaría hoy.",
+      "empty": "No hay ciclistas con contrato.",
+      "header": {
+        "rider": "Ciclista",
+        "contract": "Contrato (T{current})",
+        "projection": "Proyección T{next}",
+        "delta": "Cambio"
+      },
+      "total": "Total",
+      "viewAll": "Ver los {count} ciclistas",
+      "showLess": "Mostrar menos"
+    }
+  },
+  "report": {
+    "season": "Temporada {n}",
+    "livePreview": " · vista previa en directo",
+    "cashflowOverview": "Resumen del flujo de caja",
+    "ongoing": " – en curso",
+    "netCashflow": "Flujo de caja neto",
+    "transactionCount": "{count} transacciones",
+    "income": "Ingresos",
+    "expense": "Gastos",
+    "nonCashLoanInterest": "Intereses acumulados sobre la deuda (sin efectivo, excluidos del neto)",
+    "total": "Total",
+    "activeLoans": "Préstamos activos",
+    "noActiveLoans": "Sin préstamos activos.",
+    "loanType": "Tipo",
+    "loanRemaining": "Deuda pendiente",
+    "loanInterest": "Intereses",
+    "loanSeasons": "Temporadas",
+    "loanNextInterest": "Intereses de la próxima temporada",
+    "loanAccruedInterest": "Intereses acumulados",
+    "loanShort": "Préstamo corto",
+    "loanLong": "Préstamo largo",
+    "loanEmergency": "Préstamo de emergencia",
+    "mustLogin": "Debes haber iniciado sesión.",
+    "errorStatus": "Error {status}",
+    "loadError": "No se pudo cargar el informe",
+    "back": "Atrás",
+    "title": "Informe financiero · temporada {n}",
+    "adminView": " · vista de administrador",
+    "donutIncomeTitle": "Ingresos por origen",
+    "donutExpenseTitle": "Gastos por categoría",
+    "donutIncomeEmpty": "No se han registrado ingresos esta temporada.",
+    "donutExpenseEmpty": "No se han registrado gastos esta temporada.",
+    "topInTitle": "Top 3 de ingresos",
+    "topOutTitle": "Top 3 de gastos",
+    "topInEmpty": "No se han registrado ingresos.",
+    "topOutEmpty": "No se han registrado gastos.",
+    "sponsorTitle": "Curva del modificador de patrocinio",
+    "sponsorBody": "Disponible desde la temporada 2. Requiere el historial del plan de la directiva de al menos una temporada cerrada.",
+    "reasonCode": {
+      "season_start_sponsor": "Patrocinio",
+      "season_start_upkeep": "Mantenimiento y conservación",
+      "race_day_travel_staff": "Viajes y personal",
+      "season_start_parachute": "Paracaídas por descenso",
+      "season_start_academy_drift": "Mantenimiento de la academia",
+      "season_end_salary": "Salarios",
+      "season_end_division_bonus": "Bonus de división",
+      "season_end_negative_interest": "Intereses negativos",
+      "season_end_loan_interest": "Intereses del préstamo",
+      "starting_budget": "Presupuesto inicial",
+      "race_prize_payout": "Premios en metálico",
+      "auction_winner_payment": "Compra en subasta",
+      "auction_seller_payout": "Venta en subasta",
+      "auction_guaranteed_bank_sale": "Venta garantizada por el banco",
+      "intake_expiry_auction_compensation": "Compensación por caducidad de la cantera",
+      "transfer_purchase": "Compra por fichaje",
+      "transfer_sale": "Venta por fichaje",
+      "swap_cash_delta": "Intercambio (diferencia en efectivo)",
+      "sponsor_race_day": "Patrocinio (por etapa)",
+      "rider_release_buyout": "Cláusula de rescisión",
+      "loan_fee_paid": "Comisión de préstamo pagada",
+      "loan_fee_received": "Comisión de préstamo recibida",
+      "loan_fee_refunded": "Comisión de préstamo reembolsada",
+      "loan_principal_received": "Préstamo contratado",
+      "loan_repayment": "Devolución del préstamo",
+      "loan_buyout": "Préstamo rescatado",
+      "loan_origination_fee": "Comisión de apertura del préstamo",
+      "emergency_loan_received": "Préstamo de emergencia",
+      "squad_auto_purchase": "Compra forzosa de ciclista",
+      "squad_auto_sale": "Venta forzosa de ciclista",
+      "squad_violation_fine": "Multa por composición de plantilla",
+      "board_bonus_accepted": "Bonus de la directiva",
+      "admin_balance_adjustment": "Ajuste del administrador",
+      "admin_force_prize": "Premio concedido por el administrador",
+      "admin_beta_reset": "Reinicio de la beta",
+      "facility_purchase": "Compras de instalaciones",
+      "scout_travel": "Viajes del ojeador",
+      "unknown": "Otros"
+    }
+  }
+}
