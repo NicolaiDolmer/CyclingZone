@@ -28,7 +28,7 @@
     ]
   },
   "tierSupporter": {
-    "name": "Premium",
+    "name": "Plan Premium",
     "priceSuffix": "/mes",
     "altYearTemplate": "{annual}/año (= 10 meses)",
     "tagline": "Jugadores implicados",
