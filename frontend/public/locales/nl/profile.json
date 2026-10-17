@@ -1,0 +1,194 @@
+{
+  "header": {
+    "title": "Mijn profiel",
+    "subtitle": "Instellingen en team"
+  },
+  "tabs": {
+    "label": "Instellingenonderdelen",
+    "account": "Account",
+    "notifications": "Meldingen",
+    "preferences": "Voorkeuren",
+    "privacy": "Privacy",
+    "beta": "Beta"
+  },
+  "account": {
+    "title": "Account",
+    "email": "E-mail",
+    "username": "Gebruikersnaam",
+    "adminBadge": "Admin",
+    "saving": "Opslaan...",
+    "saveUsername": "Opslaan",
+    "saveEmail": "Wijzigen",
+    "usernameHelp": "3-20 tekens. Letters, cijfers, underscore of koppelteken.",
+    "usernameError": "De gebruikersnaam moet 3-20 tekens hebben (letters, cijfers, _ of -)",
+    "usernameTaken": "Die gebruikersnaam is al bezet",
+    "usernameSaved": "Gebruikersnaam bijgewerkt!",
+    "emailHelp": "Ik stuur een bevestigingslink naar het nieuwe adres. De wijziging gaat in zodra je erop klikt.",
+    "emailError": "Vul een geldig e-mailadres in",
+    "emailPending": "Bevestiging verstuurd naar {email}. Klik op de link om de wijziging af te ronden.",
+    "noSession": "Er is geen actieve sessie gevonden"
+  },
+  "appearance": {
+    "title": "Weergave",
+    "subtitle": "Kies een thema voor de hele app.",
+    "systemLabel": "Systeem volgen",
+    "systemHint": "Schakelt automatisch mee met je apparaat",
+    "lightLabel": "Licht",
+    "lightHint": "Lichte achtergrond in de hele app",
+    "darkLabel": "Donker",
+    "darkHint": "Donkere achtergrond in de hele app"
+  },
+  "assistant": {
+    "title": "Assistent",
+    "subtitle": "Kies of de assistent opstellingen voor je mag kiezen.",
+    "toggleLabel": "De assistent vult mijn opstelling automatisch in",
+    "toggleHint": "Aan: de assistent kiest een opstelling voor koersen die je niet zelf hebt ingesteld. Uit: die koersen blijven leeg tot je kiest, en alleen de redding bij de start van de koers geldt nog.",
+    "on": "De assistent vult nu je opstellingen in.",
+    "off": "De assistent kiest niet meer voor je."
+  },
+  "privacy": {
+    "title": "Privacy",
+    "subtitle": "Jij bepaalt wat ik meet. Wijzigingen gaan in de volgende keer dat je het spel opent.",
+    "necessary": "Noodzakelijk",
+    "alwaysOn": "Altijd aan",
+    "analytics": "Analyse",
+    "marketing": "Marketing",
+    "email": "E-mail",
+    "accepted": "Geaccepteerd",
+    "declined": "Geweigerd",
+    "changeChoices": "Mijn keuzes wijzigen",
+    "readPolicy": "Lees het privacybeleid"
+  },
+  "subscription": {
+    "title": "Abonnement",
+    "statusPro": "CZ Pro is actief op je account.",
+    "statusFounder": "CZ Pro is actief op je account, met permanente Founder-status.",
+    "manage": "Abonnement beheren",
+    "manageHint": "Opent het selfserviceportaal van mijn betaalprovider, waar je kunt opzeggen, bonnetjes kunt bekijken en je kaart kunt bijwerken.",
+    "portalError": "Het abonnementsportaal kon niet worden geopend. Probeer het opnieuw, of neem via Discord contact met me op, dan help ik je handmatig.",
+    "readTerms": "Lees de verkoopvoorwaarden"
+  },
+  "team": {
+    "title": "Team",
+    "notInitialized": "Je team moet nog worden opgezet. Sla de teamgegevens op om het nu aan te maken.",
+    "teamNameLabel": "Teamnaam",
+    "managerNameLabel": "Managernaam",
+    "managerNamePlaceholder": "Je naam als manager",
+    "saving": "Opslaan...",
+    "save": "Teamgegevens opslaan",
+    "create": "Teamgegevens aanmaken",
+    "errorTeamName": "De teamnaam moet minstens 3 tekens hebben",
+    "errorManagerName": "De managernaam moet minstens 2 tekens hebben",
+    "errorNoSession": "Er is geen actieve sessie gevonden",
+    "saved": "Teamgegevens opgeslagen!",
+    "created": "Team aangemaakt!"
+  },
+  "discord": {
+    "title": "Discord-koppeling",
+    "subtitle": "Ontvang meldingen rechtstreeks in Discord",
+    "handleLabel": "Publieke Discord-gebruikersnaam",
+    "handlePlaceholder": "bijv. nicolai.dolmer",
+    "handleHelp": "Wordt getoond op je openbare profiel, zodat andere managers je op Discord kunnen toevoegen. Kleine letters, cijfers, punten en underscores, 2-32 tekens. Laat leeg om het te verbergen.",
+    "handleSave": "Gebruikersnaam opslaan",
+    "handleSaved": "Discord-gebruikersnaam opgeslagen!",
+    "handleCleared": "Discord-gebruikersnaam verwijderd",
+    "handleError": "Moet 2-32 tekens zijn: alleen kleine letters, cijfers, punten en underscores (je huidige Discord-gebruikersnaam, geen bijnaam).",
+    "intro": "Als je je Discord-gebruikers-ID koppelt, word je in Discord getagd wanneer je wordt overboden in veilingen, een veiling wint, transferaanbiedingen ontvangt en meer.",
+    "idLabel": "Je Discord-gebruikers-ID",
+    "idPlaceholder": "bijv. 123456789012345678",
+    "idHelp": "Zo vind je je ID: Discord → Instellingen → Geavanceerd → Ontwikkelaarsmodus aanzetten → Klik met de rechtermuisknop op je naam → \"Gebruikers-ID kopiëren\".",
+    "idHelpStrong": "Het is een getal van 17-19 cijfers, niet je @gebruikersnaam.",
+    "save": "Discord-ID opslaan",
+    "saving": "Opslaan...",
+    "idSaved": "Discord-ID opgeslagen!",
+    "idError": "Het Discord-ID moet uit 17-19 cijfers bestaan (alleen cijfers). Waarschijnlijk heb je de gebruikersnaam gekopieerd. Klik in Discord met de rechtermuisknop op je eigen naam → 'Gebruikers-ID kopiëren' (vereist Ontwikkelaarsmodus onder Geavanceerd).",
+    "noSession": "Geen actieve sessie",
+    "dmOn": "DM aangezet",
+    "dmOff": "DM uitgezet",
+    "testSent": "Test-DM verstuurd. Kijk in Discord",
+    "statusConnected": "Verbonden. Je ontvangt DM's van de bot over veilingen en transfers.",
+    "statusDmOff": "Het Discord-ID is ingesteld, maar DM's staan uit. Je wordt nog wel genoemd (@) in het kanaal.",
+    "statusBotMissing": "De bot is op de server nog niet geconfigureerd. Voorlopig werken alleen vermeldingen in het kanaal.",
+    "statusIdMissing": "Discord-ID ontbreekt. Voeg het hieronder toe om DM's te ontvangen.",
+    "statusAutoDisconnected": "Discord is losgekoppeld. De bot kon je niet bereiken, wat meestal betekent dat je de Cycling Zone Discord-server hebt verlaten. Sluit je weer aan bij de server en voeg hieronder je ID toe om weer DM's te ontvangen.",
+    "statusUsernamePre": "Je opgeslagen ID (",
+    "statusUsernamePost": ") lijkt een gebruikersnaam, geen gebruikers-ID. DM's worden niet bezorgd. Vervang het door een getal van 17-19 cijfers. Zie de handleiding hieronder.",
+    "toggleLabel": "DM's ontvangen voor gebeurtenissen die jou aangaan",
+    "toggleHint": "Zet uit als je geen privéberichten van de bot wilt. Je wordt nog wel genoemd (@) in het kanaal.",
+    "testSending": "Versturen...",
+    "testSend": "Test-DM versturen",
+    "testBotMissing": "Bot niet geconfigureerd",
+    "eventsTitle": "Je ontvangt Discord-meldingen wanneer:",
+    "eventOutbid": "Je wordt overboden in een veiling",
+    "eventWonAuction": "Je een veiling wint",
+    "eventTransferOffer": "Je een transferaanbieding ontvangt",
+    "eventOfferResolved": "Je transferaanbieding wordt geaccepteerd of afgewezen",
+    "eventNewAuction": "Er een nieuwe veiling wordt aangemaakt",
+    "eventSeasonChange": "Er een nieuw seizoen begint of eindigt",
+    "prefs": {
+      "heading": "Kies waarover je een DM krijgt",
+      "masterOffHint": "Zet hierboven DM's aan om afzonderlijke gebeurtenissen te kiezen.",
+      "group": {
+        "auctions": "Veilingen",
+        "transfers": "Transfers",
+        "club": "Club"
+      },
+      "auction_outbid": {
+        "label": "Overboden",
+        "desc": "Iemand overbiedt je, ook met automatische biedingen."
+      },
+      "auction_won": {
+        "label": "Veiling gewonnen",
+        "desc": "Je wint een renner waarop je bood."
+      },
+      "watchlist_rider_auction": {
+        "label": "Renner van je volglijst in veiling",
+        "desc": "Een renner van je volglijst wordt te koop gezet."
+      },
+      "transfer_offer": {
+        "label": "Transferaanbieding ontvangen",
+        "desc": "Een andere manager biedt op een van je renners."
+      },
+      "transfer_response": {
+        "label": "Antwoord op je aanbieding",
+        "desc": "Geaccepteerd, afgewezen of met een tegenbod beantwoord."
+      },
+      "board_update": {
+        "label": "Update van het bestuur",
+        "desc": "Je bestuur reageert op resultaten of financiën."
+      }
+    }
+  },
+  "forumCategories": {
+    "title": "Forumcategorieën",
+    "hint": "Zet een categorie uit en je krijgt geen seintje meer dat er iets nieuws is. Reacties op je eigen gesprekken bereiken je nog steeds.",
+    "summary": "Je volgt {count} van {total} categorieën.",
+    "saveFailed": "Je keuze kon niet worden opgeslagen. Probeer het opnieuw."
+  },
+  "selectionReminder": {
+    "title": "Deadlineherinnering",
+    "subtitle": "Een ontbrekende selectie wordt gemarkeerd in de navigatie en op de planningspagina.",
+    "toggleLabel": "Herinner me vóór de selectiedeadline",
+    "toggleHint": "Aan: Planning wordt gemarkeerd wanneer een koers binnen {windowHours} uur start zonder volledige selectie, en wordt rood als je team niet zou starten met minder dan {urgentHours} uur te gaan. Uit: er wordt niets gemarkeerd, en de deadline blijft gelden.",
+    "toggleHintGeneric": "Aan: Planning wordt gemarkeerd wanneer een koers binnenkort start zonder volledige selectie, en wordt rood als je team niet zou starten. Uit: er wordt niets gemarkeerd, en de deadline blijft gelden.",
+    "on": "Deadlineherinneringen staan aan.",
+    "off": "Deadlineherinneringen staan uit."
+  },
+  "beta": {
+    "title": "Betagroep",
+    "badge": "Beta-tester",
+    "subtitle": "Zie functies terwijl ik ze nog bouw.",
+    "memberBody": "Je zit erbij. Functies die nog in test zijn, zie jij als eerste, en sommige gaan stuk. Laat het me weten als dat gebeurt.",
+    "noneBody": "Ik open nieuwe functies eerst voor een kleine groep, zodat ik elke reactie kan lezen. Vraag of je mee mag doen, dan beantwoord ik het zelf.",
+    "pendingBody": "Je aanvraag ligt bij mij. Ik beantwoord ze met de hand, dus geef het een dag of twee.",
+    "rejectedBody": "Deze ronde niet. Ik hou de groep klein, en je mag het gerust opnieuw vragen.",
+    "whereToReport": "Meld wat er niet goed voelt op Discord, of via het feedbackformulier.",
+    "requestButton": "Vraag om mee te doen",
+    "cancelButton": "Aanvraag intrekken",
+    "leaveButton": "De betagroep verlaten",
+    "requested": "Aanvraag verstuurd.",
+    "cancelled": "Aanvraag ingetrokken.",
+    "left": "Je hebt de betagroep verlaten.",
+    "unavailable": "Aanmelden voor de beta is nu niet mogelijk. Probeer het zo meteen opnieuw."
+  }
+}

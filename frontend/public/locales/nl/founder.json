@@ -1,0 +1,257 @@
+{
+  "metaTitle": "Schrijf je in op de Founder-wachtlijst · Cycling Zone",
+  "metaDescription": "Steun Cycling Zone als Founder. Premium koopt nooit sterkere renners of resultaten. Schrijf je in op de wachtlijst en help een eerlijke wielermanager vormgeven.",
+  "languageLabel": "Taal",
+  "badgeBeta": "Open beta",
+  "badgeFair": "Eerlijke premium",
+  "heroEyebrow": "Open beta, gesprek over eerlijke premium",
+  "heroHeadline": "Bouw je wielerteam. Koers de wereld rond. Steun een eerlijk managerspel.",
+  "heroSub": "Cycling Zone is een wielermanagerspel in je browser waarin tactiek, plannen op lange termijn en rivaliteit in de community tellen. Ik onderzoek premium, maar de regel is simpel: ",
+  "heroSubStrong": "het spel moet eerlijk zijn voor iedereen. Je kunt niet betalen voor betere renners, snellere training of betere resultaten.",
+  "ctaPrimary": "Schrijf je in op de Founder-wachtlijst",
+  "ctaSecondary": "Lees de hele belofte",
+  "promiseTitle": "Cycling Zone moet eerlijk blijven",
+  "promiseBody": "Premium kan identiteit, gemak, analyse en manieren om de ontwikkeling te steunen ontgrendelen. Het kan geen betere koersresultaten, snellere training, sterkere renners, transfervoordelen, betere scoutingkansen of verborgen macht ontgrendelen.",
+  "promiseFootnote": "Deze belofte staat hier en bij elke toekomstige prijsinformatie. Het is de belangrijkste vertrouwensboodschap in het hele gesprek over premium.",
+  "tiersTitle": "Hoe zou eerlijke premium eruit kunnen zien?",
+  "tiersSub": "Niets hier is definitief. De kaarten hieronder tonen één mogelijke set maandprijzen. Voor het Premium-niveau overweeg ik {prices}/mnd, en door je in te schrijven help je me beslissen.",
+  "perDayApprox": "≈ {price}/dag",
+  "founderNoteTitle": "Waar past de Founder-wachtlijst in?",
+  "founderNoteBody": "Founder is geen apart betaald niveau. Het is een vroege wachtlijststatus voor de eerste 100 spelers die in aanmerking willen komen als betalen later opengaat. Inschrijven is vrijblijvend en je betaalt vandaag niets.",
+  "tierFree": {
+    "name": "Gratis manager",
+    "tagline": "Nieuwe / casual spelers",
+    "bullets": [
+      "Volledige toegang tot de competitie",
+      "Niets weggehaald uit het kernspel",
+      "Gratis spelers blijven competitief, voor altijd"
+    ]
+  },
+  "tierSupporter": {
+    "name": "Premium",
+    "priceSuffix": "/mnd",
+    "altYearTemplate": "{annual}/jr (= 10 maanden)",
+    "tagline": "Betrokken spelers",
+    "bullets": [
+      "Premium-badge op je profiel",
+      "Profielthema's + cosmetica",
+      "Discord-rol",
+      "Opgeslagen filters + uitgebreide geschiedenis"
+    ]
+  },
+  "tierPro": {
+    "name": "Pro Analyst",
+    "priceSuffix": "/mnd",
+    "tagline": "Hardcore managers",
+    "bullets": [
+      "Geavanceerde analyse",
+      "Rennersvergelijking",
+      "Scoutingdashboards",
+      "Transfervolglijsten + data-export"
+    ]
+  },
+  "tierPatron": {
+    "name": "Patron",
+    "priceSuffix": "/mnd",
+    "tagline": "Superfans / vroege gelovigen",
+    "bullets": [
+      "Founder-badge + cosmetica",
+      "Q&A met de ontwikkelaar",
+      "Roadmap-stemmen (niet over balans)",
+      "Vermelding in het spel"
+    ]
+  },
+  "fairnessTitle": "Wat mag worden verkocht, en wat nooit",
+  "fairnessSub": "De merkbelofte als concrete regels. Rotsvast.",
+  "soldCol": "Mag worden verkocht",
+  "notSoldCol": "Mag NIET worden verkocht (pay-to-win)",
+  "sold": [
+    "Premium-badge",
+    "Profielthema's / cosmetica",
+    "Discord-rol",
+    "Opgeslagen dashboards",
+    "Uitgebreide geschiedenis",
+    "Analyse & rennersvergelijking",
+    "Data-export",
+    "Roadmap-stemmen (niet over balans)"
+  ],
+  "notSold": [
+    "Snellere training",
+    "Betere koersuitslagen",
+    "Groter transferbudget",
+    "Betere scoutingkansen",
+    "Exclusieve ranglijstkoersen voor betalende gebruikers",
+    "Betaalde valuta die de balans verandert",
+    "Machtsfuncties",
+    "Stemmen die de balans / economie veranderen"
+  ],
+  "benefitsTitle": "Wat krijgen leden van de Founder-wachtlijst?",
+  "benefitsBody": "Founder-status is identiteit en een bedankje, nooit een competitief voordeel. De definitieve lijst wordt samen met de community bepaald voordat betalen opengaat.",
+  "benefitsList": [
+    {
+      "title": "Permanente Founder-badge",
+      "desc": "Een identiteitsteken dat je later niet meer kunt kopen."
+    },
+    {
+      "title": "Founder-rol op Discord",
+      "desc": "Een sterk signaal in de community."
+    },
+    {
+      "title": "Profielthema of cosmetisch kader",
+      "desc": "Waarde voor vroege Founders."
+    },
+    {
+      "title": "Je naam op de Founder Wall",
+      "desc": "Voor vroege gelovigen."
+    },
+    {
+      "title": "Maandelijkse ontwikkelaarsupdates",
+      "desc": "Bouwt vertrouwen + transparantie."
+    },
+    {
+      "title": "Stemmen over roadmap-onderwerpen die de balans niet raken",
+      "desc": "Nooit over balans of competitief voordeel."
+    }
+  ],
+  "formSectionTitle": "Schrijf je in op de Founder-wachtlijst",
+  "formSectionSub": "Het is NIET bindend. Je betaalt vandaag niets. Het doel is te zien of er genoeg interesse is om het project financieel te steunen voordat ik betalingen toevoeg.",
+  "faqTitle": "Vragen die ik heb gehoord",
+  "faqItems": [
+    {
+      "q": "Wordt Cycling Zone pay-to-win?",
+      "a": "Nee. De competitieve kern moet eerlijk blijven. Premium gaat over identiteit, gemak, analyse en manieren om de ontwikkeling te steunen."
+    },
+    {
+      "q": "Kunnen gratis spelers meedoen?",
+      "a": "Ja. Gratis spelers hebben volledige toegang tot het competitieve kernspel. Dat is de basis van eerlijkheid."
+    },
+    {
+      "q": "Kunnen premiumgebruikers sterkere renners of snellere training kopen?",
+      "a": "Nee. Die functies mogen niet worden verkocht. Punt."
+    },
+    {
+      "q": "Waarom nu vragen naar premium?",
+      "a": "Om te horen of Cycling Zone houdbaar kan worden voordat ik het verkeerde bouw. Beter leren voordat ik investeer."
+    },
+    {
+      "q": "Is betalen nu live?",
+      "a": "Nee. Eerst de wachtlijst, later betalen, en alleen als de reactie van de community positief is. Je betaalt niets als je je inschrijft."
+    },
+    {
+      "q": "Wat gebeurt er als mensen geen premium willen?",
+      "a": "Dan wacht premium, en gaat de focus terug naar behoud van spelers, gameplay en groei van de community. Daarom vraag ik eerst."
+    }
+  ],
+  "footerPrivacy": "Privacybeleid",
+  "footerTerms": "Verkoopvoorwaarden",
+  "footerBack": "Terug naar Cycling Zone",
+  "form": {
+    "contactLegend": "Hoe ik contact met je opneem",
+    "contactHelp": "Minstens één van de velden hieronder moet worden ingevuld.",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "jij@email.com",
+    "discordLabel": "Discord-gebruikersnaam (optioneel)",
+    "discordPlaceholder": "bijv. nicolai.dolmer",
+    "interestLegend": "Hoe geïnteresseerd ben je?",
+    "tierLegend": "Welk niveau zou bij je passen?",
+    "tierHelp": "Ik test verschillende prijspunten, je antwoord is niet bindend.",
+    "benefitsLegend": "Wat zou voor jou belangrijk zijn? (optioneel)",
+    "benefitsHelp": "Kies er zoveel als van toepassing zijn.",
+    "mainReasonLabel": "Wat is de belangrijkste reden dat je overweegt het project te steunen? (optioneel)",
+    "mainReasonPlaceholder": "Schrijf een paar zinnen...",
+    "fairnessLabel": "Is er iets waardoor je nee zou zeggen? (optioneel)",
+    "fairnessPlaceholder": "bijv. pay-to-win-mechanismen, oneerlijke systemen...",
+    "countryLabel": "Waar woon je?",
+    "followUpConsent": "Het is goed dat ik je maximaal 2 vervolgvragen stel (interview / korte enquête). Dit is optioneel.",
+    "gdprBefore": "Ik heb het ",
+    "gdprLink": "privacybeleid",
+    "gdprAfter": " gelezen en geaccepteerd en geef toestemming om mijn e-mailadres + Discord-gebruikersnaam op te slaan voor het hierboven genoemde doel.",
+    "privacyPath": "/privacy-policy",
+    "submit": "Schrijf je in op de Founder-wachtlijst",
+    "submitLoading": "Versturen...",
+    "submitDisclaimer": "Ik spam niet en deel je gegevens nooit. Je kunt me altijd mailen om verwijderd te worden.",
+    "honeypotLabel": "Laat dit veld leeg",
+    "successTitle": "Je staat op de lijst!",
+    "successBody": "Bedankt dat je er vroeg bij bent. Ik mail je als premium opengaat, en eerder als ik vragen heb over wat je ervan vindt.",
+    "successNextTitle": "Volgende stappen:",
+    "successNext": [
+      {
+        "text": "Join de Discord voor updates en vragen"
+      },
+      {
+        "text": "Volg de patch notes voor de voortgang"
+      },
+      {
+        "text": "Kijk de komende dagen in je inbox"
+      }
+    ],
+    "successDiscordCta": "Join de Discord",
+    "interestOptions": {
+      "very": "Zeer geïnteresseerd, ik wil er vanaf het begin bij zijn",
+      "maybe": "Misschien, hangt af van prijs en inhoud",
+      "unsure": "Onzeker, ik wil eerst meer weten"
+    },
+    "tierOptions": {
+      "supporter_monthly": {
+        "label": "Premium maandelijks",
+        "sub": "{price}/mnd, steun het project en ontgrendel de Founder-badge"
+      },
+      "supporter_annual": {
+        "label": "Premium jaarlijks",
+        "sub": "{price}/jr, hetzelfde als maandelijks + 2 maanden gratis"
+      },
+      "pro_analyst_monthly": {
+        "label": "Pro Analyst maandelijks",
+        "sub": "{price}/mnd, Premium + geavanceerde tactische analyse"
+      },
+      "free_only": {
+        "label": "Alleen gratis",
+        "sub": "Ik speel gratis en betaal niet"
+      }
+    },
+    "benefitOptions": {
+      "founder_badge": "Founder-badge op mijn profiel",
+      "early_pricing": "Early-bird-prijzen voor de toekomst vastleggen",
+      "dev_dialog": "Rechtstreeks contact met de ontwikkelaar (Discord/DM)",
+      "beta_features": "Vroege toegang tot nieuwe functies",
+      "tactical_analysis": "Geavanceerd tactisch inzicht",
+      "income_breakdown": "Gedetailleerde inkomstenstatistieken",
+      "ad_free": "Ervaring zonder advertenties",
+      "support_project": "Gewoon om het project te steunen"
+    },
+    "countryOptions": {
+      "DK": "Denemarken",
+      "NO": "Noorwegen",
+      "SE": "Zweden",
+      "DE": "Duitsland",
+      "NL": "Nederland",
+      "BE": "België",
+      "FR": "Frankrijk",
+      "IT": "Italië",
+      "ES": "Spanje",
+      "GB": "Verenigd Koninkrijk",
+      "IE": "Ierland",
+      "PL": "Polen",
+      "CH": "Zwitserland",
+      "AT": "Oostenrijk",
+      "US": "VS",
+      "OTHER": "Ander land"
+    },
+    "errors": {
+      "contact": "Vul minstens een e-mailadres of Discord-gebruikersnaam in",
+      "email": "Ongeldig e-mailadres",
+      "discordHandle": "Ongeldige Discord-gebruikersnaam (bijv. nicolai.dolmer of Naam#1234)",
+      "interestLevel": "Kies je interessegraad",
+      "preferredTier": "Kies een niveau",
+      "country": "Ongeldig land",
+      "valuedBenefits": "Onbekend voordeel geselecteerd",
+      "gdprConsent": "Je moet het privacybeleid accepteren om verder te gaan"
+    },
+    "insertErrors": {
+      "duplicate": "Je staat al op de lijst. Kijk in je inbox (en spam) voor mijn eerste e-mail.",
+      "rls": "Toegang geweigerd. Laad de pagina opnieuw en probeer het nog eens. Neem contact op met support als het probleem blijft.",
+      "network": "De server kon niet worden bereikt. Controleer je verbinding en probeer het opnieuw.",
+      "unknown": "Er ging iets mis. Probeer het over een moment opnieuw."
+    }
+  }
+}

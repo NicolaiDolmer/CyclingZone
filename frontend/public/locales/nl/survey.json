@@ -1,0 +1,78 @@
+{
+  "page": {
+    "subtitle": "Ongeveer 5 minuten",
+    "introLead": "Ik vraag het je liever dan dat ik gok, daarom heb ik de hele lijst op één plek gezet.",
+    "introAccount": "Je antwoorden worden bij je account opgeslagen, dus je kunt ze wijzigen tot de enquête sluit.",
+    "closesOn": "Sluit op {date}"
+  },
+  "progress": {
+    "label": "Beantwoord",
+    "value": "{done} van {total}",
+    "aria": "Hoeveel van de enquête je hebt beantwoord"
+  },
+  "sections": {
+    "today": "Hoe het nu voelt",
+    "ideas": "De ideeën",
+    "problems": "Wat het slechtst werkt",
+    "fog": "Wat je kunt zien",
+    "choices": "Wat je zou kiezen",
+    "pro": "Pro",
+    "closing": "Voordat je verstuurt",
+    "other": "Meer"
+  },
+  "axes": {
+    "idea": "Idee",
+    "importance": "Belangrijk",
+    "dontKnow": "Weet ik niet",
+    "dontKnowAria": "Geen mening over {feature}"
+  },
+  "scale": {
+    "satisfactionLow": "Niet tevreden",
+    "satisfactionHigh": "Zeer tevreden"
+  },
+  "field": {
+    "optional": "Optioneel",
+    "required": "Verplicht",
+    "textPlaceholder": "Schrijf zoveel of zo weinig als je wilt",
+    "maxThreeLeft": "{left, plural, =0 {Drie is het maximum. Haal er een weg om een andere te kiezen.} one {# over} other {# over}}",
+    "yes": "Ja",
+    "no": "Nee"
+  },
+  "save": {
+    "saving": "Opslaan",
+    "saved": "Opgeslagen",
+    "error": "Dat antwoord is niet opgeslagen. Pas het nog een keer aan, dan probeer ik het opnieuw."
+  },
+  "submit": {
+    "cta": "Mijn antwoorden versturen",
+    "sending": "Versturen",
+    "missing": "{count, plural, one {# vraag} other {# vragen}} heeft nog een antwoord nodig.",
+    "error": "Dat is niet gelukt. Probeer het opnieuw."
+  },
+  "thanks": {
+    "title": "Bedankt",
+    "body": "Ik lees elk antwoord zelf, en in het forum vertel ik je wat eruit is gekomen.",
+    "editable": "Je kunt je antwoorden wijzigen tot de enquête sluit.",
+    "edit": "Mijn antwoorden wijzigen",
+    "roadmap": "Bekijk de roadmap"
+  },
+  "preview": {
+    "notice": "Conceptvoorbeeld. Alleen beheerders zien deze pagina. Antwoorden worden niet opgeslagen.",
+    "submitDisabled": "Versturen staat uit zolang de enquête een concept is."
+  },
+  "closed": {
+    "title": "Deze enquête is gesloten",
+    "body": "Bedankt aan iedereen die heeft geantwoord. Wat eruit komt, belandt op de roadmap.",
+    "roadmap": "Bekijk de roadmap"
+  },
+  "notFound": {
+    "title": "Ik kan die enquête niet vinden",
+    "body": "De link is waarschijnlijk een oude. De roadmap laat zien waar ik nu aan werk.",
+    "roadmap": "Bekijk de roadmap"
+  },
+  "error": {
+    "title": "De enquête is niet geladen",
+    "body": "Er is niets verloren gegaan. Antwoorden die je al hebt gegeven zijn veilig.",
+    "retry": "Probeer opnieuw"
+  }
+}

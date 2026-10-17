@@ -1,0 +1,225 @@
+{
+  "page": {
+    "title": "Seizoensplanner"
+  },
+  "empty": {
+    "title": "De seizoensplanner is nog niet live",
+    "description": "Hier plan je straks de formpieken van elke renner over het seizoen. Kijk binnenkort weer."
+  },
+  "seasonMenu": {
+    "label": "Seizoen",
+    "option": "S{number}"
+  },
+  "seasonNotReady": {
+    "title": "De kalender van seizoen {number} is nog niet klaar",
+    "description": "Het koersprogramma voor dit seizoen is nog niet gegenereerd, dus er valt nog niets te plannen. Kijk later terug, dichter bij de start van het seizoen."
+  },
+  "nextSeasonBanner": {
+    "title": "Seizoen {number} is open voor planning",
+    "body": "De kalender van seizoen {number} is klaar. Je kunt er nu al pieken voor instellen, vóór de start van het seizoen.",
+    "cta": "Naar seizoen {number}",
+    "dismiss": "Sluiten",
+    "bodyUpcoming": "De kalender van seizoen {number} is klaar om te verkennen. Je divisie voor dat seizoen wordt bepaald bij de seizoenswissel, dus pieken gaan open zodra die vaststaat."
+  },
+  "tabs": {
+    "squad": "Selectie",
+    "season": "Seizoen"
+  },
+  "board": {
+    "title": "Seizoensbord"
+  },
+  "statusLine": {
+    "peaks": "{count, plural, =0 {Geen pieken gepland} one {# piek gepland} other {# pieken gepland}}",
+    "needsAction": "{count, plural, one {# heeft actie nodig} other {# hebben actie nodig}}",
+    "allClear": "Niets vraagt om actie",
+    "nextLeadup": "{count, plural, =0 {Vandaag begint een voorbereiding} one {Volgende voorbereiding over # dag} other {Volgende voorbereiding over # dagen}}",
+    "noLeadup": "Geen voorbereiding gepland"
+  },
+  "squad": {
+    "title": "Je selectie",
+    "count": "{count, plural, one {# renner} other {# renners}}",
+    "colRider": "Renner",
+    "colForm": "Vorm",
+    "colTarget": "Pieksdoel",
+    "colValue": "Wat het waard is",
+    "noPeak": "Geen piek",
+    "pickRace": "Pieksdoel voor {name}",
+    "raceOption": "{date} · {race} · match {fit}",
+    "raceOptionPayback": "{date} · {race} · match {fit} · kans op terugval",
+    "raceOptionLocksNow": "{date} · {race} · match {fit} · wordt direct vergrendeld",
+    "age": "{age} jr",
+    "load": "{days, plural, one {# koersdag} other {# koersdagen}}",
+    "loadTitle": "Seizoensbelasting: {races, plural, one {# koers} other {# koersen}}, {days, plural, one {# koersdag} other {# koersdagen}} dit seizoen ingeschreven",
+    "formInline": "Vorm {value}",
+    "remove": "Piek verwijderen",
+    "window": "Voorbereiding {start} tot {end}",
+    "locksOn": "Vergrendelt {date}",
+    "lockedTooltip": "Vergrendeld sinds het pieksvenster begon op {date}. Pieken worden vergrendeld zodra hun venster start en kunnen dan niet meer worden gewijzigd.",
+    "lockedTooltipGeneric": "Het venster van deze piek is begonnen, dus hij is vergrendeld en kan niet meer worden gewijzigd.",
+    "value": {
+      "range": "+{floor} tot +{ceiling} vorm",
+      "current": "+{current} vorm",
+      "rangeHint": "Hangt af van hoe de voorbereiding wordt gereden. Daarna {payback} vorm gedurende {days} dagen.",
+      "currentHint": "Daarna {payback} vorm gedurende {days} dagen.",
+      "unset": "Stel een doel in om te zien wat een piek waard is."
+    },
+    "payback": {
+      "collision": "De dip na deze piek valt over {race}, {days, plural, one {# dag} other {# dagen}} later. Verwacht daar {payback} vorm.",
+      "unknownRace": "een andere koers in het programma van deze renner"
+    },
+    "youth": {
+      "title": "U23- en juniorenrenners",
+      "note": "Deze renners rijden U23- en juniorenkoersen. Pieken worden gepland voor de seniorenkalender, dus hun pieken kun je hier alleen verwijderen.",
+      "squad": {
+        "u23": "U23",
+        "junior": "Junior"
+      }
+    }
+  },
+  "assistant": {
+    "cardTitle": "De assistent heeft {peaks, plural, one {# piek} other {# pieken}} voorgesteld voor {riders, plural, one {# renner} other {# renners}}",
+    "cardWhy": "Elke piek is gekozen op basis van de eigen koerskalender, het type en de leeftijd van die renner. Accepteer ze allemaal, of pas ze afzonderlijk aan in de lijst hieronder.",
+    "cardRule": "Elke renner kan per seizoen voor maximaal {max} koersen pieken, dus kies waar het telt.",
+    "acceptAll": "Alles accepteren",
+    "acceptedAll": "{count, plural, one {# piek ingesteld} other {# pieken ingesteld}}. Pas ze aan in de lijst.",
+    "acceptedPartial": "{created} ingesteld, {skipped} niet gelukt. De lijst toont wat is blijven staan.",
+    "badge": "Suggestie van de assistent",
+    "badgeMixed": "{real, plural, one {# piek} other {# pieken}} + {count, plural, one {# suggestie} other {# suggesties}}",
+    "accept": "Accepteren",
+    "reset": "Leegmaken",
+    "resetDone": "Suggestie gewist. Kies een doelkoers wanneer je er klaar voor bent.",
+    "reasonRegistered": "Past bij een koers waarvoor je hem al hebt ingeschreven.",
+    "reasonSuitability": "Beste typematch in je kalender.",
+    "reasonNoPeak": "De assistent stelt op dit moment geen volgende piek voor deze renner voor.",
+    "noPeakTitle": "Geen verdere piek aanbevolen",
+    "keepOnePeak": "Houd één piek"
+  },
+  "filter": {
+    "mine": "Mijn koersen",
+    "all": "Alle koersen"
+  },
+  "planningTowards": {
+    "label": "Plannen richting: {race} · {date}"
+  },
+  "raceList": {
+    "title": "Koersen van het seizoen",
+    "subtitle": "Alle koersen van dit seizoen: wanneer ze worden gereden en wat ze vragen. Open er een om een piek te plannen, of ga naar de volledige pagina.",
+    "count": "{count, plural, one {# koers} other {# koersen}}",
+    "viewPage": "Koerspagina van {race} openen",
+    "mine": "In je kalender",
+    "peaksHere": "{count, plural, one {# renner piekt hier} other {# renners pieken hier}}",
+    "empty": "Er zijn nog geen koersen die bij dit filter passen.",
+    "past": "Klaar"
+  },
+  "legend": {
+    "potential": "Potentiële top",
+    "realized": "Gerealiseerd (getraind)",
+    "block": "Opbouw / afbouw",
+    "token": "Piekpunt",
+    "drag": "Sleep een haak om te herrichten"
+  },
+  "status": {
+    "onTrack": "Afbouw op koers",
+    "atRisk": "Piek in gevaar",
+    "pending": "Voorbereiding niet gestart",
+    "locked": "Vergrendeld"
+  },
+  "tokens": {
+    "label": "{used} van {max} pieken gebruikt"
+  },
+  "ovr": {
+    "label": "OVR"
+  },
+  "today": "Vandaag",
+  "form": {
+    "now": "Huidige vorm {value}"
+  },
+  "lane": {
+    "noPeaks": "Geen pieken ingesteld. Een vlak seizoen tot je er een plant."
+  },
+  "drawer": {
+    "close": "Sluiten",
+    "race": {
+      "summary": "{stages} etappes · {summits, plural, =0 {geen bergaankomsten} one {# bergaankomst} other {# bergaankomsten}}",
+      "rankedTitle": "Jouw renners, gerangschikt op geschiktheid",
+      "rivalThreat": "Dreiging van rivalen",
+      "rivalCount": "{count, plural, =0 {Geen rivalen pieken hier} one {# rivaal piekt hier ook} other {# rivalen pieken hier ook}}",
+      "viewProfiles": "Etappeprofielen bekijken",
+      "hideProfiles": "Etappeprofielen verbergen",
+      "openStage": "Etappe {stage} openen in een nieuw tabblad",
+      "setPeak": "Piek instellen",
+      "demands": "Deze koers vraagt",
+      "alreadyPeaking": "Piekt hier",
+      "suggestedHere": "De assistent stelt hier voor",
+      "viewPage": "Koerspagina bekijken",
+      "peaksLocked": "Divisie nog niet bekend",
+      "maxedReached": "Pieklimiet bereikt (max. {max} per renner)",
+      "started": "Gestart"
+    },
+    "rider": {
+      "abilities": "Vaardigheden",
+      "suggestedBlock": "Voorgestelde voorbereiding",
+      "autoPlan": "Training automatisch plannen",
+      "build": "Opbouwweek",
+      "taper": "Afbouwweek",
+      "focus": "Aanbevolen focus: {focus}",
+      "accepted": "{week} naar de training van {name} geschreven",
+      "noPeak": "Nog geen piek. Kies een doelkoers om er een te plannen.",
+      "peakFor": "Piek voor {race}",
+      "pickRace": "Kies een doelkoers",
+      "removePeak": "Piek verwijderen",
+      "windowLabel": "Pieksvenster {start} – {end}"
+    }
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "hilly": "Heuvelachtig",
+    "mountain": "Bergen",
+    "itt": "TT",
+    "ttt": "PTT",
+    "cobbles": "Kasseien"
+  },
+  "focus": {
+    "vo2max": "VO2max",
+    "threshold": "Drempel",
+    "sprint": "Sprint",
+    "endurance": "Duurvermogen",
+    "technique": "Techniek",
+    "aero": "Aero",
+    "loebslaere": "Koersinzicht"
+  },
+  "error": {
+    "max_reached": "Deze renner heeft al het maximum van {max} pieken.",
+    "duplicate_target": "Deze renner piekt al voor die koers.",
+    "locked": "Deze piek is vergrendeld en kan niet meer worden gewijzigd.",
+    "race_not_in_calendar": "Die koers staat niet in de kalender van je divisie.",
+    "race_not_scheduled": "Die koers is nog niet ingepland.",
+    "generic": "Er ging iets mis. Probeer het opnieuw.",
+    "title": "De seizoensplanner kon niet worden geladen",
+    "description": "Er is niets verloren gegaan. Je pieken en trainingsplannen zijn veilig. Probeer het opnieuw.",
+    "session": "Je sessie is verlopen. Log opnieuw in om verder te plannen.",
+    "retry": "Probeer opnieuw",
+    "division_not_settled": "Je divisie voor dat seizoen wordt bepaald bij de seizoenswissel, dus pieken kunnen nog niet worden ingesteld.",
+    "race_already_started": "Die koers is al begonnen, dus hij kan geen pieksdoel meer zijn.",
+    "rider_not_senior_squad": "Pieken worden gepland voor seniorenrenners. Deze renner zit in je U23- of juniorenselectie."
+  },
+  "months": [
+    "Jan",
+    "Feb",
+    "Mrt",
+    "Apr",
+    "Mei",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Dec"
+  ],
+  "divisionPending": {
+    "title": "Je divisie voor seizoen {number} wordt bepaald bij de seizoenswissel",
+    "body": "Promotie en degradatie worden vastgesteld wanneer het huidige seizoen sluit, dus ik kan je nog niet zeggen welke kalender de jouwe is. Hieronder staan de koersen van seizoen {number} voor elke divisie, zodat je de route toch al kunt bestuderen.",
+    "hint": "Pieken voor seizoen {number} gaan open zodra je divisie vaststaat."
+  }
+}

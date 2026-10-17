@@ -1,0 +1,764 @@
+{
+  "tx": {
+    "sponsor": {
+      "seasonStartIntro": "Sponsorinkomsten · Seizoensstart (intro {amount} ×{modifier})",
+      "seasonStartIntroPullout": "Sponsorinkomsten · Seizoensstart (intro {amount} ×{modifier} · sponsorterugtrekking actief)",
+      "seasonStartVariable": "Sponsorinkomsten · Seizoensstart (basis {base} + variabel {variable} ×{modifier})",
+      "seasonStartVariablePullout": "Sponsorinkomsten · Seizoensstart (basis {base} + variabel {variable} ×{modifier} · sponsorterugtrekking actief)",
+      "seasonStartFallback": "Sponsorinkomsten · Seizoensstart (terugval {amount} ×{modifier})",
+      "seasonStartFallbackPullout": "Sponsorinkomsten · Seizoensstart (terugval {amount} ×{modifier} · sponsorterugtrekking actief)",
+      "seasonStartContract": "Sponsorinkomsten · Seizoensstart (contract met {sponsor}, basis {base} ×{modifier})",
+      "seasonStartContractPullout": "Sponsorinkomsten · Seizoensstart (contract met {sponsor}, basis {base} ×{modifier} · sponsorterugtrekking actief)",
+      "midSeasonProRata": "Sponsorinkomsten · Midden in het seizoen ingestapt ({sponsorName} · {percent} % van het seizoen te gaan)",
+      "signingBonus": "Sponsor · Tekenbonus ({sponsorName})",
+      "resultBonus": "Sponsor · Resultaatbonus ({wins} zeges, {podiums} podia)",
+      "objectiveBonus": "Sponsor · Seizoensdoel gehaald ({sponsorName})"
+    },
+    "salary": "Seizoenssalarissen · {count} renners",
+    "wageDaily": "Dagloon · {count} renners",
+    "upkeep": "Onderhoud (exploitatiekosten) · Divisie {division}",
+    "travelStaff": "Reis & staf · {race}, etappe {stage}",
+    "parachute": "Degradatieparachute · Divisie {oldDivision} -> {newDivision}",
+    "academyDrift": "Academieonderhoud · {count} plekken × {drift_per_slot} pnt",
+    "facilityUpkeep": "Faciliteitenonderhoud · {tracks} sporen",
+    "facilityPurchase": "Faciliteit opgewaardeerd: {track} -> niveau {tier}",
+    "staffSalary": "Seizoenssalarissen staf · {count} stafleden",
+    "staffSeverance": "{role} ontslagen (ontslagvergoeding)",
+    "staffRelease": "{role} {staffName} ontslagen (ontslagvergoeding)",
+    "interest": "Rente op schuld (10% van {amount} pnt)",
+    "bonus": "Divisiebonus · Eindigde als nr. {rank} in Divisie {division}",
+    "loanReceivedShort": "Korte lening afgesloten (kosten: {fee} CZ$)",
+    "loanReceivedLong": "Lange lening afgesloten (kosten: {fee} CZ$)",
+    "loanRepayment": "Leningaflossing betaald",
+    "loanRepaymentFinal": "Leningaflossing betaald. Lening volledig afgelost! 🎉",
+    "loanRepaymentRemaining": "Leningaflossing betaald (resterend: {remaining} CZ$)",
+    "forcedDebtRepaymentFinal": "De opbrengst van de gedwongen verkoop loste je lening volledig af",
+    "forcedDebtRepaymentRemaining": "De opbrengst van de gedwongen verkoop verlaagde de schuld (resterend: {remaining} CZ$)",
+    "loanInterest": "Leningrente ({rate}%): opgeteld bij de leningschuld, niet van het saldo afgeschreven",
+    "emergencyLoan": "Noodlening automatisch geopend (kosten: {feeRate}%, rente: {interestRate}%/seizoen)",
+    "squadFineSingle": "Boete voor selectiegrootte: {count} renner te veel × {amount} CZ$",
+    "squadFineMulti": "Boete voor selectiegrootte: {count} renners te veel × {amount} CZ$",
+    "auctionBuy": "{riderName} gekocht in een veiling",
+    "auctionSell": "{riderName} verkocht in een veiling",
+    "guaranteedAiSale": "Gegarandeerde verkoop aan AI: {riderName}",
+    "forcedDebtSale": "Gedwongen verkoop (schuldenplafond): {riderName}",
+    "youthAuctionWin": "Jeugdrenner {riderName} gewonnen in een veiling",
+    "academySigning": "Academiecontract: {riderName}",
+    "intakeExpiryCompensation": "Compensatie: verlopen instroomaanbieding voor {riderName} verkocht in een veiling",
+    "transferBuy": "{riderName} gekocht via een transfer",
+    "transferSell": "{riderName} verkocht via een transfer",
+    "riderRelease": "{riderName} vrijgegeven (afkoopsom)",
+    "swapCash": "Contante afwikkeling van de ruil: {offeredName} <-> {requestedName}",
+    "scoutTravel": "Reiskosten van de scout",
+    "scoutLostReportRefund": "Terugbetaling: scoutrapport verloren door een bug",
+    "legacy": {
+      "sponsor": "Sponsorinkomsten · Seizoen {season}",
+      "salary": "Salarissen · Seizoen {season}",
+      "prize": "Prijzengeld · {raceName}",
+      "transferPurchase": "Rennersaankoop · {detail}",
+      "transferSale": "Rennersverkoop · {detail}",
+      "loanReceived": "Lening ontvangen",
+      "loanRepayment": "Leningaflossing",
+      "loanInterest": "Leningrente",
+      "emergencyLoan": "Noodlening",
+      "bonus": "Divisiebonus",
+      "interest": "Rente",
+      "adminAdjustment": "Aanpassing door beheerder"
+    },
+    "divisionAdjustment": "Divisieaanpassing · deal geprijsd voor Divisie {signedDivision}, koerst in Divisie {currentDivision}"
+  },
+  "forecast": {
+    "warning": {
+      "negativeNet": "Verwacht tekort: {value} CZ$ volgend seizoen. Verkoop een renner, verlaag actieve leningen of onderhandel over een betere sponsor.",
+      "debtNearCeiling": "De schuld is {ratio}% van het plafond ({totalDebt} / {ceiling} CZ$). Het bestuur maakt zich zorgen.",
+      "debtGrowing": "De schuld is {ratio}% van het plafond. Houd de rentelast in de gaten.",
+      "debtTrend": "Bij het huidige tekort bereik je het schuldenplafond binnen 2 seizoenen. Onderneem nu actie.",
+      "salaryExceedsSponsor": "Salarissen ({salary} CZ$) liggen boven de sponsor ({sponsor} CZ$). Rustig draaien dekt de lonen niet meer."
+    }
+  },
+  "notif": {
+    "admin": {
+      "feedbackReply": {
+        "title": "Antwoord op je bericht"
+      },
+      "retirementAnnounced": {
+        "title": "Laatste seizoen voor {count} van je renners",
+        "message": "{count} van je renners hebben aangekondigd dat dit hun laatste seizoen is: {names}. Ze stoppen wanneer seizoen {season} eindigt."
+      },
+      "devTransition": {
+        "title": "De ontwikkelingsweergave is veranderd",
+        "message": "Je renners zijn niet veranderd. Vaardigheden, ratings en uitslagen zijn precies als gisteren. Het oude bereik liep van ondergrens tot plafond. Het nieuwe bereik is het verwachte niveau van je renner: waar hij met jouw training realistisch uitkomt. Plafonds zijn tegelijk voor de meeste renners verhoogd, dus een lager ogend bereik betekent niet dat een renner zwakker is. Potentieel bepaalt nu hoe snel een renner zich ontwikkelt, niet waar hij stopt. Je dashboard toont je eigen renners voor en na."
+      },
+      "survey": {
+        "title": "Help me beslissen wat ik als volgende bouw",
+        "message": "Ik heb een korte enquête in het spel gezet. Je beoordeelt elk idee twee keer: of het sowieso een goed idee is, en hoeveel het nu voor jou uitmaakt. Het duurt ongeveer 5 minuten en je kunt je antwoorden wijzigen tot de enquête sluit. Open hem vanaf hier."
+      },
+      "surveyNudge": {
+        "title": "Drie minuten voor het volgende seizoen?",
+        "message": "{count} managers hebben de functie-enquête tot nu toe beantwoord. Jeugdteams, training en de koersmotor staan bovenaan. Ik hoor graag waar jij staat voordat ik het plan vastleg. De enquête sluit op 14 september. Open hem vanaf hier."
+      },
+      "surveyNudgeStarted": {
+        "title": "Je hoeft alleen nog op versturen te drukken",
+        "message": "Je bent aan de functie-enquête begonnen maar hebt hem nooit verstuurd. Je antwoorden zijn opgeslagen, dus je kunt verdergaan waar je gebleven was. {count} managers hebben tot nu toe geantwoord en de enquête sluit op 14 september. Open hem vanaf hier."
+      }
+    },
+    "loanCreatedShort": {
+      "title": "Lening aangemaakt",
+      "message": "Je hebt een korte lening van {principal} CZ$ afgesloten. Kosten: {fee} CZ$. Totale terugbetaling: {totalOwed} CZ$."
+    },
+    "loanCreatedLong": {
+      "title": "Lening aangemaakt",
+      "message": "Je hebt een lange lening van {principal} CZ$ afgesloten. Kosten: {fee} CZ$. Totale terugbetaling: {totalOwed} CZ$."
+    },
+    "emergencyLoan": {
+      "title": "⚠️ Noodlening geopend",
+      "message": "Je team kon de lonen niet dekken. Er is automatisch een noodlening van {amount} CZ$ geopend met {feeRate}% kosten en {interestRate}% rente. Totale schuld: {totalOwed} CZ$."
+    },
+    "emergencyLoanBreach": {
+      "title": "🚨 Schuldenplafond overschreden",
+      "message": "Je noodlening brengt de schuld van het team {breachAmount} CZ$ boven het plafond van de divisie van {ceiling} CZ$. Je kunt doorspelen, maar je MOET kosten verlagen (renners verkopen, sterrencontracten laten gaan) vóór het einde van het volgende seizoen om een schuldenspiraal te voorkomen."
+    },
+    "emergencyLoanEscalation": {
+      "title": "Het bestuur bevriest transfers",
+      "message": "Je team had {streak} seizoenen op rij een noodlening nodig. Het bestuur bevriest transfers tot je financiën stabiliseren."
+    },
+    "debtCeilingFreeze": {
+      "title": "Transfers bevroren: schuld boven het plafond",
+      "message": "Je schuld van {debt} CZ$ ligt boven het plafond van je divisie van {ceiling} CZ$. Het bestuur bevriest transfers tot je weer onder het plafond zit. Los schuld af of verkoop renners vóór het volgende seizoen, anders dwingt het bestuur een verkoop af."
+    },
+    "debtCeilingFinalWarning": {
+      "title": "Eén seizoen voor een gedwongen verkoop",
+      "message": "Je schuld van {debt} CZ$ ligt boven het plafond van je divisie van {ceiling} CZ$ en transfers zijn al bevroren. Als je bij de volgende seizoenswissel nog boven het plafond zit, verkoopt het bestuur je meest waardevolle renners om het gat te dichten. Los leningen af, verkoop zelf renners of verlaag de lonen voor die tijd."
+    },
+    "debtCeilingForcedSale": {
+      "title": "Het bestuur dwong een verkoop af",
+      "message": "Je schuld van {debt} CZ$ bleef {streak} seizoenen op rij boven het plafond van je divisie van {ceiling} CZ$, dus het bestuur verkocht {riders} voor {proceeds} CZ$ en stopte het geld rechtstreeks in je leningen. Je schuld is nu {remainingDebt} CZ$ en transfers blijven bevroren tot je weer onder het plafond zit. Als je bij de volgende seizoenswissel nog boven het plafond zit, verkoopt het bestuur opnieuw. Los leningen af, verkoop zelf renners of verlaag de lonen voor die tijd."
+    },
+    "loanPaidOff": {
+      "title": "✅ Lening afgelost",
+      "message": "Gefeliciteerd! Je hebt je lening volledig afgelost."
+    },
+    "boardPlanExpired": {
+      "title": "Bestuursplan verlopen",
+      "message": "{headline}. {summary} Tevredenheid: {satisfaction}%. Onderhandel met het bestuur over een nieuw plan."
+    },
+    "boardMidReview": {
+      "title": "Tussentijdse beoordeling",
+      "message": "Tussentijdse beoordeling: {midMsg} {summary} Tevredenheid: {satisfaction}%."
+    },
+    "boardSeasonReport": {
+      "title": "Seizoensrapport",
+      "messageGain": "Seizoen {seasonsCompleted}/{planDuration} van je {planLabel} is voltooid. {summary} Tevredenheid: {satisfaction}% (+{delta}).",
+      "messageLoss": "Seizoen {seasonsCompleted}/{planDuration} van je {planLabel} is voltooid. {summary} Tevredenheid: {satisfaction}% ({delta})."
+    },
+    "boardMidMessage": {
+      "good": "Het bestuur is tevreden over je voortgang.",
+      "moderate": "Het bestuur is redelijk tevreden over je voortgang.",
+      "bad": "Het bestuur maakt zich zorgen over je voortgang in het plan."
+    },
+    "boardChairmanReplaced": {
+      "title": "Het bestuur heeft een nieuwe voorzitter gekozen",
+      "message": "Na twee teleurstellende planningsseizoenen heeft het bestuur de voorzitter vervangen. {chairmanLabel} neemt het over. Verwacht een nieuwe toon in de komende onderhandelingen.",
+      "messageWithName": "Na twee teleurstellende planningsseizoenen heeft het bestuur de voorzitter vervangen. {chairmanName}, de nieuwe {chairmanLabel} van de club, neemt het over. Verwacht een nieuwe toon in de komende onderhandelingen."
+    },
+    "boardForcedListing": {
+      "title": "Het bestuur eist een verkoop",
+      "message": "De tevredenheid staat op {satisfaction}%. Het bestuur heeft {riderName} verplicht te koop gezet voor {askingPrice} CZ$."
+    },
+    "boardSponsorPullout": {
+      "title": "Sponsor trekt zich terug",
+      "message": "Het bestuur meldt dat een hoofdsponsor zich na het seizoen heeft teruggetrokken. De sponsorinkomsten dalen volgend seizoen met 10%."
+    },
+    "boardBonusOffer": {
+      "title": "Bonusaanbod van het bestuur",
+      "message": "Het bestuur is onder de indruk ({satisfaction}% tevredenheid, {goalsMet}/{goalsTotal} doelen gehaald). Het biedt +{bonusAmount} CZ$ voor een extra doel: {goalLabel}. Accepteer of wijs af op de pagina Bestuur."
+    },
+    "divisionPromoted": {
+      "title": "Gepromoveerd! 🎉",
+      "message": "Gefeliciteerd! Je team stijgt naar Divisie {division}."
+    },
+    "divisionRelegated": {
+      "title": "Degradatie",
+      "message": "Je team zakt naar Divisie {division}."
+    },
+    "poolReseeded": {
+      "title": "Nieuwe poule voor volgend seizoen",
+      "message": "Je team is opnieuw geplaatst in {pool}, zodat de poules even sterk zijn."
+    },
+    "boardPlanOpened": {
+      "title": "Je bestuur is klaar om je {planLabel} te bespreken",
+      "message": "Je {planLabel} wacht op onderhandeling. Neem de tijd die je nodig hebt. Je krijgt een herinnering voordat het bestuur zelf beslist."
+    },
+    "boardT3Reminder": {
+      "title": "Het bestuur wacht op je {planLabel}",
+      "message": "Je hebt nog {daysLeft} dagen om over je {planLabel} te onderhandelen. Als je niets doet, beslist het bestuur."
+    },
+    "academyBoardGift": {
+      "title": "Een bedankje van het bestuur",
+      "message": "Bedankt dat je met mij koerst. Ik heb 10 jeugdtalenten in je academie gezet: 5 van U23-leeftijd en 5 van juniorenleeftijd. Ze contracteren is gratis en het gewone jeugdloon geldt. Kies binnen 14 dagen degene die je wilt. De rest vertrekt stilletjes."
+    },
+    "academySigned": {
+      "title": "Academiecontract afgerond",
+      "message": "Je academietalent is bij je academie aangesloten."
+    },
+    "academyGraduationReady": {
+      "title": "Academie-afstuderen",
+      "message": "{name} is te oud geworden voor je academie. Promoveer, verkoop of geef hem vrij vóór de deadline."
+    },
+    "academyGraduated": {
+      "title": "Academieafgestudeerde afgehandeld",
+      "promote": "{name} is gepromoveerd naar je seniorenselectie.",
+      "sell": "{name} is op de transferlijst gezet.",
+      "release": "{name} is vrijgegeven.",
+      "unsoldPromotedTitle": "Academieafgestudeerde gepromoveerd",
+      "unsoldPromoted": "Op {name} kwamen geen biedingen, dus hij stroomt door naar je seniorenselectie.",
+      "unsoldTitle": "Academieafgestudeerde vrijgegeven",
+      "unsold": "Op {name} kwamen geen biedingen en hij verliet je academie transfervrij."
+    },
+    "promotionPending": {
+      "title": "Wacht op promotie: {name}",
+      "u23": "{name} is klaar voor je U23-selectie, maar die is vol. Hij blijft in zijn huidige selectie op hetzelfde contract. Maak een plek vrij en promoveer hem vanaf je teampagina.",
+      "senior": "{name} is klaar voor je seniorenselectie, maar die is vol. Hij blijft in zijn huidige selectie op hetzelfde contract. Maak een plek vrij en promoveer hem vanaf je teampagina."
+    },
+    "academySigningDeferred": {
+      "title": "Academiecontract bevestigd",
+      "message": "{riderName} sluit zich aan bij je academie zodra zijn huidige etappekoers is afgelopen. Tot dan blijft hij koersen voor je seniorenselectie."
+    },
+    "academySigningArrived": {
+      "title": "Academierenner is aangekomen",
+      "message": "{riderName} heeft zich bij je academie aangesloten. Zijn etappekoers is voorbij."
+    },
+    "academyDrip": {
+      "title": "Nieuw academietalent is aangekomen",
+      "message": "Nieuwe kandidaten wachten in je academie - contracteer of wijs ze af."
+    },
+    "seasonStarted": {
+      "title": "Seizoen {number} is begonnen",
+      "message": "Een nieuw seizoen is begonnen. Bekijk je dashboard voor de doelen van je bestuur en je selectie voor het seizoen dat komt.",
+      "messageWithSponsor": "Een nieuw seizoen is begonnen. Je sponsor heeft {amount} CZ$ voor het seizoen uitbetaald. Bekijk je dashboard voor de doelen van je bestuur en je selectie voor het seizoen dat komt."
+    },
+    "seasonEnded": {
+      "title": "Seizoen {number} is afgelopen",
+      "message": "Het seizoen is voorbij. Zie het overzicht voor de eindstand, promoties en degradaties.",
+      "messagePersonal": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld. Je beste renner was {rider} met {riderPoints} punten. Je begint Seizoen {nextSeason} in Divisie {nextDivision}.",
+      "messagePersonalNoNextDivision": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld. Je beste renner was {rider} met {riderPoints} punten.",
+      "messagePersonalNoRider": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld. Je begint Seizoen {nextSeason} in Divisie {nextDivision}.",
+      "messagePersonalMinimal": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld.",
+      "messagePersonalBoard": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld. Je beste renner was {rider} met {riderPoints} punten. Je begint Seizoen {nextSeason} in Divisie {nextDivision}. Je bestuur kwam na de slotetappe bijeen: {boardMet} van {boardTotal} doelen gehaald, vertrouwen {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoNextDivisionBoard": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld. Je beste renner was {rider} met {riderPoints} punten. Je bestuur kwam na de slotetappe bijeen: {boardMet} van {boardTotal} doelen gehaald, vertrouwen {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoRiderBoard": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld. Je begint Seizoen {nextSeason} in Divisie {nextDivision}. Je bestuur kwam na de slotetappe bijeen: {boardMet} van {boardTotal} doelen gehaald, vertrouwen {boardBefore} -> {boardAfter}.",
+      "messagePersonalMinimalBoard": "Je eindigde als {rankOrdinal} van {poolSize} in Divisie {division} met {points} punten en CZ$ {prize} aan prijzengeld. Je bestuur kwam na de slotetappe bijeen: {boardMet} van {boardTotal} doelen gehaald, vertrouwen {boardBefore} -> {boardAfter}."
+    },
+    "raceResult": {
+      "title": "De koersuitslag is binnen",
+      "message": "{race} is gereden. Bekijk de uitslag."
+    },
+    "firstRaceResult": {
+      "title": "Je eerste koers zit erop",
+      "message": "{race} is gereden. Kijk hoe je renners het deden."
+    },
+    "stageResult": {
+      "title": "De etappeuitslag is binnen",
+      "message": "Etappe {stage} van {race} is klaar. Jouw beste: {rider}, positie {position}.",
+      "messageNoResult": "Etappe {stage} van {race} is klaar."
+    },
+    "contractExpiring": {
+      "title": "Contract loopt af",
+      "message": "Het contract van {rider} loopt af aan het eind van seizoen {season}."
+    },
+    "contractExpiredRelease": {
+      "title": "Renner vrijgegeven: contract verlopen",
+      "message": "Het contract van {rider} liep af aan het eind van seizoen {season}. Hij is nu transfervrij."
+    },
+    "squadBelowMinimum": {
+      "title": "Selectie onder het koersminimum",
+      "message": "Je selectie heeft {count} renner(s) die mogen koersen, onder het minimum van {min} renners dat nodig is om een koersdag te rijden. Contracteer transfervrije renners of bied in een veiling vóór je volgende koers.",
+      "titleU23": "U23-team onder het koersminimum",
+      "messageU23": "Je U23-team heeft {count, plural, one {1 renner} other {# renners}}, onder de {min} die nodig zijn om een koers te starten. Wanneer een contract bij de seizoenswissel afloopt, verlaat de renner het team. Je U23-team kan geen koers starten tot je het aanvult.",
+      "titleJunior": "Juniorenteam onder het koersminimum",
+      "messageJunior": "Je juniorenteam heeft {count, plural, one {1 renner} other {# renners}}, onder de {min} die nodig zijn om een koers te starten. Wanneer een contract bij de seizoenswissel afloopt, verlaat de renner het team. Je juniorenteam kan geen koers starten tot je het aanvult."
+    },
+    "seniorStartReminder": {
+      "title": "Je seniorenselectie heeft renners nodig",
+      "message24h": "Koersdag {gameDay} begint binnen 24 uur. Je hebt {count, plural, one {1 seniorenrenner} other {# seniorenrenners}} en hebt er {missing, plural, one {nog 1} other {nog #}} nodig om een team op te stellen. Zoek een renner op de markt.",
+      "message3h": "Koersdag {gameDay} begint binnen 3 uur. Je hebt nog {missing, plural, one {1 seniorenrenner} other {# seniorenrenners}} nodig om een team op te stellen. Zoek een renner op de markt."
+    },
+    "selectionWarning": {
+      "title": "Selectie nodig",
+      "message": "{race} begint binnen 36 uur en je hebt je selectie nog niet gekozen. Kies je renners, of laat de assistent automatisch voor je kiezen."
+    },
+    "assistantFilledSquad": {
+      "title": "De assistent heeft je selectie ingevuld",
+      "message": "Je assistent heeft je selectie voor {race} gekozen. Je had geen selectie ingediend. Kijk ernaar en wijzig hem als je wilt."
+    },
+    "riderRetired": {
+      "title": "{name} is gestopt",
+      "message": "{name} is op {age}-jarige leeftijd gestopt met het profwielrennen. Zijn plek in je selectie is nu vrij."
+    },
+    "seasonTransitionRisk": {
+      "title": "Seizoenswissel: contract- en pensioenrisico",
+      "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng het contract van een renner vanaf zijn profiel vóór de wissel om te voorkomen dat hij vertrekt. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
+      "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng hun contract vanaf het profiel van de renner vóór de wissel om ze te houden.",
+      "messageRetirementOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers."
+    },
+    "watchlistDeparted": {
+      "title": "Renner heeft het spel verlaten",
+      "message": "{rider} heeft het spel verlaten en is van je volglijst gehaald."
+    },
+    "scoutReportReady": {
+      "target": {
+        "title": "Scoutingrapport klaar",
+        "message": "Je onderzoek van niveau {level} naar {rider} is klaar. Bekijk het rapport."
+      },
+      "mission": {
+        "title": "Scoutingmissie klaar",
+        "messageSingle": "Je scoutingmissie vond {count} renner. Bekijk de shortlist.",
+        "messageMulti": "Je scoutingmissie vond {count} renners. Bekijk de shortlist.",
+        "titleEmpty": "Scoutingmissie: geen matches",
+        "messageEmpty": "Je scout heeft gezocht maar geen renners gevonden die aan je criteria voldoen."
+      }
+    },
+    "scoutLostReportRefund": {
+      "title": "Scoutmissie terugbetaald",
+      "message": "Je scoutrapport van {date} is verloren gegaan door een bug. De {amount} CZ$ is terugbetaald."
+    },
+    "auctionCancelledRetired": {
+      "title": "Veiling geannuleerd: renner gestopt",
+      "messageBidder": "{rider} stopte voordat de veiling kon worden afgerond. Er is niets in rekening gebracht.",
+      "messageSeller": "{rider} stopte voordat de veiling op hem kon worden afgerond. De veiling is geannuleerd."
+    },
+    "intakeExpiryCompensation": {
+      "title": "Aanbieding uit de academie-instroom verlopen: renner verkocht",
+      "message": "Je academie-aanbieding voor {rider} is verlopen en hij is in een veiling verkocht. Je ontving {amount} CZ$."
+    },
+    "boardT1Reminder": {
+      "title": "Laatste kans: {planLabel}",
+      "messageSingle": "Het bestuur neemt het over over {daysLeft} dag. Open de pagina Bestuur en onderhandel nu over je {planLabel}.",
+      "messageMulti": "Het bestuur neemt het over over {daysLeft} dagen. Open de pagina Bestuur en onderhandel nu over je {planLabel}."
+    },
+    "boardAutoAccepted": {
+      "title": "Het bestuur heeft {planLabel} voor je gekozen",
+      "message": "Je hebt niet op tijd over je {planLabel} onderhandeld. Het bestuur koos de focus \"{focus}\" en standaarddoelen. Je kunt nog wijzigingen aanvragen zodra het plan loopt."
+    },
+    "boardMandateOpened": {
+      "title": "Het bestuur heeft de jaarvergadering bijeengeroepen",
+      "message": "Je bestuur heeft het mandaat voor volgend seizoen voorgesteld. Neem de tijd die je nodig hebt. Je krijgt een herinnering voordat het bestuur zelf tekent.",
+      "messageWithChairman": "{chairman} heeft je mandaat voor seizoen {season} voorgesteld. Je hebt {days} dagen voordat het bestuur zelf tekent.",
+      "messageNoChairman": "Je bestuur heeft je mandaat voor seizoen {season} voorgesteld. Je hebt {days} dagen voordat het bestuur zelf tekent."
+    },
+    "boardMandateT3Reminder": {
+      "title": "Het bestuur wacht op je jaarmandaat",
+      "message": "Je hebt nog {daysLeft} dagen om over je jaarmandaat te onderhandelen. Als je niets doet, tekent het bestuur voor je."
+    },
+    "boardMandateT1Reminder": {
+      "title": "Laatste kans: teken je jaarmandaat",
+      "messageSingle": "Het bestuur tekent zelf over {daysLeft} dag. Open nu de jaarvergadering.",
+      "messageMulti": "Het bestuur tekent zelf over {daysLeft} dagen. Open nu de jaarvergadering."
+    },
+    "boardMandateAutoAccepted": {
+      "title": "Het bestuur heeft je jaarmandaat voor je getekend",
+      "message": "Je hebt je jaarmandaat niet op tijd getekend. Het bestuur hield de voorgestelde doelen aan en tekende namens jou. Je kunt nog wijzigingen aanvragen zodra het seizoen loopt."
+    },
+    "autoBidPlaced": {
+      "title": "Automatisch bod geplaatst",
+      "message": "Het automatische bod van {bidderName} plaatste {amount} CZ$ op {riderName}"
+    },
+    "autoBidExhausted": {
+      "title": "Je automatische bod is overboden",
+      "message": "Je automatische bod op {riderName} bereikte zijn limiet en is overboden door {bidderName}. Het automatische bod is geannuleerd en je gereserveerde saldo is vrijgegeven.",
+      "messageNotCancelled": "Je automatische bod op {riderName} bereikte zijn limiet en is overboden door {bidderName}."
+    },
+    "autoBidCancelled": {
+      "title": "Automatisch bod geannuleerd",
+      "message": "De prijs van {riderName} is voorbij je limiet voor automatisch bieden van {maxAmount} CZ$ gegaan. Het automatische bod is geannuleerd en je gereserveerde saldo is vrijgegeven."
+    },
+    "autoBidRaised": {
+      "title": "Je automatische bod hield de leiding",
+      "message": "{bidderName} probeerde je te overbieden op {riderName}. Je automatische bod steeg naar {amount} CZ$ om voor te blijven."
+    },
+    "auctionLostToRival": {
+      "title": "Je verloor de biedoorlog",
+      "message": "{winnerName} snapte {rider} weg voor {price} CZ$, {overBid} CZ$ boven je hoogste bod van {yourMax} CZ$."
+    },
+    "debtWarning": {
+      "title": "⚠️ Negatief saldo",
+      "message": "Je team heeft een negatief saldo. Bekijk de pagina Financiën voor details."
+    },
+    "deadlineDay": {
+      "24h": {
+        "title": "Deadline Day over 24 uur",
+        "message": "De transferperiode sluit over 24 uur. Laatste kans om renners in veiling te zetten of aanbiedingen te accepteren."
+      },
+      "2h": {
+        "title": "Deadline Day over 2 uur",
+        "message": "De transferperiode sluit over 2 uur. Flitsveilingen en dringende biedingen zijn actief."
+      },
+      "30min": {
+        "title": "Deadline Day over 30 minuten",
+        "message": "Laatste kans: de transferperiode sluit over 30 minuten."
+      }
+    },
+    "transfer": {
+      "bidReceived": {
+        "title": "Nieuw bod ontvangen",
+        "message": "{bidderName} bood {amount} CZ$ op {riderName}"
+      },
+      "auctionOutbid": {
+        "title": "Je bent overboden!"
+      },
+      "watchlistAuction": {
+        "title": "Renner van je volglijst in veiling",
+        "message": "{riderName} staat in veiling (startprijs {startPrice} CZ$)"
+      },
+      "watchlistListed": {
+        "title": "Renner van je volglijst te koop",
+        "message": "{riderName} staat te koop ({askingPrice} CZ$)"
+      },
+      "transferInterest": {
+        "title": "Transfergeruchten",
+        "message": "Een manager heeft zijn oog laten vallen op {riderName}"
+      },
+      "offerReceived": {
+        "title": "Nieuwe transferaanbieding ontvangen",
+        "message": "{buyerName} biedt {amount} CZ$ voor {riderName}"
+      },
+      "newBid": {
+        "title": "Nieuw bod ontvangen",
+        "message": "{buyerName} biedt nu {amount} CZ$ voor {riderName}"
+      },
+      "offerAccepted": {
+        "title": "Aanbieding geaccepteerd: bevestig de deal",
+        "message": "{sellerName} heeft je aanbieding voor {riderName} van {price} CZ$ geaccepteerd. Bevestig om de deal af te ronden."
+      },
+      "counterAccepted": {
+        "title": "Tegenbod geaccepteerd: bevestig de deal",
+        "message": "{buyerName} heeft je tegenbod voor {riderName} van {price} CZ$ geaccepteerd. Bevestig om de deal af te ronden."
+      },
+      "offerRejected": {
+        "title": "Transferaanbieding afgewezen",
+        "message": "Je aanbieding voor {riderName} is afgewezen"
+      },
+      "counter": {
+        "title": "Tegenbod ontvangen",
+        "message": "{counterName} stuurt een tegenbod voor {riderName}: {counterAmount} CZ$"
+      },
+      "cancelled": {
+        "title": "Transfer geannuleerd",
+        "message": "{actorName} trok zich terug uit de deal voor {riderName}."
+      },
+      "withdrawn": {
+        "title": "Aanbieding ingetrokken",
+        "message": "{buyerName} trok zijn aanbieding voor {riderName} in"
+      },
+      "counterWithdrawn": {
+        "title": "Tegenbod ingetrokken",
+        "message": "{sellerName} trok zijn tegenbod voor {riderName} in. Je kunt een nieuwe aanbieding doen."
+      },
+      "onAuctionCancelled": {
+        "title": "Transfer geannuleerd",
+        "message": "{riderName} ging naar een actieve veiling. De deal is geannuleerd. Bied in plaats daarvan op de veiling."
+      },
+      "staleCancelled": {
+        "title": "Transfer geannuleerd",
+        "message": "{riderName} kon niet worden afgerond omdat de renner tijdens de bevestiging van status veranderde."
+      },
+      "completed": {
+        "title": "Transfer afgerond!",
+        "message": "{riderName} wisselt van team voor {price} CZ$",
+        "messageDeferred": "{riderName} is verhandeld voor {price} CZ$. Hij wisselt van team zodra zijn lopende etappekoers is afgelopen."
+      },
+      "issue": {
+        "title": "Transfer geannuleerd",
+        "swapTitle": "Ruil geannuleerd",
+        "sellerNoLongerOwns": "{riderName} kon niet worden afgerond omdat de renner niet meer in het team van de verkoper zit.",
+        "sellerSquadTooSmall": "{riderName} kon niet worden verkocht omdat de verkoper anders onder de {minRiders} renners in Divisie {division} zou zakken.",
+        "sellerSquadRiskTooSmall": "{riderName} kon niet worden verkocht omdat de verkoper anders onder de {minRiders} renners zou zakken als de renners die bij de volgende seizoenswissel vertrekken (aflopend contract of pensioenrisico) worden meegeteld.",
+        "buyerSquadFull": "{riderName} kon niet worden overgedragen omdat het team van de koper al vol is.",
+        "buyerCannotAfford": "De deal voor {riderName} kon niet worden afgerond omdat de koper onvoldoende geld heeft.",
+        "offeredMoved": "{offeredName} is niet meer beschikbaar voor de ruil.",
+        "requestedMoved": "{requestedName} is niet meer beschikbaar voor de ruil.",
+        "proposingCannotAfford": "De ruil {offeredName} <-> {requestedName} kon niet worden afgerond omdat het voorstellende team onvoldoende geld heeft.",
+        "receivingCannotAfford": "De ruil {offeredName} <-> {requestedName} kon niet worden afgerond omdat het ontvangende team onvoldoende geld heeft."
+      },
+      "swapProposed": {
+        "title": "Ruil voorgesteld",
+        "message": "{proposerName} biedt {offeredName} voor {requestedName}",
+        "messageCash": "{proposerName} biedt {offeredName} voor {requestedName} ({cashSign}{cash} CZ$ contant)"
+      },
+      "swapAccepted": {
+        "title": "Ruil geaccepteerd: bevestig de deal",
+        "message": "{accepterName} heeft de ruil geaccepteerd: {offeredName} <-> {requestedName}. Bevestig om af te ronden.",
+        "messageCash": "{accepterName} heeft de ruil geaccepteerd: {offeredName} <-> {requestedName} · {cashSign}{cash} CZ$. Bevestig om af te ronden."
+      },
+      "swapRejected": {
+        "title": "Ruil afgewezen",
+        "message": "{rejecterName} wees je ruilaanbod af"
+      },
+      "swapCounter": {
+        "title": "Tegenbod op ruil",
+        "message": "{counterName} stuurt een tegenbod: {offeredName} <-> {requestedName} ({cashSign}{counterCash} CZ$)"
+      },
+      "swapCounterAccepted": {
+        "title": "Tegenbod geaccepteerd: bevestig de deal",
+        "message": "{accepterName} heeft je tegenbod geaccepteerd. Bevestig om de ruil af te ronden."
+      },
+      "swapCompleted": {
+        "title": "Ruil afgerond!",
+        "message": "{offeredName} <-> {requestedName} zijn nu van team gewisseld",
+        "messageDeferred": "{offeredName} <-> {requestedName} zijn geruild. De renners wisselen van team zodra hun lopende etappekoers is afgelopen."
+      },
+      "swapCancelledStale": {
+        "title": "Ruil geannuleerd",
+        "message": "{riderName} veranderde tijdens de bevestiging van status."
+      },
+      "swapOnAuctionCancelled": {
+        "title": "Ruil geannuleerd",
+        "message": "{riderName} ging naar een actieve veiling. De ruil is geannuleerd. Bied in plaats daarvan op de veiling."
+      },
+      "swapPulledOut": {
+        "title": "Ruil geannuleerd",
+        "message": "{actorName} trok zich terug uit de ruil."
+      },
+      "adminTransferCancelled": {
+        "title": "Deal geannuleerd door een beheerder",
+        "message": "De deal voor {riderName} is door een beheerder geannuleerd.",
+        "messageReason": "De deal voor {riderName} is door een beheerder geannuleerd: {reason}"
+      },
+      "adminSwapCancelled": {
+        "title": "Ruil geannuleerd door een beheerder",
+        "message": "De ruil {offeredName} <-> {requestedName} is door een beheerder geannuleerd.",
+        "messageReason": "De ruil {offeredName} <-> {requestedName} is door een beheerder geannuleerd: {reason}"
+      },
+      "confirmPending": {
+        "title": "De deal wacht op jouw bevestiging",
+        "message": "{role, select, seller {De verkoper} other {De koper}} heeft de deal voor {riderName} bevestigd. Bevestig om hem af te ronden."
+      },
+      "swapConfirmPending": {
+        "title": "De ruil wacht op jouw bevestiging",
+        "message": "{side, select, proposing {Het voorstellende team} other {Het ontvangende team}} heeft de ruil bevestigd. Bevestig om hem af te ronden."
+      }
+    },
+    "welcome": {
+      "title": "Welkom bij Cycling Zone",
+      "message": "Je team staat klaar. Doe een bod in het veilinghuis om je eerste renner te contracteren."
+    },
+    "discordWelcome": {
+      "title": "Hé! Kom ook naar Discord",
+      "message": "Cycling Zone is meer dan de website. Het is een community, en een groot deel daarvan speelt zich af op Discord: daar hang ik rond, daar vraag ik je wat ik als volgende moet bouwen, en daar praten de andere managers de hele dag over wielrennen. Wees gerust eerlijk tegen me, dat is veel nuttiger dan lof. Kom zoals je bent, je hebt geen resultaten nodig om erbij te horen. Tot daar :)",
+      "forumLine": "Liever op de site blijven? Het <forum>managersforum</forum> staat gewoon hier in het spel.",
+      "cta": "Naar Discord"
+    },
+    "betaAccess": {
+      "approved": {
+        "title": "Je zit in de betagroep",
+        "message": "Je ziet nu functies terwijl ik ze nog test. Ze kunnen veranderen, stukgaan of weer verdwijnen, en dat is precies de bedoeling: vertel me wat er niet goed voelt, op Discord of via het feedbackformulier. Je kunt de groep verlaten wanneer je wilt, via je profiel."
+      },
+      "rejected": {
+        "title": "Deze ronde niet",
+        "message": "Ik hou de betagroep klein, zodat ik echt elke reactie kan lezen. Je staat nog op de lijst en je mag het later via je profiel gerust opnieuw vragen."
+      }
+    },
+    "scoutChanged": {
+      "title": "Nieuwe scout, rapporten herberekend",
+      "message": "{scoutName} beoordeelt nu je renners. Bestaande scoutingrapporten worden herberekend op zijn of haar nauwkeurigheid, maar de echte vaardigheden van je renners zijn niet veranderd."
+    },
+    "forumThreadReply": {
+      "title": "{count, plural, one {Nieuwe reactie op je gesprek} other {# nieuwe reacties op je gesprek}}",
+      "message": "{count, plural, one {Iemand reageerde op je gesprek} other {# nieuwe reacties op je gesprek}}",
+      "messageWithTitle": "{count, plural, one {Een nieuwe reactie op \"{postTitle}\"} other {# nieuwe reacties op \"{postTitle}\"}}"
+    },
+    "forumMention": {
+      "title": "Je bent genoemd",
+      "message": "{author} noemde je op het forum",
+      "messageWithTitle": "{author} noemde je in \"{postTitle}\""
+    },
+    "careerMilestone": {
+      "maidenWin": {
+        "title": "Eerste zege",
+        "message": "{rider} won zijn eerste profkoers: {race}."
+      },
+      "firstPodium": {
+        "title": "Eerste podium",
+        "message": "{rider} haalde zijn eerste podium uit zijn carrière: {race}."
+      },
+      "firstJersey": {
+        "title": "Eerste klassementstrui",
+        "message": "{rider} won zijn eerste klassementstrui: {race}."
+      },
+      "clubMilestoneWin": {
+        "title": "Mijlpaal voor de club",
+        "message": "Je club boekte zojuist zege nummer {count}, dankzij {rider}."
+      }
+    },
+    "sponsorPaid": {
+      "seasonStart": {
+        "title": "Sponsoruitbetaling",
+        "message": "{sponsor} heeft {amount} CZ$ uitbetaald voor het nieuwe seizoen."
+      },
+      "raceDay": {
+        "title": "Sponsoruitbetaling",
+        "message": "{sponsor} heeft {amount} CZ$ uitbetaald voor {race}."
+      },
+      "signingBonus": {
+        "title": "Sponsoruitbetaling",
+        "message": "{sponsor} heeft een tekenbonus van {amount} CZ$ uitbetaald."
+      },
+      "objectiveBonus": {
+        "title": "Sponsoruitbetaling",
+        "message": "{sponsor} heeft {amount} CZ$ uitbetaald voor het halen van je seizoensdoel."
+      }
+    },
+    "auction": {
+      "wonTitle": "Je hebt de veiling gewonnen",
+      "wonMessage": "{rider} zit nu in je team voor {price} CZ$",
+      "wonMessageDeferred": "{rider} is gekocht voor {price} CZ$. Hij komt bij je team zodra zijn lopende etappekoers is afgelopen.",
+      "wonYouthTitle": "Je hebt de jeugdveiling gewonnen",
+      "wonYouthSeniorMessage": "{rider} zit nu in je seniorenselectie voor {price} CZ$",
+      "wonYouthAcademyMessage": "{rider} zit nu in je academie voor {price} CZ$",
+      "cancelledTitle": "Veiling geannuleerd",
+      "cancelledUnaffordable": "Je kon {rider} niet betalen.",
+      "cancelledBuyerBalance": "Je kon {rider} niet betalen. Saldo: {balance} CZ$",
+      "cancelledBuyerBalanceSeller": "De koper had te weinig geld. {rider} is niet overgedragen.",
+      "cancelledAlreadyTaken": "{rider} is door een ander team gecontracteerd.",
+      "cancelledOwnerChanged": "{rider} kon niet worden overgedragen, omdat hij nu bij een andere manager hoort.",
+      "cancelledNotOnTeam": "{rider} zit niet meer in je team, dus de veiling is geannuleerd.",
+      "cancelledNoRoomTitle": "Veiling geannuleerd: geen plek",
+      "cancelledNoRoomMessage": "Zowel je seniorenselectie als je academie ({slots} plekken) zijn vol. {rider} kon niet worden gecontracteerd.",
+      "cancelledSquadFullTitle": "Veiling geannuleerd: selectie vol",
+      "cancelledSquadFullMessage": "Je team (Div {division}) kan maximaal {maxRiders} renners hebben. {rider} kon niet worden overgedragen. Verkoop eerst een renner.",
+      "cancelledWinnerSquadFull": "{rider} kon niet worden overgedragen, omdat de selectie van de winnaar vol was.",
+      "cancelledSellerFloorBuyer": "{rider} kon niet worden overgedragen, omdat de selectie van de verkoper onder het koersminimum ({minRiders}) zou zakken.",
+      "cancelledSellerFloorTitle": "Veiling geannuleerd: je selectie zou onder het minimum zakken",
+      "cancelledSellerFloorSeller": "{rider} is niet overgedragen, omdat je selectie onder de {minRiders} renners (het koersminimum) zou zakken. Zet hem opnieuw te koop als je selectie daar ruimte voor heeft.",
+      "soldTitle": "Veiling afgelopen",
+      "soldMessage": "{rider} verkocht voor {price} CZ$",
+      "boughtMessage": "{rider} gekocht voor {price} CZ$",
+      "soldToAiTitle": "Renner aan AI verkocht",
+      "soldToAiMessage": "{rider} is voor {price} CZ$ aan de AI verkocht (gegarandeerde prijs)",
+      "expiredNoBidsTitle": "Veiling verlopen zonder biedingen",
+      "expiredNoBidsMessage": "Niemand bood op {rider}",
+      "adminCancelledBidder": "De veiling voor {rider} is door een beheerder geannuleerd. Je bod is vrijgegeven en je saldo is weer beschikbaar.",
+      "adminCancelledSeller": "Je veiling voor {rider} is door een beheerder geannuleerd."
+    },
+    "directMessage": {
+      "title": "{count, plural, one {Nieuw bericht} other {# nieuwe berichten}}",
+      "message": "{count, plural, one {{senderName} stuurde je een bericht} other {# nieuwe berichten van {senderName}}}",
+      "messageUnknownSender": "{count, plural, one {Een andere manager stuurde je een bericht} other {# nieuwe berichten van een andere manager}}"
+    },
+    "riderInjured": {
+      "title": "Renner geblesseerd",
+      "message": "{rider} viel in {race} en is geblesseerd tot {until}.",
+      "messageMissed": "{rider} viel in {race} en is geblesseerd tot {until}. Hij rijdt {missed} niet."
+    },
+    "teamDidNotStart": {
+      "title": "Je team is niet gestart",
+      "message": "Je team is niet gestart in {race}: minder dan {min} fitte renners aan de start."
+    },
+    "autoBidStopped": {
+      "title": "Je automatische bod is gestopt",
+      "message": "Je automatische bod op {riderName} is gestopt door onvoldoende saldo. Zorg dat er geld op je rekening staat om weer te bieden."
+    },
+    "autoBidMatched": {
+      "message": "Het automatische bod van {leaderName} evenaarde je bod op {riderName} en behoudt de leiding bij een gelijk bod"
+    },
+    "autoBidOutbid": {
+      "message": "Het automatische bod van {bidderName} overbood je op {riderName}"
+    },
+    "riderArrived": {
+      "title": "De renner is aangekomen",
+      "message": "{riderName} heeft zich bij je team aangesloten. {reason, select, tourFinished {{raceName} is afgelopen.} tourFinishedUnnamed {Zijn etappekoers is afgelopen.} dealCompleted {Zijn deal is nu afgerond.} other {}}"
+    },
+    "squadEnforced": {
+      "title": "Selectiegrootte afgedwongen",
+      "message": "{purchasedCount, plural, =0 {} one {Automatisch # renner gekocht: {purchasedNames}\n} other {Automatisch # renners gekocht: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# renner sluit zich bij het team aan zodra zijn lopende etappekoers is afgelopen: {deferredNames}\n} other {# renners sluiten zich bij het team aan zodra hun lopende etappekoers is afgelopen: {deferredNames}\n}}{soldCount, plural, =0 {} one {Automatisch # renner verkocht: {soldNames}\n} other {Automatisch # renners verkocht: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# renner in een lopende etappekoers wordt in plaats daarvan na de koers verkocht\n} other {# renners in een lopende etappekoers worden in plaats daarvan na de koers verkocht\n}}Boete: {fine} CZ$ · Aftrek: {points} punten"
+    }
+  },
+  "error": {
+    "repayInsufficient": "Je hebt maar {available} CZ$ beschikbaar. De rest staat vast in actieve biedingen of automatische biedingen",
+    "boardSigningRestriction": "Het bestuur blokkeert aankopen boven {threshold} CZ$ (tevredenheid onder {satisfaction}%).",
+    "boardSalaryCap": "Salarisplafond bepaald door het bestuur ({cap} CZ$). Je kunt het totale salaris van het team niet verhogen. Verkoop eerst een renner.",
+    "squadFineDeducted": "Boete: {fineAmount} CZ$ · Aftrek: {penaltyPoints} punten",
+    "debtCapReached": "Schuldenplafond van {ceiling} CZ$ bereikt voor deze divisie",
+    "loanGateRaceDaysOnly": "Nieuwe teams moeten {minRaceDays} koersdag(en) hebben gereden voordat ze een lening kunnen afsluiten. Je hebt er tot nu toe {raceDaysRun} gereden.",
+    "loanGateAccountAgeOnly": "Nieuwe teams moeten {minAccountAgeDays} dag(en) oud zijn voordat ze een lening kunnen afsluiten. Je team is nu {accountAgeDays} dag(en) oud.",
+    "loanGateEither": "Nieuwe teams moeten {minRaceDays} koersdag(en) hebben gereden of {minAccountAgeDays} dag(en) oud zijn voordat ze een lening kunnen afsluiten. Je hebt er tot nu toe {raceDaysRun} gereden en je team is {accountAgeDays} dag(en) oud."
+  },
+  "consequence": {
+    "layer": {
+      "salaryCap": "Salarisplafond",
+      "signingRestriction": "Contracteerbeperking",
+      "forcedListing": "Verplichte verkoop",
+      "sponsorPullout": "Sponsorterugtrekking",
+      "bonusOffer": "Bonusaanbod"
+    },
+    "layerFallback": "Laag {layer}",
+    "bonusGoal": {
+      "signatureRider": "Contracteer 1 nieuwe renner met grote naamsbekendheid (nettowinst sinds accepteren)",
+      "monumentPodium": "Top 3 in een Monument, na accepteren"
+    },
+    "unknownRider": "Renner {id}"
+  },
+  "planLabel": {
+    "1yr": "plan van 1 jaar",
+    "3yr": "plan van 3 jaar",
+    "5yr": "plan van 5 jaar",
+    "unknown": "plan"
+  },
+  "sponsor": {
+    "explanation": {
+      "variable": "Basis {base} + variabel {variable} op basis van de punten/plaats van vorig seizoen."
+    }
+  },
+  "discord": {
+    "typeLabel": {
+      "auction_new": "Nieuwe veiling",
+      "auction_outbid": "Overboden",
+      "auction_won": "Veiling gewonnen",
+      "transfer_offer": "Transferaanbieding",
+      "transfer_accepted": "Transfer geaccepteerd",
+      "transfer_rejected": "Transfer afgewezen",
+      "transfer_completed": "Transfer afgerond",
+      "swap_completed": "Ruil afgerond",
+      "season_started": "Seizoen begonnen",
+      "season_ended": "Seizoen afgelopen",
+      "watchlist_rider_auction": "Renner van de volglijst in veiling",
+      "board_update": "Update van het bestuur",
+      "board_critical": "Het bestuur is ontevreden",
+      "race_result_digest": "Koersuitslagen"
+    },
+    "field": {
+      "newBid": "Nieuw bod",
+      "bidBy": "Bod van",
+      "autoBidFrom": "Automatisch bod van",
+      "finalPrice": "Eindprijs",
+      "offer": "Aanbieding",
+      "counterOffer": "Tegenbod",
+      "ends": "Eindigt"
+    },
+    "dm": {
+      "outbid": "Je bent overboden op {rider}.",
+      "outbidAuto": "Een automatisch bod heeft je overboden op {rider}.",
+      "outbidExhausted": "Je automatische bod op {rider} bereikte zijn limiet en is overboden.",
+      "auctionWon": "Je hebt de veiling voor {rider} gewonnen.",
+      "transferOffer": "{buyer} heeft een aanbieding voor {rider} gestuurd.",
+      "transferAccepted": "Je aanbieding voor {rider} is geaccepteerd.",
+      "transferCountered": "Je aanbieding voor {rider} kreeg een tegenbod.",
+      "transferRejected": "Je aanbieding voor {rider} is afgewezen.",
+      "watchlistRiderAuction": "Een renner van je volglijst staat in veiling: {rider}.",
+      "testTitle": "Discord-DM werkt",
+      "testDescription": "Je ontvangt nu DM's van Cycling Zone over veilingen, transfers en updates van het bestuur."
+    }
+  },
+  "push": {
+    "digest": {
+      "title": "Sinds je laatste bezoek",
+      "count": {
+        "auctions": "{count, plural, one {# veilingupdate} other {# veilingupdates}}",
+        "races": "{count, plural, one {# koersuitslag} other {# koersuitslagen}}",
+        "transfers": "{count, plural, one {# transferaanbieding} other {# transferaanbiedingen}}",
+        "deadlines": "{count, plural, one {# deadline} other {# deadlines}}",
+        "academy": "{count, plural, one {# academieupdate} other {# academieupdates}}"
+      }
+    }
+  }
+}
