@@ -20,6 +20,7 @@ import { isBreakawayWin, settleBreakawaySurvivedEvents } from "./groups.ts";
 import { climbSelectionHook } from "./mechanics/climbSelection.ts";
 import { descentHook } from "./mechanics/descent.ts";
 import { breakawayHook } from "./mechanics/breakaway.ts";
+import { isS5V2BreakawayWin, withWinnerEscapeOutcome } from "./mechanics/chaseGroup.ts";
 import { applyThreeKmRuleToResults, incidentHook } from "./mechanics/incidents.ts";
 import { cobblesHook } from "./mechanics/cobbles.ts";
 import { teamPlayHook } from "./mechanics/teamPlay.ts";
@@ -54,7 +55,7 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
-import { isOrdersGcV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 
@@ -306,19 +307,25 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   const results = timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km, sortedTimeline);
   const winnerId = results[0]?.rider_id ?? null;
-  const breakawayWin = finaleTrace ? isBreakawayWin(finaleTrace, winnerId) : false;
+  // #6748 (KUN s5_profiles_v2): ogsaa en sejr fra et stykke af udbruddet (chaseGroup.ts).
+  const s5V2 = isS5ProfilesV2OrLater(input.rules_revision);
+  const breakawayWin = finaleTrace ? (s5V2 ? isS5V2BreakawayWin(finaleTrace, winnerId) : isBreakawayWin(finaleTrace, winnerId)) : false;
 
   // #5515: `breakaway_survived` er udsendt FOER finalen og betyder kun at
   // udbruddet stadig var sin egen gruppe. Nu hvor finalen og placeringerne er
   // afgjort, skrives et udbrud der blev hentet om til `breakaway_caught`, saa
   // loebsfilmen aldrig siger "udbruddet holdt" paa en etape udbruddet ikke vandt.
   // Samme dom som trace.breakaway_win, som etape-fortaellingen bruger.
-  const settledTimeline = settleBreakawaySurvivedEvents(sortedTimeline, {
+  const settledBreakaway = settleBreakawaySurvivedEvents(sortedTimeline, {
     ...(usesSharedGroupTime(input.rules_revision) ? { physicalDescentOutcomes: true } : {}),
     breakawayWin,
     trace: finaleTrace,
     results,
   });
+  // #6748 (KUN s5_profiles_v2): vinderen fra et stykke af udbruddet faar samme udfald som dommen.
+  const settledTimeline = s5V2
+    ? withWinnerEscapeOutcome(settledBreakaway, { trace: finaleTrace, winnerId, breakawayWin, km: input.route.distance_km })
+    : settledBreakaway;
 
   // M15's events ligger paa maalstregen og hoerer kronologisk EFTER
   // finish-eventet: tidsgraensen kan foerst afgoeres naar vinderen er i maal.

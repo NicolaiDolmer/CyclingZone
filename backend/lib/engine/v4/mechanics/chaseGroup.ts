@@ -1,4 +1,53 @@
 import type { RaceGroup, SegmentHookResult, TimelineEvent } from "../types.ts";
+import type { FinaleGroupTrace } from "../groups.ts";
+
+/** #6748: gruppen rytteren koerer i, naar den er af dagens udbrud (oprindelse "breakaway", enhver art). */
+function morningOriginGroupOf(groups: readonly RaceGroup[], riderId: string): RaceGroup | null {
+  const group = groups.find((g) => g.rider_ids.includes(riderId));
+  return group && group.origin === "breakaway" ? group : null;
+}
+
+/**
+ * #6748 (KUN s5_profiles_v2): udbrudsdommen (groups.isBreakawayWin) uden
+ * kravet om gruppens art. En udbryder der faldt bagud fra udbrudsgruppen og
+ * vandt fra et stykke af udbruddet (oprindelse "breakaway", kun udbrydere),
+ * vandt fra udbruddet, ligesom maal-afgoerelsen (raceParticipationHistory's
+ * settleBreakawayOutcome) siger "holdt hjem". Finalens krav er uaendret: tog
+ * finalen ikke-udbrydere med i opgoeret, er udbruddet hentet.
+ * Er sand overalt hvor isBreakawayWin er sand. REN.
+ */
+export function isS5V2BreakawayWin(trace: FinaleGroupTrace, winnerId: string | null): boolean {
+  if (!winnerId) return false;
+  if (!morningOriginGroupOf(trace.entryGroups, winnerId) || !morningOriginGroupOf(trace.preFinaleGroups, winnerId)) return false;
+  const escapeRiderIds = new Set(trace.preFinaleGroups.filter((g) => g.origin === "breakaway").flatMap((g) => g.rider_ids));
+  const preFinaleIds = new Set(trace.preFinaleGroups.map((g) => g.id));
+  const finaleBuilt = trace.postFinaleGroups.filter((g) => !preFinaleIds.has(g.id));
+  if (!finaleBuilt.some((g) => g.rider_ids.includes(winnerId))) return morningOriginGroupOf(trace.postFinaleGroups, winnerId) !== null;
+  return finaleBuilt.every((g) => g.rider_ids.every((id) => escapeRiderIds.has(id)));
+}
+
+/**
+ * #6748 (KUN s5_profiles_v2): vinderen fra et stykke af udbruddet faar sit
+ * eget udfald paa stregen. Motoren udsender kun udfald for udbrudsgruppen
+ * (breakaway_survived/-caught), saa en udbryder der faldt bagud og vandt
+ * bagfra, stod som "sat af" mod motorens udbrudsdom. Navngiver intet udfald
+ * vinderen, og koerte han lige foer finalen i en gruppe af dagens udbrud,
+ * tilfoejes `breakaway_survived` (udbruddet vandt) eller `breakaway_caught`
+ * (finalen tog feltet med i opgoeret) paa maalstregen for netop ham. Samme dom
+ * som `breakawayWin`. REN: input muteres ikke.
+ */
+export function withWinnerEscapeOutcome(
+  events: readonly TimelineEvent[],
+  args: { trace: FinaleGroupTrace | null; winnerId: string | null; breakawayWin: boolean; km: number },
+): TimelineEvent[] {
+  const { trace, winnerId } = args;
+  if (!trace || !winnerId) return [...events];
+  const named = events.some((e) => (e.type === "breakaway_survived" || e.type === "breakaway_caught")
+    && Array.isArray(e.params.rider_ids) && e.params.rider_ids.includes(winnerId));
+  const group = named ? null : morningOriginGroupOf(trace.preFinaleGroups, winnerId);
+  if (!group) return [...events];
+  return [...events, { km: args.km, type: args.breakawayWin ? "breakaway_survived" : "breakaway_caught", params: { group_id: group.id, rider_ids: [winnerId] } }];
+}
 
 /** A pursuing group must be physically behind the group it is chasing. */
 export function findChaseGroup(groups: readonly RaceGroup[], target: RaceGroup): RaceGroup | null {
