@@ -1,0 +1,97 @@
+{
+  "page": {
+    "title": "Détection",
+    "subtitle": "Le travail en cours de ton recruteur, ses trouvailles et ses briefs de mission."
+  },
+  "empty": {
+    "title": "Le centre de détection n'est pas encore ouvert",
+    "description": "Cette page se débloque dès que le système de missions du recruteur est en ligne pour ton équipe."
+  },
+  "scoutCard": {
+    "eyebrow": "Ton recruteur",
+    "defaultTitle": "Recruteur par défaut",
+    "defaultBody": "Tu n'as pas recruté de recruteur de talents. Un recruteur de base (note {overall}) couvre quand même tes missions ciblées, avec simplement une lecture plus large de ce qu'il trouve.",
+    "ratingLabel": "Note",
+    "capacityLabel": "{capacity, plural, one {1 mission à la fois} other {# missions à la fois}}",
+    "capacityHintLocked": "Une deuxième mission en parallèle demande un chef recruteur noté environ 80 au global. Construire le réseau de détection seul ne l'accorde pas.",
+    "viewProfile": "Voir le profil"
+  },
+  "queue": {
+    "title": "Missions en cours",
+    "empty": "Aucune mission en cours pour l'instant.",
+    "kindTarget": "Mission ciblée",
+    "kindMission": "Mission",
+    "reportIn": "Rapport dans {days, plural, one {1 jour} other {# jours}}",
+    "reportOn": "Rapport prêt le {date} vers {time}",
+    "reportToday": "Rapport prêt vers {time} aujourd'hui",
+    "reportTomorrow": "Rapport prêt vers {time} demain",
+    "reportDue": "Rapport prêt. Actualise pour l'ouvrir.",
+    "targetReportIn": "Rapport dans ~{minutes} min",
+    "targetReportCountdown": "Rapport dans {minutes, plural, one {1 min} other {# min}}",
+    "readyAtTitle": "Rapport prêt à {time}, heure danoise",
+    "loadingRider": "Chargement du coureur…",
+    "cancel": "Annuler"
+  },
+  "mission": {
+    "form": {
+      "title": "Lancer une mission",
+      "subtitle": "Envoie ton recruteur couvrir un secteur pour établir une présélection de jeunes talents.",
+      "targetPoolLabel": "Qui détecter",
+      "recommended": "Recommandé",
+      "pool": {
+        "freeAgents": {
+          "title": "Agents libres",
+          "subtitle": "Des coureurs sans contrat. Tu peux les signer tout de suite."
+        },
+        "otherTeams": {
+          "title": "Coureurs d'autres équipes",
+          "subtitle": "Détecte des talents qui appartiennent à d'autres managers. Les signer passe par une enchère ou une négociation."
+        }
+      },
+      "existenceGuarantee": "Chaque rapport ne contient que des coureurs qui existent et qu'on peut trouver dans la recherche.",
+      "scopeLabel": "Périmètre",
+      "countryLabel": "Pays",
+      "typeLabel": "Type de coureur",
+      "submit": "Lancer la mission",
+      "costNote": "Ton recruteur fait son rapport environ {hours} heures après son envoi, et cette mission coûte {cost, number} en frais de déplacement sur ton budget. Pas de remboursement en cas d'annulation."
+    },
+    "scope": {
+      "u23": "Coureurs U23",
+      "country": "Pays",
+      "nm": "Championnats nationaux",
+      "division": "Ma division",
+      "type": "Type de coureur"
+    }
+  },
+  "shortlist": {
+    "title": "Présélections de mission",
+    "empty": "Aucune mission n'a encore fait son rapport.",
+    "allReportedNote": "Chaque coureur ci-dessous vient avec un rapport de détection de niveau 1 offert. Ouvre l'onglet Détection de son profil pour le voir.",
+    "topFind": "Meilleur profil",
+    "noMatches": "Ton recruteur a cherché mais n'a trouvé aucun coureur correspondant à tes critères.",
+    "allHidden": "Les coureurs de cette mission ne peuvent pas être consultés pour le moment, par exemple à cause d'une offre d'académie ouverte ou d'un transfert en cours.",
+    "statusFreeAgent": "Agent libre"
+  },
+  "teamHistory": {
+    "title": "Coureurs détectés par ton équipe",
+    "subtitle": "Chaque enquête individuelle terminée, quel que soit le recruteur qui l'a menée.",
+    "empty": "Aucune enquête individuelle n'a encore fait son rapport.",
+    "levelValue": "Niveau {level}",
+    "riderUnavailable": "Plus disponible"
+  },
+  "error": {
+    "capacity": "Ton recruteur est déjà à pleine capacité. Regarde la liste des missions en cours : ta mission existante est toujours en file et fera son rapport comme prévu.",
+    "insufficient_funds": "Solde insuffisant pour couvrir les frais de déplacement.",
+    "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
+    "invalid_target_pool": "Choix de ciblage invalide. Réessaie.",
+    "no_active_season": "Aucune saison en cours pour l'instant.",
+    "auth": "Tu dois être connecté.",
+    "network": "Erreur réseau. Réessaie.",
+    "failed": "Un problème est survenu. Réessaie.",
+    "load": {
+      "title": "Impossible de charger le centre de détection",
+      "description": "Rien n'a été perdu. Les missions en cours de ton recruteur continuent. Réessaie.",
+      "retry": "Réessayer"
+    }
+  }
+}

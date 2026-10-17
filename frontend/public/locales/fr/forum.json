@@ -1,0 +1,142 @@
+{
+  "page": {
+    "title": "Forum",
+    "subtitle": "Discute avec les autres managers et partage tes idées",
+    "newPost": "Nouveau message",
+    "markAllRead": "Tout marquer comme lu",
+    "markingAllRead": "Marquage..."
+  },
+  "categories": {
+    "all": "Tout",
+    "roadmap": "Feuille de route",
+    "general": "Général",
+    "feedback_ideas": "Retours et idées",
+    "questions": "Questions et réponses",
+    "tactics": "Tactique et stratégie",
+    "transfers": "Transferts",
+    "off_topic": "Hors sujet",
+    "archive": "Archives"
+  },
+  "adminOnly": {
+    "tag": "Officiel",
+    "description": "Où va le jeu, directement de ma part.",
+    "notice": "Je suis le seul à poster ici. Réponds autant que tu veux.",
+    "emptyDescription": "Rien ici pour l'instant. C'est ici que je poste où va le jeu."
+  },
+  "list": {
+    "pinnedHeading": "Épinglés",
+    "latestHeading": "Derniers messages",
+    "archiveHeading": "Archives",
+    "replies": "{count, plural, =0 {Aucune réponse} one {1 réponse} other {# réponses}}",
+    "poll": "Sondage",
+    "loadMore": "Charger plus",
+    "emptyTitle": "Pas encore de messages",
+    "emptyDescription": "Sois le premier à lancer une discussion.",
+    "archiveEmptyTitle": "Rien d'archivé pour l'instant",
+    "archiveEmptyDescription": "Les fils passent ici automatiquement après 60 jours sans nouvelle activité.",
+    "by": "Par {name}",
+    "unread": "Non lu"
+  },
+  "stats": {
+    "views": "{count, plural, =0 {Aucune vue} one {1 vue} other {# vues}}",
+    "lastReply": "Dernière réponse {name}, {time}"
+  },
+  "compose": {
+    "title": "Nouveau message",
+    "categoryLabel": "Catégorie",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "De quoi s'agit-il ?",
+    "bodyLabel": "Message",
+    "bodyPlaceholder": "Écris ton message",
+    "pollLabel": "Options du sondage (admin uniquement, une par ligne)",
+    "pollHelp": "Ajoute 2 à 10 options pour joindre un sondage à ce message.",
+    "submit": "Publier",
+    "cancel": "Annuler"
+  },
+  "post": {
+    "back": "Retour au forum",
+    "repliesHeading": "Réponses",
+    "replyLabel": "Ta réponse",
+    "replyPlaceholder": "Écris une réponse",
+    "replySubmit": "Répondre",
+    "noReplies": "Pas encore de réponses. Sois le premier à répondre.",
+    "earlierReplies": "{count, plural, =1 {1 réponse précédente} other {# réponses précédentes}}",
+    "report": "Signaler",
+    "delete": "Supprimer",
+    "pin": "Épingler",
+    "unpin": "Désépingler",
+    "pinnedTag": "Épinglé",
+    "move": "Déplacer",
+    "moveModalTitle": "Déplacer le fil",
+    "moveModalDescription": "Choisis la catégorie vers laquelle ce fil doit être déplacé.",
+    "moveConfirm": "Déplacer",
+    "movedToast": "Fil déplacé vers {category}",
+    "notFoundTitle": "Message introuvable",
+    "notFoundDescription": "Ce message a peut-être été supprimé."
+  },
+  "poll": {
+    "heading": "Sondage",
+    "votes": "{count, plural, =0 {Aucun vote pour l'instant} one {1 vote} other {# votes}}",
+    "yourVote": "Ton vote"
+  },
+  "support": {
+    "ariaOn": "{count, plural, =0 {Retirer ton soutien} one {Retirer ton soutien (1 soutien)} other {Retirer ton soutien (# soutiens)}}",
+    "ariaOff": "{count, plural, =0 {Soutenir ceci} one {Soutenir ceci (1 soutien)} other {Soutenir ceci (# soutiens)}}",
+    "count": "{count, plural, =0 {Aucun soutien pour l'instant} one {1 soutien} other {# soutiens}}"
+  },
+  "identity": {
+    "profileAria": "Ouvrir le profil de manager de {name}"
+  },
+  "mentions": {
+    "listLabel": "Mentionner un manager"
+  },
+  "signature": {
+    "division": "Division {division}"
+  },
+  "quote": {
+    "action": "Citer",
+    "cancel": "Annuler",
+    "replyingTo": "En réponse à {name}",
+    "removedNotice": "Cette réponse a été supprimée"
+  },
+  "report": {
+    "title": "Signaler un contenu",
+    "description": "Le signalement va directement à l'admin. Utilise-le pour du spam, des abus ou tout ce qui n'a pas sa place ici.",
+    "reasonLabel": "Motif",
+    "reasonPlaceholder": "Pourquoi signales-tu ceci ? (au moins 10 caractères)",
+    "reasonMinError": "Ajoute au moins {count} caractères pour expliquer pourquoi.",
+    "submit": "Envoyer le signalement",
+    "cancel": "Annuler",
+    "sent": "Merci. Le signalement a été envoyé à l'admin."
+  },
+  "errors": {
+    "loadFailed": "Impossible de charger le forum. Rien n'a été perdu.",
+    "submitFailed": "Impossible d'envoyer. Réessaie.",
+    "retry": "Réessayer",
+    "markAllReadFailed": "Impossible de marquer tous les fils comme lus. Réessaie."
+  },
+  "images": {
+    "label": "Images",
+    "add": "Ajouter une image",
+    "counter": "{count} sur {max}",
+    "remove": "Retirer l'image",
+    "adminRemove": "Supprimer l'image",
+    "openFull": "Ouvrir l'image en taille réelle",
+    "attachmentAlt": "Image dans ce message",
+    "hint": "Jusqu'à {max} images. JPG, PNG ou WebP. Les grandes photos sont réduites avant d'être envoyées.",
+    "errors": {
+      "type": "Ce type de fichier ne fonctionne pas ici. Utilise JPG, PNG ou WebP.",
+      "tooMany": "Tu peux ajouter {count} images à un message.",
+      "tooLarge": "Cette image est encore trop grande après réduction. Essaie-en une plus petite.",
+      "decode": "L'image n'a pas pu être lue. Essaie un autre fichier.",
+      "upload": "L'envoi a échoué. Vérifie ta connexion et réessaie."
+    }
+  },
+  "subscription": {
+    "following": "Suivie",
+    "muted": "En sourdine",
+    "followingHint": "Tu reçois des marqueurs non lus et le point du forum quand il y a du nouveau ici.",
+    "mutedHint": "Aucun marqueur non lu et aucun point du forum pour cette catégorie. Les réponses à tes propres fils te parviennent toujours.",
+    "saveFailed": "Impossible d'enregistrer ton choix. Réessaie."
+  }
+}

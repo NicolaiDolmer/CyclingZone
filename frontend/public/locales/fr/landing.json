@@ -1,0 +1,168 @@
+{
+  "meta": {
+    "title": "Cycling Zone · le jeu de manager cycliste dans ton navigateur où la stratégie bat l'argent",
+    "description": "Monte une équipe, enchéris sur des coureurs dans des enchères en direct, fixe ta tactique et dispute une saison complète. Un jeu de manager cycliste gratuit, dans ton navigateur. Pas de pay-to-win."
+  },
+  "nav": {
+    "discordLabel": "Discord",
+    "languageLabel": "Langue",
+    "login": "Se connecter",
+    "signup": "S'inscrire",
+    "skipToContent": "Aller au contenu"
+  },
+  "hero": {
+    "badge": "Bêta ouverte · Gratuit",
+    "title": "Un jeu de manager cycliste pensé pour le long terme.",
+    "subtitle": "Monte ton équipe, enchéris sur des coureurs dans des enchères en direct et prends chaque décision sur une saison complète. Gravis les divisions, directement dans ton navigateur.",
+    "ctaPlay": "Crée ton équipe",
+    "ctaDiscord": "Rejoindre le Discord",
+    "ctaEmail": "Recevoir l'e-mail de lancement",
+    "trustFree": "Gratuit",
+    "trustNoCard": "Aucun téléchargement",
+    "trustBrowser": "Fonctionne dans ton navigateur"
+  },
+  "signature": {
+    "kicker": "Dans le jeu",
+    "stageTitle": "Étape 14 · Arrivée au sommet",
+    "distanceLabel": "Distance",
+    "distanceValue": "182 km",
+    "climbLabel": "Dernière ascension",
+    "climbValue": "HC · 14,2 km à 7,8 %",
+    "classificationTitle": "Classement général",
+    "gapHeader": "Écart",
+    "jerseyYellow": "Maillot jaune",
+    "jerseyGreen": "Maillot vert",
+    "jerseyPolka": "Maillot à pois",
+    "sampleNote": "Données d'exemple. Le classement en direct se met à jour au fil de la course."
+  },
+  "how": {
+    "kicker": "Comment on joue",
+    "title": "Cinq décisions, chaque saison",
+    "rows": [
+      {
+        "no": "01",
+        "title": "Monte ton équipe",
+        "body": "Choisis un effectif adapté à ta stratégie. Des grimpeurs pour la montagne, des sprinteurs pour le plat, un leader autour duquel construire.",
+        "data": "Mène un effectif complet, pas seulement une star"
+      },
+      {
+        "no": "02",
+        "title": "Enchéris en direct",
+        "body": "Bats-toi pour des coureurs dans des enchères en temps réel contre d'autres managers. Lis la salle, choisis ton moment, ne paie pas trop cher.",
+        "data": "Des enchères en direct, manager contre manager"
+      },
+      {
+        "no": "03",
+        "title": "Fais progresser tes coureurs",
+        "body": "Entraîne tes coureurs pour affûter leurs points forts, et fais monter de jeunes talents par ton académie. La promesse d'aujourd'hui peut devenir la star de la saison prochaine.",
+        "data": "Une académie de jeunes pour former tes propres stars"
+      },
+      {
+        "no": "04",
+        "title": "Fixe ta tactique",
+        "body": "Choisis ton leader, envoie des coureurs à l'avant et décide qui chasse et qui garde ses jambes pour l'arrivée.",
+        "data": "Une tactique qui change le résultat"
+      },
+      {
+        "no": "05",
+        "title": "Cours la saison",
+        "body": "Suis ton équipe sur des courses par étapes et des classiques tout au long d'une saison complète, puis prépare la suivante.",
+        "data": "Gravis les divisions à la force des jambes"
+      }
+    ]
+  },
+  "different": {
+    "kicker": "Pas un jeu de manager comme les autres",
+    "title": "Bâti sur une seule promesse",
+    "fairness": "Le jeu doit être équitable pour tout le monde. L'argent réel ne peut pas acheter de meilleurs coureurs, un entraînement plus rapide ou de meilleurs résultats.",
+    "cards": [
+      {
+        "title": "Façonné par la communauté",
+        "body": "Un seul développeur, qui construit en public. Tes retours décident de ce qui est construit ensuite, et chaque changement sort là où tu peux le voir."
+      },
+      {
+        "title": "Gratuit",
+        "body": "Le jeu complet est gratuit. Inscris-toi, monte une équipe et rivalise sans rien payer qui influence le résultat."
+      },
+      {
+        "title": "Rien à installer",
+        "body": "Il fonctionne dans ton navigateur, sur ton téléphone ou ton ordinateur. Rien à télécharger, rien à mettre à jour."
+      }
+    ]
+  },
+  "discord": {
+    "kicker": "Rejoins la communauté",
+    "title": "Le jeu se construit au grand jour",
+    "body": "Cycling Zone est parti d'une idée : un jeu de manager cycliste où tu ne te contentes pas de cliquer sur des chiffres, mais où tu construis vraiment quelque chose au fil d'une saison. Je le fais seul, au grand jour, saison après saison. Le Discord, c'est là où je partage ce sur quoi je travaille avant que ça sorte, où les nouveaux managers trouvent un coup de main pour prendre leurs marques, et où tes retours décident de ce que je construis ensuite. Ce n'est pas fini, et ça s'améliore chaque semaine. Tu viens pour la course. Tu restes pour les gens. Viens avec ton équipe, partage ton avis et aide à décider où ça va.",
+    "cta": "Ouvrir le Discord"
+  },
+  "waitlist": {
+    "kicker": "Tu préfères l'e-mail ?",
+    "title": "Recevoir l'e-mail de lancement",
+    "body": "Laisse ton e-mail, et je t'envoie un seul message quand la prochaine saison démarre. Pas de newsletter, pas de bruit.",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "toi@exemple.com",
+    "nameLabel": "Prénom",
+    "nameOptional": "facultatif",
+    "namePlaceholder": "Comment dois-je t'appeler ?",
+    "consentBefore": "J'accepte d'être contacté au sujet du lancement et j'accepte la ",
+    "consentLink": "politique de confidentialité",
+    "consentAfter": ".",
+    "privacyPath": "/privacy-policy",
+    "submit": "Me prévenir au lancement",
+    "submitting": "Ajout à la liste...",
+    "disclaimer": "Un seul e-mail au lancement. Désinscription possible à tout moment.",
+    "successTitle": "Tu es sur la liste",
+    "successBody": "Merci. Je t'enverrai un seul e-mail quand la prochaine saison démarrera. En attendant, le Discord est le meilleur endroit pour suivre.",
+    "successDiscord": "Rejoindre le Discord",
+    "errors": {
+      "emailRequired": "Saisis ton e-mail.",
+      "emailInvalid": "Cet e-mail n'a pas l'air correct.",
+      "consent": "Accepte la politique de confidentialité pour continuer.",
+      "duplicate": "Tu es déjà sur la liste.",
+      "rls": "Quelque chose a bloqué l'inscription. Réessaie.",
+      "network": "Erreur réseau. Vérifie ta connexion et réessaie.",
+      "unknown": "Un problème est survenu. Réessaie."
+    }
+  },
+  "faq": {
+    "kicker": "Questions",
+    "title": "Bon à savoir",
+    "items": [
+      {
+        "q": "C'est vraiment gratuit ?",
+        "a": "Oui. Le jeu complet est gratuit. Tu peux t'inscrire, monter une équipe et affronter d'autres managers sans rien payer."
+      },
+      {
+        "q": "C'est du pay-to-win ?",
+        "a": "Non. L'argent réel ne peut pas acheter de résultats. C'est le meilleur manager qui gagne, pas celui qui dépense le plus."
+      },
+      {
+        "q": "Quand démarre la saison ?",
+        "a": "Cycling Zone est en bêta ouverte maintenant, avec une nouvelle saison qui ouvre bientôt. Rejoins le Discord ou laisse ton e-mail, et je te préviens à la seconde où elle démarre."
+      },
+      {
+        "q": "Dois-je installer quelque chose ?",
+        "a": "Non. Il fonctionne dans ton navigateur, sur ordinateur et sur mobile. Il n'y a rien à télécharger."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "Un jeu de manager cycliste dans ton navigateur.",
+    "privacy": "Confidentialité",
+    "discord": "Discord",
+    "rights": "Cycling Zone",
+    "exploreHeading": "Explorer",
+    "explore": {
+      "howItWorks": "Comment ça marche",
+      "compare": "Cycling Zone vs Pro Cycling Manager",
+      "help": "Aide",
+      "rules": "Règles",
+      "roadmap": "Feuille de route",
+      "patchNotes": "Patch Notes",
+      "founderSupporter": "Founder",
+      "terms": "Conditions",
+      "privacy": "Confidentialité"
+    }
+  }
+}

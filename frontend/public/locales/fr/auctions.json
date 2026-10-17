@@ -1,0 +1,301 @@
+{
+  "page": {
+    "title": "Enchères",
+    "loadingAria": "Chargement des enchères"
+  },
+  "loadError": {
+    "message": "Impossible de charger les enchères. Réessaie.",
+    "retry": "Réessayer"
+  },
+  "watchlist": {
+    "toggleFailed": "Impossible de mettre à jour ta liste de suivi. Réessaie."
+  },
+  "mobileSort": {
+    "label": "Trier par",
+    "ascAria": "Tri croissant, touche pour passer en décroissant",
+    "descAria": "Tri décroissant, touche pour passer en croissant"
+  },
+  "tour": {
+    "placeBid": {
+      "title": "Placer une enchère",
+      "body": "Saisis ton montant et appuie sur « Enchérir ». L'enchère minimale est préremplie. Tu dois enchérir d'au moins 1 CZ$ de plus que l'enchère actuelle."
+    },
+    "countdown": {
+      "title": "Temps restant et prolongation automatique",
+      "body": "Si une enchère prend la tête dans les 10 dernières minutes, l'enchère est prolongée automatiquement. Enchérir sans prendre la tête, par exemple face à une enchère automatique qui te répond, ne la prolonge pas."
+    }
+  },
+  "hint": {
+    "title": "Remporte l'enchère, le coureur rejoint ton équipe",
+    "body": "Le coureur court pour toi dès ta prochaine sélection d'effectif. Tu enchéris contre de vrais managers, tu n'achètes pas à prix fixe.",
+    "minBidLabel": "Placer une enchère :",
+    "minBidBody": "Le champ est prérempli avec le minimum, au moins 1 CZ$ de plus que l'enchère actuelle. Appuie sur Enchérir et te voilà dans la partie.",
+    "autoExtendLabel": "Prolongation automatique de 10 min :",
+    "autoExtendBody": "Une enchère qui prend la tête dans les 10 dernières minutes prolonge l'enchère, pour que personne ne puisse l'arracher à la dernière seconde.",
+    "startTour": "Fais-moi visiter",
+    "jumpToRecommendation": "Voir un choix abordable"
+  },
+  "ticker": {
+    "bidCount": "{count, plural, one {1 enchère récente} other {# enchères récentes}}"
+  },
+  "stats": {
+    "balance": "Solde",
+    "reserved": "Réservé dans les enchères",
+    "ridersNow": "Coureurs actuels",
+    "projection": "Projection"
+  },
+  "filter": {
+    "mySituation": "Mes enchères ({count})",
+    "all": "Toutes ({count})",
+    "otherManagers": "Autres managers ({count})",
+    "wishlistButton": "Uniquement ma liste de suivi",
+    "feedButton": "Enchères en direct",
+    "feedTitleOn": "Masquer le panneau des enchères en direct",
+    "feedTitleOff": "Afficher le panneau des enchères en direct",
+    "searchPlaceholder": "Rechercher des coureurs",
+    "searchAria": "Rechercher des coureurs aux enchères",
+    "moreFilters": "Plus de filtres"
+  },
+  "nav": {
+    "history": "Historique"
+  },
+  "history": {
+    "subtitle": "Tes enchères terminées : achats, ventes et enchères perdues.",
+    "tabActive": "En cours",
+    "tabHistory": "Historique ({count})",
+    "statBought": "Achetés",
+    "statSold": "Vendus",
+    "statSpent": "Dépensé",
+    "statEarned": "Gagné",
+    "filterAll": "Tout",
+    "filterBought": "Achetés ({count})",
+    "filterSold": "Vendus ({count})",
+    "emptyWon": "Tu n'as encore remporté aucune enchère",
+    "emptySold": "Tu n'as encore vendu aucun coureur",
+    "emptyLost": "Aucune enchère perdue dans ton historique",
+    "emptyAll": "Aucune enchère terminée pour l'instant",
+    "colNation": "Nation",
+    "colStatus": "Statut",
+    "colWinner": "Gagnant",
+    "colBids": "Enchères",
+    "colPrice": "Prix",
+    "colTime": "Heure",
+    "noBids": "Aucune enchère",
+    "bidsCount": "{count, plural, one {1 enchère} other {# enchères}}",
+    "bidsUniqueBidders": "{count, plural, one {1 équipe} other {# équipes}}",
+    "bidWarBadge": "Guerre d'enchères · {bids, plural, one {1 enchère} other {# enchères}}, {teams, plural, one {1 équipe} other {# équipes}}",
+    "riderMeta": "Valeur : {value} CZ$ · Salaire : {salary}",
+    "salaryNone": "—",
+    "pageOf": "Page {page} sur {total}",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "viewBidWar": "Voir la guerre d'enchères"
+  },
+  "bidWar": {
+    "title": "Guerre d'enchères : {rider}",
+    "subtitle": "Prix final {price} CZ$. Toutes les enchères réalisées, maintenant que le marteau est tombé.",
+    "empty": "Aucune enchère n'a été placée sur ce coureur.",
+    "winningBid": "Enchère gagnante",
+    "fairPlayNote": "Seules les enchères réalisées sont affichées ici. Les plafonds d'enchère automatique et les stratégies actives restent toujours privés, même après la clôture de l'enchère."
+  },
+  "table": {
+    "rider": "Coureur",
+    "nation": "Nation",
+    "status": "Statut",
+    "type": "Type",
+    "value": "Valeur",
+    "highestBid": "Enchère la plus haute",
+    "timeLeft": "Temps restant",
+    "age": "Âge",
+    "salary": "Salaire",
+    "potential": "Potentiel",
+    "popularity": "Popularité",
+    "popularityTitle": "Popularité auprès des fans (0-100). Utilisée par l'objectif de coureur star du plan quinquennal de la direction.",
+    "reputation": "Réputation",
+    "reputationTitle": "Réputation de course acquise. C'est le chiffre que la direction lit pour les coureurs à profil.",
+    "seller": "Vendeur",
+    "bid": "Enchère",
+    "ovr": "Note",
+    "ovrTitle": "La moyenne pondérée des aptitudes que demande son propre rôle. Le même chiffre correspond au même niveau, quel que soit le rôle."
+  },
+  "card": {
+    "time": "Temps",
+    "highestBid": "Enchère la plus haute",
+    "salary": "Salaire",
+    "estSalary": "Salaire est.",
+    "contractExpires": "Exp. après S.{season}",
+    "seller": "Vendeur",
+    "potential": "Potentiel",
+    "popularity": "Pop.",
+    "reputation": "Rép.",
+    "ageYears": "{age} ans",
+    "estValue": "Valeur est.",
+    "ovrTitle": "La moyenne pondérée des aptitudes que demande son propre rôle. Le même chiffre correspond au même niveau, quel que soit le rôle."
+  },
+  "reputation": {
+    "band": {
+      "unknown": "Inconnu",
+      "known": "Connu",
+      "profile": "Profil",
+      "star": "Star",
+      "legend": "Légende"
+    }
+  },
+  "leader": {
+    "line": "En tête : {name}",
+    "none": "Aucune enchère pour l'instant"
+  },
+  "overbidHidden": {
+    "hideTitle": "Masquer cette enchère de ta liste",
+    "hideAria": "Masquer l'enchère pour {name} de ta liste",
+    "showAgain": "Afficher les masquées ({count})"
+  },
+  "list": {
+    "countLine": "Affichage de {shown} enchères sur {total}"
+  },
+  "timer": {
+    "completed": "Terminée",
+    "expired": "Expirée",
+    "hoursMinutes": "{h} h {m} min",
+    "minutesSeconds": "{m} min {s} s",
+    "seconds": "{s} s"
+  },
+  "badge": {
+    "winning": "En tête",
+    "seller": "Vendeur",
+    "mine": "À moi",
+    "extended": "Prol.",
+    "flash": "Flash",
+    "u23": "U23",
+    "u25": "U25",
+    "youth": "Jeune",
+    "firstBidPick": "Premier choix",
+    "outbid": "Surenchéri · la tienne {amount}"
+  },
+  "bidGate": {
+    "bothFull": "Plus de place dans ton académie ni dans ton effectif senior (30/30). Vends un coureur pour enchérir.",
+    "bothFullU23": "Plus de place dans ton équipe U23 ({max}/{max}) ni dans ton effectif senior (30/30). Vends un coureur pour enchérir.",
+    "bothFullJunior": "Plus de place dans ton équipe juniors ({max}/{max}) ni dans ton effectif senior (30/30). Vends un coureur pour enchérir.",
+    "seniorFull": "Ton effectif senior est complet (30/30). Vends un coureur pour enchérir.",
+    "toSenior": "-> rejoint ton effectif senior",
+    "toAcademy": "-> rejoint ton académie",
+    "toU23": "-> rejoint ton équipe U23",
+    "toJunior": "-> rejoint ton équipe juniors"
+  },
+  "bid": {
+    "minBid": "Min. {amount} CZ$",
+    "minBidCard": "Enchère min. : {amount} CZ$",
+    "inputAria": "Ton enchère en CZ$",
+    "buttonPlace": "Enchérir",
+    "buttonRaise": "Surenchérir",
+    "buttonError": "Erreur",
+    "buttonPlaceAria": "Placer l'enchère",
+    "buttonRaiseAria": "Surenchérir sur ton enchère",
+    "sellerLabel": "Tu vends",
+    "blockedBelowMin": "Monte ton enchère à au moins {amount} CZ$ pour enchérir.",
+    "blockedExpired": "Cette enchère est terminée. Actualise pour voir le résultat.",
+    "proxy": {
+      "blockedBelowMin": "Ta limite d'enchère automatique doit être d'au moins {amount} CZ$, l'enchère minimale actuelle.",
+      "blockedExpired": "Cette enchère est terminée. Actualise pour voir le résultat.",
+      "display": "Enchère auto : max {amount} CZ$",
+      "help": "J'enchéris pour toi jusqu'à cette limite, 1 CZ$ à la fois. Tu ne perds la tête que si quelqu'un dépasse ton plafond. Ton plafond reste privé.",
+      "set": "Fixer la limite d'enchère automatique",
+      "edit": "Modifier la limite d'enchère automatique",
+      "remove": "Retirer l'enchère automatique",
+      "save": "Enregistrer la limite d'enchère automatique",
+      "saveButton": "Enregistrer",
+      "cancel": "Annuler la modification de l'enchère automatique",
+      "placeholder": "Limite max.",
+      "inputAria": "Limite d'enchère automatique en CZ$",
+      "buttonAdd": "+ Enchère auto",
+      "buttonAddCard": "+ Fixer une limite d'enchère auto",
+      "editButton": "Modifier",
+      "removeButton": "Retirer"
+    }
+  },
+  "section": {
+    "leading": "Tu es en tête",
+    "overbid": "Tu as été surenchéri",
+    "selling": "Tu vends"
+  },
+  "empty": {
+    "wishlistNoResults": "Aucune enchère en cours sur les coureurs de ta liste de suivi",
+    "noInvolvementMySituation": "Tu n'es impliqué dans aucune enchère en cours",
+    "noResults": "Aucune enchère dans cette catégorie",
+    "wishlistHelp": "Désactive « Uniquement ma liste de suivi » ou ajoute des coureurs depuis l'aperçu des coureurs",
+    "browseSuggestion": "Passe sur « Toutes » pour parcourir le marché",
+    "startAuctionSuggestion": "Va dans Coureurs et lance une enchère",
+    "actionClearWishlist": "Afficher toutes les enchères",
+    "actionBrowseAll": "Parcourir toutes les enchères",
+    "actionStartAuction": "Aller aux coureurs"
+  },
+  "feed": {
+    "title": "Enchères en direct · tes enchères",
+    "empty": "Pas encore d'activité sur tes enchères.",
+    "yourBid": "Tu as enchéri",
+    "counterBid": "Contre-enchère",
+    "counterBidNamed": "Contre-enchère de {name}",
+    "fallbackRider": "Coureur",
+    "relativeSec": "il y a {n} s",
+    "relativeMin": "il y a {n} min",
+    "relativeHour": "il y a {n} h"
+  },
+  "toast": {
+    "overbidMessage": "Tu as été surenchéri sur {riderName}",
+    "overbidNewPrice": "Nouveau prix : {amount} CZ$"
+  },
+  "modal": {
+    "bidTitle": "Confirmer l'enchère",
+    "bidVerb": "enchérir",
+    "bidAction": "Enchérir",
+    "proxyTitle": "Confirmer l'enchère automatique",
+    "proxyVerb": "fixer la limite d'enchère automatique à",
+    "proxyAction": "Enregistrer l'enchère auto",
+    "transferTitle": "Confirmer l'offre de transfert",
+    "transferVerb": "envoyer une offre de transfert de",
+    "transferAction": "Envoyer l'offre",
+    "questionPrefix": "Es-tu sûr de vouloir",
+    "onLabel": "sur",
+    "settlesAfterValueUpdate": "Cette enchère se règle après la mise à jour des valeurs de dimanche. La valeur et les aptitudes peuvent changer avant sa fin.",
+    "retirementWarning": {
+      "risk": "Fin de carrière proche : ce coureur est dans la fenêtre de retraite (âge {windowStart}-{guaranteedAge}) et peut prendre sa retraite après cette saison.",
+      "certain": "Ce coureur a {guaranteedAge} ans ou plus et prendra sa retraite après cette saison."
+    },
+    "typoGuard": {
+      "title": "Vérifie ton prix",
+      "body": "Tu mets <strong>{riderName}</strong> en vente à <strong>{price} CZ$</strong>.",
+      "question": "Sa valeur de marché est de <strong>{marketValue} CZ$</strong>. C'est ce que tu voulais ?",
+      "confirmButton": "Non, mon prix est voulu",
+      "fixButton": "Corriger le prix"
+    }
+  },
+  "fallback": {
+    "rider": "coureur",
+    "team": "un manager"
+  },
+  "celebration": {
+    "title": "Tu as remporté l'enchère !",
+    "subtitle": "Le coureur est maintenant dans ton équipe"
+  },
+  "priceChanged": {
+    "title": "Le prix a changé",
+    "newPrice": "Le prix est maintenant de <strong>{amount} CZ$</strong>.",
+    "newMinBid": "L'enchère minimale est maintenant de <strong>{amount} CZ$</strong>. Tu veux toujours enchérir ?",
+    "bidCta": "Enchérir {amount} CZ$"
+  },
+  "error": {
+    "bidFailed": "L'enchère n'a pas pu être placée",
+    "proxyFailed": "Impossible de fixer l'enchère automatique",
+    "proxyRemoveFailed": "La limite d'enchère automatique n'a pas pu être retirée. Elle est toujours active.",
+    "insufficientBalance": "L'enchère dépasse ton solde disponible"
+  },
+  "warning": {
+    "squadCapacity": "Attention : tu mènes maintenant des enchères équivalant à {totalAfter} coureurs (max {maxRiders}). Le plafond est une limite stricte, tu ne peux donc pas remporter plus de coureurs que ton effectif ne peut en accueillir."
+  },
+  "valueDelta": {
+    "under": "{pct} % sous la valeur est.",
+    "over": "{pct} % au-dessus de la valeur est.",
+    "at": "Proche de la valeur est.",
+    "title": "Valeur de marché estimée : {amount} CZ$. Une estimation du modèle, pas un prix garanti."
+  }
+}
