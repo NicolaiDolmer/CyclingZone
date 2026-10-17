@@ -5,11 +5,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-function runGuard(t, source, locales) {
+function runGuard(t, source, locales, registered = ["en", "da"]) {
   const root = mkdtempSync(join(tmpdir(), "i18n-key-coverage-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   mkdirSync(join(root, "scripts"));
   copyFileSync(new URL("./i18n-check-keys.mjs", import.meta.url), join(root, "scripts/i18n-check-keys.mjs"));
+  copyFileSync(new URL("./i18n-check-key-parity.mjs", import.meta.url), join(root, "scripts/i18n-check-key-parity.mjs"));
+  mkdirSync(join(root, "frontend/src/i18n"), { recursive: true });
+  writeFileSync(join(root, "frontend/src/i18n/languages.js"), `export const LANGUAGES = [${registered.map((c) => `{ code: "${c}" }`).join(", ")}];
+`);
   mkdirSync(join(root, "frontend/src/components"), { recursive: true });
   writeFileSync(join(root, "frontend/src/components/Role.tsx"), source);
   for (const [language, namespaces] of Object.entries(locales)) {
@@ -51,4 +55,9 @@ test("key parity still catches a key missing in only one language", (t) => {
 });
 test("commented calls do not create translation requirements", (t) => {
   assert.equal(runGuard(t, '// ' + source, { en: { races: {} }, da: { races: {} } }).status, 0);
+});
+test("unregistered locale folder is skipped as work in progress (#6597)", (t) => {
+  const result = runGuard(t, source, { en: complete, da: complete, fr: { races: {} } });
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /skipping unregistered locale folder\(s\).*fr/);
 });

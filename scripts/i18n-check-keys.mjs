@@ -15,19 +15,31 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PSEUDO_LANG, registeredLanguages } from "./i18n-check-key-parity.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const LOCALES_DIR = join(ROOT, "frontend", "public", "locales");
 const PLACEHOLDER = "__MISSING__";
 
+// Only registered languages (frontend/src/i18n/languages.js) plus the
+// pseudo-locale are checked. An unregistered locale folder is work in progress
+// and is reported as info, matching i18n-check-key-parity.mjs (#6597 Codex).
 function listLngs() {
-  return readdirSync(LOCALES_DIR).filter((name) => {
+  const dirs = readdirSync(LOCALES_DIR).filter((name) => {
     try {
       return statSync(join(LOCALES_DIR, name)).isDirectory();
     } catch {
       return false;
     }
   });
+  const registered = new Set(
+    registeredLanguages(readFileSync(join(ROOT, "frontend", "src", "i18n", "languages.js"), "utf8")),
+  );
+  const skipped = dirs.filter((name) => !registered.has(name) && name !== PSEUDO_LANG);
+  if (skipped.length) {
+    console.log(`i18n key-coverage: skipping unregistered locale folder(s) (work in progress): ${skipped.join(", ")}`);
+  }
+  return dirs.filter((name) => registered.has(name) || name === PSEUDO_LANG);
 }
 
 function listNamespaces(lng) {
