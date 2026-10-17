@@ -369,11 +369,15 @@ async function defaultBaseline() {
 }
 
 /**
- * #6794: `now` (et Date) er det eneste ur: det styrer default-out-datoen og
- * generatedAt, saa en test kan fastlaase begge. `defaultBaseline` kan injiceres
+ * #6794: uret kan injiceres. `now` er starttidspunktet (default-out-datoen);
+ * `clock` stempler generatedAt naar kortet bygges, saa en lang koersel ikke
+ * faar starttiden paa kortet. Gives kun `now`, bruger kortet samme tid, saa en
+ * test kan fastlaase begge. `defaultBaseline` kan injiceres
  * af samme grund (default: den aktuelle revision).
  */
-export async function main(argv = process.argv.slice(2), { now = new Date(), defaultBaseline: baselineOverride } = {}) {
+export async function main(argv = process.argv.slice(2), { now, clock, defaultBaseline: baselineOverride } = {}) {
+  const stamp = clock ?? (now ? () => now : () => new Date());
+  now ??= stamp();
   const opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
   if (opts.benchWorker) return benchWorker(opts);
   const outDir = assertPrivateOutDir(abs(opts.out));
@@ -383,7 +387,7 @@ export async function main(argv = process.argv.slice(2), { now = new Date(), def
     // Kortet samles igen med koerslens EGNE parametre; meta-filen roeres ikke.
     if (!prev) throw new Error(`--report-only: ${metaFile} findes ikke`);
     const thresholds = resolveReportThresholds(prev, opts);
-    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: buildReportMeta(prev, opts, thresholds, now), thresholds });
+    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: buildReportMeta(prev, opts, thresholds, stamp()), thresholds });
     return writeCard({ card, outDir, png: opts.png, failed: prev.failedRaces ?? [] });
   }
   if (prev && (prev.candidate !== opts.candidate || prev.baseline !== opts.baseline || prev.seeds !== opts.seeds || (prev.benchScope ?? "all") !== opts.benchScope)) {
@@ -421,7 +425,7 @@ export async function main(argv = process.argv.slice(2), { now = new Date(), def
   });
   meta.failedRaces = res.failed;
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
-  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: now.toISOString() }, thresholds });
+  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: stamp().toISOString() }, thresholds });
   return writeCard({ card, outDir, png: opts.png, failed: res.failed });
 }
 

@@ -164,6 +164,24 @@ test("#6794: main stempler generatedAt fra det injicerede ur (koersel og --repor
   }
 });
 
+test("#6794: clock stempler kortet ved faerdiggoerelse, now styrer kun out-datoen", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-clock2-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    const done = new Date("2026-10-17T12:30:00Z");
+    let calls = 0;
+    const clock = () => { calls += 1; return done; };
+    const { card } = await main(["--candidate=rev", "--bench-only", "--no-bench", `--out=${out}`, "--no-png"], { now: NOW, clock, defaultBaseline: "rev" });
+    assert.equal(card.generatedAt, done.toISOString(), "kortet faar faerdig-tiden, ikke starttiden");
+    assert.ok(calls >= 1, "uret samples naar kortet bygges");
+    assert.equal(parseArgs(["--candidate=c"], { defaultBaseline: "b", now: NOW }).out, path.join("balance-internals", "6750", "2026-10-17"));
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("#6794: --report-only --thresholds=<ny fil> faar matchende in-memory-meta uden at omskrive testport-meta.json", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "testport-thr4-"));
   const prevExit = process.exitCode;
