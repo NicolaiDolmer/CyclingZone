@@ -72,3 +72,54 @@ test("native curve requires explicit distance to its actual pursuer", () => {
   ];
   assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [{ km: 30, gapSeconds: 60 }, { km: 40, gapSeconds: 0 }]);
 });
+
+// #6803: S5's nye udbrud efter en tidlig indhentning (#6369) har eget gruppe-id.
+type Ev = { km: number; type: string; params?: Record<string, unknown> };
+const twoBreaks = (extra: Ev[] = [], { caughtSecond = true } = {}): Ev[] => [
+  { km: 0, type: "stage_start", params: { distance_km: 180 } },
+  { km: 12, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["a", "b"] } },
+  { km: 14, type: "gap_update", params: { group_id: "breakaway-0", gap_seconds: 0, chase_group_id: "peloton-0", separation_seconds: 50 } },
+  { km: 18, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["a", "b"], chase_group_id: "peloton-0" } },
+  { km: 23, type: "breakaway_formed", params: { group_id: "breakaway-1500", rider_ids: ["c", "d"], reformation: true } },
+  { km: 30, type: "gap_update", params: { group_id: "breakaway-1500", gap_seconds: 0, chase_group_id: "peloton-0", separation_seconds: 80 } },
+  { km: 50, type: "gap_update", params: { group_id: "breakaway-1500", gap_seconds: 0, chase_group_id: "peloton-0", separation_seconds: 35 } },
+  ...(caughtSecond ? [{ km: 74, type: "breakaway_caught", params: { group_id: "breakaway-1500", rider_ids: ["c", "d"], chase_group_id: "peloton-0" } }] : []),
+  ...extra,
+  { km: 180, type: "finish", params: {} },
+];
+
+test("#6803 the gap curve follows the new break after an early catch, with zero in between", () => {
+  const film = buildFilmTimeline({ events: twoBreaks() });
+  assert.equal(film.catchKm, 18);
+  assert.deepEqual(film.gapCurve, [
+    { km: 14, gapSeconds: 50 }, { km: 18, gapSeconds: 0 },
+    { km: 23, gapSeconds: 0 }, { km: 30, gapSeconds: 80 }, { km: 50, gapSeconds: 35 }, { km: 74, gapSeconds: 0 },
+  ]);
+});
+
+test("#6803 a new break that holds on ends its curve without an invented catch", () => {
+  const film = buildFilmTimeline({ events: twoBreaks([], { caughtSecond: false }) });
+  assert.deepEqual(film.gapCurve.at(-1), { km: 50, gapSeconds: 35 });
+});
+
+test("#6803 the first break's group id reused by the field after the catch does not leak into the curve", () => {
+  const reused = { km: 40, type: "gap_update", params: { group_id: "breakaway-0", gap_seconds: 25, chase_group_id: "x", separation_seconds: 25 } };
+  assert.equal(buildFilmTimeline({ events: twoBreaks([reused]) }).gapCurve.some((p) => p.km === 40), false);
+});
+
+test("#6803 a new break without explicit pursuit data invents no curve", () => {
+  const events = twoBreaks().filter((e) => !(e.type === "gap_update" && e.params?.group_id === "breakaway-1500"));
+  assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [{ km: 14, gapSeconds: 50 }, { km: 18, gapSeconds: 0 }]);
+});
+
+test("#6803 a stage with one break is unchanged by the reformation lookup", () => {
+  const events = twoBreaks().filter((e) => !(e.km >= 23 && e.km <= 74));
+  assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [{ km: 14, gapSeconds: 50 }, { km: 18, gapSeconds: 0 }]);
+});
+
+test("#6803 a later-only curve starts at zero where the new break forms", () => {
+  const events = twoBreaks().filter((e) => !(e.type === "gap_update" && e.params?.group_id === "breakaway-0"));
+  assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [
+    { km: 23, gapSeconds: 0 }, { km: 30, gapSeconds: 80 }, { km: 50, gapSeconds: 35 }, { km: 74, gapSeconds: 0 },
+  ]);
+});
