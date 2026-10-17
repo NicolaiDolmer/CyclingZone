@@ -205,16 +205,11 @@ export const DIVISION_BONUSES = {
 };
 
 // -- Saeson-skift kontrol-flags (#1155, ejer-beslutning 2026-06-08) ------------
-// Tre bevidste produktbeslutninger for det foerste rigtige saeson-skift (S1->S2).
+// Bevidste produktbeslutninger for det foerste rigtige saeson-skift (S1->S2).
 // Alle er rene applikationskode-gates (ingen migration) og taendes igen ved at
 // saette true + deploy. Holdt som flags frem for slettet kode saa de er trivielle
-// at genaktivere naar systemerne er klar.
-
-// Saeson-transition skal vaere en BEVIDST manuel admin-handling -- aldrig en cron.
-// Sat false efter at den automatiske cron 2026-05-21 fyrede 4 skift i traek
-// (0->1->2->3->4). Vindue-luk, final whistle og squad-tjek forbliver automatiske;
-// kun selve skiftet til ny saeson kraever nu et eksplicit admin-tryk.
-export const SEASON_AUTO_TRANSITION_ENABLED = false;
+// at genaktivere naar systemerne er klar. (Saeson-skiftet selv er en manuel
+// admin-handling; auto-skifte-cron'en og dens flag er fjernet, #6796.)
 
 // Rytter-vaerdi-genberegning (prize_earnings_bonus /3, #1156) ved saeson-slut.
 // Slaaet fra indtil vaerdimodellen giver mening at koere ved transition (ejeren
@@ -229,7 +224,7 @@ export const SEASON_VALUE_RECALC_ENABLED = false;
 export const SEASON_RIDER_PROGRESSION_ENABLED = true;
 
 // -- Forever-relaunch saeson-1-opstarts-gates (#1678, ejer-direktiv 2026-06-21) -----
-// To rene applikationskode-flags (samme moenster som SEASON_AUTO_TRANSITION_ENABLED:
+// To rene applikationskode-flags (samme moenster som SEASON_VALUE_RECALC_ENABLED:
 // genaktivering = saet false/true + deploy, ingen migration). De gaelder KUN
 // engangs-opstarten af saeson 1 (transition 0->1) — IKKE de loebende net-kurver, som
 // moneySupplyScorecard --synthetic-only granit-laaser.

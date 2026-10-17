@@ -4,8 +4,7 @@
 // Kører transitionToNextSeason({ dryRun: true }) mod den aktive sæson og rapporterer
 // de tre transition-invarianter eksplicit:
 //   1. Nedrykning gated (seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON=3 → springes over)
-//   2. Auto-loop guard (closed_at IS NOT NULL skelner lukket deadline-window fra nyfødt
-//      racing-window — nyt window fødes med closed_at=null så cron ikke re-fyrer)
+//   2. Intet auto-skifte (sæsonskiftet er manuelt, #1155; auto-skifte-cron'en er fjernet, #6796)
 //   3. Transfer-vindue lukker (closePrevTransferWindow sætter status='closed', closed_at sat)
 //
 // dryRun=true returnerer EFTER buildTransitionPlan (kun .select()) → garanteret write-fri.
@@ -79,29 +78,8 @@ console.log(
   ` → ${relegationSkipped ? "✓ INGEN op/nedrykning (sprunget over)" : "⚠️ OP/NEDRYKNING VIL SKE"}`
 );
 
-// (2) Auto-loop guard: inspicér transfer_windows for fromSeason
-const { data: fromWindows } = await supabase
-  .from("transfer_windows")
-  .select("id, status, closed_at, final_whistle_sent_at, squad_enforcement_completed_at, created_at")
-  .eq("season_id", plan.from_season.id)
-  .order("created_at", { ascending: false });
-const latestFrom = (fromWindows || [])[0] || null;
-console.log(`\n  2. Auto-loop guard (cron matcher kun status='closed' + closed_at + final_whistle + squad_enforcement):`);
-if (!latestFrom) {
-  console.log(`     fromSeason har intet transfer_window endnu.`);
-} else {
-  const wrapped =
-    latestFrom.status === "closed" &&
-    latestFrom.closed_at != null &&
-    latestFrom.final_whistle_sent_at != null &&
-    latestFrom.squad_enforcement_completed_at != null;
-  console.log(`     fromSeason-window: status='${latestFrom.status}'` +
-    ` · closed_at=${latestFrom.closed_at ? "sat" : "null"}` +
-    ` · final_whistle=${latestFrom.final_whistle_sent_at ? "sat" : "null"}` +
-    ` · squad_enf=${latestFrom.squad_enforcement_completed_at ? "sat" : "null"}`);
-  console.log(`     → cron vil ${wrapped ? "FYRE transition (window fuldt wrapped)" : "IKKE fyre endnu (mangler wrap-trin)"}`);
-  console.log(`     Nyt S${toNum}-window fødes med closed_at=null → cron kan ALDRIG re-fyre på det. ✓`);
-}
+// (2) Intet auto-skifte: der findes ingen cron der kan skifte sæson (#6796)
+console.log(`\n  2. Intet auto-skifte: sæsonskiftet er en manuel admin-handling (#1155); ingen cron kan fyre det. ✓`);
 
 // (3) Vindue lukker — vis nuværende status (lukkes når transition kører rigtigt)
 console.log(`\n  3. Vindue lukker: closePrevTransferWindow sætter status='closed' + closed_at ved rigtig kørsel.`);

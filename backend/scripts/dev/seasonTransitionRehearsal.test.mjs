@@ -148,7 +148,8 @@ test("dommere: preflight, løbsdag, oprykning og transitionsplan", () => {
     "yellow",
   );
   assert.equal(judgeStep(by("promotion-pending"), { exitCode: 0, output: "AFVENTER 0\nAFVENTER 0" }), "green");
-  assert.equal(judgeStep(by("transition-plan"), { exitCode: 0, output: "→ cron vil IKKE fyre endnu" }), "yellow");
+  assert.equal(judgeStep(by("transition-plan"), { exitCode: 0, output: "2. Intet auto-skifte" }), "green");
+  assert.equal(judgeStep(by("transition-plan"), { exitCode: 1, output: "" }), "red");
   assert.equal(judgeStep(by("contract-expiry"), { exitCode: 0, output: "" }), "ran");
   assert.equal(judgeStep(by("contract-expiry"), { exitCode: 2, output: "" }), "red");
 });
