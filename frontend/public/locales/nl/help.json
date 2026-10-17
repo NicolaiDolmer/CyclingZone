@@ -689,7 +689,7 @@
       },
       "seasonDocumentary": {
         "title": "De seizoensdocumentaire",
-        "text": "Na een afgerond seizoen toont /seizoenen onder het seizoensoverzicht een documentairedeel voor je team: de grootste contracten van je seizoen, je topresultaat, je beste dag en de dichtstbijzijnde rivaal in je eindstand, uitgeschreven als een kort verhaal. Het wordt eenmaal per team per seizoen gegenereerd en gecachet, dus iedereen leest dezelfde tekst. De standaardversie is opgebouwd uit een sjabloon over je eigen gecontroleerde cijfers; als de eigenaar de optionele AI-bijschaaflaag aanzet, worden dezelfde feiten herschreven tot vloeiend proza zonder iets nieuws toe te voegen. Een knop Deelkaart downloaden ernaast exporteert een screenshotklare afbeelding met je teamnaam en de belangrijkste feiten van het seizoen."
+        "text": "Na een afgerond seizoen toont /seasons onder het seizoensoverzicht een documentairedeel voor je team: de grootste contracten van je seizoen, je topresultaat, je beste dag en de dichtstbijzijnde rivaal in je eindstand, uitgeschreven als een kort verhaal. Het wordt eenmaal per team per seizoen gegenereerd en gecachet, dus iedereen leest dezelfde tekst. De standaardversie is opgebouwd uit een sjabloon over je eigen gecontroleerde cijfers; als de eigenaar de optionele AI-bijschaaflaag aanzet, worden dezelfde feiten herschreven tot vloeiend proza zonder iets nieuws toe te voegen. Een knop Deelkaart downloaden ernaast exporteert een screenshotklare afbeelding met je teamnaam en de belangrijkste feiten van het seizoen."
       },
       "adminRecomputeStandings": {
         "title": "Beheerder: ranglijsten herberekenen bij afwijking",
