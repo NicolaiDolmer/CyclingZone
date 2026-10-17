@@ -15,6 +15,7 @@
 // bor i scoutCountdownParts/scoutReadyClock og enheds-testes uden React-render.
 
 import { useEffect, useState } from "react";
+import { formatClock24 } from "./intlLocale.js";
 
 // Hvor ofte hooken kigger efter om minut-tallet er skiftet. 15s er rigeligt til
 // minut-granularitet og koster ingen re-render medmindre labelen faktisk ændrer sig.
@@ -66,9 +67,7 @@ export function scoutReadyClock(readyAt) {
   if (!readyAt) return null;
   const ready = readyAt instanceof Date ? readyAt : new Date(readyAt);
   if (Number.isNaN(ready.getTime())) return null;
-  return ready.toLocaleTimeString("en-GB", {
-    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Copenhagen",
-  });
+  return formatClock24(ready, "Europe/Copenhagen");
 }
 
 const CPH_DATE_FMT = new Intl.DateTimeFormat("en-CA", {

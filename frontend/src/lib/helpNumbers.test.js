@@ -53,9 +53,9 @@ test("buildHelpNumbers reflects RULES_NUMBERS (the help→RULES_NUMBERS pin)", (
   assert.equal(en.u23SquadCap, String(RULES_NUMBERS.u23SquadCap));
   assert.equal(en.juniorSquadCap, String(RULES_NUMBERS.juniorSquadCap));
 
-  // Danish formats thousands with a dot; unknown languages fall back to en-US.
+  // Danish formats thousands with a dot; other languages use their own Intl locale (#6785).
   assert.equal(buildHelpNumbers("da").startingBalance, RULES_NUMBERS.startingBalance.toLocaleString("da-DK"));
-  assert.equal(buildHelpNumbers("fr").startingBalance, RULES_NUMBERS.startingBalance.toLocaleString("en-US"));
+  assert.equal(buildHelpNumbers("fr").startingBalance, RULES_NUMBERS.startingBalance.toLocaleString("fr"));
 });
 
 test("HELP_NUMBER_KEYS exactly covers buildHelpNumbers output", () => {
