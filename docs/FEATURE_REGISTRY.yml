@@ -261,6 +261,8 @@ features:
     epic: 6514
     verified: 2026-10-15
     note: PR #6680; flag-nøglen race_library_v2 oprettes som off af migrationen efter merge, ejer flytter den til beta.
+    decision: ejer-beslutning
+    decide_by: 2026-10-25
 
   - id: race-day-development
     area: race-day
