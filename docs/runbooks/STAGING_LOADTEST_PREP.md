@@ -184,7 +184,7 @@ fra en anden shell sender ikke `--flag`-argumenterne videre, målt 10/10):
 
 ```powershell
 & ./scripts/staging/with-loadtest-staging.ps1 -Cwd . -- node scripts/loadtest/race-day-sim.mjs `
-  --clock 2026-10-06T00:00:00+02:00 --season 4 --min-results <frisk prod-estimat> `
+  --clock 2026-10-19T00:00:00+02:00 --season 4 --min-results <frisk prod-estimat> `
   --viewer-token-file <sti uden for repoet>
 ```
 
