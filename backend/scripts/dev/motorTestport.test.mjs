@@ -187,11 +187,8 @@ test("#6777: meta gemmer taerskelfil + snapshot, og --report-only genbruger snap
     const out = path.join(root, "balance-internals", "run");
     const thrFile = path.join(root, "t.json");
     writeFileSync(thrFile, JSON.stringify({ bigBreakawayWinSeconds: 111 }));
-    const races = path.join(root, "export", "a");
-    mkdirSync(races, { recursive: true });
-    writeFileSync(path.join(races, "cache.json"), "{}");
-    // fuld koersel uden bench/loeb-arbejde: tom --races-liste giver kun meta + kort
-    await main(["--candidate=rev", "--baseline=rev", "--races=zz", "--no-bench", `--thresholds=${thrFile}`, `--out=${out}`, "--no-png"]).catch(() => {});
+    // ingen opgaver (--bench-only --no-bench): kun meta + kort
+    await main(["--candidate=rev", "--baseline=rev", "--bench-only", "--no-bench", `--thresholds=${thrFile}`, `--out=${out}`, "--no-png"]);
     const meta = JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8"));
     assert.equal(meta.thresholdsFile, thrFile);
     assert.deepEqual(meta.thresholds, { bigBreakawayWinSeconds: 111 });
@@ -199,6 +196,9 @@ test("#6777: meta gemmer taerskelfil + snapshot, og --report-only genbruger snap
     writeFileSync(thrFile, JSON.stringify({ bigBreakawayWinSeconds: 999 }));
     const { card } = await main(["--report-only", `--out=${out}`, "--no-png"]);
     assert.equal(card.thresholds.bigBreakawayWinSeconds, 111);
+    // genoptagelse (samme koersel) overskriver ikke snapshottet
+    await main(["--candidate=rev", "--baseline=rev", "--bench-only", "--no-bench", `--out=${out}`, "--no-png"]);
+    assert.deepEqual(JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8")).thresholds, { bigBreakawayWinSeconds: 111 });
     // eksplicit --thresholds vinder
     const again = await main(["--report-only", `--thresholds=${thrFile}`, `--out=${out}`, "--no-png"]);
     assert.equal(again.card.thresholds.bigBreakawayWinSeconds, 999);

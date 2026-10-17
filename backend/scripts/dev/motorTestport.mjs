@@ -358,7 +358,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (prev && existsSync(idsPath)) assertSameRaceSelection(parseIdsText(readFileSync(idsPath, "utf8")), raceIds, outDir);
     writeFileSync(idsPath, `${raceIds.join("\n")}\n`);
   }
-  const thresholds = loadThresholds(abs(opts.thresholds));
+  const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: opts.thresholds, thresholds };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
