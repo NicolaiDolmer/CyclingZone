@@ -282,7 +282,9 @@ function runStep(step) {
     cwd: step.cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
-    shell: process.platform === "win32",
+    // Ingen shell: argumenterne sendes uescapede videre med shell=true (DEP0190).
+    // node, pwsh og infisical er alle rigtige .exe-filer på Windows.
+    shell: false,
     env: process.env,
   });
   const output = `${res.stdout ?? ""}${res.stderr ?? ""}`;
