@@ -54,8 +54,10 @@ async function call(handler) {
   return response;
 }
 
-for (const raceDayTickOn of [false, true]) {
-  const path = raceDayTickOn ? "loebsdags-stien" : "den gamle kalenderdags-sti";
+// #6798 (Codex runde 2): kun den gamle kalenderdags-sti kaster en holdt
+// reservation; loebsdags-stien svarer alreadyRan paa 23505 (opfoelgning #6827).
+for (const raceDayTickOn of [false]) {
+  const path = "den gamle kalenderdags-sti";
 
   test(`#6798 (${path}): optaget reservation → 409 training_in_progress, ingen Sentry`, async () => {
     const captured = [];
