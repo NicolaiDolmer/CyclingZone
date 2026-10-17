@@ -381,8 +381,8 @@ target-checkoutet) deployer intet og har ingen cron-påvirkning; uenighed mellem
 de to kilder fejler lukket. Fejler scriptet på topniveau, logges årsagen uden
 secrets (kendte secret-værdier og Bearer-tokens maskeres, JSON-fejl citeres ikke).
 
-Merge-køens `-DeployVerifyTimeoutMinutes` (110) ligger over Deploy verify-jobbets
-`timeout-minutes` (100), så et helt attempt kan nå at blive færdigt; en test
+Merge-køens `-DeployVerifyTimeoutMinutes` (140) ligger over Deploy verify-jobbets
+`timeout-minutes` (130), så et helt attempt kan nå at blive færdigt; en test
 holder de to tal afstemt.
 
 ---
