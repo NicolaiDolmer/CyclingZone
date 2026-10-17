@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -220,4 +220,11 @@ test("#6777: resolveReportThresholds: snapshot > gemt filsti > default", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("#6777 (Codex): genoptagelse uden --thresholds beholder den gemte tærskelsti", () => {
+  const prev = { thresholdsFile: "balance-internals/custom.json" };
+  assert.equal(resolveThresholdsFile(prev, { thresholds: "balance-internals/default.json", thresholdsExplicit: false }), "balance-internals/custom.json");
+  assert.equal(resolveThresholdsFile(prev, { thresholds: "balance-internals/ny.json", thresholdsExplicit: true }), "balance-internals/ny.json");
+  assert.equal(resolveThresholdsFile(null, { thresholds: "balance-internals/default.json", thresholdsExplicit: false }), "balance-internals/default.json");
 });

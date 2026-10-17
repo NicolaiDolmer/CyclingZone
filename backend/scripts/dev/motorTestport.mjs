@@ -255,6 +255,15 @@ export function assertSameRaceSelection(previousIds, nextIds, outDir) {
  * saa et kort ikke aendrer sig fordi standardfilen er blevet rettet siden. Et eksplicit
  * --thresholds=<fil> vinder; meta uden snapshot (aeldre koersler) falder tilbage til filen.
  */
+/**
+ * #6777 (Codex): stien der faktisk blev brugt. Ved genoptagelse uden eksplicit
+ * --thresholds beholdes den gemte sti, ikke default-stien.
+ */
+export function resolveThresholdsFile(prev, opts) {
+  if (opts?.thresholdsExplicit || !prev) return opts?.thresholds ?? null;
+  return prev.thresholdsFile ?? opts?.thresholds ?? null;
+}
+
 export function resolveReportThresholds(prev, opts) {
   if (opts.thresholdsExplicit) return loadThresholds(abs(opts.thresholds));
   if (prev?.thresholds && typeof prev.thresholds === "object") return prev.thresholds;
@@ -359,7 +368,7 @@ export async function main(argv = process.argv.slice(2)) {
     writeFileSync(idsPath, `${raceIds.join("\n")}\n`);
   }
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
-  const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: opts.thresholds, thresholds };
+  const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
   const tasks = planTasks({ raceIds, opts, outDir, fromDir });
