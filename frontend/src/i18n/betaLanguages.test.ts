@@ -249,6 +249,6 @@ test("sprogvaelgerens flag kender fr/es/nl (ellers tekst-only valg)", () => {
   const flagSrc = readFileSync(join(HERE, "../components/LanguageSwitcherFlag.jsx"), "utf8");
   for (const code of REGISTERED_BETA) {
     const entry = LANGUAGES.find((l) => l.code === code);
-    assert.match(flagSrc, new RegExp(`[ {,]${entry.flag}: `), `${entry.flag} mangler i FLAGS`);
+    assert.match(flagSrc, new RegExp(`[ {,]${entry?.flag}: `), `${entry?.flag} mangler i FLAGS`);
   }
 });
