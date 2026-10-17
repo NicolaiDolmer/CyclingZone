@@ -358,6 +358,12 @@ dér kan stadig skrive et check-in. Beviset tæller derfor kun check-ins strengt
 efter grænsen **plus** drain, og deadlinen regnes fra samme punkt. Værdien læses
 fra Railway-configen; en ugyldig værdi fejler lukket.
 
+**Genstart efter grænsen (#6799):** ses en boot-kohorte (fælles tidsstempel) for et
+job efter grænsen, regnes jobbets deadline fra kohorten i stedet, dog højst
+`MAX_COHORT_SHIFT_SECONDS` (30 min) senere. Beviset kan derfor tage op til ca. 80 min.
+En forbigående læsefejl mod `cron_checkins` giver nyt forsøg indtil jobbets deadline,
+ikke en rød dom.
+
 Kun **korte kadencer (≤ 30 min) kræves** for at et deploy er bevist. Kadencer
 over 30 minutter må give **AFVENTER CHECK-IN**, når de korte jobs er bevist.
 Det er `deferred`, aldrig `verified`: ingen LIVE-kommentar, men en
@@ -381,8 +387,8 @@ target-checkoutet) deployer intet og har ingen cron-påvirkning; uenighed mellem
 de to kilder fejler lukket. Fejler scriptet på topniveau, logges årsagen uden
 secrets (kendte secret-værdier og Bearer-tokens maskeres, JSON-fejl citeres ikke).
 
-Merge-køens `-DeployVerifyTimeoutMinutes` (110) ligger over Deploy verify-jobbets
-`timeout-minutes` (100), så et helt attempt kan nå at blive færdigt; en test
+Merge-køens `-DeployVerifyTimeoutMinutes` (140) ligger over Deploy verify-jobbets
+`timeout-minutes` (130), så et helt attempt kan nå at blive færdigt; en test
 holder de to tal afstemt.
 
 ---
