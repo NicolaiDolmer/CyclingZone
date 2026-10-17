@@ -31,7 +31,7 @@ import {
   nextFocusDayIso,
   seasonDayOrdinal,
 } from "../../lib/seasonTimeline.js";
-import { intlLocale } from "../../lib/intlLocale.js";
+import { intlLocale } from "../../lib/intlLocale.ts";
 
 const API = import.meta.env.VITE_API_URL;
 

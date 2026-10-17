@@ -2,7 +2,7 @@
 // i18n format-guard, Refs #6785 (sprogfundamentet foer fr/es/nl).
 //
 // Tal, valuta, datoer og klokkeslaet skal formateres efter spillerens aktive
-// sprog via Intl (frontend/src/lib/intl.js og lib/intlLocale.js). Et fast
+// sprog via Intl (frontend/src/lib/intl.js og lib/intlLocale.ts). Et fast
 // "da-DK" eller en haandskrevet "toFixed(1)%" giver en fransk, spansk eller
 // hollandsk spiller dansk eller engelsk skriftbillede.
 //
@@ -30,7 +30,7 @@
 // UNDTAGET (bevidst politik, ikke gaeld):
 //   - tests, preview-seed, og admin-flader (dansk by design, samme politik som
 //     i18n-check-leaks.mjs: ingen spiller ser dem).
-//   - lib/intl.js og lib/intlLocale.js: de to filer er DER locale-valget bor.
+//   - lib/intl.js og lib/intlLocale.ts: de to filer er DER locale-valget bor.
 //   - en-CA og sv-SE: bruges kun som "YYYY-MM-DD"/ISO-trick til tidszone-noegler
 //     (aldrig til visning), og er ens i alle sprog.
 //
@@ -49,7 +49,7 @@ const BASELINE_PATH = join(ROOT, "scripts", "i18n-hardcoded-formats-baseline.jso
 // Filer hvor locale-valget bor. Alt andet skal gaa gennem dem.
 export const FORMATTER_FILES = new Set([
   "frontend/src/lib/intl.js",
-  "frontend/src/lib/intlLocale.js",
+  "frontend/src/lib/intlLocale.ts",
 ]);
 
 // Locales der kun bruges til at faa ISO-formen "YYYY-MM-DD" ud af Intl i en
@@ -239,7 +239,7 @@ export function totalOf(counts) {
 function buildBaseline(counts) {
   return {
     $comment:
-      "Kendte hardcodede format-fund (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-hardcoded-formats.mjs --update-baseline. Refs #6785. Nye fund maa IKKE tilfoejes her: fix dem via lib/intl.js eller lib/intlLocale.js.",
+      "Kendte hardcodede format-fund (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-hardcoded-formats.mjs --update-baseline. Refs #6785. Nye fund maa IKKE tilfoejes her: fix dem via lib/intl.js eller lib/intlLocale.ts.",
     total: totalOf(counts),
     files: counts,
   };
@@ -285,7 +285,7 @@ function main() {
     console.error(`
 Fix:
   - Tal/valuta/dato: formatNumber, formatCurrency, formatDate, formatDateTime fra lib/intl.js.
-  - Intl-locale til en lokal formatter: intlLocale(language) fra lib/intlLocale.js.
+  - Intl-locale til en lokal formatter: intlLocale(language) fra lib/intlLocale.ts.
   - Fast 24-timers klokkeslaet i spillets tidszone: formatClock24(date, timeZone).
   - Admin-flade? Admin-filer (admin/-mapper, Admin*-filnavne) er undtaget.
 Baselinen maa IKKE udvides (ratchet, Refs #6785).`);

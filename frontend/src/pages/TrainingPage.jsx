@@ -33,7 +33,7 @@ import {
 import { copenhagenDayKey } from "../lib/raceCentre.js";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
-import { formatClock24 } from "../lib/intlLocale.js";
+import { formatClock24 } from "../lib/intlLocale.ts";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import FocusPanel from "../components/training/FocusPanel.jsx";
 import AssistantSuggestionsPanel from "../components/training/AssistantSuggestionsPanel.jsx";

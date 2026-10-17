@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { intlLocale, formatClock24 } from "./intlLocale.js";
+import { intlLocale, formatClock24 } from "./intlLocale.ts";
 import { buildHelpNumbers } from "./helpNumbers.js";
 import { formatCloseDate } from "./survey.js";
 import { formatForumDate } from "../components/forum/forumIdentity.js";
 
-// Refs #6785. Output for en og da skal vaere bit-for-bit som foer lib/intlLocale.js
+// Refs #6785. Output for en og da skal vaere bit-for-bit som foer lib/intlLocale.ts
 // blev indfoert; de nye sprog (fr/es/nl) faar deres egen Intl-locale i stedet for en-GB.
 
 test("intlLocale: da og en giver de samme locales som de gamle ternaries", () => {

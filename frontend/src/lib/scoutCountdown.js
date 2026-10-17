@@ -15,7 +15,7 @@
 // bor i scoutCountdownParts/scoutReadyClock og enheds-testes uden React-render.
 
 import { useEffect, useState } from "react";
-import { formatClock24 } from "./intlLocale.js";
+import { formatClock24 } from "./intlLocale.ts";
 
 // Hvor ofte hooken kigger efter om minut-tallet er skiftet. 15s er rigeligt til
 // minut-granularitet og koster ingen re-render medmindre labelen faktisk ændrer sig.

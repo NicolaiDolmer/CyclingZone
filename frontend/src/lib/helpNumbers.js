@@ -21,7 +21,7 @@
 // pinning them costs nothing extra.
 
 import { RULES_NUMBERS } from "./rulesNumbers.js";
-import { intlLocale } from "./intlLocale.js";
+import { intlLocale } from "./intlLocale.ts";
 
 // Every bonusD<division>P<place> key in RULES_NUMBERS, derived rather than listed
 // so a new division or placement in the backend table reaches /help automatically

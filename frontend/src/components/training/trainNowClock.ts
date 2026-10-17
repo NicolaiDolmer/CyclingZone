@@ -1,4 +1,4 @@
-import { formatClock24 } from "../../lib/intlLocale.js";
+import { formatClock24 } from "../../lib/intlLocale.ts";
 
 /**
  * #6139: HH:MM in game time (Europe/Copenhagen) for "locked since"; null when unknown.

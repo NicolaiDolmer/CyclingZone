@@ -31,7 +31,7 @@ export const KINDS = [
   "yes_no",
 ];
 
-import { intlLocale } from "./intlLocale.js";
+import { intlLocale } from "./intlLocale.ts";
 
 export const MULTI_MAX3_LIMIT = 3;
 export const TEXT_MAX_LENGTH = 1000;

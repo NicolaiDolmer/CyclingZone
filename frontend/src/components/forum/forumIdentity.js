@@ -3,7 +3,7 @@
 // signatur). Holdt uden JSX og uden React-import, saa reglerne kan koeres
 // direkte under `node --test` (samme moenster som lib/avatarStyles.js).
 
-import { intlLocale } from "../../lib/intlLocale.js";
+import { intlLocale } from "../../lib/intlLocale.ts";
 
 /**
  * Datoformat for forummet. Altid Europe/Copenhagen — spillet er dansk-drevet,

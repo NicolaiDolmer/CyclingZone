@@ -21,7 +21,7 @@ import {
 } from "../ui";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { formatNumber } from "../../lib/intl.js";
-import { formatClock24 } from "../../lib/intlLocale.js";
+import { formatClock24 } from "../../lib/intlLocale.ts";
 import { filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6350: "km A-B" for kørte etaper
 
 // Tidspunktet for etapens slot, altid renderet i København-tid (spillets faste

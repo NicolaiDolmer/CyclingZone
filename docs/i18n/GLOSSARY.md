@@ -113,7 +113,7 @@ Noter:
 
 ## Formatering er ikke oversættelse
 
-Tal, valuta, datoer og klokkeslæt oversættes ikke i locale-filerne. De formateres af `Intl` efter det aktive sprog, via `frontend/src/lib/intl.js` (`formatNumber`, `formatCurrency`, `formatDate`, `formatDateTime`) og `frontend/src/lib/intlLocale.js` (`intlLocale`, `formatClock24`). Skriv aldrig "1.234", "12,5 %" eller "15. okt." ind i en oversættelse; send tallet eller datoen som parameter. `scripts/i18n-check-hardcoded-formats.mjs` stopper nye hardkodede formater (fast "da-DK", `toFixed` med `%`, håndskrevne separatorer).
+Tal, valuta, datoer og klokkeslæt oversættes ikke i locale-filerne. De formateres af `Intl` efter det aktive sprog, via `frontend/src/lib/intl.js` (`formatNumber`, `formatCurrency`, `formatDate`, `formatDateTime`) og `frontend/src/lib/intlLocale.ts` (`intlLocale`, `formatClock24`). Skriv aldrig "1.234", "12,5 %" eller "15. okt." ind i en oversættelse; send tallet eller datoen som parameter. `scripts/i18n-check-hardcoded-formats.mjs` stopper nye hardkodede formater (fast "da-DK", `toFixed` med `%`, håndskrevne separatorer).
 
 ## Genvejstaster + emoji-status
 

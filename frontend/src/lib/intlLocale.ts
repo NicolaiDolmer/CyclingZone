@@ -13,7 +13,10 @@ const ISO_BASE_RE = /[-_]/;
 // da giver da-DK. en giver `en` (default en-GB, den danske spillers
 // "27 Aug"-stil; givet videre som { en: "en-US" } hvor siden altid brugte det).
 // Alle andre sprog sendes uaendret videre til Intl.
-export function intlLocale(language, { en = "en-GB" } = {}) {
+export function intlLocale(
+  language: string | null | undefined,
+  { en = "en-GB" }: { en?: string } = {},
+): string {
   const raw = String(language || "");
   const base = raw.toLowerCase().split(ISO_BASE_RE)[0];
   if (base === "da") return "da-DK";
@@ -26,7 +29,10 @@ export function intlLocale(language, { en = "en-GB" } = {}) {
 // skifte skriftbillede med sproget (da giver ellers "14.05"). en-GB er den
 // locale der giver "14:05" uden AM/PM; det er derfor den staar her og ikke i
 // kalderne.
-export function formatClock24(date, timeZone) {
+export function formatClock24(
+  date: Date | number | string | null | undefined,
+  timeZone?: string,
+): string {
   if (date == null) return "";
   const d = date instanceof Date ? date : new Date(date);
   if (Number.isNaN(d.getTime())) return "";

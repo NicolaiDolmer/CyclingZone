@@ -1,6 +1,6 @@
 // #6150: små visningshjælpere delt af roadmap-fanerne.
 import type { RoadmapVote } from "../../lib/roadmapModel.ts";
-import { intlLocale } from "../../lib/intlLocale.js";
+import { intlLocale } from "../../lib/intlLocale.ts";
 
 export type SaveState = "saving" | "saved" | "error";
 export type Translate = (key: string, options?: Record<string, unknown>) => string;

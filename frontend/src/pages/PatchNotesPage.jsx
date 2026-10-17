@@ -6,7 +6,7 @@ import {
 } from "../lib/patchNotes.js";
 import { loadAnonymousFlags } from "../lib/featureStage.ts";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
-import { intlLocale } from "../lib/intlLocale.js";
+import { intlLocale } from "../lib/intlLocale.ts";
 import {
   PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader, Segmented, Toggle,
   SearchIcon, ChevronDownIcon, ChevronRightIcon,
