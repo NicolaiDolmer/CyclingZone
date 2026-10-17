@@ -199,7 +199,7 @@ aliaser (R01 ...), aldrig id'er eller navne.
 1. **Volumen:** `--min-results` er prods `pg_class`-estimat for `race_results`, målt read-only
    samme dag. Ingen default og ingen tolerance; scriptet sænker aldrig grænsen. En relativ
    tolerance kræver et ejer-go (kort i PR'en for #5904). Top-up er kun tilladt på staging
-   (`scripts/staging/synthesize-race-results.sql`).
+   (`scripts/staging/synthesize-race-results.sql`; top-up til en ny fast dag: `scripts/staging/topup-race-results.sql`, kør med `psql -v ON_ERROR_STOP=1`).
 2. **Flag i stagings `app_config`:** `stage_scheduler_enabled`, `race_engine_v2_enabled` og `auto_prize_enabled`
    skal være tændt. Scriptet læser dem og skriver aldrig flag. Øvrige flag
    (fx `training_tick_per_race_day`) sættes som i prod; rapporten viser ikke deres værdi.

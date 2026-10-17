@@ -16,7 +16,9 @@
 -- Fail-closed: filen og hver skrivende funktion naegter, medmindre
 -- app_config.cz_environment = 'loadtest-staging' (markoeren fra anonymize-staging.sql).
 -- Brug (staging-ref pywxpnynzmbukdvoiazp, ALDRIG prod):
---   1) koer denne fil (opretter schema + funktioner; idempotent)
+--   1) koer denne fil (opretter schema + funktioner; idempotent). Med psql ALTID:
+--        psql -v ON_ERROR_STOP=1 -f scripts/staging/topup-race-results.sql
+--      ellers koerer resten af filen videre, hvis miljoevagten stopper (fx mod prod).
 --   2) gentag til remaining_stages = 0:
 --        select cz_loadtest.topup_batch('2026-10-19T00:00:00+02:00', 15);
 --   3) oprydning:  drop schema cz_loadtest cascade;  analyze public.race_results;
