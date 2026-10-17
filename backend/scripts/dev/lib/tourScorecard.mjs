@@ -20,6 +20,7 @@ import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
 import { isOrdersGcRulesRevision } from "../../../lib/raceEngineRulesRevision.ts";
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
+import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
 // Loebsfilmens egen afledning (samme kode som spillerne ser): "hvor tabte
 // rytterne tid" og om tidslinjen overhovedet baerer v4's gruppe-gab.
 import { buildOwnTimeLoss, hasGroupGaps } from "../../../../frontend/src/lib/stageSplitTimes.ts";
@@ -604,6 +605,25 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
   return gcAfter;
 }
 
+/**
+ * #6750 motor-testport: vinderen og hans rolle, dagens udbrudsryttere, og om
+ * morgenudbruddet blev hentet tidligt (inden for motorens egen reformations-
+ * graense, S5_REFORMATION_TUNING.maxStageFraction) og et nyt udbrud gik.
+ */
+export function testportStageFacts(out, profile, roleByRider = null) {
+  const events = out?.timeline?.events ?? [];
+  const winnerId = finishedSorted(out)[0]?.rider_id ?? null;
+  const morningIds = new Set(events.find((e) => e.type === "breakaway_formed" && e.params?.reformation !== true)?.params?.rider_ids ?? []);
+  const km = Number(profile?.distance_km);
+  const caughtKm = events.filter((e) => e.type === "breakaway_caught" && (e.params?.rider_ids ?? []).some((id) => morningIds.has(id))).map((e) => Number(e.params?.exact_km ?? e.km)).filter(Number.isFinite);
+  return {
+    winnerId, winnerRole: winnerId ? roleByRider?.get(winnerId) ?? null : null,
+    breakawayRiderIds: [...breakawaySets(out).formed],
+    earlyCatch: morningIds.size > 0 && km > 0 && caughtKm.length > 0 && Math.min(...caughtKm) <= km * S5_REFORMATION_TUNING.maxStageFraction,
+    reformed: events.some((e) => e.type === "breakaway_formed" && e.params?.reformation === true),
+  };
+}
+
 /** Etapens maalinger for ét seed. */
 export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds = null, roleByRider = null }) {
   const out = res.v4Output;
@@ -637,6 +657,7 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     minuteLossAtZeroKm: tt ? null : minuteLossAtZeroKm(res.timeline?.events ?? null, { riderIds }),
     labelContradictions: labelContradictions(ranked, out).length,
     winType: ranked?.[0]?.win_type ?? null,
+    ...(tt ? { winnerId: testportStageFacts(out, profile, roleByRider).winnerId } : testportStageFacts(out, profile, roleByRider)), // #6750
   };
   if (tt) {
     m.rhoTempo = abilityTimeCorrelation(out, abilitiesById, "time_trial");
