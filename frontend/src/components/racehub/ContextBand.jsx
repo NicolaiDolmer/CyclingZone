@@ -62,8 +62,10 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
               const base = isFocus
                 ? "bg-cz-accent"
                 : d.hasMyRace
-                ? "bg-cz-card hover:bg-cz-elevated"
-                : "bg-cz-card/40 hover:bg-cz-card";
+                ? "bg-cz-day-cell-mine hover:bg-cz-day-cell-hover"
+                : "bg-cz-day-cell hover:bg-cz-day-cell-hover";
+              // #6768: dagscellerne ligger paa kontrol-tokens (>= 3:1 mod baandet);
+              // bg-cz-card paa bg-cz-subtle var 1,02:1 i moerkt tema.
               // "I dag" markeres med inset-ring når den ikke i forvejen er den fokuserede dag.
               const todayRing = isToday && !isFocus ? "ring-1 ring-inset ring-cz-accent-t/70" : "";
               return (

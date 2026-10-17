@@ -103,14 +103,19 @@ export default function CookieBanner() {
                     />
                     <span
                       className={
-                        "w-10 h-6 rounded-full transition-colors " +
-                        (cat.locked ? "bg-cz-3/40" : value ? "bg-cz-accent-t" : "bg-cz-subtle")
+                        // #6768: samme moenster som ui/Toggle (kontrol-tokens, >= 3:1).
+                        "w-10 h-6 rounded-full border transition-colors " +
+                        (cat.locked
+                          ? "border-cz-accent bg-cz-accent opacity-60"
+                          : value
+                          ? "border-cz-accent bg-cz-accent"
+                          : "border-cz-border-strong bg-cz-toggle-off")
                       }
                     />
                     <span
                       className={
-                        "absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform " +
-                        (value ? "translate-x-4" : "")
+                        "absolute left-0.5 top-0.5 w-5 h-5 rounded-full transition-transform " +
+                        (value ? "translate-x-4 bg-cz-on-accent" : "bg-cz-toggle-thumb")
                       }
                     />
                   </label>

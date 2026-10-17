@@ -928,7 +928,7 @@ function WhitelistColumn({
                 <button
                   type="button"
                   onClick={() => onRemove(id, type)}
-                  className="text-cz-3 hover:text-red-400 px-1"
+                  className="text-cz-3 hover:text-cz-danger px-1"
                   title="Fjern fra listen"
                 >
                   ✕
