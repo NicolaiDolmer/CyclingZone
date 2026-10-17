@@ -11,7 +11,7 @@
     "helper": "Bloquea el entrenamiento de hoy y la selección de carrera de hoy. El resultado es el mismo que si esperas.",
     "helperRace": "Bloquea el entrenamiento de hoy y la selección de carrera de hoy ({race}). El resultado es el mismo que si esperas.",
     "locked": "El entrenamiento y las inscripciones de hoy están bloqueados. La fatiga y la forma se actualizan en la liquidación de la tarde.",
-    "afterRace": "Los ciclistas que corren hoy se liquidan después de su etapa.",
+    "afterRace": "El entrenamiento de los ciclistas que corren hoy se procesa después de su etapa.",
     "pressResult": "{trained, plural, one {# ciclista entrenado ahora} other {# ciclistas entrenados ahora}}, {waiting, plural, one {# esperando su carrera} other {# esperando su carrera}}.",
     "pressResultAll": "{trained, plural, one {# ciclista entrenado ahora.} other {# ciclistas entrenados ahora.}}",
     "settled": "El entrenamiento de hoy está liquidado.",
