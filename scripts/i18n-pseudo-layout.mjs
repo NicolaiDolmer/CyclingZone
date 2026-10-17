@@ -283,7 +283,13 @@ const server = spawn(
 
 let browser;
 const results = [];
+let serverExit = null;
+server.once("exit", (code) => { serverExit = code ?? -1; });
 try {
+  // Er porten optaget, doer vores server med EADDRINUSE med det samme, og en
+  // fremmed server paa samme port ville ellers blive maalt som om den var vores.
+  await new Promise((r) => setTimeout(r, 1500));
+  if (serverExit !== null) throw new Error(`static server stoppede med kode ${serverExit} (port ${PORT} optaget?)`);
   await waitForServer(`${BASE}/app.html`);
   browser = await chromium.launch();
   const targets = opts.pages ? PAGES.filter((p) => opts.pages.includes(p.name)) : PAGES;
@@ -294,7 +300,10 @@ try {
     await login(context);
     for (const target of targets) {
       const base = opts.baseline ? await measurePage(context, target, "baseline", vpName) : { ok: true, findings: [], bottomNav: [] };
-      const pseudo = await measurePage(context, target, "pseudo", vpName);
+      let pseudo = await measurePage(context, target, "pseudo", vpName);
+      // En fejlet baseline giver tom sammenligning, og saa ville ALLE pseudo-fund
+      // se nye ud. Marker siden som fejlet i stedet.
+      if (opts.baseline && !base.ok) pseudo = { ...pseudo, ok: false, error: `baseline fejlede: ${base.error}` };
       const diff = diffFindings(base.findings, pseudo.findings);
       results.push({ page: target.name, path: target.path, viewport: vpName, baseline: base, pseudo, new: diff.isNew, existing: diff.existing });
       const hi = diff.isNew.filter((f) => f.severity === "high").length;
