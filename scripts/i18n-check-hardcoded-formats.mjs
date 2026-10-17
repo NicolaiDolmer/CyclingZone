@@ -56,6 +56,21 @@ export const FORMATTER_FILES = new Set([
 // given tidszone. De vises aldrig for en spiller.
 export const ISO_TRICK_LOCALES = new Set(["en-CA", "sv-SE"]);
 
+// #6785 (Codex): "en-CA"/"sv-SE" er kun et ISO-noegle-trick (YYYY-MM-DD), naar
+// kaldet er et DATO-kald uden tekstuelle dele. Maanedsnavne, ugedage,
+// klokkeslaet-tekst og talformatering med disse locales er visning og fanges.
+export function isIsoKeyUse(line) {
+  if (/\bNumberFormat\(|\btoLocaleTimeString\(/.test(line)) return false;
+  // toLocaleString er kun et dato-trick, naar kaldet baerer tidszone/dato-felter
+  // (sv-SE + timeZone giver "YYYY-MM-DD HH:mm:ss"); uden dem er det talformatering.
+  const isDateCall = /\btoLocaleDateString\(|\bDateTimeFormat\(/.test(line)
+    || (/\btoLocaleString\(/.test(line) && /[{,]\s*(?:timeZone|year|hour)\b/.test(line));
+  if (!isDateCall) return false;
+  if (/\b(?:month|weekday|era|dayPeriod|timeZoneName)\s*:\s*["'\x60](?:long|short|narrow)["'\x60]/.test(line)) return false;
+  if (/\bdateStyle\s*:\s*["'\x60](?:full|long|medium)["'\x60]/.test(line)) return false;
+  return true;
+}
+
 const SCAN_EXT = /\.(jsx?|tsx?|mjs)$/;
 const TEST_FILE = /\.(test|shots|spec)\.(jsx?|tsx?|mjs)$/;
 
@@ -113,7 +128,7 @@ export const RULES = [
       //    sprogkoden som konstant ("en-XA") og prosa i data er ikke formatering.
       const usesLocale = INTL_CALL.test(line) || TERNARY_OR_FALLBACK.test(line);
       for (const m of usesLocale ? line.matchAll(new RegExp(String.raw`["'\x60](${LOCALE_TAG})["'\x60]`, "g")) : []) {
-        if (!ISO_TRICK_LOCALES.has(m[1])) return `fast locale "${m[1]}"`;
+        if (!(ISO_TRICK_LOCALES.has(m[1]) && isIsoKeyUse(line))) return `fast locale "${m[1]}"`;
       }
       // 2) Bar sprogkode som foerste argument ("da", "en") til en Intl-/toLocale-kald.
       const bare = line.match(new RegExp(String.raw`${INTL_CALL.source}\s*["'\x60]([a-z]{2,3})["'\x60]`));
@@ -189,7 +204,7 @@ export function scanSource(src, rel = "") {
     "g",
   );
   for (const m of code.matchAll(multiline)) {
-    if (ISO_TRICK_LOCALES.has(m[2])) continue;
+    if (ISO_TRICK_LOCALES.has(m[2]) && isIsoKeyUse(m[0])) continue;
     const line = code.slice(0, m.index).split("\n").length;
     if (findings.some((f) => f.line === line)) continue;
     findings.push({
@@ -250,16 +265,63 @@ export function compareAgainstBaseline(counts, baselineFiles) {
   return { grown, stale };
 }
 
+// #6785 (Codex): fingeraftryk pr. fund (regel + normaliseret linje, ikke
+// linjenummer), saa et nyt fund i en fil med kendte fund opdages, selvom
+// antallet er uaendret.
+export function fingerprintOf(finding) {
+  return `${finding.rule}|${String(finding.text ?? "").replace(/\s+/g, " ").trim()}`;
+}
+
+export function fingerprintsOf(findingsByFile) {
+  return Object.fromEntries(
+    Object.entries(findingsByFile)
+      .map(([file, list]) => [file, list.map(fingerprintOf).sort()])
+      .sort(([a], [b]) => a.localeCompare(b)),
+  );
+}
+
+// Multisaet-sammenligning: et fingeraftryk der optraeder flere gange end i
+// baselinen er nyt. Baseline-vaerdier der stadig er tal (gammelt format)
+// sammenlignes paa antal.
+export function compareFingerprints(findingsByFile, baselineFiles) {
+  const grown = [];
+  const stale = [];
+  const files = new Set([...Object.keys(findingsByFile), ...Object.keys(baselineFiles)]);
+  for (const file of [...files].sort()) {
+    const current = (findingsByFile[file] || []).map(fingerprintOf);
+    const base = baselineFiles[file];
+    if (typeof base === "number" || base == null) {
+      const allowed = base ?? 0;
+      if (current.length > allowed) grown.push({ file, count: current.length, allowed, fresh: current });
+      else if (current.length < allowed) stale.push({ file, current: current.length, allowed });
+      continue;
+    }
+    const left = new Map();
+    for (const fp of base) left.set(fp, (left.get(fp) || 0) + 1);
+    const fresh = [];
+    for (const fp of current) {
+      const n = left.get(fp) || 0;
+      if (n > 0) left.set(fp, n - 1);
+      else fresh.push(fp);
+    }
+    const remaining = [...left.values()].reduce((a, b) => a + b, 0);
+    if (fresh.length) grown.push({ file, count: current.length, allowed: base.length, fresh });
+    else if (remaining > 0) stale.push({ file, current: current.length, allowed: base.length });
+  }
+  return { grown, stale };
+}
+
 export function totalOf(counts) {
   return Object.values(counts).reduce((a, b) => a + b, 0);
 }
 
-function buildBaseline(counts) {
+function buildBaseline(findingsByFile) {
+  const fingerprints = fingerprintsOf(findingsByFile);
   return {
     $comment:
       "Kendte hardcodede format-fund (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-hardcoded-formats.mjs --update-baseline. Refs #6785. Nye fund maa IKKE tilfoejes her: fix dem via lib/intl.js eller lib/intlLocale.ts.",
-    total: totalOf(counts),
-    files: counts,
+    total: Object.values(fingerprints).reduce((n, list) => n + list.length, 0),
+    files: fingerprints,
   };
 }
 
@@ -269,7 +331,7 @@ function main() {
   const counts = countsOf(findingsByFile);
 
   if (updateBaseline) {
-    const baseline = buildBaseline(counts);
+    const baseline = buildBaseline(findingsByFile);
     writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + "\n");
     console.log(
       `Baseline skrevet til scripts/i18n-hardcoded-formats-baseline.json (${Object.keys(counts).length} filer, ${baseline.total} fund).`,
@@ -281,7 +343,7 @@ function main() {
   if (existsSync(BASELINE_PATH)) baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
   const baselineFiles = baseline.files || {};
 
-  const { grown, stale } = compareAgainstBaseline(counts, baselineFiles);
+  const { grown, stale } = compareFingerprints(findingsByFile, baselineFiles);
   const total = totalOf(counts);
 
   if (stale.length) {
@@ -295,8 +357,9 @@ function main() {
   if (grown.length) {
     console.error(`\nNYE hardcodede format-fund i ${grown.length} fil(er) (baseline maa kun skrumpe):`);
     for (const g of grown) {
-      console.error(`\n   ${g.file}: ${g.count} fund, baseline tillader ${g.allowed}`);
-      for (const f of findingsByFile[g.file]) {
+      console.error(`\n   ${g.file}: ${g.count} fund, baseline tillader ${g.allowed} (nye: ${g.fresh.length})`);
+      const freshSet = new Set(g.fresh);
+      for (const f of findingsByFile[g.file].filter((x) => freshSet.has(fingerprintOf(x)))) {
         console.error(`     linje ${f.line} [${f.rule}] ${f.why}\n       ${f.text}`);
       }
     }
@@ -310,7 +373,7 @@ Baselinen maa IKKE udvides (ratchet, Refs #6785).`);
     process.exit(1);
   }
 
-  const baselineTotal = totalOf(baselineFiles);
+  const baselineTotal = Object.values(baselineFiles).reduce((n, v) => n + (typeof v === "number" ? v : v.length), 0);
   console.log(
     `i18n format-guard: ingen nye hardcodede formater (${total} kendte fund i ${Object.keys(counts).length} filer, baseline ${baselineTotal}).`,
   );

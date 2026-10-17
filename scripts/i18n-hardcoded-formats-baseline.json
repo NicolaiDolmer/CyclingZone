@@ -2,24 +2,70 @@
   "$comment": "Kendte hardcodede format-fund (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-hardcoded-formats.mjs --update-baseline. Refs #6785. Nye fund maa IKKE tilfoejes her: fix dem via lib/intl.js eller lib/intlLocale.ts.",
   "total": 27,
   "files": {
-    "frontend/src/components/race/FinalKilometrePlayback.jsx": 1,
-    "frontend/src/components/race/StageProfileGraph.jsx": 1,
-    "frontend/src/components/race/StageWaypointReadout.jsx": 1,
-    "frontend/src/components/racehub/SeasonMatrix.jsx": 1,
-    "frontend/src/components/rider/profile/RiderOverviewPhysiology.jsx": 1,
-    "frontend/src/components/rider/profile/RiderPhysiologyTab.jsx": 1,
-    "frontend/src/components/rider/RiderLevelCorrectionReceipt.jsx": 1,
-    "frontend/src/components/SeasonFinanceReportPanel.jsx": 3,
-    "frontend/src/components/training/FocusPanel.jsx": 1,
-    "frontend/src/lib/boardGoalLabel.js": 1,
-    "frontend/src/lib/countryUtils.js": 1,
-    "frontend/src/lib/expectedPrizeCalculator.js": 1,
-    "frontend/src/lib/facilityDisplay.js": 2,
-    "frontend/src/lib/pricing.js": 1,
-    "frontend/src/pages/BoardPage.jsx": 2,
-    "frontend/src/pages/DashboardPage.jsx": 1,
-    "frontend/src/pages/FinancePage.jsx": 5,
-    "frontend/src/pages/PatchNotesPage.jsx": 1,
-    "frontend/src/pages/PrivacyPolicyPage.jsx": 1
+    "frontend/src/components/race/FinalKilometrePlayback.jsx": [
+      "display-toFixed|if (m >= 1000) return t(\"detail.finalKm.distanceKm\", { value: (m / 1000).toFixed(1) });"
+    ],
+    "frontend/src/components/race/StageProfileGraph.jsx": [
+      "display-toFixed|length: c.length_km.toFixed(1), gradient: c.avg_gradient.toFixed(1),"
+    ],
+    "frontend/src/components/race/StageWaypointReadout.jsx": [
+      "display-toFixed|return `${t(\"detail.route.waypoint.climb\", { cat: waypoint.category })} · ${t(\"detail.route.waypoint.kmMark\", { km: waypoint.km })} · ${t(\"d"
+    ],
+    "frontend/src/components/racehub/SeasonMatrix.jsx": [
+      "locale-literal|return new Intl.DateTimeFormat(\"en-GB\", { day: \"numeric\", month: \"short\", timeZone: \"UTC\" }).format(d).replace(/\\./g, \"\").toUpperCase();"
+    ],
+    "frontend/src/components/rider/profile/RiderOverviewPhysiology.jsx": [
+      "display-toFixed|return digits > 0 ? num.toFixed(digits) : Math.round(num).toLocaleString(locale);"
+    ],
+    "frontend/src/components/rider/profile/RiderPhysiologyTab.jsx": [
+      "display-toFixed|const fmtWkg = (wkg) => Number(wkg).toFixed(1);"
+    ],
+    "frontend/src/components/rider/RiderLevelCorrectionReceipt.jsx": [
+      "display-toFixed|const factorText = Number.isFinite(receipt.c) ? receipt.c.toFixed(3) : \"—\";"
+    ],
+    "frontend/src/components/SeasonFinanceReportPanel.jsx": [
+      "display-toFixed|const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : \"0\";",
+      "display-toFixed|const pct = total > 0 ? ((p.value / total) * 100).toFixed(1) : \"0\";",
+      "percent-toFixed|{(l.interest_rate * 100).toFixed(1)}%"
+    ],
+    "frontend/src/components/training/FocusPanel.jsx": [
+      "display-toFixed|.map((a) => (row.perSeason?.[a] != null ? `+${Number(row.perSeason[a]).toFixed(1)}` : \"—\"))"
+    ],
+    "frontend/src/lib/boardGoalLabel.js": [
+      "display-toFixed|if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;"
+    ],
+    "frontend/src/lib/countryUtils.js": [
+      "locale-literal|return locale || i18n.language || \"da-DK\";"
+    ],
+    "frontend/src/lib/expectedPrizeCalculator.js": [
+      "decimal-comma|return `~${millions.toFixed(decimals).replace(\".\", \",\")}M CZ$`;"
+    ],
+    "frontend/src/lib/facilityDisplay.js": [
+      "display-toFixed|return `+${Number.isInteger(n) ? n : n.toFixed(1)}`;",
+      "percent-toFixed|return `+${(effectiveBonus * 100).toFixed(1)}%`;"
+    ],
+    "frontend/src/lib/pricing.js": [
+      "display-toFixed|return eur == null ? \"\" : `€${eur.toFixed(2)}`;"
+    ],
+    "frontend/src/pages/BoardPage.jsx": [
+      "display-toFixed|<p className=\"text-cz-3 text-2xs font-data\">×{modifier.toFixed(2)}</p>",
+      "display-toFixed|<p className=\"text-cz-3 text-xs\">{t(\"satisfactionMeter.sponsorModifier\", { modifier: effectiveModifier.toFixed(2) })}</p>"
+    ],
+    "frontend/src/pages/DashboardPage.jsx": [
+      "display-toFixed|×{board.budget_modifier?.toFixed(2) || \"1.00\"}"
+    ],
+    "frontend/src/pages/FinancePage.jsx": [
+      "display-toFixed|<p className=\"text-cz-2 font-mono mt-0.5\">{t(\"loans.take.interestValue\", { pct: (selectedConfig.interest_rate_pct * 100).toFixed(0) })}</p>",
+      "display-toFixed|<p className=\"text-cz-3\">{t(\"loans.take.feeLabel\", { pct: (selectedConfig.origination_fee_pct * 100).toFixed(0) })}</p>",
+      "percent-toFixed|<p className=\"text-cz-2 font-mono text-xs\">{(loan.interest_rate * 100).toFixed(0)}%</p>",
+      "percent-toFixed|<td className=\"px-3 py-2 text-end text-cz-2\">{(c.interest_rate_pct * 100).toFixed(0)}%</td>",
+      "percent-toFixed|<td className=\"px-3 py-2 text-end text-cz-2\">{(c.origination_fee_pct * 100).toFixed(0)}%</td>"
+    ],
+    "frontend/src/pages/PatchNotesPage.jsx": [
+      "locale-literal|return d.toLocaleDateString(lang === \"da\" ? \"da-DK\" : \"en-GB\", {"
+    ],
+    "frontend/src/pages/PrivacyPolicyPage.jsx": [
+      "locale-literal|? new Date(consent.updated_at).toLocaleString(\"en-GB\")"
+    ]
   }
 }

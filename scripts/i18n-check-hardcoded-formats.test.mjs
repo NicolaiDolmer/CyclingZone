@@ -164,3 +164,33 @@ test("repoet: baselinen indeholder ingen undtagne eller manglende filer", () => 
     assert.ok(readFileSync(join(ROOT, file), "utf8").length > 0, `${file} findes ikke`);
   }
 });
+
+test("#6785 (Codex): ISO-undtagelsen gælder kun numeriske dato-nøgler", async () => {
+  const { isIsoKeyUse, scanSource } = await import("./i18n-check-hardcoded-formats.mjs");
+  assert.equal(isIsoKeyUse('const key = d.toLocaleDateString("en-CA");'), true);
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Copenhagen" })'), true);
+  assert.equal(isIsoKeyUse('d.toLocaleDateString("en-CA", { month: "long" })'), false);
+  assert.equal(isIsoKeyUse('new Intl.NumberFormat("en-CA")'), false);
+  assert.ok(scanSource('const s = d.toLocaleDateString("en-CA", { month: "long" });', "x.jsx").length > 0);
+  assert.equal(scanSource('const key = d.toLocaleDateString("en-CA");', "x.jsx").length, 0);
+});
+
+test("#6785 (Codex): ratchet på fingeraftryk fanger et ombyttet fund i samme fil", async () => {
+  const { compareFingerprints, fingerprintOf } = await import("./i18n-check-hardcoded-formats.mjs");
+  const old = { rule: "display-toFixed", text: "a.toFixed(1)" };
+  const swapped = { rule: "display-toFixed", text: "b.toFixed(2)" };
+  const base = { "f.jsx": [fingerprintOf(old)] };
+  assert.deepEqual(compareFingerprints({ "f.jsx": [old] }, base), { grown: [], stale: [] });
+  const r = compareFingerprints({ "f.jsx": [swapped] }, base);
+  assert.equal(r.grown.length, 1, "samme antal, men et nyt fund");
+  assert.deepEqual(r.grown[0].fresh, [fingerprintOf(swapped)]);
+  assert.equal(compareFingerprints({}, base).stale.length, 1);
+  // gammelt talformat i baseline virker stadig
+  assert.equal(compareFingerprints({ "g.jsx": [old, old] }, { "g.jsx": 1 }).grown.length, 1);
+});
+
+test("#6785: sv-SE + timeZone i toLocaleString er stadig et ISO-trick; tal er ikke", async () => {
+  const { isIsoKeyUse } = await import("./i18n-check-hardcoded-formats.mjs");
+  assert.equal(isIsoKeyUse('d.toLocaleString("sv-SE", { timeZone: GAME_TIMEZONE })'), true);
+  assert.equal(isIsoKeyUse('n.toLocaleString("en-CA")'), false);
+});
