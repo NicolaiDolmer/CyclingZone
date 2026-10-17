@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
-  verifyCronCheckins, SHORT_CADENCE_SECONDS } from './cron-deploy-verification.mjs';
+  verifyCronCheckins, SHORT_CADENCE_SECONDS, MAX_COHORT_SHIFT_SECONDS } from './cron-deploy-verification.mjs';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
 
 const since = '2026-10-07T12:00:00Z';
@@ -432,9 +432,18 @@ test('#6487: cron proof starts right after smoke and its step timeout covers the
   assert.ok(drain > 55, 'smoke must fit inside the Railway drain window');
   const step = workflow.slice(workflow.indexOf('- name: Verify affected cron check-ins'), workflow.indexOf('- name: Cron check-ins verified'));
   const minutes = Number(step.match(/timeout-minutes: (\d+)/)[1]);
-  const needed = (drain + latest) / 60;
+  const needed = (drain + latest + MAX_COHORT_SHIFT_SECONDS) / 60;
   assert.ok(minutes >= needed + 1 && minutes <= needed + 5, `cron step timeout ${minutes} min vs latest short deadline ${needed} min`);
   const comment = workflow.slice(workflow.indexOf('- name: Comment release verified'), workflow.indexOf('- name: Verify affected cron check-ins'));
   assert.match(comment, /continue-on-error: true/);
   assert.match(comment, /<!-- deploy-verify:\$SHA -->/);
+});
+
+test('#6799 (Codex #6823): a late boot cohort shifts the deadline at most MAX_COHORT_SHIFT_SECONDS', () => {
+  const since = '2026-10-17T12:00:00.000Z';
+  const late = new Date(Date.parse(since) + (MAX_COHORT_SHIFT_SECONDS + 3600) * 1000).toISOString();
+  const rows = ['board-auto-accept', 'board-mid-season'].map(job_slug => ({ job_slug, last_checkin_at: late, expected_cadence_seconds: 1800 }));
+  const result = evaluateCheckins({ slugs: ['board-auto-accept'], rows, since, now: late, excluded: new Set([Date.parse(late)]), cohortAt: new Map([['board-auto-accept', Date.parse(late)]]) });
+  const deadline = Date.parse(result.jobs[0].deadline);
+  assert.ok(deadline <= Date.parse(since) + (MAX_COHORT_SHIFT_SECONDS + 1800 + 15 * 60) * 1000, `deadline ${result.jobs[0].deadline}`);
 });

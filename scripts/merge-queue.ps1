@@ -78,7 +78,7 @@ param(
   [int] $MaxBatch = 3,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
-  [int] $DeployVerifyTimeoutMinutes = 110,
+  [int] $DeployVerifyTimeoutMinutes = 140,
   [int] $CiTimeoutMinutes = 25
 )
 

@@ -127,6 +127,9 @@ export function safeReason(error, secrets = []) {
 }
 
 export const SHORT_CADENCE_SECONDS = 1800;
+// #6799 (Codex #6823): en boot-kohorte efter boundary maa hoejst flytte deadline
+// saa meget; deploy-verify.yml's step-timeout daekker det (testet).
+export const MAX_COHORT_SHIFT_SECONDS = 1800;
 
 // cohortAt (#6799) remembers, per job, the latest excluded (boot-cohort or
 // first-snapshot) timestamp seen AFTER the boundary on that job's row. A
@@ -161,7 +164,7 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
     if (Number.isFinite(time) && time > boundary && time <= clock && excluded.has(time)) {
       cohortAt.set(slug, Math.max(cohortAt.get(slug) ?? 0, time));
     }
-    const deadline = Math.max(boundary, cohortAt.get(slug) ?? 0) + (cadence + margin) * 1000;
+    const deadline = Math.min(Math.max(boundary, cohortAt.get(slug) ?? 0), boundary + MAX_COHORT_SHIFT_SECONDS * 1000) + (cadence + margin) * 1000;
     // A partial prime may initially look unique. Revoke cached evidence if a
     // later snapshot reveals that its timestamp belongs to a boot cohort.
     if (accepted.has(slug) && excluded.has(stamp(accepted.get(slug).lastCheckin))) accepted.delete(slug);
@@ -198,7 +201,7 @@ export function evaluateUnreadable({ slugs, since, now, monitors = ALL_CRON_MONI
     const cadence = config ? config.schedule.value * units[config.schedule.unit] : NaN;
     const margin = (config?.checkinMargin ?? 0) * 60;
     if (!(cadence > 0) || !(margin >= 0)) return unreadable(slug);
-    const deadline = Math.max(boundary, cohortAt.get(slug) ?? 0) + (cadence + margin) * 1000;
+    const deadline = Math.min(Math.max(boundary, cohortAt.get(slug) ?? 0), boundary + MAX_COHORT_SHIFT_SECONDS * 1000) + (cadence + margin) * 1000;
     const deadlineText = new Date(deadline).toISOString();
     if (accepted.has(slug)) return { slug, state: 'verified', lastCheckin: accepted.get(slug).lastCheckin, deadline: deadlineText };
     let state = 'waiting';
