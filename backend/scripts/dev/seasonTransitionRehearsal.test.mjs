@@ -106,7 +106,16 @@ test("gylden diff: ændret kalender uden hårde brud er gul, ikke grøn", () => 
     "green",
   );
   assert.equal(judgeStep(step, { exitCode: 0, output: "⚠ Kalenderen er ÆNDRET mod den gyldne snapshot." }), "yellow");
-  assert.equal(judgeStep(step, { exitCode: 0, output: "❌ S5 BENCHMARK-GATEN ER RØD" }), "red");
+  assert.equal(judgeStep(step, { exitCode: 0, output: "❌ S5 BENCHMARK-GATEN ER RØD — S5-kalenderen må IKKE" }), "red");
+  assert.equal(judgeStep(step, { exitCode: 0, output: "❌ HÅRDE INVARIANTER BRUDT — kalenderen" }), "red");
+  // Målt-men-ikke-dømt benchmark-linje med ❌ + identisk kalender = grøn.
+  assert.equal(
+    judgeStep(step, {
+      exitCode: 0,
+      output: "Tour X (tour, 18): flat 6/3  ❌ 6\n✅ Kalenderen er identisk med den gyldne snapshot, og ingen hård invariant er brudt.",
+    }),
+    "green",
+  );
   assert.equal(judgeStep(step, { exitCode: 1, output: "" }), "red");
 });
 

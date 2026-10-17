@@ -67,7 +67,9 @@ export const judges = Object.freeze({
   // Exit 0 betyder kun "ingen hård invariant brudt". En ændret kalender uden
   // hårde brud er også exit 0 (CALENDAR_RULES.md), men skal undersøges: gul.
   goldenDiff: ({ exitCode, output }) => {
-    if (exitCode !== 0 || /❌/.test(output)) return "red";
+    // Kun dommens slutlinjer tæller. "❌" står også i den målte, IKKE dømte
+    // S5-benchmark-sektion (#6367) og må ikke farve trinnet rødt.
+    if (exitCode !== 0 || /❌ (HÅRDE INVARIANTER BRUDT|S5 BENCHMARK-GATEN ER RØD)/.test(output)) return "red";
     return /Kalenderen er identisk med den gyldne snapshot/.test(output) ? "green" : "yellow";
   },
   loadtest: ({ exitCode, output }) => {
