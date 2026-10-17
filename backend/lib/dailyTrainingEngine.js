@@ -44,6 +44,7 @@ import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
+import { captureException } from "./sentry.js";
 import { riderLevelBand } from "./staffAbilityConstants.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
@@ -67,6 +68,11 @@ import {
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
 // findes for at sweepens noegle-strenge og motorens INSERT kan dele ÉN sandhed.
 export const TRAINING_DAY_RUN_DEFAULT_SQUAD = "senior";
+// #6596: oprydning af en reservation efter en phase-1-fejl proeves et par gange,
+// fordi sletningen typisk rammer samme forbigaaende nedbrud som selve fejlen.
+const RESERVATION_CLEANUP_ATTEMPTS = 3;
+const RESERVATION_CLEANUP_BACKOFF_MS = 250;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────
 // AI-, bank- og testhold (og hold uden manager) koerer stadig det daglige tick:
@@ -645,7 +651,7 @@ export async function runTeamTrainingDay({
   // (nul regression). Vedvarende fejl: neutral i loaderen. #6596: forbigaaende fejl
   // KASTER, saa catch'en nedenfor sletter reservationen og naeste sweep proever igen.
   const { facilityTier: trainingFacilityTier, staff: trainingStaff } =
-    await loadTrainingStaffContext(supabase, teamId);
+    await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true });
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   abilityUpdates = []; // { riderId, patch }
@@ -1216,9 +1222,30 @@ export async function runTeamTrainingDay({
 
   } catch (phase1Err) {
     // Load/beregnings-fejl: slet reservationen så holdet kan retrye samme dag.
-    try {
-      if (!conditionPerDate) await runRowFilter(supabase.from("training_day_runs").delete());
-    } catch { /* swallow — original fejl er vigtigst */ }
+    // #6596 (Codex-fund): under samme nedbrud kan sletningen også fejle, og en
+    // efterladt pending-række ville give alreadyRan resten af dagen. Derfor
+    // tjekkes svaret og prøves igen; lykkes det stadig ikke, meldes det højt
+    // (opfølgning: selvrettende oprydning af forældede reservationer, #6759).
+    if (!conditionPerDate) {
+      let cleanupError = null;
+      for (let attempt = 1; attempt <= RESERVATION_CLEANUP_ATTEMPTS; attempt += 1) {
+        try {
+          const { error } = await runRowFilter(supabase.from("training_day_runs").delete());
+          cleanupError = error ?? null;
+        } catch (err) {
+          cleanupError = err;
+        }
+        if (!cleanupError) break;
+        if (attempt < RESERVATION_CLEANUP_ATTEMPTS) await sleep(RESERVATION_CLEANUP_BACKOFF_MS * attempt);
+      }
+      if (cleanupError) {
+        console.error(`  ⚠️ training_day_runs reservation cleanup failed for team ${teamId} (${tickDate}): ${cleanupError?.message ?? cleanupError}`);
+        captureException(cleanupError instanceof Error ? cleanupError : new Error(String(cleanupError?.message ?? cleanupError)), {
+          tags: { lib: "dailyTrainingEngine", step: "reservation_cleanup" },
+          extra: { teamId, tickDate, originalError: phase1Err?.message ?? String(phase1Err) },
+        });
+      }
+    }
     throw phase1Err;
   }
 

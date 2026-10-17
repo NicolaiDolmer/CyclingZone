@@ -993,6 +993,37 @@ test("#6596: 502 paa team_facilities → tick kaster, reservation slettet, ingen
   assert.equal(state.training_day_runs.length, 1);
 });
 
+// #6596 (Codex-fund): sletningen af reservationen rammer typisk samme nedbrud.
+// Den proeves igen, saa holdet ikke staar med en pending-raekke resten af dagen.
+test("#6596: fejlet oprydning af reservationen proeves igen, indtil den lykkes", async () => {
+  const deleteCalls = [];
+  const state = seedState();
+  state.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 5 }];
+  const base = createMockSupabase(state, { deleteCalls });
+  const gateway502 = { data: null, error: { message: "Bad gateway" }, status: 502 };
+  const failing = { select: () => failing, eq: () => failing, then: (resolve) => Promise.resolve(gateway502).then(resolve) };
+  let failedDeletes = 0;
+  const failingDelete = { eq: () => failingDelete, then: (resolve) => { failedDeletes += 1; return Promise.resolve({ error: { message: "Bad gateway" } }).then(resolve); } };
+  const supabase = {
+    ...base,
+    from: (table) => {
+      if (table === "team_facilities") return failing;
+      if (table === "training_day_runs" && failedDeletes < 2) {
+        const q = base.from(table);
+        return new Proxy(q, { get: (target, prop) => (prop === "delete" ? () => failingDelete : target[prop]) });
+      }
+      return base.from(table);
+    },
+  };
+  await assert.rejects(() => runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "assistant", now: NOW,
+  }), (err) => err.retryable === true);
+  assert.equal(failedDeletes, 2, "to fejlede sletninger");
+  assert.equal(deleteCalls.filter((c) => c.table === "training_day_runs").length, 1, "tredje forsoeg sletter");
+  assert.equal(state.training_day_runs.length, 0, "ingen efterladt reservation");
+});
+
 // ── #3459 fase 2a: løbsdags-motoren (D1 løbsdags-gate + D3 recovery-konstanter) ──
 // NOW = 2026-06-12T10:00+02:00 → tickDate "2026-06-12" i dansk tid.
 const IMPORTED_AT_TODAY = "2026-06-12T08:00:00Z"; // 10:00 CEST — inde i tickDate's danske døgn

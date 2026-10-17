@@ -58,9 +58,13 @@ function loadError(label, res) {
  * @param {object} supabase — service-role client
  * @param {string} teamId
  * @returns {Promise<{ facilityTier: number, staff: object|null }>}
- * @throws {TrainingStaffContextRetryError} ved forbigående DB-/gateway-fejl (#6596).
+ * @param {{ retryOnTransient?: boolean }} [options] — #6596: kun træningsmotoren
+ *   sætter `retryOnTransient: true` (den kan tage holdet igen ved næste sweep).
+ *   Andre læsere (akademi-visningen, dev-scripts) beholder neutral kontekst, så en
+ *   forbigående fejl ikke vælter en hel side.
+ * @throws {TrainingStaffContextRetryError} ved forbigående DB-/gateway-fejl, kun med retryOnTransient.
  */
-export async function loadTrainingStaffContext(supabase, teamId) {
+export async function loadTrainingStaffContext(supabase, teamId, { retryOnTransient = false } = {}) {
   try {
     const [facRes, staffRes] = await Promise.all([
       supabase.from("team_facilities").select("track, tier").eq("team_id", teamId).eq("track", "training"),
@@ -107,7 +111,7 @@ export async function loadTrainingStaffContext(supabase, teamId) {
     // #6596: egne load-fejl bærer klassifikationen; uventede kast (fx en afvist
     // fetch) klassificeres ud fra beskeden.
     const transient = typeof err?.transient === "boolean" ? err.transient : isTransientSupabaseError(err);
-    if (transient) {
+    if (transient && retryOnTransient) {
       // Ingen neutral kontekst: kast, så holdet tages igen ved næste sweep.
       // Sweepen logger selv "team retained for retry" med denne korte besked.
       console.warn(`  ⚠️ trainingStaffContext load failed for team ${teamId} (transient, retry on next sweep): ${message}`);

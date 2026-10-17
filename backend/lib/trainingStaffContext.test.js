@@ -147,7 +147,7 @@ const ONE_COACH = {
 
 async function assertRetry(supabase, labelRe) {
   await assert.rejects(
-    () => loadTrainingStaffContext(supabase, TEAM_ID),
+    () => loadTrainingStaffContext(supabase, TEAM_ID, { retryOnTransient: true }),
     (err) => {
       assert.ok(err instanceof TrainingStaffContextRetryError, `forventede retry-fejl, fik ${err?.name}`);
       assert.equal(err.retryable, true);
@@ -203,6 +203,13 @@ test("#6596: afvist kald (fetch kaster) → kaster retry-fejl", async () => {
 test("#6596: vedvarende fejl (permission denied, 403) → stadig neutral (ingen retry-løkke)", async () => {
   const supabase = createSupabaseMock(FAC_TIER4, {
     errorTable: "team_facilities", error: { message: "permission denied for table team_facilities", code: "42501" }, status: 403,
+  });
+  assert.deepEqual(await loadTrainingStaffContext(supabase, TEAM_ID), { facilityTier: 0, staff: null });
+});
+
+test("#6596: uden retryOnTransient (akademi-visningen) giver 502 stadig neutral kontekst", async () => {
+  const supabase = createSupabaseMock(FAC_TIER4, {
+    errorTable: "team_facilities", error: { message: CF_502_HTML }, status: 502,
   });
   assert.deepEqual(await loadTrainingStaffContext(supabase, TEAM_ID), { facilityTier: 0, staff: null });
 });

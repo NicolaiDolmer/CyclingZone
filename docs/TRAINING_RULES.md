@@ -21,6 +21,13 @@ er fjernet fra proposals, fordi dets writer er erstattet og ikke må genanvendes
 Infrastrukturen er live; en konkret kompensationskørsel kræver fortsat separat
 ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparation.
 
+## Forbigående DB-fejl i facilitets- og træneropslaget (#6596, 17/10)
+
+- **Forbigående fejl** (HTTP 0/502/503/504/520-524, netværksfejl, statement-timeout): træningsmotoren afregner IKKE holdet uden facilitets- og trænerbonus. Tick'et kaster, intet skrives, og holdet tages ved næste sweep. Kun motoren beder om dette (`loadTrainingStaffContext(..., { retryOnTransient: true })`).
+- **Vedvarende fejl** (fx manglende rettighed, skema-drift): neutral kontekst og Sentry, så én permanent fejl ikke stopper al træning.
+- **Andre læsere** (akademi-visningen, dev-scripts) får altid neutral kontekst; en kort gateway-fejl vælter ikke siden.
+- **Reservationen** på den gamle kalenderdags-sti slettes efter en fejl og prøves op til 3 gange; lykkes det ikke, meldes det i Sentry (`step: reservation_cleanup`). Selvrettende oprydning af forældede reservationer: #6759.
+
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
 Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
