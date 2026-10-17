@@ -67,6 +67,16 @@ test("locale-literal: en-CA og sv-SE er ISO-trick til tidszone-noegler", () => {
   assert.deepEqual(rules('d.toLocaleString("sv-SE", { timeZone })'), []);
 });
 
+test("locale-literal: parenteser i regex og template-literal afkorter ikke kaldet (Codex #6842)", () => {
+  // timeStyle efter et regex med parenteser er stadig visningsformatering, ikke ISO-noegle.
+  const src = 'new Intl.DateTimeFormat("en-CA", { timeZone: label.match(/\(([^)]+)\)/)?.[1], timeStyle: "short" })';
+  assert.deepEqual(rules(src), ["locale-literal"]);
+  const tpl = 'new Intl.DateTimeFormat("en-CA", { timeZone: `${a)}`, timeStyle: "short" })';
+  assert.deepEqual(rules(tpl), ["locale-literal"]);
+  // Division er ikke et regex: kaldet afsluttes korrekt og ISO-brugen er fortsat fri.
+  assert.deepEqual(rules('new Intl.DateTimeFormat("en-CA", { timeZone: zones[i / 2], year: "numeric", month: "2-digit", day: "2-digit" })'), []);
+});
+
 test("locale-default: toLocale*String() uden argument fanges", () => {
   assert.deepEqual(rules("d.toLocaleString()"), ["locale-default"]);
   assert.deepEqual(rules("d.toLocaleTimeString()"), ["locale-default"]);

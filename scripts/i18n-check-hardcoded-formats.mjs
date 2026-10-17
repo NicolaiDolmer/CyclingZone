@@ -130,17 +130,30 @@ const INTL_CALL = /(?:toLocale(?:String|DateString|TimeString)|Intl\.(?:NumberFo
 export function callSpan(code, callStart, openParenIdx) {
   let depth = 0;
   let quote = null;
+  let inRegex = false;
+  let inClass = false;
+  let prev = "(";
   const limit = Math.min(code.length, openParenIdx + 1500);
   for (let i = openParenIdx; i < limit; i++) {
     const ch = code[i];
     if (quote) {
       if (ch === "\\") i++;
-      else if (ch === quote) quote = null;
+      else if (ch === quote) { quote = null; prev = ch; }
       continue;
     }
-    if (ch === '"' || ch === "'") quote = ch;
+    // Parenteser i et regex-literal (fx /\(([^)]+)\)/) er ikke kald-graenser.
+    if (inRegex) {
+      if (ch === "\\") i++;
+      else if (ch === "[") inClass = true;
+      else if (ch === "]") inClass = false;
+      else if (ch === "/" && !inClass) { inRegex = false; prev = "/"; }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+    else if (ch === "/" && /[(,=:[!&|?{};]/.test(prev) && code[i + 1] !== "/" && code[i + 1] !== "*") inRegex = true;
     else if (ch === "(") depth++;
     else if (ch === ")" && --depth === 0) return code.slice(callStart, i + 1);
+    if (!/\s/.test(ch)) prev = ch;
   }
   return null;
 }
