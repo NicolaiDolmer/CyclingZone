@@ -341,8 +341,8 @@ select count(*) as loeb_i_alt from races where season_id = '$toSeasonId';
 -- kraever_kalender spejler poolHasCalendar (divisionCalendarGenerator.js, CALENDAR_RULES §1f):
 -- D1/D2/D4 altid; D3 kun med mindst een rigtig manager. Et hul = kraever_kalender og loeb = 0.
 select d.id, d.label, d.tier,
-       (select count(*) from teams t where t.league_division_id = d.id and not t.is_ai and not t.is_bank and not t.is_frozen and not t.is_test_account) as rigtige_managere,
-       (d.tier in (1, 2, 4) or (select count(*) from teams t where t.league_division_id = d.id and not t.is_ai and not t.is_bank and not t.is_frozen and not t.is_test_account) >= 1) as kraever_kalender,
+       (select count(*) from teams t where t.league_division_id = d.id and t.is_ai = false and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false) and not coalesce(t.is_test_account, false)) as rigtige_managere,
+       (d.tier in (1, 2, 4) or (select count(*) from teams t where t.league_division_id = d.id and t.is_ai = false and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false) and not coalesce(t.is_test_account, false)) >= 1) as kraever_kalender,
        count(r.id) as loeb
 from league_divisions d
 left join races r on r.league_division_id = d.id and r.season_id = '$toSeasonId'
