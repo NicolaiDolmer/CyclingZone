@@ -1,0 +1,842 @@
+{
+  "meta": {
+    "title": "Ayuda · Cycling Zone",
+    "description": "Guías y preguntas frecuentes de Cycling Zone: fichajes, subastas, entrenamiento, carreras y calendario de la temporada."
+  },
+  "page": {
+    "title": "Ayuda",
+    "subtitle": "Todo lo que necesitas saber sobre Cycling Zone Manager",
+    "searchPlaceholder": "Buscar en la ayuda y las preguntas frecuentes...",
+    "searchResults": {
+      "sectionsHeading": "Secciones",
+      "faqHeading": "Preguntas frecuentes",
+      "emptyTitle": "Sin coincidencias",
+      "emptyDescription": "Prueba con otro término de búsqueda."
+    },
+    "faqLabel": "Preguntas frecuentes",
+    "faqHeading": "Preguntas frecuentes"
+  },
+  "sections": {
+    "start": {
+      "label": "Primeros pasos",
+      "intro": {
+        "title": "¿Qué es Cycling Zone Manager?",
+        "text": "Cycling Zone Manager es un juego de mánager de ciclismo en el que montas y diriges un equipo ciclista. Compras ciclistas en subastas, negocias fichajes con otros mánagers, cumples los objetivos de la directiva y compites para ir subiendo por las divisiones."
+      },
+      "firstSteps": {
+        "title": "Primeros pasos",
+        "steps": [
+          "Crea una cuenta e inicia sesión.",
+          "Elige el nombre de tu equipo y el de mánager en el asistente de bienvenida. Los dos campos son obligatorios para poder continuar.",
+          "La ventana de bienvenida se abre sola la primera vez y te guía por las tres funciones principales: Mercado, Subastas y Directiva. Enlaza directamente con Ayuda y reglas.",
+          "Empiezas en la División 4 con un presupuesto inicial de {startingBalance} CZ$.",
+          "Ve a Ciclistas y busca ciclistas libres por los que quieras pujar.",
+          "Inicia una subasta por un ciclista. Si ganas la subasta, el ciclista es tuyo.",
+          "Empiezas con una plantilla inicial de {initialSquad} ciclistas. No se exige un tamaño mínimo de plantilla, pero necesitas ciclistas en tu plantilla para sacar un equipo en las carreras."
+        ]
+      },
+      "mobileTables": {
+        "title": "Tablas en el móvil",
+        "text": "En el móvil, las tablas como tu plantilla, los rankings y la base de datos de ciclistas muestran la columna del nombre más tres estadísticas clave a la vez, en lugar de una tabla ancha por la que te desplazas de lado. Unas etiquetas encima de la tabla te permiten cambiar qué tres estadísticas se muestran, y tu elección se recuerda por separado para cada tabla. Toca «Tabla completa» para abrir todas las columnas a la vez, con la columna del nombre fija mientras recorres el resto."
+      }
+    },
+    "board": {
+      "label": "Directiva",
+      "whatBoard": {
+        "title": "¿Qué hace la directiva?",
+        "text": "La directiva fija objetivos para tu equipo y sigue tu temporada en directo: la satisfacción ahora se actualiza después de cada fin de semana de carreras (se mueve como máximo 5 puntos por fin de semana) hacia lo que daría una evaluación completa de la temporada. La satisfacción determina tu modificador de patrocinio, es decir, cuánto de los ingresos de patrocinio se paga, y el modificador sigue a la satisfacción en directo. Las consecuencias duras (tope salarial, restricción de fichajes, venta forzosa) solo se evalúan en dos puntos de control previsibles: a mitad de temporada y al final de la temporada. No te pueden despedir; las consecuencias son graduales y siempre previsibles. Puedes seguirlo carrera a carrera en los detalles del plan de la página de la Directiva, donde un historial fin de semana a fin de semana muestra si la satisfacción subió o bajó y qué área de objetivos la movió."
+      },
+      "season1Baseline": {
+        "title": "Tu directiva está abierta desde el primer día",
+        "text": "La junta directiva se desbloquea desde el inicio de tu primera temporada, así que puedes elegir el ADN de tu club y negociar tus planes enseguida en lugar de esperar una temporada. Tu modificador de patrocinio se queda en 1,0× hasta que firmes tu primer plan, así que el patrocinio de la temporada 1 es neutral mientras lo montas. Durante esta temporada de referencia la directiva ya vigila tus resultados de carrera y las finanzas del club fin de semana a fin de semana, y su satisfacción se mueve en consecuencia dentro de un rango de 30 a 75, aunque todavía no hay consecuencias duras. La directiva también lee a tu equipo (núcleo nacional, proporción sub-25, especialización y perfil de estrella) y guarda una instantánea de identidad permanente que alimenta las sugerencias de tu plan a 5 años."
+      },
+      "nationalCoreRule": {
+        "title": "Cómo se decide tu núcleo nacional",
+        "text": "Tu núcleo nacional lo marca la nacionalidad con más ciclistas en tu plantilla, nunca una puntuación combinada de varias. Pasa a ser un núcleo establecido cuando esa nacionalidad tiene al menos 4 ciclistas y representa al menos el 35 % de tu plantilla completa; por debajo de ese umbral, la tarjeta de tu directiva muestra «Mixto» y «Aún sin un núcleo claro», por cerca que esté la nacionalidad que le sigue. Una vez establecido, la tarjeta nombra esa nacionalidad con su número de ciclistas y su proporción de tu plantilla. Solo se comprueba la nacionalidad más numerosa contra estas cifras: si dos nacionalidades están cerca de cumplirlas, la menor no obtiene un núcleo propio, aunque se quede a un solo ciclista. Cuando dos nacionalidades empatan exactamente en número de ciclistas, el desempate lo gana el país cuyo código va primero por orden alfabético."
+      },
+      "season2Onboarding": {
+        "title": "Incorporación secuencial a la directiva",
+        "steps": [
+          "Desde el inicio de la temporada 1 eliges primero el ADN del club. Luego la directiva se abre de forma secuencial: plan a 5 años, plan a 3 años, plan a 1 año.",
+          "Elige una dirección de enfoque (Equilibrado, Desarrollo juvenil, Fichaje de una estrella) y negocia cada objetivo una vez en el asistente.",
+          "El ADN de tu club es obligatorio antes del primer plan: da color tanto a las sugerencias de objetivos como a la composición de la directiva.",
+          "Si te olvidas de elegir el ADN y negociar antes del día de carrera 5, el sistema elige la sugerencia de ADN que mejor encaje, asigna la directiva y firma un plan con el enfoque por defecto derivado de tu instantánea de identidad.",
+          "Después, el plan a 1 año se renueva cada año, el plan a 3 años cada 3 años y el plan a 5 años cada 5 años. Nunca más los tres a la vez."
+        ]
+      },
+      "strategicDashboard": {
+        "title": "El panel estratégico",
+        "text": "La página de la Directiva muestra los tres planes en paralelo (escritorio) o apilados (móvil). Cada panel muestra el % de satisfacción, el modificador de patrocinio ×, el progreso por objetivo e iconos de estado (✓ cumplido · ! en riesgo · ~ cerca · ○ neutral). Haz clic en un objetivo para abrir un pequeño diálogo con todos los detalles, una barra de progreso acumulado y una reacción del miembro de la directiva que es responsable de esa categoría."
+      },
+      "namedMembers": {
+        "title": "Miembros de la directiva con nombre",
+        "text": "Tu equipo tiene 5 miembros de la directiva con nombre, tomados de un conjunto de 9 arquetipos: El Director de patrocinios, El Tradicionalista, El Ojeador de talentos, El Cazador de resultados, El Pragmático, El Idealista juvenil, El Purista nacional, El Purista de las clásicas y El Romántico de la general. Se asignan solo después de elegir el ADN del club, de modo que tres encajan con la identidad de tu equipo en la temporada 1 y con el ADN elegido, mientras que dos comodines aportan contraste. El miembro con mayor afinidad es el presidente (★) y habla cuando hay dudas. Dos caducidades de plan seguidas por debajo del 30 % de satisfacción sustituyen al presidente."
+      },
+      "clubDna": {
+        "title": "ADN del club",
+        "text": "Cuando se crea tu equipo eliges uno de 5 arquetipos de ADN de club antes de que se forme la directiva: equipo de desarrollo escandinavo, tradicionalista de las clásicas italianas, comercial centrado en el sprint, herencia escaladora francesa, todoterreno británico. El ADN afecta a tres cosas: (1) los planes a 5 años reciben un objetivo de tradición extra (p. ej. un podio en una clásica, incl. Monuments, para italian_classics), (2) los objetivos que coinciden con las prioridades del ADN reciben una bonificación y una penalización de satisfacción reforzadas, (3) los miembros de la directiva y los futuros cambios de presidente se inclinan hacia los arquetipos que encajan. Todavía puedes cambiar tu ADN hasta que termine tu primera temporada; después queda fijado. Cambiarlo reasigna a los miembros de tu directiva y la ponderación de los objetivos."
+      },
+      "consequenceTiers": {
+        "title": "Niveles de consecuencias (6 capas)",
+        "rows": [
+          [
+            "Capa",
+            "Activador",
+            "Efecto"
+          ],
+          [
+            "1",
+            "Basada en la satisfacción",
+            "Modificador de patrocinio ±20 % (pasivo)"
+          ],
+          [
+            "2",
+            "Satisfacción <40 % en 2 evaluaciones seguidas",
+            "Tope salarial: el salario total queda limitado a 1,5 veces su nivel en el momento de activarse, bloqueando compras y ampliaciones de contrato que lo aumenten más. Nunca se activa en los primeros 30 días de un equipo"
+          ],
+          [
+            "3",
+            "Satisfacción <30 %",
+            "Restricción de fichajes: se bloquean las compras >300K"
+          ],
+          [
+            "4",
+            "Satisfacción <15 %",
+            "Venta forzosa: tu ciclista de menor valor se pone en venta automáticamente. Los ciclistas de perfil alto y los de valor de mercado muy alto están protegidos."
+          ],
+          [
+            "5",
+            "<10 % o 2× caducidad de plan por debajo del 30 %",
+            "Retirada del patrocinador: −10 % de patrocinio durante una temporada"
+          ],
+          [
+            "6 (positiva)",
+            ">75 % de satisfacción + ≥75 % de objetivos cumplidos",
+            "Oferta de bonus: +200K por un objetivo extra"
+          ]
+        ]
+      },
+      "requestsAndLocks": {
+        "title": "Solicitudes a la directiva y bloqueos de giro",
+        "text": "Una vez por temporada puedes enviar una solicitud a la directiva para reorientar tu plan (p. ej. «más enfoque en estrellas»). La respuesta es aprobada, parcial, rechazada o aprobada con un compromiso. Los giros importantes (juventud/estrellas) solo se permiten una vez por ciclo de vida del plan. Los planes a 5 y a 3 años no se pueden reorientar durante el primer 50 % de su duración, salvo que la satisfacción haya cambiado más de 30 puntos. En los últimos 5 días de carrera de una temporada todas las solicitudes quedan bloqueadas."
+      },
+      "midSeasonCheck": {
+        "title": "Revisión de mitad de temporada",
+        "text": "A mitad de temporada (cuando se ha completado la mitad de los días de carrera) la directiva comprueba automáticamente el estado de tu plan. Si la satisfacción está por debajo del 50 % o al menos la mitad de los objetivos medibles están «por detrás», recibes una notificación de «Acción necesaria» en tu bandeja de entrada. La mitad de temporada es también el primer punto de control duro: si la satisfacción ha caído por debajo de los umbrales de consecuencias para entonces, la directiva aplica las capas de consecuencias correspondientes (el segundo punto de control es el final de la temporada). Entre los puntos de control la satisfacción se mueve libremente sin activar consecuencias duras."
+      },
+      "multiYearLifecycle": {
+        "title": "Cómo funcionan los planes a 3 y a 5 años",
+        "text": "Tus tres planes corren en paralelo y son totalmente independientes: cada uno tiene sus propios objetivos, su propia satisfacción y su propio ritmo de renovación. Negociar el plan a 1 año nunca cambia los objetivos del plan a 3 o a 5 años.",
+        "steps": [
+          "Un plan dura toda su extensión, 1, 3 o 5 temporadas. Al final de cada temporada la directiva lo evalúa, y los objetivos acumulativos (victorias de etapa, victorias en la general) siguen contando a lo largo de las temporadas de ese plan.",
+          "A mitad de un plan plurianual, tras 1 temporada completada en un plan a 3 años y 2 en uno a 5 años, la directiva envía una revisión de mitad de plan a tu bandeja de entrada. Es un mensaje de estado sobre cómo va el plan, sin ninguna consecuencia asociada.",
+          "Cuando un plan llega a su duración completa, caduca. No se prorroga simplemente hasta que por fin cumplas los objetivos: la directiva hace su evaluación final, los contadores acumulativos se reinician a cero y el plan queda a la espera de negociación.",
+          "Un plan caducado no hace nada hasta que negocies uno nuevo en la página de la Directiva. Mientras espera, no cuenta para tu modificador de patrocinio.",
+          "Los tres planes pueden activar la oferta de bonus, no solo el plan a 1 año. La elegibilidad se comprueba por plan, así que un buen plan a 3 años puede producir la oferta incluso cuando el plan a 1 año no puede.",
+          "La directiva hace como máximo una oferta de bonus por temporada, sin importar cuántos planes cumplan los requisitos. Se comprueba en los dos puntos de control de la temporada, a mitad de temporada y al final, por lo que la oferta puede llegar en momentos distintos de una temporada a otra."
+        ]
+      }
+    },
+    "mandate": {
+      "label": "El Mandato",
+      "whatMandate": {
+        "title": "Qué es el Mandato",
+        "text": "El Mandato es tu relación con la directiva reunida en un solo lugar. Una sola puntuación de confianza en lugar de tres números de satisfacción separados, un solo conjunto de objetivos para la temporada en curso y una visión del club con hitos más adelante. Todo vive en la página de la Directiva, bajo Sede del club, dividido en cuatro pestañas: Resumen, Mandato, Visión y Directiva. La directiva sigue sin poder despedirte, y sus consecuencias siguen siendo graduales y se anuncian antes de que muerdan."
+      },
+      "confidence": {
+        "title": "La confianza sustituye a los tres números de satisfacción",
+        "text": "La confianza es una sola puntuación de 0 a 100 sobre cómo ve la directiva tu trabajo. La alimentan cuatro áreas: resultados, economía, identidad y clasificación. La tarjeta de confianza muestra la puntuación, el movimiento desde la semana pasada, un medidor por área y una línea clara que nombra cualquier límite que la directiva te imponga en ese momento. La confianza también mueve tu modificador de patrocinio, así que un solo número explica ahora tanto lo que piensa la directiva como lo que paga el patrocinador. Cada objetivo que cumples o fallas mueve la confianza, nunca directamente tu saldo."
+      },
+      "annualMeeting": {
+        "title": "La junta anual",
+        "text": "Una vez por temporada, en el cambio de temporada, la directiva te convoca y te propone el mandato para la temporada que viene. Es una única reunión a pantalla completa, y la forma más rápida de pasarla es aceptar la propuesta y firmar. Dos clics.",
+        "steps": [
+          "Aparece un botón dorado en la página de la Directiva cuando la junta está lista. Antes de eso no hay botón, ni siquiera uno en gris.",
+          "Primero eliges un enfoque. Cambiar el enfoque hace que la directiva reconstruya su propuesta en torno a él, y los ajustes que ya hubieras hecho se reinician.",
+          "La propuesta consta de 3 a 5 objetivos. Cada uno se puede mantener tal cual, hacer más fácil o hacer más exigente. Un objetivo más exigente da más confianza si lo cumples y cuesta más si lo fallas.",
+          "Tienes un número fijo de ajustes por junta, que se muestra arriba. Una directiva que confía en ti concede más y estira más en sus contraofertas.",
+          "La directiva puede proponer un hito nuevo para la visión del club, con la temporada en la que debería alcanzarse. Acéptalo o recházalo.",
+          "Tienes una solicitud por junta. Una negativa siempre vuelve con una contraoferta, nunca con un no rotundo.",
+          "Firma, y el mandato queda activo para la temporada. Hasta que se firma sigue siendo una propuesta.",
+          "Si nunca respondes, la directiva firma su propia propuesta por ti cuando se agota el plazo que se muestra arriba en la junta. Conservas el mandato, simplemente no lo moldeaste."
+        ]
+      },
+      "bonusOffers": {
+        "title": "Ofertas de bonus",
+        "text": "Cuando una temporada va bien, la directiva puede poner sobre la mesa una oferta de bonus: dinero que se abona ya en tu saldo, a cambio de un objetivo extra añadido al mandato de esta temporada. La oferta aparece como una franja en el mandato de la pestaña Resumen, y completa en la pestaña Mandato. Si la aceptas, el dinero se abona de inmediato, el objetivo extra cuenta desde el momento en que aceptas y se juzga al final de la temporada junto con el resto del mandato. Si la rechazas, desaparece. La directiva hace como máximo una oferta por temporada, y la tarjeta de la oferta indica la temporada a la que pertenece."
+      },
+      "clubDnaAndBoard": {
+        "title": "El ADN del club y tus cinco miembros de la directiva",
+        "text": "El ADN del club es la primera elección que haces, entre cinco arquetipos, y da forma a todo el Mandato. Decide quién se sienta en tu directiva: tres de los cinco miembros con nombre encajan con tu ADN y con la identidad de tu equipo, dos son comodines que aportan contraste, y el que más encaja es el presidente. Inclina los objetivos que se te ofrecen hacia lo que le importa a ese ADN, y da nombre a la visión de tu club. Cada miembro es responsable de un área y lee tu temporada con su propia voz, por lo que el mismo resultado puede mover a un miembro y dejar frío a otro. Puedes cambiar tu ADN hasta que termine tu primera temporada, lo que sienta una directiva nueva; después queda bloqueado. La pestaña Directiva muestra a los cinco, su ánimo hacia ti y las actas con sus propias palabras."
+      },
+      "visionMilestones": {
+        "title": "Cuándo cuentan los hitos de la visión",
+        "text": "Cada hito de la visión de tu club tiene una temporada objetivo, y el propio hito indica cuándo cuenta, por ejemplo «Cuenta al final de la temporada 5». La directiva comprueba los hitos al final de cada temporada, no por el camino, así que un objetivo a largo plazo puede parecer sin tocar durante la mayor parte de una temporada sin estar por detrás. Puedes cumplir un hito antes de tiempo: si ya lo has alcanzado al final de una temporada anterior, cuenta justo ahí, la directiva lo marca como conseguido y propone un hito nuevo en la siguiente junta anual. Un hito que no hayas alcanzado al final de su temporada objetivo se considera fallado. Eso cuesta confianza una vez, y el resto de la visión sigue sin cambios."
+      }
+    },
+    "auctions": {
+      "label": "Subastas",
+      "whatAuctions": {
+        "title": "¿Qué son las subastas?",
+        "text": "Las subastas se usan sobre todo para comprar ciclistas libres (ciclistas sin equipo). Pones un ciclista en subasta, todos los mánagers pueden pujar y gana la puja más alta. También puedes poner en subasta a tus propios ciclistas. Si inicias una subasta por un ciclista libre, solo eres quien la inicia: no recibes lo obtenido de la venta salvo que el ciclista estuviera realmente en tu equipo. Los ciclistas de un equipo controlado por la IA no se pueden subastar en absoluto; solo se pueden poner en subasta ciclistas libres y ciclistas del equipo de otro mánager."
+      },
+      "howToStart": {
+        "title": "Cómo iniciar una subasta",
+        "steps": [
+          "Ve a Ciclistas y busca un ciclista libre (sin equipo).",
+          "Haz clic en el nombre del ciclista para abrir la página de estadísticas.",
+          "Haz clic en «Iniciar subasta» y fija un precio de salida. El mínimo es igual al Valor del ciclista.",
+          "En un ciclista libre, el precio de salida es tu primera puja, así que lideras la subasta de inmediato.",
+          "La subasta ya es visible para todos en Subastas."
+        ]
+      },
+      "bidding": {
+        "title": "Pujar en subastas",
+        "text": "Ve a Subastas y busca una subasta en la que quieras pujar. Introduce tu puja y haz clic en «Pujar». Puedes ver si vas ganando (Ganando) o si has pujado pero te han superado (Pujaste). La puja mínima es 1 CZ$ por encima del precio actual (o igualar el precio de salida si nadie ha pujado todavía)."
+      },
+      "valuation": {
+        "title": "La valoración junto a una puja",
+        "text": "Cada subasta muestra el valor de mercado estimado del ciclista, y el porcentaje te dice lo por debajo o por encima de él que está la puja actual. La valoración es la estimación del modelo del juego, pensada como referencia para ayudarte a juzgar una puja, no como un precio justo garantizado."
+      },
+      "autoBidCap": {
+        "title": "Tope de puja automática",
+        "text": "El tope de puja automática te permite fijar tu máximo privado. Si todavía no lideras, la puja automática hace por ti la puja mínima enseguida para que tomes el liderato. Después puja por ti automáticamente cada vez que alguien te supera, subiendo tu puja de 1 CZ$ en 1 CZ$ y nunca por encima de tu tope. Sigues por delante hasta que otro mánager supera tu tope, y solo entonces te superan. Tu tope es privado, así que otros mánagers nunca lo ven. Si tu saldo ya no puede cubrir tu tope, la puja automática se detiene hasta que liberes fondos."
+      },
+      "anonymityAndReveal": {
+        "title": "Pujas anónimas, y luego una revelación completa",
+        "text": "Mientras una subasta está en marcha, las pujas son anónimas: ves los importes y si vas ganando, nunca quién más puja. Eso protege el tope de puja automática y la estrategia de todos para que los rivales no los lean. Cuando cae el martillo, se revela toda la guerra de pujas. Desde una subasta completada en Subastas -> Historial, haz clic en «Ver guerra de pujas» para ver cada puja realizada en orden, con el nombre del pujador, y también se te dirá quién la ganó si la perdiste. Los topes de puja automática y las estrategias activas nunca se revelan, ni antes ni después de que la subasta se cierre. Solo se muestran las pujas que se realizaron de verdad."
+      },
+      "tieRule": {
+        "title": "Empates en pujas iguales",
+        "text": "Si otro mánager puja exactamente tu tope de puja automática, conservas el liderato al mismo precio, sin aumento. Cuando dos pujas coinciden, mantiene el liderato el mánager que llegó antes a ese importe. Por tanto, fijar un tope también defiende tu liderato frente a cualquiera que solo lo iguale."
+      },
+      "whenExpires": {
+        "title": "¿Cuándo caduca una subasta?",
+        "text": "Cuando pones en subasta a tu propio ciclista, eliges la hora exacta en que termina la subasta, de 1 a 48 horas por delante. Las subastas de agentes libres (iniciadas por el banco o a través del mercado juvenil) duran al menos 12 horas activas, para que no pierdas a un joven talento solo porque estabas durmiendo o trabajando. Las horas nocturnas no cuentan: la ventana activa va de las 08:00 a las 24:00 todos los días, y el mercado se pausa de 00:00 a 08:00. Si pujas a las 19:40, la subasta termina esa misma tarde a las 20:40. Si pujas a las 23:30, el tiempo restante se traslada por la noche y la subasta termina a la mañana siguiente a las 08:30. Además, las subastas no pueden crearse para que duren más allá del cambio de temporada, de modo que una venta nunca puede quedar atrapada a mitad del cambio."
+      },
+      "flashAuction": {
+        "title": "Subasta relámpago (Deadline Day)",
+        "text": "Durante el Deadline Day puedes elegir Subasta relámpago al iniciar una subasta. Una Subasta relámpago dura exactamente 30 minutos desde la hora de inicio, sin importar las ventanas activas. La opción solo aparece en la página de estadísticas del ciclista cuando el Deadline Day está activo."
+      },
+      "tenMinExtend": {
+        "title": "Prórroga de 10 minutos",
+        "text": "Si una puja toma el liderato en los últimos 10 minutos de una subasta, la subasta se prolonga automáticamente 10 minutos desde la hora de la puja. El liderato tiene que cambiar de verdad: si pujas contra una puja automática y esta te contesta sin perder nunca el liderato, no se prolonga nada. Es deliberado, porque evita que una subasta se alargue con pujas mínimas repetidas que nunca amenazan al líder. Las prórrogas continúan hasta que ninguna puja toma el liderato en los últimos 10 minutos. La prórroga no puede desbordar la ventana activa del día: si los 10 minutos extra cayeran después del cierre, la subasta salta directamente a la apertura de la ventana siguiente, trasladando solo los minutos sobrantes (p. ej. una puja que habría terminado la subasta 5 minutos después del cierre la termina en cambio 5 minutos después de la apertura de la siguiente ventana)."
+      },
+      "squadAndAuctions": {
+        "title": "Tamaño de la plantilla y subastas",
+        "text": "Los límites de plantilla se siguen aplicando por división. Las subastas activas que lideras reservan tanto saldo como un posible hueco de plantilla, así que no puedes liderar más subastas de las que tu plantilla puede albergar."
+      }
+    },
+    "transfers": {
+      "label": "Fichajes",
+      "whatTransfers": {
+        "title": "¿Qué es el sistema de fichajes?",
+        "text": "El sistema de fichajes te permite negociar directamente con otros mánagers para comprar o vender ciclistas, como en Football Manager. Puedes enviar una oferta por cualquier ciclista, esté o no en venta."
+      },
+      "allTrades": {
+        "title": "Mira todas las operaciones del juego",
+        "text": "La pestaña «Todas las operaciones» de Fichajes enumera todos los movimientos de ciclistas del juego, de más reciente a más antiguo: ventas en subasta, fichajes directos e intercambios. Puedes filtrar por tipo, por división y hasta tu propio equipo. Cada fila lleva una discreta acción de revisión. Si una operación te parece rara, mándamela con una frase sobre lo que te llamó la atención, y la leo. Denunciar no es acusar, y al otro mánager nunca se le dice quién lo denunció."
+      },
+      "sellOnTransferList": {
+        "title": "Vender mediante la lista de fichajes",
+        "text": "Puedes poner a tus propios ciclistas a la venta a un precio pedido fijo, ya sea desde Mi equipo o directamente desde la página de perfil del ciclista. Mientras un ciclista está anunciado, puedes editar el precio pedido o quitar el anuncio en cualquier momento, tanto desde la página de Fichajes como desde el perfil del ciclista. Los compradores pueden ordenar o filtrar el mercado por precio pedido, además de ordenar por los anuncios más recientes."
+      },
+      "bulkEditPrices": {
+        "title": "Editar muchos precios a la vez",
+        "text": "En la pestaña Mercado puedes marcar varios de tus propios anuncios a la vez y aplicar un único cambio de precio a todos: fijar cada ciclista marcado a un precio exacto, sumar o restar un importe fijo en CZ$, o ajustarlos todos con un porcentaje (por ejemplo +10 %). La vista previa muestra el precio antiguo y el nuevo de cada ciclista antes de que apliques nada."
+      },
+      "valueDeviation": {
+        "title": "La valoración junto al precio pedido",
+        "text": "La lista de fichajes muestra el valor de mercado estimado de cada ciclista junto al precio pedido, y el porcentaje te dice lo por debajo o por encima de él que está el precio pedido (la misma estimación que en Subastas). Puedes filtrar el mercado por este porcentaje en «Desviación de valor % (mín.-máx.)» en el panel de filtros, por ejemplo para encontrar ciclistas con un precio muy inferior a su valor estimado."
+      },
+      "sendOffer": {
+        "title": "Enviar una oferta",
+        "steps": [
+          "Encuentra al ciclista que quieres comprar en Ciclistas y haz clic en su nombre.",
+          "Haz clic en «Enviar oferta de fichaje» al final de la página.",
+          "Introduce tu oferta en CZ$ y un mensaje opcional.",
+          "Haz clic en «Enviar oferta». El vendedor recibe una notificación.",
+          "Los ciclistas IA no se pueden comprar en absoluto, ni por oferta directa ni por subasta."
+        ]
+      },
+      "proposeSwap": {
+        "title": "Proponer un intercambio de ciclistas",
+        "steps": [
+          "Encuentra al ciclista que quieres en un intercambio y ve a su página de perfil.",
+          "Haz clic en «⇄ Proponer intercambio», elige a uno de tus propios ciclistas para ofrecer y, si quieres, añade un ajuste en efectivo.",
+          "Haz clic en «Enviar intercambio». El otro mánager recibe una notificación.",
+          "Las propuestas de intercambio existentes siguen apareciendo en Ofertas recibidas y Ofertas enviadas en la página de Fichajes, donde puedes aceptarlas, contraofertar o retirarlas."
+        ]
+      },
+      "receiveAndReply": {
+        "title": "Recibir y responder a ofertas",
+        "text": "Ve a Fichajes, Ofertas recibidas. Aquí ves todas las ofertas por tus ciclistas. Puedes aceptar, rechazar o enviar una contraoferta con tu propio precio."
+      },
+      "finalConfirmation": {
+        "title": "Confirmación final",
+        "text": "Cuando se acepta una oferta o una contraoferta, el trato entra en una breve fase de confirmación. Ambos mánagers deben confirmar el acuerdo final, y el sistema vuelve a comprobar la propiedad, el saldo y los límites de plantilla justo antes de que el trato se complete."
+      },
+      "midRaceTransfers": {
+        "title": "Operaciones durante una carrera por etapas en curso",
+        "text": "Si un ciclista se traspasa (fichaje, intercambio o subasta) mientras está a mitad de una carrera por etapas activa, el trato y el pago se completan de inmediato, pero él termina la carrera para su equipo vendedor y se une a su nuevo equipo justo después de la meta. Su perfil muestra mientras tanto el equipo futuro, y no se le puede volver a traspasar hasta que se complete el cambio. Las carreras que aún no han empezado no se ven afectadas: el ciclista se mueve al instante. Un día de carrera ya usado para el equipo anterior sigue ocupado después del cambio. Puede inscribirse en carreras de días de carrera posteriores."
+      },
+      "negotiation": {
+        "title": "Negociación de ida y vuelta",
+        "text": "La negociación puede continuar indefinidamente. El vendedor envía una contraoferta; el comprador puede aceptarla, enviar una oferta nueva o retirarse. El contador de rondas muestra lo avanzada que va la negociación."
+      },
+      "privacy": {
+        "title": "Privacidad",
+        "text": "Las ofertas son privadas. Solo tú y el vendedor pueden ver la negociación. Los demás mánagers no pueden ver quién ha pujado por el mismo ciclista."
+      },
+      "archiveCompleted": {
+        "title": "Archivar negociaciones completadas",
+        "text": "Las ofertas y propuestas de intercambio que se rechazan, se retiran o se completan de otro modo se pueden archivar desde la página de Fichajes. Archivarlas las quita de las listas activas, así que las negociaciones en curso son siempre fáciles de encontrar."
+      }
+    },
+    "managers": {
+      "label": "Mánager y perfil",
+      "profile": {
+        "title": "Perfil del mánager",
+        "text": "Cada mánager tiene una página de perfil pública. Haz clic en el nombre de un equipo en la clasificación, en la lista de equipos o en los fichajes para ver su perfil. El perfil muestra el equipo y los ciclistas, el historial de temporadas, los logros y la actividad de fichajes."
+      },
+      "namesAndInit": {
+        "title": "Nombre del equipo y nombre del mánager",
+        "text": "En Mi perfil puedes guardar o editar tanto el nombre del equipo como el del mánager. Si tu cuenta se creó antes sin un equipo real, también puedes inicializar el equipo desde aquí guardando la información del equipo."
+      },
+      "accountSettings": {
+        "title": "Cambiar el nombre de usuario o el correo",
+        "text": "En Mi perfil, Cuenta puedes cambiar tu nombre de usuario y tu correo. Un nombre de usuario tiene de 3 a 20 caracteres (letras, números, guion bajo o guion) y debe ser único. Cambiar el correo envía un enlace de confirmación a la nueva dirección; el cambio solo se aplica cuando haces clic en ese enlace, así que tu inicio de sesión sigue funcionando hasta entonces."
+      },
+      "theme": {
+        "title": "Tema (claro / oscuro)",
+        "text": "En Ajustes, Apariencia puedes elegir entre «Seguir el sistema» (automático según tu dispositivo), «Claro» y «Oscuro». La elección se guarda localmente en tu navegador. La barra lateral se mantiene oscura en ambos temas por coherencia."
+      },
+      "forgotPassword": {
+        "title": "He olvidado mi contraseña",
+        "text": "Si no puedes iniciar sesión, puedes elegir «¿Has olvidado tu contraseña?» en la página de inicio de sesión. El sistema envía un enlace de restablecimiento a tu correo, y el enlace abre una página específica donde puedes elegir una contraseña nueva."
+      },
+      "inbox": {
+        "title": "Bandeja de entrada",
+        "text": "La bandeja de entrada (en Sede del club) reúne todos los eventos del sistema: pujas, subastas, ofertas de fichaje, inicio de temporada, economía y logros. Haz clic en un mensaje para ir directamente a la página correspondiente. Los mensajes sin leer aparecen como un contador amarillo junto al icono de la campana."
+      },
+      "onlineStatus": {
+        "title": "Estado en línea",
+        "text": "Un punto verde junto al nombre de un mánager significa que está activo ahora mismo (visto en los últimos 30 minutos). Un punto gris indica que está desconectado. Puedes verlo en los perfiles de los mánagers y junto a cada equipo en Liga y clasificación."
+      },
+      "managersOnline": {
+        "title": "Contador de mánagers en línea",
+        "text": "En el Panel puedes ver cuántos mánagers están activos en el juego ahora mismo. Se actualiza automáticamente."
+      },
+      "headToHead": {
+        "title": "Comparar dos equipos (Cara a cara)",
+        "text": "Abre Liga y clasificación (en Resultados). Haz clic en el número de puesto de dos equipos para seleccionarlos y pulsa Comparar para abrir un panel lateral comparativo: puntos de la temporada, victorias de etapa y en la general, historial de fichajes entre los equipos y los 5 mejores ciclistas actuales de ambos equipos. Tu propio equipo se selecciona primero por defecto."
+      },
+      "contactSupport": {
+        "title": "Contacto y comentarios",
+        "text": "¿Sin Discord? Usa el botón Contacto de la parte inferior del menú para enviar comentarios, informar de un error o compartir una idea directamente con el desarrollador. Elige una categoría, escribe tu mensaje y envíalo. Un informe de error incluye automáticamente la página en la que estabas, lo que facilita localizarlo. Para preguntas de facturación (CZ Pro), también puedes escribir a support@cyclingzone.org."
+      }
+    },
+    "forum": {
+      "label": "Foro",
+      "roadmap": {
+        "title": "¿Quién publica en la categoría Hoja de ruta?",
+        "text": "Solo yo abro hilos nuevos en la Hoja de ruta, y es donde te cuento hacia dónde va el juego. Todo el mundo puede responder, así que pregunta y rebate justo debajo de cada publicación."
+      },
+      "mentions": {
+        "title": "¿Cómo funcionan las @-menciones?",
+        "text": "Escribe @ y las primeras letras del nombre de un mánager en una publicación o respuesta, y luego elige el nombre de la lista. Ese mánager recibe un mensaje en su bandeja de entrada con un enlace directo a tu publicación. El nombre se puede pulsar en la publicación y lleva a su perfil de mánager."
+      },
+      "following": {
+        "title": "¿Cómo sigo o silencio una categoría?",
+        "text": "Usa la campana en la cabecera de una categoría, o la lista en Ajustes, para desactivar una categoría. Entonces deja de marcar hilos como no leídos y deja de encender el punto del foro. Las respuestas a tus propios hilos y las @-menciones siempre te llegan, incluso en una categoría silenciada."
+      },
+      "pictures": {
+        "title": "Imágenes en las publicaciones",
+        "text": "Puedes añadir hasta tres imágenes a una publicación o respuesta. Funcionan JPG, PNG y WebP, y las fotos grandes se reducen a 2 MB en tu navegador antes de subirlas, así que las fotos del móvil valen. Toca una imagen para verla a tamaño completo, o toca la X de una imagen antes de enviar para quitarla."
+      },
+      "survey": {
+        "title": "¿De qué trata la encuesta?",
+        "text": "Hay una encuesta corta en el juego en la que valoras ideas sobre lo que debería construir a continuación: ¿es una buena idea y te importa? Ábrela desde la tarjeta de tu panel, el mensaje de tu bandeja de entrada o el enlace del foro. Tus respuestas se guardan en tu cuenta y solo las leo yo."
+      }
+    },
+    "messages": {
+      "label": "Mensajes",
+      "starting": {
+        "title": "¿Cómo empiezo una conversación?",
+        "text": "Abre el perfil de un mánager o toca su nombre en el foro y pulsa Mensaje. En una oferta de fichaje o en una subasta también puedes pulsar Escribir al otro mánager para escribirle con el trato citado en la primera línea."
+      },
+      "whereTheyLive": {
+        "title": "¿Dónde están mis conversaciones?",
+        "text": "En Mensajes, dentro de la bandeja de entrada. Cada conversación muestra el nombre del otro mánager y tu último mensaje."
+      },
+      "block": {
+        "title": "¿Qué pasa si bloqueo a un mánager?",
+        "text": "Ya no puede contactar contigo aquí, y no se le avisa de que lo has bloqueado. Conservas los mensajes anteriores de esa conversación; solo los nuevos permanecen ocultos hasta que lo desbloquees."
+      },
+      "report": {
+        "title": "¿Cómo denuncio una conversación?",
+        "text": "Abre la conversación, usa el menú y elige Denunciar conversación. Recibo una copia de todo el hilo y lo leo yo mismo; no hace falta que hagas capturas antes."
+      },
+      "retention": {
+        "title": "¿Se borran alguna vez los mensajes?",
+        "text": "No. Los mensajes se conservan para poder comprobar el juego limpio, incluso años después. Ocultar conversación solo la quita de tu propia lista; un mensaje nuevo de ese mánager la hace volver."
+      },
+      "rateLimit": {
+        "title": "¿Hay un límite de mensajes que puedo enviar?",
+        "text": "Sí, un límite de uso razonable. Si envías muchísimos mensajes en poco tiempo, tienes una breve pausa antes de que salga el siguiente."
+      }
+    },
+    "discord": {
+      "label": "MD de Discord",
+      "whyDms": {
+        "title": "¿Por qué MD de Discord?",
+        "text": "Cycling Zone envía notificaciones (pujas superadas, subastas ganadas, ofertas de fichaje y respuestas) como mensajes privados directamente a ti en Discord, así que no necesitas tener la app abierta para enterarte de una situación urgente. No sustituye a las notificaciones dentro de la app; las complementa."
+      },
+      "howToGetDms": {
+        "title": "Cómo recibir MD",
+        "steps": [
+          "En Discord: Ajustes de usuario, Avanzado, activa el Modo desarrollador.",
+          "Haz clic derecho en tu propio nombre en cualquier lugar de Discord y elige «Copiar ID de usuario».",
+          "En Cycling Zone: ve a Perfil, Integración con Discord y pega tu ID en el campo. Haz clic en «Guardar ID de Discord».",
+          "Asegúrate de compartir un servidor con el bot de Cycling Zone y de que «Permitir mensajes directos de miembros del servidor» está activado en ese servidor.",
+          "Haz clic en «Enviar MD de prueba» para comprobar que funciona."
+        ]
+      },
+      "optOut": {
+        "title": "Desactivar los MD (exclusión)",
+        "text": "Si no quieres mensajes privados del bot, puedes desactivar «Recibir MD de los eventos que te afectan» en Perfil, Integración con Discord. Las notificaciones dentro de la app siguen funcionando. La información personal (pujas superadas, subastas ganadas, ofertas de fichaje y respuestas) no se publica en el canal compartido; ese canal está reservado para anuncios generales."
+      },
+      "whenDmsSent": {
+        "title": "¿Cuándo se envían MD?",
+        "rows": [
+          [
+            "Evento",
+            "MD"
+          ],
+          [
+            "Te superan la puja en una subasta",
+            "Sí"
+          ],
+          [
+            "Ganas una subasta",
+            "Sí"
+          ],
+          [
+            "Recibes una oferta de fichaje",
+            "Sí"
+          ],
+          [
+            "Tu oferta de fichaje es aceptada / rechazada / contraofertada",
+            "Sí"
+          ],
+          [
+            "Se crea una subasta nueva (todos los mánagers)",
+            "No, solo canal"
+          ],
+          [
+            "Fichaje completado (todos los mánagers)",
+            "No, solo canal"
+          ],
+          [
+            "Inicio / fin de temporada",
+            "No, solo canal"
+          ]
+        ]
+      }
+    },
+    "achievements": {
+      "label": "Logros",
+      "whatAchievements": {
+        "title": "¿Qué son los logros?",
+        "text": "Los logros son recompensas que desbloqueas al alcanzar hitos concretos del juego. Hay 45 logros repartidos en 5 categorías: Subastas, Fichajes, Equipo, Temporada y Secretos."
+      },
+      "categories": {
+        "title": "Categorías",
+        "rows": [
+          [
+            "Categoría",
+            "Ejemplos"
+          ],
+          [
+            "Subastas",
+            "Primera puja, Francotirador, Gran apostador, 50 subastas ganadas"
+          ],
+          [
+            "Fichajes",
+            "Primer trato, Negociador, El chollo, 30 fichajes"
+          ],
+          [
+            "◈ Equipo",
+            "Plantilla completa, Equipo joven, Equipo con estrella, ¡Ascenso!"
+          ],
+          [
+            "Temporada",
+            "Ganador de división, Podio, Favorito de la directiva, Veterano"
+          ],
+          [
+            "Secretos",
+            "Se desbloquean con eventos inesperados, no se describen de antemano"
+          ]
+        ]
+      },
+      "seasonAchievements": {
+        "title": "Logros de temporada",
+        "text": "Los puestos, el ascenso, el descenso y la permanencia se deciden en el cambio de temporada, no mientras la temporada está en marcha. Tu puesto es tu clasificación en el grupo de tu propia división, así que cada grupo tiene un ganador. El ascenso y el descenso se conceden cuando se fijan las nuevas divisiones."
+      },
+      "secretAchievements": {
+        "title": "Logros secretos",
+        "text": "Los logros secretos aparecen bloqueados con el título «???» hasta que los desbloqueas. La descripción solo se revela después. Se desbloquean cuando haces cosas inesperadas o divertidas en el juego."
+      },
+      "notifications": {
+        "title": "Notificaciones de logros",
+        "text": "Cuando desbloqueas un logro, recibes un mensaje en la bandeja de entrada con el icono y el título del logro. Tus logros desbloqueados aparecen en tu perfil de mánager."
+      },
+      "careerFirsts": {
+        "title": "Primeras veces de la carrera",
+        "text": "El juego registra las primeras veces de la carrera de cada ciclista: una primera victoria, un primer podio, un primer maillot de clasificación y hitos del club como una victoria número 25 con tus colores. Se detectan automáticamente a partir de los resultados de carrera, se muestran como una tarjeta de momento en tu panel y en la página de la carrera, y quedan visibles para siempre en el perfil del propio ciclista, en la pestaña Palmarés."
+      }
+    },
+    "watchlist": {
+      "label": "Lista de seguimiento",
+      "whatWatchlist": {
+        "title": "¿Qué es la Lista de seguimiento?",
+        "text": "La Lista de seguimiento es tu lista privada de ciclistas a los que sigues. La lista solo es visible para ti."
+      },
+      "howToAdd": {
+        "title": "Cómo añadir a un ciclista",
+        "steps": [
+          "Encuentra a un ciclista en la Base de datos de ciclistas o en la página de estadísticas de un ciclista.",
+          "Haz clic en la estrella ☆ junto al nombre del ciclista.",
+          "La estrella se pone amarilla (★) y el ciclista ya está en tu lista.",
+          "Ve a Lista de seguimiento en el menú para ver tu lista completa."
+        ]
+      },
+      "saleNotification": {
+        "title": "Notificación de venta",
+        "text": "Si un ciclista de tu lista de seguimiento se pone a la venta en la lista de fichajes o en subasta, recibes automáticamente una notificación en tu bandeja de entrada. Te mantienes al día de tus favoritos sin tener que mirar el mercado activamente."
+      },
+      "departureNotification": {
+        "title": "Notificación de salida de un ciclista",
+        "text": "Si un ciclista de tu lista de seguimiento deja el juego (por ejemplo, una promesa juvenil sin vender tras su subasta, o un ciclista de un equipo IA cuando se elimina el equipo), recibes una notificación y el ciclista se quita automáticamente de tu lista de seguimiento."
+      },
+      "watchlistCounter": {
+        "title": "Contador de la lista de seguimiento",
+        "text": "En la página de estadísticas de un ciclista puedes ver «X mánagers siguen a este ciclista». Esto muestra el número total de mánagers que tienen al ciclista en su lista de seguimiento, sin revelar quiénes. Úsalo como una señal de demanda."
+      },
+      "features": {
+        "title": "Funciones de la lista de seguimiento",
+        "text": "Puedes ordenar y filtrar tus ciclistas guardados por todas las estadísticas, Valor, salario, edad, sub-25/sub-23 y agente libre. Puedes añadir notas privadas a cada ciclista. En los agentes libres puedes iniciar una subasta directamente desde la lista de seguimiento."
+      }
+    },
+    "activity": {
+      "label": "Mi actividad",
+      "whatActivity": {
+        "title": "¿Qué es Mi actividad?",
+        "text": "Mi actividad es tu espacio de trabajo personal del mercado, que está como una pestaña en tu Bandeja de entrada. Reúne todas tus acciones de mercado (subastas, fichajes y lista de seguimiento) en un solo lugar, separadas de la bandeja de entrada global."
+      },
+      "tabs": {
+        "title": "Las pestañas",
+        "steps": [
+          "Requiere acción: ofertas que esperan tu respuesta, contraofertas que has recibido, tratos que esperan tu confirmación y subastas que terminan en menos de 1 hora. Se abre por defecto.",
+          "Subastas: todas las subastas activas en las que eres vendedor o pujador.",
+          "Fichajes: ofertas que has recibido y ofertas que has enviado que siguen activas.",
+          "Lista de seguimiento: vista compacta de tus ciclistas guardados con su estado de mercado. Ábrela para ver la lista de seguimiento completa.",
+          "Historial: subastas completadas y fichajes cerrados."
+        ]
+      },
+      "deepLinks": {
+        "title": "Enlaces directos",
+        "text": "Hacer clic en una fila de Mi actividad te lleva directamente a la página correspondiente: subastas, fichajes o la página de estadísticas del ciclista. Hacer clic en el nombre del ciclista dentro de una fila abre la página de estadísticas del ciclista."
+      }
+    },
+    "season": {
+      "label": "Temporada",
+      "seasonFlow": {
+        "title": "Desarrollo de la temporada",
+        "steps": [
+          "El administrador cierra el mercado de fichajes y empieza una nueva temporada.",
+          "Al inicio de la temporada: se procesan los fichajes pendientes, primero se paga el dinero del patrocinio, luego se descuentan los intereses de los préstamos y los salarios (cada salario se fija al firmar y no cambia hasta que vuelvas a firmar o ampliar). Solo se crea un préstamo de emergencia si el patrocinio + el saldo no cubren el déficit.",
+          "Las carreras las ejecuta el motor de carreras de Cycling Zone, que simula cada etapa y escribe los resultados automáticamente.",
+          "Al final de la temporada: se suman los puntos, se paga el bonus de división, se decide el ascenso/descenso (cada temporada) y se evalúan los planes de la directiva. Los salarios y los intereses ya no se descuentan al final de la temporada. Pasaron al inicio de la temporada siguiente (v3.78)."
+        ]
+      },
+      "racesAndResults": {
+        "title": "Carreras y resultados",
+        "text": "Las carreras las ejecuta el motor de carreras de Cycling Zone. Simula cada etapa a partir de las habilidades, la forma y las tácticas de los ciclistas, y luego escribe automáticamente la clasificación y los premios en metálico. Los premios llegan al saldo de tu equipo en cuanto se cierra una carrera. Puedes seguir cada resultado en Resultados, donde Últimos muestra las carreras terminadas en tu división. Mientras una carrera por etapas está en marcha, la página de la carrera también muestra la clasificación completa en curso tras cada etapa completada: general, puntos, montaña, jóvenes y equipos. La general final es siempre la suma de las diferencias publicadas de las etapas, así que puedes comprobarlo tú mismo. Recibes una notificación dentro de la app tras cada etapa en la que participas, no solo tras la última, así que una carrera de varios días nunca se queda en silencio."
+      },
+      "raceCentre": {
+        "title": "Centro de carreras",
+        "text": "El Centro de carreras reúne en una página todas las carreras de hoy. Primero van tus propias carreras: las carreras en directo muestran lo último y una entrada para Ver en directo, las próximas muestran una cuenta atrás y si tu alineación está lista, y las terminadas muestran el podio y tu mejor ciclista. Una franja Por las divisiones debajo muestra los resultados de hoy en otras divisiones. Lo encontrarás en el menú, en Carreras."
+      },
+      "finalKilometre": {
+        "title": "El último kilómetro",
+        "text": "Abre cualquier carrera con una etapa terminada y la parte superior de la página repite sus últimos ~3 km: una cuenta atrás avanza hasta la meta, y luego los ciclistas van encajando en el orden de llegada uno a uno, con una marca de foto finish siempre que la diferencia sea inferior a un segundo. Se repite siempre a partir de los mismos datos de resultado (pulsa Repetición para verlo otra vez), así que funciona igual de bien horas después de que terminara la carrera. Si tu dispositivo prefiere movimiento reducido, o a la carrera le faltan los datos antiguos de escapada/momentos, simplemente ves directamente el resultado final."
+      },
+      "latestTeamResult": {
+        "title": "¿Dónde veo cómo le fue a mi equipo?",
+        "text": "Después de que se cierre una carrera con tus ciclistas, tu panel muestra una tarjeta «Cómo le fue a tu equipo» con tus puestos, los premios en metálico y un breve resumen de la carrera. Sigue el enlace de la tarjeta hasta el resultado completo con todas las etapas y clasificaciones."
+      },
+      "heroAgonyCard": {
+        "title": "¿Qué es la tarjeta Hero & Agony?",
+        "text": "Tu panel también muestra una tarjeta Hero & Agony: un momento personal de la etapa más reciente de tu equipo, elegido automáticamente a partir de lo que realmente les pasó a tus ciclistas ese día, ya sea una victoria de etapa, un cambio en el liderato de la carrera, un ciclista que sacrificó su propio resultado por el equipo o un favorito que terminó fuera del top 15. La agonía cuenta tanto como el triunfo: un ciclista que pasó el día en la escapada y fue alcanzado justo antes de la meta da una historia mejor que una tranquila posición a mitad del pelotón, y la tarjeta está hecha para reflejarlo. Haz clic en «Compartir como imagen» para descargar un PNG editorial de la tarjeta, listo para publicar en Discord."
+      },
+      "stageEndings": {
+        "title": "Los finales de etapa, explicados",
+        "text": "Cada etapa tiene un tipo de final que se muestra junto a su etiqueta de terreno en el calendario y en la página de la carrera. Pasa el cursor o toca la etiqueta para ver la explicación completa allí mismo; la tabla de abajo los recoge todos en un solo lugar.",
+        "rows": [
+          [
+            "Final",
+            "Qué significa"
+          ],
+          [
+            "Sprint masivo",
+            "El pelotón se mantiene junto y la etapa se decide en un sprint masivo."
+          ],
+          [
+            "Sprint reducido",
+            "Un grupo reducido llega a la meta y se juega la victoria al sprint."
+          ],
+          [
+            "Final explosivo",
+            "Un repecho corto y empinado cerca de la meta premia un ataque tardío por encima de un sprint puro."
+          ],
+          [
+            "Final en alto",
+            "La propia subida es la meta, y abre las mayores diferencias del día."
+          ],
+          [
+            "Final en bajada",
+            "La meta llega tras un descenso, lo que da a los perseguidores una oportunidad de recortar antes de la línea."
+          ],
+          [
+            "Contrarreloj individual",
+            "Cada ciclista sale solo contra el reloj, sin rueda."
+          ],
+          [
+            "Escapada",
+            "Un grupo de escapados temprano se mantiene por delante del pelotón y se disputa la victoria entre sí."
+          ]
+        ]
+      },
+      "stageProfile": {
+        "title": "Terreno y perfiles de etapa",
+        "text": "A partir de la temporada 2, las carreras con datos de recorrido muestran el perfil real de la etapa: es el recorrido exacto que ejecuta el motor de carreras, con la longitud, la pendiente y la categoría de cada subida, el sprint intermedio, los sectores de adoquines y dónde cae la meta. La categoría de una subida fija cuántos puntos de montaña hay en juego en la cima, y una meta en lo alto de una subida abre mayores diferencias que una meta tras un descenso. Toca una marca del perfil para ver qué hay en juego allí, o quién se lo llevó una vez disputada la etapa. Las carreras antiguas sin datos de recorrido siguen mostrando la etiqueta de terreno anterior: una silueta esquemática y una categoría indicativa, no un perfil medido."
+      },
+      "raceDetail": {
+        "title": "Abre una carrera: recorrido, ADN del terreno y tu alineación",
+        "text": "Los nombres de las carreras se pueden pulsar en todo el juego. Abrir una carrera muestra sus resultados si se ha corrido o, para una carrera próxima, el perfil del recorrido por etapa, una barra de ADN del terreno con las habilidades que premia cada etapa y tu propia alineación con el encaje con el recorrido por etapa, para que elijas ciclistas que se adapten al recorrido. Elige una etapa en la franja de etapas para cambiar el perfil y el encaje con el recorrido. Las carreras con datos de recorrido muestran el perfil exacto que ejecuta el motor; las más antiguas sin ellos siguen mostrando una categoría de terreno indicativa. En la pestaña de resultados de una etapa puedes cambiar entre Etapa, General, Puntos, Montaña, Jóvenes y Equipos para ver la clasificación tras esa etapa, y un filtro de equipo te permite acotar las tablas a todos los equipos, a tu propio equipo o a uno concreto."
+      },
+      "teamSelection": {
+        "title": "Elige tu equipo y mueve ciclistas entre carreras",
+        "text": "Para cada carrera en la que te inscribes sacas un equipo completo: elige todas las plazas de ciclista que tiene la carrera. Si prefieres no correr una carrera, retírate de ella; si andas escaso de ciclistas, ficha agentes libres desde la página de Fichajes. Cuando dos de tus carreras se solapan el mismo día, un ciclista solo puede estar en una de ellas. En el tablero de Reparto de la plantilla puedes mover a un ciclista de una carrera a otra arrastrándolo en el escritorio, o tocando al ciclista y eligiendo la otra carrera en el móvil. La carrera de la que lo sacas aparece con pocos ciclistas hasta que la rellenes de nuevo, y la opción Rellenar automáticamente del asistente lo hace rápido."
+      },
+      "prizeMoney": {
+        "title": "Premios en metálico de las carreras",
+        "text": "Cada resultado de un ciclista de tu equipo genera premios en metálico: puntos por el puesto × {prizePerPoint} CZ$. Los premios se pagan automáticamente al saldo de tu equipo cuando el administrador finaliza los resultados y aparecen como una transacción de «premio» en tu registro de finanzas. Los puntos de la clasificación de la temporada y los premios en metálico se calculan por separado: los puntos deciden la clasificación, mientras que el premio en CZ$ solo afecta a tu saldo. Las carreras sin categoría de carrera no generan premios. Consulta la tabla de puntos completa en Resultados, Puntos y premios."
+      },
+      "divisionBonus": {
+        "title": "Bonus de división al final de la temporada",
+        "text": "Léelo en dos pasos: elige la fila del puesto en que terminaste en tu propia división y luego la columna de la división en la que corriste. Las celdas en blanco no pagan nada, y tampoco cualquier puesto por debajo de la última fila.",
+        "rows": [
+          [
+            "Dónde terminaste",
+            "En la División 1",
+            "En la División 2",
+            "En la División 3",
+            "En la División 4"
+          ],
+          [
+            "1.º en tu división",
+            "{bonusD1P1} CZ$",
+            "{bonusD2P1} CZ$",
+            "{bonusD3P1} CZ$",
+            "{bonusD4P1} CZ$"
+          ],
+          [
+            "2.º en tu división",
+            "{bonusD1P2} CZ$",
+            "{bonusD2P2} CZ$",
+            "{bonusD3P2} CZ$",
+            "{bonusD4P2} CZ$"
+          ],
+          [
+            "3.º en tu división",
+            "{bonusD1P3} CZ$",
+            "{bonusD2P3} CZ$",
+            "{bonusD3P3} CZ$",
+            "{bonusD4P3} CZ$"
+          ],
+          [
+            "4.º en tu división",
+            "{bonusD1P4} CZ$",
+            "{bonusD2P4} CZ$",
+            "—",
+            "—"
+          ]
+        ]
+      },
+      "raceLibrary": {
+        "title": "Archivo de carreras",
+        "text": "En Resultados, Archivo puedes buscar y filtrar todas las carreras de todas las temporadas (temporada, categoría, estado, nombre). La lista se ordena de más nueva a más antigua, y un filtro «Solo mi división» la acota a las carreras de tu propia división para que encuentres rápido lo que corriste hoy. Haz clic en una carrera para abrir su página de historial con las ediciones anteriores, el ganador de cada temporada y un resumen acumulado de los ciclistas que mejor han rendido históricamente en esa carrera. Cada edición enlaza directamente con el resultado completo de esa edición."
+      },
+      "promotionRelegation": {
+        "title": "Ascensos y descensos",
+        "text": "Las divisiones forman una pirámide de grupos: 1 grupo en la División 1, 2 en la División 2, 4 en la División 3 y 4 en la División 4. Al final de la temporada cada grupo asciende a sus 2 primeros equipos al grupo de arriba, y desciende a sus 4 últimos equipos al grupo o grupos de abajo, repartidos a partes iguales cuando hay más de uno. La División 1 no asciende (es la más alta) y la división más baja no desciende. Se decide automáticamente a partir de la clasificación final de tu grupo, cada temporada. Solo los mánagers reales cambian de grupo; los equipos IA son relleno y se completan después, nunca ascienden ni descienden ellos mismos. La División 4 se llena con equipos IA y tiene carreras desde el primer día, igual que todas las demás divisiones. Si desciendes de la División 1 o de la División 2, recibes un paracaídas de descenso de una temporada al inicio de tu próxima temporada: la mitad de los ingresos de patrocinio que pierdes al bajar de división, pagada una sola vez para suavizar la caída. Excepción puntual: entre la temporada 1 y la 2 la pirámide se compactó, con los 48 mejores equipos de mánagers llenando la División 2 y los 96 siguientes llenando la División 3, ordenados por los puntos totales de la temporada 1 en todos los grupos. El ascenso y el descenso normales se retomaron desde la temporada 2, así que el cambio de la temporada 2 a la 3 sigue la regla de arriba: los 2 primeros y los 4 últimos de cada grupo según la clasificación que ves ahora mismo, no un nuevo reparto por ranking global."
+      },
+      "whenSeasonEnds": {
+        "title": "¿Cuándo se puede terminar una temporada?",
+        "text": "El administrador solo puede terminar una temporada cuando se han procesado todos los resultados de carrera pendientes de las carreras de la temporada. Mientras haya envíos esperando aprobación o rechazo, el cierre de la temporada está bloqueado."
+      },
+      "seasonDocumentary": {
+        "title": "El documental de la temporada",
+        "text": "Después de una temporada completada, /seasons muestra una sección de documental para tu equipo debajo del resumen de la temporada: los mayores fichajes de tu temporada, tu mejor resultado, tu mejor día y el rival más cercano de tu clasificación final, redactado como una breve narración. Se genera una sola vez por equipo y temporada y se guarda en caché, así que todos leen el mismo texto. La versión por defecto se construye con una plantilla sobre tus propias cifras verificadas; si el propietario activa la capa opcional de pulido con IA, los mismos hechos se reescriben en prosa fluida sin añadir nada nuevo. Un botón Descargar tarjeta para compartir junto a ella exporta una imagen lista para captura con el nombre de tu equipo y los datos principales de la temporada."
+      },
+      "adminRecomputeStandings": {
+        "title": "Admin: recalcular la clasificación por desviación",
+        "text": "Si a una temporada activa o completada le faltan clasificaciones por una desviación de datos antiguos, el administrador puede usar el botón «↻ Clasificación» de la página de Admin. Recalcula la tabla a partir de los `race_results` almacenados, crea las filas de clasificación que faltan y actualiza el puesto interno de la división que la directiva usa al final de la temporada."
+      },
+      "adminBetaReset": {
+        "title": "Admin: reinicio de la beta",
+        "text": "En Admin, Herramientas de pruebas beta, el administrador puede ejecutar un reinicio parcial o un reinicio completo de pruebas. El conjunto puede cancelar la actividad de mercado abierta, devolver los ciclistas de los mánagers al grupo IA/libre, reiniciar saldos, divisiones, directivas, calendario de carreras, temporadas, XP/nivel y logros desbloqueados. Los equipos IA, los equipos del banco y los equipos congelados no se ven afectados por los reinicios de mánagers."
+      },
+      "seasonChangeover": {
+        "title": "Qué pasa con tus ciclistas en el cambio de temporada",
+        "steps": [
+          "Cada ciclista cumple un año más.",
+          "La forma decae hacia 50: alrededor del 25 % de la forma de final de temporada de cada ciclista pasa a la nueva temporada.",
+          "La fatiga se restablece a 0 para todos los ciclistas.",
+          "Las lesiones NO se restablecen. Pasan sin cambios.",
+          "Los planes de pico de forma no se ven afectados por el cambio.",
+          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan una sola vez, en la actualización del domingo posterior a que se complete el cambio.",
+          "El primer día de carrera de la nueva temporada es el día después del cambio. Su primera etapa empieza al menos 24 horas después de la última etapa de la temporada anterior, así que tienes tiempo para elegir tus plantillas de carrera."
+        ]
+      }
+    },
+    "prizes": {
+      "label": "Premios",
+      "formula": {
+        "title": "La fórmula del premio",
+        "text": "Los premios en metálico se calculan directamente a partir de los puntos: 1 punto = {prizePerPoint} CZ$. Solo las carreras con una categoría de carrera (Grand Tour, Gran vuelta, Monuments, WorldTour, ProSeries, Clase 1, Clase 2) generan premios. Las carreras sin categoría dan 0 CZ$."
+      },
+      "examples": {
+        "title": "Ejemplos de importes de premio",
+        "rows": [
+          [
+            "Victoria",
+            "Puntos",
+            "Premio"
+          ],
+          [
+            "Victoria en un Grand Tour",
+            "1.300",
+            "97.500 CZ$"
+          ],
+          [
+            "Victoria en un Monument",
+            "800",
+            "60.000 CZ$"
+          ],
+          [
+            "Victoria de etapa (Grand Tour)",
+            "210",
+            "15.750 CZ$"
+          ],
+          [
+            "Victoria en una ProSeries",
+            "200",
+            "15.000 CZ$"
+          ],
+          [
+            "Victoria en Clase 1",
+            "125",
+            "9.375 CZ$"
+          ],
+          [
+            "Victoria en Clase 2",
+            "40",
+            "3.000 CZ$"
+          ]
+        ]
+      },
+      "payout": {
+        "title": "Pago",
+        "text": "Los premios en metálico se pagan automáticamente a tu saldo cuando el administrador finaliza los resultados de carrera y aparecen como una transacción de «premio» en tu registro de finanzas. Los puntos de la clasificación de la temporada y los premios en metálico se calculan por separado: los puntos deciden la clasificación, mientras que el premio en CZ$ solo afecta a tu saldo."
+      },
+      "fullTable": {
+        "title": "La tabla de puntos completa",
+        "text": "En Resultados, Puntos y premios encontrarás la escala completa de puntos y premios de cada categoría de carrera con todos los puestos.",
+        "ctaLabel": "Abrir Puntos y premios",
+        "ctaTo": "/resultater?tab=points",
+        "disclaimer": "Los importes de los premios aún pueden ajustarse durante la beta abierta."
+      }
+    },
+    "divisions": {
+      "label": "Divisiones",
+      "overview": {
+        "title": "Resumen de las divisiones",
+        "text": "El juego tiene 4 divisiones. La División 1 es la más alta. Los equipos nuevos empiezan en la División 4."
+      },
+      "sizePerDivision": {
+        "title": "Tamaño de la plantilla por división",
+        "rows": [
+          [
+            "División",
+            "Mínimo de ciclistas",
+            "Máximo de ciclistas"
+          ],
+          [
+            "División 1",
+            "0",
+            "30"
+          ],
+          [
+            "División 2",
+            "0",
+            "30"
+          ],
+          [
+            "División 3",
+            "0",
+            "30"
+          ],
+          [
+            "División 4",
+            "0",
+            "30"
+          ]
+        ]
+      },
+      "promotionRelegation": {
+        "title": "Ascensos y descensos",
+        "text": "Cada grupo asciende a sus 2 primeros al grupo de arriba y desciende a sus 4 últimos al grupo o grupos de abajo, repartidos a partes iguales cuando hay más de uno. La División 1 no asciende y la división más baja no desciende. Se decide automáticamente a partir de la clasificación de tu grupo, cada temporada. Los equipos que descienden de la División 1 o 2 reciben un paracaídas de descenso de una temporada (la mitad de los ingresos de patrocinio perdidos) para suavizar la transición."
+      }
+    },
+    "globalRank": {
+      "label": "Ranking global",
+      "whatIsIt": {
+        "title": "¿Qué es el Ranking global?",
+        "text": "El Ranking global es un único ranking de todos los mánagers, en todas las divisiones, así que tu posición sobrevive a los ascensos y descensos y no se reinicia cuando termina la temporada. Lo encontrarás en Resultados > Clasificaciones, en la pestaña Ranking global."
+      },
+      "howScored": {
+        "title": "¿Cómo se ganan los puntos?",
+        "text": "Ganas puntos con tus resultados de carrera, ponderados por el prestigio de la carrera (los mismos puntos que ya cuentan para tu clasificación de la temporada). Las carreras más grandes (Monuments, Grand Tours) valen más."
+      },
+      "decay": {
+        "title": "¿Por qué se reducen mis puntos?",
+        "text": "Todos tus puntos se reducen a la mitad en cada cambio de temporada. No hay una fecha de caducidad fija ni una ventana móvil, solo un decaimiento sencillo: la temporada que acabas de terminar sigue contando, pero con la mitad de peso, luego una cuarta parte, y así sucesivamente. Esto mantiene el ranking autolimitado (tu total se estabiliza en torno al doble de los puntos de una buena temporada) y hace que la forma reciente siempre cuente más."
+      },
+      "newManagers": {
+        "title": "¿Y los mánagers nuevos?",
+        "text": "La primera temporada de un mánager nuevo cuenta con peso completo desde el primer día, junto a los puntos antiguos y reducidos a la mitad de los veteranos, así que no hay penalización por antigüedad. Los rookies (mánagers en su primera temporada) también se destacan por separado en el panel «Mejor mánager nuevo»."
+      },
+      "inactive": {
+        "title": "¿Por qué he desaparecido de la lista?",
+        "text": "Los mánagers sin actividad en las últimas 2 temporadas se ocultan del Ranking global para mantener la lista relevante. Tus puntos no se pierden: volverás a aparecer con el puesto correcto en cuanto vuelvas a estar activo."
+      },
+      "movement": {
+        "title": "La flecha de movimiento",
+        "text": "La flecha de subida/bajada junto a tu puesto muestra cómo ha cambiado tu posición desde la instantánea de la semana pasada (no en directo en cada carga de página). El panel «Escaladores de la temporada», en cambio, mide los puestos ganados desde que empezó la temporada."
+      }
+    }
+  }
+}
