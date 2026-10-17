@@ -228,7 +228,8 @@ test("#6748 rigtig motor: et nyt udbrud paa foerste etape rummer under v2 ingen 
   const { entrants } = splitEntrants(GIRO);
   // Foerste og anden vejetape som et loeb for sig: den foerste har S5's syntetiske klassement.
   const stages = sortedStages(GIRO).filter((s: { profile_type: string }) => s.profile_type !== "itt" && s.profile_type !== "ttt").slice(0, 2);
-  const byId: Record<string, Entrant> = Object.fromEntries(entrants.map((e: Entrant) => [e.rider_id, e]));
+  // Kun evnerne bruges (gcAbility); maaleskemaets raekker er ikke fulde Entrants.
+  const byId = Object.fromEntries(entrants.map((e: { rider_id: string }) => [e.rider_id, e])) as unknown as Record<string, Entrant>;
   const top = s5ReformationExcludedRiders(syntheticFirstStage(Object.keys(byId)), byId, S5_REFORMATION_TUNING.excludeGcRankAtMost, { abilityOnFirstStage: true });
   let seen = 0;
   for (const seedTag of ["a1", "a2", "a3", "a4", "a5", "a6"]) {
