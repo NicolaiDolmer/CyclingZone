@@ -17,7 +17,9 @@ test("riderNameMatches — accent- og case-ufølsom, tom q matcher alt", () => {
   assert.ok(riderNameMatches("Tadej Pogačar", "pogacar"));
   assert.ok(riderNameMatches("Alejandro López", "LOPEZ"));
   assert.ok(riderNameMatches("Søren Kragh", "soren"));
-  assert.ok(riderNameMatches("Dylan O'Brien", "obrien") === false);
+  assert.ok(riderNameMatches("Jean-Pierre Bidard", "Jean-Pierre"), "bindestreg i token");
+  assert.ok(riderNameMatches("Dylan O'Brien", "O'Brien"), "apostrof i token");
+  assert.ok(riderNameMatches("Jean-Pierre Bidard", "pierre"), "ord efter bindestreg");
   assert.ok(riderNameMatches("Dylan O'Brien", "brien"));
   assert.ok(riderNameMatches("Hvem Som Helst", "  "));
 });
