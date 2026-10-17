@@ -375,7 +375,9 @@ function withS5Reformation(result: SegmentHookResult, ctx: BreakawayHookContext)
   const current = findBreakawayGroups(result.state.groups).filter((g) => g.origin === "breakaway"); // kun morgen-/reformationsudbrud, aldrig et nedkoerselsangreb
   if (current.length > 0) {
     // Husk udbruddets ryttere; indhentningen (sammenlaegningen) sker senere i loopet.
-    return { ...result, state: { ...result.state, s5_last_break_rider_ids: current.flatMap((g) => g.rider_ids).sort() } };
+    // Akkumuleret: en udbryder der allerede er sat af, er stadig fra det hentede udbrud.
+    const roster = new Set([...(result.state.s5_last_break_rider_ids ?? []), ...current.flatMap((g) => g.rider_ids)]);
+    return { ...result, state: { ...result.state, s5_last_break_rider_ids: [...roster].sort() } };
   }
   const last = result.state.s5_last_break_rider_ids;
   const used = result.state.breakaway_reformations ?? 0;
