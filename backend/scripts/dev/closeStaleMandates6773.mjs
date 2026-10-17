@@ -318,24 +318,28 @@ export async function runApply({
   // (1) Bonusmål først, så intet accepteret mål er usynligt mellem de to trin.
   // Codex P1: lykkes en flytning ikke, lukkes kilden IKKE.
   const keepOpen = new Set();
+  // Codex P1: optimistisk lås på updated_at, så en samtidig accept af et
+  // bonustilbud (appendBonusGoalToActiveMandate sætter updated_at) aldrig
+  // overskrives af et forældet goals-array. Ved kollision læses der igen.
   for (const move of plan.bonusMoves) {
-    const { data: target, error } = await supabase
-      .from("board_mandates").select("id, status, goals").eq("id", move.toId).maybeSingle();
-    if (error) throw new Error(`modtager-mandat ${move.toId}: ${error.message}`);
-    if (!target || target.status !== "active") {
-      result.skipped.push({ id: move.toId, reason: "modtager ikke aktiv; kilden lukkes ikke" });
-      keepOpen.add(move.fromId);
-      continue;
+    let moved = false;
+    let reason = "bonusmål ikke skrevet efter 3 forsøg; kilden lukkes ikke";
+    for (let attempt = 1; attempt <= 3 && !moved; attempt += 1) {
+      const { data: target, error } = await supabase
+        .from("board_mandates").select("id, status, goals, updated_at").eq("id", move.toId).maybeSingle();
+      if (error) throw new Error(`modtager-mandat ${move.toId}: ${error.message}`);
+      if (!target || target.status !== "active") { reason = "modtager ikke aktiv; kilden lukkes ikke"; break; }
+      const current = Array.isArray(target.goals) ? target.goals : [];
+      const add = move.goals.filter((g) => !hasBonusGoalForOffer(current, { offerId: g.bonus_offer_id, extraGoal: g }));
+      if (!add.length) { moved = true; break; }
+      let q = supabase.from("board_mandates").update({ goals: [...current, ...add], updated_at: nowIso })
+        .eq("id", move.toId).eq("status", "active");
+      q = target.updated_at == null ? q.is("updated_at", null) : q.eq("updated_at", target.updated_at);
+      const { data: upd, error: upErr } = await q.select("id");
+      if (upErr) throw new Error(`bonusmål til ${move.toId}: ${upErr.message}`);
+      if ((upd || []).length) { result.bonusGoalsMoved += add.length; moved = true; }
     }
-    const current = Array.isArray(target.goals) ? target.goals : [];
-    const add = move.goals.filter((g) => !hasBonusGoalForOffer(current, { offerId: g.bonus_offer_id, extraGoal: g }));
-    if (!add.length) continue;
-    const { data: upd, error: upErr } = await supabase
-      .from("board_mandates").update({ goals: [...current, ...add], updated_at: nowIso })
-      .eq("id", move.toId).eq("status", "active").select("id");
-    if (upErr) throw new Error(`bonusmål til ${move.toId}: ${upErr.message}`);
-    if ((upd || []).length) result.bonusGoalsMoved += add.length;
-    else { result.skipped.push({ id: move.toId, reason: "bonusmål ikke skrevet; kilden lukkes ikke" }); keepOpen.add(move.fromId); }
+    if (!moved) { result.skipped.push({ id: move.toId, reason }); keepOpen.add(move.fromId); }
   }
 
   // (2) Luk KUN de godkendte id'er, betinget på den forventede gamle status.

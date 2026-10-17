@@ -42,6 +42,7 @@ function createDouble(tables) {
         const up = {
           eq(col, v) { filters.push((r) => r[col] === v); return up; },
           lte(col, v) { filters.push((r) => r[col] != null && Number(r[col]) <= v); return up; },
+          is(col, v) { filters.push((r) => (r[col] ?? null) === v); return up; },
           select: async () => {
             const hit = rows.filter(match);
             hit.forEach((r) => Object.assign(r, payload));
@@ -261,4 +262,28 @@ test("#6773 (Codex) apply: mislykkes en bonus-flytning, lukkes kilden ikke", asy
   const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
   assert.equal(tables.board_mandates.find((m) => m.id === id(1)).status, "active", "kilden med bonusmålet står åben");
   assert.ok(out.result.skipped.some((s) => /kilden lukkes ikke/.test(s.reason)));
+});
+
+test("#6773 (Codex) apply: en samtidig accept af et bonustilbud overskrives ikke", async () => {
+  const tables = fixture();
+  tables.board_mandates.find((m) => m.id === id(2)).updated_at = "2026-10-17T10:00:00Z";
+  const double = createDouble(tables);
+  const { plan, hash } = await runDryRun({ supabase: double });
+  tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
+  // Spilleren accepterer et nyt bonustilbud lige efter apply har læst modtageren (første gang).
+  let raced = false;
+  tables.__onMaybeSingle = (table) => {
+    if (table !== "board_mandates" || raced) return;
+    raced = true;
+    queueMicrotask(() => {
+      const m = tables.board_mandates.find((x) => x.id === id(2));
+      m.goals = [...m.goals, { type: "y", target: 1, source: "bonus_offer", bonus_offer_id: "bo-new" }];
+      m.updated_at = "2026-10-17T10:05:00Z";
+    });
+  };
+  const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
+  const goals = tables.board_mandates.find((m) => m.id === id(2)).goals;
+  assert.ok(goals.some((g) => g.bonus_offer_id === "bo-new"), "spillerens nye bonusmål er bevaret");
+  assert.ok(goals.some((g) => g.bonus_offer_id === "bo-1"), "det flyttede bonusmål er med");
+  assert.equal(out.result.bonusGoalsMoved, 1);
 });
