@@ -13,7 +13,7 @@ klar, hvad der er bevist, og hvad der stadig blokerer.
 | Sideeffekt-isolation | **Klar.** Ny prod-kopi 5/10, renset; wrapperen giver `ISOLATED` (genmålt 10/10). |
 | Volumen i prod-størrelse | **Klar.** Staging 2.307.176 resultatrækker mod prods estimat 2.136.917 (17/10), efter `scripts/staging/topup-race-results.sql`. |
 | Pinned dag | **Klar:** uret `2026-10-19T00:00:00+02:00` (S4 game day 21, 57 slots i alle tre trupper), 0 forfaldne etaper før uret. |
-| Flag på staging | **Mangler:** `race_engine_v2` og `auto_prize` findes ikke i stagings `app_config` (planen stopper på `PLAN_STAGING_FLAG_OFF`). `stage_scheduler_enabled` er `on`. |
+| Flag på staging | **Mangler:** `race_engine_v2_enabled` og `auto_prize_enabled` findes ikke i stagings `app_config` (planen stopper på `PLAN_STAGING_FLAG_OFF`). `stage_scheduler_enabled` er `on`. |
 | Fuld pinned S4-løbsdag | **Værktøj klar:** `scripts/loadtest/race-day-sim.mjs` (afsnit 5). Ikke kørt: maskinen 17/10 havde hverken `supabase` CLI eller `psql`. |
 | #6170-prerequisites | Volumen-proben består nu ved `--min-results 2136917` (ikke kørt via wrapperen, talt med SQL). |
 
@@ -145,7 +145,7 @@ lavet, og læsning af auth-schemaet blev også afvist. Efter ejer-go køres:
 psql $env:STAGING_DB_URL -f scripts/staging/anonymize-staging.sql
 ```
 
-**Motor/scheduler:** tændes KUN i stagings `app_config` (`race_engine_v2`/`stage_scheduler`)
+**Motor/scheduler:** tændes KUN i stagings `app_config` (`race_engine_v2_enabled`/`stage_scheduler_enabled`)
 og kun efter grønt isolationstjek. Prod-flag røres aldrig.
 
 ### Fail-closed refresh (#6229)
@@ -200,7 +200,7 @@ aliaser (R01 ...), aldrig id'er eller navne.
    samme dag. Ingen default og ingen tolerance; scriptet sænker aldrig grænsen. En relativ
    tolerance kræver et ejer-go (kort i PR'en for #5904). Top-up er kun tilladt på staging
    (`scripts/staging/synthesize-race-results.sql`).
-2. **Flag i stagings `app_config`:** `stage_scheduler_enabled`, `race_engine_v2` og `auto_prize`
+2. **Flag i stagings `app_config`:** `stage_scheduler_enabled`, `race_engine_v2_enabled` og `auto_prize_enabled`
    skal være tændt. Scriptet læser dem og skriver aldrig flag. Øvrige flag
    (fx `training_tick_per_race_day`) sættes som i prod; rapporten viser ikke deres værdi.
 3. **Pinned dag:** første S4-dag der ikke er kørt på staging. Planen stopper ved forfaldne
@@ -240,7 +240,7 @@ næste uafviklede dag eller en frisk refresh.
 ## 6. Udestående
 
 1. ~~Volumen~~: løst 17/10 (afsnit 2). Gentag top-up'en, hvis prods estimat passerer stagings tal.
-2. **Flag:** `race_engine_v2` og `auto_prize` sættes på STAGING (kun efter grønt isolationstjek).
+2. **Flag:** `race_engine_v2_enabled` og `auto_prize_enabled` sættes på STAGING (kun efter grønt isolationstjek).
 3. Kør `race-day-sim.mjs` (afsnit 5) med `--clock 2026-10-19T00:00:00+02:00 --season 4
    --min-results <frisk prod-estimat>` fra en maskine med `supabase` CLI og `psql`, og gem
    rapporten i `docs/snapshots/5904/`.
