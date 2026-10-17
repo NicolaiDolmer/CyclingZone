@@ -3189,6 +3189,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
 // returnerer "invalid_focus", hvilket blokerer knappen helt.
 router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  // #6536 (Codex): et parkeret hold traener ikke, heller ikke paa managerens tryk.
+  if (req.team.parked_at != null) return res.status(409).json({ error: "team_parked" });
   try {
     if (await isTrainingConditionPerDateEnabled(supabase)) {
       return res.status(409).json({ error: "normalized_sweep_owns_date" });
