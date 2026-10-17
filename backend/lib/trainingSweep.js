@@ -14,7 +14,7 @@
 import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
-import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { isReclaimableLegacyReservation, runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
 
 export const SWEEP_FROM_HOUR = 22;
@@ -52,9 +52,14 @@ export function shouldSweepNow(now = new Date()) {
  * @param {string} tickDate — YYYY-MM-DD
  * @returns {Array<{id: string}>}
  */
-export function teamsNeedingSweep(teams, todaysRuns, tickDate) {
+export function teamsNeedingSweep(teams, todaysRuns, tickDate, now) {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) throw new Error("teamsNeedingSweep: now (Date) er paakraevet");
+  // #6759 (Codex): en forældet "loading"-reservation er IKKE en kørsel. Holdet
+  // sendes til motoren, som overtager reservationen (resolveTakenLegacyReservation).
   const ranToday = new Set(
-    todaysRuns.filter((r) => r.tick_date === tickDate).map((r) => r.team_id)
+    todaysRuns
+      .filter((r) => r.tick_date === tickDate && !isReclaimableLegacyReservation(r, now))
+      .map((r) => r.team_id)
   );
   return teams.filter((t) => !ranToday.has(t.id));
 }
@@ -118,7 +123,7 @@ export async function runTrainingSweep({
 
     supabase
       .from("training_day_runs")
-      .select("team_id, tick_date")
+      .select("team_id, tick_date, created_at, report")
       .eq("tick_date", tickDate),
   ]);
 
@@ -145,7 +150,7 @@ export async function runTrainingSweep({
   const runs = runsResult.data ?? [];
 
   // ── Sekventiel sweep (idempotent-safe via engine-mutex) ───────────────────────
-  const pending = teamsNeedingSweep(teams, runs, tickDate);
+  const pending = teamsNeedingSweep(teams, runs, tickDate, now);
 
   let swept = 0;
   let failed = 0;

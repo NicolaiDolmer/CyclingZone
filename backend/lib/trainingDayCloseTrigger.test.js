@@ -16,6 +16,7 @@ import {
   TEAM_CONCURRENCY_CONFIG_KEY, MAX_TEAM_CONCURRENCY, parseTeamConcurrency, resolveTeamConcurrency,
   startTrainingDayCloseAfterStages,
   formatTrainingDayCloseFailure, formatTrainingDayCloseFailures, createTrainingDayCloseFailureTracker,
+  loadLegacyRunBlockingTeamIds,
 } from "./trainingDayCloseTrigger.js";
 import {
   runNormalizedTrainingDateSweep, forEachTeamBounded, __resetNormalizedTrainingDateCacheForTests,
@@ -1108,6 +1109,45 @@ describe("parseTeamConcurrency / resolveTeamConcurrency (#5911)", () => {
     assert.equal(await sweepConcurrency(12), 12);
     assert.equal(await sweepConcurrency(undefined), 1);
     assert.equal(await sweepConcurrency("on"), 1);
+  });
+
+  it("#6759: den normaliserede sweep faar legacy-loaderen der ignorerer uafregnede reservationer", async () => {
+    __resetTrainingDayCloseStateForTests();
+    const query = { select() { return this; }, eq() { return this; },
+      async maybeSingle() { return { data: { value: "on" }, error: null }; } };
+    let received = null;
+    await runTrainingDayCloseSweep({
+      supabase: { from: () => query }, now: new Date("2026-10-11T18:05:00Z"),
+      runNormalized: async (args) => { received = args.loadLegacyRuns; return { ran: false }; },
+    });
+    assert.equal(received, loadLegacyRunBlockingTeamIds);
+  });
+});
+
+describe("loadLegacyRunBlockingTeamIds (#6759)", () => {
+  function fakeSupabase(rows, calls) {
+    const query = {
+      select(cols) { calls.push(["select", cols]); return this; },
+      eq(col, val) { calls.push(["eq", col, val]); return this; },
+      is(col, val) { calls.push(["is", col, val]); return this; },
+      order() { return this; },
+      range() { return Promise.resolve({ data: rows, error: null }); },
+    };
+    return { from: (table) => { calls.push(["from", table]); return query; } };
+  }
+
+  it("afregnede og 'writing'-raekker blokerer; 'loading'-reservationer (frisk eller forældet) goer ikke", async () => {
+    const calls = [];
+    const rows = [
+      { team_id: "settled", stage: null },
+      { team_id: "writing", stage: "writing" },
+      { team_id: "loading", stage: "loading" },
+    ];
+    const blocking = await loadLegacyRunBlockingTeamIds({ supabase: fakeSupabase(rows, calls), tickDate: "2026-10-11" });
+    assert.deepEqual([...blocking].sort(), ["settled", "writing"]);
+    assert.deepEqual(calls.filter((c) => c[0] !== "select"), [
+      ["from", "training_day_runs"], ["eq", "tick_date", "2026-10-11"], ["is", "game_day", null],
+    ]);
   });
 });
 

@@ -33,7 +33,8 @@ ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparatio
 - **Forbigående fejl** (HTTP 0/502/503/504/520-524, netværksfejl, statement-timeout): træningsmotoren afregner IKKE holdet uden facilitets- og trænerbonus. Tick'et kaster, intet skrives, og holdet tages ved næste sweep. Kun motoren beder om dette (`loadTrainingStaffContext(..., { retryOnTransient: true })`).
 - **Vedvarende fejl** (fx manglende rettighed, skema-drift): neutral kontekst og Sentry, så én permanent fejl ikke stopper al træning.
 - **Andre læsere** (akademi-visningen, dev-scripts) får altid neutral kontekst; en kort gateway-fejl vælter ikke siden.
-- **Reservationen** på den gamle kalenderdags-sti slettes efter en fejl og prøves op til 3 gange; lykkes det ikke, meldes det i Sentry (`step: reservation_cleanup`). Selvrettende oprydning af forældede reservationer: #6759.
+- **Reservationen** på den gamle kalenderdags-sti slettes efter en fejl og prøves op til 3 gange; lykkes det ikke, meldes det i Sentry (`step: reservation_cleanup`).
+- **Selvrettende reservation (#6759):** reservationen bærer et stadie. `loading` (kun læsning, intet skrevet) ældre end én sweep-cyklus (5 min, cron-kadencen) er ledig: næste kørsel sletter den betinget og afregner holdet én gang. En frisk `loading` giver en retryable fejl, så sweepen prøver igen i stedet for at kalde dagen færdig. `writing` (writes i gang) og afregnede rækker frigives aldrig.
 
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 

@@ -51,7 +51,7 @@ import { copenhagenHour, copenhagenDateString, copenhagenMidnightUTC } from "./c
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
-import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { runTeamTrainingDay, isLegacyLoadingReservation } from "./dailyTrainingEngine.js";
 import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -65,6 +65,22 @@ import { isLegacyCalendarTickTeam, runNormalizedTrainingDateSweep } from './trai
  */
 function stripJoin(rows) {
   return (rows ?? []).map(({ races: _join, ...rest }) => /** @type {any} */ (rest));
+}
+
+/**
+ * #6759: hvilke division-loese hold har en legacy-raekke for datoen, der betyder
+ * "faerdig"? En uafregnet "loading"-reservation taeller IKKE som koert: sweepen kalder
+ * motoren, der enten frigiver en forældet reservation og afregner (hoejst én gang)
+ * eller kaster en retryable fejl for en frisk, saa datoen ikke caches som faerdig
+ * foer holdet er afregnet. Afregnede raekker og "writing"-raekker springes over.
+ * @param {{supabase: any, tickDate: string}} args
+ * @returns {Promise<Set<string>>}
+ */
+export async function loadLegacyRunBlockingTeamIds({ supabase, tickDate }) {
+  const rows = await fetchAllRows(() => supabase.from("training_day_runs")
+    .select("team_id, stage:report->>stage")
+    .eq("tick_date", tickDate).is("game_day", null).order("team_id"));
+  return new Set(rows.filter((row) => !isLegacyLoadingReservation(row)).map((row) => row.team_id));
 }
 
 /** Tidligste danske klokketime sweepen maa koere (ejer 15/9, beslutning 4). */
@@ -784,7 +800,8 @@ async function runTrainingDayCloseSweepGuarded({
   if (await isTrainingConditionPerDateEnabled(supabase)) {
     if (!await isDailyTrainingEnabled(supabase)) return { ran: false, skipped: 'daily_training_off' };
     const teamConcurrency = await resolveTeamConcurrency(supabase);
-    return await runNormalized({ supabase, now, runDay, onAlarm, logger, loadDaySpans: loadDayCloseSpans, teamConcurrency });
+    return await runNormalized({ supabase, now, runDay, onAlarm, logger, loadDaySpans: loadDayCloseSpans, teamConcurrency,
+      loadLegacyRuns: loadLegacyRunBlockingTeamIds });
   }
 
   // ── b) Dags-claim ───────────────────────────────────────────────────────────

@@ -3,6 +3,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { shouldSweepNow, teamsNeedingSweep, runTrainingSweep, __resetTrainingSweepStateForTests } from "./trainingSweep.js";
 
+// Fast referencetid: testene maa ikke laese vaeguret (#6759 Codex).
+const FIXED_NOW = new Date("2026-06-20T20:00:00Z");
+
 // ── shouldSweepNow ────────────────────────────────────────────────────────────
 
 describe("shouldSweepNow", () => {
@@ -36,7 +39,7 @@ describe("teamsNeedingSweep", () => {
     const teams = [{ id: "t1" }, { id: "t2" }];
     const runs = [{ team_id: "t1", tick_date: "2026-06-20" }];
     assert.deepEqual(
-      teamsNeedingSweep(teams, runs, "2026-06-20").map((t) => t.id),
+      teamsNeedingSweep(teams, runs, "2026-06-20", FIXED_NOW).map((t) => t.id),
       ["t2"]
     );
   });
@@ -45,7 +48,7 @@ describe("teamsNeedingSweep", () => {
     const teams = [{ id: "t1" }, { id: "t2" }];
     const runs = [];
     assert.deepEqual(
-      teamsNeedingSweep(teams, runs, "2026-06-20").map((t) => t.id),
+      teamsNeedingSweep(teams, runs, "2026-06-20", FIXED_NOW).map((t) => t.id),
       ["t1", "t2"]
     );
   });
@@ -56,7 +59,7 @@ describe("teamsNeedingSweep", () => {
       { team_id: "t1", tick_date: "2026-06-20" },
       { team_id: "t2", tick_date: "2026-06-20" },
     ];
-    assert.deepEqual(teamsNeedingSweep(teams, runs, "2026-06-20"), []);
+    assert.deepEqual(teamsNeedingSweep(teams, runs, "2026-06-20", FIXED_NOW), []);
   });
 
   it("kørsler fra en anden dato tæller ikke", () => {
@@ -64,7 +67,7 @@ describe("teamsNeedingSweep", () => {
     // t1 kørte i går
     const runs = [{ team_id: "t1", tick_date: "2026-06-19" }];
     assert.deepEqual(
-      teamsNeedingSweep(teams, runs, "2026-06-20").map((t) => t.id),
+      teamsNeedingSweep(teams, runs, "2026-06-20", FIXED_NOW).map((t) => t.id),
       ["t1", "t2"]
     );
   });
@@ -388,6 +391,19 @@ describe("#3459 D4: is_ai-filteret følger race_day_engine_enabled", () => {
     const runDay = async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; };
     await runTrainingSweep({ supabase, now: afterWindow, runDay });
     assert.deepEqual(called, ["ai1"], "bank/frozen/test-account-hold udelukkes stadig, kun ai1 kvalificerer");
+  });
+});
+
+describe("#6759 (Codex): den gamle sweep sender forældede reservationer til motoren", () => {
+  it("en forældet 'loading'-række tæller ikke som kørt; frisk loading og afregnet gør", () => {
+    const now = new Date("2026-06-20T20:30:00Z");
+    const teams = [{ id: "stale" }, { id: "fresh" }, { id: "done" }];
+    const runs = [
+      { team_id: "stale", tick_date: "2026-06-20", created_at: "2026-06-20T20:00:00Z", report: { stage: "loading" } },
+      { team_id: "fresh", tick_date: "2026-06-20", created_at: "2026-06-20T20:29:00Z", report: { stage: "loading" } },
+      { team_id: "done", tick_date: "2026-06-20", created_at: "2026-06-20T19:00:00Z", report: { riders: [] } },
+    ];
+    assert.deepEqual(teamsNeedingSweep(teams, runs, "2026-06-20", now).map((t) => t.id), ["stale"]);
   });
 });
 
