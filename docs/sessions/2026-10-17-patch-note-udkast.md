@@ -8,7 +8,7 @@
 Auction cancellations, auto-bid alerts, deal confirmations, squad enforcement and rider arrivals now reach you in the language you play in. Before, some of them always came in Danish.
 
 **Parked teams and training**
-A parked team no longer trains, and the training page says so. When you come back from parking, you don't get the missed days in one go either.
+A parked team no longer trains, and the training page no longer offers to run it. When you come back from parking, you don't get the missed days in one go either.
 
 **"Train now" while a run is busy**
 If you press "Train now" while the evening run is already handling your team, the page now simply refreshes instead of showing an error.
@@ -19,7 +19,7 @@ If you press "Train now" while the evening run is already handling your team, th
 Annullerede auktioner, autobud, handler der venter på dig, trup-håndhævelse og ankomne ryttere kommer nu på det sprog, du spiller på. Før kom nogle af dem altid på dansk.
 
 **Parkerede hold og træning**
-Et parkeret hold træner ikke længere, og træningssiden siger det. Når du kommer tilbage fra parkering, får du heller ikke de missede dage på én gang.
+Et parkeret hold træner ikke længere, og træningssiden tilbyder det ikke længere. Når du kommer tilbage fra parkering, får du heller ikke de missede dage på én gang.
 
 **"Træn nu" mens en kørsel er i gang**
 Trykker du "Træn nu", mens aftenens kørsel allerede tager dit hold, genindlæser siden nu bare i stedet for at vise en fejl.
