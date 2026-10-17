@@ -76,7 +76,9 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const locked = !!column.lineup_locked;
   // #6740: startet, men holdet kom ikke med i feltet (fjernet ved start, under gulvet).
   // Afmeldt har forrang (#4306); begge viser en note i stedet for en "låst" trup.
-  const didNotStart = !column.withdrawn && locked && !!column.did_not_start;
+  // did_not_start VINDER over withdrawn: serveren sætter begge for et hold der blev
+  // fjernet ved start og frigivet med en did_not_start-afmelding (#6740).
+  const didNotStart = locked && !!column.did_not_start;
   const inactive = !!column.withdrawn || didNotStart;
   // #6383: ryttere der har trænet i dag (Train now) er afgjort for dette løb: grånet,
   // kan hverken fjernes eller trækkes — samme regel som udtagelsespanelet (#6139).
@@ -126,10 +128,10 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   // efter etape 1 er kørt - lineup_locked er sand for HELE løbet uafhængigt af
   // holdets egen withdrawn-status, så den gamle rækkefølge lod "locked" overtrumfe
   // "withdrawn" fra og med etape 1.
-  const status = column.withdrawn
-    ? { kind: "withdrawn", selected: column.counts.selected, target: column.counts.target }
-    : didNotStart
+  const status = didNotStart
     ? { kind: "didNotStart" }
+    : column.withdrawn
+    ? { kind: "withdrawn", selected: column.counts.selected, target: column.counts.target }
     : locked
     ? { kind: "locked" }
     : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, max: column.size?.max, withdrawn: column.withdrawn });
@@ -259,7 +261,13 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         </>
       )}
 
-      {column.withdrawn ? (
+      {didNotStart ? (
+        // #6740: holdet kørte ikke. Ingen trup at vise som "låst", ingen tal der lyver.
+        <div data-testid="column-did-not-start" className="flex-1 flex items-start gap-2 px-3 py-4 text-xs text-cz-warning">
+          <AlertTriangleIcon size={14} className="shrink-0 mt-px" aria-hidden="true" />
+          <span>{t("racehub.column.didNotStartNote", { min: MIN_RACE_ENTRIES })}</span>
+        </div>
+      ) : column.withdrawn ? (
         // #4306 (ejer-direktiv 27/8, Refs #4306): withdrawn har FORRANG over locked -
         // et hold der afmeldte sig FØR løbsstart skal blive ved med at vise denne note
         // gennem hele afviklingen, ikke kun frem til etape 1. lineup_locked er sand for
@@ -268,12 +276,6 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
         <div className="flex-1 flex items-start gap-2 px-3 py-4 text-xs text-cz-3">
           <InfoIcon size={14} className="shrink-0 mt-px" aria-hidden="true" />
           <span>{t("racehub.column.withdrawnNote")}</span>
-        </div>
-      ) : didNotStart ? (
-        // #6740: holdet kørte ikke. Ingen trup at vise som "låst", ingen tal der lyver.
-        <div data-testid="column-did-not-start" className="flex-1 flex items-start gap-2 px-3 py-4 text-xs text-cz-warning">
-          <AlertTriangleIcon size={14} className="shrink-0 mt-px" aria-hidden="true" />
-          <span>{t("racehub.column.didNotStartNote", { min: MIN_RACE_ENTRIES })}</span>
         </div>
       ) : locked ? (
         <div className="py-1 flex-1">

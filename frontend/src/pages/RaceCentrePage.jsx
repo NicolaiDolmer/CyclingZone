@@ -247,6 +247,8 @@ export default function RaceCentrePage() {
               // backend/routes/api.js) — læs den så kortet kan vise "Withdrawn"
               // i stedet for "Line-up ready" for et hold der har meldt fra.
               withdrawn: body.withdrawn === true,
+              // #6740: fjernet ved start (did_not_start-afmelding) — kortet siger det, ikke "Withdrawn".
+              didNotStart: body.did_not_start === true,
             }];
           } catch { return null; }
         }));

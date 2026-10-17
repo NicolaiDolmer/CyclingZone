@@ -89,7 +89,8 @@ test("#5301/3: loebssidens selection-endpoint fortaeller om holdet har trukket s
     block, /\.from\("race_withdrawals"\)\.select\("race_id, withdrawn_reason"\)\s*\n\s*\.eq\("race_id", race\.id\)\.eq\("team_id", req\.team\.id\)\.maybeSingle\(\)/,
     "GET skal slaa op i race_withdrawals for netop dette loeb+hold"
   );
-  assert.match(block, /const withdrawn = Boolean\(withdrawalRow\) && !didNotStart;/);
+  assert.match(block, /const withdrawn = Boolean\(withdrawalRow\);/);
+  assert.match(block, /const didNotStart = withdrawalRow\?\.withdrawn_reason === DID_NOT_START_REASON;/);
   assert.match(
     block, /res\.json\(\{ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race,/,
     "flaget skal med i svaret — Dashboard-nudgen og panelet laeser begge denne payload"

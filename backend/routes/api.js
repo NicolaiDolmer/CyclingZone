@@ -4713,10 +4713,12 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       .from("race_withdrawals").select("race_id, withdrawn_reason")
       .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
     if (wErr) return res.status(500).json({ error: wErr.message });
-    // #6740: en "did_not_start"-afmelding (holdet blev fjernet ved start) er ikke et
-    // frivilligt fravalg: panelet må ikke sige "du har meldt fra, deltag igen".
+    // #6740: en "did_not_start"-afmelding (holdet blev fjernet ved start) er inaktiv som
+    // enhver afmelding (`withdrawn`, så Race Centre, dashboard-påmindelsen og panelet
+    // ikke beder om en trup), men teksterne læser `did_not_start` FØRST: det var ikke et
+    // frivilligt fravalg, og "deltag igen" findes ikke.
     const didNotStart = withdrawalRow?.withdrawn_reason === DID_NOT_START_REASON;
-    const withdrawn = Boolean(withdrawalRow) && !didNotStart;
+    const withdrawn = Boolean(withdrawalRow);
 
     // #2265: binding-info pr. rytter — hvem er allerede optaget i et ANDET løb hvis
     // in-game-dag-vindue overlapper DETTE løbs? Samme datavej som PUT-guarden
@@ -5379,7 +5381,9 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         primaryProfileType: dominantTerrain(profTypes),
         primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
-        withdrawn: voluntaryWithdrawnSet.has(race.id),
+        // #6740: inaktiv for al eksisterende klient-logik (pulje, overlap, binding) ved
+        // begge slags afmelding; kolonnens tekst læser did_not_start først.
+        withdrawn: withdrawnSet.has(race.id),
         lineup_locked: startedHere,
         did_not_start: startedHere && !voluntaryWithdrawnSet.has(race.id)
           && (didNotStartSet.has(race.id) || inFieldByRace.get(race.id) === false),
