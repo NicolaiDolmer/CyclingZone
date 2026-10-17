@@ -2,7 +2,9 @@
 //
 // Idempotent via et unique-index i training_day_runs: reservation-first strategi
 // bruger en pending-row som mutex. Postgres 23505 unique-violation ved INSERT
-// → alreadyRan=true uden videre DB-skriv.
+// → alreadyRan=true uden videre DB-skriv, medmindre raekken er en reservation som en
+// anden koersel holder lige nu: saa en retryable held-fejl (#6759 gammel sti, #6827
+// loebsdags-stien).
 //
 // #4846/#4847: HVILKET index der er mutexen afgoeres af `training_tick_per_race_day`:
 //   flag off → UNIQUE(team_id, tick_date)                                   WHERE game_day IS NULL
