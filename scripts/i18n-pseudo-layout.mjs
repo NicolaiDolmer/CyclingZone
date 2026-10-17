@@ -35,6 +35,7 @@
 // efterladt proces. Playwright hentes fra frontend/node_modules.
 
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -289,10 +290,16 @@ const git = (args) => {
   const r = spawnSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   return r.status === 0 ? r.stdout : "";
 };
+// Usporede filer: git diff ser kun sporede, saa deres indhold hashes selv.
+const untrackedHashes = git(["ls-files", "--others", "--exclude-standard", "--", "frontend", ":(exclude)frontend/dist"])
+  .split("\n").map((p) => p.trim()).filter(Boolean)
+  .map((p) => `${p}:${createHash("sha1").update(readFileSync(join(REPO_ROOT, p))).digest("hex")}`)
+  .join("\n");
 const expectedStamp = computeBuildStamp({
   head: git(["rev-parse", "HEAD"]),
   status: git(["status", "--porcelain", "--", "frontend", ":(exclude)frontend/dist"]),
   diff: git(["diff", "HEAD", "--", "frontend", ":(exclude)frontend/dist"]),
+  untracked: untrackedHashes,
   base: BASE,
 });
 const storedStamp = existsSync(STAMP_FILE) ? readFileSync(STAMP_FILE, "utf8") : null;

@@ -15,6 +15,7 @@ import {
   measureLayout,
   navHeadroom,
   normalizeText,
+  remainingAfter,
   renderFindingsTable,
   sortFindings,
   summarize,
@@ -127,7 +128,30 @@ test("afterStatus + bottomNavIssues: en klippet fane i efter-koerslen giver rest
   assert.equal(afterStatus({ ok: true, measured: false, remaining: bottomNavIssues([]).length }), "unknown");
 });
 
+test("remainingAfter: et fund der er blevet generelt (flyttet til existing) er ikke rettet", () => {
+  const pick = (x) => x.kind === "clipped-by-ancestor";
+  const beforeHits = [f("clipped-by-ancestor", "td:1")];
+  const moved = remainingAfter({ beforeHits, afterNew: [], afterExisting: [f("clipped-by-ancestor", "td:1")], pick });
+  assert.deepEqual(moved.map(findingKey), ["clipped-by-ancestor|td:1"]);
+  assert.equal(afterStatus({ ok: true, measured: true, remaining: moved.length }), "rest");
+});
+
+test("remainingAfter: urelaterede eksisterende fund af samme type taeller ikke; nye matchende gor", () => {
+  const pick = (x) => x.kind === "clipped-by-ancestor";
+  const beforeHits = [f("clipped-by-ancestor", "td:1")];
+  const unrelated = remainingAfter({ beforeHits, afterNew: [], afterExisting: [f("clipped-by-ancestor", "other:9")], pick });
+  assert.deepEqual(unrelated, []);
+  const fresh = remainingAfter({ beforeHits, afterNew: [f("clipped-by-ancestor", "td:5"), f("ellipsis", "x")], afterExisting: [], pick });
+  assert.deepEqual(fresh.map(findingKey), ["clipped-by-ancestor|td:5"]);
+});
+
 // ── #6816 punkt 3: byg-maerke ───────────────────────────────────────────────
+
+test("computeBuildStamp: indhold af usporede filer er med i maerket", () => {
+  const a = computeBuildStamp({ head: "h", untracked: "frontend/src/new.tsx:aaa", base: "b" });
+  assert.notEqual(a, computeBuildStamp({ head: "h", untracked: "frontend/src/new.tsx:bbb", base: "b" }));
+  assert.notEqual(a, computeBuildStamp({ head: "h", base: "b" }));
+});
 
 test("computeBuildStamp: HEAD + hash af lokale aendringer + base", () => {
   const clean = computeBuildStamp({ head: "abc123\n", status: "", diff: "", base: "http://127.0.0.1:4173" });

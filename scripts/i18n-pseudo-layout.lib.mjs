@@ -377,6 +377,17 @@ export function navHeadroom(row) {
 }
 
 /**
+ * Fund der stadig staar efter en rettelse: nye fund i efter-koerslen der matcher
+ * `pick`, plus de foer-fund (kind+sti) der nu ogsaa findes i engelsk baseline og
+ * dermed er flyttet fra `new` til `existing`. Et fejl der er blevet generelt
+ * (ogsaa paa engelsk) er ikke rettet (Codex #6826).
+ */
+export function remainingAfter({ beforeHits, afterNew, afterExisting, pick }) {
+  const beforeKeys = new Set(beforeHits.map(findingKey));
+  return [...afterNew.filter(pick), ...afterExisting.filter((f) => beforeKeys.has(findingKey(f)))];
+}
+
+/**
  * Faner i bundnavigationen der stadig har et problem: label klippet/afkortet,
  * ombrudt til 2+ linjer, eller bredere end fanens indre plads (#6816).
  */
@@ -399,14 +410,15 @@ export function afterStatus({ ok, measured, remaining }) {
 
 /**
  * Byg-maerke for frontend/dist: HEAD-commit + hash af lokale aendringer i
- * frontend/ + base-URL'en der er bagt ind i buildet. Aendres noget af det, er
+ * frontend/ (sporede diff og indhold af usporede filer, `untracked` = en
+ * "sti:hash"-linje pr. fil) + base-URL'en der er bagt ind i buildet. Aendres noget af det, er
  * en gammel dist ikke laengere det der skal maales (#6816).
  * Returnerer null uden HEAD, saa kalderen altid bygger om.
  */
-export function computeBuildStamp({ head, status = "", diff = "", base = "" }) {
+export function computeBuildStamp({ head, status = "", diff = "", untracked = "", base = "" }) {
   const sha = String(head ?? "").trim();
   if (!sha) return null;
-  const dirty = `${status}\n${diff}`.trim();
+  const dirty = `${status}\n${diff}\n${untracked}`.trim();
   const dirtyHash = dirty ? createHash("sha1").update(dirty).digest("hex").slice(0, 12) : "clean";
   return `${sha}|${dirtyHash}|${base}`;
 }

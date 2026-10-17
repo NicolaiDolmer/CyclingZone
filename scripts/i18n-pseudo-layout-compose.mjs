@@ -17,7 +17,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { afterStatus, bottomNavIssues } from "./i18n-pseudo-layout.lib.mjs";
+import { afterStatus, bottomNavIssues, remainingAfter } from "./i18n-pseudo-layout.lib.mjs";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const req = createRequire(join(REPO_ROOT, "frontend", "package.json"));
@@ -101,7 +101,7 @@ for (const c of CASES) {
       region.w = c.cropX[1] - c.cropX[0];
     }
     beforeMarks = capped.map((f) => f.rect);
-    const remaining = a.new.filter(c.pick);
+    const remaining = remainingAfter({ beforeHits: hits, afterNew: a.new, afterExisting: a.existing ?? [], pick: c.pick });
     afterMarks = remaining.slice(0, 12).map((f) => f.rect);
     status = afterStatus({ ok: a.ok, measured: true, remaining: remaining.length });
   }
