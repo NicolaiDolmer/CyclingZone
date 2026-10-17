@@ -31,8 +31,10 @@
 //   - tests, preview-seed, og admin-flader (dansk by design, samme politik som
 //     i18n-check-leaks.mjs: ingen spiller ser dem).
 //   - lib/intl.js og lib/intlLocale.ts: de to filer er DER locale-valget bor.
-//   - en-CA og sv-SE: bruges kun som "YYYY-MM-DD"/ISO-trick til tidszone-noegler
-//     (aldrig til visning), og er ens i alle sprog.
+//   - en-CA og sv-SE (case-ufoelsomt): bruges kun som "YYYY-MM-DD"/ISO-trick til
+//     tidszone-noegler (aldrig til visning), og er ens i alle sprog. Kun naar
+//     kaldet giver en fuld numerisk dato-noegle: rene tidsformatere (timeStyle,
+//     hour/minute uden dato), delvise datoer og tekstuelle dele fanges (#6797).
 //
 // Brug:
 //   node scripts/i18n-check-hardcoded-formats.mjs                    # check (CI)
@@ -56,9 +58,27 @@ export const FORMATTER_FILES = new Set([
 // given tidszone. De vises aldrig for en spiller.
 export const ISO_TRICK_LOCALES = new Set(["en-CA", "sv-SE"]);
 
-// #6785 (Codex): "en-CA"/"sv-SE" er kun et ISO-noegle-trick (YYYY-MM-DD), naar
-// kaldet er et DATO-kald uden tekstuelle dele. Maanedsnavne, ugedage,
-// klokkeslaet-tekst og talformatering med disse locales er visning og fanges.
+// Kanonisk form af en locale-tag: sprog med smaa, region med store bogstaver
+// ("en-gb" og "EN-GB" bliver begge til "en-GB"). #6797: Intl accepterer alle
+// skrivemaader, saa guarden maa ikke afhaenge af at kilden staar kanonisk.
+export function canonicalLocaleTag(tag) {
+  const [lang, region] = String(tag).split("-");
+  return region ? `${lang.toLowerCase()}-${region.toUpperCase()}` : lang.toLowerCase();
+}
+
+// Dato-felter og tids-felter i en options-literal. Kun literalen i selve kaldet
+// kan ses; en options-variabel (`DateTimeFormat("en-CA", opts)`) kan guarden
+// ikke laese og behandles som standard-datoform.
+const DATE_FIELD = /\b(?:year|month|day)\s*:/;
+const TIME_FIELD = /\b(?:hour|minute|second|fractionalSecondDigits)\s*:/;
+const NUMERIC_FIELD = (name) =>
+  new RegExp(String.raw`\b${name}\s*:\s*["'\x60](?:numeric|2-digit)["'\x60]`);
+
+// #6785 + #6797 (Codex): "en-CA"/"sv-SE" er kun et ISO-noegle-trick (YYYY-MM-DD),
+// naar kaldet er et DATO-kald der giver en fuld numerisk dato-noegle.
+// Maanedsnavne, ugedage, klokkeslaet-tekst, rene tidsformatere (timeStyle eller
+// hour/minute uden dato), delvise datoer (kun aar, kun dag ...) og talformatering
+// med disse locales er visning og fanges.
 export function isIsoKeyUse(line) {
   if (/\bNumberFormat\(|\btoLocaleTimeString\(/.test(line)) return false;
   // toLocaleString er kun et dato-trick, naar kaldet baerer tidszone/dato-felter
@@ -68,6 +88,14 @@ export function isIsoKeyUse(line) {
   if (!isDateCall) return false;
   if (/\b(?:month|weekday|era|dayPeriod|timeZoneName)\s*:\s*["'\x60](?:long|short|narrow)["'\x60]/.test(line)) return false;
   if (/\bdateStyle\s*:\s*["'\x60](?:full|long|medium)["'\x60]/.test(line)) return false;
+  // timeStyle er altid klokkeslaet-visning, ogsaa sammen med dateStyle.
+  if (/\btimeStyle\s*:/.test(line)) return false;
+  const hasDate = DATE_FIELD.test(line);
+  // hour/minute/second uden dato-felter giver et rent klokkeslaet.
+  if (TIME_FIELD.test(line) && !hasDate) return false;
+  // Eksplicitte dato-felter: hele noeglen (aar + maaned + dag) skal vaere numerisk.
+  // Uden dato-felter er standardformen allerede den fulde numeriske dato.
+  if (hasDate && !["year", "month", "day"].every((f) => NUMERIC_FIELD(f).test(line))) return false;
   return true;
 }
 
@@ -91,8 +119,48 @@ export function stripComments(src) {
     .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 }
 
-const LOCALE_TAG = String.raw`[a-z]{2,3}-[A-Z]{2}`;
+// #6797: region/sprog kan staa i vilkaarlig case ("en-gb", "EN-GB"); Intl
+// accepterer dem alle.
+const LOCALE_TAG = String.raw`[a-zA-Z]{2,3}-[a-zA-Z]{2}`;
 const INTL_CALL = /(?:toLocale(?:String|DateString|TimeString)|Intl\.(?:NumberFormat|DateTimeFormat|RelativeTimeFormat|PluralRules|ListFormat|DisplayNames))\(/;
+
+// Teksten fra en Intl-/toLocale-kalds aabne parentes til den matchende lukkende
+// (maks. 1500 tegn, streng-literaler springes over). Giver ISO-tjekket hele
+// kaldet inkl. options paa efterfoelgende linjer. Ikke afsluttet -> null.
+export function callSpan(code, callStart, openParenIdx) {
+  let depth = 0;
+  let quote = null;
+  const limit = Math.min(code.length, openParenIdx + 1500);
+  for (let i = openParenIdx; i < limit; i++) {
+    const ch = code[i];
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")" && --depth === 0) return code.slice(callStart, i + 1);
+  }
+  return null;
+}
+
+// Kaldet (inkl. options, ogsaa over flere linjer) som en locale-literal paa
+// position `literalIdx` i `code` er argument til: det naermeste Intl-/toLocale-
+// kald foer literalen paa samme linje. Ingen -> null (ternary/fallback).
+function enclosingCall(code, lineStart, literalIdx) {
+  const lineEnd = code.indexOf("\n", lineStart);
+  const head = code.slice(lineStart, literalIdx);
+  let last = null;
+  for (const m of head.matchAll(new RegExp(INTL_CALL.source, "g"))) last = m;
+  if (!last) return null;
+  const callStart = lineStart + last.index;
+  const open = callStart + last[0].length - 1;
+  const span = callSpan(code, callStart, open);
+  if (span === null) return code.slice(callStart, lineEnd === -1 ? code.length : lineEnd);
+  // Et allerede lukket kald, som literalen ikke hoerer til: brug hele linjen.
+  return callStart + span.length > literalIdx ? span : null;
+}
 
 const TERNARY_OR_FALLBACK = new RegExp(
   String.raw`(?:\?\s*|\|\||\?\?)\s*["'\x60]${LOCALE_TAG}["'\x60]`,
@@ -122,13 +190,21 @@ const GEOMETRY_LINE = new RegExp(
 export const RULES = [
   {
     id: "locale-literal",
-    test(line) {
+    test(line, ctx) {
       // 1) Region-locale-literal ("da-DK") i et Intl-/toLocale-kald, i en
       //    ternary (`? "da-DK" :`) eller som fallback (`|| "da-DK"`). Selve
       //    sprogkoden som konstant ("en-XA") og prosa i data er ikke formatering.
       const usesLocale = INTL_CALL.test(line) || TERNARY_OR_FALLBACK.test(line);
       for (const m of usesLocale ? line.matchAll(new RegExp(String.raw`["'\x60](${LOCALE_TAG})["'\x60]`, "g")) : []) {
-        if (!(ISO_TRICK_LOCALES.has(m[1]) && isIsoKeyUse(line))) return `fast locale "${m[1]}"`;
+        // Kaldet inkl. options paa efterfoelgende linjer (#6797); uden kontekst
+        // eller uden omsluttende kald (ternary/fallback) ses kun linjen.
+        let call = null;
+        if (ctx) {
+          const literalIdx = ctx.lineStart + m.index;
+          call = enclosingCall(ctx.code, ctx.lineStart, literalIdx);
+        }
+        // Normaliseres foer ISO-tjekket: "en-ca" er det samme trick som "en-CA".
+        if (!(ISO_TRICK_LOCALES.has(canonicalLocaleTag(m[1])) && isIsoKeyUse(call ?? line))) return `fast locale "${m[1]}"`;
       }
       // 2) Bar sprogkode som foerste argument ("da", "en") til en Intl-/toLocale-kald.
       const bare = line.match(new RegExp(String.raw`${INTL_CALL.source}\s*["'\x60]([a-z]{2,3})["'\x60]`));
@@ -186,11 +262,12 @@ export function scanSource(src, rel = "") {
   const findings = [];
   const code = stripComments(src.replace(/\r\n/g, "\n"));
   const lines = code.split("\n");
-  for (let i = 0; i < lines.length; i++) {
+  let lineStart = 0;
+  for (let i = 0; i < lines.length; lineStart += lines[i].length + 1, i++) {
     const text = lines[i];
     if (!text.trim()) continue;
     for (const rule of RULES) {
-      const why = rule.test(text);
+      const why = rule.test(text, { code, lineStart });
       if (why) {
         findings.push({ line: i + 1, rule: rule.id, why, text: text.trim().slice(0, 140) });
         break; // en linje taeller kun een gang, som i leak-guarden
@@ -200,11 +277,13 @@ export function scanSource(src, rel = "") {
   // Flerlinjede kald: `new Intl.NumberFormat(\n  "da-DK",\n)`. Linjerne ses
   // hver for sig ovenfor og rammer ikke; her ses kaldet og literalen sammen.
   const multiline = new RegExp(
-    String.raw`(${INTL_CALL.source})\s*\n\s*["'\x60]([a-z]{2,3}(?:-[A-Z]{2})?)["'\x60]`,
+    String.raw`(${INTL_CALL.source})\s*\n\s*["'\x60]([a-zA-Z]{2,3}(?:-[a-zA-Z]{2})?)["'\x60]`,
     "g",
   );
   for (const m of code.matchAll(multiline)) {
-    if (ISO_TRICK_LOCALES.has(m[2]) && isIsoKeyUse(m[0])) continue;
+    // Hele kaldet (options kan staa paa senere linjer), ikke kun frem til literalen.
+    const call = callSpan(code, m.index, m.index + m[1].length - 1) ?? m[0];
+    if (ISO_TRICK_LOCALES.has(canonicalLocaleTag(m[2])) && isIsoKeyUse(call)) continue;
     const line = code.slice(0, m.index).split("\n").length;
     if (findings.some((f) => f.line === line)) continue;
     findings.push({
