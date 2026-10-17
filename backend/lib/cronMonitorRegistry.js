@@ -234,12 +234,6 @@ export const ALL_CRON_MONITORS = [
 // er monitorCron-wrappet eller står i denne liste — så en fremtidig
 // udvikler der glemmer BEGGE dele får en rød test i stedet for et tavst hul.
 export const UNMONITORED_CRON_TICKS = [
-  // Sæson-auto-transition er DEAKTIVERET (SEASON_AUTO_TRANSITION_ENABLED=false
-  // i economyConstants.js — manuelt sæson-skift, ejer-beslutning 2026-06-08).
-  // Koden kører aldrig i praksis under flaget; et Sentry-heartbeat på et job
-  // der pr. design ikke ticker ville kun støje. Tilføj monitorCron(...) +
-  // en ALL_CRON_MONITORS-entry SAMTIDIG med at flaget flippes til true.
-  "season auto-transition",
   // Sunday-intake-drip er bevidst søndags-gated + claim-idempotent (#2064 S0)
   // — modulet selv no-op'er alle ugens øvrige dage. Et fast interval-schedule
   // (CRON_MONITOR_60MIN) forventer succes hver time; det ville false-positive

@@ -45,8 +45,6 @@ import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
 import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #5867
-import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
-import { SEASON_AUTO_TRANSITION_ENABLED } from "./lib/economyConstants.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
@@ -409,30 +407,6 @@ async function runMidSeasonReviewCron() {
     // #2389 A2: mirror board auto-accept — top-level-fejl skal captures her.
     console.error("Cron error (mid-season review):", err.message);
     sentryCapture(err, { tags: { cron: "board mid-season" } });
-  }
-}
-
-// ─── Season Auto-Transition ──────────────────────────────────────────────────
-// Når kildesæsonen er afsluttet (season-end kørt) og skifte-gaten er grøn,
-// fyrer transitionToNextSeason automatisk (#6784: læser ikke transfer_windows).
-// Slukket via SEASON_AUTO_TRANSITION_ENABLED=false.
-
-async function runSeasonAutoTransitionCron() {
-  try {
-    const result = await processSeasonAutoTransitionCron({
-      supabase,
-      now: new Date(),
-    });
-    if (result.transitioned) {
-      console.log(
-        `🌅 Sæson-transition: sæson ${result.fromSeason} → ${result.toSeason} udført automatisk`
-      );
-    }
-  } catch (err) {
-    // #2389 A2: sæson-transition er det mest forretningskritiske flow i denne fil
-    // (jf. incident 2026-05-21) — en fejl her var 100% usynlig i Sentry før nu.
-    console.error("Cron error (season auto-transition):", err.message);
-    sentryCapture(err, { tags: { cron: "season auto-transition" } });
   }
 }
 
@@ -1902,17 +1876,8 @@ export function startCron() {
     5 * 60 * 1000
   );
 
-  // Season auto-transition (#1155): DEAKTIVERET — sæson-skift er nu en bevidst
-  // manuel admin-handling (ejer-beslutning 2026-06-08). Den automatiske cron
-  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Squad-tjek (squad
-  // enforcement-cron ovenfor) forbliver automatisk; kun selve sæson-skiftet er
-  // manuelt. (#6120: Deadline Day-cron'en er fjernet — markedet er altid åbent.)
-  // Tændes igen ved SEASON_AUTO_TRANSITION_ENABLED=true i economyConstants.js.
-  if (SEASON_AUTO_TRANSITION_ENABLED) {
-    setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
-  } else {
-    console.log("  ⏸  Season auto-transition cron DEAKTIVERET (manuelt sæson-skift, #1155)");
-  }
+  // Sæson-skift er en bevidst manuel admin-handling (#1155); auto-skifte-cron'en
+  // er fjernet (#6796). Squad-tjek (squad enforcement-cron ovenfor) er automatisk.
 
   // Every 24 hours: check debt (#607 — 6h → 24h. notifyUser-dedup virker nu da
   // message er statisk; matcher cadence-pattern fra processDailySeasonCountCheck).
