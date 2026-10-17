@@ -18,20 +18,19 @@ import {
   DEFAULT_LANG,
   HAS_BETA_LANGS,
   isBetaLang,
-  visibleLanguages,
 } from "./languages.js";
 import { LAZY_BUNDLE_LANGS, bundleKey } from "./localeBundleBackend.js";
-import { publicLanguageCandidates } from "./publicLanguageDetector.js";
+import { publicLanguageCandidates } from "./publicLanguageDetector.ts";
 import {
   hasBetaLanguageAccess,
   selectableLanguages,
   languageToRevertTo,
-} from "../lib/languageAccess.js";
+} from "../lib/languageAccess.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const read = (rel) => readFileSync(join(HERE, rel), "utf8");
+const read = (rel: string) => readFileSync(join(HERE, rel), "utf8");
 
-const SYNTHETIC = [
+const SYNTHETIC: { code: string; flag: string; beta: boolean }[] = [
   { code: "en", flag: "gb", beta: false },
   { code: "da", flag: "dk", beta: false },
   { code: "xx", flag: "un", beta: true },
@@ -60,12 +59,6 @@ test("isBetaLang: basis-kode, case-insensitiv, ukendt og ikke-streng er aldrig b
   assert.equal(isBetaLang("zz"), false);
   assert.equal(isBetaLang(undefined), false);
   assert.equal(isBetaLang(null), false);
-});
-
-test("visibleLanguages skjuler beta-sprog uden adgang og viser dem med adgang", () => {
-  assert.deepEqual(visibleLanguages(false, SYNTHETIC).map((l) => l.code), ["en", "da"]);
-  assert.deepEqual(visibleLanguages(null, SYNTHETIC).map((l) => l.code), ["en", "da"]);
-  assert.deepEqual(visibleLanguages(true, SYNTHETIC).map((l) => l.code), ["en", "da", "xx"]);
 });
 
 // ── adgang (ejer + beta-tester) ─────────────────────────────────────────────
@@ -112,7 +105,7 @@ test("publicLanguageCandidates bevarer offentlige koder og taaler ugyldigt input
 
 test("i18n bruger den beta-filtrerende detektor, ikke den rene navigator", () => {
   const src = read("index.js");
-  assert.match(src, /from "\.\/publicLanguageDetector\.js"/);
+  assert.match(src, /from "\.\/publicLanguageDetector.ts"/);
   assert.match(src, /order: \["localStorage", "navigatorPublic", "htmlTag"\]/);
   assert.doesNotMatch(src, /from "i18next-browser-languagedetector"/);
 });
@@ -142,7 +135,7 @@ test("engelsk er den eneste inline-bundle: ingen messages.<lng>-import i entry-g
 
 // ── engelsk fallback pr. noegle ─────────────────────────────────────────────
 
-async function makeInstance(resources) {
+async function makeInstance(resources: Record<string, Record<string, Record<string, unknown>>>) {
   const instance = i18next.createInstance();
   // Samme fallback-relevante options som index.js.
   await instance.init({

@@ -41,14 +41,6 @@ export function isBetaLang(code) {
 /** Findes der overhovedet et beta-sprog? Falsk i dag => ingen netvaerkskald. */
 export const HAS_BETA_LANGS = LANGUAGES.some((l) => l.beta === true);
 
-/**
- * Sprog en viewer maa se/vaelge. Beta-sprog kun med beta-adgang (ejer eller
- * beta-tester). `languages` kan overstyres i test.
- */
-export function visibleLanguages(hasBetaAccess, languages = LANGUAGES) {
-  return languages.filter((l) => !l.beta || hasBetaAccess === true);
-}
-
 
 // Pseudo-locale til layout-stress-test (?pseudo=1) — findes ikke som en rigtig
 // sprog-entry i LANGUAGES (ingen locale-JSON, intet flag, ikke valgbar i UI).

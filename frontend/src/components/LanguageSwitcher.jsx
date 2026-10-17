@@ -36,8 +36,8 @@ import LanguageSwitcherFlag from "./LanguageSwitcherFlag.jsx";
 // LANGUAGES.
 import { LANGUAGES } from "../i18n/languages.js";
 // #6802: beta-sprog (LANGUAGES[].beta) vises kun for ejer + beta-testere.
-import { selectableLanguages, languageToRevertTo } from "../lib/languageAccess.js";
-import { useBetaLanguageAccess } from "../lib/languageAccessHook.js";
+import { selectableLanguages, languageToRevertTo } from "../lib/languageAccess.ts";
+import { useBetaLanguageAccess } from "../lib/languageAccessHook.ts";
 
 const LABEL_KEYS = { da: "language.danish", en: "language.english" };
 const DISPLAY_ORDER = ["da", "en"];

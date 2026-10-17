@@ -8,32 +8,32 @@
 // Fail-closed: et fejlet kald giver false, aldrig true.
 
 import { useEffect, useState } from "react";
-import { supabase } from "./supabase";
+import { supabase } from "./supabase.ts";
 import { apiFetch } from "./apiFetch.ts";
 import { useUserProfile } from "./userProfile.jsx";
 import { HAS_BETA_LANGS } from "../i18n/languages.js";
-import { hasBetaLanguageAccess } from "./languageAccess.js";
+import { hasBetaLanguageAccess } from "./languageAccess.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
-// userId -> Promise<boolean>. Layout monterer flere vaelgere (sidebar + mobil);
-// de skal dele ET opslag.
-const cache = new Map();
+// userId -> Promise<boolean | null>. Layout monterer flere vaelgere (sidebar +
+// mobil); de skal dele ET opslag.
+const cache = new Map<string, Promise<boolean | null>>();
 
-async function fetchAccess(token, isAdmin) {
+async function fetchAccess(token: string, isAdmin: boolean): Promise<boolean> {
   const headers = { Authorization: `Bearer ${token}` };
   let isBetaTester = false;
   let isOwner = false;
   try {
     const res = await apiFetch(`${API}/api/me/beta-access`, { headers }, { source: "language-beta-access" });
-    isBetaTester = res.ok && res.data?.is_beta_tester === true;
+    isBetaTester = res.ok && (res.data as { is_beta_tester?: unknown } | null)?.is_beta_tester === true;
   } catch {
     // best-effort: ingen adgang er den sikre retning
   }
   if (isAdmin && !isBetaTester) {
     try {
       const res = await apiFetch(`${API}/api/admin/owner-check`, { headers }, { source: "language-owner-check" });
-      isOwner = res.ok && res.data?.isOwner === true;
+      isOwner = res.ok && (res.data as { isOwner?: unknown } | null)?.isOwner === true;
     } catch {
       // best-effort
     }
@@ -41,9 +41,12 @@ async function fetchAccess(token, isAdmin) {
   return hasBetaLanguageAccess({ isBetaTester, isOwner });
 }
 
-export function useBetaLanguageAccess() {
-  const { userId, profile } = useUserProfile();
-  const [access, setAccess] = useState(HAS_BETA_LANGS ? null : false);
+export function useBetaLanguageAccess(): boolean | null {
+  const { userId, profile } = useUserProfile() as {
+    userId: string | null;
+    profile: { role?: string } | null;
+  };
+  const [access, setAccess] = useState<boolean | null>(HAS_BETA_LANGS ? null : false);
   const isAdmin = profile?.role === "admin";
   const profileReady = Boolean(profile);
 
@@ -54,16 +57,15 @@ export function useBetaLanguageAccess() {
       return undefined;
     }
     let cancelled = false;
-    if (!cache.has(userId)) {
-      cache.set(
-        userId,
-        supabase.auth.getSession().then(({ data }) => {
-          const token = data?.session?.access_token;
-          return token ? fetchAccess(token, isAdmin) : null;
-        })
-      );
+    let pending = cache.get(userId);
+    if (!pending) {
+      pending = supabase.auth.getSession().then(({ data }) => {
+        const token = data?.session?.access_token;
+        return token ? fetchAccess(token, isAdmin) : null;
+      });
+      cache.set(userId, pending);
     }
-    cache.get(userId).then((result) => {
+    pending.then((result) => {
       if (cancelled) return;
       if (result === null) cache.delete(userId);
       setAccess(result);

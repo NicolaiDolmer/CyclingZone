@@ -7,27 +7,26 @@
 // serverside-hemmelighed i en oversaettelse, og en bevidst valgt `cz_lang` i
 // localStorage er spillerens eget valg.
 
-import { DEFAULT_LANG, isBetaLang, visibleLanguages } from "../i18n/languages.js";
+import { DEFAULT_LANG, isBetaLang } from "../i18n/languages.js";
 
-/**
- * @param {{ isBetaTester?: unknown, isOwner?: unknown }} access
- * @returns {boolean} Kun et ægte `true` giver adgang (fail-closed).
- */
-export function hasBetaLanguageAccess({ isBetaTester, isOwner } = {}) {
+export interface LanguageLike {
+  code: string;
+  beta?: boolean;
+}
+
+/** Kun et aegte `true` giver adgang (fail-closed). */
+export function hasBetaLanguageAccess(
+  { isBetaTester, isOwner }: { isBetaTester?: unknown; isOwner?: unknown } = {}
+): boolean {
   return isBetaTester === true || isOwner === true;
 }
 
 /**
  * Valgmuligheder til sprogvaelgeren. `access`: true = beta-adgang; false/null
  * (ukendt eller ingen) = kun offentlige sprog. Fail-closed.
- *
- * @template {{ code: string, beta?: boolean }} L
- * @param {L[]} languages
- * @param {boolean|null} access
- * @returns {L[]}
  */
-export function selectableLanguages(languages, access) {
-  return visibleLanguages(access === true, languages);
+export function selectableLanguages<L extends LanguageLike>(languages: L[], access: boolean | null): L[] {
+  return languages.filter((l) => !l.beta || access === true);
 }
 
 /**
@@ -36,10 +35,8 @@ export function selectableLanguages(languages, access) {
  * beta. `null` (ikke hentet endnu) rulles aldrig tilbage — ellers ville en
  * beta-tester blive kastet til engelsk ved hver sideindlaesning.
  *
- * @param {string} activeCode
- * @param {boolean|null} access
- * @returns {string|null} sproget der skal skiftes til, eller null
+ * Returnerer sproget der skal skiftes til, eller null.
  */
-export function languageToRevertTo(activeCode, access) {
+export function languageToRevertTo(activeCode: string, access: boolean | null): string | null {
   return access === false && isBetaLang(activeCode) ? DEFAULT_LANG : null;
 }

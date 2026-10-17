@@ -41,7 +41,7 @@ import { initReactI18next } from "react-i18next";
 import LocaleBundleBackend from "./localeBundleBackend.js";
 // #6802: som i18next-browser-languagedetector, men navigator-opslaget springer
 // beta-sprog over (de maa kun vaelges bevidst i sprogvaelgeren).
-import LanguageDetector from "./publicLanguageDetector.js";
+import LanguageDetector from "./publicLanguageDetector.ts";
 import ICU from "i18next-icu";
 
 import { SUPPORTED_LANGS, PSEUDO_LANG } from "./languages.js";

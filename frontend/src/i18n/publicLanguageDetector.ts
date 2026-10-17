@@ -10,28 +10,25 @@
 import LanguageDetector from "i18next-browser-languagedetector";
 import { isBetaLang } from "./languages.js";
 
-/**
- * Fjern beta-sprog fra en liste af browser-sprogkoder. Ren funktion.
- * @param {unknown} codes
- * @returns {string[]}
- */
-export function publicLanguageCandidates(codes) {
+/** Fjern beta-sprog fra en liste af browser-sprogkoder. Ren funktion. */
+export function publicLanguageCandidates(codes: unknown): string[] {
   if (!Array.isArray(codes)) return [];
-  return codes.filter((c) => typeof c === "string" && c && !isBetaLang(c));
+  return codes.filter((c): c is string => typeof c === "string" && c !== "" && !isBetaLang(c));
 }
 
-function navigatorPublicLookup() {
+function navigatorPublicLookup(): string[] | undefined {
   if (typeof navigator === "undefined") return undefined;
-  const found = [];
-  if (Array.isArray(navigator.languages)) found.push(...navigator.languages);
-  if (navigator.userLanguage) found.push(navigator.userLanguage);
-  if (navigator.language) found.push(navigator.language);
+  const nav = navigator as Navigator & { userLanguage?: string };
+  const found: string[] = [];
+  if (Array.isArray(nav.languages)) found.push(...nav.languages);
+  if (nav.userLanguage) found.push(nav.userLanguage);
+  if (nav.language) found.push(nav.language);
   const out = publicLanguageCandidates(found);
   return out.length > 0 ? out : undefined;
 }
 
 export default class PublicLanguageDetector extends LanguageDetector {
-  init(...args) {
+  override init(...args: Parameters<LanguageDetector["init"]>): void {
     super.init(...args);
     this.addDetector({ name: "navigatorPublic", lookup: navigatorPublicLookup });
   }
