@@ -1,6 +1,6 @@
 {
   "$comment": "Kendte hardcodede format-fund (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-hardcoded-formats.mjs --update-baseline. Refs #6785. Nye fund maa IKKE tilfoejes her: fix dem via lib/intl.js eller lib/intlLocale.ts.",
-  "total": 26,
+  "total": 27,
   "files": {
     "frontend/src/components/race/FinalKilometrePlayback.jsx": 1,
     "frontend/src/components/race/StageProfileGraph.jsx": 1,
@@ -19,6 +19,7 @@
     "frontend/src/pages/BoardPage.jsx": 2,
     "frontend/src/pages/DashboardPage.jsx": 1,
     "frontend/src/pages/FinancePage.jsx": 5,
+    "frontend/src/pages/PatchNotesPage.jsx": 1,
     "frontend/src/pages/PrivacyPolicyPage.jsx": 1
   }
 }
