@@ -729,7 +729,7 @@ td.n{text-align:right;width:70px}td.viz{width:300px}
 .legend span{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px;vertical-align:middle}
 </style></head><body><div class="card">
 <h1>#6158 formtoppe tilbage, før og efter pr. hold</h1>
-<p>Tørkørsel ${esc(generatedAt)}. Sæson ${t.seasonNumber}. Formtoppe virker igen ${esc(t.ignitionAt)}. Intet er skrevet.</p>
+<p>Tørkørsel ${esc(copenhagenDateString(new Date(generatedAt)))}. Sæson ${t.seasonNumber}. Formtoppe virker igen fra ${esc(copenhagenDateString(new Date(t.ignitionAt)))} (dansk tid). Intet er skrevet.</p>
 <div class="kpis">
 <div class="kpi"><b>${t.giveBack}</b>toppe gives tilbage</div>
 <div class="kpi"><b>${t.giveBackRiders}</b>ryttere</div>
@@ -738,7 +738,7 @@ td.n{text-align:right;width:70px}td.viz{width:300px}
 <div class="kpi"><b>${d ? d.ridersCarryingDipAhead : "-"}</b>ryttere med nedgang foran (fjernes)</div>
 </div>
 <p class="legend"><span style="background:var(--before)"></span>toppe brugt nu<span style="background:var(--after)"></span>står tilbage efter</p>
-<table><thead><tr><th>Hold</th><th class="n">Før</th><th></th><th class="n">Efter</th><th class="n">Tilbage</th><th class="n">Ryttere</th><th class="n">Nedgang fjernet</th></tr></thead><tbody>${body}</tbody></table>
+<table><thead><tr><th>Hold</th><th class="n">Før</th><th></th><th class="n">Efter</th><th class="n">Tilbage</th><th class="n">Ryttere</th><th class="n">Planer m. nedgang fjernet</th></tr></thead><tbody>${body}</tbody></table>
 </div></body></html>
 `;
 }
