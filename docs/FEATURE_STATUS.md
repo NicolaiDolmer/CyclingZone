@@ -12,12 +12,12 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## race-engine
 
-**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · S5 engine rules (s5_profiles_v1) (`race-engine-s5-profiles`) 2026-10-16 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
+**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · S5 engine rules (s5_profiles_v1) (`race-engine-s5-profiles`) 2026-10-17 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-15 | UI live; v4 er on, men flaget race_day_intention_enabled findes ikke i prod (læst 15/10). Kalibrering + beta i #6641. |
-| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). Aktuel er official_times_v5 fra ejerens \"tænd\" 16/10 (#6462, sprinttog kun standard på flade etaper); løb bundet til v2-v4 færdiggøres på deres revision (#6642). |
+| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). official_times_v5 var aktuel fra ejerens \"tænd\" 16/10 (#6462) til S5-tændingen 17/10 (s5_profiles_v1, se race-engine-s5-profiles); løb bundet til v2-v5 færdiggøres på deres revision (#6642). |
 
 ## race-day
 

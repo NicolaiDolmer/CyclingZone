@@ -102,7 +102,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). Aktuel er official_times_v5 fra ejerens \"tænd\" 16/10 (#6462, sprinttog kun standard på flade etaper); løb bundet til v2-v4 færdiggøres på deres revision (#6642)."
+    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). official_times_v5 var aktuel fra ejerens \"tænd\" 16/10 (#6462) til S5-tændingen 17/10 (s5_profiles_v1, se race-engine-s5-profiles); løb bundet til v2-v5 færdiggøres på deres revision (#6642)."
 
   - id: race-engine-s5-profiles
     area: race-engine
@@ -111,7 +111,7 @@ features:
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6369
-    verified: 2026-10-16
+    verified: 2026-10-17
     note: "CURRENT_RACE_RULES_REVISION fra tænd-PR'en (ejer-go): løb hvis første etape claimes efter deploy binder til S5, startede løb beholder deres revision; rollback = revert af konstanten."
 
   - id: race-notify-outbox
