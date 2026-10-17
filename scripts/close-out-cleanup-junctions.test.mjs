@@ -78,7 +78,9 @@ function runRemove(wt, { dryRun = false, remover = '' } = {}) {
   assert.equal(r.status, 0, `pwsh fejlede:\n${r.stdout}\n${r.stderr}`);
   const line = r.stdout.split(/\r?\n/).find((l) => l.startsWith('RESULT='));
   assert.ok(line, `ingen RESULT-linje i output:\n${r.stdout}`);
-  return JSON.parse(line.slice('RESULT='.length));
+  const res = JSON.parse(line.slice('RESULT='.length));
+  res.Errors = [res.Errors].flat().filter(Boolean); // ConvertTo-Json pakker 1 element ud af arrayet
+  return res;
 }
 
 test('fjerner node_modules-junctions uden at toemme maalet', { skip }, () => {
