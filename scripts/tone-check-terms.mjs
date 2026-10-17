@@ -62,11 +62,11 @@ const EXEMPT_LOCALE_FILES = new Map([
     "frontend/public/locales/da/founder.json",
     "Samme side, dansk. Se linjen ovenfor.",
   ],
-  [
-    "frontend/public/locales/nl/founder.json",
-    "Samme side, hollandsk beta-sprog (#6831). Faithful oversaettelse af den gamle " +
-      "venteliste; lukkes sammen med en/da naar copyen er ejer-godkendt.",
-  ],
+  // #6829-#6831: de skjulte beta-sprog oversaetter samme side tro mod en.
+  // Undtagelsen foelger en/da og fjernes sammen med dem, naar ejeren beslutter copyen.
+  ["frontend/public/locales/fr/founder.json", "Samme side, fransk (beta). Se en-linjen ovenfor."],
+  ["frontend/public/locales/es/founder.json", "Samme side, spansk (beta). Se en-linjen ovenfor."],
+  ["frontend/public/locales/nl/founder.json", "Samme side, hollandsk (beta). Se en-linjen ovenfor."],
 ]);
 
 // Hvert mønster: navn + regex. Regex'erne er bevidst snævre, så et alment ord
