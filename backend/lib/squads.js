@@ -75,7 +75,7 @@ export function isSquad(squad) {
  *
  * Dette er præcis det prædikat den gamle `riders.is_academy` bar: `is_academy`
  * bliver stående som afledt kolonne (`squad <> 'senior'`) i overgangsperioden,
- * fordi 35+ kaldsteder og RLS-funktionen `is_offered_intake_rider()` læser den
+ * fordi 35+ kaldsteder og RLS-funktionen `offered_intake_rider_ids()` læser den
  * (spec §3.2). Skriv ALTID begge felter konsistent når squad sættes.
  *
  * @param {unknown} squad
