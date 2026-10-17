@@ -776,7 +776,8 @@ test("#6156 rigtig motor: uden toppe er s5_profiles_v2 = s5_profiles_v1; med top
     return engine.simulateStage({ entrants, stageProfile: stages[0], seedString: `${race.id}:1`, stageNumber: 1, isStageRace: true, raceStages: stages, rulesRevision: rev }).v4Output;
   };
   const v1 = await run("s5_profiles_v1", false);
-  assert.equal(JSON.stringify(await run("s5_profiles_v2", false)), JSON.stringify(v1), "ingen top -> identisk med v1");
+  // #6748: v2's udbrudsopfoelgning kan tilfoeje udfald i tidslinjen; resultatet er formtoppens maal.
+  assert.equal(JSON.stringify((await run("s5_profiles_v2", false)).results), JSON.stringify(v1.results), "ingen top -> identisk med v1");
   assert.equal(JSON.stringify(await run("s5_profiles_v1", true)), JSON.stringify(v1), "v1 ignorerer toppene");
   assert.notEqual(JSON.stringify((await run("s5_profiles_v2", true)).results), JSON.stringify(v1.results), "v2 med toppe: toppen virker");
 });
