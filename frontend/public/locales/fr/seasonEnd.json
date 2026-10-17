@@ -1,0 +1,139 @@
+{
+  "title": "Saison {number}",
+  "titleFallback": "Instantané de la saison",
+  "subtitle": "{status} · calendrier, classement final et vainqueurs de la saison",
+  "statusOngoing": "En cours",
+  "statusCompleted": "Terminée",
+  "financeReport": "Rapport financier",
+  "seasonOption": "Saison {number} · {status}",
+  "empty": {
+    "title": "Pas encore de résultats",
+    "body": "Termine des courses et des saisons pour voir les résultats ici",
+    "cta": "Voir le calendrier"
+  },
+  "status": {
+    "completed": "Terminée",
+    "active": "En direct",
+    "scheduled": "À venir"
+  },
+  "honours": {
+    "heading": "Meilleurs coureurs de la saison",
+    "metaFinal": "Saison {number} · final",
+    "metaProvisional": "Provisoire",
+    "title": {
+      "points": "Plus de points",
+      "wins": "Plus de victoires"
+    },
+    "unit": {
+      "points": "points",
+      "wins": "victoires"
+    },
+    "tieBreak": {
+      "points": "Égalité aux points. L'ordre alphabétique décide qui est listé en premier.",
+      "wins": "Égalité aux victoires. Les points décident de l'ordre."
+    },
+    "note": "Les victoires comptent les succès d'étape, au classement général, en course d'un jour, aux points, en montagne et au classement des jeunes, le même total que la colonne Victoires du classement des coureurs.",
+    "noRider": "Pas encore de coureur.",
+    "noTeam": "Aucune équipe",
+    "empty": {
+      "title": "Pas encore de résultats de coureurs",
+      "body": "Les coureurs gagnent des points et des victoires une fois les courses de la saison disputées."
+    },
+    "error": "Impossible de charger les meilleurs coureurs de la saison."
+  },
+  "winners": {
+    "prize": { "title": "Leader des gains", "secondary": "+{amount} gagnés", "empty": "Pas encore de gains" },
+    "transfer": { "title": "Plus gros transfert", "fallback": "Transfert", "empty": "Aucun transfert" },
+    "active": { "title": "Le plus actif", "secondary": "{count} transferts", "empty": "Aucun accord" },
+    "stageKing": { "title": "Roi des étapes", "secondary": "{count, plural, one {# victoire d'étape} other {# victoires d'étape}}", "empty": "Aucune étape courue" },
+    "classicKing": { "title": "Victoires en classiques", "secondary": "{count, plural, one {# victoire en classique} other {# victoires en classiques}}" }
+  },
+  "calendar": {
+    "heading": "Calendrier · {count} courses",
+    "expectedTotal": "Cagnotte totale attendue pour la saison :",
+    "expectedTotalTooltip": "Somme calculée en direct de la cagnotte attendue pour toutes les courses de la saison",
+    "summary": "{completed} terminées · {scheduled} à venir",
+    "stageRace": "Course par étapes · {count, plural, one {# étape} other {# étapes}}",
+    "oneDay": "Course d'un jour"
+  },
+  "division": "Division {div}",
+  "promotionNote": "Les 2 premiers promus",
+  "relegationNote": "Les 4 derniers relégués",
+  "table": {
+    "rank": "#",
+    "team": "Équipe",
+    "stageWins": "Victoires d'étape",
+    "points": "Points",
+    "progression": "Tendance"
+  },
+  "you": "Toi",
+  "promotion": "Monte",
+  "relegation": "Descend",
+  "myProgression": "Progression des points de ton équipe",
+  "loadError": "Impossible de charger la saison. Réessaie.",
+  "retry": "Réessayer",
+  "recap": {
+    "heading": "Ta saison en bref",
+    "metaFinal": "Saison {number} · final",
+    "eyebrow": "Saison {number} terminée",
+    "stat": {
+      "rank": "Rang final",
+      "points": "Points",
+      "stageWins": "Victoires d'étape",
+      "prize": "Gains",
+      "classicWins": "Victoires en classiques"
+    },
+    "rankLine": "n° {rank} sur {size} en division {division}",
+    "movement": {
+      "promoted": "Promu",
+      "relegated": "Relégué",
+      "maintained": "Maintenu en division {division}"
+    },
+    "boardVerdict": {
+      "label": "Le verdict de la direction",
+      "value": "{met} objectifs atteints sur {total}",
+      "confidence": "confiance",
+      "confidenceTo": "à",
+      "attribution": "{name} · Président · verdict de la saison",
+      "ctaMeeting": "Aller à l'assemblée annuelle",
+      "ctaBoardroom": "Ouvrir la salle de la direction"
+    },
+    "highlight": {
+      "prizeLeader": "Leader des gains de la division {division}",
+      "biggestSale": "Plus grosse vente de la saison",
+      "stageKing": "Roi des étapes de l'équipe : {name}",
+      "stageKingValue": "{count, plural, one {# victoire} other {# victoires}}",
+      "classicKing": "Roi des classiques de l'équipe : {name}",
+      "classicKingValue": "{count, plural, one {# victoire} other {# victoires}}",
+      "turningPoint": "Meilleur jour de la saison",
+      "turningPointValue": "{race} · {points} pts",
+      "biggestResult": "Meilleur résultat individuel",
+      "biggestResultValue": "{rider} · {race}",
+      "rival": "Rival le plus proche : {team}",
+      "rivalBeatenBy": "battu de {n} pts",
+      "rivalBehindBy": "{n} pts derrière"
+    },
+    "copyLink": "Copier le lien du récap",
+    "linkCopied": "Lien copié",
+    "downloadCard": "Télécharger la carte à partager",
+    "downloading": "Préparation…",
+    "downloadError": "Impossible de créer l'image. Réessaie.",
+    "shareCardMeta": "Division {division} · n° {rank} sur {size}"
+  },
+  "documentary": {
+    "heading": "Le documentaire",
+    "metaFinal": "Saison {number} · final",
+    "eyebrow": "Ta saison, racontée en entier",
+    "error": "Impossible de charger le documentaire de la saison.",
+    "sourceLlm": "Récit peaufiné par l'IA",
+    "sourceDeterministic": "Récit de la saison",
+    "card": {
+      "eyebrow": "Documentaire de la saison {number}",
+      "turningPoint": "Tournant",
+      "pts": "pts",
+      "result": "Plus gros résultat",
+      "rival": "Rival le plus proche",
+      "finalPoints": "Points finaux"
+    }
+  }
+}

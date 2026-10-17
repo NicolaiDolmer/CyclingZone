@@ -1,0 +1,108 @@
+{
+  "page": {
+    "title": "Politique de confidentialité",
+    "langSwitchLabel": "Dansk",
+    "back": "Retour",
+    "intro": "Dernière mise à jour : 6 octobre 2026. Cycling Zone est une bêta ouverte exploitée par Dolmer Digital (CVR danois 46524861). Je traite le moins de données possible, et c'est toi qui décides de ce que je peux mesurer."
+  },
+  "sections": {
+    "controller": {
+      "heading": "Qui est le responsable du traitement ?",
+      "paragraph1": "<bold>Dolmer Digital</bold> (CVR danois 46524861), une entreprise individuelle exploitée par Nicolai Dolmer Mikkelsen. Cycling Zone est un produit de Dolmer Digital.",
+      "paragraph2": "Les demandes concernant tes données (accès, suppression, portabilité, opposition) peuvent être envoyées via Discord (de préférence) ou par e-mail à une adresse indiquée sur la <helpLink>page d'aide</helpLink>. Je réponds en général sous quelques jours, et au plus tard sous un mois conformément à l'art. 12 du RGPD."
+    },
+    "dataTypes": {
+      "heading": "Quelles données je traite ?",
+      "items": [
+        "<bold>Compte :</bold> e-mail, nom d'utilisateur, nom d'équipe choisi et nom de manager (nécessaires pour se connecter et jouer).",
+        "<bold>Données de jeu :</bold> l'économie de ton équipe, les coureurs, les enchères, l'état de la direction, les résultats de saison (tout ce qui est créé en jouant).",
+        "<bold>Facultatif :</bold> ton identifiant Discord si tu l'ajoutes pour recevoir des notifications par MP.",
+        "<bold>Technique :</bold> adresse IP dans les journaux d'accès pendant 30 jours au maximum, utilisée pour l'exploitation et la sécurité.",
+        "<bold>Mesure d'audience (avec consentement uniquement) :</bold> données comportementales anonymes via Microsoft Clarity (par exemple où les utilisateurs cliquent en vain ou défilent avec frustration), statistiques anonymes de trafic/source via Google Analytics (par exemple de quelle page tu viens) et pages vues anonymes via Vercel Web Analytics (par exemple combien de personnes visitent une page). Utilisées uniquement pour corriger une mauvaise UX et comprendre où les joueurs trouvent le jeu.",
+        "<bold>Analyse produit via PostHog (active sauf si tu refuses la mesure d'audience) :</bold> pages vues et étapes clés du jeu (par exemple inscription, équipe créée, première enchère et premier entraînement), pour voir où les nouveaux joueurs bloquent. PostHog ne dépose aucun cookie et ne stocke rien dans ton navigateur : chaque chargement de page reçoit un nouvel identifiant aléatoire. Une fois connecté, ces événements sont reliés à l'identifiant interne de ton compte (jamais ton e-mail ni ton nom), de sorte que les visites peuvent être rattachées d'une session à l'autre. Refuser la catégorie “Mesure d'audience” désactive PostHog immédiatement. La base légale est l'intérêt légitime d'améliorer le jeu (RGPD art. 6, par. 1, point f), et refuser la mesure d'audience est ta façon de t'y opposer.",
+        "<bold>Source d'acquisition (intérêt légitime) :</bold> quand tu crées un compte, j'enregistre comment tu as d'abord atteint le site (un lien de provenance, d'éventuelles balises de campagne dans l'URL et la page d'arrivée) pour voir quels canaux amènent de nouveaux joueurs. Données propres uniquement, aucun suivi inter-sites, et tu peux t'y opposer à tout moment.",
+        "<bold>Statistiques de trafic agrégées (aucun consentement nécessaire) :</bold> je compte des pages vues et un engagement anonymes et agrégés (par exemple combien de visiteurs une page a reçus et s'ils se sont engagés), sans cookies et sans stocker d'adresses IP ni aucune donnée permettant de t'identifier. J'enregistre aussi de quelle page vient une visite et d'éventuelles balises de campagne dans l'URL, pour voir quels canaux amènent des visiteurs. C'est une information sur le lien de provenance, pas sur toi. Comme elle ne peut pas être reliée à toi, elle ne demande aucun consentement.",
+        "<bold>Fair-play (intérêt légitime) :</bold> pour détecter et documenter la triche par comptes multiples, j'enregistre des signaux techniques à la création d'un compte et lors d'actions de valeur dans le jeu (par exemple transferts acceptés, enchères placées et emprunts souscrits) : adresse IP, informations sur le navigateur (user agent), langue et fuseau horaire. Ces données servent uniquement à faire respecter le fair-play, ne sont jamais visibles par les autres joueurs, ne sont pas partagées avec des tiers et sont supprimées automatiquement après 180 jours. Si tu supprimes ton compte, elles sont supprimées avec lui. La base légale est mon intérêt légitime à un jeu équitable (RGPD art. 6, par. 1, point f), et tu peux t'y opposer à tout moment."
+      ]
+    },
+    "founderWaitlist": {
+      "heading": "Liste d'attente Founder (marque d'intérêt sans engagement)",
+      "intro": "Si tu t'inscris sur la liste d'attente “Founder”, je traite les données suivantes sur la base de ton consentement explicite (RGPD art. 6, par. 1, point a) :",
+      "items": [
+        "<bold>Contact :</bold> e-mail et/ou pseudo Discord (au moins un est requis pour que je puisse te recontacter).",
+        "<bold>Intention :</bold> niveau d'intérêt, formule préférée, raison principale, avantages appréciés, lignes rouges d'équité perçues (texte libre).",
+        "<bold>Suivi :</bold> consentement à un suivi personnel (oui/non séparé).",
+        "<bold>Attribution :</bold> d'où tu viens (paramètre UTM ou balise manuelle, par exemple “discord_launch”).",
+        "<bold>Horodatage :</bold> quand tu as donné ton consentement (preuve de la base légale)."
+      ],
+      "purpose": "<bold>Finalité :</bold> gérer la liste d'attente, te contacter au sujet du lancement et mesurer quels canaux génèrent un intérêt réel.",
+      "retention": "<bold>Conservation :</bold> jusqu'à ce que tu demandes la suppression, ou après 24 mois d'inactivité, selon ce qui arrive en premier. Tu peux m'écrire à tout moment pour être supprimé.",
+      "important": "<bold>Important :</bold> une inscription sur la liste d'attente n'est <em>pas</em> un achat et <em>n'engage pas</em>. Aucun paiement n'est encaissé avant un éventuel lancement ultérieur, et à ce moment-là tu devras accepter activement des conditions commerciales."
+    },
+    "thirdParties": {
+      "heading": "Tiers (sous-traitants)",
+      "items": [
+        "<bold>Supabase (UE, Francfort) :</bold> base de données et authentification (accord de traitement des données en place).",
+        "<bold>Vercel :</bold> hébergement du frontend (edge UE/US). Vercel voit les adresses IP dans les journaux d'accès.",
+        "<bold>Railway :</bold> hébergement du backend.",
+        "<bold>PostHog (cloud UE) :</bold> analyse produit sans cookies. Désactivé si tu refuses la catégorie “Mesure d'audience”.",
+        "<bold>Microsoft Clarity :</bold> chargé uniquement si tu as accepté la catégorie “Mesure d'audience”.",
+        "<bold>Google Analytics :</bold> chargé uniquement si tu as accepté la catégorie “Mesure d'audience”. Les signaux publicitaires sont désactivés.",
+        "<bold>Vercel Web Analytics :</bold> chargé uniquement si tu as accepté la catégorie “Mesure d'audience”.",
+        "<bold>Discord (via Discord Inc.) :</bold> seulement si tu ajoutes volontairement ton identifiant Discord, ou si tu me contactes sur Discord. Discord est un responsable de traitement indépendant pour tout contenu que tu m'y envoies."
+      ],
+      "footnote": "Je ne vends pas tes données et je ne les partage pas avec des tiers à des fins de marketing. Un lien vers Discord n'est pas un transfert de données, seulement quand tu cliques et m'écris toi-même."
+    },
+    "retention": {
+      "heading": "Combien de temps je garde les données ?",
+      "items": [
+        "<bold>Compte et données de jeu :</bold> tant que ton compte est actif. Si tu supprimes ton compte, les données personnelles identifiables sont supprimées sous 30 jours ; l'historique de jeu agrégé (par exemple les résultats de saisons passées) peut être conservé sous forme anonymisée.",
+        "<bold>Données de la liste d'attente :</bold> jusqu'à ce que tu demandes la suppression, ou 24 mois d'inactivité, selon ce qui arrive en premier.",
+        "<bold>Journaux d'accès (IP) :</bold> supprimés automatiquement après 30 jours.",
+        "<bold>Télémétrie fair-play (signaux IP et appareil) :</bold> supprimée automatiquement après 180 jours.",
+        "<bold>Preuve de consentement (horodatage du consentement + choix) :</bold> aussi longtemps que les données concernées sont traitées, pour pouvoir documenter la base légale."
+      ]
+    },
+    "rights": {
+      "heading": "Tes droits RGPD",
+      "intro": "Tu as le droit de :",
+      "items": [
+        "<bold>Accès</bold> : savoir quelles données je détiens sur toi.",
+        "<bold>Rectification</bold> : faire corriger des données inexactes.",
+        "<bold>Effacement</bold> (“droit à l'oubli”).",
+        "<bold>Portabilité des données</bold> : recevoir tes données dans un format lisible par machine.",
+        "<bold>Opposition</bold> aux traitements fondés sur l'intérêt légitime.",
+        "<bold>Retrait du consentement</bold> : s'applique pour l'avenir et arrête la collecte. Les données recueillies avant le retrait ne peuvent pas être retirées des agrégats anonymes."
+      ],
+      "complaint": "<bold>Introduire une réclamation auprès de l'autorité danoise de protection des données</bold> : <datatilsynetLink>datatilsynet.dk/english</datatilsynetLink>.",
+      "complaintUrl": "https://www.datatilsynet.dk/english",
+      "consentButton": "Modifier mes choix de consentement"
+    },
+    "cookies": {
+      "heading": "Cookies et stockage local",
+      "intro": "J'utilise des cookies/localStorage <em>strictement nécessaires</em> et un stockage propre pour :",
+      "items": [
+        "<bold>Session de connexion</bold> (auth Supabase) : nécessaire pour te garder connecté.",
+        "<bold>Choix du thème</bold> (clair/sombre) : stocké localement dans ton navigateur.",
+        "<bold>Choix de consentement</bold> (<code>cz_consent_v1</code> dans localStorage) : pour retenir ta sélection et ne pas te redemander.",
+        "<bold>Épinglage de version</bold> (<code>__vdpl</code>) : garde ton navigateur sur la version de l'application que tu as chargée, pour que la page ne plante pas en cours de session."
+      ],
+      "outro": "Ils ne demandent pas de consentement au titre de la directive ePrivacy (strictement nécessaires). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> et <bold>Vercel Web Analytics</bold> ne sont chargés que si tu as activement accepté la catégorie “Mesure d'audience”. <bold>PostHog</bold> ne stocke rien dans ton navigateur (ni cookies, ni localStorage) et est désactivé si tu refuses “Mesure d'audience”. Tu peux modifier ton choix sur cette page à tout moment."
+    },
+    "currentChoices": {
+      "heading": "Tes choix actuels",
+      "necessary": "Nécessaires",
+      "alwaysOn": "toujours actif",
+      "analytics": "Mesure d'audience",
+      "marketing": "Marketing",
+      "email": "E-mail",
+      "accepted": "accepté",
+      "denied": "refusé",
+      "lastUpdated": "Dernière mise à jour : {date}"
+    },
+    "changes": {
+      "heading": "Modifications de cette politique",
+      "paragraph": "Je mets à jour cette politique quand de nouveaux outils ou fonctionnalités sont introduits. Les changements majeurs sont annoncés dans les Patch Notes du jeu ; tu retrouves toujours ici la dernière version."
+    }
+  }
+}
