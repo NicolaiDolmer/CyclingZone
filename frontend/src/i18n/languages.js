@@ -21,6 +21,10 @@
 export const LANGUAGES = [
   { code: "en", label: "English", nativeLabel: "English", flag: "gb", beta: false },
   { code: "da", label: "Danish", nativeLabel: "Dansk", flag: "dk", beta: false },
+  // #6836: fr/es/nl er skjulte beta-sprog (ejer + beta-testere), aldrig offentlige.
+  { code: "fr", label: "French", nativeLabel: "Français", flag: "fr", beta: true },
+  { code: "es", label: "Spanish", nativeLabel: "Español", flag: "es", beta: true },
+  { code: "nl", label: "Dutch", nativeLabel: "Nederlands", flag: "nl", beta: true },
 ];
 
 export const SUPPORTED_LANGS = LANGUAGES.map((l) => l.code);

@@ -32,6 +32,10 @@ import HttpBackend from "i18next-http-backend";
 // (partialBundledLanguages springer bundlede namespaces over).
 const LAZY_BUNDLES = {
   da: () => import("./messages.da.js"),
+  // #6836: skjulte beta-sprog, egen chunk hver (aldrig i EN/DA-bundlen).
+  fr: () => import("./messages.fr.js"),
+  es: () => import("./messages.es.js"),
+  nl: () => import("./messages.nl.js"),
 };
 
 // #6802: sprog med lazy bundle. Testen haandhaever at HVERT registreret sprog i

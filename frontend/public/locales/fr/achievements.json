@@ -93,7 +93,7 @@
   },
   "auction_sniper": {
     "title": "Sniper",
-    "description": "Remporte une enchère avec la mise minimale."
+    "description": "Remporte une enchère en enchérissant le minimum."
   },
   "auction_last_second": {
     "title": "À la dernière seconde",

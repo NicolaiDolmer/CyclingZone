@@ -185,3 +185,70 @@ test("regionale koder falder tilbage via basis-sproget", async () => {
   await i.changeLanguage("xx-YY");
   assert.equal(i.t("only"), "Only EN");
 });
+
+// ── fr/es/nl som skjulte beta-sprog (#6836) ────────────────────────────────
+
+const REGISTERED_BETA = ["fr", "es", "nl"];
+
+test("fr/es/nl er registreret som beta og aldrig offentlige", () => {
+  for (const code of REGISTERED_BETA) {
+    const entry = LANGUAGES.find((l) => l.code === code);
+    assert.ok(entry, `${code} mangler i LANGUAGES`);
+    assert.equal(entry.beta, true, `${code} skal vaere beta: true`);
+    assert.equal(isBetaLang(code), true);
+    assert.equal(isBetaLang(`${code}-XX`), true);
+    assert.ok(SUPPORTED_LANGS.includes(code));
+    assert.ok(!PUBLIC_LANGS.includes(code), `${code} maa ikke vaere i PUBLIC_LANGS`);
+  }
+  assert.deepEqual(PUBLIC_LANGS, ["en", "da"]);
+  assert.equal(HAS_BETA_LANGS, true);
+});
+
+test("browser-detektion vaelger aldrig fr/es/nl, selv med en fransk/spansk/hollandsk browser", () => {
+  assert.deepEqual(publicLanguageCandidates(["fr-FR", "es-ES", "nl-NL", "da-DK"]), ["da-DK"]);
+  assert.deepEqual(publicLanguageCandidates(["fr", "es", "nl"]), []);
+});
+
+test("sprogvaelgeren skjuler fr/es/nl for almindelige spillere og viser dem for testere", () => {
+  assert.deepEqual(selectableLanguages(LANGUAGES, false).map((l) => l.code), ["en", "da"]);
+  assert.deepEqual(selectableLanguages(LANGUAGES, null).map((l) => l.code), ["en", "da"]);
+  assert.deepEqual(selectableLanguages(LANGUAGES, true).map((l) => l.code), ["en", "da", "fr", "es", "nl"]);
+  for (const code of REGISTERED_BETA) assert.equal(languageToRevertTo(code, false), DEFAULT_LANG);
+});
+
+test("sprognavne-noegler language.<kode> findes i alle fem sprog (switcherens fallback-noegle)", () => {
+  const dir = join(HERE, "../../public/locales");
+  for (const lng of ["en", "da", ...REGISTERED_BETA]) {
+    const common = JSON.parse(readFileSync(join(dir, lng, "common.json"), "utf8"));
+    for (const code of REGISTERED_BETA) {
+      assert.equal(typeof common.language?.[code], "string", `${lng}/common.json mangler language.${code}`);
+    }
+  }
+});
+
+test("hver beta-bundle dækker praecis de samme namespaces som den danske", () => {
+  const ns = (src: string) => [...src.matchAll(/^import (\w+) from "\.\.\/\.\.\/public\/locales\/([a-z]+)\//gm)];
+  const da = ns(read("messages.da.js"));
+  assert.ok(da.length > 0);
+  for (const code of REGISTERED_BETA) {
+    const src = read(`messages.${code}.js`);
+    const own = ns(src);
+    assert.deepEqual(own.map((m) => m[1]), da.map((m) => m[1]), `${code}: namespace-liste afviger fra da`);
+    assert.ok(own.every((m) => m[2] === code), `${code}: importerer et andet sprogs locale-filer`);
+  }
+});
+
+test("vite splitter hver beta-bundle ud i sin egen chunk (EN/DA vokser aldrig)", () => {
+  const vite = readFileSync(join(HERE, "../../vite.config.js"), "utf8");
+  for (const code of REGISTERED_BETA) {
+    assert.match(vite, new RegExp(`name: "i18n-messages-${code}"`), `${code} mangler codeSplitting-gruppe`);
+  }
+});
+
+test("sprogvaelgerens flag kender fr/es/nl (ellers tekst-only valg)", () => {
+  const flagSrc = readFileSync(join(HERE, "../components/LanguageSwitcherFlag.jsx"), "utf8");
+  for (const code of REGISTERED_BETA) {
+    const entry = LANGUAGES.find((l) => l.code === code);
+    assert.match(flagSrc, new RegExp(`[ {,]${entry.flag}: `), `${entry.flag} mangler i FLAGS`);
+  }
+});

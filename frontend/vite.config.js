@@ -320,6 +320,22 @@ export default defineConfig({
               test: /(public[\\/]locales[\\/]da[\\/]|src[\\/]i18n[\\/]messages\.da\.js)/,
               priority: 30,
             },
+            // #6836: skjulte beta-sprog, én lazy chunk pr. sprog (preloades aldrig).
+            {
+              name: "i18n-messages-fr",
+              test: /(public[\\/]locales[\\/]fr[\\/]|src[\\/]i18n[\\/]messages\.fr\.js)/,
+              priority: 30,
+            },
+            {
+              name: "i18n-messages-es",
+              test: /(public[\\/]locales[\\/]es[\\/]|src[\\/]i18n[\\/]messages\.es\.js)/,
+              priority: 30,
+            },
+            {
+              name: "i18n-messages-nl",
+              test: /(public[\\/]locales[\\/]nl[\\/]|src[\\/]i18n[\\/]messages\.nl\.js)/,
+              priority: 30,
+            },
           ],
         },
       },
