@@ -2942,7 +2942,10 @@ router.get("/training/me", requireAuth, async (req, res) => {
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
       readFlagStage(supabase, TRAINING_BULK_DAY_FLAG_KEY), // #6523
     ]);
-    const enabled = evaluateFlagStage(stage, { isBetaTester });
+    // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
+    // gaten staar lukket her ogsaa: fladen viser "sat paa pause".
+    const parked = req.team.parked_at != null;
+    const enabled = !parked && evaluateFlagStage(stage, { isBetaTester });
     // #3459 V3 / #4375: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres
     // KUN når løbsdags-UDVIKLINGEN er on for brugeren. Badgen beskriver præcis D1+D2
     // ("rytteren racer i dag, derfor er dagens pas løbet"), og de to hænger på
@@ -3119,7 +3122,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     let dayClose = null;
     if (raceDayTickOn) {
       const windowOpen = trainingWindowOpen(new Date());
-      const close = windowOpen && activeSeasonId
+      const close = parked ? { closed: false, reason: "team_parked", gameDays: [] } : windowOpen && activeSeasonId
         ? await resolveDayCloseStatus({
           supabase, seasonId: activeSeasonId, now: new Date(),
           divisionId: req.team.league_division_id ?? null,

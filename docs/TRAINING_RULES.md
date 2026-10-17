@@ -26,7 +26,8 @@ ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparatio
 - Et parkeret hold (`teams.parked_at` sat) er urørt: ingen træningstick, hverken på løbsdags-nøglen eller den gamle kalenderdags-nøgle. Arbejde der allerede var registreret for datoen før parkeringen, afregnes færdigt.
 - Den gamle kalenderdags-nøgle (`game_day IS NULL`) gælder kun hold uden division, der ikke er parkeret: division-løse AI-hold og et nyt menneskehold oprettet uden division (fallback i `pickDivisionForNewTeam`).
 - Én regel for begge writers: `isLegacyCalendarTickTeam` (`trainingDateClose.js`) og `isTrainingDateTeam` (`trainingDateReadiness.js`).
-- Managerens egne tryk afviser også et parkeret hold med 409 `team_parked`: "Træn nu" (`runTrainNow`) og den gamle `POST /api/training/run-today`.
+- Managerens egne tryk afviser også et parkeret hold med 409 `team_parked`: "Træn nu" (`runTrainNow`) og den gamle `POST /api/training/run-today`. `GET /api/training/me` viser gaten lukket for et parkeret hold (`enabled: false`, og `dayClose.reason: "team_parked"` når løbsdags-tick er on), så fladen ikke lover en knap, der afvises (#6811).
+- **Varig parkeringsperiode (#6811):** et comeback (`returnParkedTeam`) sætter `teams.comeback_at`. En dato der sluttede før comebacket, regnes ikke med for holdet, samme regel som `created_at` for et nyt hold; comeback-dagen selv tæller. Reglen ligger i databasen, så den holder også efter en genstart, hvor sweepen gennemgår alle sæsonens datoer igen. Uden den fik et tilbagevendt hold alle de parkerede datoer på én gang. Comebacks fra før kolonnen fandtes, har `comeback_at` NULL og er ikke dækket.
 
 ## Forbigående DB-fejl i facilitets- og træneropslaget (#6596, 17/10)
 
