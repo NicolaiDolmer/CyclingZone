@@ -1,0 +1,2052 @@
+{
+  "page": {
+    "title": "Bestuur",
+    "subtitle": "Drie parallelle plannen, aparte doelen en tevredenheid",
+    "financeLink": "Financiën"
+  },
+  "loadError": "Het bestuur kon niet worden geladen. Probeer het opnieuw.",
+  "retry": "Probeer opnieuw",
+  "tour": {
+    "plans": {
+      "title": "Drie plannen lopen parallel",
+      "body": "Wissel met de tabbladen tussen de plannen van 1, 3 en 5 jaar. Eén plan tegelijk, op volle breedte. Elk toont zijn stand, tevredenheid, sponsor×-modifier en doelen met statuspictogrammen. Klik op een doel om de reactie van het bestuur te zien."
+    },
+    "satisfaction": {
+      "title": "Tevredenheid bepaalt sponsor en gevolgen",
+      "body": "Hoge tevredenheid (boven 70%) verhoogt de sponsorinkomsten. Lage tevredenheid (onder 40%) kan leiden tot salarisplafonds, contracteerbeperkingen en uiteindelijk gedwongen verkoop van renners. De progressie is geleidelijk en voorspelbaar."
+    },
+    "kpis": {
+      "title": "Waarop ze beoordelen",
+      "body": "Resultaten, financiën, identiteit (U25, nationale kern) en ranglijst, plus nieuwere typen: Monuments, truien, sterrenrenner en vooruitgang in U25-vaardigheden. Je club-DNA en 5 genoemde bestuursleden kleuren de reacties."
+    }
+  },
+  "baseline": {
+    "title": "Het bestuur observeert je eerste seizoen",
+    "body": "Je zit in je basisseizoen. Het bestuur leert je team kennen zonder eisen of doelen. De sponsormodifier blijft op 1,0×. Als het seizoen eindigt, openen de onderhandelingen na elkaar: eerst het plan van 5 jaar, dan het plan van 3 jaar, dan het plan van 1 jaar."
+  },
+  "emptyState": {
+    "headline": "Maak kennis met je bestuur",
+    "intro": "Je hebt nog geen bestuursplannen. Het bestuur stelt doelen, beoordeelt je seizoen en bepaalt hoeveel sponsorinkomsten je team uitbetaald krijgt.",
+    "plans": {
+      "oneYear": {
+        "label": "Plan van 1 jaar",
+        "description": "Strikte doelen, snelle resultaten. Volledige straf bij falen."
+      },
+      "threeYear": {
+        "label": "Plan van 3 jaar",
+        "description": "Gematigde doelen, ruimte om te groeien. 20% minder straf."
+      },
+      "fiveYear": {
+        "label": "Plan van 5 jaar",
+        "description": "Ambities op lange termijn. 40% minder straf."
+      }
+    },
+    "plansFooter": "Alle drie de plannen lopen parallel. Je onderhandelt over één tegelijk, en elk heeft zijn eigen doelen en tijdshorizon.",
+    "satisfactionLabel": "Tevredenheid -> sponsormodifier",
+    "bands": {
+      "high": "60–100% -> sponsor × 1,10–1,20",
+      "moderate": "40–59% -> sponsor × 1,00",
+      "low": "0–39% -> sponsor × 0,80–0,90"
+    },
+    "satisfactionFooter": "Elk gehaald doel verhoogt de tevredenheid. Ontevreden besturen verscherpen de eisen bij de volgende planonderhandeling.",
+    "kpis": {
+      "heading": "Waarop ze beoordelen",
+      "results": {
+        "label": "Resultaten",
+        "text": "koerszeges, topplaatsen, totaal aantal zeges"
+      },
+      "finance": {
+        "label": "Financiën",
+        "text": "openstaande schuld, sponsorgroei gedurende het plan"
+      },
+      "identity": {
+        "label": "Identiteit",
+        "text": "U25-aandeel, nationale kern, sterrenrenners"
+      },
+      "rank": {
+        "label": "Ranglijst",
+        "text": "plaats in de divisie aan het eind van het seizoen"
+      }
+    },
+    "ctaNegotiate": "Onderhandel met het bestuur over je eerste plan",
+    "ctaShowTour": "Laat me rondkijken"
+  },
+  "planLabels": {
+    "1yr": "plan van 1 jaar",
+    "3yr": "plan van 3 jaar",
+    "5yr": "plan van 5 jaar"
+  },
+  "planDescriptions": {
+    "1yr": "Strikte doelen, snelle resultaten. Volledige straf bij falen.",
+    "3yr": "Gematigde doelen, ruimte om te groeien. 20% minder straf.",
+    "5yr": "Ambities op lange termijn. 40% minder straf."
+  },
+  "focus": {
+    "balanced": "Evenwichtig",
+    "youth_development": "Jeugdontwikkeling",
+    "star_signing": "Sterrentransfer"
+  },
+  "goal": {
+    "topNFinish": "Top {target} in de divisie",
+    "topNFinishPlanEnd": "Top {target} in de divisie aan het einde van het plan",
+    "minNationalRiders": "Min. {target} renners uit {country}",
+    "signatureRider": "{count, plural, one {Minstens 1 renner met grote naamsbekendheid} other {Minstens # renners met grote naamsbekendheid}}",
+    "stageWins": "{target, plural, one {Minstens 1 koerszege} other {Minstens # koerszeges}}",
+    "stageWinsPlanPeriod": "Minstens {target} koerszeges over de planperiode",
+    "gcWins": "{target, plural, one {Minstens 1 eindzege} other {Minstens # eindzeges}}",
+    "gcWinsPlanPeriod": "Minstens {target} eindzeges over de planperiode",
+    "minU25Riders": "Min. {target} U25-renners in het team",
+    "minRiders": "Houd minstens {target} renners",
+    "sponsorGrowth": "Sponsorinkomsten {target}% hoger",
+    "sponsorGrowthPlanPeriod": "Sponsorinkomsten {target}% hoger over de planperiode",
+    "noOutstandingDebt": "Geen openstaande schuld aan het eind van het seizoen",
+    "monumentPodium": "Top 3 in minstens {target} Monument-{target, plural, one {koers} other {koersen}}",
+    "monumentPodiumPlanPeriod": "Minstens {target} podium{target, plural, one {} other {s}} in Monument-koersen over de planperiode",
+    "classicsPodium": "Top 3 in minstens {target} {target, plural, one {klassieker} other {klassiekers}} (incl. Monuments)",
+    "classicsPodiumPlanPeriod": "Minstens {target} podium{target, plural, one {} other {s}} in klassiekers (incl. Monuments) over de planperiode",
+    "jerseyWins": "Minstens {target} {target, plural, one {trui} other {truien}} in etappekoersen (punten/berg/jeugd)",
+    "jerseyWinsPlanPeriod": "Minstens {target} truien in etappekoersen over de planperiode",
+    "profitableTransfers": "Netto transfersaldo >= {amount} over de planperiode",
+    "u25DevelopmentDelta": "Gemiddelde vooruitgang van U25-vaardigheden >= {target} vaardigheidspunten/seizoen",
+    "relativeRank": "Eindig voor minstens {target} andere managers in de divisie",
+    "domesticDominance": "Minstens {target} zeges in thuiskoersen per seizoen",
+    "required": "Vereist",
+    "negotiated": "Onderhandeld",
+    "tightenedBadge": "🔒 Aangescherpt",
+    "tightenedTitle": "Aangescherpt door het bestuur na een eerder verzoek",
+    "cumulative": "Cumulatief",
+    "satisfactionBonus": "+{count} tevredenheid",
+    "satisfactionPenalty": "-{count} als niet gehaald",
+    "memberReacts": "{member} reageert",
+    "relativeRankDetail": "Je staat #{rank} van {total} managers in de divisie en verslaat er {actual} (doel: {target}<check/>).",
+    "targetMet": "doel gehaald",
+    "rankInDivisionShort": "Je staat #{rank} van {total} managers in de divisie.",
+    "sponsorGrowthDetail": "De sponsorgroei is {actual}% tegenover het doel van {target}% dat nu moet zijn bereikt.",
+    "progress": "Voortgang",
+    "obligatory": "Verplicht",
+    "boardReaction": "De reactie van het bestuur"
+  },
+  "goalType": {
+    "u25_development_delta": "U25-ontwikkeling",
+    "signature_rider": "Renner met grote naamsbekendheid",
+    "min_national_riders": "Nationale kern",
+    "profitable_transfers": "Winstgevende transfers",
+    "monument_podium": "Monument-podia",
+    "jersey_wins": "Truien in etappekoersen",
+    "relative_rank": "Divisieranglijst",
+    "top_n_finish": "Divisie-eindstand",
+    "stage_wins": "Koerszeges",
+    "gc_wins": "Eindzeges",
+    "sponsor_growth": "Sponsorgroei",
+    "domestic_dominance": "Thuisdominantie"
+  },
+  "goalHelp": {
+    "heading": "Hoe wordt dit gemeten?",
+    "signature_rider": "Telt renners die het bestuur als sterrenrenners herkent. Met reputatie ingeschakeld leest dit dezelfde verdiende reputatiewaarde die op de rennersschermen staat.",
+    "top_n_finish": "Beoordeeld op je eindstand in het laatste seizoen van het plan, niet op een gemiddelde over de seizoenen van het plan.",
+    "u25_development_delta": "De gemiddelde winst aan vaardigheidspunten per U25-renner per seizoen. Ontwikkel jonge renners zodat hun vaardigheden over het seizoen stijgen.",
+    "sponsor_growth": "Vergelijkt de seizoensuitbetaling van je sponsor (contractbasis, naar rato als je team midden in het seizoen instapte, plus inkomsten per koersdag) tussen dit seizoen en het eerste seizoen van het plan. Eenmalige bonussen (tekenen, resultaten, doelen) tellen niet mee. Alleen getoond vanaf het tweede seizoen van het plan, zodra er een echt basisseizoen bestaat."
+  },
+  "drivers": {
+    "heading": "Wat drijft dit bestuur?",
+    "satisfactionLabel": "Algemene tevredenheid",
+    "weightsLabel": "Hier geeft dit bestuur het meest om",
+    "weightHint": "Het halen van deze doelen verschuift de tevredenheid van het bestuur meer dan de andere."
+  },
+  "status": {
+    "behind": "In gevaar",
+    "near_miss": "Bijna",
+    "on_track": "Op koers",
+    "watch": "Opletten",
+    "benchmark": {
+      "belowPar": "Onder de maat",
+      "onTrack": "Op koers",
+      "good": "Goed",
+      "great": "Zeer goed",
+      "outstanding": "Uitmuntend"
+    },
+    "trend": {
+      "up": "Tevredenheid stijgt",
+      "down": "Tevredenheid daalt",
+      "flat": "Tevredenheid stabiel"
+    }
+  },
+  "changeKind": {
+    "relaxed": "Versoepeld",
+    "tightened": "Aangescherpt",
+    "replaced": "Vervangen"
+  },
+  "outcome": {
+    "approved": "Goedgekeurd",
+    "partial": "Gedeeltelijk",
+    "tradeoff": "Afweging",
+    "rejected": "Afgewezen"
+  },
+  "personality": {
+    "sports_ambition": {
+      "low": "Lage ambitie",
+      "medium": "Gematigde ambitie",
+      "high": "Hoge ambitie"
+    },
+    "financial_risk": {
+      "cautious": "Voorzichtige economie",
+      "balanced": "Evenwichtige economie",
+      "aggressive": "Agressieve economie"
+    },
+    "identity_strength": {
+      "low": "Zwakke identiteit",
+      "medium": "Gematigde identiteit",
+      "high": "Sterke identiteit"
+    }
+  },
+  "satisfactionMeter": {
+    "label": "Tevredenheid van het bestuur",
+    "veryHappy": "Zeer tevreden",
+    "happy": "Tevreden",
+    "neutral": "Neutraal",
+    "unhappy": "Ontevreden",
+    "veryUnhappy": "Zeer ontevreden",
+    "sponsorModifier": "Sponsor ×{modifier}"
+  },
+  "members": {
+    "heading": "Het bestuur",
+    "count": "{count, plural, one {1 lid} other {# leden}}",
+    "chairman": "Voorzitter",
+    "chairmanTitle": "Voorzitter van het bestuur",
+    "wildcard": "Wildcard",
+    "identityMatch": "Identiteitsmatch",
+    "weightsHeading": "Wat dit lid zwaar laat wegen",
+    "viewProfile": "Bestuurslid bekijken"
+  },
+  "dna": {
+    "sectionLabel": "Club-DNA",
+    "selectHeading": "Kies de identiteit van je club",
+    "selectIntro": "Het bestuur heeft seizoen 1 geobserveerd en stelt drie richtingen voor. DNA bepaalt de weging van doelen, de doelen vanuit de clubtraditie en welke bestuursleden je vanaf het eerste plan krijgt.",
+    "slot": {
+      "national_match": "Nationale match",
+      "specialization_match": "Specialisatiematch",
+      "wildcard": "Wildcard",
+      "fallback": "Suggestie"
+    },
+    "saving": "Opslaan…",
+    "choose": "Dit DNA kiezen",
+    "switch": "Naar dit DNA overstappen",
+    "current": "Huidig",
+    "badge": {
+      "label": "Club-DNA",
+      "viewHint": "Club-DNA bekijken"
+    },
+    "rechoose": {
+      "hint": "Je kunt je club-DNA nog wijzigen tot je eerste seizoen eindigt. Daarna ligt het vast.",
+      "toggle": "Club-DNA wijzigen",
+      "sectionLabel": "Club-DNA",
+      "heading": "Wijzig je club-DNA",
+      "intro": "Kies een andere richting zolang je in je eerste seizoen zit. Overstappen wijst je bestuursleden en de weging van doelen opnieuw toe."
+    },
+    "locked": {
+      "heading": "Vergrendeld voor het seizoen",
+      "body": "Je club-DNA staat vast voor het seizoen en kan niet worden gewijzigd. Het bepaalt de weging van doelen, de doelen vanuit de clubtraditie en welke bestuursleden je krijgt."
+    },
+    "skandinavisk_udvikling": {
+      "label": "Scandinavisch ontwikkelteam",
+      "shortDescription": "Jeugd, evenwicht en Noords erfgoed",
+      "longDescription": "Wij bouwen renners van onderaf op: geduld, structuur en Noordse arbeidsethos. Sponsors verwachten ontwikkeling, geen vuurwerk.",
+      "traditionGoalLabel": "Club-DNA: ontwikkel de talenten, gemiddeld +3 vaardigheidspunten per seizoen voor U25-renners"
+    },
+    "italiensk_klassiker": {
+      "label": "Italiaanse klassiekertraditionalist",
+      "shortDescription": "De lente is heilig. Monuments zijn het doel",
+      "longDescription": "De club is gebouwd op de wegen van Lombardia en Strade Bianche. Onze fans dromen van Sanremo en Lombardia, niet van podia in de Tour de France.",
+      "traditionGoalLabel": "Club-DNA: minstens één podium in een klassieker (incl. Monuments) per plancyclus"
+    },
+    "sprint_kommerciel": {
+      "label": "Sprintgericht commercieel team",
+      "shortDescription": "Zeges op de streep, sponsors op het wiel",
+      "longDescription": "Onze renner moet als eerste over de streep en als eerste voor de camera's. Sponsorgroei komt van zichtbaarheid, en zichtbaarheid komt van etappezeges.",
+      "traditionGoalLabel": "Club-DNA: win minstens 2 truien in etappekoersen over de planperiode (sprintfocus)"
+    },
+    "fransk_klatrer": {
+      "label": "Frans klimmerserfgoed",
+      "shortDescription": "De bergen van de Tour zijn het thuis van de club",
+      "longDescription": "Wij zijn omhooggeklommen met Anquetil, Hinault en Pinot. De bergen definiëren ons, en de Tour de France is nog altijd de belangrijkste zondag op de kalender.",
+      "traditionGoalLabel": "Club-DNA: minstens 4 Franse renners in de selectie"
+    },
+    "britisk_allrounder": {
+      "label": "Britse allrounder",
+      "shortDescription": "Discipline over de hele linie, datagedreven en breed",
+      "longDescription": "De Sky-school leeft voort. Wij winnen door structuur, marginale winst en diepgang, van Roubaix tot Andorra. Geen enkele discipline bezit de club, maar elke discipline hoort hier thuis.",
+      "traditionGoalLabel": "Club-DNA: top 3 in de divisie (brede prestatie)"
+    },
+    "suggestionRationale": {
+      "nationalMatch": "Past bij je kern uit {nationalCode} vanaf seizoen 1",
+      "specializationMatch": "Past bij je {specLabel}",
+      "wildcard": "Een nieuw pad. Het bestuur volgt je waar het ook heen leidt"
+    },
+    "specLabel": {
+      "gc": "klassementsfocus",
+      "sprint": "sprintfocus",
+      "classics": "klassiekerfocus",
+      "breakaway": "ontsnappingsstijl",
+      "youth": "jeugdstempel",
+      "balanced": "evenwichtig profiel"
+    },
+    "errorFallback": "Het DNA kon niet worden gekozen",
+    "requiredBeforePlan": "Kies je club-DNA voordat je met het bestuur onderhandelt."
+  },
+  "identity": {
+    "defaultTitle": "Teamidentiteit",
+    "wizardTitle": "Hoe het bestuur het team leest",
+    "u25": "U25",
+    "u25Count": "{count, plural, one {1 renner} other {# renners}}",
+    "u25ShareSub": "{percent}% van de selectie",
+    "primary": "Primair",
+    "secondary": "Secundair",
+    "competitive": "Competitief spoor",
+    "squad": "Selectie",
+    "nationalCore": "Nationale kern",
+    "nationalCoreMixed": "Gemengd",
+    "nationalCoreNone": "Nog geen duidelijke kern",
+    "nationalCoreSub": "{count, plural, one {1 renner} other {# renners}} · {percent}% van de selectie",
+    "starProfile": "Sterrenprofiel",
+    "starProfileUnknown": "Onbekend",
+    "starProfileNone": "Nog geen duidelijke profielen",
+    "starProfileSub": "{count, plural, one {1 sterrenrenner} other {# sterrenrenners}}",
+    "starRidersHeading": "Profielrenners",
+    "starRidersEmpty": "Nog geen renner is bekend genoeg om door het bestuur als ster te worden gelezen.",
+    "starRidersExplainer": "Het bestuur leest deze renners als je sterren. Met reputatie ingeschakeld bepaalt hetzelfde verdiende reputatiegetal dat op de rennersschermen staat wie meetelt.",
+    "starRiderPopularity": "Populariteit {popularity}",
+    "starRiderReputation": "Reputatie {score}",
+    "starRiderUnnamed": "Naamloze renner",
+    "dnaRelation": "Dit weerspiegelt je huidige selectie, niet je gekozen club-DNA ({dna}). Het bestuur leest de renners die je nu hebt. Het DNA bepaalt de langetermijndoelen waarover je onderhandelt.",
+    "dnaRelationNoDna": "Dit weerspiegelt je huidige selectie. Het bestuur leest de renners die je nu hebt."
+  },
+  "request": {
+    "heading": "Verzoek aan het bestuur",
+    "subheading": "Eén strategisch verzoek per seizoen",
+    "used": "Gebruikt",
+    "ready": "Klaar",
+    "pendingMigration": "Bestuursverzoeken wachten op een databasemigratie",
+    "changesHeading": "Waarop het bestuur reageerde",
+    "focusLabel": "Focus",
+    "changesTo": "verandert naar",
+    "sending": "Versturen...",
+    "send": "Verzoek versturen",
+    "errorFallback": "Het verzoek aan het bestuur kon niet worden verstuurd.",
+    "preview": "Suggestie bekijken",
+    "previewing": "Suggestie laden...",
+    "previewHeading": "Voorgestelde wijziging",
+    "previewSubheading": "Er wordt nog niets toegepast. Bekijk het en accepteer, of houd je huidige plan.",
+    "accept": "Accepteren",
+    "applying": "Toepassen...",
+    "keepCurrent": "Huidig plan houden",
+    "previewErrorFallback": "De suggestie kon niet worden geladen."
+  },
+  "consequence": {
+    "heading": "Actieve gevolgen",
+    "count": "{count, plural, one {1 actief} other {# actief}}",
+    "layer2": {
+      "label": "Salarisplafond",
+      "describe": "Het bestuur heeft een salarisplafond van {cash} opgelegd. Je kunt het totale salaris van het team niet verhogen, verkoop eerst een renner."
+    },
+    "layer3": {
+      "label": "Contracteerbeperking",
+      "describe": "Het bestuur blokkeert alle aankopen boven {cash} tot de tevredenheid herstelt."
+    },
+    "layer4": {
+      "label": "Gedwongen verkoop",
+      "describe": "Het bestuur heeft {rider} verplicht te koop gezet voor {cash}. Zoek een koper om de deal snel te sluiten."
+    },
+    "layer4DefaultRider": "een renner",
+    "layer5": {
+      "label": "Sponsor trekt zich terug",
+      "describe": "Een hoofdsponsor heeft zich teruggetrokken. De sponsorinkomsten dalen volgend seizoen met 10%."
+    }
+  },
+  "bonusOffer": {
+    "heading": "Bonusaanbod van het bestuur",
+    "body": "Het bestuur is onder de indruk. Het biedt <bonus>+{cash}</bonus> op het saldo van het team voor één extra doel: <goal>{goal}</goal>.",
+    "footer": "Accepteer en het budget wordt direct bijgeschreven. Het extra doel wordt aan je plan van 1 jaar toegevoegd en aan het eind van het seizoen beoordeeld.",
+    "defaultGoal": "1 extra doel",
+    "accept": "Aanbod accepteren",
+    "decline": "Afwijzen"
+  },
+  "feed": {
+    "heading": "Bestuursfeed",
+    "latestCount": "{count} laatste",
+    "needsAction": "Actie nodig"
+  },
+  "autoAccept": {
+    "lastChance": "Laatste kans, het bestuur neemt het over over {count, plural, one {1 dag} other {# dagen}}",
+    "waiting": "Het bestuur wacht op je onderhandeling, nog {count, plural, one {1 dag} other {# dagen}}",
+    "footer": "Als je binnen 5 dagen nadat het plan opent geen focus hebt gekozen en geen doelen hebt onderhandeld, kiest het bestuur een plan op basis van je teamidentiteit uit seizoen 1."
+  },
+  "plan": {
+    "autoConfigured": "Automatisch ingesteld bij de start van het volgende seizoen",
+    "negotiateExpired": "Onderhandel over een nieuw plan",
+    "goalsLabel": "Doelen",
+    "seasonsRemaining": "{count, plural, one {1 seizoen te gaan} other {# seizoenen te gaan}}",
+    "hideDetails": "Details verbergen",
+    "showDetails": "Details tonen",
+    "timelineHeading": "Tijdlijn van het plan",
+    "midReviewHeading": "Tussentijdse beoordeling afgerond",
+    "midReviewBody": "Seizoen {current} van {total} beoordeeld.",
+    "planGoalsLabel": "Plandoelen",
+    "seasonGoalsLabel": "Seizoensdoelen",
+    "outlookHeading": "De beoordeling van het bestuur",
+    "renew": "Plan verlengen (status quo)",
+    "renewing": "Verlengen…",
+    "renewLocked": "Heronderhandelen is vergrendeld voor de rest van het seizoen.",
+    "renewLockedPlanActive": "Dit plan is nog actief. Het kan pas opnieuw worden onderhandeld als de volledige looptijd voorbij is.",
+    "standingHeading": "Stand",
+    "negotiationOrder": "Plannen worden van lang naar kort onderhandeld: 5 -> 3 -> 1 jaar."
+  },
+  "tabs": {
+    "aria": "Planhorizons",
+    "select": "{plan} bekijken"
+  },
+  "snapshot": {
+    "heading": "Seizoensgeschiedenis",
+    "columns": {
+      "season": "Seizoen",
+      "rank": "Plaats",
+      "stageWins": "Etappes",
+      "gcWins": "Totalen",
+      "goalsMet": "Doelen",
+      "satisfaction": "Tevredenheid"
+    },
+    "seasonNumber": "Seizoen {number}",
+    "rankNone": "—"
+  },
+  "cumulative": {
+    "stageWins": "Koerszeges",
+    "gcWins": "Totaal aantal zeges"
+  },
+  "wizard": {
+    "step1Title": "Het voorstel van het bestuur",
+    "step1Subtitle": "Kies een strategie; het bestuur stelt eisen op",
+    "focusLabel": "Teamfocus",
+    "horizonLabel": "Tijdshorizon",
+    "horizonDuration": "Het plan beslaat {count, plural, one {1 seizoen} other {# seizoenen}}, doelen worden continu beoordeeld",
+    "requirementsHeading": "De eisen van het bestuur",
+    "startNegotiation": "Onderhandeling starten",
+    "startBlockedNoRequirements": "Voor deze focus zijn geen eisen opgesteld. Probeer een andere focus.",
+    "errorProposal": "Het voorstel van het bestuur kon niet worden opgehaald.",
+    "errorSign": "Het bestuursplan kon niet worden getekend.",
+    "step2Title": "Onderhandeling",
+    "step2Subtitle": "Bekijk de eisen van het bestuur een voor een",
+    "goalCounter": "Doel {current}/{total}",
+    "alreadyNegotiated": "Al onderhandeld",
+    "negotiateDown": "Naar beneden onderhandelen",
+    "cannotNegotiate": "Niet te onderhandelen",
+    "accept": "Accepteren",
+    "compromiseHeading": "Het bestuur heeft een compromis geaccepteerd",
+    "compromiseBody": "Straf gehalveerd. Het onderhandelde doel accepteren?",
+    "acceptNegotiated": "Onderhandeld doel accepteren",
+    "negotiationsUsed": "{count, plural, one {1 onderhandeling gebruikt} other {# onderhandelingen gebruikt}}",
+    "step3Title": "Handtekening",
+    "step3Subtitle": "{plan}, beslaat {count, plural, one {1 seizoen} other {# seizoenen}}",
+    "agreedHeading": "Afgesproken doelen",
+    "signing": "Opslaan...",
+    "sign": "Contract tekenen ✍",
+    "resetNotice": "Tekenen zet de tellers van dit plan terug (voltooide seizoenen, cumulatieve zeges) en start een nieuw planvenster. Je verzoek aan het bestuur voor dit seizoen wordt niet teruggezet. Dat blijft vergrendeld tot volgend seizoen.",
+    "obligatory": "Vereist",
+    "negotiatedTick": "Onderhandeld ✓",
+    "steps": {
+      "strategy": "Strategie",
+      "negotiation": "Onderhandeling",
+      "signature": "Handtekening"
+    },
+    "setupHeading": "Opzet bestuursplan ({step}/3)",
+    "setupBody": "Onderhandel met het bestuur over je {plan}. Ga daarna verder met het volgende plan.",
+    "setupSequence": "De eerste vergadering volgt een vaste volgorde: eerst het plan van 5 jaar, dan het plan van 3 jaar en tot slot het plan van 1 jaar.",
+    "multiRenewalHeading": "Planverlenging {current}/{total}, {plan}",
+    "multiRenewalBodyNext": "Ga daarna verder met {next}.",
+    "multiRenewalBodyLast": "Laatste plan in de rij.",
+    "singleRenewalHeading": "{plan} verlopen",
+    "singleRenewalBody": "Onderhandel met het bestuur over een nieuw {plan}.",
+    "back": "Terug",
+    "backToPlan": "Terug naar {plan}",
+    "backToOverview": "Terug naar het overzicht",
+    "dialogAria": "Onderhandeling over het bestuursplan"
+  },
+  "a11y": {
+    "closeDialog": "Dialoog sluiten",
+    "goalStatus": {
+      "achieved": "Gehaald",
+      "behind": "Achter",
+      "nearMiss": "Net gemist",
+      "pending": "In afwachting"
+    },
+    "seasonComplete": {
+      "good": "Seizoen afgerond: doelen gehaald",
+      "poor": "Seizoen afgerond: doelen gemist"
+    },
+    "wizardStepDone": "Voltooid",
+    "goalProgress": "Voortgang van het doel",
+    "goalsProgress": "Gehaalde doelen",
+    "planProgress": "Voortgang van het plan",
+    "wizardProgress": "Voortgang van de onderhandelingsstap"
+  },
+  "satisfactionExplainer": {
+    "heading": "Wat betekent tevredenheid?",
+    "high": {
+      "range": "60–100%",
+      "label": "Hoge tevredenheid",
+      "effect": "Sponsor × 1,10–1,20, extra inkomsten"
+    },
+    "moderate": {
+      "range": "40–59%",
+      "label": "Gematigde tevredenheid",
+      "effect": "Sponsor × 1,00, normale inkomsten"
+    },
+    "low": {
+      "range": "0–39%",
+      "label": "Lage tevredenheid",
+      "effect": "Sponsor × 0,80–0,90, verminderd"
+    }
+  },
+  "category": {
+    "results": "Resultaten",
+    "economy": "Financiën",
+    "identity": "Identiteit",
+    "ranking": "Ranglijst"
+  },
+  "satisfactionTimeline": {
+    "heading": "Weekend na weekend",
+    "goals": "{met}/{total} doelen gehaald",
+    "flat": "geen verandering",
+    "unknownRace": "Koersweekend"
+  },
+  "transparency": {
+    "progressTowards": "Onderweg naar {target}%",
+    "progressAtTarget": "Al op het doel ({target}%)",
+    "passiveModifier": {
+      "strong_boost": "Het bestuur is zeer tevreden: sponsorinkomsten +{pct}%",
+      "boost": "Het bestuur is tevreden: sponsorinkomsten +{pct}%",
+      "neutral": "Het bestuur is neutraal: geen effect op de sponsor",
+      "penalty": "Het bestuur is ontevreden: sponsorinkomsten {pct}%",
+      "strong_penalty": "Het bestuur is zeer ontevreden: sponsorinkomsten {pct}%"
+    },
+    "chairmanWarning": "Nog één teleurstellend planverloop en het bestuur vervangt de voorzitter",
+    "bonusOfferClose": "{count} doel verwijderd van een bonusaanbod",
+    "bonusOfferClose_plural": "{count} doelen verwijderd van een bonusaanbod",
+    "bonusOfferSatisfactionGap": "Vereist tevredenheid boven {threshold}% voor een bonusaanbod",
+    "bonusOfferEligible": "Komt in aanmerking voor een bonusaanbod",
+    "tradeoff": {
+      "heading": "Vastgelegd uit een eerder verzoek",
+      "tighten_identity_riders": "Je volgende plan vraagt {delta} identiteitsrenner(s) meer",
+      "raise_sponsor_growth_target": "Het sponsorgroeidoel van je volgende plan stijgt met {deltaPct}%"
+    }
+  },
+  "feedback": {
+    "awaitingData": {
+      "headline": "Het bestuur wacht op meer gegevens",
+      "summary": "De signalen van het seizoen zijn nog te schaars voor een duidelijke beoordeling."
+    },
+    "expired": {
+      "headline": "Het plan is verlopen",
+      "summary": "Het bestuur onderhandelt over een nieuw plan op basis van de laatste evaluatie en de huidige richting van het team."
+    },
+    "awaitingFirstMarkers": {
+      "headline": "Het bestuur wacht op de eerste signalen van het seizoen",
+      "summary": "{personalitySummary} Voorlopig zijn de verwachtingen intact, maar de sportieve antwoorden komen pas als het seizoen vorm krijgt.{profileHint}",
+      "profileHint": "Het bestuur leest het team als: {identitySummary}"
+    },
+    "veryHappy": {
+      "headline": "Het bestuur is zeer tevreden",
+      "summary": "{strong} trekt het plan vooruit, en {weakLower} is nog onder controle."
+    },
+    "steadyProgress": {
+      "headline": "Het bestuur ziet gestage vooruitgang",
+      "summary": "{strong} ligt op koers, maar {weakLower} vraagt meer focus om het plan gezond te houden."
+    },
+    "awaitingNext": {
+      "headline": "Het bestuur wacht op de volgende stap",
+      "summary": "{weak} blijft achter bij het plan, en de druk loopt op als de trend niet snel draait."
+    },
+    "concerned": {
+      "headline": "Het bestuur maakt zich zorgen",
+      "summary": "{weak} ligt duidelijk onder de verwachtingen, en het team mist zichtbare vooruitgang in het huidige plan."
+    },
+    "signalHint": {
+      "nationalCoreStrong": "De kern uit {country} geeft het team in de ogen van het bestuur een duidelijke identiteit.",
+      "nationalCoreWeak": "De kern uit {country} geeft het team nog steeds een duidelijke identiteit die het bestuur niet snel loslaat.",
+      "starHigh": "Renners met een grote naam versterken het sponsorproject, maar houden ook de verwachtingen hoog.",
+      "starHighWeak": "Renners met een grote naam houden de sponsors geïnteresseerd, maar zetten het bestuur er ook toe aan meer output te eisen.",
+      "starMedium": "De profielen in het team geven het sponsorproject wat extra gewicht."
+    }
+  },
+  "archetypes": {
+    "sponsoraten": {
+      "label": "De Sponsordirecteur",
+      "shortDescription": "Bewaakt sponsorrelaties en financiële discipline",
+      "longDescription": "Een voormalig commercieel directeur. Houdt sponsordeals, de balans en financieel risico in de gaten. Wordt zenuwachtig van schulden en duimt elk seizoen voor sponsorgroei.",
+      "reactions": {
+        "feedback_positive": [
+          "De sponsors zijn blij. Dit houdt stand.",
+          "Nu kunnen we de cijfers eindelijk laten zien.",
+          "Dit ziet eruit als een goed gerund project.",
+          "De inkomsten houden gelijke tred met de ambitie, perfect.",
+          "Het bestuur kan nu rustig slapen."
+        ],
+        "feedback_warning": [
+          "We moeten vanaf nu de balans in de gaten houden.",
+          "De sponsors kijken zenuwachtig naar de cijfers.",
+          "We moeten geen resultaten najagen op geleende tijd.",
+          "Geluk is geen plan, we hebben stabiliteit nodig.",
+          "Als dit omslaat, wordt het duur."
+        ],
+        "feedback_negative": [
+          "Dit houdt op de lange termijn geen stand.",
+          "De sponsors bellen, en niet om ons te prijzen.",
+          "De cijfers zeggen wat we niet willen horen.",
+          "We verliezen vertrouwen elke keer dat dit zich herhaalt.",
+          "Als dit zo doorgaat, is er volgend jaar geen budget."
+        ],
+        "goal_proposal": [
+          "Dit zekert de cashflow.",
+          "De sponsordeal gaat dit belonen.",
+          "Realistisch en budgetvriendelijk, graag.",
+          "Dit geeft ons ruimte om te plannen.",
+          "Behoudend, maar dat is juist de kracht."
+        ],
+        "goal_achievement": [
+          "Precies waar we op hoopten, goed werk.",
+          "De sponsors belden zelf om te bedanken.",
+          "Dit houdt het budget tot in de details op orde.",
+          "Solide cijfers, hier bouwen we op voort.",
+          "Het vertrouwen groeit elk kwartaal."
+        ],
+        "goal_failure": [
+          "We missen het weer, en de sponsors voelen het.",
+          "Dit is niet langer alleen een boekhoudkundig probleem.",
+          "We bloeden meer dan verwacht.",
+          "De investeerders stellen nu vragen.",
+          "Dit brengt de sponsoronderhandeling van volgend seizoen in gevaar."
+        ],
+        "receipt_positive": [
+          "Dat is het soort getal dat ik naar de sponsors kan brengen.",
+          "Er komt geld binnen, de kosten zijn onder controle. Zo vind ik het mooi.",
+          "Beter dan mijn prognose. Dat zeg ik niet vaak.",
+          "Goed. De sponsors merken zoiets eerder op dan wij."
+        ],
+        "receipt_negative": [
+          "Ik hou niet van waar dit getal naartoe gaat.",
+          "We geven geld uit dat we nog niet hebben verdiend.",
+          "Ik kan dit niet verkopen aan de sponsors. Zo niet.",
+          "De schuld groeit sneller dan de inkomsten. Dat moet omslaan."
+        ],
+        "meeting_easier": [
+          "Lager doel, lager plafond voor de sponsors. Ik accepteer het, maar ik schrijf het op.",
+          "De voorzichtige optie. Prima.",
+          "Nog steeds een getal dat ik voor de sponsors kan verdedigen.",
+          "Ik haal liever een klein doel dan dat ik een groot doel najaag."
+        ],
+        "meeting_keep": [
+          "Hetzelfde getal, dezelfde verwachtingen. Goed.",
+          "Het budget is rond dit doel gebouwd. Laten we het houden.",
+          "Geen wijzigingen. Dat is meestal de juiste keuze.",
+          "Zolang de cijfers kloppen, ben ik tevreden."
+        ],
+        "meeting_stretch": [
+          "Een hoger doel vraagt om een gezonder budget erachter. Laat me dat zien.",
+          "Als het doel omhooggaat, houd ik de boeken nog scherper in de gaten.",
+          "Ambitieus. De sponsors vragen hoe we het betalen.",
+          "Ik teken ervoor. Maar ik hou de rekeningen de hele weg in de gaten."
+        ],
+        "midseason_status": [
+          "We zijn halverwege. De cijfers die vandaag op tafel liggen, kan ik verdedigen.",
+          "Halverwege het seizoen, en het bestuur wil een eerlijk beeld, geen opgesmukt beeld.",
+          "Deze stand is geen oordeel. Het is een momentopname waar we naar handelen.",
+          "Ik heb slechtere halfjaarboeken gezien dan dit."
+        ],
+        "milestone_achieved": [
+          "We hebben het gehaald, en de boeken zien er nog steeds goed uit. Dat is zeldzaam.",
+          "De sponsors willen hier graag over horen.",
+          "Goed gedaan. Een resultaat en een schone balans tegelijk.",
+          "Laten we hiervan genieten. Dan zoeken we het volgende doel."
+        ],
+        "milestone_missed": [
+          "We hebben het gemist. Dat kost vertrouwen, niet alleen een getal.",
+          "Het heeft geen zin dit op te smukken. We kwamen tekort.",
+          "Geen ramp, maar ik had nu meer verwacht.",
+          "Ik schrijf het op. We nemen het mee naar de volgende jaarvergadering."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen. De cijfers kunnen niet wachten tot de volgende jaarvergadering.",
+          "Dit is geen routine. We komen nu bijeen, niet op de gebruikelijke tijd.",
+          "Ik heb om een extra vergadering gevraagd. De boeken eisen het.",
+          "We komen buiten de cyclus bijeen, omdat hier iets niet kan wachten."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel met de boeken op orde. Dat was de nalatenschap die ik wilde.",
+          "Mijn tijd als voorzitter eindigt hier. Zorg na mij goed voor de cijfers.",
+          "Ik treed terug. De financiën van de club staan beter dan toen ik begon.",
+          "De stoel gaat verder. Mijn zorgen houd ik vanaf nu voor mezelf."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is de boeken lezen.",
+          "Nieuwe voorzitter, dezelfde eisen aan de cijfers.",
+          "Ik begin hieraan met open ogen en de rekenmachine klaar.",
+          "Nu ben ik aan de beurt. Ik beloof geen wonderen, alleen een eerlijke set boeken."
+        ]
+      }
+    },
+    "traditionalisten": {
+      "label": "De Traditionalist",
+      "shortDescription": "Weegt het erfgoed en de nationale identiteit van de club",
+      "longDescription": "Zit in het bestuur omdat hij er al in de vorige eeuw bij was, of bijna. Wil dat de club mensen eraan herinnert waar ze vandaan komt. Het minst enthousiast over moderne vernieuwing.",
+      "reactions": {
+        "feedback_positive": [
+          "De club draagt haar erfgoed met trots.",
+          "Dit is waar het bestuur in de jaren 90 van droomde.",
+          "Het team lijkt weer op zichzelf.",
+          "Mensen herkennen de club in het peloton.",
+          "De ziel is intact, dat telt het meest."
+        ],
+        "feedback_warning": [
+          "We verliezen onszelf een beetje in de jacht.",
+          "Waar is de identiteit van de club gebleven?",
+          "Dit lijkt meer op andere teams dan op ons.",
+          "Traditie is geen bonusdoos.",
+          "Er ontbreekt iets herkenbaars."
+        ],
+        "feedback_negative": [
+          "We zijn een vreemde geworden op onze eigen weg.",
+          "De club is niet meer te herkennen.",
+          "Het is alsof een andere club in onze trui rijdt.",
+          "Dit is een breuk met alles waar de club voor staat.",
+          "Onze fans huilen, en ik bijna ook."
+        ],
+        "goal_proposal": [
+          "Dit lijkt op het DNA van de club.",
+          "Zo is het bij ons altijd geweest.",
+          "Onze fans gaan het voelen.",
+          "Het is continuïteit, ja.",
+          "Het bestuur herkent de club hierin."
+        ],
+        "goal_achievement": [
+          "Echte clubgeest, zo hoort het.",
+          "De voorvaderen zouden lachen.",
+          "Hier bestaan we voor.",
+          "Zo bouw je een club die blijft.",
+          "De identiteit staat nu duidelijker."
+        ],
+        "goal_failure": [
+          "Het is een harde klap voor het erfgoed.",
+          "We zijn de club een verontschuldiging verschuldigd.",
+          "Dit was vroeger nooit gebeurd.",
+          "We verliezen terrein op eigen bodem.",
+          "Waar is de trots gebleven?"
+        ],
+        "receipt_positive": [
+          "De club lijkt nog steeds op zichzelf. Dat telt zwaarder dan welk resultaat ook.",
+          "De oude leden zouden dit team herkennen. Goed.",
+          "Dit is de club waar ik mijn halve leven voor heb gezorgd.",
+          "We voegen hier iets toe aan de geschiedenis, niet alleen aan de resultaten."
+        ],
+        "receipt_negative": [
+          "We drijven weg van waar deze club altijd voor heeft gestaan.",
+          "Het embleem verdient beter dan dit.",
+          "Ik herken ons op dit moment niet.",
+          "De oude leden hadden dit niet getolereerd. Ik ook niet."
+        ],
+        "meeting_easier": [
+          "Een lichter doel wist onze geschiedenis niet uit. Daar kan ik mee leven.",
+          "Deze club heeft rustigere seizoenen overleefd.",
+          "Prima. Het embleem op de trui blijft hetzelfde.",
+          "Goed, zolang we niet licht omgaan met waar we voor staan."
+        ],
+        "meeting_keep": [
+          "Continuïteit is de helft van wat deze club is.",
+          "Ongewijzigd. De oude leden zouden daarbij knikken.",
+          "We houden de lijn vast, zoals deze club altijd heeft gedaan.",
+          "We jagen hier niet elke nieuwe mode na. Goed."
+        ],
+        "meeting_stretch": [
+          "Meer ambitie, prima. Zolang het er nog uitziet als wij wanneer we er zijn.",
+          "Richt hoger, maar verlies onderweg niet wie we zijn.",
+          "Een club met zoveel geschiedenis kan een groter doel dragen.",
+          "Ambitieus. Mensen zullen onthouden welke generatie dit deed."
+        ],
+        "midseason_status": [
+          "Halverwege, en de club ziet er nog uit als die op de oude foto's.",
+          "Dit tussentijdse verslag hoort in de eigen geschiedenis van de club, goed of slecht.",
+          "We worden halverwege het seizoen op dezelfde manier beoordeeld als elk bestuur voor ons.",
+          "Halverwege, en ik herken nog steeds het team dat we in het voorjaar op pad stuurden."
+        ],
+        "milestone_achieved": [
+          "Die komt in de recordboeken van de club.",
+          "Weer een hoofdstuk, geschreven zoals de oprichters het zouden hebben gewild.",
+          "De oude leden praten hier jaren over.",
+          "De geschiedenis van de club is net iets langer geworden."
+        ],
+        "milestone_missed": [
+          "We hebben het gemist, en dat doet hier meer pijn dan een getal zou moeten.",
+          "Deze club heeft ergere dingen meegemaakt en bleef zichzelf. Dat doet ze weer.",
+          "We zijn de oude leden beter verschuldigd dan dit.",
+          "Niet het einde dat dit hoofdstuk verdiende. Laten we het volgende goed schrijven."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen. Sommige dingen kunnen niet op de kalender wachten.",
+          "Dit is geen routine, en de geschiedenis van de club zegt dat we handelen als het ertoe doet.",
+          "Ik heb gevraagd nu bijeen te komen. Het embleem is een vroege vergadering waard.",
+          "Buitengewone vergadering, omdat de club meer verdient dan een schouderophaal."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel. De club stond hier lang voor mij en staat hier lang na mij.",
+          "Mijn tijd eindigt hier, maar de geschiedenis die mij is toevertrouwd gaat door.",
+          "Ik treed terug nadat ik de club op zichzelf liet lijken. Dat was het werk.",
+          "De stoel gaat verder. Iemand anders draagt nu de oude vlag."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is de eigen geschiedenis van de club lezen.",
+          "Nieuwe voorzitter, hetzelfde respect voor wat er voor mij kwam.",
+          "Ik begin hieraan en weet precies op wiens schouders ik sta.",
+          "Nu ben ik aan de beurt. Ik beloof het embleem even trots achter te laten als ik het aantrof."
+        ]
+      }
+    },
+    "talentspejderen": {
+      "label": "De Talentscout",
+      "shortDescription": "Gelooft in jeugdontwikkeling op de lange termijn",
+      "longDescription": "Een voormalig sportdirecteur van een opleidingsteam. Ziet liever dat een 22-jarige over vijf jaar wint dan een 32-jarige vandaag. Kent elke U25-vaardigheid uit zijn hoofd.",
+      "reactions": {
+        "feedback_positive": [
+          "De talenten krijgen ruimte, en ze leveren.",
+          "Zo bouw je precies aan de toekomst.",
+          "Over vijf jaar begrijpt iedereen deze keuze.",
+          "De jeugd bloeit, zelden zo duidelijk gezien.",
+          "De volgende generatie stapt nu naar voren."
+        ],
+        "feedback_warning": [
+          "We mogen de jeugd in de jacht niet vergeten.",
+          "De talenten krijgen te weinig koerservaring.",
+          "Waar is de U25-rotatie?",
+          "We hebben betere renners in het tweede team dan we laten zien.",
+          "We verkopen de toekomst voor één zege."
+        ],
+        "feedback_negative": [
+          "We laten een hele generatie op de bank zitten.",
+          "De jonge renners branden op zonder koerskilometers in de benen.",
+          "Dit is geen toekomst voor de club.",
+          "De talenten vluchten volgend jaar naar andere teams.",
+          "We hebben niet begrepen wat een team is."
+        ],
+        "goal_proposal": [
+          "Dit opent deuren voor de jonge renners.",
+          "Uitgestippelde ontwikkeling, die nemen we.",
+          "De jonge renners hebben precies dit nodig.",
+          "Zo laat je een team organisch groeien.",
+          "Dit tilt meer dan één bestuursmaatstaf omhoog."
+        ],
+        "goal_achievement": [
+          "De talenten leverden, precies zoals voorspeld.",
+          "Deze ontwikkeling creëert decennia aan waarde.",
+          "De U25's hebben de stap gezet, prachtig om te zien.",
+          "Zo stuur je een signaal naar de scouts.",
+          "Dit bevestigt de hele ontwikkelingsfilosofie."
+        ],
+        "goal_failure": [
+          "De jonge renners kregen de kans niet, onze fout.",
+          "Wij dragen de schuld voor de stilgevallen ontwikkeling.",
+          "Talent heeft hier langer voor nodig om te herstellen.",
+          "We verloren iets wat we jarenlang hebben opgebouwd.",
+          "Betere rotatie had dit opgelost."
+        ],
+        "receipt_positive": [
+          "De jongeren die ik had gemarkeerd, beginnen te leveren. Fijn om gelijk te hebben.",
+          "Weer een naam van mijn lijst die doorbreekt.",
+          "Vroeg gevonden, geduldig ontwikkeld. Nu zie je het.",
+          "Dit is precies het potentieel waarvoor ik scout."
+        ],
+        "receipt_negative": [
+          "Het talent is er. Het plan om het te ontwikkelen niet.",
+          "Ik scout geen renners om ze stil te zien staan.",
+          "Ergens schrijft de scout van een andere club de namen op die wij verspillen.",
+          "Dat zijn niet de renners die falen. Dat is het ontwikkelplan."
+        ],
+        "meeting_easier": [
+          "Een lagere lat geeft de jongeren meer tijd. Dat neem ik.",
+          "Minder renners die worden gepusht voordat ze er klaar voor zijn. Goed.",
+          "Prima. Potentieel heeft meer geduld nodig dan druk.",
+          "Ik bescherm liever het lange spel dan dat ik het getal van dit seizoen najaag."
+        ],
+        "meeting_keep": [
+          "Mijn lijst verandert niet op een gril, en dit ook niet.",
+          "Mijn prognoses kloppen nog steeds. Laat het zo.",
+          "De jongeren zitten op de tijdlijn die ik heb uitgestippeld. Niet aan komen.",
+          "De cijfers die ik bijhoud, bewegen ook zonder nieuw doel."
+        ],
+        "meeting_stretch": [
+          "Een hogere lat is prima, als het geen half klare renner op de startlijst dwingt.",
+          "Leg het doel hoger, niet een negentienjarige voorbij wat hij aankan.",
+          "Ik accepteer het, zolang de jongeren de tijd krijgen die ze nodig hebben.",
+          "Ambitieus. Ik zorg dat ontwikkeling er niet voor opdraait."
+        ],
+        "midseason_status": [
+          "Halverwege, en ik wil weten welke namen op mijn lijst echt minuten kregen.",
+          "Het tussentijdse verslag moet me curves laten zien, niet alleen de plaatsingen van deze week.",
+          "Ik meet dit seizoen af aan hoeveel talenten omhoog zijn gegaan op mijn lijst, niet alleen aan de ranglijst.",
+          "Halverwege, en drie namen die ik in de voorbereiding markeerde, ontwikkelen zich precies zoals voorspeld."
+        ],
+        "milestone_achieved": [
+          "Mijlpaal gehaald. Ik denk graag dat mijn shortlist er iets mee te maken had.",
+          "Dat bewijst dat de scouting werkt, niet alleen de selectie.",
+          "Het begon als een gok in een spreadsheet. Kijk nu.",
+          "Zo ziet het eruit als vroeg wedden op potentieel zich uitbetaalt."
+        ],
+        "milestone_missed": [
+          "Ik blijf mezelf afvragen of de jongeren ooit een echte kans kregen.",
+          "Een paar namen op mijn lijst hadden meer koersen nodig dan ze kregen.",
+          "Voor de volgende poging kijken we kritisch naar hoe we renners ontwikkelen.",
+          "Ik noteer wie werd tegengehouden. Dat verdwijnt niet zomaar."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen en ik wil de behoeften van de pijplijn op tafel.",
+          "Dit kan niet wachten, en het venster van sommige talenten ook niet.",
+          "Ik heb gevraagd nu bijeen te komen. Een scoutingvenster gaat niet op verzoek weer open.",
+          "Buitengewone vergadering, omdat een beslissing hier namen op mijn lijst jarenlang bepaalt."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel. De shortlist die ik bouwde blijft achter voor wie volgt.",
+          "Mijn tijd eindigt hier, maar de namen die ik markeerde ontwikkelen zich zonder mij verder.",
+          "Ik treed terug nadat ik meer talent vond dan ik erkenning kreeg.",
+          "De stoel gaat verder. Houd de renners die ik markeerde in de gaten, ze zijn nog niet klaar."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is elk scoutingrapport in het dossier lezen.",
+          "Nieuwe voorzitter, hetzelfde oog voor wat een renner over drie jaar kan worden.",
+          "Ik begin hieraan en kijk voorbij de selectie van dit seizoen, naar de volgende.",
+          "Nu ben ik aan de beurt. Ik beloof de namen te vinden die nog niemand anders in de gaten had."
+        ]
+      }
+    },
+    "resultatjaegeren": {
+      "label": "De Resultatenjager",
+      "shortDescription": "Wil nu winnen, al het andere is een smoes",
+      "longDescription": "Een ex-sportdirecteur met drie Tour-podia op zijn cv. Geduld is geen persoonlijke sterkte. Beoordeelt een team op zeges, podia en puntentotalen, punt uit.",
+      "reactions": {
+        "feedback_positive": [
+          "Zeges. Eindelijk zeges.",
+          "Dit is wat ik kwam zien.",
+          "De resultaten spreken voor zich.",
+          "De rivalen zien er nu nerveus uit.",
+          "Dit is eindelijk een winnend team."
+        ],
+        "feedback_warning": [
+          "De zeges zijn te weinig en te klein.",
+          "We rijden top-10 maar niet top-3.",
+          "Meedoen is niet genoeg.",
+          "De rivalen voelen ons nog niet.",
+          "Waar is die killer-instinct die koersen wint?"
+        ],
+        "feedback_negative": [
+          "Dit is onaanvaardbaar.",
+          "De resultaten zijn een ramp.",
+          "We zijn onzichtbaar in het peloton.",
+          "Dit team moet meer winnen, veel meer.",
+          "Hoeveel koersen moeten we verliezen voordat we handelen?"
+        ],
+        "goal_proposal": [
+          "Eindelijk iets met tanden.",
+          "Dit winnen we, of we ruilen de fietsen in.",
+          "Zo stel je eisen.",
+          "Die nemen we. Volgend doel?",
+          "De jacht maakt het leuk, kom maar op."
+        ],
+        "goal_achievement": [
+          "De zege is binnen, ga door.",
+          "Dit is de club die we kennen uit de goede jaren.",
+          "De rivalen zagen het aankomen en konden ons niet stoppen.",
+          "Eindelijk leveren we, ga door.",
+          "Dit is wat het bestuur kwam zien."
+        ],
+        "goal_failure": [
+          "Dit is beschamend.",
+          "We verloren van teams die we zouden moeten verpletteren.",
+          "Stap naar voren en leg uit.",
+          "Dat is geen team, dat is een smoes.",
+          "Het volgende plan scherpt de eisen aanzienlijk aan."
+        ],
+        "receipt_positive": [
+          "Een zege is een zege. Blijf ze brengen.",
+          "We klimmen. Dat is de enige grafiek die ik lees.",
+          "Nu komen we ergens.",
+          "Zo ziet winnen eruit. Meer."
+        ],
+        "receipt_negative": [
+          "Geen zeges is geen zeges. Smoesjes verschijnen niet op de ranglijst.",
+          "We glijden af, en ik doe niet aan langzaam.",
+          "Tweede plaats is nog steeds verliezen. Daar hebben we te veel van gehad.",
+          "Dit moet nu omslaan. Niet volgende maand."
+        ],
+        "meeting_easier": [
+          "Lager doel. Het moet nog steeds op zeges uitlopen.",
+          "Makkelijker betekent geen goede poging. Het betekent een zege op de streep.",
+          "Prima. Het gaat weer omhoog zodra we winnen.",
+          "Ik accepteer het, maar ik vind het niet leuk. We richten niet lang laag."
+        ],
+        "meeting_keep": [
+          "Winnen krijg je niet met korting.",
+          "De lat gaat voor niemand omlaag.",
+          "We zijn hier om te winnen, niet om opnieuw te onderhandelen.",
+          "Het getal blijft. Ga het nu winnen."
+        ],
+        "meeting_stretch": [
+          "Hoger. Eindelijk iemand in deze kamer die wil winnen.",
+          "Ik had sowieso om meer gevraagd.",
+          "Goed. Ambitie is het enige waar ik nooit over discussieer.",
+          "Leg het hoog. Alles minder moet oncomfortabel voelen."
+        ],
+        "midseason_status": [
+          "Halverwege, en ik tel zeges, geen inzet.",
+          "Dit tussentijdse verslag is voor mij één getal: hoe vaak hebben we gewonnen.",
+          "Halverwege het seizoen is niet voor smoesjes. Het is voor een scorebord.",
+          "Halverwege, en ik wil meer zeges dan we in de tweede helft hebben."
+        ],
+        "milestone_achieved": [
+          "Klaar. Dat is de standaard die ik verwacht.",
+          "Eindelijk een mijlpaal die past bij wat deze club zou moeten doen.",
+          "Zoek nu de volgende, en maak hem zwaarder.",
+          "Doel gehaald. Zo hoort het er altijd uit te zien."
+        ],
+        "milestone_missed": [
+          "Gemist. Op dit niveau is dat niet acceptabel.",
+          "We hadden de selectie om dit te doen. Dat deden we niet. Leg me dat uit.",
+          "Dat kost meer dan een mijlpaal. Het kost geloofwaardigheid.",
+          "Volgende keer: een scherper doel en nul geduld voor smoesjes."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen. Verliesreeksen als deze wachten niet op de kalender.",
+          "Dit is geen routine. We komen nu bijeen, want de ranglijst herstelt zich niet vanzelf.",
+          "Ik heb een extra vergadering geëist. Niemand verliest zoveel koersen zonder een hard gesprek.",
+          "Buitengewone vergadering, want acceptabel is geen woord dat ik voor dit palmares gebruik."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel. Beoordeel me op de zeges, dat was altijd de afspraak.",
+          "Mijn tijd eindigt hier. Ik vroeg nooit om aardig gevonden te worden, alleen om te winnen.",
+          "Ik treed terug. De trofeeënkast zegt of ik mijn werk deed.",
+          "De stoel gaat verder. Wie hem overneemt, moet net zo graag willen winnen als ik."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is naar de resultaten van vorig seizoen kijken.",
+          "Nieuwe voorzitter, dezelfde eis: nu winnen, nooit uitleggen.",
+          "Ik begin hieraan om te winnen, niet om verwachtingen te managen.",
+          "Nu ben ik aan de beurt. Ik beloof niets, behalve dat verliezen hier niet comfortabel zal zijn."
+        ]
+      }
+    },
+    "pragmatikeren": {
+      "label": "De Pragmaticus",
+      "shortDescription": "Zoekt de balans tussen ambitie en voorzichtigheid",
+      "longDescription": "Een voormalig bestuursvoorzitter uit de industrie. Bekijkt alles als een verhouding tussen risico en opbrengst. Zelden euforisch, zelden in paniek, zelden twee dagen achter elkaar het met zichzelf eens.",
+      "reactions": {
+        "feedback_positive": [
+          "Dit ziet eruit als een gezonde balans.",
+          "Risico en opbrengst zijn goed op elkaar afgestemd.",
+          "Het team levert op meerdere fronten, goed.",
+          "Het is houdbaar, en dat is waar we naar op zoek zijn.",
+          "Geen rode vlaggen, genoeg groen."
+        ],
+        "feedback_warning": [
+          "Dit staat op het scherpst van de snede, blijf alert.",
+          "We verliezen een beetje op elk front.",
+          "Het balanceert te dicht bij de rand.",
+          "Iets meer discipline en het draait.",
+          "We missen één maatstaf die zijn gewicht draagt."
+        ],
+        "feedback_negative": [
+          "Het risico weegt aanzienlijk zwaarder dan de opbrengst.",
+          "Dit overleeft geen nieuwe stresstest.",
+          "We verliezen aan beide kanten van de tafel.",
+          "Dit is geen plan meer, het is drijven.",
+          "Het bestuur kan dit niet verdedigen."
+        ],
+        "goal_proposal": [
+          "Realistisch, daar staan we achter.",
+          "Het past bij waar we nu staan.",
+          "Zo voorkom je dat je jezelf overschat.",
+          "Het is pragmatisch en helder, ja.",
+          "Dit is een goede middenweg."
+        ],
+        "goal_achievement": [
+          "Zoals verwacht, solide werk.",
+          "Hiervoor is pragmatisme er.",
+          "Het team leverde zonder drama.",
+          "Zo ziet houdbaarheid eruit.",
+          "Het volgende doel kan hierop worden gebouwd."
+        ],
+        "goal_failure": [
+          "Dit had binnen bereik moeten zijn.",
+          "Teleurstellend, zonder duidelijke excuses.",
+          "We kiezen het volgende plan met strengere eisen.",
+          "Dit baart me meer zorgen dan zou moeten.",
+          "Het bestuur verwacht een open evaluatie."
+        ],
+        "receipt_positive": [
+          "Risico en opbrengst sluiten eindelijk aan. Meer vraag ik niet.",
+          "Niets spectaculairs, niets blootgelegd. Die neem ik.",
+          "We winnen op meer fronten dan we verliezen. Goed genoeg is goed.",
+          "Gestaag. Zo bouw je echt iets op."
+        ],
+        "receipt_negative": [
+          "De weegschaal is gekanteld, en niet in ons voordeel.",
+          "We verliezen overal een beetje. Dat telt sneller op dan één groot verlies.",
+          "Nog geen crisis. Maar als het weer gebeurt, is het niet meer prima.",
+          "De afweging die we maakten, betaalt zich niet uit."
+        ],
+        "meeting_easier": [
+          "Een lager doel voor een seizoen dat ruimte nodig heeft om te ademen. Eerlijke ruil.",
+          "Dat is een aanpassing, geen terugtocht.",
+          "Ik kan leven met lager, zolang we het gekozen hebben en er niet gewoon naartoe zijn gedreven.",
+          "Soms is de verstandige keuze het kleinere getal."
+        ],
+        "meeting_keep": [
+          "Het was verstandig toen we het instelden, en er is niets veranderd.",
+          "Ik verschuif een getal niet omdat iemand ongeduldig is.",
+          "De afweging geldt nog steeds. Houd het.",
+          "Een stabiel doel is beter dan een nerveus doel."
+        ],
+        "meeting_stretch": [
+          "Hoger, prima. Zolang we eerlijk zijn over wat we riskeren.",
+          "Ga je gang, maar ik wil de nadelen opgeschreven hebben voor we tekenen.",
+          "Ik accepteer het als de voordelen echt zwaarder wegen dan wat er mis kan gaan.",
+          "Ambitieus is prima. Roekeloos niet. Ik hou de lijn in de gaten."
+        ],
+        "midseason_status": [
+          "Halverwege, en het beeld is niet zo goed en niet zo slecht als het voelt.",
+          "Deze stand is een momentopname, geen oordeel. Laten we hem zo behandelen.",
+          "Sommige dingen gaan omhoog, andere omlaag. Dat is een normaal seizoen, geen crisis.",
+          "Halverwege, en de balans houdt nog, nauwelijks, en daarom houden we hem in de gaten."
+        ],
+        "milestone_achieved": [
+          "Het was het waard. De afwegingen onderweg hebben zich uitbetaald.",
+          "Gehaald zonder iets anders te breken. Dat is de echte zege.",
+          "Zo ziet een verstandig plan eruit als het uitbetaalt.",
+          "Goed resultaat. Ik zou dezelfde keuzes opnieuw maken."
+        ],
+        "milestone_missed": [
+          "Niet het einde van het plan, maar we moeten begrijpen waarom we tekortschoten.",
+          "We hebben de balans ergens verkeerd ingeschat. Laten we uitzoeken waar.",
+          "Teleurstellend, maar geen reden om de hele aanpak weg te gooien.",
+          "Genoteerd. De volgende keer veranderen we de weging, niet de filosofie."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen. De balans is genoeg gekanteld om dat te rechtvaardigen.",
+          "Dit is geen routine, maar ook geen paniek. We stellen gewoon vroeg bij.",
+          "Ik heb om een eerdere vergadering gevraagd omdat wachten meer kost dan vergaderen.",
+          "Buitengewone vergadering, rustig afgewogen tegen wachten tot de gebruikelijke datum."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel met zowel de boeken als de selectie in redelijke staat.",
+          "Mijn tijd eindigt hier. Ik jaagde nooit het spectaculaire na, alleen het houdbare.",
+          "Ik treed terug nadat ik meer balansen stabiel heb gehouden dan dat er omvielen.",
+          "De stoel gaat verder. Wie volgt, moet altijd beide kanten wegen."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is afwegen wat werkt tegen wat niet werkt.",
+          "Nieuwe voorzitter, hetzelfde instinct om de afweging te zoeken voor de kop.",
+          "Ik begin hieraan op zoek naar balans, niet naar applaus.",
+          "Nu ben ik aan de beurt. Ik beloof afgewogen beslissingen, geen dramatische."
+        ]
+      }
+    },
+    "ungdomsidealisten": {
+      "label": "De Jeugdidealist",
+      "shortDescription": "De toekomst van de club wordt gebouwd op jonge benen",
+      "longDescription": "Een leraar en voormalig trainer in het systeem van de lagere divisies. Wil dat de club bekendstaat om het koesteren van talent, zonder het daarna te verkopen. Begrijpt dat elke winnaar ooit jong was.",
+      "reactions": {
+        "feedback_positive": [
+          "De jonge renners krijgen ruimte, daar draait het om.",
+          "De club is een broedplaats voor de toekomst.",
+          "De U25-stempel is duidelijk en mooi.",
+          "Talent groeit hier, zoals het hoort.",
+          "Hier zal men met plezier aan terugdenken."
+        ],
+        "feedback_warning": [
+          "We duwen de jonge renners in te veel koersen.",
+          "Of is er eigenlijk wel ruimte voor U25?",
+          "Talent zonder geduld brandt op.",
+          "We verliezen de focus op wat het meest telt, de jeugd.",
+          "Waar is de lange lijn?"
+        ],
+        "feedback_negative": [
+          "De jonge renners lijden, het is hartverscheurend om te zien.",
+          "De club verkoopt haar eigen toekomst.",
+          "Dit team is vergeten waar het vandaan komt.",
+          "De talenten vluchten naar plekken waar ze gezien worden.",
+          "We verraden nu een hele generatie."
+        ],
+        "goal_proposal": [
+          "Dit geeft de jonge renners ruimte, perfect.",
+          "Het bestuur staat er voor 100% achter.",
+          "Zo bouw je de toekomst.",
+          "Dit werpt de komende jaren vruchten af.",
+          "De U25's zullen zich hierdoor gezien voelen."
+        ],
+        "goal_achievement": [
+          "De jonge renners namen verantwoordelijkheid en leverden.",
+          "Dit is de beloning voor geduld.",
+          "We hebben een omgeving gecreëerd waarin ze bloeien.",
+          "De club mag trots zijn op haar ontwikkelwerk.",
+          "Zo ziet een gezonde generatie eruit."
+        ],
+        "goal_failure": [
+          "We gaven ze niet genoeg ruimte, helaas.",
+          "Dit is een harde les voor het hele systeem.",
+          "We zijn de jonge renners een betere structuur verschuldigd.",
+          "Een schadelijk signaal naar toekomstige talenten.",
+          "Als dit zo doorgaat, belt de academie niet."
+        ],
+        "receipt_positive": [
+          "De jonge renners krijgen ruimte, en ze gebruiken die.",
+          "Weer een jonge renner zette een stap vooruit. Zo bouw je een generatie.",
+          "Dit team ontwikkelt talent. Het verbruikt het niet alleen.",
+          "Dit is waar het om draait. Ik ben trots op ze."
+        ],
+        "receipt_negative": [
+          "De jonge renners zitten weer op de bank. Dat is moeilijk om te zien.",
+          "We beloven ontwikkeling en leveren stilstand.",
+          "Het talent is er. De kansen niet.",
+          "Jonge renners hebben koersen nodig, geen plek op de teamfoto."
+        ],
+        "meeting_easier": [
+          "Een makkelijker doel betekent meer geduld met de jongeren. Daar ben ik blij mee.",
+          "Minder punten om na te jagen, meer ruimte voor een jonge renner om te leren.",
+          "Prima, zolang de ontwikkeling niet ook wordt versoepeld.",
+          "Ja, als het meer koersen voor de jongeren betekent."
+        ],
+        "meeting_keep": [
+          "Dezelfde belofte aan de jonge renners: ze worden gezien.",
+          "Jonge renners hebben iets stabiels nodig om in te groeien.",
+          "Ontwikkeling kost de tijd die het kost. Dit is prima.",
+          "Goed voor de jongeren. Laten we het zo laten."
+        ],
+        "meeting_stretch": [
+          "Een zwaarder doel mag niet ten koste van de jonge renners gaan.",
+          "Ik accepteer het, maar ik let op wie mag koersen.",
+          "Ambitieus is prima, zolang de jongeren hun kans nog krijgen.",
+          "Richt hoger. Vergeet alleen niet wie ons daar moet brengen."
+        ],
+        "midseason_status": [
+          "We zijn halverwege, en ik wil weten hoeveel debutanten er sinds de vorige keer hebben gekoerst.",
+          "Het beeld halverwege moet ontwikkeling tonen, niet alleen plaatsingen.",
+          "Ik meet het seizoen af aan hoeveel jonge renners vooruitgingen, niet alleen aan podia.",
+          "Halverwege, en de jonge renners hebben nog steeds mijn volle aandacht."
+        ],
+        "milestone_achieved": [
+          "Ik hoop dat de jongeren weten dat ze hier deel van uitmaken.",
+          "Mooi. Laten we nu kijken waarin de jongeren hierna kunnen groeien.",
+          "Dit laat zien dat het ontwikkelpad werkt.",
+          "Een toekomst die we beloofden, en nu een die we hebben waargemaakt."
+        ],
+        "milestone_missed": [
+          "De mijlpaal niet gehaald. Kregen de jongeren wel genoeg tijd?",
+          "Niet het einde van de wereld, maar de ontwikkeling moet sneller.",
+          "We zijn de jonge renners vanaf nu een beter plan verschuldigd.",
+          "Op de volgende jaarvergadering krijgen ze weer een echte kans. Daar zorg ik voor."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen. Ik wil de omstandigheden van de jonge renners op de agenda.",
+          "Deze vergadering kan niet wachten, en het ontwikkelwerk ook niet.",
+          "Ik heb gevraagd nu bijeen te komen. Het talent mag niet lijden terwijl we wachten.",
+          "Buitengewone vergadering, omdat hier iets de jonge renners rechtstreeks raakt."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel. Zorg goed voor de academie na mij.",
+          "Mijn tijd eindigt hier, maar de jonge renners voor wie ik ruimte maakte, blijven groeien.",
+          "Ik treed terug met een gerust geweten. De jeugd kreeg onder mij haar kans.",
+          "De stoel gaat verder. Vergeet niet wie de toekomst bouwt."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en de jonge renners krijgen vanaf dag één mijn volle aandacht.",
+          "Nieuwe voorzitter, hetzelfde geloof dat de toekomst begint in de U25-selectie.",
+          "Ik begin hieraan omwille van de jonge renners, niet omwille van mezelf.",
+          "Nu ben ik aan de beurt. Ik beloof ruimte voor wie nog geen kans heeft gehad."
+        ]
+      }
+    },
+    "nationalist_purist": {
+      "label": "De Nationalistische Purist",
+      "shortDescription": "De club moet haar thuisland vertegenwoordigen",
+      "longDescription": "Een voormalig bondscoach. Gelooft dat een club zonder nationale kern gewoon een sponsor in truien is. Heeft liever één eigen talent dan twee buitenlandse sterren.",
+      "reactions": {
+        "feedback_positive": [
+          "De eigen kern schittert nog steeds.",
+          "Wij zijn de club van ons land, daar is geen twijfel over.",
+          "De trots op eigen bodem is intact.",
+          "Onze fans horen hun eigen taal in het peloton.",
+          "Zo hoort een club te klinken."
+        ],
+        "feedback_warning": [
+          "Onze nationale identiteit glipt weg.",
+          "Minder eigen renners, dat doet ertoe.",
+          "We verliezen de band met de achterban.",
+          "Thuisland en club horen nauw verbonden te zijn.",
+          "Waar is de volgende lokale ster?"
+        ],
+        "feedback_negative": [
+          "De club is een luchthaven van sponsors geworden.",
+          "De nationale band is verbroken.",
+          "De fans herkennen zichzelf niet meer in het team.",
+          "Dit is een commerciële transactie, geen club.",
+          "We schamen ons voor hoe de selectie is samengesteld."
+        ],
+        "goal_proposal": [
+          "Thuiskleuren, natuurlijk.",
+          "Dit bevestigt de wortels van de club.",
+          "Het bestuur staat hier pal achter.",
+          "Zo blijft de club zichzelf.",
+          "Dit is wat de oorspronkelijke sponsor zou hebben gekozen."
+        ],
+        "goal_achievement": [
+          "De eigen kern leverde, fantastisch.",
+          "Dit klinkt door in het hele land.",
+          "Zo word je een nationaal erfgoed.",
+          "Elke thuiszege is dubbel zoveel waard.",
+          "Dit maakt de club onvervangbaar."
+        ],
+        "goal_failure": [
+          "De blik van het thuisland weegt nu zwaar.",
+          "Dit verwondt de club tot in de kern.",
+          "We hebben meer teleurgesteld dan alleen het bestuur.",
+          "Dit maakt werven moeilijker.",
+          "We verliezen terrein dat we niet makkelijk terugwinnen."
+        ],
+        "receipt_positive": [
+          "Onze eigen renners vooraan. De fans horen hun eigen taal in het peloton.",
+          "Een eigen resultaat. Dat telt voor mij zwaarder dan de punten.",
+          "De nationale kern leverde, zoals het hoort bij een club als de onze.",
+          "Onze vlag vooraan. Dat is meer waard dan de marge."
+        ],
+        "receipt_negative": [
+          "Minder eigen renners op de uitslag. Minder fans herkennen zich in dit team.",
+          "We worden een club van geïmporteerde namen, en het thuispubliek merkt het.",
+          "De nationale kern dunt uit. Dat is een trager rampscenario dan welke nederlaag ook.",
+          "Onze eigen vlag drijft naar achteren in het peloton."
+        ],
+        "meeting_easier": [
+          "Een lager doel voor de nationale kern, zolang de kern zelf niet krimpt.",
+          "Ik wil onze eigen renners op de startlijst, niet alleen in de cijfers.",
+          "Prima, als het geduld is met de onze en geen stille stap weg van hen.",
+          "Ik accepteer het als het ons eigen talent meer tijd geeft om te groeien."
+        ],
+        "meeting_keep": [
+          "Wie we zijn staat niet ter discussie.",
+          "De thuisfans verdienen die consistentie.",
+          "De vlag op de trui doet er nog steeds evenveel toe.",
+          "Onze kern was nooit te koop."
+        ],
+        "meeting_stretch": [
+          "Een hoger doel voor de nationale kern, en ik houd iedereen eraan.",
+          "Het wordt tijd dat deze club zich op wie we zijn gaat toeleggen.",
+          "Ja, zolang het meer eigen renners betekent en niet alleen een groter getal.",
+          "Ambitieus. De thuisfans zien eindelijk meer van hun eigen mensen."
+        ],
+        "midseason_status": [
+          "Halverwege, en ik wil weten hoeveel eigen renners daadwerkelijk hebben gekoerst.",
+          "Deze stand zegt me weinig zonder een telling van onze eigen vlag op de startlijsten.",
+          "Ik meet het seizoen af aan hoeveel van dit team nog als thuis voelt.",
+          "Halverwege, en de nationale kern houdt stand, en dat is het getal dat voor mij telt."
+        ],
+        "milestone_achieved": [
+          "Het hele land kan deze opeisen.",
+          "Dit is het soort mijlpaal waardoor de thuisfans trots de kleuren dragen.",
+          "Onze eigen kleuren, onze eigen mijlpaal. Mensen onthouden dat.",
+          "Deze is ook van het thuispubliek."
+        ],
+        "milestone_missed": [
+          "Kregen onze eigen renners ooit de kans om dit te dragen?",
+          "De nationale kern verdiende hier een grotere rol.",
+          "We zijn de thuisfans de volgende keer een duidelijker pad hiernaartoe verschuldigd.",
+          "Op de volgende jaarvergadering gaat de vlag weer naar voren."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen en ik wil de positie van de nationale kern op de agenda.",
+          "Dit kan niet wachten, en een tanende band met de thuisfans ook niet.",
+          "Ik heb gevraagd nu bijeen te komen. Onze identiteit laten we niet wegdrijven terwijl we wachten.",
+          "Buitengewone vergadering, omdat hier iets raakt aan wat deze club hoort te vertegenwoordigen."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel. De vlag wappert nog vooraan, en dat was altijd de missie.",
+          "Mijn tijd eindigt hier, maar de eigen kern die ik beschermde, blijft deze club dragen.",
+          "Ik treed terug met de nationale identiteit intact. Dat is mijn nalatenschap hier.",
+          "De stoel gaat verder. Laat de eigen kern na mij geen bijzaak worden."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is tellen hoeveel eigen renners er in deze selectie zitten.",
+          "Nieuwe voorzitter, hetzelfde geloof dat een club zonder nationale kern gewoon een sponsor in truien is.",
+          "Ik begin hieraan voor de thuisfans, degenen die zichzelf in dit team herkennen.",
+          "Nu ben ik aan de beurt. Ik beloof dat de vlag in elk gesprek vooraan blijft."
+        ]
+      }
+    },
+    "klassiker_purist": {
+      "label": "De Klassiekerpurist",
+      "shortDescription": "Monuments maken een club onsterfelijk",
+      "longDescription": "Zelf een voormalig klassiekerrenner. Gelooft dat het klassement statistiek is en Roubaix geschiedenis. Heeft liever één Monument dan vijf etappezeges.",
+      "reactions": {
+        "feedback_positive": [
+          "We gaan richting een Monument, ik voel het.",
+          "De klassiekersgeest hangt in de lucht.",
+          "Hier hoort de club thuis.",
+          "Rotsvaste rollen voor de voorjaarscampagne.",
+          "Zeldzame kwaliteit op de wegen die tellen."
+        ],
+        "feedback_warning": [
+          "De klassiekerambitie is te zacht.",
+          "We missen een harde kerel voor het Roubaix-type.",
+          "Waar is de focus op het voorjaar?",
+          "Dit team zou nooit Luik winnen.",
+          "Dat is etappekoersen, niet het erfgoed."
+        ],
+        "feedback_negative": [
+          "We zijn klassiekerloos, dit is beschamend.",
+          "De voorjaarsmaanden verdwijnen spoorloos.",
+          "Het team rijdt langs de Monuments zonder op te kijken.",
+          "Dit is de verkeerde clubidentiteit voor deze sport.",
+          "Hier zullen we om niets onthouden worden."
+        ],
+        "goal_proposal": [
+          "Monuments, eindelijk op de agenda.",
+          "Hiervoor is de club geboren.",
+          "Voorjaarsfocus, het bestuur juicht.",
+          "Zo schrijf je geschiedenis.",
+          "Die nemen we en we rijden naar huis met een kassei."
+        ],
+        "goal_achievement": [
+          "Een Monument! Hier wordt sport eeuwig.",
+          "Dit gaat voor altijd de boeken in.",
+          "Het voorjaar is van ons, zoals het hoort.",
+          "Kassei voor kassei, zo bouw je een club.",
+          "Dit is het soort dingen dat leden onthouden."
+        ],
+        "goal_failure": [
+          "De voorjaarscampagne flopte, onaanvaardbaar.",
+          "De Monuments lachen ons dit jaar uit.",
+          "Dit rukt het hart uit de klassiekerziel.",
+          "We moeten het voorjaarsplan opnieuw uitvinden.",
+          "Niemand neemt de club hierna nog serieus op de Roubaix-helling."
+        ],
+        "receipt_positive": [
+          "Dat is een echt klassiekerresultaat. Daar is deze club voor.",
+          "We koersten als een klassiekerploeg, en dat was te zien.",
+          "Een resultaat als dat hoort op de Roubaix-wielerbaan, niet alleen op een uitslag.",
+          "Nu voelt het als een club die op de kasseien thuishoort."
+        ],
+        "receipt_negative": [
+          "Geen kasseien, geen vorm, geen verhaal dat de moeite waard is.",
+          "We zien er verloren uit zodra de weg in stenen verandert.",
+          "Een klassiekerploeg die de kasseien mijdt, is geen klassiekerploeg.",
+          "De Monuments onthouden zo'n seizoen niet."
+        ],
+        "meeting_easier": [
+          "Een lichter doel, zolang we nog opdagen voor de koersen die tellen.",
+          "De Monuments geven niets om onze smoesjes, hoe dan ook.",
+          "Prima, als het betekent dat we goed naar Roubaix toewerken in plaats van het te forceren.",
+          "Ik accepteer het, zolang het niet onze klassiekeridentiteit is die we net verlaagden."
+        ],
+        "meeting_keep": [
+          "De kasseien worden niet makkelijker omdat we netjes vragen.",
+          "De klassiekers verplaatsen hun data voor niemand.",
+          "Een klassiekerclub houdt haar ambitie vast door de modder heen.",
+          "De Monuments verdienen een vast doel, geen bewegend doel."
+        ],
+        "meeting_stretch": [
+          "Een zwaarder doel. Eindelijk iets dat de kasseien waardig is.",
+          "We mogen niet genoegen nemen met minder dan een Monument.",
+          "Graag. De klassiekers verdienen echte ambitie.",
+          "Ambitieus. Goed, nu staat de druk erop."
+        ],
+        "midseason_status": [
+          "Halverwege, en ik beoordeel dit seizoen nog steeds op wat er in april gebeurde.",
+          "Het tussentijdse verslag doet er voor mij minder toe dan of we een echt voorjaar hadden.",
+          "Deze club leeft of sterft op de kasseien, en de rest van het seizoen is slechts nasleep.",
+          "Halverwege, en de Monuments hebben ons al het grootste deel verteld wat we moeten weten."
+        ],
+        "milestone_achieved": [
+          "Gehaald op de wegen die voor deze club tellen.",
+          "Mijlpaal binnen. Zo doet een klassiekerclub dat.",
+          "De klassiekergeschiedenisboeken gaan deze echt vermelden.",
+          "Een resultaat dat een Monument waardig is. Daarom bestaat deze club."
+        ],
+        "milestone_missed": [
+          "Een jaar zonder echt klassiekerresultaat steekt meer dan welk ander jaar ook.",
+          "De klassiekers waren ons meer verschuldigd dan dit.",
+          "We hebben volgend jaar een scherpere klassiekercampagne nodig.",
+          "De opbouw naar de volgende begint nu."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen. Het voorjaar wacht niet op de gebruikelijke kalender.",
+          "Dit is geen routine, maar het verliezen van onze kans op de Monuments ook niet.",
+          "Ik heb gevraagd nu bijeen te komen. Een kasseiencampagne die in haast is opgebouwd, wint nooit iets.",
+          "Buitengewone vergadering, omdat april dichterbij is dan het bestuur lijkt te denken."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel. We hebben de Monuments eerlijk nagejaagd, en dat was het hele punt.",
+          "Mijn tijd eindigt hier, maar de klassiekersgeest waarvoor ik vocht, mag niet met mij vertrekken.",
+          "Ik treed terug nadat ik deze club nooit één keer de kasseien liet vergeten.",
+          "De stoel gaat verder. Wie volgt, gelooft maar beter nog in april."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is de voorjaarskalender controleren.",
+          "Nieuwe voorzitter, hetzelfde geloof dat Roubaix meer betekent dan welk podium in een etappekoers ook.",
+          "Ik begin hieraan voor de kasseien, degene die me van deze sport deden houden.",
+          "Nu ben ik aan de beurt. Ik beloof dat deze club niet vergeet waar april voor dient."
+        ]
+      }
+    },
+    "gc_elsker": {
+      "label": "De Klassementsromanticus",
+      "shortDescription": "Drie weken of niets, de Tour is alles",
+      "longDescription": "Een voormalig klassementsdirecteur. De grootste dromer van het bestuur. Wil het team opbouwen om een Grand Tour te winnen. Begrijpt niet waarom iemand anders nog zou koersen.",
+      "reactions": {
+        "feedback_positive": [
+          "Het klassementspad ligt vast, we bouwen naar de Tour toe.",
+          "Dit is een echte opbouw voor een Grand Tour-renner.",
+          "De bergen wachten op ons.",
+          "De driewekenvorm begint te stralen.",
+          "We hebben een team dat groot kan winnen."
+        ],
+        "feedback_warning": [
+          "De klassementsstructuur is te zacht.",
+          "Waar zijn de knechten voor het hooggebergte?",
+          "We missen de veerkracht van de derde week.",
+          "Dit team barst in de Pyreneeën.",
+          "De Tour-droom staat op pauze."
+        ],
+        "feedback_negative": [
+          "We hebben geen klassementsrenner in het team, onaanvaardbaar.",
+          "Dit team zou op dag één 20 minuten verliezen.",
+          "De Tour is verder weg dan ooit.",
+          "Het bestuur kreeg niet wat ons was beloofd.",
+          "Dit is geen serieus WorldTour-project."
+        ],
+        "goal_proposal": [
+          "Klassementsfocus, eindelijk op weg naar het grote spel.",
+          "Hier wordt de carrière gebouwd.",
+          "De Tour is het doel, en dit is de stap.",
+          "Het bestuur accepteert zonder aarzelen.",
+          "Zo kweek je een kopmanproject."
+        ],
+        "goal_achievement": [
+          "Het klassementsresultaat is solide, blijf klimmen.",
+          "Hierop worden wegen naar de Tour gebouwd.",
+          "De bergen gaven respect, goed werk.",
+          "We gaan naar het hoofdstuk dat iedereen zal lezen.",
+          "Dit is de stap voor de drie weken."
+        ],
+        "goal_failure": [
+          "Het klassementsproject bloedt, dit helpt niet.",
+          "We staan nu verder van de Tour dan vóór het seizoen.",
+          "Dit is een achteruitgang, geen bijstelling.",
+          "De bergen verpletterden ons, dit mag nooit meer gebeuren.",
+          "We hebben geen plan voor waar de ster vandaan moet komen."
+        ],
+        "receipt_positive": [
+          "Dat is Grand Tour-vorm. We bouwen iets echts.",
+          "Het klassementsbeeld wordt steeds beter. Zo bouw je een etappekoersploeg.",
+          "We rijden eindelijk als een team met een driewekenambitie.",
+          "Ik zie het nu. De Tour komt dichterbij."
+        ],
+        "receipt_negative": [
+          "Geen aanwezigheid in het klassement, geen klimbenen, geen Tour-project dat die naam waard is.",
+          "We vallen uit elkaar zodra de weg langer dan een dag bergop gaat.",
+          "Een team zonder echte klassementsdreiging bouwt niet naar iets toe waar ik om geef.",
+          "De Tour voelt verder weg dan een maand geleden."
+        ],
+        "meeting_easier": [
+          "Een lichter klassementsdoel, zolang we drie weken nog rijden alsof ze ertoe doen.",
+          "Ik wil sowieso dat de klimbenen worden opgebouwd.",
+          "Prima, als het de klimmers tijd geeft voordat we ze om een Grand Tour vragen.",
+          "Zolang de Tour nog steeds ons doel is, kan ik ermee leven."
+        ],
+        "meeting_keep": [
+          "De bergen geven niets om wat wij ervan vinden.",
+          "Een driewekenproject herschrijft zijn eigen tijdlijn niet.",
+          "De Tour wacht niet omdat wij om korting vroegen.",
+          "Klassementsambitie is het laatste wat we moeten schrappen."
+        ],
+        "meeting_stretch": [
+          "Eindelijk, een ambitie op Tour-formaat.",
+          "Deze club moet altijd op drie weken mikken, niet op één dag.",
+          "Graag. De bergen verdienen echte ambitie.",
+          "Ambitieus. Dat is de enige versnelling waarin dit project hoort te rijden."
+        ],
+        "midseason_status": [
+          "Halverwege, en ik beoordeel dit seizoen op waar het klassementsproject staat, niet op de sprints.",
+          "Het tussentijdse verslag doet er minder toe dan of we een echte leider voor juli hebben.",
+          "Deze club bestaat voor drie weken in de zomer. Al het andere is voorbereiding.",
+          "Halverwege, en de bergbenen komen, en dat is het enige getal dat ik volg."
+        ],
+        "milestone_achieved": [
+          "Echt klassementsgewicht achter deze. Ik hou ervan.",
+          "Nog een stap op de weg naar een Grand Tour.",
+          "Dit vertelt me dat het Tour-project echt is, geen droom.",
+          "Een resultaat dat drie weken waardig is. Daarvoor is deze club gebouwd."
+        ],
+        "milestone_missed": [
+          "Dat kost een Grand Tour-project een heel seizoen aan momentum.",
+          "De klimmers hadden meer in zich dan dit liet zien.",
+          "We hebben een scherpere opbouw naar de volgende Grand Tour nodig.",
+          "We beginnen nu met het herbouwen van de weg naar de Tour."
+        ],
+        "extraordinary_meeting": [
+          "Het bestuur roept een buitengewone vergadering bijeen. Een Tour-project wacht niet op de gebruikelijke kalender.",
+          "Dit is geen routine, maar het verliezen van onze kans op drie weken in juli ook niet.",
+          "Ik heb gevraagd nu bijeen te komen. Bergbenen bouw je niet in haast op het laatste moment.",
+          "Buitengewone vergadering, omdat de Tour dichterbij is dan het bestuur lijkt te denken."
+        ],
+        "chairman_departure": [
+          "Ik verlaat de voorzittersstoel. We bouwden eerlijk naar de bergen toe, en dat was het hele punt.",
+          "Mijn tijd eindigt hier, maar de Tour-ambitie waarvoor ik vocht, mag niet met mij vertrekken.",
+          "Ik treed terug nadat ik deze club nooit één keer liet vergeten wat drie weken betekenen.",
+          "De stoel gaat verder. Wie volgt, droomt maar beter nog van juli."
+        ],
+        "chairman_arrival": [
+          "Ik neem plaats op de stoel en het eerste wat ik doe, is nagaan wie drie weken in de bergen kan overleven.",
+          "Nieuwe voorzitter, hetzelfde geloof dat niets in deze sport meer telt dan de Tour.",
+          "Ik begin hieraan voor juli, de enige maand die echt telt.",
+          "Nu ben ik aan de beurt. Ik beloof dat deze club niet vergeet wat drie weken betekenen."
+        ]
+      }
+    }
+  },
+  "specialization": {
+    "gc": "Klassementsteam",
+    "sprint": "Sprintteam",
+    "classics": "Klassiekerteam",
+    "breakaway": "Etappejagersteam",
+    "youth": "Jeugdteam",
+    "balanced": "Evenwichtig team"
+  },
+  "competitiveTier": {
+    "contender": "Klaar om mee te strijden",
+    "competitive": "Competitief",
+    "rebuilding": "In opbouw"
+  },
+  "squadStatus": {
+    "thin": "Dunne selectie",
+    "healthy": "Gezonde selectie",
+    "full": "Brede selectie"
+  },
+  "starProfileLevel": {
+    "low": "Onbekend",
+    "medium": "Lokaal bekend",
+    "high": "Landelijk bekend",
+    "elite": "Wereldberoemd"
+  },
+  "nationalCoreLabel": {
+    "mixed": "Gemengde selectie",
+    "core": "Kern uit {country}",
+    "clearCore": "Duidelijke kern uit {country}"
+  },
+  "identitySummary": {
+    "template": "{primary} met een secundaire {secondaryLower} richting, {youth}, {squad}, {national} en {star}.",
+    "youth": {
+      "high": "een sterke jeugdstempel",
+      "medium": "een gematigd jeugdaandeel",
+      "low": "een laag jeugdaandeel"
+    },
+    "squad": {
+      "thin": "een dunne selectie",
+      "healthy": "een gezonde selectie",
+      "full": "een brede selectie"
+    },
+    "national": {
+      "core": "een kern uit {country} van {percent}%",
+      "mixed": "een gemengd nationaal profiel"
+    },
+    "star": {
+      "profile": "sterrenprofiel: {label}",
+      "none": "geen duidelijk sterrenprofiel"
+    }
+  },
+  "personalitySummary": {
+    "template": "{ambition}, {risk} en {identity}.",
+    "ambition": {
+      "low": "Lage sportieve ambitie",
+      "medium": "Gematigde sportieve ambitie",
+      "high": "Hoge sportieve ambitie"
+    },
+    "risk": {
+      "cautious": "voorzichtige financiële risicobereidheid",
+      "balanced": "evenwichtige financiële risicobereidheid",
+      "aggressive": "agressieve financiële risicobereidheid"
+    },
+    "identity": {
+      "low": "zwakke identiteitssterkte",
+      "medium": "gematigde identiteitssterkte",
+      "high": "sterke identiteitssterkte"
+    }
+  },
+  "requestDefs": {
+    "lower_results_pressure": {
+      "label": "De resultatendruk verlagen",
+      "description": "Vraag het bestuur om wat meer ademruimte in de sportieve eisen van het actieve plan.",
+      "tradeoffPreview": "Als het bestuur ja zegt, verwacht het doorgaans striktere financiële discipline."
+    },
+    "more_youth_focus": {
+      "label": "Meer focus op jeugd",
+      "description": "Duw het plan in een duidelijkere jeugdrichting met meer ruimte voor ontwikkeling.",
+      "tradeoffPreview": "Als het bestuur ja zegt, wordt de U25-identiteit centraler in het actieve plan."
+    },
+    "more_results_focus": {
+      "label": "Nu meer focus op resultaten",
+      "description": "Vraag het bestuur om topresultaten meteen zwaarder te laten wegen.",
+      "tradeoffPreview": "Dit maakt het plan niet makkelijker - de sportieve eisen worden scherper."
+    },
+    "ease_identity_requirements": {
+      "label": "Identiteitseisen versoepelen",
+      "description": "Vraag om iets meer flexibiliteit in de samenstelling van de selectie en de identiteitsdoelen.",
+      "tradeoffPreview": "Als het bestuur ja zegt, draait het doorgaans in plaats daarvan de sportieve druk op."
+    }
+  },
+  "requestReason": {
+    "noActivePlan": "Geen actief bestuursplan.",
+    "planNotActive": "Onderhandel over een nieuw plan voordat je verzoeken verstuurt.",
+    "alreadyUsed": "Je hebt het bestuursverzoek van dit seizoen al gebruikt.",
+    "windowBlocked": "De slotfase van het seizoen is begonnen. Het bestuur neemt in de laatste {raceDays} koersdagen geen verzoeken aan.",
+    "midCycleLocked": "Het plan van {years} jaar zit te vroeg in zijn cyclus om bijgestuurd te worden. Het bestuur wil dat minstens {percent}% van het plan is voltooid, of een grote omslag in tevredenheid, voordat het een heroriëntatie toestaat.",
+    "majorPivotUsed": "Het bestuur heeft in deze plancyclus al een grote koerswijziging geaccepteerd. Nog een grote richtingsverandering vraagt om een nieuw plan.",
+    "unknown": "Onbekend bestuursverzoek.",
+    "fallback": "Het bestuur wijst het verzoek op dit moment af.",
+    "lowerResults": {
+      "noSportingGoals": "Het plan heeft geen sportieve doelen om te versoepelen.",
+      "tooUnhappy": "Het bestuur is te ontevreden om de resultateneisen te versoepelen.",
+      "needProgress": "Het bestuur wil meer vooruitgang zien voordat het de resultateneisen versoepelt.",
+      "starPressure": "Grote namen houden de sponsorverwachtingen hoog, dus het bestuur versoepelt de resultateneisen nog niet.",
+      "underEnoughPressure": "Het bestuur vindt dat het plan al onder genoeg druk staat en wil meer vooruitgang zien voordat het de eisen versoepelt.",
+      "starAmbitionLocked": "Het bestuur weigert het ambitieniveau te verlagen voor een team met duidelijke sterrenprofielen, omdat de sponsorverwachtingen al verhoogd zijn."
+    },
+    "moreYouth": {
+      "alreadyYouth": "Het plan zit al op een jeugdspoor.",
+      "noIdentityGoal": "Het plan mist een identiteitsdoel om bij te sturen.",
+      "needStability": "Het bestuur wil meer stabiliteit zien voordat het nu van focus wisselt.",
+      "needYouthBase": "Het bestuur wil een duidelijkere jeugdbasis in de selectie zien voordat het van focus wisselt."
+    },
+    "moreResults": {
+      "alreadyResults": "Het plan duwt al op topresultaten.",
+      "squadTooThin": "Het bestuur wil een bredere selectie zien voordat het het ambitieniveau verder verhoogt."
+    },
+    "easeIdentity": {
+      "noIdentityGoal": "Het plan heeft geen identiteitseis om te versoepelen.",
+      "needTrust": "Het bestuur wil meer vertrouwen voordat het de identiteitseis versoepelt.",
+      "needSportingStability": "Het bestuur wil meer sportieve stabiliteit zien voordat het de identiteitseis versoepelt.",
+      "nationalCoreCentral": "Het bestuur ziet de nationale kern als een essentieel onderdeel van het DNA van het team en laat die nog niet los.",
+      "youthCoreCentral": "Het bestuur ziet het jeugdspoor als een kern van de identiteit van het team en laat dat nog niet los.",
+      "needStabilityFirst": "Het bestuur versoepelt de identiteitseisen pas als het team sportief stabieler staat.",
+      "nationalCoreDna": "Het bestuur ziet de nationale kern als een essentieel onderdeel van het DNA van het team en laat die nog niet los."
+    }
+  },
+  "requestOutcome": {
+    "approvedTitle": "Het bestuur accepteert het verzoek",
+    "rejectedTitle": "Het bestuur wijst het verzoek af",
+    "lowerResults": {
+      "titlePartial": "Het bestuur geeft een beetje ruimte",
+      "titleTradeoff": "Het bestuur geeft ruimte, tegen een prijs",
+      "summaryStar": "Het bestuur geeft maar een beetje ruimte, omdat een team met grote namen nog steeds aan hoge verwachtingen wordt gehouden.",
+      "summaryDefault": "Het bestuur verlaagt de sportieve druk in het actieve plan licht.",
+      "tradeoffStar": "De profielen geven het sponsorproject gewicht, maar betekenen ook dat het bestuur in plaats daarvan de financiële eis aanscherpt in plaats van de ambities helemaal los te laten.",
+      "tradeoffEconomy": "In ruil daarvoor wordt de financiële eis scherper, dus het team moet de rest van het plan met meer discipline worden gerund.",
+      "tradeoffPartial": "Het bestuur staat maar een gedeeltelijke versoepeling toe, omdat het plan nog duidelijke resultaten nodig heeft."
+    },
+    "moreYouth": {
+      "titleBridge": "Het bestuur accepteert alleen een geleidelijke verschuiving",
+      "titleDefault": "Het bestuur accepteert een jeugdiger spoor",
+      "summaryBridge": "Het bestuur wil meer ontwikkeling zien, maar een team met duidelijke sterrenprofielen kan niet in één keer van spoor wisselen.",
+      "summaryYouthTrack": "Het bestuur ziet al een jeugdspoor in de selectie en draait het plan duidelijker richting ontwikkeling.",
+      "summaryNationalCore": "Het bestuur ziet een duidelijke kern in de selectie en accepteert het plan richting een ontwikkelrichting op langere termijn te draaien.",
+      "summaryDefault": "Het plan wordt meer gericht op ontwikkeling en selectieopbouw op lange termijn.",
+      "tradeoffBridge": "Het plan wordt jeugdgerichter, maar het bestuur houdt de focus op een evenwichtig tussenpunt en laat de resultatendruk nog niet helemaal los.",
+      "tradeoffDefault": "In ruil daarvoor is de U25-identiteit nu een duidelijkere en duurzamere eis in het actieve plan."
+    },
+    "moreResults": {
+      "titleBridge": "Het bestuur accepteert alleen een geleidelijke opschaling",
+      "titleDefault": "Het bestuur verhoogt de ambitie",
+      "summaryBridge": "Het bestuur wil meer resultatendruk zien, maar een uitgesproken jeugdspoor wordt maar geleidelijk richting een ambitieuzere middenpositie verschoven.",
+      "summaryStar": "Grote namen en sponsorverwachtingen zorgen ervoor dat het bestuur de ambitie meteen verhoogt.",
+      "summarySpecialized": "Het bestuur ziet het team klaar om grotere resultaten na te jagen en verhoogt de ambitie.",
+      "summaryDefault": "Het plan laat topresultaten nu nog duidelijker zwaarder wegen dan voorheen.",
+      "tradeoffBridge": "Het bestuur houdt een deel van het ontwikkelspoor vast, dus het team moet het nieuwe ambitieniveau na verloop van tijd bewijzen.",
+      "tradeoffDefault": "Je krijgt wat meer flexibiliteit in de identiteitseis, maar de resultatendoelen zijn in ruil daarvoor meteen scherper geworden."
+    },
+    "easeIdentity": {
+      "titleCore": "Het bestuur versoepelt de identiteitseis maar licht",
+      "titleDefault": "Het bestuur versoepelt de identiteitseis",
+      "summaryCore": "Het bestuur ziet de nationale kern nog steeds als een essentieel onderdeel van het DNA van het team en geeft maar iets meer flexibiliteit in de identiteitseis.",
+      "summaryDefault": "Het team krijgt wat meer flexibiliteit in selectieopbouw en de identiteitsdragende doelen.",
+      "tradeoffCore": "De nationale identiteit wordt niet helemaal losgelaten, en in ruil daarvoor verwacht het bestuur scherpere sportieve output voor de rest van het plan.",
+      "tradeoffDefault": "In ruil daarvoor verwacht het bestuur scherpere sportieve output voor de rest van het plan."
+    }
+  },
+  "errors": {
+    "loginRequired": "Je moet ingelogd zijn.",
+    "requestFallback": "Het verzoek aan het bestuur kon niet worden verstuurd.",
+    "renewFallback": "Het plan kon niet worden verlengd. Er is niets gewijzigd."
+  },
+  "boardroom": {
+    "route": {
+      "loading": "Bestuurskamer laden"
+    },
+    "header": {
+      "title": "Bestuurskamer",
+      "subtitle": "{chair}, voorzitter · {dna}",
+      "subtitleChairOnly": "{chair}, voorzitter",
+      "subtitleNoChair": "Het bestuur",
+      "enterMeetingCta": "Naar de jaarvergadering"
+    },
+    "status": {
+      "on_track": "Op koers",
+      "at_risk": "In gevaar",
+      "behind": "Achter",
+      "achieved": "Gehaald",
+      "failed": "Mislukt"
+    },
+    "confidence": {
+      "cardTitle": "Vertrouwen van het bestuur",
+      "updated": "Bijgewerkt {date}",
+      "weekDeltaUp": "+{delta} deze week",
+      "weekDeltaDown": "{delta} deze week",
+      "weekDeltaFlat": "Geen verandering deze week",
+      "categories": {
+        "results": "Resultaten",
+        "economy": "Economie",
+        "identity": "Identiteit",
+        "ranking": "Ranglijst"
+      },
+      "noConsequenceDefault": "Geen actieve gevolgen. Het loonplafond gaat in onder 40."
+    },
+    "mandate": {
+      "cardTitle": "Seizoensmandaat · S{season}",
+      "cardTitleGeneric": "Seizoensmandaat",
+      "goalsMeta": "{count} doelen · getekend {date}",
+      "achievedTarget": "Gehaald {achieved} / doel {target}",
+      "expandAll": "Alles uitklappen",
+      "collapseAll": "Alles inklappen",
+      "stretch": "Uitdaging",
+      "discussTarget": "Doel bespreken",
+      "discussTargetDisabledHint": "Doelen bespreken kan vanaf de jaarvergadering.",
+      "receipt": {
+        "countedPrefix": "Meegeteld:",
+        "lastMovementPrefix": "Laatste beweging:",
+        "weightedByPrefix": "Gewogen door {name}."
+      },
+      "empty": {
+        "title": "Nog geen mandaat getekend",
+        "description": "Het bestuur heeft het mandaat van dit seizoen nog niet getekend. Kijk na de jaarvergadering terug."
+      },
+      "proposed": {
+        "cardTitle": "Voorgesteld mandaat · S{season}",
+        "meta": "Wacht op jouw handtekening",
+        "pill": "Voorgesteld",
+        "summaryLine": "Voorgesteld mandaat · wacht op jouw handtekening"
+      },
+      "goalLabels": {
+        "keepResultAboveZero": "Houd het seizoensresultaat boven nul",
+        "academyDebuts": "Geef {count} academierenners een debuut"
+      },
+      "receipts": {
+        "winRaceDays": {
+          "counted": "bevestigde zeges op koersdagen over het seizoen.",
+          "lastMovement": "Etappezege, {race}",
+          "weightedByLine": "Hij waardeert zeges boven al het andere."
+        },
+        "economyResult": {
+          "counted": "seizoensinkomsten min lonen, transfers en koerskosten.",
+          "lastMovement": "{amount} inkomsten per koersdag",
+          "weightedByLine": "Hij waardeert stabiele marges boven grote uitschieters."
+        },
+        "academyDebuts": {
+          "counted": "academierenners die een eerste startplek in een koers kregen.",
+          "lastMovement": "Debuut: {name}, {age}",
+          "weightedByLine": "Zij telt elk debuut als een gehouden belofte."
+        },
+        "clubRankingTopN": {
+          "counted": "de huidige positie op de wereldwijde clubranglijst.",
+          "lastMovement": "Geen beweging deze week",
+          "weightedByLine": "Hij houdt de ranglijst elke week in de gaten."
+        }
+      },
+      "bonus": "Bonus"
+    },
+    "vision": {
+      "cardTitle": "Clubvisie",
+      "meta": "{seasons, plural, one {plan van 1 seizoen} other {plan van # seizoenen}}",
+      "seasonLabel": "Seizoen {season}",
+      "currentSeasonLabel": "Seizoen {season} · Je bent hier",
+      "explainer": "Elke mijlpaal moet aan het eind van zijn doelseizoen zijn gehaald. Haal je hem eerder, dan telt hij aan het eind van dat seizoen. Een gemiste mijlpaal kost eenmalig vertrouwen, daarna gaat de visie verder.",
+      "countsAt": "Telt aan het eind van seizoen {season} · kan eerder worden gehaald",
+      "countsAtCurrent": "Telt aan het eind van seizoen {season}",
+      "milestoneAchieved": "Gehaald",
+      "milestoneMissed": "Gemist",
+      "empty": {
+        "title": "Nog geen visie vastgesteld",
+        "description": "De clubvisie is nog niet opgesteld."
+      },
+      "milestoneLabels": {
+        "establishDivision3": "Vestigen in Divisie 3",
+        "promotionPush": "Promotieronde",
+        "monumentPodium": "Monument-podium",
+        "clubRankingTop30": "Top 30 van de clubranglijst"
+      }
+    },
+    "board": {
+      "cardTitle": "Het bestuur",
+      "minutesLink": "Notulen van de vergadering",
+      "memberGridHint": "Tik op een lid om te zien wat hij of zij vindt en welke doelen hij of zij beheert.",
+      "role": {
+        "chair": "Voorzitter",
+        "results": "Resultaten",
+        "economy": "Economie",
+        "identity": "Identiteit",
+        "ranking": "Ranglijst"
+      },
+      "mood": {
+        "positive": "Tevreden over jou",
+        "neutral": "Houdt je scherp in de gaten",
+        "negative": "Ontevreden over jou"
+      },
+      "chairmanQuoteFixture": "Wij zien de richting. Houd de loonkosten eerlijk, dan volgen de resultaten.",
+      "chairmanContextFixture": "na de zondagse beoordeling",
+      "dnaExplainer": "Het club-DNA bepaalt wie er in het bestuur zit en hoe zij je doelen wegen."
+    },
+    "member": {
+      "viewHint": "Lid bekijken",
+      "ownsGoalsCount": "{count, plural, one {beheert 1 doel} other {beheert # doelen}}",
+      "sinceSeason": "in het bestuur sinds S{season}",
+      "personalityHeading": "Persoonlijkheid",
+      "ownsGoalsHeading": "Beheert deze doelen",
+      "ownWordsHeading": "In eigen woorden",
+      "confidenceMove": "{sign}{delta} vertrouwen · {date}",
+      "footerNote": "Nog geen foto's. Voorlopig herken je ze aan wat ze zeggen.",
+      "close": "Sluiten"
+    },
+    "minutesFixture": {
+      "stageWin": "Etappezege, Vuelta a Andalucía. “Hiervoor heb ik getekend.”",
+      "youthDebut": "Jeugddebuut: {name}, {age}. “Dit is de Noordse manier.”",
+      "deficitWeek": "Tekortweek, {amount}. “Marges, geen wonderen.”",
+      "captainSaleWarning": "Wij verkopen midden in het seizoen geen kopman zonder plan. “Laat me het plan zien.”"
+    },
+    "meeting": {
+      "route": {
+        "loading": "Jaarvergadering laden"
+      },
+      "header": {
+        "title": "Jaarvergadering · Seizoen {season}",
+        "subtitle": "Het bestuur stelt je mandaat voor. Pas het aan, doe één verzoek, teken.",
+        "confidenceMeta": "Vertrouwen {confidence} · {count} aanpassingen beschikbaar",
+        "confidenceMetaNoValue": "{count} aanpassingen beschikbaar",
+        "deadline": "Onbeantwoorde mandaten worden over {days, plural, one {# dag} other {# dagen}} automatisch getekend"
+      },
+      "steps": {
+        "focus": "Focus",
+        "mandate": "Mandaat",
+        "request": "Verzoek",
+        "sign": "Tekenen"
+      },
+      "focus": {
+        "label": "Focus"
+      },
+      "mandate": {
+        "title": "Voorgesteld mandaat · focus: {focus}",
+        "meta": "{count, plural, one {# doel} other {# doelen}} · {used} van {allowed} aanpassingen gebruikt",
+        "reward": "Beloning +{bonus} vertrouwen · gemist -{penalty}",
+        "rewardWas": "Beloning +{bonus} vertrouwen · gemist -{penalty} · was {was}",
+        "choice": {
+          "easier": "Makkelijker",
+          "keep": "Houden",
+          "stretch": "Uitdagender"
+        },
+        "choiceDisabledEasier": "Dit doel kan niet verder worden versoepeld.",
+        "choiceDisabledStretch": "Dit doel kan niet verder worden opgerekt.",
+        "choiceDisabledBudget": "Je hebt al je aanpassingen voor deze vergadering gebruikt.",
+        "reactionAttribution": "{name}, die dit doel beheert"
+      },
+      "visionSlot": {
+        "title": "Het bestuur stelt een nieuwe mijlpaal voor",
+        "targetSeason": "Doel: seizoen {season}",
+        "accept": "Accepteren",
+        "decline": "Afwijzen"
+      },
+      "request": {
+        "title": "Jouw verzoek · 1 per vergadering",
+        "meta": "Een weigering komt altijd met een tegenvoorstel",
+        "changeRequest": "Verzoek wijzigen",
+        "select": "Kiezen",
+        "none": "Geen verzoek deze vergadering"
+      },
+      "sign": {
+        "hint": "Snelste weg: accepteer het voorstel en teken. Twee klikken.",
+        "back": "Terug",
+        "button": "Mandaat tekenen",
+        "signing": "Tekenen",
+        "error": "Er ging iets mis. Probeer het opnieuw.",
+        "focusChangeError": "De focus kon niet worden bijgewerkt. Probeer het opnieuw."
+      }
+    },
+    "tabs": {
+      "aria": "Onderdelen van de bestuurskamer",
+      "overview": "Overzicht",
+      "mandate": "Mandaat",
+      "vision": "Visie",
+      "board": "Bestuur"
+    },
+    "overview": {
+      "goalsAchieved": "{achieved} van {total} doelen gehaald,",
+      "signedOn": "getekend {date}",
+      "worstGoalNote": "{goal} staat op {achieved} tegenover een doel van {target}.",
+      "openMandate": "Mandaat openen",
+      "openVision": "Visie openen",
+      "openBoard": "Bestuur openen",
+      "visionLabel": "Clubvisie",
+      "boardLabel": "Het bestuur",
+      "nextMilestone": "Volgende mijlpaal: {milestone}, in seizoen {season}.",
+      "boardNoQuote": "Het bestuur heeft sinds de laatste vergadering niets gezegd.",
+      "goalValue": "{achieved} / {target}"
+    },
+    "bonusOffer": {
+      "lead": "Bonusaanbod van het bestuur.",
+      "stripeDetail": "voor één extra doel: {goal}.",
+      "expires": "Verloopt aan het eind van S{season}",
+      "acceptedOn": "Geaccepteerd {date}. {cash} bijgeschreven op het saldo. Geteld vanaf acceptatie, beoordeeld aan het eind van het seizoen.",
+      "accepted": "Aanbod geaccepteerd. {cash} bijgeschreven op het saldo. Geteld vanaf acceptatie, beoordeeld aan het eind van het seizoen.",
+      "actionFailed": "Het bestuur antwoordde niet. Probeer het opnieuw."
+    }
+  },
+  "vision": {
+    "title": {
+      "skandinavisk_udvikling": "Het Noordse project",
+      "italiensk_klassiker": "Het klassiekererfgoed",
+      "sprint_kommerciel": "De Sprintexpres",
+      "fransk_klatrer": "De erfenis van de bergen",
+      "britisk_allrounder": "Het allroundersproject"
+    }
+  },
+  "goalReceipt": {
+    "counted": {
+      "top_n_finish": "je huidige plaats in de divisieranglijst.",
+      "stage_wins": "koerszeges, etappezeges en eendagszeges samen.",
+      "gc_wins": "eindzeges in etappekoersen.",
+      "min_u25_riders": "U25-renners die nu in je team zitten.",
+      "min_national_riders": "renners uit het land van het doel die nu in je team zitten.",
+      "min_riders": "renners die nu in je team zitten.",
+      "no_outstanding_debt": "je saldo min actieve leningen. Het doel is gehaald als dat aan het eind van het seizoen nul of meer is.",
+      "sponsor_growth": "de stijging van de seizoensuitbetaling van je sponsor sinds het eerste seizoen van het plan, in procenten.",
+      "monument_podium": "top-3-plaatsen in Monuments, of in klassiekers als het doel die noemt. Een bonusdoel telt vanaf acceptatie.",
+      "signature_rider": "renners met grote naamsbekendheid in je team. Een bonusdoel telt vanaf acceptatie.",
+      "jersey_wins": "punten-, berg- en jongerentruien gewonnen in etappekoersen.",
+      "profitable_transfers": "je netto transfersaldo over de planperiode.",
+      "u25_development_delta": "de gemiddelde winst aan vaardigheidspunten per U25-renner per seizoen sinds het plan begon.",
+      "relative_rank": "de managers voor wie je staat in de divisieranglijst.",
+      "domestic_dominance": "nog niet gemeten.",
+      "unknown": "je voortgang richting dit doel."
+    }
+  },
+  "chairmanBeat": {
+    "milestone_achieved": "nadat een visiemijlpaal was gehaald",
+    "milestone_missed": "na een gemiste visiemijlpaal",
+    "meeting_keep": "nadat het mandaat was getekend"
+  }
+}
