@@ -1,0 +1,225 @@
+{
+  "page": {
+    "title": "Planificador de temporada"
+  },
+  "empty": {
+    "title": "El planificador de temporada aún no está activo",
+    "description": "Aquí planificarás los picos de forma de cada ciclista a lo largo de la temporada. Vuelve pronto."
+  },
+  "seasonMenu": {
+    "label": "Temporada",
+    "option": "T{number}"
+  },
+  "seasonNotReady": {
+    "title": "El calendario de la temporada {number} aún no está listo",
+    "description": "El programa de carreras de esta temporada todavía no se ha generado, así que no hay nada contra lo que planificar. Vuelve a mirar más cerca del inicio de la temporada."
+  },
+  "nextSeasonBanner": {
+    "title": "La temporada {number} está abierta para planificar",
+    "body": "El calendario de la temporada {number} está listo. Ya puedes fijar picos de forma para ella, antes del inicio de la temporada.",
+    "cta": "Cambiar a la temporada {number}",
+    "dismiss": "Descartar",
+    "bodyUpcoming": "El calendario de la temporada {number} está listo para explorar. Tu división para esa temporada se decide en el cambio de temporada, así que los picos de forma se abren cuando se confirme."
+  },
+  "tabs": {
+    "squad": "Plantilla",
+    "season": "Temporada"
+  },
+  "board": {
+    "title": "Tablero de la temporada"
+  },
+  "statusLine": {
+    "peaks": "{count, plural, =0 {Sin picos planificados} one {# pico planificado} other {# picos planificados}}",
+    "needsAction": "{count, plural, one {# requiere acción} other {# requieren acción}}",
+    "allClear": "Nada requiere acción",
+    "nextLeadup": "{count, plural, =0 {La preparación empieza hoy} one {Próxima preparación en # día} other {Próxima preparación en # días}}",
+    "noLeadup": "Sin preparación programada"
+  },
+  "squad": {
+    "title": "Tu plantilla",
+    "count": "{count, plural, one {# ciclista} other {# ciclistas}}",
+    "colRider": "Ciclista",
+    "colForm": "Forma",
+    "colTarget": "Objetivo del pico",
+    "colValue": "Lo que vale",
+    "noPeak": "Sin pico",
+    "pickRace": "Objetivo del pico para {name}",
+    "raceOption": "{date} · {race} · encaje {fit}",
+    "raceOptionPayback": "{date} · {race} · encaje {fit} · riesgo de bajón",
+    "raceOptionLocksNow": "{date} · {race} · encaje {fit} · se bloquea de inmediato",
+    "age": "{age} a.",
+    "load": "{days, plural, one {# día de carrera} other {# días de carrera}}",
+    "loadTitle": "Carga de la temporada: {races, plural, one {# carrera} other {# carreras}}, {days, plural, one {# día de carrera} other {# días de carrera}} inscritos esta temporada",
+    "formInline": "Forma {value}",
+    "remove": "Quitar pico",
+    "window": "Preparación del {start} al {end}",
+    "locksOn": "Se bloquea el {date}",
+    "lockedTooltip": "Bloqueado desde que empezó la ventana de su pico el {date}. Los picos se bloquean cuando empieza su ventana y ya no se pueden cambiar.",
+    "lockedTooltipGeneric": "La ventana de este pico ya ha empezado, así que está bloqueado y ya no se puede cambiar.",
+    "value": {
+      "range": "+{floor} a +{ceiling} de forma",
+      "current": "+{current} de forma",
+      "rangeHint": "Depende de cómo se corra la preparación. Después, {payback} de forma durante {days} días.",
+      "currentHint": "Después, {payback} de forma durante {days} días.",
+      "unset": "Fija un objetivo para ver lo que vale un pico."
+    },
+    "payback": {
+      "collision": "El bajón tras este pico cubre {race}, {days, plural, one {# día} other {# días}} después. Espera {payback} de forma ahí.",
+      "unknownRace": "otra carrera del programa de este ciclista"
+    },
+    "youth": {
+      "title": "Ciclistas sub-23 y júniors",
+      "note": "Estos ciclistas corren carreras sub-23 y júnior. Los picos se planifican para el calendario sénior, así que aquí solo se pueden quitar sus picos.",
+      "squad": {
+        "u23": "Sub-23",
+        "junior": "Júnior"
+      }
+    }
+  },
+  "assistant": {
+    "cardTitle": "El asistente ha redactado {peaks, plural, one {# pico} other {# picos}} para {riders, plural, one {# ciclista} other {# ciclistas}}",
+    "cardWhy": "Cada uno se elige a partir del propio calendario de carreras de ese ciclista, su tipo y su edad. Acéptalos todos o cambia cualquiera en la lista de abajo.",
+    "cardRule": "Cada ciclista puede alcanzar su pico en hasta {max} carreras por temporada, así que elige dónde cuenta.",
+    "acceptAll": "Aceptar todo",
+    "acceptedAll": "{count, plural, one {# pico fijado} other {# picos fijados}}. Cambia cualquiera en la lista.",
+    "acceptedPartial": "{created} fijados, {skipped} no se pudieron fijar. La lista muestra lo que ha quedado.",
+    "badge": "Sugerencia del asistente",
+    "badgeMixed": "{real, plural, one {# pico} other {# picos}} + {count, plural, one {# sugerencia} other {# sugerencias}}",
+    "accept": "Aceptar",
+    "reset": "Restablecer en blanco",
+    "resetDone": "Sugerencia borrada. Elige una carrera objetivo cuando quieras.",
+    "reasonRegistered": "Coincide con una carrera en la que ya los has inscrito.",
+    "reasonSuitability": "La mejor coincidencia de tipo de tu calendario.",
+    "reasonNoPeak": "El asistente no sugiere otro pico para este ciclista ahora mismo.",
+    "noPeakTitle": "No se recomienda otro pico",
+    "keepOnePeak": "Mantener un pico"
+  },
+  "filter": {
+    "mine": "Mis carreras",
+    "all": "Todas las carreras"
+  },
+  "planningTowards": {
+    "label": "Planificando hacia: {race} · {date}"
+  },
+  "raceList": {
+    "title": "Carreras de la temporada",
+    "subtitle": "Todas las carreras de esta temporada: cuándo se corren y qué exigen. Abre una para planificar un pico o ve a su página completa.",
+    "count": "{count, plural, one {# carrera} other {# carreras}}",
+    "viewPage": "Abrir la página de la carrera {race}",
+    "mine": "En tu calendario",
+    "peaksHere": "{count, plural, one {# ciclista alcanza su pico aquí} other {# ciclistas alcanzan su pico aquí}}",
+    "empty": "Todavía no hay carreras que coincidan con este filtro.",
+    "past": "Terminada"
+  },
+  "legend": {
+    "potential": "Techo potencial",
+    "realized": "Alcanzado (entrenado)",
+    "block": "Carga / descarga",
+    "token": "Ficha de pico",
+    "drag": "Arrastra un corchete para cambiar el objetivo"
+  },
+  "status": {
+    "onTrack": "Descarga en camino",
+    "atRisk": "Pico en riesgo",
+    "pending": "Preparación sin empezar",
+    "locked": "Bloqueado"
+  },
+  "tokens": {
+    "label": "{used} de {max} picos usados"
+  },
+  "ovr": {
+    "label": "OVR"
+  },
+  "today": "Hoy",
+  "form": {
+    "now": "Forma actual {value}"
+  },
+  "lane": {
+    "noPeaks": "Sin picos fijados. Una temporada plana hasta que planifiques uno."
+  },
+  "drawer": {
+    "close": "Cerrar",
+    "race": {
+      "summary": "{stages} etapas · {summits, plural, =0 {sin finales en alto} one {# final en alto} other {# finales en alto}}",
+      "rankedTitle": "Tus ciclistas, ordenados por idoneidad",
+      "rivalThreat": "Amenaza de rivales",
+      "rivalCount": "{count, plural, =0 {Ningún rival alcanza su pico aquí} one {# rival también alcanza su pico aquí} other {# rivales también alcanzan su pico aquí}}",
+      "viewProfiles": "Ver perfiles de etapa",
+      "hideProfiles": "Ocultar perfiles de etapa",
+      "openStage": "Abrir la etapa {stage} en una pestaña nueva",
+      "setPeak": "Fijar pico",
+      "demands": "Esta carrera exige",
+      "alreadyPeaking": "Con el pico aquí",
+      "suggestedHere": "El asistente lo sugiere aquí",
+      "viewPage": "Ver página de la carrera",
+      "peaksLocked": "División pendiente",
+      "maxedReached": "Límite de picos alcanzado (máx. {max} por ciclista)",
+      "started": "Empezada"
+    },
+    "rider": {
+      "abilities": "Habilidades",
+      "suggestedBlock": "Preparación sugerida",
+      "autoPlan": "Planificar entrenamiento automáticamente",
+      "build": "Semana de carga",
+      "taper": "Semana de descarga",
+      "focus": "Enfoque recomendado: {focus}",
+      "accepted": "{week} escrita en el entrenamiento de {name}",
+      "noPeak": "Aún no hay pico. Elige una carrera objetivo para planificar uno.",
+      "peakFor": "Pico para {race}",
+      "pickRace": "Elige una carrera objetivo",
+      "removePeak": "Quitar pico",
+      "windowLabel": "Ventana del pico {start} – {end}"
+    }
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "hilly": "Ondulado",
+    "mountain": "Montaña",
+    "itt": "CRI",
+    "ttt": "CRE",
+    "cobbles": "Adoquines"
+  },
+  "focus": {
+    "vo2max": "VO2max",
+    "threshold": "Umbral",
+    "sprint": "Sprint",
+    "endurance": "Resistencia",
+    "technique": "Técnica",
+    "aero": "Aerodinámica",
+    "loebslaere": "Lectura de carrera"
+  },
+  "error": {
+    "max_reached": "Este ciclista ya tiene el máximo de {max} picos.",
+    "duplicate_target": "Este ciclista ya tiene un pico para esa carrera.",
+    "locked": "Este pico está bloqueado y ya no se puede cambiar.",
+    "race_not_in_calendar": "Esa carrera no está en el calendario de tu división.",
+    "race_not_scheduled": "Esa carrera aún no está programada.",
+    "generic": "Algo salió mal. Inténtalo de nuevo.",
+    "title": "No se pudo cargar el planificador de temporada",
+    "description": "No se ha perdido nada. Tus picos y planes de entrenamiento están a salvo. Inténtalo de nuevo.",
+    "session": "Tu sesión ha terminado. Inicia sesión de nuevo para seguir planificando.",
+    "retry": "Reintentar",
+    "division_not_settled": "Tu división para esa temporada se decide en el cambio de temporada, así que todavía no se pueden fijar picos.",
+    "race_already_started": "Esa carrera ya ha empezado, así que ya no puede ser objetivo de un pico.",
+    "rider_not_senior_squad": "Los picos se planifican para ciclistas sénior. Este ciclista está en tu plantilla sub-23 o júnior."
+  },
+  "months": [
+    "ene",
+    "feb",
+    "mar",
+    "abr",
+    "may",
+    "jun",
+    "jul",
+    "ago",
+    "sep",
+    "oct",
+    "nov",
+    "dic"
+  ],
+  "divisionPending": {
+    "title": "Tu división de la temporada {number} se decide en el cambio de temporada",
+    "body": "Los ascensos y descensos se resuelven cuando se cierra la temporada actual, así que todavía no puedo decirte cuál es tu calendario. Debajo se listan las carreras de la temporada {number} de todas las divisiones, para que puedas estudiar el recorrido.",
+    "hint": "Los picos de la temporada {number} se abren en cuanto se confirme tu división."
+  }
+}
