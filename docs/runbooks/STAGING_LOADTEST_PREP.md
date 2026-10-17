@@ -5,17 +5,20 @@ Ejer-beslutning A (4/10): Claude Code klargør Supabase-branchen `staging-cutove
 prod er kun læst for schema og størrelses-estimater. Denne side er afleveringen: hvad der er
 klar, hvad der er bevist, og hvad der stadig blokerer.
 
-## Status 10/10 (målt)
+## Status 17/10 (målt, #6275)
 
 | Område | Status |
 |---|---|
-| Schema = prod | **Klar.** Fingeraftrykket matcher prod på alle app-kategorier (genmålt 5/10 efter refresh). |
+| Schema = prod | **Klar.** Fingeraftrykket matcher prod på alle app-kategorier (genmålt 5/10 efter refresh). Top-up'en 17/10 rører ikke `public`-schemaet. |
 | Sideeffekt-isolation | **Klar.** Ny prod-kopi 5/10, renset; wrapperen giver `ISOLATED` (genmålt 10/10). |
-| Volumen i prod-størrelse | **Blokeret.** Staging 1.889.644 resultatrækker mod prods katalogestimat 1.931.805 (7/10). |
-| Fuld pinned S4-løbsdag | **Værktøj klar:** `scripts/loadtest/race-day-sim.mjs` (afsnit 5). Ikke kørt, fordi volumen blokerer. |
-| #6170-prerequisites | `BLOCKED`, kun på `RESULT_VOLUME_TOO_SMALL`. Schema-proberne består. |
+| Volumen i prod-størrelse | **Klar.** Staging 2.307.176 resultatrækker mod prods estimat 2.136.917 (17/10), efter `scripts/staging/topup-race-results.sql`. |
+| Pinned dag | **Klar:** uret `2026-10-19T00:00:00+02:00` (S4 game day 21, 57 slots i alle tre trupper), 0 forfaldne etaper før uret. |
+| Flag på staging | **Mangler:** `race_engine_v2_enabled` og `auto_prize_enabled` findes ikke i stagings `app_config` (planen stopper på `PLAN_STAGING_FLAG_OFF`). `stage_scheduler_enabled` er `on`. |
+| Fuld pinned S4-løbsdag | **Værktøj klar:** `scripts/loadtest/race-day-sim.mjs` (afsnit 5). Ikke kørt: maskinen 17/10 havde hverken `supabase` CLI eller `psql`. |
+| #6170-prerequisites | Volumen-proben består nu ved `--min-results 2136917` (ikke kørt via wrapperen, talt med SQL). |
 
-**Konklusion:** load-testen kan ikke godkendes endnu. Den sidste blokering er volumen.
+**Konklusion:** volumen er ikke længere blokeringen. Tilbage: flagene på staging og en kørsel fra en
+maskine med CLI + psql. Rapport og 10x-fund: `docs/audits/2026-10-17-6275-lasttest-10x.md`.
 Afsnit 1-4 nedenfor er historikken fra klargøringen 5/10.
 
 ## 1. Schema-identitet
@@ -82,7 +85,18 @@ Den laver én transaktion pr. løb, er idempotent og kan genoptages. Med
 til cirka 1,9 mio. ud fra felter × etaper × resultattyper; det er ikke målt.
 Kørslen blev afbrudt (se "Kapacitet"), så staging har stadig 0 rækker.
 
-## 3. Kapacitet (blokering, kræver ejer)
+**Top-up 17/10 (#6275):** `scripts/staging/topup-race-results.sql` afvikler syntetisk alle aktive
+sæsonetaper planlagt før et pinned ur (alle trupper; løb der krydser uret får kun etaperne før
+uret). Den kører i portioner (`select cz_loadtest.topup_batch('<ur>', 40);` til
+`remaining_stages = 0`), virker fra både psql og Supabase MCP, og har triggere tændt, så
+`race_day_participation` og `race_entry_days` fyldes som i prod. Kørt med uret
+`2026-10-19T00:00:00+02:00`: +417.532 rækker i syv portioner, ingen fejl, database 4,0 GB.
+Næste pinned dag efter en kørsel er den første dag efter uret med alle tre trupper.
+
+## 3. Kapacitet (historik 5/10; ikke blokerende 17/10)
+
+17/10: branchen rummer 4,0 GB efter top-up'en uden genstart. Compute er stadig Small
+(2 GB RAM, 90 forbindelser) mod prods Medium, så tider fra staging er konservative.
 
 Målt 5/10: Den første generator-kørsel var én statement over hele mængden. Ved cirka 733 MB
 databasestørrelse genstartede branchens postmaster ("crash of another server process"), og
@@ -131,7 +145,7 @@ lavet, og læsning af auth-schemaet blev også afvist. Efter ejer-go køres:
 psql $env:STAGING_DB_URL -f scripts/staging/anonymize-staging.sql
 ```
 
-**Motor/scheduler:** tændes KUN i stagings `app_config` (`race_engine_v2`/`stage_scheduler`)
+**Motor/scheduler:** tændes KUN i stagings `app_config` (`race_engine_v2_enabled`/`stage_scheduler_enabled`)
 og kun efter grønt isolationstjek. Prod-flag røres aldrig.
 
 ### Fail-closed refresh (#6229)
@@ -170,7 +184,7 @@ fra en anden shell sender ikke `--flag`-argumenterne videre, målt 10/10):
 
 ```powershell
 & ./scripts/staging/with-loadtest-staging.ps1 -Cwd . -- node scripts/loadtest/race-day-sim.mjs `
-  --clock 2026-10-06T00:00:00+02:00 --season 4 --min-results <frisk prod-estimat> `
+  --clock 2026-10-19T00:00:00+02:00 --season 4 --min-results <frisk prod-estimat> `
   --viewer-token-file <sti uden for repoet>
 ```
 
@@ -185,8 +199,8 @@ aliaser (R01 ...), aldrig id'er eller navne.
 1. **Volumen:** `--min-results` er prods `pg_class`-estimat for `race_results`, målt read-only
    samme dag. Ingen default og ingen tolerance; scriptet sænker aldrig grænsen. En relativ
    tolerance kræver et ejer-go (kort i PR'en for #5904). Top-up er kun tilladt på staging
-   (`scripts/staging/synthesize-race-results.sql`).
-2. **Flag i stagings `app_config`:** `stage_scheduler_enabled`, `race_engine_v2` og `auto_prize`
+   (`scripts/staging/synthesize-race-results.sql`; top-up til en ny fast dag: `scripts/staging/topup-race-results.sql`, kør med `psql -v ON_ERROR_STOP=1`).
+2. **Flag i stagings `app_config`:** `stage_scheduler_enabled`, `race_engine_v2_enabled` og `auto_prize_enabled`
    skal være tændt. Scriptet læser dem og skriver aldrig flag. Øvrige flag
    (fx `training_tick_per_race_day`) sættes som i prod; rapporten viser ikke deres værdi.
 3. **Pinned dag:** første S4-dag der ikke er kørt på staging. Planen stopper ved forfaldne
@@ -225,9 +239,13 @@ næste uafviklede dag eller en frisk refresh.
 
 ## 6. Udestående
 
-1. **Volumen:** top-up på staging til mindst prods friske estimat, eller ejer-go på en relativ
-   tolerance.
-2. Kør `race-day-sim.mjs` (afsnit 5) og gem rapporten i `docs/snapshots/5904/`.
+1. ~~Volumen~~: løst 17/10 (afsnit 2). Gentag top-up'en, hvis prods estimat passerer stagings tal.
+2. **Flag:** `race_engine_v2_enabled` og `auto_prize_enabled` sættes på STAGING (kun efter grønt isolationstjek).
+3. Kør `race-day-sim.mjs` (afsnit 5) med `--clock 2026-10-19T00:00:00+02:00 --season 4
+   --min-results <frisk prod-estimat>` fra en maskine med `supabase` CLI og `psql`, og gem
+   rapporten i `docs/snapshots/5904/`.
+4. 10x: `node scripts/loadtest/tenx-dryrun.mjs --scales 1,2,10` (dry-run, ingen netværk) og
+   fundene i `docs/audits/2026-10-17-6275-lasttest-10x.md` (#6764, #6765, #6766).
 
 ## Genskab beviserne
 

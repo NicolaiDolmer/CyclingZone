@@ -72,7 +72,7 @@ function makeFakeLive(world, behaviour = {}) {
           slots: world.races.map(r => ({ raceId: r.id, alias: aliasOf.get(r.id), stageNumber: 1, squad: r.squad, scheduledAtMs: r.scheduledAtMs })),
           races: world.races.map(r => ({ id: r.id, alias: aliasOf.get(r.id) })), raceCount: world.races.length,
           backlogBeforeClock: 0, finalizeStatePresent: 0, existingRunsForSlots: 0, capBaselineRuns: 0,
-          flags: { stage_scheduler_enabled: true, race_engine_v2: true, auto_prize: true },
+          flags: { stage_scheduler_enabled: true, race_engine_v2_enabled: true, auto_prize_enabled: true },
         };
       },
       async runTick(now) {
@@ -259,13 +259,13 @@ test('fail-closed: a viewer token from another project or about to expire blocks
 test('fail-closed: plan validation demands all three squads, no backlog, no half-finalized race and staging flags on', () => {
   const ticks = computeTicks(CLOCK_MS, CLOCK_MS + 86400000);
   const slots = [10, 12, 14, 16, 18].map((h, i) => ({ squad: i < 3 ? 'senior' : 'junior', scheduledAtMs: CLOCK_MS + h * 3600000, dueTickIndex: h * 12 }));
-  const plan = { activeSeasonCount: 1, activeSeasonNumber: 4, slots, backlogBeforeClock: 2, finalizeStatePresent: 1, existingRunsForSlots: 0, capBaselineRuns: 0, flags: { stage_scheduler_enabled: true, race_engine_v2: false } };
+  const plan = { activeSeasonCount: 1, activeSeasonNumber: 4, slots, backlogBeforeClock: 2, finalizeStatePresent: 1, existingRunsForSlots: 0, capBaselineRuns: 0, flags: { stage_scheduler_enabled: true, race_engine_v2_enabled: false } };
   const b = validatePlan(plan, { season: 4, clockMs: CLOCK_MS, untilMs: CLOCK_MS + 86400000 });
   assert.ok(b.includes('PLAN_SQUAD_WITHOUT_SLOTS:u23'));
   assert.ok(!b.includes('PLAN_SQUAD_WITHOUT_SLOTS:senior'));
   assert.ok(b.includes('PLAN_BACKLOG_BEFORE_CLOCK'));
   assert.ok(b.includes('PLAN_FINALIZE_STATE_PRESENT'));
-  assert.ok(b.includes('PLAN_STAGING_FLAG_OFF:race_engine_v2'));
+  assert.ok(b.includes('PLAN_STAGING_FLAG_OFF:race_engine_v2_enabled'));
   assert.ok(validatePlan({ ...plan, activeSeasonNumber: 3 }, { season: 4, clockMs: CLOCK_MS, untilMs: CLOCK_MS + 86400000 }).includes('PLAN_SEASON_MISMATCH'));
   assert.ok(ticks.length > 0);
 });
