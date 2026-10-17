@@ -252,19 +252,27 @@ function startLock(dir, flags, command, extraEnv = {}) {
   return run;
 }
 
+// Lock-timeouten skal daekke tre serielle procesventetider (PROCESS_WAIT_MS) plus margin,
+// ellers kan den foerste ventende give op (exit 75) foer slottet frigives (Codex #6817).
+const LOCK_TIMEOUT_S = 120;
+
 function runtimeHolder(dir, runtime, id, max = 2) {
   const marker = join(dir, `entered-${id}`), stop = join(dir, `stop-${id}`);
-  const run = startLock(dir, ['-Runtime', runtime, '-Max', String(max), '-Timeout', '30'], ['node', holdScript, marker, stop]);
+  const run = startLock(dir, ['-Runtime', runtime, '-Max', String(max), '-Timeout', String(LOCK_TIMEOUT_S)], ['node', holdScript, marker, stop]);
   return Object.assign(run, { marker, stop });
 }
 
+// CI-runnere starter pwsh langsomt; tre processer i traek kan tage over 10 s.
+// Graensen er kun et loft for ventetiden: raekkefoelge-tjekkene er uaendrede.
+const PROCESS_WAIT_MS = 30000;
+
 async function entered(run) {
-  assert.ok(await waitFor(() => existsSync(run.marker) || run.child.exitCode !== null, 10000));
+  assert.ok(await waitFor(() => existsSync(run.marker) || run.child.exitCode !== null, PROCESS_WAIT_MS));
   assert.ok(existsSync(run.marker), `holder failed: ${run.stderr}`);
 }
 
 async function waiting(run) {
-  assert.ok(await waitFor(() => run.stdout.includes('venter paa slot') || existsSync(run.marker) || run.child.exitCode !== null, 10000));
+  assert.ok(await waitFor(() => run.stdout.includes('venter paa slot') || existsSync(run.marker) || run.child.exitCode !== null, PROCESS_WAIT_MS));
   assert.ok(run.stdout.includes('venter paa slot'), `expected waiting admission: ${run.stderr}`);
   assert.equal(existsSync(run.marker), false);
 }
