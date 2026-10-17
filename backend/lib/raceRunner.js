@@ -115,7 +115,7 @@ import { detectCareerFirsts } from "./careerFirsts.js";
 import { runReputationDetectionSafe } from "./reputationHook.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
-import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
+import { loadWithdrawnTeamIds, releaseTeamsThatDidNotStart, reconcileDidNotStartReleases } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
@@ -2051,6 +2051,19 @@ export function notStartedTeams({ droppedTeamIds = [], selectedTeamIds = new Set
 // committet. Fejl isoleres: en besked må aldrig vælte en afviklet etape.
 async function sendDidNotStartNotices({ supabase, race, teamIds }) {
   if (!teamIds?.length) return;
+  // #6740 (Friis 17/10): frigiv rytterne FØR beskeden — ellers står de bundet løbet ud
+  // i et løb holdet ikke kører. Egen try/catch: en fejl her må hverken vælte etapen
+  // eller koste beskeden.
+  // Ét genforsøg med det samme; slår begge fejl, indhenter afstemningen ved næste etape
+  // (reconcileDidNotStartReleases i simulateStageByIndex) frigivelsen.
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      await releaseTeamsThatDidNotStart({ supabase, raceId: race.id, teamIds });
+      break;
+    } catch (err) {
+      if (attempt === 2) captureException(err, { tags: { flow: "race-run", stage: "did-not-start-release" }, raceId: race.id });
+    }
+  }
   try {
     await notifyTeamsDidNotStart({ supabase, race, teamIds });
   } catch (err) {
@@ -3516,6 +3529,18 @@ export async function simulateStageByIndex({
     applied = { rowsImported };
     // #6740: etape 1 er committet (låsen vundet) — først nu er "stillede ikke op" sandt.
     await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
+    // #6740 (review #6747): ved senere etaper afstemmes feltet, så en frigivelse der
+    // fejlede ved etape 1 (eller et nedbrud før den) bliver indhentet. Best-effort med
+    // logning: en fejl her må aldrig vælte en committet etape.
+    if (stageIndex > 0) {
+      try {
+        await reconcileDidNotStartReleases({
+          supabase, raceId: race.id, startFieldRiderIds: await loadStartFieldRiderIds({ supabase, raceId: race.id }),
+        });
+      } catch (err) {
+        captureException(err, { tags: { flow: "race-run", stage: "did-not-start-reconcile" }, raceId: race.id });
+      }
+    }
 
     // Standings-recompute kører EFTER den atomære result-write committer. updateStandings
     // er en fuld re-derivation fra race_results (alle etaper) — inhærent idempotent og

@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.366",
+    "version": "7.367",
     "date": "2026-10-17",
     "changes": [
       {
@@ -121,6 +121,29 @@ export const PATCHES = [
         },
         "refs": [
           5928
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.366",
+    "date": "2026-10-17",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Riders are free when your team does not start",
+          "body": "If your team did not start a stage race, its riders were still tied to that race until it ended. They are now free for other races straight away."
+        },
+        "da": {
+          "title": "Rytterne er frie, når dit hold ikke stiller op",
+          "body": "Stillede dit hold ikke op i et etapeløb, var rytterne stadig bundet til løbet, til det sluttede. Nu er de frie til andre løb med det samme."
+        },
+        "refs": [
+          6740
         ]
       }
     ]

@@ -69,7 +69,6 @@ test("#6369: paa Giro-feltet faar S5 et nyt udbrud efter den tidlige indhentning
     let distance = 0;
     runStagesInOrder({
       v4, data, revision, seedTag: "gate1", stages, entrants,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tourScorecard.mjs er utypet (som i resultChain6285)
       onStage: ({ profile, res }: any) => {
         if (profile.stage_number !== 2) return;
         distance = profile.distance_km;

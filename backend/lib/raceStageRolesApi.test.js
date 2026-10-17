@@ -683,3 +683,10 @@ test("getStageRolesContext (#6740): en udtaget rytter der har brugt løbsdagen r
   });
   assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "below_min" });
 });
+
+test("getStageRolesContext (#6740): en did_not_start-afmelding viser did_not_start, ikke withdrawn (Friis 17/10)", async () => {
+  const supabase = makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS.slice(0, 6),
+    withdrawals: [{ race_id: "race-1", withdrawn_reason: "did_not_start" }] });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 6, stages_completed: 1 }, teamId: "team-1", now: NOW_6740 });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "did_not_start" });
+});

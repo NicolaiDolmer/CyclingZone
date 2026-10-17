@@ -85,12 +85,14 @@ test("#5301/2: saeson-matrixens endpoint returnerer holdets afmeldte loeb", () =
 test("#5301/3: loebssidens selection-endpoint fortaeller om holdet har trukket sig", () => {
   const block = routeBlock('router.get("/races/:raceId/selection"');
   assert.match(
-    block, /\.from\("race_withdrawals"\)\.select\("race_id"\)\s*\n\s*\.eq\("race_id", race\.id\)\.eq\("team_id", req\.team\.id\)\.maybeSingle\(\)/,
+    // #6740: withdrawn_reason med, saa en did_not_start-afmelding ikke vises som frivillig.
+    block, /\.from\("race_withdrawals"\)\.select\("race_id, withdrawn_reason"\)\s*\n\s*\.eq\("race_id", race\.id\)\.eq\("team_id", req\.team\.id\)\.maybeSingle\(\)/,
     "GET skal slaa op i race_withdrawals for netop dette loeb+hold"
   );
   assert.match(block, /const withdrawn = Boolean\(withdrawalRow\);/);
+  assert.match(block, /const didNotStart = withdrawalRow\?\.withdrawn_reason === DID_NOT_START_REASON;/);
   assert.match(
-    block, /res\.json\(\{ enabled: true, eligible, withdrawn, race,/,
+    block, /res\.json\(\{ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race,/,
     "flaget skal med i svaret — Dashboard-nudgen og panelet laeser begge denne payload"
   );
 
@@ -146,7 +148,8 @@ test("#5301/5: guardens logik er testbar (ligger i lib, ikke inline i ruten)", (
 test("#5301: afmeldings-opslagene deles fra raceWithdrawal.js (ingen femte kopi)", () => {
   assert.match(
     apiSource,
-    /import \{ findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey \} from "\.\.\/lib\/raceWithdrawal\.js";/,
+    // #6740: splitWithdrawals skelner frivillige afmeldinger fra "did_not_start" (samme modul).
+    /import \{ findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON \} from "\.\.\/lib\/raceWithdrawal\.js";/,
     "hver flade der ruller sit eget race_withdrawals-opslag er en ny chance for at glemme det — det var rod-aarsagen i #5301"
   );
 });
