@@ -837,6 +837,292 @@
         "title": "La flecha de movimiento",
         "text": "La flecha de subida/bajada junto a tu puesto muestra cómo ha cambiado tu posición desde la instantánea de la semana pasada (no en directo en cada carga de página). El panel «Escaladores de la temporada», en cambio, mide los puestos ganados desde que empezó la temporada."
       }
+    },
+    "riders": {
+      "label": "Ciclistas",
+      "valueAndPrice": {
+        "title": "Valor y precio",
+        "text": "El valor de mercado de un ciclista sale del modelo de valoración del juego: estima la producción que se espera que el ciclista aporte durante el resto de su carrera, medida frente al propio calendario de temporadas del juego y ajustada por edad y desarrollo. Se construye con las mismas habilidades que la valoración de su ficha y se calcula igual para todos los ciclistas, sea cual sea su tipo, así que cuando sus habilidades se mueven, su valor las sigue. Los jóvenes talentos tienen valor por las temporadas que tienen por delante; los veteranos se valoran por lo que les queda; la élite absoluta del juego tiene precios de estrella muy por encima del presupuesto de cualquier equipo. El precio de salida de una subasta debe igualar como mínimo el Valor del ciclista. Los valores se recalculan una vez por semana, cada domingo a partir de las 14:00 hora danesa, así que el valor de un ciclista se mueve en pasos semanales y no día a día. El entrenamiento cambia sus habilidades de inmediato; su valor lo sigue en la próxima actualización del domingo. El valor puede empezar a bajar ya al final de la veintena, antes de que ninguna habilidad decaiga: valora toda su carrera restante, no solo su nivel actual. Un ciclista que sigue en su mejor momento puede ver igualmente caer su valor, simplemente porque le quedan menos temporadas en las que venderlo."
+      },
+      "salary": {
+        "title": "Salario",
+        "text": "El salario anual de cada ciclista se fija al firmarlo según lo que se espera que produzca en la temporada actual, y luego queda fijado: no cambia automáticamente a medida que el ciclista se desarrolla. El valor y el salario responden a dos preguntas distintas: el valor es el precio del futuro del ciclista, el salario es el coste de lo que aporta ahora mismo. Por eso los jóvenes talentos son baratos de mantener en la plantilla, mientras que las estrellas consolidadas cobran sueldos acordes con su rendimiento. El salario se ve como una columna aparte en la Base de datos de ciclistas y en la lista de seguimiento. Los salarios se pagan automáticamente al inicio de la temporada siguiente, justo después de que llegue el dinero del patrocinio. Si el patrocinio + tu saldo actual no cubren los salarios, el sistema contrata automáticamente un préstamo de emergencia."
+      },
+      "abilitiesExplained": {
+        "title": "Las 17 habilidades y dónde importan",
+        "rows": [
+          [
+            "Habilidad",
+            "Qué hace",
+            "Dónde importa más"
+          ],
+          [
+            "Escalada",
+            "Potencia en subidas largas",
+            "Etapas de montaña"
+          ],
+          [
+            "Contrarreloj",
+            "Rodar solo contra el reloj",
+            "Contrarrelojes"
+          ],
+          [
+            "Llano",
+            "Mantener la velocidad en carreteras llanas",
+            "Etapas llanas, contrarrelojes"
+          ],
+          [
+            "Tempo",
+            "Esfuerzo medio sostenido",
+            "Media montaña, etapas onduladas"
+          ],
+          [
+            "Sprint",
+            "Velocidad punta para una llegada",
+            "Sprints masivos en llano"
+          ],
+          [
+            "Aceleración",
+            "Patada explosiva para lanzar un ataque o cerrar un hueco",
+            "Sprints, ataques en terreno ondulado"
+          ],
+          [
+            "Punch",
+            "Esfuerzos cortos y empinados",
+            "Etapas y finales ondulados"
+          ],
+          [
+            "Resistencia",
+            "Aguantar toda la distancia",
+            "Días largos y duros, y clásicas"
+          ],
+          [
+            "Recuperación",
+            "Rehacerse entre días",
+            "Carreras por etapas"
+          ],
+          [
+            "Durabilidad",
+            "Resistir la fatiga, flaquear menos al final",
+            "Carreras por etapas duras"
+          ],
+          [
+            "Descenso",
+            "Ventaja en finales en bajada",
+            "Etapas que terminan en un descenso"
+          ],
+          [
+            "Adoquines",
+            "Manejo y potencia sobre adoquines",
+            "Clásicas de adoquines"
+          ],
+          [
+            "Colocación",
+            "Mantenerse cerca de la cabeza",
+            "Etapas nerviosas, contrarrelojes"
+          ],
+          [
+            "Agresividad",
+            "Ganas de atacar",
+            "Escapadas"
+          ],
+          [
+            "Táctica",
+            "Oficio y lectura de carrera",
+            "Contrarrelojes por equipos, carreras tácticas"
+          ],
+          [
+            "Trabajo en equipo",
+            "Cuánto vale un gregario para su jefe de filas",
+            "Cualquier día que corres para otro"
+          ],
+          [
+            "Liderazgo",
+            "Si la plantilla corre detrás de él",
+            "Días de jefe de filas, y pasárselo a un joven"
+          ]
+        ]
+      },
+      "riderType": {
+        "title": "Qué significa realmente el tipo de ciclista",
+        "text": "El tipo principal y secundario de un ciclista (Escalador, Sprinter, general, etc.) muestra en qué puede convertirse en su techo, no en qué es mejor hoy. Se fija una vez y se mantiene igual el resto de su carrera, así que el tipo de un ciclista joven no cambia cada temporada a medida que se desarrollan sus estadísticas. Es a propósito: el tipo es una lectura del talento, no un informe de forma. Si quieres saber quién encaja mejor con una carrera concreta ahora mismo, mira la puntuación de idoneidad en la pantalla de selección del equipo; se calcula de nuevo a partir de las habilidades actuales de cada ciclista y del terreno de la carrera. El tipo y la idoneidad responden a dos preguntas distintas: el tipo es quién es un ciclista, la idoneidad es quién encaja con esta carrera hoy."
+      },
+      "typeOverview": {
+        "title": "Los 8 tipos de ciclista",
+        "text": "Cada tipo se construye en torno a un conjunto de habilidades de especialidad, que crecen más rápido cuando las trabajas con la sesión adecuada en un día de Entrenamiento o de Técnica (consulta Entrenamiento diario). El tipo amplio de aspirante a la general no tiene una sola sesión correcta; usa varias.",
+        "rows": [
+          [
+            "Tipo",
+            "Abarca",
+            "Entrena con"
+          ],
+          [
+            "Sprinter",
+            "Velocidad explosiva para un sprint masivo en llano.",
+            "Sprint (Sprint, Aceleración)"
+          ],
+          [
+            "Contrarrelojista",
+            "Correr en solitario contra el reloj, sin ayuda del pelotón.",
+            "Umbral (Contrarreloj, Tempo)"
+          ],
+          [
+            "Escalador",
+            "Subidas largas y ritmo sostenido en montaña.",
+            "Intervalos de escalada (Escalada, Tempo)"
+          ],
+          [
+            "Puncheur",
+            "Esfuerzos cortos y empinados y finales ondulados.",
+            "Intervalos de punch (Punch, Tempo)"
+          ],
+          [
+            "Especialista en adoquines",
+            "Potencia y manejo sobre adoquines.",
+            "Técnica (Adoquines)"
+          ],
+          [
+            "Baroudeur",
+            "Instinto de ataque, en la escapada todo el día.",
+            "Lectura de carrera (Agresividad)"
+          ],
+          [
+            "Rouleur",
+            "Machaca el terreno llano para el equipo.",
+            "Tempo (Llano)"
+          ],
+          [
+            "Aspirante a la general",
+            "El paquete completo: escalada, contrarreloj y recuperación a lo largo de semanas.",
+            "Intervalos y Umbral juntos"
+          ]
+        ]
+      },
+      "development": {
+        "title": "Desarrollo a lo largo del tiempo",
+        "text": "En la página de estadísticas de un ciclista hay una pestaña «Desarrollo». Aquí puedes elegir una habilidad, seguir su desarrollo en un gráfico y ver los últimos puntos de datos históricos. Se añaden puntos de datos nuevos a medida que los ciclistas se desarrollan, por ejemplo en los cambios de temporada. Si la pestaña está vacía, el ciclista aún no tiene desarrollo registrado."
+      },
+      "agingAndDecline": {
+        "title": "Edad, pico y declive",
+        "text": "Todos los ciclistas alcanzan su pico a los 28 años, sea cual sea su tipo. A partir de la temporada posterior a la que cumple 29, sus habilidades decaen en lugar de crecer, y eso solo ocurre en el cambio de temporada, nunca durante la propia temporada. El declive no es fijo: crece cuanto más tiempo lleva pasado su pico. Durante los tres primeros años después del pico (de 29 a 31 años) sus habilidades principales bajan aproximadamente 1 punto por temporada. Del cuarto al sexto año después del pico (de 32 a 34) sube a unos 1,8 puntos por temporada, y desde el séptimo año (35+) a unos 2,6 puntos por temporada. No todas las habilidades caen a la misma velocidad: las habilidades principales de un ciclista, aquellas en torno a las que se construye su tipo principal, caen al ritmo completo de arriba. Todas las demás habilidades, incluidas las de oficio Colocación y Táctica, caen más despacio, aproximadamente el 70 por ciento de ese ritmo. Es una diferencia de velocidad, no un inicio retrasado: todas las habilidades empiezan a decaer en la misma temporada."
+      },
+      "trainingFocus": {
+        "title": "Enfoque de entrenamiento",
+        "text": "Desde el perfil de uno de tus propios ciclistas puedes fijar un enfoque de entrenamiento para toda la temporada: una dirección (VO2max, Umbral/CRI, Sprint, Resistencia, Técnica, Aerodinámica o Lectura de carrera). El esfuerzo viene con el tipo de sesión y no es una elección aparte: los intervalos, el umbral y el sprint son duros, el tempo es medio y el resto son suaves. Las habilidades entrenadas se desarrollan más rápido hacia su techo mediante el entrenamiento diario que se ejecuta cada tarde, mientras que las demás habilidades crecen algo más despacio. Las sesiones duras acumulan más fatiga pero no conllevan ningún riesgo de perder progreso. Puedes fijar un enfoque de entrenamiento en tantos ciclistas como quieras; cambiar un enfoque existente no cuesta nada. El entrenamiento es gratuito y no cuesta dinero. Los ciclistas que corren se desarrollan con la carrera en lugar de con su sesión prevista, incluidas las carreras de un día. Los ciclistas seleccionados que no toman la salida siguen su programa, salvo lesiones. La fatiga, la forma y el riesgo de lesión por entrenamiento se evalúan a partir de la actividad combinada de carrera y entrenamiento del día en la actualización de la tarde. Los huecos entre etapas no añaden recuperación extra. El entrenamiento duro sigue siendo más cansado que el normal."
+      },
+      "scouting": {
+        "title": "Ojear el potencial",
+        "text": "El potencial de un ciclista permanece oculto hasta que lo ojeas: los ciclistas sin ojear de otros equipos no muestran ninguna estimación. Todos los equipos tienen un ojeador de talentos, un miembro real del personal técnico si has contratado uno y, si no, un ojeador por defecto, que se encarga de los trabajos desde la página de Ojeo o desde el perfil de un ciclista. Un trabajo dirigido investiga a un ciclista e informa en unos 30 minutos, con cualquier nivel de ojeador; una misión cubre una división, un país, ciclistas sub-23 o un campeonato nacional para obtener una lista corta, más un informe gratuito sobre el mejor hallazgo. Cuando inicias una misión también eliges a quién se dirige: agentes libres (ciclistas sin contrato, recomendado, los fichas de inmediato) o ciclistas de otros equipos (talento que pertenece a otro mánager, donde ficharlos implica pujar o negociar). Los trabajos cuestan gastos de viaje, y tu ojeador solo puede llevar uno o dos trabajos a la vez según su valoración. Un ojeador mejor estrecha más sus estimaciones, y su valoración fija un límite de precisión que no puede superar. Cada nivel de ojeo compra aún algo de precisión, y la pestaña Ojeo te dice exactamente cuánto añadiría el siguiente. Ningún ojeador conoce nunca a un ciclista con exactitud: incluso los ciclistas totalmente ojeados, y tu propia plantilla, muestran un rango estrecho y no un número exacto. Las estimaciones son personales de tu equipo, así que dos mánagers pueden leer el mismo talento de forma distinta, y los resultados de carrera son lo que decide quién tenía razón. Un informe nunca puede hacer referencia a un ciclista que ya no está disponible (fichado en otro sitio o en pleno traspaso): siempre refleja quién está realmente disponible ahora mismo y muestra el estado actual de cada ciclista. La pestaña Ojeo del perfil del ciclista reúne el informe completo: el veredicto, un rango de potencial por tipo de ciclista y una comparación de valor. El potencial global se muestra como un rango de valoración y un veredicto, en la misma unidad que la propia valoración del ciclista, para que puedas compararlos. Las filas por tipo también muestran su nivel de hoy y el techo del rol: lo más alto que permite ese rol, igual para todos los ciclistas de él, nunca enmascarado. El rango de potencial que hay al lado se estrecha con un ojeador mejor, pero no es una garantía: es una proyección construida sobre los resultados del entrenamiento encima de una estimación enmascarada, y para un ciclista muy bien ojeado el valor real puede quedar a veces justo fuera, por diseño."
+      },
+      "u25u23": {
+        "title": "Ciclistas sub-25 y sub-23",
+        "text": "Los ciclistas sub-25 tienen 25 años o menos en el año de referencia de la temporada (la norma de la UCI), y los sub-23 tienen 22 años o menos. Puedes filtrar por sub-25/sub-23 en la base de datos de ciclistas y en la lista de seguimiento."
+      }
+    },
+    "dailytraining": {
+      "label": "Entrenamiento diario",
+      "whatDailyTraining": {
+        "title": "¿Qué es el Entrenamiento diario?",
+        "text": "El Entrenamiento diario te permite desarrollar a tus ciclistas todos los días en lugar de solo en los cambios de temporada. En la página de Entrenamiento diario fijas un programa para cada ciclista (una dirección de enfoque y una intensidad), y el sistema lo aplica automáticamente cada día. El Entrenamiento diario está activo, en directo desde el relanzamiento de la temporada 1."
+      },
+      "programs": {
+        "title": "Fijar programas",
+        "steps": [
+          "Ve a Entrenamiento diario en la navegación.",
+          "Busca a un ciclista y elige qué tipo de día es: Descanso, Recuperación activa, un Día de técnica o Entrenamiento.",
+          "En un día de entrenamiento, elige la sesión: Salida larga (suave), Tempo (media), o Intervalos mixtos, Intervalos de escalada, Intervalos de punch, Umbral, Sprint, Sectores de adoquines, Ejercicios de abanicos o Repeticiones de ataque (duras). En un día de técnica: Técnica, Aerodinámica o Lectura de carrera.",
+          "Guarda. El día se ejecuta todos los días hasta que lo cambies.",
+          "No hay tope en cuántos ciclistas pueden tener un programa: puedes fijar uno para toda tu plantilla."
+        ]
+      },
+      "dayTypes": {
+        "title": "Los cuatro tipos de día",
+        "text": "El descanso baja la fatiga al máximo y no desarrolla nada. La recuperación activa la baja algo menos y da una pequeña ganancia en Recuperación, lo que la convierte en el único día que hace las dos cosas. Un día de técnica tiene poca carga y desarrolla solo el oficio, a un ritmo fijo y más lento sea cual sea el perfil del ciclista, así que nunca puede superar a un día duro en su propia especialidad. El entrenamiento desarrolla habilidades físicas al nivel de la sesión que elijas."
+      },
+      "focusAbilities": {
+        "title": "Qué entrena cada sesión",
+        "text": "Cada sesión desarrolla un conjunto concreto de habilidades más rápido hacia su techo, mientras que las demás habilidades del ciclista siguen mejorando algo más despacio. La Salida larga entrena Resistencia, Recuperación y Durabilidad. El Tempo entrena Tempo, Llano y Durabilidad. Los Intervalos mixtos entrenan Escalada, Punch y Tempo a partes iguales. Los Intervalos de escalada entrenan Escalada y Tempo, y la Escalada gana más que en la sesión mixta, pero el Punch no se entrena en absoluto. Los Intervalos de punch son la imagen especular: Punch y Tempo, con el Punch ganando más y la Escalada fuera. Las tres cubren la misma cantidad de trabajo, así que elegir una en lugar de otra mueve tus ganancias, no las aumenta. El Umbral entrena Contrarreloj y Tempo. El Sprint entrena Sprint y Aceleración. Los Sectores de adoquines entrenan Adoquines, Durabilidad y Colocación, con los Adoquines ganando más. Los Ejercicios de abanicos entrenan Llano, Colocación y Durabilidad, con el Llano ganando más. Las Repeticiones de ataque entrenan Agresividad, Punch y Aceleración, con la Agresividad ganando más. La Técnica entrena Descenso y Adoquines. La Aerodinámica entrena Contrarreloj y Llano. La Lectura de carrera entrena Colocación, Táctica y Agresividad. El esfuerzo viene con la sesión y no es una elección aparte: una salida larga es suave, el tempo es medio, y los intervalos, el umbral, el sprint, los Sectores de adoquines, los Ejercicios de abanicos y las Repeticiones de ataque son todos duros; la técnica, la aerodinámica y la lectura de carrera son todas suaves. Las sesiones duras acumulan más fatiga que las suaves, pero no conllevan ningún riesgo de perder progreso."
+      },
+      "typeGating": {
+        "title": "¿Por qué un enfoque crece más rápido en unos ciclistas que en otros?",
+        "text": "Cada ciclista tiene un tipo principal Y secundario (Sprinter, Escalador, CRI, general, etc.) y un potencial oculto por habilidad, ambos fijados cuando se crea el ciclista. Dos cosas distintas deciden en qué se convierte una habilidad: hasta dónde puede llegar y con qué rapidez llega. Su tipo fija ambas. Una habilidad para la que está hecho su tipo principal llega más alto y se construye más rápido. Su tipo secundario va justo detrás, con alrededor del 85 % de esa altura. La colocación y la táctica son oficio: nadie nace con ellas, así que todos los ciclistas pueden llegar en torno al 75 % de esa altura, pero se construyen despacio. Una habilidad fuera de sus dos roles llega en torno al 60 % de esa altura y se construye despacio. Cada tipo cubre varias habilidades, no solo la de su nombre: un tipo general también cubre la contrarreloj, así que un ciclista de la general puede llegar alto ahí. Una habilidad contra la que trabaja activamente su tipo apenas se mueve. Mira las dos etiquetas de tipo antes de elegir un enfoque, y ten en cuenta que llegar alto y llegar rápido ya no son lo mismo: una habilidad puede tener mucho margen y aun así tardar años en llenarlo. El ritmo se ajusta de vez en cuando como parte del equilibrado continuo del juego, así que el progreso diario de un ciclista puede sentirse distinto de una actualización a otra aunque nada en él personalmente haya cambiado."
+      },
+      "ceilingReached": {
+        "title": "La habilidad de mi ciclista ha dejado de subir",
+        "text": "Eso ahora es poco habitual. Cada habilidad sigue teniendo un techo vitalicio fijado por el tipo y el potencial, pero los ciclistas ya no llegan a él sin más. Lo cerca que llega un ciclista, y en qué habilidades, lo decide cómo lo entrenas. Si una habilidad realmente se ha detenido, casi siempre es una de dos cosas. O bien el ciclista ha pasado su pico, donde las habilidades decaen en lugar de crecer, y lo que tiene es lo que conserva. O bien la habilidad ya está por encima de lo que su tipo y potencial construirían por sí solos, lo que ocurre con ciclistas heredados de una versión anterior del juego. No se le quita nada, simplemente no subirá más. Cada habilidad tiene su propia línea en la página de Entrenamiento diario y en el perfil del ciclista, y una terminada muestra «hecho» donde las demás muestran progreso. El número junto a una habilidad es siempre su valor actual, nunca el techo en sí, que nunca se muestra como número en ninguna parte del juego, y el progreso se ralentiza de forma natural cuanto más se acerca un ciclista, así que un valor que se queda quieto unos días no significa necesariamente que haya terminado."
+      },
+      "trainToday": {
+        "title": "Ejecuta ahora el entrenamiento de hoy",
+        "text": "El entrenamiento se ejecuta una vez por día de carrera, después de la última carrera del día y a partir de las 20:00. Puedes ejecutarlo cuando se abre, o dejar que tu asistente ejecute automáticamente la misma sesión. Hacer clic no da ganancias extra."
+      },
+      "runDayNow": {
+        "title": "Ejecuta ahora el entrenamiento de hoy",
+        "text": "Desde la temporada 4 el entrenamiento del día se ejecuta solo, de una vez, cuando termina la última carrera del día y no antes de las 20:00. Todos los días de carrera de ese día se entrenan en la misma ejecución, así que no se pierde nada por no estar en línea. «Ejecutar ahora el entrenamiento de hoy» está ahí solo por si no quieres esperar: ejecuta exactamente el mismo entrenamiento, sin bonificación ni ventaja, y se abre en el mismo momento en que se abriría la ejecución automática. Una vez entrenado el día, no se puede volver a ejecutar. Con Entrenar ahora (beta), pulsarlo también bloquea la selección de carrera de hoy para los ciclistas que han entrenado: no se pueden añadir a la carrera de hoy ni quitar de ella. Los ciclistas que fiches o asciendas después de pulsarlo sí pueden correr."
+      },
+      "raceDays": {
+        "title": "Días de carrera y entrenamiento",
+        "text": "Un día de carrera no cambia el entrenamiento de ese día. Tu ciclista sigue haciendo la sesión que planificaste, y la carrera añade su propia fatiga encima de la carga de entrenamiento. Correr en sí no sube las habilidades: el desarrollo viene del entrenamiento, corra o no el ciclista ese día. Lo que sí cuesta correr es frescura, y cada etapa añade su propia carga mientras que la recuperación solo llega una vez al día, así que un ciclista en una carrera por etapas exigente se cansa rápido. Vigila la Fatiga de los ciclistas que inscribes a menudo, y dales sesiones más suaves o descanso antes de que su Forma se desplome."
+      },
+      "raceDaysPerRaceDay": {
+        "title": "Días de carrera y entrenamiento",
+        "text": "En un día de carrera tu ciclista corre o entrena, nunca las dos cosas. Cuando corre, su programa no se ejecuta ese día de carrera, y la carrera aporta su propia fatiga en su lugar. Una carrera por etapas lo ata desde la primera etapa hasta la última, días de descanso incluidos, así que no entrena hasta que termina. Correr también lo desarrolla: un día de carrera cuenta como una sesión media en las habilidades que exige el perfil de la etapa, de modo que una etapa de montaña entrena la escalada y una etapa llana entrena el sprint, con un tope de un punto por habilidad y día de carrera. Tu plan de entrenamiento no cambia lo que da la carrera; solo lo cambia la etapa. Cada división tiene 140 días de carrera por temporada, y cada día de carrera sin carrera para tu ciclista es un día de entrenamiento. Vigila la Fatiga de los ciclistas que inscribes a menudo, y dales sesiones más suaves o descanso entre sus carreras."
+      },
+      "smartDefault": {
+        "title": "¿Qué entrena un ciclista sin enfoque fijado?",
+        "text": "Un ciclista sin enfoque elegido no se queda sin entrenar: el asistente lo entrena hacia un enfoque que encaje con su tipo, por ejemplo un Sprinter por defecto va a Sprint y un Escalador a VO2max. Verás una pequeña nota «Asistente: ... (auto)» bajo el desplegable de enfoque cuando se aplique. Fijar tu propio enfoque siempre lo anula. Para aplicar un enfoque acorde con el tipo a varios ciclistas a la vez, selecciónalos y elige «Enfoque inteligente (según el tipo de ciclista)» en la barra de aplicación en bloque; los ciclistas que ya tienen un enfoque fijado se omiten, así que tus elecciones existentes nunca se sobrescriben."
+      },
+      "assistantSuggestions": {
+        "title": "Pedir sugerencias al asistente",
+        "text": "El botón «Pedir sugerencias al asistente» de la cabecera del Entrenamiento diario abre un panel de revisión con un enfoque acorde con el tipo para cada ciclista (la misma sugerencia que usa el valor predeterminado inteligente). Cada fila muestra al ciclista, una marca «Sin plan» o «Tu plan», y lo que fijaría el asistente. No se aplica nada hasta que aceptes: marca los ciclistas que quieras y haz clic en «Aceptar las seleccionadas», o haz clic en «Aceptar todas», que abarca a todos los ciclistas marcados como «Sin plan». Activa «Solo ciclistas sin plan» para revisar únicamente a los ciclistas que aún no están entrenados. Aceptar nunca sobrescribe a un ciclista que ya tiene su propio enfoque fijado, la misma regla que la opción en bloque «Enfoque inteligente» de la plantilla, así que las filas marcadas «Tu plan» no se pueden marcar. Borra primero el enfoque de ese ciclista si quieres que el asistente se encargue. Debajo de los ciclistas, el panel también ofrece un programa de entrenamiento para cada tipo de ciclista (por ejemplo un programa de Sprinter para tus sprinters). Haz clic en «Aplicar a estos» para copiarlo a su plan. Solo va a los ciclistas sin su propio plan semanal que no siguen a un grupo de entrenamiento, y nunca cambia a nadie más."
+      },
+      "formFatigue": {
+        "title": "Forma y fatiga",
+        "text": "Cada ciclista tiene un valor de Forma y un valor de Fatiga, ambos en una escala de 0 a 100, visibles en el perfil del ciclista. El entrenamiento y las carreras acumulan Fatiga. Una vez por día de carrera, después de la última carrera del día y a partir de las 20:00 hora danesa (o cuando ejecutas tú la sesión una vez abierta), cada ciclista también recupera algo de Fatiga: el descanso y los días suaves recuperan más, el entrenamiento normal se estabiliza en un nivel sostenible y el entrenamiento duro sigue acumulándola a lo largo del día. Con un calendario de carreras cargado y mucha carga de trabajo, la Fatiga aún puede acumularse cerca de 100 porque la recuperación no siempre sigue el ritmo; es un área de equilibrado conocida en la que estoy trabajando. Una valoración alta de Recuperación acelera la recuperación diaria. La Forma sigue el equilibrio entre ambas: una Fatiga alta mantiene baja la Forma, mientras que la Forma de un ciclista bien descansado sube. Ambos valores se actualizan a diario. En las carreras (activo desde el relanzamiento de la temporada 1), la forma da una pequeña ventaja de puntuación y la fatiga una pequeña penalización, con un tope de alrededor del ±3 % para que los favoritos sigan ganando por habilidad. Los días de carrera acumulan fatiga según el perfil de la etapa: las etapas de montaña cuestan más, las llanas menos. Los ciclistas lesionados no se inscriben automáticamente en las carreras."
+      },
+      "formFatiguePerRaceDay": {
+        "title": "Forma y fatiga",
+        "text": "Los ciclistas nuevos reciben su condición inicial cuando se unen a un equipo, incluidos los comprados antes de su primera actividad. Su primera carrera no impide que se ejecute la actualización de la tarde. Cada ciclista tiene un valor de Forma y un valor de Fatiga, ambos en una escala de 0 a 100, visibles en el perfil del ciclista. El entrenamiento y las carreras acumulan Fatiga. Después de cada día de carrera cada ciclista recupera algo de Fatiga, incluidos los días de carrera con carrera: los días de carrera de descanso y suaves recuperan más, el entrenamiento normal se estabiliza en un nivel sostenible y el entrenamiento duro sigue acumulándola. Los días de carrera del día se entrenan y se recuperan en una sola ejecución, cuando termina la última carrera del día y no antes de las 20:00 hora danesa. Con un calendario de carreras cargado y mucha carga de trabajo, la Fatiga aún puede acumularse cerca de 100 porque la recuperación no siempre sigue el ritmo; es un área de equilibrado conocida en la que estoy trabajando. Una valoración alta de Recuperación acelera la recuperación. La Forma sigue el equilibrio entre ambas: una Fatiga alta mantiene baja la Forma, mientras que la Forma de un ciclista bien descansado sube. Ambos valores se actualizan tras cada día de carrera. En las carreras (activo desde el relanzamiento de la temporada 1), la forma da una pequeña ventaja de puntuación y la fatiga una pequeña penalización, con un tope de alrededor del ±3 % para que los favoritos sigan ganando por habilidad. Las carreras acumulan fatiga según el perfil de la etapa: las etapas de montaña cuestan más, las llanas menos. Los ciclistas lesionados no se inscriben automáticamente en las carreras."
+      },
+      "injuryRisk": {
+        "title": "Riesgo de lesión",
+        "text": "El entrenamiento duro con Fatiga alta conlleva un riesgo de lesión. Mira la etiqueta de riesgo antes de entrenar. Una lesión leve suele costar de 1 a 5 días naturales. Cuando la ficha de tu ciclista cuenta días de carrera, la duración sigue el calendario de la temporada y la fecha de regreso es aproximada. En la temporada 4 eso significa de 5 a 25 días de entrenamiento perdidos. Normal o Descanso elimina el riesgo."
+      },
+      "progressBars": {
+        "title": "Barras de progreso y puntos de habilidad",
+        "text": "Los perfiles de los ciclistas muestran una barra de progreso para cada habilidad que se entrena. La barra se llena a medida que se acumula el entrenamiento. Cuando la barra llega al máximo, el ciclista gana +1 en esa habilidad y la barra empieza de nuevo hacia el SIGUIENTE punto, así que justo después de una ganancia, una barra baja o casi vacía es buena señal, no una pérdida. La página de Entrenamiento también muestra una etiqueta «+N hoy» en los ciclistas que han ganado puntos enteros en la sesión de hoy. Cada habilidad tiene un techo vitalicio oculto fijado por el potencial y la edad del ciclista; una habilidad que lo ha alcanzado muestra «hecho» en su propia línea en lugar de una barra. La pestaña Entrenamiento del perfil del ciclista enumera las 17 habilidades con lo que es cada una ahora, cuántos puntos enteros ha ganado el ciclista esta temporada y cuánto lleva del siguiente punto. Cambia de enfoque si otra área aún tiene margen, o disfruta del ciclista a plena fuerza. Los ciclistas veteranos que han pasado su pico de carrera tienen lógicamente poco o ningún margen. Un porcentaje como «Llano +10 %» en un informe de entrenamiento es el progreso del día contado en puntos de habilidad: 100 % equivale a un punto entero. El progreso se arrastra de un día a otro. Nada se reinicia a mitad de temporada. El recuento «esta temporada» solo abarca los días dentro de la temporada activa. Entre dos temporadas muestra la fecha de inicio en lugar de un número, mientras que los valores de las habilidades y las barras siguen contando cada sesión. El recuento de una temporada nueva empieza vacío y se va llenando desde su primer día de entrenamiento."
+      },
+      "trainingScore": {
+        "title": "La puntuación de entrenamiento",
+        "text": "Cada sesión que completa un ciclista recibe una puntuación de entrenamiento de 1 a 99. Mide la CALIDAD de esa sesión, no lo que el ciclista sacó de ella: lo exigente que fue la sesión, lo bien que encajó con los puntos fuertes del ciclista, la forma y la fatiga del ciclista ese día, el entrenador y las instalaciones que la respaldan, el talento y la edad del ciclista, y el propio día. La puntuación es lo que impulsa el desarrollo: una sesión mejor mueve más las habilidades. No depende de lo cerca que esté una habilidad de su techo, así que un ciclista que casi ha terminado sus habilidades de enfoque sigue obteniendo una lectura honesta de lo buena que fue la sesión. Los días de descanso no reciben puntuación, porque no hubo sesión que medir. En un día en que una carrera ocupa el lugar de la sesión, la columna muestra «Carrera» en lugar de un número. El número de hoy aparece una vez que se ha ejecutado la sesión de hoy, y hasta entonces la columna muestra la última en gris. Solo tú puedes ver las puntuaciones de tus propios ciclistas."
+      },
+      "longTermGrowth": {
+        "title": "Crecimiento a largo plazo",
+        "text": "Dos cosas distintas deciden dónde acaba una habilidad: hasta dónde puede llegar y con qué rapidez llega. Las dos vienen del tipo del ciclista. Por eso un ciclista ya no llega a su techo solo por existir el tiempo suficiente. El techo es en lo que podría haberse convertido; tu entrenamiento decide lo cerca que llega y en qué habilidades se acerca. Los ciclistas siguen alcanzando su pico en torno a los 27-28 años y decaen después, y el entrenamiento nunca puede llevar a nadie más allá de su potencial."
+      },
+      "readingReport": {
+        "title": "Leer el informe de entrenamiento",
+        "text": "Después de ejecutarse el entrenamiento, el informe se abre con un resumen del día: cuántos ciclistas entrenaron, cuántos tuvieron un salto de nivel (una habilidad subió +1) y cuántos están en plena forma. Cada fila muestra el progreso de la habilidad de enfoque hacia su siguiente +1, y un salto de nivel se resalta con el salto real, por ejemplo de 71 a 72. La tabla de la plantilla muestra la misma barra de progreso, para que puedas orientar un enfoque hacia un ciclista que está cerca de un salto de nivel."
+      },
+      "trainingHistory": {
+        "title": "Historial de entrenamiento",
+        "text": "Se conserva cada ejecución de entrenamiento diario. La página de Entrenamiento diario enumera tus últimos 30 días debajo de la plantilla, y cada día muestra cuántos ciclistas entrenaron, saltos de nivel y ciclistas en plena forma; despliega un día para ver el informe completo por ciclista. El perfil de cada ciclista tiene su propio historial de entrenamiento en la pestaña Desarrollo, con el enfoque, la intensidad, las ganancias y la forma de ese ciclista día a día."
+      },
+      "weeklyRhythm": {
+        "title": "Ritmo semanal",
+        "text": "El panel «Ritmo semanal» de la página de Entrenamiento te permite fijar una intensidad objetivo para cada día de la semana (de lunes a domingo) para todo tu equipo a la vez. Dirige solo la intensidad, nunca el enfoque. Importante: el ritmo es un VALOR PREDETERMINADO para los ciclistas que no tienen una intensidad propia fijada en su enfoque. Si un ciclista tiene elegido su propio enfoque e intensidad (en su fila de la plantilla, o como programa de temporada), el ajuste propio de ese ciclista siempre gana para él, todos los días, incluso mientras un ritmo de equipo está activo; el ritmo nunca anula en silencio a un ciclista que hayas puesto en Descanso o Suave. Solo rellena una intensidad objetivo para los ciclistas que no has personalizado tú. La fila de cada ciclista muestra la intensidad real de hoy y de dónde viene («ritmo semanal del equipo» o «ajuste propio de este ciclista»), así que no se oculta nada. El ritmo nunca ejecuta el entrenamiento por sí mismo: solo fija una intensidad predeterminada para la sesión del día, la ejecutes tú o la ejecute tu asistente después de la última carrera del día, a partir de las 20:00."
+      },
+      "individualWeeklyPlan": {
+        "title": "Plan semanal individual por ciclista",
+        "text": "Haz clic en «Plan semanal individual» en la fila de cualquier ciclista de la plantilla para fijar la intensidad objetivo propia de ese ciclista por día, aparte tanto de su propio enfoque/intensidad como del ritmo del equipo. Es la capa más específica: un plan semanal individual gana sobre todo lo demás para ese ciclista, incluida su propia intensidad explícita, que a su vez ya gana sobre el ritmo semanal del equipo. Está pensado para los 2 o 3 ciclistas cuyo entrenamiento quieres variar día a día. Los ciclistas con su propio plan semanal muestran una etiqueta «Plan propio» en la plantilla."
+      },
+      "fatigueLimit": {
+        "title": "Límite de fatiga",
+        "text": "Puedes fijar una regla para el equipo: por encima de un nivel de fatiga que elijas, los ciclistas hacen en su lugar una sesión más ligera (la misma sesión con carga ligera, recuperación activa o descanso). Un ciclista concreto puede tener su propio límite o ninguno. La regla se comprueba con la fatiga al inicio de cada fecha, así que el resultado es el mismo cuando inicies sesión. Nunca cambia el plan, así que el ciclista vuelve a su programa cuando esté por debajo del límite. También puedes elegir que la primera casilla del día después de una etapa sea recuperación activa. Lo fijas en Programa, Límite de fatiga, donde los últimos 7 días muestran cuándo entró en juego una regla. Correr siempre va primero: un ciclista que está en una carrera no se ve afectado."
+      },
+      "trainingGroups": {
+        "title": "Grupos de entrenamiento",
+        "text": "Un grupo te permite tomar una decisión de entrenamiento para varios ciclistas. Crea uno en Programa, Plan: abre «Plan para» y elige «+ Grupo nuevo». Ponle un nombre y empieza desde un tipo de ciclista o elige tú mismo a los ciclistas. Un ciclista puede estar en un grupo. Entonces un cambio en un campo se aplica a todo el grupo, y los ciclistas con una etapa conservan la etapa. «Fatiga esta noche» muestra al ciclista más cansado del grupo. El orden es fijo: primero el plan propio del ciclista, luego el plan de su grupo y después el plan del equipo. Si cambias los campos propios de un ciclista, su plan gana hasta que vuelvas a elegir «Seguir al grupo». También puedes aplicar un programa a un grupo en Programas, y dar a un grupo su propia excepción en Límite de fatiga."
+      }
     }
   }
 }
