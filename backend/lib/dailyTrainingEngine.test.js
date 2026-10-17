@@ -25,7 +25,14 @@ function createMockSupabase(state, opts = {}) {
   // opts.injectUniqueViolation = true → første INSERT på training_day_runs fejler 23505
 
   function builder(table, op = "select", filters = [], patch = null, inList = null) {
-    const matchRow = (row) => {
+    const matchRow = (rawRow) => {
+      // #6759: PostgREST-JSON-sti ("report->>stage") slaas op i kolonnens objekt.
+      const row = new Proxy(rawRow, { get: (target, col) => {
+        if (typeof col !== "string" || !col.includes("->>")) return target[col];
+        const [base, key] = col.split("->>");
+        const value = target[base]?.[key];
+        return value == null ? value : String(value);
+      } });
       if (filters.some(([col, val, fop]) => {
         // #4846: order/limit rejser med i filter-listen som "meta" — de filtrerer ikke.
         if (fop === "meta") return false;
@@ -44,6 +51,8 @@ function createMockSupabase(state, opts = {}) {
     const obj = {
       select(/* _cols */) {
         // Vi ignorerer kolonne-selektionen og returnerer alle felter (mock).
+        // #6759: .update()/.delete() efterfulgt af .select() returnerer de ramte raekker.
+        if (op === "update" || op === "delete") return builder(table, op, [...filters, ["__returning", true, "meta"]], patch, inList);
         return builder(table, "select", filters, patch, inList);
       },
       eq(col, val) {
@@ -138,15 +147,16 @@ function createMockSupabase(state, opts = {}) {
         // Await-støtte: flush pending operation på .then().
         state[table] ??= [];
         let result;
+        const returning = filters.some((f) => f[0] === "__returning");
         if (op === "update") {
-          for (const row of state[table]) {
-            if (matchRow(row)) Object.assign(row, patch);
-          }
-          result = { error: null };
+          const hit = state[table].filter(matchRow);
+          for (const row of hit) Object.assign(row, patch);
+          result = returning ? { data: hit, error: null } : { error: null };
         } else if (op === "delete") {
           if (opts.deleteCalls) opts.deleteCalls.push({ table, filters: [...filters] });
+          const hit = state[table].filter(matchRow);
           state[table] = state[table].filter((row) => !matchRow(row));
-          result = { error: null };
+          result = returning ? { data: hit, error: null } : { error: null };
         } else {
           // select — injicér fejl hvis opts.injectRidersError matcher dette bord
           if (opts.injectRidersError && table === "riders") {
