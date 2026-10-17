@@ -254,7 +254,6 @@ const fmtDelta = (b, c, f = fmtN) => {
   if (d === 0) return "=";
   return `${d > 0 ? "+" : "-"}${f(Math.abs(d))}`;
 };
-const countsText = (c) => `PASS ${c.PASS} / WARN ${c.WARN} / FAIL ${c.FAIL} / TODO ${c.TODO} / N/A ${c["N/A"]}`;
 
 /** Kortets hovedtabel: [label, baseline-tekst, kandidat-tekst, delta-tekst]. */
 export function sideBySideRows(card) {
@@ -350,15 +349,13 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&
 /** Et kompakt HTML-kort (dom + side om side) til PNG-gengivelse. */
 export function renderTestportHtml(card) {
   const reg = card.verdict.hardGateRegressions;
-  const rows = sideBySideRows(card).map(([l, b, c, d]) => {
-    const cls = d === "=" || d === "-" ? "" : d.startsWith("+") ? "up" : "down";
-    return `<tr><td>${esc(l)}</td><td class="n">${esc(b)}</td><td class="n">${esc(c)}</td><td class="n ${cls}">${esc(d)}</td></tr>`;
-  }).join("");
+  // Delta uden farve: om "+" er godt afhaenger af maalingen (PASS op = godt, FAIL op = skidt).
+  const rows = sideBySideRows(card).map(([l, b, c, d]) => `<tr><td>${esc(l)}</td><td class="n">${esc(b)}</td><td class="n">${esc(c)}</td><td class="n">${esc(d)}</td></tr>`).join("");
   return `<!doctype html><html><head><meta charset="utf-8"><style>
 body{font:13px/1.4 system-ui,sans-serif;margin:0;padding:20px;background:#fff;color:#111;width:860px}
 h1{font-size:18px;margin:0 0 4px}p{margin:4px 0 12px;color:#444}
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:4px 8px;text-align:left}
-.n{text-align:right;font-variant-numeric:tabular-nums}.up{color:#9a3412}.down{color:#166534}
+.n{text-align:right;font-variant-numeric:tabular-nums}
 .bad{color:#9a3412;font-weight:600}.ok{color:#166534;font-weight:600}
 </style></head><body>
 <h1>Motor-testport: ${esc(card.candidate)} mod ${esc(card.baseline)}</h1>

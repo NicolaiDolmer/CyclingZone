@@ -88,7 +88,8 @@ test("aggregateRevision: GC-vinder fra udbrud og tidlige indhentninger paa etape
 });
 
 test("aggregateRevision: aeldre scorecards uden de nye felter giver null, ikke 0", () => {
-  const old = (({ winnerId, winnerRole, breakawayRiderIds, earlyCatch, reformed, ...rest }) => rest)(row({ breakawayWon: true }));
+  const old = row({ breakawayWon: true });
+  for (const k of ["winnerId", "winnerRole", "breakawayRiderIds", "earlyCatch", "reformed"]) delete old[k];
   const rr = raceResultFromDryRun(dryRun({ id: "r", name: "Gammel", stages: 2, runs: [run("rev", [{ seed: 1, gcWinner: "g", rows: [old] }])] }));
   const a = aggregateRevision([rr], "rev");
   assert.equal(a.favouriteBreakawayWins, null);
