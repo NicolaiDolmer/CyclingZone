@@ -333,7 +333,9 @@ function attemptFormation(
   const selected = selectBreakawayRiders(candidates, MIN_BREAKAWAY_SIZE, maxSize);
   if (selected.length === 0) return { state, events };
 
-  const newGroupId = makeGroupId("breakaway", ctx.segmentIndex * 1000);
+  // #6369: et nyt udbrud kan dannes i SAMME segment som morgenudbruddet (hentet i
+  // et langt segment); eget id-rum, saa film og historik aldrig blander de to.
+  const newGroupId = makeGroupId("breakaway", ctx.segmentIndex * 1000 + (reform ? 500 : 0));
   const groups = splitGroup(state.groups, sourceGroup.id, selected, {
     id: newGroupId,
     kind: "breakaway",

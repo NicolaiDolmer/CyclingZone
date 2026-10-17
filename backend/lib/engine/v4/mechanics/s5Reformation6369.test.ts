@@ -66,4 +66,7 @@ test("#6369: paa Giro-feltet faar S5 et nyt udbrud efter den tidlige indhentning
   assert.ok(reform[0].km <= s5.distance * S5_REFORMATION_TUNING.maxStageFraction + S5_REFORMATION_TUNING.afterCatchKm, "kun tidligt paa etapen");
   const first = new Set(s5.formed[0].params.rider_ids as string[]);
   assert.equal((reform[0].params.rider_ids as string[]).some((id) => first.has(id)), false, "uden det hentede udbruds ryttere");
+  // Etape 2 er ét langt segment: morgenudbruddet hentes i dannelsessegmentet, og det
+  // nye udbrud skal alligevel have sit eget gruppe-id (film og historik adskiller dem).
+  assert.notEqual(reform[0].params.group_id, s5.formed[0].params.group_id, "eget gruppe-id");
 });
