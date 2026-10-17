@@ -3,7 +3,7 @@
   "subtitle": "Compara el historial de dos mánagers",
   "searchPlaceholder": "Buscar equipos...",
   "division": "División {n}",
-  "noTeamsFound": "No se han encontrado equipos para «{q}»",
+  "noTeamsFound": "No se han encontrado equipos para “{q}”",
   "teamA": "Equipo A",
   "teamB": "Equipo B",
   "errorLoad": "No se pudieron cargar los datos de la comparación. Inténtalo de nuevo.",

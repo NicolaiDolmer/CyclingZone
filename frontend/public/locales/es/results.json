@@ -29,9 +29,18 @@
   },
   "hub": {
     "moreTitle": "Más en Resultados",
-    "standings": { "label": "Clasificación", "desc": "Clasificación por equipos de la temporada en curso" },
-    "riderRankings": { "label": "Ranking de ciclistas", "desc": "Resultados individuales de todos los ciclistas" },
-    "seasonSnapshot": { "label": "Resumen de temporada", "desc": "Calendario, clasificación final y ganadores de la temporada" }
+    "standings": {
+      "label": "Clasificación",
+      "desc": "Clasificación por equipos de la temporada en curso"
+    },
+    "riderRankings": {
+      "label": "Ranking de ciclistas",
+      "desc": "Resultados individuales de todos los ciclistas"
+    },
+    "seasonSnapshot": {
+      "label": "Resumen de temporada",
+      "desc": "Calendario, clasificación final y ganadores de la temporada"
+    }
   },
   "loadingAria": "Cargando resultados",
   "emptyNoSeason": "No hay temporada activa. Los resultados aparecerán aquí cuando la temporada esté en marcha",

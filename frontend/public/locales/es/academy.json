@@ -148,8 +148,16 @@
     "nowOnWithAge": "Ahora en <strong>{squad}</strong> · edad de temporada {age}.",
     "pick": "Elige la nueva plantilla:",
     "pickerLabel": "Nueva plantilla",
-    "rowName": { "senior": "Plantilla sénior", "u23": "Equipo sub-23", "junior": "Equipo júnior" },
-    "shortName": { "senior": "Sénior", "u23": "Sub-23", "junior": "Júnior" },
+    "rowName": {
+      "senior": "Plantilla sénior",
+      "u23": "Equipo sub-23",
+      "junior": "Equipo júnior"
+    },
+    "shortName": {
+      "senior": "Sénior",
+      "u23": "Sub-23",
+      "junior": "Júnior"
+    },
     "hint": {
       "current": "Plantilla actual",
       "tooOld": "Demasiado mayor para {squad} (máx. {max})",
@@ -159,7 +167,11 @@
       "naturalNoAge": "Plantilla natural para esta edad",
       "upward": "Permitido: movimiento hacia arriba"
     },
-    "confirm": { "senior": "Mover a la plantilla sénior", "u23": "Mover a sub-23", "junior": "Mover a júnior" },
+    "confirm": {
+      "senior": "Mover a la plantilla sénior",
+      "u23": "Mover a sub-23",
+      "junior": "Mover a júnior"
+    },
     "confirmNone": "Mover",
     "moveNote": "Solo cambia la plantilla. El salario y el contrato se quedan exactamente como están.",
     "errors": {

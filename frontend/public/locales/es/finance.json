@@ -207,7 +207,7 @@
     "dismissAria": "Ocultar",
     "sponsor": {
       "title": "Ingresos de patrocinio",
-      "before": "Escalados por división (D1 600.000 · D2 400.000 · D3 340.000 CZ$) por temporada × tu ",
+      "before": "Escalados por división (D1 600.000 · D2 400.000 · D3 340.000 CZ$) por temporada × tu",
       "linkText": "modificador de la directiva",
       "after": ". Se paga de una sola vez al inicio de la temporada."
     },
@@ -290,9 +290,9 @@
   },
   "report": {
     "season": "Temporada {n}",
-    "livePreview": " · vista previa en directo",
+    "livePreview": "· vista previa en directo",
     "cashflowOverview": "Resumen del flujo de caja",
-    "ongoing": " – en curso",
+    "ongoing": "– en curso",
     "netCashflow": "Flujo de caja neto",
     "transactionCount": "{count} transacciones",
     "income": "Ingresos",
@@ -315,7 +315,7 @@
     "loadError": "No se pudo cargar el informe",
     "back": "Atrás",
     "title": "Informe financiero · temporada {n}",
-    "adminView": " · vista de administrador",
+    "adminView": "· vista de administrador",
     "donutIncomeTitle": "Ingresos por origen",
     "donutExpenseTitle": "Gastos por categoría",
     "donutIncomeEmpty": "No se han registrado ingresos esta temporada.",

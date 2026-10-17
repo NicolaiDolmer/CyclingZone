@@ -6,7 +6,7 @@
   "badgeFair": "Premium justo",
   "heroEyebrow": "Beta abierta, debate sobre un premium justo",
   "heroHeadline": "Monta tu equipo ciclista. Corre por el mundo. Apoya un juego de mánager justo.",
-  "heroSub": "Cycling Zone es un juego de mánager de ciclismo en el navegador donde importan las tácticas, la planificación a largo plazo y la rivalidad de la comunidad. Estoy explorando un premium, pero la regla es sencilla: ",
+  "heroSub": "Cycling Zone es un juego de mánager de ciclismo en el navegador donde importan las tácticas, la planificación a largo plazo y la rivalidad de la comunidad. Estoy explorando un premium, pero la regla es sencilla:",
   "heroSubStrong": "el juego debe ser justo para todos. No puedes pagar por mejores ciclistas, entrenamiento más rápido ni mejores resultados.",
   "ctaPrimary": "Únete a la lista de espera Founder",
   "ctaSecondary": "Leer la promesa completa",
@@ -88,12 +88,30 @@
   "benefitsTitle": "¿Qué reciben los miembros de la lista de espera Founder?",
   "benefitsBody": "El estatus Founder es identidad y un agradecimiento, nunca una ventaja competitiva. La lista final se decide junto con la comunidad antes de que se abra el pago.",
   "benefitsList": [
-    { "title": "Insignia Founder permanente", "desc": "Una marca de identidad que no se podrá comprar más adelante." },
-    { "title": "Rol Founder en Discord", "desc": "Una señal fuerte para la comunidad." },
-    { "title": "Tema de perfil o marco cosmético", "desc": "Valor de Founder temprano." },
-    { "title": "Tu nombre en el Muro de Founders", "desc": "Para los primeros creyentes." },
-    { "title": "Novedades mensuales del desarrollo", "desc": "Genera confianza y transparencia." },
-    { "title": "Voto en temas de la hoja de ruta ajenos al equilibrio", "desc": "Nunca sobre equilibrio ni ventaja competitiva." }
+    {
+      "title": "Insignia Founder permanente",
+      "desc": "Una marca de identidad que no se podrá comprar más adelante."
+    },
+    {
+      "title": "Rol Founder en Discord",
+      "desc": "Una señal fuerte para la comunidad."
+    },
+    {
+      "title": "Tema de perfil o marco cosmético",
+      "desc": "Valor de Founder temprano."
+    },
+    {
+      "title": "Tu nombre en el Muro de Founders",
+      "desc": "Para los primeros creyentes."
+    },
+    {
+      "title": "Novedades mensuales del desarrollo",
+      "desc": "Genera confianza y transparencia."
+    },
+    {
+      "title": "Voto en temas de la hoja de ruta ajenos al equilibrio",
+      "desc": "Nunca sobre equilibrio ni ventaja competitiva."
+    }
   ],
   "formSectionTitle": "Únete a la lista de espera Founder",
   "formSectionSub": "NO te compromete a nada. Hoy no se te cobra nada. El objetivo es ver si hay suficiente interés en apoyar económicamente el proyecto antes de que añada pagos.",
@@ -145,9 +163,9 @@
     "fairnessPlaceholder": "p. ej. mecánicas pay-to-win, sistemas injustos...",
     "countryLabel": "¿Dónde vives?",
     "followUpConsent": "Puedes contactar conmigo con hasta 2 preguntas de seguimiento (entrevista / encuesta corta). Es opcional.",
-    "gdprBefore": "He leído y acepto la ",
+    "gdprBefore": "He leído y acepto la",
     "gdprLink": "política de privacidad",
-    "gdprAfter": " y consiento que se guarden mi correo y mi usuario de Discord para la finalidad indicada arriba.",
+    "gdprAfter": "y consiento que se guarden mi correo y mi usuario de Discord para la finalidad indicada arriba.",
     "privacyPath": "/privacy-policy",
     "submit": "Únete a la lista de espera Founder",
     "submitLoading": "Enviando...",
@@ -157,9 +175,15 @@
     "successBody": "Gracias por unirte pronto. Te escribiré cuando se abra el premium, y antes si tengo preguntas sobre lo que piensas.",
     "successNextTitle": "Próximos pasos:",
     "successNext": [
-      { "text": "Únete a nuestro Discord para novedades y preguntas" },
-      { "text": "Sigue las patch notes para ver los avances" },
-      { "text": "Revisa tu bandeja de entrada en los próximos días" }
+      {
+        "text": "Únete a nuestro Discord para novedades y preguntas"
+      },
+      {
+        "text": "Sigue las patch notes para ver los avances"
+      },
+      {
+        "text": "Revisa tu bandeja de entrada en los próximos días"
+      }
     ],
     "successDiscordCta": "Únete al Discord",
     "interestOptions": {
@@ -168,10 +192,22 @@
       "unsure": "No lo tengo claro, primero quiero saber más"
     },
     "tierOptions": {
-      "supporter_monthly": { "label": "Premium mensual", "sub": "{price}/mes, apoya el proyecto y desbloquea la insignia Founder" },
-      "supporter_annual": { "label": "Premium anual", "sub": "{price}/año, lo mismo que el mensual + 2 meses gratis" },
-      "pro_analyst_monthly": { "label": "Analista Pro mensual", "sub": "{price}/mes, Premium + análisis táctico avanzado" },
-      "free_only": { "label": "Solo gratis", "sub": "Jugaré gratis, no pagaré" }
+      "supporter_monthly": {
+        "label": "Premium mensual",
+        "sub": "{price}/mes, apoya el proyecto y desbloquea la insignia Founder"
+      },
+      "supporter_annual": {
+        "label": "Premium anual",
+        "sub": "{price}/año, lo mismo que el mensual + 2 meses gratis"
+      },
+      "pro_analyst_monthly": {
+        "label": "Analista Pro mensual",
+        "sub": "{price}/mes, Premium + análisis táctico avanzado"
+      },
+      "free_only": {
+        "label": "Solo gratis",
+        "sub": "Jugaré gratis, no pagaré"
+      }
     },
     "benefitOptions": {
       "founder_badge": "Insignia Founder en el perfil",

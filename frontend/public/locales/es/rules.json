@@ -64,11 +64,41 @@
           "title": "Bonus de división (fin de temporada)",
           "text": "Un bonus único que se paga al final de la temporada. Léelo en dos pasos: elige la fila del puesto en que terminaste en tu propia división y luego la columna de la división en la que corriste. Las celdas en blanco no pagan nada, y tampoco cualquier puesto por debajo de la última fila.",
           "rows": [
-            ["Dónde terminaste", "En la División 1", "En la División 2", "En la División 3", "En la División 4"],
-            ["1.º en tu división", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
-            ["2.º en tu división", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
-            ["3.º en tu división", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
-            ["4.º en tu división", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
+            [
+              "Dónde terminaste",
+              "En la División 1",
+              "En la División 2",
+              "En la División 3",
+              "En la División 4"
+            ],
+            [
+              "1.º en tu división",
+              "{bonusD1P1} CZ$",
+              "{bonusD2P1} CZ$",
+              "{bonusD3P1} CZ$",
+              "{bonusD4P1} CZ$"
+            ],
+            [
+              "2.º en tu división",
+              "{bonusD1P2} CZ$",
+              "{bonusD2P2} CZ$",
+              "{bonusD3P2} CZ$",
+              "{bonusD4P2} CZ$"
+            ],
+            [
+              "3.º en tu división",
+              "{bonusD1P3} CZ$",
+              "{bonusD2P3} CZ$",
+              "{bonusD3P3} CZ$",
+              "{bonusD4P3} CZ$"
+            ],
+            [
+              "4.º en tu división",
+              "{bonusD1P4} CZ$",
+              "{bonusD2P4} CZ$",
+              "—",
+              "—"
+            ]
           ]
         }
       }

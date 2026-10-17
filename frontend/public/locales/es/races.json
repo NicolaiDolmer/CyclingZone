@@ -440,7 +440,7 @@
     "noRacesMatch": "Ninguna carrera coincide con los filtros",
     "raceNotFound": "Carrera no encontrada",
     "noResultsImportedRace": "Aún no se han importado resultados de esta carrera",
-    "noHistory": "No se han encontrado datos de «{name}»",
+    "noHistory": "No se han encontrado datos de “{name}”",
     "raceNotFoundHint": "Puede que el enlace sea antiguo o que se haya eliminado la carrera. Abre la biblioteca de carreras para encontrar otra.",
     "noResultsImportedRaceHint": "Esta carrera aún no tiene filas de resultados. Otras carreras de la biblioteca ya tienen las suyas.",
     "noResultsImportedRaceCta": "Abrir la biblioteca de carreras"
@@ -706,7 +706,7 @@
     "roleFree": "Rol libre",
     "notSetNote": "Sin fijar significa que corre con lo predeterminado de su rol.",
     "roleDefault": "Predeterminado del rol · normal",
-    "listAnd": " y ",
+    "listAnd": "y",
     "roleDefaultTag": "Predeterminado del rol",
     "nothingSet": "Nada fijado. Corre con su rol.",
     "setIntention": "Fijar intención",
@@ -1031,7 +1031,7 @@
       "summary": "Cambian {changedRaces} carreras · +{totalAdded}/−{totalRemoved} ciclistas · {captainChanges} cambios de jefe de filas",
       "in": "Entran",
       "out": "Salen",
-      "captain": "Jefe de filas → {name}"
+      "captain": "Jefe de filas -> {name}"
     },
     "error": {
       "title": "Algo salió mal",

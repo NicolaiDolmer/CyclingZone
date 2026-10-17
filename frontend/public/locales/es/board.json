@@ -112,7 +112,7 @@
     "domesticDominance": "Al menos {target} victorias en carreras locales por temporada",
     "required": "Obligatorio",
     "negotiated": "Negociado",
-    "tightenedBadge": "🔒 Endurecido",
+    "tightenedBadge": "Endurecido",
     "tightenedTitle": "Endurecido por la directiva tras una solicitud anterior",
     "cumulative": "Acumulado",
     "satisfactionBonus": "+{count} de satisfacción",
@@ -447,10 +447,10 @@
     "step3Subtitle": "{plan}, abarca {count, plural, one {1 temporada} other {# temporadas}}",
     "agreedHeading": "Objetivos acordados",
     "signing": "Guardando...",
-    "sign": "Firmar contrato ✍",
+    "sign": "Firmar contrato",
     "resetNotice": "Firmar restablece los contadores de este plan (temporadas completadas, victorias acumuladas) y abre una nueva ventana de plan. No restablece tu solicitud a la directiva de esta temporada. Esa sigue bloqueada hasta la próxima temporada.",
     "obligatory": "Obligatorio",
-    "negotiatedTick": "Negociado ✓",
+    "negotiatedTick": "Negociado",
     "steps": {
       "strategy": "Estrategia",
       "negotiation": "Negociación",
@@ -1924,10 +1924,10 @@
       "close": "Cerrar"
     },
     "minutesFixture": {
-      "stageWin": "Victoria de etapa, Vuelta a Andalucía. «Para esto me apunté.»",
-      "youthDebut": "Debut juvenil: {name}, {age}. «Esta es la manera nórdica.»",
-      "deficitWeek": "Semana de déficit, {amount}. «Márgenes, no milagros.»",
-      "captainSaleWarning": "No vendemos a un jefe de filas a mitad de temporada sin un plan. «Enséñame el plan.»"
+      "stageWin": "Victoria de etapa, Vuelta a Andalucía. “Para esto me apunté.”",
+      "youthDebut": "Debut juvenil: {name}, {age}. “Esta es la manera nórdica.”",
+      "deficitWeek": "Semana de déficit, {amount}. “Márgenes, no milagros.”",
+      "captainSaleWarning": "No vendemos a un jefe de filas a mitad de temporada sin un plan. “Enséñame el plan.”"
     },
     "meeting": {
       "route": {

@@ -52,7 +52,7 @@
   "tour": {
     "filters": {
       "title": "Filtra la lista según tu presupuesto",
-      "body": "Pon el «Valor máx.» igual a tu saldo para ver solo los ciclistas que puedes permitirte. Los interruptores Sub-25 / Agente libre abren caminos más baratos."
+      "body": "Pon el “Valor máx.” igual a tu saldo para ver solo los ciclistas que puedes permitirte. Los interruptores Sub-25 / Agente libre abren caminos más baratos."
     },
     "list": {
       "title": "Haz clic en un ciclista",
@@ -88,7 +88,7 @@
     "ownerFilterLabel": "Filtrar por propietario",
     "searchPlaceholder": "Buscar nombre de ciclista…",
     "noResults": "No se han encontrado resultados",
-    "noResultsFor": "No se han encontrado resultados para «{q}»",
+    "noResultsFor": "No se han encontrado resultados para “{q}”",
     "loadError": "No se pudo cargar el ranking. Inténtalo de nuevo.",
     "retry": "Reintentar",
     "thNation": "País",

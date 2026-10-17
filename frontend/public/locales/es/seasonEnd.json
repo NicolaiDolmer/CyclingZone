@@ -42,11 +42,30 @@
     "error": "No se pudieron cargar los mejores ciclistas de la temporada."
   },
   "winners": {
-    "prize": { "title": "Líder en premios", "secondary": "+{amount} ganados", "empty": "Aún no hay premios" },
-    "transfer": { "title": "Mayor fichaje", "fallback": "Fichaje", "empty": "Sin fichajes" },
-    "active": { "title": "Más activo", "secondary": "{count} fichajes", "empty": "Sin tratos" },
-    "stageKing": { "title": "Rey de las etapas", "secondary": "{count, plural, one {# victoria de etapa} other {# victorias de etapa}}", "empty": "Sin etapas disputadas" },
-    "classicKing": { "title": "Victorias en clásicas", "secondary": "{count, plural, one {# victoria en clásica} other {# victorias en clásicas}}" }
+    "prize": {
+      "title": "Líder en premios",
+      "secondary": "+{amount} ganados",
+      "empty": "Aún no hay premios"
+    },
+    "transfer": {
+      "title": "Mayor fichaje",
+      "fallback": "Fichaje",
+      "empty": "Sin fichajes"
+    },
+    "active": {
+      "title": "Más activo",
+      "secondary": "{count} fichajes",
+      "empty": "Sin tratos"
+    },
+    "stageKing": {
+      "title": "Rey de las etapas",
+      "secondary": "{count, plural, one {# victoria de etapa} other {# victorias de etapa}}",
+      "empty": "Sin etapas disputadas"
+    },
+    "classicKing": {
+      "title": "Victorias en clásicas",
+      "secondary": "{count, plural, one {# victoria en clásica} other {# victorias en clásicas}}"
+    }
   },
   "calendar": {
     "heading": "Calendario · {count} carreras",

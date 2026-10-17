@@ -130,11 +130,23 @@
     }
   },
   "engines": {
-    "races": { "title": "Carreras" },
-    "training": { "title": "Entrenamiento" },
-    "youth": { "title": "Desarrollo juvenil" },
-    "market": { "title": "Fichajes y subastas" },
-    "club": { "title": "Club y mundo" },
-    "other": { "title": "Otros" }
+    "races": {
+      "title": "Carreras"
+    },
+    "training": {
+      "title": "Entrenamiento"
+    },
+    "youth": {
+      "title": "Desarrollo juvenil"
+    },
+    "market": {
+      "title": "Fichajes y subastas"
+    },
+    "club": {
+      "title": "Club y mundo"
+    },
+    "other": {
+      "title": "Otros"
+    }
   }
 }

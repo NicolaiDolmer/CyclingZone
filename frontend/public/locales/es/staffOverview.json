@@ -1,5 +1,8 @@
 {
-  "page": { "title": "Personal técnico", "subtitle": "{count} responsables en toda la liga" },
+  "page": {
+    "title": "Personal técnico",
+    "subtitle": "{count} responsables en toda la liga"
+  },
   "filters": {
     "search": "Buscar",
     "searchPlaceholder": "Nombre o equipo",
@@ -24,6 +27,13 @@
     "count": "Mostrando {filtered} de {total} miembros del personal",
     "emptyFiltered": "Ningún miembro del personal coincide con tus filtros"
   },
-  "disabled": { "title": "Aún no disponible", "description": "El área de personal técnico todavía no está abierta." },
-  "error": { "title": "No se pudo cargar el personal técnico", "description": "Algo salió mal al cargar el directorio del personal. Inténtalo de nuevo en un momento.", "retry": "Reintentar" }
+  "disabled": {
+    "title": "Aún no disponible",
+    "description": "El área de personal técnico todavía no está abierta."
+  },
+  "error": {
+    "title": "No se pudo cargar el personal técnico",
+    "description": "Algo salió mal al cargar el directorio del personal. Inténtalo de nuevo en un momento.",
+    "retry": "Reintentar"
+  }
 }

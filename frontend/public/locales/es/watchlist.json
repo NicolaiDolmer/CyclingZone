@@ -3,7 +3,7 @@
   "subtitle": "{count} ciclistas en tu lista de seguimiento, solo visible para ti",
   "addRiders": "+ Añadir ciclistas",
   "emptyTitle": "Tu lista de seguimiento está vacía",
-  "emptyBody": "Haz clic en la ⭐ junto a un ciclista en la base de datos de ciclistas para añadirlo aquí",
+  "emptyBody": "Haz clic en la estrella junto a un ciclista en la base de datos de ciclistas para añadirlo aquí",
   "emptyCta": "Ir a Ciclistas",
   "searchPlaceholder": "Buscar ciclistas...",
   "searchAria": "Buscar ciclistas",

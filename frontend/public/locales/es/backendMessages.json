@@ -30,7 +30,7 @@
     "loanReceivedShort": "Préstamo a corto plazo contratado (comisión: {fee} CZ$)",
     "loanReceivedLong": "Préstamo a largo plazo contratado (comisión: {fee} CZ$)",
     "loanRepayment": "Cuota del préstamo pagada",
-    "loanRepaymentFinal": "Cuota del préstamo pagada. ¡Préstamo devuelto por completo! 🎉",
+    "loanRepaymentFinal": "Cuota del préstamo pagada. ¡Préstamo devuelto por completo!",
     "loanRepaymentRemaining": "Cuota del préstamo pagada (pendiente: {remaining} CZ$)",
     "forcedDebtRepaymentFinal": "Lo obtenido en la venta forzosa liquidó tu préstamo por completo",
     "forcedDebtRepaymentRemaining": "Lo obtenido en la venta forzosa redujo la deuda (pendiente: {remaining} CZ$)",
@@ -111,11 +111,11 @@
       "message": "Has contratado un préstamo a largo plazo de {principal} CZ$. Comisión: {fee} CZ$. Devolución total: {totalOwed} CZ$."
     },
     "emergencyLoan": {
-      "title": "⚠️ Préstamo de emergencia abierto",
+      "title": "Préstamo de emergencia abierto",
       "message": "Tu equipo no podía cubrir los salarios. Se ha abierto automáticamente un préstamo de emergencia de {amount} CZ$ con una comisión del {feeRate} % y un interés del {interestRate} %. Deuda total: {totalOwed} CZ$."
     },
     "emergencyLoanBreach": {
-      "title": "🚨 Tope de deuda superado",
+      "title": "Tope de deuda superado",
       "message": "Tu préstamo de emergencia hace que la deuda del equipo supere en {breachAmount} CZ$ el tope de la división, de {ceiling} CZ$. Puedes seguir operando, pero DEBES recortar gastos (vender ciclistas, rescindir contratos de estrellas) antes de que termine la próxima temporada para evitar una espiral de deuda."
     },
     "emergencyLoanEscalation": {
@@ -135,7 +135,7 @@
       "message": "Tu deuda de {debt} CZ$ se mantuvo por encima del tope de tu división, de {ceiling} CZ$, durante {streak} temporadas seguidas, así que la directiva vendió a {riders} por {proceeds} CZ$ y destinó el dinero directamente a tus préstamos. Tu deuda es ahora de {remainingDebt} CZ$ y los fichajes siguen congelados hasta que vuelvas a estar por debajo del tope. Si sigues por encima en el próximo cambio de temporada, la directiva volverá a vender. Devuelve préstamos, vende ciclistas tú mismo o recorta salarios antes de entonces."
     },
     "loanPaidOff": {
-      "title": "✅ Préstamo devuelto",
+      "title": "Préstamo devuelto",
       "message": "¡Enhorabuena! Has devuelto tu préstamo por completo."
     },
     "boardPlanExpired": {
@@ -174,7 +174,7 @@
       "message": "La directiva está impresionada ({satisfaction} % de satisfacción, {goalsMet}/{goalsTotal} objetivos cumplidos). Ofrece +{bonusAmount} CZ$ por un objetivo extra: {goalLabel}. Acepta o rechaza en la página de la Directiva."
     },
     "divisionPromoted": {
-      "title": "¡Ascenso! 🎉",
+      "title": "¡Ascenso!",
       "message": "¡Enhorabuena! Tu equipo sube a la División {division}."
     },
     "divisionRelegated": {
@@ -338,7 +338,7 @@
     },
     "boardAutoAccepted": {
       "title": "La directiva ha elegido {planLabel} por ti",
-      "message": "No negociaste tu {planLabel} a tiempo. La directiva eligió el enfoque «{focus}» y los objetivos por defecto. Todavía puedes pedir cambios cuando el plan esté en marcha."
+      "message": "No negociaste tu {planLabel} a tiempo. La directiva eligió el enfoque “{focus}” y los objetivos por defecto. Todavía puedes pedir cambios cuando el plan esté en marcha."
     },
     "boardMandateOpened": {
       "title": "La directiva ha convocado la junta anual",
@@ -381,7 +381,7 @@
       "message": "{winnerName} se llevó a {rider} por {price} CZ$, {overBid} CZ$ por encima de tu puja máxima de {yourMax} CZ$."
     },
     "debtWarning": {
-      "title": "⚠️ Saldo negativo",
+      "title": "Saldo negativo",
       "message": "Tu equipo tiene un saldo negativo. Consulta la página de Finanzas para ver los detalles."
     },
     "deadlineDay": {
@@ -565,12 +565,12 @@
     "forumThreadReply": {
       "title": "{count, plural, one {Nueva respuesta a tu hilo} other {# respuestas nuevas a tu hilo}}",
       "message": "{count, plural, one {Alguien ha respondido a tu hilo} other {# respuestas nuevas a tu hilo}}",
-      "messageWithTitle": "{count, plural, one {Una respuesta nueva en «{postTitle}»} other {# respuestas nuevas en «{postTitle}»}}"
+      "messageWithTitle": "{count, plural, one {Una respuesta nueva en “{postTitle}”} other {# respuestas nuevas en “{postTitle}”}}"
     },
     "forumMention": {
       "title": "Te han mencionado",
       "message": "{author} te ha mencionado en el foro",
-      "messageWithTitle": "{author} te ha mencionado en «{postTitle}»"
+      "messageWithTitle": "{author} te ha mencionado en “{postTitle}”"
     },
     "careerMilestone": {
       "maidenWin": {

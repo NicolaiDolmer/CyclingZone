@@ -37,7 +37,7 @@
       },
       "mobileTables": {
         "title": "Tablas en el móvil",
-        "text": "En el móvil, las tablas como tu plantilla, los rankings y la base de datos de ciclistas muestran la columna del nombre más tres estadísticas clave a la vez, en lugar de una tabla ancha por la que te desplazas de lado. Unas etiquetas encima de la tabla te permiten cambiar qué tres estadísticas se muestran, y tu elección se recuerda por separado para cada tabla. Toca «Tabla completa» para abrir todas las columnas a la vez, con la columna del nombre fija mientras recorres el resto."
+        "text": "En el móvil, las tablas como tu plantilla, los rankings y la base de datos de ciclistas muestran la columna del nombre más tres estadísticas clave a la vez, en lugar de una tabla ancha por la que te desplazas de lado. Unas etiquetas encima de la tabla te permiten cambiar qué tres estadísticas se muestran, y tu elección se recuerda por separado para cada tabla. Toca “Tabla completa” para abrir todas las columnas a la vez, con la columna del nombre fija mientras recorres el resto."
       }
     },
     "board": {
@@ -52,7 +52,7 @@
       },
       "nationalCoreRule": {
         "title": "Cómo se decide tu núcleo nacional",
-        "text": "Tu núcleo nacional lo marca la nacionalidad con más ciclistas en tu plantilla, nunca una puntuación combinada de varias. Pasa a ser un núcleo establecido cuando esa nacionalidad tiene al menos 4 ciclistas y representa al menos el 35 % de tu plantilla completa; por debajo de ese umbral, la tarjeta de tu directiva muestra «Mixto» y «Aún sin un núcleo claro», por cerca que esté la nacionalidad que le sigue. Una vez establecido, la tarjeta nombra esa nacionalidad con su número de ciclistas y su proporción de tu plantilla. Solo se comprueba la nacionalidad más numerosa contra estas cifras: si dos nacionalidades están cerca de cumplirlas, la menor no obtiene un núcleo propio, aunque se quede a un solo ciclista. Cuando dos nacionalidades empatan exactamente en número de ciclistas, el desempate lo gana el país cuyo código va primero por orden alfabético."
+        "text": "Tu núcleo nacional lo marca la nacionalidad con más ciclistas en tu plantilla, nunca una puntuación combinada de varias. Pasa a ser un núcleo establecido cuando esa nacionalidad tiene al menos 4 ciclistas y representa al menos el 35 % de tu plantilla completa; por debajo de ese umbral, la tarjeta de tu directiva muestra “Mixto” y “Aún sin un núcleo claro”, por cerca que esté la nacionalidad que le sigue. Una vez establecido, la tarjeta nombra esa nacionalidad con su número de ciclistas y su proporción de tu plantilla. Solo se comprueba la nacionalidad más numerosa contra estas cifras: si dos nacionalidades están cerca de cumplirlas, la menor no obtiene un núcleo propio, aunque se quede a un solo ciclista. Cuando dos nacionalidades empatan exactamente en número de ciclistas, el desempate lo gana el país cuyo código va primero por orden alfabético."
       },
       "season2Onboarding": {
         "title": "Incorporación secuencial a la directiva",
@@ -66,7 +66,7 @@
       },
       "strategicDashboard": {
         "title": "El panel estratégico",
-        "text": "La página de la Directiva muestra los tres planes en paralelo (escritorio) o apilados (móvil). Cada panel muestra el % de satisfacción, el modificador de patrocinio ×, el progreso por objetivo e iconos de estado (✓ cumplido · ! en riesgo · ~ cerca · ○ neutral). Haz clic en un objetivo para abrir un pequeño diálogo con todos los detalles, una barra de progreso acumulado y una reacción del miembro de la directiva que es responsable de esa categoría."
+        "text": "La página de la Directiva muestra los tres planes en paralelo (escritorio) o apilados (móvil). Cada panel muestra el % de satisfacción, el modificador de patrocinio ×, el progreso por objetivo e iconos de estado (marca verde = cumplido · ! = en riesgo · ~ = cerca · círculo vacío = neutral). Haz clic en un objetivo para abrir un pequeño diálogo con todos los detalles, una barra de progreso acumulado y una reacción del miembro de la directiva que es responsable de esa categoría."
       },
       "namedMembers": {
         "title": "Miembros de la directiva con nombre",
@@ -118,11 +118,11 @@
       },
       "requestsAndLocks": {
         "title": "Solicitudes a la directiva y bloqueos de giro",
-        "text": "Una vez por temporada puedes enviar una solicitud a la directiva para reorientar tu plan (p. ej. «más enfoque en estrellas»). La respuesta es aprobada, parcial, rechazada o aprobada con un compromiso. Los giros importantes (juventud/estrellas) solo se permiten una vez por ciclo de vida del plan. Los planes a 5 y a 3 años no se pueden reorientar durante el primer 50 % de su duración, salvo que la satisfacción haya cambiado más de 30 puntos. En los últimos 5 días de carrera de una temporada todas las solicitudes quedan bloqueadas."
+        "text": "Una vez por temporada puedes enviar una solicitud a la directiva para reorientar tu plan (p. ej. “más enfoque en estrellas”). La respuesta es aprobada, parcial, rechazada o aprobada con un compromiso. Los giros importantes (juventud/estrellas) solo se permiten una vez por ciclo de vida del plan. Los planes a 5 y a 3 años no se pueden reorientar durante el primer 50 % de su duración, salvo que la satisfacción haya cambiado más de 30 puntos. En los últimos 5 días de carrera de una temporada todas las solicitudes quedan bloqueadas."
       },
       "midSeasonCheck": {
         "title": "Revisión de mitad de temporada",
-        "text": "A mitad de temporada (cuando se ha completado la mitad de los días de carrera) la directiva comprueba automáticamente el estado de tu plan. Si la satisfacción está por debajo del 50 % o al menos la mitad de los objetivos medibles están «por detrás», recibes una notificación de «Acción necesaria» en tu bandeja de entrada. La mitad de temporada es también el primer punto de control duro: si la satisfacción ha caído por debajo de los umbrales de consecuencias para entonces, la directiva aplica las capas de consecuencias correspondientes (el segundo punto de control es el final de la temporada). Entre los puntos de control la satisfacción se mueve libremente sin activar consecuencias duras."
+        "text": "A mitad de temporada (cuando se ha completado la mitad de los días de carrera) la directiva comprueba automáticamente el estado de tu plan. Si la satisfacción está por debajo del 50 % o al menos la mitad de los objetivos medibles están “por detrás”, recibes una notificación de “Acción necesaria” en tu bandeja de entrada. La mitad de temporada es también el primer punto de control duro: si la satisfacción ha caído por debajo de los umbrales de consecuencias para entonces, la directiva aplica las capas de consecuencias correspondientes (el segundo punto de control es el final de la temporada). Entre los puntos de control la satisfacción se mueve libremente sin activar consecuencias duras."
       },
       "multiYearLifecycle": {
         "title": "Cómo funcionan los planes a 3 y a 5 años",
@@ -171,7 +171,7 @@
       },
       "visionMilestones": {
         "title": "Cuándo cuentan los hitos de la visión",
-        "text": "Cada hito de la visión de tu club tiene una temporada objetivo, y el propio hito indica cuándo cuenta, por ejemplo «Cuenta al final de la temporada 5». La directiva comprueba los hitos al final de cada temporada, no por el camino, así que un objetivo a largo plazo puede parecer sin tocar durante la mayor parte de una temporada sin estar por detrás. Puedes cumplir un hito antes de tiempo: si ya lo has alcanzado al final de una temporada anterior, cuenta justo ahí, la directiva lo marca como conseguido y propone un hito nuevo en la siguiente junta anual. Un hito que no hayas alcanzado al final de su temporada objetivo se considera fallado. Eso cuesta confianza una vez, y el resto de la visión sigue sin cambios."
+        "text": "Cada hito de la visión de tu club tiene una temporada objetivo, y el propio hito indica cuándo cuenta, por ejemplo “Cuenta al final de la temporada 5”. La directiva comprueba los hitos al final de cada temporada, no por el camino, así que un objetivo a largo plazo puede parecer sin tocar durante la mayor parte de una temporada sin estar por detrás. Puedes cumplir un hito antes de tiempo: si ya lo has alcanzado al final de una temporada anterior, cuenta justo ahí, la directiva lo marca como conseguido y propone un hito nuevo en la siguiente junta anual. Un hito que no hayas alcanzado al final de su temporada objetivo se considera fallado. Eso cuesta confianza una vez, y el resto de la visión sigue sin cambios."
       }
     },
     "auctions": {
@@ -185,14 +185,14 @@
         "steps": [
           "Ve a Ciclistas y busca un ciclista libre (sin equipo).",
           "Haz clic en el nombre del ciclista para abrir la página de estadísticas.",
-          "Haz clic en «Iniciar subasta» y fija un precio de salida. El mínimo es igual al Valor del ciclista.",
+          "Haz clic en “Iniciar subasta” y fija un precio de salida. El mínimo es igual al Valor del ciclista.",
           "En un ciclista libre, el precio de salida es tu primera puja, así que lideras la subasta de inmediato.",
           "La subasta ya es visible para todos en Subastas."
         ]
       },
       "bidding": {
         "title": "Pujar en subastas",
-        "text": "Ve a Subastas y busca una subasta en la que quieras pujar. Introduce tu puja y haz clic en «Pujar». Puedes ver si vas ganando (Ganando) o si has pujado pero te han superado (Pujaste). La puja mínima es 1 CZ$ por encima del precio actual (o igualar el precio de salida si nadie ha pujado todavía)."
+        "text": "Ve a Subastas y busca una subasta en la que quieras pujar. Introduce tu puja y haz clic en “Pujar”. Puedes ver si vas ganando (Ganando) o si has pujado pero te han superado (Pujaste). La puja mínima es 1 CZ$ por encima del precio actual (o igualar el precio de salida si nadie ha pujado todavía)."
       },
       "valuation": {
         "title": "La valoración junto a una puja",
@@ -204,7 +204,7 @@
       },
       "anonymityAndReveal": {
         "title": "Pujas anónimas, y luego una revelación completa",
-        "text": "Mientras una subasta está en marcha, las pujas son anónimas: ves los importes y si vas ganando, nunca quién más puja. Eso protege el tope de puja automática y la estrategia de todos para que los rivales no los lean. Cuando cae el martillo, se revela toda la guerra de pujas. Desde una subasta completada en Subastas -> Historial, haz clic en «Ver guerra de pujas» para ver cada puja realizada en orden, con el nombre del pujador, y también se te dirá quién la ganó si la perdiste. Los topes de puja automática y las estrategias activas nunca se revelan, ni antes ni después de que la subasta se cierre. Solo se muestran las pujas que se realizaron de verdad."
+        "text": "Mientras una subasta está en marcha, las pujas son anónimas: ves los importes y si vas ganando, nunca quién más puja. Eso protege el tope de puja automática y la estrategia de todos para que los rivales no los lean. Cuando cae el martillo, se revela toda la guerra de pujas. Desde una subasta completada en Subastas -> Historial, haz clic en “Ver guerra de pujas” para ver cada puja realizada en orden, con el nombre del pujador, y también se te dirá quién la ganó si la perdiste. Los topes de puja automática y las estrategias activas nunca se revelan, ni antes ni después de que la subasta se cierre. Solo se muestran las pujas que se realizaron de verdad."
       },
       "tieRule": {
         "title": "Empates en pujas iguales",
@@ -235,7 +235,7 @@
       },
       "allTrades": {
         "title": "Mira todas las operaciones del juego",
-        "text": "La pestaña «Todas las operaciones» de Fichajes enumera todos los movimientos de ciclistas del juego, de más reciente a más antiguo: ventas en subasta, fichajes directos e intercambios. Puedes filtrar por tipo, por división y hasta tu propio equipo. Cada fila lleva una discreta acción de revisión. Si una operación te parece rara, mándamela con una frase sobre lo que te llamó la atención, y la leo. Denunciar no es acusar, y al otro mánager nunca se le dice quién lo denunció."
+        "text": "La pestaña “Todas las operaciones” de Fichajes enumera todos los movimientos de ciclistas del juego, de más reciente a más antiguo: ventas en subasta, fichajes directos e intercambios. Puedes filtrar por tipo, por división y hasta tu propio equipo. Cada fila lleva una discreta acción de revisión. Si una operación te parece rara, mándamela con una frase sobre lo que te llamó la atención, y la leo. Denunciar no es acusar, y al otro mánager nunca se le dice quién lo denunció."
       },
       "sellOnTransferList": {
         "title": "Vender mediante la lista de fichajes",
@@ -247,15 +247,15 @@
       },
       "valueDeviation": {
         "title": "La valoración junto al precio pedido",
-        "text": "La lista de fichajes muestra el valor de mercado estimado de cada ciclista junto al precio pedido, y el porcentaje te dice lo por debajo o por encima de él que está el precio pedido (la misma estimación que en Subastas). Puedes filtrar el mercado por este porcentaje en «Desviación de valor % (mín.-máx.)» en el panel de filtros, por ejemplo para encontrar ciclistas con un precio muy inferior a su valor estimado."
+        "text": "La lista de fichajes muestra el valor de mercado estimado de cada ciclista junto al precio pedido, y el porcentaje te dice lo por debajo o por encima de él que está el precio pedido (la misma estimación que en Subastas). Puedes filtrar el mercado por este porcentaje en “Desviación de valor % (mín.-máx.)” en el panel de filtros, por ejemplo para encontrar ciclistas con un precio muy inferior a su valor estimado."
       },
       "sendOffer": {
         "title": "Enviar una oferta",
         "steps": [
           "Encuentra al ciclista que quieres comprar en Ciclistas y haz clic en su nombre.",
-          "Haz clic en «Enviar oferta de fichaje» al final de la página.",
+          "Haz clic en “Enviar oferta de fichaje” al final de la página.",
           "Introduce tu oferta en CZ$ y un mensaje opcional.",
-          "Haz clic en «Enviar oferta». El vendedor recibe una notificación.",
+          "Haz clic en “Enviar oferta”. El vendedor recibe una notificación.",
           "Los ciclistas IA no se pueden comprar en absoluto, ni por oferta directa ni por subasta."
         ]
       },
@@ -263,8 +263,8 @@
         "title": "Proponer un intercambio de ciclistas",
         "steps": [
           "Encuentra al ciclista que quieres en un intercambio y ve a su página de perfil.",
-          "Haz clic en «⇄ Proponer intercambio», elige a uno de tus propios ciclistas para ofrecer y, si quieres, añade un ajuste en efectivo.",
-          "Haz clic en «Enviar intercambio». El otro mánager recibe una notificación.",
+          "Haz clic en “⇄ Proponer intercambio”, elige a uno de tus propios ciclistas para ofrecer y, si quieres, añade un ajuste en efectivo.",
+          "Haz clic en “Enviar intercambio”. El otro mánager recibe una notificación.",
           "Las propuestas de intercambio existentes siguen apareciendo en Ofertas recibidas y Ofertas enviadas en la página de Fichajes, donde puedes aceptarlas, contraofertar o retirarlas."
         ]
       },
@@ -309,11 +309,11 @@
       },
       "theme": {
         "title": "Tema (claro / oscuro)",
-        "text": "En Ajustes, Apariencia puedes elegir entre «Seguir el sistema» (automático según tu dispositivo), «Claro» y «Oscuro». La elección se guarda localmente en tu navegador. La barra lateral se mantiene oscura en ambos temas por coherencia."
+        "text": "En Ajustes, Apariencia puedes elegir entre “Seguir el sistema” (automático según tu dispositivo), “Claro” y “Oscuro”. La elección se guarda localmente en tu navegador. La barra lateral se mantiene oscura en ambos temas por coherencia."
       },
       "forgotPassword": {
         "title": "He olvidado mi contraseña",
-        "text": "Si no puedes iniciar sesión, puedes elegir «¿Has olvidado tu contraseña?» en la página de inicio de sesión. El sistema envía un enlace de restablecimiento a tu correo, y el enlace abre una página específica donde puedes elegir una contraseña nueva."
+        "text": "Si no puedes iniciar sesión, puedes elegir “¿Has olvidado tu contraseña?” en la página de inicio de sesión. El sistema envía un enlace de restablecimiento a tu correo, y el enlace abre una página específica donde puedes elegir una contraseña nueva."
       },
       "inbox": {
         "title": "Bandeja de entrada",
@@ -396,15 +396,15 @@
         "title": "Cómo recibir MD",
         "steps": [
           "En Discord: Ajustes de usuario, Avanzado, activa el Modo desarrollador.",
-          "Haz clic derecho en tu propio nombre en cualquier lugar de Discord y elige «Copiar ID de usuario».",
-          "En Cycling Zone: ve a Perfil, Integración con Discord y pega tu ID en el campo. Haz clic en «Guardar ID de Discord».",
-          "Asegúrate de compartir un servidor con el bot de Cycling Zone y de que «Permitir mensajes directos de miembros del servidor» está activado en ese servidor.",
-          "Haz clic en «Enviar MD de prueba» para comprobar que funciona."
+          "Haz clic derecho en tu propio nombre en cualquier lugar de Discord y elige “Copiar ID de usuario”.",
+          "En Cycling Zone: ve a Perfil, Integración con Discord y pega tu ID en el campo. Haz clic en “Guardar ID de Discord”.",
+          "Asegúrate de compartir un servidor con el bot de Cycling Zone y de que “Permitir mensajes directos de miembros del servidor” está activado en ese servidor.",
+          "Haz clic en “Enviar MD de prueba” para comprobar que funciona."
         ]
       },
       "optOut": {
         "title": "Desactivar los MD (exclusión)",
-        "text": "Si no quieres mensajes privados del bot, puedes desactivar «Recibir MD de los eventos que te afectan» en Perfil, Integración con Discord. Las notificaciones dentro de la app siguen funcionando. La información personal (pujas superadas, subastas ganadas, ofertas de fichaje y respuestas) no se publica en el canal compartido; ese canal está reservado para anuncios generales."
+        "text": "Si no quieres mensajes privados del bot, puedes desactivar “Recibir MD de los eventos que te afectan” en Perfil, Integración con Discord. Las notificaciones dentro de la app siguen funcionando. La información personal (pujas superadas, subastas ganadas, ofertas de fichaje y respuestas) no se publica en el canal compartido; ese canal está reservado para anuncios generales."
       },
       "whenDmsSent": {
         "title": "¿Cuándo se envían MD?",
@@ -485,7 +485,7 @@
       },
       "secretAchievements": {
         "title": "Logros secretos",
-        "text": "Los logros secretos aparecen bloqueados con el título «???» hasta que los desbloqueas. La descripción solo se revela después. Se desbloquean cuando haces cosas inesperadas o divertidas en el juego."
+        "text": "Los logros secretos aparecen bloqueados con el título “???” hasta que los desbloqueas. La descripción solo se revela después. Se desbloquean cuando haces cosas inesperadas o divertidas en el juego."
       },
       "notifications": {
         "title": "Notificaciones de logros",
@@ -521,7 +521,7 @@
       },
       "watchlistCounter": {
         "title": "Contador de la lista de seguimiento",
-        "text": "En la página de estadísticas de un ciclista puedes ver «X mánagers siguen a este ciclista». Esto muestra el número total de mánagers que tienen al ciclista en su lista de seguimiento, sin revelar quiénes. Úsalo como una señal de demanda."
+        "text": "En la página de estadísticas de un ciclista puedes ver “X mánagers siguen a este ciclista”. Esto muestra el número total de mánagers que tienen al ciclista en su lista de seguimiento, sin revelar quiénes. Úsalo como una señal de demanda."
       },
       "features": {
         "title": "Funciones de la lista de seguimiento",
@@ -574,11 +574,11 @@
       },
       "latestTeamResult": {
         "title": "¿Dónde veo cómo le fue a mi equipo?",
-        "text": "Después de que se cierre una carrera con tus ciclistas, tu panel muestra una tarjeta «Cómo le fue a tu equipo» con tus puestos, los premios en metálico y un breve resumen de la carrera. Sigue el enlace de la tarjeta hasta el resultado completo con todas las etapas y clasificaciones."
+        "text": "Después de que se cierre una carrera con tus ciclistas, tu panel muestra una tarjeta “Cómo le fue a tu equipo” con tus puestos, los premios en metálico y un breve resumen de la carrera. Sigue el enlace de la tarjeta hasta el resultado completo con todas las etapas y clasificaciones."
       },
       "heroAgonyCard": {
         "title": "¿Qué es la tarjeta Hero & Agony?",
-        "text": "Tu panel también muestra una tarjeta Hero & Agony: un momento personal de la etapa más reciente de tu equipo, elegido automáticamente a partir de lo que realmente les pasó a tus ciclistas ese día, ya sea una victoria de etapa, un cambio en el liderato de la carrera, un ciclista que sacrificó su propio resultado por el equipo o un favorito que terminó fuera del top 15. La agonía cuenta tanto como el triunfo: un ciclista que pasó el día en la escapada y fue alcanzado justo antes de la meta da una historia mejor que una tranquila posición a mitad del pelotón, y la tarjeta está hecha para reflejarlo. Haz clic en «Compartir como imagen» para descargar un PNG editorial de la tarjeta, listo para publicar en Discord."
+        "text": "Tu panel también muestra una tarjeta Hero & Agony: un momento personal de la etapa más reciente de tu equipo, elegido automáticamente a partir de lo que realmente les pasó a tus ciclistas ese día, ya sea una victoria de etapa, un cambio en el liderato de la carrera, un ciclista que sacrificó su propio resultado por el equipo o un favorito que terminó fuera del top 15. La agonía cuenta tanto como el triunfo: un ciclista que pasó el día en la escapada y fue alcanzado justo antes de la meta da una historia mejor que una tranquila posición a mitad del pelotón, y la tarjeta está hecha para reflejarlo. Haz clic en “Compartir como imagen” para descargar un PNG editorial de la tarjeta, listo para publicar en Discord."
       },
       "stageEndings": {
         "title": "Los finales de etapa, explicados",
@@ -632,7 +632,7 @@
       },
       "prizeMoney": {
         "title": "Premios en metálico de las carreras",
-        "text": "Cada resultado de un ciclista de tu equipo genera premios en metálico: puntos por el puesto × {prizePerPoint} CZ$. Los premios se pagan automáticamente al saldo de tu equipo cuando el administrador finaliza los resultados y aparecen como una transacción de «premio» en tu registro de finanzas. Los puntos de la clasificación de la temporada y los premios en metálico se calculan por separado: los puntos deciden la clasificación, mientras que el premio en CZ$ solo afecta a tu saldo. Las carreras sin categoría de carrera no generan premios. Consulta la tabla de puntos completa en Resultados, Puntos y premios."
+        "text": "Cada resultado de un ciclista de tu equipo genera premios en metálico: puntos por el puesto × {prizePerPoint} CZ$. Los premios se pagan automáticamente al saldo de tu equipo cuando el administrador finaliza los resultados y aparecen como una transacción de “premio” en tu registro de finanzas. Los puntos de la clasificación de la temporada y los premios en metálico se calculan por separado: los puntos deciden la clasificación, mientras que el premio en CZ$ solo afecta a tu saldo. Las carreras sin categoría de carrera no generan premios. Consulta la tabla de puntos completa en Resultados, Puntos y premios."
       },
       "divisionBonus": {
         "title": "Bonus de división al final de la temporada",
@@ -677,7 +677,7 @@
       },
       "raceLibrary": {
         "title": "Archivo de carreras",
-        "text": "En Resultados, Archivo puedes buscar y filtrar todas las carreras de todas las temporadas (temporada, categoría, estado, nombre). La lista se ordena de más nueva a más antigua, y un filtro «Solo mi división» la acota a las carreras de tu propia división para que encuentres rápido lo que corriste hoy. Haz clic en una carrera para abrir su página de historial con las ediciones anteriores, el ganador de cada temporada y un resumen acumulado de los ciclistas que mejor han rendido históricamente en esa carrera. Cada edición enlaza directamente con el resultado completo de esa edición."
+        "text": "En Resultados, Archivo puedes buscar y filtrar todas las carreras de todas las temporadas (temporada, categoría, estado, nombre). La lista se ordena de más nueva a más antigua, y un filtro “Solo mi división” la acota a las carreras de tu propia división para que encuentres rápido lo que corriste hoy. Haz clic en una carrera para abrir su página de historial con las ediciones anteriores, el ganador de cada temporada y un resumen acumulado de los ciclistas que mejor han rendido históricamente en esa carrera. Cada edición enlaza directamente con el resultado completo de esa edición."
       },
       "promotionRelegation": {
         "title": "Ascensos y descensos",
@@ -693,7 +693,7 @@
       },
       "adminRecomputeStandings": {
         "title": "Admin: recalcular la clasificación por desviación",
-        "text": "Si a una temporada activa o completada le faltan clasificaciones por una desviación de datos antiguos, el administrador puede usar el botón «↻ Clasificación» de la página de Admin. Recalcula la tabla a partir de los `race_results` almacenados, crea las filas de clasificación que faltan y actualiza el puesto interno de la división que la directiva usa al final de la temporada."
+        "text": "Si a una temporada activa o completada le faltan clasificaciones por una desviación de datos antiguos, el administrador puede usar el botón “↻ Clasificación” de la página de Admin. Recalcula la tabla a partir de los `race_results` almacenados, crea las filas de clasificación que faltan y actualiza el puesto interno de la división que la directiva usa al final de la temporada."
       },
       "adminBetaReset": {
         "title": "Admin: reinicio de la beta",
@@ -760,7 +760,7 @@
       },
       "payout": {
         "title": "Pago",
-        "text": "Los premios en metálico se pagan automáticamente a tu saldo cuando el administrador finaliza los resultados de carrera y aparecen como una transacción de «premio» en tu registro de finanzas. Los puntos de la clasificación de la temporada y los premios en metálico se calculan por separado: los puntos deciden la clasificación, mientras que el premio en CZ$ solo afecta a tu saldo."
+        "text": "Los premios en metálico se pagan automáticamente a tu saldo cuando el administrador finaliza los resultados de carrera y aparecen como una transacción de “premio” en tu registro de finanzas. Los puntos de la clasificación de la temporada y los premios en metálico se calculan por separado: los puntos deciden la clasificación, mientras que el premio en CZ$ solo afecta a tu saldo."
       },
       "fullTable": {
         "title": "La tabla de puntos completa",
@@ -827,7 +827,7 @@
       },
       "newManagers": {
         "title": "¿Y los mánagers nuevos?",
-        "text": "La primera temporada de un mánager nuevo cuenta con peso completo desde el primer día, junto a los puntos antiguos y reducidos a la mitad de los veteranos, así que no hay penalización por antigüedad. Los rookies (mánagers en su primera temporada) también se destacan por separado en el panel «Mejor mánager nuevo»."
+        "text": "La primera temporada de un mánager nuevo cuenta con peso completo desde el primer día, junto a los puntos antiguos y reducidos a la mitad de los veteranos, así que no hay penalización por antigüedad. Los rookies (mánagers en su primera temporada) también se destacan por separado en el panel “Mejor mánager nuevo”."
       },
       "inactive": {
         "title": "¿Por qué he desaparecido de la lista?",
@@ -835,7 +835,7 @@
       },
       "movement": {
         "title": "La flecha de movimiento",
-        "text": "La flecha de subida/bajada junto a tu puesto muestra cómo ha cambiado tu posición desde la instantánea de la semana pasada (no en directo en cada carga de página). El panel «Escaladores de la temporada», en cambio, mide los puestos ganados desde que empezó la temporada."
+        "text": "La flecha de subida/bajada junto a tu puesto muestra cómo ha cambiado tu posición desde la instantánea de la semana pasada (no en directo en cada carga de página). El panel “Escaladores de la temporada”, en cambio, mide los puestos ganados desde que empezó la temporada."
       }
     },
     "riders": {
@@ -1000,7 +1000,7 @@
       },
       "development": {
         "title": "Desarrollo a lo largo del tiempo",
-        "text": "En la página de estadísticas de un ciclista hay una pestaña «Desarrollo». Aquí puedes elegir una habilidad, seguir su desarrollo en un gráfico y ver los últimos puntos de datos históricos. Se añaden puntos de datos nuevos a medida que los ciclistas se desarrollan, por ejemplo en los cambios de temporada. Si la pestaña está vacía, el ciclista aún no tiene desarrollo registrado."
+        "text": "En la página de estadísticas de un ciclista hay una pestaña “Desarrollo”. Aquí puedes elegir una habilidad, seguir su desarrollo en un gráfico y ver los últimos puntos de datos históricos. Se añaden puntos de datos nuevos a medida que los ciclistas se desarrollan, por ejemplo en los cambios de temporada. Si la pestaña está vacía, el ciclista aún no tiene desarrollo registrado."
       },
       "agingAndDecline": {
         "title": "Edad, pico y declive",
@@ -1049,7 +1049,7 @@
       },
       "ceilingReached": {
         "title": "La habilidad de mi ciclista ha dejado de subir",
-        "text": "Eso ahora es poco habitual. Cada habilidad sigue teniendo un techo vitalicio fijado por el tipo y el potencial, pero los ciclistas ya no llegan a él sin más. Lo cerca que llega un ciclista, y en qué habilidades, lo decide cómo lo entrenas. Si una habilidad realmente se ha detenido, casi siempre es una de dos cosas. O bien el ciclista ha pasado su pico, donde las habilidades decaen en lugar de crecer, y lo que tiene es lo que conserva. O bien la habilidad ya está por encima de lo que su tipo y potencial construirían por sí solos, lo que ocurre con ciclistas heredados de una versión anterior del juego. No se le quita nada, simplemente no subirá más. Cada habilidad tiene su propia línea en la página de Entrenamiento diario y en el perfil del ciclista, y una terminada muestra «hecho» donde las demás muestran progreso. El número junto a una habilidad es siempre su valor actual, nunca el techo en sí, que nunca se muestra como número en ninguna parte del juego, y el progreso se ralentiza de forma natural cuanto más se acerca un ciclista, así que un valor que se queda quieto unos días no significa necesariamente que haya terminado."
+        "text": "Eso ahora es poco habitual. Cada habilidad sigue teniendo un techo vitalicio fijado por el tipo y el potencial, pero los ciclistas ya no llegan a él sin más. Lo cerca que llega un ciclista, y en qué habilidades, lo decide cómo lo entrenas. Si una habilidad realmente se ha detenido, casi siempre es una de dos cosas. O bien el ciclista ha pasado su pico, donde las habilidades decaen en lugar de crecer, y lo que tiene es lo que conserva. O bien la habilidad ya está por encima de lo que su tipo y potencial construirían por sí solos, lo que ocurre con ciclistas heredados de una versión anterior del juego. No se le quita nada, simplemente no subirá más. Cada habilidad tiene su propia línea en la página de Entrenamiento diario y en el perfil del ciclista, y una terminada muestra “hecho” donde las demás muestran progreso. El número junto a una habilidad es siempre su valor actual, nunca el techo en sí, que nunca se muestra como número en ninguna parte del juego, y el progreso se ralentiza de forma natural cuanto más se acerca un ciclista, así que un valor que se queda quieto unos días no significa necesariamente que haya terminado."
       },
       "trainToday": {
         "title": "Ejecuta ahora el entrenamiento de hoy",
@@ -1057,7 +1057,7 @@
       },
       "runDayNow": {
         "title": "Ejecuta ahora el entrenamiento de hoy",
-        "text": "Desde la temporada 4 el entrenamiento del día se ejecuta solo, de una vez, cuando termina la última carrera del día y no antes de las 20:00. Todos los días de carrera de ese día se entrenan en la misma ejecución, así que no se pierde nada por no estar en línea. «Ejecutar ahora el entrenamiento de hoy» está ahí solo por si no quieres esperar: ejecuta exactamente el mismo entrenamiento, sin bonificación ni ventaja, y se abre en el mismo momento en que se abriría la ejecución automática. Una vez entrenado el día, no se puede volver a ejecutar. Con Entrenar ahora (beta), pulsarlo también bloquea la selección de carrera de hoy para los ciclistas que han entrenado: no se pueden añadir a la carrera de hoy ni quitar de ella. Los ciclistas que fiches o asciendas después de pulsarlo sí pueden correr."
+        "text": "Desde la temporada 4 el entrenamiento del día se ejecuta solo, de una vez, cuando termina la última carrera del día y no antes de las 20:00. Todos los días de carrera de ese día se entrenan en la misma ejecución, así que no se pierde nada por no estar en línea. “Ejecutar ahora el entrenamiento de hoy” está ahí solo por si no quieres esperar: ejecuta exactamente el mismo entrenamiento, sin bonificación ni ventaja, y se abre en el mismo momento en que se abriría la ejecución automática. Una vez entrenado el día, no se puede volver a ejecutar. Con Entrenar ahora (beta), pulsarlo también bloquea la selección de carrera de hoy para los ciclistas que han entrenado: no se pueden añadir a la carrera de hoy ni quitar de ella. Los ciclistas que fiches o asciendas después de pulsarlo sí pueden correr."
       },
       "raceDays": {
         "title": "Días de carrera y entrenamiento",
@@ -1069,11 +1069,11 @@
       },
       "smartDefault": {
         "title": "¿Qué entrena un ciclista sin enfoque fijado?",
-        "text": "Un ciclista sin enfoque elegido no se queda sin entrenar: el asistente lo entrena hacia un enfoque que encaje con su tipo, por ejemplo un Sprinter por defecto va a Sprint y un Escalador a VO2max. Verás una pequeña nota «Asistente: ... (auto)» bajo el desplegable de enfoque cuando se aplique. Fijar tu propio enfoque siempre lo anula. Para aplicar un enfoque acorde con el tipo a varios ciclistas a la vez, selecciónalos y elige «Enfoque inteligente (según el tipo de ciclista)» en la barra de aplicación en bloque; los ciclistas que ya tienen un enfoque fijado se omiten, así que tus elecciones existentes nunca se sobrescriben."
+        "text": "Un ciclista sin enfoque elegido no se queda sin entrenar: el asistente lo entrena hacia un enfoque que encaje con su tipo, por ejemplo un Sprinter por defecto va a Sprint y un Escalador a VO2max. Verás una pequeña nota “Asistente: ... (auto)” bajo el desplegable de enfoque cuando se aplique. Fijar tu propio enfoque siempre lo anula. Para aplicar un enfoque acorde con el tipo a varios ciclistas a la vez, selecciónalos y elige “Enfoque inteligente (según el tipo de ciclista)” en la barra de aplicación en bloque; los ciclistas que ya tienen un enfoque fijado se omiten, así que tus elecciones existentes nunca se sobrescriben."
       },
       "assistantSuggestions": {
         "title": "Pedir sugerencias al asistente",
-        "text": "El botón «Pedir sugerencias al asistente» de la cabecera del Entrenamiento diario abre un panel de revisión con un enfoque acorde con el tipo para cada ciclista (la misma sugerencia que usa el valor predeterminado inteligente). Cada fila muestra al ciclista, una marca «Sin plan» o «Tu plan», y lo que fijaría el asistente. No se aplica nada hasta que aceptes: marca los ciclistas que quieras y haz clic en «Aceptar las seleccionadas», o haz clic en «Aceptar todas», que abarca a todos los ciclistas marcados como «Sin plan». Activa «Solo ciclistas sin plan» para revisar únicamente a los ciclistas que aún no están entrenados. Aceptar nunca sobrescribe a un ciclista que ya tiene su propio enfoque fijado, la misma regla que la opción en bloque «Enfoque inteligente» de la plantilla, así que las filas marcadas «Tu plan» no se pueden marcar. Borra primero el enfoque de ese ciclista si quieres que el asistente se encargue. Debajo de los ciclistas, el panel también ofrece un programa de entrenamiento para cada tipo de ciclista (por ejemplo un programa de Sprinter para tus sprinters). Haz clic en «Aplicar a estos» para copiarlo a su plan. Solo va a los ciclistas sin su propio plan semanal que no siguen a un grupo de entrenamiento, y nunca cambia a nadie más."
+        "text": "El botón “Pedir sugerencias al asistente” de la cabecera del Entrenamiento diario abre un panel de revisión con un enfoque acorde con el tipo para cada ciclista (la misma sugerencia que usa el valor predeterminado inteligente). Cada fila muestra al ciclista, una marca “Sin plan” o “Tu plan”, y lo que fijaría el asistente. No se aplica nada hasta que aceptes: marca los ciclistas que quieras y haz clic en “Aceptar las seleccionadas”, o haz clic en “Aceptar todas”, que abarca a todos los ciclistas marcados como “Sin plan”. Activa “Solo ciclistas sin plan” para revisar únicamente a los ciclistas que aún no están entrenados. Aceptar nunca sobrescribe a un ciclista que ya tiene su propio enfoque fijado, la misma regla que la opción en bloque “Enfoque inteligente” de la plantilla, así que las filas marcadas “Tu plan” no se pueden marcar. Borra primero el enfoque de ese ciclista si quieres que el asistente se encargue. Debajo de los ciclistas, el panel también ofrece un programa de entrenamiento para cada tipo de ciclista (por ejemplo un programa de Sprinter para tus sprinters). Haz clic en “Aplicar a estos” para copiarlo a su plan. Solo va a los ciclistas sin su propio plan semanal que no siguen a un grupo de entrenamiento, y nunca cambia a nadie más."
       },
       "formFatigue": {
         "title": "Forma y fatiga",
@@ -1089,11 +1089,11 @@
       },
       "progressBars": {
         "title": "Barras de progreso y puntos de habilidad",
-        "text": "Los perfiles de los ciclistas muestran una barra de progreso para cada habilidad que se entrena. La barra se llena a medida que se acumula el entrenamiento. Cuando la barra llega al máximo, el ciclista gana +1 en esa habilidad y la barra empieza de nuevo hacia el SIGUIENTE punto, así que justo después de una ganancia, una barra baja o casi vacía es buena señal, no una pérdida. La página de Entrenamiento también muestra una etiqueta «+N hoy» en los ciclistas que han ganado puntos enteros en la sesión de hoy. Cada habilidad tiene un techo vitalicio oculto fijado por el potencial y la edad del ciclista; una habilidad que lo ha alcanzado muestra «hecho» en su propia línea en lugar de una barra. La pestaña Entrenamiento del perfil del ciclista enumera las 17 habilidades con lo que es cada una ahora, cuántos puntos enteros ha ganado el ciclista esta temporada y cuánto lleva del siguiente punto. Cambia de enfoque si otra área aún tiene margen, o disfruta del ciclista a plena fuerza. Los ciclistas veteranos que han pasado su pico de carrera tienen lógicamente poco o ningún margen. Un porcentaje como «Llano +10 %» en un informe de entrenamiento es el progreso del día contado en puntos de habilidad: 100 % equivale a un punto entero. El progreso se arrastra de un día a otro. Nada se reinicia a mitad de temporada. El recuento «esta temporada» solo abarca los días dentro de la temporada activa. Entre dos temporadas muestra la fecha de inicio en lugar de un número, mientras que los valores de las habilidades y las barras siguen contando cada sesión. El recuento de una temporada nueva empieza vacío y se va llenando desde su primer día de entrenamiento."
+        "text": "Los perfiles de los ciclistas muestran una barra de progreso para cada habilidad que se entrena. La barra se llena a medida que se acumula el entrenamiento. Cuando la barra llega al máximo, el ciclista gana +1 en esa habilidad y la barra empieza de nuevo hacia el SIGUIENTE punto, así que justo después de una ganancia, una barra baja o casi vacía es buena señal, no una pérdida. La página de Entrenamiento también muestra una etiqueta “+N hoy” en los ciclistas que han ganado puntos enteros en la sesión de hoy. Cada habilidad tiene un techo vitalicio oculto fijado por el potencial y la edad del ciclista; una habilidad que lo ha alcanzado muestra “hecho” en su propia línea en lugar de una barra. La pestaña Entrenamiento del perfil del ciclista enumera las 17 habilidades con lo que es cada una ahora, cuántos puntos enteros ha ganado el ciclista esta temporada y cuánto lleva del siguiente punto. Cambia de enfoque si otra área aún tiene margen, o disfruta del ciclista a plena fuerza. Los ciclistas veteranos que han pasado su pico de carrera tienen lógicamente poco o ningún margen. Un porcentaje como “Llano +10 %” en un informe de entrenamiento es el progreso del día contado en puntos de habilidad: 100 % equivale a un punto entero. El progreso se arrastra de un día a otro. Nada se reinicia a mitad de temporada. El recuento “esta temporada” solo abarca los días dentro de la temporada activa. Entre dos temporadas muestra la fecha de inicio en lugar de un número, mientras que los valores de las habilidades y las barras siguen contando cada sesión. El recuento de una temporada nueva empieza vacío y se va llenando desde su primer día de entrenamiento."
       },
       "trainingScore": {
         "title": "La puntuación de entrenamiento",
-        "text": "Cada sesión que completa un ciclista recibe una puntuación de entrenamiento de 1 a 99. Mide la CALIDAD de esa sesión, no lo que el ciclista sacó de ella: lo exigente que fue la sesión, lo bien que encajó con los puntos fuertes del ciclista, la forma y la fatiga del ciclista ese día, el entrenador y las instalaciones que la respaldan, el talento y la edad del ciclista, y el propio día. La puntuación es lo que impulsa el desarrollo: una sesión mejor mueve más las habilidades. No depende de lo cerca que esté una habilidad de su techo, así que un ciclista que casi ha terminado sus habilidades de enfoque sigue obteniendo una lectura honesta de lo buena que fue la sesión. Los días de descanso no reciben puntuación, porque no hubo sesión que medir. En un día en que una carrera ocupa el lugar de la sesión, la columna muestra «Carrera» en lugar de un número. El número de hoy aparece una vez que se ha ejecutado la sesión de hoy, y hasta entonces la columna muestra la última en gris. Solo tú puedes ver las puntuaciones de tus propios ciclistas."
+        "text": "Cada sesión que completa un ciclista recibe una puntuación de entrenamiento de 1 a 99. Mide la CALIDAD de esa sesión, no lo que el ciclista sacó de ella: lo exigente que fue la sesión, lo bien que encajó con los puntos fuertes del ciclista, la forma y la fatiga del ciclista ese día, el entrenador y las instalaciones que la respaldan, el talento y la edad del ciclista, y el propio día. La puntuación es lo que impulsa el desarrollo: una sesión mejor mueve más las habilidades. No depende de lo cerca que esté una habilidad de su techo, así que un ciclista que casi ha terminado sus habilidades de enfoque sigue obteniendo una lectura honesta de lo buena que fue la sesión. Los días de descanso no reciben puntuación, porque no hubo sesión que medir. En un día en que una carrera ocupa el lugar de la sesión, la columna muestra “Carrera” en lugar de un número. El número de hoy aparece una vez que se ha ejecutado la sesión de hoy, y hasta entonces la columna muestra la última en gris. Solo tú puedes ver las puntuaciones de tus propios ciclistas."
       },
       "longTermGrowth": {
         "title": "Crecimiento a largo plazo",
@@ -1109,11 +1109,11 @@
       },
       "weeklyRhythm": {
         "title": "Ritmo semanal",
-        "text": "El panel «Ritmo semanal» de la página de Entrenamiento te permite fijar una intensidad objetivo para cada día de la semana (de lunes a domingo) para todo tu equipo a la vez. Dirige solo la intensidad, nunca el enfoque. Importante: el ritmo es un VALOR PREDETERMINADO para los ciclistas que no tienen una intensidad propia fijada en su enfoque. Si un ciclista tiene elegido su propio enfoque e intensidad (en su fila de la plantilla, o como programa de temporada), el ajuste propio de ese ciclista siempre gana para él, todos los días, incluso mientras un ritmo de equipo está activo; el ritmo nunca anula en silencio a un ciclista que hayas puesto en Descanso o Suave. Solo rellena una intensidad objetivo para los ciclistas que no has personalizado tú. La fila de cada ciclista muestra la intensidad real de hoy y de dónde viene («ritmo semanal del equipo» o «ajuste propio de este ciclista»), así que no se oculta nada. El ritmo nunca ejecuta el entrenamiento por sí mismo: solo fija una intensidad predeterminada para la sesión del día, la ejecutes tú o la ejecute tu asistente después de la última carrera del día, a partir de las 20:00."
+        "text": "El panel “Ritmo semanal” de la página de Entrenamiento te permite fijar una intensidad objetivo para cada día de la semana (de lunes a domingo) para todo tu equipo a la vez. Dirige solo la intensidad, nunca el enfoque. Importante: el ritmo es un VALOR PREDETERMINADO para los ciclistas que no tienen una intensidad propia fijada en su enfoque. Si un ciclista tiene elegido su propio enfoque e intensidad (en su fila de la plantilla, o como programa de temporada), el ajuste propio de ese ciclista siempre gana para él, todos los días, incluso mientras un ritmo de equipo está activo; el ritmo nunca anula en silencio a un ciclista que hayas puesto en Descanso o Suave. Solo rellena una intensidad objetivo para los ciclistas que no has personalizado tú. La fila de cada ciclista muestra la intensidad real de hoy y de dónde viene (“ritmo semanal del equipo” o “ajuste propio de este ciclista”), así que no se oculta nada. El ritmo nunca ejecuta el entrenamiento por sí mismo: solo fija una intensidad predeterminada para la sesión del día, la ejecutes tú o la ejecute tu asistente después de la última carrera del día, a partir de las 20:00."
       },
       "individualWeeklyPlan": {
         "title": "Plan semanal individual por ciclista",
-        "text": "Haz clic en «Plan semanal individual» en la fila de cualquier ciclista de la plantilla para fijar la intensidad objetivo propia de ese ciclista por día, aparte tanto de su propio enfoque/intensidad como del ritmo del equipo. Es la capa más específica: un plan semanal individual gana sobre todo lo demás para ese ciclista, incluida su propia intensidad explícita, que a su vez ya gana sobre el ritmo semanal del equipo. Está pensado para los 2 o 3 ciclistas cuyo entrenamiento quieres variar día a día. Los ciclistas con su propio plan semanal muestran una etiqueta «Plan propio» en la plantilla."
+        "text": "Haz clic en “Plan semanal individual” en la fila de cualquier ciclista de la plantilla para fijar la intensidad objetivo propia de ese ciclista por día, aparte tanto de su propio enfoque/intensidad como del ritmo del equipo. Es la capa más específica: un plan semanal individual gana sobre todo lo demás para ese ciclista, incluida su propia intensidad explícita, que a su vez ya gana sobre el ritmo semanal del equipo. Está pensado para los 2 o 3 ciclistas cuyo entrenamiento quieres variar día a día. Los ciclistas con su propio plan semanal muestran una etiqueta “Plan propio” en la plantilla."
       },
       "fatigueLimit": {
         "title": "Límite de fatiga",
@@ -1121,7 +1121,7 @@
       },
       "trainingGroups": {
         "title": "Grupos de entrenamiento",
-        "text": "Un grupo te permite tomar una decisión de entrenamiento para varios ciclistas. Crea uno en Programa, Plan: abre «Plan para» y elige «+ Grupo nuevo». Ponle un nombre y empieza desde un tipo de ciclista o elige tú mismo a los ciclistas. Un ciclista puede estar en un grupo. Entonces un cambio en un campo se aplica a todo el grupo, y los ciclistas con una etapa conservan la etapa. «Fatiga esta noche» muestra al ciclista más cansado del grupo. El orden es fijo: primero el plan propio del ciclista, luego el plan de su grupo y después el plan del equipo. Si cambias los campos propios de un ciclista, su plan gana hasta que vuelvas a elegir «Seguir al grupo». También puedes aplicar un programa a un grupo en Programas, y dar a un grupo su propia excepción en Límite de fatiga."
+        "text": "Un grupo te permite tomar una decisión de entrenamiento para varios ciclistas. Crea uno en Programa, Plan: abre “Plan para” y elige “+ Grupo nuevo”. Ponle un nombre y empieza desde un tipo de ciclista o elige tú mismo a los ciclistas. Un ciclista puede estar en un grupo. Entonces un cambio en un campo se aplica a todo el grupo, y los ciclistas con una etapa conservan la etapa. “Fatiga esta noche” muestra al ciclista más cansado del grupo. El orden es fijo: primero el plan propio del ciclista, luego el plan de su grupo y después el plan del equipo. Si cambias los campos propios de un ciclista, su plan gana hasta que vuelvas a elegir “Seguir al grupo”. También puedes aplicar un programa a un grupo en Programas, y dar a un grupo su propia excepción en Límite de fatiga."
       }
     },
     "activityfeed": {
@@ -1161,7 +1161,7 @@
       },
       "transferRumors": {
         "title": "Rumores de fichajes",
-        "text": "Si un mánager mira a uno de tus ciclistas, recibes una notificación anónima: «Un mánager está mirando a tu ciclista X». Recibes como máximo una notificación por ciclista y hora para evitar el spam."
+        "text": "Si un mánager mira a uno de tus ciclistas, recibes una notificación anónima: “Un mánager está mirando a tu ciclista X”. Recibes como máximo una notificación por ciclista y hora para evitar el spam."
       }
     },
     "contracts": {
@@ -1172,7 +1172,7 @@
       },
       "frozenSalary": {
         "title": "Por qué el salario está fijado (contratos de oro y cargas)",
-        "text": "Como el salario se fija al firmar, un ciclista joven que se desarrolla hasta ser un jugador mejor se convierte en una ganga: pagas una tarifa de principio de carrera por un ciclista ahora más fuerte. Es un «contrato de oro». Lo contrario también es cierto: una estrella en declive fichada en su valor máximo sigue con un salario alto aunque su habilidad baje, convirtiéndose en una carga financiera. Detectar estas situaciones pronto es una parte esencial de la gestión de la plantilla."
+        "text": "Como el salario se fija al firmar, un ciclista joven que se desarrolla hasta ser un jugador mejor se convierte en una ganga: pagas una tarifa de principio de carrera por un ciclista ahora más fuerte. Es un “contrato de oro”. Lo contrario también es cierto: una estrella en declive fichada en su valor máximo sigue con un salario alto aunque su habilidad baje, convirtiéndose en una carga financiera. Detectar estas situaciones pronto es una parte esencial de la gestión de la plantilla."
       },
       "contractOnTrade": {
         "title": "Los contratos siguen al ciclista",
@@ -1184,7 +1184,7 @@
       },
       "freeAgents": {
         "title": "Agentes libres",
-        "text": "Los agentes libres no tienen salario hasta que un equipo los ficha. El perfil del ciclista y la página de la subasta muestran un salario estimado (según la producción esperada del ciclista esta temporada) para que puedas planificar tu presupuesto antes de pujar. El salario real solo se fija en el momento de la firma. Los agentes libres aparecen sobre todo cuando el contrato de un ciclista termina y no se renueva en el cambio de temporada: en la práctica es casi siempre una plantilla gestionada por una persona, porque los equipos controlados por la IA renuevan automáticamente sus propios contratos que vencen en esa misma transición. El resto son ciclistas liberados por su antiguo club, ya sea en la graduación de la Academia o por una oferta de cantera de la Academia que caducó sin respuesta y no encontró comprador en subasta (consulta «¿Caducan las ofertas de cantera de la Academia?»)."
+        "text": "Los agentes libres no tienen salario hasta que un equipo los ficha. El perfil del ciclista y la página de la subasta muestran un salario estimado (según la producción esperada del ciclista esta temporada) para que puedas planificar tu presupuesto antes de pujar. El salario real solo se fija en el momento de la firma. Los agentes libres aparecen sobre todo cuando el contrato de un ciclista termina y no se renueva en el cambio de temporada: en la práctica es casi siempre una plantilla gestionada por una persona, porque los equipos controlados por la IA renuevan automáticamente sus propios contratos que vencen en esa misma transición. El resto son ciclistas liberados por su antiguo club, ya sea en la graduación de la Academia o por una oferta de cantera de la Academia que caducó sin respuesta y no encontró comprador en subasta (consulta “¿Caducan las ofertas de cantera de la Academia?”)."
       }
     },
     "academy": {
@@ -1365,7 +1365,7 @@
       },
       "stagesPerDay": {
         "title": "Por qué una carrera por etapas puede terminar en menos días que etapas tiene",
-        "text": "La División 1 corre hasta cinco etapas al día, así que una carrera de ocho etapas suele terminar en tres o cuatro fechas. Es deliberado: evita que una carrera por etapas bloquee a tus ciclistas durante una semana y media. Cada etapa sigue teniendo su propio día de carrera, que es lo que ata a un ciclista, así que las ocho etapas ocupan ocho días de carrera aunque se corran en cuatro fechas. Por eso una carrera puede leerse como «día de carrera 12 a 19» estando en cuatro fechas del calendario. Un ciclista queda atado a una carrera por día de carrera, nunca por fecha, así que un compañero puede salir en otra carrera en la misma fecha. Si los días de carrera de una carrera por etapas tienen huecos, sigues atado durante todo el tramo, desde su primer día de carrera hasta el último: no puedes dejar una carrera por etapas a medias para empezar otra cosa. La etiqueta de carga de la temporada cuenta los días de carrera que un ciclista corre de verdad, así que es la menor de las dos cifras."
+        "text": "La División 1 corre hasta cinco etapas al día, así que una carrera de ocho etapas suele terminar en tres o cuatro fechas. Es deliberado: evita que una carrera por etapas bloquee a tus ciclistas durante una semana y media. Cada etapa sigue teniendo su propio día de carrera, que es lo que ata a un ciclista, así que las ocho etapas ocupan ocho días de carrera aunque se corran en cuatro fechas. Por eso una carrera puede leerse como “día de carrera 12 a 19” estando en cuatro fechas del calendario. Un ciclista queda atado a una carrera por día de carrera, nunca por fecha, así que un compañero puede salir en otra carrera en la misma fecha. Si los días de carrera de una carrera por etapas tienen huecos, sigues atado durante todo el tramo, desde su primer día de carrera hasta el último: no puedes dejar una carrera por etapas a medias para empezar otra cosa. La etiqueta de carga de la temporada cuenta los días de carrera que un ciclista corre de verdad, así que es la menor de las dos cifras."
       },
       "suitability": {
         "title": "Leer la tabla de selección",
@@ -1401,7 +1401,7 @@
       },
       "scouting": {
         "title": "Ojear otras divisiones",
-        "text": "Cambia el centro de carreras a «Mi división» u «Otras divisiones» para explorar las listas de salida próximas de cualquier grupo, en modo solo lectura. Las listas de salida se abren siete días antes de cada carrera y solo muestran plantillas en bruto (qué ciclistas ha inscrito un equipo), para que puedas calcular el pelotón esperado. Los roles, la forma y la fatiga siguen ocultos, y las carreras más lejanas siguen bloqueadas hasta que se abre su lista de salida."
+        "text": "Cambia el centro de carreras a “Mi división” u “Otras divisiones” para explorar las listas de salida próximas de cualquier grupo, en modo solo lectura. Las listas de salida se abren siete días antes de cada carrera y solo muestran plantillas en bruto (qué ciclistas ha inscrito un equipo), para que puedas calcular el pelotón esperado. Los roles, la forma y la fatiga siguen ocultos, y las carreras más lejanas siguen bloqueadas hasta que se abre su lista de salida."
       }
     },
     "raceDay": {
@@ -1435,7 +1435,7 @@
     },
     "peakWhatItDoes": {
       "q": "¿Qué hace un pico?",
-      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. Los picos todavía no cuentan en las carreras; las carreras usan su Forma normal. Mira «¿Cómo funciona el entrenamiento de pico?» y «¿Un pico me cuesta algo después?» más abajo para saber exactamente cuánto y cuándo."
+      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. Los picos todavía no cuentan en las carreras; las carreras usan su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
     },
     "peakTraining": {
       "q": "¿Cómo funciona el entrenamiento de pico?",
@@ -1447,11 +1447,11 @@
     },
     "peakPayback": {
       "q": "¿Un pico me cuesta algo después?",
-      "a": "Sí. Después de que se cierre la ventana de un pico, el ciclista arrastra unos -14 de forma durante los siete días siguientes. Ese es el precio de la cima, y por eso un pico es una elección y no una mejora gratuita. El Plan de forma te avisa de esto antes de que elijas: las carreras del desplegable de objetivo se marcan con «riesgo de bajón» si alcanzar el pico allí haría caer el bajón sobre otra carrera del programa del ciclista, incluidas las inscripciones rellenadas automáticamente. Si ya existe una colisión, la fila nombra la carrera y cuántos días después del pico cae. El tablero de Selección del equipo cuenta la misma historia por carrera: la tarjeta de cada carrera enumera quién alcanza el pico allí y quién está pagando un pico reciente."
+      "a": "Sí. Después de que se cierre la ventana de un pico, el ciclista arrastra unos -14 de forma durante los siete días siguientes. Ese es el precio de la cima, y por eso un pico es una elección y no una mejora gratuita. El Plan de forma te avisa de esto antes de que elijas: las carreras del desplegable de objetivo se marcan con “riesgo de bajón” si alcanzar el pico allí haría caer el bajón sobre otra carrera del programa del ciclista, incluidas las inscripciones rellenadas automáticamente. Si ya existe una colisión, la fila nombra la carrera y cuántos días después del pico cae. El tablero de Selección del equipo cuenta la misma historia por carrera: la tarjeta de cada carrera enumera quién alcanza el pico allí y quién está pagando un pico reciente."
     },
     "overlappingRaces": {
       "q": "¿Cómo funcionan las carreras solapadas y el reparto de la plantilla?",
-      "a": "Las carreras se solapan cuando sus etapas caen en el mismo día de carrera del juego, y un ciclista solo puede tomar la salida en una carrera por día del juego, así que repartir tu plantilla entre carreras solapadas es una decisión estratégica. Varias carreras pueden compartir la misma fecha del calendario sin entrar en conflicto cuando están en días distintos del juego. Cada carrera muestra su día de carrera (por ejemplo Día de carrera 11), así que dos carreras de la misma tarde son claramente días de juego distintos; reutilizar a un ciclista en dos días de carrera está permitido, pero arrastra fatiga a la carrera posterior, así que es una decisión de equilibrio. La vista de reparto de la plantilla (Planificación -> Selección del equipo) muestra tus carreras solapadas lado a lado. Añade ciclistas a una carrera desde tu grupo disponible; un ciclista que pones en una carrera queda bloqueado en las demás carreras que se solapan con ella, pero quítalo y vuelve a estar disponible de inmediato para otra carrera. Tus ediciones se guardan localmente hasta que pulsas Guardar cambios (un aviso te advierte si intentas salir con ediciones sin guardar). También puedes guardar una alineación parcial: los huecos que dejes abiertos se rellenan automáticamente con tus ciclistas disponibles cuando se corra la carrera. Si no quieres inscribirte en una carrera, retírate de ella y simplemente no tomas la salida; entonces la columna te dice que tu equipo no sale voluntariamente, y una selección guardada ya no se puede mandar a esa carrera. El asistente rellena tus alineaciones automáticamente como punto de partida, y puedes pedirle que las rellene otra vez: elige Rellenar huecos para conservar las elecciones que hiciste a mano, o Reconstruir todo para sustituir todas las elecciones por la sugerencia del asistente. Una vez que ha empezado una carrera, su alineación es definitiva y ya no se puede cambiar. La pestaña Calendario de la vista de temporada cuenta de otra manera: muestra «Día N de M», el día del calendario de la temporada, no la casilla del día de carrera, así que la misma tarde puede leerse Día de carrera 11 en Selección del equipo y Día 8 de 27 en el calendario."
+      "a": "Las carreras se solapan cuando sus etapas caen en el mismo día de carrera del juego, y un ciclista solo puede tomar la salida en una carrera por día del juego, así que repartir tu plantilla entre carreras solapadas es una decisión estratégica. Varias carreras pueden compartir la misma fecha del calendario sin entrar en conflicto cuando están en días distintos del juego. Cada carrera muestra su día de carrera (por ejemplo Día de carrera 11), así que dos carreras de la misma tarde son claramente días de juego distintos; reutilizar a un ciclista en dos días de carrera está permitido, pero arrastra fatiga a la carrera posterior, así que es una decisión de equilibrio. La vista de reparto de la plantilla (Planificación -> Selección del equipo) muestra tus carreras solapadas lado a lado. Añade ciclistas a una carrera desde tu grupo disponible; un ciclista que pones en una carrera queda bloqueado en las demás carreras que se solapan con ella, pero quítalo y vuelve a estar disponible de inmediato para otra carrera. Tus ediciones se guardan localmente hasta que pulsas Guardar cambios (un aviso te advierte si intentas salir con ediciones sin guardar). También puedes guardar una alineación parcial: los huecos que dejes abiertos se rellenan automáticamente con tus ciclistas disponibles cuando se corra la carrera. Si no quieres inscribirte en una carrera, retírate de ella y simplemente no tomas la salida; entonces la columna te dice que tu equipo no sale voluntariamente, y una selección guardada ya no se puede mandar a esa carrera. El asistente rellena tus alineaciones automáticamente como punto de partida, y puedes pedirle que las rellene otra vez: elige Rellenar huecos para conservar las elecciones que hiciste a mano, o Reconstruir todo para sustituir todas las elecciones por la sugerencia del asistente. Una vez que ha empezado una carrera, su alineación es definitiva y ya no se puede cambiar. La pestaña Calendario de la vista de temporada cuenta de otra manera: muestra “Día N de M”, el día del calendario de la temporada, no la casilla del día de carrera, así que la misma tarde puede leerse Día de carrera 11 en Selección del equipo y Día 8 de 27 en el calendario."
     },
     "stageRaceLockout": {
       "q": "¿Por qué mi ciclista está bloqueado durante una carrera por etapas?",
@@ -1491,11 +1491,11 @@
     },
     "appUpdatesFaq": {
       "q": "¿Por qué el juego se recarga a veces solo?",
-      "a": "Cuando publico una versión nueva, una pestaña que ya tenías abierta sigue apuntando a los archivos antiguos, y pueden desaparecer. La pestaña comprueba si hay una versión nueva y se recarga sola para que obtengas la nueva. Nunca lo hace mientras tienes cambios sin guardar o una película de carrera en marcha. En ese caso aparece abajo una pequeña barra «Nueva versión lista» y eres tú quien decide cuándo aplicar la actualización."
+      "a": "Cuando publico una versión nueva, una pestaña que ya tenías abierta sigue apuntando a los archivos antiguos, y pueden desaparecer. La pestaña comprueba si hay una versión nueva y se recarga sola para que obtengas la nueva. Nunca lo hace mientras tienes cambios sin guardar o una película de carrera en marcha. En ese caso aparece abajo una pequeña barra “Nueva versión lista” y eres tú quien decide cuándo aplicar la actualización."
     },
     "passwordReset": {
       "q": "¿Cómo restablezco mi contraseña?",
-      "a": "Desde la página de inicio de sesión puedes hacer clic en «¿Has olvidado tu contraseña?», introducir tu correo y seguir el enlace de restablecimiento del correo. El enlace abre una página de restablecimiento específica donde eliges una contraseña nueva."
+      "a": "Desde la página de inicio de sesión puedes hacer clic en “¿Has olvidado tu contraseña?”, introducir tu correo y seguir el enlace de restablecimiento del correo. El enlace abre una página de restablecimiento específica donde eliges una contraseña nueva."
     },
     "riderTransferTiming": {
       "q": "¿Cuándo cambia de equipo un ciclista tras un fichaje?",
@@ -1547,7 +1547,7 @@
     },
     "developmentProjectionFaq": {
       "q": "¿Qué es la proyección de la pestaña Desarrollo?",
-      "a": "Es un pronóstico de hacia dónde se encamina un ciclista: una línea discontinua desde su valoración de tipo actual hacia una banda objetivo sombreada, con una estimación aproximada de cuántas temporadas y a qué edad llega. Es siempre un rango, nunca un número exacto, porque nadie conoce el objetivo exacto de un ciclista. La banda es deliberadamente difusa para que no pueda deducirse su potencial oculto, y permanece oculta para los ciclistas rivales que no has ojeado. Aquí dos cosas distintas pueden mencionar la edad, y responden a preguntas diferentes: «Edad objetivo» es cuándo espera esta proyección que su crecimiento actual llegue a su banda objetivo, lo que puede ocurrir bastante antes de su pico de carrera (27-28 años) si aún le quedan años de margen de desarrollo. A un ciclista cuyo nivel sigue lejos de su objetivo se le muestra una honesta línea «Mucha distancia al objetivo» en lugar de un falso «Acercándose al objetivo», reservado para ciclistas que están realmente cerca."
+      "a": "Es un pronóstico de hacia dónde se encamina un ciclista: una línea discontinua desde su valoración de tipo actual hacia una banda objetivo sombreada, con una estimación aproximada de cuántas temporadas y a qué edad llega. Es siempre un rango, nunca un número exacto, porque nadie conoce el objetivo exacto de un ciclista. La banda es deliberadamente difusa para que no pueda deducirse su potencial oculto, y permanece oculta para los ciclistas rivales que no has ojeado. Aquí dos cosas distintas pueden mencionar la edad, y responden a preguntas diferentes: “Edad objetivo” es cuándo espera esta proyección que su crecimiento actual llegue a su banda objetivo, lo que puede ocurrir bastante antes de su pico de carrera (27-28 años) si aún le quedan años de margen de desarrollo. A un ciclista cuyo nivel sigue lejos de su objetivo se le muestra una honesta línea “Mucha distancia al objetivo” en lugar de un falso “Acercándose al objetivo”, reservado para ciclistas que están realmente cerca."
     },
     "watchlistSaleNotificationFaq": {
       "q": "¿Recibo una notificación cuando un ciclista de mi lista de seguimiento se pone a la venta?",
@@ -1555,19 +1555,19 @@
     },
     "riderSalaryView": {
       "q": "¿Cómo veo el salario de un ciclista?",
-      "a": "El salario es una columna visible en la Base de datos de ciclistas y en la lista de seguimiento, y se puede ordenar y filtrar. Puedes filtrar por un rango de salario en «Salario CZ$ (mín.-máx.)» en el panel de filtros. El salario de un ciclista es una proporción fija de su valor de producción actual, que es lo que el juego espera que rinda esta temporada con sus habilidades actuales. No se basa en su valor de mercado: el valor pone precio a toda su carrera restante, el salario solo a esta temporada. La proporción es la misma para todos los equipos de todas las divisiones, así que el mismo ciclista cuesta lo mismo juegue donde juegue. Un ciclista cuyas habilidades crecen se encarece en su siguiente contrato, y uno cuyas habilidades se apagan se abarata. Algo que conviene saber antes de renovar: su salario actual queda fijado desde el momento en que firma y nunca se mueve solo, así que si sus habilidades han crecido mucho desde entonces, la oferta de renovación puede parecer un salto enorme aunque nada de cómo se calcula haya cambiado."
+      "a": "El salario es una columna visible en la Base de datos de ciclistas y en la lista de seguimiento, y se puede ordenar y filtrar. Puedes filtrar por un rango de salario en “Salario CZ$ (mín.-máx.)” en el panel de filtros. El salario de un ciclista es una proporción fija de su valor de producción actual, que es lo que el juego espera que rinda esta temporada con sus habilidades actuales. No se basa en su valor de mercado: el valor pone precio a toda su carrera restante, el salario solo a esta temporada. La proporción es la misma para todos los equipos de todas las divisiones, así que el mismo ciclista cuesta lo mismo juegue donde juegue. Un ciclista cuyas habilidades crecen se encarece en su siguiente contrato, y uno cuyas habilidades se apagan se abarata. Algo que conviene saber antes de renovar: su salario actual queda fijado desde el momento en que firma y nunca se mueve solo, así que si sus habilidades han crecido mucho desde entonces, la oferta de renovación puede parecer un salto enorme aunque nada de cómo se calcula haya cambiado."
     },
     "riderDevelopment": {
       "q": "¿Dónde puedo ver si un ciclista se está desarrollando?",
-      "a": "Abre la página de estadísticas del ciclista y elige la pestaña «Desarrollo». Muestra un gráfico seleccionable para cada estadística y el desarrollo registrado del ciclista a lo largo del tiempo."
+      "a": "Abre la página de estadísticas del ciclista y elige la pestaña “Desarrollo”. Muestra un gráfico seleccionable para cada estadística y el desarrollo registrado del ciclista a lo largo del tiempo."
     },
     "trainingFocusFaq": {
       "q": "¿Cómo entreno a un ciclista?",
-      "a": "Abre uno de tus propios ciclistas y fija un enfoque de entrenamiento en «Enfoque de entrenamiento» del perfil: elige una dirección y una intensidad. Las habilidades entrenadas se desarrollan más rápido hacia su techo en el próximo cambio de temporada. Puedes fijar un enfoque en tantos ciclistas como quieras. Una intensidad más alta entrena más rápido y acumula más fatiga, pero nunca arriesga perder progreso; cambiar un enfoque existente no cuesta nada, y el entrenamiento es gratuito."
+      "a": "Abre uno de tus propios ciclistas y fija un enfoque de entrenamiento en “Enfoque de entrenamiento” del perfil: elige una dirección y una intensidad. Las habilidades entrenadas se desarrollan más rápido hacia su techo en el próximo cambio de temporada. Puedes fijar un enfoque en tantos ciclistas como quieras. Una intensidad más alta entrena más rápido y acumula más fatiga, pero nunca arriesga perder progreso; cambiar un enfoque existente no cuesta nada, y el entrenamiento es gratuito."
     },
     "restForDevelopedFaq": {
       "q": "Mi ciclista está totalmente desarrollado. ¿Le pongo simplemente en Descanso?",
-      "a": "Cuando todas las habilidades del enfoque elegido de un ciclista han llegado a su techo vitalicio, cada línea de ese enfoque muestra «hecho», y entrenar más ahí no añade nada: la ganancia diaria viene de la diferencia entre la habilidad actual y el techo, y con diferencia cero se queda en cero a cualquier intensidad. Normal o Duro en un ciclista al máximo sigue acumulando Fatiga, y Duro sigue conllevando el mismo riesgo de lesión de siempre, sin ninguna ganancia de habilidad a cambio, así que Descanso es la elección más segura: quita Fatiga en lugar de añadirla. El declive de un ciclista tras su pico, desde alrededor de los 28 años, avanza al mismo ritmo fijo y basado en la edad en cada cambio de temporada, sea cual sea la intensidad con la que entrenaste, así que ni el entrenamiento ni el Descanso lo aceleran ni lo frenan. Si otro enfoque aún tiene margen, cambiar a él es mejor que descansar."
+      "a": "Cuando todas las habilidades del enfoque elegido de un ciclista han llegado a su techo vitalicio, cada línea de ese enfoque muestra “hecho”, y entrenar más ahí no añade nada: la ganancia diaria viene de la diferencia entre la habilidad actual y el techo, y con diferencia cero se queda en cero a cualquier intensidad. Normal o Duro en un ciclista al máximo sigue acumulando Fatiga, y Duro sigue conllevando el mismo riesgo de lesión de siempre, sin ninguna ganancia de habilidad a cambio, así que Descanso es la elección más segura: quita Fatiga en lugar de añadirla. El declive de un ciclista tras su pico, desde alrededor de los 28 años, avanza al mismo ritmo fijo y basado en la edad en cada cambio de temporada, sea cual sea la intensidad con la que entrenaste, así que ni el entrenamiento ni el Descanso lo aceleran ni lo frenan. Si otro enfoque aún tiene margen, cambiar a él es mejor que descansar."
     },
     "raceDayIntensityFaq": {
       "q": "¿Sigue importando la intensidad que elegí en un día en que mi ciclista corre?",
@@ -1579,7 +1579,7 @@
     },
     "raceDayProfileMatchFaq": {
       "q": "¿Tiene que coincidir la sesión de entrenamiento de mi ciclista con el terreno de la carrera (llano, montaña, adoquines)?",
-      "a": "No. La sesión de entrenamiento de tu ciclista y sus carreras son cosas separadas. Lo que le da una carrera lo decide la etapa que corre, nunca la sesión que planificaste, así que no hay nada con lo que una sesión tenga que «coincidir». Entrena a cada ciclista hacia lo que necesita a largo plazo, y elige sus carreras según el terreno en el que quieres que corra."
+      "a": "No. La sesión de entrenamiento de tu ciclista y sus carreras son cosas separadas. Lo que le da una carrera lo decide la etapa que corre, nunca la sesión que planificaste, así que no hay nada con lo que una sesión tenga que “coincidir”. Entrena a cada ciclista hacia lo que necesita a largo plazo, y elige sus carreras según el terreno en el que quieres que corra."
     },
     "raceDayAcademyFaq": {
       "q": "¿Merece la pena que corran los jóvenes talentos de la Academia, o siempre es mejor el entrenamiento de la Academia?",
@@ -1614,7 +1614,7 @@
       "a": "No. Un informe de ojeo siempre se calcula en directo, usando la precisión de tu jefe de ojeadores ACTUAL, así que se reconstruye desde cero cada vez que lo abres. El informe de ojeo de cada ciclista muestra ahora quién lo evaluó y de qué nivel bajo el titular, para que puedas ver de un vistazo de quién es la lectura que estás mirando. Contratar a un ojeador con una valoración más baja ensancha la banda de techo que ves y puede desplazar dónde se sitúa; contratar a uno con una valoración más alta la estrecha. Ninguna de las dos direcciones toca las habilidades reales del ciclista, que solo se mueven con el entrenamiento, la edad y las carreras. Si cambias de jefe de ojeadores cuando tu equipo ya tiene ciclistas ojeados, recibes un mensaje en la bandeja de entrada que explica exactamente esto en el momento en que llega el nuevo fichaje."
     },
     "typeRatingScaleFaq": {
-      "q": "¿Por qué han cambiado los números de «Proyección por tipo de ciclista» y qué significan ahora?",
+      "q": "¿Por qué han cambiado los números de “Proyección por tipo de ciclista” y qué significan ahora?",
       "a": "Tus ciclistas no han cambiado. Sus habilidades, techos y tipos de ciclista son exactamente los que eran: solo ha cambiado la forma de calcular el número. El número de un rol es ahora simplemente la media ponderada de las habilidades que necesita ese rol, así que un ciclista con 13 en todas las habilidades que cuentan muestra 13 en ese rol. Ya no se estira nada para encajar con el resto del pelotón. Conviene saber dos consecuencias. Los números son más bajos que antes, pero para la mayoría de los ciclistas el cambio es pequeño: un ciclista típico muestra 13 donde antes mostraba 15. El cambio es mayor en lo alto, donde el cálculo antiguo estiraba a los mejores ciclistas hasta un techo que era el de la escala, no el suyo: 15 ciclistas estaban clavados en 99, y el número más alto del juego es ahora 85. Y son estables: el número de un ciclista solo puede moverse cuando se mueven sus propias habilidades. Antes de este cambio la escala estaba anclada a todo el grupo de ciclistas, así que reajustar esos anclajes podía mover el número de cada ciclista sin que cambiara una sola habilidad. Eso ya no puede ocurrir, y eliminarlo era el objetivo."
     },
     "scoutedBandGuaranteeFaq": {
@@ -1623,7 +1623,7 @@
     },
     "seasonChangeMoneyFaq": {
       "q": "¿Qué pasa con mi dinero en el cambio de temporada?",
-      "a": "Todo ocurre al inicio de la nueva temporada, en un solo lote. Primero se renueva tu contrato de patrocinio, luego se paga el dinero del patrocinio y justo después sigue la nómina de la temporada: intereses de los préstamos, salarios de los ciclistas, intereses de cualquier saldo que siga negativo después, mantenimiento de la academia (si tienes ciclistas de la academia), mantenimiento del club, mantenimiento de instalaciones y salarios del personal técnico, en ese orden. Si el mantenimiento de tu club se paga por día de carrera como Viajes y personal, no forma parte de este lote (consulta «¿Qué son las líneas de Viajes y personal en mis finanzas?»). No se descuenta nada cuando termina la temporada antigua; los salarios y los intereses pasaron al inicio de la temporada en la v3.78. Si tus ingresos de patrocinio y tu saldo no pueden cubrir la nómina, el sistema contrata automáticamente un préstamo de emergencia por el déficit (consulta «¿Qué pasa si no puedo pagar los salarios?»). Si tu acuerdo de patrocinio también tiene una tarifa por etapa, esa parte se paga aparte a medida que completas carreras durante la temporada; no forma parte del lote del cambio de temporada."
+      "a": "Todo ocurre al inicio de la nueva temporada, en un solo lote. Primero se renueva tu contrato de patrocinio, luego se paga el dinero del patrocinio y justo después sigue la nómina de la temporada: intereses de los préstamos, salarios de los ciclistas, intereses de cualquier saldo que siga negativo después, mantenimiento de la academia (si tienes ciclistas de la academia), mantenimiento del club, mantenimiento de instalaciones y salarios del personal técnico, en ese orden. Si el mantenimiento de tu club se paga por día de carrera como Viajes y personal, no forma parte de este lote (consulta “¿Qué son las líneas de Viajes y personal en mis finanzas?”). No se descuenta nada cuando termina la temporada antigua; los salarios y los intereses pasaron al inicio de la temporada en la v3.78. Si tus ingresos de patrocinio y tu saldo no pueden cubrir la nómina, el sistema contrata automáticamente un préstamo de emergencia por el déficit (consulta “¿Qué pasa si no puedo pagar los salarios?”). Si tu acuerdo de patrocinio también tiene una tarifa por etapa, esa parte se paga aparte a medida que completas carreras durante la temporada; no forma parte del lote del cambio de temporada."
     },
     "upkeepPerRaceDayFaq": {
       "q": "¿Qué son las líneas de Viajes y personal en mis finanzas?",
@@ -1639,11 +1639,11 @@
     },
     "prizeMoneyFaq": {
       "q": "¿Qué son los premios en metálico y cuándo se pagan?",
-      "a": "Los premios en metálico son una recompensa directa en CZ$ por los resultados que logran tus ciclistas en las carreras. La fórmula es: puntos por el puesto × {prizePerPoint} CZ$. El dinero se paga automáticamente a tu saldo cuando el administrador finaliza los resultados y aparece como «premio» en tu registro de finanzas. Solo las carreras con una categoría de carrera (Grand Tour, WorldTour, ProSeries, etc.) generan premios. Las carreras sin categoría dan 0."
+      "a": "Los premios en metálico son una recompensa directa en CZ$ por los resultados que logran tus ciclistas en las carreras. La fórmula es: puntos por el puesto × {prizePerPoint} CZ$. El dinero se paga automáticamente a tu saldo cuando el administrador finaliza los resultados y aparece como “premio” en tu registro de finanzas. Solo las carreras con una categoría de carrera (Grand Tour, WorldTour, ProSeries, etc.) generan premios. Las carreras sin categoría dan 0."
     },
     "divisionBonusFaq": {
       "q": "¿Qué es el bonus de división y cuándo se paga?",
-      "a": "El bonus de división es un bonus único que se paga al final de la temporada. Depende de dos cosas a la vez: en qué división corriste y el puesto en que terminaste dentro de esa división. La División 1 paga {bonusD1P1} / {bonusD1P2} / {bonusD1P3} / {bonusD1P4} CZ$ del 1.º al 4.º. La División 2 paga {bonusD2P1} / {bonusD2P2} / {bonusD2P3} / {bonusD2P4} CZ$ del 1.º al 4.º. La División 3 paga {bonusD3P1} / {bonusD3P2} / {bonusD3P3} CZ$ del 1.º al 3.º. La División 4 paga {bonusD4P1} / {bonusD4P2} / {bonusD4P3} CZ$ del 1.º al 3.º. Cualquier puesto por debajo no paga nada. Ten en cuenta que el mismo importe puede venir de divisiones distintas: {bonusD1P4} CZ$ es el 4.º de la División 1 y también el 1.º de la División 4, así que lee el texto de la transacción, no solo el número. El bonus se contabiliza como «bonus» en tu registro de finanzas."
+      "a": "El bonus de división es un bonus único que se paga al final de la temporada. Depende de dos cosas a la vez: en qué división corriste y el puesto en que terminaste dentro de esa división. La División 1 paga {bonusD1P1} / {bonusD1P2} / {bonusD1P3} / {bonusD1P4} CZ$ del 1.º al 4.º. La División 2 paga {bonusD2P1} / {bonusD2P2} / {bonusD2P3} / {bonusD2P4} CZ$ del 1.º al 4.º. La División 3 paga {bonusD3P1} / {bonusD3P2} / {bonusD3P3} CZ$ del 1.º al 3.º. La División 4 paga {bonusD4P1} / {bonusD4P2} / {bonusD4P3} CZ$ del 1.º al 3.º. Cualquier puesto por debajo no paga nada. Ten en cuenta que el mismo importe puede venir de divisiones distintas: {bonusD1P4} CZ$ es el 4.º de la División 1 y también el 1.º de la División 4, así que lee el texto de la transacción, no solo el número. El bonus se contabiliza como “bonus” en tu registro de finanzas."
     },
     "sponsorPayoutTiming": {
       "q": "¿Cuándo se paga el dinero del patrocinio?",
@@ -1711,15 +1711,15 @@
     },
     "season1BaselineFaq": {
       "q": "¿Está disponible la directiva en la temporada 1?",
-      "a": "Sí. La directiva está desbloqueada desde el inicio de la temporada 1, así que puedes elegir el ADN de tu club y negociar tus planes a 5 años, 3 años y 1 año enseguida. Hasta que firmes tu primer plan, el modificador de patrocinio se queda en 1,0×, así que el patrocinio de la temporada 1 es neutral mientras lo montas. Incluso sin un plan firmado, la satisfacción de la directiva ya sigue tus resultados de carrera (posición entre los demás equipos reales de tu grupo) y tus finanzas fin de semana a fin de semana, moviéndose dentro de un rango de 30 a 75. Simplemente aún no activa consecuencias duras. La directiva también *lee* a tu equipo (qué nacionalidad domina, lo grande que es la proporción sub-25, hacia qué especialización apunta el equipo y lo visibles que son tus estrellas) y guarda esta «instantánea de identidad» en tu equipo de forma permanente como base de las sugerencias de tu plan a 5 años."
+      "a": "Sí. La directiva está desbloqueada desde el inicio de la temporada 1, así que puedes elegir el ADN de tu club y negociar tus planes a 5 años, 3 años y 1 año enseguida. Hasta que firmes tu primer plan, el modificador de patrocinio se queda en 1,0×, así que el patrocinio de la temporada 1 es neutral mientras lo montas. Incluso sin un plan firmado, la satisfacción de la directiva ya sigue tus resultados de carrera (posición entre los demás equipos reales de tu grupo) y tus finanzas fin de semana a fin de semana, moviéndose dentro de un rango de 30 a 75. Simplemente aún no activa consecuencias duras. La directiva también *lee* a tu equipo (qué nacionalidad domina, lo grande que es la proporción sub-25, hacia qué especialización apunta el equipo y lo visibles que son tus estrellas) y guarda esta “instantánea de identidad” en tu equipo de forma permanente como base de las sugerencias de tu plan a 5 años."
     },
     "buildOnCoreBadge": {
-      "q": "¿Qué significa la etiqueta «Se apoya en tu núcleo» en los objetivos a 5 años?",
-      "a": "Es alimentación de identidad. Cuando la directiva propone objetivos a 5 años en la temporada 2, los objetivos relevantes se anotan con una pequeña etiqueta que explica por qué existe ese objetivo. Ejemplo: «Se apoya en tu núcleo FR (5/8 ciclistas)» cuando tu equipo de la temporada 1 tenía cinco ciclistas franceses de ocho. Haz clic en la etiqueta para ver la explicación completa. La etiqueta muestra la observación fijada de la temporada 1, es decir, aunque más adelante cambies de ciclistas, la directiva recuerda qué señal impulsó originalmente el objetivo."
+      "q": "¿Qué significa la etiqueta “Se apoya en tu núcleo” en los objetivos a 5 años?",
+      "a": "Es alimentación de identidad. Cuando la directiva propone objetivos a 5 años en la temporada 2, los objetivos relevantes se anotan con una pequeña etiqueta que explica por qué existe ese objetivo. Ejemplo: “Se apoya en tu núcleo FR (5/8 ciclistas)” cuando tu equipo de la temporada 1 tenía cinco ciclistas franceses de ocho. Haz clic en la etiqueta para ver la explicación completa. La etiqueta muestra la observación fijada de la temporada 1, es decir, aunque más adelante cambies de ciclistas, la directiva recuerda qué señal impulsó originalmente el objetivo."
     },
     "forgotToNegotiatePlan": {
       "q": "¿Qué pasa si me olvido de negociar mi plan?",
-      "a": "La directiva toma el control. Si no has firmado un plan nuevo antes de pasar el día de carrera 5, la directiva firma automáticamente un plan con el enfoque por defecto derivado de la identidad de tu equipo (mucho sub-25 -> desarrollo juvenil, perfil de estrella -> fichaje de una estrella, si no equilibrado) y objetivos estándar. Primero recibes un recordatorio informativo en el día de carrera 2 («La directiva espera tu plan a N años»), luego una notificación de «Acción necesaria» en el día de carrera 4 («Última oportunidad»), y después es la elección de la directiva. Aún puedes pedir cambios mediante una solicitud a la directiva cuando el plan esté en marcha. Si miras la página de la Directiva a menudo, también verás un banner con cuenta atrás en directo con los días de carrera que quedan."
+      "a": "La directiva toma el control. Si no has firmado un plan nuevo antes de pasar el día de carrera 5, la directiva firma automáticamente un plan con el enfoque por defecto derivado de la identidad de tu equipo (mucho sub-25 -> desarrollo juvenil, perfil de estrella -> fichaje de una estrella, si no equilibrado) y objetivos estándar. Primero recibes un recordatorio informativo en el día de carrera 2 (“La directiva espera tu plan a N años”), luego una notificación de “Acción necesaria” en el día de carrera 4 (“Última oportunidad”), y después es la elección de la directiva. Aún puedes pedir cambios mediante una solicitud a la directiva cuando el plan esté en marcha. Si miras la página de la Directiva a menudo, también verás un banner con cuenta atrás en directo con los días de carrera que quedan."
     },
     "boardMembersFaq": {
       "q": "¿Quiénes son los miembros de mi directiva?",
@@ -1727,23 +1727,23 @@
     },
     "boardChairman": {
       "q": "¿Qué hace el presidente de la directiva?",
-      "a": "El presidente es el miembro con mayor afinidad con tu equipo. Habla cuando hay dudas: si la valoración de la directiva no tiene una categoría dominante clara, es la voz del presidente la que oyes. También es al que sustituyen si la directiva pierde la paciencia: 2× caducidad de plan seguida por debajo del 30 % de satisfacción -> se elige un presidente nuevo entre los 4 arquetipos sin asignar. Recibes una notificación «La directiva ha elegido a un nuevo presidente» cuando ocurre."
+      "a": "El presidente es el miembro con mayor afinidad con tu equipo. Habla cuando hay dudas: si la valoración de la directiva no tiene una categoría dominante clara, es la voz del presidente la que oyes. También es al que sustituyen si la directiva pierde la paciencia: 2× caducidad de plan seguida por debajo del 30 % de satisfacción -> se elige un presidente nuevo entre los 4 arquetipos sin asignar. Recibes una notificación “La directiva ha elegido a un nuevo presidente” cuando ocurre."
     },
     "memberReactions": {
       "q": "¿Por qué reaccionan distintos miembros de la directiva a distintos objetivos?",
-      "a": "Cada arquetipo es «dueño» de ciertas categorías: El Director de patrocinios es dueño de los objetivos de economía, El Cazador de resultados de los resultados, El Tradicionalista/El Purista nacional de la identidad, El Pragmático de la clasificación. Cuando haces clic en el botón «X reacciona» de un objetivo, aparece una cita del miembro a cuya categoría pertenece el objetivo. Las citas están escritas a mano por arquetipo y por situación (propuesta, cumplido, fallado), así que El Director de patrocinios suena preocupado por un objetivo de deuda que se relaja, y El Cazador de resultados suena entusiasmado por una victoria."
+      "a": "Cada arquetipo es “dueño” de ciertas categorías: El Director de patrocinios es dueño de los objetivos de economía, El Cazador de resultados de los resultados, El Tradicionalista/El Purista nacional de la identidad, El Pragmático de la clasificación. Cuando haces clic en el botón “X reacciona” de un objetivo, aparece una cita del miembro a cuya categoría pertenece el objetivo. Las citas están escritas a mano por arquetipo y por situación (propuesta, cumplido, fallado), así que El Director de patrocinios suena preocupado por un objetivo de deuda que se relaja, y El Cazador de resultados suena entusiasmado por una victoria."
     },
     "starSigningGoal": {
-      "q": "¿Qué significa el nuevo objetivo de «ciclista estrella» en los planes de fichaje de una estrella?",
+      "q": "¿Qué significa el nuevo objetivo de “ciclista estrella” en los planes de fichaje de una estrella?",
       "a": "Un plan centrado en fichar estrellas recibe un objetivo extra: al menos un ciclista de gran renombre. La directiva espera que un plan que persigue resultados se refleje en tu plantilla, ya sea que fiches a una estrella o desarrolles a una tú mismo. El objetivo se comprueba en la evaluación, así que cuenta tu plantilla actual."
     },
     "u25StatGain": {
-      "q": "¿Qué es la «mejora de estadísticas sub-25» en los planes juveniles?",
-      "a": "El enfoque de desarrollo juvenil recibe ahora un 5.º objetivo: «Mejora media de estadísticas sub-25 ≥3 puntos de estadística/temporada». Mide si tus ciclistas sub-25 se desarrollan de verdad, no solo si están en el equipo. La referencia de inicio del plan se fija automáticamente al final de la temporada, y la directiva compara con la media actual. Un programa de desarrollo que solo mueve jóvenes pero no los desarrolla no cumple el objetivo. La directiva espera ver un crecimiento real."
+      "q": "¿Qué es la “mejora de estadísticas sub-25” en los planes juveniles?",
+      "a": "El enfoque de desarrollo juvenil recibe ahora un 5.º objetivo: “Mejora media de estadísticas sub-25 ≥3 puntos de estadística/temporada”. Mide si tus ciclistas sub-25 se desarrollan de verdad, no solo si están en el equipo. La referencia de inicio del plan se fija automáticamente al final de la temporada, y la directiva compara con la media actual. Un programa de desarrollo que solo mueve jóvenes pero no los desarrolla no cumple el objetivo. La directiva espera ver un crecimiento real."
     },
     "balancedRelativeRank": {
-      "q": "¿Qué es «terminar por delante de X otros mánagers» en los planes equilibrados?",
-      "a": "El enfoque equilibrado recibe ahora un 5.º objetivo: «Terminar por delante de al menos 3 otros mánagers de la división». No trata de la clasificación absoluta, sino de la relativa: tienes que superar a más de la mitad de tu división. Se escala automáticamente cuando se unen más mánagers: si hay 5 mánagers humanos en tu división y eres el 1.º, has superado a 4. Si eres el 4.º, solo has superado a 1 -> objetivo no cumplido. Se lee a partir de tu puesto actual en la división frente al número de mánagers humanos que hay en ella."
+      "q": "¿Qué es “terminar por delante de X otros mánagers” en los planes equilibrados?",
+      "a": "El enfoque equilibrado recibe ahora un 5.º objetivo: “Terminar por delante de al menos 3 otros mánagers de la división”. No trata de la clasificación absoluta, sino de la relativa: tienes que superar a más de la mitad de tu división. Se escala automáticamente cuando se unen más mánagers: si hay 5 mánagers humanos en tu división y eres el 1.º, has superado a 4. Si eres el 4.º, solo has superado a 1 -> objetivo no cumplido. Se lee a partir de tu puesto actual en la división frente al número de mánagers humanos que hay en ella."
     },
     "boardUnsatisfiedConsequences": {
       "q": "¿Qué pasa cuando la directiva está muy descontenta? ¿Me pueden despedir?",
@@ -1755,19 +1755,19 @@
     },
     "boardSatisfactionArrow": {
       "q": "¿Qué es la flecha/pronóstico bajo mi número de satisfacción?",
-      "a": "Muestra hacia dónde va la satisfacción, no solo dónde está. Cada fin de semana de carreras la directiva hace una evaluación completa de tu temporada actual y calcula un objetivo a partir de tu satisfacción de inicio de temporada más esa evaluación. El número en directo se mueve entonces hacia el objetivo como máximo 5 puntos hacia abajo o 8 hacia arriba por fin de semana (el mismo límite descrito en «¿Qué es la satisfacción de la directiva?»), así que puedes ver «camino del 71 %» antes de que llegue de verdad. Si el número ya está en el objetivo, verás «ya en el objetivo»."
+      "a": "Muestra hacia dónde va la satisfacción, no solo dónde está. Cada fin de semana de carreras la directiva hace una evaluación completa de tu temporada actual y calcula un objetivo a partir de tu satisfacción de inicio de temporada más esa evaluación. El número en directo se mueve entonces hacia el objetivo como máximo 5 puntos hacia abajo o 8 hacia arriba por fin de semana (el mismo límite descrito en “¿Qué es la satisfacción de la directiva?”), así que puedes ver “camino del 71 %” antes de que llegue de verdad. Si el número ya está en el objetivo, verás “ya en el objetivo”."
     },
     "boardChairmanWarning": {
       "q": "¿Qué significa el aviso rojo sobre el presidente?",
-      "a": "Aparece cuando tu equipo ya tiene registrada una caducidad de plan seguida por debajo del 30 % de satisfacción. Una caducidad de plan decepcionante más seguida y la directiva sustituye al presidente por un arquetipo nuevo, según la regla descrita en «¿Qué hace el presidente de la directiva?». El aviso desaparece de nuevo cuando un plan se renueva con una satisfacción por encima del umbral, reiniciando el contador."
+      "a": "Aparece cuando tu equipo ya tiene registrada una caducidad de plan seguida por debajo del 30 % de satisfacción. Una caducidad de plan decepcionante más seguida y la directiva sustituye al presidente por un arquetipo nuevo, según la regla descrita en “¿Qué hace el presidente de la directiva?”. El aviso desaparece de nuevo cuando un plan se renueva con una satisfacción por encima del umbral, reiniciando el contador."
     },
     "bonusOfferDistance": {
       "q": "¿Cómo sé lo cerca que estoy de una oferta de bonus?",
-      "a": "Cada tarjeta de plan muestra tu distancia a la elegibilidad para la oferta de bonus (satisfacción por encima del 75 % Y al menos el 75 % de los objetivos cumplidos, consulta «¿Qué es la oferta de bonus que acabo de recibir de la directiva?»). Si la satisfacción sigue siendo demasiado baja, verás cuántos puntos faltan; cuando la satisfacción supera el listón, verás cuántos objetivos más necesitas cumplir («A 2 objetivos de una oferta de bonus»). Cuando se cumplen las dos condiciones, simplemente dice que eres apto."
+      "a": "Cada tarjeta de plan muestra tu distancia a la elegibilidad para la oferta de bonus (satisfacción por encima del 75 % Y al menos el 75 % de los objetivos cumplidos, consulta “¿Qué es la oferta de bonus que acabo de recibir de la directiva?”). Si la satisfacción sigue siendo demasiado baja, verás cuántos puntos faltan; cuando la satisfacción supera el listón, verás cuántos objetivos más necesitas cumplir (“A 2 objetivos de una oferta de bonus”). Cuando se cumplen las dos condiciones, simplemente dice que eres apto."
     },
     "boardMemberWeights": {
       "q": "¿Qué pondera un miembro de la directiva cuando abro su tarjeta?",
-      "a": "Haz clic en un miembro de la cuadrícula de avatares para abrir su tarjeta. Debajo de la descripción verás las cuatro categorías de comentarios (resultados, economía, identidad, clasificación) con una barra por categoría, que muestra lo fuerte que pondera cada una el arquetipo de ese miembro. Es la misma ponderación que usa el motor de la directiva para elegir qué miembro «habla» sobre la reacción a un objetivo concreto, ahora hecha visible en lugar de usarse solo internamente."
+      "a": "Haz clic en un miembro de la cuadrícula de avatares para abrir su tarjeta. Debajo de la descripción verás las cuatro categorías de comentarios (resultados, economía, identidad, clasificación) con una barra por categoría, que muestra lo fuerte que pondera cada una el arquetipo de ese miembro. Es la misma ponderación que usa el motor de la directiva para elegir qué miembro “habla” sobre la reacción a un objetivo concreto, ahora hecha visible en lugar de usarse solo internamente."
     },
     "boardTradeoffWarning": {
       "q": "¿Qué es el aviso de compromiso en una tarjeta de plan?",
@@ -1775,7 +1775,7 @@
     },
     "boardPassiveModifierLayer": {
       "q": "¿Qué es la pequeña línea sobre el modificador de patrocinio bajo mi número de satisfacción?",
-      "a": "Es la capa 1 del sistema de consecuencias: el modificador pasivo de patrocinio que ya sigue tu satisfacción en directo (±20 % en los extremos, consulta «¿Qué es la satisfacción de la directiva?»). Antes solo aparecía como un número en bruto «×1,10»; ahora también hay una frase breve que describe el efecto en lenguaje claro, para que quede claro que ya está activo antes de que entren en juego cualquiera de las capas de consecuencias más duras (2-6)."
+      "a": "Es la capa 1 del sistema de consecuencias: el modificador pasivo de patrocinio que ya sigue tu satisfacción en directo (±20 % en los extremos, consulta “¿Qué es la satisfacción de la directiva?”). Antes solo aparecía como un número en bruto “×1,10”; ahora también hay una frase breve que describe el efecto en lenguaje claro, para que quede claro que ya está activo antes de que entren en juego cualquiera de las capas de consecuencias más duras (2-6)."
     },
     "clubDnaFaq": {
       "q": "¿Qué es el ADN del club y cuándo lo elijo?",
@@ -1783,31 +1783,31 @@
     },
     "clubDnaEffects": {
       "q": "¿Qué hace exactamente el ADN del club?",
-      "a": "El ADN afecta a tres cosas: (1) Tus planes a 5 años reciben un objetivo extra de tradición del ADN (p. ej. «al menos un podio en un Monument» para italian_classics o «mín. 2 maillots de etapa durante el plan» para sprint_commercial) como objetivo de bonus añadido a los basados en el enfoque. (2) Los objetivos que coinciden con las prioridades del ADN reciben una bonificación y una penalización de satisfacción reforzadas (italian_classics × 1,6 en los objetivos de monument_podium: si ganas, la directiva celebra más; si fallas, la penalización es mayor). (3) Cuando se sustituye al presidente (tras 2× caducidad de plan por debajo del 30 % de satisfacción), el bonus del ADN inclina la puntuación de afinidad hacia los arquetipos que encajan con la identidad del club (italian_classics da +4 a classics_purist y -2 a gc_lover, de modo que el presidente refleja el ADN con el tiempo)."
+      "a": "El ADN afecta a tres cosas: (1) Tus planes a 5 años reciben un objetivo extra de tradición del ADN (p. ej. “al menos un podio en un Monument” para italian_classics o “mín. 2 maillots de etapa durante el plan” para sprint_commercial) como objetivo de bonus añadido a los basados en el enfoque. (2) Los objetivos que coinciden con las prioridades del ADN reciben una bonificación y una penalización de satisfacción reforzadas (italian_classics × 1,6 en los objetivos de monument_podium: si ganas, la directiva celebra más; si fallas, la penalización es mayor). (3) Cuando se sustituye al presidente (tras 2× caducidad de plan por debajo del 30 % de satisfacción), el bonus del ADN inclina la puntuación de afinidad hacia los arquetipos que encajan con la identidad del club (italian_classics da +4 a classics_purist y -2 a gc_lover, de modo que el presidente refleja el ADN con el tiempo)."
     },
     "midSeasonCheckFaq": {
-      "q": "¿Qué es la revisión de mitad de temporada y por qué recibo una notificación de «Acción necesaria» a mitad de temporada?",
-      "a": "Cuando ha pasado la mitad de los días de carrera de la temporada, la directiva comprueba el estado de tu plan. Si la satisfacción está por debajo del 50 % O al menos la mitad de los objetivos de tu plan están «por detrás» tras el descanso -> recibes una notificación de «Revisión de mitad de temporada» en la bandeja de entrada, en «Acción necesaria». La notificación es informativa: la directiva está preocupada pero no actúa automáticamente. Puedes responder enviando una solicitud a la directiva (reorientar los objetivos del plan), pidiendo un préstamo de presupuesto en la página de Economía o simplemente afinando el enfoque durante el resto de la temporada. El banner solo salta una vez por temporada y por directiva."
+      "q": "¿Qué es la revisión de mitad de temporada y por qué recibo una notificación de “Acción necesaria” a mitad de temporada?",
+      "a": "Cuando ha pasado la mitad de los días de carrera de la temporada, la directiva comprueba el estado de tu plan. Si la satisfacción está por debajo del 50 % O al menos la mitad de los objetivos de tu plan están “por detrás” tras el descanso -> recibes una notificación de “Revisión de mitad de temporada” en la bandeja de entrada, en “Acción necesaria”. La notificación es informativa: la directiva está preocupada pero no actúa automáticamente. Puedes responder enviando una solicitud a la directiva (reorientar los objetivos del plan), pidiendo un préstamo de presupuesto en la página de Economía o simplemente afinando el enfoque durante el resto de la temporada. El banner solo salta una vez por temporada y por directiva."
     },
     "majorPivotCooldown": {
-      "q": "¿Qué es el enfriamiento de giro y un «giro importante»?",
-      "a": "Un giro importante es un cambio de enfoque entre extremos: del desarrollo juvenil al fichaje de una estrella o viceversa. Solo se permiten una vez por ciclo de vida del plan. Cuando, por ejemplo, aceptas «más estrellas ya» desde una vía juvenil, la directiva registra que has usado tu giro importante para este plan, y la siguiente solicitud similar se rechaza con «La directiva ya ha aceptado un giro importante». Se reinicia cuando el plan se renueva (plan nuevo = enfriamiento nuevo). Los giros hacia/desde equilibrado no son importantes: aún puedes girar gradualmente mediante un paso intermedio equilibrado."
+      "q": "¿Qué es el enfriamiento de giro y un “giro importante”?",
+      "a": "Un giro importante es un cambio de enfoque entre extremos: del desarrollo juvenil al fichaje de una estrella o viceversa. Solo se permiten una vez por ciclo de vida del plan. Cuando, por ejemplo, aceptas “más estrellas ya” desde una vía juvenil, la directiva registra que has usado tu giro importante para este plan, y la siguiente solicitud similar se rechaza con “La directiva ya ha aceptado un giro importante”. Se reinicia cuando el plan se renueva (plan nuevo = enfriamiento nuevo). Los giros hacia/desde equilibrado no son importantes: aún puedes girar gradualmente mediante un paso intermedio equilibrado."
     },
     "endOfSeasonBlock": {
       "q": "¿Por qué no puedo enviar solicitudes a la directiva en la fase final de la temporada?",
-      "a": "En los últimos 5 días de carrera de una temporada, todas las solicitudes quedan bloqueadas. La directiva no quiere arriesgarse a que el plan se reoriente justo antes de la evaluación, eso perdería el vínculo entre tus elecciones y el resultado. Cuando quedan menos de 6 días de carrera, ves un mensaje «Ha empezado la fase final de la temporada» en todos los botones de solicitud. La ventana se abre de nuevo al inicio de la temporada. Aprovecha esa fase para sumar los últimos puntos."
+      "a": "En los últimos 5 días de carrera de una temporada, todas las solicitudes quedan bloqueadas. La directiva no quiere arriesgarse a que el plan se reoriente justo antes de la evaluación, eso perdería el vínculo entre tus elecciones y el resultado. Cuando quedan menos de 6 días de carrera, ves un mensaje “Ha empezado la fase final de la temporada” en todos los botones de solicitud. La ventana se abre de nuevo al inicio de la temporada. Aprovecha esa fase para sumar los últimos puntos."
     },
     "multiYearPlanLock": {
       "q": "¿Por qué no puedo reorientar mi plan a 5 años antes de que llegue a la mitad?",
       "a": "Los planes a 5 y a 3 años están bloqueados durante la primera mitad de su duración. En concreto: la directiva no acepta solicitudes sobre un plan plurianual antes de que se haya completado al menos el 50 % del plan O de que tu satisfacción haya cambiado más de 30 puntos desde el inicio del plan. Esto evita cambios impulsivos de rumbo en planes a largo plazo y da tiempo a la directiva para ver si la estrategia funciona. Los planes a 1 año no tienen un bloqueo equivalente."
     },
     "tightenedBadge": {
-      "q": "¿Qué significa la etiqueta «Endurecido» en un objetivo de mi plan nuevo?",
-      "a": "La etiqueta aparece cuando un objetivo se ha elevado por un bloqueo de compromiso de una solicitud anterior. Si, por ejemplo, la temporada pasada te aprobaron «Bajar la presión de resultados», el objetivo sub-25 o nacional de tu plan nuevo sube +1 en exigencia (o sponsor_growth +5 pp con «Suavizar la exigencia de identidad»). Es la consecuencia diferida de suavizar algo: la directiva espera ver más de otra cosa a cambio. El endurecimiento desaparece de nuevo tras UNA temporada."
+      "q": "¿Qué significa la etiqueta “Endurecido” en un objetivo de mi plan nuevo?",
+      "a": "La etiqueta aparece cuando un objetivo se ha elevado por un bloqueo de compromiso de una solicitud anterior. Si, por ejemplo, la temporada pasada te aprobaron “Bajar la presión de resultados”, el objetivo sub-25 o nacional de tu plan nuevo sube +1 en exigencia (o sponsor_growth +5 pp con “Suavizar la exigencia de identidad”). Es la consecuencia diferida de suavizar algo: la directiva espera ver más de otra cosa a cambio. El endurecimiento desaparece de nuevo tras UNA temporada."
     },
     "relativeRankLive": {
-      "q": "¿Cómo funciona en directo el objetivo «terminar por delante de X otros mánagers»?",
-      "a": "En la página de la Directiva, el objetivo relative_rank del plan equilibrado muestra ahora el estado en directo: «Eres n.º 4 de 8 mánagers de la división, por delante de 4 (objetivo: 3 ✓)». El número se actualiza después de cada día de carrera cuando se refresca la clasificación. Se mide en relación con el número de mánagers humanos de tu división, así que escala de forma natural de ~19 ahora a más de 100 mánagers tras la beta abierta, sin ruido entre divisiones."
+      "q": "¿Cómo funciona en directo el objetivo “terminar por delante de X otros mánagers”?",
+      "a": "En la página de la Directiva, el objetivo relative_rank del plan equilibrado muestra ahora el estado en directo: “Eres n.º 4 de 8 mánagers de la división, por delante de 4 (objetivo: 3 )”. El número se actualiza después de cada día de carrera cuando se refresca la clasificación. Se mide en relación con el número de mánagers humanos de tu división, así que escala de forma natural de ~19 ahora a más de 100 mánagers tras la beta abierta, sin ruido entre divisiones."
     },
     "season0To1Special": {
       "q": "¿Qué pasa en la transición de la temporada 0 a la temporada 1?",
@@ -1835,7 +1835,7 @@
     },
     "raceClassificationsFaq": {
       "q": "¿Cuál es la diferencia entre la general, las clásicas/Monuments y las victorias de etapa?",
-      "a": "Cada carrera tiene una categoría (como ProSeries, Monuments o un Grand Tour) y un tipo: carrera por etapas o carrera de un día. Las carreras por etapas (como los Grand Tours) corren varias etapas y registran dos resultados separados: una victoria de etapa por ganar una etapa individual y una victoria en la general por liderar la clasificación general cuando termina la carrera. Las carreras de un día (clásicas y Monuments) solo producen un único resultado cuando terminan, así que ganar una cuenta siempre como una victoria en la general, nunca como una victoria de etapa, aunque no haya una clasificación general de varios días de la que hablar. Las estadísticas de tu equipo y los logros cuentan por separado las victorias de etapa y las victorias en la general. El objetivo de «victorias en carrera» de la directiva es una excepción: una victoria de un día cuenta para él igual que una victoria de etapa, ya que es un logro al menos igual de grande."
+      "a": "Cada carrera tiene una categoría (como ProSeries, Monuments o un Grand Tour) y un tipo: carrera por etapas o carrera de un día. Las carreras por etapas (como los Grand Tours) corren varias etapas y registran dos resultados separados: una victoria de etapa por ganar una etapa individual y una victoria en la general por liderar la clasificación general cuando termina la carrera. Las carreras de un día (clásicas y Monuments) solo producen un único resultado cuando terminan, así que ganar una cuenta siempre como una victoria en la general, nunca como una victoria de etapa, aunque no haya una clasificación general de varios días de la que hablar. Las estadísticas de tu equipo y los logros cuentan por separado las victorias de etapa y las victorias en la general. El objetivo de “victorias en carrera” de la directiva es una excepción: una victoria de un día cuenta para él igual que una victoria de etapa, ya que es un logro al menos igual de grande."
     },
     "raceJerseysFaq": {
       "q": "¿Cómo funcionan el maillot verde y el maillot de la montaña?",
@@ -1875,11 +1875,11 @@
     },
     "whyReportFaq": {
       "q": "¿Cómo puedo ver por qué ocurrió un resultado?",
-      "a": "Las páginas de las carreras explican los resultados destacados en lenguaje llano, no solo con números. Unas pequeñas etiquetas junto al nombre de un ciclista señalan cosas como un gregario que sacrificó su propio puesto por el jefe de filas, un favorito previo a la etapa que tuvo un mal día o un ciclista que afinó su pico de forma a la perfección. Un bloque «El panorama general» en la página de la etapa añade una frase para los grandes vuelcos, como un cambio de líder de la general. Los números exactos que hay detrás de un resultado permanecen ocultos; solo se muestra la historia. La etiqueta de «mal día» solo puede, por construcción, recaer en el ciclista más fuerte de la etapa sobre el papel (nunca en un gregario que corre en apoyo de un jefe de filas), así que no dice nada sobre la fatiga ni sobre lo descansado que está un ciclista."
+      "a": "Las páginas de las carreras explican los resultados destacados en lenguaje llano, no solo con números. Unas pequeñas etiquetas junto al nombre de un ciclista señalan cosas como un gregario que sacrificó su propio puesto por el jefe de filas, un favorito previo a la etapa que tuvo un mal día o un ciclista que afinó su pico de forma a la perfección. Un bloque “El panorama general” en la página de la etapa añade una frase para los grandes vuelcos, como un cambio de líder de la general. Los números exactos que hay detrás de un resultado permanecen ocultos; solo se muestra la historia. La etiqueta de “mal día” solo puede, por construcción, recaer en el ciclista más fuerte de la etapa sobre el papel (nunca en un gregario que corre en apoyo de un jefe de filas), así que no dice nada sobre la fatiga ni sobre lo descansado que está un ciclista."
     },
     "contractExpiryRetirementFaq": {
       "q": "¿Qué pasa con los contratos que caducan y con los ciclistas veteranos en el cambio de temporada?",
-      "a": "Cuando termina una temporada, los ciclistas cuyo contrato ha vencido se liberan como agentes libres, y los ciclistas de 36 años o más pueden decidir retirarse. La retirada no se puede evitar, pero un contrato que caduca sí: amplíalo desde el perfil del ciclista antes del cambio. Si tu plantilla se ve afectada, recibes una notificación de aviso antes de que cambie la temporada, y el juego bloquea las ventas, liberaciones y anuncios en subasta que podrían dejar a tu equipo por debajo del margen de seguridad de mercado de 8 ciclistas, contando juntos los contratos que caducan y el riesgo de retirada. Hacen falta seis ciclistas sénior para tomar la salida en una carrera. La página de tu plantilla muestra una etiqueta de «contrato a punto de caducar» o de «riesgo de retirada» junto a cada ciclista que cuenta para ese riesgo, y una venta bloqueada nombra a los ciclistas concretos para que veas exactamente por qué."
+      "a": "Cuando termina una temporada, los ciclistas cuyo contrato ha vencido se liberan como agentes libres, y los ciclistas de 36 años o más pueden decidir retirarse. La retirada no se puede evitar, pero un contrato que caduca sí: amplíalo desde el perfil del ciclista antes del cambio. Si tu plantilla se ve afectada, recibes una notificación de aviso antes de que cambie la temporada, y el juego bloquea las ventas, liberaciones y anuncios en subasta que podrían dejar a tu equipo por debajo del margen de seguridad de mercado de 8 ciclistas, contando juntos los contratos que caducan y el riesgo de retirada. Hacen falta seis ciclistas sénior para tomar la salida en una carrera. La página de tu plantilla muestra una etiqueta de “contrato a punto de caducar” o de “riesgo de retirada” junto a cada ciclista que cuenta para ese riesgo, y una venta bloqueada nombra a los ciclistas concretos para que veas exactamente por qué."
     },
     "seniorStartReminderFaq": {
       "q": "¿Por qué mi panel dice que necesito más ciclistas sénior para tomar la salida?",
@@ -1895,7 +1895,7 @@
     },
     "seasonFormCarryoverFaq": {
       "q": "¿Conservan los ciclistas la Forma de la temporada anterior cuando empieza una temporada nueva?",
-      "a": "En parte. La Forma se reinicia ahora en el cambio de temporada, pero no del todo: la Forma de la nueva temporada de cada ciclista se calcula como 50 + (Forma antigua - 50) x 0,25, así que un ciclista que terminó la temporada anterior con una Forma muy alta o muy baja empieza la nueva mucho más cerca de la neutral, conservando aun así un leve rastro de donde lo dejó. La Forma sigue entonces moviéndose día a día exactamente como siempre: sube cuando un ciclista entrena o corre en el «punto dulce» de fatiga de 25-60, y baja si se le empuja a la sobrecarga."
+      "a": "En parte. La Forma se reinicia ahora en el cambio de temporada, pero no del todo: la Forma de la nueva temporada de cada ciclista se calcula como 50 + (Forma antigua - 50) x 0,25, así que un ciclista que terminó la temporada anterior con una Forma muy alta o muy baja empieza la nueva mucho más cerca de la neutral, conservando aun así un leve rastro de donde lo dejó. La Forma sigue entonces moviéndose día a día exactamente como siempre: sube cuando un ciclista entrena o corre en el “punto dulce” de fatiga de 25-60, y baja si se le empuja a la sobrecarga."
     },
     "sprintCaptainRoleFaq": {
       "q": "Tengo dos sprinters: uno es Jefe de filas y otro Jefe de filas de sprint. ¿Para cuál trabaja realmente mi equipo?",
@@ -1915,14 +1915,14 @@
     },
     "forumUnreadFaq": {
       "q": "¿Qué significa el punto junto a un hilo del foro?",
-      "a": "Un hilo se marca como no leído hasta que lo abres, según su publicación o respuesta más reciente, no según cuándo se creó. El mismo punto dorado aparece junto a «Foro» en el menú siempre que algún hilo tenga actividad sin leer. Si alguien responde a un hilo que has empezado, también recibes una notificación en tu bandeja de entrada; responder a tu propio hilo nunca te notifica."
+      "a": "Un hilo se marca como no leído hasta que lo abres, según su publicación o respuesta más reciente, no según cuándo se creó. El mismo punto dorado aparece junto a “Foro” en el menú siempre que algún hilo tenga actividad sin leer. Si alguien responde a un hilo que has empezado, también recibes una notificación en tu bandeja de entrada; responder a tu propio hilo nunca te notifica."
     },
     "betaGroupFaq": {
       "q": "¿Qué es el grupo beta y cómo me uno?",
       "a": "Abro la mayoría de las funciones nuevas primero a un grupo pequeño, para poder leer cada respuesta antes de que las tenga todo el mundo. Un beta tester ve esas funciones pronto, y algunas cambiarán o se romperán por el camino. Pide unirte en Perfil, Grupo beta: contesto cada solicitud a mano y recibes un mensaje en tu bandeja de entrada de cualquier manera. Cuéntame lo que te parezca raro en Discord o a través del formulario de comentarios. Puedes salir del grupo de nuevo desde el mismo sitio, y conservas todo lo que ya se ha activado para todos. En las patch notes, Beta marca un cambio que solo tiene el grupo beta, Ya disponible para todos marca el día en que llega a todos, Activado marca algo construido antes que ahora está en uso y Evento de temporada marca cosas como un cambio de temporada. Un cambio sin etiqueta está activo para todos."
     },
     "sharpFlatTrainingDaysFaq": {
-      "q": "¿Qué significan los días «de buenas piernas» y «flojos» de entrenamiento, y debería preocuparme una racha de días flojos?",
+      "q": "¿Qué significan los días “de buenas piernas” y “flojos” de entrenamiento, y debería preocuparme una racha de días flojos?",
       "a": "Cada día de entrenamiento incluye una pequeña oscilación aleatoria sobre el progreso habitual de tu ciclista: algunos días quedan algo por encima de lo previsto (un día de buenas piernas), otros algo por debajo (un día flojo), y la mayoría se sitúan alrededor de lo normal. Es aproximadamente un tercio de los días en cada sentido, sorteado de nuevo por ciclista y por día y totalmente independiente del día anterior, así que no sigue la fatiga, la forma ni nada que estés haciendo mal. Dos o tres días flojos seguidos le ocurrirán a alguien en una plantilla de tamaño normal por pura casualidad; juzga el desarrollo de un ciclista a lo largo de un bloque de entrenamiento completo, no de un solo día."
     },
     "teamworkLeadershipTrainingFaq": {

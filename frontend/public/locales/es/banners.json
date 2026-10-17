@@ -13,7 +13,7 @@
   },
   "consent": {
     "title": "Uso datos para mejorar el juego",
-    "intro": "Tú decides qué puedo medir. Siempre puedes cambiar tus elecciones en tu perfil, en «Privacidad».",
+    "intro": "Tú decides qué puedo medir. Siempre puedes cambiar tus elecciones en tu perfil, en “Privacidad”.",
     "privacyLink": "Leer la política de privacidad",
     "closeAriaLabel": "Cerrar sin cambiar nada",
     "alwaysOn": "(siempre activo)",

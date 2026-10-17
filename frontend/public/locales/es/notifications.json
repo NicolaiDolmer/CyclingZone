@@ -76,7 +76,7 @@
     "transferPrimary": "{rider}, {price} CZ$",
     "transferUnknownPrice": "{rider}, ? CZ$",
     "transferSecondary": "De {team} · {role}",
-    "swapPrimary": "{offered} ↔ {requested}",
+    "swapPrimary": "{offered} <-> {requested}",
     "swapSecondaryWithCash": "{team} · Efectivo {cash} CZ$ · {role}",
     "swapSecondaryNoCash": "{team} · {role}"
   },

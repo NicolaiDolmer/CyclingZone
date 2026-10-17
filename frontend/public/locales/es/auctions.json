@@ -18,7 +18,7 @@
   "tour": {
     "placeBid": {
       "title": "Haz una puja",
-      "body": "Introduce tu puja y pulsa «Pujar». La puja mínima ya viene rellenada. Debes pujar al menos 1 CZ$ por encima de la puja actual."
+      "body": "Introduce tu puja y pulsa “Pujar”. La puja mínima ya viene rellenada. Debes pujar al menos 1 CZ$ por encima de la puja actual."
     },
     "countdown": {
       "title": "Tiempo restante y prórroga automática",
@@ -222,8 +222,8 @@
     "wishlistNoResults": "No hay subastas activas de ciclistas de tu lista de seguimiento",
     "noInvolvementMySituation": "No participas en ninguna subasta activa",
     "noResults": "No hay subastas en esta categoría",
-    "wishlistHelp": "Desactiva «Solo mi lista de seguimiento» o añade ciclistas desde la vista general de ciclistas",
-    "browseSuggestion": "Cambia a «Todas» para explorar el mercado",
+    "wishlistHelp": "Desactiva “Solo mi lista de seguimiento” o añade ciclistas desde la vista general de ciclistas",
+    "browseSuggestion": "Cambia a “Todas” para explorar el mercado",
     "startAuctionSuggestion": "Ve a Ciclistas e inicia una subasta",
     "actionClearWishlist": "Mostrar todas las subastas",
     "actionBrowseAll": "Explorar todas las subastas",

@@ -45,8 +45,8 @@
     "watchlistToggleFailed": "No se pudo actualizar tu lista de seguimiento. Inténtalo de nuevo.",
     "compare": "⇄ Comparar",
     "compareTitle": "Comparar con otros ciclistas",
-    "watchlistCount": "👁 {count, plural, one {1 mánager sigue a este ciclista} other {# mánagers siguen a este ciclista}}",
-    "visitors": "👀 {count, plural, one {1 visitante único} other {# visitantes únicos}} (7 d)",
+    "watchlistCount": "{count, plural, one {1 mánager sigue a este ciclista} other {# mánagers siguen a este ciclista}}",
+    "visitors": "{count, plural, one {1 visitante único} other {# visitantes únicos}} (7 d)",
     "visitors24h": "{count, plural, one {1 en las últimas 24 h} other {# en las últimas 24 h}}",
     "visitorsNew": "Nuevo",
     "visitorsTrendUp": "Sube un {pct} % respecto a los 7 días anteriores",
@@ -63,7 +63,7 @@
     "freeAgent": "Agente libre",
     "nextSeasonPrefix": "Entrante:",
     "pendingTransfer": "Se une a {team} cuando termine su carrera por etapas actual",
-    "activeAuctionBadge": "⚡ Subasta activa",
+    "activeAuctionBadge": "Subasta activa",
     "highestBidLabel": "Puja más alta: {amount} CZ$",
     "valueLabel": "Valor CZ$",
     "contractSalary": "Salario CZ$",
@@ -76,7 +76,7 @@
     "newValueBetaTooltip": "Vista previa de la próxima valoración basada en habilidades. Aún no se usa para comprar, vender ni para el salario."
   },
   "blocked": {
-    "pendingTransfer": "🔒 El ciclista ha sido traspasado y se une a su nuevo equipo cuando termine su carrera por etapas actual. No se le puede volver a traspasar hasta entonces.",
+    "pendingTransfer": "El ciclista ha sido traspasado y se une a su nuevo equipo cuando termine su carrera por etapas actual. No se le puede volver a traspasar hasta entonces.",
     "retired": "El ciclista está retirado y no se puede traspasar.",
     "errorFallback": "Algo salió mal"
   },
@@ -496,7 +496,7 @@
       },
       "log": {
         "title": "Registro de desarrollo",
-        "hint": "entrenamiento → ganancias de habilidad por temporada",
+        "hint": "entrenamiento -> ganancias de habilidad por temporada",
         "seasonNow": "Temporada {n} · ahora",
         "delta": "{delta} de valoración",
         "note": "ganancias en {days} de los últimos {window} días",
@@ -732,13 +732,13 @@
     }
   },
   "auctionPanel": {
-    "activeLabel": "⚡ Subasta activa",
+    "activeLabel": "Subasta activa",
     "badges": {
       "leading": "Vas liderando",
       "selling": "Estás vendiendo",
       "outbid": "Te han superado",
-      "extended": "⚡ Pró.",
-      "flash": "⚡ Relámpago"
+      "extended": "Pró.",
+      "flash": "Relámpago"
     },
     "highestBid": "Puja más alta",
     "leaderFallback": "",
@@ -770,7 +770,7 @@
       "saveAria": "Guardar límite de puja automática",
       "cancelAria": "Cancelar la edición de la puja automática",
       "error": "Error",
-      "saved": "✓"
+      "saved": "OK"
     },
     "riderNameFallback": "ciclista"
   },
@@ -789,7 +789,7 @@
       "free": "Iniciar subasta (agente libre)"
     },
     "flash": {
-      "label": "⚡ Subasta relámpago (30 min)",
+      "label": "Subasta relámpago (30 min)",
       "hint": "Deadline Day: termina exactamente 30 minutos después de empezar"
     },
     "end": {
@@ -799,7 +799,7 @@
     },
     "buttons": {
       "start": "Iniciar subasta",
-      "startFlash": "⚡ Iniciar subasta relámpago",
+      "startFlash": "Iniciar subasta relámpago",
       "loading": "..."
     },
     "priceError": "El precio de salida debe igualar al menos el Valor ({amount} CZ$)",
@@ -813,8 +813,8 @@
     "submit": "Enviar oferta",
     "sending": "Enviando...",
     "toast": {
-      "success": "✅ ¡Oferta enviada!",
-      "errorPrefix": "❌"
+      "success": "¡Oferta enviada!",
+      "errorPrefix": "Error:"
     }
   },
   "sellRider": {
@@ -831,10 +831,10 @@
     "confirmRemove": "Sí, quitar",
     "cancel": "Cancelar",
     "toast": {
-      "listed": "✅ ¡Puesto a la venta!",
-      "priceUpdated": "✅ Precio pedido actualizado",
-      "removed": "✅ Quitado de la lista de fichajes",
-      "errorPrefix": "❌"
+      "listed": "¡Puesto a la venta!",
+      "priceUpdated": "Precio pedido actualizado",
+      "removed": "Quitado de la lista de fichajes",
+      "errorPrefix": "Error:"
     }
   },
   "manage": {
@@ -886,12 +886,12 @@
     "submit": "Enviar intercambio",
     "sending": "Enviando...",
     "toast": {
-      "success": "✅ ¡Intercambio propuesto!",
-      "errorPrefix": "❌"
+      "success": "¡Intercambio propuesto!",
+      "errorPrefix": "Error:"
     }
   },
   "celebration": {
-    "title": "¡Has ganado la subasta! 🏆",
+    "title": "¡Has ganado la subasta!",
     "subtitle": "El ciclista ya está en tu equipo"
   },
   "compare": {

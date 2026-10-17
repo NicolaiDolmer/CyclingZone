@@ -19,7 +19,7 @@
         "<bold>Opcional:</bold> tu ID de Discord si lo añades para recibir notificaciones por MD.",
         "<bold>Técnicos:</bold> dirección IP en los registros de acceso durante un máximo de 30 días, usada para operación y seguridad.",
         "<bold>Analítica (solo con consentimiento):</bold> datos de comportamiento anónimos mediante Microsoft Clarity (p. ej. dónde hacen clic en vano los usuarios o hacen scroll con frustración), estadísticas anónimas de tráfico y origen mediante Google Analytics (p. ej. desde qué página llegaste) y visitas anónimas a páginas mediante Vercel Web Analytics (p. ej. cuánta gente visita una página). Se usan solo para corregir una mala UX y entender dónde encuentran el juego los jugadores.",
-        "<bold>Analítica de producto con PostHog (se ejecuta salvo que rechaces la analítica):</bold> visitas a páginas y pasos clave del juego (por ejemplo registro, equipo creado, primera puja y primer entrenamiento), para ver dónde se atascan los jugadores nuevos. PostHog no instala cookies y no guarda nada en tu navegador: cada carga de página recibe un ID aleatorio nuevo. Cuando inicias sesión, estos eventos se vinculan a tu ID de cuenta interno (nunca a tu correo ni a tu nombre), de modo que las visitas se pueden conectar entre sesiones. Rechazar la categoría «Analítica» desactiva PostHog de inmediato. La base jurídica es el interés legítimo en mejorar el juego (art. 6.1.f del RGPD), y rechazar la analítica es la forma de oponerte.",
+        "<bold>Analítica de producto con PostHog (se ejecuta salvo que rechaces la analítica):</bold> visitas a páginas y pasos clave del juego (por ejemplo registro, equipo creado, primera puja y primer entrenamiento), para ver dónde se atascan los jugadores nuevos. PostHog no instala cookies y no guarda nada en tu navegador: cada carga de página recibe un ID aleatorio nuevo. Cuando inicias sesión, estos eventos se vinculan a tu ID de cuenta interno (nunca a tu correo ni a tu nombre), de modo que las visitas se pueden conectar entre sesiones. Rechazar la categoría “Analítica” desactiva PostHog de inmediato. La base jurídica es el interés legítimo en mejorar el juego (art. 6.1.f del RGPD), y rechazar la analítica es la forma de oponerte.",
         "<bold>Origen de adquisición (interés legítimo):</bold> al crear una cuenta registramos cómo llegaste por primera vez al sitio (un enlace de referencia, las etiquetas de campaña de la URL y la página de aterrizaje) para ver qué canales traen jugadores nuevos. Solo de origen propio, sin seguimiento entre sitios, y puedes oponerte en cualquier momento.",
         "<bold>Estadísticas agregadas de tráfico (sin necesidad de consentimiento):</bold> contamos visitas a páginas y participación de forma anónima y agregada (p. ej. cuántos visitantes recibió una página y si participaron) sin cookies y sin guardar direcciones IP ni ningún dato que pueda identificarte. También registramos de qué página procede una visita y las etiquetas de campaña de la URL, para ver qué canales traen visitantes. Es información sobre el enlace de referencia, no sobre ti. Como no se puede vincular contigo, no requiere consentimiento.",
         "<bold>Juego limpio (interés legítimo):</bold> para detectar y documentar las trampas con varias cuentas, registramos señales técnicas cuando se crea una cuenta y cuando ocurren acciones con valor en el juego (por ejemplo fichajes aceptados, pujas en subastas y préstamos contratados): dirección IP, información del navegador (user agent), idioma configurado y zona horaria. Estos datos se usan únicamente para hacer cumplir el juego limpio, nunca son visibles para otros jugadores, no se comparten con terceros y se eliminan automáticamente a los 180 días. Si eliminas tu cuenta, se eliminan con ella. La base jurídica es nuestro interés legítimo en un juego justo (art. 6.1.f del RGPD), y puedes oponerte en cualquier momento."
@@ -27,12 +27,12 @@
     },
     "founderWaitlist": {
       "heading": "Lista de espera Founder (manifestación de interés sin compromiso)",
-      "intro": "Si te apuntas a nuestra lista de espera «Founder», tratamos los siguientes datos sobre la base de tu consentimiento explícito (art. 6.1.a del RGPD):",
+      "intro": "Si te apuntas a nuestra lista de espera “Founder”, tratamos los siguientes datos sobre la base de tu consentimiento explícito (art. 6.1.a del RGPD):",
       "items": [
         "<bold>Contacto:</bold> correo electrónico y/o usuario de Discord (se necesita al menos uno para poder responderte).",
         "<bold>Intención:</bold> nivel de interés, nivel preferido, motivo principal, ventajas que valoras y líneas rojas de justicia percibidas (texto libre).",
         "<bold>Seguimiento:</bold> consentimiento para un seguimiento personal (sí/no por separado).",
-        "<bold>Atribución:</bold> de dónde vienes (parámetro UTM o etiqueta manual, p. ej. «discord_launch»).",
+        "<bold>Atribución:</bold> de dónde vienes (parámetro UTM o etiqueta manual, p. ej. “discord_launch”).",
         "<bold>Marca de tiempo:</bold> cuándo diste el consentimiento (prueba de la base legal)."
       ],
       "purpose": "<bold>Finalidad:</bold> administrar la lista de espera, contactar contigo sobre el lanzamiento y medir qué canales generan interés real.",
@@ -45,10 +45,10 @@
         "<bold>Supabase (UE, Fráncfort):</bold> base de datos y autenticación (con acuerdo de encargo del tratamiento).",
         "<bold>Vercel:</bold> alojamiento del frontend (edge en UE/EE. UU.). Vercel ve las direcciones IP en los registros de acceso.",
         "<bold>Railway:</bold> alojamiento del backend.",
-        "<bold>PostHog (nube de la UE):</bold> analítica de producto sin cookies. Se desactiva si rechazas la categoría «Analítica».",
-        "<bold>Microsoft Clarity:</bold> solo se carga si has aceptado la categoría «Analítica».",
-        "<bold>Google Analytics:</bold> solo se carga si has aceptado la categoría «Analítica». Las señales publicitarias están desactivadas.",
-        "<bold>Vercel Web Analytics:</bold> solo se carga si has aceptado la categoría «Analítica».",
+        "<bold>PostHog (nube de la UE):</bold> analítica de producto sin cookies. Se desactiva si rechazas la categoría “Analítica”.",
+        "<bold>Microsoft Clarity:</bold> solo se carga si has aceptado la categoría “Analítica”.",
+        "<bold>Google Analytics:</bold> solo se carga si has aceptado la categoría “Analítica”. Las señales publicitarias están desactivadas.",
+        "<bold>Vercel Web Analytics:</bold> solo se carga si has aceptado la categoría “Analítica”.",
         "<bold>Discord (a través de Discord Inc.):</bold> solo si añades voluntariamente tu ID de Discord o nos escribes por Discord. Discord es un responsable del tratamiento independiente de cualquier contenido que nos envíes allí."
       ],
       "footnote": "No vendemos tus datos ni los compartimos con terceros con fines de marketing. Un enlace a Discord no es una transferencia de datos, solo lo es cuando haces clic y nos escribes tú mismo."
@@ -69,7 +69,7 @@
       "items": [
         "<bold>Acceso</bold>: saber qué datos tenemos sobre ti.",
         "<bold>Rectificación</bold>: que se corrijan los datos incorrectos.",
-        "<bold>Supresión</bold> («derecho al olvido»).",
+        "<bold>Supresión</bold> (“derecho al olvido”).",
         "<bold>Portabilidad de los datos</bold>: recibir tus datos en un formato legible por máquina.",
         "<bold>Oposición</bold> al tratamiento basado en el interés legítimo.",
         "<bold>Retirar el consentimiento</bold>: se aplica a partir de ese momento y detiene la recogida. Los datos recogidos antes de la retirada no se pueden quitar de los agregados anónimos."
@@ -87,7 +87,7 @@
         "<bold>Elecciones de consentimiento</bold> (<code>cz_consent_v1</code> en localStorage): para recordar tu selección y no volver a preguntarte.",
         "<bold>Fijación de versión</bold> (<code>__vdpl</code>): mantiene tu navegador en la versión de la app que cargaste, para que la página no se rompa a mitad de sesión."
       ],
-      "outro": "Estos no requieren consentimiento según la directiva ePrivacy (estrictamente necesarios). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> y <bold>Vercel Web Analytics</bold> solo se cargan si has aceptado activamente la categoría «Analítica». <bold>PostHog</bold> no guarda nada en tu navegador (ni cookies ni localStorage) y se desactiva si rechazas «Analítica». Puedes cambiar tu elección en esta página en cualquier momento."
+      "outro": "Estos no requieren consentimiento según la directiva ePrivacy (estrictamente necesarios). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> y <bold>Vercel Web Analytics</bold> solo se cargan si has aceptado activamente la categoría “Analítica”. <bold>PostHog</bold> no guarda nada en tu navegador (ni cookies ni localStorage) y se desactiva si rechazas “Analítica”. Puedes cambiar tu elección en esta página en cualquier momento."
     },
     "currentChoices": {
       "heading": "Tus elecciones actuales",

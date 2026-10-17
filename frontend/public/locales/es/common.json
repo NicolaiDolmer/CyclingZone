@@ -72,7 +72,7 @@
     "clickToClose": "Haz clic para cerrar",
     "loading": "Cargando…",
     "loadingShort": "…",
-    "success": "✓",
+    "success": "OK",
     "error": "Error"
   },
   "time": {
@@ -137,11 +137,26 @@
     "error": "No ha funcionado. Inténtalo de nuevo.",
     "categoriesHeading": "Lo que te envío",
     "category": {
-      "auctions": { "label": "Subastas, a última hora", "desc": "Te superan la puja justo antes del final, y subastas ganadas." },
-      "races": { "label": "Carreras", "desc": "Un resumen por día de carrera." },
-      "transfers": { "label": "Ofertas de fichaje", "desc": "Hay una oferta esperando tu respuesta." },
-      "deadlines": { "label": "Plantilla y plazos", "desc": "Plazos que te cuestan caro si se te pasan." },
-      "academy": { "label": "Academia y entrenamiento", "desc": "Solo en el resumen de la mañana." }
+      "auctions": {
+        "label": "Subastas, a última hora",
+        "desc": "Te superan la puja justo antes del final, y subastas ganadas."
+      },
+      "races": {
+        "label": "Carreras",
+        "desc": "Un resumen por día de carrera."
+      },
+      "transfers": {
+        "label": "Ofertas de fichaje",
+        "desc": "Hay una oferta esperando tu respuesta."
+      },
+      "deadlines": {
+        "label": "Plantilla y plazos",
+        "desc": "Plazos que te cuestan caro si se te pasan."
+      },
+      "academy": {
+        "label": "Academia y entrenamiento",
+        "desc": "Solo en el resumen de la mañana."
+      }
     },
     "offer": {
       "regionAriaLabel": "Notificaciones push",
