@@ -52,7 +52,7 @@
   "tour": {
     "filters": {
       "title": "Filtre la liste selon ton budget",
-      "body": "Mets « Valeur max » à ton solde pour ne voir que les coureurs que tu peux t'offrir. Les interrupteurs U25 / Agent libre ouvrent des voies moins chères."
+      "body": "Mets “Valeur max” à ton solde pour ne voir que les coureurs que tu peux t'offrir. Les interrupteurs U25 / Agent libre ouvrent des voies moins chères."
     },
     "list": {
       "title": "Clique sur un coureur",
@@ -88,7 +88,7 @@
     "ownerFilterLabel": "Filtrer par propriétaire",
     "searchPlaceholder": "Rechercher un nom de coureur…",
     "noResults": "Aucun résultat trouvé",
-    "noResultsFor": "Aucun résultat trouvé pour « {q} »",
+    "noResultsFor": "Aucun résultat trouvé pour “{q}”",
     "loadError": "Impossible de charger le classement. Réessaie.",
     "retry": "Réessayer",
     "thNation": "Nation",

@@ -3,7 +3,7 @@
   "subtitle": "Compare l'historique de deux managers",
   "searchPlaceholder": "Rechercher des équipes...",
   "division": "Division {n}",
-  "noTeamsFound": "Aucune équipe trouvée pour « {q} »",
+  "noTeamsFound": "Aucune équipe trouvée pour “{q}”",
   "teamA": "Équipe A",
   "teamB": "Équipe B",
   "errorLoad": "Impossible de charger les données de comparaison. Réessaie.",

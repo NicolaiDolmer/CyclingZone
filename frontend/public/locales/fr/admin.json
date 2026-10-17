@@ -132,7 +132,7 @@
   "model": {
     "tabModel": "Modèle (cascade)",
     "tabManual": "Avancé (manuel)",
-    "intro": "Fixe une seule fois la catégorie maîtresse ; toutes les autres catégories suivent automatiquement selon leur facteur. Modifier un point d'ancrage met à l'échelle toutes les catégories qui partagent ce classement. La forme des courbes de chaque catégorie reste fixe. Clique sur « Enregistrer et générer » pour écrire le résultat dans les points de course.",
+    "intro": "Fixe une seule fois la catégorie maîtresse ; toutes les autres catégories suivent automatiquement selon leur facteur. Modifier un point d'ancrage met à l'échelle toutes les catégories qui partagent ce classement. La forme des courbes de chaque catégorie reste fixe. Clique sur “Enregistrer et générer” pour écrire le résultat dans les points de course.",
     "mastersTitle": "Points d'ancrage maîtres (1re place)",
     "masterStage": "Maître course par étapes · Tour de France",
     "masterOneDay": "Maître course d'un jour · Monuments",
@@ -154,8 +154,8 @@
     "invalidValue": "Doit être un nombre non négatif"
   },
     "sectionTitle": "Points de course · remplacement",
-    "intro": "Ajuste les points attribués par position à l'arrivée, par classe de course. Les modifications sont consignées dans le journal admin. Utilise « Rétablir la base » pour restaurer les valeurs par défaut.",
-    "appliesToFutureHint": "Les modifications enregistrées n'affectent que les courses importées à partir de maintenant. Pour les appliquer aux classements existants, lance « ↻ Point fra config » dans l'onglet Saison (les courses déjà payées ne sont pas touchées).",
+    "intro": "Ajuste les points attribués par position à l'arrivée, par classe de course. Les modifications sont consignées dans le journal admin. Utilise “Rétablir la base” pour restaurer les valeurs par défaut.",
+    "appliesToFutureHint": "Les modifications enregistrées n'affectent que les courses importées à partir de maintenant. Pour les appliquer aux classements existants, lance “↻ Point fra config” dans l'onglet Saison (les courses déjà payées ne sont pas touchées).",
     "raceClassTab": "Classe de course",
     "rankHeader": "n° {rank}",
     "resultTypeLabel": "Classement",

@@ -3,7 +3,7 @@
   "subtitle": "{count} coureurs sur ta liste de suivi, visibles uniquement par toi",
   "addRiders": "+ Ajouter des coureurs",
   "emptyTitle": "Ta liste de suivi est vide",
-  "emptyBody": "Clique sur le ⭐ à côté d'un coureur dans la base des coureurs pour l'ajouter ici",
+  "emptyBody": "Clique sur l'étoile à côté d'un coureur dans la base des coureurs pour l'ajouter ici",
   "emptyCta": "Aller aux coureurs",
   "searchPlaceholder": "Rechercher des coureurs...",
   "searchAria": "Rechercher des coureurs",

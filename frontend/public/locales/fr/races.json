@@ -440,7 +440,7 @@
     "noRacesMatch": "Aucune course ne correspond aux filtres",
     "raceNotFound": "Course introuvable",
     "noResultsImportedRace": "Aucun résultat importé pour cette course pour l'instant",
-    "noHistory": "Aucune donnée trouvée pour « {name} »",
+    "noHistory": "Aucune donnée trouvée pour “{name}”",
     "raceNotFoundHint": "Le lien est peut-être ancien, ou la course a été supprimée. Ouvre la bibliothèque des courses pour en trouver une autre.",
     "noResultsImportedRaceHint": "Cette course n'a pas encore de lignes de résultats. D'autres courses de la bibliothèque ont déjà les leurs.",
     "noResultsImportedRaceCta": "Ouvrir la bibliothèque des courses"
@@ -1031,7 +1031,7 @@
       "summary": "{changedRaces} courses changent · +{totalAdded}/−{totalRemoved} coureurs · {captainChanges} changements de leader",
       "in": "Entrants",
       "out": "Sortants",
-      "captain": "Leader → {name}"
+      "captain": "Leader : {name}"
     },
     "error": {
       "title": "Un problème est survenu",

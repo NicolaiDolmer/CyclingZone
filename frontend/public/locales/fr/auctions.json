@@ -18,7 +18,7 @@
   "tour": {
     "placeBid": {
       "title": "Placer une enchère",
-      "body": "Saisis ton montant et appuie sur « Enchérir ». L'enchère minimale est préremplie. Tu dois enchérir d'au moins 1 CZ$ de plus que l'enchère actuelle."
+      "body": "Saisis ton montant et appuie sur “Enchérir”. L'enchère minimale est préremplie. Tu dois enchérir d'au moins 1 CZ$ de plus que l'enchère actuelle."
     },
     "countdown": {
       "title": "Temps restant et prolongation automatique",
@@ -222,8 +222,8 @@
     "wishlistNoResults": "Aucune enchère en cours sur les coureurs de ta liste de suivi",
     "noInvolvementMySituation": "Tu n'es impliqué dans aucune enchère en cours",
     "noResults": "Aucune enchère dans cette catégorie",
-    "wishlistHelp": "Désactive « Uniquement ma liste de suivi » ou ajoute des coureurs depuis l'aperçu des coureurs",
-    "browseSuggestion": "Passe sur « Toutes » pour parcourir le marché",
+    "wishlistHelp": "Désactive “Uniquement ma liste de suivi” ou ajoute des coureurs depuis l'aperçu des coureurs",
+    "browseSuggestion": "Passe sur “Toutes” pour parcourir le marché",
     "startAuctionSuggestion": "Va dans Coureurs et lance une enchère",
     "actionClearWishlist": "Afficher toutes les enchères",
     "actionBrowseAll": "Parcourir toutes les enchères",

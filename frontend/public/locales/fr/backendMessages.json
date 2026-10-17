@@ -30,7 +30,7 @@
     "loanReceivedShort": "Emprunt à court terme souscrit (frais : {fee} CZ$)",
     "loanReceivedLong": "Emprunt à long terme souscrit (frais : {fee} CZ$)",
     "loanRepayment": "Échéance d'emprunt payée",
-    "loanRepaymentFinal": "Échéance d'emprunt payée. Emprunt entièrement remboursé ! 🎉",
+    "loanRepaymentFinal": "Échéance d'emprunt payée. Emprunt entièrement remboursé !",
     "loanRepaymentRemaining": "Échéance d'emprunt payée (restant : {remaining} CZ$)",
     "forcedDebtRepaymentFinal": "Le produit de la vente forcée a entièrement remboursé ton emprunt",
     "forcedDebtRepaymentRemaining": "Le produit de la vente forcée a réduit la dette (restant : {remaining} CZ$)",
@@ -111,11 +111,11 @@
       "message": "Tu as souscrit un emprunt à long terme de {principal} CZ$. Frais : {fee} CZ$. Remboursement total : {totalOwed} CZ$."
     },
     "emergencyLoan": {
-      "title": "⚠️ Emprunt d'urgence ouvert",
+      "title": "Emprunt d'urgence ouvert",
       "message": "Ton équipe n'a pas pu couvrir les salaires. Un emprunt d'urgence de {amount} CZ$ a été ouvert automatiquement avec {feeRate} % de frais et {interestRate} % d'intérêts. Dette totale : {totalOwed} CZ$."
     },
     "emergencyLoanBreach": {
-      "title": "🚨 Plafond de dette dépassé",
+      "title": "Plafond de dette dépassé",
       "message": "Ton emprunt d'urgence porte la dette de l'équipe {breachAmount} CZ$ au-dessus du plafond de la division de {ceiling} CZ$. Tu peux continuer à fonctionner, mais tu DOIS réduire tes coûts (vendre des coureurs, abandonner des contrats de stars) avant la fin de la saison prochaine pour éviter une spirale de dette."
     },
     "emergencyLoanEscalation": {
@@ -135,7 +135,7 @@
       "message": "Ta dette de {debt} CZ$ est restée au-dessus du plafond de ta division de {ceiling} CZ$ pendant {streak} saisons de suite, la direction a donc vendu {riders} pour {proceeds} CZ$ et a versé l'argent directement sur tes emprunts. Ta dette est maintenant de {remainingDebt} CZ$ et les transferts restent gelés tant que tu n'es pas repassé sous le plafond. Si tu es toujours au-dessus au prochain changement de saison, la direction revendra. Rembourse tes emprunts, vends toi-même des coureurs ou réduis les salaires d'ici là."
     },
     "loanPaidOff": {
-      "title": "✅ Emprunt remboursé",
+      "title": "Emprunt remboursé",
       "message": "Félicitations ! Tu as entièrement remboursé ton emprunt."
     },
     "boardPlanExpired": {
@@ -174,7 +174,7 @@
       "message": "La direction est impressionnée ({satisfaction} % de satisfaction, {goalsMet}/{goalsTotal} objectifs atteints). Elle offre +{bonusAmount} CZ$ pour un objectif supplémentaire : {goalLabel}. Accepte ou refuse sur la page Direction."
     },
     "divisionPromoted": {
-      "title": "Promu ! 🎉",
+      "title": "Promu !",
       "message": "Félicitations ! Ton équipe monte en division {division}."
     },
     "divisionRelegated": {
@@ -338,7 +338,7 @@
     },
     "boardAutoAccepted": {
       "title": "La direction a choisi {planLabel} pour toi",
-      "message": "Tu n'as pas négocié ton {planLabel} à temps. La direction a retenu l'axe « {focus} » et des objectifs par défaut. Tu peux encore demander des changements une fois le plan lancé."
+      "message": "Tu n'as pas négocié ton {planLabel} à temps. La direction a retenu l'axe “{focus}” et des objectifs par défaut. Tu peux encore demander des changements une fois le plan lancé."
     },
     "boardMandateOpened": {
       "title": "La direction a convoqué l'assemblée annuelle",
@@ -381,7 +381,7 @@
       "message": "{winnerName} a emporté {rider} pour {price} CZ$, soit {overBid} CZ$ au-dessus de ton enchère maximale de {yourMax} CZ$."
     },
     "debtWarning": {
-      "title": "⚠️ Solde négatif",
+      "title": "Solde négatif",
       "message": "Ton équipe a un solde négatif. Consulte la page Finances pour les détails."
     },
     "deadlineDay": {
@@ -565,12 +565,12 @@
     "forumThreadReply": {
       "title": "{count, plural, one {Nouvelle réponse à ton fil} other {# nouvelles réponses à ton fil}}",
       "message": "{count, plural, one {Quelqu'un a répondu à ton fil} other {# nouvelles réponses à ton fil}}",
-      "messageWithTitle": "{count, plural, one {Une nouvelle réponse sur « {postTitle} »} other {# nouvelles réponses sur « {postTitle} »}}"
+      "messageWithTitle": "{count, plural, one {Une nouvelle réponse sur “{postTitle}”} other {# nouvelles réponses sur “{postTitle}”}}"
     },
     "forumMention": {
       "title": "Tu as été mentionné",
       "message": "{author} t'a mentionné sur le forum",
-      "messageWithTitle": "{author} t'a mentionné dans « {postTitle} »"
+      "messageWithTitle": "{author} t'a mentionné dans “{postTitle}”"
     },
     "careerMilestone": {
       "maidenWin": {

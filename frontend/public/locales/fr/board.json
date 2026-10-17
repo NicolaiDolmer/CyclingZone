@@ -112,7 +112,7 @@
     "domesticDominance": "Au moins {target} victoires dans les courses à domicile par saison",
     "required": "Obligatoire",
     "negotiated": "Négocié",
-    "tightenedBadge": "🔒 Durci",
+    "tightenedBadge": "Durci",
     "tightenedTitle": "Durci par la direction après une demande précédente",
     "cumulative": "Cumulé",
     "satisfactionBonus": "+{count} de satisfaction",
@@ -447,10 +447,10 @@
     "step3Subtitle": "{plan}, sur {count, plural, one {1 saison} other {# saisons}}",
     "agreedHeading": "Objectifs convenus",
     "signing": "Enregistrement...",
-    "sign": "Signer le contrat ✍",
+    "sign": "Signer le contrat",
     "resetNotice": "Signer remet à zéro les compteurs de ce plan (saisons terminées, victoires cumulées) et ouvre une nouvelle fenêtre de plan. Cela ne remet pas à zéro ta demande à la direction pour cette saison. Elle reste verrouillée jusqu'à la saison prochaine.",
     "obligatory": "Obligatoire",
-    "negotiatedTick": "Négocié ✓",
+    "negotiatedTick": "Négocié",
     "steps": {
       "strategy": "Stratégie",
       "negotiation": "Négociation",
@@ -1021,7 +1021,7 @@
           "La direction convoque une assemblée extraordinaire. Des séries de défaites comme celle-ci n'attendent pas le calendrier.",
           "Ce n'est pas la routine. On se réunit maintenant, car le classement ne se corrige pas tout seul.",
           "J'ai exigé une réunion supplémentaire. Personne ne perd autant de courses sans une discussion difficile.",
-          "Assemblée extraordinaire, parce qu'« acceptable » n'est pas un mot que j'emploie pour ce bilan."
+          "Assemblée extraordinaire, parce qu'“acceptable” n'est pas un mot que j'emploie pour ce bilan."
         ],
         "chairman_departure": [
           "Je quitte la présidence. Juge-moi sur les victoires, c'était toujours l'accord.",
@@ -1924,10 +1924,10 @@
       "close": "Fermer"
     },
     "minutesFixture": {
-      "stageWin": "Victoire d'étape, Vuelta a Andalucía. « C'est ce pour quoi j'ai signé. »",
-      "youthDebut": "Début d'un jeune : {name}, {age}. « C'est la voie nordique. »",
-      "deficitWeek": "Semaine déficitaire, {amount}. « Des marges, pas des miracles. »",
-      "captainSaleWarning": "On ne vend pas un leader en cours de saison sans plan. « Montre-moi le plan. »"
+      "stageWin": "Victoire d'étape, Vuelta a Andalucía. “C'est ce pour quoi j'ai signé.”",
+      "youthDebut": "Début d'un jeune : {name}, {age}. “C'est la voie nordique.”",
+      "deficitWeek": "Semaine déficitaire, {amount}. “Des marges, pas des miracles.”",
+      "captainSaleWarning": "On ne vend pas un leader en cours de saison sans plan. “Montre-moi le plan.”"
     },
     "meeting": {
       "route": {

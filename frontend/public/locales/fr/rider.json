@@ -45,8 +45,8 @@
     "watchlistToggleFailed": "Impossible de mettre à jour ta liste de suivi. Réessaie.",
     "compare": "⇄ Comparer",
     "compareTitle": "Comparer avec d'autres coureurs",
-    "watchlistCount": "👁 {count, plural, one {1 manager suit ce coureur} other {# managers suivent ce coureur}}",
-    "visitors": "👀 {count, plural, one {1 visiteur unique} other {# visiteurs uniques}} (7 j)",
+    "watchlistCount": "{count, plural, one {1 manager suit ce coureur} other {# managers suivent ce coureur}}",
+    "visitors": "{count, plural, one {1 visiteur unique} other {# visiteurs uniques}} (7 j)",
     "visitors24h": "{count, plural, one {1 ces dernières 24 h} other {# ces dernières 24 h}}",
     "visitorsNew": "Nouveau",
     "visitorsTrendUp": "En hausse de {pct} % par rapport aux 7 jours précédents",
@@ -63,7 +63,7 @@
     "freeAgent": "Agent libre",
     "nextSeasonPrefix": "Entrant :",
     "pendingTransfer": "Rejoint {team} une fois sa course par étapes en cours terminée",
-    "activeAuctionBadge": "⚡ Enchère en cours",
+    "activeAuctionBadge": "Enchère en cours",
     "highestBidLabel": "Enchère la plus haute : {amount} CZ$",
     "valueLabel": "Valeur en CZ$",
     "contractSalary": "Salaire en CZ$",
@@ -76,7 +76,7 @@
     "newValueBetaTooltip": "Aperçu de la future valorisation fondée sur les aptitudes. Pas encore utilisée pour acheter, vendre ni pour le salaire."
   },
   "blocked": {
-    "pendingTransfer": "🔒 Le coureur a été transféré et rejoint sa nouvelle équipe une fois sa course par étapes en cours terminée. Il ne peut pas être transféré à nouveau d'ici là.",
+    "pendingTransfer": "Le coureur a été transféré et rejoint sa nouvelle équipe une fois sa course par étapes en cours terminée. Il ne peut pas être transféré à nouveau d'ici là.",
     "retired": "Le coureur est à la retraite et ne peut pas être transféré.",
     "errorFallback": "Un problème est survenu"
   },
@@ -496,7 +496,7 @@
       },
       "log": {
         "title": "Journal de progression",
-        "hint": "entraînement → gains d'aptitude par saison",
+        "hint": "de l'entraînement aux gains d'aptitude par saison",
         "seasonNow": "Saison {n} · maintenant",
         "delta": "{delta} de note",
         "note": "gains sur {days} des {window} derniers jours",
@@ -732,13 +732,13 @@
     }
   },
   "auctionPanel": {
-    "activeLabel": "⚡ Enchère en cours",
+    "activeLabel": "Enchère en cours",
     "badges": {
       "leading": "Tu es en tête",
       "selling": "Tu vends",
       "outbid": "Tu as été surenchéri",
-      "extended": "⚡ Prol.",
-      "flash": "⚡ Flash"
+      "extended": "Prol.",
+      "flash": "Flash"
     },
     "highestBid": "Enchère la plus haute",
     "leaderFallback": "",
@@ -770,7 +770,7 @@
       "saveAria": "Enregistrer la limite d'enchère automatique",
       "cancelAria": "Annuler la modification de l'enchère automatique",
       "error": "Erreur",
-      "saved": "✓"
+      "saved": "OK"
     },
     "riderNameFallback": "coureur"
   },
@@ -789,7 +789,7 @@
       "free": "Lancer une enchère (agent libre)"
     },
     "flash": {
-      "label": "⚡ Enchère flash (30 min)",
+      "label": "Enchère flash (30 min)",
       "hint": "Deadline Day : se termine exactement 30 minutes après le lancement"
     },
     "end": {
@@ -799,7 +799,7 @@
     },
     "buttons": {
       "start": "Lancer l'enchère",
-      "startFlash": "⚡ Lancer une enchère flash",
+      "startFlash": "Lancer une enchère flash",
       "loading": "..."
     },
     "priceError": "Le prix de départ doit au moins égaler la valeur ({amount} CZ$)",
@@ -813,8 +813,8 @@
     "submit": "Envoyer l'offre",
     "sending": "Envoi...",
     "toast": {
-      "success": "✅ Offre envoyée !",
-      "errorPrefix": "❌"
+      "success": "Offre envoyée !",
+      "errorPrefix": "Erreur :"
     }
   },
   "sellRider": {
@@ -831,10 +831,10 @@
     "confirmRemove": "Oui, retirer",
     "cancel": "Annuler",
     "toast": {
-      "listed": "✅ Mis en vente !",
-      "priceUpdated": "✅ Prix demandé mis à jour",
-      "removed": "✅ Retiré de la liste des transferts",
-      "errorPrefix": "❌"
+      "listed": "Mis en vente !",
+      "priceUpdated": "Prix demandé mis à jour",
+      "removed": "Retiré de la liste des transferts",
+      "errorPrefix": "Erreur :"
     }
   },
   "manage": {
@@ -886,12 +886,12 @@
     "submit": "Envoyer l'échange",
     "sending": "Envoi...",
     "toast": {
-      "success": "✅ Échange proposé !",
-      "errorPrefix": "❌"
+      "success": "Échange proposé !",
+      "errorPrefix": "Erreur :"
     }
   },
   "celebration": {
-    "title": "Tu as remporté l'enchère ! 🏆",
+    "title": "Tu as remporté l'enchère !",
     "subtitle": "Le coureur est maintenant dans ton équipe"
   },
   "compare": {
