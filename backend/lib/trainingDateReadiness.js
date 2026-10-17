@@ -107,7 +107,7 @@ export async function loadTrainingDateTeams(supabase) {
     return await fetchAllRows(() => supabase.from('teams').select('id,league_division_id,u23_league_division_id,junior_league_division_id,is_ai,parked_at,assistant_autopick_enabled,is_bank,is_frozen,is_test_account,created_at,comeback_at').order('id'));
   } catch (error) {
     if (!isMissingComebackAtSelect(error)) throw error;
-    console.warn('[training-date] teams.comeback_at mangler endnu; laeser hold uden (#6811)');
+    console.warn('[comeback] teams.comeback_at mangler endnu; traeningssweepen laeser hold uden (#6811)');
     return fetchAllRows(() => supabase.from('teams').select('id,league_division_id,u23_league_division_id,junior_league_division_id,is_ai,parked_at,assistant_autopick_enabled,is_bank,is_frozen,is_test_account,created_at').order('id'));
   }
 }
