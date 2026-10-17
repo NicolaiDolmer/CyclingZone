@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
@@ -17,6 +17,12 @@ export default function RaceHistoryPage() {
   const { t } = useTranslation("races");
   const { raceSlug } = useParams();
   const raceName = decodeURIComponent(raceSlug);
+  // #6514: Løbshistorikken linker med ?type=, så et endagsløb og et etapeløb med samme
+  // navn ikke blandes i én historik. Uden param (ældre links) er opførslen uændret.
+  const [searchParams] = useSearchParams();
+  const raceTypeFilter = searchParams.get("type");
+  // Valgt pulje fra Loebshistorik-biblioteket; uden param (aeldre links) er alle puljer med som foer.
+  const poolFilter = searchParams.get("pool");
 
   const [editions, setEditions] = useState([]);
   const [riderStats, setRiderStats] = useState([]);
@@ -32,10 +38,13 @@ export default function RaceHistoryPage() {
     setLoadError(false);
 
     try {
-      const { data: races, error: racesError } = await supabase
+      let racesQuery = supabase
         .from("races")
         .select("id, name, race_type, stages, edition_year, status, season:season_id(id, number, status)")
-        .ilike("name", raceName)
+        .ilike("name", raceName);
+      if (raceTypeFilter) racesQuery = racesQuery.eq("race_type", raceTypeFilter);
+      if (poolFilter && Number.isFinite(Number(poolFilter))) racesQuery = racesQuery.eq("league_division_id", Number(poolFilter));
+      const { data: races, error: racesError } = await racesQuery
         .order("edition_year", { ascending: false, nullsFirst: false });
 
       if (racesError) { setLoadError(true); return; }
@@ -51,7 +60,7 @@ export default function RaceHistoryPage() {
       try {
         results = await fetchAllRows(() => supabase
           .from("race_results")
-          .select("race_id, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+          .select("race_id, stage_number, result_type, rank, rider_id, rider_name, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
           .in("race_id", raceIds)
           .order("rank")
           .order("id", { ascending: true }));
@@ -59,15 +68,16 @@ export default function RaceHistoryPage() {
         setLoadError(true); return;
       }
 
-      const raceType = races[0].race_type;
-      const primaryType = raceType === "stage_race" ? "gc" : "stage";
+      // Kanonisk (GAME_INVARIANTS, raceHistoryModel): vinderen er rank 1 i "gc" — endagsløb ved etape 1, etapeløb ved højeste etape.
+      const primaryType = "gc";
 
       const editionMap = {};
       races.forEach(r => { editionMap[r.id] = { ...r, winner: null }; });
       (results || []).forEach(res => {
         const ed = editionMap[res.race_id];
         if (!ed) return;
-        if (res.rank === 1 && res.result_type === primaryType && !ed.winner) {
+        if (res.rank === 1 && res.result_type === primaryType
+          && (!ed.winner || (Number(res.stage_number) || 1) > (Number(ed.winner.stage_number) || 1))) {
           ed.winner = res;
         }
       });
@@ -116,7 +126,7 @@ export default function RaceHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [raceName]);
+  }, [raceName, raceTypeFilter, poolFilter]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 

@@ -76,5 +76,24 @@
     "description": "Noget gik galt under indlæsning af løbskalenderen. Prøv igen om lidt.",
     "retry": "Prøv igen",
     "session": "Din session er udløbet. Log ind igen for at se kalenderen."
+  },
+  "peek": {
+    "stages": "{count, plural, one {# etape} other {# etaper}}",
+    "oneDay": "Endagsløb",
+    "terrain": "Terræn",
+    "noProfile": "Ruten er ikke offentliggjort endnu",
+    "teamFit": "Passer til holdet",
+    "bestBet": "Bedste bud: {name} ({score})",
+    "fitUnavailable": "Ikke tilgængeligt for dette løb",
+    "status": {
+      "label": "Din status",
+      "missing": "Mangler udtagelse",
+      "selected": "Udtaget",
+      "gtBound": "Bundet af din Grand Tour"
+    },
+    "pick": "Udtag hold",
+    "editSquad": "Ret udtagelse",
+    "openRace": "Åbn løbet",
+    "terrainCount": "{type} ×{count}"
   }
 }

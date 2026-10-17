@@ -255,6 +255,7 @@ import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
 import { createStagePageV2Router } from "../lib/stagePageV2Flag.js"; // #6570
+import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
@@ -963,6 +964,7 @@ router.use("/rankings", createRankingsRouter({
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
 router.use(createStagePageV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6570
+router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
 // #4629: traeningsprogrammer (beta). Monteret HER, foer `/training/:riderId`, saa
 // "programs" aldrig matches som et rytter-id.
@@ -4947,13 +4949,15 @@ router.get("/races/calendar", requireAuth, cached({
 
     // Bølge 2 — løbene og holdets entries afhænger begge KUN af season.id. Entry-loadet
     // ventede før på raceIds (og sendte dem som id-liste); joinet gør det unødvendigt.
-    const [racesRes, teamEntryRows] = await Promise.all([
+    const [racesRes, teamEntryRows, teamWithdrawnRaceIds] = await Promise.all([
       // #5517: seniorkalenderen — ungdomsløb holdes ude (squads.withSeniorSquadScope).
       withSeniorSquadScope((senior) => senior(supabase
         .from("races")
-        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start"))
+        .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id, game_day_start"))
         .eq("season_id", season.id)),
       fetchTeamSeasonRaceEntries(supabase, req.team?.id, season.id),
+      // #6514: afmeldte løb (entries bevares ved afmelding) må ikke ligne en udtagelse i kalenderkortet.
+      req.team?.id ? loadWithdrawnRaceIdsForTeam({ supabase, teamId: req.team.id }) : Promise.resolve(new Set()),
     ]);
     if (racesRes.error) throw new Error(`races (calendar): ${racesRes.error.message}`);
     const raceList = racesRes.data || [];
@@ -4983,6 +4987,7 @@ router.get("/races/calendar", requireAuth, cached({
       teamDivisionId: ownPoolId,
       teamEntryRaceIds,
       teamLeaderRaceIds,
+      teamWithdrawnRaceIds,
     });
 
     res.json({
@@ -5763,6 +5768,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         .delete().eq("race_id", race.id).eq("team_id", req.team.id);
       if (clearCleanupErr) captureException(new Error(`race_entry_clears cleanup (manual save): ${clearCleanupErr.message}`));
     }
+    invalidateNamespace("calendar"); // #6514: kalenderens entered-status følger udtagelsen
     res.json({ ok: true });
   } catch (err) {
     // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.
@@ -5966,6 +5972,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       }
     }
 
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, saved: changes.length });
   } catch (err) {
     // #2256/#4283-mønsteret: RPC'ens deferred binding-backstop tabte kapløbet for os (en
@@ -6132,6 +6139,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       return res.status(500).json({ error: insErr.message });
     }
 
+    invalidateNamespace("calendar"); // #6514
     res.json({
       ok: true,
       rider_ids: picks.map((p) => p.rider_id),
@@ -6423,6 +6431,8 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     const { error: upErr } = await supabase
       .from("race_withdrawals").upsert({ race_id: race.id, team_id: req.team.id }, { onConflict: "race_id,team_id" });
     if (upErr) return res.status(500).json({ error: upErr.message });
+    invalidateNamespace("races");
+    invalidateNamespace("calendar"); // #6514: kalenderkortet bærer holdets afmeldt-status
     res.json({ ok: true, withdrawn: true });
   } catch (err) {
     captureException(err);
@@ -6463,6 +6473,8 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
     const { error: delErr } = await supabase
       .from("race_withdrawals").delete().eq("race_id", req.params.raceId).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
+    invalidateNamespace("races");
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, withdrawn: false });
   } catch (err) {
     captureException(err);
@@ -6619,6 +6631,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
       write: async (args) => await writeRegeneratedLineups({ ...args }),
     });
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
     captureException(err);
@@ -6741,6 +6754,7 @@ router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async 
       .upsert(markerRows, { onConflict: "race_id,team_id" });
     if (markErr) throw new Error(`race_entry_clears upsert: ${markErr.message}`);
 
+    invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, cleared: targetIds.length, skipped, scope });
   } catch (err) {
     captureException(err);

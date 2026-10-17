@@ -8,6 +8,7 @@
   "tabs": {
     "latest": "Seneste",
     "archive": "Arkiv",
+    "raceHistory": "Løbshistorik",
     "points": "Point & præmier"
   },
   "latest": {
@@ -47,5 +48,45 @@
   "emptyNoResults": "Ingen løbsresultater importeret endnu denne sæson",
   "loadError": "Resultater kunne ikke indlæses",
   "loadErrorBody": "Intet gik tabt. Prøv at indlæse siden igen.",
-  "retry": "Prøv igen"
+  "retry": "Prøv igen",
+  "raceHistory": {
+    "tableLabel": "Løbshistorik",
+    "searchPlaceholder": "Søg efter løb",
+    "poolLabel": "Division",
+    "count": "{count, plural, one {# løb} other {# løb}}",
+    "showing": "Viser {from}-{to} af {total}",
+    "prev": "Forrige",
+    "next": "Næste",
+    "seasonShort": "S{number}",
+    "stages": "{count, plural, one {# etape} other {# etaper}}",
+    "oneDay": "Endagsløb",
+    "place": "{rank}. plads",
+    "notPlaced": "Ikke i resultaterne",
+    "noWinner": "Ingen vinder registreret",
+    "noRoute": "Ruten er ikke registreret",
+    "allEditions": "Alle {count} udgaver",
+    "firstEdition": "Første udgave",
+    "th": {
+      "race": "Løb",
+      "champion": "Forsvarende mester",
+      "championShort": "Mester",
+      "best": "Dit bedste",
+      "bestShort": "Bedste",
+      "terrain": "Terræn",
+      "winners": "Tidligere vindere"
+    },
+    "empty": {
+      "title": "Vælg en anden division",
+      "desc": "Ingen løb er kørt færdigt i denne division endnu.",
+      "action": "Vis {pool}",
+      "latest": "Se de seneste resultater"
+    },
+    "emptySearch": {
+      "title": "Prøv en anden søgning",
+      "desc": "Intet afsluttet løb matcher det navn.",
+      "action": "Ryd søgning"
+    },
+    "error": "Løbshistorikken kunne ikke hentes. Intet er gået tabt.",
+    "retry": "Prøv igen"
+  }
 }

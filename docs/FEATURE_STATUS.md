@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-95 poster: live 75 · beta 2 · dormant 5 · building 5 · spec 1 · idea 2 · retired 5. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+96 poster: live 75 · beta 2 · dormant 5 · building 6 · spec 1 · idea 2 · retired 5. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -104,6 +104,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| Calendar race card and race history library (`race-library-v2`) | building | - | [CALENDAR_RULES](CALENDAR_RULES.md) | #6514 | 2026-10-15 | PR #6680; flag-nøglen race_library_v2 oprettes som off af migrationen efter merge, ejer flytter den til beta. |
 | Hall of Fame (`hall-of-fame`) | retired | - | - | #2359 | 2026-09-06 | Redirecter til /standings. |
 
 ## onboarding
