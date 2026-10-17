@@ -31,3 +31,12 @@ test("both new strings exist in EN and DA", () => {
     assert.match(j.racehub.column.didNotStartNote, /\{min\}/);
   }
 });
+
+test("#6740 release: panel og sæsonmatrix viser did_not_start, ikke 'du har meldt fra'", () => {
+  const panel = readFileSync(new URL("../race/RaceSelectionPanel.jsx", import.meta.url), "utf8");
+  const matrix = readFileSync(new URL("./SeasonMatrix.jsx", import.meta.url), "utf8");
+  const didNotStartAt = panel.indexOf("if (data.did_not_start) {");
+  assert.ok(didNotStartAt > 0 && didNotStartAt < panel.indexOf("if (data.withdrawn) {"), "did_not_start foer withdrawnPanel");
+  assert.match(matrix, /didNotStart: didNotStart\.has\(r\.id\)/);
+  assert.equal(matrix.match(/racehub\.status\.didNotStart/g)?.length, 2, "desktop + mobil");
+});

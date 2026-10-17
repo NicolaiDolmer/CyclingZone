@@ -111,8 +111,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   // entries alene og låser ryttere ude af løb de faktisk må køre.
   const races = useMemo(() => {
     const withdrawn = new Set(data?.withdrawnRaceIds ?? []);
+    // #6740: fjernet ved start. Binder ikke (som en afmelding), men hedder "Did not start".
+    const didNotStart = new Set(data?.didNotStartRaceIds ?? []);
     if (!withdrawn.size) return data?.races ?? [];
-    return (data?.races ?? []).map((r) => (withdrawn.has(r.id) ? { ...r, withdrawn: true } : r));
+    return (data?.races ?? []).map((r) => (withdrawn.has(r.id) ? { ...r, withdrawn: true, didNotStart: didNotStart.has(r.id) } : r));
   }, [data]);
   const riders = useMemo(() => [...(data?.riders ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [data]);
   const raceById = useMemo(() => new Map(races.map((r) => [r.id, r])), [races]);
@@ -384,7 +386,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
           </div>
           )}
           <div className="text-2xs tabular-nums text-cz-3">
-            {selectedMobileRace.withdrawn ? t("racehub.status.withdrawn") : t("matrix.squadCount", { count: raceCurrentCount(draftByRace, selectedMobileRace.id), max: selectedMobileRace.sizeMax })}
+            {selectedMobileRace.withdrawn ? t(selectedMobileRace.didNotStart ? "racehub.status.didNotStart" : "racehub.status.withdrawn") : t("matrix.squadCount", { count: raceCurrentCount(draftByRace, selectedMobileRace.id), max: selectedMobileRace.sizeMax })}
           </div>
         </div>
         <table data-sort-exempt="mobile rytter x loebsdag-gitter" className="w-full table-fixed border-collapse">
@@ -503,7 +505,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                           <span className="truncate">{race.name}</span>
                           <span className="tabular-nums text-cz-3 shrink-0">
                             {race.withdrawn
-                              ? t("racehub.status.withdrawn")
+                              ? t(race.didNotStart ? "racehub.status.didNotStart" : "racehub.status.withdrawn")
                               : t("matrix.squadCount", { count: raceCurrentCount(draftByRace, race.id), max: race.sizeMax })}
                           </span>
                         </span>

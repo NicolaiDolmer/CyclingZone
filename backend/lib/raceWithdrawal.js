@@ -37,6 +37,57 @@ export async function releaseTeamsThatDidNotStart({ supabase, raceId, teamIds })
   return { released: ids.length };
 }
 
+/**
+ * PURE: hvilke (løb, hold) skal frigives? Et hold med entries i et startet løb, uden en
+ * eneste tilmeldt rytter i etape-1-snapshottet og uden afmelding.
+ * @param {{ races: Array<{id}>, snapshots: Map<string, Set<string>>,
+ *   entries: Array<{race_id, team_id, rider_id}>, withdrawals: Array<{race_id, team_id}> }} args
+ * @returns {Array<{ raceId: string, teamIds: string[] }>}
+ */
+export function planDidNotStartReleases({ races, snapshots, entries, withdrawals }) {
+  const withdrawn = new Set((withdrawals ?? []).map((w) => `${w.race_id}:${w.team_id}`));
+  const out = [];
+  for (const race of races ?? []) {
+    const field = snapshots.get(race.id);
+    if (!field) continue; // legacy: intet frosset felt, ingen sikker afgørelse
+    const ridersByTeam = new Map();
+    for (const e of entries ?? []) {
+      if (e.race_id !== race.id || !e.team_id) continue;
+      if (!ridersByTeam.has(e.team_id)) ridersByTeam.set(e.team_id, []);
+      ridersByTeam.get(e.team_id).push(e.rider_id);
+    }
+    const teamIds = [...ridersByTeam]
+      .filter(([teamId, riderIds]) => !withdrawn.has(`${race.id}:${teamId}`) && !riderIds.some((id) => field.has(id)))
+      .map(([teamId]) => teamId)
+      .sort();
+    if (teamIds.length) out.push({ raceId: race.id, teamIds });
+  }
+  return out;
+}
+
+/**
+ * #6740 (review #6742/#6747): afstem ét startet løb mod dets frosne startfelt og frigiv
+ * hold der ikke stillede op, men endnu ikke har en afmelding. Kaldes ved hver senere
+ * etape, så en frigivelse der fejlede ved etape 1 bliver indhentet. `startFieldRiderIds`
+ * er etape-1-snapshottet (null = legacy, intet gøres). Kaster ved DB-fejl.
+ */
+export async function reconcileDidNotStartReleases({ supabase, raceId, startFieldRiderIds }) {
+  if (!raceId || !Array.isArray(startFieldRiderIds)) return { released: 0 };
+  // pagination-safe: ét løbs tilmeldinger (≤ felt-loftet × 9) og dets afmeldinger.
+  const [entriesRes, wdRes] = await Promise.all([
+    supabase.from("race_entries").select("race_id, team_id, rider_id").eq("race_id", raceId),
+    supabase.from("race_withdrawals").select("race_id, team_id").eq("race_id", raceId),
+  ]);
+  if (entriesRes.error) throw new Error(`race_entries (reconcile): ${entriesRes.error.message}`);
+  if (wdRes.error) throw new Error(`race_withdrawals (reconcile): ${wdRes.error.message}`);
+  const [plan] = planDidNotStartReleases({
+    races: [{ id: raceId }], snapshots: new Map([[raceId, new Set(startFieldRiderIds)]]),
+    entries: entriesRes.data ?? [], withdrawals: wdRes.data ?? [],
+  });
+  if (!plan) return { released: 0 };
+  return releaseTeamsThatDidNotStart({ supabase, raceId, teamIds: plan.teamIds });
+}
+
 /** PURE: delt afmeldings-rækker i frivillige og "stillede ikke op" (race_id-sæt). */
 export function splitWithdrawals(rows) {
   const withdrawn = new Set();

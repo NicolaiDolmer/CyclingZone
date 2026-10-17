@@ -23,35 +23,10 @@ import dotenv from "dotenv";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
-import { releaseTeamsThatDidNotStart } from "../lib/raceWithdrawal.js";
+import { releaseTeamsThatDidNotStart, planDidNotStartReleases } from "../lib/raceWithdrawal.js";
 
-/**
- * PURE: hvilke (løb, hold) skal frigives? Et hold med entries i et startet løb, uden en
- * eneste tilmeldt rytter i etape-1-snapshottet og uden afmelding.
- * @param {{ races: Array<{id}>, snapshots: Map<string, Set<string>>,
- *   entries: Array<{race_id, team_id, rider_id}>, withdrawals: Array<{race_id, team_id}> }} args
- * @returns {Array<{ raceId: string, teamIds: string[] }>}
- */
-export function planDidNotStartReleases({ races, snapshots, entries, withdrawals }) {
-  const withdrawn = new Set((withdrawals ?? []).map((w) => `${w.race_id}:${w.team_id}`));
-  const out = [];
-  for (const race of races ?? []) {
-    const field = snapshots.get(race.id);
-    if (!field) continue; // legacy: intet frosset felt, ingen sikker afgørelse
-    const ridersByTeam = new Map();
-    for (const e of entries ?? []) {
-      if (e.race_id !== race.id || !e.team_id) continue;
-      if (!ridersByTeam.has(e.team_id)) ridersByTeam.set(e.team_id, []);
-      ridersByTeam.get(e.team_id).push(e.rider_id);
-    }
-    const teamIds = [...ridersByTeam]
-      .filter(([teamId, riderIds]) => !withdrawn.has(`${race.id}:${teamId}`) && !riderIds.some((id) => field.has(id)))
-      .map(([teamId]) => teamId)
-      .sort();
-    if (teamIds.length) out.push({ raceId: race.id, teamIds });
-  }
-  return out;
-}
+// Planen bor i raceWithdrawal.js (delt med raceRunners afstemning ved senere etaper).
+export { planDidNotStartReleases };
 
 async function main() {
   const __dirname = dirname(fileURLToPath(import.meta.url));

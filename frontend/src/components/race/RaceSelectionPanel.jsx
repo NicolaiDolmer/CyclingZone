@@ -228,6 +228,16 @@ export default function RaceSelectionPanel({
   // den BEVAREDE opstilling med kaptajn og sprint-kaptajn afkrydset, som om holdet stillede
   // op — spilleren måtte spørge på Discord om rytterne ville køre alligevel (16/9,
   // egomadsen). Opstillingen VISES stadig, men som det den er: gemt, ikke startende.
+  // #6740: holdet blev fjernet ved start (under 6 raske ryttere). Ikke et frivilligt
+  // fravalg, og "deltag igen" findes ikke: sig hvad der skete, intet andet.
+  if (data.did_not_start) {
+    return (
+      <section data-testid="race-selection-did-not-start" className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
+        <p className="text-sm font-semibold text-cz-1">{t("racehub.status.didNotStart")}</p>
+        <p className="text-xs text-cz-warning mt-0.5">{t("racehub.column.didNotStartNote", { min: MIN_RACE_ENTRIES })}</p>
+      </section>
+    );
+  }
   if (data.withdrawn) {
     const keptIds = data.selection?.rider_ids ?? [];
     const keptRiders = (data.riders || []).filter((r) => keptIds.includes(r.id));

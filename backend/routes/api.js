@@ -105,7 +105,7 @@ import {
 } from "../lib/racePoolCatalog.js";
 // #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
-import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals } from "../lib/raceWithdrawal.js";
+import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals, DID_NOT_START_REASON } from "../lib/raceWithdrawal.js";
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
@@ -4710,10 +4710,13 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     // (isSquadSelectionMissing, #3042) bad om en trup til et løb holdet havde meldt
     // fra. Samme opslag som gaten, så visning og gem ikke kan drive fra hinanden.
     const { data: withdrawalRow, error: wErr } = await supabase
-      .from("race_withdrawals").select("race_id")
+      .from("race_withdrawals").select("race_id, withdrawn_reason")
       .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
     if (wErr) return res.status(500).json({ error: wErr.message });
-    const withdrawn = Boolean(withdrawalRow);
+    // #6740: en "did_not_start"-afmelding (holdet blev fjernet ved start) er ikke et
+    // frivilligt fravalg: panelet må ikke sige "du har meldt fra, deltag igen".
+    const didNotStart = withdrawalRow?.withdrawn_reason === DID_NOT_START_REASON;
+    const withdrawn = Boolean(withdrawalRow) && !didNotStart;
 
     // #2265: binding-info pr. rytter — hvem er allerede optaget i et ANDET løb hvis
     // in-game-dag-vindue overlapper DETTE løbs? Samme datavej som PUT-guarden
@@ -4739,7 +4742,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
         }));
       }
     }
-    res.json({ enabled: true, eligible, withdrawn, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
+    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -5153,6 +5156,17 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     const withdrawnRaceIds = await loadWithdrawnRaceIdsForTeam({
       supabase, teamId: req.team.id, raceIds: ownRaceIds,
     });
+    // #6740: løb hvor holdet blev fjernet ved start (did_not_start-afmelding). De står
+    // også i withdrawnRaceIds (rytterne binder ikke), men matrixen viser "Did not start".
+    const didNotStartRaceIds = [];
+    if (withdrawnRaceIds.size) {
+      const { data: dnsRows, error: dnsErr } = await supabase.from("race_withdrawals")
+        .select("race_id").eq("team_id", req.team.id).eq("withdrawn_reason", DID_NOT_START_REASON)
+        // pagination-safe: ét holds afmeldinger i egne løb (få pr. sæson).
+        .in("race_id", [...withdrawnRaceIds]);
+      if (dnsErr) throw new Error(`race_withdrawals (did not start): ${dnsErr.message}`);
+      for (const row of dnsRows ?? []) didNotStartRaceIds.push(row.race_id);
+    }
 
     // #6383: Train now-laasen pr. loeb, saa matrixen graaner de laaste ryttere FOER gem
     // (samme regel som udtagelsespanelet, #6139). Kun loeb der endnu har en etape
@@ -5176,6 +5190,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       riders,
       entries: entries.map((e) => ({ raceId: e.race_id, riderId: e.rider_id, raceRole: e.race_role })),
       withdrawnRaceIds: [...withdrawnRaceIds],
+      didNotStartRaceIds,
       trainNowLockByRace,
       dayDates: [...dayDateMap.entries()].map(([gameDay, date]) => ({ gameDay, date })),
     });
