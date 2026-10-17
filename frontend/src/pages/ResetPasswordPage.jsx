@@ -247,11 +247,11 @@ export default function ResetPasswordPage({ session }) {
           {t("auth:page.tagline")}
         </p>
         <p className="mt-2 text-center text-xs text-cz-3">
-          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="underline hover:text-cz-1">
+          <Link to={language === "da" ? "/privatlivspolitik" : "/privacy-policy"} className="underline hover:text-cz-1">
             {t("auth:footer.privacyPolicy")}
           </Link>
           <span className="mx-2" aria-hidden="true">·</span>
-          <Link to={language === "en" ? "/terms" : "/handelsbetingelser"} className="underline hover:text-cz-1">
+          <Link to={language === "da" ? "/handelsbetingelser" : "/terms"} className="underline hover:text-cz-1">
             {t("auth:footer.terms")}
           </Link>
         </p>
