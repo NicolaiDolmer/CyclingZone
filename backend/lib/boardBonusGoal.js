@@ -33,6 +33,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { countTeamStarRiders } from "./boardIdentity.js";
 import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
+import { queryCurrentSeasonActiveMandate } from "./boardMandateEngine.js";
 import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 
 function ensureSupabase(supabase) {
@@ -162,19 +163,24 @@ export async function appendBonusGoalToBoardProfile({ supabase, teamId, goal, of
 /**
  * #4856 · Den nye sti: samme ekstra-mål ind i holdets AKTIVE mandat, som er
  * det Boardroom-siden læser. Rækken vælges med præcis samme filter+sortering
- * som `boardRoom.js` bruger (status='active', nyeste `signed_at`), så vi
- * skriver til den række spilleren faktisk får vist.
+ * som `boardRoom.js` bruger (#6773: aktivt mandat for den AKTIVE sæson via
+ * `queryCurrentSeasonActiveMandate`), så vi skriver til den række spilleren
+ * faktisk får vist, aldrig til et gammelt mandat fra en afsluttet sæson.
  */
 export async function appendBonusGoalToActiveMandate({ supabase, teamId, goal, offerId } = {}) {
   ensureSupabase(supabase);
-  const { data: mandate, error } = await supabase
-    .from("board_mandates")
-    .select("id, goals")
-    .eq("team_id", teamId)
+  const { data: activeSeason, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, number")
     .eq("status", "active")
-    .order("signed_at", { ascending: false })
-    .limit(1)
     .maybeSingle();
+  // Samme fallback som boardRoom.js: et fejlet sæson-opslag giver nyeste
+  // sæsons mandat, ikke et tabt ekstra-mål.
+  const { data: mandate, error } = await queryCurrentSeasonActiveMandate(supabase, {
+    teamId,
+    seasonNumber: seasonError ? null : (activeSeason?.number ?? null),
+    select: "id, goals",
+  });
   if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
   if (!mandate) return { written: false, reason: "no_active_mandate" };
 

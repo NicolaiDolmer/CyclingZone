@@ -631,8 +631,15 @@ function makeMandateLifecycleSupabase({
   let mandateSeq = state.mandates.length;
   let relationSeq = state.relations.length;
 
+  // #6773 · `__lte:<kolonne>` understøtter closeEndedSeasonMandates' .lte().
   function matchAll(row, filters) {
-    return Object.entries(filters).every(([k, v]) => row[k] === v);
+    return Object.entries(filters).every(([k, v]) => {
+      if (k.startsWith("__lte:")) {
+        const cell = row[k.slice(6)];
+        return cell != null && Number(cell) <= v;
+      }
+      return row[k] === v;
+    });
   }
 
   function selectChain(rows) {
@@ -716,6 +723,7 @@ function makeMandateLifecycleSupabase({
             const filters = {};
             const chain = {
               eq(col, value) { filters[col] = value; return chain; },
+              lte(col, value) { filters[`__lte:${col}`] = value; return chain; },
               select: async () => {
                 const matched = state.mandates.filter((m) => matchAll(m, filters));
                 matched.forEach((m) => Object.assign(m, payload));
