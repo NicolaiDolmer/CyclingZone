@@ -436,7 +436,7 @@ Guard: `node scripts/tone-check-terms.mjs` (§8.4).
 | [#4117](https://github.com/NicolaiDolmer/CyclingZone/issues/4117) | Status på de 13 tråde er ukendt (§5.1) | Kan ikke planlægge uden at vide hvad der er postet |
 | ❓ | **Discord-kanalnavnene er ikke verificeret live** (MCP nede 8/9) | Et udkast med et forkert kanalnavn |
 <!-- tone-check-terms:disable (rækken herunder navngiver den drift den beskriver) -->
-| ❓ | **Døde tier-navne er live på `/founder-supporter`**: `frontend/public/locales/{en,da}/founder.json` viser stadig et 4-tier-katalog (Premium 49, Pro Analyst 89, Patron 149), mens produktet er ét tier. Ruten er aktiv i `App.jsx`. Rettelsen er en spillervendt copy-beslutning, ikke en docs-rettelse | Ejer-go på ordlyd |
+| ❓ | **Døde tier-navne er live på `/founder-supporter`**: `frontend/public/locales/{en,da}/founder.json` (og de skjulte beta-sprog `{fr,es,nl}/founder.json`, som oversætter samme side) viser stadig et 4-tier-katalog (Premium 49, Pro Analyst 89, Patron 149), mens produktet er ét tier. Ruten er aktiv i `App.jsx`. Rettelsen er en spillervendt copy-beslutning, ikke en docs-rettelse | Ejer-go på ordlyd |
 <!-- tone-check-terms:enable -->
 
 ### 8.2 Faldgruber
