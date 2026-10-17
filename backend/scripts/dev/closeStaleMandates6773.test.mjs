@@ -31,7 +31,7 @@ function createDouble(tables) {
       in(col, vs) { filters.push((r) => vs.includes(r[col])); return read; },
       order: () => read,
       range: async (a, b) => ({ data: rows.filter(match).slice(a, b + 1), error: null }),
-      maybeSingle: async () => ({ data: rows.filter(match)[0] ?? null, error: null }),
+      maybeSingle: async () => { tables.__onMaybeSingle?.(table); return { data: rows.filter(match)[0] ?? null, error: null }; },
       then: (resolve) => resolve({ data: rows.filter(match), error: null }),
     };
     return {
@@ -253,7 +253,11 @@ test("#6773 (Codex) apply: mislykkes en bonus-flytning, lukkes kilden ikke", asy
   const double = createDouble(tables);
   const { plan, hash } = await runDryRun({ supabase: double });
   tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
-  tables.board_mandates.find((m) => m.id === id(2)).status = "completed"; // modtageren er ikke længere aktiv
+  // Modtageren holder op med at være aktiv EFTER apply har læst planen
+  // (mellem snapshot og flytning), dvs. midt i apply.
+  tables.__onMaybeSingle = (table) => {
+    if (table === "board_mandates") tables.board_mandates.find((m) => m.id === id(2)).status = "completed";
+  };
   const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
   assert.equal(tables.board_mandates.find((m) => m.id === id(1)).status, "active", "kilden med bonusmålet står åben");
   assert.ok(out.result.skipped.some((s) => /kilden lukkes ikke/.test(s.reason)));
