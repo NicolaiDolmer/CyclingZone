@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, collectCard, latestDryRunJson, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -159,4 +159,23 @@ test("runPool: hoejst `parallel` ad gangen, fejl stopper ikke de andre", async (
   assert.deepEqual(res.failed.sort(), ["t3", "t5"]);
   assert.equal(res.ok.length, 7);
   assert.deepEqual(await runPool([], 4, async () => 0), { ok: [], failed: [] });
+});
+
+test("#6750: en output-mappe afviser en anden loebsudvaelgelse, men tillader genoptagelse", () => {
+  assert.doesNotThrow(() => assertSameRaceSelection([], ["a"], "out"));
+  assert.doesNotThrow(() => assertSameRaceSelection(["a", "b"], ["b", "a"], "out"));
+  assert.throws(() => assertSameRaceSelection(["a"], ["b"], "out"), /anden loebsudvaelgelse/);
+  assert.throws(() => assertSameRaceSelection(["a", "b"], ["a"], "out"), /anden loebsudvaelgelse/);
+});
+
+test("#6750: taerskler laeses fra privat fil; mangler den, er de tomme", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "testport-thr-"));
+  try {
+    assert.deepEqual(loadThresholds(path.join(dir, "findes-ikke.json")), {});
+    const file = path.join(dir, "t.json");
+    writeFileSync(file, JSON.stringify({ bigBreakawayWinSeconds: 120 }));
+    assert.deepEqual(loadThresholds(file), { bigBreakawayWinSeconds: 120 });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

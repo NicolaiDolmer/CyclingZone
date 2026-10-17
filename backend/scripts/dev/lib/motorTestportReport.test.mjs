@@ -54,7 +54,7 @@ test("aggregateRevision: haarde gates, store udbrudssejre, terraen og favorit-ud
     ] }], { c: counts(3, 1, 2), raceVerdicts: { labelContradictions: "FAIL" } })] })),
     raceResultFromDryRun(dryRun({ id: "r2", name: "B", runs: [run("other", [])] })),
   ];
-  const a = aggregateRevision(races, "rev");
+  const a = aggregateRevision(races, "rev", { bigBreakawayWinSeconds: 120 }) // syntetisk taerskel, ikke balance-vaerdien;
   assert.equal(a.races, 1);
   assert.equal(a.missing, 1);
   assert.equal(a.stageRuns, 3);
@@ -185,4 +185,11 @@ test("perRaceRows taaler loeb uden koersel under en revision", () => {
   const rr = raceResultFromDryRun(dryRun({ id: "a", name: "A", runs: [run("base", [])] }));
   const rows = perRaceRows([rr], "base", "cand");
   assert.equal(rows[0].candidate, null);
+});
+
+test("#6750: uden privat taerskel er udbrudssejre med stort forspring null (ingen offentlig konstant)", () => {
+  const races = [raceResultFromDryRun(dryRun({ id: "r1", name: "A", runs: [run("rev", [{ seed: 1, rows: [row({ breakawayWon: true, breakawayWinMargin: 700 })] }])] }))];
+  const a = aggregateRevision(races, "rev");
+  assert.equal(a.bigBreakawayWins, null);
+  assert.equal(a.bigBreakawayWinShare, null);
 });

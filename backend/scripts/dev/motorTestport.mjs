@@ -85,6 +85,9 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     benchOnly: flag("bench-only"),
     benchScope,
     reportOnly: flag("report-only"),
+    // #6750 (Codex): balance-taersklerne (fx "stort forspring") staar i en privat
+    // fil, aldrig i det offentlige repo (hard rule 17).
+    thresholds: get("thresholds", path.join("balance-internals", "motor-testport-thresholds.json")),
     png: !flag("no-png"),
     benchWorker,
     revision: get("revision"),
@@ -226,7 +229,27 @@ export function assertPrivateOutDir(dir) {
  * et forventet loeb uden et laesbart scorecard er en FEJL paa kortet
  * (`missingScorecards`), aldrig et stille mindre datasaet.
  */
-export function collectCard({ outDir, baseline, candidate, meta, benchScope = meta?.benchScope ?? "all" }) {
+/** Private balance-taerskler for kortet. Mangler filen, er de maalinger null. */
+export function loadThresholds(file) {
+  if (!file || !existsSync(file)) {
+    console.warn(`motor-testport: ingen privat taerskelfil (${file}); maalinger der kraever den vises som "-".`);
+    return {};
+  }
+  return JSON.parse(readFileSync(file, "utf8"));
+}
+
+/**
+ * #6750 (Codex): en output-mappe tilhoerer EN loebsudvaelgelse. Genoptagelse med
+ * samme loeb er ok; et andet saet ville blande gamle scorecards ind i kortet.
+ */
+export function assertSameRaceSelection(previousIds, nextIds, outDir) {
+  if (!previousIds || previousIds.length === 0) return;
+  const a = [...new Set(previousIds)].sort().join(",");
+  const b = [...new Set(nextIds)].sort().join(",");
+  if (a !== b) throw new Error(`${outDir} er koert med en anden loebsudvaelgelse (${previousIds.length} loeb mod ${nextIds.length}). Brug en ny --out.`);
+}
+
+export function collectCard({ outDir, baseline, candidate, meta, benchScope = meta?.benchScope ?? "all", thresholds = {} }) {
   const racesDir = path.join(outDir, "races");
   const idsFile = path.join(outDir, "ids.txt");
   const expected = existsSync(idsFile) ? parseIdsText(readFileSync(idsFile, "utf8")) : [];
@@ -249,7 +272,7 @@ export function collectCard({ outDir, baseline, candidate, meta, benchScope = me
     const file = path.join(outDir, "bench", revision, `motor-bench-${benchScope}.json`);
     if (existsSync(file)) benchByRevision[revision] = benchView(JSON.parse(readFileSync(file, "utf8")));
   }
-  return buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, missingScorecards } });
+  return buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, missingScorecards }, thresholds });
 }
 
 /** PNG af kortets overblik via Playwright fra frontend/node_modules. Best-effort. */
@@ -302,7 +325,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (opts.reportOnly) {
     // Kortet samles igen med koerslens EGNE parametre; meta-filen roeres ikke.
     if (!prev) throw new Error(`--report-only: ${metaFile} findes ikke`);
-    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: { ...prev, generatedAt: new Date().toISOString() } });
+    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: { ...prev, generatedAt: new Date().toISOString() }, thresholds: loadThresholds(abs(opts.thresholds)) });
     return writeCard({ card, outDir, png: opts.png, failed: prev.failedRaces ?? [] });
   }
   if (prev && (prev.candidate !== opts.candidate || prev.baseline !== opts.baseline || prev.seeds !== opts.seeds || (prev.benchScope ?? "all") !== opts.benchScope)) {
@@ -319,7 +342,9 @@ export async function main(argv = process.argv.slice(2)) {
     else if (fromDir) { raceIds = raceIdsFromDir(fromDir); source = `--from-dir ${path.basename(fromDir)}`; }
     else { raceIds = await listUpcomingRaceIds({ includeRunning: opts.includeRunning }); source = opts.includeRunning ? "prod (ikke afsluttede)" : "prod (ikke startede)"; }
     raceIds = selectRaceIds(raceIds, opts.limit);
-    writeFileSync(path.join(outDir, "ids.txt"), `${raceIds.join("\n")}\n`);
+    const idsPath = path.join(outDir, "ids.txt");
+    if (prev && existsSync(idsPath)) assertSameRaceSelection(parseIdsText(readFileSync(idsPath, "utf8")), raceIds, outDir);
+    writeFileSync(idsPath, `${raceIds.join("\n")}\n`);
   }
   const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
@@ -332,7 +357,7 @@ export async function main(argv = process.argv.slice(2)) {
   });
   meta.failedRaces = res.failed;
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
-  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: new Date().toISOString() } });
+  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: new Date().toISOString() }, thresholds: loadThresholds(abs(opts.thresholds)) });
   return writeCard({ card, outDir, png: opts.png, failed: res.failed });
 }
 

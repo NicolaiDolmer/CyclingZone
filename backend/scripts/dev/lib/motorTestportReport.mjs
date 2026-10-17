@@ -11,8 +11,11 @@
 export const TIME_TRIAL_CLASSES = Object.freeze(["itt", "itt_hilly", "ttt"]);
 const isRoad = (row) => !TIME_TRIAL_CLASSES.includes(row?.cls ?? row?.profile_type);
 
-/** Udbrudssejr "med minutter" i kortets overblik: forspring paa mindst dette (s). */
-export const BIG_BREAKAWAY_WIN_SECONDS = 600;
+/**
+ * Udbrudssejr "med stort forspring": taersklen er en balance-vaerdi og staar
+ * derfor IKKE her (hard rule 17). motorTestport.mjs laeser den fra den private
+ * taerskelfil i balance-internals/; mangler den, er maalingen null (vises "-").
+ */
 
 /**
  * Haarde gates: spillervendte fejl hvor virkeligheden har nul. Noeglerne er
@@ -105,7 +108,7 @@ function terrainStats(rows) {
  * bygger paa nye raekke-felter (vinderens rolle, udbrudsryttere, tidlig
  * indhentning) er null, naar ingen raekke har feltet (aeldre scorecards).
  */
-export function aggregateRevision(raceResults, revision) {
+export function aggregateRevision(raceResults, revision, { bigBreakawayWinSeconds = null } = {}) {
   const agg = {
     revision, races: 0, missing: 0, stageRuns: 0, roadRuns: 0,
     counts: Object.fromEntries(VERDICTS.map((x) => [x, 0])), tallies: {},
@@ -156,8 +159,10 @@ export function aggregateRevision(raceResults, revision) {
   const road = allRows.filter(isRoad);
   agg.stageRuns = allRows.length;
   agg.roadRuns = road.length;
-  agg.bigBreakawayWins = road.filter((r) => r.breakawayWon === true && Number(r.breakawayWinMargin) >= BIG_BREAKAWAY_WIN_SECONDS).length;
-  agg.bigBreakawayWinShare = share(agg.bigBreakawayWins, road.length);
+  const bigWinSeconds = Number.isFinite(Number(bigBreakawayWinSeconds)) && bigBreakawayWinSeconds !== null ? Number(bigBreakawayWinSeconds) : null;
+  agg.bigBreakawayWins = bigWinSeconds === null ? null
+    : road.filter((r) => r.breakawayWon === true && Number(r.breakawayWinMargin) >= bigWinSeconds).length;
+  agg.bigBreakawayWinShare = agg.bigBreakawayWins === null ? null : share(agg.bigBreakawayWins, road.length);
   agg.ittGapTo10Per40KmMedian = median(itt);
   agg.stageRaces.gcTo10FinalMedian = median(gcFinal);
   agg.stageRaces.gcWinnerMarginMedian = median(gcMargin);
@@ -218,10 +223,10 @@ export function benchView(json) {
  * Hele kortet: baseline og kandidat side om side + bench. `meta` er koerslens
  * parametre (seeds, parallel, kilde, fejlede loeb ...), skrives som de er.
  */
-export function buildTestportCard({ raceResults, baseline, candidate, benchByRevision = {}, meta = {} }) {
+export function buildTestportCard({ raceResults, baseline, candidate, benchByRevision = {}, meta = {}, thresholds = {} }) {
   const results = raceResults.filter(Boolean);
-  const base = aggregateRevision(results, baseline);
-  const cand = baseline === candidate ? base : aggregateRevision(results, candidate);
+  const base = aggregateRevision(results, baseline, thresholds);
+  const cand = baseline === candidate ? base : aggregateRevision(results, candidate, thresholds);
   const regressions = [];
   for (const [k, label] of HARD_GATES) {
     if (cand.hardGates[k].total > base.hardGates[k].total) regressions.push({ gate: k, label, baseline: base.hardGates[k].total, candidate: cand.hardGates[k].total });
@@ -231,6 +236,7 @@ export function buildTestportCard({ raceResults, baseline, candidate, benchByRev
     baseline, candidate, sameRevision: baseline === candidate,
     meta,
     races: results.length,
+    thresholds,
     revisions: { baseline: base, candidate: cand },
     verdict: { failDelta: cand.counts.FAIL - base.counts.FAIL, passDelta: cand.counts.PASS - base.counts.PASS, hardGateRegressions: regressions },
     perRace: perRaceRows(results, baseline, candidate),
@@ -267,8 +273,10 @@ export function sideBySideRows(card) {
   add("WARN", (a) => a.counts.WARN, (x) => fmtN(x, 0));
   add("FAIL", (a) => a.counts.FAIL, (x) => fmtN(x, 0));
   for (const [k, label] of HARD_GATES) add(`haard gate: ${label} (hits)`, (a) => a.hardGates[k].total, (x) => fmtN(x, 0));
-  add(`udbrudssejre >${BIG_BREAKAWAY_WIN_SECONDS / 60} min (antal)`, (a) => a.bigBreakawayWins, (x) => fmtN(x, 0));
-  add(`udbrudssejre >${BIG_BREAKAWAY_WIN_SECONDS / 60} min (andel af vejetaper)`, (a) => a.bigBreakawayWinShare, fmtPct);
+  const bigWin = card.thresholds?.bigBreakawayWinSeconds;
+  const bigWinLabel = Number.isFinite(Number(bigWin)) && bigWin !== null ? `>${Number(bigWin) / 60} min` : "stort forspring (privat taerskel mangler)";
+  add(`udbrudssejre ${bigWinLabel} (antal)`, (a) => a.bigBreakawayWins, (x) => fmtN(x, 0));
+  add(`udbrudssejre ${bigWinLabel} (andel af vejetaper)`, (a) => a.bigBreakawayWinShare, fmtPct);
   add("enkeltstart nr. 10 pr. 40 km (median)", (a) => a.ittGapTo10Per40KmMedian, fmtS);
   add("etapeloeb: klassement nr. 10 slut (median)", (a) => a.stageRaces.gcTo10FinalMedian, fmtS);
   add("etapeloeb: vindermargin (median)", (a) => a.stageRaces.gcWinnerMarginMedian, fmtS);
