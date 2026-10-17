@@ -169,3 +169,18 @@ test("repoet matcher baselinen (ingen nye hardkodede notifikations-kald)", () =>
     "nyt notifikations-kald med hardkodet tekst: giv det en noegle (se scriptets fejlbesked)",
   );
 });
+
+test("et kald med kun den ene kode fanges stadig (Codex #6810)", () => {
+  const src = 'notifyUser({ userId, titleCode: "notif.x.title", message: "Hard coded player message" });\n';
+  assert.equal(findUnkeyedNotificationCalls(src).length, 1);
+});
+
+test("en navngiven titel med titleCode og en variabel besked er noeglet pr. felt", () => {
+  const src = 'notify({ userId, title: "Reply from the developer", message: trimmed, metadata: { titleCode: "notif.x.title" } });\n';
+  assert.deepEqual(findUnkeyedNotificationCalls(src), []);
+});
+
+test("positionelt kald med kun den ene kode fanges", () => {
+  const src = "await notifyTeamOwner(teamId, type, 'You won the auction', 'Rider is now on your team', id, { titleCode: 'notif.a.t' });\n";
+  assert.equal(findUnkeyedNotificationCalls(src).length, 1);
+});

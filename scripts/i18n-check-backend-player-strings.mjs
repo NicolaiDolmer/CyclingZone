@@ -168,7 +168,10 @@ export const NOTIFY_CALLEES = [
 ];
 
 const CALL_RE = new RegExp(`(?<![.\\w])(?:${NOTIFY_CALLEES.join("|")})\\s*\\(`, "g");
-const KEYED = /\b(?:titleCode|messageCode)\b/;
+// Et kald er kun noeglet naar BAADE titel og besked har en kode (Codex #6810):
+// en enkelt kode lader den anden hardkodede tekst slippe igennem.
+const KEYED_TITLE = /\btitleCode\b/;
+const KEYED_MESSAGE = /\bmessageCode\b/;
 // Naturligt sprog = mindst to ord med mellemrum imellem. "auction_cancelled"
 // (type-konstanten) har ingen mellemrum og taeller derfor ikke.
 const PROSE = /[A-Za-zÆØÅæøå]{2,}\s+[A-Za-zÆØÅæøå]{2,}/;
@@ -234,8 +237,15 @@ export function findUnkeyedNotificationCalls(src) {
     const end = findCallEnd(cleaned, open);
     if (end === -1) continue;
     const text = cleaned.slice(m.index, end + 1);
-    if (KEYED.test(text)) continue;
-    if (!stringLiterals(text.slice(m[0].length - 1)).some((s) => PROSE.test(s))) continue;
+    const hasTitleCode = KEYED_TITLE.test(text);
+    const hasMessageCode = KEYED_MESSAGE.test(text);
+    if (hasTitleCode && hasMessageCode) continue;
+    // Pr. felt: en navngiven titel/besked med sin egen kode er EN-fallback, ikke
+    // et laek. Positionelle kald kan ikke parres og kraever begge koder.
+    let args = text.slice(m[0].length - 1);
+    if (hasTitleCode) args = args.replace(/\btitle\s*:\s*(["'`])(?:\\.|(?!\1)[^\\])*\1/g, "title: _");
+    if (hasMessageCode) args = args.replace(/\bmessage\s*:\s*(["'`])(?:\\.|(?!\1)[^\\])*\1/g, "message: _");
+    if (!stringLiterals(args).some((s) => PROSE.test(s))) continue;
     hits.push({
       line: cleaned.slice(0, m.index).split("\n").length,
       snippet: text.replace(/\s+/g, " ").slice(0, 110),
