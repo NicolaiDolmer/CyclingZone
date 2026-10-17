@@ -1,8 +1,33 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  sanitizeNameToken, nameSearchTokens, applyNameSearch, buildAccentInsensitivePattern,
+  sanitizeNameToken, nameSearchTokens, applyNameSearch, buildAccentInsensitivePattern, riderNameMatches,
 } from "./riderNameSearch.js";
+
+// #5941: ord-præfiks-match, aldrig spredte bogstaver eller midt-i-ord.
+test("riderNameMatches — 'Jonas' finder Jonas men ikke 'Lars De Jong'", () => {
+  assert.ok(riderNameMatches("Jonas Frank", "Jonas"));
+  assert.ok(!riderNameMatches("Lars De Jong", "Jonas"));
+  assert.ok(riderNameMatches("Lars De Jong", "Jong"), "ord-præfiks");
+  assert.ok(riderNameMatches("Lars De Jong", "de jon"), "flere tokens");
+  assert.ok(!riderNameMatches("Lars De Jong", "ong"), "ikke midt-i-ord");
+});
+
+test("riderNameMatches — accent- og case-ufølsom, tom q matcher alt", () => {
+  assert.ok(riderNameMatches("Tadej Pogačar", "pogacar"));
+  assert.ok(riderNameMatches("Alejandro López", "LOPEZ"));
+  assert.ok(riderNameMatches("Søren Kragh", "soren"));
+  assert.ok(riderNameMatches("Jean-Pierre Bidard", "Jean-Pierre"), "bindestreg i token");
+  assert.ok(riderNameMatches("Dylan O'Brien", "O'Brien"), "apostrof i token");
+  assert.ok(riderNameMatches("Jean-Pierre Bidard", "pierre"), "ord efter bindestreg");
+  assert.ok(riderNameMatches("Dylan O'Brien", "brien"));
+  assert.ok(riderNameMatches("Hvem Som Helst", "  "));
+});
+
+test("applyNameSearch — mønsteret er ord-start (\\m)", () => {
+  const q = applyNameSearch(mockQuery(), "Jonas");
+  assert.ok(q._calls[0].startsWith("firstname.imatch.\\mj"));
+});
 
 // Mock-query der opsamler .or()-kald (efterligner supabase-js's kæde-API).
 function mockQuery() {
@@ -34,8 +59,8 @@ test("sanitizeNameToken fjerner injektions-tegn + wildcards, bevarer navne-tegn"
 test("applyNameSearch bygger ét or-kald pr. token, med imatch accent-fold-mønster", () => {
   const q = applyNameSearch(mockQuery(), "Tadej Pog");
   assert.deepEqual(q._calls, [
-    `firstname.imatch.${buildAccentInsensitivePattern("Tadej")},lastname.imatch.${buildAccentInsensitivePattern("Tadej")}`,
-    `firstname.imatch.${buildAccentInsensitivePattern("Pog")},lastname.imatch.${buildAccentInsensitivePattern("Pog")}`,
+    `firstname.imatch.${buildAccentInsensitivePattern("Tadej", { wordStart: true })},lastname.imatch.${buildAccentInsensitivePattern("Tadej", { wordStart: true })}`,
+    `firstname.imatch.${buildAccentInsensitivePattern("Pog", { wordStart: true })},lastname.imatch.${buildAccentInsensitivePattern("Pog", { wordStart: true })}`,
   ]);
 });
 
@@ -82,8 +107,16 @@ test("injektions-token kan ikke åbne en ny or-betingelse", () => {
   // eneste komma i strengen er det vi selv indsætter mellem firstname/lastname.
   const q = applyNameSearch(mockQuery(), "x,or(id.gt.0)");
   assert.equal(q._calls.length, 1);
-  const cleaned = buildAccentInsensitivePattern("xorid.gt.0");
+  const cleaned = buildAccentInsensitivePattern("xorid.gt.0", { wordStart: true });
   assert.equal(q._calls[0], `firstname.imatch.${cleaned},lastname.imatch.${cleaned}`);
   // Ingen parentes i den producerede streng (kun de escapede punktummer fra "id.gt.0").
   assert.ok(!/[()]/.test(q._calls[0]));
+});
+
+test("#5941 (Codex): ikke-ASCII-bogstaver er en del af ordet (ß, kyrillisk)", () => {
+  assert.equal(riderNameMatches("Felix Großschartner", "schartner"), false);
+  assert.equal(riderNameMatches("Felix Großschartner", "gross"), false, "ß foldes ikke til ss; praefiks kraever ß");
+  assert.equal(riderNameMatches("Felix Großschartner", "groß"), true);
+  assert.equal(riderNameMatches("Иван Петров", "етров"), false);
+  assert.equal(riderNameMatches("Иван Петров", "Пет"), true);
 });
