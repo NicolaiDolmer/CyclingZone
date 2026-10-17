@@ -335,9 +335,20 @@ select number, status, start_date, end_date from seasons order by number;
 "@
 Write-Host $sqlSeasons
 
-$manual += "S$ToSeasonNumber-kalender-status (forvent 4/8: 0 raekker -- kalenderen for S$ToSeasonNumber er IKKE materialiseret endnu):"
+$manual += "S$ToSeasonNumber-kalender-status (tilstands-neutral, #6781: rapportér kun. Kalenderen kan vaere bygget foer eller bygges af transitionen. Forvent at den, naar den findes, daekker ALLE aktive seniorpuljer -- 'pulje' = league_divisions med retired_at is null og squad senior. en pulje med kraever_kalender = true og loeb = 0 i en ellers bygget kalender er et hul (D3 uden rigtig manager har bevidst ingen kalender, #6781); 0 loeb i alt er ogsaa gyldigt, hvis transitionen bygger den selv):"
 $sqlCalendar = @"
-select count(*) from races where season_id = '$toSeasonId';
+select count(*) as loeb_i_alt from races where season_id = '$toSeasonId';
+-- kraever_kalender spejler poolHasCalendar (divisionCalendarGenerator.js, CALENDAR_RULES §1f):
+-- D1/D2/D4 altid; D3 kun med mindst een rigtig manager. Et hul = kraever_kalender og loeb = 0.
+select d.id, d.label, d.tier,
+       (select count(*) from teams t where t.league_division_id = d.id and t.is_ai = false and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false) and not coalesce(t.is_test_account, false)) as rigtige_managere,
+       (d.tier in (1, 2, 4) or (select count(*) from teams t where t.league_division_id = d.id and t.is_ai = false and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false) and not coalesce(t.is_test_account, false)) >= 1) as kraever_kalender,
+       count(r.id) as loeb
+from league_divisions d
+left join races r on r.league_division_id = d.id and r.season_id = '$toSeasonId'
+where d.retired_at is null and coalesce(d.squad, 'senior') = 'senior'
+group by d.id, d.label, d.tier
+order by d.label;
 "@
 Write-Host $sqlCalendar
 

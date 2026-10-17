@@ -24,6 +24,9 @@ on:
       - 'scripts/i18n-check-lib-strings.mjs'
       - 'scripts/i18n-check-leaks.mjs'
       - 'scripts/i18n-leaks-baseline.json'
+      - 'scripts/i18n-check-hardcoded-formats.mjs'
+      - 'scripts/i18n-check-hardcoded-formats.test.mjs'
+      - 'scripts/i18n-hardcoded-formats-baseline.json'
       - 'scripts/i18n-check-terrain-coverage.mjs'
       - 'scripts/i18n-check-terrain-coverage.test.mjs'
       - 'scripts/i18n-check-error-codes.mjs'
@@ -266,6 +269,32 @@ jobs:
 
       - name: Run i18n leak guard
         run: node scripts/i18n-check-leaks.mjs
+
+  hardcoded-formats:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Refs #6785 - forward-guard mod hardcodede tal/dato/valuta-formater i
+    # spillervendt frontend-kode (fast "da-DK"/"en-GB", toFixed + %, haandskrevne
+    # separatorer). Kendte fund ligger i scripts/i18n-hardcoded-formats-baseline.json
+    # (ratchet, maa kun skrumpe), saa jobbet er groent paa main og fejler kun paa
+    # NYE fund. Stram baselinen med:
+    #   node scripts/i18n-check-hardcoded-formats.mjs --update-baseline
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Test hardcoded-formats guard
+        run: node --test scripts/i18n-check-hardcoded-formats.test.mjs
+
+      - name: Run hardcoded-formats guard
+        run: node scripts/i18n-check-hardcoded-formats.mjs
 
   tone-em-dash:
     runs-on: ubuntu-latest

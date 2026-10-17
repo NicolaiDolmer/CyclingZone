@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -178,4 +178,53 @@ test("#6750: taerskler laeses fra privat fil; mangler den, er de tomme", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("#6777: meta gemmer taerskelfil + snapshot, og --report-only genbruger snapshottet", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-thr2-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    const thrFile = path.join(root, "t.json");
+    writeFileSync(thrFile, JSON.stringify({ bigBreakawayWinSeconds: 111 }));
+    // ingen opgaver (--bench-only --no-bench): kun meta + kort
+    await main(["--candidate=rev", "--baseline=rev", "--bench-only", "--no-bench", `--thresholds=${thrFile}`, `--out=${out}`, "--no-png"]);
+    const meta = JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8"));
+    assert.equal(meta.thresholdsFile, thrFile);
+    assert.deepEqual(meta.thresholds, { bigBreakawayWinSeconds: 111 });
+    // filen aendres/forsvinder: --report-only bruger stadig snapshottet
+    writeFileSync(thrFile, JSON.stringify({ bigBreakawayWinSeconds: 999 }));
+    const { card } = await main(["--report-only", `--out=${out}`, "--no-png"]);
+    assert.equal(card.thresholds.bigBreakawayWinSeconds, 111);
+    // genoptagelse (samme koersel) overskriver ikke snapshottet
+    await main(["--candidate=rev", "--baseline=rev", "--bench-only", "--no-bench", `--out=${out}`, "--no-png"]);
+    assert.deepEqual(JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8")).thresholds, { bigBreakawayWinSeconds: 111 });
+    // eksplicit --thresholds vinder
+    const again = await main(["--report-only", `--thresholds=${thrFile}`, `--out=${out}`, "--no-png"]);
+    assert.equal(again.card.thresholds.bigBreakawayWinSeconds, 999);
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6777: resolveReportThresholds: snapshot > gemt filsti > default", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "testport-thr3-"));
+  try {
+    const file = path.join(dir, "gammel.json");
+    writeFileSync(file, JSON.stringify({ x: 1 }));
+    const opts = { thresholds: path.join(dir, "default-findes-ikke.json"), thresholdsExplicit: false };
+    assert.deepEqual(resolveReportThresholds({ thresholds: { y: 2 }, thresholdsFile: file }, opts), { y: 2 });
+    assert.deepEqual(resolveReportThresholds({ thresholdsFile: file }, opts), { x: 1 }, "aeldre meta uden snapshot");
+    assert.deepEqual(resolveReportThresholds({}, opts), {});
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("#6777 (Codex): genoptagelse uden --thresholds beholder den gemte tærskelsti", () => {
+  const prev = { thresholdsFile: "balance-internals/custom.json" };
+  assert.equal(resolveThresholdsFile(prev, { thresholds: "balance-internals/default.json", thresholdsExplicit: false }), "balance-internals/custom.json");
+  assert.equal(resolveThresholdsFile(prev, { thresholds: "balance-internals/ny.json", thresholdsExplicit: true }), "balance-internals/ny.json");
+  assert.equal(resolveThresholdsFile(null, { thresholds: "balance-internals/default.json", thresholdsExplicit: false }), "balance-internals/default.json");
 });

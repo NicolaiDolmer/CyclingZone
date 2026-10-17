@@ -8,7 +8,7 @@
 >
 > **🎯 Next action:** pc1 lang session 17-18/10: `docs/sessions/2026-10-17-pc1-eftermiddag-startprompt.md` (ejer-godkendt: sæsonskifte-generalprøve + 10x, `s5_profiles_v2` slået fra med kuperede udbrud + formtoppe, formtop-tilbagebetaling som tørkørsel, testport, dark mode, UI #6698 #6569 #6512 #6351 #6683 #6570, vækst-udkast). Søndag: verificér Vuelta binder S5 kl. 11 · `promotion_pending_enabled` på "tænd" · webhook · roadbook/Discord 7.361-7.367 · #6680. #6739: "spørg senere".
 >
-> **17/10 (pc1):** S5-motorreglerne tændt (#6699 merget 08:48, ejerens "Tænd"; testet på alle 157 S4-løb + hele S5-sæsonen, S5 872 mod v5 968 fejlende mål; nyt udbrud efter tidlig indhentning). GitHub-audit: 45 lukket, done 69 → 20. Opfølgning #6748.
+> **17/10 (pc1):** S5-motorreglerne tændt (#6699, ejerens "Tænd"). Opfølgning #6748. **Eftermiddag:** 9 tekniske PR'er merget (bl.a. #6762 v2 slukket, #6778, #6755 post-verificeret); falsk verify-rød → #6799. **Ejer-kort i `docs/sessions/kort-2026-10-17/`:** 1 frys · 2 skifte (2a-2d) · 3 UX · **4 lasttest-gaten IKKE bestået (pc1 mangler supabase CLI + psql)**. Testport v1→v2 kører.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 

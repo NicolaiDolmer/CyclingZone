@@ -88,6 +88,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     // #6750 (Codex): balance-taersklerne (fx "stort forspring") staar i en privat
     // fil, aldrig i det offentlige repo (hard rule 17).
     thresholds: get("thresholds", path.join("balance-internals", "motor-testport-thresholds.json")),
+    thresholdsExplicit: get("thresholds") !== null,
     png: !flag("no-png"),
     benchWorker,
     revision: get("revision"),
@@ -249,6 +250,26 @@ export function assertSameRaceSelection(previousIds, nextIds, outDir) {
   if (a !== b) throw new Error(`${outDir} er koert med en anden loebsudvaelgelse (${previousIds.length} loeb mod ${nextIds.length}). Brug en ny --out.`);
 }
 
+/**
+ * #6777: --report-only bruger de taerskler koerslen gemte i testport-meta.json (fil + snapshot),
+ * saa et kort ikke aendrer sig fordi standardfilen er blevet rettet siden. Et eksplicit
+ * --thresholds=<fil> vinder; meta uden snapshot (aeldre koersler) falder tilbage til filen.
+ */
+/**
+ * #6777 (Codex): stien der faktisk blev brugt. Ved genoptagelse uden eksplicit
+ * --thresholds beholdes den gemte sti, ikke default-stien.
+ */
+export function resolveThresholdsFile(prev, opts) {
+  if (opts?.thresholdsExplicit || !prev) return opts?.thresholds ?? null;
+  return prev.thresholdsFile ?? opts?.thresholds ?? null;
+}
+
+export function resolveReportThresholds(prev, opts) {
+  if (opts.thresholdsExplicit) return loadThresholds(abs(opts.thresholds));
+  if (prev?.thresholds && typeof prev.thresholds === "object") return prev.thresholds;
+  return loadThresholds(abs(prev?.thresholdsFile ?? opts.thresholds));
+}
+
 export function collectCard({ outDir, baseline, candidate, meta, benchScope = meta?.benchScope ?? "all", thresholds = {} }) {
   const racesDir = path.join(outDir, "races");
   const idsFile = path.join(outDir, "ids.txt");
@@ -325,7 +346,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (opts.reportOnly) {
     // Kortet samles igen med koerslens EGNE parametre; meta-filen roeres ikke.
     if (!prev) throw new Error(`--report-only: ${metaFile} findes ikke`);
-    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: { ...prev, generatedAt: new Date().toISOString() }, thresholds: loadThresholds(abs(opts.thresholds)) });
+    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: { ...prev, generatedAt: new Date().toISOString() }, thresholds: resolveReportThresholds(prev, opts) });
     return writeCard({ card, outDir, png: opts.png, failed: prev.failedRaces ?? [] });
   }
   if (prev && (prev.candidate !== opts.candidate || prev.baseline !== opts.baseline || prev.seeds !== opts.seeds || (prev.benchScope ?? "all") !== opts.benchScope)) {
@@ -346,7 +367,8 @@ export async function main(argv = process.argv.slice(2)) {
     if (prev && existsSync(idsPath)) assertSameRaceSelection(parseIdsText(readFileSync(idsPath, "utf8")), raceIds, outDir);
     writeFileSync(idsPath, `${raceIds.join("\n")}\n`);
   }
-  const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope };
+  const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
+  const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
   const tasks = planTasks({ raceIds, opts, outDir, fromDir });
@@ -357,7 +379,7 @@ export async function main(argv = process.argv.slice(2)) {
   });
   meta.failedRaces = res.failed;
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
-  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: new Date().toISOString() }, thresholds: loadThresholds(abs(opts.thresholds)) });
+  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: new Date().toISOString() }, thresholds });
   return writeCard({ card, outDir, png: opts.png, failed: res.failed });
 }
 

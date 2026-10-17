@@ -8,8 +8,8 @@ function readinessWith(overrides = {}) {
   return {
     ready: false,
     checks: {
-      window_closed: { ...okCheck },
-      final_whistle_sent: { ...okCheck },
+      season_end_completed: { ...okCheck },
+      no_deferred_transfers: { ...okCheck },
       squad_enforcement_completed: { ...okCheck },
       no_active_auctions: { ...okCheck },
       all_races_completed: { ...okCheck },
@@ -40,13 +40,13 @@ test("summarizeTransitionReadiness — alle checks ok giver blocked=false og 5 r
 
 test("summarizeTransitionReadiness — kritisk fail blokerer og bærer dansk label + detail", () => {
   const gate = summarizeTransitionReadiness(readinessWith({
-    window_closed: { ok: false, critical: true, detail: "Vinduet har status 'open'" },
+    no_deferred_transfers: { ok: false, critical: true, detail: "2 gennemførte transfers venter" },
   }));
   assert.equal(gate.blocked, true);
   assert.equal(gate.failed.length, 1);
-  assert.equal(gate.failed[0].key, "window_closed");
-  assert.equal(gate.failed[0].label, TRANSITION_CHECK_LABELS.window_closed);
-  assert.equal(gate.failed[0].detail, "Vinduet har status 'open'");
+  assert.equal(gate.failed[0].key, "no_deferred_transfers");
+  assert.equal(gate.failed[0].label, TRANSITION_CHECK_LABELS.no_deferred_transfers);
+  assert.equal(gate.failed[0].detail, "2 gennemførte transfers venter");
 });
 
 test("summarizeTransitionReadiness — ukendt check-key falder tilbage til key som label", () => {

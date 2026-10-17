@@ -33,7 +33,7 @@ function fixtureInputs(): Array<{ name: string; input: StageInput }> {
 
 test("#6369: motoren kender s5_profiles_v1 (ingen kast), ukendte revisioner kaster stadig", () => {
   assert.equal(normalizeRulesRevision("s5_profiles_v1"), "s5_profiles_v1");
-  assert.throws(() => normalizeRulesRevision("s5_profiles_v2"));
+  assert.throws(() => normalizeRulesRevision("s5_profiles_v3")); // #6156: s5_profiles_v2 er kendt
 });
 
 // #6363 (Spor 2): S5-adfaerden rammer kun mur/bakke/stigende spurt/flad spurt, mellembjerg,

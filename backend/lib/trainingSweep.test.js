@@ -81,6 +81,7 @@ function makeChainMock({ resolveWith }) {
   const obj = {
     select() { return this; },
     eq() { return this; },
+    is() { return this; },
     maybeSingle() { return Promise.resolve(resolveWith); },
     then(resolve, reject) {
       return Promise.resolve(resolveWith).then(resolve, reject);
@@ -285,6 +286,7 @@ describe("runTrainingSweep query-fejl", () => {
           key: null,
           select() { return b; },
           eq(_column, key) { b.key = key; return b; },
+          is() { return b; },
           maybeSingle() { return Promise.resolve({ data: { value: b.key === 'training_condition_per_date' ? 'off' : true }, error: null }); },
           then(resolve) {
             if (table === "teams") {
@@ -313,8 +315,9 @@ function makeD4MockSupabase({ raceDayEngineValue = false, teams, season = { id: 
     return {
       select() { return teamsBuilder(filters); },
       eq(col, val) { return teamsBuilder([...filters, [col, val]]); },
+      is(col, val) { return teamsBuilder([...filters, [col, val]]); },
       then(resolve, reject) {
-        const filtered = teams.filter((t) => filters.every(([c, v]) => t[c] === v));
+        const filtered = teams.filter((t) => filters.every(([c, v]) => (t[c] ?? null) === v));
         return Promise.resolve({ data: filtered, error: null }).then(resolve, reject);
       },
     };
@@ -401,5 +404,19 @@ describe("#6759 (Codex): den gamle sweep sender forældede reservationer til mot
       { team_id: "done", tick_date: "2026-06-20", created_at: "2026-06-20T19:00:00Z", report: { riders: [] } },
     ];
     assert.deepEqual(teamsNeedingSweep(teams, runs, "2026-06-20", now).map((t) => t.id), ["stale"]);
+  });
+});
+
+describe("#6536: parkerede hold faar intet tick i den gamle sweep", () => {
+  it("et parkeret hold springes over; aktive hold sweepes", async () => {
+    const teams = [
+      { id: "active", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: null },
+      { id: "parked", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, parked_at: "2026-09-27T18:59:00Z" },
+    ];
+    const supabase = makeD4MockSupabase({ raceDayEngineValue: false, teams });
+    const called = [];
+    const runDay = async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; };
+    await runTrainingSweep({ supabase, now: new Date("2026-06-20T20:30:00Z"), runDay });
+    assert.deepEqual(called, ["active"]);
   });
 });

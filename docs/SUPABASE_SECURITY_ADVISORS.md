@@ -8,6 +8,38 @@
 > Den korte regel (tjek ved session-start, ingen WARN over 7 dage) står i
 > [`AI_OPS_REFERENCE.md`](AI_OPS_REFERENCE.md#supabase-security-advisors--7-dages-regel).
 
+## Status 17/10 2026 (kl. 09:45 UTC), #6752
+
+**Målt med `get_advisors(type: "security")`: 4 WARN + 160 INFO**,
+`observed_at=2026-10-17T09:45:09Z`. De fire WARN er alle `0029`:
+`founder_public_list()`, `is_admin()`, `is_offered_intake_rider(uuid)` og den
+nye `offered_intake_rider_ids()` (fra #6341, 8/10 — var ikke dokumenteret her,
+deraf #6752). INFO er stadig kun `0008_rls_enabled_no_policy` (120 → 160,
+samme klasse: nye backup-/ops-tabeller).
+
+- **`offered_intake_rider_ids()` — bevidst åben, DB-policy-afhængig.** Den er
+  sæt-udgaven af `is_offered_intake_rider(uuid)` og kaldes ÉN gang pr. query
+  fra `"Public read riders"`. Policy-udtryk evalueres med kalderens
+  rettigheder, så `authenticated` SKAL have EXECUTE, ellers fejler al
+  indlogget læsning af `riders` med 42501. Den skal være SECURITY DEFINER:
+  `academy_intake_owner_read` begrænser authenticated til eget hold, så en rå
+  subquery ville lække andre holds kandidater (#1743). Returnerer kun rytter-
+  id'er der allerede er skjult, ingen personhenførbare data. anon har ikke
+  EXECUTE. Kilde: `database/2026-10-08-6341-riders-rls-per-row.sql`.
+- **`is_offered_intake_rider(uuid)` — lukkes af #6752.** Verificeret read-only
+  i prod 17/10: 0 referencer i `pg_policies`, `pg_views`/`pg_matviews`, andre
+  funktioners `prosrc`, `pg_trigger` og `pg_depend`, og ingen `.rpc(...)`-kalder
+  i backend/frontend. Begrundelsen for at beholde authenticated-EXECUTE (12/9,
+  nedenfor) faldt med #6341. `database/2026-10-17-6752-revoke-is-offered-intake-rider.sql`
+  revoker EXECUTE fra PUBLIC/anon/authenticated (service_role beholder den).
+  Funktionen droppes ikke: den er facit i `backend/test/rls/ridersReadPolicy.test.js`.
+  Applies af auto-migrate ved merge (#2642); forventet efter apply: 3 WARN.
+- **Accept-listen:** posten for `is_offered_intake_rider` er fjernet fra
+  `scripts/ops/supabase-advisor-allowlist.json` i samme PR (et lukket fund må
+  ikke stå på listen, se reglen nedenfor), og funktionen er taget ud af
+  allowlisten i `scripts/security-grants.sql`, så et gen-opstået grant fanges.
+  `offered_intake_rider_ids` står på begge lister.
+
 ## Triage-tabel: hvilke fund er falske positiver (#5088, 17/9 2026)
 
 Denne tabel er det ene sted den daglige advisor-rutine
@@ -30,7 +62,8 @@ backup-/ops-tabeller, samme klasse som resten — se INFO-afsnittet nederst).
 | `is_admin()` kaldbar af `anon` (`0028`) | **Væk** (lukket i #5153 §C) | Var falsk positiv | Funktionen svarer på "er **kalderen** admin?". For `anon` er `auth.uid()` NULL → tom subquery → `COALESCE(...)` → `false`. Lækker intet, giver ingen rettigheder. Grantet blev alligevel fjernet som oprydning. |
 | `is_admin()` kaldbar af `authenticated` (`0029`) | **Åben — bevidst** | Falsk positiv | Indgår i ~70 RLS-policies i `public`. En policy-expression evalueres med kalderens rettigheder, så `authenticated` SKAL beholde EXECUTE. INVOKER er ikke en erstatning: `users`-policyen gater selv på `is_admin()` → 42P17 rekursion. Detaljer i afsnittet nedenfor. |
 | `is_beta_tester()` kaldbar af `authenticated` (`0029`) | **Væk** (lukket i #5153 §D) | Var falsk positiv | Indgik i 0 policies og havde ingen kaldesteder. Samme caller-scoped mønster som `is_admin()`. Kunne derfor lukkes uden at knække noget. |
-| `is_offered_intake_rider(uuid)` kaldbar af `authenticated` (`0029`) | **Åben — bevidst** | Falsk positiv | Indgår i `"Public read riders"`-policyen på `riders`. Fjernes EXECUTE, knækker rytter-synligheden for hele spillet. Lækker ét bit pr. rytter-id ("tilbudt academy-intake uden hold") til indloggede spillere; nødvendigt for at policyen kan evalueres. Ejer-beslutning 12/9: **B — kun indloggede må læse riders**. |
+| `is_offered_intake_rider(uuid)` kaldbar af `authenticated` (`0029`) | **Lukket via #6752** (17/10, væk fra advisoren efter auto-migrate-apply) | Var falsk positiv, nu ubrugt | Indgik i `"Public read riders"` indtil #6341 (8/10) erstattede den med `offered_intake_rider_ids()`. 0 policies/views/funktioner/triggers og ingen RPC-kalder 17/10, så authenticated-EXECUTE er revoket (`2026-10-17-6752-revoke-is-offered-intake-rider.sql`). service_role beholder den. Ejer-beslutning 12/9 (**B — kun indloggede må læse riders**) er uændret; den bæres nu af søsterhelperen. |
+| `offered_intake_rider_ids()` kaldbar af `authenticated` (`0029`) | **Åben — bevidst** (dokumenteret 17/10, #6752) | Falsk positiv | DB-policy-afhængig: kaldes ÉN gang pr. query fra `"Public read riders"`, og policy-udtryk evalueres med kalderens rettigheder, så authenticated SKAL have EXECUTE (ellers 42501 på al indlogget riders-læsning). SECURITY DEFINER er nødvendig, fordi `academy_intake_owner_read` begrænser authenticated til eget hold. Returnerer kun id'er der allerede er skjult. anon har ikke EXECUTE (#6341). |
 | `founder_public_list()` kaldbar af `authenticated` (`0029`) | **Åben — bevidst** | Falsk positiv | Returnerer kun `team_id` + løbenummer for founders, læser `subscriptions` (ikke `users`), ingen personhenførbare data. `anon` er revoket (#4870). Lukning kræver et separat backend-endpoint, ikke en bredere SELECT-policy — se afsnittet nedenfor. |
 | `record_forum_thread_view(uuid,uuid)` med mutable `search_path` (`0011`) | **Væk** (lukket i #5153 §A) | Var lav, ikke falsk | `SECURITY INVOKER` (`prosecdef = false`), så ingen privilege escalation — men et ægte hygiejnefund. Lukket med `SET search_path = public, pg_catalog`. |
 | `btree_gist` i `public` (`0014`) | **Væk** (flyttet i #5153 §B) | Kosmetisk | Blev anbefalet WONTFIX i #5088, fordi en flytning normalt kræver drop+recreate af afhængige exclusion-constraints. #5153 kunne flytte den alligevel: der var 0 exclusion-constraints og 0 indekser med dens opclasses. |
@@ -227,6 +260,9 @@ Alternativt en separat public-safe projektion; ikke en bred subscriptions-
 policy. Live-RLS er ikke genverificeret her, og ingen founder-policy ændres.
 
 ### `is_offered_intake_rider(uuid)`: B godkendt af ejeren 12/9 2026
+
+> **Historisk (17/10, #6752):** policyen kalder ikke længere funktionen
+> (#6341), og authenticated-EXECUTE er revoket. Se statusafsnittet øverst.
 
 Ejerens svar i Codex-sessionen: **"B: Kun indloggede må læse riders"**.
 Dette fastlægger adgangsreglen. Policy-ændringen og de tilhørende whitelist-
