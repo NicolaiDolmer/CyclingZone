@@ -172,6 +172,42 @@ export function isTrainingReservationHeldError(err) {
   return err?.retryable === true && err?.code === TRAINING_RESERVATION_HELD;
 }
 
+// ── #6827: holdt reservation paa loebsdags-stien ─────────────────────────────
+// Loebsdags-raekken staar som `{ pending: true }` fra reservationen til den sidste
+// rapport-update, altsaa gennem baade phase 1 og phase 2. En optaget noegle betyder
+// derfor ikke noedvendigvis "allerede koert": en sweep kan vaere midt i samme
+// loebsdag. Train now maa ikke svare already_trained_today og gaa videre til
+// senere loebsdage, mens det tidligere tick stadig skriver (409, se routen).
+//   afregnet (ingen pending)       → alreadyRan som foer.
+//   frisk pending (< taerskelen)   → retryable held-fejl; intet er skrevet.
+//   forældet pending               → alreadyRan som foer: en efterladt raekke (fx
+//                                    nedbrud i phase 2) er en blokeret loebsdag,
+//                                    aldrig en ledig (ingen overtagelse her).
+//   ingen raekke (frigivet imens)  → retryable held-fejl: den anden koersel
+//                                    fejlede i phase 1, proev igen om lidt.
+// Samme taerskel som den gamle sti (STALE_LEGACY_RESERVATION_MS); et tick for ét
+// hold tager sekunder, saa en levende koersel er altid frisk.
+/**
+ * @param {{pending?:string|boolean|null, report?:{pending?:boolean}|null, created_at?:string|null}} row
+ * @param {Date} now
+ */
+export function isHeldRaceDayReservation(row, now) {
+  if (String(row?.pending ?? row?.report?.pending) !== "true") return false;
+  const createdAt = Date.parse(row.created_at ?? "");
+  // Ukendt alder behandles konservativt som en levende koersel.
+  return !Number.isFinite(createdAt) || createdAt >= now.getTime() - STALE_LEGACY_RESERVATION_MS;
+}
+
+async function assertRaceDayReservationSettled({ supabase, runRowFilter, teamId, tickDate, now }) {
+  const { data: rows, error } = await runRowFilter(
+    supabase.from("training_day_runs").select("created_at, pending:report->>pending"),
+  );
+  if (error) throw new Error(`training_day_runs reservation lookup: ${error.message}`);
+  if (!(rows ?? []).length || rows.some((row) => isHeldRaceDayReservation(row, now))) {
+    throw reservationHeldError(teamId, tickDate);
+  }
+}
+
 // ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────
 // AI-, bank- og testhold (og hold uden manager) koerer stadig det daglige tick:
 // form, traethed, skade og traeningsscore er uaendrede. Men evnegevinsterne,
@@ -458,6 +494,10 @@ export async function runTeamTrainingDay({
     // Taber vi INSERT'et efter frigivelsen, ejer en samtidig koersel noeglen og er
     // maaske stadig i phase 1 — ikke "alreadyRan", men proev igen senere.
     if (insertError?.code === "23505") throw reservationHeldError(teamId, tickDate);
+  }
+  // #6827: paa loebsdags-stien kaster en holdt raekke; kun en afregnet giver alreadyRan.
+  if (insertError?.code === "23505" && useRaceDayKey) {
+    await assertRaceDayReservationSettled({ supabase, runRowFilter, teamId, tickDate, now });
   }
 
   if (insertError) {
