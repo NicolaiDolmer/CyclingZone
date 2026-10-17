@@ -372,7 +372,7 @@ export const S5_REFORMATION_TUNING = Object.freeze({
 });
 
 function withS5Reformation(result: SegmentHookResult, ctx: BreakawayHookContext): SegmentHookResult {
-  const current = findBreakawayGroups(result.state.groups);
+  const current = findBreakawayGroups(result.state.groups).filter((g) => g.origin === "breakaway"); // kun morgen-/reformationsudbrud, aldrig et nedkoerselsangreb
   if (current.length > 0) {
     // Husk udbruddets ryttere; indhentningen (sammenlaegningen) sker senere i loopet.
     return { ...result, state: { ...result.state, s5_last_break_rider_ids: current.flatMap((g) => g.rider_ids).sort() } };
@@ -2157,7 +2157,7 @@ const breakawayHookCore: BreakawayHook = (state: EngineState, ctx: BreakawayHook
     const formed = { state: progressed.state, events: [...gcContextEvents(ctx), ...formationResult.events, ...progressed.events] };
     if (ctx.s5ProfilesV1 !== true) return formed;
     // #6369: husk udbruddet allerede her; det kan hentes i samme (lange) segment.
-    const formedIds = findBreakawayGroups(formationResult.state.groups).flatMap((g) => g.rider_ids).sort();
+    const formedIds = findBreakawayGroups(formationResult.state.groups).filter((g) => g.origin === "breakaway").flatMap((g) => g.rider_ids).sort();
     return withS5Reformation(formedIds.length ? { ...formed, state: { ...formed.state, s5_last_break_rider_ids: formedIds } } : formed, ctx);
   }
   const progressed = progressChase(state, ctx);
