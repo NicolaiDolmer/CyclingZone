@@ -263,6 +263,9 @@ async function measurePage(context, target, mode, vpName) {
     if (opts.shots && (mode === "pseudo" || process.env.I18N_PSEUDO_ALL_SHOTS === "1")) {
       await page.screenshot({ path: join(OUT, `${target.name}-${vpName}-${mode}.png`), fullPage: true });
     }
+    // En browser-undtagelse kan betyde en halvt renderet side: maalingen er ikke
+    // gyldig og maa ikke certificeres (Codex #6808).
+    if (errors.length > 0) return { ...result, errors, ok: false, error: `browser-fejl paa siden: ${errors[0]}` };
     return { ...result, errors, ok: true };
   } catch (err) {
     return { ok: false, error: String(err.message || err), findings: [], bottomNav: [], errors };
@@ -322,7 +325,7 @@ writeFileSync(
   JSON.stringify(
     results.map((r) => ({
       page: r.page, path: r.path, viewport: r.viewport,
-      ok: r.pseudo.ok, error: r.pseudo.error ?? null,
+      ok: r.pseudo.ok, error: r.pseudo.error ?? null, errors: r.pseudo.errors ?? [],
       new: sortFindings(r.new), existing: sortFindings(r.existing),
       bottomNav: r.pseudo.bottomNav, bottomNavBaseline: r.baseline.bottomNav,
     })),
@@ -346,5 +349,12 @@ for (const r of results) {
     md.push("");
   }
 }
+const failed = results.filter((r) => !r.pseudo.ok);
+if (failed.length > 0) md.splice(2, 0, `**${failed.length} maaling(er) FEJLEDE; sweepet er ufuldstaendigt.**`, "");
 writeFileSync(join(OUT, "report.md"), `${md.join("\n")}\n`);
 log(`\nResultat → ${OUT}`);
+// Codex #6808: et ufuldstaendigt sweep maa aldrig give exit 0.
+if (failed.length > 0) {
+  log(`FEJL: ${failed.length} maaling(er) fejlede: ${failed.map((r) => `${r.viewport}/${r.page}`).join(", ")}`);
+  process.exitCode = 1;
+}
