@@ -99,9 +99,12 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
     const p = event.params ?? {};
     const ids = riderIds(p.rider_ids);
     const groupId = typeof p.group_id === "string" ? p.group_id : null;
-    if (event.type === "breakaway_formed" && !formationSeen) {
+    // #6369 (s5_profiles_v1): et nyt udbrud efter en tidlig indhentning
+    // (`reformation: true`) er ogsaa dagens udbrud; det hentede udbruds ryttere
+    // beholder deres udfald. Aeldre motorer udsender aldrig maerket.
+    if (event.type === "breakaway_formed" && (!formationSeen || p.reformation === true)) {
+      if (!formationSeen) engineDrops = p.drops_reported === true;
       formationSeen = true;
-      engineDrops = p.drops_reported === true;
       for (const id of ids) { morningRiderIds.add(id); entry(id).morning = true; }
       if (groupId) groups.set(groupId, new Set(ids));
       const source = typeof p.source_group_id === "string" ? p.source_group_id : "peloton-0";

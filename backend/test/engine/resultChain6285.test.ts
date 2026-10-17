@@ -66,11 +66,13 @@ function chainViolations({ out, events, distanceKm = null }: { out: any; events:
   const resultIds = (out?.results ?? []).map((r: any) => r.rider_id);
   const ranked = rankedFromV4Output(out, { rulesRevision: REVISION });
   const stored: Map<string, { in_breakaway: boolean; breakaway_caught: boolean; breakaway_dropped?: boolean | null }> = deriveBreakawayStatus(ranked);
-  const morning = new Set(idsOf(raw.find((e) => e.type === "breakaway_formed")));
+  const firstFormation = new Set(idsOf(raw.find((e) => e.type === "breakaway_formed")));
+  // #6369 (s5_profiles_v1): et nyt udbrud efter en tidlig indhentning (`reformation: true`) er ogsaa dagens udbrud.
+  const morning = new Set([...firstFormation, ...raw.filter((e) => e.type === "breakaway_formed" && e.params?.reformation === true).flatMap((e) => idsOf(e))]);
   const film = buildFilmTimeline({ events, distanceKm, timelineVersion: 2, startlist: resultIds });
   const filmEvents: Ev[] = film.events;
   const filmMorning = new Set(idsOf(filmEvents.find((e) => e.type === "breakaway_formed")));
-  if ([...morning].sort().join() !== [...filmMorning].sort().join()) issues.push("film_formation");
+  if ([...firstFormation].sort().join() !== [...filmMorning].sort().join()) issues.push("film_formation");
 
   // 5. Filmen viser motorens udbrudshaendelser, minus regroups (#6294).
   const { regroupCatches } = deriveParticipationHistory(raw, resultIds);
