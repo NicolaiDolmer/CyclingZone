@@ -258,13 +258,17 @@ function runtimeHolder(dir, runtime, id, max = 2) {
   return Object.assign(run, { marker, stop });
 }
 
+// CI-runnere starter pwsh langsomt; tre processer i traek kan tage over 10 s.
+// Graensen er kun et loft for ventetiden: raekkefoelge-tjekkene er uaendrede.
+const PROCESS_WAIT_MS = 30000;
+
 async function entered(run) {
-  assert.ok(await waitFor(() => existsSync(run.marker) || run.child.exitCode !== null, 10000));
+  assert.ok(await waitFor(() => existsSync(run.marker) || run.child.exitCode !== null, PROCESS_WAIT_MS));
   assert.ok(existsSync(run.marker), `holder failed: ${run.stderr}`);
 }
 
 async function waiting(run) {
-  assert.ok(await waitFor(() => run.stdout.includes('venter paa slot') || existsSync(run.marker) || run.child.exitCode !== null, 10000));
+  assert.ok(await waitFor(() => run.stdout.includes('venter paa slot') || existsSync(run.marker) || run.child.exitCode !== null, PROCESS_WAIT_MS));
   assert.ok(run.stdout.includes('venter paa slot'), `expected waiting admission: ${run.stderr}`);
   assert.equal(existsSync(run.marker), false);
 }
