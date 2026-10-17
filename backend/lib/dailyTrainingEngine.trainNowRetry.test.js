@@ -36,8 +36,13 @@ const DEPS = [
 
 const TEAM_ID = "team";
 const SEASON_ID = "season";
+// Fast referencetid (AGENTS.md: ingen vaegur i tests). Routen sender ingen `now`, saa
+// den rigtige motor faar den gennem en wrapper; fixturerne bygges ud fra samme tid.
+const NOW = new Date("2026-06-12T20:30:00+02:00");
+const TICK_DATE = copenhagenDateString(NOW);
+const realEngine = (args) => runTeamTrainingDay({ ...args, now: NOW });
 
-function loadHandler({ raceDayTickOn, runDay = runTeamTrainingDay, supabase = {}, gameDays = [3], captured }) {
+function loadHandler({ raceDayTickOn, runDay = realEngine, supabase = {}, gameDays = [3], captured }) {
   const start = apiSource.indexOf('router.post("/training/run-today"');
   const end = apiSource.indexOf("\n});", start) + 4;
   assert.ok(start >= 0 && end > start, "run-today-handleren findes i api.js");
@@ -108,11 +113,11 @@ function fakeSupabase({ flags = {}, runs = [] } = {}) {
   return { tables, inserts, from: (table) => query(table) };
 }
 
-const freshCreatedAt = () => new Date().toISOString();
+const freshCreatedAt = () => new Date(NOW.getTime() - 30 * 1000).toISOString();
 const settledReport = (gameDay) => ({ riders: [], game_day: gameDay, executed_by: "assistant" });
 const raceDayRun = (gameDay, report) => ({
   id: `run-${gameDay}`, team_id: TEAM_ID, season_id: SEASON_ID, squad: "senior", game_day: gameDay,
-  tick_date: copenhagenDateString(new Date()), created_at: freshCreatedAt(), report,
+  tick_date: TICK_DATE, created_at: freshCreatedAt(), report,
 });
 
 test("#6827 (loebsdags-stien, rigtig motor): en sweep holder loebsdag 3 → 409 training_in_progress, loebsdag 4 roeres ikke", async () => {
@@ -147,7 +152,7 @@ test("#6798 (den gamle kalenderdags-sti, rigtig motor): frisk 'loading'-reservat
   const captured = [];
   const supabase = fakeSupabase({
     runs: [{
-      id: "run-legacy", team_id: TEAM_ID, tick_date: copenhagenDateString(new Date()), game_day: null,
+      id: "run-legacy", team_id: TEAM_ID, tick_date: TICK_DATE, game_day: null,
       created_at: freshCreatedAt(), report: { pending: true, stage: LEGACY_RESERVATION_STAGE_LOADING, token: "token-of-the-sweep" },
     }],
   });
