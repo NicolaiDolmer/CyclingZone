@@ -19,7 +19,8 @@
  *     5. minut hele dagen på det klokke-justerede tick-gitter (schedulerTick.js) mod en
  *     tællende in-memory Supabase. Dens udvælgelse (forfaldne etaper, tomme puljer,
  *     dagligt loft, genoptagelse) og dens egne DB-kald + returnerede rækker er målt.
- *     Etape-tiderne kommer fra `slotsFor`/`TIER_STAGE_SLOTS` og `SQUAD_CALENDAR`, og
+ *     Etape-tiderne kommer fra `slotsFor`/`TIER_STAGE_SLOTS` (senior) og
+ *     `squadSlotsForDate`/`SQUAD_CALENDAR` (ungdom, samme kilde som materializeren), og
  *     puljestrukturen fra `SENIOR_CALENDAR_POOLS_FROM_S4` og `YOUTH_GROUP_SIZE`.
  *   - MODEL: selve etapeafviklingen (`runStageFn`, motoren) erstattes af en kalibreret
  *     omkostningsmodel (COST_PROFILES), fordi motoren ikke kan køres uden en fuld DB.
@@ -44,6 +45,7 @@ import { STAGE_TICK_PERIOD_MS, STAGE_TICK_OFFSET_MS } from "../lib/schedulerTick
 import { TIER_STAGE_SLOTS, slotsFor } from "../lib/calendarPlanningWindow.js";
 import { SQUAD_CALENDAR, SENIOR_CALENDAR_POOLS_FROM_S4 } from "../lib/calendarTierCaps.js";
 import { YOUTH_GROUP_SIZE } from "../lib/youthPoolAssignment.js";
+import { squadSlotsForDate } from "../lib/squadCalendarPacker.js";
 import { copenhagenHourToUTC, copenhagenMidnightUTC } from "../lib/copenhagenTime.js";
 import { isStageSchedulerEnabled, STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled, RACE_ENGINE_V2_FLAG_KEY } from "../lib/raceEngineFlag.js";
@@ -256,6 +258,18 @@ export function trainingCloseStart(lastStageEndMs) {
 
 const HISTORY_DAYS = 12; // afsluttede løb tidligere i sæsonen (fylder schedule-tabellen)
 
+/**
+ * Ungdomstruppens etape-tid(er) på en dato, præcis som tierCalendarMaterializer udleder dem:
+ * truppens ene stageSlot gennem slotsFor (sæsonens sidste dag) og derefter flyttet væk fra
+ * seniorens tider og de andre truppers tid (squadSlotsForDate, #6667).
+ */
+export function youthSlotsFor(squad, date, seasonLastRaceDay = null) {
+  const otherSquadSlots = Object.entries(SQUAD_CALENDAR).filter(([s]) => s !== squad).map(([, c]) => c.stageSlot);
+  return squadSlotsForDate({
+    squad, tier: 1, localDate: date, squadSlots: [SQUAD_CALENDAR[squad].stageSlot], otherSquadSlots, seasonLastRaceDay,
+  });
+}
+
 function poolAlias(squad, index) {
   const prefix = squad === "senior" ? "S" : squad === "u23" ? "U" : "J";
   return `${prefix}${String(index + 1).padStart(2, "0")}`;
@@ -388,9 +402,12 @@ export function buildRaceDayFixture({
       });
     }
 
+    // Ungdom: samme kilde som materializeren (tierCalendarMaterializer -> squadSlotsForDate).
+    // #6772: rå slotsFor lagde U23 på seniorens 15:00 på sæsonens sidste dag; prod flytter
+    // den væk fra senior-tiderne (youthSlotsApartFromSenior, #6667).
     const slots = pool.squad === "senior"
       ? slotsFor(pool.tier, date, { seasonLastRaceDay })
-      : slotsFor(1, date, { slots: { 1: [SQUAD_CALENDAR[pool.squad].stageSlot] }, seasonLastRaceDay });
+      : youthSlotsFor(pool.squad, date, seasonLastRaceDay);
     slots.forEach((hhmm, lane) => {
       const scheduledMs = copenhagenSlotMs(date, hhmm);
       // Andelen af afsluttende etaper styres deterministisk af finalShare.
