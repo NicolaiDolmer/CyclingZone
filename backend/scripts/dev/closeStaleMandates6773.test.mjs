@@ -134,6 +134,8 @@ test("#6773 backup-SQL: idempotent og dækker præcis plan-rækkerne", () => {
   const sql = buildBackupSql(plan);
   assert.match(sql, new RegExp(`create table if not exists public\\.${BACKUP_TABLE}`));
   assert.match(sql, /on conflict \(id\) do nothing/);
+  assert.match(sql, /revoke all on table public\.backup_6773_board_mandates from public, anon, authenticated, service_role/);
+  assert.match(sql, /grant select on table public\.backup_6773_board_mandates to service_role/, "apply læser backuppen som service_role");
   for (const r of plan.rows) assert.ok(sql.includes(r.id));
   assert.ok(!sql.includes(id(2)) && !sql.includes(id(5)), "aktuelle mandater er ikke med");
 });

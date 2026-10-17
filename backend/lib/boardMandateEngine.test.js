@@ -1295,6 +1295,8 @@ const STALE_S3 = {
   id: "m-s3", team_id: "t1", season_id: "s3", season_number: 3, status: "active",
   signed_at: "2026-10-03T08:00:00Z",
 };
+// AGENTS 16: fast klokke, aldrig vægur-tiden.
+const ROLLOVER_NOW = new Date("2026-10-25T10:00:00Z");
 const CURRENT_S4 = {
   id: "m-s4", team_id: "t1", season_id: "s4", season_number: 4, status: "active",
   signed_at: "2026-09-29T08:00:00Z",
@@ -1366,7 +1368,7 @@ test("#6773 closeEndedSeasonMandates: active → completed, proposed → lapsed 
 
   const second = await closeEndedSeasonMandates(supabase, { teamId: "t1", endedSeasonNumber: 4, now });
   assert.deepEqual(second, { completed: 0, lapsed: 0 }, "anden kørsel finder intet");
-  assert.deepEqual(await closeEndedSeasonMandates(supabase, { teamId: "t1", endedSeasonNumber: null }), { completed: 0, lapsed: 0 });
+  assert.deepEqual(await closeEndedSeasonMandates(supabase, { teamId: "t1", endedSeasonNumber: null, now }), { completed: 0, lapsed: 0 });
 });
 
 test("#6773 advanceMandateAtSeasonEnd: mandat underskrevet EFTER sit eget sæsonslut afsluttes ved næste skifte", async () => {
@@ -1378,7 +1380,7 @@ test("#6773 advanceMandateAtSeasonEnd: mandat underskrevet EFTER sit eget sæson
     mandates: [{ ...STALE_S3 }, { ...CURRENT_S4, focus: "youth_development" }],
   });
   const result = await advanceMandateAtSeasonEnd(supabase, {
-    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4, notifyUser: async () => ({ delivered: false }),
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4, notifyUser: async () => ({ delivered: false }), now: ROLLOVER_NOW,
   });
   const byId = Object.fromEntries(supabase._state.mandates.map((m) => [m.id, m]));
   assert.equal(byId["m-s3"].status, "completed", "det gamle S3-mandat står ikke længere aktivt");
@@ -1399,7 +1401,7 @@ test("#6773 advanceMandateAtSeasonEnd: et forslag for den afsluttede sæson udl�
     mandates: [{ id: "m-s3-prop", team_id: "t1", season_id: "s3", season_number: 3, status: "proposed" }],
   });
   const result = await advanceMandateAtSeasonEnd(supabase, {
-    teamId: "t1", seasonId: "s3", currentSeasonNumber: 3, notifyUser: async () => ({ delivered: false }),
+    teamId: "t1", seasonId: "s3", currentSeasonNumber: 3, notifyUser: async () => ({ delivered: false }), now: ROLLOVER_NOW,
   });
   assert.equal(supabase._state.mandates.find((m) => m.id === "m-s3-prop").status, "lapsed");
   assert.deepEqual(result.closed_ended_seasons, { completed: 0, lapsed: 1 });
@@ -1412,6 +1414,6 @@ test("#6773 advanceMandateAtSeasonEnd: næste sæson mangler → heller ikke gam
     relations: [{ id: "rel-1", team_id: "t1", confidence: 60 }],
     mandates: [{ ...STALE_S3 }, { ...CURRENT_S4 }],
   });
-  await advanceMandateAtSeasonEnd(supabase, { teamId: "t1", seasonId: "s4", currentSeasonNumber: 4 });
+  await advanceMandateAtSeasonEnd(supabase, { teamId: "t1", seasonId: "s4", currentSeasonNumber: 4, now: ROLLOVER_NOW });
   assert.ok(supabase._state.mandates.every((m) => m.status === "active"));
 });

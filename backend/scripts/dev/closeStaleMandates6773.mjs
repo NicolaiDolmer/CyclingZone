@@ -164,10 +164,14 @@ export function buildBackupSql(plan) {
   if (!plan.rows.length) return "-- #6773: ingen kandidater, ingen backup nødvendig\n";
   const ids = uuidList(plan.rows.map((r) => r.id));
   return `-- #6773 backup FØR lukning af mandater for afsluttede sæsoner. Idempotent.
+-- data-api-access: {"table":"public.${BACKUP_TABLE}","roles":{"anon":[],"authenticated":[],"service_role":["SELECT"]},"reason":"Backend-only ops backup; apply reads it to prove coverage"}
 begin;
 create table if not exists public.${BACKUP_TABLE} as
   select *, now() as snapshot_at from public.board_mandates where false;
 alter table public.${BACKUP_TABLE} enable row level security;
+-- RLS erstatter ikke grants (docs/DATA_API_GRANTS.md): kun service_role må læse.
+revoke all on table public.${BACKUP_TABLE} from public, anon, authenticated, service_role;
+grant select on table public.${BACKUP_TABLE} to service_role;
 create unique index if not exists ${BACKUP_TABLE}_id on public.${BACKUP_TABLE}(id);
 insert into public.${BACKUP_TABLE}
   select *, now() from public.board_mandates where id in (
