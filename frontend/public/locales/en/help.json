@@ -321,7 +321,7 @@
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
+        "text": "A green dot next to a manager's name means they are active right now (last seen within 30 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
       },
       "managersOnline": {
         "title": "Managers online count",
@@ -1197,6 +1197,14 @@
         "title": "Season intake cohort",
         "text": "At the start of each season the system generates a small cohort of prospects for your club. Prospects are teenagers, so they start with low, raw stats: judge them mainly by their potential rather than their current numbers, and scout a prospect to narrow down how far it can go. You can then decide how many (if any) to sign, and you are never forced to sign anyone. New academy candidates arrive every Sunday. Candidates you don't sign or reject expire after 7 days."
       },
+      "intakeProfile": {
+        "title": "Your weekly intake and the Academy Expansion",
+        "text": "Each week you bring in your intake with one click on the Academy page. The Academy Expansion on the Club page decides how big it is: 2 candidates without it, 3 from level 2 and 4 at level 5. From level 1 you can give the intake a profile, a nationality or region, from level 3 also a rider type, and from level 4 one extra choice. Every level makes the profile pull a little harder, but it never decides the whole intake, and talent is drawn the same way at every level. You can change the profile whenever you like; a change takes effect after 2 weeks. The Academy Expansion has no chief."
+      },
+      "prognosisTraining": {
+        "title": "Learning a prospect's potential",
+        "text": "When you bring in a candidate you see his name, age, nationality, rider type and current abilities. His potential reads Learned through training: you find out by having him on your team. After about 10 race days of training you get a first, wide forecast, after about 30 a narrow one, and after a full season the final one. A better Training Center and a stronger Sports Director get you there sooner. They make you surer of the rider, they don't make him better."
+      },
       "signingProspects": {
         "title": "Signing prospects",
         "steps": [
@@ -1306,8 +1314,8 @@
           ],
           [
             "Academy Expansion",
-            "Adds extra Academy intake slots",
-            "Coming soon"
+            "More candidates in your weekly intake and a profile for it (no chief)",
+            "Opens with the weekly intake"
           ],
           [
             "Commercial Department",
@@ -1349,7 +1357,7 @@
       "label": "Team selection",
       "what": {
         "title": "Picking your race squad",
-        "text": "Each race has a field size set by its class: 6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours. Open the race page and use the Team selection panel. You can save fewer riders than the field holds, and saving is never blocked. But your team needs at least 6 riders in the line-up to start the race, in every race, whatever the field size. Fewer than 6 and your team does not start, so no result and no race day earnings from it. If you leave a race empty or below 6, your assistant fills it up to 6 at race time from the riders you have free, and it skips races you have withdrawn from or cleared on purpose. The panel tells you before you leave the page whether your team will start. To sit a race out, withdraw from it; if you want more riders to choose from, sign free agents."
+        "text": "Each race has a field size set by its class: 6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours. Open the race page and use the Team selection panel. You can save fewer riders than the field holds, and saving is never blocked. But your team needs at least 6 riders in the line-up to start the race, in every race, whatever the field size. Fewer than 6 and your team does not start, so no result and no race day earnings from it. One exception: if you had 6 riders selected and some got injured after you picked them, your team still starts with the fit riders it has left, after the assistant has added any free riders. If you leave a race empty or below 6, your assistant fills it up to 6 at race time from the riders you have free, and it skips races you have withdrawn from or cleared on purpose. The panel tells you before you leave the page whether your team will start. To sit a race out, withdraw from it; if you want more riders to choose from, sign free agents."
       },
       "seasonOverview": {
         "title": "Season view on the planning board",
@@ -1523,7 +1531,7 @@
     },
     "onlineStatusFaq": {
       "q": "What is online status?",
-      "a": "A green dot next to a manager's name means they've been active within the last 5 minutes. You can see this everywhere in the game."
+      "a": "A green dot next to a manager's name means they've been active within the last 30 minutes. You can see this everywhere in the game."
     },
     "watchlistCounterFaq": {
       "q": "What does the watchlist counter on a rider page mean?",

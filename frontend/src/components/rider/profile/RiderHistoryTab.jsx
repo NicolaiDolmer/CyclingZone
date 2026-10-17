@@ -17,7 +17,14 @@ import TeamLink from "../../TeamLink";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import { ExchangeIcon } from "../../ui/icons/index.jsx";
 
-const GRID = "grid grid-cols-[58px_64px_minmax(0,1fr)_78px] sm:grid-cols-[84px_88px_minmax(0,1fr)_116px] gap-2.5 px-4 items-center";
+// #6728: på mobil to linjer pr. række: dato, type og beløb øverst, hele
+// hændelsen under i fuld bredde. Før klippede den smalle hændelseskolonne
+// teksten ("Regression …"), og "GUARANTEED SALE" var bredere end sin 64/88 px
+// kolonne og lå oven i hændelsen. Typekolonnen på desktop er bred nok til det
+// længste mærke.
+const GRID = "grid grid-cols-[58px_minmax(0,1fr)_78px] sm:grid-cols-[84px_132px_minmax(0,1fr)_116px] gap-x-2.5 gap-y-1 px-4 items-center";
+const EVENT_CELL = "col-span-full row-start-2 sm:col-span-1 sm:row-start-auto";
+const AMOUNT_CELL = "col-start-3 row-start-1 sm:col-start-auto sm:row-start-auto";
 
 const CHIP_TONE = {
   auction: "text-cz-accent-t",
@@ -139,7 +146,7 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
       <div className={`${GRID} py-2 border-b border-cz-border`}>
         <span className={th}>{t("profile.history.table.date")}</span>
         <span className={th}>{t("profile.history.table.type")}</span>
-        <span className={th}>{t("profile.history.table.event")}</span>
+        <span className={`${th} hidden sm:block`}>{t("profile.history.table.event")}</span>
         <span className={`${th} text-right`}>{t("profile.history.table.amount")}</span>
       </div>
       {rows.map((row, i) => {
@@ -152,10 +159,10 @@ export default function RiderHistoryTab({ events, bidTimeline }) {
             <span className={`inline-flex justify-self-start font-mono text-3xs font-bold uppercase tracking-[0.04em] px-1.5 py-[2px] rounded bg-cz-subtle border border-cz-border whitespace-nowrap ${CHIP_TONE[row.kind] ?? "text-cz-2"}`}>
               {chipLabel(row.kind, row, t)}
             </span>
-            <span className="text-[12.5px] leading-snug min-w-0 truncate">
+            <span className={`text-[12.5px] leading-snug min-w-0 break-words ${EVENT_CELL}`}>
               <EventCell row={row} t={t} />
             </span>
-            <span className={`font-mono tabular-nums text-xs font-semibold text-right whitespace-nowrap ${amount == null ? "text-cz-3" : AMOUNT_TONE[row.kind] ?? "text-cz-2"}`}>
+            <span className={`font-mono tabular-nums text-xs font-semibold text-right whitespace-nowrap ${AMOUNT_CELL} ${amount == null ? "text-cz-3" : AMOUNT_TONE[row.kind] ?? "text-cz-2"}`}>
               {amount == null
                 ? t("history.fallbackDash")
                 : `${row.kind === "swap" && amount > 0 ? "+" : ""}${formatNumber(amount)} CZ$`}

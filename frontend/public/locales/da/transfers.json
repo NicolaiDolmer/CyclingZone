@@ -106,6 +106,7 @@
       "newOffer": "Nyt bud",
       "withdraw": "Træk tilbage",
       "withdrawOffer": "Træk tilbud tilbage",
+      "withdrawCounter": "Træk modbud tilbage",
       "confirmDeal": "✓ Bekræft handel ({amount} CZ$)",
       "cancelDeal": "Annuller handel",
       "archive": "Arkivér"
@@ -259,6 +260,7 @@
     "dealCancelled": "Handel annulleret",
     "transferRejected": "Transfer afvist",
     "counterSent": "Modbud sendt",
+    "counterWithdrawn": "Modbud trukket tilbage",
     "newOfferSent": "Nyt bud sendt",
     "offerWithdrawn": "Tilbud trukket tilbage",
     "offerArchived": "Tilbud arkiveret",

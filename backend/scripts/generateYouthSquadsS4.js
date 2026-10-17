@@ -51,6 +51,18 @@
 //   node backend/scripts/generateYouthSquadsS4.js --juniors=N --out=balance-internals/<fil>.md
 //   node backend/scripts/generateYouthSquadsS4.js --juniors=N --apply --owner-go   # KRÆVER EJER-GO
 //
+// #6668 (ejer 15/10 på #6667) — AI-ungdommen løftes til menneskeholdenes niveau:
+//   --match-human-level   nye kuld får et mål-niveau pr. alder fra menneske-
+//                         holdenes ungdom (se "Niveau-matchning" nedenfor)
+//   --lift-existing       løfter OGSÅ de AI-ungdomsryttere der allerede findes
+//                         (ny fødsels-markør + derive; navn, kontrakt og løn
+//                         urørt). Indebærer --match-human-level.
+//   S5-kørslen:  --juniors=0 --season=5 --lift-existing --out=balance-internals/<fil>.md
+//   Apply som før: kun med --apply --owner-go, og kun når målsæsonen er aktiv.
+//   --restore-lift=balance-internals/<restore-fil>.json   ruller et løft tilbage fra
+//                         snapshottet (fødsels-markør + trænede evner, ingen derive).
+//                         Dry-run default; skriver kun med --apply --owner-go.
+//
 // --apply skriver mod prod og er gated bag BEGGE flag. Kør ALDRIG --apply uden et
 // eksplicit ejer-go på netop de tal dry-run'en har vist (feedback_explicit_go_per_prod_step).
 // --out må kun pege ind i balance-internals/ (gitignoreret): rapporten har
@@ -71,6 +83,7 @@ import { ACADEMY } from "../lib/academyFlag.js";
 import { makeRng, BIRTH_MODE_OWN_PRIORS } from "../lib/fictionalRiderGenerator.js";
 import { deriveTeamSeed, aiValueCapForTier } from "../lib/starterSquadAllocator.js";
 import {
+  makeBirthMarker,
   makeU23BirthMarker,
   makeYouthBirthMarker,
   deriveBirthAbilities,
@@ -161,6 +174,21 @@ export function parseArgs(argv) {
     return Number(raw);
   };
 
+  // #6668: --restore-lift=<restore-fil> ruller et løft tilbage (egen tilstand; --juniors gælder ikke).
+  const restoreRaw = get("restore-lift");
+  if (restoreRaw !== undefined) {
+    if (restoreRaw === true || restoreRaw === "") throw new Error("--restore-lift kræver stien til restore-filen");
+    const restoreApply = get("apply") === true;
+    if (restoreApply && get("owner-go") !== true) {
+      throw new Error("--apply kræver OGSÅ --owner-go. Kør dry-run først og få ejerens go på netop de tal.");
+    }
+    return {
+      restoreLift: assertBalanceInternalsPath(restoreRaw, { flag: "--restore-lift" }),
+      apply: restoreApply,
+      ownerGo: get("owner-go") === true,
+    };
+  }
+
   const juniorsRaw = get("juniors");
   if (juniorsRaw === undefined) {
     throw new Error(
@@ -194,7 +222,17 @@ export function parseArgs(argv) {
     out = assertBalanceInternalsPath(outRaw);
   }
 
-  return { juniors, apply, ownerGo, json: get("json") === true, season, seed: seed >>> 0, out };
+  // #6668: --lift-existing løfter de AI-ungdomsryttere der allerede findes, og
+  // indebærer --match-human-level (nye kuld matches også mod menneske-fordelingen).
+  const flag = (name) => {
+    const v = get(name);
+    if (v !== undefined && v !== true) throw new Error(`--${name} tager ingen værdi`);
+    return v === true;
+  };
+  const liftExisting = flag("lift-existing");
+  const matchHumanLevel = flag("match-human-level") || liftExisting;
+
+  return { juniors, apply, ownerGo, json: get("json") === true, season, seed: seed >>> 0, out, matchHumanLevel, liftExisting };
 }
 
 /**
@@ -204,11 +242,11 @@ export function parseArgs(argv) {
  * @param {string} p
  * @returns {string} absolut sti
  */
-export function assertBalanceInternalsPath(p, { root = REPO_ROOT, cwd = process.cwd() } = {}) {
+export function assertBalanceInternalsPath(p, { root = REPO_ROOT, cwd = process.cwd(), flag = "--out" } = {}) {
   const abs = resolve(cwd, p);
   const rel = relative(join(root, "balance-internals"), abs);
   if (rel === "" || rel.startsWith("..") || rel.split(sep)[0] === ".." || resolve(abs) === resolve(root, "balance-internals")) {
-    throw new Error(`--out skal pege på en fil inde i balance-internals/ (fik ${p})`);
+    throw new Error(`${flag} skal pege på en fil inde i balance-internals/ (fik ${p})`);
   }
   return abs;
 }
@@ -257,6 +295,137 @@ export function mirrorDerive(row, { seasonNumber, valuationModel, productionValu
   };
 }
 
+// ── Niveau-matchning mod menneskeholdenes ungdom (#6668, ejer 15/10 på #6667) ─
+//
+// HVORFOR: S4's AI-ungdom blev født i akademiets/U23-båndet (lave evner), mens
+// menneskeholdenes ungdom også rummer trænede akademiryttere og rigtige unge
+// ryttere managerne selv har flyttet ned. Felterne blev mest AI, og menneske-
+// holdene vandt næsten alt. Ejer-beslutning 15/10: AI-ungdommen løftes til SAMME
+// niveaufordeling som menneskeholdenes ungdom, PR. ALDER.
+//
+// HVORDAN (ingen ny formel, intet nyt bånd): niveauet er rytterens bedste synlige
+// evne (`bestAbility`, samme mål som rapporten altid har brugt). For hver alder
+// læses menneskeholdenes ungdoms-fordeling (empirisk, fra prod ved kørslen). Hver
+// AI-rytter får et mål-niveau fra den fordeling, og fødslen vælges blandt de
+// fødsels-markører spillet allerede kender — truppens eget bånd (youth/u23) og
+// voksen-tiers (`makeBirthMarker`) — over et lille, deterministisk sæt af
+// fødsels-seeds. Den markør hvis reproducerede evner ligger tættest på målet
+// vinder. Markøren persisteres som altid, så `deriveForRiderIds` og enhver
+// heal-sweep reproducerer PRÆCIS det valgte træk (RIDER_GENERATION §8b).
+//
+// For få menneske-ryttere på en alder (fx de 16-årige før sæsonens første
+// intake) → ingen løft: truppens eget bånd, uændret.
+/** Færre menneske-ryttere end dette på en alder = ingen fordeling at matche. */
+export const LEVEL_MATCH_MIN_SAMPLES = 20;
+/** Fødsels-seeds pr. opskrift i søgningen (deterministiske). */
+export const LEVEL_MATCH_SEED_TRIES = 12;
+/** Voksen-tiers søgningen må vælge ud over truppens eget bånd (laveste først). */
+export const LEVEL_MATCH_ADULT_TIERS = Object.freeze(["domestique", "solid", "star", "superstar"]);
+const LEVEL_OFFSET = 6668;
+
+/** Niveau-målet: bedste synlige evne. */
+export const levelOf = (abilities) => bestAbility(abilities);
+
+/**
+ * Menneskeholdenes ungdoms-niveau pr. alder i målsæsonen. Ren funktion.
+ * @param {Array<{birthdate:string, level:number}>} rows  menneskeholdenes ungdomsryttere
+ * @param {{season:number, minSamples?:number}} opts
+ * @returns {Map<number, number[]>} alder → sorterede niveauer (kun aldre med nok ryttere)
+ */
+export function buildHumanLevelProfile(rows, { season, minSamples = LEVEL_MATCH_MIN_SAMPLES }) {
+  const byAge = new Map();
+  for (const r of rows || []) {
+    const age = ageForSeason(r.birthdate, season);
+    const level = Number(r.level);
+    if (!Number.isFinite(age) || !Number.isFinite(level)) continue;
+    if (!byAge.has(age)) byAge.set(age, []);
+    byAge.get(age).push(level);
+  }
+  const out = new Map();
+  for (const [age, xs] of [...byAge].sort((a, b) => a[0] - b[0])) {
+    if (xs.length >= minSamples) out.set(age, xs.slice().sort((a, b) => a - b));
+  }
+  return out;
+}
+
+/** Kvantil u∈[0,1) af en sorteret liste (nærmeste rang). null hvis listen mangler. */
+export function levelQuantile(sorted, u) {
+  if (!sorted?.length) return null;
+  const i = Math.min(sorted.length - 1, Math.max(0, Math.floor(u * sorted.length)));
+  return sorted[i];
+}
+
+/** Truppens eget fødsels-bånd for en alder (samme valg som planen altid har truffet). */
+function nativeMarker(seed, age) {
+  return age >= U23_BIRTH_AGE_MIN && age <= U23_BIRTH_AGE_MAX
+    ? makeU23BirthMarker({ seed, age })
+    : makeYouthBirthMarker({ seed, age });
+}
+
+/** Seed nr. k i søgningen. k = 0 er rytterens egen fødsels-seed (ingen ændring). */
+function triedSeed(seed, k) {
+  return k === 0 ? seed >>> 0 : deriveTeamSeed((seed + LEVEL_OFFSET) >>> 0, `level-${k}`);
+}
+
+/**
+ * Vælg den fødsels-markør hvis reproducerede niveau ligger tættest på målet.
+ * Ren + deterministisk. Kandidaterne er sorteret efter afstand (tie → truppens
+ * eget bånd før voksen-tiers, lavere seed-nr. først), så kalderen kan gå videre
+ * til næste kandidat hvis den bedste fx ligger over holdets værdiloft.
+ *
+ * @param {object} args
+ * @param {object} args.row     payload-række (archetype_draw.primary/secondary, potentiale, birthdate)
+ * @param {number} args.seed    rytterens fødsels-seed
+ * @param {number} args.age     fødsels-alderen (= sæsonalder i målsæsonen)
+ * @param {number|null} args.target  mål-niveau; null = truppens eget bånd, uændret
+ * @returns {Array<{birth:object, level:number, distance:number}>}
+ */
+export function rankBirthCandidates({ row, seed, age, target, tries = LEVEL_MATCH_SEED_TRIES }) {
+  const native = nativeMarker(seed, age);
+  const levelFor = (birth) => levelOf(deriveBirthAbilities(
+    { ...row, archetype_draw: { primary: row.archetype_draw.primary, secondary: row.archetype_draw.secondary ?? null, birth } },
+    { age, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE },
+  ));
+  if (target == null) return [{ birth: native, level: levelFor(native), distance: 0 }];
+  const out = [];
+  for (let k = 0; k < tries; k++) {
+    const s = triedSeed(seed, k);
+    // Mellem truppens bånd (lavt loft) og voksen-tierne er der et hul: bedste
+    // evne for en domestique ligger sjældent lavt. Den kapslede domestique (loftet
+    // følger rytteren gennem enhver re-derive, `makeBirthMarker` cap) dækker hullet;
+    // den står efter de ukapslede, så et ukapslet ramt mål altid foretrækkes.
+    const recipes = [
+      nativeMarker(s, age),
+      ...LEVEL_MATCH_ADULT_TIERS.map((tier) => makeBirthMarker({ tier, seed: s, age })),
+      makeBirthMarker({ tier: LEVEL_MATCH_ADULT_TIERS[0], seed: s, age, cap: target }),
+    ];
+    recipes.forEach((birth, r) => {
+      const level = levelFor(birth);
+      out.push({ birth, level, distance: Math.abs(level - target), order: k * recipes.length + r });
+    });
+  }
+  out.sort((a, b) => (a.distance - b.distance) || (a.order - b.order));
+  return out.map(({ birth, level, distance }) => ({ birth, level, distance }));
+}
+
+/**
+ * Første kandidat der kan stå på holdet (under værdiloftet). Spejler derive for
+ * hver kandidat der prøves. Ligger alle over loftet, returneres den bedste med
+ * `overValueCap: true`, så apply-gaten blokerer som før.
+ */
+function chooseBirth({ payload, candidates, valueCap, mirrorOpts, idHint }) {
+  let first = null;
+  for (const c of candidates) {
+    const draw = { primary: payload.archetype_draw.primary, secondary: payload.archetype_draw.secondary ?? null, birth: c.birth };
+    const mirror = mirrorDerive({ ...payload, archetype_draw: draw, id: idHint }, mirrorOpts);
+    const over = valueCap != null && mirror.base_value != null && mirror.base_value > valueCap;
+    const pick = { draw, mirror, level: c.level, overValueCap: over };
+    if (!first) first = pick;
+    if (!over) return pick;
+  }
+  return first;
+}
+
 // ── Planen (ren) ─────────────────────────────────────────────────────────────
 /**
  * Byg HELE kuldet for en liste AI-hold. Ren funktion uden I/O: dry-run og apply
@@ -284,6 +453,7 @@ export function planYouthSquads({
   valuationModel,
   productionValuationModel,
   existingByTeam = new Map(),
+  levelProfile = null,
 }) {
   if (!Number.isInteger(juniorsPerTeam) || juniorsPerTeam < 0) {
     throw new Error("planYouthSquads: juniorsPerTeam er påkrævet (helt tal ≥ 0)");
@@ -325,6 +495,9 @@ export function planYouthSquads({
     });
 
     const valueCap = aiValueCapForTier(team.tier);
+    // Egen strøm til mål-niveauet (#4180-princippet): uden --match-human-level
+    // trækkes den aldrig, og kuldet er bit for bit som før.
+    const levelRng = levelProfile ? makeRng(deriveTeamSeed((base + LEVEL_OFFSET) >>> 0, team.id)) : null;
     const teamRows = candidates.map((c, i) => {
       const squad = i < u23Count ? "u23" : "junior";
       const [lo, hi] = squad === "u23" ? [U23_BIRTH_AGE_MIN, U23_BIRTH_AGE_MAX] : [JUNIOR_AGE_MIN, JUNIOR_AGE_MAX];
@@ -349,10 +522,16 @@ export function planYouthSquads({
         generation_tag: `s${targetSeason}`,
         archetype_draw: { primary: c.archetypeDraw.primary, secondary: c.archetypeDraw.secondary, birth },
       };
-      const mirror = mirrorDerive(
-        { ...payload, id: `plan-${team.id}-${i}` },
-        { seasonNumber: targetSeason, valuationModel, productionValuationModel },
-      );
+      const mirrorOpts = { seasonNumber: targetSeason, valuationModel, productionValuationModel };
+      if (levelRng) {
+        // Rækkefølgen i strømmen følger kuldets rækkefølge: ét træk pr. rytter.
+        const target = levelQuantile(levelProfile.get(age), levelRng());
+        const ranked = rankBirthCandidates({ row: payload, seed: birthSeed, age, target });
+        const pick = chooseBirth({ payload, candidates: ranked, valueCap, mirrorOpts, idHint: `plan-${team.id}-${i}` });
+        payload.archetype_draw = pick.draw;
+        return { teamId: team.id, squad, age, payload, mirror: pick.mirror, overValueCap: pick.overValueCap, target };
+      }
+      const mirror = mirrorDerive({ ...payload, id: `plan-${team.id}-${i}` }, mirrorOpts);
       const overValueCap = valueCap != null && mirror.base_value != null && mirror.base_value > valueCap;
       return { teamId: team.id, squad, age, payload, mirror, overValueCap };
     });
@@ -388,6 +567,134 @@ export function planYouthSquads({
   };
 }
 
+/**
+ * Løft af de AI-ungdomsryttere der ALLEREDE står i trupperne (#6668). Ren funktion.
+ *
+ * Samme matchning som et nyt kuld, men målet er STRATIFICERET pr. alder: AI-
+ * rytterne sorteres efter nuværende niveau og får hver sin kvantil af menneske-
+ * fordelingen ((i + ½)/n). Rangordenen bevares (den bedste AI-junior forbliver den
+ * bedste), og fordelingen rammes uden lodtræknings-støj. Rytteren BEHOLDER navn,
+ * kontrakt, løn og anlæg; kun fødsels-markøren skiftes og derive gentages.
+ *
+ * Løftet sænker aldrig: ligger den bedste kandidat under rytterens nuværende
+ * niveau, står han uændret. Ryttere der er vokset ud af ungdommen i målsæsonen
+ * (Graduation Day), og ryttere uden en ungdoms-/U23-markør, røres ikke.
+ *
+ * @param {object} args
+ * @param {Array<{id:string, team_id:string, birthdate:string, potentiale:number,
+ *   archetype_draw:object, squad:string, level?:number}>} args.riders
+ *   AI-holdenes ungdomsryttere; `level` = nuværende niveau (DB), ellers reproduceres det.
+ * @param {Map<string,{tier:number,name?:string}>} args.teamsById
+ * @param {number} args.targetSeason
+ * @param {Map<number,number[]>} args.levelProfile  fra buildHumanLevelProfile
+ */
+export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel, rankCandidates = rankBirthCandidates }) {
+  if (!(levelProfile instanceof Map)) throw new Error("planYouthLift: levelProfile er påkrævet");
+  const mirrorOpts = { seasonNumber: targetSeason, valuationModel, productionValuationModel };
+  const eligible = [];
+  const skipped = { graduated: 0, noMarker: 0, noTeam: 0 };
+  for (const r of riders || []) {
+    const team = teamsById.get(r.team_id);
+    if (!team) { skipped.noTeam++; continue; }
+    const tier = r.archetype_draw?.birth?.tier;
+    // Generatorens egne ryttere kendes på truppen: et tidligere løft kan have skiftet markørens tier.
+    const generatorBorn = r.squad === "u23" || r.squad === "junior" || tier === "youth" || tier === U23_BIRTH_TIER;
+    if (!isBornFromPriors(r) || !generatorBorn) { skipped.noMarker++; continue; }
+    const age = ageForSeason(r.birthdate, targetSeason);
+    if (!Number.isInteger(age) || age < JUNIOR_AGE_MIN || age > U23_BIRTH_AGE_MAX) { skipped.graduated++; continue; }
+    const level = Number.isFinite(Number(r.level))
+      ? Number(r.level)
+      : levelOf(deriveBirthAbilities(r, { age, classifierWeightsByType: CLASSIFIER_WEIGHTS_BY_TYPE }));
+    eligible.push({ rider: r, team, age, level });
+  }
+
+  const rows = [];
+  const byAge = new Map();
+  for (const e of eligible) {
+    if (!byAge.has(e.age)) byAge.set(e.age, []);
+    byAge.get(e.age).push(e);
+  }
+  for (const [age, list] of [...byAge].sort((a, b) => a[0] - b[0])) {
+    list.sort((a, b) => (a.level - b.level) || String(a.rider.id).localeCompare(String(b.rider.id)));
+    const profile = levelProfile.get(age);
+    // Rangordenen bevares EFTER kandidatvalget: hver rytters nye niveau må ikke ligge
+    // under den foregående (svagere) rytters nye niveau, selv om to nærmeste-kandidat-
+    // søgninger rammer deres stigende mål forskelligt. `floor` er løbende maksimum.
+    let floor = -Infinity;
+    list.forEach((e, i) => {
+      const target = levelQuantile(profile, (i + 0.5) / list.length);
+      const base = { riderId: e.rider.id, teamId: e.rider.team_id, squad: e.rider.squad, age, before: e.level, target };
+      const needsFloor = floor > e.level;
+      if (target == null || (target <= e.level && !needsFloor)) {
+        rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
+        floor = Math.max(floor, e.level);
+        return;
+      }
+      const ranked = rankCandidates({
+        row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target: Math.max(target, floor),
+      }).filter((c) => c.level >= floor);
+      const pick = chooseBirth({
+        payload: e.rider,
+        candidates: ranked,
+        valueCap: aiValueCapForTier(e.team.tier),
+        mirrorOpts,
+        idHint: e.rider.id,
+      });
+      if (needsFloor && !pick) {
+        // Ingen kandidat når gulvet: rytteren ville stå under en svagere rytters nye niveau.
+        // Det er ikke et gyldigt løft; marker rækken, så apply blokerer (aldrig stille brud på rangordenen).
+        rows.push({ ...base, after: e.level, changed: false, overValueCap: false, rankFloorUnmet: true });
+        return;
+      }
+      if (!pick || pick.level <= e.level) {
+        rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
+        floor = Math.max(floor, e.level);
+        return;
+      }
+      floor = Math.max(floor, pick.level);
+      rows.push({
+        ...base,
+        after: pick.level,
+        changed: true,
+        overValueCap: pick.overValueCap,
+        // Kun fødsels-markøren skiftes; resten af archetype_draw bevares.
+        archetype_draw: { ...e.rider.archetype_draw, birth: pick.draw.birth },
+        previousBirth: e.rider.archetype_draw.birth,
+        mirror: pick.mirror,
+      });
+    });
+  }
+  return {
+    targetSeason,
+    rows,
+    skipped,
+    totals: {
+      riders: rows.length,
+      changed: rows.filter((r) => r.changed).length,
+      overValueCap: rows.filter((r) => r.overValueCap).length,
+      rankFloorUnmet: rows.filter((r) => r.rankFloorUnmet).length,
+    },
+  };
+}
+
+/**
+ * Niveau-fordeling pr. trup og alder: menneske vs. AI før vs. AI efter. Ren.
+ * @returns {Array<{squad:string, age:number, human:object, aiBefore:object, aiAfter:object}>}
+ */
+export function summarizeLevels({ humanProfile, lift, newRows = [] }) {
+  const ages = new Set([...(humanProfile?.keys() ?? []), ...lift.rows.map((r) => r.age), ...newRows.map((r) => r.age)]);
+  return [...ages].sort((a, b) => a - b).map((age) => {
+    const liftRows = lift.rows.filter((r) => r.age === age);
+    const fresh = newRows.filter((r) => r.age === age).map((r) => levelOf(r.mirror.abilities));
+    return {
+      age,
+      human: describe(humanProfile?.get(age) ?? []),
+      aiBefore: describe(liftRows.map((r) => r.before)),
+      aiAfter: describe([...liftRows.map((r) => r.after), ...fresh]),
+    };
+  });
+}
+
 // ── Rapport (tal til balance-internals, aldrig til repoet) ───────────────────
 const q = (xs, p) => {
   const s = xs.filter(Number.isFinite).slice().sort((a, b) => a - b);
@@ -396,7 +703,9 @@ const q = (xs, p) => {
 };
 const bestAbility = (a) => Math.max(...VISIBLE_ABILITIES.map((k) => Number(a?.[k])).filter(Number.isFinite));
 function describe(xs) {
-  return { n: xs.filter(Number.isFinite).length, p10: q(xs, 0.1), median: q(xs, 0.5), p90: q(xs, 0.9), max: q(xs, 1) };
+  const f = xs.filter(Number.isFinite);
+  const mean = f.length ? f.reduce((s, x) => s + x, 0) / f.length : null;
+  return { n: f.length, mean, p10: q(xs, 0.1), median: q(xs, 0.5), p90: q(xs, 0.9), max: q(xs, 1) };
 }
 
 /**
@@ -498,6 +807,22 @@ export async function loadActiveAiTeams(supabase) {
     .map((t) => ({ id: t.id, name: t.name, tier: tierByPool.get(t.league_division_id) }));
 }
 
+/**
+ * Idempotens-grundlag pr. AI-hold. U23-truppen kendes på `squad === "u23"` ELLER
+ * U23-markøren: `--lift-existing`/`--match-human-level` kan skifte markørens tier til
+ * en voksen-tier, så markøren alene må ikke afgøre om holdet har en U23-trup (#6668).
+ */
+export function summarizeExistingByTeam(aiRiders) {
+  const existingByTeam = new Map();
+  for (const r of aiRiders) {
+    const e = existingByTeam.get(r.team_id) ?? { u23Born: false, juniors: 0 };
+    if (r.squad === "u23" || r.archetype_draw?.birth?.tier === U23_BIRTH_TIER) e.u23Born = true;
+    if (r.squad === "junior") e.juniors++;
+    existingByTeam.set(r.team_id, e);
+  }
+  return existingByTeam;
+}
+
 export async function loadPopulation(supabase, aiTeamIds) {
   // schema-columns-ok: riders.squad findes i prod (database/2026-09-15-4619-riders-squad.sql,
   // #4619, verificeret 23/9 i information_schema); schema-snapshot.json er ikke gen-dumpet siden.
@@ -509,13 +834,7 @@ export async function loadPopulation(supabase, aiTeamIds) {
   const aiRiders = active.filter((r) => r.team_id && aiSet.has(r.team_id));
   // Idempotens pr. trup. AI-hold får intet akademi-intake (runAcademyIntake er
   // kun for menneskehold), så en junior på et AI-hold stammer fra denne generator.
-  const existingByTeam = new Map();
-  for (const r of aiRiders) {
-    const e = existingByTeam.get(r.team_id) ?? { u23Born: false, juniors: 0 };
-    if (r.archetype_draw?.birth?.tier === U23_BIRTH_TIER) e.u23Born = true;
-    if (r.squad === "junior") e.juniors++;
-    existingByTeam.set(r.team_id, e);
-  }
+  const existingByTeam = summarizeExistingByTeam(aiRiders);
   const aiTeamsWithYouth = new Set(aiRiders.filter((r) => r.is_academy === true || isYouthSquad(r.squad)).map((r) => r.team_id));
   const aiSeniorIds = aiRiders.filter((r) => r.is_academy !== true && !isYouthSquad(r.squad)).map((r) => r.id);
   return {
@@ -637,6 +956,207 @@ export async function applyPlan(supabase, plan, {
   return { inserted: ids, mismatches };
 }
 
+/** Niveau (bedste synlige evne) pr. rytter-id, læst af rider_derived_abilities. */
+async function loadLevels(supabase, ids) {
+  if (!ids.length) return new Map();
+  const rows = await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("rider_derived_abilities")
+    .select(["rider_id", ...VISIBLE_ABILITIES].join(", "))
+    .in("rider_id", chunk)
+    .order("rider_id"));
+  return new Map(rows.map((r) => [r.rider_id, levelOf(r)]));
+}
+
+/**
+ * #6668: menneskeholdenes ungdom (aktive, ikke-parkerede managerhold; trup u23/
+ * junior) og AI-holdenes nuværende ungdomsryttere, med niveau. Kun SELECT.
+ */
+export async function loadLevelInputs(supabase, aiTeamIds) {
+  // schema-columns-ok: riders.squad og teams.parked_at/retired_at findes i prod (#4619, A2 #5517).
+  const [teams, riders] = await Promise.all([
+    fetchAllRows(() => supabase.from("teams")
+      .select("id, is_ai, is_bank, is_frozen, is_test_account, parked_at, retired_at")
+      .order("id")),
+    fetchAllRows(() => supabase.from("riders")
+      .select("id, team_id, birthdate, potentiale, squad, is_retired, archetype_draw, generation_tag")
+      .in("squad", ["u23", "junior"])
+      .order("id")),
+  ]);
+  const humanTeams = new Set(teams
+    .filter((t) => t.is_ai !== true && !t.is_bank && !t.is_frozen && !t.is_test_account && !t.parked_at && !t.retired_at)
+    .map((t) => t.id));
+  const aiSet = new Set(aiTeamIds);
+  const active = riders.filter((r) => r.is_retired !== true && r.team_id);
+  const human = active.filter((r) => humanTeams.has(r.team_id));
+  const ai = active.filter((r) => aiSet.has(r.team_id));
+  const levels = await loadLevels(supabase, [...human, ...ai].map((r) => r.id));
+  return {
+    humanRows: human.filter((r) => levels.has(r.id)).map((r) => ({ birthdate: r.birthdate, level: levels.get(r.id) })),
+    aiRiders: ai.map((r) => ({ ...r, level: levels.get(r.id) })),
+  };
+}
+
+/** Grund til at et løft ikke må anvendes (null = ok). Tjekkes FØR applyPlan skriver nye kuld (#6668). */
+export function liftBlockedReason(lift) {
+  if (lift?.totals?.rankFloorUnmet > 0) {
+    return `STOP: ${lift.totals.rankFloorUnmet} løft kan ikke bevare rangordenen (ingen kandidat når gulvet) — apply blokeret før første skrivning (#6668).`;
+  }
+  if (!lift || !(lift.totals?.overValueCap > 0)) return null;
+  return `STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret før første skrivning (#2065, #6668).`;
+}
+
+// ── Restore-snapshot af løftet (#6668, Codex P1 på #6671) ────────────────────
+// Fødsels-markøren alene kan IKKE rulle et løft tilbage: deriveForRiderIds
+// reproducerer evnerne fra markøren og bevarer kun `ability_progress`, så evne-
+// point optjent ved træning ville forsvinde. Snapshottet tager derfor ALT derive
+// skriver (riders-felterne nedenfor + hele rider_derived_abilities- og
+// rider_physiology_profiles-rækken), og en rollback skriver det tilbage UDEN derive.
+export const LIFT_SNAPSHOT_RIDER_COLUMNS = Object.freeze([
+  "id", "archetype_draw", "primary_type", "secondary_type", "valuation_type", "base_value", "current_production_value",
+]);
+
+/**
+ * Læs løftets ryttere som de står FØR første skrivning. Kun SELECT. Mangler en
+ * rytter, hans evne-række eller fysiologi, kastes der: så kan tilbagerulningen ikke
+ * blive eksakt, og apply skal stoppe før noget er skrevet.
+ * @returns {Promise<Array<{id:string, rider:object, derivedAbilities:object, physiology:object}>>}
+ */
+export async function snapshotLiftState(supabase, ids) {
+  if (!ids.length) return [];
+  const read = (table, select, col) => fetchAllRowsChunkedIn(ids, (chunk) => supabase.from(table)
+    .select(select)
+    .in(col, chunk)
+    .order(col));
+  const [riders, abilities, physiology] = await Promise.all([
+    read("riders", LIFT_SNAPSHOT_RIDER_COLUMNS.join(", "), "id"),
+    read("rider_derived_abilities", "*", "rider_id"),
+    read("rider_physiology_profiles", "*", "rider_id"),
+  ]);
+  const riderById = new Map(riders.map((r) => [r.id, r]));
+  const abilitiesById = new Map(abilities.map((r) => [r.rider_id, r]));
+  const physiologyById = new Map(physiology.map((r) => [r.rider_id, r]));
+  const missing = ids.filter((id) => !riderById.has(id) || !abilitiesById.has(id) || !physiologyById.has(id));
+  if (missing.length) {
+    throw new Error(`STOP: restore-snapshot mangler ${missing.length} rytter(e) (${missing.slice(0, 5).join(", ")}) — `
+      + "tilbagerulningen kan ikke blive eksakt; apply blokeret før første skrivning (#6668).");
+  }
+  return ids.map((id) => ({
+    id,
+    rider: riderById.get(id),
+    derivedAbilities: abilitiesById.get(id),
+    physiology: physiologyById.get(id),
+  }));
+}
+
+/**
+ * Rul et løft tilbage fra restore-filen: skriver de snapshottede rækker tilbage
+ * PRÆCIS som de var (trænede evner, ability_progress, caps, fysiologi, type og
+ * værdi). Kører bevidst IKKE derive: derive ville gendanne fødsels-trækket, ikke
+ * rytterens faktiske evner. En restore-fil fra før snapshottet (kun `birth`) afvises.
+ * @returns {Promise<{restored:string[], mismatches:Array<{id:string}>}>}
+ */
+export async function restoreLift(supabase, restoreRows, { log = console.log } = {}) {
+  const rows = restoreRows || [];
+  const incomplete = rows.filter((r) => !r?.id || !r.rider || !r.derivedAbilities || !r.physiology);
+  if (incomplete.length) {
+    throw new Error(`STOP: ${incomplete.length} restore-række(r) uden evne-snapshot — kan ikke rulles eksakt tilbage (#6668).`);
+  }
+  for (let i = 0; i < rows.length; i += WRITE_CONCURRENCY) {
+    await Promise.all(rows.slice(i, i + WRITE_CONCURRENCY).map((r) => {
+      const { id: _id, ...patch } = r.rider;
+      return supabase.from("riders").update(patch).eq("id", r.id).then(({ error }) => {
+        if (error) throw new Error(`restore ${r.id}: ${error.message}`);
+      });
+    }));
+  }
+  for (const [table, key] of [["rider_derived_abilities", "derivedAbilities"], ["rider_physiology_profiles", "physiology"]]) {
+    for (let i = 0; i < rows.length; i += WRITE_CONCURRENCY) {
+      const { error } = await supabase.from(table)
+        .upsert(rows.slice(i, i + WRITE_CONCURRENCY).map((r) => r[key]), { onConflict: "rider_id" });
+      if (error) throw new Error(`restore ${table}: ${error.message}`);
+    }
+  }
+  log(`  ryttere rullet tilbage: ${rows.length}`);
+  const ids = rows.map((r) => r.id);
+  if (!ids.length) return { restored: [], mismatches: [] };
+  const persisted = await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("rider_derived_abilities")
+    .select(["rider_id", ...VISIBLE_ABILITIES].join(", "))
+    .in("rider_id", chunk)
+    .order("rider_id"));
+  const byId = new Map(persisted.map((p) => [p.rider_id, p]));
+  const mismatches = rows
+    .filter((r) => VISIBLE_ABILITIES.some((k) => byId.get(r.id)?.[k] !== r.derivedAbilities[k]))
+    .map((r) => ({ id: r.id }));
+  return { restored: ids, mismatches };
+}
+
+/**
+ * Apply af løftet: restore-snapshot (fødsels-markør + trænede evner) FØR første
+ * skrivning → ny fødsels-markør pr. rytter → deriveForRiderIds med SAMME modeller
+ * som spejlingen → post-verify. Kontrakt og løn røres ikke (løn er frosset ved
+ * signering, #1309).
+ */
+export async function applyLift(supabase, lift, {
+  valuationModel,
+  productionValuationModel,
+  derive = deriveForRiderIds,
+  snapshot = snapshotLiftState,
+  log = console.log,
+  writeRestore = () => {},
+} = {}) {
+  if (lift.totals.overValueCap > 0) {
+    throw new Error(`STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret (#2065)`);
+  }
+  if (lift.totals.rankFloorUnmet > 0) {
+    throw new Error(`STOP: ${lift.totals.rankFloorUnmet} løft kan ikke bevare rangordenen — apply blokeret (#6668)`);
+  }
+  const changed = lift.rows.filter((r) => r.changed);
+  const before = await snapshot(supabase, changed.map((r) => r.riderId));
+  const beforeById = new Map(before.map((s) => [s.id, s]));
+  writeRestore(changed.map((r) => ({ birth: r.previousBirth, ...beforeById.get(r.riderId), id: r.riderId })));
+  for (let i = 0; i < changed.length; i += WRITE_CONCURRENCY) {
+    await Promise.all(changed.slice(i, i + WRITE_CONCURRENCY).map((r) =>
+      supabase.from("riders").update({ archetype_draw: r.archetype_draw }).eq("id", r.riderId).then(({ error }) => {
+        if (error) throw new Error(`løft ${r.riderId}: ${error.message}`);
+      })));
+  }
+  log(`  fødsels-markører skiftet: ${changed.length}`);
+  const ids = changed.map((r) => r.riderId);
+  if (!ids.length) return { lifted: [], mismatches: [] };
+  await derive(supabase, ids, { dryRun: false, valuationModel, productionValuationModel });
+  const persisted = await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("riders")
+    .select("id, base_value, primary_type")
+    .in("id", chunk)
+    .order("id"));
+  const byId = new Map(persisted.map((r) => [r.id, r]));
+  const mismatches = [];
+  for (const r of changed) {
+    const p = byId.get(r.riderId);
+    if (!p || p.base_value !== r.mirror.base_value || p.primary_type !== r.mirror.primary_type) {
+      // rider-type-write-ok: afvigelses-rapport (læst tilbage efter derive), skrives aldrig til riders.
+      mismatches.push({ id: r.riderId, expected: { base_value: r.mirror.base_value, primary_type: r.mirror.primary_type }, got: p ?? null });
+    }
+  }
+  return { lifted: ids, mismatches };
+}
+
+/** Privat rapport-udsnit for niveau-matchningen (balance-internals). */
+export function renderLevelMarkdown(levels, lift) {
+  const L = ["## Niveau pr. alder (bedste synlige evne, #6668)", ""];
+  L.push(`Løft: ${lift.totals.changed} af ${lift.totals.riders} AI-ungdomsryttere ændres · over værdiloft: ${lift.totals.overValueCap} · sprunget over: ${JSON.stringify(lift.skipped)}`, "");
+  L.push("| alder | menneske n | menneske gns/median/p90/max | AI før gns/median/p90/max | AI efter gns/median/p90/max |", "|---:|---:|---|---|---|");
+  const d = (x) => (x.n ? `${x.mean.toFixed(1)} / ${fmt(x.median)} / ${fmt(x.p90)} / ${fmt(x.max)}` : "-");
+  for (const l of levels) L.push(`| ${l.age} | ${l.human.n} | ${d(l.human)} | ${d(l.aiBefore)} | ${d(l.aiAfter)} |`);
+  L.push("", "Matchningens præcision (løftede ryttere): gns. |efter − mål| pr. alder, og andel der står uændret fordi målet ikke ligger over nuværende niveau.", "");
+  for (const age of [...new Set(lift.rows.map((r) => r.age))].sort((a, b) => a - b)) {
+    const rows = lift.rows.filter((r) => r.age === age);
+    const ch = rows.filter((r) => r.changed);
+    const err = ch.length ? ch.reduce((s, r) => s + Math.abs(r.after - r.target), 0) / ch.length : null;
+    L.push(`- ${age}: ${err == null ? "-" : err.toFixed(1)} · uændret ${rows.length - ch.length}/${rows.length}`);
+  }
+  L.push("");
+  return L.join("\n");
+}
+
 async function main() {
   let args;
   try {
@@ -654,6 +1174,22 @@ async function main() {
   }
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
+  if (args.restoreLift) {
+    const rows = JSON.parse(readFileSync(args.restoreLift, "utf8")).restore ?? [];
+    console.log(`#6668 tilbagerulning af løft: ${rows.length} rytter(e) fra ${relative(REPO_ROOT, args.restoreLift)} (${args.apply ? "APPLY" : "DRY-RUN, read-only"})`);
+    if (!args.apply) {
+      console.log("DRY-RUN (read-only). Intet skrevet. Tilbagerulning: --apply --owner-go\n");
+      process.exit(0);
+    }
+    const { mismatches } = await restoreLift(supabase, rows);
+    if (mismatches.length > 0) {
+      console.error(`  RESTORE-AFVIGELSE: ${mismatches.length} rytter(e) har ikke de snapshottede evner efter tilbagerulningen.`);
+      process.exit(1);
+    }
+    console.log("  restore-verify: 0 afvigelser");
+    process.exit(0);
+  }
+
   // Modellerne VÆLGES af app_config præcis som derive'en gør, og det SAMME objekt
   // sendes til både spejlingen og derive (#5443). Fail-safe v4 ligger i loaderen.
   const valuationModel = await loadValuationModel(supabase) ?? loadValuationModelById(DEFAULT_VALUATION_MODEL_ID);
@@ -661,6 +1197,9 @@ async function main() {
 
   const teams = await loadActiveAiTeams(supabase);
   const population = await loadPopulation(supabase, teams.map((t) => t.id));
+  // #6668: menneskeholdenes ungdoms-niveau pr. alder (målsæsonens alders-akse).
+  const levelInputs = args.matchHumanLevel ? await loadLevelInputs(supabase, teams.map((t) => t.id)) : null;
+  const levelProfile = levelInputs ? buildHumanLevelProfile(levelInputs.humanRows, { season: args.season }) : null;
   const plan = planYouthSquads({
     teams,
     juniorsPerTeam: args.juniors,
@@ -670,14 +1209,28 @@ async function main() {
     valuationModel,
     productionValuationModel,
     existingByTeam: population.existingByTeam,
+    levelProfile,
   });
+  const lift = args.liftExisting
+    ? planYouthLift({
+      riders: levelInputs.aiRiders,
+      teamsById: new Map(teams.map((t) => [t.id, t])),
+      targetSeason: args.season,
+      levelProfile,
+      valuationModel,
+      productionValuationModel,
+    })
+    : null;
+  const levels = levelProfile
+    ? summarizeLevels({ humanProfile: levelProfile, lift: lift ?? { rows: [] }, newRows: plan.rows })
+    : null;
   const summary = summarizePlan(plan, {
     ...population.load,
     aiSeniorBestAbility: await loadAiSeniorBestAbility(supabase, population.aiSeniorIds),
   });
 
   if (args.json) {
-    console.log(JSON.stringify(summary, null, 2));
+    console.log(JSON.stringify({ ...summary, lift: lift?.totals ?? null, levels }, null, 2));
   } else {
     console.log("");
     console.log(`#5518 A6 - AI-ungdomstrupper til S${plan.targetSeason} (${args.apply ? "APPLY" : "DRY-RUN, read-only"})`);
@@ -688,11 +1241,17 @@ async function main() {
     console.log(`  Over værdiloft (blokerer apply) .. ${summary.totals.overValueCap}`);
     console.log(`  Bestand i dag / vækst ............ ${summary.load.activeRiders} / +${summary.totals.riders}`);
     console.log(`  Pr. tier: ${JSON.stringify(summary.perTier)}`);
+    if (levelProfile) {
+      console.log(`  Niveau-match (#6668) ............. aldre med menneske-fordeling: ${[...levelProfile.keys()].join(", ") || "-"}`);
+    }
+    if (lift) {
+      console.log(`  Løft af eksisterende AI-ungdom ... ${lift.totals.changed} af ${lift.totals.riders} (over værdiloft: ${lift.totals.overValueCap})`);
+    }
     console.log("");
   }
   if (args.out) {
     mkdirSync(dirname(args.out), { recursive: true });
-    writeFileSync(args.out, renderMarkdown(plan, summary));
+    writeFileSync(args.out, renderMarkdown(plan, summary) + (levels ? `\n${renderLevelMarkdown(levels, lift ?? { rows: [], totals: { riders: 0, changed: 0, overValueCap: 0 }, skipped: {} })}` : ""));
     console.log(`  rapport skrevet: ${relative(REPO_ROOT, args.out)}`);
   }
 
@@ -708,6 +1267,13 @@ async function main() {
     process.exit(2);
   }
 
+  // Afvis et ugyldigt løft FØR første skrivning: applyPlan indsætter og deriverer nye kuld, og et løft
+  // der først afvises i applyLift ville efterlade prod halvt opdateret (en genkørsel springer så kuldene over).
+  if (liftBlockedReason(lift)) {
+    console.error(liftBlockedReason(lift));
+    process.exit(1);
+  }
+
   console.log("APPLY (--owner-go givet)");
   // Rollback-listen skrives LØBENDE (efter hvert holds insert) og en sidste gang
   // i finally, så en fejl midt i kørslen aldrig efterlader indsatte ryttere uden
@@ -721,11 +1287,14 @@ async function main() {
     writeFileSync(rollbackPath, JSON.stringify({ inserted: insertedSoFar, complete }, null, 2));
   let result = null;
   try {
-    result = await applyPlan(supabase, plan, {
-      valuationModel,
-      productionValuationModel,
-      onInserted: (ids) => { insertedSoFar.push(...ids); persistRollback(false); },
-    });
+    // Et S5-løb uden nye kuld (alle hold har deres trupper) har intet at indsætte.
+    result = plan.totals.riders === 0
+      ? { inserted: [], mismatches: [] }
+      : await applyPlan(supabase, plan, {
+        valuationModel,
+        productionValuationModel,
+        onInserted: (ids) => { insertedSoFar.push(...ids); persistRollback(false); },
+      });
   } finally {
     persistRollback(result !== null);
     console.log(`  rollback-liste (rytter-id'er, complete=${result !== null}): ${relative(REPO_ROOT, rollbackPath)}`);
@@ -734,6 +1303,22 @@ async function main() {
   if (mismatches.length > 0) {
     console.error(`  SPEJLINGS-AFVIGELSE: ${mismatches.length} rytter(e) fik en anden base_value/type end gaten vurderede (#2065).`);
     process.exit(1);
+  }
+  if (lift) {
+    const restorePath = join(REPO_ROOT, "balance-internals", `6668-lift-restore-s${plan.targetSeason}-${Date.now()}.json`);
+    const liftResult = await applyLift(supabase, lift, {
+      valuationModel,
+      productionValuationModel,
+      writeRestore: (rows) => {
+        writeFileSync(restorePath, JSON.stringify({ restore: rows }, null, 2));
+        console.log(`  restore-fil (fødsels-markører + trænede evner før løftet): ${relative(REPO_ROOT, restorePath)}`);
+        console.log(`  tilbagerulning: node backend/scripts/generateYouthSquadsS4.js --restore-lift=${relative(REPO_ROOT, restorePath)} --apply --owner-go`);
+      },
+    });
+    if (liftResult.mismatches.length > 0) {
+      console.error(`  SPEJLINGS-AFVIGELSE (løft): ${liftResult.mismatches.length} rytter(e) (#2065).`);
+      process.exit(1);
+    }
   }
   console.log("  spejlings-gate: 0 afvigelser");
   process.exit(0);

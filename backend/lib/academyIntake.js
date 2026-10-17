@@ -163,9 +163,9 @@ export async function seedAcademyCohortForTeam(supabase, {
   existingNames,
   rng,
   identityBasis = null,
-  countOverride = null,
+  countOverride = /** @type {number|null} */ (null), // #6666: pull sender candidatesForTier(tier)
   generatorOptions = null,
-  source = null,
+  source = /** @type {string|null} */ (null), // #6155: "pull" fra ugens hent-knap
 }) {
   const candidates = generateAcademyCandidates({
     rng,
@@ -205,9 +205,20 @@ export async function seedAcademyCohortForTeam(supabase, {
   const { error: intakeErr } = await supabase
     .from("academy_intake")
     .insert(intakeRows);
-  if (intakeErr) throw new Error(`academy-intake intake insert (team ${teamId}): ${intakeErr.message}`);
+  const insertedIds = insertedRiders.map((/** @type {{ id: string }} */ r) => r.id);
+  if (intakeErr) {
+    // #6666: ryd de netop indsatte ryttere, så en fejl aldrig efterlader kandidater
+    // uden intake-række (kalderen kender ikke deres id'er når vi kaster).
+    const { error: cleanupErr } = await supabase.from("riders").delete().in("id", insertedIds);
+    const cleanupNote = cleanupErr ? `; cleanup of ${insertedIds.length} riders failed: ${cleanupErr.message}` : "";
+    const seedErr = new Error(`academy-intake intake insert (team ${teamId}): ${intakeErr.message}${cleanupNote}`);
+    // Codex 16/10: fejlede oprydningen, skal kalderen vide hvilke ryttere der
+    // ligger tilbage, saa ugens claim ikke frigives over forældreløse ryttere.
+    if (cleanupErr) /** @type {any} */ (seedErr).orphanRiderIds = insertedIds;
+    throw seedErr;
+  }
 
-  return insertedRiders.map((r) => r.id);
+  return insertedIds;
 }
 
 /**

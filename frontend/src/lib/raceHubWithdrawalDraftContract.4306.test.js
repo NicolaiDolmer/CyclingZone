@@ -50,11 +50,12 @@ test("RaceColumn: withdrawn har forrang over locked, noten forsvinder ikke igen 
   // Adversarisk verifikation fandt at withdrawnNote forsvandt igen fra og med etape 1,
   // fordi lineup_locked overtrumfede withdrawn i baade status-badget og kort-kroppen.
   // Status-badget skal afgoere withdrawn FOER locked.
-  assert.match(raceColumn, /const status = column\.withdrawn\s*\n\s*\? \{ kind: "withdrawn"/, "status skal tjekke column.withdrawn foer locked");
+  // #6740: did_not_start (som ogsaa saetter withdrawn) staar foerst; derefter withdrawn foer locked.
+  assert.match(raceColumn, /: column\.withdrawn\s*\n\s*\? \{ kind: "withdrawn"[^\n]*\n\s*: locked/, "status skal tjekke column.withdrawn foer locked");
 
   // Kort-kroppen: withdrawn-grenen skal ligge FOER locked-grenen i selve ternary'en, saa
   // withdrawnNote vises uanset lineup_locked, ikke kun i perioden foer loebsstart.
-  const bodyIdx = raceColumn.indexOf("{column.withdrawn ? (");
+  const bodyIdx = raceColumn.indexOf(") : column.withdrawn ? (");
   const lockedBranchIdx = raceColumn.indexOf(") : locked ? (");
   assert.ok(bodyIdx !== -1 && lockedBranchIdx !== -1, "begge markoerer skal findes");
   assert.ok(bodyIdx < lockedBranchIdx, "withdrawn-grenen skal komme foer locked-grenen i kort-kroppen");

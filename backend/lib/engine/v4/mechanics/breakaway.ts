@@ -62,7 +62,7 @@ import { pursuitContactKm } from "../exactPlace.ts";
 //    SIDSTE segment, emitteres `breakaway_survived` (finale.ts afgoer derefter
 //    om forspringet baeres helt i maal eller indhentes i selve finalen).
 
-import { bookFinishDescentClosure, finishDescentIndexFor, finishDescentRemainingCapSeconds, timeModelTuningFor } from "./timeModel.ts";
+import { bookFinishDescentClosure, finishDescentIndexFor, finishDescentRemainingCapSeconds, S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE, timeModelTuningFor } from "./timeModel.ts";
 import type {
   AbilityKey,
   Entrant,
@@ -101,6 +101,7 @@ import {
   normalizeGcContext,
   oneDayProtectedRider,
   protectedRiderForTeam,
+  s5ReformationExcludedRiders,
   type DangerModel,
   type GcDangerTuning,
   type GcThreat,
@@ -297,6 +298,9 @@ function attemptFormation(
   state: EngineState,
   ctx: BreakawayHookContext,
   tryBreakRiderIds: ReadonlySet<string>,
+  // #6369 (KUN s5_profiles_v1, nyt udbrud efter tidlig indhentning): udelukkede
+  // ryttere, egen km og egen rng-stroem. Udeladt = morgenudbruddet, bit-identisk.
+  reform?: { excluded: ReadonlySet<string>; km: number },
 ): SegmentHookResult {
   const events: TimelineEvent[] = [];
   const sourceGroup = [...state.groups].sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.id.localeCompare(b.id))[0];
@@ -307,6 +311,7 @@ function attemptFormation(
     const entrant = ctx.entrants[riderId];
     const riderState = state.riders[riderId];
     if (!entrant || !riderState || riderState.status !== "racing") continue;
+    if (reform?.excluded.has(riderId)) continue;
     // M12-wiring (#4632, ejer-beslutning 6/9): en rytter i grupettoen forsoeger
     // ALDRIG at komme med i udbruddet. Det er ikke en sandsynligheds-daempning
     // men en udelukkelse af KANDIDAT-listen: "grupetto" betyder ordret at
@@ -319,7 +324,7 @@ function attemptFormation(
     const tryBreak = tryBreakRiderIds.has(riderId);
     const score = computeJoinScore(entrant.abilities, tryBreak, effortJoinBoost(entrant.role, entrant.effort));
     const p = joinProbability(score);
-    const roll = ctx.rngFor("breakaway_join", riderId)();
+    const roll = ctx.rngFor(reform ? "breakaway_rejoin" : "breakaway_join", riderId)();
     candidates.push({ riderId, score, wantsToJoin: roll < p });
   }
   if (candidates.length < MIN_BREAKAWAY_SIZE + 1) return { state, events };
@@ -328,7 +333,9 @@ function attemptFormation(
   const selected = selectBreakawayRiders(candidates, MIN_BREAKAWAY_SIZE, maxSize);
   if (selected.length === 0) return { state, events };
 
-  const newGroupId = makeGroupId("breakaway", ctx.segmentIndex * 1000);
+  // #6369: et nyt udbrud kan dannes i SAMME segment som morgenudbruddet (hentet i
+  // et langt segment); eget id-rum, saa film og historik aldrig blander de to.
+  const newGroupId = makeGroupId("breakaway", ctx.segmentIndex * 1000 + (reform ? 500 : 0));
   const groups = splitGroup(state.groups, sourceGroup.id, selected, {
     id: newGroupId,
     kind: "breakaway",
@@ -338,12 +345,52 @@ function attemptFormation(
   });
 
   events.push({
-    km: formationKmFor(ctx.segment),
+    km: reform ? reform.km : formationKmFor(ctx.segment),
     type: "breakaway_formed",
-    params: { group_id: newGroupId, rider_ids: [...selected] },
+    // #6369: et nyt udbrud efter indhentningen er maerket, saa deltagelses-
+    // historikken (raceParticipationHistory.ts) goer det til dagens udbrud.
+    params: { group_id: newGroupId, rider_ids: [...selected], ...(reform ? { reformation: true } : {}) },
   });
 
   return { state: { ...state, groups }, events };
+}
+
+/**
+ * #6369 (KUN s5_profiles_v1): et nyt udbrud efter en tidlig indhentning. S5's
+ * trusselsmodel jager et morgenudbrud med en farlig klassementsrytter straks
+ * (8 hold, hentet efter faa km paa en flad etape). Uden dette koerte feltet
+ * samlet resten af dagen; i virkeligheden gaar et nyt udbrud uden ham. Hentes
+ * udbruddet inden for `maxStageFraction` af etapen, forsoeges ét nyt (hoejst
+ * `maxReformations`), uden det hentede udbruds ryttere og uden klassementets
+ * forreste. Eksporteret for kontrakt-tests.
+ */
+export const S5_REFORMATION_TUNING = Object.freeze({
+  maxReformations: 1,
+  maxStageFraction: 0.4,
+  excludeGcRankAtMost: 20,
+  afterCatchKm: 5,
+});
+
+function withS5Reformation(result: SegmentHookResult, ctx: BreakawayHookContext): SegmentHookResult {
+  const current = findBreakawayGroups(result.state.groups).filter((g) => g.origin === "breakaway"); // kun morgen-/reformationsudbrud, aldrig et nedkoerselsangreb
+  if (current.length > 0) {
+    // Husk udbruddets ryttere; indhentningen (sammenlaegningen) sker senere i loopet.
+    // Akkumuleret: en udbryder der allerede er sat af, er stadig fra det hentede udbrud.
+    const roster = new Set([...(result.state.s5_last_break_rider_ids ?? []), ...current.flatMap((g) => g.rider_ids)]);
+    return { ...result, state: { ...result.state, s5_last_break_rider_ids: [...roster].sort() } };
+  }
+  const last = result.state.s5_last_break_rider_ids;
+  const used = result.state.breakaway_reformations ?? 0;
+  if (!last || last.length === 0 || used >= S5_REFORMATION_TUNING.maxReformations) return result;
+  // Indhentningens km: motorens eget breakaway_caught i dette segment, ellers
+  // segmentets start (sammenlaegningen skete i slutningen af det forrige).
+  const caughtEvent = result.events.find((e) => e.type === "breakaway_caught");
+  const caughtKm = caughtEvent ? Number(caughtEvent.params?.exact_km ?? caughtEvent.km) : ctx.segment.from_km;
+  if (!(ctx.route.distance_km > 0) || !Number.isFinite(caughtKm) || caughtKm > ctx.route.distance_km * S5_REFORMATION_TUNING.maxStageFraction) return result;
+  const km = round2(Math.min(ctx.segment.to_km, caughtKm + S5_REFORMATION_TUNING.afterCatchKm));
+  const excluded = new Set([...last, ...s5ReformationExcludedRiders(normalizeGcContext(ctx.gcContext), ctx.entrants, S5_REFORMATION_TUNING.excludeGcRankAtMost)]);
+  const formed = attemptFormation(result.state, ctx, flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders)), { excluded, km });
+  return { state: { ...formed.state, breakaway_reformations: used + 1 }, events: [...result.events, ...formed.events] };
 }
 
 /**
@@ -1860,6 +1907,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       // skal jagten hente det fysisk; feltet giver derfor et andet lad-gaa-loft,
       // #5578: kalibreret pr. etapeprofil mod udbrudsmaalene.
       maxGapSeconds *= letGoTuning.letGoMaxGapScaleByProfile[ctx.route.profile_type] ?? letGoTuning.letGoMaxGapScale;
+      // #6369 (KUN s5_profiles_v1, endagsloeb): uden klassementshold der lofter
+      // udbruddet skal bjerg-bucket'ens loft vaere endagsloebets eget (timeModel.ts).
+      if (ctx.s5ProfilesV1 === true && gcContext?.status === "one_day") {
+        maxGapSeconds *= S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE[ctx.route.profile_type] ?? 1;
+      }
       // #5578 (KUN official_times_v2, udbrudsmaal 6): et farligt udbrud vokser aldrig
       // forbi det mindste forspring de bremsende hold tolererer. #5578 robust: ogsaa
       // troejens tolerance lofter (alle reagerende hold, ikke kun de farlige).
@@ -2104,7 +2156,13 @@ const breakawayHookCore: BreakawayHook = (state: EngineState, ctx: BreakawayHook
     // formations-segmentet ingen fremdrift, fordi en fuld segment-laengdes
     // jagt ellers udslettede hovedstarten.
     const progressed = progressChase(formationResult.state, ctx);
-    return { state: progressed.state, events: [...gcContextEvents(ctx), ...formationResult.events, ...progressed.events] };
+    const formed = { state: progressed.state, events: [...gcContextEvents(ctx), ...formationResult.events, ...progressed.events] };
+    if (ctx.s5ProfilesV1 !== true) return formed;
+    // #6369: husk udbruddet allerede her; det kan hentes i samme (lange) segment.
+    const formedIds = findBreakawayGroups(formationResult.state.groups).filter((g) => g.origin === "breakaway").flatMap((g) => g.rider_ids).sort();
+    return withS5Reformation(formedIds.length ? { ...formed, state: { ...formed.state, s5_last_break_rider_ids: formedIds } } : formed, ctx);
   }
-  return progressChase(state, ctx);
+  const progressed = progressChase(state, ctx);
+  // #6369 (KUN s5_profiles_v1): nyt udbrud efter en tidlig indhentning.
+  return ctx.s5ProfilesV1 === true ? withS5Reformation(progressed, ctx) : progressed;
 };

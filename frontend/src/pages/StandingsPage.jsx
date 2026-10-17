@@ -52,9 +52,9 @@ function parseDivisionParam(raw) {
 // #3035: races er finaliserings-signalet (bumpes pr. etape/løb) i stedet for den
 // masseskrevne race_results, som er taget ud af realtime-publikationen.
 const REALTIME_TABLES = ["season_standings", "races"];
-// Online-prik: bruger anses som online hvis last_seen < 5 min (foldet ind fra
-// TeamsPage, #1609). Samme tærskel som TeamsPage.jsx:129.
-const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+// Online-prik: bruger anses som online hvis last_seen < 30 min (#5385, samme
+// tærskel som backend/lib/presenceWindow.js ONLINE_WINDOW_MS).
+const ONLINE_WINDOW_MS = 30 * 60 * 1000;
 // #1529: "strong"-fremhævning på squad-styrke-linsen. Evne-skalaen er lavere
 // (gns. ~40) end den gamle PCM-skala (gns. ~62), så 55 er den kalibrerede tærskel
 // (genbrugt fra SeasonPreviewPage.jsx:14).

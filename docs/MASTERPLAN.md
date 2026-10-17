@@ -15,7 +15,7 @@ Kun det der ødelægger spillet i dag. Tomt = godt.
 
 ## 🟠 Nu · højst 5
 
-1. **S5-etapeprofiler #6369** (kalender #5841): live senest 18/10.
+1. **S5-etapeprofiler #6369** (kalender #5841): motorreglerne tændt 17/10 (#6699); opfølgning #6748 i `s5_profiles_v2`.
 2. **Udvikling 2.0 del 1 #6499** (#6110): tilbagegang D4 + ingen udvikling uden for managerhold, til 25/10.
 3. **Sæsonskifte uden fejl 25/10:** #5904 lasttest · #5864 · #5833 · bestyrelse #6130 #6122.
 4. **Træningens rest:** #5947 historik · #5915 · #6210 maks +1 (PR #6248) · #5965 analyse.

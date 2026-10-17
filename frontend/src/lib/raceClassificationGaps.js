@@ -20,7 +20,8 @@
 // #6464: official_times_v4 er hele official_times_v3-pakken (backend
 // sharedTimeModelGeneration), så den tæller også uden bonussekunder.
 // #6369: s5_profiles_v1 (slukket, tom) er hele official_times_v4-pakken.
-export const REVISIONS_WITHOUT_TEAM_BONUS = new Set(["official_times_v3", "official_times_v4", "s5_profiles_v1"]);
+// #6462: official_times_v5 (slukket) er hele official_times_v4-pakken + togreglen.
+export const REVISIONS_WITHOUT_TEAM_BONUS = new Set(["official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"]);
 
 /** Spejler backend isOfficialTimesV3OrLater. Ukendt/null revision = ældre regler. */
 export function isOfficialTimesV3OrLater(revision) {

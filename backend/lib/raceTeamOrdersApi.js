@@ -32,6 +32,7 @@ import {
   defaultTeamOrderForRoster,
 } from "./engine/v4/ai/teamOrderContract.ts";
 import { validEffortsFor } from "./raceRoles.js";
+import { isOfficialTimesV5OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
 
 export const VALID_BREAKAWAY_STANCES = [...BREAKAWAY_STANCE_VALUES];
 
@@ -187,6 +188,18 @@ export function normalizeTeamOrder(order) {
  *
  * @param {{supabase, race: {id, stages, stages_completed, status}, teamId: string}} args
  */
+/**
+ * #6462: er sprint-toget KUN standard paa flade etaper i dette loeb? Svaret er
+ * den revision motoren koerer loebet paa: den gemte, eller (ikke-startet loeb
+ * uden gemt revision) den aktuelle, som motoren binder ved foerste etape-claim.
+ * Samme helper som ordre-adapteren (teamOrdersAdapter.trainIsDefaultOnStage),
+ * saa taktik-fladen og motoren aldrig er uenige. `race` skal baere
+ * engine_rules_revision og stages_completed.
+ */
+export function sprintTrainFlatOnlyForRace(race) {
+  return isOfficialTimesV5OrLater(surfaceRulesRevision({ race, storedRevision: race?.engine_rules_revision }));
+}
+
 export async function getTeamOrdersContext({ supabase, race, teamId }) {
   const [entriesRes, ordersRes, schedRes] = await Promise.all([
     supabase

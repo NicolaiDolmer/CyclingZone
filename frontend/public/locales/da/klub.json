@@ -2,71 +2,89 @@
   "page": {
     "title": "Klub",
     "subtitle": "Faciliteter og staff",
-    "intro": "Faciliteter får dine ryttere til at udvikle sig hurtigere, restituere bedre og scoute skarpere. Hver facilitet du bygger koster penge hver sæson, så invester der hvor det passer din plan.",
     "balance": "Saldo",
     "division": "Division {division}"
+  },
+  "summary": {
+    "upkeep": "Drift pr. sæson",
+    "wages": "Løn",
+    "balance": "Saldo"
   },
   "sections": {
     "facilities": "Faciliteter",
     "staff": "Staff"
   },
-  "cost": {
-    "upkeep": "Drift",
-    "payroll": "Lønninger",
-    "balance": "Saldo",
-    "seasonLine": "Hver sæson betaler du {upkeep} drift + {payroll} løn = {total} CZ$. Læg budget før du opgraderer."
-  },
   "facilities": {
     "tier": "Tier {tier} / {max}",
     "notBuilt": "Ikke bygget",
-    "upgradeTo": "Opgradér til T{tier}",
-    "buildTier": "Byg T{tier}",
-    "upkeep": "Drift {amount}/sæson",
     "maxed": "Fuldt udbygget",
-    "comingSoon": "Kommer snart"
+    "comingSoon": "Kommer snart",
+    "upgrade": "Opgradér",
+    "build": "Byg",
+    "upkeepAt": "Drift ved niveau {tier}: {amount}/sæson",
+    "upkeepNow": "Drift {amount}/sæson"
   },
   "roi": {
-    "training": "Dine ryttere træner {value} hurtigere hver dag",
     "trainingBuild": "Byg den for at begynde at træne dine ryttere hurtigere",
-    "trainingNext": "Næste: Niveau {tier} → dine ryttere vil træne {value} hurtigere hver dag",
-    "scouting": "Låser op for at ansætte en chefscout: skarpere rytter-vurderinger. En chefscout med omkring 80 i overall kører to spejder-opgaver ad gangen",
     "scoutingBuild": "Byg den for at låse op for at ansætte en chefscout",
-    "scoutingNext": "Næste: Niveau {tier} låser op for en højere-tier chefscout"
+    "academyBuild": "Byg den for flere kandidater om ugen og en profil til dit optag"
   },
-  "nextTier": {
-    "generic": "Næste: Niveau {tier} → {value}"
+  "badge": {
+    "active": "Aktiv"
+  },
+  "hero": {
+    "trainingSub": "hurtigere træning hver dag",
+    "scouting": "Chefscout",
+    "scoutingSub": "Du kan ansætte en chef op til tier {tier}",
+    "academy": "{value} kandidater",
+    "academySub": "om ugen, og din profil styrer optaget"
+  },
+  "ladder": {
+    "label": "Niveauer",
+    "now": "nu",
+    "scouting": "Chef T{tier}",
+    "academy": "{value} kand.",
+    "unlock": {
+      "origin": "region",
+      "type": "+ type",
+      "extra": "+1 ekstra",
+      "stronger": "mere træk"
+    }
   },
   "effect": {
-    "label": "Effekt",
     "live": "Aktiv nu",
-    "target": "Kommer snart",
-    "note": "Ikke alle effekter er aktive endnu"
+    "target": "Kommer snart"
   },
   "tracks": {
     "training": {
       "name": "Træningscenter",
       "effect": "træning",
-      "soon": "Hurtigere rytter-udvikling"
+      "soon": "Hurtigere rytter-udvikling",
+      "teaser": "Dine ryttere træner hurtigere hver dag."
     },
     "scouting": {
       "name": "Scouting-netværk",
       "effect": "rytter-indsigt",
-      "soon": "Skarpere rytter-indsigt"
+      "soon": "Skarpere rytter-indsigt",
+      "teaser": "Ansæt en chefscout og få skarpere rytter-vurderinger."
     },
     "medical": {
       "name": "Medicinsk afdeling",
       "effect": "restitution",
-      "soon": "Hurtigere restitution"
+      "soon": "Hurtigere restitution",
+      "teaser": "Dine ryttere får formen hurtigere tilbage efter hårde løb."
     },
     "academy": {
       "name": "Akademi-udvidelse",
-      "effect": "intake-slots",
-      "soon": "Flere intake-slots"
+      "effect": "kandidater om ugen",
+      "soon": "Større ugentligt optag med din egen profil",
+      "teaser": "Et større ugentligt optag der trækker mod de ryttere du vil have."
     },
     "commercial": {
       "name": "Kommerciel afdeling",
       "effect": "sponsor (loftet)",
-      "soon": "Langsigtet sponsor-indtægt"
+      "soon": "Langsigtet sponsor-indtægt",
+      "teaser": "Langsigtet ekstra sponsor-indtægt."
     }
   },
   "roles": {

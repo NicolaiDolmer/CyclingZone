@@ -223,6 +223,8 @@ export default function RiderScoutingTab({ rider, scouting }) {
   // for det konstante ETA-tal, så ventetiden faktisk falder mens man kigger.
   const pendingCountdown = useScoutCountdown(pending?.readyAt ?? null);
   const pendingReadyClock = scoutReadyClock(pending?.readyAt);
+  // #5852: optaget spejder (job-model) er ikke "ingen slots" — vis hvornår han er ledig.
+  const nextFreeCountdown = useScoutCountdown(scouting.nextFreeAt ?? null);
 
   const load = useCallback(async () => {
     if (!riderId) return;
@@ -309,7 +311,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
         disabled={!canScout}
         title={
           remaining <= 0
-            ? t("scouting.noSlots")
+            ? (scoutSystemEnabled
+              ? (nextFreeCountdown?.state === "counting"
+                ? t("scouting.scoutBusy", { minutes: nextFreeCountdown.minutes })
+                : t("scouting.scoutBusyNow"))
+              : t("scouting.noSlots"))
             : nextLevelUseless
               ? t("scouting.levelUseless")
               : t("scouting.scoutTitle")

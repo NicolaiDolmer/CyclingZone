@@ -36,9 +36,9 @@ import { buildFilmTimeline } from "../../../frontend/src/lib/stageTimelineFilm.j
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(here, "..", "..", "scripts", "baselines", "giro-field-6088-2026-10-02.json");
 const data = JSON.parse(readFileSync(FIXTURE, "utf8"));
-// #6452: den live revision. official_times_v2 er frosset byte-identisk
+// #6452/#6462/#6369: den live revision. official_times_v2 er frosset byte-identisk
 // (officialTimesV2Frozen6200.test.ts), saa kaeden gates paa den nye.
-const REVISION = "official_times_v4";
+const REVISION = "s5_profiles_v1";
 const SEEDS = 3;
 const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 const BREAK_EVENT_TYPES = new Set(["breakaway_formed", "breakaway_caught", "breakaway_dropped", "breakaway_survived"]);
@@ -66,11 +66,13 @@ function chainViolations({ out, events, distanceKm = null }: { out: any; events:
   const resultIds = (out?.results ?? []).map((r: any) => r.rider_id);
   const ranked = rankedFromV4Output(out, { rulesRevision: REVISION });
   const stored: Map<string, { in_breakaway: boolean; breakaway_caught: boolean; breakaway_dropped?: boolean | null }> = deriveBreakawayStatus(ranked);
-  const morning = new Set(idsOf(raw.find((e) => e.type === "breakaway_formed")));
+  const firstFormation = new Set(idsOf(raw.find((e) => e.type === "breakaway_formed")));
+  // #6369 (s5_profiles_v1): et nyt udbrud efter en tidlig indhentning (`reformation: true`) er ogsaa dagens udbrud.
+  const morning = new Set([...firstFormation, ...raw.filter((e) => e.type === "breakaway_formed" && e.params?.reformation === true).flatMap((e) => idsOf(e))]);
   const film = buildFilmTimeline({ events, distanceKm, timelineVersion: 2, startlist: resultIds });
   const filmEvents: Ev[] = film.events;
   const filmMorning = new Set(idsOf(filmEvents.find((e) => e.type === "breakaway_formed")));
-  if ([...morning].sort().join() !== [...filmMorning].sort().join()) issues.push("film_formation");
+  if ([...firstFormation].sort().join() !== [...filmMorning].sort().join()) issues.push("film_formation");
 
   // 5. Filmen viser motorens udbrudshaendelser, minus regroups (#6294).
   const { regroupCatches } = deriveParticipationHistory(raw, resultIds);
