@@ -1,12 +1,10 @@
 /**
  * #1346 — Readiness-gate for manuel sæson-transition.
  * =====================================================
- * Genbruger auto-cron'ens "wrapped window"-semantik (seasonAutoTransition.js):
- * den afgående sæsons seneste transfervindue skal være lukket via deadline-
- * cyklussen (status='closed' OG closed_at sat — et racing-window født af
- * transitionToNextSeason har closed_at=null og tæller IKKE) og squad
- * enforcement kørt. Dertil: ingen aktive auktioner og alle
- * sæsonens løb afviklet (ejer-beslutning 12/6: kritisk check).
+ * Den afgående sæsons seneste transfervindue skal være lukket og trup-
+ * håndhævelsens resultat skal holde (se #5855 nedenfor for hvordan det måles).
+ * Dertil: ingen aktive auktioner og alle sæsonens løb afviklet
+ * (ejer-beslutning 12/6: kritisk check).
  *
  * #2361 — season_end_completed: transitionToNextSeason (season-transition) og
  * processSeasonEnd ("Afslut sæson") er TO adskilte manuelle admin-handlinger.
@@ -22,9 +20,25 @@
  *
  * #6120 — final_whistle_sent er fjernet: Final Whistle blev kun sat af den
  * afskaffede Deadline Day-cron (markedet er altid åbent, docs/TRANSFER_MARKET_RULES.md),
- * så checket var permanent rødt uden at beskytte noget. De øvrige kritiske
- * checks er uændrede — squad enforcement (trup-loftet) kræver stadig både et
- * lukket vindue (closed_at) og squad_enforcement_completed_at.
+ * så checket var permanent rødt uden at beskytte noget.
+ *
+ * #5855 — window_closed og squad_enforcement_completed måles på den måde
+ * vinduet lukkes I DAG, ikke på markører fra den afskaffede deadline-cyklus.
+ * En sæsons vindue fødes af transitionToNextSeason med status='closed' og
+ * closed_at=null (insertTransferWindowIfMissing), og closePrevTransferWindow
+ * springer et allerede-lukket vindue over. closed_at og
+ * squad_enforcement_completed_at bliver derfor ALDRIG sat i det nuværende flow
+ * (squad-enforcement-cron'en filtrerer på closed_at), og S3→S4 krævede manuel
+ * SQL-normalisering af markørerne. Kontrakten er nu:
+ *   - window_closed: seneste vindue findes og har status='closed'. Et åbent
+ *     vindue blokerer stadig (handel der kan ændre trupper efter skiftet).
+ *   - squad_enforcement_completed: håndhævelsens POSTCONDITION skal holde —
+ *     ingen menneske-styrede, ikke-frosne hold uden for divisionens trup-
+ *     grænser (samme population og samme senior-tælling som
+ *     squadEnforcement.js). Markøren squad_enforcement_completed_at accepteres
+ *     stadig som bevis (gamle vinduer). En påbegyndt men ikke afsluttet
+ *     håndhævelse (started_at uden completed_at) blokerer altid: cron'en er
+ *     midt i at flytte ryttere.
  *
  * Gaten håndhæves i POST /api/admin/season-transition (routes/api.js).
  * Cron, relaunch-orchestratoren (#1103) og scripts/executeSeasonTransition.js
@@ -34,7 +48,53 @@
 
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "./economyConstants.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { getSquadLimits } from "./marketUtils.js";
+import { applySeniorSquadFilter } from "./squads.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+
+/**
+ * #5855 — read-only måling af trup-håndhævelsens postcondition.
+ * Samme population som processSquadEnforcementCron (menneske-styret, ikke bank,
+ * ikke frosset, har user_id) og samme tælling som getSquadSnapshot i
+ * squadEnforcement.js (senior-trup, ikke akademi, ikke pensioneret), målt mod
+ * getSquadLimits(division) — begge retninger, ligesom håndhævelsen.
+ * Returnerer antal hold uden for grænserne. Kaster ved læsefejl (fail-closed).
+ */
+export async function countSquadLimitViolations({ supabase } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  let teams;
+  let riders;
+  try {
+    teams = await fetchAllRows(() => supabase
+      .from("teams")
+      .select("id, division")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .not("user_id", "is", null)
+      .order("id", { ascending: true }));
+    const teamIds = (teams || []).map((t) => t.id);
+    riders = teamIds.length === 0 ? [] : await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+      applySeniorSquadFilter(supabase
+        .from("riders")
+        .select("id, team_id")
+        .in("team_id", chunk))
+        .eq("is_retired", false)
+        .order("id", { ascending: true }));
+  } catch (e) {
+    throw new Error(`Kunne ikke måle trup-grænser: ${e.message || e}`, { cause: e });
+  }
+
+  const countByTeam = new Map();
+  for (const r of riders || []) countByTeam.set(r.team_id, (countByTeam.get(r.team_id) || 0) + 1);
+  let violations = 0;
+  for (const t of teams || []) {
+    const limits = getSquadLimits(t.division);
+    const n = countByTeam.get(t.id) || 0;
+    if (n > limits.max || n < limits.min) violations++;
+  }
+  return { teams_checked: (teams || []).length, violations };
+}
 
 export async function assessTransitionReadiness({ supabase, fromSeasonId } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -43,7 +103,7 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   const [windowRes, auctionsRes, racesRes, seasonRes, poolFilterRes] = await Promise.all([
     supabase
       .from("transfer_windows")
-      .select("id, status, closed_at, squad_enforcement_completed_at")
+      .select("id, status, squad_enforcement_started_at, squad_enforcement_completed_at")
       .eq("season_id", fromSeasonId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -89,14 +149,36 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   const seasonEndRequired = season.number >= FIRST_PROMOTION_RELEGATION_SEASON;
   const seasonEndCompleted = !seasonEndRequired || season.status === "completed";
 
-  const windowClosed = Boolean(win && win.status === "closed" && win.closed_at);
+  // #5855: status='closed' er hele lukke-kontrakten i dag. closed_at sættes kun
+  // af closePrevTransferWindow på et ÅBENT vindue, og et vindue født af
+  // transitionen er lukket fra start — at kræve closed_at gjorde gaten rød på
+  // et vindue der aldrig har været åbent.
+  const windowClosed = Boolean(win && win.status === "closed");
   const windowDetail = !win
-    ? "Intet transfervindue fundet for sæsonen, deadline-cyklussen er ikke kørt"
+    ? "Intet transfervindue fundet for sæsonen (transitionen opretter altid ét — undersøg data)"
     : win.status !== "closed"
-      ? `Vinduet har status '${win.status}'`
-      : !win.closed_at
-        ? "Vinduet er aldrig lukket via deadline-cyklussen (closed_at mangler)"
-        : null;
+      ? `Vinduet har status '${win.status}' — handel i et åbent vindue kan ændre trupperne efter skiftet`
+      : null;
+
+  // #5855: trup-håndhævelsen måles på sit resultat, ikke på en markør det
+  // nuværende flow aldrig sætter. Markøren accepteres stadig (gamle vinduer);
+  // en påbegyndt-men-ikke-afsluttet kørsel blokerer altid.
+  const enforcementInProgress = Boolean(win?.squad_enforcement_started_at && !win?.squad_enforcement_completed_at);
+  const enforcementMarker = Boolean(win?.squad_enforcement_completed_at);
+  let squadOk;
+  let squadDetail = null;
+  if (enforcementInProgress) {
+    squadOk = false;
+    squadDetail = "Trup-håndhævelsen er påbegyndt men ikke afsluttet (squad_enforcement_started_at uden completed_at) — vent på at cron'en gør den færdig";
+  } else if (enforcementMarker) {
+    squadOk = true;
+  } else {
+    const { violations } = await countSquadLimitViolations({ supabase });
+    squadOk = violations === 0;
+    squadDetail = squadOk
+      ? null
+      : `${violations} hold er uden for divisionens trup-grænser — trup-håndhævelsen er ikke kørt`;
+  }
 
   const checks = {
     season_end_completed: {
@@ -107,11 +189,7 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
         : `Sæson ${season.number} er stadig '${season.status}' — kør 'Afslut sæson' (season-end) FØRST, ellers springes op/nedrykning + divisionsbonusser over`,
     },
     window_closed: { ok: windowClosed, critical: true, detail: windowDetail },
-    squad_enforcement_completed: {
-      ok: Boolean(win?.squad_enforcement_completed_at),
-      critical: true,
-      detail: win?.squad_enforcement_completed_at ? null : "squad_enforcement_completed_at mangler på vinduet",
-    },
+    squad_enforcement_completed: { ok: squadOk, critical: true, detail: squadDetail },
     no_active_auctions: {
       ok: activeAuctions === 0,
       critical: true,

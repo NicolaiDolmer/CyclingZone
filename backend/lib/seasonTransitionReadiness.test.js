@@ -5,8 +5,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { assessSeasonEndBlockers, assessTransitionReadiness } from "./seasonTransitionReadiness.js";
+import { assessSeasonEndBlockers, assessTransitionReadiness, countSquadLimitViolations } from "./seasonTransitionReadiness.js";
 import { ALL_CRON_MONITORS } from "./cronMonitorRegistry.js";
+import { getSquadLimits } from "./marketUtils.js";
 
 const LIB_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -20,14 +21,24 @@ const LIB_DIR = dirname(fileURLToPath(import.meta.url));
 
 // Paged chain til fetchAllRows-forbrugere: alle filtre returnerer kæden,
 // range(from, to) leverer det udsnit.
-function pagedChain(rows) {
+function pagedChain(rows, { calls = null, error = null } = {}) {
+  const rec = (op) => (...args) => { if (calls) calls.push([op, ...args]); return chain; };
   const chain = {
-    eq: () => chain,
-    neq: () => chain,
+    eq: rec("eq"),
+    neq: rec("neq"),
+    not: rec("not"),
+    in: rec("in"),
     order: () => chain,
-    range: (from, to) => Promise.resolve({ data: rows.slice(from, to + 1), error: null }),
+    range: (from, to) => Promise.resolve(error
+      ? { data: null, error }
+      : { data: rows.slice(from, to + 1), error: null }),
   };
   return chain;
+}
+
+// #5855: hold med `count` senior-ryttere hver (team_id = holdets id).
+function ridersFor(teamId, count) {
+  return Array.from({ length: count }, (_, i) => ({ id: `${teamId}-r${i}`, team_id: teamId }));
 }
 
 function createMockSupabase({
@@ -45,6 +56,13 @@ function createMockSupabase({
   seasonNumber = 1,
   seasonStatus = "completed",
   seasonMissing = false,
+  // #5855: trup-grænse-målingen. humanTeams = rækker {id, division} fra
+  // populationens teams-query; seniorRiders = rækker {id, team_id}. Default
+  // tom → 0 overtrædelser.
+  humanTeams = [],
+  seniorRiders = [],
+  ridersError = null,
+  calls = null,
 } = {}) {
   const thenableCount = (count) => ({
     then: (resolve) => resolve({ data: null, count, error: null }),
@@ -52,7 +70,29 @@ function createMockSupabase({
   const raceRows = unfinishedRaceRows
     ?? Array.from({ length: unfinishedRaceCount }, (_, i) => ({ id: `race-${i}`, league_division_id: null }));
   return {
+    _calls: calls,
     from(table) {
+      if (table === "riders") {
+        return {
+          select: () => {
+            const c = calls ? [] : null;
+            if (calls) calls.push(["riders", c]);
+            return pagedChain(seniorRiders, { calls: c, error: ridersError });
+          },
+        };
+      }
+      if (table === "teams") {
+        return {
+          select: (cols) => {
+            if (cols === "id, division") {
+              const c = calls ? [] : null;
+              if (calls) calls.push(["teams", c]);
+              return pagedChain(humanTeams, { calls: c });
+            }
+            return pagedChain(teamRows);
+          },
+        };
+      }
       if (table === "transfer_windows") {
         const chain = {
           eq: () => chain,
@@ -67,9 +107,6 @@ function createMockSupabase({
       }
       if (table === "races") {
         return { select: () => pagedChain(raceRows) };
-      }
-      if (table === "teams") {
-        return { select: () => pagedChain(teamRows) };
       }
       if (table === "seasons") {
         const chain = {
@@ -96,6 +133,21 @@ const WRAPPED_WINDOW = {
 };
 
 const FROM_SEASON_ID = "00000000-0000-0000-0000-000000000001";
+
+// #5855: sådan ser en sæsons vindue ud i det NUVÆRENDE flow — født af
+// transitionToNextSeason med status='closed', og ingen af de gamle
+// deadline-cyklus-markører bliver nogensinde sat.
+const CURRENT_FLOW_WINDOW = {
+  id: "w-now",
+  status: "closed",
+  squad_enforcement_started_at: null,
+  squad_enforcement_completed_at: null,
+};
+
+const MAX_D1 = getSquadLimits(1).max;
+const COMPLIANT_TEAMS = [{ id: "hold-a", division: 1 }, { id: "hold-b", division: 1 }];
+const COMPLIANT_RIDERS = [...ridersFor("hold-a", MAX_D1), ...ridersFor("hold-b", MAX_D1 - 3)];
+const OVER_CAP_RIDERS = [...ridersFor("hold-a", MAX_D1 + 1), ...ridersFor("hold-b", MAX_D1 - 3)];
 
 test("assessTransitionReadiness — wrapped vindue + 0 auktioner + 0 uafviklede løb = ready", async () => {
   const supabase = createMockSupabase({ win: WRAPPED_WINDOW });
@@ -226,13 +278,131 @@ test("assessTransitionReadiness — åbent vindue blokerer (window_closed=false)
   assert.ok(result.failed_critical.includes("window_closed"));
 });
 
-test("assessTransitionReadiness — racing-window (closed men closed_at=null) blokerer", async () => {
+// ============================================================
+// #5855: gaten måler vinduet på den måde det lukkes NU. closed_at og
+// squad_enforcement_completed_at sættes aldrig i det nuværende flow, og S3→S4
+// krævede manuel SQL-normalisering. Gaten skal stadig blokere et åbent vindue
+// og en trup-håndhævelse der ikke er kørt — målt på dataene, ikke markøren.
+// ============================================================
+
+test("#5855 lukket vindue UDEN gamle markører + trupper inden for grænserne = ready", async () => {
   const supabase = createMockSupabase({
-    win: { id: "w-3", status: "closed", closed_at: null, final_whistle_sent_at: null, squad_enforcement_completed_at: null },
+    win: CURRENT_FLOW_WINDOW,
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: COMPLIANT_RIDERS,
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, true);
+  assert.deepEqual(result.failed_critical, []);
+  assert.equal(result.checks.window_closed.ok, true, "status='closed' uden closed_at er lukket i dag");
+  assert.equal(result.checks.squad_enforcement_completed.ok, true);
+  assert.equal(result.checks.squad_enforcement_completed.detail, null);
+});
+
+test("#5855 åbent vindue blokerer, også når trupperne er inden for grænserne", async () => {
+  const supabase = createMockSupabase({
+    win: { ...CURRENT_FLOW_WINDOW, status: "open" },
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: COMPLIANT_RIDERS,
   });
   const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
   assert.equal(result.ready, false);
-  assert.equal(result.checks.window_closed.ok, false, "racing-window må ikke tælle som lukket deadline-vindue");
+  assert.deepEqual(result.failed_critical, ["window_closed"]);
+  assert.match(result.checks.window_closed.detail, /'open'/);
+});
+
+test("#5855 håndhævelse ikke kørt (hold over loftet, ingen markør) blokerer", async () => {
+  const supabase = createMockSupabase({
+    win: CURRENT_FLOW_WINDOW,
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: OVER_CAP_RIDERS,
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.failed_critical, ["squad_enforcement_completed"]);
+  assert.match(result.checks.squad_enforcement_completed.detail, /^1 hold er uden for/);
+});
+
+test("#5855 countSquadLimitViolations tæller pr. hold og springer rider-læsning over uden hold", async () => {
+  const over = await countSquadLimitViolations({
+    supabase: createMockSupabase({
+      humanTeams: [...COMPLIANT_TEAMS, { id: "hold-c", division: 1 }],
+      seniorRiders: [...OVER_CAP_RIDERS, ...ridersFor("hold-c", MAX_D1 + 2)],
+    }),
+  });
+  assert.deepEqual(over, { teams_checked: 3, violations: 2 });
+
+  const calls = [];
+  const none = await countSquadLimitViolations({ supabase: createMockSupabase({ calls }) });
+  assert.deepEqual(none, { teams_checked: 0, violations: 0 });
+  assert.ok(!calls.some(([t]) => t === "riders"), "ingen hold → ingen .in([])-query mod riders");
+});
+
+test("#5855 påbegyndt men ikke afsluttet håndhævelse blokerer, selv med trupper inden for grænserne", async () => {
+  const supabase = createMockSupabase({
+    win: { ...CURRENT_FLOW_WINDOW, squad_enforcement_started_at: "2026-10-25T18:00:00Z" },
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: COMPLIANT_RIDERS,
+  });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.failed_critical, ["squad_enforcement_completed"]);
+  assert.match(result.checks.squad_enforcement_completed.detail, /påbegyndt/);
+});
+
+test("#5855 gammelt vindue med completed-markør er stadig ok (markøren er gyldigt bevis)", async () => {
+  const calls = [];
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW, seniorRiders: OVER_CAP_RIDERS, humanTeams: COMPLIANT_TEAMS, calls });
+  const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  assert.equal(result.checks.squad_enforcement_completed.ok, true);
+  assert.equal(calls.length, 0, "med markøren sat skal trup-målingen ikke køres");
+});
+
+test("#5855 trup-målingen bruger håndhævelsens population og senior-tælling", async () => {
+  const calls = [];
+  const supabase = createMockSupabase({
+    win: CURRENT_FLOW_WINDOW,
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: COMPLIANT_RIDERS,
+    calls,
+  });
+  await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
+  const teamsCalls = calls.find(([t]) => t === "teams")[1];
+  for (const expected of [["eq", "is_ai", false], ["eq", "is_bank", false], ["eq", "is_frozen", false], ["not", "user_id", "is", null]]) {
+    assert.ok(teamsCalls.some((c) => JSON.stringify(c) === JSON.stringify(expected)), `teams-filter mangler: ${expected}`);
+  }
+  const riderCalls = calls.find(([t]) => t === "riders")[1];
+  for (const expected of [["eq", "squad", "senior"], ["eq", "is_academy", false], ["eq", "is_retired", false]]) {
+    assert.ok(riderCalls.some((c) => JSON.stringify(c) === JSON.stringify(expected)), `rider-filter mangler: ${expected}`);
+  }
+  const inCall = riderCalls.find(([op]) => op === "in");
+  assert.deepEqual(inCall, ["in", "team_id", ["hold-a", "hold-b"]]);
+});
+
+test("#5855 læsefejl i trup-målingen kaster (fail-closed, aldrig ready)", async () => {
+  const supabase = createMockSupabase({
+    win: CURRENT_FLOW_WINDOW,
+    humanTeams: COMPLIANT_TEAMS,
+    ridersError: { message: "boom" },
+  });
+  await assert.rejects(
+    () => assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID }),
+    /Kunne ikke måle trup-grænser/,
+  );
+});
+
+test("#5855 readiness læser ikke closed_at fra transfer_windows", async () => {
+  const selects = [];
+  const base = createMockSupabase({ win: CURRENT_FLOW_WINDOW });
+  const spy = {
+    from(table) {
+      const q = base.from(table);
+      if (table !== "transfer_windows") return q;
+      return { select: (cols, ...rest) => { selects.push(cols); return q.select(cols, ...rest); } };
+    },
+  };
+  await assessTransitionReadiness({ supabase: spy, fromSeasonId: FROM_SEASON_ID });
+  assert.ok(!/\bclosed_at\b/.test(selects[0]), `select må ikke kræve closed_at: ${selects[0]}`);
 });
 
 // ============================================================
@@ -252,9 +422,11 @@ test("#6120 altid-åbent marked: manglende final whistle blokerer IKKE", async (
   assert.ok(!result.failed_critical.includes("final_whistle_sent"));
 });
 
-test("#6120 ikke fail-open: whistle sat men squad enforcement mangler blokerer stadig", async () => {
+test("#6120 ikke fail-open: whistle sat men squad enforcement ikke kørt (hold over loftet) blokerer stadig", async () => {
   const supabase = createMockSupabase({
     win: { ...WRAPPED_WINDOW, final_whistle_sent_at: "2026-06-10T18:05:00Z", squad_enforcement_completed_at: null },
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: OVER_CAP_RIDERS,
   });
   const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
   assert.equal(result.ready, false);
@@ -263,7 +435,9 @@ test("#6120 ikke fail-open: whistle sat men squad enforcement mangler blokerer s
 
 test("#6120 ikke fail-open: alle kritiske blockers består samtidig", async () => {
   const supabase = createMockSupabase({
-    win: { id: "w-4", status: "closed", closed_at: null, final_whistle_sent_at: null, squad_enforcement_completed_at: null },
+    win: { id: "w-4", status: "open", closed_at: null, final_whistle_sent_at: null, squad_enforcement_completed_at: null },
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: OVER_CAP_RIDERS,
     activeAuctionCount: 1,
     unfinishedRaceCount: 1,
     seasonNumber: 3,
@@ -298,9 +472,11 @@ test("#6120 readiness læser ikke final_whistle_sent_at fra transfer_windows", a
   assert.ok(!selects[0].includes("final_whistle_sent_at"), `select må ikke kræve whistle: ${selects[0]}`);
 });
 
-test("assessTransitionReadiness — manglende squad enforcement blokerer", async () => {
+test("assessTransitionReadiness — manglende squad enforcement (ingen markør, hold over loftet) blokerer", async () => {
   const supabase = createMockSupabase({
     win: { ...WRAPPED_WINDOW, squad_enforcement_completed_at: null },
+    humanTeams: COMPLIANT_TEAMS,
+    seniorRiders: OVER_CAP_RIDERS,
   });
   const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
   assert.equal(result.ready, false);
@@ -323,8 +499,8 @@ test("assessTransitionReadiness — uafviklede løb blokerer med antal i detail"
   assert.match(result.checks.all_races_completed.detail, /3/);
 });
 
-test("assessTransitionReadiness — intet vindue overhovedet blokerer", async () => {
-  const supabase = createMockSupabase({ win: null });
+test("assessTransitionReadiness — intet vindue overhovedet blokerer (trup-checket måles stadig på data)", async () => {
+  const supabase = createMockSupabase({ win: null, humanTeams: COMPLIANT_TEAMS, seniorRiders: OVER_CAP_RIDERS });
   const result = await assessTransitionReadiness({ supabase, fromSeasonId: FROM_SEASON_ID });
   assert.equal(result.ready, false);
   assert.equal(result.checks.window_closed.ok, false);
