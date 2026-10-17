@@ -128,7 +128,7 @@ Omkring 4 af 10 seniorryttere på menneskehold har kontrakt, der udløber ved S4
 
 ## Ny orkestrering
 
-`backend/scripts/dev/seasonTransitionRehearsal.mjs` kører delene ovenfor i fast rækkefølge (offline først, prod kun med `--prod` og kun gennem infisical) og samler status pr. trin. Den afviser ethvert trin med et skrive-flag, før første trin kører. Rå output lander kun i `balance-internals/<issue>/`; konsollen viser trin, status og exit. Test: `backend/scripts/dev/seasonTransitionRehearsal.test.mjs`.
+`backend/scripts/dev/seasonTransitionRehearsal.mjs` kører delene ovenfor i fast rækkefølge (offline først, prod kun med `--prod` og kun gennem infisical) og samler status pr. trin. Den afviser ethvert trin med et skrive-flag, før første trin kører. Første prod-trin (transitionsplanen) er en vagt: er prods aktive sæson ikke `--from`, springes resten af prod-trinene over, så rapporten aldrig blander to skift. Rå output lander kun i `balance-internals/<issue>/`; konsollen viser trin, status og exit. Test: `backend/scripts/dev/seasonTransitionRehearsal.test.mjs`.
 
 ```powershell
 node backend/scripts/dev/seasonTransitionRehearsal.mjs --list
