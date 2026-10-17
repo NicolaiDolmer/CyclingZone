@@ -156,3 +156,12 @@ test("CLI: already-live da only warns, --strict blocks", (t) => {
   const strict = run(root, "--strict");
   assert.equal(strict.status, 1, strict.output);
 });
+
+test("compareMessages: unterminated ICU target fails even when arms match (#6597 Codex)", () => {
+  const src = "{count, plural, one {# item} other {# items}}";
+  const problems = compareMessages(src, "{count, plural, one {# ting} other {# ting}");
+  assert.ok(problems.some((p) => p.includes("unbalanced")), problems.join("; "));
+  assert.deepEqual(compareMessages(src, "{count, plural, one {# ting} other {# ting}}"), []);
+  assert.ok(compareMessages("Hi {name}", "Hej {name").some((p) => p.includes("unbalanced")));
+  assert.ok(compareMessages("{n, number, integer}", "{n, number, integer").some((p) => p.includes("unbalanced")));
+});

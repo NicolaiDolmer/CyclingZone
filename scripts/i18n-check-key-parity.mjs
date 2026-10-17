@@ -41,7 +41,9 @@ const ICU_TYPES_WITH_ARMS = new Set(["plural", "select", "selectordinal"]);
 
 // Returns { args:Set<"name|type">, arms:Map<"name|type", Set<selector>>, tags:string[] }
 export function analyzeMessage(message) {
-  const result = { args: new Set(), arms: new Map(), tags: [] };
+  // `unbalanced`: an argument or arm is still open at end of message (#6597
+  // Codex): intl-messageformat cannot render it, so parity must not pass.
+  const result = { args: new Set(), arms: new Map(), tags: [], unbalanced: false };
   const s = String(message);
   let i = 0;
 
@@ -90,6 +92,7 @@ export function analyzeMessage(message) {
       literal += c;
       i++;
     }
+    if (nested) result.unbalanced = true;
     flushTags();
   }
 
@@ -99,7 +102,7 @@ export function analyzeMessage(message) {
     while (i < s.length && !/[,}\s]/.test(s[i])) name += s[i++];
     skipWs();
     if (s[i] === "}") { i++; result.args.add(`${name}|simple`); return; }
-    if (s[i] !== ",") { return; }
+    if (s[i] !== ",") { if (i >= s.length) result.unbalanced = true; return; }
     i++;
     skipWs();
     let type = "";
@@ -115,6 +118,7 @@ export function analyzeMessage(message) {
         else if (s[i] === "}") depth--;
         i++;
       }
+      if (depth > 0) result.unbalanced = true;
       return;
     }
     if (s[i] === ",") i++;
@@ -135,6 +139,7 @@ export function analyzeMessage(message) {
       skipWs();
     }
     if (s[i] === "}") i++;
+    else result.unbalanced = true;
   }
 
   parseText(null, false);
@@ -148,6 +153,7 @@ export function compareMessages(source, target) {
   const problems = [];
   const a = analyzeMessage(source);
   const b = analyzeMessage(target);
+  if (b.unbalanced && !a.unbalanced) problems.push("ICU syntax: unbalanced braces (unterminated argument)");
 
   const lost = [...a.args].filter((x) => !b.args.has(x));
   const extra = [...b.args].filter((x) => !a.args.has(x));
