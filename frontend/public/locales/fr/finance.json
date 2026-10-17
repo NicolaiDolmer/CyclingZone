@@ -13,7 +13,7 @@
     "seasonSwitch": "Changement de saison"
   },
   "loanSummary": {
-    "active": "{count, plural, one {1 emprunt actif} other {# emprunts actifs}}",
+    "active": "{count, plural, one {# emprunt actif} other {# emprunts actifs}}",
     "owed": "{value} CZ$ restants",
     "none": "Aucun emprunt actif",
     "view": "Gérer les emprunts"
@@ -57,7 +57,7 @@
   "prize": {
     "label": "Gains (saison {season})",
     "labelNoSeason": "Gains",
-    "raceCount": "{count, plural, one {1 course} other {# courses}}",
+    "raceCount": "{count, plural, one {# course} other {# courses}}",
     "allSeasons": "toutes saisons : {amount} CZ$"
   },
   "prizeList": {

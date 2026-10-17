@@ -114,7 +114,7 @@
       "overview": "Aperçu",
       "abilities": "Aptitudes"
     },
-    "count": "{count, plural, one {1 coureur} other {# coureurs}}",
+    "count": "{count, plural, one {# coureur} other {# coureurs}}",
     "actionButton": "Vendre / Enchère",
     "ownAuctionTooltip": "Aux enchères · enchère la plus haute {price} CZ$ · se termine dans {timeLeft}",
     "ownTransferListingTooltip": "En vente par transfert · prix demandé {price} CZ$"

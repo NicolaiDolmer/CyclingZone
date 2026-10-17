@@ -223,17 +223,17 @@
     "unknownRider": "Ancien coureur de l'académie"
   },
   "graduationBanner": {
-    "title": "{count, plural, one {1 coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}",
+    "title": "{count, plural, one {# coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}",
     "body": "Décide avant le changement de saison, sinon le club choisit pour toi.",
     "action": "Ouvrir le Jour de la remise des diplômes"
   },
   "graduationDay": {
     "title": "Jour de la remise des diplômes",
-    "subtitleDays": "{count, plural, one {1 coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}. {days, plural, one {1 jour} other {# jours}} pour décider.",
-    "subtitleDue": "{count, plural, one {1 coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}. La date limite est passée.",
-    "subtitlePlain": "{count, plural, one {1 coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}.",
+    "subtitleDays": "{count, plural, one {# coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}. {days, plural, one {# jour} other {# jours}} pour décider.",
+    "subtitleDue": "{count, plural, one {# coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}. La date limite est passée.",
+    "subtitlePlain": "{count, plural, one {# coureur a dépassé son effectif} other {# coureurs ont dépassé leur effectif}}.",
     "confirmAll": "Tout confirmer",
-    "riderCount": "{count, plural, one {1 coureur} other {# coureurs}}",
+    "riderCount": "{count, plural, one {# coureur} other {# coureurs}}",
     "backToAcademy": "Retour à l'académie",
     "emptySubtitle": "Personne ne change d'effectif pour l'instant.",
     "emptyTitle": "Aucun coureur en fin de formation",

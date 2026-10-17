@@ -274,14 +274,14 @@
       "title": "Effectif sous le minimum de course",
       "message": "Ton effectif compte {count} coureur(s) aptes à courir, sous le minimum de {min} coureurs nécessaire pour aligner un jour de course. Signe des agents libres ou enchéris avant ta prochaine course.",
       "titleU23": "Équipe U23 sous le minimum de course",
-      "messageU23": "Ton équipe U23 compte {count, plural, one {1 coureur} other {# coureurs}}, sous les {min} nécessaires pour prendre le départ d'une course. Quand un contrat expire au changement de saison, le coureur quitte l'équipe. Ton équipe U23 ne peut pas prendre le départ d'une course tant que tu ne l'as pas complétée.",
+      "messageU23": "Ton équipe U23 compte {count, plural, one {# coureur} other {# coureurs}}, sous les {min} nécessaires pour prendre le départ d'une course. Quand un contrat expire au changement de saison, le coureur quitte l'équipe. Ton équipe U23 ne peut pas prendre le départ d'une course tant que tu ne l'as pas complétée.",
       "titleJunior": "Équipe juniors sous le minimum de course",
-      "messageJunior": "Ton équipe juniors compte {count, plural, one {1 coureur} other {# coureurs}}, sous les {min} nécessaires pour prendre le départ d'une course. Quand un contrat expire au changement de saison, le coureur quitte l'équipe. Ton équipe juniors ne peut pas prendre le départ d'une course tant que tu ne l'as pas complétée."
+      "messageJunior": "Ton équipe juniors compte {count, plural, one {# coureur} other {# coureurs}}, sous les {min} nécessaires pour prendre le départ d'une course. Quand un contrat expire au changement de saison, le coureur quitte l'équipe. Ton équipe juniors ne peut pas prendre le départ d'une course tant que tu ne l'as pas complétée."
     },
     "seniorStartReminder": {
       "title": "Ton effectif senior a besoin de coureurs",
-      "message24h": "Le jour de course {gameDay} démarre dans les 24 heures. Tu as {count, plural, one {1 coureur senior} other {# coureurs seniors}} et il t'en faut {missing, plural, one {1 de plus} other {# de plus}} pour aligner une équipe. Trouve un coureur sur le marché.",
-      "message3h": "Le jour de course {gameDay} démarre dans les 3 heures. Il te manque encore {missing, plural, one {1 coureur senior} other {# coureurs seniors}} pour aligner une équipe. Trouve un coureur sur le marché."
+      "message24h": "Le jour de course {gameDay} démarre dans les 24 heures. Tu as {count, plural, one {# coureur senior} other {# coureurs seniors}} et il t'en faut {missing, plural, one {# de plus} other {# de plus}} pour aligner une équipe. Trouve un coureur sur le marché.",
+      "message3h": "Le jour de course {gameDay} démarre dans les 3 heures. Il te manque encore {missing, plural, one {# coureur senior} other {# coureurs seniors}} pour aligner une équipe. Trouve un coureur sur le marché."
     },
     "selectionWarning": {
       "title": "Sélection de l'effectif nécessaire",

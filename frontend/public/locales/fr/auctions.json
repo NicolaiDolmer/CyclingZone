@@ -36,7 +36,7 @@
     "jumpToRecommendation": "Voir un choix abordable"
   },
   "ticker": {
-    "bidCount": "{count, plural, one {1 enchère récente} other {# enchères récentes}}"
+    "bidCount": "{count, plural, one {# enchère récente} other {# enchères récentes}}"
   },
   "stats": {
     "balance": "Solde",
@@ -81,9 +81,9 @@
     "colPrice": "Prix",
     "colTime": "Heure",
     "noBids": "Aucune enchère",
-    "bidsCount": "{count, plural, one {1 enchère} other {# enchères}}",
-    "bidsUniqueBidders": "{count, plural, one {1 équipe} other {# équipes}}",
-    "bidWarBadge": "Guerre d'enchères · {bids, plural, one {1 enchère} other {# enchères}}, {teams, plural, one {1 équipe} other {# équipes}}",
+    "bidsCount": "{count, plural, one {# enchère} other {# enchères}}",
+    "bidsUniqueBidders": "{count, plural, one {# équipe} other {# équipes}}",
+    "bidWarBadge": "Guerre d'enchères · {bids, plural, one {# enchère} other {# enchères}}, {teams, plural, one {# équipe} other {# équipes}}",
     "riderMeta": "Valeur : {value} CZ$ · Salaire : {salary}",
     "salaryNone": "—",
     "pageOf": "Page {page} sur {total}",

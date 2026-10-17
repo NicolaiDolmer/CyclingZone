@@ -44,7 +44,7 @@
     "entries": "{count, plural, one {# coureur engagé} other {# coureurs engagés}}"
   },
   "header": {
-    "subtitle": "Division {division} · {count, plural, one {1 coureur} other {# coureurs}}",
+    "subtitle": "Division {division} · {count, plural, one {# coureur} other {# coureurs}}",
     "incoming": "+{count} entrants",
     "outgoing": "−{count} sortants",
     "lockedInBids": "{value} CZ$ bloqués dans des enchères"
@@ -53,9 +53,9 @@
     "title": "Prochaine action",
     "loading": "Vérification de ce qui t'attend…",
     "allClear": "Tu es à jour. Rien ne demande ton action pour l'instant.",
-    "transferOffers": "{count, plural, one {1 offre de transfert attend ta décision} other {# offres de transfert attendent ta décision}}",
-    "swapOffers": "{count, plural, one {1 proposition d'échange attend ta décision} other {# propositions d'échange attendent ta décision}}",
-    "urgentAuctions": "{count, plural, one {1 enchère se termine dans l'heure} other {# enchères se terminent dans l'heure}}",
+    "transferOffers": "{count, plural, one {# offre de transfert attend ta décision} other {# offres de transfert attendent ta décision}}",
+    "swapOffers": "{count, plural, one {# proposition d'échange attend ta décision} other {# propositions d'échange attendent ta décision}}",
+    "urgentAuctions": "{count, plural, one {# enchère se termine dans l'heure} other {# enchères se terminent dans l'heure}}",
     "squadSelectionMissing": "Sélection de l'effectif manquante pour {race}",
     "notTrainedToday": "Tu ne t'es pas encore entraîné aujourd'hui",
     "boardPlanMissing": "Aucun plan de la direction négocié pour l'instant"
@@ -122,16 +122,16 @@
     "error": "Impossible de t'inscrire. Réessaie."
   },
   "squadWarning": {
-    "over": "Effectif trop grand. Max {limit} en division {division}. Vends {count, plural, one {1 coureur} other {# coureurs}}.",
-    "under": "Effectif trop petit. Min {limit} en division {division}. Achète {count, plural, one {1 coureur de plus} other {# coureurs de plus}}.",
+    "over": "Effectif trop grand. Max {limit} en division {division}. Vends {count, plural, one {# coureur} other {# coureurs}}.",
+    "under": "Effectif trop petit. Min {limit} en division {division}. Achète {count, plural, one {# coureur de plus} other {# coureurs de plus}}.",
     "ctaMyTeam": "Mon équipe"
   },
   "seniorStartWarning": {
-    "message": "Effectif senior : {count} sur {min}. Il te faut {missing, plural, one {1 coureur de plus} other {# coureurs de plus}} pour prendre le départ d'une course.",
+    "message": "Effectif senior : {count} sur {min}. Il te faut {missing, plural, one {# coureur de plus} other {# coureurs de plus}} pour prendre le départ d'une course.",
     "cta": "Trouver un coureur"
   },
   "contractWarning": {
-    "message": "{count, plural, one {Le contrat de 1 coureur expire} other {Les contrats de # coureurs expirent}} au changement de saison. Renouvelle depuis le profil du coureur pour le garder, sinon il sera libéré comme agent libre.",
+    "message": "{count, plural, one {Le contrat de # coureur expire} other {Les contrats de # coureurs expirent}} au changement de saison. Renouvelle depuis le profil du coureur pour le garder, sinon il sera libéré comme agent libre.",
     "cta": "Revoir les contrats",
     "letExpire": "Je comprends, laisse expirer",
     "dismissAria": "Ignorer pour cette saison"
@@ -271,7 +271,7 @@
       "empty": "Aucun transfert en attente",
       "emptyCta": "Parcourir les coureurs à vendre",
       "emptyHint": "Le marché des transferts est ouvert toute la saison.",
-      "incomingCount": "{count, plural, one {1 transfert entrant} other {# transferts entrants}}",
+      "incomingCount": "{count, plural, one {# transfert entrant} other {# transferts entrants}}",
       "from": "De : {name}",
       "to": "À : {name}",
       "needsAction": "À traiter",
@@ -283,7 +283,7 @@
       "empty": "Aucune course programmée",
       "emptyCta": "Ouvrir le calendrier des courses",
       "emptyHint": "Engage ton équipe dans une course à venir depuis le calendrier.",
-      "stages": "{count, plural, one {1 étape} other {# étapes}}",
+      "stages": "{count, plural, one {# étape} other {# étapes}}",
       "oneDay": "Course d'un jour",
       "scheduled": "Programmée",
       "live": "En direct"
@@ -329,7 +329,7 @@
       "linkAll": "Classement complet",
       "empty": "Les résultats apparaissent ici après les premières courses",
       "emptyCta": "Ouvrir le calendrier des courses",
-      "stageWins": "{count, plural, one {1 victoire d'étape} other {# victoires d'étape}}",
+      "stageWins": "{count, plural, one {# victoire d'étape} other {# victoires d'étape}}",
       "gcWins": "{count} CG",
       "classicWins": "{count} classique",
       "points": "{points} pts",
@@ -443,7 +443,7 @@
     },
     "horizon": {
       "label": "Horizon de prévision :",
-      "option": "{count, plural, one {1 saison} other {# saisons}}",
+      "option": "{count, plural, one {# saison} other {# saisons}}",
       "rangeSuffix": "({from}–{to})"
     },
     "multiSeason": {

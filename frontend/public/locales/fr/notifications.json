@@ -1,11 +1,11 @@
 {
   "page": {
     "title": "Boîte de réception",
-    "subtitleMine": "{count, plural, =0 {Tout est lu} one {1 non lue} other {# non lues}}",
-    "subtitleHandle": "{count, plural, =0 {Rien à traiter pour l'instant} one {1 t'attend} other {# t'attendent}}",
+    "subtitleMine": "{count, plural, =0 {Tout est lu} one {# non lue} other {# non lues}}",
+    "subtitleHandle": "{count, plural, =0 {Rien à traiter pour l'instant} one {# t'attend} other {# t'attendent}}",
     "subtitleLeague": "Ce qui se passe dans la ligue",
     "subtitleActivity": "Toutes tes actions sur le marché au même endroit",
-    "subtitleMessages": "{count, plural, =0 {Aucun message non lu} one {1 conversation t'attend} other {# conversations t'attendent}}"
+    "subtitleMessages": "{count, plural, =0 {Aucun message non lu} one {# conversation t'attend} other {# conversations t'attendent}}"
   },
   "actions": {
     "markAllRead": "Tout marquer comme lu",

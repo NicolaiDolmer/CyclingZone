@@ -68,7 +68,7 @@
       "podiums": "Podiums",
       "points": "Points"
     },
-    "count": "{count, plural, one {1 équipe} other {# équipes}}",
+    "count": "{count, plural, one {# équipe} other {# équipes}}",
     "group": "Groupe {letter}",
     "ownGroup": "Ton groupe",
     "groupLabel": "Groupe",
@@ -121,9 +121,9 @@
     "team": {
       "none": "Pas choisi",
       "training": "Non engagé · entraînement",
-      "auto": "{count, plural, one {1 coureur, choisi automatiquement} other {# coureurs, choisis automatiquement}}",
-      "manual": "{count, plural, one {1 coureur choisi} other {# coureurs choisis}}",
-      "rode": "{count, plural, one {1 coureur} other {# coureurs}}",
+      "auto": "{count, plural, one {# coureur, choisi automatiquement} other {# coureurs, choisis automatiquement}}",
+      "manual": "{count, plural, one {# coureur choisi} other {# coureurs choisis}}",
+      "rode": "{count, plural, one {# coureur} other {# coureurs}}",
       "belowFloor": "Moins de {min} : ajoute des coureurs"
     },
     "action": {
@@ -136,8 +136,8 @@
       "title": "Impossible de charger les courses de jeunes",
       "description": "Réessaie dans un instant."
     },
-    "stages": "{count, plural, one {1 étape} other {# étapes}}",
-    "count": "{count, plural, one {1 course} other {# courses}}",
+    "stages": "{count, plural, one {# étape} other {# étapes}}",
+    "count": "{count, plural, one {# course} other {# courses}}",
     "noPool": {
       "title": "Pas encore de groupe de jeunes pour ton équipe",
       "u23": "Ton équipe n'est dans aucun groupe U23 cette saison, il n'y a donc pas de courses U23 à composer.",

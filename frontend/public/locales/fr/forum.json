@@ -27,7 +27,7 @@
     "pinnedHeading": "Épinglés",
     "latestHeading": "Derniers messages",
     "archiveHeading": "Archives",
-    "replies": "{count, plural, =0 {Aucune réponse} one {1 réponse} other {# réponses}}",
+    "replies": "{count, plural, =0 {Aucune réponse} one {# réponse} other {# réponses}}",
     "poll": "Sondage",
     "loadMore": "Charger plus",
     "emptyTitle": "Pas encore de messages",
@@ -38,7 +38,7 @@
     "unread": "Non lu"
   },
   "stats": {
-    "views": "{count, plural, =0 {Aucune vue} one {1 vue} other {# vues}}",
+    "views": "{count, plural, =0 {Aucune vue} one {# vue} other {# vues}}",
     "lastReply": "Dernière réponse {name}, {time}"
   },
   "compose": {
@@ -76,13 +76,13 @@
   },
   "poll": {
     "heading": "Sondage",
-    "votes": "{count, plural, =0 {Aucun vote pour l'instant} one {1 vote} other {# votes}}",
+    "votes": "{count, plural, =0 {Aucun vote pour l'instant} one {# vote} other {# votes}}",
     "yourVote": "Ton vote"
   },
   "support": {
-    "ariaOn": "{count, plural, =0 {Retirer ton soutien} one {Retirer ton soutien (1 soutien)} other {Retirer ton soutien (# soutiens)}}",
-    "ariaOff": "{count, plural, =0 {Soutenir ceci} one {Soutenir ceci (1 soutien)} other {Soutenir ceci (# soutiens)}}",
-    "count": "{count, plural, =0 {Aucun soutien pour l'instant} one {1 soutien} other {# soutiens}}"
+    "ariaOn": "{count, plural, =0 {Retirer ton soutien} one {Retirer ton soutien (# soutien)} other {Retirer ton soutien (# soutiens)}}",
+    "ariaOff": "{count, plural, =0 {Soutenir ceci} one {Soutenir ceci (# soutien)} other {Soutenir ceci (# soutiens)}}",
+    "count": "{count, plural, =0 {Aucun soutien pour l'instant} one {# soutien} other {# soutiens}}"
   },
   "identity": {
     "profileAria": "Ouvrir le profil de manager de {name}"
