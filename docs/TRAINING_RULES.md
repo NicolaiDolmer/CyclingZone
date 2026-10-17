@@ -35,6 +35,7 @@ ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparatio
 - **Andre læsere** (akademi-visningen, dev-scripts) får altid neutral kontekst; en kort gateway-fejl vælter ikke siden.
 - **Reservationen** på den gamle kalenderdags-sti slettes efter en fejl og prøves op til 3 gange; lykkes det ikke, meldes det i Sentry (`step: reservation_cleanup`).
 - **Selvrettende reservation (#6759):** reservationen bærer et stadie. `loading` (kun læsning, intet skrevet) ældre end én sweep-cyklus (5 min, cron-kadencen) er ledig: næste kørsel sletter den betinget og afregner holdet én gang. En frisk `loading` giver en retryable fejl, så sweepen prøver igen i stedet for at kalde dagen færdig. `writing` (writes i gang) og afregnede rækker frigives aldrig.
+- **Managerens tryk på en holdt reservation (#6798, kun den gamle kalenderdags-sti):** rammer `POST /api/training/run-today` en frisk `loading`-reservation (en sweep eller et andet tryk er i gang), svarer routen `409 { error: "training_in_progress" }` uden Sentry, og frontenden genindlæser som ved `already_trained_today`. Sweeps beholder den retryable fejl. `trainingDayCloseTrigger` tæller en forældet `loading` som ikke kørt. På løbsdags-stien svarer et samtidigt tryk stadig `already_trained_today` (opfølgning #6827).
 
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
