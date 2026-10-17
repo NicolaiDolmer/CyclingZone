@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   runTeamTrainingDay, stageMatchesCanonicalLoad,
   LEGACY_RESERVATION_STAGE_LOADING, LEGACY_RESERVATION_STAGE_WRITING, STALE_LEGACY_RESERVATION_MS,
-  isTrainingReservationHeldError, isReclaimableLegacyReservation,
+  isTrainingReservationHeldError, isReclaimableLegacyReservation, isHeldRaceDayReservation,
 } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
@@ -1688,6 +1688,72 @@ test("#4846 (flag on): andet tick på SAMME løbsdag rammer mutexen → alreadyR
   assert.equal(second.alreadyRan, true, "løbsdags-nøglen forhindrer dobbelt-tick samme løbsdag");
   assert.equal(second.gameDay, 12);
   assert.equal(state.training_day_runs.length, 1, "kun ÉN række pr. (hold, sæson, løbsdag)");
+});
+
+// ── #6827: holdt reservation paa loebsdags-stien ──────────────────────────────
+function seedRaceDayRun(state, { gameDay = 12, createdAt = NOW, report = { pending: true } } = {}) {
+  state.training_day_runs.push({
+    id: `run-held-${gameDay}`, team_id: TEAM_ID, season_id: SEASON_ID, squad: "senior", game_day: gameDay,
+    tick_date: "2026-06-12", executed_by: "assistant", bonus_applied: false,
+    created_at: createdAt.toISOString(), report,
+  });
+}
+const raceDaySnapshot = (state) => structuredClone({
+  runs: state.training_day_runs, abilities: state.rider_derived_abilities, conditions: state.rider_condition,
+});
+
+test("#6827 (flag on): frisk pending loebsdags-raekke (en sweep er i gang) → retryable held-fejl, intet skrevet", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW });
+  const before = raceDaySnapshot(state);
+  await assert.rejects(() => runDay(state, { gameDay: 12, now: minutesAfter(NOW, 1) }),
+    (err) => isTrainingReservationHeldError(err) && /held by an unfinished run/.test(err.message));
+  assert.deepEqual(raceDaySnapshot(state), before, "hverken reservation, evner eller condition roert");
+});
+
+test("#6827 (flag on): afregnet loebsdags-raekke → stadig alreadyRan, intet skrevet", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW, report: { riders: [], game_day: 12, tick_date: "2026-06-12" } });
+  const before = raceDaySnapshot(state);
+  const result = await runDay(state, { gameDay: 12, now: minutesAfter(NOW, 1) });
+  assert.equal(result.alreadyRan, true);
+  assert.equal(result.gameDay, 12);
+  assert.deepEqual(raceDaySnapshot(state), before);
+});
+
+test("#6827 (flag on): forældet pending loebsdags-raekke → alreadyRan som foer (blokeret dag, ingen overtagelse)", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW });
+  const before = raceDaySnapshot(state);
+  const later = new Date(NOW.getTime() + STALE_LEGACY_RESERVATION_MS + 60 * 1000);
+  const result = await runDay(state, { gameDay: 12, now: later });
+  assert.equal(result.alreadyRan, true);
+  assert.deepEqual(raceDaySnapshot(state), before, "raekken staar; intet slettet eller skrevet");
+});
+
+test("#6827 (flag on): 23505 men raekken er frigivet imens → retryable held-fejl, ikke alreadyRan", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  const supabase = createMockSupabase(state, { injectUniqueViolation: true });
+  await assert.rejects(() => runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager",
+    now: NOW, gameDay: 12, eligibleRiderIds: state.riders.map((rider) => rider.id),
+  }), (err) => isTrainingReservationHeldError(err));
+  assert.equal(state.training_day_runs.length, 0);
+});
+
+test("#6827: isHeldRaceDayReservation laeser det smalle format (pending som tekst) og report-formatet", () => {
+  const fresh = NOW.toISOString();
+  const old = new Date(NOW.getTime() - STALE_LEGACY_RESERVATION_MS - 1000).toISOString();
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: fresh }, NOW), true);
+  assert.equal(isHeldRaceDayReservation({ report: { pending: true }, created_at: fresh }, NOW), true);
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: null }, NOW), true, "ukendt alder = levende");
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: old }, NOW), false, "forældet");
+  assert.equal(isHeldRaceDayReservation({ pending: null, created_at: fresh }, NOW), false, "afregnet");
+  assert.equal(isHeldRaceDayReservation({ report: { riders: [] }, created_at: fresh }, NOW), false, "afregnet");
 });
 
 test("#4846 (flag on): to forskellige løbsdage på SAMME kalenderdato kører begge", async () => {
