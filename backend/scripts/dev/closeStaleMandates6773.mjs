@@ -115,13 +115,14 @@ export function planStaleMandateClosure({ seasons, mandates, teams = [] }) {
   // mandat. Uden aktuelt mandat kan de ikke flyttes; de tælles til ejeren.
   const mandateById = new Map(open.map((m) => [m.id, m]));
   const bonusMoves = [];
+  const orphanBonus = [];
   let bonusGoalsWithoutTarget = 0;
   for (const r of rows) {
     if (r.from !== "active") continue;
     const bonus = (mandateById.get(r.id)?.goals || []).filter((g) => g?.source === "bonus_offer");
     if (!bonus.length) continue;
     const target = currentActiveByTeam.get(r.teamId);
-    if (!target) { bonusGoalsWithoutTarget += bonus.length; continue; }
+    if (!target) { bonusGoalsWithoutTarget += bonus.length; orphanBonus.push({ fromId: r.id, count: bonus.length }); continue; }
     const missing = bonus.filter((g) => !hasBonusGoalForOffer(target.goals, { offerId: g.bonus_offer_id, extraGoal: g }));
     if (missing.length) bonusMoves.push({ fromId: r.id, toId: target.id, teamId: r.teamId, goals: missing });
   }
@@ -150,6 +151,7 @@ export function planStaleMandateClosure({ seasons, mandates, teams = [] }) {
     rows,
     teamIds,
     bonusMoves,
+    orphanBonus,
     outOfScopeCount: outOfScope.length,
     counts: {
       total: rows.length,
@@ -171,6 +173,7 @@ export function approvedListHash(plan) {
   const body = [
     ...plan.rows.map((r) => `${r.id}:${r.from}`),
     ...(plan.bonusMoves || []).map((m) => `bonus:${m.fromId}->${m.toId}:${m.goals.length}`),
+    ...(plan.orphanBonus || []).map((o) => `orphan-bonus:${o.fromId}:${o.count}`),
   ].join("\n");
   return createHash("sha256").update(body).digest("hex").slice(0, 16);
 }
@@ -294,11 +297,18 @@ export async function runApply({
   ownerGo,
   approvedHash,
   now = new Date(),
+  allowOrphanBonus = 0,
 }) {
   if (ownerGo !== OWNER_GO_TOKEN) throw new Error(`--apply kræver --owner-go=${OWNER_GO_TOKEN}. Intet skrevet.`);
   const plan = planStaleMandateClosure(await fetchSnapshot(supabase));
   if (approvedHash !== approvedListHash(plan)) {
     throw new Error("Den levende liste afviger fra den godkendte. Kør dry-run igen og vis ejeren den nye liste. Intet skrevet.");
+  }
+  // Codex P1: bonusmål uden aktuelt mandat at flytte til bliver usynlige, når
+  // kilden lukkes. Det er en ejer-beslutning: apply kræver det præcise antal.
+  const orphanCount = plan.counts.bonusGoalsWithoutTarget;
+  if (orphanCount > 0 && Number(allowOrphanBonus) !== orphanCount) {
+    throw new Error(`${orphanCount} bonusmål har intet aktuelt mandat at flytte til. Kræver ejerens beslutning: --allow-orphan-bonus=${orphanCount}. Intet skrevet.`);
   }
   await assertBackupCovers(supabase, touchedIds(plan));
 
@@ -306,11 +316,17 @@ export async function runApply({
   const result = { completed: 0, lapsed: 0, bonusGoalsMoved: 0, skipped: [] };
 
   // (1) Bonusmål først, så intet accepteret mål er usynligt mellem de to trin.
+  // Codex P1: lykkes en flytning ikke, lukkes kilden IKKE.
+  const keepOpen = new Set();
   for (const move of plan.bonusMoves) {
     const { data: target, error } = await supabase
       .from("board_mandates").select("id, status, goals").eq("id", move.toId).maybeSingle();
     if (error) throw new Error(`modtager-mandat ${move.toId}: ${error.message}`);
-    if (!target || target.status !== "active") { result.skipped.push({ id: move.toId, reason: "modtager ikke aktiv" }); continue; }
+    if (!target || target.status !== "active") {
+      result.skipped.push({ id: move.toId, reason: "modtager ikke aktiv; kilden lukkes ikke" });
+      keepOpen.add(move.fromId);
+      continue;
+    }
     const current = Array.isArray(target.goals) ? target.goals : [];
     const add = move.goals.filter((g) => !hasBonusGoalForOffer(current, { offerId: g.bonus_offer_id, extraGoal: g }));
     if (!add.length) continue;
@@ -319,10 +335,12 @@ export async function runApply({
       .eq("id", move.toId).eq("status", "active").select("id");
     if (upErr) throw new Error(`bonusmål til ${move.toId}: ${upErr.message}`);
     if ((upd || []).length) result.bonusGoalsMoved += add.length;
+    else { result.skipped.push({ id: move.toId, reason: "bonusmål ikke skrevet; kilden lukkes ikke" }); keepOpen.add(move.fromId); }
   }
 
   // (2) Luk KUN de godkendte id'er, betinget på den forventede gamle status.
   for (const r of plan.rows) {
+    if (keepOpen.has(r.id)) continue;
     const { data: upd, error } = await supabase
       .from("board_mandates").update({ status: r.to, updated_at: nowIso })
       .eq("id", r.id).eq("status", r.from).select("id");
@@ -343,11 +361,13 @@ export function parseArgs(argv) {
   const hashArg = argv.find((a) => a.startsWith("--approved-list="));
   const ownerGo = goArg ? goArg.slice("--owner-go=".length) : null;
   const approvedHash = hashArg ? hashArg.slice("--approved-list=".length) : null;
+  const orphanArg = argv.find((a) => a.startsWith("--allow-orphan-bonus="));
+  const allowOrphanBonus = orphanArg ? Number(orphanArg.slice("--allow-orphan-bonus=".length)) : 0;
   if (apply && ownerGo !== OWNER_GO_TOKEN) {
     return { error: `--apply kræver --owner-go=${OWNER_GO_TOKEN} (eksplicit ejer-go for netop denne kørsel).` };
   }
   if (apply && !approvedHash) return { error: "--apply kræver --approved-list=<hash> fra det dry-run ejeren godkendte." };
-  return { apply, ownerGo, approvedHash };
+  return { apply, ownerGo, approvedHash, allowOrphanBonus };
 }
 
 /** Offentlige linjer: kun samlede tal, ingen id'er. */
@@ -410,7 +430,7 @@ async function main() {
     return;
   }
 
-  const { result, remaining } = await runApply({ supabase, ownerGo: args.ownerGo, approvedHash: args.approvedHash });
+  const { result, remaining } = await runApply({ supabase, ownerGo: args.ownerGo, approvedHash: args.approvedHash, allowOrphanBonus: args.allowOrphanBonus });
   console.log(`APPLY: completed ${result.completed}, lapsed ${result.lapsed}, bonusmål flyttet ${result.bonusGoalsMoved}, sprunget over ${result.skipped.length}`);
   for (const f of result.skipped) console.error(`  SKIP: ${f.reason}`);
   console.log(`POST-VERIFY: åbne mandater for afsluttede sæsoner tilbage: ${remaining}`);

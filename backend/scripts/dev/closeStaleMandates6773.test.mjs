@@ -145,7 +145,8 @@ test("#6773 backup-SQL: idempotent og dækker præcis plan-rækkerne", () => {
 });
 
 test("#6773 parseArgs: --apply kræver ejer-go OG godkendt hash", () => {
-  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: null, approvedHash: null });
+  assert.deepEqual(parseArgs([]), { apply: false, ownerGo: null, approvedHash: null, allowOrphanBonus: 0 });
+  assert.equal(parseArgs(["--allow-orphan-bonus=2"]).allowOrphanBonus, 2);
   assert.ok(parseArgs(["--apply"]).error);
   assert.ok(parseArgs(["--apply", `--owner-go=${OWNER_GO_TOKEN}`]).error);
   assert.equal(parseArgs(["--apply", `--owner-go=${OWNER_GO_TOKEN}`, "--approved-list=abc"]).apply, true);
@@ -229,4 +230,31 @@ test("#6773 apply: lukker kun godkendte id'er; en række der har skiftet status 
   const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
   assert.equal(out.result.lapsed, 0);
   assert.deepEqual(out.result.skipped.map((s) => s.id), [id(4)]);
+});
+
+test("#6773 (Codex) apply: bonusmål uden modtager kræver ejerens præcise antal, ellers intet skrevet", async () => {
+  const tables = fixture();
+  tables.board_mandates.find((m) => m.id === id(3)).goals = [{ type: "x", target: 1, source: "bonus_offer", bonus_offer_id: "bo-9" }];
+  const double = createDouble(tables);
+  const { plan, hash } = await runDryRun({ supabase: double });
+  assert.equal(plan.counts.bonusGoalsWithoutTarget, 1);
+  tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
+  await assert.rejects(
+    () => runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash }),
+    /--allow-orphan-bonus=1/,
+  );
+  assert.equal(double.writes.length, 0);
+  const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, allowOrphanBonus: 1, now: new Date("2026-10-18T10:00:00Z") });
+  assert.equal(out.result.completed, 2);
+});
+
+test("#6773 (Codex) apply: mislykkes en bonus-flytning, lukkes kilden ikke", async () => {
+  const tables = fixture();
+  const double = createDouble(tables);
+  const { plan, hash } = await runDryRun({ supabase: double });
+  tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
+  tables.board_mandates.find((m) => m.id === id(2)).status = "completed"; // modtageren er ikke længere aktiv
+  const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
+  assert.equal(tables.board_mandates.find((m) => m.id === id(1)).status, "active", "kilden med bonusmålet står åben");
+  assert.ok(out.result.skipped.some((s) => /kilden lukkes ikke/.test(s.reason)));
 });
