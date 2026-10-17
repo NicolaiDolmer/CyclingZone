@@ -11,53 +11,53 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const css = readFileSync(join(here, "..", "index.css"), "utf8").replace(/\r\n/g, "\n");
 
-function block(startMarker) {
+function block(startMarker: string): string {
   const start = css.indexOf(startMarker);
   assert.ok(start >= 0, `kunne ikke finde ${startMarker} i index.css`);
   const end = css.indexOf("\n}", start);
   return css.slice(start, end);
 }
 
-function tokensOf(blockText) {
-  const out = {};
+function tokensOf(blockText: string): Record<string, string> {
+  const out: Record<string, string> = {};
   for (const m of blockText.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)) out[m[1]] = m[2].trim();
   return out;
 }
 
-const THEMES = {
+const THEMES: Record<string, Record<string, string>> = {
   light: tokensOf(block("\n:root {\n  color-scheme: light;")),
   dark: tokensOf(block('\n[data-theme="dark"] {\n  color-scheme: dark;')),
 };
 
-const hexToRgb = (h) => {
+const hexToRgb = (h: string): number[] => {
   const m = /^#([0-9a-f]{6})$/i.exec(h);
   assert.ok(m, `forventede #rrggbb, fik ${h}`);
   return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
 };
-const channels = (v) => v.trim().split(/\s+/).map(Number);
-const rgbaOf = (v) => {
+const channels = (v: string): number[] => v.trim().split(/\s+/).map(Number);
+const rgbaOf = (v: string) => {
   const m = /^rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)$/.exec(v);
   assert.ok(m, `forventede rgba(...), fik ${v}`);
   return { rgb: [+m[1], +m[2], +m[3]], a: +m[4] };
 };
-const over = (fg, a, bg) => fg.map((c, i) => Math.round(c * a + bg[i] * (1 - a)));
-const lin = (c) => {
+const over = (fg: number[], a: number, bg: number[]): number[] => fg.map((c, i) => Math.round(c * a + bg[i] * (1 - a)));
+const lin = (c: number): number => {
   const s = c / 255;
   return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
 };
-const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-const ratio = (a, b) => {
+const lum = ([r, g, b]: number[]): number => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const ratio = (a: number[], b: number[]): number => {
   const x = lum(a);
   const y = lum(b);
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
 
 for (const [name, t] of Object.entries(THEMES)) {
-  const hex = (k) => {
+  const hex = (k: string): number[] => {
     assert.ok(t[k], `${name}: ${k} mangler`);
     return hexToRgb(t[k]);
   };
-  const surfaces = { body: hex("--bg-body"), card: hex("--bg-card"), elevated: hex("--bg-elevated"), subtle: hex("--bg-subtle") };
+  const surfaces: Record<string, number[]> = { body: hex("--bg-body"), card: hex("--bg-card"), elevated: hex("--bg-elevated"), subtle: hex("--bg-subtle") };
 
   test(`${name}: --border-strong og slukket kontakt >= 3:1 mod alle flader`, () => {
     for (const token of ["--border-strong", "--toggle-off"]) {
