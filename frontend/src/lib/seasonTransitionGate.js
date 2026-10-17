@@ -11,9 +11,8 @@ export const TRANSITION_CHECK_LABELS = {
   // backend-checks-objektet) — springer man season-end over, er det den
   // vigtigste og mest irreversible fejl at fange FØR transition.
   season_end_completed: "Season-end kørt (op/nedrykning + bonusser)",
-  window_closed: "Transfervindue lukket",
-  final_whistle_sent: "Final whistle sendt",
-  squad_enforcement_completed: "Squad enforcement kørt",
+  no_deferred_transfers: "Ingen udskudte transfers",
+  squad_enforcement_completed: "Trupper inden for grænserne",
   no_active_auctions: "Ingen aktive auktioner",
   all_races_completed: "Alle løb afviklet",
 };

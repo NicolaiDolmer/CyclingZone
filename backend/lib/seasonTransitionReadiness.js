@@ -1,8 +1,8 @@
 /**
  * #1346 — Readiness-gate for manuel sæson-transition.
  * =====================================================
- * Den afgående sæsons seneste transfervindue skal være lukket og trup-
- * håndhævelsens resultat skal holde (se #5855 nedenfor for hvordan det måles).
+ * Ingen udskudte transfers må vente, og trup-loftets resultat skal holde
+ * (se #5855 nedenfor for hvordan det måles).
  * Dertil: ingen aktive auktioner og alle sæsonens løb afviklet
  * (ejer-beslutning 12/6: kritisk check).
  *
@@ -22,23 +22,22 @@
  * afskaffede Deadline Day-cron (markedet er altid åbent, docs/TRANSFER_MARKET_RULES.md),
  * så checket var permanent rødt uden at beskytte noget.
  *
- * #5855 — window_closed og squad_enforcement_completed måles på den måde
- * vinduet lukkes I DAG, ikke på markører fra den afskaffede deadline-cyklus.
- * En sæsons vindue fødes af transitionToNextSeason med status='closed' og
- * closed_at=null (insertTransferWindowIfMissing), og closePrevTransferWindow
- * springer et allerede-lukket vindue over. closed_at og
- * squad_enforcement_completed_at bliver derfor ALDRIG sat i det nuværende flow
- * (squad-enforcement-cron'en filtrerer på closed_at), og S3→S4 krævede manuel
- * SQL-normalisering af markørerne. Kontrakten er nu:
- *   - window_closed: seneste vindue findes og har status='closed'. Et åbent
- *     vindue blokerer stadig (handel der kan ændre trupper efter skiftet).
- *   - squad_enforcement_completed: håndhævelsens POSTCONDITION skal holde —
- *     ingen menneske-styrede, ikke-frosne hold uden for divisionens trup-
- *     grænser (samme population og samme senior-tælling som
- *     squadEnforcement.js). Markøren squad_enforcement_completed_at accepteres
- *     stadig som bevis (gamle vinduer). En påbegyndt men ikke afsluttet
- *     håndhævelse (started_at uden completed_at) blokerer altid: cron'en er
- *     midt i at flytte ryttere.
+ * #5855 — markedet er altid åbent, og transfer_windows er død data som ingen
+ * kode må ankre adfærd i (docs/TRANSFER_MARKET_RULES.md, "Transfervinduet er
+ * afskaffet"). Gaten læser derfor IKKE transfer_windows. Kontrakten er:
+ *   - no_deferred_transfers: ingen gennemførte handler, der venter på at blive
+ *     flyttet (riders.pending_team_id sat). En udskudt transfer under et
+ *     etapeløb flyttes af flush/heal-sweepet; står den stadig ved skiftet,
+ *     ville transitionen regne trupper og kontrakter på det gamle hold.
+ *     Åbne forhandlinger (pending/countered/awaiting_confirmation) blokerer
+ *     ikke: markedet er altid åbent, og finalize-gaten håndhæver trup-loftet
+ *     mod tilstanden efter skiftet (TRANSFER_MARKET_RULES §7).
+ *   - squad_enforcement_completed: trup-loftets POSTCONDITION måles på data,
+ *     ikke på en markør: ingen menneske-styrede, ikke-frosne hold uden for
+ *     divisionens trup-grænser, talt med samme semantik som
+ *     getTeamMarketState.future_count (nuværende minus udgående plus
+ *     indgående udskudte), samme population og senior-tælling som
+ *     squadEnforcement.js.
  *
  * Gaten håndhæves i POST /api/admin/season-transition (routes/api.js).
  * Cron, relaunch-orchestratoren (#1103) og scripts/executeSeasonTransition.js
@@ -64,6 +63,7 @@ export async function countSquadLimitViolations({ supabase } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   let teams;
   let riders;
+  let incoming;
   try {
     teams = await fetchAllRows(() => supabase
       .from("teams")
@@ -77,16 +77,29 @@ export async function countSquadLimitViolations({ supabase } = {}) {
     riders = teamIds.length === 0 ? [] : await fetchAllRowsChunkedIn(teamIds, (chunk) =>
       applySeniorSquadFilter(supabase
         .from("riders")
-        .select("id, team_id")
+        .select("id, team_id, pending_team_id")
         .in("team_id", chunk))
+        .eq("is_retired", false)
+        .order("id", { ascending: true }));
+    // #5855 (Codex): udskudte indgående transfers tæller paa KOEBERENS trup
+    // (getTeamMarketState.future_count), ikke paa saelgerens.
+    incoming = teamIds.length === 0 ? [] : await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+      applySeniorSquadFilter(supabase
+        .from("riders")
+        .select("id, pending_team_id, team_id")
+        .in("pending_team_id", chunk))
         .eq("is_retired", false)
         .order("id", { ascending: true }));
   } catch (e) {
     throw new Error(`Kunne ikke måle trup-grænser: ${e.message || e}`, { cause: e });
   }
 
+  const effectiveTeamById = new Map();
+  for (const r of [...(riders || []), ...(incoming || [])]) {
+    effectiveTeamById.set(r.id, r.pending_team_id ?? r.team_id);
+  }
   const countByTeam = new Map();
-  for (const r of riders || []) countByTeam.set(r.team_id, (countByTeam.get(r.team_id) || 0) + 1);
+  for (const teamId of effectiveTeamById.values()) countByTeam.set(teamId, (countByTeam.get(teamId) || 0) + 1);
   let violations = 0;
   for (const t of teams || []) {
     const limits = getSquadLimits(t.division);
@@ -100,14 +113,13 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!fromSeasonId) throw new Error("fromSeasonId required");
 
-  const [windowRes, auctionsRes, racesRes, seasonRes, poolFilterRes] = await Promise.all([
-    supabase
-      .from("transfer_windows")
-      .select("id, status, squad_enforcement_started_at, squad_enforcement_completed_at")
-      .eq("season_id", fromSeasonId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+  const [deferredRes, auctionsRes, racesRes, seasonRes, poolFilterRes] = await Promise.all([
+    fetchAllRows(() => supabase
+      .from("riders")
+      .select("id")
+      .not("pending_team_id", "is", null)
+      .order("id", { ascending: true }))
+      .then((rows) => ({ data: rows, error: null }), (e) => ({ data: null, error: e })),
     supabase
       .from("auctions")
       .select("id", { count: "exact", head: true })
@@ -132,14 +144,14 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
       .then((f) => ({ data: f, error: null }), (e) => ({ data: null, error: e })),
   ]);
 
-  if (windowRes.error) throw new Error(`Kunne ikke læse transfervindue: ${windowRes.error.message}`);
+  if (deferredRes.error) throw new Error(`Kunne ikke tælle udskudte transfers: ${deferredRes.error.message || deferredRes.error}`);
   if (auctionsRes.error) throw new Error(`Kunne ikke tælle auktioner: ${auctionsRes.error.message}`);
   if (racesRes.error) throw new Error(`Kunne ikke tælle løb: ${racesRes.error.message || racesRes.error}`);
   if (seasonRes.error) throw new Error(`Kunne ikke læse sæson: ${seasonRes.error.message}`);
   if (!seasonRes.data) throw new Error(`Sæson ${fromSeasonId} findes ikke`);
   if (poolFilterRes.error) throw new Error(`Kunne ikke læse puljer: ${poolFilterRes.error.message || poolFilterRes.error}`);
 
-  const win = windowRes.data;
+  const deferredTransfers = (deferredRes.data || []).length;
   const activeAuctions = auctionsRes.count || 0;
   const { inEmptyPool } = poolFilterRes.data;
   const unfinishedRaces = (racesRes.data || []).filter((r) => !inEmptyPool(r)).length;
@@ -149,36 +161,12 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   const seasonEndRequired = season.number >= FIRST_PROMOTION_RELEGATION_SEASON;
   const seasonEndCompleted = !seasonEndRequired || season.status === "completed";
 
-  // #5855: status='closed' er hele lukke-kontrakten i dag. closed_at sættes kun
-  // af closePrevTransferWindow på et ÅBENT vindue, og et vindue født af
-  // transitionen er lukket fra start — at kræve closed_at gjorde gaten rød på
-  // et vindue der aldrig har været åbent.
-  const windowClosed = Boolean(win && win.status === "closed");
-  const windowDetail = !win
-    ? "Intet transfervindue fundet for sæsonen (transitionen opretter altid ét — undersøg data)"
-    : win.status !== "closed"
-      ? `Vinduet har status '${win.status}' — handel i et åbent vindue kan ændre trupperne efter skiftet`
-      : null;
-
-  // #5855: trup-håndhævelsen måles på sit resultat, ikke på en markør det
-  // nuværende flow aldrig sætter. Markøren accepteres stadig (gamle vinduer);
-  // en påbegyndt-men-ikke-afsluttet kørsel blokerer altid.
-  const enforcementInProgress = Boolean(win?.squad_enforcement_started_at && !win?.squad_enforcement_completed_at);
-  const enforcementMarker = Boolean(win?.squad_enforcement_completed_at);
-  let squadOk;
-  let squadDetail = null;
-  if (enforcementInProgress) {
-    squadOk = false;
-    squadDetail = "Trup-håndhævelsen er påbegyndt men ikke afsluttet (squad_enforcement_started_at uden completed_at) — vent på at cron'en gør den færdig";
-  } else if (enforcementMarker) {
-    squadOk = true;
-  } else {
-    const { violations } = await countSquadLimitViolations({ supabase });
-    squadOk = violations === 0;
-    squadDetail = squadOk
-      ? null
-      : `${violations} hold er uden for divisionens trup-grænser — trup-håndhævelsen er ikke kørt`;
-  }
+  // #5855: trup-loftet maales altid paa data (ingen vindue-markoer at stole paa).
+  const { violations } = await countSquadLimitViolations({ supabase });
+  const squadOk = violations === 0;
+  const squadDetail = squadOk
+    ? null
+    : `${violations} hold er uden for divisionens trup-grænser (inkl. udskudte transfers) — ret trupperne før skiftet`;
 
   const checks = {
     season_end_completed: {
@@ -188,7 +176,13 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
         ? null
         : `Sæson ${season.number} er stadig '${season.status}' — kør 'Afslut sæson' (season-end) FØRST, ellers springes op/nedrykning + divisionsbonusser over`,
     },
-    window_closed: { ok: windowClosed, critical: true, detail: windowDetail },
+    no_deferred_transfers: {
+      ok: deferredTransfers === 0,
+      critical: true,
+      detail: deferredTransfers === 0
+        ? null
+        : `${deferredTransfers} gennemførte transfers venter på at blive flyttet (pending_team_id) — kør flush/heal-sweepet først`,
+    },
     squad_enforcement_completed: { ok: squadOk, critical: true, detail: squadDetail },
     no_active_auctions: {
       ok: activeAuctions === 0,
