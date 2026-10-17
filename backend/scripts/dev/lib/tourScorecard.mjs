@@ -264,6 +264,12 @@ export function breakawaySets(out) {
   return { formed, caught };
 }
 
+/** #6369: stoerrelsen paa dagens udbrud (det seneste reformation-udbrud, ellers alle dannede som foer). */
+export function dayBreakSize(out, formed = breakawaySets(out).formed) {
+  const reform = (out?.timeline?.events ?? []).filter((e) => e.type === "breakaway_formed" && e.params?.reformation === true);
+  return reform.length ? (reform[reform.length - 1].params?.rider_ids ?? []).length : formed.size;
+}
+
 /** #6201 R1: antal ryttere der forsoegte morgenudbruddet (breakaway_attempt). */
 export function breakawayAttempts(out) {
   const events = out?.timeline?.events ?? [];
@@ -612,7 +618,9 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     stage: profile.stage_number, profile_type: profile.profile_type, finale_type: profile.finale_type ?? null, cls,
     gapTo10: g10, gapTo30: gapAtRank(out, 30),
     ittGapTo10Per40Km: tt && km && g10 !== null ? (g10 / km) * 40 : null,
-    breakawaySize: tt ? null : formed.size,
+    // #6369: med et nyt udbrud efter en tidlig indhentning (reformation) er
+    // dagens udbrud det SIDST dannede; ellers morgenudbruddet (uaendret).
+    breakawaySize: tt ? null : dayBreakSize(out, formed),
     // #6201 R1: forsoeg pr. etape (breakaway_attempt) - maalt, ikke doemt.
     breakawayAttempts: tt ? null : breakawayAttempts(out),
     breakawayWon: tt ? null : bw.won,

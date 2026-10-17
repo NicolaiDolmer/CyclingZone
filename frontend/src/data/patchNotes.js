@@ -1,5 +1,131 @@
 export const PATCHES = [
   {
+    "version": "7.367",
+    "date": "2026-10-17",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Time trials spread out more",
+          "body": "The gaps in a time trial are now closer to real racing, so a strong time triallist can gain real time in the general classification."
+        },
+        "da": {
+          "title": "Enkeltstarter spreder sig mere",
+          "body": "Tidsforskellene i en enkeltstart ligger nu tættere på virkeligheden, så en stærk enkeltstartsrytter kan vinde reel tid i klassementet."
+        },
+        "refs": [
+          6645,
+          6595
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Gaps at the finish come from the race",
+          "body": "No more fixed steps of a few seconds between riders. The gap now depends on how much stronger a rider was and how much climbing was left."
+        },
+        "da": {
+          "title": "Tidsforskelle i mål kommer af løbet",
+          "body": "Ikke flere faste trin på få sekunder mellem rytterne. Forskellen afhænger nu af, hvor meget stærkere en rytter var, og hvor meget stigning der var tilbage."
+        },
+        "refs": [
+          6648
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Bigger breakaways on hills and mountains",
+          "body": "More riders can go in the breakaway on hilly and mountain stages."
+        },
+        "da": {
+          "title": "Større udbrud på bakker og bjerge",
+          "body": "Flere ryttere kan komme med i udbruddet på kuperede etaper og bjergetaper."
+        },
+        "refs": [
+          6201
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "GC riders get a shorter leash",
+          "body": "A dangerous GC rider in the breakaway is chased harder, so the overall win is rarely decided by a breakaway."
+        },
+        "da": {
+          "title": "Klassementsryttere får kortere snor",
+          "body": "En farlig klassementsrytter i udbruddet bliver jagtet hårdere, så den samlede sejr sjældent afgøres af et udbrud."
+        },
+        "refs": [
+          5978
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "A new breakaway after an early catch",
+          "body": "If the breakaway is caught early, a new one can go without the dangerous riders, so flat stages still have a breakaway up the road."
+        },
+        "da": {
+          "title": "Nyt udbrud efter en tidlig indhentning",
+          "body": "Bliver udbruddet hentet tidligt, kan et nyt køre uden de farlige ryttere, så der stadig er et udbrud på flade etaper."
+        },
+        "refs": [
+          6369
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Late solo attacks",
+          "body": "A strong rider can now attack alone late in a stage and try to hold off the group."
+        },
+        "da": {
+          "title": "Sene soloangreb",
+          "body": "En stærk rytter kan nu angribe alene sent på en etape og prøve at holde gruppen bag sig."
+        },
+        "refs": [
+          6368
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Grand Tours get harder in week 3",
+          "body": "Fatigue builds up over the whole race and follows the work a rider actually did, so the third week of a Grand Tour is tough."
+        },
+        "da": {
+          "title": "Grand Tours bliver hårdere i uge 3",
+          "body": "Trætheden hober sig op gennem hele løbet og følger det arbejde, rytteren faktisk lavede, så tredje uge af en Grand Tour er hård."
+        },
+        "refs": [
+          5928
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.366",
     "date": "2026-10-17",
     "changes": [
