@@ -715,6 +715,7 @@ test("#6156: the v4 engine gives byte-identical StageOutput under s5_profiles_v2
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
     const v1 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v1" });
     const v2 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" });
-    assert.equal(JSON.stringify(v2), JSON.stringify(v1), name);
+    // #6748: v2's udbrudsopfoelgning kan tilfoeje udfald i tidslinjen; alt andet er byte-identisk.
+    assert.equal(JSON.stringify({ ...v2, timeline: null }), JSON.stringify({ ...v1, timeline: null }), name);
   }
 });
