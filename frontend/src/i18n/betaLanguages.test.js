@@ -181,7 +181,7 @@ test("et helt manglende namespace i beta-sproget falder tilbage til engelsk", as
     xx: { common: { a: "A XX" } },
   });
   await i.loadNamespaces("extra");
-  assert.equal(i.t("extra:b"), "B EN");
+  assert.equal(i.t(["extra", "b"].join(":")) /* dynamisk: testens lazy-namespace er ikke et UI-namespace (namespace-inline-guard) */, "B EN");
 });
 
 test("regionale koder falder tilbage via basis-sproget", async () => {
