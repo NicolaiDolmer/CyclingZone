@@ -1,0 +1,186 @@
+{
+  "founder_badge": {
+    "title": "Mánager fundador",
+    "description": "Estás aquí desde la temporada inaugural. Permanente. Sobrevive a todos los reinicios."
+  },
+  "season_first_result": {
+    "title": "Primer resultado",
+    "description": "Consigue que se registre tu primer resultado de carrera."
+  },
+  "team_star": {
+    "title": "Equipo con estrella",
+    "description": "Ten un ciclista estrella en tu equipo: un ciclista con un valor de 8.000.000 CZ$ o más."
+  },
+  "transfer_bargain": {
+    "title": "El chollo",
+    "description": "Compra a un ciclista por menos de la mitad de su valor."
+  },
+  "season_top10": {
+    "title": "Top 10",
+    "description": "Termina una temporada entre los 10 primeros de tu división."
+  },
+  "season_top5": {
+    "title": "Top 5",
+    "description": "Termina una temporada entre los 5 primeros de tu división."
+  },
+  "season_top3": {
+    "title": "Podio",
+    "description": "Termina una temporada entre los 3 primeros de tu división."
+  },
+  "season_winner": {
+    "title": "Ganador de división",
+    "description": "Gana tu división en una temporada."
+  },
+  "season_div1_winner": {
+    "title": "Campeón",
+    "description": "Gana la División 1."
+  },
+  "season_div3_winner": {
+    "title": "Recién ascendido",
+    "description": "Gana la División 3."
+  },
+  "season_3_top3": {
+    "title": "Constante",
+    "description": "Termina entre los 3 primeros tres temporadas seguidas."
+  },
+  "season_2_seasons": {
+    "title": "Dos temporadas",
+    "description": "Completa 2 temporadas."
+  },
+  "season_5_seasons": {
+    "title": "Veterano",
+    "description": "Completa 5 temporadas."
+  },
+  "season_grand_tour_rider": {
+    "title": "Equipo de Grand Tour",
+    "description": "Haz que un ciclista tome la salida en un Grand Tour."
+  },
+  "team_promotion": {
+    "title": "Ascenso",
+    "description": "Sube a una división superior."
+  },
+  "team_relegation": {
+    "title": "Descenso",
+    "description": "Baja a una división inferior."
+  },
+  "team_survived": {
+    "title": "Salvado",
+    "description": "Evita el descenso tras terminar en la zona de peligro."
+  },
+  "auction_first_bid": {
+    "title": "Primera puja",
+    "description": "Haz tu primera puja en una subasta."
+  },
+  "auction_first_win": {
+    "title": "Primera victoria",
+    "description": "Gana tu primera subasta."
+  },
+  "auction_5_wins": {
+    "title": "5 subastas ganadas",
+    "description": "Gana 5 subastas en total."
+  },
+  "auction_10_wins": {
+    "title": "10 subastas ganadas",
+    "description": "Gana 10 subastas en total."
+  },
+  "auction_25_wins": {
+    "title": "25 subastas ganadas",
+    "description": "Gana 25 subastas en total."
+  },
+  "auction_50_wins": {
+    "title": "50 subastas ganadas",
+    "description": "Gana 50 subastas en total."
+  },
+  "auction_sniper": {
+    "title": "Francotirador",
+    "description": "Gana una subasta con la puja mínima."
+  },
+  "auction_last_second": {
+    "title": "Último segundo",
+    "description": "Gana una subasta durante la prórroga."
+  },
+  "auction_high_roller": {
+    "title": "Gran apostador",
+    "description": "Haz una puja de más de 500.000 CZ$."
+  },
+  "auction_5_streak": {
+    "title": "Dominio",
+    "description": "Gana 5 subastas seguidas."
+  },
+  "secret_rival": {
+    "title": "Rival acérrimo",
+    "description": "Puja contra el mismo mánager en 10 subastas."
+  },
+  "secret_heartbreak": {
+    "title": "Rompecorazones",
+    "description": "Pierde una subasta en el último segundo 3 veces."
+  },
+  "secret_streak_7": {
+    "title": "Semanal",
+    "description": "Inicia sesión 7 días seguidos."
+  },
+  "secret_streak_30": {
+    "title": "Constante de verdad",
+    "description": "Inicia sesión 30 días seguidos."
+  },
+  "secret_watchlist_50": {
+    "title": "Ojeador",
+    "description": "Añade 50 ciclistas a tu lista de seguimiento."
+  },
+  "team_15_riders": {
+    "title": "Plantilla en crecimiento",
+    "description": "Ten 15 ciclistas en tu equipo a la vez."
+  },
+  "team_20_riders": {
+    "title": "Plantilla completa",
+    "description": "Ten 20 ciclistas en tu equipo a la vez."
+  },
+  "team_25_riders": {
+    "title": "Plantilla amplia",
+    "description": "Ten 25 ciclistas en tu equipo a la vez."
+  },
+  "team_30_riders": {
+    "title": "Plantilla máxima",
+    "description": "Alcanza el número máximo de ciclistas (30)."
+  },
+  "team_youth": {
+    "title": "Equipo joven",
+    "description": "Ten al menos un 50 % de ciclistas sub-25 en tu equipo."
+  },
+  "team_5_achievements": {
+    "title": "Vitrina de trofeos",
+    "description": "Desbloquea 5 logros."
+  },
+  "season_board_100": {
+    "title": "El favorito de la directiva",
+    "description": "Alcanza el 100 % de satisfacción de la directiva."
+  },
+  "transfer_first": {
+    "title": "Primer trato",
+    "description": "Completa tu primer fichaje."
+  },
+  "transfer_5": {
+    "title": "5 fichajes",
+    "description": "Completa 5 fichajes en total."
+  },
+  "transfer_15": {
+    "title": "15 fichajes",
+    "description": "Completa 15 fichajes en total."
+  },
+  "transfer_30": {
+    "title": "30 fichajes",
+    "description": "Completa 30 fichajes en total."
+  },
+  "transfer_seller_10": {
+    "title": "Vendedor",
+    "description": "Vende 10 ciclistas mediante fichaje."
+  },
+  "transfer_buyer_10": {
+    "title": "Comprador",
+    "description": "Compra 10 ciclistas mediante fichaje."
+  },
+  "transfer_negotiator": {
+    "title": "Negociador",
+    "description": "Completa un fichaje después de al menos 3 rondas de contraofertas."
+  }
+}
