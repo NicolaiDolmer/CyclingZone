@@ -74,7 +74,8 @@ test("native curve requires explicit distance to its actual pursuer", () => {
 });
 
 // #6803: S5's nye udbrud efter en tidlig indhentning (#6369) har eget gruppe-id.
-const twoBreaks = (extra: Array<Record<string, unknown>> = [], { caughtSecond = true } = {}) => [
+type Ev = { km: number; type: string; params?: Record<string, unknown> };
+const twoBreaks = (extra: Ev[] = [], { caughtSecond = true } = {}): Ev[] => [
   { km: 0, type: "stage_start", params: { distance_km: 180 } },
   { km: 12, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["a", "b"] } },
   { km: 14, type: "gap_update", params: { group_id: "breakaway-0", gap_seconds: 0, chase_group_id: "peloton-0", separation_seconds: 50 } },
@@ -107,7 +108,7 @@ test("#6803 the first break's group id reused by the field after the catch does 
 });
 
 test("#6803 a new break without explicit pursuit data invents no curve", () => {
-  const events = twoBreaks().filter((e) => !(e.type === "gap_update" && (e.params as any).group_id === "breakaway-1500"));
+  const events = twoBreaks().filter((e) => !(e.type === "gap_update" && e.params?.group_id === "breakaway-1500"));
   assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [{ km: 14, gapSeconds: 50 }, { km: 18, gapSeconds: 0 }]);
 });
 
