@@ -481,7 +481,7 @@ test("trainNowShortRaces: Friis' sag - 6 udtaget, 1 skadet -> advarsel (5 raske)
   assert.deepEqual(trainNowShortRaces({
     races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled" }],
     entries, injuredIds: new Set(["f"]),
-  }), [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6 }]);
+  }), [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6, startsShort: true }]);
 });
 
 test("trainNowShortRaces: fuld trup, startede, afmeldte og ryddede loeb giver ingen advarsel", () => {
@@ -500,7 +500,7 @@ test("trainNowShortRaces: fuld trup, startede, afmeldte og ryddede loeb giver in
 
 test("trainNowShortRaces: ingen udtagelse -> advarsel (assistenten kan ikke fylde op efter trykket)", () => {
   assert.deepEqual(trainNowShortRaces({ races: [{ id: "r", name: "R", stages_completed: 0 }], entries: [] }),
-    [{ id: "r", name: "R", fit: 0, entered: 0, min: 6 }]);
+    [{ id: "r", name: "R", fit: 0, entered: 0, min: 6, startsShort: false }]);
 });
 
 test("loadTrainNowShortRaces: en solgt rytter i udtagelsen taeller ikke (review #6742)", async () => {
@@ -513,7 +513,7 @@ test("loadTrainNowShortRaces: en solgt rytter i udtagelsen taeller ikke (review 
     riders: six.map((id) => ({ id, team_id: id === "sold" ? "t2" : "t1", squad: "senior", is_academy: false, is_retired: false })),
   };
   const out = await loadTrainNowShortRaces({ supabase: shortRaceDb(tables), team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
-  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
+  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6, startsShort: false }]);
 });
 
 function shortRaceDb(tables, { spent = [], failTable = null } = {}) {
@@ -543,7 +543,15 @@ const SIX_TABLES = () => {
 test("loadTrainNowShortRaces: en rytter der allerede har brugt loebsdagen taeller ikke (review #6742)", async () => {
   const supabase = shortRaceDb(SIX_TABLES(), { spent: [{ rider_id: "f", race_id: "other", game_day: 94 }] });
   const out = await loadTrainNowShortRaces({ supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
-  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
+  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6, startsShort: false }]);
+});
+
+test("trainNowShortRaces: regel B kun naar holdet havde gulvet og mindst 1 rask er tilbage (#6740)", () => {
+  const ids = (n) => Array.from({ length: n }, (_, i) => ({ race_id: "r", rider_id: `x${i}` }));
+  const race = [{ id: "r", name: "R", stages_completed: 0 }];
+  assert.equal(trainNowShortRaces({ races: race, entries: ids(5), injuredIds: new Set(["x0"]) })[0].startsShort, false, "5 udtaget havde aldrig gulvet");
+  assert.equal(trainNowShortRaces({ races: race, entries: ids(6), injuredIds: new Set(["x0","x1","x2","x3","x4","x5"]) })[0].startsShort, false, "ingen raske tilbage");
+  assert.equal(trainNowShortRaces({ races: race, entries: ids(7), injuredIds: new Set(["x0","x1"]) })[0].startsShort, true);
 });
 
 test("loadTrainNowShortRaces: GET fejler aabent, trykkets strict-tjek fejler lukket (review #6742)", async () => {

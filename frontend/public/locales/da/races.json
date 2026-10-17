@@ -559,6 +559,8 @@
     "willNotStart": "Færre end {min} ryttere. Dit hold stiller ikke op i dette løb.",
     "willNotStartEmpty": "Færre end {min} ryttere er fri til dette løb. Dit hold stiller ikke op.",
     "willNotStartShort": "Under {min} ryttere. Stiller ikke op.",
+    "startsShort": "{injured, plural, one {1 udtaget rytter er skadet} other {# udtagne ryttere er skadede}}. Dit hold starter med {starters, plural, one {1 rytter} other {# ryttere}}.",
+    "startsShortShort": "Skader: starter med {starters}.",
     "minHint": "Mindst {min} ryttere for at stille op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",

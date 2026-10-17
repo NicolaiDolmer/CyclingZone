@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** søndag 18/10: start `docs/sessions/2026-10-18-soendag-startprompt.md` (ejer-go pr. ny opgave + planlagt dag, ejer 16/10). Søndag: flip `promotion_pending_enabled` (55 ryttere, dry-run 16/10) på ordret "tænd" + help.json samme dag · Discord-webhook i Infisical (ejeren kører kommandoen) · roadbook + Discord 7.361-7.363 (ejeren poster) · billeder + go på #6680 · go på #6744 (#6742 merget). Mandag: #6724 (DOLMERPC) · #6731 · #6683 genbruger #6636, luk så #6636/#6634 · S5-genmåling #6712 → tænd-kort #6699 · #6703/#6704 prod-målinger.
+> **🎯 Next action:** søndag 18/10: start `docs/sessions/2026-10-18-soendag-startprompt.md` (ejer-go pr. ny opgave + planlagt dag, ejer 16/10). Søndag: flip `promotion_pending_enabled` (55 ryttere, dry-run 16/10) på ordret "tænd" + help.json samme dag · Discord-webhook i Infisical (ejeren kører kommandoen) · roadbook + Discord 7.361-7.363 (ejeren poster) · billeder + go på #6680. Mandag: #6724 (DOLMERPC) · #6731 · #6683 genbruger #6636, luk så #6636/#6634 · S5-genmåling #6712 → tænd-kort #6699 · #6703/#6704 prod-målinger.
 >
 > **16/10 (pc1):** 27 PR'er merget, bl.a. Akademi 2.0 (#6673, flag `academy_intake_pull_enabled` on ca. 21:15, trappe D) og sprinttog kun på flade etaper (`official_times_v5` aktuel, #6741), afventer oprykning bygget (flag off). Codex-stop (AGENTS 35), review-gate (#6657), CodeRabbit fra.
 >

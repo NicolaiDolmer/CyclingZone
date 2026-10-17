@@ -88,7 +88,7 @@ test("parse: shortRaces from the server, malformed rows dropped", () => {
   const s = parseTrainNowStatus({ enabled: true, available: true, shortRaces: [
     { id: "leman", name: "Tour du Léman", fit: 5, min: 6 }, { name: "no id" }, null,
   ] });
-  assert.deepEqual(s.shortRaces, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6 }]);
+  assert.deepEqual(s.shortRaces, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6, startsShort: false }]);
   assert.deepEqual(parseTrainNowStatus({ enabled: true }).shortRaces, []);
 });
 
@@ -112,4 +112,12 @@ test("warnings: none once the date is locked or the press is unavailable", () =>
   assert.deepEqual(trainNowWarnings({ ...available, available: false, reason: "previous_date_open", shortRaces: short }), []);
   assert.equal(trainNowNeedsConfirm({ ...available, shortRaces: [] }), false);
   assert.equal(trainNowNeedsConfirm(TRAIN_NOW_OFF), false);
+});
+
+// #6740 regel B: holdet havde gulvet, skade tog det under: det starter med de raske.
+test("warnings: a team that still starts short (rule B) gets its own sentence", () => {
+  const status = { ...available, shortRaces: [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6, startsShort: true }] };
+  assert.deepEqual(trainNowWarnings(status), [{ key: "trainNow.shortRaceStarts", params: { race: "Tour du Léman", fit: 5, min: 6 } }]);
+  assert.equal(trainNowNeedsConfirm(status), true);
+  assert.equal(parseTrainNowStatus({ enabled: true, shortRaces: [{ id: "a", fit: 5, entered: 6, min: 6, startsShort: true }] }).shortRaces[0].startsShort, true);
 });

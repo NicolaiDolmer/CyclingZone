@@ -132,6 +132,8 @@ export async function loadTodayRacesForTeam({ supabase, team, tickDate, strict =
  * After a press every rider is locked, so nobody can be added and the assistant
  * cannot top up (raceRunner skips locked riders). The team then starts with its
  * fit entered riders only. Started, withdrawn and cleared races are not warned about.
+ * Rule B (#6740, owner 16/10): when the team had the floor and only injuries took it
+ * below, it still starts with its fit riders (at least 1): `startsShort` says so.
  */
 export function trainNowShortRaces({ races, entries, injuredIds = new Set(), withdrawnIds = new Set(), clearedIds = new Set(), min = MIN_RACE_ENTRIES }) {
   const out = [];
@@ -141,7 +143,9 @@ export function trainNowShortRaces({ races, entries, injuredIds = new Set(), wit
     const raceEntries = (entries ?? []).filter((e) => e.race_id === race.id);
     const fit = raceEntries.filter((e) => !injuredIds.has(e.rider_id)).length;
     // `entered` skelner "ingen udtaget" fra "udtaget, men skadet" i advarslens tekst.
-    if (fit < min) out.push({ id: race.id, name: race.name ?? null, fit, entered: raceEntries.length, min });
+    if (fit >= min) continue;
+    const entered = raceEntries.length;
+    out.push({ id: race.id, name: race.name ?? null, fit, entered, min, startsShort: entered >= min && fit >= 1 });
   }
   return out;
 }
