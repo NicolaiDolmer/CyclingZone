@@ -242,6 +242,9 @@ export function parseArgs(argv) {
     else if (a.startsWith("--issue=")) opts.issue = a.slice(8);
     else throw new Error(`Ukendt argument: ${a}`);
   }
+  if (opts.only !== null && opts.only.length === 0) {
+    throw new Error("--only kræver mindst ét trin-id (fx --only=parking,contract-expiry)");
+  }
   if (!Number.isInteger(opts.fromSeason) || opts.fromSeason < 1) {
     throw new Error("--from skal være et positivt heltal");
   }
@@ -254,6 +257,7 @@ export function parseArgs(argv) {
  * uden --prod; et ukendt --only-id er en fejl, ikke en stille udeladelse.
  */
 export function selectSteps(plan, { prod, only }) {
+  if (only && only.length === 0) throw new Error("--only kræver mindst ét trin-id");
   if (only) {
     const known = new Set(plan.map((s) => s.id));
     const unknown = only.filter((id) => !known.has(id));
