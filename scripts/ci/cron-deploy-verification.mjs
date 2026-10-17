@@ -263,9 +263,12 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
       // never proves a tick; every affected row must advance after observation.
       if (initial && Array.isArray(rows)) {
         for (const row of rows) if (Number.isFinite(stamp(row?.last_checkin_at))) excluded.add(stamp(row.last_checkin_at));
-        initial = false;
       }
       result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded, accepted, drainSeconds, cohortAt });
+      // Only a snapshot that evaluated cleanly consumes the first-snapshot
+      // guard (#6799): an invalid one is retried and the next valid snapshot
+      // is then still the first one that can never prove a tick.
+      initial = false;
       for (const job of result.jobs) if (job.state === 'verified') accepted.set(job.slug, job);
       everRead = true;
       readFailing = false;

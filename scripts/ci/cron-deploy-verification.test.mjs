@@ -118,6 +118,16 @@ test('a read error that lasts to the deadline is red for unaccepted jobs while a
   assert.equal(result.jobs.find(job => job.slug === 'medium').state, 'failed');
 });
 
+test('an invalid first snapshot does not consume the first-snapshot guard (#6799 review)', async () => {
+  let calls = 0;
+  const bodies = [[row('short', since), row('short', since)], [row('short', '2026-10-07T12:00:05Z')], [row('short', '2026-10-07T12:00:20Z')]];
+  const result = await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',
+    now: () => '2026-10-07T12:00:30Z', sleep: async () => {},
+    fetchFn: async () => ({ ok: true, json: async () => bodies[calls++] }) });
+  assert.equal(result.state, 'verified');
+  assert.equal(calls, 3, 'the unique boot-prime row after the invalid snapshot is not proof');
+});
+
 test('a never-readable heartbeat fails long cadence jobs after the short window instead of deferring them (#6799)', () => {
   const args = { slugs: ['long'], since, monitors };
   assert.equal(evaluateUnreadable({ ...args, now: '2026-10-07T12:10:00Z' }).state, 'waiting');
