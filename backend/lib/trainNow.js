@@ -263,6 +263,8 @@ export async function runTrainNow({
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
   if (!await isTrainingConditionPerDateEnabled(supabase)) return { status: 409, body: { error: "train_now_requires_date_settlement" } };
   if (!season?.id) return { status: 409, body: { error: "no_active_season" } };
+  // #6536 (Codex): et parkeret hold traener ikke, heller ikke paa managerens tryk.
+  if (team.parked_at != null) return { status: 409, body: { error: "team_parked" } };
   if (!team.league_division_id) return { status: 409, body: { error: "no_race_day_today" } };
   if (typeof loadDaySpans !== "function") throw new Error("loadDaySpans required");
 

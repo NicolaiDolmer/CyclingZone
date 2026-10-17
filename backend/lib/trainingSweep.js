@@ -101,9 +101,11 @@ export async function runTrainingSweep({
   // gennem SAMME dailyTrainingEngine som menneskehold (samme motor, nul asymmetri).
   // Flag off (default) = eksakt samme query som før #3459 (bit-identisk).
   const raceDayEngineOn = await isRaceDayEngineEnabled(supabase);
+  // #6536: et parkeret hold er uroert, ogsaa i denne gamle writer (ellers ville
+  // 22:00-sweepen tikke det, naar dagsafslutningen bevidst springer det over).
   const teamsQuery = raceDayEngineOn
-    ? supabase.from("teams").select("id").eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false)
-    : supabase.from("teams").select("id").eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false);
+    ? supabase.from("teams").select("id").eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false).is("parked_at", null)
+    : supabase.from("teams").select("id").eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false).is("parked_at", null);
 
   const [teamsResult, seasonResult, runsResult] = await Promise.all([
     teamsQuery,

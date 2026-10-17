@@ -138,7 +138,7 @@ describe("buildSweepPlan", () => {
     // gameDay: null — motorens fail-safe-kaskade falder saa tilbage til
     // (team_id, tick_date). De stopper altsaa ikke stille med at udvikle sig.
     const plan = buildSweepPlan({
-      teams: [{ id: "ai1", league_division_id: null }],
+      teams: [{ id: "ai1", league_division_id: null, is_ai: true }],
       gameDaysByDivisionMap: byDivision,
       alreadyRanRaceDayKeys: new Set(),
       alreadyRanLegacyTeamIds: new Set(),
@@ -148,12 +148,63 @@ describe("buildSweepPlan", () => {
 
   it("et division-loest hold der allerede har koert i dag springes over", () => {
     const plan = buildSweepPlan({
-      teams: [{ id: "ai1", league_division_id: null }],
+      teams: [{ id: "ai1", league_division_id: null, is_ai: true }],
       gameDaysByDivisionMap: byDivision,
       alreadyRanRaceDayKeys: new Set(),
       alreadyRanLegacyTeamIds: new Set(["ai1"]),
     });
     assert.deepEqual(plan, []);
+  });
+
+  // #6536: parkering nulstiller league_division_id. Et parkeret menneskehold lignede
+  // derfor et division-loest AI-hold og fik et legacy-tick hver aften.
+  it("parkeret hold uden division faar INTET tick", () => {
+    const plan = buildSweepPlan({
+      teams: [{ id: "p1", league_division_id: null, is_ai: false, parked_at: "2026-09-27T18:59:00Z" }],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.deepEqual(plan, []);
+  });
+
+  it("parkeret hold springes over, ogsaa hvis det stadig baerer en division", () => {
+    const plan = buildSweepPlan({
+      teams: [{ id: "p1", league_division_id: "d1", is_ai: false, parked_at: "2026-09-27T18:59:00Z" }],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.deepEqual(plan, []);
+  });
+
+  it("aktivt menneskehold uden division (fallback ved oprettelse) faar stadig legacy-tick", () => {
+    const plan = buildSweepPlan({
+      teams: [{ id: "h1", league_division_id: null, is_ai: false, parked_at: null }],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.equal(plan.length, 1);
+    assert.equal(plan[0].teamId, "h1");
+    assert.equal(plan[0].gameDay, null);
+  });
+
+  it("blandet bestand: aktivt hold uaendret, AI-hold uden division stadig ét legacy-tick, parkeret intet", () => {
+    const plan = buildSweepPlan({
+      teams: [
+        { id: "t1", league_division_id: "d2", is_ai: false, parked_at: null },
+        { id: "ai1", league_division_id: null, is_ai: true, parked_at: null },
+        { id: "p1", league_division_id: null, is_ai: false, parked_at: "2026-09-27T18:59:00Z" },
+      ],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.deepEqual(plan, [
+      { teamId: "t1", gameDay: 7, squad: DEFAULT_SQUAD, dateGameDays: [7] },
+      { teamId: "ai1", gameDay: null, squad: DEFAULT_SQUAD },
+    ]);
   });
 });
 
@@ -1106,7 +1157,7 @@ function buildParityFixture() {
   const riders = [];
   for (let t = 0; t < 262; t++) {
     const id = `team-${String(t).padStart(3, "0")}`;
-    teams.push({ id, league_division_id: t < 2 ? null : `div-${t % 11}` });
+    teams.push({ id, league_division_id: t < 2 ? null : `div-${t % 11}`, is_ai: t < 2 });
     for (let r = 0; r < 3; r++) riders.push({ id: `${id}-r${r}`, team_id: id });
   }
   // #6439: en rytter solgt efter at datoen aabnede, settles af det gamle hold.
