@@ -194,6 +194,30 @@ export function firstStageAtByRace(scheduleRows) {
   return out;
 }
 
+/** race_id → sidste etapes tidspunkt (ms). Bruges til løbets tilstand VED tændingen. */
+export function lastStageAtByRace(scheduleRows) {
+  const out = new Map();
+  for (const row of scheduleRows || []) {
+    const ms = Date.parse(row?.scheduled_at);
+    if (!row?.race_id || !Number.isFinite(ms)) continue;
+    const prev = out.get(row.race_id);
+    if (prev == null || ms > prev) out.set(row.race_id, ms);
+  }
+  return out;
+}
+
+/**
+ * Er et etapeløb i gang VED tændingen? (#6158, Codex) Med etapeplan: startet før
+ * tændingen og sidste etape på/efter tændingen, så en fremtidig tænding ikke
+ * bruger dagens etapetæller. Uden etapeplan: dagens tæller som fallback.
+ */
+export function targetInProgressAtIgnition(race, { targetStarted, lastStageMs, ignitionMs }) {
+  const stages = Number(race?.stages) || 0;
+  if (!targetStarted || stages <= 1) return false;
+  if (lastStageMs != null) return lastStageMs >= ignitionMs;
+  return (Number(race?.stages_completed) || 0) < stages;
+}
+
 /**
  * Er målløbet startet før tændingen? Etapeplanen afgør (første etape før
  * tændingstidspunktet), så en prognose med en fremtidig tænding også fanger løb
@@ -241,7 +265,7 @@ export function countedAfterIgnition(plan, stagesForRider, paybackDays = RACE_V3
  * @param {string[]} [p.alreadyGivenBackIds]  i backup, ikke længere i tabellen
  * @param {string} p.ignitionAt              ISO
  */
-export function buildPlan({ season, plans, ridersById, teamsById, racesById, firstStageMs, postIgnitionStagesByRider, alreadyGivenBackIds = [], ignitionAt }) {
+export function buildPlan({ season, plans, ridersById, teamsById, racesById, firstStageMs, lastStageMs = new Map(), postIgnitionStagesByRider, alreadyGivenBackIds = [], ignitionAt }) {
   const ignitionMs = Date.parse(ignitionAt);
   if (!Number.isFinite(ignitionMs)) throw new Error("ignitionAt must be a valid timestamp");
   const ignitionDay = dateStringToOrdinal(copenhagenDateString(new Date(ignitionMs)));
@@ -278,8 +302,6 @@ export function buildPlan({ season, plans, ridersById, teamsById, racesById, fir
     if (c.counted) outcome = "keep_counted_after_ignition";
     else if (rules.length) outcome = "give_back";
 
-    const stages = Number(race?.stages) || 0;
-    const done = Number(race?.stages_completed) || 0;
     rows.push({
       planId: p.id,
       riderId: p.rider_id,
@@ -295,7 +317,7 @@ export function buildPlan({ season, plans, ridersById, teamsById, racesById, fir
       countedRaceIds: c.countedRaceIds,
       dipFelt: c.dipFelt,
       // Følgeeffekt til go-kortet: målløbet var i gang ved tændingen (etapeløb).
-      targetInProgressAtIgnition: targetStarted && stages > 1 && done < stages,
+      targetInProgressAtIgnition: targetInProgressAtIgnition(race, { targetStarted, lastStageMs: lastStageMs.get(p.target_race_id) ?? null, ignitionMs }),
       // Planlægbar igen? Pladsen frigives altid; det samme mål kan kun vælges igen
       // hvis det ikke er startet, og kun en seniorrytter kan planlægges.
       riderSeniorNow: plannerSquadFor(rider) === "senior",
@@ -495,7 +517,7 @@ export function dipApplyBlockers(dip) {
 // ── SQL: snapshot + restore ────────────────────────────────────────────────
 
 function assertBackupTable(table) {
-  if (!/^backup_6158_\d{8}$/.test(String(table))) throw new Error("Unexpected backup table name: ${table}");
+  if (!/^backup_6158_\d{8}$/.test(String(table))) throw new Error(`Unexpected backup table name: ${table}`);
 }
 
 function uuidList(ids) {
@@ -522,6 +544,10 @@ create table if not exists public.${table} as
   from public.rider_peak_plans where false;
 alter table public.${table} add column if not exists given_back_at timestamptz;
 alter table public.${table} enable row level security;
+-- Data API-grants (AGENTS 92, database/templates/new-public-table.sql): kun
+-- service_role (apply-scriptet) maa laese og stemple; RLS erstatter ikke grants.
+revoke all on table public.${table} from public, anon, authenticated, service_role;
+grant select, insert, update, delete on table public.${table} to service_role;
 create unique index if not exists ${table}_id on public.${table}(id);
 insert into public.${table}
   select ${PLAN_COLUMNS}, now(), null::timestamptz
@@ -928,6 +954,7 @@ export async function loadPlan(supabase, { ignition = IGNITION_NEXT_SEASON, back
   const plan = buildPlan({
     season, plans, ridersById, teamsById, racesById,
     firstStageMs: firstStageAtByRace(schedule),
+    lastStageMs: lastStageAtByRace(schedule),
     postIgnitionStagesByRider: postIgnitionFrom(seasonStagesByRider, ignitionMs),
     alreadyGivenBackIds, ignitionAt,
   });

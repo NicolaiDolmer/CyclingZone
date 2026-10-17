@@ -9,6 +9,8 @@ import {
   parseArgs,
   outOfScopeReason,
   firstStageAtByRace,
+  lastStageAtByRace,
+  targetInProgressAtIgnition,
   targetStartedBeforeIgnition,
   countedAfterIgnition,
   buildPlan,
@@ -661,4 +663,27 @@ test("after give-back the rider's quota slot is free again (quota counts rows)",
   const { canCreatePeakPlan } = await import("../../lib/riderPeakPlans.js");
   const existing = supabase.db.rider_peak_plans.filter((p) => p.rider_id === uuid(1)).map((p) => p.target_race_id);
   assert.deepEqual(canCreatePeakPlan({ existingTargetRaceIds: existing, targetRaceId: "R3" }), { ok: true, reason: null });
+});
+
+test("#6158 (Codex): etapeløb i gang ved tændingen afgøres af etapeplanen, ikke dagens tæller", () => {
+  const ign = Date.parse("2026-10-28T00:00:00+01:00");
+  const race = { stages: 5, stages_completed: 2 };
+  // Slutter før tændingen: ikke i gang ved tændingen, selvom kun 2 af 5 er kørt i dag.
+  assert.equal(targetInProgressAtIgnition(race, { targetStarted: true, lastStageMs: Date.parse("2026-10-24T15:00:00+02:00"), ignitionMs: ign }), false);
+  // Sidste etape efter tændingen: i gang.
+  assert.equal(targetInProgressAtIgnition(race, { targetStarted: true, lastStageMs: Date.parse("2026-10-29T15:00:00+01:00"), ignitionMs: ign }), true);
+  // Uden etapeplan: fallback til tælleren.
+  assert.equal(targetInProgressAtIgnition(race, { targetStarted: true, lastStageMs: null, ignitionMs: ign }), true);
+  // Endagsløb og ikke-startede løb er aldrig i gang.
+  assert.equal(targetInProgressAtIgnition({ stages: 1 }, { targetStarted: true, lastStageMs: null, ignitionMs: ign }), false);
+  assert.equal(targetInProgressAtIgnition(race, { targetStarted: false, lastStageMs: null, ignitionMs: ign }), false);
+  const last = lastStageAtByRace([{ race_id: "a", scheduled_at: "2026-10-20T13:00:00Z" }, { race_id: "a", scheduled_at: "2026-10-22T13:00:00Z" }]);
+  assert.equal(last.get("a"), Date.parse("2026-10-22T13:00:00Z"));
+});
+
+test("#6158 (Codex): backup-tabellen faar Data API-grants kun til service_role", () => {
+  const sql = buildSnapshotSql(["00000000-0000-0000-0000-000000000001"], "backup_6158_20261017");
+  assert.match(sql, /revoke all on table public\.backup_6158_20261017 from public, anon, authenticated, service_role;/);
+  assert.match(sql, /grant select, insert, update, delete on table public\.backup_6158_20261017 to service_role;/);
+  assert.doesNotMatch(sql, /to (anon|authenticated)/);
 });
