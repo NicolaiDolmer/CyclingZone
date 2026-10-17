@@ -138,13 +138,12 @@ export const MIN_DIVISION = 1;
 // (reconcileAiTeamsForPool) håndterer nu hold-bevægelse pr. pulje (binær-træ via pool_index).
 export const MAX_DIVISION = 4;
 
-// #1688 forever-relaunch (ejer-besluttet 2026-06-22): ægte managere kommer ind i
-// MANAGER_ENTRY_DIVISION — IKKE i den strukturelle bund (MAX_DIVISION). Med nuværende
-// spillertal fyldes div 4 ikke med AI; managerne koncentreres i div 3 (fyldigere felter,
-// ~770 færre fyld-ryttere). Div 4 forbliver tom headroom og aktiveres ved skala (op/-
-// nedrykning + signup-division revurderes når div 3 nærmer sig kapacitet). MAX_DIVISION
-// (=4) er stadig den strukturelle bund for økonomi + op/nedrykning.
-export const MANAGER_ENTRY_DIVISION = 3;
+// #6650 (ejer-besluttet 2026-10-15): ægte nye managere kommer ind i bunden, Division 4,
+// og spredes jævnt på dens aktive puljer (færrest rigtige managere først). Fra #1688
+// (22/6) var entry div 3, men S4-pyramiden 1/2/4/4 (#5642) fyldte alle D3-puljer med AI,
+// så D3 altid var mættet og hver tilmelding siden 28/9 faldt igennem til D4 alligevel.
+// Konstanten siger nu det, placeringen reelt gør.
+export const MANAGER_ENTRY_DIVISION = MAX_DIVISION;
 
 // Mål-antal "rigtige" hold pr. division for fyld-fra-toppen (#962). Kun aktive,
 // ikke-test menneske-hold tæller med — samme filter som ranglisten (AI, test og

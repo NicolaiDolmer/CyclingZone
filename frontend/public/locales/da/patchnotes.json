@@ -11,11 +11,12 @@
   },
   "filter": {
     "ariaLabel": "Filtrér efter kategori",
-    "rollout": {
-      "ariaLabel": "Filtrér efter udrulning",
+    "betaOnly": "Kun beta",
+    "category": {
       "all": "Alle",
-      "beta": "Beta",
-      "nowLive": "Nu for alle"
+      "new": "Nyt",
+      "improved": "Forbedret",
+      "fixed": "Rettet"
     }
   },
   "category": {

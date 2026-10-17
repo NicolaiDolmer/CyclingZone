@@ -117,10 +117,25 @@ export const MIN_RACE_ENTRIES = 6;
 //                                            kan ikke nå 6, og holdet stiller ikke op.
 // `emptySelection` lader panelet/kolonnen vælge den rigtige sætning uden at duplikere
 // gulv-logikken — selve reglen (er der ryttere nok) er identisk med den delvise gren.
-export function partialSquadOutlook({ selected, free = 0, fieldMax, raceLive = false }) {
+//
+// #6740 (regel B, ejer 16/10): `selected` er RASKE udtagne, `injured` de skadede udtagne.
+// Havde holdet gulvet og er kun under det pga. skade, fylder assistenten op med de frie
+// det har, og holdet starter med dem der er (mindst 1):
+//   "startsShort" — { starters } ryttere stiller op, færre end gulvet.
+// Spejler backendens raceStartOutlook.teamWillStart / raceFieldIntegrity.injuryShortTeamIds.
+export function partialSquadOutlook({ selected, injured = 0, free = 0, fieldMax, raceLive = false }) {
   if (raceLive) return null;
   const picked = Number(selected) || 0;
   const freeLeft = Math.max(0, Number(free) || 0);
+  const injuredPicked = Math.max(0, Number(injured) || 0);
+  const fitLeft = Math.max(0, picked);
+  if (injuredPicked > 0 && fitLeft < MIN_RACE_ENTRIES && fitLeft + injuredPicked >= MIN_RACE_ENTRIES
+    && fitLeft + freeLeft < MIN_RACE_ENTRIES && fitLeft + freeLeft >= 1) {
+    return {
+      kind: "startsShort", open: Math.max(0, MIN_RACE_ENTRIES - fitLeft), free: freeLeft,
+      injured: injuredPicked, starters: fitLeft + freeLeft, min: MIN_RACE_ENTRIES,
+    };
+  }
   if (picked <= 0) {
     const open = Math.max(0, Number(fieldMax) || 0);
     if (freeLeft < MIN_RACE_ENTRIES) {

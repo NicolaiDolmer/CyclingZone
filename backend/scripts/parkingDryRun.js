@@ -35,7 +35,9 @@ import {
 } from '../lib/managerParking.js';
 import { choosePoolForNewTeam, NEW_TEAM_PLACEMENT_TEAM_COLUMNS } from '../lib/teamProfileEngine.js';
 import { daysSinceLastSeen } from '../lib/managerActivity.js';
-import { MANAGER_ENTRY_DIVISION, MAX_DIVISION, POOL_TARGET_SIZE } from '../lib/economyConstants.js';
+import { MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE } from '../lib/economyConstants.js';
+import { isPoolRetired } from '../lib/aiTeamGenerator.js';
+import { isYouthSquad } from '../lib/squads.js';
 
 const wantJson = process.argv.includes('--json');
 
@@ -79,7 +81,9 @@ export function simulateParkingSweep({ humanTeams, users, subscriptions, pools, 
     const sim = simById.get(t.id);
     if (sim) sim.league_division_id = null;
   }
-  const placementPools = pools.filter((p) => p.tier === MANAGER_ENTRY_DIVISION || p.tier === MAX_DIVISION);
+  // Samme mål som pickDivisionForNewTeam: aktive seniorpuljer i entry-tieren. #6650: entry
+  // er D4, hvor E-H er pensioneret (#5642); ungdomspuljer deler tier (#5536).
+  const placementPools = pools.filter((p) => p.tier === MANAGER_ENTRY_DIVISION && !isPoolRetired(p) && !isYouthSquad(p.squad));
   const placements = [];
   for (const t of wouldUnpark) {
     const choice = choosePoolForNewTeam({ pools: placementPools, teams: simTeams });
@@ -131,7 +135,7 @@ async function main() {
   // Samme grundlag som sweepen (managerParking.loadParkingInputs).
   const { teams: humanTeams, users, subscriptions } = await loadParkingInputs({ supabase });
   const pools = await fetchAllRows(() =>
-    supabase.from('league_divisions').select('id, tier, pool_index, label').order('id')
+    supabase.from('league_divisions').select('id, tier, pool_index, label, retired_at, squad').order('id')
   );
   // ALLE hold (også AI) — pladser tæller uanset hvem der sidder på dem.
   const seatTeams = await fetchAllRows(() =>

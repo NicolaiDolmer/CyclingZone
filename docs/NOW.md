@@ -4,17 +4,17 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · CodeRabbit-loft · `INDEXNOW_KEY` (#6558) · post Discord 7.356-7.360 (`docs/drafts/discord-patch-7356-7360-2026-10-14.md`) · tænd beta for etapeside 2.0 (`stage_page_v2`) når klar.
+> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action (startprompt `docs/sessions/2026-10-15-pc1-dynamisk-workflow.md`):** (0) #6639 merget 15/10 (S5-benchmark under backend/); #6640 (vagt) åben. (1) Merg kalender-PR #6637 (#6367, §1d=160 ejer-go) → prod dry-run → vis ejeren → `--apply` på ordret go; åbne gates: motor-del (#6362/#6363) + bølget-afslutningsbånd. Live senest lør 18/10 (#6369). (2) Løbshistorien på etapeside 2.0 (#6570 del 2, kontrakt fra #6632). (3) Datokort tor (#6601). (4) Landingpage "mennesket bag" (#1369, P01-P20). (5) Codex-audit af svageste områder → kort.
+> **🎯 Next action:** pc1 lang session 17-18/10: `docs/sessions/2026-10-17-pc1-eftermiddag-startprompt.md` (ejer-godkendt: sæsonskifte-generalprøve + 10x, `s5_profiles_v2` slået fra med kuperede udbrud + formtoppe, formtop-tilbagebetaling som tørkørsel, testport, dark mode, UI #6698 #6569 #6512 #6351 #6683 #6570, vækst-udkast). Søndag: verificér Vuelta binder S5 kl. 11 · `promotion_pending_enabled` på "tænd" · webhook · roadbook/Discord 7.361-7.367 · #6680. #6739: "spørg senere".
 >
-> **14/10 aften DOLMERPC merget:** S5 = ons 28/10 - lør 28/11 (#5833, forum) · lørdagsslut fra S5 (#6635) · S5-gate på alle skrivestier (#6630) · motor-bench (#6631) · løbslog-korrekthed + race-story-kontrakt (#6632) · etapeside 2.0 bag `stage_page_v2`=off (#6633) · patch 7.360. Åbent: #6616 pkt 2, #6617, #6618.
+> **17/10 (pc1):** S5-motorreglerne tændt (#6699 merget 08:48, ejerens "Tænd"; testet på alle 157 S4-løb + hele S5-sæsonen, S5 872 mod v5 968 fejlende mål; nyt udbrud efter tidlig indhentning). GitHub-audit: 45 lukket, done 69 → 20. Opfølgning #6748.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
 
-> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse. **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
+> **🔴 Åbne fund:** #6490 aftenspids · #5692 matview · #6504 frigivelse (ny forekomst 16/10, CYCLINGZONE-9B). **📊 Triage:** `infisical run --env=dev --silent -- node scripts/sentry-issues.mjs --period=24h`.
 
 ## Standing context (forever-relaunch)
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude Code på NICOLAIPC (pc1) 15/10 - startprompt `docs/sessions/2026-10-15-pc1-dynamisk-workflow.md`. Codex-bibliotek PR #6636 holdes adskilt. DOLMERPC-rester: OneDrive `recovery/DOLMERPC-2026-10-15/`. **DOLMERPC:** Claude Code 15/10 - løbshistorien #6570, så #1369.
+> **🤖 Working agent:** pc1 lang session 17-18/10 (Claude, start 11:29), samle-issue #6749. Ejer merge-køen.

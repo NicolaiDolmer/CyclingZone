@@ -37,7 +37,10 @@ export function createTrainNowRouter({
     try {
       const isBetaTester = await isViewerBetaTester(req);
       const season = await loadActiveSeason();
-      const result = await run({ supabase, team: req.team, season, isBetaTester, loadDaySpans });
+      // #6740: the page's explicit yes, bound to the race ids its warning showed.
+      const raw = req.body?.confirmedShortRaceIds;
+      const confirmedShortRaceIds = Array.isArray(raw) ? raw.filter((id) => typeof id === "string").slice(0, 50) : [];
+      const result = await run({ supabase, team: req.team, season, isBetaTester, loadDaySpans, confirmedShortRaceIds });
       res.status(result.status).json(result.body);
     } catch (err) {
       captureExceptionFn(err);

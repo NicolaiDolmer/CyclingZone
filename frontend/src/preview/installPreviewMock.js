@@ -16,6 +16,7 @@ import { trainingGroupsMockRoute } from "../components/training/groups/trainingG
 import { trainingFatigueRulesMockRoute } from "./trainingFatigueRulesMock.js"; // #4854
 import { trainingReceiptMock } from "./trainingReceiptMock.ts";
 import { trainNowPreviewRoute, trainNowSelectionPreview, trainNowBoardPreview, trainNowSeasonPreview } from "../components/training/TrainNowPreviewMock.ts"; // #4847/#6139/#6383
+import { raceStartBoardPreview, raceStartPreviewNotifications } from "./raceStartPreviewMock.ts"; // #6740
 import {
   TEST_USER, TEST_TEAM, SEED_ONBOARDING_PROGRESS, SEED_TRAINING, SEED_SCOUT_ESTIMATES,
   SEED_TEAM_ORDERS,
@@ -231,9 +232,9 @@ export function installPreviewMock() {
       // #4981 · indbakkens bud-aggregat, se PREVIEW_AUTOBID_NOTIFICATIONS ovenfor.
       // Skal stå FØR den generiske REST-blok, som ellers svarer [] for tabellen.
       if (method === "GET" && /\/rest\/v1\/notifications/.test(url)) {
-        return jsonResponse(
-          wantsObject(accept) ? PREVIEW_AUTOBID_NOTIFICATIONS[0] : PREVIEW_AUTOBID_NOTIFICATIONS,
-        );
+        // #6740: ?raceStart=injured|dns lægger de to nye beskeder øverst.
+        const rows = [...raceStartPreviewNotifications(TEST_USER.id), ...PREVIEW_AUTOBID_NOTIFICATIONS];
+        return jsonResponse(wantsObject(accept) ? rows[0] : rows);
       }
 
       // #5519: rytter-opslaget fra U23 team-/Junior team-siden. Svarer KUN når
@@ -543,7 +544,8 @@ export function installPreviewMock() {
         }
         // #6383: dagsboardet og saesonmatrixen foelger samme Train now-tilstand.
         if (parsed.pathname.endsWith("/api/races/distribution")) {
-          return jsonResponse(trainNowBoardPreview(apiResponse(parsed.pathname, parsed.search)));
+          // #6740: ?raceStart=injured|dns (skadet rytter / stillede ikke op).
+          return jsonResponse(raceStartBoardPreview(trainNowBoardPreview(apiResponse(parsed.pathname, parsed.search))));
         }
         if (parsed.pathname.endsWith("/api/races/selection/season")) {
           return jsonResponse(trainNowSeasonPreview(apiResponse(parsed.pathname, parsed.search)));

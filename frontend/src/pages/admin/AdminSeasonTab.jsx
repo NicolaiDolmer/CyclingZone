@@ -316,11 +316,11 @@ export default function AdminSeasonTab() {
               type="datetime-local"
               value={closesAtInput}
               onChange={e => setClosesAtInput(e.target.value)}
-              className="flex-1 px-3 py-2 border border-cz-border rounded-lg text-sm text-cz-1 bg-cz-card"
+              className="flex-1 px-3 py-2 border border-cz-border rounded-cz text-sm text-cz-1 bg-cz-card"
             />
             {windowOpen && (
               <button onClick={updateClosesAt} disabled={loading.closesAt}
-                className="px-3 py-2 bg-cz-info-bg text-cz-info border border-cz-info/30 rounded-lg text-sm font-medium hover:bg-blue-100 disabled:opacity-50">
+                className="px-3 py-2 bg-cz-info-bg text-cz-info border border-cz-info/30 rounded-cz text-sm font-medium hover:bg-blue-100 disabled:opacity-50">
                 {loading.closesAt ? "..." : "Gem"}
               </button>
             )}
@@ -340,7 +340,7 @@ export default function AdminSeasonTab() {
               return (
                 <button key={mode} onClick={() => updateDeadlineDayOverride(mode)}
                   disabled={loading[`dd_${mode}`] || active}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all disabled:cursor-default
+                  className={`px-3 py-1.5 rounded-cz text-sm font-medium border transition-all disabled:cursor-default
                     ${active
                       ? "bg-cz-sidebar text-white border-cz-sidebar"
                       : "bg-cz-card text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
@@ -362,7 +362,7 @@ export default function AdminSeasonTab() {
         {seasons.length > 0 && (
           <div className="mb-4 flex flex-col gap-2">
             {seasons.map(s => (
-              <div key={s.id} className="flex items-center justify-between bg-cz-subtle rounded-lg px-4 py-3">
+              <div key={s.id} className="flex items-center justify-between bg-cz-subtle rounded-cz px-4 py-3">
                 <div>
                   <span className="text-cz-1 font-medium text-sm">Sæson {s.number}</span>
                   <span className={`ms-3 text-xs ${statusColor[s.status]}`}>{statusLabel[s.status]}</span>
@@ -372,25 +372,25 @@ export default function AdminSeasonTab() {
                   {s.status !== "upcoming" && (
                     <button onClick={() => handleRederivePoints(s.id)} disabled={loading[`rederive_${s.id}`]}
                       title="Genberegn point + præmiepenge på løbsresultater ud fra den aktuelle point-config. Rytternes markedsværdi opdateres samtidig. Udbetalte løb røres ikke."
-                      className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 hover:bg-cz-subtle hover:text-cz-1">
+                      className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs disabled:opacity-50 hover:bg-cz-subtle hover:text-cz-1">
                       {loading[`rederive_${s.id}`] ? "..." : "↻ Point fra config"}
                     </button>
                   )}
                   {s.status !== "upcoming" && (
                     <button onClick={() => handleRebuildStandings(s.id)} disabled={loading[`rebuild_${s.id}`]}
-                      className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs disabled:opacity-50 hover:bg-cz-subtle hover:text-cz-1">
+                      className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-xs disabled:opacity-50 hover:bg-cz-subtle hover:text-cz-1">
                       {loading[`rebuild_${s.id}`] ? "..." : "↻ Standings"}
                     </button>
                   )}
                   {s.status === "upcoming" && (
                     <button onClick={() => handleSeasonAction(s.id, "start")} disabled={loading[`start_${s.id}`]}
-                      className="px-3 py-1.5 bg-cz-success-bg text-cz-success border border-cz-success/30 rounded-lg text-xs disabled:opacity-50">
+                      className="px-3 py-1.5 bg-cz-success-bg text-cz-success border border-cz-success/30 rounded-cz text-xs disabled:opacity-50">
                       {loading[`start_${s.id}`] ? "..." : "▶ Start"}
                     </button>
                   )}
                   {s.status === "active" && (
                     <button onClick={() => handleSeasonAction(s.id, "end")} disabled={loading[`end_${s.id}`]}
-                      className="px-3 py-1.5 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-xs disabled:opacity-50">
+                      className="px-3 py-1.5 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-xs disabled:opacity-50">
                       {loading[`end_${s.id}`] ? "..." : "⏹ Afslut"}
                     </button>
                   )}
@@ -404,17 +404,17 @@ export default function AdminSeasonTab() {
             <label className="block text-cz-3 text-xs mb-1">Sæsonnummer</label>
             <input type="number" required placeholder="1" value={seasonForm.number}
               onChange={e => setSeasonForm(f => ({ ...f, number: e.target.value }))}
-              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-28 focus:outline-hidden focus:border-cz-accent" />
+              className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm w-28 focus:outline-hidden focus:border-cz-accent" />
           </div>
           <div>
             <label className="block text-cz-3 text-xs mb-1">Løbsdage</label>
             <input type="number" value={seasonForm.race_days_total}
               onChange={e => setSeasonForm(f => ({ ...f, race_days_total: e.target.value }))}
-              className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm w-28 focus:outline-hidden focus:border-cz-accent" />
+              className="bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm w-28 focus:outline-hidden focus:border-cz-accent" />
           </div>
           <div className="flex items-end">
             <button type="submit" disabled={loading.season}
-              className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+              className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50">
               {loading.season ? "..." : "Opret sæson"}
             </button>
           </div>
@@ -429,26 +429,26 @@ export default function AdminSeasonTab() {
           <div className="flex-1">
             <label className="block text-cz-3 text-xs mb-1">Vælg sæson</label>
             <select value={calSeasonId} onChange={e => { setCalSeasonId(e.target.value); setCalPreview(null); setCalResult(null); }}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
           </div>
           <div className="flex items-end gap-2">
             <button onClick={loadCalendarPreview} disabled={loading.cal_preview || !calSeasonId}
-              className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50">
+              className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50">
               {loading.cal_preview ? "Indlæser..." : "Preview (dry-run)"}
             </button>
             <button onClick={handleGenerateCalendar} disabled={loading.cal_generate || !calPreview}
               title={!calPreview ? "Kør preview først" : undefined}
-              className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50">
+              className="px-4 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-sm font-medium hover:brightness-110 disabled:opacity-50">
               {loading.cal_generate ? "Genererer..." : "Generér kalender"}
             </button>
           </div>
         </div>
 
         {calPreview && (
-          <div className="overflow-x-auto rounded-lg border border-cz-border mb-2">
+          <div className="overflow-x-auto rounded-cz border border-cz-border mb-2">
             <table data-sort-exempt="admin dry-run preview, altid kort og pulje-ordnet" className="w-full text-xs min-w-[640px]">
               <thead>
                 <tr className="border-b border-cz-border">
@@ -500,7 +500,7 @@ export default function AdminSeasonTab() {
                 ? new Date(a.calculated_end).toLocaleString("da-DK", { timeZoneName: "short" })
                 : "—";
               return (
-                <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 bg-cz-subtle rounded-lg px-3 py-2">
+                <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 bg-cz-subtle rounded-cz px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-cz-1 text-sm font-medium">
                       {riderName}
@@ -515,7 +515,7 @@ export default function AdminSeasonTab() {
                   <button
                     onClick={() => handleCancelAuction(a)}
                     disabled={loading[`cancel_auction_${a.id}`]}
-                    className="px-3 py-1.5 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-xs hover:brightness-110 disabled:opacity-50 transition-all">
+                    className="px-3 py-1.5 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz text-xs hover:brightness-110 disabled:opacity-50 transition-all">
                     {loading[`cancel_auction_${a.id}`] ? "Annullerer..." : "Annullér"}
                   </button>
                 </div>
@@ -534,20 +534,20 @@ export default function AdminSeasonTab() {
           <div className="flex-1">
             <label className="block text-cz-3 text-xs mb-1">Vælg sæson (den sæson der afsluttes)</label>
             <select value={previewSeason} onChange={e => setPreviewSeason(e.target.value)}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+              className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
               <option value="">Vælg sæson...</option>
               {seasons.map(s => <option key={s.id} value={s.id}>Sæson {s.number} ({s.status})</option>)}
             </select>
           </div>
           <div className="flex items-end">
             <button onClick={loadSeasonPreview} disabled={loadingPreview || !previewSeason}
-              className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50">
+              className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-cz text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50">
               {loadingPreview ? "Indlæser..." : "Vis preview"}
             </button>
           </div>
         </div>
         {seasonPreview && (
-          <div className="overflow-x-auto rounded-lg border border-cz-border">
+          <div className="overflow-x-auto rounded-cz border border-cz-border">
             <table data-sortable className="w-full text-xs min-w-[760px]">
               <thead>
                 <tr className="border-b border-cz-border">

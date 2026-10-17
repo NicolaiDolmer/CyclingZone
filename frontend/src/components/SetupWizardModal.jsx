@@ -113,7 +113,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
               onKeyDown={e => e.key === "Enter" && handleSave()}
               placeholder={t("setupWizard.teamNamePlaceholder")}
               maxLength={40}
-              className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
+              className="w-full px-3 py-2.5 border border-cz-border rounded-cz text-sm
                 focus:outline-hidden focus:ring-2 focus:ring-cz-accent focus:border-transparent"
             />
           </div>
@@ -126,14 +126,14 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
               onKeyDown={e => e.key === "Enter" && handleSave()}
               placeholder={t("setupWizard.managerNamePlaceholder")}
               maxLength={40}
-              className="w-full px-3 py-2.5 border border-cz-border rounded-lg text-sm
+              className="w-full px-3 py-2.5 border border-cz-border rounded-cz text-sm
                 focus:outline-hidden focus:ring-2 focus:ring-cz-accent focus:border-transparent"
             />
           </div>
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm mb-4 px-3 py-2 bg-cz-danger-bg rounded-lg border border-cz-danger/30">
+          <p className="text-red-600 text-sm mb-4 px-3 py-2 bg-cz-danger-bg rounded-cz border border-cz-danger/30">
             {error}
           </p>
         )}
@@ -141,7 +141,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-2.5 bg-cz-accent hover:brightness-110 text-white font-bold rounded-lg
+          className="w-full py-2.5 bg-cz-accent hover:brightness-110 text-white font-bold rounded-cz
             text-sm transition-colors disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1"
         >
           {saving ? t("setupWizard.submitLoading") : (

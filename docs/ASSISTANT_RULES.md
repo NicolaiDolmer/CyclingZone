@@ -366,7 +366,11 @@ const rule = isRescue
 `raceRunner.js:977-979`
 
 **Redningen sætter aldrig en anden kaptajn end den spilleren selv valgte**
-(`race_role: isRescue ? "helper" : pick.race_role`, `raceRunner.js:988`).
+(`race_role: existingCount > 0 ? "helper" : pick.race_role`, `raceRunner.js`).
+**Eneste undtagelse (#6740 regel B, ejer 16/10):** er ALLE udtagne skadet, står ingen af
+spillerens egne ryttere tilbage til at bære kaptajnen. Redningen fylder da op til 6 som en
+redning (ingen felt-cap, ingen "assistenten udtog dit hold"-besked), men med autopickens
+roller, så holdet får en kaptajn blandt de frie ryttere.
 
 **Når gulvet ikke kan nås, skrives intet:**
 ```js
@@ -374,6 +378,12 @@ if (existingCount + picks.length < MIN_RACE_ENTRIES) continue;
 ```
 `raceRunner.js:984`. Begrundelsen står i koden: auto-entries der ikke rækker til et startfelt
 ville binde rytterne på løbsdagen for et løb de aldrig kommer i.
+
+**Undtagelse, skade efter udtagelsen (#6740, ejer 16/10):** havde holdet gulvet, og er det kun
+under det fordi udtagne ryttere er skadet, starter holdet alligevel med de raske det har
+(regel B). Her skriver redningen de frie ryttere den kan finde, også når 6 ikke nås
+(`injuryShortTeamIds`-parameteren). Se [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) under
+"Hvem stillede op".
 
 **Hold der springes over:** frosne · afmeldte (`race_withdrawals`) · eksplicit ryddede
 (`race_entry_clears`) · hold uden for løbets pulje (når `race.league_division_id` er sat) ·

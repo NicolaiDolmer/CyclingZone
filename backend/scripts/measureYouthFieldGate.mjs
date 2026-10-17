@@ -52,6 +52,14 @@
 //   infisical run --env=prod --silent -- node scripts/measureYouthFieldGate.mjs --juniors=N
 //   ... --squad=u23|junior|both   (default u23; junior kræver --juniors)
 //   ... --out=../balance-internals/<fil>.md
+//   ... --season=5 --gap-season=4   # benchmark af gab (default: sæsonen før målsæsonen)
+//   ... --no-benchmark              # kun felt-gaten
+//
+// #6668: AI-holdenes EKSISTERENDE ungdom tælles med (efter S4-cutover har de deres
+// trupper; planen giver kun nye kuld til hold uden trup, samme idempotens som
+// generatoren), og rapporten får en benchmark af gab: gap10 pr. terræn i ungdoms-
+// løbene mod senior og mod Grand Tour-referencen, og niveau-gabet menneske vs. AI
+// (i dag og efter løftet) med seniorernes bånd ved siden af.
 //
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY. Kun SELECT — scriptet har ingen skrivesti.
 // Exit: 0 = rapport skrevet, 2 = kald-/konfigurationsfejl.
@@ -62,16 +70,29 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { fetchAllRows } from "../lib/supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
+import { loadS5Benchmark } from "../lib/s5BenchmarkGate.js";
+// Samme evne-liste som generatorens niveau-mål (bestAbility over de synlige evner).
+import { VISIBLE_ABILITIES as LEVEL_ABILITIES } from "../lib/abilityDerivation.js";
 import { ageForSeason } from "../lib/riderSeasonAge.js";
+import { ACADEMY } from "../lib/academyFlag.js";
 import { SQUAD_MAX_AGE, SQUAD_CAPS, isYouthSquad, squadForSeasonAge } from "../lib/squads.js";
 import { MIN_RACE_ENTRIES, selectionSizeForRace } from "../lib/raceAutopick.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { hashStringToSeed } from "../lib/starterSquadAllocator.js";
-import { loadValuationModelById, DEFAULT_VALUATION_MODEL_ID } from "../lib/riderValuationModelSelect.js";
+import {
+  loadValuationModel,
+  loadProductionValueModel,
+  loadValuationModelById,
+  DEFAULT_VALUATION_MODEL_ID,
+} from "../lib/riderValuationModelSelect.js";
 import {
   planYouthSquads,
+  planYouthLift,
   loadActiveAiTeams,
+  loadPopulation,
+  loadLevelInputs,
+  buildHumanLevelProfile,
   assertBalanceInternalsPath,
   DEFAULT_TARGET_SEASON,
   DEFAULT_SEED,
@@ -93,8 +114,8 @@ export const RACE_DAYS = 140;
 /** Gulve (startende hold) gaten vises ved. Ikke en beslutning — se topkommentaren. */
 export const MIN_TEAM_FLOORS = Object.freeze([2, 4, 6, 8, 12]);
 export const DEFAULT_UNAVAILABLE = Object.freeze([0, 0.05, 0.1, 0.15]);
-/** Løbsberettiget fra sæsonalder 17 (YOUTH_RULES §2.1: 16-årige træner, kører ikke). */
-export const JUNIOR_RACE_MIN_AGE = 17;
+/** Løbsberettiget fra sæsonalder 16 (YOUTH_RULES §2.1, ejer 24/9 #5645: hele juniortruppen 16-18 må køre). Deles med akademiets mindstealder. */
+export const JUNIOR_RACE_MIN_AGE = ACADEMY.MIN_AGE;
 const SEED = 0x5518c1;
 
 // ── Rene funktioner ──────────────────────────────────────────────────────────
@@ -214,6 +235,98 @@ export function simulateForm({ pools, rosters, raceDays = RACE_DAYS, unavailable
 /** Holder gaten ved et gulv? 100 % af (pulje, løbsdag) skal have mindst `floor` startende hold. */
 export const gatePasses = (result, floor) => result.minStarters >= floor;
 
+// ── #6668: benchmark af ungdomsfelternes gab ─────────────────────────────────
+// Ejer 15/10 (#6667): felterne måles mod virkelige gab, FØR kalenderen skrives.
+// To mål, begge read-only og kun til balance-internals/:
+//   1) TIDS-gab: gap10 (tid fra vinder til nr. 10) i en afviklet sæsons ungdomsløb
+//      pr. terræn, mod seniorløbene i samme sæson og mod den virkelige reference
+//      (Grand Tour-etaper 2021-2025, backend/lib/__fixtures__/s5Benchmark…json,
+//      samme kilde som S5-benchmark-gaten). Etapeløb måles på etaperne, endagsløb
+//      på slutresultatet.
+//   2) NIVEAU-gab: bedste synlige evne pr. trup for menneskeholdenes ungdom, AI-
+//      ungdommen i dag, AI-ungdommen efter #6668-løftet, og seniorerne som bånd.
+/** Benchmarkens terræn-navne → spillets profile_type. Holdtidskørsel er udeladt. */
+export const BENCHMARK_TERRAIN_TO_PROFILE = Object.freeze({
+  flad: "flat",
+  boelget: "rolling",
+  kuperet: "hilly",
+  mellembjerg: "medium_mountain",
+  bjerg: "mountain",
+  hojbjerg: "high_mountain",
+  itt: "itt",
+});
+
+/** "+m:ss" / "+h:mm:ss" / "0:00" → sekunder; alt andet → null. */
+export function finishTimeSeconds(t) {
+  if (t == null) return null;
+  const m = /^\+?(\d+(?::\d{1,2}){0,2})$/.exec(String(t).trim());
+  if (!m) return null;
+  return m[1].split(":").reduce((s, x) => s * 60 + Number(x), 0);
+}
+
+const quartiles = (xs) => {
+  const s = xs.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!s.length) return { n: 0, p25: null, median: null, p75: null };
+  const at = (p) => {
+    const i = (s.length - 1) * p;
+    const lo = Math.floor(i);
+    const hi = Math.ceil(i);
+    return s[lo] + (s[hi] - s[lo]) * (i - lo);
+  };
+  return { n: s.length, p25: at(0.25), median: at(0.5), p75: at(0.75) };
+};
+
+/** n, gns, median, p90, max for en liste niveauer. Ren. */
+export function describeLevels(xs) {
+  const s = (xs || []).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!s.length) return { n: 0, mean: null, median: null, p90: null, max: null };
+  const at = (p) => s[Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1))];
+  return { n: s.length, mean: s.reduce((a, b) => a + b, 0) / s.length, median: at(0.5), p90: at(0.9), max: s[s.length - 1] };
+}
+
+/**
+ * gap10 pr. (trup, terræn) for en sæsons resultater. Ren.
+ * @param {Array<{squad:string|null, profile_type:string|null, finish_time:string}>} rows
+ *        én række pr. målt løb/etape: resultatet for nr. 10
+ * @returns {Map<string, Map<string, {n,p25,median,p75}>>} trup → terræn → kvartiler
+ */
+export function gap10BySquadTerrain(rows) {
+  const acc = new Map();
+  for (const r of rows || []) {
+    const sec = finishTimeSeconds(r.finish_time);
+    if (sec == null || !r.profile_type) continue;
+    const squad = r.squad || "senior";
+    if (!acc.has(squad)) acc.set(squad, new Map());
+    const byT = acc.get(squad);
+    if (!byT.has(r.profile_type)) byT.set(r.profile_type, []);
+    byT.get(r.profile_type).push(sec);
+  }
+  return new Map([...acc].map(([sq, byT]) => [sq, new Map([...byT].map(([t, xs]) => [t, quartiles(xs)]))]));
+}
+
+/** Den virkelige reference pr. terræn (benchmark-filens gap10). Ren. */
+export function benchmarkGapByTerrain(benchmark) {
+  const by = new Map();
+  for (const r of benchmark || []) {
+    const t = BENCHMARK_TERRAIN_TO_PROFILE[r?.terrain];
+    if (!t || r.gap10_s == null || !Number.isFinite(Number(r.gap10_s))) continue;
+    if (!by.has(t)) by.set(t, []);
+    by.get(t).push(Number(r.gap10_s));
+  }
+  return new Map([...by].map(([t, xs]) => [t, quartiles(xs)]));
+}
+
+/**
+ * Dom pr. (trup, terræn): ungdommens median mod referencens kvartil-interval.
+ * "inside" / "above" (for store gab) / "below" (for små gab). Ren.
+ */
+export function gapVerdict(median, ref) {
+  if (median == null || !ref || ref.p25 == null) return null;
+  if (median > ref.p75) return "above";
+  if (median < ref.p25) return "below";
+  return "inside";
+}
+
 // ── I/O ──────────────────────────────────────────────────────────────────────
 function parseArgs(argv) {
   const get = (name) => {
@@ -251,7 +364,12 @@ function parseArgs(argv) {
   const out = assertBalanceInternalsPath(
     get("out") && get("out") !== true ? get("out") : join(REPO_ROOT, "balance-internals", `5518-c1-field-gate-${stamp}.md`),
   );
-  return { squads: squadArg === "both" ? ["u23", "junior"] : [squadArg], juniors: juniors ?? 0, season, unavailable, out };
+  // #6668: benchmark af gab er default; tids-gabet måles på den seneste afviklede
+  // sæson før målsæsonen, medmindre --gap-season vælger en anden.
+  const benchmark = get("no-benchmark") !== true;
+  const gapSeason = get("gap-season") === undefined ? season - 1 : intArg("gap-season", get("gap-season"));
+  if (gapSeason < 1) throw new Error(`--gap-season skal være ≥ 1 (fik ${gapSeason})`);
+  return { squads: squadArg === "both" ? ["u23", "junior"] : [squadArg], juniors: juniors ?? 0, season, unavailable, out, benchmark, gapSeason };
 }
 
 async function loadInputs(supabase) {
@@ -289,7 +407,30 @@ function fieldMaxForSquad(catalog, squad) {
   return { max: Math.max(...classes.map((c) => selectionSizeForRace({ race_class: c }).max)), classes };
 }
 
-function render({ args, results, meta }) {
+function renderBenchmark(bench) {
+  if (!bench) return [];
+  const L = ["", `## Benchmark af gab (#6668) - gap10 i S${bench.gapSeason}, sekunder`, ""];
+  L.push("Median (p25-p75, n) pr. terræn. Reference = Grand Tour-etaper 2021-2025 (seniorer, virkelige). Dom = ungdommens median mod referencens kvartil-interval.", "");
+  const terrains = [...new Set([...bench.ref.keys(), ...[...bench.gaps.values()].flatMap((m) => [...m.keys()])])].sort();
+  const cell = (q) => (q && q.n ? `${Math.round(q.median)} (${Math.round(q.p25)}-${Math.round(q.p75)}, ${q.n})` : "-");
+  L.push("| terræn | reference | senior | U23 | junior | dom U23 | dom junior |", "|---|---|---|---|---|---|---|");
+  for (const t of terrains) {
+    const ref = bench.ref.get(t);
+    const g = (sq) => bench.gaps.get(sq)?.get(t);
+    L.push(`| ${t} | ${cell(ref)} | ${cell(g("senior"))} | ${cell(g("u23"))} | ${cell(g("junior"))} | ${gapVerdict(g("u23")?.median ?? null, ref) ?? "-"} | ${gapVerdict(g("junior")?.median ?? null, ref) ?? "-"} |`);
+  }
+  if (bench.levels) {
+    L.push("", "### Niveau-gab (bedste synlige evne) pr. trup", "");
+    L.push("| trup | gruppe | n | gns | median | p90 | max |", "|---|---|---:|---:|---:|---:|---:|");
+    for (const row of bench.levels) {
+      const d = row.stats;
+      L.push(`| ${row.squad} | ${row.group} | ${d.n} | ${d.mean == null ? "-" : d.mean.toFixed(1)} | ${d.median ?? "-"} | ${d.p90 ?? "-"} | ${d.max ?? "-"} |`);
+    }
+  }
+  return L;
+}
+
+function render({ args, results, meta, bench = null }) {
   const L = [];
   L.push(`# #5518 C1 - felt-gate for ungdomsløb (S${args.season})`, "");
   L.push("PRIVAT (balance-internals/, hard rule 17). Genereret af backend/scripts/measureYouthFieldGate.mjs (read-only).", "");
@@ -312,7 +453,65 @@ function render({ args, results, meta }) {
       L.push(`**${r.mapping} ${r.form.join("/")}:** ${r.result.perPool.map((p) => `${p.pool}=${p.minStarters}h/${p.minRiders}r`).join(" · ")}`, "");
     }
   }
+  L.push(...renderBenchmark(bench));
   return L.join("\n");
+}
+
+/** gap10-rækker (nr. 10) for en sæson: etaper for etapeløb, slutresultat for endagsløb. Kun SELECT. */
+async function loadGapRows(supabase, seasonNumber) {
+  const { data: season, error } = await supabase.from("seasons").select("id").eq("number", seasonNumber).maybeSingle();
+  if (error) throw new Error(`sæson ${seasonNumber}: ${error.message}`);
+  if (!season) return [];
+  // schema-columns-ok: races.squad findes i prod (U23-/juniorløb, #5517), verificeret 15/10 i information_schema.
+  const races = await fetchAllRows(() => supabase.from("races").select("id, squad, race_type").eq("season_id", season.id).order("id"));
+  const byId = new Map(races.map((r) => [r.id, r]));
+  const ids = races.map((r) => r.id);
+  if (!ids.length) return [];
+  const [results, profiles] = await Promise.all([
+    fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("race_results")
+      .select("race_id, stage_number, result_type, finish_time")
+      .in("race_id", chunk).eq("rank", 10).in("result_type", ["stage", "gc"])
+      .order("race_id").order("stage_number").order("result_type")),
+    fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("race_stage_profiles")
+      .select("race_id, stage_number, profile_type")
+      .in("race_id", chunk)
+      .order("race_id").order("stage_number")),
+  ]);
+  const profileOf = new Map(profiles.map((p) => [`${p.race_id}:${p.stage_number}`, p.profile_type]));
+  return results
+    .filter((r) => {
+      const race = byId.get(r.race_id);
+      // Etapeløb: etaperne. Endagsløb: slutresultatet (der er ingen etape-række).
+      return race && (race.race_type === "stage_race" ? r.result_type === "stage" : r.result_type === "gc");
+    })
+    .map((r) => ({ squad: byId.get(r.race_id).squad, profile_type: profileOf.get(`${r.race_id}:${r.stage_number}`) ?? null, finish_time: r.finish_time }));
+}
+
+async function loadSeniorLevels(supabase, seasonNumber) {
+  const riders = await fetchAllRows(() => supabase.from("riders")
+    .select("id, birthdate, squad, is_retired, team_id")
+    .eq("squad", "senior").not("team_id", "is", null)
+    .order("id"));
+  const young = riders.filter((r) => r.is_retired !== true && ageForSeason(r.birthdate, seasonNumber) >= SQUAD_MAX_AGE.u23 + 1
+    && ageForSeason(r.birthdate, seasonNumber) <= SQUAD_MAX_AGE.u23 + 3);
+  const rows = await fetchAllRowsChunkedIn(young.map((r) => r.id), (chunk) => supabase.from("rider_derived_abilities")
+    .select(["rider_id", ...LEVEL_ABILITIES].join(", ")).in("rider_id", chunk).order("rider_id"));
+  return rows.map((r) => Math.max(...LEVEL_ABILITIES.map((k) => Number(r[k])).filter(Number.isFinite)));
+}
+
+/**
+ * #6668: de modeller app_config VÆLGER lige nu, præcis som generatoren (og derive'en)
+ * henter dem. Løftets kandidatvalg afhænger af værdiloftet, så en hårdkodet model
+ * ville vælge andre kandidater end apply og give en forkert "AI efter løft"-fordeling.
+ * Fail-safe (v4) ligger i loaderne; loaderne kan injiceres til test.
+ */
+export async function loadLiveValuationModels(supabase, loaders = {}) {
+  const loadValuation = loaders.loadValuationModel ?? loadValuationModel;
+  const loadProduction = loaders.loadProductionValueModel ?? loadProductionValueModel;
+  const fallback = loaders.loadValuationModelById ?? loadValuationModelById;
+  const valuationModel = await loadValuation(supabase) ?? fallback(DEFAULT_VALUATION_MODEL_ID);
+  const productionValuationModel = await loadProduction(supabase);
+  return { valuationModel, productionValuationModel };
 }
 
 async function main() {
@@ -335,19 +534,26 @@ async function main() {
   // A6-kuldet fra SAMME plan-funktion som generatoren. Navnene er ligegyldige
   // her (tomt navne-sæt), antal og alder er det der tæller — og de afhænger
   // kun af seed + hold-id, ikke af navnene.
-  const model = loadValuationModelById(DEFAULT_VALUATION_MODEL_ID);
+  const { valuationModel, productionValuationModel } = await loadLiveValuationModels(supabase);
   const aiTeams = await loadActiveAiTeams(supabase);
+  // #6668: hold der allerede HAR en trup (efter S4-cutover) får ikke et nyt kuld
+  // i planen — samme idempotens som generatoren. Deres eksisterende ryttere tælles
+  // i stedet nedenfor, så målingen ser trupperne som de faktisk står.
+  const population = await loadPopulation(supabase, aiTeams.map((t) => t.id));
   const plan = planYouthSquads({
     teams: aiTeams, juniorsPerTeam: args.juniors, targetSeason: args.season, seed: DEFAULT_SEED,
-    valuationModel: model, productionValuationModel: model,
+    valuationModel, productionValuationModel,
+    existingByTeam: population.existingByTeam,
   });
 
   const humanTeamIds = new Set(teams.filter((t) => !t.is_ai).map((t) => t.id));
+  const aiTeamIds = new Set(teams.filter((t) => t.is_ai).map((t) => t.id));
   const results = [];
   const meta = { teams: teams.length, aiTeams: teams.filter((t) => t.is_ai).length, bySquad: {} };
 
   for (const squad of args.squads) {
-    const aiRoster = new Map();
+    // AI-holdenes eksisterende ungdom (målsæsonens alder, truppens loft) + et evt. nyt kuld.
+    const aiRoster = youthRosterByTeam({ riders, humanTeamIds: aiTeamIds, squad, season: args.season });
     for (const r of plan.rows) {
       if (r.squad !== squad || (squad === "junior" && r.age < JUNIOR_RACE_MIN_AGE)) continue;
       if (!aiRoster.has(r.teamId)) aiRoster.set(r.teamId, []);
@@ -381,14 +587,53 @@ async function main() {
     }
   }
 
+  let bench = null;
+  if (args.benchmark) {
+    const gaps = gap10BySquadTerrain(await loadGapRows(supabase, args.gapSeason));
+    const ref = benchmarkGapByTerrain(loadS5Benchmark());
+    // Niveau-gabet: menneske vs. AI i dag vs. AI efter #6668-løftet, og seniorernes bånd.
+    const levelInputs = await loadLevelInputs(supabase, aiTeams.map((t) => t.id));
+    const profile = buildHumanLevelProfile(levelInputs.humanRows, { season: args.season });
+    const lift = planYouthLift({
+      riders: levelInputs.aiRiders,
+      teamsById: new Map(aiTeams.map((t) => [t.id, t])),
+      targetSeason: args.season,
+      levelProfile: profile,
+      valuationModel,
+      productionValuationModel,
+    });
+    const inSquad = (squad, age) => age != null && age <= SQUAD_MAX_AGE[squad]
+      && age >= (squad === "junior" ? JUNIOR_RACE_MIN_AGE : SQUAD_MAX_AGE.junior + 1);
+    const levels = [];
+    for (const squad of ["u23", "junior"]) {
+      const human = levelInputs.humanRows.filter((r) => inSquad(squad, ageForSeason(r.birthdate, args.season))).map((r) => r.level);
+      const liftRows = lift.rows.filter((r) => inSquad(squad, r.age));
+      levels.push(
+        { squad, group: "menneske", stats: describeLevels(human) },
+        { squad, group: "AI i dag", stats: describeLevels(liftRows.map((r) => r.before)) },
+        { squad, group: "AI efter løft", stats: describeLevels(liftRows.map((r) => r.after)) },
+      );
+    }
+    levels.push({ squad: "senior", group: `${SQUAD_MAX_AGE.u23 + 1}-${SQUAD_MAX_AGE.u23 + 3} år`, stats: describeLevels(await loadSeniorLevels(supabase, args.season)) });
+    bench = { gapSeason: args.gapSeason, gaps, ref, levels };
+  }
+
   mkdirSync(dirname(args.out), { recursive: true });
-  writeFileSync(args.out, render({ args, results, meta }));
+  writeFileSync(args.out, render({ args, results, meta, bench }));
 
   // Stdout: kun bestået/fejlet (ingen tal) — tallene står i den private rapport.
   console.log(`\n#5518 C1 felt-gate (S${args.season}, read-only) - rapport: ${relative(REPO_ROOT, args.out)}`);
   for (const r of results.filter((x) => x.scenario === "base" && x.unavailable === 0)) {
     const passes = MIN_TEAM_FLOORS.filter((f) => gatePasses(r.result, f));
     console.log(`  ${r.squad.padEnd(6)} ${r.mapping.padEnd(11)} ${r.form.join("/").padEnd(8)} ${passes.length ? `holder ved gulv op til ${Math.max(...passes)} hold` : "FEJLER ved alle gulve"}`);
+  }
+  if (bench) {
+    // Kun domme (ingen tal) på stdout.
+    for (const squad of ["u23", "junior"]) {
+      const verdicts = [...(bench.gaps.get(squad) ?? new Map())]
+        .map(([t, q]) => `${t}=${gapVerdict(q.median, bench.ref.get(t)) ?? "ingen reference"}`);
+      console.log(`  gab ${squad.padEnd(6)} (S${bench.gapSeason}): ${verdicts.join(" · ") || "ingen målte løb"}`);
+    }
   }
   console.log("");
 }

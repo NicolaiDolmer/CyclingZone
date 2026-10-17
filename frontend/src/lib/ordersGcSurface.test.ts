@@ -36,7 +36,8 @@ test("regel-revision: kun orders_gc_v1 er de nye regler; null/ukendt/legacy er l
   // #6452: official_times_v3 (the clean engine revision) keeps the same surfaces.
   // #6464: official_times_v4 keeps them too.
   // #6369: s5_profiles_v1 (slukket, tom) = official_times_v4; samme flader.
-  for (const official of ["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1"]) {
+  // #6462: official_times_v5 (slukket) = official_times_v4 + togreglen; samme flader.
+  for (const official of ["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"]) {
     assert.equal(raceRulesRevision(official), "orders_gc_v1");
     assert.equal(isOrdersGcRevision(official), true);
   }

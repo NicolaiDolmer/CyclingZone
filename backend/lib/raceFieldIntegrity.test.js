@@ -2,7 +2,7 @@
 // Rene funktioner — ingen DB. RED-first.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries } from "./raceFieldIntegrity.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds } from "./raceFieldIntegrity.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 // ── #1844: feltet må ikke ændre sig mellem etaper ──────────────────────────────
@@ -117,4 +117,24 @@ test("filterTeamsBelowMinimumEntries: tomt felt og tom input er stabile", () => 
   const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries: all });
   assert.deepEqual(kept, [], "er ALLE hold under gulvet, står der ingen på startlisten");
   assert.deepEqual(droppedTeamIds.sort(), ["tA", "tB"]);
+});
+
+// ── #6740: regel B — skade efter udtagelsen undtager fra gulvet (ejer 16/10) ────
+test("injuryShortTeamIds: kun hold der havde gulvet og kun mistede det til skade", () => {
+  const entries = [...team("tA", 5), ...team("tB", 4), ...team("tC", 6), ...team("tD", 3)];
+  const injuredEntries = [
+    { team_id: "tA", rider_id: "tA-x" }, // 5 + 1 = 6: skade-kort
+    { team_id: "tB", rider_id: "tB-x" }, // 4 + 1 = 5: havde aldrig gulvet
+    { team_id: "tC", rider_id: "tC-x" }, // 6 raske: ikke under gulvet
+    { team_id: "tE", rider_id: "tE-1" }, ...Array.from({ length: 5 }, (_, i) => ({ team_id: "tE", rider_id: `tE-i${i}` })), // alle 6 skadede
+  ];
+  assert.deepEqual([...injuryShortTeamIds({ entries, injuredEntries })].sort(), ["tA", "tE"]);
+  assert.equal(injuryShortTeamIds({ entries, injuredEntries: [] }).size, 0);
+});
+
+test("filterTeamsBelowMinimumEntries: et undtaget hold starter under gulvet (#6740)", () => {
+  const entries = [...team("tShort", 5), ...team("tLow", 4)];
+  const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries, exemptTeamIds: new Set(["tShort"]) });
+  assert.deepEqual(droppedTeamIds, ["tLow"]);
+  assert.equal(kept.length, 5);
 });

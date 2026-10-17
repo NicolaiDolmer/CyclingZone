@@ -47,6 +47,18 @@ export function scoutCountdownParts(readyAt, now = new Date()) {
   return { state: "counting", minutes: Math.ceil(ms / 60_000) };
 }
 
+// #5852: tidligste readyAt blandt holdets aktive opgaver, dvs. hvornår en
+// spejder næste gang er ledig. null hvis ingen opgave har et gyldigt tidspunkt.
+export function earliestReadyAt(pendingTargets) {
+  let best = null;
+  for (const entry of Object.values(pendingTargets ?? {})) {
+    const at = entry?.readyAt ? new Date(entry.readyAt) : null;
+    if (!at || Number.isNaN(at.getTime())) continue;
+    if (!best || at.getTime() < best.getTime()) best = at;
+  }
+  return best ? best.toISOString() : null;
+}
+
 // Klar-tidspunktet som klokkeslæt i DANSK lokaltid. ready_at er UTC fra serveren,
 // så tidszonen sættes eksplicit (Europe/Copenhagen) i stedet for at arve
 // browserens — samme mønster som TrainingPage.jsx' trainedTime().

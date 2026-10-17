@@ -87,6 +87,7 @@ import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
 import { runOwnershipInvariantWatch } from "./lib/ownershipInvariantWatch.js";
 import { runRiderDoubleBookingWatch } from "./lib/riderDoubleBookingWatch.js";
+import { runSquadEntryGateWatch } from "./lib/squadEntryGate.js"; // #6489
 import { buildAlertSignature, shouldAlertOnChange } from "./lib/opsAlertDedupe.js";
 import { runTrainingSlotHealthWatch } from "./lib/trainingSlotHealthWatch.js"; // #3639
 import { runEmailWelcomeSweep } from "./lib/emailWelcomeSweep.js"; // #2725
@@ -1169,8 +1170,8 @@ async function runMarketValueLevelCorrectionGateSweepCron() {
 }
 
 // ─── Søndagens værdi-pipeline (#4419) ─────────────────────────────────────────
-// v4-refresh (base_value/CPV/typer følger udviklede evner) + markedsblendet
-// (#3448) i ét ordnet flow, søndag fra SUNDAY_VALUE_FROM_HOUR dansk tid (#5842). Selv-gated (søndag +
+// Værdi-refresh (base_value/CPV/typer følger udviklede evner; markedsblendet
+// #3448 fjernet i #6642), søndag fra SUNDAY_VALUE_FROM_HOUR dansk tid (#5842). Selv-gated (søndag +
 // vindue + persisteret dato-claim), så timelig polling + boot-run er sikre.
 // Ejer 28/9 (#5842): én gang om ugen, søndag eftermiddag, aldrig om morgenen;
 // på skiftedagen først efter det fuldførte sæsonskifte.
@@ -1181,7 +1182,6 @@ async function runSundayValueSweepCron() {
       const v = r.valueRefresh;
       console.log(
         `💰 Søndags-værdier (${r.runDate}): ${v?.scanned ?? 0} scannet · ${v?.changed ?? 0} ændret` +
-        (r.marketValueSweep?.ran ? ` · markedsblend ${r.marketValueSweep.written ?? 0} skrevet` : " · markedsblend slukket") +
         // #5497: post-verify af trin-tælleren og løngrundlaget, direkte i Railway.
         ` · model ${v?.modelId ?? "?"} · phase step ${r.phase?.step ?? "-"} · production_value changed: ${v?.productionChanged ?? "?"}`
       );
@@ -1492,6 +1492,21 @@ async function runRiderDoubleBookingWatchCron() {
     console.log(
       `✅ Binding-invariant-vagt: ${result.resolved.length} par RESOLVERET siden sidste tjek — ` +
       result.resolved.map(formatChurnPair).join("; ")
+    );
+  }
+}
+
+// ─── Trup-port-vagt (#6489) ───────────────────────────────────────────────────
+// Daglig READ-ONLY tælling af startliste-rækker i ikke-startede løb som rytteren
+// ikke må køre. DB-triggeren (trg_cleanup_ineligible_future_entries) holder tallet
+// på 0 for alle stier; vagten alarmerer i Sentry hvis en sti alligevel slipper
+// forbi. Reparerer intet.
+async function runSquadEntryGateWatchCron() {
+  const result = await runSquadEntryGateWatch({ supabase, captureExceptionFn: sentryCapture });
+  if (result.alerted) {
+    console.error(
+      `🚨 Trup-port-vagt: ${result.offSquad + result.ghosts} forkerte startliste-rækker ` +
+      `(anden trup: ${result.offSquad}, ikke på holdet/pensioneret: ${result.ghosts}) (#6489)`
     );
   }
 }
@@ -2161,6 +2176,12 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
+  // Every 24 hours: trup-port-vagt (#6489) — READ-ONLY. Alarmerer; reparerer intet.
+  setInterval(
+    trackedTick("squad-entry-gate-watch", monitorCron("squad-entry-gate-watch", runSquadEntryGateWatchCron, CRON_MONITOR_24H)),
+    24 * 60 * 60 * 1000
+  );
+
   // Every 24 hours: akademi-intake-udløb (#2627) — 'offered'-tilbud ældre end 7
   // dage sættes til 'expired', så rytteren frigives fra is_offered_intake_rider-
   // skjulet. Gated bag intake_offer_expiry_enabled (fail-safe OFF). Idempotent
@@ -2184,8 +2205,8 @@ export function startCron() {
     60 * 60 * 1000
   );
 
-  // Every 60 minutes: søndagens værdi-pipeline (#4419): v4-refresh + markedsblend
-  // i ét ordnet flow. Modulet er selv søndags-gated (SUNDAY_VALUE_FROM_HOUR, #5842) og
+  // Every 60 minutes: søndagens værdi-pipeline (#4419): værdi-refresh
+  // (markedsblendet fjernet i #6642). Modulet er selv søndags-gated (SUNDAY_VALUE_FROM_HOUR, #5842) og
   // claim-idempotent pr. dato, så en times cadence bare fylder søndagens vindue op.
   // Samme monitor-begrundelse som market-value-level-correction-gate ovenfor:
   // tikket returnerer normalt (ran:false) på ikke-søndage, så CRON_MONITOR_60MIN
@@ -2310,12 +2331,6 @@ export function startCron() {
     5 * 60 * 1000
   );
 
-  // #3448/#4419: markedsblendet har BEVIDST ingen selvstændig tick. Det køres
-  // som SIDSTE skridt i søndagens værdi-pipeline (sundayValueSweep.js, tick-et
-  // ovenfor), efter v4-refresh-en. En uafhængig tick ville lade v4-refresh-en
-  // skrive markedsblendet væk igen. Se marketValueSundaySweep.js s
-  // "RÆKKEFØLGE PÅ SØNDAGE".
-
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
@@ -2350,6 +2365,8 @@ export function startCron() {
   // #3113: samme begrundelse — read-only, ingen writes. Boot-run betyder at et brud
   // opdages ved næste deploy i stedet for at vente op til 24 timer.
   trackedTick("rider-double-booking-watch", runRiderDoubleBookingWatchCron)();
+  // #6489: read-only, ingen writes. Boot-run gør 24h-monitoren ærlig.
+  trackedTick("squad-entry-gate-watch", runSquadEntryGateWatchCron)();
   // #3639: upsert på (snapshot_date, focus) + edge-triggered alarm-dedup → boot-run
   // er idempotent og kan ikke re-spamme ops ved gentagne deploys.
   trackedTick("training-slot-health-watch", runTrainingSlotHealthWatchCron)();

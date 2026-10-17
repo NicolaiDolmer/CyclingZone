@@ -14,6 +14,91 @@ import { loadTeamBindingContext, mapRiderBindingDetails } from "./raceBinding.js
 // ("endnu en kopi der glemmer reglen") var rod-aarsagen i #5301.
 // Historik: docs/superpowers/plans/2026-06-23-race-hub-fase-0b-generator-afmeld.md
 
+// #6740 (Friis 17/10): et hold der ikke kom med i feltet (fjernet ved start, under
+// gulvet) beholdt sine entries, og de BANDT rytterne løbet ud (binding_span, race_entry_days),
+// så de ikke kunne køre overlappende løb. En afmelding er den eneste frigivelse både DB'en
+// (race_entries_binding_span, trg_race_withdrawals_resync_binding) og appen (Rod A) kender.
+// Årsagen skelner den fra en frivillig afmelding, så fladerne viser "Did not start".
+export const DID_NOT_START_REASON = "did_not_start";
+
+/**
+ * #6740: frigiv hold der ikke stillede op. Kaldes FØRST når etape 1 er committet (så
+ * "deltag igen" er blokeret af selection_race_started). Idempotent: en eksisterende
+ * afmelding (frivillig eller tidligere) røres ikke. Kaster ved DB-fejl; kalderen isolerer.
+ */
+export async function releaseTeamsThatDidNotStart({ supabase, raceId, teamIds }) {
+  const ids = [...new Set((teamIds ?? []).filter(Boolean))];
+  if (!raceId || !ids.length) return { released: 0 };
+  const { error } = await supabase.from("race_withdrawals").upsert(
+    ids.map((teamId) => ({ race_id: raceId, team_id: teamId, withdrawn_reason: DID_NOT_START_REASON })),
+    { onConflict: "race_id,team_id", ignoreDuplicates: true },
+  );
+  if (error) throw new Error(`race_withdrawals (did not start): ${error.message ?? error}`);
+  return { released: ids.length };
+}
+
+/**
+ * PURE: hvilke (løb, hold) skal frigives? Et hold med entries i et startet løb, uden en
+ * eneste tilmeldt rytter i etape-1-snapshottet og uden afmelding.
+ * @param {{ races: Array<{id}>, snapshots: Map<string, Set<string>>,
+ *   entries: Array<{race_id, team_id, rider_id}>, withdrawals: Array<{race_id, team_id}> }} args
+ * @returns {Array<{ raceId: string, teamIds: string[] }>}
+ */
+export function planDidNotStartReleases({ races, snapshots, entries, withdrawals }) {
+  const withdrawn = new Set((withdrawals ?? []).map((w) => `${w.race_id}:${w.team_id}`));
+  const out = [];
+  for (const race of races ?? []) {
+    const field = snapshots.get(race.id);
+    if (!field) continue; // legacy: intet frosset felt, ingen sikker afgørelse
+    const ridersByTeam = new Map();
+    for (const e of entries ?? []) {
+      if (e.race_id !== race.id || !e.team_id) continue;
+      if (!ridersByTeam.has(e.team_id)) ridersByTeam.set(e.team_id, []);
+      ridersByTeam.get(e.team_id).push(e.rider_id);
+    }
+    const teamIds = [...ridersByTeam]
+      .filter(([teamId, riderIds]) => !withdrawn.has(`${race.id}:${teamId}`) && !riderIds.some((id) => field.has(id)))
+      .map(([teamId]) => teamId)
+      .sort();
+    if (teamIds.length) out.push({ raceId: race.id, teamIds });
+  }
+  return out;
+}
+
+/**
+ * #6740 (review #6742/#6747): afstem ét startet løb mod dets frosne startfelt og frigiv
+ * hold der ikke stillede op, men endnu ikke har en afmelding. Kaldes ved hver senere
+ * etape, så en frigivelse der fejlede ved etape 1 bliver indhentet. `startFieldRiderIds`
+ * er etape-1-snapshottet (null = legacy, intet gøres). Kaster ved DB-fejl.
+ */
+export async function reconcileDidNotStartReleases({ supabase, raceId, startFieldRiderIds }) {
+  if (!raceId || !Array.isArray(startFieldRiderIds)) return { released: 0 };
+  // pagination-safe: ét løbs tilmeldinger (≤ felt-loftet × 9) og dets afmeldinger.
+  const [entriesRes, wdRes] = await Promise.all([
+    supabase.from("race_entries").select("race_id, team_id, rider_id").eq("race_id", raceId),
+    supabase.from("race_withdrawals").select("race_id, team_id").eq("race_id", raceId),
+  ]);
+  if (entriesRes.error) throw new Error(`race_entries (reconcile): ${entriesRes.error.message}`);
+  if (wdRes.error) throw new Error(`race_withdrawals (reconcile): ${wdRes.error.message}`);
+  const [plan] = planDidNotStartReleases({
+    races: [{ id: raceId }], snapshots: new Map([[raceId, new Set(startFieldRiderIds)]]),
+    entries: entriesRes.data ?? [], withdrawals: wdRes.data ?? [],
+  });
+  if (!plan) return { released: 0 };
+  return releaseTeamsThatDidNotStart({ supabase, raceId, teamIds: plan.teamIds });
+}
+
+/** PURE: delt afmeldings-rækker i frivillige og "stillede ikke op" (race_id-sæt). */
+export function splitWithdrawals(rows) {
+  const withdrawn = new Set();
+  const didNotStart = new Set();
+  for (const row of rows ?? []) {
+    if (!row?.race_id) continue;
+    (row.withdrawn_reason === DID_NOT_START_REASON ? didNotStart : withdrawn).add(row.race_id);
+  }
+  return { withdrawn, didNotStart };
+}
+
 // Set af team_id der har trukket sig fra et løb.
 export async function loadWithdrawnTeamIds({ supabase, raceId }) {
   const { data, error } = await supabase

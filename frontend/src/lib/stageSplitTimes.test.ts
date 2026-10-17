@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, effectiveEffortByRider, formatSplitGap, hasGroupGaps,
+  buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, effectiveEffortByRider, EFFORT_NORMAL_NOT_A_CHOICE_FROM, stageUsesEffortFix6647, formatSplitGap, hasGroupGaps,
 } from "./stageSplitTimes.ts";
 
 // Formen er kopieret fra en ægte v4-etape (kuperet, 165 km): udbrud, en stor
@@ -182,6 +182,27 @@ test("effectiveEffortByRider: v4-ordren vinder over stage-roles, v3 bruger kun s
   assert.deepEqual([...effectiveEffortByRider(roles, orders, 2, { v4: true })], [["a", "save"], ["b", "save"]]);
   assert.deepEqual([...effectiveEffortByRider(roles, orders, 2, { v4: false })], [["a", "normal"], ["b", "save"]]);
   assert.equal(effectiveEffortByRider(null, null, 2, { v4: true }).size, 0);
+});
+
+test("#6647 effectiveEffortByRider: en ordre med 'normal' overskriver ikke rollens beskyt/spar", () => {
+  const roles = { overrides: [{ stage_number: 4, rider_id: "r1", effort: "save" }, { stage_number: 4, rider_id: "r2", effort: "protect" }] };
+  const neutral = { orders: [{ stage_number: 4, riders: [{ rider_id: "r1", effort: "normal" }, { rider_id: "r2", effort: "normal" }] }] };
+  assert.deepEqual([...effectiveEffortByRider(roles, neutral, 4, { v4: true })], [["r1", "save"], ["r2", "protect"]]);
+  assert.equal(effectiveEffortByRider(null, neutral, 4, { v4: true }).size, 0);
+  const mixed = { orders: [{ stage_number: 4, riders: [{ rider_id: "r1", effort: "normal" }, { rider_id: "r2", effort: "all_out" }] }] };
+  assert.deepEqual([...effectiveEffortByRider(roles, mixed, 4, { v4: true })], [["r1", "save"], ["r2", "all_out"]]);
+});
+
+test("#6647 review: etaper koert FOER rettelsen viser den indsats motoren faktisk brugte (ordrens normal vandt)", () => {
+  const roles = { overrides: [{ stage_number: 4, rider_id: "r1", effort: "save" }] };
+  const neutral = { orders: [{ stage_number: 4, riders: [{ rider_id: "r1", effort: "normal" }] }] };
+  const before = new Date(Date.parse(EFFORT_NORMAL_NOT_A_CHOICE_FROM) - 60_000).toISOString();
+  const after = new Date(Date.parse(EFFORT_NORMAL_NOT_A_CHOICE_FROM) + 60_000).toISOString();
+  assert.deepEqual([...effectiveEffortByRider(roles, neutral, 4, { v4: true, ranAt: before })], [["r1", "normal"]]);
+  assert.deepEqual([...effectiveEffortByRider(roles, neutral, 4, { v4: true, ranAt: after })], [["r1", "save"]]);
+  assert.equal(stageUsesEffortFix6647(null), true);
+  assert.equal(stageUsesEffortFix6647("ikke-en-dato"), true);
+  assert.equal(stageUsesEffortFix6647(before), false);
 });
 
 test("formatSplitGap", () => {

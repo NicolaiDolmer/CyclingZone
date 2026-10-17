@@ -215,6 +215,11 @@
       "unsoldTitle": "Academy graduate released",
       "unsold": "{name} drew no bids and left your academy as a free agent."
     },
+    "promotionPending": {
+      "title": "Awaiting promotion: {name}",
+      "u23": "{name} is ready for your U23 squad, but it is full. He stays in his current squad on the same contract. Free a spot and promote him from your team page.",
+      "senior": "{name} is ready for your senior squad, but it is full. He stays in his current squad on the same contract. Free a spot and promote him from your team page."
+    },
     "academySigningDeferred": {
       "title": "Academy signing confirmed",
       "message": "{riderName} will join your academy once his current stage race is finished. He keeps racing for your senior squad until then."
@@ -445,6 +450,10 @@
         "title": "Offer withdrawn",
         "message": "{buyerName} withdrew their offer on {riderName}"
       },
+      "counterWithdrawn": {
+        "title": "Counter offer withdrawn",
+        "message": "{sellerName} withdrew their counter offer on {riderName}. You can make a new offer."
+      },
       "onAuctionCancelled": {
         "title": "Transfer cancelled",
         "message": "{riderName} went to an active auction. The deal was cancelled. Bid on the auction instead."
@@ -625,6 +634,15 @@
       "title": "{count, plural, one {New message} other {# new messages}}",
       "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Another manager sent you a message} other {# new messages from another manager}}"
+    },
+    "riderInjured": {
+      "title": "Rider injured",
+      "message": "{rider} crashed in {race} and is injured until {until}.",
+      "messageMissed": "{rider} crashed in {race} and is injured until {until}. He will not ride {missed}."
+    },
+    "teamDidNotStart": {
+      "title": "Your team did not start",
+      "message": "Your team did not start {race}: fewer than {min} fit riders at the start."
     }
   },
   "error": {

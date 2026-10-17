@@ -36,6 +36,17 @@
 //   node scripts/seedYouthPools.js                      # dry-run, begge trupper
 //   node scripts/seedYouthPools.js --squad=u23          # kun U23
 //   node scripts/seedYouthPools.js --apply --owner-go   # EJER-GATED
+//
+// REGROUP (#6668, ejer 15/10 på #6667: "menneskehold samles i færre grupper"):
+//   --regroup --managers-per-group=<tal> lægger ALLE hold om efter en ny plan, også
+//   når grupperne findes. Eksisterende gruppe-rækker genbruges; grupper planen ikke
+//   bruger, står tomme (unusedPools); AI-hold der ikke er plads til, får FK = null
+//   (deres ungdom træner). Hold der allerede står rigtigt, skrives ikke igen.
+//   Valgt til S5: 20 managers pr. gruppe (begrundelse i docs/YOUTH_RULES.md §2.3).
+//   node scripts/seedYouthPools.js --regroup --managers-per-group=20 --mix-junior   # dry-run
+//   Startklare hold tælles kun med startberettigede ryttere efter sæsonalder: kun
+//   trup'ens aldersloft (U23 til og med 22, junior til og med 18); en yngre rytter
+//   flyttet op tæller med. --season=<tal> vælger sæsonen alderen måles mod (default: aktiv sæson).
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -55,6 +66,8 @@ import {
   youthGroupLabel,
 } from "../lib/youthPoolAssignment.js";
 import { MIN_RACE_ENTRIES } from "../lib/raceAutopick.js";
+import { ageForSeason } from "../lib/riderSeasonAge.js";
+import { fitsSquadAge } from "../lib/squads.js";
 import {
   loadParkingInputs,
   selectActiveSubscriptionTeamIds,
@@ -118,16 +131,50 @@ export function parseArgs(argv) {
     throw new Error("--mix-junior tager ingen værdi");
   }
   const mixJunior = mixRaw === true;
-  return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior };
+  // #6668 (ejer 15/10 på #6667): --regroup lægger ALLE hold om efter en ny plan,
+  // også når grupperne findes (ellers topper en genkørsel kun op). Det er hele
+  // pointen med "menneskehold samles i færre grupper", så antallet af managers pr.
+  // gruppe SKAL vælges eksplicit og dokumenteres; intet default.
+  const regroupRaw = get("regroup");
+  if (regroupRaw !== undefined && regroupRaw !== true) throw new Error("--regroup tager ingen værdi");
+  const regroup = regroupRaw === true;
+  if (regroup && managersPerGroup == null) {
+    throw new Error("--regroup kræver --managers-per-group=<tal> (gruppetallet er et dokumenteret valg, intet default)");
+  }
+  // #6668: sæsonen startberettigelsen (alder) måles mod; default = den aktive sæson.
+  const seasonRaw = get("season");
+  if (seasonRaw === true || seasonRaw === "") throw new Error("--season kræver et tal efter =");
+  const season = seasonRaw === undefined ? null : Number(seasonRaw);
+  if (season != null && (!Number.isInteger(season) || season < 1)) {
+    throw new Error(`--season skal være et helt tal ≥ 1 (fik ${JSON.stringify(seasonRaw)})`);
+  }
+  return { squads, apply, ownerGo, groupSize, managersPerGroup, mixJunior, regroup, season };
 }
 
 // ── Rene hjælpere (testes i seedYouthPools.test.js) ─────────────────────────
 
-/** Antal aktive ryttere pr. hold i trup'en. */
-export function youthRidersByTeam(riders, squad) {
+/**
+ * #6668: er rytteren løbsberettiget i trup'en efter sæsonalder?
+ * Berettigelsen følger den TILDELTE trup; kun trup'ens aldersloft gælder, ingen
+ * mindstealder (YOUTH_RULES §2.2: "opad er altid tilladt", en 17-årig må stå på
+ * U23 team og køre dens løb). Samme kontrakt som squads.fitsSquadAge, så der ikke
+ * findes en anden kopi af aldersreglen. Ukendt fødselsdato tæller ikke (aldrig et gæt).
+ */
+export function isRaceAgeEligible(rider, squad, seasonNumber) {
+  return fitsSquadAge({ squad, seasonAge: ageForSeason(rider?.birthdate, seasonNumber) });
+}
+
+/**
+ * Antal aktive ryttere pr. hold i trup'en. Med `seasonNumber` tælles kun
+ * startberettigede (sæsonalder under trup'ens aldersloft); ryttere der er
+ * vokset ud, men endnu ikke flyttet af Graduation Day, tæller ikke med (#6668).
+ * Uden `seasonNumber` tælles alle aktive i trup'en (ingen alders-filtrering).
+ */
+export function youthRidersByTeam(riders, squad, { seasonNumber = null } = {}) {
   const out = new Map();
   for (const r of riders || []) {
     if (!r?.team_id || r.squad !== squad || r.is_retired === true) continue;
+    if (seasonNumber != null && !isRaceAgeEligible(r, squad, seasonNumber)) continue;
     out.set(r.team_id, (out.get(r.team_id) || 0) + 1);
   }
   return out;
@@ -152,19 +199,25 @@ export function currentGroups({ pools, teams, squad }) {
  */
 export function buildSquadPlan({
   squad, pools, teams, globalRanks, riders, groupSize = YOUTH_GROUP_SIZE, managersPerGroup = null, mixJunior = false,
+  regroup = false, seasonNumber = null,
 }) {
   const col = fkColumn(squad);
-  const counts = youthRidersByTeam(riders, squad);
+  const counts = youthRidersByTeam(riders, squad, { seasonNumber });
   const withCount = (t) => ({ ...t, youthRiders: counts.get(t.id) || 0 });
   const managers = (teams || []).filter((t) => t.is_ai !== true).map(withCount);
   // AI-hold uden seniorpulje er rester (samme krav som A6's loadActiveAiTeams).
   const aiTeams = (teams || []).filter((t) => t.is_ai === true && t.league_division_id != null).map(withCount);
 
-  const existing = currentGroups({ pools, teams, squad });
-  const assignedCount = existing.reduce((n, g) => n + g.managerTeamIds.length + g.aiTeamIds.length, 0);
-  const mode = assignedCount === 0 ? "fresh" : "top-up";
+  const allGroups = currentGroups({ pools, teams, squad });
+  const assignedCount = allGroups.reduce((n, g) => n + g.managerTeamIds.length + g.aiTeamIds.length, 0);
+  const mode = regroup ? "regroup" : (assignedCount === 0 ? "fresh" : "top-up");
+  // #6668: en top-up må aldrig placere et hold i en pulje en tidligere regroup har
+  // pensioneret (retired_at): kalenderbyggeren ignorerer den, så holdet fik ingen løb.
+  // Kun regroup ser pensionerede puljer (den kan genbruge dem).
+  const retiredPoolIds = new Set((pools || []).filter((p) => p.retired_at != null).map((p) => p.id));
+  const existing = mode === "top-up" ? allGroups.filter((g) => !retiredPoolIds.has(g.poolId)) : allGroups;
 
-  const plan = mode === "fresh"
+  const plan = mode !== "top-up"
     ? planYouthGroups({ teams: managers, aiTeams, globalRanks, squad, groupSize, managersPerGroup, mixJunior })
     : planYouthTopUp({ groups: existing, teams: managers, aiTeams, globalRanks, squad, groupSize });
 
@@ -175,9 +228,21 @@ export function buildSquadPlan({
   const unusedPools = [...existingIndexes].filter((i) => !plan.groups.some((g) => g.poolIndex === i)).sort((a, b) => a - b);
 
   const updates = [];
-  if (mode === "fresh") {
+  if (mode !== "top-up") {
+    const placed = new Set();
+    const currentIndex = new Map(existing.flatMap((g) => [...g.managerTeamIds, ...g.aiTeamIds].map((id) => [id, g.poolIndex])));
     for (const g of plan.groups) {
-      for (const id of [...g.managerTeamIds, ...g.aiTeamIds]) updates.push({ teamId: id, column: col, poolIndex: g.poolIndex });
+      for (const id of [...g.managerTeamIds, ...g.aiTeamIds]) {
+        placed.add(id);
+        // regroup: et hold der allerede står i sin nye gruppe skrives ikke igen.
+        if (mode === "regroup" && currentIndex.get(id) === g.poolIndex) continue;
+        updates.push({ teamId: id, column: col, poolIndex: g.poolIndex });
+      }
+    }
+    // regroup: hold der stod i en gruppe men ikke har plads i den nye plan
+    // (AI-overløb), mister deres plads. Deres ungdom træner i stedet for at køre.
+    for (const id of currentIndex.keys()) {
+      if (!placed.has(id)) updates.push({ teamId: id, column: col, poolIndex: null });
     }
   } else {
     for (const m of plan.moves) updates.push({ teamId: m.teamId, column: col, poolIndex: m.poolIndex });
@@ -185,7 +250,13 @@ export function buildSquadPlan({
     for (const d of plan.displacedAi) if (!moved.has(d.teamId)) updates.push({ teamId: d.teamId, column: col, poolIndex: null });
   }
 
-  return { squad, mode, plan, poolsToCreate, unusedPools, updates };
+  // Startklare hold pr. gruppe, delt på menneske/AI (#6668: feltets AI-andel).
+  const startersByPool = plan.groups.map((g) => ({
+    poolIndex: g.poolIndex,
+    managerStarters: g.managerTeamIds.filter((id) => (counts.get(id) || 0) >= MIN_RACE_ENTRIES).length,
+    aiStarters: g.aiTeamIds.filter((id) => (counts.get(id) || 0) >= MIN_RACE_ENTRIES).length,
+  }));
+  return { squad, mode, plan, poolsToCreate, unusedPools, updates, startersByPool };
 }
 
 /**
@@ -210,6 +281,24 @@ export function squadNumbers({ squad, plan }) {
 }
 
 /**
+ * #6668: hvor stor en andel af de startklare hold er AI, samlet og i den mest
+ * AI-tunge gruppe. Ren; kun tal (ingen hold).
+ */
+export function starterShares(startersByPool = []) {
+  const m = startersByPool.reduce((s, g) => s + g.managerStarters, 0);
+  const a = startersByPool.reduce((s, g) => s + g.aiStarters, 0);
+  const share = (x, y) => (x + y > 0 ? y / (x + y) : null);
+  const perGroup = startersByPool.map((g) => share(g.managerStarters, g.aiStarters)).filter((x) => x != null);
+  return {
+    managerStarters: m,
+    aiStarters: a,
+    aiStarterShare: share(m, a),
+    maxGroupAiStarterShare: perGroup.length ? Math.max(...perGroup) : null,
+    minGroupManagerStarters: startersByPool.length ? Math.min(...startersByPool.map((g) => g.managerStarters)) : null,
+  };
+}
+
+/**
  * Tal uden holdnavne/id'er, til den committede snapshot (offentligt repo).
  * forecast (valgfri) = { parked, unparked, squads: [squadNumbers] } efter parkerings-sweepen.
  */
@@ -220,9 +309,10 @@ export function publicSummary(squadPlans, { generatedAt, eligibleManagers, eligi
     mode: "dry-run",
     input: { eligibleManagers, eligibleAi, globalRankRows },
     forecastAfterParking: forecast,
-    squads: squadPlans.map(({ squad, mode, plan, poolsToCreate, unusedPools, updates }) => ({
+    squads: squadPlans.map(({ squad, mode, plan, poolsToCreate, unusedPools, updates, startersByPool = [] }) => ({
       squad,
       mode,
+      ...starterShares(startersByPool),
       groupSize: plan.groupSize,
       managers: plan.summary.managers,
       aiTeams: plan.summary.aiTeams,
@@ -244,10 +334,14 @@ export function publicSummary(squadPlans, { generatedAt, eligibleManagers, eligi
         aiTeams: g.aiTeamIds.length,
         size: g.size,
         startersNow: g.starters,
+        managerStarters: startersByPool.find((x) => x.poolIndex === g.poolIndex)?.managerStarters ?? null,
+        aiStarters: startersByPool.find((x) => x.poolIndex === g.poolIndex)?.aiStarters ?? null,
       })),
     })),
   };
 }
+
+const pct = (x) => (x == null ? "-" : `${Math.round(100 * x)} %`);
 
 export function renderMarkdown(summary) {
   const lines = [
@@ -281,11 +375,12 @@ export function renderMarkdown(summary) {
       `- Største gruppe: ${s.largestGroup} · mindste: ${s.smallestGroup}`,
       `- Managers uden Global Rank (lagt sidst): ${s.managersWithoutGlobalRank}`,
       `- Grupper under ${s.minRaceEntries} startklare hold i dag: ${s.groupsBelowMinStarters} (AI-holdene har ingen ungdomsryttere før A6)`,
-      `- AI-hold uden plads: ${s.aiOverflow} · grupper der oprettes: ${s.poolsToCreate} · FK-opdateringer: ${s.teamUpdates}`,
+      `- AI-hold uden plads: ${s.aiOverflow} · grupper der oprettes: ${s.poolsToCreate} · ubrugte grupper: ${s.unusedPools} · FK-opdateringer: ${s.teamUpdates}`,
+      `- Startklare nu: managers ${s.managerStarters} · AI-hold ${s.aiStarters} · AI-andel ${pct(s.aiStarterShare)} (mest AI-tunge gruppe ${pct(s.maxGroupAiStarterShare)}) · færrest startklare managers i en gruppe: ${s.minGroupManagerStarters ?? "-"}`,
       "",
-      "| Gruppe | Managers | AI | I alt | Startklare nu |",
-      "|---|---:|---:|---:|---:|",
-      ...s.groups.map((g) => `| ${g.label} | ${g.managers} | ${g.aiTeams} | ${g.size} | ${g.startersNow} |`),
+      "| Gruppe | Managers | AI | I alt | Startklare nu | heraf managers | heraf AI |",
+      "|---|---:|---:|---:|---:|---:|---:|",
+      ...s.groups.map((g) => `| ${g.label} | ${g.managers} | ${g.aiTeams} | ${g.size} | ${g.startersNow} | ${g.managerStarters ?? "-"} | ${g.aiStarters ?? "-"} |`),
       "",
     );
   }
@@ -300,16 +395,38 @@ async function loadState(supabase) {
     fetchAllRows(() => supabase.from("teams")
       .select("id, name, is_ai, is_bank, is_frozen, is_test_account, parked_at, retired_at, pending_removal_at, division, league_division_id, u23_league_division_id, junior_league_division_id")
       .order("id")),
-    fetchAllRows(() => supabase.from("league_divisions").select("id, tier, pool_index, label, squad").order("id")),
+    fetchAllRows(() => supabase.from("league_divisions").select("id, tier, pool_index, label, squad, retired_at").order("id")),
     fetchAllRows(() => supabase.from("global_rank_mv")
       .select("team_id, global_points, global_rank, active_recent")
       .order("team_id")),
     fetchAllRows(() => supabase.from("riders")
-      .select("id, team_id, squad, is_retired")
+      .select("id, team_id, squad, is_retired, birthdate")
       .in("squad", YOUTH_POOL_SQUADS)
       .order("id")),
   ]);
   return { teams, pools, globalRanks, riders };
+}
+
+async function loadActiveSeasonNumber(supabase) {
+  const { data, error } = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (error) throw new Error(`seasons: ${error.message}`);
+  if (!Number.isFinite(data?.number)) throw new Error("ingen aktiv sæson fundet; angiv --season=<tal>");
+  return data.number;
+}
+
+/**
+ * #6668: hvilke puljer en regroup skal pensionere og hvilke den skal genbruge.
+ * Kalenderbyggeren (tierCalendarMaterializer.loadCalendarPools) læser hver pulje
+ * uden retired_at som aktiv, så en pulje regroup har tømt skal have retired_at,
+ * ellers får den løb uden felt. Puljer planen bruger igen (en tidligere regroup
+ * kan have pensioneret dem) får retired_at fjernet. Kun regroup rører ved dem.
+ */
+export function poolRetirement(squadPlan) {
+  if (squadPlan.mode !== "regroup") return { retireIndexes: [], reviveIndexes: [] };
+  return {
+    retireIndexes: [...(squadPlan.unusedPools || [])],
+    reviveIndexes: (squadPlan.plan?.groups || []).map((g) => g.poolIndex),
+  };
 }
 
 async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
@@ -322,7 +439,7 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     if (error) throw new Error(`league_divisions insert (${squad}): ${error.message}`);
   }
   const { data: pools, error: poolErr } = await supabase.from("league_divisions")
-    .select("id, pool_index, squad").eq("squad", squad).eq("tier", YOUTH_GROUP_TIER);
+    .select("id, pool_index, squad, retired_at").eq("squad", squad).eq("tier", YOUTH_GROUP_TIER);
   if (poolErr) throw new Error(`league_divisions (${squad}): ${poolErr.message}`);
   const poolIdByIndex = new Map(pools.map((p) => [p.pool_index, p.id]));
 
@@ -331,7 +448,13 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     ? await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from("teams").select(`id, ${col}`).in("id", chunk).order("id"))
     : [];
   const restorePath = join(internalsDir, `youth-pools-restore-${squad}-${stamp}.json`);
-  writeFileSync(restorePath, JSON.stringify({ squad, column: col, teams: before }, null, 2));
+  const { retireIndexes, reviveIndexes } = poolRetirement(squadPlan);
+  const retireIds = pools.filter((p) => retireIndexes.includes(p.pool_index) && p.retired_at == null).map((p) => p.id);
+  const reviveIds = pools.filter((p) => reviveIndexes.includes(p.pool_index) && p.retired_at != null).map((p) => p.id);
+  // Restore-filen husker også puljernes tidligere retired_at, så en regroup kan rulles tilbage.
+  const poolsBefore = pools.filter((p) => retireIds.includes(p.id) || reviveIds.includes(p.id))
+    .map((p) => ({ id: p.id, pool_index: p.pool_index, retired_at: p.retired_at ?? null }));
+  writeFileSync(restorePath, JSON.stringify({ squad, column: col, teams: before, pools: poolsBefore }, null, 2));
   console.log(`  restore-fil: ${relative(REPO_ROOT, restorePath)}`);
 
   const byTarget = new Map();
@@ -345,6 +468,14 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
   for (const { target, ids: teamIds } of byTarget.values()) {
     const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
     if (error) throw new Error(`teams.${col} update: ${error.message}`);
+  }
+  if (reviveIds.length) {
+    const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
+    if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
+  }
+  if (retireIds.length) {
+    const { error } = await supabase.from("league_divisions").update({ retired_at: new Date().toISOString() }).in("id", retireIds);
+    if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
   }
 
   const after = ids.length
@@ -362,9 +493,12 @@ export async function main(argv = process.argv.slice(2)) {
   if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_KEY mangler (kør via railway run eller backend/.env).");
   const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-  console.log(`UNGDOMSGRUPPER (#5646) ${args.apply ? "APPLY (skriver til prod)" : "DRY-RUN (read-only)"} · trupper: ${args.squads.join(", ")}`);
+  console.log(`UNGDOMSGRUPPER (#5646) ${args.apply ? "APPLY (skriver til prod)" : "DRY-RUN (read-only)"} · trupper: ${args.squads.join(", ")}${args.regroup ? ` · REGROUP, ${args.managersPerGroup} managers pr. gruppe` : ""}`);
   const state = await loadState(supabase);
-  const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, ...state }));
+  const seasonNumber = args.season ?? await loadActiveSeasonNumber(supabase);
+  console.log(`  startberettigelse efter sæsonalder i sæson ${seasonNumber}`);
+  const planOpts = { groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, regroup: args.regroup, seasonNumber };
+  const squadPlans = args.squads.map((squad) => buildSquadPlan({ squad, ...planOpts, ...state }));
 
   // Prognose: samme plan efter parkerings-sweepen ved sæsonskiftet (read-only;
   // udvælgelsen er managerParking.js' egne rene funktioner, ingen kopi).
@@ -377,7 +511,10 @@ export async function main(argv = process.argv.slice(2)) {
   const forecast = {
     parked: toPark.length,
     unparked: toUnpark.length,
-    squads: args.squads.map((squad) => squadNumbers(buildSquadPlan({ squad, groupSize: args.groupSize, managersPerGroup: args.managersPerGroup, mixJunior: args.mixJunior, ...state, teams: forecastTeams }))),
+    squads: args.squads.map((squad) => {
+      const sp = buildSquadPlan({ squad, ...planOpts, ...state, teams: forecastTeams });
+      return { ...squadNumbers(sp), ...starterShares(sp.startersByPool) };
+    }),
   };
 
   const generatedAt = new Date().toISOString();
@@ -402,7 +539,7 @@ export async function main(argv = process.argv.slice(2)) {
   writeFileSync(fullPath, JSON.stringify({ generated_at: generatedAt, squadPlans }, null, 2));
 
   for (const s of summary.squads) {
-    console.log(`  ${s.squad} (${s.mode}): ${s.managers} managers + ${s.aiTeams} AI → ${s.groupCount} grupper, størst ${s.largestGroup}, mindst ${s.smallestGroup}, ${s.groupsBelowMinStarters} under ${s.minRaceEntries} startklare, ${s.teamUpdates} FK-opdateringer`);
+    console.log(`  ${s.squad} (${s.mode}): ${s.managers} managers + ${s.aiTeams} AI → ${s.groupCount} grupper, størst ${s.largestGroup}, mindst ${s.smallestGroup}, ${s.groupsBelowMinStarters} under ${s.minRaceEntries} startklare, ${s.teamUpdates} FK-opdateringer, AI-andel af startklare ${pct(s.aiStarterShare)}`);
   }
   console.log(`  prognose efter parkering (${forecast.parked} parkeres, ${forecast.unparked} genindplaceres): ${forecast.squads.map((s) => `${s.squad} ${s.managers}+${s.aiTeams} → ${s.groupCount} grupper (${s.smallestGroup}-${s.largestGroup})`).join(" · ")}`);
   console.log(`  snapshot: ${relative(REPO_ROOT, jsonPath)} + .md · fuld plan: ${relative(REPO_ROOT, fullPath)}`);

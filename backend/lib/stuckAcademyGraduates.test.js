@@ -160,6 +160,44 @@ test("#4495 et LÆNGE udløbet override-vindue er et brud (sweepet er gået i st
   assert.equal(stuck[0].pendingGraduationId, "g1");
 });
 
+// #6710: "afventer oprykning" er en lovlig tilstand. Den nyeste grad-raekke paa
+// rytterens EGET hold staar 'expired' (vinduet udloeb med fuld seniortrup).
+test("#6710 en rytter der afventer oprykning ('expired' som nyeste raekke paa eget hold) er ikke et fund", async () => {
+  const supabase = makeMock({
+    riders: [STUCK_23],
+    graduations: [
+      { id: "g0", rider_id: "r-stuck", team_id: "t1", status: "sold", created_at: "2026-07-01T00:00:00.000Z" },
+      { id: "g1", rider_id: "r-stuck", team_id: "t1", status: "expired", created_at: "2026-08-20T00:00:00.000Z" },
+    ],
+  });
+  const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
+  assert.deepEqual(stuck, []);
+});
+
+test("#6710 'expired' fra et ANDET hold beskytter ikke (rytteren er skiftet hold siden)", async () => {
+  const supabase = makeMock({
+    riders: [STUCK_23],
+    graduations: [{ id: "g1", rider_id: "r-stuck", team_id: "t-old", status: "expired", created_at: "2026-08-20T00:00:00.000Z" }],
+  });
+  const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
+  assert.equal(stuck.length, 1);
+  assert.deepEqual(stuck[0].graduationStatuses, ["expired"]);
+});
+
+test("#6710 en nyere LÆNGE udløbet 'pending' oven paa 'expired' er stadig et brud (naeste saesons vindue gik i staa)", async () => {
+  const deadline = new Date(NOW.getTime() - (STUCK_GRADUATE_GRACE_HOURS + 1) * 3_600_000).toISOString();
+  const supabase = makeMock({
+    riders: [STUCK_23],
+    graduations: [
+      { id: "g1", rider_id: "r-stuck", team_id: "t1", status: "expired", created_at: "2026-07-20T00:00:00.000Z" },
+      { id: "g2", rider_id: "r-stuck", team_id: "t1", status: "pending", deadline, created_at: "2026-08-20T00:00:00.000Z" },
+    ],
+  });
+  const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });
+  assert.equal(stuck.length, 1);
+  assert.equal(stuck[0].pendingGraduationId, "g2");
+});
+
 test("#4495 en holdløs akademirytter hører til invariant D (#2257), ikke her", async () => {
   const supabase = makeMock({ riders: [{ ...STUCK_23, team_id: null }] });
   const { stuck } = await findStuckAcademyGraduates(supabase, { now: NOW });

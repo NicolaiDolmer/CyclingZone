@@ -16,13 +16,12 @@ const SATURDAY_IN_HOUR = new Date("2026-06-20T13:00:00Z"); // lørdag 15:00 CEST
 const supabase = { from: () => ({}) };
 
 function harness(overrides = {}) {
-  const calls = { refresh: 0, market: 0, claim: 0, release: 0, complete: [], refreshOpts: [], phaseWrites: [] };
+  const calls = { refresh: 0, claim: 0, release: 0, complete: [], refreshOpts: [], phaseWrites: [] };
   const base = {
     supabase,
     refreshValues: async (_sb, opts) => { calls.refresh++; calls.refreshOpts.push(opts); return { scanned: 10, changed: 3, written: 3 }; },
     readPhaseStep: async () => 0,
     advancePhaseStep: async (_sb, step) => { calls.phaseWrites.push(step); },
-    runMarketValueSweep: async () => { calls.market++; return { ran: false, skipped: "flag_off" }; },
     claimRunDate: async () => { calls.claim++; return { claimed: true, tableMissing: false }; },
     releaseRunDate: async () => { calls.release++; },
     completeRun: async ({ summary }) => { calls.complete.push(summary); },
@@ -135,8 +134,7 @@ describe("runSundayValueSweep, dato-claim", () => {
     });
     const r = await runSundayValueSweep({ ...args, now: SUNDAY_IN_WINDOW });
     assert.equal(r.skipped, "already_ran_today");
-    assert.equal(calls.refresh, 0, "en anden kørsel ville skrive dagens markedsblend væk");
-    assert.equal(calls.market, 0);
+    assert.equal(calls.refresh, 0, "dagen er allerede kørt; en ny refresh ville gentage mutationen");
   });
 
   it("manglende log-tabel → kører INTET, men skriger (fail-safe må ikke være tavs)", async () => {
@@ -220,26 +218,17 @@ describe("runSundayValueSweep, default-claim mod PostgREST-fejlkoder", () => {
 });
 
 describe("runSundayValueSweep, rækkefølge og fejlhåndtering", () => {
-  it("kører markedsblendet EFTER v4-refresh'en (#3448 rækkefølge)", async () => {
-    const order = [];
-    const { args } = harness({
-      refreshValues: async () => { order.push("v4-refresh"); return { scanned: 1, changed: 1, written: 1 }; },
-      runMarketValueSweep: async ({ now }) => {
-        order.push("market-blend");
-        assert.equal(now, SUNDAY_IN_WINDOW, "blendet skal have det injicerede `now`, ikke vægur-tiden");
-        return { ran: true, scanned: 1, changed: 1, written: 1 };
-      },
-    });
+  it("markedsblendet er fjernet (#6642): resultatet bærer ingen marketValueSweep", async () => {
+    const { args } = harness();
     const r = await runSundayValueSweep({ ...args, now: SUNDAY_IN_WINDOW });
-    assert.deepEqual(order, ["v4-refresh", "market-blend"]);
-    assert.equal(r.marketValueSweep.ran, true);
+    assert.equal(r.ran, true);
+    assert.equal("marketValueSweep" in r, false);
   });
 
-  it("en fejlende v4-refresh FRIGIVER dagens claim og springer blendet over", async () => {
+  it("en fejlende v4-refresh FRIGIVER dagens claim", async () => {
     // Uden frigivelsen kostede ét statement-timeout hele ugens værdiopdatering:
     // næste tick fandt claim-rækken og svarede already_ran_today (review 31/8,
-    // fund 2). Blendet springes over, fordi næste forsøgs v4-refresh ellers
-    // ville skrive det væk igen.
+    // fund 2).
     const captured = [];
     const { calls, args } = harness({
       refreshValues: async () => { throw new Error("v4 nede"); },
@@ -250,7 +239,6 @@ describe("runSundayValueSweep, rækkefølge og fejlhåndtering", () => {
     assert.equal(r.skipped, "value_refresh_failed");
     assert.equal(r.claimReleased, true);
     assert.equal(calls.release, 1);
-    assert.equal(calls.market, 0, "et blend nu ville blive skrevet væk af næste forsøgs refresh");
     assert.equal(calls.complete.length, 0, "der er ingen række at opsummere efter en frigivelse");
     assert.deepEqual(captured, ["value-refresh"]);
   });
@@ -279,7 +267,6 @@ describe("runSundayValueSweep, rækkefølge og fejlhåndtering", () => {
     const second = await runSundayValueSweep({ ...args, now: SUNDAY_NEXT_TICK });
     assert.equal(second.ran, true, "den frigivne dag skal kunne claimes igen samme søndag");
     assert.equal(calls.refresh, 2);
-    assert.equal(calls.market, 1);
   });
 
   it("default-frigivelsen sletter netop dagens række", async () => {
@@ -305,27 +292,10 @@ describe("runSundayValueSweep, rækkefølge og fejlhåndtering", () => {
     assert.deepEqual(captured, ["value-refresh", "release-claim"]);
   });
 
-  it("et fejlende markedsblend vælter ikke kørslen", async () => {
-    const captured = [];
-    const { args } = harness({
-      runMarketValueSweep: async () => { throw new Error("blend nede"); },
-      captureExceptionFn: (err, ctx) => captured.push(ctx?.tags?.stage),
-    });
-    const r = await runSundayValueSweep({ ...args, now: SUNDAY_IN_WINDOW });
-    assert.equal(r.ran, true);
-    assert.equal(r.marketValueSweep, null);
-    assert.deepEqual(captured, ["market-value-sweep"]);
-  });
-
   it("opsummerer kørslen i log-rækken", async () => {
-    const { calls, args } = harness({
-      runMarketValueSweep: async () => ({ ran: true, written: 42 }),
-    });
+    const { calls, args } = harness();
     await runSundayValueSweep({ ...args, now: SUNDAY_IN_WINDOW });
-    assert.deepEqual(calls.complete[0], {
-      scanned: 10, changed: 3, written: 3,
-      marketSweepRan: true, marketSweepWritten: 42,
-    });
+    assert.deepEqual(calls.complete[0], { scanned: 10, changed: 3, written: 3 });
   });
 
   it("en fejlende opsummering rapporterer stadig kørslen som kørt", async () => {
@@ -525,7 +495,6 @@ describe("runSundayValueSweep, skiftedagen (#5842)", () => {
     assert.equal(r.skipped, "transition_pending");
     assert.equal(calls.claim, 0);
     assert.equal(calls.refresh, 0);
-    assert.equal(calls.market, 0);
   });
 
   it("vinduet gates før skifte-tjekket: ingen DB-opslag om morgenen", async () => {

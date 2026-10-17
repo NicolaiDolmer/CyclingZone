@@ -40,7 +40,13 @@ export default function CaptainBoard({ roster, value, onChange }) {
                     if (!r) return null;
                     return (
                       <li key={id} className="flex items-center gap-2">
-                        <span className="font-mono text-3xs text-cz-3 w-4">{t("strategy.captains.rank", { n: i + 1 })}</span>
+                        {/* #6728: kun nummeret, som i A-kæden. "Captain 1" i en 16 px
+                            kolonne blev brudt om og lå oven i terrænnavnet og rytteren;
+                            skærmlæsere får stadig hele teksten via aria-label. */}
+                        <span className="font-mono text-2xs text-cz-3 w-5 text-right tabular-nums">
+                          <span aria-hidden="true">{i + 1}</span>
+                          <span className="sr-only">{t("strategy.captains.rank", { n: i + 1 })}</span>
+                        </span>
                         <span className="text-xs text-cz-1 truncate flex-1">{r.name}</span>
                         <FitBar score={r.suitabilities?.[bucket]} />
                         <span className="flex items-center gap-0.5">

@@ -12,10 +12,27 @@
     "salaryPerSeasonTooltip": "Samlet sæsonløn for din trup",
     "teamValue": "Holdværdi: {value} CZ$",
     "division": "Division {n}",
-    "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 3 er startniveauet.",
+    "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 4 er startniveauet.",
     "balance": "{value} CZ$",
     "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
     "ownAuctionsBanner": "{count, plural, one {# af dine ryttere er på auktion} other {# af dine ryttere er på auktion}} · se auktioner"
+  },
+  "promotionPending": {
+    "title": "Afventer oprykning",
+    "hint": "Deres næste trup er fuld. De kører videre i deres nuværende trup på samme kontrakt.",
+    "waitingFor": {
+      "u23": "Venter på en U23-plads",
+      "senior": "Venter på en seniorplads"
+    },
+    "promote": "Ryk op",
+    "noRoom": "Ingen plads endnu",
+    "promoted": "{name} er rykket op.",
+    "error": {
+      "squad_full": "Truppen er fuld. Gør plads først.",
+      "rider_on_market": "Han er på auktion. Ryk ham op, når auktionen er slut.",
+      "rider_in_stage_race": "Han kører et etapeløb. Ryk ham op, når det er slut.",
+      "generic": "Kunne ikke rykke rytteren op. Prøv igen."
+    }
   },
   "tabs": {
     "ariaLabel": "Holdets afsnit",
@@ -80,6 +97,7 @@
       "type": "Type",
       "contract": "Kontrakt",
       "contractUntil": "Til sæson {season}",
+      "contractExpired": "Udløbet",
       "action": "Handling"
     },
     "reputation": {
@@ -111,7 +129,7 @@
       "move": "Flyt trup"
     },
     "auction": {
-      "description": "Start auktion. Andre managers kan byde.",
+      "description": "Start auktion. Andre managere kan byde.",
       "startButton": "Start",
       "startFlashButton": "Start Flash",
       "flashLabel": "Flash Auktion (30 min)",

@@ -13,7 +13,7 @@
 //   tier 4      → ALTID en kalender fra S4 (#4592, ejer 24/9: "D4 går fra 8 til 4 puljer,
 //                 fyldes med AI-hold fra start og har løb fra dag ét"). De aktive D4-puljer
 //                 AI-fyldes uden ægte managers, præcis som tier 1-2.
-//   tier 3      → kun puljer med >=1 ægte manager (MANAGER_ENTRY_DIVISION=3).
+//   tier 3      → kun puljer med >=1 ægte manager (entry-division indtil #6650).
 //   ungdomspulje (squad u23/junior, #2492) → ALTID en kalender: grupperne AI-fyldes til
 //                 24 (ejer 24/9, spec-ungdomslob-2026-09-24 "Ejer-valg" pkt. 1), og deres
 //                 ægte managers tælles ikke via teams.league_division_id (senior-kolonnen).

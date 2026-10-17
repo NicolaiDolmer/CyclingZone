@@ -271,6 +271,18 @@ export const SHARED_TIME_MODEL_V4_TUNING: TimeModelTuning = freeze({
   descentFinishClimbAbilityWeightScale: 1,
 });
 
+/**
+ * #6369 (KUN s5_profiles_v1, endagsloeb): skalering af lad-gaa-loftet pr. etapeprofil
+ * i et endagsloeb. Bjerg-bucket'ens loft (letGoMaxGapScaleByProfile) er kalibreret paa
+ * etapeloeb, hvor klassementsholdenes tolerance (gcDanger) lofter udbruddet; i et
+ * endagsloeb findes den ikke, saa morgenudbruddet fik et forspring ingen jagt kunne
+ * hente. Udeladt profil = 1 (uaendret). Ingen aeldre revision laeser dette.
+ * Kalibreret privat (balance-internals/6367/).
+ */
+export const S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE: Readonly<Partial<Record<ProfileType, number>>> = freeze({
+  mountain: 0.25,
+});
+
 // Den kalibrerede tuning pr. profil med egen evne-vaegt (beregnet én gang).
 function byProfile(base: TimeModelTuning): Readonly<Partial<Record<ProfileType, TimeModelTuning>>> {
   return Object.freeze(Object.fromEntries(

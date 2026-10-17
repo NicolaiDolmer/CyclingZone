@@ -86,7 +86,52 @@ export type GcThreat = {
   leash_rider_ids?: string[];
   /** #5978 (KUN orders_gc_v3): truslen er et endagsloebs (evne, ikke klassement). */
   one_day?: boolean;
+  /**
+   * #5978 (KUN S5-trusselsmodellen, s5_profiles_v1): hvor farlig den farligste
+   * rytter i truslen/snoren er for holdet, i [0, 1]. Laeses af planTeamReaction:
+   * jo farligere, jo haardere jagt. Udeladt = alle aeldre revisioner (bit-identisk).
+   */
+  danger?: number;
 };
+
+/**
+ * #5978 (ADDITIVT, KUN s5_profiles_v1, sat af broen): GC-kontekstens maerker for
+ * S5-trusselsmodellen. `threat_model: "s5"` vaelger modellen; `first_stage: true`
+ * er etapeloebets foerste etape, hvor alle dagens startere staar lige (rang 1,
+ * intet hul) i stedet for status "first_stage" (som ingen reaktion giver).
+ * Holdes her (ikke i types.ts), fordi kun dette modul laeser dem.
+ */
+export type S5GcMarks = { threat_model?: "s5"; first_stage?: true };
+
+/** #5978: er GC-konteksten S5-trusselsmodellens (s5_profiles_v1)? */
+export function isS5ThreatModel(gc: GcContext | null | undefined): boolean {
+  return !!gc && gc.status === "standings" && (gc as GcContext & S5GcMarks).threat_model === "s5";
+}
+
+/** #5978 (KUN s5_profiles_v1): broens syntetiske foerste-etape-klassement (alle staar lige, rang 1). */
+export function isSyntheticFirstStage(gc: GcContext): boolean {
+  return gc.status === "standings" && (gc as GcContext & S5GcMarks).first_stage === true;
+}
+
+/**
+ * #5978 (KUN s5_profiles_v1, ejer 5/10 + 15/10): farlige klassementsryttere faar
+ * kortere snor, og rivalerne jager haardere jo farligere rytteren er.
+ * START-KANDIDATER, kalibreret privat (balance-internals/5978/).
+ *  - dangerFloor: under denne andel af holdets GC-rytters klassementsevne er en
+ *    rytter ingen fare; ved 1 (lige saa staerk eller staerkere) er faren fuld.
+ *    Imellem stiger faren lineaert (i stedet for orders_gc_v3's skarpe graense).
+ *    En lavere graense kostede udbrudssejre paa Grand Tours' bjergetaper (maalt).
+ *  - dangerAllowanceSeconds: det ekstra forspring en rytter uden fare faar ud over
+ *    sin afstand; det skrumper lineaert til 0 ved fuld fare (kortere snor).
+ *  - contenderFieldRank: paa foerste etape (ingen tider endnu) har et hold noget at
+ *    forsvare naar dets GC-rytter er blandt feltets bedste klassementsryttere paa evne.
+ *    Senere etaper: hvem der har noget at forsvare er uaendret (revisionens regel).
+ */
+export const S5_GC_THREAT_TUNING = Object.freeze({
+  dangerFloor: 0.95,
+  dangerAllowanceSeconds: 240,
+  contenderFieldRank: 20,
+});
 
 /**
  * #5978 (KUN orders_gc_v3): hvad farlighed maales paa ud over dagens tidshul.
@@ -321,14 +366,20 @@ export function normalizeGcContext(raw: unknown): GcContext {
       }
       if (!hasStage || standings.length === 0) return { status: "missing", ...(hasStage ? { stage_number: stageNumber } : {}) };
       standings.sort((a, b) => a.rank - b.rank || a.rider_id.localeCompare(b.rider_id));
+      // #5978 (ADDITIVT, KUN s5_profiles_v1): S5-trusselsmodellens maerker. Paa
+      // foerste etape staar alle lige: ingen foerer (ingen troeje at forsvare).
+      const s5 = ctx["threat_model"] === "s5";
+      const firstStage = s5 && ctx["first_stage"] === true;
       const rawLeader = ctx["leader_id"];
-      const leaderId = typeof rawLeader === "string" && seen.has(rawLeader) ? rawLeader : standings[0].rider_id;
+      const leaderId = firstStage ? null : typeof rawLeader === "string" && seen.has(rawLeader) ? rawLeader : standings[0].rider_id;
       // #5978 (ADDITIVT, kun sat af broen under orders_gc_v3): etaper tilbage efter i dag.
       const stagesRemaining = Number(ctx["stages_remaining"]);
       const remaining = ctx["stages_remaining"] !== undefined && Number.isInteger(stagesRemaining) && stagesRemaining >= 0
         ? { stages_remaining: stagesRemaining }
         : {};
-      return { status: "standings", stage_number: stageNumber, leader_id: leaderId, standings, ...remaining };
+      const marks: S5GcMarks = s5 ? { threat_model: "s5", ...(firstStage ? { first_stage: true as const } : {}) } : {};
+      const out = { status: "standings" as const, stage_number: stageNumber, leader_id: leaderId, standings, ...remaining, ...marks };
+      return out;
     }
     case "missing":
       return hasStage ? { status: "missing", stage_number: stageNumber } : { status: "missing" };
@@ -347,6 +398,19 @@ export function protectedRiderForTeam(input: {
   entrants: Readonly<Record<string, Entrant>>;
 }): string | null {
   if (input.gcContext.status !== "standings") return null;
+  if (isS5ThreatModel(input.gcContext)) {
+    // #5978 (KUN s5_profiles_v1): holdets rytter med mindst hul; paa samme tid
+    // (fx alle paa foerste etape) den bedste klassementsrytter paa evne, ikke den
+    // der tilfaeldigvis staar oeverst blandt de lige.
+    let pick: { standing: GcStanding; ability: number } | null = null;
+    for (const standing of input.gcContext.standings) {
+      if (input.entrants[standing.rider_id]?.team_id !== input.teamId) continue;
+      const ability = gcAbility(input.entrants[standing.rider_id]);
+      if (!pick || standing.gap_seconds < pick.standing.gap_seconds
+        || (standing.gap_seconds === pick.standing.gap_seconds && ability > pick.ability)) pick = { standing, ability };
+    }
+    return pick ? pick.standing.rider_id : null;
+  }
   for (const standing of input.gcContext.standings) {
     const teamId = input.entrants[standing.rider_id]?.team_id;
     if (typeof teamId === "string" && teamId === input.teamId) return standing.rider_id;
@@ -437,9 +501,14 @@ export function assessGcThreat(input: {
 
   const isLeader = gcContext.leader_id === protectedId;
   const stagesRemaining = stagesRemainingOf(model);
-  const interested = model
-    ? hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining, dangerTuningOf(model))
-    : isLeader || protectedStanding.rank <= tuning.protectRankLimit;
+  // #5978 (KUN s5_profiles_v1): faren er glidende, og snoren kortere jo farligere.
+  const s5 = model !== undefined && isS5ThreatModel(gcContext);
+  const firstStage = s5 && isSyntheticFirstStage(gcContext);
+  const interested = firstStage
+    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds) <= S5_GC_THREAT_TUNING.contenderFieldRank
+    : model
+      ? hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining, dangerTuningOf(model))
+      : isLeader || protectedStanding.rank <= tuning.protectRankLimit;
   if (!interested) {
     return { ...NO_THREAT_BASE, protected_rider_id: protectedId, severity: "none", reason: "no_gc_interest" };
   }
@@ -470,7 +539,7 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   // #6187: under orders_gc_v3 taeller holdets egne ryttere aldrig (og med
@@ -497,10 +566,17 @@ export function assessGcThreat(input: {
       );
       // #5578 (KUN official_times_v2): klassementets forreste er altid en rival, og
       // hans afstand taeller hoejst som snorens loft (udbrudsmaal 6: aldrig 5 min).
-      const ranked = model !== undefined && danger.rivalRankAlways !== null && standing.rank <= danger.rivalRankAlways;
+      // #5978 (S5): paa foerste etape staar alle lige; ingen er "de forreste".
+      const ranked = model !== undefined && !firstStage && danger.rivalRankAlways !== null && standing.rank <= danger.rivalRankAlways;
       const cap = ranked ? danger.rankedLeadCapSeconds : null;
-      const margin = (cap !== null ? Math.min(deficit, cap) : deficit) - lead - potential;
-      const isRival = ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
+      // #5978 (KUN s5_profiles_v1): faren i [0, 1] og den afstand snoren maales
+      // fra: hans afstand plus et tillaeg der skrumper til 0 jo farligere han er.
+      const riderDanger = s5 ? (ranked ? 1 : dangerOf(strengthRaw)) : undefined;
+      const distance = riderDanger !== undefined ? deficit + (1 - riderDanger) * S5_GC_THREAT_TUNING.dangerAllowanceSeconds : deficit;
+      const margin = (cap !== null ? Math.min(distance, cap) : distance) - lead - potential;
+      const isRival = riderDanger !== undefined
+        ? riderDanger > 0
+        : ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
       let severity: GcThreatSeverity;
       let reason: GcThreatReason;
       if (margin <= 0) {
@@ -524,10 +600,13 @@ export function assessGcThreat(input: {
       // #5578 robust (KUN official_times_v2): foererens hold lader en svagere
       // udbryder tage troejen, men kun med et begraenset forspring.
       const allowance = model !== undefined && isLeader && !isRival ? danger.jerseyAllowanceSeconds?.[input.route.profile_type] : undefined;
-      const leashRoom = allowance !== undefined ? Math.max(0, deficit) + allowance : deficit - Math.max(0, future) - danger.leashMarginSeconds;
+      // #5978 (S5): en svagere rytters forventede tidstab paa de kommende etaper
+      // giver ham laengere snor (orders_gc_v3 talte kun en staerkeres gevinst med).
+      const leashRoom = allowance !== undefined ? Math.max(0, deficit) + allowance : distance - (s5 ? future : Math.max(0, future)) - danger.leashMarginSeconds;
       // #5578 (KUN official_times_v2): de forreste holder altid snoren, og den er hoejst loftet lang.
       candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival,
-        leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}) });
+        leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}),
+        ...(riderDanger !== undefined ? { danger: riderDanger } : {}) });
     }
   }
   if (!anyClassified) return { ...base, threat_rider_ids: [], tied: false, severity: "none", reason: "no_classified_rider_ahead" };
@@ -581,7 +660,7 @@ function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean; fo
  */
 function withLeash(
   threat: GcThreat,
-  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number; forcedLeash?: boolean }>,
+  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number }>,
   leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds,
 ): GcThreat {
   const held = counted.filter((c) => holdsLeash(c, leashMarginSeconds));
@@ -589,12 +668,52 @@ function withLeash(
   const tolerated = limiting.length > 0
     ? { tolerated_lead_seconds: Math.max(0, Math.min(...limiting.map((c) => c.leashRoom))) }
     : {};
+  // #5978 (KUN s5_profiles_v1): den farligste af de ryttere holdet faktisk reagerer paa.
+  const dangers = limiting.map((c) => c.danger).filter((d): d is number => d !== undefined);
   return {
     ...threat,
     ...tolerated,
     leash_hold: held.length > 0,
     ...(held.length > 0 ? { leash_rider_ids: held.map((c) => c.riderId).sort() } : {}),
+    ...(dangers.length > 0 ? { danger: Math.max(...dangers) } : {}),
   };
+}
+
+/** #5978 (KUN s5_profiles_v1): faren i [0, 1] ud fra styrkeforholdet til holdets GC-rytter. */
+export function dangerOf(strengthRatio: number): number {
+  const floor = S5_GC_THREAT_TUNING.dangerFloor;
+  if (!Number.isFinite(strengthRatio)) return 0;
+  return clamp((strengthRatio - floor) / Math.max(1e-9, 1 - floor), 0, 1);
+}
+
+/**
+ * #6369 (KUN s5_profiles_v1): hvem et nyt udbrud efter en tidlig indhentning
+ * udelukker: klassementets forreste (rang <= rankAtMost) og enhver der er
+ * staerk nok til at vaere farlig for dem (klassementsevne mindst dangerFloor x
+ * medianen af de forreste), saa feltet ikke straks jagter det nye udbrud.
+ * Synligt foerste-etape-klassement (alle lige) = ingen udelukkelse.
+ */
+export function s5ReformationExcludedRiders(gc: GcContext, entrants: Readonly<Record<string, Entrant>>, rankAtMost: number): Set<string> {
+  const out = new Set<string>();
+  if (gc.status !== "standings" || isSyntheticFirstStage(gc)) return out;
+  const top = gc.standings.filter((s) => s.rank <= rankAtMost);
+  for (const s of top) out.add(s.rider_id);
+  const abilities = top.map((s) => gcAbility(entrants[s.rider_id])).filter((a) => a > 0).sort((a, b) => a - b);
+  if (abilities.length === 0) return out;
+  const floor = S5_GC_THREAT_TUNING.dangerFloor * abilities[Math.floor((abilities.length - 1) / 2)];
+  for (const id of Object.keys(entrants)) if (gcAbility(entrants[id]) >= floor) out.add(id);
+  return out;
+}
+
+/** #5978: rytterens plads paa klassementsevne blandt de koerende (1 = bedst; lige evne deler plads). */
+function fieldGcRank(riderId: string, entrants: Readonly<Record<string, Entrant>>, racingRiderIds?: ReadonlySet<string>): number {
+  const own = gcAbility(entrants[riderId]);
+  let better = 0;
+  for (const id of Object.keys(entrants)) {
+    if (id === riderId || (racingRiderIds && !racingRiderIds.has(id))) continue;
+    if (gcAbility(entrants[id]) > own) better++;
+  }
+  return better + 1;
 }
 
 /**
@@ -690,7 +809,7 @@ export function formationDangerTeams(input: {
   km: number;
   racingRiderIds?: ReadonlySet<string>;
   dangerModel: DangerModel;
-}): string[] {
+}): FormationDangerTeams {
   const gcContext = input.gcContext ?? null;
   if (!gcContext || (gcContext.status !== "standings" && gcContext.status !== "one_day")) return [];
   if (gcContext.status === "one_day" && !input.dangerModel.routeDemand) return [];
@@ -702,7 +821,8 @@ export function formationDangerTeams(input: {
   const probe: RaceGroup = { ...source, id: `${source.id}#attempt`, rider_ids: [input.riderId], gap_seconds: source.gap_seconds - 1e-9 };
   const rest: RaceGroup = { ...source, rider_ids: source.rider_ids.filter((id) => id !== input.riderId) };
   const groups = [probe, rest];
-  const out: string[] = [];
+  const out: FormationDangerTeams = [];
+  const dangerByTeam = new Map<string, number>();
   for (const teamId of [...input.teamIds].sort((a, b) => a.localeCompare(b))) {
     if (teamId === riderTeam) continue;
     const protectedRiderId = gcContext.status === "one_day"
@@ -725,7 +845,20 @@ export function formationDangerTeams(input: {
       gcContext, groups, entrants: input.entrants, route: input.route, protectedRiderId, km: input.km,
       racingRiderIds: input.racingRiderIds, ownTeamId: teamId, dangerModel: input.dangerModel,
     });
-    if (threat.leash_hold === true || threat.severity !== "none") out.push(teamId);
+    if (threat.leash_hold === true || threat.severity !== "none") {
+      out.push(teamId);
+      if (threat.danger !== undefined) dangerByTeam.set(teamId, threat.danger);
+    }
   }
+  // #5978 (KUN s5_profiles_v1): hvor farligt forsoeget er for hvert af holdene.
+  if (dangerByTeam.size > 0) out.danger = dangerByTeam;
   return out;
 }
+
+/**
+ * #5978: holdene et forsoeg er farligt for (sorteret). Under S5-trusselsmodellen
+ * baerer listen ogsaa faren pr. hold (`danger`, [0, 1]); breakawayPermission
+ * lader de forsvarende holds modstand vokse med den. En almindelig liste for
+ * alle aeldre revisioner (bit-identisk).
+ */
+export type FormationDangerTeams = string[] & { danger?: ReadonlyMap<string, number> };

@@ -300,7 +300,7 @@ export default function ActivityPage() {
       <div className="flex gap-1 mb-5 overflow-x-auto pb-px">
         {TABS.map(tabItem => (
           <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border shrink-0
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-cz text-sm font-medium whitespace-nowrap transition-all border shrink-0
               ${tab === tabItem.key
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>

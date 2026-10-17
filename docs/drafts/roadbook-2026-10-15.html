@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Roadbook 15 Oct</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter+Tight:wght@500;600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#101215;--card:#16191d;--line:#2a2e35;--t1:#ecebe7;--t2:#a7abb3;--t3:#6c717a;--gold:#d6a62b;--s4:#3b4049}
+*{box-sizing:border-box;margin:0}
+body{width:1200px;height:675px;background:var(--bg);color:var(--t1);font-family:"DM Sans",sans-serif;padding:44px 52px;position:relative;overflow:hidden}
+.top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:14px}
+.eyebrow{font:600 13px "Inter Tight";letter-spacing:.14em;text-transform:uppercase;color:var(--t2)}
+.brand{font:700 14px "Inter Tight";letter-spacing:.06em;color:var(--t2)}
+h1{font-family:"Bebas Neue";font-size:92px;line-height:.9;letter-spacing:.01em;margin-top:26px}
+h1 span{color:var(--gold)}
+.sub{font-size:18px;color:var(--t2);margin-top:10px;font-variant-numeric:tabular-nums}
+.cal{margin-top:26px;display:flex;align-items:flex-end;gap:4px;height:38px}
+.d{width:16px;height:16px;border-radius:2px;background:var(--s4)}
+.d.s5{background:var(--t1)}
+.d.gap{background:transparent;border:1px dashed var(--t3)}
+.d.first{background:var(--gold)}
+.callab{display:flex;gap:0;font:500 12px "Inter Tight";color:var(--t3);margin-top:8px;font-variant-numeric:tabular-nums;width:800px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:30px}
+.col{border-top:1px solid var(--line);padding-top:14px}
+.col h2{font:700 15px "Inter Tight";margin-bottom:10px}
+ul{padding:0}
+.col li{list-style:none;font-size:16px;line-height:1.35;color:var(--t1);padding:5px 0;display:flex;gap:10px;align-items:baseline}
+.col li b{font-weight:500}
+.tag{font:600 10.5px "Inter Tight";letter-spacing:.08em;text-transform:uppercase;color:var(--t2);border:1px solid var(--line);border-radius:5px;padding:2px 6px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--t3);flex:none;transform:translateY(-2px)}
+.foot{position:absolute;left:52px;right:52px;bottom:30px;display:flex;justify-content:space-between;font:500 13px "Inter Tight";color:var(--t3)}
+</style></head><body>
+<div class="top"><div class="eyebrow">The Roadbook · 15 October</div><div class="brand">CYCLING ZONE</div></div>
+<h1>Season 5 starts <span>Wed 28 Oct</span></h1>
+<div class="sub">32 race dates · 28 Oct to Sat 28 Nov · Season 4 ends Sun 25 Oct</div>
+<div class="cal" id="cal"></div>
+<div class="callab"><span style="width:100px">S4 ends</span><span style="width:40px">break</span><span>Season 5 · 32 race dates</span></div>
+<div class="cols">
+  <div class="col"><h2>The race engine gets a lift</h2><ul>
+    <li><span class="dot"></span>Time trials spread out like real ones</li>
+    <li><span class="dot"></span>GC teams react to a dangerous breakaway</li>
+    <li><span class="dot"></span>No more fixed 3-second gaps on summit finishes</li>
+    <li><span class="dot"></span>Form peaks count in races from season 5</li>
+  </ul></div>
+  <div class="col"><h2>New right now</h2><ul>
+    <li><span class="tag">Beta</span><b>Stage page 2.0</b></li>
+    <li><span class="tag">Beta</span><b>Set the day for many riders at once</b></li>
+    <li><span class="tag">New</span><b>Your first race card for new managers</b></li>
+  </ul></div>
+</div>
+<div class="foot"><span>Full list under Known issues · cyclingzone.org/roadmap</span><span>Dolmer</span></div>
+<script>
+const c=document.getElementById('cal');
+for(let i=0;i<5;i++){const d=document.createElement('div');d.className='d';c.appendChild(d)}
+for(let i=0;i<2;i++){const d=document.createElement('div');d.className='d gap';c.appendChild(d)}
+for(let i=0;i<32;i++){const d=document.createElement('div');d.className='d s5'+(i===0?' first':'');c.appendChild(d)}
+</script>
+</body></html>

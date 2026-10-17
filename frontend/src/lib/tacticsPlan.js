@@ -26,6 +26,32 @@ export function defaultTeamOrder(riderIds = []) {
   return { team_id: null, breakaway_stance: "neutral", riders: riderIds.map(defaultRiderOrder) };
 }
 
+// #6462: motorens tog-etaper (backend mechanics/leadout.ts isSprintTrainProfile).
+const SPRINT_TRAIN_PROFILES = new Set(["flat"]);
+
+/** #6462: etapen er en tog-etape (flad). En ukendt profil er det ikke: intet forvalg. */
+export function isSprintTrainStage(profileType) {
+  return SPRINT_TRAIN_PROFILES.has(profileType);
+}
+
+/**
+ * #6462 (ejer 16/10): sprint-toget er kun STANDARD paa en flad etape. Spejler
+ * motorens adapter (teamOrdersAdapter.ts trainIsDefaultOnStage + withoutDefaultTrain).
+ * `flatOnly` er serverens svar for loebet (team-orders `sprint_train_flat_only`):
+ * den revision motoren koerer loebet paa, ogsaa for et loeb der endnu ikke er
+ * bundet (backend raceTeamOrdersApi.sprintTrainFlatOnlyForRace). Fladen gaetter
+ * aldrig selv revisionen. Med flatOnly faar hjaelperne ingen tog-standard paa
+ * bjerg, enkeltstart, kuperet og brosten; uden beholder rollens standard alle
+ * etaper (official_times_v4 og aeldre), i motoren og derfor ogsaa her.
+ * Gemte valg roeres ikke (de ligger i de gemte raekker, ikke i standardordren).
+ * Ren: returnerer en ny ordre; null/undefined passerer uaendret igennem.
+ */
+export function trainDefaultForStage(defaultOrder, { profileType = null, flatOnly = false } = {}) {
+  if (!defaultOrder) return defaultOrder;
+  if (flatOnly !== true || isSprintTrainStage(profileType)) return defaultOrder;
+  return { ...defaultOrder, riders: (defaultOrder.riders ?? []).map((r) => ({ ...r, leadout: false })) };
+}
+
 /**
  * Standardordren for én rytter, som serveren regnede den ud af rollen.
  * Ukendt rytter (fx netop udtaget) falder til den neutrale ordre.
@@ -67,6 +93,26 @@ export function effortCounts(riders = [], keys = DEFAULT_EFFORT_KEYS) {
 
 export function setRiderEffort(order, riderId, effort) {
   return { ...order, riders: order.riders.map((r) => (r.rider_id === riderId ? { ...r, effort } : r)) };
+}
+
+/**
+ * #6647: ordren der gemmes skal bære managerens indsatsvalg fra intentions-
+ * kolonnen (rolle-overlayet), ikke rollens standard. Før blev hver rytter gemt
+ * med "normal" fra standardordren, og den ordre overskrev beskyt/spar i
+ * motoren. Én kilde: det spilleren valgte i fanen er det ordren gemmer.
+ * Ren: ny ordre returneres; ryttere uden et valg beholder deres effort.
+ *
+ * @param {{riders?: Array<{rider_id: string, effort?: string}>}} order
+ * @param {(riderId: string) => string|null|undefined} effortForRider
+ */
+export function withIntentionEfforts(order, effortForRider) {
+  return {
+    ...order,
+    riders: (order?.riders ?? []).map((r) => {
+      const effort = effortForRider?.(r.rider_id);
+      return effort ? { ...r, effort } : r;
+    }),
+  };
 }
 
 export function toggleTryBreak(order, riderId) {
