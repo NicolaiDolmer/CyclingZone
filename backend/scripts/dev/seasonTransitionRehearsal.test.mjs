@@ -166,3 +166,12 @@ test("privat log lander under balance-internals, som er gitignoreret", () => {
   const ignore = readFileSync(join(REPO_ROOT, ".gitignore"), "utf8");
   assert.match(ignore, /^balance-internals\/\s*$/m);
 });
+
+test("#6751 (Codex): aldrings-trinnet skriver ingen offentlig snapshot, og bestyrelsens formations-trin er med", () => {
+  const plan = buildPlan({ fromSeason: 4 });
+  const aging = plan.find((s) => s.id === "aging-v2");
+  assert.ok(aging.cmd.includes("--no-public-snapshot"));
+  const formation = plan.find((s) => s.id === "board-formation");
+  assert.ok(formation, "boardFormationGoalsDryRun.js er med i planen");
+  assert.ok(!formation.cmd.includes("--out"), "rapporten gaar til stdout, ikke til en fil i repoet");
+});

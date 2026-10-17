@@ -171,7 +171,7 @@ export function buildPlan({ fromSeason = 4 } = {}) {
       area: "Aldring/tilbagegang (#6110/#5833)",
       kind: "prod",
       cwd: BACKEND,
-      cmd: ["node", "scripts/dev/agingV2DryRun6110.mjs"],
+      cmd: ["node", "scripts/dev/agingV2DryRun6110.mjs", "--no-public-snapshot"],
       judge: "exit",
     },
     {
@@ -180,6 +180,14 @@ export function buildPlan({ fromSeason = 4 } = {}) {
       kind: "prod",
       cwd: BACKEND,
       cmd: ["node", "scripts/proposeNextMandateDryRun.js"],
+      judge: "exit",
+    },
+    {
+      id: "board-formation",
+      area: "Bestyrelse: formationsmål og fallback-mål for nye hold",
+      kind: "prod",
+      cwd: BACKEND,
+      cmd: ["node", "scripts/boardFormationGoalsDryRun.js"],
       judge: "exit",
     },
     {
