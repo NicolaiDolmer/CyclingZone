@@ -17,6 +17,9 @@
 #   - Springer over FRISKE worktrees uden egne commits ift. base (ahead==0) — et
 #     netop oprettet fleet-worktree ser ancestry-merged ud, men er ikke merged
 #     (issue #1271). -Force kan rydde dem alligevel.
+#   - Fjerner junctions/symlinks (fx node_modules -> hovedcheckoutens) FOER
+#     'git worktree remove', uden at foelge dem, og NAEGTER at fjerne worktreet
+#     hvis et link ikke kunne fjernes (#6687, scripts/close-out-cleanup-junctions.ps1).
 #   - Sletter kun med positivt merge-bevis: en merged PR (gh), eller en
 #     ancestry-merge MED egne commits. Er gh ubestemt for en squash-branch →
 #     branchen BEHOLDES.
@@ -38,6 +41,7 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot 'lib\git-merge-detection.ps1')
 . (Join-Path $PSScriptRoot 'lib\claude-project-paths.ps1')
+. (Join-Path $PSScriptRoot 'close-out-cleanup-junctions.ps1')
 
 $dry = -not $Execute
 $mode = if ($dry) { "DRY-RUN (intet slettes — kør med -Execute)" } else { "EXECUTE" }
@@ -125,6 +129,17 @@ foreach ($b in $blocks) {
   $detail = if ($removeForFresh) { "frisk worktree, fjernet via -Force" } else { $decision.Detail }
   $forceDel = $decision.ForceDelete -or $removeForFresh
   Write-Host ("  {0} {1}  [{2}]  ({3})" -f ($(if ($dry) {'[would-remove]'} else {'[remove]'})), $path, $branch, $detail) -ForegroundColor Yellow
+
+  # #6687: fjern junctions/symlinks (fx node_modules -> hovedcheckoutens) FOER
+  # 'git worktree remove' - ellers foelger --force linket og toemmer maalet.
+  # Kan et link ikke fjernes (eller et maal forsvinder), nægtes fjernelsen.
+  $jr = Remove-WorktreeJunctions -WorktreePath $path -DryRun:$dry
+  if (-not $jr.Ok) {
+    foreach ($e in $jr.Errors) { Write-Host "      [REFUSED] $e" -ForegroundColor Red }
+    $skipped += "junction ikke fjernet (worktree BEHOLDT): $tag"
+    continue
+  }
+
   Remove-MemoryJunction $path
   if (-not $dry) {
     & git -C $RepoRoot worktree remove $path 2>&1 | Out-Null

@@ -35,6 +35,10 @@
 #     scripts/prune-merged-worktrees.ps1 -Execute.
 #   - Uden -Execute koerer worktree-delen prune-merged-worktrees.ps1 i dens
 #     egen dry-run (rapport, sletter intet).
+#   - Junction-sikker (#6687): prune-merged-worktrees.ps1 fjerner junctions/
+#     symlinks (node_modules -> hovedcheckoutens) i et worktree FOER
+#     'git worktree remove', uden at foelge dem, og naegter fjernelsen hvis et
+#     link ikke kan fjernes (scripts/close-out-cleanup-junctions.ps1).
 #
 # Brug:
 #   pwsh -File scripts/close-out-cleanup.ps1              # dry-run (rapportér)
