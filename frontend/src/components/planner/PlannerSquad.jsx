@@ -275,10 +275,10 @@ export default function PlannerSquad({
         <table className="block w-full border-collapse md:table" data-sort-exempt="Rangeret efter rating; input-raekker, ikke en sammenlignings-tabel">
           <thead className="hidden md:table-header-group">
             <tr>
-              <th className="whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colRider")}</th>
-              <th className="whitespace-nowrap bg-cz-card px-2 py-3 text-right font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colForm")}</th>
-              <th className="w-[38%] whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colTarget")}</th>
-              <th className="whitespace-nowrap bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colValue")}</th>
+              <th className="bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colRider")}</th>
+              <th className="bg-cz-card px-2 py-3 text-right font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colForm")}</th>
+              <th className="w-[38%] bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colTarget")}</th>
+              <th className="bg-cz-card px-4 py-3 text-left font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3">{t("squad.colValue")}</th>
             </tr>
           </thead>
           <tbody className="block md:table-row-group">
@@ -303,7 +303,7 @@ export default function PlannerSquad({
                           <span className="truncate">{riderShortName(rider)}</span>
                           <ChevronRightIcon size={13} aria-hidden="true" className="shrink-0 text-cz-3" />
                         </button>
-                        <div className="mt-0.5 flex items-center gap-1.5">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
                           {rider.nationality && <Flag code={rider.nationality} className="text-[11px]" />}
                           {rider.primaryType && <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} size="sm" />}
                           {rider.age != null && (
