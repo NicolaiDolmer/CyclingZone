@@ -4,6 +4,7 @@
   "seasonTooltip": "Current season. Standings reset each season.",
   "noActiveSeason": "No active season",
   "loadError": "Couldn't load the standings. Please try again.",
+  "strengthLoadError": "Couldn't load squad strength. Please try again.",
   "retry": "Try again",
   "division": "Division {n}",
   "poolAll": "All",

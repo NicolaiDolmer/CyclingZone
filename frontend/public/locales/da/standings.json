@@ -4,6 +4,7 @@
   "seasonTooltip": "Nuværende sæson. Ranglisten nulstilles hver sæson.",
   "noActiveSeason": "Ingen aktiv sæson",
   "loadError": "Kunne ikke indlæse ranglisten. Prøv igen.",
+  "strengthLoadError": "Kunne ikke hente truppernes styrke. Prøv igen.",
   "retry": "Prøv igen",
   "division": "Division {n}",
   "poolAll": "Alle",
