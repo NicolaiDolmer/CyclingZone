@@ -1,0 +1,764 @@
+{
+  "tx": {
+    "sponsor": {
+      "seasonStartIntro": "Ingresos de patrocinio · Inicio de temporada (intro {amount} ×{modifier})",
+      "seasonStartIntroPullout": "Ingresos de patrocinio · Inicio de temporada (intro {amount} ×{modifier} · retirada de patrocinador activa)",
+      "seasonStartVariable": "Ingresos de patrocinio · Inicio de temporada (base {base} + variable {variable} ×{modifier})",
+      "seasonStartVariablePullout": "Ingresos de patrocinio · Inicio de temporada (base {base} + variable {variable} ×{modifier} · retirada de patrocinador activa)",
+      "seasonStartFallback": "Ingresos de patrocinio · Inicio de temporada (alternativa {amount} ×{modifier})",
+      "seasonStartFallbackPullout": "Ingresos de patrocinio · Inicio de temporada (alternativa {amount} ×{modifier} · retirada de patrocinador activa)",
+      "seasonStartContract": "Ingresos de patrocinio · Inicio de temporada (contrato con {sponsor}, base {base} ×{modifier})",
+      "seasonStartContractPullout": "Ingresos de patrocinio · Inicio de temporada (contrato con {sponsor}, base {base} ×{modifier} · retirada de patrocinador activa)",
+      "midSeasonProRata": "Ingresos de patrocinio · Incorporación a mitad de temporada ({sponsorName} · queda el {percent} % de la temporada)",
+      "signingBonus": "Patrocinio · Prima de firma ({sponsorName})",
+      "resultBonus": "Patrocinio · Prima por resultado ({wins} victorias, {podiums} podios)",
+      "objectiveBonus": "Patrocinio · Objetivo de temporada cumplido ({sponsorName})"
+    },
+    "salary": "Salarios de la temporada · {count} ciclistas",
+    "wageDaily": "Salario diario · {count} ciclistas",
+    "upkeep": "Mantenimiento (costes de funcionamiento) · División {division}",
+    "travelStaff": "Viajes y personal · {race}, etapa {stage}",
+    "parachute": "Paracaídas por descenso · División {oldDivision} -> {newDivision}",
+    "academyDrift": "Mantenimiento de la academia · {count} plazas × {drift_per_slot} pts",
+    "facilityUpkeep": "Mantenimiento de instalaciones · {tracks} líneas",
+    "facilityPurchase": "Mejora de instalaciones: {track} -> nivel {tier}",
+    "staffSalary": "Salarios de la temporada del personal técnico · {count} miembros",
+    "staffSeverance": "{role} despedido (indemnización)",
+    "staffRelease": "{role} {staffName} despedido (indemnización)",
+    "interest": "Intereses de la deuda (10 % de {amount} pts)",
+    "bonus": "Bonus de división · Puesto n.º {rank} en la División {division}",
+    "loanReceivedShort": "Préstamo a corto plazo contratado (comisión: {fee} CZ$)",
+    "loanReceivedLong": "Préstamo a largo plazo contratado (comisión: {fee} CZ$)",
+    "loanRepayment": "Cuota del préstamo pagada",
+    "loanRepaymentFinal": "Cuota del préstamo pagada. ¡Préstamo devuelto por completo! 🎉",
+    "loanRepaymentRemaining": "Cuota del préstamo pagada (pendiente: {remaining} CZ$)",
+    "forcedDebtRepaymentFinal": "Lo obtenido en la venta forzosa liquidó tu préstamo por completo",
+    "forcedDebtRepaymentRemaining": "Lo obtenido en la venta forzosa redujo la deuda (pendiente: {remaining} CZ$)",
+    "loanInterest": "Intereses del préstamo ({rate} %): se suman a la deuda del préstamo, no se descuentan del saldo",
+    "emergencyLoan": "Préstamo de emergencia abierto automáticamente (comisión: {feeRate} %, intereses: {interestRate} %/temporada)",
+    "squadFineSingle": "Multa por tamaño de plantilla: {count} ciclista de más × {amount} CZ$",
+    "squadFineMulti": "Multa por tamaño de plantilla: {count} ciclistas de más × {amount} CZ$",
+    "auctionBuy": "{riderName} comprado en subasta",
+    "auctionSell": "{riderName} vendido en subasta",
+    "guaranteedAiSale": "Venta garantizada a la IA: {riderName}",
+    "forcedDebtSale": "Venta forzosa (tope de deuda): {riderName}",
+    "youthAuctionWin": "Ciclista juvenil {riderName} ganado en subasta",
+    "academySigning": "Fichaje para la academia: {riderName}",
+    "intakeExpiryCompensation": "Compensación: oferta de cantera caducada de {riderName} vendido en subasta",
+    "transferBuy": "{riderName} comprado por fichaje",
+    "transferSell": "{riderName} vendido por fichaje",
+    "riderRelease": "{riderName} liberado (cláusula de rescisión)",
+    "swapCash": "Liquidación en efectivo del intercambio: {offeredName} <-> {requestedName}",
+    "scoutTravel": "Coste de viaje del ojeador",
+    "scoutLostReportRefund": "Reembolso: informe del ojeador perdido por un error",
+    "legacy": {
+      "sponsor": "Ingresos de patrocinio · Temporada {season}",
+      "salary": "Salarios · Temporada {season}",
+      "prize": "Premios en metálico · {raceName}",
+      "transferPurchase": "Compra de ciclista · {detail}",
+      "transferSale": "Venta de ciclista · {detail}",
+      "loanReceived": "Préstamo recibido",
+      "loanRepayment": "Cuota del préstamo",
+      "loanInterest": "Intereses del préstamo",
+      "emergencyLoan": "Préstamo de emergencia",
+      "bonus": "Bonus de división",
+      "interest": "Intereses",
+      "adminAdjustment": "Ajuste del administrador"
+    },
+    "divisionAdjustment": "Ajuste de división · acuerdo calculado para la División {signedDivision}, corriendo en la División {currentDivision}"
+  },
+  "forecast": {
+    "warning": {
+      "negativeNet": "Déficit esperado: {value} CZ$ la próxima temporada. Vende a un ciclista, reduce los préstamos activos o negocia un patrocinador mejor.",
+      "debtNearCeiling": "La deuda es el {ratio} % del tope ({totalDebt} / {ceiling} CZ$). La directiva está preocupada.",
+      "debtGrowing": "La deuda es el {ratio} % del tope. Vigila la carga de intereses.",
+      "debtTrend": "Con el déficit actual alcanzarás el tope de deuda en 2 temporadas. Actúa ya.",
+      "salaryExceedsSponsor": "Los salarios ({salary} CZ$) superan al patrocinio ({sponsor} CZ$). Las operaciones tranquilas ya no cubren los salarios."
+    }
+  },
+  "notif": {
+    "admin": {
+      "feedbackReply": {
+        "title": "Respuesta a tu mensaje"
+      },
+      "retirementAnnounced": {
+        "title": "Última temporada de {count} de tus ciclistas",
+        "message": "{count} de tus ciclistas han anunciado que esta es su última temporada: {names}. Se retiran cuando termine la temporada {season}."
+      },
+      "devTransition": {
+        "title": "La vista de desarrollo ha cambiado",
+        "message": "Tus ciclistas no han cambiado. Las habilidades, valoraciones y resultados son exactamente los de ayer. El rango antiguo iba del suelo al techo. El rango nuevo es el nivel proyectado de tu ciclista: dónde acaba realistamente con tu entrenamiento. Los techos se elevaron para la mayoría de los ciclistas a la vez, así que un rango de aspecto más bajo no significa un ciclista más débil. El potencial ahora decide con qué rapidez se desarrolla un ciclista, no dónde se detiene. Tu panel muestra a tus propios ciclistas antes y después."
+      },
+      "survey": {
+        "title": "Ayúdame a decidir qué construir a continuación",
+        "message": "He puesto una encuesta corta en el juego. Valoras cada idea dos veces: si es una buena idea en general y cuánto te importa ahora mismo. Lleva unos 5 minutos, y puedes cambiar tus respuestas hasta que se cierre. Ábrela desde aquí."
+      },
+      "surveyNudge": {
+        "title": "¿Tres minutos para la próxima temporada?",
+        "message": "Hasta ahora {count} mánagers han respondido la encuesta de funciones. Los equipos juveniles, el entrenamiento y el motor de carreras están arriba. Me gustaría saber dónde estás antes de cerrar el plan. La encuesta se cierra el 14 de septiembre. Ábrela desde aquí."
+      },
+      "surveyNudgeStarted": {
+        "title": "Solo te falta pulsar enviar",
+        "message": "Empezaste la encuesta de funciones pero nunca la enviaste. Tus respuestas están guardadas, así que puedes retomarla donde la dejaste. Hasta ahora han respondido {count} mánagers, y la encuesta se cierra el 14 de septiembre. Ábrela desde aquí."
+      }
+    },
+    "loanCreatedShort": {
+      "title": "Préstamo creado",
+      "message": "Has contratado un préstamo a corto plazo de {principal} CZ$. Comisión: {fee} CZ$. Devolución total: {totalOwed} CZ$."
+    },
+    "loanCreatedLong": {
+      "title": "Préstamo creado",
+      "message": "Has contratado un préstamo a largo plazo de {principal} CZ$. Comisión: {fee} CZ$. Devolución total: {totalOwed} CZ$."
+    },
+    "emergencyLoan": {
+      "title": "⚠️ Préstamo de emergencia abierto",
+      "message": "Tu equipo no podía cubrir los salarios. Se ha abierto automáticamente un préstamo de emergencia de {amount} CZ$ con una comisión del {feeRate} % y un interés del {interestRate} %. Deuda total: {totalOwed} CZ$."
+    },
+    "emergencyLoanBreach": {
+      "title": "🚨 Tope de deuda superado",
+      "message": "Tu préstamo de emergencia hace que la deuda del equipo supere en {breachAmount} CZ$ el tope de la división, de {ceiling} CZ$. Puedes seguir operando, pero DEBES recortar gastos (vender ciclistas, rescindir contratos de estrellas) antes de que termine la próxima temporada para evitar una espiral de deuda."
+    },
+    "emergencyLoanEscalation": {
+      "title": "La directiva congela los fichajes",
+      "message": "Tu equipo ha necesitado un préstamo de emergencia {streak} temporadas seguidas. La directiva congela los fichajes hasta que tus finanzas se estabilicen."
+    },
+    "debtCeilingFreeze": {
+      "title": "Fichajes congelados: deuda por encima del tope",
+      "message": "Tu deuda de {debt} CZ$ supera el tope de tu división, de {ceiling} CZ$. La directiva congela los fichajes hasta que vuelvas a estar por debajo del tope. Devuelve deuda o vende ciclistas antes de la próxima temporada, o la directiva forzará una venta."
+    },
+    "debtCeilingFinalWarning": {
+      "title": "Una temporada antes de una venta forzosa",
+      "message": "Tu deuda de {debt} CZ$ supera el tope de tu división, de {ceiling} CZ$, y los fichajes ya están congelados. Si sigues por encima del tope en el próximo cambio de temporada, la directiva venderá a tus ciclistas más valiosos para cerrar la diferencia. Devuelve préstamos, vende ciclistas tú mismo o recorta salarios antes de entonces."
+    },
+    "debtCeilingForcedSale": {
+      "title": "La directiva ha forzado una venta",
+      "message": "Tu deuda de {debt} CZ$ se mantuvo por encima del tope de tu división, de {ceiling} CZ$, durante {streak} temporadas seguidas, así que la directiva vendió a {riders} por {proceeds} CZ$ y destinó el dinero directamente a tus préstamos. Tu deuda es ahora de {remainingDebt} CZ$ y los fichajes siguen congelados hasta que vuelvas a estar por debajo del tope. Si sigues por encima en el próximo cambio de temporada, la directiva volverá a vender. Devuelve préstamos, vende ciclistas tú mismo o recorta salarios antes de entonces."
+    },
+    "loanPaidOff": {
+      "title": "✅ Préstamo devuelto",
+      "message": "¡Enhorabuena! Has devuelto tu préstamo por completo."
+    },
+    "boardPlanExpired": {
+      "title": "Plan de la directiva caducado",
+      "message": "{headline}. {summary} Satisfacción: {satisfaction} %. Negocia un plan nuevo con la directiva."
+    },
+    "boardMidReview": {
+      "title": "Revisión a mitad del plan",
+      "message": "Revisión a mitad del plan: {midMsg} {summary} Satisfacción: {satisfaction} %."
+    },
+    "boardSeasonReport": {
+      "title": "Informe de la temporada",
+      "messageGain": "Temporada {seasonsCompleted}/{planDuration} de tu {planLabel} completada. {summary} Satisfacción: {satisfaction} % (+{delta}).",
+      "messageLoss": "Temporada {seasonsCompleted}/{planDuration} de tu {planLabel} completada. {summary} Satisfacción: {satisfaction} % ({delta})."
+    },
+    "boardMidMessage": {
+      "good": "La directiva está contenta con tu progreso.",
+      "moderate": "La directiva está moderadamente contenta con tu progreso.",
+      "bad": "La directiva está preocupada por tu progreso en el plan."
+    },
+    "boardChairmanReplaced": {
+      "title": "La directiva ha elegido a un nuevo presidente",
+      "message": "Tras dos temporadas decepcionantes del plan, la directiva ha sustituido al presidente. Asume el cargo {chairmanLabel}. Espera un tono nuevo en las próximas negociaciones.",
+      "messageWithName": "Tras dos temporadas decepcionantes del plan, la directiva ha sustituido al presidente. Asume el cargo {chairmanName}, nuevo {chairmanLabel} del club. Espera un tono nuevo en las próximas negociaciones."
+    },
+    "boardForcedListing": {
+      "title": "La directiva exige una venta",
+      "message": "La satisfacción está en el {satisfaction} %. La directiva ha puesto a {riderName} en venta a la fuerza por {askingPrice} CZ$."
+    },
+    "boardSponsorPullout": {
+      "title": "El patrocinador se retira",
+      "message": "La directiva informa de que un patrocinador principal se ha retirado tras la temporada. Los ingresos de patrocinio bajan un 10 % la próxima temporada."
+    },
+    "boardBonusOffer": {
+      "title": "Oferta de bonus de la directiva",
+      "message": "La directiva está impresionada ({satisfaction} % de satisfacción, {goalsMet}/{goalsTotal} objetivos cumplidos). Ofrece +{bonusAmount} CZ$ por un objetivo extra: {goalLabel}. Acepta o rechaza en la página de la Directiva."
+    },
+    "divisionPromoted": {
+      "title": "¡Ascenso! 🎉",
+      "message": "¡Enhorabuena! Tu equipo sube a la División {division}."
+    },
+    "divisionRelegated": {
+      "title": "Descenso",
+      "message": "Tu equipo baja a la División {division}."
+    },
+    "poolReseeded": {
+      "title": "Grupo nuevo para la próxima temporada",
+      "message": "Tu equipo ha sido recolocado en {pool} para que los grupos estén igualados."
+    },
+    "boardPlanOpened": {
+      "title": "Tu directiva está lista para hablar de tu {planLabel}",
+      "message": "Tu {planLabel} está esperando a ser negociado. Tómate el tiempo que necesites. Recibirás un recordatorio antes de que la directiva decida por su cuenta."
+    },
+    "boardT3Reminder": {
+      "title": "La directiva está esperando tu {planLabel}",
+      "message": "Te quedan {daysLeft} días para negociar tu {planLabel}. Si no actúas, la directiva decidirá."
+    },
+    "academyBoardGift": {
+      "title": "Un agradecimiento de la directiva",
+      "message": "Gracias por correr conmigo. He puesto 10 promesas juveniles en tu academia: 5 de edad sub-23 y 5 de edad júnior. Ficharlas es gratis y se aplican los salarios juveniles normales. Elige las que quieras en un plazo de 14 días. Las demás se marchan en silencio."
+    },
+    "academySigned": {
+      "title": "Fichaje para la academia completado",
+      "message": "Tu promesa de la academia se ha unido a tu academia."
+    },
+    "academyGraduationReady": {
+      "title": "Graduación de la academia",
+      "message": "{name} ha superado la edad de tu academia. Asciéndelo, véndelo o libéralo antes del plazo."
+    },
+    "academyGraduated": {
+      "title": "Graduado de la academia resuelto",
+      "promote": "{name} ha sido ascendido a tu plantilla sénior.",
+      "sell": "{name} ha sido puesto en la lista de fichajes.",
+      "release": "{name} ha sido liberado.",
+      "unsoldPromotedTitle": "Graduado de la academia ascendido",
+      "unsoldPromoted": "{name} no recibió pujas, así que sube a tu plantilla sénior.",
+      "unsoldTitle": "Graduado de la academia liberado",
+      "unsold": "{name} no recibió pujas y salió de tu academia como agente libre."
+    },
+    "promotionPending": {
+      "title": "A la espera de ascenso: {name}",
+      "u23": "{name} está listo para tu plantilla sub-23, pero está llena. Se queda en su plantilla actual con el mismo contrato. Libera una plaza y ascéndelo desde la página de tu equipo.",
+      "senior": "{name} está listo para tu plantilla sénior, pero está llena. Se queda en su plantilla actual con el mismo contrato. Libera una plaza y ascéndelo desde la página de tu equipo."
+    },
+    "academySigningDeferred": {
+      "title": "Fichaje para la academia confirmado",
+      "message": "{riderName} se unirá a tu academia cuando termine su carrera por etapas actual. Hasta entonces sigue corriendo para tu plantilla sénior."
+    },
+    "academySigningArrived": {
+      "title": "El ciclista de la academia ha llegado",
+      "message": "{riderName} se ha unido a tu academia. Su carrera por etapas ha terminado."
+    },
+    "academyDrip": {
+      "title": "Ha llegado talento nuevo a la academia",
+      "message": "Hay candidatos nuevos esperando en tu academia - ficha o rechaza."
+    },
+    "seasonStarted": {
+      "title": "Ha empezado la temporada {number}",
+      "message": "Ha empezado una temporada nueva. Mira tu panel para ver los objetivos de tu directiva y tu plantilla para la temporada que viene.",
+      "messageWithSponsor": "Ha empezado una temporada nueva. Tu patrocinador ha pagado {amount} CZ$ por la temporada. Mira tu panel para ver los objetivos de tu directiva y tu plantilla para la temporada que viene."
+    },
+    "seasonEnded": {
+      "title": "Ha terminado la temporada {number}",
+      "message": "La temporada ha terminado. Mira el resumen para ver la clasificación final, los ascensos y los descensos.",
+      "messagePersonal": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios. Tu mejor ciclista fue {rider} con {riderPoints} puntos. Empiezas la temporada {nextSeason} en la División {nextDivision}.",
+      "messagePersonalNoNextDivision": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios. Tu mejor ciclista fue {rider} con {riderPoints} puntos.",
+      "messagePersonalNoRider": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios. Empiezas la temporada {nextSeason} en la División {nextDivision}.",
+      "messagePersonalMinimal": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios.",
+      "messagePersonalBoard": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios. Tu mejor ciclista fue {rider} con {riderPoints} puntos. Empiezas la temporada {nextSeason} en la División {nextDivision}. Tu directiva se reunió tras la última etapa: {boardMet} de {boardTotal} objetivos cumplidos, confianza {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoNextDivisionBoard": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios. Tu mejor ciclista fue {rider} con {riderPoints} puntos. Tu directiva se reunió tras la última etapa: {boardMet} de {boardTotal} objetivos cumplidos, confianza {boardBefore} -> {boardAfter}.",
+      "messagePersonalNoRiderBoard": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios. Empiezas la temporada {nextSeason} en la División {nextDivision}. Tu directiva se reunió tras la última etapa: {boardMet} de {boardTotal} objetivos cumplidos, confianza {boardBefore} -> {boardAfter}.",
+      "messagePersonalMinimalBoard": "Has terminado {rankOrdinal} de {poolSize} en la División {division} con {points} puntos y {prize} CZ$ en premios. Tu directiva se reunió tras la última etapa: {boardMet} de {boardTotal} objetivos cumplidos, confianza {boardBefore} -> {boardAfter}."
+    },
+    "raceResult": {
+      "title": "Ya está el resultado de la carrera",
+      "message": "Se ha corrido {race}. Ver el resultado."
+    },
+    "firstRaceResult": {
+      "title": "Tu primera carrera ya es historia",
+      "message": "Se ha corrido {race}. Mira cómo les fue a tus ciclistas."
+    },
+    "stageResult": {
+      "title": "Ya está el resultado de la etapa",
+      "message": "La etapa {stage} de {race} ha terminado. Tu mejor: {rider}, puesto {position}.",
+      "messageNoResult": "La etapa {stage} de {race} ha terminado."
+    },
+    "contractExpiring": {
+      "title": "Contrato a punto de caducar",
+      "message": "El contrato de {rider} caduca al final de la temporada {season}."
+    },
+    "contractExpiredRelease": {
+      "title": "Ciclista liberado: contrato caducado",
+      "message": "El contrato de {rider} caducó al final de la temporada {season}. Ahora es agente libre."
+    },
+    "squadBelowMinimum": {
+      "title": "Plantilla por debajo del mínimo para correr",
+      "message": "Tu plantilla tiene {count} ciclista(s) aptos para correr, por debajo del mínimo de {min} ciclistas necesario para sacar un día de carrera. Ficha agentes libres o puja en una subasta antes de tu próxima carrera.",
+      "titleU23": "Equipo sub-23 por debajo del mínimo para correr",
+      "messageU23": "Tu equipo sub-23 tiene {count, plural, one {1 ciclista} other {# ciclistas}}, por debajo de los {min} necesarios para tomar la salida en una carrera. Cuando un contrato caduca en el cambio de temporada, el ciclista abandona el equipo. Tu equipo sub-23 no puede tomar la salida en una carrera hasta que lo completes.",
+      "titleJunior": "Equipo júnior por debajo del mínimo para correr",
+      "messageJunior": "Tu equipo júnior tiene {count, plural, one {1 ciclista} other {# ciclistas}}, por debajo de los {min} necesarios para tomar la salida en una carrera. Cuando un contrato caduca en el cambio de temporada, el ciclista abandona el equipo. Tu equipo júnior no puede tomar la salida en una carrera hasta que lo completes."
+    },
+    "seniorStartReminder": {
+      "title": "Tu plantilla sénior necesita ciclistas",
+      "message24h": "El día de carrera {gameDay} empieza en menos de 24 horas. Tienes {count, plural, one {1 ciclista sénior} other {# ciclistas sénior}} y necesitas {missing, plural, one {1 más} other {# más}} para sacar un equipo. Busca un ciclista en el mercado.",
+      "message3h": "El día de carrera {gameDay} empieza en menos de 3 horas. Todavía necesitas {missing, plural, one {1 ciclista sénior} other {# ciclistas sénior}} para sacar un equipo. Busca un ciclista en el mercado."
+    },
+    "selectionWarning": {
+      "title": "Hace falta la selección de la plantilla",
+      "message": "{race} empieza en menos de 36 horas y aún no has elegido tu plantilla. Selecciona a tus ciclistas o deja que el asistente seleccione por ti."
+    },
+    "assistantFilledSquad": {
+      "title": "El asistente rellenó tu plantilla",
+      "message": "Tu asistente eligió tu plantilla para {race}. No tenías ninguna selección. Échale un vistazo y cámbiala si quieres."
+    },
+    "riderRetired": {
+      "title": "{name} se ha retirado",
+      "message": "{name} se ha retirado del ciclismo profesional a los {age} años. Su plaza en tu plantilla queda libre."
+    },
+    "seasonTransitionRisk": {
+      "title": "Cambio de temporada: riesgo de contrato y de retirada",
+      "messageBoth": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca, y {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. Amplía el contrato de un ciclista desde su perfil antes del cambio para evitar que lo liberen; la retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada.",
+      "messageExpiringOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca. Amplía su contrato desde el perfil del ciclista antes del cambio para conservarlos.",
+      "messageRetirementOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. La retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada."
+    },
+    "watchlistDeparted": {
+      "title": "El ciclista ha dejado el juego",
+      "message": "{rider} ha dejado el juego y se ha quitado de tu lista de seguimiento."
+    },
+    "scoutReportReady": {
+      "target": {
+        "title": "Informe de ojeo listo",
+        "message": "Tu investigación de nivel {level} sobre {rider} está lista. Ver el informe."
+      },
+      "mission": {
+        "title": "Misión de ojeo lista",
+        "messageSingle": "Tu misión de ojeo ha encontrado {count} ciclista. Ver la lista corta.",
+        "messageMulti": "Tu misión de ojeo ha encontrado {count} ciclistas. Ver la lista corta.",
+        "titleEmpty": "Misión de ojeo: sin coincidencias",
+        "messageEmpty": "Tu ojeador ha buscado, pero no ha encontrado ciclistas que cumplan tus criterios."
+      }
+    },
+    "scoutLostReportRefund": {
+      "title": "Misión de ojeo reembolsada",
+      "message": "Tu informe de ojeo del {date} se perdió por un error. Se te han reembolsado los {amount} CZ$."
+    },
+    "auctionCancelledRetired": {
+      "title": "Subasta cancelada: el ciclista se ha retirado",
+      "messageBidder": "{rider} se retiró antes de que la subasta pudiera completarse. No se te ha cobrado nada.",
+      "messageSeller": "{rider} se retiró antes de que la subasta sobre él pudiera completarse. La subasta se ha cancelado."
+    },
+    "intakeExpiryCompensation": {
+      "title": "Oferta de cantera de la academia caducada: ciclista vendido",
+      "message": "Tu oferta de cantera de la academia por {rider} caducó, y se vendió en subasta. Has recibido {amount} CZ$."
+    },
+    "boardT1Reminder": {
+      "title": "Última oportunidad: {planLabel}",
+      "messageSingle": "La directiva toma el control en {daysLeft} día. Abre la página de la Directiva y negocia ya tu {planLabel}.",
+      "messageMulti": "La directiva toma el control en {daysLeft} días. Abre la página de la Directiva y negocia ya tu {planLabel}."
+    },
+    "boardAutoAccepted": {
+      "title": "La directiva ha elegido {planLabel} por ti",
+      "message": "No negociaste tu {planLabel} a tiempo. La directiva eligió el enfoque «{focus}» y los objetivos por defecto. Todavía puedes pedir cambios cuando el plan esté en marcha."
+    },
+    "boardMandateOpened": {
+      "title": "La directiva ha convocado la junta anual",
+      "message": "Tu directiva ha propuesto el mandato de la próxima temporada. Tómate el tiempo que necesites. Recibirás un recordatorio antes de que la directiva firme por su cuenta.",
+      "messageWithChairman": "{chairman} ha propuesto tu mandato de la temporada {season}. Tienes {days} días antes de que la directiva firme por su cuenta.",
+      "messageNoChairman": "Tu directiva ha propuesto tu mandato de la temporada {season}. Tienes {days} días antes de que la directiva firme por su cuenta."
+    },
+    "boardMandateT3Reminder": {
+      "title": "La directiva está esperando tu mandato anual",
+      "message": "Te quedan {daysLeft} días para negociar tu mandato anual. Si no actúas, la directiva firmará por ti."
+    },
+    "boardMandateT1Reminder": {
+      "title": "Última oportunidad: firma tu mandato anual",
+      "messageSingle": "La directiva firma por su cuenta en {daysLeft} día. Abre ya la junta anual.",
+      "messageMulti": "La directiva firma por su cuenta en {daysLeft} días. Abre ya la junta anual."
+    },
+    "boardMandateAutoAccepted": {
+      "title": "La directiva ha firmado tu mandato anual por ti",
+      "message": "No firmaste tu mandato anual a tiempo. La directiva mantuvo los objetivos propuestos y firmó en tu nombre. Todavía puedes pedir cambios cuando la temporada esté en marcha."
+    },
+    "autoBidPlaced": {
+      "title": "Puja automática realizada",
+      "message": "La puja automática de {bidderName} ha puesto {amount} CZ$ por {riderName}"
+    },
+    "autoBidExhausted": {
+      "title": "Te han superado tu puja automática",
+      "message": "Tu puja automática por {riderName} llegó a su tope y {bidderName} la superó. La puja automática se ha cancelado y tu saldo reservado se ha liberado.",
+      "messageNotCancelled": "Tu puja automática por {riderName} llegó a su tope y {bidderName} la superó."
+    },
+    "autoBidCancelled": {
+      "title": "Puja automática cancelada",
+      "message": "El precio de {riderName} ha superado el tope de tu puja automática, de {maxAmount} CZ$. La puja automática se ha cancelado y tu saldo reservado se ha liberado."
+    },
+    "autoBidRaised": {
+      "title": "Tu puja automática mantuvo el liderato",
+      "message": "{bidderName} intentó superarte por {riderName}. Tu puja automática subió a {amount} CZ$ para seguir por delante."
+    },
+    "auctionLostToRival": {
+      "title": "Has perdido la guerra de pujas",
+      "message": "{winnerName} se llevó a {rider} por {price} CZ$, {overBid} CZ$ por encima de tu puja máxima de {yourMax} CZ$."
+    },
+    "debtWarning": {
+      "title": "⚠️ Saldo negativo",
+      "message": "Tu equipo tiene un saldo negativo. Consulta la página de Finanzas para ver los detalles."
+    },
+    "deadlineDay": {
+      "24h": {
+        "title": "Deadline Day en 24 horas",
+        "message": "El mercado de fichajes se cierra en 24 horas. Última oportunidad para poner ciclistas en subasta o aceptar ofertas."
+      },
+      "2h": {
+        "title": "Deadline Day en 2 horas",
+        "message": "El mercado de fichajes se cierra en 2 horas. Las subastas relámpago y las pujas urgentes están activas."
+      },
+      "30min": {
+        "title": "Deadline Day en 30 minutos",
+        "message": "Última oportunidad: el mercado de fichajes se cierra en 30 minutos."
+      }
+    },
+    "transfer": {
+      "bidReceived": {
+        "title": "Nueva puja recibida",
+        "message": "{bidderName} ha pujado {amount} CZ$ por {riderName}"
+      },
+      "auctionOutbid": {
+        "title": "¡Te han superado la puja!"
+      },
+      "watchlistAuction": {
+        "title": "Ciclista de tu lista de seguimiento en subasta",
+        "message": "{riderName} está en subasta (precio de salida {startPrice} CZ$)"
+      },
+      "watchlistListed": {
+        "title": "Ciclista de tu lista de seguimiento en venta",
+        "message": "{riderName} está en venta ({askingPrice} CZ$)"
+      },
+      "transferInterest": {
+        "title": "Rumor de fichaje",
+        "message": "Un mánager tiene echado el ojo a {riderName}"
+      },
+      "offerReceived": {
+        "title": "Nueva oferta de fichaje recibida",
+        "message": "{buyerName} ofrece {amount} CZ$ por {riderName}"
+      },
+      "newBid": {
+        "title": "Nueva puja recibida",
+        "message": "{buyerName} puja ahora {amount} CZ$ por {riderName}"
+      },
+      "offerAccepted": {
+        "title": "Oferta aceptada: confirma el trato",
+        "message": "{sellerName} ha aceptado tu oferta por {riderName} de {price} CZ$. Confirma para completar el trato."
+      },
+      "counterAccepted": {
+        "title": "Contraoferta aceptada: confirma el trato",
+        "message": "{buyerName} ha aceptado tu contraoferta por {riderName} de {price} CZ$. Confirma para completar el trato."
+      },
+      "offerRejected": {
+        "title": "Oferta de fichaje rechazada",
+        "message": "Tu oferta por {riderName} ha sido rechazada"
+      },
+      "counter": {
+        "title": "Contraoferta recibida",
+        "message": "{counterName} envía una contraoferta por {riderName}: {counterAmount} CZ$"
+      },
+      "cancelled": {
+        "title": "Fichaje cancelado",
+        "message": "{actorName} se ha retirado del trato por {riderName}."
+      },
+      "withdrawn": {
+        "title": "Oferta retirada",
+        "message": "{buyerName} ha retirado su oferta por {riderName}"
+      },
+      "counterWithdrawn": {
+        "title": "Contraoferta retirada",
+        "message": "{sellerName} ha retirado su contraoferta por {riderName}. Puedes hacer una oferta nueva."
+      },
+      "onAuctionCancelled": {
+        "title": "Fichaje cancelado",
+        "message": "{riderName} ha pasado a una subasta activa. El trato se ha cancelado. Puja en la subasta en su lugar."
+      },
+      "staleCancelled": {
+        "title": "Fichaje cancelado",
+        "message": "No se pudo completar lo de {riderName} porque el ciclista cambió de estado durante la confirmación."
+      },
+      "completed": {
+        "title": "¡Fichaje completado!",
+        "message": "{riderName} cambia de equipo por {price} CZ$",
+        "messageDeferred": "{riderName} se traspasó por {price} CZ$. Cambia de equipo cuando termine su carrera por etapas en curso."
+      },
+      "issue": {
+        "title": "Fichaje cancelado",
+        "swapTitle": "Intercambio cancelado",
+        "sellerNoLongerOwns": "No se pudo completar lo de {riderName} porque el ciclista ya no está en el equipo del vendedor.",
+        "sellerSquadTooSmall": "{riderName} no se pudo vender porque el vendedor bajaría de {minRiders} ciclistas en la División {division}.",
+        "sellerSquadRiskTooSmall": "{riderName} no se pudo vender porque el vendedor bajaría de {minRiders} ciclistas una vez contados los que se van en el próximo cambio de temporada (fin de contrato o riesgo de retirada).",
+        "buyerSquadFull": "{riderName} no se pudo traspasar porque el equipo del comprador ya está lleno.",
+        "buyerCannotAfford": "El trato por {riderName} no se pudo completar porque el comprador no tiene fondos.",
+        "offeredMoved": "{offeredName} ya no está disponible para el intercambio.",
+        "requestedMoved": "{requestedName} ya no está disponible para el intercambio.",
+        "proposingCannotAfford": "El intercambio {offeredName} <-> {requestedName} no se pudo completar porque el equipo proponente no tiene fondos.",
+        "receivingCannotAfford": "El intercambio {offeredName} <-> {requestedName} no se pudo completar porque el equipo receptor no tiene fondos."
+      },
+      "swapProposed": {
+        "title": "Intercambio propuesto",
+        "message": "{proposerName} ofrece a {offeredName} por {requestedName}",
+        "messageCash": "{proposerName} ofrece a {offeredName} por {requestedName} ({cashSign}{cash} CZ$ de su parte)"
+      },
+      "swapAccepted": {
+        "title": "Intercambio aceptado: confirma el trato",
+        "message": "{accepterName} ha aceptado el intercambio: {offeredName} <-> {requestedName}. Confirma para completarlo.",
+        "messageCash": "{accepterName} ha aceptado el intercambio: {offeredName} <-> {requestedName} · {cashSign}{cash} CZ$. Confirma para completarlo."
+      },
+      "swapRejected": {
+        "title": "Intercambio rechazado",
+        "message": "{rejecterName} ha rechazado tu oferta de intercambio"
+      },
+      "swapCounter": {
+        "title": "Contraoferta en el intercambio",
+        "message": "{counterName} envía una contraoferta: {offeredName} <-> {requestedName} ({cashSign}{counterCash} CZ$)"
+      },
+      "swapCounterAccepted": {
+        "title": "Contraoferta aceptada: confirma el trato",
+        "message": "{accepterName} ha aceptado tu contraoferta. Confirma para completar el intercambio."
+      },
+      "swapCompleted": {
+        "title": "¡Intercambio completado!",
+        "message": "{offeredName} <-> {requestedName} ya han cambiado de equipo",
+        "messageDeferred": "{offeredName} <-> {requestedName} intercambiados. Los ciclistas cambian de equipo cuando termine su carrera por etapas en curso."
+      },
+      "swapCancelledStale": {
+        "title": "Intercambio cancelado",
+        "message": "{riderName} cambió de estado durante la confirmación."
+      },
+      "swapOnAuctionCancelled": {
+        "title": "Intercambio cancelado",
+        "message": "{riderName} ha pasado a una subasta activa. El intercambio se ha cancelado. Puja en la subasta en su lugar."
+      },
+      "swapPulledOut": {
+        "title": "Intercambio cancelado",
+        "message": "{actorName} se ha retirado del intercambio."
+      },
+      "adminTransferCancelled": {
+        "title": "Trato cancelado por el administrador",
+        "message": "El trato por {riderName} ha sido cancelado por un administrador.",
+        "messageReason": "El trato por {riderName} ha sido cancelado por un administrador: {reason}"
+      },
+      "adminSwapCancelled": {
+        "title": "Intercambio cancelado por el administrador",
+        "message": "El intercambio {offeredName} <-> {requestedName} ha sido cancelado por un administrador.",
+        "messageReason": "El intercambio {offeredName} <-> {requestedName} ha sido cancelado por un administrador: {reason}"
+      },
+      "confirmPending": {
+        "title": "El trato espera tu confirmación",
+        "message": "{role, select, seller {El vendedor} other {El comprador}} ha confirmado el trato por {riderName}. Confirma para completarlo."
+      },
+      "swapConfirmPending": {
+        "title": "El intercambio espera tu confirmación",
+        "message": "{side, select, proposing {El equipo proponente} other {El equipo receptor}} ha confirmado el intercambio. Confirma para completarlo."
+      }
+    },
+    "welcome": {
+      "title": "Bienvenido a Cycling Zone",
+      "message": "Tu equipo está listo. Haz una puja en la casa de subastas para fichar a tu primer ciclista."
+    },
+    "discordWelcome": {
+      "title": "¡Ey! Pásate por Discord",
+      "message": "Cycling Zone es más que la web. Es una comunidad, y buena parte de ella ocurre en Discord: ahí es donde estoy, donde os pregunto qué construir a continuación y donde los demás mánagers hablan de ciclismo todo el día. Sé directo conmigo allí, es mucho más útil que los halagos. Ven como eres, no necesitas resultados para pertenecer. Nos vemos allí :)",
+      "forumLine": "¿Prefieres quedarte en la web? El <forum>foro de mánagers</forum> está aquí mismo, en el juego.",
+      "cta": "Unirse a Discord"
+    },
+    "betaAccess": {
+      "approved": {
+        "title": "Estás en el grupo beta",
+        "message": "Ahora ves funciones mientras aún las estoy probando. Pueden cambiar, romperse o desaparecer otra vez, y de eso se trata: cuéntame lo que te parezca raro, en Discord o a través del formulario de comentarios. Puedes salir del grupo cuando quieras, desde tu perfil."
+      },
+      "rejected": {
+        "title": "En esta ronda no",
+        "message": "Mantengo el grupo beta pequeño para poder leer cada respuesta de verdad. Sigues en la lista, y puedes volver a pedirlo más adelante desde tu perfil."
+      }
+    },
+    "scoutChanged": {
+      "title": "Ojeador nuevo, informes recalculados",
+      "message": "{scoutName} evalúa ahora a tus ciclistas. Los informes de ojeo existentes se recalculan para ajustarse a su precisión, pero las habilidades reales de tus ciclistas no han cambiado."
+    },
+    "forumThreadReply": {
+      "title": "{count, plural, one {Nueva respuesta a tu hilo} other {# respuestas nuevas a tu hilo}}",
+      "message": "{count, plural, one {Alguien ha respondido a tu hilo} other {# respuestas nuevas a tu hilo}}",
+      "messageWithTitle": "{count, plural, one {Una respuesta nueva en «{postTitle}»} other {# respuestas nuevas en «{postTitle}»}}"
+    },
+    "forumMention": {
+      "title": "Te han mencionado",
+      "message": "{author} te ha mencionado en el foro",
+      "messageWithTitle": "{author} te ha mencionado en «{postTitle}»"
+    },
+    "careerMilestone": {
+      "maidenWin": {
+        "title": "Primera victoria",
+        "message": "{rider} ganó su primera carrera profesional: {race}."
+      },
+      "firstPodium": {
+        "title": "Primer podio",
+        "message": "{rider} logró su primer podio en su carrera: {race}."
+      },
+      "firstJersey": {
+        "title": "Primer maillot de clasificación",
+        "message": "{rider} ganó su primer maillot de clasificación: {race}."
+      },
+      "clubMilestoneWin": {
+        "title": "Hito del club",
+        "message": "Tu club acaba de registrar la victoria número {count}, gracias a {rider}."
+      }
+    },
+    "sponsorPaid": {
+      "seasonStart": {
+        "title": "Pago del patrocinador",
+        "message": "{sponsor} ha pagado {amount} CZ$ por la nueva temporada."
+      },
+      "raceDay": {
+        "title": "Pago del patrocinador",
+        "message": "{sponsor} ha pagado {amount} CZ$ por {race}."
+      },
+      "signingBonus": {
+        "title": "Pago del patrocinador",
+        "message": "{sponsor} ha pagado una prima de firma de {amount} CZ$."
+      },
+      "objectiveBonus": {
+        "title": "Pago del patrocinador",
+        "message": "{sponsor} ha pagado {amount} CZ$ por cumplir tu objetivo de temporada."
+      }
+    },
+    "auction": {
+      "wonTitle": "Has ganado la subasta",
+      "wonMessage": "{rider} ya está en tu equipo por {price} CZ$",
+      "wonMessageDeferred": "{rider} se ha comprado por {price} CZ$. Se une a tu equipo cuando termine su carrera por etapas en curso.",
+      "wonYouthTitle": "Has ganado la subasta juvenil",
+      "wonYouthSeniorMessage": "{rider} ya está en tu plantilla sénior por {price} CZ$",
+      "wonYouthAcademyMessage": "{rider} ya está en tu academia por {price} CZ$",
+      "cancelledTitle": "Subasta cancelada",
+      "cancelledUnaffordable": "No pudiste pagar a {rider}.",
+      "cancelledBuyerBalance": "No pudiste pagar a {rider}. Saldo: {balance} CZ$",
+      "cancelledBuyerBalanceSeller": "Al comprador le faltaron fondos. {rider} no se traspasó.",
+      "cancelledAlreadyTaken": "{rider} fue fichado por otro equipo.",
+      "cancelledOwnerChanged": "{rider} no se pudo traspasar, porque ahora pertenece a otro mánager.",
+      "cancelledNotOnTeam": "{rider} ya no está en tu equipo, así que la subasta se canceló.",
+      "cancelledNoRoomTitle": "Subasta cancelada: sin sitio",
+      "cancelledNoRoomMessage": "Tanto tu plantilla sénior como tu academia ({slots} plazas) están llenas. {rider} no se pudo fichar.",
+      "cancelledSquadFullTitle": "Subasta cancelada: plantilla llena",
+      "cancelledSquadFullMessage": "Tu equipo (Div {division}) puede tener como máximo {maxRiders} ciclistas. {rider} no se pudo traspasar. Vende primero a un ciclista.",
+      "cancelledWinnerSquadFull": "{rider} no se pudo traspasar, porque la plantilla del ganador estaba llena.",
+      "cancelledSellerFloorBuyer": "{rider} no se pudo traspasar, porque la plantilla del vendedor bajaría del mínimo para correr ({minRiders}).",
+      "cancelledSellerFloorTitle": "Subasta cancelada: tu plantilla bajaría del mínimo",
+      "cancelledSellerFloorSeller": "{rider} no se traspasó, porque tu plantilla bajaría de {minRiders} ciclistas (el mínimo para correr). Vuelve a ponerlo a la venta cuando tu plantilla tenga sitio para ello.",
+      "soldTitle": "Subasta terminada",
+      "soldMessage": "{rider} vendido por {price} CZ$",
+      "boughtMessage": "{rider} se compró por {price} CZ$",
+      "soldToAiTitle": "Ciclista vendido a la IA",
+      "soldToAiMessage": "{rider} se vendió a la IA por {price} CZ$ (precio garantizado)",
+      "expiredNoBidsTitle": "Subasta caducada sin pujas",
+      "expiredNoBidsMessage": "Nadie pujó por {rider}",
+      "adminCancelledBidder": "La subasta de {rider} fue cancelada por un administrador. Tu puja se ha liberado y tu saldo vuelve a estar disponible.",
+      "adminCancelledSeller": "Tu subasta de {rider} fue cancelada por un administrador."
+    },
+    "directMessage": {
+      "title": "{count, plural, one {Mensaje nuevo} other {# mensajes nuevos}}",
+      "message": "{count, plural, one {{senderName} te ha enviado un mensaje} other {# mensajes nuevos de {senderName}}}",
+      "messageUnknownSender": "{count, plural, one {Otro mánager te ha enviado un mensaje} other {# mensajes nuevos de otro mánager}}"
+    },
+    "riderInjured": {
+      "title": "Ciclista lesionado",
+      "message": "{rider} se cayó en {race} y está lesionado hasta el {until}.",
+      "messageMissed": "{rider} se cayó en {race} y está lesionado hasta el {until}. No correrá {missed}."
+    },
+    "teamDidNotStart": {
+      "title": "Tu equipo no tomó la salida",
+      "message": "Tu equipo no tomó la salida en {race}: menos de {min} ciclistas en forma en la salida."
+    },
+    "autoBidStopped": {
+      "title": "Tu puja automática se ha detenido",
+      "message": "Tu puja automática por {riderName} se detuvo por saldo insuficiente. Asegúrate de tener fondos en tu cuenta para volver a pujar."
+    },
+    "autoBidMatched": {
+      "message": "La puja automática de {leaderName} igualó tu puja por {riderName} y mantiene el liderato con una puja idéntica"
+    },
+    "autoBidOutbid": {
+      "message": "La puja automática de {bidderName} te superó por {riderName}"
+    },
+    "riderArrived": {
+      "title": "El ciclista ha llegado",
+      "message": "{riderName} se ha unido a tu equipo. {reason, select, tourFinished {{raceName} ha terminado.} tourFinishedUnnamed {Su carrera por etapas ha terminado.} dealCompleted {Su trato ya está completado.} other {}}"
+    },
+    "squadEnforced": {
+      "title": "Tamaño de plantilla aplicado",
+      "message": "{purchasedCount, plural, =0 {} one {Compra automática de # ciclista: {purchasedNames}\n} other {Compra automática de # ciclistas: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# ciclista se unirá al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n} other {# ciclistas se unirán al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n}}{soldCount, plural, =0 {} one {Venta automática de # ciclista: {soldNames}\n} other {Venta automática de # ciclistas: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# ciclista en una carrera por etapas en curso se venderá después de la carrera\n} other {# ciclistas en una carrera por etapas en curso se venderán después de la carrera\n}}Multa: {fine} CZ$ · Deducción: {points} puntos"
+    }
+  },
+  "error": {
+    "repayInsufficient": "Solo tienes {available} CZ$ disponibles. El resto está bloqueado en pujas activas o pujas automáticas",
+    "boardSigningRestriction": "La directiva bloquea las compras por encima de {threshold} CZ$ (satisfacción por debajo del {satisfaction} %).",
+    "boardSalaryCap": "Tope salarial fijado por la directiva ({cap} CZ$). No puedes aumentar el salario total del equipo. Vende primero a un ciclista.",
+    "squadFineDeducted": "Multa: {fineAmount} CZ$ · Deducción: {penaltyPoints} puntos",
+    "debtCapReached": "Tope de deuda de {ceiling} CZ$ alcanzado para esta división",
+    "loanGateRaceDaysOnly": "Los equipos nuevos deben correr {minRaceDays} día(s) de carrera antes de contratar un préstamo. Hasta ahora has corrido {raceDaysRun}.",
+    "loanGateAccountAgeOnly": "Los equipos nuevos deben tener {minAccountAgeDays} día(s) de antigüedad antes de contratar un préstamo. Tu equipo tiene ahora {accountAgeDays} día(s).",
+    "loanGateEither": "Los equipos nuevos deben correr {minRaceDays} día(s) de carrera o tener {minAccountAgeDays} día(s) de antigüedad antes de contratar un préstamo. Hasta ahora has corrido {raceDaysRun}, y tu equipo tiene {accountAgeDays} día(s)."
+  },
+  "consequence": {
+    "layer": {
+      "salaryCap": "Tope salarial",
+      "signingRestriction": "Restricción de fichajes",
+      "forcedListing": "Venta forzosa",
+      "sponsorPullout": "Retirada del patrocinador",
+      "bonusOffer": "Oferta de bonus"
+    },
+    "layerFallback": "Capa {layer}",
+    "bonusGoal": {
+      "signatureRider": "Ficha a 1 ciclista nuevo de gran renombre (ganancia neta desde que aceptaste)",
+      "monumentPodium": "Top 3 en un monument, tras aceptar"
+    },
+    "unknownRider": "Ciclista {id}"
+  },
+  "planLabel": {
+    "1yr": "plan a 1 año",
+    "3yr": "plan a 3 años",
+    "5yr": "plan a 5 años",
+    "unknown": "plan"
+  },
+  "sponsor": {
+    "explanation": {
+      "variable": "Base {base} + variable {variable} según los puntos/puesto de la temporada pasada."
+    }
+  },
+  "discord": {
+    "typeLabel": {
+      "auction_new": "Subasta nueva",
+      "auction_outbid": "Puja superada",
+      "auction_won": "Subasta ganada",
+      "transfer_offer": "Oferta de fichaje",
+      "transfer_accepted": "Fichaje aceptado",
+      "transfer_rejected": "Fichaje rechazado",
+      "transfer_completed": "Fichaje completado",
+      "swap_completed": "Intercambio completado",
+      "season_started": "Temporada empezada",
+      "season_ended": "Temporada terminada",
+      "watchlist_rider_auction": "Ciclista de la lista de seguimiento en subasta",
+      "board_update": "Novedades de la directiva",
+      "board_critical": "La directiva está descontenta",
+      "race_result_digest": "Resultados de carreras"
+    },
+    "field": {
+      "newBid": "Puja nueva",
+      "bidBy": "Puja de",
+      "autoBidFrom": "Puja automática de",
+      "finalPrice": "Precio final",
+      "offer": "Oferta",
+      "counterOffer": "Contraoferta",
+      "ends": "Termina"
+    },
+    "dm": {
+      "outbid": "Te han superado la puja por {rider}.",
+      "outbidAuto": "Una puja automática te ha superado por {rider}.",
+      "outbidExhausted": "Tu puja automática por {rider} llegó a su tope y fue superada.",
+      "auctionWon": "Has ganado la subasta de {rider}.",
+      "transferOffer": "{buyer} ha enviado una oferta por {rider}.",
+      "transferAccepted": "Tu oferta por {rider} ha sido aceptada.",
+      "transferCountered": "Tu oferta por {rider} ha recibido una contraoferta.",
+      "transferRejected": "Tu oferta por {rider} ha sido rechazada.",
+      "watchlistRiderAuction": "Un ciclista de tu lista de seguimiento está en subasta: {rider}.",
+      "testTitle": "Los MD de Discord funcionan",
+      "testDescription": "A partir de ahora recibirás MD de Cycling Zone sobre subastas, fichajes y novedades de la directiva."
+    }
+  },
+  "push": {
+    "digest": {
+      "title": "Desde la última vez que miraste",
+      "count": {
+        "auctions": "{count, plural, one {# novedad de subastas} other {# novedades de subastas}}",
+        "races": "{count, plural, one {# resultado de carrera} other {# resultados de carrera}}",
+        "transfers": "{count, plural, one {# oferta de fichaje} other {# ofertas de fichaje}}",
+        "deadlines": "{count, plural, one {# plazo} other {# plazos}}",
+        "academy": "{count, plural, one {# novedad de la academia} other {# novedades de la academia}}"
+      }
+    }
+  }
+}
