@@ -1,0 +1,325 @@
+{
+  "page": {
+    "fallbackTitle": "Mon équipe",
+    "managerLabel": "Manager : {name}",
+    "ridersCount": "{count}/{cap} coureurs seniors",
+    "youthSquadCounts": "+{u23} U23 · +{junior} juniors",
+    "seniorCapTooltip": "Le plafond d'effectif est de {cap} coureurs seniors. Les coureurs de l'académie n'y comptent pas.",
+    "youthSquadCountsTooltip": "Les coureurs U23 et juniors ont leurs propres plafonds d'effectif (12 et 10) et ne comptent pas dans le plafond senior.",
+    "incomingCount": "+{count} entrants",
+    "outgoingCount": "-{count} sortants",
+    "salaryPerSeason": "Salaire/saison : {value} CZ$",
+    "salaryPerSeasonTooltip": "Salaire total que ton effectif touche par saison",
+    "teamValue": "Valeur de l'équipe : {value} CZ$",
+    "division": "Division {n}",
+    "divisionTooltip": "Ton niveau de ligue. La division 1 est le plus haut niveau, la division 4 le niveau d'entrée.",
+    "balance": "{value} CZ$",
+    "balanceTooltip": "Le CZ$ est la monnaie du jeu. Tu en gagnes en jouant, et il ne s'achète pas avec de l'argent réel.",
+    "ownAuctionsBanner": "{count, plural, one {# de tes coureurs est aux enchères} other {# de tes coureurs sont aux enchères}} · voir les enchères"
+  },
+  "promotionPending": {
+    "title": "En attente de promotion",
+    "hint": "Leur prochain effectif est complet. Ils continuent de courir dans leur effectif actuel avec le même contrat.",
+    "waitingFor": {
+      "u23": "En attente d'une place U23",
+      "senior": "En attente d'une place senior"
+    },
+    "promote": "Promouvoir",
+    "noRoom": "Pas encore de place",
+    "promoted": "{name} est monté.",
+    "error": {
+      "squad_full": "Cet effectif est complet. Libère d'abord une place.",
+      "rider_on_market": "Il est aux enchères. Promeus-le quand l'enchère sera terminée.",
+      "rider_in_stage_race": "Il est en course par étapes. Promeus-le quand elle sera terminée.",
+      "generic": "Impossible de promouvoir le coureur. Réessaie."
+    }
+  },
+  "tabs": {
+    "ariaLabel": "Sections de l'équipe",
+    "squad": "Effectif ({count})",
+    "development": "Progression",
+    "stats": "Stats",
+    "transfers": "Historique des transferts"
+  },
+  "development": {
+    "headers": {
+      "projected": "Projeté",
+      "projectedTitle": "Fourchette de note projetée pour son rôle principal, selon ton entraînement. Trié sur la borne haute.",
+      "ceiling": "Plafond",
+      "ceilingTitle": "La note théorique la plus haute que son rôle pourrait atteindre. Non ajustée à la façon dont tu l'entraînes."
+    },
+    "noForecast": "Pas encore de prévision"
+  },
+  "stats": {
+    "seasonLabel": "Saison {n}",
+    "noActiveSeason": "Aucune saison en cours pour l'instant.",
+    "loadError": "Impossible de charger les stats de la saison. Réessaie.",
+    "retry": "Réessayer",
+    "headers": {
+      "raceDays": "Jours de course",
+      "wins": "Victoires",
+      "points": "Points",
+      "prize": "Gains"
+    }
+  },
+  "squad": {
+    "view": {
+      "ariaLabel": "Vue de l'effectif",
+      "current": "Effectif actuel ({count})",
+      "upcoming": "Saison prochaine ({count})",
+      "upcomingHint": "Montre l'effectif une fois les transferts en attente terminés."
+    },
+    "filter": {
+      "label": "Afficher",
+      "seniors": "Seniors ({count})",
+      "academy": "Académie ({count})"
+    },
+    "emptyState": "Ton effectif est vide",
+    "emptyStateBody": "Signe tes premiers coureurs sur le marché pour commencer à bâtir ton équipe.",
+    "emptyStateCta": "Parcourir les coureurs",
+    "emptyStateCtaAuctions": "Aller aux enchères",
+    "emptyView": "Aucun coureur ne correspond à la vue actuelle.",
+    "headers": {
+      "nation": "Nation",
+      "rider": "Coureur",
+      "rating": "Note",
+      "ratingTitle": "La moyenne pondérée des aptitudes que demande son propre rôle. Le même chiffre correspond au même niveau, quel que soit le rôle.",
+      "value": "Valeur",
+      "salary": "Salaire",
+      "potential": "Potentiel",
+      "potentialTitle": "La fourchette de note projetée vers laquelle il se dirige de façon réaliste avec ton entraînement. Différente du plafond du rôle (le plus haut théorique pour son rôle) - survole le chiffre pour voir les deux.",
+      "badges": "Statut",
+      "age": "Âge",
+      "popularity": "Popularité",
+      "popularityTitle": "Popularité auprès des fans (0-100). Utilisée par l'objectif de coureur star du plan quinquennal de la direction.",
+      "reputationLabel": "Réputation",
+      "reputationTitle": "Réputation de course acquise. C'est le chiffre que la direction lit pour les coureurs à profil.",
+      "type": "Type",
+      "contract": "Contrat",
+      "contractUntil": "Jusqu'à la saison {season}",
+      "contractExpired": "Expiré",
+      "action": "Action"
+    },
+    "reputation": {
+      "band": {
+        "unknown": "Inconnu",
+        "known": "Connu",
+        "profile": "Profil",
+        "star": "Star",
+        "legend": "Légende"
+      }
+    },
+    "mode": {
+      "ariaLabel": "Colonnes du tableau",
+      "overview": "Aperçu",
+      "abilities": "Aptitudes"
+    },
+    "count": "{count, plural, one {1 coureur} other {# coureurs}}",
+    "actionButton": "Vendre / Enchère",
+    "ownAuctionTooltip": "Aux enchères · enchère la plus haute {price} CZ$ · se termine dans {timeLeft}",
+    "ownTransferListingTooltip": "En vente par transfert · prix demandé {price} CZ$"
+  },
+  "actionModal": {
+    "potentialLabel": "Potentiel",
+    "tabs": {
+      "auction": "Enchère",
+      "transfer": "Liste des transferts",
+      "release": "Libérer",
+      "extend": "Prolonger le contrat",
+      "move": "Changer d'effectif"
+    },
+    "auction": {
+      "description": "Lance une enchère. Les autres managers peuvent enchérir.",
+      "startButton": "Lancer",
+      "startFlashButton": "Lancer une Flash",
+      "flashLabel": "Enchère flash (30 min)",
+      "flashHint": "Deadline Day : se termine exactement 30 minutes après le lancement",
+      "successMsg": "Enchère lancée !",
+      "priceError": "Le prix de départ doit être compris entre 0 et la valeur ({amount} CZ$)",
+      "endLabel": "Fin de l'enchère",
+      "endHint": "Dans {min} à {max} heures, heure de jeu (Copenhague).",
+      "endWindowHint": "Le marché est ouvert de {open} à {close}."
+    },
+    "transfer": {
+      "description": "Mets en vente à prix fixe.",
+      "listButton": "Mettre en vente",
+      "successMsg": "Mis en vente !"
+    },
+    "release": {
+      "description": "Mets fin au contrat de ce coureur et laisse-le partir comme agent libre.",
+      "feeLabel": "Indemnité de rachat",
+      "balanceLabel": "Ton solde",
+      "feeHint": "La moitié d'un salaire de saison pour chaque saison de contrat restante.",
+      "freeHint": "Ce coureur n'a pas de salaire, la libération est donc gratuite.",
+      "confirmButton": "Libérer le coureur",
+      "cannotAfford": "Tu n'as pas les moyens de payer l'indemnité de rachat.",
+      "successMsg": "Coureur libéré."
+    },
+    "extend": {
+      "description": "Prolonge le contrat d'une saison. Le salaire est renégocié à partir de la valeur actuelle du coureur.",
+      "currentSalaryLabel": "Salaire actuel",
+      "newSalaryLabel": "Nouveau salaire",
+      "newContractLabel": "Nouveau contrat",
+      "newContractValue": "Expire après S{season}",
+      "confirmButton": "Prolonger le contrat",
+      "loadingTermsButton": "Chargement des conditions…",
+      "workingButton": "Prolongation…",
+      "successMsg": "Contrat prolongé.",
+      "capped": "Contrat à la durée maximale (jusqu'à la saison {season}).",
+      "capCounterLabel": "Prolongations utilisées"
+    },
+    "move": {
+      "description": "Déplace ce coureur vers l'effectif senior, l'équipe U23 ou l'équipe juniors. Tu choisis l'effectif et tu vois ensuite tout l'effet.",
+      "openButton": "Choisir l'effectif"
+    },
+    "loadingShort": "...",
+    "errorPrefix": ""
+  },
+  "profile": {
+    "back": "Retour",
+    "notFound": "Équipe introuvable",
+    "loadError": {
+      "message": "Impossible de charger l'équipe. Rien n'a été perdu. Réessaie.",
+      "retry": "Réessayer"
+    },
+    "tabsAriaLabel": "Sections du profil de l'équipe",
+    "yourTeam": "Ton équipe",
+    "managerLabel": "Manager : {name}",
+    "division": "Division {n}",
+    "statRidersNow": "Coureurs actuels",
+    "statIncoming": "Entrants",
+    "statOutgoing": "Sortants",
+    "statTeamValue": "Valeur de l'équipe",
+    "seasonResults": "Résultats de la saison",
+    "seasonLabel": "Saison {n}",
+    "seasonOngoing": "En cours",
+    "seasonFinished": "Terminée",
+    "seasonPoints": "Points",
+    "seasonStageWins": "Victoires d'étape",
+    "seasonGcWins": "Victoires au général",
+    "tabSquad": "Effectif ({count})",
+    "tabResults": "Résultats",
+    "tabPalmares": "Palmarès",
+    "tabTransfers": "Historique des transferts",
+    "tabClub": "Staff et installations",
+    "squadTitle": "Effectif ({count} coureurs)",
+    "viewCurrent": "Effectif actuel ({count})",
+    "viewUpcoming": "Saison prochaine ({count})",
+    "viewUpcomingHint": "Montre l'effectif une fois les transferts en attente terminés.",
+    "noRiders": "Aucun coureur",
+    "thNation": "Nation",
+    "thRider": "Coureur",
+    "thBadges": "Statut",
+    "thAge": "Âge",
+    "thType": "Type",
+    "thValue": "Valeur",
+    "palmares": {
+      "totalsTitle": "Totaux de carrière",
+      "totals": {
+        "seasons": "Saisons",
+        "wins": "Victoires",
+        "bestResult": "Meilleur résultat",
+        "honours": "Panthéon",
+        "bestResultValue": "Division {division} · n° {rank}"
+      },
+      "seasonHistoryTitle": "Saison par saison",
+      "thSeason": "Saison",
+      "thDivision": "Division",
+      "thRank": "Rang",
+      "thPoints": "Points",
+      "thWins": "Victoires",
+      "movementPromoted": "Promu",
+      "movementRelegated": "Relégué",
+      "honoursTitle": "Panthéon",
+      "honoursEmpty": "Pas encore d'entrées au Panthéon pour cette équipe.",
+      "emptyTitle": "Pas encore de palmarès",
+      "emptyBody": "Chaque saison jouée ajoute une nouvelle ligne ici.",
+      "loadError": "Impossible de charger le palmarès pour le moment."
+    }
+  },
+  "results": {
+    "title": "Résultats de course",
+    "subtitle": "Tous les résultats de course de cette équipe",
+    "seasonFilterAll": "Toutes les saisons",
+    "seasonFilterCurrent": "Saison {n} (en cours)",
+    "seasonOption": "Saison {n}",
+    "seasonRow": "Saison {n}",
+    "loadError": "Impossible de charger les résultats. Réessaie.",
+    "emptyAll": "Pas encore de résultats de course",
+    "emptyFiltered": "Aucun résultat pour la saison sélectionnée",
+    "thRace": "Course",
+    "thType": "Classement",
+    "thRank": "Rang",
+    "thRider": "Coureur",
+    "thPoints": "Points",
+    "thPrize": "Gains",
+    "stageN": "Étape {n}",
+    "riderTeam": "Équipe",
+    "total": "Total · {count, plural, one {# résultat} other {# résultats}}",
+    "type": {
+      "stage": "Étape",
+      "gc": "Général (CG)",
+      "oneday": "Résultat d'une course d'un jour",
+      "points": "Classement par points",
+      "mountain": "Classement de la montagne",
+      "young": "Jeune coureur",
+      "team": "Classement par équipes",
+      "leader": "Maillot de leader (jour)",
+      "points_day": "Maillot vert (jour)",
+      "mountain_day": "Maillot à pois (jour)",
+      "young_day": "Maillot blanc (jour)"
+    }
+  },
+  "club": {
+    "facilitiesTitle": "Installations",
+    "staffTitle": "Staff",
+    "noStaff": "Aucun staff recruté",
+    "errorTitle": "Impossible de charger ceci",
+    "errorDescription": "Le staff et les installations n'ont pas pu être chargés pour le moment."
+  },
+  "manager": {
+    "back": "Retour",
+    "notFound": "Équipe introuvable",
+    "loadError": {
+      "message": "Impossible de charger le profil de ce manager. Rien n'a été perdu. Réessaie.",
+      "retry": "Réessayer"
+    },
+    "yourTeam": "Ton équipe",
+    "managerPrefix": "Manager :",
+    "aiManaged": "Équipe gérée par l'IA",
+    "division": "Division {n}",
+    "settingsLink": "Paramètres",
+    "streak": "série",
+    "achievements": "succès",
+    "recentlyUnlocked": "Récemment débloqués",
+    "noRecentAchievements": "Rien de débloqué pour l'instant. Cours, enchéris et bâtis un effectif pour commencer à collectionner.",
+    "inProgress": "En cours",
+    "progressTowards": "{title} : {current} sur {target}",
+    "tabOverview": "Aperçu",
+    "tabRiders": "Équipe ({count})",
+    "tabSeason": "Historique des saisons",
+    "tabAchievements": "Succès {unlocked}/{total}",
+    "statSeasons": "Saisons",
+    "statTransfers": "Transferts",
+    "statForumPosts": "Messages du forum",
+    "recentTransfers": "Transferts récents",
+    "noTransfers": "Pas encore de transferts",
+    "boughtFrom": "Acheté à",
+    "soldTo": "Vendu à",
+    "noRiders": "Aucun coureur",
+    "noSeasonHistory": "Pas encore d'historique de saison",
+    "noAchievements": "Pas encore de succès",
+    "seasonOngoing": "En cours",
+    "thRider": "Coureur",
+    "thValue": "Valeur",
+    "thSeason": "Saison",
+    "thDivision": "Division",
+    "thPoints": "Points",
+    "thRank": "Rang",
+    "seasonNumber": "Saison {n}",
+    "divisionShort": "Div. {n}",
+    "discordOpenAria": "Ouvrir le profil Discord de {handle}",
+    "discordCopyAria": "Copier le nom d'utilisateur Discord {handle}",
+    "discordCopied": "Copié"
+  }
+}

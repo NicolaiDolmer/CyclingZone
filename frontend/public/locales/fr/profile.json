@@ -1,0 +1,194 @@
+{
+  "header": {
+    "title": "Mon profil",
+    "subtitle": "Paramètres et équipe"
+  },
+  "tabs": {
+    "label": "Sections des paramètres",
+    "account": "Compte",
+    "notifications": "Notifications",
+    "preferences": "Préférences",
+    "privacy": "Confidentialité",
+    "beta": "Bêta"
+  },
+  "account": {
+    "title": "Compte",
+    "email": "E-mail",
+    "username": "Nom d'utilisateur",
+    "adminBadge": "Admin",
+    "saving": "Enregistrement...",
+    "saveUsername": "Enregistrer",
+    "saveEmail": "Modifier",
+    "usernameHelp": "3 à 20 caractères. Lettres, chiffres, tiret bas ou trait d'union.",
+    "usernameError": "Le nom d'utilisateur doit faire 3 à 20 caractères (lettres, chiffres, _ ou -)",
+    "usernameTaken": "Ce nom d'utilisateur est déjà pris",
+    "usernameSaved": "Nom d'utilisateur mis à jour !",
+    "emailHelp": "J'enverrai un lien de confirmation à la nouvelle adresse. Le changement prend effet quand tu cliques dessus.",
+    "emailError": "Saisis une adresse e-mail valide",
+    "emailPending": "Confirmation envoyée à {email}. Clique sur le lien pour finaliser le changement.",
+    "noSession": "Impossible de trouver une session active"
+  },
+  "appearance": {
+    "title": "Apparence",
+    "subtitle": "Choisis un thème pour toute l'application.",
+    "systemLabel": "Suivre le système",
+    "systemHint": "Change automatiquement avec ton appareil",
+    "lightLabel": "Clair",
+    "lightHint": "Fond clair dans toute l'application",
+    "darkLabel": "Sombre",
+    "darkHint": "Fond sombre dans toute l'application"
+  },
+  "assistant": {
+    "title": "Assistant",
+    "subtitle": "Choisis si l'assistant peut composer tes équipes à ta place.",
+    "toggleLabel": "L'assistant remplit ma composition automatiquement",
+    "toggleHint": "Activé : l'assistant compose l'équipe pour les courses que tu n'as pas réglées toi-même. Désactivé : ces courses restent vides jusqu'à ce que tu choisisses, et seul le sauvetage au départ de la course s'applique encore.",
+    "on": "L'assistant remplit maintenant tes compositions.",
+    "off": "L'assistant ne choisit plus à ta place."
+  },
+  "privacy": {
+    "title": "Confidentialité",
+    "subtitle": "C'est toi qui décides de ce que je mesure. Les changements prennent effet à la prochaine ouverture du jeu.",
+    "necessary": "Nécessaires",
+    "alwaysOn": "Toujours actif",
+    "analytics": "Mesure d'audience",
+    "marketing": "Marketing",
+    "email": "E-mail",
+    "accepted": "Accepté",
+    "declined": "Refusé",
+    "changeChoices": "Modifier mes choix",
+    "readPolicy": "Lire la politique de confidentialité"
+  },
+  "subscription": {
+    "title": "Abonnement",
+    "statusPro": "CZ Pro est actif sur ton compte.",
+    "statusFounder": "CZ Pro est actif sur ton compte, avec le statut Founder permanent.",
+    "manage": "Gérer l'abonnement",
+    "manageHint": "Ouvre le portail en libre-service chez mon prestataire de paiement, où tu peux résilier, consulter tes reçus et mettre à jour ta carte.",
+    "portalError": "Impossible d'ouvrir le portail d'abonnement. Réessaie, ou contacte-moi sur Discord et je t'aiderai à la main.",
+    "readTerms": "Lire les conditions de vente"
+  },
+  "team": {
+    "title": "Équipe",
+    "notInitialized": "Ton équipe doit encore être initialisée. Enregistre les infos de l'équipe pour la créer maintenant.",
+    "teamNameLabel": "Nom de l'équipe",
+    "managerNameLabel": "Nom du manager",
+    "managerNamePlaceholder": "Ton nom de manager",
+    "saving": "Enregistrement...",
+    "save": "Enregistrer les infos de l'équipe",
+    "create": "Créer les infos de l'équipe",
+    "errorTeamName": "Le nom de l'équipe doit faire au moins 3 caractères",
+    "errorManagerName": "Le nom du manager doit faire au moins 2 caractères",
+    "errorNoSession": "Impossible de trouver une session active",
+    "saved": "Infos de l'équipe enregistrées !",
+    "created": "Équipe créée !"
+  },
+  "discord": {
+    "title": "Intégration Discord",
+    "subtitle": "Reçois les notifications directement sur Discord",
+    "handleLabel": "Nom d'utilisateur Discord public",
+    "handlePlaceholder": "p. ex. nicolai.dolmer",
+    "handleHelp": "Affiché sur ton profil public pour que les autres managers puissent t'ajouter sur Discord. Lettres minuscules, chiffres, points et tirets bas, 2 à 32 caractères. Laisse vide pour le masquer.",
+    "handleSave": "Enregistrer le nom d'utilisateur",
+    "handleSaved": "Nom d'utilisateur Discord enregistré !",
+    "handleCleared": "Nom d'utilisateur Discord retiré",
+    "handleError": "Doit faire 2 à 32 caractères : lettres minuscules, chiffres, points et tirets bas uniquement (ton nom d'utilisateur Discord actuel, pas un surnom).",
+    "intro": "Si tu relies ton identifiant d'utilisateur Discord, tu seras mentionné sur Discord quand on te surenchérit aux enchères, quand tu en remportes, quand tu reçois des offres de transfert et plus encore.",
+    "idLabel": "Ton identifiant d'utilisateur Discord",
+    "idPlaceholder": "p. ex. 123456789012345678",
+    "idHelp": "Trouve ton identifiant : Discord → Paramètres → Avancés → Activer le mode développeur → Clic droit sur ton nom → « Copier l'identifiant de l'utilisateur ».",
+    "idHelpStrong": "C'est un nombre de 17 à 19 chiffres, pas ton @pseudo.",
+    "save": "Enregistrer l'identifiant Discord",
+    "saving": "Enregistrement...",
+    "idSaved": "Identifiant Discord enregistré !",
+    "idError": "L'identifiant Discord doit faire 17 à 19 chiffres (chiffres uniquement). Tu as probablement copié le nom d'utilisateur. Fais un clic droit sur ton propre nom dans Discord → « Copier l'identifiant de l'utilisateur » (nécessite le mode développeur dans Avancés).",
+    "noSession": "Aucune session active",
+    "dmOn": "MP activés",
+    "dmOff": "MP désactivés",
+    "testSent": "MP de test envoyé. Vérifie Discord",
+    "statusConnected": "Connecté. Tu recevras des MP du bot pour les enchères et les transferts.",
+    "statusDmOff": "L'identifiant Discord est renseigné, mais les MP sont désactivés. Tu seras quand même mentionné dans le salon.",
+    "statusBotMissing": "Le bot n'est pas encore configuré sur le serveur. Seules les mentions dans le salon fonctionnent pour l'instant.",
+    "statusIdMissing": "Identifiant Discord manquant. Ajoute-le ci-dessous pour recevoir des MP.",
+    "statusAutoDisconnected": "Discord déconnecté. Le bot n'a pas pu te joindre, ce qui veut en général dire que tu as quitté le serveur Discord de Cycling Zone. Rejoins à nouveau le serveur et ajoute ton identifiant ci-dessous pour recevoir de nouveau des MP.",
+    "statusUsernamePre": "Ton identifiant enregistré (",
+    "statusUsernamePost": ") ressemble à un nom d'utilisateur, pas à un identifiant d'utilisateur. Les MP ne seront pas livrés. Remplace-le par un nombre de 17 à 19 chiffres. Voir le guide ci-dessous.",
+    "toggleLabel": "Recevoir des MP pour les événements qui te concernent",
+    "toggleHint": "Désactive si tu ne veux pas de messages privés du bot. Tu seras quand même mentionné dans le salon.",
+    "testSending": "Envoi...",
+    "testSend": "Envoyer un MP de test",
+    "testBotMissing": "Bot non configuré",
+    "eventsTitle": "Tu recevras des notifications Discord quand :",
+    "eventOutbid": "Quelqu'un te surenchérit à une enchère",
+    "eventWonAuction": "Tu remportes une enchère",
+    "eventTransferOffer": "Tu reçois une offre de transfert",
+    "eventOfferResolved": "Ton offre de transfert est acceptée ou refusée",
+    "eventNewAuction": "Une nouvelle enchère est créée",
+    "eventSeasonChange": "Une nouvelle saison commence ou se termine",
+    "prefs": {
+      "heading": "Choisis pour quoi tu reçois des MP",
+      "masterOffHint": "Active les MP ci-dessus pour choisir les événements un par un.",
+      "group": {
+        "auctions": "Enchères",
+        "transfers": "Transferts",
+        "club": "Club"
+      },
+      "auction_outbid": {
+        "label": "Surenchère",
+        "desc": "Quelqu'un dépasse ton enchère, enchères automatiques comprises."
+      },
+      "auction_won": {
+        "label": "Enchère remportée",
+        "desc": "Tu remportes un coureur sur lequel tu enchérissais."
+      },
+      "watchlist_rider_auction": {
+        "label": "Coureur suivi mis aux enchères",
+        "desc": "Un coureur de ta liste de suivi est mis en vente."
+      },
+      "transfer_offer": {
+        "label": "Offre de transfert reçue",
+        "desc": "Un autre manager fait une offre sur l'un de tes coureurs."
+      },
+      "transfer_response": {
+        "label": "Réponse à ton offre",
+        "desc": "Acceptée, refusée ou contre-proposée."
+      },
+      "board_update": {
+        "label": "Nouvelle de la direction",
+        "desc": "Ta direction réagit aux résultats ou aux finances."
+      }
+    }
+  },
+  "forumCategories": {
+    "title": "Catégories du forum",
+    "hint": "Désactive une catégorie et elle cesse de te signaler du nouveau. Les réponses à tes propres fils te parviennent toujours.",
+    "summary": "Tu suis {count} catégories sur {total}.",
+    "saveFailed": "Impossible d'enregistrer ton choix. Réessaie."
+  },
+  "selectionReminder": {
+    "title": "Rappel de date limite",
+    "subtitle": "Un effectif manquant est signalé dans la navigation et sur la page de planification.",
+    "toggleLabel": "Me rappeler avant la date limite de sélection",
+    "toggleHint": "Activé : Planification est marquée quand une course démarre dans les {windowHours} heures sans effectif complet, et passe au rouge si ton équipe ne prendrait pas le départ avec moins de {urgentHours} heures restantes. Désactivé : rien n'est marqué, et la date limite s'applique quand même.",
+    "toggleHintGeneric": "Activé : Planification est marquée quand une course démarre bientôt sans effectif complet, et passe au rouge si ton équipe ne prendrait pas le départ. Désactivé : rien n'est marqué, et la date limite s'applique quand même.",
+    "on": "Les rappels de date limite sont activés.",
+    "off": "Les rappels de date limite sont désactivés."
+  },
+  "beta": {
+    "title": "Groupe bêta",
+    "badge": "Bêta-testeur",
+    "subtitle": "Vois les fonctionnalités pendant que je les construis encore.",
+    "memberBody": "Tu en fais partie. Les fonctionnalités encore en test s'affichent d'abord pour toi, et certaines vont planter. Dis-le-moi quand ça arrive.",
+    "noneBody": "J'ouvre les nouvelles fonctionnalités à un petit groupe d'abord, pour pouvoir lire chaque réponse. Demande à rejoindre et je répondrai moi-même.",
+    "pendingBody": "Ta demande est chez moi. Je réponds à la main, alors compte un jour ou deux.",
+    "rejectedBody": "Pas cette fois. Je garde le groupe petit, et tu peux bien sûr redemander.",
+    "whereToReport": "Signale ce qui ne va pas sur Discord, ou via le formulaire de retour.",
+    "requestButton": "Demander à rejoindre",
+    "cancelButton": "Retirer la demande",
+    "leaveButton": "Quitter le groupe bêta",
+    "requested": "Demande envoyée.",
+    "cancelled": "Demande retirée.",
+    "left": "Tu as quitté le groupe bêta.",
+    "unavailable": "L'inscription à la bêta n'est pas disponible pour le moment. Réessaie dans un instant."
+  }
+}
