@@ -15,18 +15,23 @@
 //   KASTER ved enhver skrivning. Viser samlede tal i konsollen; detaljer
 //   (mandat-id'er, hold-id'er) + backup-SQL + restore-SQL lægges i
 //   balance-internals/6773/ (gitignoreret).
-//   --apply --owner-go=6773-production --approved-list=<hash>: lukker rækkerne
-//   via SAMME funktion som sæsonskiftet (`closeEndedSeasonMandates`, genbrugt,
-//   ikke kopieret) pr. hold med tærsklen "aktiv sæson - 1". Afbryder FØR første
-//   skrivning hvis den levende liste afviger fra den godkendte (hash), eller
-//   hvis backup-tabellen (backup_6773_board_mandates) ikke dækker alle rækker.
-//   Efter apply: post-verify (0 tilbage), ellers exit 1.
+//   --apply --owner-go=6773-production --approved-list=<hash>: (1) flytter
+//   bonusmål (source 'bonus_offer') fra et gammelt aktivt mandat til holdets
+//   aktuelle mandat, idempotent på bonus_offer_id (review N1: ellers forsvinder
+//   et S4-bonusmål fra Boardroom, når læserne vælger den aktive sæson); (2)
+//   lukker KUN de godkendte id'er, betinget på den forventede gamle status
+//   (Codex/review N2). Afbryder FØR første skrivning hvis den levende liste
+//   afviger fra den godkendte (hash, inkl. bonus-flytninger), eller hvis
+//   backup-tabellen (backup_6773_board_mandates) ikke dækker alle berørte
+//   rækker (også mandater der får bonusmål). Efter apply: post-verify (0
+//   tilbage), ellers exit 1.
 //
 // SCOPE = runtime-predikatet: status active/proposed og
 //   season_number <= aktiv sæson - 1. Rækker uden season_number tælles separat
 //   ("uden for scope") og røres ikke, præcis som runtime.
-//   active → completed, proposed → lapsed. Kun status og updated_at skrives:
-//   ingen tillid, ingen kvittering, ingen penge.
+//   active → completed, proposed → lapsed. På de lukkede rækker skrives kun
+//   status og updated_at; på modtager-mandatet kun goals og updated_at. Ingen
+//   tillid, ingen kvittering, ingen penge.
 //
 // Idempotent: en lukket række matcher ikke predikatet igen, og hver opdatering
 // er betinget på den gamle status.
@@ -40,7 +45,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { closeEndedSeasonMandates } from "../../lib/boardMandateEngine.js";
+import { hasBonusGoalForOffer } from "../../lib/boardBonusGoal.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -106,6 +111,22 @@ export function planStaleMandateClosure({ seasons, mandates, teams = [] }) {
     }
   }
 
+  // Review N1: bonusmål på et gammelt aktivt mandat flyttes til holdets aktuelle
+  // mandat. Uden aktuelt mandat kan de ikke flyttes; de tælles til ejeren.
+  const mandateById = new Map(open.map((m) => [m.id, m]));
+  const bonusMoves = [];
+  let bonusGoalsWithoutTarget = 0;
+  for (const r of rows) {
+    if (r.from !== "active") continue;
+    const bonus = (mandateById.get(r.id)?.goals || []).filter((g) => g?.source === "bonus_offer");
+    if (!bonus.length) continue;
+    const target = currentActiveByTeam.get(r.teamId);
+    if (!target) { bonusGoalsWithoutTarget += bonus.length; continue; }
+    const missing = bonus.filter((g) => !hasBonusGoalForOffer(target.goals, { offerId: g.bonus_offer_id, extraGoal: g }));
+    if (missing.length) bonusMoves.push({ fromId: r.id, toId: target.id, teamId: r.teamId, goals: missing });
+  }
+  bonusMoves.sort((a, b) => String(a.fromId).localeCompare(String(b.fromId)));
+
   const teamIds = [...new Set(rows.map((r) => r.teamId))].sort();
   const staleActive = rows.filter((r) => r.from === "active");
   const shadowing = staleActive.filter((r) => {
@@ -128,6 +149,7 @@ export function planStaleMandateClosure({ seasons, mandates, teams = [] }) {
     threshold,
     rows,
     teamIds,
+    bonusMoves,
     outOfScopeCount: outOfScope.length,
     counts: {
       total: rows.length,
@@ -137,6 +159,8 @@ export function planStaleMandateClosure({ seasons, mandates, teams = [] }) {
       teamsAlsoWithCurrentActive: new Set(staleActive.filter((r) => currentActiveByTeam.has(r.teamId)).map((r) => r.teamId)).size,
       staleSignedAfterCurrent: shadowing.length,
       frozenTeams: teamIds.filter((id) => teamById.get(id)?.is_frozen).length,
+      bonusGoalsToMove: bonusMoves.reduce((n, m) => n + m.goals.length, 0),
+      bonusGoalsWithoutTarget,
       bySeason,
     },
   };
@@ -144,7 +168,10 @@ export function planStaleMandateClosure({ seasons, mandates, teams = [] }) {
 
 /** Stabil hash af den godkendte liste (id + fra-status), så apply kan nægte en anden mængde. */
 export function approvedListHash(plan) {
-  const body = plan.rows.map((r) => `${r.id}:${r.from}`).join("\n");
+  const body = [
+    ...plan.rows.map((r) => `${r.id}:${r.from}`),
+    ...(plan.bonusMoves || []).map((m) => `bonus:${m.fromId}->${m.toId}:${m.goals.length}`),
+  ].join("\n");
   return createHash("sha256").update(body).digest("hex").slice(0, 16);
 }
 
@@ -160,9 +187,14 @@ function uuidList(ids) {
  * `create table if not exists` + `on conflict do nothing`, så en genkørsel
  * aldrig overskriver det oprindelige før-billede.
  */
+/** Alle rækker apply rører: de lukkede + modtagerne af bonusmål. */
+export function touchedIds(plan) {
+  return [...new Set([...plan.rows.map((r) => r.id), ...(plan.bonusMoves || []).map((m) => m.toId)])].sort();
+}
+
 export function buildBackupSql(plan) {
   if (!plan.rows.length) return "-- #6773: ingen kandidater, ingen backup nødvendig\n";
-  const ids = uuidList(plan.rows.map((r) => r.id));
+  const ids = uuidList(touchedIds(plan));
   return `-- #6773 backup FØR lukning af mandater for afsluttede sæsoner. Idempotent.
 -- data-api-access: {"table":"public.${BACKUP_TABLE}","roles":{"anon":[],"authenticated":[],"service_role":["SELECT"]},"reason":"Backend-only ops backup; apply reads it to prove coverage"}
 begin;
@@ -180,7 +212,7 @@ insert into public.${BACKUP_TABLE}
 on conflict (id) do nothing;
 commit;
 notify pgrst, 'reload schema';
--- Verificér: select count(*) from public.${BACKUP_TABLE}; (skal være ${plan.rows.length})
+-- Verificér: select count(*) from public.${BACKUP_TABLE}; (skal være ${touchedIds(plan).length})
 `;
 }
 
@@ -188,7 +220,7 @@ notify pgrst, 'reload schema';
 export function buildRestoreSql() {
   return `-- #6773 restore: rul lukningen tilbage fra ${BACKUP_TABLE}. Ejer-gated.
 update public.board_mandates m
-   set status = b.status, updated_at = b.updated_at
+   set status = b.status, goals = b.goals, updated_at = b.updated_at
   from public.${BACKUP_TABLE} b
  where b.id = m.id;
 `;
@@ -201,7 +233,7 @@ export async function fetchSnapshot(supabase) {
   if (seasonsError) throw new Error(`seasons lookup failed: ${seasonsError.message}`);
   const mandates = await fetchAllRows(() => supabase
     .from("board_mandates")
-    .select("id, team_id, season_id, season_number, status, signed_at, proposed_at")
+    .select("id, team_id, season_id, season_number, status, signed_at, proposed_at, goals")
     .in("status", [...OPEN_STATUSES])
     .order("id"));
   const teamIds = [...new Set(mandates.map((m) => m.team_id).filter(Boolean))];
@@ -262,24 +294,41 @@ export async function runApply({
   ownerGo,
   approvedHash,
   now = new Date(),
-  closeFn = closeEndedSeasonMandates,
 }) {
   if (ownerGo !== OWNER_GO_TOKEN) throw new Error(`--apply kræver --owner-go=${OWNER_GO_TOKEN}. Intet skrevet.`);
   const plan = planStaleMandateClosure(await fetchSnapshot(supabase));
   if (approvedHash !== approvedListHash(plan)) {
     throw new Error("Den levende liste afviger fra den godkendte. Kør dry-run igen og vis ejeren den nye liste. Intet skrevet.");
   }
-  await assertBackupCovers(supabase, plan.rows.map((r) => r.id));
+  await assertBackupCovers(supabase, touchedIds(plan));
 
-  const result = { completed: 0, lapsed: 0, failedTeams: [] };
-  for (const teamId of plan.teamIds) {
-    try {
-      const res = await closeFn(supabase, { teamId, endedSeasonNumber: plan.threshold, now });
-      result.completed += res.completed;
-      result.lapsed += res.lapsed;
-    } catch (err) {
-      result.failedTeams.push({ teamId, error: err.message });
-    }
+  const nowIso = now.toISOString();
+  const result = { completed: 0, lapsed: 0, bonusGoalsMoved: 0, skipped: [] };
+
+  // (1) Bonusmål først, så intet accepteret mål er usynligt mellem de to trin.
+  for (const move of plan.bonusMoves) {
+    const { data: target, error } = await supabase
+      .from("board_mandates").select("id, status, goals").eq("id", move.toId).maybeSingle();
+    if (error) throw new Error(`modtager-mandat ${move.toId}: ${error.message}`);
+    if (!target || target.status !== "active") { result.skipped.push({ id: move.toId, reason: "modtager ikke aktiv" }); continue; }
+    const current = Array.isArray(target.goals) ? target.goals : [];
+    const add = move.goals.filter((g) => !hasBonusGoalForOffer(current, { offerId: g.bonus_offer_id, extraGoal: g }));
+    if (!add.length) continue;
+    const { data: upd, error: upErr } = await supabase
+      .from("board_mandates").update({ goals: [...current, ...add], updated_at: nowIso })
+      .eq("id", move.toId).eq("status", "active").select("id");
+    if (upErr) throw new Error(`bonusmål til ${move.toId}: ${upErr.message}`);
+    if ((upd || []).length) result.bonusGoalsMoved += add.length;
+  }
+
+  // (2) Luk KUN de godkendte id'er, betinget på den forventede gamle status.
+  for (const r of plan.rows) {
+    const { data: upd, error } = await supabase
+      .from("board_mandates").update({ status: r.to, updated_at: nowIso })
+      .eq("id", r.id).eq("status", r.from).select("id");
+    if (error) throw new Error(`luk ${r.id}: ${error.message}`);
+    if (!(upd || []).length) { result.skipped.push({ id: r.id, reason: "status ændret siden godkendelse" }); continue; }
+    if (r.to === "completed") result.completed += 1; else result.lapsed += 1;
   }
 
   const after = planStaleMandateClosure(await fetchSnapshot(supabase));
@@ -308,6 +357,7 @@ export function renderPublicSummary(plan, hash) {
     `Aktiv sæson: S${plan.activeSeasonNumber} (lukker mandater for S${plan.threshold} og ældre)`,
     `Rækker der ville blive lukket: ${c.total} (active → completed: ${c.activeToCompleted}, proposed → lapsed: ${c.proposedToLapsed})`,
     `Berørte hold: ${c.teams} (heraf frosne: ${c.frozenTeams})`,
+    `Bonusmål der flyttes til det aktuelle mandat: ${c.bonusGoalsToMove}; bonusmål uden aktuelt mandat at flytte til: ${c.bonusGoalsWithoutTarget}`,
     `Hold der også har et aktivt mandat for S${plan.activeSeasonNumber}: ${c.teamsAlsoWithCurrentActive}`,
     `Gamle mandater underskrevet SENERE end holdets aktuelle (skygger i den gamle læser): ${c.staleSignedAfterCurrent}`,
     `Pr. sæson: ${Object.entries(c.bySeason).map(([k, v]) => `${k} active=${v.active} proposed=${v.proposed}`).join("; ") || "ingen"}`,
@@ -361,10 +411,10 @@ async function main() {
   }
 
   const { result, remaining } = await runApply({ supabase, ownerGo: args.ownerGo, approvedHash: args.approvedHash });
-  console.log(`APPLY: completed ${result.completed}, lapsed ${result.lapsed}, fejlede hold ${result.failedTeams.length}`);
-  for (const f of result.failedTeams) console.error(`  FAIL ${f.teamId}: ${f.error}`);
+  console.log(`APPLY: completed ${result.completed}, lapsed ${result.lapsed}, bonusmål flyttet ${result.bonusGoalsMoved}, sprunget over ${result.skipped.length}`);
+  for (const f of result.skipped) console.error(`  SKIP: ${f.reason}`);
   console.log(`POST-VERIFY: åbne mandater for afsluttede sæsoner tilbage: ${remaining}`);
-  process.exit(result.failedTeams.length > 0 || remaining > 0 ? 1 : 0);
+  process.exit(result.skipped.length > 0 || remaining > 0 ? 1 : 0);
 }
 
 if (isMain()) {

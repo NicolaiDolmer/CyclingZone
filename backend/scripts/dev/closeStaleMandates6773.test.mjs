@@ -31,6 +31,7 @@ function createDouble(tables) {
       in(col, vs) { filters.push((r) => vs.includes(r[col])); return read; },
       order: () => read,
       range: async (a, b) => ({ data: rows.filter(match).slice(a, b + 1), error: null }),
+      maybeSingle: async () => ({ data: rows.filter(match)[0] ?? null, error: null }),
       then: (resolve) => resolve({ data: rows.filter(match), error: null }),
     };
     return {
@@ -69,8 +70,10 @@ function fixture() {
     teams: [{ id: "tA", is_frozen: false }, { id: "tB", is_frozen: true }, { id: "tC", is_frozen: false }],
     board_mandates: [
       // Hold A: gammelt S3 underskrevet EFTER S4 (rod-årsagens form).
-      { id: id(1), team_id: "tA", season_id: "s3", season_number: 3, status: "active", signed_at: "2026-10-03T08:00:00Z" },
-      { id: id(2), team_id: "tA", season_id: "s4", season_number: 4, status: "active", signed_at: "2026-09-29T08:00:00Z" },
+      { id: id(1), team_id: "tA", season_id: "s3", season_number: 3, status: "active", signed_at: "2026-10-03T08:00:00Z",
+        goals: [{ type: "stage_wins", target: 2, source: "board" }, { type: "signature_rider", target: 1, source: "bonus_offer", bonus_offer_id: "bo-1" }] },
+      { id: id(2), team_id: "tA", season_id: "s4", season_number: 4, status: "active", signed_at: "2026-09-29T08:00:00Z",
+        goals: [{ type: "gc_top10", target: 1, source: "board" }] },
       // Hold B (frosset): kun et gammelt S3 + et hængende S3-forslag.
       { id: id(3), team_id: "tB", season_id: "s3", season_number: 3, status: "active", signed_at: "2026-10-01T08:00:00Z" },
       { id: id(4), team_id: "tB", season_id: "s2", season_number: 2, status: "proposed", signed_at: null },
@@ -137,7 +140,8 @@ test("#6773 backup-SQL: idempotent og dækker præcis plan-rækkerne", () => {
   assert.match(sql, /revoke all on table public\.backup_6773_board_mandates from public, anon, authenticated, service_role/);
   assert.match(sql, /grant select on table public\.backup_6773_board_mandates to service_role/, "apply læser backuppen som service_role");
   for (const r of plan.rows) assert.ok(sql.includes(r.id));
-  assert.ok(!sql.includes(id(2)) && !sql.includes(id(5)), "aktuelle mandater er ikke med");
+  assert.ok(sql.includes(id(2)), "modtageren af bonusmålet er med i backuppen");
+  assert.ok(!sql.includes(id(5)), "urørte aktuelle mandater er ikke med");
 });
 
 test("#6773 parseArgs: --apply kræver ejer-go OG godkendt hash", () => {
@@ -171,11 +175,11 @@ test("#6773 apply: lukker via runtime-funktionen, post-verify 0, og en genkørse
   const tables = fixture();
   const double = createDouble(tables);
   const { plan, hash } = await runDryRun({ supabase: double });
-  tables[BACKUP_TABLE] = plan.rows.map((r) => ({ id: r.id }));
+  tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
 
   const now = new Date("2026-10-18T10:00:00Z");
   const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now });
-  assert.deepEqual(out.result, { completed: 2, lapsed: 1, failedTeams: [] });
+  assert.deepEqual(out.result, { completed: 2, lapsed: 1, bonusGoalsMoved: 1, skipped: [] });
   assert.equal(out.remaining, 0);
 
   const byId = Object.fromEntries(tables.board_mandates.map((m) => [m.id, m]));
@@ -185,9 +189,44 @@ test("#6773 apply: lukker via runtime-funktionen, post-verify 0, og en genkørse
   assert.equal(byId[id(2)].status, "active", "det aktuelle S4-mandat røres ikke");
   assert.equal(byId[id(5)].status, "active");
   assert.equal(byId[id(7)].status, "active", "uden season_number: uden for scope");
-  assert.ok(double.writes.every((w) => w.table === "board_mandates" && Object.keys(w.payload).sort().join(",") === "status,updated_at"),
-    "kun status + updated_at skrives");
+  assert.ok(double.writes.every((w) => w.table === "board_mandates"
+    && ["status,updated_at", "goals,updated_at"].includes(Object.keys(w.payload).sort().join(","))),
+    "kun status/goals + updated_at skrives");
+  assert.ok(byId[id(2)].goals.some((g) => g.bonus_offer_id === "bo-1"), "S4-bonusmålet ligger nu på det aktuelle mandat");
+  assert.equal(byId[id(2)].goals.filter((g) => g.source === "board").length, 1, "mandatets egne mål røres ikke");
 
   const again = await runDryRun({ supabase: double });
   assert.equal(again.plan.counts.total, 0);
+});
+
+test("#6773 plan: tæller bonusmål der flyttes, og dem uden aktuelt mandat", () => {
+  const t = fixture();
+  t.board_mandates.find((m) => m.id === id(3)).goals = [{ type: "x", target: 1, source: "bonus_offer", bonus_offer_id: "bo-9" }];
+  const plan = planStaleMandateClosure({ seasons: t.seasons, mandates: t.board_mandates, teams: t.teams });
+  assert.equal(plan.counts.bonusGoalsToMove, 1);
+  assert.equal(plan.counts.bonusGoalsWithoutTarget, 1, "hold B har intet S4-mandat at flytte til");
+  assert.deepEqual(plan.bonusMoves.map((m) => [m.fromId, m.toId]), [[id(1), id(2)]]);
+});
+
+test("#6773 apply: lukker kun godkendte id'er; en række der har skiftet status springes over", async () => {
+  const tables = fixture();
+  const double = createDouble(tables);
+  const { plan, hash } = await runDryRun({ supabase: double });
+  tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
+  const realFrom = double.from;
+  let flipped = false;
+  double.from = (table) => {
+    const q = realFrom(table);
+    if (table === "board_mandates" && !flipped && q.update) {
+      const origUpdate = q.update;
+      q.update = (payload) => {
+        if (payload.status === "lapsed" && !flipped) { flipped = true; tables.board_mandates.find((m) => m.id === id(4)).status = "active"; }
+        return origUpdate(payload);
+      };
+    }
+    return q;
+  };
+  const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
+  assert.equal(out.result.lapsed, 0);
+  assert.deepEqual(out.result.skipped.map((s) => s.id), [id(4)]);
 });
