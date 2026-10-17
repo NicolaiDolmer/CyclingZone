@@ -157,6 +157,65 @@ test("CLI: already-live da only warns, --strict blocks", (t) => {
   assert.equal(strict.status, 1, strict.output);
 });
 
+test("compareMessages: exact plural selectors (=0, =1) must be kept in the target (#6806)", () => {
+  const src = "{n, plural, =0 {none} =1 {one item} other {# items}}";
+  const dropped = compareMessages(src, "{n, plural, one {# stk} other {# stk}}");
+  assert.ok(dropped.some((x) => x.includes('"=0" missing')), dropped.join("; "));
+  assert.ok(dropped.some((x) => x.includes('"=1" missing')), dropped.join("; "));
+  assert.deepEqual(compareMessages(src, "{n, plural, =0 {ingen} =1 {en ting} other {# ting}}"), []);
+  // a target may add its own exact selectors or CLDR categories
+  assert.deepEqual(compareMessages(src, "{n, plural, =0 {ingen} =1 {en} =2 {to} few {#} other {#}}"), []);
+  // en without exact selectors: nothing extra is demanded
+  assert.deepEqual(compareMessages("{n, plural, one {#} other {#}}", "{n, plural, one {#} other {#}}"), []);
+});
+
+test("compareMessages: exact selectors are checked for i18next plural-suffix forms too (#6806)", () => {
+  const en = { n_one: "{n, plural, =0 {none} other {#}}", n_other: "{n, plural, =0 {none} other {#}}" };
+  const bad = { n_one: "{n, plural, other {#}}", n_other: "{n, plural, =0 {ingen} other {#}}" };
+  assert.ok(checkNamespace(en, bad).some((x) => x.includes('"n_one"') && x.includes('"=0" missing')));
+});
+
+test("compareMessages: unmatched closing brace at top level is a syntax error (#6806)", () => {
+  assert.ok(compareMessages("Hi {name}", "Hej {name}}").some((p) => p.includes("unmatched closing brace")));
+  assert.ok(compareMessages("Hi {name}", "Hej } {name}").some((p) => p.includes("unmatched closing brace")));
+  const src = "{count, plural, one {# item} other {# items}}";
+  assert.ok(compareMessages(src, "{count, plural, one {# ting} other {# ting}}}").some((p) => p.includes("unmatched closing brace")));
+  // balanced messages and apostrophe-escaped braces stay clean
+  assert.deepEqual(compareMessages("Hi {name}", "Hej {name}"), []);
+  assert.deepEqual(compareMessages("Use '{'name'}'", "Brug '{'navn'}'"), []);
+  assert.equal(analyzeMessage("Hej '}' verden").strayClose, false);
+  // not blamed on the target when en already has the same defect
+  assert.deepEqual(compareMessages("Hi } {name}", "Hej } {name}"), []);
+});
+
+test("compareMessages: missing comma after plural/select type is a syntax error (#6806)", () => {
+  const src = "{count, plural, one {# item} other {# items}}";
+  const plural = compareMessages(src, "{count, plural one {# ting} other {# ting}}");
+  assert.ok(plural.some((p) => p.includes("missing comma")), plural.join("; "));
+  const select = compareMessages("{g, select, m {He} other {They}}", "{g, select m {Han} other {De}}");
+  assert.ok(select.some((p) => p.includes("missing comma")), select.join("; "));
+  const ordinal = compareMessages("{n, selectordinal, one {#st} other {#th}}", "{n, selectordinal one {#.} other {#.}}");
+  assert.ok(ordinal.some((p) => p.includes("missing comma")), ordinal.join("; "));
+  // with the comma, and with newlines/extra spaces around it, it is clean
+  assert.deepEqual(compareMessages(src, "{count, plural, one {# ting} other {# ting}}"), []);
+  assert.deepEqual(compareMessages(src, "{count , plural ,one {# ting} other {# ting}}"), []);
+});
+
+test("CLI: registered language with =0 dropped, stray brace or missing comma blocks (#6806)", (t) => {
+  const en = { common: { items: "{n, plural, =0 {none} other {# items}}", hi: "Hi {name}" } };
+  const cases = [
+    [{ items: "{n, plural, other {# stk}}", hi: "Hej {name}" }, /"=0" missing/],
+    [{ items: "{n, plural, =0 {ingen} other {# stk}}", hi: "Hej {name}}" }, /unmatched closing brace/],
+    [{ items: "{n, plural =0 {ingen} other {# stk}}", hi: "Hej {name}" }, /missing comma/],
+  ];
+  for (const [common, pattern] of cases) {
+    const root = makeRoot(t, ["en", "fr"], { en, fr: { common } });
+    const r = run(root);
+    assert.equal(r.status, 1, r.output);
+    assert.match(r.output, pattern);
+  }
+});
+
 test("compareMessages: unterminated ICU target fails even when arms match (#6597 Codex)", () => {
   const src = "{count, plural, one {# item} other {# items}}";
   const problems = compareMessages(src, "{count, plural, one {# ting} other {# ting}");
