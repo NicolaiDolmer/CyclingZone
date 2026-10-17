@@ -31,6 +31,7 @@ import {
   nextFocusDayIso,
   seasonDayOrdinal,
 } from "../../lib/seasonTimeline.js";
+import { intlLocale } from "../../lib/intlLocale.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -229,7 +230,7 @@ export default function SeasonView({ onSwitchView }) {
   }, [data, todayIso]);
 
   const fmt = useMemo(() => {
-    const locale = i18n.language?.startsWith("da") ? "da-DK" : "en-GB";
+    const locale = intlLocale(i18n.language);
     const edge = new Intl.DateTimeFormat(locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
     const mid = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" });
     const asUtc = (iso) => new Date(`${iso}T00:00:00Z`);

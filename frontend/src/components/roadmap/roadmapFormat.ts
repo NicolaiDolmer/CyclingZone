@@ -1,5 +1,6 @@
 // #6150: små visningshjælpere delt af roadmap-fanerne.
 import type { RoadmapVote } from "../../lib/roadmapModel.ts";
+import { intlLocale } from "../../lib/intlLocale.ts";
 
 export type SaveState = "saving" | "saved" | "error";
 export type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -21,7 +22,7 @@ export function shortDate(iso: string | null | undefined, language: string | und
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat(isDanish(language) ? "da-DK" : "en-GB", {
+  return new Intl.DateTimeFormat(intlLocale(language), {
     day: "numeric",
     month: "short",
     timeZone: "Europe/Copenhagen",
