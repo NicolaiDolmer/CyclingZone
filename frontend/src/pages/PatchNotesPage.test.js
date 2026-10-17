@@ -52,3 +52,17 @@ test("rollout-noeglerne findes paa begge sprog (#6014)", () => {
     assert.ok(j.footer?.rolloutNote, `${lang}: footer.rolloutNote`);
   }
 });
+
+test("én segment-række + 'Kun beta'-kontakt; 'Nu for alle' er fjernet (#6717)", () => {
+  assert.match(src, /<Segmented[\s\S]*?value=\{category\}/);
+  assert.match(src, /<Toggle[\s\S]*?filter\.betaOnly/);
+  assert.doesNotMatch(src, /now_live|nowLive/);
+  // Ingen haandrullede runde kategori-piller ved siden af Segmented.
+  assert.doesNotMatch(src, /rounded-cz-pill border transition-colors/);
+  for (const lang of ["en", "da"]) {
+    const j = JSON.parse(readFileSync(join(__dirname, `../../public/locales/${lang}/patchnotes.json`), "utf8"));
+    assert.ok(j.filter?.betaOnly, `${lang}: filter.betaOnly`);
+    for (const c of ["all", "new", "improved", "fixed"]) assert.ok(j.filter?.category?.[c], `${lang}: filter.category.${c}`);
+    assert.equal(j.filter?.rollout, undefined, `${lang}: filter.rollout skal vaere fjernet`);
+  }
+});

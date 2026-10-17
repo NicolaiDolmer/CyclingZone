@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 
 import {
   TRAINING_RACE_DAY_CONFIG, raceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
-  resolveRaceDaysPerSeason, resolveRaceDayBudgetDivisor, loadBoundRiderIdsForRaceDay,
+  resolveRaceDayBudgetDivisor, loadBoundRiderIdsForRaceDay,
   resolveCalendarRaceDayTarget, loadRaceExitGameDays, dropBindingsAfterRaceExit,
 } from "./trainingRaceDayTick.js";
-import { dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
+import { applyDailyTick, dailyAbilityDelta, DAILY_TRAINING_CONFIG, growthFractionForAge } from "./dailyTraining.js";
 import { PROGRESSION_CONFIG } from "./riderProgression.js";
 import { isTrainingTickPerRaceDayEnabled, TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
@@ -125,36 +125,115 @@ test("G1: UDEN rekalibrering ville flere ticks overtræne markant (negativ-test)
   assert.ok(naive / today > 1.8, `uden rekalibrering ${(naive / today).toFixed(2)}x — gaten skal kunne se det`);
 });
 
-// ── #4847 punkt 5: deleren LAESER maalet, duplikerer det ikke ─────────────────
-test("#4847: maalet laeses fra calendarRaceDayTargets.js (statisk import, #4846)", () => {
-  assert.equal(
-    resolveRaceDaysPerSeason({ seasonNumber: 4 }),
-    SEASON_RACE_DAY_TARGET[4],
-    "traeningsdeleren og kalenderpakkeren skal dele ÉN sandhed — ikke to kopier af 140",
-  );
-  // Ejerens laaste tal (TRAINING_RULES.md §13.3 beslutning 2).
-  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4 }), 140);
+// ── #6711: deleren er forankret i loebsdage pr. DATO, ikke i saesonens laengde ──
+//
+// Saesonerne i #5833-planen: S4 = 28 datoer, S5 = 32 datoer, S6 = 27 datoer, alle med
+// kalenderens 5 loebsdage pr. dato. Modelleret lokalt, saa testen ikke raadner naar et
+// nyt saesonmaal tilfoejes til SEASON_RACE_DAY_TARGET.
+const RACE_DAYS_PER_DATE = TRAINING_RACE_DAY_CONFIG.raceDaysPerDate;
+const SEASONS_6711 = Object.freeze([
+  { label: "S4 (140)", seasonNumber: 4, raceDays: 140 },
+  { label: "S5 (160)", seasonNumber: 5, raceDays: 160 },
+  { label: "S6 (135)", seasonNumber: 6, raceDays: 135 },
+]);
+// Deleren som den saa ud FOER #6711: skaleret med saesonens samlede loebsdage.
+const legacySeasonScaledDivisor = (raceDays) =>
+  (raceDays * TRAINING_RACE_DAY_CONFIG.legacyDaysPerSeason) / TRAINING_RACE_DAY_CONFIG.calendarTicksPerSeasonToday;
+
+const RIDER_6711 = Object.freeze({
+  ability: "endurance", cap: 90, age: 20, program: { focus: "endurance", intensity: "normal" },
+  conditionMult: 1, bonus: false, noise: 1, potentiale: 4,
+});
+// Evnens forloeb dato for dato: kurven[i] = vaerdien efter dato i (5 loebsdags-ticks pr. dato).
+function perDateCurve(dates, divisor, start = 40) {
+  const curve = [];
+  let current = start;
+  for (let d = 0; d < dates; d += 1) {
+    for (let slot = 0; slot < RACE_DAYS_PER_DATE; slot += 1) {
+      current += dailyAbilityDelta({ ...RIDER_6711, current, budgetDivisor: divisor });
+    }
+    curve.push(current);
+  }
+  return curve;
+}
+
+test("#6711: ankeret er kalenderens 5 loebsdage pr. dato, og reference-saesonen er S4's", () => {
+  assert.equal(RACE_DAYS_PER_DATE, 5);
+  assert.equal(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason,
+    RACE_DAYS_PER_DATE * TRAINING_RACE_DAY_CONFIG.legacyDaysPerSeason,
+    "reference-saesonen er udledt af ankeret, ikke et frit tal");
+  assert.equal(TRAINING_RACE_DAY_CONFIG.raceDaysPerSeason, SEASON_RACE_DAY_TARGET[4],
+    "ankeret rammer S4's kalendermaal, ellers aendrer #6711 S4's udbytte");
 });
 
-test("#4846: opslaget er SYNKRONT — ingen dynamisk import at vente paa", () => {
-  const out = resolveRaceDaysPerSeason({ seasonNumber: 4 });
-  assert.equal(typeof out, "number", "et Promise her ville betyde at den dynamiske import er tilbage");
+test("#6711: S4 (140) faar BIT-IDENTISK deler og udvikling som foer", () => {
+  const before = legacySeasonScaledDivisor(SEASON_RACE_DAY_TARGET[4]);
+  const after = resolveRaceDayBudgetDivisor({ seasonNumber: 4 });
+  assert.ok(Object.is(after, before), `deleren skal vaere bit-identisk: foer ${before}, efter ${after}`);
+  assert.ok(Object.is(raceDayBudgetDivisor(), before));
+  // Hele saesonen gennem den AEGTE dailyAbilityDelta: hvert mellemresultat ens.
+  assert.deepStrictEqual(perDateCurve(28, after), perDateCurve(28, before));
+  // ... og gennem applyDailyTick (stoej, skade-rul, carry, fokus-pakke).
+  const tickArgs = {
+    riderId: "r-6711", dateStr: "2026-10-16", age: 22, tickSeedKey: "season-4#gd17",
+    abilities: { climbing: 50, endurance: 50, sprint: 50 },
+    caps: { climbing: 80, endurance: 80, sprint: 80 },
+    progress: {}, program: { focus: "endurance", intensity: "normal" },
+    conditionMult: 1, potentiale: 4,
+  };
+  assert.deepStrictEqual(
+    applyDailyTick({ ...tickArgs, budgetDivisor: after }),
+    applyDailyTick({ ...tickArgs, budgetDivisor: before }),
+  );
+});
+
+test("#6711: deleren er ens for 140, 160 og 135 loebsdage (og for ukendte saesoner)", () => {
+  const reference = raceDayBudgetDivisor();
+  for (const { label, seasonNumber } of SEASONS_6711) {
+    assert.ok(Object.is(resolveRaceDayBudgetDivisor({ seasonNumber }), reference), label);
+  }
+  for (const seasonNumber of [null, undefined, 3, 99]) {
+    assert.ok(Object.is(resolveRaceDayBudgetDivisor({ seasonNumber }), reference), `saeson ${String(seasonNumber)}`);
+  }
+  assert.ok(Object.is(resolveRaceDayBudgetDivisor(), reference), "uden argumenter");
+});
+
+test("#6711: forventet udvikling pr. virkelig dato er ens for 140, 160 og 135", () => {
+  const curves = SEASONS_6711.map(({ seasonNumber, raceDays }) => {
+    assert.equal(raceDays % RACE_DAYS_PER_DATE, 0, "praemissen: hele datoer");
+    return perDateCurve(raceDays / RACE_DAYS_PER_DATE, resolveRaceDayBudgetDivisor({ seasonNumber }));
+  });
+  const shared = Math.min(...curves.map((c) => c.length));
+  for (let i = 1; i < curves.length; i += 1) {
+    assert.deepStrictEqual(curves[i].slice(0, shared), curves[0].slice(0, shared),
+      `${SEASONS_6711[i].label}: samme dato giver samme evne som ${SEASONS_6711[0].label}`);
+  }
+  // En laengere saeson giver mere SAMLET udvikling, fordi den har flere datoer.
+  const [s4, s5, s6] = curves.map((c) => c.at(-1));
+  assert.ok(s5 > s4 && s4 > s6, `saesonens total foelger antal datoer: S4 ${s4}, S5 ${s5}, S6 ${s6}`);
+});
+
+test("#6711: den gamle saeson-skalerede deler tyndede S5 ud (negativ-test)", () => {
+  // Uden forankringen giver den foerste loebsdag i S5 kun 140/160 af S4's udbytte, og
+  // i S6 mere end S4's. Det er praecis fejlen #6711 retter.
+  const firstDelta = (divisor) => dailyAbilityDelta({ ...RIDER_6711, current: 40, budgetDivisor: divisor });
+  const s4 = firstDelta(legacySeasonScaledDivisor(140));
+  const s5 = firstDelta(legacySeasonScaledDivisor(160));
+  const s6 = firstDelta(legacySeasonScaledDivisor(135));
+  assert.ok(Math.abs(s5 / s4 - 140 / 160) < 1e-9, `S5/S4 = ${s5 / s4}`);
+  assert.ok(s6 > s4, "S6 ville have faaet mere pr. dag end S4");
+  const fixed = firstDelta(resolveRaceDayBudgetDivisor({ seasonNumber: 5 }));
+  assert.ok(Object.is(fixed, s4), "med forankringen faar S5 S4's udbytte pr. loebsdag");
+});
+
+test("#4846: deler-opslaget er SYNKRONT — ingen dynamisk import at vente paa", () => {
   assert.equal(typeof resolveRaceDayBudgetDivisor({ seasonNumber: 4 }), "number");
 });
 
-test("#4847: en ukendt saeson arver det hoejeste kendte maal, aldrig 0", () => {
-  const n = resolveRaceDaysPerSeason({ seasonNumber: 99 });
-  assert.ok(Number.isFinite(n) && n > 0, `maalet skal altid vaere et positivt tal, fik ${n}`);
-  assert.ok(n >= 80, "et maal under D1's naturlige antal loebsdage ville vaere uopnaaeligt");
-  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: null }), n, "ukendt saesonnummer = samme arv");
-});
-
-test("#4846: en tabel uden et eneste positivt maal falder tilbage paa konfigurationens tal", () => {
-  const cfg = { ...TRAINING_RACE_DAY_CONFIG, raceDaysPerSeason: 77 };
-  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4, cfg, table: {} }), 77);
-  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 4, cfg, table: { 4: 0, 5: -3 } }), 77);
-  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 5, cfg, table: { 4: 120, 6: 150 } }), 150,
-    "en saeson uden eget tal arver det HOEJESTE kendte maal");
+test("#6711: en cfg-override flytter deleren via ankeret, ikke via saesonens maal", () => {
+  const cfg = { ...TRAINING_RACE_DAY_CONFIG, raceDaysPerDate: 10 };
+  assert.ok(Math.abs(raceDayBudgetDivisor(cfg) - 2 * raceDayBudgetDivisor()) < 1e-9);
+  assert.ok(Object.is(resolveRaceDayBudgetDivisor({ seasonNumber: 5, cfg }), raceDayBudgetDivisor(cfg)));
 });
 
 // Diff-tjekket af PR #5608 (24/9): aksens laengde maa IKKE arves. Kalenderen pakker
@@ -170,8 +249,6 @@ test("#4846: aksens maal laeses med kalenderens regel — en saeson uden eget ta
   const today = { 4: 140 };
   assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 3, table: today }), null,
     "en saeson uden eget maal: ingen forlaengelse");
-  assert.equal(resolveRaceDaysPerSeason({ seasonNumber: 3, table: today }), 140,
-    "budget-deleren arver stadig (uaendret) — netop derfor maa aksen ikke bruge den");
 });
 
 test("#4846: kalenderens maal — ukendt, ugyldigt eller ikke-positivt giver null, aldrig 0", () => {
@@ -183,13 +260,6 @@ test("#4846: kalenderens maal — ukendt, ugyldigt eller ikke-positivt giver nul
     assert.equal(resolveCalendarRaceDayTarget({ seasonNumber, table }), null, `saeson ${String(seasonNumber)}`);
   }
   assert.equal(resolveCalendarRaceDayTarget({ seasonNumber: 4, table: null }), null);
-});
-
-test("#4847: deleren matcher den synkrone formel", () => {
-  const D = resolveRaceDayBudgetDivisor({ seasonNumber: 4 });
-  const raceDays = resolveRaceDaysPerSeason({ seasonNumber: 4 });
-  assert.ok(Math.abs(D - (raceDays * 28) / 31) < 1e-9, `D = ${D}`);
-  assert.ok(Math.abs(D - raceDayBudgetDivisor()) < 1e-9, "S4's deler = konfigurationens deler (140)");
 });
 
 // ── Seed-nøglen (A3) ─────────────────────────────────────────────────────────

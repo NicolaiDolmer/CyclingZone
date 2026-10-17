@@ -686,6 +686,25 @@ export function dangerOf(strengthRatio: number): number {
   return clamp((strengthRatio - floor) / Math.max(1e-9, 1 - floor), 0, 1);
 }
 
+/**
+ * #6369 (KUN s5_profiles_v1): hvem et nyt udbrud efter en tidlig indhentning
+ * udelukker: klassementets forreste (rang <= rankAtMost) og enhver der er
+ * staerk nok til at vaere farlig for dem (klassementsevne mindst dangerFloor x
+ * medianen af de forreste), saa feltet ikke straks jagter det nye udbrud.
+ * Synligt foerste-etape-klassement (alle lige) = ingen udelukkelse.
+ */
+export function s5ReformationExcludedRiders(gc: GcContext, entrants: Readonly<Record<string, Entrant>>, rankAtMost: number): Set<string> {
+  const out = new Set<string>();
+  if (gc.status !== "standings" || isSyntheticFirstStage(gc)) return out;
+  const top = gc.standings.filter((s) => s.rank <= rankAtMost);
+  for (const s of top) out.add(s.rider_id);
+  const abilities = top.map((s) => gcAbility(entrants[s.rider_id])).filter((a) => a > 0).sort((a, b) => a - b);
+  if (abilities.length === 0) return out;
+  const floor = S5_GC_THREAT_TUNING.dangerFloor * abilities[Math.floor((abilities.length - 1) / 2)];
+  for (const id of Object.keys(entrants)) if (gcAbility(entrants[id]) >= floor) out.add(id);
+  return out;
+}
+
 /** #5978: rytterens plads paa klassementsevne blandt de koerende (1 = bedst; lige evne deler plads). */
 function fieldGcRank(riderId: string, entrants: Readonly<Record<string, Entrant>>, racingRiderIds?: ReadonlySet<string>): number {
   const own = gcAbility(entrants[riderId]);

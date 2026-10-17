@@ -95,25 +95,61 @@ export function filterEntriesToRaceDivision({ entries = [], teamDivisionById = n
  * Et igangværende etapeløb må aldrig miste et hold der faktisk startede, fordi en rytter
  * bliver skadet undervejs.
  *
- * @param {{ entries: Array<{team_id:string, rider_id:string}>, minEntries?: number }} args
+ * #6740 (ejer-beslutning B 16/10): `exemptTeamIds` er hold der kun er under gulvet
+ * fordi udtagne ryttere blev skadet efter udtagelsen (se injuryShortTeamIds). De
+ * starter med de raske ryttere de har tilbage, mindst 1.
+ *
+ * @param {{ entries: Array<{team_id:string, rider_id:string}>, minEntries?: number,
+ *   exemptTeamIds?: Set<string> }} args
  * @returns {{ kept: object[], droppedTeamIds: string[] }}
- *   kept           = entries fra hold der har mindst minEntries ryttere
+ *   kept           = entries fra hold der har mindst minEntries ryttere (eller er undtaget)
  *   droppedTeamIds = team_id for hold der ikke stiller op (stabil rækkefølge: første forekomst)
  */
-export function filterTeamsBelowMinimumEntries({ entries = [], minEntries = MIN_RACE_ENTRIES }) {
+export function filterTeamsBelowMinimumEntries({ entries = [], minEntries = MIN_RACE_ENTRIES, exemptTeamIds = new Set() }) {
   if (!entries.length || !Number.isFinite(minEntries) || minEntries <= 0) {
     return { kept: entries, droppedTeamIds: [] };
   }
   // Tæl UNIKKE ryttere pr. hold: en dublet-række må ikke kunne løfte et hold over gulvet.
+  const ridersByTeam = uniqueRidersByTeam(entries);
+  const droppedTeamIds = [...ridersByTeam.entries()]
+    .filter(([teamId, riderIds]) => riderIds.size < minEntries && !exemptTeamIds.has(teamId))
+    .map(([teamId]) => teamId);
+  if (!droppedTeamIds.length) return { kept: entries, droppedTeamIds: [] };
+  const droppedSet = new Set(droppedTeamIds);
+  return { kept: entries.filter((e) => !droppedSet.has(e.team_id)), droppedTeamIds };
+}
+
+function uniqueRidersByTeam(entries) {
   const ridersByTeam = new Map();
   for (const e of entries) {
     if (!ridersByTeam.has(e.team_id)) ridersByTeam.set(e.team_id, new Set());
     ridersByTeam.get(e.team_id).add(e.rider_id);
   }
-  const droppedTeamIds = [...ridersByTeam.entries()]
-    .filter(([, riderIds]) => riderIds.size < minEntries)
-    .map(([teamId]) => teamId);
-  if (!droppedTeamIds.length) return { kept: entries, droppedTeamIds: [] };
-  const droppedSet = new Set(droppedTeamIds);
-  return { kept: entries.filter((e) => !droppedSet.has(e.team_id)), droppedTeamIds };
+  return ridersByTeam;
+}
+
+/**
+ * #6740 (ejer-beslutning B 16/10): hold der kun er under gulvet fordi udtagne ryttere
+ * blev skadet efter udtagelsen. Holdet havde gulvet: `tilbage + skadede >= minEntries`.
+ * Andre grunde (for få udtaget, spent days, ghosts, afmelding) tæller ikke som skade:
+ * kalderen sender `entries` EFTER de filtre og `injuredEntries` = de skadede udtagne
+ * som skadefilteret tog ud. Et hold med nul raske tilbage kan stadig være med her;
+ * assistenten fylder op med frie ryttere, og gulvet kræver mindst 1 ved start.
+ *
+ * @param {{ entries: Array<{team_id, rider_id}>, injuredEntries: Array<{team_id, rider_id}>,
+ *   minEntries?: number }} args
+ * @returns {Set<string>} team_id
+ */
+export function injuryShortTeamIds({ entries = [], injuredEntries = [], minEntries = MIN_RACE_ENTRIES }) {
+  const out = new Set();
+  if (!injuredEntries.length) return out;
+  const kept = uniqueRidersByTeam(entries);
+  const injured = uniqueRidersByTeam(injuredEntries);
+  for (const [teamId, injuredIds] of injured) {
+    const keptIds = kept.get(teamId) ?? new Set();
+    const fitLeft = keptIds.size;
+    const injuredOnly = [...injuredIds].filter((id) => !keptIds.has(id)).length;
+    if (fitLeft < minEntries && fitLeft + injuredOnly >= minEntries) out.add(teamId);
+  }
+  return out;
 }

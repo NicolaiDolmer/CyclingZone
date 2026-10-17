@@ -30,22 +30,25 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, seaso
   return (
     /* #2819: tour-anker — trin 2 i /races-rundvisningen peger på puljen. */
     <div data-tour="races-pool" className="border border-cz-border rounded-cz bg-cz-subtle">
-      <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between gap-2">
+      <div className="px-3 py-2 border-b border-cz-border flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
         <span className="text-2xs uppercase tracking-wide text-cz-2">{t("racehub.pool.title", { count: roster.length })}</span>
         {/* #1919: "Auto-udfyld"-labelen var en død <span> (Clarity dead-clicks) — den er nu
             selve den primære knap (udfyld manglende), så begge handlinger er ægte knapper. */}
-        <span className="flex items-center gap-1.5">
+        {/* #6728 (fund 8): de tre handlinger har samme anatomi (12 px, ingen
+            versaler) og brydes aldrig midt i ordet; bliver raekken for smal,
+            falder hele gruppen ned under titlen. */}
+        <span className="flex items-center gap-1.5 whitespace-nowrap">
           <button type="button" onClick={() => onRegenerate("missing")} disabled={busy}
-            className="text-2xs uppercase tracking-wide font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
+            className="text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
           {/* #3428: "Ryd dag" rammer ALLE overlappende løb vist på boardet lige nu — uklart
               før. Tooltip navngiver præcis hvor mange løb/ryttere den rydder. */}
           <button type="button" onClick={() => onClearSquad?.("day")} disabled={busy || dayClearImpact?.races === 0}
             title={dayClearImpact ? t("racehub.pool.clearDayTooltip", dayClearImpact) : undefined}
-            className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearDay")}</button>
+            className="text-xs font-medium text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearDay")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
           <button type="button" onClick={() => onClearSquad?.("all")} disabled={busy}
-            className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearAllSeason")}</button>
+            className="text-xs font-medium text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.clearAllSeason")}</button>
         </span>
       </div>
       {/* #1925: puljen er en drop-zone — slip en rytter her for at fjerne ham fra hans løb. */}

@@ -218,7 +218,8 @@
       "understaffed": "{selected} / {target} · understaffed",
       "overfull": "{selected} / {target} · too many",
       "withdrawn": "Withdrawn",
-      "locked": "Lineup locked"
+      "locked": "Lineup locked",
+      "didNotStart": "Did not start"
     },
     "pool": {
       "title": "Available riders · {count}-squad",
@@ -253,6 +254,7 @@
       "withdraw": "Withdraw",
       "reenter": "Re-enter",
       "withdrawnNote": "Your team is voluntarily not starting this race",
+      "didNotStartNote": "Your team did not start: fewer than {min} fit riders at the start.",
       "remove": "Remove rider",
       "openRace": "Open {name}",
       "peaksHere": "Peaking here: {names}",
@@ -557,6 +559,8 @@
     "willNotStart": "Fewer than {min} riders. Your team will not start this race.",
     "willNotStartEmpty": "Fewer than {min} riders free for this race. Your team will not start.",
     "willNotStartShort": "Under {min} riders. Does not start.",
+    "startsShort": "{injured, plural, one {1 selected rider is injured} other {# selected riders are injured}}. Your team starts with {starters, plural, one {1 rider} other {# riders}}.",
+    "startsShortShort": "Injuries: starts with {starters}.",
     "minHint": "Minimum {min} riders to start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",

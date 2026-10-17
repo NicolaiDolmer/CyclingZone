@@ -52,10 +52,23 @@ const SIX_ENTRIES = SIX_IDS.map((rider_id) => ({ race_id: "race-a", rider_id }))
 
 // riders: holdets ryttere {id, squad}; roster-querien (applyRiderEligibilityFilter) afgraenses
 // paa .eq("squad", <trup>) som i prod. Default = 6 senior-ryttere.
-function fakeSupabase({ entries, sched, races, entryError, schedError, raceError, conditions, conditionError, riders } = {}) {
+// #6740: generisk kæde til de nye opslag (afmelding, faktisk felt, Train now-lås).
+function chain(rows) {
+  const api = {};
+  for (const m of ["select", "eq", "in", "order", "range", "limit", "is", "gte", "lt"]) api[m] = () => api;
+  api.then = (resolve, reject) => Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+  return api;
+}
+
+function fakeSupabase({ entries, sched, races, entryError, schedError, raceError, conditions, conditionError, riders,
+  withdrawals, results, locks, lockSched, runs } = {}) {
   const roster = riders ?? SIX_IDS.map((id) => ({ id, squad: "senior" }));
   return {
     from(table) {
+      if (table === "race_withdrawals" && withdrawals) return chain(withdrawals);
+      if (table === "race_results" && results) return chain(results);
+      if (table === "race_simulation_runs" && runs) return chain(runs);
+      if (table === "training_train_now_locks" && locks) return chain(locks);
       if (table === "riders") {
         const state = { squad: null };
         const api = {
@@ -85,6 +98,8 @@ function fakeSupabase({ entries, sched, races, entryError, schedError, raceError
             gte: () => ({
               lt: async () => ({ data: sched ?? [], error: schedError ?? null }),
             }),
+            // #6740: Train now-låsens opslag af løbets etapedatoer.
+            in: async () => ({ data: lockSched ?? [], error: null }),
           }),
         };
       }
@@ -282,4 +297,73 @@ test("pin: rytter fra et hold der ikke staar i startfeltet er ikke bundet paa lo
   const out = await loadBoundRiderIdsForRaceDay({ supabase, riderIds: ["rider-1", "rider-2"], seasonId: "s1", gameDay: 4 });
   assert.equal(out.error, null);
   assert.equal(out.data.size, 0);
+});
+
+// ── #6740: afmeldte og ikke-startede hold får intet "Racing"-mærke ────────────
+
+test("loadRacingTodayByRider: afmeldt hold har ingen badge, selvom entries er bevaret (#6740, knud 16/10)", async () => {
+  const supabase = fakeSupabase({
+    entries: SIX_ENTRIES,
+    sched: [{ race_id: "race-a" }],
+    races: [{ id: "race-a", name: "Tour du Danube", stages_completed: 0 }],
+    withdrawals: [{ race_id: "race-a" }],
+  });
+  assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date("2026-10-16T08:00:00Z")), {});
+});
+
+test("loadRacingTodayByRider: startet loeb uden holdet i feltet giver ingen badge (#6740)", async () => {
+  const supabase = fakeSupabase({
+    entries: SIX_ENTRIES.slice(0, 4),
+    sched: [{ race_id: "race-a" }],
+    races: [{ id: "race-a", name: "Tour du Danube", stages_completed: 1 }],
+    withdrawals: [],
+    runs: [{ race_id: "race-a", entrant_snapshot: ["someone-else"] }],
+  });
+  assert.deepEqual(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date("2026-10-16T08:00:00Z")), {});
+});
+
+test("loadRacingTodayByRider: startet loeb med holdet i feltet beholder badget (#6740)", async () => {
+  const supabase = fakeSupabase({
+    entries: SIX_ENTRIES,
+    sched: [{ race_id: "race-a" }],
+    races: [{ id: "race-a", name: "Tour du Danube", stages_completed: 1 }],
+    withdrawals: [],
+    runs: [{ race_id: "race-a", entrant_snapshot: SIX_IDS }],
+  });
+  assert.equal(Object.keys(await loadRacingTodayByRider(supabase, "team-1", SIX_IDS, new Date("2026-10-16T08:00:00Z"))).length, 6);
+});
+
+test("loadRacingTodayByRider: Train now-laaste ryttere taeller ikke som frie reserver (#6740, Friis 16/10)", async () => {
+  // 5 raske udtaget + 1 fri rytter, men den frie har trænet i dag og kan ikke fyldes ind.
+  const riders = [...SIX_IDS, "rider-7"].map((id) => ({ id, squad: "senior" }));
+  const today = new Date("2026-10-16T08:00:00Z");
+  const base = {
+    entries: SIX_ENTRIES.slice(0, 5),
+    sched: [{ race_id: "race-a" }],
+    races: [{ id: "race-a", name: "Tour du Léman", stages_completed: 0 }],
+    riders, withdrawals: [],
+    lockSched: [{ race_id: "race-a", scheduled_at: "2026-10-16T17:00:00Z" }],
+  };
+  const unlocked = await loadRacingTodayByRider(fakeSupabase({ ...base, locks: [] }), "team-1", [...SIX_IDS, "rider-7"], today);
+  assert.equal(Object.keys(unlocked).length, 5, "uden laas kan assistenten fylde op, holdet starter");
+  const locked = await loadRacingTodayByRider(fakeSupabase({ ...base, locks: [
+    { rider_id: "rider-6", tick_date: "2026-10-16", team_id: "team-1", pressed_at: "2026-10-16T07:04:00Z" },
+    { rider_id: "rider-7", tick_date: "2026-10-16", team_id: "team-1", pressed_at: "2026-10-16T07:04:00Z" },
+  ] }), "team-1", [...SIX_IDS, "rider-7"], today);
+  assert.deepEqual(locked, {}, "alle reserver laast: holdet stiller ikke op, intet badge");
+});
+
+test("computeRacingTodayByRider: en skadet udtaget rytter løber ikke, selv om holdet starter (regel B, #6740)", () => {
+  const out = computeRacingTodayByRider({
+    entryRows: [{ race_id: "leman", rider_id: "fit" }, { race_id: "leman", rider_id: "hurt" }],
+    todayRaceIds: ["leman"], raceNameById: new Map([["leman", "Tour du Léman"]]),
+    startsByRaceId: new Map([["leman", true]]), notStartingByRaceId: new Map([["leman", new Set(["hurt"])]]),
+  });
+  assert.deepEqual(out, { fit: { race: "Tour du Léman" } });
+  // Startet løb (intet sæt): en rytter der styrtede i dagens løb, kørte det (Codex P2).
+  const started = computeRacingTodayByRider({
+    entryRows: [{ race_id: "leman", rider_id: "hurt" }], todayRaceIds: ["leman"],
+    raceNameById: new Map([["leman", "Tour du Léman"]]), startsByRaceId: new Map([["leman", true]]),
+  });
+  assert.deepEqual(started, { hurt: { race: "Tour du Léman" } });
 });

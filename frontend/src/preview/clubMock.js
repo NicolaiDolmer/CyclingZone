@@ -111,6 +111,11 @@ function facilitiesPayload() {
       // (co-SSOT, dækket af clubMock.parity.test.js) så ejerens preview ALDRIG
       // viser en anden facilitets-status end prod.
       effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
+      // #6666 (Klub retning D): hele niveau-trappen, samme shape som
+      // facilityRoutesHandlers.facilityLadder (pris, drift, effekt pr. niveau).
+      ladder: [1, 2, 3, 4, 5].map((t) => ({
+        tier: t, price: PRICE[t], upkeep: UPKEEP[t], bonus: (BASE_EFFECT[track][t] || 0) * util(staffTier),
+      })),
     };
   });
   // #2220 A4b: sæson-omkostnings-resume (upkeep + payroll vs. saldo).

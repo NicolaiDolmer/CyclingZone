@@ -149,7 +149,9 @@ export default function RaceCentreCard({
                     selection-endepunktet (samme guard som før), så gæster uden
                     svar stadig ser lineupUnknown. */}
                 {selection
-                  ? selection.withdrawn
+                  ? selection.didNotStart
+                    ? t("racehub.status.didNotStart")
+                    : selection.withdrawn
                     ? t("raceCentre.card.withdrawn")
                     : t(
                       selection.complete ? "raceCentre.card.lineupReady" : "raceCentre.card.lineupIncomplete",

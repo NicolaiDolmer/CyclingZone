@@ -18,7 +18,16 @@
     "previousOpen": "Gårsdagens træning bliver stadig afregnet. Prøv igen om lidt.",
     "noRaceDay": "Der er ingen løbsdag i dag, så der er intet at låse.",
     "error": "Dagen kunne ikke låses. Prøv igen.",
-    "planLocked": "Dagens felter er låst. Du kan stadig ændre i morgen."
+    "planLocked": "Dagens felter er låst. Du kan stadig ændre i morgen.",
+    "shortRace": "{race}: kun {fit} af {min} raske ryttere udtaget. Efter Træn nu kan ingen rytter tilføjes, så dit hold stiller ikke op.",
+    "shortRaceEmpty": "{race}: ingen ryttere udtaget. Efter Træn nu kan assistenten ikke udtage nogen, så dit hold stiller ikke op.",
+    "shortRaceStarts": "{race}: kun {fit} af {min} raske ryttere udtaget. Efter Træn nu kan ingen rytter tilføjes, så dit hold starter med {fit}.",
+    "confirm": {
+      "title": "Dit hold stiller ikke op",
+      "titleShort": "Dit hold starter med færre ryttere",
+      "go": "Træn alligevel",
+      "cancel": "Annullér"
+    }
   },
   "trainedToday_you": "Trænet i dag (af dig)",
   "trainedToday_assistant": "Trænet i dag (af assistenten)",

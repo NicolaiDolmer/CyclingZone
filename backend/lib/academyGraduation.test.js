@@ -12,6 +12,11 @@ import {
   resolveUnsoldGraduate,
   completeStuckPromotion,
   resolveNeverGraduated,
+  isPromotionPendingEnabled,
+  isPromotionPendingActive,
+  markPromotionPending,
+  PROMOTION_PENDING_FLAG_KEY,
+  PROMOTION_PENDING_GRAD_STATUS,
 } from "./academyGraduation.js";
 
 // ─── Mock-supabase ─────────────────────────────────────────────────────────────
@@ -980,4 +985,229 @@ test("#4495 resolveNeverGraduated: rytter der imens er kommet videre (is_academy
   assert.equal(res.reason, "already_resolved");
   assert.equal(rec.riderUpdates.length, 0);
   assert.equal(rec.auctionInserts.length, 0);
+});
+
+// ─── #6710: "Afventer oprykning" i stedet for salg/slip ved fuld mål-trup ─────
+// Plan-PR 1 i #5833 (ejer-go 16/10). Flag on: fuld mål-trup → rytteren bliver i
+// sin trup med klub og kontrakt og venter (riders.promotion_pending_*), grad-
+// rækken lukkes 'expired'. Flag off: den gamle kæde, uændret.
+
+const FLAG_ON = async () => true;
+const FLAG_OFF = async () => false;
+const JUNIOR_GRAD = { id: "g7", team_id: "t1", rider_id: "r1", status: "pending", from_squad: "junior", to_squad: "u23" };
+const U23_GRAD = { id: "g8", team_id: "t1", rider_id: "r1", status: "pending", from_squad: "u23", to_squad: "senior" };
+
+test("#6710 isPromotionPendingEnabled: kun 'on'/true taender; beta, off, fravaer og fejl er off", async () => {
+  const flagClient = (value, error = null) => ({
+    from(table) {
+      assert.equal(table, "app_config");
+      return { select() { return { eq(col, key) { assert.equal(key, PROMOTION_PENDING_FLAG_KEY); return { maybeSingle: async () => ({ data: value === undefined ? null : { value }, error }) }; } }; } };
+    },
+  });
+  assert.equal(await isPromotionPendingEnabled(flagClient("on")), true);
+  assert.equal(await isPromotionPendingEnabled(flagClient(true)), true);
+  assert.equal(await isPromotionPendingEnabled(flagClient("beta")), false);
+  assert.equal(await isPromotionPendingEnabled(flagClient("off")), false);
+  assert.equal(await isPromotionPendingEnabled(flagClient(undefined)), false);
+  assert.equal(await isPromotionPendingEnabled(flagClient("on", { message: "boom" })), false);
+});
+
+test("#6710 isPromotionPendingActive: kun aktiv mens rytteren staar UNDER maal-truppen", () => {
+  assert.equal(isPromotionPendingActive({ squad: "junior", is_academy: true, promotion_pending_to: "u23" }), true);
+  assert.equal(isPromotionPendingActive({ squad: "u23", is_academy: true, promotion_pending_to: "senior" }), true);
+  // Flyttet op ad en anden vej (Move squad, Graduation Day) → gamle felter er harmloese.
+  assert.equal(isPromotionPendingActive({ squad: "u23", is_academy: true, promotion_pending_to: "u23" }), false);
+  assert.equal(isPromotionPendingActive({ squad: "senior", is_academy: false, promotion_pending_to: "u23" }), false);
+  assert.equal(isPromotionPendingActive({ squad: "junior", is_academy: true, promotion_pending_to: null }), false);
+  assert.equal(isPromotionPendingActive({ squad: "junior", is_academy: true, promotion_pending_to: "bogus" }), false);
+  assert.equal(isPromotionPendingActive(null), false);
+});
+
+test("#6710 defaultResolveGraduate flag ON + fuld U23-trup: afventer i stedet for salg; klub, trup og kontrakt uroert", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [JUNIOR_GRAD], rider: RIDER });
+  const notify = spyNotify();
+  const now = new Date("2026-10-25T21:00:00Z");
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1, now,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 }),
+    countSquad: async () => 12, notify, isPendingEnabled: FLAG_ON,
+  });
+
+  assert.deepEqual(res, { riderId: "r1", action: "pending", to: "u23" });
+  assert.equal(rec.auctionInserts.length, 0, "ingen auktion");
+  assert.equal(rec.riderUpdates.length, 1);
+  // KUN ventefelterne skrives: squad/is_academy/team_id/kontrakt er uroerte.
+  assert.deepEqual(rec.riderUpdates[0], { promotion_pending_to: "u23", promotion_pending_since: now.toISOString() });
+  assert.equal(rec.gradUpdates.length, 1);
+  assert.equal(rec.gradUpdates[0].status, PROMOTION_PENDING_GRAD_STATUS);
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g7"]);
+  assert.equal(notify.calls.length, 1);
+  assert.equal(notify.calls[0].type, "academy_graduated");
+  assert.equal(notify.calls[0].metadata.titleCode, "notif.promotionPending.title");
+  assert.equal(notify.calls[0].metadata.messageCode, "notif.promotionPending.u23");
+  assert.deepEqual(notify.calls[0].metadata.messageParams, { name: "Grad Uate" });
+});
+
+test("#6710 defaultResolveGraduate flag ON + fuld seniortrup (u23->senior): afventer senior-plads", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [U23_GRAD], rider: RIDER });
+  const notify = spyNotify();
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 }),
+    notify, isPendingEnabled: FLAG_ON, auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(res.action, "pending");
+  assert.equal(res.to, "senior");
+  assert.equal(rec.auctionInserts.length, 0);
+  assert.equal(notify.calls[0].metadata.messageCode, "notif.promotionPending.senior");
+});
+
+test("#6710 defaultResolveGraduate flag ON + fuld trup + negativ saldo: afventer (pladsen er grunden, ikke salg)", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [U23_GRAD], rider: RIDER });
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: -500 }),
+    notify: spyNotify(), isPendingEnabled: FLAG_ON, auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(res.action, "pending");
+  assert.equal(rec.auctionInserts.length, 0);
+});
+
+test("#6710 defaultResolveGraduate flag ON + plads: promoverer som foer, flaget roerer intet", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [JUNIOR_GRAD], rider: RIDER });
+  let flagReads = 0;
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 }),
+    countSquad: async () => 4, notify: spyNotify(),
+    isPendingEnabled: async () => { flagReads += 1; return true; },
+  });
+  assert.equal(res.action, "promoted");
+  assert.equal(rec.riderUpdates[0].squad, "u23");
+  assert.equal("promotion_pending_to" in rec.riderUpdates[0], false, "ingen nye kolonner paa promote-stien");
+  assert.equal(flagReads, 0, "flaget laeses kun naar der IKKE er plads");
+});
+
+test("#6710 defaultResolveGraduate flag ON + plads men negativ saldo: saelger som foer", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [U23_GRAD], rider: RIDER });
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: -1 }),
+    notify: spyNotify(), isPendingEnabled: FLAG_ON, auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(res.action, "sold");
+  assert.equal(rec.auctionInserts.length, 1);
+});
+
+test("#6710 defaultResolveGraduate flag OFF + fuld U23-trup: dagens adfaerd (saelg), ingen nye kolonner", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [JUNIOR_GRAD], rider: RIDER });
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 }),
+    countSquad: async () => 12, notify: spyNotify(), isPendingEnabled: FLAG_OFF, auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(res.action, "sold");
+  assert.equal(rec.auctionInserts.length, 1);
+  assert.ok(rec.riderUpdates.every((u) => !("promotion_pending_to" in u)));
+  assert.ok(rec.gradUpdates.every((u) => u.status !== PROMOTION_PENDING_GRAD_STATUS));
+});
+
+test("#6710 defaultResolveGraduate flag ON: race mellem tjek og skriv (squad_cap_violation) → afventer, ikke salg", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [JUNIOR_GRAD], rider: RIDER });
+  let counts = 0;
+  // 1. taelling (defaultResolve): plads. 2. taelling (resolveGraduation's promote): fuld.
+  const countSquad = async () => { counts += 1; return counts === 1 ? 11 : 12; };
+  const res = await defaultResolveGraduate(supabase, {
+    teamId: "t1", riderId: "r1", seasonNumber: 1,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: 5000 }),
+    countSquad, notify: spyNotify(), isPendingEnabled: FLAG_ON, auctionConfig: DEFAULT_AUCTION_CONFIG,
+  });
+  assert.equal(res.action, "pending");
+  assert.equal(rec.auctionInserts.length, 0);
+});
+
+test("#6710 markPromotionPending: idempotent — samme maal beholder since og sender ingen ny besked", async () => {
+  const since = "2026-10-20T10:00:00.000Z";
+  const { supabase, rec } = makeSupabase({
+    gradRows: [JUNIOR_GRAD],
+    rider: { ...RIDER, promotion_pending_to: "u23", promotion_pending_since: since },
+  });
+  const notify = spyNotify();
+  const res = await markPromotionPending(supabase, {
+    teamId: "t1", riderId: "r1", targetSquad: "u23", grad: JUNIOR_GRAD, now: new Date("2026-11-30T21:00:00Z"), notify,
+  });
+  assert.equal(res.action, "pending");
+  assert.equal(rec.riderUpdates[0].promotion_pending_since, since);
+  assert.equal(notify.calls.length, 0);
+});
+
+test("#6710 markPromotionPending: rytter paa et andet hold roeres ikke", async () => {
+  const { supabase, rec } = makeSupabase({ gradRows: [JUNIOR_GRAD], rider: { ...RIDER, team_id: "t2" } });
+  const res = await markPromotionPending(supabase, {
+    teamId: "t1", riderId: "r1", targetSquad: "u23", grad: JUNIOR_GRAD, notify: spyNotify(),
+  });
+  assert.deepEqual(res, { riderId: "r1", action: "skipped", reason: "not_on_team" });
+  assert.equal(rec.riderUpdates.length, 0);
+  assert.equal(rec.gradUpdates.length, 0);
+});
+
+test("#6710 markPromotionPending: ugyldigt maal kaster", async () => {
+  const { supabase } = makeSupabase({ rider: RIDER });
+  await assert.rejects(
+    () => markPromotionPending(supabase, { teamId: "t1", riderId: "r1", targetSquad: "junior", notify: spyNotify() }),
+    /invalid targetSquad/,
+  );
+});
+
+test("#6710 resolveUnsoldGraduate flag ON + fuld seniortrup: afventer i stedet for slip; 'sold' restemples 'expired'", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  const notify = spyNotify();
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, notify, isPendingEnabled: FLAG_ON,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 }),
+  });
+  assert.deepEqual(res, { riderId: "r9", action: "pending" });
+  assert.equal(rec.riderUpdates.length, 1);
+  assert.equal(rec.riderUpdates[0].promotion_pending_to, "senior");
+  assert.equal("team_id" in rec.riderUpdates[0], false, "rytteren bliver paa holdet");
+  assert.equal(rec.gradUpdates.length, 1);
+  assert.equal(rec.gradUpdates[0].status, PROMOTION_PENDING_GRAD_STATUS);
+  assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g-sold"]);
+  assert.equal(notify.calls[0].metadata.messageCode, "notif.promotionPending.senior");
+});
+
+test("#6710 resolveUnsoldGraduate flag ON + race (squad_cap_violation): afventer, slipper ikke", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  let calls = 0;
+  const getMarketState = async () => {
+    calls += 1;
+    return calls === 1
+      ? { squad_limits: { max: 30 }, future_count: 10, balance: 5000 }
+      : { squad_limits: { max: 30 }, future_count: 30, balance: 5000 };
+  };
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, getMarketState, notify: spyNotify(), isPendingEnabled: FLAG_ON,
+  });
+  assert.equal(res.action, "pending");
+  assert.ok(rec.riderUpdates.every((u) => u.team_id !== null));
+});
+
+test("#6710 resolveUnsoldGraduate flag ON + plads men negativ saldo: slipper som foer (ikke pga. plads)", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, notify: spyNotify(), isPendingEnabled: FLAG_ON,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: -1 }),
+  });
+  assert.equal(res.action, "released");
+  assert.equal(rec.riderUpdates[0].team_id, null);
+});
+
+test("#6710 resolveUnsoldGraduate flag OFF + fuld seniortrup: slipper som foer", async () => {
+  const { supabase, rec } = makeSupabase({ rider: UNSOLD_GRADUATE, gradRows: [SOLD_GRAD] });
+  const res = await resolveUnsoldGraduate(supabase, {
+    teamId: "t1", riderId: "r9", seasonNumber: 3, notify: spyNotify(), isPendingEnabled: FLAG_OFF,
+    getMarketState: async () => ({ squad_limits: { max: 30 }, future_count: 30, balance: 5000 }),
+  });
+  assert.equal(res.action, "released");
+  assert.equal(rec.riderUpdates[0].team_id, null);
 });

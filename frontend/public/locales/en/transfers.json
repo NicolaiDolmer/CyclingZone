@@ -106,6 +106,7 @@
       "newOffer": "New offer",
       "withdraw": "Withdraw",
       "withdrawOffer": "Withdraw offer",
+      "withdrawCounter": "Withdraw counter offer",
       "confirmDeal": "✓ Confirm deal ({amount} CZ$)",
       "cancelDeal": "Cancel deal",
       "archive": "Archive"
@@ -259,6 +260,7 @@
     "dealCancelled": "Deal cancelled",
     "transferRejected": "Transfer rejected",
     "counterSent": "Counter sent",
+    "counterWithdrawn": "Counter offer withdrawn",
     "newOfferSent": "New offer sent",
     "offerWithdrawn": "Offer withdrawn",
     "offerArchived": "Offer archived",

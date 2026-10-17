@@ -52,7 +52,8 @@ test("#6362: fixturen er den rigtige bench (ikke en stub), skrevet med den kanon
   assert.equal(FIXTURE.stub, false);
   assert.deepEqual(FIXTURE.config, { ...S5_MOTOR_BENCH_CONFIG });
   assert.equal(S5_MOTOR_BENCH_CONFIG.revision, "s5_profiles_v1");
-  assert.notEqual(CURRENT_RACE_RULES_REVISION, "s5_profiles_v1", "benchen taender aldrig revisionen i prod");
+  // #6369: benchen maaler den revision ejerens "taend" goer aktuel; den taender den aldrig selv.
+  assert.equal(CURRENT_RACE_RULES_REVISION, S5_MOTOR_BENCH_CONFIG.revision);
   for (const v of Object.values(FIXTURE.verdicts)) assert.ok(MOTOR_GAP_VERDICTS.includes(v), v);
   assert.ok(!("medians" in FIXTURE), "ingen maalte tal i det offentlige repo (hard rule 17)");
 });

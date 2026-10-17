@@ -19,7 +19,7 @@ import { groupRiderRaces, racesForSeason, riderResultTotals, seasonsInRaces } fr
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
 // Mobil: Løb | Plac | Point | Præmie. Desktop: + Dato, Klasse, Terræn.
-const GRID = "grid grid-cols-[minmax(0,1fr)_40px_44px_80px] sm:grid-cols-[80px_minmax(0,1fr)_78px_86px_48px_52px_96px] gap-2.5 px-4 items-center";
+const GRID = "grid grid-cols-[minmax(0,1fr)_36px_40px_64px] sm:grid-cols-[80px_minmax(0,1fr)_78px_86px_48px_52px_96px] gap-2.5 px-4 items-center";
 const DESKTOP_ONLY = "hidden sm:block";
 
 function DateCell({ race, seasonLabel }) {
@@ -180,7 +180,7 @@ export default function RiderResultsTab({ seasonRows, loadFailed = false }) {
                   )}
                   <RaceLink
                     id={race.raceId}
-                    className="text-[12.5px] text-cz-1 font-semibold truncate hover:text-cz-accent-t transition-colors"
+                    className="min-w-0 text-[12.5px] text-cz-1 font-semibold break-words sm:truncate hover:text-cz-accent-t transition-colors"
                   >
                     {race.name ?? t("results.fallbackDash")}
                   </RaceLink>
