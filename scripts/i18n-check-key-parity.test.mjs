@@ -224,3 +224,8 @@ test("compareMessages: unterminated ICU target fails even when arms match (#6597
   assert.ok(compareMessages("Hi {name}", "Hej {name").some((p) => p.includes("unbalanced")));
   assert.ok(compareMessages("{n, number, integer}", "{n, number, integer").some((p) => p.includes("unbalanced")));
 });
+
+test("compareMessages: doubled apostrophe inside a quoted ICU section is a literal (Codex #6825)", () => {
+  assert.deepEqual(compareMessages("Use '{foo isn''t bar}' now", "Brug '{foo isn''t bar}' nu"), []);
+  assert.ok(compareMessages("Hi {name}", "Hej {name}}").some((p) => p.includes("unmatched closing brace")));
+});

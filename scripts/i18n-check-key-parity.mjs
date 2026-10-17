@@ -76,7 +76,13 @@ export function analyzeMessage(message) {
         if (s[i + 1] === "'") { literal += "'"; i += 2; continue; }
         if (s[i + 1] === "{" || s[i + 1] === "}") {
           i++;
-          while (i < s.length && s[i] !== "'") i++;
+          // Inside a quoted section `''` is an escaped literal apostrophe, not
+          // the closing quote (Codex #6825): `'{foo isn''t bar}'` is one section.
+          while (i < s.length) {
+            if (s[i] === "'" && s[i + 1] === "'") { i += 2; continue; }
+            if (s[i] === "'") break;
+            i++;
+          }
           i++;
           continue;
         }
