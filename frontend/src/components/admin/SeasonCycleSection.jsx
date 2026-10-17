@@ -186,7 +186,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
         </div>
 
         {preview.already_transitioned && (
-          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-cz text-yellow-900 text-xs">
+          <div className="mt-3 p-3 bg-cz-warning-bg border border-cz-warning/30 rounded-cz text-cz-warning text-xs">
             ⚠️ Sæson {preview.to_season.number} eksisterer allerede. Re-run vil kun køre
             de faser der mangler (idempotent).
           </div>
@@ -317,7 +317,7 @@ function PayrollSummaryTable({ result }) {
   // venlig fallback i stedet for tomme tal.
   if (payrollEntry.skipped) {
     return (
-      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-cz text-yellow-900 text-xs">
+      <div className="mt-3 p-3 bg-cz-warning-bg border border-cz-warning/30 rounded-cz text-cz-warning text-xs">
         ⚠️ Payroll-summary ikke tilgængelig: {payrollEntry.reason}
       </div>
     );
@@ -387,7 +387,7 @@ function PayrollSummaryTable({ result }) {
             return (
               <tr
                 key={row.key}
-                className={`border-t border-cz-border ${diverges ? "bg-red-50" : ""}`}
+                className={`border-t border-cz-border ${diverges ? "bg-cz-danger-bg" : ""}`}
               >
                 <td className="py-1 pr-2 text-cz-1">{row.label}</td>
                 <td className="py-1 pr-2 text-right text-cz-2">
@@ -395,7 +395,7 @@ function PayrollSummaryTable({ result }) {
                 </td>
                 <td
                   className={`py-1 pr-2 text-right font-semibold ${
-                    diverges ? "text-red-700" : "text-cz-1"
+                    diverges ? "text-cz-danger" : "text-cz-1"
                   }`}
                 >
                   {fmt(row.actualCount)}
