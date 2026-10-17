@@ -52,7 +52,8 @@ export function shouldSweepNow(now = new Date()) {
  * @param {string} tickDate — YYYY-MM-DD
  * @returns {Array<{id: string}>}
  */
-export function teamsNeedingSweep(teams, todaysRuns, tickDate, now = new Date()) {
+export function teamsNeedingSweep(teams, todaysRuns, tickDate, now) {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) throw new Error("teamsNeedingSweep: now (Date) er paakraevet");
   // #6759 (Codex): en forældet "loading"-reservation er IKKE en kørsel. Holdet
   // sendes til motoren, som overtager reservationen (resolveTakenLegacyReservation).
   const ranToday = new Set(
