@@ -88,6 +88,15 @@ test("checkNamespace: i18next plural suffix forms", () => {
   assert.deepEqual(checkNamespace(en, { n_one: "{count} ting", n_other: "{count} ting", n_few: "{count} ting" }), []);
 });
 
+test("checkNamespace: plural forms with empty or null values are rejected", () => {
+  const en = { n_one: "thing", n_other: "things" };
+  assert.ok(checkNamespace(en, { n_one: "", n_other: null }).length >= 2);
+});
+
+test("repeated markup in an extra plural arm is allowed", () => {
+  assert.deepEqual(compareMessages("{n, plural, one {<b>#</b>} other {<b>#</b>}}", "{n, plural, one {<b>#</b>} few {<b>#</b>} other {<b>#</b>}}"), []);
+});
+
 test("checkNamespace: a lone _many key is an ordinary key, not a plural form", () => {
   assert.deepEqual(checkNamespace({ too_many: "Max {max}" }, { too_many: "Hojst {max}" }), []);
 });

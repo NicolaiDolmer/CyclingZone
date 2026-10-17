@@ -138,7 +138,8 @@ export function analyzeMessage(message) {
   }
 
   parseText(null, false);
-  result.tags.sort();
+  // Distinct tags only: an extra plural arm may legitimately repeat markup.
+  result.tags = [...new Set(result.tags)].sort();
   return result;
 }
 
@@ -253,7 +254,11 @@ export function checkNamespace(enData, tgtData) {
     if (!tgtForms.has("other")) problems.push(`"${base}": plural form "_other" missing`);
     for (const [cat, tv] of tgtForms) {
       const src = srcForms.get(cat) ?? srcForms.get("other");
-      if (typeof src === "string" && typeof tv === "string") {
+      if (typeof tv !== "string" || tv === PLACEHOLDER || (tv.trim() === "" && String(src ?? "").trim() !== "")) {
+        problems.push(`"${base}_${cat}" is empty or ${PLACEHOLDER}`);
+        continue;
+      }
+      if (typeof src === "string") {
         for (const p of compareMessages(src, tv)) problems.push(`"${base}_${cat}": ${p}`);
       }
     }
