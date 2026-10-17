@@ -9,6 +9,7 @@ import {
   FORBIDDEN_FLAGS,
   PROD_WRAPPER,
   REPO_ROOT,
+  activeSeasonFromOutput,
   assertReadOnlyStep,
   buildPlan,
   commandFor,
@@ -16,6 +17,7 @@ import {
   overallExit,
   parseArgs,
   renderSummary,
+  seasonGuardError,
   selectSteps,
 } from "./seasonTransitionRehearsal.mjs";
 
@@ -79,8 +81,33 @@ test("uden --prod springes alle prod-trin over", () => {
 test("--only filtrerer og et ukendt id er en fejl", () => {
   const plan = buildPlan({ fromSeason: 4 });
   const steps = selectSteps(plan, { prod: true, only: ["parking", "preflight"] });
-  assert.deepEqual(steps.map((s) => s.id), ["preflight", "parking"]);
+  // Vagt-trinnet (transition-plan) følger med, fordi parking er et prod-trin.
+  assert.deepEqual(steps.map((s) => s.id), ["preflight", "transition-plan", "parking"]);
+  const offlineOnly = selectSteps(plan, { prod: true, only: ["preflight"] });
+  assert.deepEqual(offlineOnly.map((s) => s.id), ["preflight"]);
   assert.throws(() => selectSteps(plan, { prod: true, only: ["findes-ikke"] }), /Ukendte trin/);
+});
+
+test("vagt-trinnet er første prod-trin, og sæson-vagten fanger en forkert --from", () => {
+  const plan = buildPlan({ fromSeason: 4 });
+  assert.equal(plan.find((s) => s.kind === "prod").id, "transition-plan");
+  assert.equal(plan.filter((s) => s.guard).length, 1);
+  assert.equal(activeSeasonFromOutput("Aktiv sæson: #4  (id ...)"), 4);
+  assert.equal(activeSeasonFromOutput("intet her"), null);
+  assert.equal(seasonGuardError("Aktiv sæson: #4  (id x)", 4), null);
+  assert.equal(seasonGuardError("Aktiv sæson: #5  (id x)", 4), "aktiv sæson er S5, ikke S4");
+  assert.equal(seasonGuardError("", 4), "kunne ikke læse aktiv sæson");
+});
+
+test("gylden diff: ændret kalender uden hårde brud er gul, ikke grøn", () => {
+  const step = buildPlan({ fromSeason: 4 }).find((s) => s.id === "calendar-golden-diff");
+  assert.equal(
+    judgeStep(step, { exitCode: 0, output: "✅ Kalenderen er identisk med den gyldne snapshot, og ingen hård invariant er brudt." }),
+    "green",
+  );
+  assert.equal(judgeStep(step, { exitCode: 0, output: "⚠ Kalenderen er ÆNDRET mod den gyldne snapshot." }), "yellow");
+  assert.equal(judgeStep(step, { exitCode: 0, output: "❌ S5 BENCHMARK-GATEN ER RØD" }), "red");
+  assert.equal(judgeStep(step, { exitCode: 1, output: "" }), "red");
 });
 
 test("parseArgs: flag, defaults og validering", () => {

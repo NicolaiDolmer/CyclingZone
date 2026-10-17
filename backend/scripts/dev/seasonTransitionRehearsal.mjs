@@ -64,7 +64,12 @@ export const judges = Object.freeze({
     if (exitCode !== 0 || /\[NO-GO\]/.test(output)) return "red";
     return /\[warn\]/.test(output) ? "yellow" : "green";
   },
-  goldenDiff: ({ exitCode }) => (exitCode === 0 ? "green" : "red"),
+  // Exit 0 betyder kun "ingen hård invariant brudt". En ændret kalender uden
+  // hårde brud er også exit 0 (CALENDAR_RULES.md), men skal undersøges: gul.
+  goldenDiff: ({ exitCode, output }) => {
+    if (exitCode !== 0 || /❌/.test(output)) return "red";
+    return /Kalenderen er identisk med den gyldne snapshot/.test(output) ? "green" : "yellow";
+  },
   loadtest: ({ exitCode, output }) => {
     if (exitCode === 0 && !/: FAIL/.test(output)) return "green";
     return "red";
@@ -116,9 +121,13 @@ export function buildPlan({ fromSeason = 4 } = {}) {
       judge: "loadtest",
     },
     {
+      // Første prod-trin og VAGTEN: dets "Aktiv sæson: #N" skal være --from.
+      // Flere af de øvrige prod-scripts vælger selv den aktive sæson, så en
+      // forkert --from ville ellers blande to skift under én overskrift.
       id: "transition-plan",
       area: "Transitionsplan, sponsor, carry-over, vindue-markører",
       kind: "prod",
+      guard: true,
       cwd: BACKEND,
       cmd: ["node", "scripts/simulateSeasonTransitionDryRun.js"],
       judge: "transitionPlan",
@@ -240,9 +249,28 @@ export function selectSteps(plan, { prod, only }) {
     const unknown = only.filter((id) => !known.has(id));
     if (unknown.length) throw new Error(`Ukendte trin i --only: ${unknown.join(", ")}`);
   }
+  const wanted = (s) => !only || only.includes(s.id);
+  // Vagt-trinnet følger altid med, når mindst ét prod-trin er valgt.
+  const anyProd = plan.some((s) => s.kind === "prod" && wanted(s));
   return plan
-    .filter((s) => !only || only.includes(s.id))
+    .filter((s) => wanted(s) || (s.guard && anyProd))
     .map((s) => ({ ...s, skip: s.kind === "prod" && !prod ? "kræver --prod" : null }));
+}
+
+/** Læser "Aktiv sæson: #N" fra transitions-dry-run'en. null hvis linjen mangler. */
+export function activeSeasonFromOutput(output) {
+  const m = /Aktiv sæson: #(\d+)/.exec(output ?? "");
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * Vagt: prod-trinene må kun køre, når prods aktive sæson er den sæson
+ * rapporten hedder (--from). Returnerer en fejltekst eller null.
+ */
+export function seasonGuardError(output, fromSeason) {
+  const active = activeSeasonFromOutput(output);
+  if (active == null) return "kunne ikke læse aktiv sæson";
+  return active === fromSeason ? null : `aktiv sæson er S${active}, ikke S${fromSeason}`;
 }
 
 /** Bygger den faktiske kommandolinje (prod-trin pakkes i infisical-wrapperen). */
@@ -326,18 +354,28 @@ async function main() {
   mkdirSync(privDir, { recursive: true });
 
   const results = [];
+  let prodBlocked = null;
   for (const step of steps) {
-    if (step.skip) {
-      results.push({ id: step.id, area: step.area, status: "skipped", note: step.skip, exitCode: null });
-      console.log(`- ${step.id}: sprunget over (${step.skip})`);
+    const skip = step.skip ?? (step.kind === "prod" && prodBlocked ? `vagt: ${prodBlocked}` : null);
+    if (skip) {
+      results.push({ id: step.id, area: step.area, status: "skipped", note: skip, exitCode: null });
+      console.log(`- ${step.id}: sprunget over (${skip})`);
       continue;
     }
     console.log(`> ${step.id} ...`);
     const { exitCode, output } = runStep(step);
     writeFileSync(join(privDir, `${step.id}.txt`), output);
-    const status = judgeStep(step, { exitCode, output });
-    results.push({ id: step.id, area: step.area, status, exitCode });
-    console.log(`  ${step.id}: ${status} (exit ${exitCode})`);
+    let status = judgeStep(step, { exitCode, output });
+    let note = null;
+    if (step.guard) {
+      prodBlocked = seasonGuardError(output, opts.fromSeason);
+      if (prodBlocked) {
+        status = "red";
+        note = prodBlocked;
+      }
+    }
+    results.push({ id: step.id, area: step.area, status, exitCode, note });
+    console.log(`  ${step.id}: ${status} (exit ${exitCode})${note ? ` - ${note}` : ""}`);
   }
 
   const summary = renderSummary(results, { fromSeason: opts.fromSeason, startedAt });
