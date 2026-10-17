@@ -135,6 +135,7 @@ import {
   notifyForumThreadReply,
   notifyDirectMessage,
   notifyForumMentions,
+  buildKeyedNotification,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
@@ -7958,14 +7959,14 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     // fører kan have et autobud der straks genvinder føringen. Sender vi her,
     // får de en falsk "du er overbudt"-besked.
     if (auction.rider?.team_id === auction.seller_team_id && auction.seller_team_id !== req.team.id) {
-      await notifyTeamOwner(
-        auction.seller_team_id,
-        "bid_received",
-        "Nyt bud modtaget",
-        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
-        auction.id,
-        { riderId: auction.rider_id },
-      );
+      // #6801: noegle + parametre (modtagerens sprog) i stedet for hardkodet dansk.
+      const autoBidSellerNotice = buildKeyedNotification({
+        titleCode: "notif.transfer.bidReceived.title",
+        messageCode: "notif.autoBidPlaced.message",
+        messageParams: { bidderName: req.team.name, amount: openingBidAmount, riderName },
+        metadata: { riderId: auction.rider_id },
+      });
+      await notifyTeamOwner(auction.seller_team_id, "bid_received", autoBidSellerNotice.title, autoBidSellerNotice.message, auction.id, autoBidSellerNotice.metadata);
     }
     awardXP(req.user.id, "bid_placed").catch(() => {});
   }
@@ -7997,14 +7998,13 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     const proxyAlreadyNotified = proxyCascadeResult?.outbidNotified ?? new Set();
     if (previousLeader !== proxyFinalLeaderId && !proxyAlreadyNotified.has(previousLeader)) {
       const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
-      await notifyTeamOwner(
-        previousLeader,
-        "auction_outbid",
-        "Du er blevet overbudt!",
-        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
-        auction.id,
-        { riderId: auction.rider_id },
-      );
+      const autoBidOutbidNotice = buildKeyedNotification({
+        titleCode: "notif.transfer.auctionOutbid.title",
+        messageCode: "notif.autoBidPlaced.message",
+        messageParams: { bidderName: req.team.name, amount: openingBidAmount, riderName },
+        metadata: { riderId: auction.rider_id },
+      });
+      await notifyTeamOwner(previousLeader, "auction_outbid", autoBidOutbidNotice.title, autoBidOutbidNotice.message, auction.id, autoBidOutbidNotice.metadata);
     }
   }
 

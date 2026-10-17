@@ -278,6 +278,37 @@ jobs:
       - name: Run i18n leak guard
         run: node scripts/i18n-check-leaks.mjs
 
+  backend-player-strings:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Refs #6801 (ejer 17/10, startprompt sprog punkt 5) — spillertekst uden for
+    # frontenden skal gennem samme i18n-pipeline. Del 1: ingen dansk prosa i de
+    # spillervendte backend-filer. Del 2: baseline-ratchet paa notifikations-kald
+    # med hardkodet tekst uden titleCode/messageCode (scripts/i18n-check-backend-
+    # player-strings-baseline.json, maa kun skrumpe). Plus drift-gaten for den
+    # genererede locale-bundle, som backend rendrer EN-fallback og Discord-DM fra.
+    # Jobbet er IKKE i scripts/ci-required-checks.json endnu: at goere det
+    # blokerende kraever at ejeren tilfoejer navnet under branch protection.
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+
+      - name: Test backend player-strings guard
+        run: node --test scripts/i18n-check-backend-player-strings.test.mjs
+
+      - name: Run backend player-strings guard
+        run: node scripts/i18n-check-backend-player-strings.mjs
+
+      - name: Check backend locale bundle is in sync
+        run: node scripts/build-backend-locales.mjs --check
+
   hardcoded-formats:
     runs-on: ubuntu-latest
     permissions:

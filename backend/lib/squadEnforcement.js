@@ -35,6 +35,7 @@ import {
   getSquadLimits,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -485,44 +486,36 @@ export async function enforceTeamSquadCompliance({
   });
 
   // Notifikation til ramt manager (ikke spam — én pr. enforcement).
-  // #666: alle strenge bygges på EN; full structured i18n via metadata på
-  // selve notif-kaldet nedenfor (squad_enforced.* keys i backendMessages).
-  const summaryLines = [];
-  if (purchases.length) {
-    summaryLines.push(
-      `Auto-purchased ${purchases.length} rider${purchases.length === 1 ? "" : "s"}: ${purchases.map(p => p.riderName).join(", ")}`
-    );
-    // #2617/#1995: én eller flere købte ryttere var midt i et aktivt etapeløb —
-    // de er betalt for, men skifter først synligt hold når løbet er slut.
-    const deferredPurchases = purchases.filter(p => p.deferred);
-    if (deferredPurchases.length) {
-      summaryLines.push(
-        `${deferredPurchases.length} rider${deferredPurchases.length === 1 ? "" : "s"} will join the team once their ongoing stage race finishes: ${deferredPurchases.map(p => p.riderName).join(", ")}`
-      );
-    }
-  }
-  if (sales.length) {
-    summaryLines.push(
-      `Auto-sold ${sales.length} rider${sales.length === 1 ? "" : "s"}: ${sales.map(s => s.riderName).join(", ")}`
-    );
-  }
-  if (salesDeferredByRacing > 0) {
-    // #2617/#1995: overskuds-ryttere midt i et aktivt fleretape-løb sælges ikke
-    // mid-løb — de tages ved næste vindues-enforcement i stedet.
-    summaryLines.push(
-      `${salesDeferredByRacing} rider${salesDeferredByRacing === 1 ? "" : "s"} in an ongoing stage race will be sold after the race instead`
-    );
-  }
-  summaryLines.push(
-    `Fine: ${fineAmount} CZ$ · Deduction: ${penaltyPoints} points`
-  );
+  // #666/#6801: teksten ligger i backendMessages (notif.squadEnforced.*) som
+  // ICU-plurals pr. linje, saa modtageren faar den i eget sprog. Antal + navne
+  // sendes som parametre; en linje med antal 0 er tom i skabelonen.
+  //   #2617/#1995: købte ryttere midt i et aktivt etapeløb er betalt for, men
+  //   skifter først synligt hold når løbet er slut. Overskuds-ryttere midt i et
+  //   aktivt fleretape-løb sælges ikke mid-løb, de tages ved næste vindues-enforcement.
+  const deferredPurchases = purchases.filter(p => p.deferred);
+  const squadNotice = buildKeyedNotification({
+    titleCode: "notif.squadEnforced.title",
+    messageCode: "notif.squadEnforced.message",
+    messageParams: {
+      purchasedCount: purchases.length,
+      purchasedNames: purchases.map(p => p.riderName).join(", "),
+      deferredCount: deferredPurchases.length,
+      deferredNames: deferredPurchases.map(p => p.riderName).join(", "),
+      soldCount: sales.length,
+      soldNames: sales.map(s => s.riderName).join(", "),
+      salesDeferredCount: salesDeferredByRacing,
+      fine: fineAmount,
+      points: penaltyPoints,
+    },
+  });
 
   await notifyTeamOwner(
     teamId,
     "squad_enforced",
-    "Squad size enforced",
-    summaryLines.join("\n"),
-    null
+    squadNotice.title,
+    squadNotice.message,
+    null,
+    squadNotice.metadata
   );
 
   return {
