@@ -1,0 +1,154 @@
+{
+  "nav": {
+    "group": {
+      "klubhus": "Siège du club",
+      "planlaegning": "Planification",
+      "marked": "Marché",
+      "resultater": "Résultats",
+      "min": "Mon espace",
+      "admin": "Admin"
+    },
+    "item": {
+      "dashboard": "Tableau de bord",
+      "team": "Mon équipe",
+      "u23Team": "Équipe U23",
+      "juniorTeam": "Équipe juniors",
+      "training": "Entraînement quotidien",
+      "planning": "Planification",
+      "academy": "Académie",
+      "scouting": "Détection",
+      "board": "Direction",
+      "sponsors": "Sponsors",
+      "finance": "Finances",
+      "klub": "Club",
+      "notifications": "Boîte de réception",
+      "forum": "Forum",
+      "managerProfile": "Mon profil de manager",
+      "riders": "Coureurs",
+      "auctions": "Enchères",
+      "transfers": "Transferts",
+      "transferList": "Liste des transferts",
+      "watchlist": "Liste de suivi",
+      "raceCentre": "Centre des courses",
+      "results": "Aperçu",
+      "rankings": "Classements",
+      "seasons": "Instantané de la saison",
+      "hallOfFame": "Panthéon",
+      "profile": "Paramètres",
+      "pro": "Pro",
+      "help": "Aide",
+      "contact": "Contact",
+      "rules": "Règles",
+      "patchNotes": "Patch Notes",
+      "roadmap": "Feuille de route",
+      "logout": "Se déconnecter",
+      "admin": "Admin",
+      "growth": "Croissance",
+      "fairplay": "Fair-play",
+      "valueTransition": "Transition de valeur",
+      "valuePreview": "Aperçu des valeurs",
+      "survey": "Sondage"
+    }
+  },
+  "sidebar": {
+    "balance": "Solde",
+    "balanceTooltip": "Le CZ$ est la monnaie du jeu. Tu en gagnes en jouant, et il ne s'achète pas avec de l'argent réel.",
+    "division": "Division {division}",
+    "divisionTooltip": "Ton niveau de ligue. La division 1 est le plus haut niveau, la division 4 le niveau d'entrée.",
+    "onlineNow": "{count} en ligne",
+    "joinDiscord": "Rejoindre Discord"
+  },
+  "language": {
+    "label": "Langue",
+    "danish": "Dansk",
+    "english": "English",
+    "switchTooltip": "Changer de langue"
+  },
+  "actions": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "close": "Fermer",
+    "hide": "Masquer",
+    "clickToClose": "Clique pour fermer",
+    "loading": "Chargement…",
+    "loadingShort": "…",
+    "success": "✓",
+    "error": "Erreur"
+  },
+  "time": {
+    "justNow": "À l'instant",
+    "minutesAgo": "il y a {m} min",
+    "hoursAgo": "il y a {h} h",
+    "daysAgo": "il y a {d} j",
+    "onlineNow": "En ligne",
+    "never": "Jamais"
+  },
+  "controls": {
+    "watchlistAdd": "Ajouter à la liste de suivi",
+    "watchlistRemove": "Retirer de la liste de suivi",
+    "compareSelect": "Sélectionner pour comparer",
+    "compareRemove": "Retirer de la comparaison",
+    "compareMax": "Tu peux comparer {max} coureurs au maximum",
+    "compareButton": "Comparer",
+    "compareSelectedLabel": "sélectionnés",
+    "compareMinHint": "(sélectionne-en au moins 2)",
+    "clear": "Effacer",
+    "noFilterResults": "Aucun coureur ne correspond à tes filtres",
+    "clearFilters": "Effacer tous les filtres",
+    "statsToggleButton": "Afficher les stats",
+    "statsToggleHeading": "Stats",
+    "statsToggleShowAll": "Tout afficher",
+    "statsToggleHideAll": "Tout masquer"
+  },
+  "a11y": {
+    "openMenu": "Ouvrir le menu",
+    "openNotifications": "Boîte de réception",
+    "removeFromComparison": "Retirer de la comparaison",
+    "saveNote": "Enregistrer la note",
+    "searchHelp": "Rechercher dans l'aide et la FAQ",
+    "selectSeason": "Choisir la saison",
+    "unreadPatchNotes": "Nouvelles Patch Notes",
+    "unreadForum": "Nouvelle activité sur le forum",
+    "unreadRoadmap": "Nouveaux points sur la feuille de route",
+    "selectionReminder": "Sélection de l'effectif manquante avant la date limite",
+    "selectionReminderUrgent": "Ton équipe ne prendra pas le départ"
+  },
+  "leaderBadge": "Leader",
+  "betaBadge": "Bêta",
+  "amountInput": {
+    "invalid": "Saisis un nombre entier, par exemple 150000 ou 150.000",
+    "parsedPreview": "= {amount} CZ$"
+  },
+  "table": {
+    "fullTable": "Tableau complet",
+    "columnsLabel": "Choisir les colonnes",
+    "moreRight": "Plus de colonnes à droite"
+  },
+  "networkError": "Impossible de joindre le serveur pour le moment. Vérifie ta connexion et réessaie.",
+  "push": {
+    "title": "Notifications push",
+    "subtitle": "Je ne t'envoie un message que quand ça compte. Jamais entre 22:00 et 08:00, et 6 par jour au maximum.",
+    "enable": "Activer le push",
+    "disable": "Désactiver sur cet appareil",
+    "statusOn": "Activé sur cet appareil",
+    "denied": "Ton navigateur bloque les notifications de Cycling Zone. Autorise-les dans les paramètres du site, puis réessaie.",
+    "iosInstall": "Sur iPhone et iPad, le push fonctionne dès que Cycling Zone est sur ton écran d'accueil : touche Partager, puis Sur l'écran d'accueil.",
+    "unsupported": "Ce navigateur ne peut pas recevoir de notifications push.",
+    "error": "Ça n'a pas marché. Réessaie.",
+    "categoriesHeading": "Ce que j'envoie",
+    "category": {
+      "auctions": { "label": "Enchères, dernière minute", "desc": "Surenchère juste avant la fin, et enchère remportée." },
+      "races": { "label": "Courses", "desc": "Un résumé par jour de course." },
+      "transfers": { "label": "Offres de transfert", "desc": "Une offre attend ta réponse." },
+      "deadlines": { "label": "Effectif et dates limites", "desc": "Les dates limites qui te coûtent cher si tu les rates." },
+      "academy": { "label": "Académie et entraînement", "desc": "Uniquement dans le résumé du matin." }
+    },
+    "offer": {
+      "regionAriaLabel": "Notifications push",
+      "title": "Tu veux un message si quelqu'un surenchérit avant la fin ?",
+      "accept": "Oui, préviens-moi",
+      "later": "Pas maintenant",
+      "done": "C'est fait. Tu peux le changer à tout moment dans Profil, Notifications."
+    }
+  }
+}

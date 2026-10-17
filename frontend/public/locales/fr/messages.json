@@ -1,0 +1,79 @@
+{
+  "tab": {
+    "label": "Messages"
+  },
+  "list": {
+    "title": "Messages",
+    "subtitle": "{count, plural, one {# conversation t'attend} other {# conversations t'attendent}}",
+    "subtitleNone": "Rien de nouveau",
+    "emptyTitle": "Pas encore de messages",
+    "emptyBody": "Ouvre le profil d'un manager et écris à la personne derrière l'équipe. Un accord se conclut plus facilement quand on peut d'abord poser des questions.",
+    "emptyAction": "Trouver un manager",
+    "you": "Toi",
+    "loadError": "Je n'ai pas pu charger tes messages. Réessaie.",
+    "retry": "Réessayer"
+  },
+  "thread": {
+    "back": "Tous les messages",
+    "placeholder": "Écris un message",
+    "send": "Envoyer",
+    "sending": "Envoi",
+    "counter": "{count}/{max}",
+    "loadMore": "Afficher les messages plus anciens",
+    "emptyTitle": "Pas encore de messages",
+    "emptyBody": "Dis ce que tu veux, et reste courtois. Chaque message est conservé.",
+    "sendError": "Je n'ai pas pu envoyer ça. Réessaie.",
+    "tooLong": "Reste sous {max} caractères.",
+    "openProfile": "Ouvrir le profil",
+    "blockedNote": "Tu as bloqué ce manager. Tu ne verras pas ses nouveaux messages tant que tu ne l'auras pas débloqué."
+  },
+  "menu": {
+    "label": "Plus",
+    "block": "Bloquer le manager",
+    "unblock": "Débloquer le manager",
+    "report": "Signaler la conversation",
+    "hide": "Masquer la conversation"
+  },
+  "block": {
+    "title": "Bloquer ce manager ?",
+    "body": "Il ne pourra plus te joindre ici. Il n'est pas prévenu que tu l'as bloqué.",
+    "confirm": "Bloquer",
+    "cancel": "Annuler",
+    "done": "Bloqué",
+    "undone": "Débloqué",
+    "error": "Je n'ai pas pu faire ça. Réessaie."
+  },
+  "report": {
+    "title": "Signaler cette conversation",
+    "body": "Je reçois une copie du fil et je le lis moi-même. Dis-moi ce qui ne va pas.",
+    "reasonLabel": "Ce qui s'est passé",
+    "reasonPlaceholder": "Une phrase ou deux suffisent",
+    "confirm": "Envoyer le signalement",
+    "cancel": "Annuler",
+    "done": "Signalement envoyé. Je vais regarder ça.",
+    "alreadyDone": "Tu as déjà signalé cette conversation. Je l'ai.",
+    "tooShort": "Écris au moins {min} caractères, que je sache quoi chercher.",
+    "error": "Je n'ai pas pu envoyer le signalement. Réessaie."
+  },
+  "hide": {
+    "done": "Conversation masquée. Un nouveau message la fait revenir.",
+    "error": "Je n'ai pas pu la masquer. Réessaie."
+  },
+  "start": {
+    "button": "Écrire",
+    "buttonAria": "Écrire à {name}",
+    "forumLink": "Écrire",
+    "dealButton": "Écrire à l'autre manager",
+    "title": "Écrire à {name}",
+    "placeholder": "Écris un message",
+    "send": "Envoyer",
+    "cancel": "Annuler",
+    "sent": "Message envoyé"
+  },
+  "quote": {
+    "transfer_offer": "Offre de transfert",
+    "auction": "Enchère",
+    "amount": "{amount} CZ$",
+    "open": "Ouvrir"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "title": "Face-à-face",
+  "subtitle": "Compare l'historique de deux managers",
+  "searchPlaceholder": "Rechercher des équipes...",
+  "division": "Division {n}",
+  "noTeamsFound": "Aucune équipe trouvée pour « {q} »",
+  "teamA": "Équipe A",
+  "teamB": "Équipe B",
+  "errorLoad": "Impossible de charger les données de comparaison. Réessaie.",
+  "retry": "Réessayer",
+  "seasonStats": "Stats de saison (toutes les saisons)",
+  "statPoints": "Points",
+  "statStageWins": "Victoires d'étape",
+  "statGcWins": "Victoires au classement général",
+  "statSeasons": "Saisons",
+  "transferHistory": "Historique des transferts entre les équipes",
+  "boughtFrom": "{buyer} a acheté à {seller} :",
+  "topFive": "{team} · Top 5",
+  "pointsEarnedTitle": "Points de course gagnés (toutes les saisons)",
+  "noRiders": "Aucun coureur",
+  "selectOther": "Choisis une autre équipe pour lancer la comparaison"
+}

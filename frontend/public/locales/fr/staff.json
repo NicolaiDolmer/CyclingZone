@@ -1,0 +1,61 @@
+{
+  "back": "Retour",
+  "gate": { "title": "Pas encore disponible", "description": "L'espace staff n'est pas encore ouvert." },
+  "missing": { "title": "Membre du staff introuvable", "description": "Ce responsable n'est pas dans ton équipe." },
+  "roles": { "training": "Directeur sportif", "scouting": "Chef recruteur", "medical": "Médecin de l'équipe", "academy": "Directeur de l'académie", "commercial": "Directeur commercial" },
+  "hero": { "tierLabel": "Palier", "salaryLabel": "Salaire", "salary": "{amount} CZ$/saison", "ratingEyebrow": "Note /99", "specHeadline": "Excellent en {axis}", "photoFallback": "Photo" },
+  "tabs": { "overview": "Aperçu", "effect": "Effet", "history": "Historique" },
+  "columns": {
+    "dimensions": "Encadrement", "levels": "Groupe d'âge entraîné", "roleSkills": "Compétences du rôle",
+    "levelsTooltip": "U23 couvre les coureurs de l'académie et les jeunes pros jusqu'à 25 ans ; Senior couvre les coureurs de 26 ans et plus. Le groupe d'âge entraîné d'un responsable montre la tranche d'âge qu'il entraîne le mieux, en plus de ses dimensions d'encadrement."
+  },
+  "axes": {
+    "physical": "préparation physique", "mental": "préparation mentale", "technical": "préparation technique",
+    "u23": "U23", "senior": "senior",
+    "evaluation": "évaluation des talents", "reach": "portée du réseau",
+    "recovery": "récupération", "injuryPrevention": "prévention des blessures",
+    "intake": "qualité du recrutement", "growth": "rythme de progression",
+    "negotiation": "négociation", "marketing": "marketing"
+  },
+  "effect": { "body": "La note globale de ce responsable ({rating}) détermine quelle part de l'effet de l'installation se réalise. Le centre d'entraînement est actif dans le jeu aujourd'hui ; les autres arrivent bientôt et montrent ce qu'ils feront une fois en ligne." },
+  "history": {
+    "body": "L'historique des contrats et l'ancienneté apparaîtront ici dès que les contrats du staff seront disponibles.",
+    "scouting": {
+      "loading": "Chargement de l'historique de détection…",
+      "loadFailed": "Impossible de charger l'historique de détection. Réessaie.",
+      "empty": "Aucun coureur détecté pour l'instant.",
+      "loadingRider": "Chargement du coureur…",
+      "riderUnavailable": "Coureur plus disponible",
+      "levelValue": "Niveau {level}/{max}",
+      "table": { "date": "Date", "rider": "Coureur", "level": "Niveau" }
+    }
+  },
+  "switcher": { "count": "{index} / {total}" },
+  "public": {
+    "team": "Employé par {team}",
+    "viewTeam": "Voir l'équipe",
+    "limitedNote": "Ceci est le staff d'un autre manager : seuls la note et la spécialisation principale sont visibles. Le détail complet des aptitudes n'est montré qu'à l'équipe propriétaire."
+  },
+  "release": {
+    "button": "Libérer le membre du staff",
+    "title": "Libérer {name} ?",
+    "body": "Le contrat prend fin immédiatement. Tu paies l'indemnité de départ maintenant, et le poste est tout de suite ouvert à un nouveau recrutement.",
+    "severanceLabel": "Indemnité de départ ({multiplier} × {weeklyWage} CZ$)",
+    "wagesFreedLabel": "Salaires hebdomadaires libérés",
+    "slotLabel": "Poste de {role}",
+    "slotValue": "Disponible immédiatement",
+    "keepButton": "Le/la garder",
+    "confirmButton": "Libérer pour {amount} CZ$",
+    "confirmBusy": "Libération…",
+    "errors": {
+      "staff_not_found": "Ce membre du staff n'est plus dans ton équipe.",
+      "already_released": "Déjà libéré.",
+      "insufficient_funds": "Tu n'as pas les moyens de payer l'indemnité de départ ({amount} CZ$).",
+      "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
+      "facilities_disabled": "La gestion du staff n'est pas encore disponible.",
+      "auth": "Tu dois être connecté pour faire ça.",
+      "network": "Échec de la connexion. Réessaie dans un instant.",
+      "failed": "Impossible de libérer ce membre du staff. Réessaie dans un instant."
+    }
+  }
+}

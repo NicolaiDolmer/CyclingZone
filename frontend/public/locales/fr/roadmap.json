@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "title": "Feuille de route · Cycling Zone",
+    "description": "Ce qui se construit dans Cycling Zone, ce sur quoi les joueurs peuvent voter, ce qui est en bêta et quels problèmes sont en cours de correction."
+  },
+  "page": {
+    "title": "Feuille de route",
+    "subtitle": "Ce que je construis, ce sur quoi tu peux voter, et ce que je corrige."
+  },
+  "labels": {
+    "new": "Nouveau"
+  },
+  "loginToVote": {
+    "text": "Connecte-toi pour noter les projets et signaler des problèmes.",
+    "link": "Se connecter"
+  },
+  "filter": {
+    "onlyUnrated": "Seulement ce que je n'ai pas noté",
+    "rated": "Noté {rated} sur {total}"
+  },
+  "tabs": {
+    "label": "Sections de la feuille de route",
+    "plan": "Plan",
+    "beta": "Bêta",
+    "vote": "Vote",
+    "issues": "Problèmes connus",
+    "done": "Terminé"
+  },
+  "voting": {
+    "idea": "Bonne idée ?",
+    "importance": "Important pour toi ?",
+    "saved": "Enregistré",
+    "error": "Ton vote n'a pas été enregistré. Réessaie."
+  },
+  "plan": {
+    "inProgress": "En cours",
+    "planned": "Prévu",
+    "plannedHint": "À peu près dans cet ordre",
+    "later": "Plus tard · {count} de plus"
+  },
+  "beta": {
+    "inBeta": "En bêta maintenant",
+    "inBetaHint": "Les bêta-testeurs les ont. Tous les autres les auront quand ce sera prêt.",
+    "coming": "Bientôt en bêta",
+    "badgeInBeta": "En bêta",
+    "badgeSoon": "Bientôt pour tous",
+    "badgeNext": "Prochain en bêta",
+    "since": "en bêta depuis le {date}",
+    "join": "Rejoindre la bêta",
+    "member": "Tu es dans la bêta",
+    "pending": "Demande envoyée"
+  },
+  "vote": {
+    "title": "Les idées que j'envisage",
+    "hint": "Tes notes décident de ce qui passe dans le plan",
+    "areaLabel": "Domaine",
+    "all": "Tout",
+    "forum": "Une idée à toi ? Poste-la dans le forum"
+  },
+  "issues": {
+    "areaLabel": "Domaine",
+    "all": "Tout",
+    "confirmed": "Confirmés",
+    "confirmedHint": "Des problèmes que j'ai vus moi-même ou dont j'ai trouvé la cause.",
+    "checking": "Signalés, en cours de vérification",
+    "checkingHint": "Des joueurs les ont signalés. Je ne les ai pas confirmés, et je ne promets aucun changement.",
+    "checkingMore": "{count} de plus",
+    "checkingMoreOwn": "{count} de plus · {own} signalés par toi",
+    "status": {
+      "checking": "En cours de vérification",
+      "confirmed": "Confirmé",
+      "fixing": "Correction en cours",
+      "fixed": "Corrigé",
+      "dismissed": "Aucun problème trouvé"
+    },
+    "affectsMe": "Ça me touche aussi",
+    "seeToo": "Je le vois aussi",
+    "reported": "Signalé",
+    "reportError": "Ça n'a pas été enregistré. Réessaie.",
+    "updated": "mis à jour le {date}",
+    "reportedByPlayers": "signalé par des joueurs",
+    "earlierUpdates": "Mises à jour précédentes · {count}",
+    "dismissed": "Vérifié, aucun problème trouvé · 14 derniers jours",
+    "fixed": "Corrigé ces 14 derniers jours"
+  },
+  "done": {
+    "title": "Terminé",
+    "hint": "Du plus récent au plus ancien",
+    "feature": "Fonctionnalité",
+    "fix": "Correction",
+    "showMore": "Afficher plus"
+  },
+  "empty": {
+    "plan": {
+      "title": "Afficher les projets que tu as notés",
+      "description": "Tu as tout noté dans le plan.",
+      "action": "Tout afficher"
+    },
+    "planNone": {
+      "title": "Note plutôt les idées",
+      "description": "Rien n'est prévu pour l'instant.",
+      "action": "Aller au vote"
+    },
+    "vote": {
+      "title": "Afficher les idées que tu as notées",
+      "description": "Tu as noté toutes les idées.",
+      "action": "Tout afficher"
+    },
+    "voteNone": {
+      "title": "Partage ta propre idée",
+      "description": "Il n'y a aucune idée à voter pour l'instant.",
+      "action": "Aller au forum"
+    },
+    "beta": {
+      "title": "Rejoindre la bêta",
+      "description": "Rien n'est en bêta pour l'instant. Les nouvelles fonctionnalités apparaissent ici quand elles passent en bêta.",
+      "memberTitle": "Voir ce qui est prévu",
+      "memberAction": "Aller au plan"
+    },
+    "issues": {
+      "title": "Dis-moi si quelque chose te semble anormal",
+      "description": "Il n'y a aucun problème connu pour l'instant.",
+      "action": "Envoyer un retour",
+      "loginAction": "Se connecter"
+    },
+    "done": {
+      "title": "Voir ce qui est prévu",
+      "description": "Rien n'est encore terminé.",
+      "action": "Aller au plan"
+    }
+  },
+  "engines": {
+    "races": { "title": "Courses" },
+    "training": { "title": "Entraînement" },
+    "youth": { "title": "Formation des jeunes" },
+    "market": { "title": "Transferts et enchères" },
+    "club": { "title": "Club et monde" },
+    "other": { "title": "Autre" }
+  }
+}

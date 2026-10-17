@@ -1,0 +1,32 @@
+{
+  "title": "Contact",
+  "subtitle": "Pas de Discord ? Envoie un retour, signale un bug ou partage une idée directement au développeur.",
+  "close": "Fermer",
+  "field": {
+    "category": "Catégorie",
+    "message": "Message",
+    "messageHelper": "{count} caractères restants"
+  },
+  "category": {
+    "feedback": "Retour",
+    "bug": "Signalement de bug",
+    "idea": "Idée",
+    "fairplay": "Fair-play / signaler un transfert",
+    "feedbackPlaceholder": "Qu'est-ce que tu as en tête ?",
+    "bugPlaceholder": "Que s'est-il passé ? À quoi t'attendais-tu ?",
+    "ideaPlaceholder": "Qu'aimerais-tu voir dans le jeu ?",
+    "fairplayPlaceholder": "Qu'est-ce qui t'a semblé louche ? Un transfert ou une équipe suffit. Je m'en occupe."
+  },
+  "submit": "Envoyer",
+  "sent": {
+    "text": "Merci. Ton message a été envoyé. S'il appelle une réponse, tu la recevras dans tes notifications.",
+    "close": "Fermer"
+  },
+  "error": {
+    "invalidCategory": "Choisis d'abord une catégorie.",
+    "messageRequired": "Écris un message avant d'envoyer.",
+    "messageTooLong": "Ton message est trop long. Reste sous les 4000 caractères.",
+    "rateLimited": "Tu as déjà envoyé quelques messages. Réessaie un peu plus tard.",
+    "generic": "Impossible d'envoyer ton message. Réessaie dans un instant."
+  }
+}
