@@ -325,7 +325,7 @@ export function renderTestportMarkdown(card) {
   const keys = [...new Set([...Object.keys(b.tallies), ...Object.keys(c.tallies)])].sort();
   const tt = (t) => (t ? `${t.PASS}/${t.WARN}/${t.FAIL}/${t.TODO}/${t["N/A"]}` : "-");
   lines.push(...table(["Maaling", `${card.baseline} P/W/F/T/NA`, `${card.candidate} P/W/F/T/NA`, "FAIL delta"], keys.map((k) => [k, tt(b.tallies[k]), tt(c.tallies[k]), fmtDelta(b.tallies[k]?.FAIL, c.tallies[k]?.FAIL, (x) => fmtN(x, 0))])));
-  lines.push("", "## S5-motor-bench (--scope=all)", "");
+  lines.push("", `## S5-motor-bench (--scope=${card.meta?.benchScope ?? "all"})`, "");
   const bb = card.bench.baseline;
   const cb = card.bench.candidate;
   if (!bb && !cb) {

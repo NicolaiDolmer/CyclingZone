@@ -147,6 +147,13 @@ test("renderTestportMarkdown og -Html indeholder dom, haarde gates, bench og pr.
   assert.match(html, /Haarde gates vaerre/);
 });
 
+test("#6777: bench-afsnittets label kommer fra meta.benchScope (default all)", () => {
+  const h = (meta) => renderTestportMarkdown(buildTestportCard({ raceResults: [], baseline: "b", candidate: "c", meta }));
+  assert.ok(h({ benchScope: "gate" }).includes("## S5-motor-bench (--scope=gate)"));
+  assert.ok(h({ benchScope: "gt" }).includes("## S5-motor-bench (--scope=gt)"));
+  assert.ok(h({}).includes("## S5-motor-bench (--scope=all)"));
+});
+
 test("smaa hjaelpere: median, fmtS, copenhagenDate", () => {
   assert.equal(median([3, null, 1, 2]), 2);
   assert.equal(median([]), null);
