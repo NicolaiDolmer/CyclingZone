@@ -104,6 +104,7 @@ og finalize-gaten håndhæver trup-loftet **hårdt** (§7).
 Målt 30/8: `transfer_windows` har 2 rækker, begge `status='closed'` med `closes_at=NULL` -
 død data. Ingen kode må ankre noget i den tabel (kostede en fejlklasse, se §12).
 Deadline Day-cron'en og Final Whistle-kravet i sæsonskifte-readiness er fjernet (#6120).
+**Sæsonskifte-readiness (#5855, 17/10)** læser ikke `transfer_windows`. Den kræver `no_deferred_transfers` (ingen gennemførte handler der venter på flytning, `riders.pending_team_id`) og at trupperne holder divisionens grænser talt som `future_count` (udskudte indgående tæller på køberen). Åbne forhandlinger blokerer ikke; finalize-gaten (§7) håndhæver trup-loftet efter skiftet. Vindue-markører må aldrig sættes manuelt for at få gaten grøn.
 
 ---
 
