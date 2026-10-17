@@ -702,3 +702,19 @@ test("#6156: the v4 engine accepts s5_profiles_v2 (normalizeRulesRevision)", asy
   assert.equal(normalizeRulesRevision("s5_profiles_v2"), "s5_profiles_v2");
   for (const revision of RACE_RULES_REVISIONS) assert.equal(normalizeRulesRevision(revision), revision);
 });
+
+test("#6156: the v4 engine gives byte-identical StageOutput under s5_profiles_v2 and s5_profiles_v1 on every motor fixture", async () => {
+  const { readdirSync, readFileSync, statSync } = await import("node:fs");
+  const path = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const { simulateStageV4 } = await import("./engine/v4/index.ts");
+  const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "engine", "v4", "fixtures");
+  const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
+  assert.ok(names.length > 0);
+  for (const name of names) {
+    const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
+    const v1 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v1" });
+    const v2 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" });
+    assert.equal(JSON.stringify(v2), JSON.stringify(v1), name);
+  }
+});
