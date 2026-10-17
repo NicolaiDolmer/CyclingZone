@@ -1123,6 +1123,309 @@
         "title": "Grupos de entrenamiento",
         "text": "Un grupo te permite tomar una decisión de entrenamiento para varios ciclistas. Crea uno en Programa, Plan: abre «Plan para» y elige «+ Grupo nuevo». Ponle un nombre y empieza desde un tipo de ciclista o elige tú mismo a los ciclistas. Un ciclista puede estar en un grupo. Entonces un cambio en un campo se aplica a todo el grupo, y los ciclistas con una etapa conservan la etapa. «Fatiga esta noche» muestra al ciclista más cansado del grupo. El orden es fijo: primero el plan propio del ciclista, luego el plan de su grupo y después el plan del equipo. Si cambias los campos propios de un ciclista, su plan gana hasta que vuelvas a elegir «Seguir al grupo». También puedes aplicar un programa a un grupo en Programas, y dar a un grupo su propia excepción en Límite de fatiga."
       }
+    },
+    "activityfeed": {
+      "label": "Feed de actividad",
+      "whatActivityFeed": {
+        "title": "¿Qué es el Feed de actividad?",
+        "text": "El Feed de actividad es un flujo público de lo que pasa en el juego. Puedes ver quién gana subastas, completa fichajes y cuándo empiezan y terminan las temporadas. El feed se actualiza en tiempo real."
+      },
+      "whatShown": {
+        "title": "¿Qué aparece en el feed?",
+        "rows": [
+          [
+            "Evento",
+            "Descripción"
+          ],
+          [
+            "Subasta ganada",
+            "Un equipo ganó una subasta (muestra ciclista y precio)"
+          ],
+          [
+            "Subasta iniciada",
+            "Un equipo ha puesto a un ciclista en subasta"
+          ],
+          [
+            "Fichaje completado",
+            "Se aceptó un fichaje entre dos mánagers"
+          ],
+          [
+            "Temporada iniciada",
+            "El administrador ha empezado una nueva temporada"
+          ],
+          [
+            "Resultados aprobados",
+            "El administrador ha aprobado resultados de carrera"
+          ]
+        ]
+      },
+      "transferRumors": {
+        "title": "Rumores de fichajes",
+        "text": "Si un mánager mira a uno de tus ciclistas, recibes una notificación anónima: «Un mánager está mirando a tu ciclista X». Recibes como máximo una notificación por ciclista y hora para evitar el spam."
+      }
+    },
+    "contracts": {
+      "label": "Contratos",
+      "whatContract": {
+        "title": "¿Qué es un contrato de ciclista?",
+        "text": "Todo ciclista con propietario tiene un contrato: un salario fijado, una duración (de 1 a 3 temporadas) y una temporada de vencimiento. El salario se fija en el momento de la firma y no cambia automáticamente a medida que el ciclista se desarrolla. Los agentes libres (ciclistas sin equipo) no tienen contrato hasta que se los ficha. Si ganas una subasta por un ciclista sin contrato después de que haya terminado una temporada pero antes de que empiece la siguiente, su contrato cuenta desde la temporada que viene, así que no caduca en el cambio. Un ciclista que ya tiene contrato lo conserva sin cambios."
+      },
+      "frozenSalary": {
+        "title": "Por qué el salario está fijado (contratos de oro y cargas)",
+        "text": "Como el salario se fija al firmar, un ciclista joven que se desarrolla hasta ser un jugador mejor se convierte en una ganga: pagas una tarifa de principio de carrera por un ciclista ahora más fuerte. Es un «contrato de oro». Lo contrario también es cierto: una estrella en declive fichada en su valor máximo sigue con un salario alto aunque su habilidad baje, convirtiéndose en una carga financiera. Detectar estas situaciones pronto es una parte esencial de la gestión de la plantilla."
+      },
+      "contractOnTrade": {
+        "title": "Los contratos siguen al ciclista",
+        "text": "Cuando un ciclista se traspasa, su contrato pasa sin cambios al nuevo equipo. El comprador hereda el salario existente y la duración restante del contrato. El contrato nunca se reinicia ni se renegocia en un traspaso."
+      },
+      "extendContract": {
+        "title": "Ampliar un contrato",
+        "text": "Ampliar el contrato de un ciclista desde su página de perfil añade una temporada a la duración del contrato y traslada la temporada de vencimiento una temporada más allá, con un salario renegociado según la producción actual del ciclista. Puedes ampliar tantas veces como quieras, pero la temporada de vencimiento nunca puede llevarse más allá de 3 temporadas respecto a la actual: cuando el contrato de un ciclista ya llega tan lejos, las ampliaciones siguientes quedan bloqueadas hasta que avance la temporada actual."
+      },
+      "freeAgents": {
+        "title": "Agentes libres",
+        "text": "Los agentes libres no tienen salario hasta que un equipo los ficha. El perfil del ciclista y la página de la subasta muestran un salario estimado (según la producción esperada del ciclista esta temporada) para que puedas planificar tu presupuesto antes de pujar. El salario real solo se fija en el momento de la firma. Los agentes libres aparecen sobre todo cuando el contrato de un ciclista termina y no se renueva en el cambio de temporada: en la práctica es casi siempre una plantilla gestionada por una persona, porque los equipos controlados por la IA renuevan automáticamente sus propios contratos que vencen en esa misma transición. El resto son ciclistas liberados por su antiguo club, ya sea en la graduación de la Academia o por una oferta de cantera de la Academia que caducó sin respuesta y no encontró comprador en subasta (consulta «¿Caducan las ofertas de cantera de la Academia?»)."
+      }
+    },
+    "academy": {
+      "label": "Academia",
+      "whatAcademy": {
+        "title": "¿Qué es la Academia?",
+        "text": "La Academia te permite desarrollar a tu propio talento joven en lugar de comprar ciclistas consolidados en el mercado abierto. Cada temporada tu club recibe una cohorte de promesas al inicio de la temporada. Las revisas, fichas de 0 a 2 para tu Academia y las desarrollas en casa. La Academia es independiente de tu plantilla sénior y está activa, en directo desde el relanzamiento de la temporada 1."
+      },
+      "intakeCohort": {
+        "title": "Cohorte de la cantera de la temporada",
+        "text": "Al inicio de cada temporada el sistema genera una pequeña cohorte de promesas para tu club. Las promesas son adolescentes, así que empiezan con estadísticas bajas y en bruto: júzgalas sobre todo por su potencial más que por sus números actuales, y ojea a una promesa para acotar hasta dónde puede llegar. Luego decides cuántas (si alguna) fichas, y nunca estás obligado a fichar a nadie. Los candidatos nuevos de la academia llegan cada domingo. Los candidatos que no fichas ni rechazas caducan a los 7 días."
+      },
+      "intakeProfile": {
+        "title": "Tu cantera semanal y la Ampliación de la academia",
+        "text": "Cada semana traes tu cantera con un clic en la página de la Academia. La Ampliación de la academia de la página del Club decide su tamaño: 2 candidatos sin ella, 3 desde el nivel 2 y 4 en el nivel 5. Desde el nivel 1 puedes dar a la cantera un perfil, una nacionalidad o región, desde el nivel 3 también un tipo de ciclista, y desde el nivel 4 una elección extra. Cada nivel hace que el perfil tire un poco más fuerte, pero nunca decide toda la cantera, y el talento se sortea igual en todos los niveles. Puedes cambiar el perfil cuando quieras; un cambio tiene efecto pasadas 2 semanas. La Ampliación de la academia no tiene responsable."
+      },
+      "prognosisTraining": {
+        "title": "Descubrir el potencial de una promesa",
+        "text": "Cuando traes a un candidato ves su nombre, edad, nacionalidad, tipo de ciclista y habilidades actuales. Su potencial figura como Se descubre con el entrenamiento: lo averiguas teniéndolo en tu equipo. Tras unos 10 días de carrera de entrenamiento obtienes un primer pronóstico amplio, tras unos 30 uno estrecho, y tras una temporada completa el definitivo. Un Centro de entrenamiento mejor y un Director deportivo más fuerte te llevan ahí antes. Te dan más seguridad sobre el ciclista, no lo hacen mejor."
+      },
+      "signingProspects": {
+        "title": "Fichar promesas",
+        "steps": [
+          "Ve a Academia en la navegación.",
+          "Revisa la cohorte de la cantera de la temporada.",
+          "Ficha de 0 a 2 promesas. Cada fichaje cuesta una tarifa única del {academySigningFeePct} % del valor de mercado del ciclista, que se muestra en la tarjeta del candidato antes de fichar, y te compromete a un salario juvenil.",
+          "Las promesas que no fichas se ponen en subasta como promesas juveniles (consulta Subastas juveniles más abajo)."
+        ]
+      },
+      "academySize": {
+        "title": "Tamaño de la academia (por equipo)",
+        "text": "Tu Academia tiene dos equipos, cada uno con su propio tope: hasta {u23SquadCap} ciclistas en tu equipo sub-23 y hasta {juniorSquadCap} en tu equipo júnior. Un ciclista ocupa una plaza en el equipo en el que lo sitúa su edad. Estas plazas son completamente independientes de tu tope de plantilla sénior de {squadCap}. Los ciclistas de la academia nunca cuentan para tu límite de plantilla sénior y nunca corren en carreras sénior; desde la temporada 4 corren en sus propias carreras juveniles."
+      },
+      "dailyTrainingBoost": {
+        "title": "Entrenamiento diario en la academia",
+        "text": "Los ciclistas de la academia siguen exactamente el mismo modelo de entrenamiento que tu plantilla sénior. No hay un sistema de academia aparte ni un freno oculto a la rapidez con que mejoran: fija un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. La única diferencia real es la edad. Los ciclistas menores de 22 años reciben un impulso juvenil extra que se desvanece al acercarse a los 22. Su potencial fija tanto hasta dónde pueden llegar sus habilidades como con qué rapidez llegan, así que un talento mayor se desarrolla antes y llega más alto, mientras que un talento menor se convierte en un gregario sólido."
+      },
+      "youthAuctions": {
+        "title": "Subastas juveniles",
+        "text": "Cuando rechazas a una promesa de la cantera, sale a una subasta juvenil (marcada como Juvenil) en la que puede pujar cualquier club. Solo puedes pujar si tienes sitio para el ciclista, ya sea una plaza sénior libre o una plaza libre en la academia; si ambas están llenas, el botón de pujar está desactivado. El club ganador paga la puja ganadora, y la promesa se une a su plantilla sénior cuando hay una plaza libre (asumiendo un contrato sénior y contando para el límite de 30 ciclistas), recurriendo a su Academia (una plaza en el equipo sub-23 o júnior, según su edad) solo cuando la plantilla sénior está llena. Cada subasta muestra dónde acabará el ciclista. Una promesa por la que nadie puja abandona el deporte para siempre, así que rechazar a un candidato es una decisión de verdad. Nunca interviene dinero real, solo puntos del juego."
+      },
+      "upkeepCost": {
+        "title": "Mantenimiento de la academia",
+        "text": "Llevar la Academia cuesta una tarifa de mantenimiento por plaza ocupada, que se cobra automáticamente en la nómina de la temporada junto a tus salarios sénior. Planifica tu presupuesto en consecuencia: una Academia llena ({u23SquadCap} ciclistas sub-23 y {juniorSquadCap} júnior) supone un coste de funcionamiento notable cada temporada. El cambio de la temporada 3 a la 4 fue una excepción: en ese cambio no se cobró mantenimiento por los equipos juveniles."
+      },
+      "graduation": {
+        "title": "Día de graduación",
+        "text": "Los ciclistas que han quedado pequeños para su plantilla pasan de nivel en el cambio de temporada. Un júnior que cumple 19 años pasa a tu equipo sub-23, y un ciclista sub-23 que cumple 23 pasa a tu equipo sénior. La lista se abre la semana antes del cambio de temporada, y el plazo es el propio cambio. Hasta que muevas a un ciclista, entrena y corre en su plantilla anterior. Para cada ciclista eliges Subir (necesita una plaza libre en la plantilla a la que pasa, y conserva su contrato exactamente como está), Vender en el mercado de fichajes o Liberar como agente libre. Si no haces nada, el club elige por ti en el cambio: sube cuando hay sitio y, si no, vende. Tu entrenador da una breve lectura sobre cada ciclista, y es solo una lectura, nunca una promesa."
+      },
+      "graduationDayPage": {
+        "title": "Dónde tomar la decisión",
+        "steps": [
+          "Aparece un banner en la página de la Academia, y recibes un mensaje en tu bandeja de entrada, cuando hay ciclistas esperando.",
+          "Abre el Día de graduación desde cualquiera de los dos.",
+          "Cada transición tiene su propia tarjeta, con una fila por ciclista: valoración, potencial, contrato y la lectura de tu entrenador.",
+          "Fija Subir, Vender o Liberar para cada ciclista y luego pulsa Confirmar todo."
+        ]
+      },
+      "promoteDemote": {
+        "title": "Mover ciclistas entre plantillas",
+        "text": "Usa Cambiar de plantilla en la página de un ciclista o en Mi equipo para colocarlo en tu plantilla sénior, sub-23 o júnior. El diálogo enumera las tres plantillas con las plazas usadas y libres, marca su plantilla actual y desactiva una plantilla para la que es demasiado mayor o que está llena, con el motivo. Subir siempre está permitido, así que un júnior puede estar en el equipo sub-23. Bajar solo funciona dentro del límite de edad de la plantilla: júnior hasta la edad de temporada 18, sub-23 hasta 22. Cada plantilla juvenil tiene un tope: {u23SquadCap} en el equipo sub-23 y {juniorSquadCap} en el equipo júnior. Un ciclista que ya tiene contrato lo conserva exactamente como está, en cualquiera de las dos direcciones; solo a un ciclista sin contrato se le da un contrato estándar al subir a la plantilla sénior. Bajar a un ciclista lo saca de las próximas carreras en las que estuviera inscrito. El diálogo muestra el efecto completo antes de que confirmes. También puedes ampliar un contrato o liberar a un ciclista directamente desde la propia página del ciclista, y ampliar funciona directamente también con los ciclistas juveniles."
+      }
+    },
+    "youthSquads": {
+      "label": "Equipo sub-23 y equipo júnior",
+      "whatAreTheseSquads": {
+        "title": "¿Qué son el equipo sub-23 y el equipo júnior?",
+        "text": "El equipo sub-23 reúne a ciclistas de 19 a 22 años (edad de temporada) y el equipo júnior a ciclistas de 16 a 18 años. Ambos tienen su propia página en Sede del club, junto a Mi equipo, con las mismas pestañas que tu plantilla sénior: Plantilla, Calendario, Resultados, Clasificación y Desarrollo. Cada uno tiene su propio tope: hasta {u23SquadCap} ciclistas en el equipo sub-23 y hasta {juniorSquadCap} en el equipo júnior."
+      },
+      "staysUntilYouMoveHim": {
+        "title": "¿Se baja a un ciclista automáticamente?",
+        "text": "No. Un ciclista se queda en la plantilla en la que lo pusiste por última vez hasta que lo muevas otra vez. Si pones a un ciclista joven en tu equipo sénior, se queda allí, tratado exactamente igual que el resto de tu plantilla sénior; el juego nunca lo vuelve a bajar por su cuenta. Mueve tú mismo a un ciclista, cuando quieras, desde su perfil con el botón Cambiar de plantilla."
+      },
+      "upwardAlwaysAllowed": {
+        "title": "¿Puedo subir a un ciclista antes de tiempo?",
+        "text": "Sí, subir siempre está permitido si hay una plaza libre: un chico de 17 años puede estar en el equipo sub-23, uno de 20 en el equipo sénior, cuando tú elijas. Bajar solo funciona dentro del límite de edad de la propia plantilla: uno de 19 años no puede volver al equipo júnior, y uno de 23 no puede volver al equipo sub-23."
+      },
+      "graduationDayAt23": {
+        "title": "¿Qué pasa cuando un ciclista supera la edad de su plantilla?",
+        "text": "En el cambio de temporada, los ciclistas que han quedado pequeños para su plantilla pasan de nivel: de júnior al equipo sub-23 con 19 años de edad de temporada, de sub-23 a sénior con 23. Tienes la primera elección en el Día de graduación; si no haces nada antes del plazo, el club lo sube cuando hay sitio y puedes permitírtelo, si no lo vende y, si no, lo libera como agente libre."
+      },
+      "youthRacesFromS4": {
+        "title": "¿Corren de verdad el equipo sub-23 y el equipo júnior?",
+        "text": "Sí, desde la temporada 4. Cada categoría corre en su propio calendario con su propia clasificación, en el mismo motor de carreras que el sénior. De entrada no hay premios en metálico en las carreras juveniles."
+      },
+      "startFloor": {
+        "title": "¿Cuántos ciclistas necesito para tomar la salida en una carrera juvenil?",
+        "text": "Al menos 6, igual que en el sénior. Si tu equipo sub-23 o júnior tiene menos de 6 ciclistas en la alineación cuando empieza la carrera, no sale, así que no hay resultado. Carreras juveniles muestra un aviso en Tu equipo por cada carrera abierta por debajo de 6; abre la carrera y añade ciclistas. Aún puedes guardar menos de 6, nada te lo impide. Una vez que empieza la carrera, la alineación queda bloqueada."
+      },
+      "trainOnly": {
+        "title": "¿Puede una plantilla juvenil saltarse las carreras y solo entrenar?",
+        "text": "Sí. En la página del equipo sub-23 o júnior, fija Carreras en Solo entrenar. Entonces el asistente deja de inscribir a esa plantilla, y tú tampoco puedes inscribirla a mano. Tiene efecto desde el próximo día de carrera que no esté bloqueado: los ciclistas ya inscritos en un día bloqueado corren esa carrera, y las inscripciones en carreras posteriores se quitan. Tus ciclistas entrenan todos los días sin carrera. Vuelve a Participar en carreras y el asistente vuelve a inscribir a la plantilla desde el siguiente día de carrera desbloqueado. Tu equipo sénior no se ve afectado."
+      },
+      "noUpkeepAtSeasonChange": {
+        "title": "¿Cuánto costaron mis plantillas juveniles en el cambio de esta temporada?",
+        "text": "Nada. Tus ciclistas sub-23 y júnior no pagaron mantenimiento en el cambio de la temporada 3 a la 4. Lo que costará llevarlos a partir de la temporada 4 todavía no se ha decidido."
+      }
+    },
+    "facilities": {
+      "label": "Instalaciones del club",
+      "whatFacilities": {
+        "title": "¿Qué son las instalaciones del club?",
+        "text": "Las instalaciones son mejoras a nivel de club que construyes y subes de nivel en la página del Club, independientes de tus ciclistas. Cada instalación tiene 5 niveles: un precio único de construcción/mejora por nivel, más un coste de mantenimiento menor cada temporada una vez construida. También puedes contratar a un responsable para una instalación; la valoración global del responsable decide cuánto del efecto de la instalación obtienes realmente, desde más o menos la mitad en una instalación básica sin responsable hasta el efecto completo con un responsable de máxima valoración."
+      },
+      "tracks": {
+        "title": "Las 5 líneas de instalaciones",
+        "rows": [
+          [
+            "Instalación",
+            "Qué hace",
+            "Estado"
+          ],
+          [
+            "Centro de entrenamiento",
+            "Acelera el crecimiento diario de habilidades de tus ciclistas",
+            "Activo ahora"
+          ],
+          [
+            "Red de ojeo",
+            "Desbloquea la contratación y mejora de tu jefe de ojeadores",
+            "Activo ahora"
+          ],
+          [
+            "Departamento médico",
+            "Acelera la recuperación de forma y de lesiones",
+            "Próximamente"
+          ],
+          [
+            "Ampliación de la academia",
+            "Más candidatos en tu cantera semanal y un perfil para ella (sin responsable)",
+            "Se abre con la cantera semanal"
+          ],
+          [
+            "Departamento comercial",
+            "Aumenta los ingresos de patrocinio (con tope, una inversión a largo plazo)",
+            "Próximamente"
+          ]
+        ]
+      },
+      "liveTracksStatus": {
+        "title": "Ahora mismo solo están activos Entrenamiento y Ojeo",
+        "text": "De las 5 líneas, hoy solo el Centro de entrenamiento y la Red de ojeo están conectados al juego. Las otras 3 muestran lo que harán para que puedas planificar con antelación, pero construirlas o mejorarlas aún no tiene ningún efecto en el juego. Su etiqueta Próximamente pasará automáticamente a Activo en cuanto su motor entre en funcionamiento, sin que tengas que hacer nada."
+      },
+      "staffSynergy": {
+        "title": "Cómo trabajan juntos un responsable y la instalación",
+        "text": "El nivel de una instalación fija su efecto base. Contratar a un responsable para esa línea decide entonces cuánto de ese efecto base obtienes realmente: una instalación sin responsable funciona a más o menos la mitad de su fuerza, y la valoración global de un responsable la sube hacia la fuerza completa a medida que la valoración se acerca al máximo. En resumen, la instalación es el techo y el responsable es lo cerca que llegas de él."
+      },
+      "hireChiefScout": {
+        "title": "Contratar a un jefe de ojeadores",
+        "text": "El nivel de la Red de ojeo fija el nivel más alto de jefe de ojeadores que puedes contratar, así que constrúyela o mejórala primero si el candidato que quieres está bloqueado. Todos los equipos ya tienen un ojeador por defecto aunque no tengan ninguna instalación construida, pero un jefe de ojeadores contratado tiene una valoración global real y más alta: esa valoración estrecha más sus estimaciones (un rango de potencial más ajustado en la pestaña Ojeo) y, cuando su global llega a unos 80, le permite llevar dos trabajos de ojeo a la vez en lugar de uno. Contrata y despide responsables desde la página del Club, igual que en cualquier otra línea de instalaciones."
+      },
+      "coachingGroups": {
+        "title": "Grupos de entrenamiento: sub-23 frente a sénior",
+        "text": "El grupo de entrenamiento preferente de un Director deportivo muestra con qué grupo de edad trabaja mejor. Sub-23 abarca a los ciclistas de la academia y a los jóvenes profesionales hasta los 25; Sénior abarca a los ciclistas de 26 en adelante. Es una especialización propia del responsable, independiente de la estructura de plantillas del club (el equipo júnior y el equipo sub-23 llegan pronto): un grupo de entrenamiento trata de con qué ciclistas trabaja mejor un responsable, no de a qué plantilla pertenece un ciclista."
+      },
+      "costs": {
+        "title": "Costes: precio único de construcción + mantenimiento recurrente",
+        "text": "Cada nivel tiene un precio único de construcción o mejora, que se paga una sola vez al construirlo. Además, cada nivel construido lleva un coste de mantenimiento menor que se vuelve a cobrar automáticamente cada temporada, junto con los salarios del personal técnico, así que presupuéstalo como una línea recurrente, no solo como el precio inicial."
+      },
+      "staffOverview": {
+        "title": "Ver el personal técnico de todos los equipos",
+        "text": "La pestaña Personal técnico de la página del Club enumera a todos los responsables contratados de la liga, filtrables por rol, equipo y nivel. Haz clic en tu propio responsable para ver su desglose completo de habilidades. Haz clic en el responsable de otro mánager y solo verás lo que verías al comparar candidatos a contratar: valoración global, nivel y especialización principal, nunca su desglose completo."
+      },
+      "teamPublicProfile": {
+        "title": "Ver el personal técnico y las instalaciones de un rival",
+        "text": "La página de cualquier equipo tiene una pestaña Personal técnico e instalaciones, para que puedas ojear lo que ha construido un rival sin abrir su plantilla a ciegas. Muestra nombres, roles y niveles de instalaciones, igual que al comparar candidatos a contratar: nunca salarios, detalles de contrato ni costes de mejora, sea la página de tu propio equipo o la de otro."
+      }
+    },
+    "raceSelection": {
+      "label": "Selección del equipo",
+      "what": {
+        "title": "Elegir la plantilla de tu carrera",
+        "text": "Cada carrera tiene un tamaño de pelotón fijado por su categoría: 6 en la mayoría de las carreras, 7 en las grandes carreras World Tour y los Monuments, 8 en los Grand Tours. Abre la página de la carrera y usa el panel de Selección del equipo. Puedes guardar menos ciclistas de los que caben en el pelotón, y guardar nunca está bloqueado. Pero tu equipo necesita al menos 6 ciclistas en la alineación para tomar la salida en la carrera, en todas las carreras, sea cual sea el tamaño del pelotón. Con menos de 6 tu equipo no sale, así que no hay resultado ni ingresos de día de carrera. Una excepción: si tenías 6 ciclistas seleccionados y algunos se lesionaron después de que los eligieras, tu equipo sigue saliendo con los ciclistas en forma que le quedan, después de que el asistente haya añadido a los ciclistas libres. Si dejas una carrera vacía o por debajo de 6, tu asistente la rellena hasta 6 en el momento de la carrera con los ciclistas que tengas libres, y se salta las carreras de las que te has retirado o que has vaciado a propósito. El panel te dice antes de salir de la página si tu equipo saldrá. Para no correr una carrera, retírate de ella; si quieres más ciclistas entre los que elegir, ficha agentes libres."
+      },
+      "seasonOverview": {
+        "title": "Vista de temporada en el tablero de planificación",
+        "text": "El tablero de planificación tiene dos vistas. Día muestra un día de carrera cada vez. Temporada muestra todo el calendario de tu grupo en una única línea de tiempo: los Grand Tours como barras largas, el monument en su propio día de carrera exclusivo y un tono dorado en cada carrera en la que ya tienes una selección guardada. Haz clic en cualquier carrera para abrir su tablero del día."
+      },
+      "stagesPerDay": {
+        "title": "Por qué una carrera por etapas puede terminar en menos días que etapas tiene",
+        "text": "La División 1 corre hasta cinco etapas al día, así que una carrera de ocho etapas suele terminar en tres o cuatro fechas. Es deliberado: evita que una carrera por etapas bloquee a tus ciclistas durante una semana y media. Cada etapa sigue teniendo su propio día de carrera, que es lo que ata a un ciclista, así que las ocho etapas ocupan ocho días de carrera aunque se corran en cuatro fechas. Por eso una carrera puede leerse como «día de carrera 12 a 19» estando en cuatro fechas del calendario. Un ciclista queda atado a una carrera por día de carrera, nunca por fecha, así que un compañero puede salir en otra carrera en la misma fecha. Si los días de carrera de una carrera por etapas tienen huecos, sigues atado durante todo el tramo, desde su primer día de carrera hasta el último: no puedes dejar una carrera por etapas a medias para empezar otra cosa. La etiqueta de carga de la temporada cuenta los días de carrera que un ciclista corre de verdad, así que es la menor de las dos cifras."
+      },
+      "suitability": {
+        "title": "Leer la tabla de selección",
+        "text": "Cada ciclista muestra su tipo (como Sprinter o Escalador), una puntuación de Idoneidad de 0 a 100 que mide lo bien que encaja con el terreno de esta carrera, además de la Forma y la Fatiga actuales. Una idoneidad más alta significa mejor encaje con el recorrido. Un ciclista que sigue lesionado en la fecha de salida de la propia carrera no se puede elegir para ella; usa Ocultar lesionados para quitarlos de la lista mientras eliges. Un ciclista cuya lesión termina antes de que empiece la carrera no aparece aquí como lesionado, aunque ahora mismo lo esté, así que puedes planificar una carrera con semanas de antelación sin esperar a que se cure. Si su ficha muestra días de carrera, la fecha mostrada es aproximada."
+      },
+      "roles": {
+        "title": "Jefe de filas, jefe de filas de sprint, cazador de escapadas y rol libre",
+        "text": "Das a cada ciclista seleccionado un rol mediante las tarjetas de tácticas, y cada tarjeta explica por qué el rol encaja con el terreno de esta carrera. Tu jefe de filas está protegido por el equipo: unos gregarios fuertes y frescos aumentan las opciones del jefe de filas. En las etapas llanas, tu jefe de filas de sprint (si lo hay) recibe en su lugar la protección. Un cazador de escapadas intenta entrar en la escapada del día por defecto y corre más fuerte para mantenerse por delante. Puedes desactivarlo para una sola etapa, y un intento nunca es seguro. La tarjeta del cazador muestra lo probable que es que una escapada llegue en este terreno, y la página de detalle de la carrera ordena a tus mejores cazadores por agresividad, las ganas de atacar. La agresividad hace más probable que un ciclista entre en la escapada, y un ciclista con rol libre también lo intenta más a menudo por su cuenta. En las carreras con las reglas actuales cada intento cuesta energía, también cuando falla. El trabajo de equipo tiene un precio: los gregarios pierden puestos trabajando para el jefe de filas, y ese trabajo es justo lo que compra el impulso del jefe de filas. Un ciclista con Rol libre se salta las obligaciones de equipo y corre su propia carrera, sin coste de trabajo ni apoyo al jefe de filas."
+      },
+      "stageTactics": {
+        "title": "Carreras por etapas: roles y esfuerzo por etapa",
+        "text": "En las carreras por etapas, la página de la carrera tiene un tablero de tácticas etapa por etapa. Las etapas completadas están bloqueadas y muestran lo que pasó; las etapas próximas aún se pueden cambiar mientras la carrera avanza. Cada ciclista puede correr un rol distinto por etapa, más un esfuerzo: hay tres esfuerzos: Ir tranquilo, Normal y Trabajar o atacar. Trabajar o atacar acumula fatiga extra: un gregario o un cazador trabaja para el equipo, mientras que un jefe de filas o un ciclista con rol libre lo usa para atacar. Ir tranquilo afloja para llegar más fresco a los días que importan. Si un ciclista toma el maillot de líder, un atajo en la pestaña Equipo de la página de la carrera lo hace jefe de filas para todas las etapas restantes con un solo clic mientras la carrera está en marcha, pasando a gregario a cualquier otro jefe de filas en esas etapas. Las etapas en las que no fijas nada usan simplemente el rol de carrera del ciclista."
+      },
+      "strategy": {
+        "title": "Estrategia del equipo (preferencias permanentes)",
+        "text": "Abre Estrategia del equipo en Planificación, o desde el tablero de la plantilla, para fijar las preferencias que sigue tu asistente cuando rellena automáticamente el calendario. Ordena una cadena A de ciclistas clave. Tienen prioridad en las carreras que marques como objetivos. Da a un ciclista un rol fijo (siempre jefe de filas, o siempre jefe de filas de sprint cuando esté seleccionado). Ordena a los jefes de filas 1/2/3 para cada tipo de terreno (llano, cuestas, montaña, adoquines, contrarreloj); el asistente elige al ciclista mejor clasificado que entre en la alineación de esa carrera. Marca tus carreras objetivo para que tus ciclistas más fuertes vayan allí. La vista previa muestra exactamente cómo cambia tu estrategia las selecciones antes de guardar, y Regenerar sugerencias la aplica sin tocar las elecciones que hiciste a mano."
+      },
+      "breakaway": {
+        "title": "Escapadas",
+        "text": "Una escapada puede formarse en cualquier etapa de carretera, y los días de montaña envían los grupos más grandes. Una escapada pequeña tiene opciones de llegar. La mayoría son alcanzadas, pero a veces la escapada llega. Los ciclistas agresivos y los cazadores designados entran más a menudo en las escapadas. Cuando una etapa tiene un historial nativo de carrera completo, los resultados usan una bandera para la escapada de la mañana y una flecha para un ataque posterior. La bandera distingue la participación, una captura registrada y una escapada que llegó. Las etapas más antiguas sin ese historial conservan sus marcas almacenadas. Un ciclista que se queda por detrás de la escapada recibe su propia marca: descolgado de la escapada. Si vuelve a enlazar con la escapada, vuelve a estar en ella, no alcanzado. En las carreras con las reglas actuales, intentar la escapada cuesta energía, también cuando falla, y una escapada pequeña hace que sus ciclistas tiren con más fuerza. Si un ciclista importante de la general entra en la escapada, los equipos rivales pueden perseguir con dureza y mantener la diferencia controlada, salvo que dejen la persecución a otros o no tengan ciclistas libres para reaccionar. Es arriesgado: cuesta más y a menudo fracasa."
+      },
+      "ordersGc": {
+        "title": "Órdenes de escapada y reacción en la general",
+        "text": "Las carreras nuevas usan estas reglas. Una carrera que empezó antes conserva las reglas con las que empezó. La pestaña Tácticas las muestra en Reglas de carrera antes de que guardes. Los párrafos de abajo fijan quién entra en la escapada de la mañana y lo que cuesta. La escapada de la mañana sigue tus órdenes. Un jefe de filas, un jefe de filas de sprint o un gregario solo va a por ella con Intentar la escapada seleccionado. Un cazador de escapadas va a por ella por defecto, y puedes desactivarlo para una sola etapa. Un ciclista con rol libre puede intentarlo por su cuenta cuando su intención es Normal; con cualquier otra intención necesita Intentar la escapada. El grupeto nunca lo intenta. Cada intento cuesta energía, también cuando falla, y ningún intento tiene garantizado entrar en la escapada. Un gregario que entra en la escapada no puede ayudar a la vez a su jefe de filas en el pelotón. Una etapa también puede acabar sin ninguna escapada de la mañana. La postura de tu equipo decide cómo trata la escapada. Perseguir añade potencia a la persecución, salvo contra una escapada que lleve a uno de tus propios ciclistas. Leer la carrera reacciona cuando la escapada amenaza a tu ciclista de la general, y un equipo sin orden reacciona de la misma manera. Dejar la persecución a otros significa que tu equipo no ayuda a perseguir; nunca frena al pelotón. Sin una orden, un equipo persigue por su cuenta cuando tiene un ciclista que puede ganar el final del día: un sprinter en una etapa llana, un puncheur en una etapa ondulada, un escalador en una etapa de montaña. Tu propia orden siempre va primero. Con Dejar la persecución a otros el equipo aún puede dar una respuesta limitada a una amenaza seria a tu ciclista de la general: solo usa ciclistas libres de su grupo y se detiene cuando ha gastado una cantidad fija de trabajo en la etapa. Una respuesta mantiene controlada la diferencia, nunca garantiza una captura. Las amenazas se juzgan a partir de la clasificación general publicada antes de la etapa, así que no hay reacción en la general en la primera etapa. En una carrera de un día, un equipo reacciona cuando un rival que puede ganar el día va por delante y su propio jefe de filas también puede ganarlo, salvo que el equipo haya elegido Dejar la persecución a otros. La película de la carrera muestra cuándo un equipo empieza o deja de reaccionar, cuándo ha gastado todo lo que puede y cuándo no tiene ciclistas libres con los que reaccionar."
+      },
+      "fatigue": {
+        "title": "La fatiga importa",
+        "text": "Los gregarios cansados apoyan menos a su jefe de filas, y correr acumula fatiga. Rotar tu plantilla entre carreras mantiene frescas a tus estrellas para los días que importan."
+      },
+      "assistantFill": {
+        "title": "Cuándo rellena el asistente una alineación",
+        "text": "El asistente nunca sobrescribe una alineación que hayas fijado tú, y nunca toca un día de carrera que vaciaste a propósito. Lo que hace por su cuenta depende del ajuste que yo tenga puesto: puede dejarte todas las alineaciones a ti, puede rellenar una carrera que dejaste completamente vacía poco antes de que empiece, o puedes activarlo para tu equipo y dejar que elija. Sea cual sea el ajuste, un equipo que está vacío o por debajo de seis ciclistas cuando empieza la carrera se rellena igualmente hasta seis para que tomes la salida. Si tu plantilla estaba completamente vacía y el asistente la rellenó por ti, recibes un mensaje en tu bandeja de entrada para que puedas revisar las elecciones y cambiarlas si quieres."
+      },
+      "scouting": {
+        "title": "Ojear otras divisiones",
+        "text": "Cambia el centro de carreras a «Mi división» u «Otras divisiones» para explorar las listas de salida próximas de cualquier grupo, en modo solo lectura. Las listas de salida se abren siete días antes de cada carrera y solo muestran plantillas en bruto (qué ciclistas ha inscrito un equipo), para que puedas calcular el pelotón esperado. Los roles, la forma y la fatiga siguen ocultos, y las carreras más lejanas siguen bloqueadas hasta que se abre su lista de salida."
+      }
+    },
+    "raceDay": {
+      "label": "Día de carrera y tácticas",
+      "roleAndIntention": {
+        "title": "Roles e intención de hoy",
+        "text": "Tu rol es el trabajo que elegiste para un ciclista al montar tu equipo: jefe de filas, jefe de filas de sprint, cazador de escapadas, gregario o rol libre. Dura toda la carrera y rara vez cambia. La intención es distinta: es lo que le pides en la etapa que tienes abierta ahora mismo, y si la dejas como está, simplemente corre con su rol. Hay cinco ajustes, del más fácil al más duro: grupeto, ir tranquilo, normal, trabajar o atacar y a tope. Un ajuste más duro siempre cuesta más fatiga que uno más fácil, por fuerte que sea el ciclista, y el grupeto nunca le da un resultado propio."
+      },
+      "crashesAndIncidents": {
+        "title": "Caídas e incidentes",
+        "text": "Una caída en la carretera ya no es todo o nada. Una caída ligera cuesta una pequeña cantidad de tiempo, y el ciclista sigue sin daño. Una caída dura cuesta mucho más tiempo y lo deja marcado con días de lesión, pero aun así termina la etapa. Una caída grave termina su carrera y también viene con días de lesión, y es poco frecuente. Un problema mecánico, un pinchazo, una cadena caída, una rueda, cuesta siempre solo tiempo: nunca puede obligar a un ciclista a abandonar y nunca puede lesionarlo, y un compañero que ruede cerca lo devuelve a la bici más rápido. Solo una caída de verdad puede hacer daño a un ciclista. Las lesiones por caída usan la misma escala de tiempo que las lesiones de entrenamiento. La ficha de tu ciclista muestra si el tiempo restante se cuenta en días naturales o en días de carrera."
+      },
+      "timeLimitAndGrupetto": {
+        "title": "El control de tiempo y el grupeto",
+        "text": "Llega demasiado por detrás del ganador de la etapa y tu carrera ha terminado: fuera de todo el evento en una carrera por etapas, un abandono en una carrera de un día. Un grupo grande que llega junto se salva en bloque; es el grupeto, y existe para que un pelotón entero cansado no sea mandado a casa en un día brutal. Cuánto margen tienes depende de la etapa: los días llanos son los más estrictos, la alta montaña la más indulgente. En las carreras juveniles el límite es más laxo y se puede salvar a un grupo más pequeño. Es una regla, nunca una tirada de dados, y trata a un equipo IA exactamente igual que a ti. Lo único que ves es el resultado llano: fuera de control, o grupeto salvado."
+      },
+      "teamwork": {
+        "title": "Trabajo en equipo en la carretera",
+        "text": "Tu jefe de filas, o tu jefe de filas de sprint en una etapa llana, está protegido por el trabajo que pone el resto del equipo. Un gregario o un cazador de escapadas paga esa protección con su propio esfuerzo; un ciclista con rol libre ni ayuda ni paga. El impulso está acotado para que nunca se dispare, y solo cuenta cuando al menos un compañero sigue corriendo cerca de él. Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo. Un gregario en Ir tranquilo paga menos pero da menos apoyo a tu jefe de filas. Trabajar para el equipo nunca sale gratis, y ninguna combinación de rol e intención puede convertirlo en una bonificación añadida a la propia habilidad de un ciclista."
+      },
+      "weatherAndCobbles": {
+        "title": "Clima y adoquines",
+        "text": "Cada etapa lleva su propio clima. El sol y el cielo cubierto son la base tranquila, no cambia nada. La lluvia ralentiza toda la etapa y golpea más fuerte a un ciclista débil en mojado que al resto del grupo. El viento muerde sobre todo donde la carretera es abierta; una subida está resguardada por su propia pendiente. La lluvia también aumenta el riesgo de caída en adoquines, gravel y descensos atrevidos. Lo verás como una sola nota en la línea de tiempo de la etapa, en el kilómetro donde empieza a importar, nunca como un número asociado."
+      }
     }
   }
 }
