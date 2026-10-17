@@ -57,6 +57,19 @@ export function findChaseGroup(groups: readonly RaceGroup[], target: RaceGroup):
 }
 
 /**
+ * #6199: dagens udbryderes saet, som isMorningRegroupCatch maaler paa (segmentLoop).
+ * #6748 (KUN s5_profiles_v2): et nyt udbrud med `separate_formation` er den
+ * AKTIVE formation og nulstiller saettet, saa det hentede udbruds ryttere der
+ * henter det nye udbrud, er en indhentning, ikke en sammenlaegning (samme regel
+ * som raceParticipationHistory.ts). Uden maerket vokser saettet som foer.
+ */
+export function noteFormationRiders(formation: Set<string>, event: TimelineEvent): void {
+  if (event.type !== "breakaway_formed") return;
+  if (event.params.separate_formation === true) formation.clear();
+  for (const id of Array.isArray(event.params.rider_ids) ? event.params.rider_ids : []) if (typeof id === "string") formation.add(id);
+}
+
+/**
  * #6234 (KUN orders_gc_v3): et stykke af dagens udbrud (oprindelse "breakaway")
  * der ikke selv er udbrudsgruppen. Gruppen rummer kun udbrydere: en
  * sammenlaegning med ikke-udbrydere giver den anden parts oprindelse

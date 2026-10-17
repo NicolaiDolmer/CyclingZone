@@ -89,7 +89,7 @@ import {
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
 import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
-import { findChaseGroup, isMorningRegroupCatch } from "./mechanics/chaseGroup.ts";
+import { findChaseGroup, isMorningRegroupCatch, noteFormationRiders } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
@@ -873,9 +873,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     const regroupCatches = new Set<TimelineEvent>();
     const noteSegmentEvents = (events: readonly TimelineEvent[]) => {
       if (!preciseContact) return;
-      for (const event of events) {
-        if (event.type === "breakaway_formed") for (const id of Array.isArray(event.params.rider_ids) ? event.params.rider_ids : []) if (typeof id === "string") morningRiderIds.add(id);
-      }
+      // #6748: et nyt udbrud med separate_formation (KUN s5_profiles_v2) nulstiller saettet.
+      for (const event of events) noteFormationRiders(morningRiderIds, event);
       for (const event of events) if (isMorningRegroupCatch(event, state.groups, morningRiderIds)) regroupCatches.add(event);
     };
 

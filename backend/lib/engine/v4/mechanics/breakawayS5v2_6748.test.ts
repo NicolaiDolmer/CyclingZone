@@ -18,7 +18,7 @@ import { RACE_V4_TUNING } from "../tuning.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { breakawayHook, s5BreakMergedWithField, S5_REFORMATION_TUNING } from "./breakaway.ts";
 import { s5ReformationExcludedRiders } from "./gcThreat.ts";
-import { isS5V2BreakawayWin, withWinnerEscapeOutcome } from "./chaseGroup.ts";
+import { isMorningRegroupCatch, isS5V2BreakawayWin, noteFormationRiders, withWinnerEscapeOutcome } from "./chaseGroup.ts";
 import { isBreakawayWin, type FinaleGroupTrace } from "../groups.ts";
 import { deriveParticipationHistory, settleBreakawayOutcome } from "../../../raceParticipationHistory.ts";
 import { loadRaceEngineV4 } from "../../../raceEngineV4Bridge.js";
@@ -192,6 +192,24 @@ test("#6748 punkt 5: caught_but_solo antager kun trin-modellen uden for v2; ueni
   assert.deepEqual(labelContradictions(caught, out, { stepModel: false }), []);
   const disagree = [{ rider_id: "w", breakaway_win: false, breakaway_status: { in_breakaway: true, breakaway_caught: false } }];
   assert.deepEqual(labelContradictions(disagree, out, { stepModel: false }).map((c: { kind: string }) => c.kind), ["win_flag_vs_label"]);
+});
+
+// ── Punkt 6 i motoren: filmens sammenlaegnings-filter (segmentLoop) ──────────
+
+test("#6748 punkt 6: motorens filter ser den aktive formation; det hentede udbrud der henter det nye, er en indhentning", () => {
+  const formedA: TimelineEvent = { km: 12, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["a1", "a2"] } };
+  const formedB = (separate: boolean): TimelineEvent => ({ km: 23, type: "breakaway_formed", params: { group_id: "breakaway-1500", rider_ids: ["b1", "b2"], reformation: true, ...(separate ? { separate_formation: true } : {}) } });
+  const caught: TimelineEvent = { km: 120, type: "breakaway_caught", params: { group_id: "breakaway-1500", rider_ids: ["b1", "b2"], chase_group_id: "chase-9000" } };
+  const groups = [g("chase-9000", "chase", ["a1", "a2", "b1", "b2"]), g("peloton-0", "peloton", ["p1"])];
+  const formationAfter = (separate: boolean) => {
+    const set = new Set<string>();
+    for (const e of [formedA, formedB(separate)]) noteFormationRiders(set, e);
+    return set;
+  };
+  assert.deepEqual([...formationAfter(false)].sort(), ["a1", "a2", "b1", "b2"], "uden maerket: begge udbrud (v1, uaendret)");
+  assert.equal(isMorningRegroupCatch(caught, groups, formationAfter(false)), true, "v1 laeser det som en sammenlaegning");
+  assert.deepEqual([...formationAfter(true)].sort(), ["b1", "b2"], "med maerket: kun det nye udbrud");
+  assert.equal(isMorningRegroupCatch(caught, groups, formationAfter(true)), false, "v2: en indhentning, som filmen viser");
 });
 
 // ── Rigtig motor paa Giro-feltet ─────────────────────────────────────────────
