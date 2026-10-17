@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "title": "Patch notes · Cycling Zone",
+    "description": "Elke wijziging aan Cycling Zone, nieuwste eerst: nieuwe functies, verbeteringen en fixes."
+  },
+  "title": "Patch notes",
+  "subtitle": "Wat is er nieuw in Cycling Zone Manager",
+  "search": {
+    "ariaLabel": "Updates zoeken",
+    "placeholder": "Updates zoeken…"
+  },
+  "filter": {
+    "ariaLabel": "Filteren op categorie",
+    "betaOnly": "Alleen beta",
+    "category": {
+      "all": "Alle",
+      "new": "Nieuw",
+      "improved": "Verbeterd",
+      "fixed": "Opgelost"
+    }
+  },
+  "category": {
+    "all": "Alle",
+    "new": "Nieuw",
+    "improved": "Verbeterd",
+    "fixed": "Opgelost"
+  },
+  "newBadge": "Nieuw",
+  "rollout": {
+    "beta": "Beta",
+    "beta_to_live": "Nu live voor iedereen",
+    "switched_on": "Ingeschakeld",
+    "event": "Seizoensevent"
+  },
+  "fallbackLang": {
+    "da": "Deens",
+    "en": "Engels"
+  },
+  "loadError": "Updates konden niet worden geladen",
+  "loadErrorBody": "Er is niets verloren gegaan. Probeer de pagina opnieuw te laden.",
+  "retry": "Probeer opnieuw",
+  "loading": {
+    "label": "Updates laden"
+  },
+  "empty": {
+    "title": "Geen updates gevonden",
+    "description": "Probeer een andere zoekterm of categorie."
+  },
+  "footer": {
+    "hiddenNote": "Interne en technische notities worden op deze pagina niet getoond.",
+    "rolloutNote": "Beta: alleen de bètagroep heeft het. Geen label: live voor iedereen."
+  }
+}

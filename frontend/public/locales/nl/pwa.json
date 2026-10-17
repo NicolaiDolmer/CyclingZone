@@ -1,0 +1,10 @@
+{
+  "install": {
+    "regionAriaLabel": "De app installeren",
+    "title": "Zet Cycling Zone op je beginscherm. Het opent op volledig scherm, direct bij jouw team.",
+    "action": "Installeren",
+    "later": "Niet nu",
+    "iosTitle": "Zet Cycling Zone op je beginscherm: tik op Deel en daarna op Zet op beginscherm.",
+    "iosDismiss": "Begrepen"
+  }
+}

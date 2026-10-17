@@ -1,0 +1,60 @@
+{
+  "title": "Uitslagen",
+  "subtitle": {
+    "active": "Seizoen {number} · actief",
+    "viewing": "Seizoen {number}",
+    "noSeason": "Geen actief seizoen"
+  },
+  "tabs": {
+    "latest": "Recent",
+    "archive": "Archief",
+    "points": "Punten & prijzen"
+  },
+  "latest": {
+    "empty": "Hier zijn nog geen koersen afgerond",
+    "emptyBody": "Uitslagen verschijnen hier zodra de eerste koers in deze selectie klaar is.",
+    "noPodium": "Voor deze koers is nog geen klassement geïmporteerd",
+    "viewFull": "Volledige uitslag",
+    "stageProgress": "Etappe {done} van {total}"
+  },
+  "filters": {
+    "seasonLabel": "Seizoen",
+    "seasonOption": "Seizoen {number}",
+    "seasonOptionActive": "Seizoen {number} (actief)",
+    "divisionLabel": "Divisie",
+    "allDivisions": "Alle divisies",
+    "division": "Divisie {n}",
+    "poolLabel": "Poule",
+    "allPools": "Alle poules"
+  },
+  "hub": {
+    "moreTitle": "Meer bij Uitslagen",
+    "standings": {
+      "label": "Ranglijst",
+      "desc": "Teamranglijst van het actieve seizoen"
+    },
+    "riderRankings": {
+      "label": "Rennersranglijst",
+      "desc": "Individuele resultaten van alle renners"
+    },
+    "seasonSnapshot": {
+      "label": "Seizoensoverzicht",
+      "desc": "Kalender, eindstand en seizoenswinnaars"
+    }
+  },
+  "loadingAria": "Uitslagen laden",
+  "emptyNoSeason": "Geen actief seizoen. Uitslagen verschijnen hier zodra het seizoen loopt",
+  "topTeams": "Topteams · Seizoen {number}",
+  "topScorers": "Topscorers · Seizoen {number}",
+  "teamMeta": "{stageWins, plural, one {# etappezege} other {# etappezeges}} · {gcWins} eindklassement",
+  "freeAgent": "Transfervrij",
+  "riderStageWins": "{count, plural, one {# etappezege} other {# etappezeges}}",
+  "riderGcWins": "{count} eindklassement",
+  "points": "{count} pt",
+  "seeAllStandings": "Bekijk de volledige ranglijst",
+  "seeAllRiders": "Bekijk alle renners",
+  "emptyNoResults": "Dit seizoen zijn nog geen koersuitslagen geïmporteerd",
+  "loadError": "Uitslagen konden niet worden geladen",
+  "loadErrorBody": "Er is niets verloren gegaan. Probeer de pagina opnieuw te laden.",
+  "retry": "Probeer opnieuw"
+}

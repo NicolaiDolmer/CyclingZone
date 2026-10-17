@@ -1,0 +1,65 @@
+{
+  "panel": {
+    "label": "Filter",
+    "resetAll": "Alles resetten",
+    "resetCount": "Alles resetten ({count})",
+    "more": "Meer filters"
+  },
+  "fields": {
+    "name": "Naam",
+    "namePlaceholder": "Renner zoeken...",
+    "country": "Land",
+    "countryAll": "Alle landen",
+    "valueRange": "Waarde CZ$ (min-max)",
+    "salaryRange": "Salaris CZ$ (min-max)",
+    "ageRange": "Leeftijd (min-max)",
+    "bidRange": "Hoogste bod CZ$ (min-max)",
+    "askingPriceRange": "Vraagprijs CZ$ (min-max)",
+    "valueDeviationRange": "Waardeafwijking % (min-max)",
+    "team": "Team",
+    "teamAll": "Alle teams",
+    "min": "Min",
+    "max": "Max"
+  },
+  "toggles": {
+    "freeAgent": "Transfervrij",
+    "u25": "U25",
+    "u23": "U23",
+    "showAi": "AI-teams tonen"
+  },
+  "stats": {
+    "section": "Statistiekfilters",
+    "active": "{count} actief",
+    "minInput": "{label} min",
+    "maxInput": "{label} max"
+  },
+  "chips": {
+    "value": {
+      "min": "Waarde ≥ {amount} CZ$",
+      "max": "Waarde ≤ {amount} CZ$"
+    },
+    "salary": {
+      "min": "Salaris ≥ {amount} CZ$",
+      "max": "Salaris ≤ {amount} CZ$"
+    },
+    "age": {
+      "min": "Leeftijd ≥ {value}",
+      "max": "Leeftijd ≤ {value}"
+    },
+    "bid": {
+      "min": "Bod ≥ {amount} CZ$",
+      "max": "Bod ≤ {amount} CZ$"
+    },
+    "askingPrice": {
+      "min": "Prijs ≥ {amount} CZ$",
+      "max": "Prijs ≤ {amount} CZ$"
+    },
+    "valueDeviation": {
+      "min": "Afwijking ≥ {value}%",
+      "max": "Afwijking ≤ {value}%"
+    },
+    "teamSelected": "Team geselecteerd",
+    "statRange": "{label} {min}-{max}",
+    "remove": "Filter verwijderen: {label}"
+  }
+}
