@@ -93,7 +93,7 @@ function createMockSupabase({
       if (table === "teams") {
         return {
           select: (cols) => {
-            if (cols === "id, division") {
+            if (cols === "id, name, division") {
               const c = calls ? [] : null;
               if (calls) calls.push(["teams", c]);
               return pagedChain(humanTeams, { calls: c });
@@ -295,11 +295,11 @@ test("#5855 countSquadLimitViolations tæller pr. hold og springer rider-læsnin
       seniorRiders: [...OVER_CAP_RIDERS, ...ridersFor("hold-c", MAX_D1 + 2)],
     }),
   });
-  assert.deepEqual(over, { teams_checked: 3, violations: 2 });
+  assert.deepEqual({ teams_checked: over.teams_checked, violations: over.violations }, { teams_checked: 3, violations: 2 });
 
   const calls = [];
   const none = await countSquadLimitViolations({ supabase: createMockSupabase({ calls }) });
-  assert.deepEqual(none, { teams_checked: 0, violations: 0 });
+  assert.deepEqual(none, { teams_checked: 0, violations: 0, violating_teams: [] });
   assert.ok(!calls.some(([t]) => t.startsWith("riders")), "ingen hold → ingen .in([])-query mod riders");
 });
 
@@ -311,7 +311,36 @@ test("#5855 (Codex) udskudt transfer tæller på køberens trup, ikke sælgerens
   const res = await countSquadLimitViolations({
     supabase: createMockSupabase({ humanTeams: COMPLIANT_TEAMS, seniorRiders, incomingRiders: [moving] }),
   });
-  assert.deepEqual(res, { teams_checked: 2, violations: 1 });
+  assert.deepEqual({ teams_checked: res.teams_checked, violations: res.violations }, { teams_checked: 2, violations: 1 });
+  assert.equal(res.violating_teams[0].teamId, "hold-a");
+});
+
+test("#6784 countSquadLimitViolations returnerer hvilke hold med antal og grænser", async () => {
+  const res = await countSquadLimitViolations({
+    supabase: createMockSupabase({
+      humanTeams: [{ id: "hold-a", name: "Hold A", division: 1 }, { id: "hold-b", name: "Hold B", division: 1 }, { id: "hold-c", name: "Hold C", division: 1 }],
+      seniorRiders: [...ridersFor("hold-a", MAX_D1 + 1), ...ridersFor("hold-b", MAX_D1 - 3), ...ridersFor("hold-c", MAX_D1)],
+    }),
+  });
+  const { min, max } = getSquadLimits(1);
+  assert.deepEqual(res.violating_teams, [
+    { teamId: "hold-a", teamName: "Hold A", count: MAX_D1 + 1, min, max },
+  ]);
+});
+
+test("#6784 squad-detail viser de første 5 hold med navn og antal", async () => {
+  const teams = Array.from({ length: 7 }, (_, i) => ({ id: `hold-${i}`, name: `Hold ${i}`, division: 1 }));
+  const seniorRiders = teams.flatMap((t) => ridersFor(t.id, MAX_D1 + 1));
+  const result = await assessTransitionReadiness({
+    supabase: createMockSupabase({ humanTeams: teams, seniorRiders }),
+    fromSeasonId: FROM_SEASON_ID,
+  });
+  const detail = result.checks.squad_enforcement_completed.detail;
+  assert.match(detail, /^7 hold er uden for/);
+  assert.ok(detail.includes(`Hold 0 ${MAX_D1 + 1} (max ${MAX_D1})`), detail);
+  assert.ok(detail.includes("Hold 4"), detail);
+  assert.ok(!detail.includes("Hold 5"), detail);
+  assert.match(detail, /og 2 flere/);
 });
 
 test("#5855 trup-målingen bruger håndhævelsens population og senior-tælling", async () => {
