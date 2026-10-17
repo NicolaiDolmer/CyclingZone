@@ -1,0 +1,158 @@
+{
+  "title": "Seizoen {number}",
+  "titleFallback": "Seizoensoverzicht",
+  "subtitle": "{status} · kalender, eindstand en seizoenswinnaars",
+  "statusOngoing": "Lopend",
+  "statusCompleted": "Afgerond",
+  "financeReport": "Financieel rapport",
+  "seasonOption": "Seizoen {number} · {status}",
+  "empty": {
+    "title": "Nog geen uitslagen",
+    "body": "Rond koersen en seizoenen af om hier uitslagen te zien",
+    "cta": "Kalender bekijken"
+  },
+  "status": {
+    "completed": "Afgerond",
+    "active": "Live",
+    "scheduled": "Komend"
+  },
+  "honours": {
+    "heading": "Beste renners van het seizoen",
+    "metaFinal": "Seizoen {number} · definitief",
+    "metaProvisional": "Voorlopig",
+    "title": {
+      "points": "Meeste punten",
+      "wins": "Meeste zeges"
+    },
+    "unit": {
+      "points": "punten",
+      "wins": "zeges"
+    },
+    "tieBreak": {
+      "points": "Gelijk op punten. De alfabetische volgorde bepaalt wie bovenaan staat.",
+      "wins": "Gelijk op zeges. Punten bepalen de volgorde."
+    },
+    "note": "Zeges tellen etappe-, eindklassements-, eendags-, punten-, berg- en jongerenklassementszeges, hetzelfde totaal als de kolom Zeges in de rennersranglijst.",
+    "noRider": "Nog geen renner.",
+    "noTeam": "Geen team",
+    "empty": {
+      "title": "Nog geen rennersresultaten",
+      "body": "Renners verdienen punten en zeges zodra de koersen van het seizoen zijn gereden."
+    },
+    "error": "De beste renners van het seizoen konden niet worden geladen."
+  },
+  "winners": {
+    "prize": {
+      "title": "Leider in prijzengeld",
+      "secondary": "+{amount} verdiend",
+      "empty": "Nog geen prijzen"
+    },
+    "transfer": {
+      "title": "Grootste transfer",
+      "fallback": "Transfer",
+      "empty": "Geen transfers"
+    },
+    "active": {
+      "title": "Meest actief",
+      "secondary": "{count} transfers",
+      "empty": "Geen deals"
+    },
+    "stageKing": {
+      "title": "Etappekoning",
+      "secondary": "{count, plural, one {# etappezege} other {# etappezeges}}",
+      "empty": "Geen etappes gereden"
+    },
+    "classicKing": {
+      "title": "Klassiekerzeges",
+      "secondary": "{count, plural, one {# klassiekerzege} other {# klassiekerzeges}}"
+    }
+  },
+  "calendar": {
+    "heading": "Kalender · {count} koersen",
+    "expectedTotal": "Totale verwachte pot voor het seizoen:",
+    "expectedTotalTooltip": "Live berekende som van de verwachte pot voor alle koersen van het seizoen",
+    "summary": "{completed} afgerond · {scheduled} komend",
+    "stageRace": "Etappekoers · {count, plural, one {# etappe} other {# etappes}}",
+    "oneDay": "Eendagskoers"
+  },
+  "division": "Divisie {div}",
+  "promotionNote": "Top 2 promoveert",
+  "relegationNote": "Onderste 4 degraderen",
+  "table": {
+    "rank": "#",
+    "team": "Team",
+    "stageWins": "Etappezeges",
+    "points": "Punten",
+    "progression": "Trend"
+  },
+  "you": "Jij",
+  "promotion": "Op",
+  "relegation": "Neer",
+  "myProgression": "Puntenverloop van je team",
+  "loadError": "Het seizoen kon niet worden geladen. Probeer het opnieuw.",
+  "retry": "Probeer opnieuw",
+  "recap": {
+    "heading": "Jouw seizoen, samengevat",
+    "metaFinal": "Seizoen {number} · definitief",
+    "eyebrow": "Seizoen {number} afgerond",
+    "stat": {
+      "rank": "Eindplaats",
+      "points": "Punten",
+      "stageWins": "Etappezeges",
+      "prize": "Gewonnen prijzengeld",
+      "classicWins": "Klassiekerzeges"
+    },
+    "rankLine": "#{rank} van {size} in Divisie {division}",
+    "movement": {
+      "promoted": "Gepromoveerd",
+      "relegated": "Gedegradeerd",
+      "maintained": "Divisie {division} behouden"
+    },
+    "boardVerdict": {
+      "label": "Het oordeel van het bestuur",
+      "value": "{met} van {total} doelen gehaald",
+      "confidence": "vertrouwen",
+      "confidenceTo": "naar",
+      "attribution": "{name} · Voorzitter · seizoensoordeel",
+      "ctaMeeting": "Naar de jaarvergadering",
+      "ctaBoardroom": "Open de bestuurskamer"
+    },
+    "highlight": {
+      "prizeLeader": "Leider in prijzengeld van Divisie {division}",
+      "biggestSale": "Grootste verkoop van het seizoen",
+      "stageKing": "Etappekoning van het team: {name}",
+      "stageKingValue": "{count, plural, one {# zege} other {# zeges}}",
+      "classicKing": "Klassiekerkoning van het team: {name}",
+      "classicKingValue": "{count, plural, one {# zege} other {# zeges}}",
+      "turningPoint": "Beste dag van het seizoen",
+      "turningPointValue": "{race} · {points} pnt",
+      "biggestResult": "Beste individuele resultaat",
+      "biggestResultValue": "{rider} · {race}",
+      "rival": "Dichtstbijzijnde rivaal: {team}",
+      "rivalBeatenBy": "verslagen met {n} pnt",
+      "rivalBehindBy": "{n} pnt achter"
+    },
+    "copyLink": "Link naar samenvatting kopiëren",
+    "linkCopied": "Link gekopieerd",
+    "downloadCard": "Deelkaart downloaden",
+    "downloading": "Voorbereiden…",
+    "downloadError": "De afbeelding kon niet worden gemaakt. Probeer het opnieuw.",
+    "shareCardMeta": "Divisie {division} · #{rank} van {size}"
+  },
+  "documentary": {
+    "heading": "De documentaire",
+    "metaFinal": "Seizoen {number} · definitief",
+    "eyebrow": "Jouw seizoen, volledig verteld",
+    "error": "De seizoensdocumentaire kon niet worden geladen.",
+    "sourceLlm": "Door AI bijgeschaafd verhaal",
+    "sourceDeterministic": "Seizoensverhaal",
+    "card": {
+      "eyebrow": "Documentaire van seizoen {number}",
+      "turningPoint": "Keerpunt",
+      "pts": "pnt",
+      "result": "Grootste resultaat",
+      "rival": "Dichtstbijzijnde rivaal",
+      "finalPoints": "Eindpunten"
+    }
+  }
+}

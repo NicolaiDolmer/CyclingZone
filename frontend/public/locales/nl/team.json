@@ -1,0 +1,325 @@
+{
+  "page": {
+    "fallbackTitle": "Mijn team",
+    "managerLabel": "Manager: {name}",
+    "ridersCount": "{count}/{cap} seniorenrenners",
+    "youthSquadCounts": "+{u23} U23 · +{junior} junioren",
+    "seniorCapTooltip": "De selectielimiet is {cap} seniorenrenners. Academierenners tellen daar niet voor mee.",
+    "youthSquadCountsTooltip": "U23- en juniorenrenners hebben hun eigen selectielimieten (12 en 10) en tellen niet mee voor de seniorenlimiet.",
+    "incomingCount": "+{count} komen binnen",
+    "outgoingCount": "-{count} vertrekken",
+    "salaryPerSeason": "Salaris/seizoen: {value} CZ$",
+    "salaryPerSeasonTooltip": "Totaal salaris dat je selectie per seizoen verdient",
+    "teamValue": "Teamwaarde: {value} CZ$",
+    "division": "Divisie {n}",
+    "divisionTooltip": "Jouw competitieniveau. Divisie 1 is het hoogste niveau, Divisie 4 het instapniveau.",
+    "balance": "{value} CZ$",
+    "balanceTooltip": "CZ$ is de valuta in het spel. Je verdient het door te spelen en het is niet met echt geld te koop.",
+    "ownAuctionsBanner": "{count, plural, one {# van je renners staat in veiling} other {# van je renners staan in veiling}} · bekijk veilingen"
+  },
+  "promotionPending": {
+    "title": "Wacht op promotie",
+    "hint": "Hun volgende selectie is vol. Ze blijven koersen in hun huidige selectie op hetzelfde contract.",
+    "waitingFor": {
+      "u23": "Wacht op een U23-plek",
+      "senior": "Wacht op een seniorenplek"
+    },
+    "promote": "Promoveren",
+    "noRoom": "Nog geen plek",
+    "promoted": "{name} is doorgeschoven.",
+    "error": {
+      "squad_full": "Die selectie is vol. Maak eerst een plek vrij.",
+      "rider_on_market": "Hij staat in veiling. Promoveer hem als de veiling voorbij is.",
+      "rider_in_stage_race": "Hij zit in een etappekoers. Promoveer hem als die voorbij is.",
+      "generic": "De renner kon niet worden gepromoveerd. Probeer het opnieuw."
+    }
+  },
+  "tabs": {
+    "ariaLabel": "Teamonderdelen",
+    "squad": "Selectie ({count})",
+    "development": "Ontwikkeling",
+    "stats": "Statistieken",
+    "transfers": "Transfergeschiedenis"
+  },
+  "development": {
+    "headers": {
+      "projected": "Verwacht",
+      "projectedTitle": "Verwachte ratingrange voor zijn hoofdrol, gebaseerd op jouw training. Gesorteerd op de bovengrens.",
+      "ceiling": "Plafond",
+      "ceilingTitle": "De theoretisch hoogste rating die zijn rol kan bereiken. Niet aangepast aan hoe jij hem traint."
+    },
+    "noForecast": "Nog geen voorspelling"
+  },
+  "stats": {
+    "seasonLabel": "Seizoen {n}",
+    "noActiveSeason": "Op dit moment geen actief seizoen.",
+    "loadError": "De seizoensstatistieken konden niet worden geladen. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "headers": {
+      "raceDays": "Koersdagen",
+      "wins": "Zeges",
+      "points": "Punten",
+      "prize": "Prijzengeld"
+    }
+  },
+  "squad": {
+    "view": {
+      "ariaLabel": "Selectieweergave",
+      "current": "Huidige selectie ({count})",
+      "upcoming": "Volgend seizoen ({count})",
+      "upcomingHint": "Toont de selectie zodra lopende transfers zijn afgerond."
+    },
+    "filter": {
+      "label": "Tonen",
+      "seniors": "Senioren ({count})",
+      "academy": "Academie ({count})"
+    },
+    "emptyState": "Je selectie is leeg",
+    "emptyStateBody": "Contracteer je eerste renners op de markt om je team op te bouwen.",
+    "emptyStateCta": "Renners bekijken",
+    "emptyStateCtaAuctions": "Naar de veilingen",
+    "emptyView": "Geen renners die bij de huidige weergave passen.",
+    "headers": {
+      "nation": "Land",
+      "rider": "Renner",
+      "rating": "Rating",
+      "ratingTitle": "Het gewogen gemiddelde van de vaardigheden die zijn eigen rol nodig heeft. Hetzelfde getal betekent hetzelfde niveau in elke rol.",
+      "value": "Waarde",
+      "salary": "Salaris",
+      "potential": "Potentieel",
+      "potentialTitle": "De verwachte ratingrange waar hij met jouw training realistisch naartoe gaat. Niet hetzelfde als het plafond van de rol (de theoretisch hoogste rating voor zijn rol) - houd de muis boven het getal voor beide.",
+      "badges": "Status",
+      "age": "Leeftijd",
+      "popularity": "Populariteit",
+      "popularityTitle": "Populariteit bij de fans (0-100). Gebruikt door het sterrenrenner-doel van het 5-jarenplan van het bestuur.",
+      "reputationLabel": "Reputatie",
+      "reputationTitle": "Verdiende reputatie in de koers. Dit is het getal dat het bestuur leest voor profielrenners.",
+      "type": "Type",
+      "contract": "Contract",
+      "contractUntil": "Tot seizoen {season}",
+      "contractExpired": "Verlopen",
+      "action": "Actie"
+    },
+    "reputation": {
+      "band": {
+        "unknown": "Onbekend",
+        "known": "Bekend",
+        "profile": "Profiel",
+        "star": "Ster",
+        "legend": "Legende"
+      }
+    },
+    "mode": {
+      "ariaLabel": "Tabelkolommen",
+      "overview": "Overzicht",
+      "abilities": "Vaardigheden"
+    },
+    "count": "{count, plural, one {1 renner} other {# renners}}",
+    "actionButton": "Verkopen / Veilen",
+    "ownAuctionTooltip": "In veiling · hoogste bod {price} CZ$ · eindigt over {timeLeft}",
+    "ownTransferListingTooltip": "Op de transferlijst · vraagprijs {price} CZ$"
+  },
+  "actionModal": {
+    "potentialLabel": "Potentieel",
+    "tabs": {
+      "auction": "Veiling",
+      "transfer": "Transferlijst",
+      "release": "Vrijgeven",
+      "extend": "Contract verlengen",
+      "move": "Selectie wisselen"
+    },
+    "auction": {
+      "description": "Start een veiling. Andere managers kunnen bieden.",
+      "startButton": "Starten",
+      "startFlashButton": "Flash starten",
+      "flashLabel": "Flitsveiling (30 min)",
+      "flashHint": "Deadline Day: eindigt precies 30 minuten na de start",
+      "successMsg": "Veiling gestart!",
+      "priceError": "De startprijs moet tussen 0 en de waarde ({amount} CZ$) liggen",
+      "endLabel": "De veiling eindigt",
+      "endHint": "{min}-{max} uur vanaf nu, speltijd (Kopenhagen).",
+      "endWindowHint": "De markt is open van {open} tot {close}."
+    },
+    "transfer": {
+      "description": "Te koop zetten voor een vaste prijs.",
+      "listButton": "Te koop zetten",
+      "successMsg": "Te koop gezet!"
+    },
+    "release": {
+      "description": "Beëindig het contract van deze renner en laat hem transfervrij vertrekken.",
+      "feeLabel": "Afkoopsom",
+      "balanceLabel": "Je saldo",
+      "feeHint": "Een half seizoenssalaris voor elk resterend contractseizoen.",
+      "freeHint": "Deze renner heeft geen salaris, dus vrijgeven is gratis.",
+      "confirmButton": "Renner vrijgeven",
+      "cannotAfford": "Je kunt de afkoopsom niet betalen.",
+      "successMsg": "Renner vrijgegeven."
+    },
+    "extend": {
+      "description": "Verleng het contract met één seizoen. Het salaris wordt opnieuw onderhandeld op basis van de huidige waarde van de renner.",
+      "currentSalaryLabel": "Huidig salaris",
+      "newSalaryLabel": "Nieuw salaris",
+      "newContractLabel": "Nieuw contract",
+      "newContractValue": "Verloopt na S{season}",
+      "confirmButton": "Contract verlengen",
+      "loadingTermsButton": "Voorwaarden laden…",
+      "workingButton": "Verlengen…",
+      "successMsg": "Contract verlengd.",
+      "capped": "Contract heeft de maximale lengte (tot en met seizoen {season}).",
+      "capCounterLabel": "Gebruikte verlengingen"
+    },
+    "move": {
+      "description": "Verplaats deze renner naar de seniorenselectie, het U23-team of het juniorenteam. Je kiest de selectie en ziet daarna het volledige effect.",
+      "openButton": "Selectie kiezen"
+    },
+    "loadingShort": "...",
+    "errorPrefix": ""
+  },
+  "profile": {
+    "back": "Terug",
+    "notFound": "Team niet gevonden",
+    "loadError": {
+      "message": "Het team kon niet worden geladen. Er is niets verloren gegaan. Probeer het opnieuw.",
+      "retry": "Probeer opnieuw"
+    },
+    "tabsAriaLabel": "Onderdelen van het teamprofiel",
+    "yourTeam": "Jouw team",
+    "managerLabel": "Manager: {name}",
+    "division": "Divisie {n}",
+    "statRidersNow": "Renners nu",
+    "statIncoming": "Binnenkomend",
+    "statOutgoing": "Vertrekkend",
+    "statTeamValue": "Teamwaarde",
+    "seasonResults": "Seizoensresultaten",
+    "seasonLabel": "Seizoen {n}",
+    "seasonOngoing": "Lopend",
+    "seasonFinished": "Afgelopen",
+    "seasonPoints": "Punten",
+    "seasonStageWins": "Etappezeges",
+    "seasonGcWins": "Eindklassementszeges",
+    "tabSquad": "Selectie ({count})",
+    "tabResults": "Uitslagen",
+    "tabPalmares": "Palmarès",
+    "tabTransfers": "Transfergeschiedenis",
+    "tabClub": "Staf & Faciliteiten",
+    "squadTitle": "Selectie ({count} renners)",
+    "viewCurrent": "Huidige selectie ({count})",
+    "viewUpcoming": "Volgend seizoen ({count})",
+    "viewUpcomingHint": "Toont de selectie zodra lopende transfers zijn afgerond.",
+    "noRiders": "Geen renners",
+    "thNation": "Land",
+    "thRider": "Renner",
+    "thBadges": "Status",
+    "thAge": "Leeftijd",
+    "thType": "Type",
+    "thValue": "Waarde",
+    "palmares": {
+      "totalsTitle": "Totalen over de carrière",
+      "totals": {
+        "seasons": "Seizoenen",
+        "wins": "Zeges",
+        "bestResult": "Beste resultaat",
+        "honours": "Hall of Fame",
+        "bestResultValue": "Divisie {division} · #{rank}"
+      },
+      "seasonHistoryTitle": "Seizoen na seizoen",
+      "thSeason": "Seizoen",
+      "thDivision": "Divisie",
+      "thRank": "Plaats",
+      "thPoints": "Punten",
+      "thWins": "Zeges",
+      "movementPromoted": "Gepromoveerd",
+      "movementRelegated": "Gedegradeerd",
+      "honoursTitle": "Hall of Fame",
+      "honoursEmpty": "Nog geen Hall of Fame-vermeldingen voor dit team.",
+      "emptyTitle": "Nog geen palmarès",
+      "emptyBody": "Elk gespeeld seizoen schrijft hier een nieuwe regel.",
+      "loadError": "Het palmarès kon nu niet worden geladen."
+    }
+  },
+  "results": {
+    "title": "Koersuitslagen",
+    "subtitle": "Alle koersuitslagen van dit team",
+    "seasonFilterAll": "Alle seizoenen",
+    "seasonFilterCurrent": "Seizoen {n} (huidig)",
+    "seasonOption": "Seizoen {n}",
+    "seasonRow": "Seizoen {n}",
+    "loadError": "De uitslagen konden niet worden geladen. Probeer het opnieuw.",
+    "emptyAll": "Nog geen koersuitslagen",
+    "emptyFiltered": "Geen uitslagen in het gekozen seizoen",
+    "thRace": "Koers",
+    "thType": "Klassement",
+    "thRank": "Plaats",
+    "thRider": "Renner",
+    "thPoints": "Punten",
+    "thPrize": "Prijs",
+    "stageN": "Etappe {n}",
+    "riderTeam": "Team",
+    "total": "Totaal · {count, plural, one {# uitslag} other {# uitslagen}}",
+    "type": {
+      "stage": "Etappe",
+      "gc": "Algemeen (eindklassement)",
+      "oneday": "Eendagsuitslag",
+      "points": "Puntenklassement",
+      "mountain": "Bergklassement",
+      "young": "Jonge renner",
+      "team": "Ploegenklassement",
+      "leader": "Leiderstrui (dag)",
+      "points_day": "Puntentrui (dag)",
+      "mountain_day": "Bergtrui (dag)",
+      "young_day": "Jongerentrui (dag)"
+    }
+  },
+  "club": {
+    "facilitiesTitle": "Faciliteiten",
+    "staffTitle": "Staf",
+    "noStaff": "Geen staf aangenomen",
+    "errorTitle": "Dit kon niet worden geladen",
+    "errorDescription": "Staf en faciliteiten konden nu niet worden geladen."
+  },
+  "manager": {
+    "back": "Terug",
+    "notFound": "Team niet gevonden",
+    "loadError": {
+      "message": "Het profiel van deze manager kon niet worden geladen. Er is niets verloren gegaan. Probeer het opnieuw.",
+      "retry": "Probeer opnieuw"
+    },
+    "yourTeam": "Jouw team",
+    "managerPrefix": "Manager:",
+    "aiManaged": "Team beheerd door AI",
+    "division": "Divisie {n}",
+    "settingsLink": "Instellingen",
+    "streak": "reeks",
+    "achievements": "prestaties",
+    "recentlyUnlocked": "Recent ontgrendeld",
+    "noRecentAchievements": "Nog niets ontgrendeld. Koers, bied en bouw een selectie om te beginnen met verzamelen.",
+    "inProgress": "Bezig",
+    "progressTowards": "{title}: {current} van {target}",
+    "tabOverview": "Overzicht",
+    "tabRiders": "Team ({count})",
+    "tabSeason": "Seizoensgeschiedenis",
+    "tabAchievements": "Prestaties {unlocked}/{total}",
+    "statSeasons": "Seizoenen",
+    "statTransfers": "Transfers",
+    "statForumPosts": "Forumberichten",
+    "recentTransfers": "Recente transfers",
+    "noTransfers": "Nog geen transfers",
+    "boughtFrom": "Gekocht van",
+    "soldTo": "Verkocht aan",
+    "noRiders": "Geen renners",
+    "noSeasonHistory": "Nog geen seizoensgeschiedenis",
+    "noAchievements": "Nog geen prestaties",
+    "seasonOngoing": "Lopend",
+    "thRider": "Renner",
+    "thValue": "Waarde",
+    "thSeason": "Seizoen",
+    "thDivision": "Divisie",
+    "thPoints": "Punten",
+    "thRank": "Plaats",
+    "seasonNumber": "Seizoen {n}",
+    "divisionShort": "Div. {n}",
+    "discordOpenAria": "Het Discord-profiel van {handle} openen",
+    "discordCopyAria": "Discord-gebruikersnaam {handle} kopiëren",
+    "discordCopied": "Gekopieerd"
+  }
+}
