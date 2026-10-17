@@ -136,6 +136,8 @@ export default function StandingsPage() {
   const [lens, setLens] = useState(searchParams.get("view") === LENS_STRENGTH ? LENS_STRENGTH : LENS_STANDINGS);
   const [strength, setStrength] = useState(null); // { [team_id]: aggregat } | null = ikke hentet
   const [strengthLoading, setStrengthLoading] = useState(false);
+  // #6322 (Codex): en fejlet styrke-hentning vises som fejl med 'Proev igen', aldrig som nuller.
+  const [strengthError, setStrengthError] = useState(false);
 
   // Fri tekst-søgning (foldet ind fra TeamsPage, #1609).
   const [search, setSearch] = useState("");
@@ -320,7 +322,7 @@ export default function StandingsPage() {
   const strengthMounted = useRef(true);
   useEffect(() => { strengthMounted.current = true; return () => { strengthMounted.current = false; }; }, []);
   useEffect(() => {
-    if (lens !== LENS_STRENGTH || strength !== null || strengthFetchStarted.current) return;
+    if (lens !== LENS_STRENGTH || strength !== null || strengthError || strengthFetchStarted.current) return;
     strengthFetchStarted.current = true;
     (async () => {
       setStrengthLoading(true);
@@ -339,7 +341,7 @@ export default function StandingsPage() {
       if (riders === null) {
         // Fejl: gem ikke tomme aggregater som succes — tillad nyt forsøg ved næste linse-skift.
         strengthFetchStarted.current = false;
-        if (strengthMounted.current) setStrengthLoading(false);
+        if (strengthMounted.current) { setStrengthLoading(false); setStrengthError(true); }
         return;
       }
       const ridersByTeam = {};
@@ -359,7 +361,7 @@ export default function StandingsPage() {
       });
       if (strengthMounted.current) { setStrength(agg); setStrengthLoading(false); }
     })();
-  }, [lens, strength]);
+  }, [lens, strength, strengthError]);
 
   // ?compare=1 deep-link (fra /head-to-head redirect): åbn drawer med eget hold som
   // A. Hold B vælges først når brugeren markerer en række — drawer'en åbnes da.
@@ -847,7 +849,12 @@ export default function StandingsPage() {
         </div>
       )}
 
-      {divStandings.length === 0 ? (
+      {lens === LENS_STRENGTH && strengthError ? (
+        <ErrorState
+          title={t("strengthLoadError")}
+          action={<Button size="sm" variant="secondary" onClick={() => setStrengthError(false)}>{t("retry")}</Button>}
+        />
+      ) : divStandings.length === 0 ? (
         <EmptyState
           icon={<PodiumIcon size={26} aria-hidden="true" />}
           title={search ? t("noMatch") : t("noData", { n: divTab })}

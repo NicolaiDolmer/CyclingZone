@@ -17,7 +17,7 @@ const block = source.slice(start, end);
 
 test("#6322 styrke-effekten har ikke strengthLoading i deps", () => {
   assert.ok(start > 0 && end > start, "fandt ikke effekt-blokken");
-  assert.match(block, /\}, \[lens, strength\]\);/);
+  assert.match(block, /\}, \[lens, strength, strengthError\]\);/);
   assert.doesNotMatch(block, /\[lens, strength, strengthLoading\]/);
 });
 
@@ -33,4 +33,11 @@ test("#6322 fejlet fetch efterlader ikke linsen i loading", () => {
   assert.match(block, /setStrength\(agg\); setStrengthLoading\(false\)/);
   assert.match(block, /strengthFetchStarted\.current = false;/, "fejl skal tillade nyt forsøg");
   assert.match(block, /strengthMounted\.current = true;/, "StrictMode-replay skal genaktivere mounted-ref");
+});
+
+test("#6322 (Codex) fejlet fetch viser en fejl med 'Proev igen', ikke nuller", () => {
+  assert.match(block, /setStrengthError\(true\)/);
+  assert.match(source, /lens === LENS_STRENGTH && strengthError \? \(/);
+  assert.match(source, /t\("strengthLoadError"\)/);
+  assert.match(source, /onClick=\{\(\) => setStrengthError\(false\)\}/);
 });
