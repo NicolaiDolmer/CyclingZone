@@ -35,12 +35,22 @@ import LanguageSwitcherFlag from "./LanguageSwitcherFlag.jsx";
 // rækkefølge (dansk øverst, engelsk nederst) uændret uanset rækkefølgen i
 // LANGUAGES.
 import { LANGUAGES } from "../i18n/languages.js";
+// #6802: beta-sprog (LANGUAGES[].beta) vises kun for ejer + beta-testere.
+import { selectableLanguages, languageToRevertTo } from "../lib/languageAccess.js";
+import { useBetaLanguageAccess } from "../lib/languageAccessHook.js";
 
 const LABEL_KEYS = { da: "language.danish", en: "language.english" };
 const DISPLAY_ORDER = ["da", "en"];
-const OPTIONS = [...LANGUAGES]
-  .sort((a, b) => DISPLAY_ORDER.indexOf(a.code) - DISPLAY_ORDER.indexOf(b.code))
-  .map((l) => ({ code: l.code, flag: l.flag, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
+// Nye sprog uden plads i DISPLAY_ORDER sorteres sidst (#6802).
+const orderOf = (code) => {
+  const i = DISPLAY_ORDER.indexOf(code);
+  return i === -1 ? DISPLAY_ORDER.length : i;
+};
+const toOptions = (languages) =>
+  [...languages]
+    .sort((a, b) => orderOf(a.code) - orderOf(b.code))
+    .map((l) => ({ code: l.code, flag: l.flag, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
+const ALL_OPTIONS = toOptions(LANGUAGES);
 
 // Estimeret menuhøjde (2 valg) til at vælge op/ned før menuen er målt.
 const MENU_EST_HEIGHT = 88;
@@ -51,6 +61,8 @@ const GAP = 4;
 export default function LanguageSwitcher({ className = "", surface = "page" }) {
   const { t } = useTranslation("common");
   const { language, setLanguage } = useLanguage();
+  const betaAccess = useBetaLanguageAccess();
+  const OPTIONS = toOptions(selectableLanguages(LANGUAGES, betaAccess));
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState(null);
   const btnRef = useRef(null);
@@ -102,7 +114,14 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
     };
   }, [open]);
 
-  const active = OPTIONS.find((o) => o.code === language) ?? OPTIONS[1];
+  const active = ALL_OPTIONS.find((o) => o.code === language) ?? ALL_OPTIONS.find((o) => o.code === "en");
+
+  // Kendt uden beta-adgang men staar paa et beta-sprog (fx tilbagekaldt adgang):
+  // rul tilbage til standardsproget. Aldrig mens adgangen endnu er ukendt (null).
+  const revertTo = languageToRevertTo(language, betaAccess);
+  useEffect(() => {
+    if (revertTo) setLanguage(revertTo);
+  }, [revertTo, setLanguage]);
 
   return (
     <div className={`relative inline-block ${className}`}>

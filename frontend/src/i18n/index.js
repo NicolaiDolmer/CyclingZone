@@ -39,7 +39,9 @@ import { initReactI18next } from "react-i18next";
 // hele det danske first-paint-saet fra ÉN lazy chunk. Se filens header for
 // hvorfor det er en backend og ikke en changeLanguage-wrapper.
 import LocaleBundleBackend from "./localeBundleBackend.js";
-import LanguageDetector from "i18next-browser-languagedetector";
+// #6802: som i18next-browser-languagedetector, men navigator-opslaget springer
+// beta-sprog over (de maa kun vaelges bevidst i sprogvaelgeren).
+import LanguageDetector from "./publicLanguageDetector.js";
 import ICU from "i18next-icu";
 
 import { SUPPORTED_LANGS, PSEUDO_LANG } from "./languages.js";
@@ -163,7 +165,7 @@ i18n
       en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, feedback: feedbackEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, team: teamEn, finance: financeEn, sponsor: sponsorEn, headtohead: headtoheadEn, halloffame: halloffameEn, races: racesEn, training: trainingEn, academy: academyEn, klub: klubEn, staff: staffEn, landing: landingEn, globalRank: globalRankEn },
     },
     detection: {
-      order: ["localStorage", "navigator", "htmlTag"],
+      order: ["localStorage", "navigatorPublic", "htmlTag"],
       lookupLocalStorage: "cz_lang",
       caches: ["localStorage"],
     },

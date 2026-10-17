@@ -9,16 +9,46 @@
 // constraint-config.sql, som holder samme liste og skal udvides sammen med
 // denne fil).
 //
+// #6802: `beta: true` skjuler sproget for almindelige spillere. Et beta-sprog er
+// kun valgbart i sprogvaelgeren for ejer + beta-testere (lib/languageAccess.js),
+// og browser-detektionen vaelger det ALDRIG automatisk (i18n/index.js). Et
+// sprog uden `beta` (eller med `beta: false`) er offentligt. Et registreret
+// beta-sprog skal bestaa paritetsgaten (#6597) og have en lazy bundle i
+// localeBundleBackend.js (testet), saa EN/DA-bundlen aldrig vokser.
+//
 // Flag-koder matcher de faktiske `fi fi-<code>`-klasser fra flag-icons, som
 // LanguageSwitcher.jsx og Flag.jsx allerede bruger i dag (en → gb, da → dk).
 export const LANGUAGES = [
-  { code: "en", label: "English", nativeLabel: "English", flag: "gb" },
-  { code: "da", label: "Danish", nativeLabel: "Dansk", flag: "dk" },
+  { code: "en", label: "English", nativeLabel: "English", flag: "gb", beta: false },
+  { code: "da", label: "Danish", nativeLabel: "Dansk", flag: "dk", beta: false },
 ];
 
 export const SUPPORTED_LANGS = LANGUAGES.map((l) => l.code);
 
 export const DEFAULT_LANG = "en";
+
+// #6802: offentlige sprog (alle uden beta-flag) — det landing-toggle, browser-
+// detektion og anonyme besoegende maa se.
+export const PUBLIC_LANGS = LANGUAGES.filter((l) => !l.beta).map((l) => l.code);
+
+/** Er koden et registreret beta-sprog? (basis-kode, case-insensitiv) */
+export function isBetaLang(code) {
+  if (typeof code !== "string") return false;
+  const base = code.trim().toLowerCase().split("-")[0];
+  return LANGUAGES.some((l) => l.code === base && l.beta === true);
+}
+
+/** Findes der overhovedet et beta-sprog? Falsk i dag => ingen netvaerkskald. */
+export const HAS_BETA_LANGS = LANGUAGES.some((l) => l.beta === true);
+
+/**
+ * Sprog en viewer maa se/vaelge. Beta-sprog kun med beta-adgang (ejer eller
+ * beta-tester). `languages` kan overstyres i test.
+ */
+export function visibleLanguages(hasBetaAccess, languages = LANGUAGES) {
+  return languages.filter((l) => !l.beta || hasBetaAccess === true);
+}
+
 
 // Pseudo-locale til layout-stress-test (?pseudo=1) — findes ikke som en rigtig
 // sprog-entry i LANGUAGES (ingen locale-JSON, intet flag, ikke valgbar i UI).
