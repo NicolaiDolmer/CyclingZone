@@ -169,7 +169,8 @@ export const RULES = [
 export function scanSource(src, rel = "") {
   if (FORMATTER_FILES.has(rel)) return [];
   const findings = [];
-  const lines = stripComments(src).split("\n");
+  const code = stripComments(src.replace(/\r\n/g, "\n"));
+  const lines = code.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const text = lines[i];
     if (!text.trim()) continue;
@@ -181,7 +182,24 @@ export function scanSource(src, rel = "") {
       }
     }
   }
-  return findings;
+  // Flerlinjede kald: `new Intl.NumberFormat(\n  "da-DK",\n)`. Linjerne ses
+  // hver for sig ovenfor og rammer ikke; her ses kaldet og literalen sammen.
+  const multiline = new RegExp(
+    String.raw`(${INTL_CALL.source})\s*\n\s*["'\x60]([a-z]{2,3}(?:-[A-Z]{2})?)["'\x60]`,
+    "g",
+  );
+  for (const m of code.matchAll(multiline)) {
+    if (ISO_TRICK_LOCALES.has(m[2])) continue;
+    const line = code.slice(0, m.index).split("\n").length;
+    if (findings.some((f) => f.line === line)) continue;
+    findings.push({
+      line,
+      rule: "locale-literal",
+      why: `fast locale "${m[2]}" paa naeste linje`,
+      text: lines[line - 1].trim().slice(0, 140),
+    });
+  }
+  return findings.sort((a, b) => a.line - b.line);
 }
 
 function walk(dir, out = []) {

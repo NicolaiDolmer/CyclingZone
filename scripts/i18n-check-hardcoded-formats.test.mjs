@@ -36,6 +36,19 @@ test("locale-literal: bar sprogkode i Intl-kald fanges", () => {
   assert.deepEqual(rules('new Intl.NumberFormat("fr").format(n)'), ["locale-literal"]);
 });
 
+test("locale-literal: locale paa naeste linje i et flerlinjet kald fanges (en gang)", () => {
+  const src = 'const f = new Intl.NumberFormat(\n  "da-DK",\n  { maximumFractionDigits: 1 },\n).format(n);';
+  const found = scanSource(src, "frontend/src/pages/X.jsx");
+  assert.equal(found.length, 1);
+  assert.equal(found[0].rule, "locale-literal");
+  assert.equal(found[0].line, 1);
+  assert.equal(scanSource('d.toLocaleDateString(\n  "en-GB",\n)', "frontend/src/pages/X.jsx").length, 1);
+  assert.equal(scanSource('d.toLocaleString(\r\n  "da"\r\n)', "frontend/src/pages/X.jsx").length, 1);
+  // ISO-trick og dynamisk locale paa naeste linje er stadig fint.
+  assert.equal(scanSource('new Intl.DateTimeFormat(\n  "en-CA",\n  { timeZone },\n)', "frontend/src/pages/X.jsx").length, 0);
+  assert.equal(scanSource("new Intl.NumberFormat(\n  locale,\n)", "frontend/src/pages/X.jsx").length, 0);
+});
+
 test("locale-literal: dynamisk locale er fint", () => {
   assert.deepEqual(rules("n.toLocaleString(locale)"), []);
   assert.deepEqual(rules("new Intl.DateTimeFormat(intlLocale(language), opts).format(d)"), []);
