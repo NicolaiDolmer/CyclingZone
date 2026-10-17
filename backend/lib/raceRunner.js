@@ -115,7 +115,7 @@ import { detectCareerFirsts } from "./careerFirsts.js";
 import { runReputationDetectionSafe } from "./reputationHook.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
-import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
+import { loadWithdrawnTeamIds, releaseTeamsThatDidNotStart } from "./raceWithdrawal.js";
 import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
@@ -2051,6 +2051,14 @@ export function notStartedTeams({ droppedTeamIds = [], selectedTeamIds = new Set
 // committet. Fejl isoleres: en besked må aldrig vælte en afviklet etape.
 async function sendDidNotStartNotices({ supabase, race, teamIds }) {
   if (!teamIds?.length) return;
+  // #6740 (Friis 17/10): frigiv rytterne FØR beskeden — ellers står de bundet løbet ud
+  // i et løb holdet ikke kører. Egen try/catch: en fejl her må hverken vælte etapen
+  // eller koste beskeden.
+  try {
+    await releaseTeamsThatDidNotStart({ supabase, raceId: race.id, teamIds });
+  } catch (err) {
+    captureException(err, { tags: { flow: "race-run", stage: "did-not-start-release" }, raceId: race.id });
+  }
   try {
     await notifyTeamsDidNotStart({ supabase, race, teamIds });
   } catch (err) {

@@ -14,6 +14,40 @@ import { loadTeamBindingContext, mapRiderBindingDetails } from "./raceBinding.js
 // ("endnu en kopi der glemmer reglen") var rod-aarsagen i #5301.
 // Historik: docs/superpowers/plans/2026-06-23-race-hub-fase-0b-generator-afmeld.md
 
+// #6740 (Friis 17/10): et hold der ikke kom med i feltet (fjernet ved start, under
+// gulvet) beholdt sine entries, og de BANDT rytterne løbet ud (binding_span, race_entry_days),
+// så de ikke kunne køre overlappende løb. En afmelding er den eneste frigivelse både DB'en
+// (race_entries_binding_span, trg_race_withdrawals_resync_binding) og appen (Rod A) kender.
+// Årsagen skelner den fra en frivillig afmelding, så fladerne viser "Did not start".
+export const DID_NOT_START_REASON = "did_not_start";
+
+/**
+ * #6740: frigiv hold der ikke stillede op. Kaldes FØRST når etape 1 er committet (så
+ * "deltag igen" er blokeret af selection_race_started). Idempotent: en eksisterende
+ * afmelding (frivillig eller tidligere) røres ikke. Kaster ved DB-fejl; kalderen isolerer.
+ */
+export async function releaseTeamsThatDidNotStart({ supabase, raceId, teamIds }) {
+  const ids = [...new Set((teamIds ?? []).filter(Boolean))];
+  if (!raceId || !ids.length) return { released: 0 };
+  const { error } = await supabase.from("race_withdrawals").upsert(
+    ids.map((teamId) => ({ race_id: raceId, team_id: teamId, withdrawn_reason: DID_NOT_START_REASON })),
+    { onConflict: "race_id,team_id", ignoreDuplicates: true },
+  );
+  if (error) throw new Error(`race_withdrawals (did not start): ${error.message ?? error}`);
+  return { released: ids.length };
+}
+
+/** PURE: delt afmeldings-rækker i frivillige og "stillede ikke op" (race_id-sæt). */
+export function splitWithdrawals(rows) {
+  const withdrawn = new Set();
+  const didNotStart = new Set();
+  for (const row of rows ?? []) {
+    if (!row?.race_id) continue;
+    (row.withdrawn_reason === DID_NOT_START_REASON ? didNotStart : withdrawn).add(row.race_id);
+  }
+  return { withdrawn, didNotStart };
+}
+
 // Set af team_id der har trukket sig fra et løb.
 export async function loadWithdrawnTeamIds({ supabase, raceId }) {
   const { data, error } = await supabase

@@ -20,7 +20,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
 import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
-import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
+import { splitWithdrawals } from "./raceWithdrawal.js"; // #6740
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import {
@@ -44,8 +44,13 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = new Date() }) {
   const fallback = { starts: true, min: teamWillStart({}).min, reason: null };
   try {
-    const withdrawn = (await loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds: [race.id] })).has(race.id);
-    if (withdrawn) return teamWillStart({ withdrawn });
+    const { data: wRows, error: wErr } = await supabase.from("race_withdrawals")
+      .select("race_id, withdrawn_reason").eq("team_id", teamId).eq("race_id", race.id);
+    if (wErr) return fallback;
+    const { withdrawn, didNotStart } = splitWithdrawals(wRows);
+    // #6740: holdet blev fjernet ved start og frigivet med en "did_not_start"-afmelding.
+    if (didNotStart.has(race.id)) return teamWillStart({ stagesCompleted: race.stages_completed ?? 1, inField: false });
+    if (withdrawn.has(race.id)) return teamWillStart({ withdrawn: true });
     const stagesCompleted = race.stages_completed ?? 0;
     if (stagesCompleted > 0) {
       const inField = (await loadTeamsInStartedField({ supabase, raceIds: [race.id], teamId })).get(race.id) ?? null;

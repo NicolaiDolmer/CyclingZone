@@ -146,7 +146,8 @@ test("#5301/5: guardens logik er testbar (ligger i lib, ikke inline i ruten)", (
 test("#5301: afmeldings-opslagene deles fra raceWithdrawal.js (ingen femte kopi)", () => {
   assert.match(
     apiSource,
-    /import \{ findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey \} from "\.\.\/lib\/raceWithdrawal\.js";/,
+    // #6740: splitWithdrawals skelner frivillige afmeldinger fra "did_not_start" (samme modul).
+    /import \{ findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals \} from "\.\.\/lib\/raceWithdrawal\.js";/,
     "hver flade der ruller sit eget race_withdrawals-opslag er en ny chance for at glemme det — det var rod-aarsagen i #5301"
   );
 });

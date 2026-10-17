@@ -105,7 +105,7 @@ import {
 } from "../lib/racePoolCatalog.js";
 // #5301: afmeldings-opslag som ALLE læseflader deler, så "har entries" aldrig igen
 // forveksles med "stiller op" (race_entries bevares bevidst ved afmelding, #4306).
-import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey } from "../lib/raceWithdrawal.js";
+import { findRejoinConflicts, loadWithdrawnPairs, loadWithdrawnRaceIdsForTeam, withdrawalKey, splitWithdrawals } from "../lib/raceWithdrawal.js";
 import { loadTeamsInStartedField } from "../lib/raceStartOutlook.js"; // #6740
 import { isOwnerUser } from "../lib/ownerGate.js"; // #3750 ejer-gate
 import { AUTH_FAILURE_RESPONSES, verifyBearerToken } from "../lib/authTokenVerification.js"; // #4369
@@ -5257,8 +5257,11 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
 
     const { data: withdrawals } = await supabase
-      .from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
-    const withdrawnSet = new Set((withdrawals || []).map((w) => w.race_id));
+      .from("race_withdrawals").select("race_id, withdrawn_reason").eq("team_id", req.team.id);
+    // #6740: en "did_not_start"-afmelding (holdet blev fjernet ved start) frigiver rytterne
+    // som enhver afmelding (bindingMap nedenfor), men kolonnen viser "Did not start".
+    const { withdrawn: voluntaryWithdrawnSet, didNotStart: didNotStartSet } = splitWithdrawals(withdrawals);
+    const withdrawnSet = new Set([...voluntaryWithdrawnSet, ...didNotStartSet]);
 
     // S5 (Lag 3): dominerende terræn pr. kolonne-løb → profil-bevidste rolle-hints
     // (RoleCard). Kun dagens overlap-løb (cols) — lille sæt, genbruger timeline-profilernes
@@ -5322,7 +5325,8 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // gulvet) viste "Lineup locked" med rytterne, som om holdet kørte (Friis 16/10).
     // Best-effort: svigter opslaget, vises kolonnen som før (låst).
     let inFieldByRace = new Map();
-    const startedColIds = cols.filter((r) => (r.stages_completed ?? 0) > 0 && !withdrawnSet.has(r.id)).map((r) => r.id);
+    const startedColIds = cols.filter((r) => (r.stages_completed ?? 0) > 0 && !voluntaryWithdrawnSet.has(r.id)
+      && !didNotStartSet.has(r.id)).map((r) => r.id);
     if (startedColIds.length) {
       try {
         inFieldByRace = await loadTeamsInStartedField({ supabase, raceIds: startedColIds, teamId: req.team.id });
@@ -5360,9 +5364,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         primaryProfileType: dominantTerrain(profTypes),
         primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
-        withdrawn: withdrawnSet.has(race.id),
+        withdrawn: voluntaryWithdrawnSet.has(race.id),
         lineup_locked: startedHere,
-        did_not_start: startedHere && !withdrawnSet.has(race.id) && inFieldByRace.get(race.id) === false,
+        did_not_start: startedHere && !voluntaryWithdrawnSet.has(race.id)
+          && (didNotStartSet.has(race.id) || inFieldByRace.get(race.id) === false),
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
         bindingRiderIds,
         // #3102 PR 2: peaks/payback-overlay til løbskortet (rytter-navne slås op
