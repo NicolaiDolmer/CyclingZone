@@ -1114,8 +1114,8 @@ async function runRaceEntryGeneratorSweepCron() {
 
 // ─── Akademi-intake-udløb (#2627) ─────────────────────────────────────────────
 // Rod-årsag: 'offered'-tilbud har ingen udløbstid, så inaktive holds åbne tilbud
-// akkumulerer og skjuler ryttere for HELE spillerbasen via is_offered_intake_rider
-// (RLS). Sætter 'offered'-rækker ældre end INTAKE_OFFER_EXPIRY_DAYS (7) til
+// akkumulerer og skjuler ryttere for HELE spillerbasen via offered_intake_rider_ids
+// (RLS, #6341). Sætter 'offered'-rækker ældre end INTAKE_OFFER_EXPIRY_DAYS (7) til
 // 'expired' + resolved_at. Gated bag intake_offer_expiry_enabled (fail-safe OFF).
 // Idempotent (WHERE status='offered' i UPDATE'en) → daglig cadence er nok.
 
@@ -2183,7 +2183,7 @@ export function startCron() {
   );
 
   // Every 24 hours: akademi-intake-udløb (#2627) — 'offered'-tilbud ældre end 7
-  // dage sættes til 'expired', så rytteren frigives fra is_offered_intake_rider-
+  // dage sættes til 'expired', så rytteren frigives fra offered_intake_rider_ids-
   // skjulet. Gated bag intake_offer_expiry_enabled (fail-safe OFF). Idempotent
   // (WHERE status='offered') → immediate-run nedenfor er sikkert.
   setInterval(
