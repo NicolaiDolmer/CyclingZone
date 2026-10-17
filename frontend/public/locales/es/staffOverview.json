@@ -1,0 +1,29 @@
+{
+  "page": { "title": "Personal técnico", "subtitle": "{count} responsables en toda la liga" },
+  "filters": {
+    "search": "Buscar",
+    "searchPlaceholder": "Nombre o equipo",
+    "role": "Rol",
+    "allRoles": "Todos los roles",
+    "minTier": "Nivel mín.",
+    "anyTier": "Cualquier nivel",
+    "includeAi": "Incluir equipos IA"
+  },
+  "table": {
+    "name": "Nombre",
+    "role": "Rol",
+    "team": "Equipo",
+    "division": "División",
+    "tier": "Nivel",
+    "specialization": "Especialización",
+    "overall": "Valoración",
+    "salary": "Salario",
+    "mine": "Mío",
+    "ai": "IA",
+    "actions": "Acciones",
+    "count": "Mostrando {filtered} de {total} miembros del personal",
+    "emptyFiltered": "Ningún miembro del personal coincide con tus filtros"
+  },
+  "disabled": { "title": "Aún no disponible", "description": "El área de personal técnico todavía no está abierta." },
+  "error": { "title": "No se pudo cargar el personal técnico", "description": "Algo salió mal al cargar el directorio del personal. Inténtalo de nuevo en un momento.", "retry": "Reintentar" }
+}

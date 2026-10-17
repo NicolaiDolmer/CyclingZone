@@ -1,0 +1,80 @@
+{
+  "title": "Calendario de carreras",
+  "eyebrow": "Temporada {number} · {days} días de carrera",
+  "eyebrowNoDays": "Temporada {number}",
+  "loadingAria": "Cargando el calendario de carreras",
+  "noSeason": {
+    "title": "Sin temporada activa",
+    "desc": "El calendario de carreras aparece aquí cuando hay una temporada programada."
+  },
+  "seasonMenu": {
+    "label": "Temporada",
+    "option": "T{number}"
+  },
+  "notGenerated": {
+    "title": "El calendario de la temporada {number} aún no está listo",
+    "desc": "El programa de carreras de esta temporada todavía no se ha generado. Vuelve a mirar más cerca del inicio de la temporada."
+  },
+  "divisionPending": "La temporada {number} aún no ha empezado. Tu división se decide en el cambio de temporada, así que tus propias carreras no aparecen marcadas.",
+  "empty": {
+    "title": "No hay carreras este mes",
+    "desc": "Usa las flechas del mes para encontrar las carreras programadas."
+  },
+  "tabs": {
+    "mine": "Mi equipo",
+    "all": "Todos los equipos",
+    "divisions": "Divisiones"
+  },
+  "division": "División {n}",
+  "divisionMenu": {
+    "label": "División",
+    "all": "Todas las divisiones"
+  },
+  "poolMenu": {
+    "label": "Grupo",
+    "all": "Todos los grupos"
+  },
+  "filter": {
+    "mine": "Carreras de mi equipo"
+  },
+  "chip": {
+    "stageNum": "etapa {n}",
+    "openRace": "Abrir la planificación de {name}"
+  },
+  "weekday": {
+    "mon": "LUN",
+    "tue": "MAR",
+    "wed": "MIÉ",
+    "thu": "JUE",
+    "fri": "VIE",
+    "sat": "SÁB",
+    "sun": "DOM"
+  },
+  "today": "Hoy",
+  "legend": {
+    "title": "Terreno",
+    "sprint": "Sprint",
+    "cobbles": "Adoquines",
+    "hilly": "Ondulado",
+    "mountain": "Montaña",
+    "itt": "Contrarreloj",
+    "ttt": "Contrarreloj por equipos"
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "cobbles": "Adoquines",
+    "hilly": "Ondulado",
+    "mountain": "Montaña",
+    "itt": "Contrarreloj",
+    "ttt": "Contrarreloj por equipos"
+  },
+  "moreRaces": "+{count} más",
+  "prevMonth": "Mes anterior",
+  "nextMonth": "Mes siguiente",
+  "error": {
+    "title": "No se pudo cargar el calendario",
+    "description": "Algo salió mal al cargar el calendario de carreras. Inténtalo de nuevo en un momento.",
+    "retry": "Reintentar",
+    "session": "Tu sesión ha terminado. Inicia sesión de nuevo para ver el calendario."
+  }
+}

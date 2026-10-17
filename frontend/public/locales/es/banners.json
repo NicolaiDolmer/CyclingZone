@@ -1,0 +1,56 @@
+{
+  "nps": {
+    "question": "¿Qué probabilidad hay de que recomiendes Cycling Zone a un amigo?",
+    "scaleLow": "Poco probable",
+    "scaleHigh": "Muy probable",
+    "reasonLabel": "¿Cuál es el motivo principal? (opcional)",
+    "reasonPlaceholder": "Opcional: el motivo principal, en una o dos frases",
+    "submit": "Enviar",
+    "notNow": "Ahora no",
+    "thanks": "Gracias. Eso me dice en qué trabajar a continuación.",
+    "regionAriaLabel": "Pregunta de opinión",
+    "dismissAriaLabel": "Descartar la pregunta de opinión"
+  },
+  "consent": {
+    "title": "Uso datos para mejorar el juego",
+    "intro": "Tú decides qué puedo medir. Siempre puedes cambiar tus elecciones en tu perfil, en «Privacidad».",
+    "privacyLink": "Leer la política de privacidad",
+    "closeAriaLabel": "Cerrar sin cambiar nada",
+    "alwaysOn": "(siempre activo)",
+    "save": "Guardar mis elecciones",
+    "customize": "Personalizar",
+    "rejectAll": "Solo las necesarias",
+    "acceptAll": "Aceptar todo",
+    "categories": {
+      "necessary": {
+        "label": "Necesarias",
+        "desc": "Inicio de sesión, sesión y los ajustes de tu cuenta. El juego no funciona sin ellas."
+      },
+      "analytics": {
+        "label": "Analítica",
+        "desc": "Mido de forma anónima cómo se usa el juego: qué botones frustran a los jugadores (Microsoft Clarity), de dónde vienen los jugadores (Google Analytics) y las visitas a las páginas (Vercel Web Analytics), para poder corregir una mala UX. PostHog cuenta las visitas a las páginas y los pasos clave del juego sin cookies, y los vincula al ID de tu cuenta cuando inicias sesión. Rechazar la analítica también desactiva PostHog."
+      },
+      "marketing": {
+        "label": "Marketing",
+        "desc": "No se usa hoy. Si algún día muestro anuncios o hago remarketing, solo ocurrirá si aquí dices que sí."
+      },
+      "email_marketing": {
+        "label": "Correo electrónico",
+        "desc": "Boletines ocasionales sobre grandes novedades de la temporada o eventos. Los correos transaccionales (subasta ganada, etc.) no dependen de esta elección."
+      }
+    }
+  },
+  "releaseUpdate": {
+    "title": "Nueva versión lista",
+    "action": "Actualizar",
+    "regionAriaLabel": "Actualización disponible",
+    "unsavedTitle": "Tienes cambios sin guardar. Guarda primero o actualiza de todos modos.",
+    "saveFirst": "Guardar primero",
+    "updateAnyway": "Actualizar de todos modos"
+  },
+  "opsNotice": {
+    "regionAriaLabel": "Estado del servicio",
+    "dismissAriaLabel": "Descartar el aviso",
+    "knownIssuesLink": "Problemas conocidos"
+  }
+}

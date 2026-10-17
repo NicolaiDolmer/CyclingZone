@@ -1,0 +1,79 @@
+{
+  "tab": {
+    "label": "Mensajes"
+  },
+  "list": {
+    "title": "Mensajes",
+    "subtitle": "{count, plural, one {# conversación te espera} other {# conversaciones te esperan}}",
+    "subtitleNone": "Nada nuevo",
+    "emptyTitle": "Aún no hay mensajes",
+    "emptyBody": "Abre el perfil de un mánager y escribe a la persona que hay detrás del equipo. Cerrar un trato es más fácil si puedes preguntar antes.",
+    "emptyAction": "Buscar un mánager",
+    "you": "Tú",
+    "loadError": "No pude cargar tus mensajes. Inténtalo de nuevo.",
+    "retry": "Reintentar"
+  },
+  "thread": {
+    "back": "Todos los mensajes",
+    "placeholder": "Escribe un mensaje",
+    "send": "Enviar",
+    "sending": "Enviando",
+    "counter": "{count}/{max}",
+    "loadMore": "Mostrar mensajes anteriores",
+    "emptyTitle": "Aún no hay mensajes",
+    "emptyBody": "Di lo que quieras y mantén las formas. Todos los mensajes se guardan.",
+    "sendError": "No pude enviarlo. Inténtalo de nuevo.",
+    "tooLong": "Mantenlo por debajo de {max} caracteres.",
+    "openProfile": "Abrir perfil",
+    "blockedNote": "Has bloqueado a este mánager. No verás sus mensajes nuevos hasta que lo desbloquees."
+  },
+  "menu": {
+    "label": "Más",
+    "block": "Bloquear mánager",
+    "unblock": "Desbloquear mánager",
+    "report": "Denunciar conversación",
+    "hide": "Ocultar conversación"
+  },
+  "block": {
+    "title": "¿Bloquear a este mánager?",
+    "body": "No podrá contactar contigo aquí. No se le avisa de que lo has bloqueado.",
+    "confirm": "Bloquear",
+    "cancel": "Cancelar",
+    "done": "Bloqueado",
+    "undone": "Desbloqueado",
+    "error": "No pude hacerlo. Inténtalo de nuevo."
+  },
+  "report": {
+    "title": "Denunciar esta conversación",
+    "body": "Recibo una copia del hilo y lo leo yo mismo. Cuéntame qué está mal.",
+    "reasonLabel": "Qué pasó",
+    "reasonPlaceholder": "Con una o dos frases basta",
+    "confirm": "Enviar denuncia",
+    "cancel": "Cancelar",
+    "done": "Denuncia enviada. La miraré.",
+    "alreadyDone": "Ya denunciaste esta conversación. La tengo.",
+    "tooShort": "Escribe al menos {min} caracteres, para que sepa qué buscar.",
+    "error": "No pude enviar la denuncia. Inténtalo de nuevo."
+  },
+  "hide": {
+    "done": "Conversación oculta. Un mensaje nuevo la hace volver.",
+    "error": "No pude ocultarla. Inténtalo de nuevo."
+  },
+  "start": {
+    "button": "Mensaje",
+    "buttonAria": "Enviar mensaje a {name}",
+    "forumLink": "Mensaje",
+    "dealButton": "Escribir al otro mánager",
+    "title": "Mensaje para {name}",
+    "placeholder": "Escribe un mensaje",
+    "send": "Enviar",
+    "cancel": "Cancelar",
+    "sent": "Mensaje enviado"
+  },
+  "quote": {
+    "transfer_offer": "Oferta de fichaje",
+    "auction": "Subasta",
+    "amount": "{amount} CZ$",
+    "open": "Abrir"
+  }
+}

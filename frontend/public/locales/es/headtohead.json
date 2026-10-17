@@ -1,0 +1,22 @@
+{
+  "title": "Cara a cara",
+  "subtitle": "Compara el historial de dos mánagers",
+  "searchPlaceholder": "Buscar equipos...",
+  "division": "División {n}",
+  "noTeamsFound": "No se han encontrado equipos para «{q}»",
+  "teamA": "Equipo A",
+  "teamB": "Equipo B",
+  "errorLoad": "No se pudieron cargar los datos de la comparación. Inténtalo de nuevo.",
+  "retry": "Reintentar",
+  "seasonStats": "Estadísticas de temporada (todas las temporadas)",
+  "statPoints": "Puntos",
+  "statStageWins": "Victorias de etapa",
+  "statGcWins": "Victorias en la general",
+  "statSeasons": "Temporadas",
+  "transferHistory": "Historial de fichajes entre los equipos",
+  "boughtFrom": "{buyer} ha comprado a {seller}:",
+  "topFive": "{team} · Top 5",
+  "pointsEarnedTitle": "Puntos de carrera obtenidos (todas las temporadas)",
+  "noRiders": "Sin ciclistas",
+  "selectOther": "Selecciona otro equipo para empezar la comparación"
+}
