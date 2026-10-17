@@ -8,7 +8,7 @@
 // nøgler/params er alle rene funktioner af (events, distanceKm) — ingen skjult
 // tilstand, ingen engine-kald.
 
-import { catchActor, findMorningCatch } from "./raceCatchActor.ts";
+import { catchActor, findMorningCatch, findReformationCatches } from "./raceCatchActor.ts";
 
 // gap_update er kurve-punkter (spec §2.2 "(S) kurvepunkter — valg 2"), ALDRIG en
 // narrativ feed-linje — samme udelukkelse som stageTimelineStory.js.
@@ -125,14 +125,32 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
       // Sparse absolute group gaps cannot prove distance to the actual pursuer.
       // Only an explicit pursuit relationship may supply the native break-lead curve.
       const escapeId = formation.params.group_id;
-      const explicit = sorted.filter(event => event.type === "gap_update"
-        && event.params?.group_id === escapeId
+      const explicitPoints = (groupId, fromKm, toKm) => sorted.filter(event => event.type === "gap_update"
+        && event.params?.group_id === groupId
         && typeof event.params?.chase_group_id === "string"
         && Number.isFinite(event.params?.separation_seconds)
         && Number(event.params?.separation_seconds) >= 0
-        && (catchKm == null || event.km <= catchKm));
-      gapCurve = explicit.map(event => ({ km: event.km, gapSeconds: Number(event.params.separation_seconds) }));
+        && (fromKm == null || event.km >= fromKm)
+        && (toKm == null || event.km <= toKm))
+        .map(event => ({ km: event.km, gapSeconds: Number(event.params.separation_seconds) }));
+      gapCurve = explicitPoints(escapeId, null, catchKm);
       if (gapCurve.length && catchKm != null) gapCurve.push({ km: catchKm, gapSeconds: 0 });
+      // #6803: S5's nye udbrud efter en tidlig indhentning (#6369) har sit eget
+      // gruppe-id og sin egen indhentning; kurven følger det samme sted, med nul
+      // mellem de to udbrud. Uden nyt udbrud er løkken tom: etapen er uændret.
+      if (catchKm != null) {
+        for (const { formed, caught } of findReformationCatches(events, startlist)) {
+          const newKm = formed.km;
+          const newCatchKm = caught ? (exactEventKm(caught) ?? caught.km ?? null) : null;
+          if (typeof formed.params?.group_id !== "string" || !Number.isFinite(newKm)) continue;
+          const points = explicitPoints(formed.params.group_id, newKm, newCatchKm);
+          if (!points.length) continue;
+          const lastKm = gapCurve.length ? gapCurve[gapCurve.length - 1].km : null;
+          if (lastKm != null && newKm > lastKm) gapCurve.push({ km: newKm, gapSeconds: 0 });
+          gapCurve.push(...points);
+          if (newCatchKm != null) gapCurve.push({ km: newCatchKm, gapSeconds: 0 });
+        }
+      }
     }
   }
   const finishEvent = sorted.find((e) => e?.type === "finish");
