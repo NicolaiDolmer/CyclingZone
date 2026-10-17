@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { trainingDateDeadline, resolveTrainingDateReadiness, trainingAutopickCandidates } from './trainingDateReadiness.js';
+import { trainingDateDeadline, resolveTrainingDateReadiness, trainingAutopickCandidates, isTrainingDateTeam } from './trainingDateReadiness.js';
 
 test('deadline uses the original date across midnight and Copenhagen DST transitions', () => {
   assert.equal(trainingDateDeadline('2026-09-29').toISOString(), '2026-09-30T00:00:00.000Z');
@@ -73,4 +73,14 @@ test('completed race does not hide a missing load and GC cannot stand in for a t
   input.results = [{ race_id: 'race', stage_number: 1, rider_id: 'waiting', result_type: 'gc' }];
   input.loads = [{ race_id: 'race', stage_number: 1, rider_id: 'waiting', load: 12 }];
   assert.deepEqual(resolveTrainingDateReadiness(input).eligibleRiderIds, ['ready']);
+});
+
+test('#6536: a parked team is outside the training date, also with a division; registered work still settles', () => {
+  const end = new Date('2026-10-02T00:00:00Z');
+  const none = new Set();
+  assert.equal(isTrainingDateTeam({ id: 'a', league_division_id: 'd' }, none, end), true);
+  assert.equal(isTrainingDateTeam({ id: 'p', league_division_id: 'd', parked_at: '2026-09-27T18:59:00Z' }, none, end), false);
+  assert.equal(isTrainingDateTeam({ id: 'p', league_division_id: 'd', parked_at: '2026-09-27T18:59:00Z' }, new Set(['p']), end), true);
+  assert.equal(isTrainingDateTeam({ id: 'b', is_bank: true }, none, end), false);
+  assert.equal(isTrainingDateTeam({ id: 'n', created_at: '2026-10-03T00:00:00Z' }, none, end), false);
 });
