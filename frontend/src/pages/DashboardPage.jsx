@@ -1,6 +1,5 @@
 ﻿import { useState, useEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
-import { getRaceDayPoints } from "../lib/rankingsApi.ts";
 import { supabase } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { isNetworkError } from "../lib/networkErrorGuards.ts"; // #5312/#5322
@@ -83,16 +82,13 @@ import {
 import SeasonSignupCard from "../components/SeasonSignupCard"; // [epic #4592 del 3] #452
 import { computeDashboardGoldCta } from "../lib/dashboardGoldCta.js";
 import { resolveSeasonMovement } from "../lib/seasonRecapData.js";
-// vk-movement-signals — bevægelses-signaler på "My division standings":
-// divisionsplacering + holdpoint siden sidste afsluttede løbsdag i egen pulje.
-import { findLastCompletedRaceDay, sumPointsByTeam, computeDivisionMovement } from "../lib/dashboardMovementSignals.js";
 import { fetchReservedBalance, computeAvailableBalance } from "../lib/availableBalance.js";
 import { readCachedAcademyNav } from "../lib/academyNavVisibility";
 import { buildRiderRankingLink } from "../lib/riderRankingDivisionLink";
 import {
-  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ArrowUpIcon, ChevronRightIcon, CheckIcon, DiscordIcon,
+  Card, AlertTriangleIcon, XIcon, ArrowDownIcon, ChevronRightIcon, DiscordIcon,
   PageLoader, PageHeader, Section, SectionHeader, SectionAction, Button, ErrorState,
-  SkeletonLines, EmptyState, ProgressMeter,
+  SkeletonLines, EmptyState, ProgressMeter, StatusBadge,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { flushPendingSignup, logFirstEvent, logTeamCreated, logTeamDrafted } from "../lib/logEvent";
@@ -187,10 +183,6 @@ export default function DashboardPage() {
   // load — samme false-empty-faelde som #3510 loeste for recentResults/riderRanking.
   const [teamRaceIdsLoaded, setTeamRaceIdsLoaded] = useState(false);
   const [standings, setStandings] = useState([]);
-  // vk-movement-signals — hold-point pr. hold for SIDSTE afsluttede
-  // løbsdag i egen pulje (team_id → sum af race_points). {} = ingen data endnu
-  // (før hentet, eller ingen afsluttet løbsdag) → movement-badges vises ikke.
-  const [lastRaceDayPoints, setLastRaceDayPoints] = useState({});
   // #2182 — league_divisions (alle puljer, ~15 rækker reference-data). Bruges til
   // at afgøre om egen tier har >1 pulje (hasPoolSubtabs) + puljens label i titlen.
   const [pools, setPools] = useState([]);
@@ -325,36 +317,26 @@ export default function DashboardPage() {
   // vinduet lukker af sig selv uden reload og uden urent new Date() i render.
   const seasonStartWindowOpen = isSeasonStartWindow(seasonInfo, new Date(nowMs));
 
-  // #4160 — de to opslag der forudsaetter loadAll'ets id-lister. De laa foer som
-  // to ekstra `await`-trin MIDT i loadAll og skoed dermed HELE sidens foerste
-  // maling to tur/retur laengere ud. De fodrer et filter paa "Kommende loeb" og
-  // to bevaegelses-badges paa stillings-modulet — ingen af delene er sidens
-  // hovedindhold, saa de hydrerer nu selvstaendigt. Egen try/catch: DASHBOARD_
+  // #4160 — opslaget der forudsaetter loadAll'ets id-liste. Det laa foer som
+  // et ekstra `await`-trin MIDT i loadAll og skoed dermed HELE sidens foerste
+  // maling en tur/retur laengere ud. Det fodrer et filter paa "Kommende loeb",
+  // som ikke er sidens hovedindhold, saa det hydrerer nu selvstaendigt. Egen try/catch: DASHBOARD_
   // RULES.md §3 ("et modul maa aldrig kunne vaelte dashboardet") — en fejl her
   // maa ikke saette sidens error-state.
-  async function loadDependentRows(teamId, raceIds, poolRaces) {
+  async function loadDependentRows(teamId, raceIds) {
     try {
-      // vk-movement-signals: sidste afsluttede loebsdag i egen pulje. Ingen
-      // afsluttet loebsdag endnu → ingen query, {} forbliver ({}=intet at vise).
-      const lastRaceDay = findLastCompletedRaceDay(poolRaces);
-      const [teamRaceEntriesRes, lastRaceDayPointsRes] = await Promise.all([
-        // #3751: holdets EGNE race_entries — kun for de loeb Dashboard rent
-        // faktisk viser. pagination-safe: dobbelt afgraenset — eet hold
-        // (RLS-scoped team_id) OG hoejst 50 race_id'er (racesRes' .limit(50)),
-        // saa raekketallet er langt under PostgREST's 1000-loft (#3331).
-        raceIds.length
-          ? supabase.from("race_entries").select("race_id")
-              .eq("team_id", teamId).in("race_id", raceIds)
-          : Promise.resolve({ data: [] }),
-        lastRaceDay?.raceIds.length
-          ? getRaceDayPoints(lastRaceDay.raceIds)
-          : Promise.resolve({ data: [] }),
-      ]);
+      // #3751: holdets EGNE race_entries — kun for de loeb Dashboard rent
+      // faktisk viser. pagination-safe: dobbelt afgraenset — eet hold
+      // (RLS-scoped team_id) OG hoejst 50 race_id'er (racesRes' .limit(50)),
+      // saa raekketallet er langt under PostgREST's 1000-loft (#3331).
+      const teamRaceEntriesRes = raceIds.length
+        ? await supabase.from("race_entries").select("race_id")
+            .eq("team_id", teamId).in("race_id", raceIds)
+        : { data: [] };
       // #3751: distinkte race_id'er holdet har mindst een entry i.
       setTeamRaceIds(new Set((teamRaceEntriesRes.data || []).map((e) => e.race_id)));
-      setLastRaceDayPoints(sumPointsByTeam(lastRaceDayPointsRes.data || []));
     } catch {
-      // best-effort: filteret forbliver ufyldt og bevaegelses-badges udebliver.
+      // best-effort: filteret forbliver ufyldt.
       // Ingen af delene vaelter siden (DASHBOARD_RULES.md §3).
     } finally {
       // Flaget skal saettes OGSAA paa fejlstien: ellers ville "Kommende loeb"
@@ -462,11 +444,8 @@ export default function DashboardPage() {
     // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
     // så vi kan vise kørt/muligt for puljen i stedet for det sæson-globale tal. Klient-side
     // (races er public-read via RLS); ingen migration.
-    // vk-movement-signals: id + game_day_start tilføjet til selectet (2 ekstra kolonner, SAMME
-    // query — ingen ny round-trip) — genbruges af findLastCompletedRaceDay til at
-    // finde sidste afsluttede løbsdag i puljen (movement-signalerne nedenfor).
     const poolRacesPromise = activeSeason && teamData.league_division_id != null
-      ? supabase.from("races").select("id, stages, stages_completed, status, game_day_start")
+      ? supabase.from("races").select("stages, stages_completed, status")
           .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
       : Promise.resolve({ data: [] });
 
@@ -557,7 +536,7 @@ export default function DashboardPage() {
     // harness gav fri hydrering CLS 0,130 mod 0,064 paa main, mod ca. 300 ms
     // LCP. Skreddet vejer tungere end de 300 ms.
     const racesForTeamCheck = (racesRes.data || []).map((r) => r.id);
-    const dependentRowsPromise = loadDependentRows(teamData.id, racesForTeamCheck, poolRacesRes.data || []);
+    const dependentRowsPromise = loadDependentRows(teamData.id, racesForTeamCheck);
 
     setReservedBalance(reservedBalanceValue || 0);
     setSeasonInfo(activeSeason || null);
@@ -1146,19 +1125,12 @@ export default function DashboardPage() {
   // #3506: _rank er nu det kanoniske, Standings-konsistente tal (AI-hold med
   // i rangberegningen, jf. #1718). myManagerRank er det sekundære "blandt
   // managere"-tal (kun menneskehold), vist som lille tillægslinje på egen række.
-  const { hasPoolSubtabs, ownPoolRow, divStandingsAll, divStandingsTop, divStandings, myManagerRank } =
+  const { hasPoolSubtabs, ownPoolRow, divStandingsTop, divStandings, myManagerRank } =
     computeMyDivisionStandings(standings, team, pools);
   // #5315 — "Full standings" skal lande på managerens egen pulje/gruppe (samme
   // kilde som modulet selv viser), ikke hele divisionen. Fallder tilbage til
   // almindeligt /standings (dagens adfærd) når puljen endnu er ukendt.
   const standingsLink = buildStandingsLink(hasPoolSubtabs, ownPoolRow);
-
-  // vk-movement-signals — divisionsplacering + holdpoint siden sidste
-  // afsluttede løbsdag i egen pulje. null/0 → ingen badge (ingen "0"-støj,
-  // samme konvention som GlobalRankWidget's movement != null && movement !== 0).
-  const { rankMovement, pointsDelta } = computeDivisionMovement({
-    divStandingsAll, myTeamId: team?.id, pointsByTeam: lastRaceDayPoints,
-  });
 
   const pendingIncoming = pendingIncomingCount;
   const activeMarketOffers = activeOffers.filter(o =>
@@ -1822,12 +1794,15 @@ export default function DashboardPage() {
                     {/* #1828: et igangværende etapeløb vises "Live" + etape-fremdrift i stedet for datoen. */}
                     {deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live" ? (
                       <span className="inline-flex flex-col items-end gap-0.5">
-                        <span className="inline-flex items-center gap-1 text-3xs uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
+                        {/* #6717: spillets status-maerke (5 px radius, samme anatomi som
+                            "Overgaaet" paa bestyrelseskortet), ikke en rund guld-pille. Rolig
+                            info-tone (ejer 16/10): et loeb i gang er normal drift, ikke en fejl. */}
+                        <StatusBadge state="info" emphasis>
                           {t("dashboard:cards.races.live")}
                           {race.race_type === "stage_race" && (
-                            <span className="font-mono normal-case tracking-normal">{race.stages_completed}/{race.stages}</span>
+                            <span>{race.stages_completed}/{race.stages}</span>
                           )}
-                        </span>
+                        </StatusBadge>
                         {nextStageByRace[race.id] && (
                           <span className="text-3xs text-cz-3 tabular-nums">{formatCountdown(nextStageByRace[race.id], nowMs, t)}</span>
                         )}
@@ -1891,23 +1866,8 @@ export default function DashboardPage() {
                         leder-guldet. Samme opdeling som .cz-me / .cz-me-bar i
                         tabellerne, saa dashboardet ser ud som /standings. */}
                     <Link to={standingsLink}
-                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-lg transition-colors ${isLeader ? "bg-cz-accent/8" : "hover:bg-cz-subtle"}`}>
+                      className={`${isMe ? (isLeader ? "cz-me-block-bar " : "cz-me-block ") : ""}flex items-center gap-3 py-1.5 -mx-2 px-2 rounded-cz transition-colors ${isLeader ? "bg-cz-accent/8" : "hover:bg-cz-subtle"}`}>
                       <span className={`font-mono text-xs w-4 text-right shrink-0 ${isLeader ? "text-cz-accent-t" : "text-cz-3"}`}>#{s._rank}</span>
-                      {/* vk-movement-signals — divisionsplacerings-bevægelse siden
-                          sidste løbsdag, KUN på egen række. null/0 = ingen løbsdag endnu
-                          eller uændret placering → ingen badge (ingen "0"-støj, samme
-                          konvention som GlobalRankWidget). */}
-                      {isMe && rankMovement != null && rankMovement !== 0 && (
-                        <span
-                          title={t("dashboard:cards.standings.movementTitle")}
-                          className={`font-mono text-3xs font-bold inline-flex items-center gap-0.5 shrink-0 ${rankMovement > 0 ? "text-cz-success" : "text-cz-danger"}`}
-                        >
-                          {rankMovement > 0
-                            ? <ArrowUpIcon size={11} aria-hidden="true" />
-                            : <ArrowDownIcon size={11} aria-hidden="true" />}
-                          {Math.abs(rankMovement)}
-                        </span>
-                      )}
                       <div className="w-28 shrink-0 min-w-0">
                         <div className="flex items-center gap-1 min-w-0">
                           <p className={`text-sm truncate ${isMe ? "text-cz-1 font-medium" : "text-cz-2"}`}>{s.team?.name}</p>
@@ -1941,16 +1901,6 @@ export default function DashboardPage() {
                           ariaLabel={t("dashboard:cards.standings.title", { division: team?.division })}
                         />
                         <span className="font-data text-xs text-cz-2 w-8 text-right tabular-nums">{s.total_points || 0}</span>
-                        {/* vk-movement-signals — holdpoint siden sidste løbsdag ("+86"), KUN på egen
-                            række. 0 point den dag = ingen badge (ingen "0"-støj). */}
-                        {isMe && pointsDelta != null && pointsDelta !== 0 && (
-                          <span
-                            title={t("dashboard:cards.standings.pointsDeltaTitle")}
-                            className={`font-mono text-3xs font-bold tabular-nums shrink-0 ${pointsDelta > 0 ? "text-cz-success" : "text-cz-danger"}`}
-                          >
-                            {formatNumber(pointsDelta, { signDisplay: "exceptZero" })}
-                          </span>
-                        )}
                       </div>
                     </Link>
                   </Fragment>
@@ -2084,7 +2034,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-1">
               {riderRanking.map((r, i) => (
                 <RiderLink key={r.rider_id} id={r.rider_id}
-                  className="flex items-center gap-3 py-1.5 hover:bg-cz-subtle rounded-lg -mx-2 px-2 transition-colors">
+                  className="flex items-center gap-3 py-1.5 hover:bg-cz-subtle rounded-cz -mx-2 px-2 transition-colors">
                   <span className={`font-mono text-xs w-4 text-right shrink-0 ${i === 0 ? "text-cz-accent-t" : "text-cz-3"}`}>#{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-cz-1 text-sm truncate">
@@ -2149,22 +2099,21 @@ export default function DashboardPage() {
                 <div className="mt-4 pt-4 border-t border-cz-border">
                   <p className="text-cz-1 text-sm font-medium">{resolveBoardFeedbackHeadline(t, boardOutlook.feedback)}</p>
                   <p className="text-cz-2 text-xs mt-1">{resolveBoardFeedbackSummary(t, boardOutlook.feedback)}</p>
-                  <div className="grid sm:grid-cols-4 gap-3 mt-3">
+                  {/* #6717: maalets navn oeverst (ombrydes, aldrig afskaaret),
+                      derunder status-maerke + procent, saa bjaelken. 2 kolonner
+                      ogsaa paa mobil: kortet deler raekke med Global Rank, saa 4
+                      kolonner pressede navnet ud til "RANGERI…". */}
+                  <div className="grid grid-cols-2 gap-3 mt-3">
                     {Object.values(boardOutlook.score_breakdown?.categories || {}).map((category) => (
-                      <div key={category.key} className="bg-cz-subtle rounded-cz p-3 border border-cz-border">
-                        <div className="flex items-center justify-between gap-1 mb-1">
-                          <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 truncate">{resolveCategoryLabel(t, category)}</p>
-                          <span className="flex items-center gap-1 shrink-0">
-                            {category.score_pct > 100 && (
-                              <span
-                                className="inline-flex items-center gap-0.5 text-3xs font-medium text-cz-success bg-cz-success-bg/60 rounded px-1 leading-tight"
-                                title={t("dashboard:cards.board.exceedsTitle")}
-                              >
-                                <CheckIcon size={10} aria-hidden="true" /> {t("dashboard:cards.board.exceeds")}
-                              </span>
-                            )}
-                            <span className="text-cz-2 text-3xs font-mono">{Math.min(100, category.score_pct)}%</span>
-                          </span>
+                      <div key={category.key} className="flex flex-col bg-cz-subtle rounded-cz p-3 border border-cz-border">
+                        <p className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 break-words hyphens-auto">{resolveCategoryLabel(t, category)}</p>
+                        <div className="flex items-center justify-between gap-2 mt-auto pt-1 mb-1.5 min-h-6">
+                          {category.score_pct > 100 ? (
+                            <StatusBadge state="won" emphasis className="whitespace-nowrap">
+                              <span title={t("dashboard:cards.board.exceedsTitle")}>{t("dashboard:cards.board.exceeds")}</span>
+                            </StatusBadge>
+                          ) : <span aria-hidden="true" />}
+                          <span className="text-cz-2 text-xs font-data tabular-nums">{Math.min(100, category.score_pct)}%</span>
                         </div>
                         <ProgressMeter
                           value={Math.min(100, category.score_pct)}

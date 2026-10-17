@@ -34,7 +34,7 @@ Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekani
 | Del | Godkendt slutbillede for det eksisterende rework | Kilde/bevis |
 |---|---|---|
 | Tre parallelle planer og satisfaction-tal | Erstattes af én relation med confidence, ét årligt mandat og langsigtede visions-milepæle | Spec 7/8 §3; `boardMandate.js`, `boardMandateEngine.js` |
-| Managerens forhandling | Ét årsmøde med fokusvalg, Easier/Keep/Stretch, anmodning og underskrift; mid-season/ekstraordinær samtale består som retning | Spec §3.2-3.3; `boardMandateMeeting.js`; `annualMeeting/AnnualMeetingPage.jsx`; PR #4656/#4661 |
+| Managerens forhandling | Ét årsmøde med fokusvalg, Easier/Keep/Stretch, anmodning og underskrift; mid-season/ekstraordinær samtale består som retning | Spec §3.2-3.3 (layout: inde i Layout med venstremenu, jf. slice 09c §4.7, #5848); `boardMandateMeeting.js`; `annualMeeting/AnnualMeetingPage.jsx`; PR #4656/#4661 |
 | Navngivne medlemmer og mål-ejerskab | Bevares og får stemme, kvitteringer, referater og medlemsvisning | Addendum 1/9 A3; `boardVoice.js`, `BoardCard.jsx`; PR #4558 |
 | Langsigtede mål | Bliver visions-milepæle med oprindelige frister; tidligt opnået milepæl fejres straks, nyt slot-forslag ved næste årsmøde | Addendum 1/9 A7 afløser spec'ens venten til målsæsonen for tidlig opfyldelse |
 | Sponsorsamtale | Flyttet til egen Sponsors-side; den økonomiske kobling til bestyrelsens tillid består | §5; merged PR #4843; `SponsorsPage.jsx`, `App.jsx` |

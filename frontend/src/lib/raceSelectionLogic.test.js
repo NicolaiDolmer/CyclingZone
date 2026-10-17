@@ -171,3 +171,17 @@ test("partialSquadOutlook: 0 valgt, præcis gulvet frie riders → assistenten f
   assert.equal(out.kind, "assistantFills");
   assert.equal(out.emptySelection, true);
 });
+
+test("partialSquadOutlook: regel B, skade efter udtagelsen -> startsShort (#6740)", () => {
+  // Friis/Léman: 5 raske + 1 skadet udtaget, ingen frie.
+  assert.deepEqual(partialSquadOutlook({ selected: 5, injured: 1, free: 0, fieldMax: 7 }),
+    { kind: "startsShort", open: 1, free: 0, injured: 1, starters: 5, min: MIN_RACE_ENTRIES });
+  // 2 skadede, 1 fri: assistenten fylder delvist, 5 starter.
+  assert.equal(partialSquadOutlook({ selected: 4, injured: 2, free: 1, fieldMax: 7 }).starters, 5);
+  // Frie nok til gulvet: almindelig opfyldning, ikke startsShort.
+  assert.equal(partialSquadOutlook({ selected: 5, injured: 1, free: 3, fieldMax: 7 }).kind, "assistantFills");
+  // Havde aldrig gulvet: gulvet gælder.
+  assert.equal(partialSquadOutlook({ selected: 4, injured: 1, free: 0, fieldMax: 7 }).kind, "willNotStart");
+  // Alle skadede og ingen frie: ingen at starte med.
+  assert.equal(partialSquadOutlook({ selected: 0, injured: 6, free: 0, fieldMax: 7 }).kind, "willNotStart");
+});

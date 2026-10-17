@@ -288,6 +288,21 @@ En prior-født rytter seeder sin fysiologi fra sine EGNE evner (samme 0-99-skala
 
 Dry-run-tallene (antal, værdi- og evnefordeling, pr. hold) skrives kun til `balance-internals/` via `--out` (hard rule 17). Felt-gaten for ungdomsløb (C1) måles af `backend/scripts/measureYouthFieldGate.mjs`, som bruger samme plan-funktion, så måling og apply ikke kan se to forskellige kuld (YOUTH_RULES §2.3).
 
+### 8b4. AI-ungdom på menneskeholdenes niveau ([#6668](https://github.com/NicolaiDolmer/CyclingZone/issues/6668), ejer 15/10 på #6667)
+
+Kontrakten i §8b2/§8b3 (U23-båndet for U23, akademibåndet for juniorer) er ikke længere den eneste, når generatoren køres med niveau-flagene. Det her afsnit er SSOT for den udvidede kontrakt; spillereglen står i `YOUTH_RULES.md`.
+
+| Regel | Hvordan |
+|---|---|
+| Mål | AI-holdenes ungdom får samme niveaufordeling PR. ALDER som menneskeholdenes ungdom. Fordelingen læses empirisk fra menneskeholdene ved kørslen; er der for få ryttere på en alder, løftes den alder ikke, og truppens eget bånd gælder uændret |
+| `--match-human-level` | Nye kuld får et mål-niveau pr. alder. Fødslen vælges blandt de fødsels-markører spillet allerede kender (truppens eget bånd samt de voksne tiers) over et lille deterministisk sæt af seeds; den markør hvis reproducerede evner ligger tættest på målet vinder. Der er ingen ny formel og intet nyt bånd |
+| `--lift-existing` | Indebærer `--match-human-level`. Giver også de AI-ungdomsryttere der allerede findes en ny fødsels-markør og gentager derive. Navn, kontrakt, løn og anlæg er urørt; AI-rytterne får hver sin kvantil af menneskefordelingen, så rangordenen bevares. Et løft sænker aldrig en rytters niveau |
+| Markøren kan have en voksen-tier | Markøren skal fortsat persisteres, så `deriveForRiderIds` og enhver heal-sweep reproducerer netop det valgte træk (§8b). Markørens tier afgør derfor ikke længere alene om et hold har en U23-trup; idempotensen i §8b3 genkender en U23-trup på trup-feltet eller markøren |
+| Gates | Værdiloftet (#2065) tjekkes på løftet FØR første skrivning; er et løft over loftet, blokeres apply. Alders-aksen og spejlings-gaten i §8b3 gælder uændret |
+| Kørsel | Dry-run er default; `--apply` kræver `--owner-go` og at målsæsonen er den aktive. Tal og fordelinger skrives kun til `balance-internals/` (hard rule 17) |
+
+Gruppernes størrelse (`seedYouthPools.js --regroup`) ændrer ikke hvordan ryttere fødes og er beskrevet i `YOUTH_RULES.md`.
+
 ## 8c. Den synlige test af generatoren ([#5283](https://github.com/NicolaiDolmer/CyclingZone/issues/5283))
 
 **Ejer-krav 15/9, ordret** (ved merge-go på PR #5278): *"Vi skal have lavet test inden naeste gang der laves nye ryttere, for at se at rytter generatoren virker ordentligt."* Gaten ligger FØR U23-ryttere genereres til AI-holdene ved S4-cutover ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md)).

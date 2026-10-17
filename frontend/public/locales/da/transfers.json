@@ -1,8 +1,8 @@
 {
   "page": {
     "title": "Transfers",
-    "subtitle": "Forhandle direkte med andre managers",
-    "subtitleWithBalance": "Forhandle direkte med andre managers · Balance {balance} CZ$",
+    "subtitle": "Forhandle direkte med andre managere",
+    "subtitleWithBalance": "Forhandle direkte med andre managere · Balance {balance} CZ$",
     "balance": "Balance",
     "loadingAria": "Indlæser transfers"
   },
@@ -106,6 +106,7 @@
       "newOffer": "Nyt bud",
       "withdraw": "Træk tilbage",
       "withdrawOffer": "Træk tilbud tilbage",
+      "withdrawCounter": "Træk modbud tilbage",
       "confirmDeal": "✓ Bekræft handel ({amount} CZ$)",
       "cancelDeal": "Annuller handel",
       "archive": "Arkivér"
@@ -236,7 +237,7 @@
   },
   "empty": {
     "received": "Kig på markedet imens",
-    "receivedHint": "Andre managers sender tilbud på dine ryttere fra rytterens side.",
+    "receivedHint": "Andre managere sender tilbud på dine ryttere fra rytterens side.",
     "sent": "Send dit første tilbud",
     "sentHint": "Åbn en rytters side og klik \"Send transfertilbud\".",
     "archive": "Se dine åbne forhandlinger",
@@ -259,6 +260,7 @@
     "dealCancelled": "Handel annulleret",
     "transferRejected": "Transfer afvist",
     "counterSent": "Modbud sendt",
+    "counterWithdrawn": "Modbud trukket tilbage",
     "newOfferSent": "Nyt bud sendt",
     "offerWithdrawn": "Tilbud trukket tilbage",
     "offerArchived": "Tilbud arkiveret",

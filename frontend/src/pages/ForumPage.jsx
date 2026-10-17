@@ -68,7 +68,7 @@ function PostRow({ post, t, language }) {
       to={`/forum/${post.id}`}
       className="block py-[13px] transition-colors hover:bg-cz-subtle -mx-2 px-2"
     >
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
         <span className="flex min-w-0 items-center gap-2">
           {/* #4118/#3451: gul prik — samme markup/farve som nav-prikken
               (Layout.jsx), ikke et nyt visuelt sprog. Kun dekorativ; den
@@ -80,11 +80,11 @@ function PostRow({ post, t, language }) {
               <span className="sr-only">{t("list.unread")}</span>
             </span>
           )}
-          {/* #5383: samme klipning som dashboardets forum-kort — `title` holder
-              hele overskriften tilgaengelig naar cellen er for smal. */}
+          {/* #6728 (fund 11): som dashboardets forum-kort ombrydes titlen paa
+              mobil, og tallene staar under den i stedet for at klemme den. */}
           <span
             title={post.title}
-            className={`min-w-0 truncate text-[13.5px] text-cz-1 ${post.is_unread ? "font-semibold" : "font-medium"}`}
+            className={`min-w-0 break-words sm:truncate text-[13.5px] text-cz-1 ${post.is_unread ? "font-semibold" : "font-medium"}`}
           >
             {post.title}
           </span>
@@ -97,10 +97,10 @@ function PostRow({ post, t, language }) {
           {t("stats.views", { count: post.view_count ?? 0 })}
         </span>
       </div>
-      <div className="mt-0.5 flex items-center gap-2 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-data text-2xs uppercase tracking-[.04em] text-cz-3">
         {post.is_pinned && <span className="text-cz-accent-t">{t("post.pinnedTag")}</span>}
         {post.has_poll && <span className="text-cz-accent-t">{t("list.poll")}</span>}
-        <span className="truncate">
+        <span className="min-w-0 [overflow-wrap:anywhere]">
           {t("list.by", { name: authorDisplayName(post.author) })}
         </span>
         {/* #4649: Founder-mærke ved forfatterlinjen. */}

@@ -14,6 +14,7 @@ import { statStyle } from "../lib/statColor";
 import { useSortState, sortRows } from "../lib/useTableSort.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import { initialsFrom } from "../components/ui/avatarStyles.js";
+import Tooltip from "../components/ui/Tooltip.jsx";
 import { isValidDiscordSnowflake } from "../lib/discordHandle.js";
 import {
   Card,
@@ -63,27 +64,33 @@ function AchievementBadge({ achievement }) {
   // uden oversættelse endnu (#1103 — founder_badge er første tosprogede badge).
   const title = t(`${achievement.id}.title`, { defaultValue: achievement.title });
   const description = t(`${achievement.id}.description`, { defaultValue: achievement.description });
+  // #6728: boblen var et usynligt, absolut placeret lag, som ved skærmkanten
+  // gjorde profilen 10 px bredere end en 375 px telefon. Tooltip renderer kun
+  // den åbne boble og holder den inden for skærmen. Mærket er en knap, så et
+  // tryk på mobil giver fokus, og boblen også kan åbnes uden mus.
+  const tip = (
+    <span className="block w-44">
+      <span className="block text-cz-1 text-xs font-bold">{isLocked && achievement.is_secret ? "???" : title}</span>
+      {(!isLocked || !achievement.is_secret) && (
+        <span className="block text-cz-2 text-3xs mt-0.5 leading-relaxed">{description}</span>
+      )}
+      {achievement.unlocked_at && (
+        <span className="block text-cz-accent-t/60 text-3xs mt-1">
+          {formatDate(achievement.unlocked_at)}
+        </span>
+      )}
+    </span>
+  );
   return (
-    <div className="group relative">
-      <div className={`w-10 h-10 rounded-cz flex items-center justify-center border transition-all
+    <Tooltip label={tip}>
+      <button type="button" aria-label={isLocked && achievement.is_secret ? "???" : title}
+        className={`w-10 h-10 rounded-cz flex items-center justify-center border transition-all cursor-help
         ${isLocked ? "bg-cz-subtle border-cz-border opacity-40 grayscale" : "bg-cz-accent/10 border-cz-accent/30"}`}>
         {isLocked && achievement.is_secret
           ? <LockIcon size={16} className="text-cz-3" />
           : <TrophyIcon size={18} className={isLocked ? "text-cz-3" : "text-cz-accent"} aria-hidden="true" />}
-      </div>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 w-44
-        opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <p className="text-cz-1 text-xs font-bold">{isLocked && achievement.is_secret ? "???" : title}</p>
-        {(!isLocked || !achievement.is_secret) && (
-          <p className="text-cz-2 text-3xs mt-0.5 leading-relaxed">{description}</p>
-        )}
-        {achievement.unlocked_at && (
-          <p className="text-cz-accent-t/60 text-3xs mt-1">
-            {formatDate(achievement.unlocked_at)}
-          </p>
-        )}
-      </div>
-    </div>
+      </button>
+    </Tooltip>
   );
 }
 

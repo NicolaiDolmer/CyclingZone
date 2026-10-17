@@ -174,6 +174,10 @@ export const ALL_CRON_MONITORS = [
   ["entry-generator", CRON_MONITOR_60MIN],
   ["ownership-invariant-watch", CRON_MONITOR_24H],
   ["rider-double-booking-watch", CRON_MONITOR_24H],
+  // #6489: trup-port-vagt — daglig READ-ONLY tælling af startliste-rækker i
+  // ikke-startede løb som rytteren ikke må køre (anden trup, andet hold,
+  // pensioneret). DB-triggeren holder tallet på 0; vagten beviser det.
+  ["squad-entry-gate-watch", CRON_MONITOR_24H],
   // #3639: trænings-slot-vagt — daglig tælling af træningsfokus uden hovedrum.
   ["training-slot-health-watch", CRON_MONITOR_24H],
   ["intake-offer-expiry", CRON_MONITOR_24H],
@@ -215,7 +219,7 @@ export const ALL_CRON_MONITORS = [
   // selv (dør hele cron-processen, fyrer ingen tick — samme blinde vinkel som
   // stall-watchdog'en har for sin egen død).
   ["cron-heartbeat-sweep", CRON_MONITOR_5MIN],
-  // #4419: søndagens værdi-pipeline (v4-refresh + markedsblend). Samme
+  // #4419: søndagens værdi-pipeline (værdi-refresh; markedsblendet fjernet i #6642). Samme
   // begrundelse som market-value-level-correction-gate ovenfor: tikket kalder gennem hver time og
   // returnerer normalt (ran:false, skipped:"not_sunday"/"before_window") uden
   // for vinduet, så en 60min-monitor er ærlig hele ugen.

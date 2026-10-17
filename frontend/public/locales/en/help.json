@@ -29,7 +29,7 @@
           "Create an account and log in.",
           "Pick a team name and a manager name in the welcome wizard. Both fields are required before you can continue.",
           "The welcome modal opens automatically the first time and walks you through the three core features: Market, Auctions and Board. It links directly to Help & Rules.",
-          "You start in Division 3 with a starting budget of {startingBalance} CZ$.",
+          "You start in Division 4 with a starting budget of {startingBalance} CZ$.",
           "Go to Riders and find free riders you want to bid on.",
           "Start an auction on a rider. If you win the auction, the rider is yours.",
           "You begin with a {initialSquad}-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
@@ -321,7 +321,7 @@
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
+        "text": "A green dot next to a manager's name means they are active right now (last seen within 30 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
       },
       "managersOnline": {
         "title": "Managers online count",
@@ -774,7 +774,7 @@
       "label": "Divisions",
       "overview": {
         "title": "Division overview",
-        "text": "The game has 4 divisions. Division 1 is the highest. Everyone starts in Division 3."
+        "text": "The game has 4 divisions. Division 1 is the highest. New teams start in Division 4."
       },
       "sizePerDivision": {
         "title": "Squad size per division",
@@ -1197,6 +1197,14 @@
         "title": "Season intake cohort",
         "text": "At the start of each season the system generates a small cohort of prospects for your club. Prospects are teenagers, so they start with low, raw stats: judge them mainly by their potential rather than their current numbers, and scout a prospect to narrow down how far it can go. You can then decide how many (if any) to sign, and you are never forced to sign anyone. New academy candidates arrive every Sunday. Candidates you don't sign or reject expire after 7 days."
       },
+      "intakeProfile": {
+        "title": "Your weekly intake and the Academy Expansion",
+        "text": "Each week you bring in your intake with one click on the Academy page. The Academy Expansion on the Club page decides how big it is: 2 candidates without it, 3 from level 2 and 4 at level 5. From level 1 you can give the intake a profile, a nationality or region, from level 3 also a rider type, and from level 4 one extra choice. Every level makes the profile pull a little harder, but it never decides the whole intake, and talent is drawn the same way at every level. You can change the profile whenever you like; a change takes effect after 2 weeks. The Academy Expansion has no chief."
+      },
+      "prognosisTraining": {
+        "title": "Learning a prospect's potential",
+        "text": "When you bring in a candidate you see his name, age, nationality, rider type and current abilities. His potential reads Learned through training: you find out by having him on your team. After about 10 race days of training you get a first, wide forecast, after about 30 a narrow one, and after a full season the final one. A better Training Center and a stronger Sports Director get you there sooner. They make you surer of the rider, they don't make him better."
+      },
       "signingProspects": {
         "title": "Signing prospects",
         "steps": [
@@ -1262,6 +1270,10 @@
         "title": "Do U23 team and Junior team actually race?",
         "text": "Yes, from season 4. Each tier races on its own calendar with its own standings, on the same race engine as Senior. There is no prize money for youth races to start with."
       },
+      "startFloor": {
+        "title": "How many riders do I need to start a youth race?",
+        "text": "At least 6, the same as for senior. If your U23 or junior team has fewer than 6 riders in the line-up when the race starts, it does not start, so there is no result from it. Youth races shows a warning under Your team for every open race below 6; open the race and add riders. You can still save fewer than 6, nothing blocks you. Once the race starts the line-up is locked."
+      },
       "trainOnly": {
         "title": "Can a youth squad skip races and only train?",
         "text": "Yes. On the U23 team or Junior team page, set Races to Train only. The assistant then stops entering that squad, and you can't enter it by hand. It takes effect from the next race day that isn't locked: riders already entered for a locked day ride that race, and entries for later races are removed. Your riders train on every day without a race. Switch back to Enter races and the assistant enters the squad again from the next unlocked race day. Your senior team is not affected."
@@ -1302,8 +1314,8 @@
           ],
           [
             "Academy Expansion",
-            "Adds extra Academy intake slots",
-            "Coming soon"
+            "More candidates in your weekly intake and a profile for it (no chief)",
+            "Opens with the weekly intake"
           ],
           [
             "Commercial Department",
@@ -1345,7 +1357,7 @@
       "label": "Team selection",
       "what": {
         "title": "Picking your race squad",
-        "text": "Each race has a field size set by its class: 6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours. Open the race page and use the Team selection panel. You can save fewer riders than the field holds, and saving is never blocked. But your team needs at least 6 riders in the line-up to start the race, in every race, whatever the field size. Fewer than 6 and your team does not start, so no result and no race day earnings from it. If you leave a race empty or below 6, your assistant fills it up to 6 at race time from the riders you have free, and it skips races you have withdrawn from or cleared on purpose. The panel tells you before you leave the page whether your team will start. To sit a race out, withdraw from it; if you want more riders to choose from, sign free agents."
+        "text": "Each race has a field size set by its class: 6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours. Open the race page and use the Team selection panel. You can save fewer riders than the field holds, and saving is never blocked. But your team needs at least 6 riders in the line-up to start the race, in every race, whatever the field size. Fewer than 6 and your team does not start, so no result and no race day earnings from it. One exception: if you had 6 riders selected and some got injured after you picked them, your team still starts with the fit riders it has left, after the assistant has added any free riders. If you leave a race empty or below 6, your assistant fills it up to 6 at race time from the riders you have free, and it skips races you have withdrawn from or cleared on purpose. The panel tells you before you leave the page whether your team will start. To sit a race out, withdraw from it; if you want more riders to choose from, sign free agents."
       },
       "seasonOverview": {
         "title": "Season view on the planning board",
@@ -1361,11 +1373,11 @@
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
-        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter is always sent into the day's breakaway and rides harder to stay clear. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. High aggression is never a downside for the rider himself: joining a breakaway costs nothing extra, no added fatigue and no penalty to his own finishing position if the break gets caught, so an aggressive rider only ever gains more chances at a result. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
+        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter tries for the day's breakaway by default and rides harder to stay clear. You can turn that off for a single stage, and a try is never sure. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Aggression makes a rider more likely to get into the break, and a rider on free role also tries more often on his own. In races on the current rules every try costs energy, also when it fails. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
-        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: Work goes all in for the team today but builds extra fatigue, Normal rides normally, and Save legs eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: There are three efforts: Ride easy, Normal and Work or attack. Work or attack builds extra fatigue: a helper or hunter works for the team, while a captain or a rider on free role uses it to attack. Ride easy eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",
@@ -1373,11 +1385,11 @@
       },
       "breakaway": {
         "title": "Breakaways",
-        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. When a stage has a complete native race history, the results use a flag for the morning breakaway and an arrow for a later attack. The flag distinguishes participation, a recorded catch and a break that stayed away. Older stages without that history keep their stored markers. A rider who falls behind the break gets his own marker: dropped from the break. If he gets back up to the break, he is back in it, not caught. Joining the breakaway costs a rider nothing extra: no added fatigue and no penalty to his own finishing position if it gets caught. It is a free shot at a better result, never a gamble with a downside."
+        "text": "A breakaway can form on any road stage, and mountain days send the biggest groups. A small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. When a stage has a complete native race history, the results use a flag for the morning breakaway and an arrow for a later attack. The flag distinguishes participation, a recorded catch and a break that stayed away. Older stages without that history keep their stored markers. A rider who falls behind the break gets his own marker: dropped from the break. If he gets back up to the break, he is back in it, not caught. In races on the current rules, trying for the breakaway costs energy, also when it fails, and a small break makes its riders pull harder. If a top GC rider goes in the break, rival teams can chase hard and keep the gap on a leash, unless they leave the chase to others or have no riders free to react. That is risky: it costs more and often fails."
       },
       "ordersGc": {
         "title": "Break orders and GC reaction",
-        "text": "Some races use newer tactics rules. The Tactics tab shows it under Race rules before you save, and in those races the paragraphs below replace what the Breakaways section says about who joins the morning break and what it costs. The morning breakaway follows your orders. A captain, sprint captain or domestique only goes for it with Try the break selected. A breakaway hunter goes for it by default, and you can switch that off for a single stage. A rider on free role may try on his own when his intention is Normal; on any other intention he needs Try the break. Grupetto never tries. Every attempt costs energy, also when it fails, and no attempt is sure to make the break. A domestique who gets into the break cannot help his captain in the bunch at the same time. A stage can also end up with no morning breakaway at all. Your team's stance decides how it deals with the break. Chase always adds power to the chase. Read the race reacts when the break threatens your GC rider, and a team with no order reacts the same way. Leave the chase to others means your team does not help chase; it never slows the bunch down. Without an order, a team chases on its own when it has a rider who can win the day's finale: a sprinter on a flat stage, a puncheur on a hilly stage, a climber on a mountain stage. Your own order always comes first. With Leave the chase to others the team can still make a limited response to a serious threat to your GC rider: it only uses free riders in his group and stops when it has spent a fixed amount of work for the stage. A response holds the gap down, it never guarantees a catch. Threats are judged from the GC standings published before the stage, so there is no GC reaction on the first stage or in one-day races. The race film shows when a team starts or stops reacting, when it has spent what it can, and when it has no free riders to react with."
+        "text": "New races use these rules. A race that started earlier keeps the rules it started with. The Tactics tab shows them under Race rules before you save. The paragraphs below set who joins the morning break and what it costs. The morning breakaway follows your orders. A captain, sprint captain or domestique only goes for it with Try the break selected. A breakaway hunter goes for it by default, and you can switch that off for a single stage. A rider on free role may try on his own when his intention is Normal; on any other intention he needs Try the break. Grupetto never tries. Every attempt costs energy, also when it fails, and no attempt is sure to make the break. A domestique who gets into the break cannot help his captain in the bunch at the same time. A stage can also end up with no morning breakaway at all. Your team's stance decides how it deals with the break. Chase adds power to the chase, except against a break that has one of your own riders in it. Read the race reacts when the break threatens your GC rider, and a team with no order reacts the same way. Leave the chase to others means your team does not help chase; it never slows the bunch down. Without an order, a team chases on its own when it has a rider who can win the day's finale: a sprinter on a flat stage, a puncheur on a hilly stage, a climber on a mountain stage. Your own order always comes first. With Leave the chase to others the team can still make a limited response to a serious threat to your GC rider: it only uses free riders in his group and stops when it has spent a fixed amount of work for the stage. A response holds the gap down, it never guarantees a catch. Threats are judged from the GC standings published before the stage, so there is no GC reaction on the first stage. In a one-day race a team reacts when a rival who can win the day is up the road and its own captain can win it too, unless the team has chosen Leave the chase to others. The race film shows when a team starts or stops reacting, when it has spent what it can, and when it has no free riders to react with."
       },
       "fatigue": {
         "title": "Fatigue matters",
@@ -1404,11 +1416,11 @@
       },
       "timeLimitAndGrupetto": {
         "title": "The time limit and the grupetto",
-        "text": "Arrive too far behind the stage winner and your race is over, out of the whole event on a stage race, a DNF on a one-day race. A big group that comes in together is saved as one instead, that is the grupetto, and it exists so a whole tired peloton is not sent home on a brutal day. How much room you get depends on the stage: flat days are the strictest, the high mountains the most forgiving. It is a rule, never a roll of the dice, and it treats an AI team exactly the same way it treats you. All you ever see is the plain result: out of the time limit, or the grupetto saved."
+        "text": "Arrive too far behind the stage winner and your race is over, out of the whole event on a stage race, a DNF on a one-day race. A big group that comes in together is saved as one instead, that is the grupetto, and it exists so a whole tired peloton is not sent home on a brutal day. How much room you get depends on the stage: flat days are the strictest, the high mountains the most forgiving. In youth races the limit is looser and a smaller group can be saved. It is a rule, never a roll of the dice, and it treats an AI team exactly the same way it treats you. All you ever see is the plain result: out of the time limit, or the grupetto saved."
       },
       "teamwork": {
         "title": "Teamwork on the road",
-        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
       },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",
@@ -1519,7 +1531,7 @@
     },
     "onlineStatusFaq": {
       "q": "What is online status?",
-      "a": "A green dot next to a manager's name means they've been active within the last 5 minutes. You can see this everywhere in the game."
+      "a": "A green dot next to a manager's name means they've been active within the last 30 minutes. You can see this everywhere in the game."
     },
     "watchlistCounterFaq": {
       "q": "What does the watchlist counter on a rider page mean?",
@@ -1623,7 +1635,7 @@
     },
     "debtCeiling": {
       "q": "What is the debt ceiling, and when does it apply?",
-      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. New short-term and long-term loans are rejected if the loan plus its fee would push your total debt over the ceiling. The fee counts towards the cap, so the max you can borrow is a bit less than the room under the cap. The loan form on the Finances page shows your current max, plus what next season's interest would add to your debt if you repay nothing. If a loan would push your debt to 50% or more of the ceiling, you get a confirmation step showing the same numbers before it goes through, so you always see the season cost up front. Automatic emergency loans can exceed the ceiling, but you get a warning and must cut costs. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
+      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$, Division 4: 400,000 CZ$. New short-term and long-term loans are rejected if the loan plus its fee would push your total debt over the ceiling. The fee counts towards the cap, so the max you can borrow is a bit less than the room under the cap. The loan form on the Finances page shows your current max, plus what next season's interest would add to your debt if you repay nothing. If a loan would push your debt to 50% or more of the ceiling, you get a confirmation step showing the same numbers before it goes through, so you always see the season cost up front. Automatic emergency loans can exceed the ceiling, but you get a warning and must cut costs. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
@@ -1835,7 +1847,7 @@
     },
     "newPlayerEconomyFaq": {
       "q": "How much money do I start with, and when should I take a loan?",
-      "a": "You start with a {startingBalance} CZ$ budget in Division 3. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries and loan interest are deducted automatically at the start of each season, and so is upkeep unless it is paid per race day as Travel & staff. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 3: 600,000 CZ$) that caps how much you can borrow at once."
+      "a": "You start with a {startingBalance} CZ$ budget in Division 4. Prize money from races, sponsor payouts at season start and rider sales all add income; salaries and loan interest are deducted automatically at the start of each season, and so is upkeep unless it is paid per race day as Travel & staff. If your balance and sponsor income can't cover that season's salaries, the game takes an automatic emergency loan to cover the shortfall, so you're never blocked from paying wages. You can also take a loan yourself from the Finances page if you want to bid big on a rider before your income catches up. Each division has a debt ceiling (Division 4: 400,000 CZ$) that caps how much you can borrow at once."
     },
     "academyIntakeScoutingFaq": {
       "q": "How often do I get new Academy prospects, and does scouting reset?",
@@ -1878,8 +1890,8 @@
       "a": "Open the staff member's profile (or their row on the staff overview list) and use Release staff. The contract ends immediately and the role opens for a new hire right away, but it costs a severance fee of 4 weeks' wages, deducted the moment you confirm. The confirmation dialog always shows the exact fee before you commit, so there are no surprises. You can only release staff on your own team."
     },
     "saveLegsCarryoverFaq": {
-      "q": "Does Save legs actually make my rider fresher later, or does it just move effort around within the same race?",
-      "a": "It's real, and it carries forward: Save legs cuts that stage's fatigue build-up below Normal, the most on mountain stages and the least on flat stages (Work instead adds 20% on top), and because fatigue is a persistent stat that's only reset between seasons, a stage ridden on Save legs leaves measurably less fatigue for your rider's next stage, and his next race too. If he's working for the team (Helper or Breakaway hunter), Save legs also halves the placing penalty he pays for that work, without reducing the support your captain gets from him. So yes, it makes sense to set Save legs on a stage where there's genuinely nothing left to win for that rider, like a final stage with no jersey or points on the line: it can only help his own result and leaves him fresher afterwards."
+      "q": "Does Ride easy actually make my rider fresher later, or does it just move effort around within the same race?",
+      "a": "It's real, and it carries forward: Ride easy cuts that stage's fatigue build-up below Normal, the most on mountain stages and the least on flat stages (Work or attack adds to it instead), and because fatigue is a persistent stat that's only reset between seasons, a stage ridden on Ride easy leaves measurably less fatigue for your rider's next stage, and his next race too. If he's working for the team (Helper or Breakaway hunter), Ride easy also lowers the placing penalty he pays for that work, but he then gives your captain less support. So yes, it makes sense to set Ride easy on a stage where there's genuinely nothing left to win for that rider, like a final stage with no jersey or points on the line: he leaves the day fresher, but on a climb he can lose touch sooner."
     },
     "seasonFormCarryoverFaq": {
       "q": "Do riders keep their previous season's Form when a new season starts?",

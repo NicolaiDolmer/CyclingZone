@@ -13,6 +13,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, retirementRiskBadgeKey, contractExpiringBadgeKey, seasonNumberFromReferenceYear } from "../lib/riderAge.js";
+import { isContractAwaitingRelease } from "../../../backend/lib/contractOfferEligibility.js"; // #6638
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, detectStartPriceTypo } from "../lib/marketValues.js";
 import { formatHour } from "../lib/auctionEndTime.js";
@@ -31,6 +32,7 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamDevelopmentTab from "../components/TeamDevelopmentTab";
+import PromotionPendingPanel from "../components/squad/PromotionPendingPanel.tsx"; // #6710
 import { useSquadGroupFilter, squadGroupFilterToolbar } from "../components/squad/SquadGroupFilter.tsx";
 import { resolveApiError } from "../lib/apiError";
 import { reportActionFailure } from "../lib/actionTelemetry.js";
@@ -848,7 +850,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       compact: true,
       render: (r) => (
         <span className="text-cz-2 whitespace-nowrap">
-          {r.contract_end_season != null ? t("squad.headers.contractUntil", { season: r.contract_end_season }) : "—"}
+          {r.contract_end_season == null ? "—"
+            : isContractAwaitingRelease(r.contract_end_season, activeSeasonNumber) ? t("squad.headers.contractExpired") /* #6638 */
+            : t("squad.headers.contractUntil", { season: r.contract_end_season })}
         </span>
       ),
     },
@@ -1268,6 +1272,9 @@ export function TeamPage() {
           <ChevronRightIcon size={14} aria-hidden="true" />
         </Link>
       )}
+
+      {/* #6710: "Afventer oprykning" — skjult når flaget er off eller ingen venter. */}
+      <PromotionPendingPanel onPromoted={loadAll} />
 
       {/* #4628 (audit 2026-09 række #2): fanerne var tegnet som fire kantede
           knapper. PAGE_TEMPLATES er utvetydig — "Tabs are underline-tabs, never

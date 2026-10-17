@@ -69,6 +69,9 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "training_groups", // #6000
   "rider_best_role_display", // #6154
   "training_programs", // #6154
+  "stage_page_v2", // 7.361
+  "training_bulk_day", // 7.361
+  "academy_intake_pull_enabled", // #6666
 ];
 
 function playerFlags() {

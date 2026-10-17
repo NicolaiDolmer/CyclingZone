@@ -228,6 +228,16 @@ export default function RaceSelectionPanel({
   // den BEVAREDE opstilling med kaptajn og sprint-kaptajn afkrydset, som om holdet stillede
   // op — spilleren måtte spørge på Discord om rytterne ville køre alligevel (16/9,
   // egomadsen). Opstillingen VISES stadig, men som det den er: gemt, ikke startende.
+  // #6740: holdet blev fjernet ved start (under 6 raske ryttere). Ikke et frivilligt
+  // fravalg, og "deltag igen" findes ikke: sig hvad der skete, intet andet.
+  if (data.did_not_start) {
+    return (
+      <section data-testid="race-selection-did-not-start" className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
+        <p className="text-sm font-semibold text-cz-1">{t("racehub.status.didNotStart")}</p>
+        <p className="text-xs text-cz-warning mt-0.5">{t("racehub.column.didNotStartNote", { min: MIN_RACE_ENTRIES })}</p>
+      </section>
+    );
+  }
   if (data.withdrawn) {
     const keptIds = data.selection?.rider_ids ?? [];
     const keptRiders = (data.riders || []).filter((r) => keptIds.includes(r.id));
@@ -303,14 +313,16 @@ export default function RaceSelectionPanel({
   // (dagsboardet) kalder den STADIG med et ægte raceLive (`locked`), det er kun panelets
   // egen, altid-falske kopi der er væk. Serverens spejl-guard (#1825/selection_race_started
   // i raceSelection.js) håndhæver frysningen uændret — den er backend, ikke denne fil.
+  // #6740: en skadet udtaget rytter tæller ikke med i gulvet: motoren fjerner ham ved start.
+  const fitSelected = selectedRiders.filter((r) => !r.injured).length;
   const outlook = partialSquadOutlook({
-    selected: sel.riderIds.length, free: freeLeft, fieldMax: size.max,
+    selected: fitSelected, injured: selectedRiders.length - fitSelected, free: freeLeft, fieldMax: size.max,
   });
   // #4295 opfølgning: en 0-valgt trup er IKKE det samme udsagn som en delvis trup — se
   // partialSquadOutlook. `emptySelection` vælger de to dedikerede sætninger i stedet for
   // "N pladser åbne", som ville være tomt/misvisende når intet er valgt endnu.
   const partialHint = outlook
-    ? t(`selection.${outlook.kind === "willNotStart"
+    ? t(`selection.${outlook.kind === "startsShort" ? "startsShort" : outlook.kind === "willNotStart"
       ? (outlook.emptySelection ? "willNotStartEmpty" : "willNotStart")
       : outlook.kind === "assistantFills"
         ? (outlook.emptySelection ? "assistantFillsEmpty" : "partialHint")
@@ -886,7 +898,7 @@ export default function RaceSelectionPanel({
               <p
                 data-testid="selection-partial-hint"
                 data-outlook={outlook.kind}
-                className={`text-xs ${outlook.kind === "willNotStart" ? "text-cz-warning" : "text-cz-3"}`}
+                className={`text-xs ${(outlook.kind === "willNotStart" || outlook.kind === "startsShort") ? "text-cz-warning" : "text-cz-3"}`}
               >
                 {partialHint}
               </p>
@@ -926,7 +938,7 @@ export default function RaceSelectionPanel({
               type="button"
               onClick={autoSelect}
               disabled={busy || fullyTrainNowLocked}
-              className="px-4 py-2 rounded-lg border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-cz border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t("selection.autoFill")}
             </button>
@@ -939,7 +951,7 @@ export default function RaceSelectionPanel({
               onClick={(event) => saveBlock.guard(save)(event)}
               disabled={busy || fullyTrainNowLocked}
               {...saveBlock.blockedProps}
-              className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              className="px-4 py-2 rounded-cz bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
               {saving ? t("selection.saving") : t(fullyTrainNowLocked ? "selection.saveLocked" : "selection.save")}
             </button>

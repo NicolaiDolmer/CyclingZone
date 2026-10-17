@@ -8,8 +8,9 @@
 // på #2601, se PR-beskrivelsen). Sammenlign med getStaffDirectoryHandler, som
 // eksponerer salary — den kontrakt er UÆNDRET; DENNE route er en strammere,
 // dedikeret sanitering til holdsiden.
-import { FACILITIES_ENABLED, FACILITY_TRACKS, EFFECT_LIVE_BY_TRACK } from "./facilityConstants.js";
-import { effectiveBonus, primaryStaff } from "./facilityEngine.js";
+import { FACILITIES_ENABLED, FACILITY_TRACKS, isTrackEffectLive } from "./facilityConstants.js";
+import { primaryStaff } from "./facilityEngine.js";
+import { displayTrackBonus, resolveTrackLiveFlags } from "./facilityRoutesHandlers.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 
 const DEFAULT_FLAGS = Object.freeze({ facilitiesEnabled: FACILITIES_ENABLED });
@@ -57,6 +58,9 @@ export async function getTeamPublicProfileHandler(
   }
   const tierByTrack = new Map((facilityRows ?? []).map((r) => [r.track, r.tier]));
 
+  // #6666: akademiets live-status følger academy_intake_pull_enabled (samme kilde som klubsiden).
+  const liveFlags = await resolveTrackLiveFlags(flags, supabaseClient);
+
   const staff = (staffRows ?? []).map((s) => ({ id: s.id, name: s.name, role: s.role, tier: s.tier }));
 
   const facilities = FACILITY_TRACKS.map((track) => {
@@ -69,8 +73,8 @@ export async function getTeamPublicProfileHandler(
       tier,
       staff: staffRow ? { id: staffRow.id, name: staffRow.name, tier: staffRow.tier } : null,
       staffCount: roleList.length,
-      effectiveBonus: effectiveBonus(track, tier, staffRow ? { overall: staffRow.overall } : null),
-      effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
+      effectiveBonus: displayTrackBonus(track, tier, staffRow ? { overall: staffRow.overall } : null),
+      effectLive: isTrackEffectLive(track, liveFlags),
     };
   });
 

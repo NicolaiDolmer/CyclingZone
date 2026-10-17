@@ -43,6 +43,8 @@ export function useAcademy() {
   // #3550: pull-baseret intake — { enabled, pulledThisWeek }. enabled=false (default
   // indtil cutover-flip) betyder uændret adfærd (den gamle auto-drip-visning).
   const [intakePull, setIntakePull] = useState({ enabled: false, pulledThisWeek: false });
+  // #6666: akademiets profil (null når pull-optaget er slukket).
+  const [academyProfile, setAcademyProfile] = useState(null);
 
   // Holdets saldo hentes direkte fra Supabase (samme mønster som AuctionsPage) — så
   // bekræftelses-modalen (#1744) kan vise saldo-effekt uden en backend-ændring på
@@ -99,6 +101,7 @@ export function useAcademy() {
       setSeniorCount(data.seniorCount ?? 0);
       setSeniorMax(data.seniorMax ?? 30);
       setIntakePull(data.intakePull ?? { enabled: false, pulledThisWeek: false });
+      setAcademyProfile(data.academyProfile ?? null);
       setError(null);
     } catch {
       /* netværk — behold tidligere state */
@@ -219,6 +222,24 @@ export function useAcademy() {
     }
   }, [refresh]);
 
+  // #6666: gem akademiets ønskede profil ({ origins, types }). Virker efter 14 dage.
+  const saveProfile = useCallback(async (profile) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    try {
+      const res = await apiFetch(`${API}/api/academy/profile`, {
+        method: "PUT", headers, body: JSON.stringify(profile),
+      });
+      if (res.networkError) return NETWORK_FAILURE;
+      const data = res.data || {};
+      if (!res.ok) return { ok: false, error: data.error || "failed" };
+      await refresh();
+      return { ok: true, result: data };
+    } catch {
+      return { ok: false, error: "network" };
+    }
+  }, [refresh]);
+
   // #5748: flyt en rytter til en VALGT trup ('senior' | 'u23' | 'junior') via
   // POST /api/riders/:id/squad (moveRider i backend). Én handling for alle
   // retninger: op til senior, ned fra senior og junior <-> U23. Afløser den
@@ -305,5 +326,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, moveRider, fetchMoveState, fetchReleaseQuote, releaseRider, pullIntake, refresh };
+  return { enabled, squads, seniorCount, seniorMax, roster, intake, graduations, balance, division, intakePull, loading, error, signCandidate, rejectCandidate, resolveGraduate, promoteRider, moveRider, fetchMoveState, fetchReleaseQuote, releaseRider, pullIntake, academyProfile, saveProfile, refresh };
 }

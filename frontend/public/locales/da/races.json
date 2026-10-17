@@ -218,7 +218,8 @@
       "understaffed": "{selected} / {target} · underbemandet",
       "overfull": "{selected} / {target} · for mange",
       "withdrawn": "Afmeldt",
-      "locked": "Trup låst"
+      "locked": "Trup låst",
+      "didNotStart": "Stillede ikke op"
     },
     "pool": {
       "title": "Ledige ryttere · {count}-trup",
@@ -253,6 +254,7 @@
       "withdraw": "Afmeld",
       "reenter": "Deltag igen",
       "withdrawnNote": "Dit hold stiller frivilligt ikke op i dette løb",
+      "didNotStartNote": "Dit hold stillede ikke op: færre end {min} raske ryttere ved start.",
       "remove": "Fjern rytter",
       "openRace": "Åbn {name}",
       "peaksHere": "Topper her: {names}",
@@ -557,6 +559,8 @@
     "willNotStart": "Færre end {min} ryttere. Dit hold stiller ikke op i dette løb.",
     "willNotStartEmpty": "Færre end {min} ryttere er fri til dette løb. Dit hold stiller ikke op.",
     "willNotStartShort": "Under {min} ryttere. Stiller ikke op.",
+    "startsShort": "{injured, plural, one {1 udtaget rytter er skadet} other {# udtagne ryttere er skadede}}. Dit hold starter med {starters, plural, one {1 rytter} other {# ryttere}}.",
+    "startsShortShort": "Skader: starter med {starters}.",
     "minHint": "Mindst {min} ryttere for at stille op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
@@ -1662,7 +1666,9 @@
     },
     "table": {
       "prizePoints": "Præmiepoint",
-      "jerseyPoints": "Trøjepoint"
+      "jerseyPoints": "Trøjepoint",
+      "prizePointsShort": "Præmie",
+      "jerseyPointsShort": "Trøje"
     },
     "jumpToResults": "Se resultater"
   },

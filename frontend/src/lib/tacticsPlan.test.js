@@ -15,6 +15,8 @@ import {
   toggleLeadout,
   hasSprintCaptain,
   withIntentionEfforts,
+  trainDefaultForStage,
+  isSprintTrainStage,
 } from "./tacticsPlan.js";
 
 test("defaultTeamOrder — neutrale defaults for hver rytter (T4)", () => {
@@ -191,4 +193,53 @@ test("#6647 withIntentionEfforts — ordren der gemmes bærer intentionens besky
   assert.equal(saved.breakaway_stance, order.breakaway_stance);
   assert.equal(order.riders[0].effort, "normal");
   assert.equal(saved.riders[1].try_break, false);
+});
+
+// #6462 (ejer 16/10): toget er kun standard paa en flad etape, som i motorens
+// adapter (teamOrdersAdapter.ts trainIsDefaultOnStage + withoutDefaultTrain).
+const SERVER_DEFAULT_6462 = {
+  team_id: "t",
+  breakaway_stance: "neutral",
+  riders: [
+    { rider_id: "spr", effort: "normal", try_break: false, leadout: false },
+    { rider_id: "h1", effort: "normal", try_break: false, leadout: true },
+    { rider_id: "hunter", effort: "normal", try_break: true, leadout: false },
+  ],
+};
+const trainOn = (order) => order.riders.filter((r) => r.leadout).map((r) => r.rider_id);
+
+test("#6462 trainDefaultForStage — flad etape: hjaelperne er i toget som standard", () => {
+  for (const flatOnly of [true, false]) {
+    const def = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "flat", flatOnly });
+    assert.deepEqual(trainOn(def), ["h1"], String(flatOnly));
+    const fresh = mergeOrderWithRoster({ breakaway_stance: "neutral", riders: [] }, ["spr", "h1", "hunter"], def);
+    assert.deepEqual(trainOn(fresh), ["h1"], "en uroert flad etape viser toget");
+  }
+});
+
+test("#6462 trainDefaultForStage — bjerg, enkeltstart, kuperet, brosten og ukendt profil: intet tog", () => {
+  for (const profileType of ["mountain", "high_mountain", "itt", "itt_hilly", "ttt", "hilly", "rolling", "cobbles", "gravel", "classic", null, undefined]) {
+    const def = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType, flatOnly: true });
+    assert.deepEqual(trainOn(def), [], String(profileType));
+    assert.equal(def.riders[2].try_break, true, "oevrige defaults uroert");
+    const fresh = mergeOrderWithRoster({ breakaway_stance: "neutral", riders: [] }, ["spr", "h1", "hunter"], def);
+    assert.deepEqual(trainOn(fresh), [], `${profileType}: en uroert etape viser intet tog`);
+  }
+  assert.equal(SERVER_DEFAULT_6462.riders[1].leadout, true, "muterer aldrig input");
+  assert.equal(trainDefaultForStage(null, { profileType: "mountain", flatOnly: true }), null);
+});
+
+test("#6462 trainDefaultForStage — gemt valg vinder; uden flatOnly (official_times_v4 og aeldre) er alt uaendret", () => {
+  const mountain = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "mountain", flatOnly: true });
+  const savedOn = mergeOrderWithRoster({ riders: [{ rider_id: "h1", leadout: true }] }, ["spr", "h1"], mountain);
+  assert.deepEqual(trainOn(savedOn), ["h1"], "et gemt tog paa bjerget staar");
+  const flat = trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "flat", flatOnly: true });
+  const savedOff = mergeOrderWithRoster({ riders: [{ rider_id: "h1", leadout: false }] }, ["spr", "h1"], flat);
+  assert.deepEqual(trainOn(savedOff), [], "et gemt 'intet tog' paa en flad etape staar");
+  for (const flatOnly of [false, undefined, null, "true"]) {
+    assert.equal(trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "mountain", flatOnly }), SERVER_DEFAULT_6462, String(flatOnly));
+  }
+  assert.equal(trainDefaultForStage(SERVER_DEFAULT_6462, { profileType: "mountain" }), SERVER_DEFAULT_6462, "intet svar fra serveren = uaendret");
+  assert.equal(isSprintTrainStage("flat"), true);
+  assert.equal(isSprintTrainStage("mountain"), false);
 });

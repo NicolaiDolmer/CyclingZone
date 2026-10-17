@@ -222,6 +222,34 @@ test("GET facilities: nextTierBonus = effectiveBonus ved tier+1 (samme staff), n
   assert.equal(scouting.nextTierBonus, effectiveBonus("scouting", 1, null));
 });
 
+test("GET facilities: ladder = alle 5 niveauer med pris, drift og effekt (#6666 Klub retning D)", async () => {
+  const supabase = createSupabaseMock({
+    facilities: [{ track: "training", tier: 2 }, { track: "academy", tier: 1 }],
+    staff: [{ id: "staff-1", name: "Sofie Lindqvist", role: "training", tier: 2, salary: 22_000 }],
+  });
+  const { status, body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
+  assert.equal(status, 200);
+  for (const f of body.facilities) {
+    assert.deepEqual(f.ladder.map((r) => r.tier), [1, 2, 3, 4, 5], `${f.track}: 5 trin`);
+    for (const r of f.ladder) {
+      assert.equal(r.price, FACILITY_TIER_PRICE[r.tier]);
+      assert.equal(r.upkeep, FACILITY_TIER_UPKEEP[r.tier]);
+    }
+  }
+  const training = body.facilities.find((f) => f.track === "training");
+  // Trappen bruger samme effekt-kilde som effectiveBonus/nextTierBonus (staff konstant).
+  assert.equal(training.ladder[1].bonus, training.effectiveBonus);
+  assert.equal(training.ladder[2].bonus, training.nextTierBonus);
+  assert.ok(!("unlock" in training.ladder[0]), "kun akademi har oplåsnings-etiket");
+
+  const academy = body.facilities.find((f) => f.track === "academy");
+  assert.equal(academy.ladder[0].unlock, "origin");
+  assert.equal(academy.ladder[1].unlock, "stronger", "forslag D: niveau 2 = +1 kandidat");
+  assert.equal(academy.ladder[2].unlock, "type");
+  assert.equal(academy.ladder[3].unlock, "extra");
+  assert.ok(academy.ladder.every((r) => !("share" in r)), "overvægten forlader aldrig backend");
+});
+
 test("GET facilities: effectLive — training + scouting er live, medical/academy/commercial er coming-soon (#1441 Plan B, #2530)", async () => {
   // Tomt facilitets-sæt: alle spor tier 0.
   const supabase = createSupabaseMock();

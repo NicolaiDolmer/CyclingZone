@@ -59,6 +59,6 @@ export default {
   // ikon i frontend/src). Scriptet laver altid en fuld-repo-scan mod
   // scripts/ui-slop-baseline.json (ratchet) — staged-args passeres per
   // lint-staged-konventionen men ignoreres, saa resultatet er deterministisk.
-  "frontend/src/**/*.{js,jsx,css}": (files) =>
+  "frontend/src/**/*.{js,jsx,ts,tsx,css}": (files) =>
     `node scripts/lint-ui-slop.mjs ${files.map(escape).join(" ")}`,
 };

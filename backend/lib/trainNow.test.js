@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   runTrainNow, loadTrainNowStatus, trainNowGameDays, splitTrainNowRiders,
-  createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY,
+  createTrainNowPlanLock, sameWeekdayCell, TRAIN_NOW_FLAG_KEY, trainNowShortRaces, loadTrainNowShortRaces,
 } from "./trainNow.js";
 import {
   TRAIN_NOW_LOCK_TABLE, loadRaceTrainNowLock, loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates,
@@ -69,7 +69,8 @@ function fakeSupabase(state, { missing = [] } = {}) {
     };
     return q;
   }
-  return { from: query, writes };
+  // #6740: find_spent_race_days (the Train now re-check) - no spent riders in these tests.
+  return { from: query, writes, rpc: async () => ({ data: [], error: null }) };
 }
 
 function baseState(flag = "on") {
@@ -471,4 +472,133 @@ test("sameWeekdayCell ignores key order", () => {
   assert.equal(sameWeekdayCell({ a: 1, b: { c: 2, d: 3 } }, { b: { d: 3, c: 2 }, a: 1 }), true);
   assert.equal(sameWeekdayCell({ a: 1 }, { a: 2 }), false);
   assert.equal(sameWeekdayCell(undefined, null), true);
+});
+
+// ── #6740: advarsel foer tryk naar dagens loeb ender under gulvet ─────────────
+
+test("trainNowShortRaces: Friis' sag - 6 udtaget, 1 skadet -> advarsel (5 raske)", () => {
+  const entries = ["a", "b", "c", "d", "e", "f"].map((rider_id) => ({ race_id: "leman", rider_id }));
+  assert.deepEqual(trainNowShortRaces({
+    races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled" }],
+    entries, injuredIds: new Set(["f"]),
+  }), [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6, startsShort: true }]);
+});
+
+test("trainNowShortRaces: fuld trup, startede, afmeldte og ryddede loeb giver ingen advarsel", () => {
+  const six = (race_id) => ["a", "b", "c", "d", "e", "f"].map((rider_id) => ({ race_id, rider_id }));
+  const out = trainNowShortRaces({
+    races: [
+      { id: "full", name: "Full", stages_completed: 0 },
+      { id: "started", name: "Started", stages_completed: 2 },
+      { id: "withdrawn", name: "Withdrawn", stages_completed: 0 },
+      { id: "cleared", name: "Cleared", stages_completed: 0 },
+    ],
+    entries: six("full"), withdrawnIds: new Set(["withdrawn"]), clearedIds: new Set(["cleared"]),
+  });
+  assert.deepEqual(out, []);
+});
+
+test("trainNowShortRaces: ingen udtagelse -> advarsel (assistenten kan ikke fylde op efter trykket)", () => {
+  assert.deepEqual(trainNowShortRaces({ races: [{ id: "r", name: "R", stages_completed: 0 }], entries: [] }),
+    [{ id: "r", name: "R", fit: 0, entered: 0, min: 6, startsShort: false }]);
+});
+
+test("loadTrainNowShortRaces: en solgt rytter i udtagelsen taeller ikke (review #6742)", async () => {
+  const six = ["a", "b", "c", "d", "e", "sold"];
+  const tables = {
+    races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled", squad: "senior" }],
+    race_withdrawals: [], race_entry_clears: [], rider_condition: [],
+    race_entries: six.map((rider_id) => ({ race_id: "leman", rider_id, team_id: "t1" })),
+    // "sold" er nu paa et andet hold: motoren fjerner entryen foer gulvet.
+    riders: six.map((id) => ({ id, team_id: id === "sold" ? "t2" : "t1", squad: "senior", is_academy: false, is_retired: false })),
+  };
+  const out = await loadTrainNowShortRaces({ supabase: shortRaceDb(tables), team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
+  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6, startsShort: false }]);
+});
+
+function shortRaceDb(tables, { spent = [], failTable = null } = {}) {
+  return {
+    rpc: async () => ({ data: spent, error: null }),
+    from: (table) => {
+      const q = {};
+      for (const m of ["select", "eq", "in", "neq", "order", "is", "or"]) q[m] = () => q;
+      const res = table === failTable ? { data: null, error: { message: "db down" } } : { data: tables[table] ?? [], error: null };
+      q.range = () => Promise.resolve(res);
+      q.then = (resolve, reject) => Promise.resolve(res).then(resolve, reject);
+      return q;
+    },
+  };
+}
+
+const SIX_TABLES = () => {
+  const six = ["a", "b", "c", "d", "e", "f"];
+  return {
+    races: [{ id: "leman", name: "Tour du Léman", stages_completed: 0, status: "scheduled", squad: "senior" }],
+    race_withdrawals: [], race_entry_clears: [], rider_condition: [],
+    race_entries: six.map((rider_id) => ({ race_id: "leman", rider_id, team_id: "t1" })),
+    riders: six.map((id) => ({ id, team_id: "t1", squad: "senior", is_academy: false, is_retired: false })),
+  };
+};
+
+test("loadTrainNowShortRaces: en rytter der allerede har brugt loebsdagen taeller ikke (review #6742)", async () => {
+  const supabase = shortRaceDb(SIX_TABLES(), { spent: [{ rider_id: "f", race_id: "other", game_day: 94 }] });
+  const out = await loadTrainNowShortRaces({ supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" });
+  assert.deepEqual(out, [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 5, min: 6, startsShort: false }]);
+});
+
+test("trainNowShortRaces: regel B kun naar holdet havde gulvet og mindst 1 rask er tilbage (#6740)", () => {
+  const ids = (n) => Array.from({ length: n }, (_, i) => ({ race_id: "r", rider_id: `x${i}` }));
+  const race = [{ id: "r", name: "R", stages_completed: 0 }];
+  assert.equal(trainNowShortRaces({ races: race, entries: ids(5), injuredIds: new Set(["x0"]) })[0].startsShort, false, "5 udtaget havde aldrig gulvet");
+  assert.equal(trainNowShortRaces({ races: race, entries: ids(6), injuredIds: new Set(["x0","x1","x2","x3","x4","x5"]) })[0].startsShort, false, "ingen raske tilbage");
+  assert.equal(trainNowShortRaces({ races: race, entries: ids(7), injuredIds: new Set(["x0","x1"]) })[0].startsShort, true);
+});
+
+test("loadTrainNowShortRaces: GET fejler aabent, trykkets strict-tjek fejler lukket (review #6742)", async () => {
+  const supabase = shortRaceDb(SIX_TABLES(), { failTable: "race_entries" });
+  const args = { supabase, team: { id: "t1" }, todayRaces: [{ id: "leman" }], tickDate: "2026-10-16" };
+  assert.deepEqual(await loadTrainNowShortRaces(args), []);
+  await assert.rejects(() => loadTrainNowShortRaces({ ...args, strict: true }), /short race entries/);
+});
+
+// ── #6740 review: the press re-checks short races; the page's yes is explicit ──
+const SHORT = [{ id: "leman", name: "Tour du Léman", fit: 5, entered: 6, min: 6 }];
+
+test("press: a race below the floor without the explicit yes -> 409, nothing locked", async () => {
+  const state = baseState();
+  const { deps, calls } = harness(state);
+  const result = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "short_races_confirm");
+  assert.deepEqual(result.body.shortRaces, SHORT);
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 0, "no lock before the yes");
+  assert.equal(calls.length, 0);
+});
+
+test("press: the yes for exactly the short races runs the press, still re-checked", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  let asked = 0;
+  const result = await runTrainNow({ ...deps, confirmedShortRaceIds: ["leman"], loadShortRaces: async () => { asked += 1; return SHORT; } });
+  assert.equal(result.status, 200);
+  assert.equal(asked, 1, "every first press re-checks");
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 2);
+});
+
+test("press: a race that fell below the floor after the dialog is asked again (review #6742)", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  const fresh = [...SHORT, { id: "danube", name: "Tour du Danube", fit: 4, entered: 6, min: 6 }];
+  const result = await runTrainNow({ ...deps, confirmedShortRaceIds: ["leman"], loadShortRaces: async () => fresh });
+  assert.equal(result.status, 409);
+  assert.deepEqual(result.body.shortRaces, fresh);
+  assert.equal(state[TRAIN_NOW_LOCK_TABLE].length, 0);
+});
+
+test("press: a repeated press (locks already written) is never asked again", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  await runTrainNow({ ...deps, confirmedShortRaceIds: ["leman"], loadShortRaces: async () => SHORT });
+  const again = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
+  assert.equal(again.status, 200);
 });

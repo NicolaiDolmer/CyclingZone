@@ -104,7 +104,6 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
-  { key: "market_value_sweep_enabled", area: "market", label: "Markedsværdi-sweep" },
   { key: "rider_values_bulk_write_enabled", area: "market", label: "Ryttereværdier — bulk-skrivning" },
   { key: "rider_primary_type_from_distribution", area: "squad", label: "Rytter-generator: primær type fra mål-fordelingen" },
   { key: "alunta_reconcile_enabled", area: "billing", label: "Alunta-afstemning" },
@@ -161,6 +160,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // #5519: HelpPage gater den nye youthSquads-sektion paa dette flag, saa
   // U23/junior-hjaelpeteksterne foerst vises naar siderne faktisk er live.
   "youth_squad_pages",
+  // #6666: HelpPage gater optag 2.0-blokkene (profil, prognose) paa dette flag.
+  "academy_intake_pull_enabled",
   // #4854: HelpPage gater traethedsgraense-blokken paa dette flag.
   "training_fatigue_rules",
   // #5124: SeasonMatrix vaelger mobilvisningen paa dette flag.
@@ -171,4 +172,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // maerket skifter til "Now for everyone" naar kontakten er on for alle.
   "rider_best_role_display",
   "training_programs",
+  // 7.361: beta-noterne for etapeside 2.0 og bulk-dag skifter til
+  // "Now for everyone", naar kontakterne er on for alle.
+  "stage_page_v2",
+  "training_bulk_day",
 ]);

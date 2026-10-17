@@ -125,7 +125,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
         <p className="text-cz-3 text-sm mb-3">Ingen forhåndsvisning tilgængelig.</p>
         <button
           onClick={reloadPreview}
-          className="px-3 py-2 bg-cz-info-bg text-cz-info border border-cz-info/30 rounded-lg text-sm font-medium hover:brightness-110"
+          className="px-3 py-2 bg-cz-info-bg text-cz-info border border-cz-info/30 rounded-cz text-sm font-medium hover:brightness-110"
         >
           Forsøg igen
         </button>
@@ -186,7 +186,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
         </div>
 
         {preview.already_transitioned && (
-          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-900 text-xs">
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-cz text-yellow-900 text-xs">
             ⚠️ Sæson {preview.to_season.number} eksisterer allerede. Re-run vil kun køre
             de faser der mangler (idempotent).
           </div>
@@ -244,7 +244,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
             ))}
           </div>
           {gate.blocked && (
-            <label className="mt-3 flex items-start gap-2 p-3 bg-cz-danger-bg border border-cz-danger/30 rounded-lg text-xs text-cz-danger cursor-pointer">
+            <label className="mt-3 flex items-start gap-2 p-3 bg-cz-danger-bg border border-cz-danger/30 rounded-cz text-xs text-cz-danger cursor-pointer">
               <input
                 type="checkbox"
                 checked={force}
@@ -266,14 +266,14 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
         <button
           onClick={reloadPreview}
           disabled={loading || executing}
-          className="px-4 py-2 bg-cz-card border border-cz-border text-cz-2 rounded-lg text-sm font-medium hover:bg-cz-subtle disabled:opacity-50"
+          className="px-4 py-2 bg-cz-card border border-cz-border text-cz-2 rounded-cz text-sm font-medium hover:bg-cz-subtle disabled:opacity-50"
         >
           {loading ? "Henter…" : "🔄 Genindlæs forhåndsvisning"}
         </button>
         <button
           onClick={executeTransition}
           disabled={loading || executing || (gate.blocked && !force)}
-          className="flex-1 min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50"
+          className="flex-1 min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 disabled:opacity-50"
         >
           {executing
             ? "Udfører…"
@@ -317,7 +317,7 @@ function PayrollSummaryTable({ result }) {
   // venlig fallback i stedet for tomme tal.
   if (payrollEntry.skipped) {
     return (
-      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-900 text-xs">
+      <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-cz text-yellow-900 text-xs">
         ⚠️ Payroll-summary ikke tilgængelig: {payrollEntry.reason}
       </div>
     );

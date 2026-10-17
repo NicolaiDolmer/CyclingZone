@@ -370,9 +370,13 @@ test("saveStageRoleOverrides: tomt teamRiderIds → INGEN delete-kald", async ()
 function makeContextSupabase({
   entries = [], riders = [], overrides = [], incidents = [],
   abilities = [], conditions = [], profiles = [], schedule = [],
+  withdrawals = [], results = [], locks = [], spent = [],
 } = {}) {
   function from(table) {
     const rowsFor = () => (table === "race_stage_schedule" ? schedule
+      : table === "race_withdrawals" ? withdrawals
+      : table === "race_results" ? results
+      : table === "training_train_now_locks" ? locks
       : table === "race_entries" ? entries
       : table === "riders" ? riders
       : table === "race_stage_roles" ? overrides
@@ -400,7 +404,11 @@ function makeContextSupabase({
     };
     return b;
   }
-  return { from };
+  // find_spent_race_days (#6740): ryttere i `spent` har allerede brugt løbsdagen.
+  const rpc = (name, args) => Promise.resolve(name === "find_spent_race_days"
+    ? { data: (args.p_rider_ids || []).filter((id) => spent.includes(id)).map((rider_id) => ({ rider_id, race_id: "other", game_day: 1 })), error: null }
+    : { data: null, error: null });
+  return { from, rpc };
 }
 
 test("getStageRolesContext: bygger riders[] med navn + basis-race_role fra race_entries", async () => {
@@ -568,7 +576,7 @@ test("getStageRolesContext (#5945): 3 udtagne og ingen frie ryttere -> start_out
     riders: OUTLOOK_RIDERS.slice(0, 3),
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 0 }, teamId: "team-1" });
-  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6 });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "below_min" });
 });
 
 test("getStageRolesContext (#5945): frie ryttere der kan fylde op til gulvet -> starts=true", async () => {
@@ -577,7 +585,7 @@ test("getStageRolesContext (#5945): frie ryttere der kan fylde op til gulvet -> 
     riders: OUTLOOK_RIDERS,
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 0 }, teamId: "team-1" });
-  assert.deepEqual(ctx.start_outlook, { starts: true, min: 6 });
+  assert.deepEqual(ctx.start_outlook, { starts: true, min: 6, reason: null });
 });
 
 test("getStageRolesContext (#5945): skadede frie ryttere taeller ikke -> starts=false", async () => {
@@ -587,20 +595,98 @@ test("getStageRolesContext (#5945): skadede frie ryttere taeller ikke -> starts=
     conditions: OUTLOOK_RIDERS.slice(3).map((r) => ({ rider_id: r.id, form: 50, fatigue: 0, injured_until: "2999-01-01" })),
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 0 }, teamId: "team-1" });
-  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6 });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "below_min" });
 });
 
-test("getStageRolesContext (#5945): loeb i gang roeres ikke, selv med 3 udtagne", async () => {
+test("getStageRolesContext (#5945/#6740): loeb i gang med holdet i feltet starter, selv med 3 udtagne", async () => {
   const supabase = makeContextSupabase({
     entries: [{ rider_id: "r1", race_role: "captain" }, { rider_id: "r2", race_role: "helper" }, { rider_id: "r3", race_role: "helper" }],
     riders: OUTLOOK_RIDERS.slice(0, 3),
+    results: [{ race_id: "race-1" }],
   });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 2 }, teamId: "team-1" });
-  assert.deepEqual(ctx.start_outlook, { starts: true, min: 6 });
+  assert.deepEqual(ctx.start_outlook, { starts: true, min: 6, reason: null });
 });
 
 test("getStageRolesContext (#5945): ingen entries -> starts=true (intet at advare om)", async () => {
   const supabase = makeContextSupabase({ entries: [] });
   const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 5, stages_completed: 0 }, teamId: "team-1" });
-  assert.deepEqual(ctx.start_outlook, { starts: true, min: 6 });
+  assert.deepEqual(ctx.start_outlook, { starts: true, min: 6, reason: null });
+});
+
+// ── #6740: afmeldt / ikke i feltet / Train now-laaste reserver ────────────────
+
+// Fast tidspunkt (AGENTS.md regel 16): ingen test læser vægur-tiden.
+const NOW_6740 = new Date("2999-01-01T08:00:00Z");
+
+const SIX_ENTRIES = OUTLOOK_RIDERS.slice(0, 6).map((r, i) => ({ rider_id: r.id, race_role: i === 0 ? "captain" : "helper" }));
+
+test("getStageRolesContext (#6740): loeb i gang uden holdet i feltet -> did_not_start (Friis 16/10)", async () => {
+  const supabase = makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS.slice(0, 6), results: [] });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 6, stages_completed: 1 }, teamId: "team-1", now: NOW_6740 });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "did_not_start" });
+});
+
+test("getStageRolesContext (#6740): afmeldt hold -> withdrawn, ogsaa foer start", async () => {
+  const supabase = makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS, withdrawals: [{ race_id: "race-1" }] });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1", now: NOW_6740 });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "withdrawn" });
+});
+
+test("getStageRolesContext (#6740): Train now-laaste reserver kan ikke fylde op -> regel B / below_min", async () => {
+  // 5 raske udtaget (r6 skadet), r7/r8 frie, men laast af Train now paa loebsdagen.
+  // Regel B (ejer 16/10): holdet havde 6 udtaget, kun skaden tog det under -> starter med 5.
+  // Uden r1 i udtagelsen havde holdet aldrig gulvet (4 raske + 1 skadet) -> below_min.
+  const entries = SIX_ENTRIES.slice(1);
+  const conditions = [{ rider_id: "r6", form: 50, fatigue: 0, injured_until: "2999-01-01" }];
+  const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
+  const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
+  const free = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries, riders: OUTLOOK_RIDERS, conditions, schedule, locks: [] }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1", now: NOW_6740,
+  });
+  assert.equal(free.start_outlook.starts, true, "uden laas fylder assistenten op");
+  const locked = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries, riders: OUTLOOK_RIDERS, conditions, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)) }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1", now: NOW_6740,
+  });
+  assert.deepEqual(locked.start_outlook, { starts: false, min: 6, reason: "below_min" });
+  const lockedSix = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS, conditions, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)) }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
+  });
+  assert.deepEqual(lockedSix.start_outlook, { starts: true, min: 6, reason: null }, "regel B: Friis' sag starter med 5");
+});
+
+test("getStageRolesContext (#6740): en solgt udtaget rytter redder ikke holdet via regel B", async () => {
+  // 6 udtaget: r2-r6 + en solgt rytter (ikke i truppen). r6 skadet, reserver laast.
+  // Motoren dropper den solgte foer gulvet: 4 raske + 1 skadet = 5 -> gulvet gaelder.
+  const entries = [...SIX_ENTRIES.slice(1), { rider_id: "sold-1", race_role: "helper" }];
+  const conditions = [{ rider_id: "r6", form: 50, fatigue: 0, injured_until: "2999-01-01" }];
+  const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
+  const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
+  const ctx = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries, riders: OUTLOOK_RIDERS, conditions, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)) }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
+  });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "below_min" });
+});
+
+test("getStageRolesContext (#6740): en udtaget rytter der har brugt løbsdagen redder ikke holdet via regel B (Codex P2)", async () => {
+  // 6 udtaget, r6 skadet, r5 spent, reserver laast: motoren ser 4 raske + 1 skadet = 5 -> gulvet.
+  const conditions = [{ rider_id: "r6", form: 50, fatigue: 0, injured_until: "2999-01-01" }];
+  const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
+  const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
+  const ctx = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS, conditions, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)), spent: ["r5"] }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
+  });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "below_min" });
+});
+
+test("getStageRolesContext (#6740): en did_not_start-afmelding viser did_not_start, ikke withdrawn (Friis 17/10)", async () => {
+  const supabase = makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS.slice(0, 6),
+    withdrawals: [{ race_id: "race-1", withdrawn_reason: "did_not_start" }] });
+  const ctx = await getStageRolesContext({ supabase, race: { id: "race-1", stages: 6, stages_completed: 1 }, teamId: "team-1", now: NOW_6740 });
+  assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "did_not_start" });
 });

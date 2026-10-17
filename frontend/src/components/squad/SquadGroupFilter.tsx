@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { useYouthSquadPages } from "../../lib/useYouthSquadPages.ts";
+import { SQUAD_MAX_SEASON_AGE } from "../../lib/squadTarget.ts";
 import {
   ALL_GROUPS_VISIBLE,
   countSquadGroups,
@@ -86,17 +87,19 @@ function SquadGroupFilter({ filter, counts }: {
   const label: Record<SquadGroup, string> = {
     senior: t("squad.filter.seniors", { count: counts.senior }),
     academy: t("squad.filter.academy", { count: counts.academy }),
-    u23: tSquad("filter.u23", { count: counts.u23 }),
-    junior: tSquad("filter.junior", { count: counts.junior }),
+    u23: tSquad("filter.u23", { count: counts.u23, age: SQUAD_MAX_SEASON_AGE.u23 }),
+    junior: tSquad("filter.junior", { count: counts.junior, age: SQUAD_MAX_SEASON_AGE.junior }),
   };
   return (
-    <div className="flex flex-wrap items-center gap-2" data-testid="squad-group-filter">
-      <span className="text-xs text-cz-3 select-none">{t("squad.filter.label")}</span>
+    // #5819: på mobil ligger "Vis" + alle valg på ÉN linje (vandret scroll i stedet for at
+    // Junior-valget falder ned på en egen række); fra sm: wrapper de som før.
+    <div className="flex items-center gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden" data-testid="squad-group-filter">
+      <span className="shrink-0 whitespace-nowrap text-xs text-cz-3 select-none">{t("squad.filter.label")}</span>
       {squadGroupsFor(filter.split).map((group) => {
         const on = filter.visible[group];
         return (
           <button key={group} type="button" onClick={() => filter.toggle(group)} aria-pressed={on}
-            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${on ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+            className={`shrink-0 whitespace-nowrap px-3 py-1.5 text-xs font-medium rounded-cz border transition-colors duration-150 ${on ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
             {label[group]}
           </button>
         );

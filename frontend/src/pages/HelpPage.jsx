@@ -417,6 +417,10 @@ const SECTION_DEFS = [
     blocks: [
       { id: "whatAcademy", kind: "text" },
       { id: "intakeCohort", kind: "text" },
+      // #6666: optag 2.0 (faciliteten, profilen, prognose gennem træning) vises
+      // først når academy_intake_pull_enabled er tændt.
+      { id: "intakeProfile", kind: "text", flag: "academy_intake_pull_enabled" },
+      { id: "prognosisTraining", kind: "text", flag: "academy_intake_pull_enabled" },
       { id: "signingProspects", kind: "steps" },
       { id: "academySize", kind: "text" },
       { id: "dailyTrainingBoost", kind: "text" },
@@ -448,6 +452,7 @@ const SECTION_DEFS = [
       { id: "graduationDayAt23", kind: "text" },
       { id: "youthRacesFromS4", kind: "text" },
       { id: "trainOnly", kind: "text" },
+      { id: "startFloor", kind: "text" },
       { id: "noUpkeepAtSeasonChange", kind: "text" },
     ],
   },

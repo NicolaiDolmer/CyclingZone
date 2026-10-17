@@ -162,8 +162,10 @@ export function riderLockReason({ riderId, columns = [], bindingMap, outgoing = 
 
   // Ingen binding i spil: så er kolonnerne utilgængelige i sig selv. Samme prædikat som
   // riderColumnState's "locked"-gren, blot delt i sine to grunde.
-  const withdrawn = states.filter((s) => s.column?.withdrawn).length;
-  const started = states.filter((s) => s.column && !s.column.withdrawn && s.column.lineup_locked).length;
+  // #6740: en did_not_start-kolonne er også withdrawn (inaktiv), men den er et startet løb,
+  // ikke et frivilligt fravalg — tæl den som startet i forklaringen.
+  const withdrawn = states.filter((s) => s.column?.withdrawn && !s.column?.did_not_start).length;
+  const started = states.filter((s) => s.column && (!s.column.withdrawn || s.column.did_not_start) && s.column.lineup_locked).length;
   if (started > 0 && withdrawn === 0) return { code: "all_races_started", raceId: null, raceName: null };
   if (withdrawn > 0 && started === 0) return { code: "all_races_withdrawn", raceId: null, raceName: null };
   return { code: "all_races_unavailable", raceId: null, raceName: null };

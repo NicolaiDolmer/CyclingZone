@@ -87,9 +87,9 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
         <label className="block text-cz-3 text-xs mb-1">Søg rytter</label>
         <input type="text" value={query} onChange={e => searchRiders(e.target.value)}
           placeholder="Navn..."
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent" />
+          className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden focus:border-cz-accent" />
         {riderResults.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-cz-subtle border border-cz-border rounded-lg overflow-hidden shadow-xl">
+          <div className="absolute z-10 w-full mt-1 bg-cz-subtle border border-cz-border rounded-cz overflow-hidden shadow-xl">
             {riderResults.map(r => (
               <div key={r.id} className="px-3 py-2 cursor-pointer hover:bg-cz-subtle border-b border-cz-border last:border-0"
                 onClick={() => { setSelectedRider(r); setQuery(`${r.firstname} ${r.lastname}`); setRiderResults([]); }}>
@@ -109,7 +109,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
       <div>
         <label className="block text-cz-3 text-xs mb-1">Flyt til hold</label>
         <select value={selectedTeam} onChange={e => setSelectedTeam(e.target.value)}
-          className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
+          className="w-full bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 text-cz-1 text-sm focus:outline-hidden">
           <option value="">Fri agent (intet hold)</option>
           {teams.map(t => <option key={t.id} value={t.id}>{t.name} (Div {t.division})</option>)}
         </select>
@@ -117,7 +117,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
       <div className="flex items-end">
         <div className="w-full grid grid-cols-1 gap-2">
           <button onClick={moveRider} disabled={loading || !selectedRider}
-            className="w-full px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
+            className="w-full px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm
               hover:brightness-110 disabled:opacity-50 transition-all">
             {loading ? "Arbejder..." : "Flyt rytter"}
           </button>
@@ -125,7 +125,7 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
             <button
               onClick={() => setRetirement(!selectedRider.is_retired)}
               disabled={loading}
-              className={`w-full px-4 py-2 font-bold rounded-lg text-sm border transition-all disabled:opacity-50
+              className={`w-full px-4 py-2 font-bold rounded-cz text-sm border transition-all disabled:opacity-50
                 ${selectedRider.is_retired
                   ? "bg-cz-success-bg text-cz-success border-cz-success/30"
                   : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}
@@ -317,7 +317,7 @@ export default function AdminUsersTab() {
         {users.length === 0 ? (
           <p className="text-cz-3 text-sm">Ingen brugere endnu.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-cz-border">
+          <div className="overflow-x-auto rounded-cz border border-cz-border">
             <table data-sortable className="w-full text-xs min-w-[580px]">
               <thead>
                 <tr className="border-b border-cz-border">
