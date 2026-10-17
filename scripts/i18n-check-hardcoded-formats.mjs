@@ -216,6 +216,12 @@ export const RULES = [
           const literalIdx = ctx.lineStart + m.index;
           call = enclosingCall(ctx.code, ctx.lineStart, literalIdx);
         }
+        // Kun egentlige locale-udtryk taeller: et argument i kaldet, eller en
+        // ternary/fallback-gren. Anden bindestregs-tekst paa linjen (aria-label=
+        // "go-to") er ikke en locale (Codex #6842).
+        const isFallback = /(?:\?\s*|\|\||\?\?)\s*$/.test(line.slice(0, m.index));
+        const inCall = ctx ? call !== null : INTL_CALL.test(line.slice(0, m.index));
+        if (!inCall && !isFallback) continue;
         // Normaliseres foer ISO-tjekket: "en-ca" er det samme trick som "en-CA".
         if (!(ISO_TRICK_LOCALES.has(canonicalLocaleTag(m[1])) && isIsoKeyUse(call ?? line))) return `fast locale "${m[1]}"`;
       }

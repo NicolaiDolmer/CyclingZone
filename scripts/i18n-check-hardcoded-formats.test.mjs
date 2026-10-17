@@ -77,6 +77,12 @@ test("locale-literal: parenteser i regex og template-literal afkorter ikke kalde
   assert.deepEqual(rules('new Intl.DateTimeFormat("en-CA", { timeZone: zones[i / 2], year: "numeric", month: "2-digit", day: "2-digit" })'), []);
 });
 
+test("locale-literal: bindestregs-tekst ved siden af et kald er ikke en locale (Codex #6842)", () => {
+  assert.deepEqual(rules('<span aria-label="go-to">{n.toLocaleString(locale)}</span>'), []);
+  assert.deepEqual(rules('<span aria-label="go-to">{n.toLocaleString("en-gb")}</span>'), ["locale-literal"]);
+  assert.deepEqual(rules('const l = lang === "da" ? "da-dk" : locale;'), ["locale-literal"]);
+});
+
 test("locale-default: toLocale*String() uden argument fanges", () => {
   assert.deepEqual(rules("d.toLocaleString()"), ["locale-default"]);
   assert.deepEqual(rules("d.toLocaleTimeString()"), ["locale-default"]);
