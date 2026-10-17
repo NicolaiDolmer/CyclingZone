@@ -1,0 +1,145 @@
+{
+  "page": {
+    "title": "Base des coureurs",
+    "subtitle": "{count} coureurs",
+    "watchlistLink": "Ma liste de suivi ({count})",
+    "loadingAria": "Chargement des coureurs"
+  },
+  "loadError": "Impossible de charger les coureurs. Réessaie.",
+  "retry": "Réessayer",
+  "watchlistToggleFailed": "Impossible de mettre à jour ta liste de suivi. Réessaie.",
+  "table": {
+    "nation": "Nation",
+    "rider": "Coureur",
+    "rating": "Note",
+    "ratingTitle": "La moyenne pondérée des aptitudes que demande son propre rôle. Le même chiffre correspond au même niveau, quel que soit le rôle.",
+    "team": "Équipe",
+    "badges": "Statut",
+    "age": "Âge",
+    "type": "Type",
+    "value": "Valeur",
+    "salary": "Salaire",
+    "popularity": "Popularité",
+    "popularityTitle": "Popularité auprès des fans (0-100). Les objectifs de coureur star déjà fixés par la direction gardent la mesure sous laquelle ils ont été convenus.",
+    "reputationLabel": "Réputation",
+    "reputationTitle": "Réputation de course. Pendant la transition, elle ne s'affiche jamais sous l'ancienne popularité de ce coureur. La direction lit ce chiffre pour les nouveaux objectifs de profil.",
+    "reputation": {
+      "band": {
+        "unknown": "Inconnu",
+        "known": "Connu",
+        "profile": "Profil",
+        "star": "Star",
+        "legend": "Légende"
+      }
+    },
+    "compareTooltip": "Sélectionner pour comparer",
+    "teamFree": "Libre",
+    "pendingTransfer": "Transfert en attente : il rejoint {team} une fois sa course par étapes en cours terminée"
+  },
+  "abilityLegend": {
+    "toggle": "Que signifient les codes ?"
+  },
+  "mobileSort": {
+    "label": "Trier par",
+    "ascAria": "Tri croissant, touche pour passer en décroissant",
+    "descAria": "Tri décroissant, touche pour passer en croissant"
+  },
+  "pagination": {
+    "showing": "Affichage de {from}-{to} sur {total}",
+    "prev": "Précédent",
+    "next": "Suivant"
+  },
+  "tour": {
+    "filters": {
+      "title": "Filtre la liste selon ton budget",
+      "body": "Mets « Valeur max » à ton solde pour ne voir que les coureurs que tu peux t'offrir. Les interrupteurs U25 / Agent libre ouvrent des voies moins chères."
+    },
+    "list": {
+      "title": "Clique sur un coureur",
+      "body": "La page de détail montre toutes les stats, le statut du contrat et les options d'achat/enchère. Tu peux y lancer une enchère ou envoyer une offre."
+    },
+    "watchlist": {
+      "title": "Utilise la liste de suivi",
+      "body": "L'étoile ajoute le coureur à ta liste de suivi pour que tu puisses y revenir facilement. La liste se trouve aussi dans le menu, sous Marché : Liste de suivi."
+    }
+  },
+  "emptyState": {
+    "title": "Monte ta première équipe",
+    "intro": "Tu n'as pas encore de coureurs. Utilise les filtres ci-dessous pour trouver ceux qui correspondent à ta stratégie et à ton budget.",
+    "balance": "Ton solde",
+    "tipValue": "<strong>Filtres de valeur</strong> = plafond de prix en CZ$. Mets le max sous ton solde pour ne voir que les coureurs abordables.",
+    "tipStats": "<strong>Filtres de stats</strong> = aptitudes des coureurs comme la grimpe, le sprint et le contre-la-montre. Commence large et affine ensuite.",
+    "tipBudget": "<strong>U25 / Agent libre</strong> = voies économiques : un potentiel plus jeune ou des coureurs sans contrat.",
+    "ctaFindFirst": "Trouve ton premier coureur (≤ {balance} CZ$)",
+    "ctaTour": "Fais-moi visiter"
+  },
+  "rankings": {
+    "title": "Classement des coureurs",
+    "season": "Saison {n}",
+    "noActiveSeason": "Aucune saison en cours",
+    "completedSeasonNote": "· Saison terminée. La nouvelle saison n'a pas encore commencé.",
+    "ridersCount": "{count} coureurs",
+    "filterIndicator": "Affichage de la division {division}",
+    "divisionFilterLabel": "Filtrer par division",
+    "divisionFilterAll": "Toutes les divisions",
+    "divisionFilterOption": "Division {n}",
+    "poolFilterLabel": "Filtrer par groupe",
+    "poolFilterAll": "Tous les groupes",
+    "ownerFilterLabel": "Filtrer par propriétaire",
+    "searchPlaceholder": "Rechercher un nom de coureur…",
+    "noResults": "Aucun résultat trouvé",
+    "noResultsFor": "Aucun résultat trouvé pour « {q} »",
+    "loadError": "Impossible de charger le classement. Réessaie.",
+    "retry": "Réessayer",
+    "thNation": "Nation",
+    "thRider": "Coureur",
+    "thTeam": "Équipe",
+    "thBadges": "Statut",
+    "teamFree": "Agent libre",
+    "ownerAll": "Tous",
+    "ownerManager": "Appartient à un manager",
+    "ownerAi": "Appartient à l'IA",
+    "ownerFree": "Agents libres",
+    "teamFilterLabel": "Filtrer par équipe",
+    "teamFilterAll": "Toutes les équipes",
+    "colPoints": "Points",
+    "colTotalWins": "Victoires totales",
+    "colStageWins": "Victoires d'étape",
+    "colGcWins": "Victoires au général",
+    "colClassicWins": "Victoires en classiques",
+    "colPtsWins": "Classement par points",
+    "colMtnWins": "Classement de la montagne",
+    "colYoungWins": "Classement des jeunes",
+    "colPrize": "Gains",
+    "colTop3": "Top 3",
+    "colTop10": "Top 10",
+    "colYellowDays": "Jours en jaune",
+    "colGreenDays": "Jours en vert",
+    "colPolkaDays": "Jours à pois",
+    "colWhiteDays": "Jours en blanc",
+    "shortPoints": "Pts",
+    "shortTotalWins": "Vict.",
+    "shortStageWins": "Étape",
+    "shortGcWins": "CG",
+    "shortClassicWins": "Cls",
+    "shortPtsWins": "PCL",
+    "shortMtnWins": "Mont.",
+    "shortYoungWins": "U25",
+    "shortPrize": "Gains",
+    "shortTop3": "T3",
+    "shortTop10": "T10",
+    "shortYellowDays": "Jau",
+    "shortGreenDays": "Ver",
+    "shortPolkaDays": "Poi",
+    "shortWhiteDays": "Bla",
+    "columnsButton": "Colonnes",
+    "columnsHeading": "Afficher les colonnes",
+    "legendStage": "Étape = victoires d'étape",
+    "legendGc": "CG = victoires au général en course par étapes",
+    "legendClassic": "Cls = victoires en classiques d'un jour",
+    "legendPcl": "PCL = classement par points",
+    "legendMtn": "Mont. = classement de la montagne",
+    "legendU25": "U25 = classement des jeunes",
+    "legendSort": "Clique sur une colonne pour trier"
+  }
+}
