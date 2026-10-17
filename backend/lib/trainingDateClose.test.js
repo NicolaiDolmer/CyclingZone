@@ -265,7 +265,7 @@ test('a normal date pass still settles division-less teams without a legacy row'
 
 // #6536: parking clears league_division_id, so a parked human team looked like a
 // division-less AI team and got a legacy tick every evening.
-test('a parked or division-less human team gets no legacy tick; a division-less AI team still does', async () => {
+test('a parked team gets no legacy tick; division-less AI and active human teams still do', async () => {
   __resetNormalizedTrainingDateCacheForTests();
   const calls = [], legacyLookups = [];
   const base = retryLoopOptions({ calls, legacyLookups, forceRetry: false });
@@ -285,7 +285,7 @@ test('a parked or division-less human team gets no legacy tick; a division-less 
     registerWork: async args => ({ team_id: args.teamId, game_days: args.gameDays, expected_rider_ids: args.riderIds, status: 'pending', opening_conditions: { 'r-active': {} } }),
     runDay: async args => { calls.push(`${args.teamId}:${args.gameDay}`); return {}; },
   });
-  assert.deepEqual(calls.sort(), ['active:5', 'ai:null']);
+  assert.deepEqual(calls.sort(), ['active:5', 'ai:null', 'human-no-division:null']);
   assert.equal(result.failed, 0);
 });
 

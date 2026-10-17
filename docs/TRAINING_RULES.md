@@ -21,6 +21,12 @@ er fjernet fra proposals, fordi dets writer er erstattet og ikke må genanvendes
 Infrastrukturen er live; en konkret kompensationskørsel kræver fortsat separat
 ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparation.
 
+## Parkerede hold træner ikke (#6536, 17/10)
+
+- Et parkeret hold (`teams.parked_at` sat) er urørt: ingen træningstick, hverken på løbsdags-nøglen eller den gamle kalenderdags-nøgle. Arbejde der allerede var registreret for datoen før parkeringen, afregnes færdigt.
+- Den gamle kalenderdags-nøgle (`game_day IS NULL`) gælder kun hold uden division, der ikke er parkeret: division-løse AI-hold og et nyt menneskehold oprettet uden division (fallback i `pickDivisionForNewTeam`).
+- Én regel for begge writers: `isLegacyCalendarTickTeam` (`trainingDateClose.js`) og `isTrainingDateTeam` (`trainingDateReadiness.js`).
+
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
 Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én

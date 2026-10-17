@@ -6,11 +6,14 @@ import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, t
 /**
  * #6536: who gets the division-less calendar-day tick (gameDay null)?
  *
- * Only AI teams without a `league_division_id` (spec §3.2): they have no race-day
- * axis, so one tick on the old calendar-day key keeps them developing. A parked
- * human team also loses its division (managerParking.js), but parking leaves the
- * team untouched apart from parked_at, so it must not train. A missing `is_ai`
- * counts as human: an unknown team never trains silently on the legacy key.
+ * Teams without a `league_division_id` (spec §3.2) that are not parked: they have
+ * no race-day axis, so one tick on the old calendar-day key keeps them developing. That
+ * covers division-less AI teams and the supported fallback where a new human
+ * team is created without a division (teamProfileEngine.pickDivisionForNewTeam).
+ * A parked team also loses its division (managerParking.js), but parking leaves
+ * the team untouched apart from parked_at, so it must not train (#6536). Callers
+ * MUST select parked_at; both writers below do, and the per-date context also
+ * drops parked teams up front (trainingDateReadiness.isTrainingDateTeam).
  *
  * Both writers use this one rule: buildSweepPlan (trainingDayCloseTrigger.js)
  * and the per-date sweep below.
@@ -19,7 +22,7 @@ import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, t
  * @returns {boolean}
  */
 export function isLegacyCalendarTickTeam(team) {
-  return !team?.league_division_id && team?.is_ai === true && team?.parked_at == null;
+  return !team?.league_division_id && team?.parked_at == null;
 }
 
 async function checked(query, label) {

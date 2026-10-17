@@ -178,14 +178,16 @@ describe("buildSweepPlan", () => {
     assert.deepEqual(plan, []);
   });
 
-  it("menneskehold uden division faar ikke et stille legacy-tick (kun AI-hold, spec §3.2)", () => {
+  it("aktivt menneskehold uden division (fallback ved oprettelse) faar stadig legacy-tick", () => {
     const plan = buildSweepPlan({
-      teams: [{ id: "h1", league_division_id: null, is_ai: false }],
+      teams: [{ id: "h1", league_division_id: null, is_ai: false, parked_at: null }],
       gameDaysByDivisionMap: byDivision,
       alreadyRanRaceDayKeys: new Set(),
       alreadyRanLegacyTeamIds: new Set(),
     });
-    assert.deepEqual(plan, []);
+    assert.equal(plan.length, 1);
+    assert.equal(plan[0].teamId, "h1");
+    assert.equal(plan[0].gameDay, null);
   });
 
   it("blandet bestand: aktivt hold uaendret, AI-hold uden division stadig ét legacy-tick, parkeret intet", () => {

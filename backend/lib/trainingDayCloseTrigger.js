@@ -585,7 +585,8 @@ export async function loadDayCloseSpans({
  * PARKEREDE HOLD (#6536) faar INTET tick. Parkering nulstiller league_division_id
  * (managerParking.js), saa et parkeret menneskehold lignede foer et division-loest
  * AI-hold og fik et legacy-tick hver aften. Et parkeret hold er uroert ud over
- * parked_at. Legacy-grenen gaelder derfor kun AI-hold (isLegacyCalendarTickTeam).
+ * parked_at. Legacy-grenen gaelder hold uden division der ikke er parkeret
+ * (isLegacyCalendarTickTeam), inkl. nye menneskehold oprettet uden division.
  *
  * @param {object} args
  * @param {Array<{id: string, league_division_id?: string|null, is_ai?: boolean|null, parked_at?: string|null}>} args.teams
