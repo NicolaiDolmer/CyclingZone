@@ -13,6 +13,8 @@
 --     public, saa schema-fingeraftrykket er uroert) og kaldes i portioner. Det virker baade
 --     fra psql og fra Supabase MCP execute_sql (én transaktion pr. kald).
 --
+-- Fail-closed: filen og hver skrivende funktion naegter, medmindre
+-- app_config.cz_environment = 'loadtest-staging' (markoeren fra anonymize-staging.sql).
 -- Brug (staging-ref pywxpnynzmbukdvoiazp, ALDRIG prod):
 --   1) koer denne fil (opretter schema + funktioner; idempotent)
 --   2) gentag til remaining_stages = 0:
@@ -26,13 +28,30 @@
 -- deltagelse samme game day, udelades, saa vagten aldrig afviser portionen.
 -- Afsluttede loeb faar prize_paid_at (ingen udbetaling sker; markoeren holder praemie-stien vaek).
 
+-- Fail-closed maal-tjek: kun en database med miljoe-markoeren fra anonymize-staging.sql.
+-- Prod har ikke markoeren, saa intet oprettes eller skrives der.
+do $g$ begin
+  if coalesce((select value #>> '{}' from public.app_config where key = 'cz_environment'), '') <> 'loadtest-staging' then
+    raise exception 'topup-race-results: ikke load-test-staging (app_config.cz_environment mangler) - naegter';
+  end if;
+end $g$;
+
 create schema if not exists cz_loadtest;
 revoke all on schema cz_loadtest from public, anon, authenticated;
+
+-- Samme tjek i hver skrivende funktion, saa et direkte kald aldrig rammer en anden database.
+create or replace function cz_loadtest.assert_staging() returns void language plpgsql as $f$
+begin
+  if coalesce((select value #>> '{}' from public.app_config where key = 'cz_environment'), '') <> 'loadtest-staging' then
+    raise exception 'cz_loadtest: ikke load-test-staging - naegter';
+  end if;
+end $f$;
 
 create or replace function cz_loadtest.syn_stage(p_race uuid, p_stage int, p_multi boolean)
 returns bigint language plpgsql as $f$
 declare v_rows bigint := 0; v_n bigint; v_season uuid; v_day int;
 begin
+  perform cz_loadtest.assert_staging();
   if exists (select 1 from public.race_results x where x.race_id = p_race and x.stage_number = p_stage) then
     return 0;
   end if;
@@ -86,6 +105,7 @@ returns jsonb language plpgsql as $f$
 declare
   v_race record; v_stage record; v_rows bigint := 0; v_done int := 0; v_last int; v_remaining bigint;
 begin
+  perform cz_loadtest.assert_staging();
   perform set_config('statement_timeout', '0', true);
   for v_race in
     select r.id, r.stages, coalesce(r.stages_completed, 0) as done
