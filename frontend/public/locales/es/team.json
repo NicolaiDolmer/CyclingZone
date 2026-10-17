@@ -265,9 +265,9 @@
       "young": "Ciclista joven",
       "team": "Clasificación por equipos",
       "leader": "Maillot de líder (día)",
-      "points_day": "Maillot de puntos (día)",
+      "points_day": "Maillot verde (día)",
       "mountain_day": "Maillot de la montaña (día)",
-      "young_day": "Maillot de jóvenes (día)"
+      "young_day": "Maillot blanco (día)"
     }
   },
   "club": {

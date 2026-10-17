@@ -228,9 +228,9 @@
         "stage_win": "Victoria de etapa",
         "stage_podium": "Podio de etapa",
         "stage_top10": "Top 10 de etapa",
-        "jersey_points_win": "Maillot de puntos",
+        "jersey_points_win": "Maillot verde",
         "jersey_mountain_win": "Maillot de la montaña",
-        "jersey_young_win": "Maillot de jóvenes",
+        "jersey_young_win": "Maillot blanco",
         "leader_day": "Maillot de líder",
         "fallback": "Evento de reputación"
       }
@@ -317,9 +317,9 @@
       },
       "jerseyDayLine": {
         "leader": "Maillot de líder · {n, plural, one {# día} other {# días}}",
-        "points_day": "Maillot de puntos · {n, plural, one {# día} other {# días}}",
+        "points_day": "Maillot verde · {n, plural, one {# día} other {# días}}",
         "mountain_day": "Maillot de la montaña · {n, plural, one {# día} other {# días}}",
-        "young_day": "Maillot de jóvenes · {n, plural, one {# día} other {# días}}"
+        "young_day": "Maillot blanco · {n, plural, one {# día} other {# días}}"
       },
       "totalsTitle": "Totales de la carrera",
       "totals": {

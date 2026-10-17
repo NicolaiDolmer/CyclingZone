@@ -192,13 +192,13 @@
       "Etapeplacering": "Puesto de etapa",
       "Klassement": "General (final)",
       "Klassiker": "Resultado de un día",
-      "Pointtroje": "Maillot de puntos (final)",
+      "Pointtroje": "Maillot verde (final)",
       "Bjergtroje": "Maillot de la montaña (final)",
-      "Ungdomstroje": "Maillot de jóvenes (final)",
+      "Ungdomstroje": "Maillot blanco (final)",
       "Forertroje": "Maillot de líder (por etapa llevado)",
       "BjergtrojeDag": "Maillot de la montaña (por día llevado)",
-      "PointtrojeDag": "Maillot de puntos (por día llevado)",
-      "UngdomstrojeDag": "Maillot de jóvenes (por día llevado)",
+      "PointtrojeDag": "Maillot verde (por día llevado)",
+      "UngdomstrojeDag": "Maillot blanco (por día llevado)",
       "EtapelobHold": "Equipos · carrera por etapas",
       "KlassikerHold": "Equipos · un día"
     }

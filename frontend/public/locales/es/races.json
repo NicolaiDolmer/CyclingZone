@@ -529,7 +529,7 @@
         "desc": "Por etapa en las carreras por etapas"
       },
       "Pointtroje": {
-        "label": "Maillot de puntos",
+        "label": "Maillot verde",
         "desc": "Top 3 de la clasificación por puntos"
       },
       "Bjergtroje": {
@@ -537,7 +537,7 @@
         "desc": "Top 3 de la clasificación de la montaña"
       },
       "Ungdomstroje": {
-        "label": "Maillot de jóvenes",
+        "label": "Maillot blanco",
         "desc": "Top 3 de la clasificación sub-25"
       },
       "EtapelobHold": {
@@ -553,16 +553,16 @@
         "desc": "Por día con el maillot de líder"
       },
       "PointtrojeDag": {
-        "label": "Maillot de puntos (por día)",
-        "desc": "Por día con el maillot de puntos"
+        "label": "Maillot verde (por día)",
+        "desc": "Por día con el maillot verde"
       },
       "BjergtrojeDag": {
         "label": "Maillot de la montaña (por día)",
         "desc": "Por día con el maillot de la montaña"
       },
       "UngdomstrojeDag": {
-        "label": "Maillot de jóvenes (por día)",
-        "desc": "Por día con el maillot de jóvenes"
+        "label": "Maillot blanco (por día)",
+        "desc": "Por día con el maillot blanco"
       }
     }
   },
