@@ -40,4 +40,9 @@ test("#6740 release: panel og sæsonmatrix viser did_not_start, ikke 'du har mel
   assert.ok(didNotStartAt > 0 && didNotStartAt < panel.indexOf("if (data.withdrawn) {"), "did_not_start foer withdrawnPanel");
   assert.match(matrix, /didNotStart: didNotStart\.has\(r\.id\)/);
   assert.equal(matrix.match(/racehub\.status\.didNotStart/g)?.length, 2, "desktop + mobil");
+  // Hintet (tooltip + popover) siger did not start, aldrig "du har meldt fra".
+  assert.equal(matrix.match(/withdrawnHintFor\(race\)/g)?.length, 2);
+  // Kolonnen viser ingen afmeld/deltag-igen-knap for et hold der blev fjernet ved start.
+  const col = readFileSync(new URL("./RaceColumn.jsx", import.meta.url), "utf8");
+  assert.match(col, /\{didNotStart \? <span \/> : \(/);
 });

@@ -372,10 +372,13 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
             {t("racehub.column.clearSelection")}
           </button>
         ) : <span />}
-        <button type="button" onClick={() => onToggleWithdraw(column.id, !column.withdrawn)} disabled={busy || locked}
-          className="text-xs text-cz-3 hover:text-cz-1 disabled:opacity-40 disabled:cursor-not-allowed">
-          {column.withdrawn ? t("racehub.column.reenter") : t("racehub.column.withdraw")}
-        </button>
+        {/* #6740: holdet blev fjernet ved start; der er intet at afmelde eller gen-deltage i. */}
+        {didNotStart ? <span /> : (
+          <button type="button" onClick={() => onToggleWithdraw(column.id, !column.withdrawn)} disabled={busy || locked}
+            className="text-xs text-cz-3 hover:text-cz-1 disabled:opacity-40 disabled:cursor-not-allowed">
+            {column.withdrawn ? t("racehub.column.reenter") : t("racehub.column.withdraw")}
+          </button>
+        )}
       </div>
     </div>
   );

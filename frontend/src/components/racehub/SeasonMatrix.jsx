@@ -17,6 +17,7 @@ import { useReloadBlock, RELOAD_BLOCK_REASONS } from "../../lib/reloadGate.js";
 import { mobileRaceWindow, shiftMobileRaceWindow } from "../../lib/seasonMatrixMobile.ts";
 import { fetchPlayerFeatureFlags } from "../../lib/playerFeatureFlags.js";
 import { fitTier, trainNowLockSummary } from "../../lib/raceHubLogic.js";
+import { MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js"; // #6740
 import TrainNowLockBanner from "./TrainNowLockBanner.tsx"; // #6383
 import { trainNowClock } from "../training/trainNowClock.ts";
 import { Spinner, EmptyState, ErrorState, Button, Segmented, FlagIcon, LockIcon, AlertTriangleIcon } from "../ui";
@@ -109,6 +110,12 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   // samme mønster som Race Hub-kolonnernes `c.withdrawn`. Entries bevares bevidst
   // ved afmelding (#4306), så uden dette flag udleder matrixen "deltager" af
   // entries alene og låser ryttere ude af løb de faktisk må køre.
+  // #6740: et løb holdet blev fjernet fra ved start er inaktivt som en afmelding, men
+  // hintet må ikke sige "du har meldt fra / deltag igen".
+  const withdrawnHintFor = (race) => (race.didNotStart
+    ? t("racehub.column.didNotStartNote", { min: MIN_RACE_ENTRIES })
+    : t("matrix.withdrawnHint"));
+
   const races = useMemo(() => {
     const withdrawn = new Set(data?.withdrawnRaceIds ?? []);
     // #6740: fjernet ved start. Binder ikke (som en afmelding), men hedder "Did not start".
@@ -611,7 +618,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                             // popoveren, der forklarer låsen.
                             title={[
                               t("matrix.cellFilledAria", { rider: rider.name, race: race.name, role: t(`tacticsOrders.roleLabel.${role}`) }),
-                              race.withdrawn ? t("matrix.withdrawnHint") : null,
+                              race.withdrawn ? withdrawnHintFor(race) : null,
                               trainedToday ? t("selection.trainNowLock.rider") : null,
                               peakInfo,
                             ].filter(Boolean).join(" · ")}
@@ -675,7 +682,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         // udtagelsespanelet; serveren afviser både tilføjelse og fjernelse af en låst rytter.
         const lockedReasonText = readOnly
           ? t("seasonView.readOnlyHint")
-          : race.withdrawn ? t("matrix.withdrawnHint")
+          : race.withdrawn ? withdrawnHintFor(race)
             : isTrainedToday(race.id, rider.id) ? trainNowReasonText(race.id) : null;
         return (
           <SeasonMatrixCellPopover
