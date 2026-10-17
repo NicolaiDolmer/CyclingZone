@@ -21,6 +21,7 @@
 | `tone-check-em-dash.mjs` | Em-dash i spillervendt copy |
 | `build-backend-locales.mjs --check` | Backendens locale-bundle er stale i forhold til `frontend/public/locales` (#4734) |
 | `i18n-check-backend-player-strings.mjs` | Hardkodet dansk prosa i backendens spillervendte tekstkilder (#4734), og nye notifikations-kald med hardkodet tekst uden `titleCode`/`messageCode` (baseline-ratchet, #6801). CI-job `backend-player-strings`. Opgørelse: [`2026-10-17-6801-backend-strings.md`](2026-10-17-6801-backend-strings.md) |
+| `i18n-check-hardcoded-formats.mjs` | Nye hardkodede tal/dato/valuta-formater i spillervendt frontend (fast "da-DK", `toFixed` + `%`, håndskrevne separatorer). Ratchet-baseline `scripts/i18n-hardcoded-formats-baseline.json`, må kun skrumpe (#6785) |
 | `i18n-check-duplicate-keys`, `-namespace-inline`, `-nav-strings`, `-page-untranslated`, `-lib-strings`, `-leaks`, `-terrain-coverage`, `-error-codes` | Øvrige struktur- og dækningskrav |
 
 Hele kæden kører lokalt med `npm run check:i18n` (og i `scripts/preflight-pr.ps1`).
