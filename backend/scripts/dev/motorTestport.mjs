@@ -291,6 +291,16 @@ export function resolveReportThresholds(prev, opts) {
   return loadThresholds(abs(prev?.thresholdsFile ?? opts.thresholds));
 }
 
+/**
+ * #6794: meta til et --report-only-kort. Bygges i hukommelsen og skrives aldrig til
+ * testport-meta.json. thresholdsFile/thresholds foelger de taerskler kortet faktisk
+ * er regnet med (et eksplicit --thresholds=<fil> vinder over de gemte), og
+ * generatedAt stemples fra det injicerede ur.
+ */
+export function buildReportMeta(prev, opts, thresholds, now = new Date()) {
+  return { ...prev, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds, generatedAt: now.toISOString() };
+}
+
 export function collectCard({ outDir, baseline, candidate, meta, benchScope = meta?.benchScope ?? "all", thresholds = {} }) {
   const racesDir = path.join(outDir, "races");
   const idsFile = path.join(outDir, "ids.txt");
@@ -358,8 +368,13 @@ async function defaultBaseline() {
   }
 }
 
-export async function main(argv = process.argv.slice(2)) {
-  const opts = parseArgs(argv, { defaultBaseline: await defaultBaseline() });
+/**
+ * #6794: `now` (et Date) er det eneste ur: det styrer default-out-datoen og
+ * generatedAt, saa en test kan fastlaase begge. `defaultBaseline` kan injiceres
+ * af samme grund (default: den aktuelle revision).
+ */
+export async function main(argv = process.argv.slice(2), { now = new Date(), defaultBaseline: baselineOverride } = {}) {
+  const opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
   if (opts.benchWorker) return benchWorker(opts);
   const outDir = assertPrivateOutDir(abs(opts.out));
   const metaFile = path.join(outDir, "testport-meta.json");
@@ -367,7 +382,8 @@ export async function main(argv = process.argv.slice(2)) {
   if (opts.reportOnly) {
     // Kortet samles igen med koerslens EGNE parametre; meta-filen roeres ikke.
     if (!prev) throw new Error(`--report-only: ${metaFile} findes ikke`);
-    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: { ...prev, generatedAt: new Date().toISOString() }, thresholds: resolveReportThresholds(prev, opts) });
+    const thresholds = resolveReportThresholds(prev, opts);
+    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: buildReportMeta(prev, opts, thresholds, now), thresholds });
     return writeCard({ card, outDir, png: opts.png, failed: prev.failedRaces ?? [] });
   }
   if (prev && (prev.candidate !== opts.candidate || prev.baseline !== opts.baseline || prev.seeds !== opts.seeds || (prev.benchScope ?? "all") !== opts.benchScope)) {
@@ -405,7 +421,7 @@ export async function main(argv = process.argv.slice(2)) {
   });
   meta.failedRaces = res.failed;
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
-  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: new Date().toISOString() }, thresholds });
+  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: now.toISOString() }, thresholds });
   return writeCard({ card, outDir, png: opts.png, failed: res.failed });
 }
 

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, assertSameRaceSelection, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -129,7 +129,8 @@ test("main --report-only: bruger koerslens gemte parametre og roerer ikke meta-f
     writeFileSync(path.join(out, "testport-meta.json"), JSON.stringify(meta, null, 2));
     writeFileSync(path.join(out, "races", "a", "loeb-2026-10-17-08-00.json"), scorecard("a", "rev"));
     const metaBefore = readFileSync(path.join(out, "testport-meta.json"), "utf8");
-    const { card } = await main(["--report-only", `--out=${out}`, "--no-png"]);
+    const { card } = await main(["--report-only", `--out=${out}`, "--no-png"], { now: NOW });
+    assert.equal(card.generatedAt, NOW.toISOString());
     assert.equal(card.meta.seeds, 3);
     assert.deepEqual(card.meta.failedRaces, ["b"]);
     assert.equal(readFileSync(path.join(out, "testport-meta.json"), "utf8"), metaBefore);
@@ -141,6 +142,70 @@ test("main --report-only: bruger koerslens gemte parametre og roerer ikke meta-f
     process.exitCode = prevExit;
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("#6794: main stempler generatedAt fra det injicerede ur (koersel og --report-only), ikke vaeguret", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-clock-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    const first = await main(["--candidate=rev", "--bench-only", "--no-bench", `--out=${out}`, "--no-png"], { now: NOW, defaultBaseline: "rev" });
+    assert.equal(first.card.generatedAt, NOW.toISOString());
+    assert.equal(first.card.meta.generatedAt, NOW.toISOString());
+    const later = new Date("2031-01-02T03:04:05Z");
+    const report = await main(["--report-only", `--out=${out}`, "--no-png"], { now: later });
+    assert.equal(report.card.generatedAt, later.toISOString());
+    assert.equal(JSON.parse(readFileSync(path.join(out, "testport.json"), "utf8")).generatedAt, later.toISOString());
+    assert.match(readFileSync(path.join(out, "testport.md"), "utf8"), /Genereret 2031-01-02T03:04:05\.000Z/);
+    assert.equal(JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8")).generatedAt, undefined, "meta-filen indeholder intet ur");
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6794: --report-only --thresholds=<ny fil> faar matchende in-memory-meta uden at omskrive testport-meta.json", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-thr4-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    const oldFile = path.join(root, "gammel.json");
+    const newFile = path.join(root, "ny.json");
+    writeFileSync(oldFile, JSON.stringify({ bigBreakawayWinSeconds: 111 }));
+    writeFileSync(newFile, JSON.stringify({ bigBreakawayWinSeconds: 222 }));
+    await main(["--candidate=rev", "--baseline=rev", "--bench-only", "--no-bench", `--thresholds=${oldFile}`, `--out=${out}`, "--no-png"], { now: NOW });
+    const metaPath = path.join(out, "testport-meta.json");
+    const metaBefore = readFileSync(metaPath, "utf8");
+
+    // uden --thresholds: kortets meta peger paa den gemte fil og det gemte snapshot
+    const kept = await main(["--report-only", `--out=${out}`, "--no-png"], { now: NOW });
+    assert.equal(kept.card.meta.thresholdsFile, oldFile);
+    assert.deepEqual(kept.card.meta.thresholds, { bigBreakawayWinSeconds: 111 });
+
+    // med ny fil: kortets tal OG meta foelger den nye fil
+    const { card } = await main(["--report-only", `--thresholds=${newFile}`, `--out=${out}`, "--no-png"], { now: NOW });
+    assert.equal(card.thresholds.bigBreakawayWinSeconds, 222);
+    assert.equal(card.meta.thresholdsFile, newFile);
+    assert.deepEqual(card.meta.thresholds, card.thresholds);
+    const written = JSON.parse(readFileSync(path.join(out, "testport.json"), "utf8"));
+    assert.equal(written.meta.thresholdsFile, newFile);
+    assert.deepEqual(written.meta.thresholds, { bigBreakawayWinSeconds: 222 });
+
+    // testport-meta.json er uroert (byte for byte)
+    assert.equal(readFileSync(metaPath, "utf8"), metaBefore);
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6794: buildReportMeta: rent, roerer ikke prev, eksplicit fil vinder", () => {
+  const prev = { candidate: "c", thresholdsFile: "gammel.json", thresholds: { a: 1 } };
+  const frozen = JSON.stringify(prev);
+  const meta = buildReportMeta(prev, { thresholds: "ny.json", thresholdsExplicit: true }, { a: 2 }, NOW);
+  assert.deepEqual(meta, { candidate: "c", thresholdsFile: "ny.json", thresholds: { a: 2 }, generatedAt: NOW.toISOString() });
+  assert.equal(JSON.stringify(prev), frozen);
+  assert.equal(buildReportMeta(prev, { thresholds: "default.json", thresholdsExplicit: false }, { a: 1 }, NOW).thresholdsFile, "gammel.json");
 });
 
 test("runPool: hoejst `parallel` ad gangen, fejl stopper ikke de andre", async () => {
