@@ -39,6 +39,26 @@ test("#6369: historikken goer et nyt udbrud (reformation) til dagens udbrud; det
   assert.deepEqual([...old.morningRiderIds].sort(), ["a1", "a2"]);
 });
 
+test("#6369: feltet der har overtaget det hentede udbruds id, 'henter' ikke det nye udbrud ved en senere sammenlaegning", () => {
+  // Ronde van Zeeland seed 5 etape 3 (17/10): feltet slaas sammen IND i breakaway-0,
+  // det nye udbrud koerer fra den gruppe, og en senere sammenlaegning ind i breakaway-0
+  // maa ikke maerke de nye udbrydere som hentet.
+  const events = [
+    { km: 0, type: "stage_start", params: {} },
+    { km: 12, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["a1"], drops_reported: true } },
+    { km: 18, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["a1"], chase_group_id: "peloton-0", chase_group_kind: "peloton" } },
+    { km: 18, type: "group_merged", params: { group_id: "peloton-0", into_group_id: "breakaway-0", rider_ids: ["p1", "p2", "b1", "b2"] } },
+    { km: 23, type: "breakaway_formed", params: { group_id: "breakaway-1500", rider_ids: ["b1", "b2"], reformation: true } },
+    { km: 120, type: "group_merged", params: { group_id: "chase-1", into_group_id: "breakaway-0", rider_ids: ["p3"] } },
+    { km: 155, type: "breakaway_survived", params: { group_id: "breakaway-1500", rider_ids: ["b1", "b2"] } },
+    { km: 155, type: "finish", params: {} },
+  ];
+  const h = deriveParticipationHistory(events, ["a1", "p1", "p2", "p3", "b1", "b2"]);
+  assert.equal(h.riders.get("b1")?.caught, false);
+  assert.equal(h.riders.get("b1")?.survived, true);
+  assert.equal(h.riders.get("a1")?.caught, true);
+});
+
 test("#6369: paa Giro-feltet faar S5 et nyt udbrud efter den tidlige indhentning; official_times_v5 er uroert", async () => {
   const data = JSON.parse(readFileSync(new URL("../../../../scripts/baselines/giro-field-6088-2026-10-02.json", import.meta.url), "utf8"));
   const stages = sortedStages(data).filter((s: { stage_number: number }) => s.stage_number <= 2);

@@ -107,8 +107,14 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
       formationSeen = true;
       for (const id of ids) { morningRiderIds.add(id); entry(id).morning = true; }
       if (groupId) groups.set(groupId, new Set(ids));
-      const source = typeof p.source_group_id === "string" ? p.source_group_id : "peloton-0";
-      for (const id of ids) groups.get(source)?.delete(id);
+      // #6369: et nyt udbrud (reformation) koerer fra den gruppe, feltet er blevet
+      // til efter indhentningen (fx id'et "breakaway-0"); rytterne fjernes fra alle andre grupper.
+      if (p.reformation === true) {
+        for (const [gid, members] of groups) if (gid !== groupId) for (const id of ids) members.delete(id);
+      } else {
+        const source = typeof p.source_group_id === "string" ? p.source_group_id : "peloton-0";
+        for (const id of ids) groups.get(source)?.delete(id);
+      }
     } else if (event.type === "finale_attack" && p.kind !== "stage_decided") {
       const attackers = ids.length ? ids : typeof p.rider_id === "string" ? [p.rider_id] : [];
       for (const id of attackers) entry(id).laterAttack = true;
