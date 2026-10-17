@@ -128,6 +128,7 @@ if findings:
 sys.exit(0)
 PYEOF
     ) || PY_EXIT=$?
+    rm -f "$_SECRET_SCAN_DIFF_FILE"
     unset _SECRET_SCAN_DIFF_FILE
 
     if [ "$PY_EXIT" -eq 2 ]; then
