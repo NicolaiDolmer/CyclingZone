@@ -1,19 +1,33 @@
 /**
  * Slice 09 — Auto-transition cron
  * =========================================
- * Fyrer transitionToNextSeason automatisk når et sæson-vindue er
- * fuldt-wrapped: status=closed, final_whistle_sent_at sat, squad enforcement done.
+ * Fyrer transitionToNextSeason automatisk, når den manuelle skifte-gate ville
+ * lade admin skifte: kildesæsonen er afsluttet (season-end kørt) og
+ * assessTransitionReadiness er grøn.
  *
- * Cron-rytmen er bevidst 5-min interval — samme tempo som final whistle + squad
- * enforcement crons. Sponsor lander derfor på alle managers' konti ~5-15 min
- * efter window-close.
+ * #6784 — cron'en læser IKKE transfer_windows. Markedet er altid åbent
+ * (docs/TRANSFER_MARKET_RULES.md, "Transfervinduet er afskaffet"), og ingen
+ * kode skriver vinduets final-whistle- og squad-enforcement-markører længere,
+ * så den gamle "fuldt-wrapped vindue"-trigger kunne aldrig fyre. Kontrakten er
+ * nu den samme som POST /api/admin/season-transition:
+ *   1. Kildesæson = resolveTransitionSourceSeason (nyeste 'active', ellers
+ *      nyeste 'completed').
+ *   2. Kildesæsonen skal have status='completed'. Cron'en kører aldrig
+ *      season-end selv og skifter aldrig en aktiv sæson — heller ikke sæson 0,
+ *      der ikke har et season-end-skridt (det skifte er manuelt).
+ *   3. assessTransitionReadiness skal være grøn (alle kritiske checks).
+ *   4. Min-interval-guard mod transition-loop (admin_log).
  *
- * Idempotens: hvis season.status='completed' (allerede transitioneret),
- * returnerer cron uden at gøre noget. transitionToNextSeason er selv
- * idempotent per fase (insert-if-missing, update-if-changed).
+ * Idempotens: efter et skifte findes en ny 'active' sæson, så resolveren
+ * vælger den, og trin 2 stopper (season_status_active). transitionToNextSeason
+ * er selv idempotent per fase og validerer at næste sæson findes.
+ *
+ * NB: denne cron kører kun når SEASON_AUTO_TRANSITION_ENABLED=true i
+ * economyConstants.js — pt. false (#1155, ejer-beslutning 2026-06-08):
+ * sæson-skift er en bevidst manuel admin-handling. #6784 tænder den ikke.
  */
 
-import { transitionToNextSeason } from "./seasonTransition.js";
+import { resolveTransitionSourceSeason, transitionToNextSeason } from "./seasonTransition.js";
 import { assessTransitionReadiness } from "./seasonTransitionReadiness.js";
 import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
 
@@ -27,63 +41,22 @@ export async function processSeasonAutoTransitionCron({
   now = new Date(),
   transitionFn = transitionToNextSeason,
   assessReadiness = assessTransitionReadiness,
+  resolveSourceSeason = resolveTransitionSourceSeason,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
-  // closed_at IS NOT NULL skelner racing-windows (oprettet via transitionToNextSeason
-  // med status='closed' men closed_at=null) fra windows der faktisk er lukket via
-  // closePrevTransferWindow (sæsonstart/-transition). Uden dette filter ville cron'en
-  // matche det nyfødte racing-window og fyre en ekstra transition hver 5-10 min
-  // (sæson-loop-bug rettet 2026-05-21 efter 0→1→2→3→4-incident).
-  //
-  // Dette filter er LAG 1 (kode-filter) i et 2-lags forsvar-i-dybden mod racing-windows:
-  //   1. KODE-FILTER  — denne `.not("closed_at","is",null)` (+ samme i squadEnforcement.js).
-  //   2. DB CHECK     — 2026-05-22-transfer-window-racing-guard.sql gør det strukturelt
-  //                     umuligt at sætte final_whistle_sent_at / squad_enforcement_completed_at
-  //                     uden closed_at.
-  // (En tidligere LAG 3 "kilde-guard i admin-close-endpoint'et" #544 fandtes indtil
-  // #1996 del 1 fjernede admin transfer-window/open+close-endpoints — markedet er nu
-  // altid åbent, jf. marketUtils.getTransferWindowOpen. Kun to kodestier skriver til
-  // transfer_windows i dag: insertTransferWindowIfMissing (altid closed_at=null,
-  // "racing"-window) og closePrevTransferWindow (altid closed_at sat), begge kaldt
-  // fra sæsonstart/-transition — så LAG 1+2 er tilstrækkelige, der er ikke længere
-  // en tredje skrive-vej der kan genskabe en modstridende state.)
-  //
-  // NB: denne cron kører kun når SEASON_AUTO_TRANSITION_ENABLED=true i
-  // economyConstants.js — pt. false (#1155, ejer-beslutning 2026-06-08, forud for
-  // #1996): sæson-skift er en bevidst manuel admin-handling. Uafhængig af #1996.
-  const { data: window, error: windowError } = await supabase
-    .from("transfer_windows")
-    .select("id, season_id, status, closes_at, closed_at, final_whistle_sent_at, squad_enforcement_completed_at")
-    .eq("status", "closed")
-    .not("closed_at", "is", null)
-    .not("final_whistle_sent_at", "is", null)
-    .not("squad_enforcement_completed_at", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (windowError) throw windowError;
-  if (!window) return { transitioned: false, reason: "no_wrapped_window" };
-  if (!window.season_id) return { transitioned: false, reason: "no_season_id" };
+  const season = await resolveSourceSeason({ supabase });
+  if (!season) return { transitioned: false, reason: "no_source_season" };
 
-  // Idempotens: tjek season.status — kun 'active' skal transitioneres.
-  const { data: season, error: seasonError } = await supabase
-    .from("seasons")
-    .select("id, number, status")
-    .eq("id", window.season_id)
-    .maybeSingle();
-  if (seasonError) throw seasonError;
-  if (!season) return { transitioned: false, reason: "season_not_found" };
-  if (season.status !== "active") {
+  // Kun en afsluttet sæson (season-end kørt af admin) må skiftes automatisk.
+  if (season.status !== "completed") {
     return { transitioned: false, reason: `season_status_${season.status}` };
   }
 
-  // #WS1 Task 2.1: readiness-gate. Den manuelle endpoint deler allerede dette
-  // check (POST /api/admin/season-transition); auto-cron'en var ugatet og kunne
-  // skifte sæson midt i uafsluttede løb / aktive auktioner. assessTransitionReadiness
-  // returnerer { ready, checks, failed_critical } — afled en reason fra det første
-  // fejlede kritiske check så afbruddet er sporbart i loggen.
-  const readiness = await assessReadiness({ supabase, fromSeasonId: window.season_id });
+  // #WS1 Task 2.1: samme readiness-gate som det manuelle endpoint.
+  // assessTransitionReadiness returnerer { ready, checks, failed_critical } — afled
+  // en reason fra det første fejlede kritiske check så afbruddet er sporbart.
+  const readiness = await assessReadiness({ supabase, fromSeasonId: season.id });
   if (!readiness.ready) {
     const cause = readiness.failed_critical?.[0] ?? "unknown";
     return { transitioned: false, reason: `not_ready_${cause}` };
@@ -107,7 +80,7 @@ export async function processSeasonAutoTransitionCron({
 
   const result = await transitionFn({
     supabase,
-    fromSeasonId: window.season_id,
+    fromSeasonId: season.id,
     transitionAt: now,
     adminUserId: null,
   });

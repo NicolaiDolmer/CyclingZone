@@ -221,7 +221,7 @@ function retryLoopOptions({ calls, legacyLookups, legacyRan = new Set(), forceRe
     loadIndex: async () => ({ today: '2026-10-01', activeSeasonId: 'season', jobs: [{ tickDate: '2026-09-30', season: { id: 'season', number: 4 }, ...(forceRetry ? { forceRetry: true } : {}) }] }),
     loadWorkRows: async () => (forceRetry ? [work] : []),
     loadContext: async () => ({
-      teams: [{ id: 'stuck', league_division_id: 'division' }, { id: 'legacy-a', league_division_id: null }, { id: 'legacy-b', league_division_id: null }],
+      teams: [{ id: 'stuck', league_division_id: 'division' }, { id: 'legacy-a', league_division_id: null, is_ai: true }, { id: 'legacy-b', league_division_id: null, is_ai: true }],
       riders: [{ id: 'r-stuck', team_id: 'stuck' }, { id: 'r-a', team_id: 'legacy-a' }, { id: 'r-b', team_id: 'legacy-b' }],
       races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
       gameDaysByDivision: new Map([['division', [5]]]),
@@ -261,6 +261,32 @@ test('a normal date pass still settles division-less teams without a legacy row'
   assert.deepEqual(calls.filter(id => id.startsWith('legacy')), ['legacy-a']);
   assert.equal(legacyLookups.length, 1);
   assert.equal(result.failed, 1);
+});
+
+// #6536: parking clears league_division_id, so a parked human team looked like a
+// division-less AI team and got a legacy tick every evening.
+test('a parked team gets no legacy tick; division-less AI and active human teams still do', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const calls = [], legacyLookups = [];
+  const base = retryLoopOptions({ calls, legacyLookups, forceRetry: false });
+  const result = await runNormalizedTrainingDateSweep({
+    ...base,
+    loadContext: async () => ({
+      teams: [
+        { id: 'active', league_division_id: 'division', is_ai: false },
+        { id: 'parked', league_division_id: null, is_ai: false, parked_at: '2026-09-27T18:59:00Z' },
+        { id: 'human-no-division', league_division_id: null, is_ai: false },
+        { id: 'ai', league_division_id: null, is_ai: true },
+      ],
+      riders: [{ id: 'r-active', team_id: 'active' }, { id: 'r-parked', team_id: 'parked' }, { id: 'r-human', team_id: 'human-no-division' }, { id: 'r-ai', team_id: 'ai' }],
+      races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
+      gameDaysByDivision: new Map([['division', [5]]]),
+    }),
+    registerWork: async args => ({ team_id: args.teamId, game_days: args.gameDays, expected_rider_ids: args.riderIds, status: 'pending', opening_conditions: { 'r-active': {} } }),
+    runDay: async args => { calls.push(`${args.teamId}:${args.gameDay}`); return {}; },
+  });
+  assert.deepEqual(calls.sort(), ['active:5', 'ai:null', 'human-no-division:null']);
+  assert.equal(result.failed, 0);
 });
 
 test('a legacy failure keeps the forced retry on a full pass', async () => {

@@ -134,7 +134,28 @@ export async function listUpcomingRaceIds({ includeRunning = false } = {}) {
     ids.push(...(data ?? []).map((r) => r.id));
     if (!data || data.length < PAGE) break;
   }
-  return ids;
+  // #6805: et loeb uden startfelt (ingen race_entries endnu, fx S5 foer
+  // tilmelding) kan ikke koeres og er ikke en motorfejl. Det springes over og
+  // taelles paa kortet i stedet for at staa som FEJL.
+  const withField = new Set();
+  const CHUNK = 200;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const chunk = ids.slice(i, i + CHUNK);
+    // pagination-safe: .range() i sider, da et loeb kan have mange tilmeldinger
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await db.from("race_entries").select("race_id").in("race_id", chunk).order("race_id", { ascending: true }).range(from, from + PAGE - 1);
+      if (error) throw new Error(`race_entries: ${error.message}`);
+      for (const row of data ?? []) withField.add(row.race_id);
+      if (!data || data.length < PAGE) break;
+    }
+  }
+  return splitByStartField(ids, withField);
+}
+
+/** #6805: del loebene i dem med startfelt og dem uden (rent, testbart). Raekkefoelgen bevares. */
+export function splitByStartField(ids, withField) {
+  const kept = ids.filter((id) => withField.has(id));
+  return { ids: kept, skippedNoField: ids.length - kept.length };
 }
 
 /**
@@ -361,7 +382,12 @@ export async function main(argv = process.argv.slice(2)) {
     if (opts.raceIds) { raceIds = opts.raceIds; source = "--races"; }
     else if (opts.idsFile) { raceIds = parseIdsText(readFileSync(abs(opts.idsFile), "utf8")); source = `--ids-file ${path.basename(opts.idsFile)}`; }
     else if (fromDir) { raceIds = raceIdsFromDir(fromDir); source = `--from-dir ${path.basename(fromDir)}`; }
-    else { raceIds = await listUpcomingRaceIds({ includeRunning: opts.includeRunning }); source = opts.includeRunning ? "prod (ikke afsluttede)" : "prod (ikke startede)"; }
+    else {
+      const upcoming = await listUpcomingRaceIds({ includeRunning: opts.includeRunning });
+      raceIds = upcoming.ids;
+      source = `${opts.includeRunning ? "prod (ikke afsluttede)" : "prod (ikke startede)"}${upcoming.skippedNoField ? `, ${upcoming.skippedNoField} uden startfelt sprunget over` : ""}`;
+      if (upcoming.skippedNoField) console.log(`${upcoming.skippedNoField} kommende loeb har intet startfelt endnu og koeres ikke (#6805).`);
+    }
     raceIds = selectRaceIds(raceIds, opts.limit);
     const idsPath = path.join(outDir, "ids.txt");
     if (prev && existsSync(idsPath)) assertSameRaceSelection(parseIdsText(readFileSync(idsPath, "utf8")), raceIds, outDir);

@@ -26,6 +26,12 @@ function riderIds(value: unknown): string[] {
 export function deriveParticipationHistory(events: readonly ParticipationEvent[] = [], initialRiderIds: readonly string[] = []): ParticipationHistory {
   const riders = new Map<string, RiderParticipation>();
   const morningRiderIds = new Set<string>();
+  // #6748 (KUN s5_profiles_v2, `separate_formation` paa et nyt udbrud): den
+  // AKTIVE formation, adskilt fra den samlede deltagelse. Om en indhentning er
+  // en sammenlaegning inde i udbruddet, afgoeres paa den: en jagtgruppe af det
+  // hentede udbruds ryttere der henter det nye udbrud, har hentet det. Uden
+  // maerket er den aktive formation hele deltagelsen (s5_profiles_v1 og aeldre).
+  let formation: Set<string> = morningRiderIds;
   const groups = new Map<string, Set<string>>();
   if (initialRiderIds.length) groups.set("peloton-0", new Set(initialRiderIds));
   const entry = (id: string) => {
@@ -92,7 +98,7 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
     const known = groups.get(chaseGroupId);
     const members = known && known.size > 0 ? [...known]
       : typeof p.group_id === "string" ? mergedIntoBreak.get(`${event.km}|${chaseGroupId}|${p.group_id}`) ?? [] : [];
-    return members.length > 0 && members.every((id) => morningRiderIds.has(id));
+    return members.length > 0 && members.every((id) => formation.has(id));
   };
   const regroupCatches = new Set<ParticipationEvent>();
   for (const event of events) {
@@ -106,6 +112,8 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
       if (!formationSeen) engineDrops = p.drops_reported === true;
       formationSeen = true;
       for (const id of ids) { morningRiderIds.add(id); entry(id).morning = true; }
+      // #6748 (KUN s5_profiles_v2): det nye udbrud er nu den aktive formation.
+      if (p.reformation === true && p.separate_formation === true) formation = new Set(ids);
       if (groupId) groups.set(groupId, new Set(ids));
       // #6369: et nyt udbrud (reformation) koerer fra den gruppe, feltet er blevet
       // til efter indhentningen (fx id'et "breakaway-0"); rytterne fjernes fra alle andre grupper.
@@ -141,7 +149,7 @@ export function deriveParticipationHistory(events: readonly ParticipationEvent[]
       const incoming = ids.length ? ids : [...(groups.get(groupId) ?? [])];
       const combined = new Set([...target, ...incoming]);
       // Only actual known members can prove a reunion with non-escapees.
-      if ([...combined].some((id) => !morningRiderIds.has(id))) catchMorning(combined);
+      if ([...combined].some((id) => !formation.has(id))) catchMorning(combined);
       else rejoinBreak(combined);
       groups.delete(groupId);
       groups.set(p.into_group_id, combined);
