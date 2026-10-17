@@ -31,4 +31,6 @@ test("#6322 effekten annullerer ikke sit eget resultat via cleanup", () => {
 test("#6322 fejlet fetch efterlader ikke linsen i loading", () => {
   assert.match(block, /catch \(err\)/);
   assert.match(block, /setStrength\(agg\); setStrengthLoading\(false\)/);
+  assert.match(block, /strengthFetchStarted\.current = false;/, "fejl skal tillade nyt forsøg");
+  assert.match(block, /strengthMounted\.current = true;/, "StrictMode-replay skal genaktivere mounted-ref");
 });

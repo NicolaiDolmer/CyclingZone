@@ -318,7 +318,7 @@ export default function StandingsPage() {
   // resultatet → linsen blev stående på "…". Cleanup kører nu kun ved unmount.
   const strengthFetchStarted = useRef(false);
   const strengthMounted = useRef(true);
-  useEffect(() => () => { strengthMounted.current = false; }, []);
+  useEffect(() => { strengthMounted.current = true; return () => { strengthMounted.current = false; }; }, []);
   useEffect(() => {
     if (lens !== LENS_STRENGTH || strength !== null || strengthFetchStarted.current) return;
     strengthFetchStarted.current = true;
@@ -326,7 +326,7 @@ export default function StandingsPage() {
       setStrengthLoading(true);
       // Paginér: ~4.9k ryttere er på hold, men PostgREST capper ved 1000 → uden
       // dette manglede trup-styrke for de fleste hold i Linse B (#2206).
-      let riders = [];
+      let riders = null;
       try {
         riders = await fetchAllRows(() => supabase
           .from("riders")
@@ -335,6 +335,12 @@ export default function StandingsPage() {
           .order("id", { ascending: true }));
       } catch (err) {
         console.error("[StandingsPage] squad-styrke-fetch fejlede:", err);
+      }
+      if (riders === null) {
+        // Fejl: gem ikke tomme aggregater som succes — tillad nyt forsøg ved næste linse-skift.
+        strengthFetchStarted.current = false;
+        if (strengthMounted.current) setStrengthLoading(false);
+        return;
       }
       const ridersByTeam = {};
       (riders || []).forEach(raw => {
