@@ -11,6 +11,25 @@
 
 Se også: `memory/feedback_language_priority.md`.
 
+## Nye sprog: fr, es, nl (uformel tiltale)
+
+> Refs #6785. Gælder FØR et nyt sprog åbnes og for enhver oversætter, menneske eller model. Termerne står i [`docs/i18n/GLOSSARY.md`](i18n/GLOSSARY.md); rytter-, hold- og løbsnavne oversættes aldrig.
+
+Stemmen er den samme i alle sprog: én spiller ad gangen, jeg-stemmen, ærlig og uden firmasprog. Tiltalen er uformel, ligesom "du" på dansk og "you" på engelsk. Den formelle form er forkert, ikke bare for stiv.
+
+| Sprog | Tiltale | Jeg-stemme | Imperativ (eksempel) | Må ikke forekomme |
+|---|---|---|---|---|
+| fr | tu (ton, ta, tes) | je | Clique sur, Vends un coureur | vous, votre, vos, nous om brand-stemmen |
+| es | tú (tu, tus), kun ental | yo (ofte udeladt i verbet) | Haz clic en, Vende un ciclista | usted, ustedes, vosotros, vos, nosotros om brand-stemmen |
+| nl | je/jij (je, jouw) | ik | Klik op, Verkoop een renner | u, uw, gij, wij om brand-stemmen |
+
+- **nl er flamsk-neutral.** "je" er umarkeret og passer i både Vlaanderen og Nederland. Brug ikke "u" (stift) eller "gij" (kun Vlaanderen), og undgå ord der kun findes i det ene land. Fagets egne ord (ploeg, koers, renner, kopman, knecht) er fælles.
+- **Undtagelsen fra "vi" gælder også her:** in-fiction karakterer (bestyrelsesmedlemmer, ryttere) må sige nous, nosotros og wij om deres egen klub i deres replikker. Brand-stemmen til spilleren gør det ikke.
+- **Skriv ikke ordret efter dansk eller engelsk.** Brug den vending et menneske ville bruge i sproget, med fagets etablerede termer. "Udbrud" er "échappée", ikke "éruption".
+- **Typografi følger sproget:** fr har mellemrum før ? ! : ; og bruger « guillemets »; es åbner med ¿ og ¡; nl bruger almindelige citationstegn. Intet em-dash i noget sprog (reglen under Punktuation gælder alle sprog).
+- **Tal og datoer skrives ikke i teksten.** CZ$ er CZ$ overalt, og selve tallet og datoen sendes som parameter og formateres af `Intl` (se GLOSSARY.md, "Formatering er ikke oversættelse").
+- **Gennemlæsning:** søg efter de forbudte former i tabellen, før en kaptajn får filen. Sprogtesten (#6586) fandt "vous" i et tu-sprog og "vosotros" i et tú-sprog ved en simpel søgning, og ingen CI-gate fanger det. Et nyt sprog åbnes først efter en indfødt gennemlæsning.
+
 ## Brand voice · founder-led, build-in-public
 
 **Stemmen er Nicolais**, ikke et team eller en virksomhed:

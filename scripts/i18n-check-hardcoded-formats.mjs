@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// i18n format-guard — Refs #6785 (sprogfundamentet foer fr/es/nl).
+// i18n format-guard, Refs #6785 (sprogfundamentet foer fr/es/nl).
 //
 // Tal, valuta, datoer og klokkeslaet skal formateres efter spillerens aktive
 // sprog via Intl (frontend/src/lib/intl.js og lib/intlLocale.js). Et fast

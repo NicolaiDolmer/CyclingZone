@@ -1,4 +1,4 @@
-// Tests for format-guarden mod hardcodede tal/dato/valuta-formater — Refs #6785.
+// Tests for format-guarden mod hardcodede tal/dato/valuta-formater, Refs #6785.
 // Koer: node --test scripts/i18n-check-hardcoded-formats.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
