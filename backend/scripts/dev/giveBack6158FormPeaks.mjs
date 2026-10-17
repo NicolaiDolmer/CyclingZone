@@ -576,7 +576,9 @@ insert into public.rider_peak_plans (${PLAN_COLUMNS})
   select b.id, b.rider_id, b.season_id, b.target_race_id, b.window_start, b.window_end, b.locked_at, b.created_at
   from public.${table} b
   join public.riders r on r.id = b.rider_id
-  where not exists (select 1 from public.rider_peak_plans p where p.id = b.id)
+  -- Kun planer scriptet selv har givet tilbage (kvitteret), ikke planer manageren selv slettede.
+  where b.given_back_at is not null
+    and not exists (select 1 from public.rider_peak_plans p where p.id = b.id)
     and (select count(*) from public.rider_peak_plans p where p.rider_id = b.rider_id and p.season_id = b.season_id) < ${RIDER_PLAN_QUOTA_SQL}
 on conflict do nothing;
 -- Kvitteringen nulstilles for de genindsatte rækker.

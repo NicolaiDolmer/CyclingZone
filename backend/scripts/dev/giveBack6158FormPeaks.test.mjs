@@ -304,7 +304,7 @@ test("snapshot SQL is idempotent, RLS-protected and injection-safe", () => {
 
 test("restore SQL never re-inserts over the quota or over an existing plan, and clears the receipt", () => {
   const sql = buildRestoreSql(BACKUP_TABLE);
-  assert.match(sql, /where not exists \(select 1 from public\.rider_peak_plans p where p\.id = b\.id\)/);
+  assert.match(sql, /and not exists \(select 1 from public\.rider_peak_plans p where p\.id = b\.id\)/);
   assert.ok(sql.includes(`< ${MAX_PEAK_PLANS_PER_SEASON}`));
   assert.match(sql, /on conflict do nothing/);
   assert.match(sql, /set given_back_at = null/);
@@ -686,4 +686,9 @@ test("#6158 (Codex): backup-tabellen faar Data API-grants kun til service_role",
   assert.match(sql, /revoke all on table public\.backup_6158_20261017 from public, anon, authenticated, service_role;/);
   assert.match(sql, /grant select, insert, update, delete on table public\.backup_6158_20261017 to service_role;/);
   assert.doesNotMatch(sql, /to (anon|authenticated)/);
+});
+
+test("#6158 (review): restore genindsætter kun kvitterede (af scriptet tilbagegivne) planer", () => {
+  const sql = buildRestoreSql("backup_6158_20261017");
+  assert.match(sql, /where b\.given_back_at is not null/);
 });
