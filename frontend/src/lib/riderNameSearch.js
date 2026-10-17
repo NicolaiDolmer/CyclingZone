@@ -85,8 +85,8 @@ export function buildAccentInsensitivePattern(token, { wordStart = false } = {})
 // applyNameSearch): hvert whitespace-token skal være PRÆFIKS af et ord i
 // fulde navn, accent- og case-ufølsomt. Aldrig spredte bogstaver / midt-i-ord.
 function foldForSearch(s) {
-  return String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
-    .replace(/[øØ]/g, "o").replace(/đ/g, "d").replace(/ł/g, "l").replace(/ı/g, "i");
+  return String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[\u00f8\u00d8]/g, "o").replace(/\u0111/g, "d").replace(/\u0142/g, "l").replace(/\u0131/g, "i");
 }
 
 export function riderNameMatches(fullName, q) {
