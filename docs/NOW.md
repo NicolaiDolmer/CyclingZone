@@ -6,9 +6,9 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** pc1: `docs/sessions/2026-10-17-pc1-startprompt.md` (#6739 A/B). Søndag 18/10: start `docs/sessions/2026-10-18-soendag-startprompt.md` (ejer-go pr. ny opgave + planlagt dag, ejer 16/10). Søndag: flip `promotion_pending_enabled` (55 ryttere, dry-run 16/10) på ordret "tænd" + help.json samme dag · Discord-webhook i Infisical (ejeren kører kommandoen) · roadbook + Discord 7.361-7.363 (ejeren poster) · billeder + go på #6680. Mandag: #6724 (DOLMERPC) · #6731 · #6683 genbruger #6636, luk så #6636/#6634 · S5-genmåling #6712 → tænd-kort #6699 · #6703/#6704 prod-målinger.
+> **🎯 Next action:** pc1 lang session 17-18/10: `docs/sessions/2026-10-17-pc1-eftermiddag-startprompt.md` (ejer-godkendt: sæsonskifte-generalprøve + 10x, `s5_profiles_v2` slået fra med kuperede udbrud + formtoppe, formtop-tilbagebetaling som tørkørsel, testport, dark mode, UI #6698 #6569 #6512 #6351 #6683 #6570, vækst-udkast). Søndag: verificér Vuelta binder S5 kl. 11 · `promotion_pending_enabled` på "tænd" · webhook · roadbook/Discord 7.361-7.367 · #6680. #6739: "spørg senere".
 >
-> **16/10 (pc1):** 27 PR'er merget, bl.a. Akademi 2.0 (#6673, flag `academy_intake_pull_enabled` on ca. 21:15, trappe D) og sprinttog kun på flade etaper (`official_times_v5` aktuel, #6741), afventer oprykning bygget (flag off). Codex-stop (AGENTS 35), review-gate (#6657), CodeRabbit fra.
+> **17/10 (pc1):** S5-motorreglerne tændt (#6699 merget 08:48, ejerens "Tænd"; testet på alle 157 S4-løb + hele S5-sæsonen, S5 872 mod v5 968 fejlende mål; nyt udbrud efter tidlig indhentning). GitHub-audit: 45 lukket, done 69 → 20. Opfølgning #6748.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (DolmerPC 17/10 lukket). Næste: pc1-startprompt 17/10.
+> **🤖 Working agent:** Ingen aktiv session (pc1 17/10 formiddag lukket). Næste: `docs/sessions/2026-10-17-pc1-eftermiddag-startprompt.md`.

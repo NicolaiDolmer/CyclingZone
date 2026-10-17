@@ -4,17 +4,16 @@
 > Kilde: `gh pr list` / `gh issue list` (live) + [`docs/FEATURE_REGISTRY.yml`](FEATURE_REGISTRY.yml)
 > Regenerér: `node scripts/generate-status-board.mjs`
 
-94 features i FEATURE_REGISTRY.yml: live 74 · beta 2 · dormant 5 · building 5 · spec 1 · idea 2 · retired 5.
+95 features i FEATURE_REGISTRY.yml: live 75 · beta 2 · dormant 5 · building 5 · spec 1 · idea 2 · retired 5.
 
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (10d) — groen
-- #6636 feat(race-library): upcoming races and scoped edition history (1d) — groen
+- #6636 feat(race-library): upcoming races and scoped edition history (2d) — groen
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (1d) — groen
 - #6643 feat(stage-page-v2): løbshistorien - replay, øjeblikke, mellemtider, Final 5 km, referat… (1d) — DIRTY
 - #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — DIRTY
-- #6699 [EJER-GO KRÆVES - TÆNDING] S5-motorregler: s5_profiles_v1 bliver aktuel revision (#6369) (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -39,18 +38,18 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
 - #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (10d) — groen
-- #6703 fix(training): forbigaaende DB-fejl giver ny koersel, ikke traening uden bonus (#6596) (0d) — groen
+- #6703 fix(training): forbigaaende DB-fejl giver ny koersel, ikke traening uden bonus (#6596) (1d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
 - #6634 docs: implementeringsplan for løbsbibliotek med kommende løb og historik (2d) — groen
-- #6703 fix(training): forbigaaende DB-fejl giver ny koersel, ikke traening uden bonus (#6596) (0d) — groen
-- #6704 fix(training): parkerede hold koerer ikke laengere legacy-traening (#6536) (0d) — groen
+- #6703 fix(training): forbigaaende DB-fejl giver ny koersel, ikke traening uden bonus (#6596) (1d) — groen
+- #6704 fix(training): parkerede hold koerer ikke laengere legacy-traening (#6536) (1d) — groen
 
 **Ikke-draft med roed tilstand:**
 
-- #6699 [EJER-GO KRÆVES - TÆNDING] S5-motorregler: s5_profiles_v1 bliver aktuel revision (#6369) (0d) — roed
+- ingen
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -61,16 +60,16 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (92d)
 - #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (90d)
 - #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (87d)
-- #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (85d)
+- #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (86d)
 - #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (85d)
 - #2884 [feature] Auktioner: længere varighed + anti-snipe-forlængelse ved sene bud (1-times-vind… (84d)
 - #3154 [ops] Ejer-direktiv 26/7: backlog ned til ~200 åbne issues på 7-14 dage + fuld prioriteri… (78d)
-- #3426 [balance] Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjerg… (71d)
+- #3426 [balance] Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjerg… (72d)
 - #3461 [bug/balance] Restitutionens timing: 'Træn i dag' om morgenen brænder dagens eneste resti… (71d)
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (70d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (68d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (60d)
-- …og 732 mere
+- …og 735 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -90,4 +89,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6474 [økonomi] Økonomihistorikken viser både køb og salg for en rytter man kun har købt + salg… (5d)
 - #6499 Udvikling 2.0 del 1: tilbagegang D4 ved sæsonskiftet + prøvekørsel (bag flag) (5d)
 - #6367 [S5-profiler] Benchmark-gate: S5-kalenderen målt mod rigtige Grand Tours før live (8d)
-- …og 5 mere
+- …og 6 mere
