@@ -284,21 +284,23 @@ async function measurePage(context, target, mode, vpName) {
 // ── Koersel ──────────────────────────────────────────────────────────────────
 
 // Byg-maerke (#6816): en gammel frontend/dist maa aldrig males og godkendes.
-// Stemmer maerket (HEAD + lokale aendringer i frontend/ + base-URL) ikke, bygges om.
+// Stemmer maerket (HEAD + lokale aendringer i HELE arbejdskopien + base-URL) ikke,
+// bygges om. Hele repoet, fordi Vite ogsaa bundler moduler uden for frontend/
+// (fx backend/lib/contractOfferEligibility.js, Codex #6826).
 const STAMP_FILE = join(FRONTEND, "dist", ".pseudo-layout-build-stamp");
 const git = (args) => {
   const r = spawnSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   return r.status === 0 ? r.stdout : "";
 };
 // Usporede filer: git diff ser kun sporede, saa deres indhold hashes selv.
-const untrackedHashes = git(["ls-files", "--others", "--exclude-standard", "--", "frontend", ":(exclude)frontend/dist"])
+const untrackedHashes = git(["ls-files", "--others", "--exclude-standard", "--", ".", ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results"])
   .split("\n").map((p) => p.trim()).filter(Boolean)
   .map((p) => `${p}:${createHash("sha1").update(readFileSync(join(REPO_ROOT, p))).digest("hex")}`)
   .join("\n");
 const expectedStamp = computeBuildStamp({
   head: git(["rev-parse", "HEAD"]),
-  status: git(["status", "--porcelain", "--", "frontend", ":(exclude)frontend/dist"]),
-  diff: git(["diff", "HEAD", "--", "frontend", ":(exclude)frontend/dist"]),
+  status: git(["status", "--porcelain", "--", ".", ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results"]),
+  diff: git(["diff", "HEAD", "--", ".", ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results"]),
   untracked: untrackedHashes,
   base: BASE,
 });
