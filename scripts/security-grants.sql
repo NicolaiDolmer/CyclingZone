@@ -70,11 +70,12 @@
 --                                     nævner. Fail-closed-tilstanden er
 --                                     whitelistet i
 --                                     scripts/security-rls-policy-fn-grants.sql.
---   is_offered_intake_rider           auth. Read-only, bærer riders-RLS-policyen
---                                     "Public read riders" (#2581).
---   offered_intake_rider_ids          auth. Read-only, set-baseret afløser i samme
---                                     policy (#6341): én opslagsliste i stedet for
---                                     et funktionskald pr. række.
+--   offered_intake_rider_ids          auth. Read-only, bærer riders-RLS-policyen
+--                                     "Public read riders" (#6341): én
+--                                     opslagsliste i stedet for et funktionskald
+--                                     pr. række. Afløste is_offered_intake_rider,
+--                                     som er revoket i #6752 og derfor IKKE står
+--                                     her: et gen-opstået klient-grant skal fanges.
 --   get_cohort_retention              auth. Read-only admin-analytics, intern gate.
 --   get_sprint_metrics                auth. Read-only admin-analytics, intern gate.
 --   get_retention_scorecard_activity  auth. Read-only admin-analytics, intern gate.
@@ -96,7 +97,6 @@ WITH secdef AS (
     AND p.prosecdef
     AND p.proname NOT IN (
       'is_admin',
-      'is_offered_intake_rider',
       'offered_intake_rider_ids',
       'get_cohort_retention',
       'get_sprint_metrics',

@@ -25,7 +25,10 @@ import {
   simulateRaceDay,
   trainingCloseStart,
   TRAINING_DAY_CLOSE_CRON_PERIOD_MS,
+  youthSlotsFor,
 } from "./loadtestRaceDay.mjs";
+import { squadSlotsForDate } from "../lib/squadCalendarPacker.js";
+import { SQUAD_CALENDAR } from "../lib/calendarTierCaps.js";
 import { STAGE_TICK_PERIOD_MS, STAGE_TICK_OFFSET_MS } from "../lib/schedulerTick.js";
 import { startTrainingDayCloseAfterStages, SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
 
@@ -91,11 +94,41 @@ test("fixture: S5-strukturen (senior 1/2/4/4 + ungdomsgrupper) og dagens etaper 
   assert.ok(state.teams.every((t) => !("name" in t)));
 });
 
-test("fixture: sæsonens sidste løbsdag slutter kl. 15 i alle trupper", () => {
+test("fixture: sæsonens sidste løbsdag slutter kl. 15 for senior; U23 flyttes væk fra seniorens 15:00 (#6772)", () => {
   const { expected } = buildRaceDayFixture({ date: DATE, scenario: "season-last-day", youthGroups: 2 });
-  const latest = Math.max(...expected.map((e) => e.scheduledMs));
-  assert.equal(copenhagenHHMM(latest), "15:00");
-  assert.ok(expected.filter((e) => e.squad === "u23").every((e) => copenhagenHHMM(e.scheduledMs) === "15:00"));
+  const hhmm = (squad) => [...new Set(expected.filter((e) => e.squad === squad).map((e) => copenhagenHHMM(e.scheduledMs)))];
+  const seniorLatest = Math.max(...expected.filter((e) => e.squad === "senior").map((e) => e.scheduledMs));
+  assert.equal(copenhagenHHMM(seniorLatest), "15:00");
+  // Samme tider som materializeren skriver (squadSlotsForDate): U23's 16:30 presses til 15:00
+  // af sidste-dags-reglen og rykkes derefter et skridt, fordi seniorens 15:00 er optaget.
+  assert.deepEqual(hhmm("u23"), ["15:05"]);
+  assert.deepEqual(hhmm("junior"), ["14:30"]);
+  const seniorSlots = new Set(hhmm("senior"));
+  assert.ok(![...hhmm("u23"), ...hhmm("junior")].some((t) => seniorSlots.has(t)), "ingen ungdomsetape deler tid med senior");
+});
+
+test("paritet: ungdomstiderne kommer fra materializerens kilde (squadSlotsForDate)", () => {
+  const src = readFileSync(fileURLToPath(new URL("../lib/tierCalendarMaterializer.js", import.meta.url)), "utf8");
+  assert.match(src, /squadSlotsForDate\(\{ squad, tier, localDate, squadSlots: squadSlots\[tier\], otherSquadSlots, notBefore: planningNotBefore, seasonLastRaceDay: lastRaceDay \}\)/);
+  for (const date of [DATE, "2026-10-25"]) {
+    for (const last of [null, date]) {
+      const other = (squad) => Object.entries(SQUAD_CALENDAR).filter(([s]) => s !== squad).map(([, c]) => c.stageSlot);
+      for (const squad of Object.keys(SQUAD_CALENDAR)) {
+        const direct = squadSlotsForDate({ squad, tier: 1, localDate: date, squadSlots: [SQUAD_CALENDAR[squad].stageSlot], otherSquadSlots: other(squad), seasonLastRaceDay: last });
+        assert.deepEqual(youthSlotsFor(squad, date, last), direct, `${squad} ${date} last=${last}`);
+      }
+    }
+  }
+});
+
+test("#6772: sæsonens sidste løbsdag består med nuværende profil (også S4's skiftedag 25/10)", async () => {
+  for (const date of [DATE, "2026-10-25"]) {
+    const run = await simulateRaceDay({ date, scenario: "season-last-day", profile: COST_PROFILES.current });
+    const failed = run.checks.filter((c) => !c.ok).map((c) => c.id);
+    assert.deepEqual(failed, [], date);
+    assert.equal(run.metrics.ticksSkippedOverlap, 0, date);
+    assert.ok(run.metrics.maxTickDurationMs <= DEFAULT_LIMITS.maxTickDurationMs, date);
+  }
 });
 
 test("tællende fake: hvert kald tælles, !inner-filter og HEAD-count virker", async () => {

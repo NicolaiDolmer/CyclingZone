@@ -21,6 +21,13 @@ er fjernet fra proposals, fordi dets writer er erstattet og ikke må genanvendes
 Infrastrukturen er live; en konkret kompensationskørsel kræver fortsat separat
 ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparation.
 
+## Forbigående DB-fejl i facilitets- og træneropslaget (#6596, 17/10)
+
+- **Forbigående fejl** (HTTP 0/502/503/504/520-524, netværksfejl, statement-timeout): træningsmotoren afregner IKKE holdet uden facilitets- og trænerbonus. Tick'et kaster, intet skrives, og holdet tages ved næste sweep. Kun motoren beder om dette (`loadTrainingStaffContext(..., { retryOnTransient: true })`).
+- **Vedvarende fejl** (fx manglende rettighed, skema-drift): neutral kontekst og Sentry, så én permanent fejl ikke stopper al træning.
+- **Andre læsere** (akademi-visningen, dev-scripts) får altid neutral kontekst; en kort gateway-fejl vælter ikke siden.
+- **Reservationen** på den gamle kalenderdags-sti slettes efter en fejl og prøves op til 3 gange; lykkes det ikke, meldes det i Sentry (`step: reservation_cleanup`). Selvrettende oprydning af forældede reservationer: #6759.
+
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
 Rapporten samler gemte kørsler pr. dato og sæson, derefter pr. rytter. Én
@@ -505,6 +512,13 @@ et øjebliksbillede af hele bestanden.
 **Form vægter reelt ind i løbssimuleringen** via `formRaceWeightV3()` (`raceRoles.js`),
 som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
 fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
+
+**Formtoppe i løbsmotor v4 (#6156, `s5_profiles_v2`, slukket).** Under v4 når formen motoren fra
+`official_times_v3` (uden top). Toppen kobles på under revisionen `s5_profiles_v2`, som ingen løb
+bindes til før ejerens "tænd" (S5): én samlet form = rytterens form + toppens tillæg i
+peak-vinduet, minus dykket i tilbagebetalingen bagefter, klampet til 0-100. Tillægget er det
+samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
+Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
 
 ### 5.4 Skader fra træning
 

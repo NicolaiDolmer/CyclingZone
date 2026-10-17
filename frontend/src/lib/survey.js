@@ -31,6 +31,8 @@ export const KINDS = [
   "yes_no",
 ];
 
+import { intlLocale } from "./intlLocale.ts";
+
 export const MULTI_MAX3_LIMIT = 3;
 export const TEXT_MAX_LENGTH = 1000;
 
@@ -268,7 +270,7 @@ export function formatCloseDate(closesAt, language) {
   if (!closesAt) return null;
   const closesMs = Date.parse(closesAt);
   if (Number.isNaN(closesMs)) return null;
-  const locale = DA(language) ? "da-DK" : "en-GB";
+  const locale = intlLocale(language);
   const formatted = new Intl.DateTimeFormat(locale, {
     weekday: "long",
     day: "numeric",

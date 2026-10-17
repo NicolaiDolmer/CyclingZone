@@ -283,13 +283,19 @@ async function main() {
   pub.push(pubRow("**Alle**", "", totals));
   pub.push("");
   pub.push(`Kontrol: vækst ved skiftet (ny) = ${totals.neu.grew}, tekniske+mentale ændret (ny) = ${totals.neu.stable}. Begge skal være 0.`);
-  pub.push(`Endagsløb tæller med i løbsdagene: ${load.singleRaceCount} endagsløb i sæsonen gav ${load.oneDayRiderDays} rytter-løbsdage (fra rytterens 'gc'-række; endagsløb har ingen 'stage'-rækker).`);  const pubDir = join(REPO, "docs", "snapshots", "6110");
-  mkdirSync(pubDir, { recursive: true });
-  writeFileSync(join(pubDir, `aging-v2-dry-run-${date}.md`), pub.join("\n") + "\n");
+  pub.push(`Endagsløb tæller med i løbsdagene: ${load.singleRaceCount} endagsløb i sæsonen gav ${load.oneDayRiderDays} rytter-løbsdage (fra rytterens 'gc'-række; endagsløb har ingen 'stage'-rækker).`);
+  // #6751: generalprøven kalder med --no-public-snapshot, så en gentaget kørsel
+  // ikke efterlader en ny offentlig fil i docs/ (alt output bliver privat).
+  const writePublic = !process.argv.includes("--no-public-snapshot");
+  if (writePublic) {
+    const pubDir = join(REPO, "docs", "snapshots", "6110");
+    mkdirSync(pubDir, { recursive: true });
+    writeFileSync(join(pubDir, `aging-v2-dry-run-${date}.md`), pub.join("\n") + "\n");
+  }
 
   console.log(`[6110-dry-run] ${totals.n} ryttere. Ny: vækst=${totals.neu.grew}, tek+mental=${totals.neu.stable}.`);
   console.log(`[6110-dry-run] privat: balance-internals/6110/aging-v2-dry-run-${date}.md`);
-  console.log(`[6110-dry-run] offentligt: docs/snapshots/6110/aging-v2-dry-run-${date}.md`);
+  if (writePublic) console.log(`[6110-dry-run] offentligt: docs/snapshots/6110/aging-v2-dry-run-${date}.md`);
   if (totals.neu.grew !== 0 || totals.neu.stable !== 0) process.exitCode = 2;
 }
 

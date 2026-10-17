@@ -34,22 +34,45 @@
 //   (UNIQUE(rider, season, target) rammer ikke, rækken er væk); vinduet snappes så
 //   igen om løbet og er låst fra sin startdato som alle andre planer.
 //
+// DEL B: NEDGANGEN EFTER EN TOP UDEN BONUS (ejer 17/10)
+//   Ejeren: rytterne må ikke bære formdykket efter en top, der aldrig gav bonus.
+//   Læst i koden 17/10 (verificeret, ikke antaget):
+//   - Dykket gemmes ALDRIG i rider_condition.form. Det regnes ved løbstid ud fra
+//     selve planrækken (racePeaks.peakPhaseForWindow: dagene efter window_end) og
+//     lægges kun ind i v3-scoren (raceSimulator). Planlæggeren viser det samme
+//     "formhul" ud fra rækken (plannerBoard.findPaybackCollisions).
+//   - Under v4 smider broen vinduerne væk, og formen v4 ser er rytterens rå form
+//     UDEN top og UDEN dyk (raceEngineV4Bridge.riderFormForV4, ejer 10/10).
+//   Derfor måler scriptet dykket i stedet for at gætte: for hver plan findes de
+//   kørte etaper hvor rytteren stod i nedgangen, og for hver etape læses hvad
+//   motoren faktisk lagde på (race_simulation_rider_scores.components.peak < 0).
+//   - "Formjustering pr. rytter" = det målte, anvendte dyk. Der er intet at rette
+//     i rider_condition (dykket bor der ikke).
+//   - Et dyk der stadig ligger foran (vinduet sluttede for nylig eller ligger
+//     senere) fjernes ved at rækken slettes (del A). Scriptet tjekker at INGEN
+//     plan med nedgang foran bliver stående.
+//   - Er der målt et anvendt dyk i et kørt resultat, afbryder apply: historiske
+//     resultater røres ikke uden særskilt ejer-beslutning (#6156).
+//
 // HVAD SCRIPTET GØR
 //   Standard (ingen flag): READ-ONLY dry-run. Ingen skrivning til databasen.
 //     Skriver en PRIVAT rapport (rytter-id'er, holdnavne, tal) + json + snapshot-
-//     SQL + restore-SQL til balance-internals/6158/ (gitignoreret). Konsollen får
-//     kun samlede tal og liste-hashen.
-//   --ignition=<ISO-tidspunkt>: tændingstidspunktet. Default "nu" (prognose).
-//     Et tidspunkt i fremtiden giver en prognose for den dag.
-//   --apply --owner-go=6158-production --approved-list=<hash> --ignition=<ISO>:
-//     sletter præcis de godkendte planer. Kræver eksplicit --ignition (ellers ville
-//     "nu" ved en sen kørsel flytte reglens grænse). Afbryder FØR første skrivning,
-//     hvis den levende liste afviger fra den godkendte (hash), eller hvis backup-
-//     tabellen (backup_6158_rider_peak_plans) ikke dækker alle planer.
+//     SQL + restore-SQL + kort (html) til balance-internals/6158/ (gitignoreret).
+//     Konsollen får kun samlede tal og liste-hashen.
+//   --ignition=<ISO>|next-season|now: tidspunktet hvor formtoppe virker igen.
+//     Default next-season (ejer 10/10: formtoppe tændes ved næste sæsons start,
+//     midnat dansk tid på seasons.start_date). "now" giver en prognose for i dag.
+//   --backup-date=YYYYMMDD: dato-suffiks på backup-tabellen backup_6158_<dato>.
+//     Default dagens danske dato i dry-run; KRÆVET ved apply (samme som snapshot).
+//   --apply --owner-go=6158-production --approved-list=<hash> --ignition=<...> --backup-date=<dato>:
+//     sletter præcis de godkendte planer. Afbryder FØR første skrivning, hvis den
+//     levende liste afviger fra den godkendte (hash), hvis backup-tabellen ikke
+//     dækker alle planer, hvis et dyk er målt anvendt i et kørt resultat, eller
+//     hvis en plan med nedgang foran ikke er på listen.
 //     Idempotent: hashen dækker "levende kandidater + allerede tilbagegivne"
-//     (i backup, ikke længere i tabellen), så en genkørsel efter et afbrudt apply
-//     matcher samme hash og sletter kun resten. Verificerer bagefter at ingen af de
-//     godkendte planer findes mere.
+//     (i backup, ikke længere i tabellen), og hver tilbagegivet række stemples
+//     given_back_at i backuppen (kvittering). Post-verify: ingen godkendt plan
+//     findes mere, alle er kvitteret, og en ny indlæsning har intet at give tilbage.
 //
 // SCOPE
 //   Kun den aktive sæson (S4) og kun ryttere på menneskehold (ikke bank, ikke
@@ -58,7 +81,7 @@
 //
 //   node backend/scripts/dev/giveBack6158FormPeaks.mjs
 //   node backend/scripts/dev/giveBack6158FormPeaks.mjs --ignition=2026-10-12T08:00:00+02:00
-//   node backend/scripts/dev/giveBack6158FormPeaks.mjs --apply --owner-go=6158-production --approved-list=<hash> --ignition=<ISO>
+//   node backend/scripts/dev/giveBack6158FormPeaks.mjs --apply --owner-go=6158-production --approved-list=<hash> --ignition=next-season --backup-date=<YYYYMMDD>
 
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -66,19 +89,32 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../../lib/supabasePagination.js";
-import { copenhagenDateString } from "../../lib/copenhagenTime.js";
+import { copenhagenDateString, copenhagenHourToUTC } from "../../lib/copenhagenTime.js";
 import { dateStringToOrdinal, scheduledAtToOrdinal } from "../../lib/racePeakPlans.js";
-import { peakPhaseForWindow } from "../../lib/racePeaks.js";
+import { peakPhaseForWindow, resolvePeakPhase } from "../../lib/racePeaks.js";
 import { RACE_V3_TUNING } from "../../lib/raceRoles.js";
 import { peakTargetRaceStarted, plannerSquadFor } from "../../lib/peakTargetScope.js";
 import { MAX_PEAK_PLANS_PER_SEASON } from "../../lib/riderPeakPlans.js";
+import { scoreComponentToFormPoints } from "../../lib/plannerBoard.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolve(__dirname, "../../..");
 export const PRIVATE_DIR = join(REPO_ROOT, "balance-internals", "6158");
 
 export const OWNER_GO_FLAG = "--owner-go=6158-production";
-export const BACKUP_TABLE = "backup_6158_rider_peak_plans";
+export const IGNITION_NEXT_SEASON = "next-season";
+export const IGNITION_NOW = "now";
+
+/** Backup-/kvitteringstabellen: backup_6158_<YYYYMMDD> (ejer 17/10). */
+export function backupTableName(backupDate) {
+  if (!/^\d{8}$/.test(String(backupDate ?? ""))) throw new Error("--backup-date must be YYYYMMDD");
+  return `backup_6158_${backupDate}`;
+}
+
+/** Dagens danske dato som YYYYMMDD (default backup-dato i dry-run). */
+export function defaultBackupDate(now = new Date()) {
+  return copenhagenDateString(now).replace(/-/g, "");
+}
 
 const PLAN_COLUMNS = "id, rider_id, season_id, target_race_id, window_start, window_end, locked_at, created_at";
 const RIDER_COLUMNS = "id, firstname, lastname, team_id, squad, is_academy, is_retired";
@@ -90,7 +126,7 @@ const RIDER_PLAN_QUOTA_SQL = String(MAX_PEAK_PLANS_PER_SEASON);
 // ── Argumenter ──────────────────────────────────────────────────────────────
 
 export function parseArgs(argv) {
-  const opts = { apply: false, ownerGo: false, approvedHash: null, ignition: null };
+  const opts = { apply: false, ownerGo: false, approvedHash: null, ignition: null, backupDate: null };
   for (const arg of argv) {
     if (arg === "--apply") opts.apply = true;
     else if (arg === OWNER_GO_FLAG) opts.ownerGo = true;
@@ -101,9 +137,16 @@ export function parseArgs(argv) {
       opts.approvedHash = h;
     } else if (arg.startsWith("--ignition=")) {
       const raw = arg.slice("--ignition=".length);
+      if (raw === IGNITION_NEXT_SEASON || raw === IGNITION_NOW) {
+        opts.ignition = raw;
+        continue;
+      }
       const ms = Date.parse(raw);
-      if (!raw || !Number.isFinite(ms)) throw new Error("--ignition must be an ISO timestamp, e.g. 2026-10-12T08:00:00+02:00");
+      if (!raw || !Number.isFinite(ms)) throw new Error(`--ignition must be an ISO timestamp (e.g. 2026-10-12T08:00:00+02:00), ${IGNITION_NEXT_SEASON} or ${IGNITION_NOW}`);
       opts.ignition = new Date(ms).toISOString();
+    } else if (arg.startsWith("--backup-date=")) {
+      opts.backupDate = arg.slice("--backup-date=".length);
+      backupTableName(opts.backupDate); // validerer
     } else throw new Error(`Unknown option: ${arg}`);
   }
   if (opts.ownerGo && !opts.apply) throw new Error("--owner-go only makes sense together with --apply");
@@ -111,8 +154,11 @@ export function parseArgs(argv) {
   if (opts.apply && opts.approvedHash === null) {
     throw new Error("--apply requires --approved-list=<list hash from the dry-run the owner approved>");
   }
-  if (opts.apply && opts.ignition === null) {
-    throw new Error("--apply requires an explicit --ignition=<ISO> (the same one the approved dry-run used)");
+  if (opts.apply && (opts.ignition === null || opts.ignition === IGNITION_NOW)) {
+    throw new Error(`--apply requires an explicit --ignition=<ISO> or --ignition=${IGNITION_NEXT_SEASON} (the same one the approved dry-run used)`);
+  }
+  if (opts.apply && opts.backupDate === null) {
+    throw new Error("--apply requires --backup-date=YYYYMMDD (the date of the snapshot that was taken)");
   }
   return opts;
 }
@@ -146,6 +192,30 @@ export function firstStageAtByRace(scheduleRows) {
     if (prev == null || ms < prev) out.set(row.race_id, ms);
   }
   return out;
+}
+
+/** race_id → sidste etapes tidspunkt (ms). Bruges til løbets tilstand VED tændingen. */
+export function lastStageAtByRace(scheduleRows) {
+  const out = new Map();
+  for (const row of scheduleRows || []) {
+    const ms = Date.parse(row?.scheduled_at);
+    if (!row?.race_id || !Number.isFinite(ms)) continue;
+    const prev = out.get(row.race_id);
+    if (prev == null || ms > prev) out.set(row.race_id, ms);
+  }
+  return out;
+}
+
+/**
+ * Er et etapeløb i gang VED tændingen? (#6158, Codex) Med etapeplan: startet før
+ * tændingen og sidste etape på/efter tændingen, så en fremtidig tænding ikke
+ * bruger dagens etapetæller. Uden etapeplan: dagens tæller som fallback.
+ */
+export function targetInProgressAtIgnition(race, { targetStarted, lastStageMs, ignitionMs }) {
+  const stages = Number(race?.stages) || 0;
+  if (!targetStarted || stages <= 1) return false;
+  if (lastStageMs != null) return lastStageMs >= ignitionMs;
+  return (Number(race?.stages_completed) || 0) < stages;
 }
 
 /**
@@ -195,7 +265,7 @@ export function countedAfterIgnition(plan, stagesForRider, paybackDays = RACE_V3
  * @param {string[]} [p.alreadyGivenBackIds]  i backup, ikke længere i tabellen
  * @param {string} p.ignitionAt              ISO
  */
-export function buildPlan({ season, plans, ridersById, teamsById, racesById, firstStageMs, postIgnitionStagesByRider, alreadyGivenBackIds = [], ignitionAt }) {
+export function buildPlan({ season, plans, ridersById, teamsById, racesById, firstStageMs, lastStageMs = new Map(), postIgnitionStagesByRider, alreadyGivenBackIds = [], ignitionAt }) {
   const ignitionMs = Date.parse(ignitionAt);
   if (!Number.isFinite(ignitionMs)) throw new Error("ignitionAt must be a valid timestamp");
   const ignitionDay = dateStringToOrdinal(copenhagenDateString(new Date(ignitionMs)));
@@ -232,8 +302,6 @@ export function buildPlan({ season, plans, ridersById, teamsById, racesById, fir
     if (c.counted) outcome = "keep_counted_after_ignition";
     else if (rules.length) outcome = "give_back";
 
-    const stages = Number(race?.stages) || 0;
-    const done = Number(race?.stages_completed) || 0;
     rows.push({
       planId: p.id,
       riderId: p.rider_id,
@@ -249,7 +317,7 @@ export function buildPlan({ season, plans, ridersById, teamsById, racesById, fir
       countedRaceIds: c.countedRaceIds,
       dipFelt: c.dipFelt,
       // Følgeeffekt til go-kortet: målløbet var i gang ved tændingen (etapeløb).
-      targetInProgressAtIgnition: targetStarted && stages > 1 && done < stages,
+      targetInProgressAtIgnition: targetInProgressAtIgnition(race, { targetStarted, lastStageMs: lastStageMs.get(p.target_race_id) ?? null, ignitionMs }),
       // Planlægbar igen? Pladsen frigives altid; det samme mål kan kun vælges igen
       // hvis det ikke er startet, og kun en seniorrytter kan planlægges.
       riderSeniorNow: plannerSquadFor(rider) === "senior",
@@ -325,7 +393,132 @@ export function approvedListHash(plan) {
   return createHash("sha256").update(ids.join("\n")).digest("hex");
 }
 
+// ── Del B: nedgangen efter en top uden bonus ───────────────────────────────
+
+/**
+ * Mål nedgangen (dykket) for hver plan i scope. Ren funktion.
+ *
+ * For hver plan med målløb: hvilke KØRTE etaper stod rytteren til start på i
+ * nedgangen (resolvePeakPhase over alle rytterens vinduer = "payback"; et andet
+ * aktivt vindue samme dag vinder, som i motoren), og hvad lagde motoren faktisk
+ * på (peak-komponenten < 0 i den seneste kørsel af etapen)? Og ligger nedgangen
+ * stadig foran (slutter i dag eller senere)?
+ *
+ * @param {object} p
+ * @param {object[]} p.rows   buildPlan(...).rows (kun planer i scope med målløb)
+ * @param {Map<string,Array<{raceId:string, stageNumber:number, dayOrdinal:number}>>} p.seasonStagesByRider  kørte etaper i sæsonen
+ * @param {Map<string,{runId:string, engineVersion:number|null}>} p.latestRunByStage  `${raceId}:${stageNumber}` → seneste kørsel
+ * @param {Map<string,number>} p.peakComponentByRunRider  `${runId}:${riderId}` → components.peak
+ * @param {number} p.todayOrdinal  dansk kalenderdag-ordinal for "nu"
+ * @param {number} [p.paybackDays]
+ */
+export function assessDip({ rows, seasonStagesByRider, latestRunByStage, peakComponentByRunRider, todayOrdinal, paybackDays = RACE_V3_TUNING.PEAK_PAYBACK_DAYS, tuning = RACE_V3_TUNING }) {
+  const windowsByRider = new Map();
+  for (const r of rows || []) {
+    const start = dateStringToOrdinal(r.windowStart);
+    const end = dateStringToOrdinal(r.windowEnd);
+    if (start == null || end == null) continue;
+    if (!windowsByRider.has(r.riderId)) windowsByRider.set(r.riderId, []);
+    windowsByRider.get(r.riderId).push({ planId: r.planId, start, end });
+  }
+
+  const perPlan = [];
+  for (const r of rows || []) {
+    const end = dateStringToOrdinal(r.windowEnd);
+    if (end == null) continue;
+    const pbStart = end + 1;
+    const pbEnd = end + paybackDays;
+    const others = windowsByRider.get(r.riderId) || [];
+    let stagesRun = 0;
+    let stagesApplied = 0;
+    let appliedSum = 0;
+    const engineVersions = new Set();
+    for (const s of seasonStagesByRider.get(r.riderId) || []) {
+      if (s.dayOrdinal < pbStart || s.dayOrdinal > pbEnd) continue;
+      // Et andet vindue samme dag vinder over nedgangen (samme regel som motoren).
+      if (resolvePeakPhase(s.dayOrdinal, others, paybackDays) !== "payback") continue;
+      stagesRun++;
+      const run = latestRunByStage.get(`${s.raceId}:${s.stageNumber}`) || null;
+      if (run) engineVersions.add(run.engineVersion ?? "unknown");
+      const comp = run ? Number(peakComponentByRunRider.get(`${run.runId}:${r.riderId}`)) : NaN;
+      if (Number.isFinite(comp) && comp < 0) {
+        stagesApplied++;
+        appliedSum += comp;
+      }
+    }
+    let paybackStatus = "ahead";
+    if (pbEnd < todayOrdinal) paybackStatus = "lapsed";
+    else if (pbStart <= todayOrdinal) paybackStatus = "active";
+    perPlan.push({
+      planId: r.planId,
+      riderId: r.riderId,
+      teamId: r.teamId,
+      outcome: r.outcome,
+      paybackStatus,
+      dipStagesRun: stagesRun,
+      dipStagesApplied: stagesApplied,
+      dipAppliedScore: appliedSum,
+      engineVersions: [...engineVersions].map(String).sort(),
+      // Nedgangen ligger foran (eller er i gang) og fjernes kun, hvis rækken slettes.
+      dipAheadRemovedByGiveBack: paybackStatus !== "lapsed" && r.outcome === "give_back",
+      // En beholdt plan har (eller faar) sin bonus, saa dens nedgang er fortjent.
+      dipAheadWithBonus: paybackStatus !== "lapsed" && r.outcome !== "give_back",
+    });
+  }
+
+  // Kun nedgang efter en top UDEN bonus (tilbagegivne planer) tæller som "formstraf
+  // for intet". En beholdt top har (eller får) sin bonus, så dens dyk er fortjent.
+  const riders = new Map();
+  for (const p of perPlan) {
+    if (p.outcome !== "give_back") continue;
+    if (!riders.has(p.riderId)) riders.set(p.riderId, { riderId: p.riderId, teamId: p.teamId, dipAppliedScore: 0, dipStagesApplied: 0, dipAhead: false });
+    const x = riders.get(p.riderId);
+    x.dipAppliedScore += p.dipAppliedScore;
+    x.dipStagesApplied += p.dipStagesApplied;
+    if (p.paybackStatus !== "lapsed") x.dipAhead = true;
+  }
+  const riderList = [...riders.values()].map((x) => ({
+    ...x,
+    // Formjusteringen = det målte, anvendte dyk med modsat fortegn (i formpoint).
+    // rider_condition.form røres ikke: dykket gemmes aldrig der.
+    formAdjustmentPoints: x.dipAppliedScore < 0 ? scoreComponentToFormPoints(-x.dipAppliedScore, tuning) : 0,
+    riderConditionDelta: 0,
+  }));
+
+  const totals = {
+    plansAssessed: perPlan.length,
+    plansLapsed: perPlan.filter((p) => p.paybackStatus === "lapsed").length,
+    plansActive: perPlan.filter((p) => p.paybackStatus === "active").length,
+    plansAhead: perPlan.filter((p) => p.paybackStatus === "ahead").length,
+    dipStagesRun: perPlan.reduce((s, p) => s + p.dipStagesRun, 0),
+    dipStagesApplied: perPlan.reduce((s, p) => s + p.dipStagesApplied, 0),
+    ridersWithDipStagesRun: new Set(perPlan.filter((p) => p.dipStagesRun > 0).map((p) => p.riderId)).size,
+    ridersWithDipApplied: riderList.filter((x) => x.dipStagesApplied > 0).length,
+    ridersNeedingFormAdjustment: riderList.filter((x) => x.formAdjustmentPoints).length,
+    ridersCarryingDipAhead: riderList.filter((x) => x.dipAhead).length,
+    plansDipAheadRemovedByGiveBack: perPlan.filter((p) => p.dipAheadRemovedByGiveBack).length,
+    plansDipAheadWithBonus: perPlan.filter((p) => p.dipAheadWithBonus).length,
+    // Dyk uden bonus der faktisk er lagt paa et koert resultat (kun tilbagegivne planer).
+    dipWithoutBonusStagesApplied: perPlan.filter((p) => p.outcome === "give_back").reduce((s, p) => s + p.dipStagesApplied, 0),
+    engineVersionsSeen: [...new Set(perPlan.flatMap((p) => p.engineVersions))].sort(),
+  };
+  return { perPlan, riders: riderList, totals };
+}
+
+/** Hvorfor apply ikke må køre ud fra del B (tom liste = ok). */
+export function dipApplyBlockers(dip) {
+  const out = [];
+  if (dip.totals.dipWithoutBonusStagesApplied > 0) {
+    out.push(`A dip without bonus was applied in ${dip.totals.dipWithoutBonusStagesApplied} finished rider-stages; historical results need a separate owner decision (#6156). Nothing was written.`);
+  }
+  return out;
+}
+
 // ── SQL: snapshot + restore ────────────────────────────────────────────────
+
+function assertBackupTable(table) {
+  if (!/^backup_6158_\d{8}$/.test(String(table))) throw new Error(`Unexpected backup table name: ${table}`);
+}
 
 function uuidList(ids) {
   for (const id of ids) {
@@ -339,25 +532,32 @@ function uuidList(ids) {
  * Idempotent: `create table if not exists` + `on conflict do nothing`, så en
  * genkørsel aldrig overskriver det oprindelige før-billede.
  */
-export function buildSnapshotSql(planIds) {
+export function buildSnapshotSql(planIds, table) {
+  assertBackupTable(table);
   if (!planIds.length) return "-- #6158: ingen planer at give tilbage, intet snapshot nødvendigt\n";
   const ids = uuidList(planIds);
   return `-- #6158 snapshot FØR tilbagegivelse af formtoppe. Idempotent.
+-- given_back_at er kvitteringen: apply stempler den, når rækken er slettet.
 begin;
-create table if not exists public.${BACKUP_TABLE} as
-  select ${PLAN_COLUMNS}, now() as backed_up_at
+create table if not exists public.${table} as
+  select ${PLAN_COLUMNS}, now() as backed_up_at, null::timestamptz as given_back_at
   from public.rider_peak_plans where false;
-alter table public.${BACKUP_TABLE} enable row level security;
-create unique index if not exists ${BACKUP_TABLE}_id on public.${BACKUP_TABLE}(id);
-insert into public.${BACKUP_TABLE}
-  select ${PLAN_COLUMNS}, now()
+alter table public.${table} add column if not exists given_back_at timestamptz;
+alter table public.${table} enable row level security;
+-- Data API-grants (AGENTS 92, database/templates/new-public-table.sql): kun
+-- service_role (apply-scriptet) maa laese og stemple; RLS erstatter ikke grants.
+revoke all on table public.${table} from public, anon, authenticated, service_role;
+grant select, insert, update, delete on table public.${table} to service_role;
+create unique index if not exists ${table}_id on public.${table}(id);
+insert into public.${table}
+  select ${PLAN_COLUMNS}, now(), null::timestamptz
   from public.rider_peak_plans where id in (
   ${ids}
   )
 on conflict (id) do nothing;
 commit;
 notify pgrst, 'reload schema';
--- Verificér: select count(*) from public.${BACKUP_TABLE}; (skal være mindst ${planIds.length})
+-- Verificér: select count(*) from public.${table}; (skal være mindst ${planIds.length})
 `;
 }
 
@@ -366,18 +566,24 @@ notify pgrst, 'reload schema';
  * hvis rytteren siden har brugt pladsen igen (kvoten ville ellers blive brudt) eller
  * har en plan mod samme mål (UNIQUE). Rytteren skal stadig eksistere (FK).
  */
-export function buildRestoreSql() {
-  return `-- #6158 restore: rul tilbagegivelsen tilbage fra ${BACKUP_TABLE}. Ejer-gated.
+export function buildRestoreSql(table) {
+  assertBackupTable(table);
+  return `-- #6158 restore: rul tilbagegivelsen tilbage fra ${table}. Ejer-gated.
 -- NB: kvoten tjekkes mod tabellen FØR indsættelsen; har en rytter to backup-planer
 -- og én ny plan, kan han ende over kvoten. Tjek bagefter med forespørgslen nederst.
 begin;
 insert into public.rider_peak_plans (${PLAN_COLUMNS})
   select b.id, b.rider_id, b.season_id, b.target_race_id, b.window_start, b.window_end, b.locked_at, b.created_at
-  from public.${BACKUP_TABLE} b
+  from public.${table} b
   join public.riders r on r.id = b.rider_id
-  where not exists (select 1 from public.rider_peak_plans p where p.id = b.id)
+  -- Kun planer scriptet selv har givet tilbage (kvitteret), ikke planer manageren selv slettede.
+  where b.given_back_at is not null
+    and not exists (select 1 from public.rider_peak_plans p where p.id = b.id)
     and (select count(*) from public.rider_peak_plans p where p.rider_id = b.rider_id and p.season_id = b.season_id) < ${RIDER_PLAN_QUOTA_SQL}
 on conflict do nothing;
+-- Kvitteringen nulstilles for de genindsatte rækker.
+update public.${table} b set given_back_at = null
+  where exists (select 1 from public.rider_peak_plans p where p.id = b.id);
 commit;
 -- Over kvoten efter restore:
 -- select rider_id, season_id, count(*) from public.rider_peak_plans group by 1, 2 having count(*) > ${RIDER_PLAN_QUOTA_SQL};
@@ -415,7 +621,31 @@ export function renderPrivateReport(plan, { generatedAt }) {
   lines.push(`- Beholdes fordi den virker efter tændingen: ${t.keepWillWork}`);
   lines.push(`- Allerede givet tilbage (i backup, ikke i tabellen): ${t.alreadyGivenBack}`);
   lines.push(`- Liste-hash (apply kræver \`--approved-list=\` med netop denne og samme \`--ignition=\`): \`${approvedListHash(plan)}\``);
+  if (plan.backupTable) lines.push(`- Backup-/kvitteringstabel: \`${plan.backupTable}\` (apply kræver samme \`--backup-date=\`)`);
   lines.push("");
+  if (plan.dip) {
+    const d = plan.dip.totals;
+    lines.push("## Del B: nedgangen efter en top uden bonus");
+    lines.push(`- Planer vurderet: ${d.plansAssessed} (nedgang overstået ${d.plansLapsed}, i gang ${d.plansActive}, foran ${d.plansAhead})`);
+    lines.push(`- Kørte rytter-etaper i nedgangen (alle planer i scope): ${d.dipStagesRun} på ${d.ridersWithDipStagesRun} ryttere. Motorversioner set: ${d.engineVersionsSeen.join(", ") || "-"}`);
+    lines.push(`- **Rytter-etaper hvor motoren faktisk lagde et dyk på (alle planer): ${d.dipStagesApplied}**`);
+    lines.push(`- **Heraf efter en top uden bonus (tilbagegivne planer): ${d.dipWithoutBonusStagesApplied}** på ${d.ridersWithDipApplied} ryttere`);
+    lines.push(`- Ryttere der skal have formjustering for et allerede anvendt dyk: ${d.ridersNeedingFormAdjustment}. Ændring i \`rider_condition.form\`: 0 for alle (dykket gemmes ikke der).`);
+    lines.push(`- Ryttere der stadig bærer en nedgang uden bonus (i gang eller foran): ${d.ridersCarryingDipAhead}; ${d.plansDipAheadRemovedByGiveBack} planer. Fjernes når rækken slettes i del A.`);
+    lines.push(`- Beholdte planer med nedgang foran (har bonus, røres ikke): ${d.plansDipAheadWithBonus}`);
+    const blockers = dipApplyBlockers(plan.dip);
+    lines.push(`- Apply-spærre fra del B: ${blockers.length ? blockers.join(" ") : "ingen"}`);
+    lines.push("");
+    const adjusted = plan.dip.riders.filter((x) => x.formAdjustmentPoints || x.dipAhead);
+    if (adjusted.length) {
+      lines.push("| Rytter-id | Hold-id | Anvendt dyk (etaper) | Formjustering (formpoint) | rider_condition | Nedgang foran |");
+      lines.push("|---|---|---|---|---|---|");
+      for (const x of adjusted) {
+        lines.push(`| ${x.riderId} | ${x.teamId} | ${x.dipStagesApplied} | ${x.formAdjustmentPoints ?? "?"} | ${x.riderConditionDelta} | ${x.dipAhead ? "ja" : "nej"} |`);
+      }
+      lines.push("");
+    }
+  }
   lines.push("## Følgeeffekt til go-kortet");
   lines.push(`- ${t.giveBackTargetInProgress} tilbagegivne toppe hører til et etapeløb der er i gang ved tændingen. Manageren får toppen tilbage, men kan først bruge den i et løb der starter efter tændingen.`);
   lines.push(`- ${t.giveBackRiderNotSenior} tilbagegivne toppe hører til ryttere der ikke står i seniortruppen nu; de kan ikke planlægges igen før rytteren er senior (#5992).`);
@@ -464,8 +694,81 @@ export function renderPublicSummary(plan) {
     `  I scope: ${t.inScope} | gives tilbage: ${t.giveBack} (kun A ${t.giveBackByRule.window_started_only}, kun B ${t.giveBackByRule.target_started_only}, begge ${t.giveBackByRule.both})`,
     `  Beholdes: talt efter tænding ${t.keepCountedAfterIgnition}, virker efter tænding ${t.keepWillWork} | allerede givet tilbage: ${t.alreadyGivenBack}`,
     `  Ryttere ${t.giveBackRiders} | hold ${t.giveBackTeams} (parkerede ${t.giveBackTeamsParked}) | målløb i gang ved tænding ${t.giveBackTargetInProgress} | ikke senior nu ${t.giveBackRiderNotSenior}`,
-    `  Liste-hash (til --approved-list): ${approvedListHash(plan)}`,
+    ...(plan.dip ? [
+      `  Del B (nedgang): kørte rytter-etaper i nedgangen ${plan.dip.totals.dipStagesRun} | dyk anvendt ${plan.dip.totals.dipStagesApplied} (uden bonus ${plan.dip.totals.dipWithoutBonusStagesApplied}) | ryttere med nedgang uden bonus foran ${plan.dip.totals.ridersCarryingDipAhead} | formjustering nødvendig ${plan.dip.totals.ridersNeedingFormAdjustment}`,
+    ] : []),
+    `  Liste-hash (til --approved-list): ${approvedListHash(plan)}${plan.backupTable ? ` | backup ${plan.backupTable}` : ""}`,
   ].join("\n");
+}
+
+// ── Kort til ejeren (privat, anonymiseret) ─────────────────────────────────
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+}
+
+/** Hold-alias A, B, ... AA, AB (stabilt efter antal toppe, så id). */
+export function teamAlias(i) {
+  let n = i;
+  let s = "";
+  do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0);
+  return `Hold ${s}`;
+}
+
+/**
+ * Før/efter pr. hold: toppe brugt i S4 (i scope) før, og hvor mange der står
+ * tilbage efter tilbagegivelsen. Anonymiseret (Hold A, B, ...). Ren.
+ */
+export function cardRows(plan) {
+  const byTeam = new Map();
+  for (const r of plan.rows) {
+    if (!byTeam.has(r.teamId)) byTeam.set(r.teamId, { teamId: r.teamId, before: 0, givenBack: 0, riders: new Set(), dipAhead: 0 });
+    const t = byTeam.get(r.teamId);
+    t.before++;
+    if (r.outcome === "give_back") { t.givenBack++; t.riders.add(r.riderId); }
+  }
+  for (const p of plan.dip?.perPlan || []) {
+    if (p.dipAheadRemovedByGiveBack && byTeam.has(p.teamId)) byTeam.get(p.teamId).dipAhead++;
+  }
+  return [...byTeam.values()]
+    .sort((a, b) => (b.givenBack - a.givenBack) || (b.before - a.before) || String(a.teamId).localeCompare(String(b.teamId)))
+    .map((t, i) => ({ alias: teamAlias(i), before: t.before, after: t.before - t.givenBack, givenBack: t.givenBack, riders: t.riders.size, dipAhead: t.dipAhead }));
+}
+
+export function renderCardHtml(plan, { generatedAt }) {
+  const rows = cardRows(plan);
+  const t = plan.totals;
+  const d = plan.dip?.totals;
+  const max = Math.max(1, ...rows.map((r) => r.before));
+  const bar = (v, cls) => `<span class="bar ${cls}" style="width:${((v / max) * 100).toFixed(1)}%"></span>`;
+  const body = rows.map((r) => `<tr><td>${esc(r.alias)}</td><td class="n">${r.before}</td><td class="viz">${bar(r.before, "before")}${bar(r.after, "after")}</td><td class="n">${r.after}</td><td class="n">${r.givenBack}</td><td class="n">${r.riders}</td><td class="n">${r.dipAhead}</td></tr>`).join("");
+  return `<!doctype html><html lang="da"><head><meta charset="utf-8"><title>6158 formtoppe tilbage</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--muted:#6b6b6b;--line:#e3e3e3;--before:#b8b8b8;--after:#c9a227}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,Segoe UI,sans-serif}
+.card{width:880px;padding:24px;box-sizing:border-box}
+h1{font-size:18px;margin:0 0 4px}p{margin:0 0 12px;color:var(--muted)}
+.kpis{display:flex;gap:12px;margin:12px 0 16px}.kpi{border:1px solid var(--line);border-radius:5px;padding:8px 12px;flex:1}
+.kpi b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}th{color:var(--muted);font-weight:500}
+td.n{text-align:right;width:70px}td.viz{width:300px}
+.bar{display:block;height:6px;border-radius:2px;margin:1px 0}.bar.before{background:var(--before)}.bar.after{background:var(--after)}
+.legend span{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 12px;vertical-align:middle}
+</style></head><body><div class="card">
+<h1>#6158 formtoppe tilbage, før og efter pr. hold</h1>
+<p>Tørkørsel ${esc(copenhagenDateString(new Date(generatedAt)))}. Sæson ${t.seasonNumber}. Formtoppe virker igen fra ${esc(copenhagenDateString(new Date(t.ignitionAt)))} (dansk tid). Intet er skrevet.</p>
+<div class="kpis">
+<div class="kpi"><b>${t.giveBack}</b>toppe gives tilbage</div>
+<div class="kpi"><b>${t.giveBackRiders}</b>ryttere</div>
+<div class="kpi"><b>${t.giveBackTeams}</b>hold</div>
+<div class="kpi"><b>${d ? d.dipWithoutBonusStagesApplied : "-"}</b>etaper med dyk uden bonus</div>
+<div class="kpi"><b>${d ? d.ridersCarryingDipAhead : "-"}</b>ryttere med nedgang foran (fjernes)</div>
+</div>
+<p class="legend"><span style="background:var(--before)"></span>toppe brugt nu<span style="background:var(--after)"></span>står tilbage efter</p>
+<table><thead><tr><th>Hold</th><th class="n">Før</th><th></th><th class="n">Efter</th><th class="n">Tilbage</th><th class="n">Ryttere</th><th class="n">Planer m. nedgang fjernet</th></tr></thead><tbody>${body}</tbody></table>
+</div></body></html>
+`;
 }
 
 // ── I/O (read-only) ─────────────────────────────────────────────────────────
@@ -504,11 +807,11 @@ async function fetchSchedule(supabase, raceIds) {
 }
 
 /**
- * Kørte etaper (rytter, CET-dag) i løb der startede på eller efter tændingen.
- * Kun løb i sæsonen med mindst én kørt etape; en etape tæller som kørt når
- * stage_number <= stages_completed.
+ * Alle KØRTE etaper (rytter, etape, CET-dag) i sæsonens løb, for de givne ryttere.
+ * En etape tæller som kørt når stage_number <= stages_completed. Bærer løbets
+ * første etapetidspunkt, så tændingsgrænsen kan lægges på bagefter (rent).
  */
-export async function fetchPostIgnitionStages(supabase, { seasonId, riderIds, ignitionMs }) {
+export async function fetchSeasonStages(supabase, { seasonId, riderIds }) {
   const out = new Map();
   if (!riderIds.length) return out;
   const entries = await fetchAllRowsChunkedIn(riderIds, (chunk) =>
@@ -525,30 +828,87 @@ export async function fetchPostIgnitionStages(supabase, { seasonId, riderIds, ig
   const schedule = await fetchSchedule(supabase, raceIds);
   const first = firstStageAtByRace(schedule);
   const completedByRace = new Map(entries.map((e) => [e.race_id, Number(e.races?.stages_completed) || 0]));
-  const stageDaysByRace = new Map();
+  const stagesByRace = new Map();
   for (const s of schedule) {
-    const f = first.get(s.race_id);
-    if (f == null || f < ignitionMs) continue; // løbet startede før tændingen: gamle regler
     if (!(Number(s.stage_number) <= (completedByRace.get(s.race_id) || 0))) continue;
     const day = scheduledAtToOrdinal(s.scheduled_at);
     if (day == null) continue;
-    if (!stageDaysByRace.has(s.race_id)) stageDaysByRace.set(s.race_id, []);
-    stageDaysByRace.get(s.race_id).push(day);
+    if (!stagesByRace.has(s.race_id)) stagesByRace.set(s.race_id, []);
+    stagesByRace.get(s.race_id).push({ stageNumber: Number(s.stage_number), dayOrdinal: day, raceFirstMs: first.get(s.race_id) ?? null });
   }
   for (const e of entries) {
-    for (const day of stageDaysByRace.get(e.race_id) || []) {
+    for (const st of stagesByRace.get(e.race_id) || []) {
       if (!out.has(e.rider_id)) out.set(e.rider_id, []);
-      out.get(e.rider_id).push({ raceId: e.race_id, dayOrdinal: day });
+      out.get(e.rider_id).push({ raceId: e.race_id, ...st });
     }
   }
   return out;
 }
 
+/** Kun etaper i løb der startede på eller efter tændingen (de nye regler). Ren. */
+export function postIgnitionFrom(seasonStagesByRider, ignitionMs) {
+  const out = new Map();
+  for (const [riderId, list] of seasonStagesByRider) {
+    const kept = list
+      .filter((s) => s.raceFirstMs != null && s.raceFirstMs >= ignitionMs)
+      .map((s) => ({ raceId: s.raceId, dayOrdinal: s.dayOrdinal }));
+    if (kept.length) out.set(riderId, kept);
+  }
+  return out;
+}
+
+/**
+ * Kørte etaper (rytter, CET-dag) i løb der startede på eller efter tændingen.
+ * Bevaret som indgang; bygger på fetchSeasonStages.
+ */
+export async function fetchPostIgnitionStages(supabase, { seasonId, riderIds, ignitionMs }) {
+  return postIgnitionFrom(await fetchSeasonStages(supabase, { seasonId, riderIds }), ignitionMs);
+}
+
+/** Seneste motorkørsel pr. (løb, etape): `${raceId}:${stage}` → {runId, engineVersion}. */
+export async function fetchLatestRuns(supabase, raceIds) {
+  const uniq = [...new Set(raceIds.filter(Boolean))];
+  const out = new Map();
+  if (!uniq.length) return out;
+  const rows = await fetchAllRowsChunkedIn(uniq, (chunk) =>
+    supabase.from("race_simulation_runs").select("id, race_id, stage_number, engine_version, created_at")
+      .in("race_id", chunk).order("race_id").order("stage_number").order("created_at")
+  );
+  const best = new Map();
+  for (const r of rows) {
+    const key = `${r.race_id}:${Number(r.stage_number)}`;
+    const prev = best.get(key);
+    if (!prev || Date.parse(r.created_at) >= Date.parse(prev.created_at)) best.set(key, r);
+  }
+  for (const [key, r] of best) out.set(key, { runId: r.id, engineVersion: r.engine_version ?? null });
+  return out;
+}
+
+/**
+ * Peak-komponenten (score-rum) pr. (kørsel, rytter), kun rækker hvor motoren
+ * overhovedet skrev en peak-komponent. Under v4 skrives ingen komponenter.
+ */
+export async function fetchPeakComponents(supabase, runIds) {
+  const uniq = [...new Set(runIds.filter(Boolean))];
+  const out = new Map();
+  if (!uniq.length) return out;
+  const rows = await fetchAllRowsChunkedIn(uniq, (chunk) =>
+    supabase.from("race_simulation_rider_scores").select("run_id, rider_id, peak:components->peak")
+      .in("run_id", chunk).not("components->peak", "is", null).order("run_id").order("rider_id")
+  );
+  for (const r of rows) {
+    const v = Number(r.peak);
+    if (Number.isFinite(v)) out.set(`${r.run_id}:${r.rider_id}`, v);
+  }
+  return out;
+}
+
 /** Backup-rækker for sæsonen; tom liste hvis backup-tabellen ikke findes endnu. */
-export async function fetchBackupIds(supabase, seasonId) {
+export async function fetchBackupIds(supabase, seasonId, table) {
+  assertBackupTable(table);
   try {
     const rows = await fetchAllRows(() =>
-      supabase.from(BACKUP_TABLE).select("id").eq("season_id", seasonId).order("id")
+      supabase.from(table).select("id").eq("season_id", seasonId).order("id")
     );
     return rows.map((r) => r.id);
   } catch (err) {
@@ -557,26 +917,62 @@ export async function fetchBackupIds(supabase, seasonId) {
   }
 }
 
-export async function loadPlan(supabase, { ignitionAt }) {
+/** Næste sæsons start (midnat dansk tid) = tidspunktet hvor formtoppe virker igen (ejer 10/10). */
+export async function fetchNextSeasonIgnition(supabase, activeSeason) {
+  const { data, error } = await supabase
+    .from("seasons").select("id, number, start_date").eq("number", Number(activeSeason.number) + 1)
+    .limit(1).maybeSingle();
+  if (error) throw new Error(`next season lookup: ${error.message}`);
+  if (!data?.start_date) throw new Error(`No season ${Number(activeSeason.number) + 1} with a start_date; pass --ignition=<ISO>`);
+  return copenhagenHourToUTC(String(data.start_date).slice(0, 10), 0).toISOString();
+}
+
+/**
+ * Indlæs alt read-only og byg planen (del A) + nedgangen (del B).
+ * @param {object} supabase
+ * @param {{ignition?: string|null, backupTable: string, now?: string}} opts
+ *   ignition: ISO, "next-season" (default) eller "now".
+ */
+export async function loadPlan(supabase, { ignition = IGNITION_NEXT_SEASON, backupTable, now = new Date().toISOString() }) {
   const season = await fetchActiveSeason(supabase);
+  let ignitionAt;
+  if (ignition === IGNITION_NOW) ignitionAt = now;
+  else if (ignition == null || ignition === IGNITION_NEXT_SEASON) ignitionAt = await fetchNextSeasonIgnition(supabase, season);
+  else ignitionAt = ignition;
   const ignitionMs = Date.parse(ignitionAt);
   const plans = await fetchSeasonPlans(supabase, season.id);
   const ridersById = await fetchByIds(supabase, "riders", RIDER_COLUMNS, plans.map((p) => p.rider_id));
   const teamsById = await fetchByIds(supabase, "teams", TEAM_COLUMNS, [...ridersById.values()].map((r) => r.team_id));
   const targetIds = plans.map((p) => p.target_race_id);
-  const [racesById, schedule, postIgnitionStagesByRider, backupIds] = await Promise.all([
+  const riderIds = [...new Set(plans.map((p) => p.rider_id))];
+  const [racesById, schedule, seasonStagesByRider, backupIds] = await Promise.all([
     fetchByIds(supabase, "races", RACE_COLUMNS, targetIds),
     fetchSchedule(supabase, targetIds),
-    fetchPostIgnitionStages(supabase, { seasonId: season.id, riderIds: [...new Set(plans.map((p) => p.rider_id))], ignitionMs }),
-    fetchBackupIds(supabase, season.id),
+    fetchSeasonStages(supabase, { seasonId: season.id, riderIds }),
+    fetchBackupIds(supabase, season.id, backupTable),
   ]);
   const live = new Set(plans.map((p) => p.id));
   const alreadyGivenBackIds = backupIds.filter((id) => !live.has(id));
   const plan = buildPlan({
     season, plans, ridersById, teamsById, racesById,
     firstStageMs: firstStageAtByRace(schedule),
-    postIgnitionStagesByRider, alreadyGivenBackIds, ignitionAt,
+    lastStageMs: lastStageAtByRace(schedule),
+    postIgnitionStagesByRider: postIgnitionFrom(seasonStagesByRider, ignitionMs),
+    alreadyGivenBackIds, ignitionAt,
   });
+
+  // Del B: hvad lagde motoren faktisk på i nedgangen?
+  const stagedRaceIds = [...new Set([...seasonStagesByRider.values()].flat().map((s) => s.raceId))];
+  const latestRunByStage = await fetchLatestRuns(supabase, stagedRaceIds);
+  const peakComponentByRunRider = await fetchPeakComponents(supabase, [...latestRunByStage.values()].map((r) => r.runId));
+  plan.dip = assessDip({
+    rows: plan.rows,
+    seasonStagesByRider,
+    latestRunByStage,
+    peakComponentByRunRider,
+    todayOrdinal: dateStringToOrdinal(copenhagenDateString(new Date(Date.parse(now)))),
+  });
+  plan.backupTable = backupTable;
   return { plan, season };
 }
 
@@ -587,22 +983,25 @@ export function writePrivateArtifacts(plan, { generatedAt, dir = PRIVATE_DIR, su
   const json = join(dir, `${suffix}-${stamp}.json`);
   const snapshot = join(dir, "snapshot.sql");
   const restore = join(dir, "restore.sql");
+  const card = join(dir, "card.html");
   writeFileSync(report, renderPrivateReport(plan, { generatedAt }), "utf8");
   writeFileSync(json, JSON.stringify({ generatedAt, listHash: approvedListHash(plan), ...plan }, null, 2), "utf8");
-  writeFileSync(snapshot, buildSnapshotSql(giveBackIds(plan)), "utf8");
-  writeFileSync(restore, buildRestoreSql(), "utf8");
-  return { report, json, snapshot, restore };
+  writeFileSync(snapshot, buildSnapshotSql(giveBackIds(plan), plan.backupTable), "utf8");
+  writeFileSync(restore, buildRestoreSql(plan.backupTable), "utf8");
+  writeFileSync(card, renderCardHtml(plan, { generatedAt }), "utf8");
+  return { report, json, snapshot, restore, card };
 }
 
 // ── Apply (ejer-gated) ──────────────────────────────────────────────────────
 
 /** Kast hvis backup-tabellen ikke dækker alle planer der skal slettes. */
-export async function assertBackupCovers(supabase, planIds) {
+export async function assertBackupCovers(supabase, planIds, table) {
+  assertBackupTable(table);
   if (!planIds.length) return;
   const rows = await fetchAllRowsChunkedIn(planIds, (chunk) =>
-    supabase.from(BACKUP_TABLE).select("id").in("id", chunk).order("id")
+    supabase.from(table).select("id").in("id", chunk).order("id")
   ).catch((err) => {
-    throw new Error(`Backup table ${BACKUP_TABLE} not readable (${err.message}). Run balance-internals/6158/snapshot.sql first. Nothing was written.`);
+    throw new Error(`Backup table ${table} not readable (${err.message}). Run balance-internals/6158/snapshot.sql first. Nothing was written.`);
   });
   const covered = new Set(rows.map((r) => r.id));
   const missing = planIds.filter((id) => !covered.has(id));
@@ -612,17 +1011,22 @@ export async function assertBackupCovers(supabase, planIds) {
 }
 
 /**
- * Apply: slet præcis de godkendte planer (giv toppene tilbage), derefter
- * verificering. Idempotent: en slettet plan findes ikke igen og tælles som
- * "allerede givet tilbage" i hashen.
+ * Apply: slet præcis de godkendte planer (giv toppene tilbage og fjern dermed
+ * nedgangen), stempl kvitteringen i backuppen, og verificér. Idempotent: en
+ * slettet plan findes ikke igen og tælles som "allerede givet tilbage" i hashen;
+ * kvitteringen stemples kun hvor den mangler.
  */
-export async function runApply({ supabase, plan, seasonId, ownerGo, approvedHash }) {
+export async function runApply({ supabase, plan, seasonId, ownerGo, approvedHash, now = new Date().toISOString() }) {
   if (!ownerGo) throw new Error(`Apply requires ${OWNER_GO_FLAG}`);
   if (approvedHash !== approvedListHash(plan)) {
     throw new Error("Live list differs from the list the owner approved. Re-run dry-run and show the owner the new list. Nothing was written.");
   }
+  const table = plan.backupTable;
+  assertBackupTable(table);
+  const blockers = plan.dip ? dipApplyBlockers(plan.dip) : ["Dip assessment (part B) missing. Nothing was written."];
+  if (blockers.length) throw new Error(blockers.join(" "));
   const ids = giveBackIds(plan);
-  await assertBackupCovers(supabase, ids);
+  await assertBackupCovers(supabase, ids, table);
 
   let deleted = 0;
   for (let i = 0; i < ids.length; i += 100) {
@@ -636,13 +1040,42 @@ export async function runApply({ supabase, plan, seasonId, ownerGo, approvedHash
     deleted += (data || []).length;
   }
 
-  // Verificering: ingen af de godkendte planer må findes bagefter.
+  // Kvittering: stempl given_back_at på alle godkendte (også et tidligere, afbrudt
+  // apply's rækker), kun hvor stemplet mangler.
   const all = [...new Set([...ids, ...plan.alreadyGivenBackIds])];
+  let receipted = 0;
+  for (let i = 0; i < all.length; i += 100) {
+    const chunk = all.slice(i, i + 100);
+    const { data, error } = await supabase.from(table)
+      .update({ given_back_at: now })
+      .in("id", chunk)
+      .is("given_back_at", null)
+      .select("id");
+    if (error) throw new Error(`receipt (${table}.given_back_at) after ${receipted} rows: ${error.message}. Plans are deleted; re-run apply to finish the receipt.`);
+    receipted += (data || []).length;
+  }
+
+  // Post-verify 1: ingen godkendt plan findes mere.
   const remaining = all.length
     ? await fetchAllRowsChunkedIn(all, (chunk) => supabase.from("rider_peak_plans").select("id").in("id", chunk).order("id"))
     : [];
   if (remaining.length) throw new Error(`Verification failed: ${remaining.length} approved plans still exist after delete`);
-  return { planned: ids.length, deleted, alreadyGivenBack: plan.alreadyGivenBackIds.length, remainingAfter: 0 };
+  // Post-verify 2: alle godkendte er kvitteret i backuppen.
+  const backupRows = all.length
+    ? await fetchAllRowsChunkedIn(all, (chunk) => supabase.from(table).select("id, given_back_at").in("id", chunk).order("id"))
+    : [];
+  const unreceipted = all.length - backupRows.filter((r) => r.given_back_at != null).length;
+  if (unreceipted) throw new Error(`Verification failed: ${unreceipted} approved plans have no receipt in ${table}`);
+  return { planned: ids.length, deleted, alreadyGivenBack: plan.alreadyGivenBackIds.length, receipted, remainingAfter: 0 };
+}
+
+/** Post-verify 3: en frisk indlæsning har intet tilbage at give, og hashen er uændret. */
+export function assertNothingLeft(planAfter, approvedHash) {
+  if (giveBackIds(planAfter).length) throw new Error(`Verification failed: ${giveBackIds(planAfter).length} plans still qualify for give-back after apply`);
+  if (approvedListHash(planAfter) !== approvedHash) throw new Error("Verification failed: list hash changed after apply");
+  if (planAfter.dip && planAfter.dip.totals.plansDipAheadRemovedByGiveBack) {
+    throw new Error("Verification failed: a dip without bonus is still ahead after apply");
+  }
 }
 
 async function main() {
@@ -655,21 +1088,24 @@ async function main() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
   const generatedAt = new Date().toISOString();
-  const ignitionAt = opts.ignition ?? generatedAt;
-  const { plan, season } = await loadPlan(supabase, { ignitionAt });
+  const backupTable = backupTableName(opts.backupDate ?? defaultBackupDate(new Date(generatedAt)));
+  const { plan, season } = await loadPlan(supabase, { ignition: opts.ignition, backupTable, now: generatedAt });
   const files = writePrivateArtifacts(plan, { generatedAt, suffix: opts.apply ? "pre-apply" : "dry-run" });
   console.log(renderPublicSummary(plan));
   console.log(`  Privat rapport: ${files.report}`);
   console.log(`  Snapshot-SQL:   ${files.snapshot}`);
   console.log(`  Restore-SQL:    ${files.restore}`);
+  console.log(`  Kort (html):    ${files.card}`);
   if (!opts.apply) {
     console.log("Dry-run: intet skrevet til databasen.");
     return;
   }
   const result = await runApply({ supabase, plan, seasonId: season.id, ownerGo: opts.ownerGo, approvedHash: opts.approvedHash });
+  const { plan: after } = await loadPlan(supabase, { ignition: opts.ignition, backupTable, now: new Date().toISOString() });
+  assertNothingLeft(after, opts.approvedHash);
   const resultPath = join(PRIVATE_DIR, `apply-result-${generatedAt.replace(/[:.]/g, "-")}.json`);
-  writeFileSync(resultPath, JSON.stringify(result, null, 2), "utf8");
-  console.log(`Apply: ${JSON.stringify(result)}`);
+  writeFileSync(resultPath, JSON.stringify({ ...result, postVerify: "ok" }, null, 2), "utf8");
+  console.log(`Apply: ${JSON.stringify(result)} | post-verify ok`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
