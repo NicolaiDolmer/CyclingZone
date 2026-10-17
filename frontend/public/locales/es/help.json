@@ -1427,5 +1427,207 @@
         "text": "Cada etapa lleva su propio clima. El sol y el cielo cubierto son la base tranquila, no cambia nada. La lluvia ralentiza toda la etapa y golpea más fuerte a un ciclista débil en mojado que al resto del grupo. El viento muerde sobre todo donde la carretera es abierta; una subida está resguardada por su propia pendiente. La lluvia también aumenta el riesgo de caída en adoquines, gravel y descensos atrevidos. Lo verás como una sola nota en la línea de tiempo de la etapa, en el kilómetro donde empieza a importar, nunca como un número asociado."
       }
     }
+  },
+  "faq": {
+    "seasonPlanner": {
+      "q": "¿Qué es el Planificador de temporada?",
+      "a": "El Planificador de temporada es donde planificas los picos de forma de toda tu plantilla. Se abre en la pestaña Plantilla: una fila por ciclista, con un desplegable donde eliges la carrera para la que alcanza su pico. La pestaña Temporada muestra el mismo plan como un tablero en el que puedes arrastrar, y la pestaña Carreras enumera el calendario de la temporada. La forma se gana entrenando en la preparación, así que un pico para el que te preparas rinde más que uno que dejas al azar. Cada ciclista puede alcanzar su pico para hasta dos carreras por temporada, y la carrera objetivo debe estar en el calendario de tu división."
+    },
+    "peakWhatItDoes": {
+      "q": "¿Qué hace un pico?",
+      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. Los picos todavía no cuentan en las carreras; las carreras usan su Forma normal. Mira «¿Cómo funciona el entrenamiento de pico?» y «¿Un pico me cuesta algo después?» más abajo para saber exactamente cuánto y cuándo."
+    },
+    "peakTraining": {
+      "q": "¿Cómo funciona el entrenamiento de pico?",
+      "a": "Cuando fijas un pico, el planificador sugiere una semana de carga y una semana de descarga para la preparación. Acepta una desde el panel del ciclista y escribe ese ritmo en el entrenamiento semanal del ciclista. Entrenar el enfoque adecuado para el perfil de la carrera, ser constante y llegar descansado a la descarga aumentan cuánto del pico consigues. Un pico sigue siendo totalmente editable (cambiar su objetivo, quitarlo o fijar un segundo) hasta que su ventana empieza de verdad; cuando llega esa fecha se bloquea, porque el pico ya está en uso. Tanto la pestaña Plantilla como el panel del ciclista muestran exactamente cuándo se bloquea cada pico, y una etiqueta de bloqueo siempre indica la fecha en que ocurrió."
+    },
+    "peakValue": {
+      "q": "¿Cuánto vale realmente un pico?",
+      "a": "Un pico vale entre +6 y +29 de forma el día de la carrera, y en qué punto de ese rango caes depende por completo de cómo se corra la preparación: una preparación descuidada vale aproximadamente una quinta parte de una perfecta. Hasta que empieza la preparación, el planificador solo puede mostrarte el rango, porque el número aún no existe. Una vez en marcha el entrenamiento, se concreta en una sola cifra. Para tener una referencia, +29 es la diferencia entre un ciclista con 50 de forma y el mismo ciclista con 79."
+    },
+    "peakPayback": {
+      "q": "¿Un pico me cuesta algo después?",
+      "a": "Sí. Después de que se cierre la ventana de un pico, el ciclista arrastra unos -14 de forma durante los siete días siguientes. Ese es el precio de la cima, y por eso un pico es una elección y no una mejora gratuita. El Plan de forma te avisa de esto antes de que elijas: las carreras del desplegable de objetivo se marcan con «riesgo de bajón» si alcanzar el pico allí haría caer el bajón sobre otra carrera del programa del ciclista, incluidas las inscripciones rellenadas automáticamente. Si ya existe una colisión, la fila nombra la carrera y cuántos días después del pico cae. El tablero de Selección del equipo cuenta la misma historia por carrera: la tarjeta de cada carrera enumera quién alcanza el pico allí y quién está pagando un pico reciente."
+    },
+    "overlappingRaces": {
+      "q": "¿Cómo funcionan las carreras solapadas y el reparto de la plantilla?",
+      "a": "Las carreras se solapan cuando sus etapas caen en el mismo día de carrera del juego, y un ciclista solo puede tomar la salida en una carrera por día del juego, así que repartir tu plantilla entre carreras solapadas es una decisión estratégica. Varias carreras pueden compartir la misma fecha del calendario sin entrar en conflicto cuando están en días distintos del juego. Cada carrera muestra su día de carrera (por ejemplo Día de carrera 11), así que dos carreras de la misma tarde son claramente días de juego distintos; reutilizar a un ciclista en dos días de carrera está permitido, pero arrastra fatiga a la carrera posterior, así que es una decisión de equilibrio. La vista de reparto de la plantilla (Planificación -> Selección del equipo) muestra tus carreras solapadas lado a lado. Añade ciclistas a una carrera desde tu grupo disponible; un ciclista que pones en una carrera queda bloqueado en las demás carreras que se solapan con ella, pero quítalo y vuelve a estar disponible de inmediato para otra carrera. Tus ediciones se guardan localmente hasta que pulsas Guardar cambios (un aviso te advierte si intentas salir con ediciones sin guardar). También puedes guardar una alineación parcial: los huecos que dejes abiertos se rellenan automáticamente con tus ciclistas disponibles cuando se corra la carrera. Si no quieres inscribirte en una carrera, retírate de ella y simplemente no tomas la salida; entonces la columna te dice que tu equipo no sale voluntariamente, y una selección guardada ya no se puede mandar a esa carrera. El asistente rellena tus alineaciones automáticamente como punto de partida, y puedes pedirle que las rellene otra vez: elige Rellenar huecos para conservar las elecciones que hiciste a mano, o Reconstruir todo para sustituir todas las elecciones por la sugerencia del asistente. Una vez que ha empezado una carrera, su alineación es definitiva y ya no se puede cambiar. La pestaña Calendario de la vista de temporada cuenta de otra manera: muestra «Día N de M», el día del calendario de la temporada, no la casilla del día de carrera, así que la misma tarde puede leerse Día de carrera 11 en Selección del equipo y Día 8 de 27 en el calendario."
+    },
+    "stageRaceLockout": {
+      "q": "¿Por qué mi ciclista está bloqueado durante una carrera por etapas?",
+      "a": "Una carrera por etapas retiene a un ciclista durante todo su tramo de días de carrera. Si se corre del día de carrera 11 al 30, no puede tomar la salida en nada más en esa ventana, ni siquiera en los días en que la carrera no se corre."
+    },
+    "autoSelect": {
+      "q": "¿Qué hace la Selección automática?",
+      "a": "La Selección automática rellena tu selección de carrera con tus mejores ciclistas disponibles, con las mismas reglas que la selección manual: un ciclista por día de carrera y sin ciclistas lesionados. Puedes ajustar el resultado antes de guardar."
+    },
+    "teamStrategyFaq": {
+      "q": "¿Cómo hago que el asistente elija a mis mejores ciclistas para las grandes carreras?",
+      "a": "Abre Estrategia del equipo en Planificación. Añade a tus mejores ciclistas a la cadena A y marca como objetivos las carreras que más importan, y el asistente dará prioridad a tu cadena A en esas carreras. También puedes ordenar a los jefes de filas 1/2/3 por terreno y dar roles fijos a los ciclistas. Usa Previsualizar cambios para ver exactamente cómo afecta a tus alineaciones, y luego Guardar y Regenerar sugerencias. Las elecciones que hiciste a mano nunca se sobrescriben."
+    },
+    "relaunchTeamMoney": {
+      "q": "¿Qué pasó con mi equipo y mi dinero en el relanzamiento de la Temporada 1?",
+      "a": "En el relanzamiento todo empieza de nuevo. Tu plantilla, saldo y fichajes anteriores no pasan a la nueva Temporada 1. Recibes una plantilla nueva de {initialSquad} ciclistas y un presupuesto inicial de {startingBalance} CZ$, igual que todos los demás mánagers."
+    },
+    "relaunchRiderNames": {
+      "q": "¿Por qué los nombres de los ciclistas son distintos después del relanzamiento?",
+      "a": "Cycling Zone funciona ahora en su propio mundo de ciclistas ficticios, con sus propios valores y su propio motor de carreras, así que el juego ya no depende de datos externos del mundo real."
+    },
+    "relaunchFounderBadge": {
+      "q": "¿Qué es la insignia Founder?",
+      "a": "Una marca permanente en tu perfil que reconoce que jugaste durante la beta, antes del relanzamiento de la Temporada 1."
+    },
+    "relaunchNextSeasonBuys": {
+      "q": "Compré ciclistas para la próxima temporada antes del relanzamiento. ¿Qué pasó con ellos?",
+      "a": "El plan anterior de dos temporadas cambió. El relanzamiento reinicia todos los equipos, así que los ciclistas comprados para una temporada futura no se conservan. Todos empiezan de nuevo en igualdad de condiciones, con una plantilla nueva."
+    },
+    "balanceVisibility": {
+      "q": "¿Pueden los demás ver mi saldo?",
+      "a": "No. Tu saldo solo es visible para ti."
+    },
+    "ridersOffline": {
+      "q": "¿Qué pasa con mis ciclistas si no inicio sesión?",
+      "a": "Tus ciclistas se quedan en tu equipo. Cycling Zone no te castiga por saltarte un día, así que juega a tu ritmo."
+    },
+    "appUpdatesFaq": {
+      "q": "¿Por qué el juego se recarga a veces solo?",
+      "a": "Cuando publico una versión nueva, una pestaña que ya tenías abierta sigue apuntando a los archivos antiguos, y pueden desaparecer. La pestaña comprueba si hay una versión nueva y se recarga sola para que obtengas la nueva. Nunca lo hace mientras tienes cambios sin guardar o una película de carrera en marcha. En ese caso aparece abajo una pequeña barra «Nueva versión lista» y eres tú quien decide cuándo aplicar la actualización."
+    },
+    "passwordReset": {
+      "q": "¿Cómo restablezco mi contraseña?",
+      "a": "Desde la página de inicio de sesión puedes hacer clic en «¿Has olvidado tu contraseña?», introducir tu correo y seguir el enlace de restablecimiento del correo. El enlace abre una página de restablecimiento específica donde eliges una contraseña nueva."
+    },
+    "riderTransferTiming": {
+      "q": "¿Cuándo cambia de equipo un ciclista tras un fichaje?",
+      "a": "El trato se completa inmediatamente después de que ambas partes confirmen. El mercado siempre está abierto, así que no hay que esperar a ningún periodo de fichajes."
+    },
+    "cancelParkedTransfer": {
+      "q": "¿Puedo cancelar un fichaje después de que ambas partes acepten?",
+      "a": "No. Una vez que ambas partes han aceptado, el trato queda bloqueado y se completa de inmediato. El sistema vuelve a comprobar la propiedad, el saldo y los límites de plantilla justo antes de que se complete."
+    },
+    "aiDirectOffers": {
+      "q": "¿Puedo comprar ciclistas IA con una oferta directa?",
+      "a": "No. Los ciclistas de un equipo controlado por la IA no se pueden adquirir en absoluto: ni por fichaje directo ni por oferta de intercambio, ni tampoco por subasta. Solo pueden cambiar de manos los ciclistas libres (sin equipo) y los ciclistas del equipo de otro mánager."
+    },
+    "auctionExpiry": {
+      "q": "¿Cuándo caduca una subasta?",
+      "a": "Cuando pones en subasta a tu propio ciclista, eliges la hora exacta en que termina la subasta, de 1 a 48 horas por delante. Una subasta de un ciclista libre (sin equipo) dura por defecto al menos 12 horas activas: lo inicie quien lo inicie, y sea cual sea el motivo por el que el ciclista quedó libre (iniciada por uno mismo, el banco, la academia o el mercado juvenil), para que no pierdas a un joven talento solo porque estabas durmiendo o trabajando. La única excepción es una Subasta relámpago, que siempre dura exactamente 30 minutos. Las horas nocturnas no cuentan: la ventana activa va de las 08:00 a las 24:00 todos los días. Ejemplo: una subasta iniciada a las 19:40 termina esa misma tarde a las 20:40. Una subasta iniciada a las 23:30 termina a la mañana siguiente a las 08:30."
+    },
+    "flashAuction": {
+      "q": "¿Qué es una Subasta relámpago?",
+      "a": "Las Subastas relámpago son un tipo especial de subasta que solo está disponible durante el Deadline Day. Duran exactamente 30 minutos desde la hora de inicio, sin importar la ventana activa. Encuentras la opción en la página de estadísticas del ciclista cuando el Deadline Day está activo."
+    },
+    "minBidAmount": {
+      "q": "¿Cuánto tengo que pujar por encima del precio actual?",
+      "a": "Tu puja debe ser al menos 1 CZ$ superior al precio actual. Si nadie ha pujado todavía, puedes igualar el precio de salida. Las subastas activas que lideras cuentan a la vez como saldo reservado y como posible hueco de plantilla."
+    },
+    "bidVisibility": {
+      "q": "¿Puedo ver quién ha pujado por mi ciclista?",
+      "a": "No. Las negociaciones de fichajes son privadas: solo las pueden ver comprador y vendedor. Recibes una notificación anónima cuando alguien mira a tu ciclista."
+    },
+    "secretAchievementsFaq": {
+      "q": "¿Qué son los logros secretos?",
+      "a": "Los logros secretos aparecen bloqueados y solo se revelan cuando los desbloqueas. Se activan con acciones inesperadas en el juego."
+    },
+    "onlineStatusFaq": {
+      "q": "¿Qué es el estado en línea?",
+      "a": "Un punto verde junto al nombre de un mánager significa que ha estado activo en los últimos 30 minutos. Puedes verlo en todas partes del juego."
+    },
+    "watchlistCounterFaq": {
+      "q": "¿Qué significa el contador de la lista de seguimiento en la página de un ciclista?",
+      "a": "Muestra cuántos mánagers tienen a ese ciclista en su lista de seguimiento. No puedes ver quiénes, solo el recuento total."
+    },
+    "scoutVisibilityFaq": {
+      "q": "¿Pueden otros mánagers ver que he ojeado a un ciclista?",
+      "a": "El propietario del ciclista sí. En el perfil de su propio ciclista, la pestaña Interés enumera qué equipos han usado plazas de ojeo con él, cuántas y cuándo. Todos los demás solo ven totales anónimos (cuántos rivales lo ojearon), nunca qué equipos."
+    },
+    "scoutHistoryFaq": {
+      "q": "¿Puedo ver qué ciclistas ha ojeado ya mi ojeador?",
+      "a": "Sí. Abre el perfil de tu jefe de ojeadores (Ver perfil en la página de Ojeo) y usa la pestaña Historial. Enumera todos los ciclistas sobre los que tu ojeador ha completado una investigación dirigida, de más reciente a más antiguo, con un enlace al perfil y al informe de cada ciclista."
+    },
+    "developmentProjectionFaq": {
+      "q": "¿Qué es la proyección de la pestaña Desarrollo?",
+      "a": "Es un pronóstico de hacia dónde se encamina un ciclista: una línea discontinua desde su valoración de tipo actual hacia una banda objetivo sombreada, con una estimación aproximada de cuántas temporadas y a qué edad llega. Es siempre un rango, nunca un número exacto, porque nadie conoce el objetivo exacto de un ciclista. La banda es deliberadamente difusa para que no pueda deducirse su potencial oculto, y permanece oculta para los ciclistas rivales que no has ojeado. Aquí dos cosas distintas pueden mencionar la edad, y responden a preguntas diferentes: «Edad objetivo» es cuándo espera esta proyección que su crecimiento actual llegue a su banda objetivo, lo que puede ocurrir bastante antes de su pico de carrera (27-28 años) si aún le quedan años de margen de desarrollo. A un ciclista cuyo nivel sigue lejos de su objetivo se le muestra una honesta línea «Mucha distancia al objetivo» en lugar de un falso «Acercándose al objetivo», reservado para ciclistas que están realmente cerca."
+    },
+    "watchlistSaleNotificationFaq": {
+      "q": "¿Recibo una notificación cuando un ciclista de mi lista de seguimiento se pone a la venta?",
+      "a": "Sí. Si un ciclista al que sigues se anuncia en la lista de fichajes o se pone en subasta, recibes automáticamente una notificación en la bandeja de entrada con el precio y el tipo. No necesitas mirar activamente el mercado por tus favoritos."
+    },
+    "riderSalaryView": {
+      "q": "¿Cómo veo el salario de un ciclista?",
+      "a": "El salario es una columna visible en la Base de datos de ciclistas y en la lista de seguimiento, y se puede ordenar y filtrar. Puedes filtrar por un rango de salario en «Salario CZ$ (mín.-máx.)» en el panel de filtros. El salario de un ciclista es una proporción fija de su valor de producción actual, que es lo que el juego espera que rinda esta temporada con sus habilidades actuales. No se basa en su valor de mercado: el valor pone precio a toda su carrera restante, el salario solo a esta temporada. La proporción es la misma para todos los equipos de todas las divisiones, así que el mismo ciclista cuesta lo mismo juegue donde juegue. Un ciclista cuyas habilidades crecen se encarece en su siguiente contrato, y uno cuyas habilidades se apagan se abarata. Algo que conviene saber antes de renovar: su salario actual queda fijado desde el momento en que firma y nunca se mueve solo, así que si sus habilidades han crecido mucho desde entonces, la oferta de renovación puede parecer un salto enorme aunque nada de cómo se calcula haya cambiado."
+    },
+    "riderDevelopment": {
+      "q": "¿Dónde puedo ver si un ciclista se está desarrollando?",
+      "a": "Abre la página de estadísticas del ciclista y elige la pestaña «Desarrollo». Muestra un gráfico seleccionable para cada estadística y el desarrollo registrado del ciclista a lo largo del tiempo."
+    },
+    "trainingFocusFaq": {
+      "q": "¿Cómo entreno a un ciclista?",
+      "a": "Abre uno de tus propios ciclistas y fija un enfoque de entrenamiento en «Enfoque de entrenamiento» del perfil: elige una dirección y una intensidad. Las habilidades entrenadas se desarrollan más rápido hacia su techo en el próximo cambio de temporada. Puedes fijar un enfoque en tantos ciclistas como quieras. Una intensidad más alta entrena más rápido y acumula más fatiga, pero nunca arriesga perder progreso; cambiar un enfoque existente no cuesta nada, y el entrenamiento es gratuito."
+    },
+    "restForDevelopedFaq": {
+      "q": "Mi ciclista está totalmente desarrollado. ¿Le pongo simplemente en Descanso?",
+      "a": "Cuando todas las habilidades del enfoque elegido de un ciclista han llegado a su techo vitalicio, cada línea de ese enfoque muestra «hecho», y entrenar más ahí no añade nada: la ganancia diaria viene de la diferencia entre la habilidad actual y el techo, y con diferencia cero se queda en cero a cualquier intensidad. Normal o Duro en un ciclista al máximo sigue acumulando Fatiga, y Duro sigue conllevando el mismo riesgo de lesión de siempre, sin ninguna ganancia de habilidad a cambio, así que Descanso es la elección más segura: quita Fatiga en lugar de añadirla. El declive de un ciclista tras su pico, desde alrededor de los 28 años, avanza al mismo ritmo fijo y basado en la edad en cada cambio de temporada, sea cual sea la intensidad con la que entrenaste, así que ni el entrenamiento ni el Descanso lo aceleran ni lo frenan. Si otro enfoque aún tiene margen, cambiar a él es mejor que descansar."
+    },
+    "raceDayIntensityFaq": {
+      "q": "¿Sigue importando la intensidad que elegí en un día en que mi ciclista corre?",
+      "a": "Sí, exactamente igual que en cualquier otro día. Correr no cambia lo que da la sesión de ese día: Descanso da ganancia cero, Duro da la mayor ganancia y la mayor fatiga (más riesgo de lesión cuando la Fatiga es alta), igual que en un día sin carrera. La carrera es una carga aparte encima: su propia fatiga se suma a la que ya construyó la sesión, así que un ciclista que corre y entrena Duro el mismo día carga con las dos."
+    },
+    "raceDayIntensityPerRaceDayFaq": {
+      "q": "¿Sigue importando la intensidad que elegí en un día en que mi ciclista corre?",
+      "a": "No en los días de carrera en que corre. En un día de carrera tu ciclista corre o entrena, nunca las dos cosas, así que su sesión no se ejecuta mientras está en una carrera: ni carga de entrenamiento ni riesgo de lesión por entrenamiento, solo la fatiga propia de la carrera. La carrera da en cambio su propio desarrollo, como una sesión media en las habilidades que exige la etapa, sea cual sea la intensidad que elegiste. Tu intensidad decide cada día de carrera en que no corre: Descanso da ganancia cero, Duro da la mayor ganancia y la mayor fatiga, más riesgo de lesión cuando la Fatiga es alta."
+    },
+    "raceDayProfileMatchFaq": {
+      "q": "¿Tiene que coincidir la sesión de entrenamiento de mi ciclista con el terreno de la carrera (llano, montaña, adoquines)?",
+      "a": "No. La sesión de entrenamiento de tu ciclista y sus carreras son cosas separadas. Lo que le da una carrera lo decide la etapa que corre, nunca la sesión que planificaste, así que no hay nada con lo que una sesión tenga que «coincidir». Entrena a cada ciclista hacia lo que necesita a largo plazo, y elige sus carreras según el terreno en el que quieres que corra."
+    },
+    "raceDayAcademyFaq": {
+      "q": "¿Merece la pena que corran los jóvenes talentos de la Academia, o siempre es mejor el entrenamiento de la Academia?",
+      "a": "Correr no cuesta desarrollo de habilidades en la temporada 3: tu talento sigue recibiendo exactamente la sesión que planificaste ese día, corra o no. El coste real es la fatiga: una carrera añade su propia carga encima del entrenamiento, y un talento que corre a menudo necesita sesiones más ligeras y días de descanso reales para mantenerse por debajo del umbral de lesión, igual que cualquier ciclista sénior. No hay ninguna penalización específica de la Academia por correr, así que el compromiso trata de gestionar la fatiga, no de desarrollo perdido."
+    },
+    "raceDayAcademyPerRaceDayFaq": {
+      "q": "¿Merece la pena que corran los jóvenes talentos de la Academia, o siempre es mejor el entrenamiento de la Academia?",
+      "a": "Las dos cosas lo desarrollan, de maneras distintas. En un día de carrera tu talento corre o entrena, nunca las dos cosas. Un día de carrera en que corre cuenta como una sesión media en las habilidades que exige la etapa, con un tope de un punto por habilidad y día de carrera, así que no se queda quieto mientras corre. Un día de entrenamiento es más preciso: tú eliges la sesión, y una sesión dura da más que una carrera. Una carrera por etapas ocupa todos los días de carrera desde la primera etapa hasta la última, y en sus días de descanso no gana nada. No hay ninguna penalización específica de la Academia: la misma regla se aplica a todos los ciclistas. Si una habilidad importa más que las demás, entrénala; si quieres que se desarrolle de forma amplia mientras aprende a correr, ponlo a correr en etapas que le encajen."
+    },
+    "lowerDivisionTrainingFaq": {
+      "q": "¿Las divisiones inferiores tienen más entrenamiento?",
+      "a": "Normalmente sí. Todas las divisiones tienen 140 días de carrera por temporada, pero las divisiones inferiores tienen menos etapas que correr. Un día de carrera sin carrera para tu ciclista es un día de entrenamiento, así que menos etapas significa más días de entrenamiento. En cualquier división, un ciclista que no corre en un día de carrera entrena ese día."
+    },
+    "multipleStagesTrainingFaq": {
+      "q": "¿Varias etapas el mismo día dan más entrenamiento?",
+      "a": "No. Cada etapa se corre en su propio día de carrera, y en un día de carrera tu ciclista corre o entrena, nunca las dos cosas. Un ciclista que corre tres etapas en un día corre tres días de carrera y no entrena en ninguno. Cada etapa añade su propia fatiga y su propio desarrollo de día de carrera, y cada día de carrera da su propia recuperación. Los compañeros que no corren entrenan en cada uno de los días de carrera de ese día. El entrenamiento por día de carrera está escalado a una temporada de 140 días de carrera, así que un día con muchos días de carrera no acelera el desarrollo a lo largo de la temporada."
+    },
+    "stageRaceRestDayFaq": {
+      "q": "¿Qué pasa en un día de descanso de una carrera por etapas?",
+      "a": "Tu ciclista descansa. Una carrera por etapas lo ata desde la primera etapa hasta la última, días de descanso incluidos, así que tampoco entrena en un día de descanso. Su programa no se ejecuta, ese día no gana desarrollo y no hay riesgo de lesión por entrenamiento. Las etapas que corre lo desarrollan, el día de descanso no. Lo que sí obtiene es recuperación: un día de descanso baja su Fatiga."
+    },
+    "flatCobblesHardTrainingFaq": {
+      "q": "¿Puedo entrenar Llano o Adoquines con intensidad Dura?",
+      "a": "Sí, con Sectores de adoquines y Ejercicios de abanicos. Los Sectores de adoquines entrenan los Adoquines con más dureza, con la Durabilidad y la Colocación mejorando de propina. Los Ejercicios de abanicos entrenan el Llano con más dureza, con la Colocación y la Durabilidad mejorando del mismo modo. Las sesiones Duras más antiguas siguen dejando fuera a ambos: Intervalos mixtos (Escalada, Punch, Tempo), Intervalos de escalada (Escalada, Tempo), Intervalos de punch (Punch, Tempo), Umbral (Contrarreloj, Tempo) y Sprint (Sprint, Aceleración). El Tempo (Normal), la Aerodinámica y la Técnica (ambas Suaves) también siguen funcionando, solo que a menor intensidad."
+    },
+    "scoutNetworkOwnRidersFaq": {
+      "q": "¿Una mejor red de ojeo también mejora lo bien que veo a mis propios ciclistas?",
+      "a": "Sí, de una manera concreta. Las misiones de ojeo nunca involucran a tus propios ciclistas: el grupo de candidatos de una misión solo busca entre ciclistas de otros equipos y agentes libres, y una investigación de un solo ciclista cuesta y tarda lo mismo sea cual sea la valoración de tu ojeador. Pero la precisión de los rangos de potencial que ves sí sigue a tu jefe de ojeadores: él conoce por completo tu propia plantilla, así que su valoración decide lo estrechos que son el rango de potencial y las bandas de techo por tipo de tus propios ciclistas, exactamente igual que con un rival totalmente ojeado. Ningún ojeador informa nunca de un valor exacto: incluso con la valoración más alta ves un rango estrecho, nunca un valor numérico preciso."
+    },
+    "scoutChangeRecalcFaq": {
+      "q": "He contratado a un jefe de ojeadores nuevo y ha cambiado el informe de ojeo de un ciclista. ¿Ha empeorado el ciclista?",
+      "a": "No. Un informe de ojeo siempre se calcula en directo, usando la precisión de tu jefe de ojeadores ACTUAL, así que se reconstruye desde cero cada vez que lo abres. El informe de ojeo de cada ciclista muestra ahora quién lo evaluó y de qué nivel bajo el titular, para que puedas ver de un vistazo de quién es la lectura que estás mirando. Contratar a un ojeador con una valoración más baja ensancha la banda de techo que ves y puede desplazar dónde se sitúa; contratar a uno con una valoración más alta la estrecha. Ninguna de las dos direcciones toca las habilidades reales del ciclista, que solo se mueven con el entrenamiento, la edad y las carreras. Si cambias de jefe de ojeadores cuando tu equipo ya tiene ciclistas ojeados, recibes un mensaje en la bandeja de entrada que explica exactamente esto en el momento en que llega el nuevo fichaje."
+    },
+    "typeRatingScaleFaq": {
+      "q": "¿Por qué han cambiado los números de «Proyección por tipo de ciclista» y qué significan ahora?",
+      "a": "Tus ciclistas no han cambiado. Sus habilidades, techos y tipos de ciclista son exactamente los que eran: solo ha cambiado la forma de calcular el número. El número de un rol es ahora simplemente la media ponderada de las habilidades que necesita ese rol, así que un ciclista con 13 en todas las habilidades que cuentan muestra 13 en ese rol. Ya no se estira nada para encajar con el resto del pelotón. Conviene saber dos consecuencias. Los números son más bajos que antes, pero para la mayoría de los ciclistas el cambio es pequeño: un ciclista típico muestra 13 donde antes mostraba 15. El cambio es mayor en lo alto, donde el cálculo antiguo estiraba a los mejores ciclistas hasta un techo que era el de la escala, no el suyo: 15 ciclistas estaban clavados en 99, y el número más alto del juego es ahora 85. Y son estables: el número de un ciclista solo puede moverse cuando se mueven sus propias habilidades. Antes de este cambio la escala estaba anclada a todo el grupo de ciclistas, así que reajustar esos anclajes podía mover el número de cada ciclista sin que cambiara una sola habilidad. Eso ya no puede ocurrir, y eliminarlo era el objetivo."
+    },
+    "scoutedBandGuaranteeFaq": {
+      "q": "¿Es una garantía la banda ojeada?",
+      "a": "No, por dos razones. La banda ni siquiera intenta fijar un único número oculto: el extremo inferior supone un ciclista entrenado con regularidad pero sin enfoque, el superior supone un enfoque dedicado cada día de su carrera. Una banda ancha solo significa que su desarrollo está en tus manos, no que el ojeador dude. Pero el potencial que hay bajo la banda tampoco se conoce nunca con precisión. Un ojeador mejor estrecha el intervalo, pero el desfase oculto que mantiene secreto el número tiene el mismo tamaño sea cual sea el nivel del ojeador, a propósito: evita que dos niveles de ojeo sobre el mismo ciclista puedan combinarse en una respuesta exacta. El resultado es que una banda muy estrecha, un ciclista totalmente ojeado, un ojeador de alta valoración o tu propia plantilla pueden quedar a veces algo desviados del valor real. El techo del rol que se muestra junto a la banda es otra cosa: es lo más alto que permite el rol, igual para todos los de ese rol, y nunca enmascarado."
+    },
+    "seasonChangeMoneyFaq": {
+      "q": "¿Qué pasa con mi dinero en el cambio de temporada?",
+      "a": "Todo ocurre al inicio de la nueva temporada, en un solo lote. Primero se renueva tu contrato de patrocinio, luego se paga el dinero del patrocinio y justo después sigue la nómina de la temporada: intereses de los préstamos, salarios de los ciclistas, intereses de cualquier saldo que siga negativo después, mantenimiento de la academia (si tienes ciclistas de la academia), mantenimiento del club, mantenimiento de instalaciones y salarios del personal técnico, en ese orden. Si el mantenimiento de tu club se paga por día de carrera como Viajes y personal, no forma parte de este lote (consulta «¿Qué son las líneas de Viajes y personal en mis finanzas?»). No se descuenta nada cuando termina la temporada antigua; los salarios y los intereses pasaron al inicio de la temporada en la v3.78. Si tus ingresos de patrocinio y tu saldo no pueden cubrir la nómina, el sistema contrata automáticamente un préstamo de emergencia por el déficit (consulta «¿Qué pasa si no puedo pagar los salarios?»). Si tu acuerdo de patrocinio también tiene una tarifa por etapa, esa parte se paga aparte a medida que completas carreras durante la temporada; no forma parte del lote del cambio de temporada."
+    },
+    "upkeepPerRaceDayFaq": {
+      "q": "¿Qué son las líneas de Viajes y personal en mis finanzas?",
+      "a": "Viajes y personal es el mantenimiento del club que se paga por día de carrera en lugar de en un solo cargo al inicio de la temporada. Cuando se aplica, no se descuenta nada por mantenimiento del club en el cambio de temporada. En su lugar pagas una cantidad fija por cada día de carrera sénior en que sale tu equipo: 1.571 CZ$ en la División 1, 625 CZ$ en la División 2, 238 CZ$ en la División 3 y nada en la División 4. A lo largo de una temporada completa suma el mismo total que el cargo de inicio de temporada, solo que repartido. Un día de carrera solo cuesta algo si al menos uno de tus ciclistas sale ese día. Las carreras sub-23 y júnior son gratuitas, y un equipo aparcado no corre nada y no paga nada. Cada día de carrera aparece como su propia línea de Viajes y personal, cobrada cuando se liquida la carrera, al mismo tiempo que los premios en metálico. Tu previsión muestra qué modelo se te aplica."
+    }
   }
 }
