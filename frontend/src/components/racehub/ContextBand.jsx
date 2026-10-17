@@ -67,7 +67,8 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
               // #6768: dagscellerne ligger paa kontrol-tokens (>= 3:1 mod baandet);
               // bg-cz-card paa bg-cz-subtle var 1,02:1 i moerkt tema.
               // "I dag" markeres med inset-ring når den ikke i forvejen er den fokuserede dag.
-              const todayRing = isToday && !isFocus ? "ring-1 ring-inset ring-cz-accent-t/70" : "";
+              // #6768 (review): ringen maales mod de nye cellefarver (accent-t forsvandt paa dem); text-1 holder >= 3:1.
+              const todayRing = isToday && !isFocus ? "ring-2 ring-inset ring-cz-1" : "";
               return (
                 <button
                   key={d.day}

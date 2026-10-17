@@ -84,6 +84,13 @@ for (const [name, t] of Object.entries(THEMES)) {
     }
   });
 
+  test(`${name}: "i dag"-ringen (text-1) >= 3:1 mod alle dagsceller`, () => {
+    for (const token of ["--day-cell", "--day-cell-mine"]) {
+      const r = ratio(hex("--text-1"), hex(token));
+      assert.ok(r >= 3, `${name} ring (text-1) mod ${token}: ${r.toFixed(2)}:1 < 3:1`);
+    }
+  });
+
   test(`${name}: dag med eget loeb kan skelnes fra dag uden`, () => {
     const r = ratio(hex("--day-cell-mine"), hex("--day-cell"));
     assert.ok(r >= 1.3, `${name} day-cell-mine mod day-cell: ${r.toFixed(2)}:1 < 1,3:1`);
