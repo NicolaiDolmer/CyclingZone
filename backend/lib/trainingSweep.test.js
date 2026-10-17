@@ -387,3 +387,16 @@ describe("#3459 D4: is_ai-filteret følger race_day_engine_enabled", () => {
     assert.deepEqual(called, ["ai1"], "bank/frozen/test-account-hold udelukkes stadig, kun ai1 kvalificerer");
   });
 });
+
+describe("#6759 (Codex): den gamle sweep sender forældede reservationer til motoren", () => {
+  it("en forældet 'loading'-række tæller ikke som kørt; frisk loading og afregnet gør", () => {
+    const now = new Date("2026-06-20T20:30:00Z");
+    const teams = [{ id: "stale" }, { id: "fresh" }, { id: "done" }];
+    const runs = [
+      { team_id: "stale", tick_date: "2026-06-20", created_at: "2026-06-20T20:00:00Z", report: { stage: "loading" } },
+      { team_id: "fresh", tick_date: "2026-06-20", created_at: "2026-06-20T20:29:00Z", report: { stage: "loading" } },
+      { team_id: "done", tick_date: "2026-06-20", created_at: "2026-06-20T19:00:00Z", report: { riders: [] } },
+    ];
+    assert.deepEqual(teamsNeedingSweep(teams, runs, "2026-06-20", now).map((t) => t.id), ["stale"]);
+  });
+});
