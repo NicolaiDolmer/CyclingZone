@@ -132,3 +132,14 @@ test("kontrol-tokens er registreret som --color-cz-* i @theme", () => {
     assert.ok(css.includes(`--color-cz-${name}: var(${source});`), `--color-cz-${name} mangler i @theme`);
   }
 });
+
+// Codex (#6792): tændt kontakt beholder border-strong-kanten; accent alene er
+// ca. 1,5:1 mod lyse flader, så sporets kant ville forsvinde i lyst tema.
+test("tændt kontakt beholder --border-strong-kanten (Toggle + CookieBanner)", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const toggle = readFileSync(join(here, "..", "components", "ui", "Toggle.jsx"), "utf8");
+  assert.ok(!/peer-checked:border-cz-accent/.test(toggle), "Toggle må ikke skifte kanten til accent i tændt tilstand");
+  assert.match(toggle, /border border-cz-border-strong/);
+  const cookie = readFileSync(join(here, "..", "components", "CookieBanner.jsx"), "utf8");
+  assert.ok(!/"border-cz-accent bg-cz-accent/.test(cookie), "CookieBanner-kontakten beholder border-strong");
+});

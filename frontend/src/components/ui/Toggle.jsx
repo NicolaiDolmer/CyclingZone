@@ -1,6 +1,7 @@
 // #6768: slukket spor + tommel paa kontrol-tokens (>= 3:1 mod fladen, WCAG 1.4.11)
 // og en 1px border-strong, saa kontakten aldrig forsvinder i moerkt tema.
-// Taendt: accent-spor med on-accent-tommel (card-tommel gav lav kontrast paa guld).
+// Taendt: accent-spor med on-accent-tommel; kanten forbliver border-strong, saa
+// sporet ogsaa i lyst tema har >= 3:1 mod fladen (accent alene er ca. 1,5:1).
 export default function Toggle({ label, id, checked, className = "", ...rest }) {
   return (
     <label htmlFor={id} className="inline-flex cursor-pointer items-center gap-2.5 text-sm text-cz-1">
@@ -8,7 +9,7 @@ export default function Toggle({ label, id, checked, className = "", ...rest }) 
         <input id={id} type="checkbox" role="switch" checked={checked} className="peer sr-only" {...rest} />
         <span
           aria-hidden="true"
-          className="absolute inset-0 rounded-cz-pill border border-cz-border-strong bg-cz-toggle-off transition-colors duration-150 peer-checked:border-cz-accent peer-checked:bg-cz-accent peer-focus-visible:outline-solid peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cz-accent-t"
+          className="absolute inset-0 rounded-cz-pill border border-cz-border-strong bg-cz-toggle-off transition-colors duration-150 peer-checked:bg-cz-accent peer-focus-visible:outline-solid peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cz-accent-t"
         />
         <span
           aria-hidden="true"

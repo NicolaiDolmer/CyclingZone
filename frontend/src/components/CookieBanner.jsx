@@ -106,9 +106,9 @@ export default function CookieBanner() {
                         // #6768: samme moenster som ui/Toggle (kontrol-tokens, >= 3:1).
                         "w-10 h-6 rounded-full border transition-colors " +
                         (cat.locked
-                          ? "border-cz-accent bg-cz-accent opacity-60"
+                          ? "border-cz-border-strong bg-cz-accent opacity-60"
                           : value
-                          ? "border-cz-accent bg-cz-accent"
+                          ? "border-cz-border-strong bg-cz-accent"
                           : "border-cz-border-strong bg-cz-toggle-off")
                       }
                     />
