@@ -38,7 +38,7 @@
   },
   "todayStages": {
     "title": "Les étapes du jour",
-    "winner": "Vainqueur : {name}",
+    "winner": "Vainqueur : {name}",
     "standing": "n° {rank} sur {total} au général",
     "standingPending": "Position au général pas encore établie",
     "entries": "{count, plural, one {# coureur engagé} other {# coureurs engagés}}"
@@ -61,7 +61,7 @@
     "boardPlanMissing": "Aucun plan de la direction négocié pour l'instant"
   },
   "seasonStart": {
-    "title": "Saison {number} : c'est parti",
+    "title": "Saison {number} : c'est parti",
     "dismissAria": "Fermer le guide de début de saison",
     "done": "Terminé",
     "progress": "{done} décisions prises sur {total}",
@@ -97,11 +97,11 @@
       "maintained": "Maintenu en division {division}"
     },
     "rankLine": "Tu as terminé n° {rank} sur {size} en division {division}",
-    "boardConfidence": "Confiance de la direction {percent} %",
+    "boardConfidence": "Confiance de la direction {percent} %",
     "statsLine": "{points} points · {wins, plural, one {# victoire} other {# victoires}}",
     "cta": "Voir le récap de ta saison",
     "goal": {
-      "promoted": "La saison {nextNumber} démarre dans une nouvelle division. Premier objectif : rester loin de la zone de relégation.",
+      "promoted": "La saison {nextNumber} démarre dans une nouvelle division. Premier objectif : rester loin de la zone de relégation.",
       "relegated": "La saison {nextNumber} démarre maintenant. Termine dans les deux premiers pour remonter aussitôt.",
       "heldTop": "La saison {nextNumber} démarre maintenant. Défends ta position en tête de la division {division}.",
       "heldBottom": "La saison {nextNumber} démarre maintenant. Pas de risque de relégation ici, alors grimpe au classement.",
@@ -127,7 +127,7 @@
     "ctaMyTeam": "Mon équipe"
   },
   "seniorStartWarning": {
-    "message": "Effectif senior : {count} sur {min}. Il te faut {missing, plural, one {1 coureur de plus} other {# coureurs de plus}} pour prendre le départ d'une course.",
+    "message": "Effectif senior : {count} sur {min}. Il te faut {missing, plural, one {1 coureur de plus} other {# coureurs de plus}} pour prendre le départ d'une course.",
     "cta": "Trouver un coureur"
   },
   "contractWarning": {
@@ -179,9 +179,9 @@
       "firstRaceIntro": "Disputée pendant ton absence. Voici comment ça s'est passé.",
       "firstRaceIntroAt": "Terminée {time} pendant ton absence. Voici comment ça s'est passé.",
       "firstRaceCta": "Lire toute l'histoire de la course",
-      "firstRaceNext": "Prochaine course : {race}, {count, plural, one {dans # jour} other {dans # jours}}",
-      "confettiTitleGc": "Général remporté !",
-      "confettiTitleRace": "Course remportée !",
+      "firstRaceNext": "Prochaine course : {race}, {count, plural, one {dans # jour} other {dans # jours}}",
+      "confettiTitleGc": "Général remporté !",
+      "confettiTitleRace": "Course remportée !",
       "breakdown": {
         "show": "Voir le détail",
         "hide": "Masquer le détail",
@@ -203,9 +203,9 @@
         "clubMilestoneWin": "Étape marquante du club"
       },
       "body": {
-        "maidenWin": "remporte sa première course professionnelle aux couleurs du club : {race}",
-        "firstPodium": "décroche son premier podium en carrière : {race}",
-        "firstJersey": "gagne son premier maillot de classement : {race}",
+        "maidenWin": "remporte sa première course professionnelle aux couleurs du club : {race}",
+        "firstPodium": "décroche son premier podium en carrière : {race}",
+        "firstJersey": "gagne son premier maillot de classement : {race}",
         "clubMilestoneWin": "offre à {team} sa victoire n° {count}"
       }
     },
@@ -233,7 +233,7 @@
         "gc_takeover_won": "{rider} a pris la tête de la course à {previousLeader}.",
         "gc_takeover_lost": "{rider} a perdu la tête de la course au profit de {newLeader}.",
         "final_gc": "{rider} a terminé à la place n° {rank} du général.",
-        "favorite_off_day": "{rider} abordait l'étape en favori mais a terminé n° {rank} : {reason, select, jour_sans {un jour sans} incident {une chute ou un problème mécanique} helper_work {une journée passée à travailler pour un coéquipier} other {sans raison claire}}.",
+        "favorite_off_day": "{rider} abordait l'étape en favori mais a terminé n° {rank} : {reason, select, jour_sans {un jour sans} incident {une chute ou un problème mécanique} helper_work {une journée passée à travailler pour un coéquipier} other {sans raison claire}}.",
         "helper_shift": "{count, plural, one {Un coéquipier a sacrifié ses chances} other {# coéquipiers ont sacrifié leurs chances}} pour amener {captain} à l'avant.",
         "tag_helper_sacrifice": "{rider} a sacrifié son propre résultat, en terminant n° {rank}, pour travailler pour {captain}.",
         "form_peak": "{rider} est arrivé en grande forme et a livré.",
@@ -241,11 +241,11 @@
         "tag_peak_day": "{rider} avait calé son pic de forme sur cette étape.",
         "tag_jour_sans": "{rider} n'avait tout simplement pas les jambes aujourd'hui.",
         "tag_crash_ruined": "L'étape de {rider} a été gâchée par {kind, select, crash {une chute} mechanical {un problème mécanique} other {un incident}}.",
-        "incident_abandon": "{kind, select, crash {{rider} a abandonné l'étape après une chute.} mechanical {{rider} a abandonné l'étape après un problème mécanique.} injury {{rider} n'a pas pris le départ de l'étape : blessé.} other {{rider} a abandonné l'étape après un incident.}}",
+        "incident_abandon": "{kind, select, crash {{rider} a abandonné l'étape après une chute.} mechanical {{rider} a abandonné l'étape après un problème mécanique.} injury {{rider} n'a pas pris le départ de l'étape : blessé.} other {{rider} a abandonné l'étape après un incident.}}",
         "incident_time_loss": "{rider} a perdu {seconds, plural, one {# seconde} other {# secondes}} après {kind, select, crash {une chute} mechanical {un problème mécanique} other {un incident}}.",
         "incident_time_loss_generic": "{rider} a perdu du temps après {kind, select, crash {une chute} mechanical {un problème mécanique} other {un incident}}.",
         "tag_outsider_win": "{rider} a gagné sans être le plus fort sur le papier.",
-        "tag_aggression_no_cost": "{rider} a attaqué et s'est fait reprendre, mais ça n'a rien coûté : une tentative d'échappée ne coûte jamais de fatigue supplémentaire ni ton propre résultat.",
+        "tag_aggression_no_cost": "{rider} a attaqué et s'est fait reprendre, mais ça n'a rien coûté : une tentative d'échappée ne coûte jamais de fatigue supplémentaire ni ton propre résultat.",
         "tag_saved_effort": "{rider} a levé le pied aujourd'hui, en gardant quelque chose pour la suite.",
         "tag_gave_everything": "{rider} n'a rien gardé, effort total jusqu'au bout.",
         "team_day": "{team} a placé {count} coureurs dans le top 10 aujourd'hui.",
@@ -272,8 +272,8 @@
       "emptyCta": "Parcourir les coureurs à vendre",
       "emptyHint": "Le marché des transferts est ouvert toute la saison.",
       "incomingCount": "{count, plural, one {1 transfert entrant} other {# transferts entrants}}",
-      "from": "De : {name}",
-      "to": "À : {name}",
+      "from": "De : {name}",
+      "to": "À : {name}",
       "needsAction": "À traiter",
       "active": "Actif"
     },
@@ -305,7 +305,7 @@
       "focus": "Priorité",
       "budgetMultiplier": "Multiplicateur de budget",
       "exceeds": "Dépassé",
-      "exceedsTitle": "Cette catégorie a dépassé 100 %. Tu as dépassé les attentes de la direction ici.",
+      "exceedsTitle": "Cette catégorie a dépassé 100 %. Tu as dépassé les attentes de la direction ici.",
       "meetingNudge": {
         "title": "L'assemblée annuelle est ouverte",
         "subtitle": "Ta direction a proposé le mandat de la saison prochaine. Ajuste, demande et signe.",
@@ -391,7 +391,7 @@
       }
     },
     "projectedLabel": "Net attendu la saison prochaine",
-    "rangeLine": "Fourchette : {low} à {high} (selon l'incertitude de l'estimation des gains)",
+    "rangeLine": "Fourchette : {low} à {high} (selon l'incertitude de l'estimation des gains)",
     "columns": {
       "s2": "Cette saison (S{number})",
       "s3": "Saison prochaine (S{number})",
@@ -415,16 +415,16 @@
       "academyDrift": "Entretien de l'académie"
     },
     "sponsorDetail": {
-      "contract": "Sponsor de la saison prochaine : {sponsor} · base garantie {base}, revenu des jours de course en plus",
+      "contract": "Sponsor de la saison prochaine : {sponsor} · base garantie {base}, revenu des jours de course en plus",
       "variable": "Base {base} + variable {variable} selon le rang/les points de la saison dernière",
-      "intro": "Saison d'introduction : le sponsor variable démarre à la saison 2",
-      "fallback": "Solution de repli : classement de la saison précédente manquant",
+      "intro": "Saison d'introduction : le sponsor variable démarre à la saison 2",
+      "fallback": "Solution de repli : classement de la saison précédente manquant",
       "s2Combined": "Cette saison affiche le montant total crédité en un seul paiement, base et prime de performance réunies. La saison prochaine sépare les deux ci-dessous.",
       "inSeasonBonus": "Primes de jours de course, de résultat, d'objectif et de signature réellement gagnées cette saison. Non prévues pour la saison prochaine, car elles dépendent de résultats pas encore courus."
     },
     "prizeDetail": {
-      "realizedFloor": "Mon estimation repose sur les gains obtenus par ton équipe, à plus ou moins 20 % ; ce n'est pas une fourchette mesurée",
-      "divisionInterval": "Mon estimation pour ton équipe, à plus ou moins 20 % ; ce n'est pas une fourchette mesurée"
+      "realizedFloor": "Mon estimation repose sur les gains obtenus par ton équipe, à plus ou moins 20 % ; ce n'est pas une fourchette mesurée",
+      "divisionInterval": "Mon estimation pour ton équipe, à plus ou moins 20 % ; ce n'est pas une fourchette mesurée"
     },
     "upkeepDetail": {
       "perRaceDay": "{rate} par jour de course senior × {days} jours de course. Prélevé au règlement de chaque course, pas au début de la saison.",
@@ -437,12 +437,12 @@
     "loanInterestDetail": "Intérêts courus sur la dette restante de tes emprunts actifs. Ajoutés à l'emprunt lui-même, pas déduits du net.",
     "assumption": "Suppose ton effectif actuel, aucun transfert, et le système de salaires de la saison {next}.",
     "footnote": "Prévision, pas un contrat. Les chiffres peuvent changer à cause de ventes, d'emprunts ou d'un nouveau plan de la direction.",
-    "footnoteLink": "Comment la prévision est-elle calculée ?",
+    "footnoteLink": "Comment la prévision est-elle calculée ?",
     "badge": {
       "label": "Prévision saison prochaine"
     },
     "horizon": {
-      "label": "Horizon de prévision :",
+      "label": "Horizon de prévision :",
       "option": "{count, plural, one {1 saison} other {# saisons}}",
       "rangeSuffix": "({from}–{to})"
     },
@@ -461,7 +461,7 @@
       "estimateMark": "~",
       "estimateTooltip": "Estimation, suppose le statu quo",
       "total": "Total",
-      "estimateNote": "~ = estimation fondée sur un statu quo (même effectif, même sponsor et 25 % de décroissance des emprunts par saison). Les intérêts s'ajoutent à ta dette restante, ils ne sont pas déduits du net."
+      "estimateNote": "~ = estimation fondée sur un statu quo (même effectif, même sponsor et 25 % de décroissance des emprunts par saison). Les intérêts s'ajoutent à ta dette restante, ils ne sont pas déduits du net."
     }
   },
   "onboardingProgress": {
@@ -482,7 +482,7 @@
     "oneClick": {
       "primaryCta": "Lancer l'entraînement de la semaine",
       "secondaryCta": "Le faire moi-même",
-      "resultLine": "Semaine lancée : {count, plural, one {# coureur entraîné} other {# coureurs entraînés}}.",
+      "resultLine": "Semaine lancée : {count, plural, one {# coureur entraîné} other {# coureurs entraînés}}.",
       "resultLink": "Voir l'entraînement",
       "alreadyRun": "Cette semaine est déjà lancée.",
       "error": "Impossible de lancer l'entraînement de cette semaine. Réessaie."
@@ -507,12 +507,12 @@
   },
   "devTransition": {
     "title": "La vue de progression a changé",
-    "intro": "Tes coureurs n'ont pas changé. Les aptitudes, les notes et les résultats sont exactement comme hier. Ce qui est nouveau, c'est ce que le chiffre montre : avant, le profil affichait un plafond théorique. Maintenant il affiche à la fois le plafond et le niveau où chaque coureur se situe de façon réaliste avec ton entraînement.",
+    "intro": "Tes coureurs n'ont pas changé. Les aptitudes, les notes et les résultats sont exactement comme hier. Ce qui est nouveau, c'est ce que le chiffre montre : avant, le profil affichait un plafond théorique. Maintenant il affiche à la fois le plafond et le niveau où chaque coureur se situe de façon réaliste avec ton entraînement.",
     "factAbilitiesTitle": "Aptitudes et résultats",
     "factAbilitiesSub": "inchangés pour chaque coureur",
     "factCeilingsTitle": "Plafonds relevés",
     "factCeilingsSub": "pour {up} de tes {total} coureurs",
-    "factForecastTitle": "Nouveau : niveau projeté",
+    "factForecastTitle": "Nouveau : niveau projeté",
     "factForecastSub": "la prévision que ton entraînement oriente",
     "colRider": "Coureur",
     "colRating": "Note",

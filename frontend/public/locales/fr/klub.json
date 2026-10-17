@@ -21,7 +21,7 @@
     "comingSoon": "Bientôt",
     "upgrade": "Améliorer",
     "build": "Construire",
-    "upkeepAt": "Entretien au niveau {tier} : {amount}/saison",
+    "upkeepAt": "Entretien au niveau {tier} : {amount}/saison",
     "upkeepNow": "Entretien {amount}/saison"
   },
   "roi": {
@@ -96,7 +96,7 @@
   },
   "staff": {
     "none": "Aucun staff recruté",
-    "locked": "Verrouillé : construis d'abord le palier 1",
+    "locked": "Verrouillé : construis d'abord le palier 1",
     "hired": "Recruté",
     "salary": "Salaire {amount} CZ$/saison",
     "candidates": "Candidats",
@@ -111,7 +111,7 @@
   },
   "errors": {
     "insufficient_funds": "Solde insuffisant pour cette amélioration.",
-    "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
+    "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
     "max_tier": "Cette piste est déjà entièrement améliorée.",
     "role_occupied": "Tu as déjà un membre du staff à ce poste.",
     "staff_tier_exceeds_facility": "Améliore l'installation avant de recruter un responsable d'un palier supérieur.",
@@ -127,7 +127,7 @@
   "confirm": {
     "upgradeTitle": "Confirmer l'amélioration",
     "buildTitle": "Confirmer la construction",
-    "fireTitle": "Libérer {name} ?",
+    "fireTitle": "Libérer {name} ?",
     "cost": "Coût",
     "newTier": "Nouveau palier",
     "deductNote": "Déduit de ton solde maintenant",

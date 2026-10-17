@@ -1,10 +1,10 @@
 {
   "nps": {
-    "question": "Quelle est la probabilité que tu recommandes Cycling Zone à un ami ?",
+    "question": "Quelle est la probabilité que tu recommandes Cycling Zone à un ami ?",
     "scaleLow": "Peu probable",
     "scaleHigh": "Très probable",
-    "reasonLabel": "Quelle en est la raison principale ? (facultatif)",
-    "reasonPlaceholder": "Facultatif : la raison principale, en une ou deux phrases",
+    "reasonLabel": "Quelle en est la raison principale ? (facultatif)",
+    "reasonPlaceholder": "Facultatif : la raison principale, en une ou deux phrases",
     "submit": "Envoyer",
     "notNow": "Pas maintenant",
     "thanks": "Merci. Ça me dit sur quoi travailler ensuite.",
@@ -13,7 +13,7 @@
   },
   "consent": {
     "title": "J'utilise des données pour améliorer le jeu",
-    "intro": "C'est toi qui décides de ce que je peux mesurer. Tu peux toujours modifier tes choix dans ton profil, sous « Confidentialité ».",
+    "intro": "C'est toi qui décides de ce que je peux mesurer. Tu peux toujours modifier tes choix dans ton profil, sous « Confidentialité ».",
     "privacyLink": "Lire la politique de confidentialité",
     "closeAriaLabel": "Fermer sans rien changer",
     "alwaysOn": "(toujours actif)",
@@ -28,7 +28,7 @@
       },
       "analytics": {
         "label": "Mesure d'audience",
-        "desc": "Je mesure de façon anonyme comment le jeu est utilisé : quels boutons frustrent les joueurs (Microsoft Clarity), d'où viennent les joueurs (Google Analytics) et les pages vues (Vercel Web Analytics), pour pouvoir corriger une mauvaise UX. PostHog compte les pages vues et les étapes clés du jeu sans cookies, et les relie à l'identifiant de ton compte une fois connecté. Refuser la mesure d'audience désactive aussi PostHog."
+        "desc": "Je mesure de façon anonyme comment le jeu est utilisé : quels boutons frustrent les joueurs (Microsoft Clarity), d'où viennent les joueurs (Google Analytics) et les pages vues (Vercel Web Analytics), pour pouvoir corriger une mauvaise UX. PostHog compte les pages vues et les étapes clés du jeu sans cookies, et les relie à l'identifiant de ton compte une fois connecté. Refuser la mesure d'audience désactive aussi PostHog."
       },
       "marketing": {
         "label": "Marketing",

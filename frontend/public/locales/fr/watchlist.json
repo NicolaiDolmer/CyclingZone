@@ -32,5 +32,5 @@
   "pagination": "Affichage de {from}–{to} sur {total}",
   "prev": "Précédent",
   "next": "Suivant",
-  "auctionStarted": "Enchère lancée.\n\nNote : tu mènes maintenant des enchères équivalant à {total} coureurs (maximum {max}). Le plafond est une limite stricte, tu ne peux donc pas remporter plus de coureurs que ton effectif ne peut en accueillir."
+  "auctionStarted": "Enchère lancée.\n\nNote : tu mènes maintenant des enchères équivalant à {total} coureurs (maximum {max}). Le plafond est une limite stricte, tu ne peux donc pas remporter plus de coureurs que ton effectif ne peut en accueillir."
 }

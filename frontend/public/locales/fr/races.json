@@ -23,11 +23,11 @@
       "toGoAxis": "{km} km à parcourir",
       "drawn": "Dessiné d'après les ascensions et le dénivelé total. Les pentes entre les ascensions sont approximatives.",
       "legend": {
-        "flat": "moins de 3 %",
-        "band2": "3-6 %",
-        "band3": "6-8 %",
-        "band4": "8-10 %",
-        "band5": "plus de 10 %",
+        "flat": "moins de 3 %",
+        "band2": "3-6 %",
+        "band3": "6-8 %",
+        "band4": "8-10 %",
+        "band5": "plus de 10 %",
         "down": "descente"
       },
       "sprint": "Sprint km {km}"
@@ -46,7 +46,7 @@
       "steepest": "Km le plus raide",
       "hardest5": "5 km les plus durs",
       "top": "Sommet",
-      "steepestValue": "{grade} % · km {index}",
+      "steepestValue": "{grade} % · km {index}",
       "topValue": "{m} m · km {km}",
       "toFinish": "Jusqu'à l'arrivée",
       "perKmAria": "{name}, pente par kilomètre",
@@ -143,7 +143,7 @@
       "title": "Ce qui change au changement de saison",
       "items": {
         "age": "Les coureurs prennent 1 an",
-        "form": "La forme décroît vers 50 (environ 25 % sont conservés)",
+        "form": "La forme décroît vers 50 (environ 25 % sont conservés)",
         "fatigue": "La fatigue repasse à 0",
         "injuries": "Les blessures ne sont pas remises à zéro",
         "peaks": "Les plans de pic restent inchangés",
@@ -174,17 +174,17 @@
     "save": "Enregistrer le plan",
     "saveCount": "{count, plural, one {Enregistrer le plan · # changement} other {Enregistrer le plan · # changements}}",
     "saving": "Enregistrement...",
-    "saveErrorNamed": "Impossible d'enregistrer {race} : {reason}",
+    "saveErrorNamed": "Impossible d'enregistrer {race} : {reason}",
     "noProblems": "Aucun problème",
     "problemsCount": "{count, plural, one {# problème} other {# problèmes}}",
-    "leaveUnsaved": "Tu as des modifications non enregistrées dans la matrice. Quitter quand même ?",
+    "leaveUnsaved": "Tu as des modifications non enregistrées dans la matrice. Quitter quand même ?",
     "errorTitle": "Impossible de charger la matrice de sélection",
     "empty": "Aucune course cette saison pour l'instant",
     "restDay": "Jour de repos",
     "withdrawnHint": "Tu t'es retiré de cette course. La composition enregistrée est conservée au cas où tu te réengagerais, mais ces coureurs ne prendront pas le départ.",
     "dayAria": "Jour de course {index}, {date}. Ouvrir son tableau du jour.",
-    "cellEmptyAria": "{rider}, {race} : non sélectionné. Clique pour ajouter.",
-    "cellFilledAria": "{rider}, {race} : {role}. Clique pour changer.",
+    "cellEmptyAria": "{rider}, {race} : non sélectionné. Clique pour ajouter.",
+    "cellFilledAria": "{rider}, {race} : {role}. Clique pour changer.",
     "squadCount": "{count}/{max}",
     "loadSuffix": "{count, plural, one {# jour de course} other {# jours de course}}",
     "peakWindow": "Fenêtre de pic · objectif {race}",
@@ -229,7 +229,7 @@
     "save": "Enregistrer les changements",
     "discard": "Annuler",
     "unsaved": "Tu as des modifications non enregistrées",
-    "leaveUnsaved": "Tu as des modifications non enregistrées. Quitter sans enregistrer ?",
+    "leaveUnsaved": "Tu as des modifications non enregistrées. Quitter sans enregistrer ?",
     "status": {
       "full": "{selected} / {target} sélectionnés",
       "understaffed": "{selected} / {target} · effectif insuffisant",
@@ -246,13 +246,13 @@
       "clearAllSeason": "Tout vider",
       "bound": "Les coureurs verrouillés ne peuvent être ajoutés à aucune course affichée aujourd'hui",
       "loadShort": "{days} j",
-      "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
+      "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
       "clearDayTooltip": "Vide {races, plural, one {# course} other {# courses}} et retire {riders, plural, one {# coureur} other {# coureurs}} pour ce jour"
     },
-    "clearDayWarn": "Retirer {riders, plural, one {# coureur} other {# coureurs}} de {races, plural, one {# course} other {# courses}} aujourd'hui ? C'est irréversible, et l'assistant ne les remettra pas tant que tu ne le lui demandes pas.",
-    "clearAllWarn": "Retirer chaque coureur de TOUTES tes courses restantes cette saison ? C'est irréversible, et l'assistant ne les remettra pas tant que tu ne le lui demandes pas.",
+    "clearDayWarn": "Retirer {riders, plural, one {# coureur} other {# coureurs}} de {races, plural, one {# course} other {# courses}} aujourd'hui ? C'est irréversible, et l'assistant ne les remettra pas tant que tu ne le lui demandes pas.",
+    "clearAllWarn": "Retirer chaque coureur de TOUTES tes courses restantes cette saison ? C'est irréversible, et l'assistant ne les remettra pas tant que tu ne le lui demandes pas.",
     "clearAllDialog": {
-      "title": "Effacer toutes les sélections ?",
+      "title": "Effacer toutes les sélections ?",
       "body": "Une course sans effectif de ta part est une course que ton équipe ne dispute pas. Cela retire tes coureurs de {count, plural, one {1 course} other {# courses}}.",
       "startsIn": "démarre dans {time}",
       "reassurance": "Tu peux choisir un nouvel effectif à tout moment avant le départ d'une course.",
@@ -263,20 +263,20 @@
       "riderHeading": "Coureur",
       "orderHeading": "Consigne",
       "helperOrder": "Équipier",
-      "editOrder": "{order} : changer la consigne de {name}",
+      "editOrder": "{order} : changer la consigne de {name}",
       "routeMatchHeading": "Adéquation au parcours",
       "currentFormHeading": "Forme actuelle",
-      "numbersExplanation": "Adéquation au parcours : moyenne sur toute la course, étapes comprises. Forme actuelle : la forme du jour, pas une prévision. Un tiret signifie indisponible.",
+      "numbersExplanation": "Adéquation au parcours : moyenne sur toute la course, étapes comprises. Forme actuelle : la forme du jour, pas une prévision. Un tiret signifie indisponible.",
       "add": "Ajouter parmi les disponibles",
       "withdraw": "Retirer",
       "reenter": "Réengager",
       "withdrawnNote": "Ton équipe ne prend volontairement pas le départ de cette course",
-      "didNotStartNote": "Ton équipe n'a pas pris le départ : moins de {min} coureurs aptes au départ.",
+      "didNotStartNote": "Ton équipe n'a pas pris le départ : moins de {min} coureurs aptes au départ.",
       "remove": "Retirer le coureur",
       "openRace": "Ouvrir {name}",
-      "peaksHere": "Pic ici : {names}",
-      "paybackHere": "Creux de contrecoup ici : {names} ({points} de forme)",
-      "paybackHereNoPoints": "Creux de contrecoup ici : {names}",
+      "peaksHere": "Pic ici : {names}",
+      "paybackHere": "Creux de contrecoup ici : {names} ({points} de forme)",
+      "paybackHereNoPoints": "Creux de contrecoup ici : {names}",
       "clearSelection": "Effacer la sélection",
       "sharesDay": "Partage le jour de course {day} avec {race}",
       "sharesDays": "Partage les jours de course {start}-{end} avec {race}",
@@ -287,7 +287,7 @@
       "clashMany": "{count, plural, one {# coureur dispute} other {# coureurs disputent}} plus d'une course le même jour"
     },
     "popover": {
-      "title": "Ajouter à quelle course ?",
+      "title": "Ajouter à quelle course ?",
       "none": "Aucune course disponible pour ce coureur aujourd'hui",
       "understaffed": "manque de coureurs",
       "availableGroup": "Disponible pour",
@@ -367,7 +367,7 @@
     },
     "hunterExplainer": {
       "strengthLine": "Sur le terrain de cette course, une échappée a des chances {strength} de tenir.",
-      "candidatesHint": "Classés par agressivité : l'envie d'attaquer et de s'engager dans une action.",
+      "candidatesHint": "Classés par agressivité : l'envie d'attaquer et de s'engager dans une action.",
       "noCandidates": "Choisis des coureurs pour cette course pour voir tes meilleurs chasseurs.",
       "aggression": "Agressivité",
       "pickTitle": "Choisis ton chasseur d'échappée",
@@ -392,7 +392,7 @@
     },
     "dismiss": "Ignorer",
     "empty": "Aucune course à planifier pour ce jour.",
-    "regenerateWarn": "Cela remplace tous les choix des courses du jour par la suggestion de l'assistant. Continuer ?"
+    "regenerateWarn": "Cela remplace tous les choix des courses du jour par la suggestion de l'assistant. Continuer ?"
   },
   "tabs": {
     "library": "Bibliothèque",
@@ -440,7 +440,7 @@
     "noRacesMatch": "Aucune course ne correspond aux filtres",
     "raceNotFound": "Course introuvable",
     "noResultsImportedRace": "Aucun résultat importé pour cette course pour l'instant",
-    "noHistory": "Aucune donnée trouvée pour « {name} »",
+    "noHistory": "Aucune donnée trouvée pour « {name} »",
     "raceNotFoundHint": "Le lien est peut-être ancien, ou la course a été supprimée. Ouvre la bibliothèque des courses pour en trouver une autre.",
     "noResultsImportedRaceHint": "Cette course n'a pas encore de lignes de résultats. D'autres courses de la bibliothèque ont déjà les leurs.",
     "noResultsImportedRaceCta": "Ouvrir la bibliothèque des courses"
@@ -500,7 +500,7 @@
     "retry": "Réessayer",
     "subtitle": "Comment les gains de tes courses sont calculés à partir de tes places",
     "help": "Aide et règles",
-    "formula": "Formule des gains : 1 point = {amount} CZ$",
+    "formula": "Formule des gains : 1 point = {amount} CZ$",
     "noClassData": "Aucune donnée de points pour cette classe",
     "thRank": "Rang",
     "thPoints": "Points",
@@ -577,7 +577,7 @@
     "willNotStartEmpty": "Moins de {min} coureurs disponibles pour cette course. Ton équipe ne prendra pas le départ.",
     "willNotStartShort": "Moins de {min} coureurs. Ne prend pas le départ.",
     "startsShort": "{injured, plural, one {1 coureur sélectionné est blessé} other {# coureurs sélectionnés sont blessés}}. Ton équipe prend le départ avec {starters, plural, one {1 coureur} other {# coureurs}}.",
-    "startsShortShort": "Blessures : part avec {starters}.",
+    "startsShortShort": "Blessures : part avec {starters}.",
     "minHint": "Minimum {min} coureurs pour prendre le départ.",
     "captain": "Leader",
     "sprintCaptain": "Leader sprint (facultatif)",
@@ -602,14 +602,14 @@
     },
     "driverInsight": {
       "escape": {
-        "high": "Chances d'échappée : élevées. L'agressivité l'entraîne souvent dans des tentatives d'échappée sur ce terrain, et ça ne coûte jamais son propre résultat si l'action est reprise.",
-        "medium": "Chances d'échappée : moyennes. L'agressivité l'entraîne parfois dans des tentatives d'échappée sur ce terrain, sans coût si l'action est reprise.",
-        "low": "Chances d'échappée : faibles. Pas assez agressif pour être une menace d'échappée régulière sur ce terrain."
+        "high": "Chances d'échappée : élevées. L'agressivité l'entraîne souvent dans des tentatives d'échappée sur ce terrain, et ça ne coûte jamais son propre résultat si l'action est reprise.",
+        "medium": "Chances d'échappée : moyennes. L'agressivité l'entraîne parfois dans des tentatives d'échappée sur ce terrain, sans coût si l'action est reprise.",
+        "low": "Chances d'échappée : faibles. Pas assez agressif pour être une menace d'échappée régulière sur ce terrain."
       },
       "tactics": {
-        "strong": "Adéquation tactique : forte. Cette étape récompense le placement et la lecture de course, et c'est un point fort chez lui.",
-        "average": "Adéquation tactique : moyenne. Cette étape récompense le placement et la lecture de course.",
-        "poor": "Adéquation tactique : limitée. Cette étape récompense le placement et la lecture de course, ce qui n'est pas encore son point fort."
+        "strong": "Adéquation tactique : forte. Cette étape récompense le placement et la lecture de course, et c'est un point fort chez lui.",
+        "average": "Adéquation tactique : moyenne. Cette étape récompense le placement et la lecture de course.",
+        "poor": "Adéquation tactique : limitée. Cette étape récompense le placement et la lecture de course, ce qui n'est pas encore son point fort."
       }
     },
     "sort": {
@@ -619,7 +619,7 @@
     },
     "best": "Meilleur",
     "bestForStage": "Ton meilleur choix pour cette étape",
-    "whyBest": "Cette étape de type {bucket} récompense ton meilleur choix : {name}.",
+    "whyBest": "Cette étape de type {bucket} récompense ton meilleur choix : {name}.",
     "form": "Forme",
     "fatigue": "Fatigue",
     "injured": "Blessé",
@@ -677,13 +677,13 @@
       "selection_withdrawn": "Tu t'es retiré de cette course, une composition ne peut donc pas y être enregistrée.",
       "selection_train_now_locked": "Les coureurs qui se sont entraînés aujourd'hui ne peuvent être ni ajoutés ni retirés de la course du jour.",
       "selection_youth_squad_train_only": "Cet effectif est réglé sur Entraînement uniquement. Passe-le sur Engager en course sur la page de l'effectif pour l'engager.",
-      "selection_duplicate_race": "Impossible d'enregistrer : la même course était incluse deux fois. Réessaie.",
+      "selection_duplicate_race": "Impossible d'enregistrer : la même course était incluse deux fois. Réessaie.",
       "selection_bulk_too_large": "Tu peux enregistrer au plus {max} courses modifiées à la fois. Enregistres-en quelques-unes maintenant, puis le reste.",
       "race_not_found": "Cette course n'existe plus. Actualise et réessaie.",
-      "strategy_invalid_body": "Impossible d'enregistrer ta stratégie : données invalides.",
+      "strategy_invalid_body": "Impossible d'enregistrer ta stratégie : données invalides.",
       "strategy_flag_disabled": "Le hub des courses n'est pas encore actif.",
       "generic": "Impossible d'enregistrer la sélection. Réessaie.",
-      "saveAllPartial": "Ces compositions n'ont pas été enregistrées : {races}. Tes changements sont toujours là, réessaie donc d'enregistrer."
+      "saveAllPartial": "Ces compositions n'ont pas été enregistrées : {races}. Tes changements sont toujours là, réessaie donc d'enregistrer."
     }
   },
   "intention": {
@@ -714,7 +714,7 @@
     "close": "Fermer",
     "appliesToStageOnly": "S'applique à cette étape uniquement",
     "pickerTitle": "{name} · {scope}",
-    "line": "Par défaut {role}. Aujourd'hui : {today}.",
+    "line": "Par défaut {role}. Aujourd'hui : {today}.",
     "riderAbandoned": "Hors course",
     "copyToStage": "Copier vers l'étape {number}",
     "save": "Enregistrer l'étape {number}",
@@ -722,8 +722,8 @@
     "saving": "Enregistrement…",
     "saved": "Consignes enregistrées.",
     "unsaved": "Tu as des modifications non enregistrées",
-    "footer": "Étape {stage} : {set, plural, one {# coureur fixé} other {# coureurs fixés}}, {onDefault} sur leur rôle par défaut",
-    "footerRaceDay": "Jour de course : {set, plural, one {# coureur fixé} other {# coureurs fixés}}, {onDefault} sur leur rôle par défaut",
+    "footer": "Étape {stage} : {set, plural, one {# coureur fixé} other {# coureurs fixés}}, {onDefault} sur leur rôle par défaut",
+    "footerRaceDay": "Jour de course : {set, plural, one {# coureur fixé} other {# coureurs fixés}}, {onDefault} sur leur rôle par défaut",
     "footerUntouchedOne": "étape {stages} non touchée",
     "footerUntouchedMany": "étapes {stages} non touchées",
     "step": {
@@ -824,8 +824,8 @@
     "saved": "Tactique enregistrée.",
     "leadout": "Train de sprint",
     "leadoutAria": "{name} roule dans le train de sprint",
-    "standardPrefix": "Standard : {role}",
-    "todayPrefix": "Aujourd'hui : {today}",
+    "standardPrefix": "Standard : {role}",
+    "todayPrefix": "Aujourd'hui : {today}",
     "today": {
       "ridesRole": "court selon son rôle",
       "tryBreak": "tente l'échappée",
@@ -904,8 +904,8 @@
       "lockedStage": "Étape {number} verrouillée à {time}. C'est avec ça que tu les as envoyés.",
       "lockedStageNoTime": "L'étape {number} est verrouillée. C'est avec ça que tu les as envoyés.",
       "lockedRaceDay": "Le jour de course est verrouillé. C'est avec ça que tu les as envoyés.",
-      "whatYouSet": "Ce que tu as fixé. Étape {number} : {today}.",
-      "whatYouSetRaceDay": "Ce que tu as fixé. Jour de course : {today}.",
+      "whatYouSet": "Ce que tu as fixé. Étape {number} : {today}.",
+      "whatYouSetRaceDay": "Ce que tu as fixé. Jour de course : {today}.",
       "loadError": "Impossible de charger ta tactique pour cette course.",
       "changeRoleAria": "Changer le rôle de {name}",
       "rolePickerTitle": "Rôle de {name}",
@@ -1061,7 +1061,7 @@
     },
     "card": {
       "yourRider": "Ton coureur",
-      "yourBest": "Ton meilleur : {rank} {rider}",
+      "yourBest": "Ton meilleur : {rank} {rider}",
       "liveNoFilm": "L'étape est en cours. Les résultats tombent dès que les coureurs franchissent la ligne.",
       "playbackProgress": "Progression de la lecture de l'étape",
       "lineupReady": "Composition prête, {selected} coureurs choisis sur {max}.",
@@ -1105,11 +1105,11 @@
     },
     "backToLibrary": "Bibliothèque des courses",
     "back": "Retour",
-    "raceDnaLabel": "Cette course :",
+    "raceDnaLabel": "Cette course :",
     "terrainDna": {
       "label": "ADN du terrain · ce que l'étape récompense",
       "rest": "Autres facteurs",
-      "finaleFactor": "+ jusqu'à ±{pct} % : la descente et le placement décident de la finale"
+      "finaleFactor": "+ jusqu'à ±{pct} % : la descente et le placement décident de la finale"
     },
     "ability": {
       "climbing": "Grimpe",
@@ -1208,7 +1208,7 @@
         "showAll": "Afficher tous les groupes",
         "front": "Tête",
         "riders": "{count, plural, one {# coureur} other {# coureurs}}",
-        "yours": "Les tiens : {names}",
+        "yours": "Les tiens : {names}",
         "more": "{count, plural, one {# groupe de plus plus loin derrière} other {# groupes de plus plus loin derrière}}",
         "group": {
           "breakaway": "Échappée",
@@ -1224,8 +1224,8 @@
           "cobbles_sector": "Les pavés ont fait éclater le groupe."
         },
         "order": {
-          "save": "Ta consigne : Rouler tranquille.",
-          "grupetto": "Ta consigne : Autobus."
+          "save": "Ta consigne : Rouler tranquille.",
+          "grupetto": "Ta consigne : Autobus."
         }
       },
       "event": {
@@ -1233,8 +1233,8 @@
         "stage_start_itt": "{count} coureurs s'élancent un par un sur {distance} km contre la montre.",
         "stage_start_ttt": "Les équipes s'élancent une par une sur {distance} km contre la montre.",
         "breakaway_formed": "{riders} {count, plural, one {s'échappe} other {s'échappent}} à l'avant.",
-        "kom_passage": "{name} (cat. {category}) : {rider} passe en tête au sommet.",
-        "intermediate_sprint": "{name} : {rider} remporte le sprint intermédiaire.",
+        "kom_passage": "{name} (cat. {category}) : {rider} passe en tête au sommet.",
+        "intermediate_sprint": "{name} : {rider} remporte le sprint intermédiaire.",
         "breakaway_caught": "{riders} {count, plural, one {est repris} other {sont repris}} par le groupe de poursuite.",
         "breakaway_caught_by_teams": "{riders} {count, plural, one {est repris} other {sont repris}}. {teamCount, plural, =1 {{teamLast} a mené la chasse} other {{teamsHead} et {teamLast} ont mené la chasse}}.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {est repris} other {sont repris}} par le peloton.",
@@ -1242,7 +1242,7 @@
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",
         "incident": "{kind, select, mechanical {{rider} est victime d'un problème mécanique.} other {{rider} chute.}}",
         "incident_crash_time_loss": "{rider} chute et perd {seconds} s.",
-        "incident_crash_hard": "{rider} chute lourdement : {seconds} s perdues, et {days, plural, one {# jour} other {# jours}} d'absence.",
+        "incident_crash_hard": "{rider} chute lourdement : {seconds} s perdues, et {days, plural, one {# jour} other {# jours}} d'absence.",
         "incident_crash_abandon": "La course de {rider} s'achève sur une chute. Il est absent pour {days, plural, one {# jour} other {# jours}}.",
         "incident_mechanical": "{rider} crève et perd {seconds} s.",
         "incident_mechanical_helper": "{rider} crève, mais de l'aide est juste là. Seulement {seconds} s perdues.",
@@ -1252,9 +1252,9 @@
         "finale_attack": "{rider} attaque dans la finale.",
         "ttt_rider_dropped": "{rider} décroche de son équipe.",
         "sprint_decided": "Ça se joue sur la ligne entre {rider} et les poursuivants.",
-        "sprint_decided_photo": "Photo-finish : ça se joue sur la ligne pour {rider}.",
+        "sprint_decided_photo": "Photo-finish : ça se joue sur la ligne pour {rider}.",
         "outside_time_limit": "{count, plural, one {# coureur termine} other {# coureurs terminent}} hors délai et {count, plural, one {quitte} other {quittent}} la course.",
-        "grupetto_saved": "L'autobus arrive groupé : {count, plural, one {# coureur est sauvé} other {# coureurs sont sauvés}}.",
+        "grupetto_saved": "L'autobus arrive groupé : {count, plural, one {# coureur est sauvé} other {# coureurs sont sauvés}}.",
         "finish": "{rider} remporte l'étape.",
         "finish_sprint_win": "{rider} remporte le sprint massif.",
         "finish_close_win": "{rider} remporte l'étape.",
@@ -1301,8 +1301,8 @@
       "breakawayCaughtByPeloton": "Le peloton a repris l'échappée {where, select, km {à {km} km de l'arrivée} other {avant la ligne}}.",
       "teamDay": "{team} a mené le classement par équipes avec {count} coureurs dans le top 10.",
       "teamWon": "{team} a remporté le classement par équipes.",
-      "jerseys": "Leaders des maillots : {points} aux points, {mountain} en montagne.",
-      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} other {{rider} a abandonné.}}",
+      "jerseys": "Leaders des maillots : {points} aux points, {mountain} en montagne.",
+      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} other {{rider} a abandonné.}}",
       "notableCrash": "{rider} a chuté et perdu {marginText}."
     },
     "incidents": {
@@ -1314,15 +1314,15 @@
     "why": {
       "title": "Vue d'ensemble",
       "gcTakeover": "{rider} a pris la tête du général à {previousLeader}.",
-      "finalGc": "Classement général final : {first}, {second} et {third}.",
+      "finalGc": "Classement général final : {first}, {second} et {third}.",
       "helperShift": "{captain} a terminé dans le top 5 après que {count} coéquipiers ont sacrifié leur propre résultat pour le soutenir.",
-      "favoriteOffDay": "{rider} abordait l'étape comme le coureur le plus fort sur le papier mais a terminé hors du top 15 : {reason, select, jour_sans {il a eu un jour sans} incident {une chute ou un problème mécanique lui a coûté la journée} helper_work {il s'est dépensé à travailler pour un coéquipier} other {aucune raison claire n'est apparue}}.",
+      "favoriteOffDay": "{rider} abordait l'étape comme le coureur le plus fort sur le papier mais a terminé hors du top 15 : {reason, select, jour_sans {il a eu un jour sans} incident {une chute ou un problème mécanique lui a coûté la journée} helper_work {il s'est dépensé à travailler pour un coéquipier} other {aucune raison claire n'est apparue}}.",
       "formPeak": "{rider} est arrivé en excellente forme et a livré."
     },
     "storyTags": {
       "tag_jour_sans": {
         "label": "Jour sans",
-        "tooltip": "A eu une mauvaise journée : les jambes n'y étaient tout simplement pas."
+        "tooltip": "A eu une mauvaise journée : les jambes n'y étaient tout simplement pas."
       },
       "tag_peak_day": {
         "label": "Pic",
@@ -1342,7 +1342,7 @@
       },
       "tag_favorite_collapse": {
         "label": "Effondrement",
-        "tooltip": "Le favori de l'étape a perdu sa chance : {reason, select, jour_sans {il a eu un jour sans, les jambes n'y étaient pas} incident {une chute ou un problème mécanique lui a coûté la journée} helper_work {il s'est dépensé à travailler pour un coéquipier} other {aucune raison claire n'est apparue}}."
+        "tooltip": "Le favori de l'étape a perdu sa chance : {reason, select, jour_sans {il a eu un jour sans, les jambes n'y étaient pas} incident {une chute ou un problème mécanique lui a coûté la journée} helper_work {il s'est dépensé à travailler pour un coéquipier} other {aucune raison claire n'est apparue}}."
       },
       "tag_crash_ruined": {
         "label": "Chute",
@@ -1350,7 +1350,7 @@
       },
       "tag_aggression_no_cost": {
         "label": "Sans coût",
-        "tooltip": "A attaqué et s'est fait reprendre, mais ça ne lui a rien coûté : rejoindre une échappée ne coûte jamais de fatigue supplémentaire ni ta propre place."
+        "tooltip": "A attaqué et s'est fait reprendre, mais ça ne lui a rien coûté : rejoindre une échappée ne coûte jamais de fatigue supplémentaire ni ta propre place."
       },
       "tag_saved_effort": {
         "label": "Jambes gardées",
@@ -1460,12 +1460,12 @@
           "v3": "Une victoire en solitaire avec {marginText} pour {rider}"
         },
         "breakaway_survived": {
-          "v1": "L'échappée va au bout : {rider} gagne",
+          "v1": "L'échappée va au bout : {rider} gagne",
           "v2": "{rider} gagne depuis l'échappée"
         },
         "gc_takeover": {
           "v1": "{rider} prend la tête de la course",
-          "v2": "Nouveau leader de la course : {rider}"
+          "v2": "Nouveau leader de la course : {rider}"
         },
         "final_gc": {
           "v1": "{rider} remporte {race}",
@@ -1513,7 +1513,7 @@
           "v1": "{count, plural, one {Le leader solitaire n'a jamais été repris.} other {Les # fuyards ont tenu le peloton à distance jusqu'à la ligne.}}"
         },
         "helper_shift": {
-          "v1": "{team} s'est tout entière engagée pour {captain} : {count, plural, one {un coéquipier a travaillé} other {# coéquipiers ont travaillé}} pour l'amener à l'avant.",
+          "v1": "{team} s'est tout entière engagée pour {captain} : {count, plural, one {un coéquipier a travaillé} other {# coéquipiers ont travaillé}} pour l'amener à l'avant.",
           "v2": "{count, plural, one {Un coéquipier a sacrifié ses chances} other {# coéquipiers ont sacrifié leurs chances}} pour {captain} aujourd'hui."
         },
         "form_peak": {
@@ -1525,10 +1525,10 @@
         },
         "gc_takeover": {
           "v1": "{rider} prend la tête du général à {previousLeader}.",
-          "v2": "La tête du général change de mains : {rider} est maintenant devant."
+          "v2": "La tête du général change de mains : {rider} est maintenant devant."
         },
         "team_day": {
-          "v1": "Ce fut un jour pour {team} : {count} coureurs dans le top 10."
+          "v1": "Ce fut un jour pour {team} : {count} coureurs dans le top 10."
         },
         "aggression_no_cost": {
           "v1": "{rider} a attaqué et s'est fait reprendre, mais ça ne lui a rien coûté. Une tentative d'échappée ne coûte jamais de fatigue supplémentaire ni ta propre place.",
@@ -1540,12 +1540,12 @@
         },
         "gave_everything": {
           "v1": "{rider} était réglé pour travailler à fond, tout donner pour l'équipe aujourd'hui.",
-          "v2": "Pas de retenue pour {rider} aujourd'hui : effort total, jusqu'au bout."
+          "v2": "Pas de retenue pour {rider} aujourd'hui : effort total, jusqu'au bout."
         }
       },
       "yourTeam": {
         "title": "Ton équipe",
-        "bestResult": "Mieux placé : {rider}, rang d'étape {rank}.",
+        "bestResult": "Mieux placé : {rider}, rang d'étape {rank}.",
         "inBreak": "{rider} a passé la journée dans l'échappée.",
         "helperWork": "{count, plural, one {Un coéquipier a roulé} other {# coéquipiers ont roulé}} au service de {captain}.",
         "none": "Aucun coureur de ton équipe n'a pris le départ de cette étape."
@@ -1617,7 +1617,7 @@
       "bunch_sprint": "Le peloton reste groupé et l'étape se décide dans un sprint massif.",
       "reduced_sprint": "Un groupe réduit survit jusqu'à la ligne et sprinte pour la victoire.",
       "punch": "Une courte bosse raide près de la ligne récompense une attaque tardive plutôt qu'un pur sprint.",
-      "long_climb": "Arrivée au sommet : l'ascension elle-même est la ligne d'arrivée, ce qui crée les plus gros écarts de la journée.",
+      "long_climb": "Arrivée au sommet : l'ascension elle-même est la ligne d'arrivée, ce qui crée les plus gros écarts de la journée.",
       "descent": "L'arrivée suit une descente, ce qui laisse aux poursuivants une chance de revenir avant la ligne.",
       "solo_tt": "Chaque coureur part seul contre la montre, sans abri.",
       "breakaway": "Un terrain qui favorise une échappée précoce. Qu'elle tienne se décide sur la route, pas ici.",
@@ -1666,7 +1666,7 @@
         "sprint": "Sprint intermédiaire",
         "finish": "Arrivée",
         "kmMark": "km {km}",
-        "gradient": "{length} km à {gradient} %",
+        "gradient": "{length} km à {gradient} %",
         "altitude": "alt. {m} m",
         "afterCrest": "{km} km après le dernier sommet"
       },
@@ -1678,7 +1678,7 @@
       "sprintMarker": "SPRINT · {points} p · +{bonus} s",
       "finishNote": "ARRIVÉE {first} / {second} / {third} s",
       "a11y": {
-        "graph": "Profil altimétrique de l'étape {number} : {distance} km, {elevation} m de dénivelé, {climbs} ascensions classées"
+        "graph": "Profil altimétrique de l'étape {number} : {distance} km, {elevation} m de dénivelé, {climbs} ascensions classées"
       }
     },
     "table": {
@@ -1740,7 +1740,7 @@
     },
     "pickRiders": {
       "title": "Tes coureurs sont ici",
-      "body": "Touche un coureur, ou fais-le glisser sur une course, pour l'engager. Une pastille grisée est déjà prise : un coureur ne court qu'une fois par jour de course. Le remplissage auto comble les trous et garde ce que tu as choisi toi-même. Rien ne compte tant que tu n'appuies pas sur Enregistrer les changements."
+      "body": "Touche un coureur, ou fais-le glisser sur une course, pour l'engager. Une pastille grisée est déjà prise : un coureur ne court qu'une fois par jour de course. Le remplissage auto comble les trous et garde ce que tu as choisi toi-même. Rien ne compte tant que tu n'appuies pas sur Enregistrer les changements."
     },
     "tactics": {
       "title": "Fixe tes préférences une fois",

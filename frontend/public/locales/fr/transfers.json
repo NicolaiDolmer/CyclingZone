@@ -157,7 +157,7 @@
     "removeListing": "Retirer de la liste des transferts",
     "removing": "Retrait...",
     "removeAria": "Retirer {riderName} de la liste des transferts",
-    "removeConfirm": "Retirer {riderName} de la liste des transferts ?",
+    "removeConfirm": "Retirer {riderName} de la liste des transferts ?",
     "ridersForSale": "coureur",
     "editPrice": "Modifier le prix",
     "editPriceAria": "Modifier le prix demandé pour {riderName}",
@@ -190,14 +190,14 @@
     "loadError": "Impossible de charger l'historique des transferts",
     "noSaleToggle": "Afficher les enchères sans offre",
     "noSaleHiddenNote": "{count, plural, one {# enchère sans offre est masquée} other {# enchères sans offre sont masquées}}. Aucun coureur n'a changé de mains.",
-    "emptyFilteredNoSaleOnly": "Aucun vrai transfert dans la saison sélectionnée : seulement des enchères sans offre (masquées, voir le filtre ci-dessus).",
+    "emptyFilteredNoSaleOnly": "Aucun vrai transfert dans la saison sélectionnée : seulement des enchères sans offre (masquées, voir le filtre ci-dessus).",
     "reportAction": "Signaler pour examen",
     "reportActionAria": "Signaler ce transfert pour examen"
   },
   "report": {
     "title": "Signaler ce transfert",
     "subtitle": "Envoie-le-moi pour que je regarde de plus près. Ce n'est pas une accusation, juste un signal que je vérifie.",
-    "messageLabel": "Qu'est-ce qui t'a semblé louche ?",
+    "messageLabel": "Qu'est-ce qui t'a semblé louche ?",
     "messagePlaceholder": "Décris ce qui t'a frappé...",
     "messageHelper": "{count} caractères restants",
     "cancel": "Annuler",
@@ -208,7 +208,7 @@
     "alreadyDone": "Ton équipe a déjà signalé ce transfert. Je l'ai.",
     "error": "Impossible d'envoyer le signalement. Réessaie dans un instant.",
     "rateLimited": "Tu as déjà envoyé quelques signalements. Réessaie un peu plus tard.",
-    "tooShort": "Dis-en un peu plus : au moins {min} caractères.",
+    "tooShort": "Dis-en un peu plus : au moins {min} caractères.",
     "tooLong": "Reste sous {max} caractères."
   },
   "profit": {
@@ -239,7 +239,7 @@
     "received": "Parcours le marché en attendant",
     "receivedHint": "Les autres managers envoient des offres sur tes coureurs depuis la page du coureur.",
     "sent": "Envoie ta première offre",
-    "sentHint": "Ouvre la page d'un coureur et clique sur « Envoyer une offre de transfert ».",
+    "sentHint": "Ouvre la page d'un coureur et clique sur « Envoyer une offre de transfert ».",
     "archive": "Vérifie tes négociations ouvertes",
     "archiveHint": "Les accords que tu conclus ou refuses atterrissent ici.",
     "marketNoListings": "Mets un coureur en vente",
@@ -251,7 +251,7 @@
     "ctaListRider": "Ouvrir mon effectif"
   },
   "toast": {
-    "offerSent": "✅ Offre envoyée !",
+    "offerSent": "✅ Offre envoyée !",
     "listingRemoved": "✅ Coureur retiré de la liste des transferts",
     "listingRemoveFailed": "Impossible de retirer l'annonce",
     "offerAcceptedBuyer": "✅ Acceptée · l'acheteur doit maintenant confirmer l'accord",
@@ -276,15 +276,15 @@
   },
   "celebration": {
     "transferDone": {
-      "title": "Transfert terminé ! 🎉",
+      "title": "Transfert terminé ! 🎉",
       "subtitle": "Le coureur est maintenant dans ton équipe"
     },
     "swapDone": {
-      "title": "Échange terminé ! 🎉",
+      "title": "Échange terminé ! 🎉",
       "subtitle": "Les coureurs ont été échangés"
     },
     "buyoutDone": {
-      "title": "Coureur acheté ! 🎉",
+      "title": "Coureur acheté ! 🎉",
       "subtitle": "L'option d'achat a été levée"
     }
   },
@@ -322,7 +322,7 @@
     },
     "valueLabel": "Valeur",
     "valuePlaceholder": {
-      "percent": "p. ex. 10 pour +10 %, -10 pour -10 %",
+      "percent": "p. ex. 10 pour +10 %, -10 pour -10 %",
       "amount": "p. ex. 500 ou -500",
       "set": "Nouveau prix demandé"
     },
@@ -337,9 +337,9 @@
     "toastFailed": "Impossible de mettre à jour les prix"
   },
   "valueDelta": {
-    "under": "{pct} % sous la valeur est.",
-    "over": "{pct} % au-dessus de la valeur est.",
+    "under": "{pct} % sous la valeur est.",
+    "over": "{pct} % au-dessus de la valeur est.",
     "at": "Proche de la valeur est.",
-    "title": "Valeur de marché estimée : {amount} CZ$. Une estimation du modèle, pas un prix garanti."
+    "title": "Valeur de marché estimée : {amount} CZ$. Une estimation du modèle, pas un prix garanti."
   }
 }

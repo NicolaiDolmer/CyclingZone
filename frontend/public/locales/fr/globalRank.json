@@ -1,6 +1,6 @@
 {
   "title": "Classement mondial",
-  "subtitle": "Un seul classement, uniquement des managers humains. Les points viennent des résultats de course et sont divisés par deux à chaque saison : la forme récente compte toujours le plus.",
+  "subtitle": "Un seul classement, uniquement des managers humains. Les points viennent des résultats de course et sont divisés par deux à chaque saison : la forme récente compte toujours le plus.",
   "loadError": "Impossible de charger le classement mondial. Réessaie.",
   "retry": "Réessayer",
   "youBadge": "Toi",

@@ -55,11 +55,11 @@
       "max": "Prix ≤ {amount} CZ$"
     },
     "valueDeviation": {
-      "min": "Écart ≥ {value} %",
-      "max": "Écart ≤ {value} %"
+      "min": "Écart ≥ {value} %",
+      "max": "Écart ≤ {value} %"
     },
     "teamSelected": "Équipe sélectionnée",
     "statRange": "{label} {min}-{max}",
-    "remove": "Retirer le filtre : {label}"
+    "remove": "Retirer le filtre : {label}"
   }
 }

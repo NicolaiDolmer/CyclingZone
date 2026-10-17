@@ -132,7 +132,7 @@
     "disable": "Désactiver sur cet appareil",
     "statusOn": "Activé sur cet appareil",
     "denied": "Ton navigateur bloque les notifications de Cycling Zone. Autorise-les dans les paramètres du site, puis réessaie.",
-    "iosInstall": "Sur iPhone et iPad, le push fonctionne dès que Cycling Zone est sur ton écran d'accueil : touche Partager, puis Sur l'écran d'accueil.",
+    "iosInstall": "Sur iPhone et iPad, le push fonctionne dès que Cycling Zone est sur ton écran d'accueil : touche Partager, puis Sur l'écran d'accueil.",
     "unsupported": "Ce navigateur ne peut pas recevoir de notifications push.",
     "error": "Ça n'a pas marché. Réessaie.",
     "categoriesHeading": "Ce que j'envoie",
@@ -145,7 +145,7 @@
     },
     "offer": {
       "regionAriaLabel": "Notifications push",
-      "title": "Tu veux un message si quelqu'un surenchérit avant la fin ?",
+      "title": "Tu veux un message si quelqu'un surenchérit avant la fin ?",
       "accept": "Oui, préviens-moi",
       "later": "Pas maintenant",
       "done": "C'est fait. Tu peux le changer à tout moment dans Profil, Notifications."

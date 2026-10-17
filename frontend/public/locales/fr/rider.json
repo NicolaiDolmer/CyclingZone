@@ -12,8 +12,8 @@
     "sold": "Tu as vendu ce coureur",
     "injured": "Blessé",
     "academy": "Coureur de l'académie (hors plafond de l'effectif senior)",
-    "retireRisk": "Risque de retraite élevé : les coureurs prennent généralement leur retraite entre 36 et 40 ans",
-    "contractExpiring": "Le contrat expire au prochain changement de saison : ce coureur devient agent libre sauf si le contrat est d'abord prolongé",
+    "retireRisk": "Risque de retraite élevé : les coureurs prennent généralement leur retraite entre 36 et 40 ans",
+    "contractExpiring": "Le contrat expire au prochain changement de saison : ce coureur devient agent libre sauf si le contrat est d'abord prolongé",
     "junior": "Coureur junior (dans ton effectif juniors)",
     "label": {
       "u23": "U23",
@@ -49,8 +49,8 @@
     "visitors": "👀 {count, plural, one {1 visiteur unique} other {# visiteurs uniques}} (7 j)",
     "visitors24h": "{count, plural, one {1 ces dernières 24 h} other {# ces dernières 24 h}}",
     "visitorsNew": "Nouveau",
-    "visitorsTrendUp": "En hausse de {pct} % par rapport aux 7 jours précédents",
-    "visitorsTrendDown": "En baisse de {pct} % par rapport aux 7 jours précédents",
+    "visitorsTrendUp": "En hausse de {pct} % par rapport aux 7 jours précédents",
+    "visitorsTrendDown": "En baisse de {pct} % par rapport aux 7 jours précédents",
     "u23": "U23",
     "u25": "U25",
     "retired": "Retraité",
@@ -59,12 +59,12 @@
     "weightKg": "{weight} kg",
     "potential": "Potentiel",
     "overall": "Note",
-    "teamPrefix": "Équipe :",
+    "teamPrefix": "Équipe :",
     "freeAgent": "Agent libre",
-    "nextSeasonPrefix": "Entrant :",
+    "nextSeasonPrefix": "Entrant :",
     "pendingTransfer": "Rejoint {team} une fois sa course par étapes en cours terminée",
     "activeAuctionBadge": "⚡ Enchère en cours",
-    "highestBidLabel": "Enchère la plus haute : {amount} CZ$",
+    "highestBidLabel": "Enchère la plus haute : {amount} CZ$",
     "valueLabel": "Valeur en CZ$",
     "contractSalary": "Salaire en CZ$",
     "contractLength": "{count, plural, one {1 saison} other {# saisons}}",
@@ -72,7 +72,7 @@
     "noContract": "Agent libre (sans contrat)",
     "estSalary": "Salaire est. en CZ$",
     "typeDefault": "Polyvalent",
-    "newValueBeta": "Nouvelle valeur (bêta) : {amount} CZ$",
+    "newValueBeta": "Nouvelle valeur (bêta) : {amount} CZ$",
     "newValueBetaTooltip": "Aperçu de la future valorisation fondée sur les aptitudes. Pas encore utilisée pour acheter, vendre ni pour le salaire."
   },
   "blocked": {
@@ -81,7 +81,7 @@
     "errorFallback": "Un problème est survenu"
   },
   "offerShortcut": {
-    "textWithPrice": "Offre ouverte : {price} CZ$ de {team}",
+    "textWithPrice": "Offre ouverte : {price} CZ$ de {team}",
     "text": "Offre ouverte de {team}",
     "unknownTeam": "un autre manager",
     "cta": "Décider"
@@ -115,11 +115,11 @@
         "echelon_drills": "Exercices de bordures",
         "attack_repeats": "Répétitions d'attaques"
       },
-      "active": "Actif : {focus} · {intensity} · entraîne {abilities}",
+      "active": "Actif : {focus} · {intensity} · entraîne {abilities}",
       "activeRest": "Au repos (axe {focus} en pause)",
       "effectNote": "mise à jour quotidienne",
       "noRiskNote": "Une intensité plus haute fait progresser plus vite, sans risque de perdre ses acquis.",
-      "restNote": "Pas de progression d'aptitude un jour de repos ; la fatigue récupère.",
+      "restNote": "Pas de progression d'aptitude un jour de repos ; la fatigue récupère.",
       "emptyFocus": "Choisis un axe pour assigner l'entraînement.",
       "actionErrorGeneric": "Impossible d'enregistrer. Réessaie dans un instant.",
       "actionErrors": {
@@ -162,7 +162,7 @@
         "title": "Score d'entraînement",
         "todayLabel": "Séance du jour",
         "race": "Course",
-        "raceNote": "Jour de course : la course remplace l'entraînement",
+        "raceNote": "Jour de course : la course remplace l'entraînement",
         "sparkAria": "Score d'entraînement, 7 derniers jours",
         "avg": "Moyenne, {days} jours",
         "best": "Meilleur, 30 jours",
@@ -236,8 +236,8 @@
       }
     },
     "levelCorrectionReceipt": {
-      "developmentLine": "Progression : aucun changement dû à l'entraînement cette semaine.",
-      "marketLine": "Marché : ajustement de niveau unique, tous les coureurs. Les valeurs correspondent maintenant à ce pour quoi les coureurs s'échangent vraiment. Ton coureur ne devient pas moins bon.",
+      "developmentLine": "Progression : aucun changement dû à l'entraînement cette semaine.",
+      "marketLine": "Marché : ajustement de niveau unique, tous les coureurs. Les valeurs correspondent maintenant à ce pour quoi les coureurs s'échangent vraiment. Ton coureur ne devient pas moins bon.",
       "detailsToggle": "Afficher les chiffres",
       "detailsHide": "Masquer les chiffres",
       "anchorBefore": "Valeur avant",
@@ -299,7 +299,7 @@
       "stagesCount": "{n} étapes",
       "stageRow": "Étape {n}",
       "overallRow": "Général (CG)",
-      "expandHint": "Touche le chevron pour déplier toutes les étapes ; touche le nom de la course pour l'ouvrir.",
+      "expandHint": "Touche le chevron pour déplier toutes les étapes ; touche le nom de la course pour l'ouvrir.",
       "emptySeason": "Aucun résultat cette saison.",
       "seasonShort": "S{n}",
       "loadError": "Impossible de charger les résultats pour le moment."
@@ -353,7 +353,7 @@
       "eyebrowOther": "Rapport de détection",
       "provenanceNamed": "Évalué par {name} · recruteur de palier {tier}",
       "provenanceDefault": "Évalué par le recruteur par défaut de ton équipe (note {overall})",
-      "recalcNote": "La fourchette montre où il se dirige de façon réaliste avec ton entraînement. Elle reflète la précision de ton recruteur ACTUEL et est recalculée à chaque changement de recruteur, mais les vraies aptitudes du coureur ne sont jamais touchées. Un meilleur recruteur resserre la fourchette, mais ce n'est pas une garantie : la vraie valeur peut parfois se situer juste en dehors.",
+      "recalcNote": "La fourchette montre où il se dirige de façon réaliste avec ton entraînement. Elle reflète la précision de ton recruteur ACTUEL et est recalculée à chaque changement de recruteur, mais les vraies aptitudes du coureur ne sont jamais touchées. Un meilleur recruteur resserre la fourchette, mais ce n'est pas une garantie : la vraie valeur peut parfois se situer juste en dehors.",
       "notScoutedTitle": "Pas détecté",
       "notScoutedBody": "Tu ne connais pas encore le potentiel de ce coureur. Utilise une place de détection pour obtenir la première lecture de ton recruteur sur lui.",
       "potentialLabel": "Potentiel",
@@ -389,14 +389,14 @@
       "naturalRolesLabel": "Ses rôles naturels",
       "otherRolesNaturalLabel": "Autres rôles",
       "otherRolesNote": "Les rôles partagent des aptitudes. L'ordre ici est une estimation.",
-      "typesLegendNoLoft": "Barre pleine = niveau d'aujourd'hui. Bande ombrée = où il se dirige de façon réaliste avec ton entraînement : le bas correspond à un travail régulier mais peu ciblé, le haut à un travail ciblé chaque jour. Le potentiel décide de la vitesse à laquelle il y arrive. C'est une estimation, pas une garantie, et aucun recruteur ne connaît un coureur exactement. Les notes sont comparables d'un rôle à l'autre : le même chiffre correspond partout au même niveau.",
+      "typesLegendNoLoft": "Barre pleine = niveau d'aujourd'hui. Bande ombrée = où il se dirige de façon réaliste avec ton entraînement : le bas correspond à un travail régulier mais peu ciblé, le haut à un travail ciblé chaque jour. Le potentiel décide de la vitesse à laquelle il y arrive. C'est une estimation, pas une garantie, et aucun recruteur ne connaît un coureur exactement. Les notes sont comparables d'un rôle à l'autre : le même chiffre correspond partout au même niveau.",
       "precisionNext": "Le prochain niveau de détection resserre la fourchette de ±{half} à ±{next} points.",
       "precisionUseless": "Un niveau de plus ne resserrerait pas visiblement la fourchette avec ton chef recruteur actuel (±{half} points). Un meilleur chef recruteur le ferait.",
       "precisionAtMax": "C'est aussi étroit que la détection peut le rendre. La largeur de la fourchette repose maintenant sur la note de ton chef recruteur (±{half} points).",
-      "typesLegend": "Barre pleine = niveau d'aujourd'hui. Bande ombrée = où il se dirige de façon réaliste avec ton entraînement : le bas correspond à un travail régulier mais peu ciblé, le haut à un travail ciblé chaque jour. Repère sombre = le plafond du rôle, le même pour tous ceux de ce rôle ; le potentiel décide de la vitesse à laquelle il s'en approche. C'est une estimation, pas une garantie, et aucun recruteur ne connaît un coureur exactement. Les notes sont comparables d'un rôle à l'autre : le même chiffre correspond partout au même niveau.",
+      "typesLegend": "Barre pleine = niveau d'aujourd'hui. Bande ombrée = où il se dirige de façon réaliste avec ton entraînement : le bas correspond à un travail régulier mais peu ciblé, le haut à un travail ciblé chaque jour. Repère sombre = le plafond du rôle, le même pour tous ceux de ce rôle ; le potentiel décide de la vitesse à laquelle il s'en approche. C'est une estimation, pas une garantie, et aucun recruteur ne connaît un coureur exactement. Les notes sont comparables d'un rôle à l'autre : le même chiffre correspond partout au même niveau.",
       "capsMissingTitle": "Rapport incomplet",
       "capsMissingBody": "Les données de projection ne sont pas encore disponibles pour ce coureur, les perspectives par type ne peuvent donc pas être affichées.",
-      "valueTitle": "Une bonne affaire ?",
+      "valueTitle": "Une bonne affaire ?",
       "valueMarket": "Valeur de marché",
       "valueExpected": "Valeur attendue",
       "valueReadAbove": "Le modèle le valorise au-dessus de sa valeur de marché actuelle.",
@@ -406,7 +406,7 @@
         "max_level": "Ce coureur est déjà entièrement détecté.",
         "capacity": "Ton recruteur est déjà complet. Attends la fin d'une mission.",
         "insufficient_funds": "Pas assez de CZ$ pour envoyer un recruteur.",
-        "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
+        "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
         "auth": "Ta session a expiré. Reconnecte-toi.",
         "network": "Échec de la connexion. Vérifie ton réseau et réessaie."
       }
@@ -433,7 +433,7 @@
         "scoutingQuiet": "Pas encore d'intérêt visible."
       },
       "whoScouts": {
-        "title": "Qui détecte ton coureur ?",
+        "title": "Qui détecte ton coureur ?",
         "body": "{count, plural, one {1 équipe rivale a utilisé des places de détection sur lui.} other {# équipes rivales ont utilisé des places de détection sur lui.}}",
         "empty": "Aucun rival ne l'a encore détecté.",
         "level": "Niveau {level}"
@@ -445,7 +445,7 @@
         "scoutSelf": "Tu l'as détecté",
         "watch": "Ajouté à la liste de suivi d'un manager",
         "watchSelf": "Tu l'as ajouté à ta liste de suivi",
-        "viewsTrend": "Vues du profil {pct} % par rapport aux 7 jours précédents",
+        "viewsTrend": "Vues du profil {pct} % par rapport aux 7 jours précédents",
         "viewsTrendMeta": "7 derniers jours",
         "empty": "Pas encore d'activité"
       }
@@ -560,7 +560,7 @@
         "title": "Modèle de puissance critique",
         "cp": "CP (puissance critique)",
         "wprime": "W′ capacité anaérobie",
-        "read": "W′ est la réserve anaérobie au-dessus de la CP : le travail que tu peux dépenser avant de faiblir ; la CP est la puissance que tu peux tenir presque indéfiniment."
+        "read": "W′ est la réserve anaérobie au-dessus de la CP : le travail que tu peux dépenser avant de faiblir ; la CP est la puissance que tu peux tenir presque indéfiniment."
       },
       "zones": {
         "title": "Zones de puissance",
@@ -728,7 +728,7 @@
     "swap": {
       "label": "Échange",
       "teamFallback": "Inconnu",
-      "cashAdjustment": "Complément en cash : {amount} CZ$"
+      "cashAdjustment": "Complément en cash : {amount} CZ$"
     }
   },
   "auctionPanel": {
@@ -743,7 +743,7 @@
     "highestBid": "Enchère la plus haute",
     "leaderFallback": "",
     "timeLeft": "Temps restant",
-    "sellerPrefix": "Vendeur : {name}",
+    "sellerPrefix": "Vendeur : {name}",
     "cannotBidOwn": "Tu vends dans cette enchère. Tu ne peux pas enchérir sur ton propre coureur.",
     "fallbackDash": "-",
     "bidInputAria": "Ton enchère en CZ$",
@@ -752,12 +752,12 @@
     "bidError": "Erreur",
     "bidPlaceAria": "Placer l'enchère",
     "bidRaiseAria": "Surenchérir sur ton enchère",
-    "minBid": "Enchère min. : {amount} CZ$",
+    "minBid": "Enchère min. : {amount} CZ$",
     "errorFallback": "L'enchère n'a pas pu être placée",
     "proxyErrorFallback": "Impossible de fixer l'enchère automatique",
     "proxyRemoveErrorFallback": "La limite d'enchère automatique n'a pas pu être retirée. Elle est toujours active.",
     "proxy": {
-      "display": "Enchère auto : max {amount} CZ$",
+      "display": "Enchère auto : max {amount} CZ$",
       "edit": "Modifier",
       "editAria": "Modifier la limite d'enchère automatique",
       "remove": "Retirer",
@@ -790,7 +790,7 @@
     },
     "flash": {
       "label": "⚡ Enchère flash (30 min)",
-      "hint": "Deadline Day : se termine exactement 30 minutes après le lancement"
+      "hint": "Deadline Day : se termine exactement 30 minutes après le lancement"
     },
     "end": {
       "label": "Fin de l'enchère",
@@ -804,7 +804,7 @@
     },
     "priceError": "Le prix de départ doit au moins égaler la valeur ({amount} CZ$)",
     "priceErrorOwn": "Le prix de départ doit être compris entre 0 et la valeur ({amount} CZ$)",
-    "squadWarning": "Enchère lancée.\n\nNote : tu mènes maintenant des enchères équivalant à {total} coureurs (maximum {max}). Le plafond est une limite stricte, tu ne peux donc pas remporter plus de coureurs que ton effectif ne peut en accueillir."
+    "squadWarning": "Enchère lancée.\n\nNote : tu mènes maintenant des enchères équivalant à {total} coureurs (maximum {max}). Le plafond est une limite stricte, tu ne peux donc pas remporter plus de coureurs que ton effectif ne peut en accueillir."
   },
   "directOffer": {
     "buttonOpen": "Envoyer une offre de transfert",
@@ -813,7 +813,7 @@
     "submit": "Envoyer l'offre",
     "sending": "Envoi...",
     "toast": {
-      "success": "✅ Offre envoyée !",
+      "success": "✅ Offre envoyée !",
       "errorPrefix": "❌"
     }
   },
@@ -831,7 +831,7 @@
     "confirmRemove": "Oui, retirer",
     "cancel": "Annuler",
     "toast": {
-      "listed": "✅ Mis en vente !",
+      "listed": "✅ Mis en vente !",
       "priceUpdated": "✅ Prix demandé mis à jour",
       "removed": "✅ Retiré de la liste des transferts",
       "errorPrefix": "❌"
@@ -850,7 +850,7 @@
       "loadingTerms": "Chargement des conditions…",
       "working": "Prolongation…",
       "success": "Contrat prolongé.",
-      "errorPrefix": "Prolongation impossible :",
+      "errorPrefix": "Prolongation impossible :",
       "capped": "Contrat à la durée maximale (jusqu'à la saison {season}).",
       "capCounterLabel": "Prolongations utilisées"
     },
@@ -867,7 +867,7 @@
       "working": "Libération…",
       "cancel": "Annuler",
       "success": "Coureur libéré.",
-      "errorPrefix": "Libération impossible :"
+      "errorPrefix": "Libération impossible :"
     },
     "move": {
       "button": "Changer d'effectif",
@@ -882,16 +882,16 @@
     "buttonOpen": "⇄ Proposer un échange",
     "selectRider": "Choisis le coureur à proposer",
     "cashLabel": "Paiement en cash (CZ$)",
-    "cashHint": "Positif : tu paies. Négatif : tu reçois.",
+    "cashHint": "Positif : tu paies. Négatif : tu reçois.",
     "submit": "Envoyer l'échange",
     "sending": "Envoi...",
     "toast": {
-      "success": "✅ Échange proposé !",
+      "success": "✅ Échange proposé !",
       "errorPrefix": "❌"
     }
   },
   "celebration": {
-    "title": "Tu as remporté l'enchère ! 🏆",
+    "title": "Tu as remporté l'enchère ! 🏆",
     "subtitle": "Le coureur est maintenant dans ton équipe"
   },
   "compare": {
@@ -919,12 +919,12 @@
     "noSlots": "Plus de places de détection cette saison",
     "scoutBusy": "Recruteur occupé, libre dans {minutes, plural, one {1 min} other {# min}}",
     "scoutBusyNow": "Recruteur occupé, libre d'un instant à l'autre",
-    "levelUseless": "Ton chef recruteur a atteint sa propre limite de précision : un niveau de plus ne resserrerait pas l'estimation",
+    "levelUseless": "Ton chef recruteur a atteint sa propre limite de précision : un niveau de plus ne resserrerait pas l'estimation",
     "levelTitle": "Niveau de détection. Plus haut = plus précis, jusqu'à la limite de précision de ton propre recruteur",
-    "potentialBandTitle": "Niveau projeté en tant que {role} : {lo}-{hi}.",
+    "potentialBandTitle": "Niveau projeté en tant que {role} : {lo}-{hi}.",
     "potentialBandSubtitle": "Où il atterrit de façon réaliste avec ton entraînement. Toujours une fourchette, aucun recruteur ne connaît un coureur exactement.",
     "loftShort": "plafond {value}",
-    "loftTitle": "Plafond du rôle : jusqu'à {value}. Chaque {role} partage le même plafond, le potentiel décide de la vitesse à laquelle il s'en approche.",
+    "loftTitle": "Plafond du rôle : jusqu'à {value}. Chaque {role} partage le même plafond, le potentiel décide de la vitesse à laquelle il s'en approche.",
     "loftPastPeakShort": "plafond {value} · après le pic",
     "loftPastPeakTitle": "Le plafond de savoir-faire du rôle est de {value}. Il est après son pic et ne progresse plus vers lui - la prévision montre où il atterrit vraiment.",
     "notScouted": "Pas détecté",
@@ -942,8 +942,8 @@
   "condition": {
     "form": "Forme",
     "fatigue": "Fatigue",
-    "injured": "Blessé : {days} j restants",
-    "injuredRaceDays": "Blessé : {days, plural, one {1 jour de course restant} other {# jours de course restants}}",
+    "injured": "Blessé : {days} j restants",
+    "injuredRaceDays": "Blessé : {days, plural, one {1 jour de course restant} other {# jours de course restants}}",
     "injuredApprox": "De retour vers le {date}"
   },
   "training": {
@@ -979,7 +979,7 @@
     "noSlots": "Plus de places d'axe cette saison",
     "current": "Axe actuel",
     "assistantNoRisk": "Progression ciblée plus rapide, sans risque de revers.",
-    "assistantRisk": "Progression ciblée plus rapide, mais ~{risk} % de risque de revers (gains perdus) cette saison.",
+    "assistantRisk": "Progression ciblée plus rapide, mais ~{risk} % de risque de revers (gains perdus) cette saison.",
     "tradeoff": "Les autres aptitudes progressent un peu plus lentement.",
     "intensity_recovery": "Récupération"
   }

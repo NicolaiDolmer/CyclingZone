@@ -34,10 +34,10 @@
     },
     "compareTooltip": "Sélectionner pour comparer",
     "teamFree": "Libre",
-    "pendingTransfer": "Transfert en attente : il rejoint {team} une fois sa course par étapes en cours terminée"
+    "pendingTransfer": "Transfert en attente : il rejoint {team} une fois sa course par étapes en cours terminée"
   },
   "abilityLegend": {
-    "toggle": "Que signifient les codes ?"
+    "toggle": "Que signifient les codes ?"
   },
   "mobileSort": {
     "label": "Trier par",
@@ -52,7 +52,7 @@
   "tour": {
     "filters": {
       "title": "Filtre la liste selon ton budget",
-      "body": "Mets « Valeur max » à ton solde pour ne voir que les coureurs que tu peux t'offrir. Les interrupteurs U25 / Agent libre ouvrent des voies moins chères."
+      "body": "Mets « Valeur max » à ton solde pour ne voir que les coureurs que tu peux t'offrir. Les interrupteurs U25 / Agent libre ouvrent des voies moins chères."
     },
     "list": {
       "title": "Clique sur un coureur",
@@ -60,7 +60,7 @@
     },
     "watchlist": {
       "title": "Utilise la liste de suivi",
-      "body": "L'étoile ajoute le coureur à ta liste de suivi pour que tu puisses y revenir facilement. La liste se trouve aussi dans le menu, sous Marché : Liste de suivi."
+      "body": "L'étoile ajoute le coureur à ta liste de suivi pour que tu puisses y revenir facilement. La liste se trouve aussi dans le menu, sous Marché : Liste de suivi."
     }
   },
   "emptyState": {
@@ -69,7 +69,7 @@
     "balance": "Ton solde",
     "tipValue": "<strong>Filtres de valeur</strong> = plafond de prix en CZ$. Mets le max sous ton solde pour ne voir que les coureurs abordables.",
     "tipStats": "<strong>Filtres de stats</strong> = aptitudes des coureurs comme la grimpe, le sprint et le contre-la-montre. Commence large et affine ensuite.",
-    "tipBudget": "<strong>U25 / Agent libre</strong> = voies économiques : un potentiel plus jeune ou des coureurs sans contrat.",
+    "tipBudget": "<strong>U25 / Agent libre</strong> = voies économiques : un potentiel plus jeune ou des coureurs sans contrat.",
     "ctaFindFirst": "Trouve ton premier coureur (≤ {balance} CZ$)",
     "ctaTour": "Fais-moi visiter"
   },
@@ -88,7 +88,7 @@
     "ownerFilterLabel": "Filtrer par propriétaire",
     "searchPlaceholder": "Rechercher un nom de coureur…",
     "noResults": "Aucun résultat trouvé",
-    "noResultsFor": "Aucun résultat trouvé pour « {q} »",
+    "noResultsFor": "Aucun résultat trouvé pour « {q} »",
     "loadError": "Impossible de charger le classement. Réessaie.",
     "retry": "Réessayer",
     "thNation": "Nation",

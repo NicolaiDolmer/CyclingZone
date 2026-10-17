@@ -27,7 +27,7 @@
     "distanceLabel": "Distance",
     "distanceValue": "182 km",
     "climbLabel": "Dernière ascension",
-    "climbValue": "HC · 14,2 km à 7,8 %",
+    "climbValue": "HC · 14,2 km à 7,8 %",
     "classificationTitle": "Classement général",
     "gapHeader": "Écart",
     "jerseyYellow": "Maillot jaune",
@@ -93,18 +93,18 @@
   "discord": {
     "kicker": "Rejoins la communauté",
     "title": "Le jeu se construit au grand jour",
-    "body": "Cycling Zone est parti d'une idée : un jeu de manager cycliste où tu ne te contentes pas de cliquer sur des chiffres, mais où tu construis vraiment quelque chose au fil d'une saison. Je le fais seul, au grand jour, saison après saison. Le Discord, c'est là où je partage ce sur quoi je travaille avant que ça sorte, où les nouveaux managers trouvent un coup de main pour prendre leurs marques, et où tes retours décident de ce que je construis ensuite. Ce n'est pas fini, et ça s'améliore chaque semaine. Tu viens pour la course. Tu restes pour les gens. Viens avec ton équipe, partage ton avis et aide à décider où ça va.",
+    "body": "Cycling Zone est parti d'une idée : un jeu de manager cycliste où tu ne te contentes pas de cliquer sur des chiffres, mais où tu construis vraiment quelque chose au fil d'une saison. Je le fais seul, au grand jour, saison après saison. Le Discord, c'est là où je partage ce sur quoi je travaille avant que ça sorte, où les nouveaux managers trouvent un coup de main pour prendre leurs marques, et où tes retours décident de ce que je construis ensuite. Ce n'est pas fini, et ça s'améliore chaque semaine. Tu viens pour la course. Tu restes pour les gens. Viens avec ton équipe, partage ton avis et aide à décider où ça va.",
     "cta": "Ouvrir le Discord"
   },
   "waitlist": {
-    "kicker": "Tu préfères l'e-mail ?",
+    "kicker": "Tu préfères l'e-mail ?",
     "title": "Recevoir l'e-mail de lancement",
     "body": "Laisse ton e-mail, et je t'envoie un seul message quand la prochaine saison démarre. Pas de newsletter, pas de bruit.",
     "emailLabel": "E-mail",
     "emailPlaceholder": "toi@exemple.com",
     "nameLabel": "Prénom",
     "nameOptional": "facultatif",
-    "namePlaceholder": "Comment dois-je t'appeler ?",
+    "namePlaceholder": "Comment dois-je t'appeler ?",
     "consentBefore": "J'accepte d'être contacté au sujet du lancement et j'accepte la ",
     "consentLink": "politique de confidentialité",
     "consentAfter": ".",
@@ -130,19 +130,19 @@
     "title": "Bon à savoir",
     "items": [
       {
-        "q": "C'est vraiment gratuit ?",
+        "q": "C'est vraiment gratuit ?",
         "a": "Oui. Le jeu complet est gratuit. Tu peux t'inscrire, monter une équipe et affronter d'autres managers sans rien payer."
       },
       {
-        "q": "C'est du pay-to-win ?",
+        "q": "C'est du pay-to-win ?",
         "a": "Non. L'argent réel ne peut pas acheter de résultats. C'est le meilleur manager qui gagne, pas celui qui dépense le plus."
       },
       {
-        "q": "Quand démarre la saison ?",
+        "q": "Quand démarre la saison ?",
         "a": "Cycling Zone est en bêta ouverte maintenant, avec une nouvelle saison qui ouvre bientôt. Rejoins le Discord ou laisse ton e-mail, et je te préviens à la seconde où elle démarre."
       },
       {
-        "q": "Dois-je installer quelque chose ?",
+        "q": "Dois-je installer quelque chose ?",
         "a": "Non. Il fonctionne dans ton navigateur, sur ordinateur et sur mobile. Il n'y a rien à télécharger."
       }
     ]

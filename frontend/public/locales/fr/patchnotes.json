@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Patch Notes · Cycling Zone",
-    "description": "Chaque changement dans Cycling Zone, du plus récent au plus ancien : nouveautés, améliorations et corrections."
+    "description": "Chaque changement dans Cycling Zone, du plus récent au plus ancien : nouveautés, améliorations et corrections."
   },
   "title": "Patch Notes",
   "subtitle": "Les nouveautés de Cycling Zone Manager",
@@ -48,6 +48,6 @@
   },
   "footer": {
     "hiddenNote": "Les notes internes et techniques sont masquées sur cette page.",
-    "rolloutNote": "Bêta : seul le groupe bêta l'a. Sans étiquette : disponible pour tout le monde."
+    "rolloutNote": "Bêta : seul le groupe bêta l'a. Sans étiquette : disponible pour tout le monde."
   }
 }

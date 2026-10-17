@@ -12,7 +12,7 @@
       "u23": "Équipe U23, coureurs de 22 ans ou moins",
       "junior": "Équipe juniors, coureurs de 18 ans ou moins"
     },
-    "squadValue": "Valeur de l'effectif : {value} CZ$",
+    "squadValue": "Valeur de l'effectif : {value} CZ$",
     "rosterCount": "{count}/{cap} coureurs dans l'effectif",
     "seniorsStayHint": "Les coureurs de ton effectif senior restent seniors tant que tu ne les déplaces pas. Ouvre un coureur et utilise Changer d'effectif."
   },
@@ -124,7 +124,7 @@
       "auto": "{count, plural, one {1 coureur, choisi automatiquement} other {# coureurs, choisis automatiquement}}",
       "manual": "{count, plural, one {1 coureur choisi} other {# coureurs choisis}}",
       "rode": "{count, plural, one {1 coureur} other {# coureurs}}",
-      "belowFloor": "Moins de {min} : ajoute des coureurs"
+      "belowFloor": "Moins de {min} : ajoute des coureurs"
     },
     "action": {
       "pick": "Choisir les coureurs",

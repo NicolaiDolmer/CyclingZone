@@ -50,7 +50,7 @@
   },
   "calendar": {
     "heading": "Calendrier · {count} courses",
-    "expectedTotal": "Cagnotte totale attendue pour la saison :",
+    "expectedTotal": "Cagnotte totale attendue pour la saison :",
     "expectedTotalTooltip": "Somme calculée en direct de la cagnotte attendue pour toutes les courses de la saison",
     "summary": "{completed} terminées · {scheduled} à venir",
     "stageRace": "Course par étapes · {count, plural, one {# étape} other {# étapes}}",
@@ -101,15 +101,15 @@
     "highlight": {
       "prizeLeader": "Leader des gains de la division {division}",
       "biggestSale": "Plus grosse vente de la saison",
-      "stageKing": "Roi des étapes de l'équipe : {name}",
+      "stageKing": "Roi des étapes de l'équipe : {name}",
       "stageKingValue": "{count, plural, one {# victoire} other {# victoires}}",
-      "classicKing": "Roi des classiques de l'équipe : {name}",
+      "classicKing": "Roi des classiques de l'équipe : {name}",
       "classicKingValue": "{count, plural, one {# victoire} other {# victoires}}",
       "turningPoint": "Meilleur jour de la saison",
       "turningPointValue": "{race} · {points} pts",
       "biggestResult": "Meilleur résultat individuel",
       "biggestResultValue": "{rider} · {race}",
-      "rival": "Rival le plus proche : {team}",
+      "rival": "Rival le plus proche : {team}",
       "rivalBeatenBy": "battu de {n} pts",
       "rivalBehindBy": "{n} pts derrière"
     },

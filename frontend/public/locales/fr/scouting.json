@@ -80,9 +80,9 @@
     "riderUnavailable": "Plus disponible"
   },
   "error": {
-    "capacity": "Ton recruteur est déjà à pleine capacité. Regarde la liste des missions en cours : ta mission existante est toujours en file et fera son rapport comme prévu.",
+    "capacity": "Ton recruteur est déjà à pleine capacité. Regarde la liste des missions en cours : ta mission existante est toujours en file et fera son rapport comme prévu.",
     "insufficient_funds": "Solde insuffisant pour couvrir les frais de déplacement.",
-    "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
+    "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
     "invalid_target_pool": "Choix de ciblage invalide. Réessaie.",
     "no_active_season": "Aucune saison en cours pour l'instant.",
     "auth": "Tu dois être connecté.",

@@ -56,12 +56,12 @@
     "historySub": "Les accords conclus apparaissent ici"
   },
   "detail": {
-    "to": "À : {name}",
-    "from": "De : {name}",
+    "to": "À : {name}",
+    "from": "De : {name}",
     "season": "Saison {start}–{end}",
-    "highestBidder": "Meilleur enchérisseur : {name}",
+    "highestBidder": "Meilleur enchérisseur : {name}",
     "noBidsYet": "Aucune enchère pour l'instant",
-    "leader": "En tête : {name}",
+    "leader": "En tête : {name}",
     "noLeaderYet": "Pas encore de leader"
   },
   "watchlist": {

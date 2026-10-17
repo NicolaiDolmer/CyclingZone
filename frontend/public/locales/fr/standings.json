@@ -32,7 +32,7 @@
   "aiBadge": "IA",
   "promotionBadge": "Monte",
   "relegationBadge": "Descend",
-  "penaltyTooltip": "Déduction pour taille d'effectif : {penalty} points ({earned} gagnés − {penalty} de déduction)",
+  "penaltyTooltip": "Déduction pour taille d'effectif : {penalty} points ({earned} gagnés − {penalty} de déduction)",
   "legendLeader": "Leader (rang 1)",
   "legendPromotion": "Zone de promotion (2 premiers)",
   "legendRelegation": "Zone de relégation (4 derniers)",
@@ -67,10 +67,10 @@
   },
   "preview": {
     "title": "Aperçu de la saison",
-    "subtitle": "Saison {n} : forces des équipes et pronostics",
+    "subtitle": "Saison {n} : forces des équipes et pronostics",
     "strengthHeading": "Forces des équipes, d'après la valeur totale de l'effectif",
     "divisionRank": "Division {division} · force n° {rank}",
-    "topStar": "Tête d'affiche :"
+    "topStar": "Tête d'affiche :"
   },
   "hub": {
     "title": "Classements",

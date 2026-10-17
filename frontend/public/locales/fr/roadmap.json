@@ -27,8 +27,8 @@
     "done": "Terminé"
   },
   "voting": {
-    "idea": "Bonne idée ?",
-    "importance": "Important pour toi ?",
+    "idea": "Bonne idée ?",
+    "importance": "Important pour toi ?",
     "saved": "Enregistré",
     "error": "Ton vote n'a pas été enregistré. Réessaie."
   },
@@ -55,7 +55,7 @@
     "hint": "Tes notes décident de ce qui passe dans le plan",
     "areaLabel": "Domaine",
     "all": "Tout",
-    "forum": "Une idée à toi ? Poste-la dans le forum"
+    "forum": "Une idée à toi ? Poste-la dans le forum"
   },
   "issues": {
     "areaLabel": "Domaine",

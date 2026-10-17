@@ -50,15 +50,15 @@
   },
   "debt": {
     "label": "Dette totale",
-    "ceiling": "Plafond : {value} CZ$",
-    "headroom": "Marge sous le plafond : {value} CZ$",
+    "ceiling": "Plafond : {value} CZ$",
+    "headroom": "Marge sous le plafond : {value} CZ$",
     "accruedInterest": "Dont {value} CZ$ d'intérêts courus"
   },
   "prize": {
     "label": "Gains (saison {season})",
     "labelNoSeason": "Gains",
     "raceCount": "{count, plural, one {1 course} other {# courses}}",
-    "allSeasons": "toutes saisons : {amount} CZ$"
+    "allSeasons": "toutes saisons : {amount} CZ$"
   },
   "prizeList": {
     "title": "Gains des courses",
@@ -86,7 +86,7 @@
       "seasonsRemaining": "Saisons restantes",
       "accruedInterest": "Intérêts courus",
       "startRepay": "Payer une échéance",
-      "startRepayBlocked": "Rien à rembourser pour l'instant : ton solde disponible est immobilisé dans des enchères en cours.",
+      "startRepayBlocked": "Rien à rembourser pour l'instant : ton solde disponible est immobilisé dans des enchères en cours.",
       "startRepayMaxPlaceholder": "Max {value}",
       "repayPlaceholder": "0",
       "repayBtn": "Payer",
@@ -99,27 +99,27 @@
       "typeLabel": "Type d'emprunt",
       "amountLabel": "Montant (CZ$)",
       "amountPlaceholder": "p. ex. 500",
-      "feeLabel": "Frais ({pct} %)",
+      "feeLabel": "Frais ({pct} %)",
       "feeValue": "{value} CZ$",
       "interestLabel": "Intérêts/saison",
-      "interestValue": "{pct} %",
+      "interestValue": "{pct} %",
       "totalLabel": "Remboursement total",
       "totalValue": "{value} CZ$",
-      "maxBorrowable": "Emprunt max. actuel : {value} CZ$",
+      "maxBorrowable": "Emprunt max. actuel : {value} CZ$",
       "maxBorrowableDetail": "Les frais de {fee} CZ$ s'ajoutent à ta dette, qui atteint donc {total} CZ$ sur un plafond de {ceiling} CZ$.",
       "useMax": "Utiliser le max.",
       "maxZero": "Pas de place pour un nouvel emprunt. Ta dette est au plafond de la division, soit {ceiling} CZ$.",
-      "exceedsMax": "Cela te ferait dépasser le plafond de dette, car les frais y comptent. Emprunt max. actuel : {value} CZ$.",
-      "costPerSeason": "Intérêts de la saison prochaine si tu ne rembourses rien : {interest} CZ$ -> la dette atteindrait {projected} CZ$",
+      "exceedsMax": "Cela te ferait dépasser le plafond de dette, car les frais y comptent. Emprunt max. actuel : {value} CZ$.",
+      "costPerSeason": "Intérêts de la saison prochaine si tu ne rembourses rien : {interest} CZ$ -> la dette atteindrait {projected} CZ$",
       "submit": "Souscrire l'emprunt",
       "processing": "Traitement..."
     },
     "confirmModal": {
       "title": "Confirmer un gros emprunt",
-      "body": "Tu es sur le point d'emprunter <strong>{principal} CZ$</strong> plus <strong>{fee} CZ$</strong> de frais. Ta dette totale devient <strong>{newTotalDebt} CZ$</strong>, soit {pct} % du plafond de dette de {ceiling} CZ$ de ta division.",
+      "body": "Tu es sur le point d'emprunter <strong>{principal} CZ$</strong> plus <strong>{fee} CZ$</strong> de frais. Ta dette totale devient <strong>{newTotalDebt} CZ$</strong>, soit {pct} % du plafond de dette de {ceiling} CZ$ de ta division.",
       "interestForecast": "Si tu ne rembourses rien, les seuls intérêts de la saison prochaine ajoutent <strong>{interest} CZ$</strong>, ce qui porte ta dette à <strong>{projected} CZ$</strong>.",
       "ceilingWarning": "Rien que par les intérêts, c'est au-dessus du plafond de ta division. Si tu es toujours au-dessus au prochain changement de saison, la direction gèle les transferts et peut forcer la vente de tes coureurs pour combler l'écart.",
-      "question": "Souscrire cet emprunt quand même ?",
+      "question": "Souscrire cet emprunt quand même ?",
       "confirm": "Souscrire l'emprunt"
     },
     "terms": {
@@ -183,7 +183,7 @@
   },
   "msg": {
     "loanCreated": "Emprunt de {amount} CZ$ créé",
-    "loanRepaidFull": "Emprunt entièrement remboursé !",
+    "loanRepaidFull": "Emprunt entièrement remboursé !",
     "loanRepaidPartial": "{paid} CZ$ payés, {remaining} CZ$ restants",
     "errorPrefix": ""
   },
@@ -194,11 +194,11 @@
     },
     "debtCeiling": {
       "title": "Plafond de dette par division",
-      "body": "Chaque division a un plafond de dette totale (D1 1 200 K · D2 900 K · D3 600 K). Une fois le plafond atteint, les nouveaux emprunts sont bloqués, et la direction pénalise aussi les dépenses excessives lors de l'évaluation de la saison."
+      "body": "Chaque division a un plafond de dette totale (D1 1 200 K · D2 900 K · D3 600 K). Une fois le plafond atteint, les nouveaux emprunts sont bloqués, et la direction pénalise aussi les dépenses excessives lors de l'évaluation de la saison."
     },
     "txHistory": {
       "title": "Suis la trésorerie",
-      "body": "Le sponsor et les salaires tombent une fois par saison (tous deux en début de saison : le sponsor d'abord, puis les salaires), tandis que les gains et les transferts arrivent en continu. Tu vois ici chaque transaction : sers-t'en pour vérifier que tes finances vont dans le bon sens."
+      "body": "Le sponsor et les salaires tombent une fois par saison (tous deux en début de saison : le sponsor d'abord, puis les salaires), tandis que les gains et les transferts arrivent en continu. Tu vois ici chaque transaction : sers-t'en pour vérifier que tes finances vont dans le bon sens."
     }
   },
   "hint": {
@@ -207,21 +207,21 @@
     "dismissAria": "Masquer",
     "sponsor": {
       "title": "Revenu de sponsor",
-      "before": "Échelonné par division (D1 600 000 · D2 400 000 · D3 340 000 CZ$) par saison × ton ",
+      "before": "Échelonné par division (D1 600 000 · D2 400 000 · D3 340 000 CZ$) par saison × ton ",
       "linkText": "modificateur de la direction",
       "after": ". Versé en une seule fois au début de la saison."
     },
     "salary": {
       "title": "Salaires des coureurs",
-      "body": "Le salaire d'un coureur est le prix de ce qu'il apporte cette saison, pas de ce qu'il vaut sur le marché. C'est une part fixe de sa valeur de production actuelle, la même part pour toutes les équipes de toutes les divisions : un meilleur coureur coûte donc toujours plus cher. Les salaires sont figés à la signature ou à la prolongation, le salaire d'un coureur ne bouge donc pas ensuite avec sa valeur de marché. Prélevé en une seule fois au début de la saison suivante, juste après l'arrivée du sponsor."
+      "body": "Le salaire d'un coureur est le prix de ce qu'il apporte cette saison, pas de ce qu'il vaut sur le marché. C'est une part fixe de sa valeur de production actuelle, la même part pour toutes les équipes de toutes les divisions : un meilleur coureur coûte donc toujours plus cher. Les salaires sont figés à la signature ou à la prolongation, le salaire d'un coureur ne bouge donc pas ensuite avec sa valeur de marché. Prélevé en une seule fois au début de la saison suivante, juste après l'arrivée du sponsor."
     },
     "debt": {
       "title": "Plafond de dette par division",
-      "body": "D1 1 200 K · D2 900 K · D3 600 K. Dépasse le plafond et les nouveaux emprunts sont bloqués, et la direction sanctionne les dépenses excessives."
+      "body": "D1 1 200 K · D2 900 K · D3 600 K. Dépasse le plafond et les nouveaux emprunts sont bloqués, et la direction sanctionne les dépenses excessives."
     },
     "loans": {
       "title": "Emprunts, court ou long terme",
-      "body": "Emprunt court : frais bas, remboursement rapide. Emprunt long : montant plus important sur plusieurs saisons. Utilise-les pour les pics de transferts, pas pour combler les trous de fonctionnement."
+      "body": "Emprunt court : frais bas, remboursement rapide. Emprunt long : montant plus important sur plusieurs saisons. Utilise-les pour les pics de transferts, pas pour combler les trous de fonctionnement."
     },
     "showTour": "Fais-moi visiter",
     "skip": "Passer"
@@ -231,7 +231,7 @@
     "receipt": {
       "title": "Règlement saison {current} -> {next}",
       "subtitle": "Ce qui arrive à ton solde quand les comptes se ferment et que la saison {next} démarre, dans l'ordre exact où le jeu le prélève.",
-      "balanceAfter": "Solde : {value} CZ$",
+      "balanceAfter": "Solde : {value} CZ$",
       "step": {
         "books_close": {
           "label": "Clôture des comptes",
@@ -272,9 +272,9 @@
       }
     },
     "footnote": "Aperçu du règlement, pas une garantie. Les gains et le revenu de sponsor par étape n'y sont pas inclus, car ils dépendent de courses pas encore disputées, pas plus que tout ce qui est conditionnel, comme les intérêts d'emprunt d'urgence si ton solde devient négatif ou une vente forcée si ta dette dépasse le plafond. Les déplacements du recruteur, les transferts, les achats d'installations, les changements de staff et les signatures à l'académie n'y sont pas inclus non plus, car rien de tout cela n'est connu à l'avance.",
-    "footnoteLink": "Qu'est-ce qui est inclus exactement ?",
+    "footnoteLink": "Qu'est-ce qui est inclus exactement ?",
     "salaryTable": {
-      "title": "Salaires : contrat actuel contre saison prochaine",
+      "title": "Salaires : contrat actuel contre saison prochaine",
       "subtitle": "Le salaire de contrat figé de chaque coureur sous contrat, à côté de ce que la formule de la saison {next} leur donnerait aujourd'hui.",
       "empty": "Aucun coureur sous contrat.",
       "header": {

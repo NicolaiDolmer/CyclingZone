@@ -1,6 +1,6 @@
 {
   "title": "Contact",
-  "subtitle": "Pas de Discord ? Envoie un retour, signale un bug ou partage une idée directement au développeur.",
+  "subtitle": "Pas de Discord ? Envoie un retour, signale un bug ou partage une idée directement au développeur.",
   "close": "Fermer",
   "field": {
     "category": "Catégorie",
@@ -12,10 +12,10 @@
     "bug": "Signalement de bug",
     "idea": "Idée",
     "fairplay": "Fair-play / signaler un transfert",
-    "feedbackPlaceholder": "Qu'est-ce que tu as en tête ?",
-    "bugPlaceholder": "Que s'est-il passé ? À quoi t'attendais-tu ?",
-    "ideaPlaceholder": "Qu'aimerais-tu voir dans le jeu ?",
-    "fairplayPlaceholder": "Qu'est-ce qui t'a semblé louche ? Un transfert ou une équipe suffit. Je m'en occupe."
+    "feedbackPlaceholder": "Qu'est-ce que tu as en tête ?",
+    "bugPlaceholder": "Que s'est-il passé ? À quoi t'attendais-tu ?",
+    "ideaPlaceholder": "Qu'aimerais-tu voir dans le jeu ?",
+    "fairplayPlaceholder": "Qu'est-ce qui t'a semblé louche ? Un transfert ou une équipe suffit. Je m'en occupe."
   },
   "submit": "Envoyer",
   "sent": {

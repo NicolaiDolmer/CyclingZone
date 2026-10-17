@@ -4,19 +4,19 @@
     "all": "Tous les types"
   },
   "badge": {
-    "ariaLabel": "Type de coureur : {primary} / {secondary}",
-    "ariaLabelSingle": "Type de coureur : {primary}"
+    "ariaLabel": "Type de coureur : {primary} / {secondary}",
+    "ariaLabelSingle": "Type de coureur : {primary}"
   },
   "natural": {
     "label": "Naturel",
     "roleLabel": "Rôle naturel",
-    "filterAll": "Rôle naturel : tous",
-    "ariaLabel": "Rôle naturel : {primary} / {secondary}",
-    "ariaLabelSingle": "Rôle naturel : {primary}"
+    "filterAll": "Rôle naturel : tous",
+    "ariaLabel": "Rôle naturel : {primary} / {secondary}",
+    "ariaLabelSingle": "Rôle naturel : {primary}"
   },
   "bestRole": {
     "label": "Meilleur rôle actuel",
-    "filterAll": "Meilleur rôle actuel : tous",
+    "filterAll": "Meilleur rôle actuel : tous",
     "title": "{role} est le rôle dans lequel il est le mieux noté actuellement. Le chiffre est sa note en tant que {role}."
   },
   "types": {

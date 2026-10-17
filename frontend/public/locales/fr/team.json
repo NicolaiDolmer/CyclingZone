@@ -1,16 +1,16 @@
 {
   "page": {
     "fallbackTitle": "Mon équipe",
-    "managerLabel": "Manager : {name}",
+    "managerLabel": "Manager : {name}",
     "ridersCount": "{count}/{cap} coureurs seniors",
     "youthSquadCounts": "+{u23} U23 · +{junior} juniors",
     "seniorCapTooltip": "Le plafond d'effectif est de {cap} coureurs seniors. Les coureurs de l'académie n'y comptent pas.",
     "youthSquadCountsTooltip": "Les coureurs U23 et juniors ont leurs propres plafonds d'effectif (12 et 10) et ne comptent pas dans le plafond senior.",
     "incomingCount": "+{count} entrants",
     "outgoingCount": "-{count} sortants",
-    "salaryPerSeason": "Salaire/saison : {value} CZ$",
+    "salaryPerSeason": "Salaire/saison : {value} CZ$",
     "salaryPerSeasonTooltip": "Salaire total que ton effectif touche par saison",
-    "teamValue": "Valeur de l'équipe : {value} CZ$",
+    "teamValue": "Valeur de l'équipe : {value} CZ$",
     "division": "Division {n}",
     "divisionTooltip": "Ton niveau de ligue. La division 1 est le plus haut niveau, la division 4 le niveau d'entrée.",
     "balance": "{value} CZ$",
@@ -133,8 +133,8 @@
       "startButton": "Lancer",
       "startFlashButton": "Lancer une Flash",
       "flashLabel": "Enchère flash (30 min)",
-      "flashHint": "Deadline Day : se termine exactement 30 minutes après le lancement",
-      "successMsg": "Enchère lancée !",
+      "flashHint": "Deadline Day : se termine exactement 30 minutes après le lancement",
+      "successMsg": "Enchère lancée !",
       "priceError": "Le prix de départ doit être compris entre 0 et la valeur ({amount} CZ$)",
       "endLabel": "Fin de l'enchère",
       "endHint": "Dans {min} à {max} heures, heure de jeu (Copenhague).",
@@ -143,7 +143,7 @@
     "transfer": {
       "description": "Mets en vente à prix fixe.",
       "listButton": "Mettre en vente",
-      "successMsg": "Mis en vente !"
+      "successMsg": "Mis en vente !"
     },
     "release": {
       "description": "Mets fin au contrat de ce coureur et laisse-le partir comme agent libre.",
@@ -184,7 +184,7 @@
     },
     "tabsAriaLabel": "Sections du profil de l'équipe",
     "yourTeam": "Ton équipe",
-    "managerLabel": "Manager : {name}",
+    "managerLabel": "Manager : {name}",
     "division": "Division {n}",
     "statRidersNow": "Coureurs actuels",
     "statIncoming": "Entrants",
@@ -285,7 +285,7 @@
       "retry": "Réessayer"
     },
     "yourTeam": "Ton équipe",
-    "managerPrefix": "Manager :",
+    "managerPrefix": "Manager :",
     "aiManaged": "Équipe gérée par l'IA",
     "division": "Division {n}",
     "settingsLink": "Paramètres",
@@ -294,7 +294,7 @@
     "recentlyUnlocked": "Récemment débloqués",
     "noRecentAchievements": "Rien de débloqué pour l'instant. Cours, enchéris et bâtis un effectif pour commencer à collectionner.",
     "inProgress": "En cours",
-    "progressTowards": "{title} : {current} sur {target}",
+    "progressTowards": "{title} : {current} sur {target}",
     "tabOverview": "Aperçu",
     "tabRiders": "Équipe ({count})",
     "tabSeason": "Historique des saisons",

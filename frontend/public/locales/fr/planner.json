@@ -49,7 +49,7 @@
     "raceOptionLocksNow": "{date} · {race} · adéquation {fit} · se verrouille tout de suite",
     "age": "{age} ans",
     "load": "{days, plural, one {# jour de course} other {# jours de course}}",
-    "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
+    "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
     "formInline": "Forme {value}",
     "remove": "Retirer le pic",
     "window": "Préparation du {start} au {end}",
@@ -99,11 +99,11 @@
     "all": "Toutes les courses"
   },
   "planningTowards": {
-    "label": "Planification vers : {race} · {date}"
+    "label": "Planification vers : {race} · {date}"
   },
   "raceList": {
     "title": "Courses de la saison",
-    "subtitle": "Chaque course de la saison : quand elle a lieu et ce qu'elle exige. Ouvres-en une pour planifier un pic, ou va directement à sa page complète.",
+    "subtitle": "Chaque course de la saison : quand elle a lieu et ce qu'elle exige. Ouvres-en une pour planifier un pic, ou va directement à sa page complète.",
     "count": "{count, plural, one {# course} other {# courses}}",
     "viewPage": "Ouvrir la page de la course {race}",
     "mine": "Dans ton calendrier",
@@ -162,7 +162,7 @@
       "autoPlan": "Planifier l'entraînement automatiquement",
       "build": "Semaine de charge",
       "taper": "Semaine d'affûtage",
-      "focus": "Axe recommandé : {focus}",
+      "focus": "Axe recommandé : {focus}",
       "accepted": "{week} écrite dans l'entraînement de {name}",
       "noPeak": "Pas encore de pic. Choisis une course cible pour en planifier un.",
       "peakFor": "Pic pour {race}",

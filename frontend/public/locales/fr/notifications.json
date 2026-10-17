@@ -48,7 +48,7 @@
   },
   "aggregate": {
     "countSuffix": "(×{count})",
-    "raceResultTitle": "{race} : le résultat est tombé",
+    "raceResultTitle": "{race} : le résultat est tombé",
     "firstLatest": "Première {first} · Dernière {latest}",
     "lostLeadShare": "Dont {count} où tu as perdu la tête",
     "expand": "Développer",
@@ -74,7 +74,7 @@
     },
     "unknownTeam": "équipe inconnue",
     "transferPrimary": "{rider}, {price} CZ$",
-    "transferUnknownPrice": "{rider}, ? CZ$",
+    "transferUnknownPrice": "{rider}, ? CZ$",
     "transferSecondary": "De {team} · {role}",
     "swapPrimary": "{offered} ↔ {requested}",
     "swapSecondaryWithCash": "{team} · Cash {cash} CZ$ · {role}",
@@ -87,7 +87,7 @@
     "riderListed": "{team} a mis un coureur en vente",
     "seasonStarted": "La saison {number} a commencé",
     "seasonEnded": "La saison {number} est terminée",
-    "raceResultsApproved": "Résultats validés : {race}",
+    "raceResultsApproved": "Résultats validés : {race}",
     "fallbackLabel": "{type}"
   },
   "error": {

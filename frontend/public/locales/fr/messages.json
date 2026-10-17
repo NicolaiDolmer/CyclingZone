@@ -35,7 +35,7 @@
     "hide": "Masquer la conversation"
   },
   "block": {
-    "title": "Bloquer ce manager ?",
+    "title": "Bloquer ce manager ?",
     "body": "Il ne pourra plus te joindre ici. Il n'est pas prévenu que tu l'as bloqué.",
     "confirm": "Bloquer",
     "cancel": "Annuler",
