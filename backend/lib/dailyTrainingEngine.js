@@ -123,8 +123,9 @@ export function isLegacyLoadingReservation(row) {
 //                 taerskelen frigives raekken. Intet er skrevet.
 // Sletningen er compare-and-delete paa stadie + alder: to samtidige koersler kan
 // ikke begge slette (Postgres laaser raekken, den anden ser 0 raekker), og en frisk
-// reservation (created_at = nu) matcher aldrig. Taber den der slettede det nye
-// INSERT, er det 23505 = alreadyRan, saa holdet afregnes hoejst én gang.
+// reservation (created_at = nu) matcher aldrig. Taber en koersel sletningen eller det
+// nye INSERT, kaster den samme retryable fejl som ved en frisk reservation (vinderen
+// kan stadig fejle i phase 1), saa holdet afregnes hoejst én gang og aldrig tabes.
 async function resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }) {
   const { data: rows, error } = await supabase.from("training_day_runs")
     .select("id, created_at, report")
@@ -133,11 +134,7 @@ async function resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }
   if (error) throw new Error(`training_day_runs reservation lookup: ${error.message}`);
   const held = (rows ?? []).filter(isLegacyLoadingReservation);
   if (!held.length) return "settled";
-  if (!held.every((row) => isReclaimableLegacyReservation(row, now))) {
-    const err = new Error(`training_day_runs: reservation for team ${teamId} (${tickDate}) is held by an unfinished run`);
-    err.retryable = true;
-    throw err;
-  }
+  if (!held.every((row) => isReclaimableLegacyReservation(row, now))) throw reservationHeldError(teamId, tickDate);
   const cutoff = new Date(now.getTime() - STALE_LEGACY_RESERVATION_MS).toISOString();
   const { data: released, error: deleteError } = await supabase.from("training_day_runs").delete()
     .eq("team_id", teamId).eq("tick_date", tickDate)
@@ -145,9 +142,18 @@ async function resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }
     .lt("created_at", cutoff)
     .select("id");
   if (deleteError) throw new Error(`training_day_runs stale reservation: ${deleteError.message}`);
-  if (!(released ?? []).length) return "settled"; // en samtidig koersel kom foerst
+  // En samtidig koersel kom foerst og er maaske stadig i phase 1: ikke afregnet endnu.
+  if (!(released ?? []).length) throw reservationHeldError(teamId, tickDate);
   console.warn(`  ♻️ training_day_runs: stale reservation for team ${teamId} (${tickDate}) released`);
   return "reclaimed";
+}
+
+// #6759: holdet er ikke afregnet, men en anden koersel ejer noeglen lige nu.
+// Retryable, saa sweepen taeller en fejl og tager holdet igen (datoen forbliver aaben).
+function reservationHeldError(teamId, tickDate) {
+  const err = new Error(`training_day_runs: reservation for team ${teamId} (${tickDate}) is held by an unfinished run`);
+  err.retryable = true;
+  return err;
 }
 
 // ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────
@@ -433,6 +439,9 @@ export async function runTeamTrainingDay({
   if (insertError?.code === "23505" && !useRaceDayKey
     && await resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }) === "reclaimed") {
     ({ error: insertError } = await reserve());
+    // Taber vi INSERT'et efter frigivelsen, ejer en samtidig koersel noeglen og er
+    // maaske stadig i phase 1 — ikke "alreadyRan", men proev igen senere.
+    if (insertError?.code === "23505") throw reservationHeldError(teamId, tickDate);
   }
 
   if (insertError) {
@@ -500,7 +509,15 @@ export async function runTeamTrainingDay({
         p_history: [], p_race_history: [], p_scores: [],
       });
       if (error) throw new Error(`daily condition commit: ${error.message}`);
-    } else await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
+    } else if (useRaceDayKey) await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
+    else {
+      // #6759: samme ejerskabs-bevis som skiftet til "writing" (token), saa en
+      // overtaget koersel aldrig overskriver den nye ejers raekke.
+      const { data: written, error } = await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }))
+        .eq("report->>token", reservationToken).select("id");
+      if (error) throw new Error(`training_day_runs empty report: ${error.message}`);
+      if ((written ?? []).length !== 1) throw new Error("training_day_runs empty report: reservation no longer held");
+    }
     return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, squad: squadKey, report: emptyReport };
   }
 

@@ -1151,6 +1151,65 @@ test("#6759: issue-scenariet — sletningen fejler 3 gange, holdet afregnes ved 
   assert.equal(state.training_day_runs.length, 1);
 });
 
+test("#6759: taber koerslen frigivelsen eller det nye INSERT til en samtidig koersel → retryable, ikke alreadyRan", async () => {
+  const later = new Date(NOW.getTime() + STALE_LEGACY_RESERVATION_MS + 60 * 1000);
+  // a) Den anden koersel sletter raekken mellem vores opslag og vores sletning.
+  {
+    const state = seedState();
+    seedLegacyRun(state, { stage: LEGACY_RESERVATION_STAGE_LOADING, createdAt: NOW });
+    const base = createMockSupabase(state);
+    const supabase = { ...base, from: (table) => {
+      const q = base.from(table);
+      if (table !== "training_day_runs") return q;
+      return new Proxy(q, { get: (target, prop) => (prop === "delete" ? () => {
+        state.training_day_runs = []; // vinderen kom foerst
+        return target.delete();
+      } : target[prop]) });
+    } };
+    await assert.rejects(() => runLegacy(supabase, later), (err) => err.retryable === true && /held by an unfinished run/.test(err.message));
+  }
+  // b) Vi frigiver, men vinderen naar at reservere foer vores nye INSERT.
+  {
+    const state = seedState();
+    seedLegacyRun(state, { stage: LEGACY_RESERVATION_STAGE_LOADING, createdAt: NOW });
+    const winner = { id: "run-winner", team_id: TEAM_ID, tick_date: "2026-06-12", created_at: later.toISOString(),
+      report: { pending: true, stage: LEGACY_RESERVATION_STAGE_LOADING, token: "token-of-the-winner" } };
+    const base = createMockSupabase(state);
+    let inserts = 0;
+    const supabase = { ...base, from: (table) => {
+      const q = base.from(table);
+      if (table !== "training_day_runs") return q;
+      return new Proxy(q, { get: (target, prop) => (prop === "insert" ? (row) => {
+        inserts += 1;
+        if (inserts === 2) state.training_day_runs.push(structuredClone(winner));
+        return target.insert(row);
+      } : target[prop]) });
+    } };
+    await assert.rejects(() => runLegacy(supabase, later), (err) => err.retryable === true);
+    assert.deepEqual(state.training_day_runs, [winner], "vinderens reservation staar uroert");
+  }
+});
+
+test("#6759: tom trup — en overtaget koersel overskriver ikke den nye ejers raekke", async () => {
+  const state = seedState({ riders: [], abilities: [], conditions: [] });
+  const base = createMockSupabase(state);
+  const newOwner = { pending: true, stage: LEGACY_RESERVATION_STAGE_LOADING, token: "token-of-the-new-owner" };
+  const supabase = { ...base, from: (table) => {
+    if (table === "riders") state.training_day_runs[0].report = { ...newOwner };
+    return base.from(table);
+  } };
+  await assert.rejects(() => runLegacy(supabase, NOW), /reservation no longer held/);
+  assert.equal(state.training_day_runs.length, 1);
+  assert.deepEqual(state.training_day_runs[0].report, newOwner, "den nye ejers raekke er uroert");
+
+  // Uden overtagelse afregnes den tomme trup som foer.
+  const fresh = seedState({ riders: [], abilities: [], conditions: [] });
+  const result = await runLegacy(createMockSupabase(fresh), NOW);
+  assert.equal(result.alreadyRan, false);
+  assert.equal(fresh.training_day_runs[0].report.riders.length, 0);
+  assert.equal(fresh.training_day_runs[0].report.stage, undefined);
+});
+
 test("#6759: en overtaget koersel skriver intet og sletter ikke den nye ejers reservation", async () => {
   const state = seedState();
   const before = structuredClone({ abilities: state.rider_derived_abilities, conditions: state.rider_condition });
