@@ -50,6 +50,7 @@ import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
+import { isMandateSeasonEnded } from "./boardMandateEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
 export class MandateSignConflictError extends Error {
@@ -96,6 +97,9 @@ async function loadProposedMandate(supabase, teamId) {
     .select("*")
     .eq("team_id", teamId)
     .eq("status", "proposed")
+    // #6773 · Nyeste SÆSON først: et forslag for en ældre sæson må aldrig
+    // skygge for det aktuelle årsmøde.
+    .order("season_number", { ascending: false, nullsFirst: false })
     .order("proposed_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -124,6 +128,7 @@ async function loadLatestMandateStatus(supabase, teamId) {
     .from("board_mandates")
     .select("status")
     .eq("team_id", teamId)
+    .order("season_number", { ascending: false, nullsFirst: false })
     .order("proposed_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -497,6 +502,15 @@ export async function signMandate(supabase, {
     throw new MandateSignConflictError(
       `Mandatet kan ikke underskrives fra status "${mandate.status}".`,
       { errorCode: "board_mandate_not_proposed" }
+    );
+  }
+  // #6773 · Et forslag for en afsluttet sæson underskrives aldrig (hverken af
+  // manageren eller auto-accept). Før blev sådanne forslag aktive EFTER
+  // skiftet og skyggede for næste sæsons mandat.
+  if (await isMandateSeasonEnded(supabase, mandate)) {
+    throw new MandateSignConflictError(
+      "This mandate belongs to a season that has ended.",
+      { errorCode: "board_mandate_season_ended" }
     );
   }
 

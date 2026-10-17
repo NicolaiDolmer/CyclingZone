@@ -312,7 +312,9 @@ export async function loadBoardVerdicts({ supabase, seasonId, teams = [] } = {})
       if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
       // Et mandat der aldrig blev underskrevet ('proposed') har ingen dom.
       for (const row of data || []) {
-        if (row.status !== "proposed") mandateByTeam.set(row.team_id, row.id);
+        // #6773 · 'lapsed' (forslag der udløb ved skiftet) har heller ingen dom;
+        // samme statusser som boardVerdict.js's VERDICT_MANDATE_STATUSES.
+        if (row.status === "active" || row.status === "completed") mandateByTeam.set(row.team_id, row.id);
       }
     }
 

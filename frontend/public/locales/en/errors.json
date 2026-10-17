@@ -177,6 +177,7 @@
     "mandate_id_required": "mandateId is required",
     "board_mandate_not_found": "Mandate not found",
     "board_mandate_not_proposed": "This mandate can't be signed right now",
+    "board_mandate_season_ended": "This mandate belongs to a season that has ended",
     "board_mandate_request_already_used": "This mandate's annual meeting request has already been used",
     "board_mandate_sign_conflict": "This mandate can't be signed right now",
     "board_mandate_adjustment_budget_exceeded": "You've used more adjustments than your board allows this year",
