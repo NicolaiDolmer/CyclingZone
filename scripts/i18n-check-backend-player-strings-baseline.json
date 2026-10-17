@@ -1,0 +1,11 @@
+{
+  "$comment": "Kendte notifikations-kald med hardkodet spillertekst uden titleCode/messageCode (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-backend-player-strings.mjs --update-baseline. Refs #6801. Nye kald maa IKKE tilfoejes her: giv teksten en noegle i frontend/public/locales/{en,da}/backendMessages.json.",
+  "files": {
+    "backend/lib/auctionCancellation.js": 2,
+    "backend/lib/proxyBidding.js": 4,
+    "backend/lib/squadEnforcement.js": 1,
+    "backend/lib/stageRaceTransferDefer.js": 1,
+    "backend/lib/transferExecution.js": 2,
+    "backend/routes/api.js": 2
+  }
+}
