@@ -22,6 +22,10 @@
 --   SELECT column_name, data_type, is_nullable FROM information_schema.columns
 --   WHERE table_schema = 'public' AND table_name = 'teams' AND column_name = 'comeback_at';
 
+-- Fejl hurtigt (og kan koeres igen) i stedet for at staa i koe bag en lang
+-- transaktion og blokere teams imens (#6342, docs/MIGRATIONS.md).
+SET lock_timeout = '3s';
+
 ALTER TABLE public.teams
   ADD COLUMN IF NOT EXISTS comeback_at timestamptz NULL;
 
@@ -40,3 +44,5 @@ BEGIN
   END IF;
 END
 $$;
+
+RESET lock_timeout;
