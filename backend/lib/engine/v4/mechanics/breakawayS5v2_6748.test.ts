@@ -19,7 +19,7 @@ import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { breakawayHook, s5BreakMergedWithField, S5_REFORMATION_TUNING } from "./breakaway.ts";
 import { s5ReformationExcludedRiders } from "./gcThreat.ts";
 import { isMorningRegroupCatch, isS5V2BreakawayWin, noteFormationRiders, withWinnerEscapeOutcome } from "./chaseGroup.ts";
-import { isBreakawayWin, type FinaleGroupTrace } from "../groups.ts";
+import { isBreakawayWin, settleBreakawaySurvivedEvents, type FinaleGroupTrace } from "../groups.ts";
 import { deriveParticipationHistory, settleBreakawayOutcome } from "../../../raceParticipationHistory.ts";
 import { loadRaceEngineV4 } from "../../../raceEngineV4Bridge.js";
 import { labelContradictions, runStagesInOrder, sortedStages, splitEntrants } from "../../../../scripts/dev/lib/tourScorecard.mjs";
@@ -263,4 +263,17 @@ test("#6748 rigtig motor: et nyt udbrud paa foerste etape rummer under v2 ingen 
     } as Parameters<typeof runStagesInOrder>[0]);
   }
   assert.ok(seen >= 1, "mindst ét nyt udbrud paa foerste etape at maale paa");
+});
+
+test("#6748 punkt 5 (Codex #6807): under v2 bevarer settle udbrudsgruppens 'holdt', naar vinderen kom fra et stykke af udbruddet", () => {
+  const trace = pieceTrace(null);
+  const events: TimelineEvent[] = [...DROP_EVENTS, { km: 95, type: "breakaway_survived", params: { group_id: "breakaway-0", rider_ids: ["e0"] } }];
+  const results = [
+    { rider_id: "w", rank: 1, status: "finished" }, { rider_id: "e2", rank: 2, status: "finished" },
+    { rider_id: "e0", rank: 3, status: "finished" }, { rider_id: "p1", rank: 4, status: "finished" }, { rider_id: "p2", rank: 5, status: "finished" },
+  ] as unknown as Parameters<typeof settleBreakawaySurvivedEvents>[1]["results"];
+  const outcome = (escapeAnyKind: boolean) => settleBreakawaySurvivedEvents(events, { breakawayWin: true, trace, results, escapeAnyKind })
+    .find((e) => e.params.group_id === "breakaway-0" && (e.type === "breakaway_survived" || e.type === "breakaway_caught"))?.type;
+  assert.equal(outcome(true), "breakaway_survived", "v2: e0 holdt, ingen ikke-udbryder kom foran");
+  assert.equal(outcome(false), "breakaway_caught", "v1-definitionen er uaendret (stykket er en jagtgruppe)");
 });

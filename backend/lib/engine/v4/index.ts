@@ -321,6 +321,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     breakawayWin,
     trace: finaleTrace,
     results,
+    ...(s5V2 ? { escapeAnyKind: true } : {}),
   });
   // #6748 (KUN s5_profiles_v2): vinderen fra et stykke af udbruddet faar samme udfald som dommen.
   const settledTimeline = s5V2
