@@ -19,7 +19,11 @@ const API = import.meta.env.VITE_API_URL;
 
 // userId -> Promise<boolean | null>. Layout monterer flere vaelgere (sidebar +
 // mobil); de skal dele ET opslag.
-const cache = new Map<string, Promise<boolean | null>>();
+// Et svar genbruges kun i CACHE_TTL_MS (Codex #6812): melder en spiller sig ud
+// af beta eller fjernes af en admin, skjules beta-sprogene ved naeste mount
+// efter udloeb uden genindlaesning.
+const CACHE_TTL_MS = 5 * 60_000;
+const cache = new Map<string, { at: number; promise: Promise<boolean | null> }>();
 
 // null = opslaget fejlede (429/5xx/netvaerk) og siger INTET om adgangen. Det maa
 // aldrig laeses som "afvist": sprogvaelgeren ruller et beta-sprog tilbage ved
@@ -61,13 +65,14 @@ export function useBetaLanguageAccess(): boolean | null {
       return undefined;
     }
     let cancelled = false;
-    let pending = cache.get(userId);
+    const hit = cache.get(userId);
+    let pending = hit && Date.now() - hit.at < CACHE_TTL_MS ? hit.promise : undefined;
     if (!pending) {
       pending = supabase.auth.getSession().then(({ data }) => {
         const token = data?.session?.access_token;
         return token ? fetchAccess(token, isAdmin) : null;
       });
-      cache.set(userId, pending);
+      cache.set(userId, { at: Date.now(), promise: pending });
     }
     pending.then((result) => {
       if (cancelled) return;

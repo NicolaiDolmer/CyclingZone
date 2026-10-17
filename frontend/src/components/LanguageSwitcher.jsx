@@ -52,8 +52,9 @@ const toOptions = (languages) =>
     .map((l) => ({ code: l.code, flag: l.flag, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
 const ALL_OPTIONS = toOptions(LANGUAGES);
 
-// Estimeret menuhøjde (2 valg) til at vælge op/ned før menuen er målt.
-const MENU_EST_HEIGHT = 88;
+// Estimeret højde pr. valg til at vælge op/ned før menuen er målt; menuen
+// vokser med antallet af valg, når beta-sprog vises (Codex #6812).
+const MENU_ROW_EST_HEIGHT = 44;
 const GAP = 4;
 
 // surface="sidebar": knappen staar paa den moerke sidebar/topbar (ogsaa i lyst tema), saa den
@@ -73,13 +74,16 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
     if (!btn) return;
     const r = btn.getBoundingClientRect();
     const spaceBelow = window.innerHeight - r.bottom;
-    const openUp = spaceBelow < MENU_EST_HEIGHT && r.top > spaceBelow;
+    const estHeight = OPTIONS.length * MENU_ROW_EST_HEIGHT;
+    const openUp = spaceBelow < estHeight && r.top > spaceBelow;
     setCoords({
+      // Plads til menuen i den valgte retning, så de nederste valg aldrig ender uden for skærmen.
+      maxHeight: Math.max(MENU_ROW_EST_HEIGHT, (openUp ? r.top : spaceBelow) - GAP * 2),
       right: Math.max(GAP, window.innerWidth - r.right),
       top: openUp ? null : r.bottom + GAP,
       bottom: openUp ? window.innerHeight - r.top + GAP : null,
     });
-  }, []);
+  }, [OPTIONS.length]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -150,7 +154,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
               right: coords.right,
               top: coords.top ?? undefined,
               bottom: coords.bottom ?? undefined,
-              maxHeight: `calc(100vh - ${GAP * 2}px)`,
+              maxHeight: coords?.maxHeight ? `${coords.maxHeight}px` : `calc(100vh - ${GAP * 2}px)`,
             }}
             // #2880: portaled to document.body, so it competes at the TOP-LEVEL
             // stacking context against everything else — including nav chrome
