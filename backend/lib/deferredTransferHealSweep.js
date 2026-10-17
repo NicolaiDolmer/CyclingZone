@@ -63,7 +63,7 @@ export async function runDeferredTransferHealSweep({
       const flushed = await flushParkedRider(supabase, rider, {
         notifyTeamOwner,
         flushedAt,
-        arrivalNote: "hans handel er nu gennemført",
+        arrival: { reason: "dealCompleted" },
       });
       if (flushed) healed += 1;
     } catch (err) {

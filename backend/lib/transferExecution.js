@@ -19,7 +19,7 @@ import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
-import { buildContractExpiringNotification } from "./notificationService.js";
+import { buildContractExpiringNotification, buildKeyedNotification } from "./notificationService.js";
 import {
   buildSwapCancelledStaleNotification,
   buildSwapCompletedNotification,
@@ -1145,13 +1145,23 @@ export async function confirmTransferOffer({
   const otherTeamId = isSeller ? offer.buyer_team_id : offer.seller_team_id;
 
   if (!nowSellerConfirmed || !nowBuyerConfirmed) {
+    // #6801: noegle + parametre (modtagerens sprog) i stedet for hardkodet dansk.
+    const pendingNotice = buildKeyedNotification({
+      titleCode: "notif.transfer.confirmPending.title",
+      messageCode: "notif.transfer.confirmPending.message",
+      messageParams: {
+        role: isSeller ? "seller" : "buyer",
+        riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
+      },
+      metadata: { riderId: offer.rider.id },
+    });
     await notifyTeamOwner(
       otherTeamId,
       "transfer_offer_accepted",
-      "Handlen afventer din bekræftelse",
-      `${isSeller ? "Sælger" : "Køber"} har bekræftet handlen på ${offer.rider.firstname} ${offer.rider.lastname}. Bekræft for at gennemføre.`,
+      pendingNotice.title,
+      pendingNotice.message,
       offer.id,
-      { riderId: offer.rider.id }
+      pendingNotice.metadata
     );
 
     return success({ action: "confirmed_partial" });
@@ -1220,12 +1230,18 @@ export async function confirmSwapOffer({
   const otherTeamId = isProposing ? swap.receiving_team_id : swap.proposing_team_id;
 
   if (!nowProposing || !nowReceiving) {
+    const swapPendingNotice = buildKeyedNotification({
+      titleCode: "notif.transfer.swapConfirmPending.title",
+      messageCode: "notif.transfer.swapConfirmPending.message",
+      messageParams: { side: isProposing ? "proposing" : "receiving" },
+    });
     await notifyTeamOwner(
       otherTeamId,
       "transfer_offer_accepted",
-      "Byttehandel afventer din bekræftelse",
-      `${isProposing ? "Det foreslående hold" : "Det modtagende hold"} har bekræftet byttehandlen. Bekræft for at gennemføre.`,
-      swap.id
+      swapPendingNotice.title,
+      swapPendingNotice.message,
+      swap.id,
+      swapPendingNotice.metadata
     );
 
     return success({ action: "confirmed_partial" });

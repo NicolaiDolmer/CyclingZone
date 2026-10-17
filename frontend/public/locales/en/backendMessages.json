@@ -528,6 +528,14 @@
         "title": "Swap cancelled by admin",
         "message": "The swap {offeredName} <-> {requestedName} was cancelled by an admin.",
         "messageReason": "The swap {offeredName} <-> {requestedName} was cancelled by an admin: {reason}"
+      },
+      "confirmPending": {
+        "title": "The deal is waiting for your confirmation",
+        "message": "{role, select, seller {The seller} other {The buyer}} has confirmed the deal on {riderName}. Confirm to complete it."
+      },
+      "swapConfirmPending": {
+        "title": "The swap is waiting for your confirmation",
+        "message": "{side, select, proposing {The proposing team} other {The receiving team}} has confirmed the swap. Confirm to complete it."
       }
     },
     "welcome": {
@@ -628,7 +636,9 @@
       "soldToAiTitle": "Rider sold to AI",
       "soldToAiMessage": "{rider} was sold to the AI for {price} CZ$ (guaranteed price)",
       "expiredNoBidsTitle": "Auction expired without bids",
-      "expiredNoBidsMessage": "Nobody bid on {rider}"
+      "expiredNoBidsMessage": "Nobody bid on {rider}",
+      "adminCancelledBidder": "The auction for {rider} was cancelled by an admin. Your bid has been released and your balance is available again.",
+      "adminCancelledSeller": "Your auction for {rider} was cancelled by an admin."
     },
     "directMessage": {
       "title": "{count, plural, one {New message} other {# new messages}}",
@@ -643,6 +653,24 @@
     "teamDidNotStart": {
       "title": "Your team did not start",
       "message": "Your team did not start {race}: fewer than {min} fit riders at the start."
+    },
+    "autoBidStopped": {
+      "title": "Your auto-bid has stopped",
+      "message": "Your auto-bid on {riderName} stopped because of insufficient balance. Make sure you have funds in your account to bid again."
+    },
+    "autoBidMatched": {
+      "message": "{leaderName}'s auto-bid matched your bid on {riderName} and keeps the lead on an identical bid"
+    },
+    "autoBidOutbid": {
+      "message": "{bidderName}'s auto-bid outbid you on {riderName}"
+    },
+    "riderArrived": {
+      "title": "The rider has arrived",
+      "message": "{riderName} has joined your team. {reason, select, tourFinished {{raceName} has finished.} tourFinishedUnnamed {His stage race has finished.} dealCompleted {His deal is now completed.} other {}}"
+    },
+    "squadEnforced": {
+      "title": "Squad size enforced",
+      "message": "{purchasedCount, plural, =0 {} one {Auto-purchased # rider: {purchasedNames}\n} other {Auto-purchased # riders: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rider will join the team once their ongoing stage race finishes: {deferredNames}\n} other {# riders will join the team once their ongoing stage race finishes: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-sold # rider: {soldNames}\n} other {Auto-sold # riders: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rider in an ongoing stage race will be sold after the race instead\n} other {# riders in an ongoing stage race will be sold after the race instead\n}}Fine: {fine} CZ$ · Deduction: {points} points"
     }
   },
   "error": {

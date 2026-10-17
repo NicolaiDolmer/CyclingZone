@@ -4,6 +4,18 @@ import {
 } from "./auctionRules.js";
 import { isAuctionExpired, isLateBidTriggerError } from "./auctionEngine.js";
 import { captureException } from "./sentry.js";
+import { buildKeyedNotification } from "./notificationService.js";
+
+// #6801: "dit autobud er stoppet (for lidt balance)" bruges to steder i cascaden;
+// teksten ligger i backendMessages (notif.autoBidStopped), ikke som dansk streng.
+function buildAutoBidStoppedNotice(riderName, riderId) {
+  return buildKeyedNotification({
+    titleCode: "notif.autoBidStopped.title",
+    messageCode: "notif.autoBidStopped.message",
+    messageParams: { riderName },
+    metadata: { riderId },
+  });
+}
 
 // #2389 A2: in-app "du er overbudt"-notifikationer fejlede før kun til console —
 // spillere mistede beskeden uden at nogen så det i Sentry. Fælles fail-handler
@@ -217,13 +229,14 @@ export async function resolveProxyBids({
       if (!canAffordTie) {
         balanceRejectedTeams.add(previousLeader);
         if (notifyTeamOwner) {
+          const stoppedNotice = buildAutoBidStoppedNotice(riderName, auction.rider_id);
           await trackedNotify(
             previousLeader,
             "auction_proxy_outbid",
-            "Dit autobud er stoppet",
-            `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
+            stoppedNotice.title,
+            stoppedNotice.message,
             auctionId,
-            { riderId: auction.rider_id },
+            stoppedNotice.metadata,
           ).catch(onProxyNotifFailed(auctionId));
         }
         continue;
@@ -266,13 +279,19 @@ export async function resolveProxyBids({
           });
         }
         const leaderName = leaderTeam?.name || "Autobud";
+        const matchedNotice = buildKeyedNotification({
+          titleCode: "notif.transfer.auctionOutbid.title",
+          messageCode: "notif.autoBidMatched.message",
+          messageParams: { leaderName, riderName },
+          metadata: { riderId: auction.rider_id },
+        });
         await trackedNotify(
           currentWinner,
           "auction_outbid",
-          "Du er blevet overbudt!",
-          `${leaderName}'s autobud matchede dit bud på ${riderName} og beholder føringen ved identisk bud`,
+          matchedNotice.title,
+          matchedNotice.message,
           auctionId,
-          { riderId: auction.rider_id },
+          matchedNotice.metadata,
         ).catch(onProxyNotifFailed(auctionId));
       }
       // Ingen sælger-notif her: prisen steg ikke, og sælgeren fik allerede
@@ -398,13 +417,14 @@ export async function resolveProxyBids({
       // var winner eller challenger — meningen er "dit autobud er stoppet".
       const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
       if (notifyTeamOwner) {
+        const stoppedNotice = buildAutoBidStoppedNotice(riderName, auction.rider_id);
         await trackedNotify(
           autoBidder,
           "auction_proxy_outbid",
-          "Dit autobud er stoppet",
-          `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
+          stoppedNotice.title,
+          stoppedNotice.message,
           auctionId,
-          { riderId: auction.rider_id },
+          stoppedNotice.metadata,
         ).catch(onProxyNotifFailed(auctionId));
       }
       // Ingen bid-insert; loop fortsætter med næste challenger.
@@ -491,13 +511,19 @@ export async function resolveProxyBids({
         ).catch(onProxyNotifFailed(auctionId));
       } else if (autoBidder !== currentWinner && currentWinner) {
         // Challenger took over, current winner had no proxy (normal outbid via proxy)
+        const outbidNotice = buildKeyedNotification({
+          titleCode: "notif.transfer.auctionOutbid.title",
+          messageCode: "notif.autoBidOutbid.message",
+          messageParams: { bidderName, riderName },
+          metadata: { riderId: auction.rider_id },
+        });
         await trackedNotify(
           currentWinner,
           "auction_outbid",
-          "Du er blevet overbudt!",
-          `${bidderName}'s autobud overbød dig på ${riderName}`,
+          outbidNotice.title,
+          outbidNotice.message,
           auctionId,
-          { riderId: auction.rider_id }
+          outbidNotice.metadata
         ).catch(onProxyNotifFailed(auctionId));
       } else if (autoBidder === currentWinner) {
         // #4981: vinderens eget autobud maatte hæve sig for at holde føringen —
