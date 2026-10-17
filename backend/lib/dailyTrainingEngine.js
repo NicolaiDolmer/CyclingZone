@@ -83,46 +83,71 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 //               er ledig: naeste koersel sletter den betinget og reserverer forfra.
 //   "writing" = phase 2 er i gang (eller fejlede midt i writes). ALDRIG ledig: en
 //               blokeret dag er sikrere end et dobbelt-tick efter delvise ability-writes.
-// `token` binder stadie-skiftet og oprydningen til PRAECIS denne reservation, saa en
-// koersel der selv blev overtaget aldrig roerer den nye ejers raekke.
+// `token` binder stadie-skiftet og oprydningen til PRAECIS denne reservation: en
+// koersel der selv blev overtaget, finder ikke sin token ved skiftet til "writing",
+// kaster foer writes og sletter aldrig den nye ejers raekke. Derfor er det sikkert
+// at taerskelen er kort.
 // Raekker uden stadie (skrevet foer #6759) behandles konservativt som optaget.
 export const LEGACY_RESERVATION_STAGE_LOADING = "loading";
 export const LEGACY_RESERVATION_STAGE_WRITING = "writing";
-// Taerskel: begge traenings-crons (training sweep + training day-close) tikker hvert
-// 5. minut (cron.js), og en sweep kan selv vare flere minutter (overlap-guarden
-// springer et tick over saa laenge). En reservation lever kun under ét holds
-// phase 1 (sekunder). 15 min = tre cron-intervaller: altid mindst én hel sweep-
-// cyklus, og langt over en levende reservations levetid.
-export const STALE_LEGACY_RESERVATION_MS = 15 * 60 * 1000;
+// Taerskel = én sweep-cyklus: begge traenings-crons (training sweep + training
+// day-close) tikker hvert 5. minut (cron.js). En levende reservation lever kun
+// under ét holds phase 1 (sekunder), saa en "loading"-raekke aeldre end ét cron-
+// interval er efterladt, og en overtagelse af en langsom levende koersel er
+// ufarlig (token, se ovenfor).
+export const STALE_LEGACY_RESERVATION_MS = 5 * 60 * 1000;
 
 /**
  * #6759: er en legacy-reservation forældet og dermed ledig? Kun en "loading"-raekke
  * aeldre end taerskelen. `created_at` er databasens egen tid ved INSERT.
- * @param {{stage?:string|null, created_at?:string|null}} row
+ * @param {{stage?:string|null, report?:{stage?:string}|null, created_at?:string|null}} row
  * @param {Date} now
  */
 export function isReclaimableLegacyReservation(row, now) {
-  if (row?.stage !== LEGACY_RESERVATION_STAGE_LOADING) return false;
+  if (!isLegacyLoadingReservation(row)) return false;
   const createdAt = Date.parse(row.created_at ?? "");
   return Number.isFinite(createdAt) && createdAt < now.getTime() - STALE_LEGACY_RESERVATION_MS;
 }
 
-// Betinget sletning af en forældet "loading"-reservation. Filtrene ER compare-and-
-// delete: to samtidige koersler kan ikke begge slette (Postgres laaser raekken, den
-// anden ser 0 raekker), og en frisk reservation (created_at = nu) matcher aldrig.
-// Den der sletter, reserverer forfra via samme unikke noegle; taber den INSERT'et,
-// er det 23505 = alreadyRan, saa holdet afregnes hoejst én gang.
-async function reclaimStaleLegacyReservation({ supabase, teamId, tickDate, now }) {
+/** #6759: en uafregnet "loading"-reservation (frisk eller forældet). */
+export function isLegacyLoadingReservation(row) {
+  return (row?.stage ?? row?.report?.stage) === LEGACY_RESERVATION_STAGE_LOADING;
+}
+
+// #6759: noeglen er optaget paa den gamle sti. Tre udfald:
+//   "settled"   — afregnet, "writing" eller gammelt format: alreadyRan som foer.
+//   "reclaimed" — forældet "loading": slettet betinget, kalderen reserverer forfra.
+//   kast        — frisk "loading": en anden koersel er i gang ELLER oprydningen
+//                 fejlede for nylig. Holdet er IKKE afregnet, saa sweepen skal
+//                 taelle en fejl (datoen forbliver aaben) og proeve igen; efter
+//                 taerskelen frigives raekken. Intet er skrevet.
+// Sletningen er compare-and-delete paa stadie + alder: to samtidige koersler kan
+// ikke begge slette (Postgres laaser raekken, den anden ser 0 raekker), og en frisk
+// reservation (created_at = nu) matcher aldrig. Taber den der slettede det nye
+// INSERT, er det 23505 = alreadyRan, saa holdet afregnes hoejst én gang.
+async function resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }) {
+  const { data: rows, error } = await supabase.from("training_day_runs")
+    .select("id, created_at, report")
+    .eq("team_id", teamId).eq("tick_date", tickDate)
+    .eq("report->>stage", LEGACY_RESERVATION_STAGE_LOADING);
+  if (error) throw new Error(`training_day_runs reservation lookup: ${error.message}`);
+  const held = (rows ?? []).filter(isLegacyLoadingReservation);
+  if (!held.length) return "settled";
+  if (!held.every((row) => isReclaimableLegacyReservation(row, now))) {
+    const err = new Error(`training_day_runs: reservation for team ${teamId} (${tickDate}) is held by an unfinished run`);
+    err.retryable = true;
+    throw err;
+  }
   const cutoff = new Date(now.getTime() - STALE_LEGACY_RESERVATION_MS).toISOString();
-  const { data, error } = await supabase.from("training_day_runs").delete()
+  const { data: released, error: deleteError } = await supabase.from("training_day_runs").delete()
     .eq("team_id", teamId).eq("tick_date", tickDate)
     .eq("report->>stage", LEGACY_RESERVATION_STAGE_LOADING)
     .lt("created_at", cutoff)
     .select("id");
-  if (error) throw new Error(`training_day_runs stale reservation: ${error.message}`);
-  const reclaimed = (data ?? []).length > 0;
-  if (reclaimed) console.warn(`  ♻️ training_day_runs: stale reservation for team ${teamId} (${tickDate}) released`);
-  return reclaimed;
+  if (deleteError) throw new Error(`training_day_runs stale reservation: ${deleteError.message}`);
+  if (!(released ?? []).length) return "settled"; // en samtidig koersel kom foerst
+  console.warn(`  ♻️ training_day_runs: stale reservation for team ${teamId} (${tickDate}) released`);
+  return "reclaimed";
 }
 
 // ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────
@@ -406,7 +431,7 @@ export async function runTeamTrainingDay({
   // #6759: optaget noegle paa den gamle sti → er det en forældet "loading"-reservation,
   // slettes den betinget og der reserveres forfra (hoejst ét forsoeg).
   if (insertError?.code === "23505" && !useRaceDayKey
-    && await reclaimStaleLegacyReservation({ supabase, teamId, tickDate, now })) {
+    && await resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }) === "reclaimed") {
     ({ error: insertError } = await reserve());
   }
 
