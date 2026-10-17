@@ -30,6 +30,8 @@ function makeSupabase({ recentTransitions = 0, tables = null } = {}) {
 }
 
 const COMPLETED = { id: "s3", number: 3, status: "completed" };
+// Fast ur (AGENTS.md: ingen væg-ur i tests); min-interval-guarden regnes ud fra det.
+const NOW = new Date("2026-10-17T10:00:00Z");
 const resolveTo = (season) => async () => season;
 
 // Standard passing-readiness stub: dækket af seasonTransitionReadiness.test.js.
@@ -46,6 +48,7 @@ test("processSeasonAutoTransitionCron: ingen kildesæson → no-op", async () =>
   let transitionCalled = false;
   const result = await processSeasonAutoTransitionCron({
     supabase: makeSupabase(),
+    now: NOW,
     resolveSourceSeason: resolveTo(null),
     assessReadiness: readyStub,
     transitionFn: async () => { transitionCalled = true; return { ok: true }; },
@@ -59,6 +62,7 @@ test("processSeasonAutoTransitionCron: aktiv sæson (season-end ikke kørt) skif
   let readinessCalled = false;
   const result = await processSeasonAutoTransitionCron({
     supabase: makeSupabase(),
+    now: NOW,
     resolveSourceSeason: resolveTo({ id: "s4", number: 4, status: "active" }),
     assessReadiness: async () => { readinessCalled = true; return { ready: true, failed_critical: [] }; },
     transitionFn: async () => { throw new Error("should not be called"); },
@@ -71,6 +75,7 @@ test("processSeasonAutoTransitionCron: aktiv sæson (season-end ikke kørt) skif
 test("processSeasonAutoTransitionCron: sæson 0 (aktiv, intet season-end-skridt) er manuel", async () => {
   const result = await processSeasonAutoTransitionCron({
     supabase: makeSupabase(),
+    now: NOW,
     resolveSourceSeason: resolveTo({ id: "s0", number: 0, status: "active" }),
     assessReadiness: readyStub,
     transitionFn: async () => { throw new Error("should not be called"); },
@@ -81,10 +86,9 @@ test("processSeasonAutoTransitionCron: sæson 0 (aktiv, intet season-end-skridt)
 
 test("processSeasonAutoTransitionCron: afsluttet sæson + grøn gate → transitionerer", async () => {
   const capturedArgs = [];
-  const now = new Date("2026-10-17T10:00:00Z");
   const result = await processSeasonAutoTransitionCron({
     supabase: makeSupabase(),
-    now,
+    now: NOW,
     resolveSourceSeason: resolveTo(COMPLETED),
     assessReadiness: readyStub,
     transitionFn: async (args) => {
@@ -97,7 +101,7 @@ test("processSeasonAutoTransitionCron: afsluttet sæson + grøn gate → transit
   assert.equal(result.toSeason, 4);
   assert.equal(capturedArgs.length, 1);
   assert.equal(capturedArgs[0].fromSeasonId, "s3");
-  assert.equal(capturedArgs[0].transitionAt, now);
+  assert.equal(capturedArgs[0].transitionAt, NOW);
   assert.equal(capturedArgs[0].adminUserId, null);
 });
 
@@ -107,6 +111,7 @@ test("processSeasonAutoTransitionCron: afbryder hvis readiness ikke er opfyldt",
   let transitioned = false;
   const r = await processSeasonAutoTransitionCron({
     supabase: makeSupabase(),
+    now: NOW,
     resolveSourceSeason: resolveTo(COMPLETED),
     transitionFn: async () => { transitioned = true; return {}; },
     assessReadiness: async () => ({ ready: false, failed_critical: ["squad_enforcement_completed"] }),
@@ -121,6 +126,7 @@ test("processSeasonAutoTransitionCron: kalder assessReadiness med kildesæsonens
   let readinessArg = null;
   await processSeasonAutoTransitionCron({
     supabase,
+    now: NOW,
     resolveSourceSeason: resolveTo(COMPLETED),
     transitionFn: async () => ({ ok: true }),
     assessReadiness: async (arg) => { readinessArg = arg; return { ready: true, failed_critical: [] }; },
@@ -135,6 +141,7 @@ test("processSeasonAutoTransitionCron: blokeres hvis en transition allerede er l
   let transitioned = false;
   const r = await processSeasonAutoTransitionCron({
     supabase: makeSupabase({ recentTransitions: 1 }),
+    now: NOW,
     resolveSourceSeason: resolveTo(COMPLETED),
     transitionFn: async () => { transitioned = true; return {}; },
     assessReadiness: readyStub,
@@ -150,6 +157,7 @@ test("#6784 cron'en læser ikke transfer_windows", async () => {
   const tables = [];
   await processSeasonAutoTransitionCron({
     supabase: makeSupabase({ tables }),
+    now: NOW,
     resolveSourceSeason: resolveTo(COMPLETED),
     assessReadiness: readyStub,
     transitionFn: async () => ({ ok: true }),
