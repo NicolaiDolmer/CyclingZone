@@ -137,7 +137,7 @@ test("renderTestportMarkdown og -Html indeholder dom, haarde gates, bench og pr.
   const md = renderTestportMarkdown(card);
   assert.match(md, /# Motor-testport \(#6750\): cand mod base/);
   assert.match(md, /Haarde gates VAERRE under kandidaten: ramt loft/);
-  assert.match(md, /1 loeb fejlede/);
+  assert.match(md, /1 opgaver fejlede/);
   for (const [, label] of HARD_GATES) assert.ok(md.includes(label), label);
   assert.match(md, /\| punch \| - \| - \| 2 s \| below \|/);
   assert.match(md, /Loeb <A>/);

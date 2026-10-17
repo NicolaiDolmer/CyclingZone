@@ -1,10 +1,16 @@
 // #6750: motor-testportens CLI, opgaveplan og parallelle pulje (uden motor og uden prod).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { latestDryRunJson, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, collectCard, latestDryRunJson, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, tourDryRunArgs } from "./motorTestport.mjs";
+
+/** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
+const scorecard = (id, revision) => JSON.stringify({
+  race: { id, name: `Loeb ${id}`, stages: 1 },
+  runs: [{ revision, seeds: 1, perSeed: [{ seed: 1, rows: [] }], summary: { counts: { PASS: 1, WARN: 0, FAIL: 0, TODO: 0, "N/A": 0 }, stages: [], classes: [], race: { verdicts: {} } } }],
+});
 
 const NOW = new Date("2026-10-17T10:00:00Z");
 
@@ -82,6 +88,57 @@ test("planTasks + raceIdsFromDir + latestDryRunJson paa en midlertidig mappe", (
     utimesSync(path.join(dir, "loeb-2026-10-17-07-00.json"), new Date(1000), new Date(1000));
     assert.equal(path.basename(latestDryRunJson(dir)), "loeb-2026-10-17-08-00.json");
   } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("assertPrivateOutDir: kun under en balance-internals-mappe (hard rule 17)", () => {
+  assert.doesNotThrow(() => assertPrivateOutDir(path.join("x", "balance-internals", "6750", "d")));
+  assert.throws(() => assertPrivateOutDir(path.join("docs", "6750")), /balance-internals/);
+  assert.throws(() => assertPrivateOutDir(path.join("x", "balance-internals-kopi", "d")), /balance-internals/);
+});
+
+test("collectCard: forventet loeb uden laesbart scorecard er en fejl, bench laeses for den koerte scope", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-"));
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    for (const id of ["ok", "broken", "empty"]) mkdirSync(path.join(out, "races", id), { recursive: true });
+    writeFileSync(path.join(out, "ids.txt"), "ok\nbroken\nempty\nnever\n");
+    writeFileSync(path.join(out, "races", "ok", "loeb-2026-10-17-08-00.json"), scorecard("ok", "rev"));
+    writeFileSync(path.join(out, "races", "broken", "loeb-2026-10-17-08-00.json"), "{ikke json");
+    writeFileSync(path.join(out, "races", "broken", "done"), "x");
+    mkdirSync(path.join(out, "bench", "rev"), { recursive: true });
+    writeFileSync(path.join(out, "bench", "rev", "motor-bench-gate.json"), JSON.stringify({ config: { revision: "rev" }, scope: "gate", summary: { gate: {}, all: {} } }));
+    const card = collectCard({ outDir: out, baseline: "rev", candidate: "rev", meta: { benchScope: "all" } });
+    assert.equal(card.races, 1);
+    assert.deepEqual(card.meta.missingScorecards.map((s) => s.split(" ")[0]).sort(), ["broken", "empty", "never"]);
+    assert.equal(card.bench.baseline, null, "en gate-bench vises ikke som all-scope");
+    assert.equal(collectCard({ outDir: out, baseline: "rev", candidate: "rev", meta: { benchScope: "gate" } }).bench.baseline.scope, "gate");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("main --report-only: bruger koerslens gemte parametre og roerer ikke meta-filen", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    mkdirSync(path.join(out, "races", "a"), { recursive: true });
+    const meta = { candidate: "rev", baseline: "rev", seeds: 3, parallel: 2, source: "--races", limit: null, benchScope: "all", failedRaces: ["b"] };
+    writeFileSync(path.join(out, "testport-meta.json"), JSON.stringify(meta, null, 2));
+    writeFileSync(path.join(out, "races", "a", "loeb-2026-10-17-08-00.json"), scorecard("a", "rev"));
+    const metaBefore = readFileSync(path.join(out, "testport-meta.json"), "utf8");
+    const { card } = await main(["--report-only", `--out=${out}`, "--no-png"]);
+    assert.equal(card.meta.seeds, 3);
+    assert.deepEqual(card.meta.failedRaces, ["b"]);
+    assert.equal(readFileSync(path.join(out, "testport-meta.json"), "utf8"), metaBefore);
+    assert.match(readFileSync(path.join(out, "testport.md"), "utf8"), /3 seeds pr\. revision/);
+    assert.equal(process.exitCode, 1, "en tidligere fejlet opgave giver stadig exit 1");
+    await assert.rejects(() => main(["--candidate=x", "--baseline=y", `--out=${path.join(root, "offentlig")}`, "--no-png"]), /balance-internals/);
+    await assert.rejects(() => main(["--candidate=rev", "--baseline=rev", "--seeds=3", "--bench-scope=gate", `--out=${out}`, "--no-png"]), /anden koersel/);
+  } finally {
+    process.exitCode = prevExit;
     rmSync(root, { recursive: true, force: true });
   }
 });

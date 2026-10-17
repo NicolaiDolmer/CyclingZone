@@ -211,30 +211,45 @@ export function latestDryRunJson(dir) {
   return path.join(dir, files[files.length - 1]);
 }
 
-/** Saml kortet fra en out-mappe. */
-export function collectCard({ outDir, baseline, candidate, meta }) {
+/**
+ * Hard rule 17: maalte tal og loebsdata maa kun skrives under en mappe der
+ * hedder balance-internals (gitignoreret i repoet, privat i OneDrive-context).
+ */
+export function assertPrivateOutDir(dir) {
+  const segments = path.resolve(dir).split(/[\\/]+/);
+  if (!segments.includes("balance-internals")) throw new Error(`--out skal ligge under en balance-internals/-mappe (hard rule 17): ${dir}`);
+  return dir;
+}
+
+/**
+ * Saml kortet fra en out-mappe. De forventede loeb er ids.txt (hvis den findes);
+ * et forventet loeb uden et laesbart scorecard er en FEJL paa kortet
+ * (`missingScorecards`), aldrig et stille mindre datasaet.
+ */
+export function collectCard({ outDir, baseline, candidate, meta, benchScope = meta?.benchScope ?? "all" }) {
   const racesDir = path.join(outDir, "races");
+  const idsFile = path.join(outDir, "ids.txt");
+  const expected = existsSync(idsFile) ? parseIdsText(readFileSync(idsFile, "utf8")) : [];
+  const present = existsSync(racesDir) ? readdirSync(racesDir).sort() : [];
   const raceResults = [];
-  const unreadable = [];
-  if (existsSync(racesDir)) {
-    for (const id of readdirSync(racesDir).sort()) {
-      const file = latestDryRunJson(path.join(racesDir, id));
-      if (!file) continue;
-      try {
-        const rr = raceResultFromDryRun(JSON.parse(readFileSync(file, "utf8")));
-        if (rr) raceResults.push(rr);
-      } catch (err) {
-        unreadable.push(`${id} (${err.message})`);
-      }
+  const missingScorecards = [];
+  for (const id of [...new Set([...expected, ...present])]) {
+    const file = latestDryRunJson(path.join(racesDir, id));
+    if (!file) { missingScorecards.push(`${id} (intet scorecard)`); continue; }
+    try {
+      const rr = raceResultFromDryRun(JSON.parse(readFileSync(file, "utf8")));
+      if (rr) raceResults.push(rr);
+      else missingScorecards.push(`${id} (tomt scorecard)`);
+    } catch (err) {
+      missingScorecards.push(`${id} (${err.message})`);
     }
   }
   const benchByRevision = {};
   for (const revision of [...new Set([baseline, candidate])]) {
-    const dir = path.join(outDir, "bench", revision);
-    const file = existsSync(dir) ? readdirSync(dir).find((f) => /^motor-bench-.*\.json$/.test(f)) : null;
-    if (file) benchByRevision[revision] = benchView(JSON.parse(readFileSync(path.join(dir, file), "utf8")));
+    const file = path.join(outDir, "bench", revision, `motor-bench-${benchScope}.json`);
+    if (existsSync(file)) benchByRevision[revision] = benchView(JSON.parse(readFileSync(file, "utf8")));
   }
-  return buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, unreadable } });
+  return buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, missingScorecards } });
 }
 
 /** PNG af kortets overblik via Playwright fra frontend/node_modules. Best-effort. */
@@ -259,10 +274,10 @@ async function benchWorker(opts) {
   const { buildS5BenchRaces, runS5MotorBench, summarizeS5MotorBench, renderS5MotorBenchMarkdown, loadWinnerThresholds, S5_MOTOR_BENCH_CONFIG } = await import("./s5MotorBench.mjs");
   const { loadS5Benchmark } = await import("../../lib/s5BenchmarkGate.js");
   const config = { ...S5_MOTOR_BENCH_CONFIG, revision: opts.revision };
+  const dir = assertPrivateOutDir(abs(opts.out));
   const t0 = performance.now();
   const rows = await runS5MotorBench({ races: buildS5BenchRaces({ scope: opts.benchScope }), revision: opts.revision });
   const summary = summarizeS5MotorBench(rows, loadS5Benchmark());
-  const dir = abs(opts.out);
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, `motor-bench-${opts.benchScope}.json`), JSON.stringify({ config, scope: opts.benchScope, summary, rows }, null, 2));
   writeFileSync(path.join(dir, `motor-bench-${opts.benchScope}.md`), renderS5MotorBenchMarkdown(summary, { scope: opts.benchScope, config, thresholds: loadWinnerThresholds() }));
@@ -281,22 +296,24 @@ async function defaultBaseline() {
 export async function main(argv = process.argv.slice(2)) {
   const opts = parseArgs(argv, { defaultBaseline: await defaultBaseline() });
   if (opts.benchWorker) return benchWorker(opts);
-  const outDir = abs(opts.out);
-  mkdirSync(outDir, { recursive: true });
+  const outDir = assertPrivateOutDir(abs(opts.out));
   const metaFile = path.join(outDir, "testport-meta.json");
   const prev = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, "utf8")) : null;
   if (opts.reportOnly) {
+    // Kortet samles igen med koerslens EGNE parametre; meta-filen roeres ikke.
     if (!prev) throw new Error(`--report-only: ${metaFile} findes ikke`);
-    opts.candidate ??= prev.candidate;
-    opts.baseline = argv.some((a) => a.startsWith("--baseline=")) ? opts.baseline : prev.baseline;
-  } else if (prev && (prev.candidate !== opts.candidate || prev.baseline !== opts.baseline || prev.seeds !== opts.seeds)) {
-    throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds). Brug en ny --out.`);
+    const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: { ...prev, generatedAt: new Date().toISOString() } });
+    return writeCard({ card, outDir, png: opts.png, failed: prev.failedRaces ?? [] });
   }
+  if (prev && (prev.candidate !== opts.candidate || prev.baseline !== opts.baseline || prev.seeds !== opts.seeds || (prev.benchScope ?? "all") !== opts.benchScope)) {
+    throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds, bench ${prev.benchScope}). Brug en ny --out.`);
+  }
+  mkdirSync(outDir, { recursive: true });
 
   let source = prev?.source ?? null;
   let raceIds = [];
   const fromDir = opts.fromDir ? abs(opts.fromDir) : null;
-  if (!opts.reportOnly && !opts.benchOnly) {
+  if (!opts.benchOnly) {
     if (opts.raceIds) { raceIds = opts.raceIds; source = "--races"; }
     else if (opts.idsFile) { raceIds = parseIdsText(readFileSync(abs(opts.idsFile), "utf8")); source = `--ids-file ${path.basename(opts.idsFile)}`; }
     else if (fromDir) { raceIds = raceIdsFromDir(fromDir); source = `--from-dir ${path.basename(fromDir)}`; }
@@ -307,24 +324,23 @@ export async function main(argv = process.argv.slice(2)) {
   const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
-  let failed = prev?.failedRaces ?? [];
-  if (!opts.reportOnly) {
-    const tasks = planTasks({ raceIds, opts, outDir, fromDir });
-    const todo = tasks.filter((t) => !t.done);
-    console.log(`${tasks.length} opgaver (${tasks.length - todo.length} allerede faerdige), ${opts.parallel} ad gangen: ${opts.baseline} -> ${opts.candidate}, ${opts.seeds} seeds`);
-    const res = await runPool(todo, opts.parallel, runChild, {
-      onDone: (t, code, p) => console.log(`[${p.ok + p.failed}/${p.total}] ${t.id}: ${code === 0 ? "ok" : `FEJL (exit ${code}, se ${path.relative(REPO_ROOT, path.join(t.dir, "log.txt"))})`}`),
-    });
-    failed = res.failed;
-    meta.failedRaces = failed;
-    writeFileSync(metaFile, JSON.stringify(meta, null, 2));
-  }
+  const tasks = planTasks({ raceIds, opts, outDir, fromDir });
+  const todo = tasks.filter((t) => !t.done);
+  console.log(`${tasks.length} opgaver (${tasks.length - todo.length} allerede faerdige), ${opts.parallel} ad gangen: ${opts.baseline} -> ${opts.candidate}, ${opts.seeds} seeds`);
+  const res = await runPool(todo, opts.parallel, runChild, {
+    onDone: (t, code, p) => console.log(`[${p.ok + p.failed}/${p.total}] ${t.id}: ${code === 0 ? "ok" : `FEJL (exit ${code}, se ${path.relative(REPO_ROOT, path.join(t.dir, "log.txt"))})`}`),
+  });
+  meta.failedRaces = res.failed;
+  writeFileSync(metaFile, JSON.stringify(meta, null, 2));
+  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: new Date().toISOString() } });
+  return writeCard({ card, outDir, png: opts.png, failed: res.failed });
+}
 
-  const generatedAt = new Date().toISOString();
-  const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, failedRaces: failed, generatedAt } });
+/** Skriv kortet (md + json + evt. png). Fejlede opgaver eller manglende scorecards = exit 1. */
+async function writeCard({ card, outDir, png, failed }) {
   writeFileSync(path.join(outDir, "testport.json"), JSON.stringify(card, null, 2));
   writeFileSync(path.join(outDir, "testport.md"), renderTestportMarkdown(card));
-  if (opts.png) {
+  if (png) {
     try {
       const why = await renderPng(renderTestportHtml(card), path.join(outDir, "testport.png"));
       if (why) console.warn(`PNG sprunget over: ${why}`);
@@ -332,8 +348,9 @@ export async function main(argv = process.argv.slice(2)) {
       console.warn(`PNG sprunget over: ${err.message}`);
     }
   }
-  console.log(`Kort: ${path.join(outDir, "testport.md")} (+ .json${opts.png ? ", .png" : ""}) · ${card.races} loeb${failed.length ? ` · ${failed.length} FEJLEDE` : ""}`);
-  if (failed.length) process.exitCode = 1;
+  const missing = card.meta?.missingScorecards ?? [];
+  console.log(`Kort: ${path.join(outDir, "testport.md")} (+ .json${png ? ", .png" : ""}) · ${card.races} loeb${failed.length ? ` · ${failed.length} opgaver FEJLEDE` : ""}${missing.length ? ` · ${missing.length} scorecards mangler` : ""}`);
+  if (failed.length || missing.length) process.exitCode = 1;
   return { card, outDir, failed };
 }
 
