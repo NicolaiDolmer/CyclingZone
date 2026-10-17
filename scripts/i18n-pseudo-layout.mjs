@@ -252,6 +252,11 @@ async function measurePage(context, target, mode, vpName) {
     if (mode === "baseline" && decorated) throw new Error("baseline indeholder pseudo-pynt");
 
     const result = await page.evaluate(measureLayout, { maxFindings: 400 });
+    if (opts.shots && mode === "pseudo" && vpName === "mobile") {
+      // Viewport-billedet viser den faste bundnavigation paa sin rigtige plads
+      // (fullPage-billedet lægger den midt i siden).
+      await page.screenshot({ path: join(OUT, `${target.name}-${vpName}-${mode}-viewport.png`) });
+    }
     if (opts.shots && (mode === "pseudo" || process.env.I18N_PSEUDO_ALL_SHOTS === "1")) {
       await page.screenshot({ path: join(OUT, `${target.name}-${vpName}-${mode}.png`), fullPage: true });
     }
