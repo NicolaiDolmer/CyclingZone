@@ -112,3 +112,11 @@ test("injektions-token kan ikke åbne en ny or-betingelse", () => {
   // Ingen parentes i den producerede streng (kun de escapede punktummer fra "id.gt.0").
   assert.ok(!/[()]/.test(q._calls[0]));
 });
+
+test("#5941 (Codex): ikke-ASCII-bogstaver er en del af ordet (ß, kyrillisk)", () => {
+  assert.equal(riderNameMatches("Felix Großschartner", "schartner"), false);
+  assert.equal(riderNameMatches("Felix Großschartner", "gross"), false, "ß foldes ikke til ss; praefiks kraever ß");
+  assert.equal(riderNameMatches("Felix Großschartner", "groß"), true);
+  assert.equal(riderNameMatches("Иван Петров", "етров"), false);
+  assert.equal(riderNameMatches("Иван Петров", "Пет"), true);
+});

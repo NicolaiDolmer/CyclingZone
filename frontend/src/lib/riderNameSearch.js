@@ -93,7 +93,8 @@ export function riderNameMatches(fullName, q) {
   const tokens = nameSearchTokens(q).map(foldForSearch);
   if (tokens.length === 0) return true;
   const name = foldForSearch(fullName);
-  const isWordStart = (i) => i === 0 || !/[a-z0-9]/.test(name[i - 1]);
+  // Unicode-bevidst (ß, kyrillisk, græsk er bogstaver), samme som Postgres \m.
+  const isWordStart = (i) => i === 0 || !/[\p{L}\p{N}]/u.test(name[i - 1]);
   // Token skal starte ved et ord-start i det intakte navn (bevarer bindestreg/apostrof i token).
   return tokens.every((t) => {
     for (let i = name.indexOf(t); i !== -1; i = name.indexOf(t, i + 1)) {
