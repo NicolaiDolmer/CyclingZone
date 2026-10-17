@@ -24,6 +24,7 @@ function makeMeetingSupabase({
   team = { id: "t1", balance: 0, sponsor_income: 100, team_dna_key: null },
   boardProfiles = [],
   milestones = [],
+  seasons = [],
 } = {}) {
   const state = { mandates: [...mandates], relations: [...relations], boardProfiles: [...boardProfiles], events: [], milestones: milestones.map((m) => ({ ...m })) };
 
@@ -75,8 +76,18 @@ function makeMeetingSupabase({
       if (table === "seasons") {
         // buildBoardRoomPayload henter (a) den AKTIVE sæson og (b) hele
         // sæson-listen (til sinceSeason) — begge tomme/no-op er fint her.
-        const chain = { eq: () => chain, order: () => ({ error: null, data: [] }), maybeSingle: async () => ({ data: null, error: null }) };
-        return { select: () => chain };
+        // #6773 · signMandate slår mandatets sæson op på id (isMandateSeasonEnded);
+        // kun den id-baserede form matcher `seasons`-fixturen, resten er no-op.
+        const select = () => {
+          let byId = null;
+          const chain = {
+            eq(col, value) { if (col === "id") byId = value; return chain; },
+            order: () => ({ error: null, data: [] }),
+            maybeSingle: async () => ({ data: byId ? (seasons.find((s) => s.id === byId) ?? null) : null, error: null }),
+          };
+          return chain;
+        };
+        return { select };
       }
       if (table === "loans") {
         // .select("id", { count: "exact", head: true }).eq(...).eq(...) — awaitet direkte.
@@ -292,6 +303,19 @@ test("signMandate: status hverken proposed eller active → MandateSignConflictE
     () => signMandate(supabase, { teamId: "t1", mandateId: "m1" }),
     (err) => err instanceof MandateSignConflictError
   );
+});
+
+test("#6773 signMandate: forslag for en AFSLUTTET sæson kan ikke underskrives (forbliver proposed)", async () => {
+  const supabase = makeMeetingSupabase({
+    seasons: [{ id: "s3", number: 3, status: "completed" }],
+    mandates: [{ id: "m1", team_id: "t1", season_id: "s3", season_number: 3, status: "proposed", focus: "balanced", goals: [] }],
+  });
+  await assert.rejects(
+    () => signMandate(supabase, { teamId: "t1", mandateId: "m1" }),
+    (err) => err instanceof MandateSignConflictError && err.errorCode === "board_mandate_season_ended"
+  );
+  assert.equal(supabase._state.mandates[0].status, "proposed");
+  assert.equal(supabase._state.mandates[0].signed_at, undefined);
 });
 
 test("signMandate: budget-overskridelse propagerer MandateAdjustmentBudgetError", async () => {

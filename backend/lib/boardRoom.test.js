@@ -150,6 +150,37 @@ test("tomme skygge-tabeller: enabled:true, mandate:null, vision:null, tom minute
   assert.deepEqual(payload.confidence.consequence, { active: false, lineKey: null, lineParams: {} });
 });
 
+test("#6773 to aktive mandater (S3+S4): Boardroom viser den AKTIVE sæsons mandat, også når S3 er underskrevet senere", async () => {
+  const tables = baseTables({
+    seasons: [
+      { id: "s3", number: 3, status: "completed", start_date: "2026-07-31T00:00:00Z" },
+      { id: "s4", number: 4, status: "active", start_date: "2026-09-27T00:00:00Z" },
+    ],
+    board_mandates: [
+      { id: "mand-s3", team_id: TEAM_ID, season_id: "s3", season_number: 3, status: "active", signed_at: "2026-10-03T08:00:00Z", goals: [] },
+      { id: "mand-s4", team_id: TEAM_ID, season_id: "s4", season_number: 4, status: "active", signed_at: "2026-09-29T08:00:00Z", goals: [] },
+    ],
+  });
+  const payload = await buildBoardRoomPayload({ supabase: makeSupabase(tables), teamId: TEAM_ID });
+  assert.ok(payload.mandate);
+  assert.equal(payload.mandate.seasonNumber, 4);
+  assert.equal(payload.mandate.signedAt, "2026-09-29T08:00:00Z");
+});
+
+test("#6773 kun et gammelt S3-mandat aktivt i S4: Boardroom viser intet aktuelt mandat frem for det forældede", async () => {
+  const tables = baseTables({
+    seasons: [
+      { id: "s3", number: 3, status: "completed", start_date: "2026-07-31T00:00:00Z" },
+      { id: "s4", number: 4, status: "active", start_date: "2026-09-27T00:00:00Z" },
+    ],
+    board_mandates: [
+      { id: "mand-s3", team_id: TEAM_ID, season_id: "s3", season_number: 3, status: "active", signed_at: "2026-10-03T08:00:00Z", goals: [] },
+    ],
+  });
+  const payload = await buildBoardRoomPayload({ supabase: makeSupabase(tables), teamId: TEAM_ID });
+  assert.equal(payload.mandate, null);
+});
+
 test("mandate med mål der IKKE har owner_archetype_key persisteret falder tilbage til kategori-alignment", async () => {
   const tables = baseTables({
     board_relations: [{
