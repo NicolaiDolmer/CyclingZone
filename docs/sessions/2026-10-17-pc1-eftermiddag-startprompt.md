@@ -24,6 +24,7 @@ Udfordr status quo: spørg hele tiden "hvad ville et spil i verdensklasse gøre 
 - Mindst 30 lukkede eller done-flippede backlog-issues.
 - Et UX-kort med faner/klik-forbedringer til mig.
 - Idébanken har sine top 5.
+- Sprogfundamentet (paritets-gate, ordliste, Intl-formatering, layout-robusthed) er bygget; fr/es/nl er oversat som skjulte beta-sprog, hvis tiden rækker.
 
 ## Rammer (ejer-godkendt 17/10)
 
@@ -225,6 +226,43 @@ Tænk stort om de svageste områder: motorens forudsigelighed, nye spilleres fø
 - GitHub
 
 Hvert forslag: problem, løsning, værdi for spillerne/mig/driften ved 10x, omkostning, anbefalet dag. Send de 5 bedste som ét kort med billeder.
+
+## 10. Flere sprog: verdensklasse og langsigtet (ejer-godkendt 17/10)
+
+Tag dette, når de andre spor er i gang eller venter på mig, eller når du er i tvivl om en anden opgave. Fundamentet først, så oversættelserne.
+
+**Ejer-beslutninger 17/10**
+- **Sprog:** fransk (`fr`), spansk (`es`) og hollandsk (`nl`, neutral formulering, der også passer i Flandern).
+- **Udgivelse:** skjult indtil en sprogkaptajn har gennemgået sproget (regel #4110). Synlig kun for mig og beta-testere som "beta"-sprog i sprogvælgeren.
+- **Tone:** uformel tiltale (fr "tu", es "tú", nl "je/jij") i alle nye sprog. Skrives som regel i `docs/TONE_OF_VOICE.md` pr. sprog.
+
+**Udgangspunkt (tjek først hvad der findes)**
+- Pipelinen `scripts/i18n-translate-delta.mjs` (#4733) oversætter kun nye eller ændrede nøgler og bevarer kaptajnens rettelser via `frontend/i18n-state.json` (`machine`/`reviewed`).
+- 15 `i18n-check-*`-gates.
+- Pseudo-locale `en-XA`.
+- Målingen 13/10 (#6586/#6588, rapport `docs/i18n/2026-10-13-6586-sprogtest-sonnet.md`): Haiku til UI-tekst og Sonnet til help/FAQ. Oversættelse er billig; kvalitetssikringen er omkostningen.
+
+**Fundament (byg før oversættelse, merges efter regel 35 når der ikke er synlig UI-ændring)**
+1. **Gate for nøgle-paritet (#6597):** et sprog kan ikke registreres i `frontend/src/i18n/languages.js`, før alle namespaces har præcis samme nøglesæt som `en` (0 manglende, 0 ekstra), med ICU-pladsholdere, plural-former og HTML-tags 1:1.
+2. **Ordliste:** fagtermer pr. sprog i `docs/i18n/GLOSSARY.md` (peloton, udbrud, klassement, etape, enkeltstart, holdkaptajn, auktion, trup, akademi, formtop m.fl.). Ryttere, hold og løbsnavne oversættes aldrig.
+3. **Sprog-bevidst formatering overalt:** tal, valuta, datoer, tider og afstande via `Intl` pr. sprog. Find og ret hårdkodede formater; tilføj en gate mod nye.
+4. **Layout-robusthed:** kør hele appen i pseudo-locale (`en-XA`, +30-40 % længde) på desktop 1440 og mobil 375. Ret alt der klipper eller bryder (målingen så fransk bundnavigation tæt på at klippe). Ét samlet før/efter-kort; UI-ændringer venter på mit go.
+5. **Sprog uden for frontenden:** backend-spillerstrenge, notifikationer, push og e-mails (Supabase/Resend-skabeloner) ad samme pipeline. Gate mod nye hårdkodede spillerstrenge (`i18n-check-backend-player-strings`).
+6. **Sprogvælger og registrering:**
+   - Beta-sprog synlige kun for ejer og beta-testere (eksisterende beta-adgang).
+   - Fallback til engelsk pr. nøgle, aldrig en rå nøgle.
+   - Lazy-load pr. sprog, så bundlen ikke vokser for EN/DA-spillere (`bundle-budget.json`).
+7. **Kaptajn-værktøj, kun forslag:** hvordan en sprogkaptajn gennemgår og retter (fx eksport/import af `machine`-nøgler eller en enkel review-side), så `reviewed` bliver sandheden. Skriv det i idébanken; byg kun med mit ja.
+8. **SEO og marketing, kun forslag:** `hreflang`, oversatte marketing-sider og lokaliserede butikstekster til når sprogene åbnes.
+
+**Oversættelse (når 1-6 er grønne)**
+- Kør delta-pipelinen for `fr`, `es`, `nl` på alle namespaces. Haiku til UI og Sonnet til help/FAQ og længere tekst. Ordlisten og tone-reglen ligger i hver brief.
+- Kvalitetssikring pr. sprog:
+  - alle gates grønne
+  - stikprøve på 30 strenge pr. sprog side om side med EN (tone, termer, længde)
+  - skærmbilleder af 5 nøglesider på mobil
+- Alt står som `machine`, indtil en kaptajn har set det. Ingen spiller uden beta-adgang ser sprogene.
+- Rapport til mig: dækning, fejlfund, pris/tid og forslag til at finde en sprogkaptajn pr. sprog (Discord, spillere fra landene).
 
 ## Close-out (før du stopper, også ved >20 timer)
 
