@@ -29,16 +29,3 @@ export function buttonClass({
     .filter(Boolean)
     .join(" ");
 }
-
-// Porteret fra fieldStyles.js — kun input-varianten waitlist-formen bruger.
-const CONTROL_BASE =
-  "w-full rounded-cz border bg-cz-card text-cz-1 placeholder:text-cz-3 " +
-  "transition-colors duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed " +
-  "px-3 py-2 text-sm";
-
-export function controlClass({ error = false }: { error?: boolean } = {}) {
-  return [
-    CONTROL_BASE,
-    error ? "border-cz-danger focus:border-cz-danger" : "border-cz-border focus:border-cz-3",
-  ].join(" ");
-}
