@@ -1,0 +1,532 @@
+{
+  "loadError": "Het dashboard kon niet worden geladen. Probeer het opnieuw.",
+  "offlineError": "De spelserver is niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
+  "retry": "Probeer opnieuw",
+  "firstRace": {
+    "eyebrow": "Je eerste koers",
+    "titleUpcoming": "{race} start {when}",
+    "titleSoon": "{race} komt eraan",
+    "titleStarted": "{race} is bezig",
+    "titlePause": "Er is nu geen koers om voor te kiezen",
+    "when": {
+      "today": "vandaag om {time}",
+      "tomorrow": "morgen om {time}",
+      "date": "op {day} om {time}"
+    },
+    "at": {
+      "today": "Vandaag {time}",
+      "tomorrow": "Morgen {time}",
+      "date": "{day} {time}"
+    },
+    "stages": "{count, plural, one {# etappe} other {# etappes}}",
+    "oneDay": "Eendagskoers",
+    "division": "je renners koersen in Divisie {division}",
+    "now": "Nu",
+    "nowAssistant": "Kies je renners en kopman. Als je het overslaat, kiest je assistent voor je.",
+    "nowPick": "Kies je renners en kopman.",
+    "nowSaved": "Je opstelling is opgeslagen. Je kunt hem wijzigen tot de koers start.",
+    "stageRaced": "Etappe {number} is gereden.",
+    "oneDayRaced": "De koers is bezig.",
+    "resultHere": "Je uitslag staat hier.",
+    "resultMail": "Je uitslag staat hier en wordt je gemaild.",
+    "takesAbout": "Duurt ongeveer 2 minuten",
+    "nextLabel": "Volgende",
+    "pauseSeason": "Het volgende seizoen begint op {day}. Je eerste koers verschijnt hier.",
+    "pauseUnknown": "Je eerste koers verschijnt hier zodra hij in de kalender staat.",
+    "openCalendar": "De koerskalender openen",
+    "viewRace": "De koers bekijken"
+  },
+  "todayStages": {
+    "title": "Etappes van vandaag",
+    "winner": "Winnaar: {name}",
+    "standing": "#{rank} van {total} in het algemeen klassement",
+    "standingPending": "Positie in het algemeen klassement nog niet vastgesteld",
+    "entries": "{count, plural, one {# renner ingeschreven} other {# renners ingeschreven}}"
+  },
+  "header": {
+    "subtitle": "Divisie {division} · {count, plural, one {1 renner} other {# renners}}",
+    "incoming": "+{count} erbij",
+    "outgoing": "−{count} eraf",
+    "lockedInBids": "{value} CZ$ vast in biedingen"
+  },
+  "nextActions": {
+    "title": "Volgende stap",
+    "loading": "Kijken wat er van je nodig is…",
+    "allClear": "Je bent helemaal bij. Op dit moment vraagt niets om actie van jou.",
+    "transferOffers": "{count, plural, one {1 transferaanbieding wacht op je beslissing} other {# transferaanbiedingen wachten op je beslissing}}",
+    "swapOffers": "{count, plural, one {1 ruilvoorstel wacht op je beslissing} other {# ruilvoorstellen wachten op je beslissing}}",
+    "urgentAuctions": "{count, plural, one {1 veiling eindigt binnen het uur} other {# veilingen eindigen binnen het uur}}",
+    "squadSelectionMissing": "Selectie ontbreekt voor {race}",
+    "notTrainedToday": "Je hebt vandaag niet getraind",
+    "boardPlanMissing": "Nog geen bestuursplan onderhandeld"
+  },
+  "seasonStart": {
+    "title": "Seizoen {number}: aan de slag",
+    "dismissAria": "De gids voor de seizoensstart sluiten",
+    "done": "Klaar",
+    "progress": "{done} van {total} beslissingen genomen",
+    "items": {
+      "squad": {
+        "title": "Bouw je selectie",
+        "desc": "De meeste teams beginnen een seizoen met te weinig renners. Bied in de live veilingen om de gaten te vullen."
+      },
+      "training": {
+        "title": "Stel het trainingsplan in",
+        "desc": "Trainingsplannen horen bij één seizoen, dus het plan van vorig seizoen geldt niet meer."
+      },
+      "board": {
+        "title": "Teken je mandaat",
+        "desc": "De jaarvergadering is open. Beantwoord elk doel en teken, anders tekent het bestuur voor je als de deadline verstrijkt."
+      },
+      "boardLegacy": {
+        "title": "Onderhandel met het bestuur",
+        "desc": "Je nieuwe plan wacht op je. Zolang je er niet mee instemt, staan de doelen van het seizoen niet vast."
+      },
+      "academy": {
+        "title": "Beslis over academieafgestudeerden",
+        "desc": "Promoveer, verkoop of geef renners vrij die 21 zijn geworden. Na 7 dagen promoveert de motor ze als je ruimte en geld hebt, anders verkoopt hij ze."
+      }
+    }
+  },
+  "seasonWrap": {
+    "title": "Seizoen {number} afgerond",
+    "dismissAria": "De seizoenskaart sluiten",
+    "movement": {
+      "promoted": "Gepromoveerd",
+      "relegated": "Gedegradeerd",
+      "maintained": "Divisie {division} behouden"
+    },
+    "rankLine": "Je eindigde als #{rank} van {size} in Divisie {division}",
+    "boardConfidence": "Vertrouwen van het bestuur {percent}%",
+    "statsLine": "{points} punten · {wins, plural, one {# zege} other {# zeges}}",
+    "cta": "Bekijk je seizoensoverzicht",
+    "goal": {
+      "promoted": "Seizoen {nextNumber} begint in een nieuwe divisie. Eerste doel: blijf uit de degradatiezone.",
+      "relegated": "Seizoen {nextNumber} begint nu. Eindig in de top twee om direct terug te keren.",
+      "heldTop": "Seizoen {nextNumber} begint nu. Verdedig je positie bovenin Divisie {division}.",
+      "heldBottom": "Seizoen {nextNumber} begint nu. Hier is geen degradatiegevaar, dus klim op de ranglijst.",
+      "heldMid": "Seizoen {nextNumber} begint nu. Ga voor een top-twee-plaats en promotie."
+    }
+  },
+  "seasonSignup": {
+    "titleParked": "Je team is geparkeerd",
+    "titleDormant": "Hou je plek vast voor seizoen {number}",
+    "bodyParkedComeback": "Doordat je een tijd niet bent ingelogd, is je team uit de competitie gehaald. Kom nu terug en je koerst dit seizoen weer mee, geplaatst op basis van je Global Rank.",
+    "bodyDormant": "Je bent een tijdje weg geweest. Meld je nu aan om je plek voor seizoen {number} vast te leggen.",
+    "cta": "Aanmelden voor volgend seizoen",
+    "ctaComeback": "Terug naar de competitie",
+    "confirmed": "Je bent aangemeld voor seizoen {number}",
+    "comebackTitle": "Welkom terug",
+    "comebackConfirmed": "Je team zit weer in Divisie {division} en koerst dit seizoen weer mee.",
+    "comebackError": "Je team kon niet worden teruggehaald. Probeer het opnieuw.",
+    "error": "Aanmelden is niet gelukt. Probeer het opnieuw."
+  },
+  "squadWarning": {
+    "over": "Selectie te groot. Max. {limit} in Divisie {division}. Verkoop {count, plural, one {1 renner} other {# renners}}.",
+    "under": "Selectie te klein. Min. {limit} in Divisie {division}. Koop {count, plural, one {nog 1 renner} other {nog # renners}}.",
+    "ctaMyTeam": "Mijn team"
+  },
+  "seniorStartWarning": {
+    "message": "Seniorenselectie: {count} van {min}. Je hebt {missing, plural, one {nog 1 renner} other {nog # renners}} nodig om een koers te starten.",
+    "cta": "Vind een renner"
+  },
+  "contractWarning": {
+    "message": "{count, plural, one {Het contract van 1 renner loopt af} other {De contracten van # renners lopen af}} bij de seizoenswissel. Verleng vanaf het profiel van de renner om hem te houden, anders gaat hij transfervrij weg.",
+    "cta": "Contracten bekijken",
+    "letExpire": "Ik begrijp het, laat het aflopen",
+    "dismissAria": "Voor dit seizoen sluiten"
+  },
+  "discordNudge": {
+    "title": "Ontvang DM's bij overboden, transferaanbiedingen en signalen van het bestuur",
+    "subtitle": "Voeg je Discord-ID toe onder Profiel. Zo blijf je op de hoogte, ook als de app niet openstaat.",
+    "cta": "Toevoegen",
+    "dismissAria": "Verbergen"
+  },
+  "seasonBanner": {
+    "title": "Seizoen {number}",
+    "status": {
+      "active": "Actief",
+      "upcoming": "Komend",
+      "completed": "Afgerond"
+    },
+    "ended": "Het seizoen is afgelopen",
+    "daysLeftSuffix": "dagen tot het seizoen eindigt",
+    "stages": "{completed}/{total} etappes",
+    "stagesLive": "{count} live",
+    "viewCalendar": "Kalender bekijken"
+  },
+  "cards": {
+    "myResult": {
+      "title": "Hoe je team het deed",
+      "linkFull": "Volledige uitslag",
+      "newBadge": "Nieuw",
+      "oneDay": "Eendagskoers",
+      "stagesCount": "{count} etappes",
+      "moreRiders": "+{count, plural, one {# renner meer} other {# renners meer}}",
+      "points": "Punten",
+      "prize": "Prijzengeld",
+      "pointsShort": "{value} pt",
+      "thisRace": "Deze koers",
+      "earlier": "Eerdere koersen",
+      "showAll": "Alle {count} tonen",
+      "showLess": "Minder tonen",
+      "season": "Dit seizoen",
+      "seasonRaces": "{count, plural, one {# koers} other {# koersen}}",
+      "stageWins": "{count, plural, one {# etappezege} other {# etappezeges}}",
+      "empty": "Je renners hebben nog niet gekoerst. De resultaten van je team komen hier na de eerste koers.",
+      "emptyCta": "De koerskalender openen",
+      "firstRaceTitle": "Je eerste koers zit erop",
+      "firstRaceIntro": "Gereden terwijl je weg was. Zo ging het.",
+      "firstRaceIntroAt": "Afgerond om {time} terwijl je weg was. Zo ging het.",
+      "firstRaceCta": "Lees het hele koersverhaal",
+      "firstRaceNext": "Volgende koers: {race}, {count, plural, one {over # dag} other {over # dagen}}",
+      "confettiTitleGc": "Eindklassement gewonnen!",
+      "confettiTitleRace": "Koers gewonnen!",
+      "breakdown": {
+        "show": "Uitsplitsing bekijken",
+        "hide": "Uitsplitsing verbergen",
+        "stage": "Plaatsing in etappe {number}",
+        "teamBonus": "Teambonus",
+        "sponsor": "Sponsoruitbetaling",
+        "sponsorRaceDay": "Inkomsten per koersdag",
+        "sponsorResultBonus": "Resultaatbonus"
+      }
+    },
+    "maidenWin": {
+      "title": "Momenten uit de carrière",
+      "unknownRider": "Je renner",
+      "viewRace": "Koers bekijken",
+      "headline": {
+        "maidenWin": "Eerste zege",
+        "firstPodium": "Eerste podium",
+        "firstJersey": "Eerste trui",
+        "clubMilestoneWin": "Mijlpaal voor de club"
+      },
+      "body": {
+        "maidenWin": "wint zijn eerste profkoers in clubkleuren: {race}",
+        "firstPodium": "haalt zijn eerste podium uit zijn carrière: {race}",
+        "firstJersey": "wint zijn eerste klassementstrui: {race}",
+        "clubMilestoneWin": "bezorgt {team} zege nummer {count}"
+      }
+    },
+    "heroAgony": {
+      "title": "Hero & Agony",
+      "linkFull": "Koers openen",
+      "eyebrow": {
+        "hero": "Held",
+        "agony": "Pijn",
+        "moment": "Moment"
+      },
+      "meta": "{race}, etappe {stage}",
+      "metaOneDay": "{race}",
+      "exportCta": "Delen als afbeelding",
+      "exportedFilenamePrefix": "cycling-zone-hero-agony",
+      "empty": "Nog geen etappemoment. Je eerste koersdag verschijnt hier.",
+      "moments": {
+        "sprint_win": "{rider} won de sprint in de finale.",
+        "close_win": "{rider} won met slechts {seconds, plural, one {# seconde} other {# seconden}} verschil.",
+        "close_win_generic": "{rider} hield stand voor de zege in een nek-aan-nekfinish.",
+        "solo_win": "{rider} reed weg en won alleen aan de kop.",
+        "itt_win": "{rider} reed de snelste tijd van de dag.",
+        "ttt_win": "{rider} leidde de snelste ploeg van de dag naar de finish.",
+        "breakaway_survived": "{rider} hield de ontsnapping vol en won vanuit de kop.",
+        "gc_takeover_won": "{rider} nam de leiding in de koers over van {previousLeader}.",
+        "gc_takeover_lost": "{rider} raakte de leiding in de koers kwijt aan {newLeader}.",
+        "final_gc": "{rider} eindigde als #{rank} in het algemeen klassement.",
+        "favorite_off_day": "{rider} startte de etappe als favoriet vooraf maar eindigde als #{rank}: {reason, select, jour_sans {een slechte dag} incident {een valpartij of materiaalpech} helper_work {een dag werken voor een ploeggenoot} other {geen duidelijke reden}}.",
+        "helper_shift": "{count, plural, one {Eén ploeggenoot gaf} other {# ploeggenoten gaven}} hun eigen kansen op om {captain} naar voren te brengen.",
+        "tag_helper_sacrifice": "{rider} gaf zijn eigen resultaat op, eindigde als #{rank}, om te werken voor {captain}.",
+        "form_peak": "{rider} kwam in topvorm aan de start en leverde.",
+        "tag_perfect_peak": "{rider} won precies in de etappe waarvoor hij piekte.",
+        "tag_peak_day": "{rider} had zijn vorm getimed om te pieken voor deze etappe.",
+        "tag_jour_sans": "{rider} had vandaag gewoon de benen niet.",
+        "tag_crash_ruined": "De etappe van {rider} werd verpest door {kind, select, crash {een valpartij} mechanical {materiaalpech} other {een incident}}.",
+        "incident_abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af na materiaalpech.} injury {{rider} startte niet in de etappe: geblesseerd.} other {{rider} stapte af na een incident.}}",
+        "incident_time_loss": "{rider} verloor {seconds, plural, one {# seconde} other {# seconden}} door {kind, select, crash {een valpartij} mechanical {materiaalpech} other {een incident}}.",
+        "incident_time_loss_generic": "{rider} verloor tijd door {kind, select, crash {een valpartij} mechanical {materiaalpech} other {een incident}}.",
+        "tag_outsider_win": "{rider} won zonder op papier de sterkste renner te zijn.",
+        "tag_aggression_no_cost": "{rider} viel aan en werd gegrepen, maar het kostte niets: een ontsnappingspoging kost nooit extra vermoeidheid of je eigen resultaat.",
+        "tag_saved_effort": "{rider} nam vandaag gas terug en bewaarde iets voor wat nog komt.",
+        "tag_gave_everything": "{rider} hield niets achter, volle inzet tot het einde.",
+        "team_day": "{team} zette vandaag {count} renners in de top 10.",
+        "breakaway_effort": "{rider} zat de hele etappe in de ontsnapping en werd vlak voor de streep gegrepen.",
+        "plain_result": "{rider} kwam als #{rank} over de streep."
+      }
+    },
+    "auctions": {
+      "title": "Actieve veilingen",
+      "linkAll": "Alles bekijken",
+      "empty": "Geen actieve veilingen",
+      "emptyCta": "De veilingmarkt bekijken",
+      "emptyHint": "Veilingen sluiten elke avond om 20:00.",
+      "expired": "Verlopen",
+      "winning": "Winnend",
+      "selling": "Verkopend",
+      "timeLeftHm": "{h}u {m}m",
+      "timeLeftM": "{m}m"
+    },
+    "transfers": {
+      "title": "Transfers en aanbiedingen",
+      "linkAll": "Alles bekijken",
+      "empty": "Geen lopende transfers",
+      "emptyCta": "Renners te koop bekijken",
+      "emptyHint": "De transfermarkt is het hele seizoen open.",
+      "incomingCount": "{count, plural, one {1 binnenkomende transfer} other {# binnenkomende transfers}}",
+      "from": "Van: {name}",
+      "to": "Naar: {name}",
+      "needsAction": "Actie nodig",
+      "active": "Actief"
+    },
+    "races": {
+      "title": "Komende koersen",
+      "linkAll": "Kalender",
+      "empty": "Geen geplande koersen",
+      "emptyCta": "De koerskalender openen",
+      "emptyHint": "Schrijf je team in voor een komende koers vanuit de kalender.",
+      "stages": "{count, plural, one {1 etappe} other {# etappes}}",
+      "oneDay": "Eendagskoers",
+      "scheduled": "Gepland",
+      "live": "Live"
+    },
+    "standings": {
+      "title": "Divisie {division} · Ranglijst",
+      "titlePool": "{label} · Ranglijst",
+      "linkAll": "Volledige ranglijst",
+      "empty": "Nog geen seizoensgegevens",
+      "emptyCta": "De volledige ranglijst bekijken",
+      "emptyHint": "De ranglijst wordt na elke afgeronde koersdag bijgewerkt.",
+      "aiBadge": "AI",
+      "managerRank": "#{rank} onder de managers"
+    },
+    "board": {
+      "title": "Status van het bestuur",
+      "linkAll": "Details",
+      "satisfaction": "Tevredenheid",
+      "focus": "Focus",
+      "budgetMultiplier": "Budgetmultiplicator",
+      "exceeds": "Overtroffen",
+      "exceedsTitle": "Deze categorie scoorde boven 100%. Je hebt de verwachtingen van het bestuur hier overtroffen.",
+      "meetingNudge": {
+        "title": "De jaarvergadering is open",
+        "subtitle": "Je bestuur heeft het mandaat voor volgend seizoen voorgesteld. Pas aan, vraag en teken.",
+        "daysLeft": "{count, plural, one {# dag over voor automatisch tekenen} other {# dagen over voor automatisch tekenen}}",
+        "cta": "Naar de jaarvergadering"
+      }
+    },
+    "recentResults": {
+      "title": "Recente uitslagen",
+      "linkAll": "Alles bekijken",
+      "empty": "Uitslagen verschijnen hier na de eerste koersen",
+      "emptyCta": "De koerskalender openen",
+      "gc": "Winnaar algemeen klassement",
+      "winner": "Winnaar",
+      "stage": "Winnaar etappe {n}",
+      "aiBadge": "AI"
+    },
+    "riderRanking": {
+      "title": "Rennersranglijst",
+      "scopeLabel": "Jouw divisie",
+      "linkAll": "Volledige ranglijst",
+      "empty": "Uitslagen verschijnen hier na de eerste koersen",
+      "emptyCta": "De koerskalender openen",
+      "stageWins": "{count, plural, one {1 etappezege} other {# etappezeges}}",
+      "gcWins": "{count} eindklassement",
+      "classicWins": "{count} klassieker",
+      "points": "{points} pnt",
+      "aiBadge": "AI"
+    }
+  },
+  "customize": {
+    "button": "Aanpassen",
+    "heading": "Modules tonen",
+    "reset": "Standaard herstellen",
+    "modules": {
+      "nextActions": "Volgende stap",
+      "forecast": "Financiële prognose",
+      "myLatestResult": "Hoe je team het deed",
+      "heroAgony": "Hero & Agony",
+      "auctions": "Actieve veilingen",
+      "transfers": "Transfers en aanbiedingen",
+      "races": "Komende koersen",
+      "divStandings": "Ranglijst van de divisie",
+      "board": "Status van het bestuur",
+      "recentResults": "Recente uitslagen",
+      "riderRanking": "Rennersranglijst",
+      "globalRank": "Global Rank",
+      "forumHighlights": "Van het forum"
+    }
+  },
+  "forumHighlights": {
+    "title": "Van het forum",
+    "allThreads": "Alle gesprekken",
+    "emptyTitle": "Niets nieuws sinds je laatste bezoek.",
+    "emptyDescription": "Kijk later terug of start een nieuw gesprek."
+  },
+  "board": {
+    "focus": {
+      "balanced": "Evenwichtig",
+      "youth_development": "Jeugdontwikkeling",
+      "star_signing": "Sterrentransfer"
+    }
+  },
+  "forecast": {
+    "loading": "Prognose berekenen…",
+    "title": "Volgend seizoen · prognose",
+    "subtitle": "Verwachte cashflow op basis van selectie + leningen + sponsor + exploitatiekosten",
+    "tier": {
+      "green": {
+        "label": "Groen",
+        "headline": "Gezonde financiën",
+        "summary": "Verwacht overschot en schuld onder controle. Je kunt offensief spelen."
+      },
+      "yellow": {
+        "label": "Geel",
+        "headline": "Smalle marge",
+        "summary": "Niet veel ruimte. Eén slechte koers of een duur contract kan het doen omslaan."
+      },
+      "red": {
+        "label": "Rood",
+        "headline": "Risico op faillissement",
+        "summary": "Zwaar tekort of schuld vlak onder het plafond. Onderneem nu actie."
+      }
+    },
+    "projectedLabel": "Verwacht netto volgend seizoen",
+    "rangeLine": "Bereik: {low} tot {high} (gebaseerd op de onzekerheid van de prijsschatting)",
+    "columns": {
+      "s2": "Dit seizoen (S{number})",
+      "s3": "Volgend seizoen (S{number})",
+      "toggleAria": "Kies welke seizoenskolom je wilt zien"
+    },
+    "chip": {
+      "signedContracts": "Getekende contracten"
+    },
+    "row": {
+      "sponsorBase": "Sponsor (basis)",
+      "sponsorVariable": "Sponsor (variabel)",
+      "sponsorInSeasonBonus": "Sponsor (bonussen tijdens het seizoen)",
+      "prize": "Prijzengeld",
+      "salary": "Salaris",
+      "upkeep": "Divisieonderhoud",
+      "travelStaff": "Reis & staf",
+      "staffFacilities": "Staf en faciliteiten",
+      "facilityUpkeep": "Faciliteitenonderhoud",
+      "staffSalary": "Stafsalarissen",
+      "loanInterest": "Leningrente",
+      "academyDrift": "Academieonderhoud"
+    },
+    "sponsorDetail": {
+      "contract": "Sponsor van volgend seizoen: {sponsor} · gegarandeerde basis {base}, inkomsten per koersdag daarbovenop",
+      "variable": "Basis {base} + variabel {variable} op basis van de plaats/punten van vorig seizoen",
+      "intro": "Introductieseizoen: variabele sponsor begint vanaf seizoen 2",
+      "fallback": "Terugval: ranglijst van het vorige seizoen ontbreekt",
+      "s2Combined": "Dit seizoen toont het volledige bedrag dat in één betaling is bijgeschreven, basis en prestatiebonus samen. Volgend seizoen splitst beide hieronder.",
+      "inSeasonBonus": "Bonussen voor koersdagen, resultaten, doelen en tekenen die dit seizoen echt zijn verdiend. Niet geprognosticeerd voor volgend seizoen, omdat dat afhangt van resultaten die nog niet zijn gereden."
+    },
+    "prizeDetail": {
+      "realizedFloor": "Mijn schatting is gebaseerd op de prijzen die je team heeft verdiend, plus/min 20%; geen gemeten bereik",
+      "divisionInterval": "Mijn schatting voor je team, plus/min 20%; geen gemeten bereik"
+    },
+    "upkeepDetail": {
+      "perRaceDay": "{rate} per seniorenkoersdag × {days} koersdagen. In rekening gebracht wanneer elke koers wordt afgehandeld, niet bij de seizoensstart.",
+      "byDivision": "Bepaald door je divisie, niet door je selectie"
+    },
+    "salaryDetail": {
+      "productionS3": "Loonsysteem van seizoen 3. Je huidige contracten zijn vergrendeld en ongewijzigd.",
+      "seasonSwitch": "Seizoen {next} berekent bij de overgang elk loon opnieuw op basis van wat de renner levert. Je huidige contracten zijn al getekend, dus het getal van dit seizoen blijft tot dan vastliggen."
+    },
+    "loanInterestDetail": "Rente opgebouwd over de openstaande schuld van je actieve leningen. Wordt bij de lening zelf opgeteld, niet van het netto afgetrokken.",
+    "assumption": "Gaat uit van je huidige selectie, geen transfers en het loonsysteem van seizoen {next}.",
+    "footnote": "Prognose, geen contract. Getallen kunnen veranderen door verkopen, leningen of een nieuw bestuursplan.",
+    "footnoteLink": "Hoe wordt de prognose berekend?",
+    "badge": {
+      "label": "Prognose volgend seizoen"
+    },
+    "horizon": {
+      "label": "Prognosehorizon:",
+      "option": "{count, plural, one {1 seizoen} other {# seizoenen}}",
+      "rangeSuffix": "({from}–{to})"
+    },
+    "multiSeason": {
+      "title": "Seizoen na seizoen (schatting vanaf seizoen {from} ->)",
+      "headers": {
+        "season": "Seizoen",
+        "sponsor": "Sponsor",
+        "prize": "Prijs",
+        "salary": "Salaris",
+        "interest": "Rente",
+        "net": "Netto",
+        "endBalance": "Eindsaldo",
+        "risk": "Risico"
+      },
+      "estimateMark": "~",
+      "estimateTooltip": "Schatting, gaat uit van status quo",
+      "total": "Totaal",
+      "estimateNote": "~ = schatting op basis van een status-quo-aanname (dezelfde selectie, sponsor en 25% aflossing van leningen per seizoen). Rente wordt bij je openstaande schuld opgeteld, niet van het netto afgetrokken."
+    }
+  },
+  "onboardingProgress": {
+    "header": "Aan de slag · {completed}/{total} stappen voltooid",
+    "steps": {
+      "first_bid_placed": "Doe je eerste bod",
+      "first_training_run": "Draai je eerste trainingsdag",
+      "first_squad_selected": "Kies je selectie voor een koers",
+      "board_plan_set": "Onderhandel over een bestuursplan",
+      "board_plan_set_auto": "Je bestuur heeft een plan opgesteld. Neem een kijkje."
+    },
+    "ctas": {
+      "first_bid_placed": "Bekijk veilingen",
+      "first_training_run": "Naar training",
+      "first_squad_selected": "Naar koersen",
+      "board_plan_set": "Ontmoet het bestuur"
+    },
+    "oneClick": {
+      "primaryCta": "De training van deze week draaien",
+      "secondaryCta": "Zelf kiezen",
+      "resultLine": "Week gedraaid: {count, plural, one {# renner getraind} other {# renners getraind}}.",
+      "resultLink": "Bekijk training",
+      "alreadyRun": "Deze week is al gedraaid.",
+      "error": "De training van deze week kon niet worden gedraaid. Probeer het opnieuw."
+    },
+    "tour": "Laat me zien hoe",
+    "dismissAria": "Verbergen"
+  },
+  "onboardingComplete": {
+    "title": "Je bent klaar. De basis zit erop",
+    "body": "Alle vier de startstappen zijn afgevinkt. De volgende fase is je team over meerdere seizoenen opbouwen. Haal de doelen van het bestuur en vecht voor promotie.",
+    "nextLinks": {
+      "board": {
+        "label": "Bestuur",
+        "desc": "Onderhandel parallel over plannen van 1, 3 en 5 jaar"
+      },
+      "help": {
+        "label": "Help en regels",
+        "desc": "Leer hoe de economie, het koersen en de tactiek werken"
+      }
+    },
+    "dismissAria": "Verbergen"
+  },
+  "devTransition": {
+    "title": "De ontwikkelingsweergave is veranderd",
+    "intro": "Je renners zijn niet veranderd. Vaardigheden, ratings en uitslagen zijn precies als gisteren. Wat nieuw is, is wat het getal toont: eerder toonde het profiel een theoretisch plafond. Nu toont het zowel het plafond als waar elke renner met jouw training realistisch uitkomt.",
+    "factAbilitiesTitle": "Vaardigheden en uitslagen",
+    "factAbilitiesSub": "ongewijzigd voor elke renner",
+    "factCeilingsTitle": "Plafonds verhoogd",
+    "factCeilingsSub": "voor {up} van je {total} renners",
+    "factForecastTitle": "Nieuw: verwacht niveau",
+    "factForecastSub": "de prognose die jouw training bijstuurt",
+    "colRider": "Renner",
+    "colRating": "Rating",
+    "colCeilBefore": "Plafond eerder",
+    "colCeilNow": "Plafond nu",
+    "colForecast": "Verwacht niveau (nieuw)",
+    "loweredNote": "Sommige renners zitten bij een paar vaardigheden boven hun nieuwe plafond. Ze houden alles en blijven daar gewoon staan. Geen enkele renner verliest ook maar één punt.",
+    "helpLink": "Hoe ontwikkeling werkt",
+    "dismiss": "Begrepen"
+  },
+  "surveyInvite": {
+    "title": "Help me beslissen wat ik als volgende bouw",
+    "subtitle": "Beoordeel elk idee twee keer. Het duurt ongeveer 5 minuten.",
+    "cta": "Nu beantwoorden",
+    "dismissAria": "De enquêtekaart verbergen"
+  }
+}
