@@ -31,6 +31,10 @@
 //
 // Refs #5177
 
+// #6802: beta-sprog preloades aldrig (en fransk browser skal ikke betale for en
+// skjult bundle).
+import { isBetaLang } from "../src/i18n/languages.js";
+
 export const I18N_LANG_ASSETS_ELEMENT_ID = "cz-i18n-lang-assets";
 
 // Ankeret blokken skal staa foran. Samme streng som i index.html.
@@ -47,7 +51,7 @@ const LAZY_LANG_CHUNK_PREFIX = "i18n-messages-";
  * @param {string} assetsBase base-praefiks, fx "/"
  * @returns {Record<string, string>}
  */
-export function collectLangChunks(bundle, assetsBase = "/") {
+export function collectLangChunks(bundle, assetsBase = "/", isBeta = isBetaLang) {
   const out = {};
   for (const chunk of Object.values(bundle || {})) {
     if (chunk.type !== "chunk") continue;
@@ -56,7 +60,7 @@ export function collectLangChunks(bundle, assetsBase = "/") {
     const lng = name.slice(LAZY_LANG_CHUNK_PREFIX.length);
     // `i18n-messages-en` er den STATISKE engelske chunk — den er allerede
     // modulepreloadet af Vite selv og skal ikke hintes igen.
-    if (!lng || lng === "en") continue;
+    if (!lng || lng === "en" || isBeta(lng)) continue;
     out[lng] = `${assetsBase}${chunk.fileName}`;
   }
   return out;

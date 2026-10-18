@@ -1,0 +1,56 @@
+{
+  "nps": {
+    "question": "Quelle est la probabilité que tu recommandes Cycling Zone à un ami ?",
+    "scaleLow": "Peu probable",
+    "scaleHigh": "Très probable",
+    "reasonLabel": "Quelle en est la raison principale ? (facultatif)",
+    "reasonPlaceholder": "Facultatif : la raison principale, en une ou deux phrases",
+    "submit": "Envoyer",
+    "notNow": "Pas maintenant",
+    "thanks": "Merci. Ça me dit sur quoi travailler ensuite.",
+    "regionAriaLabel": "Demande de retour",
+    "dismissAriaLabel": "Fermer la demande de retour"
+  },
+  "consent": {
+    "title": "J'utilise des données pour améliorer le jeu",
+    "intro": "C'est toi qui décides de ce que je peux mesurer. Tu peux toujours modifier tes choix dans ton profil, sous “Confidentialité”.",
+    "privacyLink": "Lire la politique de confidentialité",
+    "closeAriaLabel": "Fermer sans rien changer",
+    "alwaysOn": "(toujours actif)",
+    "save": "Enregistrer mes choix",
+    "customize": "Personnaliser",
+    "rejectAll": "Nécessaires uniquement",
+    "acceptAll": "Tout accepter",
+    "categories": {
+      "necessary": {
+        "label": "Nécessaires",
+        "desc": "Connexion, session et paramètres de ton compte. Le jeu ne fonctionne pas sans eux."
+      },
+      "analytics": {
+        "label": "Mesure d'audience",
+        "desc": "Je mesure de façon anonyme comment le jeu est utilisé : quels boutons frustrent les joueurs (Microsoft Clarity), d'où viennent les joueurs (Google Analytics) et les pages vues (Vercel Web Analytics), pour pouvoir corriger une mauvaise UX. PostHog compte les pages vues et les étapes clés du jeu sans cookies, et les relie à l'identifiant de ton compte une fois connecté. Refuser la mesure d'audience désactive aussi PostHog."
+      },
+      "marketing": {
+        "label": "Marketing",
+        "desc": "Non utilisé aujourd'hui. Si j'affiche un jour des publicités ou du remarketing, ce ne sera que si tu dis oui ici."
+      },
+      "email_marketing": {
+        "label": "E-mail",
+        "desc": "Des newsletters occasionnelles sur les grandes mises à jour de saison ou les événements. Les e-mails transactionnels (enchère remportée, etc.) ne dépendent pas de ce choix."
+      }
+    }
+  },
+  "releaseUpdate": {
+    "title": "Nouvelle version prête",
+    "action": "Mettre à jour",
+    "regionAriaLabel": "Mise à jour disponible",
+    "unsavedTitle": "Tu as des modifications non enregistrées. Enregistre d'abord, ou mets à jour quand même.",
+    "saveFirst": "Enregistrer d'abord",
+    "updateAnyway": "Mettre à jour quand même"
+  },
+  "opsNotice": {
+    "regionAriaLabel": "État du service",
+    "dismissAriaLabel": "Fermer l'avis",
+    "knownIssuesLink": "Problèmes connus"
+  }
+}

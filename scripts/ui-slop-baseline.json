@@ -169,6 +169,83 @@
       "emoji": 1,
       "arrowglyph": 0
     },
+    "frontend/public/locales/nl/backendMessages.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 6,
+      "arrowglyph": 0
+    },
+    "frontend/public/locales/nl/board.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 2,
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/nl/common.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/nl/help.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 3
+    },
+    "frontend/public/locales/nl/notifications.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 1,
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/nl/profile.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 6
+    },
+    "frontend/public/locales/nl/races.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 1
+    },
+    "frontend/public/locales/nl/rider.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 18,
+      "arrowglyph": 2
+    },
+    "frontend/public/locales/nl/training.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 0,
+      "arrowglyph": 4
+    },
+    "frontend/public/locales/nl/transfers.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 14,
+      "arrowglyph": 8
+    },
+    "frontend/public/locales/nl/watchlist.json": {
+      "hex": 0,
+      "slop": 0,
+      "colour": 0,
+      "emoji": 1,
+      "arrowglyph": 0
+    },
     "frontend/src/components/SetupWizardModal.jsx": {
       "hex": 0,
       "slop": 0,

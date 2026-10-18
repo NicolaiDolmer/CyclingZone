@@ -1,0 +1,70 @@
+{
+  "metaTitle": "Passer à CZ Pro",
+  "title": "Deviens Founder",
+  "subtitle": "Soutiens le développement du jeu et verrouille le statut Founder. Le jeu gratuit reste pleinement compétitif. Pro est un badge et une identité, jamais un avantage.",
+  "monthly": "Mensuel",
+  "semiannual": "6 mois",
+  "monthlyPrice": "6,49 €/mois",
+  "semiannualPrice": "34,99 €",
+  "semiannualNote": "≈ 5,83 €/mois · économise ~10 %",
+  "vatNote": "Tous les prix incluent la TVA danoise de 25 %.",
+  "currencyNote": "Prix en euros. Passe le jeu en danois pour payer en couronnes. La page de paiement elle-même est en danois.",
+  "prorataNote": "Ton premier prélèvement ne couvre que le reste de ce mois, il peut donc être inférieur au prix affiché. Le plein tarif s'applique à partir du 1er.",
+  "cta": "Continuer vers le paiement",
+  "checkoutPaused": "Les achats sont temporairement suspendus le temps que je finalise les conditions de vente et la résiliation en libre-service. Les comptes existants et le jeu gratuit ne sont pas touchés.",
+  "error": "Impossible de lancer le paiement. Réessaie.",
+  "alreadyPro": "Tu es Pro. Merci de soutenir Cycling Zone.",
+  "alreadyFounder": "Tu es Founder. Merci de soutenir Cycling Zone depuis le début.",
+  "founderHeading": "Places Founder",
+  "founderSeatsTaken": "{taken} places Founder prises sur {cap}",
+  "founderSeatsRemaining": "{remaining} places restantes",
+  "founderSeatsFull": "Toutes les places Founder sont prises. Les nouveaux abonnés ont quand même le Pro complet.",
+  "founderExplainer": "Les 50 premiers abonnés payants deviennent Founders. Les Founders gardent un badge Founder permanent, même si l'abonnement s'arrête plus tard.",
+  "fairnessNote": "Jamais de pay-to-win : l'argent achète de la profondeur, du confort et des cosmétiques, jamais un avantage compétitif.",
+  "termsAccept": "J'accepte les <termsLink>Conditions de vente</termsLink> et je consens expressément à ce que CZ Pro soit fourni immédiatement, en reconnaissant que mon droit de rétractation expire ainsi pour la période commencée.",
+  "renewalNote": "L'abonnement se renouvelle automatiquement jusqu'à ce que tu le résilies. Aucun engagement au-delà de la période payée ; résilie à tout moment depuis les paramètres de ton compte.",
+  "choosePlan": "Choisis ta formule",
+  "loadError": {
+    "message": "Je n'ai pas pu charger les détails de ton abonnement. Rien n'a été perdu et ton compte n'est pas touché.",
+    "retry": "Réessayer"
+  },
+  "founderMark": {
+    "label": "Founder",
+    "aria": "Founder n° {n} sur {cap}",
+    "heroLine": "Founder n° {n} sur {cap}"
+  },
+  "gate": {
+    "note": "Pro montre ceci sur toutes les saisons, pas seulement la saison en cours.",
+    "cta": "Voir Pro"
+  },
+  "riderHistory": {
+    "title": "Historique des saisons",
+    "cta": "Voir Pro",
+    "note": "Pro montre chaque aptitude sur toutes les saisons, pas seulement la saison en cours.",
+    "ceilingLegend": "Plafond de l'échelle (99)",
+    "empty": "Aucun historique de saison enregistré pour l'instant.",
+    "errorTitle": "Impossible de charger l'historique des saisons",
+    "statusErrorTitle": "Impossible de vérifier ton statut Pro",
+    "errorBody": "Rien n'a été perdu. Les aptitudes du coureur sont inchangées.",
+    "retry": "Réessayer",
+    "emptyTitle": "Aucune aptitude enregistrée pour l'instant",
+    "checkAgain": "Vérifier à nouveau",
+    "now": "Maintenant"
+  },
+  "savedFilters": {
+    "title": "Filtres enregistrés",
+    "save": "Enregistrer le filtre actuel",
+    "namePlaceholder": "Nomme ce filtre",
+    "saveConfirm": "Enregistrer",
+    "cancel": "Annuler",
+    "remove": "Retirer",
+    "empty": "Aucun filtre enregistré pour l'instant.",
+    "note": "Pro te permet d'enregistrer des filtres par nom et d'y revenir en un clic.",
+    "cta": "Voir Pro",
+    "removeNamed": "Retirer {name}",
+    "duplicate": "Tu as déjà un filtre portant ce nom.",
+    "limit": "Tu as enregistré {max} filtres, le maximum. Retires-en un pour en enregistrer un nouveau.",
+    "statusError": "Je n'ai pas pu vérifier ton statut Pro, les filtres enregistrés sont donc masqués pour l'instant.",
+    "retry": "Réessayer"
+  }
+}

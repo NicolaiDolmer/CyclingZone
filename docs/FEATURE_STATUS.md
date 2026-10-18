@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-96 poster: live 75 · beta 2 · dormant 5 · building 6 · spec 1 · idea 2 · retired 5. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+97 poster: live 75 · beta 2 · dormant 5 · building 6 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -67,12 +67,13 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## season
 
-**live:** AI pool retirement (`ai-pool-retirement-v2`) 2026-10-15 · AI team retirement (`ai-team-retire`) 2026-09-06 · Season recap (`season-end-recap`) 2026-09-06 · Season matrix on mobile (`season-matrix-mobile`) 2026-10-06 · Season signup (`season-signup`) 2026-09-24 · Season transition (`season-transition`) 2026-09-06
+**live:** AI pool retirement (`ai-pool-retirement-v2`) 2026-10-15 · AI team retirement (`ai-team-retire`) 2026-09-06 · Season recap (`season-end-recap`) 2026-09-06 · Season matrix on mobile (`season-matrix-mobile`) 2026-10-06 · Season signup (`season-signup`) 2026-09-24 · Season transition (`season-transition`) 2026-10-17
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) | dormant | `development_v2_aging_enabled` | - | #6499 | 2026-10-15 | PR #6501 (11/10); off i prod (læst 15/10). Fail-safe off, beta læses som off; kun ejeren flipper. |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
+| Automatic season transition cron (`season-auto-transition`) | retired | - | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #1155 | 2026-10-17 | Slukket siden 8/6 (fyrede fire skift i træk 21/5) og fjernet helt 17/10 (#6796); sæsonskiftet er en bevidst manuel admin-handling. |
 
 ## economy
 

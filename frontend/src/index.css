@@ -375,6 +375,14 @@ video {
   --color-cz-elevated: var(--bg-elevated);
   --color-cz-subtle: var(--bg-subtle);
   --color-cz-border: var(--border);
+  /* #6768: kontrol-tokens med >= 3:1 (WCAG 1.4.11). --border forbliver hairline
+     (TASTE); disse bruges kun hvor kanten/fladen ER kontrollen. */
+  --color-cz-border-strong: var(--border-strong);
+  --color-cz-toggle-off: var(--toggle-off);
+  --color-cz-toggle-thumb: var(--toggle-thumb);
+  --color-cz-day-cell: var(--day-cell);
+  --color-cz-day-cell-mine: var(--day-cell-mine);
+  --color-cz-day-cell-hover: var(--day-cell-hover);
   --color-cz-1: var(--text-1);
   --color-cz-2: var(--text-2);
   --color-cz-3: var(--text-3);
@@ -582,6 +590,14 @@ video {
   --bg-elevated: #ffffff;   /* elevated (modals / popovers / raised) */
   --bg-subtle:   #ece9e1;   /* recessed inset / hover (progress tracks, nested panels) */
   --border:      #e5e0d5;
+  /* #6768: kontrol-kontrast (>= 3:1 mod body/card/elevated/subtle). Se
+     frontend/src/theme/contrast.test.js. */
+  --border-strong: #827f96;  /* kontakt-/kontrolkant */
+  --toggle-off:    #827f96;  /* slukket kontaktspor */
+  --toggle-thumb:  #ffffff;  /* slukket tommel (>= 3:1 mod sporet) */
+  --day-cell:       #827f96; /* dagsbaand: dag uden eget loeb */
+  --day-cell-mine:  #5f6380; /* dagsbaand: dag med eget loeb */
+  --day-cell-hover: #4a4e68; /* dagsbaand: hover */
   --text-1:      #0e0f15;   /* light-mode foreground navy (D-P3B) */
   --text-2:      #4c4a5e;   /* AA+ (ejer B 15/10, #6681) - was #66637a */
   --text-3:      #67657e;   /* AA fix (ejer B 15/10, #6681) - was #9896b0 (2,4-2,8:1, FAILed AA) */
@@ -692,6 +708,12 @@ video {
   --bg-elevated: #1f2233;   /* elevated (D-SURF) */
   --bg-subtle:   #14161e;   /* recessed inset / hover */
   --border:      #2a2d3a;
+  --border-strong: #6a6e86;  /* #6768: >= 3:1 mod alle flader */
+  --toggle-off:    #6a6e86;
+  --toggle-thumb:  #ededf2;
+  --day-cell:       #5f6380;
+  --day-cell-mine:  #7d819b;
+  --day-cell-hover: #a3a7bf;
   --text-1:      #ededf2;
   --text-2:      #9da0b3;
   --text-3:      #888ba0;   /* AA fix (D-TEXT3) — was #6b6d7e (3.75:1, FAILed AA) */

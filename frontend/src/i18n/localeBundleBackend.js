@@ -34,6 +34,11 @@ const LAZY_BUNDLES = {
   da: () => import("./messages.da.js"),
 };
 
+// #6802: sprog med lazy bundle. Testen haandhaever at HVERT registreret sprog i
+// languages.js (undtagen engelsk, som ligger inline) staar her, og at intet
+// beta-sprog importeres statisk fra entry-grafen.
+export const LAZY_BUNDLE_LANGS = Object.keys(LAZY_BUNDLES);
+
 // Én promise pr. sprog — 24 namespace-opslag ved boot maa give ÉT netvaerkskald,
 // ikke 24.
 const inflight = new Map();

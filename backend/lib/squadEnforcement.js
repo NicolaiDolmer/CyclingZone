@@ -35,6 +35,7 @@ import {
   getSquadLimits,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -485,44 +486,36 @@ export async function enforceTeamSquadCompliance({
   });
 
   // Notifikation til ramt manager (ikke spam — én pr. enforcement).
-  // #666: alle strenge bygges på EN; full structured i18n via metadata på
-  // selve notif-kaldet nedenfor (squad_enforced.* keys i backendMessages).
-  const summaryLines = [];
-  if (purchases.length) {
-    summaryLines.push(
-      `Auto-purchased ${purchases.length} rider${purchases.length === 1 ? "" : "s"}: ${purchases.map(p => p.riderName).join(", ")}`
-    );
-    // #2617/#1995: én eller flere købte ryttere var midt i et aktivt etapeløb —
-    // de er betalt for, men skifter først synligt hold når løbet er slut.
-    const deferredPurchases = purchases.filter(p => p.deferred);
-    if (deferredPurchases.length) {
-      summaryLines.push(
-        `${deferredPurchases.length} rider${deferredPurchases.length === 1 ? "" : "s"} will join the team once their ongoing stage race finishes: ${deferredPurchases.map(p => p.riderName).join(", ")}`
-      );
-    }
-  }
-  if (sales.length) {
-    summaryLines.push(
-      `Auto-sold ${sales.length} rider${sales.length === 1 ? "" : "s"}: ${sales.map(s => s.riderName).join(", ")}`
-    );
-  }
-  if (salesDeferredByRacing > 0) {
-    // #2617/#1995: overskuds-ryttere midt i et aktivt fleretape-løb sælges ikke
-    // mid-løb — de tages ved næste vindues-enforcement i stedet.
-    summaryLines.push(
-      `${salesDeferredByRacing} rider${salesDeferredByRacing === 1 ? "" : "s"} in an ongoing stage race will be sold after the race instead`
-    );
-  }
-  summaryLines.push(
-    `Fine: ${fineAmount} CZ$ · Deduction: ${penaltyPoints} points`
-  );
+  // #666/#6801: teksten ligger i backendMessages (notif.squadEnforced.*) som
+  // ICU-plurals pr. linje, saa modtageren faar den i eget sprog. Antal + navne
+  // sendes som parametre; en linje med antal 0 er tom i skabelonen.
+  //   #2617/#1995: købte ryttere midt i et aktivt etapeløb er betalt for, men
+  //   skifter først synligt hold når løbet er slut. Overskuds-ryttere midt i et
+  //   aktivt fleretape-løb sælges ikke mid-løb, de tages ved næste vindues-enforcement.
+  const deferredPurchases = purchases.filter(p => p.deferred);
+  const squadNotice = buildKeyedNotification({
+    titleCode: "notif.squadEnforced.title",
+    messageCode: "notif.squadEnforced.message",
+    messageParams: {
+      purchasedCount: purchases.length,
+      purchasedNames: purchases.map(p => p.riderName).join(", "),
+      deferredCount: deferredPurchases.length,
+      deferredNames: deferredPurchases.map(p => p.riderName).join(", "),
+      soldCount: sales.length,
+      soldNames: sales.map(s => s.riderName).join(", "),
+      salesDeferredCount: salesDeferredByRacing,
+      fine: fineAmount,
+      points: penaltyPoints,
+    },
+  });
 
   await notifyTeamOwner(
     teamId,
     "squad_enforced",
-    "Squad size enforced",
-    summaryLines.join("\n"),
-    null
+    squadNotice.title,
+    squadNotice.message,
+    null,
+    squadNotice.metadata
   );
 
   return {
@@ -563,14 +556,13 @@ export async function processSquadEnforcementCron({
   // og dermed bidrage til sæson-loop-bug'en (rettet 2026-05-21).
   //
   // Lag 1 (kode-filter) i 2-lags forsvar-i-dybden: dette filter + DB CHECK
-  // (2026-05-22-transfer-window-racing-guard.sql, strukturelt). Se seasonAutoTransition.js
-  // for fuld kæde-beskrivelse (inkl. hvorfor en tidligere lag 3 — admin-close-endpointet
-  // #544 — er fjernet siden #1996 del 1 og ikke længere nødvendig).
+  // (2026-05-22-transfer-window-racing-guard.sql, strukturelt). En tidligere lag 3 —
+  // admin-close-endpointet #544 — er fjernet siden #1996 del 1 og ikke længere nødvendig.
   //
   // Denne cron kører UBETINGET hvert 5. min (cron.js) og fyrer reelt: closePrevTransferWindow
   // sætter closed_at på det afgående vindue ved hver sæsonstart/-transition (manuel
-  // admin-handling, #1155), hvilket matcher filtret her. Ikke koblet til
-  // SEASON_AUTO_TRANSITION_ENABLED (den flag gælder kun selve sæson-skiftet, #1155).
+  // admin-handling, #1155), hvilket matcher filtret her. Sæson-skiftet selv har ingen
+  // cron (auto-skifte-cron'en er fjernet, #6796).
   const window = await expectMaybeSingle(
     supabase
       .from("transfer_windows")

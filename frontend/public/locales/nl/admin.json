@@ -1,0 +1,307 @@
+{
+  "surveyResults": {
+    "title": "Enquêteresultaten",
+    "subtitle": {
+      "open": "De enquête is open. De getallen worden bijgewerkt zodra er antwoorden binnenkomen.",
+      "closed": "De enquête is gesloten. Dit zijn de definitieve getallen.",
+      "draft": "De enquête is nog een concept, dus niemand kan haar al beantwoorden."
+    },
+    "status": {
+      "draft": "Concept",
+      "open": "Open",
+      "closed": "Gesloten"
+    },
+    "reload": "Herladen",
+    "loading": "Enquêteresultaten laden",
+    "notFound": {
+      "title": "Geen enquête met dat adres",
+      "description": "Vergelijk de slug in de adresbalk met de enquêtetabel.",
+      "action": "Terug naar admin"
+    },
+    "error": {
+      "title": "De resultaten konden niet worden geladen",
+      "description": "Er is niets verloren gegaan. De antwoorden staan nog in de database.",
+      "forbidden": "Je bent geen beheerder.",
+      "retry": "Probeer opnieuw"
+    },
+    "empty": {
+      "title": "Nog geen antwoorden",
+      "description": "Het eerste antwoord verschijnt hier enkele seconden nadat het is opgeslagen.",
+      "action": "Herladen"
+    },
+    "segment": {
+      "label": "Splitsen op",
+      "none": "Iedereen",
+      "division": "Divisie",
+      "language": "Taal",
+      "active": "Actief in de laatste 7 dagen",
+      "hint": "De splitsing geldt voor elk tabblad.",
+      "values": {
+        "division": "Divisie {value}",
+        "da": "Deens",
+        "en": "Engels",
+        "active": "Actief",
+        "lapsed": "Afgehaakt",
+        "unknown": "Onbekend"
+      },
+      "respondents": "{n} hebben geantwoord"
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "ideas": "De ideeën",
+      "worst": "Werkt het slechtst",
+      "text": "Vrije tekst",
+      "pro": "Pro",
+      "segments": "Segmenten"
+    },
+    "totals": {
+      "invited": "Uitgenodigd",
+      "started": "Gestart",
+      "completed": "Voltooid",
+      "avgMinutes": "Gemiddelde tijd",
+      "minutes": "{value} min",
+      "ofInvited": "{pct} van de uitgenodigden",
+      "ofStarted": "{pct} van wie gestart is"
+    },
+    "overview": {
+      "timeline": "Antwoorden per dag",
+      "timelineMeta": "Vol is voltooid, bleek is gestart",
+      "timelineEmpty": "Nog geen antwoorden.",
+      "satisfaction": "Tevredenheid vandaag",
+      "average": "Gemiddeld {value} van 5",
+      "fog": "Hoeveel meer moet worden verborgen",
+      "scaleValue": "{value} van 5",
+      "noAnswers": "Nog geen antwoorden.",
+      "answers": "{n} antwoorden"
+    },
+    "ideas": {
+      "title": "Elk idee, gerangschikt op prioriteit",
+      "meta": "Prioriteit is idee maal belang, beide op een schaal van 1 tot 5",
+      "quadrant": "Idee tegenover belang",
+      "quadrantX": "Goed idee",
+      "quadrantY": "Belangrijk voor mij",
+      "quadrantCorner": "Bouw dit eerst",
+      "columns": {
+        "rank": "#",
+        "feature": "Idee",
+        "group": "Gebied",
+        "idea": "Idee",
+        "importance": "Belang",
+        "priority": "Prioriteit",
+        "dontKnow": "Weet ik niet",
+        "veto": "Beoordeeld met 1 of 2",
+        "n": "Beoordeeld door"
+      },
+      "vetoHint": "Boven de 25 procent verdeelt het idee de zaal, hoe goed het gemiddelde er ook uitziet.",
+      "empty": "Nog niemand heeft de ideeën beoordeeld."
+    },
+    "worst": {
+      "title": "Wat nu het slechtst werkt",
+      "meta": "Maximaal drie keuzes per persoon, dus de aandelen tellen op tot boven de 100",
+      "empty": "Nog niemand heeft een gebied gekozen."
+    },
+    "text": {
+      "question": "Vraag",
+      "allQuestions": "Alle vrije tekst",
+      "search": "De antwoorden doorzoeken",
+      "searchPlaceholder": "Woord of zin",
+      "count": "{shown} van {total} antwoorden",
+      "empty": "Geen antwoorden die passen.",
+      "emptyDescription": "Probeer een ander woord, of kies een andere vraag.",
+      "emptyAction": "Zoekopdracht wissen",
+      "noTeam": "Geen team",
+      "division": "Divisie {value}"
+    },
+    "pro": {
+      "contents": "Wat hoort er in Pro",
+      "wouldPay": "Zou je betalen voor die Pro",
+      "exclusions": "Wat moet er buiten Pro blijven",
+      "empty": "Nog geen antwoorden."
+    },
+    "segments": {
+      "pick": "Kies bovenaan een splitsing om segmenten te vergelijken.",
+      "satisfaction": "Tevredenheid per segment",
+      "topIdeas": "Top vijf ideeën per segment",
+      "tooFew": "Minder dan drie antwoorden, dus dit is ruis in plaats van een segment.",
+      "empty": "Nog geen antwoorden in dit segment."
+    },
+    "orphan": "{n} antwoorden hangen aan sleutels die de enquête niet meer heeft: {keys}"
+  },
+  "seasonCycle": {
+    "parkedLabel": "Geparkeerde teams",
+    "parkedSub": "Geen sponsor dit seizoen. Lonen worden nog wel betaald.",
+    "confirmParked": "Sponsor overslaan voor {count, plural, one {# geparkeerd team} other {# geparkeerde teams}}"
+  },
+  "racePoints": {
+    "model": {
+      "tabModel": "Model (cascade)",
+      "tabManual": "Geavanceerd (handmatig)",
+      "intro": "Stel de hoofdcategorie één keer in. Alle andere categorieën volgen automatisch via hun factor. Een anker wijzigen herschaalt elke categorie met dezelfde classificatie. De curvevormen per categorie blijven vast. Klik op \"Opslaan & genereren\" om het resultaat in de koerspunten te schrijven.",
+      "mastersTitle": "Hoofdankers (1e plaats)",
+      "masterStage": "Hoofdanker etappekoersen · Tour de France",
+      "masterOneDay": "Hoofdanker eendagskoersen · Monuments",
+      "cascadeTitle": "Cascadefactoren (% van de hoofdcategorie)",
+      "anchorLabel": "Anker",
+      "previewHint": "resulterende 1e plaats",
+      "masterBadge": "hoofd",
+      "save": "Opslaan & genereren",
+      "saving": "Opslaan…",
+      "generating": "Genereren…",
+      "discard": "Weggooien",
+      "dirty": "{count, plural, one {1 niet-opgeslagen wijziging} other {# niet-opgeslagen wijzigingen}}",
+      "generateConfirm": "Hiermee worden de koerspunten opnieuw uit het model gegenereerd. Doorgaan?",
+      "generated": "Opgeslagen · {count, plural, one {1 koerspuntenrij bijgewerkt} other {# koerspuntenrijen bijgewerkt}}",
+      "noChanges": "Opgeslagen · geen koerspuntenrijen gewijzigd",
+      "loadError": "Het model kon niet worden geladen: {error}",
+      "saveError": "Opslaan is niet gelukt: {error}",
+      "generateError": "Genereren is niet gelukt: {error}",
+      "invalidValue": "Moet een niet-negatief getal zijn"
+    },
+    "sectionTitle": "Koerspunten · overschrijven",
+    "intro": "Pas de punten aan die per eindpositie worden toegekend, per koersklasse. Wijzigingen worden vastgelegd in het adminlog. Gebruik \"Terug naar basislijn\" om de standaardwaarden te herstellen.",
+    "appliesToFutureHint": "Opgeslagen wijzigingen gelden alleen voor koersen die vanaf nu worden geïmporteerd. Om ze op bestaande ranglijsten toe te passen, voer je \"↻ Point fra config\" uit onder het tabblad Seizoen (al uitbetaalde koersen blijven ongemoeid).",
+    "raceClassTab": "Koersklasse",
+    "rankHeader": "#{rank}",
+    "resultTypeLabel": "Klassement",
+    "save": "Wijzigingen opslaan ({count})",
+    "discard": "Weggooien",
+    "resetRow": "Terug naar basislijn",
+    "saving": "Opslaan…",
+    "saved": "{count, plural, one {1 wijziging} other {# wijzigingen}} opgeslagen",
+    "saveError": "Opslaan is niet gelukt: {error}",
+    "loadError": "De koerspunten konden niet worden geladen: {error}",
+    "invalidValue": "Moet een niet-negatief geheel getal zijn",
+    "groups": {
+      "Grand Tour": "Grand Tour",
+      "Endagslob": "Eendags-Monuments",
+      "WorldTour": "WorldTour",
+      "Continental Circuit": "Continental Circuit"
+    },
+    "raceClasses": {
+      "TourFrance": "Tour de France",
+      "GiroVuelta": "Giro / Vuelta",
+      "Monuments": "Monuments",
+      "OtherWorldTourA": "Overige WorldTour A",
+      "OtherWorldTourB": "Overige WorldTour B",
+      "OtherWorldTourC": "Overige WorldTour C",
+      "ProSeries": "ProSeries",
+      "Class1": "Klasse 1",
+      "Class2": "Klasse 2"
+    },
+    "resultTypes": {
+      "Etapeplacering": "Etappeplaatsing",
+      "Klassement": "Algemeen klassement",
+      "Klassiker": "Eendagsuitslag",
+      "Pointtroje": "Puntentrui (eindstand)",
+      "Bjergtroje": "Bergtrui (eindstand)",
+      "Ungdomstroje": "Jongerentrui (eindstand)",
+      "Forertroje": "Leiderstrui (per gedragen etappe)",
+      "BjergtrojeDag": "Bergtrui (per gedragen dag)",
+      "PointtrojeDag": "Puntentrui (per gedragen dag)",
+      "UngdomstrojeDag": "Jongerentrui (per gedragen dag)",
+      "EtapelobHold": "Ploeg · etappekoers",
+      "KlassikerHold": "Ploeg · eendagskoers"
+    }
+  },
+  "valuePreview": {
+    "title": "Waardevoorbeeld",
+    "subtitle": "Rennerswaarden vóór en na een model. Hier wordt niets opgeslagen.",
+    "loading": "Waarden berekenen",
+    "modelSelect": "Model om te bekijken",
+    "modelOption": "{from} naar {to}",
+    "reload": "Herladen",
+    "meta": "Live {from} · loon {wage} · seizoen {season} · {time}",
+    "sameModel": "Aan beide kanten hetzelfde model, dus er verandert niets.",
+    "noTeam": "Geen team",
+    "academy": "Academie",
+    "ageShort": "Leeftijd {n}",
+    "count": "{shown} van {total} getoond",
+    "teamCount": "{n} teams",
+    "showMore": "{n} meer tonen",
+    "drift": "Alleen al het live model verschuift {n} waarden komende zondag.",
+    "skipped": "{n} renners zonder vaardigheden of leeftijd blijven buiten beschouwing.",
+    "tabs": {
+      "overview": "Overzicht",
+      "riders": "Renners",
+      "teams": "Teams"
+    },
+    "steps": {
+      "label": "Invoerstap",
+      "runDay": "Uitvoerdag",
+      "week": "Week {n}"
+    },
+    "filters": {
+      "search": "Renner of team zoeken",
+      "more": "Meer filters",
+      "scope": {
+        "label": "Populatie",
+        "managers": "Managersteams",
+        "all": "Alle renners"
+      },
+      "division": {
+        "label": "Divisie",
+        "all": "Alle divisies",
+        "one": "Divisie {n}"
+      },
+      "type": {
+        "label": "Renner-type",
+        "all": "Alle types"
+      },
+      "team": {
+        "label": "Team",
+        "all": "Alle teams"
+      },
+      "age": {
+        "label": "Leeftijd",
+        "all": "Alle leeftijden",
+        "u22": "Onder 22",
+        "a22_25": "22 tot 25",
+        "a26_29": "26 tot 29",
+        "a30": "30 en ouder"
+      }
+    },
+    "overview": {
+      "population": "Populatie",
+      "hardestHit": "Hardst geraakte teams",
+      "allTeams": "Alle teams",
+      "noTeams": "Geen teams in deze selectie."
+    },
+    "stats": {
+      "riders": "Renners",
+      "before": "Waarde vooraf",
+      "after": "Waarde achteraf",
+      "change": "Verandering",
+      "median": "Mediane verandering",
+      "up": "Omhoog",
+      "down": "Omlaag",
+      "same": "Ongewijzigd",
+      "drop25": "25 % of meer omlaag",
+      "drop50": "50 % of meer omlaag"
+    },
+    "wage": {
+      "ok": "Loon-check: geen loongrondslag verschuift ({model}). Looneisen blijven gelijk.",
+      "moved": "Loon-check: {n} loongrondslagen verschuiven ({model}). Stop en controleer vóór de run."
+    },
+    "columns": {
+      "rider": "Renner",
+      "team": "Team",
+      "type": "Type",
+      "riders": "Renners",
+      "before": "Vooraf",
+      "after": "Achteraf",
+      "deltaKr": "Verandering CZ$",
+      "deltaPct": "Verandering %"
+    },
+    "empty": {
+      "title": "Geen renners die bij de filters passen",
+      "description": "Wis de filters om de hele populatie te zien.",
+      "action": "Filters wissen"
+    },
+    "error": {
+      "title": "Het voorbeeld kon niet worden berekend",
+      "description": "Er is niets gewijzigd. De waarden in het spel zijn ongemoeid.",
+      "retry": "Probeer opnieuw",
+      "stale": "Vernieuwen is niet gelukt. De getallen hieronder komen uit de laatste geslaagde keer laden."
+    }
+  }
+}

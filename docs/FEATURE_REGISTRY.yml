@@ -657,7 +657,18 @@ features:
     title_da: Sæsonskifte
     state: live
     ssot: docs/SEASON_TRANSITION_CHECKLIST.md
-    verified: 2026-09-06
+    verified: 2026-10-17
+    note: Manuelt admin-skift efter runbooken (#1155).
+
+  - id: season-auto-transition
+    area: season
+    title_en: Automatic season transition cron
+    title_da: Automatisk sæsonskifte (cron)
+    state: retired
+    ssot: docs/SEASON_CUTOVER_RUNBOOK.md
+    epic: 1155
+    verified: 2026-10-17
+    note: Slukket siden 8/6 (fyrede fire skift i træk 21/5) og fjernet helt 17/10 (#6796); sæsonskiftet er en bevidst manuel admin-handling.
 
   - id: season-signup
     area: season

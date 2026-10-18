@@ -1,0 +1,301 @@
+{
+  "page": {
+    "title": "Subastas",
+    "loadingAria": "Cargando subastas"
+  },
+  "loadError": {
+    "message": "No se pudieron cargar las subastas. Inténtalo de nuevo.",
+    "retry": "Reintentar"
+  },
+  "watchlist": {
+    "toggleFailed": "No se pudo actualizar tu lista de seguimiento. Inténtalo de nuevo."
+  },
+  "mobileSort": {
+    "label": "Ordenar por",
+    "ascAria": "Orden ascendente, toca para ordenar de forma descendente",
+    "descAria": "Orden descendente, toca para ordenar de forma ascendente"
+  },
+  "tour": {
+    "placeBid": {
+      "title": "Haz una puja",
+      "body": "Introduce tu puja y pulsa “Pujar”. La puja mínima ya viene rellenada. Debes pujar al menos 1 CZ$ por encima de la puja actual."
+    },
+    "countdown": {
+      "title": "Tiempo restante y prórroga automática",
+      "body": "Si una puja toma el liderato en los últimos 10 minutos, la subasta se prolonga automáticamente. Pujar sin tomar el liderato, por ejemplo contra una puja automática que te supera, no la prolonga."
+    }
+  },
+  "hint": {
+    "title": "Gana la puja y el ciclista se une a tu equipo",
+    "body": "El ciclista corre para ti desde tu próxima selección de plantilla. Pujas contra mánagers reales, no compras a un precio fijo.",
+    "minBidLabel": "Hacer una puja:",
+    "minBidBody": "El campo viene rellenado con el mínimo, al menos 1 CZ$ por encima de la puja actual. Pulsa Pujar y ya estás dentro.",
+    "autoExtendLabel": "Prórroga automática de 10 min:",
+    "autoExtendBody": "Una puja que toma el liderato en los últimos 10 minutos prolonga la subasta, para que nadie pueda ganarla en el último segundo.",
+    "startTour": "Enséñame el juego",
+    "jumpToRecommendation": "Ver una opción asequible"
+  },
+  "ticker": {
+    "bidCount": "{count, plural, one {1 puja reciente} other {# pujas recientes}}"
+  },
+  "stats": {
+    "balance": "Saldo",
+    "reserved": "Reservado en pujas",
+    "ridersNow": "Ciclistas ahora",
+    "projection": "Proyección"
+  },
+  "filter": {
+    "mySituation": "Mis subastas ({count})",
+    "all": "Todas ({count})",
+    "otherManagers": "Otros mánagers ({count})",
+    "wishlistButton": "Solo mi lista de seguimiento",
+    "feedButton": "Pujas en directo",
+    "feedTitleOn": "Ocultar el panel de pujas en directo",
+    "feedTitleOff": "Mostrar el panel de pujas en directo",
+    "searchPlaceholder": "Buscar ciclistas",
+    "searchAria": "Buscar ciclistas en subasta",
+    "moreFilters": "Más filtros"
+  },
+  "nav": {
+    "history": "Historial"
+  },
+  "history": {
+    "subtitle": "Tus subastas completadas: compras, ventas y pujas perdidas.",
+    "tabActive": "Activas",
+    "tabHistory": "Historial ({count})",
+    "statBought": "Comprados",
+    "statSold": "Vendidos",
+    "statSpent": "Gastado",
+    "statEarned": "Ingresado",
+    "filterAll": "Todas",
+    "filterBought": "Compras ({count})",
+    "filterSold": "Ventas ({count})",
+    "emptyWon": "Todavía no has ganado ninguna subasta",
+    "emptySold": "Todavía no has vendido a ningún ciclista",
+    "emptyLost": "No hay subastas perdidas en tu historial",
+    "emptyAll": "Aún no hay subastas completadas",
+    "colNation": "País",
+    "colStatus": "Estado",
+    "colWinner": "Ganador",
+    "colBids": "Pujas",
+    "colPrice": "Precio",
+    "colTime": "Hora",
+    "noBids": "Sin pujas",
+    "bidsCount": "{count, plural, one {1 puja} other {# pujas}}",
+    "bidsUniqueBidders": "{count, plural, one {1 equipo} other {# equipos}}",
+    "bidWarBadge": "Guerra de pujas · {bids, plural, one {1 puja} other {# pujas}}, {teams, plural, one {1 equipo} other {# equipos}}",
+    "riderMeta": "Valor: {value} CZ$ · Salario: {salary}",
+    "salaryNone": "—",
+    "pageOf": "Página {page} de {total}",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "viewBidWar": "Ver guerra de pujas"
+  },
+  "bidWar": {
+    "title": "Guerra de pujas: {rider}",
+    "subtitle": "Precio final {price} CZ$. Todas las pujas realizadas, ahora que ha caído el martillo.",
+    "empty": "No se hizo ninguna puja por este ciclista.",
+    "winningBid": "Puja ganadora",
+    "fairPlayNote": "Aquí solo se muestran las pujas realizadas. Los topes de las pujas automáticas y las estrategias activas siguen siendo privados, incluso cuando la subasta se cierra."
+  },
+  "table": {
+    "rider": "Ciclista",
+    "nation": "País",
+    "status": "Estado",
+    "type": "Tipo",
+    "value": "Valor",
+    "highestBid": "Puja más alta",
+    "timeLeft": "Tiempo restante",
+    "age": "Edad",
+    "salary": "Salario",
+    "potential": "Potencial",
+    "popularity": "Popularidad",
+    "popularityTitle": "Popularidad entre los aficionados (0-100). La usa el objetivo de ciclista estrella del plan a 5 años de la directiva.",
+    "reputation": "Reputación",
+    "reputationTitle": "Reputación en carrera ganada. Es el número que lee la directiva para los ciclistas con perfil.",
+    "seller": "Vendedor",
+    "bid": "Puja",
+    "ovr": "OVR",
+    "ovrTitle": "La media ponderada de las habilidades que necesita su propio rol. El mismo número significa el mismo nivel en cualquier rol."
+  },
+  "card": {
+    "time": "Tiempo",
+    "highestBid": "Puja más alta",
+    "salary": "Salario",
+    "estSalary": "Salario est.",
+    "contractExpires": "Cad. tras T{season}",
+    "seller": "Vendedor",
+    "potential": "Potencial",
+    "popularity": "Pop.",
+    "reputation": "Rep.",
+    "ageYears": "{age} años",
+    "estValue": "Valor est.",
+    "ovrTitle": "La media ponderada de las habilidades que necesita su propio rol. El mismo número significa el mismo nivel en cualquier rol."
+  },
+  "reputation": {
+    "band": {
+      "unknown": "Desconocido",
+      "known": "Conocido",
+      "profile": "Con perfil",
+      "star": "Estrella",
+      "legend": "Leyenda"
+    }
+  },
+  "leader": {
+    "line": "Líder: {name}",
+    "none": "Aún sin pujas"
+  },
+  "overbidHidden": {
+    "hideTitle": "Ocultar esta subasta de tu lista",
+    "hideAria": "Ocultar de tu lista la subasta de {name}",
+    "showAgain": "Mostrar ocultas ({count})"
+  },
+  "list": {
+    "countLine": "Mostrando {shown} de {total} subastas"
+  },
+  "timer": {
+    "completed": "Terminada",
+    "expired": "Caducada",
+    "hoursMinutes": "{h} h {m} min",
+    "minutesSeconds": "{m} min {s} s",
+    "seconds": "{s} s"
+  },
+  "badge": {
+    "winning": "Ganando",
+    "seller": "Vendedor",
+    "mine": "Mía",
+    "extended": "Pró.",
+    "flash": "Relámpago",
+    "u23": "Sub-23",
+    "u25": "Sub-25",
+    "youth": "Juvenil",
+    "firstBidPick": "Primera opción",
+    "outbid": "Superada · la tuya {amount}"
+  },
+  "bidGate": {
+    "bothFull": "No hay sitio en tu academia ni en tu plantilla sénior (30/30). Vende a un ciclista para pujar.",
+    "bothFullU23": "No hay sitio en tu equipo sub-23 ({max}/{max}) ni en tu plantilla sénior (30/30). Vende a un ciclista para pujar.",
+    "bothFullJunior": "No hay sitio en tu equipo júnior ({max}/{max}) ni en tu plantilla sénior (30/30). Vende a un ciclista para pujar.",
+    "seniorFull": "Tu plantilla sénior está llena (30/30). Vende a un ciclista para pujar.",
+    "toSenior": "-> se une a tu plantilla sénior",
+    "toAcademy": "-> se une a tu academia",
+    "toU23": "-> se une a tu equipo sub-23",
+    "toJunior": "-> se une a tu equipo júnior"
+  },
+  "bid": {
+    "minBid": "Mín. {amount} CZ$",
+    "minBidCard": "Puja mín.: {amount} CZ$",
+    "inputAria": "Tu puja en CZ$",
+    "buttonPlace": "Pujar",
+    "buttonRaise": "Subir",
+    "buttonError": "Error",
+    "buttonPlaceAria": "Hacer puja",
+    "buttonRaiseAria": "Subir tu puja",
+    "sellerLabel": "Estás vendiendo",
+    "blockedBelowMin": "Sube tu puja a al menos {amount} CZ$ para pujar.",
+    "blockedExpired": "Esta subasta ha terminado. Actualiza para ver el resultado.",
+    "proxy": {
+      "blockedBelowMin": "El límite de tu puja automática debe ser de al menos {amount} CZ$, la puja mínima actual.",
+      "blockedExpired": "Esta subasta ha terminado. Actualiza para ver el resultado.",
+      "display": "Puja automática: máx. {amount} CZ$",
+      "help": "Puja por ti hasta este importe, de 1 CZ$ en 1 CZ$. Solo pierdes el liderato si alguien supera tu tope. Tu tope es privado.",
+      "set": "Fijar límite de puja automática",
+      "edit": "Cambiar límite de puja automática",
+      "remove": "Quitar puja automática",
+      "save": "Guardar límite de puja automática",
+      "saveButton": "Guardar",
+      "cancel": "Cancelar la edición de la puja automática",
+      "placeholder": "Límite máx.",
+      "inputAria": "Límite de puja automática en CZ$",
+      "buttonAdd": "+ Puja automática",
+      "buttonAddCard": "+ Fijar límite de puja automática",
+      "editButton": "Cambiar",
+      "removeButton": "Quitar"
+    }
+  },
+  "section": {
+    "leading": "Vas liderando",
+    "overbid": "Te han superado",
+    "selling": "Estás vendiendo"
+  },
+  "empty": {
+    "wishlistNoResults": "No hay subastas activas de ciclistas de tu lista de seguimiento",
+    "noInvolvementMySituation": "No participas en ninguna subasta activa",
+    "noResults": "No hay subastas en esta categoría",
+    "wishlistHelp": "Desactiva “Solo mi lista de seguimiento” o añade ciclistas desde la vista general de ciclistas",
+    "browseSuggestion": "Cambia a “Todas” para explorar el mercado",
+    "startAuctionSuggestion": "Ve a Ciclistas e inicia una subasta",
+    "actionClearWishlist": "Mostrar todas las subastas",
+    "actionBrowseAll": "Explorar todas las subastas",
+    "actionStartAuction": "Ir a ciclistas"
+  },
+  "feed": {
+    "title": "Pujas en directo · tus subastas",
+    "empty": "Aún no hay actividad en tus subastas.",
+    "yourBid": "Pujaste",
+    "counterBid": "Contrapuja",
+    "counterBidNamed": "Contrapuja de {name}",
+    "fallbackRider": "Ciclista",
+    "relativeSec": "hace {n} s",
+    "relativeMin": "hace {n} min",
+    "relativeHour": "hace {n} h"
+  },
+  "toast": {
+    "overbidMessage": "Te han superado la puja por {riderName}",
+    "overbidNewPrice": "Nuevo precio: {amount} CZ$"
+  },
+  "modal": {
+    "bidTitle": "Confirmar puja",
+    "bidVerb": "pujar",
+    "bidAction": "Pujar",
+    "proxyTitle": "Confirmar puja automática",
+    "proxyVerb": "fijar el límite de la puja automática en",
+    "proxyAction": "Guardar puja automática",
+    "transferTitle": "Confirmar oferta de fichaje",
+    "transferVerb": "enviar una oferta de fichaje de",
+    "transferAction": "Enviar oferta",
+    "questionPrefix": "¿Seguro que quieres",
+    "onLabel": "por",
+    "settlesAfterValueUpdate": "Esta subasta se liquida después de la actualización de valores del domingo. El valor y las habilidades pueden cambiar antes de que termine.",
+    "retirementWarning": {
+      "risk": "Cerca del final de su carrera: este ciclista está en la ventana de retirada (edad {windowStart}-{guaranteedAge}) y puede retirarse tras esta temporada.",
+      "certain": "Este ciclista tiene {guaranteedAge} años o más y se retirará tras esta temporada."
+    },
+    "typoGuard": {
+      "title": "Revisa tu precio",
+      "body": "Vas a poner a la venta a <strong>{riderName}</strong> a <strong>{price} CZ$</strong>.",
+      "question": "Su valor de mercado es de <strong>{marketValue} CZ$</strong>. ¿Era eso lo que querías?",
+      "confirmButton": "No, mi precio es intencionado",
+      "fixButton": "Corregir precio"
+    }
+  },
+  "fallback": {
+    "rider": "ciclista",
+    "team": "un mánager"
+  },
+  "celebration": {
+    "title": "¡Has ganado la subasta!",
+    "subtitle": "El ciclista ya está en tu equipo"
+  },
+  "priceChanged": {
+    "title": "El precio ha cambiado",
+    "newPrice": "El precio ahora es de <strong>{amount} CZ$</strong>.",
+    "newMinBid": "La puja mínima ahora es de <strong>{amount} CZ$</strong>. ¿Sigues queriendo pujar?",
+    "bidCta": "Pujar {amount} CZ$"
+  },
+  "error": {
+    "bidFailed": "No se pudo hacer la puja",
+    "proxyFailed": "No se pudo fijar la puja automática",
+    "proxyRemoveFailed": "No se pudo quitar el límite de la puja automática. Sigue activo.",
+    "insufficientBalance": "La puja supera tu saldo disponible"
+  },
+  "warning": {
+    "squadCapacity": "Ojo: ahora lideras subastas equivalentes a {totalAfter} ciclistas (máx. {maxRiders}). El tope es un límite estricto, así que no puedes ganar más ciclistas de los que caben en tu plantilla."
+  },
+  "valueDelta": {
+    "under": "{pct} % por debajo del valor est.",
+    "over": "{pct} % por encima del valor est.",
+    "at": "Cerca del valor est.",
+    "title": "Valor de mercado estimado: {amount} CZ$. Es una estimación de un modelo, no un precio garantizado."
+  }
+}

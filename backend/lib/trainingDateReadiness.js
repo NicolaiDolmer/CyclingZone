@@ -77,19 +77,53 @@ async function must(query, name) {
   return data ?? [];
 }
 
+/**
+ * Hvilke hold en traeningsdato regner med. Registreret arbejde afregnes altid
+ * faerdigt; ellers kun rigtige, aktive hold oprettet foer datoens slut.
+ * #6536: et parkeret hold er uroert, ogsaa hvis det stadig har en division.
+ * #6811: et hold der er kommet tilbage (comeback_at), regnes som et hold oprettet
+ * paa det tidspunkt: datoer der sluttede foer comebacket, var holdets parkerings-
+ * periode. Reglen bor i en DB-kolonne, saa den overlever en genstart, hvor
+ * loadTrainingDateIndex gennemgaar alle saesonens datoer igen.
+ */
+export function isTrainingDateTeam(team, registered, end) {
+  if (registered.has(team.id)) return true;
+  if (team.is_bank || team.is_frozen || team.is_test_account || team.parked_at) return false;
+  if (team.comeback_at && new Date(team.comeback_at) >= end) return false;
+  return !team.created_at || new Date(team.created_at) < end;
+}
+
+// #6811: comeback_at kommer med database/2026-10-17-6811-team-comeback-at.sql. I
+// deploy-vinduet foer auto-migrate (#2642) falder selecten tilbage til kolonnerne
+// uden den, saa sweepen ikke fejler (holdet regnes da som foer #6811, uden grænsen).
+export function isMissingComebackAtSelect(error) {
+  if (error?.code !== '42703' && error?.code !== 'PGRST204') return false;
+  return String(error?.message ?? '').includes('comeback_at');
+}
+
+export async function loadTrainingDateTeams(supabase) {
+  try {
+    // schema-columns-ok: comeback_at tilfoejes af database/2026-10-17-6811-team-comeback-at.sql, applied post-merge.
+    return await fetchAllRows(() => supabase.from('teams').select('id,league_division_id,u23_league_division_id,junior_league_division_id,is_ai,parked_at,assistant_autopick_enabled,is_bank,is_frozen,is_test_account,created_at,comeback_at').order('id'));
+  } catch (error) {
+    if (!isMissingComebackAtSelect(error)) throw error;
+    console.warn('[comeback] teams.comeback_at mangler endnu; traeningssweepen laeser hold uden (#6811)');
+    return fetchAllRows(() => supabase.from('teams').select('id,league_division_id,u23_league_division_id,junior_league_division_id,is_ai,parked_at,assistant_autopick_enabled,is_bank,is_frozen,is_test_account,created_at').order('id'));
+  }
+}
+
 export async function loadTrainingDateContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds = [] }) {
   const { start, end } = trainingDateBounds(tickDate);
   const [races, allTeams, riders, stageRows, loads] = await Promise.all([
     fetchAllRows(() => supabase.from('races').select('id,league_division_id,race_type,squad,stages_completed,finalize_state').eq('season_id', season.id).order('id')),
-    fetchAllRows(() => supabase.from('teams').select('id,league_division_id,u23_league_division_id,junior_league_division_id,is_ai,assistant_autopick_enabled,is_bank,is_frozen,is_test_account,created_at').order('id')),
+    loadTrainingDateTeams(supabase),
     fetchAllRows(() => supabase.from('riders').select('id,team_id,squad,is_academy,is_retired,pending_team_id,created_at,acquired_at').eq('is_retired', false).not('team_id', 'is', null).order('id')),
     // pagination-safe: one calendar date; season is filtered inside PostgREST.
     must(supabase.from('race_stage_schedule').select('race_id,stage_number,game_day,scheduled_at,races!inner(season_id)').eq('races.season_id', season.id).gte('scheduled_at', start.toISOString()).lt('scheduled_at', end.toISOString()), 'stage schedule'),
     fetchAllRows(() => supabase.from('training_race_loads').select('rider_id,race_id,stage_number,game_day,load').eq('season_id', season.id).eq('tick_date', tickDate).order('rider_id').order('game_day')),
   ]);
   const registered = new Set(registeredTeamIds);
-  const teams = allTeams.filter(team => registered.has(team.id) || (!team.is_bank && !team.is_frozen && !team.is_test_account &&
-    (!team.created_at || new Date(team.created_at) < end)));
+  const teams = allTeams.filter(team => isTrainingDateTeam(team, registered, end));
   const stages = stageRows.map(({ races: _joined, ...row }) => row);
   const raceIds = [...new Set(stages.map(row => row.race_id))];
   const pending = stages.filter(stage => {

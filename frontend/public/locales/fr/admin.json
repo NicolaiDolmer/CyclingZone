@@ -1,0 +1,303 @@
+{
+  "surveyResults": {
+    "title": "Résultats du sondage",
+    "subtitle": {
+      "open": "Le sondage est ouvert. Les chiffres se mettent à jour au fil des réponses.",
+      "closed": "Le sondage est clos. Ce sont les chiffres finaux.",
+      "draft": "Le sondage est encore un brouillon, personne ne peut donc y répondre pour l'instant."
+    },
+    "status": { "draft": "Brouillon", "open": "Ouvert", "closed": "Clos" },
+    "reload": "Recharger",
+    "loading": "Chargement des résultats du sondage",
+    "notFound": {
+      "title": "Aucun sondage à cette adresse",
+      "description": "Compare le slug de la barre d'adresse avec la table des sondages.",
+      "action": "Retour à l'admin"
+    },
+    "error": {
+      "title": "Impossible de charger les résultats",
+      "description": "Rien n'a été perdu. Les réponses sont toujours dans la base de données.",
+      "forbidden": "Tu n'es pas admin.",
+      "retry": "Réessayer"
+    },
+    "empty": {
+      "title": "Pas encore de réponses",
+      "description": "La première réponse apparaît ici quelques secondes après son enregistrement.",
+      "action": "Recharger"
+    },
+    "segment": {
+      "label": "Découper par",
+      "none": "Tout le monde",
+      "division": "Division",
+      "language": "Langue",
+      "active": "Actifs ces 7 derniers jours",
+      "hint": "Le découpage s'applique à chaque onglet.",
+      "values": {
+        "division": "Division {value}",
+        "da": "Danois",
+        "en": "Anglais",
+        "active": "Actif",
+        "lapsed": "Inactif",
+        "unknown": "Inconnu"
+      },
+      "respondents": "{n} ont répondu"
+    },
+    "tabs": {
+      "overview": "Aperçu",
+      "ideas": "Les idées",
+      "worst": "Ce qui marche le moins bien",
+      "text": "Texte libre",
+      "pro": "Pro",
+      "segments": "Segments"
+    },
+    "totals": {
+      "invited": "Invités",
+      "started": "Commencé",
+      "completed": "Terminé",
+      "avgMinutes": "Durée moyenne",
+      "minutes": "{value} min",
+      "ofInvited": "{pct} des invités",
+      "ofStarted": "{pct} de ceux qui ont commencé"
+    },
+    "overview": {
+      "timeline": "Réponses par jour",
+      "timelineMeta": "Plein = terminé, pâle = commencé",
+      "timelineEmpty": "Pas encore de réponses.",
+      "satisfaction": "Satisfaction aujourd'hui",
+      "average": "Moyenne {value} sur 5",
+      "fog": "Ce qu'il faudrait cacher de plus",
+      "scaleValue": "{value} sur 5",
+      "noAnswers": "Pas encore de réponses.",
+      "answers": "{n} réponses"
+    },
+    "ideas": {
+      "title": "Chaque idée, classée par priorité",
+      "meta": "La priorité est idée fois importance, les deux sur une échelle de 1 à 5",
+      "quadrant": "Idée contre importance",
+      "quadrantX": "Bonne idée",
+      "quadrantY": "Important pour moi",
+      "quadrantCorner": "À construire en premier",
+      "columns": {
+        "rank": "#",
+        "feature": "Idée",
+        "group": "Domaine",
+        "idea": "Idée",
+        "importance": "Importance",
+        "priority": "Priorité",
+        "dontKnow": "Je ne sais pas",
+        "veto": "Noté 1 ou 2",
+        "n": "Noté par"
+      },
+      "vetoHint": "Au-dessus de 25 pour cent, l'idée divise la salle, quelle que soit la qualité de la moyenne.",
+      "empty": "Personne n'a encore noté les idées."
+    },
+    "worst": {
+      "title": "Ce qui marche le moins bien aujourd'hui",
+      "meta": "Jusqu'à trois choix chacun, donc les parts dépassent 100 au total",
+      "empty": "Personne n'a encore choisi de domaine."
+    },
+    "text": {
+      "question": "Question",
+      "allQuestions": "Tout le texte libre",
+      "search": "Rechercher dans les réponses",
+      "searchPlaceholder": "Mot ou expression",
+      "count": "{shown} réponses sur {total}",
+      "empty": "Aucune réponse ne correspond.",
+      "emptyDescription": "Essaie un autre mot, ou choisis une autre question.",
+      "emptyAction": "Effacer la recherche",
+      "noTeam": "Aucune équipe",
+      "division": "Division {value}"
+    },
+    "pro": {
+      "contents": "Ce qui doit être dans Pro",
+      "wouldPay": "Paierais-tu pour ce Pro",
+      "exclusions": "Ce qui doit rester hors de Pro",
+      "empty": "Pas encore de réponses."
+    },
+    "segments": {
+      "pick": "Choisis un découpage en haut pour comparer les segments.",
+      "satisfaction": "Satisfaction par segment",
+      "topIdeas": "Top cinq des idées par segment",
+      "tooFew": "Moins de trois réponses : c'est du bruit plutôt qu'un segment.",
+      "empty": "Pas encore de réponses dans ce segment."
+    },
+    "orphan": "{n} réponses portent sur des clés que le sondage n'a plus : {keys}"
+  },
+  "seasonCycle": {
+    "parkedLabel": "Équipes en pause",
+    "parkedSub": "Pas de sponsor cette saison. Les salaires sont quand même payés.",
+    "confirmParked": "Ignorer le sponsor pour {count, plural, one {# équipe en pause} other {# équipes en pause}}"
+  },
+  "racePoints": {
+  "model": {
+    "tabModel": "Modèle (cascade)",
+    "tabManual": "Avancé (manuel)",
+    "intro": "Fixe une seule fois la catégorie maîtresse ; toutes les autres catégories suivent automatiquement selon leur facteur. Modifier un point d'ancrage met à l'échelle toutes les catégories qui partagent ce classement. La forme des courbes de chaque catégorie reste fixe. Clique sur “Enregistrer et générer” pour écrire le résultat dans les points de course.",
+    "mastersTitle": "Points d'ancrage maîtres (1re place)",
+    "masterStage": "Maître course par étapes · Tour de France",
+    "masterOneDay": "Maître course d'un jour · Monuments",
+    "cascadeTitle": "Facteurs en cascade (% du maître)",
+    "anchorLabel": "Ancrage",
+    "previewHint": "1re place obtenue",
+    "masterBadge": "maître",
+    "save": "Enregistrer et générer",
+    "saving": "Enregistrement…",
+    "generating": "Génération…",
+    "discard": "Annuler",
+    "dirty": "{count, plural, one {# modification non enregistrée} other {# modifications non enregistrées}}",
+    "generateConfirm": "Cela régénère les points de course à partir du modèle. Continuer ?",
+    "generated": "Enregistré · {count, plural, one {# ligne de points de course mise à jour} other {# lignes de points de course mises à jour}}",
+    "noChanges": "Enregistré · aucune ligne de points de course modifiée",
+    "loadError": "Impossible de charger le modèle : {error}",
+    "saveError": "Impossible d'enregistrer : {error}",
+    "generateError": "Impossible de générer : {error}",
+    "invalidValue": "Doit être un nombre non négatif"
+  },
+    "sectionTitle": "Points de course · remplacement",
+    "intro": "Ajuste les points attribués par position à l'arrivée, par classe de course. Les modifications sont consignées dans le journal admin. Utilise “Rétablir la base” pour restaurer les valeurs par défaut.",
+    "appliesToFutureHint": "Les modifications enregistrées n'affectent que les courses importées à partir de maintenant. Pour les appliquer aux classements existants, lance “↻ Point fra config” dans l'onglet Saison (les courses déjà payées ne sont pas touchées).",
+    "raceClassTab": "Classe de course",
+    "rankHeader": "n° {rank}",
+    "resultTypeLabel": "Classement",
+    "save": "Enregistrer les modifications ({count})",
+    "discard": "Annuler",
+    "resetRow": "Rétablir la base",
+    "saving": "Enregistrement…",
+    "saved": "{count, plural, one {# modification enregistrée} other {# modifications enregistrées}}",
+    "saveError": "Impossible d'enregistrer : {error}",
+    "loadError": "Impossible de charger les points de course : {error}",
+    "invalidValue": "Doit être un entier non négatif",
+    "groups": {
+      "Grand Tour": "Grand Tour",
+      "Endagslob": "Monuments d'un jour",
+      "WorldTour": "World Tour",
+      "Continental Circuit": "Continental Circuit"
+    },
+    "raceClasses": {
+      "TourFrance": "Tour de France",
+      "GiroVuelta": "Giro / Vuelta",
+      "Monuments": "Monuments",
+      "OtherWorldTourA": "Autre WorldTour A",
+      "OtherWorldTourB": "Autre WorldTour B",
+      "OtherWorldTourC": "Autre WorldTour C",
+      "ProSeries": "ProSeries",
+      "Class1": "Classe 1",
+      "Class2": "Classe 2"
+    },
+    "resultTypes": {
+      "Etapeplacering": "Place à l'étape",
+      "Klassement": "Général (final)",
+      "Klassiker": "Résultat d'une course d'un jour",
+      "Pointtroje": "Maillot vert (final)",
+      "Bjergtroje": "Maillot à pois (final)",
+      "Ungdomstroje": "Maillot blanc (final)",
+      "Forertroje": "Maillot de leader (par étape portée)",
+      "BjergtrojeDag": "Maillot à pois (par jour porté)",
+      "PointtrojeDag": "Maillot vert (par jour porté)",
+      "UngdomstrojeDag": "Maillot blanc (par jour porté)",
+      "EtapelobHold": "Équipe · course par étapes",
+      "KlassikerHold": "Équipe · course d'un jour"
+    }
+  },
+  "valuePreview": {
+    "title": "Aperçu des valeurs",
+    "subtitle": "Les valeurs des coureurs avant et après un modèle. Rien n'est enregistré ici.",
+    "loading": "Calcul des valeurs",
+    "modelSelect": "Modèle à prévisualiser",
+    "modelOption": "{from} vers {to}",
+    "reload": "Recharger",
+    "meta": "En direct {from} · salaire {wage} · saison {season} · {time}",
+    "sameModel": "Même modèle aux deux bouts, donc rien ne change.",
+    "noTeam": "Aucune équipe",
+    "academy": "Académie",
+    "ageShort": "Âge {n}",
+    "count": "Affichage de {shown} sur {total}",
+    "teamCount": "{n} équipes",
+    "showMore": "Afficher {n} de plus",
+    "drift": "Le modèle en direct seul déplace {n} valeurs dimanche prochain.",
+    "skipped": "{n} coureurs sans aptitudes ni âge sont écartés.",
+    "tabs": {
+      "overview": "Aperçu",
+      "riders": "Coureurs",
+      "teams": "Équipes"
+    },
+    "steps": {
+      "label": "Étape d'introduction progressive",
+      "runDay": "Jour d'exécution",
+      "week": "Semaine {n}"
+    },
+    "filters": {
+      "search": "Rechercher un coureur ou une équipe",
+      "more": "Plus de filtres",
+      "scope": {
+        "label": "Population",
+        "managers": "Équipes de managers",
+        "all": "Tous les coureurs"
+      },
+      "division": {
+        "label": "Division",
+        "all": "Toutes les divisions",
+        "one": "Division {n}"
+      },
+      "type": {
+        "label": "Type de coureur",
+        "all": "Tous les types"
+      },
+      "team": {
+        "label": "Équipe",
+        "all": "Toutes les équipes"
+      },
+      "age": {
+        "label": "Âge",
+        "all": "Tous les âges",
+        "u22": "Moins de 22 ans",
+        "a22_25": "22 à 25 ans",
+        "a26_29": "26 à 29 ans",
+        "a30": "30 ans et plus"
+      }
+    },
+    "overview": {
+      "population": "Population",
+      "hardestHit": "Équipes les plus touchées",
+      "allTeams": "Toutes les équipes",
+      "noTeams": "Aucune équipe dans cette sélection."
+    },
+    "stats": {
+      "riders": "Coureurs",
+      "before": "Valeur avant",
+      "after": "Valeur après",
+      "change": "Variation",
+      "median": "Variation médiane",
+      "up": "En hausse",
+      "down": "En baisse",
+      "same": "Inchangé",
+      "drop25": "Baisse de 25 % ou plus",
+      "drop50": "Baisse de 50 % ou plus"
+    },
+    "wage": {
+      "ok": "Contrôle des salaires : aucune base salariale ne bouge ({model}). Les demandes de salaire restent les mêmes.",
+      "moved": "Contrôle des salaires : {n} bases salariales bougent ({model}). Arrête-toi et vérifie avant l'exécution."
+    },
+    "columns": {
+      "rider": "Coureur",
+      "team": "Équipe",
+      "type": "Type",
+      "riders": "Coureurs",
+      "before": "Avant",
+      "after": "Après",
+      "deltaKr": "Variation CZ$",
+      "deltaPct": "Variation %"
+    },
+    "empty": {
+      "title": "Aucun coureur ne correspond aux filtres",
+      "description": "Efface les filtres pour voir toute la population.",
+      "action": "Effacer les filtres"
+    },
+    "error": {
+      "title": "Impossible de calculer l'aperçu",
+      "description": "Rien n'a été modifié. Les valeurs dans le jeu sont intactes.",
+      "retry": "Réessayer",
+      "stale": "Impossible d'actualiser. Les chiffres ci-dessous datent du dernier chargement réussi."
+    }
+  }
+}

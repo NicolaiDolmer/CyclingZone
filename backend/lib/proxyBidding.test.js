@@ -988,7 +988,9 @@ test("#1091 + #44: tie-match balance-gates — fører uden råd mister tie-fortr
   assert.equal(supabase.state.auction.current_bidder_id, "team-b");
   const rejectNotif = ownerCalls.find((c) => c[0] === "team-a" && c[1] === "auction_proxy_outbid");
   assert.ok(rejectNotif, "A skal notificeres om stoppet autobud");
-  assert.match(rejectNotif[3], /utilstr.kkelig balance/);
+  // #6801: tekst via noegle (modtagerens sprog); fallback-teksten er EN.
+  assert.equal(rejectNotif[5].messageCode, "notif.autoBidStopped.message");
+  assert.match(rejectNotif[3], /insufficient balance/);
 });
 
 // =============================================================================
@@ -1033,7 +1035,8 @@ test("#44: challenger med proxy > balance behandles som udmattet, næste challen
   // B skal have notif om at deres proxy stoppede pga. utilstrækkelig balance
   const bRejectNotif = ownerCalls.find((c) => c[0] === "team-b" && c[1] === "auction_proxy_outbid");
   assert.ok(bRejectNotif, "team-b skal have proxy-outbid notif");
-  assert.match(bRejectNotif[3], /utilstr.kkelig balance/);
+  assert.equal(bRejectNotif[5].messageCode, "notif.autoBidStopped.message");
+  assert.match(bRejectNotif[3], /insufficient balance/);
 });
 
 test("#44: alle challengers afvist på balance → cascade stopper uden counter-bid", async () => {

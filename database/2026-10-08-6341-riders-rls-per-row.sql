@@ -54,9 +54,9 @@
 -- den kan aldrig returnere NULL. Ville den, ville NOT IN give NULL → rækken
 -- skjules (fail-closed retning), aldrig en lækage.
 --
--- is_offered_intake_rider(uuid) RØRES IKKE (grants og krop uændret), så en
--- rollback er én ALTER POLICY. Den bruges ikke længere af nogen policy; at
--- revoke/droppe den er en separat oprydning.
+-- is_offered_intake_rider(uuid) RØRES IKKE her (grants og krop uændret). Den
+-- bruges ikke længere af nogen policy. #6752 (17/10) revoker authenticated-
+-- EXECUTE på den, så en rollback nu er GRANT + ALTER POLICY (se nedenfor).
 --
 -- Idempotent: CREATE OR REPLACE FUNCTION, REVOKE/GRANT, ALTER POLICY (ikke
 -- DROP+CREATE → atomisk, intet deny-all-vindue).
@@ -66,6 +66,9 @@
 -- =============================================================================
 -- ROLLBACK (gen-indfører den langsomme, men korrekte policy)
 -- =============================================================================
+--   -- #6752: GRANT FØRST, ellers giver policyen 42501 på al indlogget læsning
+--   -- af riders (samme fejlklasse som #2676).
+--   GRANT EXECUTE ON FUNCTION public.is_offered_intake_rider(uuid) TO authenticated;
 --   ALTER POLICY "Public read riders" ON public.riders
 --     USING (public.is_admin() OR NOT public.is_offered_intake_rider(id));
 --   NOTIFY pgrst, 'reload schema';

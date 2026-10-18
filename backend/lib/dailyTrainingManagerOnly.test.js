@@ -17,8 +17,11 @@ import { TRAINING_TICK_PER_RACE_DAY_FLAG_KEY } from "./trainingTickRaceDayFlag.j
 function createMockSupabase(state, opts = {}) {
   const calls = opts.calls ?? [];
   function builder(table, op = "select", filters = [], patch = null) {
-    const matchRow = (row) => !filters.some(([col, val, fop]) => {
+    // #6759: PostgREST-JSON-sti ("report->>token") slaas op i kolonnens objekt.
+    const cell = (row, col) => (col.includes("->>") ? row[col.split("->>")[0]]?.[col.split("->>")[1]] : row[col]);
+    const matchRow = (rawRow) => !filters.some(([col, val, fop]) => {
       if (fop === "meta") return false;
+      const row = { [col]: cell(rawRow, col) };
       if (fop === "gte") return !(row[col] >= val);
       if (fop === "lt") return !(row[col] < val);
       if (fop === "lte") return !(row[col] <= val);
@@ -70,12 +73,15 @@ function createMockSupabase(state, opts = {}) {
       then(resolve) {
         state[table] ??= [];
         let result;
+        // #6759: .update()/.delete() + .select() returnerer de ramte raekker.
         if (op === "update") {
-          for (const row of state[table]) if (matchRow(row)) Object.assign(row, patch);
-          result = { error: null };
+          const hit = state[table].filter(matchRow);
+          for (const row of hit) Object.assign(row, patch);
+          result = { data: hit, error: null };
         } else if (op === "delete") {
+          const hit = state[table].filter(matchRow);
           state[table] = state[table].filter((row) => !matchRow(row));
-          result = { error: null };
+          result = { data: hit, error: null };
         } else if (opts.injectTeamsError && table === "teams") {
           result = { data: null, error: { message: opts.injectTeamsError } };
         } else {
