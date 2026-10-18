@@ -490,3 +490,21 @@ test("#6773: tabes låsen 3 gange, kastes der med hold og tilbud i beskeden", as
   );
   assert.equal(n, 3);
 });
+
+test("#6780 (Codex P2): to aktive saesoner under skiftet → bonusmaalet havner paa den NYESTE saesons mandat", async () => {
+  const tables = baseTables();
+  tables.seasons = [
+    { id: "s3", number: 3, status: "active", start_date: "2026-07-31T00:00:00Z" },
+    { id: "s4", number: 4, status: "active", start_date: "2026-09-27T00:00:00Z" },
+  ];
+  tables.board_mandates = [
+    { id: "old", team_id: TEAM_ID, season_number: 3, status: "active", signed_at: "2026-08-01T00:00:00Z", goals: [] },
+    { id: "new", team_id: TEAM_ID, season_number: 4, status: "active", signed_at: "2026-09-28T00:00:00Z", goals: [] },
+  ];
+  const supabase = makeSupabase(tables);
+  const result = await appendBonusGoalToActiveMandate({
+    supabase, teamId: TEAM_ID, goal: buildBonusExtraGoal({ extraGoal: EXTRA_GOAL, offerId: OFFER_ID }), offerId: OFFER_ID,
+  });
+  assert.equal(result.mandateId, "new");
+  assert.equal(tables.board_mandates.find((m) => m.id === "old").goals.length, 0);
+});

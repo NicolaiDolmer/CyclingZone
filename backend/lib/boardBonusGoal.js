@@ -173,6 +173,11 @@ export async function appendBonusGoalToActiveMandate({ supabase, teamId, goal, o
     .from("seasons")
     .select("id, number")
     .eq("status", "active")
+    // Codex P2 (#6780): under saesonskiftet kan to saesoner kortvarigt vaere
+    // aktive. Vaelg den nyeste i stedet for at fejle og falde tilbage til
+    // "uden saesonfilter" (som ville ramme det gamle mandat).
+    .order("number", { ascending: false })
+    .limit(1)
     .maybeSingle();
   // Samme fallback som boardRoom.js: et fejlet sæson-opslag giver nyeste
   // sæsons mandat, ikke et tabt ekstra-mål.
