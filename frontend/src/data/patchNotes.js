@@ -60,26 +60,6 @@ export const PATCHES = [
         ]
       },
       {
-        "category": "fixed",
-        "audience": "player",
-        "rollout": "live",
-        "topic": "Training",
-        "en": {
-          "title": "\"Train now\" no longer gets stuck",
-          "body": "If you press \"Train now\" while the evening run is already handling your team, the page now refreshes instead of showing an error. A training day that was left half-booked also fixes itself."
-        },
-        "da": {
-          "title": "\"Træn nu\" sidder ikke længere fast",
-          "body": "Trykker du \"Træn nu\", mens aftenens kørsel allerede tager dit hold, genindlæser siden nu i stedet for at vise en fejl. En træningsdag, der stod halvt booket, retter sig også selv."
-        },
-        "refs": [
-          6822,
-          6798,
-          6791,
-          6759
-        ]
-      },
-      {
         "category": "improved",
         "audience": "player",
         "rollout": "live",
@@ -139,11 +119,11 @@ export const PATCHES = [
         "topic": "Board",
         "en": {
           "title": "Annual meeting shows this season",
-          "body": "The annual board meeting now always shows the mandate for the current season, never one from a season that has ended."
+          "body": "While a season is running, the annual board meeting now shows the mandate for that season, not one from a season that has ended."
         },
         "da": {
           "title": "Årsmødet viser denne sæson",
-          "body": "Bestyrelsens årsmøde viser nu altid mandatet for den aktuelle sæson, aldrig et fra en afsluttet sæson."
+          "body": "Mens en sæson kører, viser bestyrelsens årsmøde nu mandatet for den sæson, ikke et fra en afsluttet sæson."
         },
         "refs": [
           6847,
