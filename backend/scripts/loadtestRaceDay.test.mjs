@@ -251,7 +251,7 @@ test("#6766: varighedsgaten fejler ærligt ved 1x serielt og består kun når ta
   assert.equal(ok.passed, true);
 });
 
-test("#6766: gaten fejler også ved 10x-fixturen, og manglende aftentræning bestå ikke tomt", async () => {
+test("#6766: gaten fejler også ved 10x-fixturen, og en aldrig startet aftentræning består ikke tomt", async () => {
   const big = await simulateRaceDay({ date: DATE, scenario: "normal", teams: 4100, trainingConcurrency: 16 });
   const check = big.checks.find((c) => c.id === "training_close_duration");
   assert.equal(check.ok, false);
@@ -364,7 +364,7 @@ test("grænserne er konfigurerbare: et for stort svar fanges af rows_per_respons
   assert.ok(rows.value > 5);
 });
 
-test("CLI: forkert brug giver exit 2, et bestået scenarie exit 0 med JSON", () => {
+test("CLI: forkert brug giver exit 2, standardkørslen exit 1 (kun aftentræningens varighed) med JSON", () => {
   const bad = spawnSync(process.execPath, [SCRIPT, "--profile", "prod"], { encoding: "utf8" });
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /USAGE_INVALID_PROFILE/);
