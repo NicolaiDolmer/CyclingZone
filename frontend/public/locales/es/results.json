@@ -69,7 +69,7 @@
     "seasonShort": "T{number}",
     "stages": "{count, plural, one {# etapa} other {# etapas}}",
     "oneDay": "Carrera de un día",
-    "place": "{rank, selectordinal, other {#.º}}",
+    "place": "{rank, selectordinal, one {#.º} two {#.º} few {#.º} other {#.º}}",
     "notPlaced": "No está en los resultados",
     "noWinner": "Sin ganador registrado",
     "noRoute": "Recorrido no registrado",

@@ -69,7 +69,7 @@
     "seasonShort": "S{number}",
     "stages": "{count, plural, one {# etappe} other {# etappes}}",
     "oneDay": "Eendagskoers",
-    "place": "{rank, selectordinal, other {#e}}",
+    "place": "{rank, selectordinal, one {#e} two {#e} few {#e} other {#e}}",
     "notPlaced": "Niet in de uitslag",
     "noWinner": "Geen winnaar vastgelegd",
     "noRoute": "Parcours niet vastgelegd",
