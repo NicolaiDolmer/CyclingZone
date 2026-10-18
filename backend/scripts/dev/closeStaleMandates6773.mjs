@@ -317,7 +317,7 @@ export async function runApply({
   // lås og overskrive næste flytning til samme mandat. Strengt stigende pr. skriv.
   let lastLockMs = now.getTime();
   const nextLockToken = () => {
-    lastLockMs = Math.max(Date.now(), lastLockMs + 1);
+    lastLockMs += 1; // kun fra det injicerede ur (AGENTS L55), strengt stigende
     return new Date(lastLockMs).toISOString();
   };
   const result = { completed: 0, lapsed: 0, bonusGoalsMoved: 0, skipped: [] };
