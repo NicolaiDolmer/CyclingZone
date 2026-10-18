@@ -193,7 +193,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
             : t("rider:scouting.scoutBusyNow"))
           : t("rider:scouting.noSlots"))
         : t("rider:scouting.scoutTitle")}
-      className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors sm:whitespace-nowrap"
     >
       {busy ? (
         t("rider:scouting.scouting")
@@ -210,7 +210,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   if (hidden) {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        <span className="text-cz-3 text-xs whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
+        <span className="text-cz-3 text-xs sm:whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
           {t("rider:scouting.notScouted")}
         </span>
         {pendingBadge}

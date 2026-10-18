@@ -100,7 +100,7 @@ export default function TrainingOverview({
                 >
                   {cell.count}
                 </span>
-                <span className="mt-1 block truncate font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
+                <span className="mt-1 block wrap-break-word font-data text-3xs font-semibold uppercase tracking-[.06em] text-cz-3">
                   {cell.shortLabel}
                 </span>
               </>
