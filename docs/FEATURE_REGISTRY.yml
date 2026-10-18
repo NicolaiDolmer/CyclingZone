@@ -259,8 +259,9 @@ features:
     state: building
     ssot: docs/CALENDAR_RULES.md
     epic: 6514
-    verified: 2026-10-15
-    note: PR #6680; flag-nøglen race_library_v2 oprettes som off af migrationen efter merge; `flag:` tilføjes her i samme post-merge-skridt (registry-gaten kræver nøglen i prod), ejer flytter den til beta.
+    flag: race_library_v2
+    verified: 2026-10-18
+    note: PR #6680 merget 18/10; flaget race_library_v2 står som off i prod (læst 18/10 efter auto-migrate). Ejer flytter den til beta; #6875 rettes før "tænd beta".
     decision: ejer-beslutning
     decide_by: 2026-10-25
 
