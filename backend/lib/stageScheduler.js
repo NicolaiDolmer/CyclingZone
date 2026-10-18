@@ -12,11 +12,11 @@
 // Loop-prævention (3 lag, mod 2026-05-21-incidenten):
 //   1. stage_scheduler_enabled-flag (fail-safe OFF).
 //   2. race_engine_v2-flag (ekstra lag — afvikling sker via samme motor).
-//   3. countStagesDoneToday >= MAX_STAGES_PER_DAY hard-cap (Beslutning D: runaway-backstop,
-//      sat over reel fuld-pyramide-peak — se MAX_STAGES_PER_DAY nedenfor).
+//   3. countStagesDoneToday >= dagens cap (Beslutning D: runaway-backstop). Cap'et er
+//      max(MAX_STAGES_PER_DAY, ceil(dagens planlagte etaper × 1,5)) — se loadDailyStageCap (#6764).
 // + trackedTick (Sentry-capture) i cron-laget.
 
-import { copenhagenMidnightUTC } from "./copenhagenTime.js";
+import { copenhagenMidnightUTC, copenhagenDateString } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
 import { detectInFlightRacesWithoutEntries } from "./raceActiveGuard.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
@@ -40,8 +40,72 @@ import { startTrainingDayCloseAfterStages } from "./trainingDayCloseTrigger.js";
 // puljer (25/dag i dag + 3×2 = 31 > 30) og bygge en voksende backlog. Vi sætter nu cap'et
 // til peak + ~50% margin, så det forbliver en ægte runaway-guard uden at klippe legitim
 // afvikling ved fuld liga.
+//
+// #6764: seniorpyramiden er ikke hele kalenderen. Ungdomstrupperne kører deres egne løb
+// gennem samme scheduler og samme cap, og flere managere giver flere puljer/grupper.
+// Lasttesten (#6275) målte de travleste dage tæt på 62 allerede ved 1x, så ved vækst
+// blev legitime etaper skubbet til næste døgn ("daily_cap_reached"). Derfor er 62 nu
+// GULVET, og dagens cap følger kalenderen: max(62, ceil(dagens planlagte etaper × 1,5)).
+// Runaway-værnet består: cap'et er stadig endeligt og bundet til hvad der faktisk er
+// planlagt i dag, med samme ~50 % margin. Fejler tællingen, falder vi tilbage til gulvet.
 const FULL_PYRAMID_PEAK_STAGES_PER_DAY = 5 * 1 + 4 * 2 + 3 * 4 + 2 * 8; // = 41
-const MAX_STAGES_PER_DAY = Math.ceil(FULL_PYRAMID_PEAK_STAGES_PER_DAY * 1.5); // = 62
+const DAILY_CAP_MARGIN = 1.5;
+const MAX_STAGES_PER_DAY = Math.ceil(FULL_PYRAMID_PEAK_STAGES_PER_DAY * DAILY_CAP_MARGIN); // = 62 (gulv)
+
+// Ren formel (#6764): gulvet, eller dagens planlagte etaper + margin hvis det er højere.
+/**
+ * @param {number | null | undefined} plannedToday
+ * @returns {number}
+ */
+export function dailyStageCapFor(plannedToday) {
+  const planned = typeof plannedToday === "number" && Number.isFinite(plannedToday) && plannedToday > 0 ? plannedToday : 0;
+  return Math.max(MAX_STAGES_PER_DAY, Math.ceil(planned * DAILY_CAP_MARGIN));
+}
+
+// #6764: dagens planlagte scheduler-etaper = race_stage_schedule-rækker med scheduled_at
+// i det danske døgn [midnat, næste midnat). Én billig HEAD-count pr. tick (ingen rækker
+// overføres). Bevidst UDEN races.status-filteret fra due-queryen: doneToday tæller også
+// etaper fra løb der blev færdige tidligere i dag, så nævneren skal gøre det samme —
+// ellers ville cap'et skrumpe i løbet af dagen, efterhånden som løb afsluttes.
+// Fejler tællingen, returneres gulvet (62) — logget og capturet, aldrig tavst.
+/**
+ * @param {{
+ *   supabase: any,
+ *   now: Date,
+ *   seenKeys?: Map<string, any> | null,
+ *   captureExceptionFn?: Function,
+ * }} args
+ * @returns {Promise<{ cap: number, plannedToday: number | null, fallback: boolean }>}
+ */
+export async function loadDailyStageCap({ supabase, now, seenKeys = null, captureExceptionFn = captureException }) {
+  const midnight = copenhagenMidnightUTC(now);
+  // +26 t lander altid på næste danske kalenderdag (døgn er 23-25 t ved DST-skift).
+  const nextMidnight = copenhagenMidnightUTC(new Date(midnight.getTime() + 26 * 60 * 60 * 1000));
+  try {
+    const { count, error } = await supabase
+      .from("race_stage_schedule")
+      .select("race_id", { count: "exact", head: true })
+      .gte("scheduled_at", midnight.toISOString())
+      .lt("scheduled_at", nextMidnight.toISOString());
+    if (error) throw new Error(`race_stage_schedule count: ${error.message}`);
+    if (!Number.isFinite(count)) throw new Error("race_stage_schedule count: intet tal i svaret");
+    return { cap: dailyStageCapFor(count), plannedToday: count, fallback: false };
+  } catch (err) {
+    console.error(JSON.stringify({
+      event: "stage_scheduler_planned_count_failed",
+      error: err instanceof Error ? err.message : String(err),
+      fallbackCap: MAX_STAGES_PER_DAY,
+      tick: now.toISOString(),
+    }));
+    // Capture én gang pr. dansk døgn (samme dedupe-Map som løbsfejlene), log hvert tick.
+    const dedupeKey = `planned-count:${copenhagenDateString(now)}`;
+    if (!seenKeys || !seenKeys.has(dedupeKey)) {
+      if (seenKeys) seenKeys.set(dedupeKey, { firstFailedAt: now.getTime(), escalated: false });
+      captureExceptionFn(err, { tags: { cron: "stage-scheduler", check: "planned-stage-count" } });
+    }
+    return { cap: MAX_STAGES_PER_DAY, plannedToday: null, fallback: true };
+  }
+}
 
 // Source-markør på race_simulation_runs: KUN scheduler-drevne runs tæller i daglig cap.
 // Skrives af persistRuns via simulateStageByIndex's runSource (sat = 'scheduler' fra
@@ -59,13 +123,17 @@ const ESCALATION_AFTER_MS = 3 * 60 * 60 * 1000;
 // bruger den delte, DST-robuste copenhagenMidnightUTC (FIX 2).
 async function countStagesDoneToday(supabase, now) {
   const since = copenhagenMidnightUTC(now).toISOString();
-  const { data, error } = await supabase
+  // #6764: HEAD-count, ikke data.length. Med et kalender-afhængigt cap kan dagens antal
+  // overstige PostgRESTs rækkeloft (1000); en afkortet liste ville så holde budgettet
+  // positivt for evigt og slå runaway-værnet fra.
+  const { count, error } = await supabase
     .from("race_simulation_runs")
-    .select("id")
+    .select("id", { count: "exact", head: true })
     .eq("source", SCHEDULER_RUN_SOURCE)
     .gte("created_at", since); // race_simulation_runs bruger created_at (verificeret schema)
   if (error) throw new Error(`race_simulation_runs: ${error.message}`);
-  return (data || []).length;
+  if (!Number.isFinite(count)) throw new Error("race_simulation_runs: intet count i svaret");
+  return count;
 }
 
 /**
@@ -77,7 +145,7 @@ async function countStagesDoneToday(supabase, now) {
  *   captureExceptionFn?: Function,
  *   startTrainingDayClose?: Function,
  * }} args
- * @returns {{ ran, errors, skipped? }}
+ * @returns {{ ran, errors, skipped?, dailyCap?: number }}
  */
 export async function runStageScheduler({
   supabase,
@@ -121,9 +189,11 @@ export async function runStageScheduler({
   }
 
   // Hard-cap: hvor mange etaper er allerede afviklet i dag? (loop-prævention)
+  // #6764: cap'et følger dagens planlagte kalender (gulv 62, fallback 62 ved tællefejl).
   const doneToday = await countStagesDoneToday(supabase, now);
-  let budget = MAX_STAGES_PER_DAY - doneToday;
-  if (budget <= 0) return { ran: 0, errors: 0, skipped: "daily_cap_reached" };
+  const { cap: dailyCap } = await loadDailyStageCap({ supabase, now, seenKeys, captureExceptionFn });
+  let budget = dailyCap - doneToday;
+  if (budget <= 0) return { ran: 0, errors: 0, skipped: "daily_cap_reached", dailyCap };
 
   // Forfaldne etape-tider: scheduled_at <= now. Sorteret på tid → ældste først.
   // P0 2/7: races!inner-join filtrerer completede løbs rækker fra SERVER-SIDE.
@@ -321,7 +391,7 @@ export async function runStageScheduler({
   }
   // #5911: dagens sidste etape kan vaere afviklet nu - start traenings-lukningen straks (cron er fallback).
   startTrainingDayClose({ supabase, stagesRan: ran + recovered + resumed, captureExceptionFn });
-  return { ran, errors, recovered, resumed, benignSkips };
+  return { ran, errors, recovered, resumed, benignSkips, dailyCap };
 }
 
 export { MAX_STAGES_PER_DAY };

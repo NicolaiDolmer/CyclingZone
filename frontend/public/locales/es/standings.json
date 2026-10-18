@@ -4,6 +4,7 @@
   "seasonTooltip": "Temporada actual. La clasificación se reinicia cada temporada.",
   "noActiveSeason": "Sin temporada activa",
   "loadError": "No se pudo cargar la clasificación. Inténtalo de nuevo.",
+  "strengthLoadError": "No se pudo cargar la fuerza de las plantillas. Inténtalo de nuevo.",
   "retry": "Reintentar",
   "division": "División {n}",
   "poolAll": "Todos",

@@ -73,10 +73,35 @@ function escapeRegexChar(ch) {
 // så resten er trygge navne-tegn: bogstaver, apostrof, bindestreg m.fl.).
 // `imatch` (~*) er selv case-insensitiv, så mønsteret bygges udelukkende i
 // småt — versaler i søgeteksten folder ned til samme tegnklasse.
-export function buildAccentInsensitivePattern(token) {
-  return Array.from(String(token ?? "").toLowerCase())
+export function buildAccentInsensitivePattern(token, { wordStart = false } = {}) {
+  const body = Array.from(String(token ?? "").toLowerCase())
     .map((ch) => (ACCENT_CLASSES[ch] ? `[${ACCENT_CLASSES[ch]}]` : escapeRegexChar(ch)))
     .join("");
+  // #5941: \m = Postgres-ARE "begyndelsen af et ord" (findes ikke i JS-regex).
+  return wordStart ? `\\m${body}` : body;
+}
+
+// #5941: ÉT prædikat for client-side rytter-søgefelter (samme kontrakt som
+// applyNameSearch): hvert whitespace-token skal være PRÆFIKS af et ord i
+// fulde navn, accent- og case-ufølsomt. Aldrig spredte bogstaver / midt-i-ord.
+function foldForSearch(s) {
+  return String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/[\u00f8\u00d8]/g, "o").replace(/\u0111/g, "d").replace(/\u0142/g, "l").replace(/\u0131/g, "i");
+}
+
+export function riderNameMatches(fullName, q) {
+  const tokens = nameSearchTokens(q).map(foldForSearch);
+  if (tokens.length === 0) return true;
+  const name = foldForSearch(fullName);
+  // Unicode-bevidst (ß, kyrillisk, græsk er bogstaver), samme som Postgres \m.
+  const isWordStart = (i) => i === 0 || !/[\p{L}\p{N}]/u.test(name[i - 1]);
+  // Token skal starte ved et ord-start i det intakte navn (bevarer bindestreg/apostrof i token).
+  return tokens.every((t) => {
+    for (let i = name.indexOf(t); i !== -1; i = name.indexOf(t, i + 1)) {
+      if (isWordStart(i)) return true;
+    }
+    return false;
+  });
 }
 
 // Anvender token-set navnesøgning på en supabase-query. Tom / kun-whitespace /
@@ -87,7 +112,7 @@ export function buildAccentInsensitivePattern(token) {
 // .or() rammer det embeddede niveau i stedet for top-level. Udeladt = top-level.
 export function applyNameSearch(query, q, { referencedTable } = {}) {
   for (const token of nameSearchTokens(q)) {
-    const pattern = buildAccentInsensitivePattern(token);
+    const pattern = buildAccentInsensitivePattern(token, { wordStart: true }); // #5941 ord-præfiks, ikke indeholder
     const orStr = `firstname.imatch.${pattern},lastname.imatch.${pattern}`;
     query = referencedTable ? query.or(orStr, { referencedTable }) : query.or(orStr);
   }

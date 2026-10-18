@@ -97,7 +97,7 @@ export default function MobileQuickNav({ unread }) {
             <NavLink
               key={to}
               to={to}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-3xs font-medium transition-colors
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 text-3xs font-medium transition-colors
                 ${isActive ? "text-cz-accent" : "text-cz-sidebar-2 hover:text-cz-sidebar-1"}`}
             >
               <div className="relative">
@@ -108,7 +108,7 @@ export default function MobileQuickNav({ unread }) {
                   </span>
                 )}
               </div>
-              <span>{t(labelKey)}</span>
+              <span className="max-w-full text-center leading-tight wrap-break-word">{t(labelKey)}</span>
             </NavLink>
           );
         })}

@@ -1326,7 +1326,7 @@
       },
       "tag_peak_day": {
         "label": "Pico",
-        "tooltip": "Afinó su forma para estar en su mejor momento en esta etapa."
+        "tooltip": "Afinó su forma para llegar en pico a esta etapa."
       },
       "tag_perfect_peak": {
         "label": "Pico perfecto",
@@ -1517,7 +1517,7 @@
           "v2": "{count, plural, one {Un compañero renunció} other {# compañeros renunciaron}} a sus propias opciones por {captain} hoy."
         },
         "form_peak": {
-          "v1": "{rider} llegó en plena forma, y se notó.",
+          "v1": "{rider} llegó en pico de forma, y se notó.",
           "v2": "La forma marcó la diferencia para {rider} hoy."
         },
         "favorite_off_day": {

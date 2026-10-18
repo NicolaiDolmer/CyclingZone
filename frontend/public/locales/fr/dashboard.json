@@ -236,7 +236,7 @@
         "favorite_off_day": "{rider} abordait l'étape en favori mais a terminé n° {rank} : {reason, select, jour_sans {un jour sans} incident {une chute ou un problème mécanique} helper_work {une journée passée à travailler pour un coéquipier} other {sans raison claire}}.",
         "helper_shift": "{count, plural, one {Un coéquipier a sacrifié ses chances} other {# coéquipiers ont sacrifié leurs chances}} pour amener {captain} à l'avant.",
         "tag_helper_sacrifice": "{rider} a sacrifié son propre résultat, en terminant n° {rank}, pour travailler pour {captain}.",
-        "form_peak": "{rider} est arrivé en grande forme et a livré.",
+        "form_peak": "{rider} est arrivé au pic de forme et a livré.",
         "tag_perfect_peak": "{rider} a gagné sur l'étape exacte pour laquelle il avait préparé son pic de forme.",
         "tag_peak_day": "{rider} avait calé son pic de forme sur cette étape.",
         "tag_jour_sans": "{rider} n'avait tout simplement pas les jambes aujourd'hui.",

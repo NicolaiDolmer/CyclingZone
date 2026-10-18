@@ -230,6 +230,10 @@ Alle puljer i en division kører stadig den samme kalender (#2276), så D4's lø
 
 ---
 
+### 1g. Dagligt etape-loft i scheduleren følger kalenderen ([#6764](https://github.com/NicolaiDolmer/CyclingZone/issues/6764), 18/10)
+
+`stageScheduler.js` kører højst `max(62, ceil(dagens planlagte etaper × 1,5))` scheduler-etaper pr. dansk døgn, for alle trupper tilsammen. 62 er gulvet (fuld seniorpyramide 41 + 50 %). "Planlagt" = `race_stage_schedule`-rækker med `scheduled_at` i døgnet [midnat, næste midnat), uden status-filter, så loftet ikke skrumper i løbet af dagen. Fejler tællingen, gælder gulvet (logget og sendt til Sentry én gang pr. døgn). Loftet er et værn mod en løbsk loop, ikke pacing: kalenderen bestemmer tempoet. Lasttesten (#6275) målte 57 planlagte etaper på de travleste dage allerede ved 1x.
+
 ## 2. Sæsonens rammer
 
 | Regel | Værdi | Låst | Kilde |

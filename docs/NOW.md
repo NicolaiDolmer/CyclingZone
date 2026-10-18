@@ -6,9 +6,9 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** gennemgang: `docs/sessions/2026-10-18-gennemgang-startprompt.md` (kort 1-9 + tænd-kort, ét ad gangen). Hændelse 18/10: PostgREST nede 05:42-08:20 (#6184), alarm mangler.
+> **🎯 Next action:** I DAG 18/10: merge-kø · bølge #6858+#6859 · løbsidentitet #6857 (design → byg, S5) · patch notes grundigt · MASTERPLAN + roadmap · GitHub-audit. Venter ejer: supabase login, motor v2, ungdom S5, #6839-UX. MANDAG 19/10: DST-audit #6862 · token-audit #6863 · UX-mockups (#6767).
 >
-> **17-18/10 (pc1):** S5-motorreglerne tændt (#6699). 31 PR'er merget, 45 issues done. **Ejer-kort i `docs/sessions/kort-2026-10-17/`:** 1 frys · 2 skifte (2a-2d) · 3 UX · 4 lasttest (kræver `supabase login`) · 5 dark mode · 6 kuperede udbrud · **tænd-kort `s5_profiles_v2`** (#6819→#6820). **Venter ejer-go (rule 35-klassifikator):** #6839 #6840 #6841 #6842 (reviewet, Codex rene/rettet). **Frosset til efter 25/10:** #6837 (beta-sprog-register; bundle +0,3 KB, #6838). Design-draft #6843 (jagtafstand, #6814). Frys-brud 00:19: #6832-#6834 (læring 2026-10-17).
+> **17-18/10 (pc1):** S5-motorreglerne tændt (#6699). 31 PRer merget, 45 issues done. Kort i `docs/sessions/kort-2026-10-17/`.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude (NicolaiPC), gennemgangs-session 18/10, overtaget alle åbne PRer + Auto-fix fra pc1.

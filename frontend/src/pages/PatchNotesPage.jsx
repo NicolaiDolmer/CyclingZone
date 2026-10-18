@@ -6,6 +6,8 @@ import {
 } from "../lib/patchNotes.js";
 import { loadAnonymousFlags } from "../lib/featureStage.ts";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
+import { intlLocale } from "../lib/intlLocale.ts";
 import {
   PageHeader, Card, Input, Button, EmptyState, ErrorState, PageLoader, Segmented, Toggle,
   SearchIcon, ChevronDownIcon, ChevronRightIcon,
@@ -30,9 +32,11 @@ function rolloutOf(change, liveFlags) {
   return ROLLOUT_CHIP[r] ? r : null;
 }
 
-function formatDate(iso, lang) {
+// Codex (#6837): datoen formateres i spillerens aktive sprog (også fr/es/nl);
+// en/da-fallbacken gælder kun valget af patch-note-prosa (pickLang).
+function formatDate(iso, language) {
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString(lang === "da" ? "da-DK" : "en-GB", {
+  return d.toLocaleDateString(intlLocale(language), {
     weekday: "long", day: "numeric", month: "long",
   });
 }
@@ -53,7 +57,7 @@ export default function PatchNotesPage() {
     title: ready ? t("meta.title") : undefined,
     description: ready ? t("meta.description") : undefined,
     canonical: "https://cyclingzone.org/patch-notes",
-    lang,
+    lang: documentLang(i18n.language),
   });
 
   const [query, setQuery] = useState("");
@@ -239,7 +243,7 @@ export default function PatchNotesPage() {
                 >
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="font-data text-[15px] font-semibold tabular-nums text-cz-1 capitalize truncate">
-                      {formatDate(day.date, lang)}
+                      {formatDate(day.date, i18n.language)}
                     </span>
                     {isNew && (
                       <span className="text-3xs uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill shrink-0">
