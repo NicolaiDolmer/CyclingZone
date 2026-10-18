@@ -7,7 +7,7 @@ import { processMandateAutoAcceptCron } from "./boardMandateAutoAccept.js";
 // signMandate (boardMandateMeeting.js) selv rører når den kaldes med Keep på
 // alt — samme tabel-sæt som boardMandateMeeting.test.js's mock. ────────────
 function makeCronSupabase({
-  flagValue = "on", mandates = [], teams = [], users = [], notifications = [], boardMembers = [],
+  flagValue = "on", mandates = [], teams = [], users = [], notifications = [], boardMembers = [], seasons = [],
 } = {}) {
   const state = { mandates: [...mandates], events: [], boardProfiles: [], notificationQueries: [] };
 
@@ -104,7 +104,14 @@ function makeCronSupabase({
         };
       }
       if (table === "seasons") {
-        const chain = { eq: () => chain, order: () => ({ data: [], error: null }), maybeSingle: async () => ({ data: null, error: null }) };
+        // #6773 · isMandateSeasonEnded slår op på id/number; uden fixtures
+        // findes sæsonen ikke (= ikke afsluttet), som før.
+        const filters = {};
+        const chain = {
+          eq(col, value) { filters[col] = value; return chain; },
+          order: () => ({ data: [], error: null }),
+          maybeSingle: async () => ({ data: Object.keys(filters).length ? (applyFilters(seasons, filters)[0] ?? null) : null, error: null }),
+        };
         return { select: () => chain };
       }
       if (table === "riders") return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
@@ -143,7 +150,7 @@ test("processMandateAutoAcceptCron: kill-switch off → no-op, ingen queries udo
   const supabase = makeCronSupabase({ flagValue: "off" });
   const notified = [];
   const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified) });
-  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 });
+  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 });
   assert.equal(notified.length, 0);
 });
 
@@ -294,7 +301,7 @@ test("#4839 processMandateAutoAcceptCron: off → stadig no-op, også som motor-
   });
   const notified = [];
   const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified) });
-  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 });
+  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 });
   assert.equal(supabase._state.mandates[0].status, "proposed");
 });
 
@@ -341,4 +348,77 @@ test("#6122 processMandateAutoAcceptCron: T-3 allerede sendt (anden daysLeft-tek
   assert.equal(notified.length, 0, "24t-tekst-dedup ville have sendt igen; mandat-nøglen gør ikke");
   assert.equal(result.reminders_sent, 0);
   assert.equal(result.errors, 0);
+});
+
+test("#6773 processMandateAutoAcceptCron: forslag for en AFSLUTTET sæson underskrives ikke, det udløber (lapsed)", async () => {
+  const openedAt = new Date("2026-09-25T00:00:00Z");
+  const now = new Date(openedAt.getTime() + 8 * 24 * 60 * 60 * 1000);
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    seasons: [
+      { id: "s3", number: 3, status: "completed" },
+      { id: "s4", number: 4, status: "active" },
+    ],
+    mandates: [
+      {
+        id: "m-old", team_id: "t1", season_id: "s3", season_number: 3, status: "proposed", focus: "balanced",
+        goals: [], adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+        source: {},
+      },
+      {
+        id: "m-new", team_id: "t1", season_id: "s4", season_number: 4, status: "proposed", focus: "balanced",
+        goals: [{ type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }],
+        adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+        source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+      },
+    ],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  const byId = Object.fromEntries(supabase._state.mandates.map((m) => [m.id, m]));
+  assert.equal(byId["m-old"].status, "lapsed", "den afsluttede sæsons forslag bliver aldrig aktivt");
+  assert.equal(byId["m-old"].signed_at, undefined, "ingen underskrift");
+  assert.equal(byId["m-new"].status, "active", "den aktuelle sæsons forslag auto-accepteres som før");
+  assert.equal(result.lapsed_ended_season, 1);
+  assert.equal(result.auto_accepted, 1);
+  assert.equal(result.errors, 0);
+  assert.ok(notified.every((n) => n.relatedId !== "m-old"), "ingen besked om det udløbne forslag");
+});
+
+test("#6780 (Codex P2) auto-accept: lapses forslaget under underskriften, sendes ingen 'underskrevet for dig'", async () => {
+  const openedAt = new Date("2026-09-25T00:00:00Z");
+  const now = new Date(openedAt.getTime() + 8 * 24 * 60 * 60 * 1000);
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s4", number: 4, status: "active" }],
+    mandates: [{
+      id: "m1", team_id: "t1", season_id: "s4", season_number: 4, status: "proposed", focus: "balanced",
+      goals: [{ type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }],
+      adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  // Sæsonskiftet lapser forslaget lige før den betingede sign-opdatering.
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_mandates") return api;
+    return {
+      ...api,
+      update: (payload) => {
+        if (payload.status === "active") supabase._state.mandates[0].status = "lapsed";
+        return api.update(payload);
+      },
+    };
+  };
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(supabase._state.mandates[0].status, "lapsed");
+  assert.equal(result.auto_accepted, 0);
+  assert.equal(result.errors, 0);
+  assert.equal(notified.length, 0, "ingen besked om en underskrift der ikke skete");
 });

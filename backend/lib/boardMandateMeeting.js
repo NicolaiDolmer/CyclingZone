@@ -50,6 +50,7 @@ import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
+import { isMandateSeasonEnded } from "./boardMandateEngine.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
@@ -489,6 +490,18 @@ export async function writeLegacyOneYearBoard(supabase, {
  * en spiller der ikke må se Boardroom må heller ikke underskrive. Cron-stien
  * sender `engineWrite: true`, så auto-accept virker for alle hold i 'beta'.
  */
+// #6780 · Idempotente tilbagerulnings-trin proeves op til 3 gange; returnerer
+// den sidste fejl (eller null), saa kalderen kan afgoere om svaret er sikkert.
+async function retryRollbackStep(run, attempts = 3) {
+  let lastError = null;
+  for (let i = 0; i < attempts; i++) {
+    const { error } = await run();
+    if (!error) return null;
+    lastError = error;
+  }
+  return lastError;
+}
+
 export async function signMandate(supabase, {
   teamId,
   mandateId,
@@ -522,6 +535,15 @@ export async function signMandate(supabase, {
     throw new MandateSignConflictError(
       `Mandatet kan ikke underskrives fra status "${mandate.status}".`,
       { errorCode: "board_mandate_not_proposed" }
+    );
+  }
+  // #6773 · Et forslag for en afsluttet sæson underskrives aldrig (hverken af
+  // manageren eller auto-accept). Før blev sådanne forslag aktive EFTER
+  // skiftet og skyggede for næste sæsons mandat.
+  if (await isMandateSeasonEnded(supabase, mandate)) {
+    throw new MandateSignConflictError(
+      "This mandate belongs to a season that has ended.",
+      { errorCode: "board_mandate_season_ended" }
     );
   }
 
@@ -583,9 +605,11 @@ export async function signMandate(supabase, {
   // decline lukker kun slottet. Regenereret deterministisk — se modul-
   // headerens fortolkning 2.
   let visionSlotOutcome = null;
+  let openVisionSlotId = null;
   if (visionSlot != null) {
     const openSlot = await loadOpenVisionSlot(supabase, teamId);
     if (openSlot) {
+      openVisionSlotId = openSlot.id;
       const proposal = buildVisionSlotProposal({
         openSlot, focus: finalFocus, team, riders, standing, currentSeasonNumber: mandate.season_number, reputationEnabled,
         existingMilestones: await loadTeamMilestones(supabase, teamId),
@@ -658,6 +682,50 @@ export async function signMandate(supabase, {
   // opdatering. Stop FØR kvitteringer og legacy dual-write, så sideeffekterne
   // kun skrives én gang; svar som idempotens-stien ovenfor.
   if (!signedRows?.length) {
+    // Codex P1 (#6780): forslaget blev lukket (fx lapsed af saesonskiftet)
+    // mellem tjekket og opdateringen. Vision-slot-aendringerne fra DETTE kald
+    // rulles tilbage, saa et mandat der ikke blev underskrevet, ikke efterlader
+    // en ny milepael eller et lukket slot. (Et samtidigt sign kan ikke naa hertil:
+    // det taber allerede slot-claimet ovenfor med 409.)
+    // Codex P1 (#6780, runde 2): en fejlet tilbagerulning maa aldrig svare
+    // "succes". Hvert trin proeves op til 3 gange (begge er idempotente); lykkes
+    // det ikke, kastes en fejl med team/slot/noegle, saa den lander i Sentry og
+    // kan repareres, i stedet for at spilleren stille mister sit aabne slot.
+    if (visionSlotOutcome && openVisionSlotId) {
+      const failures = [];
+      if (visionSlotOutcome.accepted && visionSlotOutcome.milestone_key) {
+        const delError = await retryRollbackStep(() => supabase
+          .from("board_vision_milestones")
+          .delete()
+          .eq("team_id", teamId)
+          .eq("milestone_key", visionSlotOutcome.milestone_key)
+          .eq("status", "pending"));
+        if (delError) failures.push(`delete milestone ${visionSlotOutcome.milestone_key}: ${delError.message}`);
+      }
+      const reopenError = await retryRollbackStep(() => supabase
+        .from("board_vision_milestones")
+        .update({ slot_open: true, updated_at: new Date().toISOString() })
+        .eq("id", openVisionSlotId));
+      if (reopenError) failures.push(`reopen slot ${openVisionSlotId}: ${reopenError.message}`);
+      if (failures.length) {
+        throw new Error(`board_vision_milestones rollback incomplete for team ${teamId} (mandate ${mandateId} was not signed): ${failures.join("; ")}`);
+      }
+    }
+    // Codex P2 (#6780): kun et samtidigt sign, der gjorde mandatet aktivt, er
+    // en succes. Blev det lapsed imens, svares der konflikt, saa auto-accept
+    // ikke melder "underskrevet for dig" om et mandat der aldrig blev det.
+    const { data: after, error: reReadError } = await supabase
+      .from("board_mandates")
+      .select("status")
+      .eq("id", mandateId)
+      .maybeSingle();
+    if (reReadError) throw new Error(`board_mandates re-read failed: ${reReadError.message}`);
+    if (after?.status !== "active") {
+      throw new MandateSignConflictError(
+        `Mandatet kan ikke underskrives fra status "${after?.status ?? "ukendt"}".`,
+        { errorCode: "board_mandate_not_proposed" }
+      );
+    }
     return buildBoardRoomPayload({ supabase, teamId });
   }
 

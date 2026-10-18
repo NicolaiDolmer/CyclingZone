@@ -20,9 +20,9 @@
  */
 
 import { resolveThresholds, DAY_MS } from "./boardNegotiationThresholds.js";
-import { signMandate } from "./boardMandateMeeting.js";
+import { MandateSignConflictError, signMandate } from "./boardMandateMeeting.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
-import { MANDATE_OPENED_TITLE_CODE, notifyMandateOpened } from "./boardMandateEngine.js";
+import { MANDATE_OPENED_TITLE_CODE, isMandateSeasonEnded, notifyMandateOpened } from "./boardMandateEngine.js";
 
 /**
  * Cron-entry: tjek alle `proposed` mandater og send reminders / auto-sign
@@ -43,7 +43,7 @@ export async function processMandateAutoAcceptCron({
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
 
-  const summary = { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 };
+  const summary = { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 };
 
   // Kill-switch: samme fail-safe-disciplin som alle andre mandat-indgange.
   // Ingen isBetaTester-parameter her — cronen kører for HELE populationen og
@@ -55,7 +55,7 @@ export async function processMandateAutoAcceptCron({
 
   const { data: proposedMandates, error } = await supabase
     .from("board_mandates")
-    .select("id, team_id, season_number, proposed_at, auto_accept_deadline")
+    .select("id, team_id, season_id, season_number, proposed_at, auto_accept_deadline")
     .eq("status", "proposed");
   if (error) throw error;
   if (!proposedMandates?.length) return summary;
@@ -73,11 +73,26 @@ export async function processMandateAutoAcceptCron({
     userIds: (teams || []).map((t) => t.user_id).filter(Boolean),
   });
 
+  // #6773 · Ét sæson-opslag pr. sæson pr. kørsel, ikke pr. mandat.
+  const seasonEndedByKey = new Map();
+  const seasonEnded = async (mandate) => {
+    const key = mandate.season_id ?? `n:${mandate.season_number}`;
+    if (!seasonEndedByKey.has(key)) seasonEndedByKey.set(key, await isMandateSeasonEnded(supabase, mandate));
+    return seasonEndedByKey.get(key);
+  };
+
   for (const mandate of proposedMandates) {
     summary.mandates_checked += 1;
     const team = teamById.get(mandate.team_id);
     if (!team) continue;
     try {
+      // #6773 · Et forslag for en afsluttet sæson underskrives aldrig og får
+      // ingen påmindelser: det udløber ('lapsed'). Før blev det underskrevet
+      // efter skiftet og stod aktivt ved siden af næste sæsons mandat.
+      if (await seasonEnded(mandate)) {
+        if (await lapseProposedMandate({ supabase, mandateId: mandate.id, now })) summary.lapsed_ended_season += 1;
+        continue;
+      }
       const result = await processMandateAutoAccept({ supabase, mandate, team, notifyUser, now, lastSeenByUserId });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
@@ -94,6 +109,21 @@ export async function processMandateAutoAcceptCron({
   }
 
   return summary;
+}
+
+/**
+ * #6773 · Betinget på `status = 'proposed'`, så et samtidigt sign eller en
+ * anden kørsel aldrig overskrives. Returnerer true når rækken blev lukket.
+ */
+async function lapseProposedMandate({ supabase, mandateId, now }) {
+  const { data, error } = await supabase
+    .from("board_mandates")
+    .update({ status: "lapsed", updated_at: now.toISOString() })
+    .eq("id", mandateId)
+    .eq("status", "proposed")
+    .select("id");
+  if (error) throw new Error(`board_mandates lapse failed: ${error.message}`);
+  return Array.isArray(data) && data.length > 0;
 }
 
 /**
@@ -126,19 +156,26 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
   if (daysSinceOpen >= thresholds.AUTO_ACCEPT) {
     // Keep på alt: ingen adjustments, ingen anmodning, intet vision-slot-svar
     // (et evt. åbent slot forbliver åbent til næste rigtige møde).
-    await signMandate(supabase, {
-      teamId: team.id,
-      mandateId: mandate.id,
-      adjustments: [],
-      request: null,
-      visionSlot: null,
-      now,
-      // #4839: cron-skrivning uden viewer — 'beta' skal underskrive for alle
-      // hold, ellers returnerer signMandate null og cronen tæller et
-      // auto_accepted der aldrig skete.
-      engineWrite: true,
-      signedVia: "auto_accept",
-    });
+    try {
+      await signMandate(supabase, {
+        teamId: team.id,
+        mandateId: mandate.id,
+        adjustments: [],
+        request: null,
+        visionSlot: null,
+        now,
+        // #4839: cron-skrivning uden viewer — 'beta' skal underskrive for alle
+        // hold, ellers returnerer signMandate null og cronen tæller et
+        // auto_accepted der aldrig skete.
+        engineWrite: true,
+        signedVia: "auto_accept",
+      });
+    } catch (signError) {
+      // Codex P2 (#6780): forslaget blev lukket (fx lapsed af sæsonskiftet)
+      // under underskriften. Ingen underskrift, ingen besked, ingen fejl.
+      if (signError instanceof MandateSignConflictError && signError.errorCode === "board_mandate_not_proposed") return result;
+      throw signError;
+    }
     result.auto_accepted = true;
     if (team.user_id) {
       await notifyUser({
