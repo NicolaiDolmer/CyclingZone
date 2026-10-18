@@ -8,7 +8,7 @@
  * Supabase, så det også opdager "Railway nede") og gør tre ting:
  *
  *   1. Probe: backend-readiness, PostgREST direkte og pg_postmaster_start_time().
- *   2. Alarmregel: 2 fejlede kørsler i træk -> én Discord-ops-besked; når alt er
+ *   2. Alarmregel: 2 fejlede målinger i træk (op til 3 pr. kørsel, #6854) -> én Discord-ops-besked; når alt er
  *      grønt igen -> én "oppe igen"-besked med varighed. Ingen gentagne alarmer
  *      mens nedetiden varer.
  *   3. Genstart-markør: ændres pg_postmaster_start_time, sendes én besked med
@@ -46,6 +46,9 @@ import { getOpsMention, withOpsMention } from "../../backend/lib/opsWebhook.js";
 const execFileAsync = promisify(execFile);
 
 export const ALERT_AFTER_FAILURES = 2;
+// #6854: målinger pr. kørsel ved fejl (bekræftelse uden at vente på næste kørsel).
+export const CONFIRM_ROUNDS = 3;
+export const CONFIRM_DELAY_MS = 30_000;
 export const HTTP_TIMEOUT_MS = 10_000;
 export const DEFAULT_BACKEND_URL = "https://cyclingzone-production.up.railway.app";
 export const REQUIRED_ENV = [
@@ -231,7 +234,7 @@ export function buildEmbed(message, { runUrl = "" } = {}) {
         {
           title: "Databasevagt: svarer ikke",
           description:
-            `${message.failures} kørsler i træk fejlet, siden ca. ${formatCopenhagen(message.since)} (dansk tid).` +
+            `${message.failures} målinger i træk fejlet, siden ca. ${formatCopenhagen(message.since)} (dansk tid).` +
             `${diagnosis ? `\n${diagnosis}` : ""}\n\`\`\`\n${checksText(message.checks)}\n\`\`\`${link}`,
           color: COLOR_DOWN,
           timestamp: message.checks.checkedAt ?? undefined,
@@ -423,6 +426,7 @@ export async function main({
   execFn = execFileAsync,
   now = () => new Date(),
   log = console.log,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 } = {}) {
   const missing = missingEnv(env);
   if (missing.length) {
@@ -436,14 +440,27 @@ export async function main({
   const prevState = readState(stateFile);
   const nowIso = now().toISOString();
 
-  const [backend, postgrest, postmaster] = await Promise.all([
-    checkBackend(fetchFn, env.DB_WATCHDOG_BACKEND_URL || DEFAULT_BACKEND_URL),
-    checkPostgrest(fetchFn, env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY),
-    checkPostmaster(execFn, env.SUPABASE_DB_URL),
-  ]);
-  const checks = { backend, postgrest, postmaster, checkedAt: nowIso };
-
-  const { state, messages } = evaluate(prevState, checks, nowIso);
+  // #6854: GitHub kører ofte kun vagten hver 2.-4. time i stedet for hvert 5. min
+  // (18/10 så kørslen kl. 07:06 udfaldet, men næste kørsel kom først efter det).
+  // En fejl bekræftes derfor i samme kørsel: nye målinger med kort pause, indtil
+  // en er grøn, alarmen er sendt, eller CONFIRM_ROUNDS er brugt.
+  let state = prevState;
+  let checks;
+  const messages = [];
+  for (let round = 0; round < CONFIRM_ROUNDS; round += 1) {
+    if (round > 0) await sleep(CONFIRM_DELAY_MS);
+    const checkedAt = round === 0 ? nowIso : now().toISOString();
+    const [backend, postgrest, postmaster] = await Promise.all([
+      checkBackend(fetchFn, env.DB_WATCHDOG_BACKEND_URL || DEFAULT_BACKEND_URL),
+      checkPostgrest(fetchFn, env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY),
+      checkPostmaster(execFn, env.SUPABASE_DB_URL),
+    ]);
+    checks = { backend, postgrest, postmaster, checkedAt };
+    const result = evaluate(state, checks, checkedAt);
+    state = result.state;
+    messages.push(...result.messages);
+    if (!runFailed(checks) || state.alertActive) break;
+  }
   const runUrl = env.GITHUB_RUN_ID && env.GITHUB_REPOSITORY
     ? `${env.GITHUB_SERVER_URL || "https://github.com"}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`
     : "";
