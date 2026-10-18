@@ -490,6 +490,18 @@ export async function writeLegacyOneYearBoard(supabase, {
  * en spiller der ikke må se Boardroom må heller ikke underskrive. Cron-stien
  * sender `engineWrite: true`, så auto-accept virker for alle hold i 'beta'.
  */
+// #6780 · Idempotente tilbagerulnings-trin proeves op til 3 gange; returnerer
+// den sidste fejl (eller null), saa kalderen kan afgoere om svaret er sikkert.
+async function retryRollbackStep(run, attempts = 3) {
+  let lastError = null;
+  for (let i = 0; i < attempts; i++) {
+    const { error } = await run();
+    if (!error) return null;
+    lastError = error;
+  }
+  return lastError;
+}
+
 export async function signMandate(supabase, {
   teamId,
   mandateId,
@@ -675,21 +687,29 @@ export async function signMandate(supabase, {
     // rulles tilbage, saa et mandat der ikke blev underskrevet, ikke efterlader
     // en ny milepael eller et lukket slot. (Et samtidigt sign kan ikke naa hertil:
     // det taber allerede slot-claimet ovenfor med 409.)
+    // Codex P1 (#6780, runde 2): en fejlet tilbagerulning maa aldrig svare
+    // "succes". Hvert trin proeves op til 3 gange (begge er idempotente); lykkes
+    // det ikke, kastes en fejl med team/slot/noegle, saa den lander i Sentry og
+    // kan repareres, i stedet for at spilleren stille mister sit aabne slot.
     if (visionSlotOutcome && openVisionSlotId) {
+      const failures = [];
       if (visionSlotOutcome.accepted && visionSlotOutcome.milestone_key) {
-        const { error: delError } = await supabase
+        const delError = await retryRollbackStep(() => supabase
           .from("board_vision_milestones")
           .delete()
           .eq("team_id", teamId)
           .eq("milestone_key", visionSlotOutcome.milestone_key)
-          .eq("status", "pending");
-        if (delError) console.error(`  ⚠️  board_vision_milestones rollback-delete failed for team ${teamId}: ${delError.message}`);
+          .eq("status", "pending"));
+        if (delError) failures.push(`delete milestone ${visionSlotOutcome.milestone_key}: ${delError.message}`);
       }
-      const { error: reopenError } = await supabase
+      const reopenError = await retryRollbackStep(() => supabase
         .from("board_vision_milestones")
         .update({ slot_open: true, updated_at: new Date().toISOString() })
-        .eq("id", openVisionSlotId);
-      if (reopenError) console.error(`  ⚠️  board_vision_milestones rollback-reopen failed for ${openVisionSlotId}: ${reopenError.message}`);
+        .eq("id", openVisionSlotId));
+      if (reopenError) failures.push(`reopen slot ${openVisionSlotId}: ${reopenError.message}`);
+      if (failures.length) {
+        throw new Error(`board_vision_milestones rollback incomplete for team ${teamId} (mandate ${mandateId} was not signed): ${failures.join("; ")}`);
+      }
     }
     return buildBoardRoomPayload({ supabase, teamId });
   }

@@ -902,3 +902,32 @@ test("#6780 (Codex P1) signMandate: forslaget lukkes midt i underskriften → vi
   assert.equal(slot.slot_open, true, "slottet er genaabnet");
   assert.equal(supabase._state.milestones.filter((m) => m.id !== "vm-slot").length, 0, "den nye milepael er fjernet igen");
 });
+
+test("#6780 (Codex P1 runde 2) signMandate: fejler tilbagerulningen, svares der ikke succes", async () => {
+  const supabase = makeCollisionSupabase();
+  const origFrom = supabase.from.bind(supabase);
+  let reopenCalls = 0;
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_vision_milestones") return api;
+    return {
+      ...api,
+      insert: async (payload) => {
+        const res = await api.insert(payload);
+        supabase._state.mandates[0].status = "lapsed";
+        return res;
+      },
+      update: (payload) => {
+        if (payload.slot_open !== true) return api.update(payload);
+        reopenCalls++;
+        return { eq: () => ({ then: (resolve) => resolve({ error: { message: "connection reset" } }) }) };
+      },
+    };
+  };
+  await assert.rejects(
+    signMandate(supabase, { teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true } }),
+    (err) => /rollback incomplete/.test(err.message) && /reopen slot vm-slot/.test(err.message),
+  );
+  assert.equal(reopenCalls, 3, "genaabningen proeves 3 gange");
+  assert.equal(supabase._state.milestones.filter((m) => m.id !== "vm-slot").length, 0, "milepaelen er stadig fjernet");
+});
