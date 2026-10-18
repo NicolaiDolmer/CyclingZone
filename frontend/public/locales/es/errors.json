@@ -199,7 +199,7 @@
     "unknown_pref_keys": "Clave de preferencia desconocida",
     "username_invalid": "El nombre de usuario debe tener entre 3 y 20 caracteres (letras, números, _ o -)",
     "username_taken": "Ese nombre de usuario ya está en uso",
-    "invalid_loan_type": "Tipo de cesión no válido. Usa short o long",
+    "invalid_loan_type": "Tipo de préstamo no válido. Usa short o long",
     "invalid_amount": "Importe no válido",
     "offer_id_required": "Se requiere offer_id",
     "unknown_dna_key": "Clave de ADN desconocida",

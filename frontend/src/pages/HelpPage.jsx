@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
 import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import { fetchPlayerFeatureFlags } from "../lib/playerFeatureFlags.js";
 import { isHelpBlockFlagVisible, isHelpBlockVisible, isHelpFaqVisible, isHelpSectionVisible } from "./helpFlagGates.js";
@@ -766,7 +767,7 @@ export default function HelpPage() {
     title: ready ? t("meta.title") : undefined,
     description: ready ? t("meta.description") : undefined,
     canonical: "https://cyclingzone.org/help",
-    lang: i18n.language?.startsWith("da") ? "da" : "en",
+    lang: documentLang(i18n.language),
   });
   const [searchParams] = useSearchParams();
   // Deep-link support (#2467): ?faq=<id> opens the FAQ tab with that question

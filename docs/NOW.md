@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** gennemgang 18/10 (beslutninger på #6749). Frys OPHÆVET: meget nyt via beta først. Resten i dag: ungdom S5 (#6667), motor v2-tænding, #6839-UX, `supabase login` (#6275). Alarm #6856.
+> **🎯 Next action:** I DAG 18/10: merge-kø · bølge #6858+#6859 · løbsidentitet #6857 (design → byg, S5) · patch notes grundigt · MASTERPLAN + roadmap · GitHub-audit. Venter ejer: supabase login, motor v2, ungdom S5, #6839-UX. MANDAG 19/10: DST-audit #6862 · token-audit #6863 · UX-mockups (#6767).
 >
 > **17-18/10 (pc1):** S5-motorreglerne tændt (#6699). 31 PRer merget, 45 issues done. Kort i `docs/sessions/kort-2026-10-17/`.
 >

@@ -6,6 +6,10 @@
 //        [--pad 30] [--pages dashboard,team] [--viewports desktop,mobile]
 //        [--no-baseline] [--no-shots] [--build]
 //
+// Bygget: frontend/dist genbruges kun naar dets byg-maerke (HEAD + lokale
+// aendringer i frontend/ + base-URL, gemt i dist/.pseudo-layout-build-stamp)
+// stemmer; ellers bygges der om. --build tvinger et nyt byg (#6816).
+//
 // Hvad den goer: starter frontendens statiske e2e-server (frontend/dist, bygget
 // med VITE_E2E=1 og de e2e-mock-nøgler playwright.config.js bruger), logger ind
 // mod Playwright-mocks (INGEN rigtig backend, ingen prod-kald) og aabner hver
@@ -31,13 +35,16 @@
 // efterladt proces. Playwright hentes fra frontend/node_modules.
 
 import { spawn, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
+  computeBuildStamp,
   diffFindings,
+  isBuildCurrent,
   measureLayout,
   navHeadroom,
   renderFindingsTable,
@@ -276,7 +283,42 @@ async function measurePage(context, target, mode, vpName) {
 
 // ── Koersel ──────────────────────────────────────────────────────────────────
 
-if (opts.build || !existsSync(join(FRONTEND, "dist", "index.html"))) buildFrontend();
+// Byg-maerke (#6816): en gammel frontend/dist maa aldrig males og godkendes.
+// Stemmer maerket (HEAD + lokale aendringer i HELE arbejdskopien + base-URL) ikke,
+// bygges om. Hele repoet, fordi Vite ogsaa bundler moduler uden for frontend/
+// (fx backend/lib/contractOfferEligibility.js, Codex #6826).
+const STAMP_FILE = join(FRONTEND, "dist", ".pseudo-layout-build-stamp");
+const git = (args) => {
+  const r = spawnSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  return r.status === 0 ? r.stdout : "";
+};
+// Genererede filer maa ikke vaere input til maerket (Codex #6826): ellers
+// ugyldiggoer et faerdigt sweep sit eget maerke. Sweepets --out-mappe udelukkes
+// derfor ogsaa, naar den ligger inde i repoet.
+const outRel = relative(REPO_ROOT, resolve(opts.out)).split("\\").join("/");
+const STAMP_EXCLUDES = [
+  ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results",
+  ...(outRel && !outRel.startsWith("..") && !isAbsolute(outRel) ? [`:(exclude)${outRel}`] : []),
+];
+// Usporede filer: git diff ser kun sporede, saa deres indhold hashes selv.
+const untrackedHashes = git(["ls-files", "--others", "--exclude-standard", "--", ".", ...STAMP_EXCLUDES])
+  .split("\n").map((p) => p.trim()).filter(Boolean)
+  .map((p) => `${p}:${createHash("sha1").update(readFileSync(join(REPO_ROOT, p))).digest("hex")}`)
+  .join("\n");
+const expectedStamp = computeBuildStamp({
+  head: git(["rev-parse", "HEAD"]),
+  status: git(["status", "--porcelain", "--", ".", ...STAMP_EXCLUDES]),
+  diff: git(["diff", "HEAD", "--", ".", ...STAMP_EXCLUDES]),
+  untracked: untrackedHashes,
+  base: BASE,
+});
+const storedStamp = existsSync(STAMP_FILE) ? readFileSync(STAMP_FILE, "utf8") : null;
+const distIndex = join(FRONTEND, "dist", "index.html");
+if (opts.build || !existsSync(distIndex) || !isBuildCurrent(storedStamp, expectedStamp)) {
+  if (!opts.build && existsSync(distIndex)) log("frontend/dist er forældet i forhold til HEAD/lokale aendringer: bygger om.");
+  buildFrontend();
+  if (expectedStamp) writeFileSync(STAMP_FILE, expectedStamp);
+}
 
 const server = spawn(
   process.execPath,
@@ -333,7 +375,7 @@ writeFileSync(
   ),
 );
 
-const md = [`# Layout-sweep en-XA pad=${opts.pad} (${opts.label})`, ""];
+const md = [`# Layout-sweep en-XA pad=${opts.pad} (${opts.label})`, "", `Byg-maerke: ${expectedStamp ?? "ukendt (ingen git HEAD)"}`, ""];
 const total = summarize(results.flatMap((r) => r.new));
 md.push(`Nye fund i alt: ${total.total} (${Object.entries(total.bySeverity).map(([k, v]) => `${k} ${v}`).join(", ") || "ingen"})`, "");
 for (const r of results) {

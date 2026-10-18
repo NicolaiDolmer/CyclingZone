@@ -79,6 +79,21 @@ Trade-offet (bevidst): to hver-for-sig-grønne PRs der tilsammen er røde, fange
 
 Historik: GitHubs ægte Merge Queue blev forsøgt 4/8 men kræver et ORG-ejet repo (CyclingZone er bruger-ejet). CI'en er allerede kø-kompatibel (`merge_group`-triggere + pass-throughs, PR #3303, i dvale) — flyttes repoet til en organisation, kan køen tændes med ét ruleset (`scratchpad`-udkastet ligger i PR #3303's beskrivelse). Rollback af dagens ændring: `gh api .../branches/main/protection/required_status_checks -X PATCH -F strict=true`.
 
+## Arbejdsstandard for merges (ejer 18/10: branchens bedste praksis)
+
+Efter 18/10, hvor intet blev merget i ca. 2 timer, gælder disse regler for alle sessioner:
+
+1. **Merge det klare først.** En grøn, godkendt PR går i køen, FØR der rettes på andre PR'er. Push aldrig rettelser til mange PR'er samtidig, mens noget klart venter.
+2. **Små PR'er, der lander hurtigt.** Hellere flere små end én stor, der venter på andre.
+3. **Hængere opdages inden for 15 min.** Står et trin i køen eller CI stille i over 15 min, undersøges årsagen straks, og det meldes. Man venter ikke på timeout. (Automatiseres i #6859.)
+4. **Review-loft: maks 2 Codex-runder** på PR'er uden spillerdata, penge eller prod-skrivning. Derefter merges der, og restfund bliver til issues (`Refs #PR`). Spillerdata, penge og prod: ingen loft, alle fund rettes.
+5. **Deploy-kontrol beviser at ændringen er live**, ikke at præcis én SHA blev deployet. Et nyere deploy, der indeholder SHA'en, er gyldigt bevis (#6859).
+6. **Overvåg efter deploy i stedet for at blokere.** Fejlrate efter deploy giver alarm og (fra 26-27/10) automatisk rollback (#6865).
+7. **Hurtig CI:** mål p90 under 10 min for PR-CI (#6864).
+8. **Kort status til ejeren:** hvad er merget, hvad hænger, og hvorfor. Ingen lange rapporter.
+
+Plan: 1, 2, 4 og 8 gælder fra i dag. 3 og 5 bygges i #6859 (19/10). 7 måles 19/10 og bygges 20/10 (#6864). 6 kommer efter sæsonskiftet 26-27/10 (#6865).
+
 ## Risk-labels og auto-merge policy
 
 Auto-merge er standard for lav-risiko PRs, men stoppes automatisk hvis en PR har en af disse labels:
