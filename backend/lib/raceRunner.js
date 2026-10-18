@@ -30,6 +30,7 @@
 // only (gc-RANK driver points); standings/schema er uændret.
 
 import { randomUUID } from "node:crypto";
+import { invalidateNamespace } from "./responseCache.js"; // #6514
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   applyRaceResults as applyRaceResultsShared,
@@ -3527,6 +3528,10 @@ export async function simulateStageByIndex({
       };
     }
     applied = { rowsImported };
+    // #6514 (Codex-fund): kalenderen udleder lineupFrozen af stages_completed, saa den
+    // cachede kalender skal toemmes naar en etape er committet, ellers viser
+    // kalenderkortet en udtagelses-knap som lineup-endpointet afviser (op til 60 s).
+    invalidateNamespace("calendar");
     // #6740: etape 1 er committet (låsen vundet) — først nu er "stillede ikke op" sandt.
     await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
     // #6740 (review #6747): ved senere etaper afstemmes feltet, så en frigivelse der
