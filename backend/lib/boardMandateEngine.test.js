@@ -1371,6 +1371,38 @@ test("#6773 closeEndedSeasonMandates: active → completed, proposed → lapsed 
   assert.deepEqual(await closeEndedSeasonMandates(supabase, { teamId: "t1", endedSeasonNumber: null, now }), { completed: 0, lapsed: 0 });
 });
 
+test("#6773 closeEndedSeasonMandates: en underskrift midt i oprydningen efterlader aldrig et active mandat for en afsluttet sæson (Codex #6780)", async () => {
+  const supabase = makeMandateLifecycleSupabase({
+    mandates: [{ id: "m-s4-prop", team_id: "t1", season_id: "s4", season_number: 4, status: "proposed" }],
+  });
+  // Underskriften (proposed → active) lander lige efter oprydningens FØRSTE update.
+  const realFrom = supabase.from.bind(supabase);
+  let updates = 0;
+  supabase.from = (table) => {
+    const api = realFrom(table);
+    if (table !== "board_mandates") return api;
+    return {
+      ...api,
+      update(payload) {
+        const chain = api.update(payload);
+        const select = chain.select;
+        chain.select = async (...args) => {
+          const res = await select(...args);
+          updates += 1;
+          if (updates === 1) {
+            for (const m of supabase._state.mandates) if (m.status === "proposed") m.status = "active";
+          }
+          return res;
+        };
+        return chain;
+      },
+    };
+  };
+  await closeEndedSeasonMandates(supabase, { teamId: "t1", endedSeasonNumber: 4, now: new Date("2026-10-25T10:00:00Z") });
+  const row = supabase._state.mandates.find((m) => m.id === "m-s4-prop");
+  assert.notEqual(row.status, "active", "et mandat for en afsluttet sæson må ikke overleve som active");
+});
+
 test("#6773 advanceMandateAtSeasonEnd: mandat underskrevet EFTER sit eget sæsonslut afsluttes ved næste skifte", async () => {
   // S4 slutter. Holdet har sit rigtige S4-mandat + det gamle S3-mandat der blev
   // underskrevet i starten af oktober (efter S3-skiftet).

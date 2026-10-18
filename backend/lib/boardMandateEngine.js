@@ -757,8 +757,12 @@ export async function closeEndedSeasonMandates(supabase, { teamId, endedSeasonNu
     return Array.isArray(data) ? data.length : 0;
   };
 
-  const completed = await closeStatus("active", "completed");
+  // Forslag lukkes FOER aktive (Codex #6780): underskrives et forslag midt i
+  // oprydningen, er det enten allerede lapsed (underskriften rammer intet) eller
+  // blevet active foer andet trin, som saa fanger det. Omvendt raekkefoelge kunne
+  // efterlade et active mandat fra en afsluttet saeson.
   const lapsed = await closeStatus("proposed", "lapsed");
+  const completed = await closeStatus("active", "completed");
   return { completed, lapsed };
 }
 
