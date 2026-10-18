@@ -14,9 +14,13 @@ const API = import.meta.env.VITE_API_URL;
 // §4 valg 3A) degraderer PÆNT til `timeline: null`. Forbrugeren (StoryOfTheStage-
 // Section) renderer da INTET i stedet for en fejlmelding — samme princip som
 // FinalKilometrePlayback's `available: false`.
-export function useStageTimeline(raceId, stageNumber) {
+//
+// #6570: `{ story: true }` beder om loebshistorien (`&story=1`, kontrakt:
+// docs/superpowers/specs/2026-10-14-race-story-contract.md); svaret faar da et
+// `story`-felt. Uden option er kaldet og svaret praecis som foer.
+export function useStageTimeline(raceId, stageNumber, { story = false } = {}) {
   const [timelineState, setTimelineState] = useState(null);
-  const timeline = timelineState && timelineState.raceId === raceId && timelineState.stageNumber === stageNumber ? timelineState.data : null;
+  const timeline = timelineState && timelineState.raceId === raceId && timelineState.stageNumber === stageNumber && timelineState.story === story ? timelineState.data : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
@@ -31,7 +35,7 @@ export function useStageTimeline(raceId, stageNumber) {
         const { data: { session } } = await supabase.auth.getSession();
         const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
         const res = await fetch(
-          `${API}/api/races/${encodeURIComponent(raceId)}/timeline?stage=${encodeURIComponent(stageNumber)}`,
+          `${API}/api/races/${encodeURIComponent(raceId)}/timeline?stage=${encodeURIComponent(stageNumber)}${story ? "&story=1" : ""}`,
           { headers },
         );
         if (cancelled) return;
@@ -41,7 +45,7 @@ export function useStageTimeline(raceId, stageNumber) {
         if (cancelled) return;
         // Degraderer ærligt hvis kontrakten ikke er opfyldt (fx en flad {} fra
         // en endnu-ikke-live backend) — ingen events-liste = ingen film/historie.
-        setTimelineState(data && Array.isArray(data.events) ? { raceId, stageNumber, data } : null);
+        setTimelineState(data && Array.isArray(data.events) ? { raceId, stageNumber, story, data } : null);
       } catch {
         if (!cancelled) { setError(true); setTimelineState(null); }
       } finally {
@@ -50,7 +54,7 @@ export function useStageTimeline(raceId, stageNumber) {
     })();
 
     return () => { cancelled = true; };
-  }, [raceId, stageNumber]);
+  }, [raceId, stageNumber, story]);
 
   return { timeline, loading, error };
 }

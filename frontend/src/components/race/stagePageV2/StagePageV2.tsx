@@ -15,6 +15,8 @@ import StageStripV2, { type StripStage } from "./StageStripV2.tsx";
 import StageTabV2 from "./StageTabV2.tsx";
 import type { CareerEvent } from "./YourDayCard.tsx";
 import { Tab, TabList, Tabs } from "./ui.ts";
+import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
+import { asStory } from "./raceStoryModel.ts";
 
 export interface StagePageV2Props {
   isStageRace: boolean;
@@ -45,13 +47,15 @@ export interface StagePageV2Props {
   emptyStageSlot: ReactNode;
   /** Sidens 30 s-ur (RaceDetailPage), saa en startet etape ikke tilbyder taktik. */
   nowMs: number;
+  /** #6570 spor 2: loebet, saa siden selv kan hente loebshistorien for en koert etape. */
+  raceId?: string | null;
 }
 
 export default function StagePageV2(props: StagePageV2Props) {
   const {
     isStageRace, totalStages, stagesCompleted, raceFinished, selectedStage, todayStage, onSelectStage,
     activeTab, onChangeTab, onOpenTactics, profileByStage, schedule, timeLabelFor, results, stagePointRows, stageLoaded, stageErrorSlot,
-    myTeamId, stageRoles, careerEvents, standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs,
+    myTeamId, stageRoles, careerEvents, standingsSlot, teamSlot, tacticsSlot, emptyStageSlot, nowMs, raceId = null,
   } = props;
   const { t } = useTranslation("races");
 
@@ -70,6 +74,10 @@ export default function StagePageV2(props: StagePageV2Props) {
   }, [totalStages, schedule, profileByStage, timeLabelFor, bestByStage]);
 
   const phase = stagePhase(selectedStage, stagesCompleted);
+  // #6570 spor 2 (+ #6512 endagsloeb): loebshistorien for en koert etape. 404 =
+  // ingen tidslinje = den nuvaerende visning, uaendret.
+  const { timeline } = useStageTimeline(phase === "after" && activeTab === "stage" ? raceId : null, selectedStage, { story: true });
+  const story = useMemo(() => asStory((timeline as { story?: unknown } | null)?.story), [timeline]);
 
   // Den ene guld-knap: taktik for den etape der er aaben. Foer etapen = den
   // valgte; efter = den naeste, hvis loebet ikke er slut.
@@ -123,6 +131,7 @@ export default function StagePageV2(props: StagePageV2Props) {
           tacticsAction={tacticsAction}
           onOpenStandings={() => onChangeTab("standings")}
           emptyState={emptyStageSlot}
+          story={story}
         />
       )}
       {activeTab === "standings" && standingsSlot}
