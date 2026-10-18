@@ -203,7 +203,10 @@ export function startWallClockSchedule(fn, spec, {
       const result = fn();
       if (result && typeof result.then === "function") result.then(undefined, onError);
     } catch (err) {
-      onError(err); // en fejl maa ikke stoppe kaeden; naeste timer er allerede sat
+      // best-effort: en fejl fra fn maa ikke stoppe kaeden (naeste timer er allerede
+      // armeret ovenfor). Den sendes til onError; i cron.js er fn wrappet i
+      // trackedTick, som selv logger og captureException'er alt.
+      onError(err);
     }
   }
 
