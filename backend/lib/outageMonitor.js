@@ -159,6 +159,7 @@ export async function probePostgrest(fetchFn, supabaseUrl, apiKey) {
     });
     return { ok: res.status < 500, detail: `HTTP ${res.status}` };
   } catch (err) {
+    // best-effort: en fejlet probe ER signalet (tælles som udfald), ikke en kodefejl.
     return { ok: false, detail: describeError(err) };
   }
 }
@@ -173,6 +174,7 @@ async function postDiscord(fetchFn, url, payload) {
     });
     return res.ok;
   } catch {
+    // best-effort: kalderen ruller tilstanden tilbage og prøver igen ved næste probe.
     return false;
   }
 }
