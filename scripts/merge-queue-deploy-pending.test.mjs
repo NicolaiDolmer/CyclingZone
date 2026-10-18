@@ -8,11 +8,14 @@ const queue = fileURLToPath(new URL('./merge-queue.ps1', import.meta.url)).repla
 const classifier = fileURLToPath(new URL('./ci/deploy-verification-state.mjs', import.meta.url)).replaceAll("'", "''");
 const sha = 'a'.repeat(40);
 
+// #6859: deploy-verify.yml is split into jobs; the queue reads the release job
+// "Deploy live + smoke" at job level. The fixture serves one run (id 10) whose
+// attempt 1 can be a pending deployment observation and attempt 2 a release.
 function runFixture(mode) {
   const script = `
     $ErrorActionPreference='Stop'; $DryRun=$false; $Repo='fixture/repo';
     $taskClock=[DateTime]::Parse('2026-10-06T06:00:00Z').ToUniversalTime();
-    $taskReruns=0; $taskReadsAfterRerun=0; $taskJobReads=0; $script:handedOffRuns=@();
+    $taskReruns=0; $taskReadsAfterRerun=0; $taskJobReads=0; $taskRunReads=0; $script:handedOffRuns=@();
     $ast=[Management.Automation.Language.Parser]::ParseFile('${queue}',[ref]$null,[ref]$null);
     $fn=$ast.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Wait-ForDeployVerification'},$true);
     Invoke-Expression $fn.Extent.Text;
@@ -21,79 +24,79 @@ function runFixture(mode) {
       if($GhArgs[0] -eq 'run' -and $GhArgs[1] -eq 'list'){return '[{"databaseId":10,"headSha":"${sha}"}]'}
       if($GhArgs[0] -eq 'run' -and $GhArgs[1] -eq 'rerun'){$script:taskReruns++;return ''}
       if($GhArgs[0] -eq 'api' -and $GhArgs[1] -match '/runs/10$'){
+        $script:taskRunReads++;
         $attempt=1; $status='completed'; $conclusion='success';
-        if('${mode}' -in @('waiting','released','releasedAfterFailure')){$status='in_progress';$conclusion=$null}
-        if('${mode}' -eq 'failed'){$conclusion='failure'}
+        if('${mode}' -in @('waiting','released','settling')){$status='in_progress';$conclusion=$null}
+        if('${mode}' -eq 'pendingWhileRunning' -and $script:taskRunReads -le 2){$status='in_progress';$conclusion=$null}
+        if('${mode}' -in @('failed','cronRed')){$conclusion='failure'}
         if($script:taskReruns -gt 0){$script:taskReadsAfterRerun++;if($script:taskReadsAfterRerun -ge 2){$attempt=2}}
         return (@{id=10;head_sha='${sha}';run_attempt=$attempt;status=$status;conclusion=$conclusion}|ConvertTo-Json -Compress)
       }
       if($GhArgs[0] -eq 'api' -and $GhArgs[1] -match '/attempts/(\\d+)/jobs'){
-        $attempt=[int]$Matches[1];$smoke=if($attempt -eq 1 -or '${mode}' -eq 'alwaysPending'){'skipped'}else{'success'};$pending=if($attempt -eq 1 -or '${mode}' -eq 'alwaysPending'){'success'}else{'skipped'};
-        if('${mode}' -in @('deferred','missingCron')){$smoke='success';$pending='skipped'}
-        $cronVerified=if('${mode}' -eq 'deferred'){'skipped'}else{'success'};
-        $cronDeferred=if('${mode}' -eq 'deferred'){'success'}else{'skipped'};
-        $script:taskJobReads++;
-        if('${mode}' -eq 'settling'){$smoke='success';$pending='skipped'}
+        $attempt=[int]$Matches[1]; $script:taskJobReads++;
+        $isPending=($attempt -eq 1 -and '${mode}' -in @('recovered','pendingWhileRunning')) -or '${mode}' -eq 'alwaysPending';
+        $smoke=if($isPending){'skipped'}else{'success'}; $pending=if($isPending){'success'}else{'skipped'};
         $smokeStatus=if('${mode}' -eq 'settling' -and $script:taskJobReads -le 2){'in_progress'}else{'completed'};
-        $steps=@(@{name='Smoke-test prod';status=$smokeStatus;conclusion=$smoke},@{name='Deployment still pending';status='completed';conclusion=$pending});
-        if('${mode}' -in @('released','releasedAfterFailure')){
-          $first=if('${mode}' -eq 'releasedAfterFailure'){'failure'}else{'success'};
-          $steps=@(@{name='Set up job';status='completed';conclusion=$first},@{name='Deployment still pending';status='completed';conclusion='skipped'},@{name='Smoke-test prod';status='completed';conclusion='success'},@{name='Verify affected cron check-ins';status='in_progress';conclusion=$null});
-          return (@{jobs=@(@{run_id=10;run_attempt=$attempt;steps=$steps})}|ConvertTo-Json -Depth 6 -Compress)
-        }
-        if('${mode}' -ne 'missingCron'){$steps+=@(@{name='Cron check-ins verified';status='completed';conclusion=$cronVerified},@{name='Cron check-ins deferred';status='completed';conclusion=$cronDeferred})}
-        return (@{jobs=@(@{run_id=10;run_attempt=$attempt;steps=$steps})}|ConvertTo-Json -Depth 6 -Compress)
+        $jobStatus='completed'; $jobConclusion='success';
+        if('${mode}' -eq 'waiting'){$jobStatus='in_progress';$jobConclusion=$null}
+        if('${mode}' -eq 'failed'){$jobConclusion='failure';$smoke='failure'}
+        $name=if('${mode}' -eq 'oldLayout'){'verify'}else{'Deploy live + smoke'};
+        $steps=@(@{name='Deployment still pending';status='completed';conclusion=$pending},@{name='Smoke-test prod';status=$smokeStatus;conclusion=$smoke});
+        $jobs=@(@{name=$name;run_id=10;run_attempt=$attempt;status=$jobStatus;conclusion=$jobConclusion;steps=$steps});
+        if('${mode}' -eq 'cronRed'){$jobs+=@{name='Cron proof (non-blocking)';run_id=10;run_attempt=$attempt;status='completed';conclusion='failure';steps=@()}}
+        return (@{jobs=$jobs}|ConvertTo-Json -Depth 6 -Compress)
       }
       throw 'Unexpected GitHub operation'
     }
-    $state=Wait-ForDeployVerification -Sha '${sha}' -TimeoutMinutes 1 -ClassifierPath '${classifier}' -Now {$script:taskClock} -Pause {param($Seconds) $script:taskClock=$script:taskClock.AddSeconds($Seconds)};
-    $out=@{state=$state;reruns=$taskReruns;readsAfterRerun=$taskReadsAfterRerun};
-    if('${mode}' -like 'released*'){$out.handedOff=@($script:handedOffRuns)}
+    $state=Wait-ForDeployVerification -Sha '${sha}' -TimeoutMinutes 2 -ClassifierPath '${classifier}' -Now {$script:taskClock} -Pause {param($Seconds) $script:taskClock=$script:taskClock.AddSeconds($Seconds)};
+    $out=@{state=$state;reruns=$taskReruns;readsAfterRerun=$taskReadsAfterRerun;handedOff=@($script:handedOffRuns)};
     Write-Output ('RESULT='+($out|ConvertTo-Json -Compress));
   `;
   const output = execFileSync('pwsh', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
   return JSON.parse(output.split(/\r?\n/).find(line => line.startsWith('RESULT=')).slice(7));
 }
 
-test('pending attempt reruns exactly once and ignores stale completed attempt before verification', () => {
+test('pending attempt reruns exactly once and ignores stale completed attempt before the release', () => {
   const result = runFixture('recovered');
-  assert.equal(result.state, 'verified');
+  assert.equal(result.state, 'released');
   assert.equal(result.reruns, 1);
   assert.equal(result.readsAfterRerun, 2);
 });
 
+test('#6859: a pending release job is never rerun while its run is still in progress', () => {
+  const result = runFixture('pendingWhileRunning');
+  assert.equal(result.state, 'released');
+  assert.equal(result.reruns, 1);
+});
+
 test('explicit-clock deadline preserves pending and never triggers a rerun of a running worker', () => {
-  assert.deepEqual(runFixture('waiting'), { state: 'pending', reruns: 0, readsAfterRerun: 0 });
+  assert.deepEqual(runFixture('waiting'), { state: 'pending', reruns: 0, readsAfterRerun: 0, handedOff: [] });
 });
 
-test('actual failure returns immediately without pending retry', () => {
-  assert.deepEqual(runFixture('failed'), { state: 'failed', reruns: 0, readsAfterRerun: 0 });
+test('a red release job returns failed immediately without pending retry', () => {
+  assert.deepEqual(runFixture('failed'), { state: 'failed', reruns: 0, readsAfterRerun: 0, handedOff: [] });
 });
 
-test('repeated completed pending observations stop at the rerun limit without verification', () => {
+test('repeated completed pending observations stop at the rerun limit without a release', () => {
   const result = runFixture('alwaysPending');
   assert.equal(result.state, 'pending');
   assert.equal(result.reruns, 2);
 });
 
-test('deferred cron evidence stops immediately without resetting its boundary through rerun', () => {
-  assert.deepEqual(runFixture('deferred'), { state: 'deferred', reruns: 0, readsAfterRerun: 0 });
+test('#6859: a red cron proof (red run) still releases the queue: the release job decides', () => {
+  assert.deepEqual(runFixture('cronRed'), { state: 'released', reruns: 0, readsAfterRerun: 0, handedOff: [10] });
 });
 
-test('8/10: job steps still settling right after completion are re-read, not treated as unknown', () => {
-  assert.deepEqual(runFixture('settling'), { state: 'verified', reruns: 0, readsAfterRerun: 0 });
+test('8/10 + #6859: job steps still settling are re-read, also while the run is running', () => {
+  assert.deepEqual(runFixture('settling'), { state: 'released', reruns: 0, readsAfterRerun: 0, handedOff: [10] });
 });
 
-test('#6487: running attempt with deploy + smoke green releases the queue and records the run', () => {
+test('#6487/#6859: running run with deploy + smoke green releases the queue and records the run', () => {
   assert.deepEqual(runFixture('released'), { state: 'released', reruns: 0, readsAfterRerun: 0, handedOff: [10] });
 });
 
-test('#6487: a failed step before the cron proof never releases a running attempt', () => {
-  assert.deepEqual(runFixture('releasedAfterFailure'), { state: 'pending', reruns: 0, readsAfterRerun: 0, handedOff: [] });
-});
-
-test('successful smoke without cron evidence stops fail-closed', () => {
-  assert.deepEqual(runFixture('missingCron'), { state: 'unknown', reruns: 0, readsAfterRerun: 0 });
+test('#6859: the old single-job layout is never read as a release (fail-closed)', () => {
+  assert.deepEqual(runFixture('oldLayout'), { state: 'unknown', reruns: 0, readsAfterRerun: 0, handedOff: [] });
 });
 
 function gateActions(states) {
@@ -124,14 +127,18 @@ test('#6318 review: deferred long-cadence proof is shown but never stops the que
   assert.doesNotMatch(deferred, /\bexit\b/);
 });
 
-test('#6318 review: queue deploy timeout covers one full deploy-verify job', () => {
+test('#6318 review: queue deploy timeout covers one full release job', () => {
   const source = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
   const queueMinutes = Number(source.match(/\[int\] \$DeployVerifyTimeoutMinutes = (\d+)/)[1]);
   const workflow = readFileSync(new URL('../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
+  // The first job-level timeout belongs to the release job, the only job the queue waits for.
+  assert.match(workflow, /^jobs:\s+(?:#[^\r\n]*\s+)*release:\s+name: Deploy live \+ smoke/m);
   const jobMinutes = Number(workflow.match(/^ {4}timeout-minutes: (\d+)/m)[1]);
   assert.ok(queueMinutes >= jobMinutes + 5, `queue ${queueMinutes} min must exceed job ${jobMinutes} min plus run-creation slack`);
 });
 
+// #6859: handed-off runs are judged at job level. Each fixture run lists its
+// release-checks and cron-proof job states.
 function failedHandedOff(runs) {
   const script = `
     $ErrorActionPreference='Stop'; $Repo='fixture/repo';
@@ -142,23 +149,35 @@ function failedHandedOff(runs) {
     $script:handedOffRuns=@($script:fixtureRuns | ForEach-Object { $_.id });
     function Invoke-GhWithRetry {
       param([string[]]$GhArgs,[switch]$TolerateFailure)
-      $id=[int]($GhArgs[1] -replace '.*/runs/','');
+      $id=[int](($GhArgs[1] -replace '.*/runs/','') -replace '/.*','');
       $r=$script:fixtureRuns | Where-Object { $_.id -eq $id };
       if($r.PSObject.Properties['unreadable']){return $null}
-      return (@{id=$id;status=$r.status;conclusion=$r.conclusion}|ConvertTo-Json -Compress)
+      if($GhArgs[1] -match '/jobs'){
+        $jobs=@(@{name='Deploy live + smoke';run_id=$id;run_attempt=1;status='completed';conclusion='success';steps=@()});
+        if($r.checks){$jobs+=@{name='Release checks';run_id=$id;run_attempt=1;status=$r.checks.status;conclusion=$r.checks.conclusion;steps=@()}}
+        if($r.cron){$jobs+=@{name='Cron proof (non-blocking)';run_id=$id;run_attempt=1;status='completed';conclusion=$r.cron;steps=@()}}
+        return (@{jobs=$jobs}|ConvertTo-Json -Depth 6 -Compress)
+      }
+      return (@{id=$id;run_attempt=1;status=$r.status;conclusion=$r.conclusion}|ConvertTo-Json -Compress)
     }
-    Write-Output ('RESULT='+(ConvertTo-Json -InputObject @(Get-FailedHandedOffRuns) -Compress));
+    Write-Output ('RESULT='+(ConvertTo-Json -InputObject @(Get-FailedHandedOffRuns -ClassifierPath '${classifier}') -Compress));
   `;
   const output = execFileSync('pwsh', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
   return JSON.parse(output.split(/\r?\n/).find(line => line.startsWith('RESULT=')).slice(7));
 }
 
-test('#6487: a handed-off run that later failed stops the next merge; running or green runs do not', () => {
-  assert.deepEqual(failedHandedOff([{ id: 1, status: 'in_progress', conclusion: null },
-    { id: 2, status: 'completed', conclusion: 'success' }]), []);
-  assert.deepEqual(failedHandedOff([{ id: 1, status: 'completed', conclusion: 'success' },
-    { id: 2, status: 'completed', conclusion: 'failure' }, { id: 3, unreadable: true },
-    { id: 4, status: 'completed', conclusion: 'cancelled' }]), ['2 (failure)', '3 (ulaeselig)', '4 (cancelled)']);
+test('#6859: red release checks stop the next merge; a red cron proof or running checks do not', () => {
+  const done = conclusion => ({ status: 'completed', conclusion });
+  assert.deepEqual(failedHandedOff([
+    { id: 1, status: 'in_progress', conclusion: null, checks: { status: 'in_progress', conclusion: null } },
+    { id: 2, status: 'completed', conclusion: 'success', checks: done('success'), cron: 'success' },
+    { id: 3, status: 'completed', conclusion: 'failure', checks: done('success'), cron: 'failure' }]), []);
+  assert.deepEqual(failedHandedOff([
+    { id: 2, status: 'completed', conclusion: 'failure', checks: done('failure'), cron: 'success' },
+    { id: 3, unreadable: true },
+    { id: 4, status: 'completed', conclusion: 'cancelled', checks: done('cancelled') },
+    { id: 5, status: 'completed', conclusion: 'success' }]),
+  ['2 (failed: release checks failure)', '3 (ulaeselig)', '4 (failed: release checks cancelled)', '5 (failed: release checks missing)']);
   const source = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
   const check = source.indexOf('$failedRuns = @(Get-FailedHandedOffRuns)');
   assert.ok(check > 0 && check < source.indexOf('guarded-merge --pr'), 'handed-off runs are checked before every real merge');
