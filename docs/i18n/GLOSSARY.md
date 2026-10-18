@@ -85,6 +85,7 @@ Noter til tabellen:
 - **holdkaptajn** er rytteren hjælperyttere kører for. Det er IKKE vejkaptajnen (fr capitaine de route, es capitán de ruta, nl ploegkapitein), som er en anden rolle i faget. Brug derfor leader, jefe de filas og kopman, og lad "capitaine", "capitán" og "ploegkapitein" stå fri til den anden betydning.
 - **trøjerne** bruger fagets etablerede navne (fr/es: grøn for point, hvid for ungdom, prikket eller bjerg for bjergkonkurrencen). Opfind ikke nye navne eller farver.
 - **nl** bruger flamsk-neutral cyklingsprog (ploeg, koers, renner, kopman, knecht, peloton). Det er fagets eget ord i både Vlaanderen og Nederland, så der skal ikke vælges side.
+- **formtop** er tilstanden "i topform": fr pic de forme, es pico de forma, nl topvorm. Brug ikke "plena forma", "grande forme" eller "mejor forma" om den. I Peak-planlæggeren er "a peak" en planlagt top, og her bruges den korte form: fr pic, es pico, nl piek.
 - **es** bruger "sprint" som i sprogtesten; en indfødt kan vælge RAE-formen "esprint". Skriv valget her, så det er ens overalt.
 
 ## Spil- og UI-termer i fr, es, nl
@@ -143,4 +144,4 @@ fr og es har desuden kategorien `many` (kun for hele millioner og op, fx "1 mill
 - `da` — dansk (Danmark)
 - `en` — engelsk (kanonisk; mappes til 🇬🇧-flag selvom det dækker en-US + en-GB)
 - `en-XA` — pseudo-locale (dev-only, aktiveres med `?pseudo=1`)
-- `fr`, `es`, `nl`: planlagt (kaptajn-flowet i [`README.md`](README.md#tilføj-et-sprog)). Koden er ren sprogkode uden region; formatering vælges af `intlLocale()`, som giver et sprog uden region videre til `Intl` uændret.
+- `fr`, `es`, `nl`: registreret som skjulte beta-sprog (`beta: true` i `languages.js`, #6836): kun ejer og beta-testere kan vælge dem, og browser-detektion vælger dem aldrig. Åbnes for alle først via kaptajn-flowet i [`README.md`](README.md#tilføj-et-sprog). Koden er ren sprogkode uden region; formatering vælges af `intlLocale()`, som giver et sprog uden region videre til `Intl` uændret.

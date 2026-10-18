@@ -1101,11 +1101,11 @@
       },
       "readingReport": {
         "title": "Leer el informe de entrenamiento",
-        "text": "Después de ejecutarse el entrenamiento, el informe se abre con un resumen del día: cuántos ciclistas entrenaron, cuántos tuvieron un salto de nivel (una habilidad subió +1) y cuántos están en plena forma. Cada fila muestra el progreso de la habilidad de enfoque hacia su siguiente +1, y un salto de nivel se resalta con el salto real, por ejemplo de 71 a 72. La tabla de la plantilla muestra la misma barra de progreso, para que puedas orientar un enfoque hacia un ciclista que está cerca de un salto de nivel."
+        "text": "Después de ejecutarse el entrenamiento, el informe se abre con un resumen del día: cuántos ciclistas entrenaron, cuántos tuvieron un salto de nivel (una habilidad subió +1) y cuántos están en pico de forma. Cada fila muestra el progreso de la habilidad de enfoque hacia su siguiente +1, y un salto de nivel se resalta con el salto real, por ejemplo de 71 a 72. La tabla de la plantilla muestra la misma barra de progreso, para que puedas orientar un enfoque hacia un ciclista que está cerca de un salto de nivel."
       },
       "trainingHistory": {
         "title": "Historial de entrenamiento",
-        "text": "Se conserva cada ejecución de entrenamiento diario. La página de Entrenamiento diario enumera tus últimos 30 días debajo de la plantilla, y cada día muestra cuántos ciclistas entrenaron, saltos de nivel y ciclistas en plena forma; despliega un día para ver el informe completo por ciclista. El perfil de cada ciclista tiene su propio historial de entrenamiento en la pestaña Desarrollo, con el enfoque, la intensidad, las ganancias y la forma de ese ciclista día a día."
+        "text": "Se conserva cada ejecución de entrenamiento diario. La página de Entrenamiento diario enumera tus últimos 30 días debajo de la plantilla, y cada día muestra cuántos ciclistas entrenaron, saltos de nivel y ciclistas en pico de forma; despliega un día para ver el informe completo por ciclista. El perfil de cada ciclista tiene su propio historial de entrenamiento en la pestaña Desarrollo, con el enfoque, la intensidad, las ganancias y la forma de ese ciclista día a día."
       },
       "weeklyRhythm": {
         "title": "Ritmo semanal",

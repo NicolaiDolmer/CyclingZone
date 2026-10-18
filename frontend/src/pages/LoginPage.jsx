@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
 import { mapSupabaseAuthError, isEmailNotConfirmedError } from "../lib/authErrors";
 import { suggestEmailFix } from "../lib/emailDomainSuggestion.js";
 import { cooldownSecondsLeft, cooldownUntil, parseRateLimitSeconds } from "../lib/resendCooldown.js";
@@ -142,7 +143,7 @@ export default function LoginPage() {
     title: t("auth:meta.title"),
     description: t("auth:meta.description"),
     canonical: "https://cyclingzone.org/login",
-    lang: language === "da" ? "da" : "en",
+    lang: documentLang(language),
   });
 
   // #2078: ryd fejl-koden ud af router-state efter mount, så den ikke lever
@@ -799,11 +800,11 @@ export default function LoginPage() {
           {t("auth:page.tagline")}
         </p>
         <p className="mt-2 text-center text-xs text-cz-3">
-          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="underline hover:text-cz-1">
+          <Link to={language === "da" ? "/privatlivspolitik" : "/privacy-policy"} className="underline hover:text-cz-1">
             {t("auth:footer.privacyPolicy")}
           </Link>
           <span className="mx-2" aria-hidden="true">·</span>
-          <Link to={language === "en" ? "/terms" : "/handelsbetingelser"} className="underline hover:text-cz-1">
+          <Link to={language === "da" ? "/handelsbetingelser" : "/terms"} className="underline hover:text-cz-1">
             {t("auth:footer.terms")}
           </Link>
         </p>
