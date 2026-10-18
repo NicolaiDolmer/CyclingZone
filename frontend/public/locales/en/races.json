@@ -143,7 +143,9 @@
         "climbFirst": "{rider} was first over {name}.",
         "sameTime": "{count} riders finished on the winner's time.",
         "third": "{name} was third.",
-        "thirdGap": "{name} was third, {gap} down."
+        "thirdGap": "{name} was third, {gap} down.",
+        "placed": "{name} finished in position {rank}.",
+        "placedGap": "{name} finished in position {rank}, {gap} down."
       },
       "final": {
         "aria": "The final 5 km: groups on the road with distance to go, gaps and race clock",

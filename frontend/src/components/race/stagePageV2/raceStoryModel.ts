@@ -553,14 +553,28 @@ export function buildReport(story: RaceStory, lines: StoryLine[], cast: Cast): R
     const sameTime = cast.finishers.filter((f, i) => i === 0 || parseGap(f.gap) === 0).length;
     if (sameTime >= 3) out.splice(afterWinner(), 0, { key: "sameTime", params: { count: sameTime } });
   }
+  // Stadig for faa (Codex #6643): naeste placeringer fra resultatlisten, i
+  // raekkefoelge og uden at gentage en rytter der allerede er naevnt (vinderen,
+  // nr. 2 i vinder-saetningen, din bedste). Aldrig opdigtet.
   if (out.length < 3) {
-    const third = cast.finishers.find((f) => f.rank === 3);
-    const thirdName = third && !cast.mine.has(third.riderId) ? cast.nameOf(third.riderId) : null;
-    if (third && thirdName) {
-      const gapS = parseGap(third.gap);
-      out.splice(afterWinner() + (out[afterWinner()]?.key === "sameTime" ? 1 : 0), 0, gapS != null && gapS > 0
-        ? { key: "thirdGap", params: { name: thirdName, gap: formatGapPlain(gapS) } }
-        : { key: "third", params: { name: thirdName } });
+    const mentioned = new Set<string>();
+    if (first) mentioned.add(first.riderId);
+    if (second && out.some((r) => r.key === "winnerGap" || r.key === "winnerSame")) mentioned.add(second.riderId);
+    if (best) mentioned.add(best.riderId);
+    let insertAt = afterWinner() + (out[afterWinner()]?.key === "sameTime" ? 1 : 0);
+    for (const f of cast.finishers) {
+      if (out.length >= 3) break;
+      if (f.rank < 2 || mentioned.has(f.riderId)) continue;
+      const name = cast.nameOf(f.riderId);
+      if (!name) continue;
+      const gapS = parseGap(f.gap);
+      const hasGap = gapS != null && gapS > 0;
+      const row: ReportSentence = f.rank === 3
+        ? (hasGap ? { key: "thirdGap", params: { name, gap: formatGapPlain(gapS as number) } } : { key: "third", params: { name } })
+        : (hasGap ? { key: "placedGap", params: { name, rank: f.rank, gap: formatGapPlain(gapS as number) } } : { key: "placed", params: { name, rank: f.rank } });
+      out.splice(insertAt, 0, row);
+      insertAt += 1;
+      mentioned.add(f.riderId);
     }
   }
   // Hoejst 5: angrebet ryger foerst, saa udfaldet.

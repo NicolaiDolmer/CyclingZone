@@ -143,7 +143,9 @@
         "climbFirst": "{rider} var først over {name}.",
         "sameTime": "{count} ryttere kom i mål på vinderens tid.",
         "third": "{name} blev nummer tre.",
-        "thirdGap": "{name} blev nummer tre, {gap} efter."
+        "thirdGap": "{name} blev nummer tre, {gap} efter.",
+        "placed": "{name} blev nr. {rank}.",
+        "placedGap": "{name} blev nr. {rank}, {gap} efter."
       },
       "final": {
         "aria": "De sidste 5 km: grupperne på vejen med afstand til mål, huller og løbsur",

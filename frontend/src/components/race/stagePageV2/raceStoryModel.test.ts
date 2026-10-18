@@ -322,3 +322,36 @@ test("#6643: Final 5 km-maerkernes tekst overlapper aldrig (desktop og mobil)", 
     }
   }
 });
+
+test("buildReport: sparsom etape med tidshuller og din rytter nr. 3 fylder stadig op til 3 saetninger (Codex #6643)", () => {
+  const events = hillyTimeline().filter((e) => ["stage_start", "sprint_decided", "finish"].includes(e.type));
+  const s = story(events);
+  const results: ResultRow[] = [
+    rr(1, "w", "Winner", "t-x", "2:23:20"),
+    rr(2, "b2", "Second", "t-x", "+0:01"),
+    rr(3, "m1", "Mine", "t-me", "+0:05"),
+    rr(4, "x9", "Fourth", "t-y", "+0:09"),
+    rr(5, "b1", "Fifth", "t-y", "+0:12"),
+  ];
+  const c = castFrom(results, ROLES, 3, "t-me");
+  const report = buildReport(s, curateMoments(s, c), c);
+  const keys = report.map((r) => r.key);
+  assert.ok(report.length >= 3, `${report.length} saetninger: ${keys.join(",")}`);
+  assert.ok(keys.includes("winnerGap") && keys.includes("mineGap"));
+  assert.deepEqual(report.find((r) => r.key === "placedGap")?.params, { name: "Fourth", rank: 4, gap: "0:09" });
+  const names = report.flatMap((r) => [r.params?.name, r.params?.winner, r.params?.second]).filter(Boolean);
+  assert.equal(new Set(names).size, names.length, "ingen rytter naevnes to gange");
+});
+
+test("buildReport: din rytter vandt en sparsom etape: nr. 2 og 3 fylder op (Codex #6643)", () => {
+  const events = hillyTimeline().filter((e) => ["stage_start", "sprint_decided", "finish"].includes(e.type));
+  const s = story(events);
+  const results: ResultRow[] = [
+    rr(1, "m1", "Mine", "t-me", "2:23:20"),
+    rr(2, "b2", "Second", "t-x", "+0:02"),
+    rr(3, "x9", "Third", "t-y", "+0:04"),
+  ];
+  const c = castFrom(results, ROLES, 3, "t-me");
+  const report = buildReport(s, curateMoments(s, c), c);
+  assert.deepEqual(report.map((r) => r.key), ["mineWon", "placedGap", "thirdGap"]);
+});
