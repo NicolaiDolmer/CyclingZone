@@ -2,22 +2,22 @@
 
 > **Struktur ejer-godkendt 13/10: tre baner + to faste afsnit, aldrig flere.** 🔴 Brand · 🟠 Nu (højst 5) · 💰 Forretning. Alt andet bor som labels på GitHub (`priority:next`, `icebox`), ikke her. ≤1.500 tok. Spørg før omprioritering. **Intentionen** ejes af GDD'en; MASTERPLAN ejer kun rækkefølgen. Færdigt står IKKE her (patch notes + git-log). Release-gaten: #6553 (dato S6-start).
 
-**Reglen:** 🔴 brand foran alt (motor + rytterudvikling er brand fra 7/10) · klare PR'er merges én ad gangen morgen og aften · **gør det lovede færdigt** (dato først, ældste først, samme dato parallelt) · 💰 Forretning viger aldrig: fast torsdag. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) + [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
+**Reglen:** 🔴 brand foran alt (motor + rytterudvikling er brand fra 7/10) · klare PR'er merges løbende af merge-sessionen efter arbejdsstandarden ([`GITHUB_WORKFLOW.md`](GITHUB_WORKFLOW.md), merge-tog #6861) · nyt testes på beta først, kun det vi er sikre på releases (ejer 18/10) · **gør det lovede færdigt** (dato først, ældste først, samme dato parallelt) · 💰 Forretning viger aldrig: fast torsdag. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) + [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
 
-**Ro på spillet (ejer 7/10, til S5 25/10):** kvalitet og fastholdelse foran nyt. Datolovede ting bygges stadig.
+**Ro på spillet (ejer 7/10, til S5 25/10):** kvalitet og fastholdelse foran nyt. Datolovede ting bygges stadig. **Deploy-infra frosset 23-26/10** (#6864 #6865).
 
 ## 🔴 Brand
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
-- **Stabilitet:** aftenspidsen #6490: GIN-indeks droppet (#6663); 15/10-aftenen max 50 s → 1,1 s, 0 kald > 2 s, DB-tid halveret, vinduet stadig ~34 min (backend-løkken) → genmål 16/10, så job-kø #6491 + Postgres #6492 (spec #6655). Databasevagten #5878 kører, #5692 matview 0 låsefejl, chunk #5162 klar til lukning.
+- **Stabilitet:** udfaldsalarm for PostgREST live (#6856); faste job på dansk tid (#6860). Aftenspidsen #6490: GIN-indeks droppet (#6663); 15/10-aftenen max 50 s → 1,1 s, 0 kald > 2 s, DB-tid halveret, vinduet stadig ~34 min (backend-løkken) → genmål 16/10, så job-kø #6491 + Postgres #6492 (spec #6655). Databasevagten #5878 kører, #5692 matview 0 låsefejl, chunk #5162 klar til lukning.
 - **Løbsmotoren:** v4-bjergetaper pr. division (#6456 #6464, luk kun på ejer-go) · D3-rute #6486 · udbrud vinder kuperet endagsløb #6428 · S5-udbrud #6201 merget 15/10 (bag `s5_profiles_v1`). "Long day" #6475 rettet (#6660).
 
 ## 🟠 Nu · højst 5
 
-1. **S5-etapeprofiler #6369** (kalender #5841): motorreglerne tændt 17/10 (#6699); opfølgning #6748 i `s5_profiles_v2`.
+1. **S5-etapeprofiler #6369** (kalender #5841): motorreglerne tændt 17/10 (#6699); opfølgning #6748 i `s5_profiles_v2` (tænding venter ejer, #6819/#6820). **Løbsidentitet #6857** (8 typer, signaturer, monumenter; alt i S5): dry-run til ejeren 21/10.
 2. **Udvikling 2.0 del 1 #6499** (#6110): tilbagegang D4 + ingen udvikling uden for managerhold, til 25/10.
-3. **Sæsonskifte uden fejl 25/10:** #5904 lasttest · #5864 · #5833 · bestyrelse #6130 #6122.
+3. **Sæsonskifte uden fejl 25/10:** #5904 lasttest · #5864 · #5833 · bestyrelse #6130 #6122 · ungdom S5 dry-runs (før 28/10) · DST-audit #6862 (før 25/10).
 4. **Træningens rest:** #5947 historik · #5915 · #6210 maks +1 (PR #6248) · #5965 analyse.
 5. **Lovet med dato:** #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106.
 
