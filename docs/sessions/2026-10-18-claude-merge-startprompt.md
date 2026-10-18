@@ -14,7 +14,7 @@ Merge-regler: tekniske PR'er og spillervendte med design-go før byg merger du s
 |---|---|---|
 | #6780 | bestyrelsesmandater: aktivt mandat for aktiv sæson + sikre skrivninger | Venter Codex runde 4 på `68b3eed5c`. Grøn + ren → merge selv. |
 | #6680 | løbskalender-kort, status-prik, løbshistorik bag `race_library_v2` | Venter Codex på `369e9b991`. Merge selv. **Post-merge:** migrationen opretter flaget som off → tilføj `flag: race_library_v2` i `docs/FEATURE_REGISTRY.yml` + `node scripts/generate-feature-status.mjs`. #6872 rettes FØR ejeren siger "tænd beta". |
-| #6873 | patch notes 7.368 (EN+DA, 10 poster) | Ejer-go givet 18/10 ("merge naar klar"): merge ved groen CI + ren Codex-review. |
+| #6873 | patch notes 7.368 (EN+DA, 11 poster) | Ejer-go givet 18/10 ("merge naar klar"): merge ved groen CI + ren Codex-review. |
 | #6636 / #6634 | Codex' løbsbibliotek (kommende løb + historik-fane) + plan | Tjek overlap med #6680 (begge rører løbsbiblioteket). Vis ejeren forskellen med billeder og anbefal: luk som overflødig eller gør færdig. |
 | #6248 | træning: maks +1 pr. evne pr. dato (Refs #6210) | Gammel (7/10). Tjek om reglen allerede håndhæves på main; relevant → gør færdig (Codex + Claude-review), ellers luk med begrundelse. |
 | #6665 | ny forside med godkendt tekst | Ejeren læser selv: send skærmbilleder mobil + desktop i aften, vent på go. |
