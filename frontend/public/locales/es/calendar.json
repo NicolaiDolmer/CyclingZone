@@ -76,5 +76,24 @@
     "description": "Algo salió mal al cargar el calendario de carreras. Inténtalo de nuevo en un momento.",
     "retry": "Reintentar",
     "session": "Tu sesión ha terminado. Inicia sesión de nuevo para ver el calendario."
+  },
+  "peek": {
+    "stages": "{count, plural, one {# etapa} other {# etapas}}",
+    "oneDay": "Carrera de un día",
+    "terrain": "Terreno",
+    "noProfile": "Recorrido aún no publicado",
+    "teamFit": "Encaje del equipo",
+    "bestBet": "Mejor apuesta: {name} ({score})",
+    "fitUnavailable": "No disponible para esta carrera",
+    "status": {
+      "label": "Tu estado",
+      "missing": "Falta elegir plantilla",
+      "selected": "Plantilla elegida",
+      "gtBound": "Ocupado por tu Grand Tour"
+    },
+    "pick": "Elegir plantilla",
+    "editSquad": "Editar plantilla",
+    "openRace": "Abrir carrera",
+    "terrainCount": "{type} ×{count}"
   }
 }

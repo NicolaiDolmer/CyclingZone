@@ -143,9 +143,10 @@ test("hver race-muterende invalidering rammer også kalender-cachen (#2861)", ()
   const racesHits = (apiSource.match(/invalidateNamespace\("races"\)/g) || []).length;
   const calendarHits = (apiSource.match(/invalidateNamespace\("calendar"\)/g) || []).length;
   assert.ok(racesHits > 0, "der skal findes race-invalideringer at spejle");
-  assert.equal(
-    calendarHits,
-    racesHits,
+  // #6514: kalenderen bærer også holdets egen status (tilmeldt/afmeldt/udtagelse), så den
+  // invalideres OFTERE end races; kravet er kun at ingen race-invalidering mangler en makker.
+  assert.ok(
+    calendarHits >= racesHits,
     "et løb der ændrer sig ændrer kalenderen — hver invalidateNamespace(\"races\") skal have en \"calendar\"-makker",
   );
 });

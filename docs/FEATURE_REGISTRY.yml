@@ -252,6 +252,18 @@ features:
     verified: 2026-10-15
     note: PR #6633; beta siden 15/10 efter ejer-go (læst i prod 15/10).
 
+  - id: race-library-v2
+    area: stats
+    title_en: Calendar race card and race history library
+    title_da: Kalender-løbskort og løbshistorik
+    state: building
+    ssot: docs/CALENDAR_RULES.md
+    epic: 6514
+    verified: 2026-10-15
+    note: PR #6680; flag-nøglen race_library_v2 oprettes som off af migrationen efter merge; `flag:` tilføjes her i samme post-merge-skridt (registry-gaten kræver nøglen i prod), ejer flytter den til beta.
+    decision: ejer-beslutning
+    decide_by: 2026-10-25
+
   - id: race-day-development
     area: race-day
     title_en: Race day development
