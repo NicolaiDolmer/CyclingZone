@@ -132,7 +132,8 @@ test('#6318 review: queue deploy timeout covers one full release job', () => {
   const queueMinutes = Number(source.match(/\[int\] \$DeployVerifyTimeoutMinutes = (\d+)/)[1]);
   const workflow = readFileSync(new URL('../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
   // The first job-level timeout belongs to the release job, the only job the queue waits for.
-  assert.match(workflow, /^jobs:\s+(?:#[^\r\n]*\s+)*release:\s+name: Deploy live \+ smoke/m);
+  // Line-anchored so comment lines cannot overlap (CodeQL js/redos #379).
+  assert.match(workflow, /^jobs:[ \t]*\r?\n(?:[ \t]*#[^\r\n]*\r?\n)*[ \t]+release:[ \t]*\r?\n[ \t]+name: Deploy live \+ smoke/m);
   const jobMinutes = Number(workflow.match(/^ {4}timeout-minutes: (\d+)/m)[1]);
   assert.ok(queueMinutes >= jobMinutes + 5, `queue ${queueMinutes} min must exceed job ${jobMinutes} min plus run-creation slack`);
 });

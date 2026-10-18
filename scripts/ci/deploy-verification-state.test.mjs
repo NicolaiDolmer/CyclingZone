@@ -14,7 +14,7 @@ const released = [step('Deployment still pending', 'skipped'), step('Smoke-test 
 test('#6859: the job names the queue reads are exactly the workflow job names', () => {
   const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
   for (const name of [RELEASE_JOB, RELEASE_CHECKS_JOB, CRON_PROOF_JOB]) {
-    assert.match(workflow, new RegExp(`^ {4}name: ${name.replace(/[()+]/g, '\\$&')}\\s*$`, 'm'), name);
+    assert.match(workflow, new RegExp(`^ {4}name: ${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm'), name);
   }
 });
 
