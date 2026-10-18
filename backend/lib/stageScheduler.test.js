@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { runStageScheduler, MAX_STAGES_PER_DAY } from "./stageScheduler.js";
+import { runStageScheduler, MAX_STAGES_PER_DAY, dailyStageCapFor, loadDailyStageCap } from "./stageScheduler.js";
 
 // Mock-supabase med tabel-specifikke svar via en resolver-funktion. Hver from(table)
 // returnerer en kæde-bygger der ved .then() resolver canned[table] (efter at have
@@ -620,6 +620,207 @@ test("#4026: ikke-benign 409 captures stadig som fejl (kun claim/stale-tick er s
     });
     assert.equal(r.errors, 1, "ikke-benign 409 er stadig en fejl");
     assert.equal(sentryCalls.length, 1, "ikke-benign 409 captures stadig");
+  } finally {
+    console.error = originalError;
+  }
+});
+
+// ── #6764: daglig cap følger dagens planlagte kalender ─────────────────────────
+
+// race_stage_schedule-resolver: HEAD-count-queryen (cap'et) ser `planned` rækker for
+// i dag, due-queryen ser `due`. Registrerer count-queryens filtre til inspektion.
+function scheduleResolver({ planned, due, seen = {} }) {
+  return (state) => {
+    if (state.opts?.head) {
+      seen.countOpts = state.opts;
+      seen.gtes = state.gtes;
+      seen.ltes = state.ltes;
+      return Array.from({ length: planned }, (_, i) => ({ race_id: `p${i}` }));
+    }
+    return due;
+  };
+}
+
+function manyDueRaces(n) {
+  const races = Array.from({ length: n }, (_, i) => ({ id: `r${i}`, season_id: "s1", name: `Race ${i}`, stages: 1, stages_completed: 0, status: "scheduled" }));
+  const schedule = races.map((r) => ({ race_id: r.id, stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }));
+  return { races, schedule };
+}
+
+// Supabase hvor KUN count-queryen på race_stage_schedule fejler (resten som makeSupabase).
+function withFailingPlannedCount(base, message = "statement timeout") {
+  return {
+    from(table) {
+      const b = base.from(table);
+      if (table !== "race_stage_schedule") return b;
+      const originalSelect = b.select;
+      b.select = (cols, opts) => {
+        if (!opts?.head) return originalSelect(cols, opts);
+        const failing = {
+          gte() { return failing; },
+          lt() { return failing; },
+          then(res, rej) { return Promise.resolve({ count: null, data: null, error: { message } }).then(res, rej); },
+        };
+        return failing;
+      };
+      return b;
+    },
+  };
+}
+
+test("#6764 dailyStageCapFor: gulv 62, ellers planlagt × 1,5 rundet op", () => {
+  assert.equal(dailyStageCapFor(0), MAX_STAGES_PER_DAY);
+  assert.equal(dailyStageCapFor(41), MAX_STAGES_PER_DAY, "fuld seniorpyramide alene holder sig under gulvet");
+  assert.ok(dailyStageCapFor(57) >= 86, "57 planlagte etaper → cap ≥ 86");
+  assert.equal(dailyStageCapFor(237), 356);
+  assert.equal(dailyStageCapFor(Number.NaN), MAX_STAGES_PER_DAY);
+  assert.equal(dailyStageCapFor(-5), MAX_STAGES_PER_DAY);
+});
+
+test("#6764 loadDailyStageCap: én HEAD-count på race_stage_schedule over det danske døgn", async () => {
+  const seen = {};
+  const supabase = makeSupabase({ race_stage_schedule: scheduleResolver({ planned: 57, due: [], seen }) });
+  const r = await loadDailyStageCap({ supabase, now: NOW });
+  assert.ok(r.cap >= 86, `cap ${r.cap} skal være ≥ 86 ved 57 planlagte`);
+  assert.equal(r.plannedToday, 57);
+  assert.equal(r.fallback, false);
+  assert.deepEqual(seen.countOpts, { count: "exact", head: true }, "billig count, ingen rækker");
+  // 21/6 er CEST: døgnet er [20/6 22:00Z, 21/6 22:00Z).
+  assert.deepEqual(seen.gtes, [["scheduled_at", "2026-06-20T22:00:00.000Z"]]);
+  assert.deepEqual(seen.ltes, [["scheduled_at", "2026-06-21T22:00:00.000Z"]]);
+});
+
+test("#6764 loadDailyStageCap: døgnet er 25 t på DST-skiftedagen (CEST → CET)", async () => {
+  const seen = {};
+  const supabase = makeSupabase({ race_stage_schedule: scheduleResolver({ planned: 1, due: [], seen }) });
+  await loadDailyStageCap({ supabase, now: new Date("2026-10-25T12:00:00Z") });
+  assert.deepEqual(seen.gtes, [["scheduled_at", "2026-10-24T22:00:00.000Z"]]);
+  assert.deepEqual(seen.ltes, [["scheduled_at", "2026-10-25T23:00:00.000Z"]]);
+});
+
+test("#6764: 57 planlagte og 62 allerede kørt → scheduleren fortsætter (gammelt cap ville stoppe)", async () => {
+  const { races, schedule } = manyDueRaces(3);
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: Array.from({ length: MAX_STAGES_PER_DAY }, (_, i) => ({ id: i + 1 })),
+    races,
+    race_stage_schedule: scheduleResolver({ planned: 57, due: schedule }),
+  });
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => ({}),
+  });
+  assert.equal(r.skipped, undefined, "ikke daily_cap_reached");
+  assert.equal(r.ran, 3);
+  assert.ok(r.dailyCap >= 86);
+});
+
+test("#6764: 237 planlagte etaper → alle 237 kan køre samme dag", async () => {
+  const { races, schedule } = manyDueRaces(237);
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: [],
+    races,
+    race_stage_schedule: scheduleResolver({ planned: 237, due: schedule }),
+  });
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => ({}),
+  });
+  assert.equal(r.ran, 237, "ingen etape klippes af cap'et");
+});
+
+test("#6764: runaway-værnet består — cap'et er endeligt og bundet til kalenderen", async () => {
+  // 57 planlagte → cap 86. Er der allerede kørt 85, er der KUN én plads tilbage, uanset
+  // hvor mange due løb en løbsk tilstand måtte præsentere.
+  const { races, schedule } = manyDueRaces(10);
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: Array.from({ length: dailyStageCapFor(57) - 1 }, (_, i) => ({ id: i + 1 })),
+    races,
+    race_stage_schedule: scheduleResolver({ planned: 57, due: schedule }),
+  });
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => ({}),
+  });
+  assert.equal(r.ran, 1);
+});
+
+test("#6764: runaway-værnet holder over PostgRESTs 1000-rækkeloft (doneToday er en HEAD-count)", async () => {
+  // 800 planlagte → cap 1200. 1200 kørt i dag, men en almindelig select ville kun se 1000
+  // (rækkeloftet) og tro der var 200 pladser tilbage. HEAD-count ser det rigtige tal.
+  const { races, schedule } = manyDueRaces(3);
+  const runs = Array.from({ length: 1200 }, (_, i) => ({ id: i + 1 }));
+  let countQueryUsed = false;
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: (state) => {
+      if (state.opts?.head) { countQueryUsed = true; return runs; }
+      return runs.slice(0, 1000); // PostgREST-afkortning
+    },
+    races,
+    race_stage_schedule: scheduleResolver({ planned: 800, due: schedule }),
+  });
+  let ran = 0;
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => { ran++; },
+  });
+  assert.equal(countQueryUsed, true, "doneToday tælles med HEAD-count");
+  assert.equal(r.dailyCap, 1200);
+  assert.equal(r.skipped, "daily_cap_reached");
+  assert.equal(ran, 0);
+});
+
+test("#6764: count-fejl → fallback 62, logget + capturet (én capture pr. døgn)", async () => {
+  const base = makeSupabase({ race_stage_schedule: scheduleResolver({ planned: 500, due: [] }) });
+  const supabase = withFailingPlannedCount(base);
+  const sentryCalls = [];
+  const errors = [];
+  const originalError = console.error;
+  console.error = (line) => errors.push(String(line));
+  try {
+    const seenKeys = new Map();
+    const a = await loadDailyStageCap({ supabase, now: NOW, seenKeys, captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }) });
+    const b = await loadDailyStageCap({ supabase, now: NOW, seenKeys, captureExceptionFn: (err, ctx) => sentryCalls.push({ err, ctx }) });
+    assert.equal(a.cap, 62);
+    assert.equal(a.fallback, true);
+    assert.equal(b.cap, 62);
+    assert.equal(errors.filter((l) => l.includes("stage_scheduler_planned_count_failed")).length, 2, "logges hvert tick");
+    assert.equal(sentryCalls.length, 1, "captures én gang pr. døgn");
+    assert.match(sentryCalls[0].err.message, /statement timeout/);
+    assert.equal(sentryCalls[0].ctx.tags.check, "planned-stage-count");
+  } finally {
+    console.error = originalError;
+  }
+});
+
+test("#6764: count-fejl i et tick → scheduleren bruger 62 og stopper ved det gamle loft", async () => {
+  const { races, schedule } = manyDueRaces(3);
+  const base = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: Array.from({ length: MAX_STAGES_PER_DAY }, (_, i) => ({ id: i + 1 })),
+    races,
+    race_stage_schedule: scheduleResolver({ planned: 57, due: schedule }),
+  });
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    let ran = 0;
+    const r = await runStageScheduler({
+      supabase: withFailingPlannedCount(base), now: NOW,
+      isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+      captureExceptionFn: () => {},
+      runStageFn: async () => { ran++; },
+    });
+    assert.equal(r.skipped, "daily_cap_reached");
+    assert.equal(r.dailyCap, 62);
+    assert.equal(ran, 0);
   } finally {
     console.error = originalError;
   }
