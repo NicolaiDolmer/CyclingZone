@@ -948,6 +948,7 @@ jobs:
         run: |
           node --test scripts/wave-boot-identity.test.mjs scripts/wave-policy.test.mjs scripts/wave-recovery.test.mjs scripts/wave-owner-override.test.mjs scripts/codex-wave.test.mjs scripts/codex-git-write-probe.test.mjs scripts/wave-hook.test.mjs scripts/session-claim.test.mjs scripts/wave-freeze.test.mjs scripts/wave-api-recovery.test.mjs scripts/verify-lock.test.mjs scripts/make-wave-brief.test.mjs
           python3 scripts/hooks/lib/test_codex_sessions.py
+          python3 -m unittest discover -s scripts -p codex_setup_test.py
           bash scripts/test-guard-agent-spawn.sh
 
       # #5489: deploy-verify.yml laeser Railway-status via scripts/railway-deploy-status.mjs
