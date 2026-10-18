@@ -134,7 +134,7 @@ test("createOutageMonitor: alarmen sendes uden databasen og prøves igen hvis Di
 
 test("createOutageMonitor: mangler env, gør vagten intet", async () => {
   let calls = 0;
-  const tick = createOutageMonitor({ env: {}, fetchFn: async () => { calls += 1; return { status: 503 }; }, log: () => {} });
+  const tick = createOutageMonitor({ env: {}, fetchFn: async () => { calls += 1; return { status: 503 }; }, now: () => 0, log: () => {} });
   const origError = console.error;
   console.error = () => {};
   try {
@@ -171,7 +171,7 @@ test("createOutageMonitor: overlappende tik springes over", async () => {
     return { status: 200 };
   };
   const env = { SUPABASE_URL: "https://p", SUPABASE_SERVICE_KEY: "k", DISCORD_OPS_WEBHOOK_URL: "https://discord.example/h" };
-  const tick = createOutageMonitor({ env, fetchFn, log: () => {} });
+  const tick = createOutageMonitor({ env, fetchFn, now: () => 0, log: () => {} });
   const first = tick();
   await tick();
   assert.equal(probes, 1, "andet tik må ikke starte en probe mens det første kører");
