@@ -137,11 +137,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Stages run as planned",
-          "body": "The number of stages run each day now follows the day's calendar, so no planned stage is held back."
+          "body": "The number of stages run each day now follows the day's calendar instead of a fixed daily limit, so planned stages are no longer held back by that limit."
         },
         "da": {
           "title": "Etaperne køres som planlagt",
-          "body": "Antallet af etaper, der køres hver dag, følger nu dagens kalender, så ingen planlagt etape bliver holdt tilbage."
+          "body": "Antallet af etaper, der køres hver dag, følger nu dagens kalender i stedet for et fast dagligt loft, så planlagte etaper ikke længere holdes tilbage af loftet."
         },
         "refs": [
           6844,
