@@ -257,6 +257,7 @@ features:
     title_en: Calendar race card and race history library
     title_da: Kalender-løbskort og løbshistorik
     state: building
+    flag: race_library_v2
     ssot: docs/CALENDAR_RULES.md
     epic: 6514
     verified: 2026-10-15

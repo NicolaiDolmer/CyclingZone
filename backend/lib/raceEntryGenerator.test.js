@@ -2661,3 +2661,13 @@ test("#5944 generator: Train only-trup udtages ikke til U23-løbet, seniorløbet
   const sTeams = [...new Set(state.race_entries.filter((e) => e.race_id === "S").map((e) => e.team_id))].sort();
   assert.deepEqual(sTeams, ["t1", "t2"], "seniorer er upåvirkede");
 });
+
+test("#6680 (Codex P2): a live run clears the calendar cache, a dry run does not", async () => {
+  const { getCacheStats, __testing__ } = await import("./responseCache.js");
+  __testing__.setMaxEntries("calendar", 100); // the bucket exists once the calendar route has served
+  const before = getCacheStats().invalidations;
+  await runRaceEntryGenerator({ supabase: makeSupabase(transferredRiderScenario({ spent: false })), seasonId: "season1", dryRun: true, now: new Date("2026-10-02T06:00:00Z") });
+  assert.equal(getCacheStats().invalidations, before, "dry run leaves the cache");
+  await runRaceEntryGenerator({ supabase: makeSupabase(transferredRiderScenario({ spent: false })), seasonId: "season1", dryRun: false, now: new Date("2026-10-02T06:00:00Z") });
+  assert.equal(getCacheStats().invalidations, before + 1, "live run invalidates the calendar namespace");
+});
