@@ -170,7 +170,7 @@ test('Codex #6861 round 3: every deploying PR is deploy-verified, and the tick w
 });
 
 test('every waiting step in the queue is stall-guarded and stops through Stop-QueueStall', () => {
-  assert.equal(Number(source.match(/\[int\] \$StallMinutes = (\d+)/)[1]), 15);
+  assert.equal(Number(source.match(/\[int\] \$StallMinutes = (\d+)/)[1]), 45);
   assert.match(source, /Wait-ForWorkflowRun -WorkflowFile "ci\.yml" .* -StallMinutes \$StallMinutes\n\s+# #6859[^\n]*\n\s+if \(\$script:queueStall\) \{ return \$false \}/);
   assert.match(source, /\$deployState = Wait-ForDeployVerification -Sha \$sha -TimeoutMinutes \$DeployVerifyTimeoutMinutes -StallMinutes \$StallMinutes\n\s+if \(\$deployState -eq 'stalled'\) \{ Stop-QueueStall \}/);
   assert.match(source, /\[double\] \$StallMinutes = \$script:StallMinutes/);

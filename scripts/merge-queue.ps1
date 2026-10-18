@@ -92,7 +92,9 @@ param(
   # checks) saa mange minutter uden fremskridt, skriver koeen en STALL-linje med
   # aarsag, sender Discord-ops-besked (env DISCORD_OPS_WEBHOOK_URL, ellers kun
   # konsol) og stopper i stedet for at vente til timeout.
-  [int] $StallMinutes = 15,
+  # Codex P2 (#6861): over det laengste gyldige enkelt-trin (deploy-vent op til 40 min),
+  # saa et sundt trin aldrig stoppes; stadig langt under timeouts (130 min).
+  [int] $StallMinutes = 45,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
   [int] $DeployVerifyTimeoutMinutes = 140,
@@ -150,7 +152,7 @@ function Get-PrPlanEntry([int]$number) {
   elseif ($checksExit -eq 8) { $checksSummary = "AFVENTER" }
   else { $checksSummary = "ROED/mangler" }
 
-  $filesJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'files,changedFiles,title,mergeable,isDraft') -TolerateFailure
+  $filesJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid') -TolerateFailure
   $touchesBackend = $false
   # Review #6357: Railway bygger paa ALT undtagen backend/railway.json's
   # watchPatterns-undtagelser (docs/, pr-screens/, superpowers/, .claude/, rod-*.md).
@@ -162,12 +164,14 @@ function Get-PrPlanEntry([int]$number) {
   $title = "(ukendt)"
   $mergeable = "UNKNOWN"
   $isDraft = $false
+  $headSha = $null
   if ($filesJson) {
     try {
       $parsed = ($filesJson -join "") | ConvertFrom-Json
       $title = $parsed.title
       $mergeable = $parsed.mergeable
       $isDraft = [bool]$parsed.isDraft
+      if ($parsed.PSObject.Properties['headRefOid']) { $headSha = [string]$parsed.headRefOid }
       # Ejer 10/10 (valg B): klassifikationen bor i scripts/merge-queue-files.mjs
       # (node --test). Kun produktionskode er "backend"; tests/dev-scripts/
       # test-data venter ikke paa deploy-verifikation alene.
@@ -202,6 +206,7 @@ function Get-PrPlanEntry([int]$number) {
     touchesVercel  = $touchesVercel
     mergeable      = $mergeable
     isDraft        = $isDraft
+    headSha        = $headSha
   }
 }
 
@@ -796,6 +801,14 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # Codex P2 (#6861 runde 3): ventetiden paa release checks kan flytte merget
   # ind i etape-tick-vinduet. #4919 gaelder lige foer selve merget.
   Wait-OutOfMergeTickWindow
+  # Codex P1 (#6861): ventetiderne ovenfor kan vare minutter. Er der pushet et
+  # nyt commit imens, beskriver $fresh ikke laengere det hoved der merges (og
+  # merget sker med --admin). Genlaes checks og hoved lige foer merget.
+  $recheck = Get-PrPlanEntry $n
+  if ($recheck.checksExit -ne 0 -or -not $recheck.headSha -or $recheck.headSha -ne $fresh.headSha) {
+    Write-Host "STOP: PR #$n har aendret sig under ventetiden (hoved $($fresh.headSha) -> $($recheck.headSha), checks: $($recheck.checksSummary)). Koer koeen igen, naar det nye hoved er groent." -ForegroundColor Red
+    Exit-Queue 1
+  }
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) {
