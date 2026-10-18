@@ -211,7 +211,7 @@ export function isGraduateAge(age) {
  * Rytter-patch for "denne graduering blev gennemført": sæt BEGGE trup-felter.
  *
  * `riders.is_academy` er afledt af `riders.squad` i overgangsperioden (spec §3.2
- * — 35+ kaldsteder og RLS-funktionen `is_offered_intake_rider()` læser den), så
+ * — 35+ kaldsteder og RLS-funktionen `offered_intake_rider_ids()` læser den), så
  * de to må ALDRIG skrives hver for sig. Ét sted at gøre det, så promote-stien i
  * resolveGraduation, completeStuckPromotion og academyTransfer.promote() ikke kan
  * ende med tre lidt forskellige patches.

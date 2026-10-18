@@ -11,7 +11,8 @@
 //   1. Kræver at holdet er parkeret (parked_at != null) og at der er en aktiv sæson.
 //   2. Rang → division → pulje (comebackPlacement.js, ren).
 //   3. Flytter holdet: league_division_id, division, parked_at = null,
-//      next_season_signup_at = null, comeback_season_id = den aktive sæson. Opdateringen
+//      next_season_signup_at = null, comeback_season_id = den aktive sæson,
+//      comeback_at = nu (#6811: træningens varige parkeringsgrænse). Opdateringen
 //      er en compare-and-swap på den parked_at-værdi vi læste, så to samtidige kald
 //      ikke flytter holdet to gange.
 //   4. Forholdsmæssig sponsor (se payComebackSponsor).
@@ -62,6 +63,13 @@ export function seasonSponsorKeys(seasonId, teamId) {
     `sponsor:${teamId}:${seasonId}`,
     `midseason_sponsor:${seasonId}:${teamId}`,
   ];
+}
+
+// #6811: svarer databasen at teams.comeback_at ikke findes endnu (42703 fra Postgres,
+// PGRST204 fra PostgREST's skema-cache)? Kun fejl der nævner kolonnen tæller.
+export function isMissingComebackAtColumn(error) {
+  if (!error || (error.code !== "42703" && error.code !== "PGRST204")) return false;
+  return String(error.message ?? "").includes("comeback_at");
 }
 
 // Kolonnerne pickComebackPool læser pr. hold.
@@ -382,19 +390,29 @@ export async function returnParkedTeam({ supabase, teamId, now = new Date(), dep
   const placement = pickComebackPool({ tier, pools, teams });
   if (!placement) throw new ComebackError("no_pool_available", 409);
 
-  const { data: moved, error: moveError } = await supabase
+  const moveFields = {
+    league_division_id: placement.poolId,
+    division: placement.tier,
+    parked_at: null,
+    next_season_signup_at: null,
+    comeback_season_id: season.id,
+  };
+  const moveTeam = (fields) => supabase
     .from("teams")
-    .update({
-      league_division_id: placement.poolId,
-      division: placement.tier,
-      parked_at: null,
-      next_season_signup_at: null,
-      comeback_season_id: season.id,
-    })
+    .update(fields)
     .eq("id", team.id)
     // Compare-and-swap: kun hvis holdet stadig er parkeret med præcis den værdi vi læste.
     .eq("parked_at", team.parked_at)
     .select("id");
+  // #6811: comeback_at er træningens varige grænse for parkeringsperioden
+  // (trainingDateReadiness.isTrainingDateTeam). Kolonnen kommer med
+  // database/2026-10-17-6811-team-comeback-at.sql; i deploy-vinduet før
+  // auto-migrate (#2642) gentages flytningen uden den, så et comeback aldrig fejler.
+  let { data: moved, error: moveError } = await moveTeam({ ...moveFields, comeback_at: now.toISOString() });
+  if (isMissingComebackAtColumn(moveError)) {
+    console.warn(`[comeback] teams.comeback_at mangler endnu; hold ${team.id} flyttes uden (#6811)`);
+    ({ data: moved, error: moveError } = await moveTeam(moveFields));
+  }
   if (moveError) throw new Error(`teams (comeback ${team.id}): ${moveError.message}`);
   if (!Array.isArray(moved) || moved.length === 0) {
     // Et samtidigt kald nåede først, og holdet er ikke længere parkeret. Intet flyttes

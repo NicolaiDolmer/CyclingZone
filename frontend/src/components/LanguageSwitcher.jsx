@@ -35,15 +35,26 @@ import LanguageSwitcherFlag from "./LanguageSwitcherFlag.jsx";
 // rækkefølge (dansk øverst, engelsk nederst) uændret uanset rækkefølgen i
 // LANGUAGES.
 import { LANGUAGES } from "../i18n/languages.js";
+// #6802: beta-sprog (LANGUAGES[].beta) vises kun for ejer + beta-testere.
+import { selectableLanguages, languageToRevertTo } from "../lib/languageAccess.ts";
+import { useBetaLanguageAccess } from "../lib/languageAccessHook.ts";
 
 const LABEL_KEYS = { da: "language.danish", en: "language.english" };
 const DISPLAY_ORDER = ["da", "en"];
-const OPTIONS = [...LANGUAGES]
-  .sort((a, b) => DISPLAY_ORDER.indexOf(a.code) - DISPLAY_ORDER.indexOf(b.code))
-  .map((l) => ({ code: l.code, flag: l.flag, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
+// Nye sprog uden plads i DISPLAY_ORDER sorteres sidst (#6802).
+const orderOf = (code) => {
+  const i = DISPLAY_ORDER.indexOf(code);
+  return i === -1 ? DISPLAY_ORDER.length : i;
+};
+const toOptions = (languages) =>
+  [...languages]
+    .sort((a, b) => orderOf(a.code) - orderOf(b.code))
+    .map((l) => ({ code: l.code, flag: l.flag, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
+const ALL_OPTIONS = toOptions(LANGUAGES);
 
-// Estimeret menuhøjde (2 valg) til at vælge op/ned før menuen er målt.
-const MENU_EST_HEIGHT = 88;
+// Estimeret højde pr. valg til at vælge op/ned før menuen er målt; menuen
+// vokser med antallet af valg, når beta-sprog vises (Codex #6812).
+const MENU_ROW_EST_HEIGHT = 44;
 const GAP = 4;
 
 // surface="sidebar": knappen staar paa den moerke sidebar/topbar (ogsaa i lyst tema), saa den
@@ -51,6 +62,8 @@ const GAP = 4;
 export default function LanguageSwitcher({ className = "", surface = "page" }) {
   const { t } = useTranslation("common");
   const { language, setLanguage } = useLanguage();
+  const betaAccess = useBetaLanguageAccess();
+  const OPTIONS = toOptions(selectableLanguages(LANGUAGES, betaAccess));
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState(null);
   const btnRef = useRef(null);
@@ -61,13 +74,16 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
     if (!btn) return;
     const r = btn.getBoundingClientRect();
     const spaceBelow = window.innerHeight - r.bottom;
-    const openUp = spaceBelow < MENU_EST_HEIGHT && r.top > spaceBelow;
+    const estHeight = OPTIONS.length * MENU_ROW_EST_HEIGHT;
+    const openUp = spaceBelow < estHeight && r.top > spaceBelow;
     setCoords({
+      // Plads til menuen i den valgte retning, så de nederste valg aldrig ender uden for skærmen.
+      maxHeight: Math.max(MENU_ROW_EST_HEIGHT, (openUp ? r.top : spaceBelow) - GAP * 2),
       right: Math.max(GAP, window.innerWidth - r.right),
       top: openUp ? null : r.bottom + GAP,
       bottom: openUp ? window.innerHeight - r.top + GAP : null,
     });
-  }, []);
+  }, [OPTIONS.length]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -102,7 +118,14 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
     };
   }, [open]);
 
-  const active = OPTIONS.find((o) => o.code === language) ?? OPTIONS[1];
+  const active = ALL_OPTIONS.find((o) => o.code === language) ?? ALL_OPTIONS.find((o) => o.code === "en");
+
+  // Kendt uden beta-adgang men staar paa et beta-sprog (fx tilbagekaldt adgang):
+  // rul tilbage til standardsproget. Aldrig mens adgangen endnu er ukendt (null).
+  const revertTo = languageToRevertTo(language, betaAccess);
+  useEffect(() => {
+    if (revertTo) setLanguage(revertTo);
+  }, [revertTo, setLanguage]);
 
   return (
     <div className={`relative inline-block ${className}`}>
@@ -131,7 +154,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
               right: coords.right,
               top: coords.top ?? undefined,
               bottom: coords.bottom ?? undefined,
-              maxHeight: `calc(100vh - ${GAP * 2}px)`,
+              maxHeight: coords?.maxHeight ? `${coords.maxHeight}px` : `calc(100vh - ${GAP * 2}px)`,
             }}
             // #2880: portaled to document.body, so it competes at the TOP-LEVEL
             // stacking context against everything else — including nav chrome

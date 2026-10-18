@@ -1,0 +1,65 @@
+{
+  "panel": {
+    "label": "Filtro",
+    "resetAll": "Restablecer todo",
+    "resetCount": "Restablecer todo ({count})",
+    "more": "Más filtros"
+  },
+  "fields": {
+    "name": "Nombre",
+    "namePlaceholder": "Buscar ciclista...",
+    "country": "País",
+    "countryAll": "Todos los países",
+    "valueRange": "Valor CZ$ (mín.-máx.)",
+    "salaryRange": "Salario CZ$ (mín.-máx.)",
+    "ageRange": "Edad (mín.-máx.)",
+    "bidRange": "Puja más alta CZ$ (mín.-máx.)",
+    "askingPriceRange": "Precio pedido CZ$ (mín.-máx.)",
+    "valueDeviationRange": "Desviación de valor % (mín.-máx.)",
+    "team": "Equipo",
+    "teamAll": "Todos los equipos",
+    "min": "Mín.",
+    "max": "Máx."
+  },
+  "toggles": {
+    "freeAgent": "Agente libre",
+    "u25": "Sub-25",
+    "u23": "Sub-23",
+    "showAi": "Mostrar equipos IA"
+  },
+  "stats": {
+    "section": "Filtros de estadísticas",
+    "active": "{count} activos",
+    "minInput": "{label} mín.",
+    "maxInput": "{label} máx."
+  },
+  "chips": {
+    "value": {
+      "min": "Valor ≥ {amount} CZ$",
+      "max": "Valor ≤ {amount} CZ$"
+    },
+    "salary": {
+      "min": "Salario ≥ {amount} CZ$",
+      "max": "Salario ≤ {amount} CZ$"
+    },
+    "age": {
+      "min": "Edad ≥ {value}",
+      "max": "Edad ≤ {value}"
+    },
+    "bid": {
+      "min": "Puja ≥ {amount} CZ$",
+      "max": "Puja ≤ {amount} CZ$"
+    },
+    "askingPrice": {
+      "min": "Precio ≥ {amount} CZ$",
+      "max": "Precio ≤ {amount} CZ$"
+    },
+    "valueDeviation": {
+      "min": "Desviación ≥ {value}%",
+      "max": "Desviación ≤ {value}%"
+    },
+    "teamSelected": "Equipo seleccionado",
+    "statRange": "{label} {min}-{max}",
+    "remove": "Quitar filtro: {label}"
+  }
+}

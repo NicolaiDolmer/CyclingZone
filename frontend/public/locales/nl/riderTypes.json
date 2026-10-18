@@ -1,0 +1,42 @@
+{
+  "filter": {
+    "label": "Renner-type",
+    "all": "Alle types"
+  },
+  "badge": {
+    "ariaLabel": "Renner-type: {primary} / {secondary}",
+    "ariaLabelSingle": "Renner-type: {primary}"
+  },
+  "natural": {
+    "label": "Natuurlijk",
+    "roleLabel": "Natuurlijke rol",
+    "filterAll": "Natuurlijke rol: alle",
+    "ariaLabel": "Natuurlijke rol: {primary} / {secondary}",
+    "ariaLabelSingle": "Natuurlijke rol: {primary}"
+  },
+  "bestRole": {
+    "label": "Beste rol nu",
+    "filterAll": "Beste rol nu: alle",
+    "title": "{role} is de rol waarin hij op dit moment het hoogst scoort. Het getal is zijn rating als {role}."
+  },
+  "types": {
+    "sprinter": "Sprinter",
+    "tt": "Tijdrijder",
+    "climber": "Klimmer",
+    "puncheur": "Puncheur",
+    "brostensrytter": "Kasseienspecialist",
+    "baroudeur": "Baroudeur",
+    "rouleur": "Rouleur",
+    "gc": "Klassementsrenner"
+  },
+  "short": {
+    "sprinter": "Sprint",
+    "tt": "TT",
+    "climber": "Klim",
+    "puncheur": "Punch",
+    "brostensrytter": "Kassei",
+    "baroudeur": "Baroud",
+    "rouleur": "Rouleur",
+    "gc": "GC"
+  }
+}

@@ -58,6 +58,11 @@ jobs:
       - name: Test training recovery replay (#5928)
         run: node --test --test-reporter=spec ../scripts/trainingRecovery5928.test.mjs
 
+      # #6795: preflight-season-cutover.ps1's pulje-SQL koeres mod PGlite og holdes
+      # lig resolveCutoverPoolRetirement. Lever i scripts/, kraever backend-deps.
+      - name: Test cutover preflight pool SQL (#6795)
+        run: node --test --test-reporter=spec ../scripts/preflight-season-cutover.test.mjs
+
       - name: Lint backend
         run: npm run lint
 

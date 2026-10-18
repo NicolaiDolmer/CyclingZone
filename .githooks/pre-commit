@@ -79,14 +79,19 @@ else
     exit 1
   fi
 
-  STAGED_DIFF=$(git diff --cached -U0 --no-color)
-  if [ -n "$STAGED_DIFF" ]; then
-    export _SECRET_SCAN_DIFF="$STAGED_DIFF"
+  # Diffen gaar via en midlertidig fil, ikke en miljoevariabel: Windows' graense
+  # for miljoeblokken gav "Argument list too long" ved store merges (#6760).
+  _SECRET_SCAN_DIFF_FILE=$(mktemp "${TMPDIR:-/tmp}/cz-secret-scan.XXXXXX")
+  trap 'rm -f "$_SECRET_SCAN_DIFF_FILE"' EXIT
+  git diff --cached -U0 --no-color > "$_SECRET_SCAN_DIFF_FILE"
+  if [ -s "$_SECRET_SCAN_DIFF_FILE" ]; then
+    export _SECRET_SCAN_DIFF_FILE
     PY_EXIT=0
     # 2>&1: fang scanner-stderr så en crash er diagnosticerbar (ikke skjult).
     RESULT=$("$PY" <<'PYEOF' 2>&1
 import os, re, sys
-diff = os.environ.get("_SECRET_SCAN_DIFF", "")
+with open(os.environ["_SECRET_SCAN_DIFF_FILE"], encoding="utf-8", errors="replace") as fh:
+    diff = fh.read()
 PATTERNS = [
     ("supabase-secret",      re.compile(r"sb_secret_[A-Za-z0-9_-]{30,}")),
     ("jwt-supabase-legacy",  re.compile(r"eyJh[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}")),
@@ -123,7 +128,8 @@ if findings:
 sys.exit(0)
 PYEOF
     ) || PY_EXIT=$?
-    unset _SECRET_SCAN_DIFF
+    rm -f "$_SECRET_SCAN_DIFF_FILE"
+    unset _SECRET_SCAN_DIFF_FILE
 
     if [ "$PY_EXIT" -eq 2 ]; then
       # Reelt fund: scanneren kørte og matchede et secret-pattern.

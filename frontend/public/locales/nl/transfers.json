@@ -1,0 +1,345 @@
+{
+  "page": {
+    "title": "Transfers",
+    "subtitle": "Onderhandel rechtstreeks met andere managers",
+    "subtitleWithBalance": "Onderhandel rechtstreeks met andere managers · Saldo {balance} CZ$",
+    "balance": "Saldo",
+    "loadingAria": "Transfers laden"
+  },
+  "tabs": {
+    "received": "Ontvangen aanbiedingen",
+    "sent": "Verstuurde aanbiedingen",
+    "archive": "Geschiedenis ({count})",
+    "market": "Markt ({count})",
+    "trades": "Alle transfers"
+  },
+  "modes": {
+    "handle": "Te behandelen",
+    "negotiations": "Onderhandelingen",
+    "market": "Markt",
+    "trades": "Alle transfers"
+  },
+  "tradeList": {
+    "tableLabel": "Elke renner die in het spel van team wisselt, nieuwste eerst",
+    "loadingAria": "Transfers laden",
+    "loadError": "Ik kon de transferlijst niet laden.",
+    "errorTitle": "De transferlijst is niet geladen",
+    "errorBody": "Er gaat niets verloren. Probeer het over een moment opnieuw.",
+    "retry": "Probeer opnieuw",
+    "count": "{count, plural, one {# transfer getoond} other {# transfers getoond}}",
+    "loadMore": "Meer tonen",
+    "loadingMore": "Laden",
+    "depthCapNote": "Verder terug gaat de lijst niet. Gebruik de filters om oudere transfers te vinden.",
+    "emptyTitle": "Contracteer je eerste renner",
+    "emptyBody": "Er is nog geen renner van eigenaar gewisseld. Op de markt gebeurt dat straks voor het eerst.",
+    "emptyAction": "De markt bekijken",
+    "emptyFilteredTitle": "Zoek breder",
+    "emptyFilteredBody": "Geen transfers die bij deze filters passen.",
+    "reportAria": "Deze transfer ter beoordeling melden",
+    "freeAgent": "Transfervrij",
+    "header": {
+      "rider": "Renner",
+      "type": "Type",
+      "date": "Datum",
+      "from": "Van",
+      "to": "Naar",
+      "amount": "Transfersom"
+    },
+    "filter": {
+      "typeLabel": "Filteren op type",
+      "typeAll": "Alle types",
+      "divisionLabel": "Filteren op divisie",
+      "divisionAll": "Alle divisies",
+      "divisionOption": "Divisie {n}",
+      "mineOnly": "Alleen mijn team",
+      "reset": "Filters wissen"
+    }
+  },
+  "status": {
+    "pending": "Wacht op antwoord",
+    "countered": "Tegenbod verstuurd",
+    "awaitingConfirmation": "Wacht op bevestiging",
+    "accepted": "Geaccepteerd",
+    "rejected": "Afgewezen",
+    "withdrawn": "Ingetrokken"
+  },
+  "type": {
+    "auction": "Veiling",
+    "transfer": "Transfer",
+    "swap": "Ruil",
+    "academy": "Academie"
+  },
+  "direction": {
+    "in": "Kopen",
+    "out": "Verkopen",
+    "swap": "Ruilen",
+    "noSale": "Niet verkocht"
+  },
+  "relativeTime": {
+    "justNow": "Zojuist",
+    "minutes": "{m}m geleden",
+    "hours": "{h}u geleden",
+    "days": "{day}d geleden",
+    "dash": "—"
+  },
+  "offerCard": {
+    "from": "Van",
+    "to": "Naar",
+    "round": "Ronde {round}",
+    "squadCriticalReceived": "🚨 Onder het minimum",
+    "squadCriticalSent": "🚨 Verkoper onder min.",
+    "offerLabel": "Aanbieding",
+    "counterLabel": "Jouw tegenbod",
+    "counterAmountLabel": "Tegenbod",
+    "yourBidLabel": "Jouw bod",
+    "value": "Waarde",
+    "salary": "Salaris",
+    "estSalary": "Gesch. salaris",
+    "contractExpires": "Verloopt na seizoen {season}",
+    "noContract": "Transfervrij",
+    "buttons": {
+      "accept": "✓ Accepteren",
+      "counter": "Tegenbod",
+      "reject": "✕ Afwijzen",
+      "send": "Versturen",
+      "acceptCounter": "✓ Accepteren ({amount} CZ$)",
+      "newOffer": "Nieuwe aanbieding",
+      "withdraw": "Intrekken",
+      "withdrawOffer": "Aanbieding intrekken",
+      "withdrawCounter": "Tegenbod intrekken",
+      "confirmDeal": "✓ Deal bevestigen ({amount} CZ$)",
+      "cancelDeal": "Deal annuleren",
+      "archive": "Archiveren"
+    },
+    "form": {
+      "counterLabel": "Jouw tegenbod (CZ$)",
+      "newOfferLabel": "Nieuwe aanbieding (CZ$)",
+      "messageBuyer": "Optioneel bericht aan de koper...",
+      "messagePlaceholder": "Optioneel bericht...",
+      "offerAmountBlocked": "Vul een aanbieding boven 0 CZ$ in"
+    },
+    "awaiting": {
+      "sellerAccepted": "Je hebt geaccepteerd · wacht op bevestiging van de koper",
+      "buyerConfirmed": "Je hebt bevestigd · wacht op bevestiging van de verkoper"
+    }
+  },
+  "swapCard": {
+    "youOffer": "Jij biedt aan",
+    "theyOffer": "Zij bieden aan",
+    "youWant": "Jij wilt",
+    "theyWant": "Zij willen",
+    "pureSwap": "Zuivere ruil",
+    "cashFrom": "+{amount} CZ$ van {team}",
+    "counterTag": "(tegenbod)",
+    "buttons": {
+      "accept": "✓ Accepteren",
+      "counter": "Tegenbod",
+      "reject": "✕ Afwijzen",
+      "acceptCounter": "✓ Tegenbod accepteren",
+      "send": "Versturen",
+      "withdraw": "Voorstel intrekken",
+      "rejectShort": "Afwijzen",
+      "confirmSwap": "✓ Ruil bevestigen",
+      "cancelSwap": "Deal annuleren",
+      "archive": "Archiveren"
+    },
+    "form": {
+      "cashReceiveLabel": "Contante betaling (CZ$) · positief = jij ontvangt, negatief = jij betaalt",
+      "cashPayLabel": "Contante betaling (CZ$) · positief = jij betaalt, negatief = jij ontvangt"
+    },
+    "awaiting": {
+      "selfConfirmed": "Je hebt bevestigd · wacht op de andere partij"
+    }
+  },
+  "transferCard": {
+    "send": "Versturen",
+    "messagePlaceholder": "Bericht (optioneel)...",
+    "removeListing": "Van de transferlijst halen",
+    "removing": "Verwijderen...",
+    "removeAria": "{riderName} van de transferlijst halen",
+    "removeConfirm": "{riderName} van de transferlijst halen?",
+    "ridersForSale": "renner",
+    "editPrice": "Prijs aanpassen",
+    "editPriceAria": "Vraagprijs voor {riderName} aanpassen",
+    "editPriceLabel": "Nieuwe vraagprijs (CZ$)",
+    "savePrice": "Opslaan",
+    "priceInvalid": "Vul een heel getal boven 0 CZ$ in",
+    "cancel": "Annuleren",
+    "confirmRemoveButton": "Ja, verwijderen"
+  },
+  "history": {
+    "title": "Transfergeschiedenis",
+    "seasonFilterAll": "Alle seizoenen",
+    "seasonFilterCurrent": "Seizoen {n} (dit)",
+    "seasonOption": "Seizoen {n}",
+    "emptyAll": "Het team heeft nog geen transfergeschiedenis.",
+    "emptyFiltered": "Geen transfers gevonden voor het gekozen seizoen.",
+    "header": {
+      "date": "Datum",
+      "type": "Type",
+      "direction": "Richting",
+      "rider": "Renner",
+      "counterparty": "Wederpartij",
+      "amount": "Bedrag"
+    },
+    "aiTag": "(AI)",
+    "swapZero": "0 CZ$",
+    "noBids": "Geen biedingen",
+    "academySource": "Academie",
+    "aiTeamFallback": "AI-team",
+    "loadError": "De transfergeschiedenis kon niet worden geladen",
+    "noSaleToggle": "Veilingen zonder biedingen tonen",
+    "noSaleHiddenNote": "{count, plural, one {# veiling zonder biedingen is} other {# veilingen zonder biedingen zijn}} verborgen. Er is geen renner van eigenaar gewisseld.",
+    "emptyFilteredNoSaleOnly": "Geen echte transfers in het gekozen seizoen: alleen veilingen zonder biedingen (verborgen, zie het filter hierboven).",
+    "reportAction": "Ter beoordeling melden",
+    "reportActionAria": "Deze transfer ter beoordeling melden"
+  },
+  "report": {
+    "title": "Deze transfer melden",
+    "subtitle": "Stuur hem naar mij voor een nadere blik. Dit is geen beschuldiging, alleen een signaal dat ik kan nakijken.",
+    "messageLabel": "Wat zag er vreemd uit?",
+    "messagePlaceholder": "Beschrijf wat je opviel...",
+    "messageHelper": "Nog {count} tekens over",
+    "cancel": "Annuleren",
+    "confirm": "Melding versturen",
+    "close": "Sluiten",
+    "closeAction": "Sluiten",
+    "done": "Bedankt. Ik ga ernaar kijken.",
+    "alreadyDone": "Je team heeft deze transfer al gemeld. Ik heb hem.",
+    "error": "De melding kon niet worden verstuurd. Probeer het over een moment opnieuw.",
+    "rateLimited": "Je hebt al een paar meldingen gestuurd. Probeer het over even opnieuw.",
+    "tooShort": "Vertel iets meer: minstens {min} tekens.",
+    "tooLong": "Houd het onder de {max} tekens."
+  },
+  "profit": {
+    "title": "Transferwinst per renner",
+    "subtitle": "Alle seizoenen. Verkoopprijs tegenover aankoopprijs voor renners die het team heeft verkocht.",
+    "header": {
+      "rider": "Renner",
+      "bought": "Gekocht",
+      "sold": "Verkocht",
+      "profit": "Winst/verlies"
+    },
+    "unknownBuy": "Onbekend",
+    "unknownBuyHint": "Geen aankoop gevonden in de geschiedenis van het team, bijvoorbeeld de startselectie of een ruil. De winst kan niet worden berekend.",
+    "unknownAcademyBuy": "Academie (kosten onbekend)",
+    "unknownAcademyBuyHint": "Deze renner is uit de academie gecontracteerd voordat kosten werden bijgehouden. De winst kan niet worden berekend.",
+    "total": "Totale gerealiseerde winst",
+    "totalExcluded": "{count, plural, one {# verkoop} other {# verkopen}} zonder bekende aankoopprijs, niet meegeteld in het totaal."
+  },
+  "sections": {
+    "archivedReceived": "Gearchiveerde ontvangen aanbiedingen",
+    "archivedSent": "Gearchiveerde verstuurde aanbiedingen",
+    "receivedProposals": "Ontvangen voorstellen",
+    "sentProposals": "Verstuurde voorstellen",
+    "archivedReceivedProposals": "Gearchiveerde ontvangen voorstellen",
+    "archivedSentProposals": "Gearchiveerde verstuurde voorstellen"
+  },
+  "empty": {
+    "received": "Bekijk de markt terwijl je wacht",
+    "receivedHint": "Andere managers sturen aanbiedingen voor je renners vanaf de pagina van de renner.",
+    "sent": "Stuur je eerste aanbieding",
+    "sentHint": "Open de pagina van een renner en klik op \"Transferaanbieding versturen\".",
+    "archive": "Bekijk je openstaande onderhandelingen",
+    "archiveHint": "Deals die je sluit of afwijst, komen hier terecht.",
+    "marketNoListings": "Zet een renner te koop",
+    "marketNoListingsHint": "Er staat nu niets op de transferlijst. Stel vanuit je selectie een vraagprijs in.",
+    "marketNoMatches": "Verruim je filter",
+    "marketNoMatchesHint": "Geen renner op de lijst past bij het huidige filter.",
+    "ctaBrowseMarket": "De markt openen",
+    "ctaSeeSent": "Verstuurde aanbiedingen bekijken",
+    "ctaListRider": "Mijn selectie openen"
+  },
+  "toast": {
+    "offerSent": "✅ Aanbieding verstuurd!",
+    "listingRemoved": "✅ Renner van de transferlijst gehaald",
+    "listingRemoveFailed": "De aanbieding kon niet worden verwijderd",
+    "offerAcceptedBuyer": "✅ Geaccepteerd · de koper moet de deal nu bevestigen",
+    "offerAcceptedSeller": "✅ Geaccepteerd · de verkoper moet de deal nu bevestigen",
+    "confirmedAwaiting": "✅ Bevestigd · wacht op bevestiging van de andere partij",
+    "dealCancelled": "Deal geannuleerd",
+    "transferRejected": "Transfer afgewezen",
+    "counterSent": "Tegenbod verstuurd",
+    "counterWithdrawn": "Tegenbod ingetrokken",
+    "newOfferSent": "Nieuwe aanbieding verstuurd",
+    "offerWithdrawn": "Aanbieding ingetrokken",
+    "offerArchived": "Aanbieding gearchiveerd",
+    "updated": "✅ Bijgewerkt",
+    "swapAccepted": "✅ Geaccepteerd · wacht op bevestiging",
+    "swapConfirmedAwaiting": "✅ Bevestigd · wacht op de andere partij",
+    "swapCancelled": "Ruil geannuleerd",
+    "swapRejected": "Ruil afgewezen",
+    "proposalWithdrawn": "Voorstel ingetrokken",
+    "swapArchived": "Voorstel gearchiveerd",
+    "priceUpdated": "✅ Vraagprijs bijgewerkt",
+    "priceUpdateFailed": "De prijs kon niet worden bijgewerkt"
+  },
+  "celebration": {
+    "transferDone": {
+      "title": "Transfer afgerond! 🎉",
+      "subtitle": "De renner zit nu in je team"
+    },
+    "swapDone": {
+      "title": "Ruil afgerond! 🎉",
+      "subtitle": "De renners zijn uitgewisseld"
+    },
+    "buyoutDone": {
+      "title": "Renner gekocht! 🎉",
+      "subtitle": "De koopoptie is uitgeoefend"
+    }
+  },
+  "marketSort": {
+    "label": "Sorteren op",
+    "ascAria": "Oplopend sorteren",
+    "descAria": "Aflopend sorteren"
+  },
+  "marketRow": {
+    "nation": "Land",
+    "rider": "Renner",
+    "seller": "Verkoper",
+    "age": "Leeftijd",
+    "listed": "Te koop gezet",
+    "value": "Waarde",
+    "salary": "Salaris",
+    "price": "Vraagprijs",
+    "action": "Actie",
+    "offer": "Aanbieding versturen",
+    "manage": "Beheren",
+    "close": "Sluiten",
+    "offerAria": "Aanbieding versturen voor {riderName}",
+    "manageAria": "Aanbieding voor {riderName} beheren",
+    "selectAria": "{riderName} selecteren voor bulkwijziging van de prijs",
+    "countLine": "{shown} van {total} aanbiedingen getoond"
+  },
+  "bulkPrice": {
+    "selected": "{count} geselecteerd",
+    "selectAllVisible": "Alle renners in de lijst selecteren ({count})",
+    "clear": "Selectie wissen",
+    "mode": {
+      "percent": "Procent",
+      "amount": "Bedrag CZ$",
+      "set": "Prijs instellen"
+    },
+    "valueLabel": "Waarde",
+    "valuePlaceholder": {
+      "percent": "bijv. 10 voor +10%, -10 voor -10%",
+      "amount": "bijv. 500 of -500",
+      "set": "Nieuwe vraagprijs"
+    },
+    "previewTitle": "Voorbeeld",
+    "previewEmpty": "Vul een waarde in om de nieuwe prijzen te zien.",
+    "previewMore": "+ {count} meer",
+    "apply": "Toepassen op {count} renners",
+    "applying": "Toepassen...",
+    "toastSuccess": "{count} prijzen bijgewerkt",
+    "toastPartial": "{updated} bijgewerkt, {failed} konden niet worden bijgewerkt",
+    "toastNoChange": "Geen prijswijziging om toe te passen",
+    "toastFailed": "De prijzen konden niet worden bijgewerkt"
+  },
+  "valueDelta": {
+    "under": "{pct}% onder de gesch. waarde",
+    "over": "{pct}% boven de gesch. waarde",
+    "at": "Dicht bij de gesch. waarde",
+    "title": "Geschatte marktwaarde: {amount} CZ$. Een modelschatting, geen gegarandeerde prijs."
+  }
+}

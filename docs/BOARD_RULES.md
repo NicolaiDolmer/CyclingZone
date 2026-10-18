@@ -380,6 +380,11 @@ S4 i DB kører som eget spor efter kalenderpakkeren (`TRAINING_RULES.md` §13).
    `seasonLookup.js`) ligger nu FØR lukningen: findes sæsonen ikke, er sæsonskiftet en ren no-op for
    mandatet. **Uafhængigt krav står stadig: sæson 4 skal i DB før 27/9 (#4270).**
 
+3. **Mandat-læsere vælger den aktive sæson (#6793, Refs #6773).** `boardMandateMeeting.js`
+   (`GET /board/meeting`, fokusskift og sæsonstart-guidens `reason`) filtrerer på den aktive sæsons
+   `season_number` (`loadSingleActiveSeason`). Fallback til nyeste mandat sker KUN når ingen sæson er
+   aktiv. Et gammelt `proposed`/`active` mandat fra en tidligere sæson giver hverken møde eller `signed`.
+
 **Flag-note (midlertidig):** `isBoardMandateModelEnabled` accepterer nu `{ engineWrite: true }`, så
 motoren skriver skyggedata i stage `beta` uanset om den enkelte manager er beta-tester (ejer-go 6/9).
 Afløses af #4839, der skiller skrive-gaten fra læse-gaten permanent.

@@ -1,0 +1,152 @@
+{
+  "meta": {
+    "title": "Roadmap · Cycling Zone",
+    "description": "Wat er in Cycling Zone wordt gebouwd, waarop spelers kunnen stemmen, wat er in beta zit en welke problemen worden opgelost."
+  },
+  "page": {
+    "title": "Roadmap",
+    "subtitle": "Wat ik bouw, waarop jij kunt stemmen en wat ik repareer."
+  },
+  "labels": {
+    "new": "Nieuw"
+  },
+  "loginToVote": {
+    "text": "Log in om de plannen te beoordelen en problemen te melden.",
+    "link": "Inloggen"
+  },
+  "filter": {
+    "onlyUnrated": "Alleen wat ik nog niet heb beoordeeld",
+    "rated": "{rated} van {total} beoordeeld"
+  },
+  "tabs": {
+    "label": "Roadmap-onderdelen",
+    "plan": "Plan",
+    "beta": "Beta",
+    "vote": "Stemmen",
+    "issues": "Bekende problemen",
+    "done": "Klaar"
+  },
+  "voting": {
+    "idea": "Goed idee?",
+    "importance": "Belangrijk voor jou?",
+    "saved": "Opgeslagen",
+    "error": "Je stem is niet opgeslagen. Probeer het opnieuw."
+  },
+  "plan": {
+    "inProgress": "In uitvoering",
+    "planned": "Gepland",
+    "plannedHint": "Ongeveer in deze volgorde",
+    "later": "Later · nog {count}"
+  },
+  "beta": {
+    "inBeta": "Nu in beta",
+    "inBetaHint": "Beta-testers hebben dit al. Iedereen krijgt het zodra het klaar is.",
+    "coming": "Komt naar beta",
+    "badgeInBeta": "In beta",
+    "badgeSoon": "Binnenkort voor iedereen",
+    "badgeNext": "Volgende in beta",
+    "since": "in beta sinds {date}",
+    "join": "Doe mee met de beta",
+    "member": "Je zit in de beta",
+    "pending": "Aanvraag verstuurd"
+  },
+  "vote": {
+    "title": "Ideeën die ik overweeg",
+    "hint": "Jouw beoordelingen bepalen wat naar het plan gaat",
+    "areaLabel": "Gebied",
+    "all": "Alle",
+    "forum": "Heb je een eigen idee? Plaats het op het forum"
+  },
+  "issues": {
+    "areaLabel": "Gebied",
+    "all": "Alle",
+    "confirmed": "Bevestigd",
+    "confirmedHint": "Problemen die ik zelf heb gezien of waarvan ik de oorzaak heb gevonden.",
+    "checking": "Gemeld, wordt gecontroleerd",
+    "checkingHint": "Spelers hebben deze gemeld. Ik heb ze niet bevestigd en ik beloof geen aanpassing.",
+    "checkingMore": "nog {count}",
+    "checkingMoreOwn": "nog {count} · {own} door jou gemeld",
+    "status": {
+      "checking": "Wordt gecontroleerd",
+      "confirmed": "Bevestigd",
+      "fixing": "Oplossing in uitvoering",
+      "fixed": "Opgelost",
+      "dismissed": "Geen probleem gevonden"
+    },
+    "affectsMe": "Raakt mij ook",
+    "seeToo": "Ik zie dit ook",
+    "reported": "Gemeld",
+    "reportError": "Dat is niet opgeslagen. Probeer het opnieuw.",
+    "updated": "bijgewerkt {date}",
+    "reportedByPlayers": "gemeld door spelers",
+    "earlierUpdates": "Eerdere updates · {count}",
+    "dismissed": "Gecontroleerd, geen probleem gevonden · laatste 14 dagen",
+    "fixed": "Opgelost in de laatste 14 dagen"
+  },
+  "done": {
+    "title": "Klaar",
+    "hint": "Nieuwste eerst",
+    "feature": "Functie",
+    "fix": "Fix",
+    "showMore": "Meer tonen"
+  },
+  "empty": {
+    "plan": {
+      "title": "Toon de plannen die je hebt beoordeeld",
+      "description": "Je hebt alles in het plan beoordeeld.",
+      "action": "Alles tonen"
+    },
+    "planNone": {
+      "title": "Beoordeel in plaats daarvan de ideeën",
+      "description": "Er is nu niets gepland.",
+      "action": "Naar Stemmen"
+    },
+    "vote": {
+      "title": "Toon de ideeën die je hebt beoordeeld",
+      "description": "Je hebt elk idee beoordeeld.",
+      "action": "Alles tonen"
+    },
+    "voteNone": {
+      "title": "Deel je eigen idee",
+      "description": "Er zijn nu geen ideeën om op te stemmen.",
+      "action": "Naar het forum"
+    },
+    "beta": {
+      "title": "Doe mee met de beta",
+      "description": "Er zit nu niets in beta. Nieuwe functies verschijnen hier zodra ze naar beta gaan.",
+      "memberTitle": "Bekijk wat er gepland is",
+      "memberAction": "Naar Plan"
+    },
+    "issues": {
+      "title": "Laat het me weten als er iets niet klopt",
+      "description": "Er zijn nu geen bekende problemen.",
+      "action": "Feedback sturen",
+      "loginAction": "Inloggen"
+    },
+    "done": {
+      "title": "Bekijk wat er gepland is",
+      "description": "Er is nog niets af.",
+      "action": "Naar Plan"
+    }
+  },
+  "engines": {
+    "races": {
+      "title": "Koersen"
+    },
+    "training": {
+      "title": "Training"
+    },
+    "youth": {
+      "title": "Jeugdontwikkeling"
+    },
+    "market": {
+      "title": "Transfers & veilingen"
+    },
+    "club": {
+      "title": "Club & wereld"
+    },
+    "other": {
+      "title": "Overig"
+    }
+  }
+}

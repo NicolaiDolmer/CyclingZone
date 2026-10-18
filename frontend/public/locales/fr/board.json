@@ -1,0 +1,2052 @@
+{
+  "page": {
+    "title": "Direction",
+    "subtitle": "Trois plans parallèles, objectifs et satisfaction séparés",
+    "financeLink": "Finances"
+  },
+  "loadError": "Impossible de charger la direction. Réessaie.",
+  "retry": "Réessayer",
+  "tour": {
+    "plans": {
+      "title": "Trois plans en parallèle",
+      "body": "Passe d'un plan à 1, 3 ou 5 ans à l'autre avec les onglets. Un plan à la fois, en pleine largeur. Chacun montre sa situation, sa satisfaction, son modificateur de sponsor × et ses objectifs avec des icônes d'état. Clique sur un objectif pour voir la réaction de la direction."
+    },
+    "satisfaction": {
+      "title": "La satisfaction pilote le sponsor et les conséquences",
+      "body": "Une satisfaction élevée (plus de 70 %) augmente le revenu de sponsor. Une satisfaction faible (moins de 40 %) peut déclencher des plafonds salariaux, des restrictions de signature et, au bout du compte, des ventes forcées de coureurs. La progression est graduelle et prévisible."
+    },
+    "kpis": {
+      "title": "Sur quoi ils évaluent",
+      "body": "Résultats, finances, identité (U25, noyau national) et classement, plus des types plus récents : monuments, maillots, coureur star et progression des stats U25. L'ADN de ton club et 5 membres nommés de la direction colorent les réactions."
+    }
+  },
+  "baseline": {
+    "title": "La direction observe ta première saison",
+    "body": "Tu es dans ta saison de référence. La direction apprend à connaître ton équipe sans exigences ni objectifs. Le modificateur de sponsor reste à 1,0×. À la fin de la saison, les négociations s'ouvrent l'une après l'autre : d'abord le plan à 5 ans, puis le plan à 3 ans, puis le plan à 1 an."
+  },
+  "emptyState": {
+    "headline": "Rencontre ta direction",
+    "intro": "Tu n'as pas encore de plans de direction. La direction fixe des objectifs, évalue ta saison et décide du revenu de sponsor que ton équipe touche.",
+    "plans": {
+      "oneYear": {
+        "label": "Plan à 1 an",
+        "description": "Objectifs stricts, résultats rapides. Pénalité complète en cas d'échec."
+      },
+      "threeYear": {
+        "label": "Plan à 3 ans",
+        "description": "Objectifs modérés, de la marge pour progresser. Pénalité réduite de 20 %."
+      },
+      "fiveYear": {
+        "label": "Plan à 5 ans",
+        "description": "Ambitions à long terme. Pénalité réduite de 40 %."
+      }
+    },
+    "plansFooter": "Les trois plans courent en parallèle. Tu en négocies un à la fois, et chacun a ses propres objectifs et son horizon.",
+    "satisfactionLabel": "Satisfaction -> modificateur de sponsor",
+    "bands": {
+      "high": "60–100 % -> sponsor × 1,10–1,20",
+      "moderate": "40–59 % -> sponsor × 1,00",
+      "low": "0–39 % -> sponsor × 0,80–0,90"
+    },
+    "satisfactionFooter": "Chaque objectif atteint augmente la satisfaction. Une direction mécontente durcit ses exigences à la prochaine négociation de plan.",
+    "kpis": {
+      "heading": "Sur quoi ils évaluent",
+      "results": {
+        "label": "Résultats",
+        "text": "victoires en course, bonnes places, victoires totales"
+      },
+      "finance": {
+        "label": "Finances",
+        "text": "dette restante, croissance du sponsor sur la durée du plan"
+      },
+      "identity": {
+        "label": "Identité",
+        "text": "part de U25, noyau national, coureurs stars"
+      },
+      "rank": {
+        "label": "Classement",
+        "text": "place en division à la fin de la saison"
+      }
+    },
+    "ctaNegotiate": "Négocie ton premier plan avec la direction",
+    "ctaShowTour": "Fais-moi visiter"
+  },
+  "planLabels": {
+    "1yr": "Plan à 1 an",
+    "3yr": "Plan à 3 ans",
+    "5yr": "Plan à 5 ans"
+  },
+  "planDescriptions": {
+    "1yr": "Objectifs stricts, résultats rapides. Pénalité complète en cas d'échec.",
+    "3yr": "Objectifs modérés, de la marge pour progresser. Pénalité réduite de 20 %.",
+    "5yr": "Ambitions à long terme. Pénalité réduite de 40 %."
+  },
+  "focus": {
+    "balanced": "Équilibré",
+    "youth_development": "Formation des jeunes",
+    "star_signing": "Recrutement de stars"
+  },
+  "goal": {
+    "topNFinish": "Top {target} de la division",
+    "topNFinishPlanEnd": "Top {target} de la division à la fin du plan",
+    "minNationalRiders": "Min. {target} coureurs de {country}",
+    "signatureRider": "{count, plural, one {Au moins # coureur de grande renommée} other {Au moins # coureurs de grande renommée}}",
+    "stageWins": "{target, plural, one {Au moins # victoire en course} other {Au moins # victoires en course}}",
+    "stageWinsPlanPeriod": "Au moins {target} victoires en course sur la durée du plan",
+    "gcWins": "{target, plural, one {Au moins # victoire au général} other {Au moins # victoires au général}}",
+    "gcWinsPlanPeriod": "Au moins {target} victoires au général sur la durée du plan",
+    "minU25Riders": "Min. {target} coureurs U25 dans l'équipe",
+    "minRiders": "Garder au moins {target} coureurs",
+    "sponsorGrowth": "Revenu de sponsor en hausse de {target} %",
+    "sponsorGrowthPlanPeriod": "Revenu de sponsor en hausse de {target} % sur la durée du plan",
+    "noOutstandingDebt": "Aucune dette restante en fin de saison",
+    "monumentPodium": "Top 3 dans au moins {target} {target, plural, one {course Monument} other {courses Monument}}",
+    "monumentPodiumPlanPeriod": "Au moins {target} {target, plural, one {podium} other {podiums}} dans des courses Monument sur la durée du plan",
+    "classicsPodium": "Top 3 dans au moins {target} {target, plural, one {classique} other {classiques}} (Monuments inclus)",
+    "classicsPodiumPlanPeriod": "Au moins {target} {target, plural, one {podium} other {podiums}} dans des classiques (Monuments inclus) sur la durée du plan",
+    "jerseyWins": "Au moins {target} {target, plural, one {maillot} other {maillots}} de course par étapes (points/montagne/jeunes)",
+    "jerseyWinsPlanPeriod": "Au moins {target} maillots de course par étapes sur la durée du plan",
+    "profitableTransfers": "Solde net des transferts >= {amount} sur la durée du plan",
+    "u25DevelopmentDelta": "Gain moyen de stats U25 >= {target} points de stat/saison",
+    "relativeRank": "Finir devant au moins {target} autres managers de la division",
+    "domesticDominance": "Au moins {target} victoires dans les courses à domicile par saison",
+    "required": "Obligatoire",
+    "negotiated": "Négocié",
+    "tightenedBadge": "Durci",
+    "tightenedTitle": "Durci par la direction après une demande précédente",
+    "cumulative": "Cumulé",
+    "satisfactionBonus": "+{count} de satisfaction",
+    "satisfactionPenalty": "-{count} si non atteint",
+    "memberReacts": "{member} réagit",
+    "relativeRankDetail": "Tu es n° {rank} sur {total} managers de la division, devant {actual} (objectif : {target}<check/>).",
+    "targetMet": "objectif atteint",
+    "rankInDivisionShort": "Tu es n° {rank} sur {total} managers de la division.",
+    "sponsorGrowthDetail": "La croissance du sponsor est de {actual} % pour un objectif de {target} % attendu à ce stade.",
+    "progress": "Progression",
+    "obligatory": "Obligatoire",
+    "boardReaction": "La réaction de la direction"
+  },
+  "goalType": {
+    "u25_development_delta": "Progression des U25",
+    "signature_rider": "Coureur de grande renommée",
+    "min_national_riders": "Noyau national",
+    "profitable_transfers": "Transferts rentables",
+    "monument_podium": "Podiums en Monument",
+    "jersey_wins": "Maillots de course par étapes",
+    "relative_rank": "Classement de la division",
+    "top_n_finish": "Place en division",
+    "stage_wins": "Victoires en course",
+    "gc_wins": "Victoires au général",
+    "sponsor_growth": "Croissance du sponsor",
+    "domestic_dominance": "Domination à domicile"
+  },
+  "goalHelp": {
+    "heading": "Comment c'est mesuré ?",
+    "signature_rider": "Compte les coureurs que la direction reconnaît comme des stars. Avec la réputation activée, cela lit la même valeur de réputation acquise que celle affichée sur les surfaces des coureurs.",
+    "top_n_finish": "Évalué sur ta place finale lors de la dernière saison du plan, pas sur une moyenne des saisons du plan.",
+    "u25_development_delta": "Le gain moyen de points de stat par coureur U25 et par saison. Fais progresser les jeunes coureurs pour que leurs stats montent au cours de la saison.",
+    "sponsor_growth": "Compare le versement de saison de ton sponsor (base du contrat, au prorata si ton équipe a rejoint en cours de saison, plus le revenu des jours de course) entre cette saison et la première saison du plan. Les primes uniques (signature, résultats, objectifs) ne sont pas comptées. Affiché seulement à partir de la deuxième saison du plan, une fois qu'une vraie saison de référence existe."
+  },
+  "drivers": {
+    "heading": "Qu'est-ce qui pilote cette direction ?",
+    "satisfactionLabel": "Satisfaction globale",
+    "weightsLabel": "Cette direction se soucie surtout de",
+    "weightHint": "Atteindre ces objectifs fait plus bouger la satisfaction de la direction que les autres."
+  },
+  "status": {
+    "behind": "En danger",
+    "near_miss": "Proche",
+    "on_track": "Dans les temps",
+    "watch": "À surveiller",
+    "benchmark": {
+      "belowPar": "Sous la moyenne",
+      "onTrack": "Dans les temps",
+      "good": "Bon",
+      "great": "Très bon",
+      "outstanding": "Remarquable"
+    },
+    "trend": {
+      "up": "Satisfaction en hausse",
+      "down": "Satisfaction en baisse",
+      "flat": "Satisfaction stable"
+    }
+  },
+  "changeKind": {
+    "relaxed": "Assoupli",
+    "tightened": "Durci",
+    "replaced": "Remplacé"
+  },
+  "outcome": {
+    "approved": "Approuvé",
+    "partial": "Partiel",
+    "tradeoff": "Compromis",
+    "rejected": "Refusé"
+  },
+  "personality": {
+    "sports_ambition": {
+      "low": "Faible ambition",
+      "medium": "Ambition modérée",
+      "high": "Forte ambition"
+    },
+    "financial_risk": {
+      "cautious": "Économie prudente",
+      "balanced": "Économie équilibrée",
+      "aggressive": "Économie agressive"
+    },
+    "identity_strength": {
+      "low": "Identité faible",
+      "medium": "Identité modérée",
+      "high": "Identité forte"
+    }
+  },
+  "satisfactionMeter": {
+    "label": "Satisfaction de la direction",
+    "veryHappy": "Très satisfaite",
+    "happy": "Satisfaite",
+    "neutral": "Neutre",
+    "unhappy": "Mécontente",
+    "veryUnhappy": "Très mécontente",
+    "sponsorModifier": "Sponsor ×{modifier}"
+  },
+  "members": {
+    "heading": "La direction",
+    "count": "{count, plural, one {# membre} other {# membres}}",
+    "chairman": "Président",
+    "chairmanTitle": "Président de la direction",
+    "wildcard": "Joker",
+    "identityMatch": "Adéquation d'identité",
+    "weightsHeading": "Ce que ce membre pèse",
+    "viewProfile": "Voir le membre de la direction"
+  },
+  "dna": {
+    "sectionLabel": "ADN du club",
+    "selectHeading": "Choisis l'identité de ton club",
+    "selectIntro": "La direction a observé la saison 1 et propose trois directions. L'ADN façonne la pondération des objectifs, les objectifs de tradition du club et les membres de la direction que tu auras dès le premier plan.",
+    "slot": {
+      "national_match": "Correspondance nationale",
+      "specialization_match": "Correspondance de spécialisation",
+      "wildcard": "Joker",
+      "fallback": "Suggestion"
+    },
+    "saving": "Enregistrement…",
+    "choose": "Choisir cet ADN",
+    "switch": "Passer à cet ADN",
+    "current": "Actuel",
+    "badge": {
+      "label": "ADN du club",
+      "viewHint": "Voir l'ADN du club"
+    },
+    "rechoose": {
+      "hint": "Tu peux encore changer l'ADN de ton club jusqu'à la fin de ta première saison. Après, il est verrouillé.",
+      "toggle": "Changer l'ADN du club",
+      "sectionLabel": "ADN du club",
+      "heading": "Change l'ADN de ton club",
+      "intro": "Choisis une autre direction tant que tu es dans ta première saison. Changer réattribue tes membres de la direction et la pondération des objectifs."
+    },
+    "locked": {
+      "heading": "Verrouillé pour la saison",
+      "body": "L'ADN de ton club est fixé pour la saison et ne peut pas être changé. Il façonne la pondération des objectifs, les objectifs de tradition du club et les membres de la direction que tu auras."
+    },
+    "skandinavisk_udvikling": {
+      "label": "Équipe de formation scandinave",
+      "shortDescription": "Jeunesse, équilibre et héritage nordique",
+      "longDescription": "Nous formons les coureurs à la base : patience, structure et éthique de travail nordique. Les sponsors attendent de la formation, pas des feux d'artifice.",
+      "traditionGoalLabel": "ADN du club : former les talents, +3 points de stat en moyenne par saison pour les coureurs U25"
+    },
+    "italiensk_klassiker": {
+      "label": "Traditionaliste des classiques italiennes",
+      "shortDescription": "Le printemps est sacré. Les Monuments sont le but",
+      "longDescription": "Le club est bâti sur les routes de la Lombardie et des Strade Bianche. Nos supporters rêvent de Sanremo et du Lombardia, pas de podiums du Tour de France.",
+      "traditionGoalLabel": "ADN du club : au moins un podium dans une classique (Monuments inclus) par cycle de plan"
+    },
+    "sprint_kommerciel": {
+      "label": "Équipe commerciale axée sprint",
+      "shortDescription": "Des victoires sur la ligne, des sponsors dans la roue",
+      "longDescription": "Notre coureur doit être premier sur la ligne et premier devant les caméras. La croissance des sponsors vient de la visibilité, et la visibilité vient des victoires d'étape.",
+      "traditionGoalLabel": "ADN du club : gagner au moins 2 maillots de course par étapes sur la durée du plan (axe sprint)"
+    },
+    "fransk_klatrer": {
+      "label": "Héritage grimpeur français",
+      "shortDescription": "Les montagnes du Tour sont la maison du club",
+      "longDescription": "Nous avons grimpé avec Anquetil, Hinault et Pinot. Les montagnes nous définissent, et le Tour de France reste le dimanche le plus important du calendrier.",
+      "traditionGoalLabel": "ADN du club : au moins 4 coureurs français dans l'effectif"
+    },
+    "britisk_allrounder": {
+      "label": "Polyvalent britannique",
+      "shortDescription": "Discipline sur tous les fronts, piloté par les données et large",
+      "longDescription": "L'école Sky vit toujours. Nous gagnons par la structure, les gains marginaux et la profondeur, de Roubaix à l'Andorre. Aucune discipline ne possède le club, mais toutes y ont leur place.",
+      "traditionGoalLabel": "ADN du club : top 3 de la division (performance large)"
+    },
+    "suggestionRationale": {
+      "nationalMatch": "Correspond à ton noyau {nationalCode} dès la saison 1",
+      "specializationMatch": "Correspond à ton {specLabel}",
+      "wildcard": "Une nouvelle voie. La direction suivra où qu'elle mène"
+    },
+    "specLabel": {
+      "gc": "axe général",
+      "sprint": "axe sprint",
+      "classics": "axe classiques",
+      "breakaway": "style échappée",
+      "youth": "empreinte jeune",
+      "balanced": "profil équilibré"
+    },
+    "errorFallback": "Impossible de choisir l'ADN",
+    "requiredBeforePlan": "Choisis l'ADN de ton club avant de négocier avec la direction."
+  },
+  "identity": {
+    "defaultTitle": "Identité de l'équipe",
+    "wizardTitle": "La lecture de l'équipe par la direction",
+    "u25": "U25",
+    "u25Count": "{count, plural, one {# coureur} other {# coureurs}}",
+    "u25ShareSub": "{percent} % de l'effectif",
+    "primary": "Principal",
+    "secondary": "Secondaire",
+    "competitive": "Voie compétitive",
+    "squad": "Effectif",
+    "nationalCore": "Noyau national",
+    "nationalCoreMixed": "Mixte",
+    "nationalCoreNone": "Pas encore de noyau net",
+    "nationalCoreSub": "{count, plural, one {# coureur} other {# coureurs}} · {percent} % de l'effectif",
+    "starProfile": "Profil de star",
+    "starProfileUnknown": "Inconnu",
+    "starProfileNone": "Pas encore de profils nets",
+    "starProfileSub": "{count, plural, one {# coureur star} other {# coureurs stars}}",
+    "starRidersHeading": "Coureurs à profil",
+    "starRidersEmpty": "Aucun coureur n'a encore un profil assez fort pour que la direction le lise comme une star.",
+    "starRidersExplainer": "La direction lit ces coureurs comme tes stars. Avec la réputation activée, le même chiffre de réputation acquise affiché sur les surfaces des coureurs décide de qui compte.",
+    "starRiderPopularity": "Popularité {popularity}",
+    "starRiderReputation": "Réputation {score}",
+    "starRiderUnnamed": "Coureur sans nom",
+    "dnaRelation": "Ceci reflète ton effectif actuel, pas l'ADN de club que tu as choisi ({dna}). La direction lit les coureurs que tu as maintenant ; l'ADN façonne les objectifs à long terme que tu négocies.",
+    "dnaRelationNoDna": "Ceci reflète ton effectif actuel. La direction lit les coureurs que tu as maintenant."
+  },
+  "request": {
+    "heading": "Demande à la direction",
+    "subheading": "Une demande stratégique par saison",
+    "used": "Utilisée",
+    "ready": "Prête",
+    "pendingMigration": "Les demandes à la direction attendent une migration de la base de données",
+    "changesHeading": "À quoi la direction a réagi",
+    "focusLabel": "Axe",
+    "changesTo": "passe à",
+    "sending": "Envoi...",
+    "send": "Envoyer la demande",
+    "errorFallback": "Impossible d'envoyer la demande à la direction.",
+    "preview": "Voir la suggestion",
+    "previewing": "Chargement de la suggestion...",
+    "previewHeading": "Changement suggéré",
+    "previewSubheading": "Rien n'est encore appliqué. Examine-le, puis accepte ou garde ton plan actuel.",
+    "accept": "Accepter",
+    "applying": "Application...",
+    "keepCurrent": "Garder le plan actuel",
+    "previewErrorFallback": "Impossible de charger la suggestion."
+  },
+  "consequence": {
+    "heading": "Conséquences actives",
+    "count": "{count, plural, one {# active} other {# actives}}",
+    "layer2": {
+      "label": "Plafond salarial",
+      "describe": "La direction a imposé un plafond salarial de {cash}. Tu ne peux pas augmenter le salaire total de l'équipe, vends d'abord un coureur."
+    },
+    "layer3": {
+      "label": "Restriction de signature",
+      "describe": "La direction bloque toutes les signatures au-dessus de {cash} tant que la satisfaction n'est pas remontée."
+    },
+    "layer4": {
+      "label": "Vente forcée",
+      "describe": "La direction a mis {rider} en vente d'office pour {cash}. Contacte un acheteur pour conclure vite."
+    },
+    "layer4DefaultRider": "un coureur",
+    "layer5": {
+      "label": "Retrait du sponsor",
+      "describe": "Un sponsor principal s'est retiré. Le revenu de sponsor baisse de 10 % la saison prochaine."
+    }
+  },
+  "bonusOffer": {
+    "heading": "Offre de prime de la direction",
+    "body": "La direction est impressionnée. Elle offre <bonus>+{cash}</bonus> sur le solde de l'équipe pour un objectif supplémentaire : <goal>{goal}</goal>.",
+    "footer": "Accepte et le budget est crédité immédiatement. L'objectif supplémentaire est ajouté à ton plan à 1 an et évalué en fin de saison.",
+    "defaultGoal": "1 objectif supplémentaire",
+    "accept": "Accepter l'offre",
+    "decline": "Refuser"
+  },
+  "feed": {
+    "heading": "Fil de la direction",
+    "latestCount": "{count} derniers",
+    "needsAction": "À traiter"
+  },
+  "autoAccept": {
+    "lastChance": "Dernière chance, la direction reprend la main dans {count, plural, one {# jour} other {# jours}}",
+    "waiting": "La direction attend ta négociation, {count, plural, one {# jour} other {# jours}} restants",
+    "footer": "Si tu n'as pas choisi l'axe et négocié les objectifs dans les 5 jours suivant l'ouverture du plan, la direction choisit un plan d'après l'identité de ton équipe lors de la saison 1."
+  },
+  "plan": {
+    "autoConfigured": "Configuré automatiquement au début de la saison prochaine",
+    "negotiateExpired": "Négocier un nouveau plan",
+    "goalsLabel": "Objectifs",
+    "seasonsRemaining": "{count, plural, one {# saison restante} other {# saisons restantes}}",
+    "hideDetails": "Masquer les détails",
+    "showDetails": "Afficher les détails",
+    "timelineHeading": "Calendrier du plan",
+    "midReviewHeading": "Bilan à mi-plan effectué",
+    "midReviewBody": "Saison {current} sur {total} évaluée.",
+    "planGoalsLabel": "Objectifs du plan",
+    "seasonGoalsLabel": "Objectifs de la saison",
+    "outlookHeading": "L'appréciation de la direction",
+    "renew": "Renouveler le plan (statu quo)",
+    "renewing": "Renouvellement…",
+    "renewLocked": "La renégociation est verrouillée pour le reste de la saison.",
+    "renewLockedPlanActive": "Ce plan est toujours actif. Il ne peut être renégocié qu'une fois sa durée complète écoulée.",
+    "standingHeading": "Situation",
+    "negotiationOrder": "Les plans se négocient du plus long au plus court : 5 -> 3 -> 1 ans."
+  },
+  "tabs": {
+    "aria": "Horizons des plans",
+    "select": "Voir {plan}"
+  },
+  "snapshot": {
+    "heading": "Historique des saisons",
+    "columns": {
+      "season": "Saison",
+      "rank": "Rang",
+      "stageWins": "Étapes",
+      "gcWins": "Totaux",
+      "goalsMet": "Objectifs",
+      "satisfaction": "Satisfaction"
+    },
+    "seasonNumber": "Saison {number}",
+    "rankNone": "—"
+  },
+  "cumulative": {
+    "stageWins": "Victoires en course",
+    "gcWins": "Victoires totales"
+  },
+  "wizard": {
+    "step1Title": "La proposition de la direction",
+    "step1Subtitle": "Choisis une stratégie ; la direction génère les exigences",
+    "focusLabel": "Axe de l'équipe",
+    "horizonLabel": "Horizon",
+    "horizonDuration": "Le plan couvre {count, plural, one {# saison} other {# saisons}}, objectifs évalués en continu",
+    "requirementsHeading": "Les exigences de la direction",
+    "startNegotiation": "Lancer la négociation",
+    "startBlockedNoRequirements": "Aucune exigence n'a été générée pour cet axe. Essaie un autre axe.",
+    "errorProposal": "Impossible de récupérer la proposition de la direction.",
+    "errorSign": "Impossible de signer le plan de la direction.",
+    "step2Title": "Négociation",
+    "step2Subtitle": "Passe en revue les exigences de la direction une par une",
+    "goalCounter": "Objectif {current}/{total}",
+    "alreadyNegotiated": "Déjà négocié",
+    "negotiateDown": "Négocier à la baisse",
+    "cannotNegotiate": "Non négociable",
+    "accept": "Accepter",
+    "compromiseHeading": "La direction a accepté un compromis",
+    "compromiseBody": "Pénalité réduite de moitié. Accepter l'objectif négocié ?",
+    "acceptNegotiated": "Accepter l'objectif négocié",
+    "negotiationsUsed": "{count, plural, one {# négociation utilisée} other {# négociations utilisées}}",
+    "step3Title": "Signature",
+    "step3Subtitle": "{plan}, sur {count, plural, one {# saison} other {# saisons}}",
+    "agreedHeading": "Objectifs convenus",
+    "signing": "Enregistrement...",
+    "sign": "Signer le contrat",
+    "resetNotice": "Signer remet à zéro les compteurs de ce plan (saisons terminées, victoires cumulées) et ouvre une nouvelle fenêtre de plan. Cela ne remet pas à zéro ta demande à la direction pour cette saison. Elle reste verrouillée jusqu'à la saison prochaine.",
+    "obligatory": "Obligatoire",
+    "negotiatedTick": "Négocié",
+    "steps": {
+      "strategy": "Stratégie",
+      "negotiation": "Négociation",
+      "signature": "Signature"
+    },
+    "setupHeading": "Mise en place du plan de la direction ({step}/3)",
+    "setupBody": "Négocie ton {plan} avec la direction. Puis passe au plan suivant.",
+    "setupSequence": "La première réunion suit un ordre fixe : d'abord le plan à 5 ans, puis le plan à 3 ans et enfin le plan à 1 an.",
+    "multiRenewalHeading": "Renouvellement du plan {current}/{total}, {plan}",
+    "multiRenewalBodyNext": "Puis passe à {next}.",
+    "multiRenewalBodyLast": "Dernier plan de la file.",
+    "singleRenewalHeading": "{plan} expiré",
+    "singleRenewalBody": "Négocie un nouveau {plan} avec la direction.",
+    "back": "Retour",
+    "backToPlan": "Retour à {plan}",
+    "backToOverview": "Retour à l'aperçu",
+    "dialogAria": "Négociation du plan de la direction"
+  },
+  "a11y": {
+    "closeDialog": "Fermer la boîte de dialogue",
+    "goalStatus": {
+      "achieved": "Atteint",
+      "behind": "En retard",
+      "nearMiss": "Raté de peu",
+      "pending": "En attente"
+    },
+    "seasonComplete": {
+      "good": "Saison terminée : objectifs atteints",
+      "poor": "Saison terminée : objectifs manqués"
+    },
+    "wizardStepDone": "Terminé",
+    "goalProgress": "Progression de l'objectif",
+    "goalsProgress": "Objectifs atteints",
+    "planProgress": "Progression du plan",
+    "wizardProgress": "Progression de l'étape de négociation"
+  },
+  "satisfactionExplainer": {
+    "heading": "Que signifie la satisfaction ?",
+    "high": {
+      "range": "60–100 %",
+      "label": "Satisfaction élevée",
+      "effect": "Sponsor × 1,10–1,20, revenu supplémentaire"
+    },
+    "moderate": {
+      "range": "40–59 %",
+      "label": "Satisfaction modérée",
+      "effect": "Sponsor × 1,00, revenu normal"
+    },
+    "low": {
+      "range": "0–39 %",
+      "label": "Satisfaction faible",
+      "effect": "Sponsor × 0,80–0,90, réduit"
+    }
+  },
+  "category": {
+    "results": "Résultats",
+    "economy": "Finances",
+    "identity": "Identité",
+    "ranking": "Classement"
+  },
+  "satisfactionTimeline": {
+    "heading": "Week-end par week-end",
+    "goals": "{met}/{total} objectifs atteints",
+    "flat": "aucun changement",
+    "unknownRace": "Week-end de course"
+  },
+  "transparency": {
+    "progressTowards": "En route vers {target} %",
+    "progressAtTarget": "Déjà à l'objectif ({target} %)",
+    "passiveModifier": {
+      "strong_boost": "La direction est très satisfaite : revenu de sponsor +{pct} %",
+      "boost": "La direction est satisfaite : revenu de sponsor +{pct} %",
+      "neutral": "La direction est neutre : aucun effet sur le sponsor",
+      "penalty": "La direction est mécontente : revenu de sponsor {pct} %",
+      "strong_penalty": "La direction est très mécontente : revenu de sponsor {pct} %"
+    },
+    "chairmanWarning": "Une expiration de plan décevante de plus et la direction remplace le président",
+    "bonusOfferClose": "{count} objectif d'une offre de prime",
+    "bonusOfferClose_plural": "{count} objectifs d'une offre de prime",
+    "bonusOfferSatisfactionGap": "Demande une satisfaction supérieure à {threshold} % pour une offre de prime",
+    "bonusOfferEligible": "Éligible à une offre de prime",
+    "tradeoff": {
+      "heading": "Verrouillé par une demande précédente",
+      "tighten_identity_riders": "Ton prochain plan exige {delta} coureur(s) d'identité de plus",
+      "raise_sponsor_growth_target": "L'objectif de croissance du sponsor de ton prochain plan monte de {deltaPct} %"
+    }
+  },
+  "feedback": {
+    "awaitingData": {
+      "headline": "La direction attend plus de données",
+      "summary": "Les signaux de la saison sont encore trop minces pour une évaluation claire."
+    },
+    "expired": {
+      "headline": "Le plan a expiré",
+      "summary": "La direction négociera un nouveau plan d'après la dernière évaluation et la direction actuelle de l'équipe."
+    },
+    "awaitingFirstMarkers": {
+      "headline": "La direction attend les premiers repères de la saison",
+      "summary": "{personalitySummary} Pour l'instant les attentes sont intactes, mais les réponses sportives n'arrivent qu'une fois la saison lancée.{profileHint}",
+      "profileHint": "La direction lit l'équipe ainsi : {identitySummary}"
+    },
+    "veryHappy": {
+      "headline": "La direction est très satisfaite",
+      "summary": "{strong} fait avancer le plan, et {weakLower} reste sous contrôle."
+    },
+    "steadyProgress": {
+      "headline": "La direction voit une progression régulière",
+      "summary": "{strong} est dans les temps, mais {weakLower} demande plus d'attention pour garder le plan en bonne santé."
+    },
+    "awaitingNext": {
+      "headline": "La direction attend la prochaine étape",
+      "summary": "{weak} traîne derrière le plan, et la pression monte si la tendance ne s'inverse pas bientôt."
+    },
+    "concerned": {
+      "headline": "La direction est inquiète",
+      "summary": "{weak} est nettement sous les attentes, et l'équipe manque de progrès visibles dans le plan actuel."
+    },
+    "signalHint": {
+      "nationalCoreStrong": "Le noyau {country} donne à l'équipe une identité claire aux yeux de la direction.",
+      "nationalCoreWeak": "Le noyau {country} donne encore à l'équipe une identité claire que la direction ne lâchera pas facilement.",
+      "starHigh": "Les grands noms renforcent le projet de sponsor, mais ils maintiennent aussi les attentes hautes.",
+      "starHighWeak": "Les grands noms gardent les sponsors intéressés, mais ils poussent aussi la direction à exiger plus de rendement.",
+      "starMedium": "Les profils de l'équipe donnent un peu de poids supplémentaire au projet de sponsor."
+    }
+  },
+  "archetypes": {
+    "sponsoraten": {
+      "label": "Le Directeur des sponsors",
+      "shortDescription": "Veille aux relations avec les sponsors et à la discipline financière",
+      "longDescription": "Un ancien directeur commercial. Garde un œil sur les contrats de sponsors, le bilan et le risque financier. S'inquiète dès qu'il y a de la dette et croise les doigts chaque saison pour la croissance du sponsor.",
+      "reactions": {
+        "feedback_positive": [
+          "Les sponsors sont contents. Ça tient la route.",
+          "Maintenant on peut enfin montrer les chiffres.",
+          "Ça ressemble à un projet bien mené.",
+          "Les revenus suivent l'ambition, parfait.",
+          "La direction peut dormir tranquille maintenant."
+        ],
+        "feedback_warning": [
+          "Il faut surveiller le bilan à partir de maintenant.",
+          "Les sponsors regardent les chiffres avec nervosité.",
+          "On ne doit pas courir après les résultats sur du temps emprunté.",
+          "La chance n'est pas un plan, il nous faut de la stabilité.",
+          "Si ça tourne mal, ça coûtera cher."
+        ],
+        "feedback_negative": [
+          "Ça ne tiendra pas à long terme.",
+          "Les sponsors appellent, et pas pour nous féliciter.",
+          "Les chiffres disent ce qu'on ne veut pas entendre.",
+          "On perd de la confiance chaque fois que ça se répète.",
+          "Si ça continue, il n'y a pas de budget l'an prochain."
+        ],
+        "goal_proposal": [
+          "Ça sécurise la trésorerie.",
+          "Le contrat de sponsor récompensera ça.",
+          "Réaliste et économe, c'est tout bon.",
+          "Ça nous laisse de la marge pour planifier.",
+          "Prudent, mais c'est là sa force."
+        ],
+        "goal_achievement": [
+          "Exactement ce qu'on espérait, bon travail.",
+          "Les sponsors nous ont appelés eux-mêmes pour nous remercier.",
+          "Ça maintient le budget au plus juste, jusqu'au moindre détail.",
+          "Des chiffres solides, c'est sur ça qu'on construit.",
+          "La confiance grandit à chaque trimestre."
+        ],
+        "goal_failure": [
+          "On le rate encore, et les sponsors le sentent.",
+          "Ce n'est plus seulement un problème de comptabilité.",
+          "On saigne plus que prévu.",
+          "Les investisseurs posent des questions maintenant.",
+          "Ça met en danger la négociation avec le sponsor de la saison prochaine."
+        ],
+        "receipt_positive": [
+          "Voilà le genre de chiffre que je peux présenter aux sponsors.",
+          "De l'argent qui rentre, des coûts maîtrisés. C'est comme ça que je l'aime.",
+          "Mieux que ma prévision. Je ne dis pas ça souvent.",
+          "Bien. Les sponsors remarquent ce genre de choses avant nous."
+        ],
+        "receipt_negative": [
+          "Je n'aime pas la direction que prend ce chiffre.",
+          "On dépense de l'argent qu'on n'a pas encore gagné.",
+          "Je ne peux pas vendre ça aux sponsors. Pas comme ça.",
+          "La dette grandit plus vite que les revenus. Ça doit s'inverser."
+        ],
+        "meeting_easier": [
+          "Objectif plus bas, plafond plus bas pour les sponsors. J'accepte, mais je le note.",
+          "L'option prudente. Ça me va.",
+          "Un chiffre que je peux encore défendre devant les sponsors.",
+          "Je préfère atteindre un petit objectif que courir après un grand."
+        ],
+        "meeting_keep": [
+          "Même chiffre, mêmes attentes. Bien.",
+          "Le budget a été construit autour de cet objectif. Gardons-le.",
+          "Aucun changement. C'est généralement la bonne décision.",
+          "Tant que les chiffres collent, je suis content."
+        ],
+        "meeting_stretch": [
+          "Un objectif plus haut demande un budget plus sain derrière. Montre-moi ça.",
+          "Si l'objectif monte, je surveillerai les comptes encore de plus près.",
+          "Ambitieux. Les sponsors demanderont comment on le finance.",
+          "Je signe. Mais je surveille les comptes jusqu'au bout."
+        ],
+        "midseason_status": [
+          "On est à mi-parcours. Les chiffres sur la table aujourd'hui sont ceux que je peux assumer.",
+          "À mi-saison, la direction veut une image honnête, pas une image maquillée.",
+          "Ce point d'étape n'est pas un verdict. C'est un instantané sur lequel on agit.",
+          "J'ai déjà vu de pires comptes à mi-parcours que ceux-ci."
+        ],
+        "milestone_achieved": [
+          "On y est arrivé, et les comptes sont toujours bons. C'est rare.",
+          "Les sponsors voudront entendre parler de celui-ci.",
+          "Bien joué. Un résultat et un bilan propre en même temps.",
+          "Profitons-en. Puis on trouve le prochain objectif."
+        ],
+        "milestone_missed": [
+          "On l'a raté. Ça coûte de la confiance, pas seulement un chiffre.",
+          "Inutile de l'enjoliver. On est passé à côté.",
+          "Pas un désastre, mais j'attendais plus à ce stade.",
+          "Je le note. On en reparlera à la prochaine assemblée annuelle."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire. Les chiffres ne peuvent pas attendre la prochaine assemblée annuelle.",
+          "Ce n'est pas la routine. On se réunit maintenant, pas à la date habituelle.",
+          "J'ai demandé une réunion supplémentaire. Les comptes l'exigent.",
+          "On se réunit hors cycle, parce que quelque chose ici ne peut pas attendre."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence avec des comptes en ordre. C'est l'héritage que je voulais.",
+          "Mon mandat de président s'arrête ici. Veille sur les chiffres après moi.",
+          "Je me retire. Les finances du club sont meilleures que quand j'ai pris la suite.",
+          "La présidence passe. Je garderai mes inquiétudes pour moi à partir de maintenant."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de lire les comptes.",
+          "Nouveau président, mêmes exigences sur les chiffres.",
+          "J'y vais les yeux ouverts et la calculatrice prête.",
+          "C'est mon tour maintenant. Je ne promets pas de miracles, seulement des comptes honnêtes."
+        ]
+      }
+    },
+    "traditionalisten": {
+      "label": "Le Traditionaliste",
+      "shortDescription": "Pèse l'héritage du club et l'identité nationale",
+      "longDescription": "Siège à la direction parce qu'il était là au siècle dernier, ou presque. Veut que le club rappelle d'où il vient. Le moins enthousiaste face au clinquant moderne.",
+      "reactions": {
+        "feedback_positive": [
+          "Le club porte son héritage avec fierté.",
+          "C'est ce dont la direction rêvait dans les années 90.",
+          "L'équipe ressemble de nouveau à elle-même.",
+          "On reconnaît le club dans le peloton.",
+          "L'âme est intacte, c'est ce qui compte le plus."
+        ],
+        "feedback_warning": [
+          "On se perd un peu dans la poursuite.",
+          "Où est passée l'identité du club ?",
+          "Ça ressemble plus aux autres équipes qu'à la nôtre.",
+          "La tradition n'est pas une case bonus.",
+          "Il manque quelque chose de reconnaissable."
+        ],
+        "feedback_negative": [
+          "On est devenu un étranger sur notre propre route.",
+          "Le club n'est plus reconnaissable.",
+          "C'est comme voir un autre club rouler dans notre maillot.",
+          "C'est une rupture avec tout ce que représente le club.",
+          "Nos supporters pleurent, et moi presque aussi."
+        ],
+        "goal_proposal": [
+          "Ça ressemble à l'ADN du club.",
+          "C'est comme ça que ça s'est toujours passé chez nous.",
+          "Nos supporters le sentiront.",
+          "C'est de la continuité, oui.",
+          "La direction reconnaît le club là-dedans."
+        ],
+        "goal_achievement": [
+          "Le vrai esprit du club, c'est comme ça que ça doit être.",
+          "Les anciens souriraient.",
+          "Voilà pourquoi nous existons.",
+          "C'est comme ça qu'on bâtit un club qui dure.",
+          "L'identité est plus claire maintenant."
+        ],
+        "goal_failure": [
+          "C'est un coup dur pour l'héritage.",
+          "Nous devons des excuses au club.",
+          "Ça ne serait jamais arrivé autrefois.",
+          "On perd du terrain sur notre propre sol.",
+          "Où est passée la fierté ?"
+        ],
+        "receipt_positive": [
+          "Le club ressemble encore à lui-même. Ça compte plus que n'importe quel résultat.",
+          "Les anciens membres reconnaîtraient cette équipe. Bien.",
+          "C'est le club dont je m'occupe depuis la moitié de ma vie.",
+          "On ajoute à l'histoire ici, pas seulement aux résultats."
+        ],
+        "receipt_negative": [
+          "On s'éloigne de ce que ce club a toujours représenté.",
+          "L'écusson mérite mieux que ça.",
+          "Je ne nous reconnais pas en ce moment.",
+          "Les anciens membres n'auraient pas toléré ça. Moi non plus."
+        ],
+        "meeting_easier": [
+          "Un objectif plus léger n'efface pas notre histoire. Je peux vivre avec.",
+          "Ce club a survécu à des saisons plus calmes.",
+          "D'accord. L'écusson sur le maillot reste le même.",
+          "Très bien, tant qu'on ne brade pas ce que nous représentons."
+        ],
+        "meeting_keep": [
+          "La continuité, c'est la moitié de ce qu'est ce club.",
+          "Inchangé. Les anciens membres approuveraient.",
+          "Nous tenons la ligne, comme ce club l'a toujours fait.",
+          "On ne court pas après chaque nouvelle mode ici. Bien."
+        ],
+        "meeting_stretch": [
+          "Plus d'ambition, d'accord. Tant que ça nous ressemble encore quand on y arrive.",
+          "Vise plus haut, mais ne perds pas ce que nous sommes en chemin.",
+          "Un club avec autant d'histoire peut porter un objectif plus grand.",
+          "Ambitieux. On se souviendra de quelle génération l'a fait."
+        ],
+        "midseason_status": [
+          "À mi-parcours, et le club ressemble toujours à celui des vieilles photographies.",
+          "Ce point d'étape appartient à l'histoire du club, en bien ou en mal.",
+          "On est jugé à mi-saison comme toutes les directions avant nous.",
+          "À mi-parcours, et je reconnais toujours l'équipe que nous avons envoyée au printemps."
+        ],
+        "milestone_achieved": [
+          "Celui-ci entre dans le livre des records du club.",
+          "Un chapitre de plus, écrit comme les fondateurs l'auraient voulu.",
+          "Les anciens membres en parleront pendant des années.",
+          "L'histoire du club vient de s'allonger un peu."
+        ],
+        "milestone_missed": [
+          "On l'a raté, et ça fait plus mal ici qu'un chiffre ne devrait.",
+          "Ce club a connu pire et est resté lui-même. Il le fera encore.",
+          "Nous devons mieux que ça aux anciens membres.",
+          "Pas la fin que ce chapitre méritait. Écrivons le suivant correctement."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire. Certaines choses ne peuvent pas attendre le calendrier.",
+          "Ce n'est pas la routine, et l'histoire du club dit qu'on agit quand ça compte.",
+          "J'ai demandé qu'on se réunisse maintenant. L'écusson vaut une réunion anticipée.",
+          "Assemblée extraordinaire, parce que le club mérite mieux qu'un haussement d'épaules."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence. Le club était là bien avant moi et sera là bien après.",
+          "Mon mandat s'arrête ici, mais l'histoire qu'on m'a confiée continue.",
+          "Je me retire en ayant gardé le club fidèle à lui-même. C'était la mission.",
+          "La présidence passe. Quelqu'un d'autre porte maintenant l'ancien drapeau."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de lire l'histoire du club.",
+          "Nouveau président, même respect pour ce qui est venu avant moi.",
+          "J'y vais en sachant exactement sur les épaules de qui je me tiens.",
+          "C'est mon tour maintenant. Je promets de laisser l'écusson aussi fier que je l'ai trouvé."
+        ]
+      }
+    },
+    "talentspejderen": {
+      "label": "Le Recruteur de talents",
+      "shortDescription": "Croit à la formation des jeunes sur le long terme",
+      "longDescription": "Un ancien directeur sportif d'une équipe de développement. Préférerait voir un coureur de 22 ans gagner dans cinq ans plutôt qu'un de 32 ans gagner aujourd'hui. Connaît chaque stat U25 par cœur.",
+      "reactions": {
+        "feedback_positive": [
+          "Les talents ont de la place, et ils livrent.",
+          "C'est exactement comme ça qu'on construit l'avenir.",
+          "Dans cinq ans, tout le monde comprendra ce choix.",
+          "La jeunesse s'épanouit, rarement vu aussi nettement.",
+          "La prochaine génération monte en puissance maintenant."
+        ],
+        "feedback_warning": [
+          "Il ne faut pas oublier la jeunesse dans la poursuite.",
+          "Les talents courent trop peu.",
+          "Où est la rotation des U25 ?",
+          "On a de meilleurs coureurs dans la deuxième équipe que ce qu'on montre.",
+          "On vend l'avenir pour une seule victoire."
+        ],
+        "feedback_negative": [
+          "On laisse toute une génération sur le banc.",
+          "Les jeunes coureurs s'épuisent sans course dans les jambes.",
+          "Ce n'est pas un avenir pour le club.",
+          "Les talents fuiront vers d'autres équipes l'an prochain.",
+          "On a mal compris ce qu'est une équipe."
+        ],
+        "goal_proposal": [
+          "Ça ouvre des portes aux jeunes coureurs.",
+          "Une progression tracée, on prend.",
+          "Les jeunes coureurs ont besoin exactement de ça.",
+          "C'est comme ça qu'on fait grandir une équipe de façon organique.",
+          "Ça fera monter plus d'un indicateur de la direction."
+        ],
+        "goal_achievement": [
+          "Les talents ont livré, comme prévu.",
+          "Cette progression crée de la valeur pour des décennies.",
+          "Les U25 ont franchi le pas, magnifique à voir.",
+          "C'est comme ça qu'on envoie un signal aux recruteurs.",
+          "Ça confirme toute la philosophie de formation."
+        ],
+        "goal_failure": [
+          "Les jeunes coureurs n'ont pas eu leur chance, notre faute.",
+          "Nous portons la responsabilité d'une progression au point mort.",
+          "Le talent mettra plus longtemps à s'en remettre.",
+          "On a perdu quelque chose qu'on a construit pendant des années.",
+          "Une meilleure rotation aurait réglé ça."
+        ],
+        "receipt_positive": [
+          "Les jeunes que j'avais repérés commencent à livrer. C'est agréable d'avoir raison.",
+          "Un autre nom de ma liste est en train de percer.",
+          "Repéré tôt, développé patiemment. Maintenant ça se voit.",
+          "C'est exactement le potentiel que je recherche."
+        ],
+        "receipt_negative": [
+          "Le talent est là. Le plan pour le développer, non.",
+          "Je ne repère pas des coureurs pour les voir stagner.",
+          "Quelque part, le recruteur d'un autre club note les noms qu'on gaspille.",
+          "Ce ne sont pas les coureurs qui échouent. C'est le plan de développement."
+        ],
+        "meeting_easier": [
+          "Une barre plus basse donne plus de temps aux jeunes. Je prends.",
+          "Moins de coureurs poussés avant d'être prêts. Bien.",
+          "Ça me va. Le potentiel a plus besoin de patience que de pression.",
+          "Je préfère protéger le long terme plutôt que courir après le chiffre de cette saison."
+        ],
+        "meeting_keep": [
+          "Ma liste ne change pas sur un coup de tête, et ça non plus.",
+          "Mes projections tiennent toujours. Laisse-le.",
+          "Les jeunes suivent le calendrier que j'ai tracé. Inutile d'y toucher.",
+          "Les chiffres que je suis bougeront sans nouvel objectif."
+        ],
+        "meeting_stretch": [
+          "Une barre plus haute, d'accord, si ça n'oblige pas un coureur à moitié prêt à prendre le départ.",
+          "Pousse l'objectif, pas un jeune de dix-neuf ans au-delà de ce qu'il peut encaisser.",
+          "J'accepte, tant que les jeunes ont encore le temps qu'il leur faut.",
+          "Ambitieux. Je veillerai à ce que ce ne soit pas la formation qui paie."
+        ],
+        "midseason_status": [
+          "À mi-parcours, et je veux savoir quels noms de ma liste ont vraiment eu des minutes.",
+          "Le point d'étape devrait me montrer des courbes, pas seulement les places de la semaine.",
+          "Je mesure cette saison au nombre de jeunes qui ont progressé sur ma liste, pas seulement au classement.",
+          "À mi-parcours, et trois noms que j'avais signalés en présaison évoluent exactement comme prévu."
+        ],
+        "milestone_achieved": [
+          "Objectif atteint. J'aime penser que ma liste y est pour quelque chose.",
+          "Ça prouve que la détection fonctionne, pas seulement l'effectif.",
+          "Ça a commencé comme une intuition dans un tableur. Regarde-le maintenant.",
+          "Voilà ce que donne le pari précoce sur le potentiel quand il paie."
+        ],
+        "milestone_missed": [
+          "Je n'arrête pas de me demander si les jeunes ont vraiment eu leur chance.",
+          "Quelques noms de ma liste avaient besoin de plus de courses qu'ils n'en ont eu.",
+          "Avant la prochaine tentative, on regarde de près comment on fait progresser les coureurs.",
+          "Je note qui a été retenu. Ça ne disparaît pas comme ça."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire, et je veux les besoins du vivier sur la table.",
+          "Ça ne peut pas attendre, et la fenêtre de certains de ces jeunes non plus.",
+          "J'ai demandé qu'on se réunisse maintenant. Une fenêtre de détection ne rouvre pas sur demande.",
+          "Assemblée extraordinaire, parce qu'une décision ici façonne pour des années des noms de ma liste."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence. La liste que j'ai construite reste pour celui qui suit.",
+          "Mon mandat s'arrête ici, mais les noms que j'ai signalés continuent de progresser sans moi.",
+          "Je me retire après avoir trouvé plus de talents qu'on ne m'en a crédité.",
+          "La présidence passe. Garde un œil sur ceux que j'ai marqués, ils n'ont pas fini."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de lire tous les rapports de détection au dossier.",
+          "Nouveau président, même œil pour ce qu'un coureur pourrait devenir dans trois ans.",
+          "J'y vais en regardant au-delà de l'effectif de cette saison, vers le prochain.",
+          "C'est mon tour maintenant. Je promets de trouver les noms que personne d'autre ne surveillait encore."
+        ]
+      }
+    },
+    "resultatjaegeren": {
+      "label": "Le Chasseur de résultats",
+      "shortDescription": "Veut gagner maintenant, tout le reste n'est qu'excuses",
+      "longDescription": "Un ancien directeur sportif avec trois podiums du Tour à son CV. La patience n'est pas son fort. Juge une équipe sur les victoires, les podiums et les totaux de points, point final.",
+      "reactions": {
+        "feedback_positive": [
+          "Des victoires. Enfin, des victoires.",
+          "C'est ce pour quoi on m'a engagé.",
+          "Les résultats parlent d'eux-mêmes.",
+          "Les rivaux ont l'air nerveux maintenant.",
+          "C'est enfin une équipe qui gagne."
+        ],
+        "feedback_warning": [
+          "Les victoires sont trop rares et trop petites.",
+          "On court pour le top 10 mais pas pour le top 3.",
+          "Participer ne suffit pas.",
+          "Les rivaux ne nous sentent pas encore.",
+          "Où est le tranchant qui gagne des courses ?"
+        ],
+        "feedback_negative": [
+          "C'est inacceptable.",
+          "Les résultats sont un désastre.",
+          "On est invisible dans le peloton.",
+          "Cette équipe devrait gagner plus, beaucoup plus.",
+          "Combien de courses faut-il perdre avant d'agir ?"
+        ],
+        "goal_proposal": [
+          "Enfin, quelque chose qui a du mordant.",
+          "On gagne ça, ou on change les vélos.",
+          "Voilà comment on pose des exigences.",
+          "On prend. Objectif suivant ?",
+          "C'est la poursuite qui rend ça amusant, que ça vienne."
+        ],
+        "goal_achievement": [
+          "La victoire est dans la poche, continue.",
+          "C'est le club qu'on connaît des bonnes années.",
+          "Les rivaux l'ont vu venir, et n'ont pas pu nous arrêter.",
+          "Enfin on livre, continue.",
+          "C'est ce que la direction a été élue pour voir."
+        ],
+        "goal_failure": [
+          "C'est embarrassant.",
+          "On a perdu contre des équipes qu'on devrait écraser.",
+          "Avance et explique.",
+          "Ce n'est pas une équipe, c'est une excuse.",
+          "Le prochain plan durcit sensiblement les exigences."
+        ],
+        "receipt_positive": [
+          "Une victoire est une victoire. Continue à en apporter.",
+          "On monte. C'est le seul graphique que je lis.",
+          "Maintenant on avance.",
+          "Voilà à quoi ressemble gagner. Encore."
+        ],
+        "receipt_negative": [
+          "Zéro victoire, c'est zéro victoire. Les excuses n'apparaissent pas au classement.",
+          "On glisse, et je ne fais pas dans la lenteur.",
+          "Deuxième, c'est encore perdre. On en a eu trop.",
+          "Ça doit s'inverser maintenant. Pas le mois prochain."
+        ],
+        "meeting_easier": [
+          "Objectif plus bas. Il doit quand même finir en victoires.",
+          "Plus facile ne veut pas dire un bel essai. Ça veut dire une victoire sur la ligne.",
+          "D'accord. Il remonte dès qu'on se met à gagner.",
+          "J'accepte, mais ça ne me plaît pas. On ne vise pas bas longtemps."
+        ],
+        "meeting_keep": [
+          "Gagner ne se fait pas à prix cassé.",
+          "Le niveau d'exigence ne bouge pour personne.",
+          "On est là pour gagner, pas pour renégocier.",
+          "Le chiffre reste. Maintenant va le gagner."
+        ],
+        "meeting_stretch": [
+          "Plus haut. Enfin quelqu'un dans cette salle veut gagner.",
+          "J'en aurais demandé plus de toute façon.",
+          "Bien. L'ambition est la seule chose sur laquelle je ne discute jamais.",
+          "Mets-le haut. Tout ce qui est moins doit être inconfortable."
+        ],
+        "midseason_status": [
+          "À mi-parcours, et je compte les victoires, pas les efforts.",
+          "Ce point d'étape se résume à un chiffre pour moi : combien de fois a-t-on gagné.",
+          "La mi-saison n'est pas faite pour les excuses. Elle est faite pour un tableau d'affichage.",
+          "À mi-parcours, et je veux plus de victoires qu'on n'en a dans la seconde moitié."
+        ],
+        "milestone_achieved": [
+          "Fait. C'est le niveau que j'attends.",
+          "Enfin un objectif à la hauteur de ce que ce club devrait faire.",
+          "Maintenant trouve le suivant, et rends-le plus dur.",
+          "Objectif touché. C'est comme ça que ça devrait toujours se passer."
+        ],
+        "milestone_missed": [
+          "Raté. À ce niveau, ce n'est pas acceptable.",
+          "On avait l'effectif pour le faire. On ne l'a pas fait. Explique-moi ça.",
+          "Ça coûte plus qu'un objectif. Ça coûte de la crédibilité.",
+          "La prochaine fois : un objectif plus tranchant et zéro patience pour les excuses."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire. Des séries de défaites comme celle-ci n'attendent pas le calendrier.",
+          "Ce n'est pas la routine. On se réunit maintenant, car le classement ne se corrige pas tout seul.",
+          "J'ai exigé une réunion supplémentaire. Personne ne perd autant de courses sans une discussion difficile.",
+          "Assemblée extraordinaire, parce qu'“acceptable” n'est pas un mot que j'emploie pour ce bilan."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence. Juge-moi sur les victoires, c'était toujours l'accord.",
+          "Mon mandat s'arrête ici. Je n'ai jamais demandé à être aimé, seulement à gagner.",
+          "Je me retire. La vitrine à trophées dit si j'ai fait mon travail.",
+          "La présidence passe. Celui qui la prend devrait vouloir gagner aussi fort que moi."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de regarder les résultats de la saison dernière.",
+          "Nouveau président, même exigence : gagner maintenant, ne jamais expliquer.",
+          "J'y vais pour gagner, pas pour gérer les attentes.",
+          "C'est mon tour maintenant. Je ne promets rien, sauf que perdre ne sera pas confortable ici."
+        ]
+      }
+    },
+    "pragmatikeren": {
+      "label": "Le Pragmatique",
+      "shortDescription": "Cherche l'équilibre entre ambition et prudence",
+      "longDescription": "Un ancien président de conseil d'administration dans l'industrie. Voit tout comme un rapport risque/récompense. Rarement euphorique, rarement paniqué, rarement d'accord avec lui-même deux jours de suite.",
+      "reactions": {
+        "feedback_positive": [
+          "Ça ressemble à un équilibre sain.",
+          "Le risque et la récompense sont bien appariés.",
+          "L'équipe livre sur plusieurs fronts, bien.",
+          "C'est durable, et c'est ce qu'on cherche.",
+          "Aucun signal rouge, beaucoup de vert."
+        ],
+        "feedback_warning": [
+          "C'est sur le fil du rasoir, garde l'œil ouvert.",
+          "On perd un peu sur chaque front.",
+          "Ça se tient en équilibre trop près du bord.",
+          "Un peu plus de discipline et ça tourne.",
+          "Il nous manque un indicateur qui tienne son rang."
+        ],
+        "feedback_negative": [
+          "Le risque l'emporte largement sur la récompense.",
+          "Ça ne survivra pas à un autre test de résistance.",
+          "On perd des deux côtés de la table.",
+          "Ce n'est plus un plan, c'est de la dérive.",
+          "La direction ne peut pas défendre ça."
+        ],
+        "goal_proposal": [
+          "Réaliste, nous le soutenons.",
+          "Ça correspond à où nous en sommes maintenant.",
+          "C'est comme ça qu'on évite de trop s'étirer.",
+          "C'est pragmatique et clair, oui.",
+          "C'est un bon juste milieu."
+        ],
+        "goal_achievement": [
+          "Comme prévu, du travail solide.",
+          "C'est à ça que sert le pragmatisme.",
+          "L'équipe a livré sans drame.",
+          "Voilà à quoi ressemble la durabilité.",
+          "L'objectif suivant peut se construire par-dessus."
+        ],
+        "goal_failure": [
+          "Ça aurait dû être à portée.",
+          "Décevant, sans excuse claire.",
+          "Nous choisirons le prochain plan avec des exigences plus serrées.",
+          "Ça m'inquiète plus que ça ne devrait.",
+          "La direction attend une évaluation ouverte."
+        ],
+        "receipt_positive": [
+          "Le risque et la récompense s'alignent enfin. C'est tout ce que je demande.",
+          "Rien de spectaculaire, rien d'exposé. Je prends.",
+          "On gagne sur plus de fronts qu'on n'en perd. Assez bien, c'est bien.",
+          "Régulier. C'est comme ça qu'on construit vraiment quelque chose."
+        ],
+        "receipt_negative": [
+          "La balance a basculé, et pas de notre côté.",
+          "On perd un peu partout. Ça s'additionne plus vite qu'une grosse perte.",
+          "Pas encore une crise. Mais si ça se reproduit, ça cesse d'être acceptable.",
+          "Le compromis qu'on a fait ne paie pas."
+        ],
+        "meeting_easier": [
+          "Un objectif plus bas pour une saison qui a besoin de respirer. Échange équitable.",
+          "C'est un ajustement, pas une retraite.",
+          "Je peux vivre avec plus bas, tant qu'on l'a choisi et qu'on n'y a pas simplement dérivé.",
+          "Parfois le choix raisonnable est le plus petit chiffre."
+        ],
+        "meeting_keep": [
+          "C'était raisonnable quand on l'a fixé, et rien n'a changé.",
+          "Je ne bouge pas un chiffre juste parce que quelqu'un est impatient.",
+          "Le compromis tient toujours. Garde-le.",
+          "Un objectif stable vaut mieux qu'un objectif nerveux."
+        ],
+        "meeting_stretch": [
+          "Plus haut, d'accord. Tant qu'on est honnête sur ce qu'on risque.",
+          "Vas-y, mais je veux le revers écrit noir sur blanc avant qu'on signe.",
+          "J'accepte si le gain l'emporte vraiment sur ce qui pourrait mal tourner.",
+          "L'ambition, c'est bien. L'imprudence, non. Je surveillerai la ligne."
+        ],
+        "midseason_status": [
+          "À mi-parcours, et l'image n'est ni aussi bonne ni aussi mauvaise qu'on le ressent.",
+          "Ce point d'étape est un instantané, pas un verdict. Traitons-le comme tel.",
+          "Certaines choses montent, d'autres baissent. C'est une saison normale, pas une crise.",
+          "À mi-parcours, et l'équilibre tient encore, de justesse, ce qui est exactement pourquoi on le surveille."
+        ],
+        "milestone_achieved": [
+          "Ça valait le coup. Les compromis en chemin ont payé.",
+          "Fait sans rien casser d'autre. C'est la vraie victoire.",
+          "Voilà à quoi ressemble un plan raisonnable quand il paie.",
+          "Bon résultat. Je referais les mêmes choix."
+        ],
+        "milestone_missed": [
+          "Ce n'est pas la fin du plan, mais il faut comprendre pourquoi on est passé à côté.",
+          "On a mal réglé l'équilibre quelque part. Trouvons où.",
+          "Décevant, mais aucune raison de jeter toute l'approche.",
+          "Noté. La prochaine fois, on change la pondération, pas la philosophie."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire. L'équilibre a assez basculé pour le justifier.",
+          "Ce n'est pas la routine, mais ce n'est pas la panique non plus. On ajuste simplement tôt.",
+          "J'ai demandé une réunion anticipée parce qu'attendre coûterait plus que se réunir.",
+          "Assemblée extraordinaire, pesée calmement contre l'attente de la date habituelle."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence avec les comptes et l'effectif dans un état raisonnable.",
+          "Mon mandat s'arrête ici. Je n'ai jamais couru après le spectaculaire, seulement le durable.",
+          "Je me retire après avoir gardé plus d'équilibres stables que d'équilibres renversés.",
+          "La présidence passe. Celui qui suit devrait toujours peser les deux côtés."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de peser ce qui fonctionne contre ce qui ne fonctionne pas.",
+          "Nouveau président, même instinct de chercher le compromis avant le gros titre.",
+          "J'y vais en cherchant l'équilibre, pas les applaudissements.",
+          "C'est mon tour maintenant. Je promets des décisions mesurées, pas dramatiques."
+        ]
+      }
+    },
+    "ungdomsidealisten": {
+      "label": "L'Idéaliste de la jeunesse",
+      "shortDescription": "L'avenir du club se construit sur de jeunes jambes",
+      "longDescription": "Un enseignant et ancien entraîneur dans le système des divisions inférieures. Veut que le club soit connu pour cultiver le talent, sans le vendre ensuite. Comprend que chaque vainqueur a été jeune un jour.",
+      "reactions": {
+        "feedback_positive": [
+          "Les jeunes coureurs ont de la place, c'est tout l'enjeu.",
+          "Le club est une couveuse pour l'avenir.",
+          "L'empreinte U25 est claire et belle.",
+          "Le talent grandit ici, comme il se doit.",
+          "On s'en souviendra avec tendresse."
+        ],
+        "feedback_warning": [
+          "On pousse les jeunes coureurs dans trop de courses.",
+          "Ou alors, y a-t-il seulement de la place pour les U25 ?",
+          "Le talent sans patience s'épuise.",
+          "On perd de vue ce qui compte le plus, la jeunesse.",
+          "Où est la ligne à long terme ?"
+        ],
+        "feedback_negative": [
+          "Les jeunes coureurs souffrent, c'est déchirant à voir.",
+          "Le club vend son propre avenir.",
+          "Cette équipe a oublié d'où elle vient.",
+          "Les talents fuient là où on les voit.",
+          "On trahit toute une génération en ce moment."
+        ],
+        "goal_proposal": [
+          "Ça donne de la place aux jeunes coureurs, parfait.",
+          "La direction est derrière à 100 %.",
+          "C'est comme ça qu'on construit l'avenir.",
+          "Ça portera ses fruits dans les années à venir.",
+          "Les U25 se sentiront vus grâce à ça."
+        ],
+        "goal_achievement": [
+          "Les jeunes coureurs ont pris leurs responsabilités, et ils ont livré.",
+          "C'est la récompense de la patience.",
+          "Nous avons créé un environnement où ils s'épanouissent.",
+          "Le club peut être fier de son travail de formation.",
+          "Voilà à quoi ressemble une génération en bonne santé."
+        ],
+        "goal_failure": [
+          "On ne leur a pas laissé assez de place, hélas.",
+          "C'est une leçon dure pour tout le système.",
+          "Nous devons une meilleure structure aux jeunes coureurs.",
+          "Un signal dommageable pour les futurs talents.",
+          "Si ça continue, l'académie ne décrochera pas."
+        ],
+        "receipt_positive": [
+          "Les jeunes coureurs ont de la place, et ils l'utilisent.",
+          "Un autre jeune coureur a fait un pas en avant. C'est comme ça qu'on construit une génération.",
+          "Cette équipe fait progresser le talent. Elle ne se contente pas de l'user.",
+          "C'est tout le but. Je suis fier d'eux."
+        ],
+        "receipt_negative": [
+          "Les jeunes coureurs sont encore sur le banc. C'est dur à voir.",
+          "On promet de la formation et on livre du surplace.",
+          "Le talent est là. Les occasions, non.",
+          "Les jeunes coureurs ont besoin de courses, pas d'une place sur la photo d'équipe."
+        ],
+        "meeting_easier": [
+          "Un objectif plus facile, c'est plus de patience avec les jeunes. Content de ça.",
+          "Moins de points à courir après, plus de place pour qu'un jeune coureur apprenne.",
+          "D'accord, tant que la formation n'est pas allégée aussi.",
+          "Oui, si ça veut dire plus de courses pour les jeunes."
+        ],
+        "meeting_keep": [
+          "Même promesse aux jeunes coureurs : ils seront vus.",
+          "Les jeunes coureurs ont besoin de quelque chose de stable pour grandir.",
+          "La formation prend le temps qu'elle prend. C'est bien.",
+          "Bon pour les jeunes. Laissons-le."
+        ],
+        "meeting_stretch": [
+          "Un objectif plus dur ne peut pas se faire aux dépens des jeunes coureurs.",
+          "J'accepte, mais je regarde qui court.",
+          "L'ambition, c'est bien, tant que les jeunes ont encore leur chance.",
+          "Vise plus haut. N'oublie juste pas qui doit nous y amener."
+        ],
+        "midseason_status": [
+          "On est à mi-parcours, et je veux savoir combien de débutants ont couru depuis la dernière fois.",
+          "L'image de mi-parcours devrait montrer la formation, pas seulement les places.",
+          "Je mesure la saison au nombre de jeunes coureurs qui ont avancé, pas seulement aux podiums.",
+          "À mi-parcours, et les jeunes coureurs ont toujours toute mon attention."
+        ],
+        "milestone_achieved": [
+          "J'espère que les jeunes savent qu'ils en font partie.",
+          "Magnifique. Voyons maintenant ce que les jeunes peuvent devenir ensuite.",
+          "Ça montre que le chemin de formation fonctionne.",
+          "Un avenir que nous avions promis, et maintenant un avenir que nous avons livré."
+        ],
+        "milestone_missed": [
+          "Sous l'objectif. Les jeunes ont-ils eu assez de temps ?",
+          "Pas la fin du monde, mais la formation doit s'accélérer.",
+          "Nous devons un meilleur plan aux jeunes coureurs à partir de maintenant.",
+          "À la prochaine assemblée annuelle, ils auront de nouveau une vraie chance. Je m'en assurerai."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire. Je veux les conditions des jeunes coureurs à l'ordre du jour.",
+          "Cette réunion ne peut pas attendre, et le travail de formation non plus.",
+          "J'ai demandé qu'on se réunisse maintenant. Le talent ne doit pas souffrir pendant qu'on attend.",
+          "Assemblée extraordinaire, parce que quelque chose ici touche directement les jeunes coureurs."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence. Prends bien soin de l'académie après moi.",
+          "Mon mandat s'arrête ici, mais les jeunes coureurs pour qui j'ai fait de la place continuent de grandir.",
+          "Je me retire avec la conscience tranquille. La jeunesse a eu sa chance sous ma présidence.",
+          "La présidence passe. N'oublie pas qui construit l'avenir."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et les jeunes coureurs ont toute mon attention dès le premier jour.",
+          "Nouveau président, même conviction que l'avenir commence dans l'effectif U25.",
+          "J'y vais pour les jeunes coureurs, pas pour moi.",
+          "C'est mon tour maintenant. Je promets de la place à ceux qui n'ont pas encore eu leur chance."
+        ]
+      }
+    },
+    "nationalist_purist": {
+      "label": "Le Puriste national",
+      "shortDescription": "Le club doit représenter son pays d'origine",
+      "longDescription": "Un ancien sélectionneur national. Croit qu'un club sans noyau national n'est qu'un sponsor en maillot. Préférerait un talent du cru à deux stars étrangères.",
+      "reactions": {
+        "feedback_positive": [
+          "Le noyau du cru brille toujours.",
+          "Nous sommes le club de notre pays, aucun doute là-dessus.",
+          "La fierté du terroir est intacte.",
+          "Nos supporters entendent leur propre langue dans le peloton.",
+          "C'est comme ça qu'un club doit sonner."
+        ],
+        "feedback_warning": [
+          "Notre identité nationale s'efface.",
+          "Moins de coureurs du cru, ça compte.",
+          "On perd le lien avec la base de supporters.",
+          "Le pays et le club devraient être étroitement liés.",
+          "Où est la prochaine star locale ?"
+        ],
+        "feedback_negative": [
+          "Le club est devenu un aéroport de sponsors.",
+          "Le lien national est rompu.",
+          "Les supporters ne se voient plus dans l'équipe.",
+          "C'est une transaction commerciale, pas un club.",
+          "Nous avons honte de la façon dont l'effectif est composé."
+        ],
+        "goal_proposal": [
+          "Les couleurs du pays, bien sûr.",
+          "Ça affirme les racines du club.",
+          "La direction soutient fermement ça.",
+          "C'est comme ça que le club reste lui-même.",
+          "C'est ce qu'aurait choisi le sponsor d'origine."
+        ],
+        "goal_achievement": [
+          "Le noyau du cru a livré, fantastique.",
+          "Ça résonnera dans tout le pays.",
+          "C'est comme ça qu'on devient un trésor national.",
+          "Chaque victoire à domicile vaut deux fois plus.",
+          "Ça rend le club irremplaçable."
+        ],
+        "goal_failure": [
+          "Le regard du pays pèse lourd maintenant.",
+          "Ça blesse le club en plein cœur.",
+          "Nous avons déçu plus que la seule direction.",
+          "Ça rend le recrutement plus difficile.",
+          "Nous perdons un terrain qu'on ne regagnera pas facilement."
+        ],
+        "receipt_positive": [
+          "Nos propres coureurs en tête. Les supporters entendent leur langue dans le peloton.",
+          "Un résultat du cru. Ça compte plus pour moi que les points.",
+          "Le noyau national a livré, comme il se doit dans un club comme le nôtre.",
+          "Notre drapeau devant. Ça vaut plus que la marge."
+        ],
+        "receipt_negative": [
+          "Moins de coureurs du pays sur la feuille de résultats. Moins de supporters se voient dans cette équipe.",
+          "On devient un club de noms importés, et le public local le remarque.",
+          "Le noyau national s'amincit. C'est un désastre plus lent que n'importe quelle défaite.",
+          "Notre propre drapeau dérive vers l'arrière du peloton."
+        ],
+        "meeting_easier": [
+          "Un objectif plus bas pour le noyau national, tant que le noyau lui-même ne rétrécit pas.",
+          "Je veux nos propres coureurs sur la liste de départ, pas seulement dans les chiffres.",
+          "D'accord, si c'est de la patience avec les nôtres et non un pas discret pour s'en éloigner.",
+          "J'accepte si ça laisse plus de temps à nos talents du cru pour grandir."
+        ],
+        "meeting_keep": [
+          "Ce que nous sommes n'est pas négociable.",
+          "Les supporters du pays méritent cette constance.",
+          "Le drapeau sur le maillot compte autant que jamais.",
+          "Notre noyau n'a jamais été à vendre."
+        ],
+        "meeting_stretch": [
+          "Un objectif plus haut pour le noyau national, et j'y tiendrai tout le monde.",
+          "Il était temps que ce club s'appuie sur ce que nous sommes.",
+          "Oui, tant que ça veut dire plus de coureurs du pays, pas seulement un chiffre plus gros.",
+          "Ambitieux. Les supporters du pays verront enfin plus des leurs."
+        ],
+        "midseason_status": [
+          "À mi-parcours, et je veux savoir combien de coureurs du pays ont vraiment couru.",
+          "Ce point d'étape ne signifie pas grand-chose pour moi sans compter notre drapeau sur les listes de départ.",
+          "Je mesure la saison à ce qu'il reste de chez nous dans cette équipe.",
+          "À mi-parcours, et le noyau national tient, c'est le chiffre qui compte pour moi."
+        ],
+        "milestone_achieved": [
+          "Tout le pays peut revendiquer celui-ci.",
+          "C'est le genre d'objectif qui rend les supporters fiers de porter les couleurs.",
+          "Nos couleurs, notre objectif. On s'en souviendra.",
+          "Celui-ci appartient aussi au public du pays."
+        ],
+        "milestone_missed": [
+          "Nos propres coureurs ont-ils jamais eu la chance de porter ça ?",
+          "Le noyau national méritait un rôle plus grand ici.",
+          "Nous devons aux supporters du pays un chemin plus clair vers ça la prochaine fois.",
+          "À la prochaine assemblée annuelle, le drapeau repasse devant."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire, et je veux la place du noyau national à l'ordre du jour.",
+          "Ça ne peut pas attendre, pas plus qu'un lien qui s'effrite avec les supporters du pays.",
+          "J'ai demandé qu'on se réunisse maintenant. Notre identité n'est pas quelque chose qu'on laisse dériver en attendant.",
+          "Assemblée extraordinaire, parce que quelque chose ici touche à ce que ce club est censé représenter."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence. Le drapeau flotte toujours devant, et c'était toujours la mission.",
+          "Mon mandat s'arrête ici, mais le noyau du cru que j'ai protégé continue de porter ce club.",
+          "Je me retire avec l'identité nationale intacte. C'est mon héritage ici.",
+          "La présidence passe. Ne laisse pas le noyau du cru devenir un détail après moi."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de compter combien de coureurs du pays figurent dans cet effectif.",
+          "Nouveau président, même conviction qu'un club sans noyau national n'est qu'un sponsor en maillot.",
+          "J'y vais pour les supporters du pays, ceux qui se voient dans cette équipe.",
+          "C'est mon tour maintenant. Je promets que le drapeau restera au cœur de chaque discussion."
+        ]
+      }
+    },
+    "klassiker_purist": {
+      "label": "Le Puriste des classiques",
+      "shortDescription": "Les Monuments rendent un club immortel",
+      "longDescription": "Un ancien spécialiste des classiques lui-même. Croit que la course au général, c'est de la statistique, Roubaix c'est de l'histoire. Préférerait un Monument à cinq victoires d'étape.",
+      "reactions": {
+        "feedback_positive": [
+          "On file vers un Monument, je le sens.",
+          "L'esprit des classiques flotte dans l'air.",
+          "C'est là que le club a sa place.",
+          "Des rôles solides comme le roc pour la campagne de printemps.",
+          "Une qualité rare sur les routes qui comptent."
+        ],
+        "feedback_warning": [
+          "L'ambition sur les classiques est trop molle.",
+          "Il nous manque un dur pour le type Roubaix.",
+          "Où est l'axe printemps ?",
+          "Cette équipe ne gagnerait jamais Liège.",
+          "C'est de la course par étapes, pas l'héritage."
+        ],
+        "feedback_negative": [
+          "On est sans classiques, c'est embarrassant.",
+          "Les mois de printemps disparaissent sans laisser de trace.",
+          "L'équipe passe devant les Monuments sans lever les yeux.",
+          "C'est la mauvaise identité de club pour ce sport.",
+          "On ne se souviendra de rien de tout ça."
+        ],
+        "goal_proposal": [
+          "Les Monuments, enfin à l'ordre du jour.",
+          "C'est pour ça que le club est né.",
+          "L'axe printemps, la direction applaudit.",
+          "C'est comme ça qu'on écrit l'histoire.",
+          "On prend et on rentre avec un pavé."
+        ],
+        "goal_achievement": [
+          "Un Monument ! C'est là que le sport devient éternel.",
+          "Ça entre dans les livres pour toujours.",
+          "Le printemps est à nous, comme il se doit.",
+          "Pavé après pavé, c'est comme ça qu'on construit un club.",
+          "C'est le genre de chose dont les membres se souviennent."
+        ],
+        "goal_failure": [
+          "La campagne de printemps a fait un flop, inacceptable.",
+          "Les Monuments se moquent de nous cette année.",
+          "Ça arrache le cœur de l'âme des classiques.",
+          "Il faut réinventer le plan de printemps.",
+          "Personne ne prend le club au sérieux sur la rampe de Roubaix après ça."
+        ],
+        "receipt_positive": [
+          "Voilà un vrai résultat de classique. C'est pour ça que ce club existe.",
+          "On a couru comme une équipe de classiques, et ça se voyait.",
+          "Un résultat pareil mérite le vélodrome de Roubaix, pas seulement une feuille de résultats.",
+          "Maintenant ça ressemble à un club qui a sa place sur les pavés."
+        ],
+        "receipt_negative": [
+          "Pas de pavés, pas de forme, pas d'histoire qui vaille d'être racontée.",
+          "On a l'air perdu dès que la route se transforme en pierres.",
+          "Une équipe de classiques qui évite les pavés n'est pas une équipe de classiques.",
+          "Les Monuments ne se souviendront pas d'une saison comme celle-ci."
+        ],
+        "meeting_easier": [
+          "Un objectif plus léger, tant qu'on se présente toujours aux courses qui comptent.",
+          "Les Monuments se moquent de nos excuses dans les deux cas.",
+          "D'accord, si ça veut dire qu'on construit correctement vers Roubaix au lieu de le forcer.",
+          "J'accepte, tant que ce n'est pas notre identité de classiques qu'on vient de baisser."
+        ],
+        "meeting_keep": [
+          "Les pavés ne deviennent pas plus faciles parce qu'on demande poliment.",
+          "Les classiques ne déplacent leurs dates pour personne.",
+          "Un club de classiques garde son ambition dans la boue.",
+          "Les Monuments méritent un objectif fixe, pas un objectif mouvant."
+        ],
+        "meeting_stretch": [
+          "Un objectif plus dur. Enfin quelque chose digne des pavés.",
+          "On ne devrait pas se contenter de moins qu'un Monument.",
+          "Avec plaisir. Les classiques méritent une vraie ambition.",
+          "Ambitieux. Bien, maintenant la pression est là."
+        ],
+        "midseason_status": [
+          "À mi-parcours, et je juge toujours cette saison sur ce qui s'est passé en avril.",
+          "Le point d'étape compte moins pour moi que de savoir si on a eu un vrai printemps.",
+          "Ce club vit ou meurt sur les pavés, et le reste de la saison n'est que conséquence.",
+          "À mi-parcours, et les Monuments nous ont déjà dit l'essentiel de ce qu'il faut savoir."
+        ],
+        "milestone_achieved": [
+          "Fait sur les routes qui comptent pour ce club.",
+          "Objectif dans la poche. C'est comme ça qu'un club de classiques le fait.",
+          "Les livres d'histoire des classiques mentionneront vraiment celui-ci.",
+          "Un résultat digne d'un Monument. C'est pour ça que ce club existe."
+        ],
+        "milestone_missed": [
+          "Une année sans vrai résultat sur les classiques pique plus que toute autre.",
+          "Les classiques nous devaient plus que ça.",
+          "Il nous faut une campagne de classiques plus tranchante l'an prochain.",
+          "La préparation du prochain commence maintenant."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire. Le printemps n'attend pas le calendrier habituel.",
+          "Ce n'est pas la routine, mais perdre notre chance aux Monuments ne l'est pas non plus.",
+          "J'ai demandé qu'on se réunisse maintenant. Une campagne de pavés montée dans la précipitation ne gagne jamais rien.",
+          "Assemblée extraordinaire, parce qu'avril est plus proche que la direction ne semble le penser."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence. Nous avons couru après les Monuments honnêtement, et c'était tout l'enjeu.",
+          "Mon mandat s'arrête ici, mais l'esprit des classiques pour lequel je me suis battu ne devrait pas partir avec moi.",
+          "Je me retire sans avoir jamais laissé ce club oublier les pavés.",
+          "La présidence passe. Celui qui suit ferait mieux de croire encore en avril."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de vérifier le calendrier du printemps.",
+          "Nouveau président, même conviction que Roubaix compte plus que n'importe quel podium de course par étapes.",
+          "J'y vais pour les pavés, ceux qui m'ont fait aimer ce sport.",
+          "C'est mon tour maintenant. Je promets que ce club n'oubliera pas à quoi sert avril."
+        ]
+      }
+    },
+    "gc_elsker": {
+      "label": "Le Romantique du général",
+      "shortDescription": "Trois semaines ou rien, le Tour est tout",
+      "longDescription": "Un ancien directeur de général. Le plus grand rêveur de la direction. Veut bâtir l'équipe pour gagner un Grand Tour. Ne comprend pas pourquoi on se donnerait la peine de courir autrement.",
+      "reactions": {
+        "feedback_positive": [
+          "La voie du général est tracée, on construit vers le Tour.",
+          "C'est une vraie construction de coureur de Grand Tour.",
+          "Les montagnes nous attendent.",
+          "La forme sur trois semaines commence à briller.",
+          "Nous avons une équipe qui peut gagner gros."
+        ],
+        "feedback_warning": [
+          "La structure du général est trop molle.",
+          "Où sont les équipiers pour la haute montagne ?",
+          "Il nous manque la résistance de la troisième semaine.",
+          "Cette équipe craque dans les Pyrénées.",
+          "Le rêve du Tour est en pause."
+        ],
+        "feedback_negative": [
+          "Nous n'avons aucun homme de général dans l'équipe, inacceptable.",
+          "Cette équipe perdrait 20 minutes dès le premier jour.",
+          "Le Tour est plus loin que jamais.",
+          "La direction n'a pas eu ce qu'on lui avait promis.",
+          "Ce n'est pas un projet World Tour sérieux."
+        ],
+        "goal_proposal": [
+          "Axe général, on file enfin vers le grand jeu.",
+          "C'est là que se construit la carrière.",
+          "Le Tour est le but, et ceci est le pas.",
+          "La direction accepte sans hésitation.",
+          "C'est comme ça qu'on élève un projet de leader."
+        ],
+        "goal_achievement": [
+          "Le résultat au général est solide, continue à grimper.",
+          "C'est sur ça que se bâtissent les routes vers le Tour.",
+          "Les montagnes nous ont respectés, bon travail.",
+          "On file vers le chapitre que tout le monde lira.",
+          "C'est le pas avant les trois semaines."
+        ],
+        "goal_failure": [
+          "Le projet général saigne, ça n'aide pas.",
+          "Nous sommes plus loin du Tour maintenant qu'avant la saison.",
+          "C'est une régression, pas un ajustement.",
+          "Les montagnes nous ont écrasés, ça ne doit plus jamais arriver.",
+          "Il nous manque un plan pour savoir d'où viendra la star."
+        ],
+        "receipt_positive": [
+          "Voilà la forme d'un Grand Tour. On construit quelque chose de réel.",
+          "L'image du général s'améliore sans cesse. C'est comme ça qu'on bâtit une équipe de courses par étapes.",
+          "On roule enfin comme une équipe avec une ambition de trois semaines.",
+          "Je le vois maintenant. Le Tour se rapproche."
+        ],
+        "receipt_negative": [
+          "Pas de présence au général, pas de jambes de grimpeur, pas de projet Tour digne de ce nom.",
+          "On s'effondre dès que la route monte plus d'une journée.",
+          "Une équipe sans vraie menace au général ne construit rien qui m'intéresse.",
+          "Le Tour paraît plus loin qu'il y a un mois."
+        ],
+        "meeting_easier": [
+          "Un objectif de général plus léger, tant qu'on roule encore trois semaines comme si ça comptait.",
+          "Je veux les jambes de grimpeur construites quoi qu'il arrive.",
+          "D'accord, si ça donne du temps aux grimpeurs avant qu'on leur demande un Grand Tour.",
+          "Tant que le Tour reste notre destination, je peux vivre avec."
+        ],
+        "meeting_keep": [
+          "Les montagnes se moquent de ce qu'on en pense.",
+          "Un projet de trois semaines ne réécrit pas son propre calendrier.",
+          "Le Tour n'attend pas parce qu'on a demandé une remise.",
+          "L'ambition au général est la dernière chose qu'on devrait couper."
+        ],
+        "meeting_stretch": [
+          "Enfin, une ambition à la taille du Tour.",
+          "Ce club devrait toujours viser trois semaines, pas un jour.",
+          "Avec plaisir. Les montagnes méritent une vraie ambition.",
+          "Ambitieux. C'est le seul braquet dans lequel ce projet devrait rouler."
+        ],
+        "midseason_status": [
+          "À mi-parcours, et je juge cette saison sur où en est le projet général, pas sur les sprints.",
+          "Le point d'étape compte moins que de savoir si on a un vrai leader pour juillet.",
+          "Ce club existe pour trois semaines en été. Tout le reste est préparation.",
+          "À mi-parcours, et les jambes de montagne arrivent, le seul chiffre que je suis."
+        ],
+        "milestone_achieved": [
+          "Un vrai poids du général derrière celui-ci. J'adore.",
+          "Un pas de plus sur la route d'un Grand Tour.",
+          "Ça me dit que le projet Tour est réel, pas un rêve.",
+          "Un résultat digne de trois semaines. C'est pour ça que ce club est bâti."
+        ],
+        "milestone_missed": [
+          "Ça coûte à un projet de Grand Tour toute une saison d'élan.",
+          "Les grimpeurs avaient plus à donner que ce que ça a montré.",
+          "Il nous faut une construction plus tranchante vers le prochain Grand Tour.",
+          "On commence dès maintenant à rebâtir la route vers le Tour."
+        ],
+        "extraordinary_meeting": [
+          "La direction convoque une assemblée extraordinaire. Un projet Tour n'attend pas le calendrier habituel.",
+          "Ce n'est pas la routine, mais perdre notre chance sur trois semaines en juillet ne l'est pas non plus.",
+          "J'ai demandé qu'on se réunisse maintenant. Les jambes de montagne ne se construisent pas dans la précipitation à la dernière minute.",
+          "Assemblée extraordinaire, parce que le Tour est plus proche que la direction ne semble le penser."
+        ],
+        "chairman_departure": [
+          "Je quitte la présidence. Nous avons construit vers les montagnes honnêtement, et c'était tout l'enjeu.",
+          "Mon mandat s'arrête ici, mais l'ambition du Tour pour laquelle je me suis battu ne devrait pas partir avec moi.",
+          "Je me retire sans avoir jamais laissé ce club oublier ce que trois semaines veulent dire.",
+          "La présidence passe. Celui qui suit ferait mieux de rêver encore de juillet."
+        ],
+        "chairman_arrival": [
+          "Je prends la présidence, et la première chose que je fais est de vérifier qui peut survivre trois semaines en montagne.",
+          "Nouveau président, même conviction que rien dans ce sport ne compte plus que le Tour.",
+          "J'y vais pour juillet, le seul mois qui compte vraiment.",
+          "C'est mon tour maintenant. Je promets que ce club n'oubliera pas ce que trois semaines veulent dire."
+        ]
+      }
+    }
+  },
+  "specialization": {
+    "gc": "Équipe du général",
+    "sprint": "Équipe de sprint",
+    "classics": "Équipe de classiques",
+    "breakaway": "Équipe chasseuse d'étapes",
+    "youth": "Équipe de jeunes",
+    "balanced": "Équipe équilibrée"
+  },
+  "competitiveTier": {
+    "contender": "Prête à jouer les premiers rôles",
+    "competitive": "Compétitive",
+    "rebuilding": "En reconstruction"
+  },
+  "squadStatus": {
+    "thin": "Effectif mince",
+    "healthy": "Effectif sain",
+    "full": "Effectif large"
+  },
+  "starProfileLevel": {
+    "low": "Inconnu",
+    "medium": "Connu localement",
+    "high": "Connu nationalement",
+    "elite": "Célèbre dans le monde entier"
+  },
+  "nationalCoreLabel": {
+    "mixed": "Effectif mixte",
+    "core": "Noyau {country}",
+    "clearCore": "Noyau {country} net"
+  },
+  "identitySummary": {
+    "template": "{primary} avec une direction secondaire {secondaryLower}, {youth}, {squad}, {national} et {star}.",
+    "youth": {
+      "high": "une forte empreinte jeune",
+      "medium": "une part de jeunes modérée",
+      "low": "une faible part de jeunes"
+    },
+    "squad": {
+      "thin": "un effectif mince",
+      "healthy": "un effectif sain",
+      "full": "un effectif large"
+    },
+    "national": {
+      "core": "un noyau {country} à {percent} %",
+      "mixed": "un profil national mixte"
+    },
+    "star": {
+      "profile": "profil de star : {label}",
+      "none": "aucun profil de star net"
+    }
+  },
+  "personalitySummary": {
+    "template": "{ambition}, {risk} et {identity}.",
+    "ambition": {
+      "low": "Faible ambition sportive",
+      "medium": "Ambition sportive modérée",
+      "high": "Forte ambition sportive"
+    },
+    "risk": {
+      "cautious": "appétit prudent pour le risque financier",
+      "balanced": "appétit équilibré pour le risque financier",
+      "aggressive": "appétit agressif pour le risque financier"
+    },
+    "identity": {
+      "low": "identité peu marquée",
+      "medium": "identité modérée",
+      "high": "identité forte"
+    }
+  },
+  "requestDefs": {
+    "lower_results_pressure": {
+      "label": "Baisser la pression sur les résultats",
+      "description": "Demande à la direction un peu plus de marge dans les exigences sportives du plan actif.",
+      "tradeoffPreview": "Si elle dit oui, elle attend généralement une discipline financière plus stricte."
+    },
+    "more_youth_focus": {
+      "label": "Plus d'axe sur les jeunes",
+      "description": "Oriente le plan vers une direction plus nette de formation des jeunes, avec plus de place pour la progression.",
+      "tradeoffPreview": "Si elle dit oui, l'identité U25 devient plus centrale dans le plan actif."
+    },
+    "more_results_focus": {
+      "label": "Plus d'axe sur les résultats maintenant",
+      "description": "Demande à la direction de pondérer tout de suite plus fortement les meilleurs résultats.",
+      "tradeoffPreview": "Ça ne rend pas le plan plus facile - les exigences sportives se durcissent."
+    },
+    "ease_identity_requirements": {
+      "label": "Assouplir les exigences d'identité",
+      "description": "Demande un peu plus de souplesse sur la composition de l'effectif et les objectifs d'identité.",
+      "tradeoffPreview": "Si elle dit oui, elle augmente généralement la pression sportive en échange."
+    }
+  },
+  "requestReason": {
+    "noActivePlan": "Aucun plan de direction actif.",
+    "planNotActive": "Négocie un nouveau plan avant d'envoyer des demandes.",
+    "alreadyUsed": "Tu as déjà utilisé la demande à la direction de cette saison.",
+    "windowBlocked": "La phase finale de la saison a commencé. La direction n'accepte pas de demandes durant les {raceDays} derniers jours de course.",
+    "midCycleLocked": "Le plan à {years} ans est trop tôt dans son cycle pour être réorienté. La direction veut qu'au moins {percent} % du plan soient accomplis ou un fort revirement de satisfaction avant une réorientation.",
+    "majorPivotUsed": "La direction a déjà accepté un changement majeur dans ce cycle de plan. Un autre grand changement de cap demande un nouveau plan.",
+    "unknown": "Demande à la direction inconnue.",
+    "fallback": "La direction refuse la demande pour le moment.",
+    "lowerResults": {
+      "noSportingGoals": "Le plan n'a pas d'objectifs sportifs à assouplir.",
+      "tooUnhappy": "La direction est trop mécontente pour assouplir les exigences de résultats.",
+      "needProgress": "La direction veut voir plus de progrès avant d'assouplir les exigences de résultats.",
+      "starPressure": "Les gros profils maintiennent les attentes des sponsors élevées, la direction n'assouplira donc pas encore les exigences de résultats.",
+      "underEnoughPressure": "La direction estime déjà que le plan est sous assez de pression et veut voir plus de progrès avant d'assouplir les exigences.",
+      "starAmbitionLocked": "La direction refuse de baisser le niveau d'ambition pour une équipe avec de nets profils de stars, car les attentes des sponsors sont déjà relevées."
+    },
+    "moreYouth": {
+      "alreadyYouth": "Le plan est déjà sur une voie axée sur les jeunes.",
+      "noIdentityGoal": "Le plan n'a pas d'objectif d'identité à réorienter.",
+      "needStability": "La direction veut voir plus de stabilité avant de changer d'axe maintenant.",
+      "needYouthBase": "La direction veut voir une base de jeunes plus nette dans l'effectif avant de changer d'axe."
+    },
+    "moreResults": {
+      "alreadyResults": "Le plan pousse déjà vers les meilleurs résultats.",
+      "squadTooThin": "La direction veut voir un effectif plus large avant de relever davantage le niveau d'ambition."
+    },
+    "easeIdentity": {
+      "noIdentityGoal": "Le plan n'a pas d'exigence d'identité à assouplir.",
+      "needTrust": "La direction veut plus de confiance avant d'assouplir l'exigence d'identité.",
+      "needSportingStability": "La direction veut voir plus de stabilité sportive avant d'assouplir l'exigence d'identité.",
+      "nationalCoreCentral": "La direction voit le noyau national comme une partie vitale de l'ADN de l'équipe et ne le lâchera pas encore.",
+      "youthCoreCentral": "La direction voit la voie des jeunes comme un cœur de l'identité de l'équipe et ne la lâchera pas encore.",
+      "needStabilityFirst": "La direction n'assouplira pas les exigences d'identité tant que l'équipe n'est pas plus stable sur le plan sportif.",
+      "nationalCoreDna": "La direction voit le noyau national comme une partie vitale de l'ADN de l'équipe et ne le lâchera pas encore."
+    }
+  },
+  "requestOutcome": {
+    "approvedTitle": "La direction accepte la demande",
+    "rejectedTitle": "La direction refuse la demande",
+    "lowerResults": {
+      "titlePartial": "La direction lâche un peu de lest",
+      "titleTradeoff": "La direction lâche du lest, mais à un prix",
+      "summaryStar": "La direction ne lâche qu'un peu de lest, car une équipe avec de gros profils reste tenue à de fortes attentes.",
+      "summaryDefault": "La direction baisse légèrement la pression sportive dans le plan actif.",
+      "tradeoffStar": "Les profils donnent du poids au projet de sponsor, mais ils signifient aussi que la direction durcit l'exigence financière au lieu d'abandonner entièrement les ambitions.",
+      "tradeoffEconomy": "En échange l'exigence financière se durcit, l'équipe doit donc être gérée avec plus de discipline pour le reste du plan.",
+      "tradeoffPartial": "La direction n'accorde qu'un assouplissement partiel, car le plan a encore besoin de résultats nets."
+    },
+    "moreYouth": {
+      "titleBridge": "La direction n'accepte qu'un changement progressif",
+      "titleDefault": "La direction accepte une voie plus jeune",
+      "summaryBridge": "La direction veut voir plus de formation, mais une équipe avec de nets profils de stars ne peut pas changer de voie d'un coup.",
+      "summaryYouthTrack": "La direction voit déjà une voie de jeunes dans l'effectif et oriente le plan plus nettement vers la formation.",
+      "summaryNationalCore": "La direction voit un noyau net dans l'effectif et accepte d'orienter le plan vers une direction de formation plus long terme.",
+      "summaryDefault": "Le plan est tourné davantage vers la formation et la construction d'effectif à long terme.",
+      "tradeoffBridge": "Le plan devient plus orienté vers la jeunesse, mais la direction garde l'axe à un point d'étape équilibré et ne lâche pas encore entièrement la pression des résultats.",
+      "tradeoffDefault": "En échange l'identité U25 est maintenant une exigence plus nette et plus durable dans le plan actif."
+    },
+    "moreResults": {
+      "titleBridge": "La direction n'accepte qu'une escalade progressive",
+      "titleDefault": "La direction relève l'ambition",
+      "summaryBridge": "La direction veut voir plus de pression sur les résultats, mais une voie de jeunes marquée ne se déplace que progressivement vers une position médiane plus ambitieuse.",
+      "summaryStar": "Les gros profils et les attentes des sponsors poussent la direction à relever tout de suite l'ambition.",
+      "summarySpecialized": "La direction lit l'équipe comme prête à viser de plus gros résultats et relève l'ambition.",
+      "summaryDefault": "Le plan pondère maintenant les meilleurs résultats encore plus nettement qu'avant.",
+      "tradeoffBridge": "La direction garde une partie de la voie de formation, l'équipe doit donc prouver le nouveau niveau d'ambition avec le temps.",
+      "tradeoffDefault": "Tu gagnes un peu de souplesse sur l'exigence d'identité, mais les objectifs de résultats sont en échange devenus plus tranchants tout de suite."
+    },
+    "easeIdentity": {
+      "titleCore": "La direction n'assouplit que légèrement l'exigence d'identité",
+      "titleDefault": "La direction assouplit l'exigence d'identité",
+      "summaryCore": "La direction voit toujours le noyau national comme une partie vitale de l'ADN de l'équipe et ne donne qu'un peu plus de souplesse sur l'exigence d'identité.",
+      "summaryDefault": "L'équipe gagne un peu de souplesse dans la construction de l'effectif et les objectifs porteurs d'identité.",
+      "tradeoffCore": "L'identité nationale n'est pas entièrement lâchée, et en échange la direction attend une production sportive plus tranchante pour le reste du plan.",
+      "tradeoffDefault": "En échange la direction attend une production sportive plus tranchante pour le reste du plan."
+    }
+  },
+  "errors": {
+    "loginRequired": "Tu dois être connecté.",
+    "requestFallback": "Impossible d'envoyer la demande à la direction.",
+    "renewFallback": "Le plan n'a pas pu être renouvelé. Rien n'a été modifié."
+  },
+  "boardroom": {
+    "route": {
+      "loading": "Chargement de la salle de la direction"
+    },
+    "header": {
+      "title": "Salle de la direction",
+      "subtitle": "{chair}, président · {dna}",
+      "subtitleChairOnly": "{chair}, président",
+      "subtitleNoChair": "La direction",
+      "enterMeetingCta": "Entrer à l'assemblée annuelle"
+    },
+    "status": {
+      "on_track": "Dans les temps",
+      "at_risk": "En danger",
+      "behind": "En retard",
+      "achieved": "Atteint",
+      "failed": "Échoué"
+    },
+    "confidence": {
+      "cardTitle": "Confiance de la direction",
+      "updated": "Mis à jour le {date}",
+      "weekDeltaUp": "+{delta} cette semaine",
+      "weekDeltaDown": "{delta} cette semaine",
+      "weekDeltaFlat": "Aucun changement cette semaine",
+      "categories": {
+        "results": "Résultats",
+        "economy": "Économie",
+        "identity": "Identité",
+        "ranking": "Classement"
+      },
+      "noConsequenceDefault": "Aucune conséquence active. Le plafond salarial s'active sous 40."
+    },
+    "mandate": {
+      "cardTitle": "Mandat de la saison · S{season}",
+      "cardTitleGeneric": "Mandat de la saison",
+      "goalsMeta": "{count} objectifs · signé le {date}",
+      "achievedTarget": "Atteint {achieved} / objectif {target}",
+      "expandAll": "Tout développer",
+      "collapseAll": "Tout réduire",
+      "stretch": "Défi",
+      "discussTarget": "Discuter de l'objectif",
+      "discussTargetDisabledHint": "La discussion des objectifs ouvre à l'assemblée annuelle.",
+      "receipt": {
+        "countedPrefix": "Compté :",
+        "lastMovementPrefix": "Dernier mouvement :",
+        "weightedByPrefix": "Pondéré par {name}."
+      },
+      "empty": {
+        "title": "Aucun mandat signé pour l'instant",
+        "description": "La direction n'a pas signé le mandat de cette saison. Repasse après l'assemblée annuelle."
+      },
+      "proposed": {
+        "cardTitle": "Mandat proposé · S{season}",
+        "meta": "En attente de ta signature",
+        "pill": "Proposé",
+        "summaryLine": "Mandat proposé · en attente de ta signature"
+      },
+      "goalLabels": {
+        "keepResultAboveZero": "Garder le résultat de la saison au-dessus de zéro",
+        "academyDebuts": "Offrir un début à {count} coureurs de l'académie"
+      },
+      "receipts": {
+        "winRaceDays": {
+          "counted": "victoires confirmées en jour de course sur la saison.",
+          "lastMovement": "Victoire d'étape, {race}",
+          "weightedByLine": "Il met les victoires au-dessus de tout."
+        },
+        "economyResult": {
+          "counted": "revenus de la saison moins salaires, transferts et coûts de course.",
+          "lastMovement": "{amount} de revenu en jour de course",
+          "weightedByLine": "Il préfère les marges régulières aux grands écarts."
+        },
+        "academyDebuts": {
+          "counted": "coureurs de l'académie ayant pris un premier départ avec l'équipe première.",
+          "lastMovement": "Début : {name}, {age}",
+          "weightedByLine": "Elle compte chaque début comme une promesse tenue."
+        },
+        "clubRankingTopN": {
+          "counted": "position actuelle au classement mondial des clubs.",
+          "lastMovement": "Aucun mouvement cette semaine",
+          "weightedByLine": "Il surveille le classement chaque semaine."
+        }
+      },
+      "bonus": "Prime"
+    },
+    "vision": {
+      "cardTitle": "Vision du club",
+      "meta": "{seasons, plural, one {plan d'# saison} other {plan de # saisons}}",
+      "seasonLabel": "Saison {season}",
+      "currentSeasonLabel": "Saison {season} · Tu es ici",
+      "explainer": "Chaque étape est due à la fin de sa saison cible. Atteins-la plus tôt et elle compte à la fin de cette saison. Une étape manquée coûte une fois de la confiance, puis la vision avance.",
+      "countsAt": "Compte à la fin de la saison {season} · peut être atteinte plus tôt",
+      "countsAtCurrent": "Compte à la fin de la saison {season}",
+      "milestoneAchieved": "Atteinte",
+      "milestoneMissed": "Manquée",
+      "empty": {
+        "title": "Aucune vision fixée pour l'instant",
+        "description": "La vision du club n'a pas encore été établie."
+      },
+      "milestoneLabels": {
+        "establishDivision3": "S'établir en division 3",
+        "promotionPush": "Poussée vers la promotion",
+        "monumentPodium": "Podium en Monument",
+        "clubRankingTop30": "Top 30 du classement des clubs"
+      }
+    },
+    "board": {
+      "cardTitle": "La direction",
+      "minutesLink": "Compte rendu de réunion",
+      "memberGridHint": "Touche un membre pour voir ce qu'il pense et quels objectifs il porte.",
+      "role": {
+        "chair": "Président",
+        "results": "Résultats",
+        "economy": "Économie",
+        "identity": "Identité",
+        "ranking": "Classement"
+      },
+      "mood": {
+        "positive": "Content de toi",
+        "neutral": "Observe de près",
+        "negative": "Mécontent de toi"
+      },
+      "chairmanQuoteFixture": "Nous voyons le cap. Garde une masse salariale honnête et les résultats suivront.",
+      "chairmanContextFixture": "après la revue du dimanche",
+      "dnaExplainer": "L'ADN du club décide qui siège à la direction et comment ils pondèrent tes objectifs."
+    },
+    "member": {
+      "viewHint": "Voir le membre",
+      "ownsGoalsCount": "{count, plural, one {porte # objectif} other {porte # objectifs}}",
+      "sinceSeason": "à la direction depuis S{season}",
+      "personalityHeading": "Personnalité",
+      "ownsGoalsHeading": "Porte ces objectifs",
+      "ownWordsHeading": "Dans ses propres mots",
+      "confidenceMove": "{sign}{delta} de confiance · {date}",
+      "footerNote": "Pas encore de photos. Pour l'instant, tu les connaîtras à ce qu'ils disent.",
+      "close": "Fermer"
+    },
+    "minutesFixture": {
+      "stageWin": "Victoire d'étape, Vuelta a Andalucía. “C'est ce pour quoi j'ai signé.”",
+      "youthDebut": "Début d'un jeune : {name}, {age}. “C'est la voie nordique.”",
+      "deficitWeek": "Semaine déficitaire, {amount}. “Des marges, pas des miracles.”",
+      "captainSaleWarning": "On ne vend pas un leader en cours de saison sans plan. “Montre-moi le plan.”"
+    },
+    "meeting": {
+      "route": {
+        "loading": "Chargement de l'assemblée annuelle"
+      },
+      "header": {
+        "title": "Assemblée annuelle · Saison {season}",
+        "subtitle": "La direction propose ton mandat. Ajuste-le, fais une demande, signe.",
+        "confidenceMeta": "Confiance {confidence} · {count} ajustements disponibles",
+        "confidenceMetaNoValue": "{count} ajustements disponibles",
+        "deadline": "Les mandats sans réponse se signent automatiquement dans {days, plural, one {# jour} other {# jours}}"
+      },
+      "steps": {
+        "focus": "Axe",
+        "mandate": "Mandat",
+        "request": "Demande",
+        "sign": "Signature"
+      },
+      "focus": {
+        "label": "Axe"
+      },
+      "mandate": {
+        "title": "Mandat proposé · axe : {focus}",
+        "meta": "{count, plural, one {# objectif} other {# objectifs}} · {used} ajustements utilisés sur {allowed}",
+        "reward": "Récompense +{bonus} de confiance · raté -{penalty}",
+        "rewardWas": "Récompense +{bonus} de confiance · raté -{penalty} · était {was}",
+        "choice": {
+          "easier": "Plus facile",
+          "keep": "Garder",
+          "stretch": "Défi"
+        },
+        "choiceDisabledEasier": "Cet objectif ne peut pas être assoupli davantage.",
+        "choiceDisabledStretch": "Cet objectif ne peut pas être relevé davantage.",
+        "choiceDisabledBudget": "Tu as utilisé tous tes ajustements pour cette assemblée.",
+        "reactionAttribution": "{name}, qui porte cet objectif"
+      },
+      "visionSlot": {
+        "title": "La direction propose une nouvelle étape",
+        "targetSeason": "Cible : saison {season}",
+        "accept": "Accepter",
+        "decline": "Refuser"
+      },
+      "request": {
+        "title": "Ta demande · 1 par assemblée",
+        "meta": "Un refus s'accompagne toujours d'une contre-proposition",
+        "changeRequest": "Changer la demande",
+        "select": "Choisir",
+        "none": "Aucune demande à cette assemblée"
+      },
+      "sign": {
+        "hint": "Chemin le plus rapide : accepte la proposition et signe. Deux clics.",
+        "back": "Retour",
+        "button": "Signer le mandat",
+        "signing": "Signature",
+        "error": "Un problème est survenu. Réessaie.",
+        "focusChangeError": "Impossible de mettre à jour l'axe. Réessaie."
+      }
+    },
+    "tabs": {
+      "aria": "Sections de la salle de la direction",
+      "overview": "Aperçu",
+      "mandate": "Mandat",
+      "vision": "Vision",
+      "board": "Direction"
+    },
+    "overview": {
+      "goalsAchieved": "{achieved} objectifs atteints sur {total},",
+      "signedOn": "signé le {date}",
+      "worstGoalNote": "{goal} est à {achieved} pour un objectif de {target}.",
+      "openMandate": "Ouvrir le mandat",
+      "openVision": "Ouvrir la vision",
+      "openBoard": "Ouvrir la direction",
+      "visionLabel": "Vision du club",
+      "boardLabel": "La direction",
+      "nextMilestone": "Prochaine étape : {milestone}, en saison {season}.",
+      "boardNoQuote": "La direction n'a rien dit depuis la dernière assemblée.",
+      "goalValue": "{achieved} / {target}"
+    },
+    "bonusOffer": {
+      "lead": "Offre de prime de la direction.",
+      "stripeDetail": "pour un objectif supplémentaire : {goal}.",
+      "expires": "Expire à la fin de S{season}",
+      "acceptedOn": "Acceptée le {date}. {cash} crédités sur le solde. Compté à partir de l'acceptation, jugé en fin de saison.",
+      "accepted": "Offre acceptée. {cash} crédités sur le solde. Compté à partir de l'acceptation, jugé en fin de saison.",
+      "actionFailed": "La direction n'a pas répondu. Réessaie."
+    }
+  },
+  "vision": {
+    "title": {
+      "skandinavisk_udvikling": "Le projet nordique",
+      "italiensk_klassiker": "L'héritage des classiques",
+      "sprint_kommerciel": "L'express du sprint",
+      "fransk_klatrer": "L'héritage de la montagne",
+      "britisk_allrounder": "Le projet polyvalent"
+    }
+  },
+  "goalReceipt": {
+    "counted": {
+      "top_n_finish": "ta place actuelle au classement de la division.",
+      "stage_wins": "victoires en course, victoires d'étape et victoires en course d'un jour confondues.",
+      "gc_wins": "victoires au général dans les courses par étapes.",
+      "min_u25_riders": "coureurs U25 dans ton équipe en ce moment.",
+      "min_national_riders": "coureurs du pays de l'objectif dans ton équipe en ce moment.",
+      "min_riders": "coureurs dans ton équipe en ce moment.",
+      "no_outstanding_debt": "ton solde moins les emprunts actifs. L'objectif est atteint si c'est zéro ou plus en fin de saison.",
+      "sponsor_growth": "la hausse du versement de saison de ton sponsor depuis la première saison du plan, en pourcentage.",
+      "monument_podium": "places dans le top 3 en Monument, ou en classique quand l'objectif les nomme. Un objectif de prime compte à partir de l'acceptation.",
+      "signature_rider": "coureurs de grande renommée dans ton équipe. Un objectif de prime compte à partir de l'acceptation.",
+      "jersey_wins": "maillots des points, de la montagne et des jeunes gagnés en courses par étapes.",
+      "profitable_transfers": "ton solde net de transferts sur la durée du plan.",
+      "u25_development_delta": "le gain moyen de points de stat par coureur U25 et par saison depuis le début du plan.",
+      "relative_rank": "les managers que tu devances au classement de la division.",
+      "domestic_dominance": "pas encore mesuré.",
+      "unknown": "ta progression vers cet objectif."
+    }
+  },
+  "chairmanBeat": {
+    "milestone_achieved": "après qu'une étape de la vision a été atteinte",
+    "milestone_missed": "après une étape de la vision manquée",
+    "meeting_keep": "après la signature du mandat"
+  }
+}

@@ -602,3 +602,11 @@ test("press: a repeated press (locks already written) is never asked again", asy
   const again = await runTrainNow({ ...deps, loadShortRaces: async () => SHORT });
   assert.equal(again.status, 200);
 });
+
+test("#6536: a parked team cannot press (409 team_parked), nothing written", async () => {
+  const state = baseState("on");
+  const { deps, calls, supabase } = harness(state);
+  const result = await runTrainNow({ ...deps, team: { ...deps.team, parked_at: "2026-10-01T00:00:00Z" } });
+  assert.deepEqual([result.status, result.body.error], [409, "team_parked"]);
+  assert.equal(calls.length + supabase.writes.length, 0);
+});

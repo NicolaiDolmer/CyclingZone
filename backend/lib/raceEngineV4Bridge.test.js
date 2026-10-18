@@ -592,3 +592,192 @@ test("#5978 runner: kun orders_gc_v1 sender klassementet FØR etapen, på begge 
   buildStageRowsAccumulated({ race, stagesSorted: stages, stageIndex: 1, entrants, priorStageRows: stageRows, v4Engine: spy(legacySingle) });
   assert.equal("gcStandings" in legacySingle[0], false);
 });
+
+// ── #6156 (KUN s5_profiles_v2, slukket): formtoppe i v4 ──────────────────────
+//
+// Ejer 4/10 + 17/10: én samlet form = rytterens form + toppens tillaeg i
+// peak-vinduet, minus dykket bagefter. Kun s5_profiles_v2; s5_profiles_v1 er
+// byte-identisk. Ingen balance-tal her: forventningerne regnes af motorens egne
+// funktioner (racePeaks + planlaeggerens formpoint-omregning).
+
+const PEAK_WINDOW = Object.freeze({ start: 20000, end: 20004, trainingQuality: 0.8 });
+const IN_WINDOW = 20002;
+const IN_PAYBACK = PEAK_WINDOW.end + 1;
+const OUTSIDE = PEAK_WINDOW.start - 10;
+
+async function peakModules() {
+  const [physiology, planner, peaks] = await Promise.all([
+    import("./engine/v4/physiology.ts"),
+    import("./plannerBoard.js"),
+    import("./racePeaks.js"),
+  ]);
+  return { physiology, planner, peaks };
+}
+
+test("#6156 combinedFormForV4: toppen i vinduet = planlaeggerens egen formpoint-vaerdi oven i formen", async () => {
+  const { planner } = await peakModules();
+  const { combinedFormForV4 } = await import("./raceEngineV4Bridge.js");
+  const shown = planner.peakValueFormPoints({ trainingQuality: PEAK_WINDOW.trainingQuality }).current;
+  assert.ok(shown > 0, "planlaeggeren viser en positiv top");
+  assert.equal(combinedFormForV4({ form: 40, peakWindows: [PEAK_WINDOW] }, IN_WINDOW), 40 + shown);
+});
+
+test("#6156 combinedFormForV4: dykket bagefter traekkes fra; uden for vinduerne er det formen alene", async () => {
+  const { planner } = await peakModules();
+  const { combinedFormForV4, riderFormForV4 } = await import("./raceEngineV4Bridge.js");
+  const payback = planner.peakValueFormPoints({ trainingQuality: PEAK_WINDOW.trainingQuality }).payback;
+  assert.ok(payback < 0, "planlaeggeren viser et dyk");
+  const rider = { form: 60, peakWindows: [PEAK_WINDOW] };
+  assert.equal(combinedFormForV4(rider, IN_PAYBACK), 60 + payback);
+  assert.equal(combinedFormForV4(rider, OUTSIDE), riderFormForV4(rider));
+  assert.equal(combinedFormForV4(rider, null), riderFormForV4(rider), "ingen peakDay -> formen alene");
+  assert.equal(combinedFormForV4({ form: 60 }, IN_WINDOW), 60, "ingen vinduer -> formen alene");
+  assert.equal(combinedFormForV4({ form: 60, peakWindows: [] }, IN_WINDOW), 60);
+  assert.equal(combinedFormForV4({}, IN_WINDOW), null, "ingen data -> intet felt");
+});
+
+test("#6156 combinedFormForV4: klampes til skalaen; en top uden form-data laegges oven i det neutrale middel", async () => {
+  const { physiology } = await peakModules();
+  const { combinedFormForV4, NEUTRAL_FORM_FOR_PEAK } = await import("./raceEngineV4Bridge.js");
+  assert.equal(NEUTRAL_FORM_FOR_PEAK, physiology.FORM_CP_TUNING.neutralForm, "samme nulpunkt som v4's form-led");
+  assert.equal(combinedFormForV4({ form: 100, peakWindows: [PEAK_WINDOW] }, IN_WINDOW), 100);
+  assert.equal(combinedFormForV4({ form: 0, peakWindows: [PEAK_WINDOW] }, IN_PAYBACK), 0);
+  assert.ok(combinedFormForV4({ peakWindows: [PEAK_WINDOW] }, IN_WINDOW) > NEUTRAL_FORM_FOR_PEAK);
+});
+
+test("#6156 combinedFormForV4: bedre optakt giver stoerre top (vinduets egen traeningskvalitet)", async () => {
+  const { combinedFormForV4 } = await import("./raceEngineV4Bridge.js");
+  const weak = combinedFormForV4({ form: 50, peakWindows: [{ ...PEAK_WINDOW, trainingQuality: 0.3 }] }, IN_WINDOW);
+  const strong = combinedFormForV4({ form: 50, peakWindows: [{ ...PEAK_WINDOW, trainingQuality: 1 }] }, IN_WINDOW);
+  assert.ok(strong > weak && weak > 50);
+});
+
+test("#6156 combinedFormForV4: toppen giver et hoejere form-led i motoren end uden", async () => {
+  const { physiology } = await peakModules();
+  const { combinedFormForV4 } = await import("./raceEngineV4Bridge.js");
+  const without = physiology.formCpModifier(combinedFormForV4({ form: 55 }, IN_WINDOW));
+  const withPeak = physiology.formCpModifier(combinedFormForV4({ form: 55, peakWindows: [PEAK_WINDOW] }, IN_WINDOW));
+  assert.ok(withPeak > without);
+  const tuning = (await import("./engine/v4/tuning.ts")).RACE_V4_TUNING.dayform;
+  assert.ok(
+    physiology.jourSansProbability(combinedFormForV4({ form: 55, peakWindows: [PEAK_WINDOW] }, IN_WINDOW), tuning)
+      <= physiology.jourSansProbability(55, tuning),
+    "toppen giver aldrig flere daarlige dage",
+  );
+});
+
+// buildV4StageInput: KUN s5_profiles_v2 laegger toppen paa.
+
+const PEAK_STUB_MODULES = {
+  route: { routeFromStageProfileRow: () => ({ profile_type: "mountain", finale_type: null, distance_km: 10, segments: [], waypoints: [] }) },
+  entrants: { entrantFromAbilitiesRow: (row, opts) => ({ rider_id: opts.riderId, role: opts.role ?? "free_role", condition: opts.condition }) },
+  tuning: { RACE_V4_TUNING: {} },
+  orders: { buildStageOrderPlan: () => ({ orders: [], aiEffortByRider: new Map() }) },
+};
+
+const PEAK_FIELD = Object.freeze([
+  { rider_id: "peaking", team_id: "T1", abilities: {}, fatigue: 0, form: 55, peakWindows: [PEAK_WINDOW] },
+  { rider_id: "paying", team_id: "T1", abilities: {}, fatigue: 0, form: 55, peakWindows: [{ start: IN_WINDOW - 9, end: IN_WINDOW - 2, trainingQuality: 1 }] },
+  { rider_id: "plain", team_id: "T2", abilities: {}, fatigue: 0, form: 55 },
+  { rider_id: "no-data", team_id: "T2", abilities: {}, fatigue: 0 },
+]);
+
+function peakStubInput(rulesRevision, peakDay = IN_WINDOW) {
+  return buildV4StageInput({
+    modules: PEAK_STUB_MODULES,
+    entrants: PEAK_FIELD,
+    stageProfile: { stage_number: 1, profile_type: "mountain", distance_km: 150, ...(peakDay === "omit" ? {} : { peakDay }) },
+    seedString: "race:6156:peak",
+    stageNumber: 1,
+    rulesRevision,
+  });
+}
+
+test("#6156 buildV4StageInput: s5_profiles_v2 laegger toppen paa i vinduet og dykket bagefter", () => {
+  const byId = Object.fromEntries(peakStubInput("s5_profiles_v2").startlist.map((e) => [e.rider_id, e]));
+  assert.ok(byId.peaking.form > 55, "toppen loefter formen i vinduet");
+  assert.ok(byId.paying.form < 55, "dykket efter vinduet");
+  assert.equal(byId.plain.form, 55);
+  assert.equal("form" in byId["no-data"], false);
+});
+
+test("#6156 buildV4StageInput: s5_profiles_v1 og aeldre ser ALDRIG toppen (byte-identisk)", () => {
+  for (const rev of ["s5_profiles_v1", "official_times_v5", "official_times_v4", "official_times_v3"]) {
+    for (const e of peakStubInput(rev).startlist) {
+      if (e.rider_id === "no-data") assert.equal("form" in e, false, rev);
+      else assert.equal(e.form, 55, `${rev}: ${e.rider_id}`);
+    }
+  }
+});
+
+test("#6156 buildV4StageInput: uden top paa dagen er s5_profiles_v2-input identisk med s5_profiles_v1", () => {
+  for (const peakDay of ["omit", null, OUTSIDE]) {
+    const v1 = peakStubInput("s5_profiles_v1", peakDay);
+    const v2 = peakStubInput("s5_profiles_v2", peakDay);
+    assert.equal(v2.rules_revision, "s5_profiles_v2");
+    assert.equal(JSON.stringify({ ...v2, rules_revision: "s5_profiles_v1" }), JSON.stringify(v1), `peakDay ${peakDay}`);
+  }
+});
+
+// Rigtig motor + runner: kaeden runner -> bro -> kerne baerer toppen under v2.
+
+async function peakSpiedAdapter(captured) {
+  const [core, tuning, entrants, route, orders, timeline] = await Promise.all([
+    import("./engine/v4/index.ts"),
+    import("./engine/v4/tuning.ts"),
+    import("./engine/v4/adapters/entrantAdapter.ts"),
+    import("./engine/v4/adapters/routeAdapter.ts"),
+    import("./engine/v4/orders/teamOrdersAdapter.ts"),
+    import("./engine/v4/timeline.ts"),
+  ]);
+  const spyCore = { simulateStageV4: (input) => { captured.push(input); return core.simulateStageV4(input); } };
+  return createRaceEngineV4Adapter({ core: spyCore, tuning, entrants, route, orders, timeline });
+}
+
+function peakRaceFixture({ withPeaks }) {
+  const race = { id: "race-6156-peaks", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 2 };
+  const stages = [1, 2].map((n) => stageProfile({ race_id: race.id, id: `sp-${n}`, stage_number: n, peakDay: IN_WINDOW + n - 1 }));
+  const field = makeEntrants(32).map((e, i) => ({
+    ...e,
+    ...(i % 7 === 6 ? {} : { form: 35 + (i % 4) * 10 }),
+    ...(withPeaks && i % 2 === 0 ? { peakWindows: [PEAK_WINDOW] } : {}),
+  }));
+  return { race, stages, entrants: field };
+}
+
+test("#6156 regressionsvagt: buildRaceResults baerer toppen helt ind i v4 under s5_profiles_v2, ikke under v1", async () => {
+  const { buildRaceResults } = await import("./raceRunner.js");
+  const { combinedFormForV4, riderFormForV4 } = await import("./raceEngineV4Bridge.js");
+  for (const rev of ["s5_profiles_v1", "s5_profiles_v2"]) {
+    const { race, stages, entrants } = peakRaceFixture({ withPeaks: true });
+    const captured = [];
+    buildRaceResults({ race, stages, entrants, pointsLookup: {}, v3: true, v4Engine: await peakSpiedAdapter(captured), rulesRevision: rev });
+    assert.equal(captured.length, stages.length);
+    const byId = new Map(entrants.map((e) => [e.rider_id, e]));
+    let lifted = 0;
+    for (const [idx, input] of captured.entries()) {
+      for (const v4e of input.startlist) {
+        const src = byId.get(v4e.rider_id);
+        const expected = rev === "s5_profiles_v2" ? combinedFormForV4(src, stages[idx].peakDay) : riderFormForV4(src);
+        if (expected === null) assert.equal("form" in v4e, false, `${rev}: ${v4e.rider_id}`);
+        else assert.equal(v4e.form, expected, `${rev} etape ${idx + 1}: ${v4e.rider_id}`);
+        if (src.peakWindows && v4e.form > (riderFormForV4(src) ?? 50)) lifted++;
+      }
+    }
+    if (rev === "s5_profiles_v2") assert.ok(lifted > 0, "toppen naaede motoren");
+    else assert.equal(lifted, 0, "v1 ser aldrig toppen");
+  }
+});
+
+test("#6156 rigtig motor: uden toppe er s5_profiles_v2 = s5_profiles_v1; med toppe flytter v2 resultatet", async () => {
+  const run = async (rev, withPeaks) => {
+    const { race, stages, entrants } = peakRaceFixture({ withPeaks });
+    const engine = await peakSpiedAdapter([]);
+    return engine.simulateStage({ entrants, stageProfile: stages[0], seedString: `${race.id}:1`, stageNumber: 1, isStageRace: true, raceStages: stages, rulesRevision: rev }).v4Output;
+  };
+  const v1 = await run("s5_profiles_v1", false);
+  // #6748: v2's udbrudsopfoelgning kan tilfoeje udfald i tidslinjen; resultatet er formtoppens maal.
+  assert.equal(JSON.stringify((await run("s5_profiles_v2", false)).results), JSON.stringify(v1.results), "ingen top -> identisk med v1");
+  assert.equal(JSON.stringify(await run("s5_profiles_v1", true)), JSON.stringify(v1), "v1 ignorerer toppene");
+  assert.notEqual(JSON.stringify((await run("s5_profiles_v2", true)).results), JSON.stringify(v1.results), "v2 med toppe: toppen virker");
+});

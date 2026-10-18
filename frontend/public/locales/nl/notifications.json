@@ -1,0 +1,99 @@
+{
+  "page": {
+    "title": "Inbox",
+    "subtitleMine": "{count, plural, =0 {Alles gelezen} one {1 ongelezen} other {# ongelezen}}",
+    "subtitleHandle": "{count, plural, =0 {Op dit moment niets af te handelen} one {1 wacht op je} other {# wachten op je}}",
+    "subtitleLeague": "Wat er in de competitie gebeurt",
+    "subtitleActivity": "Je marktacties op één plek",
+    "subtitleMessages": "{count, plural, =0 {Geen ongelezen berichten} one {1 gesprek wacht op je} other {# gesprekken wachten op je}}"
+  },
+  "actions": {
+    "markAllRead": "Alles als gelezen markeren",
+    "markingAll": "Markeren…",
+    "deleteRead": "Gelezen verwijderen",
+    "deleteAria": "Verwijderen",
+    "deleteAllAria": "Alles verwijderen",
+    "viewAuction": "Veiling bekijken",
+    "viewDetails": "Details bekijken"
+  },
+  "tabs": {
+    "mine": "Van mij",
+    "handle": "Te behandelen",
+    "league": "Competitie",
+    "activity": "Mijn activiteit",
+    "messages": "Berichten"
+  },
+  "filter": {
+    "all": "Alle ({count})",
+    "unread": "Ongelezen ({count})",
+    "auctions": "Veilingen",
+    "transfers": "Transfers",
+    "board": "Bestuur",
+    "finance": "Financiën",
+    "season": "Seizoen",
+    "mineSelectLabel": "Meldingen filteren",
+    "feedSelectLabel": "Activiteitenfeed filteren"
+  },
+  "empty": {
+    "noneUnread": "Geen ongelezen meldingen",
+    "noneInCategory": "Geen meldingen in deze categorie",
+    "noneHint": "Meldingen in andere categorieën kunnen nog wachten.",
+    "showAllCta": "Alle meldingen tonen",
+    "noPending": "Niets wacht op jouw beslissing",
+    "noPendingHint": "Aanbiedingen en ruilen waar je op moet reageren verschijnen hier",
+    "browseMarketCta": "De markt bekijken",
+    "noFeed": "Nog geen activiteit",
+    "noFeedHint": "Start veilingen en transfers om hier activiteit te zien",
+    "goToAuctionsCta": "Naar de veilingen"
+  },
+  "aggregate": {
+    "countSuffix": "(×{count})",
+    "raceResultTitle": "{race}: de uitslag is binnen",
+    "firstLatest": "Eerste {first} · Laatste {latest}",
+    "lostLeadShare": "Waarvan {count} keer dat je de leiding kwijtraakte",
+    "expand": "Uitklappen",
+    "collapse": "Inklappen"
+  },
+  "relativeTime": {
+    "justNow": "Zojuist",
+    "minutes": "{n}m geleden",
+    "hours": "{n}u geleden",
+    "days": "{n}d geleden"
+  },
+  "pending": {
+    "role": {
+      "sellerDecide": "Aanbieding accepteren / afwijzen",
+      "buyerDecide": "Reageren op tegenbod",
+      "sellerConfirm": "Transfer bevestigen",
+      "buyerConfirm": "Transfer bevestigen",
+      "receivingDecide": "Ruil accepteren / afwijzen",
+      "proposingDecide": "Reageren op tegenbod",
+      "receivingConfirm": "Ruil bevestigen",
+      "proposingConfirm": "Ruil bevestigen",
+      "actionRequired": "Actie vereist"
+    },
+    "unknownTeam": "onbekend team",
+    "transferPrimary": "{rider}, {price} CZ$",
+    "transferUnknownPrice": "{rider}, ? CZ$",
+    "transferSecondary": "Van {team} · {role}",
+    "swapPrimary": "{offered} ↔ {requested}",
+    "swapSecondaryWithCash": "{team} · Contant {cash} CZ$ · {role}",
+    "swapSecondaryNoCash": "{team} · {role}"
+  },
+  "feed": {
+    "auctionWon": "{team} won een veiling",
+    "auctionStarted": "{team} startte een veiling",
+    "transferAccepted": "Transfer afgerond",
+    "riderListed": "{team} zette een renner te koop",
+    "seasonStarted": "Seizoen {number} is begonnen",
+    "seasonEnded": "Seizoen {number} is afgelopen",
+    "raceResultsApproved": "Uitslag goedgekeurd: {race}",
+    "fallbackLabel": "{type}"
+  },
+  "error": {
+    "notifications": "Je meldingen konden niet worden geladen. Er is niets verloren gegaan. Probeer het opnieuw.",
+    "feed": "De competitiefeed kon niet worden geladen. Er is niets verloren gegaan. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "mutationFailed": "Je meldingen konden niet worden bijgewerkt. Probeer het opnieuw."
+  }
+}

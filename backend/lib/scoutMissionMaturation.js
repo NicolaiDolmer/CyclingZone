@@ -53,7 +53,7 @@ import { fetchAllRows } from "./supabasePagination.js"; // #6551
 // mission-shortlist de ikke kunne søge frem noget sted. Read-only prod-audit
 // (17/7) viste rytterne FAKTISK findes (0 rigtige orphans blandt 46 nogensinde
 // shortlistede) — men 17/46 (37%) er lige nu skjult for ALLE ikke-admins af
-// riders-RLS-policyen "Public read riders" (is_offered_intake_rider): en rytter
+// riders-RLS-policyen "Public read riders" (offered_intake_rider_ids, #6341): en rytter
 // der står som et UAFKLARET akademi-intake-tilbud (academy_intake.status =
 // 'offered', endnu ikke accepteret/afvist af det tilbudte hold) er globalt
 // usøgbar, ikke kun for det tilbudte hold. defaultLoadCandidates kendte ikke

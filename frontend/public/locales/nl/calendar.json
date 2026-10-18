@@ -1,0 +1,80 @@
+{
+  "title": "Koerskalender",
+  "eyebrow": "Seizoen {number} · {days} koersdagen",
+  "eyebrowNoDays": "Seizoen {number}",
+  "loadingAria": "Koerskalender laden",
+  "noSeason": {
+    "title": "Geen actief seizoen",
+    "desc": "De koerskalender verschijnt hier zodra een seizoen is ingepland."
+  },
+  "seasonMenu": {
+    "label": "Seizoen",
+    "option": "S{number}"
+  },
+  "notGenerated": {
+    "title": "De kalender van seizoen {number} is nog niet klaar",
+    "desc": "Het koersprogramma voor dit seizoen is nog niet gegenereerd. Kijk later terug, dichter bij de start van het seizoen."
+  },
+  "divisionPending": "Seizoen {number} is nog niet begonnen. Je divisie wordt bepaald bij de seizoenswissel, dus je eigen koersen zijn nog niet gemarkeerd.",
+  "empty": {
+    "title": "Geen koersen deze maand",
+    "desc": "Gebruik de maandpijlen om geplande koersen te vinden."
+  },
+  "tabs": {
+    "mine": "Mijn team",
+    "all": "Alle teams",
+    "divisions": "Divisies"
+  },
+  "division": "Divisie {n}",
+  "divisionMenu": {
+    "label": "Divisie",
+    "all": "Alle divisies"
+  },
+  "poolMenu": {
+    "label": "Poule",
+    "all": "Alle poules"
+  },
+  "filter": {
+    "mine": "Koersen van mijn team"
+  },
+  "chip": {
+    "stageNum": "etappe {n}",
+    "openRace": "Planning van {name} openen"
+  },
+  "weekday": {
+    "mon": "MA",
+    "tue": "DI",
+    "wed": "WO",
+    "thu": "DO",
+    "fri": "VR",
+    "sat": "ZA",
+    "sun": "ZO"
+  },
+  "today": "Vandaag",
+  "legend": {
+    "title": "Terrein",
+    "sprint": "Sprint",
+    "cobbles": "Kasseien",
+    "hilly": "Heuvelachtig",
+    "mountain": "Bergen",
+    "itt": "Tijdrit",
+    "ttt": "Ploegentijdrit"
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "cobbles": "Kasseien",
+    "hilly": "Heuvelachtig",
+    "mountain": "Bergen",
+    "itt": "Tijdrit",
+    "ttt": "Ploegentijdrit"
+  },
+  "moreRaces": "+{count} meer",
+  "prevMonth": "Vorige maand",
+  "nextMonth": "Volgende maand",
+  "error": {
+    "title": "De kalender kon niet worden geladen",
+    "description": "Er ging iets mis bij het laden van de koerskalender. Probeer het over een moment opnieuw.",
+    "retry": "Probeer opnieuw",
+    "session": "Je sessie is verlopen. Log opnieuw in om de kalender te zien."
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "title": "Resultados",
+  "subtitle": {
+    "active": "Temporada {number} · en curso",
+    "viewing": "Temporada {number}",
+    "noSeason": "Sin temporada activa"
+  },
+  "tabs": {
+    "latest": "Últimos",
+    "archive": "Archivo",
+    "points": "Puntos y premios"
+  },
+  "latest": {
+    "empty": "Aún no ha terminado ninguna carrera aquí",
+    "emptyBody": "Los resultados aparecen aquí en cuanto termina la primera carrera de esta selección.",
+    "noPodium": "Aún no se ha importado la clasificación de esta carrera",
+    "viewFull": "Resultado completo",
+    "stageProgress": "Etapa {done} de {total}"
+  },
+  "filters": {
+    "seasonLabel": "Temporada",
+    "seasonOption": "Temporada {number}",
+    "seasonOptionActive": "Temporada {number} (en curso)",
+    "divisionLabel": "División",
+    "allDivisions": "Todas las divisiones",
+    "division": "División {n}",
+    "poolLabel": "Grupo",
+    "allPools": "Todos los grupos"
+  },
+  "hub": {
+    "moreTitle": "Más en Resultados",
+    "standings": {
+      "label": "Clasificación",
+      "desc": "Clasificación por equipos de la temporada en curso"
+    },
+    "riderRankings": {
+      "label": "Ranking de ciclistas",
+      "desc": "Resultados individuales de todos los ciclistas"
+    },
+    "seasonSnapshot": {
+      "label": "Resumen de temporada",
+      "desc": "Calendario, clasificación final y ganadores de la temporada"
+    }
+  },
+  "loadingAria": "Cargando resultados",
+  "emptyNoSeason": "No hay temporada activa. Los resultados aparecerán aquí cuando la temporada esté en marcha",
+  "topTeams": "Mejores equipos · Temporada {number}",
+  "topScorers": "Máximos anotadores · Temporada {number}",
+  "teamMeta": "{stageWins, plural, one {# victoria de etapa} other {# victorias de etapa}} · {gcWins} general",
+  "freeAgent": "Agente libre",
+  "riderStageWins": "{count, plural, one {# victoria de etapa} other {# victorias de etapa}}",
+  "riderGcWins": "{count} general",
+  "points": "{count} pt",
+  "seeAllStandings": "Ver la clasificación completa",
+  "seeAllRiders": "Ver todos los ciclistas",
+  "emptyNoResults": "Aún no se han importado resultados de carreras esta temporada",
+  "loadError": "No se pudieron cargar los resultados",
+  "loadErrorBody": "No se ha perdido nada. Prueba a recargar la página.",
+  "retry": "Reintentar"
+}
