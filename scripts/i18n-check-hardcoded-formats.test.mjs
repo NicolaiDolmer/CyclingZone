@@ -14,6 +14,8 @@ import {
   totalOf,
   scanFrontend,
   FORMATTER_FILES,
+  isIsoKeyUse,
+  canonicalLocaleTag,
 } from "./i18n-check-hardcoded-formats.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
@@ -61,8 +63,24 @@ test("locale-literal: sprogkode som konstant og prosa er ikke formatering", () =
 });
 
 test("locale-literal: en-CA og sv-SE er ISO-trick til tidszone-noegler", () => {
-  assert.deepEqual(rules('new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric" })'), []);
+  assert.deepEqual(rules('new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" })'), []);
   assert.deepEqual(rules('d.toLocaleString("sv-SE", { timeZone })'), []);
+});
+
+test("locale-literal: parenteser i regex og template-literal afkorter ikke kaldet (Codex #6842)", () => {
+  // timeStyle efter et regex med parenteser er stadig visningsformatering, ikke ISO-noegle.
+  const src = 'new Intl.DateTimeFormat("en-CA", { timeZone: label.match(/\(([^)]+)\)/)?.[1], timeStyle: "short" })';
+  assert.deepEqual(rules(src), ["locale-literal"]);
+  const tpl = 'new Intl.DateTimeFormat("en-CA", { timeZone: `${a)}`, timeStyle: "short" })';
+  assert.deepEqual(rules(tpl), ["locale-literal"]);
+  // Division er ikke et regex: kaldet afsluttes korrekt og ISO-brugen er fortsat fri.
+  assert.deepEqual(rules('new Intl.DateTimeFormat("en-CA", { timeZone: zones[i / 2], year: "numeric", month: "2-digit", day: "2-digit" })'), []);
+});
+
+test("locale-literal: bindestregs-tekst ved siden af et kald er ikke en locale (Codex #6842)", () => {
+  assert.deepEqual(rules('<span aria-label="go-to">{n.toLocaleString(locale)}</span>'), []);
+  assert.deepEqual(rules('<span aria-label="go-to">{n.toLocaleString("en-gb")}</span>'), ["locale-literal"]);
+  assert.deepEqual(rules('const l = lang === "da" ? "da-dk" : locale;'), ["locale-literal"]);
 });
 
 test("locale-default: toLocale*String() uden argument fanges", () => {
@@ -193,4 +211,87 @@ test("#6785: sv-SE + timeZone i toLocaleString er stadig et ISO-trick; tal er ik
   const { isIsoKeyUse } = await import("./i18n-check-hardcoded-formats.mjs");
   assert.equal(isIsoKeyUse('d.toLocaleString("sv-SE", { timeZone: GAME_TIMEZONE })'), true);
   assert.equal(isIsoKeyUse('n.toLocaleString("en-CA")'), false);
+});
+
+const FULL_KEY = 'year: "numeric", month: "2-digit", day: "2-digit"';
+
+test("#6797: rene tidsformatere med ISO-locale er visning og fanges", () => {
+  assert.deepEqual(rules('new Intl.DateTimeFormat("en-CA", { timeStyle: "short" }).format(d)'), ["locale-literal"]);
+  assert.deepEqual(rules('new Intl.DateTimeFormat("en-CA", { timeZone, hour: "2-digit", minute: "2-digit" }).format(d)'), ["locale-literal"]);
+  assert.deepEqual(rules('d.toLocaleString("sv-SE", { hour: "2-digit", minute: "2-digit" })'), ["locale-literal"]);
+  assert.deepEqual(rules('d.toLocaleDateString("en-CA", { timeStyle: "short" })'), ["locale-literal"]);
+  // timeStyle fanges ogsaa sammen med en kort dateStyle
+  assert.deepEqual(rules('new Intl.DateTimeFormat("sv-SE", { dateStyle: "short", timeStyle: "short" })'), ["locale-literal"]);
+  // dato + klokkeslaet i en fuld numerisk noegle (formatToParts) er stadig tricket
+  assert.deepEqual(rules(`new Intl.DateTimeFormat("en-CA", { timeZone, ${FULL_KEY}, hour: "2-digit", minute: "2-digit" })`), []);
+});
+
+test("#6797: ISO-undtagelsen kraever fuld numerisk dato-noegle", () => {
+  assert.equal(isIsoKeyUse(`new Intl.DateTimeFormat("en-CA", { timeZone, ${FULL_KEY} })`), true);
+  // standardformen (ingen dato-felter) er allerede den fulde numeriske dato
+  assert.equal(isIsoKeyUse('d.toLocaleDateString("en-CA")'), true);
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("sv-SE", { timeZone })'), true);
+  // delvise datoer er ikke en noegle
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("en-CA", { year: "numeric" })'), false);
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit" })'), false);
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("en-CA", { day: "numeric" })'), false);
+  // tids-only
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("en-CA", { hour: "2-digit" })'), false);
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("en-CA", { timeStyle: "medium" })'), false);
+  assert.equal(isIsoKeyUse('d.toLocaleString("sv-SE", { hour: "2-digit" })'), false);
+  // tekstuel maaned i en ellers fuld noegle
+  assert.equal(isIsoKeyUse('new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "long", day: "numeric" })'), false);
+});
+
+test("#6797: options paa efterfoelgende linjer ses (flerlinjet kald)", () => {
+  const file = "frontend/src/pages/X.jsx";
+  const full = `new Intl.DateTimeFormat("en-CA", {\n  timeZone,\n  ${FULL_KEY},\n}).format(d)`;
+  assert.equal(scanSource(full, file).length, 0);
+  const timeOnly = 'new Intl.DateTimeFormat("en-CA", {\n  timeZone,\n  hour: "2-digit",\n  minute: "2-digit",\n}).format(d)';
+  const found = scanSource(timeOnly, file);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].line, 1);
+  const partial = 'new Intl.DateTimeFormat("en-CA", {\n  timeZone,\n  year: "numeric",\n}).format(d)';
+  assert.equal(scanSource(partial, file).length, 1);
+  // locale paa naeste linje og options laengere nede
+  const nextLine = 'new Intl.DateTimeFormat(\n  "en-CA",\n  { timeStyle: "short" },\n).format(d)';
+  assert.equal(scanSource(nextLine, file).length, 1);
+  const nextLineOk = `new Intl.DateTimeFormat(\n  "en-CA",\n  { timeZone, ${FULL_KEY} },\n).format(d)`;
+  assert.equal(scanSource(nextLineOk, file).length, 0);
+  // et senere, urelateret kald paa en anden linje gør ikke en fuld noegle til fund
+  const later = `const k = d.toLocaleDateString("en-CA");\nconst t = d.toLocaleTimeString(locale, { hour: "2-digit" });`;
+  assert.equal(scanSource(later, file).length, 0);
+});
+
+test("#6797: det rigtige Intl-kald paa en linje afgoer ISO-tjekket", () => {
+  const file = "frontend/src/pages/X.jsx";
+  // tal-formatering foer dato-noeglen paa samme linje goer ikke noeglen til visning
+  assert.equal(scanSource('const s = `${new Intl.NumberFormat(locale).format(n)} ${d.toLocaleDateString("en-CA")}`;', file).length, 0);
+  // omvendt: en tids-formatering efter en gyldig noegle fanges stadig
+  assert.equal(scanSource('const s = `${d.toLocaleDateString("en-CA")} ${d.toLocaleString("sv-SE", { hour: "2-digit" })}`;', file).length, 1);
+});
+
+test("#6797: locale-tags matches case-ufoelsomt", () => {
+  assert.deepEqual(rules('d.toLocaleDateString("en-gb", { day: "numeric" })'), ["locale-literal"]);
+  assert.deepEqual(rules('n.toLocaleString("DA-dk")'), ["locale-literal"]);
+  assert.deepEqual(rules('new Intl.NumberFormat("en-us").format(n)'), ["locale-literal"]);
+  assert.deepEqual(rules('const l = isDa ? "da-dk" : "en-gb";'), ["locale-literal"]);
+  assert.deepEqual(rules('return locale || i18n.language || "de-de";'), ["locale-literal"]);
+  assert.equal(scanSource('d.toLocaleDateString(\n  "en-gb",\n)', "frontend/src/pages/X.jsx").length, 1);
+  // dynamisk locale og prosa uden Intl-kald er stadig fint
+  assert.deepEqual(rules("n.toLocaleString(locale)"), []);
+  assert.deepEqual(rules('export const PSEUDO_LANG = "en-xa";'), []);
+});
+
+test("#6797: ISO-tricket normaliseres foer tjekket, saa en-ca/SV-se er det samme som en-CA/sv-SE", () => {
+  assert.equal(canonicalLocaleTag("en-gb"), "en-GB");
+  assert.equal(canonicalLocaleTag("SV-se"), "sv-SE");
+  assert.equal(canonicalLocaleTag("da"), "da");
+  assert.deepEqual(rules('d.toLocaleDateString("en-ca")'), []);
+  assert.deepEqual(rules(`new Intl.DateTimeFormat("SV-SE", { timeZone, ${FULL_KEY} })`), []);
+  // normaliseringen aabner ikke for andre locales eller for visning
+  assert.deepEqual(rules('d.toLocaleDateString("en-ca", { month: "long" })'), ["locale-literal"]);
+  assert.deepEqual(rules('new Intl.DateTimeFormat("en-ca", { timeStyle: "short" })'), ["locale-literal"]);
+  assert.deepEqual(rules('d.toLocaleDateString("en-us")'), ["locale-literal"]);
+  assert.deepEqual(rules('n.toLocaleString("sv-se")'), ["locale-literal"]);
 });

@@ -1,0 +1,10 @@
+{
+  "install": {
+    "regionAriaLabel": "Instalar la app",
+    "title": "Pon Cycling Zone en tu pantalla de inicio. Se abre a pantalla completa, directo a tu equipo.",
+    "action": "Instalar",
+    "later": "Ahora no",
+    "iosTitle": "Pon Cycling Zone en tu pantalla de inicio: toca Compartir y luego Añadir a pantalla de inicio.",
+    "iosDismiss": "Entendido"
+  }
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseArgs, paramsForScale, summarize, renderMarkdown } from './tenx-dryrun.mjs';
+import { parseArgs, paramsForScale, summarize, renderMarkdown, run } from './tenx-dryrun.mjs';
 
 test('parseArgs: default er skala 1 og 10, normal-scenariet', () => {
   const { errors, options } = parseArgs([]);
@@ -18,8 +18,8 @@ test('parseArgs: afviser ukendte flag, tomme værdier og skalaer over 20', () =>
 });
 
 test('paramsForScale: hold og ungdomsgrupper vokser lineært', () => {
-  assert.deepEqual(paramsForScale(1), { teamsPerSeniorPool: 20, youthGroups: 10 });
-  assert.deepEqual(paramsForScale(10), { teamsPerSeniorPool: 200, youthGroups: 100 });
+  assert.deepEqual(paramsForScale(1), { teamsPerSeniorPool: 20, youthGroups: 10, teams: 410 });
+  assert.deepEqual(paramsForScale(10), { teamsPerSeniorPool: 200, youthGroups: 100, teams: 4100 });
 });
 
 test('summarize + renderMarkdown: fejlede checks og aftentræningens varighed vises', () => {
@@ -38,4 +38,10 @@ test('summarize + renderMarkdown: fejlede checks og aftentræningens varighed vi
   const md = renderMarkdown([row], 'normal');
   assert.match(md, /\| 10x \| 2400 \| 124\/237 \|/);
   assert.match(md, /Daglig etape-cap: 62/);
+});
+
+test('run: skala 1 afregner prods ca. 410 hold i aftentræningen (#6766)', async () => {
+  const [row] = await run({ scales: [1], scenario: 'normal' });
+  assert.equal(row.teams, 410);
+  assert.ok(row.failed.includes('training_close_duration'));
 });

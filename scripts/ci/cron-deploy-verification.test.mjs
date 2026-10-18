@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, railwayDrainSeconds, safeReason, waitingSummary,
-  verifyCronCheckins, SHORT_CADENCE_SECONDS } from './cron-deploy-verification.mjs';
+import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
+  verifyCronCheckins, SHORT_CADENCE_SECONDS, MAX_COHORT_SHIFT_SECONDS } from './cron-deploy-verification.mjs';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
 
 const since = '2026-10-07T12:00:00Z';
@@ -65,15 +65,102 @@ test('initial fresh snapshot alone cannot establish a tick after READY', async (
   assert.equal(result.state, 'verified'); assert.equal(calls, 2);
 });
 
-test('transport, non-array, duplicate and HTTP errors fail closed without leaking bodies', async () => {
+test('transport, non-array, duplicate and HTTP errors that last to the deadline fail closed without leaking bodies (#6799)', async () => {
   for (const fetchFn of [async () => { throw new Error('private body'); },
     async () => ({ ok: false }), async () => ({ ok: true, json: async () => ({ secret: 'private' }) }),
     async () => ({ ok: true, json: async () => [row('short', since), row('short', since)] })]) {
     const logs = [];
-    assert.equal((await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',
-      now: () => since, sleep: async () => assert.fail('must not sleep'), fetchFn, log: line => logs.push(line) })).state, 'failed');
+    let milliseconds = Date.parse(since), calls = 0;
+    const result = await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',
+      now: () => new Date(milliseconds).toISOString(), sleep: async ms => { milliseconds += ms; },
+      fetchFn: async (...args) => { calls++; return fetchFn(...args); }, log: line => logs.push(line) });
+    assert.equal(result.state, 'failed');
+    assert.ok(calls > 1, 'a read error is retried, never an immediate verdict');
+    assert.equal(milliseconds, Date.parse(since) + 120_000, 'red only once the job deadline is reached');
     assert.ok(logs.every(line => !line.includes('private')));
+    assert.match(logs.at(-1), /short: failed; last check-in=missing\/unreadable; deadline=2026-10-07T12:02:00/);
   }
+});
+
+test('a transient read failure keeps accepted proof and retries within the deadline (#6799)', async () => {
+  const configs = [monitors[0], ['medium', { schedule: { value: 5, unit: 'minute' }, checkinMargin: 1 }]];
+  const clock = ['2026-10-07T12:00:20Z', '2026-10-07T12:00:40Z', '2026-10-07T12:01:00Z', '2026-10-07T12:03:00Z', '2026-10-07T12:05:00Z'];
+  const bodies = [
+    () => [row('short', '2026-10-07T12:00:05Z'), row('medium', '2026-10-07T11:59:00Z', 300)],
+    () => [row('short', '2026-10-07T12:00:30Z'), row('medium', '2026-10-07T11:59:00Z', 300)],
+    () => { throw new Error('private body'); },
+    () => { throw new Error('private body'); },
+    () => [row('short', '2026-10-07T12:04:30Z'), row('medium', '2026-10-07T12:04:40Z', 300)]];
+  let calls = 0, sleeps = 0;
+  const logs = [];
+  const result = await verifyCronCheckins({ slugs: ['short', 'medium'], since, monitors: configs, url: 'https://fixture.invalid', key: 'fixture',
+    now: () => clock[Math.min(calls, clock.length) - 1], sleep: async () => { sleeps++; },
+    fetchFn: async () => { const body = bodies[calls++](); return { ok: true, json: async () => body }; }, log: line => logs.push(line) });
+  assert.equal(result.state, 'verified'); assert.equal(calls, 5); assert.equal(sleeps, 4);
+  assert.equal(result.jobs.find(job => job.slug === 'short').lastCheckin, '2026-10-07T12:00:30.000Z');
+  assert.equal(logs.filter(line => line.startsWith('Heartbeat read failed')).length, 1);
+  assert.ok(logs.every(line => !line.includes('private')));
+});
+
+test('a read error that lasts to the deadline is red for unaccepted jobs while accepted proof stays (#6799)', async () => {
+  const configs = [monitors[0], ['medium', { schedule: { value: 5, unit: 'minute' }, checkinMargin: 1 }]];
+  let milliseconds = Date.parse(since), calls = 0;
+  const result = await verifyCronCheckins({ slugs: ['short', 'medium'], since, monitors: configs, url: 'https://fixture.invalid', key: 'fixture',
+    now: () => new Date(milliseconds).toISOString(), sleep: async ms => { milliseconds += ms; },
+    fetchFn: async () => {
+      calls++;
+      if (calls > 2) throw new Error('boom');
+      const short = calls === 1 ? '2026-10-07T11:59:50Z' : '2026-10-07T12:00:10Z';
+      return { ok: true, json: async () => [row('short', short), row('medium', '2026-10-07T11:59:00Z', 300)] };
+    } });
+  assert.equal(result.state, 'failed');
+  assert.equal(result.jobs.find(job => job.slug === 'short').state, 'verified');
+  assert.equal(result.jobs.find(job => job.slug === 'medium').state, 'failed');
+});
+
+test('an invalid first snapshot does not consume the first-snapshot guard (#6799 review)', async () => {
+  let calls = 0;
+  const bodies = [[row('short', since), row('short', since)], [row('short', '2026-10-07T12:00:05Z')], [row('short', '2026-10-07T12:00:20Z')]];
+  const result = await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',
+    now: () => '2026-10-07T12:00:30Z', sleep: async () => {},
+    fetchFn: async () => ({ ok: true, json: async () => bodies[calls++] }) });
+  assert.equal(result.state, 'verified');
+  assert.equal(calls, 3, 'the unique boot-prime row after the invalid snapshot is not proof');
+});
+
+test('a never-readable heartbeat fails long cadence jobs after the short window instead of deferring them (#6799)', () => {
+  const args = { slugs: ['long'], since, monitors };
+  assert.equal(evaluateUnreadable({ ...args, now: '2026-10-07T12:10:00Z' }).state, 'waiting');
+  assert.equal(evaluateUnreadable({ ...args, now: '2026-10-07T12:30:00Z' }).state, 'failed');
+  assert.equal(evaluateUnreadable({ ...args, now: '2026-10-07T12:10:00Z', everRead: true }).state, 'deferred');
+  assert.equal(evaluateUnreadable({ ...args, now: '2026-10-07T13:02:00Z', everRead: true }).state, 'failed');
+  assert.equal(evaluateUnreadable({ slugs: ['unknown'], since, now: since, monitors }).state, 'failed');
+  assert.equal(evaluateUnreadable({ ...args, since: 'invalid', now: since }).state, 'failed');
+});
+
+test('a boot cohort after the boundary moves the deadline to cohort time + cadence + margin (#6799)', () => {
+  const boot = '2026-10-07T12:01:40Z';
+  const excluded = new Set(), cohortAt = new Map();
+  const args = { slugs: ['short'], since, monitors, excluded, cohortAt };
+  const bootRows = [row('short', boot), row('long', boot)];
+  // The base deadline is 12:02:00; without the shift this would already be red.
+  assert.equal(evaluateCheckins({ ...args, rows: bootRows, now: '2026-10-07T12:01:50Z' }).state, 'waiting');
+  const waiting = evaluateCheckins({ ...args, rows: bootRows, now: '2026-10-07T12:02:10Z' });
+  assert.equal(waiting.state, 'waiting');
+  assert.equal(waiting.jobs[0].deadline, '2026-10-07T12:03:40.000Z');
+  // A later tick overwrites the row; the remembered cohort keeps the deadline.
+  assert.equal(evaluateCheckins({ ...args, rows: [row('short', '2026-10-07T12:02:30Z'), row('long', boot)], now: '2026-10-07T12:02:40Z' }).state, 'verified');
+});
+
+test('without a genuine tick after the cohort the shifted deadline still ends red (#6799)', async () => {
+  const boot = '2026-10-07T12:01:40Z';
+  let milliseconds = Date.parse('2026-10-07T12:01:50Z');
+  const result = await verifyCronCheckins({ slugs: ['short'], since, monitors, url: 'https://fixture.invalid', key: 'fixture',
+    now: () => new Date(milliseconds).toISOString(), sleep: async ms => { milliseconds += ms; },
+    fetchFn: async () => ({ ok: true, json: async () => [row('short', boot), row('long', boot)] }) });
+  assert.equal(result.state, 'failed');
+  assert.ok(milliseconds >= Date.parse(boot) + 120_000, 'waited for the cohort-based deadline');
+  assert.equal(result.jobs[0].deadline, '2026-10-07T12:03:40.000Z');
 });
 
 test('unreadable configuration prints affected job diagnostics without requests or credentials', async () => {
@@ -345,9 +432,18 @@ test('#6487: cron proof starts right after smoke and its step timeout covers the
   assert.ok(drain > 55, 'smoke must fit inside the Railway drain window');
   const step = workflow.slice(workflow.indexOf('- name: Verify affected cron check-ins'), workflow.indexOf('- name: Cron check-ins verified'));
   const minutes = Number(step.match(/timeout-minutes: (\d+)/)[1]);
-  const needed = (drain + latest) / 60;
+  const needed = (drain + latest + MAX_COHORT_SHIFT_SECONDS) / 60;
   assert.ok(minutes >= needed + 1 && minutes <= needed + 5, `cron step timeout ${minutes} min vs latest short deadline ${needed} min`);
   const comment = workflow.slice(workflow.indexOf('- name: Comment release verified'), workflow.indexOf('- name: Verify affected cron check-ins'));
   assert.match(comment, /continue-on-error: true/);
   assert.match(comment, /<!-- deploy-verify:\$SHA -->/);
+});
+
+test('#6799 (Codex #6823): a late boot cohort shifts the deadline at most MAX_COHORT_SHIFT_SECONDS', () => {
+  const since = '2026-10-17T12:00:00.000Z';
+  const late = new Date(Date.parse(since) + (MAX_COHORT_SHIFT_SECONDS + 3600) * 1000).toISOString();
+  const rows = ['board-auto-accept', 'board-mid-season'].map(job_slug => ({ job_slug, last_checkin_at: late, expected_cadence_seconds: 1800 }));
+  const result = evaluateCheckins({ slugs: ['board-auto-accept'], rows, since, now: late, excluded: new Set([Date.parse(late)]), cohortAt: new Map([['board-auto-accept', Date.parse(late)]]) });
+  const deadline = Date.parse(result.jobs[0].deadline);
+  assert.ok(deadline <= Date.parse(since) + (MAX_COHORT_SHIFT_SECONDS + 1800 + 15 * 60) * 1000, `deadline ${result.jobs[0].deadline}`);
 });

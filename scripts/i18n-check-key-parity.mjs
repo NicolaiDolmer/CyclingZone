@@ -20,7 +20,13 @@
 //
 // Plural rules: CLDR categories differ per language, so a target must contain
 // every plural category `en` uses (plus `other`); extra categories are fine.
-// Select arms must match exactly. i18next suffix keys (`key_one`, `key_other`)
+// Exact selectors (`=0`, `=1`) are not CLDR categories: they are language
+// independent and must be kept as-is in the target (#6806).
+// Select arms must match exactly.
+//
+// ICU syntax errors reported on a target (when `en` is clean): unterminated
+// argument, a stray closing `}` at top level, and a missing comma after the
+// `plural`/`select` type (`{n, plural one {...}}`) (#6806). i18next suffix keys (`key_one`, `key_other`)
 // are grouped under their base key with the same superset rule.
 //
 // Usage:
@@ -43,7 +49,9 @@ const ICU_TYPES_WITH_ARMS = new Set(["plural", "select", "selectordinal"]);
 export function analyzeMessage(message) {
   // `unbalanced`: an argument or arm is still open at end of message (#6597
   // Codex): intl-messageformat cannot render it, so parity must not pass.
-  const result = { args: new Set(), arms: new Map(), tags: [], unbalanced: false };
+  // `strayClose`: a `}` at top level with no argument to close (#6806).
+  // `missingComma`: `{n, plural one {...}}` - no comma between type and arms (#6806).
+  const result = { args: new Set(), arms: new Map(), tags: [], unbalanced: false, strayClose: false, missingComma: false };
   const s = String(message);
   let i = 0;
 
@@ -68,7 +76,13 @@ export function analyzeMessage(message) {
         if (s[i + 1] === "'") { literal += "'"; i += 2; continue; }
         if (s[i + 1] === "{" || s[i + 1] === "}") {
           i++;
-          while (i < s.length && s[i] !== "'") i++;
+          // Inside a quoted section `''` is an escaped literal apostrophe, not
+          // the closing quote (Codex #6825): `'{foo isn''t bar}'` is one section.
+          while (i < s.length) {
+            if (s[i] === "'" && s[i + 1] === "'") { i += 2; continue; }
+            if (s[i] === "'") break;
+            i++;
+          }
           i++;
           continue;
         }
@@ -82,6 +96,7 @@ export function analyzeMessage(message) {
       }
       if (c === "}") {
         if (nested) { flushTags(); return; }
+        result.strayClose = true;
         literal += c; i++; continue;
       }
       if (c === "#" && scope) {
@@ -122,6 +137,7 @@ export function analyzeMessage(message) {
       return;
     }
     if (s[i] === ",") i++;
+    else if (i < s.length && s[i] !== "}") result.missingComma = true;
     skipWs();
     const arms = new Set();
     result.arms.set(id, arms);
@@ -154,6 +170,8 @@ export function compareMessages(source, target) {
   const a = analyzeMessage(source);
   const b = analyzeMessage(target);
   if (b.unbalanced && !a.unbalanced) problems.push("ICU syntax: unbalanced braces (unterminated argument)");
+  if (b.strayClose && !a.strayClose) problems.push("ICU syntax: unmatched closing brace }");
+  if (b.missingComma && !a.missingComma) problems.push("ICU syntax: missing comma after plural/select type");
 
   const lost = [...a.args].filter((x) => !b.args.has(x));
   const extra = [...b.args].filter((x) => !a.args.has(x));
@@ -164,7 +182,9 @@ export function compareMessages(source, target) {
     const tgtArms = b.arms.get(id);
     if (!tgtArms) continue; // already reported as a missing placeholder
     const isSelect = id.endsWith("|select");
-    const missing = [...srcArms].filter((arm) => !tgtArms.has(arm) && (isSelect || !arm.startsWith("=")));
+    // Exact selectors (=0, =1) are language independent, so they must be kept
+    // in the target just like select arms (#6806).
+    const missing = [...srcArms].filter((arm) => !tgtArms.has(arm));
     if (!isSelect && !tgtArms.has("other")) missing.push("other");
     for (const arm of new Set(missing)) problems.push(`${fmtArg(id)} form "${arm}" missing`);
     if (isSelect) {

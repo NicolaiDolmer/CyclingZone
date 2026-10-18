@@ -1,0 +1,76 @@
+{
+  "header": {
+    "title": "Mijn activiteit",
+    "subtitle": "Je marktacties op één plek"
+  },
+  "lastUpdated": "Laatst bijgewerkt {time}",
+  "refresh": "Vernieuwen",
+  "refreshing": "Vernieuwen...",
+  "refreshTitle": "Gegevens vernieuwen",
+  "countdown": {
+    "ended": "Afgelopen"
+  },
+  "tabs": {
+    "action": "Actie nodig",
+    "transfers": "Transfers",
+    "history": "Geschiedenis"
+  },
+  "offerStatus": {
+    "pending": "Wacht op antwoord",
+    "countered": "Tegenbod ontvangen",
+    "awaiting_confirmation": "Deal bevestigen",
+    "window_pending": "Afgesproken · wacht op transferperiode",
+    "accepted": "Geaccepteerd",
+    "rejected": "Afgewezen",
+    "withdrawn": "Ingetrokken"
+  },
+  "badge": {
+    "seller": "Verkoper",
+    "winner": "Winnaar",
+    "bidder": "Bieder",
+    "bought": "Gekocht",
+    "sold": "Verkocht",
+    "noBids": "Geen biedingen",
+    "lost": "Verloren",
+    "inAuction": "In veiling"
+  },
+  "section": {
+    "offersNeedResponse": "Aanbiedingen die op jouw antwoord wachten",
+    "auctionsEndingSoon": "Veilingen die binnen 1 uur eindigen",
+    "activeAuctions": "Actieve veilingen",
+    "receivedOffers": "Ontvangen aanbiedingen",
+    "sentOffers": "Verstuurde aanbiedingen",
+    "auctions": "Veilingen",
+    "transfers": "Transfers"
+  },
+  "empty": {
+    "actionTitle": "Er is niets dat actie van jou vraagt",
+    "actionSub": "Je bent bij met alle aanbiedingen en deals",
+    "auctionsTitle": "Geen actieve veilingen",
+    "auctionsSub": "Je biedt op geen enkele veiling en verkoopt niets",
+    "transfersTitle": "Geen actieve transfers",
+    "transfersSub": "Aanbiedingen die je verstuurt of ontvangt verschijnen hier",
+    "watchlistTitle": "Je volglijst is leeg",
+    "watchlistSub": "Voeg renners uit de rennersdatabase toe met de sterknop.",
+    "historyTitle": "Nog geen geschiedenis",
+    "historySub": "Afgeronde deals verschijnen hier"
+  },
+  "detail": {
+    "to": "Aan: {name}",
+    "from": "Van: {name}",
+    "season": "Seizoen {start}–{end}",
+    "highestBidder": "Hoogste bieder: {name}",
+    "noBidsYet": "Nog geen biedingen",
+    "leader": "Aan de leiding: {name}",
+    "noLeaderYet": "Nog niemand aan de leiding"
+  },
+  "watchlist": {
+    "goToFull": "Naar de volledige volglijst",
+    "freeAgent": "Transfervrij",
+    "removeFailed": "De renner kon niet van je volglijst worden gehaald. Probeer het opnieuw."
+  },
+  "loadError": {
+    "message": "Je activiteit kon niet worden geladen. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw"
+  }
+}

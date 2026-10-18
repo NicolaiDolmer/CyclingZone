@@ -1,0 +1,65 @@
+{
+  "panel": {
+    "label": "Filtre",
+    "resetAll": "Tout réinitialiser",
+    "resetCount": "Tout réinitialiser ({count})",
+    "more": "Plus de filtres"
+  },
+  "fields": {
+    "name": "Nom",
+    "namePlaceholder": "Rechercher un coureur...",
+    "country": "Pays",
+    "countryAll": "Tous les pays",
+    "valueRange": "Valeur en CZ$ (min-max)",
+    "salaryRange": "Salaire en CZ$ (min-max)",
+    "ageRange": "Âge (min-max)",
+    "bidRange": "Enchère la plus haute en CZ$ (min-max)",
+    "askingPriceRange": "Prix demandé en CZ$ (min-max)",
+    "valueDeviationRange": "Écart de valeur en % (min-max)",
+    "team": "Équipe",
+    "teamAll": "Toutes les équipes",
+    "min": "Min",
+    "max": "Max"
+  },
+  "toggles": {
+    "freeAgent": "Agent libre",
+    "u25": "U25",
+    "u23": "U23",
+    "showAi": "Afficher les équipes IA"
+  },
+  "stats": {
+    "section": "Filtres de stats",
+    "active": "{count} actifs",
+    "minInput": "{label} min",
+    "maxInput": "{label} max"
+  },
+  "chips": {
+    "value": {
+      "min": "Valeur ≥ {amount} CZ$",
+      "max": "Valeur ≤ {amount} CZ$"
+    },
+    "salary": {
+      "min": "Salaire ≥ {amount} CZ$",
+      "max": "Salaire ≤ {amount} CZ$"
+    },
+    "age": {
+      "min": "Âge ≥ {value}",
+      "max": "Âge ≤ {value}"
+    },
+    "bid": {
+      "min": "Enchère ≥ {amount} CZ$",
+      "max": "Enchère ≤ {amount} CZ$"
+    },
+    "askingPrice": {
+      "min": "Prix ≥ {amount} CZ$",
+      "max": "Prix ≤ {amount} CZ$"
+    },
+    "valueDeviation": {
+      "min": "Écart ≥ {value} %",
+      "max": "Écart ≤ {value} %"
+    },
+    "teamSelected": "Équipe sélectionnée",
+    "statRange": "{label} {min}-{max}",
+    "remove": "Retirer le filtre : {label}"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "title": "Calendrier des courses",
+  "eyebrow": "Saison {number} · {days} jours de course",
+  "eyebrowNoDays": "Saison {number}",
+  "loadingAria": "Chargement du calendrier des courses",
+  "noSeason": {
+    "title": "Aucune saison en cours",
+    "desc": "Le calendrier des courses apparaît ici dès qu'une saison est programmée."
+  },
+  "seasonMenu": {
+    "label": "Saison",
+    "option": "S{number}"
+  },
+  "notGenerated": {
+    "title": "Le calendrier de la saison {number} n'est pas encore prêt",
+    "desc": "Le programme de courses de cette saison n'a pas encore été généré. Repasse plus près du début de la saison."
+  },
+  "divisionPending": "La saison {number} n'a pas encore commencé. Ta division est décidée au changement de saison, tes propres courses ne sont donc pas marquées.",
+  "empty": {
+    "title": "Aucune course ce mois-ci",
+    "desc": "Utilise les flèches du mois pour trouver les courses programmées."
+  },
+  "tabs": {
+    "mine": "Mon équipe",
+    "all": "Toutes les équipes",
+    "divisions": "Divisions"
+  },
+  "division": "Division {n}",
+  "divisionMenu": {
+    "label": "Division",
+    "all": "Toutes les divisions"
+  },
+  "poolMenu": {
+    "label": "Groupe",
+    "all": "Tous les groupes"
+  },
+  "filter": {
+    "mine": "Les courses de mon équipe"
+  },
+  "chip": {
+    "stageNum": "étape {n}",
+    "openRace": "Ouvrir la planification de {name}"
+  },
+  "weekday": {
+    "mon": "LUN",
+    "tue": "MAR",
+    "wed": "MER",
+    "thu": "JEU",
+    "fri": "VEN",
+    "sat": "SAM",
+    "sun": "DIM"
+  },
+  "today": "Aujourd'hui",
+  "legend": {
+    "title": "Terrain",
+    "sprint": "Sprint",
+    "cobbles": "Pavés",
+    "hilly": "Vallonné",
+    "mountain": "Montagne",
+    "itt": "Contre-la-montre",
+    "ttt": "Contre-la-montre par équipes"
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "cobbles": "Pavés",
+    "hilly": "Vallonné",
+    "mountain": "Montagne",
+    "itt": "Contre-la-montre",
+    "ttt": "Contre-la-montre par équipes"
+  },
+  "moreRaces": "+{count} de plus",
+  "prevMonth": "Mois précédent",
+  "nextMonth": "Mois suivant",
+  "error": {
+    "title": "Impossible de charger le calendrier",
+    "description": "Un problème est survenu au chargement du calendrier des courses. Réessaie dans un instant.",
+    "retry": "Réessayer",
+    "session": "Ta session est terminée. Reconnecte-toi pour voir le calendrier."
+  }
+}

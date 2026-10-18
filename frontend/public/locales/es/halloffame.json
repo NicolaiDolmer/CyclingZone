@@ -1,0 +1,43 @@
+{
+  "title": "Salón de la Fama",
+  "subtitle": "Récords históricos y estadísticas de mánagers",
+  "tabRecords": "Récords",
+  "tabManagers": "Mánagers",
+  "tabDivHistory": "Historial de divisiones",
+  "season": "Temporada {n}",
+  "categories": {
+    "most_points_season": "Más puntos en una temporada",
+    "most_stage_wins_season": "Más victorias de etapa en una temporada",
+    "most_div1_titles": "Más títulos de División 1"
+  },
+  "units": {
+    "points": "puntos",
+    "wins": "victorias",
+    "titles": "títulos"
+  },
+  "noRecords": "Aún no hay récords. Juega temporadas para establecerlos",
+  "thManager": "Mánager",
+  "thTitle": "Título",
+  "thLevel": "Nivel",
+  "thXp": "XP",
+  "division1": "División 1",
+  "noDivHistory": "Aún no hay historial de divisiones",
+  "noDivHistoryHint": "Termina temporadas para ver el historial",
+  "stageWins": "{count} victorias de etapa",
+  "ptSuffix": "pt",
+  "level": {
+    "rookie": "Rookie",
+    "amateur": "Amateur",
+    "continental": "Continental",
+    "pro": "Pro",
+    "proTeam": "Pro Team",
+    "worldTour": "WorldTour",
+    "monument": "Monument",
+    "gcContender": "Aspirante a la general",
+    "grandTour": "Grand Tour",
+    "legend": "Leyenda"
+  },
+  "loadError": "No se pudo cargar el Salón de la Fama. Inténtalo de nuevo.",
+  "retry": "Reintentar",
+  "noManagers": "Aún no hay mánagers"
+}

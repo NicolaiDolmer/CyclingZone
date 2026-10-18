@@ -18,7 +18,7 @@
  *     etape-cap (MAX_STAGES_PER_DAY) på samme måde, som flere seniorpuljer ville.
  */
 import { pathToFileURL } from 'node:url';
-import { simulateRaceDay, COST_PROFILES, DEFAULT_LIMITS } from '../../backend/scripts/loadtestRaceDay.mjs';
+import { simulateRaceDay, COST_PROFILES, DEFAULT_LIMITS, PROD_TEAM_COUNT } from '../../backend/scripts/loadtestRaceDay.mjs';
 
 export const BASE = Object.freeze({ teamsPerSeniorPool: 20, youthGroups: 10 });
 export const USAGE = 'node scripts/loadtest/tenx-dryrun.mjs [--scales 1,10] [--scenario normal|season-last-day] [--json]';
@@ -50,6 +50,9 @@ export function paramsForScale(scale) {
   return {
     teamsPerSeniorPool: BASE.teamsPerSeniorPool * scale,
     youthGroups: BASE.youthGroups * scale,
+    // #6766: dry-run'ens fixture er mindst prods holdantal (ca. 410); N x skalerer det tal,
+    // så aftentræningen ved 10x afregner ca. 4.100 hold og ikke blot strukturens 2.400.
+    teams: PROD_TEAM_COUNT * scale,
   };
 }
 

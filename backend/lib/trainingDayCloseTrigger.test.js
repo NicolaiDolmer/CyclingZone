@@ -483,6 +483,37 @@ describe("runTrainingDayCloseSweep", () => {
     assert.equal(second.skipped, "already_done_today");
   });
 
+  it("#6798: en forældet 'loading'-reservation paa den gamle noegle taeller IKKE som koert", async () => {
+    // inWindow = 18:30Z. stale er aeldre end taerskelen, fresh er ét minut gammel,
+    // done er afregnet (report->>stage = null i det smalle format).
+    const base = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 3, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 3, game_day: 40, scheduled_at: "2026-09-15T09:00:00Z" }],
+      teams: ["stale", "fresh", "done", "new"].map((id) => ({ id, league_division_id: null, is_ai: false, parked_at: null })),
+      legacyRuns: [
+        { team_id: "stale", created_at: "2026-09-15T18:00:00Z", stage: "loading" },
+        { team_id: "fresh", created_at: "2026-09-15T18:29:00Z", stage: "loading" },
+        { team_id: "done", created_at: "2026-09-15T17:00:00Z", stage: null },
+      ],
+    });
+    const selects = [];
+    const supabase = { from(table) {
+      const chain = base.from(table);
+      if (table !== "training_day_runs") return chain;
+      const select = chain.select;
+      chain.select = function (columns) { selects.push(columns); return select.call(this, columns); };
+      return chain;
+    } };
+    const called = [];
+    const result = await runTrainingDayCloseSweep({
+      supabase, now: inWindow, runDay: async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; },
+    });
+    assert.ok(selects.includes("team_id, created_at, stage:report->>stage"), `legacy-opslaget henter kun stadiet: ${selects}`);
+    assert.deepEqual(called.sort(), ["new", "stale"], "forældet reservation sendes til motoren; frisk og afregnet springes over");
+    assert.equal(result.swept, 2);
+  });
+
   it("en fejlet koersel LAASER IKKE dagen: naeste tick proever igen", async () => {
     // Dags-claimen er kapacitet, ikke korrekthed. Saettes den mens et hold fejlede,
     // kigger resten af aftenens ticks slet ikke paa det hold igen — og den gamle

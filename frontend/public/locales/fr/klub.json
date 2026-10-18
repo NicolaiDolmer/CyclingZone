@@ -1,0 +1,154 @@
+{
+  "page": {
+    "title": "Club",
+    "subtitle": "Installations et staff",
+    "balance": "Solde",
+    "division": "Division {division}"
+  },
+  "summary": {
+    "upkeep": "Entretien par saison",
+    "wages": "Salaires",
+    "balance": "Solde"
+  },
+  "sections": {
+    "facilities": "Installations",
+    "staff": "Staff"
+  },
+  "facilities": {
+    "tier": "Palier {tier} / {max}",
+    "notBuilt": "Pas construit",
+    "maxed": "Entièrement amélioré",
+    "comingSoon": "Bientôt",
+    "upgrade": "Améliorer",
+    "build": "Construire",
+    "upkeepAt": "Entretien au niveau {tier} : {amount}/saison",
+    "upkeepNow": "Entretien {amount}/saison"
+  },
+  "roi": {
+    "trainingBuild": "Construis-le pour entraîner tes coureurs plus vite",
+    "scoutingBuild": "Construis-le pour pouvoir recruter un chef recruteur",
+    "academyBuild": "Construis-le pour plus de candidats chaque semaine et un profil pour ton recrutement"
+  },
+  "badge": {
+    "active": "Actif"
+  },
+  "hero": {
+    "trainingSub": "d'entraînement plus rapide chaque jour",
+    "scouting": "Chef recruteur",
+    "scoutingSub": "Tu peux recruter un responsable jusqu'au palier {tier}",
+    "academy": "{value} candidats",
+    "academySub": "par semaine, et ton profil façonne le recrutement"
+  },
+  "ladder": {
+    "label": "Niveaux",
+    "now": "actuel",
+    "scouting": "Resp. P{tier}",
+    "academy": "{value} cand.",
+    "unlock": {
+      "origin": "région",
+      "type": "+ type",
+      "extra": "+1 en plus",
+      "stronger": "plus d'attrait"
+    }
+  },
+  "effect": {
+    "live": "Actif maintenant",
+    "target": "Bientôt"
+  },
+  "tracks": {
+    "training": {
+      "name": "Centre d'entraînement",
+      "effect": "entraînement",
+      "soon": "Progression plus rapide des coureurs",
+      "teaser": "Tes coureurs s'entraînent plus vite chaque jour."
+    },
+    "scouting": {
+      "name": "Réseau de détection",
+      "effect": "vision des coureurs",
+      "soon": "Une vision plus fine des coureurs",
+      "teaser": "Recrute un chef recruteur pour des évaluations de coureurs plus précises."
+    },
+    "medical": {
+      "name": "Département médical",
+      "effect": "récupération",
+      "soon": "Récupération plus rapide",
+      "teaser": "Tes coureurs retrouvent plus vite leur forme après les courses difficiles."
+    },
+    "academy": {
+      "name": "Extension de l'académie",
+      "effect": "candidats par semaine",
+      "soon": "Un recrutement hebdomadaire plus large avec ton propre profil",
+      "teaser": "Un recrutement hebdomadaire plus large qui penche vers les coureurs que tu veux."
+    },
+    "commercial": {
+      "name": "Département commercial",
+      "effect": "sponsor (plafonné)",
+      "soon": "Revenus de sponsor à long terme",
+      "teaser": "Des revenus de sponsor supplémentaires à long terme."
+    }
+  },
+  "roles": {
+    "training": "Directeur sportif",
+    "scouting": "Chef recruteur",
+    "medical": "Médecin de l'équipe",
+    "academy": "Directeur de l'académie",
+    "commercial": "Directeur commercial"
+  },
+  "staff": {
+    "none": "Aucun staff recruté",
+    "locked": "Verrouillé : construis d'abord le palier 1",
+    "hired": "Recruté",
+    "salary": "Salaire {amount} CZ$/saison",
+    "candidates": "Candidats",
+    "addAnother": "+ Recruter un autre",
+    "slotsFull": "Les deux postes sont pourvus. Libère-en un pour recruter quelqu'un de nouveau.",
+    "candidate": "Palier {tier} · {amount}/saison",
+    "hire": "Recruter",
+    "release": "Libérer",
+    "severance": "Indemnité de départ {amount}",
+    "tierGate": "Les paliers supérieurs se débloquent quand tu améliores l'installation",
+    "billNote": "Le salaire est facturé au début de la saison"
+  },
+  "errors": {
+    "insufficient_funds": "Solde insuffisant pour cette amélioration.",
+    "insufficient_available_balance": "Pas assez d'argent disponible : une partie de ton solde est bloquée dans des enchères.",
+    "max_tier": "Cette piste est déjà entièrement améliorée.",
+    "role_occupied": "Tu as déjà un membre du staff à ce poste.",
+    "staff_tier_exceeds_facility": "Améliore l'installation avant de recruter un responsable d'un palier supérieur.",
+    "invalid_candidate": "Ce candidat n'est plus disponible.",
+    "candidate_already_hired": "Ce candidat est déjà recruté sur l'autre poste.",
+    "failed": "Un problème est survenu. Réessaie.",
+    "network": "Impossible de joindre le serveur. Réessaie."
+  },
+  "empty": {
+    "title": "Le club est fermé",
+    "description": "Les installations et le staff ne sont pas encore disponibles."
+  },
+  "confirm": {
+    "upgradeTitle": "Confirmer l'amélioration",
+    "buildTitle": "Confirmer la construction",
+    "fireTitle": "Libérer {name} ?",
+    "cost": "Coût",
+    "newTier": "Nouveau palier",
+    "deductNote": "Déduit de ton solde maintenant",
+    "severanceNote": "L'indemnité de départ est déduite maintenant",
+    "confirm": "Confirmer",
+    "cancel": "Annuler"
+  },
+  "error": {
+    "load": {
+      "title": "Impossible de charger le club",
+      "description": "Rien n'a été perdu. Tes installations et ton staff sont en sécurité. Réessaie.",
+      "retry": "Réessayer"
+    },
+    "upgrade": {
+      "failed": "L'achat n'a pas pu être finalisé. Rien n'a été déduit.",
+      "network": "Pas de connexion au serveur. Rien n'a été déduit.",
+      "auth": "Ta session a expiré. Reconnecte-toi et réessaie."
+    }
+  },
+  "tabs": {
+    "club": "Installations",
+    "staff": "Staff"
+  }
+}

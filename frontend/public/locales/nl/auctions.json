@@ -1,0 +1,301 @@
+{
+  "page": {
+    "title": "Veilingen",
+    "loadingAria": "Veilingen laden"
+  },
+  "loadError": {
+    "message": "De veilingen konden niet worden geladen. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw"
+  },
+  "watchlist": {
+    "toggleFailed": "Je volglijst kon niet worden bijgewerkt. Probeer het opnieuw."
+  },
+  "mobileSort": {
+    "label": "Sorteren op",
+    "ascAria": "Oplopend gesorteerd, tik voor aflopend",
+    "descAria": "Aflopend gesorteerd, tik voor oplopend"
+  },
+  "tour": {
+    "placeBid": {
+      "title": "Doe een bod",
+      "body": "Vul je bod in en druk op 'Bieden'. Het minimumbod is al ingevuld. Je moet minstens 1 CZ$ boven het huidige bod bieden."
+    },
+    "countdown": {
+      "title": "Resterende tijd en automatische verlenging",
+      "body": "Als een bod in de laatste 10 minuten de leiding neemt, wordt de veiling automatisch verlengd. Bieden zonder de leiding te nemen, bijvoorbeeld tegen een automatisch bod dat je overbiedt, verlengt de veiling niet."
+    }
+  },
+  "hint": {
+    "title": "Win het bod, dan komt de renner bij je team",
+    "body": "De renner koerst voor je vanaf je volgende selectie. Je biedt tegen echte managers, je koopt niet tegen een vaste prijs.",
+    "minBidLabel": "Een bod doen:",
+    "minBidBody": "Het veld is al ingevuld met het minimum, minstens 1 CZ$ boven het huidige bod. Druk op Bieden en je doet mee.",
+    "autoExtendLabel": "Automatische verlenging van 10 min:",
+    "autoExtendBody": "Een bod dat in de laatste 10 minuten de leiding neemt, verlengt de veiling, zodat niemand in de laatste seconde kan snipen.",
+    "startTour": "Laat me rondkijken",
+    "jumpToRecommendation": "Bekijk een betaalbare keuze"
+  },
+  "ticker": {
+    "bidCount": "{count, plural, one {1 recent bod} other {# recente biedingen}}"
+  },
+  "stats": {
+    "balance": "Saldo",
+    "reserved": "Gereserveerd in biedingen",
+    "ridersNow": "Renners nu",
+    "projection": "Prognose"
+  },
+  "filter": {
+    "mySituation": "Mijn veilingen ({count})",
+    "all": "Alle ({count})",
+    "otherManagers": "Andere managers ({count})",
+    "wishlistButton": "Alleen volglijst",
+    "feedButton": "Live biedingen",
+    "feedTitleOn": "Het paneel met live biedingen verbergen",
+    "feedTitleOff": "Het paneel met live biedingen tonen",
+    "searchPlaceholder": "Renners zoeken",
+    "searchAria": "Renners in veiling zoeken",
+    "moreFilters": "Meer filters"
+  },
+  "nav": {
+    "history": "Geschiedenis"
+  },
+  "history": {
+    "subtitle": "Je afgeronde veilingen: gekocht, verkocht en verloren biedingen.",
+    "tabActive": "Actief",
+    "tabHistory": "Geschiedenis ({count})",
+    "statBought": "Gekocht",
+    "statSold": "Verkocht",
+    "statSpent": "Uitgegeven",
+    "statEarned": "Verdiend",
+    "filterAll": "Alle",
+    "filterBought": "Gekocht ({count})",
+    "filterSold": "Verkocht ({count})",
+    "emptyWon": "Je hebt nog geen veilingen gewonnen",
+    "emptySold": "Je hebt nog geen renners verkocht",
+    "emptyLost": "Geen verloren veilingen in je geschiedenis",
+    "emptyAll": "Nog geen afgeronde veilingen",
+    "colNation": "Land",
+    "colStatus": "Status",
+    "colWinner": "Winnaar",
+    "colBids": "Biedingen",
+    "colPrice": "Prijs",
+    "colTime": "Tijd",
+    "noBids": "Geen biedingen",
+    "bidsCount": "{count, plural, one {1 bod} other {# biedingen}}",
+    "bidsUniqueBidders": "{count, plural, one {1 team} other {# teams}}",
+    "bidWarBadge": "Biedoorlog · {bids, plural, one {1 bod} other {# biedingen}}, {teams, plural, one {1 team} other {# teams}}",
+    "riderMeta": "Waarde: {value} CZ$ · Salaris: {salary}",
+    "salaryNone": "—",
+    "pageOf": "Pagina {page} van {total}",
+    "prev": "Vorige",
+    "next": "Volgende",
+    "viewBidWar": "Biedoorlog bekijken"
+  },
+  "bidWar": {
+    "title": "Biedoorlog: {rider}",
+    "subtitle": "Eindprijs {price} CZ$. Elk geplaatst bod, nu de hamer is gevallen.",
+    "empty": "Er zijn geen biedingen op deze renner gedaan.",
+    "winningBid": "Winnend bod",
+    "fairPlayNote": "Hier worden alleen geplaatste biedingen getoond. Limieten van automatische biedingen en actieve strategieën blijven altijd privé, ook nadat de veiling is gesloten."
+  },
+  "table": {
+    "rider": "Renner",
+    "nation": "Land",
+    "status": "Status",
+    "type": "Type",
+    "value": "Waarde",
+    "highestBid": "Hoogste bod",
+    "timeLeft": "Resterende tijd",
+    "age": "Leeftijd",
+    "salary": "Salaris",
+    "potential": "Potentieel",
+    "popularity": "Populariteit",
+    "popularityTitle": "Populariteit bij de fans (0-100). Gebruikt door het sterrenrenner-doel van het 5-jarenplan van het bestuur.",
+    "reputation": "Reputatie",
+    "reputationTitle": "Verdiende reputatie in de koers. Dit is het getal dat het bestuur leest voor profielrenners.",
+    "seller": "Verkoper",
+    "bid": "Bod",
+    "ovr": "OVR",
+    "ovrTitle": "Het gewogen gemiddelde van de vaardigheden die zijn eigen rol nodig heeft. Hetzelfde getal betekent hetzelfde niveau in elke rol."
+  },
+  "card": {
+    "time": "Tijd",
+    "highestBid": "Hoogste bod",
+    "salary": "Salaris",
+    "estSalary": "Gesch. salaris",
+    "contractExpires": "Verloopt na s.{season}",
+    "seller": "Verkoper",
+    "potential": "Potentieel",
+    "popularity": "Pop.",
+    "reputation": "Rep.",
+    "ageYears": "{age} jr",
+    "estValue": "Gesch. waarde",
+    "ovrTitle": "Het gewogen gemiddelde van de vaardigheden die zijn eigen rol nodig heeft. Hetzelfde getal betekent hetzelfde niveau in elke rol."
+  },
+  "reputation": {
+    "band": {
+      "unknown": "Onbekend",
+      "known": "Bekend",
+      "profile": "Profiel",
+      "star": "Ster",
+      "legend": "Legende"
+    }
+  },
+  "leader": {
+    "line": "Aan de leiding: {name}",
+    "none": "Nog geen biedingen"
+  },
+  "overbidHidden": {
+    "hideTitle": "Deze veiling uit je lijst verbergen",
+    "hideAria": "De veiling voor {name} uit je lijst verbergen",
+    "showAgain": "Verborgen tonen ({count})"
+  },
+  "list": {
+    "countLine": "{shown} van {total} veilingen getoond"
+  },
+  "timer": {
+    "completed": "Afgerond",
+    "expired": "Verlopen",
+    "hoursMinutes": "{h}u {m}m",
+    "minutesSeconds": "{m}m {s}s",
+    "seconds": "{s}s"
+  },
+  "badge": {
+    "winning": "Winnend",
+    "seller": "Verkoper",
+    "mine": "Van mij",
+    "extended": "Verl.",
+    "flash": "Flash",
+    "u23": "U23",
+    "u25": "U25",
+    "youth": "Jeugd",
+    "firstBidPick": "Eerste keuze",
+    "outbid": "Overboden · jouw bod {amount}"
+  },
+  "bidGate": {
+    "bothFull": "Geen plek in je academie of seniorenselectie (30/30). Verkoop een renner om te bieden.",
+    "bothFullU23": "Geen plek in je U23-team ({max}/{max}) of seniorenselectie (30/30). Verkoop een renner om te bieden.",
+    "bothFullJunior": "Geen plek in je juniorenteam ({max}/{max}) of seniorenselectie (30/30). Verkoop een renner om te bieden.",
+    "seniorFull": "Je seniorenselectie is vol (30/30). Verkoop een renner om te bieden.",
+    "toSenior": "-> komt in je seniorenselectie",
+    "toAcademy": "-> komt in je academie",
+    "toU23": "-> komt in je U23-team",
+    "toJunior": "-> komt in je juniorenteam"
+  },
+  "bid": {
+    "minBid": "Min. {amount} CZ$",
+    "minBidCard": "Min. bod: {amount} CZ$",
+    "inputAria": "Je bod in CZ$",
+    "buttonPlace": "Bieden",
+    "buttonRaise": "Verhogen",
+    "buttonError": "Fout",
+    "buttonPlaceAria": "Bod uitbrengen",
+    "buttonRaiseAria": "Je bod verhogen",
+    "sellerLabel": "Jij verkoopt",
+    "blockedBelowMin": "Verhoog je bod naar minstens {amount} CZ$ om te bieden.",
+    "blockedExpired": "Deze veiling is afgelopen. Vernieuw om de uitslag te zien.",
+    "proxy": {
+      "blockedBelowMin": "Je limiet voor automatisch bieden moet minstens {amount} CZ$ zijn, het huidige minimumbod.",
+      "blockedExpired": "Deze veiling is afgelopen. Vernieuw om de uitslag te zien.",
+      "display": "Automatisch bod: max. {amount} CZ$",
+      "help": "Ik bied tot deze limiet voor je, telkens 1 CZ$ per keer. Je verliest de leiding alleen als iemand boven je limiet gaat. Je limiet blijft privé.",
+      "set": "Limiet voor automatisch bieden instellen",
+      "edit": "Limiet voor automatisch bieden wijzigen",
+      "remove": "Automatisch bod verwijderen",
+      "save": "Limiet voor automatisch bieden opslaan",
+      "saveButton": "Opslaan",
+      "cancel": "Bewerken van automatisch bod annuleren",
+      "placeholder": "Maximumlimiet",
+      "inputAria": "Limiet voor automatisch bieden in CZ$",
+      "buttonAdd": "+ Automatisch bod",
+      "buttonAddCard": "+ Limiet voor automatisch bod instellen",
+      "editButton": "Wijzigen",
+      "removeButton": "Verwijderen"
+    }
+  },
+  "section": {
+    "leading": "Jij staat aan de leiding",
+    "overbid": "Je bent overboden",
+    "selling": "Jij verkoopt"
+  },
+  "empty": {
+    "wishlistNoResults": "Geen actieve veilingen voor renners op je volglijst",
+    "noInvolvementMySituation": "Je bent bij geen enkele actieve veiling betrokken",
+    "noResults": "Geen veilingen in deze categorie",
+    "wishlistHelp": "Zet 'Alleen volglijst' uit of voeg renners toe vanuit het rennersoverzicht",
+    "browseSuggestion": "Schakel naar 'Alle' om de markt te bekijken",
+    "startAuctionSuggestion": "Ga naar Renners en start een veiling",
+    "actionClearWishlist": "Alle veilingen tonen",
+    "actionBrowseAll": "Alle veilingen bekijken",
+    "actionStartAuction": "Naar renners"
+  },
+  "feed": {
+    "title": "Live biedingen · jouw veilingen",
+    "empty": "Nog geen activiteit in je veilingen.",
+    "yourBid": "Jij bood",
+    "counterBid": "Tegenbod",
+    "counterBidNamed": "Tegenbod van {name}",
+    "fallbackRider": "Renner",
+    "relativeSec": "{n}s geleden",
+    "relativeMin": "{n}m geleden",
+    "relativeHour": "{n}u geleden"
+  },
+  "toast": {
+    "overbidMessage": "Je bent overboden op {riderName}",
+    "overbidNewPrice": "Nieuwe prijs: {amount} CZ$"
+  },
+  "modal": {
+    "bidTitle": "Bod bevestigen",
+    "bidVerb": "een bod plaatsen van",
+    "bidAction": "Bieden",
+    "proxyTitle": "Automatisch bod bevestigen",
+    "proxyVerb": "je limiet voor automatisch bieden instellen op",
+    "proxyAction": "Automatisch bod opslaan",
+    "transferTitle": "Transferbod bevestigen",
+    "transferVerb": "een transferbod uitbrengen van",
+    "transferAction": "Bod versturen",
+    "questionPrefix": "Wil je",
+    "onLabel": "op",
+    "settlesAfterValueUpdate": "Deze veiling wordt afgehandeld na de waarde-update van zondag. Waarde en vaardigheden kunnen veranderen voordat hij afloopt.",
+    "retirementWarning": {
+      "risk": "Zijn carrière loopt op zijn einde: deze renner zit in het pensioenvenster (leeftijd {windowStart}-{guaranteedAge}) en kan na dit seizoen stoppen.",
+      "certain": "Deze renner is {guaranteedAge} of ouder en stopt na dit seizoen."
+    },
+    "typoGuard": {
+      "title": "Controleer je prijs",
+      "body": "Je zet <strong>{riderName}</strong> te koop voor <strong>{price} CZ$</strong>.",
+      "question": "Zijn marktwaarde is <strong>{marketValue} CZ$</strong>. Bedoelde je dat?",
+      "confirmButton": "Nee, mijn prijs is bewust",
+      "fixButton": "Prijs aanpassen"
+    }
+  },
+  "fallback": {
+    "rider": "renner",
+    "team": "een manager"
+  },
+  "celebration": {
+    "title": "Je hebt de veiling gewonnen!",
+    "subtitle": "De renner zit nu in je team"
+  },
+  "priceChanged": {
+    "title": "Prijs gewijzigd",
+    "newPrice": "De prijs is nu <strong>{amount} CZ$</strong>.",
+    "newMinBid": "Het minimumbod is nu <strong>{amount} CZ$</strong>. Wil je nog steeds bieden?",
+    "bidCta": "Bied {amount} CZ$"
+  },
+  "error": {
+    "bidFailed": "Het bod kon niet worden geplaatst",
+    "proxyFailed": "Automatisch bod instellen is mislukt",
+    "proxyRemoveFailed": "De limiet voor automatisch bieden kon niet worden verwijderd. Hij is nog actief.",
+    "insufficientBalance": "Het bod is hoger dan je beschikbare saldo"
+  },
+  "warning": {
+    "squadCapacity": "Let op: je staat nu aan de leiding in veilingen voor {totalAfter} renners (max. {maxRiders}). De limiet is een harde grens, dus je kunt niet meer renners winnen dan je selectie kan bevatten."
+  },
+  "valueDelta": {
+    "under": "{pct}% onder de gesch. waarde",
+    "over": "{pct}% boven de gesch. waarde",
+    "at": "Dicht bij de gesch. waarde",
+    "title": "Geschatte marktwaarde: {amount} CZ$. Een modelschatting, geen gegarandeerde prijs."
+  }
+}

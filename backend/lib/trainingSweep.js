@@ -123,7 +123,9 @@ export async function runTrainingSweep({
 
     supabase
       .from("training_day_runs")
-      .select("team_id, tick_date, created_at, report")
+      // #6798: kun stadiet, ikke hele rapporten (samme form som
+      // loadLegacyRunBlockingTeamIds); isReclaimableLegacyReservation laeser row.stage.
+      .select("team_id, tick_date, created_at, stage:report->>stage")
       .eq("tick_date", tickDate),
   ]);
 

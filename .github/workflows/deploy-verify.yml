@@ -55,7 +55,7 @@ jobs:
     # drain + 30 min cadence + margin) + probes. scripts/merge-queue.ps1's
     # -DeployVerifyTimeoutMinutes must stay above this (asserted in
     # scripts/merge-queue-deploy-pending.test.mjs, #6318).
-    timeout-minutes: 100
+    timeout-minutes: 130
     steps:
       # #5424: flyttet hertil (var før "Wait for Vercel + Railway
       # deployments", se den bevarede begrundelse ved den næste brug af
@@ -406,7 +406,7 @@ jobs:
           ## Deploy LIVE, cron-bevis koerer (${SHA:0:7})
 
           Deploy og smoke er groenne. Merge-koeen er frigivet.
-          Cron-beviset (berorte jobs tikker efter deployet) og de oevrige release-tjek koerer videre i [denne koersel]($RUN_URL), som opdaterer kommentaren her til sidst (cron-beviset tager hoejst ca. 50 min)."
+          Cron-beviset (berorte jobs tikker efter deployet) og de oevrige release-tjek koerer videre i [denne koersel]($RUN_URL), som opdaterer kommentaren her til sidst (cron-beviset tager normalt hoejst ca. 50 min, og op til ca. 80 min hvis backend genstartede efter deployet)."
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
           if [ -n "$COMMENT_ID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
@@ -418,9 +418,11 @@ jobs:
         id: crons
         if: steps.deployments.outputs.result == 'success'
         # #6487: seneste deadline for et kort job (<= 30 min) er Railway-drain
-        # 2,5 + kadence 30 + margin 15 = 47,5 min; scriptet melder selv failed
-        # derefter. 50 min er kun et vaern mod et haengende kald.
-        timeout-minutes: 50
+        # 2,5 + kadence 30 + margin 15 = 47,5 min, plus hoejst 30 min hvis en
+        # boot-kohorte efter boundary flytter deadline (#6799,
+        # MAX_COHORT_SHIFT_SECONDS); scriptet melder selv failed derefter.
+        # 80 min er kun et vaern mod et haengende kald.
+        timeout-minutes: 80
         env:
           AFFECTED_SLUGS: ${{ steps.required.outputs.affected_slugs }}
           CRON_SINCE: ${{ steps.deployments.outputs.cron_since }}

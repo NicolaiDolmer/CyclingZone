@@ -18,27 +18,56 @@ function idsOf(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
+const raceKmOf = (e: TimelineEvent) => e?.recorded_km ?? e?.km ?? 0;
+
+function sortedWithoutRegroups(events: readonly TimelineEvent[] | null | undefined, startlist: readonly string[] | null): ParticipationEvent[] {
+  // #6294: a "catch" by a group of escapees only is a regroup, never the catch.
+  // The projection replays the race in order, so sort first: by the km the
+  // engine wrote (`recorded_km` when a film span moved `km`), then the engine's
+  // own order at that km. The answer never depends on how the list arrived.
+  return withoutRegroupCatches((events || [])
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => raceKmOf(a.e) - raceKmOf(b.e) || a.i - b.i)
+    .map(({ e }) => e)
+    .filter((e): e is ParticipationEvent => typeof e?.type === "string"), startlist ?? []);
+}
+
 /**
  * Indhentningen af DAGENS udbrud (morgen-formationen), ikke et senere angreb.
  * Samme udvælgelse som filmens catch-punkt. Ingen formation → første catch.
  */
 export function findMorningCatch(events: readonly TimelineEvent[] | null | undefined = [], startlist: readonly string[] | null = null): TimelineEvent | null {
-  // #6294: a "catch" by a group of escapees only is a regroup, never the catch.
-  // The projection replays the race in order, so sort first: by the km the
-  // engine wrote (`recorded_km` when a film span moved `km`), then the engine's
-  // own order at that km. The answer never depends on how the list arrived.
-  const raceKm = (e: TimelineEvent) => e?.recorded_km ?? e?.km ?? 0;
-  const sorted = withoutRegroupCatches((events || [])
-    .map((e, i) => ({ e, i }))
-    .sort((a, b) => raceKm(a.e) - raceKm(b.e) || a.i - b.i)
-    .map(({ e }) => e)
-    .filter((e): e is ParticipationEvent => typeof e?.type === "string"), startlist ?? []);
+  const sorted = sortedWithoutRegroups(events, startlist);
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
   const morningIds = new Set(idsOf(formation?.params?.rider_ids));
   const formationGroup = formation?.params?.group_id;
   return sorted.find((e) => e?.type === "breakaway_caught"
     && (!formation || idsOf(e.params?.rider_ids).some((id) => morningIds.has(id)))
     && (!formationGroup || !e.params?.group_id || e.params.group_id === formationGroup)) ?? null;
+}
+
+export type ReformationCatch = { formed: NonNullable<TimelineEvent>; caught: TimelineEvent | null };
+
+/**
+ * #6803: de NYE udbrud (`breakaway_formed` med `reformation: true`, S5 efter en
+ * tidlig indhentning, #6369), hvert med sin egen indhentning (eller null, hvis
+ * det holdt hjem). Samme udvælgelse som `findMorningCatch`, men pr. nyt udbrud:
+ * det første `breakaway_caught` efter dannelsen, der rører udbruddets ryttere.
+ * Tom liste for etaper med kun ét udbrud, så de er uændrede.
+ */
+export function findReformationCatches(events: readonly TimelineEvent[] | null | undefined = [], startlist: readonly string[] | null = null): ReformationCatch[] {
+  const sorted = sortedWithoutRegroups(events, startlist);
+  return sorted
+    .filter((e) => e?.type === "breakaway_formed" && e.params?.reformation === true)
+    .map((formed) => {
+      const ids = new Set(idsOf(formed.params?.rider_ids));
+      const groupId = formed.params?.group_id;
+      const caught = sorted.find((e) => e?.type === "breakaway_caught"
+        && raceKmOf(e) >= raceKmOf(formed)
+        && idsOf(e.params?.rider_ids).some((id) => ids.has(id))
+        && (!groupId || !e.params?.group_id || e.params.group_id === groupId)) ?? null;
+      return { formed, caught };
+    });
 }
 
 /**

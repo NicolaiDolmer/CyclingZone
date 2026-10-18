@@ -1,0 +1,142 @@
+{
+  "page": {
+    "title": "Forum",
+    "subtitle": "Praat met de andere managers en deel je ideeën",
+    "newPost": "Nieuw bericht",
+    "markAllRead": "Alles als gelezen markeren",
+    "markingAllRead": "Markeren..."
+  },
+  "categories": {
+    "all": "Alle",
+    "roadmap": "Roadmap",
+    "general": "Algemeen",
+    "feedback_ideas": "Feedback & ideeën",
+    "questions": "Vragen & antwoorden",
+    "tactics": "Tactiek & strategie",
+    "transfers": "Transfers",
+    "off_topic": "Off-topic",
+    "archive": "Archief"
+  },
+  "adminOnly": {
+    "tag": "Officieel",
+    "description": "Waar het spel naartoe gaat, rechtstreeks van mij.",
+    "notice": "Alleen ik plaats hier berichten. Reageer zoveel je wilt.",
+    "emptyDescription": "Hier staat nog niets. Hier deel ik waar het spel naartoe gaat."
+  },
+  "list": {
+    "pinnedHeading": "Vastgepind",
+    "latestHeading": "Nieuwste berichten",
+    "archiveHeading": "Archief",
+    "replies": "{count, plural, =0 {Geen reacties} one {1 reactie} other {# reacties}}",
+    "poll": "Peiling",
+    "loadMore": "Meer laden",
+    "emptyTitle": "Nog geen berichten",
+    "emptyDescription": "Wees de eerste die een gesprek start.",
+    "archiveEmptyTitle": "Nog niets gearchiveerd",
+    "archiveEmptyDescription": "Gesprekken verhuizen hier automatisch naartoe na 60 dagen zonder nieuwe activiteit.",
+    "by": "Door {name}",
+    "unread": "Ongelezen"
+  },
+  "stats": {
+    "views": "{count, plural, =0 {Geen weergaven} one {1 weergave} other {# weergaven}}",
+    "lastReply": "Laatste reactie {name}, {time}"
+  },
+  "compose": {
+    "title": "Nieuw bericht",
+    "categoryLabel": "Categorie",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Waar gaat het over?",
+    "bodyLabel": "Bericht",
+    "bodyPlaceholder": "Schrijf je bericht",
+    "pollLabel": "Peilingopties (alleen beheerder, één per regel)",
+    "pollHelp": "Voeg 2 tot 10 opties toe om een peiling aan dit bericht te koppelen.",
+    "submit": "Publiceren",
+    "cancel": "Annuleren"
+  },
+  "post": {
+    "back": "Terug naar het forum",
+    "repliesHeading": "Reacties",
+    "replyLabel": "Jouw reactie",
+    "replyPlaceholder": "Schrijf een reactie",
+    "replySubmit": "Reageren",
+    "noReplies": "Nog geen reacties. Wees de eerste die antwoordt.",
+    "earlierReplies": "{count, plural, =1 {1 eerdere reactie} other {# eerdere reacties}}",
+    "report": "Melden",
+    "delete": "Verwijderen",
+    "pin": "Vastpinnen",
+    "unpin": "Losmaken",
+    "pinnedTag": "Vastgepind",
+    "move": "Verplaatsen",
+    "moveModalTitle": "Gesprek verplaatsen",
+    "moveModalDescription": "Kies de categorie waar dit gesprek naartoe moet.",
+    "moveConfirm": "Verplaatsen",
+    "movedToast": "Gesprek verplaatst naar {category}",
+    "notFoundTitle": "Bericht niet gevonden",
+    "notFoundDescription": "Dit bericht is mogelijk verwijderd."
+  },
+  "poll": {
+    "heading": "Peiling",
+    "votes": "{count, plural, =0 {Nog geen stemmen} one {1 stem} other {# stemmen}}",
+    "yourVote": "Jouw stem"
+  },
+  "support": {
+    "ariaOn": "{count, plural, =0 {Je steun intrekken} one {Je steun intrekken (1 supporter)} other {Je steun intrekken (# supporters)}}",
+    "ariaOff": "{count, plural, =0 {Dit steunen} one {Dit steunen (1 supporter)} other {Dit steunen (# supporters)}}",
+    "count": "{count, plural, =0 {Nog geen steun} one {1 supporter} other {# supporters}}"
+  },
+  "identity": {
+    "profileAria": "Het managerprofiel van {name} openen"
+  },
+  "mentions": {
+    "listLabel": "Een manager noemen"
+  },
+  "signature": {
+    "division": "Divisie {division}"
+  },
+  "quote": {
+    "action": "Citeren",
+    "cancel": "Annuleren",
+    "replyingTo": "Reactie op {name}",
+    "removedNotice": "Deze reactie is verwijderd"
+  },
+  "report": {
+    "title": "Inhoud melden",
+    "description": "De melding gaat rechtstreeks naar de beheerder. Gebruik het voor spam, misbruik of alles wat hier niet thuishoort.",
+    "reasonLabel": "Reden",
+    "reasonPlaceholder": "Waarom meld je dit? (minstens 10 tekens)",
+    "reasonMinError": "Voeg minstens {count} tekens toe om uit te leggen waarom.",
+    "submit": "Melding versturen",
+    "cancel": "Annuleren",
+    "sent": "Bedankt. De melding is naar de beheerder gestuurd."
+  },
+  "errors": {
+    "loadFailed": "Het forum kon niet worden geladen. Er is niets verloren gegaan.",
+    "submitFailed": "Versturen is niet gelukt. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "markAllReadFailed": "Niet alle gesprekken konden als gelezen worden gemarkeerd. Probeer het opnieuw."
+  },
+  "images": {
+    "label": "Afbeeldingen",
+    "add": "Afbeelding toevoegen",
+    "counter": "{count} van {max}",
+    "remove": "Afbeelding verwijderen",
+    "adminRemove": "Afbeelding wissen",
+    "openFull": "De afbeelding op volledige grootte openen",
+    "attachmentAlt": "Afbeelding in dit bericht",
+    "hint": "Maximaal {max} afbeeldingen. JPG, PNG of WebP. Grote foto's worden verkleind voordat ze worden geüpload.",
+    "errors": {
+      "type": "Dat bestandstype werkt hier niet. Gebruik JPG, PNG of WebP.",
+      "tooMany": "Je kunt {count} afbeeldingen aan een bericht toevoegen.",
+      "tooLarge": "Die afbeelding is na het verkleinen nog steeds te groot. Probeer een kleinere.",
+      "decode": "De afbeelding kon niet worden gelezen. Probeer een ander bestand.",
+      "upload": "Het uploaden is mislukt. Controleer je verbinding en probeer het opnieuw."
+    }
+  },
+  "subscription": {
+    "following": "Volgend",
+    "muted": "Gedempt",
+    "followingHint": "Je krijgt ongelezen-markeringen en het puntje bij Forum als er hier iets nieuws is.",
+    "mutedHint": "Geen ongelezen-markeringen en geen puntje bij Forum van deze categorie. Reacties op je eigen gesprekken bereiken je nog steeds.",
+    "saveFailed": "Je keuze kon niet worden opgeslagen. Probeer het opnieuw."
+  }
+}

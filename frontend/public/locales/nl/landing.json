@@ -1,0 +1,168 @@
+{
+  "meta": {
+    "title": "Cycling Zone · de wielermanager in je browser waar strategie wint van geld uitgeven",
+    "description": "Bouw een team, bied op renners in live veilingen, bepaal je tactiek en koers een heel seizoen. Een gratis wielermanagerspel in je browser. Geen pay-to-win."
+  },
+  "nav": {
+    "discordLabel": "Discord",
+    "languageLabel": "Taal",
+    "login": "Inloggen",
+    "signup": "Aanmelden",
+    "skipToContent": "Naar de inhoud"
+  },
+  "hero": {
+    "badge": "Open beta · Gratis te spelen",
+    "title": "Een wielermanager gebouwd voor de lange adem.",
+    "subtitle": "Bouw je team, bied op renners in live veilingen en neem elke beslissing in een heel seizoen. Klim door de divisies, gewoon in je browser.",
+    "ctaPlay": "Maak je team aan",
+    "ctaDiscord": "Join de Discord",
+    "ctaEmail": "Ontvang de lanceringsmail",
+    "trustFree": "Gratis te spelen",
+    "trustNoCard": "Geen download",
+    "trustBrowser": "Draait in je browser"
+  },
+  "signature": {
+    "kicker": "In het spel",
+    "stageTitle": "Etappe 14 · Bergaankomst",
+    "distanceLabel": "Afstand",
+    "distanceValue": "182 km",
+    "climbLabel": "Slotklim",
+    "climbValue": "HC · 14,2 km aan 7,8%",
+    "classificationTitle": "Algemeen klassement",
+    "gapHeader": "Achterstand",
+    "jerseyYellow": "Leider in de koers",
+    "jerseyGreen": "Leider in het puntenklassement",
+    "jerseyPolka": "Leider in het bergklassement",
+    "sampleNote": "Voorbeeldgegevens. De live ranglijst wordt bijgewerkt terwijl de koers zich ontwikkelt."
+  },
+  "how": {
+    "kicker": "Zo speel je",
+    "title": "Vijf beslissingen, elk seizoen",
+    "rows": [
+      {
+        "no": "01",
+        "title": "Bouw je team",
+        "body": "Kies een selectie die bij je strategie past. Klimmers voor de bergen, sprinters voor het vlakke, een kopman om omheen te bouwen.",
+        "data": "Leid een volledige selectie, niet alleen één ster"
+      },
+      {
+        "no": "02",
+        "title": "Bied in live veilingen",
+        "body": "Strijd in realtime veilingen met andere managers om renners. Lees de zaal, kies het juiste moment voor je bod en betaal niet te veel.",
+        "data": "Live bieden, manager tegen manager"
+      },
+      {
+        "no": "03",
+        "title": "Ontwikkel je renners",
+        "body": "Train je renners om hun sterke punten te scherpen en haal jong talent door via je academie. De belofte van vandaag kan de ster van volgend seizoen worden.",
+        "data": "Een jeugdacademie om je eigen sterren te kweken"
+      },
+      {
+        "no": "04",
+        "title": "Bepaal je tactiek",
+        "body": "Kies je kopman, stuur renners in de aanval en bepaal wie de achtervolging inzet en wie zijn benen spaart voor de finish.",
+        "data": "Tactiek die de uitslag verandert"
+      },
+      {
+        "no": "05",
+        "title": "Koers het seizoen",
+        "body": "Volg je team door etappekoersen en eendagskoersen in een heel seizoen en bouw daarna aan het volgende seizoen.",
+        "data": "Koers je omhoog door de divisies"
+      }
+    ]
+  },
+  "different": {
+    "kicker": "Niet je gewone managerspel",
+    "title": "Gebouwd op één belofte",
+    "fairness": "Het spel moet eerlijk zijn voor iedereen. Met echt geld koop je geen betere renners, snellere training of betere resultaten.",
+    "cards": [
+      {
+        "title": "Gevormd door de community",
+        "body": "Eén ontwikkelaar, die in het openbaar bouwt. Jouw feedback bepaalt wat er als volgende wordt gebouwd, en elke wijziging verschijnt waar je het kunt zien."
+      },
+      {
+        "title": "Gratis te spelen",
+        "body": "Het hele spel is gratis. Meld je aan, bouw een team en doe mee zonder te betalen voor iets dat de uitkomst beïnvloedt."
+      },
+      {
+        "title": "Niets te installeren",
+        "body": "Het draait in je browser, op je telefoon of je laptop. Niets te downloaden, niets bij te werken."
+      }
+    ]
+  },
+  "discord": {
+    "kicker": "Doe mee",
+    "title": "Het spel wordt in het openbaar gebouwd",
+    "body": "Cycling Zone begon met één idee: een wielermanager waarin je niet alleen door cijfers klikt, maar echt iets opbouwt over een seizoen. Ik maak het in mijn eentje, in het openbaar, seizoen na seizoen. Op de Discord deel ik waar ik aan werk voordat het live gaat, krijgen nieuwe managers een handje op weg, en bepaalt jouw feedback wat ik als volgende bouw. Het is niet af, en het wordt elke week beter. Je komt voor het koersen. Je blijft voor de mensen. Neem je team mee, deel je gedachten en help bepalen waar het naartoe gaat.",
+    "cta": "Open de Discord"
+  },
+  "waitlist": {
+    "kicker": "Liever e-mail?",
+    "title": "Ontvang de lanceringsmail",
+    "body": "Laat je e-mailadres achter, dan stuur ik je één bericht zodra het volgende seizoen begint. Geen nieuwsbrief, geen ruis.",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "jij@voorbeeld.com",
+    "nameLabel": "Voornaam",
+    "nameOptional": "optioneel",
+    "namePlaceholder": "Hoe mag ik je noemen?",
+    "consentBefore": "Ik ga ermee akkoord dat er contact met me wordt opgenomen over de lancering en accepteer het ",
+    "consentLink": "privacybeleid",
+    "consentAfter": ".",
+    "privacyPath": "/privacy-policy",
+    "submit": "Breng me op de hoogte bij de lancering",
+    "submitting": "Je wordt aan de lijst toegevoegd...",
+    "disclaimer": "Eén e-mail bij de lancering. Je kunt je altijd afmelden.",
+    "successTitle": "Je staat op de lijst",
+    "successBody": "Bedankt. Ik mail je één keer als het volgende seizoen begint. Tot dan is de Discord de beste plek om mee te volgen.",
+    "successDiscord": "Join de Discord",
+    "errors": {
+      "emailRequired": "Vul je e-mailadres in.",
+      "emailInvalid": "Dat e-mailadres lijkt niet te kloppen.",
+      "consent": "Accepteer het privacybeleid om verder te gaan.",
+      "duplicate": "Je staat al op de lijst.",
+      "rls": "Er blokkeerde iets de aanmelding. Probeer het opnieuw.",
+      "network": "Netwerkfout. Controleer je verbinding en probeer het opnieuw.",
+      "unknown": "Er ging iets mis. Probeer het opnieuw."
+    }
+  },
+  "faq": {
+    "kicker": "Vragen",
+    "title": "Goed om te weten",
+    "items": [
+      {
+        "q": "Is het echt gratis?",
+        "a": "Ja. Het hele spel is gratis te spelen. Je kunt je aanmelden, een team bouwen en tegen andere managers strijden zonder ergens voor te betalen."
+      },
+      {
+        "q": "Is het pay-to-win?",
+        "a": "Nee. Met echt geld koop je geen resultaten. De beste manager wint, niet degene die het meeste uitgeeft."
+      },
+      {
+        "q": "Wanneer begint het seizoen?",
+        "a": "Cycling Zone zit nu in open beta en er opent binnenkort een nieuw seizoen. Join de Discord of laat je e-mailadres achter, dan laat ik het je weten zodra het begint."
+      },
+      {
+        "q": "Moet ik iets installeren?",
+        "a": "Nee. Het draait in je browser op desktop en mobiel. Er valt niets te downloaden."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "Een wielermanager in je browser.",
+    "privacy": "Privacy",
+    "discord": "Discord",
+    "rights": "Cycling Zone",
+    "exploreHeading": "Verkennen",
+    "explore": {
+      "howItWorks": "Hoe het werkt",
+      "compare": "Cycling Zone vs Pro Cycling Manager",
+      "help": "Help",
+      "rules": "Regels",
+      "roadmap": "Roadmap",
+      "patchNotes": "Patch notes",
+      "founderSupporter": "Founder",
+      "terms": "Voorwaarden",
+      "privacy": "Privacy"
+    }
+  }
+}

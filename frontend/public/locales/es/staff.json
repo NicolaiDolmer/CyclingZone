@@ -1,0 +1,101 @@
+{
+  "back": "Atrás",
+  "gate": {
+    "title": "Aún no disponible",
+    "description": "El área de personal técnico todavía no está abierta."
+  },
+  "missing": {
+    "title": "Personal no encontrado",
+    "description": "Este responsable no está en tu equipo."
+  },
+  "roles": {
+    "training": "Director deportivo",
+    "scouting": "Jefe de ojeadores",
+    "medical": "Médico del equipo",
+    "academy": "Director de la academia",
+    "commercial": "Director comercial"
+  },
+  "hero": {
+    "tierLabel": "Nivel",
+    "salaryLabel": "Salario",
+    "salary": "{amount} CZ$/temporada",
+    "ratingEyebrow": "Valoración /99",
+    "specHeadline": "Mejor en {axis}",
+    "photoFallback": "Foto"
+  },
+  "tabs": {
+    "overview": "Resumen",
+    "effect": "Efecto",
+    "history": "Historial"
+  },
+  "columns": {
+    "dimensions": "Entrenamiento",
+    "levels": "Grupo de entrenamiento preferente",
+    "roleSkills": "Habilidades del rol",
+    "levelsTooltip": "Sub-23 abarca a los ciclistas de la academia y a los jóvenes profesionales hasta los 25 años; Sénior abarca a los ciclistas de 26 en adelante. El grupo de entrenamiento preferente de un responsable muestra con qué grupo de edad trabaja mejor, además de sus dimensiones de entrenamiento."
+  },
+  "axes": {
+    "physical": "entrenamiento físico",
+    "mental": "entrenamiento mental",
+    "technical": "entrenamiento técnico",
+    "u23": "Sub-23",
+    "senior": "sénior",
+    "evaluation": "evaluación de talento",
+    "reach": "alcance de la red",
+    "recovery": "recuperación",
+    "injuryPrevention": "prevención de lesiones",
+    "intake": "calidad de la cantera",
+    "growth": "ritmo de crecimiento",
+    "negotiation": "negociación",
+    "marketing": "marketing"
+  },
+  "effect": {
+    "body": "La valoración global de este responsable ({rating}) determina cuánto del efecto de la instalación se materializa. El Centro de entrenamiento está activo hoy en el juego; los demás llegan pronto y muestran lo que harán cuando se activen."
+  },
+  "history": {
+    "body": "El historial de contratos y la antigüedad aparecerán aquí cuando lleguen los contratos del personal técnico.",
+    "scouting": {
+      "loading": "Cargando el historial de ojeo…",
+      "loadFailed": "No se pudo cargar el historial de ojeo. Inténtalo de nuevo.",
+      "empty": "Aún no hay ciclistas ojeados.",
+      "loadingRider": "Cargando ciclista…",
+      "riderUnavailable": "Ciclista ya no disponible",
+      "levelValue": "Nivel {level}/{max}",
+      "table": {
+        "date": "Fecha",
+        "rider": "Ciclista",
+        "level": "Nivel"
+      }
+    }
+  },
+  "switcher": {
+    "count": "{index} / {total}"
+  },
+  "public": {
+    "team": "Contratado por {team}",
+    "viewTeam": "Ver equipo",
+    "limitedNote": "Este es el personal técnico de otro mánager, así que solo se ven la valoración y la especialización principal. El desglose completo de habilidades solo se muestra al equipo propietario."
+  },
+  "release": {
+    "button": "Despedir al personal",
+    "title": "¿Despedir a {name}?",
+    "body": "El contrato termina de inmediato. Pagarás la indemnización ahora y el puesto queda libre para una nueva contratación al instante.",
+    "severanceLabel": "Indemnización ({multiplier} × {weeklyWage} CZ$)",
+    "wagesFreedLabel": "Sueldos semanales liberados",
+    "slotLabel": "Puesto de {role}",
+    "slotValue": "Libre de inmediato",
+    "keepButton": "Conservar",
+    "confirmButton": "Despedir por {amount} CZ$",
+    "confirmBusy": "Despidiendo…",
+    "errors": {
+      "staff_not_found": "Este miembro del personal ya no está en tu equipo.",
+      "already_released": "Ya está despedido.",
+      "insufficient_funds": "No puedes pagar la indemnización ({amount} CZ$).",
+      "insufficient_available_balance": "No tienes suficiente dinero disponible: parte de tu saldo está bloqueada en pujas de subastas.",
+      "facilities_disabled": "La gestión del personal técnico aún no está disponible.",
+      "auth": "Tienes que haber iniciado sesión para hacer eso.",
+      "network": "Falló la conexión. Inténtalo de nuevo en un momento.",
+      "failed": "No se pudo despedir a este miembro del personal. Inténtalo de nuevo en un momento."
+    }
+  }
+}
