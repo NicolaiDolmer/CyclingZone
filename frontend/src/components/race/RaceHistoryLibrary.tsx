@@ -119,12 +119,14 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
   const oneDayIds = flat.filter((r) => r.race_type !== "stage_race").map((r) => r.id);
   const stageIds = flat.filter((r) => r.race_type === "stage_race").map((r) => r.id);
   const winnerCols = "race_id, stage_number, result_type, rank, rider_id, rider_name, team_name";
+  // Gamle importer har stage_number = null; de tæller som etape 1 (som recap i api.js).
+  const STAGE_ONE_OR_LEGACY = "stage_number.eq.1,stage_number.is.null";
 
   const [oneDayWinners, stageWinners] = await Promise.all([
     readChunked<ResultRow>(oneDayIds, (ids) => supabase
       // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
       .from("race_results").select(winnerCols)
-      .in("race_id", ids).eq("result_type", "gc").eq("stage_number", 1).eq("rank", 1).order("id", { ascending: true })),
+      .in("race_id", ids).eq("result_type", "gc").or(STAGE_ONE_OR_LEGACY).eq("rank", 1).order("id", { ascending: true })),
     readChunked<ResultRow>(stageIds, (ids) => supabase
       // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
       .from("race_results").select(winnerCols)
@@ -153,11 +155,11 @@ async function loadHistory({ poolId, teamId }: { poolId: number; teamId: string 
       readChunked<ResultRow>(oneDayIds, (ids) => supabase
         // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
         .from("race_results").select("race_id, stage_number, result_type, rank")
-        .in("race_id", ids).eq("team_id", teamId).eq("result_type", "gc").eq("stage_number", 1).order("id", { ascending: true })),
+        .in("race_id", ids).eq("team_id", teamId).eq("result_type", "gc").or(STAGE_ONE_OR_LEGACY).order("id", { ascending: true })),
       ...[...byFinal].map(([n, ids]) => readChunked<ResultRow>(ids, (part) => supabase
         // pagination-safe: readChunked pager via fetchAllRows pr. id-chunk.
         .from("race_results").select("race_id, stage_number, result_type, rank")
-        .in("race_id", part).eq("team_id", teamId).eq("result_type", "gc").eq("stage_number", n)
+        .in("race_id", part).eq("team_id", teamId).eq("result_type", "gc").or(n === 1 ? STAGE_ONE_OR_LEGACY : `stage_number.eq.${n}`)
         .order("id", { ascending: true }))),
     ]);
     myRows = parts.flat();
