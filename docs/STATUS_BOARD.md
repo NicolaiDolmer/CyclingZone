@@ -4,17 +4,19 @@
 > Kilde: `gh pr list` / `gh issue list` (live) + [`docs/FEATURE_REGISTRY.yml`](FEATURE_REGISTRY.yml)
 > Regenerér: `node scripts/generate-status-board.mjs`
 
-96 features i FEATURE_REGISTRY.yml: live 75 · beta 2 · dormant 5 · building 5 · spec 1 · idea 2 · retired 6.
+97 features i FEATURE_REGISTRY.yml: live 75 · beta 2 · dormant 5 · building 6 · spec 1 · idea 2 · retired 6.
 
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
-- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (11d) — DIRTY
+- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (11d) — groen
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (1d) — roed
 - #6839 fix(training): Traen nu paa loebsdags-stien svarer 409 ved holdt reservation (Refs #6827) (0d) — roed
-- #6636 feat(race-library): upcoming races and scoped edition history (0d) — DIRTY
-- #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — roed
-- #6780 fix(board): mandater fra en afsluttet saeson skygger ikke for det aktuelle mandat (#6773) (0d) — roed
+- #6636 feat(race-library): upcoming races and scoped edition history (0d) — groen
+- #6877 fix(ci): ret CodeQL-fund #379 og #380 i to testfiler (0d) — groen
+- #6878 docs(registry): race_library_v2-flaget registreret efter merge af #6680 (0d) — groen
+- #6879 fix(ci): løft shard-planen så natlig Playwright Smoke bliver grøn (#5792) (0d) — groen
+- #6880 fix(calendar): afsluttet sæsons egen pulje kommer fra slutstillingen (#6875) (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -29,7 +31,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #1177 Holddynamik-dybde: vejkaptajner + mentor + erfaring (131d)
 - #1239 [Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl (130d)
 - #1461 security(email): DMARC enforcement — p=none → quarantine → reject (122d)
-- #2236 Organic community outreach — Reddit + Discord posting (103d)
+- #2236 Organic community outreach — Reddit + Discord posting (104d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (97d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (94d)
 - #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (91d)
@@ -38,26 +40,25 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (11d) — DIRTY
+- #6248 fix(training): maks +1 pr. evne pr. rytter pr. dato, fælles værn (Refs #6210) (11d) — groen
 - #6849 docs(6765): design for inkrementelle rangliste-matviews (0d) — groen
+- #6880 fix(calendar): afsluttet sæsons egen pulje kommer fra slutstillingen (#6875) (0d) — roed
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
 - #6634 docs: implementeringsplan for løbsbibliotek med kommende løb og historik (4d) — groen
 - #6813 docs(6804): design for kuperede udbrudssejre (rod-aarsag + A/B, bag s5_profiles_v2) (1d) — groen
-- #6819 [EJER-GO KRÆVES - TÆNDING] chore(db): s5_profiles_v2 bliver en lovlig regel-revision (#68… (0d) — groen
-- #6820 [EJER-GO KRÆVES - TÆNDING] S5 v2: s5_profiles_v2 bliver aktuel revision (#6818) (0d) — groen
+- #6819 [EJER-GO KRÆVES - TÆNDING] chore(db): s5_profiles_v2 bliver en lovlig regel-revision (#68… (1d) — groen
+- #6820 [EJER-GO KRÆVES - TÆNDING] S5 v2: s5_profiles_v2 bliver aktuel revision (#6818) (1d) — groen
 - #6843 docs(6814): design for jagtafstand på gap_update (bag s5_profiles_v2) (0d) — groen
 - #6849 docs(6765): design for inkrementelle rangliste-matviews (0d) — groen
-- #6874 chore(codex): agentroller, sikker opsætning og kortere startregler (0d) — groen
 
 **Ikke-draft med roed tilstand:**
 
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (1d) — roed
 - #6839 fix(training): Traen nu paa loebsdags-stien svarer 409 ved holdt reservation (Refs #6827) (0d) — roed
-- #6680 feat(races): kalender-kort, status-prik og Løbshistorik bag race_library_v2 (#6514) (0d) — roed
-- #6780 fix(board): mandater fra en afsluttet saeson skygger ikke for det aktuelle mandat (#6773) (0d) — roed
+- #6880 fix(calendar): afsluttet sæsons egen pulje kommer fra slutstillingen (#6875) (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
@@ -97,4 +98,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6475 [løb/UI] Enkeltstart 40 km viser mærket 'Long day' - tjek mærker og hvad udholdenhed bety… (7d)
 - #6772 [cutover] Load-test-gaten (#5904) er ikke opfyldt før 25/10, og sidste løbsdag fejler i d… (1d)
 - #5928 [bug/HØJ] Træthed og form flytter sig 5x pr. dato: konstanterne er kalibreret til ét tick… (19d)
-- …og 6 mere
+- …og 7 mere
