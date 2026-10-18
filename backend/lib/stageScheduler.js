@@ -53,8 +53,12 @@ const DAILY_CAP_MARGIN = 1.5;
 const MAX_STAGES_PER_DAY = Math.ceil(FULL_PYRAMID_PEAK_STAGES_PER_DAY * DAILY_CAP_MARGIN); // = 62 (gulv)
 
 // Ren formel (#6764): gulvet, eller dagens planlagte etaper + margin hvis det er højere.
+/**
+ * @param {number | null | undefined} plannedToday
+ * @returns {number}
+ */
 export function dailyStageCapFor(plannedToday) {
-  const planned = Number.isFinite(plannedToday) && plannedToday > 0 ? plannedToday : 0;
+  const planned = typeof plannedToday === "number" && Number.isFinite(plannedToday) && plannedToday > 0 ? plannedToday : 0;
   return Math.max(MAX_STAGES_PER_DAY, Math.ceil(planned * DAILY_CAP_MARGIN));
 }
 
@@ -64,6 +68,15 @@ export function dailyStageCapFor(plannedToday) {
 // etaper fra løb der blev færdige tidligere i dag, så nævneren skal gøre det samme —
 // ellers ville cap'et skrumpe i løbet af dagen, efterhånden som løb afsluttes.
 // Fejler tællingen, returneres gulvet (62) — logget og capturet, aldrig tavst.
+/**
+ * @param {{
+ *   supabase: any,
+ *   now: Date,
+ *   seenKeys?: Map<string, any> | null,
+ *   captureExceptionFn?: Function,
+ * }} args
+ * @returns {Promise<{ cap: number, plannedToday: number | null, fallback: boolean }>}
+ */
 export async function loadDailyStageCap({ supabase, now, seenKeys = null, captureExceptionFn = captureException }) {
   const midnight = copenhagenMidnightUTC(now);
   // +26 t lander altid på næste danske kalenderdag (døgn er 23-25 t ved DST-skift).
@@ -80,7 +93,7 @@ export async function loadDailyStageCap({ supabase, now, seenKeys = null, captur
   } catch (err) {
     console.error(JSON.stringify({
       event: "stage_scheduler_planned_count_failed",
-      error: err.message,
+      error: err instanceof Error ? err.message : String(err),
       fallbackCap: MAX_STAGES_PER_DAY,
       tick: now.toISOString(),
     }));
@@ -132,7 +145,7 @@ async function countStagesDoneToday(supabase, now) {
  *   captureExceptionFn?: Function,
  *   startTrainingDayClose?: Function,
  * }} args
- * @returns {{ ran, errors, skipped? }}
+ * @returns {{ ran, errors, skipped?, dailyCap?: number }}
  */
 export async function runStageScheduler({
   supabase,
