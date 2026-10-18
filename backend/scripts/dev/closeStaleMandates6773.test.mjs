@@ -289,3 +289,17 @@ test("#6773 (Codex) apply: en samtidig accept af et bonustilbud overskrives ikke
   assert.ok(goals.some((g) => g.bonus_offer_id === "bo-1"), "det flyttede bonusmål er med");
   assert.equal(out.result.bonusGoalsMoved, 1);
 });
+
+test("#6773 (Codex) apply: låse-tokenet ligger efter rækkens updated_at, også når den er nyere end uret", async () => {
+  const tables = fixture();
+  // En accept skrev modtageren EFTER apply's `now` (fx uret går lidt bagud).
+  tables.board_mandates.find((m) => m.id === id(2)).updated_at = "2026-10-18T10:00:00.001Z";
+  const double = createDouble(tables);
+  const { plan, hash } = await runDryRun({ supabase: double });
+  tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
+  await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
+  const goalWrite = double.writes.find((w) => w.payload.goals);
+  assert.ok(Date.parse(goalWrite.payload.updated_at) > Date.parse("2026-10-18T10:00:00.001Z"), "ny version, ikke samme token som accepten");
+  const tokens = double.writes.map((w) => w.payload.updated_at);
+  assert.equal(new Set(tokens).size, tokens.length);
+});

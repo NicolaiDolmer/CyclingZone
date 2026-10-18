@@ -315,8 +315,12 @@ export async function runApply({
   // Codex P1 (#6780): hver skrivning skal give en NY updated_at, ellers kan en
   // samtidig accept, der læste efter første flytning, stadig matche sin gamle
   // lås og overskrive næste flytning til samme mandat. Strengt stigende pr. skriv.
+  // Codex P1: tokenet skal også ligge EFTER rækkens nuværende updated_at, ellers
+  // kan en accept skrevet efter `now` give samme token, og CAS'en ændrer intet.
   let lastLockMs = now.getTime();
-  const nextLockToken = () => {
+  const nextLockToken = (rowUpdatedAt) => {
+    const rowMs = rowUpdatedAt == null ? Number.NaN : Date.parse(rowUpdatedAt);
+    if (Number.isFinite(rowMs) && rowMs > lastLockMs) lastLockMs = rowMs;
     lastLockMs += 1; // kun fra det injicerede ur (AGENTS L55), strengt stigende
     return new Date(lastLockMs).toISOString();
   };
@@ -339,7 +343,7 @@ export async function runApply({
       const current = Array.isArray(target.goals) ? target.goals : [];
       const add = move.goals.filter((g) => !hasBonusGoalForOffer(current, { offerId: g.bonus_offer_id, extraGoal: g }));
       if (!add.length) { moved = true; break; }
-      let q = supabase.from("board_mandates").update({ goals: [...current, ...add], updated_at: nextLockToken() })
+      let q = supabase.from("board_mandates").update({ goals: [...current, ...add], updated_at: nextLockToken(target.updated_at) })
         .eq("id", move.toId).eq("status", "active");
       q = target.updated_at == null ? q.is("updated_at", null) : q.eq("updated_at", target.updated_at);
       const { data: upd, error: upErr } = await q.select("id");
