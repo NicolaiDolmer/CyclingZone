@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
+import { affectedCronJobs, registryCadenceSeconds, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
   verifyCronCheckins, SHORT_CADENCE_SECONDS, MAX_COHORT_SHIFT_SECONDS } from './cron-deploy-verification.mjs';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
 
@@ -287,8 +287,7 @@ test('#6318 review: a common backend change widening to every registry job verif
   const jobs = affectedCronJobs([{ filename: 'backend/server.js', status: 'modified' }]);
   const { ALL_CRON_MONITORS } = await import('../../backend/lib/cronMonitorRegistry.js');
   assert.equal(jobs.length, ALL_CRON_MONITORS.length);
-  const units = { minute: 60, hour: 3600, day: 86400 };
-  const cadence = config => config.schedule.value * units[config.schedule.unit];
+  const cadence = registryCadenceSeconds;
   const drainSeconds = railwayDrainSeconds();
   const prime = Date.parse(since) - 30_000;
   let clock = Date.parse(since), calls = 0;
@@ -446,4 +445,26 @@ test('#6799 (Codex #6823): a late boot cohort shifts the deadline at most MAX_CO
   const result = evaluateCheckins({ slugs: ['board-auto-accept'], rows, since, now: late, excluded: new Set([Date.parse(late)]), cohortAt: new Map([['board-auto-accept', Date.parse(late)]]) });
   const deadline = Date.parse(result.jobs[0].deadline);
   assert.ok(deadline <= Date.parse(since) + (MAX_COHORT_SHIFT_SECONDS + 1800 + 15 * 60) * 1000, `deadline ${result.jobs[0].deadline}`);
+});
+
+test('#6858: fixed-time (crontab) monitors have a 1- or 7-day cadence and are deferred, never invalid', () => {
+  const crontab = ALL_CRON_MONITORS.filter(([, config]) => config.schedule.type === 'crontab');
+  assert.ok(crontab.length >= 5);
+  for (const [slug, config] of crontab) {
+    assert.ok([86400, 7 * 86400].includes(registryCadenceSeconds(config)), slug);
+  }
+  assert.equal(registryCadenceSeconds(ALL_CRON_MONITORS.find(([slug]) => slug === 'sunday-value-refresh')[1]), 7 * 86400);
+  assert.ok(Number.isNaN(registryCadenceSeconds({ schedule: { type: 'crontab', value: '0 14 * * 0' } })), 'crontab without wallClock fails closed');
+  assert.equal(registryCadenceSeconds({ schedule: { type: 'interval', value: 5, unit: 'minute' } }), 300);
+});
+
+test('#6860 (Codex P2): a weekly fixed-time job is due at its next Copenhagen slot across the DST change', async () => {
+  const { dueAtMs } = await import('./cron-deploy-verification.mjs');
+  const config = { schedule: { type: 'crontab', value: '0 14 * * 0' }, maxRuntime: 60, wallClock: { weekdays: ['sun'], hour: 14, minute: 0 } };
+  const lastRun = Date.parse('2026-10-18T12:00:00Z'); // 14:00 CEST
+  const due = dueAtMs(config, lastRun, 7 * 86400, 15 * 60);
+  // 25/10 14:00 CET = 13:00Z, plus 15 min margin + 60 min maxRuntime. A nominal 168 h would say 12:15Z.
+  assert.equal(new Date(due).toISOString(), '2026-10-25T14:15:00.000Z');
+  const interval = { schedule: { type: 'interval', value: 5, unit: 'minute' } };
+  assert.equal(dueAtMs(interval, 0, 300, 600), 900000);
 });

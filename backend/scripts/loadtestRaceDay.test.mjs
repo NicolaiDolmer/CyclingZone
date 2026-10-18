@@ -341,7 +341,10 @@ test("paritet: trainingCloseStart følger prod-gaten i startTrainingDayCloseAfte
 
 test("paritet: cron-kadencen for training day-close er 5 min som i cron.js", () => {
   assert.equal(TRAINING_DAY_CLOSE_CRON_PERIOD_MS, 5 * 60 * 1000);
-  assert.match(CRON_SRC, /trackedTick\("training day-close",[^\n]*\),\s*5 \* 60 \* 1000\s*\)/);
+  // #6858: registreringen ligger paa klokken (startClockAlignedInterval, default-
+  // perioden STAGE_TICK_PERIOD_MS = 5 min, eget sekund-offset), ikke et setInterval.
+  assert.equal(STAGE_TICK_PERIOD_MS, TRAINING_DAY_CLOSE_CRON_PERIOD_MS);
+  assert.match(CRON_SRC, /startClockAlignedInterval\(\s*trackedTick\("training day-close",[^\n]*\),\s*\{ offsetMs: \d+ \* 1000[^}\n]*\}\s*\)/);
 });
 
 test("#5890-klassen: ungdomspuljer ukendt for scheduleren -> coverage fejler", async () => {

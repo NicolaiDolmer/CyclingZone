@@ -272,9 +272,10 @@ export function firstTickAtOrAfter(fromMs) {
 }
 
 /**
- * Kadencen for cron'ens "training day-close" (backend/cron.js: setInterval 5 min).
- * Dens fase afhænger af hvornår processen startede; modellen lægger den på hele
- * 5-minutter, så den tidligst mulige start er præcis kl. 20:00 dansk tid.
+ * Kadencen for cron'ens "training day-close" (backend/cron.js: 5 min på klokken via
+ * startClockAlignedInterval, #6858). Prod tikker på hele 5-minutter plus et offset
+ * på få sekunder; modellen lægger den på hele 5-minutter, så den tidligst mulige
+ * start er kl. 20:00 dansk tid.
  */
 export const TRAINING_DAY_CLOSE_CRON_PERIOD_MS = 5 * 60 * 1000;
 

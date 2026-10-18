@@ -26,6 +26,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { ALL_CRON_MONITORS, UNMONITORED_CRON_TICKS } from "./lib/cronMonitorRegistry.js";
+import * as registry from "./lib/cronMonitorRegistry.js";
+import { crontabFromWallClock } from "./lib/wallClockScheduler.js";
+import { SUNDAY_VALUE_FROM_HOUR } from "./lib/economyConstants.js";
+import { EMAIL_HEALTH_HOUR_COPENHAGEN } from "./lib/emailHealthReport.js";
+import { DIGEST_HOUR_COPENHAGEN } from "./lib/emailRaceDigestSweep.js";
+import { DISCORD_DIGEST_HOUR_COPENHAGEN } from "./lib/discordRaceDigestSweep.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CRON_SRC = readFileSync(join(HERE, "cron.js"), "utf8");
@@ -59,15 +65,29 @@ function extractStartCronScheduleBody(src) {
 // enkelt regex over hele blokken) håndterer at flere setInterval-kald ligger
 // lige efter hinanden (fx email-sweepene) uden at ét kalds monitorCron(...)
 // fejlagtigt "lækker" ind i naboens match.
+// #6858: periodiske registreringer findes i tre former — setInterval(...),
+// startClockAlignedInterval(...) (klokke-justeret 5-min-grid, #3624) og
+// startWallClockSchedule(...) (fast tidspunkt i dansk tid). Alle tre skal
+// dækkes af vagten, ellers kunne et job flyttes ud af setInterval og ud af
+// monitor-kontrollen i samme bevægelse.
+const PERIODIC_REGISTRATION_RE = /(?=\b(?:setInterval|startClockAlignedInterval|startWallClockSchedule)\()/g;
+const PERIODIC_REGISTRATION_START_RE = /^(?:setInterval|startClockAlignedInterval|startWallClockSchedule)\(/;
+
 function extractPeriodicTicks(scheduleBody) {
   const chunks = scheduleBody
-    .split(/(?=setInterval\()/g)
-    .filter((chunk) => chunk.startsWith("setInterval("));
+    .split(PERIODIC_REGISTRATION_RE)
+    .filter((chunk) => PERIODIC_REGISTRATION_START_RE.test(chunk));
 
   return chunks.map((chunk) => {
     const labelMatch = chunk.match(/trackedTick\(\s*["']([^"']+)["']/);
     assert.ok(labelMatch, `setInterval(...)-kald uden genkendeligt trackedTick("label", ...)-kald: ${chunk.slice(0, 80)}…`);
-    return { label: labelMatch[1], monitored: /monitorCron\(/.test(chunk) };
+    return {
+      label: labelMatch[1],
+      monitored: /monitorCron\(/.test(chunk),
+      kind: chunk.slice(0, chunk.indexOf("(")),
+      monitorConfigName: chunk.match(/monitorCron\(\s*["'][^"']+["']\s*,\s*[A-Za-z0-9_]+\s*,\s*([A-Z0-9_]+)\s*\)/)?.[1] ?? null,
+      wallClockSpecName: chunk.match(/,\s*([A-Z0-9_]+)\.wallClock\b/)?.[1] ?? null,
+    };
   });
 }
 
@@ -138,4 +158,74 @@ test("hvert periodisk setInterval(trackedTick(...))-job er enten monitorCron-wra
     [],
     `UNMONITORED_CRON_TICKS-entry uden tilsvarende periodisk setInterval-job (dødt allowlist-item?): ${staleAllowlist.join(", ")}`
   );
+});
+
+// ── #6858: faste tidspunkter i dansk tid ──────────────────────────────────────
+
+const CRONTAB_MONITORS = ALL_CRON_MONITORS.filter(([, config]) => config.schedule.type === "crontab");
+
+test("#6858: hver crontab-monitor er et vægur-skema i dansk tid med lille margin", () => {
+  assert.ok(CRONTAB_MONITORS.length >= 5, `forventer de vægur-planlagte jobs som crontab-monitorer (fik ${CRONTAB_MONITORS.length})`);
+  for (const [slug, config] of CRONTAB_MONITORS) {
+    assert.ok(config.wallClock, `${slug}: crontab-monitor uden wallClock-skema (heartbeat-vagten kan ikke regne fristen)`);
+    assert.equal(config.schedule.value, crontabFromWallClock(config.wallClock), `${slug}: crontab og vægur-skema er ude af trit`);
+    assert.equal(config.timezone, "Europe/Copenhagen", `${slug}: crontab skal tolkes i dansk tid`);
+    assert.equal(config.checkinMargin, 15, `${slug}: margin skal være 15 min (ejer-krav #6858)`);
+  }
+});
+
+test("#6858: søndagens værdier er planlagt præcis søndag kl. 14:00 dansk tid", () => {
+  assert.equal(SUNDAY_VALUE_FROM_HOUR, 14, "ejer 18/10: kl. 14:00");
+  const monitor = ALL_CRON_MONITORS.find(([slug]) => slug === "sunday-value-refresh")?.[1];
+  assert.ok(monitor, "sunday-value-refresh mangler i ALL_CRON_MONITORS");
+  assert.equal(monitor, registry.CRON_MONITOR_SUNDAY_VALUE);
+  assert.equal(monitor.schedule.value, "0 14 * * 0");
+  assert.deepEqual(registry.SUNDAY_VALUE_WALL_CLOCK.weekdays, ["sun"]);
+  assert.equal(registry.SUNDAY_VALUE_WALL_CLOCK.hour, SUNDAY_VALUE_FROM_HOUR);
+  assert.equal(registry.SUNDAY_VALUE_WALL_CLOCK.minute, 0);
+});
+
+test("#6858: vægur-skemaernes timer følger modulernes egne gates (paritet)", () => {
+  assert.equal(registry.EMAIL_HEALTH_WALL_CLOCK.hour, EMAIL_HEALTH_HOUR_COPENHAGEN);
+  assert.equal(registry.EMAIL_RACE_DIGEST_WALL_CLOCK.hour, DIGEST_HOUR_COPENHAGEN);
+  assert.equal(registry.DISCORD_RACE_DIGEST_WALL_CLOCK.hour, DISCORD_DIGEST_HOUR_COPENHAGEN);
+  assert.deepEqual(registry.SUNDAY_START_WALL_CLOCK.weekdays, ["sun"]);
+  assert.equal(registry.SUNDAY_START_WALL_CLOCK.hour, 0);
+  // Gaten er "fra kl. X" med genforsøg: genforsøgene skal bevares.
+  for (const name of ["SUNDAY_VALUE_WALL_CLOCK", "SUNDAY_START_WALL_CLOCK", "EMAIL_HEALTH_WALL_CLOCK", "EMAIL_RACE_DIGEST_WALL_CLOCK", "DISCORD_RACE_DIGEST_WALL_CLOCK"]) {
+    assert.equal(registry[name].repeatHourly, true, `${name}: genforsøg hver hele time skal bevares`);
+  }
+});
+
+test("#6858: vægur-planlagte jobs og crontab-monitorer hører sammen i cron.js", () => {
+  const ticks = extractPeriodicTicks(extractStartCronScheduleBody(CRON_SRC));
+  const wallClockTicks = ticks.filter((t) => t.kind === "startWallClockSchedule");
+  assert.ok(wallClockTicks.length >= 6, `forventer de vægur-planlagte jobs fundet (fik ${wallClockTicks.length})`);
+
+  for (const t of wallClockTicks) {
+    assert.ok(t.wallClockSpecName, `${t.label}: startWallClockSchedule uden <CRON_MONITOR_*>.wallClock-skema`);
+    const specConfig = registry[t.wallClockSpecName];
+    assert.ok(specConfig?.wallClock, `${t.label}: ${t.wallClockSpecName} findes ikke som vægur-monitor i cronMonitorRegistry.js`);
+    if (t.monitored) {
+      // Samme config til monitor og skema: ellers kunne Sentrys crontab og det
+      // faktiske tidspunkt glide fra hinanden.
+      assert.equal(t.monitorConfigName, t.wallClockSpecName, `${t.label}: monitorCron-config og vægur-skema skal være samme konstant`);
+    }
+  }
+
+  // Den anden vej: en crontab-monitor på et interval-registreret job ville fyre
+  // MISSED hele tiden (eller aldrig), og et interval-monitor på et vægur-job ville
+  // alarmere i timerne uden kørsel.
+  for (const t of ticks.filter((x) => x.kind !== "startWallClockSchedule" && x.monitorConfigName)) {
+    assert.notEqual(registry[t.monitorConfigName]?.schedule?.type, "crontab", `${t.label}: crontab-monitor på et ${t.kind}-job`);
+  }
+});
+
+test("#6858: sunday-value-refresh ligger ikke længere på et times-interval", () => {
+  const ticks = extractPeriodicTicks(extractStartCronScheduleBody(CRON_SRC));
+  for (const label of ["sunday-value-refresh", "sunday-intake-drip", "market-value-level-correction-gate", "email health-report", "email-race-digest sweep", "discord-race-digest sweep"]) {
+    const tick = ticks.find((t) => t.label === label);
+    assert.ok(tick, `${label} ikke fundet i startCron()`);
+    assert.equal(tick.kind, "startWallClockSchedule", `${label} skal være vægur-planlagt, ikke ${tick.kind}`);
+  }
 });
