@@ -167,6 +167,16 @@ export async function appendBonusGoalToBoardProfile({ supabase, teamId, goal, of
  * `queryCurrentSeasonActiveMandate`), så vi skriver til den række spilleren
  * faktisk får vist, aldrig til et gammelt mandat fra en afsluttet sæson.
  */
+// Codex P1 (#6780, runde 3): laase-tokenet skal ALTID rykke frem. Et rent
+// ur-tidsstempel kan i samme millisekund skrive det gamle token tilbage, saa
+// en anden skriver med det gamle token ogsaa "vinder" og overskriver goals.
+// Nyt token = max(nu, gammelt + 1 ms), ligesom closeStaleMandates6773.
+export function nextMandateLockToken(previousToken, nowMs = Date.now()) {
+  const prevMs = previousToken == null ? Number.NEGATIVE_INFINITY : Date.parse(previousToken);
+  const nextMs = Number.isFinite(prevMs) ? Math.max(nowMs, prevMs + 1) : nowMs;
+  return new Date(nextMs).toISOString();
+}
+
 export async function appendBonusGoalToActiveMandate({ supabase, teamId, goal, offerId } = {}) {
   ensureSupabase(supabase);
   const { data: activeSeason, error: seasonError } = await supabase
@@ -207,7 +217,7 @@ export async function appendBonusGoalToActiveMandate({ supabase, teamId, goal, o
 
     let q = supabase
       .from("board_mandates")
-      .update({ goals: [...existingGoals, goal], updated_at: new Date().toISOString() })
+      .update({ goals: [...existingGoals, goal], updated_at: nextMandateLockToken(mandate.updated_at) })
       .eq("id", mandate.id)
       .eq("status", "active");
     q = mandate.updated_at == null ? q.is("updated_at", null) : q.eq("updated_at", mandate.updated_at);

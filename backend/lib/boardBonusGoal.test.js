@@ -8,6 +8,7 @@ import {
   buildBonusExtraGoal,
   hasBonusGoalForOffer,
 } from "./boardBonusGoal.js";
+import { nextMandateLockToken } from "./boardBonusGoal.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
 import { countTeamStarRiders } from "./boardIdentity.js";
 
@@ -507,4 +508,14 @@ test("#6780 (Codex P2): to aktive saesoner under skiftet → bonusmaalet havner 
   });
   assert.equal(result.mandateId, "new");
   assert.equal(tables.board_mandates.find((m) => m.id === "old").goals.length, 0);
+});
+
+test("#6780 (Codex P1 runde 3): laase-tokenet rykker altid frem, ogsaa i samme millisekund", () => {
+  const old = "2026-10-18T12:00:00.000Z";
+  const same = Date.parse(old);
+  assert.equal(nextMandateLockToken(old, same), "2026-10-18T12:00:00.001Z");
+  assert.equal(nextMandateLockToken(old, same - 5000), "2026-10-18T12:00:00.001Z", "uret bagud: stadig fremad");
+  assert.equal(nextMandateLockToken(old, same + 10), "2026-10-18T12:00:00.010Z");
+  assert.equal(nextMandateLockToken(null, same), old);
+  assert.notEqual(nextMandateLockToken("2026-10-18T12:00:00.000456+00:00", same), "2026-10-18T12:00:00.000456+00:00");
 });
