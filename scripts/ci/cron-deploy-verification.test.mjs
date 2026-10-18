@@ -376,7 +376,8 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(workflow, /name: Checkout target SHA[\s\S]*?ref: \$\{\{ steps\.pr\.outputs\.sha \}\}[\s\S]*?fetch-depth: 0\s+- name: Determine required deployments/);
   // Railway/cron impact from this script; Vercel only from the canonical classifier.
   assert.match(workflow, /cron-deploy-verification\.mjs --impact\s+[\s\S]*?node scripts\/frontend-deployment-needed\.mjs "\$SHA"/);
-  const deferredComment = workflow.slice(workflow.indexOf('name: Comment deferred cron proof on merged PR'), workflow.indexOf('name: Comment pending on merged PR'));
+  // #6859: the report job writes the final comment (verified / deferred / red).
+  const deferredComment = workflow.slice(workflow.indexOf('"$CRON_STATE" == "deferred"'), workflow.indexOf('- name: Alarm Discord ops'));
   assert.doesNotMatch(deferredComment, /exit 75/);
   assert.match(deferredComment, /Merge-koeen fortsaetter/);
   assert.ok(workflow.indexOf('name: Checkout target SHA') < workflow.indexOf('cron-deploy-verification.mjs --impact'));
@@ -384,10 +385,10 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(workflow, /while \[\[[\s\S]*?RAILWAY_OK=false\s+(?:#[^\r\n]*(?:\r?\n[ \t]*)+)+CRON_SINCE=""/);
   assert.match(workflow, /echo "cron_since=\$CRON_SINCE" >> "\$GITHUB_OUTPUT"/);
   const gate = workflow.indexOf('name: Verify affected cron check-ins');
-  const live = workflow.indexOf('name: Comment success on merged PR');
+  const live = workflow.indexOf('name: Comment final verdict on merged PR');
   assert.ok(gate > 0 && gate < live);
   assert.match(workflow.slice(gate, live), /SUPABASE_SERVICE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_KEY \}\}/);
-  assert.match(workflow.slice(live), /if: success\(\).*steps\.crons\.outputs\.state == 'verified'/);
+  assert.match(workflow.slice(live), /CRON_STATE: \$\{\{ needs\.cron-proof\.outputs\.state \}\}[\s\S]*?"\$CRON" == "success" && "\$CRON_STATE" == "verified"/);
   assert.match(workflow, /name: Cron check-ins deferred/);
   const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   assert.match(ci, /node --test scripts\/ci\/cron-deploy-verification\.test\.mjs scripts\/ci\/deploy-verification-state\.test\.mjs/);
@@ -418,11 +419,18 @@ test('#6487: cron proof starts right after smoke and its step timeout covers the
   const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
   const names = [...workflow.matchAll(/^ {6}- name: (.+?)\s*$/gm)].map(match => match[1]);
   // The first heartbeat snapshot is never proof, so the cron step must start
-  // before the boundary (READY + drain). Only the bounded smoke (<= 55 s) and
-  // the PR comment may sit between the deployment wait and the cron proof.
+  // soon after the boundary (READY + drain). #6859: the proof is its own job
+  // (needs: release). Only the bounded smoke (<= 55 s), PR comments, failure
+  // markers and a light job start (shallow checkout, node, a latency note) may
+  // sit between the deployment wait and the cron proof.
   const from = names.indexOf('Deployment still pending');
   const cron = names.indexOf('Verify affected cron check-ins');
-  assert.deepEqual(names.slice(from + 1, cron), ['Smoke-test prod', 'Comment release verified, cron proof running']);
+  assert.deepEqual(names.slice(from + 1, cron), ['Smoke-test prod', 'Comment release verified, cron proof running',
+    'Failed target vercel', 'Failed target railway', 'Failed target smoke', 'Comment pending on merged PR', 'Comment failure on merged PR',
+    'Checkout target SHA (shallow)', 'Node 24', 'Cron proof start latency']);
+  const cronJob = workflow.slice(workflow.indexOf('\n  cron-proof:'), workflow.indexOf('\n  release-checks:'));
+  assert.match(cronJob, /\n {4}needs: release\r?\n/);
+  assert.doesNotMatch(cronJob, /fetch-depth|npm (?:ci|install)/);
   assert.deepEqual(names.slice(cron + 1, cron + 3), ['Cron check-ins verified', 'Cron check-ins deferred']);
   const units = { minute: 60, hour: 3600, day: 86400 };
   const latest = Math.max(...ALL_CRON_MONITORS.map(([, config]) => config.schedule.value * units[config.schedule.unit])

@@ -691,13 +691,18 @@ function readPinnedPrFiles(pr, repo, io) {
 // #5677: `lockTimeoutMs` bounds how long a busy state lock is waited out
 // before this degrades to a lock-free read (see acquireMergeLock);
 // production default 30 s, tests inject a short one to stay fast.
-export function guardedMerge(dir, pr, repo = REPO, io = defaultMergeIo, lockTimeoutMs = MERGE_LOCK_FALLBACK_MS) {
+export function guardedMerge(dir, pr, repo = REPO, io = defaultMergeIo, lockTimeoutMs = MERGE_LOCK_FALLBACK_MS, expectedHead = null) {
   fs.mkdirSync(dir, { recursive: true });
   const marker = path.join(dir, 'wave-active.json');
   let pinned = null;
   if (fs.existsSync(marker)) {
     modernMarkerOrBlock(dir); // a legacy/malformed marker blocks before any GitHub read
     pinned = readPinnedPrFiles(pr, repo, io);
+    // #6861 (Codex P1): the queue verified a specific head; a different pinned head = a push in between.
+    if (expectedHead && pinned.head !== expectedHead) throw Error(`PR #${pr} head changed after verification (${expectedHead} -> ${pinned.head}); merge blocked`);
+  } else if (expectedHead) {
+    // #6861 (Codex P1): without a marker, still merge pinned to the head the queue verified.
+    pinned = { head: expectedHead, files: null };
   }
   const lock = acquireMergeLock(dir, lockTimeoutMs);
   if (lock) {
@@ -792,10 +797,11 @@ async function cli() {
     if ((pr !== undefined && !/^[1-9]\d*$/.test(pr)) || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Valid PR and repository required');
     console.log(JSON.stringify(assertMergeAllowed(dir, pr, readPrFilesFromGitHub, repo, mergeReleaseInfo(dir, repo, defaultMergeIo))));
   } else if (command === 'guarded-merge') {
-    const pr = value('--pr'), repo = value('--repo') || REPO;
+    const pr = value('--pr'), repo = value('--repo') || REPO, head = value('--head');
     if (!/^[1-9]\d*$/.test(pr || '') || !/^[\w.-]+\/[\w.-]+$/.test(repo)) throw Error('Valid merge PR and repository required');
+    if (head && !/^[0-9a-fA-F]{40}$/.test(head)) throw Error('Invalid --head');
     // No override of the file reader or merge call from the CLI (#5562).
-    guardedMerge(dir, pr, repo);
+    guardedMerge(dir, pr, repo, defaultMergeIo, MERGE_LOCK_FALLBACK_MS, head || null);
   } else if (command === 'enqueue') {
     const file = value('--tracks-file');
     if (!file) throw Error('--tracks-file required');

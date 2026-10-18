@@ -6,11 +6,11 @@
 
 Deploy-/cron-bevis (#6318) ejes af [DEPLOYMENT.md](DEPLOYMENT.md#berørte-cron-jobs-efter-railway-ready-6318).
 Et successful Deploy verify-run er ikke alene release-bevis: merge-køen læser
-matching SHA/run-attempt og de konkrete smoke-, pending- og cron-markertrin.
-`verified` tillader fortsættelse; `deferred` (korte kadencer bevist, lange
-afventer) viser AFVENTER CHECK-IN og fortsætter uden automatisk rerun;
-`failed`/ukendt bevis stopper rødt. Eksisterende
-deployment `pending` genkøres bounded. LIVE-kommentaren kræver verificeret cron-bevis.
+matching SHA/run-attempt og jobbet **Deploy live + smoke** på job-niveau
+(#6859). `released` (deploy klar + smoke grøn) frigiver køen; `failed`/ukendt
+bevis stopper rødt. Eksisterende deployment `pending` genkøres bounded.
+LIVE-kommentaren kræver verificeret cron-bevis. Se
+[Merge-køen](#merge-køen-merge-tog-og-deploy-verify-6859).
 
 ```
 Nicolai opretter issue (template)
@@ -77,6 +77,16 @@ Main kører med `strict=false`: en godkendt PR merges med `gh pr merge --auto --
 
 Trade-offet (bevidst): to hver-for-sig-grønne PRs der tilsammen er røde, fanges nu først af CI'en på main EFTER merge. Discipliner der bærer det: (1) PRs der rører samme filer SEKVENSERES stadig af orkestratoren, (2) en rød main-CI efter en merge-salve er stop-alt-fix-først, (3) lokal preflight før push er fortsat obligatorisk.
 
+### Merge-køen: merge-tog og deploy-verify (#6859)
+
+`scripts/merge-queue.ps1` er eneste merge-vej (#4919). Ejer-beslutning 18/10:
+
+- **Køen venter kun på deploy + røgtest.** `deploy-verify.yml` er delt i jobs: `Deploy live + smoke` (det eneste køen venter på), `Cron proof (non-blocking)` og `Release checks` (begge `needs: release`) og `Report`. Et rødt cron-bevis alarmerer (PR-kommentar + Discord-ops via `DISCORD_OPS_WEBHOOK_URL`, ellers `DISCORD_WEBHOOK`) men stopper aldrig køen. Røde `Release checks` (CDN-headers, asset-miss, Sentry m.fl.) stopper køen før NÆSTE merge. Klassifikationen ligger i `scripts/ci/deploy-verification-state.mjs`.
+- **Merge-tog som standard.** Op til `-MaxBatch` (default 5) grønne PR'er merges i række, og CI (main) pr. SHA + én deploy-verifikation ventes efter toget. `-NoBatch` (én PR, ét deploy, én verify) er undtagelsen. En PR der udløser et deploy (backend, Railway eller Vercel/byggeinput) afslutter toget, og toget deploy-verificeres altid (AGENTS regel 20). Efter ventetiden på release checks tjekkes etape-tick-vinduet igen lige før merget (#4919).
+- **Rødt tog = stop + skyldig PR.** Køen peger selv den skyldige ud (`scripts/merge-queue-train.mjs`): eneste PR i toget, ellers første merge-SHA med rød CI, ellers den eneste PR der udløser det fejlende deploy-mål (`Failed target vercel/railway/smoke`-markører). Er det ikke entydigt, stopper køen med en mistænktliste. Ingen automatisk revert eller deploy af mellemtilstande: det er et prod-indgreb (ejer-go).
+- **Uændret:** én merge ad gangen, aldrig merge i HH:57-HH:03, aldrig merge oven på rød main-CI eller et fejlet deploy, review-gate og league-check som før.
+- **Runner-plads:** PR-CI (`ci.yml`, `playwright-smoke.yml`) annullerer forældede kørsler pr. PR-gren, og e2e-shards kører kun ved `frontend/`-ændringer (låst af `scripts/merge-queue-train.test.mjs`). Målt 18/10: deploy-verify-jobs startede 2-14 s efter oprettelse; de lange ventetider kom fra cron-beviset (32-47 min) og et manglende Vercel-deploy, ikke fra runner-kø.
+
 Historik: GitHubs ægte Merge Queue blev forsøgt 4/8 men kræver et ORG-ejet repo (CyclingZone er bruger-ejet). CI'en er allerede kø-kompatibel (`merge_group`-triggere + pass-throughs, PR #3303, i dvale) — flyttes repoet til en organisation, kan køen tændes med ét ruleset (`scratchpad`-udkastet ligger i PR #3303's beskrivelse). Rollback af dagens ændring: `gh api .../branches/main/protection/required_status_checks -X PATCH -F strict=true`.
 
 ## Arbejdsstandard for merges (ejer 18/10: branchens bedste praksis)
@@ -85,9 +95,9 @@ Efter 18/10, hvor intet blev merget i ca. 2 timer, gælder disse regler for alle
 
 1. **Merge det klare først.** En grøn, godkendt PR går i køen, FØR der rettes på andre PR'er. Push aldrig rettelser til mange PR'er samtidig, mens noget klart venter.
 2. **Små PR'er, der lander hurtigt.** Hellere flere små end én stor, der venter på andre.
-3. **Hængere opdages inden for 15 min.** Står et trin i køen eller CI stille i over 15 min, undersøges årsagen straks, og det meldes. Man venter ikke på timeout. (Automatiseres i #6859.)
+3. **Hængere opdages inden for 15 min.** Står et trin i køen eller CI stille i over 15 min, undersøges årsagen straks, og det meldes. Man venter ikke på timeout. Automatisk i `merge-queue.ps1` (#6859): venter CI (main), deploy-verify eller release checks i `-StallMinutes` (default 45, over det længste gyldige enkelt-trin) uden nyt fremskridt (ny kørsel, status, job- eller trinskift), skriver køen en `STALL:`-linje med årsag, sender Discord-ops-besked (`DISCORD_OPS_WEBHOOK_URL`, ellers kun konsol) og stopper med exit 1.
 4. **Review-loft: maks 2 Codex-runder** på PR'er uden spillerdata, penge eller prod-skrivning. Derefter merges der, og restfund bliver til issues (`Refs #PR`). Spillerdata, penge og prod: ingen loft, alle fund rettes.
-5. **Deploy-kontrol beviser at ændringen er live**, ikke at præcis én SHA blev deployet. Et nyere deploy, der indeholder SHA'en, er gyldigt bevis (#6859).
+5. **Deploy-kontrol beviser at ændringen er live**, ikke at præcis én SHA blev deployet. Et nyere deploy, der indeholder SHA'en, er gyldigt bevis (#6859): `scripts/ci/deploy-coverage.mjs` (Vercel og Railway uden token) og `scripts/railway-deploy-status.mjs` (Railway-API'et) godtager et READY production-deploy af en nyere main-SHA, når `git merge-base --is-ancestor <sha> <nyere>` holder. En fejlet build af SHA'en selv er stadig rød. Se `docs/DEPLOYMENT.md`.
 6. **Overvåg efter deploy i stedet for at blokere.** Fejlrate efter deploy giver alarm og (fra 26-27/10) automatisk rollback (#6865).
 7. **Hurtig CI:** mål p90 under 10 min for PR-CI (#6864).
 8. **Kort status til ejeren:** hvad er merget, hvad hænger, og hvorfor. Ingen lange rapporter.
@@ -269,7 +279,7 @@ gh issue close 42 --reason completed
 - `.github/workflows/dependabot-auto-merge.yml` — auto-mærker lav-risiko dep-PRs som auto-merge
 - `.github/workflows/dependency-review.yml` — blokerer PRs der introducerer high+ dependency vulnerabilities
 - `.github/workflows/playwright-smoke.yml` — PR-check for frontendændringer; kører mocket Playwright smoke + desktop/mobile screenshot-baselines uden live secrets
-- `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy og upserter én verified/failed/pending-comment pr. SHA. Pending er en afsluttet observation, aldrig release-verifikation; smoke og succesmelding kræver færdige deployments. Merge-koeen genkoerer samme run, venter paa en hoejere attempt og kræver gennemfoert smoke i den aktuelle SHA/attempt før næste merge (#6228).
+- `.github/workflows/deploy-verify.yml` — efter merge til main, venter på Vercel + Railway deploy og upserter én verified/failed/pending-comment pr. SHA. Pending er en afsluttet observation, aldrig release-verifikation; smoke og succesmelding kræver færdige deployments. Merge-koeen genkoerer samme run, venter paa en hoejere attempt og kræver gennemfoert smoke i den aktuelle SHA/attempt før næste merge (#6228). Siden #6859 er workflowet delt i jobs (release / cron-proof / release-checks / report); køen venter kun på release-jobbet.
 
 ### Sikkerheds-net
 
