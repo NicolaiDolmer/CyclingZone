@@ -8,7 +8,7 @@
 >
 > **🎯 Next action:** SØN AFTEN 18/10 (ejer, maskinfordeling A): **Claude merge-session** på NicolaiPC gør det åbne færdigt, bygger intet nyt: [`sessions/2026-10-18-claude-merge-startprompt.md`](sessions/2026-10-18-claude-merge-startprompt.md). **Codex** på samme maskine: egen opsætning → 4 restopgaver → løbsidentitet #6857 (dry-run 21/10): [`sessions/2026-10-18-codex-startprompt.md`](sessions/2026-10-18-codex-startprompt.md). MANDAG 19/10: ungdom S5 dry-runs · motor v2 · #6839-UX · UX-mockups (#6523 #6871) · supabase login; #6862/#6863/#6864 vælges mandag.
 >
-> **17-18/10:** S5-motorreglerne tændt (#6699). 55 PRer merget 17-18/10, bl.a. udfaldsalarm #6856, dansk tid #6860, hurtigere merge-kø #6861, CodeQL #6869. Patch note 7.368 = #6873 (venter ejer-go).
+> **17-18/10:** S5-motorreglerne tændt (#6699). 55 PRer merget 17-18/10, bl.a. udfaldsalarm #6856, dansk tid #6860, hurtigere merge-kø #6861, CodeQL #6869. Patch note 7.368 (10 poster) = #6873 (venter ejer-go).
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
