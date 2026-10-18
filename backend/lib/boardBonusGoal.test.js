@@ -33,6 +33,10 @@ function makeQueryBuilder(rows, { mode = "select", patch = null } = {}) {
       filtered = filtered.filter((r) => values.includes(r[col]));
       return builder;
     },
+    is(col, value) {
+      filtered = filtered.filter((r) => (value === null ? r[col] == null : r[col] === value));
+      return builder;
+    },
     or() {
       return builder;
     },
@@ -397,4 +401,49 @@ test("appendBonusGoalToBoardProfile: intet 1yr-board -> no-op uden kast", async 
   });
   assert.equal(result.written, false);
   assert.equal(result.reason, "no_board_profile");
+});
+
+test("#6773 (Codex P1): samtidigt skriv mellem læs og skriv taber ikke det andet mål (optimistisk lås)", async () => {
+  const tables = baseTables();
+  tables.board_mandates[0].updated_at = "2026-10-01T00:00:00Z";
+  const base = makeSupabase(tables);
+  let interfered = false;
+  // Efterligner reparations-scriptet: lige efter vores første læsning flytter det
+  // et bonusmål ind og bumper updated_at, FØR vores skriv rammer.
+  const supabase = {
+    from(table) {
+      const api = base.from(table);
+      if (table !== "board_mandates") return api;
+      return {
+        select: (...args) => {
+          const b = api.select(...args);
+          const orig = b.maybeSingle;
+          b.maybeSingle = async () => {
+            const res = await orig();
+            if (!interfered) {
+              interfered = true;
+              const row = tables.board_mandates[0];
+              row.goals = [...row.goals, { type: "migrated_goal", bonus_offer_id: "other-offer" }];
+              row.updated_at = "2026-10-18T12:00:00Z";
+            }
+            return res;
+          };
+          return b;
+        },
+        update: (patch) => api.update(patch),
+      };
+    },
+  };
+
+  const result = await appendBonusGoalToActiveMandate({
+    supabase,
+    teamId: TEAM_ID,
+    goal: buildBonusExtraGoal({ extraGoal: EXTRA_GOAL, offerId: OFFER_ID }),
+    offerId: OFFER_ID,
+  });
+
+  assert.equal(result.written, true);
+  const goals = tables.board_mandates[0].goals;
+  assert.ok(goals.some((g) => g.type === "migrated_goal"), "det samtidigt flyttede mål må ikke forsvinde");
+  assert.ok(goals.some((g) => g.bonus_offer_id === OFFER_ID), "vores eget mål er skrevet");
 });

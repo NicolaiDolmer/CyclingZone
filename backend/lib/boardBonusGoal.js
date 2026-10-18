@@ -176,31 +176,41 @@ export async function appendBonusGoalToActiveMandate({ supabase, teamId, goal, o
     .maybeSingle();
   // Samme fallback som boardRoom.js: et fejlet sæson-opslag giver nyeste
   // sæsons mandat, ikke et tabt ekstra-mål.
-  const { data: mandate, error } = await queryCurrentSeasonActiveMandate(supabase, {
-    teamId,
-    seasonNumber: seasonError ? null : (activeSeason?.number ?? null),
-    select: "id, goals",
-  });
-  if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
-  if (!mandate) return { written: false, reason: "no_active_mandate" };
+  const seasonNumber = seasonError ? null : (activeSeason?.number ?? null);
 
-  // jsonb i skemaet, men vær tolerant: en streng må ikke koste ekstra-målet.
-  const existingGoals = Array.isArray(mandate.goals)
-    ? mandate.goals
-    : (typeof mandate.goals === "string" && mandate.goals.trim() ? JSON.parse(mandate.goals) : []);
+  // #6773 (Codex P1): optimistisk lås på updated_at. Goals skrives som hele
+  // arrayet, så en samtidig skriver (fx reparations-scriptets flytning af
+  // bonusmål) ellers kan få sit mål fjernet af vores forældede array. Ved
+  // kollision læses mandatet igen; tre forsøg.
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const { data: mandate, error } = await queryCurrentSeasonActiveMandate(supabase, {
+      teamId,
+      seasonNumber,
+      select: "id, goals, updated_at",
+    });
+    if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
+    if (!mandate) return { written: false, reason: "no_active_mandate" };
 
-  if (hasBonusGoalForOffer(existingGoals, { offerId, extraGoal: goal })) {
-    return { written: false, reason: "already_present", mandateId: mandate.id };
+    // jsonb i skemaet, men vær tolerant: en streng må ikke koste ekstra-målet.
+    const existingGoals = Array.isArray(mandate.goals)
+      ? mandate.goals
+      : (typeof mandate.goals === "string" && mandate.goals.trim() ? JSON.parse(mandate.goals) : []);
+
+    if (hasBonusGoalForOffer(existingGoals, { offerId, extraGoal: goal })) {
+      return { written: false, reason: "already_present", mandateId: mandate.id };
+    }
+
+    let q = supabase
+      .from("board_mandates")
+      .update({ goals: [...existingGoals, goal], updated_at: new Date().toISOString() })
+      .eq("id", mandate.id)
+      .eq("status", "active");
+    q = mandate.updated_at == null ? q.is("updated_at", null) : q.eq("updated_at", mandate.updated_at);
+    const { data: updated, error: updateError } = await q.select("id");
+    if (updateError) throw new Error(`board_mandates goal update failed: ${updateError.message}`);
+    if ((updated || []).length) return { written: true, mandateId: mandate.id };
   }
-
-  const { error: updateError } = await supabase
-    .from("board_mandates")
-    .update({ goals: [...existingGoals, goal], updated_at: new Date().toISOString() })
-    .eq("id", mandate.id)
-    .eq("status", "active");
-  if (updateError) throw new Error(`board_mandates goal update failed: ${updateError.message}`);
-
-  return { written: true, mandateId: mandate.id };
+  throw new Error("board_mandates goal update lost the optimistic lock 3 times");
 }
 
 /**
