@@ -312,7 +312,14 @@ export async function runApply({
   }
   await assertBackupCovers(supabase, touchedIds(plan));
 
-  const nowIso = now.toISOString();
+  // Codex P1 (#6780): hver skrivning skal give en NY updated_at, ellers kan en
+  // samtidig accept, der læste efter første flytning, stadig matche sin gamle
+  // lås og overskrive næste flytning til samme mandat. Strengt stigende pr. skriv.
+  let lastLockMs = now.getTime();
+  const nextLockToken = () => {
+    lastLockMs = Math.max(Date.now(), lastLockMs + 1);
+    return new Date(lastLockMs).toISOString();
+  };
   const result = { completed: 0, lapsed: 0, bonusGoalsMoved: 0, skipped: [] };
 
   // (1) Bonusmål først, så intet accepteret mål er usynligt mellem de to trin.
@@ -332,7 +339,7 @@ export async function runApply({
       const current = Array.isArray(target.goals) ? target.goals : [];
       const add = move.goals.filter((g) => !hasBonusGoalForOffer(current, { offerId: g.bonus_offer_id, extraGoal: g }));
       if (!add.length) { moved = true; break; }
-      let q = supabase.from("board_mandates").update({ goals: [...current, ...add], updated_at: nowIso })
+      let q = supabase.from("board_mandates").update({ goals: [...current, ...add], updated_at: nextLockToken() })
         .eq("id", move.toId).eq("status", "active");
       q = target.updated_at == null ? q.is("updated_at", null) : q.eq("updated_at", target.updated_at);
       const { data: upd, error: upErr } = await q.select("id");
@@ -346,7 +353,7 @@ export async function runApply({
   for (const r of plan.rows) {
     if (keepOpen.has(r.id)) continue;
     const { data: upd, error } = await supabase
-      .from("board_mandates").update({ status: r.to, updated_at: nowIso })
+      .from("board_mandates").update({ status: r.to, updated_at: nextLockToken() })
       .eq("id", r.id).eq("status", r.from).select("id");
     if (error) throw new Error(`luk ${r.id}: ${error.message}`);
     if (!(upd || []).length) { result.skipped.push({ id: r.id, reason: "status ændret siden godkendelse" }); continue; }

@@ -194,6 +194,8 @@ test("#6773 apply: lukker via runtime-funktionen, post-verify 0, og en genkørse
   assert.ok(double.writes.every((w) => w.table === "board_mandates"
     && ["status,updated_at", "goals,updated_at"].includes(Object.keys(w.payload).sort().join(","))),
     "kun status/goals + updated_at skrives");
+  const tokens = double.writes.map((w) => w.payload.updated_at);
+  assert.equal(new Set(tokens).size, tokens.length, "Codex P1 (#6780): hver skrivning får en ny updated_at (frisk lås)");
   assert.ok(byId[id(2)].goals.some((g) => g.bonus_offer_id === "bo-1"), "S4-bonusmålet ligger nu på det aktuelle mandat");
   assert.equal(byId[id(2)].goals.filter((g) => g.source === "board").length, 1, "mandatets egne mål røres ikke");
 
