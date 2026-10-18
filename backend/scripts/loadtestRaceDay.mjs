@@ -296,15 +296,16 @@ export function trainingCloseStart(lastStageEndMs) {
 }
 
 /**
- * Aftentræningens varighed: ms pr. hold × hold ÷ hold-parallelitet
- * (`training_day_close_team_concurrency`, backend/lib/trainingDayCloseTrigger.js).
- * Modellen er IDEEL lineær: N hold ad gangen giver N gange hurtigere. Det er et gulv for
+ * Aftentræningens varighed: hele hold-runder × ms pr. hold, hvor en runde er N hold
+ * ad gangen (`training_day_close_team_concurrency`, backend/lib/trainingDayCloseTrigger.js).
+ * Et hold deles aldrig, saa sidste runde tager et fuldt hold, ogsaa hvis den er halvfuld.
+ * Modellen er IDEEL: N hold ad gangen giver N gange hurtigere. Det er et gulv for
  * varigheden, ikke en måling; GIN-flush-halerne (spec §1) og delt DB-kapacitet kan gøre det
  * dårligere. Består gaten ikke her, består den heller ikke i prod.
  */
 export function trainingCloseDurationMs(msPerTeam, teamsTotal, concurrency = 1) {
   const n = Number.isInteger(concurrency) && concurrency >= 1 ? concurrency : 1;
-  return Math.ceil((msPerTeam * teamsTotal) / n);
+  return Math.ceil(teamsTotal / n) * msPerTeam;
 }
 
 // ─── Fixture: én S5-løbsdag ───────────────────────────────────────────────────
@@ -964,10 +965,13 @@ export function trainingCloseCheck(trainingClose, limitMs, stagesExpected) {
   }
   return {
     id: "training_close_duration",
-    ok: trainingClose.durationMs <= limitMs,
+    // Strengt under maalet (#5911: "< 2 min"). Estimatet er en NEDRE graense: over maalet
+    // er en aegte fejl; under maalet er kun "ikke afvist", aldrig bevis (lowerBound).
+    ok: trainingClose.durationMs < limitMs,
+    lowerBound: true,
     value: trainingClose.durationMs,
     limit: limitMs,
-    note: `${trainingClose.teams} hold, hold-parallelitet ${trainingClose.concurrency} (training_day_close_team_concurrency), ideel lineær skalering`,
+    note: `${trainingClose.teams} hold, hold-parallelitet ${trainingClose.concurrency} (training_day_close_team_concurrency), ideel model: ${trainingClose.durationMs < limitMs ? "ikke afvist, kræver prod-måling (#6490)" : "afvist"}`,
   };
 }
 
@@ -995,7 +999,8 @@ export function renderMarkdown(report) {
     lines.push("| Check | Resultat | Værdi | Grænse | Note |");
     lines.push("|---|---|---|---|---|");
     for (const c of s.checks) {
-      lines.push(`| ${c.id} | ${c.ok ? "ok" : "**FAIL**"} | ${fmt(c.value)} | ${fmt(c.limit)} | ${c.note} |`);
+      const result = c.ok ? (c.lowerBound ? "ikke afvist (nedre grænse)" : "ok") : "**FAIL**";
+      lines.push(`| ${c.id} | ${result} | ${fmt(c.value)} | ${fmt(c.limit)} | ${c.note} |`);
     }
   }
   lines.push("");

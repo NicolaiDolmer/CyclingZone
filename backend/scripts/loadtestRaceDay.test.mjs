@@ -240,14 +240,16 @@ test("#6766: varighedsgaten fejler ærligt ved 1x serielt og består kun når ta
 
   // Concurrency er parameteren: varigheden falder lineært, men målet nås ikke blot ved at skrue op.
   const c8 = await simulateRaceDay({ date: DATE, scenario: "normal", trainingConcurrency: 8 });
-  assert.equal(c8.checks.find((c) => c.id === "training_close_duration").value, Math.ceil(check.value / 8));
+  assert.equal(c8.checks.find((c) => c.id === "training_close_duration").value, trainingCloseDurationMs(COST_PROFILES.current.trainingClosePerTeam.ms, PROD_TEAM_COUNT, 8));
   const c16 = await simulateRaceDay({ date: DATE, scenario: "normal", trainingConcurrency: MAX_TEAM_CONCURRENCY });
   assert.equal(c16.checks.find((c) => c.id === "training_close_duration").ok, false, "selv ved loftet består 6 s pr. hold ikke 2 min");
 
   // Med en per-hold-pris under målet (fx efter job-kø/direkte PG) består gaten.
   const fast = { ...COST_PROFILES.current, trainingClosePerTeam: { calls: 8, ms: 250 } };
   const ok = await simulateRaceDay({ date: DATE, scenario: "normal", profile: fast });
-  assert.equal(ok.checks.find((c) => c.id === "training_close_duration").ok, true);
+  const fastCheck = ok.checks.find((c) => c.id === "training_close_duration");
+  assert.equal(fastCheck.ok, true);
+  assert.equal(fastCheck.lowerBound, true, "under maalet er kun 'ikke afvist', ikke bevis");
   assert.equal(ok.passed, true);
 });
 
@@ -266,15 +268,16 @@ test("#6766: trainingCloseCheck: aldrig startet på en dag med etaper er en fejl
   });
   assert.equal(trainingCloseCheck(null, limit, false).ok, true);
   const at = (durationMs) => trainingCloseCheck({ durationMs, teams: 410, concurrency: 1 }, limit, true).ok;
-  assert.equal(at(limit), true, "præcis 2 min består");
+  assert.equal(at(limit), false, "præcis 2 min er ikke under 2 min");
+  assert.equal(at(limit - 1), true);
   assert.equal(at(limit + 1), false);
 });
 
 test("#6766: trainingCloseDurationMs: ideel lineær deling, afrundet op, ugyldig parallelitet = serielt", () => {
   assert.equal(trainingCloseDurationMs(6_000, 410, 1), 2_460_000);
-  assert.equal(trainingCloseDurationMs(6_000, 410, 4), 615_000);
-  assert.equal(trainingCloseDurationMs(1_000, 3, 2), 1_500);
-  assert.equal(trainingCloseDurationMs(1_000, 1, 3), 334);
+  assert.equal(trainingCloseDurationMs(6_000, 410, 4), 618_000); // 103 hele runder
+  assert.equal(trainingCloseDurationMs(1_000, 3, 2), 2_000);
+  assert.equal(trainingCloseDurationMs(1_000, 1, 3), 1_000, "et hold deles aldrig");
   for (const bad of [0, -1, 1.5, NaN, undefined, "4"]) assert.equal(trainingCloseDurationMs(6_000, 10, bad), 60_000, String(bad));
 });
 
