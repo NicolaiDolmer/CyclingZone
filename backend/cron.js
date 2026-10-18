@@ -1808,6 +1808,10 @@ export async function runBootWithNetworkRetry(label, fn, {
 // gælder uændret. Matematisk verificeret i cron.deployGrace.test.js.
 export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
   for (const [monitorSlug, config] of ALL_CRON_MONITORS) {
+    // Codex P2 (#6860): et fast-tids-job (crontab) primes ikke. Et "ok" efter en
+    // overstaaet slot ville faa Sentry til at acceptere en misset kørsel og vente
+    // til naeste dags/uges slot. Monitor-configen sendes med ved foerste rigtige kørsel.
+    if (config.schedule?.type === "crontab") continue;
     try {
       captureCheckInFn({ monitorSlug, status: "ok" }, config);
     } catch (err) {

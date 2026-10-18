@@ -172,7 +172,23 @@ export async function primeCronHeartbeatCheckIns({
     // dagens slot ville flytte fristen til naeste slot (i morgen / naeste soendag),
     // saa en misset kørsel ikke alarmerede. Fristen regnes fra sidste RIGTIGE
     // kørsel; boot-indhentningen skriver selv sit check-in.
-    if (config.schedule?.type === "crontab") continue;
+    if (config.schedule?.type === "crontab") {
+      // Codex P1 (#6860): kadencen (fx 3600 -> 86400 ved overgangen til fast tid)
+      // skal stadig migreres, ellers afviser deploy-verify raekken. Kun
+      // expected_cadence_seconds opdateres; last_checkin_at bevares, og der
+      // indsaettes aldrig en ny raekke (en ny slug venter paa sin foerste kørsel).
+      try {
+        const { error } = await supabase
+          .from(CRON_CHECKINS_TABLE)
+          .update({ expected_cadence_seconds: cadenceSecondsFromConfig(config), updated_at: now.toISOString() })
+          .eq("job_slug", slug);
+        if (error) throw new Error(error.message);
+      } catch (err) {
+        console.error(`[cron-heartbeat] kadence-migrering fejlede for ${slug}:`, err.message);
+        captureExceptionFn?.(err, { tags: { cron: "cron-heartbeat-prime", job: slug } });
+      }
+      continue;
+    }
     await recordCronCheckIn({
       supabase,
       jobSlug: slug,
