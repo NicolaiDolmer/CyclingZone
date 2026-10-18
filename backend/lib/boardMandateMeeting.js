@@ -593,9 +593,11 @@ export async function signMandate(supabase, {
   // decline lukker kun slottet. Regenereret deterministisk — se modul-
   // headerens fortolkning 2.
   let visionSlotOutcome = null;
+  let openVisionSlotId = null;
   if (visionSlot != null) {
     const openSlot = await loadOpenVisionSlot(supabase, teamId);
     if (openSlot) {
+      openVisionSlotId = openSlot.id;
       const proposal = buildVisionSlotProposal({
         openSlot, focus: finalFocus, team, riders, standing, currentSeasonNumber: mandate.season_number, reputationEnabled,
         existingMilestones: await loadTeamMilestones(supabase, teamId),
@@ -668,6 +670,27 @@ export async function signMandate(supabase, {
   // opdatering. Stop FØR kvitteringer og legacy dual-write, så sideeffekterne
   // kun skrives én gang; svar som idempotens-stien ovenfor.
   if (!signedRows?.length) {
+    // Codex P1 (#6780): forslaget blev lukket (fx lapsed af saesonskiftet)
+    // mellem tjekket og opdateringen. Vision-slot-aendringerne fra DETTE kald
+    // rulles tilbage, saa et mandat der ikke blev underskrevet, ikke efterlader
+    // en ny milepael eller et lukket slot. (Et samtidigt sign kan ikke naa hertil:
+    // det taber allerede slot-claimet ovenfor med 409.)
+    if (visionSlotOutcome && openVisionSlotId) {
+      if (visionSlotOutcome.accepted && visionSlotOutcome.milestone_key) {
+        const { error: delError } = await supabase
+          .from("board_vision_milestones")
+          .delete()
+          .eq("team_id", teamId)
+          .eq("milestone_key", visionSlotOutcome.milestone_key)
+          .eq("status", "pending");
+        if (delError) console.error(`  ⚠️  board_vision_milestones rollback-delete failed for team ${teamId}: ${delError.message}`);
+      }
+      const { error: reopenError } = await supabase
+        .from("board_vision_milestones")
+        .update({ slot_open: true, updated_at: new Date().toISOString() })
+        .eq("id", openVisionSlotId);
+      if (reopenError) console.error(`  ⚠️  board_vision_milestones rollback-reopen failed for ${openVisionSlotId}: ${reopenError.message}`);
+    }
     return buildBoardRoomPayload({ supabase, teamId });
   }
 

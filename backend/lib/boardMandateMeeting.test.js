@@ -172,7 +172,19 @@ function makeMeetingSupabase({
           };
           return upd;
         };
-        return { select: () => chain, insert, update };
+        // #6780 · rollback-sletning: .delete().eq().eq().eq() awaitet direkte.
+        const del = () => {
+          const filters = {};
+          const d = {
+            eq(col, value) { filters[col] = value; return d; },
+            then: (resolve) => {
+              state.milestones = state.milestones.filter((m) => !matchAll(m, filters));
+              resolve({ error: null });
+            },
+          };
+          return d;
+        };
+        return { select: () => chain, insert, update, delete: del };
       }
       if (table === "board_satisfaction_events") {
         const chain = {
@@ -863,4 +875,30 @@ test("#5840 signMandate: samtidigt sign vandt mandat-opdateringen → ingen dobb
   assert.ok(payload, "taberen får den friske payload (idempotent svar)");
   assert.equal(base._state.events.length, 0, "ingen kvittering fra taberen");
   assert.equal(base._state.boardProfiles.length, 0, "ingen legacy dual-write fra taberen");
+});
+
+test("#6780 (Codex P1) signMandate: forslaget lukkes midt i underskriften → vision-slot rulles tilbage", async () => {
+  const supabase = makeCollisionSupabase();
+  // Efterlign saesonskiftet: lige efter at slottet er claimet og milepaelen
+  // indsat, saettes forslaget til lapsed, saa den betingede sign-opdatering rammer 0 raekker.
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_vision_milestones") return api;
+    return {
+      ...api,
+      insert: async (payload) => {
+        const res = await api.insert(payload);
+        supabase._state.mandates[0].status = "lapsed";
+        return res;
+      },
+    };
+  };
+  await signMandate(supabase, {
+    teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true },
+  });
+  assert.equal(supabase._state.mandates[0].status, "lapsed", "mandatet er ikke underskrevet");
+  const slot = supabase._state.milestones.find((m) => m.id === "vm-slot");
+  assert.equal(slot.slot_open, true, "slottet er genaabnet");
+  assert.equal(supabase._state.milestones.filter((m) => m.id !== "vm-slot").length, 0, "den nye milepael er fjernet igen");
 });
