@@ -177,6 +177,7 @@
     "mandate_id_required": "mandateId is vereist",
     "board_mandate_not_found": "Mandaat niet gevonden",
     "board_mandate_not_proposed": "Dit mandaat kan nu niet worden getekend",
+    "board_mandate_season_ended": "Dit mandaat hoort bij een seizoen dat is afgelopen",
     "board_mandate_request_already_used": "Het verzoek voor de jaarvergadering van dit mandaat is al gebruikt",
     "board_mandate_sign_conflict": "Dit mandaat kan nu niet worden getekend",
     "board_mandate_adjustment_budget_exceeded": "Je hebt dit jaar meer aanpassingen gebruikt dan je bestuur toestaat",

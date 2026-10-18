@@ -177,6 +177,7 @@
     "mandate_id_required": "mandateId est requis",
     "board_mandate_not_found": "Mandat introuvable",
     "board_mandate_not_proposed": "Ce mandat ne peut pas être signé pour le moment",
+    "board_mandate_season_ended": "Ce mandat appartient à une saison terminée",
     "board_mandate_request_already_used": "La demande d'assemblée annuelle de ce mandat a déjà été utilisée",
     "board_mandate_sign_conflict": "Ce mandat ne peut pas être signé pour le moment",
     "board_mandate_adjustment_budget_exceeded": "Tu as utilisé plus d'ajustements que ta direction n'en autorise cette année",
