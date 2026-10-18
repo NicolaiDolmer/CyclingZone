@@ -152,6 +152,26 @@ test('brudt junction (maal slettet) fjernes uden fejl', { skip }, () => {
   assert.throws(() => fs.lstatSync(path.join(wt, 'node_modules')), /ENOENT/);
 });
 
+test('frontend/ som junction: linket fjernes, intet scannes ind i maalet (codex P2)', { skip }, () => {
+  const { nm } = makeFakeMain('main-g');
+  // Eksternt "frontend" med en ECHT node_modules der selv indeholder et link.
+  const external = path.join(sandbox, 'external-frontend');
+  fs.mkdirSync(path.join(external, 'node_modules'), { recursive: true });
+  makeJunction(path.join(external, 'node_modules', 'inner'), path.join(nm, 'pkg'));
+  const wt = path.join(sandbox, 'wt-g');
+  fs.mkdirSync(wt, { recursive: true });
+  makeJunction(path.join(wt, 'frontend'), external);
+
+  const res = runRemove(wt);
+
+  assert.equal(res.Ok, true, JSON.stringify(res));
+  assert.equal(res.Found, 1, 'kun frontend-linket selv');
+  assert.equal(fs.existsSync(path.join(wt, 'frontend')), false);
+  // Det eksterne maal og dets interne link er urørte.
+  assert.ok(fs.lstatSync(path.join(external, 'node_modules', 'inner')).isSymbolicLink());
+  assert.ok(fs.existsSync(path.join(nm, 'pkg', 'index.js')));
+});
+
 test('NAEGTER (Ok=false) naar et link ikke kan fjernes', { skip }, () => {
   const { nm, marker } = makeFakeMain('main-e');
   const wt = path.join(sandbox, 'wt-e');

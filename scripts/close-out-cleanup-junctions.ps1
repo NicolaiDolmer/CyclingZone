@@ -49,8 +49,12 @@ function Get-WorktreeLinks {
   $dirs = @($WorktreePath)
   foreach ($sub in 'frontend', 'backend', 'marketing') { $dirs += (Join-Path $WorktreePath $sub) }
   foreach ($d in $dirs) {
+    # Er selve $d et link (fx frontend -> andet sted), fanges det af forælderens scan,
+    # og vi maa IKKE kigge ind i det: dets boern ligger uden for worktreet og ville
+    # blive utilgængelige naar linket er fjernet.
+    if ([IO.Directory]::Exists($d) -and ((New-Object IO.DirectoryInfo $d).Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
     $links += Get-WorktreeLinkChildren -Dir $d
-    $nm = Join-Path $d 'node_modules'
+    $nm =Join-Path $d 'node_modules'
     if ([IO.Directory]::Exists($nm) -and -not ((New-Object IO.DirectoryInfo $nm).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
       $links += Get-WorktreeLinkChildren -Dir $nm
       foreach ($scope in (New-Object IO.DirectoryInfo $nm).GetDirectories('@*')) {
