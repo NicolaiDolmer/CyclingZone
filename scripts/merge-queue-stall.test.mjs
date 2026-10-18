@@ -159,6 +159,16 @@ test('Stop-QueueStall writes the STALL line with the cause and merged PRs, alarm
   assert.doesNotMatch(res.stdout, /NOT REACHED/);
 });
 
+test('Codex #6861 round 3: every deploying PR is deploy-verified, and the tick window is rechecked right before the merge', () => {
+  assert.match(source, /\n  if \(\$script:batchBackend -or \$script:batchRailway -or \$script:batchVercel\) \{\n\s+\$deployState = Wait-ForDeployVerification/);
+  assert.match(source, /\n  if \(\$entryVercel\) \{ \$script:batchVercel = \$true \}/);
+  assert.doesNotMatch(source, /\$batchSize -gt 1 -and \$script:batchRailway/);
+  const loop = source.slice(source.indexOf('for ($idx = 0; $idx -lt $plan.Count; $idx++)'));
+  const wait = loop.indexOf('$failedRuns = @(Get-FailedHandedOffRuns');
+  const recheck = loop.indexOf('Wait-OutOfMergeTickWindow', wait);
+  assert.ok(wait > 0 && recheck > wait && recheck < loop.indexOf('guarded-merge --pr'), 'tick window rechecked after the release-checks wait');
+});
+
 test('every waiting step in the queue is stall-guarded and stops through Stop-QueueStall', () => {
   assert.equal(Number(source.match(/\[int\] \$StallMinutes = (\d+)/)[1]), 15);
   assert.match(source, /Wait-ForWorkflowRun -WorkflowFile "ci\.yml" .* -StallMinutes \$StallMinutes\n\s+# #6859[^\n]*\n\s+if \(\$script:queueStall\) \{ return \$false \}/);

@@ -562,6 +562,8 @@ Write-Host ""
 $script:batchMerged = @()
 $script:batchRailway = $false
 $script:batchBackend = $false
+# Codex P1 (#6861 runde 3): ogsaa Vercel-kravet afgoer deploy-verifikationen (AGENTS regel 20).
+$script:batchVercel = $false
 $script:lastMergedSha = $null
 $script:dryBatchSize = 0
 $script:batchShas = @()
@@ -771,15 +773,16 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
     if ($entryRailway) { $script:batchRailway = $true }
     if ($entryBackend) { $script:batchBackend = $true }
+    if ($entryVercel) { $script:batchVercel = $true }
     if ($batchWithNext) {
       $script:dryBatchSize++
       Write-Host "  [dry-run] ville merge videre uden at vente; CI (main) og evt. Deploy verify ventes EEN gang efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
-    } elseif ($script:batchBackend -or ($script:dryBatchSize -gt 0 -and $script:batchRailway)) {
+    } elseif ($script:batchBackend -or $script:batchRailway -or $script:batchVercel) {
       Write-Host "  [dry-run] sidste i raekken: ville vente paa CI (main) + 'Deploy verify' for hele raekken." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:batchRailway = $false; $script:batchBackend = $false
+      $script:dryBatchSize = 0; $script:batchRailway = $false; $script:batchBackend = $false; $script:batchVercel = $false
     } else {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + mindst $MinWaitMinutesNoBackend min (roerer ikke backend/)." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:batchRailway = $false
+      $script:dryBatchSize = 0; $script:batchRailway = $false; $script:batchVercel = $false
     }
     continue
   }
@@ -790,6 +793,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Write-Host "STOP: en tidligere overdraget Deploy verify-koersel er ikke groen: $($failedRuns -join ', '). Se koerslen og PR-kommentaren foer naeste merge." -ForegroundColor Red
     Exit-Queue 1
   }
+  # Codex P2 (#6861 runde 3): ventetiden paa release checks kan flytte merget
+  # ind i etape-tick-vinduet. #4919 gaelder lige foer selve merget.
+  Wait-OutOfMergeTickWindow
   Write-Host "  Merger: gh pr merge $n --squash --delete-branch --admin"
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) {
@@ -827,6 +833,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
   if ($entryRailway) { $script:batchRailway = $true }
   if ($entryBackend) { $script:batchBackend = $true }
+  if ($entryVercel) { $script:batchVercel = $true }
 
   if ($batchWithNext) {
     Write-Host "  PR #$n merget - merger videre og verificerer EEN gang efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
@@ -845,9 +852,11 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:batchMerged = @()
   $script:batchShas = @()
 
-  # Deploy-verifikation: altid for backend; og efter en RAEKKE (2+) der har
-  # udloest Railway, saa sluttilstanden er verificeret (review #6357 B1).
-  if ($script:batchBackend -or ($batchSize -gt 1 -and $script:batchRailway)) {
+  # Deploy-verifikation: altid naar toget udloeser et deploy (backend, Railway
+  # eller Vercel/byggeinput, AGENTS regel 20). Codex P1 (#6861): et
+  # deploy-paavirkende PR afslutter toget, saa "raekke paa 2+ med Railway"
+  # (review #6357 B1) ville springe enkelt-PR-deploys over.
+  if ($script:batchBackend -or $script:batchRailway -or $script:batchVercel) {
     $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -StallMinutes $StallMinutes
     if ($deployState -eq 'stalled') { Stop-QueueStall }
     $gate = Get-DeployGateAction $deployState
@@ -870,6 +879,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
   $script:batchRailway = $false
   $script:batchBackend = $false
+  $script:batchVercel = $false
   $script:trainEntries = @()
 
   Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
