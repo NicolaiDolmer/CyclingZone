@@ -4953,11 +4953,18 @@ router.get("/races/calendar", requireAuth, cached({
     // skriver de nye league_division_id FØR transitionen promoverer sæsonen til
     // 'active'. En AKTIV (eller afsluttet) sæsons svar er derfor uændret.
     const divisionPending = !teamDivisionKnownForSeason(season.status);
-    const ownPoolId = divisionPending ? null : (req.team?.league_division_id ?? null);
+    // #6875: en AFSLUTTET sæsons pulje er den fra slutstillingen, ikke holdets
+    // nuværende (op-/nedrykning). Samme kilde som planlæggeren og boardet
+    // (resolveTeamDivisionForSeason); den aktive sæson bruger stadig den nuværende.
+    const ownPoolPromise = divisionPending || !req.team?.id
+      ? Promise.resolve(null)
+      : resolveTeamDivisionForSeason({
+        teamId: req.team.id, season, currentDivisionId: req.team.league_division_id ?? null,
+      }).then((r) => r.divisionId);
 
     // Bølge 2 — løbene og holdets entries afhænger begge KUN af season.id. Entry-loadet
     // ventede før på raceIds (og sendte dem som id-liste); joinet gør det unødvendigt.
-    const [racesRes, teamEntryRows, teamWithdrawnRaceIds] = await Promise.all([
+    const [racesRes, teamEntryRows, teamWithdrawnRaceIds, ownPoolId] = await Promise.all([
       // #5517: seniorkalenderen — ungdomsløb holdes ude (squads.withSeniorSquadScope).
       withSeniorSquadScope((senior) => senior(supabase
         .from("races")
@@ -4972,6 +4979,7 @@ router.get("/races/calendar", requireAuth, cached({
           return new Set();
         })
         : Promise.resolve(new Set()),
+      ownPoolPromise,
     ]);
     if (racesRes.error) throw new Error(`races (calendar): ${racesRes.error.message}`);
     const raceList = racesRes.data || [];

@@ -114,7 +114,7 @@ test("#5405: en sæson med ventende division markerer ikke ét eneste løb som h
   const block = calendarHandler();
   assert.match(
     block,
-    /const ownPoolId = divisionPending \? null : \(req\.team\?\.league_division_id \?\? null\)/,
+    /const ownPoolPromise = divisionPending \|\| !req\.team\?\.id\s*\?\s*Promise\.resolve\(null\)/,
     "egen-pulje er ukendt for en kommende sæson — vi låner ikke den nuværende",
   );
   assert.match(
@@ -126,6 +126,21 @@ test("#5405: en sæson med ventende division markerer ikke ét eneste løb som h
     block,
     /teamDivisionId: req\.team\?\.league_division_id/,
     "det gamle direkte gennemslag af den nuværende pulje må ikke komme tilbage",
+  );
+});
+
+test("#6875: en afsluttet sæsons egen-pulje kommer fra slutstillingen, ikke holdets nuværende division", () => {
+  const block = calendarHandler();
+  assert.match(
+    block,
+    /resolveTeamDivisionForSeason\(\{\s*teamId: req\.team\.id, season,/,
+    "samme kilde som planlæggeren/boardet (season_standings for en afsluttet sæson)",
+  );
+  assert.match(block, /ownPoolPromise,\s*\]\);/, "opslaget ligger i bølge 2, ikke som ekstra serielt round-trip");
+  assert.doesNotMatch(
+    block,
+    /const ownPoolId = divisionPending \? null : \(req\.team\?\.league_division_id/,
+    "den nuværende division må ikke igen bruges for alle sæsoner",
   );
 });
 
