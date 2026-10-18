@@ -61,6 +61,24 @@ export const PATCHES = [
         ]
       },
       {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Training keeps your staff bonus",
+          "body": "If the game briefly could not read your facilities or trainers, training now waits and tries again instead of running without your bonuses."
+        },
+        "da": {
+          "title": "Træningen beholder din stabsbonus",
+          "body": "Kunne spillet et øjeblik ikke læse dine faciliteter eller trænere, venter træningen nu og prøver igen i stedet for at køre uden dine bonusser."
+        },
+        "refs": [
+          6703,
+          6596
+        ]
+      },
+      {
         "category": "improved",
         "audience": "player",
         "rollout": "live",
