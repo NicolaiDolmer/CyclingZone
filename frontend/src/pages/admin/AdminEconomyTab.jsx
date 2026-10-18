@@ -441,7 +441,7 @@ export default function AdminEconomyTab() {
                   const rec = prizePreview.reconciliation?.find(x => x.race_id === r.race_id);
                   const mismatch = rec && !rec.ok;
                   return (
-                    <div key={r.race_id} className={`flex justify-between ${mismatch ? "text-cz-warning" : "text-green-600"}`}>
+                    <div key={r.race_id} className={`flex justify-between ${mismatch ? "text-cz-warning" : "text-cz-success"}`}>
                       <span>{mismatch ? "⚠️ " : ""}{r.race_name}</span>
                       <span className="font-mono">
                         {r.total_paid.toLocaleString("da-DK")} CZ$
@@ -468,7 +468,7 @@ export default function AdminEconomyTab() {
               Udbetaling gennemført — {prizePayResult.races_paid} løb · {prizePayResult.total_paid.toLocaleString("da-DK")} CZ$
             </p>
             {prizePayResult.by_race?.map(r => (
-              <div key={r.race_name} className="flex justify-between text-green-600">
+              <div key={r.race_name} className="flex justify-between text-cz-success">
                 <span>{r.race_name}</span>
                 <span className="font-mono">{r.total_prize.toLocaleString("da-DK")} CZ$</span>
               </div>

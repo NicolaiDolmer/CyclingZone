@@ -888,7 +888,7 @@ SSOT for accept: `GAME_INVARIANTS.md`, `RACE_ENGINE_RULES.md`,
 - `docs/SEASON_TRANSITION_CHECKLIST.md` — S1→S2-drejebogen (komprimerings-specifik,
   men trin 0/1/1b/4/5/7-strukturen og transition-motor-referencerne er stadig facit).
 - `scripts/preflight-season-cutover.ps1` — kør FØRST. Parametre: `-FromSeasonNumber`/
-  `-ToSeasonNumber` (default 2→3), `-SkipTests`, `-SkipGh`.
+  `-ToSeasonNumber` (default 2→3), `-SkipTests`, `-SkipGh`. Kalender-SQL'en udelader puljer der pensioneres ved målstrukturen (`--target-structure`, #6795), så de ikke ses som huller før "Afslut sæson".
 - Åbne issues denne cutover skærer ind i: #2164 (D3→D4 eksplicit regel) ·
   #3114 (D1-oprykning game_day-sentinel) · #2840 (løn-mode dagsbaseret) ·
   #3266 (form-reset decay-claim-guard).
