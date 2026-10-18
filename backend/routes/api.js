@@ -4965,7 +4965,13 @@ router.get("/races/calendar", requireAuth, cached({
         .eq("season_id", season.id)),
       fetchTeamSeasonRaceEntries(supabase, req.team?.id, season.id),
       // #6514: afmeldte løb (entries bevares ved afmelding) må ikke ligne en udtagelse i kalenderkortet.
-      req.team?.id ? loadWithdrawnRaceIdsForTeam({ supabase, teamId: req.team.id }) : Promise.resolve(new Set()),
+      // Fejl-blød: en fejl her maa ikke vaelte hele kalenderen (feltet bruges kun af kalenderkortet).
+      req.team?.id
+        ? loadWithdrawnRaceIdsForTeam({ supabase, teamId: req.team.id }).catch((err) => {
+          captureException(err, { tags: { route: "calendar", step: "withdrawn-races" } });
+          return new Set();
+        })
+        : Promise.resolve(new Set()),
     ]);
     if (racesRes.error) throw new Error(`races (calendar): ${racesRes.error.message}`);
     const raceList = racesRes.data || [];
