@@ -27,7 +27,7 @@ import { getOpsMention, withOpsMention } from "./opsWebhook.js";
 export const OUTAGE_WINDOW_MS = 10 * 60_000;
 export const OUTAGE_FAILURE_THRESHOLD = 20; // alarm når fejl i vinduet > 20
 export const OUTAGE_PROBE_INTERVAL_MS = 15_000;
-export const OUTAGE_RECOVERY_CONSECUTIVE_OK = 4; // 4 x 15 s = 1 min grønt
+export const OUTAGE_RECOVERY_CONSECUTIVE_OK = 5; // 5 prober med 15 s mellemrum spænder 60 s (Codex: 4 var kun 45 s)
 export const OUTAGE_PROBE_TIMEOUT_MS = 10_000;
 
 const COLOR_DOWN = 0xe74c3c;
