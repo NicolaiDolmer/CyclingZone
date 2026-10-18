@@ -36,6 +36,10 @@
 #   6. Er CI eller Deploy verify roed for den nye HEAD: STOPPER koeen (roed
 #      main = stop-alt-fix-foerst, jf. GITHUB_WORKFLOW.md §Hurtige merges)
 #      i stedet for at merge videre ovenpaa den.
+#   7. #6859 haenger-alarm: staar et vente-trin (CI main, Deploy verify, Release
+#      checks) -StallMinutes (15) uden fremskridt, skrives en STALL-linje med
+#      aarsag, Discord-ops alarmeres (DISCORD_OPS_WEBHOOK_URL) og koeen stopper
+#      (exit 1) i stedet for at vente til timeout.
 #
 # Boelge-gaten (#5562): en koerende boelge blokerer kun PR'er hvis filer
 # overlapper boelgens aktive ownership (`wave-policy.mjs assert-merge-allowed

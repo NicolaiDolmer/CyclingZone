@@ -895,7 +895,7 @@ jobs:
 
       - name: Test affected-cron deploy proof + merge-tog (#6318, #6859)
         if: ${{ !cancelled() }}
-        run: node --test scripts/ci/cron-deploy-verification.test.mjs scripts/ci/deploy-verification-state.test.mjs scripts/merge-queue-deploy-pending.test.mjs scripts/merge-queue-train.test.mjs scripts/merge-queue-files.test.mjs
+        run: node --test scripts/ci/cron-deploy-verification.test.mjs scripts/ci/deploy-verification-state.test.mjs scripts/merge-queue-deploy-pending.test.mjs scripts/merge-queue-train.test.mjs scripts/merge-queue-files.test.mjs scripts/merge-queue-stall.test.mjs scripts/ci/deploy-coverage.test.mjs
 
       - name: Run workflow-checkout guard (#5441)
         if: ${{ !cancelled() }}

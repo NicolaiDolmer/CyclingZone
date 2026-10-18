@@ -387,6 +387,19 @@ kører parallelt; røde release checks stopper køen før næste merge. Starter
 cron-jobbet mere end 5 min efter READY, skriver det en advarsel: et rødt 1-min-job
 kan da skyldes den sene start, ikke en død cron.
 
+**Nyere deploy der indeholder SHA'en er bevis (#6859, ejer 18/10):** Vercel og
+Railway bygger ikke altid hver main-SHA. Målt 18/10: Vercel lavede aldrig et
+production-deploy af netop den verificerede SHA; det næste deploy indeholdt den,
+men verify ventede 40 min til timeout. `Wait for Vercel + Railway deployments`
+godtager derfor også et READY production-deploy af en nyere main-SHA, der
+indeholder target-SHA'en (`git merge-base --is-ancestor`, kandidaten skal ligge
+på `origin/main`; checkoutet henter main én gang, hvis kandidaten mangler).
+Vercel og Railway uden token: `scripts/ci/deploy-coverage.mjs` (tjekkes ca. hvert
+minut for at spare API-kvoten). Railway med token: `scripts/railway-deploy-status.mjs`
+(et afløst `REMOVED`-deploy er dækket). En fejlet build af target-SHA'en selv er
+stadig rød. Output `vercel_sha` er SHA'en hvis build er live; Sentry-source-map-
+tjekket bruger den, fordi et dækkende deploy uploader under sin egen SHA.
+
 Heartbeat-læsningen filtrerer på registry-slugs (`job_slug=in.(…)`), sorterer
 og begrænser til registry-størrelse + 1, så fremmede eller forældede rækker
 aldrig kan skubbe et berørt job ud af svaret. Søskende-rækkerne bevares bevidst,
