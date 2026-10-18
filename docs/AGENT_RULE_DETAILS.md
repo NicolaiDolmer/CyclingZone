@@ -175,6 +175,6 @@ Nye public-tabeller: følg [DATA_API_GRANTS.md](DATA_API_GRANTS.md) og [migratio
 
 ### §LOKAL lokal-only-state
 
-`.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` fanger lokal-only state en agent efterlader på tværs af PC'er. Ikke en per-session-gate, men kør auditen når du mistænker drift — fx efter ophold på en sekundær PC, eller efter en Codex-session (Codex' egen memory er lokal-only og tæller som cache, jf. hard rule 2). Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](CROSS_PC_LOCAL_STATE.md).
+`.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` fanger lokal-only state en agent efterlader på tværs af PC'er. Kør auditen efter hver Codex-session og ved mistænkt drift, fx efter ophold på en sekundær PC (ejerbekræftet ved review af #6874, 18/10). Codex' egen memory er lokal-only og tæller som cache, jf. hard rule 2. Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](CROSS_PC_LOCAL_STATE.md).
 
 ---

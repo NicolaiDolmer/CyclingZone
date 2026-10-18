@@ -50,7 +50,9 @@ Parallelitet skal vises med overlappende, observerede agentforløb; statiske rol
 
 Patch notes og FEATURE_REGISTRY ændres ikke: denne leverance ændrer kun udvikleropsætning, ingen spilleradfærd, kernefeature eller flag. NOW/MASTERPLAN/STATUS_BOARD ejes af Claudes særskilte close-out.
 
-## Målt 18/10/2026
+## Målt 18/10/2026 før reviewrettelser
+
+Efter Claudes reviewrettelser er AGENTS.md 12.837 bytes med LF (12.908 med CRLF), anslået 3.145 tokens; ankerkontrollen består med de oprindelige 22 plus 2 nye regel 35-ankre. Tabellen nedenfor bevarer den oprindelige før/eftermåling.
 
 | Måling | Før | Efter |
 |---|---:|---:|
@@ -73,6 +75,14 @@ Før: agenten rapporterede shell-startfejl. Efter: svaret hævdede 0 TOML-filer,
 
 Parallel-probe: før blev to Luna-explorers startet på hver sit læseområde; præcis overlapstid blev ikke målt. Efter blev de samme to agenter aktiveret uden at afvente den første. Appens `collaboration.list_agents` observerede BEGGE som `running`; derefter blev begge afslutninger set. Rapporterede værktøjstider var 17:53:02 UTC (hygiejne) og 17:53:05-17:53:16 UTC (setup). Samtidig aktiv agentstatus er positivt observeret; samtidig shell-CPU er ikke målt. Parent samlede begge svar. Appens værktøj mangler `agent_type`, så denne kontrol brugte eksplicit model/effort og rolleprompt.
 
-En frisk CLI-probe med `agent_type explorer` hævdede to afslutninger, men JSON-events viste kun en wait med tomme receiver-ids; en verifier-probe havde samme begrænsning. Ingen custom-role-dispatch erklæres runtime-verificeret på det grundlag. Filerne TOML-parses, og det officielle format er kontrolleret; automatisk valg/indlæsning skal stadig bekræftes i en frisk understøttet session med observerbare spawn-ids.
+### Custom-roller runtime-verificeret 18/10/2026
+
+[Claudes review og runtime-bevis](https://github.com/NicolaiDolmer/CyclingZone/pull/6874#issuecomment-6253519985) dokumenterer en frisk, ikke-ephemeral `codex exec` med CLI 0.162.1, read-only sandbox i det betroede projekt. Rollefiler fra branchen blev midlertidigt indlæst og fjernet igen af Claude. Beviset er sessionernes rollout-filer:
+
+- Parent `01a15043-5bef-7d13-af93-ee19b4b73245` kaldte `spawn_agent` med `agent_type: "explorer"`.
+- Barn `01a15043-8795-7392-9afb-5746a69c8c83`: `session_meta.source.subagent.thread_spawn.agent_role = "explorer"`, `agent_path = /root/pong_check`, depth 1.
+- Barnets `turn_context` viste `gpt-6-luna` / `low`, altså rollefilens værdier frem for brugerstandardens `gpt-6.1-sol` / `medium`; explorer-instruktionen var også i konteksten.
+
+Projektets custom-rolleindlæsning og explorer-filens model/effort-forrang er dermed runtime-verificeret 18/10 af Claude. Det er ikke en individuel runtime-test af alle fem roller. `exec --json` viser ikke `spawn_agent` som event; kun `wait` med tomme `receiver_thread_ids` kan ses. De tidligere JSON-prober kunne derfor ikke afgøre indlæsning. Brug rollout-filer fra en ikke-ephemeral session til denne kontrol; `--ephemeral` gemmer ikke de nødvendige filer. Denne senere kontrol ændrer ikke de historiske svartidsprobers fejlede korrekthed eller beviser en produktivitetsgevinst.
 
 Brugerens tre agentstandarder er installeret på NicolaiPC; anden apply var byteuændret/no-op. Der er ikke skrevet til hovedcheckout, Claudes worktrees eller prod, og ingen merge er udført.

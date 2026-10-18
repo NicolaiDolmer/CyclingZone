@@ -266,7 +266,10 @@ $agentsMdAnchors = @(
   @{ Anchor = "Testplan er en del af designet"; Rule = "28 testplan hoerer til designet" },
   @{ Anchor = "enhver udtalelse om projektets tilstand"; Rule = "29 NOW.md foer udtalelse om tilstand" },
   @{ Anchor = "Omraadets SSOT|Områdets SSOT"; Rule = "30 SSOT laeses og opdateres i samme PR" },
-  @{ Anchor = "Et gulv er aldrig en godkendelse"; Rule = "30b gulv er ikke godkendelse" }
+  @{ Anchor = "Et gulv er aldrig en godkendelse"; Rule = "30b gulv er ikke godkendelse" },
+  # Regel 35 skal staa i auto-loaded core; et link alene bevarer ikke ejer-gates.
+  @{ Anchor = "Altid ejer-gated, også uden for en merge: UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning"; Rule = "35 ejer-gates ogsaa uden for merge" },
+  @{ Anchor = "Før enhver merge eller merge-anbefaling: læs.*AGENT_RULE_DETAILS\.md#regel-35.*fuldt"; Rule = "35 laes fuld regel foer merge/anbefaling" }
 )
 if (Test-Path "AGENTS.md") {
   $agentsMdRaw = (Get-Content "AGENTS.md" -Raw)
