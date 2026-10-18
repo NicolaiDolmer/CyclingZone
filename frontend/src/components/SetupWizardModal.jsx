@@ -133,7 +133,7 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm mb-4 px-3 py-2 bg-cz-danger-bg rounded-cz border border-cz-danger/30">
+          <p className="text-cz-danger text-sm mb-4 px-3 py-2 bg-cz-danger-bg rounded-cz border border-cz-danger/30">
             {error}
           </p>
         )}
