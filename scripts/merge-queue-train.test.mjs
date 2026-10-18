@@ -126,7 +126,8 @@ test('deploy-verify: the queue gate is its own job, the cron proof runs after it
   assert.match(report, /^ {4}needs: \[release, cron-proof, release-checks\]$/m);
   assert.match(report, /^ {4}if: \$\{\{ !cancelled\(\)/m);
   const alarm = report.slice(report.indexOf('- name: Alarm Discord ops'));
-  assert.match(alarm, /if: needs\.cron-proof\.result != 'success'/);
+  // !cancelled(): a failed PR comment step must never suppress the alarm (Codex review).
+  assert.match(alarm, /if: \$\{\{ !cancelled\(\) && \(needs\.cron-proof\.result != 'success' \|\| needs\.release-checks\.result != 'success'\) \}\}/);
   assert.match(alarm, /DISCORD_OPS_WEBHOOK_URL: \$\{\{ secrets\.DISCORD_OPS_WEBHOOK_URL \}\}/);
   // The alarm never fails the run: a missing webhook or a failed POST only warns.
   assert.doesNotMatch(alarm, /exit 1/);

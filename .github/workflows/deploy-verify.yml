@@ -814,6 +814,8 @@ jobs:
     steps:
       - name: Comment final verdict on merged PR
         if: needs.release.outputs.number != ''
+        # A failed comment must not turn the report job red; the alarm still runs.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ needs.release.outputs.number }}
@@ -863,7 +865,8 @@ jobs:
           fi
 
       - name: Alarm Discord ops on red cron proof or release checks
-        if: needs.cron-proof.result != 'success' || needs.release-checks.result != 'success'
+        # !cancelled(): a failed PR comment above must never suppress the alarm.
+        if: ${{ !cancelled() && (needs.cron-proof.result != 'success' || needs.release-checks.result != 'success') }}
         env:
           DISCORD_OPS_WEBHOOK_URL: ${{ secrets.DISCORD_OPS_WEBHOOK_URL }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
