@@ -3,11 +3,19 @@ import { resolve, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
+import { wallClockPeriodSeconds } from '../../backend/lib/wallClockScheduler.js';
 import { blankStringsAndComments } from '../lib/js-source-scan.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_MAP = JSON.parse(readFileSync(new URL('./cron-source-map.json', import.meta.url), 'utf8'));
 const units = { minute: 60, hour: 3600, day: 86400 };
+// #6858: a fixed-time job (crontab monitor) carries its Copenhagen wall-clock
+// schedule; its cadence is the longest gap between two fixed times (1 or 7 days),
+// the same value backend/lib/cronHeartbeat.js writes as expected_cadence_seconds.
+export function registryCadenceSeconds(config) {
+  if (config?.schedule?.type === 'crontab') return config.wallClock ? wallClockPeriodSeconds(config.wallClock) : NaN;
+  return config.schedule.value * units[config.schedule.unit];
+}
 const stamp = value => typeof value === 'string' && /^\d{4}-\d\d-\d\dT.*(?:Z|\+00:00)$/.test(value) ? Date.parse(value) : NaN;
 
 // Includes injected callback/initializer roots from the reviewed map. Loader/
@@ -157,7 +165,7 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
   const jobs = slugs.map(slug => {
     const config = configs.get(slug);
     if (!config) throw new Error('Unknown affected cron');
-    const cadence = config.schedule.value * units[config.schedule.unit];
+    const cadence = registryCadenceSeconds(config);
     const margin = (config.checkinMargin ?? 0) * 60;
     if (!(cadence > 0) || !(margin >= 0)) throw new Error('Invalid registry cadence');
     const row = bySlug.get(slug), time = stamp(row?.last_checkin_at);
@@ -198,7 +206,7 @@ export function evaluateUnreadable({ slugs, since, now, monitors = ALL_CRON_MONI
   const configs = new Map(monitors);
   const jobs = slugs.map(slug => {
     const config = configs.get(slug);
-    const cadence = config ? config.schedule.value * units[config.schedule.unit] : NaN;
+    const cadence = config ? registryCadenceSeconds(config) : NaN;
     const margin = (config?.checkinMargin ?? 0) * 60;
     if (!(cadence > 0) || !(margin >= 0)) return unreadable(slug);
     const deadline = Math.min(Math.max(boundary, cohortAt.get(slug) ?? 0), boundary + MAX_COHORT_SHIFT_SECONDS * 1000) + (cadence + margin) * 1000;
