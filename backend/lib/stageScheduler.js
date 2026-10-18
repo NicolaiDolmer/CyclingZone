@@ -110,13 +110,17 @@ const ESCALATION_AFTER_MS = 3 * 60 * 60 * 1000;
 // bruger den delte, DST-robuste copenhagenMidnightUTC (FIX 2).
 async function countStagesDoneToday(supabase, now) {
   const since = copenhagenMidnightUTC(now).toISOString();
-  const { data, error } = await supabase
+  // #6764: HEAD-count, ikke data.length. Med et kalender-afhængigt cap kan dagens antal
+  // overstige PostgRESTs rækkeloft (1000); en afkortet liste ville så holde budgettet
+  // positivt for evigt og slå runaway-værnet fra.
+  const { count, error } = await supabase
     .from("race_simulation_runs")
-    .select("id")
+    .select("id", { count: "exact", head: true })
     .eq("source", SCHEDULER_RUN_SOURCE)
     .gte("created_at", since); // race_simulation_runs bruger created_at (verificeret schema)
   if (error) throw new Error(`race_simulation_runs: ${error.message}`);
-  return (data || []).length;
+  if (!Number.isFinite(count)) throw new Error("race_simulation_runs: intet count i svaret");
+  return count;
 }
 
 /**

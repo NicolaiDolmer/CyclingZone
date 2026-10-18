@@ -750,6 +750,33 @@ test("#6764: runaway-værnet består — cap'et er endeligt og bundet til kalend
   assert.equal(r.ran, 1);
 });
 
+test("#6764: runaway-værnet holder over PostgRESTs 1000-rækkeloft (doneToday er en HEAD-count)", async () => {
+  // 800 planlagte → cap 1200. 1200 kørt i dag, men en almindelig select ville kun se 1000
+  // (rækkeloftet) og tro der var 200 pladser tilbage. HEAD-count ser det rigtige tal.
+  const { races, schedule } = manyDueRaces(3);
+  const runs = Array.from({ length: 1200 }, (_, i) => ({ id: i + 1 }));
+  let countQueryUsed = false;
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: (state) => {
+      if (state.opts?.head) { countQueryUsed = true; return runs; }
+      return runs.slice(0, 1000); // PostgREST-afkortning
+    },
+    races,
+    race_stage_schedule: scheduleResolver({ planned: 800, due: schedule }),
+  });
+  let ran = 0;
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => { ran++; },
+  });
+  assert.equal(countQueryUsed, true, "doneToday tælles med HEAD-count");
+  assert.equal(r.dailyCap, 1200);
+  assert.equal(r.skipped, "daily_cap_reached");
+  assert.equal(ran, 0);
+});
+
 test("#6764: count-fejl → fallback 62, logget + capturet (én capture pr. døgn)", async () => {
   const base = makeSupabase({ race_stage_schedule: scheduleResolver({ planned: 500, due: [] }) });
   const supabase = withFailingPlannedCount(base);
