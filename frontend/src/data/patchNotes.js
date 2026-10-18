@@ -1,5 +1,211 @@
 export const PATCHES = [
   {
+    "version": "7.368",
+    "date": "2026-10-18",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Races",
+        "en": {
+          "title": "Stage page: the race story",
+          "body": "On the new stage page you can replay the stage, see its key moments, the time checks and the final 5 km, and read a short race report."
+        },
+        "da": {
+          "title": "Etapesiden: løbets historie",
+          "body": "På den nye etapeside kan du afspille etapen igen, se de vigtigste øjeblikke, mellemtiderne og de sidste 5 km og læse et kort referat."
+        },
+        "refs": [
+          6643,
+          6570
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Messages in your language",
+          "body": "Auction cancellations, auto-bid alerts, deals waiting for you, squad enforcement and rider arrivals now reach you in the language you play in. Before, some of them always came in Danish."
+        },
+        "da": {
+          "title": "Beskeder på dit sprog",
+          "body": "Annullerede auktioner, autobud, handler der venter på dig, trup-håndhævelse og ankomne ryttere kommer nu på det sprog, du spiller på. Før kom nogle af dem altid på dansk."
+        },
+        "refs": [
+          6810,
+          6801
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Parked teams and training",
+          "body": "A parked team no longer trains, and the training page no longer offers to run it. When you come back from parking, you don't get the missed days in one go either."
+        },
+        "da": {
+          "title": "Parkerede hold og træning",
+          "body": "Et parkeret hold træner ikke længere, og træningssiden tilbyder det ikke længere. Når du kommer tilbage fra parkering, får du heller ikke de missede dage på én gang."
+        },
+        "refs": [
+          6704,
+          6824,
+          6536,
+          6811
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "\"Train now\" no longer gets stuck",
+          "body": "If you press \"Train now\" while the evening run is already handling your team, the page now refreshes instead of showing an error. A training day that was left half-booked also fixes itself."
+        },
+        "da": {
+          "title": "\"Træn nu\" sidder ikke længere fast",
+          "body": "Trykker du \"Træn nu\", mens aftenens kørsel allerede tager dit hold, genindlæser siden nu i stedet for at vise en fejl. En træningsdag, der stod halvt booket, retter sig også selv."
+        },
+        "refs": [
+          6822,
+          6798,
+          6791,
+          6759
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider search finds every name",
+          "body": "Searching for a rider now matches the start of any part of the name, so you find a rider by first name, last name or a middle name."
+        },
+        "da": {
+          "title": "Rytter-søgningen finder alle navne",
+          "body": "Søgning efter en rytter matcher nu starten af alle dele af navnet, så du finder rytteren på fornavn, efternavn eller mellemnavn."
+        },
+        "refs": [
+          6770,
+          5941
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Strength view on the standings",
+          "body": "The strength view on the standings no longer hangs while it loads."
+        },
+        "da": {
+          "title": "Styrke-visningen på stillingen",
+          "body": "Styrke-visningen på stillingen hænger ikke længere, mens den indlæses."
+        },
+        "refs": [
+          6763
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Gap chart after an early catch",
+          "body": "When the first breakaway is caught early and a new one goes, the gap chart in the race film now follows the new breakaway."
+        },
+        "da": {
+          "title": "Tidskurven efter en tidlig indhentning",
+          "body": "Bliver det første udbrud hentet tidligt, og et nyt går, følger tidskurven i løbsfilmen nu det nye udbrud."
+        },
+        "refs": [
+          6809,
+          6803
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Annual meeting shows this season",
+          "body": "The annual board meeting now always shows the mandate for the current season, never one from a season that has ended."
+        },
+        "da": {
+          "title": "Årsmødet viser denne sæson",
+          "body": "Bestyrelsens årsmøde viser nu altid mandatet for den aktuelle sæson, aldrig et fra en afsluttet sæson."
+        },
+        "refs": [
+          6847,
+          6793
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Stages run as planned",
+          "body": "The number of stages run each day now follows the day's calendar, so no planned stage is held back."
+        },
+        "da": {
+          "title": "Etaperne køres som planlagt",
+          "body": "Antallet af etaper, der køres hver dag, følger nu dagens kalender, så ingen planlagt etape bliver holdt tilbage."
+        },
+        "refs": [
+          6844,
+          6764
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Clearer dark mode",
+          "body": "Text and labels are easier to read in dark mode, among others on the day band and the cookie banner."
+        },
+        "da": {
+          "title": "Tydeligere mørk tilstand",
+          "body": "Tekst og mærker er lettere at læse i mørk tilstand, blandt andet på dagsbåndet og cookie-banneret."
+        },
+        "refs": [
+          6792
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Economy",
+        "en": {
+          "title": "Value update on Danish time",
+          "body": "The weekly value update now runs at exactly 14:00 Danish time on Sundays, also across the change to winter time."
+        },
+        "da": {
+          "title": "Værdiopdatering på dansk tid",
+          "body": "Den ugentlige værdiopdatering kører nu præcis kl. 14.00 dansk tid om søndagen, også hen over skiftet til vintertid."
+        },
+        "refs": [
+          6860,
+          6858
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.367",
     "date": "2026-10-17",
     "changes": [
