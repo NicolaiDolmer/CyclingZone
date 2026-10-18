@@ -81,6 +81,9 @@ param(
   # traek og fejlen kan stadig peges ud til en lille gruppe). #6859 (ejer
   # 18/10): merge-tog som standard, 3 -> 5; den skyldige peges ud automatisk.
   [int] $MaxBatch = 5,
+  # Codex P2 (#6861): saa laenge venter koeen paa en overdraget koersels Release checks
+  # foer naeste merge (og ved koeens slutning). Haenger de laengere, stopper koeen.
+  [int] $ReleaseChecksWaitMinutes = 15,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
   [int] $DeployVerifyTimeoutMinutes = 140,
@@ -488,14 +491,20 @@ if ($NoBatch) {
 # scripts/ci/deploy-verification-state.mjs --handed-off; ulaeselig = stop.
 # Returnerer en liste af fejlede run-id'er; tom liste = fortsaet.
 function Get-FailedHandedOffRuns {
-  param([string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs'))
+  param(
+    [string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs'),
+    [double] $WaitMinutes = 0,
+    [int] $PollSeconds = 20
+  )
   $failed = @()
+  $deadline = (Get-Date).AddMinutes($WaitMinutes)
   foreach ($id in @($script:handedOffRuns)) {
+   while ($true) {
     $json = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$id") -TolerateFailure
-    if (-not $json) { $failed += "$id (ulaeselig)"; continue }
-    try { $r = ($json -join "") | ConvertFrom-Json } catch { $failed += "$id (ulaeselig)"; continue }
+    if (-not $json) { $failed += "$id (ulaeselig)"; break }
+    try { $r = ($json -join "") | ConvertFrom-Json } catch { $failed += "$id (ulaeselig)"; break }
     $jobsJson = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$id/attempts/$($r.run_attempt)/jobs?per_page=100") -TolerateFailure
-    if (-not $jobsJson) { $failed += "$id (ulaeselig)"; continue }
+    if (-not $jobsJson) { $failed += "$id (ulaeselig)"; break }
     $runFile = [IO.Path]::GetTempFileName()
     $jobsFile = [IO.Path]::GetTempFileName()
     try {
@@ -505,7 +514,17 @@ function Get-FailedHandedOffRuns {
     } finally {
       Remove-Item -LiteralPath $runFile, $jobsFile -ErrorAction SilentlyContinue
     }
-    if ($verdict -notin @('ok', 'running')) { $failed += "$id ($verdict)" }
+    # Codex P2 (#6861): koerende Release checks er IKKE groenne. Vent paa dem op
+    # til -WaitMinutes; haenger de stadig, er det et stop (aldrig stille gennem).
+    if ($verdict -eq 'running') {
+      if ($WaitMinutes -le 0) { break }
+      if ((Get-Date) -lt $deadline) { Start-Sleep -Seconds $PollSeconds; continue }
+      $failed += "$id (release checks ikke faerdige efter $WaitMinutes min)"
+      break
+    }
+    if ($verdict -ne 'ok') { $failed += "$id ($verdict)" }
+    break
+   }
   }
   return $failed
 }
@@ -654,7 +673,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     continue
   }
 
-  $failedRuns = @(Get-FailedHandedOffRuns)
+  $failedRuns = @(Get-FailedHandedOffRuns -WaitMinutes $ReleaseChecksWaitMinutes)
   if ($failedRuns.Count -gt 0) {
     Write-Host "STOP: en tidligere overdraget Deploy verify-koersel er ikke groen: $($failedRuns -join ', '). Se koerslen og PR-kommentaren foer naeste merge." -ForegroundColor Red
     Exit-Queue 1
@@ -746,6 +765,11 @@ Write-Host ""
 if ($DryRun) {
   Write-Host "[dry-run] Hele koeen ($($PrNumbers.Count) PR'er) blev gennemgaaet uden fejl - alle er klar til en rigtig koersel lige nu." -ForegroundColor Green
 } else {
+  $finalFailed = @(Get-FailedHandedOffRuns -WaitMinutes $ReleaseChecksWaitMinutes)
+  if ($finalFailed.Count -gt 0) {
+    Write-Host "STOP: Release checks efter sidste merge er ikke groenne: $($finalFailed -join ', '). Se koerslen foer naeste merge-koe." -ForegroundColor Red
+    exit 1
+  }
   Write-Host "[OK] Hele merge-koeen ($($PrNumbers.Count) PR'er) er merget og verificeret." -ForegroundColor Green
   foreach ($id in @($script:handedOffRuns)) {
     Write-Host "  Cron-bevis koerer videre i https://github.com/$Repo/actions/runs/$id (kommenterer paa PR'en naar det er faerdigt; roedt = Discord-ops-alarm, intet stop)." -ForegroundColor DarkGray

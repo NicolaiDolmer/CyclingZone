@@ -139,7 +139,7 @@ test('#6318 review: queue deploy timeout covers one full release job', () => {
 
 // #6859: handed-off runs are judged at job level. Each fixture run lists its
 // release-checks and cron-proof job states.
-function failedHandedOff(runs) {
+function failedHandedOff(runs, extra = '') {
   const script = `
     $ErrorActionPreference='Stop'; $Repo='fixture/repo';
     $ast=[Management.Automation.Language.Parser]::ParseFile('${queue}',[ref]$null,[ref]$null);
@@ -160,7 +160,7 @@ function failedHandedOff(runs) {
       }
       return (@{id=$id;run_attempt=1;status=$r.status;conclusion=$r.conclusion}|ConvertTo-Json -Compress)
     }
-    Write-Output ('RESULT='+(ConvertTo-Json -InputObject @(Get-FailedHandedOffRuns -ClassifierPath '${classifier}') -Compress));
+    Write-Output ('RESULT='+(ConvertTo-Json -InputObject @(Get-FailedHandedOffRuns -ClassifierPath '${classifier}' ${extra}) -Compress));
   `;
   const output = execFileSync('pwsh', ['-NoProfile', '-Command', script], { encoding: 'utf8' });
   return JSON.parse(output.split(/\r?\n/).find(line => line.startsWith('RESULT=')).slice(7));
@@ -180,5 +180,14 @@ test('#6859: red release checks stop the next merge; a red cron proof or running
   ['2 (failed: release checks failure)', '3 (ulaeselig)', '4 (failed: release checks cancelled)', '5 (failed: release checks missing)']);
   const source = readFileSync(new URL('./merge-queue.ps1', import.meta.url), 'utf8');
   const check = source.indexOf('$failedRuns = @(Get-FailedHandedOffRuns)');
-  assert.ok(check > 0 && check < source.indexOf('guarded-merge --pr'), 'handed-off runs are checked before every real merge');
+  assert.equal(check, -1, 'the plain call is replaced by a waiting call');
+  const waiting = source.indexOf('$failedRuns = @(Get-FailedHandedOffRuns -WaitMinutes $ReleaseChecksWaitMinutes)');
+  assert.ok(waiting > 0 && waiting < source.indexOf('guarded-merge --pr'), 'handed-off runs are checked (and awaited) before every real merge');
+  assert.ok(source.indexOf('$finalFailed = @(Get-FailedHandedOffRuns -WaitMinutes $ReleaseChecksWaitMinutes)') > 0, 'the last release checks are observed at the end of the queue');
+});
+
+test('#6861 (Codex P2): running release checks are awaited and a hang stops the queue', () => {
+  const running = { id: 7, status: 'in_progress', conclusion: null, checks: { status: 'in_progress', conclusion: null } };
+  assert.deepEqual(failedHandedOff([running], '-WaitMinutes 0.001 -PollSeconds 0'), ['7 (release checks ikke faerdige efter 0.001 min)']);
+  assert.deepEqual(failedHandedOff([running]), [], 'without a wait budget the old non-blocking read is unchanged');
 });
