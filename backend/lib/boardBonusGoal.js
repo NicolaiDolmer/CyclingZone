@@ -210,7 +210,7 @@ export async function appendBonusGoalToActiveMandate({ supabase, teamId, goal, o
     if (updateError) throw new Error(`board_mandates goal update failed: ${updateError.message}`);
     if ((updated || []).length) return { written: true, mandateId: mandate.id };
   }
-  throw new Error("board_mandates goal update lost the optimistic lock 3 times");
+  throw new Error(`board_mandates goal update lost the optimistic lock 3 times (team ${teamId}, offer ${offerId})`);
 }
 
 /**

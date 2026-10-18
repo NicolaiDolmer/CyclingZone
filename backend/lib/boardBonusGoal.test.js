@@ -408,6 +408,7 @@ test("#6773 (Codex P1): samtidigt skriv mellem læs og skriv taber ikke det ande
   tables.board_mandates[0].updated_at = "2026-10-01T00:00:00Z";
   const base = makeSupabase(tables);
   let interfered = false;
+  let reads = 0;
   // Efterligner reparations-scriptet: lige efter vores første læsning flytter det
   // et bonusmål ind og bumper updated_at, FØR vores skriv rammer.
   const supabase = {
@@ -419,7 +420,10 @@ test("#6773 (Codex P1): samtidigt skriv mellem læs og skriv taber ikke det ande
           const b = api.select(...args);
           const orig = b.maybeSingle;
           b.maybeSingle = async () => {
-            const res = await orig();
+            reads += 1;
+            const raw = await orig();
+            // Som PostgREST: kalderen får en KOPI, ikke selve rækken.
+            const res = { ...raw, data: raw.data ? structuredClone(raw.data) : raw.data };
             if (!interfered) {
               interfered = true;
               const row = tables.board_mandates[0];
@@ -446,4 +450,43 @@ test("#6773 (Codex P1): samtidigt skriv mellem læs og skriv taber ikke det ande
   const goals = tables.board_mandates[0].goals;
   assert.ok(goals.some((g) => g.type === "migrated_goal"), "det samtidigt flyttede mål må ikke forsvinde");
   assert.ok(goals.some((g) => g.bonus_offer_id === OFFER_ID), "vores eget mål er skrevet");
+  assert.ok(reads >= 2, "kollisionen skal give en ny læsning");
+});
+
+test("#6773: tabes låsen 3 gange, kastes der med hold og tilbud i beskeden", async () => {
+  const tables = baseTables();
+  tables.board_mandates[0].updated_at = "2026-10-01T00:00:00Z";
+  const base = makeSupabase(tables);
+  let n = 0;
+  const supabase = {
+    from(table) {
+      const api = base.from(table);
+      if (table !== "board_mandates") return api;
+      return {
+        select: (...args) => {
+          const b = api.select(...args);
+          const orig = b.maybeSingle;
+          b.maybeSingle = async () => {
+            const raw = await orig();
+            const res = { ...raw, data: raw.data ? structuredClone(raw.data) : raw.data };
+            n += 1;
+            tables.board_mandates[0].updated_at = `2026-10-18T12:00:0${n}Z`; // altid en ny skriver imellem
+            return res;
+          };
+          return b;
+        },
+        update: (patch) => api.update(patch),
+      };
+    },
+  };
+  await assert.rejects(
+    appendBonusGoalToActiveMandate({
+      supabase,
+      teamId: TEAM_ID,
+      goal: buildBonusExtraGoal({ extraGoal: EXTRA_GOAL, offerId: OFFER_ID }),
+      offerId: OFFER_ID,
+    }),
+    (err) => err.message.includes(TEAM_ID) && err.message.includes(String(OFFER_ID)),
+  );
+  assert.equal(n, 3);
 });
