@@ -158,3 +158,11 @@ test('train: a deployment-affecting PR always ends the train (Codex P1)', () => 
   const queueText = read('./merge-queue.ps1');
   assert.match(queueText, /if \(\$entryBackend -or \$entryRailway -or \$entryVercel\) \{ \$batchWithNext = \$false \}/);
 });
+
+test('plan entry: an incomplete file list (100-file cap) fails closed as deploy-affecting (Codex P1)', () => {
+  const queueText = read('./merge-queue.ps1');
+  assert.match(queueText, /'--json', 'files,changedFiles,title,mergeable,isDraft'/);
+  assert.match(queueText, /\$listComplete = \(\$changed -gt 0\) -and \(\$paths\.Count -ge \$changed\)/);
+  assert.match(queueText, /\$filesKnown = \$listComplete/);
+  assert.match(queueText, /if \(-not \$filesKnown\) \{ \$touchesBackend = \$true; \$touchesRailway = \$true; \$touchesVercel = \$true \}/);
+});

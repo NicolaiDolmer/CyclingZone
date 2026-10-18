@@ -138,7 +138,7 @@ function Get-PrPlanEntry([int]$number) {
   elseif ($checksExit -eq 8) { $checksSummary = "AFVENTER" }
   else { $checksSummary = "ROED/mangler" }
 
-  $filesJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'files,title,mergeable,isDraft') -TolerateFailure
+  $filesJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'files,changedFiles,title,mergeable,isDraft') -TolerateFailure
   $touchesBackend = $false
   # Review #6357: Railway bygger paa ALT undtagen backend/railway.json's
   # watchPatterns-undtagelser (docs/, pr-screens/, superpowers/, .claude/, rod-*.md).
@@ -160,6 +160,12 @@ function Get-PrPlanEntry([int]$number) {
       # (node --test). Kun produktionskode er "backend"; tests/dev-scripts/
       # test-data venter ikke paa deploy-verifikation alene.
       $paths = @($parsed.files | ForEach-Object { $_.path })
+      # Codex P1 (#6861): `gh pr view --json files` er loftet ved 100 filer. Er
+      # listen ufuldstaendig, kan en deploy-paavirkende fil mangle -> fail closed:
+      # PR'en behandles som ukendt (deploy-paavirkende) og afslutter toget.
+      $changed = 0
+      if ($parsed.PSObject.Properties['changedFiles']) { $changed = [int]$parsed.changedFiles }
+      $listComplete = ($changed -gt 0) -and ($paths.Count -ge $changed)
       $pathsJson = ConvertTo-Json -InputObject $paths -Compress
       $classJson = & node (Join-Path $PSScriptRoot 'merge-queue-files.mjs') $pathsJson
       if ($LASTEXITCODE -eq 0 -and $classJson) {
@@ -167,12 +173,12 @@ function Get-PrPlanEntry([int]$number) {
         $touchesBackend = [bool]$cls.touchesBackend
         $touchesRailway = [bool]$cls.touchesRailway
         if ($cls.PSObject.Properties['touchesVercel']) { $touchesVercel = [bool]$cls.touchesVercel }
-        $filesKnown = $true
+        $filesKnown = $listComplete
       }
     } catch {}
   }
   # Ukendt filliste maa aldrig batches stille uden deploy-verifikation.
-  if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true }
+  if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true; $touchesVercel = $true }
 
   [pscustomobject]@{
     number         = $number
