@@ -815,7 +815,8 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Write-Host "STOP: Boelgen har aendret sig siden preflight (overlap med PR #$n): merge er blokeret." -ForegroundColor Red
     Exit-Queue 1
   }
-  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo
+  # #6861 (Codex P1): merge laast til det hoved, der netop er genvalideret.
+  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo --head $recheck.headSha
   if ($LASTEXITCODE -ne 0) {
     Write-Host "STOP: Merge af PR #$n fejlede eller boelgelaasen blev afvist." -ForegroundColor Red
     Exit-Queue 1
