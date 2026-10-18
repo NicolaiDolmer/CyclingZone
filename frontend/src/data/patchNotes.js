@@ -7,6 +7,7 @@ export const PATCHES = [
         "category": "new",
         "audience": "player",
         "rollout": "beta",
+        "flag": "stage_page_v2",
         "topic": "Races",
         "en": {
           "title": "Stage page: the race story",
