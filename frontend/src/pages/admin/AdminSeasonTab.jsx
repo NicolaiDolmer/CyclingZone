@@ -320,7 +320,7 @@ export default function AdminSeasonTab() {
             />
             {windowOpen && (
               <button onClick={updateClosesAt} disabled={loading.closesAt}
-                className="px-3 py-2 bg-cz-info-bg text-cz-info border border-cz-info/30 rounded-cz text-sm font-medium hover:bg-blue-100 disabled:opacity-50">
+                className="px-3 py-2 bg-cz-info-bg text-cz-info border border-cz-info/30 rounded-cz text-sm font-medium hover:bg-cz-info/20 disabled:opacity-50">
                 {loading.closesAt ? "..." : "Gem"}
               </button>
             )}

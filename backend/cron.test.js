@@ -24,13 +24,13 @@ test("trackedTick — kaster fejl swallowes (cron må aldrig vælte processen)",
 
 test("trackedTick — sender Sentry-event med cron-label-tag ved fejl", async () => {
   const captured = [];
-  const wrapped = trackedTick("season-auto-transition", async () => {
+  const wrapped = trackedTick("squad-enforcement", async () => {
     throw new Error("DB connection lost");
   }, { captureException: (err, ctx) => { captured.push({ err, ctx }); } });
   await wrapped();
   assert.equal(captured.length, 1);
   assert.match(captured[0].err.message, /DB connection lost/);
-  assert.deepEqual(captured[0].ctx.tags, { cron: "season-auto-transition" });
+  assert.deepEqual(captured[0].ctx.tags, { cron: "squad-enforcement" });
 });
 
 test("awaitCronsIdle — returnerer true når ingen ticks er in-flight", async () => {

@@ -955,8 +955,8 @@ export async function createLiveRuntime({ env, recorder, faults, als, getPhase, 
         backlogBeforeClock, finalizeStatePresent: finalizeStatePresent ?? 0, existingRunsForSlots, capBaselineRuns: capBaselineRuns ?? 0,
         flags: {
           stage_scheduler_enabled: await isStageSchedulerEnabled(supabase),
-          race_engine_v2: await isRaceEngineV2Enabled(supabase, { isBetaTester: true }),
-          auto_prize: await isAutoPrizeEnabled(supabase),
+          race_engine_v2_enabled: await isRaceEngineV2Enabled(supabase, { isBetaTester: true }),
+          auto_prize_enabled: await isAutoPrizeEnabled(supabase),
         },
       };
     },

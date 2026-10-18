@@ -1,0 +1,39 @@
+{
+  "page": {
+    "title": "Staf",
+    "subtitle": "{count} stafleden in de hele competitie"
+  },
+  "filters": {
+    "search": "Zoeken",
+    "searchPlaceholder": "Naam of team",
+    "role": "Rol",
+    "allRoles": "Alle rollen",
+    "minTier": "Min. niveau",
+    "anyTier": "Elk niveau",
+    "includeAi": "Inclusief AI-teams"
+  },
+  "table": {
+    "name": "Naam",
+    "role": "Rol",
+    "team": "Team",
+    "division": "Divisie",
+    "tier": "Niveau",
+    "specialization": "Specialisatie",
+    "overall": "Rating",
+    "salary": "Salaris",
+    "mine": "Van mij",
+    "ai": "AI",
+    "actions": "Acties",
+    "count": "{filtered} van {total} stafleden getoond",
+    "emptyFiltered": "Geen stafleden die bij je filters passen"
+  },
+  "disabled": {
+    "title": "Nog niet beschikbaar",
+    "description": "Het staf-onderdeel is nog niet open."
+  },
+  "error": {
+    "title": "Staf kon niet worden geladen",
+    "description": "Er ging iets mis bij het laden van het staföverzicht. Probeer het over een moment opnieuw.",
+    "retry": "Probeer opnieuw"
+  }
+}

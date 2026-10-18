@@ -14,7 +14,7 @@
 //      transfer_windows) — nøglen er fremadrettet forberedt, ikke aktivt sat.
 //   2. Ellers: den kommende sæson (seasons.status='upcoming') sin start_date
 //      MINUS én dag kl. 18:00 dansk tid — transitionen kører aftenen FØR
-//      sæsonstart (season_auto_transition er slukket; transitionen er en
+//      sæsonstart (auto-skifte-cron'en er fjernet, #6796; transitionen er en
 //      manuel admin-handling, typisk kørt aftenen før, se
 //      docs/NIGHT_WAVE_RUNBOOK.md).
 //   3. Ingen upcoming sæson → ingen grænse (ingen blokering — samme fail-open

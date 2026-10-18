@@ -1,5 +1,6 @@
 import { ensureNoError, expectMaybeSingle, expectMutation } from "./marketUtils.js";
 import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 
 const NOOP = async () => {};
 const CANCELLABLE_STATUSES = ["active", "extended"];
@@ -69,16 +70,22 @@ export async function cancelAuctionByAdmin({
     ? `${auction.rider.firstname} ${auction.rider.lastname}`
     : "ukendt rytter";
 
-  const bidderMessage = `Auktionen på ${riderName} er annulleret af en admin. Dit bud er frigivet og din balance er igen disponibel.`;
+  // #6801: noegle + parametre i stedet for hardkodet dansk (modtagerens sprog).
+  const bidderNotice = buildKeyedNotification({
+    titleCode: "notif.auction.cancelledTitle",
+    messageCode: "notif.auction.adminCancelledBidder",
+    messageParams: { rider: riderName },
+  });
 
   for (const teamId of bidderTeamIds) {
     try {
       await notifyTeamOwner(
         teamId,
         "auction_cancelled",
-        "Auktion annulleret",
-        bidderMessage,
-        auctionId
+        bidderNotice.title,
+        bidderNotice.message,
+        auctionId,
+        bidderNotice.metadata
       );
     } catch { /* best-effort — block ikke andre notifikationer */ }
   }
@@ -86,12 +93,18 @@ export async function cancelAuctionByAdmin({
   // Notificér sælger (hvis sat og ikke allerede budgivet).
   if (auction.seller_team_id && !bidderTeamIds.includes(auction.seller_team_id)) {
     try {
+      const sellerNotice = buildKeyedNotification({
+        titleCode: "notif.auction.cancelledTitle",
+        messageCode: "notif.auction.adminCancelledSeller",
+        messageParams: { rider: riderName },
+      });
       await notifyTeamOwner(
         auction.seller_team_id,
         "auction_cancelled",
-        "Auktion annulleret",
-        `Din auktion på ${riderName} er annulleret af en admin.`,
-        auctionId
+        sellerNotice.title,
+        sellerNotice.message,
+        auctionId,
+        sellerNotice.metadata
       );
     } catch { /* best-effort */ }
   }

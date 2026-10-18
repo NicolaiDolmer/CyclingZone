@@ -1,0 +1,10 @@
+{
+  "install": {
+    "regionAriaLabel": "Installer l'application",
+    "title": "Mets Cycling Zone sur ton écran d'accueil. Elle s'ouvre en plein écran, directement sur ton équipe.",
+    "action": "Installer",
+    "later": "Pas maintenant",
+    "iosTitle": "Mets Cycling Zone sur ton écran d'accueil : touche Partager, puis Sur l'écran d'accueil.",
+    "iosDismiss": "Compris"
+  }
+}

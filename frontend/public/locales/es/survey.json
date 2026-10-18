@@ -1,0 +1,78 @@
+{
+  "page": {
+    "subtitle": "Unos 5 minutos",
+    "introLead": "Prefiero preguntarte antes que adivinar, así que he puesto toda la lista en un solo sitio.",
+    "introAccount": "Tus respuestas se guardan en tu cuenta, así que puedes cambiarlas hasta que se cierre la encuesta.",
+    "closesOn": "Se cierra el {date}"
+  },
+  "progress": {
+    "label": "Respondidas",
+    "value": "{done} de {total}",
+    "aria": "Cuánto de la encuesta has respondido"
+  },
+  "sections": {
+    "today": "Cómo se siente hoy",
+    "ideas": "Las ideas",
+    "problems": "Lo que peor funciona",
+    "fog": "Lo que puedes ver",
+    "choices": "Lo que elegirías",
+    "pro": "Pro",
+    "closing": "Antes de enviar",
+    "other": "Más"
+  },
+  "axes": {
+    "idea": "Idea",
+    "importance": "Importante",
+    "dontKnow": "No lo sé",
+    "dontKnowAria": "Sin opinión sobre {feature}"
+  },
+  "scale": {
+    "satisfactionLow": "Nada satisfecho",
+    "satisfactionHigh": "Muy satisfecho"
+  },
+  "field": {
+    "optional": "Opcional",
+    "required": "Obligatorio",
+    "textPlaceholder": "Escribe tanto o tan poco como quieras",
+    "maxThreeLeft": "{left, plural, =0 {Tres es el límite. Quita una para elegir otra.} one {Queda #} other {Quedan #}}",
+    "yes": "Sí",
+    "no": "No"
+  },
+  "save": {
+    "saving": "Guardando",
+    "saved": "Guardado",
+    "error": "Esa respuesta no se guardó. Cámbiala una vez más y lo reintentaré."
+  },
+  "submit": {
+    "cta": "Enviar mis respuestas",
+    "sending": "Enviando",
+    "missing": "{count, plural, one {Todavía falta responder # pregunta.} other {Todavía faltan por responder # preguntas.}}",
+    "error": "No se ha enviado. Inténtalo de nuevo."
+  },
+  "thanks": {
+    "title": "Gracias",
+    "body": "Leo cada respuesta yo mismo y te contaré en el foro qué ha salido de todo esto.",
+    "editable": "Puedes cambiar tus respuestas hasta que se cierre la encuesta.",
+    "edit": "Cambiar mis respuestas",
+    "roadmap": "Ver la hoja de ruta"
+  },
+  "preview": {
+    "notice": "Vista previa del borrador. Solo los administradores pueden ver esta página. Las respuestas no se guardan.",
+    "submitDisabled": "El envío está desactivado mientras la encuesta sea un borrador."
+  },
+  "closed": {
+    "title": "Esta encuesta está cerrada",
+    "body": "Gracias a todos los que han respondido. Lo que salga de ella irá a la hoja de ruta.",
+    "roadmap": "Ver la hoja de ruta"
+  },
+  "notFound": {
+    "title": "No encuentro esa encuesta",
+    "body": "Seguramente el enlace es antiguo. La hoja de ruta muestra en qué estoy trabajando ahora.",
+    "roadmap": "Ver la hoja de ruta"
+  },
+  "error": {
+    "title": "La encuesta no se ha cargado",
+    "body": "No se ha perdido nada. Las respuestas que ya hayas dado están a salvo.",
+    "retry": "Reintentar"
+  }
+}

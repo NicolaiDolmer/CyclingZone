@@ -51,6 +51,7 @@ import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 export class MandateSignConflictError extends Error {
   constructor(message, { errorCode = "board_mandate_sign_conflict" } = {}) {
@@ -90,12 +91,28 @@ async function loadMeetingContext(supabase, teamId) {
   };
 }
 
-async function loadProposedMandate(supabase, teamId) {
-  const { data, error } = await supabase
+/**
+ * #6793 · Den aktive sæsons nummer, eller `null` når ingen sæson er aktiv.
+ * Genbruger det delte opslag (`loadSingleActiveSeason`), som tåler to samtidigt
+ * aktive sæsoner midt i et sæsonskifte. Mandat-læserne herunder filtrerer på
+ * dette nummer (BOARD_RULES): et mandat fra en anden sæson må aldrig svare for
+ * den aktive. Uden aktiv sæson (mellem sæsoner) falder de tilbage til nyeste.
+ */
+async function loadActiveSeasonNumber(supabase) {
+  const season = await loadSingleActiveSeason(supabase, { select: "id, number", tag: "board-meeting" });
+  const number = Number(season?.number);
+  return season && Number.isFinite(number) ? number : null;
+}
+
+async function loadProposedMandate(supabase, teamId, activeSeasonNumber = null) {
+  let query = supabase
     .from("board_mandates")
     .select("*")
     .eq("team_id", teamId)
-    .eq("status", "proposed")
+    .eq("status", "proposed");
+  if (activeSeasonNumber != null) query = query.eq("season_number", activeSeasonNumber);
+  const { data, error } = await query
+    .order("season_number", { ascending: false, nullsFirst: false })
     .order("proposed_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -119,11 +136,16 @@ async function loadProposedMandate(supabase, teamId) {
  *   • seneste status = alt andet       → "no_proposal" (fx 'completed' — mellem
  *     sæsoner, næste forslag ikke genereret endnu)
  */
-async function loadLatestMandateStatus(supabase, teamId) {
-  const { data, error } = await supabase
+async function loadLatestMandateStatus(supabase, teamId, activeSeasonNumber = null) {
+  let query = supabase
     .from("board_mandates")
     .select("status")
-    .eq("team_id", teamId)
+    .eq("team_id", teamId);
+  // #6793 · Med en aktiv sæson tæller kun dens mandat: et gammelt `active`
+  // mandat fra en tidligere sæson er ikke "underskrevet" for denne sæson.
+  if (activeSeasonNumber != null) query = query.eq("season_number", activeSeasonNumber);
+  const { data, error } = await query
+    .order("season_number", { ascending: false, nullsFirst: false })
     .order("proposed_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -289,9 +311,10 @@ export async function buildBoardMeetingPayload({ supabase, teamId } = {}) {
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
 
-  const mandate = await loadProposedMandate(supabase, teamId);
+  const activeSeasonNumber = await loadActiveSeasonNumber(supabase);
+  const mandate = await loadProposedMandate(supabase, teamId, activeSeasonNumber);
   if (!mandate) {
-    const reason = await loadLatestMandateStatus(supabase, teamId);
+    const reason = await loadLatestMandateStatus(supabase, teamId, activeSeasonNumber);
     return { available: false, reason };
   }
 
@@ -373,7 +396,9 @@ export async function regenerateMandateFocus(supabase, { teamId, focus, isBetaTe
   ensureSupabase(supabase);
   if (!await isBoardMandateModelEnabled(supabase, { isBetaTester })) return null;
 
-  const mandate = await loadProposedMandate(supabase, teamId);
+  // #6793 · Samme sæsonvalg som GET /board/meeting: fokus skiftes på det forslag
+  // spilleren faktisk ser, aldrig på et gammelt fra en anden sæson.
+  const mandate = await loadProposedMandate(supabase, teamId, await loadActiveSeasonNumber(supabase));
   if (!mandate) return { available: false };
 
   const { team, riders, standing, assignedMembers } = await loadMeetingContext(supabase, teamId);

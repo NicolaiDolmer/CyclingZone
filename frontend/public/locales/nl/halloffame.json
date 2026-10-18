@@ -1,0 +1,43 @@
+{
+  "title": "Hall of Fame",
+  "subtitle": "Historische records en managerstatistieken",
+  "tabRecords": "Records",
+  "tabManagers": "Managers",
+  "tabDivHistory": "Divisiegeschiedenis",
+  "season": "Seizoen {n}",
+  "categories": {
+    "most_points_season": "Meeste punten in een seizoen",
+    "most_stage_wins_season": "Meeste etappezeges in een seizoen",
+    "most_div1_titles": "Meeste titels in Divisie 1"
+  },
+  "units": {
+    "points": "punten",
+    "wins": "zeges",
+    "titles": "titels"
+  },
+  "noRecords": "Nog geen records. Speel seizoenen om records te vestigen",
+  "thManager": "Manager",
+  "thTitle": "Titel",
+  "thLevel": "Niveau",
+  "thXp": "XP",
+  "division1": "Divisie 1",
+  "noDivHistory": "Nog geen divisiegeschiedenis",
+  "noDivHistoryHint": "Rond seizoenen af om de geschiedenis te zien",
+  "stageWins": "{count} etappezeges",
+  "ptSuffix": "pt",
+  "level": {
+    "rookie": "Rookie",
+    "amateur": "Amateur",
+    "continental": "Continental",
+    "pro": "Pro",
+    "proTeam": "Pro Team",
+    "worldTour": "WorldTour",
+    "monument": "Monument",
+    "gcContender": "GC Contender",
+    "grandTour": "Grand Tour",
+    "legend": "Legende"
+  },
+  "loadError": "De Hall of Fame kon niet worden geladen. Probeer het opnieuw.",
+  "retry": "Probeer opnieuw",
+  "noManagers": "Nog geen managers"
+}

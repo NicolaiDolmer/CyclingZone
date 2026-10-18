@@ -21,17 +21,14 @@ import {
 } from "../ui";
 import { buttonClass } from "../ui/buttonStyles.js";
 import { formatNumber } from "../../lib/intl.js";
+import { formatClock24 } from "../../lib/intlLocale.ts";
 import { filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6350: "km A-B" for kørte etaper
 
 // Tidspunktet for etapens slot, altid renderet i København-tid (spillets faste
 // slots) — ikke i browserens zone.
 function slotTime(scheduledMs, timeZone) {
   if (!Number.isFinite(scheduledMs)) return "";
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(scheduledMs));
+  return formatClock24(scheduledMs, timeZone);
 }
 
 function MetaLine({ children }) {

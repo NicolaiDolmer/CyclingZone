@@ -405,13 +405,15 @@ export function isBreakawayWin(trace: FinaleGroupTrace, winnerId: string | null)
  */
 export function settleBreakawaySurvivedEvents(
   events: TimelineEvent[],
-  args: { breakawayWin: boolean; trace: FinaleGroupTrace | null; results: readonly StageResult[]; physicalDescentOutcomes?: boolean },
+  args: { breakawayWin: boolean; trace: FinaleGroupTrace | null; results: readonly StageResult[]; physicalDescentOutcomes?: boolean; escapeAnyKind?: boolean },
 ): TimelineEvent[] {
   if (!events.some((e) => e.type === "breakaway_survived")) return events;
 
   const escapeRiderIds = new Set(
     (args.trace?.preFinaleGroups ?? [])
-      .filter((g) => g.origin === "breakaway" && ESCAPE_KINDS.has(g.kind))
+      // #6748 (KUN s5_profiles_v2, escapeAnyKind): udbruddet er alle grupper med
+      // oprindelse "breakaway", enhver art, samme definition som isS5V2BreakawayWin.
+      .filter((g) => g.origin === "breakaway" && (args.escapeAnyKind || ESCAPE_KINDS.has(g.kind)))
       .flatMap((g) => g.rider_ids),
   );
   // #6327: the future revision reports descent contact from actual movement.

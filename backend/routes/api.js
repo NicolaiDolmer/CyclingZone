@@ -135,6 +135,7 @@ import {
   notifyForumThreadReply,
   notifyDirectMessage,
   notifyForumMentions,
+  buildKeyedNotification,
 } from "../lib/notificationService.js";
 import * as transferNotif from "../lib/transferNotifications.js";
 import { withdrawCounterOffer, claimCounterForAccept, buildCounterOfferWithdrawnNotification } from "../lib/counterOfferWithdraw.js"; // #6463
@@ -238,7 +239,7 @@ import {
   BETA_REQUEST_STATUS, decideBetaRequest, isBetaRequestsMissing, listBetaAccess, readBetaAccess,
   requestBetaAccess, setBetaTester, withdrawBetaAccess,
 } from "../lib/betaAccess.js";
-import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
+import { runTeamTrainingDay, isTrainingReservationHeldError } from "../lib/dailyTrainingEngine.js";
 // #4847: den frivillige knap "Koer dagens traening nu" haenger paa PRAECIS samme
 // lukke-betingelse som cron-sweepen (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3).
 import { resolveDayCloseStatus, teamGameDaysFromDayClose, shouldSweepNow as trainingWindowOpen, SWEEP_FROM_HOUR as TRAINING_SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
@@ -2941,7 +2942,10 @@ router.get("/training/me", requireAuth, async (req, res) => {
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
       readFlagStage(supabase, TRAINING_BULK_DAY_FLAG_KEY), // #6523
     ]);
-    const enabled = evaluateFlagStage(stage, { isBetaTester });
+    // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
+    // gaten staar lukket her ogsaa: fladen viser "sat paa pause".
+    const parked = req.team.parked_at != null;
+    const enabled = !parked && evaluateFlagStage(stage, { isBetaTester });
     // #3459 V3 / #4375: racingToday-feltet (trænings-UI'ets løbsdags-badge) leveres
     // KUN når løbsdags-UDVIKLINGEN er on for brugeren. Badgen beskriver præcis D1+D2
     // ("rytteren racer i dag, derfor er dagens pas løbet"), og de to hænger på
@@ -3118,7 +3122,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     let dayClose = null;
     if (raceDayTickOn) {
       const windowOpen = trainingWindowOpen(new Date());
-      const close = windowOpen && activeSeasonId
+      const close = parked ? { closed: false, reason: "team_parked", gameDays: [] } : windowOpen && activeSeasonId
         ? await resolveDayCloseStatus({
           supabase, seasonId: activeSeasonId, now: new Date(),
           divisionId: req.team.league_division_id ?? null,
@@ -3189,6 +3193,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
 // returnerer "invalid_focus", hvilket blokerer knappen helt.
 router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  // #6536 (Codex): et parkeret hold traener ikke, heller ikke paa managerens tryk.
+  if (req.team.parked_at != null) return res.status(409).json({ error: "team_parked" });
   try {
     if (await isTrainingConditionPerDateEnabled(supabase)) {
       return res.status(409).json({ error: "normalized_sweep_owns_date" });
@@ -3278,6 +3284,8 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
 
     res.json({ ok: true, tickDate: result.tickDate, report: result.report });
   } catch (err) {
+    // #6798: en anden koersel holder reservationen; intet skrevet, proev igen om lidt.
+    if (isTrainingReservationHeldError(err)) return res.status(409).json({ error: "training_in_progress" });
     captureException(err);
     res.status(500).json({ error: err.message });
   }
@@ -7956,14 +7964,14 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     // fører kan have et autobud der straks genvinder føringen. Sender vi her,
     // får de en falsk "du er overbudt"-besked.
     if (auction.rider?.team_id === auction.seller_team_id && auction.seller_team_id !== req.team.id) {
-      await notifyTeamOwner(
-        auction.seller_team_id,
-        "bid_received",
-        "Nyt bud modtaget",
-        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
-        auction.id,
-        { riderId: auction.rider_id },
-      );
+      // #6801: noegle + parametre (modtagerens sprog) i stedet for hardkodet dansk.
+      const autoBidSellerNotice = buildKeyedNotification({
+        titleCode: "notif.transfer.bidReceived.title",
+        messageCode: "notif.autoBidPlaced.message",
+        messageParams: { bidderName: req.team.name, amount: openingBidAmount, riderName },
+        metadata: { riderId: auction.rider_id },
+      });
+      await notifyTeamOwner(auction.seller_team_id, "bid_received", autoBidSellerNotice.title, autoBidSellerNotice.message, auction.id, autoBidSellerNotice.metadata);
     }
     awardXP(req.user.id, "bid_placed").catch(() => {});
   }
@@ -7995,14 +8003,13 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     const proxyAlreadyNotified = proxyCascadeResult?.outbidNotified ?? new Set();
     if (previousLeader !== proxyFinalLeaderId && !proxyAlreadyNotified.has(previousLeader)) {
       const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
-      await notifyTeamOwner(
-        previousLeader,
-        "auction_outbid",
-        "Du er blevet overbudt!",
-        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
-        auction.id,
-        { riderId: auction.rider_id },
-      );
+      const autoBidOutbidNotice = buildKeyedNotification({
+        titleCode: "notif.transfer.auctionOutbid.title",
+        messageCode: "notif.autoBidPlaced.message",
+        messageParams: { bidderName: req.team.name, amount: openingBidAmount, riderName },
+        metadata: { riderId: auction.rider_id },
+      });
+      await notifyTeamOwner(previousLeader, "auction_outbid", autoBidOutbidNotice.title, autoBidOutbidNotice.message, auction.id, autoBidOutbidNotice.metadata);
     }
   }
 

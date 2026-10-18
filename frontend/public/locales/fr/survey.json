@@ -1,0 +1,78 @@
+{
+  "page": {
+    "subtitle": "Environ 5 minutes",
+    "introLead": "Je préfère te demander plutôt que de deviner, alors j'ai mis toute la liste au même endroit.",
+    "introAccount": "Tes réponses sont enregistrées sur ton compte, tu peux donc les modifier jusqu'à la clôture du sondage.",
+    "closesOn": "Clôture le {date}"
+  },
+  "progress": {
+    "label": "Répondu",
+    "value": "{done} sur {total}",
+    "aria": "Avancement de tes réponses au sondage"
+  },
+  "sections": {
+    "today": "Comment tu le ressens aujourd'hui",
+    "ideas": "Les idées",
+    "problems": "Ce qui marche le moins bien",
+    "fog": "Ce que tu peux voir",
+    "choices": "Ce que tu choisirais",
+    "pro": "Pro",
+    "closing": "Avant d'envoyer",
+    "other": "Autre"
+  },
+  "axes": {
+    "idea": "Idée",
+    "importance": "Important",
+    "dontKnow": "Je ne sais pas",
+    "dontKnowAria": "Pas d'avis sur {feature}"
+  },
+  "scale": {
+    "satisfactionLow": "Pas satisfait",
+    "satisfactionHigh": "Très satisfait"
+  },
+  "field": {
+    "optional": "Facultatif",
+    "required": "Obligatoire",
+    "textPlaceholder": "Écris autant ou aussi peu que tu veux",
+    "maxThreeLeft": "{left, plural, =0 {Trois, c'est la limite. Retires-en un pour en choisir un autre.} one {# restant} other {# restants}}",
+    "yes": "Oui",
+    "no": "Non"
+  },
+  "save": {
+    "saving": "Enregistrement",
+    "saved": "Enregistré",
+    "error": "Cette réponse n'a pas été enregistrée. Modifie-la encore une fois et je réessaie."
+  },
+  "submit": {
+    "cta": "Envoyer mes réponses",
+    "sending": "Envoi",
+    "missing": "{count, plural, one {# question attend} other {# questions attendent}} encore une réponse.",
+    "error": "Ça n'est pas passé. Réessaie."
+  },
+  "thanks": {
+    "title": "Merci",
+    "body": "Je lis chaque réponse moi-même, et je te dirai dans le forum ce qui en est sorti.",
+    "editable": "Tu peux modifier tes réponses jusqu'à la clôture du sondage.",
+    "edit": "Modifier mes réponses",
+    "roadmap": "Voir la feuille de route"
+  },
+  "preview": {
+    "notice": "Aperçu du brouillon. Seuls les admins voient cette page. Les réponses ne sont pas enregistrées.",
+    "submitDisabled": "L'envoi est désactivé tant que le sondage est un brouillon."
+  },
+  "closed": {
+    "title": "Ce sondage est clos",
+    "body": "Merci à tous ceux qui ont répondu. Ce qui en ressort arrive sur la feuille de route.",
+    "roadmap": "Voir la feuille de route"
+  },
+  "notFound": {
+    "title": "Je ne trouve pas ce sondage",
+    "body": "Le lien est probablement ancien. La feuille de route montre ce sur quoi je travaille en ce moment.",
+    "roadmap": "Voir la feuille de route"
+  },
+  "error": {
+    "title": "Le sondage ne s'est pas chargé",
+    "body": "Rien n'a été perdu. Les réponses que tu as déjà données sont en sécurité.",
+    "retry": "Réessayer"
+  }
+}

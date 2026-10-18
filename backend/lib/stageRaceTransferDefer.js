@@ -20,6 +20,7 @@ import { fetchAllRows } from "./supabasePagination.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { loadWithdrawnPairs, withdrawalKey } from "./raceWithdrawal.js";
+import { buildKeyedNotification } from "./notificationKeys.js";
 
 const NOOP = () => {};
 
@@ -102,12 +103,12 @@ export async function shouldDeferTeamChange(supabase, riderIds) {
  *
  * @param {object} supabase
  * @param {{ id: string, firstname?: string, lastname?: string, pending_team_id: string }} rider
- * @param {{ notifyTeamOwner: Function, flushedAt: string, arrivalNote: string }} opts
- *   flushedAt: ISO-timestamp skrevet til acquired_at. arrivalNote: sætning der
- *   forklarer ANKOMST-konteksten i notifikationen (fx "Touren er kørt færdigt").
+ * @param {{ notifyTeamOwner: Function, flushedAt: string, arrival: { reason: "tourFinished" | "tourFinishedUnnamed" | "dealCompleted", raceName?: string } }} opts
+ *   flushedAt: ISO-timestamp skrevet til acquired_at. arrival: ANKOMST-konteksten
+ *   som noegle-parametre (notif.riderArrived.message, #6801), ikke en faerdig sætning.
  * @returns {Promise<boolean>} true hvis rytteren rent faktisk blev flushet nu.
  */
-export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flushedAt, arrivalNote }) {
+export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flushedAt, arrival }) {
   // Captur målholdet FØR update — rider-objektet kan være samme reference som
   // rækken der muteres (in-memory doubles), og notify skal bruge værdien bagefter.
   const targetTeamId = rider.pending_team_id;
@@ -147,13 +148,20 @@ export async function flushParkedRider(supabase, rider, { notifyTeamOwner, flush
   });
 
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
+  // #6801: noegle + parametre; arrival = { reason, raceName? } i stedet for en dansk sætning.
+  const notice = buildKeyedNotification({
+    titleCode: "notif.riderArrived.title",
+    messageCode: "notif.riderArrived.message",
+    messageParams: { riderName, reason: arrival?.reason ?? "other", raceName: arrival?.raceName ?? "" },
+    metadata: { riderId: rider.id },
+  });
   await notifyTeamOwner(
     targetTeamId,
     "transfer_offer_accepted",
-    "Rytteren er ankommet",
-    `${riderName} er nu skiftet til dit hold — ${arrivalNote}.`,
+    notice.title,
+    notice.message,
     rider.id,
-    { riderId: rider.id }
+    notice.metadata
   );
   return true;
 }
@@ -202,10 +210,12 @@ export async function flushDeferredTransfersForRace(supabase, race, { notifyTeam
   if (toFlush.length === 0) return empty;
 
   const flushedAt = (now || new Date()).toISOString();
-  const arrivalNote = `${race.name || "hans etapeløb"} er kørt færdigt`;
+  const arrival = race.name
+    ? { reason: "tourFinished", raceName: race.name }
+    : { reason: "tourFinishedUnnamed" };
   const flushedIds = [];
   for (const rider of toFlush) {
-    const flushed = await flushParkedRider(supabase, rider, { notifyTeamOwner, flushedAt, arrivalNote });
+    const flushed = await flushParkedRider(supabase, rider, { notifyTeamOwner, flushedAt, arrival });
     if (flushed) flushedIds.push(rider.id);
   }
 

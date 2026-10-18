@@ -54,7 +54,11 @@
 // motoren selv er uaendret. s5_profiles_v1 arver den (S5 = official_times_v5 + S5-motoren).
 // Aktuel for nye loeb fra ejerens ordrette "taend"; migrationen
 // 2026-10-16-6462-engine-rules-revision-official-times-v5.sql goer vaerdien lovlig.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"] as const;
+// #6156 (ejer 17/10, SLUKKET): "s5_profiles_v2" = hele s5_profiles_v1-pakken +
+// formtoppe i v4 (toppens tillaeg i vinduet, dykket bagefter; broen regner den
+// samlede form). Aldrig aktuel foer ejerens ordrette "taend"; ingen migration endnu,
+// saa vaerdien er heller ikke lovlig i races.engine_rules_revision.
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -81,15 +85,23 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   s5_profiles_v1: 3,
   // #6462: official_times_v4 + the sprint-train default rule (order adapter only); same v3 mechanics.
   official_times_v5: 3,
+  // #6156: s5_profiles_v1 + formtoppe i v4 (broen); same v3 mechanics.
+  s5_profiles_v2: 3,
 });
 
-const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5"]);
+const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"]);
 
-/** #6369: revisionerne der arver HELE official_times_v4-pakken (v4 selv + S5; #6462: + v5). */
-const OFFICIAL_TIMES_V4_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v4", "s5_profiles_v1", "official_times_v5"]);
+/** #6369: revisionerne der arver HELE official_times_v4-pakken (v4 selv + S5; #6462: + v5; #6156: + S5 v2). */
+const OFFICIAL_TIMES_V4_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"]);
 
-/** #6462: revisionerne der arver togreglen (official_times_v5 selv + S5). */
-const OFFICIAL_TIMES_V5_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v5", "s5_profiles_v1"]);
+/** #6462: revisionerne der arver togreglen (official_times_v5 selv + S5 v1 og v2). */
+const OFFICIAL_TIMES_V5_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v5", "s5_profiles_v1", "s5_profiles_v2"]);
+
+/** #6156: revisionerne der arver HELE s5_profiles_v1-pakken (v1 selv + v2). */
+const S5_PROFILES_V1_LINEAGE: ReadonlySet<unknown> = new Set(["s5_profiles_v1", "s5_profiles_v2"]);
+
+/** #6156: revisionerne med formtoppe i v4 (s5_profiles_v2 og senere). */
+const S5_PROFILES_V2_LINEAGE: ReadonlySet<unknown> = new Set(["s5_profiles_v2"]);
 
 /**
  * #6200: the shared time model's generation. 3 = official_times_v3 OR LATER
@@ -132,7 +144,18 @@ export function isOfficialTimesV5OrLater(revision: unknown): boolean {
  * #6363: S5-motoren (engine/v4/s5Profiles.ts) ligger bag denne; alt andet er official_times_v4.
  */
 export function isS5ProfilesV1OrLater(revision: unknown): boolean {
-  return revision === "s5_profiles_v1";
+  return S5_PROFILES_V1_LINEAGE.has(revision);
+}
+
+/**
+ * #6156 (SLUKKET, ikke aktuel): s5_profiles_v2 = HELE s5_profiles_v1-pakken +
+ * formtoppe i v4. Broen (raceEngineV4Bridge.js) laegger formtoppens tillaeg oven
+ * i rytterens form i peak-vinduet og traekker dykket fra bagefter (én samlet form,
+ * spec 2026-10-04 §3.1). Motoren selv er s5_profiles_v1. Ingen loeb bindes hertil
+ * foer ejerens ordrette "taend" (S5) og en migration der goer vaerdien lovlig.
+ */
+export function isS5ProfilesV2OrLater(revision: unknown): boolean {
+  return S5_PROFILES_V2_LINEAGE.has(revision);
 }
 
 /** Only the future pinned official-times revisions store uncapped official stage gaps. */

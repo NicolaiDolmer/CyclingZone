@@ -136,6 +136,8 @@ export default function StandingsPage() {
   const [lens, setLens] = useState(searchParams.get("view") === LENS_STRENGTH ? LENS_STRENGTH : LENS_STANDINGS);
   const [strength, setStrength] = useState(null); // { [team_id]: aggregat } | null = ikke hentet
   const [strengthLoading, setStrengthLoading] = useState(false);
+  // #6322 (Codex): en fejlet styrke-hentning vises som fejl med 'Proev igen', aldrig som nuller.
+  const [strengthError, setStrengthError] = useState(false);
 
   // Fri tekst-søgning (foldet ind fra TeamsPage, #1609).
   const [search, setSearch] = useState("");
@@ -313,18 +315,35 @@ export default function StandingsPage() {
   // Lazy squad-styrke-fetch — kun når Linse B er aktiv, og kun én gang (#1609 §3.3).
   // Henter riders med ABILITY_SELECT (evner) + aggregerer trup-værdi/avg-evner/U25/
   // top-stjerne som SeasonPreviewPage.jsx:46-55. Linse A betaler aldrig for dette.
+  // #6322: guard via ref og IKKE via strengthLoading i deps — effekten satte selv
+  // strengthLoading, så re-run'et kørte cleanup (annullerede) og kasserede
+  // resultatet → linsen blev stående på "…". Cleanup kører nu kun ved unmount.
+  const strengthFetchStarted = useRef(false);
+  const strengthMounted = useRef(true);
+  useEffect(() => { strengthMounted.current = true; return () => { strengthMounted.current = false; }; }, []);
   useEffect(() => {
-    if (lens !== LENS_STRENGTH || strength !== null || strengthLoading) return;
-    let cancelled = false;
+    if (lens !== LENS_STRENGTH || strength !== null || strengthError || strengthFetchStarted.current) return;
+    strengthFetchStarted.current = true;
     (async () => {
       setStrengthLoading(true);
       // Paginér: ~4.9k ryttere er på hold, men PostgREST capper ved 1000 → uden
       // dette manglede trup-styrke for de fleste hold i Linse B (#2206).
-      const riders = await fetchAllRows(() => supabase
-        .from("riders")
-        .select(`id, team_id, firstname, lastname, market_value, is_u25, ${ABILITY_SELECT}`)
-        .not("team_id", "is", null)
-        .order("id", { ascending: true }));
+      let riders = null;
+      try {
+        riders = await fetchAllRows(() => supabase
+          .from("riders")
+          .select(`id, team_id, firstname, lastname, market_value, is_u25, ${ABILITY_SELECT}`)
+          .not("team_id", "is", null)
+          .order("id", { ascending: true }));
+      } catch (err) {
+        console.error("[StandingsPage] squad-styrke-fetch fejlede:", err);
+      }
+      if (riders === null) {
+        // Fejl: gem ikke tomme aggregater som succes — tillad nyt forsøg ved næste linse-skift.
+        strengthFetchStarted.current = false;
+        if (strengthMounted.current) { setStrengthLoading(false); setStrengthError(true); }
+        return;
+      }
       const ridersByTeam = {};
       (riders || []).forEach(raw => {
         const r = flattenAbilities(raw);
@@ -340,10 +359,9 @@ export default function StandingsPage() {
         const topRider = [...list].sort((a, b) => getRiderMarketValue(b) - getRiderMarketValue(a))[0];
         agg[teamId] = { totalValue, avgBj, avgSp, avgTt, u25Count, topRider, riderCount: list.length };
       });
-      if (!cancelled) { setStrength(agg); setStrengthLoading(false); }
+      if (strengthMounted.current) { setStrength(agg); setStrengthLoading(false); }
     })();
-    return () => { cancelled = true; };
-  }, [lens, strength, strengthLoading]);
+  }, [lens, strength, strengthError]);
 
   // ?compare=1 deep-link (fra /head-to-head redirect): åbn drawer med eget hold som
   // A. Hold B vælges først når brugeren markerer en række — drawer'en åbnes da.
@@ -831,7 +849,12 @@ export default function StandingsPage() {
         </div>
       )}
 
-      {divStandings.length === 0 ? (
+      {lens === LENS_STRENGTH && strengthError ? (
+        <ErrorState
+          title={t("strengthLoadError")}
+          action={<Button size="sm" variant="secondary" onClick={() => setStrengthError(false)}>{t("retry")}</Button>}
+        />
+      ) : divStandings.length === 0 ? (
         <EmptyState
           icon={<PodiumIcon size={26} aria-hidden="true" />}
           title={search ? t("noMatch") : t("noData", { n: divTab })}

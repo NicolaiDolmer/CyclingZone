@@ -21,6 +21,7 @@
 // pinning them costs nothing extra.
 
 import { RULES_NUMBERS } from "./rulesNumbers.js";
+import { intlLocale } from "./intlLocale.ts";
 
 // Every bonusD<division>P<place> key in RULES_NUMBERS, derived rather than listed
 // so a new division or placement in the backend table reaches /help automatically
@@ -48,7 +49,7 @@ export const HELP_NUMBER_KEYS = Object.freeze([
 // translator wrote ("500,000" in en, "500.000" in da); the small integers need no
 // separator.
 export function buildHelpNumbers(lang) {
-  const locale = String(lang || "").toLowerCase().startsWith("da") ? "da-DK" : "en-US";
+  const locale = intlLocale(lang, { en: "en-US" });
   const bonuses = {};
   for (const key of BONUS_KEYS) bonuses[key] = RULES_NUMBERS[key].toLocaleString(locale);
   return {

@@ -1,7 +1,7 @@
 // #2644 — Server-side synligheds-guard for spejder-rapporter (missions-shortlists +
 // målrettede undersøgelser). En rapport må KUN indeholde ryttere der er synlige/
 // søgbare NU — samme diskriminator som riders-RLS-policyen "Public read riders"
-// bruger (is_offered_intake_rider, database/2026-06-22-hide-intake-riders-from-db.sql):
+// bruger (offered_intake_rider_ids, database/2026-10-08-6341-riders-rls-per-row.sql):
 // et åbent ('offered') akademi-intake-tilbud på en fri (team_id NULL), ikke-akademi
 // rytter gør ham globalt usøgbar indtil det tilbudte hold accepterer/afviser.
 //
@@ -30,7 +30,7 @@
 export function isRiderHiddenFromReport({ teamId, pendingTeamId, isAcademy, hasOpenIntakeOffer, ownerIsAi }) {
   if (pendingTeamId != null) return true;
   if (ownerIsAi === true) return true; // #2581: AI-ejede ryttere er skjulte for spillere i RidersPage
-  // Spejler is_offered_intake_rider(): åbent tilbud + endnu ikke hentet af noget hold.
+  // Spejler offered_intake_rider_ids(): åbent tilbud + endnu ikke hentet af noget hold.
   if (hasOpenIntakeOffer && teamId == null && isAcademy === false) return true;
   return false;
 }
