@@ -168,6 +168,11 @@ export async function primeCronHeartbeatCheckIns({
   captureExceptionFn,
 }) {
   for (const [slug, config] of monitors) {
+    // Codex P2 (#6860): fast-tids-job (crontab) primes IKKE. Et boot-check-in efter
+    // dagens slot ville flytte fristen til naeste slot (i morgen / naeste soendag),
+    // saa en misset kørsel ikke alarmerede. Fristen regnes fra sidste RIGTIGE
+    // kørsel; boot-indhentningen skriver selv sit check-in.
+    if (config.schedule?.type === "crontab") continue;
     await recordCronCheckIn({
       supabase,
       jobSlug: slug,
