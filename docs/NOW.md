@@ -6,7 +6,7 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** ejeren svarer på kortene + go på #6839-#6842. Søndag: verificér Vuelta binder S5 kl. 11 · `promotion_pending_enabled` på "tænd" · webhook · roadbook/Discord 7.361-7.367 · #6680. #6739: "spørg senere".
+> **🎯 Next action:** gennemgang: `docs/sessions/2026-10-18-gennemgang-startprompt.md` (kort 1-9 + tænd-kort, ét ad gangen). Hændelse 18/10: PostgREST nede 05:42-08:20 (#6184), alarm mangler.
 >
 > **17-18/10 (pc1):** S5-motorreglerne tændt (#6699). 31 PR'er merget, 45 issues done. **Ejer-kort i `docs/sessions/kort-2026-10-17/`:** 1 frys · 2 skifte (2a-2d) · 3 UX · 4 lasttest (kræver `supabase login`) · 5 dark mode · 6 kuperede udbrud · **tænd-kort `s5_profiles_v2`** (#6819→#6820). **Venter ejer-go (rule 35-klassifikator):** #6839 #6840 #6841 #6842 (reviewet, Codex rene/rettet). **Frosset til efter 25/10:** #6837 (beta-sprog-register; bundle +0,3 KB, #6838). Design-draft #6843 (jagtafstand, #6814). Frys-brud 00:19: #6832-#6834 (læring 2026-10-17).
 >
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** pc1 lang session 17-18/10 (Claude, start 11:29), samle-issue #6749. Ejer merge-køen.
+> **🤖 Working agent:** Ingen aktiv session.
