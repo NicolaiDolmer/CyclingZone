@@ -84,6 +84,11 @@ param(
   # Codex P2 (#6861): saa laenge venter koeen paa en overdraget koersels Release checks
   # foer naeste merge (og ved koeens slutning). Haenger de laengere, stopper koeen.
   [int] $ReleaseChecksWaitMinutes = 15,
+  # #6859 (ejer 18/10): haenger-alarm. Staar et trin (CI main, deploy, release
+  # checks) saa mange minutter uden fremskridt, skriver koeen en STALL-linje med
+  # aarsag, sender Discord-ops-besked (env DISCORD_OPS_WEBHOOK_URL, ellers kun
+  # konsol) og stopper i stedet for at vente til timeout.
+  [int] $StallMinutes = 15,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
   [int] $DeployVerifyTimeoutMinutes = 140,
@@ -285,16 +290,23 @@ function Wait-ForWorkflowRun {
     [string] $WorkflowFile,
     [string] $Sha,
     [int] $TimeoutMinutes,
-    [string] $Label
+    [string] $Label,
+    # #6859: haenger-alarm (0 = slaaet fra). Sat af kalderen til -StallMinutes.
+    [double] $StallMinutes = 0,
+    [scriptblock] $Now = { Get-Date },
+    [scriptblock] $Pause = { param($Seconds) Start-Sleep -Seconds $Seconds }
   )
   if ($DryRun) {
     Write-Host "  [dry-run] ville vente paa '$Label' ($WorkflowFile) for $Sha (op til $TimeoutMinutes min)." -ForegroundColor DarkGray
     return $true
   }
 
-  $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+  $deadline = (& $Now).AddMinutes($TimeoutMinutes)
+  # #6859: fremskridt = en ny observation (koersel oprettet, status eller et
+  # job-/trin-skift). Samme observation i -StallMinutes = STALL.
+  $stallSince = & $Now
   $runId = $null
-  while ((Get-Date) -lt $deadline -and -not $runId) {
+  while ((& $Now) -lt $deadline -and -not $runId) {
     $runsJson = Invoke-GhWithRetry @('run', 'list', '--repo', $Repo, '--workflow', $WorkflowFile, '--branch', 'main', '--limit', '10', '--json', 'databaseId,headSha,status,conclusion') -TolerateFailure
     if ($runsJson) {
       try {
@@ -304,8 +316,12 @@ function Wait-ForWorkflowRun {
       } catch {}
     }
     if (-not $runId) {
+      if ($StallMinutes -gt 0 -and ((& $Now) - $stallSince).TotalMinutes -ge $StallMinutes) {
+        $script:queueStall = "'$Label': ingen koersel oprettet for $Sha"
+        return $false
+      }
       Write-Host "  ... venter paa at '$Label'-koerslen for $Sha bliver oprettet ..." -ForegroundColor DarkGray
-      Start-Sleep -Seconds 15
+      & $Pause 15
     }
   }
 
@@ -319,15 +335,30 @@ function Wait-ForWorkflowRun {
   # og det blev to gange laest som "main roed" mens koerslen stadig stod queued/groen.
   # Derfor afgoeres udfaldet af koerslens EGEN status/conclusion (med retry), og vi
   # venter videre saa laenge den ikke er completed.
+  # #6859: polling i stedet for det blokerende `gh run watch`, saa koeen kan se
+  # om koerslen rykker sig (haenger-alarm). Udfaldet afgoeres som foer.
   $ok = $false
-  while ((Get-Date) -lt $deadline) {
-    & gh run watch $runId --repo $Repo --exit-status *> $null
-    $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'status,conclusion') -TolerateFailure
+  $stallSig = $null
+  $stallSince = & $Now
+  while ((& $Now) -lt $deadline) {
+    $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'status,conclusion,jobs') -TolerateFailure
     $run = $null
     if ($viewJson) { try { $run = ($viewJson -join "") | ConvertFrom-Json } catch {} }
     if ($run -and $run.status -eq 'completed') { $ok = ($run.conclusion -eq 'success'); break }
-    Write-Host "  ... '$Label' (run $runId) er ikke faerdig endnu (status: $($run.status)); venter videre ..." -ForegroundColor DarkGray
-    Start-Sleep -Seconds 20
+    $sig = "ulaeselig"
+    if ($run) {
+      $sig = "$($run.status)"
+      try {
+        foreach ($j in @($run.jobs)) { $sig += "|$($j.name):$($j.status):$($j.conclusion):$(@($j.steps | Where-Object { $_.status -eq 'completed' }).Count)" }
+      } catch {}
+    }
+    if ($sig -ne $stallSig) { $stallSig = $sig; $stallSince = & $Now }
+    elseif ($StallMinutes -gt 0 -and ((& $Now) - $stallSince).TotalMinutes -ge $StallMinutes) {
+      $script:queueStall = "'$Label' (run $runId): ingen job- eller trin-skift (status: $(($sig -split '\|')[0]))"
+      return $false
+    }
+    Write-Host "  ... '$Label' (run $runId) er ikke faerdig endnu (status: $(($sig -split '\|')[0])); venter videre ..." -ForegroundColor DarkGray
+    & $Pause 20
   }
   if ($ok) {
     Write-Host "  [ok] '$Label' groen for $Sha." -ForegroundColor Green
@@ -344,10 +375,14 @@ function Wait-ForDeployVerification {
     [int] $MaxReruns = 2,
     [scriptblock] $Now = { [DateTime]::UtcNow },
     [scriptblock] $Pause = { param($Seconds) Start-Sleep -Seconds $Seconds },
-    [string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs')
+    [string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs'),
+    # #6859: haenger-alarm (0 = slaaet fra); 'stalled' + $script:queueStall.
+    [double] $StallMinutes = 0
   )
   if ($DryRun) { return 'pending' }
   $deadline = (& $Now).AddMinutes($TimeoutMinutes)
+  $stallSig = $null
+  $stallSince = & $Now
   $runId = $null
   $minimumAttempt = 1
   $reruns = 0
@@ -365,7 +400,13 @@ function Wait-ForDeployVerification {
             if ($matches.Count -gt 0) { $runId = $matches[0].databaseId }
           } catch { Write-Host 'Deploy verify: run lookup unavailable; no verification claimed.' -ForegroundColor Yellow }
         }
-        if (-not $runId) { & $Pause 15; continue }
+        if (-not $runId) {
+          if ($StallMinutes -gt 0 -and ((& $Now) - $stallSince).TotalMinutes -ge $StallMinutes) {
+            $script:queueStall = "Deploy verify: ingen koersel oprettet for $Sha"
+            return 'stalled'
+          }
+          & $Pause 15; continue
+        }
       }
       $runJson = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$runId") -TolerateFailure
       if (-not $runJson) { return 'unknown' }
@@ -406,6 +447,17 @@ function Wait-ForDeployVerification {
         continue
       }
       if ($state -eq 'verified' -or $state -eq 'failed' -or $state -eq 'unknown') { return $state }
+      # #6859: fremskridt = nyt attempt, ny koersels-status, ny tilstand eller et
+      # job-/trin-skift. Samme observation i -StallMinutes = STALL, ikke timeout.
+      $sig = "$($run.run_attempt)|$($run.status)|$state"
+      try {
+        foreach ($j in @((($jobsJson -join "") | ConvertFrom-Json).jobs)) { $sig += "|$($j.name):$($j.status):$($j.conclusion):$(@($j.steps | Where-Object { $_.status -eq 'completed' }).Count)" }
+      } catch {}
+      if ($sig -ne $stallSig) { $stallSig = $sig; $stallSince = & $Now }
+      elseif ($StallMinutes -gt 0 -and ((& $Now) - $stallSince).TotalMinutes -ge $StallMinutes) {
+        $script:queueStall = "Deploy verify (run $runId, attempt $($run.run_attempt)): '$state' uden job- eller trin-skift"
+        return 'stalled'
+      }
       if ($state -eq 'pending') {
         if ($reruns -ge $MaxReruns) { return 'pending' }
         # #6859: release-jobbet er faerdigt, men koerslen (de skippede
@@ -430,6 +482,40 @@ function Wait-ForDeployVerification {
 # check-in. Det vises, men stopper ikke koeen. Alt andet end verified/deferred/
 # pending er fail-closed stop.
 # #6487: 'released' = deploy + smoke groen, cron-beviset overladt til koerslen.
+# #6859 (ejer 18/10): Discord-ops-besked ved STALL. Samme moenster som
+# deploy-verify.yml's report-job: DISCORD_OPS_WEBHOOK_URL, ellers kun konsol.
+# Webhook-URL'en skrives aldrig ud. En fejlet POST stopper aldrig noget.
+function Send-QueueStallAlarm {
+  param(
+    [string] $Message,
+    [scriptblock] $Post = { param($Uri, $Body) Invoke-RestMethod -Method Post -Uri $Uri -ContentType 'application/json' -Body $Body -TimeoutSec 15 | Out-Null }
+  )
+  $hook = $env:DISCORD_OPS_WEBHOOK_URL
+  if (-not $hook) {
+    Write-Host "  (DISCORD_OPS_WEBHOOK_URL er ikke sat: STALL er kun meldt her i konsollen.)" -ForegroundColor DarkYellow
+    return 'console'
+  }
+  try {
+    & $Post $hook (ConvertTo-Json -InputObject @{ content = $Message } -Compress)
+    Write-Host "  Discord-ops er alarmeret om STALL." -ForegroundColor DarkYellow
+    return 'sent'
+  } catch {
+    Write-Host "  (Discord-ops-alarmen kunne ikke sendes; STALL er kun meldt i konsollen.)" -ForegroundColor DarkYellow
+    return 'failed'
+  }
+}
+
+# #6859: STALL-linje + alarm + stop. Kaldes kun fra hovedforloebet, naar en
+# vente-funktion har sat $script:queueStall. Exit 1 = stop (som roed main).
+function Stop-QueueStall {
+  $merged = (@($script:batchMerged) | ForEach-Object { "#$_" }) -join ', '
+  Write-Host "STALL: $($script:queueStall). Intet fremskridt i $StallMinutes min - koeen stopper i stedet for at vente til timeout." -ForegroundColor Red
+  if ($merged) { Write-Host "  Allerede merget uden faerdig verifikation: $merged. Tjek koerslen foer naeste merge." -ForegroundColor Red }
+  $note = if ($merged) { " Merget uden faerdig verifikation: $merged." } else { '' }
+  Send-QueueStallAlarm -Message ("Merge-koe STALL: $($script:queueStall). Intet fremskridt i $StallMinutes min; koeen er stoppet.$note") | Out-Null
+  exit 1
+}
+
 function Get-DeployGateAction([string]$State) {
   if ($State -eq 'verified' -or $State -eq 'deferred' -or $State -eq 'released') { return 'continue' }
   if ($State -eq 'pending') { return 'pending' }
@@ -480,6 +566,8 @@ $script:handedOffRuns = @()
 $script:trainEntries = @()
 $script:ciResults = @{}
 $script:lastDeployEvidence = $null
+# #6859: aarsagen naar et trin haenger (sat af vente-funktionerne, se Stop-QueueStall).
+$script:queueStall = $null
 if ($NoBatch) {
   Write-Host "  -NoBatch: hver PR faar sit eget deploy og sin egen verify (undtagelsen; standard er merge-tog, #6859)." -ForegroundColor DarkYellow
 }
@@ -494,11 +582,17 @@ function Get-FailedHandedOffRuns {
   param(
     [string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs'),
     [double] $WaitMinutes = 0,
-    [int] $PollSeconds = 20
+    [int] $PollSeconds = 20,
+    # #6859: haenger-alarm (0 = slaaet fra). Koerende checks uden job-/trin-skift
+    # i saa mange minutter = STALL ($script:queueStall), ikke stille ventetid.
+    # Default = scriptets -StallMinutes (uden det, fx udtrukket i en test: 0).
+    [double] $StallMinutes = $script:StallMinutes
   )
   $failed = @()
   $deadline = (Get-Date).AddMinutes($WaitMinutes)
   foreach ($id in @($script:handedOffRuns)) {
+   $stallSig = $null
+   $stallSince = Get-Date
    while ($true) {
     $json = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$id") -TolerateFailure
     if (-not $json) { $failed += "$id (ulaeselig)"; break }
@@ -518,6 +612,16 @@ function Get-FailedHandedOffRuns {
     # til -WaitMinutes; haenger de stadig, er det et stop (aldrig stille gennem).
     if ($verdict -eq 'running') {
       if ($WaitMinutes -le 0) { break }
+      $sig = "$($r.run_attempt)|$($r.status)"
+      try {
+        foreach ($j in @((($jobsJson -join "") | ConvertFrom-Json).jobs)) { $sig += "|$($j.name):$($j.status):$($j.conclusion):$(@($j.steps | Where-Object { $_.status -eq 'completed' }).Count)" }
+      } catch {}
+      if ($sig -ne $stallSig) { $stallSig = $sig; $stallSince = Get-Date }
+      elseif ($StallMinutes -gt 0 -and ((Get-Date) - $stallSince).TotalMinutes -ge $StallMinutes) {
+        $script:queueStall = "Release checks (run $id): ingen job- eller trin-skift"
+        $failed += "$id (STALL: release checks uden fremskridt i $StallMinutes min)"
+        break
+      }
       if ((Get-Date) -lt $deadline) { Start-Sleep -Seconds $PollSeconds; continue }
       $failed += "$id (release checks ikke faerdige efter $WaitMinutes min)"
       break
@@ -581,7 +685,9 @@ function Write-TrainCulprit([string]$Failure) {
 function Wait-BatchCi {
   $allOk = $true
   foreach ($s in $script:batchShas) {
-    $ok = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $s -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) $($s.Substring(0, [Math]::Min(8, $s.Length)))"
+    $ok = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $s -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) $($s.Substring(0, [Math]::Min(8, $s.Length)))" -StallMinutes $StallMinutes
+    # #6859: en haengende CI er ikke roed - intet CI-resultat, kalderen stopper (STALL).
+    if ($script:queueStall) { return $false }
     # #6859: resultat pr. SHA, saa et roedt tog kan pege den skyldige PR ud.
     $script:ciResults[$s] = [bool]$ok
     if (-not $ok) { $allOk = $false }
@@ -597,6 +703,7 @@ function Exit-Queue([int]$Code) {
     $label = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
     Write-Host "  Koeen stopper midt i en raekke: $label er allerede merget. Venter paa CI (main) for raekkens merge-SHA'er foer exit." -ForegroundColor Yellow
     $ok = Wait-BatchCi
+    if ($script:queueStall) { Stop-QueueStall }
     if ($ok) {
       Write-Host "  CI (main) groen efter $label. Deploy-verifikation er IKKE ventet - tjek 'Deploy verify' for $($script:lastMergedSha)." -ForegroundColor Yellow
     } else {
@@ -674,6 +781,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
 
   $failedRuns = @(Get-FailedHandedOffRuns -WaitMinutes $ReleaseChecksWaitMinutes)
+  if ($script:queueStall) { Stop-QueueStall }
   if ($failedRuns.Count -gt 0) {
     Write-Host "STOP: en tidligere overdraget Deploy verify-koersel er ikke groen: $($failedRuns -join ', '). Se koerslen og PR-kommentaren foer naeste merge." -ForegroundColor Red
     Exit-Queue 1
@@ -725,6 +833,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $batchSize = $script:batchMerged.Count
   $ciOk = Wait-BatchCi
   if (-not $ciOk) {
+    if ($script:queueStall) { Stop-QueueStall }
     Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
     Write-TrainCulprit 'ci'
     exit 1
@@ -735,7 +844,8 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # Deploy-verifikation: altid for backend; og efter en RAEKKE (2+) der har
   # udloest Railway, saa sluttilstanden er verificeret (review #6357 B1).
   if ($script:batchBackend -or ($batchSize -gt 1 -and $script:batchRailway)) {
-    $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes
+    $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -StallMinutes $StallMinutes
+    if ($deployState -eq 'stalled') { Stop-QueueStall }
     $gate = Get-DeployGateAction $deployState
     if ($deployState -eq 'deferred') {
       Write-Host "  AFVENTER CHECK-IN efter ${batchLabel}: jobs med lang kadence (> 30 min) er ikke bevist endnu (se deploy-verify-summary). Korte kadencer er bevist; koeen fortsaetter." -ForegroundColor Yellow
@@ -766,6 +876,7 @@ if ($DryRun) {
   Write-Host "[dry-run] Hele koeen ($($PrNumbers.Count) PR'er) blev gennemgaaet uden fejl - alle er klar til en rigtig koersel lige nu." -ForegroundColor Green
 } else {
   $finalFailed = @(Get-FailedHandedOffRuns -WaitMinutes $ReleaseChecksWaitMinutes)
+  if ($script:queueStall) { Stop-QueueStall }
   if ($finalFailed.Count -gt 0) {
     Write-Host "STOP: Release checks efter sidste merge er ikke groenne: $($finalFailed -join ', '). Se koerslen foer naeste merge-koe." -ForegroundColor Red
     exit 1
