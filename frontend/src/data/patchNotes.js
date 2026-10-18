@@ -172,11 +172,11 @@ export const PATCHES = [
         "topic": "Economy",
         "en": {
           "title": "Value update on Danish time",
-          "body": "The weekly value update now runs at exactly 14:00 Danish time on Sundays, also across the change to winter time."
+          "body": "The weekly value update now runs at 14:00 Danish time on Sundays, also across the change to winter time. On the Sunday of a season change, it waits until the change is done."
         },
         "da": {
           "title": "Værdiopdatering på dansk tid",
-          "body": "Den ugentlige værdiopdatering kører nu præcis kl. 14.00 dansk tid om søndagen, også hen over skiftet til vintertid."
+          "body": "Den ugentlige værdiopdatering kører nu kl. 14.00 dansk tid om søndagen, også hen over skiftet til vintertid. På søndagen for et sæsonskifte venter den, til skiftet er færdigt."
         },
         "refs": [
           6860,
