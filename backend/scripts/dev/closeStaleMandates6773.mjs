@@ -99,6 +99,8 @@ export function planStaleMandateClosure({ seasons, mandates, teams = [] }) {
         from: m.status,
         to: TARGET_STATUS[m.status],
         signedAt: m.signed_at ?? null,
+        // Codex P1 (#6780): lukningen er betinget på denne version (ikke i hashen).
+        updatedAt: m.updated_at ?? null,
       });
     }
   }
@@ -236,7 +238,7 @@ export async function fetchSnapshot(supabase) {
   if (seasonsError) throw new Error(`seasons lookup failed: ${seasonsError.message}`);
   const mandates = await fetchAllRows(() => supabase
     .from("board_mandates")
-    .select("id, team_id, season_id, season_number, status, signed_at, proposed_at, goals")
+    .select("id, team_id, season_id, season_number, status, signed_at, proposed_at, goals, updated_at")
     .in("status", [...OPEN_STATUSES])
     .order("id"));
   const teamIds = [...new Set(mandates.map((m) => m.team_id).filter(Boolean))];
@@ -354,13 +356,18 @@ export async function runApply({
   }
 
   // (2) Luk KUN de godkendte id'er, betinget på den forventede gamle status.
+  // Codex P1 (#6780): lukningen er også betinget på kildens updated_at fra
+  // snapshottet. Har en accept tilføjet et bonusmål til kilden imens, lukkes
+  // den ikke (målet ville blive usynligt); en ny dry-run fanger det.
   for (const r of plan.rows) {
     if (keepOpen.has(r.id)) continue;
-    const { data: upd, error } = await supabase
-      .from("board_mandates").update({ status: r.to, updated_at: nextLockToken() })
-      .eq("id", r.id).eq("status", r.from).select("id");
+    let q = supabase
+      .from("board_mandates").update({ status: r.to, updated_at: nextLockToken(r.updatedAt) })
+      .eq("id", r.id).eq("status", r.from);
+    q = r.updatedAt == null ? q.is("updated_at", null) : q.eq("updated_at", r.updatedAt);
+    const { data: upd, error } = await q.select("id");
     if (error) throw new Error(`luk ${r.id}: ${error.message}`);
-    if (!(upd || []).length) { result.skipped.push({ id: r.id, reason: "status ændret siden godkendelse" }); continue; }
+    if (!(upd || []).length) { result.skipped.push({ id: r.id, reason: "ændret siden godkendelse (status eller indhold); kør dry-run igen" }); continue; }
     if (r.to === "completed") result.completed += 1; else result.lapsed += 1;
   }
 

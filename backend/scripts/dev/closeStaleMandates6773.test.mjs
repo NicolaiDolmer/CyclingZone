@@ -303,3 +303,23 @@ test("#6773 (Codex) apply: låse-tokenet ligger efter rækkens updated_at, også
   const tokens = double.writes.map((w) => w.payload.updated_at);
   assert.equal(new Set(tokens).size, tokens.length);
 });
+
+test("#6773 (Codex) apply: en kilde der får et nyt bonusmål efter snapshottet, lukkes ikke", async () => {
+  const tables = fixture();
+  tables.board_mandates.find((m) => m.id === id(1)).updated_at = "2026-10-17T09:00:00Z";
+  const double = createDouble(tables);
+  const { plan, hash } = await runDryRun({ supabase: double });
+  tables[BACKUP_TABLE] = [...plan.rows.map((r) => ({ id: r.id })), { id: id(2) }];
+  // En accept (gammel kodesti) tilføjer et mål til KILDEN, mens apply kører.
+  let raced = false;
+  tables.__onMaybeSingle = (table) => {
+    if (table !== "board_mandates" || raced) return;
+    raced = true;
+    const src = tables.board_mandates.find((x) => x.id === id(1));
+    src.goals = [...src.goals, { type: "z", target: 1, source: "bonus_offer", bonus_offer_id: "bo-late" }];
+    src.updated_at = "2026-10-18T10:00:30Z";
+  };
+  const out = await runApply({ supabase: double, ownerGo: OWNER_GO_TOKEN, approvedHash: hash, now: new Date("2026-10-18T10:00:00Z") });
+  assert.equal(tables.board_mandates.find((m) => m.id === id(1)).status, "active", "kilden med det nye mål står åben");
+  assert.ok(out.result.skipped.some((s) => s.id === id(1)));
+});
