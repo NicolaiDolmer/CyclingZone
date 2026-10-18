@@ -1517,7 +1517,7 @@
           "v2": "{count, plural, one {Un coéquipier a sacrifié ses chances} other {# coéquipiers ont sacrifié leurs chances}} pour {captain} aujourd'hui."
         },
         "form_peak": {
-          "v1": "{rider} est arrivé en grande forme, et ça s'est vu.",
+          "v1": "{rider} est arrivé au pic de forme, et ça s'est vu.",
           "v2": "La forme a fait la différence pour {rider} aujourd'hui."
         },
         "favorite_off_day": {

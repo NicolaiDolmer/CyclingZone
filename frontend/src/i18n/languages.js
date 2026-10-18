@@ -21,6 +21,10 @@
 export const LANGUAGES = [
   { code: "en", label: "English", nativeLabel: "English", flag: "gb", beta: false },
   { code: "da", label: "Danish", nativeLabel: "Dansk", flag: "dk", beta: false },
+  // #6836: fr/es/nl er skjulte beta-sprog (ejer + beta-testere), aldrig offentlige.
+  { code: "fr", label: "French", nativeLabel: "Français", flag: "fr", beta: true },
+  { code: "es", label: "Spanish", nativeLabel: "Español", flag: "es", beta: true },
+  { code: "nl", label: "Dutch", nativeLabel: "Nederlands", flag: "nl", beta: true },
 ];
 
 export const SUPPORTED_LANGS = LANGUAGES.map((l) => l.code);
@@ -45,3 +49,12 @@ export const HAS_BETA_LANGS = LANGUAGES.some((l) => l.beta === true);
 // Pseudo-locale til layout-stress-test (?pseudo=1) — findes ikke som en rigtig
 // sprog-entry i LANGUAGES (ingen locale-JSON, intet flag, ikke valgbar i UI).
 export const PSEUDO_LANG = "en-XA";
+
+/**
+ * #6836 (Codex): <html lang> for et registreret sprog (fr/es/nl inkl. beta), ellers en.
+ * Erstatter de gamle `da ? "da" : "en"`-ternaries, saa en fransk side ikke erklaeres engelsk.
+ */
+export function documentLang(language) {
+  const base = String(language || "").toLowerCase().split(/[-_]/)[0];
+  return LANGUAGES.some((l) => l.code === base) ? base : "en";
+}

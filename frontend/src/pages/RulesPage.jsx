@@ -12,6 +12,7 @@ import { formatNumber } from "../lib/intl.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import { useAcademy } from "../lib/useAcademy.js";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
 import PageHeader from "../components/ui/PageHeader.jsx";
 import PageLoader from "../components/ui/PageLoader.jsx";
 import Section, { SectionHeader } from "../components/ui/Section.jsx";
@@ -89,7 +90,7 @@ export default function RulesPage() {
     title: ready ? t("meta.title") : undefined,
     description: ready ? t("meta.description") : undefined,
     canonical: "https://cyclingzone.org/rules",
-    lang: i18n.language?.startsWith("da") ? "da" : "en",
+    lang: documentLang(i18n.language),
   });
   const [activeSection, setActiveSection] = useState("squad");
   // Academy is gated behind academy_enabled (#1308); the flag is off until the

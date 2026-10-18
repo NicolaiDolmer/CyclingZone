@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
@@ -26,7 +27,7 @@ export default function ResetPasswordPage({ session }) {
   // engangs-recovery-token i URL'en. noindex → ingen rod-canonical, ingen indeksering.
   useDocumentHead({
     title: `${t("auth:resetPassword.title")} · Cycling Zone`,
-    lang: language === "da" ? "da" : "en",
+    lang: documentLang(language),
     noindex: true,
   });
 
@@ -247,11 +248,11 @@ export default function ResetPasswordPage({ session }) {
           {t("auth:page.tagline")}
         </p>
         <p className="mt-2 text-center text-xs text-cz-3">
-          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="underline hover:text-cz-1">
+          <Link to={language === "da" ? "/privatlivspolitik" : "/privacy-policy"} className="underline hover:text-cz-1">
             {t("auth:footer.privacyPolicy")}
           </Link>
           <span className="mx-2" aria-hidden="true">·</span>
-          <Link to={language === "en" ? "/terms" : "/handelsbetingelser"} className="underline hover:text-cz-1">
+          <Link to={language === "da" ? "/handelsbetingelser" : "/terms"} className="underline hover:text-cz-1">
             {t("auth:footer.terms")}
           </Link>
         </p>
