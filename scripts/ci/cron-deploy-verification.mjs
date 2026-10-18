@@ -22,7 +22,8 @@ export function registryCadenceSeconds(config) {
 // reject a valid row an hour before its legitimate slot.
 export function dueAtMs(config, fromMs, cadence, margin) {
   if (config?.schedule?.type === 'crontab' && config.wallClock) {
-    return nextWallClockSlotMs(fromMs, config.wallClock, { primaryOnly: true }) + margin * 1000;
+    // Codex P2 (#6860): check-in skrives foerst naar kørslen er faerdig; giv maxRuntime med (som wallClockDeadlineMs).
+    return nextWallClockSlotMs(fromMs, config.wallClock, { primaryOnly: true }) + (margin + (config.maxRuntime ?? 0) * 60) * 1000;
   }
   return fromMs + (cadence + margin) * 1000;
 }

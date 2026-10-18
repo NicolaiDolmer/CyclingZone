@@ -460,11 +460,11 @@ test('#6858: fixed-time (crontab) monitors have a 1- or 7-day cadence and are de
 
 test('#6860 (Codex P2): a weekly fixed-time job is due at its next Copenhagen slot across the DST change', async () => {
   const { dueAtMs } = await import('./cron-deploy-verification.mjs');
-  const config = { schedule: { type: 'crontab', value: '0 14 * * 0' }, wallClock: { weekdays: ['sun'], hour: 14, minute: 0 } };
+  const config = { schedule: { type: 'crontab', value: '0 14 * * 0' }, maxRuntime: 60, wallClock: { weekdays: ['sun'], hour: 14, minute: 0 } };
   const lastRun = Date.parse('2026-10-18T12:00:00Z'); // 14:00 CEST
   const due = dueAtMs(config, lastRun, 7 * 86400, 15 * 60);
-  // 25/10 14:00 CET = 13:00Z, plus 15 min margin. A nominal 168 h would say 12:15Z.
-  assert.equal(new Date(due).toISOString(), '2026-10-25T13:15:00.000Z');
+  // 25/10 14:00 CET = 13:00Z, plus 15 min margin + 60 min maxRuntime. A nominal 168 h would say 12:15Z.
+  assert.equal(new Date(due).toISOString(), '2026-10-25T14:15:00.000Z');
   const interval = { schedule: { type: 'interval', value: 5, unit: 'minute' } };
   assert.equal(dueAtMs(interval, 0, 300, 600), 900000);
 });
