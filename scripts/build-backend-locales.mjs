@@ -29,7 +29,9 @@ const OUT_FILE = join(ROOT, "backend", "lib", "locales", "backendMessages.genera
 // Sprog der bundles. Holdes bevidst lig med SUPPORTED_LANGS i
 // frontend/src/i18n/languages.js (#4733) minus pseudo-locale en-XA, som kun
 // bruges til layout-test i browseren og aldrig til en notifikation.
-export const BUNDLED_LANGUAGES = ["en", "da"];
+// #6836: beta-sprogene (fr/es/nl) bundles med, saa en Discord-DM til en beta-tester
+// rendres paa deres valgte sprog i stedet for engelsk.
+export const BUNDLED_LANGUAGES = ["en", "da", "fr", "es", "nl"];
 export const BUNDLED_NAMESPACE = "backendMessages";
 
 /** Flad {a:{b:"x"}} ud til {"a.b":"x"} — samme noeglesyntaks som i18next bruger. */

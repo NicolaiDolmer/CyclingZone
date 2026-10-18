@@ -287,4 +287,9 @@ export const UNMONITORED_CRON_TICKS = [
   // udgift; fejl naar stadig Sentry via trackedTick + captureException i sweepen.
   // Tilfoej monitorCron(...) naar push er "on" og der er budget til monitoren.
   "push sweep",
+  // #6854: udfalds-vagten prober PostgREST hvert 15. sekund. En Sentry-check-in
+  // pr. probe er en ny loebende udgift og stoej, og vagtens eget formaal er at
+  // alarmere naar databasen er nede (cron_checkins ligger i databasen). Dens
+  // daekning udefra er databasevagten (scripts/ops/db-watchdog.mjs).
+  "outage monitor",
 ];

@@ -68,6 +68,7 @@ import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
 import { processStallWatchdog } from "./lib/stallWatchdog.js";
+import { createOutageMonitor, OUTAGE_PROBE_INTERVAL_MS } from "./lib/outageMonitor.js"; // #6854
 import { runAdminSimulateStage, buildRaceSimEmbed } from "./lib/adminSimulateRace.js";
 import { makeEnsureSeasonStandings } from "./lib/seasonStandingsBootstrap.js";
 import { updateStandings } from "./lib/economyEngine.js";
@@ -564,6 +565,10 @@ async function runDiscordRoleSyncCron() {
     console.log(`🎭 Discord division-roller: ${result.changed} ændret (${result.synced} synket, ${result.skipped} sprunget over)`);
   }
 }
+
+// ─── Udfalds-vagt (#6854) ────────────────────────────────────────────────────
+// Tilstand i closure; alarmvejen rører aldrig databasen (se lib/outageMonitor.js).
+const runOutageMonitorTick = createOutageMonitor();
 
 // ─── Stall-watchdog (#2077) ──────────────────────────────────────────────────
 // Fanger TAVSE stalls som exception-capture ikke ser: løb der er kørt men ikke
@@ -1863,6 +1868,10 @@ export function startCron() {
   // logger internt og re-throw'er aldrig (recordCronCheckIn), så der er intet
   // unhandled-rejection-scenarie at fange her.
   primeCronHeartbeatCheckIns({ supabase, captureExceptionFn: sentryCapture });
+
+  // Every 15 seconds: #6854 udfalds-vagt. Prober PostgREST og alarmerer ejeren
+  // i Discord-ops ved over 20 fejl paa 10 min (18/10: 2 t 40 min uden alarm).
+  setInterval(trackedTick("outage monitor", runOutageMonitorTick), OUTAGE_PROBE_INTERVAL_MS);
 
   // Every 60 seconds: finalize auctions
   setInterval(

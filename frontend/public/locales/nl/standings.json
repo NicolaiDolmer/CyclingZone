@@ -4,6 +4,7 @@
   "seasonTooltip": "Huidig seizoen. De ranglijst wordt elk seizoen gereset.",
   "noActiveSeason": "Geen actief seizoen",
   "loadError": "De ranglijst kon niet worden geladen. Probeer het opnieuw.",
+  "strengthLoadError": "Kon de sterkte van de selecties niet laden. Probeer het opnieuw.",
   "retry": "Probeer opnieuw",
   "division": "Divisie {n}",
   "poolAll": "Alle",
