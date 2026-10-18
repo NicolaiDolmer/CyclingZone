@@ -145,3 +145,36 @@ test("createOutageMonitor: mangler env, gør vagten intet", async () => {
   }
   assert.equal(calls, 0);
 });
+
+test("createOutageMonitor: fejlet 'oppe igen' prøves igen ved næste grønne probe", async () => {
+  const { ctx, tick } = monitorHarness();
+  for (let i = 0; i < OUTAGE_FAILURE_THRESHOLD + 1; i += 1) await tick();
+  assert.equal(ctx.sent.length, 1);
+  ctx.healthy = true;
+  ctx.discordOk = false;
+  for (let i = 0; i < OUTAGE_RECOVERY_CONSECUTIVE_OK; i += 1) await tick();
+  assert.equal(ctx.sent.length, 2, "forsøgt én gang");
+  ctx.discordOk = true;
+  await tick();
+  assert.equal(ctx.sent.length, 3);
+  assert.match(ctx.sent[2].embeds[0].title, /oppe igen/);
+  await tick();
+  assert.equal(ctx.sent.length, 3, "ikke igen efter succes");
+});
+
+test("createOutageMonitor: overlappende tik springes over", async () => {
+  let release;
+  let probes = 0;
+  const fetchFn = async () => {
+    probes += 1;
+    await new Promise((r) => { release = r; });
+    return { status: 200 };
+  };
+  const env = { SUPABASE_URL: "https://p", SUPABASE_SERVICE_KEY: "k", DISCORD_OPS_WEBHOOK_URL: "https://discord.example/h" };
+  const tick = createOutageMonitor({ env, fetchFn, log: () => {} });
+  const first = tick();
+  await tick();
+  assert.equal(probes, 1, "andet tik må ikke starte en probe mens det første kører");
+  release();
+  await first;
+});

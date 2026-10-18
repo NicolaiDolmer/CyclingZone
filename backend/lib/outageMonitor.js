@@ -191,8 +191,21 @@ export function createOutageMonitor({
 } = {}) {
   let state = emptyOutageState();
   let warnedMissing = false;
+  let inFlight = false;
 
   return async function outageMonitorTick() {
+    // Et tik kan tage op til 20 s (probe + Discord) mod et 15 s-interval. Overlap
+    // ville lade to tik læse samme tilstand, så en tilbagerulning kunne tabe fejl.
+    if (inFlight) return;
+    inFlight = true;
+    try {
+      await runOnce();
+    } finally {
+      inFlight = false;
+    }
+  };
+
+  async function runOnce() {
     const supabaseUrl = String(env.SUPABASE_URL ?? "").trim();
     const apiKey = String(env.SUPABASE_SERVICE_KEY ?? "").trim();
     const webhookUrl = String(env.DISCORD_OPS_WEBHOOK_URL ?? "").trim();
@@ -213,5 +226,5 @@ export function createOutageMonitor({
     const sent = await postDiscord(fetchFn, webhookUrl, buildOutagePayload(message));
     log(`[outage-monitor] ${message.kind}: ${sent ? "sendt til Discord-ops" : "SENDING FEJLEDE (prøver igen ved næste probe)"}`);
     if (!sent) state = rollbackUnsent(state, prev, message);
-  };
+  }
 }
