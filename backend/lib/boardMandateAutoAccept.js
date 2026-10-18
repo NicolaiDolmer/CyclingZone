@@ -20,7 +20,7 @@
  */
 
 import { resolveThresholds, DAY_MS } from "./boardNegotiationThresholds.js";
-import { signMandate } from "./boardMandateMeeting.js";
+import { MandateSignConflictError, signMandate } from "./boardMandateMeeting.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { MANDATE_OPENED_TITLE_CODE, isMandateSeasonEnded, notifyMandateOpened } from "./boardMandateEngine.js";
 
@@ -156,19 +156,26 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
   if (daysSinceOpen >= thresholds.AUTO_ACCEPT) {
     // Keep på alt: ingen adjustments, ingen anmodning, intet vision-slot-svar
     // (et evt. åbent slot forbliver åbent til næste rigtige møde).
-    await signMandate(supabase, {
-      teamId: team.id,
-      mandateId: mandate.id,
-      adjustments: [],
-      request: null,
-      visionSlot: null,
-      now,
-      // #4839: cron-skrivning uden viewer — 'beta' skal underskrive for alle
-      // hold, ellers returnerer signMandate null og cronen tæller et
-      // auto_accepted der aldrig skete.
-      engineWrite: true,
-      signedVia: "auto_accept",
-    });
+    try {
+      await signMandate(supabase, {
+        teamId: team.id,
+        mandateId: mandate.id,
+        adjustments: [],
+        request: null,
+        visionSlot: null,
+        now,
+        // #4839: cron-skrivning uden viewer — 'beta' skal underskrive for alle
+        // hold, ellers returnerer signMandate null og cronen tæller et
+        // auto_accepted der aldrig skete.
+        engineWrite: true,
+        signedVia: "auto_accept",
+      });
+    } catch (signError) {
+      // Codex P2 (#6780): forslaget blev lukket (fx lapsed af sæsonskiftet)
+      // under underskriften. Ingen underskrift, ingen besked, ingen fejl.
+      if (signError instanceof MandateSignConflictError && signError.errorCode === "board_mandate_not_proposed") return result;
+      throw signError;
+    }
     result.auto_accepted = true;
     if (team.user_id) {
       await notifyUser({

@@ -894,9 +894,13 @@ test("#6780 (Codex P1) signMandate: forslaget lukkes midt i underskriften → vi
       },
     };
   };
-  await signMandate(supabase, {
-    teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true },
-  });
+  // Codex P2 (#6780): et forslag der blev lapsed, svarer konflikt, ikke succes.
+  await assert.rejects(
+    () => signMandate(supabase, {
+      teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true },
+    }),
+    (err) => err.errorCode === "board_mandate_not_proposed",
+  );
   assert.equal(supabase._state.mandates[0].status, "lapsed", "mandatet er ikke underskrevet");
   const slot = supabase._state.milestones.find((m) => m.id === "vm-slot");
   assert.equal(slot.slot_open, true, "slottet er genaabnet");

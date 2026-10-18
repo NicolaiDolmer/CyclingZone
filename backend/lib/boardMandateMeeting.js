@@ -711,6 +711,21 @@ export async function signMandate(supabase, {
         throw new Error(`board_vision_milestones rollback incomplete for team ${teamId} (mandate ${mandateId} was not signed): ${failures.join("; ")}`);
       }
     }
+    // Codex P2 (#6780): kun et samtidigt sign, der gjorde mandatet aktivt, er
+    // en succes. Blev det lapsed imens, svares der konflikt, saa auto-accept
+    // ikke melder "underskrevet for dig" om et mandat der aldrig blev det.
+    const { data: after, error: reReadError } = await supabase
+      .from("board_mandates")
+      .select("status")
+      .eq("id", mandateId)
+      .maybeSingle();
+    if (reReadError) throw new Error(`board_mandates re-read failed: ${reReadError.message}`);
+    if (after?.status !== "active") {
+      throw new MandateSignConflictError(
+        `Mandatet kan ikke underskrives fra status "${after?.status ?? "ukendt"}".`,
+        { errorCode: "board_mandate_not_proposed" }
+      );
+    }
     return buildBoardRoomPayload({ supabase, teamId });
   }
 

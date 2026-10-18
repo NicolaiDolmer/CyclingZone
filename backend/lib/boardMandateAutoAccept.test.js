@@ -386,3 +386,39 @@ test("#6773 processMandateAutoAcceptCron: forslag for en AFSLUTTET sæson unders
   assert.equal(result.errors, 0);
   assert.ok(notified.every((n) => n.relatedId !== "m-old"), "ingen besked om det udløbne forslag");
 });
+
+test("#6780 (Codex P2) auto-accept: lapses forslaget under underskriften, sendes ingen 'underskrevet for dig'", async () => {
+  const openedAt = new Date("2026-09-25T00:00:00Z");
+  const now = new Date(openedAt.getTime() + 8 * 24 * 60 * 60 * 1000);
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s4", number: 4, status: "active" }],
+    mandates: [{
+      id: "m1", team_id: "t1", season_id: "s4", season_number: 4, status: "proposed", focus: "balanced",
+      goals: [{ type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }],
+      adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  // Sæsonskiftet lapser forslaget lige før den betingede sign-opdatering.
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_mandates") return api;
+    return {
+      ...api,
+      update: (payload) => {
+        if (payload.status === "active") supabase._state.mandates[0].status = "lapsed";
+        return api.update(payload);
+      },
+    };
+  };
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(supabase._state.mandates[0].status, "lapsed");
+  assert.equal(result.auto_accepted, 0);
+  assert.equal(result.errors, 0);
+  assert.equal(notified.length, 0, "ingen besked om en underskrift der ikke skete");
+});
