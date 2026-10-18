@@ -38,7 +38,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
@@ -292,15 +292,23 @@ const git = (args) => {
   const r = spawnSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   return r.status === 0 ? r.stdout : "";
 };
+// Genererede filer maa ikke vaere input til maerket (Codex #6826): ellers
+// ugyldiggoer et faerdigt sweep sit eget maerke. Sweepets --out-mappe udelukkes
+// derfor ogsaa, naar den ligger inde i repoet.
+const outRel = relative(REPO_ROOT, resolve(opts.out)).split("\\").join("/");
+const STAMP_EXCLUDES = [
+  ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results",
+  ...(outRel && !outRel.startsWith("..") && !isAbsolute(outRel) ? [`:(exclude)${outRel}`] : []),
+];
 // Usporede filer: git diff ser kun sporede, saa deres indhold hashes selv.
-const untrackedHashes = git(["ls-files", "--others", "--exclude-standard", "--", ".", ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results"])
+const untrackedHashes = git(["ls-files", "--others", "--exclude-standard", "--", ".", ...STAMP_EXCLUDES])
   .split("\n").map((p) => p.trim()).filter(Boolean)
   .map((p) => `${p}:${createHash("sha1").update(readFileSync(join(REPO_ROOT, p))).digest("hex")}`)
   .join("\n");
 const expectedStamp = computeBuildStamp({
   head: git(["rev-parse", "HEAD"]),
-  status: git(["status", "--porcelain", "--", ".", ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results"]),
-  diff: git(["diff", "HEAD", "--", ".", ":(exclude)frontend/dist", ":(exclude)balance-internals", ":(exclude)test-results"]),
+  status: git(["status", "--porcelain", "--", ".", ...STAMP_EXCLUDES]),
+  diff: git(["diff", "HEAD", "--", ".", ...STAMP_EXCLUDES]),
   untracked: untrackedHashes,
   base: BASE,
 });
