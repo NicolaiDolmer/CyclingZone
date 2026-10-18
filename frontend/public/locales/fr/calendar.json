@@ -76,5 +76,24 @@
     "description": "Un problème est survenu au chargement du calendrier des courses. Réessaie dans un instant.",
     "retry": "Réessayer",
     "session": "Ta session est terminée. Reconnecte-toi pour voir le calendrier."
+  },
+  "peek": {
+    "stages": "{count, plural, one {# étape} other {# étapes}}",
+    "oneDay": "Course d'un jour",
+    "terrain": "Terrain",
+    "noProfile": "Parcours pas encore publié",
+    "teamFit": "Adéquation de l'équipe",
+    "bestBet": "Meilleur choix : {name} ({score})",
+    "fitUnavailable": "Indisponible pour cette course",
+    "status": {
+      "label": "Ton statut",
+      "missing": "Effectif à choisir",
+      "selected": "Effectif choisi",
+      "gtBound": "Mobilisé par ton Grand Tour"
+    },
+    "pick": "Choisir l'effectif",
+    "editSquad": "Modifier l'effectif",
+    "openRace": "Ouvrir la course",
+    "terrainCount": "{type} ×{count}"
   }
 }

@@ -8,6 +8,7 @@
   "tabs": {
     "latest": "Últimos",
     "archive": "Archivo",
+    "raceHistory": "Historial de carreras",
     "points": "Puntos y premios"
   },
   "latest": {
@@ -56,5 +57,45 @@
   "emptyNoResults": "Aún no se han importado resultados de carreras esta temporada",
   "loadError": "No se pudieron cargar los resultados",
   "loadErrorBody": "No se ha perdido nada. Prueba a recargar la página.",
-  "retry": "Reintentar"
+  "retry": "Reintentar",
+  "raceHistory": {
+    "tableLabel": "Historial de carreras",
+    "searchPlaceholder": "Buscar carreras",
+    "poolLabel": "División",
+    "count": "{count, plural, one {# carrera} other {# carreras}}",
+    "showing": "Mostrando {from}-{to} de {total}",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "seasonShort": "T{number}",
+    "stages": "{count, plural, one {# etapa} other {# etapas}}",
+    "oneDay": "Carrera de un día",
+    "place": "{rank, selectordinal, other {#.º}}",
+    "notPlaced": "No está en los resultados",
+    "noWinner": "Sin ganador registrado",
+    "noRoute": "Recorrido no registrado",
+    "allEditions": "Las {count} ediciones",
+    "firstEdition": "Primera edición",
+    "th": {
+      "race": "Carrera",
+      "champion": "Campeón vigente",
+      "championShort": "Campeón",
+      "best": "Tu mejor",
+      "bestShort": "Mejor",
+      "terrain": "Terreno",
+      "winners": "Ganadores anteriores"
+    },
+    "empty": {
+      "title": "Elige otra división",
+      "desc": "Aún no ha terminado ninguna carrera en esta división.",
+      "action": "Mostrar {pool}",
+      "latest": "Ver los últimos resultados"
+    },
+    "emptySearch": {
+      "title": "Prueba con otra búsqueda",
+      "desc": "Ninguna carrera terminada coincide con ese nombre.",
+      "action": "Borrar búsqueda"
+    },
+    "error": "No se pudo cargar el historial de carreras. No se ha perdido nada.",
+    "retry": "Reintentar"
+  }
 }
