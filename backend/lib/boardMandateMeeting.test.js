@@ -24,6 +24,7 @@ function makeMeetingSupabase({
   team = { id: "t1", balance: 0, sponsor_income: 100, team_dna_key: null },
   boardProfiles = [],
   milestones = [],
+  activeSeason = null,
 } = {}) {
   const state = { mandates: [...mandates], relations: [...relations], boardProfiles: [...boardProfiles], events: [], milestones: milestones.map((m) => ({ ...m })) };
 
@@ -32,18 +33,29 @@ function makeMeetingSupabase({
   }
   function selectChain(rows) {
     const filters = {};
+    const orders = [];
+    // #6793 · Honorér .order(): ellers kan et sæson-/tidsstempel-valg ikke testes.
+    // Uden order-kald er rækkefølgen uændret (stabil sortering). null sorterer sidst.
+    const pick = () => {
+      const list = rows.filter((r) => matchAll(r, filters));
+      return list.sort((x, y) => {
+        for (const { col, ascending } of orders) {
+          const xv = x[col] ?? null;
+          const yv = y[col] ?? null;
+          if (xv === yv) continue;
+          if (xv === null) return 1;
+          if (yv === null) return -1;
+          return (xv < yv ? -1 : 1) * (ascending ? 1 : -1);
+        }
+        return 0;
+      });
+    };
     const chain = {
       eq(col, value) { filters[col] = value; return chain; },
-      order() { return chain; },
+      order(col, opts = {}) { orders.push({ col, ascending: opts.ascending !== false }); return chain; },
       limit() { return chain; },
-      maybeSingle: async () => {
-        const list = rows.filter((r) => matchAll(r, filters));
-        return { data: list[0] ?? null, error: null };
-      },
-      single: async () => {
-        const list = rows.filter((r) => matchAll(r, filters));
-        return { data: list[0] ?? null, error: null };
-      },
+      maybeSingle: async () => ({ data: pick()[0] ?? null, error: null }),
+      single: async () => ({ data: pick()[0] ?? null, error: null }),
     };
     return chain;
   }
@@ -74,8 +86,17 @@ function makeMeetingSupabase({
       }
       if (table === "seasons") {
         // buildBoardRoomPayload henter (a) den AKTIVE sæson og (b) hele
-        // sæson-listen (til sinceSeason) — begge tomme/no-op er fint her.
-        const chain = { eq: () => chain, order: () => ({ error: null, data: [] }), maybeSingle: async () => ({ data: null, error: null }) };
+        // sæson-listen (til sinceSeason); #6793 · loadSingleActiveSeason henter
+        // den aktive (order+limit+maybeSingle) og tæller aktive (awaitet direkte).
+        // Default: ingen aktiv sæson (hele sæson-listen er tom).
+        const active = activeSeason ? [activeSeason] : [];
+        const chain = {
+          eq: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: async () => ({ data: active[0] ?? null, error: null }),
+          then: (resolve) => resolve({ data: [], count: active.length, error: null }),
+        };
         return { select: () => chain };
       }
       if (table === "loans") {
@@ -225,6 +246,67 @@ test("buildBoardMeetingPayload: seneste mandat er 'completed' (mellem sæsoner) 
   });
   const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
   assert.deepEqual(payload, { available: false, reason: "no_proposal" });
+});
+
+// #6793 · Læserne følger BOARD_RULES: den aktive sæsons mandat, fallback til
+// nyeste KUN når ingen sæson er aktiv.
+const OLD_PROPOSED = {
+  id: "m-old", team_id: "t1", season_number: 3, focus: "balanced", status: "proposed", goals: [sampleGoal],
+  adjustments_allowed: 2, adjustments_used: 0, request_used: false, auto_accept_deadline: "2026-09-08T00:00:00Z",
+  proposed_at: "2026-09-01T00:00:00Z", source: {},
+};
+const NEW_PROPOSED = { ...OLD_PROPOSED, id: "m-new", season_number: 4, proposed_at: "2026-10-01T00:00:00Z" };
+
+test("buildBoardMeetingPayload (#6793): gammelt proposed mandat i forrige sæson, intet i den aktive → intet møde", async () => {
+  const supabase = makeMeetingSupabase({ mandates: [OLD_PROPOSED], activeSeason: { id: "s4", number: 4 } });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.deepEqual(payload, { available: false, reason: "no_mandate" });
+});
+
+test("buildBoardMeetingPayload (#6793): gammelt active mandat i forrige sæson, intet i den aktive → ikke 'signed'", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{ id: "m-old", team_id: "t1", season_number: 3, status: "active", proposed_at: "2026-06-01T00:00:00Z" }],
+    activeSeason: { id: "s4", number: 4 },
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.equal(payload.available, false);
+  assert.notEqual(payload.reason, "signed");
+});
+
+test("buildBoardMeetingPayload (#6793): den aktive sæsons forslag vælges frem for et gammelt", async () => {
+  const supabase = makeMeetingSupabase({
+    // Det gamle forslag er lagt først og er "nyere" ved proposed_at, så kun sæsonfilteret kan vælge rigtigt.
+    mandates: [{ ...OLD_PROPOSED, proposed_at: "2026-10-05T00:00:00Z" }, NEW_PROPOSED],
+    relations: [{ team_id: "t1", confidence: 60 }],
+    activeSeason: { id: "s4", number: 4 },
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.equal(payload.available, true);
+  assert.equal(payload.mandate.id, "m-new");
+  assert.equal(payload.mandate.seasonNumber, 4);
+});
+
+test("buildBoardMeetingPayload (#6793): aktiv sæson har et active mandat → 'signed' trods ældre rækker", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [
+      { id: "m-old", team_id: "t1", season_number: 3, status: "completed", proposed_at: "2026-10-05T00:00:00Z" },
+      { id: "m-new", team_id: "t1", season_number: 4, status: "active", proposed_at: "2026-10-01T00:00:00Z" },
+    ],
+    activeSeason: { id: "s4", number: 4 },
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.deepEqual(payload, { available: false, reason: "signed" });
+});
+
+test("buildBoardMeetingPayload (#6793): ingen aktiv sæson → nyeste sæsons forslag vælges (fallback)", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{ ...OLD_PROPOSED, proposed_at: "2026-10-05T00:00:00Z" }, NEW_PROPOSED],
+    relations: [{ team_id: "t1", confidence: 60 }],
+    activeSeason: null,
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.equal(payload.available, true);
+  assert.equal(payload.mandate.seasonNumber, 4);
 });
 
 test("buildBoardMeetingPayload: proposed mandat → goals bærer Easier/Keep/Stretch-options", async () => {

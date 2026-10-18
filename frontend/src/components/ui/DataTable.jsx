@@ -358,7 +358,7 @@ function TableHead({ columns, sort, sortDir, onSort, dense, mobile = false, stic
               // mobile ⇒ compact gutter (px-2) på ALLE celler: på 393px er de
               // 16px ekstra pr. kolonne forskellen på at tabellen passer og på
               // at den skubber sig selv ud over kanten (målt, ikke gættet).
-              className={`${thClass({ numeric: col.numeric, sticky: !mobile && col.sticky, compact: mobile || col.compact, tight: col.tight, dense, stickyHeader })} ${!mobile && col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
+              className={`${thClass({ numeric: col.numeric, sticky: !mobile && col.sticky, compact: mobile || col.compact, tight: col.tight, dense, stickyHeader, wrap: mobile })} ${!mobile && col.fold ? "hidden sm:table-cell" : ""} ${sortableCls}`}
               onClick={sortable ? () => onSort(col.sortKey) : undefined}
               aria-sort={
                 sortable ? (active ? (sortDir === "desc" ? "descending" : "ascending") : "none") : undefined

@@ -395,7 +395,7 @@ export default function RiderProfileHero({
         <HeroStat
           label={t("profile.hero.contract")}
           value={<span className={hasContractSeason && !contractOffer.awaitingRelease ? "text-cz-accent-t" : undefined}>{contractText}</span>}
-          valueClassName="text-[20px] font-[650] truncate"
+          valueClassName="text-[20px] font-[650] wrap-break-word"
           sub={contractSub}
         />
       </div>
