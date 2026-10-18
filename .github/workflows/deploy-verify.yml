@@ -79,6 +79,8 @@ jobs:
       result: ${{ steps.deployments.outputs.result }}
       cron_since: ${{ steps.deployments.outputs.cron_since }}
       vercel: ${{ steps.deployments.outputs.vercel }}
+      # #6859: the SHA whose Vercel build is live (target or a covering newer main SHA).
+      vercel_sha: ${{ steps.deployments.outputs.vercel_sha }}
       railway: ${{ steps.deployments.outputs.railway }}
     steps:
       # #5424: flyttet hertil (var før "Wait for Vercel + Railway
@@ -245,8 +247,11 @@ jobs:
           # cycling-zone-marketing also posts vercel[bot] deployments for the SHA.
           VERCEL_ENV='Production – cycling-zone'
           CRON_SINCE=""
+          ROUND=0
           while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
+            # #6859: the SHA whose Vercel build is live (this SHA or a covering one).
+            VERCEL_SHA="$SHA"
             VERCEL_OK=false
             RAILWAY_OK=false
             # Refresh the boundary per observation round. Vercel may take much
@@ -317,6 +322,33 @@ jobs:
               fi
             fi
 
+            # #6859 (ejer 18/10): Vercel/Railway bygger ikke altid hver main-SHA
+            # (18/10: Vercel sprang a9d79887 over; 20d7d5b9 indeholdt den, og
+            # verify ventede 40 min til timeout). Et READY production-deploy af en
+            # NYERE main-SHA der indeholder SHA'en (git merge-base --is-ancestor)
+            # er ogsaa bevis: scripts/ci/deploy-coverage.mjs. En fejlet build af
+            # SHA'en selv stopper stadig ovenfor. Railway med token daekkes i
+            # scripts/railway-deploy-status.mjs. Hvert 4. runde (~1 min) for at
+            # spare API-kvoten; runde 0 tjekker straks.
+            if (( ROUND % 4 == 0 )); then
+              if [[ "$NEED_VERCEL" == "true" && "$VERCEL_OK" == "false" ]]; then
+                COVER=$(node scripts/ci/deploy-coverage.mjs vercel "$SHA" || echo '{"covered":false}')
+                if [[ "$(jq -r '.covered == true' <<<"$COVER" 2>/dev/null)" == "true" ]]; then
+                  VERCEL_SHA=$(jq -r '.sha' <<<"$COVER")
+                  VERCEL_OK=true
+                  echo "  Vercel: READY production-deploy af nyere main-SHA ${VERCEL_SHA:0:7} indeholder ${SHA:0:7}"
+                fi
+              fi
+              if [[ "$NEED_RAILWAY" == "true" && -z "${RAILWAY_TOKEN:-}" && "$RAILWAY_OK" == "false" ]]; then
+                COVER=$(node scripts/ci/deploy-coverage.mjs railway "$SHA" || echo '{"covered":false}')
+                if [[ "$(jq -r '.covered == true' <<<"$COVER" 2>/dev/null)" == "true" ]]; then
+                  RAILWAY_OK=true
+                  echo "  Railway: READY deploy af nyere main-SHA $(jq -r '.sha[0:7]' <<<"$COVER") indeholder ${SHA:0:7}"
+                fi
+              fi
+            fi
+            ROUND=$((ROUND + 1))
+
             # Use a conservative UTC observation AFTER positive Railway READY,
             # never the workflow start time. The round satisfying all required
             # deployments supplies the latest positive Railway observation.
@@ -334,9 +366,12 @@ jobs:
               if [[ "$NEED_VERCEL" == "false" && "$VERCEL_OK" == "false" ]]; then
                 echo "Vercel ikke påkrævet (ingen frontend/-ændringer — Ignored Build Step skipper builden)"
                 echo "vercel=skipped (no frontend changes)" >> "$GITHUB_OUTPUT"
+              elif [[ "$VERCEL_SHA" != "$SHA" ]]; then
+                echo "vercel=success (covered by ${VERCEL_SHA:0:7})" >> "$GITHUB_OUTPUT"
               else
                 echo "vercel=success" >> "$GITHUB_OUTPUT"
               fi
+              echo "vercel_sha=$VERCEL_SHA" >> "$GITHUB_OUTPUT"
               if [[ "$NEED_RAILWAY" == "false" && "$RAILWAY_OK" == "false" ]]; then
                 echo "Railway ikke påkrævet (ingen backend/-ændringer)"
                 echo "railway=skipped (no backend changes)" >> "$GITHUB_OUTPUT"
@@ -663,7 +698,8 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-          SHA: ${{ needs.release.outputs.sha }}
+          # #6859: a covering newer deploy uploads its source maps under ITS SHA.
+          SHA: ${{ needs.release.outputs.vercel_sha || needs.release.outputs.sha }}
         run: |
           # Et skip skal kunne SES. Guarden stod "success" i tre måneder mens den i
           # virkeligheden aldrig kørte, fordi det tidlige exit 0 kun efterlod en
