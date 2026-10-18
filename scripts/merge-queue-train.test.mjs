@@ -162,7 +162,11 @@ test('train: a deployment-affecting PR always ends the train (Codex P1)', () => 
 test('plan entry: an incomplete file list (100-file cap) fails closed as deploy-affecting (Codex P1)', () => {
   const queueText = read('./merge-queue.ps1');
   assert.match(queueText, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid'/);
-  assert.match(queueText, /\$listComplete = \(\$changed -gt 0\) -and \(\$paths\.Count -ge \$changed\)/);
+  assert.match(queueText, /\$listComplete = \(\$changed -gt 0\) -and \(\$fileCount -ge \$changed\)/);
+  // Codex P1 (#6861): rename origins count too - the paginated REST list carries previous_filename.
+  assert.match(queueText, /pulls\/\$number\/files", '--paginate'/);
+  assert.match(queueText, /\.previous_filename \/\/ ""/);
+  assert.match(queueText, /if \(\$cols\.Count -gt 1 -and \$cols\[1\]\) \{ \$paths \+= \$cols\[1\] \}/);
   assert.match(queueText, /\$filesKnown = \$listComplete/);
   assert.match(queueText, /if \(-not \$filesKnown\) \{ \$touchesBackend = \$true; \$touchesRailway = \$true; \$touchesVercel = \$true \}/);
 });

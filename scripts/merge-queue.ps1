@@ -175,13 +175,23 @@ function Get-PrPlanEntry([int]$number) {
       # Ejer 10/10 (valg B): klassifikationen bor i scripts/merge-queue-files.mjs
       # (node --test). Kun produktionskode er "backend"; tests/dev-scripts/
       # test-data venter ikke paa deploy-verifikation alene.
-      $paths = @($parsed.files | ForEach-Object { $_.path })
-      # Codex P1 (#6861): `gh pr view --json files` er loftet ved 100 filer. Er
-      # listen ufuldstaendig, kan en deploy-paavirkende fil mangle -> fail closed:
-      # PR'en behandles som ukendt (deploy-paavirkende) og afslutter toget.
+      # Codex P1 (#6861): `gh pr view --json files` er loftet ved 100 filer og har
+      # kun destinationen ved omdoebninger. Den paginerede REST-liste giver alle
+      # filer + previous_filename, saa `frontend/x` -> `docs/x` stadig tæller som
+      # deploy-paavirkende. Er listen ufuldstaendig -> fail closed (afslutter toget).
+      $restRows = Invoke-GhWithRetry @('api', "repos/$Repo/pulls/$number/files", '--paginate', '--jq', '.[] | [.filename, (.previous_filename // "")] | @tsv') -TolerateFailure
+      $paths = @()
+      $fileCount = 0
+      foreach ($row in @($restRows)) {
+        if (-not $row) { continue }
+        $cols = ([string]$row) -split "`t"
+        $fileCount++
+        $paths += $cols[0]
+        if ($cols.Count -gt 1 -and $cols[1]) { $paths += $cols[1] }
+      }
       $changed = 0
       if ($parsed.PSObject.Properties['changedFiles']) { $changed = [int]$parsed.changedFiles }
-      $listComplete = ($changed -gt 0) -and ($paths.Count -ge $changed)
+      $listComplete = ($changed -gt 0) -and ($fileCount -ge $changed)
       $pathsJson = ConvertTo-Json -InputObject $paths -Compress
       $classJson = & node (Join-Path $PSScriptRoot 'merge-queue-files.mjs') $pathsJson
       if ($LASTEXITCODE -eq 0 -and $classJson) {
