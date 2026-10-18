@@ -43,9 +43,11 @@ test('culprit: a single PR in the train is always the culprit', () => {
   assert.deepEqual(findTrainCulprit({ failure: 'unknown', prs: [pr(1)] }), { culprit: 1, suspects: [1], reason: 'eneste PR i toget' });
 });
 
-test('culprit: red CI points at the FIRST merge SHA with red CI', () => {
+test('culprit: red CI names the first red SHA but reports the prefix as suspects, not a culprit (Codex P2)', () => {
   const result = findTrainCulprit({ failure: 'ci', prs: [pr(1), pr(2, { ciOk: false }), pr(3, { ciOk: false })] });
-  assert.equal(result.culprit, 2);
+  assert.equal(result.culprit, null);
+  assert.equal(result.firstFailing, 2);
+  assert.deepEqual(result.suspects, [1, 2]);
   assert.deepEqual(findTrainCulprit({ failure: 'ci', prs: [pr(1, { ciOk: null }), pr(2, { ciOk: null })] }).suspects, [1, 2]);
 });
 
@@ -143,4 +145,16 @@ test('PR-CI keeps runners free: stale PR runs are cancelled and e2e shards run o
   const smoke = read('../.github/workflows/playwright-smoke.yml');
   assert.match(jobBlock(smoke, 'e2e-shard'), /^ {4}if: .*needs\.changes\.outputs\.frontend == 'true'/m);
   assert.match(jobBlock(smoke, 'changes'), /grep -E '\^\(frontend\//);
+});
+
+test('train: a deployment-affecting PR always ends the train (Codex P1)', () => {
+  const r = psFunctions(['Test-MergeWithNext'], `
+    $a = Test-MergeWithNext $false 0 4 0 5 $false
+    $b = Test-MergeWithNext $false 0 4 0 5 $true
+    $c = Test-MergeWithNext $true 0 4 0 5 $false
+    Write-Output ('RESULT=' + (ConvertTo-Json @($a,$b,$c) -Compress))
+  `);
+  assert.deepEqual(r, [true, false, false]);
+  const queueText = read('./merge-queue.ps1');
+  assert.match(queueText, /if \(\$entryBackend -or \$entryRailway -or \$entryVercel\) \{ \$batchWithNext = \$false \}/);
 });

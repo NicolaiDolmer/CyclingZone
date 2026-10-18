@@ -241,8 +241,12 @@ function Test-InMergeTickWindow([int]$Minute) {
 # #6859: merge-tog som standard. Merger PR nr. $Index (0-baseret) videre uden at
 # vente, naar der er en naeste PR og toget (inkl. denne) er under -MaxBatch.
 # -NoBatch er undtagelsen: hver PR faar sit eget deploy og sin egen verify.
-function Test-MergeWithNext([bool]$NoBatch, [int]$Index, [int]$Count, [int]$TrainSize, [int]$MaxBatch) {
-  return (-not $NoBatch) -and ($Index + 1 -lt $Count) -and (($TrainSize + 1) -lt $MaxBatch)
+# Codex P1 (#6861): deploy-verify udleder Vercel/Railway/cron-krav af den
+# verificerede SHA's EGEN diff. Et tog maa derfor hoejst indeholde een
+# deploy-paavirkende PR, og den skal vaere den sidste: efter en sadan PR
+# slutter toget altid, saa tip-SHA'ens diff daekker hele togets deploy-krav.
+function Test-MergeWithNext([bool]$NoBatch, [int]$Index, [int]$Count, [int]$TrainSize, [int]$MaxBatch, [bool]$EntryDeploys = $false) {
+  return (-not $NoBatch) -and (-not $EntryDeploys) -and ($Index + 1 -lt $Count) -and (($TrainSize + 1) -lt $MaxBatch)
 }
 
 function Wait-OutOfMergeTickWindow {
@@ -623,6 +627,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # Review #6357 M3: brug den FRISKE fil-klassifikation for selve PR'en.
   $entryBackend = $entry.touchesBackend -or $fresh.touchesBackend
   $entryRailway = $entry.touchesRailway -or $fresh.touchesRailway
+  # Codex P1 (#6861): en deploy-paavirkende PR afslutter altid toget.
+  $entryVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel)
+  if ($entryBackend -or $entryRailway -or $entryVercel) { $batchWithNext = $false }
 
   if ($DryRun) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray

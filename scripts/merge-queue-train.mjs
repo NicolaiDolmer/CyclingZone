@@ -5,7 +5,7 @@
 // ud og stoppe. Den goer det ud fra beviser, aldrig ved at deploye
 // mellemtilstande eller revertere main (et prod-indgreb kraever ejer-go):
 //   1. Kun een PR i toget -> den.
-//   2. CI (main) roed: den FOERSTE merge-SHA med roed CI (CI koerer pr. SHA).
+//   2. CI (main) roed: foerste roede merge-SHA + praefikset som mistaenkte (aldrig en bevist skyldig).
 //   3. Deploy-fejl: de PR'er der udloeser det fejlende maal
 //      (vercel / railway; smoke = begge). Er der praecis een, er den skyldig.
 //   4. Ellers: en mistaenktliste i merge-raekkefoelge, og koeen stopper.
@@ -23,8 +23,15 @@ export function findTrainCulprit({ failure, prs } = {}) {
   if (prs.length === 1) return { culprit: all[0], suspects: all, reason: 'eneste PR i toget' };
   const kind = FAILURES.has(failure) ? failure : 'unknown';
   if (kind === 'ci') {
-    const red = prs.find((pr) => pr.ciOk === false);
-    if (red) return { culprit: red.number, suspects: [red.number], reason: 'foerste merge-SHA med roed CI (main)' };
+    // Codex P2 (#6861): roed CI paa en SHA beviser kun at PRAEFIKSET til og med
+    // den er roedt (samspil med tidligere PR'er eller en ustabil koersel giver
+    // samme billede). Den foerste roede PR er den staerkeste mistanke, men ikke
+    // en bevist skyldig, saa praefikset meldes som mistaenkte.
+    const redIndex = prs.findIndex((pr) => pr.ciOk === false);
+    if (redIndex >= 0) {
+      const prefix = prs.slice(0, redIndex + 1).map((pr) => pr.number);
+      return { culprit: null, firstFailing: prs[redIndex].number, suspects: prefix, reason: 'foerste merge-SHA med roed CI (main); praefikset til og med den er mistaenkt' };
+    }
     return { culprit: null, suspects: all, reason: 'CI (main) roed, men ingen enkelt SHA kunne udpeges' };
   }
   // Ukendt klassifikation (feltet mangler) taeller som "udloeser maalet".
