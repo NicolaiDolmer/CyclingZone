@@ -752,7 +752,10 @@ export async function simulateRaceDay({
   const emitTrainingClose = (startMs, trigger) => {
     trainingCloseStarted = true;
     const per = profile.trainingClosePerTeam;
-    emitJob("training_close", startMs, trainingCloseDurationMs(per.ms, fixture.teamsTotal, trainingConcurrency), per.calls * fixture.teamsTotal, trigger);
+    // trainingDateClose.js venter paa refreshRankings efter afregningen, foer jobbet er
+    // faerdigt (#6766, Codex): ranglisteopdateringen er en del af varigheden.
+    const durationMs = trainingCloseDurationMs(per.ms, fixture.teamsTotal, trainingConcurrency) + profile.rankingRefresh.ms;
+    emitJob("training_close", startMs, durationMs, per.calls * fixture.teamsTotal + profile.rankingRefresh.calls, trigger);
   };
 
   const runStageFn = async ({ raceId, stageIndex }) => {
