@@ -101,7 +101,7 @@ test("probePostgrest: 5xx og netværksfejl er fejl, 4xx er ikke et udfald", asyn
 function monitorHarness({ discordOk = true } = {}) {
   const ctx = { healthy: false, discordOk, sent: [], probes: 0, t: 0 };
   const fetchFn = async (url, opts = {}) => {
-    if (url.startsWith("https://discord.example")) {
+    if (new URL(url).hostname === "discord.example") {
       ctx.sent.push(JSON.parse(opts.body));
       return { ok: ctx.discordOk, status: ctx.discordOk ? 204 : 500 };
     }

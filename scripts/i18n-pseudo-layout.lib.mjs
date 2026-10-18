@@ -429,7 +429,8 @@ export function isBuildCurrent(stored, expected) {
 }
 
 function esc(s) {
-  return String(s ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
+  // CodeQL #377: escape backslash foerst, ellers kan en "\|" i input bryde cellen.
+  return String(s ?? "").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
 /** Markdown-tabel over nye fund for en side. */
