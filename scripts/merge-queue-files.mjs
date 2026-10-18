@@ -10,7 +10,13 @@
 //                  watchPatterns-undtagelser, review #6357).
 // Ukendt eller tom filliste = begge true (fail-safe: aldrig batch uden bevis).
 //
+// touchesVercel  = Vercel bygger igen (#6859; kanonisk regel i
+//                  frontend/scripts/vercel-build-decision.ts). Bruges kun til at
+//                  pege den skyldige PR i et merge-tog ud, aldrig til ventelogik.
+//
 // CLI: node scripts/merge-queue-files.mjs <json-array-af-stier>  -> JSON paa stdout.
+
+import { needsFrontendBuild } from '../frontend/scripts/vercel-build-decision.ts';
 
 const NON_PROD_BACKEND = [
   /\.test\.(?:[cm]?js|ts|tsx)$/,
@@ -35,8 +41,14 @@ export function classifyPrFiles(paths) {
   return { touchesBackend, touchesRailway };
 }
 
+// Ukendt filliste = true (samme fail-safe som ovenfor).
+export function touchesVercel(paths) {
+  if (!Array.isArray(paths) || paths.length === 0 || paths.some((p) => typeof p !== 'string')) return true;
+  return needsFrontendBuild(paths);
+}
+
 if (import.meta.url === `file:///${process.argv[1]?.replaceAll('\\', '/')}` || process.argv[1]?.endsWith('merge-queue-files.mjs')) {
   let paths = null;
   try { paths = JSON.parse(process.argv[2] ?? 'null'); } catch { paths = null; }
-  process.stdout.write(JSON.stringify(classifyPrFiles(paths)));
+  process.stdout.write(JSON.stringify({ ...classifyPrFiles(paths), touchesVercel: touchesVercel(paths) }));
 }

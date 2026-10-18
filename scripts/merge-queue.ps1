@@ -25,10 +25,14 @@
 #      mindst -MinWaitMinutesNoBackend minutter (default 3). Ejer 10/10 (valg B):
 #      op til -MaxBatch PR'er (ogsaa backend) merges i raekke med EEN
 #      verifikation efter raekken; roed = STOP, resten koeres med -NoBatch.
-#      #6487: koeen venter kun til deploy + smoke er groenne ('released');
-#      cron-beviset (op til ~50 min) koerer videre i Deploy verify, som
-#      kommenterer paa PR'en. Er en overdraget koersel endt roed, stopper
-#      koeen foer naeste merge.
+#      #6487/#6859: koeen venter kun til jobbet "Deploy live + smoke" i Deploy
+#      verify er groent ('released', laest paa JOB-niveau). Cron-beviset koerer
+#      i sit eget job bagefter og alarmerer (PR-kommentar + Discord-ops) men
+#      stopper ALDRIG koeen (ejer 18/10). Er jobbet "Release checks" i en
+#      overdraget koersel endt roed, stopper koeen foer naeste merge.
+#      #6859 merge-tog (standard): op til -MaxBatch PR'er (default 5) merges i
+#      raekke med EEN verifikation efter toget. Roed = STOP, og koeen peger selv
+#      den skyldige PR ud (scripts/merge-queue-train.mjs). -NoBatch = undtagelse.
 #   6. Er CI eller Deploy verify roed for den nye HEAD: STOPPER koeen (roed
 #      main = stop-alt-fix-foerst, jf. GITHUB_WORKFLOW.md §Hurtige merges)
 #      i stedet for at merge videre ovenpaa den.
@@ -74,8 +78,9 @@ param(
   # indeholder hele raekken). -NoBatch giver den gamle en-ad-gangen-adfaerd.
   [switch] $NoBatch,
   # Review #6357: hoejst saa mange PR'er i en raekke (faerre Railway-deploys i
-  # traek og fejlen kan stadig peges ud til en lille gruppe).
-  [int] $MaxBatch = 3,
+  # traek og fejlen kan stadig peges ud til en lille gruppe). #6859 (ejer
+  # 18/10): merge-tog som standard, 3 -> 5; den skyldige peges ud automatisk.
+  [int] $MaxBatch = 5,
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
   [int] $DeployVerifyTimeoutMinutes = 140,
@@ -139,6 +144,8 @@ function Get-PrPlanEntry([int]$number) {
   # watchPatterns-undtagelser (docs/, pr-screens/, superpowers/, .claude/, rod-*.md).
   # "Roerer ikke backend/" er altsaa ikke det samme som "deployer ikke Railway".
   $touchesRailway = $false
+  # #6859: kun til at pege den skyldige PR i et merge-tog ud.
+  $touchesVercel = $true
   $filesKnown = $false
   $title = "(ukendt)"
   $mergeable = "UNKNOWN"
@@ -159,6 +166,7 @@ function Get-PrPlanEntry([int]$number) {
         $cls = ($classJson -join "") | ConvertFrom-Json
         $touchesBackend = [bool]$cls.touchesBackend
         $touchesRailway = [bool]$cls.touchesRailway
+        if ($cls.PSObject.Properties['touchesVercel']) { $touchesVercel = [bool]$cls.touchesVercel }
         $filesKnown = $true
       }
     } catch {}
@@ -173,6 +181,7 @@ function Get-PrPlanEntry([int]$number) {
     checksSummary  = $checksSummary
     touchesBackend = $touchesBackend
     touchesRailway = $touchesRailway
+    touchesVercel  = $touchesVercel
     mergeable      = $mergeable
     isDraft        = $isDraft
   }
@@ -223,12 +232,24 @@ function Get-PrDraftState([int]$number) {
   } catch { return $null }
 }
 
+# #4919: etape-tick hver hele time - merg aldrig i HH:57..HH:03 (ren funktion,
+# testet i scripts/merge-queue-train.test.mjs).
+function Test-InMergeTickWindow([int]$Minute) {
+  return ($Minute -ge 57) -or ($Minute -le 3)
+}
+
+# #6859: merge-tog som standard. Merger PR nr. $Index (0-baseret) videre uden at
+# vente, naar der er en naeste PR og toget (inkl. denne) er under -MaxBatch.
+# -NoBatch er undtagelsen: hver PR faar sit eget deploy og sin egen verify.
+function Test-MergeWithNext([bool]$NoBatch, [int]$Index, [int]$Count, [int]$TrainSize, [int]$MaxBatch) {
+  return (-not $NoBatch) -and ($Index + 1 -lt $Count) -and (($TrainSize + 1) -lt $MaxBatch)
+}
+
 function Wait-OutOfMergeTickWindow {
-  # Etape-tick hver hele time - merg aldrig i HH:57..HH:03.
   while ($true) {
     $now = Get-Date
     $minute = $now.Minute
-    $inWindow = ($minute -ge 57) -or ($minute -le 3)
+    $inWindow = Test-InMergeTickWindow $minute
     if (-not $inWindow) { return }
 
     if ($minute -ge 57) {
@@ -338,9 +359,9 @@ function Wait-ForDeployVerification {
       try { $run = ($runJson -join "") | ConvertFrom-Json }
       catch { return 'unknown' }
       if ($run.head_sha -ne $Sha -or -not $run.run_attempt) { return 'unknown' }
-      if ($run.run_attempt -ge $minimumAttempt -and $run.status -eq 'completed' -and $run.conclusion -in @('failure', 'timed_out')) { return 'failed' }
-      # #6487: ogsaa en koerende attempt laeses, saa 'released' (deploy + smoke
-      # groen, cron-bevis i gang) kan frigive koeen uden at vente paa beviset.
+      # #6859: ingen genvej paa koerslens samlede conclusion - den er ogsaa roed
+      # naar kun det ikke-blokerende cron-bevis fejlede. Release-jobbets egen
+      # conclusion afgoer (scripts/ci/deploy-verification-state.mjs).
       $jobsJson = if ($run.run_attempt -ge $minimumAttempt) {
         Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$runId/attempts/$($run.run_attempt)/jobs?per_page=100") -TolerateFailure
       } else { '{"jobs":[]}' }
@@ -349,8 +370,9 @@ function Wait-ForDeployVerification {
       [IO.File]::WriteAllText($jobsFile, ($jobsJson -join ""))
       $state = (& node $ClassifierPath $runFile $jobsFile $Sha $minimumAttempt | Out-String).Trim()
       $lastState = $state
+      $script:lastDeployEvidence = @(($runJson -join ""), ($jobsJson -join ""))
       if ($state -eq 'released') {
-        Write-Host "  Deploy + smoke groen (run $runId, attempt $($run.run_attempt)). Cron-beviset koerer videre i GitHub-koerslen, som kommenterer paa PR'en; koeen venter ikke paa det." -ForegroundColor Green
+        Write-Host "  Deploy live + smoke groen (run $runId, attempt $($run.run_attempt)). Cron-beviset koerer i sit eget job og alarmerer selv (PR-kommentar + Discord-ops); koeen venter ikke paa det." -ForegroundColor Green
         $script:handedOffRuns = @($script:handedOffRuns) + $runId
         return 'released'
       }
@@ -358,11 +380,13 @@ function Wait-ForDeployVerification {
         Write-Host "  AFVENTER CHECK-IN for lange kadencer (run $runId, attempt $($run.run_attempt)); se job + sidste check-in i workflow-summary. Ingen automatisk genkoersel." -ForegroundColor Yellow
         return 'deferred'
       }
-      # GitHub kan melde kørslen 'completed', før job-trinnene er skrevet færdigt.
+      # GitHub kan melde et job 'completed', før job-trinnene er skrevet færdigt.
       # Et 'unknown' lige efter afslutningen er derfor ofte forbigaaende (8/10:
       # #6353 stoppede koeen, samme data gav 'deferred' sekunder senere). Laes
-      # igen hoejst 3 gange, foer 'unknown' faar lov at stoppe koeen.
-      if ($state -eq 'unknown' -and $run.status -eq 'completed' -and $settleReads -lt 3) {
+      # igen hoejst 3 gange, foer 'unknown' faar lov at stoppe koeen. #6859:
+      # release-jobbet slutter mens koerslen stadig koerer (cron-bevis), saa
+      # det gaelder uanset koerslens status.
+      if ($state -eq 'unknown' -and $settleReads -lt 3) {
         $settleReads++
         Write-Host "  Deploy verify: job-data for run $runId er endnu ikke faerdigskrevet; laeser igen om 15 s ($settleReads/3)." -ForegroundColor DarkGray
         & $Pause 15
@@ -371,6 +395,10 @@ function Wait-ForDeployVerification {
       if ($state -eq 'verified' -or $state -eq 'failed' -or $state -eq 'unknown') { return $state }
       if ($state -eq 'pending') {
         if ($reruns -ge $MaxReruns) { return 'pending' }
+        # #6859: release-jobbet er faerdigt, men koerslen (de skippede
+        # efterfoelgende jobs) kan stadig vaere i gang; en rerun af en koerende
+        # koersel afvises af GitHub. Vent til den er completed.
+        if ($run.status -ne 'completed') { & $Pause 15; continue }
         Write-Host "  AFVENTER deploy (run $runId, attempt $($run.run_attempt)); genkoerer samme run, ikke naeste merge." -ForegroundColor Yellow
         Invoke-GhWithRetry @('run', 'rerun', "$runId", '--repo', $Repo) | Out-Null
         $minimumAttempt = [int]$run.run_attempt + 1
@@ -435,20 +463,85 @@ $script:lastMergedSha = $null
 $script:dryBatchSize = 0
 $script:batchShas = @()
 $script:handedOffRuns = @()
+# #6859: togets PR'er (nummer, merge-SHA, fil-klassifikation) og CI pr. SHA.
+$script:trainEntries = @()
+$script:ciResults = @{}
+$script:lastDeployEvidence = $null
+if ($NoBatch) {
+  Write-Host "  -NoBatch: hver PR faar sit eget deploy og sin egen verify (undtagelsen; standard er merge-tog, #6859)." -ForegroundColor DarkYellow
+}
 
-# #6487: koersler hvis cron-bevis er overladt til GitHub. En afsluttet koersel
-# der fejlede, stopper koeen foer naeste merge; en koerende koersel venter vi
-# ikke paa (den kommenterer selv paa PR'en, og cron-heartbeat-vagten alarmerer).
+# #6487/#6859: koersler koeen allerede er frigivet paa. Roede "Release checks"
+# stopper koeen foer naeste merge; koerende checks venter vi ikke paa (koerslen
+# kommenterer og alarmerer selv). Et roedt cron-bevis stopper ALDRIG koeen (ejer
+# 18/10): det alarmerer via report-jobbet. Afgoeres paa JOB-niveau af
+# scripts/ci/deploy-verification-state.mjs --handed-off; ulaeselig = stop.
 # Returnerer en liste af fejlede run-id'er; tom liste = fortsaet.
 function Get-FailedHandedOffRuns {
+  param([string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs'))
   $failed = @()
   foreach ($id in @($script:handedOffRuns)) {
     $json = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$id") -TolerateFailure
     if (-not $json) { $failed += "$id (ulaeselig)"; continue }
     try { $r = ($json -join "") | ConvertFrom-Json } catch { $failed += "$id (ulaeselig)"; continue }
-    if ($r.status -eq 'completed' -and $r.conclusion -ne 'success') { $failed += "$id ($($r.conclusion))" }
+    $jobsJson = Invoke-GhWithRetry @('api', "repos/$Repo/actions/runs/$id/attempts/$($r.run_attempt)/jobs?per_page=100") -TolerateFailure
+    if (-not $jobsJson) { $failed += "$id (ulaeselig)"; continue }
+    $runFile = [IO.Path]::GetTempFileName()
+    $jobsFile = [IO.Path]::GetTempFileName()
+    try {
+      [IO.File]::WriteAllText($runFile, ($json -join ""))
+      [IO.File]::WriteAllText($jobsFile, ($jobsJson -join ""))
+      $verdict = (& node $ClassifierPath --handed-off $runFile $jobsFile | Out-String).Trim()
+    } finally {
+      Remove-Item -LiteralPath $runFile, $jobsFile -ErrorAction SilentlyContinue
+    }
+    if ($verdict -notin @('ok', 'running')) { $failed += "$id ($verdict)" }
   }
   return $failed
+}
+
+# #6859: peg den skyldige PR i et roedt merge-tog ud (scripts/merge-queue-train.mjs).
+# Kun information og et stop - ingen revert eller deploy af mellemtilstande (et
+# prod-indgreb kraever ejer-go). Fejler klassifikationen, vises hele toget.
+function Get-TrainFailedTarget {
+  param([string] $ClassifierPath = (Join-Path $PSScriptRoot 'ci/deploy-verification-state.mjs'))
+  if (-not $script:lastDeployEvidence -or @($script:lastDeployEvidence).Count -ne 2) { return 'unknown' }
+  $runFile = [IO.Path]::GetTempFileName()
+  $jobsFile = [IO.Path]::GetTempFileName()
+  try {
+    [IO.File]::WriteAllText($runFile, $script:lastDeployEvidence[0])
+    [IO.File]::WriteAllText($jobsFile, $script:lastDeployEvidence[1])
+    $target = (& node $ClassifierPath --failed-target $runFile $jobsFile | Out-String).Trim()
+    if ($target -in @('vercel', 'railway', 'smoke')) { return $target }
+    return 'unknown'
+  } catch { return 'unknown' }
+  finally { Remove-Item -LiteralPath $runFile, $jobsFile -ErrorAction SilentlyContinue }
+}
+
+function Write-TrainCulprit([string]$Failure) {
+  $entries = @($script:trainEntries)
+  if ($entries.Count -eq 0) { return }
+  $prs = @($entries | ForEach-Object {
+    $ok = $null
+    if ($script:ciResults.ContainsKey($_.sha)) { $ok = [bool]$script:ciResults[$_.sha] }
+    [ordered]@{ number = $_.number; ciOk = $ok; touchesBackend = $_.touchesBackend; touchesRailway = $_.touchesRailway; touchesVercel = $_.touchesVercel }
+  })
+  $inputJson = ConvertTo-Json -InputObject ([ordered]@{ failure = $Failure; prs = $prs }) -Depth 4 -Compress
+  $result = $null
+  try {
+    $out = & node (Join-Path $PSScriptRoot 'merge-queue-train.mjs') culprit $inputJson
+    if ($LASTEXITCODE -eq 0 -and $out) { $result = ($out -join "") | ConvertFrom-Json }
+  } catch { $result = $null }
+  if (-not $result) {
+    Write-Host ("  Skyldig PR: kunne ikke afgoeres. Toget: {0}." -f (($entries | ForEach-Object { "#$($_.number)" }) -join ', ')) -ForegroundColor Red
+    return
+  }
+  $suspects = (@($result.suspects) | ForEach-Object { "#$_" }) -join ', '
+  if ($null -ne $result.culprit) {
+    Write-Host "  Skyldig PR: #$($result.culprit) ($($result.reason)). Fix eller revert den foer naeste merge; resten af koeen merges ikke." -ForegroundColor Red
+  } else {
+    Write-Host "  Skyldig PR: ikke entydig ($($result.reason)). Mistaenkte i merge-raekkefoelge: $suspects. Ingen automatisk revert (prod-indgreb = ejer-go)." -ForegroundColor Red
+  }
 }
 
 # Review #6357 opus-fund 1: ci.yml's sti-filtrerede jobs (fx marketing-lint-build)
@@ -460,6 +553,8 @@ function Wait-BatchCi {
   $allOk = $true
   foreach ($s in $script:batchShas) {
     $ok = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $s -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) $($s.Substring(0, [Math]::Min(8, $s.Length)))"
+    # #6859: resultat pr. SHA, saa et roedt tog kan pege den skyldige PR ud.
+    $script:ciResults[$s] = [bool]$ok
     if (-not $ok) { $allOk = $false }
   }
   return $allOk
@@ -492,7 +587,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # Ejer 10/10 (valg B): ogsaa backend-PR'er merges i raekker paa op til
   # -MaxBatch med EEN CI- og deploy-verifikation efter raekken. Roed efter en
   # raekke = STOP, og raekken koeres igen med -NoBatch for at finde den skyldige.
-  $batchWithNext = (-not $NoBatch) -and ($idx + 1 -lt $plan.Count) -and (([Math]::Max($script:batchMerged.Count, $script:dryBatchSize) + 1) -lt $MaxBatch)
+  $batchWithNext = Test-MergeWithNext ([bool]$NoBatch) $idx $plan.Count ([Math]::Max($script:batchMerged.Count, $script:dryBatchSize)) $MaxBatch
   Write-Host ""
   Write-Host "=== PR #$n ===" -ForegroundColor Cyan
 
@@ -585,6 +680,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $script:batchMerged += $n
   $script:lastMergedSha = $sha
   $script:batchShas += $sha
+  $script:trainEntries += [pscustomobject]@{ number = $n; sha = $sha; touchesBackend = [bool]$entryBackend; touchesRailway = [bool]$entryRailway; touchesVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel) }
   if ($entryRailway) { $script:batchRailway = $true }
   if ($entryBackend) { $script:batchBackend = $true }
 
@@ -597,7 +693,8 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $batchSize = $script:batchMerged.Count
   $ciOk = Wait-BatchCi
   if (-not $ciOk) {
-    Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst). Ved flere PR'er: en af dem (eller samspillet) er aarsagen; find den med CI-loggen pr. commit, og koer resten af koeen med -NoBatch." -ForegroundColor Red
+    Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
+    Write-TrainCulprit 'ci'
     exit 1
   }
   $script:batchMerged = @()
@@ -616,7 +713,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
       exit 75
     }
     if ($gate -ne 'continue') {
-      Write-Host "STOP: deploy-verifikation efter $batchLabel er $deployState. Ingen naeste merge uden positivt bevis. Ved en raekke: tjek deploy-loggen for hvilken PR, og koer resten med -NoBatch." -ForegroundColor Red
+      Write-Host "STOP: deploy-verifikation efter $batchLabel er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
+      $failure = if ($deployState -eq 'failed') { Get-TrainFailedTarget } else { 'unknown' }
+      Write-TrainCulprit $failure
       exit 1
     }
   } else {
@@ -625,6 +724,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
   $script:batchRailway = $false
   $script:batchBackend = $false
+  $script:trainEntries = @()
 
   Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
 }
@@ -635,6 +735,6 @@ if ($DryRun) {
 } else {
   Write-Host "[OK] Hele merge-koeen ($($PrNumbers.Count) PR'er) er merget og verificeret." -ForegroundColor Green
   foreach ($id in @($script:handedOffRuns)) {
-    Write-Host "  Cron-bevis koerer videre i https://github.com/$Repo/actions/runs/$id (kommenterer paa PR'en, naar det er faerdigt)." -ForegroundColor DarkGray
+    Write-Host "  Cron-bevis koerer videre i https://github.com/$Repo/actions/runs/$id (kommenterer paa PR'en naar det er faerdigt; roedt = Discord-ops-alarm, intet stop)." -ForegroundColor DarkGray
   }
 }
