@@ -368,7 +368,7 @@ import {
 } from "../lib/economyConstants.js";
 import { incrementBalanceWithAudit } from "../lib/balanceRpc.js";
 import { calculateRiderMarketValue } from "../lib/marketUtils.js";
-import { recordRiderOwnershipEvent, attributeTeamExitEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "../lib/riderOwnershipAudit.js";
 import {
   getPriceBandViolation,
   getSwapPriceBandViolation,
@@ -9349,20 +9349,10 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // #3582: bevægelses-log — den ENESTE admin-drevne ejerskabs-mutationsvej.
   // Best-effort, kaster aldrig (se modul-header) — awaites for at holde
   // rækkefølgen deterministisk, men blokerer aldrig svaret unødigt længe.
-  // #6504: hold -> intet hold logges af DB-triggeren; her tilskrives den række
-  // admin i stedet for at skrive en dublet. Findes trigger-rækken ikke (deploy-
-  // vinduet før migrationen), skrives admin-rækken som før.
-  const exitAttribution = rider.team_id && !team_id
-    ? await attributeTeamExitEvent(supabase, {
-      riderId: rider_id,
-      fromTeamId: rider.team_id,
-      reason: RIDER_OWNERSHIP_REASON.ADMIN,
-      relatedEntityType: "manual",
-      actorType: "admin",
-      actorId: req.user?.id ?? null,
-    })
-    : null;
-  if (!exitAttribution || (exitAttribution.ok && exitAttribution.updated === 0 && !exitAttribution.alreadyLogged)) {
+  // #6504: hold -> intet hold logges af DB-triggeren trg_record_rider_team_exit
+  // (reason release, actor system) i samme transaktion som UPDATE'en. Her skrives
+  // derfor kun hold -> hold og fri -> hold; en egen række ved frigivelse gav dubletter.
+  if (!(rider.team_id && !team_id)) {
     await recordRiderOwnershipEvent(supabase, {
       riderId: rider_id,
       riderFirstname: rider.firstname,

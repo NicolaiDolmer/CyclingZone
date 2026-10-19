@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { recordRiderOwnershipEvent, attributeTeamExitEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 
 function makeSupabase({ error = null } = {}) {
   const inserts = [];
@@ -114,72 +114,4 @@ test("RIDER_OWNERSHIP_REASON dækker alle veje nævnt i #3582-issuet", () => {
     "swap",
     "trade",
   ]);
-});
-
-// #6504: admin-flytningen til intet hold tilskriver triggerens række i stedet for
-// at skrive en dublet, og KUN hvis rytterens nyeste række er netop denne udgang.
-function makeUpdateSupabase({ found = [{ id: 7, from_team_id: "team-a", to_team_id: null, actor_type: "system" }], findError = null, data = [{ id: 7 }], error = null } = {}) {
-  const calls = { patch: null, find: [], update: [], order: [], limit: null };
-  return {
-    from(table) {
-      assert.equal(table, "rider_ownership_events");
-      return {
-        select() {
-          const q = {
-            eq(c, v) { calls.find.push([c, v]); return q; },
-            order(c, o) { calls.order.push([c, o.ascending]); return q; },
-            limit(n) { calls.limit = n; return Promise.resolve({ data: found, error: findError }); },
-          };
-          return q;
-        },
-        update(patch) {
-          calls.patch = patch;
-          const q = {
-            eq(c, v) { calls.update.push([c, v]); return q; },
-            select() { return Promise.resolve({ data, error }); },
-          };
-          return q;
-        },
-      };
-    },
-    _calls: calls,
-  };
-}
-
-const ATTR = { riderId: "rider-1", fromTeamId: "team-a", reason: RIDER_OWNERSHIP_REASON.ADMIN, relatedEntityType: "manual", actorType: "admin", actorId: "admin-1" };
-
-test("attributeTeamExitEvent tilskriver rytterens nyeste række, når den er netop denne udgang", async () => {
-  const supabase = makeUpdateSupabase();
-  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 1, alreadyLogged: false });
-  assert.deepEqual(supabase._calls.find, [["rider_id", "rider-1"]]);
-  assert.deepEqual(supabase._calls.order, [["created_at", false], ["id", false]]);
-  assert.equal(supabase._calls.limit, 1);
-  assert.deepEqual(supabase._calls.update, [["id", 7], ["actor_type", "system"]]);
-  assert.deepEqual(supabase._calls.patch, { reason: "admin", related_entity_type: "manual", actor_type: "admin", actor_id: "admin-1" });
-});
-
-test("attributeTeamExitEvent rører intet, når den nyeste række ikke er denne udgang (fx før triggeren findes)", async () => {
-  for (const found of [
-    [],
-    [{ id: 3, from_team_id: null, to_team_id: "team-a", actor_type: "cron" }],
-    [{ id: 4, from_team_id: "team-b", to_team_id: null, actor_type: "system" }],
-  ]) {
-    const supabase = makeUpdateSupabase({ found });
-    assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 0, alreadyLogged: false });
-    assert.equal(supabase._calls.patch, null);
-  }
-});
-
-test("attributeTeamExitEvent: en samtidig request har allerede tilskrevet udgangen, så ingen fallback-dublet", async () => {
-  const already = makeUpdateSupabase({ found: [{ id: 5, from_team_id: "team-a", to_team_id: null, actor_type: "admin" }] });
-  assert.deepEqual(await attributeTeamExitEvent(already, ATTR), { ok: true, updated: 0, alreadyLogged: true });
-  assert.equal(already._calls.patch, null);
-  // Mistet mellem læs og skriv (betinget update ramte 0 rækker): også logget.
-  const raced = makeUpdateSupabase({ data: [] });
-  assert.deepEqual(await attributeTeamExitEvent(raced, ATTR), { ok: true, updated: 0, alreadyLogged: true });
-});
-
-test("attributeTeamExitEvent kaster aldrig ved DB-fejl", async () => {
-  const supabase = makeUpdateSupabase({ found: null, findError: { message: "boom" } });
-  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: false, updated: 0, alreadyLogged: false });
 });

@@ -428,9 +428,10 @@ sket - netop formen på Seojun Choi-hændelsen 9/8.
 (frigivelse, akademi-frigivelse, kontraktudløb, pension, graduering, beta-reset) logges af
 DB-triggeren `trg_record_rider_team_exit` (`database/2026-10-19-6504-release-ownership-trigger.sql`)
 med `reason = retirement` for en pensioneret rytter, ellers `release`, og `actor_type = system`.
-Kode, der flytter en rytter til intet hold, må **ikke** skrive sin egen række (dublet); kender
-kalderen den rigtige aktør, tilskriver den triggerens række med `attributeTeamExitEvent`
-(`riderOwnershipAudit.js`), som admin-flytningen gør. Hold → hold og fri → hold logges fortsat
+Kode, der flytter en rytter til intet hold, må **ikke** skrive sin egen række (dublet),
+heller ikke admin-flytningen: en admin-frigivelse logges derfor som `release`/`system`
+(bevidst: tilskrivning efter UPDATE'en gav race-dubletter, Codex-review #6891). Hold → hold
+og fri → hold logges fortsat
 af koden selv (auktion, handel, bytte, udskudt flush, fri agent).
 
 **Tabende budgivere får ét post-hammerslag-svar** med vinderens navn og deres eget højeste

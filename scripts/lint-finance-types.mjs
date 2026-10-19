@@ -350,8 +350,6 @@ export const ENUM_WRITE_SINKS = [
   { table: "finance_transactions", sink: "createLoan", pattern: "\\bcreateLoan\\s*\\(" },
   // rider_ownership_events (#3582)
   { table: "rider_ownership_events", sink: "recordRiderOwnershipEvent", pattern: "\\brecordRiderOwnershipEvent\\s*\\(" },
-  // #6504: tilskriver DB-triggerens udgangs-række (samme tabel, samme kolonner).
-  { table: "rider_ownership_events", sink: "attributeTeamExitEvent", pattern: "\\battributeTeamExitEvent\\s*\\(" },
 ];
 
 /**
