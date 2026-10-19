@@ -848,6 +848,10 @@
         "title": "Salaris",
         "text": "Het jaarsalaris van elke renner wordt bij het tekenen vastgesteld op basis van wat de renner naar verwachting in het huidige seizoen produceert, en wordt daarna vastgezet: het verandert niet automatisch naarmate de renner zich ontwikkelt. Waarde en salaris beantwoorden twee verschillende vragen: waarde is de prijs van de toekomst van de renner, salaris is de kost van wat hij nu levert. Jonge talenten zijn dus goedkoop op de loonlijst te houden, terwijl gevestigde sterren lonen verdienen die bij hun output passen. Het salaris staat als aparte kolom in de Rennersdatabase en op de volglijst. Salarissen worden automatisch betaald aan het begin van het volgende seizoen, direct nadat het sponsorgeld is binnengekomen. Als sponsor + je bestaande saldo de salarissen niet kunnen dekken, neemt het systeem automatisch een noodlening."
       },
+      "reputation": {
+        "title": "Rennerreputatie",
+        "text": "Reputatie heeft vijf niveaus: Onbekend onder 20, Bekend vanaf 20, Profiel vanaf 45, Ster vanaf 70 en Legende vanaf 90. Koersresultaten beïnvloeden de reputatie, waaronder resultaten in eendagskoersen, het eindklassement en etappes van rittenkoersen, en truien. Overwinningen en grote koersen tellen het meest."
+      },
       "abilitiesExplained": {
         "title": "De 17 vaardigheden en waar ze tellen",
         "rows": [

@@ -848,6 +848,10 @@
         "title": "Salary",
         "text": "Each rider's annual salary is set at signing based on what the rider is expected to produce in the current season, and is then frozen: it does not change automatically as the rider develops. Value and salary answer two different questions: value is the price of the rider's future, salary is the cost of what he delivers right now. Young talents are therefore cheap to keep on the payroll, while established stars earn wages that match their output. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
+      "reputation": {
+        "title": "Rider reputation",
+        "text": "Reputation has five levels: Unknown below 20, Known from 20, Profile from 45, Star from 70 and Legend from 90. Race results move a rider's reputation, including one-day results, stage-race overall and stage results, and jerseys. Wins and big races count most."
+      },
       "abilitiesExplained": {
         "title": "The 17 abilities and where they matter",
         "rows": [
