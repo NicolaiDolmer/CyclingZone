@@ -1310,7 +1310,8 @@ export default function TrainingPage() {
   // for ..." — intet markeret = alle i visningen.
   const bulkDayFlag = training.bulkDay === true;
   const bulkScope = resolveBulkScope(selected, filterIds, selectableRiders.map((r) => r.id));
-  const runTodayLabel = running || trainNow.pressing ? t("loading")
+  const runTodayLabel = trainNow.running ? t("trainNow.running")
+    : running || trainNow.pressing ? t("loading")
     : trainNow.status.enabled ? t("trainNow.button") : (dayClose ? t("runDayNow") : t("trainToday"));
   const primaryLabel = primaryAction.kind === "setDays"
     ? t("primary.setDays", { n: primaryAction.riders })
@@ -1344,7 +1345,9 @@ export default function TrainingPage() {
   }
 
   // Dagens status-linje (overblikkets femte celle).
-  const todayStatusText = todayRun
+  const todayStatusText = trainNow.running
+    ? t("overview.statusRunning") // #6839: the evening run is training the team now
+    : todayRun
     ? trainedTodayLabel()
     : !enabled
       ? t("overview.statusPaused")
@@ -1676,7 +1679,8 @@ export default function TrainingPage() {
           // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
           // knappen aldrig grå (Clarity: den grå "Train today" var en af sidens
           // største kilder til døde klik).
-          disabled={running || trainNow.pressing || bulkApplying}
+          disabled={running || trainNow.pressing || trainNow.running || bulkApplying}
+          loading={trainNow.running && primaryAction.kind === "run"}
           // min-h-11 = #1602's 44px tryk-mål på telefonen.
           className={isMobile ? "min-h-11 flex-1" : ""}
           data-testid="training-primary"
@@ -1692,11 +1696,12 @@ export default function TrainingPage() {
             size={isMobile ? "md" : "sm"}
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running || trainNow.pressing || bulkApplying}
+            disabled={running || trainNow.pressing || trainNow.running || bulkApplying}
+            loading={trainNow.running}
             className={isMobile ? "min-h-11 flex-none" : ""}
             data-testid="training-run-now"
           >
-            {running ? t("loading") : t("overview.runNow")}
+            {trainNow.running ? t("trainNow.running") : running ? t("loading") : t("overview.runNow")}
           </Button>
         </span>
       )}
@@ -1726,10 +1731,11 @@ export default function TrainingPage() {
             size="sm"
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running || trainNow.pressing}
+            disabled={running || trainNow.pressing || trainNow.running}
+            loading={trainNow.running}
             data-testid="training-run-now"
           >
-            {running ? t("loading") : t("overview.runNow")}
+            {trainNow.running ? t("trainNow.running") : running ? t("loading") : t("overview.runNow")}
           </Button>
         </span>
       )}

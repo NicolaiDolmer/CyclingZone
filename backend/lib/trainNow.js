@@ -37,7 +37,7 @@ import {
   loadTrainingDateContext, resolveTrainingDateReadiness, trainingDateBounds,
 } from "./trainingDateReadiness.js";
 import { registerTrainingDateWork } from "./trainingDateClose.js";
-import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { runTeamTrainingDay, isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
 import { stripProgramFromWeekDays } from "./trainingPrograms.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks } from "./trainNowLock.js";
@@ -339,12 +339,22 @@ export async function runTrainNow({
   const settledDays = [];
   if (settleNow.length) {
     for (const gameDay of trainNowGameDays(work.game_days)) {
-      await runDay({
-        supabase, teamId: team.id, seasonId: season.id, seasonNumber: season.number,
-        now, tickDateOverride: tickDate, gameDay, dateGameDays: work.game_days, executedBy: "manager",
-        eligibleRiderIds: settleNow, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
-        deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: false,
-      });
+      try {
+        await runDay({
+          supabase, teamId: team.id, seasonId: season.id, seasonNumber: season.number,
+          now, tickDateOverride: tickDate, gameDay, dateGameDays: work.game_days, executedBy: "manager",
+          eligibleRiderIds: settleNow, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
+          deadlineAt: readiness.deadlineAt.toISOString(), deadlineReached: false,
+        });
+      } catch (err) {
+        // #6839 (ejer-valg A 19/10): aftenkoerslen holder netop denne loebsdag. Ingen
+        // fejl for spilleren: siden viser "Koerer..." og opdaterer selv, naar datoen
+        // er afregnet. Senere loebsdage koeres ikke (koerslen tager dem).
+        if (isTrainingReservationHeldError(err)) {
+          return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: settledDays } };
+        }
+        throw err;
+      }
       settledDays.push(gameDay);
     }
   }

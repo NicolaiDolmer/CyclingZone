@@ -12,22 +12,51 @@ import {
 } from "./TrainNowState.ts";
 
 const PATH = "/api/training/train-now";
+// #6839: while the evening run holds the date, ask again this often until it is settled.
+export const TRAIN_NOW_RUNNING_POLL_MS = 10_000;
+export const TRAIN_NOW_RUNNING_MAX_MS = 15 * 60_000;
 
 export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> | void } = {}) {
   const [status, setStatus] = useState<TrainNowStatus>(TRAIN_NOW_OFF);
   const [result, setResult] = useState<TrainNowPressResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pressing, setPressing] = useState(false);
+  // #6839 (owner choice A 19/10): the evening run is training the team right now.
+  const [running, setRunning] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<TrainNowStatus | null> => {
     const headers = await authHeaders();
-    if (!headers) return;
+    if (!headers) return null;
     const res = await apiFetch(PATH, { headers }, { source: "training-train-now" });
-    if (!res.ok) return;
-    setStatus(parseTrainNowStatus(res.data));
+    if (!res.ok) return null;
+    const next = parseTrainNowStatus(res.data);
+    setStatus(next);
+    return next;
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // #6839: poll until the date is settled, then refresh the page once. Stops by
+  // itself after TRAIN_NOW_RUNNING_MAX_MS so a stuck run never polls forever.
+  useEffect(() => {
+    if (!running) return undefined;
+    const startedAt = Date.now();
+    let stopped = false;
+    const timer = setInterval(async () => {
+      if (stopped) return;
+      const next = await load();
+      const done = next?.settled === true;
+      if (done || Date.now() - startedAt > TRAIN_NOW_RUNNING_MAX_MS) {
+        stopped = true;
+        clearInterval(timer);
+        setRunning(false);
+        if (done) {
+          try { await onSettled?.(); } catch { /* best-effort: the next visit shows it */ }
+        }
+      }
+    }, TRAIN_NOW_RUNNING_POLL_MS);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [running, load, onSettled]);
 
   // Synchronous in-flight guard: a second tap while the first POST is pending
   // sends nothing (state updates are not visible until the next render).
@@ -52,6 +81,11 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
         error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
         shortRaces?: unknown;
       };
+      if (!res.ok && data.error === "training_in_progress") {
+        // #6839: not an error. The page shows "Running…" and updates by itself.
+        setRunning(true);
+        return { ok: false, error: "training_in_progress" };
+      }
       if (!res.ok && data.error === "short_races_confirm") {
         setStatus((prev) => ({ ...prev, shortRaces: parseShortRaces(data.shortRaces) }));
         return { ok: false, error: "short_races_confirm" };
@@ -87,5 +121,5 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
     }
   }, [load, onSettled]);
 
-  return { status, result, error, pressing, press, reload: load };
+  return { status, result, error, pressing, running, press, reload: load };
 }

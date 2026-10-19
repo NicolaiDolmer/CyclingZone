@@ -8,6 +8,7 @@
   },
   "trainNow": {
     "button": "Entrenar ahora",
+    "running": "En curso…",
     "helper": "Bloquea el entrenamiento de hoy y la selección de carrera de hoy. El resultado es el mismo que si esperas.",
     "helperRace": "Bloquea el entrenamiento de hoy y la selección de carrera de hoy ({race}). El resultado es el mismo que si esperas.",
     "locked": "El entrenamiento y las inscripciones de hoy están bloqueados. La fatiga y la forma se actualizan en la liquidación de la tarde.",
@@ -71,6 +72,7 @@
     "statusPaused": "En pausa",
     "statusNotYet": "Aún sin ejecutar",
     "statusWaiting": "Se ejecuta solo desde las {hour}:00",
+    "statusRunning": "En curso, actualiza",
     "statusReady": "Listo para ejecutar",
     "runNow": "Ejecutar ahora",
     "showing": "Mostrando: {label}",

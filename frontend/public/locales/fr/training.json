@@ -8,6 +8,7 @@
   },
   "trainNow": {
     "button": "S'entraîner maintenant",
+    "running": "En cours…",
     "helper": "Verrouille l'entraînement du jour et la sélection de course du jour. Le résultat est le même que si tu attends.",
     "helperRace": "Verrouille l'entraînement du jour et la sélection de course du jour ({race}). Le résultat est le même que si tu attends.",
     "locked": "L'entraînement et les engagements du jour sont verrouillés. La fatigue et la forme se mettent à jour au règlement du soir.",
@@ -71,6 +72,7 @@
     "statusPaused": "En pause",
     "statusNotYet": "Pas encore lancé",
     "statusWaiting": "Se lance tout seul à partir de {hour}:00",
+    "statusRunning": "En cours, actualise",
     "statusReady": "Prêt à lancer",
     "runNow": "Lancer maintenant",
     "showing": "Affichage : {label}",
