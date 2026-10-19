@@ -640,6 +640,132 @@ export async function completeActiveMandate(supabase, { teamId, seasonId } = {})
   return { updated: Array.isArray(data) ? data.length > 0 : Boolean(data) };
 }
 
+// ---------------------------------------------------------------------------
+// 6a. #6773 · Mandater for en afsluttet sæson
+// ---------------------------------------------------------------------------
+//
+// Fund (generalprøven #6751): mandater foreslået sidst i en sæson (ny-holds-
+// stien foreslår for den NUVÆRENDE sæson) blev underskrevet efter sæsonens
+// slut, fordi sæsonskiftet kun lukkede `active` for netop den afsluttede
+// sæsons id. De stod derefter `active` side om side med næste sæsons mandat,
+// og læsere uden sæsonfilter (Boardroom, bonusmål) kunne vælge det gamle.
+//
+// Tre regler herfra:
+//   1. Læsere vælger mandatet for den AKTUELLE sæson
+//      (`queryCurrentSeasonActiveMandate`).
+//   2. Sæsonskiftet lukker ALT for afsluttede sæsoner, ikke kun den der slutter
+//      nu (`closeEndedSeasonMandates`): active → completed, proposed → lapsed.
+//      Det samler også rækker op der blev underskrevet efter et tidligere skifte.
+//   3. Et mandat for en afsluttet sæson kan ikke underskrives
+//      (`isMandateSeasonEnded`, brugt af `signMandate` og auto-accept-cronen).
+
+/**
+ * Holdets aktive mandat for den aktuelle sæson, som én `{ data, error }`-
+ * query (samme form som det tidligere opslag, så kalderne kan blive i deres
+ * `Promise.all`). Med et kendt sæsonnummer filtreres der på det; uden (fx
+ * mellem to sæsoner, hvor ingen er 'active') vælges nyeste sæson, derefter
+ * nyeste underskrift.
+ */
+export function queryCurrentSeasonActiveMandate(supabase, { teamId, seasonNumber = null, select = "*" } = {}) {
+  ensureSupabase(supabase);
+  let query = supabase
+    .from("board_mandates")
+    .select(select)
+    .eq("team_id", teamId)
+    .eq("status", "active");
+  const number = seasonNumber == null ? NaN : Number(seasonNumber);
+  if (Number.isFinite(number)) {
+    query = query.eq("season_number", number);
+  } else {
+    query = query.order("season_number", { ascending: false, nullsFirst: false });
+  }
+  return query.order("signed_at", { ascending: false }).limit(1).maybeSingle();
+}
+
+/**
+ * Ren udvælgelse over allerede hentede rækker (scripts og tests): mandatet for
+ * `currentSeason` (id eller nummer), ellers `null`. Uden aktuel sæson: nyeste
+ * sæson, derefter nyeste underskrift.
+ */
+export function selectCurrentSeasonMandate(rows, currentSeason = null) {
+  const list = (Array.isArray(rows) ? rows : []).filter(Boolean);
+  if (list.length === 0) return null;
+  const signedMs = (row) => {
+    const ms = row?.signed_at ? new Date(row.signed_at).getTime() : NaN;
+    return Number.isFinite(ms) ? ms : -Infinity;
+  };
+  const seasonOf = (row) => {
+    const n = row?.season_number == null ? NaN : Number(row.season_number);
+    return Number.isFinite(n) ? n : -Infinity;
+  };
+  const sorted = [...list].sort((a, b) => (seasonOf(b) - seasonOf(a)) || (signedMs(b) - signedMs(a)));
+
+  const currentId = currentSeason?.id ?? null;
+  const currentNumber = currentSeason?.number == null ? NaN : Number(currentSeason.number);
+  if (!currentId && !Number.isFinite(currentNumber)) return sorted[0];
+  return sorted.find((row) => (
+    (currentId && row.season_id ? row.season_id === currentId : false)
+    || (Number.isFinite(currentNumber) && Number(row.season_number) === currentNumber)
+  )) ?? null;
+}
+
+/**
+ * Er mandatets sæson afsluttet (`seasons.status = 'completed'`)? Slår op på
+ * `season_id`, ellers `season_number`. En sæson der ikke kan findes tæller
+ * ikke som afsluttet (samme forsigtighed som før: ingen gættet blokering).
+ * Kaster ved I/O-fejl, kalderen er en skrive-sti.
+ */
+export async function isMandateSeasonEnded(supabase, mandate) {
+  ensureSupabase(supabase);
+  if (!mandate) return false;
+  let query = supabase.from("seasons").select("id, number, status");
+  if (mandate.season_id) {
+    query = query.eq("id", mandate.season_id);
+  } else if (mandate.season_number != null && Number.isFinite(Number(mandate.season_number))) {
+    query = query.eq("number", Number(mandate.season_number));
+  } else {
+    return false;
+  }
+  const { data, error } = await query.maybeSingle();
+  if (error) throw new Error(`seasons lookup failed: ${error.message}`);
+  return data?.status === "completed";
+}
+
+/**
+ * Luk holdets mandater for alle sæsoner til og med `endedSeasonNumber`:
+ * `active` → `completed`, `proposed` → `lapsed` (forslaget udløb uden
+ * underskrift, jf. skemaets status-kommentar). Rører aldrig næste sæsons
+ * mandat og aldrig rækker uden `season_number`. Idempotent: en anden kørsel
+ * finder intet. Skriver kun status/updated_at, ingen tillid eller kvittering
+ * (sæsonens vurdering er allerede skrevet af `applySeasonEndSync`).
+ */
+export async function closeEndedSeasonMandates(supabase, { teamId, endedSeasonNumber, now = new Date() } = {}) {
+  ensureSupabase(supabase);
+  const ended = endedSeasonNumber == null ? NaN : Number(endedSeasonNumber);
+  if (!teamId || !Number.isFinite(ended)) return { completed: 0, lapsed: 0 };
+  const nowIso = now.toISOString();
+
+  const closeStatus = async (fromStatus, toStatus) => {
+    const { data, error } = await supabase
+      .from("board_mandates")
+      .update({ status: toStatus, updated_at: nowIso })
+      .eq("team_id", teamId)
+      .eq("status", fromStatus)
+      .lte("season_number", ended)
+      .select("id");
+    if (error) throw new Error(`board_mandates close (${fromStatus}→${toStatus}) failed: ${error.message}`);
+    return Array.isArray(data) ? data.length : 0;
+  };
+
+  // Forslag lukkes FOER aktive (Codex #6780): underskrives et forslag midt i
+  // oprydningen, er det enten allerede lapsed (underskriften rammer intet) eller
+  // blevet active foer andet trin, som saa fanger det. Omvendt raekkefoelge kunne
+  // efterlade et active mandat fra en afsluttet saeson.
+  const lapsed = await closeStatus("proposed", "lapsed");
+  const completed = await closeStatus("active", "completed");
+  return { completed, lapsed };
+}
+
 /**
  * Sikrer at holdet har en `board_relations`-række (confidence 50, neutral
  * kvittering) — nødvendig for nye hold (spec §4.1 punkt 2: "confidence =
@@ -832,6 +958,16 @@ export async function advanceMandateAtSeasonEnd(supabase, {
   if (activeMandate) {
     await completeActiveMandate(supabase, { teamId, seasonId });
   }
+  // #6773 · Luk også alt andet for afsluttede sæsoner: et forslag for denne
+  // sæson der stadig står åbent (ville ellers blive aktivt efter skiftet), og
+  // aktive mandater for TIDLIGERE sæsoner der blev underskrevet efter deres
+  // eget skifte. Efter guarden ovenfor, så en manglende næste sæson stadig
+  // lader alt stå urørt (#4838).
+  const closedStale = await closeEndedSeasonMandates(supabase, {
+    teamId,
+    endedSeasonNumber: currentSeasonNumber,
+    now,
+  });
 
   const proposal = await proposeNextMandate(supabase, {
     teamId,
@@ -855,7 +991,12 @@ export async function advanceMandateAtSeasonEnd(supabase, {
     captureExceptionFn,
   });
 
-  return { completed_active: Boolean(activeMandate), proposal, opening_notice: openingNotice };
+  return {
+    completed_active: Boolean(activeMandate),
+    closed_ended_seasons: closedStale,
+    proposal,
+    opening_notice: openingNotice,
+  };
 }
 
 // ---------------------------------------------------------------------------

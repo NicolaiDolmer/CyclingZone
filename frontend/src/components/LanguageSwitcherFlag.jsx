@@ -49,7 +49,38 @@ function Dannebrog() {
   );
 }
 
-const FLAGS = { gb: UnionJack, dk: Dannebrog };
+// #6836: de tre beta-sprogs flag (fr/es/nl), rene striber i flag-icons' farver.
+// Spaniens flag er uden våbenskjold: ved 20x15 px er det ulæseligt.
+function Tricolore() {
+  return (
+    <>
+      <path fill="#fff" d="M0 0h640v480H0z" />
+      <path fill="#00267f" d="M0 0h213.3v480H0z" />
+      <path fill="#f31830" d="M426.7 0H640v480H426.7z" />
+    </>
+  );
+}
+
+function Rojigualda() {
+  return (
+    <>
+      <path fill="#aa151b" d="M0 0h640v480H0z" />
+      <path fill="#f1bf00" d="M0 120h640v240H0z" />
+    </>
+  );
+}
+
+function Driekleur() {
+  return (
+    <>
+      <path fill="#21468b" d="M0 0h640v480H0z" />
+      <path fill="#fff" d="M0 0h640v320H0z" />
+      <path fill="#ae1c28" d="M0 0h640v160H0z" />
+    </>
+  );
+}
+
+const FLAGS = { gb: UnionJack, dk: Dannebrog, fr: Tricolore, es: Rojigualda, nl: Driekleur };
 
 /**
  * Lille firkantet flag til sprogvælgeren.

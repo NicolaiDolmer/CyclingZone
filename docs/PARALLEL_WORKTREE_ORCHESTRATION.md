@@ -61,7 +61,7 @@ Metadata er koordinationskontrol under samme OS-bruger, ikke en sikkerheds-ACL.
 | Semafor | Maks 2 for kommandoer gennem wrapperen. Wrapping er fortsat brief-/reviewdisciplin |
 | Oprydning | Optaget ejerproces, dens levende procestrae og registreret watch-identitet; ingen global proces- eller worktree-pruning |
 | Claudes setup/cleanup | Hookens admission er kode; setup-agentens rapport og terminal-observation er stadig agentdisciplin |
-| Merge | Hovedsessionen anvender AGENTS.md regel 35 (staaende mandat eller konkret ejer-go), separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig. Under en koerende boelge kun PR'er uden ownership-overlap med boelgens aktive spor, laast til det tjekkede head (`--match-head-commit`), fail-closed (#5562) |
+| Merge | Hovedsessionen anvender AGENTS.md regel 35 (staaende mandat eller konkret ejer-go), separat via `scripts/merge-queue.ps1 -Pr "N"`; runneren merger aldrig. Under en koerende boelge kun PR'er uden ownership-overlap med boelgens aktive spor, laast til det tjekkede head (`--match-head-commit`), fail-closed (#5562). Boelgens groenne PR'er gives til koeen i EET kald (`-Pr "A,B,C"`): merge-tog er standard (op til 5 pr. tog, eet deploy, een verify); koeen venter kun paa jobbet `Deploy live + smoke`, og et roedt tog stopper med den skyldige PR udpeget. `-NoBatch` kun efter et roedt tog (#6859, [GITHUB_WORKFLOW.md](GITHUB_WORKFLOW.md#merge-køen-merge-tog-og-deploy-verify-6859)) |
 
 `ready` er overdragelse til hovedsessionen, ikke leveret status. Hovedsessionen ejer CI, godkendelsespakke, tilladt merge, deploy/main-kontrol og varigt close-out, jf. [CODEX_WORKFLOWS.md](CODEX_WORKFLOWS.md). Pilotmaaling ligger paa #605.
 

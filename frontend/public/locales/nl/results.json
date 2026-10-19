@@ -8,6 +8,7 @@
   "tabs": {
     "latest": "Recent",
     "archive": "Archief",
+    "raceHistory": "Koershistorie",
     "points": "Punten & prijzen"
   },
   "latest": {
@@ -56,5 +57,45 @@
   "emptyNoResults": "Dit seizoen zijn nog geen koersuitslagen geïmporteerd",
   "loadError": "Uitslagen konden niet worden geladen",
   "loadErrorBody": "Er is niets verloren gegaan. Probeer de pagina opnieuw te laden.",
-  "retry": "Probeer opnieuw"
+  "retry": "Probeer opnieuw",
+  "raceHistory": {
+    "tableLabel": "Koershistorie",
+    "searchPlaceholder": "Koersen zoeken",
+    "poolLabel": "Divisie",
+    "count": "{count, plural, one {# koers} other {# koersen}}",
+    "showing": "{from}-{to} van {total}",
+    "prev": "Vorige",
+    "next": "Volgende",
+    "seasonShort": "S{number}",
+    "stages": "{count, plural, one {# etappe} other {# etappes}}",
+    "oneDay": "Eendagskoers",
+    "place": "{rank, selectordinal, one {#e} two {#e} few {#e} other {#e}}",
+    "notPlaced": "Niet in de uitslag",
+    "noWinner": "Geen winnaar vastgelegd",
+    "noRoute": "Parcours niet vastgelegd",
+    "allEditions": "Alle {count} edities",
+    "firstEdition": "Eerste editie",
+    "th": {
+      "race": "Koers",
+      "champion": "Titelhouder",
+      "championShort": "Kampioen",
+      "best": "Jouw beste",
+      "bestShort": "Beste",
+      "terrain": "Terrein",
+      "winners": "Eerdere winnaars"
+    },
+    "empty": {
+      "title": "Kies een andere divisie",
+      "desc": "In deze divisie is nog geen koers afgelopen.",
+      "action": "{pool} tonen",
+      "latest": "Bekijk de laatste uitslagen"
+    },
+    "emptySearch": {
+      "title": "Probeer een andere zoekopdracht",
+      "desc": "Geen afgelopen koers komt overeen met die naam.",
+      "action": "Zoekopdracht wissen"
+    },
+    "error": "De koershistorie kon niet laden. Er is niets verloren gegaan.",
+    "retry": "Opnieuw proberen"
+  }
 }

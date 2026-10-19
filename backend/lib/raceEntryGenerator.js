@@ -25,6 +25,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
+import { invalidateNamespace } from "./responseCache.js"; // #6680
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
 import { loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates } from "./trainNowLock.js"; // #6006/#6139
 import { indexGeneratorBindings, generatorBindingLocks } from "./raceEntryGeneratorBindings.ts";
@@ -1513,6 +1514,11 @@ export async function runRaceEntryGenerator({
       });
     }
   }
+
+  // Codex P2 (#6680): kalenderens 60 s-cache udleder "mangler/udtaget" af
+  // tilmeldingerne. Baade timesweepet og admin-generate skriver her, saa en
+  // live-koersel rydder cachen (billigt; dry-run roerer den aldrig).
+  if (!dryRun) invalidateNamespace("calendar");
 
   // 11. Antal hold der reelt blev behandlet i mindst én pulje.
   const processedTeamIds = new Set();

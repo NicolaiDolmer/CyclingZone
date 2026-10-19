@@ -130,6 +130,7 @@ import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { MANDATE_CATEGORIES, resolveMandateDisplayGoals } from "./boardMandate.js";
 import { BOARD_MANDATE_MODEL_FLAG_KEY } from "./boardMandateFlag.js";
+import { queryCurrentSeasonActiveMandate } from "./boardMandateEngine.js";
 import { readFlagStage } from "./featureStage.js";
 import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } from "./boardConsequences.js";
 // #5632 · Samme rene visnings-beregninger som det gamle bestyrelsesrum
@@ -502,6 +503,21 @@ export async function buildBoardRoomPayload({
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
 
+  // #6773 · Mandatet vælges for den AKTIVE sæson. Uden sæsonfilter vandt et
+  // gammelt mandat der var underskrevet efter sit eget sæsonskifte (nyere
+  // signed_at end det aktuelle). Sæson-opslaget er derfor startet først, og
+  // mandat-opslaget venter kun på det, resten kører stadig parallelt.
+  // Promise.resolve: en Postgrest-builder kører sin request ved HVER .then(),
+  // så den pakkes i ét rigtigt promise der deles af begge forbrugere.
+  const activeSeasonPromise = Promise.resolve(
+    supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
+  );
+  const mandatePromise = activeSeasonPromise.then((seasonResult) =>
+    queryCurrentSeasonActiveMandate(supabase, {
+      teamId,
+      seasonNumber: seasonResult?.error ? null : (seasonResult?.data?.number ?? null),
+    }));
+
   const [
     relationRes,
     membersRes,
@@ -522,8 +538,7 @@ export async function buildBoardRoomPayload({
     supabase.from("team_board_members")
       .select("archetype_key, selection_kind, alignment_score, is_chairman")
       .eq("team_id", teamId),
-    supabase.from("board_mandates").select("*").eq("team_id", teamId).eq("status", "active")
-      .order("signed_at", { ascending: false }).limit(1).maybeSingle(),
+    mandatePromise,
     supabase.from("board_vision_milestones").select("*").eq("team_id", teamId)
       .order("target_season_number", { ascending: true }),
     // #4579 · sponsor_income tilføjet: buildBoardEvalContext's currentSponsorIncome
@@ -531,7 +546,7 @@ export async function buildBoardRoomPayload({
     // #1237 · balance tilføjet: nettostilling-input til no_outstanding_debt
     // (scoreFinanceHealthGoal).
     supabase.from("teams").select("team_dna_key, created_at, sponsor_income, balance").eq("id", teamId).maybeSingle(),
-    supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
+    activeSeasonPromise,
     // #4557 (1/9-tillæg) · Hele sæson-listen, kun til board.members[].sinceSeason
     // (deriveFoundingSeasonNumber). Lille tabel (én række pr. sæson) — billig
     // ekstra-query, ikke en ny tabel-afhængighed af betydning.

@@ -79,6 +79,112 @@
       "wonStage": "Ganó la etapa {number}",
       "you": "Tú"
     },
+    "story": {
+      "title": "Cómo se corrió la etapa {number}",
+      "titleOneDay": "Cómo se desarrolló la carrera",
+      "hudOneDay": "Carrera",
+      "viewsAria": "Vista del perfil",
+      "view": {
+        "route": "El recorrido",
+        "stage": "Etapa completa",
+        "race": "Carrera completa",
+        "final": "Últimos 5 km"
+      },
+      "noFinal": "Los últimos 5 km necesitan tiempos exactos en el registro de carrera. Esta etapa se corrió antes de que se registraran, así que solo muestra posiciones en km.",
+      "timeTrial": "Contrarreloj: cada ciclista rueda solo, así que no hay historia de grupos. Los tiempos están en el resultado.",
+      "you": "Tú",
+      "aRider": "Un ciclista",
+      "kmAt": "km {km}",
+      "kmSpan": "km {from}-{to}",
+      "unfolded": "Cómo se desarrolló",
+      "source": "Cada tiempo, diferencia y frase de aquí sale del registro de carrera de esta etapa.",
+      "replay": {
+        "play": "Reproducir la etapa",
+        "pause": "Pausa",
+        "scrubAria": "Posición de la repetición en km",
+        "positionTime": "km {km} · {time}"
+      },
+      "group": {
+        "leads": "Cabeza",
+        "peloton": "Pelotón",
+        "riders": "{count, plural, one {# ciclista} other {# ciclistas}}",
+        "rest": "{groups, plural, one {# grupo más} other {# grupos más}} · {riders, plural, one {# ciclista} other {# ciclistas}} · +{min} a +{max}"
+      },
+      "line": {
+        "formed": "{count, plural, one {# ciclista se escapa} other {# ciclistas se escapan}}",
+        "caught": "{count, plural, one {# ciclista de la escapada es alcanzado} other {# ciclistas de la escapada son alcanzados}}",
+        "survived": "La escapada resiste hasta la meta",
+        "attack": "{count, plural, one {{names} ataca} other {{names} atacan}}",
+        "attackGain": "{count, plural, one {{names} ataca y gana {gain}} other {{names} atacan y ganan {gain}}}",
+        "attackAnon": "Un ataque tardío",
+        "incident": "{name} {kind, select, crash {se cae} mechanical {sufre una avería} other {sufre un incidente}}{outcome, select, abandoned { y abandona} loss { y pierde {loss}} other {}}",
+        "climb": "Cima de {name}",
+        "climbFirst": "{rider} primero en {name}",
+        "gap": "La diferencia con {group, select, rest {el pelotón} other {los perseguidores}} {dir, select, grew {aumenta} other {se reduce}} de {before} a {after}",
+        "split": "{count, plural, one {Un grupo se descuelga} other {# grupos se descuelgan}}",
+        "dropped": "{count, plural, one {{names} se descuelga de la escapada} other {{names} se descuelgan de la escapada}}",
+        "joined": "{count, plural, one {Dos grupos se juntan} other {Los grupos se juntan # veces}}",
+        "gcLead": "{name} toma el liderato de la general",
+        "crack": "{name} se hunde",
+        "finish": "{name} gana",
+        "finishSprint": "{name} gana el sprint",
+        "finishAnon": "Meta"
+      },
+      "splits": {
+        "title": "Tiempos parciales",
+        "point": "Punto",
+        "leaderTime": "Líder",
+        "leading": "En cabeza",
+        "first": "Primero en cima",
+        "top": "Cima {name}",
+        "climb": "puerto",
+        "sprint": "Sprint",
+        "finish": "Meta",
+        "none": "No hay puertos, sprints ni meta en el registro de carrera."
+      },
+      "report": {
+        "title": "Crónica",
+        "formed": "{count, plural, one {# ciclista se escapó} other {# ciclistas se escaparon}} en el km {km}.",
+        "formedMine": "{count, plural, one {# ciclista se escapó} other {# ciclistas se escaparon}} en el km {km}, con tu {mine}.",
+        "caught": "La escapada fue alcanzada en el km {km}.",
+        "survived": "{names} resistieron hasta la meta.",
+        "attack": "{names} atacó en el km {km}.",
+        "attackGain": "{names} atacó en el km {km} y ganó {gain}.",
+        "winner": "{winner} ganó.",
+        "winnerGap": "{winner} ganó, {gap} por delante de {second}.",
+        "winnerSame": "{winner} ganó por delante de {second} con el mismo tiempo.",
+        "mine": "Tu mejor ciclista fue {name}, n.º {rank}.",
+        "mineGap": "Tu mejor ciclista fue {name}, n.º {rank}, a {gap}.",
+        "mineWon": "Tu ciclista {name} ganó.",
+        "climb": "La carrera pasó por {name} en el km {km}.",
+        "climbFirst": "{rider} pasó primero por {name}.",
+        "sameTime": "{count} ciclistas terminaron con el tiempo del ganador.",
+        "third": "{name} fue tercero.",
+        "thirdGap": "{name} fue tercero, a {gap}.",
+        "placed": "{name} terminó en la posición {rank}.",
+        "placedGap": "{name} terminó en la posición {rank}, a {gap}."
+      },
+      "final": {
+        "aria": "Los últimos 5 km: grupos en carretera con distancia a meta, diferencias y reloj de carrera",
+        "toGoKm": "{km} KM",
+        "toGoM": "{m} M",
+        "finish": "META",
+        "winningTime": "Tiempo del ganador",
+        "speed": "{kmh} km/h",
+        "back": "{label} · a {dist} km",
+        "gaps": "Diferencias",
+        "gapsFoot": "Diferencia en segundos en la posición del líder, según el registro de carrera.",
+        "finished": "Llegó",
+        "behindMark": "Tras la marca de 5 km",
+        "closeUp": "Plano corto del sprint",
+        "closeUpOpens": "Se abre a 500 m de meta",
+        "closeUpHint": "El plano corto sigue la cabeza desde 500 m de meta.",
+        "closeUpDone": "Resultado",
+        "play": "Reproducir los últimos 5 km",
+        "scrubAria": "Tiempo de carrera en los últimos 5 km",
+        "speedAria": "Velocidad de reproducción"
+      }
+    },
     "yourDay": {
       "title": "Tu día · etapa {number}",
       "titleOneDay": "Tu día",
@@ -1326,7 +1432,7 @@
       },
       "tag_peak_day": {
         "label": "Pico",
-        "tooltip": "Afinó su forma para estar en su mejor momento en esta etapa."
+        "tooltip": "Afinó su forma para llegar en pico a esta etapa."
       },
       "tag_perfect_peak": {
         "label": "Pico perfecto",
@@ -1517,7 +1623,7 @@
           "v2": "{count, plural, one {Un compañero renunció} other {# compañeros renunciaron}} a sus propias opciones por {captain} hoy."
         },
         "form_peak": {
-          "v1": "{rider} llegó en plena forma, y se notó.",
+          "v1": "{rider} llegó en pico de forma, y se notó.",
           "v2": "La forma marcó la diferencia para {rider} hoy."
         },
         "favorite_off_day": {

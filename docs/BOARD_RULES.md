@@ -46,6 +46,12 @@ Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekani
 
 ### 0.2 Hvad er faktisk leveret og aktiveret?
 
+**Mandatets livscyklus pr. sæson (#6773, 17/10):**
+- Et hold har højst ét gældende mandat: det `active` mandat for den **aktive sæson**. Boardroom, bonusmålet og årsmødet vælger altid den aktive sæsons mandat (falder tilbage til nyeste sæson, hvis der ingen aktiv sæson er).
+- Ved sæsonskiftet lukkes alle åbne mandater for afsluttede sæsoner (`closeEndedSeasonMandates`): `active` → `completed`, `proposed` → `lapsed`. Kun status ændres; tillid, kvitteringer og tilfredshed røres ikke.
+- Et forslag for en afsluttet sæson kan ikke underskrives (fejlkode `board_mandate_season_ended`, en+da).
+- Bonusmål (`source: 'bonus_offer'`) skrives til den aktive sæsons mandat. Engangsreparationen af S3-mandater (`closeStaleMandates6773.mjs`, ejer-gated) flytter bonusmål fra et gammelt mandat til holdets aktuelle, før det gamle lukkes.
+
 **Aktuel flagstatus 28/9 (read-only prodmåling):** `board_mandate_model_enabled = 'on'` i S4.
 De ældre beta-tal nedenfor beskriver tilstanden på deres måledato og er historiske.
 
@@ -373,6 +379,11 @@ S4 i DB kører som eget spor efter kalenderpakkeren (`TRAINING_RULES.md` §13).
    intet nyt — og `boardRoom.js` læser kun `status = 'active'`. Guarden (`findNextSeason`,
    `seasonLookup.js`) ligger nu FØR lukningen: findes sæsonen ikke, er sæsonskiftet en ren no-op for
    mandatet. **Uafhængigt krav står stadig: sæson 4 skal i DB før 27/9 (#4270).**
+
+3. **Mandat-læsere vælger den aktive sæson (#6793, Refs #6773).** `boardMandateMeeting.js`
+   (`GET /board/meeting`, fokusskift og sæsonstart-guidens `reason`) filtrerer på den aktive sæsons
+   `season_number` (`loadSingleActiveSeason`). Fallback til nyeste mandat sker KUN når ingen sæson er
+   aktiv. Et gammelt `proposed`/`active` mandat fra en tidligere sæson giver hverken møde eller `signed`.
 
 **Flag-note (midlertidig):** `isBoardMandateModelEnabled` accepterer nu `{ engineWrite: true }`, så
 motoren skriver skyggedata i stage `beta` uanset om den enkelte manager er beta-tester (ejer-go 6/9).

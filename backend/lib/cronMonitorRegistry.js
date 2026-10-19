@@ -23,6 +23,9 @@
  * Glemmer du begge dele, fejler backend/cron.monitorCoverage.test.js.
  */
 
+import { crontabFromWallClock } from "./wallClockScheduler.js";
+import { SUNDAY_VALUE_FROM_HOUR } from "./economyConstants.js";
+
 // #2077 — Sentry cron-monitor-configs. Udebliver et tick (proces død/deploy-hang)
 // fyrer Sentry en MISSED-alarm ud fra schedulen; hænger et tick over maxRuntime
 // regnes det TIMEOUT. #2389/B5: udvidet fra kun auto-prize/stage-scheduler til ALLE
@@ -101,6 +104,45 @@ export const CRON_MONITOR_24H = {
   maxRuntime: 60,
   timezone: "Etc/UTC",
 };
+
+// ─── Faste tidspunkter i dansk tid (#6858) ─────────────────────────────────
+// Job med et fast vaegur-tidspunkt planlaegges af lib/wallClockScheduler.js (ikke
+// et setInterval, der taeller fra proces-start). Skemaet bor HER sammen med
+// monitoren, saa cron.js' planlaegning, Sentrys crontab og heartbeat-vagten
+// (cronHeartbeat.js) altid laeser samme tidspunkt. Tidspunkterne er de ejer-
+// vedtagne; kun praecisionen er ny. Hver time-konstant har en paritetstest mod
+// modulets egen gate i backend/cron.monitorCoverage.test.js.
+//
+// repeatHourly: modulernes gate er "fra kl. X" med genforsoeg; det gamle times-
+// interval gav et forsoeg i timen til midnat, og det bevares, nu paa hele
+// klokkeslaet. Sentry-monitoren vogter kun det faste tidspunkt.
+export const SUNDAY_VALUE_WALL_CLOCK = Object.freeze({ weekdays: ["sun"], hour: SUNDAY_VALUE_FROM_HOUR, minute: 0, repeatHourly: true }); // #5842, ejer 18/10: 14:00
+export const SUNDAY_START_WALL_CLOCK = Object.freeze({ weekdays: ["sun"], hour: 0, minute: 0, repeatHourly: true }); // "hver soendag", ingen time-gate
+export const EMAIL_HEALTH_WALL_CLOCK = Object.freeze({ hour: 8, minute: 0, repeatHourly: true }); // EMAIL_HEALTH_HOUR_COPENHAGEN
+export const EMAIL_RACE_DIGEST_WALL_CLOCK = Object.freeze({ hour: 19, minute: 0, repeatHourly: true }); // DIGEST_HOUR_COPENHAGEN
+export const DISCORD_RACE_DIGEST_WALL_CLOCK = Object.freeze({ hour: 20, minute: 0, repeatHourly: true }); // DISCORD_DIGEST_HOUR_COPENHAGEN
+
+// Sentry-crontab-monitor for et vaegur-skema. Udebliver det faste tidspunkt, fyrer
+// Sentry MISSED efter checkinMargin (ejer-krav #6858: lille margin, 15 min).
+// failureIssueThreshold er Sentrys default (1): et tidspunkt der sker en gang i
+// doegnet eller ugen, er en reel fejl foerste gang det udebliver. `wallClock` er
+// vores eget felt (Sentry-SDK'et sender kun sine kendte felter videre); heartbeat-
+// vagten bruger det til at regne fristen fra naeste faste tidspunkt.
+export function wallClockMonitorConfig(wallClock, { checkinMargin = 15, maxRuntime = 60 } = {}) {
+  return Object.freeze({
+    schedule: { type: "crontab", value: crontabFromWallClock(wallClock) },
+    checkinMargin,
+    maxRuntime,
+    timezone: "Europe/Copenhagen",
+    wallClock,
+  });
+}
+
+export const CRON_MONITOR_SUNDAY_VALUE = wallClockMonitorConfig(SUNDAY_VALUE_WALL_CLOCK); // "0 14 * * 0"
+export const CRON_MONITOR_SUNDAY_START = wallClockMonitorConfig(SUNDAY_START_WALL_CLOCK); // "0 0 * * 0"
+export const CRON_MONITOR_EMAIL_HEALTH = wallClockMonitorConfig(EMAIL_HEALTH_WALL_CLOCK); // "0 8 * * *"
+export const CRON_MONITOR_EMAIL_RACE_DIGEST = wallClockMonitorConfig(EMAIL_RACE_DIGEST_WALL_CLOCK); // "0 19 * * *"
+export const CRON_MONITOR_DISCORD_RACE_DIGEST = wallClockMonitorConfig(DISCORD_RACE_DIGEST_WALL_CLOCK); // "0 20 * * *"
 
 // ─── ALL_CRON_MONITORS ─────────────────────────────────────────────────────
 // Deploy-grace: boot-priming af cron-monitors (#2440). Rod-årsag: hver Railway-
@@ -183,14 +225,17 @@ export const ALL_CRON_MONITORS = [
   ["intake-offer-expiry", CRON_MONITOR_24H],
   ["email-welcome", CRON_MONITOR_5MIN],
   ["email-day1", CRON_MONITOR_60MIN],
-  ["email-race-digest", CRON_MONITOR_60MIN],
+  ["email-race-digest", CRON_MONITOR_EMAIL_RACE_DIGEST],
   // #3600: retry-drain for e-mails der fejlede med en retryable Resend-fejl —
   // samme kadence som discord-dm-outbox-drain/discord-webhook-outbox-drain.
   ["email-retry-drain", CRON_MONITOR_5MIN],
-  // #2853: daglig mail-sundhedsrapport. Tikker hver time (time-gate + dags-
-  // dedupe ligger i selve sweepen), så kadencen her er 60 min, ikke 24 t.
-  ["email-health-report", CRON_MONITOR_60MIN],
-  ["discord-race-digest", CRON_MONITOR_60MIN],
+  // #2853: daglig mail-sundhedsrapport kl. 08 dansk tid. #6858: vægur-planlagt
+  // (08:00 + genforsøg hver hele time til midnat); dags-dedupen i sweepen holder
+  // den på én rapport pr. døgn. Crontab-monitoren vogter kl. 08.
+  ["email-health-report", CRON_MONITOR_EMAIL_HEALTH],
+  // #6858: e-mail-digest kl. 19 (ovenfor) og Discord-digest kl. 20 dansk tid,
+  // vægur-planlagt som mail-sundhedsrapporten (crontab-monitor på tidspunktet).
+  ["discord-race-digest", CRON_MONITOR_DISCORD_RACE_DIGEST],
   // #5130: Discord-velkomstbesked, samme kadence som email-welcome.
   ["discord-welcome", CRON_MONITOR_5MIN],
   ["alunta-subscription-reconcile", CRON_MONITOR_60MIN],
@@ -204,14 +249,11 @@ export const ALL_CRON_MONITORS = [
   // discord-race-digest). Idempotent no-op når intet mangler.
   ["season-documentary", CRON_MONITOR_60MIN],
   ["fairplay-scoring", CRON_MONITOR_24H],
-  // #3449/#3750: niveau-korrektionens søndags-gate-måling — samme 60min-kadence
-  // som entry-generator/season-documentary. Tikket kalder gennem hver time og
-  // returnerer normalt (ran:false, skipped:"not_sunday") på ikke-søndage — det
-  // er en gyldig "ok"-check-in, ikke en fejl, så CRON_MONITOR_60MIN false-
-  // positiver ikke resten af ugen (modsat sunday-intake-drip, se
-  // UNMONITORED_CRON_TICKS: den forskel er en tidligere designbeslutning, ikke
-  // en regel om at søndags-gatede jobs aldrig kan monitoreres).
-  ["market-value-level-correction-gate", CRON_MONITOR_60MIN],
+  // #3449/#3750: niveau-korrektionens søndags-gate-måling. #6858: vægur-planlagt
+  // søndag 00:00 dansk tid (+ hver hele time søndagen ud; målings-claimet holder
+  // den på én pr. søndag), crontab-monitor "0 0 * * 0". Boot-run'et i cron.js
+  // sender også check-in på andre dage; Sentry forventer så næste søndag 00:00.
+  ["market-value-level-correction-gate", CRON_MONITOR_SUNDAY_START],
   // #2892: egen cron-heartbeat-vagt (backup for Sentrys kvote-begrænsede
   // monitorer). Wrappet i monitorCron ligesom alle andre jobs herover, så den
   // selv får et check-in i cron_checkins — ren ensartethed, ikke fordi Sentry-
@@ -219,29 +261,35 @@ export const ALL_CRON_MONITORS = [
   // selv (dør hele cron-processen, fyrer ingen tick — samme blinde vinkel som
   // stall-watchdog'en har for sin egen død).
   ["cron-heartbeat-sweep", CRON_MONITOR_5MIN],
-  // #4419: søndagens værdi-pipeline (værdi-refresh; markedsblendet fjernet i #6642). Samme
-  // begrundelse som market-value-level-correction-gate ovenfor: tikket kalder gennem hver time og
-  // returnerer normalt (ran:false, skipped:"not_sunday"/"before_window") uden
-  // for vinduet, så en 60min-monitor er ærlig hele ugen.
-  ["sunday-value-refresh", CRON_MONITOR_60MIN],
+  // #4419: søndagens værdi-pipeline (værdi-refresh; markedsblendet fjernet i #6642).
+  // #6858: præcis søndag kl. 14:00 dansk tid (SUNDAY_VALUE_FROM_HOUR, ejer 18/10),
+  // crontab-monitor "0 14 * * 0" i Europe/Copenhagen med 15 min margin: udebliver
+  // kørslen, fyrer Sentry MISSED kl. 14:15. Genforsøg hver hele time til midnat.
+  ["sunday-value-refresh", CRON_MONITOR_SUNDAY_VALUE],
 ];
 
 // ─── UNMONITORED_CRON_TICKS ────────────────────────────────────────────────
-// Periodiske setInterval(trackedTick("label", ...), ...)-registreringer i
+// Periodiske registreringer (setInterval / startClockAlignedInterval /
+// startWallClockSchedule med trackedTick("label", ...)) i
 // cron.js's startCron() der BEVIDST ikke er monitorCron-wrappet. Labellen her
 // SKAL matche trackedTick's første argument præcist.
 // backend/cron.monitorCoverage.test.js kræver at ethvert periodisk job enten
 // er monitorCron-wrappet eller står i denne liste — så en fremtidig
 // udvikler der glemmer BEGGE dele får en rød test i stedet for et tavst hul.
 export const UNMONITORED_CRON_TICKS = [
-  // Sunday-intake-drip er bevidst søndags-gated + claim-idempotent (#2064 S0)
-  // — modulet selv no-op'er alle ugens øvrige dage. Et fast interval-schedule
-  // (CRON_MONITOR_60MIN) forventer succes hver time; det ville false-positive
-  // alarmere resten af ugen. Se runSundayIntakeTick.js for gate-logikken.
+  // Sunday-intake-drip er bevidst søndags-gated + claim-idempotent (#2064 S0).
+  // #6858: vægur-planlagt søndag 00:00 (+ hver hele time søndagen ud). Den kunne
+  // nu få en crontab-monitor (CRON_MONITOR_SUNDAY_START), men en ny Sentry-monitor
+  // er en ny løbende udgift, og pull-mekanikken (#3550) skal afløse drippet.
   "sunday-intake-drip",
   // #6590: web push-sweepen er bag app_config.push_enabled (startstadie off) og
   // no-op'er uden VAPID-noegler. En ny Sentry-cron-monitor er en ny loebende
   // udgift; fejl naar stadig Sentry via trackedTick + captureException i sweepen.
   // Tilfoej monitorCron(...) naar push er "on" og der er budget til monitoren.
   "push sweep",
+  // #6854: udfalds-vagten prober PostgREST hvert 15. sekund. En Sentry-check-in
+  // pr. probe er en ny loebende udgift og stoej, og vagtens eget formaal er at
+  // alarmere naar databasen er nede (cron_checkins ligger i databasen). Dens
+  // daekning udefra er databasevagten (scripts/ops/db-watchdog.mjs).
+  "outage monitor",
 ];

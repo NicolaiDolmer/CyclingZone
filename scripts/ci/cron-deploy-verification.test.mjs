@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { affectedCronJobs, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
+import { affectedCronJobs, registryCadenceSeconds, changedFiles, deploymentImpact, evaluateCheckins, evaluateUnreadable, railwayDrainSeconds, safeReason, waitingSummary,
   verifyCronCheckins, SHORT_CADENCE_SECONDS, MAX_COHORT_SHIFT_SECONDS } from './cron-deploy-verification.mjs';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
 
@@ -287,8 +287,7 @@ test('#6318 review: a common backend change widening to every registry job verif
   const jobs = affectedCronJobs([{ filename: 'backend/server.js', status: 'modified' }]);
   const { ALL_CRON_MONITORS } = await import('../../backend/lib/cronMonitorRegistry.js');
   assert.equal(jobs.length, ALL_CRON_MONITORS.length);
-  const units = { minute: 60, hour: 3600, day: 86400 };
-  const cadence = config => config.schedule.value * units[config.schedule.unit];
+  const cadence = registryCadenceSeconds;
   const drainSeconds = railwayDrainSeconds();
   const prime = Date.parse(since) - 30_000;
   let clock = Date.parse(since), calls = 0;
@@ -377,7 +376,8 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(workflow, /name: Checkout target SHA[\s\S]*?ref: \$\{\{ steps\.pr\.outputs\.sha \}\}[\s\S]*?fetch-depth: 0\s+- name: Determine required deployments/);
   // Railway/cron impact from this script; Vercel only from the canonical classifier.
   assert.match(workflow, /cron-deploy-verification\.mjs --impact\s+[\s\S]*?node scripts\/frontend-deployment-needed\.mjs "\$SHA"/);
-  const deferredComment = workflow.slice(workflow.indexOf('name: Comment deferred cron proof on merged PR'), workflow.indexOf('name: Comment pending on merged PR'));
+  // #6859: the report job writes the final comment (verified / deferred / red).
+  const deferredComment = workflow.slice(workflow.indexOf('"$CRON_STATE" == "deferred"'), workflow.indexOf('- name: Alarm Discord ops'));
   assert.doesNotMatch(deferredComment, /exit 75/);
   assert.match(deferredComment, /Merge-koeen fortsaetter/);
   assert.ok(workflow.indexOf('name: Checkout target SHA') < workflow.indexOf('cron-deploy-verification.mjs --impact'));
@@ -385,10 +385,10 @@ test('production workflow checks out target SHA, observes READY boundary and gat
   assert.match(workflow, /while \[\[[\s\S]*?RAILWAY_OK=false\s+(?:#[^\r\n]*(?:\r?\n[ \t]*)+)+CRON_SINCE=""/);
   assert.match(workflow, /echo "cron_since=\$CRON_SINCE" >> "\$GITHUB_OUTPUT"/);
   const gate = workflow.indexOf('name: Verify affected cron check-ins');
-  const live = workflow.indexOf('name: Comment success on merged PR');
+  const live = workflow.indexOf('name: Comment final verdict on merged PR');
   assert.ok(gate > 0 && gate < live);
   assert.match(workflow.slice(gate, live), /SUPABASE_SERVICE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_KEY \}\}/);
-  assert.match(workflow.slice(live), /if: success\(\).*steps\.crons\.outputs\.state == 'verified'/);
+  assert.match(workflow.slice(live), /CRON_STATE: \$\{\{ needs\.cron-proof\.outputs\.state \}\}[\s\S]*?"\$CRON" == "success" && "\$CRON_STATE" == "verified"/);
   assert.match(workflow, /name: Cron check-ins deferred/);
   const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
   assert.match(ci, /node --test scripts\/ci\/cron-deploy-verification\.test\.mjs scripts\/ci\/deploy-verification-state\.test\.mjs/);
@@ -419,11 +419,18 @@ test('#6487: cron proof starts right after smoke and its step timeout covers the
   const workflow = readFileSync(new URL('../../.github/workflows/deploy-verify.yml', import.meta.url), 'utf8');
   const names = [...workflow.matchAll(/^ {6}- name: (.+?)\s*$/gm)].map(match => match[1]);
   // The first heartbeat snapshot is never proof, so the cron step must start
-  // before the boundary (READY + drain). Only the bounded smoke (<= 55 s) and
-  // the PR comment may sit between the deployment wait and the cron proof.
+  // soon after the boundary (READY + drain). #6859: the proof is its own job
+  // (needs: release). Only the bounded smoke (<= 55 s), PR comments, failure
+  // markers and a light job start (shallow checkout, node, a latency note) may
+  // sit between the deployment wait and the cron proof.
   const from = names.indexOf('Deployment still pending');
   const cron = names.indexOf('Verify affected cron check-ins');
-  assert.deepEqual(names.slice(from + 1, cron), ['Smoke-test prod', 'Comment release verified, cron proof running']);
+  assert.deepEqual(names.slice(from + 1, cron), ['Smoke-test prod', 'Comment release verified, cron proof running',
+    'Failed target vercel', 'Failed target railway', 'Failed target smoke', 'Comment pending on merged PR', 'Comment failure on merged PR',
+    'Checkout target SHA (shallow)', 'Node 24', 'Cron proof start latency']);
+  const cronJob = workflow.slice(workflow.indexOf('\n  cron-proof:'), workflow.indexOf('\n  release-checks:'));
+  assert.match(cronJob, /\n {4}needs: release\r?\n/);
+  assert.doesNotMatch(cronJob, /fetch-depth|npm (?:ci|install)/);
   assert.deepEqual(names.slice(cron + 1, cron + 3), ['Cron check-ins verified', 'Cron check-ins deferred']);
   const units = { minute: 60, hour: 3600, day: 86400 };
   const latest = Math.max(...ALL_CRON_MONITORS.map(([, config]) => config.schedule.value * units[config.schedule.unit])
@@ -446,4 +453,26 @@ test('#6799 (Codex #6823): a late boot cohort shifts the deadline at most MAX_CO
   const result = evaluateCheckins({ slugs: ['board-auto-accept'], rows, since, now: late, excluded: new Set([Date.parse(late)]), cohortAt: new Map([['board-auto-accept', Date.parse(late)]]) });
   const deadline = Date.parse(result.jobs[0].deadline);
   assert.ok(deadline <= Date.parse(since) + (MAX_COHORT_SHIFT_SECONDS + 1800 + 15 * 60) * 1000, `deadline ${result.jobs[0].deadline}`);
+});
+
+test('#6858: fixed-time (crontab) monitors have a 1- or 7-day cadence and are deferred, never invalid', () => {
+  const crontab = ALL_CRON_MONITORS.filter(([, config]) => config.schedule.type === 'crontab');
+  assert.ok(crontab.length >= 5);
+  for (const [slug, config] of crontab) {
+    assert.ok([86400, 7 * 86400].includes(registryCadenceSeconds(config)), slug);
+  }
+  assert.equal(registryCadenceSeconds(ALL_CRON_MONITORS.find(([slug]) => slug === 'sunday-value-refresh')[1]), 7 * 86400);
+  assert.ok(Number.isNaN(registryCadenceSeconds({ schedule: { type: 'crontab', value: '0 14 * * 0' } })), 'crontab without wallClock fails closed');
+  assert.equal(registryCadenceSeconds({ schedule: { type: 'interval', value: 5, unit: 'minute' } }), 300);
+});
+
+test('#6860 (Codex P2): a weekly fixed-time job is due at its next Copenhagen slot across the DST change', async () => {
+  const { dueAtMs } = await import('./cron-deploy-verification.mjs');
+  const config = { schedule: { type: 'crontab', value: '0 14 * * 0' }, maxRuntime: 60, wallClock: { weekdays: ['sun'], hour: 14, minute: 0 } };
+  const lastRun = Date.parse('2026-10-18T12:00:00Z'); // 14:00 CEST
+  const due = dueAtMs(config, lastRun, 7 * 86400, 15 * 60);
+  // 25/10 14:00 CET = 13:00Z, plus 15 min margin + 60 min maxRuntime. A nominal 168 h would say 12:15Z.
+  assert.equal(new Date(due).toISOString(), '2026-10-25T14:15:00.000Z');
+  const interval = { schedule: { type: 'interval', value: 5, unit: 'minute' } };
+  assert.equal(dueAtMs(interval, 0, 300, 600), 900000);
 });

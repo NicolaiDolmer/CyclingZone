@@ -79,6 +79,112 @@
       "wonStage": "A gagné l'étape {number}",
       "you": "Toi"
     },
+    "story": {
+      "title": "Comment l'étape {number} s'est courue",
+      "titleOneDay": "Comment la course s'est déroulée",
+      "hudOneDay": "Course",
+      "viewsAria": "Vue du profil",
+      "view": {
+        "route": "Le parcours",
+        "stage": "Étape entière",
+        "race": "Course entière",
+        "final": "Derniers 5 km"
+      },
+      "noFinal": "Les derniers 5 km demandent des temps exacts dans le journal de course. Cette étape a été courue avant leur enregistrement, elle n'affiche donc que les positions en km.",
+      "timeTrial": "Contre-la-montre : chaque coureur roule seul, il n'y a donc pas d'histoire de groupe. Les temps sont dans le résultat.",
+      "you": "Toi",
+      "aRider": "Un coureur",
+      "kmAt": "km {km}",
+      "kmSpan": "km {from}-{to}",
+      "unfolded": "Comment ça s'est passé",
+      "source": "Chaque temps, écart et phrase ici vient du journal de course de cette étape.",
+      "replay": {
+        "play": "Rejouer l'étape",
+        "pause": "Pause",
+        "scrubAria": "Position du replay en km",
+        "positionTime": "km {km} · {time}"
+      },
+      "group": {
+        "leads": "En tête",
+        "peloton": "Peloton",
+        "riders": "{count, plural, one {# coureur} other {# coureurs}}",
+        "rest": "{groups, plural, one {# autre groupe} other {# autres groupes}} · {riders, plural, one {# coureur} other {# coureurs}} · +{min} à +{max}"
+      },
+      "line": {
+        "formed": "{count, plural, one {# coureur s'extrait} other {# coureurs s'extraient}}",
+        "caught": "{count, plural, one {# coureur de l'échappée est repris} other {# coureurs de l'échappée sont repris}}",
+        "survived": "L'échappée tient jusqu'à l'arrivée",
+        "attack": "{count, plural, one {{names} attaque} other {{names} attaquent}}",
+        "attackGain": "{count, plural, one {{names} attaque et prend {gain}} other {{names} attaquent et prennent {gain}}}",
+        "attackAnon": "Une attaque tardive",
+        "incident": "{name} {kind, select, crash {chute} mechanical {a un souci mécanique} other {a un incident}}{outcome, select, abandoned { et abandonne} loss { et perd {loss}} other {}}",
+        "climb": "Sommet de {name}",
+        "climbFirst": "{rider} en tête au sommet de {name}",
+        "gap": "L'écart avec {group, select, rest {le peloton} other {les poursuivants}} {dir, select, grew {augmente} other {diminue}} de {before} à {after}",
+        "split": "{count, plural, one {Un groupe se détache} other {# groupes se détachent}}",
+        "dropped": "{count, plural, one {{names} est lâché de l'échappée} other {{names} sont lâchés de l'échappée}}",
+        "joined": "{count, plural, one {Deux groupes se rejoignent} other {Les groupes se rejoignent # fois}}",
+        "gcLead": "{name} prend la tête du classement général",
+        "crack": "{name} craque",
+        "finish": "{name} gagne",
+        "finishSprint": "{name} gagne le sprint",
+        "finishAnon": "Arrivée"
+      },
+      "splits": {
+        "title": "Temps intermédiaires",
+        "point": "Point",
+        "leaderTime": "Leader",
+        "leading": "En tête",
+        "first": "Premier au sommet",
+        "top": "Sommet {name}",
+        "climb": "col",
+        "sprint": "Sprint",
+        "finish": "Arrivée",
+        "none": "Aucun col, sprint ni arrivée dans le journal de course."
+      },
+      "report": {
+        "title": "Compte rendu",
+        "formed": "{count, plural, one {# coureur s'est extrait} other {# coureurs se sont extraits}} au km {km}.",
+        "formedMine": "{count, plural, one {# coureur s'est extrait} other {# coureurs se sont extraits}} au km {km}, avec ton {mine}.",
+        "caught": "L'échappée a été reprise au km {km}.",
+        "survived": "{names} sont restés devant jusqu'à l'arrivée.",
+        "attack": "{names} a attaqué au km {km}.",
+        "attackGain": "{names} a attaqué au km {km} et pris {gain}.",
+        "winner": "{winner} a gagné.",
+        "winnerGap": "{winner} a gagné, {gap} devant {second}.",
+        "winnerSame": "{winner} a gagné devant {second}, dans le même temps.",
+        "mine": "Ton meilleur : {name}, n° {rank}.",
+        "mineGap": "Ton meilleur : {name}, n° {rank}, à {gap}.",
+        "mineWon": "Ton coureur {name} a gagné.",
+        "climb": "La course est passée par {name} au km {km}.",
+        "climbFirst": "{rider} est passé premier à {name}.",
+        "sameTime": "{count} coureurs ont terminé dans le temps du vainqueur.",
+        "third": "{name} a pris la troisième place.",
+        "thirdGap": "{name} a pris la troisième place, à {gap}.",
+        "placed": "{name} a terminé à la position {rank}.",
+        "placedGap": "{name} a terminé à la position {rank}, à {gap}."
+      },
+      "final": {
+        "aria": "Les derniers 5 km : groupes sur la route avec distance restante, écarts et chrono de course",
+        "toGoKm": "{km} KM",
+        "toGoM": "{m} M",
+        "finish": "ARRIVÉE",
+        "winningTime": "Temps du vainqueur",
+        "speed": "{kmh} km/h",
+        "back": "{label} · à {dist} km",
+        "gaps": "Écarts",
+        "gapsFoot": "Écart en secondes à la position du leader, d'après le journal de course.",
+        "finished": "Arrivé",
+        "behindMark": "Derrière la marque des 5 km",
+        "closeUp": "Zoom sur le sprint",
+        "closeUpOpens": "S'ouvre à 500 m de l'arrivée",
+        "closeUpHint": "Le zoom suit la tête de course à partir de 500 m de l'arrivée.",
+        "closeUpDone": "Résultat",
+        "play": "Rejouer les derniers 5 km",
+        "scrubAria": "Temps de course dans les derniers 5 km",
+        "speedAria": "Vitesse de lecture"
+      }
+    },
     "yourDay": {
       "title": "Ta journée · étape {number}",
       "titleOneDay": "Ta journée",
@@ -1517,7 +1623,7 @@
           "v2": "{count, plural, one {Un coéquipier a sacrifié ses chances} other {# coéquipiers ont sacrifié leurs chances}} pour {captain} aujourd'hui."
         },
         "form_peak": {
-          "v1": "{rider} est arrivé en grande forme, et ça s'est vu.",
+          "v1": "{rider} est arrivé au pic de forme, et ça s'est vu.",
           "v2": "La forme a fait la différence pour {rider} aujourd'hui."
         },
         "favorite_off_day": {

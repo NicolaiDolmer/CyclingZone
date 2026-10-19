@@ -374,8 +374,31 @@ time- og døgn-jobs; skulle de blokere, ville køen stå stille i timevis efter
 hver backend-PR. De lange jobs dækkes af cron-heartbeat-vagten, der alarmerer i
 Discord, hvis et job misser kadence plus margin. Køen genkører ikke deferred
 attempts, da det ville skabe en ny READY-grænse. Overskredne eller ulæselige
-check-ins fejler stadig rødt og stopper køen. Almindelig deployment `pending`
-beholder den eksisterende bounded rerun-adfærd.
+check-ins fejler stadig rødt. Almindelig deployment `pending` beholder den
+eksisterende bounded rerun-adfærd.
+
+**Eget job, alarm i stedet for stop (#6859, ejer 18/10):** `deploy-verify.yml` er
+delt i jobs. Merge-køen venter kun på `Deploy live + smoke`. Cron-beviset kører i
+`Cron proof (non-blocking)` (`needs: release`, kun et shallow checkout og Node før
+første læsning, så det når grænsen). Et rødt bevis gør koerslen rød, opdaterer
+PR-kommentaren og alarmerer Discord-ops (`report`-jobbet), men stopper **ikke**
+køen. `Release checks` (CDN-headers, asset-miss, carry-forward, Sentry m.fl.)
+kører parallelt; røde release checks stopper køen før næste merge. Starter
+cron-jobbet mere end 5 min efter READY, skriver det en advarsel: et rødt 1-min-job
+kan da skyldes den sene start, ikke en død cron.
+
+**Nyere deploy der indeholder SHA'en er bevis (#6859, ejer 18/10):** Vercel og
+Railway bygger ikke altid hver main-SHA. Målt 18/10: Vercel lavede aldrig et
+production-deploy af netop den verificerede SHA; det næste deploy indeholdt den,
+men verify ventede 40 min til timeout. `Wait for Vercel + Railway deployments`
+godtager derfor også et READY production-deploy af en nyere main-SHA, der
+indeholder target-SHA'en (`git merge-base --is-ancestor`, kandidaten skal ligge
+på `origin/main`; checkoutet henter main én gang, hvis kandidaten mangler).
+Vercel og Railway uden token: `scripts/ci/deploy-coverage.mjs` (tjekkes ca. hvert
+minut for at spare API-kvoten). Railway med token: `scripts/railway-deploy-status.mjs`
+(et afløst `REMOVED`-deploy er dækket). En fejlet build af target-SHA'en selv er
+stadig rød. Output `vercel_sha` er SHA'en hvis build er live; Sentry-source-map-
+tjekket bruger den, fordi et dækkende deploy uploader under sin egen SHA.
 
 Heartbeat-læsningen filtrerer på registry-slugs (`job_slug=in.(…)`), sorterer
 og begrænser til registry-størrelse + 1, så fremmede eller forældede rækker
@@ -387,9 +410,9 @@ target-checkoutet) deployer intet og har ingen cron-påvirkning; uenighed mellem
 de to kilder fejler lukket. Fejler scriptet på topniveau, logges årsagen uden
 secrets (kendte secret-værdier og Bearer-tokens maskeres, JSON-fejl citeres ikke).
 
-Merge-køens `-DeployVerifyTimeoutMinutes` (140) ligger over Deploy verify-jobbets
-`timeout-minutes` (130), så et helt attempt kan nå at blive færdigt; en test
-holder de to tal afstemt.
+Merge-køens `-DeployVerifyTimeoutMinutes` (140) ligger over release-jobbets
+`timeout-minutes` (50), så flere pending-attempts kan nå at blive færdige; en test
+holder de to tal afstemt. Cron-jobbet har sin egen grænse (90 min, trinnet 80).
 
 ---
 

@@ -62,6 +62,9 @@
     "label": "Idioma",
     "danish": "Dansk",
     "english": "English",
+    "fr": "Français",
+    "es": "Español",
+    "nl": "Nederlands",
     "switchTooltip": "Cambiar idioma"
   },
   "actions": {

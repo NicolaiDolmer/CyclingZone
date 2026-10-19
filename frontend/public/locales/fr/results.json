@@ -8,6 +8,7 @@
   "tabs": {
     "latest": "Derniers",
     "archive": "Archives",
+    "raceHistory": "Historique des courses",
     "points": "Points et gains"
   },
   "latest": {
@@ -29,9 +30,18 @@
   },
   "hub": {
     "moreTitle": "Plus dans Résultats",
-    "standings": { "label": "Classement", "desc": "Classement des équipes pour la saison en cours" },
-    "riderRankings": { "label": "Classement des coureurs", "desc": "Résultats individuels de tous les coureurs" },
-    "seasonSnapshot": { "label": "Instantané de la saison", "desc": "Calendrier, classement final et vainqueurs de la saison" }
+    "standings": {
+      "label": "Classement",
+      "desc": "Classement des équipes pour la saison en cours"
+    },
+    "riderRankings": {
+      "label": "Classement des coureurs",
+      "desc": "Résultats individuels de tous les coureurs"
+    },
+    "seasonSnapshot": {
+      "label": "Instantané de la saison",
+      "desc": "Calendrier, classement final et vainqueurs de la saison"
+    }
   },
   "loadingAria": "Chargement des résultats",
   "emptyNoSeason": "Aucune saison en cours. Les résultats apparaîtront ici dès que la saison sera lancée",
@@ -47,5 +57,45 @@
   "emptyNoResults": "Aucun résultat de course importé pour l'instant cette saison",
   "loadError": "Impossible de charger les résultats",
   "loadErrorBody": "Rien n'a été perdu. Essaie de recharger la page.",
-  "retry": "Réessayer"
+  "retry": "Réessayer",
+  "raceHistory": {
+    "tableLabel": "Historique des courses",
+    "searchPlaceholder": "Rechercher une course",
+    "poolLabel": "Division",
+    "count": "{count, plural, one {# course} other {# courses}}",
+    "showing": "{from}-{to} sur {total}",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "seasonShort": "S{number}",
+    "stages": "{count, plural, one {# étape} other {# étapes}}",
+    "oneDay": "Course d'un jour",
+    "place": "{rank, selectordinal, one {#er} two {#e} few {#e} other {#e}}",
+    "notPlaced": "Pas dans les résultats",
+    "noWinner": "Aucun vainqueur enregistré",
+    "noRoute": "Parcours non enregistré",
+    "allEditions": "Les {count} éditions",
+    "firstEdition": "Première édition",
+    "th": {
+      "race": "Course",
+      "champion": "Tenant du titre",
+      "championShort": "Champion",
+      "best": "Ton meilleur",
+      "bestShort": "Meilleur",
+      "terrain": "Terrain",
+      "winners": "Vainqueurs précédents"
+    },
+    "empty": {
+      "title": "Choisis une autre division",
+      "desc": "Aucune course n'est encore terminée dans cette division.",
+      "action": "Afficher {pool}",
+      "latest": "Voir les derniers résultats"
+    },
+    "emptySearch": {
+      "title": "Essaie une autre recherche",
+      "desc": "Aucune course terminée ne correspond à ce nom.",
+      "action": "Effacer la recherche"
+    },
+    "error": "L'historique des courses n'a pas pu se charger. Rien n'a été perdu.",
+    "retry": "Réessayer"
+  }
 }

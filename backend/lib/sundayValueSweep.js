@@ -34,8 +34,11 @@
 //
 // TIDSPUNKTET (#5842, ejer 28/9): ét fast tidspunkt hver søndag, et sted
 // mellem kl. 14 og 20 dansk tid, aldrig om morgenen. Timen bor i
-// economyConstants.js (SUNDAY_VALUE_FROM_HOUR). Det præcise klokkeslæt
-// bekræftes af ejeren; 14 er pladsholderen indtil da.
+// economyConstants.js (SUNDAY_VALUE_FROM_HOUR). Ejeren bekræftede kl. 14:00
+// den 18/10 (#6858). Siden #6858 planlægger cron.js jobbet efter dansk vægur
+// (lib/wallClockScheduler.js, skemaet SUNDAY_VALUE_WALL_CLOCK i
+// cronMonitorRegistry.js): præcis søndag 14:00, derefter et genforsøg hver hele
+// time til midnat. Gaten herunder er uændret og står som andet lag (boot-runs).
 //
 // SKIFTEDAGEN (#5842, ejer 28/9: "ingen to opdateringer næste sæsonskifte").
 // Sæsonskiftet skriver selv ingen værdier længere (riderProgressionEngine.js),
