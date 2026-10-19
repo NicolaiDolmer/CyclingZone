@@ -102,7 +102,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6156
     verified: 2026-10-19
-    note: Flag race_form_peaks oprettes off af migrationen; flag-feltet sættes efter merge.
+    note: Flaget oprettes off ved merge.
     decision: taend
     decide_by: 2026-10-25
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
