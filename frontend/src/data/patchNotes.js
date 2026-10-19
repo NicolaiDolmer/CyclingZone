@@ -38,6 +38,24 @@ export const PATCHES = [
           6911,
           6904
         ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Reputation you can read",
+          "body": "A rider's reputation now shows as a level with a bar to the next one, for example 3 / 20 to Known. Tap it to see what moved it and how many points each result gave."
+        },
+        "da": {
+          "title": "Omdømme du kan læse",
+          "body": "En rytters omdømme vises nu som et niveau med en bjælke mod det næste, fx 3 / 20 til Kendt. Tryk på det for at se, hvad der flyttede det, og hvor mange point hvert resultat gav."
+        },
+        "refs": [
+          6910,
+          6905
+        ]
       }
     ]
   },
