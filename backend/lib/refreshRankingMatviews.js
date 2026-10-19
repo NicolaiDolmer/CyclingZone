@@ -76,7 +76,10 @@ const runRefreshQueued = createRankingRefreshQueue();
 // Requests during a pass share one fresh follow-up, preserving later DB writes.
 export function refreshRankingMatviewsSafe(supabase, options = {}) {
   return runRefreshQueued(supabase, async () => (await runRankingRefreshWork(supabase,
-    (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { ...options, renewLease, ownerToken, targetVersion }), { ...options, force: true })) === true, 1);
+    (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, {
+      ...options, now: options.now ?? options.nowFn?.() ?? options.testNowFn?.() ?? new Date(),
+      renewLease, ownerToken, targetVersion,
+    }), { ...options, force: true })) === true, 1);
 }
 
 async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now } = {}) {
@@ -107,7 +110,7 @@ async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewL
   }
 
   // The fenced database acknowledgement atomically updates generation + heartbeat.
-  await runRankingShadowPass(supabase, { ownerToken, targetVersion, captureExceptionFn, renewLease, now: now?.getTime() });
+  await runRankingShadowPass(supabase, { ownerToken, targetVersion, captureExceptionFn, renewLease, now: now.getTime() });
   return true;
 }
 

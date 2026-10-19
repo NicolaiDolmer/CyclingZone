@@ -682,3 +682,19 @@ test('#6765: unchanged ticks drain shadow work without a legacy refresh', async 
   assert.equal(await rawGated(db, { now: FIXED_NOW, clock: () => 0, heartbeatNowFn: () => FIXED_NOW, logger: quietLogger }), true);
   assert.deepEqual(calls, ['get_ranking_refresh_work_state','apply_ranking_deltas','check_ranking_shadow_parity']);
 });
+test('#6765: Safe forwards its injected nowFn into daily shadow cadence', async () => {
+  const db=createMockSupabase();
+  const legacyControl=db._controlRpc;
+  let parityCalls=0;
+  db._controlRpc=(name,args)=>{
+    if(name==='apply_ranking_deltas') return {data:{pending:false},error:null};
+    if(name==='check_ranking_shadow_parity') {parityCalls++;return {data:{status:'equal'},error:null};}
+    return legacyControl(name,args);
+  };
+  let now=new Date('2026-10-04T10:00:00Z');
+  const options={nowFn:()=>now,testNowFn:()=>now};
+  assert.equal(await rawSafe(db,options),true);
+  now=new Date('2026-10-05T10:00:00Z');
+  assert.equal(await rawSafe(db,options),true);
+  assert.equal(parityCalls,2,'a full injected day elapses independently of host time');
+});

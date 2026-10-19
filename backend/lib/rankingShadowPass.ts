@@ -2,7 +2,7 @@
 type RpcResult = { data: unknown; error: { code?: string; message: string } | null };
 type Client = { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<RpcResult> };
 type Options = {
-  ownerToken?: string; targetVersion?: number | string; now?: number;
+  ownerToken?: string; targetVersion?: number | string; now: number;
   parityEveryPass?: boolean;
   renewLease?: () => Promise<boolean>;
   captureExceptionFn?: (error: Error, context: { tags: Record<string,string>; extra: Record<string,unknown> }) => void;
@@ -11,10 +11,10 @@ const lastParity = new WeakMap<object,number>();
 const DAY_MS=24*60*60*1000;
 
 export async function runRankingShadowPass(client: Client, {
-  ownerToken, targetVersion, now=Date.now(),
+  ownerToken, targetVersion, now,
   parityEveryPass=process.env.RANKING_SHADOW_PARITY_EVERY_PASS==='true',
   captureExceptionFn, renewLease,
-}: Options = {}): Promise<boolean> {
+}: Options): Promise<boolean> {
   try {
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost before shadow apply');
     const {data,error}=await client.rpc('apply_ranking_deltas',{
