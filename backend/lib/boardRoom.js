@@ -926,7 +926,11 @@ export async function buildBoardRoomPayload({
       }
 
       const achievedDisplay = formatGoalDisplayValue(evaluation?.actual);
-      const targetDisplay = formatGoalDisplayValue(evaluation?.target ?? goal?.target);
+      // #6903: gældsmålets krav er nettostilling >= 0 (goal.target = 0). Evalueringens
+      // target er score-kurvens buffer (en sæsons lønsum) og må ikke vises som målet.
+      const targetDisplay = formatGoalDisplayValue(goal?.type === "no_outstanding_debt"
+        ? (goal?.target ?? 0)
+        : (evaluation?.target ?? goal?.target));
 
       return {
         // #4578 · goal_key (indholdsbaseret) i stedet for den tidligere
