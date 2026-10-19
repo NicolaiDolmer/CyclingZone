@@ -2802,7 +2802,10 @@
         "updated_at",
         "terrain_archetype",
         "retired_at",
-        "squad"
+        "squad",
+        "race_identity_type",
+        "signature",
+        "authored_route"
       ]
     },
     "race_results": {

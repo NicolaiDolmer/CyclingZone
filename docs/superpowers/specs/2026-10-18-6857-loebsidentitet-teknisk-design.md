@@ -18,6 +18,13 @@ Versionsstyret kilde: `database/seed/race_identity.json` + `backend/scripts/appl
 
 Ordforråd i den nye rene fil `backend/lib/raceIdentityTypes.js`: `RACE_IDENTITY_TYPES`, `SIGNATURE_KINDS`, `TIER_IDENTITY_DISTRIBUTION` (ejerens tabel A), `validateSignature()` og `validateAuthoredRoute()`.
 
+### L1-kontrakt (19/10)
+Validatorerne returnerer `true` eller kaster `TypeError` med feltsti. Kun eksplicit `null` betyder legacy; manglende felter, ukendte nøgler, numeriske strenge og ikke-endelige tal afvises. Signaturens `climb`/`summit_finish` kræver navn, kategori, længde, gradient, stage_hint og boolean summit_finish (true for summit_finish-kind). `itt`/`prologue` kræver band flat/hilly; prologue kræver first. `sector` kræver surface cobbles/gravel, navn, længde og stage_hint. Authored route bruger eksisterende climb/crest_km-, sprint/km- og sector/start_km-former; alle placeringer skal ligge inden for ruten. Afledte felter må ikke forfattes.
+
+Seed-envelope: `version: 1`, beskrivende `schema`, `examples` og `entries`. Kun entries anvendes; L1 leverer tom entries og tre syntetiske eksempler. Hver række kræver external_id og alle tre nullable identitetsfelter. Hele filen og alle katalogreferencer valideres før første mutation; dubletter og ukendte IDs stopper. Type/signatur kræver stage_race; authored_route kræver single med katalogklassen Monuments. `--apply` er eksplicit; ingen andre flag end `--file` accepteres. Skrivninger matches på katalogets id, kontrollerer én returneret række og er genkørbare; en netværksfejl under skrivning kan efterlade en delvis anvendelse (antal afsluttede skrivninger står i fejlen).
+
+Tabel A gælder korte etapeløb: D1's 13 inkluderer de 3 GT-optakter; de tre Grand Tours er udenfor. Snapshot-kolonnelisten udvides til den kommende migration uden at ændre tidspunktet for seneste prod-udtræk. Fixturefelter er null, og API/generator er uændrede. Lokal migrationstest: `database/manual/2026-10-19-6857-local-pg17-test.ps1`. Ingen patch notes/FEATURE_REGISTRY-ændring i L1: ingen spilleradfærd eller flag aktiveres; releasekommunikation tilhører den samlede levering.
+
 ## 2. Generatorændringer
 Hver type har et fast garanti-sæt, filler-vægte og en ordnings-arketype. Det lægges i en ny tabel `IDENTITY_PROFILES` i `raceStageProfileGenerator.js`, som erstatter `archetypeFor(race)` i S5-stien, når typen er sat. v5 forbliver bit-identisk.
 
