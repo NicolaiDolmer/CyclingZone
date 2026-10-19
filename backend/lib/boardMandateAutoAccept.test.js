@@ -106,13 +106,7 @@ function makeCronSupabase({
       if (table === "seasons") {
         // #6773 · isMandateSeasonEnded slår op på id/number; uden fixtures
         // findes sæsonen ikke (= ikke afsluttet), som før.
-        const filters = {};
-        const chain = {
-          eq(col, value) { filters[col] = value; return chain; },
-          order: () => ({ data: [], error: null }),
-          maybeSingle: async () => ({ data: Object.keys(filters).length ? (applyFilters(seasons, filters)[0] ?? null) : null, error: null }),
-        };
-        return { select: () => chain };
+        return { select: () => selectChain(seasons) };
       }
       if (table === "riders") return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
       if (table === "season_standings") {

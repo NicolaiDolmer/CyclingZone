@@ -48,6 +48,7 @@ Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekani
 
 **Mandatets livscyklus pr. sæson (#6773, 17/10):**
 - Et hold har højst ét gældende mandat: det `active` mandat for den **aktive sæson**. Boardroom, bonusmålet og årsmødet vælger altid den aktive sæsons mandat (falder tilbage til nyeste sæson, hvis der ingen aktiv sæson er).
+- Under sæsonskiftets overlap med flere aktive sæsoner vælger Boardroom den med højest sæsonnummer via `loadSingleActiveSeason`. Samme sæson bruges til mandat, målkontekst, milepæle og bonustilbud; `upcoming` vælges ikke (#6876).
 - Ved sæsonskiftet lukkes alle åbne mandater for afsluttede sæsoner (`closeEndedSeasonMandates`): `active` → `completed`, `proposed` → `lapsed`. Kun status ændres; tillid, kvitteringer og tilfredshed røres ikke.
 - Et forslag for en afsluttet sæson kan ikke underskrives (fejlkode `board_mandate_season_ended`, en+da).
 - Bonusmål (`source: 'bonus_offer'`) skrives til den aktive sæsons mandat. Engangsreparationen af S3-mandater (`closeStaleMandates6773.mjs`, ejer-gated) flytter bonusmål fra et gammelt mandat til holdets aktuelle, før det gamle lukkes.
