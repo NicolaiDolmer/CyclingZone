@@ -188,3 +188,126 @@ test('every waiting step in the queue is stall-guarded and stops through Stop-Qu
   const stop = source.slice(source.indexOf('function Stop-QueueStall'), source.indexOf('function Get-DeployGateAction'));
   assert.match(stop, /exit 1\n/);
 });
+
+// #6081: exercise the production wait with a fixed clock and scripted API reads.
+function ciStatusFixture(observations, { timeout = 1 } = {}) {
+  const json = JSON.stringify(observations).replaceAll("'", "''");
+  return pwsh(`
+    Set-StrictMode -Version Latest; $ErrorActionPreference='Stop';
+    $DryRun=$false; $Repo='fixture/repo'; $script:queueStall=$null;
+    $script:clock=[DateTime]::Parse('2026-10-19T12:00:00Z'); $script:views=0;
+    $observations=ConvertFrom-Json '${json}';
+    ${load(['Wait-ForWorkflowRun', 'Wait-BatchCi'])}
+    function Invoke-GhWithRetry {
+      param([string[]]$GhArgs,[switch]$TolerateFailure)
+      if($GhArgs[1] -eq 'list'){ return '[{"databaseId":7,"headSha":"${sha}"}]' }
+      if($GhArgs[1] -eq 'view'){
+        $index=[Math]::Min($script:views, $observations.Count-1); $script:views++;
+        if($null -eq $observations[$index]){return $null}
+        return ($observations[$index]|ConvertTo-Json -Depth 6 -Compress)
+      }
+      throw 'Unexpected operation'
+    }
+    $ok=Wait-ForWorkflowRun -WorkflowFile 'ci.yml' -Sha '${sha}' -TimeoutMinutes ${timeout} -Label 'CI (main)' -Now {$script:clock} -Pause {param($Seconds) $script:clock=$script:clock.AddSeconds($Seconds)};
+    Write-Output ('RESULT='+(@{ok=$ok;views=$script:views}|ConvertTo-Json -Compress));
+  `);
+}
+const ciRun = (status, conclusion = null) => ({ status, conclusion, jobs: [] });
+
+test('#6081 queued/in_progress and transient API errors wait until completed success', () => {
+  const result = ciStatusFixture([ciRun('queued'), null, ciRun('in_progress'), ciRun('completed', 'success')], { timeout: 2 });
+  assert.equal(result.status, 0);
+  assert.deepEqual(result.result, { ok: true, views: 4 });
+  assert.doesNotMatch(result.stdout, /ROED/);
+});
+
+test('#6081 a pending timeout stops without calling CI red', () => {
+  for (const status of ['queued', 'in_progress']) {
+    const result = ciStatusFixture([ciRun(status)]);
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.result, { ok: false, views: 3 });
+    assert.match(result.stdout, /VENT.*timeout/i);
+    assert.doesNotMatch(result.stdout, /ROED/);
+  }
+});
+
+test('#6081 only completed failure is red; other conclusions stop without success', () => {
+  for (const conclusion of ['success', 'failure', 'cancelled', 'timed_out', null]) {
+    const result = ciStatusFixture([ciRun('completed', conclusion)]);
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.result, { ok: conclusion === 'success', views: 1 });
+    assert.equal(result.stdout.includes('ROED'), conclusion === 'failure', String(conclusion));
+  }
+});
+
+test('#6081 an unfinished run cannot be classified from a stale failure conclusion', () => {
+  const result = ciStatusFixture([ciRun('in_progress', 'failure'), ciRun('completed', 'success')]);
+  assert.equal(result.status, 0);
+  assert.deepEqual(result.result, { ok: true, views: 2 });
+  assert.doesNotMatch(result.stdout, /ROED/);
+});
+
+test('#6081 batch results distinguish failed CI from missing verification', () => {
+  for (const state of ['success', 'failure', 'pending', 'blocked']) {
+    const result = pwsh(`
+      Set-StrictMode -Version Latest; $ErrorActionPreference='Stop';
+      $script:batchShas=@('sha'); $script:ciResults=@{}; $script:queueStall=$null;
+      $CiTimeoutMinutes=25; $StallMinutes=45;
+      ${load(['Wait-BatchCi'])}
+      function Wait-ForWorkflowRun { $script:workflowRunState='${state}'; return ('${state}' -eq 'success') }
+      $ok=Wait-BatchCi;
+      Write-Output ('RESULT='+(@{ok=$ok;unverified=$script:ciUnverified;ci=$script:ciResults['sha']}|ConvertTo-Json -Compress));
+    `);
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.result, {
+      ok: state === 'success',
+      unverified: ['pending', 'blocked'].includes(state),
+      ci: state === 'success' ? true : state === 'failure' ? false : null,
+    });
+  }
+});
+
+test('#6081 the real batch stop reports confirmed failures even alongside unverified runs', () => {
+  const start = source.indexOf('$ciOk = Wait-BatchCi');
+  const stopBlock = source.slice(start, source.indexOf('$script:batchMerged = @()', start));
+  for (const states of [['failure', 'pending'], ['pending', 'failure'], ['pending', 'blocked']]) {
+    const result = pwsh(`
+      Set-StrictMode -Version Latest; $ErrorActionPreference='Stop';
+      $script:batchShas=@('sha1','sha2'); $script:ciResults=@{}; $script:queueStall=$null;
+      $CiTimeoutMinutes=25; $StallMinutes=45; $batchLabel='#1, #2';
+      $states=@('${states.join("','")}'); $script:reads=0;
+      ${load(['Wait-BatchCi'])}
+      function Wait-ForWorkflowRun {
+        $script:workflowRunState=$states[$script:reads]; $script:reads++;
+        return ($script:workflowRunState -eq 'success')
+      }
+      function Write-TrainCulprit { Write-Output 'CULPRIT=ci' }
+      function Stop-QueueStall { throw 'Unexpected STALL' }
+      ${stopBlock}
+    `);
+    assert.equal(result.status, 1, result.stdout);
+    assert.equal(result.stdout.includes('ROED'), states.includes('failure'), result.stdout);
+    assert.equal(result.stdout.includes('CULPRIT=ci'), states.includes('failure'), result.stdout);
+  }
+});
+
+test('#6081 real culprit serialization preserves unknown CI before a confirmed failure', () => {
+  const scriptsDir = fileURLToPath(new URL('.', import.meta.url)).replaceAll("'", "''");
+  // AST extraction has no script filename; inject only the classifier's directory.
+  const loader = load(['Write-TrainCulprit']).replace(
+    'Invoke-Expression $fn.Extent.Text;',
+    'Invoke-Expression ($fn.Extent.Text.Replace(' + "'$PSScriptRoot', " + '"' + "'" + scriptsDir + "'" + '"));',
+  );
+  const result = pwsh(`
+    $ErrorActionPreference='Stop';
+    ${loader}
+    $script:ciResults=@{sha1=$null;sha2=$false};
+    $script:trainEntries=@(
+      [pscustomobject]@{number=1;sha='sha1';touchesBackend=$false;touchesRailway=$false;touchesVercel=$false},
+      [pscustomobject]@{number=2;sha='sha2';touchesBackend=$false;touchesRailway=$false;touchesVercel=$false}
+    );
+    Write-TrainCulprit 'ci';
+  `);
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /Mistaenkte i merge-raekkefoelge: #1, #2\./);
+});

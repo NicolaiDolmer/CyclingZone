@@ -320,6 +320,7 @@ function Wait-ForWorkflowRun {
     return $true
   }
 
+  $script:workflowRunState = 'pending'
   $deadline = (& $Now).AddMinutes($TimeoutMinutes)
   # #6859: fremskridt = en ny observation (koersel oprettet, status eller et
   # job-/trin-skift). Samme observation i -StallMinutes = STALL.
@@ -363,7 +364,11 @@ function Wait-ForWorkflowRun {
     $viewJson = Invoke-GhWithRetry @('run', 'view', "$runId", '--repo', $Repo, '--json', 'status,conclusion,jobs') -TolerateFailure
     $run = $null
     if ($viewJson) { try { $run = ($viewJson -join "") | ConvertFrom-Json } catch {} }
-    if ($run -and $run.status -eq 'completed') { $ok = ($run.conclusion -eq 'success'); break }
+    if ($run -and $run.status -eq 'completed') {
+      $ok = ($run.conclusion -eq 'success')
+      $script:workflowRunState = if ($ok) { 'success' } elseif ($run.conclusion -eq 'failure') { 'failure' } else { 'blocked' }
+      break
+    }
     $sig = "ulaeselig"
     if ($run) {
       $sig = "$($run.status)"
@@ -381,8 +386,12 @@ function Wait-ForWorkflowRun {
   }
   if ($ok) {
     Write-Host "  [ok] '$Label' groen for $Sha." -ForegroundColor Green
+  } elseif ($script:workflowRunState -eq 'failure') {
+    Write-Host "  [FEJL] '$Label' ROED for $Sha (run $runId, completed/failure)." -ForegroundColor Red
+  } elseif ($script:workflowRunState -eq 'blocked') {
+    Write-Host "  [STOP] '$Label' afsluttet uden success for $Sha (run $runId, conclusion: $($run.conclusion))." -ForegroundColor Yellow
   } else {
-    Write-Host "  [FEJL] '$Label' ROED for $Sha (run $runId)." -ForegroundColor Red
+    Write-Host "  [VENT] '$Label' endnu ikke verificeret for $Sha (run $runId): timeout efter $TimeoutMinutes min." -ForegroundColor Yellow
   }
   return $ok
 }
@@ -677,7 +686,7 @@ function Write-TrainCulprit([string]$Failure) {
   if ($entries.Count -eq 0) { return }
   $prs = @($entries | ForEach-Object {
     $ok = $null
-    if ($script:ciResults.ContainsKey($_.sha)) { $ok = [bool]$script:ciResults[$_.sha] }
+    if ($script:ciResults.ContainsKey($_.sha)) { $ok = $script:ciResults[$_.sha] }
     [ordered]@{ number = $_.number; ciOk = $ok; touchesBackend = $_.touchesBackend; touchesRailway = $_.touchesRailway; touchesVercel = $_.touchesVercel }
   })
   $inputJson = ConvertTo-Json -InputObject ([ordered]@{ failure = $Failure; prs = $prs }) -Depth 4 -Compress
@@ -705,12 +714,19 @@ function Write-TrainCulprit([string]$Failure) {
 # main annulleres ikke, saa det koster stort set ingen ekstra tid).
 function Wait-BatchCi {
   $allOk = $true
+  $script:ciUnverified = $false
   foreach ($s in $script:batchShas) {
     $ok = Wait-ForWorkflowRun -WorkflowFile "ci.yml" -Sha $s -TimeoutMinutes $CiTimeoutMinutes -Label "CI (main) $($s.Substring(0, [Math]::Min(8, $s.Length)))" -StallMinutes $StallMinutes
     # #6859: en haengende CI er ikke roed - intet CI-resultat, kalderen stopper (STALL).
     if ($script:queueStall) { return $false }
     # #6859: resultat pr. SHA, saa et roedt tog kan pege den skyldige PR ud.
-    $script:ciResults[$s] = [bool]$ok
+    if ($script:workflowRunState -in @('success', 'failure')) {
+      $script:ciResults[$s] = [bool]$ok
+    } else {
+      # #6081: timeout/annulleret/ukendt er ingen observeret CI-fejl.
+      $script:ciResults[$s] = $null
+      $script:ciUnverified = $true
+    }
     if (-not $ok) { $allOk = $false }
   }
   return $allOk
@@ -728,7 +744,7 @@ function Exit-Queue([int]$Code) {
     if ($ok) {
       Write-Host "  CI (main) groen efter $label. Deploy-verifikation er IKKE ventet - tjek 'Deploy verify' for $($script:lastMergedSha)." -ForegroundColor Yellow
     } else {
-      Write-Host "  CI (main) er ROED eller ikke faerdig efter $label - fix main foer naeste merge." -ForegroundColor Red
+      Write-Host "  CI (main) er ikke verificeret groen efter $label - kontroller koerslen foer naeste merge." -ForegroundColor Red
       if ($Code -eq 0) { $Code = 1 }
     }
   }
@@ -869,6 +885,10 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $ciOk = Wait-BatchCi
   if (-not $ciOk) {
     if ($script:queueStall) { Stop-QueueStall }
+    if ($script:ciUnverified -and -not ($script:ciResults.Values -contains $false)) {
+      Write-Host "STOP: main-CI er endnu ikke verificeret groen efter $batchLabel. Kontroller koerslens status foer naeste merge." -ForegroundColor Yellow
+      exit 1
+    }
     Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
     Write-TrainCulprit 'ci'
     exit 1
