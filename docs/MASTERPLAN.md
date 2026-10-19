@@ -15,11 +15,11 @@ Kun det der ødelægger spillet i dag. Tomt = godt.
 
 ## 🟠 Nu · højst 5
 
-1. **S5-sæsonskifte uden fejl 25/10:** sidste træningsdato afregnet før skiftet (DST-audit #6862) · mandat-oprydning #6773 · ungdom S5 #6667 #6668 #6710 (dry-runs før 28/10) · board under skiftet #6876. (Ingen deploy-frys; ejer 19/10.)
-2. **S5-profiler + løbsidentitet:** #6369 opfølgning #6748 i `s5_profiles_v2` (tænding venter ejer, #6819/#6820) · **løbsidentitet #6857: dry-run til ejeren 21/10**.
+1. **S5-sæsonskifte uden fejl 25/10:** vagt for sidste træningsdato merget 19/10 (#6900); tidspunkt for skiftet (afregn-nu-knap vs. ca. 20:30) afgøres 20/10 (#6898) · mandat-oprydning #6773 · ungdom S5 #6667 #6668 #6710 (dry-runs før 28/10) · board under skiftet #6876. (Ingen deploy-frys; ejer 19/10.)
+2. **S5-ruter + løbsidentitet #6857:** L1 merget 19/10 (#6907); L2+L3 → **prøvekørsel til ejeren 21/10**, inkl. motoren testet på de nye ruter (#6909); L4 navne/Hjælp.
 3. **Udvikling 2.0 del 1 #6499** (#6110): prøvekørsel mod prod til ejeren 23/10, tænding kun på ordret go (effekt 25/10).
 4. **Træningens rest + lovet med dato:** #6210 maks +1 (PR #6248) · #5947 historik · #5965 · #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106.
-5. **Løbsbibliotek v2 til beta** (`race_library_v2`, #6680): #6514 · #6872 · #6875 (merget 19/10).
+5. **Beta → live:** løbskort/Løbshistorik (`race_library_v2`) tændes sammen med ikoner + Kalender | Tabel #6683 · etapeside v2, træning for flere ryttere, push: gennemtest og tænd på ejer-go.
 
 ## 💰 Forretning · fast torsdag (SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 
