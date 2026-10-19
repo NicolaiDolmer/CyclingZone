@@ -121,10 +121,19 @@ export async function recordRiderOwnershipEvent(supabase, event) {
  */
 export async function attributeTeamExitEvent(supabase, { riderId, fromTeamId, since, reason, relatedEntityType = null, actorType = null, actorId = null }) {
   try {
-    const { data, error } = await supabase.from("rider_ownership_events")
-      .update({ reason, related_entity_type: relatedEntityType, actor_type: actorType, actor_id: actorId })
+    // Kun den nyeste udgangs-række: en ældre udgang i samme vindue må aldrig omdøbes.
+    const { data: rows, error: findError } = await supabase.from("rider_ownership_events")
+      .select("id")
       .eq("rider_id", riderId).eq("from_team_id", fromTeamId).is("to_team_id", null)
       .eq("actor_type", "system").gte("created_at", since)
+      .order("created_at", { ascending: false }).order("id", { ascending: false })
+      .limit(1);
+    if (findError) throw new Error(normalizeSupabaseErrorMessage(findError.message));
+    const id = rows?.[0]?.id;
+    if (id == null) return { ok: true, updated: 0 };
+    const { data, error } = await supabase.from("rider_ownership_events")
+      .update({ reason, related_entity_type: relatedEntityType, actor_type: actorType, actor_id: actorId })
+      .eq("id", id).eq("actor_type", "system")
       .select("id");
     if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
     return { ok: true, updated: data?.length ?? 0 };
