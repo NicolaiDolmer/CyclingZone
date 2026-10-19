@@ -25,10 +25,17 @@ test("#6839: training_in_progress sets running, not an error", () => {
 test("#6839: polling stops when the date is settled, refreshes once, and has a ceiling", () => {
   assert.match(client, /TRAIN_NOW_RUNNING_POLL_MS = 10_000/);
   assert.match(client, /TRAIN_NOW_RUNNING_MAX_MS = 15 \* 60_000/);
-  assert.match(client, /next\?\.settled === true/);
-  assert.match(client, /if \(done\) \{\s*try \{ await onSettled\?\.\(\)/);
-  assert.match(client, /clearInterval\(timer\)/);
+  assert.match(client, /TRAIN_NOW_STATUS_TIMEOUT_MS = 8_000/);
+  assert.match(client, /next\?\.settled === true && stop\(\)/, "only the call that stops refreshes");
   assert.match(client, /return \{ status, result, error, pressing, running, press, reload: load \}/);
+});
+
+test("#6839 (Codex P2): the ceiling is its own timer and calls never overlap", () => {
+  assert.match(client, /const ceiling = setTimeout\(stop, TRAIN_NOW_RUNNING_MAX_MS\)/,
+    "the ceiling does not wait for a status call");
+  assert.match(client, /if \(stopped \|\| polling\) return;/, "one status call at a time");
+  assert.match(client, /Promise\.race\(\[\s*load\(\)/, "each status call is time-bounded");
+  assert.match(client, /clearTimeout\(ceiling\)/);
 });
 
 test("#6839: the page shows Running… on the buttons and the status line", () => {

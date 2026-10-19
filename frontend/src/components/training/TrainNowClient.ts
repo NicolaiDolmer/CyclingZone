@@ -15,6 +15,7 @@ const PATH = "/api/training/train-now";
 // #6839: while the evening run holds the date, ask again this often until it is settled.
 export const TRAIN_NOW_RUNNING_POLL_MS = 10_000;
 export const TRAIN_NOW_RUNNING_MAX_MS = 15 * 60_000;
+export const TRAIN_NOW_STATUS_TIMEOUT_MS = 8_000;
 
 export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> | void } = {}) {
   const [status, setStatus] = useState<TrainNowStatus>(TRAIN_NOW_OFF);
@@ -36,26 +37,38 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
 
   useEffect(() => { load(); }, [load]);
 
-  // #6839: poll until the date is settled, then refresh the page once. Stops by
-  // itself after TRAIN_NOW_RUNNING_MAX_MS so a stuck run never polls forever.
+  // #6839: poll until the date is settled, then refresh the page once. The ceiling
+  // is a timer of its own, so a status call that never answers cannot keep the
+  // buttons locked; one call at a time, each bounded by TRAIN_NOW_STATUS_TIMEOUT_MS.
   useEffect(() => {
     if (!running) return undefined;
-    const startedAt = Date.now();
     let stopped = false;
+    let polling = false;
+    const stop = () => {
+      if (stopped) return false;
+      stopped = true;
+      clearInterval(timer);
+      clearTimeout(ceiling);
+      setRunning(false);
+      return true;
+    };
+    const ceiling = setTimeout(stop, TRAIN_NOW_RUNNING_MAX_MS);
     const timer = setInterval(async () => {
-      if (stopped) return;
-      const next = await load();
-      const done = next?.settled === true;
-      if (done || Date.now() - startedAt > TRAIN_NOW_RUNNING_MAX_MS) {
-        stopped = true;
-        clearInterval(timer);
-        setRunning(false);
-        if (done) {
+      if (stopped || polling) return;
+      polling = true;
+      try {
+        const next = await Promise.race([
+          load(),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), TRAIN_NOW_STATUS_TIMEOUT_MS)),
+        ]);
+        if (next?.settled === true && stop()) {
           try { await onSettled?.(); } catch { /* best-effort: the next visit shows it */ }
         }
+      } finally {
+        polling = false;
       }
     }, TRAIN_NOW_RUNNING_POLL_MS);
-    return () => { stopped = true; clearInterval(timer); };
+    return () => { stopped = true; clearInterval(timer); clearTimeout(ceiling); };
   }, [running, load, onSettled]);
 
   // Synchronous in-flight guard: a second tap while the first POST is pending

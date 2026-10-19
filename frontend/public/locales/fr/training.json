@@ -72,7 +72,7 @@
     "statusPaused": "En pause",
     "statusNotYet": "Pas encore lancé",
     "statusWaiting": "Se lance tout seul à partir de {hour}:00",
-    "statusRunning": "En cours, actualise",
+    "statusRunning": "En cours, se met à jour",
     "statusReady": "Prêt à lancer",
     "runNow": "Lancer maintenant",
     "showing": "Affichage : {label}",
