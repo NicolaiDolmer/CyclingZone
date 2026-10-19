@@ -14,7 +14,7 @@ export function riderReputationProgress(value: number | null | undefined) {
   const score = Math.max(range.min, Math.min(range.max, Number(value)));
   return {
     nextBand: range.next,
-    current: Math.round(score),
+    current: Math.floor(score),
     target: range.max,
     percent: ((score - range.min) / (range.max - range.min)) * 100,
   };
