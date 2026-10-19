@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Board",
         "en": {
           "title": "Debt goal shows the right target",
-          "body": "The board's debt goal now shows 0 CZ$ as the target. Before, it showed a wage-bill figure that was never the requirement."
+          "body": "The board's debt goal now shows its real target: no outstanding debt at season end. Before, it showed a wage-bill figure that was never the requirement."
         },
         "da": {
           "title": "Gældsmålet viser det rigtige mål",
-          "body": "Bestyrelsens gældsmål viser nu 0 CZ$ som mål. Før stod der et tal for lønsummen, som aldrig var kravet."
+          "body": "Bestyrelsens gældsmål viser nu det rigtige mål: ingen udestående gæld ved sæsonens slutning. Før stod der et tal for lønsummen, som aldrig var kravet."
         },
         "refs": [
           6906,
@@ -46,11 +46,11 @@ export const PATCHES = [
         "topic": "Riders",
         "en": {
           "title": "Reputation you can read",
-          "body": "A rider's reputation now shows as a level with a bar to the next one, for example 3 / 20 to Known. Tap it to see what moved it and how many points each result gave."
+          "body": "A rider's reputation now shows as a level with a bar towards the next one. Tap it to see what moved it and how much each result counted."
         },
         "da": {
           "title": "Omdømme du kan læse",
-          "body": "En rytters omdømme vises nu som et niveau med en bjælke mod det næste, fx 3 / 20 til Kendt. Tryk på det for at se, hvad der flyttede det, og hvor mange point hvert resultat gav."
+          "body": "En rytters omdømme vises nu som et niveau med en bjælke mod det næste. Tryk på det for at se, hvad der flyttede det, og hvor meget hvert resultat talte."
         },
         "refs": [
           6910,
