@@ -668,6 +668,18 @@ test("#4579 no_outstanding_debt: reel status fra activeLoanCount", async () => {
   assert.equal(goal.awaitingData, false);
 });
 
+// #6903 (spiller 19/10): kortet viste lønsum-bufferen (fx 311.304) som "target",
+// mens kravet og forklaringen er nettostilling >= 0.
+test("#6903 no_outstanding_debt: targetDisplay er målets 0, ikke score-kurvens lønsum-buffer", async () => {
+  const goal = await payloadForGoal(
+    { type: "no_outstanding_debt", target: 0, category: "economy" },
+    { loans: [], loadGoalContext: async () => ({ wageBillPerSeason: 311304 }) },
+  );
+  assert.doesNotMatch(String(goal.targetDisplay), /311/, "lønsum-bufferen må ikke vises som mål");
+  assert.match(String(goal.targetDisplay), /^0/);
+  assert.equal(goal.receipt.countedParams.target, goal.targetDisplay, "kvitteringen viser samme mål");
+});
+
 test("#4579 signature_rider: reel status fra riders' star-score", async () => {
   const goal = await payloadForGoal(
     { type: "signature_rider", target: 1, category: "identity" },
