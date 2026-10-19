@@ -171,6 +171,30 @@ Sæsonskiftets særskilte [læser-/snapshot-bevis](audits/5692-season-rollover-s
 viser samme snapshots og læsning under concurrent writer-lock; begge forsøg
 rulles tilbage. Det er ikke en fuld løbsdagsmåling.
 
+**Inkrementel M1-skygge (#6765, design PR #6849, build-mandat 19/10):**
+De eksisterende matviews serverer fortsat; dette er ingen M2-aktivering.
+ranking_race_contrib aggregerer pr. løb/rytter/registreret hold. Summarierne
+bevarer alle kolonner, NULL-summer og nullable sæsonnøgler. Senior/ungdom følger
+løbets trup. Holdpoint følger fortsat rytterens nuværende hold; holdenes ekstra
+tal bruger registreret hold med nuværende hold som fallback. Igangværende løb
+med resultater tæller som før.
+
+Statement-triggere tilføjer køposter uden deduplikering eller delt rækkelås.
+Processoren deler cz-ranking-refresh-låsen og validerer coordinatorens lease,
+erstatter berørte bidrag og genberegner gamle/nye nøgler transaktionelt.
+Transfers fordeles til løbsposter med gammelt hold; repair/backfill fordeles til
+samme begrænsede kø. En fejl ruller også claim/sletning af køposter tilbage.
+DDL-backfill køres efter migrationens commit, aldrig under trigger-installationens
+stærke tabellåse. Sletning, genkørsel, metadataændring og TRUNCATE er kø-hændelser.
+
+Coordinatoren kører M1 efter et vellykket legacy-pas og på rene cron-ticks.
+Skyggefejl rapporteres særskilt og ændrer ikke legacy-completion/heartbeat.
+Paritet bruger ét statement-snapshot og sammenligner begge EXCEPT ALL-retninger
+for alle fire outputs; pending kø eller ændret generation udsætter kontrollen.
+Produktion kontrolleres dagligt pr. backend-klient (og efter procesgenstart),
+staging kan bruge RANKING_SHADOW_PARITY_EVERY_PASS=true. M2 kræver stadig
+staging T7 og designets særskilte observations-/ejerporte.
+
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
 boolean-overloads paa den eksisterende RPC-transport. Kun service_role maa kalde

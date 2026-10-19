@@ -75,6 +75,7 @@ function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = 
   const workQueries = [];
   let requested = 1, completed = 0, target = null, clock = () => 0, dirtyAt = 0, clockInitialized = false, lastCompleted = null, onComplete = () => {};
   const control = (name, args) => {
+    if (name === 'apply_ranking_deltas') return { data: null, error: { code: 'PGRST202', message: 'M1 schema not installed in legacy fixture' } };
     if (name === 'get_ranking_refresh_work_state') return { data: { pending: requested > completed,
       pending_age_ms: Math.max(0, clock() - dirtyAt), last_completed_at: lastCompleted }, error: null };
     if (name === 'claim_ranking_refresh_work') {
@@ -675,9 +676,9 @@ test('#5692: background finalization wakeup still respects training while within
   assert.deepEqual(db.rpcCalls, []);
 });
 
-test('#5692: unchanged ticks perform only the cheap durable state check', async () => {
+test('#6765: unchanged ticks drain shadow work without a legacy refresh', async () => {
   const calls = [];
-  const db = { async rpc(name) { calls.push(name); return { data: { pending: false, pending_age_ms: 0, last_completed_at: FIXED_NOW.toISOString() }, error: null }; } };
+  const db = { async rpc(name) { calls.push(name); return { data: name==='check_ranking_shadow_parity'?{status:'equal'}:{ pending: false, pending_age_ms: 0, last_completed_at: FIXED_NOW.toISOString() }, error: null }; } };
   assert.equal(await rawGated(db, { now: FIXED_NOW, clock: () => 0, heartbeatNowFn: () => FIXED_NOW, logger: quietLogger }), true);
-  assert.deepEqual(calls, ['get_ranking_refresh_work_state']);
+  assert.deepEqual(calls, ['get_ranking_refresh_work_state','apply_ranking_deltas','check_ranking_shadow_parity']);
 });

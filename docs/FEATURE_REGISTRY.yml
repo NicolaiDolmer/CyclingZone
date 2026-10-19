@@ -870,6 +870,8 @@ features:
     title_da: Stillinger og ranglister
     state: live
     verified: 2026-09-06
+    ssot: docs/GAME_INVARIANTS.md
+    note: "#6765 M1 adds shadow aggregates; legacy readers remain authoritative. M2 is separate."
 
   - id: results-archive
     area: stats
