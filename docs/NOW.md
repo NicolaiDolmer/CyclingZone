@@ -8,7 +8,7 @@
 >
 > **🎯 Next action:** NÆSTE CLAUDE-SESSION (DolmerPC): [`sessions/2026-10-20-startprompt.md`](sessions/2026-10-20-startprompt.md). Først: tidspunkt for skiftet 25/10 (#6898) · Codex-pladser: #6909 testport S5 · #6804 udbrudspakken trin 1 (design) · L2 · L3 (#6857) · review #6839 · første løbsfilm-gennemgang (#6914) · gennemtest beta → live. Ingen deploy-frys; færdigt før nyt.
 >
-> **19/10 (DolmerPC):** 19 merges i alt (bl.a. #6899 ranglister M1 slukket, #6900 vagt før skiftet, #6907 løbsidentitet L1, #6910 omdømme, #6911 menu, design #6813/#6843/#6849). Testport v2 kørt (privat). Ejer-beslutninger: v2-udbrudspakken #6804, jagtafstand #6814 med i v2, #6820 tændes samlet når grøn, verdensklasse-køreplan (#6914-#6919, backend A).
+> **19/10 (DolmerPC):** 21 merges i alt (+ #6921 patch 7.370, #6922 U23-fix) (bl.a. #6899 ranglister M1 slukket, #6900 vagt før skiftet, #6907 løbsidentitet L1, #6910 omdømme, #6911 menu, design #6813/#6843/#6849). Testport v2 kørt (privat). Ejer-beslutninger: v2-udbrudspakken #6804, jagtafstand #6814 med i v2, #6820 tændes samlet når grøn, verdensklasse-køreplan (#6914-#6919, backend A).
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
