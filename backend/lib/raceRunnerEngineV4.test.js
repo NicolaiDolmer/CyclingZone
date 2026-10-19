@@ -417,6 +417,7 @@ test("#6156 resolveRaceEngineV4: race_form_peaks off => motoren kaldes med formP
   off.v4Engine.simulateStage({ entrants: [] });
   assert.deepEqual(seen, [false]);
   assert.equal(off.v4Engine.version, ENGINE_VERSION_V4);
+  assert.equal(off.v4Engine.formPeaks, false, "flaget er synligt for run-identiteten");
   const on = await resolveRaceEngineV4({
     supabase: {}, race: RACE, checkV4Enabled: async () => true,
     loadEngine: async () => engine, loadOrders: async () => [], checkFormPeaksEnabled: async () => true,

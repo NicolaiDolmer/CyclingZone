@@ -70,6 +70,7 @@ import {
   raceHasStarted,
   resolveRaceRulesRevision,
   isOrdersGcRulesRevision,
+  isS5ProfilesV2OrLater,
 } from "./raceEngineRulesRevision.ts";
 // #2410 (event-log S1): deterministisk etape-tidslinje-generator — REN funktion,
 // samme build-trin som moments/passages (data er i memory). Bag flag
@@ -292,6 +293,7 @@ export async function resolveRaceEngineV4({
     // Flaget laeses een gang pr. afvikling, som motorflaget; adapteren faar vaerdien med.
     const v4Engine = formPeaks === true ? engine : {
       ...engine,
+      formPeaks: false, // #6156: med i run-identiteten (input_checksum), se buildRaceResults
       simulateStage: (args) => engine.simulateStage({ ...args, formPeaks: false }),
     };
     return { v4Engine, teamOrderRows };
@@ -663,6 +665,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         // ændrer hvilken fase (peak/payback/none) etapen rammer → skal med for at
         // to identiske inputs giver identisk output (determinisme-garantien).
         ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: stage.peakDay ?? null } : {}),
+        // #6156: race_form_peaks slukket aendrer v4's input under s5_profiles_v2; kun da
+        // med i identiteten (taendt/aeldre revisioner = uaendret checksum).
+        ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
         // #5914: troejefoererne styrer hvem der kaemper om passagerne -> input.
         // Kun naar en foerer faktisk sendes videre (bagudkompatibel checksum).
         ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
@@ -2902,6 +2907,9 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
       // S5 (#2224): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: thisStage.peakDay ?? null } : {}),
+        // #6156: race_form_peaks slukket aendrer v4's input under s5_profiles_v2; kun da
+        // med i identiteten (taendt/aeldre revisioner = uaendret checksum).
+        ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
       // #5914: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
     })),
