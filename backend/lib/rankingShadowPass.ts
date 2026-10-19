@@ -32,12 +32,12 @@ export async function runRankingShadowPass(client: Client, {
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost after shadow parity');
     const result=parity.data as {status?:string;differences?:unknown}|null;
     if(result?.status==='pending') return true;
+    if(result?.status==='equal'||result?.status==='different') lastParity.set(client,now);
     if(result?.status!=='equal') {
       const failure=new Error('Ranking shadow parity differs from legacy matviews');
       captureExceptionFn?.(failure,{tags:{lib:'rankingShadowPass'},extra:{differences:result?.differences}});
       return false;
     }
-    lastParity.set(client,now);
     return true;
   } catch(error) {
     captureExceptionFn?.(error instanceof Error?error:new Error(String(error)),{

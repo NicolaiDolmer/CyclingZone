@@ -8,7 +8,7 @@ No reader swap, production writes, flag change or player-visible change.
 - [x] Verify all columns, NULLs, corrections, transfer, metadata/deletion, truncate/rebuild, rollback and concurrent writes.
 - [x] Add coordinator shadow pass and parity reporting while preserving legacy lease/heartbeat and schema compatibility.
 - [x] Measure full refresh versus changed-race processing on identical data.
-- [ ] Migration lints, FULL verification under semaphore, preflight, independent review, guarded commit, push, one PR Refs #6765.
+- [x] Migration lints, FULL components under semaphore (Windows-safe backend batches), preflight, independent review, guarded commit, push, one PR Refs #6765. PR #6899 tracks CI/review on the pushed HEAD; no merge is included.
 
 Review focus: aggregate types and NULLs; old/new attribution; transactional queue; serialization; source-row locks; short migration locks without in-transaction backfill.
 Patch notes exempt: shadow data has no player-visible behavior. Staging T7 and M2 observation gates remain separate.

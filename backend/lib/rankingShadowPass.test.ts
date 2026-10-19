@@ -44,3 +44,19 @@ test('parity mismatch and processor failure report to Sentry without failing leg
   assert.equal(await runRankingShadowPass(failed,{now:0,captureExceptionFn}),false);
   assert.equal(errors.length,2);
 });
+test('completed mismatches obey the daily cadence while staging can check every pass',async()=>{
+  const calls:string[]=[]; const errors:unknown[]=[];
+  const client={rpc:async(name:string)=>{
+    calls.push(name);
+    return {data:name==='apply_ranking_deltas'?{pending:false}:{status:'different'},error:null};
+  }};
+  const captureExceptionFn=(e:unknown)=>{errors.push(e);};
+  assert.equal(await runRankingShadowPass(client,{now:0,captureExceptionFn}),false);
+  await runRankingShadowPass(client,{now:60000,captureExceptionFn});
+  assert.equal(calls.filter(n=>n==='check_ranking_shadow_parity').length,1);
+  assert.equal(errors.length,1,'persistent drift emits one production alert per daily check');
+  await runRankingShadowPass(client,{now:120000,captureExceptionFn,parityEveryPass:true});
+  assert.equal(calls.filter(n=>n==='check_ranking_shadow_parity').length,2);
+  await runRankingShadowPass(client,{now:120000+86400000,captureExceptionFn});
+  assert.equal(calls.filter(n=>n==='check_ranking_shadow_parity').length,3);
+});
