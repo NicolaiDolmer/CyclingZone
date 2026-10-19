@@ -40,13 +40,26 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await reputation.click();
   const details = page.getByRole("dialog", { name: "Hvorfor omdømmet flyttede sig" });
   await expect(details).toBeVisible();
+  expect(await details.evaluate((element) => element.parentElement === document.body)).toBe(true);
   await expect(details.getByText("+0,6")).toBeVisible();
   await expect(details.getByText("Preview Tour").first()).toBeVisible();
   await expect(details.getByText("+0,1")).toBeVisible();
+  await expect(details.locator("li")).toHaveCount(5);
   await expect(details.getByText("Sejre og store løb tæller mest")).toBeVisible();
-  await expect(details.getByRole("link", { name: "Sådan virker omdømme" })).toHaveAttribute("href", "/help?section=riders");
+  const helpLink = details.getByRole("link", { name: "Sådan virker omdømme" });
+  await expect(helpLink).toBeVisible();
+  await expect(helpLink).toBeInViewport();
+  await expect(helpLink).toHaveAttribute("href", "/help?section=riders");
   expect(await reputation.evaluate((element) => element.matches(":focus-visible"))).toBe(false);
-  await page.screenshot({ path: "test-results/rider-reputation-desktop.png" });
+  await page.screenshot({ path: "test-results/rider-reputation-desktop-open.png" });
+  await page.evaluate(() => window.dispatchEvent(new Event("scroll")));
+  await expect(details).toHaveCount(0);
+  await reputation.click();
+  await expect(details).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("resize")));
+  await expect(details).toHaveCount(0);
+  await reputation.click();
+  await expect(details).toBeVisible();
   await reputation.click();
   await expect(details).toHaveCount(0);
   await reputation.focus();
@@ -58,6 +71,7 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await expect(details).toBeVisible();
 
   await page.setViewportSize({ width: 375, height: 812 });
+  await reputation.click();
   await expect(details).toBeVisible();
   const mobileBounds = await details.boundingBox();
   expect(mobileBounds).not.toBeNull();
@@ -73,4 +87,10 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await expect(details).toBeVisible();
   await page.getByRole("heading", { name: "Ada Pedersen" }).click();
   await expect(details).toHaveCount(0);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await reputation.click();
+  await expect(helpLink).toBeVisible();
+  await helpLink.click();
+  await expect(page).toHaveURL(/\/help\?section=riders/);
 });

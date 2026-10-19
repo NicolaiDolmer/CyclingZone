@@ -39,7 +39,7 @@ import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
 import { riderReputationBand, riderReputationProgress, riderReputationValue } from "../../../lib/riderReputationView.ts";
 import { formatNumber } from "../../../lib/intl.js";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
-import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
+import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon, Portal } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
@@ -126,38 +126,41 @@ function StatusBanner({ banner }) {
   );
 }
 
-function ReputationEventList({ events = [], open, onClose, dialogRef }) {
+function ReputationEventList({ events = [], open, onClose, dialogRef, position }) {
   const { t } = useTranslation("rider");
   const rows = Array.isArray(events) ? events : [];
-  if (!open) return null;
+  const desktop = typeof window !== "undefined" && window.innerWidth >= 640;
+  if (!open || (desktop && !position)) return null;
   return (
-    <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} className="fixed bottom-[76px] left-4 right-4 z-overlay max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-dropdown sm:mt-2 sm:w-[320px] sm:max-h-none sm:overflow-visible">
-      <div className="flex items-center justify-between gap-3 mb-2">
-        <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
-        <button type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
+    <Portal>
+      <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} style={position ? { top: position.top, left: position.left, maxHeight: position.maxHeight } : undefined} className="fixed bottom-[76px] left-4 right-4 z-overlay max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:bottom-auto sm:left-auto sm:right-auto sm:w-[320px] sm:z-dropdown">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
+          <button type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
+        </div>
+        {rows.length ? (
+          <ul className="space-y-1.5 max-h-56 overflow-y-auto">
+            {rows.map((event, index) => {
+              const label = t(`profile.reputation.events.${event.event_kind}`, {
+                defaultValue: t("profile.reputation.events.fallback"),
+              });
+              const raceName = event.race?.name || t("profile.reputation.unknownRace");
+              return (
+                <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 text-xs">
+                  <span className="font-data tabular-nums text-cz-1">+{formatNumber(Number(event.form_points || 0), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                  <span className="min-w-0 truncate text-cz-2">{label}</span>
+                  <span className="col-start-2 min-w-0 truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">{raceName}</span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-xs text-cz-3">{t("profile.reputation.noEvents")}</p>
+        )}
+        <p className="mt-2 border-t border-cz-border pt-2 text-xs text-cz-2">{t("profile.reputation.weighting")}</p>
+        <Link to="/help?section=riders" onClick={onClose} className="mt-1 inline-block text-xs text-cz-accent-t underline underline-offset-2">{t("profile.reputation.help")}</Link>
       </div>
-      {rows.length ? (
-        <ul className="space-y-1.5 max-h-56 overflow-y-auto">
-          {rows.map((event, index) => {
-            const label = t(`profile.reputation.events.${event.event_kind}`, {
-              defaultValue: t("profile.reputation.events.fallback"),
-            });
-            const raceName = event.race?.name || t("profile.reputation.unknownRace");
-            return (
-              <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 text-xs">
-                <span className="font-data tabular-nums text-cz-1">+{formatNumber(Number(event.form_points || 0), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
-                <span className="min-w-0 truncate text-cz-2">{label}</span>
-                <span className="col-start-2 min-w-0 truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">{raceName}</span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="text-xs text-cz-3">{t("profile.reputation.noEvents")}</p>
-      )}
-      <p className="mt-2 border-t border-cz-border pt-2 text-xs text-cz-2">{t("profile.reputation.weighting")}</p>
-      <Link to="/help?section=riders" onClick={onClose} className="mt-1 inline-block text-xs text-cz-accent-t underline underline-offset-2">{t("profile.reputation.help")}</Link>
-    </div>
+    </Portal>
   );
 }
 
@@ -187,18 +190,63 @@ export default function RiderProfileHero({
 }) {
   const { t } = useTranslation("rider");
   const [reputationOpen, setReputationOpen] = useState(false);
+  const [reputationPosition, setReputationPosition] = useState(null);
   const reputationTriggerRef = useRef(null);
   const reputationDetailsRef = useRef(null);
   useEffect(() => {
     if (!reputationOpen) return undefined;
+    const positionPopover = () => {
+      if (window.innerWidth < 640) {
+        setReputationPosition(null);
+        return;
+      }
+      const anchor = reputationTriggerRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      setReputationPosition({
+        top: anchor.bottom + 8,
+        left: Math.max(12, Math.min(anchor.right - 320, window.innerWidth - 332)),
+      });
+    };
     const closeWhenOutside = (event) => {
       const target = event.target;
       if (reputationTriggerRef.current?.contains(target) || reputationDetailsRef.current?.contains(target)) return;
       setReputationOpen(false);
+      setReputationPosition(null);
     };
+    const closeOnScroll = (event) => {
+      if (reputationDetailsRef.current?.contains(event.target)) return;
+      setReputationOpen(false);
+      setReputationPosition(null);
+    };
+    const closeOnResize = () => {
+      setReputationOpen(false);
+      setReputationPosition(null);
+    };
+    positionPopover();
     document.addEventListener("pointerdown", closeWhenOutside);
-    return () => document.removeEventListener("pointerdown", closeWhenOutside);
+    window.addEventListener("scroll", closeOnScroll, true);
+    window.addEventListener("resize", closeOnResize);
+    return () => {
+      document.removeEventListener("pointerdown", closeWhenOutside);
+      window.removeEventListener("scroll", closeOnScroll, true);
+      window.removeEventListener("resize", closeOnResize);
+    };
   }, [reputationOpen]);
+  useEffect(() => {
+    if (!reputationOpen || !reputationPosition || !reputationDetailsRef.current || !reputationTriggerRef.current) return;
+    const anchor = reputationTriggerRef.current.getBoundingClientRect();
+    const panelHeight = reputationDetailsRef.current.getBoundingClientRect().height;
+    const margin = 12;
+    const gap = 8;
+    const belowTop = anchor.bottom + gap;
+    const top = belowTop + panelHeight <= window.innerHeight - margin
+      ? belowTop
+      : Math.max(margin, anchor.top - panelHeight - gap);
+    const maxHeight = Math.max(160, window.innerHeight - top - margin);
+    setReputationPosition((current) => current && current.top === top && current.maxHeight === maxHeight
+      ? current
+      : { ...current, top, maxHeight });
+  }, [reputationOpen, reputationPosition]);
   const bestRoleOn = useBestRoleDisplay();
   const reputationOn = useRiderReputation();
 
@@ -428,12 +476,20 @@ export default function RiderProfileHero({
           value={reputationOn && reputationBand ? t(`profile.reputation.band.${reputationBand}`) : reputationValue == null ? "—" : Math.round(reputationValue)}
           valueClassName="text-[20px] font-[650]"
           sub={reputationSub}
-          popover={reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => setReputationOpen(false)} dialogRef={reputationDetailsRef} />}
+          popover={reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => { setReputationOpen(false); setReputationPosition(null); }} dialogRef={reputationDetailsRef} position={reputationPosition} />}
           interactive={reputationOn}
           valueProps={reputationOn ? {
             ref: reputationTriggerRef,
-            onClick: () => setReputationOpen((isOpen) => !isOpen),
-            onKeyDown: (event) => { if (event.key === "Escape" && reputationOpen) setReputationOpen(false); },
+            onClick: () => setReputationOpen((isOpen) => {
+              if (isOpen) setReputationPosition(null);
+              return !isOpen;
+            }),
+            onKeyDown: (event) => {
+              if (event.key === "Escape" && reputationOpen) {
+                setReputationOpen(false);
+                setReputationPosition(null);
+              }
+            },
             "aria-expanded": reputationOpen,
             "aria-controls": "rider-reputation-details",
             "aria-haspopup": "dialog",
