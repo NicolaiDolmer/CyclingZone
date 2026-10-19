@@ -848,6 +848,10 @@
         "title": "Løn",
         "text": "Hver rytters årsløn fastsættes ved signering ud fra hvad rytteren forventes at producere i indeværende sæson, og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Værdi og løn svarer på to forskellige spørgsmål: værdien er prisen på rytterens fremtid, lønnen er omkostningen ved det han leverer lige nu. Unge talenter er derfor billige at have på lønningslisten, mens etablerede stjerner får løn der matcher deres niveau. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
+      "reputation": {
+        "title": "Rytterens omdømme",
+        "text": "Omdømme har fem niveauer: Ukendt under 20, Kendt fra 20, Profil fra 45, Stjerne fra 70 og Legende fra 90. Løbsresultater flytter rytterens omdømme, blandt andet resultater i éndagsløb, etapeløbenes samlede klassement og etaper samt trøjer. Sejre og store løb tæller mest."
+      },
       "abilitiesExplained": {
         "title": "De 17 evner, og hvor de betyder noget",
         "rows": [

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { riderReputationBand, riderReputationBandKey, riderReputationValue } from "./riderReputationView.ts";
+import { riderReputationBand, riderReputationBandKey, riderReputationProgress, riderReputationValue } from "./riderReputationView.ts";
 
 test("overgangen bevarer populariteten, når omdømme mangler", () => {
   const rider = { popularity: 24, reputation: null };
@@ -17,4 +17,11 @@ test("synligt omdømme falder aldrig under gammel popularitet", () => {
   assert.equal(riderReputationValue({ popularity: 24, reputation: 49 }, true), 49);
   assert.equal(riderReputationValue(rider, false), 82);
   assert.equal(riderReputationValue({ popularity: null, reputation: null }, true), null);
+});
+
+test("fremdrift følger niveaugrænserne og stopper ved Legend", () => {
+  assert.deepEqual(riderReputationProgress(3), { nextBand: "known", current: 3, target: 20, percent: 15 });
+  assert.deepEqual(riderReputationProgress(32), { nextBand: "profile", current: 32, target: 45, percent: 48 });
+  assert.equal(riderReputationProgress(90), null);
+  assert.equal(riderReputationProgress(null), null);
 });

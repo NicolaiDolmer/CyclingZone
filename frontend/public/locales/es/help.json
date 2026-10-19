@@ -848,6 +848,10 @@
         "title": "Salario",
         "text": "El salario anual de cada ciclista se fija al firmarlo según lo que se espera que produzca en la temporada actual, y luego queda fijado: no cambia automáticamente a medida que el ciclista se desarrolla. El valor y el salario responden a dos preguntas distintas: el valor es el precio del futuro del ciclista, el salario es el coste de lo que aporta ahora mismo. Por eso los jóvenes talentos son baratos de mantener en la plantilla, mientras que las estrellas consolidadas cobran sueldos acordes con su rendimiento. El salario se ve como una columna aparte en la Base de datos de ciclistas y en la lista de seguimiento. Los salarios se pagan automáticamente al inicio de la temporada siguiente, justo después de que llegue el dinero del patrocinio. Si el patrocinio + tu saldo actual no cubren los salarios, el sistema contrata automáticamente un préstamo de emergencia."
       },
+      "reputation": {
+        "title": "Reputación del ciclista",
+        "text": "La reputación tiene cinco niveles: Desconocido por debajo de 20, Conocido desde 20, Con perfil desde 45, Estrella desde 70 y Leyenda desde 90. Los resultados de las carreras mueven la reputación, incluidos los resultados de un día, las clasificaciones generales y las etapas de las vueltas, y los maillots. Las victorias y las grandes carreras cuentan más."
+      },
       "abilitiesExplained": {
         "title": "Las 17 habilidades y dónde importan",
         "rows": [

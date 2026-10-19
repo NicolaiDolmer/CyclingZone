@@ -848,6 +848,10 @@
         "title": "Salaire",
         "text": "Le salaire annuel de chaque coureur est fixé à la signature d'après ce qu'on attend de lui comme production sur la saison en cours, puis il est figé : il ne change pas automatiquement à mesure que le coureur progresse. La valeur et le salaire répondent à deux questions différentes : la valeur est le prix de l'avenir du coureur, le salaire est le coût de ce qu'il apporte maintenant. Les jeunes talents sont donc bon marché à garder sur la feuille de paie, tandis que les stars confirmées touchent des salaires à la hauteur de leur production. Le salaire est visible dans une colonne séparée dans la base des coureurs et dans la liste de suivi. Les salaires sont payés automatiquement au début de la saison suivante, juste après l'arrivée de l'argent du sponsor. Si le sponsor + ton solde existant ne peuvent pas couvrir les salaires, le système contracte automatiquement un emprunt d'urgence."
       },
+      "reputation": {
+        "title": "Réputation du coureur",
+        "text": "La réputation comporte cinq niveaux : Inconnu en dessous de 20, Connu à partir de 20, Profil à partir de 45, Star à partir de 70 et Légende à partir de 90. Les résultats en course font évoluer la réputation, notamment les courses d'un jour, les classements généraux et les étapes des courses par étapes, ainsi que les maillots. Les victoires et les grandes courses comptent le plus."
+      },
       "abilitiesExplained": {
         "title": "Les 17 aptitudes et où elles comptent",
         "rows": [

@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Waarom zijn reputatie veranderde",
+      "progressTo": "{value} / {target} tot {band}",
+      "weighting": "Overwinningen en grote koersen tellen het meest",
+      "help": "Zo werkt reputatie",
+      "close": "Sluiten",
       "noEvents": "Nog geen reputatiegebeurtenissen.",
       "unknownRace": "Een koers",
       "band": {

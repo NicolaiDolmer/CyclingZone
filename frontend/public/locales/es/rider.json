@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Por qué se ha movido su reputación",
+      "progressTo": "{value} / {target} para {band}",
+      "weighting": "Las victorias y las grandes carreras cuentan más",
+      "help": "Cómo funciona la reputación",
+      "close": "Cerrar",
       "noEvents": "Aún no hay eventos de reputación.",
       "unknownRace": "Una carrera",
       "band": {

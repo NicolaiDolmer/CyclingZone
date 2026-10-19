@@ -1,5 +1,25 @@
 export type RiderReputationBand = "unknown" | "known" | "profile" | "star" | "legend";
 
+const REPUTATION_BAND_LIMITS: Record<Exclude<RiderReputationBand, "legend">, { min: number; max: number; next: Exclude<RiderReputationBand, "unknown"> }> = {
+  unknown: { min: 0, max: 20, next: "known" },
+  known: { min: 20, max: 45, next: "profile" },
+  profile: { min: 45, max: 70, next: "star" },
+  star: { min: 70, max: 90, next: "legend" },
+};
+
+export function riderReputationProgress(value: number | null | undefined) {
+  const band = riderReputationBand(value);
+  if (!band || band === "legend") return null;
+  const range = REPUTATION_BAND_LIMITS[band];
+  const score = Math.max(range.min, Math.min(range.max, Number(value)));
+  return {
+    nextBand: range.next,
+    current: Math.round(score),
+    target: range.max,
+    percent: ((score - range.min) / (range.max - range.min)) * 100,
+  };
+}
+
 export interface RiderReputationLike {
   popularity?: number | null;
   reputation?: number | null;

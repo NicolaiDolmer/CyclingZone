@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Hvorfor omdømmet flyttede sig",
+      "progressTo": "{value} / {target} til {band}",
+      "weighting": "Sejre og store løb tæller mest",
+      "help": "Sådan virker omdømme",
+      "close": "Luk",
       "noEvents": "Ingen omdømme-events endnu.",
       "unknownRace": "Et løb",
       "band": {

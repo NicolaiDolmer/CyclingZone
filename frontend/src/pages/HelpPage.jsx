@@ -339,6 +339,7 @@ const SECTION_DEFS = [
     blocks: [
       { id: "valueAndPrice", kind: "text" },
       { id: "salary", kind: "text" },
+      { id: "reputation", kind: "text" },
       { id: "abilitiesExplained", kind: "rows" },
       { id: "riderType", kind: "text" },
       { id: "typeOverview", kind: "textRows" },

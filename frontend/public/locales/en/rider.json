@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Why his reputation moved",
+      "progressTo": "{value} / {target} to {band}",
+      "weighting": "Wins and big races count most",
+      "help": "How reputation works",
+      "close": "Close",
       "noEvents": "No reputation events yet.",
       "unknownRace": "A race",
       "band": {

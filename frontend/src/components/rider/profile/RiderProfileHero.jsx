@@ -21,6 +21,8 @@
 // display), Inter Tight tabular til tal (font-data). Dark mode flipper
 // automatisk (alle farver er cz-tokens).
 
+import { useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Flag } from "../../Flag";
 import TeamLink from "../../TeamLink";
@@ -34,7 +36,8 @@ import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey, seasonNumberFromReferenceYear } from "../../../lib/riderAge";
 import { contractOfferEligibility, CONTRACT_STATE } from "../../../../../backend/lib/contractOfferEligibility.js";
 import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
-import { riderReputationBand, riderReputationValue } from "../../../lib/riderReputationView.ts";
+import { riderReputationBand, riderReputationProgress, riderReputationValue } from "../../../lib/riderReputationView.ts";
+import { formatNumber } from "../../../lib/intl.js";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
 import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
 
@@ -48,16 +51,19 @@ const DIVISION_CHIP = "rgb(96 165 250)";
 // ville kunne skubbe den testede VALUE-blok uden for viewport på mobil
 // (core-smoke.spec.js måler dens bounding-rect). Grid'en giver samme label/
 // value-anatomi men wrapper sikkert i stedet for at skuble bredde ud af syne.
-function HeroStat({ label, value, sub, valueClassName = "text-[20px] font-[650]", valueProps = {} }) {
+function HeroStat({ label, value, sub, valueClassName = "text-[20px] font-[650]", valueProps = {}, interactive = false }) {
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0 ${interactive ? "relative" : ""}`}>
       <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
-      <div
-        className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`}
-        {...valueProps}
-      >
-        {value ?? "—"}
-      </div>
+      {interactive ? (
+        <button type="button" className={`block min-h-11 text-left font-data leading-tight text-cz-1 tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:outline-cz-2 ${valueClassName}`} {...valueProps}>
+          {value ?? "—"}
+        </button>
+      ) : (
+        <div className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`} {...valueProps}>
+          {value ?? "—"}
+        </div>
+      )}
       {sub}
     </div>
   );
@@ -118,27 +124,28 @@ function StatusBanner({ banner }) {
   );
 }
 
-function ReputationEventList({ events = [] }) {
+function ReputationEventList({ events = [], open, onClose }) {
   const { t } = useTranslation("rider");
-  const rows = Array.isArray(events) ? events.slice(0, 4) : [];
+  const rows = Array.isArray(events) ? events : [];
+  if (!open) return null;
   return (
-    <div className="mt-4 rounded-cz border border-cz-border bg-cz-subtle/50 px-3.5 py-3">
-      <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-2">
-        {t("profile.reputation.whyTitle")}
-      </p>
+    <div id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} className="fixed bottom-[76px] left-4 right-4 z-50 max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-30 sm:mt-2 sm:w-[320px] sm:max-h-none sm:overflow-visible">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
+        <button type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
+      </div>
       {rows.length ? (
-        <ul className="space-y-1.5">
+        <ul className="space-y-1.5 max-h-56 overflow-y-auto">
           {rows.map((event, index) => {
             const label = t(`profile.reputation.events.${event.event_kind}`, {
               defaultValue: t("profile.reputation.events.fallback"),
             });
             const raceName = event.race?.name || t("profile.reputation.unknownRace");
             return (
-              <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="flex items-baseline justify-between gap-3 text-xs">
+              <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 text-xs">
+                <span className="font-data tabular-nums text-cz-1">+{formatNumber(Number(event.form_points || 0), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
                 <span className="min-w-0 truncate text-cz-2">{label}</span>
-                <span className="max-w-[58%] truncate text-right font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-                  {raceName}
-                </span>
+                <span className="col-start-2 min-w-0 truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">{raceName}</span>
               </li>
             );
           })}
@@ -146,6 +153,8 @@ function ReputationEventList({ events = [] }) {
       ) : (
         <p className="text-xs text-cz-3">{t("profile.reputation.noEvents")}</p>
       )}
+      <p className="mt-2 border-t border-cz-border pt-2 text-xs text-cz-2">{t("profile.reputation.weighting")}</p>
+      <Link to="/help?section=riders" onClick={onClose} className="mt-1 inline-block text-xs text-cz-accent-t underline underline-offset-2">{t("profile.reputation.help")}</Link>
     </div>
   );
 }
@@ -175,6 +184,7 @@ export default function RiderProfileHero({
   reputationEvents = [],
 }) {
   const { t } = useTranslation("rider");
+  const [reputationOpen, setReputationOpen] = useState(false);
   const bestRoleOn = useBestRoleDisplay();
   const reputationOn = useRiderReputation();
 
@@ -224,11 +234,22 @@ export default function RiderProfileHero({
   const reputationValue = riderReputationValue(rider, reputationOn);
   // Niveauet (Ukendt..Legende) hører kun til omdømmet: off/shadow viser popularitet uden label.
   const reputationBand = reputationOn ? riderReputationBand(reputationValue) : null;
-  const reputationSub = reputationBand ? (
-    <p className="font-data text-2xs text-cz-3 tabular-nums mt-1">
-      {t(`profile.reputation.band.${reputationBand}`)}
-    </p>
-  ) : null;
+  const reputationProgress = reputationOn ? riderReputationProgress(reputationValue) : null;
+  const reputationSub = (
+    <>
+      {reputationProgress && (
+        <span className="mt-1 block max-w-28">
+          <span className="block h-1 overflow-hidden rounded-cz bg-cz-subtle" aria-hidden="true">
+            <span className="block h-full bg-cz-2" style={{ width: `${reputationProgress.percent}%` }} />
+          </span>
+          <span className="mt-1 block font-data text-2xs text-cz-3 tabular-nums">
+            {t("profile.reputation.progressTo", { value: reputationProgress.current, target: reputationProgress.target, band: t(`profile.reputation.band.${reputationProgress.nextBand}`) })}
+          </span>
+        </span>
+      )}
+      {reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => setReputationOpen(false)} />}
+    </>
+  );
 
   return (
     <>
@@ -388,9 +409,17 @@ export default function RiderProfileHero({
         <HeroStat label={t("profile.hero.salary")} value={salaryText ?? "—"} valueClassName="text-[20px] font-[650] truncate" />
         <HeroStat
           label={t(reputationOn ? "profile.hero.reputationEyebrow" : "profile.hero.popularityEyebrow")}
-          value={reputationValue == null ? "—" : Math.round(reputationValue)}
+          value={reputationOn && reputationBand ? t(`profile.reputation.band.${reputationBand}`) : reputationValue == null ? "—" : Math.round(reputationValue)}
           valueClassName="text-[20px] font-[650]"
           sub={reputationSub}
+          interactive={reputationOn}
+          valueProps={reputationOn ? {
+            onClick: () => setReputationOpen((isOpen) => !isOpen),
+            onKeyDown: (event) => { if (event.key === "Escape" && reputationOpen) setReputationOpen(false); },
+            "aria-expanded": reputationOpen,
+            "aria-controls": "rider-reputation-details",
+            "aria-haspopup": "dialog",
+          } : {}}
         />
         <HeroStat
           label={t("profile.hero.contract")}
@@ -399,8 +428,6 @@ export default function RiderProfileHero({
           sub={contractSub}
         />
       </div>
-
-      {reputationOn && <ReputationEventList events={reputationEvents} />}
 
       {/* Action-række — injiceres af parent (genbruger eksisterende handlinger). */}
       {actions && <div className="mt-5 pt-5 border-t border-cz-border">{actions}</div>}
