@@ -56,8 +56,10 @@
 // 2026-10-16-6462-engine-rules-revision-official-times-v5.sql goer vaerdien lovlig.
 // #6156 (ejer 17/10, SLUKKET): "s5_profiles_v2" = hele s5_profiles_v1-pakken +
 // formtoppe i v4 (toppens tillaeg i vinduet, dykket bagefter; broen regner den
-// samlede form). Aldrig aktuel foer ejerens ordrette "taend"; ingen migration endnu,
-// saa vaerdien er heller ikke lovlig i races.engine_rules_revision.
+// samlede form) + udbrudsopfoelgningen (#6748). IKKE aktuel (CURRENT_RACE_RULES_REVISION er
+// uaendret): ingen nye loeb binder til den foer taend-PR'en (ejer-only, #6818) flytter
+// konstanten. races_engine_rules_revision_check goer vaerdien lovlig via
+// 2026-10-17-6818-engine-rules-revision-s5-v2.sql, som skal vaere applied foer taend-PR'en merges.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 

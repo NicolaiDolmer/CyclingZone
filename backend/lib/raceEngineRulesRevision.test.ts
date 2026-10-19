@@ -567,8 +567,8 @@ test("#6369: only the S5 migration makes s5_profiles_v1 legal (no older revision
     if (!/races_engine_rules_revision_check/.test(sql)) continue;
     if (/'s5_profiles_v1'/.test(sql)) legal.push(file);
   }
-  // #6462: the official_times_v5 migration keeps every existing value, s5_profiles_v1 included.
-  assert.deepEqual(legal.sort(), [S5_MIGRATION, V5_MIGRATION].sort());
+  // #6462/#6818: the official_times_v5 and s5_profiles_v2 migrations keep every existing value, s5_profiles_v1 included.
+  assert.deepEqual(legal.sort(), [S5_MIGRATION, V5_MIGRATION, "2026-10-17-6818-engine-rules-revision-s5-v2.sql"].sort());
 });
 
 test("#6369: the bridge carries s5_profiles_v1 with the same input as official_times_v4", async () => {
@@ -632,7 +632,7 @@ test("#6462: the official_times_v5 migration allows every known revision incl. t
   const migration = readFileSync(new URL(`../../database/${V5_MIGRATION}`, import.meta.url), "utf8");
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
-  // #6156: s5_profiles_v2 is switched off; its CHECK extension belongs to the flip PR.
+  // #6818: s5_profiles_v2 came later, with its own migration (#6818 tests below).
   assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "s5_profiles_v2"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
@@ -652,7 +652,8 @@ test("#6462: only the official_times_v5 migration makes official_times_v5 legal"
     if (!/races_engine_rules_revision_check/.test(sql)) continue;
     if (/'official_times_v5'/.test(sql)) legal.push(file);
   }
-  assert.deepEqual(legal, [V5_MIGRATION]);
+  // #6818: the s5_profiles_v2 migration keeps every existing value, official_times_v5 included.
+  assert.deepEqual(legal.sort(), [V5_MIGRATION, "2026-10-17-6818-engine-rules-revision-s5-v2.sql"].sort());
 });
 
 // ── #6156 (ejer 17/10, SLUKKET): s5_profiles_v2 = s5_profiles_v1 + formtoppe i v4 ──
@@ -682,12 +683,47 @@ test("#6156: a new race still binds to s5_profiles_v1; only a stored s5_profiles
   assert.equal(surfaceRulesRevision({ race: notStarted, storedRevision: null }), "s5_profiles_v1");
 });
 
-test("#6156: no migration makes s5_profiles_v2 legal yet (it belongs to the flip PR)", async () => {
+const S5_V2_MIGRATION = "2026-10-17-6818-engine-rules-revision-s5-v2.sql";
+
+// #6818 ordering gate: the migration lands in its own PR (feat/6818-s5v2-taend-pakke) and must be
+// on main (and applied) before the ignition PR merges. Until main carries it, these tests fail on
+// purpose, so the ignition PR cannot go green ahead of its migration.
+async function readS5V2Migration(): Promise<string> {
+  const { existsSync, readFileSync } = await import("node:fs");
+  const url = new URL(`../../database/${S5_V2_MIGRATION}`, import.meta.url);
+  assert.ok(
+    existsSync(url),
+    `${S5_V2_MIGRATION} is missing: merge the migration PR (feat/6818-s5v2-taend-pakke) to main, apply it, then merge main into this branch`,
+  );
+  return readFileSync(url, "utf8");
+}
+
+test("#6818: the s5_profiles_v2 migration allows every known revision, additively, idempotently, NOT VALID + VALIDATE", async () => {
+  const migration = await readS5V2Migration();
+  const check = migration.match(/IN\s*\(([^)]*)\)/);
+  assert.ok(check, "CHECK-listen findes");
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
+  assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
+  assert.match(migration, /lock_timeout/);
+  // Hot table: add NOT VALID (no scan under ACCESS EXCLUSIVE), validate as its own statement.
+  assert.match(migration, /\)\)\s*NOT VALID;/);
+  assert.match(migration, /COMMIT;\s*(?:--[^\n]*\n\s*)*ALTER TABLE public\.races\s+VALIDATE CONSTRAINT races_engine_rules_revision_check;/);
+  // Idempotent: the replacement is guarded on the live constraint not already knowing s5_profiles_v2.
+  assert.match(migration, /position\('s5_profiles_v2' IN def\) = 0 THEN/);
+  assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
+  // The current revision must be a value the constraint allows, or the first claim fails on CHECK.
+  assert.ok(check[1].includes(`'${CURRENT_RACE_RULES_REVISION}'`));
+});
+
+test("#6818: only the s5_profiles_v2 migration makes s5_profiles_v2 legal (no older revision migration was edited)", async () => {
+  await readS5V2Migration();
   const { readdirSync, readFileSync } = await import("node:fs");
   const dir = new URL("../../database/", import.meta.url);
+  const legal: string[] = [];
   for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
-    assert.doesNotMatch(readFileSync(new URL(file, dir), "utf8"), /'s5_profiles_v2'/, file);
+    if (/'s5_profiles_v2'/.test(readFileSync(new URL(file, dir), "utf8"))) legal.push(file);
   }
+  assert.deepEqual(legal, [S5_V2_MIGRATION]);
 });
 
 test("#6156: the bridge carries s5_profiles_v2 with the same input as s5_profiles_v1 when no rider has a peak", async () => {
