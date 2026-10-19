@@ -18,7 +18,7 @@ import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
 import { buildContractExpiringNotification, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academyGraduation.js";
-import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs } from "./squads.js";
+import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs, isYouthSquad } from "./squads.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { buildRiderValueSnapshot, updateDealWithValueSnapshot } from "./dealValueSnapshot.js";
 import {
@@ -1356,7 +1356,11 @@ async function finalizeAuctionRecord({
     // ungdomsrytter — dvs. han ville optage en U23-/junior-plads på vinderens
     // loft uden at være i noget akademi.
     const riderGraduatesOnSale = auction.rider?.is_academy === true;
-    const graduatePatch = riderGraduatesOnSale ? seniorSquadPatch() : {};
+    // #6920: en FRI rytter med squad='u23'/'junior' og is_academy=false (frigivet
+    // fra et akademi eller fra ungdomspuljen) skal også lande som senior. Uden
+    // patchen beholdt han ungdomstruppen hos vinderen: talte på U23-loftet uden
+    // at være i akademiet og kunne ikke flyttes.
+    const graduatePatch = riderGraduatesOnSale || isYouthSquad(auction.rider?.squad) ? seniorSquadPatch() : {};
     // #3580: samme verifikation som senior-ungdomsplaceringen ovenfor — en
     // UPDATE der (fx pga. en samtidig sletning/race) rammer 0 rækker skal
     // ALDRIG kunne efterlade finance-benet nedenfor til at gennemføre alene.
