@@ -52,7 +52,7 @@ import {
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
-import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled } from "./raceEngineFlag.js";
+import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled, isRaceFormPeaksEnabled } from "./raceEngineFlag.js";
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -278,14 +278,22 @@ export async function resolveRaceEngineV4({
   supabase, race, checkV4Enabled,
   loadEngine = loadRaceEngineV4,
   loadOrders = loadTeamOrderRows,
+  checkFormPeaksEnabled = isRaceFormPeaksEnabled,
 }) {
   const enabled = await checkV4Enabled(supabase);
   if (!enabled) return { v4Engine: null, teamOrderRows: [] };
   try {
-    const [v4Engine, teamOrderRows] = await Promise.all([
+    const [engine, teamOrderRows, formPeaks] = await Promise.all([
       loadEngine(),
       loadOrders({ supabase, raceId: race.id }),
+      // #6156 (ejer 19/10): fail closed, en fejl i flag-opslaget = ingen formtoppe.
+      Promise.resolve().then(() => checkFormPeaksEnabled(supabase)).catch(() => false),
     ]);
+    // Flaget laeses een gang pr. afvikling, som motorflaget; adapteren faar vaerdien med.
+    const v4Engine = formPeaks === true ? engine : {
+      ...engine,
+      simulateStage: (args) => engine.simulateStage({ ...args, formPeaks: false }),
+    };
     return { v4Engine, teamOrderRows };
   } catch (err) {
     console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);

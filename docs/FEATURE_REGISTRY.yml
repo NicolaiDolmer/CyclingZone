@@ -94,6 +94,21 @@ features:
     verified: 2026-10-04
     note: On siden 28/9 (læst i prod 4/10); kører officielle etaper.
 
+  - id: race-form-peaks
+    area: race-engine
+    title_en: Form peaks in races
+    title_da: Formtoppe i løbene
+    state: dormant
+    flag: race_form_peaks
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6156
+    verified: 2026-10-19
+    note: Bygget 19/10 som eget flag (off) adskilt fra s5_profiles_v2; ejer tænder ved sæsonskiftet 25/10.
+    decision: taend
+    decide_by: 2026-10-25
+    roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
+    roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision

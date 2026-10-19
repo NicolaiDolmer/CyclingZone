@@ -405,3 +405,27 @@ test("#6079 orders_gc_v1: save-træthed ind i næste etape følger etapeprofilen
   assert.ok(gc[1].get("r01") > legacy[1].get("r01"), "save sparer mindre på en flad etape under orders_gc_v1");
   assert.equal(gc[1].get("r02"), legacy[1].get("r02"), "normal er uændret");
 });
+
+// #6156 (ejer 19/10): race_form_peaks laeses een gang pr. afvikling og sendes til motoren.
+test("#6156 resolveRaceEngineV4: race_form_peaks off => motoren kaldes med formPeaks=false; on => uaendret motor", async () => {
+  const seen = [];
+  const engine = { version: ENGINE_VERSION_V4, simulateStage: (args) => { seen.push(args.formPeaks); return {}; } };
+  const off = await resolveRaceEngineV4({
+    supabase: {}, race: RACE, checkV4Enabled: async () => true,
+    loadEngine: async () => engine, loadOrders: async () => [], checkFormPeaksEnabled: async () => false,
+  });
+  off.v4Engine.simulateStage({ entrants: [] });
+  assert.deepEqual(seen, [false]);
+  assert.equal(off.v4Engine.version, ENGINE_VERSION_V4);
+  const on = await resolveRaceEngineV4({
+    supabase: {}, race: RACE, checkV4Enabled: async () => true,
+    loadEngine: async () => engine, loadOrders: async () => [], checkFormPeaksEnabled: async () => true,
+  });
+  assert.equal(on.v4Engine, engine, "flag on: samme motor, intet wrapper-lag");
+  const failing = await resolveRaceEngineV4({
+    supabase: {}, race: RACE, checkV4Enabled: async () => true,
+    loadEngine: async () => engine, loadOrders: async () => [], checkFormPeaksEnabled: async () => { throw new Error("db"); },
+  });
+  failing.v4Engine.simulateStage({ entrants: [] });
+  assert.deepEqual(seen, [false, false], "fejl i flag-opslaget = fail closed (ingen formtoppe)");
+});
