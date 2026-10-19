@@ -7,3 +7,5 @@
 - Testfælden: Boardrooms mock lod maybeSingle returnere første række ved flere matches. Den gengiver nu PostgRESTs PGRST116, så overlap-fejlen faktisk reproduceres.
 - Rød/grøn: overlap-testen fejlede med manglende loadGoalContext-kald før rettelsen; alle 110 Boardroom/helper-tests bestod efter. Fuld suite afslørede desuden en auto-accept-mock, hvor seasons.order sluttede kæden før limit; genbrug af selectChain(seasons) rettede mocken. Alle 163 relaterede tests bestod derefter.
 - Patch notes undtaget efter ejerens mandat om ingen spillertekst; kun eksisterende sæsonvalg rettes. FEATURE_REGISTRY uændret: ingen feature-lukning, ny kernefunktion eller flagændring.
+
+- GitHub-review P2: helperen kaster ved en reel sæsonlæsefejl. En ekstra rød/grøn test beviser, at Boardrooms eksisterende best-effort-fallback bevares omkring helperen; fejlen rapporteres til Sentry, og den begrænsede payload leveres som før.

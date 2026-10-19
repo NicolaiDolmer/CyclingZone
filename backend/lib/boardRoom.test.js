@@ -205,6 +205,38 @@ for (const { phase, s4Status, s5Status, expectedSeason } of [
     assert.equal(payload.bonusOffer?.id, `offer-s${expectedSeason}`);
   });
 }
+test("#6876 season read error preserves the existing best-effort Boardroom payload", async () => {
+  const base = makeSupabase(baseTables({
+    board_mandates: [{
+      id: "mand-s3", team_id: TEAM_ID, season_number: 3, status: "active",
+      signed_at: "2026-08-01T00:00:00Z", goals: [],
+    }],
+  }));
+  const supabase = {
+    from(table) {
+      const query = base.from(table);
+      if (table !== "seasons") return query;
+      return {
+        select(columns, options) {
+          const builder = query.select(columns, options);
+          if (columns === "id, number") {
+            builder.maybeSingle = async () => ({
+              data: null, error: { code: "57014", message: "query canceled" },
+            });
+          }
+          return builder;
+        },
+      };
+    },
+  };
+  let contextCalls = 0;
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => { contextCalls += 1; return {}; },
+  });
+  assert.equal(payload.mandate?.seasonNumber, 3);
+  assert.equal(contextCalls, 0, "no active season id is available on a failed read");
+});
 test("#6773 to aktive mandater (S3+S4): Boardroom viser den AKTIVE sæsons mandat, også når S3 er underskrevet senere", async () => {
   const tables = baseTables({
     seasons: [

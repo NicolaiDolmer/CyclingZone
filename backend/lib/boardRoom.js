@@ -512,6 +512,10 @@ export async function buildBoardRoomPayload({
   // vælger den nyeste og returnerer ét promise, som begge forbrugere deler.
   const activeSeasonPromise = loadSingleActiveSeason(supabase, {
     select: "id, number", tag: "board-room",
+  }).catch((err) => {
+    // Preserve Boardroom's best-effort payload on an actual season read error.
+    captureException(err);
+    return null;
   });
   const mandatePromise = activeSeasonPromise.then((season) =>
     queryCurrentSeasonActiveMandate(supabase, {
