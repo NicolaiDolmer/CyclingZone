@@ -92,6 +92,28 @@ Eksisterende resultater og immutable belastningssnapshots bevares ved den ejer-g
 
 `recover_transferred_race_loads` er service-only, sammenligner præcist snapshot og finaliseringsstatus, kræver eksisterende resultat og en tidligere, uafregnet aktivitet på samme slot og committer hele belastningsbatchen eller intet. Ukendte ekstra konflikter, ændret evidens eller allerede afregnet tilstand afviser genopretningen. Ingen resultater, programmer, evner, skader eller live-tilstand skrives af denne RPC. Fremtidige dobbeltstarter afvises før resultat/startsnapshot efter [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md); aksen står i [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Den godkendte genopretning er gennemført 30/9 efter PR #5983. Resultatfingeraftrykket er bevaret; privat før-/efterbevis og rollback-note ligger i OneDrive-context.
 
+## Rytter der har forladt holdet (#6504, 19/10)
+
+En rytter i datoens frosne trup, som **nu** har `riders.team_id IS NULL` (frigivet,
+pension, graduering), er ikke et afstemningsfund. Aftenafregningen
+(`trainingDateClose.js`) sender ham til `depart_training_date_riders`
+(`database/2026-10-19-6504-departed-training-riders.sql`), som tjekker `team_id`
+server-side under datoens låse.
+
+- Han lægges i `quarantined_rider_ids` som før. Dermed er datoens
+  ejerskabs-semantik uændret: et andet hold kan registrere ham samme dato,
+  og værnet for tidligere datoer springer ham over.
+- Beviset (tidspunkt, `applied_receipt_days`, åbnings-tilstand) gemmes i
+  `departure_evidence`, **ikke** i `quarantine_evidence`. Derfor indgår han
+  ikke i `missing_evidence`, datoen kan ende `complete`, og der skrives ingen
+  outbox-række (ingen Sentry, ingen Discord-ops).
+- Kun almindelige hold i aktiv sæson. Bank-, frosne og testhold, historiske
+  sæsoner og ryttere på et andet hold karantæneres uændret med alarm.
+- Mangler funktionen i deploy-vinduet (PGRST202), departes ingen, og alle
+  karantæneres som før #6504.
+- En rytter frigivet mellem afregningens tjek og commit karantæneres stadig
+  af commit-RPC'en (`unsafe_current_state`). Det er sjældent og ikke ændret.
+
 ## Førstegangsregistrering og driftalarmer (#5928, 29/9)
 
 Når `training_condition_per_date` ejer træningen, springer den gamle kl. 22-sweep
