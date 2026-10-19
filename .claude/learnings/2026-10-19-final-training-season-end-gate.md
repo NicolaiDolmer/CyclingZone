@@ -1,0 +1,12 @@
+# Sidste træningsdato før season-end (#6898)
+
+- Trigger: S4 afsluttes 25/10 før datoens træning har dokumenteret afregning.
+- Rodårsag: season-end kontrollerede løb, men ikke træning. Nye træningsdatoer opdages kun for active sæson; fraværende registreringer kan derfor forsvinde fra sweepens arbejdsindeks.
+- Rettelse: læsende fail-closed gate før season-end-claim/writes og aktive transitioner (også force/scripts); alle registreringer terminale og ingen manglende aktive hold med ryttere. Ingen replay eller migration.
+- Kontrakt: docs/TRAINING_RULES.md, sidste dato før sæsonafslutning. Design-go: #6898 + ejerens direkte bestilling 19/10.
+- Testbevis: faste lokale SQL-fixtures 25/10/2026 kl. 20 Copenhagen; alle færdige, pending, partial, ingen registreringer, pagination, læsefejl og rutens stop før claim.
+- Læring: afregningsbevis kræver både terminale eksisterende rækker og en uafhængig forventet population. Tomt arbejdsindeks er ikke færdigstatus.
+- Afgrænsning: ingen prod-data, DB-migration, spillertekst, flag eller ny kernefeature. FEATURE_REGISTRY uændret.
+- Patch-note-undtagelse: intern admin-readiness-vagt; ingen ny spillertekst eller spillerfunktion. Eventuel samlet spillerkommunikation forfattes af Claude.
+- Lokal SQL-fixture: 27/27 bestået med isoleret PGlite 0.3.14/PostgreSQL 17.5 og 27/27 med repoets PostgreSQL 18.3. Repoets dependencies er uændrede; PG17-pakken ligger kun i midlertidig mappe.
+- Review: uafhængig reviewer fandt force-omgåelse; regression reproduceret og kernegate tilføjet før første transition-write. Opfølgende review: ingen handlingskrævende fund. Samlet målrettet readiness/transition: 126/126 bestået.

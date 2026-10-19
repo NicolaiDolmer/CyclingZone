@@ -83,6 +83,7 @@ import {
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import {
+  assessFinalTrainingDateSettlement,
   assessSeasonEndBlockers,
   assessTransitionReadiness,
   formatForceOverrideDescription,
@@ -11934,6 +11935,12 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       });
     }
 
+    // #6898: require durable settlement proof before any season-end writes.
+    // No force bypass and no historical replay after riders/season are reset.
+    const trainingSettlement = await assessFinalTrainingDateSettlement({ supabase, season, now: new Date() });
+    if (trainingSettlement.blocked) {
+      return res.status(400).json({ error: trainingSettlement.detail, training_settlement: trainingSettlement });
+    }
     // #2847 · DB-niveau-garanti mod concurrent dobbelt-POST. De foregående checks
     // (status/pending-results/blockers) er check-then-act uden constraint — to
     // samtidige requests kan begge bestå dem og begge nå hertil. Herfra og ned er

@@ -1,5 +1,31 @@
 # Træningens regler - SSOT
 
+## Sidste dato før sæsonafslutning (#6898, ejer-go 19/10/2026)
+
+Før `POST /admin/seasons/:id/end` claimer eller skriver sæsonafslutningen, kræver
+`assessFinalTrainingDateSettlement` dokumenteret afregning af `seasons.end_date`
+(sidste civile træningsdato). Datoen skal være gyldig og må ikke ligge i fremtiden.
+Alle registrerede hold skal være `complete` eller `needs_reconciliation`; sidstnævnte
+er den eksisterende terminaltilstand med manuel afstemning, ikke en genafregning.
+`pending`, `partial`, ukendte tilstande og læsefejl stopper afslutningen.
+
+Et tomt registreringsopslag er aldrig tilstrækkeligt bevis. Holdpopulationen følger
+`isTrainingDateTeam` og sweepens ikke-pensionerede ryttere oprettet/anskaffet før
+datoens slut. Hold med ryttere kræver en registrering, også hvis ingen hold endnu er
+registreret. Registreret arbejde kontrolleres altid, også efter parkering eller tab
+af ryttere. Divisionløse hold bruger den eksisterende kalenderdagssti: en færdig
+`training_day_runs`-rapport på hold/dato med `game_day IS NULL` er deres kvittering;
+en pending/loading/writing-reservation er ikke nok. Den kvittering erstatter aldrig
+registreringen for et hold med division. Sæson 0 er fortsat undtaget.
+
+Samme gate håndhæves i `transitionToNextSeason` før første write når kildesæsonen
+er `active`, også for force og direkte scriptkald. Dry-run er fortsat læsende;
+genoptagelse fra en allerede completed sæson genmåler ikke den ændrede population.
+Gaten er read-only, kan ikke force-omgås og afregner aldrig historisk træning efter
+et skifte. Admin får dato, hold og årsag før første irreversible handling. Den ændrer
+ikke kl. 20-reglen eller udbyttet ved manuel træning. Faste tests bruger
+25/10/2026 kl. 20 Copenhagen (19:00Z); databaseopslag er lokale syntetiske fixtures.
+
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 
 Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende

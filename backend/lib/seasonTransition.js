@@ -1,3 +1,4 @@
+import { assessFinalTrainingDateSettlement } from './seasonTransitionReadiness.js';
 /**
  * Slice 08 — Sæson-transition orchestrator
  * =========================================
@@ -562,6 +563,8 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
       id: fromSeason.id,
       number: fromSeason.number,
       start_date: fromSeason.start_date,
+      end_date: fromSeason.end_date,
+      status: fromSeason.status,
     },
     to_season: {
       id: toSeasonId,
@@ -1075,6 +1078,16 @@ export async function transitionToNextSeason({
       });
     }
     return { ok: true, dryRun: true, plan, carryOverPreview };
+  }
+
+  // #6898: force/admin/scripts all enter here. An active source must retain
+  // its final training date until settled; completed-source retries must not
+  // re-check rosters after season-end/reset has already changed them.
+  if (plan.from_season.status === 'active') {
+    const settlement = await assessFinalTrainingDateSettlement({
+      supabase, season: plan.from_season, now: deps.now ?? new Date(),
+    });
+    if (settlement.blocked) throw new Error(settlement.detail);
   }
 
   if (plan.already_transitioned) {
