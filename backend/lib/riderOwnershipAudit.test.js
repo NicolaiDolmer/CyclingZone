@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { recordRiderOwnershipEvent, attributeTeamExitEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 
 function makeSupabase({ error = null } = {}) {
   const inserts = [];
@@ -114,4 +114,45 @@ test("RIDER_OWNERSHIP_REASON dækker alle veje nævnt i #3582-issuet", () => {
     "swap",
     "trade",
   ]);
+});
+
+// #6504: admin-flytningen til intet hold tilskriver triggerens række i stedet for
+// at skrive en dublet.
+function makeUpdateSupabase({ data = [{ id: 1 }], error = null } = {}) {
+  const calls = { patch: null, filters: [] };
+  const chain = {
+    eq(col, val) { calls.filters.push(["eq", col, val]); return chain; },
+    is(col, val) { calls.filters.push(["is", col, val]); return chain; },
+    gte(col, val) { calls.filters.push(["gte", col, val]); return chain; },
+    select() { return Promise.resolve({ data, error }); },
+  };
+  return {
+    from(table) {
+      assert.equal(table, "rider_ownership_events");
+      return { update(patch) { calls.patch = patch; return chain; } };
+    },
+    _calls: calls,
+  };
+}
+
+test("attributeTeamExitEvent tilskriver kun triggerens system-række for netop denne udgang", async () => {
+  const supabase = makeUpdateSupabase();
+  const result = await attributeTeamExitEvent(supabase, {
+    riderId: "rider-1", fromTeamId: "team-a", since: "2026-10-19T10:00:00.000Z",
+    reason: RIDER_OWNERSHIP_REASON.ADMIN, relatedEntityType: "manual", actorType: "admin", actorId: "admin-1",
+  });
+  assert.deepEqual(result, { ok: true, updated: 1 });
+  assert.deepEqual(supabase._calls.patch, { reason: "admin", related_entity_type: "manual", actor_type: "admin", actor_id: "admin-1" });
+  assert.deepEqual(supabase._calls.filters, [
+    ["eq", "rider_id", "rider-1"], ["eq", "from_team_id", "team-a"], ["is", "to_team_id", null],
+    ["eq", "actor_type", "system"], ["gte", "created_at", "2026-10-19T10:00:00.000Z"],
+  ]);
+});
+
+test("attributeTeamExitEvent kaster aldrig ved DB-fejl", async () => {
+  const supabase = makeUpdateSupabase({ data: null, error: { message: "boom" } });
+  const result = await attributeTeamExitEvent(supabase, {
+    riderId: "rider-1", fromTeamId: "team-a", since: "2026-10-19T10:00:00.000Z", reason: RIDER_OWNERSHIP_REASON.ADMIN,
+  });
+  assert.deepEqual(result, { ok: false, updated: 0 });
 });

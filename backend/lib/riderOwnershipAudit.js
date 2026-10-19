@@ -100,3 +100,37 @@ export async function recordRiderOwnershipEvent(supabase, event) {
     return { ok: false, skipped: false };
   }
 }
+
+/**
+ * #6504: en udgang fra et hold (team_id -> null) logges af DB-triggeren
+ * trg_record_rider_team_exit som reason release/retirement, actor system. En
+ * kalder, der kender den rigtige aktør (admin-flytningen), skriver IKKE en egen
+ * række (det gav en dubletrække), men tilskriver triggerens række. Best-effort
+ * og kaster aldrig, som recordRiderOwnershipEvent.
+ *
+ * @param {object} supabase
+ * @param {object} p
+ * @param {string} p.riderId
+ * @param {string} p.fromTeamId holdet rytteren forlod
+ * @param {string} p.since ISO-tid lige før UPDATE'en (snævrer ind til denne udgang)
+ * @param {string} p.reason en af RIDER_OWNERSHIP_REASON
+ * @param {string} [p.relatedEntityType]
+ * @param {string} [p.actorType]
+ * @param {string|null} [p.actorId]
+ * @returns {Promise<{ok:boolean, updated:number}>}
+ */
+export async function attributeTeamExitEvent(supabase, { riderId, fromTeamId, since, reason, relatedEntityType = null, actorType = null, actorId = null }) {
+  try {
+    const { data, error } = await supabase.from("rider_ownership_events")
+      .update({ reason, related_entity_type: relatedEntityType, actor_type: actorType, actor_id: actorId })
+      .eq("rider_id", riderId).eq("from_team_id", fromTeamId).is("to_team_id", null)
+      .eq("actor_type", "system").gte("created_at", since)
+      .select("id");
+    if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
+    return { ok: true, updated: data?.length ?? 0 };
+  } catch (e) {
+    // best-effort: ejerskabsændringen er allerede committet; kun tilskrivningen mangler.
+    console.error("  ⚠️  attributeTeamExitEvent fejlede for rytter %s (ikke-fatal, #6504):", riderId, e.message);
+    return { ok: false, updated: 0 };
+  }
+}
